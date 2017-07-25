@@ -1122,7 +1122,8 @@
     % Sequence.
 
     --->    ml_stmt_block(
-                list(mlds_defn),
+                list(mlds_local_var_defn),
+                list(mlds_function_defn),
                 list(mlds_stmt),
                 prog_context
             )

@@ -601,7 +601,7 @@ ml_elim_nested_defns_in_func(Action, ModuleName, Globals, FuncDefn0,
             % and the nested functions. Also generate the GC tracing function,
             % if Action = chain_gc_stack_frames.
             ml_create_env(Action, EnvName, EnvTypeName, Locals, Context,
-                ModuleName, Name, Globals, EnvTypeDefn, EnvDecls, InitEnv,
+                ModuleName, Name, Globals, EnvTypeDefn, EnvDefns, InitEnv,
                 GCTraceFuncDefns),
             list.map_foldl(
                 ml_insert_init_env(Action, EnvTypeName, ModuleName, Globals),
@@ -671,8 +671,7 @@ ml_elim_nested_defns_in_func(Action, ModuleName, Globals, FuncDefn0,
                 % body, and append the final unlink statement (if any)
                 % at the end.
                 % XXX MLDS_DEFN
-                FuncBody = ml_gen_block(
-                    list.map(wrap_local_var_defn, EnvDecls),
+                FuncBody = ml_gen_block(EnvDefns, [],
                     InitEnv ++ CodeToCopyArgs ++ [FuncBody2] ++ UnchainFrame,
                     Context)
             )
@@ -826,7 +825,7 @@ ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
     list(mlds_function_defn)::out) is det.
 
 ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
-        ModuleName, FuncName, Globals, EnvTypeDefn, EnvDecls, InitEnv,
+        ModuleName, FuncName, Globals, EnvTypeDefn, EnvDefns, InitEnv,
         GCTraceFuncDefns) :-
     % Generate the following type:
     %
@@ -877,7 +876,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
             GCStmtEnv = gc_no_stmt
         ;
             GC_Stmts = [_ | _],
-            GC_Block = ml_gen_block([], GC_Stmts, Context),
+            GC_Block = ml_gen_block([], [], GC_Stmts, Context),
             GCStmtEnv = gc_trace_code(GC_Block)
         ),
         Fields = Fields1,
@@ -932,7 +931,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     ),
     ml_init_env(Action, EnvTypeName, EnvVarAddr, Context, ModuleName,
         Globals, EnvPtrVarDecl, InitEnv0),
-    EnvDecls = [EnvVarDecl, EnvPtrVarDecl],
+    EnvDefns = [EnvVarDecl, EnvPtrVarDecl],
     InitEnv = NewObj ++ [InitEnv0] ++ LinkStackChain.
 
 :- pred ml_chain_stack_frames(globals::in, mlds_module_name::in,
@@ -1032,7 +1031,7 @@ ml_chain_stack_frames(Globals, ModuleName, FuncName, Context,
     mlds_code_addr::out, mlds_func_params::out, mlds_function_defn::out)
     is det.
 
-gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStmts,
+gen_gc_trace_func(PredModule, FuncName, FramePointerDefn, GCTraceStmts,
         Context, GCTraceFuncAddr, FuncParams, GCTraceFuncDefn) :-
     % Compute the signature of the GC tracing function
     ArgVarName = lvn_comp_var(lvnc_this_frame),
@@ -1078,9 +1077,7 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDecl, GCTraceStmts,
     ),
 
     % Construct the function definition.
-    % XXX MLDS_DEFN
-    Stmt = ml_stmt_block([mlds_local_var(FramePointerDecl)], GCTraceStmts,
-        Context),
+    Stmt = ml_stmt_block([FramePointerDefn], [], GCTraceStmts, Context),
     DeclFlags = ml_gen_gc_trace_func_decl_flags,
     MaybePredProcId = no,
     Attributes = [],
@@ -1201,9 +1198,8 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals,
         CastEnvPtrVal = ml_unop(cast(EnvPtrVarType), EnvPtrVal),
 
         ml_init_env(Action, TypeName, CastEnvPtrVal, Context,
-            ModuleName, Globals, EnvPtrDecl, InitEnvPtr),
-        % XXX MLDS_DEFN
-        FuncBody = ml_stmt_block([mlds_local_var(EnvPtrDecl)],
+            ModuleName, Globals, EnvPtrDefn, InitEnvPtr),
+        FuncBody = ml_stmt_block([EnvPtrDefn], [],
             [InitEnvPtr, FuncBody0], Context),
         FunctionDefn = mlds_function_defn(Name, Context, Flags,
             PredProcId, Params, body_defined_here(FuncBody), Attributes,
@@ -1388,10 +1384,12 @@ ml_module_name_string(ModuleName) = sym_name_to_string_sep(ModuleName, "__").
 % flatten_statements:
 % flatten_statement:
 %
-% Recursively process the statement(s), calling fixup_var on every use
-% of a variable inside them, and calling flatten_nested_defns for every
-% definition they contain (e.g. definitions of local variables and nested
-% functions).
+% Recursively process the statement(s),
+% - calling fixup_var on every use of a variable inside them,
+% - calling flatten_nested_local_var_defns for every list of local variable
+%   definitions they contain, and
+% - calling flatten_nested_function_defns for every list of local function
+%   definitions they contain.
 %
 % Also, for Action = chain_gc_stack_frames, add code to save and restore
 % the stack chain pointer at any `try_commit' statements.
@@ -1455,12 +1453,13 @@ flatten_statements(Action, [Stmt0 | Stmts0], [Stmt | Stmts], !Info) :-
 
 flatten_statement(Action, Stmt0, Stmt, !Info) :-
     (
-        Stmt0 = ml_stmt_block(Defns0, SubStmts0, Context),
-        flatten_nested_defns(Action, Defns0, SubStmts0, Defns,
-            InitStmts, !Info),
+        Stmt0 = ml_stmt_block(LocalVarDefns0, FuncDefns0, SubStmts0, Context),
+        flatten_nested_local_var_defns(Action, LocalVarDefns0, LocalVarDefns,
+            FuncDefns0, SubStmts0, InitStmts, !Info),
+        flatten_nested_function_defns(Action, FuncDefns0, FuncDefns, !Info),
         flatten_statements(Action,
             InitStmts ++ SubStmts0, SubStmts, !Info),
-        Stmt = ml_stmt_block(Defns, SubStmts, Context)
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
         Stmt0 = ml_stmt_while(Kind, Rval0, SubStmt0, Context),
         fixup_rval(Action, !.Info, Rval0, Rval),
@@ -1600,21 +1599,22 @@ save_and_restore_stack_chain(Stmt0, Stmt, !ElimInfo) :-
     Stmt0 = ml_stmt_try_commit(Ref, BodyStmt0, HandlerStmt0, Context),
     BodyContext = get_mlds_stmt_context(BodyStmt0),
     HandlerContext = get_mlds_stmt_context(HandlerStmt0),
-    SavedVarDecl = gen_saved_stack_chain_var(Id, BodyContext),
+    SavedVarDefn = gen_saved_stack_chain_var(Id, BodyContext),
     SaveStmt = gen_save_stack_chain_var(ModuleName, Id, BodyContext),
     RestoreStmt = gen_restore_stack_chain_var(ModuleName, Id, HandlerContext),
     BodyStmt =
-        ml_stmt_block([], [SaveStmt, BodyStmt0], BodyContext),
+        ml_stmt_block([], [], [SaveStmt, BodyStmt0], BodyContext),
     HandlerStmt =
-        ml_stmt_block([], [RestoreStmt, HandlerStmt0], HandlerContext),
+        ml_stmt_block([], [], [RestoreStmt, HandlerStmt0], HandlerContext),
     TryCommit = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt, Context),
-    % XXX MLDS_DEFN
-    Stmt = ml_stmt_block([mlds_local_var(SavedVarDecl)], [TryCommit], Context).
+    Stmt = ml_stmt_block([SavedVarDefn], [], [TryCommit], Context).
 
 %-----------------------------------------------------------------------------%
 
-% flatten_nested_defns:
-% flatten_nested_defn:
+% flatten_nested_function_defns:
+% flatten_nested_function_defn:
+% flatten_nested_local_var_defns:
+% flatten_nested_local_var_defn:
 %
 % Hoist out nested function definitions, and any local variables that need
 % to go in the environment struct (e.g. because they are referenced by
@@ -1623,136 +1623,145 @@ save_and_restore_stack_chain(Stmt0, Stmt, !ElimInfo) :-
 % statements. Return the remaining (non-hoisted) definitions, the list of
 % assignment statements, and the updated elim_info.
 
-:- pred flatten_nested_defns(action, list(mlds_defn), list(mlds_stmt),
-    list(mlds_defn), list(mlds_stmt), elim_info, elim_info).
-:- mode flatten_nested_defns(in(hoist), in, in, out, out, in, out) is det.
-:- mode flatten_nested_defns(in(chain), in, in, out, out, in, out) is det.
+:- pred flatten_nested_function_defns(action,
+    list(mlds_function_defn), list(mlds_function_defn), elim_info, elim_info).
+:- mode flatten_nested_function_defns(in(hoist), in, out, in, out) is det.
+:- mode flatten_nested_function_defns(in(chain), in, out, in, out) is det.
 
-flatten_nested_defns(_, [], _, [], [], !Info).
-flatten_nested_defns(Action, [Defn0 | Defns0], FollowingStmts, Defns,
-        InitStmts, !Info) :-
-    flatten_nested_defn(Action, Defn0, Defns0, FollowingStmts,
-        Defns1, InitStmts1, !Info),
-    flatten_nested_defns(Action, Defns0, FollowingStmts,
-        Defns2, InitStmts2, !Info),
-    Defns = Defns1 ++ Defns2,
-    InitStmts = InitStmts1 ++ InitStmts2.
+flatten_nested_function_defns(_, [], [], !Info).
+flatten_nested_function_defns(Action,
+        [HeadFuncDefn0 | TailFuncDefns0], FuncDefns, !Info) :-
+    flatten_nested_function_defn(Action, HeadFuncDefn0, HeadFuncDefns,
+        !Info),
+    flatten_nested_function_defns(Action, TailFuncDefns0, TailFuncDefns,
+        !Info),
+    FuncDefns = HeadFuncDefns ++ TailFuncDefns.
 
-:- pred flatten_nested_defn(action, mlds_defn, list(mlds_defn),
-    list(mlds_stmt), list(mlds_defn), list(mlds_stmt),
-    elim_info, elim_info).
-:- mode flatten_nested_defn(in(hoist), in, in, in, out, out, in, out) is det.
-:- mode flatten_nested_defn(in(chain), in, in, in, out, out, in, out) is det.
+:- pred flatten_nested_function_defn(action,
+    mlds_function_defn, list(mlds_function_defn), elim_info, elim_info).
+:- mode flatten_nested_function_defn(in(hoist), in, out, in, out) is det.
+:- mode flatten_nested_function_defn(in(chain), in, out, in, out) is det.
 
-flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
-        Defns, InitStmts, !Info) :-
+flatten_nested_function_defn(Action, FuncDefn0, FuncDefns, !Info) :-
+    FuncDefn0 = mlds_function_defn(Name, Context, Flags0, PredProcId, Params,
+        FuncBody0, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
+    % Recursively flatten the nested function.
+    flatten_function_body(Action, FuncBody0, FuncBody, !Info),
+
+    % Mark the function as private / one_copy, rather than as
+    % local / per_instance, if we are about to hoist it out to the
+    % top level.
     (
-        Defn0 = mlds_function(FunctionDefn0),
-        FunctionDefn0 = mlds_function_defn(Name, Context, Flags0,
-            PredProcId, Params, FuncBody0, Attributes,
-            EnvVarNames, MaybeRequiretailrecInfo),
-        % Recursively flatten the nested function.
-        flatten_function_body(Action, FuncBody0, FuncBody, !Info),
-
-        % Mark the function as private / one_copy, rather than as
-        % local / per_instance, if we are about to hoist it out to the
-        % top level.
-        (
-            Action = hoist_nested_funcs,
-            set_function_access(acc_private, Flags0, Flags1),
-            set_function_per_instance(one_copy, Flags1, Flags)
-        ;
-            Action = chain_gc_stack_frames,
-            Flags = Flags0
-        ),
-        FunctionDefn = mlds_function_defn(Name, Context, Flags,
-            PredProcId, Params, FuncBody, Attributes,
-            EnvVarNames, MaybeRequiretailrecInfo),
-        Defn = mlds_function(FunctionDefn),
-        (
-            Action = hoist_nested_funcs,
-            % Note that we assume that we can safely hoist stuff inside nested
-            % functions into the containing function. If that wasn't the case,
-            % we would need code something like this:
-            % LocalVars = elim_info_get_local_vars(ElimInfo),
-            % OuterVars0 = elim_info_get_outer_vars(ElimInfo),
-            % OuterVars = [LocalVars | OuterVars0],
-            % FlattenedDefns = ml_elim_nested_defns(ModuleName,
-            %   OuterVars, Defn0),
-            % list.foldl(elim_info_add_nested_func, FlattenedDefns),
-
-            % Strip out the now flattened nested function, and store it
-            % in the elim_info.
-            elim_info_add_nested_func(FunctionDefn, !Info),
-            Defns = []
-        ;
-            Action = chain_gc_stack_frames,
-            Defns = [Defn]
-        ),
-        InitStmts = []
+        Action = hoist_nested_funcs,
+        set_function_access(acc_private, Flags0, Flags1),
+        set_function_per_instance(one_copy, Flags1, Flags)
     ;
-        Defn0 = mlds_local_var(LocalVarDefn0),
-        LocalVarDefn0 = mlds_local_var_defn(LocalVarName, Context,
-            Type, Init0, GCStmt),
-        % For local variable definitions, if they are referenced by any nested
-        % functions, then strip them out and store them in the elim_info.
-        ( if
-            % Hoist ordinary local variables.
-            ml_should_add_local_var(Action, !.Info, LocalVarName, GCStmt,
-                FollowingDefns, FollowingStmts)
-        then
-            % We need to strip out the initializer (if any) and convert it
-            % into an assignment statement, since this local variable
-            % is going to become a field, and fields can't have initializers.
-            (
-                Init0 = init_obj(Rval),
-                Init = no_initializer,
-                LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
-                    Type, Init, GCStmt),
-                % XXX BUG! Converting the initializer to an assignment doesn't
-                % work, because it doesn't handle the case when initializers in
-                % FollowingDefns reference this variable.
-                ModuleName = elim_info_get_module_name(!.Info),
-                QualLocalVarName =
-                    qual_local_var_name(ModuleName, module_qual, LocalVarName),
-                VarLval = ml_local_var(QualLocalVarName, Type),
-                InitStmt = ml_stmt_atomic(assign(VarLval, Rval), Context),
-                InitStmts = [InitStmt]
-            ;
-                Init0 = init_struct(_, _),
-                unexpected($pred, "init_struct")
-            ;
-                Init0 = init_array(_),
-                unexpected($pred, "init_array")
-            ;
-                Init0 = no_initializer,
-                LocalVarDefn = LocalVarDefn0,
-                InitStmts = []
-            ),
-            elim_info_add_local_var(LocalVarDefn, !Info),
-            Defns = []
-        else
-            fixup_initializer(Action, !.Info, Init0, Init),
-            LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
+        Action = chain_gc_stack_frames,
+        Flags = Flags0
+    ),
+    FuncDefn = mlds_function_defn(Name, Context, Flags, PredProcId, Params,
+        FuncBody, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
+    (
+        Action = hoist_nested_funcs,
+        % Note that we assume that we can safely hoist stuff inside nested
+        % functions into the containing function. If that wasn't the case,
+        % we would need code something like this:
+        % LocalVars = elim_info_get_local_vars(ElimInfo),
+        % OuterVars0 = elim_info_get_outer_vars(ElimInfo),
+        % OuterVars = [LocalVars | OuterVars0],
+        % FlattenedDefns = ml_elim_nested_defns(ModuleName,
+        %   OuterVars, Defn0),
+        % list.foldl(elim_info_add_nested_func, FlattenedDefns),
+
+        % Strip out the now flattened nested function, and store it
+        % in the elim_info.
+        elim_info_add_nested_func(FuncDefn, !Info),
+        FuncDefns = []
+    ;
+        Action = chain_gc_stack_frames,
+        FuncDefns = [FuncDefn]
+    ).
+
+:- pred flatten_nested_local_var_defns(action,
+    list(mlds_local_var_defn), list(mlds_local_var_defn),
+    list(mlds_function_defn), list(mlds_stmt), list(mlds_stmt),
+    elim_info, elim_info).
+:- mode flatten_nested_local_var_defns(in(hoist), in, out, in, in, out,
+    in, out) is det.
+:- mode flatten_nested_local_var_defns(in(chain), in, out, in, in, out,
+    in, out) is det.
+
+flatten_nested_local_var_defns(_, [], [], _, _, [], !Info).
+flatten_nested_local_var_defns(Action,
+        [HeadLocalVarDefn0 | TailLocalVarDefns0], LocalVarDefns, FuncDefns,
+        Stmts, InitStmts, !Info) :-
+    flatten_nested_local_var_defn(Action,
+        HeadLocalVarDefn0, TailLocalVarDefns0, HeadLocalVarDefns,
+        FuncDefns, Stmts, HeadInitStmts, !Info),
+    flatten_nested_local_var_defns(Action,
+        TailLocalVarDefns0, TailLocalVarDefns,
+        FuncDefns, Stmts, TailInitStmts, !Info),
+    LocalVarDefns = HeadLocalVarDefns ++ TailLocalVarDefns,
+    InitStmts = HeadInitStmts ++ TailInitStmts.
+
+:- pred flatten_nested_local_var_defn(action,
+    mlds_local_var_defn, list(mlds_local_var_defn), list(mlds_local_var_defn),
+    list(mlds_function_defn), list(mlds_stmt), list(mlds_stmt),
+    elim_info, elim_info).
+:- mode flatten_nested_local_var_defn(in(hoist), in, in, out, in, in, out,
+    in, out) is det.
+:- mode flatten_nested_local_var_defn(in(chain), in, in, out, in, in, out,
+    in, out) is det.
+
+flatten_nested_local_var_defn(Action, HeadLocalVarDefn0, _TailLocalVarDefns0,
+        HeadLocalVarDefns, FuncDefns, Stmts, InitStmts, !Info) :-
+    HeadLocalVarDefn0 = mlds_local_var_defn(LocalVarName, Context,
+        Type, Init0, GCStmt),
+    % For local variable definitions, if they are referenced by any nested
+    % functions, then strip them out and store them in the elim_info.
+    ( if
+        % Hoist ordinary local variables.
+        ml_should_add_local_var(Action, !.Info, LocalVarName, GCStmt,
+            FuncDefns, Stmts)
+    then
+        % We need to strip out the initializer (if any) and convert it
+        % into an assignment statement, since this local variable
+        % is going to become a field, and fields can't have initializers.
+        (
+            Init0 = init_obj(Rval),
+            Init = no_initializer,
+            HeadLocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
                 Type, Init, GCStmt),
-            Defns = [mlds_local_var(LocalVarDefn)],
+            % XXX BUG! Converting the initializer to an assignment doesn't
+            % work, because it doesn't handle the case when initializers in
+            % _TailLocalVarDefns0 reference this variable.
+            ModuleName = elim_info_get_module_name(!.Info),
+            QualLocalVarName =
+                qual_local_var_name(ModuleName, module_qual, LocalVarName),
+            VarLval = ml_local_var(QualLocalVarName, Type),
+            InitStmt = ml_stmt_atomic(assign(VarLval, Rval), Context),
+            InitStmts = [InitStmt]
+        ;
+            Init0 = init_struct(_, _),
+            unexpected($pred, "init_struct")
+        ;
+            Init0 = init_array(_),
+            % XXX We do generate init_array initializers for some local
+            % variables.
+            unexpected($pred, "init_array")
+        ;
+            Init0 = no_initializer,
+            HeadLocalVarDefn = HeadLocalVarDefn0,
             InitStmts = []
-        )
-    ;
-        Defn0 = mlds_class(_),
-        % Leave nested class declarations alone.
-        %
-        % XXX That might not be the right thing to do, but currently
-        % ml_code_gen.m doesn't generate any of these, so it doesn't matter
-        % what we do.
-        Defns = [Defn0],
+        ),
+        elim_info_add_local_var(HeadLocalVarDefn, !Info),
+        HeadLocalVarDefns = []
+    else
+        fixup_initializer(Action, !.Info, Init0, Init),
+        HeadLocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
+            Type, Init, GCStmt),
+        HeadLocalVarDefns = [HeadLocalVarDefn],
         InitStmts = []
-    ;
-        Defn0 = mlds_field_var(_),
-        unexpected($pred, "mlds_field_var")
-    ;
-        Defn0 = mlds_global_var(_),
-        unexpected($pred, "mlds_global_var")
     ).
 
     % Succeed iff we should add the definition of this variable to the
@@ -1761,12 +1770,12 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStmts,
     % top level (if it is a static const).
     %
 :- pred ml_should_add_local_var(action, elim_info, mlds_local_var_name,
-    mlds_gc_statement, list(mlds_defn), list(mlds_stmt)).
+    mlds_gc_statement, list(mlds_function_defn), list(mlds_stmt)).
 :- mode ml_should_add_local_var(in(hoist), in, in, in, in, in) is semidet.
 :- mode ml_should_add_local_var(in(chain), in, in, in, in, in) is semidet.
 
 ml_should_add_local_var(Action, Info, VarName, GCStmt,
-        FollowingDefns, FollowingStmts) :-
+        FuncDefns, FollowingStmts) :-
     (
         Action = chain_gc_stack_frames,
         ( GCStmt = gc_trace_code(_)
@@ -1775,7 +1784,7 @@ ml_should_add_local_var(Action, Info, VarName, GCStmt,
     ;
         Action = hoist_nested_funcs,
         ModuleName = elim_info_get_module_name(Info),
-        ml_need_to_hoist(ModuleName, VarName, FollowingDefns, FollowingStmts)
+        ml_need_to_hoist(ModuleName, VarName, FuncDefns, FollowingStmts)
     ).
 
     % This checks for a nested function definition.
@@ -1786,23 +1795,22 @@ ml_should_add_local_var(Action, Info, VarName, GCStmt,
     % is referenced in a later definition, we do N^2 tests.
     %
 :- pred ml_need_to_hoist(mlds_module_name::in, mlds_local_var_name::in,
-    list(mlds_defn)::in, list(mlds_stmt)::in) is semidet.
+    list(mlds_function_defn)::in, list(mlds_stmt)::in) is semidet.
 
-ml_need_to_hoist(ModuleName, VarName, FollowingDefns, FollowingStmts) :-
+ml_need_to_hoist(ModuleName, VarName, FuncDefns, FollowingStmts) :-
     QualVarName = qual_local_var_name(ModuleName, module_qual, VarName),
     Filter = ml_need_to_hoist_defn(QualVarName),
     (
-        list.find_first_match(Filter, FollowingDefns, _)
+        list.find_first_match(Filter, FuncDefns, _)
     ;
         statements_contains_matching_defn(Filter, FollowingStmts)
     ).
 
-:- pred ml_need_to_hoist_defn(qual_local_var_name::in, mlds_defn::in)
+:- pred ml_need_to_hoist_defn(qual_local_var_name::in, mlds_function_defn::in)
     is semidet.
 
-ml_need_to_hoist_defn(QualVarName, FollowingDefn) :-
-    FollowingDefn = mlds_function(FollowingFunctionDefn),
-    function_defn_contains_var(FollowingFunctionDefn, QualVarName) = yes.
+ml_need_to_hoist_defn(QualVarName, FuncDefn) :-
+    function_defn_contains_var(FuncDefn, QualVarName) = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -2268,7 +2276,8 @@ ml_env_module_name(Target, ClassType) = EnvModuleName :-
 %
 
 :- pred statements_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), list(mlds_stmt)::in) is semidet.
+    pred(mlds_function_defn)::in(pred(in) is semidet),
+    list(mlds_stmt)::in) is semidet.
 
 statements_contains_matching_defn(Filter, [Stmt | Stmts]) :-
     (
@@ -2278,13 +2287,15 @@ statements_contains_matching_defn(Filter, [Stmt | Stmts]) :-
     ).
 
 :- pred statement_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), mlds_stmt::in) is semidet.
+    pred(mlds_function_defn)::in(pred(in) is semidet),
+    mlds_stmt::in) is semidet.
 
 statement_contains_matching_defn(Filter, Stmt) :-
     require_complete_switch [Stmt]
     (
-        Stmt = ml_stmt_block(SubDefns, SubStmts, _Context),
-        ( defns_contains_matching_defn(Filter, SubDefns)
+        Stmt = ml_stmt_block(_LocalVarDefns, FuncDefns, SubStmts, _Context),
+        % Local var definitions contain no other definitions.
+        ( function_defns_contains_matching_defn(Filter, FuncDefns)
         ; statements_contains_matching_defn(Filter, SubStmts)
         )
     ;
@@ -2323,8 +2334,8 @@ statement_contains_matching_defn(Filter, Stmt) :-
     ).
 
 :- pred cases_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), list(mlds_switch_case)::in)
-    is semidet.
+    pred(mlds_function_defn)::in(pred(in) is semidet),
+    list(mlds_switch_case)::in) is semidet.
 
 cases_contains_matching_defn(Filter, [Case | Cases]) :-
     (
@@ -2334,14 +2345,15 @@ cases_contains_matching_defn(Filter, [Case | Cases]) :-
     ).
 
 :- pred case_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), mlds_switch_case::in) is semidet.
+    pred(mlds_function_defn)::in(pred(in) is semidet),
+    mlds_switch_case::in) is semidet.
 
 case_contains_matching_defn(Filter, Case) :-
     Case = mlds_switch_case(_FirstMatchCond, _LaterMatchConds, Stmt),
     statement_contains_matching_defn(Filter, Stmt).
 
 :- pred default_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), mlds_switch_default::in)
+    pred(mlds_function_defn)::in(pred(in) is semidet), mlds_switch_default::in)
     is semidet.
 
 % default_contains_matching_defn(_, default_do_nothing) :- fail.
@@ -2349,53 +2361,21 @@ case_contains_matching_defn(Filter, Case) :-
 default_contains_matching_defn(Filter, default_case(Stmt)) :-
     statement_contains_matching_defn(Filter, Stmt).
 
-:- pred defns_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), list(mlds_defn)::in) is semidet.
-
-defns_contains_matching_defn(Filter, [Defn | Defns]) :-
-    (
-        defn_contains_matching_defn(Filter, Defn)
-    ;
-        defns_contains_matching_defn(Filter, Defns)
-    ).
-
 :- pred function_defns_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), list(mlds_function_defn)::in)
-    is semidet.
+    pred(mlds_function_defn)::in(pred(in) is semidet),
+    list(mlds_function_defn)::in) is semidet.
 
 function_defns_contains_matching_defn(Filter, [FuncDefn | FuncDefns]) :-
     (
+        Filter(FuncDefn)
+    ;
         function_defn_contains_matching_defn(Filter, FuncDefn)
     ;
         function_defns_contains_matching_defn(Filter, FuncDefns)
     ).
 
-:- pred defn_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), mlds_defn::in) is semidet.
-
-defn_contains_matching_defn(Filter, Defn) :-
-    (
-        Filter(Defn)    % This is where we succeed!
-    ;
-        require_complete_switch [Defn]
-        (
-            Defn = mlds_function(FuncDefn),
-            function_defn_contains_matching_defn(Filter, FuncDefn)
-        ;
-            Defn = mlds_class(ClassDefn),
-            class_defn_contains_matching_defn(Filter, ClassDefn)
-        ;
-            ( Defn = mlds_global_var(_)
-            ; Defn = mlds_local_var(_)
-            ; Defn = mlds_field_var(_)
-            ),
-            % Data entities contain no definitions.
-            fail
-        )
-    ).
-
 :- pred function_defn_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), mlds_function_defn::in)
+    pred(mlds_function_defn)::in(pred(in) is semidet), mlds_function_defn::in)
     is semidet.
 
 function_defn_contains_matching_defn(Filter, FuncDefn) :-
@@ -2403,19 +2383,6 @@ function_defn_contains_matching_defn(Filter, FuncDefn) :-
         FunctionBody, _Attrs, _EnvVarNames, _MaybeRequiretailrecInfo),
     FunctionBody = body_defined_here(Stmt),
     statement_contains_matching_defn(Filter, Stmt).
-
-:- pred class_defn_contains_matching_defn(
-    pred(mlds_defn)::in(pred(in) is semidet), mlds_class_defn::in)
-    is semidet.
-
-class_defn_contains_matching_defn(Filter, ClassDefn) :-
-    ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags, _Kind,
-        _Imports, _Inherits, _Implements, _TypeParams, CtorDefns, FieldDefns),
-    (
-        defns_contains_matching_defn(Filter, FieldDefns)
-    ;
-        function_defns_contains_matching_defn(Filter, CtorDefns)
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -2450,9 +2417,9 @@ add_unchain_stack_to_stmts(Action, [Stmt0 | Stmts0], [Stmt | Stmts], !Info) :-
 
 add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info) :-
     (
-        Stmt0 = ml_stmt_block(Defns, SubStmts0, Context),
+        Stmt0 = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts0, Context),
         add_unchain_stack_to_stmts(Action, SubStmts0, SubStmts, !Info),
-        Stmt = ml_stmt_block(Defns, SubStmts, Context)
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
         Stmt0 = ml_stmt_while(Kind, Rval, SubStmt0, Context),
         add_unchain_stack_to_stmt(Action, SubStmt0, SubStmt, !Info),
@@ -2511,7 +2478,7 @@ add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
         UnchainFrame = ml_gen_unchain_frame(Context, !.Info),
         RetRvals = list.map(func(Rval) = ml_lval(Rval), RetLvals),
         RetStmt = ml_stmt_return(RetRvals, Context),
-        Stmt = ml_stmt_block([], [UnchainFrame, Stmt0, RetStmt], Context)
+        Stmt = ml_stmt_block([], [], [UnchainFrame, Stmt0, RetStmt], Context)
     ;
         CallKind = ordinary_call,
         Stmt = Stmt0
@@ -2561,7 +2528,7 @@ add_unchain_stack_to_default(Action, Default0, Default, !Info) :-
 
 prepend_unchain_frame(Stmt0, Context, ElimInfo) = Stmt :-
     UnchainFrame = ml_gen_unchain_frame(Context, ElimInfo),
-    Stmt = ml_stmt_block([], [UnchainFrame, Stmt0], Context).
+    Stmt = ml_stmt_block([], [], [UnchainFrame, Stmt0], Context).
 
 :- func ml_gen_unchain_frame(prog_context, elim_info) = mlds_stmt.
 

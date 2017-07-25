@@ -478,8 +478,8 @@
     % control if control did not go through this branch.
     %
 :- pred ml_gen_goal_as_branch(code_model::in, hlds_goal::in,
-    list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_goal_as_branch_block(code_model::in, hlds_goal::in,
     mlds_stmt::out, ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -488,8 +488,8 @@
     % and the other containing the generated statements.
     %
 :- pred ml_gen_goal(code_model::in, hlds_goal::in,
-    list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel,
     %   Context, Stmts0, Stmts, !Info):
@@ -541,14 +541,15 @@
 %
 
 ml_gen_goal_as_block(CodeModel, Goal, Stmt, !Info) :-
-    ml_gen_goal(CodeModel, Goal, Decls, Stmts, !Info),
+    ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info),
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
-    Stmt = ml_gen_block(Decls, Stmts, Context).
+    Stmt = ml_gen_block(LocalVarDefns, FuncDefns, Stmts, Context).
 
-ml_gen_goal_as_branch(CodeModel, Goal, Decls, Stmts, !Info) :-
+ml_gen_goal_as_branch(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts,
+        !Info) :-
     ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
-    ml_gen_goal(CodeModel, Goal, Decls, Stmts, !Info),
+    ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info),
     ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
 
 ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info) :-
@@ -558,7 +559,7 @@ ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_goal(CodeModel, Goal, Decls, Stmts, !Info) :-
+ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
 
@@ -567,21 +568,21 @@ ml_gen_goal(CodeModel, Goal, Decls, Stmts, !Info) :-
     find_vars_to_declare(VarTypes, GoalExpr, GoalInfo, VarsToDeclare),
 
     ml_gen_info_get_varset(!.Info, VarSet),
-    ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsToDeclare, VarDecls,
+    ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsToDeclare, VarDefns,
         !Info),
 
     % Generate code for the goal in its own code model.
     GoalCodeModel = goal_info_get_code_model(GoalInfo),
     ml_gen_goal_expr(GoalExpr, GoalCodeModel, Context, GoalInfo,
-        GoalDecls, GoalStmts0, !Info),
+        GoalLocalVarDefns, GoalFuncDefns, GoalStmts0, !Info),
 
     % Add whatever wrapper is needed to convert the goal's code model
     % to the desired code model.
     ml_gen_maybe_convert_goal_code_model(CodeModel, GoalCodeModel, Context,
         GoalStmts0, GoalStmts, !Info),
 
-    % XXX MLDS_DEFN
-    Decls = list.map(wrap_local_var_defn, VarDecls) ++ GoalDecls,
+    LocalVarDefns = VarDefns ++ GoalLocalVarDefns,
+    FuncDefns = GoalFuncDefns,
     Stmts = GoalStmts.
 
 %-----------------------------------------------------------------------------%
@@ -589,15 +590,17 @@ ml_gen_goal(CodeModel, Goal, Decls, Stmts, !Info) :-
     % Generate MLDS code for the different kinds of HLDS goals.
     %
 :- pred ml_gen_goal_expr(hlds_goal_expr::in, code_model::in, prog_context::in,
-    hlds_goal_info::in, list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    hlds_goal_info::in,
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
-        !Info) :-
+ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
+        LocalVarDefns, FuncDefns, Stmts, !Info) :-
     (
         GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
         ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info),
-        Decls = []
+        LocalVarDefns = [],
+        FuncDefns = []
     ;
         GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         (
@@ -607,11 +610,11 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
             ArgNames = ml_gen_local_var_names(VarSet, ArgVars),
             ml_variable_types(!.Info, ArgVars, ActualArgTypes),
             ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
-                CodeModel, Context, no, Decls, Stmts, !Info)
+                CodeModel, Context, no, LocalVarDefns, FuncDefns, Stmts, !Info)
         ;
             BuiltinState = inline_builtin,
             ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
-                Decls, Stmts, !Info)
+                LocalVarDefns, FuncDefns, Stmts, !Info)
         )
     ;
         GoalExpr = generic_call(GenericCall, Vars, Modes, _, Detism),
@@ -619,7 +622,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
         expect(unify(CodeModel, CallCodeModel), $module, $pred,
             "code model mismatch"),
         ml_gen_generic_call(GenericCall, Vars, Modes, Detism, Context,
-            Decls, Stmts, !Info)
+            LocalVarDefns, FuncDefns, Stmts, !Info)
     ;
         GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
             Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl),
@@ -634,42 +637,46 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
             MaybeTraceRuntimeCond = no,
             ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
                 PredId, ProcId, Args, ExtraArgs, ForeignCode,
-                ContextToUse, DataDecls, Stmts, !Info),
-            % XXX MLDS_DEFN
-            Decls = list.map(wrap_local_var_defn, DataDecls)
+                ContextToUse, LocalVarDefns, Stmts, !Info),
+            FuncDefns = []
         ;
             MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
             ml_gen_trace_runtime_cond(TraceRuntimeCond, ContextToUse,
                 Stmts, !Info),
-            Decls = []
+            LocalVarDefns = [],
+            FuncDefns = []
         )
     ;
         GoalExpr = conj(_ConjType, Goals),
         % XXX Currently we treat parallel conjunction the same as
         % sequential conjunction -- parallelism is not yet implemented.
-        ml_gen_conj(Goals, CodeModel, Context, Decls, Stmts, !Info)
+        ml_gen_conj(Goals, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
+            !Info)
     ;
         GoalExpr = disj(Goals),
         ml_gen_disj(Goals, GoalInfo, CodeModel, Context, Stmts, !Info),
-        Decls = []
+        LocalVarDefns = [],
+        FuncDefns = []
     ;
         GoalExpr = switch(Var, CanFail, CasesList),
         ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context, GoalInfo,
-            DataDecls, Stmts, !Info),
-        % XXX MLDS_DEFN
-        Decls = list.map(wrap_local_var_defn, DataDecls)
+            LocalVarDefns, Stmts, !Info),
+        FuncDefns = []
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info)
+        ml_gen_ite(CodeModel, Cond, Then, Else, Context,
+            LocalVarDefns, FuncDefns, Stmts, !Info)
     ;
         GoalExpr = negation(SubGoal),
-        ml_gen_negation(SubGoal, CodeModel, Context, Decls, Stmts, !Info)
+        ml_gen_negation(SubGoal, CodeModel, Context,
+            LocalVarDefns, FuncDefns, Stmts, !Info)
     ;
         GoalExpr = scope(Reason, SubGoal),
         (
             Reason = from_ground_term(TermVar, from_ground_term_construct),
             ml_gen_ground_term(TermVar, SubGoal, Stmts, !Info),
-            Decls = []
+            LocalVarDefns = [],
+            FuncDefns = []
         ;
             ( Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
@@ -679,13 +686,15 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
             ; Reason = require_switch_arms_detism(_, _)
             ; Reason = trace_goal(_, _, _, _, _)
             ),
-            ml_gen_goal(CodeModel, SubGoal, Decls, Stmts, !Info)
+            ml_gen_goal(CodeModel, SubGoal, LocalVarDefns, FuncDefns, Stmts,
+                !Info)
         ;
             Reason = disable_warnings(HeadWarning, TailWarnings),
             ml_gen_info_get_disabled_warnings(!.Info, Warnings0),
             set.insert_list([HeadWarning | TailWarnings], Warnings0, Warnings),
             ml_gen_info_set_disabled_warnings(Warnings, !Info),
-            ml_gen_goal(CodeModel, SubGoal, Decls, Stmts, !Info),
+            ml_gen_goal(CodeModel, SubGoal, LocalVarDefns, FuncDefns, Stmts,
+                !Info),
             ml_gen_info_set_disabled_warnings(Warnings0, !Info)
         ;
             ( Reason = exist_quant(_)
@@ -693,7 +702,8 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
             ; Reason = barrier(_)
             ; Reason = promise_solutions(_, _)
             ),
-            ml_gen_commit(SubGoal, CodeModel, Context, Decls, Stmts, !Info)
+            ml_gen_commit(SubGoal, CodeModel, Context,
+                LocalVarDefns, FuncDefns, Stmts, !Info)
         ;
             Reason = loop_control(_, _, _),
             % This hasn't been implemented for the MLDS backend yet.
@@ -714,7 +724,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Stmts,
 
     % For any given goal, we need to declare any variables which are local
     % to this goal (including its subgoals), but which are not local to
-    % a subgoal. If they're local to a subgoal, they will be declared when
+    % a subgoal. If they are local to a subgoal, they will be declared when
     % we generate code for that subgoal.
     %
     % We need to make sure that we declare any type_info or type_classinfo
@@ -881,10 +891,12 @@ cases_find_subgoal_nonlocals([Case | Cases], !SubGoalNonLocals) :-
 %
 
 :- pred ml_gen_ite(code_model::in, hlds_goal::in, hlds_goal::in, hlds_goal::in,
-    prog_context::in, list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info) :-
+ml_gen_ite(CodeModel, Cond, Then, Else, Context,
+        LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
     CondCodeModel = goal_info_get_code_model(CondGoalInfo),
     (
@@ -897,7 +909,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info) :-
         CondCodeModel = model_det,
         ml_gen_goal_as_block(model_det, Cond, CondStmt, !Info),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
-        Decls = [],
+        LocalVarDefns = [],
+        FuncDefns = [],
         Stmts = [CondStmt, ThenStmt]
     ;
         %   model_semi cond:
@@ -914,7 +927,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info) :-
 
         CondCodeModel = model_semi,
         ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
-        ml_gen_goal(model_semi, Cond, CondDecls, CondStmts, !Info),
+        ml_gen_goal(model_semi, Cond,
+            CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
         ml_gen_test_success(!.Info, Succeeded),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
         ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
@@ -922,7 +936,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info) :-
         ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
         IfStmt = ml_stmt_if_then_else(Succeeded, ThenStmt, yes(ElseStmt),
             Context),
-        Decls = CondDecls,
+        LocalVarDefns = CondLocalVarDefns,
+        FuncDefns = CondFuncDefns,
         Stmts = CondStmts ++ [IfStmt]
     ;
         % XXX The following transformation does not do as good a job of GC
@@ -966,7 +981,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info) :-
         ml_get_env_ptr(!.Info, EnvPtrRval),
         SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval, [], []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
-        ml_gen_goal(model_non, Cond, CondDecls, CondStmts, !Info),
+        ml_gen_goal(model_non, Cond, CondLocalVarDefns, CondFuncDefns,
+            CondStmts, !Info),
         ml_gen_info_pop_success_cont(!Info),
 
         % Generate the `then_func'.
@@ -976,10 +992,11 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info) :-
         ml_gen_set_cond_var(!.Info, CondVar, ml_const(mlconst_true),
             ThenContext, SetCondTrue),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
-        ThenFuncBody = ml_stmt_block([], [SetCondTrue, ThenStmt], ThenContext),
+        ThenFuncBody =
+            ml_stmt_block([], [], [SetCondTrue, ThenStmt], ThenContext),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, ThenFuncLabel, ThenContext,
-            ThenFuncBody, ThenFunc),
+            ThenFuncBody, ThenFuncDefn),
 
         % Generate `if (!cond_<N>) { <Else> }'.
         ml_gen_test_cond_var(!.Info, CondVar, CondSucceeded),
@@ -992,8 +1009,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info) :-
 
         % Package it all up in the right order.
         % XXX MLDS_DEFN
-        Decls = [mlds_local_var(CondVarDecl) | CondDecls] ++
-            [mlds_function(ThenFunc)],
+        LocalVarDefns = [CondVarDecl | CondLocalVarDefns],
+        FuncDefns = CondFuncDefns ++ [ThenFuncDefn],
         Stmts = [SetCondFalse | CondStmts] ++ [IfStmt]
     ).
 
@@ -1003,10 +1020,11 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Stmts, !Info) :-
 %
 
 :- pred ml_gen_negation(hlds_goal::in, code_model::in, prog_context::in,
-    list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_negation(Cond, CodeModel, Context, Decls, Stmts, !Info) :-
+ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
+        !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
     CondCodeModel = goal_info_get_code_model(CondGoalInfo),
     (
@@ -1021,7 +1039,8 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Stmts, !Info) :-
         %   }
 
         CodeModel = model_det,
-        ml_gen_goal_as_branch(model_semi, Cond, Decls, Stmts, !Info)
+        ml_gen_goal_as_branch(model_semi, Cond,
+            LocalVarDefns, FuncDefns, Stmts, !Info)
     ;
         % model_semi negation, model_det goal:
         %       <succeeded = not(Goal)>
@@ -1030,10 +1049,12 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Stmts, !Info) :-
         %       succeeded = MR_FALSE;
 
         CodeModel = model_semi, CondCodeModel = model_det,
-        ml_gen_goal_as_branch(model_det, Cond, CondDecls, CondStmts, !Info),
+        ml_gen_goal_as_branch(model_det, Cond,
+            CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
         ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
             SetSuccessFalse),
-        Decls = CondDecls,
+        LocalVarDefns = CondLocalVarDefns,
+        FuncDefns = CondFuncDefns,
         Stmts = CondStmts ++ [SetSuccessFalse]
     ;
         % model_semi negation, model_semi goal:
@@ -1043,11 +1064,13 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Stmts, !Info) :-
         %       succeeded = !succeeded;
 
         CodeModel = model_semi, CondCodeModel = model_semi,
-        ml_gen_goal_as_branch(model_semi, Cond, CondDecls, CondStmts, !Info),
+        ml_gen_goal_as_branch(model_semi, Cond,
+            CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
         ml_gen_test_success(!.Info, Succeeded),
         ml_gen_set_success(!.Info, ml_unop(std_unop(logical_not), Succeeded),
             Context, InvertSuccess),
-        Decls = CondDecls,
+        LocalVarDefns = CondLocalVarDefns,
+        FuncDefns = CondFuncDefns,
         Stmts = CondStmts ++ [InvertSuccess]
     ;
         CodeModel = model_semi, CondCodeModel = model_non,
@@ -1063,17 +1086,20 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Stmts, !Info) :-
 %
 
 :- pred ml_gen_conj(hlds_goals::in, code_model::in, prog_context::in,
-    list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_conj(Conjuncts, CodeModel, Context, Decls, Stmts, !Info) :-
+ml_gen_conj(Conjuncts, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
+        !Info) :-
     (
         Conjuncts = [],
         ml_gen_success(CodeModel, Context, Stmts, !Info),
-        Decls = []
+        LocalVarDefns = [],
+        FuncDefns = []
     ;
         Conjuncts = [SingleGoal],
-        ml_gen_goal(CodeModel, SingleGoal, Decls, Stmts, !Info)
+        ml_gen_goal(CodeModel, SingleGoal, LocalVarDefns, FuncDefns, Stmts,
+            !Info)
     ;
         Conjuncts = [First | Rest],
         Rest = [_ | _],
@@ -1081,13 +1107,14 @@ ml_gen_conj(Conjuncts, CodeModel, Context, Decls, Stmts, !Info) :-
         FirstDeterminism = goal_info_get_determinism(FirstGoalInfo),
         ( if determinism_components(FirstDeterminism, _, at_most_zero) then
             % the `Rest' code is unreachable
-            ml_gen_goal(CodeModel, First, Decls, Stmts, !Info)
+            ml_gen_goal(CodeModel, First, LocalVarDefns, FuncDefns, Stmts,
+                !Info)
         else
             determinism_to_code_model(FirstDeterminism, FirstCodeModel),
             DoGenFirst = ml_gen_goal(FirstCodeModel, First),
             DoGenRest = ml_gen_conj(Rest, CodeModel, Context),
             ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
-                Decls, Stmts, !Info)
+                LocalVarDefns, FuncDefns, Stmts, !Info)
         )
     ).
 

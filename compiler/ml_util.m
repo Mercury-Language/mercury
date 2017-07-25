@@ -99,11 +99,17 @@
     % the specified variable.
     %
 :- func defns_contains_var(list(mlds_defn), qual_local_var_name) = bool.
+:- func local_var_defns_contains_var(list(mlds_local_var_defn),
+    qual_local_var_name) = bool.
+:- func function_defns_contains_var(list(mlds_function_defn),
+    qual_local_var_name) = bool.
 
     % Says whether this definition contains a reference to
     % the specified variable.
     %
 :- func defn_contains_var(mlds_defn, qual_local_var_name) = bool.
+:- func local_var_defn_contains_var(mlds_local_var_defn, qual_local_var_name)
+    = bool.
 :- func function_defn_contains_var(mlds_function_defn, qual_local_var_name)
     = bool.
 
@@ -244,7 +250,7 @@ statement_is_or_contains_statement(Stmt, SubStmt) :-
 stmt_contains_statement(Stmt, SubStmt) :-
     require_complete_switch [Stmt]
     (
-        Stmt = ml_stmt_block(_Defns, Stmts, _Context),
+        Stmt = ml_stmt_block(_LocalVarDefns, _FuncDefns, Stmts, _Context),
         statements_contains_statement(Stmts, SubStmt)
     ;
         Stmt = ml_stmt_while(_Kind, _Rval, BodyStmt, _Context),
@@ -326,14 +332,23 @@ maybe_statement_contains_var(yes(Stmt), DataName) = ContainsVar :-
 
 statement_contains_var(Stmt, SearchVarName) = ContainsVar :-
     (
-        Stmt = ml_stmt_block(Defns, SubStmts, _Context),
-        DefnsContainVar = defns_contains_var(Defns, SearchVarName),
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, _Context),
+        LocalVarDefnsContainVar =
+            local_var_defns_contains_var(LocalVarDefns, SearchVarName),
         (
-            DefnsContainVar = yes,
+            LocalVarDefnsContainVar = yes,
             ContainsVar = yes
         ;
-            DefnsContainVar = no,
-            ContainsVar = statements_contains_var(SubStmts, SearchVarName)
+            LocalVarDefnsContainVar = no,
+            FuncDefnsContainVar =
+                function_defns_contains_var(FuncDefns, SearchVarName),
+            (
+                FuncDefnsContainVar = yes,
+                ContainsVar = yes
+            ;
+                FuncDefnsContainVar = no,
+                ContainsVar = statements_contains_var(SubStmts, SearchVarName)
+            )
         )
     ;
         Stmt = ml_stmt_while(_Kind, Rval, BodyStmt, _Context),
@@ -678,8 +693,19 @@ defns_contains_var([Defn | Defns], SearchVarName) = ContainsVar :-
         ContainsVar = defns_contains_var(Defns, SearchVarName)
     ).
 
-:- func function_defns_contains_var(list(mlds_function_defn),
-    qual_local_var_name) = bool.
+local_var_defns_contains_var([], _SearchVarName) = no.
+local_var_defns_contains_var([LocalVarDefn | LocalVarDefns], SearchVarName)
+        = ContainsVar :-
+    LocalVarDefnContainsVar =
+        local_var_defn_contains_var(LocalVarDefn, SearchVarName),
+    (
+        LocalVarDefnContainsVar = yes,
+        ContainsVar = yes
+    ;
+        LocalVarDefnContainsVar = no,
+        ContainsVar =
+            local_var_defns_contains_var(LocalVarDefns, SearchVarName)
+    ).
 
 function_defns_contains_var([], _SearchVarName) = no.
 function_defns_contains_var([FuncDefn | FuncDefns], SearchVarName)
@@ -695,11 +721,10 @@ function_defns_contains_var([FuncDefn | FuncDefns], SearchVarName)
 
 defn_contains_var(Defn, SearchVarName) = ContainsVar :-
     (
+        Defn = mlds_local_var(LocalVarDefn),
+        ContainsVar = local_var_defn_contains_var(LocalVarDefn, SearchVarName)
+    ;
         (
-            Defn = mlds_local_var(LocalVarDefn),
-            LocalVarDefn = mlds_local_var_defn(_Name, _Ctxt,
-                _Type, Initializer, _GCStmt)
-        ;
             Defn = mlds_global_var(GlobalVarDefn),
             GlobalVarDefn = mlds_global_var_defn(_Name, _Ctxt, _Flags,
                 _Type, Initializer, _GCStmt)
@@ -711,8 +736,8 @@ defn_contains_var(Defn, SearchVarName) = ContainsVar :-
         % XXX Should we include variables in the GCStmt field here?
         ContainsVar = initializer_contains_var(Initializer, SearchVarName)
     ;
-        Defn = mlds_function(FunctionDefn),
-        ContainsVar = function_defn_contains_var(FunctionDefn, SearchVarName)
+        Defn = mlds_function(FuncDefn),
+        ContainsVar = function_defn_contains_var(FuncDefn, SearchVarName)
     ;
         Defn = mlds_class(ClassDefn),
         ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags,
@@ -728,10 +753,15 @@ defn_contains_var(Defn, SearchVarName) = ContainsVar :-
         )
     ).
 
-function_defn_contains_var(FunctionDefn, SearchVarName) = ContainsVar :-
-    FunctionDefn = mlds_function_defn(_Name, _Ctxt, _Flags,
-        _PredProcId, _Params, Body, _Attrs,
-        _EnvVarNames, _MaybeRequireTailrecInfo),
+local_var_defn_contains_var(LocalVarDefn, SearchVarName) = ContainsVar :-
+    LocalVarDefn = mlds_local_var_defn(_Name, _Ctxt,
+        _Type, Initializer, _GCStmt),
+    % XXX Should we include variables in the GCStmt field here?
+    ContainsVar = initializer_contains_var(Initializer, SearchVarName).
+
+function_defn_contains_var(FuncDefn, SearchVarName) = ContainsVar :-
+    FuncDefn = mlds_function_defn(_Name, _Ctxt, _Flags, _PredProcId, _Params,
+        Body, _Attrs, _EnvVarNames, _MaybeRequireTailrecInfo),
     (
         Body = body_external,
         ContainsVar = no
@@ -945,7 +975,7 @@ wrap_init_obj(Rval) = init_obj(Rval).
 %-----------------------------------------------------------------------------%
 
 get_mlds_stmt_context(Stmt) = Context :-
-    ( Stmt = ml_stmt_block(_, _, Context)
+    ( Stmt = ml_stmt_block(_, _, _, Context)
     ; Stmt = ml_stmt_while(_, _, _, Context)
     ; Stmt = ml_stmt_if_then_else(_, _, _, Context)
     ; Stmt = ml_stmt_switch(_, _, _, _, _, Context)

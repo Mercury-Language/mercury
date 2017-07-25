@@ -463,7 +463,7 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
 
             % Generate code for the non-covered tagged cases.
             ml_gen_failure(CodeModel, Context, FailStmts, !Info),
-            FailBlock = ml_gen_block([], FailStmts, Context),
+            FailBlock = ml_gen_block([], [], FailStmts, Context),
 
             % Put the codes for the first and non-covered tagged cases
             % together.
@@ -484,7 +484,7 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
         ml_switch_generate_if_then_else_chain_ites(LaterTaggedCase,
             LaterTaggedCases, Var, CodeModel, CanFail, Context,
             LaterStmts, !Info),
-        LaterBlock = ml_gen_block([], LaterStmts, Context),
+        LaterBlock = ml_gen_block([], [], LaterStmts, Context),
 
         % Put the codes for the first and later tagged cases together.
         Stmt = ml_stmt_if_then_else(Cond, GoalBlock, yes(LaterBlock), Context)
@@ -632,7 +632,7 @@ ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info) :-
         ( if is_empty(FailStmts) then
             Default = default_do_nothing
         else
-            Fail = ml_gen_block([], FailStmts, Context),
+            Fail = ml_gen_block([], [], FailStmts, Context),
             Default = default_case(Fail)
         )
     ;

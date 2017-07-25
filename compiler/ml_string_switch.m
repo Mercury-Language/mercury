@@ -144,7 +144,7 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
             unexpected($pred, "failure does not assign to succeeded")
         ;
             CodeModel = model_non,
-            FailStmt = ml_stmt_block([], [], Context),
+            FailStmt = ml_stmt_block([], [], [], Context),
             CaseNumDefault = default_case(FailStmt)
         )
     ;
@@ -152,7 +152,7 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
             FailStmts = [FailStmt]
         ;
             FailStmts = [_, _ | _],
-            FailStmt = ml_stmt_block([], FailStmts, Context)
+            FailStmt = ml_stmt_block([], [], FailStmts, Context)
         ),
         CaseNumDefault = default_case(FailStmt)
     ),
@@ -161,8 +161,7 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         ml_lval(CaseNumVarLval), CaseNumSwitchRange, CaseNumSwitchArms,
         CaseNumDefault, Context),
 
-    % XXX MLDS_DEFN
-    Stmt = ml_stmt_block([mlds_local_var(CaseNumVarDefn)],
+    Stmt = ml_stmt_block([CaseNumVarDefn], [],
         [InitCaseNumVarStmt, GetCaseNumSwitchStmt, CaseSwitchStmt], Context),
     Stmts = [Stmt].
 
@@ -255,7 +254,7 @@ ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
         CodeModel = model_non,
         unexpected($pred, "model_non")
     ),
-    LookupStmt = ml_stmt_block([], LookupStmts, Context),
+    LookupStmt = ml_stmt_block([], [], LookupStmts, Context),
 
     ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, FailStmts,
         !Info),
@@ -267,7 +266,7 @@ ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
             FailStmts = [FailStmt]
         ;
             FailStmts = [_, _ | _],
-            FailStmt = ml_stmt_block([], FailStmts, Context)
+            FailStmt = ml_stmt_block([], [], FailStmts, Context)
         ),
         IsCaseNumNegCond = ml_binop(int_lt(int_type_int),
             ml_lval(CaseNumVarLval), ml_const(mlconst_int(0))),
@@ -275,7 +274,7 @@ ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
             yes(LookupStmt), Context)
     ),
 
-    Stmt = ml_stmt_block([mlds_local_var(CaseNumVarDefn)],
+    Stmt = ml_stmt_block([CaseNumVarDefn], [],
         [InitCaseNumVarStmt, GetCaseNumSwitchStmt, ResultStmt], Context),
     Stmts = [Stmt].
 
@@ -357,9 +356,7 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
         FirstSolnOutFieldIds, LaterSolnOutFieldIds,
         FirstSolnVectorCommon, LaterSolnVectorCommon, dont_need_bit_vec_check,
         MatchDefns, SuccessStmts, !Info),
-    % XXX MLDS_DEFN
-    SuccessBlockStmt = ml_stmt_block(list.map(wrap_local_var_defn, MatchDefns),
-        SuccessStmts, Context),
+    SuccessBlockStmt = ml_stmt_block(MatchDefns, [], SuccessStmts, Context),
     (
         CanFail = can_fail,
         IsCaseNumNonNegCond = ml_binop(int_ge(int_type_int),
@@ -370,7 +367,7 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
         CanFail = cannot_fail,
         ResultStmt = SuccessBlockStmt
     ),
-    Stmt = ml_stmt_block([mlds_local_var(CaseNumVarDefn)],
+    Stmt = ml_stmt_block([CaseNumVarDefn], [],
         [InitCaseNumVarStmt, GetCaseNumSwitchStmt, ResultStmt], Context),
     Stmts = [Stmt].
 
@@ -897,7 +894,7 @@ gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase,
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     Comment = ml_stmt_atomic(comment(CommentString), Context),
-    CaseStmt = ml_stmt_block([], [Comment, GoalStmt], Context),
+    CaseStmt = ml_stmt_block([], [], [Comment, GoalStmt], Context),
     map.det_insert(CaseId, CaseStmt, !CodeMap).
 
 :- func gen_string_switch_case_comment(tagged_cons_id) = string.
@@ -1505,7 +1502,7 @@ ml_gen_string_hash_switch_search(InitialComment,
     ),
     (
         MaybeNextSlotFieldId = yes(NextSlotFieldId),
-        NoMatchStmt = ml_stmt_block([], [
+        NoMatchStmt = ml_stmt_block([], [], [
             ml_stmt_atomic(comment(
                 "no match yet, so get next slot in hash chain"),
                 Context),
@@ -1518,7 +1515,7 @@ ml_gen_string_hash_switch_search(InitialComment,
         LookForMatchStmt =
             ml_stmt_if_then_else(FoundMatchCond, SuccessStmt,
                 yes(NoMatchStmt), Context),
-        LoopBody = ml_stmt_block([],
+        LoopBody = ml_stmt_block([], [],
             LookForMatchPrepareStmts ++ [LookForMatchStmt], Context),
         LoopStmts = [
             ml_stmt_atomic(comment("hash chain loop"), Context),
@@ -2026,7 +2023,7 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
             InitHiVarStmt,
             ml_stmt_while(loop_at_least_once,
                 CrossingTest,
-                ml_stmt_block([], LoopBodyStmts, Context),
+                ml_stmt_block([], [], LoopBodyStmts, Context),
                 Context)
         ]
     ;
@@ -2049,7 +2046,7 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
             InitStopLoopVarStmt,
             ml_stmt_while(loop_at_least_once,
                 ml_binop(logical_and, StopLoopTest, CrossingTest),
-                ml_stmt_block([], LoopBodyStmts, Context),
+                ml_stmt_block([], [], LoopBodyStmts, Context),
                 Context)
         ]
     ),
@@ -2195,9 +2192,7 @@ ml_wrap_loop_break(CodeModel, LoopPresent, Context, MaybeStopLoopVarLval,
             LoopPresent = no,
             OnlyFailAfterStmts = []
         then
-            % XXX MLDS_DEFN
-            BodyStmt = ml_stmt_block(list.map(wrap_local_var_defn, MatchDefns),
-                MatchStmts, Context),
+            BodyStmt = ml_stmt_block(MatchDefns, [], MatchStmts, Context),
             AfterStmts = []
         else
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -2214,8 +2209,7 @@ ml_wrap_loop_break(CodeModel, LoopPresent, Context, MaybeStopLoopVarLval,
                     comment("break out of search loop"), Context),
                 BreakStmt = ml_stmt_goto(goto_break, Context),
                 BodyStmt =
-                    % XXX MLDS_DEFN
-                    ml_stmt_block(list.map(wrap_local_var_defn, MatchDefns),
+                    ml_stmt_block(MatchDefns, [],
                         MatchStmts ++ [BreakCommentStmt, BreakStmt], Context),
                 AfterStmts = []
             else
@@ -2223,9 +2217,8 @@ ml_wrap_loop_break(CodeModel, LoopPresent, Context, MaybeStopLoopVarLval,
                 GotoCommentStmt = ml_stmt_atomic(
                     comment("jump out of search loop"), Context),
                 GotoEndStmt = ml_stmt_goto(goto_label(EndLabel), Context),
-                % XXX MLDS_DEFN
                 BodyStmt =
-                    ml_stmt_block(list.map(wrap_local_var_defn, MatchDefns),
+                    ml_stmt_block(MatchDefns, [],
                         MatchStmts ++ [GotoCommentStmt, GotoEndStmt], Context),
                 EndLabelStmt = ml_stmt_label(EndLabel, Context),
                 AfterStmts = OnlyFailAfterStmts ++ [EndLabelStmt]
@@ -2237,18 +2230,15 @@ ml_wrap_loop_break(CodeModel, LoopPresent, Context, MaybeStopLoopVarLval,
             LoopPresent = no,
             OnlyFailAfterStmts = []
         then
-            % XXX MLDS_DEFN
             BodyStmt =
-                ml_stmt_block(list.map(wrap_local_var_defn, MatchDefns),
-                    MatchStmts, Context)
+                ml_stmt_block(MatchDefns, [], MatchStmts, Context)
         else
             SetStopLoopStmt =
                 ml_stmt_atomic(
                     assign(StopLoopVarLval, ml_const(mlconst_int(1))),
                     Context),
-            % XXX MLDS_DEFN
             BodyStmt =
-                ml_stmt_block(list.map(wrap_local_var_defn, MatchDefns),
+                ml_stmt_block(MatchDefns, [],
                     MatchStmts ++ [SetStopLoopStmt], Context)
         ),
         (
@@ -2260,7 +2250,7 @@ ml_wrap_loop_break(CodeModel, LoopPresent, Context, MaybeStopLoopVarLval,
             ;
                 OnlyFailAfterStmts = [_, _ | _],
                 OnlyFailAfterStmt =
-                    ml_stmt_block([], OnlyFailAfterStmts, Context)
+                    ml_stmt_block([], [], OnlyFailAfterStmts, Context)
             ),
             SuccessTest = ml_binop(eq(int_type_int),
                 ml_lval(StopLoopVarLval),

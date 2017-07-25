@@ -62,20 +62,21 @@
     % But if the block consists only of a single statement with no
     % declarations, then just return that statement.
     %
-:- func ml_gen_block(list(mlds_defn), list(mlds_stmt), prog_context)
-    = mlds_stmt.
+:- func ml_gen_block(list(mlds_local_var_defn), list(mlds_function_defn),
+    list(mlds_stmt), prog_context) = mlds_stmt.
 
-:- type gen_pred == pred(list(mlds_defn), list(mlds_stmt),
-    ml_gen_info, ml_gen_info).
-:- inst gen_pred == (pred(out, out, in, out) is det).
+:- type gen_pred ==
+    pred(list(mlds_local_var_defn), list(mlds_function_defn), list(mlds_stmt),
+        ml_gen_info, ml_gen_info).
+:- inst gen_pred == (pred(out, out, out, in, out) is det).
 
     % Given closures to generate code for two conjuncts, generate code
     % for their conjunction.
     %
 :- pred ml_combine_conj(code_model::in, prog_context::in,
     gen_pred::in(gen_pred), gen_pred::in(gen_pred),
-    list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % Given a function label and the statement which will comprise
     % the function body for that function, generate an mlds_function_defn
@@ -589,18 +590,19 @@ ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
         CodeModel = model_non
     ).
 
-ml_gen_block(VarDecls, Stmts, Context) = Block :-
+ml_gen_block(LocalVarDefns, FuncDefns, Stmts, Context) = Block :-
     ( if
-        VarDecls = [],
+        LocalVarDefns = [],
+        FuncDefns = [],
         Stmts = [SingleStmt]
     then
         Block = SingleStmt
     else
-        Block = ml_stmt_block(VarDecls, Stmts, Context)
+        Block = ml_stmt_block(LocalVarDefns, FuncDefns, Stmts, Context)
     ).
 
 ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
-        Decls, Stmts, !Info) :-
+        LocalVarDefns, FuncDefns, Stmts, !Info) :-
     (
         % model_det goal:
         %     <First, Rest>
@@ -609,9 +611,10 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         %     <Rest>
         %
         FirstCodeModel = model_det,
-        DoGenFirst(FirstDecls, FirstStmts, !Info),
-        DoGenRest(RestDecls, RestStmts, !Info),
-        Decls = FirstDecls ++ RestDecls,
+        DoGenFirst(FirstLocalVarDefns, FirstFuncDefns, FirstStmts, !Info),
+        DoGenRest(RestLocalVarDefns, RestFuncDefns, RestStmts, !Info),
+        LocalVarDefns = FirstLocalVarDefns ++ RestLocalVarDefns,
+        FuncDefns = FirstFuncDefns ++ RestFuncDefns,
         Stmts = FirstStmts ++ RestStmts
     ;
         % model_semi goal:
@@ -627,15 +630,18 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         % to the outer scope, rather than inside the `if', so that they remain
         % in scope for any later goals which follow this (this is needed for
         % declarations of static consts).
+        % XXX We haven't put static consts into blocks for a long time;
+        % they are now in the global data field in !Info.
 
         FirstCodeModel = model_semi,
-        DoGenFirst(FirstDecls, FirstStmts, !Info),
+        DoGenFirst(FirstLocalVarDefns, FirstFuncDefns, FirstStmts, !Info),
         ml_gen_test_success(!.Info, Succeeded),
-        DoGenRest(RestDecls, RestStmts, !Info),
-        IfBody = ml_gen_block([], RestStmts, Context),
-        IfStmt = ml_stmt_if_then_else(Succeeded, IfBody, no, Context),
-        Decls = FirstDecls ++ RestDecls,
-        Stmts = FirstStmts ++ [IfStmt]
+        DoGenRest(RestLocalVarDefns, RestFuncDefns, RestStmts, !Info),
+        ThenStmt = ml_gen_block([], [], RestStmts, Context),
+        ITEStmt = ml_stmt_if_then_else(Succeeded, ThenStmt, no, Context),
+        LocalVarDefns = FirstLocalVarDefns ++ RestLocalVarDefns,
+        FuncDefns = FirstFuncDefns ++ RestFuncDefns,
+        Stmts = FirstStmts ++ [ITEStmt]
     ;
         % model_non goal:
         %     <First, Rest>
@@ -646,14 +652,10 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         %
         %     <First && succ_func()>;
         %
-        % except that we hoist any declarations generated for <First> and
-        % any _static_ declarations generated for <Rest> to the top of the
-        % scope, rather than inside or after the succ_func(), so that they
-        % remain in scope for any code following them (this is needed for
-        % declarations of static consts).
-        %
-        % We take care to only hoist _static_ declarations outside nested
-        % functions, since access to non-local variables is less efficient.
+        % except that we hoist any declarations generated for <First>
+        % to the top of the scope, rather than inside or after the
+        % succ_func(), so that they remain in scope for any code
+        % following them.
         %
         % XXX The pattern above leads to deep nesting for long conjunctions;
         % we should avoid that.
@@ -668,19 +670,20 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         ml_get_env_ptr(!.Info, EnvPtrRval),
         SuccessCont = success_cont(RestFuncLabelRval, EnvPtrRval, [], []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
-        DoGenFirst(FirstDecls, FirstStmts, !Info),
+        DoGenFirst(FirstLocalVarDefns, FirstFuncDefns, FirstStmts, !Info),
         ml_gen_info_pop_success_cont(!Info),
 
         % generate the `succ_func'
         % push nesting level
-        DoGenRest(RestDecls, RestStmts, !Info),
-        RestStmt = ml_gen_block(RestDecls, RestStmts, Context),
+        DoGenRest(RestLocalVarDefns, RestFuncDefns, RestStmts, !Info),
+        RestStmt = ml_gen_block(RestLocalVarDefns, RestFuncDefns, RestStmts,
+            Context),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, RestFuncLabel, Context,
             RestStmt, RestFunc),
 
-        % XXX MLDS_DEFN
-        Decls = FirstDecls ++ [mlds_function(RestFunc)],
+        LocalVarDefns = FirstLocalVarDefns,
+        FuncDefns = FirstFuncDefns ++ [RestFunc],
         Stmts = FirstStmts
     ).
 
@@ -1693,7 +1696,7 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
         ]),
         DeallocateCode = ml_stmt_atomic(DeallocateCodeC, Context),
         % XXX MLDS_DEFN
-        GCTraceCode = ml_stmt_block([mlds_local_var(TypeInfoDecl)],
+        GCTraceCode = ml_stmt_block([TypeInfoDecl], [],
             [MakeTypeInfoCode, CallTraceFuncCode, DeallocateCode], Context),
         GCStmt = gc_trace_code(GCTraceCode)
     ;
@@ -1946,7 +1949,7 @@ ml_generate_constants_for_arms(Vars, [Goal | Goals], [Soln | Solns], !Info) :-
 
 ml_generate_constants_for_arm(Vars, Goal, Soln, !Info) :-
     ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
-    ml_gen_goal(model_det, Goal, _Decls, _Stmts, !Info),
+    ml_gen_goal(model_det, Goal, _LocalVarDefns, _FuncDefns, _Stmts, !Info),
     ml_gen_info_get_const_var_map(!.Info, FinalConstVarMap),
     list.map(lookup_ground_rval(FinalConstVarMap), Vars, Soln),
     ml_gen_info_set_const_var_map(InitConstVarMap, !Info).

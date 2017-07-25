@@ -30,7 +30,7 @@
 %-----------------------------------------------------------------------------%
 
     % ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes,
-    %   HowToConstruct, Context, Decls, Stmts):
+    %   HowToConstruct, Context, Stmts, !Info):
     %
     % Generate code to construct a closure for the procedure specified
     % by PredId and ProcId, with the partially applied arguments specified
@@ -503,22 +503,22 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     %   {
     %       void *closure;
     %
-    %       /* declarations needed for converting output args */
+    %       // declarations needed for converting output args
     %       Arg2Type conv_arg2;
     %       RetType conv_retval;
     %       ...
     %
-    %       /* declarations needed for by-value outputs */
+    %       // declarations needed for by-value outputs
     %       MR_Box retval;
     %
-    %       closure = closure_arg;  /* XXX should add cast */
+    %       closure = closure_arg;  // XXX should add cast
     %
-    %       /* call function, unboxing inputs if needed */
+    %       // call function, unboxing inputs if needed
     %       conv_retval = foo(closure->f1, unbox(closure->f2), ...,
     %           unbox(wrapper_arg1), &conv_arg2,
     %           wrapper_arg3, ...);
     %
-    %       /* box output arguments */
+    %       // box output arguments
     %       *wrapper_arg2 = box(conv_arg2);
     %       ...
     %       retval = box(conv_retval);
@@ -538,20 +538,18 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     %   void
     % #endif
     %   foo_wrapper(
-    %       void *closure_arg /* with appropriate GC trace code */,
+    %       void *closure_arg, // with appropriate GC trace code
     %           MR_Box wrapper_arg1, MR_Box *wrapper_arg2,
     %           ..., MR_Box wrapper_argn)
-    %       /* No GC tracing code needed for the wrapper_*
-    %          parameters, because output parameters point to
-    %          the stack, and input parameters won't be live
-    %          across a GC.
-    %          Likewise for the local var `closure' below.
-    %          But we do need GC tracing code for the closure_arg
-    %          parameter since that may be referenced _during_ GC,
-    %          because it is mentioned in the GC tracing code
-    %          for the conv_* variables below.  */
+    %       // No GC tracing code needed for the wrapper_* parameters,
+    %       // because output parameters point to the stack, and
+    %       // input parameters won't be live across a GC.
+    %       // Likewise for the local var `closure' below.
+    %       // But we do need GC tracing code for the closure_arg parameter
+    %       // since that may be referenced _during_ GC, because it is
+    %       // mentioned in the GC tracing code for the conv_* variables below.
     %   {
-    % #if 0 /* XXX we should do this for HIGH_LEVEL_DATA */
+    % #if 0 // XXX we should do this for HIGH_LEVEL_DATA
     %       FooClosure *closure;
     % #else
     %       void *closure;
@@ -560,30 +558,30 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % #if defined(MR_NATIVE_GC)
     %       MR_Closure_Layout *closure_layout_ptr;
     %       MR_TypeInfo *type_params;
-    %   #if 0 /* GC tracing code */
+    %   #if 0 // GC tracing code
     %     #if CLOSURE_KIND == HIGHER_ORDER_PROC_CLOSURE
     %       closure_layout_ptr =
     %           ((MR_Closure *) closure_arg)->MR_closure_layout;
     %       type_params = MR_materialize_closure_typeinfos(closure_arg);
-    %     #else /* CLOSURE_KIND == TYPECLASS_INFO_CLOSURE */
+    %     #else // CLOSURE_KIND == TYPECLASS_INFO_CLOSURE
     %       {
     %         static const MR_Closure_Layout closure_layout = ...;
     %         closure_layout_ptr = &closure_layout;
     %       }
     %       type_params = MR_materialize_closure_typeinfos(closure_arg);
     %     #endif
-    %   #endif /* GC tracing code */
+    %   #endif // GC tracing code
     % #endif
     %
-    %       /* declarations needed for converting output args */
+    %       // declarations needed for converting output args
     %       Arg2Type conv_arg2;
-    %       /* GC tracing code same as below */
+    %       // GC tracing code same as below
     %       ...
     %
-    %       /* declarations needed for by-value outputs */
+    %       // declarations needed for by-value outputs
     %       RetType conv_retval;
     % #if defined(MR_NATIVE_GC)
-    %   #if 0 /* GC tracing code */
+    %   #if 0 // GC tracing code
     %     {
     %       MR_TypeInfo type_info;
     %       MR_MemoryList allocated_memory_cells = NULL;
@@ -600,18 +598,18 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % #if MODEL_SEMI
     %       MR_bool succeeded;
     % #elif FUNC_IN_FORWARDS_MODE
-    %       MR_Box retval; /* GC tracing code as above */
+    %       MR_Box retval; // GC tracing code as above
     % #endif
     %
-    %       closure = closure_arg;  /* XXX should add cast */
+    %       closure = closure_arg;  // XXX should add cast
     %
     %       CONJ(code_model,
-    %       /* call function, unboxing inputs if needed */
+    %       // call function, unboxing inputs if needed
     %       conv_retval = foo(closure->f1, unbox(closure->f2), ...,
     %           unbox(wrapper_arg1), &conv_arg2,
     %           wrapper_arg3, ...);
     %       ,
-    %       /* box output arguments */
+    %       // box output arguments
     %       *wrapper_arg2 = box(conv_arg2);
     %       ...
     %       retval = box(conv_retval);
@@ -627,37 +625,37 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % for a conjunction, which depends on the code model:
     %
     % #if MODEL_DET
-    %       /* call function, boxing/unboxing inputs if needed */
+    %       // call function, boxing/unboxing inputs if needed
     %       foo(closure->f1, unbox(closure->f2), ...,
     %           unbox(wrapper_arg1), &conv_arg2,
     %           wrapper_arg3, ...);
     %
-    %       /* box output arguments */
+    %       // box output arguments
     %       *wrapper_arg2 = box(conv_arg2);
     %       ...
     % #elif MODEL_SEMI
-    %       /* call function, boxing/unboxing inputs if needed */
+    %       // call function, boxing/unboxing inputs if needed
     %       succeeded = foo(closure->f1, unbox(closure->f2), ...,
     %           unbox(wrapper_arg1), &conv_arg2,
     %           wrapper_arg3, ...);
     %
     %       if (succeeded) {
-    %           /* box output arguments */
+    %           // box output arguments
     %           *wrapper_arg2 = box(conv_arg2);
     %           ...
     %       }
     %
     %       return succeeded;
     %   }
-    % #else /* MODEL_NON */
+    % #else // MODEL_NON
     %       foo_1() {
-    %           /* box output arguments */
+    %           // box output arguments
     %           *wrapper_arg2 = box(conv_arg2);
     %           ...
     %           (*succ_cont)();
     %       }
     %
-    %       /* call function, boxing/unboxing inputs if needed */
+    %       // call function, boxing/unboxing inputs if needed
     %       foo(closure->f1, unbox(closure->f2), ...,
     %           unbox(wrapper_arg1), &conv_arg2,
     %           wrapper_arg3, ...,
@@ -742,14 +740,14 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % and local declarations for any by-value output parameters.
     ml_gen_wrapper_arg_lvals(WrapperHeadVarNames, WrapperBoxedArgTypes,
         WrapperArgModes, PredOrFunc, CodeModel, Context, 1,
-        WrapperHeadVarDecls, WrapperHeadVarLvals, WrapperCopyOutLvals, !Info),
+        WrapperHeadVarDefns, WrapperHeadVarLvals, WrapperCopyOutLvals, !Info),
 
     % Generate code to declare and initialize the closure pointer,
     % if needed.
     % XXX We should use a struct type for the closure, but currently we're
     % using a low-level data representation in the closure.
     %
-    % #if 0 /* HIGH_LEVEL_DATA */
+    % #if 0 // HIGH_LEVEL_DATA
     %   FooClosure *closure;
     % #else
     %   void *closure;
@@ -771,14 +769,14 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         % (unlike the closure_arg parameter) it isn't referenced from
         % the GC tracing for other variables.
         ClosureGCStmt = gc_no_stmt,
-        ClosureDecl = ml_gen_mlds_var_decl(ClosureName, ClosureType,
+        ClosureDefn = ml_gen_mlds_var_decl(ClosureName, ClosureType,
             ClosureGCStmt, Context),
         ml_gen_local_var_lval(!.Info, ClosureName, ClosureType, ClosureLval),
         ml_gen_local_var_lval(!.Info, ClosureArgName1, ClosureArgType1,
             ClosureArgLval),
         InitClosure = ml_gen_assign(ClosureLval, ml_lval(ClosureArgLval),
             Context),
-        MaybeClosureB = yes({ClosureDecl, InitClosure}),
+        MaybeClosureB = yes({ClosureDefn, InitClosure}),
         MaybeClosureC = yes(ClosureLval)
     ;
         MaybeClosureA = no,
@@ -850,16 +848,16 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
     CallLvals = list.append(ClosureArgLvals, WrapperHeadVarLvals),
     ml_gen_call(PredId, ProcId, ProcHeadVarNames, CallLvals, ProcBoxedArgTypes,
-        CodeModel, Context, yes, Decls0, Stmts0, !Info),
+        CodeModel, Context, yes, LocalVarDefns0, FuncDefns, Stmts0, !Info),
 
     % Insert the stuff to declare and initialize the closure.
     (
-        MaybeClosureB = yes({ClosureDecl1, InitClosure1}),
-        Decls1 = [mlds_local_var(ClosureDecl1) | Decls0],
+        MaybeClosureB = yes({ClosureDefn1, InitClosure1}),
+        LocalVarDefns1 = [ClosureDefn1 | LocalVarDefns0],
         Stmts1 = [InitClosure1 | Stmts0]
     ;
         MaybeClosureB = no,
-        Decls1 = Decls0,
+        LocalVarDefns1 = LocalVarDefns0,
         Stmts1 = Stmts0
     ),
 
@@ -868,11 +866,11 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         ( CodeModel = model_det
         ; CodeModel = model_non
         ),
-        Decls2 = Decls1
+        LocalVarDefns2 = LocalVarDefns1
     ;
         CodeModel = model_semi,
-        SucceededVarDecl = ml_gen_succeeded_var_decl(Context),
-        Decls2 = [mlds_local_var(SucceededVarDecl) | Decls1]
+        SucceededVarDefn = ml_gen_succeeded_var_decl(Context),
+        LocalVarDefns2 = [SucceededVarDefn | LocalVarDefns1]
     ),
 
     % Add an appropriate `return' statement.
@@ -887,16 +885,15 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         globals.get_gc_method(Globals, gc_accurate)
     then
         ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName2,
-            ClosureArgType2, PredId, ProcId, Context, GC_Decls, !Info)
+            ClosureArgType2, PredId, ProcId, Context, GC_Defns, !Info)
     else
-        GC_Decls = []
+        GC_Defns = []
     ),
 
     % Insert the local declarations of the wrapper's output arguments,
     % if any (this is needed for functions and for `--(non)det-copy-out'),
     % and the `type_params' variable used by the GC code.
-    Decls = list.map(wrap_local_var_defn, GC_Decls ++ WrapperHeadVarDecls)
-        ++ Decls2,
+    LocalVarDefns = GC_Defns ++ WrapperHeadVarDefns ++ LocalVarDefns2,
 
     % If the wrapper function was model_non, then pop the success continuation
     % that we pushed.
@@ -910,13 +907,13 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
 
     % Put it all together.
-    WrapperFuncBody = ml_gen_block(Decls, Stmts, Context),
+    WrapperFuncBody = ml_gen_block(LocalVarDefns, FuncDefns, Stmts, Context),
     ml_gen_new_func_label(yes(WrapperParams), WrapperFuncName,
         WrapperFuncRval, !Info),
     ml_gen_wrapper_func(WrapperFuncName, WrapperParams, Context,
-        WrapperFuncBody, WrapperFunc, !Info),
+        WrapperFuncBody, WrapperFuncDefn, !Info),
     WrapperFuncType = mlds_func_type(WrapperParams),
-    ml_gen_info_add_closure_wrapper_defn(WrapperFunc, !Info).
+    ml_gen_info_add_closure_wrapper_defn(WrapperFuncDefn, !Info).
 
 :- func arg_delete_gc_statement(mlds_argument) = mlds_argument.
 

@@ -1034,9 +1034,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
     ReturnRval = ml_unop(box(ReturnVarType), ml_lval(ReturnLval)),
     ReturnStmt = ml_stmt_return([ReturnRval], Context),
 
-    % XXX MLDS_DEFN
-    Stmt = ml_stmt_block([mlds_local_var(ReturnVarDefn)],
-        [CallStmt, ReturnStmt], Context).
+    Stmt = ml_stmt_block([ReturnVarDefn], [], [CallStmt, ReturnStmt], Context).
 
 :- pred generate_call_method_nth_arg(mlds_module_name::in, mlds_type::in,
     mlds_local_var_name::in, mlds_rval::out) is det.
@@ -1368,10 +1366,13 @@ rename_class_names_in_argument(Renaming, !Argument) :-
 
 rename_class_names_in_stmt(Renaming, !Stmt) :-
     (
-        !.Stmt = ml_stmt_block(Defns0, SubStmts0, Context),
-        list.map(rename_class_names_in_mlds_defn(Renaming), Defns0, Defns),
+        !.Stmt = ml_stmt_block(LocalVarDefns0, FuncDefns0, SubStmts0, Context),
+        list.map(rename_class_names_in_local_var_defn(Renaming),
+            LocalVarDefns0, LocalVarDefns),
+        list.map(rename_class_names_in_function_defn(Renaming),
+            FuncDefns0, FuncDefns),
         list.map(rename_class_names_in_stmt(Renaming), SubStmts0, SubStmts),
-        !:Stmt = ml_stmt_block(Defns, SubStmts, Context)
+        !:Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
         !.Stmt = ml_stmt_while(Kind, Rval0, SubStmt0, Context),
         rename_class_names_in_rval(Renaming, Rval0, Rval),
@@ -3612,15 +3613,28 @@ output_statement_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
 
 output_stmt_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     (
-        Stmt = ml_stmt_block(Defns, SubStmts, Context),
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
         output_n_indents(Indent, !IO),
         io.write_string("{\n", !IO),
         (
-            Defns = [_ | _],
-            output_defns_for_java(Info, Indent + 1, oa_force_init, Defns, !IO),
+            LocalVarDefns = [_ | _],
+            list.foldl(
+                output_local_var_defn_for_java(Info, Indent + 1,
+                    oa_force_init),
+                LocalVarDefns, !IO),
             io.write_string("\n", !IO)
         ;
-            Defns = []
+            LocalVarDefns = []
+        ),
+        (
+            FuncDefns = [_ | _],
+            list.foldl(
+                output_function_defn_for_java(Info, Indent + 1,
+                    oa_force_init),
+                FuncDefns, !IO),
+            io.write_string("\n", !IO)
+        ;
+            FuncDefns = []
         ),
         output_statements_for_java(Info, Indent + 1, FuncInfo, SubStmts,
             ExitMethods, !IO),
@@ -3679,7 +3693,7 @@ output_stmt_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
             MaybeElse = yes(_),
             Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
         then
-            Then = ml_stmt_block([], [Then0], ThenContext)
+            Then = ml_stmt_block([], [], [Then0], ThenContext)
         else
             Then = Then0
         ),

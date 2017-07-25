@@ -336,12 +336,12 @@ ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
             "model_det need_range_check"),
         expect(unify(NeedBitVecCheck, dont_need_bit_vec_check), $pred,
             "model_det need_bit_vec_check"),
-        Stmt = ml_stmt_block([], LookupStmts, Context)
+        Stmt = ml_stmt_block([], [], LookupStmts, Context)
     ;
         CodeModel = model_semi,
         ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
             SetSuccessTrueStmt),
-        LookupSucceedStmt = ml_stmt_block([],
+        LookupSucceedStmt = ml_stmt_block([], [],
             LookupStmts ++ [SetSuccessTrueStmt], Context),
         (
             NeedRangeCheck = dont_need_range_check,
@@ -455,9 +455,7 @@ ml_gen_several_soln_atomic_lookup_switch(IndexRval, OutVars, OutTypes,
         FirstSolnOutFieldIds, LaterSolnOutFieldIds,
         FirstSolnVectorCommon, LaterSolnVectorCommon, NeedBitVecCheck,
         MatchDefns, InRangeStmts, !Info),
-    % XXX MLDS_DEFN
-    InRangeStmt = ml_stmt_block(list.map(wrap_local_var_defn, MatchDefns),
-        InRangeStmts, Context),
+    InRangeStmt = ml_stmt_block(MatchDefns, [], InRangeStmts, Context),
 
     (
         NeedRangeCheck = dont_need_range_check,
@@ -504,10 +502,10 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
         LaterSlotVarRval, Context, LaterSolnLookupStmts, !Info),
 
     ml_gen_call_current_success_cont(Context, CallContStmt, !Info),
-    FirstLookupSucceedStmt = ml_stmt_block([],
+    FirstLookupSucceedStmt = ml_stmt_block([], [],
         FirstSolnLookupStmts ++ [CallContStmt], Context),
 
-    LaterLookupSucceedStmt = ml_stmt_block([],
+    LaterLookupSucceedStmt = ml_stmt_block([], [],
         LaterSolnLookupStmts ++ [CallContStmt, IncrLaterSlotVarStmt], Context),
 
     MoreSolnsLoopCond = ml_binop(int_lt(int_type_int),
@@ -523,7 +521,7 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
     ;
         NeedBitVecCheck = need_bit_vec_check,
         OneOrMoreSolnsBlockStmt =
-            ml_stmt_block([], OneOrMoreSolnsStmts, Context),
+            ml_stmt_block([], [], OneOrMoreSolnsStmts, Context),
 
         AnySolnsCond = ml_binop(int_ge(int_type_int),
             NumLaterSolnsVarRval, ml_const(mlconst_int(0))),

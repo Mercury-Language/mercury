@@ -252,7 +252,7 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
             ml_gen_test_success(!.Info, Succeeded),
             ml_gen_ordinary_model_det_semi_disj(FirstLaterDisjunct,
                 LaterLaterDisjuncts, CodeModel, Context, LaterStmts, !Info),
-            LaterStmt = ml_gen_block([], LaterStmts, Context),
+            LaterStmt = ml_gen_block([], [], LaterStmts, Context),
             IfStmt = ml_stmt_if_then_else(
                 ml_unop(std_unop(logical_not), Succeeded),
                 LaterStmt, no, Context),
@@ -346,7 +346,7 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
                 ml_const(mlconst_int(1)))),
         Context),
 
-    LoopBodyStmt = ml_stmt_block([],
+    LoopBodyStmt = ml_stmt_block([], [],
         LookupStmts ++ [CallContStmt, IncrSlotVarStmt], Context),
 
     LoopCond = ml_binop(int_lt(int_type_int), SlotVarRval,
@@ -354,8 +354,7 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
     LoopStmt = ml_stmt_while(loop_at_least_once, LoopCond, LoopBodyStmt,
         Context),
 
-    % XXX MLDS_DEFN
-    Stmt = ml_stmt_block([mlds_local_var(SlotVarDefn)],
+    Stmt = ml_stmt_block([SlotVarDefn], [],
         [InitSlotVarStmt, LoopStmt], Context),
     Stmts = [Stmt].
 

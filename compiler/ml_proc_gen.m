@@ -460,7 +460,7 @@ ml_gen_proc(ConstStructMap, PredProcId,
             (
                 CopiedOutputVars = [],
                 % Optimize common case.
-                OutputVarLocals = []
+                OutputVarLocalDefns = []
             ;
                 CopiedOutputVars = [_ | _],
                 proc_info_get_varset(ProcInfo, VarSet),
@@ -470,19 +470,21 @@ ml_gen_proc(ConstStructMap, PredProcId,
                 vartypes_overlay_corresponding_lists(HeadVars, ArgTypes,
                     VarTypes, UpdatedVarTypes),
                 ml_gen_local_var_decls(VarSet, UpdatedVarTypes,
-                    Context, CopiedOutputVars, OutputVarLocals, !Info)
+                    Context, CopiedOutputVars, OutputVarLocalDefns, !Info)
             ),
-            MLDS_LocalVars = [ml_gen_succeeded_var_decl(Context) |
-                OutputVarLocals],
+            ProcLocalVarDefns = [ml_gen_succeeded_var_decl(Context) |
+                OutputVarLocalDefns],
             modes_to_top_functor_modes(!.ModuleInfo, Modes, ArgTypes,
                 TopFunctorModes),
             ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
-                CopiedOutputVars, Goal, Defns0, Statements, !Info),
+                CopiedOutputVars, Goal, LocalVarDefns0, FuncDefns, Statements,
+                !Info),
             ml_gen_proc_params(PredId, ProcId, MLDS_Params, !Info),
             ml_gen_info_get_closure_wrapper_defns(!.Info, ExtraDefns),
             ml_gen_info_get_global_data(!.Info, !:GlobalData),
-            Defns = list.map(wrap_local_var_defn, MLDS_LocalVars) ++ Defns0,
-            Statement = ml_gen_block(Defns, Statements, Context),
+            LocalVarDefns = ProcLocalVarDefns ++ LocalVarDefns0,
+            Statement = ml_gen_block(LocalVarDefns, FuncDefns, Statements,
+                Context),
             FunctionBody = body_defined_here(Statement)
 
         ),
@@ -595,11 +597,12 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
     %
 :- pred ml_gen_proc_body(code_model::in, list(prog_var)::in,
     list(mer_type)::in, list(top_functor_mode)::in, list(prog_var)::in,
-    hlds_goal::in, list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    hlds_goal::in,
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
-        CopiedOutputVars, Goal, Decls, Statements, !Info) :-
+        CopiedOutputVars, Goal, LocalVarDefns, FuncDefns, Statements, !Info) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
 
@@ -615,15 +618,16 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
 
     ml_gen_var_list(!.Info, CopiedOutputVars, CopiedOutputVarOriginalLvals),
     ml_gen_convert_headvars(HeadVars, ArgTypes, TopFunctorModes,
-        CopiedOutputVars, Context, ConvDecls,
+        CopiedOutputVars, Context, ConvLocalVarDefns,
         ConvInputStatements, ConvOutputStatements, !Info),
     ( if
-        ConvDecls = [],
+        ConvLocalVarDefns = [],
         ConvInputStatements = [],
         ConvOutputStatements = []
     then
         % No boxing/unboxing/casting required.
-        ml_gen_goal(CodeModel, Goal, Decls, Statements1, !Info)
+        ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Statements1,
+            !Info)
     else
         DoGenGoal = ml_gen_goal(CodeModel, Goal),
 
@@ -631,17 +635,19 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
         % arguments, generate the goal, convert the output arguments,
         % and then succeeed.
         DoConvOutputs =
-            ( pred(NewDecls::out, NewStatements::out,
-                    Info0::in, Info::out) is det :-
+            ( pred(NewLocalVarDefns::out, NewFuncDefns::out,
+                    NewStatements::out, Info0::in, Info::out) is det :-
                 ml_gen_success(CodeModel, Context, SuccStatements,
                     Info0, Info),
-                NewDecls = [],
+                NewLocalVarDefns = [],
+                NewFuncDefns = [],
                 NewStatements = ConvOutputStatements ++ SuccStatements
             ),
         ml_combine_conj(CodeModel, Context, DoGenGoal, DoConvOutputs,
-            Decls0, Statements0, !Info),
+            LocalVarDefns0, FuncDefns0, Statements0, !Info),
         Statements1 = ConvInputStatements ++ Statements0,
-        Decls = list.map(wrap_local_var_defn, ConvDecls) ++ Decls0
+        LocalVarDefns = ConvLocalVarDefns ++ LocalVarDefns0,
+        FuncDefns = FuncDefns0
     ),
 
     % Finally append an appropriate `return' statement, if needed.

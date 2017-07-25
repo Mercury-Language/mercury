@@ -932,10 +932,9 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
     FunctionName = mlds_function_export("<constructor>"),
     CtorFlags = init_function_decl_flags(acc_public, per_instance),
     Params = mlds_func_params(Args, ReturnValues),
-    Stmt = ml_stmt_block([], InitMembers, Context),
+    Stmt = ml_stmt_block([], [], InitMembers, Context),
     Attributes = [],
     EnvVarNames = set.init,
-    % XXX MLDS_DEFN
     CtorDefn = mlds_function_defn(FunctionName, Context,
         CtorFlags, no, Params, body_defined_here(Stmt), Attributes,
         EnvVarNames, no).

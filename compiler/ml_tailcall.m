@@ -174,7 +174,8 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
 :- type locals == list(local_defns).
 :- type local_defns
     --->    local_params(list(mlds_argument))
-    ;       local_defns(list(mlds_defn)).
+    ;       local_var_defns(list(mlds_local_var_defn))
+    ;       local_func_defns(list(mlds_function_defn)).
 
 :- type found_recursive_call
     --->    found_recursive_call
@@ -205,11 +206,6 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
 
 %-----------------------------------------------------------------------------%
 
-% mark_tailcalls_in_defns:
-% mark_tailcalls_in_defn:
-%   Recursively process the definition(s),
-%   marking each optimizable tail call in them as a tail call.
-%
 % mark_tailcalls_in_maybe_statement:
 % mark_tailcalls_in_stmts:
 % mark_tailcalls_in_stmt:
@@ -223,40 +219,6 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
 %   in terms of forward execution).
 %   The `Locals' argument contains the local definitions which are in scope
 %   at the current point.
-
-:- pred mark_tailcalls_in_defns(module_info::in, mlds_module_name::in,
-    warn_tail_calls::in, list(mlds_defn)::in, list(mlds_defn)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
-        !Defns, !Specs) :-
-    list.map_foldl(
-        mark_tailcalls_in_defn(ModuleInfo, ModuleName, WarnTailCalls),
-        !Defns, !Specs).
-
-:- pred mark_tailcalls_in_defn(module_info::in, mlds_module_name::in,
-    warn_tail_calls::in, mlds_defn::in, mlds_defn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-mark_tailcalls_in_defn(ModuleInfo, ModuleName, WarnTailCalls,
-        Defn0, Defn, !Specs) :-
-    (
-        ( Defn0 = mlds_local_var(_)
-        ; Defn0 = mlds_field_var(_)
-        ; Defn0 = mlds_global_var(_)
-        ),
-        Defn = Defn0
-    ;
-        Defn0 = mlds_function(FuncDefn0),
-        mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls,
-            FuncDefn0, FuncDefn, !Specs),
-        Defn = mlds_function(FuncDefn)
-    ;
-        Defn0 = mlds_class(ClassDefn0),
-        mark_tailcalls_in_class_defn(ModuleInfo, ModuleName, WarnTailCalls,
-            ClassDefn0, ClassDefn, !Specs),
-        Defn = mlds_class(ClassDefn)
-    ).
 
 :- pred mark_tailcalls_in_function_defn(module_info::in, mlds_module_name::in,
     warn_tail_calls::in, mlds_function_defn::in, mlds_function_defn::out,
@@ -292,24 +254,6 @@ mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls,
     FuncDefn = mlds_function_defn(Name, Context, Flags,
         MaybePredProcId, Params, FuncBody, Attributes,
         EnvVarNames, MaybeRequireTailrecInfo).
-
-:- pred mark_tailcalls_in_class_defn(module_info::in, mlds_module_name::in,
-    warn_tail_calls::in, mlds_class_defn::in, mlds_class_defn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-mark_tailcalls_in_class_defn(ModuleInfo, ModuleName, WarnTailCalls,
-        ClassDefn0, ClassDefn, !Specs) :-
-    ClassDefn0 = mlds_class_defn(Name, Context, Flags, Kind,
-        Imports, BaseClasses, Implements,
-        TypeParams, CtorDefns0, MemberDefns0),
-    list.map_foldl(
-        mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls),
-        CtorDefns0, CtorDefns, !Specs),
-    mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
-        MemberDefns0, MemberDefns, !Specs),
-    ClassDefn = mlds_class_defn(Name, Context, Flags, Kind,
-        Imports, BaseClasses, Implements,
-        TypeParams, CtorDefns, MemberDefns).
 
 :- pred mark_tailcalls_in_function_body(tailcall_info::in, at_tail::in,
     mlds_function_body::in, mlds_function_body::out,
@@ -395,7 +339,7 @@ mark_tailcalls_in_stmts(TCallInfo, !AtTail,
 mark_tailcalls_in_stmt(TCallInfo, AtTailAfter0, AtTailBefore,
         Stmt0, Stmt, !InBodyInfo) :-
     (
-        Stmt0 = ml_stmt_block(Defns0, Statements0, Context),
+        Stmt0 = ml_stmt_block(LocalVarDefns, FuncDefns0, Stmts0, Context),
         % Whenever we encounter a block statement, we recursively mark
         % tailcalls in any nested functions defined in that block.
         % We also need to add any local definitions in that block to the list
@@ -406,14 +350,18 @@ mark_tailcalls_in_stmt(TCallInfo, AtTailAfter0, AtTailBefore,
         ModuleName = TCallInfo ^ tci_module_name,
         WarnTailCalls = TCallInfo ^ tci_warn_tail_calls,
         Specs0 = !.InBodyInfo ^ tibi_specs,
-        mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
-            Defns0, Defns, Specs0, Specs),
+        list.map_foldl(
+            mark_tailcalls_in_function_defn(ModuleInfo, ModuleName,
+                WarnTailCalls),
+            FuncDefns0, FuncDefns, Specs0, Specs),
         !InBodyInfo ^ tibi_specs := Specs,
         Locals = TCallInfo ^ tci_locals,
-        NewTCallInfo = TCallInfo ^ tci_locals := [local_defns(Defns) | Locals],
+        NewTCallInfo = TCallInfo ^ tci_locals :=
+            [local_var_defns(LocalVarDefns), local_func_defns(FuncDefns)
+                | Locals],
         mark_tailcalls_in_stmts(NewTCallInfo, AtTailAfter0, AtTailBefore,
-            Statements0, Statements, !InBodyInfo),
-        Stmt = ml_stmt_block(Defns, Statements, Context)
+            Stmts0, Stmts, !InBodyInfo),
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, Stmts, Context)
     ;
         Stmt0 = ml_stmt_while(Kind, Rval, Statement0, Context),
         % The statement in the body of a while loop is never in a tail
@@ -954,10 +902,9 @@ var_is_in_locals(Var, LocalsList) :-
     some [Locals] (
         list.member(Locals, LocalsList),
         (
-            Locals = local_defns(Defns),
-            some [Defn] (
-                list.member(Defn, Defns),
-                Defn = mlds_local_var(LocalVarDefn),
+            Locals = local_var_defns(LocalVarDefns),
+            some [LocalVarDefn] (
+                list.member(LocalVarDefn, LocalVarDefns),
                 VarName = LocalVarDefn ^ mlvd_name
             )
         ;
@@ -988,10 +935,9 @@ function_is_local(CodeAddr, LocalsList) :-
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     some [Locals] (
         list.member(Locals, LocalsList),
-        Locals = local_defns(Defns),
-        some [Defn] (
-            list.member(Defn, Defns),
-            Defn = mlds_function(FuncDefn),
+        Locals = local_func_defns(FuncDefns),
+        some [FuncDefn] (
+            list.member(FuncDefn, FuncDefns),
             FuncDefn ^ mfd_function_name = mlds_function_name(PlainFuncName),
             PlainFuncName =
                 mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _PredId)

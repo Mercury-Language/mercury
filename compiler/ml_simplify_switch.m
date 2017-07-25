@@ -89,8 +89,8 @@ ml_simplify_switch(Stmt0, Stmt, !Info) :-
         maybe_eliminate_default(Range, Cases, Default, ReqDensity,
             FirstVal, LastVal, NeedRangeCheck),
         generate_dense_switch(Cases, Default, FirstVal, LastVal,
-            NeedRangeCheck, Type, Rval, Context, Decls, Stmts, !Info),
-        Stmt = ml_stmt_block(Decls, Stmts, Context)
+            NeedRangeCheck, Type, Rval, Context, Stmts, !Info),
+        Stmt = ml_stmt_block([], [], Stmts, Context)
     else if
         % Convert the remaining (sparse) int switches into if-then-else chains,
         % unless the target prefers switches.
@@ -276,12 +276,11 @@ find_min_and_max_in_case_cond(match_range(MinRval, MaxRval), !Min, !Max) :-
     %
 :- pred generate_dense_switch(list(mlds_switch_case)::in,
     mlds_switch_default::in, int::in, int::in, bool::in,
-    mlds_type::in, mlds_rval::in, prog_context::in,
-    list(mlds_defn)::out, list(mlds_stmt)::out,
+    mlds_type::in, mlds_rval::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
-        _Type, Rval, Context, Decls, Stmts, !Info) :-
+        _Type, Rval, Context, Stmts, !Info) :-
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
     ( if FirstVal = 0 then
@@ -294,8 +293,8 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     % Now generate the jump table.
     ml_gen_new_label(EndLabel, !Info),
     map.init(CaseLabelsMap0),
-    generate_cases(Cases, EndLabel, CaseLabelsMap0,
-        CaseLabelsMap, CasesDecls, CasesCode, !Info),
+    generate_cases(Cases, EndLabel, CaseLabelsMap0, CaseLabelsMap,
+        CasesCode, !Info),
     ml_gen_new_label(DefaultLabel, !Info),
     CaseLabels = get_case_labels(FirstVal, LastVal,
         CaseLabelsMap, DefaultLabel),
@@ -327,8 +326,8 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
         InRange = ml_binop(unsigned_le,
             Index,
             ml_const(mlconst_int(Difference))),
-        Else = yes(ml_stmt_block([], DefaultStmts, Context)),
-        SwitchBody = ml_stmt_block([], [DoJump | CasesCode], Context),
+        Else = yes(ml_stmt_block([], [], DefaultStmts, Context)),
+        SwitchBody = ml_stmt_block([], [], [DoJump | CasesCode], Context),
         DoSwitch = ml_stmt_if_then_else(InRange, SwitchBody, Else, Context),
         Stmts = [StartComment, DoSwitch, EndLabelStmt, EndComment]
     ;
@@ -337,22 +336,16 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
             [StartComment, DoJump | CasesCode] ++
             DefaultStmts ++
             [EndLabelStmt, EndComment]
-    ),
-    Decls = CasesDecls.
+    ).
 
 :- pred generate_cases(list(mlds_switch_case)::in, mlds_label::in,
-    case_labels_map::in, case_labels_map::out,
-    list(mlds_defn)::out, list(mlds_stmt)::out,
+    case_labels_map::in, case_labels_map::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-generate_cases([], _EndLabel, !CaseLabelsMap, [], [], !Info).
-generate_cases([Case | Cases], EndLabel, !CaseLabelsMap, Decls, Stmts,
-        !Info) :-
-    generate_case(Case, EndLabel, !CaseLabelsMap,
-        CaseDecls, CaseStmts, !Info),
-    generate_cases(Cases, EndLabel, !CaseLabelsMap,
-        CasesDecls, CasesStmts, !Info),
-    Decls = CaseDecls ++ CasesDecls,
+generate_cases([], _EndLabel, !CaseLabelsMap, [], !Info).
+generate_cases([Case | Cases], EndLabel, !CaseLabelsMap, Stmts, !Info) :-
+    generate_case(Case, EndLabel, !CaseLabelsMap, CaseStmts, !Info),
+    generate_cases(Cases, EndLabel, !CaseLabelsMap, CasesStmts, !Info),
     Stmts = CaseStmts ++ CasesStmts.
 
     % This converts an MLDS switch case into code for a dense switch case,
@@ -360,11 +353,10 @@ generate_cases([Case | Cases], EndLabel, !CaseLabelsMap, Decls, Stmts,
     % It also inserts the label for this case into the CaseLabelsMap.
     %
 :- pred generate_case(mlds_switch_case::in, mlds_label::in,
-    case_labels_map::in, case_labels_map::out,
-    list(mlds_defn)::out, list(mlds_stmt)::out,
+    case_labels_map::in, case_labels_map::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-generate_case(Case, EndLabel, !CaseLabelsMap, Decls, Stmts, !Info) :-
+generate_case(Case, EndLabel, !CaseLabelsMap, Stmts, !Info) :-
     Case = mlds_switch_case(FirstCond, LaterConds, CaseStmt),
     ml_gen_new_label(ThisLabel, !Info),
     insert_case_into_map(ThisLabel, FirstCond, !CaseLabelsMap),
@@ -375,7 +367,6 @@ generate_case(Case, EndLabel, !CaseLabelsMap, Decls, Stmts, !Info) :-
     JumpComment = ml_stmt_atomic(comment("branch to end of dense switch"),
         Context),
     JumpCode = ml_stmt_goto(goto_label(EndLabel), Context),
-    Decls = [],
     Stmts = [LabelComment, LabelCode, CaseStmt, JumpComment, JumpCode].
 
 %-----------------------------------------------------------------------------%
@@ -455,10 +446,10 @@ get_case_labels(ThisVal, LastVal, CaseLabelsMap, DefaultLabel) = CaseLabels :-
 ml_switch_to_if_else_chain([], Default, _Rval, Context) = Stmt :-
     (
         Default = default_do_nothing,
-        Stmt = ml_stmt_block([], [], Context)
+        Stmt = ml_stmt_block([], [], [], Context)
     ;
         Default = default_is_unreachable,
-        Stmt = ml_stmt_block([], [], Context)
+        Stmt = ml_stmt_block([], [], [], Context)
     ;
         Default = default_case(Stmt)
     ).

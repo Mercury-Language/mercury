@@ -113,14 +113,10 @@
 :- pred function_defn_is_private(mlds_function_defn::in) is semidet.
 :- pred class_defn_is_private(mlds_class_defn::in) is semidet.
 
-    % Succeeds iff this definition is a data definition which
-    % defines a variable whose type is mlds_commit_type.
+    % Succeeds iff the type of the local variable being defined
+    % is mlds_commit_type.
     %
-:- pred defn_is_commit_type_var(mlds_defn::in) is semidet.
-
-    % Succeeds iff this definition is a function definition.
-    %
-:- pred defn_is_function(mlds_defn::in, mlds_function_defn::out) is semidet.
+:- pred local_var_defn_is_commit_type(mlds_local_var_defn::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -260,13 +256,8 @@ class_defn_is_private(ClassDefn) :-
     ClassFlags = ClassDefn ^ mcd_decl_flags,
     get_class_access(ClassFlags) = class_private.
 
-defn_is_commit_type_var(Defn) :-
-    % XXX MLDS_DEFN
-    Defn = mlds_local_var(LocalVarDefn),
+local_var_defn_is_commit_type(LocalVarDefn) :-
     LocalVarDefn ^ mlvd_type = mlds_commit_type.
-
-defn_is_function(Defn, FuncDefn) :-
-    Defn = mlds_function(FuncDefn).
 
 %---------------------------------------------------------------------------%
 
@@ -502,6 +493,15 @@ method_ptrs_in_global_var_defn(GlobalVarDefn, !CodeAddrsInConsts) :-
 
 %---------------------%
 
+:- pred method_ptrs_in_local_var_defns(list(mlds_local_var_defn)::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_local_var_defns([], !CodeAddrsInConsts).
+method_ptrs_in_local_var_defns([LocalVarDefn | LocalVarDefns],
+        !CodeAddrsInConsts) :-
+    method_ptrs_in_local_var_defn(LocalVarDefn, !CodeAddrsInConsts),
+    method_ptrs_in_local_var_defns(LocalVarDefns, !CodeAddrsInConsts).
+
 :- pred method_ptrs_in_local_var_defn(mlds_local_var_defn::in,
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
 
@@ -568,8 +568,9 @@ method_ptrs_in_statements([Stmt | Stmts], !CodeAddrsInConsts) :-
 
 method_ptrs_in_statement(Stmt, !CodeAddrsInConsts) :-
     (
-        Stmt = ml_stmt_block(Defns, SubStmts, _Context),
-        method_ptrs_in_defns(Defns, !CodeAddrsInConsts),
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, _Context),
+        method_ptrs_in_local_var_defns(LocalVarDefns, !CodeAddrsInConsts),
+        method_ptrs_in_function_defns(FuncDefns, !CodeAddrsInConsts),
         method_ptrs_in_statements(SubStmts, !CodeAddrsInConsts)
     ;
         Stmt = ml_stmt_while(_Kind, Rval, SubStmt, _Context),

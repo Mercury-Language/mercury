@@ -919,14 +919,14 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
         MaybeTag, Context, !.Info, TakeAddrStmts),
     ThenStmts = ExtraRvalStmts ++ FieldStmts ++ TakeAddrStmts,
-    ThenStmt = ml_stmt_block([], ThenStmts, Context),
+    ThenStmt = ml_stmt_block([], [], ThenStmts, Context),
 
     % If the reassignment isn't possible because the target is statically
     % allocated then fall back to dynamic allocation.
     ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
         ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr,
         construct_dynamically, Context, DynamicStmts, !Info),
-    ElseStmt = ml_stmt_block([], DynamicStmts, Context),
+    ElseStmt = ml_stmt_block([], [], DynamicStmts, Context),
     IfStmt = ml_stmt_if_then_else(ml_lval(Var1Lval), ThenStmt, yes(ElseStmt),
         Context),
     Stmts = [HeapTestStmt, IfStmt].
@@ -2132,7 +2132,7 @@ ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context, Stmts, !Info) :-
         Stmts = [SetTagTestResult]
     ;
         GetArgsStmts = [_ | _],
-        GetArgs = ml_gen_block([], GetArgsStmts, Context),
+        GetArgs = ml_gen_block([], [], GetArgsStmts, Context),
         IfStmt = ml_stmt_if_then_else(SucceededExpression, GetArgs, no,
             Context),
         Stmts = [SetTagTestResult, IfStmt]

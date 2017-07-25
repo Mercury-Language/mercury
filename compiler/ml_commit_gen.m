@@ -169,8 +169,8 @@
     % Generate code for a commit.
     %
 :- pred ml_gen_commit(hlds_goal::in, code_model::in, prog_context::in,
-    list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -195,7 +195,8 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-ml_gen_commit(Goal, CodeModel, Context, Decls, Stmts, !Info) :-
+ml_gen_commit(Goal, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
+        !Info) :-
     Goal = hlds_goal(_, GoalInfo),
     GoalCodeModel = goal_info_get_code_model(GoalInfo),
     GoalContext = goal_info_get_context(GoalInfo),
@@ -241,44 +242,46 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Stmts, !Info) :-
         %       commit_func();
         %   #endif
 
-        ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
-            CopyLocalsToOutputArgs, OrigVarLvalMap, !Info),
+        ml_gen_maybe_make_locals_for_output_args(GoalInfo,
+            OutputArgLocalVarDefns, CopyLocalsToOutputArgs, OrigVarLvalMap,
+            !Info),
 
         % Generate the `success()' function.
         ml_gen_new_func_label(no, SuccessFuncLabel, SuccessFuncLabelRval,
             !Info),
-        % push nesting level
+        % Push nesting level.
         ml_gen_info_new_aux_var_name(mcav_commit, CommitRef, !Info),
         ml_gen_local_var_lval(!.Info, CommitRef, mlds_commit_type,
             CommitRefLval),
-        CommitRefDecl = ml_gen_commit_var_decl(Context, CommitRef),
+        CommitRefDefn = ml_gen_commit_var_decl(Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval), Context),
         % Pop nesting level.
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
-            DoCommitStmt, SuccessFunc),
+            DoCommitStmt, SuccessFuncDefn),
 
         ml_get_env_ptr(!.Info, EnvPtrRval),
         SuccessCont = success_cont(SuccessFuncLabelRval, EnvPtrRval, [], []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
-        ml_gen_goal(model_non, Goal, GoalDecls, GoalStmts, !Info),
-        GoalStmt = ml_gen_block(GoalDecls, GoalStmts, GoalContext),
+        ml_gen_goal(model_non, Goal, GoalLocalVarDefns, GoalFuncDefns,
+            GoalStmts, !Info),
+        GoalStmt = ml_gen_block(GoalLocalVarDefns, GoalFuncDefns, GoalStmts,
+            GoalContext),
         ml_gen_info_pop_success_cont(!Info),
         ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
             SetSuccessFalse),
         ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
             SetSuccessTrue),
         TryCommitStmt = ml_stmt_try_commit(CommitRefLval,
-            ml_gen_block([], [GoalStmt, SetSuccessFalse], Context),
-            ml_gen_block([], CopyLocalsToOutputArgs ++ [SetSuccessTrue],
+            ml_gen_block([], [], [GoalStmt, SetSuccessFalse], Context),
+            ml_gen_block([], [], CopyLocalsToOutputArgs ++ [SetSuccessTrue],
                 Context),
             Context
         ),
-        CommitFuncLocalDecls =
-            [mlds_local_var(CommitRefDecl), mlds_function(SuccessFunc)],
-        maybe_put_commit_in_own_func(CommitFuncLocalDecls,
-            [TryCommitStmt], Context, CommitFuncDecls, Stmts, !Info),
-        Decls = list.map(wrap_local_var_defn, LocalVarDecls)
-            ++ CommitFuncDecls,
+        maybe_put_commit_in_own_func(CommitRefDefn, SuccessFuncDefn,
+            [TryCommitStmt], Context,
+            CommitFuncLocalVarDefns, CommitFuncFuncDefns, Stmts, !Info),
+        LocalVarDefns = OutputArgLocalVarDefns ++ CommitFuncLocalVarDefns,
+        FuncDefns = CommitFuncFuncDefns,
 
         ml_gen_info_set_var_lvals(OrigVarLvalMap, !Info)
     else if
@@ -316,8 +319,9 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Stmts, !Info) :-
         %       commit_func();
         %       #endif
 
-        ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
-            CopyLocalsToOutputArgs, OrigVarLvalMap, !Info),
+        ml_gen_maybe_make_locals_for_output_args(GoalInfo,
+            OutputArgLocalVarDefns, CopyLocalsToOutputArgs, OrigVarLvalMap,
+            !Info),
 
         % Generate the `success()' function.
         ml_gen_new_func_label(no, SuccessFuncLabel, SuccessFuncLabelRval,
@@ -326,35 +330,37 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Stmts, !Info) :-
         ml_gen_info_new_aux_var_name(mcav_commit, CommitRef, !Info),
         ml_gen_local_var_lval(!.Info, CommitRef, mlds_commit_type,
             CommitRefLval),
-        CommitRefDecl = ml_gen_commit_var_decl(Context, CommitRef),
+        CommitRefDefn = ml_gen_commit_var_decl(Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval), Context),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
-            DoCommitStmt, SuccessFunc),
+            DoCommitStmt, SuccessFuncDefn),
 
         ml_get_env_ptr(!.Info, EnvPtrRval),
         SuccessCont = success_cont(SuccessFuncLabelRval, EnvPtrRval, [], []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
-        ml_gen_goal(model_non, Goal, GoalDecls, GoalStmts, !Info),
+        ml_gen_goal(model_non, Goal, GoalLocalVarDefns, GoalFuncDefns,
+            GoalStmts, !Info),
         % Hoist any static constant declarations for Goal out to the top level.
-        GoalStmt = ml_gen_block(GoalDecls, GoalStmts, GoalContext),
+        GoalStmt = ml_gen_block(GoalLocalVarDefns, GoalFuncDefns, GoalStmts,
+            GoalContext),
         ml_gen_info_pop_success_cont(!Info),
 
         TryCommitStmt = ml_stmt_try_commit(CommitRefLval, GoalStmt,
-            ml_gen_block([], CopyLocalsToOutputArgs, Context), Context),
-        CommitFuncLocalDecls =
-            [mlds_local_var(CommitRefDecl), mlds_function(SuccessFunc)],
-        maybe_put_commit_in_own_func(CommitFuncLocalDecls,
-            [TryCommitStmt], Context, CommitFuncDecls, Stmts, !Info),
-        Decls = list.map(wrap_local_var_defn, LocalVarDecls)
-            ++ CommitFuncDecls,
+            ml_gen_block([], [], CopyLocalsToOutputArgs, Context), Context),
+        maybe_put_commit_in_own_func(CommitRefDefn, SuccessFuncDefn,
+            [TryCommitStmt], Context,
+            CommitFuncLocalVarDefns, CommitFuncFuncDefns, Stmts, !Info),
+        LocalVarDefns = OutputArgLocalVarDefns ++ CommitFuncLocalVarDefns,
+        FuncDefns = CommitFuncFuncDefns,
         ml_gen_info_set_var_lvals(OrigVarLvalMap, !Info)
     else
         % No commit required.
-        ml_gen_goal(CodeModel, Goal, Decls, Stmts, !Info)
+        ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info)
     ).
 
-    % maybe_put_commit_in_own_func(Defns0, Stmts0, Defns, Stmts):
+    % maybe_put_commit_in_own_func(LocalVarDefs0, FuncDefn0,
+    %   Stmts0, Defns, Stmts):
     %
     % If the --put-commit-in-own-func option is set, put the commit in its
     % own function. This is needed for the high-level C back-end, to handle
@@ -386,25 +392,27 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Stmts, !Info) :-
     % But that would impose distributed fat and would make interoperability
     % difficult.]
     %
-:- pred maybe_put_commit_in_own_func(list(mlds_defn)::in, list(mlds_stmt)::in,
-    prog_context::in, list(mlds_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred maybe_put_commit_in_own_func(
+    mlds_local_var_defn::in, mlds_function_defn::in, list(mlds_stmt)::in,
+    prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStmts,
-        Context, Decls, Stmts, !Info) :-
+maybe_put_commit_in_own_func(LocalVarDefn0, FuncDefn0, TryCommitStmts,
+        Context, LocalVarDefns, FuncDefns, Stmts, !Info) :-
     ml_gen_info_put_commit_in_own_func(!.Info, PutCommitInOwnFunc),
     (
         PutCommitInOwnFunc = yes,
 
         % Generate the `void commit_func() { ... }' wrapper
-        % around the main body that we generated above
+        % around the main body that we generated above.
         ml_gen_new_func_label(no, CommitFuncLabel, CommitFuncLabelRval, !Info),
-        % push nesting level
-        CommitFuncBody = ml_gen_block(CommitFuncLocalDecls, TryCommitStmts,
-            Context),
-        % pop nesting level
+        % Push nesting level.
+        CommitFuncBody = ml_gen_block([LocalVarDefn0], [FuncDefn0],
+            TryCommitStmts, Context),
+        % Pop nesting level.
         ml_gen_nondet_label_func(!.Info, CommitFuncLabel, Context,
-            CommitFuncBody, CommitFunc),
+            CommitFuncBody, CommitFuncDefn),
 
         % Generate the call to `commit_func();'
         ml_gen_info_use_gcc_nested_functions(!.Info, UseNestedFuncs),
@@ -425,12 +433,14 @@ maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStmts,
         CallStmt = ml_stmt_call(Signature, CommitFuncLabelRval, no, ArgRvals,
             [], CallKind, Markers, Context),
         % Package it all up.
-        Stmts = [CallStmt],
-        Decls = [mlds_function(CommitFunc)]
+        LocalVarDefns = [],
+        FuncDefns = [CommitFuncDefn],
+        Stmts = [CallStmt]
     ;
         PutCommitInOwnFunc = no,
-        Stmts = TryCommitStmts,
-        Decls = CommitFuncLocalDecls
+        LocalVarDefns = [LocalVarDefn0],
+        FuncDefns = [FuncDefn0],
+        Stmts = TryCommitStmts
     ).
 
     % In commits, you have model_non code called from a model_det or model_semi

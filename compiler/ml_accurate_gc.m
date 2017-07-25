@@ -328,7 +328,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     fixup_newobj(mercury_module_name_to_mlds(ModuleName),
-        MLDS_TypeInfoStmt0, MLDS_TypeInfoStmt, MLDS_NewobjLocals),
+        MLDS_TypeInfoStmt0, MLDS_TypeInfoStmt, NewObjLocalVarDefns),
 
     % Build MLDS code to trace the variable.
     ml_gen_var(!.Info, TypeInfoVar, TypeInfoLval),
@@ -354,13 +354,11 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
                 gc_no_stmt, Context)
         ),
     set_of_var.to_sorted_list(NonLocals, NonLocalVarList),
-    MLDS_NonLocalVarDecls = list.map(GenLocalVarDecl, NonLocalVarList),
+    NonLocalVarDefns = list.map(GenLocalVarDecl, NonLocalVarList),
 
     % Combine the MLDS code fragments together.
     % XXX MLDS_DEFN
-    GC_TraceCode = ml_gen_block(
-        list.map(wrap_local_var_defn,
-            MLDS_NewobjLocals ++ MLDS_NonLocalVarDecls),
+    GC_TraceCode = ml_gen_block(NewObjLocalVarDefns ++ NonLocalVarDefns, [],
         [MLDS_TypeInfoStmt, MLDS_TraceStmt], Context).
 
     % ml_gen_trace_var(VarName, DeclType, TypeInfo, Context, Code):
@@ -463,9 +461,9 @@ fixup_newobj(ModuleName, Stmt0, Stmt, Defns) :-
 
 fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
     (
-        Stmt0 = ml_stmt_block(Defns, SubStmts0, Context),
+        Stmt0 = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts0, Context),
         list.map_foldl(fixup_newobj_in_stmt, SubStmts0, SubStmts, !Fixup),
-        Stmt = ml_stmt_block(Defns, SubStmts, Context)
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
         Stmt0 = ml_stmt_while(Kind, Rval, BodyStmt0, Context),
         fixup_newobj_in_stmt(BodyStmt0, BodyStmt, !Fixup),
@@ -588,7 +586,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         % to the Lval.
         TaggedPtrRval = maybe_tag_rval(MaybeTag, PointerType, PtrRval),
         AssignStmt = ml_stmt_atomic(assign(Lval, TaggedPtrRval), Context),
-        Stmt = ml_stmt_block([], ArgInitStmts ++ [AssignStmt], Context)
+        Stmt = ml_stmt_block([], [], ArgInitStmts ++ [AssignStmt], Context)
     else
         Stmt = ml_stmt_atomic(AtomicStmt0, Context)
     ).

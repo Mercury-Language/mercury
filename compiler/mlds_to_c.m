@@ -1491,6 +1491,17 @@ mlds_output_defns(Opts, Indent, Separate, ModuleName,
     mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO),
     mlds_output_defns(Opts, Indent, Separate, ModuleName, Defns, !IO).
 
+:- pred mlds_output_local_var_defns(mlds_to_c_opts::in, indent::in, bool::in,
+    mlds_module_name::in, list(mlds_local_var_defn)::in, io::di, io::uo) is det.
+
+mlds_output_local_var_defns(_Opts, _Indent, _Separate, _ModuleName, [], !IO).
+mlds_output_local_var_defns(Opts, Indent, Separate, ModuleName,
+        [LocalVarDefn | LocalVarDefns], !IO) :-
+    mlds_output_local_var_defn(Opts, Indent, Separate, ModuleName,
+        LocalVarDefn, !IO),
+    mlds_output_local_var_defns(Opts, Indent, Separate, ModuleName,
+        LocalVarDefns, !IO).
+
 :- pred mlds_output_global_var_defns(mlds_to_c_opts::in, indent::in, bool::in,
     mlds_module_name::in, list(mlds_global_var_defn)::in,
     io::di, io::uo) is det.
@@ -1597,6 +1608,7 @@ mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
 
 :- pred mlds_output_class_decl_opts(mlds_to_c_opts::in, indent::in,
     mlds_module_name::in, mlds_class_defn::in, io::di, io::uo) is det.
+:- pragma consider_used(mlds_output_class_decl_opts/6).
 
 mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
@@ -3486,48 +3498,57 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
         mlds_output_atomic_stmt(Opts, Indent, FuncInfo, AtomicStmt,
             Context, !IO)
     ;
-        Stmt = ml_stmt_block(Defns, SubStmts, Context),
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
         output_n_indents(Indent, !IO),
         io.write_string("{\n", !IO),
-        (
-            Defns = [_ | _],
-            FuncInfo = func_info_c(FuncName, _),
-            FuncName = qual_function_name(ModuleName, _),
 
-            % Output forward declarations for any nested functions defined in
-            % this block, in case they are referenced before they are defined.
-            list.filter_map(defn_is_function, Defns, NestedFuncDefns),
-            (
-                NestedFuncDefns = [_ | _],
-                list.foldl(
-                    mlds_output_function_decl_opts(Opts, Indent + 1,
-                        ModuleName),
-                    NestedFuncDefns, !IO),
-                io.write_string("\n", !IO)
-            ;
-                NestedFuncDefns = []
-            ),
+        FuncInfo = func_info_c(FuncName, _),
+        FuncName = qual_function_name(ModuleName, _),
+
+        % Output forward declarations for any nested functions defined in
+        % this block, in case they are referenced before they are defined.
+        (
+            FuncDefns = [_ | _],
+            list.foldl(
+                mlds_output_function_decl_opts(Opts, Indent + 1, ModuleName),
+                FuncDefns, !IO),
+            io.write_string("\n", !IO)
+        ;
+            FuncDefns = []
+        ),
+
+        (
+            LocalVarDefns = [_ | _],
 
             GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
             (
                 GCC_LocalLabels = yes,
                 % GNU C __label__ declarations must precede ordinary variable
                 % declarations.
-                list.filter(defn_is_commit_type_var, Defns,
+                list.filter(local_var_defn_is_commit_type, LocalVarDefns,
                     LabelDefns, NonLabelDefns),
-                mlds_output_defns(Opts, Indent + 1, no, ModuleName,
+                mlds_output_local_var_defns(Opts, Indent + 1, no, ModuleName,
                     LabelDefns, !IO),
-                mlds_output_defns(Opts, Indent + 1, no, ModuleName,
+                mlds_output_local_var_defns(Opts, Indent + 1, no, ModuleName,
                     NonLabelDefns, !IO)
             ;
                 GCC_LocalLabels = no,
-                mlds_output_defns(Opts, Indent + 1, no, ModuleName,
-                    Defns, !IO)
+                mlds_output_local_var_defns(Opts, Indent + 1, no, ModuleName,
+                    LocalVarDefns, !IO)
             ),
             io.write_string("\n", !IO)
         ;
-            Defns = []
+            LocalVarDefns = []
         ),
+        (
+            FuncDefns = [_ | _],
+            mlds_output_function_defns(Opts, Indent + 1, ModuleName,
+                FuncDefns, !IO),
+            io.write_string("\n", !IO)
+        ;
+            FuncDefns = []
+        ),
+
         mlds_output_statements(Opts, Indent + 1, FuncInfo, SubStmts, !IO),
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
@@ -3572,7 +3593,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
             MaybeElse = yes(_),
             Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
         then
-            Then = ml_stmt_block([], [Then0], ThenContext)
+            Then = ml_stmt_block([], [], [Then0], ThenContext)
         else if
             % For examples of the form
             %
@@ -3589,7 +3610,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
             MaybeElse = no,
             Then0 = ml_stmt_if_then_else(_, _, yes(_), ThenContext)
         then
-            Then = ml_stmt_block([], [Then0], ThenContext)
+            Then = ml_stmt_block([], [], [Then0], ThenContext)
         else
             Then = Then0
         ),
@@ -3859,7 +3880,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
             % We need to take care to avoid problems caused by the
             % dangling else ambiguity.
             ( if BodyStmt0 = ml_stmt_if_then_else(_, _, no, Context) then
-                BodyStmt = ml_stmt_block([], [BodyStmt0], Context)
+                BodyStmt = ml_stmt_block([], [], [BodyStmt0], Context)
             else
                 BodyStmt = BodyStmt0
             ),

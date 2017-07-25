@@ -2407,17 +2407,29 @@ output_stmts_for_csharp(Info, Indent, FuncInfo, [Stmt | Stmts],
 
 output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     (
-        Stmt = ml_stmt_block(Defns, Stmts, Context),
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, Stmts, Context),
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("{\n", !IO),
         (
-            Defns = [_ | _],
-            output_defns_for_csharp(Info, Indent + 1, oa_force_init,
-                Defns, !IO),
+            LocalVarDefns = [_ | _],
+            list.foldl(
+                output_local_var_defn_for_csharp(Info, Indent + 1,
+                    oa_force_init),
+                LocalVarDefns, !IO),
             io.write_string("\n", !IO)
         ;
-            Defns = []
+            LocalVarDefns = []
+        ),
+        (
+            FuncDefns = [_ | _],
+            list.foldl(
+                output_function_defn_for_csharp(Info, Indent + 1,
+                    oa_force_init),
+                FuncDefns, !IO),
+            io.write_string("\n", !IO)
+        ;
+            FuncDefns = []
         ),
         output_stmts_for_csharp(Info, Indent + 1, FuncInfo, Stmts,
             ExitMethods, !IO),
@@ -2480,7 +2492,7 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
             MaybeElse = yes(_),
             Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
         then
-            Then = ml_stmt_block([], [Then0], ThenContext)
+            Then = ml_stmt_block([], [], [Then0], ThenContext)
         else
             Then = Then0
         ),
