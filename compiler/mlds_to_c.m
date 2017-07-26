@@ -4207,8 +4207,7 @@ mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Stmt, Context, !IO) :-
             list.foldl(mlds_output_target_code_component(Opts, Context),
                 Components, !IO)
         ;
-            ( TargetLang = ml_target_gnu_c
-            ; TargetLang = ml_target_csharp
+            ( TargetLang = ml_target_csharp
             ; TargetLang = ml_target_java
             ),
             sorry($pred, "inline_target_code only works for language C")

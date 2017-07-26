@@ -2886,7 +2886,6 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
             output_pragma_warning_disable(!IO)
         ;
             ( TargetLang = ml_target_c
-            ; TargetLang = ml_target_gnu_c
             ; TargetLang = ml_target_java
             ),
             unexpected($pred, "inline_target_code only works for lang_java")

@@ -339,7 +339,6 @@ rename_class_names_in_atomic(Renaming, !Stmt) :-
             !:Stmt = inline_target_code(Lang, Components)
         ;
             ( Lang = ml_target_c
-            ; Lang = ml_target_gnu_c
             ; Lang = ml_target_csharp
             )
         )

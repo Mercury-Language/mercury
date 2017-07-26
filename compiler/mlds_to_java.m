@@ -3702,7 +3702,6 @@ output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO) :-
                 Components, !IO)
         ;
             ( TargetLang = ml_target_c
-            ; TargetLang = ml_target_gnu_c
             ; TargetLang = ml_target_csharp
             ),
             unexpected($pred, "inline_target_code only works for lang_java")

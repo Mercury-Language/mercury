@@ -1557,14 +1557,15 @@
             )
     ;       ola_unused.
 
-    % This is just a random selection of possible languages
-    % that we might want to target...
 :- type mlds_target_lang
     --->    ml_target_c
-    ;       ml_target_gnu_c
-%   ;       ml_target_c_minus_minus
     ;       ml_target_csharp
     ;       ml_target_java.
+
+    % This is just a random selection of possible languages
+    % that we might want to target later ...
+%   ;       ml_target_gnu_c
+%   ;       ml_target_c_minus_minus
 %   ;       ml_target_java_asm
 %   ;       ml_target_java_bytecode.
 
