@@ -593,12 +593,6 @@
                 mlds_class_defn
             ).
 
-:- func wrap_global_var_defn(mlds_global_var_defn) = mlds_defn.
-:- func wrap_local_var_defn(mlds_local_var_defn) = mlds_defn.
-:- func wrap_field_var_defn(mlds_field_var_defn) = mlds_defn.
-:- func wrap_function_defn(mlds_function_defn) = mlds_defn.
-:- func wrap_class_defn(mlds_class_defn) = mlds_defn.
-
 :- type mlds_global_var_defn
     --->    mlds_global_var_defn(
                 mgvd_name               :: mlds_global_var_name,
@@ -793,11 +787,15 @@
                 % Type parameters.
                 mcd_tparams         :: list(type_param),
 
-                % Has these constructors.
-                mcd_ctors           :: list(mlds_function_defn),
-
                 % Contains these members.
-                mcd_members         :: list(mlds_defn)
+                % The mcd_member_methods field is used only by mlds_to_java.m;
+                % it should be set to the empty list everywhere else.
+                mcd_member_fields   :: list(mlds_field_var_defn),
+                mcd_member_classes  :: list(mlds_class_defn),
+                mcd_member_methods  :: list(mlds_function_defn),
+
+                % Has these constructors.
+                mcd_ctors           :: list(mlds_function_defn)
             ).
 
 :- type mlds_type
@@ -2469,14 +2467,6 @@ get_initializer_array_size(no_initializer) = no_size.
 get_initializer_array_size(init_obj(_)) = no_size.
 get_initializer_array_size(init_struct(_, _)) = no_size.
 get_initializer_array_size(init_array(Elems)) = array_size(list.length(Elems)).
-
-%---------------------------------------------------------------------------%
-
-wrap_global_var_defn(GlobalDataDefn) = mlds_global_var(GlobalDataDefn).
-wrap_local_var_defn(LocalVarDefn) = mlds_local_var(LocalVarDefn).
-wrap_field_var_defn(LocalVarDefn) = mlds_field_var(LocalVarDefn).
-wrap_function_defn(FunctionDefn) = mlds_function(FunctionDefn).
-wrap_class_defn(ClassDefn) = mlds_class(ClassDefn).
 
 %---------------------------------------------------------------------------%
 

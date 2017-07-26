@@ -641,10 +641,9 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         % fields.
         StructTypeFlags =
             init_class_decl_flags(class_private, sealed, modifiable),
-        % XXX MLDS_DEFN
         ClassDefn = mlds_class_defn(StructTypeClassName, Context,
-            StructTypeFlags, ClassKind, [], [], [], [], CtorDefns,
-            list.map(wrap_field_var_defn, FieldDefns)),
+            StructTypeFlags, ClassKind, [], [], [], [],
+            FieldDefns, [], [], CtorDefns),
         StructTypeDefn = mlds_class(ClassDefn),
 
         QualStructTypeName =

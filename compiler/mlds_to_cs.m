@@ -618,12 +618,6 @@ output_src_end_for_csharp(Indent, ModuleName, !IO) :-
 % Code to output declarations and definitions.
 %
 
-:- pred output_defns_for_csharp(csharp_out_info::in, indent::in,
-    output_aux::in, list(mlds_defn)::in, io::di, io::uo) is det.
-
-output_defns_for_csharp(Info, Indent, OutputAux, Defns, !IO) :-
-    list.foldl(output_defn_for_csharp(Info, Indent, OutputAux), Defns, !IO).
-
 :- pred output_defn_for_csharp(csharp_out_info::in, indent::in, output_aux::in,
     mlds_defn::in, io::di, io::uo) is det.
 
@@ -734,7 +728,10 @@ output_function_defn_for_csharp(Info, Indent, OutputAux, FunctionDefn, !IO) :-
 output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     output_n_indents(Indent, !IO),
     ClassDefn = mlds_class_defn(TypeName, _Context, Flags, Kind,
-        _Imports, BaseClasses, Implements, TypeParams, Ctors, Members),
+        _Imports, BaseClasses, Implements, TypeParams,
+        MemberFields, MemberClasses, MemberMethods, Ctors),
+    expect(unify(MemberMethods, []), $pred,
+        "MemberMethods != []"),
     (
         (
             % `static' keyword not allowed on enumerations.
@@ -770,11 +767,32 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     output_supers_list(!.Info, Indent + 1, BaseClasses, Implements, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
-    output_class_body_for_csharp(!.Info, Indent + 1, Kind, TypeName,
-        Members, !IO),
+    (
+        ( Kind = mlds_class
+        ; Kind = mlds_interface
+        ; Kind = mlds_struct
+        ),
+        list.foldl(
+            output_field_var_defn_for_csharp(!.Info, Indent + 1, oa_none),
+            MemberFields, !IO),
+        list.foldl(
+            output_class_defn_for_csharp(!.Info, Indent + 1),
+            MemberClasses, !IO)
+    ;
+        Kind = mlds_package,
+        unexpected($pred, "cannot use package as a type")
+    ;
+        Kind = mlds_enum,
+        list.filter(field_var_defn_is_enum_const,
+            MemberFields, EnumConstMemberFields),
+        % XXX Why +2?
+        output_enum_constants_for_csharp(!.Info, Indent + 2, TypeName,
+            EnumConstMemberFields, !IO)
+    ),
     io.nl(!IO),
     list.foldl(
-        output_function_defn_for_csharp(!.Info, Indent + 1, oa_cname(TypeName)),
+        output_function_defn_for_csharp(!.Info, Indent + 1,
+            oa_cname(TypeName)),
         Ctors, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("}\n\n", !IO).
@@ -851,27 +869,6 @@ interface_to_string(Interface, String) :-
         )
     else
         unexpected($pred, "interface was not a class")
-    ).
-
-:- pred output_class_body_for_csharp(csharp_out_info::in, indent::in,
-    mlds_class_kind::in, mlds_type_name::in, list(mlds_defn)::in,
-    io::di, io::uo) is det.
-
-output_class_body_for_csharp(Info, Indent, Kind, TypeName, Members, !IO) :-
-    (
-        ( Kind = mlds_class
-        ; Kind = mlds_interface
-        ; Kind = mlds_struct
-        ),
-        output_defns_for_csharp(Info, Indent, oa_none, Members, !IO)
-    ;
-        Kind = mlds_package,
-        unexpected($pred, "cannot use package as a type")
-    ;
-        Kind = mlds_enum,
-        list.filter_map(defn_is_enum_const, Members, EnumConsts),
-        output_enum_constants_for_csharp(Info, Indent + 1, TypeName,
-            EnumConsts, !IO)
     ).
 
 %---------------------------------------------------------------------------%

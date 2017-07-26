@@ -102,7 +102,7 @@
     % Test whether one of the members of an mlds_enum class
     % is an enumeration constant.
     %
-:- pred defn_is_enum_const(mlds_defn::in, mlds_field_var_defn::out) is semidet.
+:- pred field_var_defn_is_enum_const(mlds_field_var_defn::in) is semidet.
 
     % Succeeds iff this definition is a data definition which
     % defines a type_ctor_info constant.
@@ -235,8 +235,7 @@ convert_qual_kind(type_qual) = type_qual.
 
 %---------------------------------------------------------------------------%
 
-defn_is_enum_const(Defn, FieldVarDefn) :-
-    Defn = mlds_field_var(FieldVarDefn),
+field_var_defn_is_enum_const(FieldVarDefn) :-
     FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_constness = const.
 
 global_var_defn_is_type_ctor_info(GlobalVarDefn) :-
@@ -447,37 +446,6 @@ init_code_addrs_in_consts =
 
 %---------------------%
 
-:- pred method_ptrs_in_defns(list(mlds_defn)::in,
-    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
-
-method_ptrs_in_defns([], !CodeAddrsInConsts).
-method_ptrs_in_defns([Defn | Defns], !CodeAddrsInConsts) :-
-    method_ptrs_in_defn(Defn, !CodeAddrsInConsts),
-    method_ptrs_in_defns(Defns, !CodeAddrsInConsts).
-
-:- pred method_ptrs_in_defn(mlds_defn::in,
-    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
-
-method_ptrs_in_defn(Defn, !CodeAddrsInConsts) :-
-    (
-        Defn = mlds_global_var(GlobalVarDefn),
-        method_ptrs_in_global_var_defn(GlobalVarDefn, !CodeAddrsInConsts)
-    ;
-        Defn = mlds_local_var(LocalVarDefn),
-        method_ptrs_in_local_var_defn(LocalVarDefn, !CodeAddrsInConsts)
-    ;
-        Defn = mlds_field_var(FieldVarDefn),
-        method_ptrs_in_field_var_defn(FieldVarDefn, !CodeAddrsInConsts)
-    ;
-        Defn = mlds_function(FuncDefn),
-        method_ptrs_in_function_defn(FuncDefn, !CodeAddrsInConsts)
-    ;
-        Defn = mlds_class(ClassDefn),
-        method_ptrs_in_class_defn(ClassDefn, !CodeAddrsInConsts)
-    ).
-
-%---------------------%
-
 method_ptrs_in_global_var_defns([], !CodeAddrsInConsts).
 method_ptrs_in_global_var_defns([GlobalVarDefn | GlobalVarDefns],
         !CodeAddrsInConsts) :-
@@ -510,6 +478,15 @@ method_ptrs_in_local_var_defn(LocalVarDefn, !CodeAddrsInConsts) :-
     method_ptrs_in_initializer(Initializer, !CodeAddrsInConsts).
 
 %---------------------%
+
+:- pred method_ptrs_in_field_var_defns(list(mlds_field_var_defn)::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_field_var_defns([], !CodeAddrsInConsts).
+method_ptrs_in_field_var_defns([FieldVarDefn | FieldVarDefns],
+        !CodeAddrsInConsts) :-
+    method_ptrs_in_field_var_defn(FieldVarDefn, !CodeAddrsInConsts),
+    method_ptrs_in_field_var_defns(FieldVarDefns, !CodeAddrsInConsts).
 
 :- pred method_ptrs_in_field_var_defn(mlds_field_var_defn::in,
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
@@ -549,9 +526,12 @@ method_ptrs_in_class_defns([ClassDefn | ClassDefns], !CodeAddrsInConsts) :-
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
 
 method_ptrs_in_class_defn(ClassDefn, !CodeAddrsInConsts) :-
-    ClassDefn = mlds_class_defn(_, _, _, _, _, _, _, _, Ctors, Members),
-    method_ptrs_in_function_defns(Ctors, !CodeAddrsInConsts),
-    method_ptrs_in_defns(Members, !CodeAddrsInConsts).
+    ClassDefn = mlds_class_defn(_, _, _, _, _, _, _, _,
+        MemberFields, MemberClasses, MemberMethods, Ctors),
+    method_ptrs_in_field_var_defns(MemberFields, !CodeAddrsInConsts),
+    method_ptrs_in_class_defns(MemberClasses, !CodeAddrsInConsts),
+    method_ptrs_in_function_defns(MemberMethods, !CodeAddrsInConsts),
+    method_ptrs_in_function_defns(Ctors, !CodeAddrsInConsts).
 
 %---------------------%
 

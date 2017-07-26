@@ -707,6 +707,23 @@ local_var_defns_contains_var([LocalVarDefn | LocalVarDefns], SearchVarName)
             local_var_defns_contains_var(LocalVarDefns, SearchVarName)
     ).
 
+:- func field_var_defns_contains_var(list(mlds_field_var_defn),
+    qual_local_var_name) = bool.
+
+field_var_defns_contains_var([], _SearchVarName) = no.
+field_var_defns_contains_var([FieldVarDefn | FieldVarDefns], SearchVarName)
+        = ContainsVar :-
+    FieldVarDefnContainsVar =
+        field_var_defn_contains_var(FieldVarDefn, SearchVarName),
+    (
+        FieldVarDefnContainsVar = yes,
+        ContainsVar = yes
+    ;
+        FieldVarDefnContainsVar = no,
+        ContainsVar =
+            field_var_defns_contains_var(FieldVarDefns, SearchVarName)
+    ).
+
 function_defns_contains_var([], _SearchVarName) = no.
 function_defns_contains_var([FuncDefn | FuncDefns], SearchVarName)
         = ContainsVar :-
@@ -719,20 +736,32 @@ function_defns_contains_var([FuncDefn | FuncDefns], SearchVarName)
         ContainsVar = function_defns_contains_var(FuncDefns, SearchVarName)
     ).
 
+:- func class_defns_contains_var(list(mlds_class_defn), qual_local_var_name)
+    = bool.
+
+class_defns_contains_var([], _SearchVarName) = no.
+class_defns_contains_var([ClassDefn | ClassDefns], SearchVarName)
+        = ContainsVar :-
+    ClassDefnContainsVar = class_defn_contains_var(ClassDefn, SearchVarName),
+    (
+        ClassDefnContainsVar = yes,
+        ContainsVar = yes
+    ;
+        ClassDefnContainsVar = no,
+        ContainsVar = class_defns_contains_var(ClassDefns, SearchVarName)
+    ).
+
 defn_contains_var(Defn, SearchVarName) = ContainsVar :-
     (
         Defn = mlds_local_var(LocalVarDefn),
         ContainsVar = local_var_defn_contains_var(LocalVarDefn, SearchVarName)
     ;
-        (
-            Defn = mlds_global_var(GlobalVarDefn),
-            GlobalVarDefn = mlds_global_var_defn(_Name, _Ctxt, _Flags,
-                _Type, Initializer, _GCStmt)
-        ;
-            Defn = mlds_field_var(FieldVarDefn),
-            FieldVarDefn = mlds_field_var_defn(_Name, _Ctxt, _Flags,
-                _Type, Initializer, _GCStmt)
-        ),
+        Defn = mlds_field_var(FieldVarDefn),
+        ContainsVar = field_var_defn_contains_var(FieldVarDefn, SearchVarName)
+    ;
+        Defn = mlds_global_var(GlobalVarDefn),
+        GlobalVarDefn = mlds_global_var_defn(_Name, _Ctxt, _Flags,
+            _Type, Initializer, _GCStmt),
         % XXX Should we include variables in the GCStmt field here?
         ContainsVar = initializer_contains_var(Initializer, SearchVarName)
     ;
@@ -740,18 +769,17 @@ defn_contains_var(Defn, SearchVarName) = ContainsVar :-
         ContainsVar = function_defn_contains_var(FuncDefn, SearchVarName)
     ;
         Defn = mlds_class(ClassDefn),
-        ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags,
-            _Kind, _Imports, _Inherits, _Implements,
-            _TypeParams, CtorDefns, FieldDefns),
-        FieldDefnsContainVar = defns_contains_var(FieldDefns, SearchVarName),
-        (
-            FieldDefnsContainVar = yes,
-            ContainsVar = yes
-        ;
-            FieldDefnsContainVar = no,
-            ContainsVar = function_defns_contains_var(CtorDefns, SearchVarName)
-        )
+        ContainsVar = class_defn_contains_var(ClassDefn, SearchVarName)
     ).
+
+:- func field_var_defn_contains_var(mlds_field_var_defn,
+    qual_local_var_name) = bool.
+
+field_var_defn_contains_var(FieldVarDefn, SearchVarName) = ContainsVar :-
+    FieldVarDefn = mlds_field_var_defn(_Name, _Ctxt, _Flags,
+        _Type, Initializer, _GCStmt),
+    % XXX Should we include variables in the GCStmt field here?
+    ContainsVar = initializer_contains_var(Initializer, SearchVarName).
 
 local_var_defn_contains_var(LocalVarDefn, SearchVarName) = ContainsVar :-
     LocalVarDefn = mlds_local_var_defn(_Name, _Ctxt,
@@ -768,6 +796,24 @@ function_defn_contains_var(FuncDefn, SearchVarName) = ContainsVar :-
     ;
         Body = body_defined_here(Stmt),
         ContainsVar = statement_contains_var(Stmt, SearchVarName)
+    ).
+
+:- func class_defn_contains_var(mlds_class_defn, qual_local_var_name) = bool.
+
+class_defn_contains_var(ClassDefn, SearchVarName) = ContainsVar :-
+    ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags,
+        _Kind, _Imports, _Inherits, _Implements,
+        _TypeParams, FieldDefns, ClassDefns, MethodDefns, CtorDefns),
+    ( if
+        ( field_var_defns_contains_var(FieldDefns, SearchVarName) = yes
+        ; class_defns_contains_var(ClassDefns, SearchVarName) = yes
+        ; function_defns_contains_var(MethodDefns, SearchVarName) = yes
+        ; function_defns_contains_var(CtorDefns, SearchVarName) = yes
+        )
+    then
+        ContainsVar = yes
+    else
+        ContainsVar = no
     ).
 
 %-----------------------------------------------------------------------------%

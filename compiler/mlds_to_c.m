@@ -1482,15 +1482,6 @@ mlds_output_exported_enum_constant(ExportedConstant, !IO) :-
 % Code to output declarations and definitions.
 %
 
-:- pred mlds_output_defns(mlds_to_c_opts::in, indent::in, bool::in,
-    mlds_module_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
-
-mlds_output_defns(_Opts, _Indent, _Separate, _ModuleName, [], !IO).
-mlds_output_defns(Opts, Indent, Separate, ModuleName,
-        [Defn | Defns], !IO) :-
-    mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO),
-    mlds_output_defns(Opts, Indent, Separate, ModuleName, Defns, !IO).
-
 :- pred mlds_output_local_var_defns(mlds_to_c_opts::in, indent::in, bool::in,
     mlds_module_name::in, list(mlds_local_var_defn)::in, io::di, io::uo) is det.
 
@@ -1513,6 +1504,28 @@ mlds_output_global_var_defns(Opts, Indent, Separate, ModuleName,
         GlobalVarDefn, !IO),
     mlds_output_global_var_defns(Opts, Indent, Separate, ModuleName,
         GlobalVarDefns, !IO).
+
+:- pred mlds_output_field_var_defns(mlds_to_c_opts::in, indent::in, bool::in,
+    mlds_module_name::in, list(mlds_field_var_defn)::in,
+    io::di, io::uo) is det.
+
+mlds_output_field_var_defns(_Opts, _Indent, _Separate, _ModuleName, [], !IO).
+mlds_output_field_var_defns(Opts, Indent, Separate, ModuleName,
+        [FieldVarDefn | FieldVarDefns], !IO) :-
+    mlds_output_field_var_defn(Opts, Indent, Separate, ModuleName,
+        FieldVarDefn, !IO),
+    mlds_output_field_var_defns(Opts, Indent, Separate, ModuleName,
+        FieldVarDefns, !IO).
+
+:- pred mlds_output_class_defns(mlds_to_c_opts::in, indent::in,
+    mlds_module_name::in, list(mlds_class_defn)::in,
+    io::di, io::uo) is det.
+
+mlds_output_class_defns(_Opts, _Indent, _ModuleName, [], !IO).
+mlds_output_class_defns(Opts, Indent, ModuleName,
+        [ClassDefn | ClassDefns], !IO) :-
+    mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO),
+    mlds_output_class_defns(Opts, Indent, ModuleName, ClassDefns, !IO).
 
 :- pred mlds_output_function_defns(mlds_to_c_opts::in, indent::in,
     mlds_module_name::in, list(mlds_function_defn)::in,
@@ -1613,7 +1626,7 @@ mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
 mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
         _Imports, _BaseClasses, _Implements,
-        _TypeParams, _Ctors, _Members),
+        _TypeParams, _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
 
     % ANSI C does not permit forward declarations of enumeration types.
     % So we just skip those. Currently they are not needed since we don't
@@ -2074,7 +2087,8 @@ mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
 
 mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(_TypeName, Context, Flags, _Kind,
-        _Imports, _BaseClasses, _Implements, _TypeParams, _Ctors, _Members),
+        _Imports, _BaseClasses, _Implements, _TypeParams,
+        _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
     io.nl(!IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
@@ -2142,7 +2156,10 @@ mlds_output_class_decl(_Indent, QualTypeName, ClassDefn, !IO) :-
 
 mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(TypeName, Context, _Flags,
-        Kind, _Imports, BaseClasses, _Implements, _TypeParams, Ctors, Members),
+        Kind, _Imports, BaseClasses, _Implements, _TypeParams,
+        MemberFields, MemberClasses, MemberMethods, Ctors),
+    expect(unify(MemberMethods, []), $pred,
+        "MemberMethods != []"),
 
     % To avoid name clashes, we need to qualify the names of the member
     % constants with the class name. (In particular, this is needed for
@@ -2163,8 +2180,8 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
         Kind = mlds_enum,
         StaticCtors = [],
         StructCtors = Ctors,
-        StaticMembers = [],
-        StructMembers = Members
+        StaticMemberFields = [],
+        StructMemberFields = MemberFields
     ;
         ( Kind = mlds_class
         ; Kind = mlds_package
@@ -2173,10 +2190,10 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
         ),
         list.filter(function_defn_is_static_member, Ctors,
             StaticCtors, NonStaticCtors),
-        list.filter(defn_is_static_member, Members,
-            StaticMembers, NonStaticMembers),
+        list.filter(field_var_defn_is_static_member, MemberFields,
+            StaticMemberFields, NonStaticMemberFields),
         StructCtors = NonStaticCtors,
-        StructMembers = NonStaticMembers
+        StructMemberFields = NonStaticMemberFields
     ),
 
     % Convert the base classes into member variables,
@@ -2207,44 +2224,40 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     (
         Kind = mlds_enum,
         mlds_output_enum_constants(Opts, Indent + 1, ClassModuleName,
-            list.map(wrap_field_var_defn, BaseFieldVarDefns) ++ StructMembers,
-            !IO)
+            BaseFieldVarDefns, !IO),
+        mlds_output_enum_constants(Opts, Indent + 1, ClassModuleName,
+            StructMemberFields, !IO)
     ;
         ( Kind = mlds_class
         ; Kind = mlds_package
         ; Kind = mlds_interface
         ; Kind = mlds_struct
         ),
-        mlds_output_defns(Opts, Indent + 1, no, ClassModuleName,
-            list.map(wrap_field_var_defn, BaseFieldVarDefns) ++
-                list.map(wrap_function_defn, StructCtors) ++ StructMembers,
-            !IO)
+        % XXX Why don't we output all the field vars in one block?
+        list.foldl(
+            mlds_output_field_var_defn(Opts, Indent + 1, no, ClassModuleName),
+            BaseFieldVarDefns, !IO),
+        list.foldl(
+            mlds_output_function_defn(Opts, Indent + 1, ClassModuleName),
+            StructCtors, !IO),
+        list.foldl(
+            mlds_output_field_var_defn(Opts, Indent + 1, no, ClassModuleName),
+            StructMemberFields, !IO)
     ),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("};\n", !IO),
-    mlds_output_defns(Opts, Indent, yes, ClassModuleName,
-        list.map(wrap_function_defn, StaticCtors) ++ StaticMembers, !IO).
+    mlds_output_function_defns(Opts, Indent, ClassModuleName,
+        StaticCtors, !IO),
+    mlds_output_field_var_defns(Opts, Indent, yes, ClassModuleName,
+        StaticMemberFields, !IO),
+    mlds_output_class_defns(Opts, Indent, ClassModuleName,
+        MemberClasses, !IO).
 
-:- pred defn_is_static_member(mlds_defn::in) is semidet.
+:- pred field_var_defn_is_static_member(mlds_field_var_defn::in) is semidet.
 
-defn_is_static_member(Defn) :-
-    % XXX MLDS_DEFN
-    (
-        Defn = mlds_global_var(_),
-        unexpected($pred, "mlds_global_var")
-    ;
-        Defn = mlds_local_var(_),
-        unexpected($pred, "mlds_local_var")
-    ;
-        Defn = mlds_field_var(FieldVarDefn),
-        FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_per_instance = one_copy
-    ;
-        Defn = mlds_function(FuncDefn),
-        function_defn_is_static_member(FuncDefn)
-    ;
-        Defn = mlds_class(_ClassDefn)
-    ).
+field_var_defn_is_static_member(FieldVarDefn) :-
+    FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_per_instance = one_copy.
 
 :- pred function_defn_is_static_member(mlds_function_defn::in) is semidet.
 
@@ -2272,13 +2285,15 @@ mlds_make_base_class(Context, ClassId, FieldVarDefn, BaseNum0, BaseNum) :-
     % for an enumeration type.
     %
 :- pred mlds_output_enum_constants(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
+    mlds_module_name::in, list(mlds_field_var_defn)::in, io::di, io::uo)
+    is det.
 
-mlds_output_enum_constants(Opts, Indent, EnumModuleName, Members, !IO) :-
+mlds_output_enum_constants(Opts, Indent, EnumModuleName, MemberFields, !IO) :-
     % Select the enumeration constants from the list of members
     % for this enumeration type, and output them.
-    list.filter_map(defn_is_enum_const, Members, EnumConsts),
-    io.write_list(EnumConsts, ",\n",
+    list.filter(field_var_defn_is_enum_const, MemberFields,
+        EnumConstMemberFields),
+    io.write_list(EnumConstMemberFields, ",\n",
         mlds_output_enum_constant(Opts, Indent, EnumModuleName), !IO),
     io.nl(!IO).
 

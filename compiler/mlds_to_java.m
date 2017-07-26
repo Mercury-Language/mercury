@@ -869,16 +869,12 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     TypeParams = [],
 
     % Put it all together.
-    % XXX MLDS_DEFN
-    ClassMembers = list.map(wrap_field_var_defn, FieldVarDefns) ++
-        [mlds_function(MethodDefn)],
     ClassTypeName = mlds_type_name(ClassName, 0),
     ClassContext = term.context_init,
     ClassFlags = addr_wrapper_decl_flags,
-    % XXX MLDS_DEFN
     ClassDefn = mlds_class_defn(ClassTypeName, ClassContext, ClassFlags,
         mlds_class, ClassImports, ClassExtends, ClassImplements,
-        TypeParams, CtorDefns, ClassMembers),
+        TypeParams, FieldVarDefns, [], [MethodDefn], CtorDefns),
 
     add_to_address_map(ClassName, CodeAddrs, !AddrOfMap).
 
@@ -1120,7 +1116,8 @@ add_to_address_map_2(FlippedClassName, [CodeAddr | CodeAddrs], I,
 
 maybe_shorten_long_class_name(!ClassDefn, !Renaming) :-
     !.ClassDefn = mlds_class_defn(TypeName0, _Context, Flags, _ClassKind,
-        _Imports, _Inherits, _Implements, _TypeParams, _Ctors0, _Members0),
+        _Imports, _Inherits, _Implements, _TypeParams,
+        _MemberFields0, _MemberClasses0, _MemberMethods0, _Ctors0),
     Access = get_class_access(Flags),
     (
         % We only rename private classes for now.
@@ -1166,35 +1163,6 @@ replace_non_alphanum_underscore(Char) =
         Char
     else
         '_'
-    ).
-
-:- pred rename_class_names_in_mlds_defn(class_name_renaming::in,
-    mlds_defn::in, mlds_defn::out) is det.
-
-rename_class_names_in_mlds_defn(Renaming, Defn0, Defn) :-
-    (
-        Defn0 = mlds_global_var(GlobalVarDefn0),
-        rename_class_names_in_global_var_defn(Renaming,
-            GlobalVarDefn0, GlobalVarDefn),
-        Defn = mlds_global_var(GlobalVarDefn)
-    ;
-        Defn0 = mlds_local_var(LocalVarDefn0),
-        rename_class_names_in_local_var_defn(Renaming,
-            LocalVarDefn0, LocalVarDefn),
-        Defn = mlds_local_var(LocalVarDefn)
-    ;
-        Defn0 = mlds_field_var(FieldVarDefn0),
-        rename_class_names_in_field_var_defn(Renaming,
-            FieldVarDefn0, FieldVarDefn),
-        Defn = mlds_field_var(FieldVarDefn)
-    ;
-        Defn0 = mlds_function(FuncDefn0),
-        rename_class_names_in_function_defn(Renaming, FuncDefn0, FuncDefn),
-        Defn = mlds_function(FuncDefn)
-    ;
-        Defn0 = mlds_class(ClassDefn0),
-        rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn),
-        Defn = mlds_class(ClassDefn)
     ).
 
 :- pred rename_class_names_in_global_var_defn(class_name_renaming::in,
@@ -1256,11 +1224,18 @@ rename_class_names_in_function_defn(Renaming, FuncDefn0, FuncDefn) :-
 
 rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn) :-
     ClassDefn0 = mlds_class_defn(Name, Context, Flags, ClassKind,
-        Imports, Inherits, Implements, TypeParams, Ctors0, Members0),
+        Imports, Inherits, Implements, TypeParams,
+        MemberFields0, MemberClasses0, MemberMethods0, Ctors0),
+    list.map(rename_class_names_in_field_var_defn(Renaming),
+        MemberFields0, MemberFields),
+    list.map(rename_class_names_in_class_defn(Renaming),
+        MemberClasses0, MemberClasses),
+    list.map(rename_class_names_in_function_defn(Renaming),
+        MemberMethods0, MemberMethods),
     list.map(rename_class_names_in_function_defn(Renaming), Ctors0, Ctors),
-    list.map(rename_class_names_in_mlds_defn(Renaming), Members0, Members),
     ClassDefn = mlds_class_defn(Name, Context, Flags, ClassKind,
-        Imports, Inherits, Implements, TypeParams, Ctors, Members).
+        Imports, Inherits, Implements, TypeParams,
+        MemberFields, MemberClasses, MemberMethods, Ctors).
 
 :- pred rename_class_names_in_type(class_name_renaming::in,
     mlds_type::in, mlds_type::out) is det.
@@ -1869,12 +1844,6 @@ output_debug_class_init(ModuleName, State, !IO) :-
 % Code to output declarations and definitions.
 %
 
-:- pred output_defns_for_java(java_out_info::in, indent::in, output_aux::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
-
-output_defns_for_java(Info, Indent, OutputAux, Defns, !IO) :-
-    list.foldl(output_defn_for_java(Info, Indent, OutputAux), Defns, !IO).
-
 :- pred output_defn_for_java(java_out_info::in, indent::in, output_aux::in,
     mlds_defn::in, io::di, io::uo) is det.
 
@@ -1987,7 +1956,8 @@ output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
 
 output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
-        _Imports, BaseClasses, Implements, TypeParams, Ctors, Members),
+        _Imports, BaseClasses, Implements, TypeParams,
+        MemberFields, MemberClasses, MemberMethods, Ctors),
     indent_line_after_context(!.Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     output_class_decl_flags_for_java(!.Info, Flags, !IO),
@@ -2017,8 +1987,33 @@ output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
     output_implements_list(Indent + 1, Implements, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
-    output_class_body_for_java(!.Info, Indent + 1, Kind, TypeName,
-        Members, !IO),
+    (
+        ( Kind = mlds_class
+        ; Kind = mlds_interface
+        ),
+        list.foldl(output_field_var_defn_for_java(!.Info, Indent + 1, oa_none),
+            MemberFields, !IO),
+        list.foldl(output_class_defn_for_java(!.Info, Indent + 1),
+            MemberClasses, !IO),
+        list.foldl(output_function_defn_for_java(!.Info, Indent + 1, oa_none),
+            MemberMethods, !IO)
+    ;
+        Kind = mlds_package,
+        unexpected($pred, "cannot use package as a type")
+    ;
+        Kind = mlds_struct,
+        unexpected($pred, "structs not supported in Java")
+    ;
+        Kind = mlds_enum,
+        list.filter(field_var_defn_is_enum_const,
+            MemberFields, EnumConstFields),
+        % XXX Why +2?
+        output_enum_constants_for_java(!.Info, Indent + 2, TypeName,
+            EnumConstFields, !IO),
+        io.nl(!IO),
+        % XXX Why +2?
+        output_enum_ctor_for_java(Indent + 2, TypeName, !IO)
+    ),
     io.nl(!IO),
     list.foldl(
         output_function_defn_for_java(!.Info, Indent + 1, oa_cname(TypeName)),
@@ -2093,32 +2088,6 @@ output_interface(Interface, !IO) :-
         )
     else
         unexpected($pred, "interface was not a class")
-    ).
-
-:- pred output_class_body_for_java(java_out_info::in, indent::in,
-    mlds_class_kind::in, mlds_type_name::in, list(mlds_defn)::in,
-    io::di, io::uo) is det.
-
-output_class_body_for_java(Info, Indent, Kind, TypeName, Members, !IO) :-
-    (
-        Kind = mlds_class,
-        output_defns_for_java(Info, Indent, oa_none, Members, !IO)
-    ;
-        Kind = mlds_package,
-        unexpected($pred, "cannot use package as a type")
-    ;
-        Kind = mlds_interface,
-        output_defns_for_java(Info, Indent, oa_none, Members, !IO)
-    ;
-        Kind = mlds_struct,
-        unexpected($pred, "structs not supported in Java")
-    ;
-        Kind = mlds_enum,
-        list.filter_map(defn_is_enum_const, Members, EnumConsts),
-        output_enum_constants_for_java(Info, Indent + 1, TypeName,
-            EnumConsts, !IO),
-        io.nl(!IO),
-        output_enum_ctor_for_java(Indent + 1, TypeName, !IO)
     ).
 
 %---------------------------------------------------------------------------%

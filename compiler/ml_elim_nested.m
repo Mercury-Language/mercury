@@ -889,10 +889,9 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     Interfaces = [],
     TypeParams = [],
     Ctors = [],
-    % XXX MLDS_DEFN
     EnvTypeDefn = mlds_class_defn(EnvTypeClassName, Context,
         EnvTypeFlags, EnvTypeKind, Imports, BaseClasses, Interfaces,
-        TypeParams, Ctors, list.map(wrap_field_var_defn, Fields)),
+        TypeParams, Fields, [], [], Ctors),
 
     % Generate the following variable declaration:
     %
