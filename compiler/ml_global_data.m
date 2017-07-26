@@ -68,7 +68,7 @@
 :- type ml_vector_cell_group
     --->    ml_vector_cell_group(
                 mvcg_type           :: mlds_type,
-                mvcg_type_defn      :: mlds_defn,
+                mvcg_type_defn      :: mlds_class_defn,
                 mvcg_field_ids      :: list(mlds_field_id),
 
                 mvcg_next_row       :: int,
@@ -641,10 +641,9 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         % fields.
         StructTypeFlags =
             init_class_decl_flags(class_private, sealed, modifiable),
-        ClassDefn = mlds_class_defn(StructTypeClassName, Context,
+        StructTypeDefn = mlds_class_defn(StructTypeClassName, Context,
             StructTypeFlags, ClassKind, [], [], [], [],
             FieldDefns, [], [], CtorDefns),
-        StructTypeDefn = mlds_class(ClassDefn),
 
         QualStructTypeName =
             qual_class_name(MLDS_ModuleName, module_qual, StructTypeName),

@@ -618,32 +618,6 @@ output_src_end_for_csharp(Indent, ModuleName, !IO) :-
 % Code to output declarations and definitions.
 %
 
-:- pred output_defn_for_csharp(csharp_out_info::in, indent::in, output_aux::in,
-    mlds_defn::in, io::di, io::uo) is det.
-
-output_defn_for_csharp(Info, Indent, OutputAux, Defn, !IO) :-
-    % XXX MLDS_DEFN
-    (
-        Defn = mlds_global_var(GlobalVarDefn),
-        output_global_var_defn_for_csharp(Info, Indent, OutputAux,
-            GlobalVarDefn, !IO)
-    ;
-        Defn = mlds_local_var(LocalVarDefn),
-        output_local_var_defn_for_csharp(Info, Indent, OutputAux,
-            LocalVarDefn, !IO)
-    ;
-        Defn = mlds_field_var(FieldVarDefn),
-        output_field_var_defn_for_csharp(Info, Indent, OutputAux,
-            FieldVarDefn, !IO)
-    ;
-        Defn = mlds_function(FunctionDefn),
-        output_function_defn_for_csharp(Info, Indent, OutputAux,
-            FunctionDefn, !IO)
-    ;
-        Defn = mlds_class(ClassDefn),
-        output_class_defn_for_csharp(Info, Indent, ClassDefn, !IO)
-    ).
-
 :- pred output_global_var_defn_for_csharp(csharp_out_info::in, indent::in,
     output_aux::in, mlds_global_var_defn::in, io::di, io::uo) is det.
 
@@ -1081,7 +1055,7 @@ output_vector_cell_decl_for_csharp(Info, Indent, TypeNum, CellGroup, !IO) :-
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldIds, _NextRow,
         _RowInits),
-    output_defn_for_csharp(Info, Indent, oa_none, ClassDefn, !IO),
+    output_class_defn_for_csharp(Info, Indent, ClassDefn, !IO),
 
     output_n_indents(Indent, !IO),
     io.write_string("private static /* readonly */ ", !IO),

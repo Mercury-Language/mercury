@@ -2614,7 +2614,7 @@ gen_restore_stack_chain_var(MLDS_Module, Id, Context) = RestoreStmt :-
 
     % The lists of local variables for each of the containing functions,
     % innermost first.
-:- type outervars == list(list(mlds_defn)).
+:- type outervars == list(list(mlds_local_var_defn)).
 
 :- type elim_info
     --->    elim_info(

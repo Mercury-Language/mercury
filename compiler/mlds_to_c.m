@@ -1753,7 +1753,7 @@ mlds_output_vector_cell_group_decl(Opts, Indent, ModuleName, MangledModuleName,
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldNames,
         _NextRow, Rows),
-    mlds_output_defn(Opts, Indent, yes, ModuleName, ClassDefn, !IO),
+    mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO),
 
     output_n_indents(Indent, !IO),
     io.write_string("\nstatic /* final */ const ", !IO),
@@ -1965,30 +1965,6 @@ mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
         io.write_string(";\n", !IO)
     else
         true
-    ).
-
-:- pred mlds_output_defn(mlds_to_c_opts::in, indent::in, bool::in,
-    mlds_module_name::in, mlds_defn::in, io::di, io::uo) is det.
-
-mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
-    (
-        Defn = mlds_global_var(GlobalVarDefn),
-        mlds_output_global_var_defn(Opts, Indent, Separate, ModuleName,
-            GlobalVarDefn, !IO)
-    ;
-        Defn = mlds_local_var(LocalVarDefn),
-        mlds_output_local_var_defn(Opts, Indent, Separate, ModuleName,
-            LocalVarDefn, !IO)
-    ;
-        Defn = mlds_field_var(FieldVarDefn),
-        mlds_output_field_var_defn(Opts, Indent, Separate, ModuleName,
-            FieldVarDefn, !IO)
-    ;
-        Defn = mlds_function(FunctionDefn),
-        mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO)
-    ;
-        Defn = mlds_class(ClassDefn),
-        mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO)
     ).
 
 :- pred mlds_output_global_var_defn(mlds_to_c_opts::in, indent::in, bool::in,

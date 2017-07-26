@@ -68,37 +68,10 @@
     is det.
 
 %-----------------------------------------------------------------------------%
-%
-% Routines that deal with definitions.
-%
-
-    % defn_contains_foreign_code(NativeTargetLang, Defn):
-    %
-    % Succeeds iff this definition contains outline_foreign_proc statements,
-    % or inline_target_code statements in a target language other than the
-    % specified native target language.
-    %
-    % XXX perhaps we should eliminate the need to check for inline_target_code,
-    % because it shouldn't be generated with target language different to the
-    % native target language in the long run.
-    %
-:- pred defn_contains_foreign_code(mlds_target_lang::in,
-    mlds_defn::in) is semidet.
-
-    % defn_contains_foreign_code(ForeignLang, Defn):
-    %
-    % Succeeds iff this definition contains outline_foreign_proc statements
-    % for the given foreign language.
-    %
-:- pred defn_contains_outline_foreign_proc(foreign_language::in,
-    mlds_defn::in) is semidet.
-
-%-----------------------------------------------------------------------------%
 
     % Says whether these definitions contains a reference to
     % the specified variable.
     %
-:- func defns_contains_var(list(mlds_defn), qual_local_var_name) = bool.
 :- func local_var_defns_contains_var(list(mlds_local_var_defn),
     qual_local_var_name) = bool.
 :- func function_defns_contains_var(list(mlds_function_defn),
@@ -107,7 +80,6 @@
     % Says whether this definition contains a reference to
     % the specified variable.
     %
-:- func defn_contains_var(mlds_defn, qual_local_var_name) = bool.
 :- func local_var_defn_contains_var(mlds_local_var_defn, qual_local_var_name)
     = bool.
 :- func function_defn_contains_var(mlds_function_defn, qual_local_var_name)
@@ -649,30 +621,6 @@ has_foreign_languages(Stmt, Langs) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Routines that deal with definitions.
-%
-
-defn_contains_foreign_code(NativeTargetLang, Defn) :-
-    % XXX MLDS_DEFN
-    Defn = mlds_function(FunctionDefn),
-    FunctionDefn ^ mfd_body = body_defined_here(FunctionBody),
-    statement_is_or_contains_statement(FunctionBody, Stmt),
-    (
-        Stmt = ml_stmt_atomic(inline_target_code(TargetLang, _), _Context),
-        TargetLang \= NativeTargetLang
-    ;
-        Stmt = ml_stmt_atomic(outline_foreign_proc(_, _, _, _), _Context)
-    ).
-
-defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
-    % XXX MLDS_DEFN
-    Defn = mlds_function(FunctionDefn),
-    FunctionDefn ^ mfd_body = body_defined_here(FunctionBody),
-    statement_is_or_contains_statement(FunctionBody, Stmt),
-    Stmt = ml_stmt_atomic(outline_foreign_proc(ForeignLang, _, _, _), _).
-
-%-----------------------------------------------------------------------------%
-%
 % defns_contains_var:
 % defn_contains_var:
 % defn_body_contains_var:
@@ -681,17 +629,6 @@ defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
 %
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
-
-defns_contains_var([], _SearchVarName) = no.
-defns_contains_var([Defn | Defns], SearchVarName) = ContainsVar :-
-    DefnContainsVar = defn_contains_var(Defn, SearchVarName),
-    (
-        DefnContainsVar = yes,
-        ContainsVar = yes
-    ;
-        DefnContainsVar = no,
-        ContainsVar = defns_contains_var(Defns, SearchVarName)
-    ).
 
 local_var_defns_contains_var([], _SearchVarName) = no.
 local_var_defns_contains_var([LocalVarDefn | LocalVarDefns], SearchVarName)
@@ -707,23 +644,6 @@ local_var_defns_contains_var([LocalVarDefn | LocalVarDefns], SearchVarName)
             local_var_defns_contains_var(LocalVarDefns, SearchVarName)
     ).
 
-:- func field_var_defns_contains_var(list(mlds_field_var_defn),
-    qual_local_var_name) = bool.
-
-field_var_defns_contains_var([], _SearchVarName) = no.
-field_var_defns_contains_var([FieldVarDefn | FieldVarDefns], SearchVarName)
-        = ContainsVar :-
-    FieldVarDefnContainsVar =
-        field_var_defn_contains_var(FieldVarDefn, SearchVarName),
-    (
-        FieldVarDefnContainsVar = yes,
-        ContainsVar = yes
-    ;
-        FieldVarDefnContainsVar = no,
-        ContainsVar =
-            field_var_defns_contains_var(FieldVarDefns, SearchVarName)
-    ).
-
 function_defns_contains_var([], _SearchVarName) = no.
 function_defns_contains_var([FuncDefn | FuncDefns], SearchVarName)
         = ContainsVar :-
@@ -735,51 +655,6 @@ function_defns_contains_var([FuncDefn | FuncDefns], SearchVarName)
         FuncDefnContainsVar = no,
         ContainsVar = function_defns_contains_var(FuncDefns, SearchVarName)
     ).
-
-:- func class_defns_contains_var(list(mlds_class_defn), qual_local_var_name)
-    = bool.
-
-class_defns_contains_var([], _SearchVarName) = no.
-class_defns_contains_var([ClassDefn | ClassDefns], SearchVarName)
-        = ContainsVar :-
-    ClassDefnContainsVar = class_defn_contains_var(ClassDefn, SearchVarName),
-    (
-        ClassDefnContainsVar = yes,
-        ContainsVar = yes
-    ;
-        ClassDefnContainsVar = no,
-        ContainsVar = class_defns_contains_var(ClassDefns, SearchVarName)
-    ).
-
-defn_contains_var(Defn, SearchVarName) = ContainsVar :-
-    (
-        Defn = mlds_local_var(LocalVarDefn),
-        ContainsVar = local_var_defn_contains_var(LocalVarDefn, SearchVarName)
-    ;
-        Defn = mlds_field_var(FieldVarDefn),
-        ContainsVar = field_var_defn_contains_var(FieldVarDefn, SearchVarName)
-    ;
-        Defn = mlds_global_var(GlobalVarDefn),
-        GlobalVarDefn = mlds_global_var_defn(_Name, _Ctxt, _Flags,
-            _Type, Initializer, _GCStmt),
-        % XXX Should we include variables in the GCStmt field here?
-        ContainsVar = initializer_contains_var(Initializer, SearchVarName)
-    ;
-        Defn = mlds_function(FuncDefn),
-        ContainsVar = function_defn_contains_var(FuncDefn, SearchVarName)
-    ;
-        Defn = mlds_class(ClassDefn),
-        ContainsVar = class_defn_contains_var(ClassDefn, SearchVarName)
-    ).
-
-:- func field_var_defn_contains_var(mlds_field_var_defn,
-    qual_local_var_name) = bool.
-
-field_var_defn_contains_var(FieldVarDefn, SearchVarName) = ContainsVar :-
-    FieldVarDefn = mlds_field_var_defn(_Name, _Ctxt, _Flags,
-        _Type, Initializer, _GCStmt),
-    % XXX Should we include variables in the GCStmt field here?
-    ContainsVar = initializer_contains_var(Initializer, SearchVarName).
 
 local_var_defn_contains_var(LocalVarDefn, SearchVarName) = ContainsVar :-
     LocalVarDefn = mlds_local_var_defn(_Name, _Ctxt,
@@ -796,24 +671,6 @@ function_defn_contains_var(FuncDefn, SearchVarName) = ContainsVar :-
     ;
         Body = body_defined_here(Stmt),
         ContainsVar = statement_contains_var(Stmt, SearchVarName)
-    ).
-
-:- func class_defn_contains_var(mlds_class_defn, qual_local_var_name) = bool.
-
-class_defn_contains_var(ClassDefn, SearchVarName) = ContainsVar :-
-    ClassDefn = mlds_class_defn(_Name, _Ctxt, _Flags,
-        _Kind, _Imports, _Inherits, _Implements,
-        _TypeParams, FieldDefns, ClassDefns, MethodDefns, CtorDefns),
-    ( if
-        ( field_var_defns_contains_var(FieldDefns, SearchVarName) = yes
-        ; class_defns_contains_var(ClassDefns, SearchVarName) = yes
-        ; function_defns_contains_var(MethodDefns, SearchVarName) = yes
-        ; function_defns_contains_var(CtorDefns, SearchVarName) = yes
-        )
-    then
-        ContainsVar = yes
-    else
-        ContainsVar = no
     ).
 
 %-----------------------------------------------------------------------------%

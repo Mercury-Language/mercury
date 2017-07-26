@@ -560,39 +560,6 @@
                 string
             ).
 
-    % This specifies information about some entity being defined
-    % The entity may be any of the following:
-    %   constant or variable
-    %   function
-    %   class, including
-    %       package (class with only static (one_copy) members)
-    %       interface (abstract class, no data members)
-    %       struct (value class)
-    %       enum
-    %
-:- type mlds_defn
-    --->    mlds_global_var(
-                % Represents a global constant or variable.
-                mlds_global_var_defn
-            )
-    ;       mlds_local_var(
-                % Represents a constant or variable that is
-                % local to a function or block.
-                mlds_local_var_defn
-            )
-    ;       mlds_field_var(
-                % Represents a constant or variable in a class definition.
-                mlds_field_var_defn
-            )
-    ;       mlds_function(
-                % Represents functions.
-                mlds_function_defn
-            )
-    ;       mlds_class(
-                % Represents packages, classes, interfaces, structs, enums.
-                mlds_class_defn
-            ).
-
 :- type mlds_global_var_defn
     --->    mlds_global_var_defn(
                 mgvd_name               :: mlds_global_var_name,
