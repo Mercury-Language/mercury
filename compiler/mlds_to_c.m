@@ -2116,7 +2116,6 @@ mlds_output_class_decl(_Indent, QualTypeName, ClassDefn, !IO) :-
         io.write_string("_e", !IO)
     ;
         ( ClassKind = mlds_class
-        ; ClassKind = mlds_package
         ; ClassKind = mlds_interface
         ; ClassKind = mlds_struct
         ),
@@ -2160,7 +2159,6 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
         StructMemberFields = MemberFields
     ;
         ( Kind = mlds_class
-        ; Kind = mlds_package
         ; Kind = mlds_interface
         ; Kind = mlds_struct
         ),
@@ -2205,7 +2203,6 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
             StructMemberFields, !IO)
     ;
         ( Kind = mlds_class
-        ; Kind = mlds_package
         ; Kind = mlds_interface
         ; Kind = mlds_struct
         ),
@@ -2967,7 +2964,6 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
             io.write_string("_e' */", !IO)
         ;
             ( ClassKind = mlds_class
-            ; ClassKind = mlds_package
             ; ClassKind = mlds_interface
             ; ClassKind = mlds_struct
             ),

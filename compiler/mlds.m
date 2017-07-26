@@ -713,9 +713,11 @@
                            % single inheritance, so usually there will be
                            % at most one class).
 
-    ;       mlds_package   % A class with only static members (can only
+%   ;       mlds_package   % A class with only static members (can only
                            % inherit other packages). Unlike other kinds
                            % of classes, packages should not be used as types.
+                           % XXX We don't actually generate any classes
+                           % whose mlds_class_kind is mlds_package.
 
     ;       mlds_interface % A class with no variable data members (can only
                            % inherit other interfaces).

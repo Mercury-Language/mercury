@@ -718,7 +718,6 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
         output_n_indents(Indent, !IO)
     ;
         ( Kind = mlds_struct
-        ; Kind = mlds_package
         ; Kind = mlds_interface
         )
     ),
@@ -753,9 +752,6 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
             output_class_defn_for_csharp(!.Info, Indent + 1),
             MemberClasses, !IO)
     ;
-        Kind = mlds_package,
-        unexpected($pred, "cannot use package as a type")
-    ;
         Kind = mlds_enum,
         list.filter(field_var_defn_is_enum_const,
             MemberFields, EnumConstMemberFields),
@@ -779,9 +775,7 @@ output_class_kind_for_csharp(Kind, !IO) :-
         Kind = mlds_interface,
         io.write_string("interface ", !IO)
     ;
-        ( Kind = mlds_class
-        ; Kind = mlds_package
-        ),
+        Kind = mlds_class,
         io.write_string("class ", !IO)
     ;
         Kind = mlds_struct,
@@ -2215,9 +2209,7 @@ output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
         PerInstance = per_instance,
         Overridable = overridable
     ;
-        ( Kind = mlds_package
-        ; Kind = mlds_interface
-        ),
+        Kind = mlds_interface,
         PerInstance = one_copy,
         Overridable = get_class_overridability(Flags)
     ),

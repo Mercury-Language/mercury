@@ -1973,9 +1973,6 @@ output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
         list.foldl(output_function_defn_for_java(!.Info, Indent + 1, oa_none),
             MemberMethods, !IO)
     ;
-        Kind = mlds_package,
-        unexpected($pred, "cannot use package as a type")
-    ;
         Kind = mlds_struct,
         unexpected($pred, "structs not supported in Java")
     ;
@@ -2004,7 +2001,6 @@ output_class_kind_for_java(Kind, !IO) :-
         io.write_string("interface ", !IO)
     ;
         ( Kind = mlds_class
-        ; Kind = mlds_package
         ; Kind = mlds_enum
         ; Kind = mlds_struct
         ),
