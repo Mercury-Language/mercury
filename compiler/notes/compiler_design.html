@@ -2117,6 +2117,9 @@ Thus we have a pass which transforms the HLDS to handle trailing:
     ml_elim_nested.m does two MLDS transformations that happen
     to have a lot in common: (1) eliminating nested functions
     and (2) adding code to handle accurate garbage collection.
+<li>
+    ml_rename_class.m does what its name suggests: renames classes in the MLDS.
+    It is used by mlds_to_java.m to replace long class names with shorter ones.
 </ul>
 
 <h4> 6b. MLDS output </h4>

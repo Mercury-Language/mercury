@@ -53,6 +53,7 @@
 
 % Phase 6-ml: MLDS -> MLDS transformations
 :- include_module ml_elim_nested.
+:- include_module ml_rename_classes.
 :- include_module ml_optimize.
 :- include_module ml_tailcall.
 
