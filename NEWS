@@ -278,6 +278,8 @@ Changes to the Mercury standard library:
     - hex_digit_to_int/2, det_hex_digit_to_int/1
     - base_digit_to_int/3, det_base_digit_to_int/2
     - is_leading_surrogate/1, is_trailing_surrogate/1
+    - is_control/1, is_space_separator/1, is_paragraph_separator/1
+    - is_line_separator/1, is_private_use/1
 
   The following predicates in the char module have been deprecated and will
   either be removed or have their semantics changed in a future release:

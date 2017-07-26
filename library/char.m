@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2008, 2011 The University of Melbourne.
+% Copyright (C) 2013-2015, 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -18,6 +19,9 @@
 % Originally we used `character' rather than `char' for the type name
 % because `char' was used by NU-Prolog to mean something different.
 % But now we use `char' and the use of `character' is discouraged.
+%
+% All predicates and functions exported by this module that deal with
+% Unicode conform to version 10 of the Unicode standard.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -276,30 +280,56 @@
     %
 :- pred to_utf16(char::in, list(int)::out) is semidet.
 
-    % Succeed if `Char' is a Unicode surrogate code point.
-    % In UTF-16, a code point with a scalar value greater than 0xffff
-    % is encoded with a pair of surrogate code points.
+    % True iff the character is a Unicode Surrogate code point, that is a code
+    % point in General Category `Other,surrogate' (`Cs').
+    % In UTF-16, a code point with a scalar value greater than 0xffff is
+    % encoded with a pair of surrogate code points.
     %
 :- pred is_surrogate(char::in) is semidet.
 
-    % Succeed if `Char' is a leading Unicode surrogate code point.
+    % True iff the character is a Unicode leading surrogate code point.
     % A leading surrogate code point is in the inclusive range from
     % 0xd800 to 0xdbff.
     %
 :- pred is_leading_surrogate(char::in) is semidet.
 
-    % Succeed if `Char' is a trailing Unicode surrogate code point.
+    % True iff the character is a Unicode trailing surrogate code point.
     % A trailing surrogate code point is in the inclusive range from
     % 0xdc00 to 0xdfff.
     %
 :- pred is_trailing_surrogate(char::in) is semidet.
 
-    % Succeed if `Char' is a Noncharacter code point.
+    % True iff the character is a Unicode Noncharacter code point.
     % Sixty-six code points are not used to encode characters.
     % These code points should not be used for interchange, but may be used
     % internally.
     %
 :- pred is_noncharacter(char::in) is semidet.
+
+    % True iff the character is a Unicode Control code point, that is a code
+    % point in General Category `Other,control' (`Cc').
+    %
+:- pred is_control(char::in) is semidet.
+
+    % True iff the character is a Unicode Space Separator code point, that is a
+    % code point in General Category `Separator,space' (`Zs').
+    %
+:- pred is_space_separator(char::in) is semidet.
+
+    % True iff the character  is a Unicode Line Separator code point, that is a
+    % code point in General Category `Separator,line' (`Zl').
+    %
+:- pred is_line_separator(char::in) is semidet.
+
+    % True iff the character is a Unicode Paragraph Separator code point, that
+    % is a code point in General Category `Separator,paragraph' (`Zp').
+    %
+:- pred is_paragraph_separator(char::in) is semidet.
+
+    % True iff the character is a Unicode Private-use code point, that is a
+    % code point in General Category `Other,private use' (`Co').
+    %
+:- pred is_private_use(char::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -324,7 +354,7 @@
 :- pred int_to_hex_char(int, char).
 :- mode int_to_hex_char(in, out) is semidet.
 
-    % Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
+    % True iff the characters is a decimal digit (0-9) or letter (a-z or A-Z).
     % Returns the character's value as a digit (0-9 or 10-35).
     %
 :- pragma obsolete(digit_to_int/2).
@@ -1017,6 +1047,36 @@ is_noncharacter(Char) :-
     Int = char.to_int(Char),
     ( 0xfdd0 =< Int, Int =< 0xfdef
     ; Int /\ 0xfffe = 0xfffe
+    ).
+
+is_control(Char) :-
+    Int = char.to_int(Char),
+    ( 0x0000 =< Int, Int =< 0x001f
+    ; 0x007f =< Int, Int =< 0x009f
+    ).
+
+is_space_separator(Char) :-
+    Int = char.to_int(Char),
+    ( Int = 0x0020
+    ; Int = 0x00a0
+    ; Int = 0x1680
+    ; 0x2000 =< Int, Int =< 0x200a
+    ; Int = 0x202f
+    ; Int = 0x205f
+    ; Int = 0x3000
+    ).
+
+is_line_separator(Char) :-
+    0x2028 = char.to_int(Char).
+
+is_paragraph_separator(Char) :-
+    0x2029 = char.to_int(Char).
+
+is_private_use(Char) :-
+    Int = char.to_int(Char),
+    ( 0xe000 =< Int, Int =< 0xf8ff     % Private Use Area.
+    ; 0xf0000 =< Int, Int =< 0xffffd   % Supplemental Private Use Area-A.
+    ; 0x100000 =< Int, Int =< 0x10fffd % Supplemental Private Use Area-B.
     ).
 
 char_to_doc(C) = str(term_io.quoted_char(C)).
