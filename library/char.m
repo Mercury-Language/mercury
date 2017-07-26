@@ -13,9 +13,6 @@
 %
 % This module defines some predicates that manipulate characters.
 %
-% The set of characters which are supported and the mapping from
-% characters to integer values are both implementation-dependent.
-%
 % Originally we used `character' rather than `char' for the type name
 % because `char' was used by NU-Prolog to mean something different.
 % But now we use `char' and the use of `character' is discouraged.
