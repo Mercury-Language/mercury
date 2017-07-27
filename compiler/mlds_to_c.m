@@ -626,8 +626,7 @@ mlds_output_env_var_init(EnvVarName, !IO) :-
     io.write_string(EnvVarName, !IO),
     io.nl(!IO).
 
-    % Output any #defines which are required to bootstrap in the hlc
-    % grade.
+    % Output any #defines which are required to bootstrap in the hlc grade.
     %
 :- pred mlds_output_src_bootstrap_defines(io::di, io::uo) is det.
 
@@ -796,10 +795,9 @@ mlds_output_init_fn_defns(Opts, ModuleName, FuncDefns, TypeCtorInfoDefns,
     io.write_string("\tMR_fatal_error(""debugger initialization " ++
         "in MLDS grade"");\n", !IO),
     io.write_string("}\n", !IO),
-    %
+
     % Maybe write out wrapper functions that call user-defined intialisation
     % and finalisation predicates.
-    %
     (
         InitPreds = []
     ;
@@ -2416,7 +2414,7 @@ mlds_output_initializer_body(Opts, Indent, Initializer, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Code to output function declarations/definitions
+% Code to output function declarations/definitions.
 %
 
 :- pred mlds_output_pred_proc_id(mlds_to_c_opts::in, pred_proc_id::in,
@@ -3387,7 +3385,7 @@ mlds_output_field_var_extern(DeclOrDefn, !IO) :-
         io.write_string("extern ", !IO)
     ;
         DeclOrDefn = definition
-            % Print no storage class.
+        % Print no storage class.
     ).
 
     % mlds_output_extern_or_static handles both the `access' and the
@@ -3436,7 +3434,7 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
     ).
 
 % :- pred mlds_output_virtuality(virtuality::in, io::di, io::uo) is det.
-% 
+%
 % mlds_output_virtuality(virtual, !IO) :-
 %     io.write_string("virtual ", !IO).
 % mlds_output_virtuality(non_virtual, !IO).
@@ -3454,7 +3452,7 @@ mlds_output_constness(const, !IO) :-
 mlds_output_constness(modifiable, !IO).
 
 % :- pred mlds_output_abstractness(abstractness::in, io::di, io::uo) is det.
-% 
+%
 % mlds_output_abstractness(abstract, !IO) :-
 %     io.write_string("/* abstract */ ", !IO).
 % mlds_output_abstractness(concrete, !IO).
@@ -5078,7 +5076,7 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
                 !IO),
             io.write_string("__", !IO)
         ),
-        rtti.id_to_c_identifier(RttiId, RttiAddrName), 
+        rtti.id_to_c_identifier(RttiId, RttiAddrName),
         io.write_string(RttiAddrName, !IO)
     ;
         Const = mlconst_data_addr_tabling(ModuleName, ProcLabel, TablingId),
