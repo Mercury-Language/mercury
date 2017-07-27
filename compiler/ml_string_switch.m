@@ -458,7 +458,17 @@ create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt, !Info) :-
     ml_gen_info_get_target(!.Info, Target),
-    Encoding = target_string_encoding(Target),
+    (
+        Target = ml_target_c,
+        CompilationTarget = target_c
+    ;
+        Target = ml_target_java,
+        CompilationTarget = target_java
+    ;
+        Target = ml_target_csharp,
+        CompilationTarget = target_csharp
+    ),
+    Encoding = target_string_encoding(CompilationTarget),
     create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode),
     ml_gen_trie_case_num_var_and_init(Context, CaseNumVarLval,
         CaseNumVarDefn, InitCaseNumVarStmt, !Info),

@@ -198,12 +198,11 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Stmts, !Info) :-
     % ml_generate_constants_for_arm expects the mark_static_terms pass to have
     % been run, which is not true when static_ground_cells is disabled.
     %
-:- func allow_lookup_disj(compilation_target) = bool.
+:- func allow_lookup_disj(mlds_target_lang) = bool.
 
-allow_lookup_disj(target_c) = yes.
-allow_lookup_disj(target_csharp) = yes.
-allow_lookup_disj(target_java) = yes.
-allow_lookup_disj(target_erlang) = no.
+allow_lookup_disj(ml_target_c) = yes.
+allow_lookup_disj(ml_target_csharp) = yes.
+allow_lookup_disj(ml_target_java) = yes.
 
 %-----------------------------------------------------------------------------%
 

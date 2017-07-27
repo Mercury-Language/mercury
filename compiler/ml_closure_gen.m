@@ -187,7 +187,8 @@ ml_gen_closure_layout(PredId, ProcId, Context,
             !GlobalData),
 
         ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
-        ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
+        ml_gen_info_get_target(!.Info, Target),
+        ml_stack_layout_construct_closure_args(ModuleInfo, Target, ClosureArgs,
             ClosureArgInitsAndTypes, !GlobalData),
         assoc_list.keys(ClosureArgInitsAndTypes, ClosureArgInits),
 
@@ -236,12 +237,14 @@ ml_gen_closure_proc_id(_ModuleInfo, _Context, InitProcId, ProcIdType,
 %   % ProcIdType = ...
 
 :- pred ml_stack_layout_construct_closure_args(module_info::in,
-    list(closure_arg_info)::in, assoc_list(mlds_initializer, mlds_type)::out,
+    mlds_target_lang::in, list(closure_arg_info)::in,
+    assoc_list(mlds_initializer, mlds_type)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
+ml_stack_layout_construct_closure_args(ModuleInfo, Target, ClosureArgs,
         ClosureArgInits, !GlobalData) :-
-    list.map_foldl(ml_stack_layout_construct_closure_arg_rval(ModuleInfo),
+    list.map_foldl(
+        ml_stack_layout_construct_closure_arg_rval(ModuleInfo, Target),
         ClosureArgs, ArgInitsAndTypes, !GlobalData),
     Length = list.length(ArgInitsAndTypes),
     LengthRval = ml_const(mlconst_int(Length)),
@@ -251,10 +254,11 @@ ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
     ClosureArgInits = [LengthInitAndType | ArgInitsAndTypes].
 
 :- pred ml_stack_layout_construct_closure_arg_rval(module_info::in,
-    closure_arg_info::in, pair(mlds_initializer, mlds_type)::out,
+    mlds_target_lang::in, closure_arg_info::in,
+    pair(mlds_initializer, mlds_type)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_stack_layout_construct_closure_arg_rval(ModuleInfo, ClosureArg,
+ml_stack_layout_construct_closure_arg_rval(ModuleInfo, Target, ClosureArg,
         ArgInit - ArgType, !GlobalData) :-
     ClosureArg = closure_arg_info(Type, _Inst),
 
@@ -266,46 +270,49 @@ ml_stack_layout_construct_closure_arg_rval(ModuleInfo, ClosureArg,
     NumUnivQTvars = -1,
     pseudo_type_info.construct_pseudo_type_info(Type, NumUnivQTvars,
         ExistQTvars, PseudoTypeInfo),
-    ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, ArgRval, ArgType,
-        !GlobalData),
+    ml_gen_pseudo_type_info(ModuleInfo, Target, PseudoTypeInfo,
+        ArgRval, ArgType, !GlobalData),
     CastArgRval = ml_unop(box(ArgType), ArgRval),
     ArgInit = init_obj(CastArgRval).
 
 :- pred ml_gen_maybe_pseudo_type_info_defn(module_info::in,
-    rtti_maybe_pseudo_type_info::in,
+    mlds_target_lang::in, rtti_maybe_pseudo_type_info::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, MaybePTI,
+ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, Target, MaybePTI,
         !GlobalData) :-
-    ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePTI, _Rval, _Type,
+    ml_gen_maybe_pseudo_type_info(ModuleInfo, Target, MaybePTI, _Rval, _Type,
         !GlobalData).
 
-:- pred ml_gen_type_info_defn(module_info::in, rtti_type_info::in,
+:- pred ml_gen_type_info_defn(module_info::in, mlds_target_lang::in,
+    rtti_type_info::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_type_info_defn(ModuleInfo, TI, !GlobalData) :-
-    ml_gen_type_info(ModuleInfo, TI, _Rval, _Type, !GlobalData).
+ml_gen_type_info_defn(ModuleInfo, Target, TI, !GlobalData) :-
+    ml_gen_type_info(ModuleInfo, Target, TI, _Rval, _Type, !GlobalData).
 
-:- pred ml_gen_maybe_pseudo_type_info(module_info::in,
+:- pred ml_gen_maybe_pseudo_type_info(module_info::in, mlds_target_lang::in,
     rtti_maybe_pseudo_type_info::in, mlds_rval::out, mlds_type::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePseudoTypeInfo, Rval, Type,
-        !GlobalData) :-
+ml_gen_maybe_pseudo_type_info(ModuleInfo, Target, MaybePseudoTypeInfo,
+        Rval, Type, !GlobalData) :-
     (
         MaybePseudoTypeInfo = pseudo(PseudoTypeInfo),
-        ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type,
-            !GlobalData)
+        ml_gen_pseudo_type_info(ModuleInfo, Target, PseudoTypeInfo,
+            Rval, Type, !GlobalData)
     ;
         MaybePseudoTypeInfo = plain(TypeInfo),
-        ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !GlobalData)
+        ml_gen_type_info(ModuleInfo, Target, TypeInfo,
+            Rval, Type, !GlobalData)
     ).
 
-:- pred ml_gen_pseudo_type_info(module_info::in, rtti_pseudo_type_info::in,
-    mlds_rval::out, mlds_type::out,
+:- pred ml_gen_pseudo_type_info(module_info::in, mlds_target_lang::in,
+    rtti_pseudo_type_info::in, mlds_rval::out, mlds_type::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !GlobalData) :-
+ml_gen_pseudo_type_info(ModuleInfo, Target, PseudoTypeInfo, Rval, Type,
+        !GlobalData) :-
     (
         PseudoTypeInfo = type_var(N),
         % Type variables are represented just as integers.
@@ -351,22 +358,24 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !GlobalData) :-
                     ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
                 Type = mlds_rtti_type(item_type(RttiId)),
 
-                add_rtti_data_to_mlds(ModuleInfo, RttiData, !GlobalData),
+                add_rtti_data_to_mlds(ModuleInfo, Target, RttiData,
+                    !GlobalData),
 
                 % Generate definitions of any type_infos and pseudo_type_infos
                 % referenced by this pseudo_type_info.
                 % ZZZ is this guaranteed to add nothing?
-                list.foldl(ml_gen_maybe_pseudo_type_info_defn(ModuleInfo),
+                list.foldl(
+                    ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, Target),
                     arg_maybe_pseudo_type_infos(PseudoTypeInfo), !GlobalData)
             )
         )
     ).
 
-:- pred ml_gen_type_info(module_info::in, rtti_type_info::in,
-    mlds_rval::out, mlds_type::out,
+:- pred ml_gen_type_info(module_info::in, mlds_target_lang::in,
+    rtti_type_info::in, mlds_rval::out, mlds_type::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !GlobalData) :-
+ml_gen_type_info(ModuleInfo, Target, TypeInfo, Rval, Type, !GlobalData) :-
     (
         TypeInfo = plain_arity_zero_type_info(RttiTypeCtor0),
         % For zero-arity types, we just generate a reference to the
@@ -397,12 +406,12 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !GlobalData) :-
             Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
             Type = mlds_rtti_type(item_type(RttiId)),
 
-            add_rtti_data_to_mlds(ModuleInfo, RttiData, !GlobalData),
+            add_rtti_data_to_mlds(ModuleInfo, Target, RttiData, !GlobalData),
 
             % Generate definitions of any type_infos referenced
             % by this type_info.
             % ZZZ is this guaranteed to add nothing?
-            list.foldl(ml_gen_type_info_defn(ModuleInfo),
+            list.foldl(ml_gen_type_info_defn(ModuleInfo, Target),
                 arg_type_infos(TypeInfo), !GlobalData)
         )
     ).

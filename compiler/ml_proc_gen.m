@@ -22,7 +22,8 @@
 
     % Generate MLDS code for an entire module.
     %
-:- pred ml_code_gen(module_info::in, module_info::out, mlds::out) is det.
+:- pred ml_code_gen(mlds_target_lang::in, mlds::out,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -77,11 +78,11 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-ml_code_gen(!ModuleInfo, MLDS) :-
+ml_code_gen(Target, MLDS, !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ml_gen_foreign_code(!.ModuleInfo, ForeignCode),
-    ml_gen_imports(!.ModuleInfo, Imports),
-    ml_gen_defns(!ModuleInfo, TypeDefns, TableStructDefns, PredDefns,
+    ml_gen_imports(!.ModuleInfo, Target, Imports),
+    ml_gen_defns(!ModuleInfo, Target, TypeDefns, TableStructDefns, PredDefns,
         GlobalData),
     ml_gen_exported_enums(!.ModuleInfo, ExportedEnums),
     module_info_user_init_pred_c_names(!.ModuleInfo, InitPreds),
@@ -136,13 +137,12 @@ ml_gen_foreign_code_lang(ModuleInfo, ForeignDeclCodes, ForeignBodyCodes,
         WantedForeignImports, MLDSWantedForeignExports),
     map.det_insert(Lang, MLDS_ForeignCode, !Map).
 
-:- pred ml_gen_imports(module_info::in, mlds_imports::out) is det.
+:- pred ml_gen_imports(module_info::in, mlds_target_lang::in,
+    mlds_imports::out) is det.
 
-ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
+ml_gen_imports(ModuleInfo, Target, MLDS_ImportList) :-
     % Determine all the mercury imports.
     % XXX This is overly conservative, i.e. we import more than we really need.
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
     module_info_get_all_deps(ModuleInfo, AllImports0),
     % No module needs to import itself.
     module_info_get_name(ModuleInfo, ThisModule),
@@ -160,48 +160,42 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
     MLDS_ImportList = ForeignTypeImports ++
         list.map(P, set.to_sorted_list(AllImports)).
 
-:- func foreign_type_required_imports(compilation_target,
+:- func foreign_type_required_imports(mlds_target_lang,
     pair(type_ctor, hlds_type_defn)) = list(mlds_import).
 
 foreign_type_required_imports(Target, _TypeCtor - _TypeDefn) = Imports :-
     (
-        ( Target = target_c
-        ; Target = target_java
-        ; Target = target_csharp
+        ( Target = ml_target_c
+        ; Target = ml_target_java
+        ; Target = ml_target_csharp
         ),
         Imports = []
-    ;
-        Target = target_erlang,
-        unexpected($pred, "target erlang")
     ).
 
-:- pred ml_gen_defns(module_info::in, module_info::out,
+:- pred ml_gen_defns(module_info::in, module_info::out, mlds_target_lang::in,
     list(mlds_class_defn)::out, list(mlds_global_var_defn)::out,
     list(mlds_function_defn)::out, ml_global_data::out) is det.
 
-ml_gen_defns(!ModuleInfo, TypeDefns, TableStructDefns, PredDefns,
+ml_gen_defns(!ModuleInfo, Target, TypeDefns, TableStructDefns, PredDefns,
         !:GlobalData) :-
-    ml_gen_types(!.ModuleInfo, TypeDefns),
+    ml_gen_types(!.ModuleInfo, Target, TypeDefns),
     ml_gen_table_structs(!.ModuleInfo, TableStructDefns),
-    ml_gen_init_common_data(!.ModuleInfo, !:GlobalData),
-    ml_gen_const_structs(!.ModuleInfo, ConstStructMap, !GlobalData),
-    ml_gen_preds(ConstStructMap, PredDefns, !GlobalData, !ModuleInfo).
+    ml_gen_init_global_data(!.ModuleInfo, Target, !:GlobalData),
+    ml_gen_const_structs(!.ModuleInfo, Target, ConstStructMap, !GlobalData),
+    ml_gen_preds(Target, ConstStructMap, PredDefns, !GlobalData, !ModuleInfo).
 
-:- pred ml_gen_init_common_data(module_info::in, ml_global_data::out) is det.
+:- pred ml_gen_init_global_data(module_info::in, mlds_target_lang::in,
+    ml_global_data::out) is det.
 
-ml_gen_init_common_data(ModuleInfo, GlobalData) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
+ml_gen_init_global_data(ModuleInfo, Target, GlobalData) :-
     (
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_java
+        ( Target = ml_target_c
+        ; Target = ml_target_csharp
+        ; Target = ml_target_java
         ),
         UseCommonCells = use_common_cells
-    ;
-        Target = target_erlang,
-        UseCommonCells = do_not_use_common_cells
     ),
+    module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloats),
     (
         UnboxedFloats = yes,
@@ -273,11 +267,13 @@ has_ptr_type(mlds_argument(_, mlds_ptr_type(_), _)).
     % Generate MLDS definitions for all the non-imported predicates
     % (and functions) in the HLDS.
     %
-:- pred ml_gen_preds(ml_const_struct_map::in, list(mlds_function_defn)::out,
+:- pred ml_gen_preds(mlds_target_lang::in,
+    ml_const_struct_map::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
     module_info::in, module_info::out) is det.
 
-ml_gen_preds(ConstStructMap, FunctionDefns, !GlobalData, !ModuleInfo) :-
+ml_gen_preds(Target, ConstStructMap, FunctionDefns,
+        !GlobalData, !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable),
     map.to_assoc_list(PredTable, PredIdInfos),
     ml_find_procs_for_code_gen(PredIdInfos, [], PredProcIds),
@@ -288,7 +284,7 @@ ml_gen_preds(ConstStructMap, FunctionDefns, !GlobalData, !ModuleInfo) :-
         only_all_calls),
     BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
 
-    ml_gen_sccs(ConstStructMap, BottomUpSCCs, [], FunctionDefns,
+    ml_gen_sccs(Target, ConstStructMap, BottomUpSCCs, [], FunctionDefns,
         !GlobalData, !ModuleInfo).
 
 :- pred ml_find_procs_for_code_gen(assoc_list(pred_id, pred_info)::in,
@@ -333,42 +329,46 @@ ml_find_procs_for_code_gen([PredIdInfo | PredIdInfos], !CodeGenPredProcIds) :-
     ),
     ml_find_procs_for_code_gen(PredIdInfos, !CodeGenPredProcIds).
 
-:- pred ml_gen_sccs(ml_const_struct_map::in, list(set(pred_proc_id))::in,
+:- pred ml_gen_sccs(mlds_target_lang::in,
+    ml_const_struct_map::in, list(set(pred_proc_id))::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
     module_info::in, module_info::out) is det.
 
-ml_gen_sccs(_, [], !FunctionDefns, !GlobalData, !ModuleInfo).
-ml_gen_sccs(ConstStructMap, [SCC | SCCs],
+ml_gen_sccs(_, _, [], !FunctionDefns, !GlobalData, !ModuleInfo).
+ml_gen_sccs(Target, ConstStructMap, [SCC | SCCs],
         !FunctionDefns, !GlobalData, !ModuleInfo) :-
-    ml_gen_scc(ConstStructMap, SCC,
+    ml_gen_scc(Target, ConstStructMap, SCC,
         !FunctionDefns, !GlobalData, !ModuleInfo),
-    ml_gen_sccs(ConstStructMap, SCCs,
+    ml_gen_sccs(Target, ConstStructMap, SCCs,
         !FunctionDefns, !GlobalData, !ModuleInfo).
 
-:- pred ml_gen_scc(ml_const_struct_map::in, set(pred_proc_id)::in,
+:- pred ml_gen_scc(mlds_target_lang::in,
+    ml_const_struct_map::in, set(pred_proc_id)::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
     module_info::in, module_info::out) is det.
 
-ml_gen_scc(ConstStructMap, SCC, !FunctionDefns, !GlobalData, !ModuleInfo) :-
+ml_gen_scc(Target, ConstStructMap, SCC,
+        !FunctionDefns, !GlobalData, !ModuleInfo) :-
     % In the future, this predicate will arrange for tail call optimization
     % in SCCs with mutually-recursive tail calls.
     set.to_sorted_list(SCC, PredProcIds),
-    ml_gen_procs(ConstStructMap, PredProcIds,
+    ml_gen_procs(Target, ConstStructMap, PredProcIds,
         !FunctionDefns, !GlobalData, !ModuleInfo).
 
-:- pred ml_gen_procs(ml_const_struct_map::in, list(pred_proc_id)::in,
+:- pred ml_gen_procs(mlds_target_lang::in,
+    ml_const_struct_map::in, list(pred_proc_id)::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
     module_info::in, module_info::out) is det.
 
-ml_gen_procs(_, [], !FunctionDefns, !GlobalData, !ModuleInfo).
-ml_gen_procs(ConstStructMap, [PredProcId | PredProcIds],
+ml_gen_procs(_, _, [], !FunctionDefns, !GlobalData, !ModuleInfo).
+ml_gen_procs(Target, ConstStructMap, [PredProcId | PredProcIds],
         !FunctionDefns, !GlobalData, !ModuleInfo) :-
-    ml_gen_proc(ConstStructMap, PredProcId,
+    ml_gen_proc(Target, ConstStructMap, PredProcId,
         !FunctionDefns, !GlobalData, !ModuleInfo),
-    ml_gen_procs(ConstStructMap, PredProcIds,
+    ml_gen_procs(Target, ConstStructMap, PredProcIds,
         !FunctionDefns, !GlobalData, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -376,12 +376,13 @@ ml_gen_procs(ConstStructMap, [PredProcId | PredProcIds],
 % Code for handling individual procedures.
 %
 
-:- pred ml_gen_proc(ml_const_struct_map::in, pred_proc_id::in,
+:- pred ml_gen_proc(mlds_target_lang::in,
+    ml_const_struct_map::in, pred_proc_id::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
     module_info::in, module_info::out) is det.
 
-ml_gen_proc(ConstStructMap, PredProcId,
+ml_gen_proc(Target, ConstStructMap, PredProcId,
         !FunctionDefns, !GlobalData, !ModuleInfo) :-
     trace [io(!IO)] (
         write_proc_progress_message("% Generating MLDS code for ",
@@ -419,7 +420,7 @@ ml_gen_proc(ConstStructMap, PredProcId,
     Context = goal_info_get_context(GoalInfo),
 
     some [!Info] (
-        !:Info = ml_gen_info_init(!.ModuleInfo, ConstStructMap,
+        !:Info = ml_gen_info_init(!.ModuleInfo, Target, ConstStructMap,
             PredId, ProcId, ProcInfo, !.GlobalData),
 
         ( if PredStatus = pred_status(status_external(_)) then

@@ -33,10 +33,10 @@
     % Add the MLDS definitions for the given rtti_data(s) to the
     % ml_global_data structure.
     %
-:- pred add_rtti_datas_to_mlds(module_info::in, list(rtti_data)::in,
-    ml_global_data::in, ml_global_data::out) is det.
-:- pred add_rtti_data_to_mlds(module_info::in, rtti_data::in,
-    ml_global_data::in, ml_global_data::out) is det.
+:- pred add_rtti_datas_to_mlds(module_info::in, mlds_target_lang::in,
+    list(rtti_data)::in, ml_global_data::in, ml_global_data::out) is det.
+:- pred add_rtti_data_to_mlds(module_info::in, mlds_target_lang::in,
+    rtti_data::in, ml_global_data::in, ml_global_data::out) is det.
 
     % Given a list of MLDS RTTI data definitions, return the definitions
     % such that if X appears in the initialiser for Y then X appears earlier in
@@ -86,17 +86,18 @@
 
 %-----------------------------------------------------------------------------%
 
-add_rtti_datas_to_mlds(ModuleInfo, RttiDatas, !GlobalData) :-
-    list.foldl(add_rtti_data_to_mlds(ModuleInfo), RttiDatas, !GlobalData).
+add_rtti_datas_to_mlds(ModuleInfo, Target, RttiDatas, !GlobalData) :-
+    list.foldl(add_rtti_data_to_mlds(ModuleInfo, Target),
+        RttiDatas, !GlobalData).
 
-add_rtti_data_to_mlds(ModuleInfo, RttiData, !GlobalData) :-
+add_rtti_data_to_mlds(ModuleInfo, Target, RttiData, !GlobalData) :-
     ( if RttiData = rtti_data_pseudo_type_info(type_var(_)) then
         % These just get represented as integers, so we don't need to define
         % a structure for them; which is why rtti_data_to_id/3 does not
         % handle this case.
         true
     else
-        gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData)
+        gen_init_rtti_data_defn(ModuleInfo, Target, RttiData, !GlobalData)
     ).
 
 :- pred rtti_name_and_init_to_defn(rtti_type_ctor::in, ctor_rtti_name::in,
@@ -157,10 +158,10 @@ rtti_data_decl_flags(Access) = mlds_global_var_decl_flags(Access, const).
     % Return an MLDS initializer for the given RTTI definition
     % occurring in the given module.
     %
-:- pred gen_init_rtti_data_defn(module_info::in, rtti_data::in,
-    ml_global_data::in, ml_global_data::out) is det.
+:- pred gen_init_rtti_data_defn(module_info::in, mlds_target_lang::in,
+    rtti_data::in, ml_global_data::in, ml_global_data::out) is det.
 
-gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
+gen_init_rtti_data_defn(ModuleInfo, Target, RttiData, !GlobalData) :-
     rtti_data_to_id(RttiData, RttiId),
     Name = gvn_rtti_var(RttiId),
     (
@@ -168,7 +169,7 @@ gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
             _InstanceStr, BaseTypeClassInfo),
         BaseTypeClassInfo = base_typeclass_info(N1, N2, N3, N4, N5, Methods),
         NumExtra = BaseTypeClassInfo ^ num_extra,
-        list.map_foldl(gen_init_method(ModuleInfo, NumExtra),
+        list.map_foldl(gen_init_method(ModuleInfo, Target, NumExtra),
             Methods, MethodInitializers, !GlobalData),
         Initializer = init_array([
             gen_init_boxed_int(N1),
@@ -182,19 +183,20 @@ gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
             !GlobalData)
     ;
         RttiData = rtti_data_type_info(TypeInfo),
-        gen_type_info_defn(ModuleInfo, TypeInfo, Name, RttiId, !GlobalData)
+        gen_type_info_defn(ModuleInfo, Target, TypeInfo, Name,
+            RttiId, !GlobalData)
     ;
         RttiData = rtti_data_pseudo_type_info(PseudoTypeInfo),
-        gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, Name, RttiId,
-            !GlobalData)
+        gen_pseudo_type_info_defn(ModuleInfo, Target, PseudoTypeInfo, Name,
+            RttiId, !GlobalData)
     ;
         RttiData = rtti_data_type_class_decl(TCDecl),
-        gen_type_class_decl_defn(ModuleInfo, TCDecl, Name, RttiId,
-            !GlobalData)
+        gen_type_class_decl_defn(ModuleInfo, Target, TCDecl, Name,
+            RttiId, !GlobalData)
     ;
         RttiData = rtti_data_type_class_instance(Instance),
-        gen_type_class_instance_defn(ModuleInfo, Instance, Name, RttiId,
-            !GlobalData)
+        gen_type_class_instance_defn(ModuleInfo, Target, Instance, Name,
+            RttiId, !GlobalData)
     ;
         RttiData = rtti_data_type_ctor_info(TypeCtorData),
         TypeCtorData = type_ctor_data(Version, TypeModule, TypeName,
@@ -206,17 +208,18 @@ gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
         FunctorsRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_functors),
         LayoutRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_layout),
 
-        gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
-            FunctorsInfo, LayoutInfo, NumberMapInfo, !GlobalData),
+        gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor,
+            TypeCtorDetails, FunctorsInfo, LayoutInfo, NumberMapInfo,
+            !GlobalData),
 
         % Note that gen_init_special_pred will by necessity add an extra
         % level of indirection to calling the special preds. However, the
         % backend compiler should be smart enough to ensure that this is
         % inlined away.
-        gen_init_special_pred(ModuleInfo, UnifyUniv, UnifyInitializer,
-            !GlobalData),
-        gen_init_special_pred(ModuleInfo, CompareUniv, CompareInitializer,
-            !GlobalData),
+        gen_init_special_pred(ModuleInfo, Target,
+            UnifyUniv, UnifyInitializer, !GlobalData),
+        gen_init_special_pred(ModuleInfo, Target,
+            CompareUniv, CompareInitializer, !GlobalData),
 
         Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
             gen_init_int(TypeArity),
@@ -253,11 +256,11 @@ gen_init_rtti_data_defn(ModuleInfo, RttiData, !GlobalData) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_type_class_decl_defn(module_info::in, tc_decl::in,
-    mlds_global_var_name::in, rtti_id::in,
+:- pred gen_type_class_decl_defn(module_info::in, mlds_target_lang::in,
+    tc_decl::in, mlds_global_var_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_type_class_decl_defn(ModuleInfo, TCDecl, Name, RttiId, !GlobalData) :-
+gen_type_class_decl_defn(ModuleInfo, Target, TCDecl, Name, RttiId, !GlobalData) :-
     TCDecl = tc_decl(TCId, Version, Supers),
     TCId = tc_id(TCName, TVarNames, MethodIds),
     TCName = tc_name(ModuleSymName, ClassName, Arity),
@@ -301,7 +304,7 @@ gen_type_class_decl_defn(ModuleInfo, TCDecl, Name, RttiId, !GlobalData) :-
     ;
         Supers = [_ | _],
         list.map_foldl2(
-            gen_tc_constraint(ModuleInfo, make_decl_super_id(TCName)),
+            gen_tc_constraint(ModuleInfo, Target, make_decl_super_id(TCName)),
             Supers, SuperRttiIds, counter.init(1), _, !GlobalData),
         SuperArrayRttiName = type_class_decl_supers,
         SuperArrayRttiId = tc_rtti_id(TCName, SuperArrayRttiName),
@@ -356,11 +359,11 @@ gen_tc_id_method_id(TCName, MethodId) = Initializer :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_type_class_instance_defn(module_info::in, tc_instance::in,
-    mlds_global_var_name::in, rtti_id::in,
+:- pred gen_type_class_instance_defn(module_info::in, mlds_target_lang::in,
+    tc_instance::in, mlds_global_var_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_type_class_instance_defn(ModuleInfo, Instance, Name, RttiId,
+gen_type_class_instance_defn(ModuleInfo, Target, Instance, Name, RttiId,
         !GlobalData) :-
     Instance = tc_instance(TCName, Types, NumTypeVars,
         InstanceConstraints, _Methods),
@@ -373,13 +376,14 @@ gen_type_class_instance_defn(ModuleInfo, Instance, Name, RttiId,
     module_info_get_name(ModuleInfo, ModuleName),
 
     TypeRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data, Types),
-    gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, TypesInitializer,
-        !GlobalData),
+    gen_pseudo_type_info_array(ModuleInfo, Target, TypeRttiDatas,
+        TypesInitializer, !GlobalData),
     rtti_id_and_init_to_defn(InstanceTypesRttiId, TypesInitializer,
         !GlobalData),
 
     list.map_foldl2(
-        gen_tc_constraint(ModuleInfo, make_instance_constr_id(TCName, Types)),
+        gen_tc_constraint(ModuleInfo, Target,
+            make_instance_constr_id(TCName, Types)),
         InstanceConstraints, TCConstrIds, counter.init(1), _, !GlobalData),
     ElementType = mlds_rtti_type(element_type(InstanceConstrsRttiId)),
     InstanceConstrsInitializer = gen_init_array(
@@ -405,11 +409,12 @@ make_instance_constr_id(TCName, Types, TCNum, Arity, RttiId) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_type_info_defn(module_info::in, rtti_type_info::in,
-    mlds_global_var_name::in, rtti_id::in,
+:- pred gen_type_info_defn(module_info::in, mlds_target_lang::in,
+    rtti_type_info::in, mlds_global_var_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
+gen_type_info_defn(ModuleInfo, Target, RttiTypeInfo, Name, RttiId,
+        !GlobalData) :-
     (
         RttiTypeInfo = plain_arity_zero_type_info(_),
         unexpected($module, $pred, "plain_arity_zero_type_info")
@@ -422,8 +427,8 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
         else
             ArgRttiDatas = list.map(type_info_to_rtti_data, ArgTypes),
             RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
-            list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas,
-                !GlobalData),
+            list.foldl(add_rtti_data_to_mlds(ModuleInfo, Target),
+                RealRttiDatas, !GlobalData),
             module_info_get_name(ModuleInfo, ModuleName),
             Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
                 gen_init_rtti_name(ModuleName, RttiTypeCtor,
@@ -450,18 +455,17 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
         else
             ArgRttiDatas = list.map(type_info_to_rtti_data, ArgTypes),
             RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
-            list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas,
-                !GlobalData),
+            list.foldl(add_rtti_data_to_mlds(ModuleInfo, Target),
+                RealRttiDatas, !GlobalData),
             RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
             module_info_get_name(ModuleInfo, ModuleName),
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.get_target(Globals, TargetLang),
 
             InitRttiName = gen_init_rtti_name(ModuleName, RttiTypeCtor,
                 type_ctor_type_ctor_info),
             InitCastRttiDatasArray = gen_init_cast_rtti_datas_array(
                 mlds_type_info_type, ModuleName, ArgRttiDatas),
-            ( if TargetLang = target_java then
+            (
+                Target = ml_target_java,
                 % For Java we need to omit the arity argument as the
                 % TypeInfo_Struct class doesn't have a constructor that
                 % supports it -- see java/runtime/TypeInfo_Struct.java for
@@ -475,7 +479,10 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
                 % as well as the code for handling pseudo type-infos below.
                 %
                 InitializerArgs = [InitRttiName, InitCastRttiDatasArray]
-            else
+            ;
+                ( Target = ml_target_c
+                ; Target = ml_target_csharp
+                ),
                 InitializerArgs = [
                     InitRttiName,
                     gen_init_int(list.length(ArgTypes)),
@@ -495,11 +502,11 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
         )
     ).
 
-:- pred gen_pseudo_type_info_defn(module_info::in, rtti_pseudo_type_info::in,
-    mlds_global_var_name::in, rtti_id::in,
+:- pred gen_pseudo_type_info_defn(module_info::in, mlds_target_lang::in,
+    rtti_pseudo_type_info::in, mlds_global_var_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
+gen_pseudo_type_info_defn(ModuleInfo, Target, RttiPseudoTypeInfo, Name, RttiId,
         !GlobalData) :-
     (
         RttiPseudoTypeInfo = plain_arity_zero_pseudo_type_info(_),
@@ -514,8 +521,8 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
             ArgRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data,
                 ArgTypes),
             RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
-            list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas,
-                !GlobalData),
+            list.foldl(add_rtti_data_to_mlds(ModuleInfo, Target),
+                RealRttiDatas, !GlobalData),
             module_info_get_name(ModuleInfo, ModuleName),
             Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
                 gen_init_rtti_name(ModuleName, RttiTypeCtor,
@@ -543,8 +550,8 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
             ArgRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data,
                 ArgTypes),
             RealRttiDatas = list.filter(real_rtti_data, ArgRttiDatas),
-            list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas,
-                !GlobalData),
+            list.foldl(add_rtti_data_to_mlds(ModuleInfo, Target),
+                RealRttiDatas, !GlobalData),
             RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
             module_info_get_name(ModuleInfo, ModuleName),
             module_info_get_globals(ModuleInfo, Globals),
@@ -587,11 +594,12 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_functors_layout_info(module_info::in, rtti_type_ctor::in,
-    type_ctor_details::in, mlds_initializer::out, mlds_initializer::out,
-    mlds_initializer::out, ml_global_data::in, ml_global_data::out) is det.
+:- pred gen_functors_layout_info(module_info::in, mlds_target_lang::in,
+    rtti_type_ctor::in, type_ctor_details::in,
+    mlds_initializer::out, mlds_initializer::out, mlds_initializer::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
+gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
         FunctorInitializer, LayoutInitializer, NumberMapInitializer,
         !GlobalData) :-
     module_info_get_name(ModuleInfo, ModuleName),
@@ -633,8 +641,8 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
     ;
         TypeCtorDetails = tcd_du(_, DuFunctors, DuByPtag, DuByName,
             FunctorNumberMap),
-        list.foldl(gen_du_functor_desc(ModuleInfo, RttiTypeCtor), DuFunctors,
-            !GlobalData),
+        list.foldl(gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor),
+            DuFunctors, !GlobalData),
         gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor,
             DuByPtag, !GlobalData),
         gen_du_name_ordered_table(ModuleInfo, RttiTypeCtor,
@@ -649,7 +657,7 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
     ;
         TypeCtorDetails = tcd_reserved(_, MaybeResFunctors, ResFunctors,
             DuByPtag, MaybeResByName, FunctorNumberMap),
-        list.foldl(gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor),
+        list.foldl(gen_maybe_res_functor_desc(ModuleInfo, Target, RttiTypeCtor),
             MaybeResFunctors, !GlobalData),
         gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor,
             ResFunctors, DuByPtag, !GlobalData),
@@ -671,13 +679,13 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
             type_ctor_notag_functor_desc),
         NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_functor_number_map),
-        gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctor,
+        gen_notag_functor_desc(ModuleInfo, Target, RttiTypeCtor, NotagFunctor,
             !GlobalData)
     ;
         TypeCtorDetails = tcd_eqv(EqvType),
         TypeRttiData = maybe_pseudo_type_info_to_rtti_data(EqvType),
-        gen_pseudo_type_info(ModuleInfo, TypeRttiData, LayoutInitializer,
-            !GlobalData),
+        gen_pseudo_type_info(ModuleInfo, Target, TypeRttiData,
+            LayoutInitializer, !GlobalData),
         % The type is a lie, but a safe one.
         FunctorInitializer = gen_init_null_pointer(mlds_generic_type),
         NumberMapInitializer = gen_init_null_pointer(mlds_generic_type)
@@ -722,15 +730,16 @@ gen_foreign_enum_functor_desc(_ModuleInfo, Lang, RttiTypeCtor,
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- pred gen_notag_functor_desc(module_info::in, rtti_type_ctor::in,
-    notag_functor::in, ml_global_data::in, ml_global_data::out) is det.
+:- pred gen_notag_functor_desc(module_info::in, mlds_target_lang::in,
+    rtti_type_ctor::in, notag_functor::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc,
+gen_notag_functor_desc(ModuleInfo, Target, RttiTypeCtor, NotagFunctorDesc,
         !GlobalData) :-
     NotagFunctorDesc = notag_functor(FunctorName, ArgType, MaybeArgName,
         FunctorSubtypeInfo),
     ArgTypeRttiData = maybe_pseudo_type_info_to_rtti_data(ArgType),
-    gen_pseudo_type_info(ModuleInfo, ArgTypeRttiData, PTIInitializer,
+    gen_pseudo_type_info(ModuleInfo, Target, ArgTypeRttiData, PTIInitializer,
         !GlobalData),
     RttiName = type_ctor_notag_functor_desc,
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
@@ -742,10 +751,12 @@ gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc,
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- pred gen_du_functor_desc(module_info::in, rtti_type_ctor::in,
-    du_functor::in, ml_global_data::in, ml_global_data::out) is det.
+:- pred gen_du_functor_desc(module_info::in, mlds_target_lang::in,
+    rtti_type_ctor::in, du_functor::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
+gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
+        !GlobalData) :-
     DuFunctor = du_functor(FunctorName, Arity, Ordinal, Rep, ArgInfos,
         MaybeExistInfo, FunctorSubtypeInfo),
     ArgTypes = list.map(du_arg_info_type, ArgInfos),
@@ -755,7 +766,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
     module_info_get_name(ModuleInfo, ModuleName),
     (
         ArgInfos = [_ | _],
-        gen_field_types(ModuleInfo, RttiTypeCtor, Ordinal, ArgTypes,
+        gen_field_types(ModuleInfo, Target, RttiTypeCtor, Ordinal, ArgTypes,
             !GlobalData),
         ArgTypeInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_field_types(Ordinal))
@@ -791,7 +802,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
     ),
     (
         MaybeExistInfo = yes(ExistInfo),
-        gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo,
+        gen_exist_info(ModuleInfo, Target, RttiTypeCtor, Ordinal, ExistInfo,
             !GlobalData),
         ExistInfoInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_exist_info(Ordinal))
@@ -854,11 +865,11 @@ gen_res_addr_functor_desc(ModuleInfo, RttiTypeCtor, ResFunctor, !GlobalData) :-
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- pred gen_maybe_res_functor_desc(module_info::in, rtti_type_ctor::in,
-    maybe_reserved_functor::in,
+:- pred gen_maybe_res_functor_desc(module_info::in, mlds_target_lang::in,
+    rtti_type_ctor::in, maybe_reserved_functor::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor, MaybeResFunctor,
+gen_maybe_res_functor_desc(ModuleInfo, Target, RttiTypeCtor, MaybeResFunctor,
         !GlobalData) :-
     (
         MaybeResFunctor = res_func(ResFunctor),
@@ -866,7 +877,8 @@ gen_maybe_res_functor_desc(ModuleInfo, RttiTypeCtor, MaybeResFunctor,
             !GlobalData)
     ;
         MaybeResFunctor = du_func(DuFunctor),
-        gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData)
+        gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
+            !GlobalData)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -898,13 +910,13 @@ gen_exist_locns_array(_ModuleInfo, RttiTypeCtor, Ordinal, Locns,
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
 
-:- pred gen_tc_constraint(module_info::in,
+:- pred gen_tc_constraint(module_info::in, mlds_target_lang::in,
     pred(int, int, rtti_id)::in(pred(in, in, out) is det),
     tc_constraint::in, rtti_id::out, counter::in, counter::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_tc_constraint(ModuleInfo, MakeRttiId, Constraint, RttiId, !Counter,
-        !GlobalData) :-
+gen_tc_constraint(ModuleInfo, Target, MakeRttiId, Constraint, RttiId,
+        !Counter, !GlobalData) :-
     Constraint = tc_constraint(TCName, Types),
     list.length(Types, Arity),
     counter.allocate(TCNum, !Counter),
@@ -912,8 +924,8 @@ gen_tc_constraint(ModuleInfo, MakeRttiId, Constraint, RttiId, !Counter,
     TCDeclRttiName = type_class_decl,
     module_info_get_name(ModuleInfo, ModuleName),
     TypeRttiDatas = list.map(maybe_pseudo_type_info_to_rtti_data, Types),
-    gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, PTIInitializers,
-        !GlobalData),
+    gen_pseudo_type_info_array(ModuleInfo, Target, TypeRttiDatas,
+        PTIInitializers, !GlobalData),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_tc_rtti_name(ModuleName, TCName, TCDeclRttiName),
         PTIInitializers
@@ -927,10 +939,12 @@ make_exist_tc_constr_id(RttiTypeCtor, Ordinal, TCNum, Arity, RttiId) :-
     RttiName = type_ctor_exist_tc_constr(Ordinal, TCNum, Arity),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName).
 
-:- pred gen_exist_info(module_info::in, rtti_type_ctor::in, int::in,
-    exist_info::in, ml_global_data::in, ml_global_data::out) is det.
+:- pred gen_exist_info(module_info::in, mlds_target_lang::in,
+    rtti_type_ctor::in, int::in, exist_info::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo, !GlobalData) :-
+gen_exist_info(ModuleInfo, Target, RttiTypeCtor, Ordinal, ExistInfo,
+        !GlobalData) :-
     ExistInfo = exist_info(Plain, InTci, Constraints, Locns),
     module_info_get_name(ModuleInfo, ModuleName),
     RttiName = type_ctor_exist_info(Ordinal),
@@ -946,7 +960,7 @@ gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo, !GlobalData) :-
         ConstrInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_exist_tc_constrs(Ordinal)),
         list.map_foldl2(
-            gen_tc_constraint(ModuleInfo,
+            gen_tc_constraint(ModuleInfo, Target,
                 make_exist_tc_constr_id(RttiTypeCtor, Ordinal)),
             Constraints, TCConstrIds, counter.init(1), _, !GlobalData),
         TCConstrArrayRttiName = type_ctor_exist_tc_constrs(Ordinal),
@@ -970,14 +984,15 @@ gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo, !GlobalData) :-
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- pred gen_field_types(module_info::in, rtti_type_ctor::in, int::in,
-    list(rtti_maybe_pseudo_type_info_or_self)::in,
+:- pred gen_field_types(module_info::in, mlds_target_lang::in,
+    rtti_type_ctor::in, int::in, list(rtti_maybe_pseudo_type_info_or_self)::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_field_types(ModuleInfo, RttiTypeCtor, Ordinal, Types, !GlobalData) :-
+gen_field_types(ModuleInfo, Target, RttiTypeCtor, Ordinal, Types,
+        !GlobalData) :-
     TypeRttiDatas = list.map(maybe_pseudo_type_info_or_self_to_rtti_data,
         Types),
-    gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, Initializer,
+    gen_pseudo_type_info_array(ModuleInfo, Target, TypeRttiDatas, Initializer,
         !GlobalData),
     RttiName = type_ctor_field_types(Ordinal),
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
@@ -1525,12 +1540,14 @@ mlds_module_name_from_tc_name(TCName) = MLDS_ModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_pseudo_type_info(module_info::in, rtti_data::in,
-    mlds_initializer::out, ml_global_data::in, ml_global_data::out) is det.
+:- pred gen_pseudo_type_info(module_info::in, mlds_target_lang::in,
+    rtti_data::in, mlds_initializer::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_pseudo_type_info(ModuleInfo, PTIRttiData, Initializer, !GlobalData) :-
+gen_pseudo_type_info(ModuleInfo, Target, PTIRttiData, Initializer,
+        !GlobalData) :-
     ( if real_rtti_data(PTIRttiData) then
-        add_rtti_data_to_mlds(ModuleInfo, PTIRttiData, !GlobalData)
+        add_rtti_data_to_mlds(ModuleInfo, Target, PTIRttiData, !GlobalData)
     else
         % Since PTIRttiData does not correspond to a global data definition,
         % we have nothing to do.
@@ -1540,23 +1557,26 @@ gen_pseudo_type_info(ModuleInfo, PTIRttiData, Initializer, !GlobalData) :-
     Initializer = gen_init_cast_rtti_data(mlds_pseudo_type_info_type,
         ModuleName, PTIRttiData).
 
-:- pred gen_pseudo_type_info_array(module_info::in, list(rtti_data)::in,
-    mlds_initializer::out, ml_global_data::in, ml_global_data::out) is det.
+:- pred gen_pseudo_type_info_array(module_info::in, mlds_target_lang::in,
+    list(rtti_data)::in, mlds_initializer::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_pseudo_type_info_array(ModuleInfo, PTIRttiDatas, Initializer,
+gen_pseudo_type_info_array(ModuleInfo, Target, PTIRttiDatas, Initializer,
         !GlobalData) :-
     RealRttiDatas = list.filter(real_rtti_data, PTIRttiDatas),
-    list.foldl(add_rtti_data_to_mlds(ModuleInfo), RealRttiDatas, !GlobalData),
+    list.foldl(add_rtti_data_to_mlds(ModuleInfo, Target),
+        RealRttiDatas, !GlobalData),
     module_info_get_name(ModuleInfo, ModuleName),
     Initializer = gen_init_cast_rtti_datas_array(mlds_pseudo_type_info_type,
         ModuleName, PTIRttiDatas).
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_init_method(module_info::in, int::in, rtti_proc_label::in,
-    mlds_initializer::out, ml_global_data::in, ml_global_data::out) is det.
+:- pred gen_init_method(module_info::in, mlds_target_lang::in,
+    int::in, rtti_proc_label::in, mlds_initializer::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-gen_init_method(ModuleInfo, NumExtra, RttiProcLabel, Initializer,
+gen_init_method(ModuleInfo, Target, NumExtra, RttiProcLabel, Initializer,
         !GlobalData) :-
     % We can't store the address of the typeclass method directly in the
     % base_typeclass_info; instead, we need to generate a wrapper function
@@ -1570,13 +1590,15 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcLabel, Initializer,
     % HLDS->HLDS inlining and/or the target code compiler will be able
     % to optimize this...
     %
-    gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcLabel,
-        typeclass_info_closure, Initializer, !GlobalData).
+    gen_wrapper_func_and_initializer(ModuleInfo, Target, NumExtra,
+        RttiProcLabel, typeclass_info_closure, Initializer, !GlobalData).
 
-:- pred gen_init_special_pred(module_info::in, univ::in, mlds_initializer::out,
+:- pred gen_init_special_pred(module_info::in, mlds_target_lang::in,
+    univ::in, mlds_initializer::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Initializer, !GlobalData) :-
+gen_init_special_pred(ModuleInfo, Target, RttiProcIdUniv, Initializer,
+        !GlobalData) :-
     % We can't store the address of the special pred procedure directly in the
     % type_ctor_info because when the special pred is called by looking up
     % its address in the type_ctor_info it is always called with its arguments
@@ -1592,15 +1614,16 @@ gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Initializer, !GlobalData) :-
         Initializer = gen_init_proc_id(ModuleInfo, RttiProcId)
     else
         NumExtra = 0,
-        gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
-            special_pred_closure, Initializer, !GlobalData)
+        gen_wrapper_func_and_initializer(ModuleInfo, Target,
+            NumExtra, RttiProcId, special_pred_closure, Initializer,
+            !GlobalData)
     ).
 
-:- pred gen_wrapper_func_and_initializer(module_info::in, int::in,
-    rtti_proc_label::in, closure_kind::in, mlds_initializer::out,
+:- pred gen_wrapper_func_and_initializer(module_info::in, mlds_target_lang::in,
+    int::in, rtti_proc_label::in, closure_kind::in, mlds_initializer::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
+gen_wrapper_func_and_initializer(ModuleInfo, Target, NumExtra, RttiProcId,
         ClosureKind, Initializer, !GlobalData) :-
     some [!Info] (
         % We start off by creating a fresh MLGenInfo here, using the pred_id
@@ -1617,7 +1640,7 @@ gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
         PredId = RttiProcId ^ rpl_pred_id,
         ProcId = RttiProcId ^ rpl_proc_id,
         module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-        !:Info = ml_gen_info_init(ModuleInfo, map.init, PredId, ProcId,
+        !:Info = ml_gen_info_init(ModuleInfo, Target, map.init, PredId, ProcId,
             ProcInfo, !.GlobalData),
         ml_gen_info_bump_counters(!Info),
 

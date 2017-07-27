@@ -325,8 +325,9 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
         STagRval = ml_unop(std_unop(unmkbody), VarRval)
     ;
         StagLocn = sectag_remote,
-        STagRval = ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTag, VarType,
-            VarRval)
+        ml_gen_info_get_target(!.Info, Target),
+        STagRval = ml_gen_secondary_tag_rval(ModuleInfo, Target,
+            PrimaryTag, VarType, VarRval)
     ;
         ( StagLocn = sectag_none
         ; StagLocn = sectag_none_direct_arg

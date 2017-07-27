@@ -141,14 +141,13 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         Lang = lang_csharp,
         ml_gen_info_get_target(!.Info, Target),
         (
-            Target = target_csharp,
+            Target = ml_target_csharp,
             ml_gen_ordinary_pragma_csharp_java_proc(ml_target_csharp,
                 OrdinaryKind, Attributes, PredId, ProcId, Args, ExtraArgs,
                 ForeignCode, Context, Decls, Stmts, !Info)
         ;
-            ( Target = target_c
-            ; Target = target_java
-            ; Target = target_erlang
+            ( Target = ml_target_c
+            ; Target = ml_target_java
             ),
             unexpected($pred,
                 "C# foreign code not supported for compilation target")

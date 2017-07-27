@@ -20,8 +20,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.rtti.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -189,7 +187,7 @@
     % can be used in code that builds and/or uses the vector.
     %
 :- pred ml_gen_static_vector_type(mlds_module_name::in, prog_context::in,
-    compilation_target::in, list(mlds_type)::in,
+    mlds_target_lang::in, list(mlds_type)::in,
     ml_vector_common_type_num::out, mlds_type::out, list(mlds_field_id)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
@@ -615,24 +613,21 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
             TypeRawNum, 0, ArgTypes, FieldNames, FieldDefns, FieldInfos),
 
         (
-            Target = target_c,
+            Target = ml_target_c,
             ClassKind = mlds_struct,
             CtorDefns = []
         ;
             (
-                Target = target_java,
+                Target = ml_target_java,
                 ClassKind = mlds_class
             ;
-                Target = target_csharp,
+                Target = ml_target_csharp,
                 ClassKind = mlds_struct
             ),
             CtorDefn = ml_gen_constructor_function(Target, StructType,
                 StructType, MLDS_ModuleName, StructType, no, FieldInfos,
                 Context),
             CtorDefns = [CtorDefn]
-        ;
-            Target = target_erlang,
-            unexpected($module, $pred, "unsupported target language")
         ),
 
         StructTypeName = "vector_common_type_" ++ TypeRawNumStr,

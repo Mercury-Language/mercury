@@ -48,13 +48,13 @@
     % information accumulated by the code generator so far during the
     % processing of previous procedures.
     %
-:- func ml_gen_info_init(module_info, ml_const_struct_map, pred_id, proc_id,
-    proc_info, ml_global_data) = ml_gen_info.
+:- func ml_gen_info_init(module_info, mlds_target_lang,
+    ml_const_struct_map, pred_id, proc_id, proc_info, ml_global_data)
+    = ml_gen_info.
 
 :- pred ml_gen_info_get_module_info(ml_gen_info::in, module_info::out) is det.
 :- pred ml_gen_info_get_high_level_data(ml_gen_info::in, bool::out) is det.
-:- pred ml_gen_info_get_target(ml_gen_info::in, compilation_target::out)
-    is det.
+:- pred ml_gen_info_get_target(ml_gen_info::in, mlds_target_lang::out) is det.
 :- pred ml_gen_info_get_gc(ml_gen_info::in, gc_method::out) is det.
 :- pred ml_gen_info_get_pred_id(ml_gen_info::in, pred_id::out) is det.
 :- pred ml_gen_info_get_proc_id(ml_gen_info::in, proc_id::out) is det.
@@ -319,7 +319,7 @@
                 % Quick-access read-only copies of parts of the globals
                 % structure taken from the module_info.
 /*  1 */        mgsi_high_level_data    :: bool,
-/*  2 */        mgsi_target             :: compilation_target,
+/*  2 */        mgsi_target             :: mlds_target_lang,
 /*  3 */        mgsi_gc                 :: gc_method,
 
                 % The identity of the procedure we are generating code for.
@@ -363,11 +363,10 @@
 /* 16 */        mgsi_disabled_warnings  :: set(goal_warning)
             ).
 
-ml_gen_info_init(ModuleInfo, ConstStructMap, PredId, ProcId, ProcInfo,
+ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
         GlobalData) = Info :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    globals.get_target(Globals, CompilationTarget),
     globals.get_gc_method(Globals, GC),
 
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -397,7 +396,7 @@ ml_gen_info_init(ModuleInfo, ConstStructMap, PredId, ProcId, ProcInfo,
 
     SubInfo = ml_gen_sub_info(
         HighLevelData,
-        CompilationTarget,
+        Target,
         GC,
         PredId,
         ProcId,

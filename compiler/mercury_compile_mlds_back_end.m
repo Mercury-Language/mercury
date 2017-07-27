@@ -128,15 +128,29 @@ mlds_backend(!HLDS, !:MLDS, Specs, !DumpInfo, !IO) :-
     map_args_to_regs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 425, "args_to_regs", !DumpInfo, !IO),
 
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        MLDS_Target = ml_target_c
+    ;
+        Target = target_java,
+        MLDS_Target = ml_target_java
+    ;
+        Target = target_csharp,
+        MLDS_Target = ml_target_csharp
+    ;
+        Target = target_erlang,
+        unexpected($pred, "MLDS cannot target Erlang")
+    ),
     maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n", !IO),
-    ml_code_gen(!HLDS, !:MLDS),
+    ml_code_gen(MLDS_Target, !:MLDS, !HLDS),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO),
     maybe_dump_hlds(!.HLDS, 499, "final", !DumpInfo, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 0, "initial", !IO),
 
     maybe_write_string(Verbose, "% Generating RTTI data...\n", !IO),
-    mlds_gen_rtti_data(!.HLDS, !MLDS),
+    mlds_gen_rtti_data(!.HLDS, MLDS_Target, !MLDS),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 10, "rtti", !IO),
@@ -191,7 +205,7 @@ mlds_backend(!HLDS, !:MLDS, Specs, !DumpInfo, !IO) :-
         GC = gc_accurate,
         maybe_write_string(Verbose,
             "% Threading GC stack frames...\n", !IO),
-        ml_elim_nested(chain_gc_stack_frames, Globals, !MLDS),
+        ml_elim_nested(chain_gc_stack_frames, Globals, MLDS_Target, !MLDS),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         ( GC = gc_automatic
@@ -208,7 +222,7 @@ mlds_backend(!HLDS, !:MLDS, Specs, !DumpInfo, !IO) :-
     (
         NestedFuncs = no,
         maybe_write_string(Verbose, "% Flattening nested functions...\n", !IO),
-        ml_elim_nested(hoist_nested_funcs, Globals, !MLDS),
+        ml_elim_nested(hoist_nested_funcs, Globals, MLDS_Target, !MLDS),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         NestedFuncs = yes
@@ -336,9 +350,10 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred mlds_gen_rtti_data(module_info::in, mlds::in, mlds::out) is det.
+:- pred mlds_gen_rtti_data(module_info::in, mlds_target_lang::in,
+    mlds::in, mlds::out) is det.
 
-mlds_gen_rtti_data(HLDS, !MLDS) :-
+mlds_gen_rtti_data(HLDS, Target, !MLDS) :-
     type_ctor_info.generate_rtti(HLDS, TypeCtorRtti),
     generate_base_typeclass_info_rtti(HLDS, TypeClassInfoRtti),
 
@@ -348,7 +363,7 @@ mlds_gen_rtti_data(HLDS, !MLDS) :-
         NewTypeClassInfoRttiData),
     RttiDatas = TypeCtorRtti ++ TypeClassInfoRtti ++ NewTypeClassInfoRttiData,
     GlobalData0 = !.MLDS ^ mlds_global_defns,
-    add_rtti_datas_to_mlds(HLDS, RttiDatas, GlobalData0, GlobalData),
+    add_rtti_datas_to_mlds(HLDS, Target, RttiDatas, GlobalData0, GlobalData),
     !MLDS ^ mlds_global_defns := GlobalData.
 
 %---------------------------------------------------------------------------%

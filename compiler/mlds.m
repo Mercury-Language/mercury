@@ -480,7 +480,7 @@
     % The qual_kind argument specifies the qualifier kind of the module_name
     % argument.
     %
-:- func mlds_append_class_qualifier(compilation_target, mlds_module_name,
+:- func mlds_append_class_qualifier(mlds_target_lang, mlds_module_name,
     mlds_qual_kind, mlds_class_name, arity) = mlds_module_name.
 :- func mlds_append_class_qualifier_module_qual(mlds_module_name,
     mlds_class_name, arity) = mlds_module_name.
@@ -2399,7 +2399,7 @@ mlds_append_class_qualifier(Target, ModuleName0, QualKind,
     % For the Java back-end, we flip the initial case of an type qualifiers,
     % in order to match the usual Java conventions.
     ( if
-        Target = target_java,
+        Target = ml_target_java,
         QualKind = type_qual
     then
         AdjustedModule0 = flip_initial_case_of_final_part(Module0)

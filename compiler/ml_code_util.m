@@ -315,7 +315,9 @@
 :- func ml_gen_hld_field_name(maybe(ctor_field_name), int) =
     mlds_field_var_name.
 
-    % Succeeds iff the specified type must be boxed when used as a field.
+    % Succeed iff the specified type must be boxed when used as a field.
+    % XXX Currently we box such types even for the other MLDS based back-ends
+    % that don't need it, e.g. the .NET back-end.
     %
 :- pred ml_must_box_field_type(module_info::in, mer_type::in, arg_width::in)
     is semidet.
@@ -1347,10 +1349,6 @@ ml_gen_hld_field_name(MaybeFieldName, ArgNum) = FieldVarName :-
     ),
     FieldVarName = fvn_du_ctor_field_hld(FieldName).
 
-    % Succeed iff the specified type must be boxed when used as a field.
-    % XXX Currently we box such types even for the other MLDS based back-ends
-    % that don't need it, e.g. the .NET back-end.
-    %
 ml_must_box_field_type(ModuleInfo, Type, Width) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),

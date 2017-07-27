@@ -80,13 +80,14 @@
 :- pred ml_gen_known_tag_test(prog_var::in, tagged_cons_id::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTag, VarType, VarRval):
+    % ml_gen_secondary_tag_rval(ModuleInfo, Target, PrimaryTag, VarType,
+    %   VarRval):
     %
     % Return the rval for the secondary tag field of VarRval, assuming that
     % VarRval has the specified VarType and PrimaryTag.
     %
-:- func ml_gen_secondary_tag_rval(module_info, tag_bits, mer_type, mlds_rval)
-    = mlds_rval.
+:- func ml_gen_secondary_tag_rval(module_info, mlds_target_lang, tag_bits,
+    mer_type, mlds_rval) = mlds_rval.
 
     % Generate an MLDS rval for a given reserved address,
     % cast to the appropriate type.
@@ -115,8 +116,8 @@
 :- pred ml_gen_ground_term(prog_var::in, hlds_goal::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-:- pred ml_gen_const_structs(module_info::in, ml_const_struct_map::out,
-    ml_global_data::in, ml_global_data::out) is det.
+:- pred ml_gen_const_structs(module_info::in, mlds_target_lang::in,
+    ml_const_struct_map::out, ml_global_data::in, ml_global_data::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -978,7 +979,7 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
     % ml_gen_static_scalar_const* will replace it by a more specialized type,
     % mlds_mostly_generic_array_type(_), if required by the elements.
     %
-:- func get_const_type_for_cons_id(compilation_target, bool, mlds_type,
+:- func get_const_type_for_cons_id(mlds_target_lang, bool, mlds_type,
     tag_uses_base_class, maybe(cons_id)) = mlds_type.
 
 get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
@@ -994,7 +995,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % are lies on C backends.
             MLDS_Type = mercury_type(_, TypeCtorCategory, _),
             TypeCtorCategory = ctor_cat_system(_),
-            Target = target_c
+            Target = ml_target_c
         then
             ConstType = mlds_array_type(mlds_generic_type)
         else if
@@ -1273,7 +1274,7 @@ ml_gen_box_extra_const_rval_list_lld(_, _, [], [_ | _], _, !GlobalData) :-
 ml_gen_box_extra_const_rval_list_lld(_, _, [_ | _], [], _, !GlobalData) :-
     unexpected($pred, "length mismatch").
 
-:- pred ml_cons_name(compilation_target::in, cons_id::in, ctor_name::out)
+:- pred ml_cons_name(mlds_target_lang::in, cons_id::in, ctor_name::out)
     is det.
 
 ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
@@ -2148,7 +2149,8 @@ ml_gen_tag_test(Var, ConsId, TagTestExpression, !Info) :-
     ml_variable_type(!.Info, Var, Type),
     ml_cons_id_to_tag(!.Info, ConsId, Tag),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    TagTestExpression = ml_gen_tag_test_rval(Tag, Type, ModuleInfo,
+    ml_gen_info_get_target(!.Info, Target),
+    TagTestExpression = ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type,
         ml_lval(VarLval)).
 
 ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpression, !Info) :-
@@ -2161,7 +2163,8 @@ ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpression, !Info) :-
     ml_variable_type(!.Info, Var, Type),
     TaggedConsId = tagged_cons_id(_ConsId, Tag),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    TagTestExpression = ml_gen_tag_test_rval(Tag, Type, ModuleInfo,
+    ml_gen_info_get_target(!.Info, Target),
+    TagTestExpression = ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type,
         ml_lval(VarLval)).
 
     % ml_gen_tag_test_rval(Tag, Type, ModuleInfo, VarRval) = TestRval:
@@ -2169,10 +2172,10 @@ ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpression, !Info) :-
     % TestRval is an Rval of type bool which evaluates to true if VarRval has
     % the specified Tag and false otherwise. Type is the type of VarRval.
     %
-:- func ml_gen_tag_test_rval(cons_tag, mer_type, module_info, mlds_rval)
-    = mlds_rval.
+:- func ml_gen_tag_test_rval(module_info, mlds_target_lang,
+    cons_tag, mer_type, mlds_rval) = mlds_rval.
 
-ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
+ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, Rval) = TagTestRval :-
     (
         Tag = string_tag(String),
         TagTestRval = ml_binop(str_eq, Rval, ml_const(mlconst_string(String)))
@@ -2215,7 +2218,7 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         TagTestRval = ml_binop(eq(int_type_int), RvalTag, UnsharedTag)
     ;
         Tag = shared_remote_tag(PrimaryTagNum, SecondaryTagNum),
-        SecondaryTagField = ml_gen_secondary_tag_rval(ModuleInfo,
+        SecondaryTagField = ml_gen_secondary_tag_rval(ModuleInfo, Target,
             PrimaryTagNum, Type, Rval),
         SecondaryTagTestRval = ml_binop(eq(int_type_int),
             SecondaryTagField, ml_const(mlconst_int(SecondaryTagNum))),
@@ -2250,12 +2253,14 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         Tag = shared_with_reserved_addresses_tag(ReservedAddrs, ThisTag),
         % We first check that the Rval doesn't match any of the ReservedAddrs,
         % and then check that it matches ThisTag.
-        CheckReservedAddrs = (func(RA, TestRval0) = TestRval :-
-            EqualRA = ml_gen_tag_test_rval(reserved_address_tag(RA), Type,
-                ModuleInfo, Rval),
-            TestRval = ml_gen_and(ml_gen_not(EqualRA), TestRval0)
-        ),
-        MatchesThisTag = ml_gen_tag_test_rval(ThisTag, Type, ModuleInfo, Rval),
+        CheckReservedAddrs =
+            ( func(RA, TestRval0) = TestRval :-
+                EqualRA = ml_gen_tag_test_rval(ModuleInfo, Target,
+                    reserved_address_tag(RA), Type, Rval),
+                TestRval = ml_gen_and(ml_gen_not(EqualRA), TestRval0)
+            ),
+        MatchesThisTag = ml_gen_tag_test_rval(ModuleInfo, Target,
+            ThisTag, Type, Rval),
         TagTestRval = list.foldr(CheckReservedAddrs, ReservedAddrs,
             MatchesThisTag)
     ).
@@ -2305,7 +2310,7 @@ ml_gen_int_tag_test_rval(IntTag, Type, ModuleInfo, Rval) = TagTestRval :-
             ml_const(mlconst_uint32(UInt32)))
     ).
 
-ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTagVal, VarType, Rval) =
+ml_gen_secondary_tag_rval(ModuleInfo, Target, PrimaryTagVal, VarType, Rval) =
         SecondaryTagField :-
     MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
     module_info_get_globals(ModuleInfo, Globals),
@@ -2322,7 +2327,7 @@ ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTagVal, VarType, Rval) =
                     mlds_generic_type, MLDS_VarType)))
     ;
         HighLevelData = yes,
-        FieldId = ml_gen_hl_tag_field_id(ModuleInfo, VarType),
+        FieldId = ml_gen_hl_tag_field_id(ModuleInfo, Target, VarType),
         SecondaryTagField = ml_lval(ml_field(yes(PrimaryTagVal), Rval,
             FieldId, mlds_native_int_type, MLDS_VarType))
     ).
@@ -2330,9 +2335,10 @@ ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTagVal, VarType, Rval) =
     % Return the field_id for the "data_tag" field of the specified
     % Mercury type, which holds the secondary tag.
     %
-:- func ml_gen_hl_tag_field_id(module_info, mer_type) = mlds_field_id.
+:- func ml_gen_hl_tag_field_id(module_info, mlds_target_lang, mer_type)
+    = mlds_field_id.
 
-ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
+ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
     % Figure out the type name and arity.
     type_to_ctor_det(Type, TypeCtor),
     ml_gen_type_name(TypeCtor, QualifiedTypeName, TypeArity),
@@ -2383,15 +2389,13 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
     QualClassName = qual_class_name(ClassQualifier, ClassQualKind, ClassName),
     ClassPtrType = mlds_ptr_type(mlds_class_type(QualClassName, ClassArity,
         mlds_class)),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
     FieldQualifier = mlds_append_class_qualifier(Target, ClassQualifier,
         ClassQualKind, ClassName, ClassArity),
     QualifiedFieldName =
         qual_field_var_name(FieldQualifier, type_qual, fvn_data_tag),
     FieldId = ml_field_named(QualifiedFieldName, ClassPtrType).
 
-:- func ml_gen_field_id(compilation_target, mer_type, cons_tag,
+:- func ml_gen_field_id(mlds_target_lang, mer_type, cons_tag,
     mlds_class_name, arity, mlds_field_var_name) = mlds_field_id.
 
 ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
@@ -2469,7 +2473,7 @@ ml_gen_ground_term(TermVar, Goal, Stmts, !Info) :-
         unexpected($pred, "unexpected nonlocals")
     ).
 
-:- pred ml_gen_ground_term_conjuncts(module_info::in, compilation_target::in,
+:- pred ml_gen_ground_term_conjuncts(module_info::in, mlds_target_lang::in,
     bool::in, vartypes::in, list(hlds_goal)::in,
     ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
@@ -2482,7 +2486,7 @@ ml_gen_ground_term_conjuncts(ModuleInfo, Target, HighLevelData, VarTypes,
     ml_gen_ground_term_conjuncts(ModuleInfo, Target, HighLevelData, VarTypes,
         Goals, !GlobalData, !GroundTermMap).
 
-:- pred ml_gen_ground_term_conjunct(module_info::in, compilation_target::in,
+:- pred ml_gen_ground_term_conjunct(module_info::in, mlds_target_lang::in,
     bool::in, vartypes::in, hlds_goal::in,
     ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
@@ -2507,7 +2511,7 @@ ml_gen_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
     ).
 
 :- pred ml_gen_ground_term_conjunct_tag(module_info::in,
-    compilation_target::in, bool::in, vartypes::in,
+    mlds_target_lang::in, bool::in, vartypes::in,
     prog_var::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
     list(prog_var)::in, prog_context::in,
     ml_global_data::in, ml_global_data::out,
@@ -2625,7 +2629,7 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
     ).
 
 :- pred ml_gen_ground_term_conjunct_compound(module_info::in,
-    compilation_target::in, bool::in, vartypes::in,
+    mlds_target_lang::in, bool::in, vartypes::in,
     prog_var::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
     int::in, list(mlds_initializer)::in, list(prog_var)::in,
     prog_context::in, ml_global_data::in, ml_global_data::out,
@@ -2813,9 +2817,8 @@ construct_ground_term_initializer_lld(ModuleInfo, Context,
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_const_structs(ModuleInfo, ConstStructMap, !GlobalData) :-
+ml_gen_const_structs(ModuleInfo, Target, ConstStructMap, !GlobalData) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     Info = ml_const_struct_info(ModuleInfo, Target, HighLevelData),
 
@@ -2827,7 +2830,7 @@ ml_gen_const_structs(ModuleInfo, ConstStructMap, !GlobalData) :-
 :- type ml_const_struct_info
     --->    ml_const_struct_info(
                 mcsi_module_info            :: module_info,
-                mcsi_target                 :: compilation_target,
+                mcsi_target                 :: mlds_target_lang,
                 mcsi_high_level_data        :: bool
             ).
 
@@ -2997,7 +3000,7 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
             HighLevelData = no
         ;
             HighLevelData = yes,
-            Target = target_java
+            Target = ml_target_java
         )
     then
         assoc_list.from_corresponding_lists(Args, ConsArgWidths,

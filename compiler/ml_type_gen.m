@@ -29,8 +29,6 @@
 :- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.mlds.
@@ -45,7 +43,8 @@
 
     % Generate MLDS definitions for all the types in the HLDS.
     %
-:- pred ml_gen_types(module_info::in, list(mlds_class_defn)::out) is det.
+:- pred ml_gen_types(module_info::in, mlds_target_lang::in,
+    list(mlds_class_defn)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -57,7 +56,7 @@
     % mlds_defns define fields, and we don't want this predicate to have to
     % test whether the data it is given makes sense.
     %
-:- func ml_gen_constructor_function(compilation_target, mlds_class_id,
+:- func ml_gen_constructor_function(mlds_target_lang, mlds_class_id,
     mlds_type, mlds_module_name, mlds_class_id, maybe(int),
     list(mlds_field_info), prog_context) = mlds_function_defn.
 
@@ -71,12 +70,12 @@
 
     % Generate a data constructor name given the type constructor.
     %
-:- func ml_gen_du_ctor_name(compilation_target, type_ctor, sym_name, int)
+:- func ml_gen_du_ctor_name(mlds_target_lang, type_ctor, sym_name, int)
     = string.
 
     % As above but pass the unqualified type name directly.
     %
-:- func ml_gen_du_ctor_name_unqual_type(compilation_target, string, int,
+:- func ml_gen_du_ctor_name_unqual_type(mlds_target_lang, string, int,
     sym_name, int) = string.
 
 %-----------------------------------------------------------------------------%
@@ -120,7 +119,7 @@
 
     % Return whether this compilation target uses object constructors.
     %
-:- func ml_target_uses_constructors(compilation_target) = bool.
+:- func ml_target_uses_constructors(mlds_target_lang) = bool.
 
     % A description of a field in a compiler-generated data structure.
 :- type mlds_field_info
@@ -161,6 +160,8 @@
 :- import_module check_hlds.
 :- import_module check_hlds.polymorphism.
 :- import_module hlds.status.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module ml_backend.ml_code_util.
@@ -176,39 +177,40 @@
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_types(ModuleInfo, Defns) :-
+ml_gen_types(ModuleInfo, Target, Defns) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
         HighLevelData = yes,
         module_info_get_type_table(ModuleInfo, TypeTable),
         get_all_type_ctor_defns(TypeTable, TypeCtorDefns),
-        list.foldl(ml_gen_hld_type_defn_if_local(ModuleInfo), TypeCtorDefns,
-            [], Defns)
+        list.foldl(ml_gen_hld_type_defn_if_local(ModuleInfo, Target),
+            TypeCtorDefns, [], Defns)
     ;
         HighLevelData = no,
         Defns = []
     ).
 
-:- pred ml_gen_hld_type_defn_if_local(module_info::in,
+:- pred ml_gen_hld_type_defn_if_local(module_info::in, mlds_target_lang::in,
     pair(type_ctor, hlds_type_defn)::in,
     list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
 
-ml_gen_hld_type_defn_if_local(ModuleInfo, TypeCtor - TypeDefn, !Defns) :-
+ml_gen_hld_type_defn_if_local(ModuleInfo, Target, TypeCtor - TypeDefn,
+        !Defns) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     DefinedThisModule = type_status_defined_in_this_module(TypeStatus),
     (
         DefinedThisModule = yes,
-        ml_gen_hld_type_defn(ModuleInfo, TypeCtor, TypeDefn, !Defns)
+        ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns)
     ;
         DefinedThisModule = no
     ).
 
-:- pred ml_gen_hld_type_defn(module_info::in, type_ctor::in,
-    hlds_type_defn::in,
+:- pred ml_gen_hld_type_defn(module_info::in, mlds_target_lang::in,
+    type_ctor::in, hlds_type_defn::in,
     list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
 
-ml_gen_hld_type_defn(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
+ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
         ( TypeBody = hlds_abstract_type(_)
@@ -230,23 +232,19 @@ ml_gen_hld_type_defn(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
             ( DuTypeKind = du_type_kind_mercury_enum
             ; DuTypeKind = du_type_kind_foreign_enum(_)
             ),
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.get_target(Globals, Target),
             ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
                 MaybeEqualityMembers, !Defns)
         ;
             DuTypeKind = du_type_kind_direct_dummy,
             % XXX We shouldn't have to generate an MLDS type for these types,
             % but it is not easy to ensure that we never refer to that type.
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.get_target(Globals, Target),
             ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
                 MaybeEqualityMembers, !Defns)
         ;
             ( DuTypeKind = du_type_kind_notag(_, _, _)
             ; DuTypeKind = du_type_kind_general
             ),
-            ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn,
+            ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn,
                 Ctors, TagValues, MaybeEqualityMembers, !Defns)
         )
     ).
@@ -272,7 +270,7 @@ ml_gen_hld_type_defn(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     % Note that for Java the MR_value field is inherited from the
     % MercuryEnum class.
     %
-:- pred ml_gen_hld_enum_type(compilation_target::in, type_ctor::in,
+:- pred ml_gen_hld_enum_type(mlds_target_lang::in, type_ctor::in,
     hlds_type_defn::in, list(constructor)::in, cons_tag_values::in,
     list(mlds_field_var_defn)::in,
     list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
@@ -300,13 +298,12 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
     % Make all Java classes corresponding to types implement the MercuryType
     % interface and extend the MercuryEnum class.
     (
-        Target = target_java,
+        Target = ml_target_java,
         Implements = [ml_java_mercury_type_interface],
         Inherits = [ml_java_mercury_enum_class]
     ;
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_erlang
+        ( Target = ml_target_c
+        ; Target = ml_target_csharp
         ),
         Implements = [],
         Inherits = []
@@ -475,12 +472,12 @@ ml_gen_hld_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
     % for that constructor, instead we just allocate the fields
     % in the base class.
     %
-:- pred ml_gen_hld_du_type(module_info::in, type_ctor::in,
-    hlds_type_defn::in, list(constructor)::in, cons_tag_values::in,
-    list(mlds_field_var_defn)::in,
+:- pred ml_gen_hld_du_type(module_info::in, mlds_target_lang::in,
+    type_ctor::in, hlds_type_defn::in, list(constructor)::in,
+    cons_tag_values::in, list(mlds_field_var_defn)::in,
     list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
 
-ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
+ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, Ctors, TagValues,
         MaybeEqualityMembers, !Defns) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
@@ -490,8 +487,6 @@ ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         mlds_class),
     QualBaseClassName =
         qual_class_name(BaseClassModuleName, QualKind, BaseClassName),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
     BaseClassQualifier = mlds_append_class_qualifier(Target,
         BaseClassModuleName, QualKind, BaseClassName, BaseClassArity),
 
@@ -535,8 +530,9 @@ ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
     % or static (one_copy) member objects for constructors with
     % reserved_object representations, or fields and a constructor method
     % for the single_functor case.
-    list.foldl3(ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId,
-        BaseClassQualifier, TagClassId, TypeCtor, TypeDefn, TagValues),
+    list.foldl3(
+        ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId,
+            BaseClassQualifier, TagClassId, TypeCtor, TypeDefn, TagValues),
         Ctors, [], CtorMemberFields, [], CtorMemberClasses,
         [], BaseClassCtorMethods),
 
@@ -547,12 +543,11 @@ ml_gen_hld_du_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
     % Make all Java classes corresponding to types implement the MercuryType
     % interface.
     (
-        Target = target_java,
+        Target = ml_target_java,
         Implements = [ml_java_mercury_type_interface]
     ;
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_erlang
+        ( Target = ml_target_c
+        ; Target = ml_target_csharp
         ),
         Implements = []
     ),
@@ -646,7 +641,7 @@ ml_gen_hld_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
     % constructors use secondary tags.
     %
 :- pred ml_gen_hld_secondary_tag_class(prog_context::in, mlds_module_name::in,
-    mlds_class_id::in, list(mlds_field_var_defn)::in, compilation_target::in,
+    mlds_class_id::in, list(mlds_field_var_defn)::in, mlds_target_lang::in,
     mlds_class_defn::out, mlds_class_id::out) is det.
 
 ml_gen_hld_secondary_tag_class(Context, BaseClassQualifier, BaseClassId,
@@ -695,14 +690,14 @@ ml_gen_hld_secondary_tag_class(Context, BaseClassQualifier, BaseClassId,
     % - (for the single_functor case) a bunch of fields and
     %   a constructor method.
     %
-:- pred ml_gen_hld_du_ctor_member(module_info::in, mlds_class_id::in,
-    mlds_module_name::in, mlds_class_id::in, type_ctor::in, hlds_type_defn::in,
-    cons_tag_values::in, constructor::in,
+:- pred ml_gen_hld_du_ctor_member(module_info::in, mlds_target_lang::in,
+    mlds_class_id::in, mlds_module_name::in, mlds_class_id::in,
+    type_ctor::in, hlds_type_defn::in, cons_tag_values::in, constructor::in,
     list(mlds_field_var_defn)::in, list(mlds_field_var_defn)::out,
     list(mlds_class_defn)::in, list(mlds_class_defn)::out,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out) is det.
 
-ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
+ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
         SecondaryTagClassId, TypeCtor, TypeDefn, ConsTagValues, Ctor,
         BaseClassFields0, BaseClassFields, BaseClassClasses0, BaseClassClasses,
         BaseClassCtors0, BaseClassCtors) :-
@@ -713,10 +708,8 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     % Generate the class name for this constructor.
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    UnqualCtorName = ml_gen_du_ctor_name(Target, TypeCtor,
-        CtorName, CtorArity),
+    UnqualCtorName =
+        ml_gen_du_ctor_name(Target, TypeCtor, CtorName, CtorArity),
 
     TagVal = get_tagval(TypeCtor, ConsTagValues, Ctor),
     ( if tagval_is_reserved_addr(TagVal, ReservedAddr) then
@@ -826,7 +819,7 @@ ml_gen_hld_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             % zero-argument constructors.
             ( if
                 (
-                    Target = target_java
+                    Target = ml_target_java
                 ;
                     TagVal = shared_with_reserved_addresses_tag(RAs,
                         single_functor_tag),
@@ -904,13 +897,11 @@ tagval_is_reserved_addr(reserved_address_tag(RA), RA).
 tagval_is_reserved_addr(shared_with_reserved_addresses_tag(_, TagVal), RA) :-
     tagval_is_reserved_addr(TagVal, RA).
 
-:- func target_uses_empty_base_classes(compilation_target) = bool.
+:- func target_uses_empty_base_classes(mlds_target_lang) = bool.
 
-target_uses_empty_base_classes(target_c) = no.
-target_uses_empty_base_classes(target_csharp) = no.
-target_uses_empty_base_classes(target_java) = yes.
-target_uses_empty_base_classes(target_erlang) =
-    unexpected($pred, "target erlang").
+target_uses_empty_base_classes(ml_target_c) = no.
+target_uses_empty_base_classes(ml_target_csharp) = no.
+target_uses_empty_base_classes(ml_target_java) = yes.
 
 ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
         SecondaryTagClassId, MaybeTag, FieldInfos, Context) = CtorDefn :-
@@ -953,7 +944,7 @@ make_arg(FieldInfo) = Arg :-
 
     % Generate "this-><fieldname> = <fieldname>;".
     %
-:- func gen_init_field(compilation_target, mlds_class_id, mlds_type,
+:- func gen_init_field(mlds_target_lang, mlds_class_id, mlds_type,
     mlds_module_name, mlds_field_info) = mlds_stmt is det.
 
 gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, FieldInfo)
@@ -996,17 +987,15 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, FieldInfo)
     % as Java, and parameter names must all be unqualified.
     % XXX perhaps we should do the same for all back-ends?
     %
-:- func target_requires_module_qualified_params(compilation_target) = bool.
+:- func target_requires_module_qualified_params(mlds_target_lang) = bool.
 
-target_requires_module_qualified_params(target_c) = no.
-target_requires_module_qualified_params(target_csharp) = yes.
-target_requires_module_qualified_params(target_java) = yes.
-target_requires_module_qualified_params(target_erlang) =
-    unexpected($pred, "target erlang").
+target_requires_module_qualified_params(ml_target_c) = no.
+target_requires_module_qualified_params(ml_target_csharp) = yes.
+target_requires_module_qualified_params(ml_target_java) = yes.
 
     % Generate "this->data_tag = <TagVal>;".
     %
-:- func gen_init_tag(compilation_target, mlds_type, mlds_class_id, int,
+:- func gen_init_tag(mlds_target_lang, mlds_type, mlds_class_id, int,
     prog_context) = mlds_stmt.
 
 gen_init_tag(Target, ClassType, SecondaryTagClassId, TagVal, Context) = Stmt :-
@@ -1108,8 +1097,8 @@ ml_gen_du_ctor_name_unqual_type(CompilationTarget, UnqualTypeName, TypeArity,
         Name, Arity) = CtorName :-
     UnqualName = unqualify_name(Name),
     ( if
-        ( CompilationTarget = target_java
-        ; CompilationTarget = target_csharp
+        ( CompilationTarget = ml_target_java
+        ; CompilationTarget = ml_target_csharp
         ),
         UnqualName = UnqualTypeName,
         Arity = TypeArity
@@ -1207,11 +1196,9 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         UsesBaseClass = tag_does_not_use_base_class
     ).
 
-ml_target_uses_constructors(target_c) = no.
-ml_target_uses_constructors(target_csharp) = yes.
-ml_target_uses_constructors(target_java) = yes.
-ml_target_uses_constructors(target_erlang) =
-    unexpected($pred, "target erlang").
+ml_target_uses_constructors(ml_target_c) = no.
+ml_target_uses_constructors(ml_target_csharp) = yes.
+ml_target_uses_constructors(ml_target_java) = yes.
 
 %----------------------------------------------------------------------------%
 
