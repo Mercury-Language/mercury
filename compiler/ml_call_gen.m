@@ -474,7 +474,7 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
     ;
         CodeModel = model_semi,
         % Return a bool indicating whether or not it succeeded.
-        ml_success_lval(!.Info, Success),
+        ml_success_lval(Success, !Info),
         ArgRvals = ArgRvals0,
         RetLvals = [Success | RetLvals0],
         FuncDefns = []
@@ -789,7 +789,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
         (
             SimpleCode = test(SimpleTest),
             TestRval = ml_gen_simple_expr(SimpleTest),
-            ml_gen_set_success(!.Info, TestRval, Context, Stmt),
+            ml_gen_set_success(TestRval, Context, Stmt, !Info),
             Stmts = [Stmt]
         ;
             SimpleCode = ref_assign(_, _),

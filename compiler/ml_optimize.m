@@ -406,8 +406,8 @@ optimize_func_stmt(OptInfo, Context, Stmt0, Stmt) :-
         % would be faster.
         ModuleName = OptInfo ^ oi_module_name,
         FunctionName = OptInfo ^ oi_func_name,
-        some [Call] (
-            stmt_contains_statement(Stmt0, SubStmt),
+        some [SubStmt] (
+            statement_is_or_contains_statement(Stmt0, SubStmt),
             stmt_is_self_recursive_call_replaceable_with_jump_to_top(
                 ModuleName, FunctionName, SubStmt)
         )

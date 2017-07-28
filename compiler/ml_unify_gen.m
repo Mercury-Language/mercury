@@ -217,7 +217,7 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
         ml_gen_var(!.Info, VarA, VarALval),
         ml_gen_var(!.Info, VarB, VarBLval),
         Test = ml_binop(EqualityOp, ml_lval(VarALval), ml_lval(VarBLval)),
-        ml_gen_set_success(!.Info, Test, Context, Stmt),
+        ml_gen_set_success(Test, Context, Stmt, !Info),
         Stmts = [Stmt]
     ;
         Unification = construct(Var, ConsId, Args, ArgModes, HowToConstruct,
@@ -2124,8 +2124,8 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
 
 ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context, Stmts, !Info) :-
     ml_gen_tag_test(Var, ConsId, TagTestExpression, !Info),
-    ml_gen_set_success(!.Info, TagTestExpression, Context, SetTagTestResult),
-    ml_gen_test_success(!.Info, SucceededExpression),
+    ml_gen_set_success(TagTestExpression, Context, SetTagTestResult, !Info),
+    ml_gen_test_success(SucceededExpression, !Info),
     ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
         GetArgsStmts, !Info),
     (

@@ -339,8 +339,8 @@ ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
         Stmt = ml_stmt_block([], [], LookupStmts, Context)
     ;
         CodeModel = model_semi,
-        ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
-            SetSuccessTrueStmt),
+        ml_gen_set_success(ml_const(mlconst_true), Context, SetSuccessTrueStmt,
+            !Info),
         LookupSucceedStmt = ml_stmt_block([], [],
             LookupStmts ++ [SetSuccessTrueStmt], Context),
         (
@@ -353,8 +353,8 @@ ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
                 ml_generate_bitvec_test(MLDS_ModuleName, Context, IndexRval,
                     CaseValues, StartVal, EndVal, BitVecCheckCond, !Info),
 
-                ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
-                    SetSuccessFalseStmt),
+                ml_gen_set_success(ml_const(mlconst_false), Context,
+                    SetSuccessFalseStmt, !Info),
 
                 Stmt = ml_stmt_if_then_else(BitVecCheckCond,
                     LookupSucceedStmt, yes(SetSuccessFalseStmt), Context)
@@ -364,8 +364,8 @@ ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
             Difference = EndVal - StartVal,
             RangeCheckCond = ml_binop(unsigned_le, IndexRval,
                 ml_const(mlconst_int(Difference))),
-            ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
-                SetSuccessFalseStmt),
+            ml_gen_set_success(ml_const(mlconst_false), Context,
+                SetSuccessFalseStmt, !Info),
             (
                 NeedBitVecCheck = dont_need_bit_vec_check,
                 RangeCheckSuccessStmt = LookupSucceedStmt

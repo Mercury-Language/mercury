@@ -65,7 +65,7 @@
 %-----------------------------------------------------------------------------%
 
 ml_gen_trace_runtime_cond(TraceRuntimeCond, Context, Stmts, !Info) :-
-    ml_success_lval(!.Info, SuccessLval),
+    ml_success_lval(SuccessLval, !Info),
     ml_generate_runtime_cond_code(TraceRuntimeCond, CondRval, !Info),
     Stmt = ml_stmt_atomic(assign(SuccessLval, CondRval), Context),
     Stmts = [Stmt].
@@ -207,7 +207,7 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
         AssignSucceeded = []
     ;
         OrdinaryKind = kind_semi,
-        ml_success_lval(!.Info, SucceededLval),
+        ml_success_lval(SucceededLval, !Info),
         (
             TargetLang = ml_target_java,
             BoolType = "boolean"
@@ -224,7 +224,7 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
         ]
     ;
         OrdinaryKind = kind_failure,
-        ml_success_lval(!.Info, SucceededLval),
+        ml_success_lval(SucceededLval, !Info),
         SucceededDecl = [],
         AssignSucceeded = [
             raw_target_code("\t"),
@@ -289,7 +289,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
     module_info_get_name(ModuleInfo, ModuleName),
     MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
 
-    ml_success_lval(!.Info, SucceededLval),
+    ml_success_lval(SucceededLval, !Info),
     (
         OrdinaryKind = kind_det,
         SuccessVarLocals = [],
@@ -471,7 +471,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         % foreign_procs the C code fragment won't assign anything
         % SUCCESS_INDICATOR; the code we generate for CanSucceed = yes
         % would test an undefined value.
-        ml_success_lval(!.Info, SucceededLval),
+        ml_success_lval(SucceededLval, !Info),
         StartingFragments = list.condense([
             [raw_target_code("{\n")],
             HashDefineAllocId,
@@ -494,7 +494,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         ]
     ;
         OrdinaryKind = kind_semi,
-        ml_success_lval(!.Info, SucceededLval),
+        ml_success_lval(SucceededLval, !Info),
         StartingFragments = list.condense([
             [raw_target_code("{\n")],
             HashDefineAllocId,

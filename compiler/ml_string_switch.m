@@ -247,8 +247,8 @@ ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
         LookupStmts = CommentedFieldAssignStmts
     ;
         CodeModel = model_semi,
-        ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
-            SetSuccessTrueStmt),
+        ml_gen_set_success(ml_const(mlconst_true), Context, SetSuccessTrueStmt,
+            !Info),
         LookupStmts = CommentedFieldAssignStmts ++ [SetSuccessTrueStmt]
     ;
         CodeModel = model_non,
@@ -1114,8 +1114,8 @@ ml_generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         MatchStmts = [FoundMatchCommentStmt | LookupStmts]
     ;
         CodeModel = model_semi,
-        ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
-            SetSuccessTrueStmt),
+        ml_gen_set_success(ml_const(mlconst_true), Context, SetSuccessTrueStmt,
+            !Info),
         MatchStmts = [FoundMatchCommentStmt | LookupStmts] ++
             [SetSuccessTrueStmt]
     ;
@@ -1495,8 +1495,8 @@ ml_gen_string_hash_switch_search(InitialComment,
             InitSuccessStmts = []
         ;
             CodeModel = model_semi,
-            ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
-                InitSuccessStmt),
+            ml_gen_set_success(ml_const(mlconst_false), Context,
+                InitSuccessStmt, !Info),
             InitSuccessStmts = [InitSuccessStmt]
         ;
             CodeModel = model_non,
@@ -1732,8 +1732,8 @@ ml_generate_string_binary_simple_lookup_switch(VarRval, CaseValues0,
         MatchStmts = GetArgStmts
     ;
         CodeModel = model_semi,
-        ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
-            SetSuccessTrueStmt),
+        ml_gen_set_success(ml_const(mlconst_true), Context, SetSuccessTrueStmt,
+            !Info),
         MatchStmts = GetArgStmts ++ [SetSuccessTrueStmt]
     ;
         CodeModel = model_non,

@@ -929,7 +929,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
         ml_gen_goal(model_semi, Cond,
             CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
-        ml_gen_test_success(!.Info, Succeeded),
+        ml_gen_test_success(Succeeded, !Info),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
         ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
         ml_gen_goal_as_block(CodeModel, Else, ElseStmt, !Info),
@@ -1051,8 +1051,8 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         CodeModel = model_semi, CondCodeModel = model_det,
         ml_gen_goal_as_branch(model_det, Cond,
             CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
-        ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
-            SetSuccessFalse),
+        ml_gen_set_success(ml_const(mlconst_false), Context, SetSuccessFalse,
+            !Info),
         LocalVarDefns = CondLocalVarDefns,
         FuncDefns = CondFuncDefns,
         Stmts = CondStmts ++ [SetSuccessFalse]
@@ -1066,9 +1066,9 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         CodeModel = model_semi, CondCodeModel = model_semi,
         ml_gen_goal_as_branch(model_semi, Cond,
             CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
-        ml_gen_test_success(!.Info, Succeeded),
-        ml_gen_set_success(!.Info, ml_unop(std_unop(logical_not), Succeeded),
-            Context, InvertSuccess),
+        ml_gen_test_success(Succeeded, !Info),
+        ml_gen_set_success(ml_unop(std_unop(logical_not), Succeeded),
+            Context, InvertSuccess, !Info),
         LocalVarDefns = CondLocalVarDefns,
         FuncDefns = CondFuncDefns,
         Stmts = CondStmts ++ [InvertSuccess]
@@ -1167,8 +1167,8 @@ ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
             %   <do Goal>
             %   succeeded = MR_TRUE
 
-            ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
-                SetSuccessTrue),
+            ml_gen_set_success(ml_const(mlconst_true), Context, SetSuccessTrue,
+                !Info),
             !:Stmts = !.Stmts ++ [SetSuccessTrue]
         ;
             OuterCodeModel = model_non,
@@ -1194,7 +1194,7 @@ ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
             %   <succeeded = Goal>
             %   if (succeeded) SUCCEED()
 
-            ml_gen_test_success(!.Info, Succeeded),
+            ml_gen_test_success(Succeeded, !Info),
             ml_gen_call_current_success_cont(Context, CallCont, !Info),
             IfStmt = ml_stmt_if_then_else(Succeeded, CallCont, no, Context),
             !:Stmts = !.Stmts ++ [IfStmt]

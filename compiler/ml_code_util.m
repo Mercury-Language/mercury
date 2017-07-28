@@ -54,9 +54,10 @@
     % Append an appropriate `return' statement for the given code_model
     % and returning the given lvals, if needed.
     %
-:- pred ml_append_return_statement(ml_gen_info::in, code_model::in,
+:- pred ml_append_return_statement(code_model::in,
     list(mlds_lval)::in, prog_context::in,
-    list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
+    list(mlds_stmt)::in, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate a block statement, i.e. `{ <Decls>; <Stmts>; }'.
     % But if the block consists only of a single statement with no
@@ -395,18 +396,20 @@
     % (`succeeded' is a boolean variable used to record
     % the success or failure of model_semi procedures.)
     %
-:- pred ml_success_lval(ml_gen_info::in, mlds_lval::out) is det.
+:- pred ml_success_lval(mlds_lval::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
     % Return an rval which will test the value of the `succeeded' flag.
     % (`succeeded' is a boolean variable used to record
     % the success or failure of model_semi procedures.)
     %
-:- pred ml_gen_test_success(ml_gen_info::in, mlds_rval::out) is det.
+:- pred ml_gen_test_success(mlds_rval::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate code to set the `succeeded' flag to the specified truth value.
     %
-:- pred ml_gen_set_success(ml_gen_info::in, mlds_rval::in, prog_context::in,
-    mlds_stmt::out) is det.
+:- pred ml_gen_set_success(mlds_rval::in, prog_context::in, mlds_stmt::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate the declaration for the specified `cond' variable.
     % (`cond' variables are boolean variables used to record
@@ -567,11 +570,11 @@ ml_gen_assign(Lval, Rval, Context) = Stmt :-
     Assign = assign(Lval, Rval),
     Stmt = ml_stmt_atomic(Assign, Context).
 
-ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
-        !Stmts) :-
+ml_append_return_statement(CodeModel, CopiedOutputVarLvals, Context,
+        !Stmts, !Info) :-
     (
         CodeModel = model_semi,
-        ml_gen_test_success(Info, Succeeded),
+        ml_gen_test_success(Succeeded, !Info),
         CopiedOutputVarRvals = list.map(func(Lval) = ml_lval(Lval),
             CopiedOutputVarLvals),
         ReturnedRvals = [Succeeded | CopiedOutputVarRvals],
@@ -637,7 +640,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 
         FirstCodeModel = model_semi,
         DoGenFirst(FirstLocalVarDefns, FirstFuncDefns, FirstStmts, !Info),
-        ml_gen_test_success(!.Info, Succeeded),
+        ml_gen_test_success(Succeeded, !Info),
         DoGenRest(RestLocalVarDefns, RestFuncDefns, RestStmts, !Info),
         ThenStmt = ml_gen_block([], [], RestStmts, Context),
         ITEStmt = ml_stmt_if_then_else(Succeeded, ThenStmt, no, Context),
@@ -1727,8 +1730,8 @@ ml_gen_success(CodeModel, Context, Stmts, !Info) :-
         % ===>
         %   succeeded = MR_TRUE;
         %
-        ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
-            SetSuccessTrue),
+        ml_gen_set_success(ml_const(mlconst_true), Context, SetSuccessTrue,
+            !Info),
         Stmts = [SetSuccessTrue]
     ;
         CodeModel = model_non,
@@ -1754,8 +1757,8 @@ ml_gen_failure(CodeModel, Context, Stmts, !Info) :-
         % ===>
         %   succeeded = MR_FALSE;
         %
-        ml_gen_set_success(!.Info, ml_const(mlconst_false), Context,
-            SetSuccessFalse),
+        ml_gen_set_success(ml_const(mlconst_false), Context, SetSuccessFalse,
+            !Info),
         Stmts = [SetSuccessFalse]
     ;
         CodeModel = model_non,
@@ -1774,16 +1777,17 @@ ml_gen_succeeded_var_decl(Context) =
     ml_gen_mlds_var_decl(lvn_comp_var(lvnc_succeeded), mlds_native_bool_type,
         gc_no_stmt, Context).
 
-ml_success_lval(Info, SucceededLval) :-
-    ml_gen_local_var_lval(Info, lvn_comp_var(lvnc_succeeded),
-        mlds_native_bool_type, SucceededLval).
+ml_success_lval(SucceededLval, !Info) :-
+    ml_gen_local_var_lval(!.Info, lvn_comp_var(lvnc_succeeded),
+        mlds_native_bool_type, SucceededLval),
+    ml_gen_info_set_used_succeeded_var(yes, !Info).
 
-ml_gen_test_success(Info, SucceededRval) :-
-    ml_success_lval(Info, SucceededLval),
+ml_gen_test_success(SucceededRval, !Info) :-
+    ml_success_lval(SucceededLval, !Info),
     SucceededRval = ml_lval(SucceededLval).
 
-ml_gen_set_success(Info, Value, Context, Stmt) :-
-    ml_success_lval(Info, Succeeded),
+ml_gen_set_success(Value, Context, Stmt, !Info) :-
+    ml_success_lval(Succeeded, !Info),
     Stmt = ml_gen_assign(Succeeded, Value, Context).
 
 %-----------------------------------------------------------------------------%

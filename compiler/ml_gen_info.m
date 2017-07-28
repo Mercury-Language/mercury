@@ -83,6 +83,7 @@
     is det.
 :- pred ml_gen_info_get_disabled_warnings(ml_gen_info::in,
     set(goal_warning)::out) is det.
+:- pred ml_gen_info_get_used_succeeded_var(ml_gen_info::in, bool::out) is det.
 
 :- pred ml_gen_info_set_module_info(module_info::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -101,6 +102,8 @@
 :- pred ml_gen_info_set_const_var_map(map(prog_var, ml_ground_term)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_disabled_warnings(set(goal_warning)::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_used_succeeded_var(bool::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_gen_info_get_globals(ml_gen_info::in, globals::out) is det.
@@ -360,7 +363,9 @@
                 %
 /* 15 */        mgsi_env_var_names      :: set(string),
 
-/* 16 */        mgsi_disabled_warnings  :: set(goal_warning)
+/* 16 */        mgsi_disabled_warnings  :: set(goal_warning),
+
+/* 17 */        mgsi_used_succeeded_var :: bool
             ).
 
 ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
@@ -393,6 +398,7 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
     ClosureWrapperDefns = [],
     set.init(EnvVarNames),
     set.init(DisabledWarnings),
+    UsedSucceededVar = no,
 
     SubInfo = ml_gen_sub_info(
         HighLevelData,
@@ -410,7 +416,8 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
         ClosureWrapperDefns,
         SuccContStack,
         EnvVarNames,
-        DisabledWarnings
+        DisabledWarnings,
+        UsedSucceededVar
     ),
     Info = ml_gen_info(
         ModuleInfo,
@@ -478,6 +485,8 @@ ml_gen_info_get_env_var_names(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_env_var_names.
 ml_gen_info_get_disabled_warnings(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_disabled_warnings.
+ml_gen_info_get_used_succeeded_var(Info, X) :-
+    X = Info ^ mgi_sub_info ^ mgsi_used_succeeded_var.
 
 :- pred ml_gen_info_set_func_counter(counter::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -496,60 +505,64 @@ ml_gen_info_get_disabled_warnings(Info, X) :-
 :- pred ml_gen_info_set_env_var_names(set(string)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_info_set_module_info(ModuleInfo, !Info) :-
-    !Info ^ mgi_module_info := ModuleInfo.
-ml_gen_info_set_varset(VarSet, !Info) :-
-    !Info ^ mgi_varset := VarSet.
-ml_gen_info_set_var_types(VarTypes, !Info) :-
-    !Info ^ mgi_var_types := VarTypes.
-ml_gen_info_set_byref_output_vars(OutputVars, !Info) :-
-    !Info ^ mgi_byref_output_vars := OutputVars.
-ml_gen_info_set_value_output_vars(OutputVars, !Info) :-
-    !Info ^ mgi_value_output_vars := OutputVars.
-ml_gen_info_set_var_lvals(VarLvals, !Info) :-
-    !Info ^ mgi_var_lvals := VarLvals.
-ml_gen_info_set_global_data(GlobalData, !Info) :-
-    !Info ^ mgi_global_data := GlobalData.
+ml_gen_info_set_module_info(X, !Info) :-
+    !Info ^ mgi_module_info := X.
+ml_gen_info_set_varset(X, !Info) :-
+    !Info ^ mgi_varset := X.
+ml_gen_info_set_var_types(X, !Info) :-
+    !Info ^ mgi_var_types := X.
+ml_gen_info_set_byref_output_vars(X, !Info) :-
+    !Info ^ mgi_byref_output_vars := X.
+ml_gen_info_set_value_output_vars(X, !Info) :-
+    !Info ^ mgi_value_output_vars := X.
+ml_gen_info_set_var_lvals(X, !Info) :-
+    !Info ^ mgi_var_lvals := X.
+ml_gen_info_set_global_data(X, !Info) :-
+    !Info ^ mgi_global_data := X.
 
-ml_gen_info_set_func_counter(FuncCounter, !Info) :-
+ml_gen_info_set_func_counter(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_func_counter := FuncCounter,
+    SubInfo = SubInfo0 ^ mgsi_func_counter := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_label_counter(LabelCounter, !Info) :-
+ml_gen_info_set_label_counter(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_label_counter := LabelCounter,
+    SubInfo = SubInfo0 ^ mgsi_label_counter := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_aux_var_counter(AuxVarCounter, !Info) :-
+ml_gen_info_set_aux_var_counter(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_aux_var_counter := AuxVarCounter,
+    SubInfo = SubInfo0 ^ mgsi_aux_var_counter := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_cond_var_counter(CondVarCounter, !Info) :-
+ml_gen_info_set_cond_var_counter(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_cond_var_counter := CondVarCounter,
+    SubInfo = SubInfo0 ^ mgsi_cond_var_counter := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_conv_var_counter(ConvVarCounter, !Info) :-
+ml_gen_info_set_conv_var_counter(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_conv_var_counter := ConvVarCounter,
+    SubInfo = SubInfo0 ^ mgsi_conv_var_counter := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_const_var_map(ConstVarMap, !Info) :-
+ml_gen_info_set_const_var_map(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_const_var_map := ConstVarMap,
+    SubInfo = SubInfo0 ^ mgsi_const_var_map := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_success_cont_stack(SuccessContStack, !Info) :-
+ml_gen_info_set_success_cont_stack(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_success_cont_stack := SuccessContStack,
+    SubInfo = SubInfo0 ^ mgsi_success_cont_stack := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_closure_wrapper_defns(ClosureWrapperDefns, !Info) :-
+ml_gen_info_set_closure_wrapper_defns(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_closure_wrapper_defns := ClosureWrapperDefns,
+    SubInfo = SubInfo0 ^ mgsi_closure_wrapper_defns := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_env_var_names(EnvVarNames, !Info) :-
+ml_gen_info_set_env_var_names(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_env_var_names := EnvVarNames,
+    SubInfo = SubInfo0 ^ mgsi_env_var_names := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_disabled_warnings(DisabledWarnings, !Info) :-
+ml_gen_info_set_disabled_warnings(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_disabled_warnings := DisabledWarnings,
+    SubInfo = SubInfo0 ^ mgsi_disabled_warnings := X,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_used_succeeded_var(X, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_used_succeeded_var := X,
     !Info ^ mgi_sub_info := SubInfo.
 
 %-----------------------------------------------------------------------------%

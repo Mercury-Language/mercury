@@ -383,7 +383,7 @@ ml_gen_procs(Target, ConstStructMap, [PredProcId | PredProcIds],
     module_info::in, module_info::out) is det.
 
 ml_gen_proc(Target, ConstStructMap, PredProcId,
-        !FunctionDefns, !GlobalData, !ModuleInfo) :-
+        !FuncDefns, !GlobalData, !ModuleInfo) :-
     trace [io(!IO)] (
         write_proc_progress_message("% Generating MLDS code for ",
             PredProcId, !.ModuleInfo, !IO)
@@ -430,8 +430,8 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
             % For example, for C it outputs a function declaration with no
             % corresponding definition, making sure that the function is
             % declared as `extern' rather than `static'.
-            FunctionBody = body_external,
-            ExtraDefns = [],
+            FuncBody = body_external,
+            ClosureWrapperFuncDefns = [],
             ml_gen_proc_params(PredId, ProcId, MLDS_Params, !.Info, _Info)
         else
             % Set up the initial success continuation, if any.
@@ -449,10 +449,16 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
                     !Info)
             ),
 
+            modes_to_top_functor_modes(!.ModuleInfo, Modes, ArgTypes,
+                TopFunctorModes),
+            ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
+                CopiedOutputVars, Goal, LocalVarDefns0, FuncDefns, Statements,
+                !Info),
+
             % This would generate all the local variables at the top of
             % the function:
             %   ml_gen_all_local_var_decls(Goal,
-            %       VarSet, VarTypes, HeadVars, MLDS_LocalVars, Info1, Info2)
+            %       VarSet, VarTypes, HeadVars, MLDS_LocalVars, !Info)
             % But instead we now generate them locally for each goal.
             % We just declare the `succeeded' var here, plus locals
             % for any output arguments that are returned by value
@@ -473,21 +479,23 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
                 ml_gen_local_var_decls(VarSet, UpdatedVarTypes,
                     Context, CopiedOutputVars, OutputVarLocalDefns, !Info)
             ),
-            ProcLocalVarDefns = [ml_gen_succeeded_var_decl(Context) |
-                OutputVarLocalDefns],
-            modes_to_top_functor_modes(!.ModuleInfo, Modes, ArgTypes,
-                TopFunctorModes),
-            ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
-                CopiedOutputVars, Goal, LocalVarDefns0, FuncDefns, Statements,
-                !Info),
+            ml_gen_info_get_used_succeeded_var(!.Info, UsedSucceededVar),
+            (
+                UsedSucceededVar = no,
+                ProcLocalVarDefns = OutputVarLocalDefns
+            ;
+                UsedSucceededVar = yes,
+                ProcLocalVarDefns = [ml_gen_succeeded_var_decl(Context) |
+                    OutputVarLocalDefns]
+            ),
             ml_gen_proc_params(PredId, ProcId, MLDS_Params, !Info),
-            ml_gen_info_get_closure_wrapper_defns(!.Info, ExtraDefns),
+            ml_gen_info_get_closure_wrapper_defns(!.Info,
+                ClosureWrapperFuncDefns),
             ml_gen_info_get_global_data(!.Info, !:GlobalData),
             LocalVarDefns = ProcLocalVarDefns ++ LocalVarDefns0,
             Statement = ml_gen_block(LocalVarDefns, FuncDefns, Statements,
                 Context),
-            FunctionBody = body_defined_here(Statement)
-
+            FuncBody = body_defined_here(Statement)
         ),
         % XXX Can env_var_names be affected by body_external?
         % If, as I (zs) suspect, it cannot, this should be inside the previous
@@ -506,10 +514,10 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
     attributes_to_attribute_list(Attributes, AttributeList),
     MLDS_Attributes =
         attributes_to_mlds_attributes(!.ModuleInfo, AttributeList),
-    FunctionDefn = mlds_function_defn(mlds_function_name(PlainFuncName),
+    FuncDefn = mlds_function_defn(mlds_function_name(PlainFuncName),
         ProcContext, DeclFlags, MaybePredProcId, MLDS_Params,
-        FunctionBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfo),
-    !:FunctionDefns = ExtraDefns ++ [FunctionDefn | !.FunctionDefns].
+        FuncBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfo),
+    !:FuncDefns = ClosureWrapperFuncDefns ++ [FuncDefn | !.FuncDefns].
 
     % Return the declaration flags appropriate for a procedure definition.
     %
@@ -652,8 +660,8 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
     ),
 
     % Finally append an appropriate `return' statement, if needed.
-    ml_append_return_statement(!.Info, CodeModel, CopiedOutputVarOriginalLvals,
-        Context, Statements1, Statements).
+    ml_append_return_statement(CodeModel, CopiedOutputVarOriginalLvals,
+        Context, Statements1, Statements, !Info).
 
     % In certain cases -- for example existentially typed procedures,
     % or unification/compare procedures for equivalence types --
