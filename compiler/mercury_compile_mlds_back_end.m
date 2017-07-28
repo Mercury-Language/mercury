@@ -411,12 +411,20 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
     globals.lookup_accumulating_option(Globals, dump_mlds, DumpStages),
     globals.lookup_accumulating_option(Globals, verbose_dump_mlds,
         VerboseDumpStages),
+    globals.lookup_accumulating_option(Globals, dump_mlds_pred_name,
+        DumpPredNames),
     StageNumStr = stage_num_str(StageNum),
     ( if should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) then
         maybe_write_string(Verbose, "% Dumping out MLDS as C...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         DumpSuffix = "_dump." ++ StageNumStr ++ "-" ++ StageName,
-        output_c_mlds(MLDS, Globals, DumpSuffix, _Succeeded, !IO),
+        (
+            DumpPredNames = [],
+            output_c_mlds(MLDS, Globals, DumpSuffix, _Succeeded, !IO)
+        ;
+            DumpPredNames = [_ | _],
+            output_c_dump_preds(MLDS, Globals, DumpSuffix, DumpPredNames, !IO)
+        ),
         maybe_write_string(Verbose, "% done.\n", !IO)
     else
         true

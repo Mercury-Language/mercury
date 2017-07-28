@@ -35,10 +35,11 @@
 
 :- import_module bool.
 :- import_module io.
+:- import_module list.
 
 %---------------------------------------------------------------------------%
 
-    % output_c_mlds(MLDS, Globals, Suffix, Succeeded):
+    % output_c_mlds(MLDS, Globals, Suffix, Succeeded, !IO):
     %
     % Output C code to the appropriate C file and C declarations to the
     % appropriate header file. The file names are determined by the module
@@ -48,6 +49,15 @@
     %
 :- pred output_c_mlds(mlds::in, globals::in, string::in, bool::out,
     io::di, io::uo) is det.
+
+    % output_c_dump_preds(MLDS, Globals, Suffix, DumpPreds, !IO):
+    %
+    % Output C code for the predicates and/or functions whose names
+    % occurs in DumpPreds. The file name to write to is determined similarly
+    % to how output_c_mlds does it, but with ".mlds_dump" replacing ".c".
+    %
+:- pred output_c_dump_preds(mlds::in, globals::in, string::in,
+    list(string)::in, io::di, io::uo) is det.
 
 :- func mlds_tabling_data_name(mlds_proc_label, proc_tabling_struct_id)
     = string.
@@ -92,7 +102,6 @@
 :- import_module float.
 :- import_module int.
 :- import_module library.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -183,6 +192,8 @@ init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
         HighLevelData, ProfileCalls, ProfileMemory, ProfileTime, ProfileAny,
         Target, GCMethod, StdFuncDecls, Globals).
 
+%---------------------------------------------------------------------------%
+
 output_c_mlds(MLDS, Globals, Suffix, Succeeded, !IO) :-
     % We output the source file before we output the header.
     % The reason why we need this order is that the mmake dependencies
@@ -246,6 +257,47 @@ output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     ;
         Succeeded = no
     ).
+
+%---------------------------------------------------------------------------%
+
+output_c_dump_preds(MLDS, Globals, Suffix, DumpPredNames, !IO) :-
+    ModuleName = mlds_get_module_name(MLDS),
+    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
+    Opts = init_mlds_to_c_opts(Globals, SourceFileName),
+    module_name_to_file_name(Globals, do_create_dirs, ".mlds_dump" ++ Suffix,
+        ModuleName, DumpFileName, !IO),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    ProcDefns = MLDS ^ mlds_proc_defns,
+    output_to_file(Globals, DumpFileName,
+        mlds_output_named_function_defns(Opts, DumpPredNames, MLDS_ModuleName,
+            ProcDefns),
+        _Succeeded, !IO).
+
+:- pred mlds_output_named_function_defns(mlds_to_c_opts::in,
+    list(string)::in, mlds_module_name::in, list(mlds_function_defn)::in,
+    io::di, io::uo) is det.
+
+mlds_output_named_function_defns(_Opts, _DumpPredNames, _ModuleName, [], !IO).
+mlds_output_named_function_defns(Opts, DumpPredNames, ModuleName,
+        [FuncDefn | FuncDefns], !IO) :-
+    FuncName = FuncDefn ^ mfd_function_name,
+    ( if
+        FuncName = mlds_function_name(PlainFuncName),
+        PlainFuncName = mlds_plain_func_name(PredLabel,
+            _ProcId, _MaybeFuncSeq, _PredId),
+        PredLabel = mlds_user_pred_label(_PredOrFunc, _DeclModule, Name,
+            _Arity, _CodeModel, _MaybeReturnValue),
+        list.member(Name, DumpPredNames)
+    then
+        Indent = 0,
+        mlds_output_function_defn(Opts, Indent, ModuleName, FuncDefn, !IO)
+    else
+        true
+    ),
+    mlds_output_named_function_defns(Opts, DumpPredNames, ModuleName,
+        FuncDefns, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- pred mlds_output_hdr_file(mlds_to_c_opts::in, indent::in, mlds::in,
     io::di, io::uo) is det.

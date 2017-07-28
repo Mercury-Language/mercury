@@ -335,6 +335,7 @@
     ;       dump_hlds_file_suffix
     ;       dump_same_hlds
     ;       dump_mlds
+    ;       dump_mlds_pred_name
     ;       verbose_dump_mlds
     ;       mode_constraints
     ;       simple_mode_constraints
@@ -1316,6 +1317,7 @@ option_defaults_2(aux_output_option, [
     dump_hlds_file_suffix               -   string(""),
     dump_same_hlds                      -   bool(no),
     dump_mlds                           -   accumulating([]),
+    dump_mlds_pred_name                 -   accumulating([]),
     verbose_dump_mlds                   -   accumulating([]),
     mode_constraints                    -   bool(no),
     simple_mode_constraints             -   bool(no),
@@ -2245,6 +2247,7 @@ long_option("dump-hlds-inst-limit",     dump_hlds_inst_limit).
 long_option("dump-hlds-file-suffix",    dump_hlds_file_suffix).
 long_option("dump-same-hlds",           dump_same_hlds).
 long_option("dump-mlds",                dump_mlds).
+long_option("dump-mlds-pred-name",      dump_mlds_pred_name).
 long_option("mlds-dump",                dump_mlds).
 long_option("verbose-dump-mlds",        verbose_dump_mlds).
 long_option("verbose-mlds-dump",        verbose_dump_mlds).
@@ -4332,6 +4335,13 @@ options_help_aux_output -->
         "\tand `<module>.h_dump.<num>-<name>'.",
         "\tStage numbers range from 1-99.",
         "\tMultiple dump options accumulate.",
+        "--dump-mlds-pred-name <pred or func name>",
+        "\tDump the MLDS (medium level intermediate representation)",
+        "\tof the predicate or function with the specified name",
+        "\tat the stages specified by the --dump-mlds option.",
+        "\tThe dump file will consist of the predicates and functions",
+        "\tnamed by all the occurrences of this option (there may be",
+        "\tmore than one), and nothing else.",
         "--verbose-dump-mlds <stage number or name>",
         "\tDump the internal compiler representation of the MLDS, after",
         "\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'."

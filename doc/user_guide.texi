@@ -7485,6 +7485,16 @@ The special stage name @samp{all} causes the dumping of all stages.
 Multiple dump options accumulate.
 
 @sp 1
+@item --dump-mlds-pred-name @var{name}
+@findex --dump-mlds-pred-name
+Dump the MLDS (medium level intermediate representation)
+of the predicate or function with the specified name
+at the stages specified by the @samp{--dump-mlds} option.
+The dump file will consist of the predicates and functions
+named by all the occurrences of this option (there may be
+more than one), and nothing else.
+
+@sp 1
 @item --verbose-dump-mlds @var{stage}
 @findex --verbose-dump-mlds
 Dump the internal compiler representation of the MLDS,
