@@ -62,8 +62,6 @@
 :- pred ml_gen_info_get_var_types(ml_gen_info::in, vartypes::out) is det.
 :- pred ml_gen_info_get_byref_output_vars(ml_gen_info::in, list(prog_var)::out)
     is det.
-:- pred ml_gen_info_get_value_output_vars(ml_gen_info::in, list(prog_var)::out)
-    is det.
 :- pred ml_gen_info_get_var_lvals(ml_gen_info::in,
     map(prog_var, mlds_lval)::out) is det.
 :- pred ml_gen_info_get_global_data(ml_gen_info::in, ml_global_data::out)
@@ -92,8 +90,6 @@
 :- pred ml_gen_info_set_var_types(vartypes::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_byref_output_vars(list(prog_var)::in,
-    ml_gen_info::in, ml_gen_info::out) is det.
-:- pred ml_gen_info_set_value_output_vars(list(prog_var)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_var_lvals(map(prog_var, mlds_lval)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -280,61 +276,19 @@
 %
 % The definition of the `ml_gen_info' ADT.
 %
+% The ml_gen_info structure is logically an atomic structure,
+% but we split it up into three pieces for performance reasons.
+% The most frequently updated fields are at the top level, in the ml_gen_info
+% structure, whose size is limited to eight fields. This makes it (just) fit
+% into one of Boehm gc's size categories, and it limits the amount of copying
+% that needs to be done when one of the fields is updated. The other fields
+% are stored in one of two substructures. The ml_gen_rare_info is for the
+% fields that are never or almost-never updated, while the ml_gen_sub_info
+% is for the fields that are updated reasonably frequently, though not
+% so frequently as to deserve a spot in the top level structure.
 
 :- type ml_gen_info
     --->    ml_gen_info(
-/*  1 */        mgi_module_info         :: module_info,
-
-                % These fields remain constant for each procedure unless
-                % accurate GC is enabled, in which case they may get updated
-                % if we create fresh variables for the type_info variables
-                % needed for calls to private_builtin.gc_trace.
-/*  2 */        mgi_varset              :: prog_varset,
-/*  3 */        mgi_var_types           :: vartypes,
-
-                % Output arguments that are passed by reference.
-/*  4 */        mgi_byref_output_vars   :: list(prog_var),
-
-                % Output arguments that are returned as values.
-/*  5 */        mgi_value_output_vars   :: list(prog_var),
-
-                % Definitions of functions or global constants which should be
-                % inserted before the definition of the function for the
-                % current procedure.
-                % 
-                % XXX The get function of this field used to have the comment
-                % "Get the partial mapping from variables to lvals.", which
-                % is quite far from the above.
-                %
-/*  6 */        mgi_var_lvals           :: map(prog_var, mlds_lval),
-
-/*  7 */        mgi_global_data         :: ml_global_data,
-
-                % All of the other pieces of information that are not among
-                % the most frequently read and/or written fields. Limiting
-                % ml_gen_info to eight fields make updating the structure
-                % quicker and less wasteful of memory.
-/*  8 */        mgi_sub_info            :: ml_gen_sub_info
-            ).
-
-:- type ml_gen_sub_info
-    --->    ml_gen_sub_info(
-                % Quick-access read-only copies of parts of the globals
-                % structure taken from the module_info.
-/*  1 */        mgsi_high_level_data    :: bool,
-/*  2 */        mgsi_target             :: mlds_target_lang,
-/*  3 */        mgsi_gc                 :: gc_method,
-
-                % The identity of the procedure we are generating code for.
-/*  4 */        mgsi_pred_id            :: pred_id,
-/*  5 */        mgsi_proc_id            :: proc_id,
-
-/*  6 */        mgsi_func_counter       :: counter,
-/*  7 */        mgsi_label_counter      :: counter,
-/*  8 */        mgsi_aux_var_counter    :: counter,
-/*  9 */        mgsi_cond_var_counter   :: counter,
-/* 10 */        mgsi_conv_var_counter   :: counter,
-
                 % A variable can be bound to a constant in one branch
                 % of a control structure and to a non-constant term
                 % in another branch. We store information about variables
@@ -349,24 +303,106 @@
                 % correctness depends on the exact route that
                 % execution took to there).
                 %
-/* 11 */        mgsi_const_var_map      :: map(prog_var, ml_ground_term),
+/*  1 */        mgi_const_var_map       :: map(prog_var, ml_ground_term),
 
-/* 12 */        mgsi_const_struct_map   :: map(int, ml_ground_term),
+/*  2 */        mgi_func_counter        :: counter,
+/*  3 */        mgi_conv_var_counter    :: counter,
+/*  4 */        mgi_used_succeeded_var  :: bool,
 
-/* 13 */        mgsi_closure_wrapper_defns :: list(mlds_function_defn),
+/*  5 */        mgi_closure_wrapper_defns :: list(mlds_function_defn),
 
-                % A partial mapping from vars to lvals, used to override
-                % the normal lval that we use for a variable.
-/* 14 */        mgsi_success_cont_stack :: stack(success_cont),
+/*  6 */        mgi_global_data         :: ml_global_data,
 
-                % The set of used environment variables.
-                %
-/* 15 */        mgsi_env_var_names      :: set(string),
-
-/* 16 */        mgsi_disabled_warnings  :: set(goal_warning),
-
-/* 17 */        mgsi_used_succeeded_var :: bool
+/*  7 */        mgi_rare_info           :: ml_gen_rare_info,
+/*  8 */        mgi_sub_info            :: ml_gen_sub_info
             ).
+
+:- type ml_gen_rare_info
+    --->    ml_gen_rare_info(
+                % The module_info. Read-only unless accurate gc needs to make
+                % new type_info variables.
+/*  1 */        mgri_module_info        :: module_info,
+
+                % The identity of the procedure we are generating code for.
+                % Read-only.
+/*  2 */        mgri_pred_id            :: pred_id,
+/*  3 */        mgri_proc_id            :: proc_id,
+
+                % The varset and vartypes fields of the procedure
+                % we are generating code for. Read-only unless accurate gc
+                % needs to make new type_info variables.
+/*  4 */        mgri_varset             :: prog_varset,
+/*  5 */        mgri_var_types          :: vartypes,
+
+                % Quick-access read-only copies of parts of the globals
+                % structure taken from the module_info. Read-only.
+/*  6 */        mgri_high_level_data    :: bool,
+/*  7 */        mgri_target             :: mlds_target_lang,
+/*  8 */        mgri_gc                 :: gc_method,
+
+                % XXX Document me.
+/*  9 */        mgri_const_struct_map   :: map(int, ml_ground_term),
+
+                % Definitions of functions or global constants which should be
+                % inserted before the definition of the function for the
+                % current procedure.
+                % 
+                % XXX The get function of this field used to have the comment
+                % "Get the partial mapping from variables to lvals.", which
+                % is quite far from the above.
+                %
+/* 10 */        mgri_var_lvals          :: map(prog_var, mlds_lval),
+
+                % The set of used environment variables. Writeable.
+                %
+/* 11 */        mgri_env_var_names      :: set(string),
+
+                % The set of warnings disabled in the current scope. Writeable.
+/* 12 */        mgri_disabled_warnings  :: set(goal_warning)
+            ).
+
+:- type ml_gen_sub_info
+    --->    ml_gen_sub_info(
+                % Output arguments that are passed by reference.
+                % (We used to store the list of output arguments that are
+                % returned as values in another field, but we don't need that
+                % information anymore.)
+/*  1 */        mgsi_byref_output_vars  :: list(prog_var),
+
+/*  2 */        mgsi_label_counter      :: counter,
+/*  3 */        mgsi_aux_var_counter    :: counter,
+/*  4 */        mgsi_cond_var_counter   :: counter,
+
+/*  5 */        mgsi_success_cont_stack :: stack(success_cont)
+            ).
+
+% Access stats for the ml_gen_info structure:
+%
+%  i      read      same      diff   same%
+%  0  18766903         0         0              module_info
+%  1    548868         0         0              high_level_data
+%  2    232588         0         0              target
+%  3   2721027         0         0              gc
+%  4    158848         0         0              pred_id
+%  5    158848         0         0              proc_id
+%  6   4647635         0         0              varset
+%  7   7835272         0         0              vartypes
+%  8   2964012     64588     11516  84.87%      byref_output_vars
+%  9         0     65734     11516  85.09%      value_output_vars
+% 10   2998238       594         0 100.00%      var_lvals
+% 11    135553     13144     27277  32.52%      global_data
+% 12     53820         0     53820   0.00%      func_counter
+% 13       237         0       237   0.00%      label_counter
+% 14      1805         0      1805   0.00%      aux_var_counter
+% 15        21         0        21   0.00%      cond_var_counter
+% 16     52544         0     52544   0.00%      conv_var_counter
+% 17    727348    151728    477494  24.11%      const_var_map
+% 18     32375         0         0              const_struct_map
+% 19     14408         0      8197   0.00%      success_cont_stack
+% 20    127335         0     32258   0.00%      closure_wrapper_defns
+% 21     77412         8         8  50.00%      env_var_names
+% 22    352575         0         2   0.00%      disabled_warnings
+% 23     77250    341887     45872  88.17%      used_succeeded_var
 
 ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
         GlobalData) = Info :-
@@ -380,7 +416,6 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
     proc_info_get_argmodes(ProcInfo, HeadModes),
     ByRefOutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
         VarTypes),
-    ValueOutputVars = [],
 
     % XXX This needs to start at 1 rather than 0 otherwise the transformation
     % for adding the shadow stack for accurate garbage collection does not work
@@ -400,33 +435,35 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
     set.init(DisabledWarnings),
     UsedSucceededVar = no,
 
-    SubInfo = ml_gen_sub_info(
+    RareInfo = ml_gen_rare_info(
+        ModuleInfo,
+        PredId,
+        ProcId,
+        VarSet,
+        VarTypes,
         HighLevelData,
         Target,
         GC,
-        PredId,
-        ProcId,
-        FuncLabelCounter,
+        ConstStructMap,
+        VarLvals,
+        EnvVarNames,
+        DisabledWarnings
+    ),
+    SubInfo = ml_gen_sub_info(
+        ByRefOutputVars,
         LabelCounter,
         AuxVarCounter,
         CondVarCounter,
-        ConvVarCounter,
-        ConstVarMap,
-        ConstStructMap,
-        ClosureWrapperDefns,
-        SuccContStack,
-        EnvVarNames,
-        DisabledWarnings,
-        UsedSucceededVar
+        SuccContStack
     ),
     Info = ml_gen_info(
-        ModuleInfo,
-        VarSet,
-        VarTypes,
-        ByRefOutputVars,
-        ValueOutputVars,
-        VarLvals,
+        ConstVarMap,
+        FuncLabelCounter,
+        ConvVarCounter,
+        UsedSucceededVar,
+        ClosureWrapperDefns,
         GlobalData,
+        RareInfo,
         SubInfo
     ).
 
@@ -438,55 +475,54 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
 :- pred ml_gen_info_get_success_cont_stack(ml_gen_info::in,
     stack(success_cont)::out) is det.
 
-ml_gen_info_get_module_info(Info, X) :-
-    X = Info ^ mgi_module_info.
-ml_gen_info_get_high_level_data(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_high_level_data.
-ml_gen_info_get_target(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_target.
-ml_gen_info_get_gc(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_gc.
-ml_gen_info_get_pred_id(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_pred_id.
-ml_gen_info_get_proc_id(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_proc_id.
-ml_gen_info_get_varset(Info, X) :-
-    X = Info ^ mgi_varset.
-ml_gen_info_get_var_types(Info, X) :-
-    X = Info ^ mgi_var_types.
-ml_gen_info_get_byref_output_vars(Info, X) :-
-    X = Info ^ mgi_byref_output_vars.
-ml_gen_info_get_value_output_vars(Info, X) :-
-    X = Info ^ mgi_value_output_vars.
-ml_gen_info_get_var_lvals(Info, X) :-
-    X = Info ^ mgi_var_lvals.
+ml_gen_info_get_const_var_map(Info, X) :-
+    X = Info ^ mgi_const_var_map.
+ml_gen_info_get_func_counter(Info, X) :-
+    X = Info ^ mgi_func_counter.
+ml_gen_info_get_conv_var_counter(Info, X) :-
+    X = Info ^ mgi_conv_var_counter.
+ml_gen_info_get_used_succeeded_var(Info, X) :-
+    X = Info ^ mgi_used_succeeded_var.
+ml_gen_info_get_closure_wrapper_defns(Info, X) :-
+    X = Info ^ mgi_closure_wrapper_defns.
 ml_gen_info_get_global_data(Info, X) :-
     X = Info ^ mgi_global_data.
 
-ml_gen_info_get_func_counter(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_func_counter.
+ml_gen_info_get_module_info(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_module_info.
+ml_gen_info_get_pred_id(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_pred_id.
+ml_gen_info_get_proc_id(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_proc_id.
+ml_gen_info_get_varset(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_varset.
+ml_gen_info_get_var_types(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_var_types.
+ml_gen_info_get_high_level_data(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_high_level_data.
+ml_gen_info_get_target(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_target.
+ml_gen_info_get_gc(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_gc.
+ml_gen_info_get_const_struct_map(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_const_struct_map.
+ml_gen_info_get_var_lvals(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_var_lvals.
+ml_gen_info_get_env_var_names(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_env_var_names.
+ml_gen_info_get_disabled_warnings(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_disabled_warnings.
+
+ml_gen_info_get_byref_output_vars(Info, X) :-
+    X = Info ^ mgi_sub_info ^ mgsi_byref_output_vars.
 ml_gen_info_get_label_counter(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_label_counter.
 ml_gen_info_get_aux_var_counter(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_aux_var_counter.
 ml_gen_info_get_cond_var_counter(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_cond_var_counter.
-ml_gen_info_get_conv_var_counter(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_conv_var_counter.
-ml_gen_info_get_const_var_map(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_const_var_map.
-ml_gen_info_get_const_struct_map(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_const_struct_map.
 ml_gen_info_get_success_cont_stack(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_success_cont_stack.
-ml_gen_info_get_closure_wrapper_defns(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_closure_wrapper_defns.
-ml_gen_info_get_env_var_names(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_env_var_names.
-ml_gen_info_get_disabled_warnings(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_disabled_warnings.
-ml_gen_info_get_used_succeeded_var(Info, X) :-
-    X = Info ^ mgi_sub_info ^ mgsi_used_succeeded_var.
 
 :- pred ml_gen_info_set_func_counter(counter::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -505,25 +541,70 @@ ml_gen_info_get_used_succeeded_var(Info, X) :-
 :- pred ml_gen_info_set_env_var_names(set(string)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_info_set_module_info(X, !Info) :-
-    !Info ^ mgi_module_info := X.
-ml_gen_info_set_varset(X, !Info) :-
-    !Info ^ mgi_varset := X.
-ml_gen_info_set_var_types(X, !Info) :-
-    !Info ^ mgi_var_types := X.
-ml_gen_info_set_byref_output_vars(X, !Info) :-
-    !Info ^ mgi_byref_output_vars := X.
-ml_gen_info_set_value_output_vars(X, !Info) :-
-    !Info ^ mgi_value_output_vars := X.
-ml_gen_info_set_var_lvals(X, !Info) :-
-    !Info ^ mgi_var_lvals := X.
-ml_gen_info_set_global_data(X, !Info) :-
-    !Info ^ mgi_global_data := X.
-
+ml_gen_info_set_const_var_map(X, !Info) :-
+    ( if private_builtin.pointer_equal(X, !.Info ^ mgi_const_var_map) then
+        true
+    else
+        !Info ^ mgi_const_var_map := X
+    ).
 ml_gen_info_set_func_counter(X, !Info) :-
+    !Info ^ mgi_func_counter := X.
+ml_gen_info_set_conv_var_counter(X, !Info) :-
+    !Info ^ mgi_conv_var_counter := X.
+ml_gen_info_set_used_succeeded_var(X, !Info) :-
+    ( if X = !.Info ^ mgi_used_succeeded_var then
+        true
+    else
+        !Info ^ mgi_used_succeeded_var := X
+    ).
+ml_gen_info_set_closure_wrapper_defns(X, !Info) :-
+    !Info ^ mgi_closure_wrapper_defns := X.
+ml_gen_info_set_global_data(X, !Info) :-
+    ( if private_builtin.pointer_equal(X, !.Info ^ mgi_global_data) then
+        true
+    else
+        !Info ^ mgi_global_data := X
+    ).
+
+ml_gen_info_set_module_info(X, !Info) :-
+    RareInfo0 = !.Info ^ mgi_rare_info,
+    RareInfo = RareInfo0 ^ mgri_module_info := X,
+    !Info ^ mgi_rare_info := RareInfo.
+ml_gen_info_set_varset(X, !Info) :-
+    RareInfo0 = !.Info ^ mgi_rare_info,
+    RareInfo = RareInfo0 ^ mgri_varset := X,
+    !Info ^ mgi_rare_info := RareInfo.
+ml_gen_info_set_var_types(X, !Info) :-
+    RareInfo0 = !.Info ^ mgi_rare_info,
+    RareInfo = RareInfo0 ^ mgri_var_types := X,
+    !Info ^ mgi_rare_info := RareInfo.
+ml_gen_info_set_var_lvals(X, !Info) :-
+    RareInfo0 = !.Info ^ mgi_rare_info,
+    ( if private_builtin.pointer_equal(X, RareInfo0 ^ mgri_var_lvals) then
+        true
+    else
+        RareInfo = RareInfo0 ^ mgri_var_lvals := X,
+        !Info ^ mgi_rare_info := RareInfo
+    ).
+ml_gen_info_set_env_var_names(X, !Info) :-
+    RareInfo0 = !.Info ^ mgi_rare_info,
+    RareInfo = RareInfo0 ^ mgri_env_var_names := X,
+    !Info ^ mgi_rare_info := RareInfo.
+ml_gen_info_set_disabled_warnings(X, !Info) :-
+    RareInfo0 = !.Info ^ mgi_rare_info,
+    RareInfo = RareInfo0 ^ mgri_disabled_warnings := X,
+    !Info ^ mgi_rare_info := RareInfo.
+
+ml_gen_info_set_byref_output_vars(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_func_counter := X,
-    !Info ^ mgi_sub_info := SubInfo.
+    ( if
+        private_builtin.pointer_equal(X, SubInfo0 ^ mgsi_byref_output_vars)
+    then
+        true
+    else
+        SubInfo = SubInfo0 ^ mgsi_byref_output_vars := X,
+        !Info ^ mgi_sub_info := SubInfo
+    ).
 ml_gen_info_set_label_counter(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
     SubInfo = SubInfo0 ^ mgsi_label_counter := X,
@@ -536,33 +617,9 @@ ml_gen_info_set_cond_var_counter(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
     SubInfo = SubInfo0 ^ mgsi_cond_var_counter := X,
     !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_conv_var_counter(X, !Info) :-
-    SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_conv_var_counter := X,
-    !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_const_var_map(X, !Info) :-
-    SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_const_var_map := X,
-    !Info ^ mgi_sub_info := SubInfo.
 ml_gen_info_set_success_cont_stack(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
     SubInfo = SubInfo0 ^ mgsi_success_cont_stack := X,
-    !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_closure_wrapper_defns(X, !Info) :-
-    SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_closure_wrapper_defns := X,
-    !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_env_var_names(X, !Info) :-
-    SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_env_var_names := X,
-    !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_disabled_warnings(X, !Info) :-
-    SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_disabled_warnings := X,
-    !Info ^ mgi_sub_info := SubInfo.
-ml_gen_info_set_used_succeeded_var(X, !Info) :-
-    SubInfo0 = !.Info ^ mgi_sub_info,
-    SubInfo = SubInfo0 ^ mgsi_used_succeeded_var := X,
     !Info ^ mgi_sub_info := SubInfo.
 
 %-----------------------------------------------------------------------------%

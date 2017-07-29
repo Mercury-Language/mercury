@@ -571,8 +571,7 @@ ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
             ByRefOutputVars = OutputVars
         )
     ),
-    ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info),
-    ml_gen_info_set_value_output_vars(CopiedOutputVars, !Info).
+    ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info).
 
     % For model_non procedures, figure out which output variables are returned
     % by value (rather than being passed by reference) and remove them from
@@ -596,7 +595,6 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
         NondetCopyOut = no,
         NondetCopiedOutputVars = []
     ),
-    ml_gen_info_set_value_output_vars(NondetCopiedOutputVars, !Info),
     ml_gen_var_list(!.Info, NondetCopiedOutputVars, OutputVarLvals),
     ml_variable_types(!.Info, NondetCopiedOutputVars, OutputVarTypes),
     ml_initial_cont(!.Info, OutputVarLvals, OutputVarTypes, InitialCont),

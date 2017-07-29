@@ -162,7 +162,12 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         unexpected($pred, "unexpected language Erlang")
     ).
 
-:- inst java_or_csharp
+:- type ordinary_pragma_kind
+    --->    kind_det
+    ;       kind_semi
+    ;       kind_failure.
+
+:- inst java_or_csharp for mlds_target_lang/0
     --->    ml_target_java
     ;       ml_target_csharp.
 
@@ -251,72 +256,6 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
         AssignOutputsList ++ ConvStmts ++
         [EndingCodeStmt],
     Decls = ConvDecls.
-
-:- type ordinary_pragma_kind
-    --->    kind_det
-    ;       kind_semi
-    ;       kind_failure.
-
-    % For ordinary (not model_non) pragma foreign_code in C#,
-    % we generate a call to an out-of-line procedure that contains
-    % the user's code.
-    %
-    % XXX This predicate is not called from anywhere. The comment above
-    % implies we should used it for C# code when the target language is C#,
-    % but in those cases we cal ml_gen_ordinary_pragma_csharp_java_proc.
-    % The predicate name itself suggests it was originally intended for
-    % target managed C++, which we don't support anymore.
-    %
-:- pred ml_gen_ordinary_pragma_managed_proc(ordinary_pragma_kind::in,
-    pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-    list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-:- pragma consider_used(ml_gen_ordinary_pragma_managed_proc/12).
-
-ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
-        Args, ExtraArgs, ForeignCode, Context, Decls, Stmts, !Info) :-
-    ml_gen_outline_args(Args, OutlineArgs, !Info),
-    expect(unify(ExtraArgs, []), $pred, "extra args"),
-
-    ForeignLang = get_foreign_language(Attributes),
-    ml_gen_info_get_value_output_vars(!.Info, OutputVars),
-    ml_gen_var_list(!.Info, OutputVars, OutputVarLvals),
-    OutlineAtomicStmt = outline_foreign_proc(ForeignLang, OutlineArgs,
-        OutputVarLvals, ForeignCode),
-
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_name(ModuleInfo, ModuleName),
-    MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
-
-    ml_success_lval(SucceededLval, !Info),
-    (
-        OrdinaryKind = kind_det,
-        SuccessVarLocals = [],
-        SuccessIndicatorStmts = []
-    ;
-        OrdinaryKind = kind_semi,
-        % If the code is semidet, we should copy SUCCESS_INDICATOR
-        % out into "success".
-        SuccessIndicatorVarName = lvn_comp_var(lvnc_success_indicator),
-        SuccessIndicatorDecl = ml_gen_mlds_var_decl(SuccessIndicatorVarName,
-            mlds_native_bool_type, gc_no_stmt, Context),
-        SuccessIndicatorLval = ml_local_var(
-            qual_local_var_name(MLDSModuleName, module_qual,
-                SuccessIndicatorVarName),
-            mlds_native_bool_type),
-        SuccessIndicatorStmt = ml_gen_assign(SucceededLval,
-            ml_lval(SuccessIndicatorLval), Context),
-        SuccessVarLocals = [SuccessIndicatorDecl],
-        SuccessIndicatorStmts = [SuccessIndicatorStmt]
-    ;
-        OrdinaryKind = kind_failure,
-        unexpected($pred, "kind_failure not yet implemented")
-    ),
-
-    OutlineStmt = ml_stmt_atomic(OutlineAtomicStmt, Context),
-    Stmts = [OutlineStmt | SuccessIndicatorStmts],
-    Decls = SuccessVarLocals.
 
 :- pred ml_gen_outline_args(list(foreign_arg)::in, list(outline_arg)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
