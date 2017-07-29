@@ -157,6 +157,8 @@
 
 :- pred write_indented_line(indent::in, string::in, io::di, io::uo) is det.
 
+:- pred scope_indent(mlds_stmt::in, int::in, int::out) is det.
+
 %---------------------------------------------------------------------------%
 
     % Output a Java/C# comment saying that the file was automatically
@@ -359,6 +361,15 @@ write_indented_line(Indent, Line, !IO) :-
     output_n_indents(Indent, !IO),
     io.write_string(Line, !IO),
     io.nl(!IO).
+
+scope_indent(Stmt, Indent, ScopeIndent) :-
+    ( if Stmt = ml_stmt_block(_, _, _, _) then
+        % We want the statements in the block to be indented by Indent + 1;
+        % it is ok for the braces around the block to be indented by Indent.
+        ScopeIndent = Indent
+    else
+        ScopeIndent = Indent + 1
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -3536,7 +3536,9 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
             Context, !IO)
     ;
         Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
-        output_n_indents(Indent, !IO),
+        BraceIndent = Indent,
+        BlockIndent = Indent + 1,
+        output_n_indents(BraceIndent, !IO),
         io.write_string("{\n", !IO),
 
         FuncInfo = func_info_c(FuncName, _),
@@ -3547,7 +3549,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
         (
             FuncDefns = [_ | _],
             list.foldl(
-                mlds_output_function_decl_opts(Opts, Indent + 1, ModuleName),
+                mlds_output_function_decl_opts(Opts, BlockIndent, ModuleName),
                 FuncDefns, !IO),
             io.write_string("\n", !IO)
         ;
@@ -3564,13 +3566,13 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
                 % declarations.
                 list.filter(local_var_defn_is_commit_type, LocalVarDefns,
                     LabelDefns, NonLabelDefns),
-                mlds_output_local_var_defns(Opts, Indent + 1, no, ModuleName,
+                mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
                     LabelDefns, !IO),
-                mlds_output_local_var_defns(Opts, Indent + 1, no, ModuleName,
+                mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
                     NonLabelDefns, !IO)
             ;
                 GCC_LocalLabels = no,
-                mlds_output_local_var_defns(Opts, Indent + 1, no, ModuleName,
+                mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
                     LocalVarDefns, !IO)
             ),
             io.write_string("\n", !IO)
@@ -3579,31 +3581,32 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
         ),
         (
             FuncDefns = [_ | _],
-            mlds_output_function_defns(Opts, Indent + 1, ModuleName,
+            mlds_output_function_defns(Opts, BlockIndent, ModuleName,
                 FuncDefns, !IO),
             io.write_string("\n", !IO)
         ;
             FuncDefns = []
         ),
 
-        mlds_output_statements(Opts, Indent + 1, FuncInfo, SubStmts, !IO),
+        mlds_output_statements(Opts, BlockIndent, FuncInfo, SubStmts, !IO),
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
+        output_n_indents(BraceIndent, !IO),
         io.write_string("}\n", !IO)
     ;
         Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
+        scope_indent(BodyStmt, Indent, ScopeIndent),
         (
             Kind = may_loop_zero_times,
             output_n_indents(Indent, !IO),
             io.write_string("while (", !IO),
             mlds_output_rval(Opts, Cond, !IO),
             io.write_string(")\n", !IO),
-            mlds_output_statement(Opts, Indent + 1, FuncInfo, BodyStmt, !IO)
+            mlds_output_statement(Opts, ScopeIndent, FuncInfo, BodyStmt, !IO)
         ;
             Kind = loop_at_least_once,
             output_n_indents(Indent, !IO),
             io.write_string("do\n", !IO),
-            mlds_output_statement(Opts, Indent + 1, FuncInfo, BodyStmt, !IO),
+            mlds_output_statement(Opts, ScopeIndent, FuncInfo, BodyStmt, !IO),
             c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
             output_n_indents(Indent, !IO),
             io.write_string("while (", !IO),
@@ -3656,7 +3659,8 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
         io.write_string("if (", !IO),
         mlds_output_rval(Opts, Cond, !IO),
         io.write_string(")\n", !IO),
-        mlds_output_statement(Opts, Indent + 1, FuncInfo, Then, !IO),
+        scope_indent(Then, Indent, ScopeIndent),
+        mlds_output_statement(Opts, ScopeIndent, FuncInfo, Then, !IO),
         (
             MaybeElse = yes(Else),
             c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
@@ -3665,11 +3669,11 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
             ( if Else = ml_stmt_if_then_else(_, _, _, _) then
                 % Indent each if-then-else in a if-then-else chain
                 % to the same depth.
-                ElseIndent = Indent
+                ElseScopeIndent = Indent
             else
-                ElseIndent = Indent + 1
+                scope_indent(Else, Indent, ElseScopeIndent)
             ),
-            mlds_output_statement(Opts, ElseIndent, FuncInfo, Else, !IO)
+            mlds_output_statement(Opts, ElseScopeIndent, FuncInfo, Else, !IO)
         ;
             MaybeElse = no
         )
