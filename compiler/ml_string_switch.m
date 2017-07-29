@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_string_switch.m.
 % Authors: fjh, zs.
@@ -33,7 +33,7 @@
 % WARNING: the code here is quite similar to the code in string_switch.m.
 % Any changes here may require similar changes there and vice versa.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_string_switch.
 :- interface.
@@ -80,8 +80,8 @@
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -113,8 +113,8 @@
 :- import_module string.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The implementation of jump tries.
 %
@@ -165,8 +165,8 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         [InitCaseNumVarStmt, GetCaseNumSwitchStmt, CaseSwitchStmt], Context),
     Stmts = [Stmt].
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The implementation of lookup tries.
 %
@@ -196,7 +196,7 @@ ml_generate_string_trie_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
             Stmts, !Info)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_generate_string_trie_simple_lookup_switch(int::in,
     mlds_lval::in, mlds_local_var_defn::in, mlds_stmt::in, mlds_stmt::in,
@@ -296,7 +296,7 @@ ml_gen_string_trie_simple_lookup_slots(StructType,
     ml_gen_string_trie_simple_lookup_slots(StructType, CaseIdValues,
         !CurCaseNum, !RevRowInitializers).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_generate_string_trie_several_soln_lookup_switch(int::in,
     mlds_lval::in, mlds_local_var_defn::in, mlds_stmt::in, mlds_stmt::in,
@@ -417,8 +417,8 @@ ml_gen_string_trie_several_soln_lookup_slots(
         CaseIdsSolns, !CurCaseNum, !.CurLaterSolnIndex,
         !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code useful for both the jump and lookup versions of tries.
 %
@@ -475,7 +475,7 @@ create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
     convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
         Context, 0, TopTrieNode, GetCaseNumSwitchStmt).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_trie(string_encoding::in, list(tagged_case)::in, int::out,
     trie_node::out) is det.
@@ -587,7 +587,7 @@ ml_gen_trie_case_num_var_and_init(Context, CaseNumVarLval, CaseNumVarDefn,
     InitAssign = assign(CaseNumVarLval, ml_const(mlconst_int(-1))),
     InitStmt = ml_stmt_atomic(InitAssign, Context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred convert_trie_to_nested_switches(string_encoding::in, mlds_rval::in,
     mlds_lval::in, prog_context::in, int::in, trie_node::in, mlds_stmt::out)
@@ -727,8 +727,8 @@ chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
             Context, NumMatched, TrieNode, ThenStmt)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The implementation of jump hash tables.
 %
@@ -826,7 +826,7 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         StringFieldId, MaybeNextSlotFieldId, HashMask,
         [], FoundMatchStmts, Stmts, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred build_str_case_id_assoc_list(list(tagged_case)::in, int::in, int::out,
     assoc_list(string, case_id)::in, assoc_list(string, case_id)::out) is det.
@@ -853,7 +853,7 @@ add_to_strs_case_ids(CaseId, TaggedConsId, !RevStrsCaseIds) :-
         unexpected($pred, "non-string tag")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gen_tagged_case_codes_for_string_switch(code_model::in,
     list(tagged_case)::in,
@@ -917,7 +917,7 @@ gen_string_switch_case_comment(TaggedConsId) = String :-
         unexpected($pred, "non-string tag")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A list of all the hash slots that all have the same code. The list is
     % stored in reversed form.
@@ -1001,8 +1001,8 @@ generate_string_jump_switch_arms(CodeMap, [Entry | Entries], !Cases) :-
 
 make_hash_match(Slot) = match_value(ml_const(mlconst_int(Slot))).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The implementation of lookup hash tables.
 %
@@ -1029,7 +1029,7 @@ ml_generate_string_hash_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
             Defns, Stmts, !Info)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_generate_string_hash_simple_lookup_switch(mlds_rval::in,
     assoc_list(string, list(mlds_rval))::in, code_model::in, can_fail::in,
@@ -1175,7 +1175,7 @@ ml_gen_string_hash_simple_lookup_slot(Slot, StructType, HashSlotMap,
             [init_obj(StringRval) | OutInitializers])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_generate_string_hash_several_soln_lookup_switch(mlds_rval::in,
     assoc_list(string, soln_consts(mlds_rval))::in,
@@ -1368,8 +1368,8 @@ ml_gen_string_hash_several_soln_lookup_slot(Slot, HashSlotMap,
             | FirstSolnOutInitializers])
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code useful for both jump and lookup hash string switches.
 %
@@ -1547,8 +1547,8 @@ ml_gen_string_hash_switch_search(InitialComment,
         Stmts = [InitialCommentStmt | SearchStmts] ++ AfterStmts
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The implementation of jump binary search tables.
 %
@@ -1653,8 +1653,8 @@ ml_gen_string_binary_jump_switch_arms([CaseIdStmt | CaseIdsStmts],
     !:SwitchCases = [SwitchCase | !.SwitchCases],
     ml_gen_string_binary_jump_switch_arms(CaseIdsStmts, !SwitchCases).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The implementation of lookup binary search tables.
 %
@@ -1681,7 +1681,7 @@ ml_generate_string_binary_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
             Context, Defns, Stmts, !Info)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_generate_string_binary_simple_lookup_switch(mlds_rval::in,
     assoc_list(string, list(mlds_rval))::in, code_model::in, can_fail::in,
@@ -1763,7 +1763,7 @@ ml_gen_string_binary_simple_lookup_initializers([Str - Rvals | StrRvals],
     ml_gen_string_binary_simple_lookup_initializers(StrRvals,
         StructType, !RevRowInitializers, !CurIndex).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_generate_string_binary_several_soln_lookup_switch(mlds_rval::in,
     assoc_list(string, soln_consts(mlds_rval))::in,
@@ -1888,8 +1888,8 @@ ml_gen_string_binary_several_lookup_initializers([Str - Solns | StrSolns],
         !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
         !CurFirstSolnIndex, !.CurLaterSolnIndex).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code useful for both jump and lookup binary string switches.
 %
@@ -2065,8 +2065,8 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
     Stmts = [InitialCommentStmt | SetupForFailStmts] ++
         SearchStmts ++ AfterStmts.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code useful for more than one kind of string switch.
 %
@@ -2272,6 +2272,6 @@ ml_wrap_loop_break(CodeModel, LoopPresent, Context, MaybeStopLoopVarLval,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_string_switch.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

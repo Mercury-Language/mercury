@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_target_util.m.
 % Author: zs.
 %
 % This module contains utility predicates dealing with target languages.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_target_util.
 :- interface.
@@ -39,8 +39,8 @@
     %
 :- func target_supports_inheritence(compilation_target) = bool.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -66,7 +66,7 @@ globals_target_supports_break_and_continue(Globals) = SupportsBreakContinue :-
     globals.get_target(Globals, Target),
     SupportsBreakContinue = target_supports_break_and_continue(Target).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 target_supports_int_switch(target_c) = yes.
 target_supports_int_switch(target_csharp) = yes.
@@ -107,6 +107,6 @@ target_supports_inheritence(target_java) = yes.
 target_supports_inheritence(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_target_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

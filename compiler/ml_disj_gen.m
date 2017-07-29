@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_disj_gen.m.
 % Authors: fjh, zs.
 %
 % Generate MLDS code for disjunctions.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for empty disjunctions (`fail')
 %
@@ -26,7 +26,7 @@
 %   ===>
 %       /* fall through */
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for non-empty disjunctions
 %
@@ -98,7 +98,7 @@
 % disj_gen.m that does the same thing for the LLDS backend. Any changes here
 % may need to be reflected there as well.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_disj_gen.
 :- interface.
@@ -117,8 +117,8 @@
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -204,7 +204,7 @@ allow_lookup_disj(ml_target_c) = yes.
 allow_lookup_disj(ml_target_csharp) = yes.
 allow_lookup_disj(ml_target_java) = yes.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_gen_ordinary_model_det_semi_disj(hlds_goal::in, list(hlds_goal)::in,
     code_model::in, prog_context::in, list(mlds_stmt)::out,
@@ -264,7 +264,7 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_gen_ordinary_model_non_disj(hlds_goal::in, list(hlds_goal)::in,
     prog_context::in, list(mlds_stmt)::out,
@@ -292,7 +292,7 @@ ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts, Context,
         Stmts = [FirstStmt | LaterStmts]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_gen_lookup_disj(list(prog_var)::in, list(list(mlds_rval))::in,
     prog_context::in, list(mlds_stmt)::out,
@@ -368,6 +368,6 @@ ml_construct_disjunction_vector(ModuleInfo, StructType,
     ml_construct_disjunction_vector(ModuleInfo, StructType,
         Solns, RowInitializers).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_disj_gen.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

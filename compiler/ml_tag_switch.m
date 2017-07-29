@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2000, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_tag_switch.m.
 % Author: fjh.
@@ -12,7 +12,7 @@
 % Generate switches based on primary and secondary tags, for the MLDS
 % back-end.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_tag_switch.
 :- interface.
@@ -27,7 +27,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate efficient indexing code for tag based switches.
     %
@@ -35,8 +35,8 @@
     code_model::in, can_fail::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -66,7 +66,7 @@
     --->    immediate(mlds_stmt)
     ;       generate(hlds_goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
         Stmts, !Info) :-
@@ -170,7 +170,7 @@ find_any_split_cases_2(_CaseId, Ptags, !IsAnyCaseSplit) :-
         !:IsAnyCaseSplit = some_case_is_split_between_ptags
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gen_ptag_cases(ptag_case_group_list(case_id)::in, code_map::in,
     prog_var::in, can_fail::in, code_model::in, ptag_count_map::in,
@@ -270,7 +270,7 @@ lookup_code_map(CodeMap, CaseId, CodeModel, Stmt, !Info) :-
         ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A list of secondary tag values that all have the same code.
     % The list is stored in reversed form.
@@ -306,7 +306,7 @@ build_stag_rev_map([Entry | Entries], !RevMap) :-
     ),
     build_stag_rev_map(Entries, !RevMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gen_stag_switch(assoc_list(case_id, stags)::in,
     code_map::in, int::in, sectag_locn::in, prog_var::in,
@@ -346,7 +346,7 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
         StagCases, Default, Context),
     ml_simplify_switch(SwitchStmt, Stmt, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gen_stag_cases(assoc_list(case_id, stags)::in,
     code_map::in, code_model::in, list(mlds_switch_case)::out,
@@ -374,6 +374,6 @@ gen_stag_case(Group, CodeMap, CodeModel, MLDS_Case, !Info) :-
 
 make_match_value(Stag) = match_value(ml_const(mlconst_int(Stag))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_tag_switch.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

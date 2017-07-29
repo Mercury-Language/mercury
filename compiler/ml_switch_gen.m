@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_switch_gen.m
 % Authors: fjh, zs.
@@ -100,7 +100,7 @@
 % - optimize if-then-else chain switches so that the recursive case
 %   comes first (see switch_gen.m).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_switch_gen.
 :- interface.
@@ -115,7 +115,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate MLDS code for a switch.
     %
@@ -130,8 +130,8 @@
     prog_context::in, mlds_switch_default::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -160,7 +160,7 @@
 :- import_module pair.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
         Decls, Stmts, !Info) :-
@@ -384,7 +384,7 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Look up the representation (tag) for the cons_id in each case.
     % Also look up the priority of each tag test.
@@ -407,7 +407,7 @@ estimate_cons_id_tag_test_cost(TaggedConsId, !CaseCost) :-
     ConsIdCost = estimate_switch_tag_test_cost(ConsTag),
     !:CaseCost = !.CaseCost + ConsIdCost.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a chain of if-then-elses to test each case in turn.
     %
@@ -518,7 +518,7 @@ chain_ors(FirstExpr, LaterExprs, Expr) :-
         chain_ors(FirstSecondExpr, OtherExprs, Expr)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate an MLDS switch. This is used for "direct-mapped" switches,
     % where we map a Mercury switch directly to a switch in the target
@@ -640,6 +640,6 @@ ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info) :-
         Default = default_is_unreachable
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_switch_gen.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

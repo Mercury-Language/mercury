@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_code_util.m.
 % Main author: fjh.
@@ -12,7 +12,7 @@
 % This module is part of the MLDS code generator; it contains utility
 % predicates.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_code_util.
 :- interface.
@@ -42,7 +42,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Various utility routines used for MLDS code generation.
 %
@@ -103,7 +103,7 @@
 :- pred ml_is_output_det_function(module_info::in, pred_id::in, proc_id::in,
     prog_var::out) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for generating expressions.
 %
@@ -118,7 +118,7 @@
 
 :- func ml_int_tag_to_rval_const(int_tag, mer_type, mlds_type) = mlds_rval.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for generating types.
 %
@@ -162,7 +162,7 @@
     %
 :- func ml_java_mercury_enum_class = mlds_type.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for generating function declarations (i.e. mlds_func_params).
 %
@@ -194,7 +194,7 @@
     list(mer_mode)::in, pred_or_func::in, code_model::in,
     mlds_func_params::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for generating labels and entity names.
 %
@@ -233,7 +233,7 @@
 :- pred ml_gen_new_label(mlds_label::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for dealing with variables.
 %
@@ -303,7 +303,7 @@
     %
 :- func ml_gen_public_field_decl_flags = mlds_field_var_decl_flags.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for dealing with fields.
 %
@@ -371,7 +371,7 @@
     int::in, prog_context::in, mlds_local_var_defn::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for handling success and failure.
 %
@@ -455,7 +455,7 @@
 :- pred ml_gen_call_current_success_cont(prog_context::in,
     mlds_stmt::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for dealing with the environment pointer used for nested functions.
 %
@@ -473,7 +473,7 @@
     %
 :- pred ml_declare_env_ptr_arg(mlds_argument::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Magic numbers relating to the representation of
 % typeclass_infos, base_typeclass_infos, and closures.
@@ -494,7 +494,7 @@
     %
 :- func ml_base_typeclass_info_method_offset = int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for dealing with lookup tables.
 %
@@ -515,7 +515,7 @@
     mlds_rval::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Miscellaneous routines.
 %
@@ -533,8 +533,8 @@
     %
 :- func fixup_builtin_module(module_name) = module_name.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -561,7 +561,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for various utility routines.
 %
@@ -748,7 +748,7 @@ ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
     RetTopFunctorMode = top_out,
     check_dummy_type(ModuleInfo, RetArgType) = is_not_dummy_type.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for generating expressions.
 %
@@ -797,7 +797,7 @@ ml_int_tag_to_rval_const(IntTag, MerType, MLDS_Type) = Rval :-
         Rval = ml_const(mlconst_uint32(UInt32))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for generating types.
 %
@@ -857,7 +857,7 @@ ml_java_mercury_enum_class = EnumClassDefn :-
         qual_class_name(InterfaceModuleName, module_qual, "MercuryEnum"),
     EnumClassDefn = mlds_class_type(EnumClass, 0, mlds_class).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for generating function declarations (i.e. mlds_func_params).
 %
@@ -1099,7 +1099,7 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
     ),
     FuncArg = mlds_argument(Var, MLDS_ArgType, GCStmt).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for generating mlds_function_names.
 %
@@ -1236,7 +1236,7 @@ ml_gen_new_label(Label, !Info) :-
     ml_gen_info_new_label(LabelNum, !Info),
     Label = "label_" ++ string.int_to_string(LabelNum).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for dealing with variables.
 %
@@ -1334,7 +1334,7 @@ ml_gen_mlds_var_decl_init(DataName, MLDS_Type, Initializer, GCStmt, Context) =
 ml_gen_public_field_decl_flags =
     mlds_field_var_decl_flags(per_instance, modifiable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for dealing with fields.
 %
@@ -1707,7 +1707,7 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
     LocalVarDefn = ml_gen_mlds_var_decl(VarName,
         mercury_type_to_mlds_type(ModuleInfo, Type), GCStmt, Context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for handling success and failure.
 %
@@ -1771,7 +1771,7 @@ ml_gen_failure(CodeModel, Context, Stmts, !Info) :-
         Stmts = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_succeeded_var_decl(Context) =
     ml_gen_mlds_var_decl(lvn_comp_var(lvnc_succeeded), mlds_native_bool_type,
@@ -1790,7 +1790,7 @@ ml_gen_set_success(Value, Context, Stmt, !Info) :-
     ml_success_lval(Succeeded, !Info),
     Stmt = ml_gen_assign(Succeeded, Value, Context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate the name for the specified `cond_<N>' variable.
     %
@@ -1816,7 +1816,7 @@ ml_gen_set_cond_var(Info, CondVar, Value, Context, Stmt) :-
     ml_cond_var_lval(Info, CondVar, CondVarLval),
     Stmt = ml_gen_assign(CondVarLval, Value, Context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_initial_cont(Info, OutputVarLvals0, OutputVarTypes0, Cont) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -1879,7 +1879,7 @@ ml_gen_call_current_success_cont(Context, Stmt, !Info) :-
     Stmt = ml_stmt_call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
         CallKind, Markers, Context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for dealing with the environment pointer used for nested functions.
 %
@@ -1899,7 +1899,7 @@ ml_declare_env_ptr_arg(Arg) :-
     GCStatement = gc_no_stmt,
     Arg = mlds_argument(VarName, Type, GCStatement).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This function returns the offset to add to the argument
     % number of a closure arg to get its field number.
@@ -1939,7 +1939,7 @@ ml_typeclass_info_arg_offset = 0.
     %
 ml_base_typeclass_info_method_offset = 4.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for dealing with lookup tables.
 %
@@ -2005,7 +2005,7 @@ ml_generate_field_assigns(OutVars, FieldTypes, FieldIds, VectorCommon,
         unexpected($module, $pred, "mismatched lists")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Miscellaneous routines.
 %
@@ -2028,6 +2028,6 @@ fixup_builtin_module(ModuleName0) = ModuleName :-
         ModuleName = ModuleName0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_code_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_global_data.m.
 % Main author: zs.
@@ -13,7 +13,7 @@
 % of data structures that are "born global", i.e. they belong to the generated
 % module as a whole, not to any particular function in it.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_global_data.
 :- interface.
@@ -204,8 +204,8 @@
     prog_context::in, mlds_alloc_id::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -219,7 +219,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type ml_scalar_cell_type
     --->    ml_scalar_cell_type(mlds_type, initializer_array_size).
@@ -255,7 +255,7 @@
                 mgd_alloc_id_map                :: ml_alloc_id_map
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_global_data_init(UseCommonCells, HaveUnboxedFloats) = GlobalData :-
     GlobalData = ml_global_data(map.init, UseCommonCells, HaveUnboxedFloats,
@@ -281,7 +281,7 @@ ml_global_data_get_all_global_defns(GlobalData,
     CellDefns = cord.to_list(CellDefnsCord),
     ClosureWrapperFuncDefns = cord.to_list(ClosureWrapperFuncDefnsCord).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Access predicates for the ml_global_data type.
 %
@@ -324,7 +324,7 @@ ml_global_data_set_rtti_defns(X, !GlobalData) :-
 ml_global_data_set_closure_wrapper_func_defns(X, !GlobalData) :-
     !GlobalData ^ mgd_closure_wrapper_funcs := X.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_global_data_add_pdup_rtti_id(RttiId, RvalType, !GlobalData) :-
     ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap0),
@@ -343,7 +343,7 @@ ml_global_data_add_closure_wrapper_func_defns(FuncDefns, !GlobalData) :-
     ml_global_data_set_closure_wrapper_func_defns(ClosureWrapperDefns,
         !GlobalData).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_static_scalar_const_value(MLDS_ModuleName, ConstVarKind, ConstType0,
         Initializer0, Context, DataRval, !GlobalData) :-
@@ -587,7 +587,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         IsFloat = yes
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         TypeNum, StructType, FieldIds, !GlobalData) :-
@@ -707,7 +707,7 @@ ml_gen_static_vector_defn(MLDS_ModuleName, TypeNum, RowInitializers, Common,
         !GlobalData ^ mgd_vector_cell_group_map := CellGroupMap
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_alloc_site(ProcLabel, MaybeConsId, Size, Context, AllocId,
         !GlobalData) :-
@@ -780,6 +780,6 @@ cons_id_to_alloc_site_string(ConsId) = TypeStr :-
         unexpected($module, $pred, "unexpected cons_id")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_global_data.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

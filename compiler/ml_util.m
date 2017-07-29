@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007,2009,2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_util.m.
 % Main author: fjh, trd.
 %
 % This module contains utility predicates for manipulating the MLDS.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_util.
 :- interface.
@@ -30,14 +30,14 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Succeeds iff the definitions contain the entry point to
     % the main predicate.
     %
 :- pred func_defns_contain_main(list(mlds_function_defn)::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % code_address_is_for_this_function(CodeAddr, ModuleName, FuncName):
     %
@@ -47,7 +47,7 @@
 :- pred code_address_is_for_this_function(mlds_code_addr::in,
     mlds_module_name::in, mlds_function_name::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines that deal with statements.
 %
@@ -67,7 +67,7 @@
 :- pred has_foreign_languages(mlds_stmt::in, list(foreign_language)::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Says whether these definitions contains a reference to
     % the specified variable.
@@ -85,7 +85,7 @@
 :- func function_defn_contains_var(mlds_function_defn, qual_local_var_name)
     = bool.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines that deal with lvals/rvals.
 %
@@ -112,7 +112,7 @@
 
 :- func lval_contains_var(mlds_lval, qual_local_var_name) = bool.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Functions for generating initializers.
 %
@@ -142,12 +142,12 @@
 
 :- func wrap_init_obj(mlds_rval) = mlds_initializer.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func get_mlds_stmt_context(mlds_stmt) = prog_context.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -158,7 +158,7 @@
 
 :- import_module solutions.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 func_defns_contain_main([FuncDefn | FuncDefns]) :-
     ( if
@@ -190,7 +190,7 @@ code_address_is_for_this_function(CodeAddr, ModuleName, FuncName) :-
     FuncName = mlds_function_name(
         mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines that deal with statements.
 %
@@ -271,7 +271,7 @@ default_contains_statement(default_is_unreachable, _) :- fail.
 default_contains_statement(default_case(Stmt), SubStmt) :-
     statement_is_or_contains_statement(Stmt, SubStmt).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % statements_contains_var:
 % maybe_statement_contains_var:
@@ -609,7 +609,7 @@ outline_arg_contains_var(OutlineArg, SearchVarName) = ContainsVar :-
         ContainsVar = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 has_foreign_languages(Stmt, Langs) :-
     GetTargetCode =
@@ -619,7 +619,7 @@ has_foreign_languages(Stmt, Langs) :-
         ),
     solutions.solutions(GetTargetCode, Langs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % defns_contains_var:
 % defn_contains_var:
@@ -673,7 +673,7 @@ function_defn_contains_var(FuncDefn, SearchVarName) = ContainsVar :-
         ContainsVar = statement_contains_var(Stmt, SearchVarName)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines that deal with lvals/rvals.
 %
@@ -843,7 +843,7 @@ lval_contains_var(Lval, SearchVarName) = ContainsVar :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 gen_init_bool(no) = init_obj(ml_const(mlconst_false)).
 gen_init_bool(yes) = init_obj(ml_const(mlconst_true)).
@@ -875,7 +875,7 @@ gen_init_array(Conv, List) = init_array(list.map(Conv, List)).
 
 wrap_init_obj(Rval) = init_obj(Rval).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_mlds_stmt_context(Stmt) = Context :-
     ( Stmt = ml_stmt_block(_, _, _, Context)
@@ -892,6 +892,6 @@ get_mlds_stmt_context(Stmt) = Context :-
     ; Stmt = ml_stmt_atomic(_, Context)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

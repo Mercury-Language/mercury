@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2000-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_optimize.m.
 % Main author: trd, fjh.
@@ -27,7 +27,7 @@
 %
 % It would probably be a good idea to make each transformation optional.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_optimize.
 :- interface.
@@ -38,8 +38,8 @@
 
 :- pred mlds_optimize(globals::in, mlds::in, mlds::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -60,7 +60,7 @@
 :- import_module require.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type opt_info
     --->    opt_info(
@@ -203,7 +203,7 @@ optimize_in_default(OptInfo, Default0, Default) :-
         Default = default_case(Stmt)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred optimize_in_call_stmt(opt_info::in,
     mlds_stmt::in(ml_stmt_is_call), mlds_stmt::out) is det.
@@ -505,7 +505,7 @@ stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
     CalleeRval = ml_const(mlconst_code_addr(CalleeCodeAddr)),
     code_address_is_for_this_function(CalleeCodeAddr, ModuleName, FuncName).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % If the list of statements contains a block with no local variables,
     % then bring the block up one level. This optimization is needed to avoid
@@ -526,7 +526,7 @@ flatten_block(Stmt) = Stmts :-
         Stmts = [Stmt]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred peephole_opt_statements(list(mlds_stmt)::in, list(mlds_stmt)::out)
     is det.
@@ -775,7 +775,7 @@ cases_affect_lvals(Lvals, [Head | Tail], Affects) :-
         cases_affect_lvals(Lvals, Tail, Affects)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 %
 % This code implements the --optimize-initializations option.
@@ -942,7 +942,7 @@ find_this_var_defn(VarName, [LocalVarDefn | LocalVarDefns], !RevPrevDefns,
             ThisVarDefn, LaterDefns)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This is a pass to eliminate initialized local variable definitions,
 % by substituting the value of the initializer for occurrences of the variable.
@@ -1663,6 +1663,6 @@ eliminate_var_in_trail_op(Op0, Op, !VarElimInfo) :-
         Op = prune_tickets_to(Rval)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_optimize.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

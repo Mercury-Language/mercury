@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2000-2001, 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_simplify_switch.m.
 % Main author: fjh.
@@ -20,7 +20,7 @@
 % depends on the target (e.g. whether it understands switches) and the
 % --prefer-switch option.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_simplify_switch.
 :- interface.
@@ -31,8 +31,8 @@
 :- pred ml_simplify_switch(mlds_stmt::in, mlds_stmt::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -56,7 +56,7 @@
 :- import_module maybe.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_simplify_switch(Stmt0, Stmt, !Info) :-
     ml_gen_info_get_globals(!.Info, Globals),
@@ -228,7 +228,7 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
         LastVal = LastCaseVal
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Find the highest and lowest case values in a list of cases.
     %
@@ -270,7 +270,7 @@ find_min_and_max_in_case_cond(match_range(MinRval, MaxRval), !Min, !Max) :-
         unexpected($pred, "non-int case")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate code for a switch using a dense jump table.
     %
@@ -369,7 +369,7 @@ generate_case(Case, EndLabel, !CaseLabelsMap, Stmts, !Info) :-
     JumpCode = ml_stmt_goto(goto_label(EndLabel), Context),
     Stmts = [LabelComment, LabelCode, CaseStmt, JumpComment, JumpCode].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % We build up a map which records which label should be used for
 % each case value.
@@ -411,7 +411,7 @@ insert_range_into_map(Min, Max, ThisLabel, !CaseLabelsMap) :-
         insert_range_into_map(Min + 1, Max, ThisLabel, !CaseLabelsMap)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given the starting and ending case values, the mapping from case values
     % to labels, and the default label to use for case values which aren't in
@@ -435,7 +435,7 @@ get_case_labels(ThisVal, LastVal, CaseLabelsMap, DefaultLabel) = CaseLabels :-
         CaseLabels = [CaseLabel | CaseLabels1]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Convert an int switch to a chain of if-then-elses that test each case
     % in turn.
@@ -497,6 +497,6 @@ ml_gen_case_match_cond(match_range(MinRval, MaxRval), SwitchRval) =
         ml_binop(int_gt(int_type_int), SwitchRval, MinRval),
         ml_binop(int_le(int_type_int), SwitchRval, MaxRval)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_simplify_switch.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

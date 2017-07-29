@@ -613,7 +613,7 @@ output_src_end_for_csharp(Indent, ModuleName, !IO) :-
     prog_out.write_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output declarations and definitions.
 %
@@ -959,7 +959,7 @@ output_init_global_var_statements_for_csharp(Info, Indent,
     output_init_global_var_statements_for_csharp(Info, Indent,
         GlobalVarDefns, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code to output common data.
 %

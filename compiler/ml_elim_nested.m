@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_elim_nested.m.
 % Main author: fjh.
@@ -25,11 +25,11 @@
 %
 % XXX Would it be possible to do both in a single pass?
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % (1) eliminating nested functions
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Note that this module does not attempt to handle arbitrary MLDS as input;
 % it will only work with the output of the current MLDS code generator.
@@ -42,9 +42,9 @@
 % the effect of fixing up the dangling `env_ptr' references that ml_code_gen.m
 % leaves in the code.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % TRANSFORMATION SUMMARY
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % We transform code of the form e.g.
 %
@@ -138,11 +138,11 @@
 % the (previously dangling) references to such variables that
 % ml_code_gen puts in calls to the nested functions.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % (2) accurate GC
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % SUMMARY
 %
@@ -256,7 +256,7 @@
 % - move termination conditions (check for base case) outside of stack frame
 %   setup & GC check where possible
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % DETAILED DESCRIPTION
 %
@@ -310,7 +310,7 @@
 % any functions calls or memory allocations.
 % XXX These optimizations are not yet implemented!
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % EXAMPLE
 %
@@ -418,7 +418,7 @@
 %       }
 %   }
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_elim_nested.
 :- interface.
@@ -427,7 +427,7 @@
 :- import_module libs.globals.
 :- import_module ml_backend.mlds.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type action
     --->    hoist_nested_funcs
@@ -447,8 +447,8 @@
 :- mode ml_elim_nested(in(hoist), in, in, in, out) is det.
 :- mode ml_elim_nested(in(chain), in, in, in, out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -476,7 +476,7 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_elim_nested(Action, Globals, Target, MLDS0, MLDS) :-
     MLDS0 = mlds(ModuleName, ForeignCode, Imports, GlobalData0,
@@ -1283,7 +1283,7 @@ ml_stack_chain_var = StackChain :-
 
 ml_stack_chain_type = mlds_generic_env_ptr_type.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This code does some name mangling.
 % It essentially duplicates the functionality in mlds_output_name.
@@ -1371,7 +1371,7 @@ ml_pred_label_name(mlds_special_pred_label(PredName, MaybeTypeModule,
 
 ml_module_name_string(ModuleName) = sym_name_to_string_sep(ModuleName, "__").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % flatten_function_body:
 % flatten_maybe_statement:
@@ -1558,7 +1558,7 @@ flatten_default(Action, Default0, Default, !Info) :-
         Default = default_case(Stmt)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Add code to save/restore the stack chain pointer. This means converting
     %
@@ -1604,7 +1604,7 @@ save_and_restore_stack_chain(Stmt0, Stmt, !ElimInfo) :-
     TryCommit = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt, Context),
     Stmt = ml_stmt_block([SavedVarDefn], [], [TryCommit], Context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % flatten_nested_function_defns:
 % flatten_nested_function_defn:
@@ -1807,7 +1807,7 @@ ml_need_to_hoist(ModuleName, VarName, FuncDefns, FollowingStmts) :-
 ml_need_to_hoist_defn(QualVarName, FuncDefn) :-
     function_defn_contains_var(FuncDefn, QualVarName) = yes.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % fixup_initializers:
 % fixup_initializer:
@@ -2131,7 +2131,7 @@ fixup_gc_statements_defn(Action, Defn0, Defn, !Info) :-
     ),
     Defn = mlds_local_var_defn(Name, Context, Type, Init, GCStmt).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Change up any references to local vars in the containing function
     % to go via the environment pointer.
@@ -2263,7 +2263,7 @@ ml_env_module_name(Target, ClassType) = EnvModuleName :-
         unexpected($pred, "ClassType is not a class")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Succeed if the specified construct contains a definition for which the
 % given filter predicate succeeds.
@@ -2378,7 +2378,7 @@ function_defn_contains_matching_defn(Filter, FuncDefn) :-
     FunctionBody = body_defined_here(Stmt),
     statement_contains_matching_defn(Filter, Stmt).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Add code to unlink the stack chain before any explicit returns or
     % tail calls.
@@ -2600,7 +2600,7 @@ gen_restore_stack_chain_var(MLDS_Module, Id, Context) = RestoreStmt :-
     Assignment = assign(ml_stack_chain_var, ml_lval(SavedStackChain)),
     RestoreStmt = ml_stmt_atomic(Assignment, Context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 %
 % The elim_info type holds information that we use or accumulate
@@ -2711,6 +2711,6 @@ elim_info_finish(ElimInfo, NestedFuncs, LocalVars) :-
     NestedFuncs = cord.to_list(ElimInfo ^ ei_nested_funcs),
     LocalVars = cord.to_list(ElimInfo ^ ei_local_vars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_elim_nested.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

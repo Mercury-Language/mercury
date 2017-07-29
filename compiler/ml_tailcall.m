@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2009 The University of Melbourne.
 % Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_tailcall.m
 % Authors: fjh, pbone
@@ -58,7 +58,7 @@
 % This is why this module calls predicates in mark_tail_calls.m to construct
 % the warning messages it generates.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_tailcall.
 :- interface.
@@ -73,7 +73,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Traverse the MLDS, marking all optimizable tail calls as tail calls.
     %
@@ -82,8 +82,8 @@
 :- pred ml_mark_tailcalls(globals::in, module_info::in, list(error_spec)::out,
     mlds::in, mlds::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -101,7 +101,7 @@
 :- import_module maybe.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
     ModuleName = mercury_module_name_to_mlds(!.MLDS ^ mlds_name),
@@ -120,7 +120,7 @@ ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
         FuncDefns0, FuncDefns, [], Specs),
     !MLDS ^ mlds_proc_defns := FuncDefns.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We identify tail calls in the body of a function by walking backwards
     % through that body in the MLDS, tracking (via at_tail) whether a given
@@ -187,7 +187,7 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
                 tibi_specs                  :: list(error_spec)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type tailcall_info
     --->    tailcall_info(
@@ -204,7 +204,7 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
     --->    warn_tail_calls
     ;       do_not_warn_tail_calls.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % mark_tailcalls_in_maybe_statement:
 % mark_tailcalls_in_stmts:
@@ -571,7 +571,7 @@ mark_tailcalls_in_default(TCallInfo, AtTailAfter, AtTailBefore,
         Default = default_case(Statement)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_warn_tailcalls(tailcall_info::in, mlds_code_addr::in,
     set(ml_call_marker)::in, prog_context::in,
@@ -657,7 +657,7 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Markers, Context, !InBodyInfo) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % call_returns_same_local_lvals_as_return_stmt(ReturnStmtRvals,
 %   CallReturnLvals):
@@ -714,7 +714,7 @@ lval_is_local(Lval) = IsLocal :-
         IsLocal = is_not_local
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type may_yield_dangling_stack_ref
     --->    may_yield_dangling_stack_ref
@@ -944,6 +944,6 @@ function_is_local(CodeAddr, LocalsList) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_tailcall.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

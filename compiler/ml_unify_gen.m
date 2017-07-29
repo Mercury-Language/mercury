@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012, 2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_unify_gen.m
 % Main author: fjh
@@ -30,7 +30,7 @@
 %           ...
 %       }
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_unify_gen.
 :- interface.
@@ -50,7 +50,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate MLDS code for a unification.
     %
@@ -119,8 +119,8 @@
 :- pred ml_gen_const_structs(module_info::in, mlds_target_lang::in,
     ml_const_struct_map::out, ml_global_data::in, ml_global_data::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -165,7 +165,7 @@
     --->    no_tag
     ;       direct_arg_tag(ground).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
     (
@@ -513,7 +513,7 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         unexpected($pred, "unexpected tag")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
     (
@@ -566,7 +566,7 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_cons_id_to_tag(Info, ConsId, Tag) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -741,7 +741,7 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
         MaybeTag, Context, !.Info, TakeAddrStmts),
     Stmts = [MakeNewObjStmt | TakeAddrStmts].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_gen_new_object_statically(maybe(cons_id)::in, maybe(ctor_name)::in,
     maybe(mlds_tag)::in,
@@ -1432,7 +1432,7 @@ ml_gen_extra_arg_assign([ExtraRval | ExtraRvals], [ExtraType | ExtraTypes],
     ml_gen_extra_arg_assign(ExtraRvals, ExtraTypes, VarType, VarLval,
         Offset + 1, ConsIdTag, Context, Stmts, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a deterministic deconstruction. In a deterministic
     % deconstruction, we know the value of the tag, so we don't need
@@ -2102,7 +2102,7 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
         unexpected($pred, "some strange unify")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a semidet deconstruction. A semidet deconstruction unification
     % is a tag test, followed by a deterministic deconstruction which is
@@ -2428,7 +2428,7 @@ ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
     ),
     FieldId = ml_field_named(QualifiedFieldName, ClassPtrType).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_ground_term(TermVar, Goal, Stmts, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -2732,7 +2732,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
     map.det_insert(Var, GroundTerm, !GroundTermMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred construct_ground_term_initializers_hld(module_info::in,
     prog_context::in, list(prog_var)::in, list(mer_type)::in,
@@ -2815,7 +2815,7 @@ construct_ground_term_initializer_lld(ModuleInfo, Context,
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, DoubleWidth,
         ArgRval0, ArgRval, !GlobalData).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_const_structs(ModuleInfo, Target, ConstStructMap, !GlobalData) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -3186,7 +3186,7 @@ int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag) = Const :-
         Const = mlconst_uint32(UInt32)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred arg_width_is_double(arg_width::in, bool::out) is det.
 
@@ -3326,6 +3326,6 @@ ml_bitwise_or(RvalA, RvalB) = Rval :-
 ml_bitwise_and(Rval, Mask) =
     ml_binop(bitwise_and(int_type_int), Rval, ml_const(mlconst_int(Mask))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_unify_gen.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

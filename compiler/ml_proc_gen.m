@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_proc_gen.m.
 % Main author: fjh.
@@ -17,16 +17,16 @@
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate MLDS code for an entire module.
     %
 :- pred ml_code_gen(mlds_target_lang::in, mlds::out,
     module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -75,8 +75,8 @@
 :- import_module set.
 :- import_module std_util.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_code_gen(Target, MLDS, !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
@@ -206,7 +206,7 @@ ml_gen_init_global_data(ModuleInfo, Target, GlobalData) :-
     ),
     GlobalData = ml_global_data_init(UseCommonCells, HaveUnboxedFloats).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % For each pragma foreign_export declaration we associate with it the
 % information used to generate the function prototype for the MLDS entity.
@@ -259,7 +259,7 @@ ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams) :-
 
 has_ptr_type(mlds_argument(_, mlds_ptr_type(_), _)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff to generate MLDS code for HLDS predicates & functions.
 %
@@ -371,7 +371,7 @@ ml_gen_procs(Target, ConstStructMap, [PredProcId | PredProcIds],
     ml_gen_procs(Target, ConstStructMap, PredProcIds,
         !FunctionDefns, !GlobalData, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for handling individual procedures.
 %
@@ -746,7 +746,7 @@ ml_gen_convert_headvars(Vars, HeadTypes, TopFunctorModes, CopiedOutputVars,
         unexpected($pred, "length mismatch")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for handling tabling structures.
 %
@@ -995,7 +995,7 @@ tabling_name_and_init_to_defn(ProcLabel, Id, Context, Constness, Initializer)
     GlobalVarDefn = mlds_global_var_defn(Name, Context, Flags,
         MLDS_Type, Initializer, GCStatement).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for handling attributes.
 %
@@ -1012,6 +1012,6 @@ attributes_to_mlds_attributes(ModuleInfo, Attrs) =
 attribute_to_mlds_attribute(ModuleInfo, custom(Type)) =
     custom(mercury_type_to_mlds_type(ModuleInfo, Type)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_proc_gen.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

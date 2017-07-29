@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_code_gen.m.
 % Main author: fjh.
@@ -46,9 +46,9 @@
 % we never keep the address of a nested function after the containing
 % functions has returned, so we won't get any dangling continuations.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % CODE GENERATION SUMMARY
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % In each procedure, we declare a local variable `MR_bool succeeded'.
 % This is used to hold the success status of semidet sub-goals.
@@ -116,7 +116,7 @@
 % const_num_map in the ml_gen_info holds the right sequence numbers
 % for the constants in scope.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for wrapping goals
 %
@@ -144,7 +144,7 @@
 %       <succeeded = Goal>
 %       if (succeeded) SUCCEED();
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for empty conjunctions (`true')
 %
@@ -164,7 +164,7 @@
 %   ===>
 %       CONT();
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for non-empty conjunctions
 %
@@ -316,7 +316,7 @@
 % variables in the environment from a nested function. So we only hoist
 % declarations of static constants.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for if-then-else
 %
@@ -364,7 +364,7 @@
 % of the scope, so that they are in scope for the <Then> goal
 % (this is needed for declarations of static consts).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for negation
 %
@@ -389,7 +389,7 @@
 %       <succeeded = Goal>
 %       succeeded = !succeeded;
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This back-end is still not yet 100% complete.
 %
@@ -444,7 +444,7 @@
 %     variable via the environment pointer
 %     (be careful about the interaction with setjmp(), though)
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_code_gen.
 :- interface.
@@ -460,8 +460,8 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate MLDS code for the specified goal in the specified code model.
     % Return the result as a single statement (which may be a block statement
@@ -510,8 +510,8 @@
     prog_context::in, list(prog_var)::in, list(mlds_local_var_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -534,8 +534,8 @@
 :- import_module require.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Generate code for goals.
 %
@@ -557,7 +557,7 @@ ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info) :-
     ml_gen_goal_as_block(CodeModel, Goal, Stmt, !Info),
     ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -585,7 +585,7 @@ ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info) :-
     FuncDefns = GoalFuncDefns,
     Stmts = GoalStmts.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate MLDS code for the different kinds of HLDS goals.
     %
@@ -720,7 +720,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
         unexpected($module, "unexpected shorthand")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % For any given goal, we need to declare any variables which are local
     % to this goal (including its subgoals), but which are not local to
@@ -885,7 +885,7 @@ cases_find_subgoal_nonlocals([Case | Cases], !SubGoalNonLocals) :-
     set_of_var.union(NonLocals, !SubGoalNonLocals),
     cases_find_subgoal_nonlocals(Cases, !SubGoalNonLocals).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for if-then-else.
 %
@@ -1014,7 +1014,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         Stmts = [SetCondFalse | CondStmts] ++ [IfStmt]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for negation.
 %
@@ -1080,7 +1080,7 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         unexpected($module, $pred, "nondet negation")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for conjunctions.
 %
@@ -1118,7 +1118,7 @@ ml_gen_conj(Conjuncts, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
         !Stmts, !Info) :-
@@ -1201,7 +1201,7 @@ ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_local_var_decls(_VarSet, _VarTypes, _Context, [], [], !Info).
 ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
@@ -1221,6 +1221,6 @@ ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
         Defns = [Defn | Defns0]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_code_gen.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

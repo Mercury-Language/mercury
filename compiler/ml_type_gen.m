@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_type_gen.m
 % Main author: fjh
@@ -21,7 +21,7 @@
 % For constructors which are represented as the addresses of specially reserved
 % objects, we generate the static (one_copy) members for those objects.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_type_gen.
 :- interface.
@@ -39,14 +39,14 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate MLDS definitions for all the types in the HLDS.
     %
 :- pred ml_gen_types(module_info::in, mlds_target_lang::in,
     list(mlds_class_defn)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a constructor function to initialise the given fields in a
     % class representing a compiler generated data structure.
@@ -60,7 +60,7 @@
     mlds_type, mlds_module_name, mlds_class_id, maybe(int),
     list(mlds_field_info), prog_context) = mlds_function_defn.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given an HLDS type_ctor, generate the MLDS class name and arity
     % for the corresponding MLDS type.
@@ -78,7 +78,7 @@
 :- func ml_gen_du_ctor_name_unqual_type(mlds_target_lang, string, int,
     sym_name, int) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the declaration flags appropriate for a type.
     %
@@ -98,7 +98,7 @@
     %
 :- func ml_gen_enum_constant_data_decl_flags = mlds_field_var_decl_flags.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag):
     % Check if this constructor uses a secondary tag,
@@ -152,8 +152,8 @@
 :- pred ml_gen_exported_enums(module_info::in, mlds_exported_enums::out)
     is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -175,7 +175,7 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_types(ModuleInfo, Target, Defns) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -249,7 +249,7 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Enumeration types.
 %
@@ -388,7 +388,7 @@ ml_gen_hld_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
         ml_gen_enum_constant_data_decl_flags, mlds_native_int_type,
         init_obj(ConstValue), gc_no_stmt).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Discriminated union types.
 %
@@ -606,7 +606,7 @@ get_tagval(TypeCtor, ConsTagValues, Ctor) = TagVal :-
     Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, Arity, _Ctxt),
     map.lookup(ConsTagValues, cons(Name, Arity, TypeCtor), TagVal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func ml_gen_hld_tag_constant(prog_context, type_ctor, cons_tag_values,
     constructor) = list(mlds_field_var_defn).
@@ -634,7 +634,7 @@ ml_gen_hld_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
         Defns = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a definition for the class used for the secondary tag type.
     % This is needed for discriminated unions for which some but not all
@@ -1071,7 +1071,7 @@ ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, MaybeFieldName, Type, Width,
 
     !:ArgNum = !.ArgNum + 1.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Miscellaneous helper routines.
 %
@@ -1124,7 +1124,7 @@ ml_gen_du_ctor_name_unqual_type(CompilationTarget, UnqualTypeName, TypeArity,
 % XXX generation of `==' members is not yet implemented.
 ml_gen_equality_members(_, []).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Routines for generating declaration flags.
 %
@@ -1150,7 +1150,7 @@ ml_gen_const_member_data_decl_flags =
 ml_gen_enum_constant_data_decl_flags =
     mlds_field_var_decl_flags(one_copy, const).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag) :-
     % BEWARE that this is NOT the same as ml_needs_secondary_tag.
@@ -1158,7 +1158,7 @@ ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag) :-
     TagVal = get_tagval(TypeCtor, ConsTagValues, Ctor),
     get_secondary_tag(TagVal) = yes(SecondaryTag).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % A constructor is represented using the base class rather than a derived
 % class if there is only a single functor, or if there is a single
@@ -1200,7 +1200,7 @@ ml_target_uses_constructors(ml_target_c) = no.
 ml_target_uses_constructors(ml_target_csharp) = yes.
 ml_target_uses_constructors(ml_target_java) = yes.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_exported_enums(ModuleInfo, MLDS_ExportedEnums) :-
      module_info_get_exported_enums(ModuleInfo, ExportedEnumInfo),
@@ -1285,6 +1285,6 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
         init_obj(ConstValue)),
     !:ExportConstants = [ExportConstant | !.ExportConstants].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_type_gen.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

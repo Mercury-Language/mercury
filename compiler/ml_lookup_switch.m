@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ml_lookup_switch.m
 % Author: zs.
@@ -16,7 +16,7 @@
 %
 % Any changes here may need to be reflected in lookup_switch.m as well.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_lookup_switch.
 :- interface.
@@ -37,7 +37,7 @@
 :- import_module maybe.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type ml_lookup_switch_info
     --->    ml_lookup_switch_info(
@@ -70,7 +70,7 @@
     pred(cons_tag, T)::in(pred(in, out) is det), list(tagged_case)::in,
     map(case_id, V)::in, map(T, V)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate MLDS code for the lookup switch.
     %
@@ -80,7 +80,7 @@
     need_bit_vec_check::in, need_range_check::in, mlds_stmt::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % These types and predicates are exported because they are useful in the
 % implementation of string lookup switches.
@@ -108,15 +108,15 @@
     ml_several_soln_lookup_vars::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func ml_construct_later_soln_row(mlds_type, list(mlds_rval)) =
     mlds_initializer.
 
 :- func ml_default_value_for_type(mlds_type) = mlds_rval.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -139,7 +139,7 @@
 :- import_module pair.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_is_lookup_switch(SwitchVar, TaggedCases, GoalInfo, CodeModel,
         MaybeLookupSwitchInfo, !Info) :-
@@ -215,7 +215,7 @@ ml_generate_constants_for_lookup_switch(CodeModel, OutVars, ArmNonLocals,
     ml_generate_constants_for_lookup_switch(CodeModel,
         OutVars, ArmNonLocals, TaggedCases, !CaseIdMap, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_case_id_soln_consts_to_tag_soln_consts(GetTag, TaggedCases, CaseIdMap,
         TagMap) :-
@@ -253,7 +253,7 @@ ml_record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
     GetTag(ConsTag, Index),
     map.det_insert(Index, SolnConsts, !IndexMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_atomic_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
         CodeModel, Context, StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck,
@@ -287,7 +287,7 @@ ml_gen_atomic_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
             NeedBitVecCheck, NeedRangeCheck, Stmt, !Info)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_gen_simple_atomic_lookup_switch(mlds_rval::in, list(prog_var)::in,
     list(mlds_type)::in, assoc_list(int, list(mlds_rval))::in, code_model::in,
@@ -391,7 +391,7 @@ ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
         unexpected($pred, "model_non")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_gen_several_soln_atomic_lookup_switch(mlds_rval::in,
     list(prog_var)::in, list(mlds_type)::in,
@@ -470,7 +470,7 @@ ml_gen_several_soln_atomic_lookup_switch(IndexRval, OutVars, OutTypes,
         Stmt = ml_stmt_if_then_else(RangeCheckCond, InRangeStmt, no, Context)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ml_gen_several_soln_lookup_code(Context, SlotVarRval,
         OutVars, OutTypes, FirstSolnStructType, LaterSolnStructType,
@@ -570,7 +570,7 @@ make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
         LaterSlotVarLval, LimitVarLval,
         LimitAssignStmt, IncrLaterSlotVarStmt, Defns).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The bitvector is an array of words (where we use the first 32 bits
     % of each word). Each bit represents a tag value for the (range checked)
@@ -678,7 +678,7 @@ ml_generate_bit_vec_initializers(All @ [WordNum - Bits | Rest], Count,
     ml_generate_bit_vec_initializers(Remainder, Count + 1,
         Rvals, Initializers).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ml_construct_simple_switch_vector(module_info::in,
     mlds_type::in, list(mlds_type)::in, int::in,
@@ -781,7 +781,7 @@ ml_construct_later_soln_row(StructType, Rvals) = RowInitializer :-
     FieldInitializers = list.map(wrap_init_obj, Rvals),
     RowInitializer = init_struct(StructType, FieldInitializers).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_dummy_first_soln_row(mlds_type::in, list(mlds_type)::in,
     list(mlds_initializer)::in, list(mlds_initializer)::out) is det.
@@ -841,6 +841,6 @@ ml_default_value_for_type(MLDS_Type) = DefaultRval :-
         unexpected($pred, "unexpected MLDS_Type")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_lookup_switch.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
