@@ -330,7 +330,7 @@ ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
     %      pred callee(float::in, T1::in, float::out, T2::out, ...).
     %
     % then for a call `callee(Arg1, Arg2, Arg3, Arg4, ...)'
-    % with arguments of types `float, U1, float, U2, ...',
+    % with arguments of types `U1, float, U2, float, ...',
     % we generate the following fragments:
     %
     %   /* declarations of variables needed for boxing/unboxing */
@@ -339,11 +339,11 @@ ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
     %   ...
     %
     %   /* code to call the function */
-    %   func(unbox(Arg1), box(Arg2), &unboxed_Arg3, &boxed_Arg4);
+    %   func(unbox(Arg1), box(Arg2), &conv0_Arg3, &conv1_Arg4);
     %
     %   /* code to box/unbox the output arguments */
-    %   *Arg3 = box(unboxed_Arg3);
-    %   *Arg4 = unbox(boxed_Arg4);
+    %   *Arg3 = box(conv0_Arg3);
+    %   *Arg4 = unbox(conv1_Arg4);
     %   ...
     %
     % Note that in general not every argument will need to be boxed/unboxed;
