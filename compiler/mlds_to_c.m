@@ -3531,434 +3531,241 @@ mlds_output_statements(Opts, Indent, FuncInfo, [Stmt | Stmts], !IO) :-
 mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
     c_output_stmt_context(Opts ^ m2co_line_numbers, Stmt, !IO),
     (
-        Stmt = ml_stmt_atomic(AtomicStmt, Context),
-        mlds_output_atomic_stmt(Opts, Indent, FuncInfo, AtomicStmt,
-            Context, !IO)
+        Stmt = ml_stmt_block(_LocalVarDefns, _FuncDefns, _SubStmts, _Context),
+        mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
-        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
-        BraceIndent = Indent,
-        BlockIndent = Indent + 1,
-        output_n_indents(BraceIndent, !IO),
-        io.write_string("{\n", !IO),
-
-        FuncInfo = func_info_c(FuncName, _),
-        FuncName = qual_function_name(ModuleName, _),
-
-        % Output forward declarations for any nested functions defined in
-        % this block, in case they are referenced before they are defined.
-        (
-            FuncDefns = [_ | _],
-            list.foldl(
-                mlds_output_function_decl_opts(Opts, BlockIndent, ModuleName),
-                FuncDefns, !IO),
-            io.write_string("\n", !IO)
-        ;
-            FuncDefns = []
-        ),
-
-        (
-            LocalVarDefns = [_ | _],
-
-            GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
-            (
-                GCC_LocalLabels = yes,
-                % GNU C __label__ declarations must precede ordinary variable
-                % declarations.
-                list.filter(local_var_defn_is_commit_type, LocalVarDefns,
-                    LabelDefns, NonLabelDefns),
-                mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
-                    LabelDefns, !IO),
-                mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
-                    NonLabelDefns, !IO)
-            ;
-                GCC_LocalLabels = no,
-                mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
-                    LocalVarDefns, !IO)
-            ),
-            io.write_string("\n", !IO)
-        ;
-            LocalVarDefns = []
-        ),
-        (
-            FuncDefns = [_ | _],
-            mlds_output_function_defns(Opts, BlockIndent, ModuleName,
-                FuncDefns, !IO),
-            io.write_string("\n", !IO)
-        ;
-            FuncDefns = []
-        ),
-
-        mlds_output_statements(Opts, BlockIndent, FuncInfo, SubStmts, !IO),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(BraceIndent, !IO),
-        io.write_string("}\n", !IO)
+        Stmt = ml_stmt_while(_Kind, _Cond, _BodyStmt, _Context),
+        mlds_output_stmt_while(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
-        Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
-        scope_indent(BodyStmt, Indent, ScopeIndent),
-        (
-            Kind = may_loop_zero_times,
-            output_n_indents(Indent, !IO),
-            io.write_string("while (", !IO),
-            mlds_output_rval(Opts, Cond, !IO),
-            io.write_string(")\n", !IO),
-            mlds_output_statement(Opts, ScopeIndent, FuncInfo, BodyStmt, !IO)
-        ;
-            Kind = loop_at_least_once,
-            output_n_indents(Indent, !IO),
-            io.write_string("do\n", !IO),
-            mlds_output_statement(Opts, ScopeIndent, FuncInfo, BodyStmt, !IO),
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent, !IO),
-            io.write_string("while (", !IO),
-            mlds_output_rval(Opts, Cond, !IO),
-            io.write_string(");\n", !IO)
-        )
+        Stmt = ml_stmt_if_then_else(_Cond, _Then, _MaybeElse, _Context),
+        mlds_output_stmt_if_then_else(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
-        Stmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse, Context),
-        % We need to take care to avoid problems caused by the dangling else
-        % ambiguity.
-        ( if
-            % For examples of the form
-            %
-            %   if (...)
-            %       if (...)
-            %           ...
-            %   else
-            %       ...
-            %
-            % we need braces around the inner `if', otherwise they wouldn't
-            % parse they way we want them to: C would match the `else'
-            % with the inner `if' rather than the outer `if'.
-
-            MaybeElse = yes(_),
-            Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
-        then
-            Then = ml_stmt_block([], [], [Then0], ThenContext)
-        else if
-            % For examples of the form
-            %
-            %   if (...)
-            %       if (...)
-            %           ...
-            %       else
-            %           ...
-            %
-            % we don't _need_ braces around the inner `if', since C will match
-            % the else with the inner `if', but we add braces anyway, to avoid
-            % a warning from gcc.
-
-            MaybeElse = no,
-            Then0 = ml_stmt_if_then_else(_, _, yes(_), ThenContext)
-        then
-            Then = ml_stmt_block([], [], [Then0], ThenContext)
-        else
-            Then = Then0
-        ),
-
-        output_n_indents(Indent, !IO),
-        io.write_string("if (", !IO),
-        mlds_output_rval(Opts, Cond, !IO),
-        io.write_string(")\n", !IO),
-        scope_indent(Then, Indent, ScopeIndent),
-        mlds_output_statement(Opts, ScopeIndent, FuncInfo, Then, !IO),
-        (
-            MaybeElse = yes(Else),
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent, !IO),
-            io.write_string("else\n", !IO),
-            ( if Else = ml_stmt_if_then_else(_, _, _, _) then
-                % Indent each if-then-else in a if-then-else chain
-                % to the same depth.
-                ElseScopeIndent = Indent
-            else
-                scope_indent(Else, Indent, ElseScopeIndent)
-            ),
-            mlds_output_statement(Opts, ElseScopeIndent, FuncInfo, Else, !IO)
-        ;
-            MaybeElse = no
-        )
+        Stmt = ml_stmt_switch(_Type, _Val, _Range, _Cases, _Default, _Context),
+        mlds_output_stmt_switch(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
-        Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, Context),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("switch (", !IO),
-        mlds_output_rval(Opts, Val, !IO),
-        io.write_string(") {\n", !IO),
-        % We put the default case first, so that if it is unreachable,
-        % it will get merged in with the first case.
-        mlds_output_switch_default(Opts, Indent + 1, FuncInfo, Context,
-            Default, !IO),
-        list.foldl(
-            mlds_output_switch_case(Opts, Indent + 1, FuncInfo, Context),
-            Cases, !IO),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("}\n", !IO)
+        Stmt = ml_stmt_label(_LabelName, _Context),
+        mlds_output_stmt_label(Indent, Stmt, !IO)
     ;
-        Stmt = ml_stmt_label(LabelName, _Context),
-        % Note: MLDS allows labels at the end of blocks. C doesn't.
-        % Hence we need to insert a semi-colon after the colon to ensure that
-        % there is a statement to attach the label to.
-
-        output_n_indents(Indent - 1, !IO),
-        mlds_output_label_name(LabelName, !IO),
-        io.write_string(":;\n", !IO)
+        Stmt = ml_stmt_goto(_Target, _Context),
+        mlds_output_stmt_goto(Indent, Stmt, !IO)
     ;
-        Stmt = ml_stmt_goto(Target, _Context),
-        (
-            Target = goto_label(LabelName),
-            output_n_indents(Indent, !IO),
-            io.write_string("goto ", !IO),
-            mlds_output_label_name(LabelName, !IO),
-            io.write_string(";\n", !IO)
-        ;
-            Target = goto_break,
-            output_n_indents(Indent, !IO),
-            io.write_string("break;\n", !IO)
-        ;
-            Target = goto_continue,
-            output_n_indents(Indent, !IO),
-            io.write_string("continue;\n", !IO)
-        )
+        Stmt = ml_stmt_computed_goto(_Expr, _Labels, _Context),
+        mlds_output_stmt_computed_goto(Opts, Indent, Stmt, !IO)
     ;
-        Stmt = ml_stmt_computed_goto(Expr, Labels, Context),
-        % XXX For GNU C, we could output potentially more efficient code
-        % by using an array of labels; this would tell the compiler that
-        % it didn't need to do any range check.
-        output_n_indents(Indent, !IO),
-        io.write_string("switch (", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string(") {\n", !IO),
-        list.foldl2(mlds_output_computed_goto_label(Opts, Context, Indent),
-            Labels, 0, _FinalCount, !IO),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent + 1, !IO),
-        io.write_string("default: /*NOTREACHED*/ MR_assert(0);\n", !IO),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("}\n", !IO)
+        Stmt = ml_stmt_call(_Signature, _FuncRval, _MaybeObject, _CallArgs,
+            _Results, _IsTailCall, _Markers, _Context),
+        mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
-        Stmt = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
-            Results, IsTailCall, _Markers, Context),
-        FuncInfo = func_info_c(CallerName, CallerSignature),
-
-        % We need to enclose the generated code inside an extra pair of curly
-        % braces, in case we generate more than one statement (e.g. because we
-        % generate extra statements for profiling or for tail call
-        % optimization) and the generated code is e.g. inside an if-then-else.
-
-        output_n_indents(Indent, !IO),
-        io.write_string("{\n", !IO),
-
-        mlds_maybe_output_call_profile_instr(Opts, Context, Indent + 1,
-            FuncRval, CallerName, !IO),
-
-        % Optimize general tail calls. We can't really do much here except to
-        % insert `return' as an extra hint to the C compiler.
-        % XXX These optimizations should be disable-able.
-        %
-        % If Results = [], i.e. the function has `void' return type, then this
-        % would result in code that is not legal ANSI C (although it _is_ legal
-        % in GNU C and in C++), so for that case, we put the return statement
-        % after the call -- see below.
-        %
-        % Note that it's only safe to add such a return statement if the
-        % calling procedure has the same return types as the callee, or if
-        % the calling procedure has no return value. (Calls where the types
-        % are different can be marked as tail calls if they are known
-        % to never return.)
-
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent + 1, !IO),
-        Signature = mlds_func_signature(_, RetTypes),
-        CallerSignature = mlds_func_signature(_, CallerRetTypes),
-        ( if
-            ( IsTailCall = tail_call
-            ; IsTailCall = no_return_call
-            ),
-            Results = [_ | _],
-            RetTypes = CallerRetTypes
-        then
-            io.write_string("return ", !IO)
-        else
-            true
-        ),
-        (
-            MaybeObject = yes(Object),
-            mlds_output_bracketed_rval(Opts, Object, !IO),
-            io.write_string(".", !IO) % XXX should this be "->"?
-        ;
-            MaybeObject = no
-        ),
-        (
-            Results = []
-        ;
-            Results = [Lval],
-            mlds_output_lval(Opts, Lval, !IO),
-            io.write_string(" = ", !IO)
-        ;
-            Results = [_, _ | _],
-            mlds_output_return_list(Results, mlds_output_lval(Opts), !IO),
-            io.write_string(" = ", !IO)
-        ),
-        mlds_output_bracketed_rval(Opts, FuncRval, !IO),
-        io.write_string("(", !IO),
-        io.write_list(CallArgs, ", ", mlds_output_rval(Opts), !IO),
-        io.write_string(");\n", !IO),
-
-        ( if
-            ( IsTailCall = tail_call
-            ; IsTailCall = no_return_call
-            ),
-            CallerRetTypes = []
-        then
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent + 1, !IO),
-            io.write_string("return;\n", !IO)
-        else
-            mlds_maybe_output_time_profile_instr(Opts, Context, Indent + 1,
-                CallerName, !IO)
-        ),
-        output_n_indents(Indent, !IO),
-        io.write_string("}\n", !IO)
+        Stmt = ml_stmt_return(_Results, _Context),
+        mlds_output_stmt_return(Opts, Indent, Stmt, !IO)
     ;
-        Stmt = ml_stmt_return(Results, _Context),
-        output_n_indents(Indent, !IO),
-        io.write_string("return", !IO),
-        (
-            Results = []
-        ;
-            Results = [Rval],
-            io.write_char(' ', !IO),
-            mlds_output_rval(Opts, Rval, !IO)
-        ;
-            Results = [_, _ | _],
-            mlds_output_return_list(Results, mlds_output_rval(Opts), !IO)
-        ),
-        io.write_string(";\n", !IO)
+        Stmt = ml_stmt_do_commit(_Ref, _Context),
+        mlds_output_stmt_do_commit(Opts, Indent, Stmt, !IO)
     ;
-        Stmt = ml_stmt_do_commit(Ref, _Context),
-        output_n_indents(Indent, !IO),
-        GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
-        (
-            GCC_LocalLabels = yes,
-            % Output "goto <Ref>".
-            io.write_string("goto ", !IO),
-            mlds_output_rval(Opts, Ref, !IO)
-        ;
-            GCC_LocalLabels = no,
-            % Output "MR_builtin_longjmp(<Ref>, 1)". This is a macro that
-            % expands to either the standard longjmp() or the GNU C's
-            % __builtin_longjmp(). Note that the second argument to GNU
-            % C's __builtin_longjmp() *must* be `1'.
-            io.write_string("MR_builtin_longjmp(", !IO),
-            mlds_output_rval(Opts, Ref, !IO),
-            io.write_string(", 1)", !IO)
-        ),
-        io.write_string(";\n", !IO)
+        Stmt = ml_stmt_try_commit(_Ref, _BodyStmt0, _HandlerStmt, _Context),
+        mlds_output_stmt_try_commit(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
-        Stmt = ml_stmt_try_commit(Ref, BodyStmt0, HandlerStmt, Context),
-        GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
-        (
-            GCC_LocalLabels = yes,
-
-            % Output the following:
-            %
-            %       <Stmt>
-            %       goto <Ref>_done;
-            %   <Ref>:
-            %       <Handler>
-            %   <Ref>_done:
-            %       ;
-
-            % Note that <Ref> should be just variable name, not a complicated
-            % expression. If not, the C compiler will catch it.
-
-            mlds_output_statement(Opts, Indent, FuncInfo, BodyStmt0, !IO),
-
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent, !IO),
-            io.write_string("goto ", !IO),
-            mlds_output_lval(Opts, Ref, !IO),
-            io.write_string("_done;\n", !IO),
-
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent - 1, !IO),
-            mlds_output_lval(Opts, Ref, !IO),
-            io.write_string(":\n", !IO),
-
-            mlds_output_statement(Opts, Indent, FuncInfo, HandlerStmt, !IO),
-
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent - 1, !IO),
-            mlds_output_lval(Opts, Ref, !IO),
-            io.write_string("_done:\t;\n", !IO)
-        ;
-            GCC_LocalLabels = no,
-
-            % Output the following:
-            %
-            %   if (MR_builtin_setjmp(<Ref>) == 0)
-            %       <Stmt>
-            %   else
-            %       <Handler>
-            %
-            % MR_builtin_setjmp() expands to either the standard setjmp()
-            % or GNU C's __builtin_setjmp().
-            %
-            % Note that ISO C says that any non-volatile variables that are
-            % local to the function containing the setjmp() and which are
-            % modified between the setjmp() and the longjmp() become
-            % indeterminate after the longjmp(). The MLDS code generator
-            % handles that by generating each commit in its own nested
-            % function, with the local variables remaining in the containing
-            % function. This ensures that none of the variables which get
-            % modified between the setjmp() and the longjmp() and which get
-            % referenced after the longjmp() are local variables in the
-            % function containing the setjmp(), so we don't need to mark them
-            % as volatile.
-
-            % We need to take care to avoid problems caused by the
-            % dangling else ambiguity.
-            ( if BodyStmt0 = ml_stmt_if_then_else(_, _, no, Context) then
-                BodyStmt = ml_stmt_block([], [], [BodyStmt0], Context)
-            else
-                BodyStmt = BodyStmt0
-            ),
-
-            output_n_indents(Indent, !IO),
-            io.write_string("if (MR_builtin_setjmp(", !IO),
-            mlds_output_lval(Opts, Ref, !IO),
-            io.write_string(") == 0)\n", !IO),
-
-            mlds_output_statement(Opts, Indent + 1, FuncInfo, BodyStmt, !IO),
-
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent, !IO),
-            io.write_string("else\n", !IO),
-
-            mlds_output_statement(Opts, Indent + 1, FuncInfo, HandlerStmt, !IO)
-        )
+        Stmt = ml_stmt_atomic(_AtomicStmt, _Context),
+        mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO)
     ).
-
-:- pred mlds_output_computed_goto_label(mlds_to_c_opts::in, prog_context::in,
-    int::in, mlds_label::in, int::in, int::out, io::di, io::uo) is det.
-
-mlds_output_computed_goto_label(Opts, Context, Indent, Label, Count0, Count,
-        !IO) :-
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent + 1, !IO),
-    io.write_string("case ", !IO),
-    io.write_int(Count0, !IO),
-    io.write_string(": goto ", !IO),
-    mlds_output_label_name(Label, !IO),
-    io.write_string(";\n", !IO),
-    Count = Count0 + 1.
 
 %---------------------------------------------------------------------------%
 %
-% Extra code for outputting switch statements.
+% Output blocks.
 %
+
+:- pred mlds_output_stmt_block(mlds_to_c_opts::in, indent::in, func_info_c::in,
+    mlds_stmt::in(ml_stmt_is_block), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_block/6).
+
+mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO) :-
+    Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
+    BraceIndent = Indent,
+    BlockIndent = Indent + 1,
+    output_n_indents(BraceIndent, !IO),
+    io.write_string("{\n", !IO),
+
+    FuncInfo = func_info_c(FuncName, _),
+    FuncName = qual_function_name(ModuleName, _),
+
+    % Output forward declarations for any nested functions defined in
+    % this block, in case they are referenced before they are defined.
+    (
+        FuncDefns = [_ | _],
+        list.foldl(
+            mlds_output_function_decl_opts(Opts, BlockIndent, ModuleName),
+            FuncDefns, !IO),
+        io.write_string("\n", !IO)
+    ;
+        FuncDefns = []
+    ),
+    (
+        LocalVarDefns = [_ | _],
+        GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
+        (
+            GCC_LocalLabels = yes,
+            % GNU C __label__ declarations must precede ordinary variable
+            % declarations.
+            list.filter(local_var_defn_is_commit_type, LocalVarDefns,
+                LabelDefns, NonLabelDefns),
+            mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
+                LabelDefns, !IO),
+            mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
+                NonLabelDefns, !IO)
+        ;
+            GCC_LocalLabels = no,
+            mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
+                LocalVarDefns, !IO)
+        ),
+        io.write_string("\n", !IO)
+    ;
+        LocalVarDefns = []
+    ),
+    (
+        FuncDefns = [_ | _],
+        mlds_output_function_defns(Opts, BlockIndent, ModuleName,
+            FuncDefns, !IO),
+        io.write_string("\n", !IO)
+    ;
+        FuncDefns = []
+    ),
+    mlds_output_statements(Opts, BlockIndent, FuncInfo, SubStmts, !IO),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(BraceIndent, !IO),
+    io.write_string("}\n", !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Output while loops.
+%
+
+:- pred mlds_output_stmt_while(mlds_to_c_opts::in, indent::in, func_info_c::in,
+    mlds_stmt::in(ml_stmt_is_while), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_while/6).
+
+mlds_output_stmt_while(Opts, Indent, FuncInfo, Stmt, !IO) :-
+    Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
+    scope_indent(BodyStmt, Indent, ScopeIndent),
+    (
+        Kind = may_loop_zero_times,
+        output_n_indents(Indent, !IO),
+        io.write_string("while (", !IO),
+        mlds_output_rval(Opts, Cond, !IO),
+        io.write_string(")\n", !IO),
+        mlds_output_statement(Opts, ScopeIndent, FuncInfo, BodyStmt, !IO)
+    ;
+        Kind = loop_at_least_once,
+        output_n_indents(Indent, !IO),
+        io.write_string("do\n", !IO),
+        mlds_output_statement(Opts, ScopeIndent, FuncInfo, BodyStmt, !IO),
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent, !IO),
+        io.write_string("while (", !IO),
+        mlds_output_rval(Opts, Cond, !IO),
+        io.write_string(");\n", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Output if-then-elses.
+%
+
+:- pred mlds_output_stmt_if_then_else(mlds_to_c_opts::in, indent::in,
+    func_info_c::in, mlds_stmt::in(ml_stmt_is_if_then_else),
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_if_then_else/6).
+
+mlds_output_stmt_if_then_else(Opts, Indent, FuncInfo, Stmt, !IO) :-
+    Stmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse, Context),
+    % We need to take care to avoid problems caused by the dangling else
+    % ambiguity.
+    ( if
+        % For examples of the form
+        %
+        %   if (...)
+        %       if (...)
+        %           ...
+        %   else
+        %       ...
+        %
+        % we need braces around the inner `if', otherwise they wouldn't parse
+        % they way we want them to: C would match the `else' with the
+        % inner `if' rather than the outer `if'.
+
+        MaybeElse = yes(_),
+        Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
+    then
+        Then = ml_stmt_block([], [], [Then0], ThenContext)
+    else if
+        % For examples of the form
+        %
+        %   if (...)
+        %       if (...)
+        %           ...
+        %       else
+        %           ...
+        %
+        % we don't _need_ braces around the inner `if', since C will match
+        % the else with the inner `if', but we add braces anyway, to avoid
+        % a warning from gcc.
+
+        MaybeElse = no,
+        Then0 = ml_stmt_if_then_else(_, _, yes(_), ThenContext)
+    then
+        Then = ml_stmt_block([], [], [Then0], ThenContext)
+    else
+        Then = Then0
+    ),
+
+    output_n_indents(Indent, !IO),
+    io.write_string("if (", !IO),
+    mlds_output_rval(Opts, Cond, !IO),
+    io.write_string(")\n", !IO),
+    scope_indent(Then, Indent, ScopeIndent),
+    mlds_output_statement(Opts, ScopeIndent, FuncInfo, Then, !IO),
+    (
+        MaybeElse = yes(Else),
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent, !IO),
+        io.write_string("else\n", !IO),
+        ( if Else = ml_stmt_if_then_else(_, _, _, _) then
+            % Indent each if-then-else in a if-then-else chain
+            % to the same depth.
+            ElseScopeIndent = Indent
+        else
+            scope_indent(Else, Indent, ElseScopeIndent)
+        ),
+        mlds_output_statement(Opts, ElseScopeIndent, FuncInfo, Else, !IO)
+    ;
+        MaybeElse = no
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Output switch statements.
+%
+
+:- pred mlds_output_stmt_switch(mlds_to_c_opts::in, indent::in,
+    func_info_c::in, mlds_stmt::in(ml_stmt_is_switch), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_switch/6).
+
+mlds_output_stmt_switch(Opts, Indent, FuncInfo, Stmt, !IO) :-
+    Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, Context),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    io.write_string("switch (", !IO),
+    mlds_output_rval(Opts, Val, !IO),
+    io.write_string(") {\n", !IO),
+    % We put the default case first, so that if it is unreachable,
+    % it will get merged in with the first case.
+    mlds_output_switch_default(Opts, Indent + 1, FuncInfo, Context,
+        Default, !IO),
+    list.foldl(
+        mlds_output_switch_case(Opts, Indent + 1, FuncInfo, Context),
+        Cases, !IO),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    io.write_string("}\n", !IO).
 
 :- pred mlds_output_switch_case(mlds_to_c_opts::in, indent::in,
     func_info_c::in, prog_context::in, mlds_switch_case::in,
@@ -4020,6 +3827,188 @@ mlds_output_switch_default(Opts, Indent, FuncInfo, Context, Default, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Output labels.
+%
+
+:- pred mlds_output_stmt_label(indent::in, mlds_stmt::in(ml_stmt_is_label),
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_label/4).
+
+mlds_output_stmt_label(Indent, Stmt, !IO) :-
+    Stmt = ml_stmt_label(LabelName, _Context),
+    % Note: MLDS allows labels at the end of blocks. C doesn't.
+    % Hence we need to insert a semi-colon after the colon to ensure that
+    % there is a statement to attach the label to.
+
+    output_n_indents(Indent - 1, !IO),
+    mlds_output_label_name(LabelName, !IO),
+    io.write_string(":;\n", !IO).
+
+:- pred mlds_output_label_name(mlds_label::in, io::di, io::uo) is det.
+
+mlds_output_label_name(LabelName, !IO) :-
+    mlds_output_mangled_name(LabelName, !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Output gotos.
+%
+
+:- pred mlds_output_stmt_goto(indent::in, mlds_stmt::in(ml_stmt_is_goto),
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_goto/4).
+
+mlds_output_stmt_goto(Indent, Stmt, !IO) :-
+    Stmt = ml_stmt_goto(Target, _Context),
+    output_n_indents(Indent, !IO),
+    (
+        Target = goto_label(LabelName),
+        io.write_string("goto ", !IO),
+        mlds_output_label_name(LabelName, !IO),
+        io.write_string(";\n", !IO)
+    ;
+        Target = goto_break,
+        io.write_string("break;\n", !IO)
+    ;
+        Target = goto_continue,
+        io.write_string("continue;\n", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Output computed gotos.
+%
+
+:- pred mlds_output_stmt_computed_goto(mlds_to_c_opts::in, indent::in,
+    mlds_stmt::in(ml_stmt_is_computed_goto), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_computed_goto/5).
+
+mlds_output_stmt_computed_goto(Opts, Indent, Stmt, !IO) :-
+    Stmt = ml_stmt_computed_goto(Expr, Labels, Context),
+    % XXX For GNU C, we could output potentially more efficient code
+    % by using an array of labels; this would tell the compiler that
+    % it didn't need to do any range check.
+    output_n_indents(Indent, !IO),
+    io.write_string("switch (", !IO),
+    mlds_output_rval(Opts, Expr, !IO),
+    io.write_string(") {\n", !IO),
+    list.foldl2(mlds_output_computed_goto_label(Opts, Context, Indent),
+        Labels, 0, _FinalCount, !IO),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent + 1, !IO),
+    io.write_string("default: /*NOTREACHED*/ MR_assert(0);\n", !IO),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    io.write_string("}\n", !IO).
+
+:- pred mlds_output_computed_goto_label(mlds_to_c_opts::in, prog_context::in,
+    int::in, mlds_label::in, int::in, int::out, io::di, io::uo) is det.
+
+mlds_output_computed_goto_label(Opts, Context, Indent, Label, Count0, Count,
+        !IO) :-
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent + 1, !IO),
+    io.write_string("case ", !IO),
+    io.write_int(Count0, !IO),
+    io.write_string(": goto ", !IO),
+    mlds_output_label_name(Label, !IO),
+    io.write_string(";\n", !IO),
+    Count = Count0 + 1.
+
+%---------------------------------------------------------------------------%
+%
+% Output calls.
+%
+
+:- pred mlds_output_stmt_call(mlds_to_c_opts::in, indent::in, func_info_c::in,
+    mlds_stmt::in(ml_stmt_is_call), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_call/6).
+
+mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
+    Stmt = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
+        Results, IsTailCall, _Markers, Context),
+    FuncInfo = func_info_c(CallerName, CallerSignature),
+
+    % We need to enclose the generated code inside an extra pair of curly
+    % braces, in case we generate more than one statement (e.g. because we
+    % generate extra statements for profiling or for tail call
+    % optimization) and the generated code is e.g. inside an if-then-else.
+
+    output_n_indents(Indent, !IO),
+    io.write_string("{\n", !IO),
+
+    mlds_maybe_output_call_profile_instr(Opts, Context, Indent + 1,
+        FuncRval, CallerName, !IO),
+
+    % Optimize general tail calls. We can't really do much here except to
+    % insert `return' as an extra hint to the C compiler.
+    % XXX These optimizations should be disable-able.
+    %
+    % If Results = [], i.e. the function has `void' return type, then this
+    % would result in code that is not legal ANSI C (although it _is_ legal
+    % in GNU C and in C++), so for that case, we put the return statement
+    % after the call -- see below.
+    %
+    % Note that it is only safe to add such a return statement if the
+    % calling procedure has the same return types as the callee, or if
+    % the calling procedure has no return value. (Calls where the types
+    % are different can be marked as tail calls if they are known
+    % to never return.)
+
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent + 1, !IO),
+    Signature = mlds_func_signature(_, RetTypes),
+    CallerSignature = mlds_func_signature(_, CallerRetTypes),
+    ( if
+        ( IsTailCall = tail_call
+        ; IsTailCall = no_return_call
+        ),
+        Results = [_ | _],
+        RetTypes = CallerRetTypes
+    then
+        io.write_string("return ", !IO)
+    else
+        true
+    ),
+    (
+        MaybeObject = yes(Object),
+        mlds_output_bracketed_rval(Opts, Object, !IO),
+        io.write_string(".", !IO) % XXX should this be "->"?
+    ;
+        MaybeObject = no
+    ),
+    (
+        Results = []
+    ;
+        Results = [Lval],
+        mlds_output_lval(Opts, Lval, !IO),
+        io.write_string(" = ", !IO)
+    ;
+        Results = [_, _ | _],
+        mlds_output_return_list(Results, mlds_output_lval(Opts), !IO),
+        io.write_string(" = ", !IO)
+    ),
+    mlds_output_bracketed_rval(Opts, FuncRval, !IO),
+    io.write_string("(", !IO),
+    io.write_list(CallArgs, ", ", mlds_output_rval(Opts), !IO),
+    io.write_string(");\n", !IO),
+
+    ( if
+        ( IsTailCall = tail_call
+        ; IsTailCall = no_return_call
+        ),
+        CallerRetTypes = []
+    then
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent + 1, !IO),
+        io.write_string("return;\n", !IO)
+    else
+        mlds_maybe_output_time_profile_instr(Opts, Context, Indent + 1,
+            CallerName, !IO)
+    ),
+    output_n_indents(Indent, !IO),
+    io.write_string("}\n", !IO).
 
     % If call profiling is turned on output an instruction to record
     % an arc in the call profile between the callee and caller.
@@ -4066,19 +4055,167 @@ mlds_maybe_output_time_profile_instr(Opts, Context, Indent,
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Output returns.
+%
 
-:- pred mlds_output_label_name(mlds_label::in, io::di, io::uo) is det.
+:- pred mlds_output_stmt_return(mlds_to_c_opts::in, indent::in,
+    mlds_stmt::in(ml_stmt_is_return), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_return/5).
 
-mlds_output_label_name(LabelName, !IO) :-
-    mlds_output_mangled_name(LabelName, !IO).
-
-:- pred mlds_output_atomic_stmt(mlds_to_c_opts::in, indent::in,
-    func_info_c::in, mlds_atomic_statement::in, prog_context::in,
-    io::di, io::uo) is det.
-
-mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Stmt, Context, !IO) :-
+mlds_output_stmt_return(Opts, Indent, Stmt, !IO) :-
+    Stmt = ml_stmt_return(Results, _Context),
+    output_n_indents(Indent, !IO),
+    io.write_string("return", !IO),
     (
-        Stmt = comment(Comment),
+        Results = []
+    ;
+        Results = [Rval],
+        io.write_char(' ', !IO),
+        mlds_output_rval(Opts, Rval, !IO)
+    ;
+        Results = [_, _ | _],
+        mlds_output_return_list(Results, mlds_output_rval(Opts), !IO)
+    ),
+    io.write_string(";\n", !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Output commits.
+%
+
+:- pred mlds_output_stmt_do_commit(mlds_to_c_opts::in, indent::in,
+    mlds_stmt::in(ml_stmt_is_do_commit), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_do_commit/5).
+
+mlds_output_stmt_do_commit(Opts, Indent, Stmt, !IO) :-
+    Stmt = ml_stmt_do_commit(Ref, _Context),
+    output_n_indents(Indent, !IO),
+    GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
+    (
+        GCC_LocalLabels = yes,
+        % Output "goto <Ref>".
+        io.write_string("goto ", !IO),
+        mlds_output_rval(Opts, Ref, !IO)
+    ;
+        GCC_LocalLabels = no,
+        % Output "MR_builtin_longjmp(<Ref>, 1)". This is a macro that
+        % expands to either the standard longjmp() or the GNU C's
+        % __builtin_longjmp(). Note that the second argument to GNU
+        % C's __builtin_longjmp() *must* be `1'.
+        io.write_string("MR_builtin_longjmp(", !IO),
+        mlds_output_rval(Opts, Ref, !IO),
+        io.write_string(", 1)", !IO)
+    ),
+    io.write_string(";\n", !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Output try commits.
+%
+
+:- pred mlds_output_stmt_try_commit(mlds_to_c_opts::in, indent::in,
+    func_info_c::in, mlds_stmt::in(ml_stmt_is_try_commit),
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_try_commit/6).
+
+mlds_output_stmt_try_commit(Opts, Indent, FuncInfo, Stmt, !IO) :-
+    Stmt = ml_stmt_try_commit(Ref, BodyStmt0, HandlerStmt, Context),
+    GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
+    (
+        GCC_LocalLabels = yes,
+
+        % Output the following:
+        %
+        %       <Stmt>
+        %       goto <Ref>_done;
+        %   <Ref>:
+        %       <Handler>
+        %   <Ref>_done:
+        %       ;
+
+        % Note that <Ref> should be just variable name, not a complicated
+        % expression. If not, the C compiler will catch it.
+
+        mlds_output_statement(Opts, Indent, FuncInfo, BodyStmt0, !IO),
+
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent, !IO),
+        io.write_string("goto ", !IO),
+        mlds_output_lval(Opts, Ref, !IO),
+        io.write_string("_done;\n", !IO),
+
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent - 1, !IO),
+        mlds_output_lval(Opts, Ref, !IO),
+        io.write_string(":\n", !IO),
+
+        mlds_output_statement(Opts, Indent, FuncInfo, HandlerStmt, !IO),
+
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent - 1, !IO),
+        mlds_output_lval(Opts, Ref, !IO),
+        io.write_string("_done:\t;\n", !IO)
+    ;
+        GCC_LocalLabels = no,
+
+        % Output the following:
+        %
+        %   if (MR_builtin_setjmp(<Ref>) == 0)
+        %       <Stmt>
+        %   else
+        %       <Handler>
+        %
+        % MR_builtin_setjmp() expands to either the standard setjmp()
+        % or GNU C's __builtin_setjmp().
+        %
+        % Note that ISO C says that any non-volatile variables that are
+        % local to the function containing the setjmp() and which are
+        % modified between the setjmp() and the longjmp() become
+        % indeterminate after the longjmp(). The MLDS code generator
+        % handles that by generating each commit in its own nested
+        % function, with the local variables remaining in the containing
+        % function. This ensures that none of the variables which get
+        % modified between the setjmp() and the longjmp() and which get
+        % referenced after the longjmp() are local variables in the
+        % function containing the setjmp(), so we don't need to mark them
+        % as volatile.
+
+        % We need to take care to avoid problems caused by the
+        % dangling else ambiguity.
+        ( if BodyStmt0 = ml_stmt_if_then_else(_, _, no, Context) then
+            BodyStmt = ml_stmt_block([], [], [BodyStmt0], Context)
+        else
+            BodyStmt = BodyStmt0
+        ),
+
+        output_n_indents(Indent, !IO),
+        io.write_string("if (MR_builtin_setjmp(", !IO),
+        mlds_output_lval(Opts, Ref, !IO),
+        io.write_string(") == 0)\n", !IO),
+
+        mlds_output_statement(Opts, Indent + 1, FuncInfo, BodyStmt, !IO),
+
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent, !IO),
+        io.write_string("else\n", !IO),
+
+        mlds_output_statement(Opts, Indent + 1, FuncInfo, HandlerStmt, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Output atomic statements.
+%
+
+:- pred mlds_output_stmt_atomic(mlds_to_c_opts::in, indent::in,
+    mlds_stmt::in(ml_stmt_is_atomic), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_atomic/5).
+
+mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
+    Stmt = ml_stmt_atomic(AtomicStmt, Context),
+    (
+        AtomicStmt = comment(Comment),
         % XXX We should escape any "*/"'s in the Comment. We should also split
         % the comment into lines and indent each line appropriately.
         output_n_indents(Indent, !IO),
@@ -4086,14 +4223,14 @@ mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Stmt, Context, !IO) :-
         io.write_string(Comment, !IO),
         io.write_string(" */\n", !IO)
     ;
-        Stmt = assign(Lval, Rval),
+        AtomicStmt = assign(Lval, Rval),
         output_n_indents(Indent, !IO),
         mlds_output_lval(Opts, Lval, !IO),
         io.write_string(" = ", !IO),
         mlds_output_rval(Opts, Rval, !IO),
         io.write_string(";\n", !IO)
     ;
-        Stmt = assign_if_in_heap(Lval, Rval),
+        AtomicStmt = assign_if_in_heap(Lval, Rval),
         output_n_indents(Indent, !IO),
         io.write_string("MR_assign_if_in_heap(", !IO),
         mlds_output_lval(Opts, Lval, !IO),
@@ -4101,161 +4238,38 @@ mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Stmt, Context, !IO) :-
         mlds_output_rval(Opts, Rval, !IO),
         io.write_string(");\n", !IO)
     ;
-        Stmt = delete_object(Rval),
+        AtomicStmt = delete_object(Rval),
         output_n_indents(Indent, !IO),
         io.write_string("MR_free_heap(", !IO),
         mlds_output_rval(Opts, Rval, !IO),
         io.write_string(");\n", !IO)
     ;
-        Stmt = new_object(Target, MaybeTag, _ExplicitSecTag, Type,
-            MaybeSize, _MaybeCtorName, Args, ArgTypes, MayUseAtomic,
-            MaybeAllocId),
-        output_n_indents(Indent, !IO),
-        io.write_string("{\n", !IO),
-
-        % When filling in the fields of a newly allocated cell, use a fresh
-        % local variable as the base address for the field references in
-        % preference to an lval that is more expensive to access. This yields
-        % a speedup of about 0.3%.
-
-        ( if Target = ml_local_var(_, _) then
-            Base = ls_lval(Target)
-        else
-            % It doesn't matter what string we pick for BaseVarName,
-            % as long as its declaration doesn't hide any of the variables
-            % inside Args. This is not hard to ensure, since the printed
-            % forms of the variables inside Args all include "__".
-            BaseVarName = "base",
-            Base = ls_string(BaseVarName),
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent + 1, !IO),
-            mlds_output_type_prefix(Opts, Type, !IO),
-            io.write_string(" ", !IO),
-            io.write_string(BaseVarName, !IO),
-            mlds_output_type_suffix(Opts, Type, no_size, !IO),
-            io.write_string(";\n", !IO)
-        ),
-
-        % For --gc accurate, we need to insert a call to GC_check()
-        % before every allocation.
-        GC_Method = Opts ^ m2co_gc_method,
-        (
-            GC_Method = gc_accurate,
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent + 1, !IO),
-            io.write_string("MR_GC_check();\n", !IO),
-            % For types which hold RTTI that will be traversed by the collector
-            % at GC-time, we need to allocate an extra word at the start,
-            % to hold the forwarding pointer. Normally we would just overwrite
-            % the first word of the object in the "from" space, but this
-            % can't be done for objects which will be referenced during
-            % the garbage collection process.
-            NeedsForwardingSpace = type_needs_forwarding_pointer_space(Type),
-            (
-                NeedsForwardingSpace = yes,
-                c_output_context(Opts ^ m2co_line_numbers,
-                    Context, !IO),
-                output_n_indents(Indent + 1, !IO),
-                io.write_string("/* reserve space for " ++
-                    "GC forwarding pointer*/\n", !IO),
-                c_output_context(Opts ^ m2co_line_numbers,
-                    Context, !IO),
-                output_n_indents(Indent + 1, !IO),
-                io.write_string("MR_hp_alloc(1);\n", !IO)
-            ;
-                NeedsForwardingSpace = no
-            )
-        ;
-            ( GC_Method = gc_none
-            ; GC_Method = gc_boehm
-            ; GC_Method = gc_boehm_debug
-            ; GC_Method = gc_hgc
-            ; GC_Method = gc_automatic
-            )
-        ),
-
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent + 1, !IO),
-        write_lval_or_string(Opts, Base, !IO),
-        io.write_string(" = ", !IO),
-        (
-            MaybeTag = yes(Tag0),
-            Tag = Tag0,
-            mlds_output_cast(Opts, Type, !IO),
-            io.write_string("MR_mkword(", !IO),
-            mlds_output_tag(Tag, !IO),
-            io.write_string(", ", !IO),
-            EndMkword = ")"
-        ;
-            MaybeTag = no,
-            Tag = 0,
-            % XXX We shouldn't need the cast here, but currently the type
-            % that we include in the call to MR_new_object() is not always
-            % correct.
-            mlds_output_cast(Opts, Type, !IO),
-            EndMkword = ""
-        ),
-        (
-            MayUseAtomic = may_not_use_atomic_alloc,
-            io.write_string("MR_new_object(", !IO)
-        ;
-            MayUseAtomic = may_use_atomic_alloc,
-            io.write_string("MR_new_object_atomic(", !IO)
-        ),
-        mlds_output_type(Opts, Type, !IO),
-        io.write_string(", ", !IO),
-        (
-            MaybeSize = yes(Size),
-            io.write_string("(", !IO),
-            mlds_output_rval(Opts, Size, !IO),
-            io.write_string(" * sizeof(MR_Word))", !IO)
-        ;
-            MaybeSize = no,
-            % XXX what should we do here?
-            io.write_int(-1, !IO)
-        ),
-        io.write_string(", ", !IO),
-        mlds_output_maybe_alloc_id(MaybeAllocId, !IO),
-        io.write_string(", NULL)", !IO),
-        io.write_string(EndMkword, !IO),
-        io.write_string(";\n", !IO),
-        (
-            Base = ls_lval(_)
-        ;
-            Base = ls_string(BaseVarName1),
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent + 1, !IO),
-            mlds_output_lval(Opts, Target, !IO),
-            io.write_string(" = ", !IO),
-            io.write_string(BaseVarName1, !IO),
-            io.write_string(";\n", !IO)
-        ),
-        mlds_output_init_args(Args, ArgTypes, Context, 0, Base, Tag,
-            Opts, Indent + 1, !IO),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("}\n", !IO)
+        AtomicStmt = new_object(_Target, _MaybeTag, _ExplicitSecTag, _Type,
+            _MaybeSize, _MaybeCtorName, _Args, _ArgTypes, _MayUseAtomic,
+            _MaybeAllocId),
+        mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context,
+            !IO)
     ;
-        Stmt = gc_check,
+        AtomicStmt = gc_check,
         output_n_indents(Indent, !IO),
         io.write_string("MR_GC_check();\n", !IO)
     ;
-        Stmt = mark_hp(Lval),
+        AtomicStmt = mark_hp(Lval),
         output_n_indents(Indent, !IO),
         io.write_string("MR_mark_hp(", !IO),
         mlds_output_lval(Opts, Lval, !IO),
         io.write_string(");\n", !IO)
     ;
-        Stmt = restore_hp(Rval),
+        AtomicStmt = restore_hp(Rval),
         output_n_indents(Indent, !IO),
         io.write_string("MR_restore_hp(", !IO),
         mlds_output_rval(Opts, Rval, !IO),
         io.write_string(");\n", !IO)
     ;
-        Stmt = trail_op(_TrailOp),
+        AtomicStmt = trail_op(_TrailOp),
         sorry($pred, "trail_ops not implemented")
     ;
-        Stmt = inline_target_code(TargetLang, Components),
+        AtomicStmt = inline_target_code(TargetLang, Components),
         (
             TargetLang = ml_target_c,
             list.foldl(mlds_output_target_code_component(Opts, Context),
@@ -4267,9 +4281,139 @@ mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Stmt, Context, !IO) :-
             sorry($pred, "inline_target_code only works for language C")
         )
     ;
-        Stmt = outline_foreign_proc(_Lang, _Vs, _Lvals, _Code),
+        AtomicStmt = outline_foreign_proc(_Lang, _Vs, _Lvals, _Code),
         unexpected($pred, "outline_foreign_proc is not used in C backend")
     ).
+
+:- pred mlds_output_stmt_atomic_new_object(mlds_to_c_opts::in, indent::in,
+    mlds_atomic_statement::in(atomic_stmt_is_new_object), prog_context::in,
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_atomic_new_object/6).
+
+mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
+    AtomicStmt = new_object(Target, MaybeTag, _ExplicitSecTag, Type, MaybeSize,
+        _MaybeCtorName, Args, ArgTypes, MayUseAtomic, MaybeAllocId),
+    output_n_indents(Indent, !IO),
+    io.write_string("{\n", !IO),
+
+    % When filling in the fields of a newly allocated cell, use a fresh
+    % local variable as the base address for the field references in
+    % preference to an lval that is more expensive to access. This yields
+    % a speedup of about 0.3%.
+
+    ( if Target = ml_local_var(_, _) then
+        Base = ls_lval(Target)
+    else
+        % It doesn't matter what string we pick for BaseVarName,
+        % as long as its declaration doesn't hide any of the variables
+        % inside Args. This is not hard to ensure, since the printed
+        % forms of the variables inside Args all include "__".
+        BaseVarName = "base",
+        Base = ls_string(BaseVarName),
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent + 1, !IO),
+        mlds_output_type_prefix(Opts, Type, !IO),
+        io.write_string(" ", !IO),
+        io.write_string(BaseVarName, !IO),
+        mlds_output_type_suffix(Opts, Type, no_size, !IO),
+        io.write_string(";\n", !IO)
+    ),
+
+    % For --gc accurate, we need to insert a call to GC_check()
+    % before every allocation.
+    GC_Method = Opts ^ m2co_gc_method,
+    (
+        GC_Method = gc_accurate,
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent + 1, !IO),
+        io.write_string("MR_GC_check();\n", !IO),
+        % For types which hold RTTI that will be traversed by the collector
+        % at GC-time, we need to allocate an extra word at the start,
+        % to hold the forwarding pointer. Normally we would just overwrite
+        % the first word of the object in the "from" space, but this
+        % can't be done for objects which will be referenced during
+        % the garbage collection process.
+        NeedsForwardingSpace = type_needs_forwarding_pointer_space(Type),
+        (
+            NeedsForwardingSpace = yes,
+            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+            output_n_indents(Indent + 1, !IO),
+            io.write_string("/* reserve space for " ++
+                "GC forwarding pointer*/\n", !IO),
+            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+            output_n_indents(Indent + 1, !IO),
+            io.write_string("MR_hp_alloc(1);\n", !IO)
+        ;
+            NeedsForwardingSpace = no
+        )
+    ;
+        ( GC_Method = gc_none
+        ; GC_Method = gc_boehm
+        ; GC_Method = gc_boehm_debug
+        ; GC_Method = gc_hgc
+        ; GC_Method = gc_automatic
+        )
+    ),
+
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent + 1, !IO),
+    write_lval_or_string(Opts, Base, !IO),
+    io.write_string(" = ", !IO),
+    (
+        MaybeTag = yes(Tag),
+        mlds_output_cast(Opts, Type, !IO),
+        io.write_string("MR_mkword(", !IO),
+        mlds_output_tag(Tag, !IO),
+        io.write_string(", ", !IO),
+        EndMkword = ")"
+    ;
+        MaybeTag = no,
+        Tag = 0,
+        % XXX We shouldn't need the cast here, but currently the type that
+        % we include in the call to MR_new_object() is not always correct.
+        mlds_output_cast(Opts, Type, !IO),
+        EndMkword = ""
+    ),
+    (
+        MayUseAtomic = may_not_use_atomic_alloc,
+        io.write_string("MR_new_object(", !IO)
+    ;
+        MayUseAtomic = may_use_atomic_alloc,
+        io.write_string("MR_new_object_atomic(", !IO)
+    ),
+    mlds_output_type(Opts, Type, !IO),
+    io.write_string(", ", !IO),
+    (
+        MaybeSize = yes(Size),
+        io.write_string("(", !IO),
+        mlds_output_rval(Opts, Size, !IO),
+        io.write_string(" * sizeof(MR_Word))", !IO)
+    ;
+        MaybeSize = no,
+        % XXX what should we do here?
+        io.write_int(-1, !IO)
+    ),
+    io.write_string(", ", !IO),
+    mlds_output_maybe_alloc_id(MaybeAllocId, !IO),
+    io.write_string(", NULL)", !IO),
+    io.write_string(EndMkword, !IO),
+    io.write_string(";\n", !IO),
+    (
+        Base = ls_lval(_)
+    ;
+        Base = ls_string(BaseVarName1),
+        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Indent + 1, !IO),
+        mlds_output_lval(Opts, Target, !IO),
+        io.write_string(" = ", !IO),
+        io.write_string(BaseVarName1, !IO),
+        io.write_string(";\n", !IO)
+    ),
+    mlds_output_init_args(Args, ArgTypes, Context, 0, Base, Tag,
+        Opts, Indent + 1, !IO),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    io.write_string("}\n", !IO).
 
 :- pred mlds_output_maybe_alloc_id(maybe(mlds_alloc_id)::in, io::di, io::uo)
     is det.

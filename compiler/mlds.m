@@ -1272,9 +1272,33 @@
 
     ;       ml_stmt_atomic(mlds_atomic_statement, prog_context).
 
+:- inst ml_stmt_is_block for mlds_stmt/0
+    --->    ml_stmt_block(ground, ground, ground, ground).
+:- inst ml_stmt_is_while for mlds_stmt/0
+    --->    ml_stmt_while(ground, ground, ground, ground).
+:- inst ml_stmt_is_if_then_else for mlds_stmt/0
+    --->    ml_stmt_if_then_else(ground, ground, ground, ground).
+:- inst ml_stmt_is_switch for mlds_stmt/0
+    --->    ml_stmt_switch(ground, ground, ground, ground, ground, ground).
+:- inst ml_stmt_is_label for mlds_stmt/0
+    --->    ml_stmt_label(ground, ground).
+:- inst ml_stmt_is_goto for mlds_stmt/0
+    --->    ml_stmt_goto(ground, ground).
+:- inst ml_stmt_is_computed_goto for mlds_stmt/0
+    --->    ml_stmt_computed_goto(ground, ground, ground).
 :- inst ml_stmt_is_call for mlds_stmt/0
     --->    ml_stmt_call(ground, ground, ground, ground, ground,
                 ground, ground, ground).
+:- inst ml_stmt_is_return for mlds_stmt/0
+    --->    ml_stmt_return(ground, ground).
+:- inst ml_stmt_is_try_commit for mlds_stmt/0
+    --->    ml_stmt_try_commit(ground, ground, ground, ground).
+:- inst ml_stmt_is_do_commit for mlds_stmt/0
+    --->    ml_stmt_do_commit(ground, ground).
+:- inst ml_stmt_is_atomic for mlds_stmt/0
+    --->    ml_stmt_atomic(ground, ground).
+
+%---------------------------------------------------------------------------%
 
 %---------------------------------------------------------------------------%
 %
@@ -1539,6 +1563,10 @@
                 % The user's foreign language code fragment.
                 string
             ).
+
+:- inst atomic_stmt_is_new_object for mlds_atomic_statement/0
+    --->    new_object(ground, ground, ground, ground, ground, ground, ground,
+                ground, ground, ground).
 
     % Stores information about each argument to an outline_foreign_proc.
     %
