@@ -588,7 +588,9 @@ peephole_opt_statement(Stmt0, Stmt1, Stmts2, Stmts) :-
         )
     then
         ContextThen = get_mlds_stmt_context(StmtThen0),
-        Then = ml_stmt_block([], [], [StmtThen0, StmtThen1], ContextThen),
+        ThenBlockStmts0 = [StmtThen0, StmtThen1],
+        maybe_flatten_block(ThenBlockStmts0, ThenBlockStmts),
+        Then = ml_stmt_block([], [], ThenBlockStmts, ContextThen),
         (
             MaybeStmtElse0 = no,
             (
@@ -605,7 +607,9 @@ peephole_opt_statement(Stmt0, Stmt1, Stmts2, Stmts) :-
                 MaybeElse = MaybeStmtElse0
             ;
                 MaybeStmtElse1 = yes(Else1),
-                Else = ml_stmt_block([], [], [Else0, Else1], Context0),
+                ElseBlockStmts0 = [Else0, Else1],
+                maybe_flatten_block(ElseBlockStmts0, ElseBlockStmts),
+                Else = ml_stmt_block([], [], ElseBlockStmts, Context0),
                 MaybeElse = yes(Else)
             )
         ),
