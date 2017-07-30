@@ -1272,7 +1272,7 @@
 
     ;       ml_stmt_atomic(mlds_atomic_statement, prog_context).
 
-:- inst ml_stmt_is_call
+:- inst ml_stmt_is_call for mlds_stmt/0
     --->    ml_stmt_call(ground, ground, ground, ground, ground,
                 ground, ground, ground).
 
