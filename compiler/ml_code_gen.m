@@ -609,8 +609,10 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
             ml_gen_info_get_varset(!.Info, VarSet),
             ArgNames = ml_gen_local_var_names(VarSet, ArgVars),
             ml_variable_types(!.Info, ArgVars, ActualArgTypes),
-            ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
-                CodeModel, Context, no, LocalVarDefns, FuncDefns, Stmts, !Info)
+            ForClosureWrapper = no,
+            ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals,
+                ActualArgTypes, CodeModel, Context, ForClosureWrapper,
+                LocalVarDefns, FuncDefns, Stmts, !Info)
         ;
             BuiltinState = inline_builtin,
             ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,

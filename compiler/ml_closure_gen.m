@@ -856,8 +856,10 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         ClosureArgLvals = []
     ),
     CallLvals = list.append(ClosureArgLvals, WrapperHeadVarLvals),
-    ml_gen_call(PredId, ProcId, ProcHeadVarNames, CallLvals, ProcBoxedArgTypes,
-        CodeModel, Context, yes, LocalVarDefns0, FuncDefns, Stmts0, !Info),
+    ForClosureWrapper = yes,
+    ml_gen_plain_call(PredId, ProcId, ProcHeadVarNames, CallLvals,
+        ProcBoxedArgTypes, CodeModel, Context, ForClosureWrapper,
+        LocalVarDefns0, FuncDefns, Stmts0, !Info),
 
     % Insert the stuff to declare and initialize the closure.
     (
