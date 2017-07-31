@@ -2518,7 +2518,7 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
         Stmt = ml_stmt_computed_goto(_, _, _),
         unexpected($pred, "computed gotos not supported in C#.")
     ;
-        Stmt = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
+        Stmt = ml_stmt_call(Signature, FuncRval, CallArgs,
             Results, IsTailCall, _Markers, Context),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
@@ -2543,13 +2543,6 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
             TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
             io.format("((%s) ", [s(TypeString)], !IO),
             CloseBracket = ")"
-        ),
-        (
-            MaybeObject = yes(Object),
-            output_bracketed_rval_for_csharp(Info, Object, !IO),
-            io.write_string(".", !IO)
-        ;
-            MaybeObject = no
         ),
         output_call_rval_for_csharp(Info, FuncRval, !IO),
         io.write_string(CloseBracket, !IO),

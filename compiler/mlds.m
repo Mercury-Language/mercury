@@ -1186,9 +1186,6 @@
                 % The function to call.
                 mlds_rval,
 
-                % For method calls, this field specifies the `this' object.
-                maybe(mlds_rval),
-
                 % The ordinary function arguments.
                 list(mlds_rval),
 
@@ -1287,7 +1284,7 @@
 :- inst ml_stmt_is_computed_goto for mlds_stmt/0
     --->    ml_stmt_computed_goto(ground, ground, ground).
 :- inst ml_stmt_is_call for mlds_stmt/0
-    --->    ml_stmt_call(ground, ground, ground, ground, ground,
+    --->    ml_stmt_call(ground, ground, ground, ground,
                 ground, ground, ground).
 :- inst ml_stmt_is_return for mlds_stmt/0
     --->    ml_stmt_return(ground, ground).

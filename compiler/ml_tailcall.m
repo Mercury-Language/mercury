@@ -414,7 +414,7 @@ mark_tailcalls_in_stmt(TCallInfo, AtTailAfter0, AtTailBefore,
         ),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default, Context)
     ;
-        Stmt0 = ml_stmt_call(_, _, _, _, _, _, _, _),
+        Stmt0 = ml_stmt_call(_, _, _, _, _, _, _),
         mark_tailcalls_in_stmt_call(TCallInfo,
             AtTailAfter0, AtTailBefore, Stmt0, Stmt, !InBodyInfo)
     ;
@@ -453,7 +453,7 @@ mark_tailcalls_in_stmt(TCallInfo, AtTailAfter0, AtTailBefore,
 
 mark_tailcalls_in_stmt_call(TCallInfo, AtTailAfter, AtTailBefore,
         Stmt0, Stmt, !InBodyInfo) :-
-    Stmt0 = ml_stmt_call(Sig, CalleeRval, MaybeObj, Args,
+    Stmt0 = ml_stmt_call(Sig, CalleeRval, Args,
         CallReturnLvals, CallKind0, Markers, Context),
     ModuleName = TCallInfo ^ tci_module_name,
     FuncName = TCallInfo ^ tci_function_name,
@@ -473,17 +473,6 @@ mark_tailcalls_in_stmt_call(TCallInfo, AtTailAfter, AtTailBefore,
             % We must be in a tail position.
             AtTailAfter = at_tail(ReturnStmtRvals),
 
-            % The call must not be do a different object.
-            % In C++, `this' is a constant, so our usual technique of
-            % assigning the arguments won't work if it is a member function.
-            % Thus we don't do this optimization if we are optimizing a
-            % member function call.
-            % XXX We don't generate managed C++ anymore. Is this a problem
-            % for the other MLDS target languages?
-            % A duplicate test is in ml_optimize.m and will also need removing
-            % if this test is removed.
-            MaybeObj = no,
-
             % The values returned in this call must match those returned
             % by the `return' statement that follows.
             call_returns_same_local_lvals_as_return_stmt(ReturnStmtRvals,
@@ -499,7 +488,7 @@ mark_tailcalls_in_stmt_call(TCallInfo, AtTailAfter, AtTailBefore,
             % but a recursive call can *never* be so nested.
         then
             % Mark this call as a tail call.
-            Stmt = ml_stmt_call(Sig, CalleeRval, MaybeObj, Args,
+            Stmt = ml_stmt_call(Sig, CalleeRval, Args,
                 CallReturnLvals, tail_call, Markers, Context),
             AtTailBefore = not_at_tail_seen_reccall
         else
@@ -729,7 +718,8 @@ lval_is_local(Lval) = IsLocal :-
 may_rvals_yield_dangling_stack_ref([], _) = will_not_yield_dangling_stack_ref.
 may_rvals_yield_dangling_stack_ref([Rval | Rvals], Locals)
         = MayYieldDanglingStackRef :-
-    MayYieldDanglingStackRef0 = may_rval_yield_dangling_stack_ref(Rval, Locals),
+    MayYieldDanglingStackRef0 =
+        may_rval_yield_dangling_stack_ref(Rval, Locals),
     (
         MayYieldDanglingStackRef0 = may_yield_dangling_stack_ref,
         MayYieldDanglingStackRef = may_yield_dangling_stack_ref
@@ -737,20 +727,6 @@ may_rvals_yield_dangling_stack_ref([Rval | Rvals], Locals)
         MayYieldDanglingStackRef0 = will_not_yield_dangling_stack_ref,
         MayYieldDanglingStackRef =
             may_rvals_yield_dangling_stack_ref(Rvals, Locals)
-    ).
-
-:- func may_maybe_rval_yield_dangling_stack_ref(maybe(mlds_rval), locals)
-    = may_yield_dangling_stack_ref.
-
-may_maybe_rval_yield_dangling_stack_ref(MaybeRval, Locals)
-        = MayYieldDanglingStackRef :-
-    (
-        MaybeRval = no,
-        MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
-    ;
-        MaybeRval = yes(Rval),
-        MayYieldDanglingStackRef =
-            may_rval_yield_dangling_stack_ref(Rval, Locals)
     ).
 
 :- func may_rval_yield_dangling_stack_ref(mlds_rval, locals)
@@ -916,7 +892,8 @@ var_is_in_locals(Var, LocalsList) :-
     % Check whether the specified function is defined locally (i.e. as a
     % nested function).
     %
-:- pred function_is_local(mlds_code_addr::in, list(local_defns)::in) is semidet.
+:- pred function_is_local(mlds_code_addr::in, list(local_defns)::in)
+    is semidet.
 
 function_is_local(CodeAddr, LocalsList) :-
     (

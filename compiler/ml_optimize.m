@@ -139,7 +139,7 @@ optimize_in_stmts(OptInfo, !Stmts) :-
 
 optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
     (
-        Stmt0 = ml_stmt_call(_, _, _, _, _, _, _, _),
+        Stmt0 = ml_stmt_call(_, _, _, _, _, _, _),
         optimize_in_call_stmt(OptInfo, Stmt0, Stmt)
     ;
         Stmt0 = ml_stmt_block(LocalVarDefns0, FuncDefns0, SubStmts0, Context),
@@ -219,7 +219,7 @@ optimize_in_default(OptInfo, Default0, Default) :-
     mlds_stmt::in(ml_stmt_is_call), mlds_stmt::out) is det.
 
 optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
-    Stmt0 = ml_stmt_call(_Signature, FuncRval, _MaybeObject, CallArgs,
+    Stmt0 = ml_stmt_call(_Signature, FuncRval, CallArgs,
         _Results, _IsTailCall, _Markers, Context),
     % If we have a self-tailcall, assign to the arguments and
     % then goto the top of the tailcall loop.
@@ -479,7 +479,7 @@ optimize_func_stmt(OptInfo, Context, Stmt0, Stmt) :-
 
 stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
         Stmt) :-
-    Stmt = ml_stmt_call(_Signature, CalleeRval, MaybeObject, _CallArgs,
+    Stmt = ml_stmt_call(_Signature, CalleeRval, _CallArgs,
         _Results, CallKind, _Markers, _Context),
 
     % Check if this call has been marked by ml_tailcall.m as one that
@@ -499,15 +499,6 @@ stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
         CallKindIsReplaceable = no
     ),
     CallKindIsReplaceable = yes,
-
-    % In C++, `this' is a constant, so our usual technique of assigning
-    % the arguments won't work if it is a member function. Thus we don't do
-    % this optimization if we are optimizing a member function call.
-    % XXX We don't generate managed C++ anymore. Is this a problem for
-    % the other MLDS target languages?
-    % This has already been checked by ml_tailcall.m if CallKind = tail_call,
-    % but we need to test it also in case CallKind = no_return_call.
-    MaybeObject = no,
 
     % Is this a self-recursive call?
     % We test this *after* we test CallKind, because the CallKind test
@@ -727,7 +718,7 @@ statement_affects_lvals(Lvals, Stmt, Affects) :-
         ),
         Affects = yes
     ;
-        Stmt = ml_stmt_call(_, _, _, _, _, _, _, _),
+        Stmt = ml_stmt_call(_, _, _, _, _, _, _),
         % A call can update local variables even without referring to them
         % explicitly, by referring to the environment in which they reside.
         Affects = yes
@@ -1355,14 +1346,6 @@ eliminate_var_in_initializer(Init0, Init, !VarElimInfo) :-
 eliminate_var_in_rvals(!Rvals, !VarElimInfo) :-
     list.map_foldl(eliminate_var_in_rval, !Rvals, !VarElimInfo).
 
-:- pred eliminate_var_in_maybe_rval(
-    maybe(mlds_rval)::in, maybe(mlds_rval)::out,
-    var_elim_info::in, var_elim_info::out) is det.
-
-eliminate_var_in_maybe_rval(no, no, !VarElimInfo).
-eliminate_var_in_maybe_rval(yes(Rval0), yes(Rval), !VarElimInfo) :-
-    eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
-
 :- pred eliminate_var_in_rval(mlds_rval::in, mlds_rval::out,
     var_elim_info::in, var_elim_info::out) is det.
 
@@ -1500,13 +1483,12 @@ eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo) :-
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         Stmt = ml_stmt_computed_goto(Rval, Labels, Context)
     ;
-        Stmt0 = ml_stmt_call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall,
+        Stmt0 = ml_stmt_call(Sig, Func0, Args0, RetLvals0, TailCall,
             Markers, Context),
         eliminate_var_in_rval(Func0, Func, !VarElimInfo),
-        eliminate_var_in_maybe_rval(Obj0, Obj, !VarElimInfo),
         eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
         eliminate_var_in_lvals(RetLvals0, RetLvals, !VarElimInfo),
-        Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall,
+        Stmt = ml_stmt_call(Sig, Func, Args, RetLvals, TailCall,
             Markers, Context)
     ;
         Stmt0 = ml_stmt_return(Rvals0, Context),

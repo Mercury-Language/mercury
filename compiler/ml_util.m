@@ -246,7 +246,7 @@ stmt_contains_statement(Stmt, SubStmt) :-
         ( Stmt = ml_stmt_label(_Label, _Context)
         ; Stmt = ml_stmt_goto(_, _Context)
         ; Stmt = ml_stmt_computed_goto(_Rval, _Labels, _Context)
-        ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall,
+        ; Stmt = ml_stmt_call(_Sig, _Func, _Args, _RetLvals, _TailCall,
             _Markers, _Context)
         ; Stmt = ml_stmt_return(_Rvals, _Context)
         ; Stmt = ml_stmt_do_commit(_Ref, _Context)
@@ -376,7 +376,7 @@ statement_contains_var(Stmt, SearchVarName) = ContainsVar :-
         Stmt = ml_stmt_computed_goto(Rval, _Labels, _Context),
         ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
-        Stmt = ml_stmt_call(_Sig, Func, Obj, Args, RetLvals, _TailCall,
+        Stmt = ml_stmt_call(_Sig, Func, Args, RetLvals, _TailCall,
             _Markers, _Context),
         FuncContainsVar = rval_contains_var(Func, SearchVarName),
         (
@@ -384,20 +384,13 @@ statement_contains_var(Stmt, SearchVarName) = ContainsVar :-
             ContainsVar = yes
         ;
             FuncContainsVar = no,
-            ObjContainsVar = maybe_rval_contains_var(Obj, SearchVarName),
+            ArgsContainVar = rvals_contains_var(Args, SearchVarName),
             (
-                ObjContainsVar = yes,
+                ArgsContainVar = yes,
                 ContainsVar = yes
             ;
-                ObjContainsVar = no,
-                ArgsContainVar = rvals_contains_var(Args, SearchVarName),
-                (
-                    ArgsContainVar = yes,
-                    ContainsVar = yes
-                ;
-                    ArgsContainVar = no,
-                    ContainsVar = lvals_contains_var(RetLvals, SearchVarName)
-                )
+                ArgsContainVar = no,
+                ContainsVar = lvals_contains_var(RetLvals, SearchVarName)
             )
         )
     ;
@@ -888,7 +881,7 @@ get_mlds_stmt_context(Stmt) = Context :-
     ; Stmt = ml_stmt_try_commit(_, _, _, Context)
     ; Stmt = ml_stmt_do_commit(_, Context)
     ; Stmt = ml_stmt_return(_, Context)
-    ; Stmt = ml_stmt_call(_, _, _, _, _, _, _, Context)
+    ; Stmt = ml_stmt_call(_, _, _, _, _, _, Context)
     ; Stmt = ml_stmt_atomic(_, Context)
     ).
 

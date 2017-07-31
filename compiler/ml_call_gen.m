@@ -220,7 +220,6 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         InputRvals, OutputLvals, OutputTypes,
         ConvArgLocalVarDefns, ConvOutputStmts, !Info),
     ClosureRval = ml_unop(unbox(ClosureArgType), ml_lval(ClosureLval)),
-    ObjectRval = no,
 
     ( if
         ConvArgLocalVarDefns = [],
@@ -228,7 +227,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     then
         % Generate the call directly (as opposed to via DoGenCall)
         % in the common case.
-        ml_gen_mlds_call(Signature, ObjectRval, FuncVarRval,
+        ml_gen_mlds_call(Signature, FuncVarRval,
             [ClosureRval | InputRvals], OutputLvals, OutputTypes,
             Determinism, Context, LocalVarDefns0, FuncDefns0, Stmts0, !Info)
     else
@@ -237,7 +236,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         % nondet, and we don't yet know what its success continuation will be.
         % Instead we construct a higher-order term `DoGenCall', which, when
         % called by ml_combine_conj, will generate it.
-        DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncVarRval,
+        DoGenCall = ml_gen_mlds_call(Signature, FuncVarRval,
             [ClosureRval | InputRvals], OutputLvals, OutputTypes,
             Determinism, Context),
 
@@ -373,7 +372,6 @@ ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
         InputRvals, OutputLvals, OutputTypes,
         ConvArgLocalVarDefns, ConvOutputStmts, !Info),
 
-    ObjectRval = no,
     proc_info_interface_determinism(ProcInfo, Detism),
 
     ( if
@@ -382,7 +380,7 @@ ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
     then
         % Generate the call directly (as opposed to via DoGenCall)
         % in the common case.
-        ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
+        ml_gen_mlds_call(Signature, FuncRval,
             InputRvals, OutputLvals, OutputTypes, Detism, Context,
             LocalVarDefns, FuncDefns, Stmts, !Info)
     else
@@ -391,7 +389,7 @@ ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
         % what its success continuation will be. That is why we construct
         % a closure `DoGenCall', which, when called by ml_combine_conj, will
         % generate it.
-        DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
+        DoGenCall = ml_gen_mlds_call(Signature, FuncRval,
             InputRvals, OutputLvals, OutputTypes, Detism, Context),
 
         % Construct a closure to generate code to convert the output arguments
@@ -438,13 +436,13 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
     % This is a lower-level routine called by both ml_gen_call
     % and ml_gen_generic_call.
     %
-:- pred ml_gen_mlds_call(mlds_func_signature::in, maybe(mlds_rval)::in,
+:- pred ml_gen_mlds_call(mlds_func_signature::in,
     mlds_rval::in, list(mlds_rval)::in, list(mlds_lval)::in,
     list(mlds_type)::in, determinism::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
+ml_gen_mlds_call(Signature, FuncRval, ArgRvals0, RetLvals0,
         RetTypes0, Detism, Context, LocalVarDefns, FuncDefns, Stmts, !Info) :-
     % Append the extra arguments or return val for this code_model.
     determinism_to_code_model(Detism, CodeModel),
@@ -505,7 +503,7 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
     else
         set.init(Markers)
     ),
-    Stmt = ml_stmt_call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
+    Stmt = ml_stmt_call(Signature, FuncRval, ArgRvals, RetLvals,
         CallKind, Markers, Context),
     Stmts = [Stmt].
 

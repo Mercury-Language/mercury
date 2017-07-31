@@ -1872,11 +1872,10 @@ ml_gen_call_current_success_cont(Context, Stmt, !Info) :-
     ),
     RetTypes = [],
     Signature = mlds_func_signature(ArgTypes, RetTypes),
-    ObjectRval = no,
     RetLvals = [],
     CallKind = ordinary_call,
     set.init(Markers),
-    Stmt = ml_stmt_call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
+    Stmt = ml_stmt_call(Signature, FuncRval, ArgRvals, RetLvals,
         CallKind, Markers, Context).
 
 %---------------------------------------------------------------------------%

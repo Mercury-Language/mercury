@@ -614,7 +614,7 @@ method_ptrs_in_statement(Stmt, !CodeAddrsInConsts) :-
         Stmt = ml_stmt_return(Rvals, _Context),
         method_ptrs_in_rvals(Rvals, !CodeAddrsInConsts)
     ;
-        Stmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
+        Stmt = ml_stmt_call(_FuncSig, _Rval, Rvals, _ReturnVars,
             _IsTailCall, _Markers, _Context),
         % We don't check "_Rval" - it may be a code address but is a
         % standard call rather than a function pointer use.

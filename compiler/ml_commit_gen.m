@@ -430,7 +430,7 @@ maybe_put_commit_in_own_func(LocalVarDefn0, FuncDefn0, TryCommitStmts,
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         CallKind = ordinary_call,
         set.init(Markers),
-        CallStmt = ml_stmt_call(Signature, CommitFuncLabelRval, no, ArgRvals,
+        CallStmt = ml_stmt_call(Signature, CommitFuncLabelRval, ArgRvals,
             [], CallKind, Markers, Context),
         % Package it all up.
         LocalVarDefns = [],

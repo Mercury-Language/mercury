@@ -1483,13 +1483,12 @@ flatten_statement(Action, Stmt0, Stmt, !Info) :-
         fixup_rval(Action, !.Info, Rval0, Rval),
         Stmt = ml_stmt_computed_goto(Rval, Labels, Context)
     ;
-        Stmt0 = ml_stmt_call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall,
+        Stmt0 = ml_stmt_call(Sig, Func0, Args0, RetLvals0, TailCall,
             Markers, Context),
         fixup_rval(Action, !.Info, Func0, Func),
-        fixup_maybe_rval(Action, !.Info, Obj0, Obj),
         fixup_rvals(Action, !.Info, Args0, Args),
         fixup_lvals(Action, !.Info, RetLvals0, RetLvals),
-        Stmt = ml_stmt_call(Sig, Func, Obj, Args, RetLvals, TailCall,
+        Stmt = ml_stmt_call(Sig, Func, Args, RetLvals, TailCall,
             Markers, Context)
     ;
         Stmt0 = ml_stmt_return(Rvals0, Context),
@@ -1818,7 +1817,6 @@ ml_need_to_hoist_defn(QualVarName, FuncDefn) :-
 % fixup_target_code_component:
 % fixup_trail_op:
 % fixup_rvals:
-% fixup_maybe_rval:
 % fixup_rval:
 % fixup_lvals:
 % fixup_lval:
@@ -2014,15 +2012,6 @@ fixup_rvals(_, _, [], []).
 fixup_rvals(Action, Info, [Rval0 | Rvals0], [Rval | Rvals]) :-
     fixup_rval(Action, Info, Rval0, Rval),
     fixup_rvals(Action, Info, Rvals0, Rvals).
-
-:- pred fixup_maybe_rval(action, elim_info,
-    maybe(mlds_rval), maybe(mlds_rval)).
-:- mode fixup_maybe_rval(in(hoist), in, in, out) is det.
-:- mode fixup_maybe_rval(in(chain), in, in, out) is det.
-
-fixup_maybe_rval(_, _, no, no).
-fixup_maybe_rval(Action, Info, yes(Rval0), yes(Rval)) :-
-    fixup_rval(Action, Info, Rval0, Rval).
 
 :- pred fixup_rval(action, elim_info, mlds_rval, mlds_rval).
 :- mode fixup_rval(in(hoist), in, in, out) is det.
@@ -2318,7 +2307,7 @@ statement_contains_matching_defn(Filter, Stmt) :-
         ( Stmt = ml_stmt_label(_Label, _Context)
         ; Stmt = ml_stmt_goto(_Target, _Context)
         ; Stmt = ml_stmt_computed_goto(_Rval, _Labels, _Context)
-        ; Stmt = ml_stmt_call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall,
+        ; Stmt = ml_stmt_call(_Sig, _Func, _Args, _RetLvals, _TailCall,
             _Markers, _Context)
         ; Stmt = ml_stmt_return(_Rvals, _Context)
         ; Stmt = ml_stmt_do_commit(_Ref, _Context)
@@ -2430,7 +2419,7 @@ add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info) :-
         add_unchain_stack_to_default(Action, Default0, Default, !Info),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default, Context)
     ;
-        Stmt0 = ml_stmt_call(_Sig, _Func, _Obj, _Args, RetLvals, CallKind,
+        Stmt0 = ml_stmt_call(_Sig, _Func, _Args, RetLvals, CallKind,
             _Markers, Context),
         add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context,
             Stmt, !Info)

@@ -1023,7 +1023,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
         OrigRetTypes = [_ | _],
         CallRetLvals = [ReturnLval]
     ),
-    CallStmt = ml_stmt_call(OrigFuncSignature, CallRval, no, CallArgs,
+    CallStmt = ml_stmt_call(OrigFuncSignature, CallRval, CallArgs,
         CallRetLvals, ordinary_call, set.init, Context),
 
     % Create a return statement that returns the result of the call to the
@@ -3199,7 +3199,7 @@ output_stmt_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
         Stmt = ml_stmt_computed_goto(_, _, _),
         unexpected($pred, "computed gotos not supported in Java.")
     ;
-        Stmt = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
+        Stmt = ml_stmt_call(Signature, FuncRval, CallArgs,
             Results, _IsTailCall, _Markers, Context),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         output_n_indents(Indent, !IO),
@@ -3225,14 +3225,6 @@ output_stmt_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
             io.write_string("java.lang.Object [] result = ", !IO)
         ),
         ( if FuncRval = ml_const(mlconst_code_addr(_)) then
-            % This is a standard method call.
-            (
-                MaybeObject = yes(Object),
-                output_bracketed_rval_for_java(Info, Object, !IO),
-                io.write_string(".", !IO)
-            ;
-                MaybeObject = no
-            ),
             % This is a standard function call.
             output_call_rval_for_java(Info, FuncRval, !IO),
             io.write_string("(", !IO),
@@ -3258,13 +3250,6 @@ output_stmt_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
             ;
                 RetTypes = [_, _ | _],
                 io.write_string("((java.lang.Object[]) ", !IO)
-            ),
-            (
-                MaybeObject = yes(Object),
-                output_bracketed_rval_for_java(Info, Object, !IO),
-                io.write_string(".", !IO)
-            ;
-                MaybeObject = no
             ),
 
             list.length(CallArgs, Arity),

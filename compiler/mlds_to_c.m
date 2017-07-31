@@ -3558,7 +3558,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
         Stmt = ml_stmt_computed_goto(_Expr, _Labels, _Context),
         mlds_output_stmt_computed_goto(Opts, Indent, Stmt, !IO)
     ;
-        Stmt = ml_stmt_call(_Signature, _FuncRval, _MaybeObject, _CallArgs,
+        Stmt = ml_stmt_call(_Signature, _FuncRval, _CallArgs,
             _Results, _IsTailCall, _Markers, _Context),
         mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
@@ -3932,8 +3932,8 @@ mlds_output_computed_goto_label(Opts, Context, Indent, Label, Count0, Count,
 :- pragma inline(mlds_output_stmt_call/6).
 
 mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
-    Stmt = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
-        Results, IsTailCall, _Markers, Context),
+    Stmt = ml_stmt_call(Signature, FuncRval, CallArgs, Results,
+        IsTailCall, _Markers, Context),
     FuncInfo = func_info_c(CallerName, CallerSignature),
 
     % We need to ensure that we generate a single C statement here,
@@ -3956,7 +3956,7 @@ mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
         ; CallHasReturn = call_has_return_expr_prefix
         )
     then
-        mlds_output_call(Opts, Context, Indent, CallHasReturn, MaybeObject,
+        mlds_output_call(Opts, Context, Indent, CallHasReturn,
             FuncRval, CallArgs, Results, !IO)
     else
         BodyIndent = Indent + 1,
@@ -3970,7 +3970,7 @@ mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
         ;
             ProfileCalls = no
         ),
-        mlds_output_call(Opts, Context, BodyIndent, CallHasReturn, MaybeObject,
+        mlds_output_call(Opts, Context, BodyIndent, CallHasReturn,
             FuncRval, CallArgs, Results, !IO),
         (
             CallHasReturn = call_has_return_stmt_suffix,
@@ -3994,11 +3994,11 @@ mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
     ).
 
 :- pred mlds_output_call(mlds_to_c_opts::in, prog_context::in, indent::in,
-    maybe_call_has_return::in, maybe(mlds_rval)::in, mlds_rval::in,
+    maybe_call_has_return::in, mlds_rval::in,
     list(mlds_rval)::in, list(mlds_lval)::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_call/10).
+:- pragma inline(mlds_output_call/9).
 
-mlds_output_call(Opts, Context, Indent, CallHasReturn, MaybeObject, FuncRval,
+mlds_output_call(Opts, Context, Indent, CallHasReturn, FuncRval,
         CallArgs, Results, !IO) :-
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
@@ -4009,13 +4009,6 @@ mlds_output_call(Opts, Context, Indent, CallHasReturn, MaybeObject, FuncRval,
         ( CallHasReturn = call_has_no_return
         ; CallHasReturn = call_has_return_stmt_suffix
         )
-    ),
-    (
-        MaybeObject = yes(Object),
-        mlds_output_bracketed_rval(Opts, Object, !IO),
-        io.write_string(".", !IO) % XXX should this be "->"?
-    ;
-        MaybeObject = no
     ),
     (
         Results = []

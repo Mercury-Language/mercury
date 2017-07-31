@@ -249,7 +249,7 @@ rename_class_names_in_stmt(Renaming, !Stmt) :-
         rename_class_names_in_rval(Renaming, Rval0, Rval),
         !:Stmt = ml_stmt_computed_goto(Rval, Labels, Context)
     ;
-        !.Stmt = ml_stmt_call(Signature0, Rval0, MaybeThis, Rvals0, RetLvals0,
+        !.Stmt = ml_stmt_call(Signature0, Rval0, Rvals0, RetLvals0,
             CallKind, Markers, Context),
         Signature0 = mlds_func_signature(ArgTypes0, RetTypes0),
         list.map(rename_class_names_in_type(Renaming), ArgTypes0, ArgTypes),
@@ -258,7 +258,7 @@ rename_class_names_in_stmt(Renaming, !Stmt) :-
         rename_class_names_in_rval(Renaming, Rval0, Rval),
         list.map(rename_class_names_in_rval(Renaming), Rvals0, Rvals),
         list.map(rename_class_names_in_lval(Renaming), RetLvals0, RetLvals),
-        !:Stmt = ml_stmt_call(Signature, Rval, MaybeThis, Rvals, RetLvals,
+        !:Stmt = ml_stmt_call(Signature, Rval, Rvals, RetLvals,
             CallKind, Markers, Context)
     ;
         !.Stmt = ml_stmt_return(Rvals0, Context),
