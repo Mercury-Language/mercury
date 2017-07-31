@@ -492,14 +492,11 @@ mark_tailcalls_in_stmt_call(TCallInfo, AtTailAfter, AtTailBefore,
             % The call must not take the address of any local variables
             % or nested functions.
             Locals = TCallInfo ^ tci_locals,
-            may_maybe_rval_yield_dangling_stack_ref(MaybeObj, Locals) =
-                will_not_yield_dangling_stack_ref,
             may_rvals_yield_dangling_stack_ref(Args, Locals) =
-                will_not_yield_dangling_stack_ref,
-
-            % The call must not be to a function nested within this function.
-            may_rval_yield_dangling_stack_ref(CalleeRval, Locals) =
                 will_not_yield_dangling_stack_ref
+
+            % The call must not be to a function nested within this function,
+            % but a recursive call can *never* be so nested.
         then
             % Mark this call as a tail call.
             Stmt = ml_stmt_call(Sig, CalleeRval, MaybeObj, Args,
