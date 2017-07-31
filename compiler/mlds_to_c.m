@@ -2505,8 +2505,14 @@ mlds_output_func(Opts, Indent, QualFuncName, Context, Params,
         output_n_indents(Indent, !IO),
         io.write_string("{\n", !IO),
 
-        mlds_maybe_output_time_profile_instr(Opts, Context, Indent + 1,
-            QualFuncName, !IO),
+        ProfileTime = Opts ^ m2co_profile_time,
+        (
+            ProfileTime = yes,
+            mlds_output_time_profile_instr(Opts, Context, Indent + 1,
+                QualFuncName, !IO)
+        ;
+            ProfileTime = no
+        ),
 
         Signature = mlds_get_func_signature(Params),
         FuncInfo = func_info_c(QualFuncName, Signature),
@@ -3930,46 +3936,79 @@ mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
         Results, IsTailCall, _Markers, Context),
     FuncInfo = func_info_c(CallerName, CallerSignature),
 
-    % We need to enclose the generated code inside an extra pair of curly
-    % braces, in case we generate more than one statement (e.g. because we
-    % generate extra statements for profiling or for tail call
-    % optimization) and the generated code is e.g. inside an if-then-else.
-
-    output_n_indents(Indent, !IO),
-    io.write_string("{\n", !IO),
-
-    mlds_maybe_output_call_profile_instr(Opts, Context, Indent + 1,
-        FuncRval, CallerName, !IO),
-
-    % Optimize general tail calls. We can't really do much here except to
-    % insert `return' as an extra hint to the C compiler.
-    % XXX These optimizations should be disable-able.
+    % We need to ensure that we generate a single C statement here,
+    % in case the generated code is e.g. one arm of an if-then-else.
     %
-    % If Results = [], i.e. the function has `void' return type, then this
-    % would result in code that is not legal ANSI C (although it _is_ legal
-    % in GNU C and in C++), so for that case, we put the return statement
-    % after the call -- see below.
-    %
-    % Note that it is only safe to add such a return statement if the
-    % calling procedure has the same return types as the callee, or if
-    % the calling procedure has no return value. (Calls where the types
-    % are different can be marked as tail calls if they are known
-    % to never return.)
+    % If we need to put profiling code before or after the call,
+    % or if we want to put a return statement after the call, we must
+    % enclose them, and the call, inside an extra pair of curly braces.
+    % However, in the common case where none of that is needed,
+    % we don't want the extra clutter of an unnecessary pair of braces.
 
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent + 1, !IO),
-    Signature = mlds_func_signature(_, RetTypes),
-    CallerSignature = mlds_func_signature(_, CallerRetTypes),
+    ProfileCalls = Opts ^ m2co_profile_calls,
+    ProfileTime = Opts ^ m2co_profile_time,
+    CallHasReturn = find_out_if_call_has_return(IsTailCall, Results,
+        Signature, CallerSignature),
     ( if
-        ( IsTailCall = tail_call
-        ; IsTailCall = no_return_call
-        ),
-        Results = [_ | _],
-        RetTypes = CallerRetTypes
+        ProfileCalls = no,
+        ProfileTime = no,
+        ( CallHasReturn = call_has_no_return
+        ; CallHasReturn = call_has_return_expr_prefix
+        )
     then
-        io.write_string("return ", !IO)
+        mlds_output_call(Opts, Context, Indent, CallHasReturn, MaybeObject,
+            FuncRval, CallArgs, Results, !IO)
     else
-        true
+        BodyIndent = Indent + 1,
+
+        output_n_indents(Indent, !IO),
+        io.write_string("{\n", !IO),
+        (
+            ProfileCalls = yes,
+            mlds_output_call_profile_instr(Opts, Context, BodyIndent,
+                FuncRval, CallerName, !IO)
+        ;
+            ProfileCalls = no
+        ),
+        mlds_output_call(Opts, Context, BodyIndent, CallHasReturn, MaybeObject,
+            FuncRval, CallArgs, Results, !IO),
+        (
+            CallHasReturn = call_has_return_stmt_suffix,
+            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+            output_n_indents(BodyIndent, !IO),
+            io.write_string("return;\n", !IO)
+        ;
+            ( CallHasReturn = call_has_no_return
+            ; CallHasReturn = call_has_return_expr_prefix
+            ),
+            (
+                ProfileTime = yes,
+                mlds_output_time_profile_instr(Opts, Context, BodyIndent,
+                    CallerName, !IO)
+            ;
+                ProfileTime = no
+            )
+        ),
+        output_n_indents(Indent, !IO),
+        io.write_string("}\n", !IO)
+    ).
+
+:- pred mlds_output_call(mlds_to_c_opts::in, prog_context::in, indent::in,
+    maybe_call_has_return::in, maybe(mlds_rval)::in, mlds_rval::in,
+    list(mlds_rval)::in, list(mlds_lval)::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_call/10).
+
+mlds_output_call(Opts, Context, Indent, CallHasReturn, MaybeObject, FuncRval,
+        CallArgs, Results, !IO) :-
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    (
+        CallHasReturn = call_has_return_expr_prefix,
+        io.write_string("return ", !IO)
+    ;
+        ( CallHasReturn = call_has_no_return
+        ; CallHasReturn = call_has_return_stmt_suffix
+        )
     ),
     (
         MaybeObject = yes(Object),
@@ -3992,67 +4031,87 @@ mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
     mlds_output_bracketed_rval(Opts, FuncRval, !IO),
     io.write_string("(", !IO),
     io.write_list(CallArgs, ", ", mlds_output_rval(Opts), !IO),
-    io.write_string(");\n", !IO),
+    io.write_string(");\n", !IO).
 
+:- type maybe_call_has_return
+    --->    call_has_no_return
+    ;       call_has_return_expr_prefix
+    ;       call_has_return_stmt_suffix.
+
+    % "Optimize" general tail calls by asking our caller to give hints
+    % to the C compiler in the form of "return" prefixes on call expressions.
+    % XXX This optimization should be disable-able.
+    %
+    % If Results = [], i.e. the function has `void' return type, then this
+    % would result in code that is not legal ANSI C (although it _is_ legal
+    % in GNU C and in C++), so for that case, we return
+    % call_has_return_stmt_suffix to ask our caller to put the return
+    % statement after the call.
+    %
+    % Note that it is only safe to add such a return statement if the
+    % calling procedure has the same return types as the callee, or if
+    % the calling procedure has no return value. (Calls where the types
+    % are different can be marked as tail calls if they are known
+    % to never return.)
+    % XXX That should be "marked as no_return_calls".
+    %
+:- func find_out_if_call_has_return(ml_call_kind, list(mlds_lval),
+    mlds_func_signature, mlds_func_signature) = maybe_call_has_return.
+
+find_out_if_call_has_return(IsTailCall, Results,
+        CalleeSignature, CallerSignature) = CallHasReturn :-
     ( if
         ( IsTailCall = tail_call
         ; IsTailCall = no_return_call
-        ),
-        CallerRetTypes = []
+        )
     then
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent + 1, !IO),
-        io.write_string("return;\n", !IO)
+        CalleeSignature = mlds_func_signature(_, CalleeRetTypes),
+        CallerSignature = mlds_func_signature(_, CallerRetTypes),
+        (
+            Results = [],
+            CallHasReturn = call_has_return_stmt_suffix
+        ;
+            Results = [_ | _],
+            ( if CalleeRetTypes = CallerRetTypes then
+                CallHasReturn = call_has_return_expr_prefix
+            else
+                CallHasReturn = call_has_no_return
+            )
+        )
     else
-        mlds_maybe_output_time_profile_instr(Opts, Context, Indent + 1,
-            CallerName, !IO)
-    ),
-    output_n_indents(Indent, !IO),
-    io.write_string("}\n", !IO).
+        CallHasReturn = call_has_no_return
+    ).
 
-    % If call profiling is turned on output an instruction to record
-    % an arc in the call profile between the callee and caller.
+    % Output an instruction to record an arc in the call profile
+    % between the callee and caller.
     %
-:- pred mlds_maybe_output_call_profile_instr(mlds_to_c_opts::in,
+:- pred mlds_output_call_profile_instr(mlds_to_c_opts::in,
     prog_context::in, indent::in, mlds_rval::in,
     qual_function_name::in, io::di, io::uo) is det.
 
-mlds_maybe_output_call_profile_instr(Opts, Context, Indent,
+mlds_output_call_profile_instr(Opts, Context, Indent,
         CalleeFuncRval, CallerName, !IO) :-
-    ProfileCalls = Opts ^ m2co_profile_calls,
-    (
-        ProfileCalls = yes,
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("MR_prof_call_profile(", !IO),
-        mlds_output_bracketed_rval(Opts, CalleeFuncRval, !IO),
-        io.write_string(", ", !IO),
-        mlds_output_fully_qualified_function_name(CallerName, !IO),
-        io.write_string(");\n", !IO)
-    ;
-        ProfileCalls = no
-    ).
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    io.write_string("MR_prof_call_profile(", !IO),
+    mlds_output_bracketed_rval(Opts, CalleeFuncRval, !IO),
+    io.write_string(", ", !IO),
+    mlds_output_fully_qualified_function_name(CallerName, !IO),
+    io.write_string(");\n", !IO).
 
-    % If time profiling is turned on output an instruction which informs
-    % the runtime which procedure we are currently located in.
+    % Output an instruction which informs the runtime which procedure
+    % we are currently located in.
     %
-:- pred mlds_maybe_output_time_profile_instr(mlds_to_c_opts::in,
+:- pred mlds_output_time_profile_instr(mlds_to_c_opts::in,
     prog_context::in, indent::in, qual_function_name::in,
     io::di, io::uo) is det.
 
-mlds_maybe_output_time_profile_instr(Opts, Context, Indent,
-        QualFuncName, !IO) :-
-    ProfileTime = Opts ^ m2co_profile_time,
-    (
-        ProfileTime = yes,
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("MR_set_prof_current_proc(", !IO),
-        mlds_output_fully_qualified_function_name(QualFuncName, !IO),
-        io.write_string(");\n", !IO)
-    ;
-        ProfileTime = no
-    ).
+mlds_output_time_profile_instr(Opts, Context, Indent, QualFuncName, !IO) :-
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    io.write_string("MR_set_prof_current_proc(", !IO),
+    mlds_output_fully_qualified_function_name(QualFuncName, !IO),
+    io.write_string(");\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
