@@ -43,6 +43,8 @@
 
 :- implementation.
 
+:- import_module backend_libs.
+:- import_module backend_libs.builtin_ops.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -157,7 +159,15 @@ optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
         Stmt0 = ml_stmt_if_then_else(Rval, Then0, MaybeElse0, Context),
         optimize_in_stmt(OptInfo, Then0, Then),
         optimize_in_maybe_stmt(OptInfo, MaybeElse0, MaybeElse),
-        Stmt = ml_stmt_if_then_else(Rval, Then, MaybeElse, Context)
+        ( if
+            Then = ml_stmt_block([], [], [], _),
+            MaybeElse = yes(Else)
+        then
+            NotRval = ml_unop(std_unop(logical_not), Rval),
+            Stmt = ml_stmt_if_then_else(NotRval, Else, no, Context)
+        else
+            Stmt = ml_stmt_if_then_else(Rval, Then, MaybeElse, Context)
+        )
     ;
         Stmt0 = ml_stmt_switch(Type, Rval, Range, Cases0, Default0, Context),
         list.map(optimize_in_case(OptInfo), Cases0, Cases),
