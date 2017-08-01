@@ -215,7 +215,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % return values.
     ml_gen_var_list(!.Info, ArgVars, ArgLvals),
     ml_variable_types(!.Info, ArgVars, ActualArgTypes),
-    ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, BoxedArgTypes,
+    ml_gen_args(ArgNames, ArgLvals, ActualArgTypes, BoxedArgTypes,
         ArgModes, PredOrFunc, CodeModel, Context, no, 1,
         InputRvals, OutputLvals, OutputTypes,
         ConvArgLocalVarDefns, ConvOutputStmts, !Info),
@@ -367,7 +367,7 @@ ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
     % Generate code to box/unbox the arguments and compute the list of
     % properly converted rvals/lvals to pass as the function call's arguments
     % and return values.
-    ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, PredArgTypes,
+    ml_gen_args(ArgNames, ArgLvals, ActualArgTypes, PredArgTypes,
         ArgModes, PredOrFunc, CodeModel, Context, ForClosureWrapper, 1,
         InputRvals, OutputLvals, OutputTypes,
         ConvArgLocalVarDefns, ConvOutputStmts, !Info),
@@ -620,14 +620,14 @@ ml_gen_copy_args_to_locals_loop(Info, [LocalLval | LocalLvals], [Type | Types],
 
     % Generate rvals and lvals for the arguments of a procedure call.
     %
-:- pred ml_gen_arg_list(list(mlds_local_var_name)::in, list(mlds_lval)::in,
+:- pred ml_gen_args(list(mlds_local_var_name)::in, list(mlds_lval)::in,
     list(mer_type)::in, list(mer_type)::in, list(mer_mode)::in,
     pred_or_func::in, code_model::in, prog_context::in, bool::in, int::in,
     list(mlds_rval)::out, list(mlds_lval)::out, list(mlds_type)::out,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
+ml_gen_args(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         PredOrFunc, CodeModel, Context, ForClosureWrapper, ArgNum,
         !:InputRvals, !:OutputLvals, !:OutputTypes, !:ConvDecls,
         !:ConvOutputStmts, !Info) :-
@@ -650,77 +650,97 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         CalleeTypes = [CalleeType | CalleeTypesTail],
         Modes = [Mode | ModesTail]
     then
-        ml_gen_arg_list(VarNamesTail, VarLvalsTail, CallerTypesTail,
+        ml_gen_args(VarNamesTail, VarLvalsTail, CallerTypesTail,
             CalleeTypesTail, ModesTail, PredOrFunc, CodeModel, Context,
             ForClosureWrapper, ArgNum + 1, !:InputRvals, !:OutputLvals,
             !:OutputTypes, !:ConvDecls, !:ConvOutputStmts, !Info),
-        ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        mode_to_top_functor_mode(ModuleInfo, Mode, CalleeType,
-            ArgTopFunctorMode),
-        CalleeIsDummy = check_dummy_type(ModuleInfo, CalleeType),
-        (
-            CalleeIsDummy = is_dummy_type
-            % Exclude arguments of type io.state etc.
-        ;
-            CalleeIsDummy = is_not_dummy_type,
-            (
-                ArgTopFunctorMode = top_unused
-                % Also exclude those with arg_mode `top_unused'.
-            ;
-                ArgTopFunctorMode = top_in,
-                % It is an input argument.
-                CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
-                (
-                    CallerIsDummy = is_dummy_type,
-                    % The variable may not have been declared, so we need to
-                    % generate a dummy value for it. Using `0' here is more
-                    % efficient than using private_builtin.dummy_var, which is
-                    % what ml_gen_var will have generated for this variable.
-                    VarRval = ml_const(mlconst_int(0))
-                ;
-                    CallerIsDummy = is_not_dummy_type,
-                    VarRval = ml_lval(VarLval)
-                ),
-                ml_gen_box_or_unbox_rval(ModuleInfo, CallerType, CalleeType,
-                    bp_native_if_possible, VarRval, ArgRval),
-                !:InputRvals = [ArgRval | !.InputRvals]
-            ;
-                ArgTopFunctorMode = top_out,
-                % It is an output argument.
-                ml_gen_box_or_unbox_lval(CallerType, CalleeType,
-                    bp_native_if_possible, VarLval, VarName, Context,
-                    ForClosureWrapper, ArgNum, ArgLval, ThisArgConvDecls,
-                    _ThisArgConvInput, ThisArgConvOutput, !Info),
-                !:ConvDecls = ThisArgConvDecls ++ !.ConvDecls,
-                !:ConvOutputStmts = ThisArgConvOutput ++ !.ConvOutputStmts,
-
-                ( if
-                    (
-                        % If this is the result argument of a model_det
-                        % function, and it has an output mode (tested above),
-                        % then return it as a value.
-                        VarNamesTail = [],
-                        CodeModel = model_det,
-                        PredOrFunc = pf_function
-                    ;
-                        % If the target language allows multiple return values,
-                        % then use them.
-                        ml_gen_info_get_globals(!.Info, Globals),
-                        get_copy_out_option(Globals, CodeModel) = yes
-                    )
-                then
-                    !:OutputLvals = [ArgLval | !.OutputLvals],
-                    ml_gen_type(!.Info, CalleeType, OutputType),
-                    !:OutputTypes = [OutputType | !.OutputTypes]
-                else
-                    % Otherwise use the traditional C style of passing the
-                    % address of the output value.
-                    !:InputRvals = [ml_gen_mem_addr(ArgLval) | !.InputRvals]
-                )
-            )
-        )
+        ml_gen_arg(VarName, VarLval, CallerType, CalleeType, Mode,
+            PredOrFunc, CodeModel, Context, ForClosureWrapper, ArgNum,
+            VarNamesTail, !InputRvals, !OutputLvals, !OutputTypes,
+            !ConvDecls, !ConvOutputStmts, !Info)
     else
         unexpected($pred, "length mismatch")
+    ).
+
+:- pred ml_gen_arg(mlds_local_var_name::in, mlds_lval::in, mer_type::in,
+    mer_type::in, mer_mode::in, pred_or_func::in, code_model::in,
+    prog_context::in, bool::in, int::in, list(mlds_local_var_name)::in,
+    list(mlds_rval)::in, list(mlds_rval)::out,
+    list(mlds_lval)::in, list(mlds_lval)::out,
+    list(mlds_type)::in, list(mlds_type)::out,
+    list(mlds_local_var_defn)::in, list(mlds_local_var_defn)::out,
+    list(mlds_stmt)::in, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pragma inline(ml_gen_arg/23).
+
+ml_gen_arg(VarName, VarLval, CallerType, CalleeType, Mode,
+        PredOrFunc, CodeModel, Context, ForClosureWrapper,
+        ArgNum, VarNamesTail,
+        !InputRvals, !OutputLvals, !OutputTypes,
+        !ConvDecls, !ConvOutputStmts, !Info) :-
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    mode_to_top_functor_mode(ModuleInfo, Mode, CalleeType, ArgTopFunctorMode),
+    CalleeIsDummy = check_dummy_type(ModuleInfo, CalleeType),
+    (
+        CalleeIsDummy = is_dummy_type
+        % Exclude arguments of type io.state etc.
+    ;
+        CalleeIsDummy = is_not_dummy_type,
+        (
+            ArgTopFunctorMode = top_unused
+            % Also exclude those with arg_mode `top_unused'.
+        ;
+            ArgTopFunctorMode = top_in,
+            % It is an input argument.
+            CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
+            (
+                CallerIsDummy = is_dummy_type,
+                % The variable may not have been declared, so we need to
+                % generate a dummy value for it. Using `0' here is more
+                % efficient than using private_builtin.dummy_var, which is
+                % what ml_gen_var will have generated for this variable.
+                VarRval = ml_const(mlconst_int(0))
+            ;
+                CallerIsDummy = is_not_dummy_type,
+                VarRval = ml_lval(VarLval)
+            ),
+            ml_gen_box_or_unbox_rval(ModuleInfo, CallerType, CalleeType,
+                bp_native_if_possible, VarRval, ArgRval),
+            !:InputRvals = [ArgRval | !.InputRvals]
+        ;
+            ArgTopFunctorMode = top_out,
+            % It is an output argument.
+            ml_gen_box_or_unbox_lval(CallerType, CalleeType,
+                bp_native_if_possible, VarLval, VarName, Context,
+                ForClosureWrapper, ArgNum, ArgLval, ThisArgConvDecls,
+                _ThisArgConvInput, ThisArgConvOutput, !Info),
+            !:ConvDecls = ThisArgConvDecls ++ !.ConvDecls,
+            !:ConvOutputStmts = ThisArgConvOutput ++ !.ConvOutputStmts,
+
+            ( if
+                (
+                    % If this is the result argument of a model_det
+                    % function, and it has an output mode (tested above),
+                    % then return it as a value.
+                    VarNamesTail = [],
+                    CodeModel = model_det,
+                    PredOrFunc = pf_function
+                ;
+                    % If the target language allows multiple return values,
+                    % then use them.
+                    ml_gen_info_get_globals(!.Info, Globals),
+                    get_copy_out_option(Globals, CodeModel) = yes
+                )
+            then
+                !:OutputLvals = [ArgLval | !.OutputLvals],
+                ml_gen_type(!.Info, CalleeType, OutputType),
+                !:OutputTypes = [OutputType | !.OutputTypes]
+            else
+                % Otherwise use the traditional C style of passing the
+                % address of the output value.
+                !:InputRvals = [ml_gen_mem_addr(ArgLval) | !.InputRvals]
+            )
+        )
     ).
 
     % ml_gen_mem_addr(Lval) returns a value equal to &Lval.
