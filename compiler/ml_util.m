@@ -42,7 +42,7 @@
     % code_address_is_for_this_function(CodeAddr, ModuleName, FuncName):
     %
     % True if CodeAddr, if used as the callee of an ml_stmt_call statement,
-    % would call qual(ModuleName, module_qual, FuncName).
+    % would call FuncName in ModuleName.
     %
 :- pred code_address_is_for_this_function(mlds_code_addr::in,
     mlds_module_name::in, mlds_function_name::in) is semidet.
@@ -147,6 +147,10 @@
 :- func get_mlds_stmt_context(mlds_stmt) = prog_context.
 
 %---------------------------------------------------------------------------%
+
+:- func mlds_maybe_aux_func_id_to_suffix(mlds_maybe_aux_func_id) = string.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -156,7 +160,9 @@
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_unify_gen.
 
+:- import_module int.
 :- import_module solutions.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -164,7 +170,9 @@ func_defns_contain_main([FuncDefn | FuncDefns]) :-
     ( if
         FuncDefn = mlds_function_defn(FuncName, _, _, _, _, _, _, _, _),
         FuncName = mlds_function_name(PlainFuncName),
-        PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
+        PlainFuncName = mlds_plain_func_name(FuncLabel, _),
+        FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
+        ProcLabel = mlds_proc_label(PredLabel, _ProcId),
         PredLabel = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _)
     then
         true
@@ -174,21 +182,14 @@ func_defns_contain_main([FuncDefn | FuncDefns]) :-
 
 code_address_is_for_this_function(CodeAddr, ModuleName, FuncName) :-
     % Check if the callee address is the same as the caller.
-    (
-        CodeAddr = code_addr_proc(QualifiedProcLabel, _Sig),
-        MaybeSeqNum = no
-    ;
-        CodeAddr = code_addr_internal(QualifiedProcLabel, SeqNum, _Sig),
-        MaybeSeqNum = yes(SeqNum)
-    ),
+    CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
+    QualFuncLabel = qual_func_label(FuncModuleName, FuncLabel),
 
     % Check that the module name matches.
-    QualifiedProcLabel = qual_proc_label(ModuleName, ProcLabel),
+    FuncModuleName = ModuleName,
 
     % Check that the function name (PredLabel, ProcId, MaybeSeqNum) matches.
-    ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    FuncName = mlds_function_name(
-        mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _)).
+    FuncName = mlds_function_name(mlds_plain_func_name(FuncLabel, _PredId)).
 
 %---------------------------------------------------------------------------%
 %
@@ -770,7 +771,7 @@ rval_contains_var(Rval, SearchVarName) = ContainsVar :-
             ; Const = mlconst_named_const(_, _)
             ; Const = mlconst_code_addr(_)
             ; Const = mlconst_data_addr_rtti(_, _)
-            ; Const = mlconst_data_addr_tabling(_, _, _)
+            ; Const = mlconst_data_addr_tabling(_, _)
             ; Const = mlconst_data_addr_global_var(_, _)
             ; Const = mlconst_null(_)
             ),
@@ -883,6 +884,30 @@ get_mlds_stmt_context(Stmt) = Context :-
     ; Stmt = ml_stmt_return(_, Context)
     ; Stmt = ml_stmt_call(_, _, _, _, _, _, Context)
     ; Stmt = ml_stmt_atomic(_, Context)
+    ).
+
+%---------------------------------------------------------------------------%
+
+mlds_maybe_aux_func_id_to_suffix(MaybeAux) = Suffix :-
+    % This function preserves Fergus's original scheme of computing
+    % a sequence number for gc trace functions by adding 10000 to the
+    % sequence number (if any) of the MLDS function they were for.
+    %
+    % A cleaner, more readable scheme would be nice, but the question
+    % will become even semi-interesting only if the accurate collector
+    % is ever used in practice.
+    (
+        MaybeAux = proc_func,
+        Suffix = ""
+    ;
+        MaybeAux = proc_aux_func(SeqNum),
+        Suffix = string.format("_%d", [i(SeqNum)])
+    ;
+        MaybeAux = gc_trace_for_proc_func,
+        Suffix = string.format("_%d", [i(10000)])
+    ;
+        MaybeAux = gc_trace_for_proc_aux_func(SeqNum),
+        Suffix = string.format("_%d", [i(10001 + SeqNum)])
     ).
 
 %---------------------------------------------------------------------------%

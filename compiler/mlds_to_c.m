@@ -283,8 +283,9 @@ mlds_output_named_function_defns(Opts, DumpPredNames, ModuleName,
     FuncName = FuncDefn ^ mfd_function_name,
     ( if
         FuncName = mlds_function_name(PlainFuncName),
-        PlainFuncName = mlds_plain_func_name(PredLabel,
-            _ProcId, _MaybeFuncSeq, _PredId),
+        PlainFuncName = mlds_plain_func_name(FuncLabel, _),
+        FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
+        ProcLabel = mlds_proc_label(PredLabel, _ProcId),
         PredLabel = mlds_user_pred_label(_PredOrFunc, _DeclModule, Name,
             _Arity, _CodeModel, _MaybeReturnValue),
         list.member(Name, DumpPredNames)
@@ -2696,7 +2697,9 @@ mlds_output_fully_qualified_function_name(QualFuncName, !IO) :-
         (
             % Don't module-qualify main/2.
             FuncName = mlds_function_name(PlainFuncName),
-            PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
+            PlainFuncName = mlds_plain_func_name(FuncLabel, _),
+            FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
+            ProcLabel = mlds_proc_label(PredLabel, _ProcId),
             PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
                 model_det, no)
         ;
@@ -2791,19 +2794,14 @@ mlds_output_function_name(FunctionName, !IO) :-
     % if they are not needed.
     (
         FunctionName = mlds_function_name(PlainFuncName),
-        PlainFuncName = mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum,
-            _PredId),
+        PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
+        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
         mlds_output_pred_label(PredLabel, !IO),
         proc_id_to_int(ProcId, ModeNum),
         io.write_char('_', !IO),
         io.write_int(ModeNum, !IO),
-        (
-            MaybeSeqNum = yes(SeqNum),
-            io.write_char('_', !IO),
-            io.write_int(SeqNum, !IO)
-        ;
-            MaybeSeqNum = no
-        )
+        io.write_string(mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
     ;
         FunctionName = mlds_function_export(Name),
         io.write_string(Name, !IO)
@@ -4992,7 +4990,7 @@ is_an_address(Rval) = IsAddr :-
             ; Const = mlconst_data_addr_local_var(_, _)
             ; Const = mlconst_data_addr_global_var(_, _)
             ; Const = mlconst_data_addr_rtti(_, _)
-            ; Const = mlconst_data_addr_tabling(_, _, _)
+            ; Const = mlconst_data_addr_tabling(_, _)
             ),
             IsAddr = yes
         ;
@@ -5331,7 +5329,7 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         io.write_string(RttiAddrName, !IO)
     ;
-        Const = mlconst_data_addr_tabling(ModuleName, ProcLabel, TablingId),
+        Const = mlconst_data_addr_tabling(QualProcLabel, TablingId),
         % If it is an array type, then we just use the name;
         % otherwise, we must prefix the name with `&'.
         ( if tabling_id_has_array_type(TablingId) = is_array then
@@ -5339,6 +5337,7 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         else
             io.write_string("&", !IO)
         ),
+        QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
         mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName), !IO),
         io.write_string("__", !IO),
         io.write_string(mlds_tabling_data_name(ProcLabel, TablingId), !IO)
@@ -5402,12 +5401,13 @@ mlds_output_tag(Tag, !IO) :-
 
 :- pred mlds_output_code_addr(mlds_code_addr::in, io::di, io::uo) is det.
 
-mlds_output_code_addr(code_addr_proc(Label, _Sig), !IO) :-
-    mlds_output_fully_qualified_proc_label(Label, !IO).
-mlds_output_code_addr(code_addr_internal(Label, SeqNum, _Sig), !IO) :-
-    mlds_output_fully_qualified_proc_label(Label, !IO),
-    io.write_string("_", !IO),
-    io.write_int(SeqNum, !IO).
+mlds_output_code_addr(CodeAddr, !IO) :-
+    CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
+    QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
+    FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+    QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
+    mlds_output_fully_qualified_proc_label(QualProcLabel, !IO),
+    io.write_string(mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO).
 
 :- pred mlds_output_proc_label(mlds_proc_label::in, io::di, io::uo) is det.
 

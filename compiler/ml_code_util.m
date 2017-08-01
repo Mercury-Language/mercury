@@ -83,14 +83,14 @@
     % the function body for that function, generate an mlds_function_defn
     % which defines that function.
     %
-:- pred ml_gen_nondet_label_func(ml_gen_info::in, ml_label_func::in,
+:- pred ml_gen_nondet_label_func(ml_gen_info::in, mlds_maybe_aux_func_id::in,
     prog_context::in, mlds_stmt::in, mlds_function_defn::out) is det.
 
     % Given a function label, the function parameters, and the statement
     % which will comprise the function body for that function,
     % generate an mlds_function_defn which defines that function.
     %
-:- pred ml_gen_label_func(ml_gen_info::in, ml_label_func::in,
+:- pred ml_gen_label_func(ml_gen_info::in, mlds_maybe_aux_func_id::in,
     mlds_func_params::in, prog_context::in, mlds_stmt::in,
     mlds_function_defn::out) is det.
 
@@ -209,16 +209,17 @@
     % given sequence number. The pred_id and proc_id specify the procedure
     % that this continuation function is part of.
     %
-:- func ml_gen_nondet_label(module_info, pred_id, proc_id, ml_label_func)
-    = mlds_plain_func_name.
+:- func ml_gen_nondet_label(module_info, pred_id, proc_id,
+    mlds_maybe_aux_func_id) = mlds_plain_func_name.
 
     % Allocate a new function label and return an rval containing the
     % function's address. If parameters are not given, we assume it is
     % a continuation function, and give it the appropriate arguments
     % (depending on whether we are doing nested functions or not).
     %
-:- pred ml_gen_new_func_label(maybe(mlds_func_params)::in, ml_label_func::out,
-    mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_new_func_label(maybe(mlds_func_params)::in,
+    mlds_maybe_aux_func_id::out, mlds_rval::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate the mlds_pred_label and module name for a given procedure.
     %
@@ -692,7 +693,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         Stmts = FirstStmts
     ).
 
-ml_gen_nondet_label_func(Info, FuncLabel, Context, Stmt, Func) :-
+ml_gen_nondet_label_func(Info, MaybeAux, Context, Stmt, Func) :-
     ml_gen_info_use_gcc_nested_functions(Info, UseNested),
     (
         UseNested = yes,
@@ -702,14 +703,14 @@ ml_gen_nondet_label_func(Info, FuncLabel, Context, Stmt, Func) :-
         ml_declare_env_ptr_arg(EnvPtrArg),
         FuncParams = mlds_func_params([EnvPtrArg], [])
     ),
-    ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Stmt, Func).
+    ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func).
 
-ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Stmt, Func) :-
+ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func) :-
     % Compute the function name.
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_info_get_pred_id(Info, PredId),
     ml_gen_info_get_proc_id(Info, ProcId),
-    FuncName = ml_gen_nondet_label(ModuleInfo, PredId, ProcId, FuncLabel),
+    FuncName = ml_gen_nondet_label(ModuleInfo, PredId, ProcId, MaybeAux),
 
     % Compute the function definition.
     DeclFlags = ml_gen_label_func_decl_flags,
@@ -1105,29 +1106,26 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
 %
 
 ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_ModuleName, MLDS_Name) :-
-    ml_gen_func_label(ModuleInfo, PredId, ProcId, no, MLDS_ModuleName,
+    ml_gen_func_label(ModuleInfo, PredId, ProcId, proc_func, MLDS_ModuleName,
         MLDS_Name).
 
-ml_gen_nondet_label(ModuleInfo, PredId, ProcId, SeqNum) = MLDS_Name :-
-    ml_gen_func_label(ModuleInfo, PredId, ProcId, yes(SeqNum),
+ml_gen_nondet_label(ModuleInfo, PredId, ProcId, MaybeAux) = MLDS_Name :-
+    ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeAux,
         _MLDS_ModuleName, MLDS_Name).
 
 :- pred ml_gen_func_label(module_info::in, pred_id::in, proc_id::in,
-    maybe(ml_label_func)::in, mlds_module_name::out, mlds_plain_func_name::out)
-    is det.
+    mlds_maybe_aux_func_id::in,
+    mlds_module_name::out, mlds_plain_func_name::out) is det.
 
-ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeSeqNum,
-        MLDS_ModuleName, MLDS_Name) :-
-    ml_gen_pred_label(ModuleInfo, PredId, ProcId,
-        MLDS_PredLabel, MLDS_ModuleName),
-    MLDS_Name =
-        mlds_plain_func_name(MLDS_PredLabel, ProcId, MaybeSeqNum, PredId).
+ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeAux,
+        ModuleName, FuncName) :-
+    ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, ModuleName),
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+    FuncName = mlds_plain_func_name(FuncLabel, PredId).
 
-    % Allocate a new function label and return an rval containing
-    % the function's address.
-    %
-ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval, !Info) :-
-    ml_gen_info_new_func_label(FuncLabel, !Info),
+ml_gen_new_func_label(MaybeParams, MaybeAux, FuncLabelRval, !Info) :-
+    ml_gen_info_new_aux_func_id(MaybeAux, !Info),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_pred_id(!.Info, PredId),
     ml_gen_info_get_proc_id(!.Info, ProcId),
@@ -1149,13 +1147,11 @@ ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval, !Info) :-
         Signature = mlds_func_signature(ArgTypes, [])
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    QualProcLabel = qual_proc_label(PredModule, ProcLabel),
-    FuncLabelRval = ml_const(
-        mlconst_code_addr(code_addr_internal(QualProcLabel,
-            FuncLabel, Signature))).
+    FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+    QualFuncLabel = qual_func_label(PredModule, FuncLabel),
+    FuncLabelRval = ml_const(mlconst_code_addr(
+        mlds_code_addr(QualFuncLabel, Signature))).
 
-    % Generate the mlds_pred_label and module name for a given procedure.
-    %
 ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
     RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel,

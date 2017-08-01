@@ -479,7 +479,8 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
-        Const = mlconst_data_addr_tabling(PredModule, ProcLabel, tabling_info),
+        QualProcLabel = qual_proc_label(PredModule, ProcLabel),
+        Const = mlconst_data_addr_tabling(QualProcLabel, tabling_info),
         Rval = ml_unop(cast(MLDS_VarType), ml_const(Const))
     ;
         Tag = deep_profiling_proc_layout_tag(_, _),

@@ -471,7 +471,7 @@ rename_class_names_in_rval_const(Renaming, !Const) :-
         ; !.Const = mlconst_data_addr_local_var(_, _)
         ; !.Const = mlconst_data_addr_global_var(_, _)
         ; !.Const = mlconst_data_addr_rtti(_, _)
-        ; !.Const = mlconst_data_addr_tabling(_, _, _)
+        ; !.Const = mlconst_data_addr_tabling(_, _)
         )
     ).
 

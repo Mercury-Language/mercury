@@ -964,14 +964,14 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
     ml_gen_gc_statement_poly(ClosureName, ClosureDeclType, ClosureActualType,
         Context, ClosureGCStmt, !Info).
 
-:- pred ml_gen_wrapper_func(ml_label_func::in, mlds_func_params::in,
+:- pred ml_gen_wrapper_func(mlds_maybe_aux_func_id::in, mlds_func_params::in,
     prog_context::in, mlds_stmt::in, mlds_function_defn::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Stmt, FunctionDefn,
+ml_gen_wrapper_func(MaybeAux, FuncParams, Context, Stmt, FunctionDefn,
         !Info) :-
     % XXX MLDS_DEFN: pass the needed flags to ml_gen_label_func
-    ml_gen_label_func(!.Info, FuncLabel, FuncParams, Context, Stmt,
+    ml_gen_label_func(!.Info, MaybeAux, FuncParams, Context, Stmt,
         FunctionDefn0),
     FunctionDefn0 = mlds_function_defn(Name, Ctxt, DeclFlags0,
         MaybePredProcId, DefnFuncParams, Body, Attributes,

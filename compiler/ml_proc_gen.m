@@ -980,7 +980,8 @@ encode_enum_init(EnumConstName) = Initializer :-
     proc_tabling_struct_id) = mlds_initializer.
 
 gen_init_tabling_name(ModuleName, ProcLabel, TablingId) = Rval :-
-    Const = mlconst_data_addr_tabling(ModuleName, ProcLabel, TablingId),
+    QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
+    Const = mlconst_data_addr_tabling(QualProcLabel, TablingId),
     Rval = init_obj(ml_const(Const)).
 
 :- func tabling_name_and_init_to_defn(mlds_proc_label, proc_tabling_struct_id,

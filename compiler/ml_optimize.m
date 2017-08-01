@@ -251,9 +251,11 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
         % This approach is better than running HLDS inlining again,
         % because it cheaper in compilation time.
 
-        FuncRval = ml_const(mlconst_code_addr(
-            code_addr_proc(qual_proc_label(ModName, ProcLabel),
-                _FuncSignature))),
+        FuncRval = ml_const(mlconst_code_addr(CodeAddr)),
+        CodeAddr = mlds_code_addr(QualFuncLabel, _CodeAddrSignature),
+        QualFuncLabel = qual_func_label(ModName, FuncLabel),
+        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+        MaybeAux = proc_func,
         ProcLabel = mlds_proc_label(PredLabel, _ProcId),
         PredLabel = mlds_user_pred_label(pf_predicate, _DefnModName, PredName,
             _Arity, _CodeModel, _NonOutputFunc),
@@ -503,8 +505,8 @@ stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
     % Is this a self-recursive call?
     % We test this *after* we test CallKind, because the CallKind test
     % is both (a) cheaper, and (b) significantly more likely to fail.
-    CalleeRval = ml_const(mlconst_code_addr(CalleeCodeAddr)),
-    code_address_is_for_this_function(CalleeCodeAddr, ModuleName, FuncName).
+    CalleeRval = ml_const(mlconst_code_addr(CodeAddr)),
+    code_address_is_for_this_function(CodeAddr, ModuleName, FuncName).
 
 %---------------------------------------------------------------------------%
 

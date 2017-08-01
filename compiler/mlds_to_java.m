@@ -776,9 +776,7 @@ output_exported_enum_constant_for_java(Info, Indent, MLDS_Type,
 
 make_code_addr_map_for_java([], !Map).
 make_code_addr_map_for_java([CodeAddr | CodeAddrs], !Map) :-
-    ( CodeAddr = code_addr_proc(_ProcLabel, OrigFuncSignature)
-    ; CodeAddr = code_addr_internal(_ProcLabel, _SeqNum, OrigFuncSignature)
-    ),
+    CodeAddr = mlds_code_addr(_QualFuncLabel, OrigFuncSignature),
     OrigFuncSignature = mlds_func_signature(OrigArgTypes, _OrigRetTypes),
     list.length(OrigArgTypes, Arity),
     multi_map.set(Arity, CodeAddr, !Map),
@@ -937,10 +935,12 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
     ),
 
     % Create new method name.
-    PredID = hlds_pred.initial_pred_id,
-    ProcID = initial_proc_id,
-    Label = mlds_special_pred_label("call", no, "", 0),
-    PlainFuncName = mlds_plain_func_name(Label, ProcID, no, PredID),
+    PredId = hlds_pred.initial_pred_id,
+    ProcId = initial_proc_id,
+    PredLabel = mlds_special_pred_label("call", no, "", 0),
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    FuncLabel = mlds_func_label(ProcLabel, proc_func),
+    PlainFuncName = mlds_plain_func_name(FuncLabel, PredId),
     MethodName = mlds_function_name(PlainFuncName),
 
     % Create return type.
@@ -950,11 +950,11 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
     % Put it all together.
     MethodFlags = ml_gen_member_decl_flags,
     MethodParams = mlds_func_params(MethodArgs, MethodRets),
-    MethodMaybeID = no,
+    MethodMaybeId = no,
     MethodAttribs = [],
     MethodEnvVarNames = set.init,
     MethodDefn = mlds_function_defn(MethodName, Context, MethodFlags,
-        MethodMaybeID, MethodParams, body_defined_here(Stmt),
+        MethodMaybeId, MethodParams, body_defined_here(Stmt),
         MethodAttribs, MethodEnvVarNames, no).
 
 :- pred create_generic_arg(int::in, mlds_local_var_name::out,
@@ -968,10 +968,8 @@ create_generic_arg(I, ArgName, Arg) :-
     mlds_code_addr::in, mlds_stmt::out) is det.
 
 generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
-    ( CodeAddr = code_addr_proc(QualProcLabel, OrigFuncSignature)
-    ; CodeAddr = code_addr_internal(QualProcLabel, _SeqNum, OrigFuncSignature)
-    ),
-    QualProcLabel = qual_proc_label(ModuleName, _ProcLabel),
+    CodeAddr = mlds_code_addr(QualFuncLabel, OrigFuncSignature),
+    QualFuncLabel = qual_func_label(ModuleName, _FuncLabel),
     OrigFuncSignature = mlds_func_signature(OrigArgTypes, OrigRetTypes),
 
     % Create the arguments to pass to the original method.
@@ -985,6 +983,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
         generate_call_method_args_from_array(OrigArgTypes, ArrayVar, 0,
             [], CallArgs)
     ),
+
 
     % Create a temporary variable to store the result of the call to the
     % original method.
@@ -2361,17 +2360,13 @@ output_type_name_for_java(TypeName, !IO) :-
 output_function_name_for_java(FunctionName, !IO) :-
     (
         FunctionName = mlds_function_name(PlainFuncName),
-        PlainFuncName = mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum,
-            _PredId),
+        PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
+        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
         output_pred_label_for_java(PredLabel, !IO),
         proc_id_to_int(ProcId, ModeNum),
         io.format("_%d", [i(ModeNum)], !IO),
-        (
-            MaybeSeqNum = yes(SeqNum),
-            io.format("_%d", [i(SeqNum)], !IO)
-        ;
-            MaybeSeqNum = no
-        )
+        io.write_string(mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
     ;
         FunctionName = mlds_function_export(Name),
         io.write_string(Name, !IO)
@@ -4738,7 +4733,8 @@ output_rval_const_for_java(Info, Const, !IO) :-
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         io.write_string(RttiAddrName, !IO)
     ;
-        Const = mlconst_data_addr_tabling(ModuleName, ProcLabel, TablingId),
+        Const = mlconst_data_addr_tabling(QualProcLabel, TablingId),
+        QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
         SymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
         io.write_string(ModuleNameStr, !IO),
@@ -4806,19 +4802,12 @@ mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO) :-
         io.write_string(")", !IO)
     ;
         IsCall = yes,
-        (
-            CodeAddr = code_addr_proc(QualProcLabel, _Sig),
-            QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
-            output_qual_name_prefix_java(ModuleName, module_qual, !IO),
-            mlds_output_proc_label_for_java(ProcLabel, !IO)
-        ;
-            CodeAddr = code_addr_internal(QualProcLabel, SeqNum, _Sig),
-            QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
-            output_qual_name_prefix_java(ModuleName, module_qual, !IO),
-            mlds_output_proc_label_for_java(ProcLabel, !IO),
-            io.write_string("_", !IO),
-            io.write_int(SeqNum, !IO)
-        )
+        CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
+        QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
+        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+        output_qual_name_prefix_java(ModuleName, module_qual, !IO),
+        mlds_output_proc_label_for_java(ProcLabel, !IO),
+        io.write_string(mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
     ).
 
 :- pred mlds_output_proc_label_for_java(mlds_proc_label::in, io::di, io::uo)

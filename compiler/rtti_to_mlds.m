@@ -1665,12 +1665,13 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Initializer :-
     % (this is similar to ml_gen_proc_addr_rval).
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcId, PredLabel, PredModule),
     ProcId = RttiProcId ^ rpl_proc_id,
-    QualifiedProcLabel = qual_proc_label(PredModule,
-        mlds_proc_label(PredLabel, ProcId)),
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    FuncLabel = mlds_func_label(ProcLabel, proc_func),
+    QualFuncLabel = qual_func_label(PredModule, FuncLabel),
     Params = ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId),
     Signature = mlds_get_func_signature(Params),
-    ProcAddrRval = ml_const(mlconst_code_addr(
-        code_addr_proc(QualifiedProcLabel, Signature))),
+    CodeAddr = mlds_code_addr(QualFuncLabel, Signature),
+    ProcAddrRval = ml_const(mlconst_code_addr(CodeAddr)),
 
     % Convert the procedure address to a generic type. We need to use a
     % generic type because since the actual type for the procedure will
@@ -1882,7 +1883,7 @@ add_rtti_defn_arcs_const(DefnGlobalVarName, Const, !Graph) :-
         ; Const = mlconst_code_addr(_)
         ; Const = mlconst_data_addr_local_var(_, _)
         ; Const = mlconst_data_addr_global_var(_, _)
-        ; Const = mlconst_data_addr_tabling(_, _, _)
+        ; Const = mlconst_data_addr_tabling(_, _)
         ; Const = mlconst_null(_)
         )
     ).

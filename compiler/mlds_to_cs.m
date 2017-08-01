@@ -475,10 +475,8 @@ output_method_ptr_constants(Info, Indent, CodeAddrs, !IO) :-
     mlds_code_addr::in, string::in, io::di, io::uo) is det.
 
 output_method_ptr_constant(Info, Indent, CodeAddr, Name, !IO) :-
-    ( CodeAddr = code_addr_proc(_, Sig)
-    ; CodeAddr = code_addr_internal(_, _, Sig)
-    ),
-    Sig = mlds_func_signature(ArgTypes, RetTypes),
+    CodeAddr = mlds_code_addr(_QualFuncLabel, Signature),
+    Signature = mlds_func_signature(ArgTypes, RetTypes),
     TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
     output_n_indents(Indent, !IO),
     io.format("private static readonly %s %s = ",
@@ -1645,18 +1643,14 @@ type_name_to_string_for_csharp(TypeName, String) :-
 function_name_to_string_for_csharp(FunctionName, String) :-
     (
         FunctionName = mlds_function_name(PlainFuncName),
-        PlainFuncName = mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum,
-            _PredId),
+        PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
+        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
         pred_label_to_string_for_csharp(PredLabel, PredLabelStr),
         proc_id_to_int(ProcId, ModeNum),
-        (
-            MaybeSeqNum = yes(SeqNum),
-            string.format("%s_%d_%d", [s(PredLabelStr), i(ModeNum), i(SeqNum)],
-                String)
-        ;
-            MaybeSeqNum = no,
-            string.format("%s_%d", [s(PredLabelStr), i(ModeNum)], String)
-        )
+        MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
+        string.format("%s_%d%s",
+            [s(PredLabelStr), i(ModeNum), s(MaybeAuxSuffix)], String)
     ;
         FunctionName = mlds_function_export(Name),
         String = Name
@@ -3713,7 +3707,7 @@ output_rval_const_for_csharp(Info, Const, !IO) :-
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         write_identifier_string_for_csharp(RttiAddrName, !IO)
     ;
-        Const = mlconst_data_addr_tabling(_ModuleName, _ProcLabel, _TablingId),
+        Const = mlconst_data_addr_tabling(_QualProcLabel, _TablingId),
         unexpected($pred, "NYI: mlconst_data_addr_tabling")
     ;
         Const = mlconst_null(Type),
@@ -3764,10 +3758,8 @@ output_uint_const_for_csharp(U, !IO) :-
     mlds_code_addr::in, bool::in, io::di, io::uo) is det.
 
 mlds_output_code_addr_for_csharp(Info, CodeAddr, IsCall, !IO) :-
-    ( CodeAddr = code_addr_proc(_, Sig)
-    ; CodeAddr = code_addr_internal(_, _, Sig)
-    ),
-    Sig = mlds_func_signature(ArgTypes, RetTypes),
+    CodeAddr = mlds_code_addr(QualFuncLabel, Signature),
+    Signature = mlds_func_signature(ArgTypes, RetTypes),
     (
         IsCall = no,
         % Not a function call, so we are taking the address of the
@@ -3777,16 +3769,11 @@ mlds_output_code_addr_for_csharp(Info, CodeAddr, IsCall, !IO) :-
     ;
         IsCall = yes
     ),
-    (
-        CodeAddr = code_addr_proc(QualProcLabel, _Sig),
-        Suffix = ""
-    ;
-        CodeAddr = code_addr_internal(QualProcLabel, SeqNum, _Sig),
-        string.format("_%d", [i(SeqNum)], Suffix)
-    ),
-    QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
+    QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
+    FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+    MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
     output_qual_name_prefix_cs(ModuleName, module_qual, !IO),
-    mlds_output_proc_label(Suffix, ProcLabel, !IO).
+    mlds_output_proc_label(MaybeAuxSuffix, ProcLabel, !IO).
 
 :- func method_ptr_type_to_string(csharp_out_info, mlds_arg_types,
     mlds_return_types) = string.

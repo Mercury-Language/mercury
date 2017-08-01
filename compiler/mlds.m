@@ -524,42 +524,6 @@
                 arity
             ).
 
-:- type mlds_plain_func_name
-    --->    mlds_plain_func_name(
-                % Identifies the source code predicate or function.
-                pfn_pred_label      :: mlds_pred_label,
-
-                pfn_proc_id         :: proc_id,
-
-                % A sequence number used to distinguish different MLDS
-                % functions when compiling a single HLDS predicate into
-                % multiple MLDS functions (e.g. to handle backtracking).
-                pfn_maybe_func_seq  :: maybe(mlds_func_sequence_num),
-
-                % Specifies the HLDS pred_id.
-                % This should generally not be needed much, since all the
-                % necessary information should be in the mlds_pred_label
-                % and/or in the mlds_entity_defn. However, the target
-                % generator may want to refer to the HLDS for additional
-                % information.
-                pfn_pred_id         :: pred_id
-            ).
-
-:- type mlds_func_sequence_num == int.
-
-:- type qual_function_name
-    --->    qual_function_name(mlds_module_name, mlds_function_name).
-            % Function names can only ever be module qualified.
-
-:- type mlds_function_name
-    --->    mlds_function_name(
-                mlds_plain_func_name
-            )
-    ;       mlds_function_export(
-                % A pragma foreign_export name.
-                string
-            ).
-
 :- type mlds_global_var_defn
     --->    mlds_global_var_defn(
                 mgvd_name               :: mlds_global_var_name,
@@ -1883,7 +1847,7 @@
     ;       mlconst_data_addr_rtti(mlds_module_name, rtti_id)
             % The address of an RTTI data structure.
 
-    ;       mlconst_data_addr_tabling(mlds_module_name, mlds_proc_label,
+    ;       mlconst_data_addr_tabling(qual_proc_label,
                 proc_tabling_struct_id)
             % The address of the given tabling data structure
             % for the given procedure.
@@ -1896,13 +1860,8 @@
             % placeholders in cases where the value will never be used.)
 
 :- type mlds_code_addr
-    --->    code_addr_proc(
-                qual_proc_label,
-                mlds_func_signature
-            )
-    ;       code_addr_internal(
-                qual_proc_label,
-                mlds_func_sequence_num,
+    --->    mlds_code_addr(
+                qual_func_label,
                 mlds_func_signature
             ).
 
@@ -2299,6 +2258,57 @@
     ;       gc.
 
 %---------------------------------------------------------------------------%
+
+:- type mlds_plain_func_name
+    --->    mlds_plain_func_name(
+                % Identifies the source code predicate or function.
+                pfn_func_label      :: mlds_func_label,
+
+                % Specifies the HLDS pred_id.
+                % This should generally not be needed much, since all the
+                % necessary information should be in the mlds_pred_label
+                % and/or in the mlds_entity_defn. However, the target
+                % generator may want to refer to the HLDS for additional
+                % information.
+                pfn_pred_id         :: pred_id
+            ).
+
+:- type mlds_maybe_aux_func_id
+    --->    proc_func
+    ;       proc_aux_func(int)
+    ;       gc_trace_for_proc_func
+    ;       gc_trace_for_proc_aux_func(int).
+
+:- type qual_function_name
+    --->    qual_function_name(mlds_module_name, mlds_function_name).
+            % Function names can only ever be module qualified.
+
+:- type mlds_function_name
+    --->    mlds_function_name(
+                mlds_plain_func_name
+            )
+    ;       mlds_function_export(
+                % A pragma foreign_export name.
+                string
+            ).
+
+:- type qual_func_label
+    --->    qual_func_label(mlds_module_name, mlds_func_label).
+            % MLDS function labels can only ever be module qualified.
+
+:- type mlds_func_label
+    --->    mlds_func_label(
+                mlds_proc_label,
+
+                % The second field will be "no" for the MLDS function
+                % we generate for a HLDS procedure as a whole, but it will be
+                % "yes(N)" for the Nth auxiliary MLDS function we generate
+                % for that procedure, e.g. to handle backtracking.
+                % (It is actually N, not N-1, because mlds_aux_func_seq_nums
+                % start at 1.)
+                % XXX
+                mlds_maybe_aux_func_id
+            ).
 
 :- type qual_proc_label
     --->    qual_proc_label(mlds_module_name, mlds_proc_label).

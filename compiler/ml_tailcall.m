@@ -593,13 +593,9 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Markers, Context, !InBodyInfo) :-
             % are direct tail calls.
         )
     then
-        (
-            CodeAddr = code_addr_proc(QualProcLabel, _Sig)
-        ;
-            CodeAddr = code_addr_internal(QualProcLabel,
-                _SeqNum, _Sig)
-        ),
-        QualProcLabel = qual_proc_label(_, ProcLabel),
+        CodeAddr = mlds_code_addr(QualFuncLabel, _Sig),
+        QualFuncLabel = qual_func_label(_ModuleName, FuncLabel),
+        FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
         (
             PredLabel = mlds_special_pred_label(_, _, _, _)
@@ -821,7 +817,7 @@ check_const(Const) = MayYieldDanglingStackRef :-
         ; Const = mlconst_multi_string(_)
         ; Const = mlconst_named_const(_, _)
         ; Const = mlconst_data_addr_rtti(_, _)
-        ; Const = mlconst_data_addr_tabling(_, _, _)
+        ; Const = mlconst_data_addr_tabling(_, _)
         ; Const = mlconst_data_addr_global_var(_, _)
         ; Const = mlconst_null(_)
         ),
@@ -834,11 +830,18 @@ check_const(Const) = MayYieldDanglingStackRef :-
 :- pred function_is_local(mlds_code_addr::in) is semidet.
 
 function_is_local(CodeAddr) :-
+    CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
+    QualFuncLabel = qual_func_label(_ModuleName, FuncLabel),
+    FuncLabel = mlds_func_label(_ProcLabel, MaybeAux),
+    require_complete_switch [MaybeAux]
     (
-        CodeAddr = code_addr_proc(_QualifiedProcLabel, _Sig),
+        MaybeAux = proc_func,
         fail
     ;
-        CodeAddr = code_addr_internal(_QualifiedProcLabel, _SeqNum, _Sig)
+        ( MaybeAux = proc_aux_func(_)
+        ; MaybeAux = gc_trace_for_proc_func
+        ; MaybeAux = gc_trace_for_proc_aux_func(_)
+        )
     ).
 
 %---------------------------------------------------------------------------%

@@ -69,15 +69,10 @@
 :- pred ml_gen_info_new_label(label_num::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % A number corresponding to an MLDS nested function which serves as a
-    % label (i.e. a continuation function).
-    %
-:- type ml_label_func == mlds_func_sequence_num.
-
     % Generate a new function label number. This is used to give unique names
     % to the nested functions used when generating code for nondet procedures.
     %
-:- pred ml_gen_info_new_func_label(ml_label_func::out,
+:- pred ml_gen_info_new_aux_func_id(mlds_maybe_aux_func_id::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Increase the function label and const sequence number counters by some
@@ -307,9 +302,10 @@ ml_gen_info_new_label(Label, !Info) :-
     counter.allocate(Label, Counter0, Counter),
     ml_gen_info_set_label_counter(Counter, !Info).
 
-ml_gen_info_new_func_label(Label, !Info) :-
+ml_gen_info_new_aux_func_id(MaybeAux, !Info) :-
     ml_gen_info_get_func_counter(!.Info, Counter0),
-    counter.allocate(Label, Counter0, Counter),
+    counter.allocate(Num, Counter0, Counter),
+    MaybeAux = proc_aux_func(Num),
     ml_gen_info_set_func_counter(Counter, !Info).
 
 ml_gen_info_bump_counters(!Info) :-

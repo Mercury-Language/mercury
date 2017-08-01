@@ -469,7 +469,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module counter.
-:- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
@@ -520,7 +519,9 @@ ml_elim_nested_defns_in_funcs(Action, ModuleName, Globals, Target,
     % nested definitions to flatten out either.
     ( if
         Name = mlds_function_name(PlainFuncName),
-        PlainFuncName = mlds_plain_func_name(PredLabel, _, _, _),
+        PlainFuncName = mlds_plain_func_name(FuncLabel, _),
+        FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
+        ProcLabel = mlds_proc_label(PredLabel, _ProcId),
         PredLabel = mlds_user_pred_label(_, _, "gc_trace", 1, _, _),
         PrivateBuiltin = mercury_private_builtin_module,
         ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
@@ -963,7 +964,8 @@ ml_chain_stack_frames(ModuleName, FuncName, Context,
     %   }
     %
     gen_gc_trace_func(ModuleName, FuncName, FramePtrDecl,
-        [InitFramePtr | GCTraceStmts], Context, GCTraceFuncAddr,
+        [InitFramePtr | GCTraceStmts], Context,
+        GCTraceFuncLabel, GCTraceFuncSignature,
         GCTraceFuncParams, GCTraceFuncDefn),
     GCTraceFuncDefns = [GCTraceFuncDefn],
 
@@ -1004,7 +1006,8 @@ ml_chain_stack_frames(ModuleName, FuncName, Context,
     StackChain = ml_stack_chain_var,
     EnvInitializer = init_struct(EnvTypeName, [
         init_obj(ml_lval(StackChain)),
-        init_obj(ml_const(mlconst_code_addr(GCTraceFuncAddr)))
+        init_obj(ml_const(mlconst_code_addr(
+            mlds_code_addr(GCTraceFuncLabel, GCTraceFuncSignature))))
     ]),
 
     % Generate code to set the global stack chain
@@ -1023,12 +1026,13 @@ ml_chain_stack_frames(ModuleName, FuncName, Context,
 
 :- pred gen_gc_trace_func(mlds_module_name::in, mlds_function_name::in,
     mlds_local_var_defn::in, list(mlds_stmt)::in, prog_context::in,
-    mlds_code_addr::out, mlds_func_params::out, mlds_function_defn::out)
-    is det.
+    qual_func_label::out, mlds_func_signature::out,
+    mlds_func_params::out, mlds_function_defn::out) is det.
 
 gen_gc_trace_func(PredModule, FuncName, FramePointerDefn, GCTraceStmts,
-        Context, GCTraceFuncAddr, FuncParams, GCTraceFuncDefn) :-
-    % Compute the signature of the GC tracing function
+        Context, QualGCTraceFuncLabel, Signature, FuncParams,
+        GCTraceFuncDefn) :-
+    % Compute the signature of the GC tracing function.
     ArgVarName = lvn_comp_var(lvnc_this_frame),
     ArgType = mlds_generic_type,
     Argument = mlds_argument(ArgVarName, ArgType, gc_no_stmt),
@@ -1036,31 +1040,26 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDefn, GCTraceStmts,
     Signature = mlds_get_func_signature(FuncParams),
 
     % Compute the name of the GC tracing function.
-    %
-    % To compute the name, we just take the name of the original function
-    % and add 100000 to the original function's sequence number.
-    % XXX This is a bit of a hack; maybe we should add another field
-    % to the `mlds_plain_func_name' function symbol to hold the desired
-    % GCTracePlainFuncName.
-
     (
         FuncName = mlds_function_name(PlainFuncName),
-        PlainFuncName =
-            mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, PredId),
+        PlainFuncName = mlds_plain_func_name(FuncLabel, PredId),
+        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
         (
-            MaybeSeqNum = yes(SeqNum)
+            MaybeAux = proc_func,
+            GCTraceMaybeAux = gc_trace_for_proc_func
         ;
-            MaybeSeqNum = no,
-            SeqNum = 0
+            MaybeAux = proc_aux_func(SeqNum),
+            GCTraceMaybeAux = gc_trace_for_proc_aux_func(SeqNum)
+        ;
+            ( MaybeAux = gc_trace_for_proc_func
+            ; MaybeAux = gc_trace_for_proc_aux_func(_)
+            ),
+            unexpected($pred, "gc trace func for gc trace func")
         ),
-        NewSeqNum = SeqNum + 100000,
-        GCTracePlainFuncName =
-            mlds_plain_func_name(PredLabel, ProcId, yes(NewSeqNum), PredId),
-        GCTraceFuncName = mlds_function_name(GCTracePlainFuncName),
-        ProcLabel = mlds_proc_label(PredLabel, ProcId),
-        QualProcLabel = qual_proc_label(PredModule, ProcLabel),
-        GCTraceFuncAddr =
-            code_addr_internal(QualProcLabel, NewSeqNum, Signature)
+        GCTraceFuncLabel = mlds_func_label(ProcLabel, GCTraceMaybeAux),
+        QualGCTraceFuncLabel = qual_func_label(PredModule, GCTraceFuncLabel),
+        GCTracePlainFuncName = mlds_plain_func_name(GCTraceFuncLabel, PredId),
+        GCTraceFuncName = mlds_function_name(GCTracePlainFuncName)
     ;
         FuncName = mlds_function_export(_),
         % XXX I (zs) think that this abort is wrong for two reasons.
@@ -1300,20 +1299,15 @@ ml_stack_chain_type = mlds_generic_env_ptr_type.
 ml_env_name(FunctionName, Action) = ClassName :-
     (
         FunctionName = mlds_function_name(PlainFuncName),
-        PlainFuncName =
-            mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _PredId),
-        Base = env_name_base(Action),
+        PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
+        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
         PredLabelStr = ml_pred_label_name(PredLabel),
         proc_id_to_int(ProcId, ModeNum),
-        (
-            MaybeSeqNum = yes(SeqNum),
-            string.format("%s_%d_%d_%s",
-                [s(PredLabelStr), i(ModeNum), i(SeqNum), s(Base)], ClassName)
-        ;
-            MaybeSeqNum = no,
-            string.format("%s_%d_%s",
-                [s(PredLabelStr), i(ModeNum), s(Base)], ClassName)
-        )
+        Base = env_name_base(Action),
+        MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
+        ClassName = string.format("%s_%d%s_%s",
+            [s(PredLabelStr), i(ModeNum), s(MaybeAuxSuffix), s(Base)])
     ;
         FunctionName = mlds_function_export(_),
         % XXX I (zs) think that this abort here is a bug, and that
