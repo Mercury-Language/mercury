@@ -169,14 +169,6 @@ not_at_tail(not_at_tail_seen_reccall, not_at_tail_seen_reccall).
 not_at_tail(not_at_tail_have_not_seen_reccall,
     not_at_tail_have_not_seen_reccall).
 
-    % The `locals' type contains a list of local definitions
-    % which are in scope.
-:- type locals == list(local_defns).
-:- type local_defns
-    --->    local_params(list(mlds_argument))
-    ;       local_var_defns(list(mlds_local_var_defn))
-    ;       local_func_defns(list(mlds_function_defn)).
-
 :- type found_recursive_call
     --->    found_recursive_call
     ;       not_found_recursive_call.
@@ -194,8 +186,6 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
                 tci_module_info             :: module_info,
                 tci_module_name             :: mlds_module_name,
                 tci_function_name           :: mlds_function_name,
-                tci_maybe_pred_info         :: maybe(pred_info),
-                tci_locals                  :: locals,
                 tci_warn_tail_calls         :: warn_tail_calls,
                 tci_maybe_require_tailrec   :: maybe(require_tail_recursion)
             ).
@@ -229,78 +219,72 @@ mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls,
     FuncDefn0 = mlds_function_defn(Name, Context, Flags,
         MaybePredProcId, Params, FuncBody0, Attributes,
         EnvVarNames, MaybeRequireTailrecInfo),
-    % Compute the initial values of the `Locals' and `AtTail' arguments.
-    Params = mlds_func_params(Args, RetTypes),
-    Locals = [local_params(Args)],
     (
-        RetTypes = [],
-        AtTail = at_tail([])
+        FuncBody0 = body_external,
+        FuncDefn = FuncDefn0
     ;
-        RetTypes = [_ | _],
-        AtTail = not_at_tail_have_not_seen_reccall
-    ),
-    (
-        MaybePredProcId = yes(proc(PredId, _)),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        MaybePredInfo = yes(PredInfo)
-    ;
-        MaybePredProcId = no,
-        MaybePredInfo = no
-    ),
-    TCallInfo = tailcall_info(ModuleInfo, ModuleName, Name,
-        MaybePredInfo, Locals, WarnTailCalls, MaybeRequireTailrecInfo),
-    mark_tailcalls_in_function_body(TCallInfo, AtTail,
-        FuncBody0, FuncBody, !Specs),
-    FuncDefn = mlds_function_defn(Name, Context, Flags,
-        MaybePredProcId, Params, FuncBody, Attributes,
-        EnvVarNames, MaybeRequireTailrecInfo).
+        FuncBody0 = body_defined_here(BodyStmt0),
+        Params = mlds_func_params(_Args, RetTypes),
+        (
+            RetTypes = [],
+            AtTailAfter = at_tail([])
+        ;
+            RetTypes = [_ | _],
+            AtTailAfter = not_at_tail_have_not_seen_reccall
+        ),
+        TCallInfo = tailcall_info(ModuleInfo, ModuleName, Name,
+            WarnTailCalls, MaybeRequireTailrecInfo),
 
-:- pred mark_tailcalls_in_function_body(tailcall_info::in, at_tail::in,
-    mlds_function_body::in, mlds_function_body::out,
+        InBodyInfo0 = tc_in_body_info(not_found_recursive_call, !.Specs),
+        mark_tailcalls_in_stmt(TCallInfo, AtTailAfter, _AtTailBefore,
+            BodyStmt0, BodyStmt, InBodyInfo0, InBodyInfo),
+        InBodyInfo = tc_in_body_info(FoundRecCall, !:Specs),
+
+        FuncBody = body_defined_here(BodyStmt),
+        FuncDefn = mlds_function_defn(Name, Context, Flags,
+            MaybePredProcId, Params, FuncBody, Attributes,
+            EnvVarNames, MaybeRequireTailrecInfo),
+
+        maybe_warn_about_no_tailcalls(ModuleInfo, MaybePredProcId,
+            MaybeRequireTailrecInfo, FoundRecCall, !Specs)
+    ).
+
+:- pred maybe_warn_about_no_tailcalls(module_info::in,
+    maybe(pred_proc_id)::in, maybe(require_tail_recursion)::in,
+    found_recursive_call::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-mark_tailcalls_in_function_body(TCallInfo, AtTail, Body0, Body, !Specs) :-
+maybe_warn_about_no_tailcalls(ModuleInfo, MaybePredProcId,
+        MaybeRequireTailrecInfo, FoundRecCall, !Specs) :-
     (
-        Body0 = body_external,
-        Body = body_external
+        FoundRecCall = found_recursive_call
     ;
-        Body0 = body_defined_here(Statement0),
-        InBodyInfo0 = tc_in_body_info(not_found_recursive_call, !.Specs),
-        mark_tailcalls_in_stmt(TCallInfo, AtTail, _,
-            Statement0, Statement, InBodyInfo0, InBodyInfo),
-        InBodyInfo = tc_in_body_info(FoundRecCall, !:Specs),
-        Body = body_defined_here(Statement),
+        FoundRecCall = not_found_recursive_call,
         (
-            FoundRecCall = found_recursive_call
-        ;
-            FoundRecCall = not_found_recursive_call,
-            MaybeRequireTailrecInfo = TCallInfo ^ tci_maybe_require_tailrec,
+            MaybeRequireTailrecInfo = yes(RequireTailrecInfo),
+            ( RequireTailrecInfo = suppress_tailrec_warnings(Context)
+            ; RequireTailrecInfo = enable_tailrec_warnings(_, _, Context)
+            ),
             (
-                MaybeRequireTailrecInfo = yes(RequireTailrecInfo),
-                ( RequireTailrecInfo = suppress_tailrec_warnings(Context)
-                ; RequireTailrecInfo = enable_tailrec_warnings(_, _, Context)
-                ),
-                MaybePredInfo = TCallInfo ^ tci_maybe_pred_info,
-                (
-                    MaybePredInfo = yes(PredInfo),
-                    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-                    pred_info_get_name(PredInfo, Name),
-                    pred_info_get_orig_arity(PredInfo, Arity),
-                    SymName = unqualified(Name),
-                    SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
-                    add_message_for_no_tail_or_nontail_recursive_calls(
-                        SimpleCallId, Context, !Specs)
-                ;
-                    % If this function wasn't generated from a Mercury
-                    % predicate, then don't create this warning.
-                    % This cannot happen anyway because the require tail
-                    % recursion pragma cannot be attached to predicates
-                    % that don't exist.
-                    MaybePredInfo = no
-                )
+                MaybePredProcId = yes(proc(PredId, _)),
+                module_info_pred_info(ModuleInfo, PredId, PredInfo),
+                PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+                pred_info_get_name(PredInfo, PredName),
+                pred_info_get_orig_arity(PredInfo, PredArity),
+                PredSymName = unqualified(PredName),
+                SimpleCallId =
+                    simple_call_id(PredOrFunc, PredSymName, PredArity),
+                add_message_for_no_tail_or_nontail_recursive_calls(
+                    SimpleCallId, Context, !Specs)
             ;
-                MaybeRequireTailrecInfo = no
+                MaybePredProcId = no
+                % If this function wasn't generated from a Mercury predicate,
+                % then don't create this warning. This cannot happen anyway
+                % because the require tail recursion pragma cannot be attached
+                % to predicates that don't exist.
             )
+        ;
+            MaybeRequireTailrecInfo = no
         )
     ).
 
@@ -355,11 +339,7 @@ mark_tailcalls_in_stmt(TCallInfo, AtTailAfter0, AtTailBefore,
                 WarnTailCalls),
             FuncDefns0, FuncDefns, Specs0, Specs),
         !InBodyInfo ^ tibi_specs := Specs,
-        Locals = TCallInfo ^ tci_locals,
-        NewTCallInfo = TCallInfo ^ tci_locals :=
-            [local_var_defns(LocalVarDefns), local_func_defns(FuncDefns)
-                | Locals],
-        mark_tailcalls_in_stmts(NewTCallInfo, AtTailAfter0, AtTailBefore,
+        mark_tailcalls_in_stmts(TCallInfo, AtTailAfter0, AtTailBefore,
             Stmts0, Stmts, !InBodyInfo),
         Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, Stmts, Context)
     ;
@@ -480,8 +460,7 @@ mark_tailcalls_in_stmt_call(TCallInfo, AtTailAfter, AtTailBefore,
 
             % The call must not take the address of any local variables
             % or nested functions.
-            Locals = TCallInfo ^ tci_locals,
-            may_rvals_yield_dangling_stack_ref(Args, Locals) =
+            may_rvals_yield_dangling_stack_ref(Args) =
                 will_not_yield_dangling_stack_ref
 
             % The call must not be to a function nested within this function,
@@ -712,27 +691,27 @@ lval_is_local(Lval) = IsLocal :-
 %   Find out if the specified rval(s) might evaluate to the addresses of
 %   local variables (or fields of local variables) or nested functions.
 
-:- func may_rvals_yield_dangling_stack_ref(list(mlds_rval), locals) =
+:- func may_rvals_yield_dangling_stack_ref(list(mlds_rval)) =
     may_yield_dangling_stack_ref.
 
-may_rvals_yield_dangling_stack_ref([], _) = will_not_yield_dangling_stack_ref.
-may_rvals_yield_dangling_stack_ref([Rval | Rvals], Locals)
+may_rvals_yield_dangling_stack_ref([]) = will_not_yield_dangling_stack_ref.
+may_rvals_yield_dangling_stack_ref([Rval | Rvals])
         = MayYieldDanglingStackRef :-
     MayYieldDanglingStackRef0 =
-        may_rval_yield_dangling_stack_ref(Rval, Locals),
+        may_rval_yield_dangling_stack_ref(Rval),
     (
         MayYieldDanglingStackRef0 = may_yield_dangling_stack_ref,
         MayYieldDanglingStackRef = may_yield_dangling_stack_ref
     ;
         MayYieldDanglingStackRef0 = will_not_yield_dangling_stack_ref,
         MayYieldDanglingStackRef =
-            may_rvals_yield_dangling_stack_ref(Rvals, Locals)
+            may_rvals_yield_dangling_stack_ref(Rvals)
     ).
 
-:- func may_rval_yield_dangling_stack_ref(mlds_rval, locals)
+:- func may_rval_yield_dangling_stack_ref(mlds_rval)
     = may_yield_dangling_stack_ref.
 
-may_rval_yield_dangling_stack_ref(Rval, Locals) = MayYieldDanglingStackRef :-
+may_rval_yield_dangling_stack_ref(Rval) = MayYieldDanglingStackRef :-
     (
         Rval = ml_lval(_Lval),
         % Passing the _value_ of an lval is fine.
@@ -740,36 +719,36 @@ may_rval_yield_dangling_stack_ref(Rval, Locals) = MayYieldDanglingStackRef :-
     ;
         Rval = ml_mkword(_Tag, SubRval),
         MayYieldDanglingStackRef =
-            may_rval_yield_dangling_stack_ref(SubRval, Locals)
+            may_rval_yield_dangling_stack_ref(SubRval)
     ;
         Rval = ml_const(Const),
-        MayYieldDanglingStackRef = check_const(Const, Locals)
+        MayYieldDanglingStackRef = check_const(Const)
     ;
         Rval = ml_unop(_Op, SubRval),
         MayYieldDanglingStackRef =
-            may_rval_yield_dangling_stack_ref(SubRval, Locals)
+            may_rval_yield_dangling_stack_ref(SubRval)
     ;
         Rval = ml_binop(_Op, SubRvalA, SubRvalB),
         MayYieldDanglingStackRefA =
-            may_rval_yield_dangling_stack_ref(SubRvalA, Locals),
+            may_rval_yield_dangling_stack_ref(SubRvalA),
         (
             MayYieldDanglingStackRefA = may_yield_dangling_stack_ref,
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
         ;
             MayYieldDanglingStackRefA = will_not_yield_dangling_stack_ref,
             MayYieldDanglingStackRef =
-                may_rval_yield_dangling_stack_ref(SubRvalB, Locals)
+                may_rval_yield_dangling_stack_ref(SubRvalB)
         )
     ;
         Rval = ml_mem_addr(Lval),
         % Passing the address of an lval is a problem,
         % if that lval names a local variable.
         MayYieldDanglingStackRef =
-            may_lval_yield_dangling_stack_ref(Lval, Locals)
+            may_lval_yield_dangling_stack_ref(Lval)
     ;
         Rval = ml_vector_common_row_addr(_VectorCommon, RowRval),
         MayYieldDanglingStackRef =
-            may_rval_yield_dangling_stack_ref(RowRval, Locals)
+            may_rval_yield_dangling_stack_ref(RowRval)
     ;
         ( Rval = ml_scalar_common(_)
         ; Rval = ml_scalar_common_addr(_)
@@ -781,21 +760,16 @@ may_rval_yield_dangling_stack_ref(Rval, Locals) = MayYieldDanglingStackRef :-
     % Find out if the specified lval might be a local variable
     % (or a field of a local variable).
     %
-:- func may_lval_yield_dangling_stack_ref(mlds_lval, locals)
+:- func may_lval_yield_dangling_stack_ref(mlds_lval)
     = may_yield_dangling_stack_ref.
 
-may_lval_yield_dangling_stack_ref(Lval, Locals) = MayYieldDanglingStackRef :-
+may_lval_yield_dangling_stack_ref(Lval) = MayYieldDanglingStackRef :-
     (
-        Lval = ml_local_var(Var0, _),
-        ( if var_is_in_locals(Var0, Locals) then
-            MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-        else
-            MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
-        )
+        Lval = ml_local_var(_Var0, _),
+        MayYieldDanglingStackRef = may_yield_dangling_stack_ref
     ;
         Lval = ml_field(_MaybeTag, Rval, _FieldId, _, _),
-        MayYieldDanglingStackRef =
-            may_rval_yield_dangling_stack_ref(Rval, Locals)
+        MayYieldDanglingStackRef = may_rval_yield_dangling_stack_ref(Rval)
     ;
         ( Lval = ml_mem_ref(_, _)
         ; Lval = ml_global_var(_, _)
@@ -815,24 +789,19 @@ may_lval_yield_dangling_stack_ref(Lval, Locals) = MayYieldDanglingStackRef :-
     % so it might be safe to allow all data_addr_consts here, but currently
     % we just take a conservative approach.
     %
-:- func check_const(mlds_rval_const, locals) = may_yield_dangling_stack_ref.
+:- func check_const(mlds_rval_const) = may_yield_dangling_stack_ref.
 
-check_const(Const, Locals) = MayYieldDanglingStackRef :-
+check_const(Const) = MayYieldDanglingStackRef :-
     (
         Const = mlconst_code_addr(CodeAddr),
-        ( if function_is_local(CodeAddr, Locals) then
+        ( if function_is_local(CodeAddr) then
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
         else
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
     ;
-        Const = mlconst_data_addr_local_var(ModuleName, VarName),
-        QualVarName = qual_local_var_name(ModuleName, module_qual, VarName),
-        ( if var_is_in_locals(QualVarName, Locals) then
-            MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-        else
-            MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
-        )
+        Const = mlconst_data_addr_local_var(_ModuleName, _VarName),
+        MayYieldDanglingStackRef = may_yield_dangling_stack_ref
     ;
         ( Const = mlconst_true
         ; Const = mlconst_false
@@ -859,63 +828,17 @@ check_const(Const, Locals) = MayYieldDanglingStackRef :-
         MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
     ).
 
-    % Check whether the specified variable is defined locally, i.e. in storage
-    % that might no longer exist when the function returns or does a tail call.
-    %
-    % It would be safe to fail for variables declared static (i.e. `one_copy'),
-    % but currently we just take a conservative approach.
-    %
-:- pred var_is_in_locals(qual_local_var_name::in, list(local_defns)::in)
-    is semidet.
-
-var_is_in_locals(Var, LocalsList) :-
-    % XXX we ignore the ModuleName -- that is safe, but overly conservative.
-    % XXX We also ignore QualKind.
-    Var = qual_local_var_name(_ModuleName, _QualKind, VarName),
-    some [Locals] (
-        list.member(Locals, LocalsList),
-        (
-            Locals = local_var_defns(LocalVarDefns),
-            some [LocalVarDefn] (
-                list.member(LocalVarDefn, LocalVarDefns),
-                VarName = LocalVarDefn ^ mlvd_name
-            )
-        ;
-            Locals = local_params(Params),
-            some [Param] (
-                list.member(Param, Params),
-                Param = mlds_argument(VarName, _, _)
-            )
-        )
-    ).
-
     % Check whether the specified function is defined locally (i.e. as a
     % nested function).
     %
-:- pred function_is_local(mlds_code_addr::in, list(local_defns)::in)
-    is semidet.
+:- pred function_is_local(mlds_code_addr::in) is semidet.
 
-function_is_local(CodeAddr, LocalsList) :-
+function_is_local(CodeAddr) :-
     (
-        CodeAddr = code_addr_proc(QualifiedProcLabel, _Sig),
-        MaybeSeqNum = no
+        CodeAddr = code_addr_proc(_QualifiedProcLabel, _Sig),
+        fail
     ;
-        CodeAddr = code_addr_internal(QualifiedProcLabel, SeqNum, _Sig),
-        MaybeSeqNum = yes(SeqNum)
-    ),
-    % XXX we ignore the ModuleName -- that is safe, but might be
-    % overly conservative.
-    QualifiedProcLabel = qual_proc_label(_ModuleName, ProcLabel),
-    ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    some [Locals] (
-        list.member(Locals, LocalsList),
-        Locals = local_func_defns(FuncDefns),
-        some [FuncDefn] (
-            list.member(FuncDefn, FuncDefns),
-            FuncDefn ^ mfd_function_name = mlds_function_name(PlainFuncName),
-            PlainFuncName =
-                mlds_plain_func_name(PredLabel, ProcId, MaybeSeqNum, _PredId)
-        )
+        CodeAddr = code_addr_internal(_QualifiedProcLabel, _SeqNum, _Sig)
     ).
 
 %---------------------------------------------------------------------------%
