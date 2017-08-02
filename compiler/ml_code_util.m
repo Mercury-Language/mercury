@@ -1032,68 +1032,75 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
 :- mode ml_gen_arg_decls(in, in, in, in, in, out, out,
     in(is_yes), out(is_yes)) is det.
 
-ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
-        FuncArgs, RetTypes, !MaybeInfo) :-
+ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOut, FuncArgs, RetTypes,
+        !MaybeInfo) :-
     ( if
-        HeadVars = [],
-        HeadTypes = [],
-        HeadModes = []
+        Vars = [],
+        Types = [],
+        Modes = []
     then
         FuncArgs = [],
         RetTypes = []
     else if
-        HeadVars = [Var | Vars],
-        HeadTypes = [Type | Types],
-        HeadModes = [Mode | Modes]
+        Vars = [HeadVar | TailVars],
+        Types = [HeadType | TailTypes],
+        Modes = [HeadMode | TailModes]
     then
-        ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOut,
-            FuncArgs0, RetTypes0, !MaybeInfo),
-        ( if
+        ml_gen_arg_decls(ModuleInfo, TailVars, TailTypes, TailModes, CopyOut,
+            TailFuncArgs, TailRetTypes, !MaybeInfo),
+        HeadIsDummy = check_dummy_type(ModuleInfo, HeadType),
+        (
+            HeadIsDummy = is_dummy_type,
             % Exclude types such as io.state, etc.
-            % Also exclude values with arg_mode `top_unused'.
-            ( check_dummy_type(ModuleInfo, Type) = is_dummy_type
-            ; Mode = top_unused
+            FuncArgs = TailFuncArgs,
+            RetTypes = TailRetTypes
+        ;
+            HeadIsDummy = is_not_dummy_type,
+            HeadMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, HeadType),
+            (
+                HeadMode = top_unused,
+                % Also exclude values with arg_mode `top_unused'.
+                FuncArgs = TailFuncArgs,
+                RetTypes = TailRetTypes
+            ;
+                HeadMode = top_out,
+                (
+                    CopyOut = yes,
+                    % For by-value outputs, generate a return type.
+                    FuncArgs = TailFuncArgs,
+                    RetTypes = [HeadMLDS_Type | TailRetTypes]
+                ;
+                    CopyOut = no,
+                    % For by-reference outputs, generate an argument.
+                    HeadMLDS_ArgType = mlds_ptr_type(HeadMLDS_Type),
+                    ml_gen_arg_decl(HeadVar, HeadType, HeadMLDS_ArgType,
+                        HeadFuncArg, !MaybeInfo),
+                    FuncArgs = [HeadFuncArg | TailFuncArgs],
+                    RetTypes = TailRetTypes
+                )
+            ;
+                HeadMode = top_in,
+                % For inputs, generate an argument.
+                HeadMLDS_ArgType = HeadMLDS_Type,
+                ml_gen_arg_decl(HeadVar, HeadType, HeadMLDS_ArgType,
+                    HeadFuncArg, !MaybeInfo),
+                FuncArgs = [HeadFuncArg | TailFuncArgs],
+                RetTypes = TailRetTypes
             )
-        then
-            FuncArgs = FuncArgs0,
-            RetTypes = RetTypes0
-        else if
-            % For by-value outputs, generate a return type.
-            Mode = top_out,
-            CopyOut = yes
-        then
-            RetType = mercury_type_to_mlds_type(ModuleInfo, Type),
-            RetTypes = [RetType | RetTypes0],
-            FuncArgs = FuncArgs0
-        else
-            % For inputs and by-reference outputs, generate argument.
-            ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, FuncArg, !MaybeInfo),
-            FuncArgs = [FuncArg | FuncArgs0],
-            RetTypes = RetTypes0
         )
     else
         unexpected($module, $pred, "length mismatch")
     ).
 
-    % Given an argument variable, and its type and mode,
+    % Given an argument variable, its actual type and its arg type,
     % generate an MLDS argument declaration for it.
     %
-:- pred ml_gen_arg_decl(module_info, mlds_local_var_name, mer_type,
-    top_functor_mode, mlds_argument, maybe(ml_gen_info), maybe(ml_gen_info)).
-:- mode ml_gen_arg_decl(in, in, in, in, out, in(is_no), out(is_no)) is det.
-:- mode ml_gen_arg_decl(in, in, in, in, out, in(is_yes), out(is_yes)) is det.
+:- pred ml_gen_arg_decl(mlds_local_var_name, mer_type, mlds_type,
+    mlds_argument, maybe(ml_gen_info), maybe(ml_gen_info)).
+:- mode ml_gen_arg_decl(in, in, in, out, in(is_no), out(is_no)) is det.
+:- mode ml_gen_arg_decl(in, in, in, out, in(is_yes), out(is_yes)) is det.
 
-ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
-    MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-    (
-        TopFunctorMode = top_in,
-        MLDS_ArgType = MLDS_Type
-    ;
-        ( TopFunctorMode = top_out
-        ; TopFunctorMode = top_unused
-        ),
-        MLDS_ArgType = mlds_ptr_type(MLDS_Type)
-    ),
+ml_gen_arg_decl(Var, Type, MLDS_ArgType, FuncArg, !MaybeInfo) :-
     (
         !.MaybeInfo = yes(Info0),
         % XXX We should fill in this Context properly.
