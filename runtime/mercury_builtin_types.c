@@ -526,42 +526,42 @@ MR_bool MR_CALL
 mercury__builtin__do_unify__int8_0_0(MR_Box x, MR_Box y)
 {
     return mercury__builtin____Unify____int8_0_0(
-        (int8_t) x, (int8_t) y);
+        (int8_t) (MR_Word) x, (int8_t) (MR_Word) y);
 }
 
 MR_bool MR_CALL
 mercury__builtin__do_unify__uint8_0_0(MR_Box x, MR_Box y)
 {
     return mercury__builtin____Unify____uint8_0_0(
-        (uint8_t) x, (uint8_t) y);
+        (uint8_t) (MR_Word) x, (uint8_t) (MR_Word) y);
 }
 
 MR_bool MR_CALL
 mercury__builtin__do_unify__int16_0_0(MR_Box x, MR_Box y)
 {
     return mercury__builtin____Unify____int16_0_0(
-        (int16_t) x, (int16_t) y);
+        (int16_t) (MR_Word) x, (int16_t) (MR_Word) y);
 }
 
 MR_bool MR_CALL
 mercury__builtin__do_unify__uint16_0_0(MR_Box x, MR_Box y)
 {
     return mercury__builtin____Unify____uint16_0_0(
-        (uint16_t) x, (uint16_t) y);
+        (uint16_t) (MR_Word) x, (uint16_t) (MR_Word) y);
 }
 
 MR_bool MR_CALL
 mercury__builtin__do_unify__int32_0_0(MR_Box x, MR_Box y)
 {
     return mercury__builtin____Unify____int32_0_0(
-        (int32_t) x, (int32_t) y);
+        (int32_t) (MR_Word) x, (int32_t) (MR_Word) y);
 }
 
 MR_bool MR_CALL
 mercury__builtin__do_unify__uint32_0_0(MR_Box x, MR_Box y)
 {
     return mercury__builtin____Unify____uint32_0_0(
-        (uint32_t) x, (uint32_t) y);
+        (uint32_t) (MR_Word) x, (uint32_t) (MR_Word) y);
 }
 
 MR_bool MR_CALL
@@ -718,7 +718,7 @@ mercury__builtin__do_compare__int8_0_0(
     MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
     mercury__builtin____Compare____int8_0_0(result,
-        (int8_t) x, (int8_t) y);
+        (int8_t) (MR_Word) x, (int8_t) (MR_Word) y);
 }
 
 void MR_CALL
@@ -726,7 +726,7 @@ mercury__builtin__do_compare__uint8_0_0(
     MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
     mercury__builtin____Compare____uint8_0_0(result,
-        (uint8_t) x, (uint8_t) y);
+        (uint8_t) (MR_Word) x, (uint8_t) (MR_Word) y);
 }
 
 void MR_CALL
@@ -734,7 +734,7 @@ mercury__builtin__do_compare__int16_0_0(
     MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
     mercury__builtin____Compare____int16_0_0(result,
-        (int16_t) x, (int16_t) y);
+        (int16_t) (MR_Word) x, (int16_t) (MR_Word) y);
 }
 
 void MR_CALL
@@ -742,7 +742,7 @@ mercury__builtin__do_compare__uint16_0_0(
     MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
     mercury__builtin____Compare____uint16_0_0(result,
-        (uint16_t) x, (uint16_t) y);
+        (uint16_t) (MR_Word) x, (uint16_t) (MR_Word) y);
 }
 
 void MR_CALL
@@ -750,7 +750,7 @@ mercury__builtin__do_compare__int32_0_0(
     MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
     mercury__builtin____Compare____int32_0_0(result,
-        (int32_t) x, (int32_t) y);
+        (int32_t) (MR_Word) x, (int32_t) (MR_Word) y);
 }
 
 void MR_CALL
@@ -758,7 +758,7 @@ mercury__builtin__do_compare__uint32_0_0(
     MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
     mercury__builtin____Compare____uint32_0_0(result,
-        (uint32_t) x, (uint32_t) y);
+        (uint32_t) (MR_Word) x, (uint32_t) (MR_Word) y);
 }
 
 void MR_CALL
