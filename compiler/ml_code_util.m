@@ -175,8 +175,8 @@
     %
 :- func ml_gen_proc_params(module_info, pred_id, proc_id) = mlds_func_params.
 
-:- pred ml_gen_proc_params(pred_id::in, proc_id::in, mlds_func_params::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_proc_params(pred_id::in, proc_id::in,
+    mlds_func_params::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % As above, but from the rtti_proc_id rather than from the module_info,
     % pred_id, and proc_id.
@@ -190,7 +190,7 @@
 :- func ml_gen_params(module_info, list(mlds_local_var_name), list(mer_type),
     list(mer_mode), pred_or_func, code_model) = mlds_func_params.
 
-:- pred ml_gen_params(list(mlds_local_var_name)::in, list(mer_type)::in,
+:- pred ml_gen_info_params(list(mlds_local_var_name)::in, list(mer_type)::in,
     list(mer_mode)::in, pred_or_func::in, code_model::in,
     mlds_func_params::out, ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -875,7 +875,7 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
     FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
         HeadModes, PredOrFunc, CodeModel).
 
-ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
+ml_gen_info_proc_params(PredId, ProcId, FuncParams, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
@@ -895,7 +895,7 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
         FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
             HeadModes, PredOrFunc, CodeModel)
     else
-        ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
+        ml_gen_info_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
             CodeModel, FuncParams, !Info)
     ).
 
@@ -921,7 +921,7 @@ ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
     ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, TopFunctorModes,
         PredOrFunc, CodeModel, FuncParams, no, _).
 
-ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
+ml_gen_info_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         CodeModel, FuncParams, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     modes_to_top_functor_modes(ModuleInfo, HeadModes, HeadTypes,

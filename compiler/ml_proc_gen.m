@@ -432,7 +432,7 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
             % declared as `extern' rather than `static'.
             FuncBody = body_external,
             ClosureWrapperFuncDefns = [],
-            ml_gen_proc_params(PredId, ProcId, MLDS_Params, !.Info, _Info)
+            ml_gen_info_proc_params(PredId, ProcId, MLDS_Params, !.Info, _Info)
         else
             % Set up the initial success continuation, if any.
             % Also figure out which output variables are returned by value
@@ -488,7 +488,7 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
                 ProcLocalVarDefns = [ml_gen_succeeded_var_decl(Context) |
                     OutputVarLocalDefns]
             ),
-            ml_gen_proc_params(PredId, ProcId, MLDS_Params, !Info),
+            ml_gen_info_proc_params(PredId, ProcId, MLDS_Params, !Info),
             ml_gen_info_get_closure_wrapper_defns(!.Info,
                 ClosureWrapperFuncDefns),
             ml_gen_info_get_global_data(!.Info, !:GlobalData),

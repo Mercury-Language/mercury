@@ -710,7 +710,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
     WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1,
         list.length(WrapperHeadVars)),
-    ml_gen_params(WrapperHeadVarNames, WrapperBoxedArgTypes,
+    ml_gen_info_params(WrapperHeadVarNames, WrapperBoxedArgTypes,
         WrapperArgModes, PredOrFunc, CodeModel, WrapperParams0, !Info),
     WrapperParams0 = mlds_func_params(WrapperArgs0, WrapperRetType),
     % The GC handling for the wrapper arguments is wrong, because we don't have

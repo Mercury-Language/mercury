@@ -423,7 +423,7 @@ ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
 ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
-    ml_gen_proc_params(PredId, ProcId, Params, !Info),
+    ml_gen_info_proc_params(PredId, ProcId, Params, !Info),
     Signature = mlds_get_func_signature(Params),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     FuncLabel = mlds_func_label(ProcLabel, proc_func),
