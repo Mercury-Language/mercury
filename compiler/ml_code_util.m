@@ -929,18 +929,20 @@ ml_gen_info_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
     ml_gen_params_base(ModuleInfo, HeadVarNames,
         HeadTypes, TopFunctorModes, PredOrFunc, CodeModel, FuncParams,
         yes(!.Info), MaybeInfo),
-    (
-        MaybeInfo = yes(Info),
-        !:Info = Info
-    ;
-        MaybeInfo = no,
-        unexpected($module, $pred, "missing ml_gen_info")
-    ).
+    MaybeInfo = yes(!:Info).
 
-:- pred ml_gen_params_base(module_info::in, list(mlds_local_var_name)::in,
-    list(mer_type)::in, list(top_functor_mode)::in, pred_or_func::in,
-    code_model::in, mlds_func_params::out,
-    maybe(ml_gen_info)::in, maybe(ml_gen_info)::out) is det.
+:- inst is_no for maybe/1
+    --->    no.
+:- inst is_yes for maybe/1
+    --->    yes(ground).
+
+:- pred ml_gen_params_base(module_info, list(mlds_local_var_name),
+    list(mer_type), list(top_functor_mode), pred_or_func,
+    code_model, mlds_func_params, maybe(ml_gen_info), maybe(ml_gen_info)).
+:- mode ml_gen_params_base(in, in, in, in, in, in, out,
+    in(is_no), out(is_no)) is det.
+:- mode ml_gen_params_base(in, in, in, in, in, in, out,
+    in(is_yes), out(is_yes)) is det.
 
 ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         CodeModel, FuncParams, !MaybeInfo) :-
@@ -1021,10 +1023,14 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
     % types and modes, generate the MLDS argument declarations
     % and return types.
     %
-:- pred ml_gen_arg_decls(module_info::in, list(mlds_local_var_name)::in,
-    list(mer_type)::in, list(top_functor_mode)::in, bool::in,
-    list(mlds_argument)::out, mlds_return_types::out,
-    maybe(ml_gen_info)::in, maybe(ml_gen_info)::out) is det.
+:- pred ml_gen_arg_decls(module_info, list(mlds_local_var_name),
+    list(mer_type), list(top_functor_mode), bool,
+    list(mlds_argument), mlds_return_types,
+    maybe(ml_gen_info), maybe(ml_gen_info)).
+:- mode ml_gen_arg_decls(in, in, in, in, in, out, out,
+    in(is_no), out(is_no)) is det.
+:- mode ml_gen_arg_decls(in, in, in, in, in, out, out,
+    in(is_yes), out(is_yes)) is det.
 
 ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
         FuncArgs, RetTypes, !MaybeInfo) :-
@@ -1072,9 +1078,10 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
     % Given an argument variable, and its type and mode,
     % generate an MLDS argument declaration for it.
     %
-:- pred ml_gen_arg_decl(module_info::in, mlds_local_var_name::in, mer_type::in,
-    top_functor_mode::in, mlds_argument::out,
-    maybe(ml_gen_info)::in, maybe(ml_gen_info)::out) is det.
+:- pred ml_gen_arg_decl(module_info, mlds_local_var_name, mer_type,
+    top_functor_mode, mlds_argument, maybe(ml_gen_info), maybe(ml_gen_info)).
+:- mode ml_gen_arg_decl(in, in, in, in, out, in(is_no), out(is_no)) is det.
+:- mode ml_gen_arg_decl(in, in, in, in, out, in(is_yes), out(is_yes)) is det.
 
 ml_gen_arg_decl(ModuleInfo, Var, Type, TopFunctorMode, FuncArg, !MaybeInfo) :-
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
