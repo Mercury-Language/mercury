@@ -4058,16 +4058,17 @@ find_out_if_call_has_return(IsTailCall, Results,
     then
         CalleeSignature = mlds_func_signature(_, CalleeRetTypes),
         CallerSignature = mlds_func_signature(_, CallerRetTypes),
-        (
-            Results = [],
-            CallHasReturn = call_has_return_stmt_suffix
-        ;
+        ( if 
             Results = [_ | _],
-            ( if CalleeRetTypes = CallerRetTypes then
-                CallHasReturn = call_has_return_expr_prefix
-            else
-                CallHasReturn = call_has_no_return
-            )
+            CalleeRetTypes = CallerRetTypes
+        then
+            CallHasReturn = call_has_return_expr_prefix
+        else if
+            CallerRetTypes = []
+        then
+            CallHasReturn = call_has_return_stmt_suffix
+        else
+            CallHasReturn = call_has_no_return
         )
     else
         CallHasReturn = call_has_no_return
