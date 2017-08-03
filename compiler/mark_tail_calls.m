@@ -81,9 +81,10 @@
     % It can also mean both, or neither.
     %
     % The LLDS code generator can be invoked to compile procedures either
-    % by phases, or by procedures; the two do the same jobs, but in different
-    % order. It calls the in_pred version when compiling procedures by phases,
-    % and it calls the in_proc version when compiling by procedures.
+    % phase-after-phase, or procedure-after-procedure; the two do
+    % the same jobs, but in different order. It calls the in_pred version
+    % when compiling by phases, and it calls the in_proc version when
+    % compiling by procedures.
     %
 :- pred mark_tail_rec_calls_in_pred_for_llds_code_gen(
     scc_map(pred_proc_id)::in, pred_id::in, module_info::in, module_info::out,
@@ -159,73 +160,132 @@
 %---------------------------------------------------------------------------%
 
 mark_self_and_mutual_tail_rec_calls_in_module(DepInfo, !ModuleInfo) :-
-    AddGoalFeature = add_goal_feature_self_or_mutual,
-    WarnNonTailRecParams = no_warnings_non_tail_rec_params,
+    MaybeSelfRec = yes(feature_self_or_mutual_tail_rec_call),
+    MaybeMutualRec = yes(feature_self_or_mutual_tail_rec_call),
+    Params = tail_rec_params(MaybeSelfRec, MaybeMutualRec,
+        do_not_record_self_recursion, no_warnings_non_tail_rec_params),
     get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
         BottomUpSCCsEntryPoints),
-    mark_tail_rec_calls_in_sccs(AddGoalFeature, WarnNonTailRecParams,
-        BottomUpSCCsEntryPoints, !ModuleInfo).
+    mark_tail_rec_calls_in_sccs(Params, BottomUpSCCsEntryPoints, !ModuleInfo).
 
-:- pred mark_tail_rec_calls_in_sccs(add_goal_feature::in,
-    warn_non_tail_rec_params::in,
+:- pred mark_tail_rec_calls_in_sccs(tail_rec_params::in,
     list(scc_with_entry_points)::in, module_info::in, module_info::out) is det.
 
-mark_tail_rec_calls_in_sccs(_AddGoalFeature, _WarnNonTailRecParams,
-        [], !ModuleInfo).
-mark_tail_rec_calls_in_sccs(AddGoalFeature, WarnNonTailRecParams,
-        [SCCEntry | SCCEntries], !ModuleInfo) :-
+mark_tail_rec_calls_in_sccs(_Params, [], !ModuleInfo).
+mark_tail_rec_calls_in_sccs(Params, [SCCEntry | SCCEntries], !ModuleInfo) :-
     SCCEntry = scc_with_entry_points(SCC, _CalledFromHigherSCC, _Exported),
-    mark_tail_rec_calls_in_scc(AddGoalFeature, WarnNonTailRecParams,
-        SCC, set.to_sorted_list(SCC), !ModuleInfo),
-    mark_tail_rec_calls_in_sccs(AddGoalFeature, WarnNonTailRecParams,
-        SCCEntries, !ModuleInfo).
+    mark_tail_rec_calls_in_scc(Params, SCC, set.to_sorted_list(SCC),
+        !ModuleInfo),
+    mark_tail_rec_calls_in_sccs(Params, SCCEntries, !ModuleInfo).
 
-:- pred mark_tail_rec_calls_in_scc(add_goal_feature::in,
-    warn_non_tail_rec_params::in,
+:- pred mark_tail_rec_calls_in_scc(tail_rec_params::in,
     set(pred_proc_id)::in, list(pred_proc_id)::in,
     module_info::in, module_info::out) is det.
 
-mark_tail_rec_calls_in_scc(_AddGoalFeature, _WarnNonTailRecParams, _SCC,
-        [], !ModuleInfo).
-mark_tail_rec_calls_in_scc(AddGoalFeature, WarnNonTailRecParams, SCC,
-        [PredProcId | PredProcIds], !ModuleInfo) :-
+mark_tail_rec_calls_in_scc(_Params, _SCC, [], !ModuleInfo).
+mark_tail_rec_calls_in_scc(Params, SCC, [PredProcId | PredProcIds],
+        !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
-    maybe_override_warn_params_for_proc(ProcInfo0,
-        WarnNonTailRecParams, WarnNonTailRecParamsForProc),
+    maybe_override_warn_params_for_proc(ProcInfo0, Params, ProcParams),
 
-    do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParamsForProc,
-        !.ModuleInfo, SCC, PredId, ProcId, PredInfo0, ProcInfo0, ProcInfo,
-        _WasProcChanged, [], _Specs),
+    do_mark_tail_rec_calls_in_proc(ProcParams, !.ModuleInfo, SCC,
+        PredId, ProcId, PredInfo0, ProcInfo0, ProcInfo, WasProcChanged,
+        [], _Specs),
 
-    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo),
-
-    mark_tail_rec_calls_in_scc(AddGoalFeature, WarnNonTailRecParams, SCC,
-        PredProcIds, !ModuleInfo).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred get_add_goal_feature_for_llds_code_gen(globals::in,
-    add_goal_feature::out) is det.
-
-get_add_goal_feature_for_llds_code_gen(Globals, AddGoalFeature) :-
-    globals.lookup_bool_option(Globals, exec_trace_tail_rec,
-        ExecTraceTailRec),
     (
-        ExecTraceTailRec = yes,
-        AddGoalFeature = add_goal_feature_self_for_debug
+        WasProcChanged = proc_was_not_changed
     ;
-        ExecTraceTailRec = no,
-        AddGoalFeature = do_not_add_goal_feature
-    ).
+        WasProcChanged = proc_may_have_been_changed,
+        map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+        map.det_update(PredId, PredInfo, PredTable0, PredTable),
+        module_info_set_preds(PredTable, !ModuleInfo)
+    ),
+
+    mark_tail_rec_calls_in_scc(Params, SCC, PredProcIds, !ModuleInfo).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap, PredId, !ModuleInfo,
+        !PredInfo, !Specs) :-
+    % We don't update ModuleInfo. Nevertheless, the passes_aux traversal
+    % that our caller uses to call us requires us to pass back a new
+    % ModuleInfo, even though it will itself put the updated PredInfo
+    % back into ModuleInfo.
+    module_info_get_globals(!.ModuleInfo, Globals),
+    get_params_for_llds_code_gen(Globals, Params),
+    ProcIds = pred_info_non_imported_procids(!.PredInfo),
+    mark_tail_rec_calls_in_procs(Params, !.ModuleInfo, SCCMap,
+        PredId, ProcIds, !PredInfo, !Specs).
+
+:- pred mark_tail_rec_calls_in_procs(tail_rec_params::in,
+    module_info::in, scc_map(pred_proc_id)::in, pred_id::in, list(proc_id)::in,
+    pred_info::in, pred_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+mark_tail_rec_calls_in_procs(_Params, _ModuleInfo, _SCCMap,
+        _PredId, [], !PredInfo, !Specs).
+mark_tail_rec_calls_in_procs(Params, ModuleInfo, SCCMap,
+        PredId, [ProcId | ProcIds], !PredInfo, !Specs) :-
+    pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
+    maybe_override_warn_params_for_proc(ProcInfo0, Params, ProcParams),
+    map.lookup(SCCMap, proc(PredId, ProcId), SCC),
+    do_mark_tail_rec_calls_in_proc(ProcParams, ModuleInfo, SCC, PredId,
+        ProcId, !.PredInfo, ProcInfo0, ProcInfo, WasProcChanged, !Specs),
+    (
+        WasProcChanged = proc_was_not_changed
+    ;
+        WasProcChanged = proc_may_have_been_changed,
+        pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
+    ),
+    mark_tail_rec_calls_in_procs(Params, ModuleInfo, SCCMap,
+        PredId, ProcIds, !PredInfo, !Specs).
+
+%---------------------------------------------------------------------------%
+
+mark_tail_rec_calls_in_proc_for_llds_code_gen(ModuleInfo, PredId, ProcId,
+        PredInfo, SCCMap, !ProcInfo, !Specs) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    get_params_for_llds_code_gen(Globals, Params),
+    maybe_override_warn_params_for_proc(!.ProcInfo, Params, ProcParams),
+    map.lookup(SCCMap, proc(PredId, ProcId), SCC),
+    % mark_tail_rec_calls_in_proc_for_llds_code_gen is called only when we are
+    % doing proc-by-proc, as opposed to phase-by-phase, code generation.
+    % For this, we don't need to put the new proc_info back into its pred_info.
+    do_mark_tail_rec_calls_in_proc(ProcParams, ModuleInfo, SCC, PredId, ProcId,
+        PredInfo, !ProcInfo, _WasProcChanged, !Specs).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type maybe_warn_non_tail_self_rec
+    --->    do_not_warn_non_tail_self_rec
+    ;       warn_non_tail_self_rec.
+
+:- type maybe_warn_non_tail_mutual_rec
+    --->    do_not_warn_non_tail_mutual_rec
+    ;       warn_non_tail_mutual_rec.
+
+:- type warn_non_tail_rec_params
+    --->    warn_non_tail_rec_params(
+                warning_or_error,
+                maybe_warn_non_tail_self_rec,
+                maybe_warn_non_tail_mutual_rec
+            ).
+
+:- func no_warnings_non_tail_rec_params = warn_non_tail_rec_params.
+
+no_warnings_non_tail_rec_params = Params :-
+    % Since neither SelfRec nor MutualRec is set, the value of
+    % WarnOrError does not matter.
+    Params = warn_non_tail_rec_params(we_warning,
+        do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec).
 
 :- pred get_default_warn_parms(globals::in,
     warn_non_tail_rec_params::out) is det.
@@ -252,27 +312,26 @@ get_default_warn_parms(Globals, WarnNonTailRecParams) :-
     WarnNonTailRecParams = warn_non_tail_rec_params(we_warning,
         WarnNonTailSelfRecOpt, WarnNonTailMutualRecOpt).
 
-    % maybe_override_warn_params_for_proc(ProcInfo, WarnParams,
-    %   WarnParamsForProc):
+    % maybe_override_warn_params_for_proc(ProcInfo, Params, ProcParams):
     %
     % If the given procedure has a pragma that governs what non-tail recursion
     % warnings (if any) we should generate for its code, return a value for
-    % WarnParamsForProc that reflects this pragma. Otherwise, return the
-    % WarnParams, the parameters that apply by default.
+    % ProcParams that reflects this pragma. Otherwise, return Params,
+    % the parameters that apply by default.
     %
 :- pred maybe_override_warn_params_for_proc(proc_info::in,
-    warn_non_tail_rec_params::in, warn_non_tail_rec_params::out) is det.
+    tail_rec_params::in, tail_rec_params::out) is det.
 
-maybe_override_warn_params_for_proc(ProcInfo, WarnParams, WarnParamsForProc) :-
+maybe_override_warn_params_for_proc(ProcInfo, Params, ProcParams) :-
     proc_info_get_maybe_require_tailrec_info(ProcInfo, MaybeRequireTailRec),
     (
         MaybeRequireTailRec = no,
-        WarnParamsForProc = WarnParams
+        ProcParams = Params
     ;
         MaybeRequireTailRec = yes(Pragma),
         (
             Pragma = suppress_tailrec_warnings(_),
-            WarnParamsForProc = no_warnings_non_tail_rec_params
+            ProcWarnParams = no_warnings_non_tail_rec_params
         ;
             Pragma = enable_tailrec_warnings(WarnOrError, RecType, _Context),
             (
@@ -284,94 +343,73 @@ maybe_override_warn_params_for_proc(ProcInfo, WarnParams, WarnParamsForProc) :-
                 SelfRec = warn_non_tail_self_rec,
                 MutualRec = warn_non_tail_mutual_rec
             ),
-            WarnParamsForProc =
+            ProcWarnParams =
                 warn_non_tail_rec_params(WarnOrError, SelfRec, MutualRec)
-        )
+        ),
+        ProcParams = Params ^ warn_params := ProcWarnParams
     ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap, PredId, !ModuleInfo,
-        !PredInfo, !Specs) :-
-    % We don't update ModuleInfo. Nevertheless, the passes_aux traversal
-    % that our caller uses to call us requires us to pass back a new
-    % ModuleInfo, even though it will itself put the updated PredInfo
-    % back into ModuleInfo.
-    module_info_get_globals(!.ModuleInfo, Globals),
-    get_add_goal_feature_for_llds_code_gen(Globals, AddGoalFeature),
+:- type maybe_record_self_rec
+    --->    do_not_record_self_recursion
+    ;       record_self_recursion_and_set_event.
+
+:- type tail_rec_params
+    --->    tail_rec_params(
+                % If set to `yes(Feature)', add Feature to the goal_info
+                % of self-tail-recursive calls.
+                self_rec_goal_feature       :: maybe(goal_feature),
+
+                % If set to `yes(Feature)', add Feature to the goal_info
+                % of mutually--tail-recursive calls.
+                mutual_rec_goal_feature     :: maybe(goal_feature),
+
+                % If set to record_self_recursion_and_set_event,
+                % record whether we have found any self-tail-recursive calls
+                % in a procedure's body, and set the procedure's
+                % has_tail_call_event field accordingly.
+                should_record_self_rec      :: maybe_record_self_rec,
+
+                % The parameters governing whether what warnings or errors
+                % we should generate about tail recursive calls or their
+                % absence.
+                warn_params                 :: warn_non_tail_rec_params
+            ).
+
+:- pred get_params_for_llds_code_gen(globals::in,
+    tail_rec_params::out) is det.
+
+get_params_for_llds_code_gen(Globals, Params) :-
     get_default_warn_parms(Globals, WarnNonTailRecParams),
-    ProcIds = pred_info_non_imported_procids(!.PredInfo),
-    mark_tail_rec_calls_in_procs_for_llds_code_gen(AddGoalFeature,
-        WarnNonTailRecParams, !.ModuleInfo, SCCMap, PredId, ProcIds,
-        !PredInfo, !Specs).
-
-:- pred mark_tail_rec_calls_in_procs_for_llds_code_gen(add_goal_feature::in,
-    warn_non_tail_rec_params::in, module_info::in,
-    scc_map(pred_proc_id)::in, pred_id::in, list(proc_id)::in,
-    pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-mark_tail_rec_calls_in_procs_for_llds_code_gen(_AddGoalFeature,
-        _WarnNonTailRecParams, _ModuleInfo,
-        _SCCMap, _PredId, [], !PredInfo, !Specs).
-mark_tail_rec_calls_in_procs_for_llds_code_gen(AddGoalFeature,
-        WarnNonTailRecParams, ModuleInfo, SCCMap,
-        PredId, [ProcId | ProcIds], !PredInfo, !Specs) :-
-    pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
-    maybe_override_warn_params_for_proc(ProcInfo0, WarnNonTailRecParams,
-        WarnNonTailRecParamsForProc),
-    map.lookup(SCCMap, proc(PredId, ProcId), SCC),
-    do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParamsForProc,
-        ModuleInfo, SCC, PredId, ProcId, !.PredInfo, ProcInfo0, ProcInfo,
-        WasProcChanged, !Specs),
+    globals.lookup_bool_option(Globals, exec_trace_tail_rec,
+        ExecTraceTailRec),
     (
-        WasProcChanged = proc_was_not_changed
+        ExecTraceTailRec = yes,
+        MaybeSelf = yes(feature_debug_self_tail_rec_call),
+        Params = tail_rec_params(MaybeSelf, no,
+            record_self_recursion_and_set_event, WarnNonTailRecParams)
     ;
-        WasProcChanged = proc_may_have_been_changed,
-        pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
-    ),
-    mark_tail_rec_calls_in_procs_for_llds_code_gen(AddGoalFeature,
-        WarnNonTailRecParams, ModuleInfo, SCCMap,
-        PredId, ProcIds, !PredInfo, !Specs).
-
-%---------------------------------------------------------------------------%
-
-mark_tail_rec_calls_in_proc_for_llds_code_gen(ModuleInfo, PredId, ProcId,
-        PredInfo, SCCMap, !ProcInfo, !Specs) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    get_add_goal_feature_for_llds_code_gen(Globals, AddGoalFeature),
-    get_default_warn_parms(Globals, WarnNonTailRecParams),
-    maybe_override_warn_params_for_proc(!.ProcInfo, WarnNonTailRecParams,
-        WarnNonTailRecParamsForProc),
-    map.lookup(SCCMap, proc(PredId, ProcId), SCC),
-    % mark_tail_rec_calls_in_proc_for_llds_code_gen is called only when we are
-    % doing proc-by-proc, as opposed to phase-by-phase, code generation.
-    % For this, we don't need to put the new proc_info back into its pred_info.
-    do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParamsForProc,
-        ModuleInfo, SCC, PredId, ProcId, PredInfo, !ProcInfo,
-        _WasProcChanged, !Specs).
+        ExecTraceTailRec = no,
+        Params = tail_rec_params(no, no, do_not_record_self_recursion,
+            WarnNonTailRecParams)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-:- type add_goal_feature
-    --->    do_not_add_goal_feature
-    ;       add_goal_feature_self_for_debug
-    ;       add_goal_feature_self_or_mutual.
 
 :- type was_proc_changed
     --->    proc_was_not_changed
     ;       proc_may_have_been_changed.
 
-:- pred do_mark_tail_rec_calls_in_proc(add_goal_feature::in,
-    warn_non_tail_rec_params::in, module_info::in, set(pred_proc_id)::in,
+:- pred do_mark_tail_rec_calls_in_proc(tail_rec_params::in,
+    module_info::in, set(pred_proc_id)::in,
     pred_id::in, proc_id::in, pred_info::in, proc_info::in, proc_info::out,
     was_proc_changed::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParams,
-        ModuleInfo, SCC, PredId, ProcId, PredInfo, !ProcInfo,
-        WasProcChanged, !Specs) :-
+do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
+        PredInfo, !ProcInfo, WasProcChanged, !Specs) :-
     proc_info_interface_determinism(!.ProcInfo, Detism),
     determinism_components(Detism, _CanFail, SolnCount),
     (
@@ -391,8 +429,12 @@ do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParams,
 
         % It is reasonably common that we don't need to check for tail calls
         % at all.
+        Params = tail_rec_params(MaybeSelfFeature, MaybeMutualFeature,
+            MaybeRecordSelf, WarnNonTailRecParams),
         ( if
-            AddGoalFeature = do_not_add_goal_feature,
+            MaybeSelfFeature = no,
+            MaybeMutualFeature = no,
+            MaybeRecordSelf = do_not_record_self_recursion,
             WarnNonTailRecParams = warn_non_tail_rec_params(_WarnOrError,
                 do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec)
         then
@@ -405,13 +447,12 @@ do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParams,
             proc_info_get_vartypes(!.ProcInfo, VarTypes),
             find_output_args(ModuleInfo, Types, Modes, HeadVars, Outputs),
 
-            Info0 = mark_tail_rec_calls_info(AddGoalFeature, ModuleInfo,
-                PredInfo, proc(PredId, ProcId), SCC, VarTypes,
-                WarnNonTailRecParams,
+            Info0 = mark_tail_rec_calls_info(ModuleInfo, PredInfo,
+                proc(PredId, ProcId), SCC, VarTypes, Params,
                 not_found_any_rec_calls, not_found_self_tail_rec_calls, []),
             mark_tail_rec_calls_in_goal(Goal0, Goal, at_tail(Outputs), _,
                 Info0, Info),
-            Info = mark_tail_rec_calls_info(_, _, _, _, _, _, _,
+            Info = mark_tail_rec_calls_info(_, _, _, _, _, _,
                 FoundAnyRecCalls, FoundSelfTailRecCalls, GoalSpecs),
 
             proc_info_set_goal(Goal, !ProcInfo),
@@ -441,18 +482,16 @@ do_mark_tail_rec_calls_in_proc(AddGoalFeature, WarnNonTailRecParams,
                 FoundAnyRecCalls = found_any_rec_calls
             ),
             (
-                FoundSelfTailRecCalls = not_found_self_tail_rec_calls,
-                TailCallEvents = has_no_tail_call_event
+                MaybeRecordSelf = do_not_record_self_recursion
             ;
-                FoundSelfTailRecCalls = found_self_tail_rec_calls,
-                TailCallEvents = has_tail_call_event
-            ),
-            (
-                ( AddGoalFeature = do_not_add_goal_feature
-                ; AddGoalFeature = add_goal_feature_self_or_mutual
-                )
-            ;
-                AddGoalFeature = add_goal_feature_self_for_debug,
+                MaybeRecordSelf = record_self_recursion_and_set_event,
+                (
+                    FoundSelfTailRecCalls = not_found_self_tail_rec_calls,
+                    TailCallEvents = has_no_tail_call_event
+                ;
+                    FoundSelfTailRecCalls = found_self_tail_rec_calls,
+                    TailCallEvents = has_tail_call_event
+                ),
                 proc_info_set_has_tail_call_event(TailCallEvents, !ProcInfo)
             ),
             !:Specs = GoalSpecs ++ !.Specs,
@@ -522,29 +561,6 @@ is_output(ModuleInfo, Mode, Type) :-
     --->    have_seen_later_rec_call
     ;       have_not_seen_later_rec_call.
 
-:- type maybe_warn_non_tail_self_rec
-    --->    do_not_warn_non_tail_self_rec
-    ;       warn_non_tail_self_rec.
-
-:- type maybe_warn_non_tail_mutual_rec
-    --->    do_not_warn_non_tail_mutual_rec
-    ;       warn_non_tail_mutual_rec.
-
-:- type warn_non_tail_rec_params
-    --->    warn_non_tail_rec_params(
-                warning_or_error,
-                maybe_warn_non_tail_self_rec,
-                maybe_warn_non_tail_mutual_rec
-            ).
-
-:- func no_warnings_non_tail_rec_params = warn_non_tail_rec_params.
-
-no_warnings_non_tail_rec_params = Params :-
-    % Since neither SelfRec nor MutualRec is set, the value of
-    % WarnOrError does not matter.
-    Params = warn_non_tail_rec_params(we_warning,
-        do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec).
-
     % Has any self-recursive tail call been found so far?
     %
     % We use this to set the has_tail_call_event field in the procedure's
@@ -575,13 +591,12 @@ no_warnings_non_tail_rec_params = Params :-
 
 :- type mark_tail_rec_calls_info
     --->    mark_tail_rec_calls_info(
-                mtc_add_feature             :: add_goal_feature,
                 mtc_module                  :: module_info,
                 mtc_pred_info               :: pred_info,
                 mtc_cur_proc                :: pred_proc_id,
                 mtc_cur_scc                 :: set(pred_proc_id),
                 mtc_vartypes                :: vartypes,
-                mtc_warn_params             :: warn_non_tail_rec_params,
+                mtc_params                  :: tail_rec_params,
                 mtc_any_rec_calls           :: found_any_rec_calls,
                 mtc_self_tail_rec_calls     :: found_self_tail_rec_calls,
                 mtc_error_specs             :: list(error_spec)
@@ -592,22 +607,10 @@ no_warnings_non_tail_rec_params = Params :-
     % mark_tail_rec_calls_in_goal(Goal0, Goal, !AtTail, !Info):
     %
     % This predicate performs a backwards traversal of Goal0.
-    % It can transform Goal0 into Goal
-    %
-    % - by adding the feature feature_debug_self_tail_rec_call feature to
-    %   self-tail-recursive calls, i.e. calls to !.Info ^ mtc_cur_proc,
-    %   if !.Info ^ mtc_add_feature is add_goal_feature_self_for_debug, or
-    %
-    % - by adding the feature feature_self_or_mutual_tail_rec_call to
-    %   either self- or mutually-tail-recursive calls, i.e. calls to either
-    %   !.Info ^ mtc_cur_proc or to a procedure in !.Info ^ mtc_cur_scc,
-    %   if !.Info ^ mtc_add_feature is add_goal_feature_self_or_mutual, or
-    %
-    % It adds nothing to the goal if !.Info ^ mtc_add_feature is
-    % do_not_add_goal_feature.
-    %
-    % If the value of !.Info ^ mtc_warn_params calls for it, we generate
-    % warnings for non-tail recursive calls, and add them to !Info.
+    % It can transform Goal0 into Goal by adding features to self- or
+    % mutually-tail-recursive calls as Params calls for it.
+    % Params can also ask it to generate warnings for recursive calls
+    % that are not *tail* recursive.
     %
     % Since we do a *backward* traversal, AtTail0 describes the situation
     % *after* Goal0, and the value of AtTail we return describes the situation
@@ -661,12 +664,13 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                     TailWarnings)
                 )
             then
-                OldWarnParams = !.Info ^ mtc_warn_params,
-                InnerWarnParams = no_warnings_non_tail_rec_params,
-                InnerInfo0 = !.Info ^ mtc_warn_params := InnerWarnParams,
+                OldParams = !.Info ^ mtc_params,
+                InnerParams = OldParams ^ warn_params := 
+                    no_warnings_non_tail_rec_params,
+                InnerInfo0 = !.Info ^ mtc_params := InnerParams,
                 mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
                     InnerInfo0, InnerInfo),
-                !:Info = InnerInfo ^ mtc_warn_params := OldWarnParams
+                !:Info = InnerInfo ^ mtc_params := OldParams
             else
                 mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
                     !Info)
@@ -788,28 +792,38 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                 % have two producers.)
                 OutputVars = CalleeOutputVars
             then
-                AddFeature = !.Info ^ mtc_add_feature,
+                !.Info ^ mtc_params = tail_rec_params(
+                    MaybeSelfFeature, MaybeMutualFeature, MaybeRecordSelf,
+                    _WarnParams),
                 (
-                    AddFeature = do_not_add_goal_feature,
-                    Goal = Goal0
-                ;
-                    AddFeature = add_goal_feature_self_for_debug,
+                    SelfOrMutual = call_is_self_rec,
                     (
-                        SelfOrMutual = call_is_self_rec,
-                        !Info ^ mtc_self_tail_rec_calls :=
-                            found_self_tail_rec_calls,
-                        goal_info_add_feature(feature_debug_self_tail_rec_call,
+                        MaybeSelfFeature = no,
+                        Goal = Goal0
+                    ;
+                        MaybeSelfFeature = yes(SelfFeature),
+                        goal_info_add_feature(SelfFeature,
                             GoalInfo0, GoalInfo),
                         Goal = hlds_goal(GoalExpr0, GoalInfo)
+                    ),
+                    (
+                        MaybeRecordSelf = do_not_record_self_recursion
                     ;
-                        SelfOrMutual = call_is_mutual_rec,
-                        Goal = Goal0
+                        MaybeRecordSelf = record_self_recursion_and_set_event,
+                        !Info ^ mtc_self_tail_rec_calls :=
+                            found_self_tail_rec_calls
                     )
                 ;
-                    AddFeature = add_goal_feature_self_or_mutual,
-                    goal_info_add_feature(feature_self_or_mutual_tail_rec_call,
-                        GoalInfo0, GoalInfo),
-                    Goal = hlds_goal(GoalExpr0, GoalInfo)
+                    SelfOrMutual = call_is_mutual_rec,
+                    (
+                        MaybeMutualFeature = no,
+                        Goal = Goal0
+                    ;
+                        MaybeMutualFeature = yes(MutualFeature),
+                        goal_info_add_feature(MutualFeature,
+                            GoalInfo0, GoalInfo),
+                        Goal = hlds_goal(GoalExpr0, GoalInfo)
+                    )
                 )
             else
                 Goal = Goal0,
@@ -973,7 +987,7 @@ not_at_tail(Before, After) :-
 
 maybe_report_nontail_recursive_call(CalleePredId, SelfOrMutualRec, Context,
         AtTail, !Info) :-
-    !.Info ^ mtc_warn_params = warn_non_tail_rec_params(WarnOrError,
+    !.Info ^ mtc_params ^ warn_params = warn_non_tail_rec_params(WarnOrError,
         WarnNonTailSelfRec, WarnNonTailMutualRec),
     ( if
         require_complete_switch [SelfOrMutualRec]
