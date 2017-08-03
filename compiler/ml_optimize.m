@@ -236,10 +236,10 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
             Context),
         GotoStmt = ml_stmt_goto(tailcall_loop_top(Globals), Context),
         OptInfo ^ oi_func_params = mlds_func_params(FuncArgs, _RetTypes),
-        generate_assign_args(OptInfo, Context, FuncArgs, CallArgs,
-            AssignStmts, AssignDefns),
-        % XXX MLDS_DEFN
-        AssignVarsStmt = ml_stmt_block(AssignDefns, [], AssignStmts, Context),
+        tail_rec_call_assign_input_args(OptInfo, Context, FuncArgs, CallArgs,
+            InitStmts, AssignStmts, TempDefns),
+        AssignVarsStmt = ml_stmt_block(TempDefns, [],
+            InitStmts ++ AssignStmts, Context),
 
         CallReplaceStmts = [CommentStmt, AssignVarsStmt, GotoStmt],
         Stmt = ml_stmt_block([], [], CallReplaceStmts, Context)
@@ -307,20 +307,61 @@ tailcall_loop_label_name = "loop_top".
 
 %----------------------------------------------------------------------------
 
-    % Assign the specified list of rvals to the arguments.
-    % This is used as part of tail recursion optimization (see above).
+    % Assign the given list of rvals (the actual parameter) to the given list
+    % of mlds_arguments (the formal parameter). This is used as part of tail
+    % recursion optimization (see above).
     %
-:- pred generate_assign_args(opt_info::in, prog_context::in,
+    % For each actual parameter that differs from its corresponding formal
+    % parameter, we declare a temporary variable to hold the next value
+    % of the formal parameter, and assign it the value of the actual parameter.
+    % Once this has been done for all parameters, we then assign each formal
+    % parameter its next value. The code we generate looks like this:
+    %
+    %   % These are returned in TempDefns.
+    %   SomeType new_value_of_arg1;
+    %   SomeType new_value_of_arg3;
+    %   SomeType new_value_of_arg3;
+    %
+    %   % These are returned in InitStmts.
+    %   new_value_of_arg1 = <the a new value of parameter 1>
+    %   new_value_of_arg2 = <the a new value of parameter 2>
+    %   new_value_of_arg3 = <the a new value of parameter 3>
+    %
+    %   % These are returned in AssignStmts.
+    %   arg1 = new_value_of_arg1;
+    %   arg2 = new_value_of_arg2;
+    %   arg3 = new_value_of_arg3;
+    %
+    % The temporaries are needed for tail calls such as
+    %
+    % p(In1, In2, ...) :-
+    %   ...
+    %   p(In2, In1, ...).
+    %
+    % We don't want to assign In1 to In2 (in the second parameter position)
+    % after we have already clobbered the value of In1 by assigning it In2
+    % (when processing the first parameter position).
+    %
+    % This predicate doesn't pay attention to the gc statement field
+    % inside the mlds_arguments it is given; it needs only the variable name
+    % and type fields.
+    %
+:- pred tail_rec_call_assign_input_args(opt_info::in, prog_context::in,
     list(mlds_argument)::in, list(mlds_rval)::in,
-    list(mlds_stmt)::out, list(mlds_local_var_defn)::out) is det.
+    list(mlds_stmt)::out, list(mlds_stmt)::out,
+    list(mlds_local_var_defn)::out) is det.
 
-generate_assign_args(_, _, [], [], [], []).
-generate_assign_args(_, _, [_|_], [], [], []) :-
+tail_rec_call_assign_input_args(_, _, [], [], [], [], []).
+tail_rec_call_assign_input_args(_, _, [_|_], [], [], [], []) :-
     unexpected($pred, "length mismatch").
-generate_assign_args(_, _, [], [_|_], [], []) :-
+tail_rec_call_assign_input_args(_, _, [], [_|_], [], [], []) :-
     unexpected($pred, "length mismatch").
-generate_assign_args(OptInfo, Context, [Arg | Args], [ArgRval | ArgRvals],
-        Stmts, TempDefns) :-
+tail_rec_call_assign_input_args(OptInfo, Context,
+        [Arg | Args], [ArgRval | ArgRvals],
+        !:InitStmts, !:AssignStmts, !:TempDefns) :-
+    tail_rec_call_assign_input_args(OptInfo, Context, Args, ArgRvals,
+        !:InitStmts, !:AssignStmts, !:TempDefns),
+
     Arg = mlds_argument(VarName, Type, _ArgGCStmt),
     ModuleName = OptInfo ^ oi_module_name,
     QualVarName = qual_local_var_name(ModuleName, module_qual, VarName),
@@ -328,28 +369,8 @@ generate_assign_args(OptInfo, Context, [Arg | Args], [ArgRval | ArgRvals],
         % Don't bother assigning a variable to itself.
         ArgRval = ml_lval(ml_local_var(QualVarName, _VarType))
     then
-        generate_assign_args(OptInfo, Context, Args, ArgRvals,
-            Stmts, TempDefns)
+        true
     else
-        % Declare a temporary variable to hold the new value of the argument,
-        % assign it the new value, recursively process the remaining args,
-        % and then assign the new value to the parameter's actual variable:
-        %
-        %   SomeType new_value_of_argN;
-        %   new_value_of_argN = <actual new value of argN>
-        %   ...
-        %   argN = new_value_of_argN;
-        %
-        % The temporaries are needed for the case where we are e.g.
-        % assigning v1, v2 to v2, v1; they ensure that we don't try
-        % to reference the old value of a parameter after it has already
-        % been clobbered by the new value.
-        %
-        % Note that we have to use an assignment rather than an initializer
-        % to initialize the temp, because this pass comes before
-        % ml_elem_nested.m, and ml_elim_nested.m doesn't handle code
-        % containing initializers.
-        % XXX We should teach it to handle them.
 
         ( if VarName = lvn_prog_var(VarNameStr, VarNum) then
             NextValueName = lvn_prog_var_next_value(VarNameStr, VarNum)
@@ -364,24 +385,26 @@ generate_assign_args(OptInfo, Context, [Arg | Args], [ArgRval | ArgRvals],
         ),
         QualNextValueName =
             qual_local_var_name(ModuleName, module_qual, NextValueName),
-        Initializer = no_initializer,
-        % We don't need to trace the temporary variables for GC, since they
-        % are not live across a call or a heap allocation.
-        GCStmt = gc_no_stmt,
-        TempDefn = ml_gen_mlds_var_decl_init(NextValueName, Type,
-            Initializer, GCStmt, Context),
+        % Note that we have to use an assignment rather than an initializer
+        % to initialize the temp, because this pass comes before
+        % ml_elem_nested.m, and ml_elim_nested.m doesn't handle code
+        % containing initializers.
+        % XXX We should teach it to handle them.
         NextValueInitStmt = ml_stmt_atomic(
             assign(ml_local_var(QualNextValueName, Type), ArgRval),
             Context),
+        !:InitStmts = [NextValueInitStmt | !.InitStmts],
         AssignStmt = ml_stmt_atomic(
             assign(
                 ml_local_var(QualVarName, Type),
                 ml_lval(ml_local_var(QualNextValueName, Type))),
             Context),
-        generate_assign_args(OptInfo, Context, Args, ArgRvals,
-            Stmts0, TempDefns0),
-        Stmts = [NextValueInitStmt | Stmts0] ++ [AssignStmt],
-        TempDefns = [TempDefn | TempDefns0]
+        !:AssignStmts = [AssignStmt | !.AssignStmts],
+        % We don't need to trace the temporary variables for GC, since they
+        % are not live across a call or a heap allocation.
+        TempDefn = ml_gen_mlds_var_decl_init(NextValueName, Type,
+            no_initializer, gc_no_stmt, Context),
+        !:TempDefns = [TempDefn | !.TempDefns]
     ).
 
 %----------------------------------------------------------------------------
