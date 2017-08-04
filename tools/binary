@@ -259,6 +259,8 @@ ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
 ln -s $root/library/*.init .
 cp $root/library/print_extra_inits .
+cp $root/library/MODULES_DOC .
+cp $root/library/MODULES_UNDOC .
 cp $root/library/Mmake* .
 cp $root/library/Mercury* .
 cp $root/library/*FLAGS* .
@@ -434,7 +436,7 @@ if test "$alldirs" = ""
 then
     echo testing which directory the problem is in
 
-    /bin/rm .stage2_problem
+    /bin/rm .stage2_problem > /dev/null 2>&1
     found=false
     for testsubdir in library mdbcomp compiler
     do
@@ -701,7 +703,7 @@ set -x
 
 tested=`half $doubtful`
 
-/bin/rm -fr .stage2_problem
+/bin/rm -fr .stage2_problem > /dev/null 2>&1
 
 while test "$tested" != ""
 do
@@ -727,7 +729,7 @@ do
 
             if test -f .stage2_problem
             then
-                /bin/rm .stage2_problem
+                /bin/rm .stage2_problem > /dev/null 2>&1
                 echo "problem with the creation of stage 2:"
                 echo "search of $testeddir/$module abandoned"
                 exit 1
@@ -768,7 +770,7 @@ do
 
             if test -f .stage2_problem
             then
-                /bin/rm .stage2_problem
+                /bin/rm .stage2_problem > /dev/null 2>&1
                 echo "problem with the creation of stage 2:"
                 echo "search of $testeddir/$module abandoned"
                 exit 1

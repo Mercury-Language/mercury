@@ -357,7 +357,7 @@ then
             # files present in the stage3 directory.
             for stage3file in stage3/$dir/*.c
             do
-                stage2file="stage2.$basis/$dir/`basename $file`"
+                stage2file="stage2.$basis/$dir/`basename $stage3file`"
                 diff -u $stage2file $stage3file >> $outfile || founddiff=true
             done
         done
