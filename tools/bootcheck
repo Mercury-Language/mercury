@@ -1246,10 +1246,10 @@ then
     MMAKE_DIR=$root/scripts
     export MMAKE_DIR
 
-    # Use the new mmake to build stage 3
+    # Use the new mmake to build stage 3.
     MMAKE=$MMAKE_DIR/mmake
 
-    # This setting is ignore unless the stage 2 was compiled with
+    # This setting is ignored unless the stage 2 was compiled with
     # -DMR_HO_CALL_STATS.
     HO_CALL_STATS="$root/HO_CALL_STATS"
     export HO_CALL_STATS
@@ -1283,7 +1283,7 @@ then
     else
         echo "building of stage 3 library initially not successful"
         df .
-        # try again, in case the failure cause was transient
+        # Try again, in case the failure cause was transient.
         if (cd $stage3dir/library &&
             $MMAKE $mmake_opts $jfactor all-ints &&
             $MMAKE $mmake_opts $jfactor ${target_ext}s)
@@ -1317,7 +1317,7 @@ then
     else
         echo "building of stage 3 mdbcomp initially not successful"
         df .
-        # try again, in case the failure cause was transient
+        # Try again, in case the failure cause was transient.
         if (cd $stage3dir/mdbcomp && \
             $MMAKE $mmake_opts $jfactor ${target_ext}s)
         then
@@ -1336,7 +1336,7 @@ then
     else
         echo "building of stage 3 browser initially not successful"
         df .
-        # try again, in case the failure cause was transient
+        # Try again, in case the failure cause was transient.
         if (cd $stage3dir/browser && \
             $MMAKE $mmake_opts $jfactor ${target_ext}s)
         then
@@ -1355,7 +1355,7 @@ then
     else
         echo "building of stage 3 ssdb initially not successful"
         df .
-        # try again, in case the failure cause was transient
+        # Try again, in case the failure cause was transient.
         if (cd $stage3dir/ssdb && \
             $MMAKE $mmake_opts $jfactor ${target_ext}s)
         then
@@ -1373,7 +1373,7 @@ then
     else
         echo "building of stage 3 compiler initially not successful"
         df .
-        # try again, in case the failure cause was transient
+        # Try again, in case the failure cause was transient.
         if (cd $stage3dir/compiler && \
             $MMAKE $mmake_opts $jfactor ${target_ext}s)
         then
