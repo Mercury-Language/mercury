@@ -110,6 +110,7 @@ OTHER_PROGS = \
 	easy_nondet_test \
 	easy_nondet_test_2 \
 	empty_bound_inst_list \
+	empty_submodule \
 	empty_switch \
 	equiv_solns_ia \
 	erl_ite_vars \

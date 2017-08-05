@@ -61,6 +61,13 @@
             % This module is the top level module, and this is the context
             % of its `:- module' declaration.
 
+    ;       split_nested_empty(prog_context)
+            % This module is not the top level module, and we have seen
+            % neither its interface section, not its implementation section.
+            % We have seen only an empty module, and have generated a warning
+            % about this fact. The context is the context of the module
+            % declaration of the empty module.
+
     ;       split_nested_only_int(prog_context)
             % This module is not the top level module, we have seen
             % only its interface section, and this is the context of the
@@ -103,6 +110,7 @@
 
 split_nested_info_get_context(SplitNested) = Context :-
     ( SplitNested = split_nested_top_module(Context)
+    ; SplitNested = split_nested_empty(Context)
     ; SplitNested = split_nested_only_int(Context)
     ; SplitNested = split_nested_only_imp(Context)
     ; SplitNested = split_nested_int_imp(Context, _)
@@ -184,9 +192,7 @@ add_new_module_maybe_submodule_to_map(ModuleAncestors, ModuleName,
 
 add_new_submodule_to_map(SectionAncestors, ModuleName, !SubModulesMap) :-
     SectionAncestors = sa_parent(ParentModuleName, _),
-    ( if
-        map.search(!.SubModulesMap, ParentModuleName, SiblingModules0)
-    then
+    ( if map.search(!.SubModulesMap, ParentModuleName, SiblingModules0) then
         SiblingModules = cord.snoc(SiblingModules0, ModuleName),
         map.det_update(ParentModuleName, SiblingModules, !SubModulesMap)
     else
@@ -238,6 +244,8 @@ create_split_compilation_units_depth_first(ModuleName,
             RawCompUnit = raw_compilation_unit(ModuleName, Context,
                 RawItemBlocks),
             !:RawCompUnitsCord = cord.snoc(!.RawCompUnitsCord, RawCompUnit)
+        ;
+            NestedInfo = split_nested_empty(_)
         ;
             NestedInfo = split_nested_only_imp(Context),
             Pieces = [words("Submodule"), qual_sym_name(ModuleName),
@@ -299,11 +307,11 @@ check_interface_items_for_abstract_instances([Item | Items], !Specs) :-
 split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
         !SplitModuleMap, !SubModulesMap, !Specs) :-
     ParseTree = parse_tree_src(ModuleName, Context, ModuleComponentsCord),
+    ModuleComponents = cord.list(ModuleComponentsCord),
     % If this module is a submodule, record its relationship to its parent.
     add_new_module_maybe_submodule_to_map(ModuleAncestors, ModuleName,
         !SubModulesMap),
 
-    ModuleComponents = cord.list(ModuleComponentsCord),
     SubModuleSectionAncestors = sa_parent(ModuleName, ModuleAncestors),
     split_components_discover_submodules(ModuleComponents,
         SubModuleSectionAncestors, !SplitModuleMap, !SubModulesMap,
@@ -353,7 +361,9 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                 report_duplicate_submodule(ModuleName, Context,
                     dup_empty, ParentModuleName, OldEntry, !Specs)
             else
-                true
+                SplitNested = split_nested_empty(Context),
+                Entry = split_nested(SplitNested, ItemBlockCord),
+                map.det_insert(ModuleName, Entry, !SplitModuleMap)
             )
         ;
             SeenInt = yes,
@@ -366,6 +376,15 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                     NewSplitNested = split_nested_int_imp(Context, ImpContext),
                     NewItemBlockCord = ItemBlockCord ++ OldItemBlockCord,
                     NewEntry = split_nested(NewSplitNested, NewItemBlockCord),
+                    map.det_update(ModuleName, NewEntry, !SplitModuleMap)
+                else if
+                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord),
+                    OldSplitNested = split_nested_empty(EmptyContext)
+                then
+                    warn_duplicate_of_empty_submodule(ModuleName,
+                        ParentModuleName, Context, EmptyContext, !Specs),
+                    SplitNested = split_nested_only_int(Context),
+                    NewEntry = split_nested(SplitNested, ItemBlockCord),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
                 else
                     report_duplicate_submodule(ModuleName, Context,
@@ -388,6 +407,15 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                     NewItemBlockCord = OldItemBlockCord ++ ItemBlockCord,
                     NewEntry = split_nested(NewSplitNested, NewItemBlockCord),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
+                else if
+                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord),
+                    OldSplitNested = split_nested_empty(EmptyContext)
+                then
+                    warn_duplicate_of_empty_submodule(ModuleName,
+                        ParentModuleName, Context, EmptyContext, !Specs),
+                    SplitNested = split_nested_only_imp(Context),
+                    NewEntry = split_nested(SplitNested, ItemBlockCord),
+                    map.det_update(ModuleName, NewEntry, !SplitModuleMap)
                 else
                     report_duplicate_submodule(ModuleName, Context,
                         dup_imp_only, ParentModuleName, OldEntry, !Specs)
@@ -401,8 +429,19 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
             SeenInt = yes,
             SeenImp = yes,
             ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
-                report_duplicate_submodule(ModuleName, Context,
-                    dup_int_imp, ParentModuleName, OldEntry, !Specs)
+                ( if
+                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord),
+                    OldSplitNested = split_nested_empty(EmptyContext)
+                then
+                    warn_duplicate_of_empty_submodule(ModuleName,
+                        ParentModuleName, Context, EmptyContext, !Specs),
+                    SplitNested = split_nested_int_imp(Context, Context),
+                    NewEntry = split_nested(SplitNested, ItemBlockCord),
+                    map.det_update(ModuleName, NewEntry, !SplitModuleMap)
+                else
+                    report_duplicate_submodule(ModuleName, Context,
+                        dup_int_imp, ParentModuleName, OldEntry, !Specs)
+                )
             else
                 SplitNested = split_nested_int_imp(Context, Context),
                 Entry = split_nested(SplitNested, ItemBlockCord),
@@ -420,6 +459,22 @@ warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
         words("is empty."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred warn_duplicate_of_empty_submodule(module_name::in, module_name::in,
+    prog_context::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
+        Context, EmptyContext, !Specs) :-
+    Pieces1 = [words("Warning: submodule"), qual_sym_name(ModuleName),
+        words("of"), words("module"), qual_sym_name(ParentModuleName),
+        words("duplicates an empty submodule."), nl],
+    Msg1 = simple_msg(Context, [always(Pieces1)]),
+    Pieces2 = [words("This is the location of the empty submodule,"), nl],
+    Msg2 = simple_msg(EmptyContext, [always(Pieces2)]),
+    Spec = error_spec(severity_warning, phase_parse_tree_to_hlds,
+        [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
 :- type duplicated_section
@@ -477,6 +532,11 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
                 report_duplicate_submodule_vs_top(ModuleName, Context,
                     ParentModuleName, Spec)
             ;
+                SplitNested = split_nested_empty(_OldContext),
+                % An empty submodule should not duplicate either an interface
+                % or an implementation section.
+                unexpected($pred, "split_nested_empty duplicates a section")
+            ;
                 SplitNested = split_nested_only_int(_OldContext),
                 report_duplicate_submodule_one_section(ModuleName, Context,
                     ms_interface, ParentModuleName, SplitNested, Spec)
@@ -503,6 +563,11 @@ report_duplicate_submodule_one_section(ModuleName, Context, Section,
         SplitNested = split_nested_top_module(_OldContext),
         report_duplicate_submodule_vs_top(ModuleName, Context,
             ParentModuleName, Spec)
+    ;
+        SplitNested = split_nested_empty(_OldContext),
+        % An empty submodule should not duplicate either an interface
+        % or an implementation section.
+        unexpected($pred, "split_nested_empty duplicates a section")
     ;
         (
             SplitNested = split_nested_only_int(IntContext),
