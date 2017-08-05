@@ -47,9 +47,9 @@ cs:	$(CS)
 
 times:	$(TIMES)
 
-dir.%:	$(PROGS) $(SS)
+dir.%:	$(PROGS)
 	-mkdir $@
-	cp $(PROGS) $(SS) $@
+	cp $(PROGS) $@
 	cp BenchEntry $@
 
 %.time: %
