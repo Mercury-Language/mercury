@@ -1515,7 +1515,7 @@ recompile_reason_message(PrefixPieces, Reason, Spec) :-
         ;
             Reason = recompile_for_item_ambiguity(Item, AmbiguousItems),
             ItemPieces = describe_item(Item),
-            AmbiguousItemPieces = component_lists_to_pieces(
+            AmbiguousItemPieces = component_lists_to_pieces("and",
                 list.map(describe_item, AmbiguousItems)),
             Pieces = [words("addition of") | ItemPieces]
                 ++ [words("could cause an ambiguity with")]
@@ -1524,7 +1524,7 @@ recompile_reason_message(PrefixPieces, Reason, Spec) :-
             Reason = recompile_for_functor_ambiguity(SymName, Arity,
                 Functor, AmbiguousFunctors),
             FunctorPieces = describe_resolved_functor(SymName, Arity, Functor),
-            AmbiguousFunctorPieces = component_lists_to_pieces(
+            AmbiguousFunctorPieces = component_lists_to_pieces("and",
                 list.map(describe_resolved_functor(SymName, Arity),
                     AmbiguousFunctors)),
             Pieces = [words("addition of") | FunctorPieces]

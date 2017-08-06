@@ -851,7 +851,7 @@ report_not_enum_type(TypeName, TypeArity, NotEnumInfo,
         ;
             SortedNonEnumConsIds = [_ | _],
             ConsIdPieces =
-                component_list_to_pieces(
+                component_list_to_pieces("and",
                     list.map(wrap_unqual_cons_id_and_maybe_arity,
                         SortedNonEnumConsIds)),
             ItHasThese = choose_number(SortedNonEnumConsIds,

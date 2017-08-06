@@ -331,10 +331,10 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstId,
                 ;
                     MaybeForTypeKind = yes(ForTypeKind),
                     check_for_type_bound_insts(ForTypeKind, BoundInsts,
-                        [], RevMismatchConsIdStrs),
-                    list.reverse(RevMismatchConsIdStrs, MismatchConsIdStrs),
+                        cord.init, MismatchesCord),
+                    Mismatches = cord.list(MismatchesCord),
                     maybe_issue_type_match_error(InstId, InstDefn0,
-                        ForTypeKind, MismatchConsIdStrs, IFTC, MatchSpecs),
+                        ForTypeKind, IFTC, Mismatches, MatchSpecs),
                     !:Specs = MatchSpecs ++ !.Specs
                 ),
                 InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
@@ -460,16 +460,22 @@ type_defn_or_builtin_to_type_ctor(TypeDefnOrBuiltin, TypeCtor) :-
     ;       ftk_char
     ;       ftk_string.
 
-:- pred check_for_type_bound_insts(for_type_kind::in,
-    list(bound_inst)::in, list(string)::in, list(string)::out) is det.
+:- type cons_mismatch
+    --->    cons_mismatch(
+                bad_cons_id                     :: format_component,
+                possible_near_miss_cons_ids     :: list(format_component)
+            ).
 
-check_for_type_bound_insts(_ForTypeKind, [], !RevMismatchConsIdStrs).
+:- pred check_for_type_bound_insts(for_type_kind::in,
+    list(bound_inst)::in,
+    cord(cons_mismatch)::in, cord(cons_mismatch)::out) is det.
+
+check_for_type_bound_insts(_ForTypeKind, [], !RevMismatches).
 check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
-        !RevMismatchConsIdStrs) :-
+        !Mismatches) :-
     BoundInst = bound_functor(ConsId, _),
-    ConsIdStr = cons_id_and_arity_to_string(ConsId),
     (
-        ConsId = cons(ConsSymName, ConsArity, _),
+        ConsId = cons(ConsSymName, ConsArity, ConsIdTypeCtor),
         (
             ForTypeKind = ftk_user(TypeCtor, TypeDefn),
             get_type_defn_body(TypeDefn, TypeDefnBody),
@@ -478,40 +484,36 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
                     _, _, _, _, _, _, _, _),
                 (
                     ConsSymName = unqualified(ConsName),
-                    ModuleMismatch = no
+                    find_ctors_with_given_name(ConsName, Constructors,
+                        CtorArities),
+                    check_arity_and_maybe_report_near_misses(ConsIdTypeCtor,
+                        ConsId, unqualified(ConsName),
+                        ConsArity, CtorArities, !Mismatches)
                 ;
-                    ConsSymName = qualified(ConsModulename, ConsName),
+                    ConsSymName = qualified(ConsModuleName, ConsName),
+                    find_ctors_with_given_name(ConsName, Constructors,
+                        CtorArities),
                     TypeCtor = type_ctor(TypeCtorSymName, _),
                     ( if
-                        TypeCtorSymName = qualified(TypeCtormoduleName, _),
-                        partial_sym_name_matches_full(ConsModulename,
-                            TypeCtormoduleName)
+                        TypeCtorSymName = qualified(TypeCtorModuleName, _),
+                        partial_sym_name_matches_full(ConsModuleName,
+                            TypeCtorModuleName)
                     then
-                        ModuleMismatch = no
+                        check_arity_and_maybe_report_near_misses(
+                            ConsIdTypeCtor, ConsId, unqualified(ConsName),
+                            ConsArity, CtorArities, !Mismatches)
                     else
-                        ModuleMismatch = yes
+                        (
+                            TypeCtorSymName = qualified(TypeCtorModuleName, _),
+                            MissConsSymName =
+                                qualified(TypeCtorModuleName, ConsName)
+                        ;
+                            TypeCtorSymName = unqualified(_),
+                            MissConsSymName = unqualified(ConsName)
+                        ),
+                        report_near_misses(ConsIdTypeCtor, ConsId,
+                            MissConsSymName, CtorArities, !Mismatches)
                     )
-                ),
-                ( if
-                    some [Constructor] (
-                        list.member(Constructor, Constructors),
-                        Constructor = ctor(_, _, CtorSymName, _, CtorArity, _),
-                        unqualify_name(CtorSymName) = ConsName,
-                        CtorArity = ConsArity
-                    )
-                then
-                    ConsIdMismatch = no
-                else
-                    ConsIdMismatch = yes
-                ),
-                ( if
-                    ModuleMismatch = no,
-                    ConsIdMismatch = no
-                then
-                    true
-                else
-                    !:RevMismatchConsIdStrs =
-                        [ConsIdStr | !.RevMismatchConsIdStrs]
                 )
             ;
                 ( TypeDefnBody = hlds_eqv_type(_)
@@ -519,7 +521,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
                 ; TypeDefnBody = hlds_solver_type(_)
                 ; TypeDefnBody = hlds_abstract_type(_)
                 ),
-                !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+                !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
             )
         ;
             ForTypeKind = ftk_char,
@@ -529,70 +531,70 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             then
                 true
             else
-                !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+                !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
             )
         ;
             ( ForTypeKind = ftk_int(_)
             ; ForTypeKind = ftk_float
             ; ForTypeKind = ftk_string
             ),
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = int_const(_),
         ( if ForTypeKind = ftk_int(int_type_int) then
             true
         else
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = uint_const(_),
         ( if ForTypeKind = ftk_int(int_type_uint) then
             true
         else
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = int8_const(_),
         ( if ForTypeKind = ftk_int(int_type_int8) then
             true
         else
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = uint8_const(_),
         ( if ForTypeKind = ftk_int(int_type_uint8) then
             true
         else
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = int16_const(_),
         ( if ForTypeKind = ftk_int(int_type_int16) then
             true
         else
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = uint16_const(_),
         ( if ForTypeKind = ftk_int(int_type_uint16) then
             true
         else
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = int32_const(_),
         ( if ForTypeKind = ftk_int(int_type_int32) then
             true
         else
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = uint32_const(_),
         ( if ForTypeKind = ftk_int(int_type_uint32) then
             true
         else
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = float_const(_),
@@ -604,7 +606,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             ; ForTypeKind = ftk_char
             ; ForTypeKind = ftk_string
             ),
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = char_const(_),
@@ -616,7 +618,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             ; ForTypeKind = ftk_float
             ; ForTypeKind = ftk_string
             ),
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ConsId = string_const(_),
@@ -628,7 +630,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             ; ForTypeKind = ftk_float
             ; ForTypeKind = ftk_char
             ),
-            !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
         ( ConsId = tuple_cons(_)
@@ -645,10 +647,54 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
         ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_entry_desc(_)
         ),
-        !:RevMismatchConsIdStrs = [ConsIdStr | !.RevMismatchConsIdStrs]
+        !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
     ),
-    check_for_type_bound_insts(ForTypeKind, BoundInsts,
-        !RevMismatchConsIdStrs).
+    check_for_type_bound_insts(ForTypeKind, BoundInsts, !Mismatches).
+
+:- pred find_ctors_with_given_name(string::in, list(constructor)::in,
+    list(arity)::out) is det.
+
+find_ctors_with_given_name(_ConsName, [], []).
+find_ctors_with_given_name(ConsName, [Constructor | Constructors], Arities) :-
+    find_ctors_with_given_name(ConsName, Constructors, AritiesTail),
+    Constructor = ctor(_, _, CtorSymName, _, CtorArity, _),
+    ( if unqualify_name(CtorSymName) = ConsName then
+        Arities = [CtorArity | AritiesTail]
+    else
+        Arities = AritiesTail
+    ).
+
+:- func simple_miss(cons_id) = cons_mismatch.
+
+simple_miss(ConsId) =
+    cons_mismatch(qual_cons_id_and_maybe_arity(ConsId), []).
+
+:- pred check_arity_and_maybe_report_near_misses(type_ctor::in, cons_id::in,
+    sym_name::in, arity::in, list(arity)::in,
+    cord(cons_mismatch)::in, cord(cons_mismatch)::out) is det.
+
+check_arity_and_maybe_report_near_misses(TypeCtor, ConsId, SymName,
+        ConsArity, CtorArities, !Mismatches) :-
+    ( if list.member(ConsArity, CtorArities) then
+        true
+    else
+        report_near_misses(TypeCtor, ConsId, SymName, CtorArities, !Mismatches)
+    ).
+
+:- pred report_near_misses(type_ctor::in, cons_id::in, sym_name::in,
+    list(arity)::in,
+    cord(cons_mismatch)::in, cord(cons_mismatch)::out) is det.
+
+report_near_misses(TypeCtor, ConsId, SymName, CtorArities, !Mismatches) :-
+    NearMisses =
+        list.map(make_cons_id_component(TypeCtor, SymName), CtorArities),
+    Mismatch = cons_mismatch(qual_cons_id_and_maybe_arity(ConsId), NearMisses),
+    !:Mismatches = cord.snoc(!.Mismatches, Mismatch).
+
+:- func make_cons_id_component(type_ctor, sym_name, arity) = format_component.
+
+make_cons_id_component(TypeCtor, SymName, Arity) =
+    qual_cons_id_and_maybe_arity(cons(SymName, Arity, TypeCtor)).
 
 %---------------------------------------------------------------------------%
 
@@ -835,11 +881,11 @@ maybe_issue_no_such_type_error(InstId, InstDefn, TypeCtor, !Specs) :-
     ).
 
 :- pred maybe_issue_type_match_error(inst_id::in, hlds_inst_defn::in,
-    for_type_kind::in, list(string)::in, inst_for_type_ctor::out,
+    for_type_kind::in, inst_for_type_ctor::out, list(cons_mismatch)::in,
     list(error_spec)::out) is det.
 
-maybe_issue_type_match_error(InstId, InstDefn, ForTypeKind, MismatchConsIdStrs,
-        IFTC, !:Specs) :-
+maybe_issue_type_match_error(InstId, InstDefn, ForTypeKind, IFTC, Mismatches,
+        !:Specs) :-
     !:Specs = [],
     InstId = inst_id(InstSymName, InstArity),
     ShortInstSymName = unqualified(unqualify_name(InstSymName)),
@@ -907,14 +953,17 @@ maybe_issue_type_match_error(InstId, InstDefn, ForTypeKind, MismatchConsIdStrs,
     ),
 
     (
-        MismatchConsIdStrs = []
+        Mismatches = []
     ;
-        MismatchConsIdStrs = [_ | _],
-        FuncSymbolPhrase = choose_number(MismatchConsIdStrs,
+        Mismatches = [_ | MismatchesTail],
+        cons_id_strs_and_near_misses(Mismatches, MismatchConsIdComponents,
+            NearMisses),
+        FuncSymbolPhrase = choose_number(Mismatches,
             "function symbol", "function symbols"),
-        IsAreNotPhrase = choose_number(MismatchConsIdStrs,
+        IsAreNotPhrase = choose_number(Mismatches,
             "is not a function symbol", "are not function symbols"),
-        MismatchConsIdPieces = list_to_quoted_pieces(MismatchConsIdStrs),
+        MismatchConsIdPieces =
+            component_list_to_pieces("and", MismatchConsIdComponents),
         MismatchPieces = [words("Error: inst"),
             unqual_sym_name_and_arity(
                 sym_name_arity(ShortInstSymName, InstArity)),
@@ -924,8 +973,24 @@ maybe_issue_type_match_error(InstId, InstDefn, ForTypeKind, MismatchConsIdStrs,
             suffix(","), words("but its top level"),
             words(FuncSymbolPhrase)] ++ MismatchConsIdPieces ++
             [words(IsAreNotPhrase), words("of that type."), nl],
+        (
+            NearMisses = [],
+            NearMissPieces = []
+        ;
+            NearMisses = [_ | _],
+            (
+                MismatchesTail = [],
+                NearMissPieces = list.condense(
+                    list.map(project_if_alone, NearMisses))
+            ;
+                MismatchesTail = [_ | _],
+                NearMissPieces = list.condense(
+                    list.map(project_if_several, NearMisses))
+            )
+        ),
         MismatchSpec = error_spec(severity_error, phase_inst_check,
-            [simple_msg(Context, [always(MismatchPieces)])]),
+            [simple_msg(Context,
+                [always(MismatchPieces), always(NearMissPieces)])]),
         !:Specs = [MismatchSpec | !.Specs]
     ),
     (
@@ -941,6 +1006,41 @@ maybe_issue_type_match_error(InstId, InstDefn, ForTypeKind, MismatchConsIdStrs,
             InstDefinedInThisModule = yes
         )
     ).
+
+:- type near_miss_cons_mismatch
+    --->    near_miss_cons_mismatch(
+                if_only_one_mismatch    :: list(format_component),
+                if_several_mismatches   :: list(format_component)
+            ).
+
+:- pred cons_id_strs_and_near_misses(list(cons_mismatch)::in,
+    list(format_component)::out, list(near_miss_cons_mismatch)::out) is det.
+
+cons_id_strs_and_near_misses([], [], []).
+cons_id_strs_and_near_misses([Mismatch | Mismatches],
+        [ConsIdComponent | ConsIdComponents], NearMissMismatches) :-
+    cons_id_strs_and_near_misses(Mismatches, ConsIdComponents,
+        NearMissMismatchesTail),
+    Mismatch = cons_mismatch(ConsIdComponent, MaybeNearMisses),
+    (
+        MaybeNearMisses = [],
+        NearMissMismatches = NearMissMismatchesTail
+    ;
+        MaybeNearMisses = [_FirstNearMiss | _LaterNearMisses],
+        IfAlone = [words("Maybe you meant") |
+            component_list_to_pieces("or", MaybeNearMisses)] ++
+            [suffix("."), nl],
+        IfSeveral = [words("For"), ConsIdComponent, suffix(","),
+            lower_case_next_if_not_first | IfAlone],
+        NearMissMismatch = near_miss_cons_mismatch(IfAlone, IfSeveral),
+        NearMissMismatches = [NearMissMismatch | NearMissMismatchesTail]
+    ).
+
+:- func project_if_alone(near_miss_cons_mismatch) = list(format_component).
+:- func project_if_several(near_miss_cons_mismatch) = list(format_component).
+
+project_if_alone(near_miss_cons_mismatch(IfAlone, _)) = IfAlone.
+project_if_several(near_miss_cons_mismatch(_, IfSeveral)) = IfSeveral.
 
 %---------------------------------------------------------------------------%
 

@@ -441,9 +441,9 @@
 
     % Convert a list of lists of format_components into a list of
     % format_components separated by commas, with the last two elements
-    % separated by `and'.
+    % separated by the first argument as a word.
     %
-:- func component_lists_to_pieces(list(list(format_component))) =
+:- func component_lists_to_pieces(string, list(list(format_component))) =
     list(format_component).
 
     % Convert a list of lists of format_components into a list of
@@ -454,9 +454,10 @@
     list(format_component).
 
     % Convert a list of format_components into a list of format_components
-    % separated by commas, with the last two elements separated by `and'.
+    % separated by commas, with the last two elements separated
+    % by the first argument as a word.
     %
-:- func component_list_to_pieces(list(format_component)) =
+:- func component_list_to_pieces(string, list(format_component)) =
     list(format_component).
 
     % Convert a list of format_components into a list of format_components
@@ -1177,13 +1178,13 @@ list_to_quoted_pieces_or([Elem1, Elem2, Elem3 | Elems]) =
     [quote(Elem1), suffix(",") |
         list_to_quoted_pieces_or([Elem2, Elem3 | Elems])].
 
-component_lists_to_pieces([]) = [].
-component_lists_to_pieces([Comps]) = Comps.
-component_lists_to_pieces([Comps1, Comps2]) =
-    Comps1 ++ [words("and")] ++ Comps2.
-component_lists_to_pieces([Comps1, Comps2, Comps3 | Comps]) =
+component_lists_to_pieces(_, []) = [].
+component_lists_to_pieces(_, [Comps]) = Comps.
+component_lists_to_pieces(LastSep, [Comps1, Comps2]) =
+    Comps1 ++ [words(LastSep)] ++ Comps2.
+component_lists_to_pieces(LastSep, [Comps1, Comps2, Comps3 | Comps]) =
     Comps1 ++ [suffix(",")]
-    ++ component_lists_to_pieces([Comps2, Comps3 | Comps]).
+    ++ component_lists_to_pieces(LastSep, [Comps2, Comps3 | Comps]).
 
 strict_component_lists_to_pieces([]) = [].
 strict_component_lists_to_pieces([Comps]) = Comps.
@@ -1191,12 +1192,13 @@ strict_component_lists_to_pieces([Comps1, Comps2 | Comps]) =
     Comps1 ++ [suffix(",")]
     ++ strict_component_lists_to_pieces([Comps2 | Comps]).
 
-component_list_to_pieces([]) = [].
-component_list_to_pieces([Comp]) = [Comp].
-component_list_to_pieces([Comp1, Comp2]) = [Comp1, words("and"), Comp2].
-component_list_to_pieces([Comp1, Comp2, Comp3 | Comps]) =
+component_list_to_pieces(_, []) = [].
+component_list_to_pieces(_, [Comp]) = [Comp].
+component_list_to_pieces(LastSep, [Comp1, Comp2]) =
+    [Comp1, words(LastSep), Comp2].
+component_list_to_pieces(LastSep, [Comp1, Comp2, Comp3 | Comps]) =
     [Comp1, suffix(",")]
-    ++ component_list_to_pieces([Comp2, Comp3 | Comps]).
+    ++ component_list_to_pieces(LastSep, [Comp2, Comp3 | Comps]).
 
 strict_component_list_to_pieces([]) = [].
 strict_component_list_to_pieces([Comp]) = [Comp].

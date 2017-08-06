@@ -224,7 +224,7 @@ describe_several_pred_names(ModuleInfo, ShouldModuleQualify, PredIds)
     PiecesList = list.map(
         describe_one_pred_name(ModuleInfo, ShouldModuleQualify),
         PredIds),
-    Pieces = component_lists_to_pieces(PiecesList).
+    Pieces = component_lists_to_pieces("and", PiecesList).
 
 describe_one_proc_name(ModuleInfo, ShouldModuleQualify, proc(PredId, ProcId))
         = Pieces :-
@@ -246,7 +246,7 @@ describe_several_proc_names(ModuleInfo, ShouldModuleQualify, PPIds) = Pieces :-
     PiecesList = list.map(
         describe_one_proc_name(ModuleInfo, ShouldModuleQualify),
         PPIds),
-    Pieces = component_lists_to_pieces(PiecesList).
+    Pieces = component_lists_to_pieces("and", PiecesList).
 
 describe_one_call_site(ModuleInfo, ShouldModuleQualify, PPId - Context)
         = Pieces :-
@@ -262,7 +262,7 @@ describe_several_call_sites(ModuleInfo, ShouldModuleQualify, Sites) = Pieces :-
     PiecesList = list.map(
         describe_one_call_site(ModuleInfo, ShouldModuleQualify),
         Sites),
-    Pieces = component_lists_to_pieces(PiecesList).
+    Pieces = component_lists_to_pieces("and", PiecesList).
 
 :- func module_qualification(module_name, should_module_qualify) = string.
 

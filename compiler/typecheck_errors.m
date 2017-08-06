@@ -1755,7 +1755,7 @@ constraints_to_pieces(TypeAssign, Pieces, !NumUnsatisfied) :-
             UnprovenProgConstraints),
     UnprovenProgConstraintsPieces =
         list.map(wrap_quote, UnprovenProgConstraintStrings),
-    Pieces = component_list_to_pieces(UnprovenProgConstraintsPieces).
+    Pieces = component_list_to_pieces("and", UnprovenProgConstraintsPieces).
 
 :- func wrap_quote(string) = format_component.
 

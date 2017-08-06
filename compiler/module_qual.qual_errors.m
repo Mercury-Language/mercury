@@ -218,7 +218,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         ),
         OtherIntSymNames = list.map(wrap_module_name, OtherIntMismatches),
         OtherIntPieces = [words("(The"), fixed(OtherIntModuleWord)] ++
-            component_list_to_pieces(OtherIntSymNames) ++
+            component_list_to_pieces("and", OtherIntSymNames) ++
             [fixed(OtherIntHasWord),
                 words("not been imported in the interface.)"), nl]
     ),
@@ -237,7 +237,8 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         QualSymNames = list.map(wrap_module_name, QualMismatches),
         QualPieces = [words("(Only fully module qualified names"),
             words("may refer to the entities defined in the"),
-            fixed(QualModuleWord)] ++ component_list_to_pieces(QualSymNames) ++
+            fixed(QualModuleWord)] ++
+            component_list_to_pieces("and", QualSymNames) ++
             [suffix(".)"), nl]
     ),
     ( if
@@ -307,7 +308,8 @@ report_ambiguous_match(ErrorContext, Id, IdType,
         words("ambiguity error: multiple possible matches for"),
         fixed(IdTypeStr), wrap_id(Id), suffix("."), nl,
         words("The possible matches are in modules")] ++
-        component_list_to_pieces(UsableModuleSymNames) ++ [suffix("."), nl],
+        component_list_to_pieces("and", UsableModuleSymNames) ++
+        [suffix("."), nl],
     (
         UnusableModuleNames = [],
         UnusablePieces = []

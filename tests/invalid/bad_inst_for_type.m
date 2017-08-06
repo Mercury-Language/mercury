@@ -66,3 +66,19 @@
     --->    [ground | ground].
 
 :- inst x1 for t1/0 == ground.
+
+:- type t3
+    --->    f3(int, int, int)
+    ;       f3(int, int, int, int, int).
+
+:- inst i3 for t3/0
+    --->    f3(ground, ground, ground, ground).
+
+:- type t4
+    --->    yes(int).
+
+:- inst i4a for t4/0
+    --->    yes(ground).
+
+:- inst i4b for t4/0
+    --->    maybe.yes(ground).

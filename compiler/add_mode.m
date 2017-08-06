@@ -314,7 +314,8 @@ report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
             ),
             Expansions),
         Pieces = [words("Error: circular equivalence"), fixed(Kinds)]
-            ++ component_list_to_pieces(ExpansionPieces) ++ [suffix("."), nl],
+            ++ component_list_to_pieces("and", ExpansionPieces) ++
+            [suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]

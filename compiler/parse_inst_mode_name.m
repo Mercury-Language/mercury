@@ -827,7 +827,7 @@ parse_bound_inst_list(AllowConstrainedInstVar, VarSet, ContextPieces,
         then
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: this bound inst lists") |
-                component_list_to_pieces(Duplicates)]
+                component_list_to_pieces("and", Duplicates)]
                 ++ [words("more than once."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(DisjunctionTerm),

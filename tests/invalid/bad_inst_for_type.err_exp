@@ -1,22 +1,33 @@
 bad_inst_for_type.m:023: Error: inst `i1b'/0 is declared to be for type
 bad_inst_for_type.m:023:   `bad_inst_for_type.t1'/0, but its top level function
-bad_inst_for_type.m:023:   symbol `f2b/1' is not a function symbol of that
+bad_inst_for_type.m:023:   symbol `f2b'/1 is not a function symbol of that
 bad_inst_for_type.m:023:   type.
 bad_inst_for_type.m:027: Error: inst `i1c'/0 is declared to be for type
 bad_inst_for_type.m:027:   `bad_inst_for_type.t1'/0, but its top level function
-bad_inst_for_type.m:027:   symbol `f1a/2' is not a function symbol of that
+bad_inst_for_type.m:027:   symbol `f1a'/2 is not a function symbol of that
 bad_inst_for_type.m:027:   type.
+bad_inst_for_type.m:027:   Maybe you meant `f1a'/1.
 bad_inst_for_type.m:036: Error: inst `i2b'/0 is declared to be for type
 bad_inst_for_type.m:036:   `bad_inst_for_type.t2'/1, but its top level function
-bad_inst_for_type.m:036:   symbol `f1a/1' is not a function symbol of that
+bad_inst_for_type.m:036:   symbol `f1a'/1 is not a function symbol of that
 bad_inst_for_type.m:036:   type.
 bad_inst_for_type.m:040: Error: inst `i2c'/0 is declared to be for type
 bad_inst_for_type.m:040:   `bad_inst_for_type.t2'/1, but its top level function
-bad_inst_for_type.m:040:   symbols `f2b/2' and `f2c/2' are not function symbols
+bad_inst_for_type.m:040:   symbols `f2b'/2 and `f2c'/2 are not function symbols
 bad_inst_for_type.m:040:   of that type.
+bad_inst_for_type.m:040:   For `f2b'/2, maybe you meant `f2b'/1.
 bad_inst_for_type.m:053: Error: inst `c3'/0 is declared to be for type
 bad_inst_for_type.m:053:   `character'/0, but its top level function symbol
-bad_inst_for_type.m:053:   `bb/0' is not a function symbol of that type.
+bad_inst_for_type.m:053:   `bb'/0 is not a function symbol of that type.
 bad_inst_for_type.m:068: Error: inst `x1'/0, is specified to be for a given
 bad_inst_for_type.m:068:   type constructor, but it is not defined to be
 bad_inst_for_type.m:068:   equivalent to a `bound' inst.
+bad_inst_for_type.m:074: Error: inst `i3'/0 is declared to be for type
+bad_inst_for_type.m:074:   `bad_inst_for_type.t3'/0, but its top level function
+bad_inst_for_type.m:074:   symbol `f3'/4 is not a function symbol of that type.
+bad_inst_for_type.m:074:   Maybe you meant `f3'/3 or `f3'/5.
+bad_inst_for_type.m:083: Error: inst `i4b'/0 is declared to be for type
+bad_inst_for_type.m:083:   `bad_inst_for_type.t4'/0, but its top level function
+bad_inst_for_type.m:083:   symbol `maybe.yes'/1 is not a function symbol of
+bad_inst_for_type.m:083:   that type.
+bad_inst_for_type.m:083:   Maybe you meant `bad_inst_for_type.yes'/1.

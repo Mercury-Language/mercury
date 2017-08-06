@@ -1179,7 +1179,7 @@ check_type_and_mode_list_is_consistent(TypesAndModes, MaybeRetTypeAndMode,
             WithoutArgNumPieces =
                 list.map(wrap_nth(add_the_prefix), WithoutModeArgNums),
             WithoutArgNumsPieces =
-                component_list_to_pieces(WithoutArgNumPieces),
+                component_list_to_pieces("and", WithoutArgNumPieces),
             IdPieces = [words("The arguments without modes are the") |
                 WithoutArgNumsPieces] ++ [suffix("."), nl]
         ),

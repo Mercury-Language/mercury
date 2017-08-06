@@ -749,7 +749,7 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
         set.to_sorted_list(ImportedAndUsed, ImportedAndUsedList),
         Pieces = [words("Warning:"),
             words(choose_number(ImportedAndUsedList, "module", "modules"))] ++
-            component_list_to_pieces(
+            component_list_to_pieces("and",
                 list.map(wrap_symname, ImportedAndUsedList)) ++
             [words(choose_number(ImportedAndUsedList, "is", "are")),
             words("imported using both"), decl("import_module"),

@@ -223,7 +223,7 @@ maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
                 OtherAritiesPieces = [words("However,"),
                     words(FullPredOrFuncStr), suffix("s"),
                     words("of that name do exist with arities") |
-                    component_list_to_pieces(
+                    component_list_to_pieces("and",
                         list.map(wrap_int_fixed, OtherAritiesList))] ++
                     [suffix("."), nl]
             ),

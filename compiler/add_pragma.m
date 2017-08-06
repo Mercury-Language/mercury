@@ -1505,7 +1505,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
             ;
                 SortedArityPieces = [_, _ | _],
                 ExpArities = [words("one of") |
-                    component_list_to_pieces(SortedArityPieces)]
+                    component_list_to_pieces("and", SortedArityPieces)]
             ),
             TypeCtor = type_ctor(TypeName, TypeArity),
             Pieces = [words("In the"), nth_fixed(!.SeqNum),
