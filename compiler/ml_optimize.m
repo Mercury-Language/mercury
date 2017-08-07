@@ -35,8 +35,60 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ml_backend.mlds.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
+
+:- import_module list.
 
 :- pred mlds_optimize(globals::in, mlds::in, mlds::out) is det.
+
+    % XXX Temporarily exported to ml_call_gen.m. When tail recursion
+    % optimization is moved completely into the code generator,
+    % this whole predicate will be moved to ml_call_gen.m.
+    %
+    % Assign the given list of rvals (the actual parameter) to the given list
+    % of mlds_arguments (the formal parameter). This is used as part of tail
+    % recursion optimization (see above).
+    %
+    % For each actual parameter that differs from its corresponding formal
+    % parameter, we declare a temporary variable to hold the next value
+    % of the formal parameter, and assign it the value of the actual parameter.
+    % Once this has been done for all parameters, we then assign each formal
+    % parameter its next value. The code we generate looks like this:
+    %
+    %   % These are returned in TempDefns.
+    %   SomeType new_value_of_arg1;
+    %   SomeType new_value_of_arg3;
+    %   SomeType new_value_of_arg3;
+    %
+    %   % These are returned in InitStmts.
+    %   new_value_of_arg1 = <the new value of parameter 1>
+    %   new_value_of_arg2 = <the new value of parameter 2>
+    %   new_value_of_arg3 = <the new value of parameter 3>
+    %
+    %   % These are returned in AssignStmts.
+    %   arg1 = new_value_of_arg1;
+    %   arg2 = new_value_of_arg2;
+    %   arg3 = new_value_of_arg3;
+    %
+    % The temporaries are needed for tail calls such as
+    %
+    % p(In1, In2, ...) :-
+    %   ...
+    %   p(In2, In1, ...).
+    %
+    % We don't want to assign In1 to In2 (in the second parameter position)
+    % after we have already clobbered the value of In1 by assigning it In2
+    % (when processing the first parameter position).
+    %
+    % This predicate doesn't pay attention to the gc statement field
+    % inside the mlds_arguments it is given; it needs only the variable name
+    % and type fields.
+    %
+:- pred tail_rec_call_assign_input_args(mlds_module_name::in, prog_context::in,
+    list(mlds_argument)::in, list(mlds_rval)::in,
+    list(mlds_stmt)::out, list(mlds_stmt)::out,
+    list(mlds_local_var_defn)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -52,12 +104,9 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_util.
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
@@ -219,7 +268,7 @@ optimize_in_default(OptInfo, Default0, Default) :-
     mlds_stmt::in(ml_stmt_is_call), mlds_stmt::out) is det.
 
 optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
-    Stmt0 = ml_stmt_call(_Signature, FuncRval, CallArgs,
+    Stmt0 = ml_stmt_call(_Signature, FuncRval, CallArgRvals,
         _Results, _IsTailCall, _Markers, Context),
     % If we have a self-tailcall, assign to the arguments and
     % then goto the top of the tailcall loop.
@@ -236,8 +285,8 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
             Context),
         GotoStmt = ml_stmt_goto(tailcall_loop_top(Globals), Context),
         OptInfo ^ oi_func_params = mlds_func_params(FuncArgs, _RetTypes),
-        tail_rec_call_assign_input_args(OptInfo, Context, FuncArgs, CallArgs,
-            InitStmts, AssignStmts, TempDefns),
+        tail_rec_call_assign_input_args(ModuleName, Context,
+            FuncArgs, CallArgRvals, InitStmts, AssignStmts, TempDefns),
         AssignVarsStmt = ml_stmt_block(TempDefns, [],
             InitStmts ++ AssignStmts, Context),
 
@@ -261,11 +310,11 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
             _Arity, _CodeModel, _NonOutputFunc),
         (
             PredName = "mark_hp",
-            CallArgs = [ml_mem_addr(Lval)],
+            CallArgRvals = [ml_mem_addr(Lval)],
             AtomicStmt = mark_hp(Lval)
         ;
             PredName = "restore_hp",
-            CallArgs = [Rval],
+            CallArgRvals = [Rval],
             AtomicStmt = restore_hp(Rval)
         ),
         PrivateBuiltin = mercury_private_builtin_module,
@@ -307,63 +356,18 @@ tailcall_loop_label_name = "loop_top".
 
 %----------------------------------------------------------------------------
 
-    % Assign the given list of rvals (the actual parameter) to the given list
-    % of mlds_arguments (the formal parameter). This is used as part of tail
-    % recursion optimization (see above).
-    %
-    % For each actual parameter that differs from its corresponding formal
-    % parameter, we declare a temporary variable to hold the next value
-    % of the formal parameter, and assign it the value of the actual parameter.
-    % Once this has been done for all parameters, we then assign each formal
-    % parameter its next value. The code we generate looks like this:
-    %
-    %   % These are returned in TempDefns.
-    %   SomeType new_value_of_arg1;
-    %   SomeType new_value_of_arg3;
-    %   SomeType new_value_of_arg3;
-    %
-    %   % These are returned in InitStmts.
-    %   new_value_of_arg1 = <the a new value of parameter 1>
-    %   new_value_of_arg2 = <the a new value of parameter 2>
-    %   new_value_of_arg3 = <the a new value of parameter 3>
-    %
-    %   % These are returned in AssignStmts.
-    %   arg1 = new_value_of_arg1;
-    %   arg2 = new_value_of_arg2;
-    %   arg3 = new_value_of_arg3;
-    %
-    % The temporaries are needed for tail calls such as
-    %
-    % p(In1, In2, ...) :-
-    %   ...
-    %   p(In2, In1, ...).
-    %
-    % We don't want to assign In1 to In2 (in the second parameter position)
-    % after we have already clobbered the value of In1 by assigning it In2
-    % (when processing the first parameter position).
-    %
-    % This predicate doesn't pay attention to the gc statement field
-    % inside the mlds_arguments it is given; it needs only the variable name
-    % and type fields.
-    %
-:- pred tail_rec_call_assign_input_args(opt_info::in, prog_context::in,
-    list(mlds_argument)::in, list(mlds_rval)::in,
-    list(mlds_stmt)::out, list(mlds_stmt)::out,
-    list(mlds_local_var_defn)::out) is det.
-
 tail_rec_call_assign_input_args(_, _, [], [], [], [], []).
 tail_rec_call_assign_input_args(_, _, [_|_], [], [], [], []) :-
     unexpected($pred, "length mismatch").
 tail_rec_call_assign_input_args(_, _, [], [_|_], [], [], []) :-
     unexpected($pred, "length mismatch").
-tail_rec_call_assign_input_args(OptInfo, Context,
+tail_rec_call_assign_input_args(ModuleName, Context,
         [Arg | Args], [ArgRval | ArgRvals],
         !:InitStmts, !:AssignStmts, !:TempDefns) :-
-    tail_rec_call_assign_input_args(OptInfo, Context, Args, ArgRvals,
+    tail_rec_call_assign_input_args(ModuleName, Context, Args, ArgRvals,
         !:InitStmts, !:AssignStmts, !:TempDefns),
 
     Arg = mlds_argument(VarName, Type, _ArgGCStmt),
-    ModuleName = OptInfo ^ oi_module_name,
     QualVarName = qual_local_var_name(ModuleName, module_qual, VarName),
     ( if
         % Don't bother assigning a variable to itself.
@@ -504,7 +508,7 @@ optimize_func_stmt(OptInfo, Context, Stmt0, Stmt) :-
 
 stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
         Stmt) :-
-    Stmt = ml_stmt_call(_Signature, CalleeRval, _CallArgs,
+    Stmt = ml_stmt_call(_Signature, CalleeRval, _CallArgRvals,
         _Results, CallKind, _Markers, _Context),
 
     % Check if this call has been marked by ml_tailcall.m as one that
@@ -909,51 +913,65 @@ maybe_convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
     list(mlds_local_var_defn)::in, list(mlds_local_var_defn)::out,
     list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
-convert_assignments_into_initializers(OptInfo, !LocalVarDefns, !Stmts) :-
-    ( if
-        % Check if the first statement in the block is an assignment to one
-        % of the variables declared in the block.
-        !.Stmts = [AssignStmt | !:Stmts],
-        AssignStmt = ml_stmt_atomic(assign(LHS, RHS), _),
-        LHS = ml_local_var(ThisVar, _ThisType),
-        ThisVar = qual_local_var_name(Qualifier, QualKind, VarName),
+convert_assignments_into_initializers(_OptInfo, !LocalVarDefns, [], []).
+convert_assignments_into_initializers(OptInfo, !LocalVarDefns,
+        [HeadStmt0 | TailStmts0], Stmts) :-
+    ( if HeadStmt0 = ml_stmt_atomic(AtomicHeadStmt0, _) then
+        ( if
+            % Check if the first statement in the block is an assignment
+            % to one of the variables declared in the block.
+            AtomicHeadStmt0 = assign(LHS, RHS),
+            LHS = ml_local_var(ThisVar, _ThisType),
+            ThisVar = qual_local_var_name(Qualifier, QualKind, VarName),
 
-        % We must check that the value being assigned doesn't refer to the
-        % variable itself.
-        rval_contains_var(RHS, ThisVar) = no,
+            % We must check that the value being assigned doesn't refer to the
+            % variable itself.
+            rval_contains_var(RHS, ThisVar) = no,
 
-        % We must check that the value being assigned doesn't refer to any
-        % of the variables which are declared after this one. We must also
-        % check that the initializers (if any) of the variables that follow
-        % this one don't refer to this variable.
-        Qualifier = OptInfo ^ oi_module_name,
-        find_this_var_defn(VarName, !.LocalVarDefns, [], RevPrevDefns,
-            ThisVarDefn0, LaterDefns),
-        Filter =
-            ( pred(OtherLocalVarDefn::in) is semidet :-
-                OtherLocalVarDefn = mlds_local_var_defn(OtherVarName, _,
-                    _Type, OtherInitializer, _GC),
-                (
-                    QualOtherVar = qual_local_var_name(Qualifier, QualKind,
-                        OtherVarName),
-                    rval_contains_var(RHS, QualOtherVar) = yes
-                ;
-                    initializer_contains_var(OtherInitializer, ThisVar) = yes
-                )
-            ),
-        not list.find_first_match(Filter, LaterDefns, _)
-    then
-        % Replace the assignment statement with an initializer
-        % on the variable declaration.
-        ThisVarDefn = ThisVarDefn0 ^ mlvd_init := init_obj(RHS),
-        !:LocalVarDefns = list.reverse(RevPrevDefns) ++
-            [ThisVarDefn | LaterDefns],
+            % We must check that the value being assigned doesn't refer to any
+            % of the variables which are declared after this one. We must also
+            % check that the initializers (if any) of the variables that follow
+            % this one don't refer to this variable.
+            Qualifier = OptInfo ^ oi_module_name,
+            find_this_var_defn(VarName, !.LocalVarDefns, [], RevPrevDefns,
+                ThisVarDefn0, LaterDefns),
+            Filter =
+                ( pred(OtherLocalVarDefn::in) is semidet :-
+                    OtherLocalVarDefn = mlds_local_var_defn(OtherVarName, _,
+                        _Type, OtherInitializer, _GC),
+                    (
+                        QualOtherVar = qual_local_var_name(Qualifier, QualKind,
+                            OtherVarName),
+                        rval_contains_var(RHS, QualOtherVar) = yes
+                    ;
+                        initializer_contains_var(OtherInitializer, ThisVar)
+                            = yes
+                    )
+                ),
+            not list.find_first_match(Filter, LaterDefns, _)
+        then
+            % Replace the assignment statement with an initializer
+            % on the variable declaration.
+            ThisVarDefn = ThisVarDefn0 ^ mlvd_init := init_obj(RHS),
+            !:LocalVarDefns = list.reverse(RevPrevDefns) ++
+                [ThisVarDefn | LaterDefns],
 
-        % Now try to apply the same optimization again.
-        convert_assignments_into_initializers(OptInfo, !LocalVarDefns, !Stmts)
+            % Now try to apply the same optimization again.
+            convert_assignments_into_initializers(OptInfo, !LocalVarDefns,
+                TailStmts0, Stmts)
+        else if
+            AtomicHeadStmt0 = comment(_)
+        then
+            convert_assignments_into_initializers(OptInfo, !LocalVarDefns,
+                TailStmts0, TailStmts),
+            Stmts = [HeadStmt0 | TailStmts]
+        else
+            % No optimization possible -- leave the block unchanged.
+            Stmts = [HeadStmt0 | TailStmts0]
+        )
     else
         % No optimization possible -- leave the block unchanged.
-        true
+        Stmts = [HeadStmt0 | TailStmts0]
     ).
 
 :- pred find_this_var_defn(mlds_local_var_name::in,

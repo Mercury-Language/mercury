@@ -16,6 +16,10 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
+
+:- import_module list.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -23,7 +27,8 @@
     % Generate MLDS code for an entire module.
     %
 :- pred ml_code_gen(mlds_target_lang::in, mlds::out,
-    module_info::in, module_info::out) is det.
+    module_info::in, module_info::out, 
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -40,6 +45,7 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.mark_tail_calls.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
@@ -52,10 +58,10 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
+:- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.ml_util.
-:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
@@ -67,7 +73,6 @@
 :- import_module cord.
 :- import_module getopt_io.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -78,12 +83,12 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-ml_code_gen(Target, MLDS, !ModuleInfo) :-
+ml_code_gen(Target, MLDS, !ModuleInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ml_gen_foreign_code(!.ModuleInfo, ForeignCode),
     ml_gen_imports(!.ModuleInfo, Target, Imports),
-    ml_gen_defns(!ModuleInfo, Target, TypeDefns, TableStructDefns, PredDefns,
-        GlobalData),
+    ml_gen_defns(Target, TypeDefns, TableStructDefns, PredDefns, GlobalData,
+        !ModuleInfo, !Specs),
     ml_gen_exported_enums(!.ModuleInfo, ExportedEnums),
     module_info_user_init_pred_c_names(!.ModuleInfo, InitPreds),
     module_info_user_final_pred_c_names(!.ModuleInfo, FinalPreds),
@@ -155,8 +160,7 @@ ml_gen_imports(ModuleInfo, Target, MLDS_ImportList) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
     ForeignTypeImports = list.condense(
-        list.map(foreign_type_required_imports(Target), TypeCtorsDefns)),
-
+        list.map(foreign_type_required_imports(Target), TypeCtorsDefns)), 
     MLDS_ImportList = ForeignTypeImports ++
         list.map(P, set.to_sorted_list(AllImports)).
 
@@ -172,17 +176,20 @@ foreign_type_required_imports(Target, _TypeCtor - _TypeDefn) = Imports :-
         Imports = []
     ).
 
-:- pred ml_gen_defns(module_info::in, module_info::out, mlds_target_lang::in,
+:- pred ml_gen_defns(mlds_target_lang::in,
     list(mlds_class_defn)::out, list(mlds_global_var_defn)::out,
-    list(mlds_function_defn)::out, ml_global_data::out) is det.
+    list(mlds_function_defn)::out, ml_global_data::out,
+    module_info::in, module_info::out, 
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-ml_gen_defns(!ModuleInfo, Target, TypeDefns, TableStructDefns, PredDefns,
-        !:GlobalData) :-
+ml_gen_defns(Target, TypeDefns, TableStructDefns, PredDefns,
+        !:GlobalData, !ModuleInfo, !Specs) :-
     ml_gen_types(!.ModuleInfo, Target, TypeDefns),
     ml_gen_table_structs(!.ModuleInfo, TableStructDefns),
     ml_gen_init_global_data(!.ModuleInfo, Target, !:GlobalData),
     ml_gen_const_structs(!.ModuleInfo, Target, ConstStructMap, !GlobalData),
-    ml_gen_preds(Target, ConstStructMap, PredDefns, !GlobalData, !ModuleInfo).
+    ml_gen_preds(Target, ConstStructMap, PredDefns, !GlobalData,
+        !ModuleInfo, !Specs).
 
 :- pred ml_gen_init_global_data(module_info::in, mlds_target_lang::in,
     ml_global_data::out) is det.
@@ -270,10 +277,11 @@ has_ptr_type(mlds_argument(_, mlds_ptr_type(_), _)).
 :- pred ml_gen_preds(mlds_target_lang::in,
     ml_const_struct_map::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    module_info::in, module_info::out) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 ml_gen_preds(Target, ConstStructMap, FunctionDefns,
-        !GlobalData, !ModuleInfo) :-
+        !GlobalData, !ModuleInfo, !Specs) :-
     module_info_get_preds(!.ModuleInfo, PredTable),
     map.to_assoc_list(PredTable, PredIdInfos),
     ml_find_procs_for_code_gen(PredIdInfos, [], PredProcIds),
@@ -285,7 +293,7 @@ ml_gen_preds(Target, ConstStructMap, FunctionDefns,
     BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
 
     ml_gen_sccs(Target, ConstStructMap, BottomUpSCCs, [], FunctionDefns,
-        !GlobalData, !ModuleInfo).
+        !GlobalData, !ModuleInfo, !Specs).
 
 :- pred ml_find_procs_for_code_gen(assoc_list(pred_id, pred_info)::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
@@ -333,43 +341,46 @@ ml_find_procs_for_code_gen([PredIdInfo | PredIdInfos], !CodeGenPredProcIds) :-
     ml_const_struct_map::in, list(set(pred_proc_id))::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    module_info::in, module_info::out) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-ml_gen_sccs(_, _, [], !FunctionDefns, !GlobalData, !ModuleInfo).
+ml_gen_sccs(_, _, [], !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
 ml_gen_sccs(Target, ConstStructMap, [SCC | SCCs],
-        !FunctionDefns, !GlobalData, !ModuleInfo) :-
+        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs) :-
     ml_gen_scc(Target, ConstStructMap, SCC,
-        !FunctionDefns, !GlobalData, !ModuleInfo),
+        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs),
     ml_gen_sccs(Target, ConstStructMap, SCCs,
-        !FunctionDefns, !GlobalData, !ModuleInfo).
+        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
 
 :- pred ml_gen_scc(mlds_target_lang::in,
     ml_const_struct_map::in, set(pred_proc_id)::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    module_info::in, module_info::out) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 ml_gen_scc(Target, ConstStructMap, SCC,
-        !FunctionDefns, !GlobalData, !ModuleInfo) :-
+        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs) :-
     % In the future, this predicate will arrange for tail call optimization
     % in SCCs with mutually-recursive tail calls.
     set.to_sorted_list(SCC, PredProcIds),
     ml_gen_procs(Target, ConstStructMap, PredProcIds,
-        !FunctionDefns, !GlobalData, !ModuleInfo).
+        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
 
 :- pred ml_gen_procs(mlds_target_lang::in,
     ml_const_struct_map::in, list(pred_proc_id)::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    module_info::in, module_info::out) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-ml_gen_procs(_, _, [], !FunctionDefns, !GlobalData, !ModuleInfo).
+ml_gen_procs(_, _, [], !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
 ml_gen_procs(Target, ConstStructMap, [PredProcId | PredProcIds],
-        !FunctionDefns, !GlobalData, !ModuleInfo) :-
+        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs) :-
     ml_gen_proc(Target, ConstStructMap, PredProcId,
-        !FunctionDefns, !GlobalData, !ModuleInfo),
+        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs),
     ml_gen_procs(Target, ConstStructMap, PredProcIds,
-        !FunctionDefns, !GlobalData, !ModuleInfo).
+        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 %
@@ -380,10 +391,11 @@ ml_gen_procs(Target, ConstStructMap, [PredProcId | PredProcIds],
     ml_const_struct_map::in, pred_proc_id::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    module_info::in, module_info::out) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 ml_gen_proc(Target, ConstStructMap, PredProcId,
-        !FuncDefns, !GlobalData, !ModuleInfo) :-
+        !FuncDefns, !GlobalData, !ModuleInfo, !Specs) :-
     trace [io(!IO)] (
         write_proc_progress_message("% Generating MLDS code for ",
             PredProcId, !.ModuleInfo, !IO)
@@ -415,13 +427,51 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_get_goal(ProcInfo, Goal),
+    MaybeRequireTailrecInfoFD = no,
 
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
 
     some [!Info] (
+        module_info_get_globals(!.ModuleInfo, Globals),
+        SupportsBreakContinue =
+            globals_target_supports_break_and_continue(Globals),
+        (
+            SupportsBreakContinue = yes,
+            % If we find a tail call, we will wrap the function body inside
+            % `while (true) { ... break; }', and so the tail call can just
+            % do a `continue', which will continue the next iteration
+            % of the loop.
+            TailRecMechanism = tail_rec_via_while_loop
+        ;
+            SupportsBreakContinue = no,
+            % If we find a tail call, we will insert a label at the start of
+            % the function, and so the tail call can just goto to that label.
+            TailRecMechanism = tail_rec_via_start_label("proc_top")
+        ),
+
+        InputParams =
+            ml_gen_proc_params_inputs_only(!.ModuleInfo, PredId, ProcId),
+
+        TailRecTargetInfo0 = tail_rec_target_info(TailRecMechanism,
+            InputParams, have_not_done_tail_rec),
+        ( if
+            % Optimize tail calls only if asked.
+            globals.lookup_bool_option(Globals, optimize_tailcalls, yes),
+            globals.lookup_bool_option(Globals,
+                optimize_tailcalls_codegen, yes),
+            % Tail recursion optimization does not apply to model_non
+            % procedures.
+            ( CodeModel = model_det
+            ; CodeModel = model_semi
+            )
+        then
+            TailRecMap0 = map.singleton(PredProcId, TailRecTargetInfo0)
+        else
+            map.init(TailRecMap0)
+        ),
         !:Info = ml_gen_info_init(!.ModuleInfo, Target, ConstStructMap,
-            PredId, ProcId, ProcInfo, !.GlobalData),
+            PredId, ProcId, ProcInfo, TailRecMap0, !.GlobalData),
 
         ( if PredStatus = pred_status(status_external(_)) then
             % For Mercury procedures declared `:- pragma external_{pred/func}',
@@ -432,7 +482,9 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
             % declared as `extern' rather than `static'.
             FuncBody = body_external,
             ClosureWrapperFuncDefns = [],
-            ml_gen_info_proc_params(PredId, ProcId, MLDS_Params, !.Info, _Info)
+            ml_gen_info_proc_params(PredId, ProcId, MLDS_Params,
+                !.Info, _Info),
+            set.init(EnvVarNames)
         else
             % Set up the initial success continuation, if any.
             % Also figure out which output variables are returned by value
@@ -452,7 +504,7 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
             modes_to_top_functor_modes(!.ModuleInfo, Modes, ArgTypes,
                 TopFunctorModes),
             ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
-                CopiedOutputVars, Goal, LocalVarDefns0, FuncDefns, Statements,
+                CopiedOutputVars, Goal, LocalVarDefns0, FuncDefns, GoalStmts,
                 !Info),
 
             % This would generate all the local variables at the top of
@@ -493,14 +545,60 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
                 ClosureWrapperFuncDefns),
             ml_gen_info_get_global_data(!.Info, !:GlobalData),
             LocalVarDefns = ProcLocalVarDefns ++ LocalVarDefns0,
-            Statement = ml_gen_block(LocalVarDefns, FuncDefns, Statements,
-                Context),
-            FuncBody = body_defined_here(Statement)
-        ),
-        % XXX Can env_var_names be affected by body_external?
-        % If, as I (zs) suspect, it cannot, this should be inside the previous
-        % scope.
-        ml_gen_info_get_env_var_names(!.Info, EnvVarNames)
+            ml_gen_info_get_tail_rec_info(!.Info, TailRecInfo),
+            TailRecInfo = tail_rec_info(TargetMap, _WarnParams, TailRecSpecs),
+            !:Specs = TailRecSpecs ++ !.Specs,
+            ( if
+                map.search(TargetMap, PredProcId, TailRecTargetInfo),
+                TailRecTargetInfo = tail_rec_target_info(_TailRecMechanism,
+                    _InputParams, HaveDoneTailRec),
+                HaveDoneTailRec = have_done_tail_rec
+            then
+                % XXX Use better comment, e.g. "setup for optimized tail calls"
+                CommentStmt = ml_stmt_atomic(
+                    comment("tailcall optimized into a loop"), Context),
+                % XXX We *should* generate the following code, but ...
+%               (
+%                   TailRecMechanism = tail_rec_via_while_loop,
+%                   BreakStmt = ml_stmt_goto(goto_break, Context),
+%                   LoopBodyStmt = ml_stmt_block(LocalVarDefns, FuncDefns,
+%                       [CommentStmt] ++ GoalStmts ++ [BreakStmt], Context),
+%                   FuncBodyStmt = ml_stmt_while(may_loop_zero_times,
+%                       ml_const(mlconst_true), LoopBodyStmt, Context)
+%               ;
+%                   TailRecMechanism = tail_rec_via_start_label(StartLabel),
+%                   LoopTopLabelStmt = ml_stmt_label(StartLabel, Context),
+%                   FuncBodyStmt = ml_stmt_block(LocalVarDefns, FuncDefns,
+%                       [CommentStmt, LoopTopLabelStmt] ++ GoalStmts, Context)
+%               )
+                % XXX ... we generate this code instead, because it reproduces
+                % the MLDS code generated by ml_optimize.m, and this allows
+                % tools/make_java_csharp_{base,diff} to work better, since
+                % this way, they won't report cosmetic differences in the
+                % prologues of tailcall-containing MLDS functions.
+                GoalBlockStmt = ml_stmt_block(LocalVarDefns, FuncDefns,
+                    GoalStmts, Context),
+                (
+                    TailRecMechanism = tail_rec_via_while_loop,
+                    BreakStmt = ml_stmt_goto(goto_break, Context),
+                    LoopBodyStmt = ml_stmt_block([], [],
+                        [CommentStmt, GoalBlockStmt, BreakStmt], Context),
+                    FuncBodyStmt = ml_stmt_while(may_loop_zero_times,
+                        ml_const(mlconst_true), LoopBodyStmt, Context)
+                ;
+                    TailRecMechanism = tail_rec_via_start_label(StartLabel),
+                    LoopTopLabelStmt = ml_stmt_label(StartLabel, Context),
+                    FuncBodyStmt = ml_stmt_block([], [],
+                        [CommentStmt, LoopTopLabelStmt, GoalBlockStmt],
+                        Context)
+                )
+            else
+                FuncBodyStmt = ml_gen_block(LocalVarDefns, FuncDefns,
+                    GoalStmts, Context)
+            ),
+            FuncBody = body_defined_here(FuncBodyStmt),
+            ml_gen_info_get_env_var_names(!.Info, EnvVarNames)
+        )
     ),
 
     proc_info_get_context(ProcInfo0, ProcContext),
@@ -508,15 +606,13 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
         _ModuleName, PlainFuncName),
     DeclFlags = ml_gen_proc_decl_flags(!.ModuleInfo, PredId, ProcId),
     MaybePredProcId = yes(PredProcId),
-    proc_info_get_maybe_require_tailrec_info(ProcInfo0,
-        MaybeRequireTailrecInfo),
     pred_info_get_attributes(PredInfo, Attributes),
     attributes_to_attribute_list(Attributes, AttributeList),
     MLDS_Attributes =
         attributes_to_mlds_attributes(!.ModuleInfo, AttributeList),
     FuncDefn = mlds_function_defn(mlds_function_name(PlainFuncName),
         ProcContext, DeclFlags, MaybePredProcId, MLDS_Params,
-        FuncBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfo),
+        FuncBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfoFD),
     !:FuncDefns = ClosureWrapperFuncDefns ++ [FuncDefn | !.FuncDefns].
 
     % Return the declaration flags appropriate for a procedure definition.

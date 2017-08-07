@@ -816,6 +816,7 @@
 
     %   - MLDS
     ;       optimize_tailcalls
+    ;       optimize_tailcalls_codegen      % XXX bootstrapping option
     ;       optimize_initializations
     ;       eliminate_local_vars
     ;       generate_trail_ops_inline
@@ -1708,6 +1709,7 @@ option_defaults_2(optimization_option, [
 
     % MLDS
     optimize_tailcalls                  -   bool(no),
+    optimize_tailcalls_codegen          -   bool(yes),
     optimize_initializations            -   bool(no),
     eliminate_local_vars                -   bool(no),
     generate_trail_ops_inline           -   bool(yes),
@@ -2688,6 +2690,8 @@ long_option("mlds-optimise",        optimize).
 long_option("mlds-peephole",        optimize_peep).
 long_option("optimize-tailcalls",   optimize_tailcalls).
 long_option("optimise-tailcalls",   optimize_tailcalls).
+long_option("optimize-tailcalls-codegen",   optimize_tailcalls_codegen).
+long_option("optimise-tailcalls-codegen",   optimize_tailcalls_codegen).
 long_option("optimize-initializations", optimize_initializations).
 long_option("optimise-initializations", optimize_initializations).
 long_option("eliminate-local-vars", eliminate_local_vars).

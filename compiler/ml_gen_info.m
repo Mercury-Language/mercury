@@ -20,12 +20,14 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.mark_tail_calls.
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -203,6 +205,50 @@
 :- pred ml_gen_info_add_env_var_name(string::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
+:- type tail_rec_mechanism
+    --->    tail_rec_via_while_loop
+            % The procedure body is wrapped in a "while (true)" loop,
+            % tail recursive calls are converted to "continue" statements,
+            % and the normal exit at the end of the procedure body
+            % is done by a "break".
+
+    ;       tail_rec_via_start_label(string).
+            % The procedure body starts with a label with the given name,
+            % tail recursive calls are converted to "goto label" statements,
+            % and the normal exit at the end of the procedure body
+            % requires no special handling.
+
+:- type have_we_done_tail_rec
+    --->    have_not_done_tail_rec
+    ;       have_done_tail_rec.
+
+    % This map should have an entry for each procedure in the TSCC.
+    % The set of keys in the map won't change and neither will
+    % the target mechanism of each, which tells the code generator
+    % how to generate code for a tail recursive call to the given
+    % procedure, but if the code generator *does* generate such
+    % a tail recursive call, it should set the
+    % have_we_done_tail_rec field to have_done_tail_rec.
+:- type tail_rec_target_map == map(pred_proc_id, tail_rec_target_info).
+:- type tail_rec_target_info
+    --->    tail_rec_target_info(
+                % The target at the start of the procedure.
+                tail_rec_mechanism,
+
+                % The list of the *input* arguments of the procedure.
+                list(mlds_argument),
+
+                % Have we generated a jump to that target?
+                have_we_done_tail_rec
+            ).
+
+:- type tail_rec_info
+    --->    tail_rec_info(
+                tri_target_map      :: tail_rec_target_map,
+                tri_warn_params     :: warn_non_tail_rec_params,
+                tri_msgs            :: list(error_spec)
+            ).
+
 %---------------------------------------------------------------------------%
 %
 % Initialize the ml_gen_info.
@@ -213,8 +259,8 @@
     % information accumulated by the code generator so far during the
     % processing of previous procedures.
     %
-:- func ml_gen_info_init(module_info, mlds_target_lang,
-    ml_const_struct_map, pred_id, proc_id, proc_info, ml_global_data)
+:- func ml_gen_info_init(module_info, mlds_target_lang, ml_const_struct_map,
+    pred_id, proc_id, proc_info, tail_rec_target_map, ml_global_data)
     = ml_gen_info.
 
 %---------------------------------------------------------------------------%
@@ -245,6 +291,8 @@
     is det.
 :- pred ml_gen_info_get_disabled_warnings(ml_gen_info::in,
     set(goal_warning)::out) is det.
+:- pred ml_gen_info_get_tail_rec_info(ml_gen_info::in,
+    tail_rec_info::out) is det.
 :- pred ml_gen_info_get_byref_output_vars(ml_gen_info::in, list(prog_var)::out)
     is det.
 
@@ -264,8 +312,12 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_disabled_warnings(set(goal_warning)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_tail_rec_info(tail_rec_info::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_byref_output_vars(list(prog_var)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -455,16 +507,27 @@ ml_gen_info_add_env_var_name(Name, !Info) :-
                 % 
                 % XXX The get function of this field used to have the comment
                 % "Get the partial mapping from variables to lvals.", which
-                % is quite far from the above.
-                %
+                % is quite far from the above, and (based on the name) is
+                % much more likely to be correct.
 /* 10 */        mgri_var_lvals          :: map(prog_var, mlds_lval),
 
                 % The set of used environment variables. Writeable.
-                %
 /* 11 */        mgri_env_var_names      :: set(string),
 
                 % The set of warnings disabled in the current scope. Writeable.
-/* 12 */        mgri_disabled_warnings  :: set(goal_warning)
+/* 12 */        mgri_disabled_warnings  :: set(goal_warning),
+
+/* 13 */        % For each procedure to whose tail calls we can apply
+                % tail recursion optimization, this maps the label of that
+                % procedure to (a) the information we need to generate
+                % the code to jump to the start of that procedure, and
+                % (b) a record of whether we *have* generated such a jump.
+                %
+                % This field also contains the information we need to generate
+                % the right set of warnings for calls marked as tail recursive
+                % by mark_tail_calls.m but which we cannot actually turn
+                % into tail calls, and the warnings so generated.
+                mgri_tail_rec_info      :: tail_rec_info
             ).
 
 :- type ml_gen_sub_info
@@ -511,7 +574,7 @@ ml_gen_info_add_env_var_name(Name, !Info) :-
 % 23     77250    341887     45872  88.17%      used_succeeded_var
 
 ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
-        GlobalData) = Info :-
+        TailRecTargetMap, GlobalData) = Info :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     globals.get_gc_method(Globals, GC),
@@ -540,6 +603,11 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
     set.init(EnvVarNames),
     set.init(DisabledWarnings),
     UsedSucceededVar = no,
+    get_default_warn_parms(Globals, DefaultWarnParams),
+    maybe_override_warn_params_for_proc(ProcInfo, DefaultWarnParams,
+        ProcWarnParams),
+    Specs0 = [],
+    TailRecInfo = tail_rec_info(TailRecTargetMap, ProcWarnParams, Specs0),
 
     RareInfo = ml_gen_rare_info(
         ModuleInfo,
@@ -553,7 +621,8 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredId, ProcId, ProcInfo,
         ConstStructMap,
         VarLvals,
         EnvVarNames,
-        DisabledWarnings
+        DisabledWarnings,
+        TailRecInfo
     ),
     SubInfo = ml_gen_sub_info(
         ByRefOutputVars,
@@ -618,6 +687,8 @@ ml_gen_info_get_env_var_names(Info, X) :-
     X = Info ^ mgi_rare_info ^ mgri_env_var_names.
 ml_gen_info_get_disabled_warnings(Info, X) :-
     X = Info ^ mgi_rare_info ^ mgri_disabled_warnings.
+ml_gen_info_get_tail_rec_info(Info, X) :-
+    X = Info ^ mgi_rare_info ^ mgri_tail_rec_info.
 
 ml_gen_info_get_byref_output_vars(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_byref_output_vars.
@@ -699,6 +770,10 @@ ml_gen_info_set_env_var_names(X, !Info) :-
 ml_gen_info_set_disabled_warnings(X, !Info) :-
     RareInfo0 = !.Info ^ mgi_rare_info,
     RareInfo = RareInfo0 ^ mgri_disabled_warnings := X,
+    !Info ^ mgi_rare_info := RareInfo.
+ml_gen_info_set_tail_rec_info(X, !Info) :-
+    RareInfo0 = !.Info ^ mgi_rare_info,
+    RareInfo = RareInfo0 ^ mgri_tail_rec_info := X,
     !Info ^ mgi_rare_info := RareInfo.
 
 ml_gen_info_set_byref_output_vars(X, !Info) :-

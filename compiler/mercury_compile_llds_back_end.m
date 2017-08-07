@@ -545,7 +545,8 @@ maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !Specs, !IO) :-
     maybe_flush_output(Verbose, !IO),
     module_info_rebuild_dependency_info(!HLDS, DepInfo),
     SCCMap = dependency_info_make_scc_map(DepInfo),
-    process_all_nonimported_preds_errors(update_pred_error(
+    process_all_nonimported_preds_errors(
+        update_pred_error(
             mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap)),
         !HLDS, !Specs, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),

@@ -65,11 +65,11 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module libs.
-:- import_module libs.globals.
 
 :- import_module list.
 
@@ -81,6 +81,13 @@
     %
 :- pred ml_mark_tailcalls(globals::in, module_info::in, list(error_spec)::out,
     mlds::in, mlds::out) is det.
+
+:- type may_yield_dangling_stack_ref
+    --->    may_yield_dangling_stack_ref
+    ;       will_not_yield_dangling_stack_ref.
+
+:- func may_rvals_yield_dangling_stack_ref(list(mlds_rval)) =
+    may_yield_dangling_stack_ref.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -169,13 +176,9 @@ not_at_tail(not_at_tail_seen_reccall, not_at_tail_seen_reccall).
 not_at_tail(not_at_tail_have_not_seen_reccall,
     not_at_tail_have_not_seen_reccall).
 
-:- type found_recursive_call
-    --->    found_recursive_call
-    ;       not_found_recursive_call.
-
 :- type tc_in_body_info
     --->    tc_in_body_info(
-                tibi_found                  :: found_recursive_call,
+                tibi_found                  :: found_any_rec_calls,
                 tibi_specs                  :: list(error_spec)
             ).
 
@@ -235,7 +238,7 @@ mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls,
         TCallInfo = tailcall_info(ModuleInfo, ModuleName, Name,
             WarnTailCalls, MaybeRequireTailrecInfo),
 
-        InBodyInfo0 = tc_in_body_info(not_found_recursive_call, !.Specs),
+        InBodyInfo0 = tc_in_body_info(not_found_any_rec_calls, !.Specs),
         mark_tailcalls_in_stmt(TCallInfo, AtTailAfter, _AtTailBefore,
             BodyStmt0, BodyStmt, InBodyInfo0, InBodyInfo),
         InBodyInfo = tc_in_body_info(FoundRecCall, !:Specs),
@@ -245,46 +248,18 @@ mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls,
             MaybePredProcId, Params, FuncBody, Attributes,
             EnvVarNames, MaybeRequireTailrecInfo),
 
-        maybe_warn_about_no_tailcalls(ModuleInfo, MaybePredProcId,
-            MaybeRequireTailrecInfo, FoundRecCall, !Specs)
-    ).
-
-:- pred maybe_warn_about_no_tailcalls(module_info::in,
-    maybe(pred_proc_id)::in, maybe(require_tail_recursion)::in,
-    found_recursive_call::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-maybe_warn_about_no_tailcalls(ModuleInfo, MaybePredProcId,
-        MaybeRequireTailrecInfo, FoundRecCall, !Specs) :-
-    (
-        FoundRecCall = found_recursive_call
-    ;
-        FoundRecCall = not_found_recursive_call,
         (
-            MaybeRequireTailrecInfo = yes(RequireTailrecInfo),
-            ( RequireTailrecInfo = suppress_tailrec_warnings(Context)
-            ; RequireTailrecInfo = enable_tailrec_warnings(_, _, Context)
-            ),
-            (
-                MaybePredProcId = yes(proc(PredId, _)),
-                module_info_pred_info(ModuleInfo, PredId, PredInfo),
-                PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-                pred_info_get_name(PredInfo, PredName),
-                pred_info_get_orig_arity(PredInfo, PredArity),
-                PredSymName = unqualified(PredName),
-                SimpleCallId =
-                    simple_call_id(PredOrFunc, PredSymName, PredArity),
-                add_message_for_no_tail_or_nontail_recursive_calls(
-                    SimpleCallId, Context, !Specs)
-            ;
-                MaybePredProcId = no
-                % If this function wasn't generated from a Mercury predicate,
-                % then don't create this warning. This cannot happen anyway
-                % because the require tail recursion pragma cannot be attached
-                % to predicates that don't exist.
-            )
+            MaybePredProcId = no
+            % If this function wasn't generated from a Mercury predicate,
+            % then we can't create this warning. This cannot happen anyway
+            % because the require tail recursion pragma cannot be attached
+            % to predicates that don't exist.
         ;
-            MaybeRequireTailrecInfo = no
+            MaybePredProcId = yes(PredProcId),
+            module_info_pred_proc_info(ModuleInfo, PredProcId,
+                PredInfo, ProcInfo),
+            maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
+                FoundRecCall, !Specs)
         )
     ).
 
@@ -448,7 +423,7 @@ mark_tailcalls_in_stmt_call(TCallInfo, AtTailAfter, AtTailBefore,
         % as the caller.
         code_address_is_for_this_function(CalleeCodeAddr, ModuleName, FuncName)
     then
-        !InBodyInfo ^ tibi_found := found_recursive_call,
+        !InBodyInfo ^ tibi_found := found_any_rec_calls,
         ( if
             % We must be in a tail position.
             AtTailAfter = at_tail(ReturnStmtRvals),
@@ -677,18 +652,11 @@ lval_is_local(Lval) = IsLocal :-
 
 %---------------------------------------------------------------------------%
 
-:- type may_yield_dangling_stack_ref
-    --->    may_yield_dangling_stack_ref
-    ;       will_not_yield_dangling_stack_ref.
-
 % may_rvals_yield_dangling_stack_ref:
 % may_maybe_rval_yield_dangling_stack_ref:
 % may_rval_yield_dangling_stack_ref:
 %   Find out if the specified rval(s) might evaluate to the addresses of
 %   local variables (or fields of local variables) or nested functions.
-
-:- func may_rvals_yield_dangling_stack_ref(list(mlds_rval)) =
-    may_yield_dangling_stack_ref.
 
 may_rvals_yield_dangling_stack_ref([]) = will_not_yield_dangling_stack_ref.
 may_rvals_yield_dangling_stack_ref([Rval | Rvals])

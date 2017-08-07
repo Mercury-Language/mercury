@@ -1641,7 +1641,7 @@ gen_wrapper_func_and_initializer(ModuleInfo, Target, NumExtra, RttiProcId,
         ProcId = RttiProcId ^ rpl_proc_id,
         module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
         !:Info = ml_gen_info_init(ModuleInfo, Target, map.init, PredId, ProcId,
-            ProcInfo, !.GlobalData),
+            ProcInfo, map.init, !.GlobalData),
         ml_gen_info_bump_counters(!Info),
 
         % Now we can safely go ahead and generate the wrapper function.

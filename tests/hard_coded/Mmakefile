@@ -270,6 +270,7 @@ ORDINARY_PROGS =	\
 	rtti_strings \
 	seek_test \
 	semi_disj \
+	semi_tail_call_in_nonlast_disjunct \
 	setjmp_test \
 	shift_test \
 	simplify_multi_arm_switch \

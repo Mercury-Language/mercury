@@ -611,7 +611,8 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
             ml_variable_types(!.Info, ArgVars, ActualArgTypes),
             ForClosureWrapper = no,
             ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals,
-                ActualArgTypes, CodeModel, Context, ForClosureWrapper,
+                ActualArgTypes, CodeModel,
+                Context, GoalInfo, ForClosureWrapper,
                 LocalVarDefns, FuncDefns, Stmts, !Info)
         ;
             BuiltinState = inline_builtin,

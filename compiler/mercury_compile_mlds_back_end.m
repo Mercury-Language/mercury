@@ -25,15 +25,10 @@
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-
-    % Return `yes' iff this module defines the main/2 entry point.
-    %
-:- func mlds_has_main(mlds) = has_main.
 
 :- pred mlds_backend(module_info::in, module_info::out, mlds::out,
     list(error_spec)::out, dump_info::in, dump_info::out, io::di, io::uo)
@@ -60,7 +55,9 @@
 :- import_module backend_libs.base_typeclass_info.
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
+:- import_module hlds.hlds_dependency_graph.        % HLDS -> HLDS
 :- import_module hlds.mark_static_terms.            % HLDS -> HLDS
+:- import_module hlds.mark_tail_calls.              % HLDS -> HLDS
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module ml_backend.add_trail_ops.          % HLDS -> HLDS
@@ -73,7 +70,6 @@
 :- import_module ml_backend.mlds_to_c.              % MLDS -> C
 :- import_module ml_backend.mlds_to_java.           % MLDS -> Java
 :- import_module ml_backend.mlds_to_cs.             % MLDS -> C#
-:- import_module ml_backend.ml_util.                % MLDS utility predicates
 :- import_module parse_tree.file_names.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
@@ -85,19 +81,7 @@
 
 %---------------------------------------------------------------------------%
 
-mlds_has_main(MLDS) =
-    ( if
-        FuncDefns = MLDS ^ mlds_proc_defns,
-        func_defns_contain_main(FuncDefns)
-    then
-        has_main
-    else
-        no_main
-    ).
-
-%---------------------------------------------------------------------------%
-
-mlds_backend(!HLDS, !:MLDS, Specs, !DumpInfo, !IO) :-
+mlds_backend(!HLDS, !:MLDS, !:Specs, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -128,6 +112,10 @@ mlds_backend(!HLDS, !:MLDS, Specs, !DumpInfo, !IO) :-
     map_args_to_regs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 425, "args_to_regs", !DumpInfo, !IO),
 
+    !:Specs = [],
+    maybe_mark_tail_rec_calls_hlds(Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_dump_hlds(!.HLDS, 430, "mark_tail_calls", !DumpInfo, !IO),
+
     globals.get_target(Globals, Target),
     (
         Target = target_c,
@@ -143,7 +131,7 @@ mlds_backend(!HLDS, !:MLDS, Specs, !DumpInfo, !IO) :-
         unexpected($pred, "MLDS cannot target Erlang")
     ),
     maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n", !IO),
-    ml_code_gen(MLDS_Target, !:MLDS, !HLDS),
+    ml_code_gen(MLDS_Target, !:MLDS, !HLDS, !Specs),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO),
     maybe_dump_hlds(!.HLDS, 499, "final", !DumpInfo, !IO),
@@ -159,14 +147,18 @@ mlds_backend(!HLDS, !:MLDS, Specs, !DumpInfo, !IO) :-
     % chain_gc_stack_frame pass of ml_elim_nested, because we need to
     % unlink the stack frame from the stack chain before tail calls.
     globals.lookup_bool_option(Globals, optimize_tailcalls, OptimizeTailCalls),
-    (
+    globals.lookup_bool_option(Globals, optimize_tailcalls_codegen,
+        OptimizeTailCallsCodegen),
+    ( if
         OptimizeTailCalls = yes,
+        OptimizeTailCallsCodegen = no
+    then
         maybe_write_string(Verbose, "% Detecting tail calls...\n", !IO),
-        ml_mark_tailcalls(Globals, !.HLDS, Specs, !MLDS),
+        ml_mark_tailcalls(Globals, !.HLDS, TailCallSpecs, !MLDS),
+        !:Specs = TailCallSpecs ++ !.Specs,
         maybe_write_string(Verbose, "% done.\n", !IO)
-    ;
-        OptimizeTailCalls = no,
-        Specs = []
+    else
+        true
     ),
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 20, "tailcalls", !IO),
@@ -348,6 +340,30 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
             "Use `--(no-)reclaim-heap-on-failure' instead.",
         write_error_pieces_plain(Globals, [words(Msg)], !IO),
         io.set_exit_status(1, !IO)
+    ).
+
+:- pred maybe_mark_tail_rec_calls_hlds(bool::in, bool::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+maybe_mark_tail_rec_calls_hlds(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, optimize_tailcalls, OptimizeTailCalls),
+    globals.lookup_bool_option(Globals, optimize_tailcalls_codegen,
+        OptimizeTailCallsCodegen),
+    ( if
+        OptimizeTailCalls = yes,
+        OptimizeTailCallsCodegen = yes
+    then
+        maybe_write_string(Verbose, "% Marking tail recursive calls...", !IO),
+        maybe_flush_output(Verbose, !IO),
+        module_info_rebuild_dependency_info(!HLDS, DepInfo),
+        mark_self_and_mutual_tail_rec_calls_in_module_for_mlds_code_gen(
+            DepInfo, !HLDS, !Specs),
+        maybe_write_string(Verbose, " done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    else
+        true
     ).
 
 :- pred mlds_gen_rtti_data(module_info::in, mlds_target_lang::in,
