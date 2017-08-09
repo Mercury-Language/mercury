@@ -1500,19 +1500,6 @@ output_maybe_qualified_global_var_name_for_csharp(Info, QualGlobalVarName,
     ),
     output_global_var_name_for_csharp(GlobalVarName, !IO).
 
-:- pred output_maybe_qualified_local_var_name_for_csharp(csharp_out_info::in,
-    mlds_local_var_name::in, io::di, io::uo) is det.
-
-output_maybe_qualified_local_var_name_for_csharp(_Info, LocalVarName, !IO) :-
-    ( if LocalVarName = lvn_comp_var(lvnc_dummy_var) then
-        % You cannot fold this prefix into output_local_var_name_for_java,
-        % because the "." would cause the entire name to be mangled.
-        io.write_string("private_builtin.", !IO)
-    else
-        true
-    ),
-    output_local_var_name_for_csharp(LocalVarName, !IO).
-
 :- pred output_maybe_qualified_function_name_for_csharp(csharp_out_info::in,
     qual_function_name::in, io::di, io::uo) is det.
 
@@ -1719,6 +1706,9 @@ global_var_name_to_string_for_csharp(GlobalVarName, String) :-
     ;
         GlobalVarName = gvn_tabling_var(_ProcLabel, _Id),
         unexpected($pred, "NYI: gvn_tabling_ref")
+    ;
+        GlobalVarName = gvn_dummy_var,
+        String = "dummy_var"
     ).
 
 :- pred output_local_var_name_for_csharp(mlds_local_var_name::in,
@@ -3005,9 +2995,8 @@ output_lval_for_csharp(Info, Lval, !IO) :-
         io.write_string("mercury_envvar_", !IO),
         io.write_string(EnvVarName, !IO)
     ;
-        Lval = ml_local_var(QualLocalVarName, _),
-        output_maybe_qualified_local_var_name_for_csharp(Info,
-            QualLocalVarName, !IO)
+        Lval = ml_local_var(LocalVarName, _),
+        output_local_var_name_for_csharp(LocalVarName, !IO)
     ;
         Lval = ml_global_var(QualGlobalVarName, _),
         output_maybe_qualified_global_var_name_for_csharp(Info,

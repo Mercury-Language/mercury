@@ -1690,10 +1690,6 @@
             )
 
     % Variables.
-    % These may be local or they may come from some enclosing scope.
-    % The variable name should be fully qualified.
-    % XXX See the comment on mlds_var above about module qualifying the names
-    % of *local* variables.
 
     ;       ml_local_var(
                 mlds_local_var_name,
@@ -1707,6 +1703,8 @@
 
 :- type global_var_ref
     --->    env_var_ref(string).
+
+:- func global_dummy_var = qual_global_var_name.
 
 %---------------------------------------------------------------------------%
 %
@@ -1888,12 +1886,15 @@
             % used to implement memoization, loopcheck or minimal model
             % semantics for the given procedure.
 
-    ;       gvn_const_var(mlds_global_const_var, int).
+    ;       gvn_const_var(mlds_global_const_var, int)
             % These MLDS variables are global variables holding constant,
             % immutable data. What kind of data is given by the first argument.
             % The integer is a sequence number (unique within the whole module)
             % allocated from a counter that is shared between all
             % gvn_const_vars.
+
+    ;       gvn_dummy_var.
+            % ZZZ
 
 :- type mlds_global_const_var
     --->    mgcv_const_var
@@ -1992,14 +1993,6 @@
             % object, used by accurate gc. The integer is a unique sequence
             % number allocated from a per-procedure counter that is dedicated
             % for this purpose.
-
-    ;       lvnc_dummy_var
-            % HLDS variables of dummy types don't have MLDS variables holding
-            % their values, since they don't *have* values. All HLDS variables
-            % of dummy types are mapped to this single MLDS variable when
-            % they are used in a context that requires an MLDS variable for
-            % them. This MLDS variable is (obviously) never initialized
-            % to any meaningful value.
 
     ;       lvnc_cond(int)
             % This MLDS variable records whether the condition of a model_non
@@ -2645,6 +2638,13 @@ set_class_constness(Constness, !Flags) :-
 
 %---------------------------------------------------------------------------%
 
+global_dummy_var = DummyVar :-
+    MLDS_ModuleName =
+        mercury_module_name_to_mlds(mercury_private_builtin_module),
+    DummyVar = qual_global_var_name(MLDS_ModuleName, gvn_dummy_var).
+
+%---------------------------------------------------------------------------%
+
 ml_global_const_var_name_to_string(ConstVar, Num) = Str :-
     (
         ConstVar = mgcv_const_var,
@@ -2741,9 +2741,6 @@ ml_local_var_name_to_string(LocalVar) = Str :-
         ;
             CompVar = lvnc_new_obj(Id),
             Str = string.format("new_obj_%d", [i(Id)])
-        ;
-            CompVar = lvnc_dummy_var,
-            Str = "dummy_var"
         ;
             CompVar = lvnc_cond(CondNum),
             Str = string.format("cond_%d", [i(CondNum)])

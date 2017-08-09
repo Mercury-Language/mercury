@@ -2881,17 +2881,15 @@ mlds_output_global_var_name(GlobalVarName, !IO) :-
     ;
         GlobalVarName = gvn_tabling_var(ProcLabel, Id),
         io.write_string(mlds_tabling_data_name(ProcLabel, Id), !IO)
+    ;
+        GlobalVarName = gvn_dummy_var,
+        io.write_string("dummy_var", !IO)
     ).
 
 :- pred mlds_output_local_var_name(mlds_local_var_name::in,
     io::di, io::uo) is det.
 
 mlds_output_local_var_name(LocalVarName, !IO) :-
-    ( if LocalVarName = lvn_comp_var(lvnc_dummy_var) then
-        io.write_string("mercury__private_builtin__", !IO)
-    else
-        true
-    ),
     mlds_output_mangled_name(ml_local_var_name_to_string(LocalVarName), !IO).
 
 :- pred mlds_output_field_var_name(mlds_field_var_name::in,

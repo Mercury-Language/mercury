@@ -2235,19 +2235,6 @@ output_maybe_qualified_global_var_name_for_java(Info, QualGlobalVarName, !IO) :-
     ),
     output_global_var_name_for_java(GlobalVarName, !IO).
 
-:- pred output_maybe_qualified_local_var_name_for_java(mlds_local_var_name::in,
-    io::di, io::uo) is det.
-
-output_maybe_qualified_local_var_name_for_java(LocalVarName, !IO) :-
-    ( if LocalVarName = lvn_comp_var(lvnc_dummy_var) then
-        % You cannot fold this prefix into output_local_var_name_for_java,
-        % because the "." would cause the entire name to be mangled.
-        io.write_string("private_builtin.", !IO)
-    else
-        true
-    ),
-    output_local_var_name_for_java(LocalVarName, !IO).
-
 :- pred output_maybe_qualified_function_name_for_java(java_out_info::in,
     qual_function_name::in, io::di, io::uo) is det.
 
@@ -2414,6 +2401,9 @@ output_global_var_name_for_java(GlobalVarName, !IO) :-
         io.write_string(Prefix, !IO),
         mlds_output_proc_label_for_java(mlds_std_tabling_proc_label(ProcLabel),
             !IO)
+    ;
+        GlobalVarName = gvn_dummy_var,
+        io.write_string("dummy_var", !IO)
     ).
 
 :- pred output_local_var_name_for_java(mlds_local_var_name::in,
@@ -3806,7 +3796,7 @@ output_lval_for_java(Info, Lval, !IO) :-
             QualGlobalVarName, !IO)
     ;
         Lval = ml_local_var(QualLocalVarName, _),
-        output_maybe_qualified_local_var_name_for_java(QualLocalVarName, !IO)
+        output_local_var_name_for_java(QualLocalVarName, !IO)
     ).
 
 :- pred output_call_rval_for_java(java_out_info::in, mlds_rval::in,

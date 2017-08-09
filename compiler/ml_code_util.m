@@ -1320,7 +1320,7 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
         % The variable won't have been declared, so we need to generate
         % a dummy lval for this variable.
         ml_gen_type(Info, Type, MLDS_Type),
-        Lval = ml_local_var(lvn_comp_var(lvnc_dummy_var), MLDS_Type)
+        Lval = ml_global_var(global_dummy_var, MLDS_Type)
     ;
         IsDummy = is_not_dummy_type,
         ml_gen_info_get_varset(Info, VarSet),
