@@ -62,7 +62,7 @@
     % Succeeds iff this statement contains a reference to the
     % specified variable.
     %
-:- func statement_contains_var(mlds_stmt, qual_local_var_name) = bool.
+:- func statement_contains_var(mlds_stmt, mlds_local_var_name) = bool.
 
 :- pred has_foreign_languages(mlds_stmt::in, list(foreign_language)::out)
     is det.
@@ -73,16 +73,16 @@
     % the specified variable.
     %
 :- func local_var_defns_contains_var(list(mlds_local_var_defn),
-    qual_local_var_name) = bool.
+    mlds_local_var_name) = bool.
 :- func function_defns_contains_var(list(mlds_function_defn),
-    qual_local_var_name) = bool.
+    mlds_local_var_name) = bool.
 
     % Says whether this definition contains a reference to
     % the specified variable.
     %
-:- func local_var_defn_contains_var(mlds_local_var_defn, qual_local_var_name)
+:- func local_var_defn_contains_var(mlds_local_var_defn, mlds_local_var_name)
     = bool.
-:- func function_defn_contains_var(mlds_function_defn, qual_local_var_name)
+:- func function_defn_contains_var(mlds_function_defn, mlds_local_var_name)
     = bool.
 
 %---------------------------------------------------------------------------%
@@ -100,17 +100,17 @@
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-:- func initializer_contains_var(mlds_initializer, qual_local_var_name) = bool.
+:- func initializer_contains_var(mlds_initializer, mlds_local_var_name) = bool.
 
-:- func rvals_contains_var(list(mlds_rval), qual_local_var_name) = bool.
+:- func rvals_contains_var(list(mlds_rval), mlds_local_var_name) = bool.
 
-:- func maybe_rval_contains_var(maybe(mlds_rval), qual_local_var_name) = bool.
+:- func maybe_rval_contains_var(maybe(mlds_rval), mlds_local_var_name) = bool.
 
-:- func rval_contains_var(mlds_rval, qual_local_var_name) = bool.
+:- func rval_contains_var(mlds_rval, mlds_local_var_name) = bool.
 
-:- func lvals_contains_var(list(mlds_lval), qual_local_var_name) = bool.
+:- func lvals_contains_var(list(mlds_lval), mlds_local_var_name) = bool.
 
-:- func lval_contains_var(mlds_lval, qual_local_var_name) = bool.
+:- func lval_contains_var(mlds_lval, mlds_local_var_name) = bool.
 
 %---------------------------------------------------------------------------%
 %
@@ -283,7 +283,7 @@ default_contains_statement(default_case(Stmt), SubStmt) :-
 % Succeed iff the specified construct contains a reference to
 % the specified variable.
 
-:- func statements_contains_var(list(mlds_stmt), qual_local_var_name) = bool.
+:- func statements_contains_var(list(mlds_stmt), mlds_local_var_name) = bool.
 
 statements_contains_var([], _DataName) = no.
 statements_contains_var([Stmt | Stmts], DataName) = ContainsVar :-
@@ -296,7 +296,7 @@ statements_contains_var([Stmt | Stmts], DataName) = ContainsVar :-
         ContainsVar = statements_contains_var(Stmts, DataName)
     ).
 
-:- func maybe_statement_contains_var(maybe(mlds_stmt), qual_local_var_name)
+:- func maybe_statement_contains_var(maybe(mlds_stmt), mlds_local_var_name)
     = bool.
 
 maybe_statement_contains_var(no, _) = no.
@@ -423,7 +423,7 @@ statement_contains_var(Stmt, SearchVarName) = ContainsVar :-
         ContainsVar = atomic_stmt_contains_var(AtomicStmt, SearchVarName)
     ).
 
-:- func cases_contains_var(list(mlds_switch_case), qual_local_var_name) = bool.
+:- func cases_contains_var(list(mlds_switch_case), mlds_local_var_name) = bool.
 
 cases_contains_var([], _SearchVarName) = no.
 cases_contains_var([Case | Cases], SearchVarName) = ContainsVar :-
@@ -437,7 +437,7 @@ cases_contains_var([Case | Cases], SearchVarName) = ContainsVar :-
         ContainsVar = cases_contains_var(Cases, SearchVarName)
     ).
 
-:- func default_contains_var(mlds_switch_default, qual_local_var_name) = bool.
+:- func default_contains_var(mlds_switch_default, mlds_local_var_name) = bool.
 
 default_contains_var(Default, SearchVarName) = ContainsVar :-
     (
@@ -450,7 +450,7 @@ default_contains_var(Default, SearchVarName) = ContainsVar :-
         ContainsVar = statement_contains_var(Stmt, SearchVarName)
     ).
 
-:- func atomic_stmt_contains_var(mlds_atomic_statement, qual_local_var_name)
+:- func atomic_stmt_contains_var(mlds_atomic_statement, mlds_local_var_name)
     = bool.
 
 atomic_stmt_contains_var(AtomicStmt, SearchVarName) = ContainsVar :-
@@ -514,7 +514,7 @@ atomic_stmt_contains_var(AtomicStmt, SearchVarName) = ContainsVar :-
         )
     ).
 
-:- func trail_op_contains_var(trail_op, qual_local_var_name) = bool.
+:- func trail_op_contains_var(trail_op, mlds_local_var_name) = bool.
 
 trail_op_contains_var(TrailOp, SearchVarName) = ContainsVar :-
     (
@@ -537,7 +537,7 @@ trail_op_contains_var(TrailOp, SearchVarName) = ContainsVar :-
     ).
 
 :- func target_code_components_contains_var(list(target_code_component),
-    qual_local_var_name) = bool.
+    mlds_local_var_name) = bool.
 
 target_code_components_contains_var([], _SearchVarName) = no.
 target_code_components_contains_var([TargetCode | TargetCodes], SearchVarName)
@@ -554,7 +554,7 @@ target_code_components_contains_var([TargetCode | TargetCodes], SearchVarName)
     ).
 
 :- func target_code_component_contains_var(target_code_component,
-    qual_local_var_name) = bool.
+    mlds_local_var_name) = bool.
 
 target_code_component_contains_var(TargetCode, SearchVarName) = ContainsVar :-
     (
@@ -573,7 +573,7 @@ target_code_component_contains_var(TargetCode, SearchVarName) = ContainsVar :-
         ContainsVar = lval_contains_var(Lval, SearchVarName)
     ).
 
-:- func outline_args_contains_var(list(outline_arg), qual_local_var_name)
+:- func outline_args_contains_var(list(outline_arg), mlds_local_var_name)
     = bool.
 
 outline_args_contains_var([], _SearchVarName) = no.
@@ -589,7 +589,7 @@ outline_args_contains_var([OutlineArg | OutlineArgs], SearchVarName) =
         ContainsVar = outline_args_contains_var(OutlineArgs, SearchVarName)
     ).
 
-:- func outline_arg_contains_var(outline_arg, qual_local_var_name) = bool.
+:- func outline_arg_contains_var(outline_arg, mlds_local_var_name) = bool.
 
 outline_arg_contains_var(OutlineArg, SearchVarName) = ContainsVar :-
     (
@@ -700,7 +700,7 @@ initializer_contains_var(Initializer, SearchVarName) = ContainsVar :-
             initializers_contains_var(ElementInitializers, SearchVarName)
     ).
 
-:- func initializers_contains_var(list(mlds_initializer), qual_local_var_name)
+:- func initializers_contains_var(list(mlds_initializer), mlds_local_var_name)
     = bool.
 
 initializers_contains_var([], _SearchVarName) = no.
@@ -741,11 +741,8 @@ rval_contains_var(Rval, SearchVarName) = ContainsVar :-
     ;
         Rval = ml_const(Const),
         (
-            Const = mlconst_data_addr_local_var(ModuleName, RawVarName),
-            ( if
-                SearchVarName =
-                    qual_local_var_name(ModuleName, _QualKind, RawVarName)
-            then
+            Const = mlconst_data_addr_local_var(RawVarName),
+            ( if SearchVarName = RawVarName then
                 % This is a place where we can succeed.
                 ContainsVar = yes
             else

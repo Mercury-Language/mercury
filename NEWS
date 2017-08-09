@@ -575,6 +575,8 @@ Changes to the Mercury compiler:
   properly written to .opt files, so when read back would not actually
   catch any exceptions.
 
+* We have disabled the old --num-reserved-objects option.
+
 * We have upgraded to the bundled Boehm GC to 7.6.0 and libatomic_ops to
   7.4.4.
 

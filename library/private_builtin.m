@@ -159,17 +159,6 @@
 :- import_module string.
 :- import_module type_desc.
 
-:- pragma foreign_code("C#", "
-
-// The dummy_var is used to represent io.states and other Mercury
-// parameters that are not really passed around. Occasionally a dummy
-// variable will be used by the code generator as an lval, so we use
-// private_builtin.dummy_var as that lval.
-
-public static object dummy_var;
-
-").
-
 :- pragma inline(builtin_compare_int/3).
 :- pragma inline(builtin_compare_uint/3).
 :- pragma inline(builtin_compare_character/3).
@@ -1884,11 +1873,19 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
     public static final int MR_PREDICATE    = 0;
     public static final int MR_FUNCTION     = 1;
 
-    // The dummy_var is used to represent io.states and other Mercury
-    // parameters that are not really passed around. Occasionally a dummy
-    // variable will be used by the code generator as an lval, so we use
-    // private_builtin:dummy_var as that lval.
+    // The dummy_var is used to represent io.states and values of other types
+    // (dummy types) that contain no information. Occasionally a dummy variable
+    // will be used by the code generator as an lval, so we use
+    // private_builtin.dummy_var as that lval.
     public static java.lang.Object dummy_var;
+").
+
+:- pragma foreign_code("C#", "
+    // The dummy_var is used to represent io.states and values of other types
+    // (dummy types) that contain no information. Occasionally a dummy variable
+    // will be used by the code generator as an lval, so we use
+    // private_builtin.dummy_var as that lval.
+    public static object dummy_var;
 ").
 
 :- pragma foreign_code("Java", "

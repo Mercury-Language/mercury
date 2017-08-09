@@ -1696,7 +1696,7 @@
     % of *local* variables.
 
     ;       ml_local_var(
-                qual_local_var_name,
+                mlds_local_var_name,
                 mlds_type
             )
 
@@ -1836,8 +1836,7 @@
 
     ;       mlconst_code_addr(mlds_code_addr)
 
-    ;       mlconst_data_addr_local_var(mlds_module_name,
-                mlds_local_var_name)
+    ;       mlconst_data_addr_local_var(mlds_local_var_name)
             % The address of a local variable.
 
     ;       mlconst_data_addr_global_var(mlds_module_name,
@@ -1903,27 +1902,9 @@
     ;       mgcv_typevar_vector
     ;       mgcv_bit_vector.
 
-    % An mlds_local_var represents a variable or constant that is either
-    % the parameter of a function or is defined inside a block of a function.
-    % XXX I (zs) don't think *any* mlds_local_vars are constants.
+    % An mlds_local_var represents a variable that is either a parameter
+    % of a function, or is defined inside a block of a function.
     %
-    % XXX Local variables should *not* need to be module qualified,
-    % since by definition they are used only inside one function.
-    % Removing the module qualification from such variables would make
-    % the generated code considerably less cluttered and therefore
-    % easier to read.
-    %
-:- type qual_local_var_name
-    --->    qual_local_var_name(mlds_module_name, mlds_qual_kind,
-                mlds_local_var_name).
-            % Over 99+% of local variables can only ever be module qualified,
-            % but the local variables representing the parameters of
-            % the constructor methods of compiler-generated classes
-            % are currently type qualified, and the difference in qualification
-            % affects the names we generate for them in Java and C#.
-            % XXX MLDS_DEFN Look into whether this difference is *necessary*,
-            % or just an accident of history.
-
 :- type mlds_local_var_name
     --->    lvn_prog_var(string, int)
             % This MLDS variable represents a variable in the HLDS procedure

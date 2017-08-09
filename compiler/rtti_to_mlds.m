@@ -1881,7 +1881,7 @@ add_rtti_defn_arcs_const(DefnGlobalVarName, Const, !Graph) :-
         ; Const = mlconst_multi_string(_)
         ; Const = mlconst_named_const(_, _)
         ; Const = mlconst_code_addr(_)
-        ; Const = mlconst_data_addr_local_var(_, _)
+        ; Const = mlconst_data_addr_local_var(_)
         ; Const = mlconst_data_addr_global_var(_, _)
         ; Const = mlconst_data_addr_tabling(_, _)
         ; Const = mlconst_null(_)

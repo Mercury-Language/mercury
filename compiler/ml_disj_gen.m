@@ -328,7 +328,7 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
     SlotVarGCStmt = gc_no_stmt,
     SlotVarDefn = ml_gen_mlds_var_decl(SlotVar, SlotVarType,
         SlotVarGCStmt, Context),
-    ml_gen_local_var_lval(!.Info, SlotVar, SlotVarType, SlotVarLval),
+    SlotVarLval = ml_local_var(SlotVar, SlotVarType),
     SlotVarRval = ml_lval(SlotVarLval),
 
     ml_generate_field_assigns(OutVars, MLDS_FieldTypes, FieldIds,

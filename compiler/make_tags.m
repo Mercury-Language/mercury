@@ -31,7 +31,7 @@
 % functors.
 %
 % If there are no tag bits available, then we try using reserved addresses
-% (e.g. NULL, (void *)1, (void *)2, etc.) instead. We split the constructors
+% (e.g. NULL, (void *) 1, (void *) 2, etc.) instead. We split the constructors
 % into constants and functors, and assign numerical reserved addresses to the
 % first constants, up to the limit set by --num-reserved-addresses. After
 % that, for the MLDS back-end, we assign symbolic reserved addresses to the
@@ -40,6 +40,7 @@
 % generate specially for this purpose. Finally, the functors and any remaining
 % constants are distinguished by a secondary tag, if there are more than one of
 % them.
+% XXX As of 2017 aug 8, we don't support --num-reserved-objects.
 %
 % If there is a `pragma reserve_tag' declaration for the type, or if the
 % `--reserve-tag' option is set, then we reserve the first primary tag (for
@@ -125,6 +126,9 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         NumReservedAddresses),
     globals.lookup_int_option(Globals, num_reserved_objects,
         NumReservedObjects),
+    % As of 2017 aug 8, there is no longer any way to specify any value
+    % for num_reserved_objects other than the default, which is zero.
+    expect(unify(NumReservedObjects, 0), $pred, "NumReservedObjects != 0"),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 
     % Determine if we need to reserve a tag for use by HAL's Herbrand

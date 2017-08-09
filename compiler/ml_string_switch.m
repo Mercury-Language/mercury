@@ -577,12 +577,12 @@ insert_case_into_trie_choice(InsertMatched, InsertNotYetMatched, InsertCaseId,
 
 ml_gen_trie_case_num_var_and_init(Context, CaseNumVarLval, CaseNumVarDefn,
         InitStmt, !Info) :-
-    ml_gen_info_new_aux_var_name(mcav_case_num, CaseNumVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_case_num, CaseNumVarName, !Info),
     CaseNumVarType = mlds_native_int_type,
     % We never need to trace ints.
-    CaseNumVarDefn = ml_gen_mlds_var_decl(CaseNumVar, CaseNumVarType,
+    CaseNumVarDefn = ml_gen_mlds_var_decl(CaseNumVarName, CaseNumVarType,
         gc_no_stmt, Context),
-    ml_gen_local_var_lval(!.Info, CaseNumVar, CaseNumVarType, CaseNumVarLval),
+    CaseNumVarLval = ml_local_var(CaseNumVarName, CaseNumVarType),
 
     InitAssign = assign(CaseNumVarLval, ml_const(mlconst_int(-1))),
     InitStmt = ml_stmt_atomic(InitAssign, Context).
@@ -1398,21 +1398,21 @@ ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
     %   int         slot;
     %   MR_String   str;
 
-    ml_gen_info_new_aux_var_name(mcav_slot, SlotVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_slot, SlotVarName, !Info),
     SlotVarType = mlds_native_int_type,
     % We never need to trace ints.
-    SlotVarDefn = ml_gen_mlds_var_decl(SlotVar, SlotVarType,
+    SlotVarDefn = ml_gen_mlds_var_decl(SlotVarName, SlotVarType,
         gc_no_stmt, Context),
-    ml_gen_local_var_lval(!.Info, SlotVar, SlotVarType, SlotVarLval),
+    SlotVarLval = ml_local_var(SlotVarName, SlotVarType),
 
-    ml_gen_info_new_aux_var_name(mcav_str, StringVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_str, StringVarName, !Info),
     StringVarType = ml_string_type,
     % StringVar always points to an element of the string_table array.
     % All those elements are static constants; they can never point into
     % the heap. So GC never needs to trace StringVar.
-    StringVarDefn = ml_gen_mlds_var_decl(StringVar, StringVarType,
+    StringVarDefn = ml_gen_mlds_var_decl(StringVarName, StringVarType,
         gc_no_stmt, Context),
-    ml_gen_local_var_lval(!.Info, StringVar, StringVarType, StringVarLval),
+    StringVarLval = ml_local_var(StringVarName, StringVarType),
 
     AlwaysDefns = [SlotVarDefn, StringVarDefn],
     ml_should_use_stop_loop(Context, LoopPresent,
@@ -1925,25 +1925,25 @@ ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
     IndexGCStmt = gc_no_stmt,
     ResultGCStmt = gc_no_stmt,
 
-    ml_gen_info_new_aux_var_name(mcav_lo, LoVar, !Info),
-    LoVarDefn = ml_gen_mlds_var_decl(LoVar, IndexType,
+    ml_gen_info_new_aux_var_name(mcav_lo, LoVarName, !Info),
+    LoVarDefn = ml_gen_mlds_var_decl(LoVarName, IndexType,
         IndexGCStmt, Context),
-    ml_gen_local_var_lval(!.Info, LoVar, IndexType, LoVarLval),
+    LoVarLval = ml_local_var(LoVarName, IndexType),
 
-    ml_gen_info_new_aux_var_name(mcav_hi, HiVar, !Info),
-    HiVarDefn = ml_gen_mlds_var_decl(HiVar, IndexType,
+    ml_gen_info_new_aux_var_name(mcav_hi, HiVarName, !Info),
+    HiVarDefn = ml_gen_mlds_var_decl(HiVarName, IndexType,
         IndexGCStmt, Context),
-    ml_gen_local_var_lval(!.Info, HiVar, IndexType, HiVarLval),
+    HiVarLval = ml_local_var(HiVarName, IndexType),
 
-    ml_gen_info_new_aux_var_name(mcav_mid, MidVar, !Info),
-    MidVarDefn = ml_gen_mlds_var_decl(MidVar, IndexType,
+    ml_gen_info_new_aux_var_name(mcav_mid, MidVarName, !Info),
+    MidVarDefn = ml_gen_mlds_var_decl(MidVarName, IndexType,
         IndexGCStmt, Context),
-    ml_gen_local_var_lval(!.Info, MidVar, IndexType, MidVarLval),
+    MidVarLval = ml_local_var(MidVarName, IndexType),
 
-    ml_gen_info_new_aux_var_name(mcav_result, ResultVar, !Info),
-    ResultVarDefn = ml_gen_mlds_var_decl(ResultVar, ResultType,
+    ml_gen_info_new_aux_var_name(mcav_result, ResultVarName, !Info),
+    ResultVarDefn = ml_gen_mlds_var_decl(ResultVarName, ResultType,
         ResultGCStmt, Context),
-    ml_gen_local_var_lval(!.Info, ResultVar, ResultType, ResultVarLval),
+    ResultVarLval = ml_local_var(ResultVarName, ResultType),
 
     AlwaysDefns = [LoVarDefn, HiVarDefn, MidVarDefn, ResultVarDefn],
     ml_should_use_stop_loop(Context, yes,
@@ -2112,11 +2112,10 @@ ml_should_use_stop_loop(Context, LoopPresent,
         % We never need to trace ints.
         StopLoopGCStmt = gc_no_stmt,
 
-        ml_gen_info_new_aux_var_name(mcav_stop_loop, StopLoopVar, !Info),
-        StopLoopVarDefn = ml_gen_mlds_var_decl(StopLoopVar,
+        ml_gen_info_new_aux_var_name(mcav_stop_loop, StopLoopVarName, !Info),
+        StopLoopVarDefn = ml_gen_mlds_var_decl(StopLoopVarName,
             StopLoopType, StopLoopGCStmt, Context),
-        ml_gen_local_var_lval(!.Info, StopLoopVar, StopLoopType,
-            StopLoopVarLval),
+        StopLoopVarLval = ml_local_var(StopLoopVarName, StopLoopType),
         MaybeStopLoopLval = yes(StopLoopVarLval),
         StopLoopLvalDefns = [StopLoopVarDefn]
     ).

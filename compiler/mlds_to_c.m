@@ -1139,8 +1139,7 @@ mlds_output_pragma_export_defn(Opts, ModuleName, Indent, PragmaExport, !IO) :-
     io.write_string("{\n", !IO),
     c_output_context(Opts ^ m2co_foreign_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_pragma_export_defn_body(Opts, ModuleName,
-        MLDS_Name, MLDS_Signature, !IO),
+    mlds_output_pragma_export_defn_body(Opts, MLDS_Name, MLDS_Signature, !IO),
     io.write_string("}\n", !IO).
 
 :- pred mlds_output_pragma_export_func_name(mlds_to_c_opts::in,
@@ -1258,11 +1257,9 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
     % Output the definition body for a pragma foreign_export.
     %
 :- pred mlds_output_pragma_export_defn_body(mlds_to_c_opts::in,
-    mlds_module_name::in, qual_function_name::in,
-    mlds_func_params::in, io::di, io::uo) is det.
+    qual_function_name::in, mlds_func_params::in, io::di, io::uo) is det.
 
-mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
-        !IO) :-
+mlds_output_pragma_export_defn_body(Opts, FuncName, Signature, !IO) :-
     Signature = mlds_func_params(Parameters, RetTypes),
 
     % Declare local variables corresponding to any foreign_type parameters.
@@ -1279,9 +1276,9 @@ mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
     CForeignTypeInputs = list.filter(IsCForeignType, Parameters),
     CForeignTypeOutputs = list.filter(IsCForeignTypePtr, Parameters),
     io.write_list(CForeignTypeInputs, "",
-        mlds_output_pragma_export_input_defns(Opts, ModuleName), !IO),
+        mlds_output_pragma_export_input_defns(Opts), !IO),
     io.write_list(CForeignTypeOutputs, "",
-        mlds_output_pragma_export_output_defns(Opts, ModuleName), !IO),
+        mlds_output_pragma_export_output_defns(Opts), !IO),
 
     % Declare a local variable or two for the return value, if needed.
     (
@@ -1307,16 +1304,14 @@ mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
     % Generate code to box any non-word-sized foreign_type input parameters;
     % these need to be converted to a uniform size before passing them
     % to Mercury code.
-    io.write_list(CForeignTypeInputs, "",
-        mlds_output_pragma_input_arg(ModuleName), !IO),
+    io.write_list(CForeignTypeInputs, "", mlds_output_pragma_input_arg, !IO),
 
     % Generate code to actually call the Mercury procedure which
     % is being exported
     (
         RetTypes = [],
         io.write_string("\t", !IO),
-        mlds_output_pragma_export_call(Opts, ModuleName, FuncName, Parameters,
-            !IO)
+        mlds_output_pragma_export_call(Opts, FuncName, Parameters, !IO)
     ;
         RetTypes = [RetType2],
         ( if RetType2 = mlds_foreign_type(c(_)) then
@@ -1326,8 +1321,7 @@ mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
             mlds_output_pragma_export_type_prefix_suffix(RetType2, !IO),
             io.write_string(")", !IO)
         ),
-        mlds_output_pragma_export_call(Opts, ModuleName, FuncName, Parameters,
-            !IO)
+        mlds_output_pragma_export_call(Opts, FuncName, Parameters, !IO)
     ;
         RetTypes = [_, _ | _],
         % This is just for MLDS dumps when compiling to non-C targets.
@@ -1340,8 +1334,7 @@ mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
 
     % Generate code to unbox any foreign_type output parameters,
     % since we are returning those parameters to C code.
-    io.write_list(CForeignTypeOutputs, "",
-        mlds_output_pragma_output_arg(ModuleName), !IO),
+    io.write_list(CForeignTypeOutputs, "", mlds_output_pragma_output_arg, !IO),
 
     % Generate the final statement to unbox and return the return value,
     % if needed.
@@ -1361,61 +1354,57 @@ mlds_output_pragma_export_defn_body(Opts, ModuleName, FuncName, Signature,
         RetTypes = [_, _ | _]
     ).
 
-:- pred mlds_output_pragma_input_arg(mlds_module_name::in, mlds_argument::in,
+:- pred mlds_output_pragma_input_arg(mlds_argument::in,
     io::di, io::uo) is det.
 
-mlds_output_pragma_input_arg(ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(VarName, Type, _GCStmt),
-    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        UnboxedLocalVarName, BoxedLocalVarName),
+mlds_output_pragma_input_arg(Arg, !IO) :-
+    Arg = mlds_argument(LocalVarName, Type, _GCStmt),
+    get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
     io.write_string("\tMR_MAYBE_BOX_FOREIGN_TYPE(", !IO),
     mlds_output_pragma_export_type_prefix_suffix(Type, !IO),
     io.write_string(", ", !IO),
-    mlds_output_fully_qualified_local_var_name(UnboxedLocalVarName, !IO),
+    mlds_output_local_var_name(LocalVarName, !IO),
     io.write_string(", ", !IO),
-    mlds_output_fully_qualified_local_var_name(BoxedLocalVarName, !IO),
+    mlds_output_local_var_name(BoxedLocalVarName, !IO),
     io.write_string(");\n", !IO).
 
-:- pred mlds_output_pragma_output_arg(mlds_module_name::in, mlds_argument::in,
+:- pred mlds_output_pragma_output_arg(mlds_argument::in,
     io::di, io::uo) is det.
 
-mlds_output_pragma_output_arg(ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(VarName, Type, _GCStmt),
-    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        UnboxedLocalVarName, BoxedLocalVarName),
+mlds_output_pragma_output_arg(Arg, !IO) :-
+    Arg = mlds_argument(LocalVarName, Type, _GCStmt),
+    get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
     io.write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
     mlds_output_pragma_export_type_prefix_suffix(pointed_to_type(Type), !IO),
     io.write_string(", ", !IO),
-    mlds_output_fully_qualified_local_var_name(BoxedLocalVarName, !IO),
+    mlds_output_local_var_name(BoxedLocalVarName, !IO),
     io.write_string(", *", !IO),
-    mlds_output_fully_qualified_local_var_name(UnboxedLocalVarName, !IO),
+    mlds_output_local_var_name(LocalVarName, !IO),
     io.write_string(");\n", !IO).
 
 :- pred mlds_output_pragma_export_input_defns(mlds_to_c_opts::in,
-    mlds_module_name::in, mlds_argument::in, io::di, io::uo) is det.
+    mlds_argument::in, io::di, io::uo) is det.
 
-mlds_output_pragma_export_input_defns(Opts, ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(VarName, Type, _GCStmt),
+mlds_output_pragma_export_input_defns(Opts, Arg, !IO) :-
+    Arg = mlds_argument(LocalVarName, Type, _GCStmt),
     io.write_string("\t", !IO),
-    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        _UnboxedLocalVarName, BoxedLocalVarName),
+    get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
     mlds_output_data_decl_ho(Opts,
         mlds_output_type_prefix, mlds_output_type_suffix_no_size,
-        mlds_output_fully_qualified_local_var_name, BoxedLocalVarName,
+        mlds_output_local_var_name, BoxedLocalVarName,
         Type, !IO),
     io.write_string(";\n", !IO).
 
 :- pred mlds_output_pragma_export_output_defns(mlds_to_c_opts::in,
-    mlds_module_name::in, mlds_argument::in, io::di, io::uo) is det.
+    mlds_argument::in, io::di, io::uo) is det.
 
-mlds_output_pragma_export_output_defns(Opts, ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(VarName, Type, _GCStmt),
+mlds_output_pragma_export_output_defns(Opts, Arg, !IO) :-
+    Arg = mlds_argument(LocalVarName, Type, _GCStmt),
     io.write_string("\t", !IO),
-    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        _UnboxedDataName, BoxedDataName),
+    get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
     mlds_output_data_decl_ho(Opts,
         mlds_output_type_prefix, mlds_output_type_suffix_no_size,
-        mlds_output_fully_qualified_local_var_name, BoxedDataName,
+        mlds_output_local_var_name, BoxedLocalVarName,
         pointed_to_type(Type), !IO),
     io.write_string(";\n", !IO).
 
@@ -1428,56 +1417,47 @@ pointed_to_type(PtrType) =
         unexpected($pred, "not pointer")
     ).
 
-:- pred qualified_unboxed_and_boxed_entity_names(mlds_module_name::in,
-    mlds_local_var_name::in,
-    qual_local_var_name::out, qual_local_var_name::out) is det.
+:- pred get_boxed_local_var_name(mlds_local_var_name::in,
+    mlds_local_var_name::out) is det.
 
-qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        UnboxedQualVarName, BoxedQualVarName) :-
+get_boxed_local_var_name(VarName, BoxedVarName) :-
     ( if VarName = lvn_prog_var(Name, Seq) then
         BoxedVarName = lvn_prog_var_boxed(Name, Seq)
     else
         NameStr = ml_local_var_name_to_string(VarName),
         BoxedVarName = lvn_comp_var(lvnc_non_prog_var_boxed(NameStr))
-    ),
-    UnboxedQualVarName = qual_local_var_name(ModuleName,
-        module_qual, VarName),
-    BoxedQualVarName = qual_local_var_name(ModuleName,
-        module_qual, BoxedVarName).
+    ).
 
 :- pred mlds_output_pragma_export_call(mlds_to_c_opts::in,
-    mlds_module_name::in, qual_function_name::in,
-    list(mlds_argument)::in, io::di, io::uo) is det.
+    qual_function_name::in, list(mlds_argument)::in, io::di, io::uo) is det.
 
-mlds_output_pragma_export_call(Opts, ModuleName, FuncName, Parameters, !IO) :-
+mlds_output_pragma_export_call(Opts, FuncName, Parameters, !IO) :-
     mlds_output_fully_qualified_function_name(FuncName, !IO),
     io.write_string("(", !IO),
-    io.write_list(Parameters, ", ",
-        mlds_output_pragma_export_arg(Opts, ModuleName), !IO),
+    io.write_list(Parameters, ", ", mlds_output_pragma_export_arg(Opts), !IO),
     io.write_string(");\n", !IO).
 
     % Output a fully qualified name preceded by a cast.
     %
-:- pred mlds_output_pragma_export_arg(mlds_to_c_opts::in, mlds_module_name::in,
+:- pred mlds_output_pragma_export_arg(mlds_to_c_opts::in,
     mlds_argument::in, io::di, io::uo) is det.
 
-mlds_output_pragma_export_arg(Opts, ModuleName, Arg, !IO) :-
-    Arg = mlds_argument(VarName, Type, _GCStmt),
-    qualified_unboxed_and_boxed_entity_names(ModuleName, VarName,
-        UnboxedLocalVarName, BoxedLocalVarName),
+mlds_output_pragma_export_arg(Opts, Arg, !IO) :-
+    Arg = mlds_argument(LocalVarName, Type, _GCStmt),
+    get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
     ( if Type = mlds_foreign_type(c(_)) then
         % This is a foreign_type input. Pass in the already-boxed value.
-        mlds_output_fully_qualified_local_var_name(BoxedLocalVarName, !IO)
+        mlds_output_local_var_name(BoxedLocalVarName, !IO)
     else if Type = mlds_ptr_type(mlds_foreign_type(c(_))) then
         % This is a foreign_type output. Pass in the address of the
         % local variable which will hold the boxed value.
         io.write_string("&", !IO),
-        mlds_output_fully_qualified_local_var_name(BoxedLocalVarName, !IO)
+        mlds_output_local_var_name(BoxedLocalVarName, !IO)
     else
         % Otherwise, no boxing or unboxing is needed.
         % Just cast the argument to the right type.
         mlds_output_cast(Opts, Type, !IO),
-        mlds_output_fully_qualified_local_var_name(UnboxedLocalVarName, !IO)
+        mlds_output_local_var_name(LocalVarName, !IO)
     ).
 
 :- pred mlds_output_export_enums(mlds_to_c_opts::in, indent::in,
@@ -1534,15 +1514,13 @@ mlds_output_exported_enum_constant(ExportedConstant, !IO) :-
 %
 
 :- pred mlds_output_local_var_defns(mlds_to_c_opts::in, indent::in, bool::in,
-    mlds_module_name::in, list(mlds_local_var_defn)::in, io::di, io::uo) is det.
+    list(mlds_local_var_defn)::in, io::di, io::uo) is det.
 
-mlds_output_local_var_defns(_Opts, _Indent, _Separate, _ModuleName, [], !IO).
-mlds_output_local_var_defns(Opts, Indent, Separate, ModuleName,
+mlds_output_local_var_defns(_Opts, _Indent, _Separate, [], !IO).
+mlds_output_local_var_defns(Opts, Indent, Separate,
         [LocalVarDefn | LocalVarDefns], !IO) :-
-    mlds_output_local_var_defn(Opts, Indent, Separate, ModuleName,
-        LocalVarDefn, !IO),
-    mlds_output_local_var_defns(Opts, Indent, Separate, ModuleName,
-        LocalVarDefns, !IO).
+    mlds_output_local_var_defn(Opts, Indent, Separate, LocalVarDefn, !IO),
+    mlds_output_local_var_defns(Opts, Indent, Separate, LocalVarDefns, !IO).
 
 :- pred mlds_output_global_var_defns(mlds_to_c_opts::in, indent::in, bool::in,
     mlds_module_name::in, list(mlds_global_var_defn)::in,
@@ -2042,10 +2020,9 @@ mlds_output_global_var_defn(Opts, Indent, Separate, ModuleName, GlobalVarDefn,
     mlds_output_gc_statement(Opts, Indent, GCStmt, "", !IO).
 
 :- pred mlds_output_local_var_defn(mlds_to_c_opts::in, indent::in, bool::in,
-    mlds_module_name::in, mlds_local_var_defn::in, io::di, io::uo) is det.
+    mlds_local_var_defn::in, io::di, io::uo) is det.
 
-mlds_output_local_var_defn(Opts, Indent, Separate, ModuleName, LocalVarDefn,
-        !IO) :-
+mlds_output_local_var_defn(Opts, Indent, Separate, LocalVarDefn, !IO) :-
     LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
         Type, Initializer, GCStmt),
     (
@@ -2056,9 +2033,7 @@ mlds_output_local_var_defn(Opts, Indent, Separate, ModuleName, LocalVarDefn,
     ),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    QualLocalVarName =
-        qual_local_var_name(ModuleName, module_qual, LocalVarName),
-    mlds_output_local_var_decl(Opts, QualLocalVarName, Type,
+    mlds_output_local_var_decl(Opts, LocalVarName, Type,
         get_initializer_array_size(Initializer), !IO),
     mlds_output_initializer(Opts, Type, Initializer, !IO),
     io.write_string(";\n", !IO),
@@ -2350,13 +2325,13 @@ mlds_output_global_var_decl(Opts, GlobalVarName, Type, InitializerSize, !IO) :-
         mlds_output_type_prefix, mlds_output_data_decl_2(InitializerSize),
         mlds_output_fully_qualified_global_var_name, GlobalVarName, Type, !IO).
 
-:- pred mlds_output_local_var_decl(mlds_to_c_opts::in, qual_local_var_name::in,
+:- pred mlds_output_local_var_decl(mlds_to_c_opts::in, mlds_local_var_name::in,
     mlds_type::in, initializer_array_size::in, io::di, io::uo) is det.
 
 mlds_output_local_var_decl(Opts, LocalVarName, Type, InitializerSize, !IO) :-
     mlds_output_data_decl_ho(Opts,
         mlds_output_type_prefix, mlds_output_data_decl_2(InitializerSize),
-        mlds_output_fully_qualified_local_var_name, LocalVarName, Type, !IO).
+        mlds_output_local_var_name, LocalVarName, Type, !IO).
 
 :- pred mlds_output_field_var_decl(mlds_to_c_opts::in, qual_field_var_name::in,
     mlds_type::in, initializer_array_size::in, io::di, io::uo) is det.
@@ -2558,7 +2533,6 @@ mlds_output_func_decl_ho(Opts, Indent, QualFuncName, Context,
     io.write_string(CallingConvention, !IO),
     io.nl(!IO),
     mlds_output_fully_qualified_function_name(QualFuncName, !IO),
-    QualFuncName = qual_function_name(ModuleName, _),
     StdDecl = Opts ^ m2co_std_func_decl,
     (
         StdDecl = no,
@@ -2568,7 +2542,7 @@ mlds_output_func_decl_ho(Opts, Indent, QualFuncName, Context,
         list.map_foldl(standardize_param_names, Parameters0, Parameters, 1, _)
     ),
     mlds_output_params(Opts, OutputPrefix, OutputSuffix, Indent,
-        ModuleName, Context, Parameters, !IO),
+        Context, Parameters, !IO),
     (
         RetTypes = [RetType2],
         OutputSuffix(Opts, RetType2, !IO)
@@ -2596,11 +2570,11 @@ mlds_output_prefix_suffix(Opts, OutputPrefix, OutputSuffix, Value, !IO) :-
     OutputSuffix(Opts, Value, !IO).
 
 :- pred mlds_output_params(mlds_to_c_opts::in, output_type::in(output_type),
-    output_type::in(output_type), indent::in, mlds_module_name::in,
+    output_type::in(output_type), indent::in,
     prog_context::in, list(mlds_argument)::in, io::di, io::uo) is det.
 
-mlds_output_params(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
-        Context, Parameters, !IO) :-
+mlds_output_params(Opts, OutputPrefix, OutputSuffix, Indent, Context,
+        Parameters, !IO) :-
     io.write_char('(', !IO),
     (
         Parameters = [],
@@ -2610,28 +2584,22 @@ mlds_output_params(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
         io.nl(!IO),
         io.write_list(Parameters, ",\n",
             mlds_output_param(Opts, OutputPrefix, OutputSuffix,
-                Indent + 1, ModuleName, Context),
+                Indent + 1, Context),
             !IO)
     ),
     io.write_char(')', !IO).
 
 :- pred mlds_output_param(mlds_to_c_opts::in, output_type::in(output_type),
-    output_type::in(output_type), indent::in, mlds_module_name::in,
+    output_type::in(output_type), indent::in,
     prog_context::in, mlds_argument::in, io::di, io::uo) is det.
 
-mlds_output_param(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
+mlds_output_param(Opts, OutputPrefix, OutputSuffix, Indent,
         Context, Arg, !IO) :-
     Arg = mlds_argument(LocalVarName, Type, GCStmt),
-    % XXX MLDS_DEFN The arguments of the constructor methods of some classes
-    % are type qualified. For C, the two kinds of qualifications yield
-    % identical results, but this is not true for Java and C#.
-    QualLocalVarName =
-        qual_local_var_name(ModuleName, module_qual, LocalVarName),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
     mlds_output_data_decl_ho(Opts, OutputPrefix, OutputSuffix,
-        mlds_output_fully_qualified_local_var_name,
-        QualLocalVarName, Type, !IO),
+        mlds_output_local_var_name, LocalVarName, Type, !IO),
     mlds_output_gc_statement(Opts, Indent, GCStmt, "\n", !IO).
 
 :- pred mlds_output_func_type_prefix(mlds_to_c_opts::in, mlds_func_params::in,
@@ -2727,14 +2695,6 @@ mlds_output_fully_qualified_global_var_name(QualGlobalVarName, !IO) :-
         output_qual_name_prefix_c(ModuleName, !IO)
     ),
     mlds_output_global_var_name(GlobalVarName, !IO).
-
-:- pred mlds_output_fully_qualified_local_var_name(qual_local_var_name::in,
-    io::di, io::uo) is det.
-
-mlds_output_fully_qualified_local_var_name(QualLocalVarName, !IO) :-
-    QualLocalVarName = qual_local_var_name(ModuleName, _, LocalVarName),
-    output_qual_name_prefix_c(ModuleName, !IO),
-    mlds_output_local_var_name(LocalVarName, !IO).
 
 :- pred mlds_output_fully_qualified_field_var_name(qual_field_var_name::in,
     io::di, io::uo) is det.
@@ -2927,6 +2887,11 @@ mlds_output_global_var_name(GlobalVarName, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_local_var_name(LocalVarName, !IO) :-
+    ( if LocalVarName = lvn_comp_var(lvnc_dummy_var) then
+        io.write_string("mercury__private_builtin__", !IO)
+    else
+        true
+    ),
     mlds_output_mangled_name(ml_local_var_name_to_string(LocalVarName), !IO).
 
 :- pred mlds_output_field_var_name(mlds_field_var_name::in,
@@ -3612,13 +3577,13 @@ mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO) :-
             % declarations.
             list.filter(local_var_defn_is_commit_type, LocalVarDefns,
                 LabelDefns, NonLabelDefns),
-            mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
+            mlds_output_local_var_defns(Opts, BlockIndent, no,
                 LabelDefns, !IO),
-            mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
+            mlds_output_local_var_defns(Opts, BlockIndent, no,
                 NonLabelDefns, !IO)
         ;
             GCC_LocalLabels = no,
-            mlds_output_local_var_defns(Opts, BlockIndent, no, ModuleName,
+            mlds_output_local_var_defns(Opts, BlockIndent, no,
                 LocalVarDefns, !IO)
         ),
         io.write_string("\n", !IO)
@@ -4714,7 +4679,7 @@ mlds_output_lval(Opts, Lval, !IO) :-
         mlds_output_fully_qualified_global_var_name(GlobalVarName, !IO)
     ;
         Lval = ml_local_var(LocalVarName, _VarType),
-        mlds_output_fully_qualified_local_var_name(LocalVarName, !IO)
+        mlds_output_local_var_name(LocalVarName, !IO)
     ).
 
 :- func global_var_name(global_var_ref) = string.
@@ -4988,7 +4953,7 @@ is_an_address(Rval) = IsAddr :-
         (
             ( Const = mlconst_null(_)
             ; Const = mlconst_code_addr(_)
-            ; Const = mlconst_data_addr_local_var(_, _)
+            ; Const = mlconst_data_addr_local_var(_)
             ; Const = mlconst_data_addr_global_var(_, _)
             ; Const = mlconst_data_addr_rtti(_, _)
             ; Const = mlconst_data_addr_tabling(_, _)
@@ -5295,11 +5260,8 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         Const = mlconst_code_addr(CodeAddr),
         mlds_output_code_addr(CodeAddr, !IO)
     ;
-        Const = mlconst_data_addr_local_var(ModuleName, LocalVarName),
+        Const = mlconst_data_addr_local_var(LocalVarName),
         io.write_string("&", !IO),
-        % XXX Does this duplicate the code that prints local var names?
-        mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName), !IO),
-        io.write_string("__", !IO),
         mlds_output_mangled_name(ml_local_var_name_to_string(LocalVarName),
             !IO)
     ;

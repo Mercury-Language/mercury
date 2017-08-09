@@ -850,11 +850,7 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
             VarLval, NonMangledArgVarName, Context, no, 0,
             ArgLval, ConvDecls, _ConvInputStmts, ConvOutputStmts, !Info),
         MLDSType = mercury_type_to_mlds_type(ModuleInfo, OrigType),
-        module_info_get_name(ModuleInfo, ModuleName),
-        MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
-        QualLocalVarName = qual_local_var_name(MLDSModuleName,
-            module_qual, NonMangledArgVarName),
-        LocalVarLval = ml_local_var(QualLocalVarName, MLDSType),
+        LocalVarLval = ml_local_var(NonMangledArgVarName, MLDSType),
         (
             MutableSpecial = not_mutable_special_case,
             Rval = ml_lval(LocalVarLval)

@@ -830,9 +830,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
             gc_no_stmt)],
         CtorReturnValues = [],
 
-        QualCtorArgName =
-            qual_local_var_name(MLDS_ModuleName, type_qual, CtorArgName),
-        CtorArgLval = ml_local_var(QualCtorArgName, mlds_native_int_type),
+        CtorArgLval = ml_local_var(CtorArgName, mlds_native_int_type),
         CtorArgRval = ml_lval(CtorArgLval),
         CtorStmt = ml_stmt_atomic(assign(FieldLval, CtorArgRval), Context),
 
@@ -848,7 +846,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     ),
 
     % Create a method that calls the original predicates.
-    generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn),
+    generate_call_method(Arity, CodeAddrs, MethodDefn),
 
     ( if Arity =< max_specialised_method_ptr_arity then
         InterfaceName = "MethodPtr" ++ string.from_int(Arity)
@@ -884,10 +882,10 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
 
 max_specialised_method_ptr_arity = 15.
 
-:- pred generate_call_method(mlds_module_name::in, arity::in,
-    list(mlds_code_addr)::in, mlds_function_defn::out) is det.
+:- pred generate_call_method(arity::in, list(mlds_code_addr)::in,
+    mlds_function_defn::out) is det.
 
-generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
+generate_call_method(Arity, CodeAddrs, MethodDefn) :-
     % Create the arguments to the call method. For low arities, the method
     % takes n arguments directly. For higher arities, the arguments are
     % passed in as an array.
@@ -926,9 +924,8 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
         Cases = list.map_corresponding(MakeCase, 0 .. MaxCase, CodeAddrStmts),
 
         SwitchVarName = lvn_field_var_as_local(fvn_ptr_num),
-        SwitchVar =
-            qual_local_var_name(MLDS_ModuleName, module_qual, SwitchVarName),
-        SwitchVarRval = ml_lval(ml_local_var(SwitchVar, mlds_native_int_type)),
+        SwitchVarRval =
+            ml_lval(ml_local_var(SwitchVarName, mlds_native_int_type)),
         SwitchRange = mlds_switch_range(0, MaxCase),
         Stmt = ml_stmt_switch(mlds_native_int_type, SwitchVarRval,
             SwitchRange, Cases, default_is_unreachable, Context)
@@ -968,19 +965,17 @@ create_generic_arg(I, ArgName, Arg) :-
     mlds_code_addr::in, mlds_stmt::out) is det.
 
 generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
-    CodeAddr = mlds_code_addr(QualFuncLabel, OrigFuncSignature),
-    QualFuncLabel = qual_func_label(ModuleName, _FuncLabel),
+    CodeAddr = mlds_code_addr(_QualFuncLabel, OrigFuncSignature),
     OrigFuncSignature = mlds_func_signature(OrigArgTypes, OrigRetTypes),
 
     % Create the arguments to pass to the original method.
     (
         InputArgs = cmi_separate(ArgNames),
-        list.map_corresponding(generate_call_method_nth_arg(ModuleName),
+        list.map_corresponding(generate_call_method_nth_arg,
             OrigArgTypes, ArgNames, CallArgs)
     ;
         InputArgs = cmi_array(ArrayVarName),
-        ArrayVar = qual_local_var_name(ModuleName, module_qual, ArrayVarName),
-        generate_call_method_args_from_array(OrigArgTypes, ArrayVar, 0,
+        generate_call_method_args_from_array(OrigArgTypes, ArrayVarName, 0,
             [], CallArgs)
     ),
 
@@ -988,9 +983,6 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
     % Create a temporary variable to store the result of the call to the
     % original method.
     ReturnVarName = lvn_comp_var(lvnc_return_value),
-    ReturnVar = qual_local_var_name(ModuleName, module_qual, ReturnVarName),
-
-    % Create a declaration for this variable.
     (
         OrigRetTypes = [],
         ReturnVarType = mlds_generic_type
@@ -1001,7 +993,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
         OrigRetTypes = [_, _ | _],
         ReturnVarType = mlds_array_type(mlds_generic_type)
     ),
-    ReturnLval = ml_local_var(ReturnVar, ReturnVarType),
+    ReturnLval = ml_local_var(ReturnVarName, ReturnVarType),
 
     Context = term.context_init,
     GCStmt = gc_no_stmt,  % The Java back-end does its own GC.
@@ -1032,17 +1024,15 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
 
     Stmt = ml_stmt_block([ReturnVarDefn], [], [CallStmt, ReturnStmt], Context).
 
-:- pred generate_call_method_nth_arg(mlds_module_name::in, mlds_type::in,
+:- pred generate_call_method_nth_arg(mlds_type::in,
     mlds_local_var_name::in, mlds_rval::out) is det.
 
-generate_call_method_nth_arg(ModuleName, Type, MethodArgVariable, CallArg) :-
-    CallArgLabel =
-        qual_local_var_name(ModuleName, module_qual, MethodArgVariable),
-    Rval = ml_lval(ml_local_var(CallArgLabel, mlds_generic_type)),
+generate_call_method_nth_arg(Type, MethodArgVariable, CallArg) :-
+    Rval = ml_lval(ml_local_var(MethodArgVariable, mlds_generic_type)),
     CallArg = ml_unop(unbox(Type), Rval).
 
 :- pred generate_call_method_args_from_array(list(mlds_type)::in,
-    qual_local_var_name::in, int::in,
+    mlds_local_var_name::in, int::in,
     list(mlds_rval)::in, list(mlds_rval)::out) is det.
 
 generate_call_method_args_from_array([], _, _, Args, Args).
@@ -2245,23 +2235,16 @@ output_maybe_qualified_global_var_name_for_java(Info, QualGlobalVarName, !IO) :-
     ),
     output_global_var_name_for_java(GlobalVarName, !IO).
 
-:- pred output_maybe_qualified_local_var_name_for_java(java_out_info::in,
-    qual_local_var_name::in, io::di, io::uo) is det.
+:- pred output_maybe_qualified_local_var_name_for_java(mlds_local_var_name::in,
+    io::di, io::uo) is det.
 
-output_maybe_qualified_local_var_name_for_java(Info, QualLocalVarName, !IO) :-
-    % Don't module qualify names which are defined in the current module.
-    % This avoids unnecessary verbosity, and is also necessary in the case
-    % of local variables and function parameters, which must not be qualified.
-    % XXX MLDS_DEFN
-    % The ModuleName = CurrentModuleName test should *always* succeed
-    % for local vars.
-    QualLocalVarName =
-        qual_local_var_name(ModuleName, QualKind, LocalVarName),
-    CurrentModuleName = Info ^ joi_module_name,
-    ( if ModuleName = CurrentModuleName then
-        true
+output_maybe_qualified_local_var_name_for_java(LocalVarName, !IO) :-
+    ( if LocalVarName = lvn_comp_var(lvnc_dummy_var) then
+        % You cannot fold this prefix into output_local_var_name_for_java,
+        % because the "." would cause the entire name to be mangled.
+        io.write_string("private_builtin.", !IO)
     else
-        output_qual_name_prefix_java(ModuleName, QualKind, !IO)
+        true
     ),
     output_local_var_name_for_java(LocalVarName, !IO).
 
@@ -3823,8 +3806,7 @@ output_lval_for_java(Info, Lval, !IO) :-
             QualGlobalVarName, !IO)
     ;
         Lval = ml_local_var(QualLocalVarName, _),
-        output_maybe_qualified_local_var_name_for_java(Info,
-            QualLocalVarName, !IO)
+        output_maybe_qualified_local_var_name_for_java(QualLocalVarName, !IO)
     ).
 
 :- pred output_call_rval_for_java(java_out_info::in, mlds_rval::in,
@@ -4711,11 +4693,7 @@ output_rval_const_for_java(Info, Const, !IO) :-
         IsCall = no,
         mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO)
     ;
-        Const = mlconst_data_addr_local_var(ModuleName, LocalVarName),
-        SymName = mlds_module_name_to_sym_name(ModuleName),
-        mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
-        io.write_string(ModuleNameStr, !IO),
-        io.write_string(".", !IO),
+        Const = mlconst_data_addr_local_var(LocalVarName),
         output_local_var_name_for_java(LocalVarName, !IO)
     ;
         Const = mlconst_data_addr_global_var(ModuleName, GlobalVarName),

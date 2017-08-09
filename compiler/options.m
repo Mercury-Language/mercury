@@ -2368,7 +2368,9 @@ long_option("single-precision-float",   single_prec_float).
 long_option("tags",                 tags).
 long_option("num-tag-bits",         num_tag_bits).
 long_option("num-reserved-addresses",   num_reserved_addresses).
-long_option("num-reserved-objects", num_reserved_objects).
+% As of 2017 aug 8, we no longer support reserved objects.
+% See the (very short) discussion on mercury-developers.
+% long_option("num-reserved-objects", num_reserved_objects).
 long_option("bits-per-word",        bits_per_word).
 long_option("bytes-per-word",       bytes_per_word).
 long_option("conf-low-tag-bits",    conf_low_tag_bits).

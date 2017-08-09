@@ -1501,22 +1501,15 @@ output_maybe_qualified_global_var_name_for_csharp(Info, QualGlobalVarName,
     output_global_var_name_for_csharp(GlobalVarName, !IO).
 
 :- pred output_maybe_qualified_local_var_name_for_csharp(csharp_out_info::in,
-    qual_local_var_name::in, io::di, io::uo) is det.
+    mlds_local_var_name::in, io::di, io::uo) is det.
 
-output_maybe_qualified_local_var_name_for_csharp(Info, QualLocalVarName,
-        !IO) :-
-    % Don't module qualify names which are defined in the current module.
-    % This avoids unnecessary verbosity, and is also necessary in the case
-    % of local variables and function parameters, which must not be qualified.
-    % XXX MLDS_DEFN
-    % The ModuleName = CurrentModuleName test should *always* succeed
-    % for local vars.
-    QualLocalVarName = qual_local_var_name(ModuleName, QualKind, LocalVarName),
-    CurrentModuleName = Info ^ csoi_module_name,
-    ( if ModuleName = CurrentModuleName then
-        true
+output_maybe_qualified_local_var_name_for_csharp(_Info, LocalVarName, !IO) :-
+    ( if LocalVarName = lvn_comp_var(lvnc_dummy_var) then
+        % You cannot fold this prefix into output_local_var_name_for_java,
+        % because the "." would cause the entire name to be mangled.
+        io.write_string("private_builtin.", !IO)
     else
-        output_qual_name_prefix_cs(ModuleName, QualKind, !IO)
+        true
     ),
     output_local_var_name_for_csharp(LocalVarName, !IO).
 
@@ -3683,11 +3676,7 @@ output_rval_const_for_csharp(Info, Const, !IO) :-
         map.lookup(Info ^ csoi_code_addrs, CodeAddr, Name),
         io.write_string(Name, !IO)
     ;
-        Const = mlconst_data_addr_local_var(ModuleName, VarName),
-        MangledModuleName = strip_mercury_and_mangle_sym_name_for_csharp(
-            mlds_module_name_to_sym_name(ModuleName)),
-        io.write_string(MangledModuleName, !IO),
-        io.write_string(".", !IO),
+        Const = mlconst_data_addr_local_var(VarName),
         local_var_name_to_string_for_csharp(VarName, VarNameStr),
         write_identifier_string_for_csharp(VarNameStr, !IO)
     ;

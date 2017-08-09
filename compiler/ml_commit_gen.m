@@ -251,15 +251,14 @@ ml_gen_commit(Goal, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
             !Info),
         % Push nesting level.
         ml_gen_info_new_aux_var_name(mcav_commit, CommitRef, !Info),
-        ml_gen_local_var_lval(!.Info, CommitRef, mlds_commit_type,
-            CommitRefLval),
+        CommitRefLval = ml_local_var(CommitRef, mlds_commit_type),
         CommitRefDefn = ml_gen_commit_var_decl(Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval), Context),
         % Pop nesting level.
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
             DoCommitStmt, SuccessFuncDefn),
 
-        ml_get_env_ptr(!.Info, EnvPtrRval),
+        ml_get_env_ptr(EnvPtrRval),
         SuccessCont = success_cont(SuccessFuncLabelRval, EnvPtrRval, [], []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
         ml_gen_goal(model_non, Goal, GoalLocalVarDefns, GoalFuncDefns,
@@ -328,15 +327,14 @@ ml_gen_commit(Goal, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
             !Info),
         % push nesting level
         ml_gen_info_new_aux_var_name(mcav_commit, CommitRef, !Info),
-        ml_gen_local_var_lval(!.Info, CommitRef, mlds_commit_type,
-            CommitRefLval),
+        CommitRefLval = ml_local_var(CommitRef, mlds_commit_type),
         CommitRefDefn = ml_gen_commit_var_decl(Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval), Context),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
             DoCommitStmt, SuccessFuncDefn),
 
-        ml_get_env_ptr(!.Info, EnvPtrRval),
+        ml_get_env_ptr(EnvPtrRval),
         SuccessCont = success_cont(SuccessFuncLabelRval, EnvPtrRval, [], []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
         ml_gen_goal(model_non, Goal, GoalLocalVarDefns, GoalFuncDefns,
@@ -422,7 +420,7 @@ maybe_put_commit_in_own_func(LocalVarDefn0, FuncDefn0, TryCommitStmts,
             ArgTypes = []
         ;
             UseNestedFuncs = no,
-            ml_get_env_ptr(!.Info, EnvPtrRval),
+            ml_get_env_ptr(EnvPtrRval),
             ArgRvals = [EnvPtrRval],
             ArgTypes = [mlds_generic_env_ptr_type]
         ),
@@ -520,7 +518,7 @@ ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
 
     % Generate code to assign from the local var to the output var.
     ml_gen_var(!.Info, OutputVar, OutputVarLval),
-    ml_gen_local_var_lval(!.Info, LocalVarName, MLDS_Type, LocalVarLval),
+    LocalVarLval = ml_local_var(LocalVarName, MLDS_Type),
     Assign = ml_gen_assign(OutputVarLval, ml_lval(LocalVarLval), Context),
 
     % Update the lval for this variable so that any references to it inside

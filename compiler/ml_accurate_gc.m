@@ -373,7 +373,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
     % Generate the lval for Var.
     ml_gen_info_get_module_info(Info, ModuleInfo),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-    ml_gen_local_var_lval(Info, VarName, MLDS_Type, VarLval),
+    VarLval = ml_local_var(VarName, MLDS_Type),
 
     % Generate the address of `private_builtin.gc_trace/1#0'.
     PredName = "gc_trace",
@@ -576,9 +576,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         % atomic_statement occurs, rather than at the local variable
         % declaration.
 
-        QualVarName = qual_local_var_name(!.Fixup ^ fnoi_module_name,
-            module_qual, VarName),
-        VarLval = ml_local_var(QualVarName, VarType),
+        VarLval = ml_local_var(VarName, VarType),
         PtrRval = ml_unop(cast(PointerType), ml_mem_addr(VarLval)),
         list.map_foldl(init_field_n(PointerType, PtrRval, Context),
             ArgRvals, ArgInitStmts, 0, _NumFields),

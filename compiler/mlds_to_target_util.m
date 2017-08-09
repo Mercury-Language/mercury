@@ -739,7 +739,7 @@ method_ptrs_in_rval(Rval, !CodeAddrsInConsts) :-
             ; RvalConst = mlconst_string(_)
             ; RvalConst = mlconst_multi_string(_)
             ; RvalConst = mlconst_named_const(_, _)
-            ; RvalConst = mlconst_data_addr_local_var(_, _)
+            ; RvalConst = mlconst_data_addr_local_var(_)
             ; RvalConst = mlconst_data_addr_global_var(_, _)
             ; RvalConst = mlconst_data_addr_rtti(_, _)
             ; RvalConst = mlconst_data_addr_tabling(_, _)

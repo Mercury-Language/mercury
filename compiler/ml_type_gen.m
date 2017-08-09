@@ -951,23 +951,24 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, FieldInfo)
         = Stmt :-
     FieldInfo = mlds_field_info(FieldVarName, Type, _GcStmt, Context),
     RequiresQualifiedParams = target_requires_module_qualified_params(Target),
+    % XXX This switch used to decide whether we module-qualified or
+    % type-qualified LocalVarName, but both mlds_to_java.m and mlds_to_cs.m
+    % ignored both qualifications, and mlds_to_c.m ignored the *distinction*
+    % between module- and type-qualification.
+    % I (zs) am not sure that retaining this test as a sanity check
+    % is useful.
     (
         RequiresQualifiedParams = yes,
-        ( if
-            BaseClassId = mlds_class_type(QualClassName, _, _),
-            QualClassName = qual_class_name(ModuleName, _, _)
-        then
-            QualLocalVarName = qual_local_var_name(ModuleName, module_qual,
-                lvn_field_var_as_local(FieldVarName))
+        ( if BaseClassId = mlds_class_type(_QualClassName, _, _) then
+            true
         else
             unexpected($pred, "invalid BaseClassId")
         )
     ;
-        RequiresQualifiedParams = no,
-        QualLocalVarName = qual_local_var_name(ClassQualifier, type_qual,
-            lvn_field_var_as_local(FieldVarName))
+        RequiresQualifiedParams = no
     ),
-    Param = ml_lval(ml_local_var(QualLocalVarName, Type)),
+    LocalVarName = lvn_field_var_as_local(FieldVarName),
+    Param = ml_lval(ml_local_var(LocalVarName, Type)),
     Field = ml_field(yes(0), ml_self(ClassType),
         ml_field_named(
             qual_field_var_name(ClassQualifier, type_qual, FieldVarName),

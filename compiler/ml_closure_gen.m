@@ -780,9 +780,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         ClosureGCStmt = gc_no_stmt,
         ClosureDefn = ml_gen_mlds_var_decl(ClosureName, ClosureType,
             ClosureGCStmt, Context),
-        ml_gen_local_var_lval(!.Info, ClosureName, ClosureType, ClosureLval),
-        ml_gen_local_var_lval(!.Info, ClosureArgName1, ClosureArgType1,
-            ClosureArgLval),
+        ClosureLval = ml_local_var(ClosureName, ClosureType),
+        ClosureArgLval = ml_local_var(ClosureArgName1, ClosureArgType1),
         InitClosure = ml_gen_assign(ClosureLval, ml_lval(ClosureArgLval),
             Context),
         MaybeClosureB = yes({ClosureDefn, InitClosure}),
@@ -1025,7 +1024,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
             CodeModel, Context, ArgNum + 1, DefnsTail, LvalsTail,
             CopyOutLvalsTail, !Info),
         ml_gen_type(!.Info, Type, MLDS_Type),
-        ml_gen_local_var_lval(!.Info, Name, MLDS_Type, VarLval),
+        VarLval = ml_local_var(Name, MLDS_Type),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         mode_to_top_functor_mode(ModuleInfo, Mode, Type, ArgTopFunctorMode),
         (
@@ -1104,22 +1103,20 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
 
 ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         PredId, ProcId, Context, GC_Decls, !Info) :-
-    ml_gen_local_var_lval(!.Info, ClosureArgName, ClosureArgType,
-        ClosureArgLval),
+    ClosureArgLval = ml_local_var(ClosureArgName, ClosureArgType),
 
     ClosureLayoutPtrName = lvn_comp_var(lvnc_closure_layout_ptr),
     % This type is really `const MR_Closure_Layout *', but there is no easy
     % way to represent that in the MLDS; using MR_Box instead works fine.
     ClosureLayoutPtrType = mlds_generic_type,
-    ml_gen_local_var_lval(!.Info, ClosureLayoutPtrName, ClosureLayoutPtrType,
-        ClosureLayoutPtrLval),
+    ClosureLayoutPtrLval =
+        ml_local_var(ClosureLayoutPtrName, ClosureLayoutPtrType),
 
     TypeParamsName = lvn_comp_var(lvnc_type_params),
     % This type is really MR_TypeInfoParams, but there is no easy way to
     % represent that in the MLDS; using MR_Box instead works fine.
     TypeParamsType = mlds_generic_type,
-    ml_gen_local_var_lval(!.Info, TypeParamsName, TypeParamsType,
-        TypeParamsLval),
+    TypeParamsLval = ml_local_var(TypeParamsName, TypeParamsType),
     (
         ClosureKind = higher_order_proc_closure,
         ClosureLayoutPtrGCInitFragments = [

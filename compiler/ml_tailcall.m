@@ -764,7 +764,7 @@ check_const(Const) = MayYieldDanglingStackRef :-
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
     ;
-        Const = mlconst_data_addr_local_var(_ModuleName, _VarName),
+        Const = mlconst_data_addr_local_var(_VarName),
         MayYieldDanglingStackRef = may_yield_dangling_stack_ref
     ;
         ( Const = mlconst_true

@@ -217,7 +217,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % not to the heap, so the GC doesn't need to trace it.
     GCStmt = gc_no_stmt,
     FuncVarDecl = ml_gen_mlds_var_decl(FuncVarName, FuncType, GCStmt, Context),
-    ml_gen_local_var_lval(!.Info, FuncVarName, FuncType, FuncVarLval),
+    FuncVarLval = ml_local_var(FuncVarName, FuncType),
     AssignFuncVar = ml_gen_assign(FuncVarLval, FuncRval, Context),
     FuncVarRval = ml_lval(FuncVarLval),
 
@@ -668,8 +668,8 @@ ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
         ml_gen_new_func_label(yes(Params),
             ContFuncLabel, ContFuncLabelRval, !Info),
         % Push nesting level.
-        ml_gen_copy_args_to_locals(!.Info, OutputArgLvals, OutputArgTypes,
-            Context, CopyStmts),
+        ml_gen_copy_args_to_locals(OutputArgLvals, OutputArgTypes, Context,
+            CopyStmts),
         ml_gen_call_current_success_cont(Context, CallContStmt, !Info),
         CopyStmt = ml_gen_block([], [], CopyStmts ++ [CallContStmt], Context),
         % Pop nesting level.
@@ -677,7 +677,7 @@ ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
             CopyStmt, ContFuncDefn),
         ContDecls = [ContFuncDefn],
 
-        ml_get_env_ptr(!.Info, EnvPtrRval),
+        ml_get_env_ptr(EnvPtrRval),
         NewSuccessCont = success_cont(ContFuncLabelRval, EnvPtrRval,
             OutputArgTypes, OutputArgLvals),
         Cont = NewSuccessCont
@@ -722,28 +722,27 @@ ml_gen_cont_params_loop([Type | Types], ArgNum, [Argument | Arguments]) :-
     Argument = mlds_argument(ArgName, Type, GCStmt),
     ml_gen_cont_params_loop(Types, ArgNum + 1, Arguments).
 
-:- pred ml_gen_copy_args_to_locals(ml_gen_info::in, list(mlds_lval)::in,
+:- pred ml_gen_copy_args_to_locals(list(mlds_lval)::in,
     list(mlds_type)::in, prog_context::in, list(mlds_stmt)::out) is det.
 
-ml_gen_copy_args_to_locals(Info, ArgLvals, ArgTypes, Context, CopyStmts) :-
-    ml_gen_copy_args_to_locals_loop(Info, ArgLvals, ArgTypes, 1, Context,
-        CopyStmts).
+ml_gen_copy_args_to_locals(ArgLvals, ArgTypes, Context, CopyStmts) :-
+    ml_gen_copy_args_to_locals_loop(ArgLvals, ArgTypes, 1, Context, CopyStmts).
 
-:- pred ml_gen_copy_args_to_locals_loop(ml_gen_info::in, list(mlds_lval)::in,
+:- pred ml_gen_copy_args_to_locals_loop(list(mlds_lval)::in,
     list(mlds_type)::in, int::in, prog_context::in,
     list(mlds_stmt)::out) is det.
 
-ml_gen_copy_args_to_locals_loop(_Info, [], [], _, _, []).
-ml_gen_copy_args_to_locals_loop(_Info, [], [_ | _], _, _, _) :-
+ml_gen_copy_args_to_locals_loop([], [], _, _, []).
+ml_gen_copy_args_to_locals_loop([], [_ | _], _, _, _) :-
     unexpected($pred, "length mismatch").
-ml_gen_copy_args_to_locals_loop(_Info, [_ | _], [], _, _, _) :-
+ml_gen_copy_args_to_locals_loop([_ | _], [], _, _, _) :-
     unexpected($pred, "length mismatch").
-ml_gen_copy_args_to_locals_loop(Info, [LocalLval | LocalLvals], [Type | Types],
+ml_gen_copy_args_to_locals_loop([LocalLval | LocalLvals], [Type | Types],
         ArgNum, Context, [Stmt | Stmts]) :-
     ArgName = lvn_comp_var(lvnc_arg(ArgNum)),
-    ml_gen_local_var_lval(Info, ArgName, Type, ArgLval),
+    ArgLval = ml_local_var(ArgName, Type),
     Stmt = ml_gen_assign(LocalLval, ml_lval(ArgLval), Context),
-    ml_gen_copy_args_to_locals_loop(Info, LocalLvals, Types, ArgNum + 1,
+    ml_gen_copy_args_to_locals_loop(LocalLvals, Types, ArgNum + 1,
         Context, Stmts).
 
 :- type maybe_for_tail_call

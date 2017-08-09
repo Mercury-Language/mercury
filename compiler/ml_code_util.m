@@ -280,12 +280,6 @@
 :- func ml_gen_local_var_name(prog_varset::in, prog_var::in)
     = (mlds_local_var_name::out(lvn_prog_var)) is det.
 
-    % Generate an lval from the variable name and type. The variable
-    % name will be qualified with the current module name.
-    %
-:- pred ml_gen_local_var_lval(ml_gen_info::in, mlds_local_var_name::in,
-    mlds_type::in, mlds_lval::out) is det.
-
     % Generate a declaration for an MLDS variable, given its HLDS type.
     %
 :- pred ml_gen_local_var_decl(mlds_local_var_name::in, mer_type::in,
@@ -428,20 +422,19 @@
     % (`cond' variables are boolean variables used to record
     % the success or failure of model_non conditions of if-then-elses.)
     %
-:- pred ml_cond_var_lval(ml_gen_info::in, cond_seq::in, mlds_lval::out) is det.
+:- pred ml_cond_var_lval(cond_seq::in, mlds_lval::out) is det.
 
     % Return an rval which will test the value of the specified `cond'
     % variable. (`cond' variables are boolean variables used to record
     % the success or failure of model_non conditions of if-then-elses.)
     %
-:- pred ml_gen_test_cond_var(ml_gen_info::in, cond_seq::in, mlds_rval::out)
-    is det.
+:- pred ml_gen_test_cond_var(cond_seq::in, mlds_rval::out) is det.
 
     % Generate code to set the specified `cond' variable to the
     % specified truth value.
     %
-:- pred ml_gen_set_cond_var(ml_gen_info::in, cond_seq::in, mlds_rval::in,
-    prog_context::in, mlds_stmt::out) is det.
+:- pred ml_gen_set_cond_var(cond_seq::in, mlds_rval::in, prog_context::in,
+    mlds_stmt::out) is det.
 
     % Return the success continuation that was passed as the current function's
     % argument(s). The success continuation consists of two parts, the `cont'
@@ -473,7 +466,7 @@
     % declaration of the env_ptr variable. At this point, the type of these
     % rvals is `mlds_unknown_type'.
     %
-:- pred ml_get_env_ptr(ml_gen_info::in, mlds_rval::out) is det.
+:- pred ml_get_env_ptr(mlds_rval::out) is det.
 
     % Return an mlds_argument for a pointer to the current environment
     % (the set of local variables in the containing procedure).
@@ -679,7 +672,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         ml_gen_new_func_label(no, RestFuncLabel, RestFuncLabelRval, !Info),
 
         % generate <First && succ_func()>
-        ml_get_env_ptr(!.Info, EnvPtrRval),
+        ml_get_env_ptr(EnvPtrRval),
         SuccessCont = success_cont(RestFuncLabelRval, EnvPtrRval, [], []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
         DoGenFirst(FirstLocalVarDefns, FirstFuncDefns, FirstStmts, !Info),
@@ -1326,20 +1319,14 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
         IsDummy = is_dummy_type,
         % The variable won't have been declared, so we need to generate
         % a dummy lval for this variable.
-
-        PrivateBuiltin = mercury_private_builtin_module,
-        MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
         ml_gen_type(Info, Type, MLDS_Type),
-        Lval = ml_local_var(
-            qual_local_var_name(MLDS_Module, module_qual,
-                lvn_comp_var(lvnc_dummy_var)),
-            MLDS_Type)
+        Lval = ml_local_var(lvn_comp_var(lvnc_dummy_var), MLDS_Type)
     ;
         IsDummy = is_not_dummy_type,
         ml_gen_info_get_varset(Info, VarSet),
         VarName = ml_gen_local_var_name(VarSet, Var),
         ml_gen_type(Info, Type, MLDS_Type),
-        ml_gen_local_var_lval(Info, VarName, MLDS_Type, VarLval),
+        VarLval = ml_local_var(VarName, MLDS_Type),
 
         % Output variables may be passed by reference...
         ml_gen_info_get_byref_output_vars(Info, OutputVars),
@@ -1369,12 +1356,6 @@ ml_gen_local_var_name(VarSet, Var) = MLDSVarName :-
     else
         MLDSVarName = lvn_prog_var("", VarNumber)
     ).
-
-ml_gen_local_var_lval(Info, VarName, VarType, QualifiedVarLval) :-
-    ml_gen_info_get_module_name(Info, ModuleName),
-    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    MLDS_Var = qual_local_var_name(MLDS_ModuleName, module_qual, VarName),
-    QualifiedVarLval = ml_local_var(MLDS_Var, VarType).
 
 ml_gen_local_var_decl(VarName, Type, Context, Defn, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -1655,7 +1636,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         ConvDecls = [ArgVarDecl],
 
         % Create the lval for the variable and use it for the argument lval.
-        ml_gen_local_var_lval(!.Info, ArgVarName, MLDS_CalleeType, ArgLval),
+        ArgLval = ml_local_var(ArgVarName, MLDS_CalleeType),
 
         CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
         (
@@ -1706,15 +1687,14 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
     % This type is really `const MR_Closure_Layout *', but there is no easy
     % way to represent that in the MLDS; using MR_Box instead works fine.
     ClosureLayoutPtrType = mlds_generic_type,
-    ml_gen_local_var_lval(!.Info, ClosureLayoutPtrName, ClosureLayoutPtrType,
-        ClosureLayoutPtrLval),
+    ClosureLayoutPtrLval =
+        ml_local_var(ClosureLayoutPtrName, ClosureLayoutPtrType),
 
     TypeParamsName = lvn_comp_var(lvnc_type_params),
     % This type is really MR_TypeInfoParams, but there is no easy way to
     % represent that in the MLDS; using MR_Box instead works fine.
     TypeParamsType = mlds_generic_type,
-    ml_gen_local_var_lval(!.Info, TypeParamsName, TypeParamsType,
-        TypeParamsLval),
+    TypeParamsLval = ml_local_var(TypeParamsName, TypeParamsType),
 
     TypeInfoName = lvn_comp_var(lvnc_type_info),
     % The type for this should match the type of the first argument
@@ -1723,7 +1703,7 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     TypeInfoMercuryType = c_pointer_type,
     TypeInfoType = mercury_type_to_mlds_type(ModuleInfo, TypeInfoMercuryType),
-    ml_gen_local_var_lval(!.Info, TypeInfoName, TypeInfoType, TypeInfoLval),
+    TypeInfoLval = ml_local_var(TypeInfoName, TypeInfoType),
     TypeInfoDecl = ml_gen_mlds_var_decl(TypeInfoName, TypeInfoType,
         gc_no_stmt, Context),
 
@@ -1836,8 +1816,8 @@ ml_gen_succeeded_var_decl(Context) =
         gc_no_stmt, Context).
 
 ml_success_lval(SucceededLval, !Info) :-
-    ml_gen_local_var_lval(!.Info, lvn_comp_var(lvnc_succeeded),
-        mlds_native_bool_type, SucceededLval),
+    SucceededLval =
+        ml_local_var(lvn_comp_var(lvnc_succeeded), mlds_native_bool_type),
     ml_gen_info_set_used_succeeded_var(yes, !Info).
 
 ml_gen_test_success(SucceededRval, !Info) :-
@@ -1854,24 +1834,24 @@ ml_gen_set_success(Value, Context, Stmt, !Info) :-
     %
 :- func ml_gen_cond_var_name(cond_seq) = mlds_local_var_name.
 
-ml_gen_cond_var_name(CondVar) = VarName :-
-    CondVar = cond_seq(CondNum),
+ml_gen_cond_var_name(CondSeq) = VarName :-
+    CondSeq = cond_seq(CondNum),
     VarName = lvn_comp_var(lvnc_cond(CondNum)).
 
-ml_gen_cond_var_decl(CondVar, Context) =
-    ml_gen_mlds_var_decl(ml_gen_cond_var_name(CondVar), mlds_native_bool_type,
+ml_gen_cond_var_decl(CondSeq, Context) =
+    ml_gen_mlds_var_decl(ml_gen_cond_var_name(CondSeq), mlds_native_bool_type,
         gc_no_stmt, Context).
 
-ml_cond_var_lval(Info, CondVar, CondVarLval) :-
-    ml_gen_local_var_lval(Info, ml_gen_cond_var_name(CondVar),
-        mlds_native_bool_type, CondVarLval).
+ml_cond_var_lval(CondSeq, CondVarLval) :-
+    CondVarLval =
+        ml_local_var(ml_gen_cond_var_name(CondSeq), mlds_native_bool_type).
 
-ml_gen_test_cond_var(Info, CondVar, CondVarRval) :-
-    ml_cond_var_lval(Info, CondVar, CondVarLval),
+ml_gen_test_cond_var(CondVar, CondVarRval) :-
+    ml_cond_var_lval(CondVar, CondVarLval),
     CondVarRval = ml_lval(CondVarLval).
 
-ml_gen_set_cond_var(Info, CondVar, Value, Context, Stmt) :-
-    ml_cond_var_lval(Info, CondVar, CondVarLval),
+ml_gen_set_cond_var(CondVar, Value, Context, Stmt) :-
+    ml_cond_var_lval(CondVar, CondVarLval),
     Stmt = ml_gen_assign(CondVarLval, Value, Context).
 
 %---------------------------------------------------------------------------%
@@ -1885,10 +1865,10 @@ ml_initial_cont(Info, OutputVarLvals0, OutputVarTypes0, Cont) :-
     % We expect OutputVarlvals0 and OutputVarTypes0 to be empty if
     % `--nondet-copy-out' is not enabled.
 
-    ml_gen_local_var_lval(Info, lvn_comp_var(lvnc_cont),
-        mlds_cont_type(MLDS_OutputVarTypes), ContLval),
-    ml_gen_local_var_lval(Info, lvn_comp_var(lvnc_cont_env_ptr),
-        mlds_generic_env_ptr_type, ContEnvLval),
+    ContLval = ml_local_var(lvn_comp_var(lvnc_cont),
+        mlds_cont_type(MLDS_OutputVarTypes)),
+    ContEnvLval = ml_local_var(lvn_comp_var(lvnc_cont_env_ptr),
+        mlds_generic_env_ptr_type),
     Cont = success_cont(ml_lval(ContLval), ml_lval(ContEnvLval),
         MLDS_OutputVarTypes, OutputVarLvals).
 
@@ -1941,9 +1921,8 @@ ml_gen_call_current_success_cont(Context, Stmt, !Info) :-
 % Routines for dealing with the environment pointer used for nested functions.
 %
 
-ml_get_env_ptr(Info, ml_lval(EnvPtrLval)) :-
-    ml_gen_local_var_lval(Info, lvn_comp_var(lvnc_env_ptr), mlds_unknown_type,
-        EnvPtrLval).
+ml_get_env_ptr(ml_lval(EnvPtrLval)) :-
+    EnvPtrLval = ml_local_var(lvn_comp_var(lvnc_env_ptr), mlds_unknown_type).
 
 ml_declare_env_ptr_arg(Arg) :-
     VarName = lvn_comp_var(lvnc_env_ptr_arg),

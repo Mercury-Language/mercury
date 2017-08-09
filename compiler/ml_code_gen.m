@@ -974,14 +974,14 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         % Generate the `cond_<N>' var and the code to initialize it to false.
         ml_gen_info_new_cond_var(CondVar, !Info),
         CondVarDecl = ml_gen_cond_var_decl(CondVar, Context),
-        ml_gen_set_cond_var(!.Info, CondVar, ml_const(mlconst_false), Context,
+        ml_gen_set_cond_var(CondVar, ml_const(mlconst_false), Context,
             SetCondFalse),
 
         % Allocate a name for the `then_func'.
         ml_gen_new_func_label(no, ThenFuncLabel, ThenFuncLabelRval, !Info),
 
         % Generate <Cond && then_func()>.
-        ml_get_env_ptr(!.Info, EnvPtrRval),
+        ml_get_env_ptr(EnvPtrRval),
         SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval, [], []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
         ml_gen_goal(model_non, Cond, CondLocalVarDefns, CondFuncDefns,
@@ -992,7 +992,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         % push nesting level
         Then = hlds_goal(_, ThenGoalInfo),
         ThenContext = goal_info_get_context(ThenGoalInfo),
-        ml_gen_set_cond_var(!.Info, CondVar, ml_const(mlconst_true),
+        ml_gen_set_cond_var(CondVar, ml_const(mlconst_true),
             ThenContext, SetCondTrue),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
         ThenFuncBody =
@@ -1002,7 +1002,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
             ThenFuncBody, ThenFuncDefn),
 
         % Generate `if (!cond_<N>) { <Else> }'.
-        ml_gen_test_cond_var(!.Info, CondVar, CondSucceeded),
+        ml_gen_test_cond_var(CondVar, CondSucceeded),
         ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
         ml_gen_goal_as_block(CodeModel, Else, ElseStmt, !Info),
         ml_gen_info_set_const_var_map(InitConstVarMap, !Info),

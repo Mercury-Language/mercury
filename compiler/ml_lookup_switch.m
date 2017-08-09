@@ -532,34 +532,33 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
     ).
 
 make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
-    ml_gen_info_new_aux_var_name(mcav_num_later_solns, NumLaterSolnsVar,
+    ml_gen_info_new_aux_var_name(mcav_num_later_solns, NumLaterSolnsVarName,
         !Info),
     % We never need to trace ints.
-    NumLaterSolnsVarDefn = ml_gen_mlds_var_decl(NumLaterSolnsVar,
+    NumLaterSolnsVarDefn = ml_gen_mlds_var_decl(NumLaterSolnsVarName,
         mlds_native_int_type, gc_no_stmt, Context),
-    ml_gen_local_var_lval(!.Info, NumLaterSolnsVar, mlds_native_int_type,
-        NumLaterSolnsVarLval),
+    NumLaterSolnsVarLval =
+        ml_local_var(NumLaterSolnsVarName, mlds_native_int_type),
 
-    ml_gen_info_new_aux_var_name(mcav_later_slot, LaterSlotVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_later_slot, LaterSlotVarName, !Info),
     % We never need to trace ints.
-    LaterSlotVarDefn = ml_gen_mlds_var_decl(LaterSlotVar,
+    LaterSlotVarDefn = ml_gen_mlds_var_decl(LaterSlotVarName,
         mlds_native_int_type, gc_no_stmt, Context),
-    ml_gen_local_var_lval(!.Info, LaterSlotVar, mlds_native_int_type,
-        LaterSlotVarLval),
+    LaterSlotVarLval = ml_local_var(LaterSlotVarName, mlds_native_int_type),
 
-    ml_gen_info_new_aux_var_name(mcav_limit, LimitVar, !Info),
+    ml_gen_info_new_aux_var_name(mcav_limit, LimitVarName, !Info),
     % We never need to trace ints.
-    LimitVarDefn = ml_gen_mlds_var_decl(LimitVar,
+    LimitVarDefn = ml_gen_mlds_var_decl(LimitVarName,
         mlds_native_int_type, gc_no_stmt, Context),
-    ml_gen_local_var_lval(!.Info, LimitVar, mlds_native_int_type,
-        LimitVarLval),
+    LimitVarLval = ml_local_var(LimitVarName, mlds_native_int_type),
 
     Defns = [NumLaterSolnsVarDefn, LaterSlotVarDefn, LimitVarDefn],
 
     LaterSlotVarRval = ml_lval(LaterSlotVarLval),
     NumLaterSolnsVarRval = ml_lval(NumLaterSolnsVarLval),
     LimitAssign = assign(LimitVarLval,
-        ml_binop(int_add(int_type_int), LaterSlotVarRval, NumLaterSolnsVarRval)),
+        ml_binop(int_add(int_type_int),
+            LaterSlotVarRval, NumLaterSolnsVarRval)),
     LimitAssignStmt = ml_stmt_atomic(LimitAssign, Context),
     IncrLaterSlotVar = assign(LaterSlotVarLval,
         ml_binop(int_add(int_type_int), LaterSlotVarRval,
