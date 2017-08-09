@@ -233,9 +233,44 @@ optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
         ; Stmt0 = ml_stmt_label(_Label, _)
         ; Stmt0 = ml_stmt_goto(_Label, _)
         ; Stmt0 = ml_stmt_computed_goto(_Rval, _Label, _)
-        ; Stmt0 = ml_stmt_atomic(_Atomic, _)
         ),
         Stmt = Stmt0
+    ;
+        Stmt0 = ml_stmt_atomic(Atomic0, Context),
+        ( if Atomic0 = assign(TargetLval, SourceRval) then
+            ( if
+                % Optimize away assignments to the dummy var, since it *should*
+                % only ever be assigned to; it should never be read.
+                TargetLval = ml_global_var(TargetGlobalVar, _TargetType),
+                TargetGlobalVar = global_dummy_var
+            then
+                Stmt = ml_stmt_block([], [], [], Context)
+            else if
+                % The only time the global dummy var seems to be read
+                % (during a bootcheck, at least) is to test whether it is
+                % equal to itself.
+                %
+                % We transform A == A into TRUE even if A is not a reference
+                % to the dummy variable, since the transformation is valid for
+                % any A (since mlds rvals can't cause side-effects), and
+                % thus testing for the dummy variable is an unnecessary cost.
+                %
+                % We don't test for other patterns (such as transforming
+                % A != A into FALSE) because I (zs) haven't seen the
+                % Mercury compiler generating such code.
+                SourceRval = ml_binop(BinOp, RvalA, RvalB),
+                RvalA = RvalB,
+                BinOp = eq(_)
+            then
+                Result = ml_const(mlconst_true),
+                Atomic = assign(TargetLval, Result),
+                Stmt = ml_stmt_atomic(Atomic, Context)
+            else
+                Stmt = Stmt0
+            )
+        else
+            Stmt = Stmt0
+        )
     ).
 
 :- pred optimize_in_case(opt_info::in,
