@@ -541,6 +541,7 @@ type_ctor_desc_and_args(TypeDesc, TypeCtorDesc, ArgsDescs) :-
     TypeCtorDesc = {pred, Arity}
 ").
 
+:- pragma no_determinism_warning(make_pred_type_ctor_desc/1).
 make_pred_type_ctor_desc(_) = _ :-
     private_builtin.sorry("make_pred_type_ctor_desc").
 
@@ -553,6 +554,7 @@ make_pred_type_ctor_desc(_) = _ :-
     TypeCtorDesc = {func, Arity}
 ").
 
+:- pragma no_determinism_warning(make_func_type_ctor_desc/1).
 make_func_type_ctor_desc(_) = _ :-
     private_builtin.sorry("make_func_type_ctor_desc").
 
@@ -565,6 +567,7 @@ make_func_type_ctor_desc(_) = _ :-
     TypeCtorDesc = {tuple, Arity}
 ").
 
+:- pragma no_determinism_warning(make_tuple_type_ctor_desc/1).
 make_tuple_type_ctor_desc(_) = _ :-
     private_builtin.sorry("make_tuple_type_ctor_desc").
 
@@ -685,6 +688,7 @@ make_fixed_arity_type_info(TypeCtorInfo, ArgTypeInfos, TypeInfo) :-
     end
 ").
 
+:- pragma no_determinism_warning(type_ctor_desc_name_and_arity/4).
 type_ctor_desc_name_and_arity(_, _, _, _) :-
     private_builtin.sorry("type_ctor_desc_name_and_arity/4").
 
@@ -1574,6 +1578,7 @@ check_tuple_arg_types(TypeInfo, [I | Is], [U | Us]) :-
     {univ_cons, TypeInfo, _} = Univ
 ").
 
+:- pragma no_determinism_warning(univ_type_info/1).
 univ_type_info(_) = _ :-
     private_builtin.sorry("univ_type_info").
 
@@ -1595,6 +1600,7 @@ univ_type_info(_) = _ :-
             [list_to_atom(List) | lists:map(fun univ_to_value/1, Args)])}
 ").
 
+:- pragma no_determinism_warning(construct_univ/3).
 construct_univ(_, _, _) = _ :-
     private_builtin.sorry("construct_univ").
 
@@ -1624,6 +1630,7 @@ construct_tuple_univ(_, _) = _ :-
     Univ = {univ_cons, TypeInfo, []}
 ").
 
+:- pragma no_determinism_warning(construct_empty_list_univ/1).
 construct_empty_list_univ(_) = _ :-
     private_builtin.sorry("construct_empty_list_univ").
 
@@ -1638,6 +1645,7 @@ construct_empty_list_univ(_) = _ :-
     Univ = {univ_cons, TypeInfo, [univ_to_value(H) | univ_to_value(T)]}
 ").
 
+:- pragma no_determinism_warning(construct_list_cons_univ/3).
 construct_list_cons_univ(_, _, _) = _ :-
     private_builtin.sorry("construct_list_cons_univ").
 
@@ -1677,6 +1685,7 @@ construct_tuple_2(Args, ArgTypes, Arity) = Tuple :-
     Term = {univ_cons, TupleTypeInfo, Tuple}
 ").
 
+:- pragma no_determinism_warning(construct_tuple_3/4).
 construct_tuple_3(_, _, _, _) = _ :-
     private_builtin.sorry("construct_tuple_3").
 
@@ -1792,6 +1801,7 @@ var_arity_type_info_index(I, TI) = TI ^ unsafe_type_info_index(I + 2).
     SubTypeInfo = element(Index, TypeInfo)
 ").
 
+:- pragma no_determinism_warning(unsafe_type_info_index/2).
 unsafe_type_info_index(_, _) = type_info :-
     det_unimplemented("unsafe_type_info_index").
 
@@ -1809,6 +1819,7 @@ unsafe_type_info_index(_, _) = type_info :-
     end
 ").
 
+:- pragma no_determinism_warning(get_fixed_arity_arg_type_infos/1).
 get_fixed_arity_arg_type_infos(_) = _ :-
     private_builtin.sorry("get_fixed_arity_arg_type_infos").
 
@@ -1821,6 +1832,7 @@ get_fixed_arity_arg_type_infos(_) = _ :-
     Args = lists:nthtail(?ML_ti_var_arity, tuple_to_list(TypeInfo))
 ").
 
+:- pragma no_determinism_warning(get_var_arity_arg_type_infos/1).
 get_var_arity_arg_type_infos(_) = _ :-
     private_builtin.sorry("get_var_arity_arg_type_infos").
 
@@ -1839,6 +1851,7 @@ get_var_arity_arg_type_infos(_) = _ :-
     void
 ").
 
+:- pragma no_determinism_warning(type_ctor_rep/1).
 type_ctor_rep(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.

@@ -266,12 +266,14 @@
 
 :- pred store_equal(store(S)::in, store(S)::in) is semidet.
 
+:- pragma no_determinism_warning(store_equal/2).
 store_equal(_, _) :-
     error("attempt to unify two stores").
 
 :- pred store_compare(comparison_result::uo, store(S)::in, store(S)::in)
     is det.
 
+:- pragma no_determinism_warning(store_compare/3).
 store_compare(_, _, _) :-
     error("attempt to compare two stores").
 

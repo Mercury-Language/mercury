@@ -1046,6 +1046,7 @@ have_fma :-
 #endif
 ").
 
+:- pragma no_determinism_warning(fma/3).
 fma(_, _, _) = _ :-
     private_builtin.sorry("math.fma").
 

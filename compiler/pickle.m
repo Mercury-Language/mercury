@@ -458,6 +458,7 @@ unpickle_string_2(Handle, Index, Length, !String, !State) :-
     Str[Length] = '\\0';
 ").
 
+:- pragma no_determinism_warning(allocate_string/2).
 allocate_string(_, _) :-
     sorry($file, $pred).
 
@@ -474,6 +475,7 @@ allocate_string(_, _) :-
     Str = Str0;
 ").
 
+:- pragma no_determinism_warning(local_unsafe_set_char/4).
 local_unsafe_set_char(_, _, _, _) :-
     sorry($file, $pred).
 
@@ -508,6 +510,7 @@ pickle_float(Float, !IO) :-
     }
 ").
 
+:- pragma no_determinism_warning(reinterpret_float_as_ints/3).
 reinterpret_float_as_ints(_, _, _) :-
     sorry($file, $pred).
 
@@ -542,6 +545,7 @@ unpickle_float(Handle, Float, !State) :-
     }
 ").
 
+:- pragma no_determinism_warning(reinterpret_ints_as_float/3).
 reinterpret_ints_as_float(_, _, _) :-
     sorry($file, $pred).
 

@@ -676,6 +676,7 @@ type_ctor(TypeDesc) = TypeCtorDesc :-
     }
 }").
 
+:- pragma no_determinism_warning(pseudo_type_ctor/1).
 pseudo_type_ctor(_) = _ :-
     private_builtin.sorry("pseudo_type_ctor/1").
 
@@ -875,6 +876,7 @@ make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
         private_builtin.sorry("make_type(in, in) = out")
     ).
 
+:- pragma no_determinism_warning(make_type/2).
 make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     private_builtin.sorry("make_type(out, out) = in").
 

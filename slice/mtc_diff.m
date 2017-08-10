@@ -112,6 +112,7 @@ usage(OutStream, !IO) :-
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_default(option::out, option_data::out) is multi.
+:- pragma no_determinism_warning(option_default/2).
 
 option_default(output_filename, string("")).
 

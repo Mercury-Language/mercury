@@ -254,7 +254,7 @@
 
     % For use by io.m.
     %
-:- pred dir.use_windows_paths is semidet.
+:- pred use_windows_paths is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -310,12 +310,12 @@ is_directory_separator(Char) :-
     % Single-moded version of is_directory_separator
     % for passing as a closure.
     %
-:- pred dir.is_directory_separator_semidet(char::in) is semidet.
+:- pred is_directory_separator_semidet(char::in) is semidet.
 
 is_directory_separator_semidet(Char) :-
     dir.is_directory_separator(Char).
 
-:- pred dir.ends_with_directory_separator(string::in, int::in, int::out)
+:- pred ends_with_directory_separator(string::in, int::in, int::out)
     is semidet.
 
 ends_with_directory_separator(String, End, PrevIndex) :-
@@ -342,9 +342,9 @@ split_name(FileName, DirName, BaseName) :-
     % or if none exist, invoke split_name_3 to split the filename using
     % Mercury code.
     % This assumes that the caller has already checked whether the
-    %
     % directory is a root directory.
-:- pred dir.split_name_2(list(char)::in, string::out, string::out) is semidet.
+    %
+:- pred split_name_2(list(char)::in, string::out, string::out) is semidet.
 
 split_name_2(FileNameChars0, DirName, BaseName) :-
     FileNameChars0 = [_ | _],
@@ -360,7 +360,7 @@ split_name_2(FileNameChars0, DirName, BaseName) :-
         dir.split_name_3(FileNameChars0, DirName, BaseName)
     ).
 
-:- pred dir.split_name_3(list(char)::in, string::out, string::out) is semidet.
+:- pred split_name_3(list(char)::in, string::out, string::out) is semidet.
 
 split_name_3(FileNameChars, DirName, BaseName) :-
     % Remove any trailing separator.
@@ -417,8 +417,7 @@ split_name_3(FileNameChars, DirName, BaseName) :-
         fail
     ).
 
-:- pred dir.split_name_dotnet(string::in, string::out, string::out)
-    is semidet.
+:- pred split_name_dotnet(string::in, string::out, string::out) is semidet.
 
 split_name_dotnet(_, "", "") :-
     semidet_fail.
@@ -702,9 +701,6 @@ is_dotnet_root_directory(FileName) :-
 
 :- pred is_dotnet_root_directory_2(string::in) is semidet.
 
-is_dotnet_root_directory_2(_) :-
-    unexpected($pred, "called for non-.NET CLI backend").
-
 :- pragma foreign_proc("C#",
     is_dotnet_root_directory_2(FileName::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -716,6 +712,10 @@ is_dotnet_root_directory_2(_) :-
         SUCCESS_INDICATOR = false;
     }
 }").
+
+:- pragma no_determinism_warning(is_dotnet_root_directory_2/1).
+is_dotnet_root_directory_2(_) :-
+    unexpected($pred, "called for non-.NET CLI backend").
 
 %---------------------------------------------------------------------------%
 
@@ -736,7 +736,7 @@ path_name_is_absolute(FileName) :-
         dir.is_directory_separator(FirstChar)
     ).
 
-:- pred dir.dotnet_path_name_is_absolute(string::in) is semidet.
+:- pred dotnet_path_name_is_absolute(string::in) is semidet.
 
 dotnet_path_name_is_absolute(FileName) :-
     dir.dotnet_path_name_is_absolute_2(FileName),
@@ -761,10 +761,7 @@ dotnet_path_name_is_absolute(FileName) :-
         )
     ).
 
-:- pred dir.dotnet_path_name_is_absolute_2(string::in) is semidet.
-
-dotnet_path_name_is_absolute_2(_) :-
-    unexpected($pred, "called on non-.NET CLI backend").
+:- pred dotnet_path_name_is_absolute_2(string::in) is semidet.
 
 :- pragma foreign_proc("C#",
     dir.dotnet_path_name_is_absolute_2(FileName::in),
@@ -776,6 +773,10 @@ dotnet_path_name_is_absolute_2(_) :-
         SUCCESS_INDICATOR = false;
     }
 ").
+
+:- pragma no_determinism_warning(dotnet_path_name_is_absolute_2/1).
+dotnet_path_name_is_absolute_2(_) :-
+    unexpected($pred, "called on non-.NET CLI backend").
 
 %---------------------------------------------------------------------------%
 
@@ -1322,7 +1323,7 @@ fixup_dirname(Dir0) = Dir :-
         Dir = string.from_char_list(remove_trailing_dir_separator(DirChars))
     ).
 
-:- pred dir.foldl2_process_dir(bool::in, dir.foldl_pred(T)::in(dir.foldl_pred),
+:- pred foldl2_process_dir(bool::in, dir.foldl_pred(T)::in(dir.foldl_pred),
     string::in, list(file_id)::in, bool::in, bool::in, bool::out, io.res::out,
     T::in, T::out, io::di, io::uo) is det.
 
@@ -1382,7 +1383,7 @@ foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
         Result = error(Error)
     ).
 
-:- pred dir.foldl2_process_dir_aux(dir.stream::in, bool::in,
+:- pred foldl2_process_dir_aux(dir.stream::in, bool::in,
     dir.foldl_pred(T)::in(dir.foldl_pred), string::in, list(file_id)::in,
     bool::in, bool::in, T::in, {bool, io.res, T}::out, io::di, io::uo) is det.
 
@@ -1558,8 +1559,7 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 :- pragma foreign_type("Java", dir.stream, "java.util.Iterator").
 :- pragma foreign_type("Erlang", dir.stream, "").
 
-:- pred dir.open(string::in, io.result(dir.stream)::out, io::di, io::uo)
-    is det.
+:- pred open(string::in, io.result(dir.stream)::out, io::di, io::uo) is det.
 
 open(DirName, Res, !IO) :-
     ( if have_win32 then
@@ -1577,10 +1577,10 @@ open(DirName, Res, !IO) :-
         dir.open_2(DirName, DirPattern, Res, !IO)
     ).
 
-:- pred dir.open_2(string::in, string::in, io.result(dir.stream)::out,
+:- pred open_2(string::in, string::in, io.result(dir.stream)::out,
     io::di, io::uo) is det.
 
-dir.open_2(DirName, DirPattern, Res, !IO) :-
+open_2(DirName, DirPattern, Res, !IO) :-
     dir.open_3(DirName, DirPattern, Dir, MaybeWin32Error, !IO),
     ( if
         is_maybe_win32_error(MaybeWin32Error, "cannot open directory: ",
@@ -1591,7 +1591,7 @@ dir.open_2(DirName, DirPattern, Res, !IO) :-
         Res = ok(Dir)
     ).
 
-:- pred dir.open_3(string::in, string::in, dir.stream::out,
+:- pred open_3(string::in, string::in, dir.stream::out,
     io.system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -1695,7 +1695,7 @@ dir.open_2(DirName, DirPattern, Res, !IO) :-
     end
 ").
 
-:- pred dir.check_dir_readable(string::in, io.res::out, io::di, io::uo) is det.
+:- pred check_dir_readable(string::in, io.res::out, io::di, io::uo) is det.
 
 check_dir_readable(DirName, Res, !IO) :-
     io.file_type(yes, DirName, FileTypeRes, !IO),
@@ -1724,7 +1724,7 @@ check_dir_readable(DirName, Res, !IO) :-
         Res = error(Error)
     ).
 
-:- pred dir.close(dir.stream::in, io.res::out, io::di, io::uo) is det.
+:- pred close(dir.stream::in, io.res::out, io::di, io::uo) is det.
 
 close(Dir, Res, !IO) :-
     dir.close_2(Dir, MaybeWin32Error, !IO),
@@ -1737,7 +1737,7 @@ close(Dir, Res, !IO) :-
         Res = ok
     ).
 
-:- pred dir.close_2(dir.stream::in, io.system_error::out, io::di, io::uo)
+:- pred close_2(dir.stream::in, io.system_error::out, io::di, io::uo)
     is det.
 
 :- pragma foreign_proc("C",
@@ -1789,7 +1789,7 @@ close(Dir, Res, !IO) :-
     Error = ok
 ").
 
-:- pred dir.read_entry(dir.stream::in, io.result(string)::out, io::di, io::uo)
+:- pred read_entry(dir.stream::in, io.result(string)::out, io::di, io::uo)
     is det.
 
 read_entry(Dir, Res, !IO) :-

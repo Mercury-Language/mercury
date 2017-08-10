@@ -5235,6 +5235,8 @@ unsafe_make_enum(_) = _ :-
 "
     SUCCESS_INDICATOR = (S == null);
 ").
+
+:- pragma no_determinism_warning(null/1).
 null(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -5291,6 +5293,7 @@ null_string = _ :-
     }
 ").
 
+:- pragma no_determinism_warning(unsafe_get_enum_value/1).
 unsafe_get_enum_value(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -5307,12 +5310,12 @@ unsafe_get_enum_value(_) = _ :-
     Value = (int) T;
 ").
 
-% XXX We cannot provide a Java version of this until mlds_to_java.m is
-%     updated to support foreign enumerations.
-
+:- pragma no_determinism_warning(unsafe_get_foreign_enum_value/1).
 unsafe_get_foreign_enum_value(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
+    % XXX We cannot provide a Java version of this until mlds_to_java.m is
+    % updated to support foreign enumerations.
     private_builtin.sorry(
         "rtti_implementation.unsafe_get_foreign_enum_value/1").
 

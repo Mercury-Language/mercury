@@ -321,7 +321,7 @@ format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String) :-
     ( if using_sprintf then
         % XXX The "d" could be "i"; we don't keep track.
         FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
-            int_length_modifer, "d"),
+            int_length_modifier, "d"),
         String = native_format_int(FormatStr, Int)
     else
         String = format_signed_int(Flags, MaybeWidth, MaybePrec, Int)
@@ -341,7 +341,7 @@ format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
         ; Base = base_hex_p,   SpecChar = "p"
         ),
         FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
-            int_length_modifer, SpecChar),
+            int_length_modifier, SpecChar),
         String = native_format_int(FormatStr, Int)
     else
         String = format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int)
@@ -388,7 +388,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
     % Note that any backends which return true for using_sprintf/0 must
     % also implement:
     %
-    %   int_length_modifer/0
+    %   int_length_modifier/0
     %   native_format_float/2
     %   native_format_int/2
     %   native_format_string/2
@@ -544,20 +544,21 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0)
 %       from_char_list(Flags),
         "}"]).
 
-:- func int_length_modifer = string.
+:- func int_length_modifier = string.
 
 :- pragma foreign_proc("C",
-    int_length_modifer = (LengthModifier::out),
+    int_length_modifier = (LengthModifier::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
     MR_make_aligned_string(LengthModifier, MR_INTEGER_LENGTH_MODIFIER);
 }").
 
-int_length_modifer = _ :-
+:- pragma no_determinism_warning(int_length_modifier/0).
+int_length_modifier = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.
-    error("string.int_length_modifer/0 not defined").
+    error("string.int_length_modifier/0 not defined").
 
     % Create a string from a float using the format string.
     % Note it is the responsibility of the caller to ensure that the
@@ -574,6 +575,8 @@ int_length_modifer = _ :-
     Str = MR_make_string(MR_ALLOC_ID, FormatStr, (double) Val);
     MR_restore_transient_hp();
 }").
+
+:- pragma no_determinism_warning(native_format_float/2).
 native_format_float(_, _) = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.
@@ -594,6 +597,8 @@ native_format_float(_, _) = _ :-
     Str = MR_make_string(MR_ALLOC_ID, FormatStr, Val);
     MR_restore_transient_hp();
 }").
+
+:- pragma no_determinism_warning(native_format_int/2).
 native_format_int(_, _) = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.
@@ -614,6 +619,8 @@ native_format_int(_, _) = _ :-
     Str = MR_make_string(MR_ALLOC_ID, FormatStr, Val);
     MR_restore_transient_hp();
 }").
+
+:- pragma no_determinism_warning(native_format_string/2).
 native_format_string(_, _) = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.
@@ -634,6 +641,8 @@ native_format_string(_, _) = _ :-
     Str = MR_make_string(MR_ALLOC_ID, FormatStr, Val);
     MR_restore_transient_hp();
 }").
+
+:- pragma no_determinism_warning(native_format_char/2).
 native_format_char(_, _) = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.

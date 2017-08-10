@@ -179,6 +179,7 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
     MR_restore_transient_hp();
 ").
 
+:- pragma no_determinism_warning(read_specs_file_2/5).
 read_specs_file_2(_, _, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 

@@ -115,6 +115,7 @@ io_action_to_browser_term(IoAction) = Term :-
     S = S0;
 }").
 
+:- pragma no_determinism_warning(pickup_io_action/4).
 pickup_io_action(_, _, _, _) :-
     private_builtin.sorry("pickup_io_action").
 

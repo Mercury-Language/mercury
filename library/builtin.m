@@ -675,6 +675,7 @@ compare_rep_tuple_pos(Result, TermA, TermB, Index, Arity) :-
     Arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY((MR_TypeInfo) TypeInfo_for_T);
 ").
 
+:- pragma no_determinism_warning(tuple_arity/2).
 tuple_arity(_, _) :-
    private_builtin.sorry("tuple_arity/2").
 
@@ -692,6 +693,7 @@ tuple_arity(_, _) :-
     Arg = arg_vector[Index];
 ").
 
+:- pragma no_determinism_warning(tuple_arg/3).
 tuple_arg(_, _, -1) :-
    private_builtin.sorry("tuple_arg/3").
 

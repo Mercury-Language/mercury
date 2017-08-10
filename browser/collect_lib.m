@@ -150,6 +150,7 @@ link_collect(ObjectFile, Filter, Initialize, PostProcess, SendResult,
     (Pointer = (MR_Word) NULL)
 ").
 
+:- pragma no_determinism_warning(set_to_null_pointer/1).
 set_to_null_pointer(_) :-
     private_builtin.sorry("collect_lib.set_to_null_pointer").
 

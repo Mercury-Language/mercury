@@ -783,6 +783,7 @@ have_job_ctl_ipc :-
 #endif
 ").
 
+:- pragma no_determinism_warning(create_job_ctl/4).
 create_job_ctl(_, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
@@ -804,6 +805,7 @@ create_job_ctl(_, _, _, _) :-
 #endif
 ").
 
+:- pragma no_determinism_warning(destroy_job_ctl/3).
 destroy_job_ctl(_, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
@@ -835,6 +837,7 @@ destroy_job_ctl(_, _, _) :-
 #endif
 ").
 
+:- pragma no_determinism_warning(accept_task/4).
 accept_task(_, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
@@ -852,6 +855,7 @@ accept_task(_, _, _, _) :-
 #endif
 ").
 
+:- pragma no_determinism_warning(mark_task_done/4).
 mark_task_done(_, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
@@ -875,6 +879,7 @@ mark_task_done(_, _, _, _) :-
 #endif
 ").
 
+:- pragma no_determinism_warning(mark_task_error/5).
 mark_task_error(_, _, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
@@ -892,6 +897,7 @@ mark_task_error(_, _, _, _, _) :-
 #endif
 ").
 
+:- pragma no_determinism_warning(mark_abort/3).
 mark_abort(_, _, _) :-
     unexpected($file, $pred, "non-C backend").
 

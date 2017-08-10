@@ -125,6 +125,7 @@
     SUCCESS_INDICATOR = ((void *) Pointer == NULL)
 ").
 
+:- pragma no_determinism_warning(is_null/1).
 is_null(_) :-
     private_builtin.sorry("is_null").
 
@@ -160,6 +161,7 @@ open(FileName, Mode, Scope, Result, !IO) :-
 #endif
 }").
 
+:- pragma no_determinism_warning(dlopen/6).
 dlopen(_, _, _, _, !IO) :-
     private_builtin.sorry("dlopen").
 
@@ -181,6 +183,7 @@ dlopen(_, _, _, _, !IO) :-
     MR_restore_transient_hp();
 }").
 
+:- pragma no_determinism_warning(make_closure/1).
 make_closure(_) = _ :-
     private_builtin.sorry("make_closure").
 
@@ -320,6 +323,7 @@ mercury_sym(Handle, MercuryProc0, Result, !IO) :-
 #endif
 }").
 
+:- pragma no_determinism_warning(dlsym/5).
 dlsym(_, _, _, !IO) :-
     private_builtin.sorry("dlsym").
 
@@ -342,6 +346,7 @@ dlsym(_, _, _, !IO) :-
     MR_make_aligned_string_copy(ErrorMsg, msg);
 }").
 
+:- pragma no_determinism_warning(dlerror/3).
 dlerror(_, !IO) :-
     private_builtin.sorry("dlerror").
 
@@ -363,6 +368,8 @@ close(handle(Handle), Result, !IO) :-
     dlclose((void *) Handle);
 #endif
 ").
+
+:- pragma no_determinism_warning(dlclose/3).
 dlclose(_, !IO) :-
     private_builtin.sorry("dlclose").
 
@@ -380,6 +387,7 @@ dlclose(_, !IO) :-
 #endif
 ").
 
+:- pragma no_determinism_warning(high_level_code/0).
 high_level_code :-
     private_builtin.sorry("high_level_code").
 
