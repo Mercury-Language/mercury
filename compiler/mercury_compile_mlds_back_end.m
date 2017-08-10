@@ -62,7 +62,7 @@
 :- import_module libs.options.
 :- import_module ml_backend.add_trail_ops.          % HLDS -> HLDS
 :- import_module ml_backend.add_heap_ops.           % HLDS -> HLDS
-:- import_module ml_backend.ml_proc_gen.            % HLDS -> MLDS
+:- import_module ml_backend.ml_top_gen.             % HLDS -> MLDS
 :- import_module ml_backend.rtti_to_mlds.           % HLDS/RTTI -> MLDS
 :- import_module ml_backend.ml_elim_nested.         % MLDS -> MLDS
 :- import_module ml_backend.ml_tailcall.            % MLDS -> MLDS

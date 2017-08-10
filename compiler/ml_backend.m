@@ -31,6 +31,7 @@
 :- include_module add_trail_ops.        % transformation
 
 % Phase 5-ml: compile HLDS to MLDS
+:- include_module ml_top_gen.
 :- include_module ml_proc_gen.
 :- include_module ml_code_gen.
    :- include_module ml_call_gen.

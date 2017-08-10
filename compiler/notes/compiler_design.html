@@ -2051,8 +2051,9 @@ Thus we have a pass which transforms the HLDS to handle trailing:
 
 <ul>
 <li>
-    ml_proc_gen.m is the top module of the package that converts HLDS code
-    to MLDS. Its main submodule is ml_code_gen.m, which handles the tasks
+    ml_top_gen.m is the top module of the package that converts HLDS code
+    to MLDS. Its main submodules are ml_proc_gen.m, which handles the
+    translation of predicates, and ml_code_gen.m, which handles the tasks
     common to all kinds of goals, as well as the tasks specific to some
     goals (conjunctions, if-then-elses, negations). For other kinds of goals,
     ml_code_gen.m invokes some other submodules:
