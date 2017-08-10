@@ -473,12 +473,14 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
             Maxfr = 0
         ),
         % Stage 7.
-        proc_info_get_has_tail_call_event(ProcInfo, TailCallEvents),
+        proc_info_get_has_tail_rec_call(ProcInfo, HasTailRecCall),
+        HasTailRecCall = has_tail_rec_call(HasSelfTailRecCall,
+            _HasMutualTailRecCall),
         (
-            TailCallEvents = has_tail_call_event,
+            HasSelfTailRecCall = has_self_tail_rec_call,
             TailRec = 1
         ;
-            TailCallEvents = has_no_tail_call_event,
+            HasSelfTailRecCall = has_no_self_tail_rec_call,
             TailRec = 0
         ),
         ReservedSlots0 = Fixed + RedoLayout + FromFull + IoSeq + Trail +

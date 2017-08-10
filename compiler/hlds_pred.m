@@ -2188,9 +2188,19 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     --->    has_user_event
     ;       has_no_user_event.
 
-:- type has_tail_call_event
-    --->    has_tail_call_event
-    ;       has_no_tail_call_event.
+:- type has_self_tail_rec_call
+    --->    has_self_tail_rec_call
+    ;       has_no_self_tail_rec_call.
+
+:- type has_mutual_tail_rec_call
+    --->    has_mutual_tail_rec_call
+    ;       has_no_mutual_tail_rec_call.
+
+:- type has_tail_rec_call
+    --->    has_tail_rec_call(
+                has_self_tail_rec_call,
+                has_mutual_tail_rec_call
+            ).
 
 :- type oisu_pred_kind_for
     --->    oisu_creator_for(type_ctor)
@@ -2276,8 +2286,8 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     has_parallel_conj::out) is det.
 :- pred proc_info_get_has_user_event(proc_info::in,
     has_user_event::out) is det.
-:- pred proc_info_get_has_tail_call_event(proc_info::in,
-    has_tail_call_event::out) is det.
+:- pred proc_info_get_has_tail_rec_call(proc_info::in,
+    has_tail_rec_call::out) is det.
 :- pred proc_info_get_oisu_kind_fors(proc_info::in,
     list(oisu_pred_kind_for)::out) is det.
 :- pred proc_info_get_maybe_require_tailrec_info(proc_info::in,
@@ -2362,7 +2372,7 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_has_user_event(has_user_event::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_has_tail_call_event(has_tail_call_event::in,
+:- pred proc_info_set_has_tail_rec_call(has_tail_rec_call::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_oisu_kind_fors(list(oisu_pred_kind_for)::in,
     proc_info::in, proc_info::out) is det.
@@ -2695,7 +2705,7 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
                 % This slot is set by the simplification pass.
                 psi_proc_has_user_event         :: has_user_event,
 
-                psi_proc_has_tail_call_event    :: has_tail_call_event,
+                psi_proc_has_tail_rec_call      :: has_tail_rec_call,
 
                 % Is the procedure mentioned in any order-independent-state-
                 % update pragmas? If yes, list the role of this procedure
@@ -2946,7 +2956,8 @@ proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
     HasForeignProcExports = no_foreign_exports,
     % argument HasParallelConj
     HasUserEvent = has_no_user_event,
-    HasTailCallEvent = has_no_tail_call_event,
+    HasTailCallEvent = has_tail_rec_call(has_no_self_tail_rec_call,
+        has_no_mutual_tail_rec_call),
     OisuKinds = [],
     MaybeRequireTailRecursion = no,
     set_of_var.init(RegR_HeadVars),
@@ -3075,7 +3086,8 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     HasForeignProcExports = no_foreign_exports,
     % argument HasParallelConj
     HasUserEvent = has_no_user_event,
-    HasTailCallEvent = has_no_tail_call_event,
+    HasTailCallEvent = has_tail_rec_call(has_no_self_tail_rec_call,
+        has_no_mutual_tail_rec_call),
     OisuKinds = [],
     MaybeRequireTailRecursion = no,
     set_of_var.init(RegR_HeadVars),
@@ -3222,8 +3234,8 @@ proc_info_get_has_parallel_conj(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_has_parallel_conj.
 proc_info_get_has_user_event(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_has_user_event.
-proc_info_get_has_tail_call_event(PI, X) :-
-    X = PI ^ proc_sub_info ^ psi_proc_has_tail_call_event.
+proc_info_get_has_tail_rec_call(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_proc_has_tail_rec_call.
 proc_info_get_maybe_require_tailrec_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_require_tailrec.
 proc_info_get_oisu_kind_fors(PI, X) :-
@@ -3308,8 +3320,8 @@ proc_info_set_has_parallel_conj(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_proc_has_parallel_conj := X.
 proc_info_set_has_user_event(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_proc_has_user_event := X.
-proc_info_set_has_tail_call_event(X, !PI) :-
-    !PI ^ proc_sub_info ^ psi_proc_has_tail_call_event := X.
+proc_info_set_has_tail_rec_call(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_proc_has_tail_rec_call := X.
 proc_info_set_oisu_kind_fors(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_oisu_kind_fors := X.
 proc_info_set_require_tailrec_info(X, !PI) :-

@@ -227,7 +227,7 @@ mark_self_and_mutual_tail_rec_calls_in_module(DepInfo, !ModuleInfo) :-
     MaybeSelfRec = yes(feature_self_or_mutual_tail_rec_call),
     MaybeMutualRec = yes(feature_self_or_mutual_tail_rec_call),
     Params = tail_rec_params(MaybeSelfRec, MaybeMutualRec,
-        do_not_record_self_recursion, no_warnings_non_tail_rec_params),
+        do_not_record_tail_recursion, no_warnings_non_tail_rec_params),
     get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
         BottomUpSCCsEntryPoints),
     mark_tail_rec_calls_in_sccs(Params, BottomUpSCCsEntryPoints,
@@ -242,7 +242,7 @@ mark_self_and_mutual_tail_rec_calls_in_module_for_mlds_code_gen(DepInfo,
     module_info_get_globals(!.ModuleInfo, Globals),
     get_default_warn_parms(Globals, WarnNonTailRecParams),
     Params = tail_rec_params(MaybeSelfRec, MaybeMutualRec,
-        do_not_record_self_recursion, WarnNonTailRecParams),
+        record_tail_recursion, WarnNonTailRecParams),
     get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
         BottomUpSCCsEntryPoints),
     mark_tail_rec_calls_in_sccs(Params, BottomUpSCCsEntryPoints,
@@ -417,9 +417,26 @@ maybe_override_params_for_proc(ProcInfo, Params, ProcParams) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- type maybe_record_self_rec
-    --->    do_not_record_self_recursion
-    ;       record_self_recursion_and_set_event.
+    % The MLDS code generator wants to know which procedures have
+    % self and/or mutual tail calls, so it does not have to look for TSCC
+    % (via-tail-call-only SCCs) among procedures that don't have any tail
+    % calls.
+    %
+    % The LLDS code generator wants to know whether it should prepare
+    % for any TAIL events in the procedure body.
+    %
+    % This module gives both generators the information they need
+    % by recording the absence or presence of both self and mutually
+    % recursive tail calls in the has_tail_call field of the proc_info.
+    %
+    % (For the time being, the debugger supports TAIL events only for
+    % *self*-tail-recursive calls, and not for mutually-tail-recursive calls,
+    % so it ignores the part of the has_tail_call field that talks about
+    % mutually recursive tail calls.)
+    %
+:- type maybe_record_tail_rec
+    --->    do_not_record_tail_recursion
+    ;       record_tail_recursion.
 
 :- type tail_rec_params
     --->    tail_rec_params(
@@ -431,11 +448,7 @@ maybe_override_params_for_proc(ProcInfo, Params, ProcParams) :-
                 % of mutually--tail-recursive calls.
                 mutual_rec_goal_feature     :: maybe(goal_feature),
 
-                % If set to record_self_recursion_and_set_event,
-                % record whether we have found any self-tail-recursive calls
-                % in a procedure's body, and set the procedure's
-                % has_tail_call_event field accordingly.
-                should_record_self_rec      :: maybe_record_self_rec,
+                should_record_tail_rec      :: maybe_record_tail_rec,
 
                 % The parameters governing whether what warnings or errors
                 % we should generate about tail recursive calls or their
@@ -453,11 +466,11 @@ get_params_for_llds_code_gen(Globals, Params) :-
     (
         ExecTraceTailRec = yes,
         MaybeSelf = yes(feature_debug_self_tail_rec_call),
-        Params = tail_rec_params(MaybeSelf, no,
-            record_self_recursion_and_set_event, WarnNonTailRecParams)
+        Params = tail_rec_params(MaybeSelf, no, record_tail_recursion,
+            WarnNonTailRecParams)
     ;
         ExecTraceTailRec = no,
-        Params = tail_rec_params(no, no, do_not_record_self_recursion,
+        Params = tail_rec_params(no, no, do_not_record_tail_recursion,
             WarnNonTailRecParams)
     ).
 
@@ -495,11 +508,11 @@ do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
         % It is reasonably common that we don't need to check for tail calls
         % at all.
         Params = tail_rec_params(MaybeSelfFeature, MaybeMutualFeature,
-            MaybeRecordSelf, WarnNonTailRecParams),
+            MaybeRecordTailCalls, WarnNonTailRecParams),
         ( if
             MaybeSelfFeature = no,
             MaybeMutualFeature = no,
-            MaybeRecordSelf = do_not_record_self_recursion,
+            MaybeRecordTailCalls = do_not_record_tail_recursion,
             WarnNonTailRecParams = warn_non_tail_rec_params(_WarnOrError,
                 do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec)
         then
@@ -514,28 +527,25 @@ do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
 
             Info0 = mark_tail_rec_calls_info(ModuleInfo, PredInfo,
                 proc(PredId, ProcId), SCC, VarTypes, Params,
-                not_found_any_rec_calls, not_found_self_tail_rec_calls, []),
+                has_no_self_tail_rec_call, has_no_mutual_tail_rec_call,
+                not_found_any_rec_calls, []),
             mark_tail_rec_calls_in_goal(Goal0, Goal, at_tail(Outputs), _,
                 Info0, Info),
             Info = mark_tail_rec_calls_info(_, _, _, _, _, _,
-                FoundAnyRecCalls, FoundSelfTailRecCalls, GoalSpecs),
+                HasSelfTailRecCall, HasMutualTailRecCall,
+                FoundAnyRecCalls, GoalSpecs),
 
             proc_info_set_goal(Goal, !ProcInfo),
 
             maybe_report_no_tail_or_nontail_recursive_calls(PredInfo,
                 !.ProcInfo, FoundAnyRecCalls, !Specs),
             (
-                MaybeRecordSelf = do_not_record_self_recursion
+                MaybeRecordTailCalls = do_not_record_tail_recursion
             ;
-                MaybeRecordSelf = record_self_recursion_and_set_event,
-                (
-                    FoundSelfTailRecCalls = not_found_self_tail_rec_calls,
-                    TailCallEvents = has_no_tail_call_event
-                ;
-                    FoundSelfTailRecCalls = found_self_tail_rec_calls,
-                    TailCallEvents = has_tail_call_event
-                ),
-                proc_info_set_has_tail_call_event(TailCallEvents, !ProcInfo)
+                MaybeRecordTailCalls = record_tail_recursion,
+                HasTailRecCall = has_tail_rec_call(HasSelfTailRecCall,
+                    HasMutualTailRecCall),
+                proc_info_set_has_tail_rec_call(HasTailRecCall, !ProcInfo)
             ),
             !:Specs = GoalSpecs ++ !.Specs,
             WasProcChanged = proc_may_have_been_changed
@@ -604,19 +614,6 @@ is_output(ModuleInfo, Mode, Type) :-
     --->    have_seen_later_rec_call
     ;       have_not_seen_later_rec_call.
 
-    % Has any self-recursive tail call been found so far?
-    %
-    % We use this to set the has_tail_call_event field in the procedure's
-    % proc_info. The LLDS debugger uses this field's value to decide
-    % whether to prepare for any TAIL events in the procedure body.
-    %
-    % For the time being, the debugger supports TAIL events only for
-    % *self*-tail-recursive calls, and not for mutually-tail-recursive calls.
-    %
-:- type found_self_tail_rec_calls
-    --->    not_found_self_tail_rec_calls
-    ;       found_self_tail_rec_calls.
-
 :- type call_is_self_or_mutual_rec
     --->    call_is_self_rec
     ;       call_is_mutual_rec.
@@ -629,8 +626,9 @@ is_output(ModuleInfo, Mode, Type) :-
                 mtc_cur_scc                 :: set(pred_proc_id),
                 mtc_vartypes                :: vartypes,
                 mtc_params                  :: tail_rec_params,
+                mtc_self_tail_rec_calls     :: has_self_tail_rec_call,
+                mtc_mutual_tail_rec_calls   :: has_mutual_tail_rec_call,
                 mtc_any_rec_calls           :: found_any_rec_calls,
-                mtc_self_tail_rec_calls     :: found_self_tail_rec_calls,
                 mtc_error_specs             :: list(error_spec)
             ).
 
@@ -825,8 +823,8 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                 OutputVars = CalleeOutputVars
             then
                 !.Info ^ mtc_params = tail_rec_params(
-                    MaybeSelfFeature, MaybeMutualFeature, MaybeRecordSelf,
-                    _WarnParams),
+                    MaybeSelfFeature, MaybeMutualFeature,
+                    MaybeRecord, _WarnParams),
                 (
                     SelfOrMutual = call_is_self_rec,
                     (
@@ -839,11 +837,11 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                         Goal = hlds_goal(GoalExpr0, GoalInfo)
                     ),
                     (
-                        MaybeRecordSelf = do_not_record_self_recursion
+                        MaybeRecord = do_not_record_tail_recursion
                     ;
-                        MaybeRecordSelf = record_self_recursion_and_set_event,
+                        MaybeRecord = record_tail_recursion,
                         !Info ^ mtc_self_tail_rec_calls :=
-                            found_self_tail_rec_calls
+                            has_self_tail_rec_call
                     )
                 ;
                     SelfOrMutual = call_is_mutual_rec,
@@ -855,6 +853,13 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                         goal_info_add_feature(MutualFeature,
                             GoalInfo0, GoalInfo),
                         Goal = hlds_goal(GoalExpr0, GoalInfo)
+                    ),
+                    (
+                        MaybeRecord = do_not_record_tail_recursion
+                    ;
+                        MaybeRecord = record_tail_recursion,
+                        !Info ^ mtc_mutual_tail_rec_calls :=
+                            has_mutual_tail_rec_call
                     )
                 )
             else

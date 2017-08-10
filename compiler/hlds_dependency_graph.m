@@ -727,15 +727,9 @@ find_callee_keys(DepGraph, ParentId, ChildKeys) :-
 :- pred proc_is_exported(module_info::in, pred_proc_id::in) is semidet.
 
 proc_is_exported(ModuleInfo, PredProcId) :-
-    PredProcId = proc(PredId, _ProcId),
+    PredProcId = proc(PredId, ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    % XXX This tests whether the *predicate* is exported, not whether
-    % the *procedure* is exported; the two can differ for compiler
-    % generated unification and comparison predicates. It just so happens
-    % that the only user of this predicate, termination analysis, does not
-    % need to care about the difference, since it knows that these compiler
-    % generated procedures always terminate.
-    pred_info_is_exported(PredInfo).
+    procedure_is_exported(ModuleInfo, PredInfo, ProcId).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_dependency_graph.

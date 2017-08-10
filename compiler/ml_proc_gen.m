@@ -72,40 +72,57 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-ml_gen_preds(Target, ConstStructMap, FunctionDefns,
+ml_gen_preds(Target, ConstStructMap, FuncDefns,
         !GlobalData, !ModuleInfo, !Specs) :-
-    module_info_get_preds(!.ModuleInfo, PredTable),
-    map.to_assoc_list(PredTable, PredIdInfos),
-    ml_find_procs_for_code_gen(PredIdInfos, [], PredProcIds),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
+    map.to_sorted_assoc_list(PredTable0, PredIdInfos0),
+    ml_find_procs_for_code_gen(PredIdInfos0, PredIdInfos, [], PredProcIds),
+    map.from_sorted_assoc_list(PredIdInfos, PredTable),
+    module_info_set_preds(PredTable, !ModuleInfo),
+
     list.sort(PredProcIds, SortedPredProcIds),
     set.sorted_list_to_set(SortedPredProcIds, CodeGenPredProcIds),
 
     DepInfo = build_proc_dependency_graph(!.ModuleInfo, CodeGenPredProcIds,
         only_all_calls),
-    BottomUpSCCs = dependency_info_get_bottom_up_sccs(DepInfo),
+    get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
+        BottomUpSCCsWithEntryPoints),
 
-    ml_gen_sccs(Target, ConstStructMap, BottomUpSCCs, [], FunctionDefns,
-        !GlobalData, !ModuleInfo, !Specs).
+    % Optimize tail calls only if asked.
+    module_info_get_globals(!.ModuleInfo, Globals),
+    ( if
+        globals.lookup_bool_option(Globals, optimize_tailcalls, yes),
+        globals.lookup_bool_option(Globals, optimize_tailcalls_codegen, yes)
+    then
+        OptTailCalls = tail_call_opt_in_code_gen
+    else
+        OptTailCalls = no_tail_call_opt_in_code_gen
+    ),
+    ml_gen_sccs(!.ModuleInfo, OptTailCalls, Target, ConstStructMap,
+        BottomUpSCCsWithEntryPoints, [], FuncDefns, !GlobalData, !Specs).
 
-:- pred ml_find_procs_for_code_gen(assoc_list(pred_id, pred_info)::in,
+:- pred ml_find_procs_for_code_gen(
+    assoc_list(pred_id, pred_info)::in,
+    assoc_list(pred_id, pred_info)::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
-ml_find_procs_for_code_gen([], !CodeGenPredProcIds).
-ml_find_procs_for_code_gen([PredIdInfo | PredIdInfos], !CodeGenPredProcIds) :-
-    PredIdInfo = PredId - PredInfo,
-    pred_info_get_status(PredInfo, PredStatus),
+ml_find_procs_for_code_gen([], [], !CodeGenPredProcIds).
+ml_find_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
+        [PredIdInfo | PredIdInfos], !CodeGenPredProcIds) :-
+    PredIdInfo0 = PredId - PredInfo0,
+    pred_info_get_status(PredInfo0, PredStatus),
     ( if
         (
             PredStatus = pred_status(status_imported(_))
         ;
             % We generate incorrect and unnecessary code for the external
             % special preds which are pseudo_imported, so just ignore them.
-            is_unify_or_compare_pred(PredInfo),
+            is_unify_or_compare_pred(PredInfo0),
             PredStatus =
                 pred_status(status_external(status_pseudo_imported))
         )
     then
-        true
+        PredIdInfo = PredIdInfo0
     else
         % Generate MLDS definitions for all the non-imported procedures
         % of a given predicate (or function).
@@ -116,84 +133,23 @@ ml_find_procs_for_code_gen([PredIdInfo | PredIdInfos], !CodeGenPredProcIds) :-
         % (e.g. one in which an input argument is known to be bound to one
         % of a small subset of the possible function symbols), it has to create
         % code for it itself. Such procedures are pseudo imported, which means
-        % that their procedure 0 (the implementing the (in,in) mode) is
-        % imported, but any other procedures are not.
+        % that their procedure 0 (the procedure implementing the (in,in) mode)
+        % is imported, but any other procedures are not.
 
         ( if PredStatus = pred_status(status_external(_)) then
-            ProcIds = pred_info_procids(PredInfo)
+            ProcIds = pred_info_procids(PredInfo0)
         else
-            ProcIds = pred_info_non_imported_procids(PredInfo)
+            ProcIds = pred_info_non_imported_procids(PredInfo0)
         ),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
+        list.foldl(requantify_codegen_proc, ProcIds, ProcTable0, ProcTable),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+        PredIdInfo = PredId - PredInfo,
+
         PredProcIds = list.map((func(ProcId) = proc(PredId, ProcId)), ProcIds),
         !:CodeGenPredProcIds = PredProcIds ++ !.CodeGenPredProcIds
     ),
-    ml_find_procs_for_code_gen(PredIdInfos, !CodeGenPredProcIds).
-
-:- pred ml_gen_sccs(mlds_target_lang::in,
-    ml_const_struct_map::in, list(set(pred_proc_id))::in,
-    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
-    ml_global_data::in, ml_global_data::out,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-ml_gen_sccs(_, _, [], !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
-ml_gen_sccs(Target, ConstStructMap, [SCC | SCCs],
-        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs) :-
-    ml_gen_scc(Target, ConstStructMap, SCC,
-        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs),
-    ml_gen_sccs(Target, ConstStructMap, SCCs,
-        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
-
-%---------------------------------------------------------------------------%
-
-:- pred ml_gen_scc(mlds_target_lang::in,
-    ml_const_struct_map::in, set(pred_proc_id)::in,
-    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
-    ml_global_data::in, ml_global_data::out,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-ml_gen_scc(Target, ConstStructMap, SCC,
-        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs) :-
-    % In the future, this predicate will arrange for tail call optimization
-    % in SCCs with mutually-recursive tail calls.
-    set.to_sorted_list(SCC, PredProcIds),
-    ml_gen_procs(Target, ConstStructMap, PredProcIds,
-        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
-
-:- pred ml_gen_procs(mlds_target_lang::in,
-    ml_const_struct_map::in, list(pred_proc_id)::in,
-    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
-    ml_global_data::in, ml_global_data::out,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-ml_gen_procs(_, _, [], !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
-ml_gen_procs(Target, ConstStructMap, [PredProcId | PredProcIds],
-        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs) :-
-    ml_gen_proc(Target, ConstStructMap, PredProcId,
-        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs),
-    ml_gen_procs(Target, ConstStructMap, PredProcIds,
-        !FunctionDefns, !GlobalData, !ModuleInfo, !Specs).
-
-%---------------------------------------------------------------------------%
-%
-% Code for handling individual procedures.
-%
-
-:- pred ml_gen_proc(mlds_target_lang::in,
-    ml_const_struct_map::in, pred_proc_id::in,
-    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
-    ml_global_data::in, ml_global_data::out,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-ml_gen_proc(Target, ConstStructMap, PredProcId,
-        !FuncDefns, !GlobalData, !ModuleInfo, !Specs) :-
-    trace [io(!IO)] (
-        write_proc_progress_message("% Generating MLDS code for ",
-            PredProcId, !.ModuleInfo, !IO)
-    ),
+    ml_find_procs_for_code_gen(PredIdInfos0, PredIdInfos, !CodeGenPredProcIds).
 
     % The specification of the HLDS allows goal_infos to overestimate
     % the set of non-locals. Such overestimates are bad for us for two reasons:
@@ -207,13 +163,172 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
     %   can be very expensive on large goals, since it would have to be done
     %   repeatedly, once for each containing goal. Quantification does just one
     %   traversal.
+    %
+:- pred requantify_codegen_proc(proc_id::in, proc_table::in, proc_table::out)
+    is det.
 
-    PredProcId = proc(PredId, ProcId),
-    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-        PredInfo, ProcInfo0),
+requantify_codegen_proc(ProcId, !ProcTable) :-
+    map.lookup(!.ProcTable, ProcId, ProcInfo0),
     requantify_proc_general(ordinary_nonlocals_no_lambda, ProcInfo0, ProcInfo),
-    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
-        !ModuleInfo),
+    map.det_update(ProcId, ProcInfo, !ProcTable).
+
+:- type maybe_tail_call_opt_in_code_gen
+    --->    no_tail_call_opt_in_code_gen
+    ;       tail_call_opt_in_code_gen.
+
+:- pred ml_gen_sccs(module_info::in, maybe_tail_call_opt_in_code_gen::in,
+    mlds_target_lang::in, ml_const_struct_map::in,
+    list(scc_with_entry_points)::in,
+    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
+    ml_global_data::in, ml_global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+ml_gen_sccs(_, _, _, _, [], !FuncDefns, !GlobalData, !Specs).
+ml_gen_sccs(ModuleInfo, OptTailCalls, Target, ConstStructMap, [SCCE | SCCEs],
+        !FuncDefns, !GlobalData, !Specs) :-
+    ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
+        !FuncDefns, !GlobalData, !Specs),
+    ml_gen_sccs(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCEs,
+        !FuncDefns, !GlobalData, !Specs).
+
+%---------------------------------------------------------------------------%
+
+:- pred ml_gen_scc(module_info::in, maybe_tail_call_opt_in_code_gen::in,
+    mlds_target_lang::in, ml_const_struct_map::in,
+    scc_with_entry_points::in,
+    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
+    ml_global_data::in, ml_global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
+        !FuncDefns, !GlobalData, !Specs) :-
+    SCCE = scc_with_entry_points(PredProcIds, CalledFromHigherSCCs,
+        ExportedProcs),
+    set.union(CalledFromHigherSCCs, ExportedProcs, SCCEntryProcs),
+    (
+        OptTailCalls = no_tail_call_opt_in_code_gen,
+        set.foldl3(
+            ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap,
+                no_tail_rec),
+            PredProcIds, !FuncDefns, !GlobalData, !Specs)
+    ;
+        OptTailCalls = tail_call_opt_in_code_gen,
+        partition_scc_procs(ModuleInfo, set.to_sorted_list(PredProcIds),
+            NonePredProcIdInfos, SelfPredProcIdInfos, MutualPredProcIdInfos),
+
+        % Translate the procedures cannot apply tail call optimization to.
+        list.foldl3(
+            ml_gen_proc(ModuleInfo, Target, ConstStructMap,
+                no_tail_rec),
+            NonePredProcIdInfos, !FuncDefns, !GlobalData, !Specs),
+
+        % Translate the procedures to which we can apply only self-tail-call
+        % optimization.
+        list.foldl3(
+            ml_gen_proc(ModuleInfo, Target, ConstStructMap,
+                self_tail_rec),
+            SelfPredProcIdInfos, !FuncDefns, !GlobalData, !Specs),
+
+        % Translate the procedures to which we can apply mutual-tail-call
+        % optimization as well.
+        TSCCDepInfo = build_proc_dependency_graph(ModuleInfo,
+            set.list_to_set(
+                list.map(project_pred_proc_id_info_id, MutualPredProcIdInfos)),
+            only_tail_calls),
+        get_bottom_up_sccs_with_entry_points(ModuleInfo, TSCCDepInfo,
+            TSCCEntries),
+        list.foldl3(
+            ml_gen_tscc(ModuleInfo, Target, ConstStructMap, SCCEntryProcs),
+            TSCCEntries, !FuncDefns, !GlobalData, !Specs)
+    ).
+
+:- type pred_proc_id_info
+    --->    pred_proc_id_info(
+                pred_proc_id,
+                pred_info,
+                proc_info
+            ).
+
+:- func project_pred_proc_id_info_id(pred_proc_id_info) = pred_proc_id.
+
+project_pred_proc_id_info_id(pred_proc_id_info(PredProcId, _, _)) = PredProcId.
+
+:- pred partition_scc_procs(module_info::in, list(pred_proc_id)::in,
+    list(pred_proc_id_info)::out, list(pred_proc_id_info)::out,
+    list(pred_proc_id_info)::out) is det.
+
+partition_scc_procs(_ModuleInfo, [], [], [], []).
+partition_scc_procs(ModuleInfo, [PredProcId | PredProcIds],
+        !:NoneIdInfos, !:SelfIdInfos, !:MutualIdInfos) :-
+    partition_scc_procs(ModuleInfo, PredProcIds,
+        !:NoneIdInfos, !:SelfIdInfos, !:MutualIdInfos),
+    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    IdInfo = pred_proc_id_info(PredProcId, PredInfo, ProcInfo),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
+    (
+        % Tail recursion optimization does not apply to model_non
+        % procedures.
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
+        proc_info_get_has_tail_rec_call(ProcInfo, HasTailRecCall),
+        HasTailRecCall = has_tail_rec_call(HasSelfTailRecCall,
+            HasMutualTailRecCall),
+        (
+            HasMutualTailRecCall = has_mutual_tail_rec_call,
+            !:MutualIdInfos = [IdInfo | !.MutualIdInfos]
+        ;
+            HasMutualTailRecCall = has_no_mutual_tail_rec_call,
+            (
+                HasSelfTailRecCall = has_self_tail_rec_call,
+                !:SelfIdInfos = [IdInfo | !.SelfIdInfos]
+            ;
+                HasSelfTailRecCall = has_no_self_tail_rec_call,
+                !:NoneIdInfos = [IdInfo | !.NoneIdInfos]
+            )
+        )
+    ;
+        CodeModel = model_non,
+        !:NoneIdInfos = [IdInfo | !.NoneIdInfos]
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Code for handling individual procedures.
+%
+
+:- pred ml_gen_proc_lookup(module_info::in, mlds_target_lang::in,
+    ml_const_struct_map::in, none_or_self_tail_rec::in, pred_proc_id::in,
+    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
+    ml_global_data::in, ml_global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
+        PredProcId, !FuncDefns, !GlobalData, !Specs) :-
+    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    PredProcIdInfo = pred_proc_id_info(PredProcId, PredInfo, ProcInfo),
+    ml_gen_proc(ModuleInfo, Target, ConstStructMap,
+        NoneOrSelf, PredProcIdInfo, !FuncDefns, !GlobalData, !Specs).
+
+%---------------------%
+
+:- type none_or_self_tail_rec
+    --->    no_tail_rec
+    ;       self_tail_rec.
+
+:- pred ml_gen_proc(module_info::in, mlds_target_lang::in,
+    ml_const_struct_map::in, none_or_self_tail_rec::in, pred_proc_id_info::in,
+    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
+    ml_global_data::in, ml_global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
+        PredProcIdInfo, !FuncDefns, !GlobalData, !Specs) :-
+    PredProcIdInfo = pred_proc_id_info(PredProcId, PredInfo, ProcInfo),
+    trace [io(!IO)] (
+        write_proc_progress_message("% Generating MLDS code for ",
+            PredProcId, ModuleInfo, !IO)
+    ),
 
     pred_info_get_status(PredInfo, PredStatus),
     pred_info_get_arg_types(PredInfo, ArgTypes),
@@ -222,49 +337,41 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
     proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_get_goal(ProcInfo, Goal),
     MaybeRequireTailrecInfoFD = no,
+    PredProcId = proc(PredId, ProcId),
 
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
 
     some [!Info] (
-        module_info_get_globals(!.ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         SupportsBreakContinue =
             globals_target_supports_break_and_continue(Globals),
         (
-            SupportsBreakContinue = yes,
-            % If we find a tail call, we will wrap the function body inside
-            % `while (true) { ... break; }', and so the tail call can just
-            % do a `continue', which will continue the next iteration
-            % of the loop.
-            TailRecMechanism = tail_rec_via_while_loop
-        ;
-            SupportsBreakContinue = no,
-            % If we find a tail call, we will insert a label at the start of
-            % the function, and so the tail call can just goto to that label.
-            TailRecMechanism = tail_rec_via_start_label("proc_top")
-        ),
-
-        InputParams =
-            ml_gen_proc_params_inputs_only(!.ModuleInfo, PredId, ProcId),
-
-        TailRecTargetInfo0 = tail_rec_target_info(TailRecMechanism,
-            InputParams, have_not_done_tail_rec),
-        ( if
-            % Optimize tail calls only if asked.
-            globals.lookup_bool_option(Globals, optimize_tailcalls, yes),
-            globals.lookup_bool_option(Globals,
-                optimize_tailcalls_codegen, yes),
-            % Tail recursion optimization does not apply to model_non
-            % procedures.
-            ( CodeModel = model_det
-            ; CodeModel = model_semi
-            )
-        then
-            TailRecMap0 = map.singleton(PredProcId, TailRecTargetInfo0)
-        else
+            NoneOrSelf = no_tail_rec,
             map.init(TailRecMap0)
+        ;
+            NoneOrSelf = self_tail_rec,
+            InputParams =
+                ml_gen_proc_params_inputs_only(ModuleInfo, PredId, ProcId),
+            (
+                SupportsBreakContinue = yes,
+                % If we find a tail call, we will wrap the function body inside
+                % `while (true) { ... break; }', and so the tail call can just
+                % do a `continue', which will continue the next iteration
+                % of the loop.
+                TailRecMechanism0 = tail_rec_via_while_loop
+            ;
+                SupportsBreakContinue = no,
+                % If we find a tail call, we will insert a label at the start
+                % of the function, and so the tail call can just goto
+                % to that label.
+                TailRecMechanism0 = tail_rec_via_start_label("proc_top")
+            ),
+            TailRecTargetInfo0 = tail_rec_target_info(TailRecMechanism0,
+                InputParams, have_not_done_tail_rec),
+            TailRecMap0 = map.singleton(PredProcId, TailRecTargetInfo0)
         ),
-        !:Info = ml_gen_info_init(!.ModuleInfo, Target, ConstStructMap,
+        !:Info = ml_gen_info_init(ModuleInfo, Target, ConstStructMap,
             PredId, ProcId, ProcInfo, TailRecMap0, !.GlobalData),
 
         ( if PredStatus = pred_status(status_external(_)) then
@@ -288,14 +395,14 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
                 ( CodeModel = model_det
                 ; CodeModel = model_semi
                 ),
-                ml_det_copy_out_vars(!.ModuleInfo, CopiedOutputVars, !Info)
+                ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info)
             ;
                 CodeModel = model_non,
-                ml_set_up_initial_succ_cont(!.ModuleInfo, CopiedOutputVars,
+                ml_set_up_initial_succ_cont(ModuleInfo, CopiedOutputVars,
                     !Info)
             ),
 
-            modes_to_top_functor_modes(!.ModuleInfo, Modes, ArgTypes,
+            modes_to_top_functor_modes(ModuleInfo, Modes, ArgTypes,
                 TopFunctorModes),
             ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
                 CopiedOutputVars, Goal, LocalVarDefns0, FuncDefns, GoalStmts,
@@ -344,7 +451,7 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
             !:Specs = TailRecSpecs ++ !.Specs,
             ( if
                 map.search(TargetMap, PredProcId, TailRecTargetInfo),
-                TailRecTargetInfo = tail_rec_target_info(_TailRecMechanism,
+                TailRecTargetInfo = tail_rec_target_info(TailRecMechanism,
                     _InputParams, HaveDoneTailRec),
                 HaveDoneTailRec = have_done_tail_rec
             then
@@ -395,19 +502,44 @@ ml_gen_proc(Target, ConstStructMap, PredProcId,
         )
     ),
 
-    proc_info_get_context(ProcInfo0, ProcContext),
-    ml_gen_proc_label(!.ModuleInfo, PredId, ProcId,
+    proc_info_get_context(ProcInfo, ProcContext),
+    ml_gen_proc_label(ModuleInfo, PredId, ProcId,
         _ModuleName, PlainFuncName),
-    DeclFlags = ml_gen_proc_decl_flags(!.ModuleInfo, PredId, ProcId),
+    DeclFlags = ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId),
     MaybePredProcId = yes(PredProcId),
     pred_info_get_attributes(PredInfo, Attributes),
     attributes_to_attribute_list(Attributes, AttributeList),
     MLDS_Attributes =
-        list.map(attribute_to_mlds_attribute(!.ModuleInfo), AttributeList),
+        list.map(attribute_to_mlds_attribute(ModuleInfo), AttributeList),
     FuncDefn = mlds_function_defn(mlds_function_name(PlainFuncName),
         ProcContext, DeclFlags, MaybePredProcId, MLDS_Params,
         FuncBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfoFD),
     !:FuncDefns = ClosureWrapperFuncDefns ++ [FuncDefn | !.FuncDefns].
+
+%---------------------------------------------------------------------------%
+%
+% Code for handling via-tail-call SCCs.
+%
+
+:- pred ml_gen_tscc(module_info::in, mlds_target_lang::in,
+    ml_const_struct_map::in, set(pred_proc_id)::in, scc_with_entry_points::in,
+    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
+    ml_global_data::in, ml_global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+ml_gen_tscc(ModuleInfo, Target, ConstStructMap, SCCEntryProcs,
+        TSCCE, !FuncDefns, !GlobalData, !Specs) :-
+    TSCCE = scc_with_entry_points(PredProcIds, CalledFromHigherSCCs,
+        ExportedProcs),
+    set.union(CalledFromHigherSCCs, ExportedProcs, TSCCEntryProcs),
+    % The following code is temporary.
+    set.union(SCCEntryProcs, TSCCEntryProcs, _EntryProcs),
+    set.foldl3(
+        ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap,
+            self_tail_rec),
+        PredProcIds, !FuncDefns, !GlobalData, !Specs).
+
+%---------------------------------------------------------------------------%
 
 :- func attribute_to_mlds_attribute(module_info, pred_attribute)
     = mlds_attribute.

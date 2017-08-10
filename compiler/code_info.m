@@ -569,13 +569,15 @@ init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
         eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
     (
         TraceLevelIsNone = no,
-        proc_info_get_has_tail_call_event(ProcInfo, HasTailCallEvents),
+        proc_info_get_has_tail_rec_call(ProcInfo, HasTailRecCall),
+        HasTailRecCall =
+            has_tail_rec_call(HasSelfTailRecCall, _HasMutualTailRecCall),
         (
-            HasTailCallEvents = has_tail_call_event,
+            HasSelfTailRecCall = has_self_tail_rec_call,
             get_next_label(TailRecLabel, !CI),
             MaybeTailRecLabel = yes(TailRecLabel)
         ;
-            HasTailCallEvents = has_no_tail_call_event,
+            HasSelfTailRecCall = has_no_self_tail_rec_call,
             MaybeTailRecLabel = no
         ),
         trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
