@@ -237,9 +237,14 @@ ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
             only_tail_calls),
         get_bottom_up_sccs_with_entry_points(ModuleInfo, TSCCDepInfo,
             TSCCEntries),
+        partition_tsccs(TSCCEntries, LonePredProcIds, NonTrivialTSCCEntries),
+        list.foldl3(
+            ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap,
+                self_tail_rec),
+            LonePredProcIds, !FuncDefns, !GlobalData, !Specs),
         list.foldl3(
             ml_gen_tscc(ModuleInfo, Target, ConstStructMap, SCCEntryProcs),
-            TSCCEntries, !FuncDefns, !GlobalData, !Specs)
+            NonTrivialTSCCEntries, !FuncDefns, !GlobalData, !Specs)
     ).
 
 :- type pred_proc_id_info
@@ -290,6 +295,25 @@ partition_scc_procs(ModuleInfo, [PredProcId | PredProcIds],
     ;
         CodeModel = model_non,
         !:NoneIdInfos = [IdInfo | !.NoneIdInfos]
+    ).
+
+:- pred partition_tsccs(list(scc_with_entry_points)::in,
+    list(pred_proc_id)::out, list(scc_with_entry_points)::out) is det.
+
+partition_tsccs([], [], []).
+partition_tsccs([TSCC | TSCCs], !:LonePredProcIds, !:NonTrivialTSCCS) :-
+    partition_tsccs(TSCCs, !:LonePredProcIds, !:NonTrivialTSCCS),
+    TSCC = scc_with_entry_points(TSCCPredProcIdsSet, _, _),
+    set.to_sorted_list(TSCCPredProcIdsSet, TSCCPredProcIds),
+    (
+        TSCCPredProcIds = [],
+        unexpected($pred, "empty TSCC")
+    ;
+        TSCCPredProcIds = [TSCCPredProcId],
+        !:LonePredProcIds = [TSCCPredProcId | !.LonePredProcIds]
+    ;
+        TSCCPredProcIds = [_, _ | _],
+        !:NonTrivialTSCCS = [TSCC | !.NonTrivialTSCCS]
     ).
 
 %---------------------------------------------------------------------------%
