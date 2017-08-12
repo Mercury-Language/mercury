@@ -1894,7 +1894,7 @@
             % gvn_const_vars.
 
     ;       gvn_dummy_var.
-            % ZZZ
+            % A reference to private_builtin.dummy_var.
 
 :- type mlds_global_const_var
     --->    mgcv_const_var
