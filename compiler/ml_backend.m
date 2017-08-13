@@ -47,6 +47,7 @@
    :- include_module ml_type_gen.
    :- include_module ml_unify_gen.
 :- include_module ml_gen_info.
+:- include_module ml_args_util.
 :- include_module ml_code_util.
 :- include_module ml_accurate_gc.
 :- include_module ml_global_data.

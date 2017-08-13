@@ -93,6 +93,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_accurate_gc.
+:- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.

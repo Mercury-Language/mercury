@@ -63,6 +63,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_gen_info.

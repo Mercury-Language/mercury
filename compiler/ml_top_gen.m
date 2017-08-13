@@ -42,6 +42,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.

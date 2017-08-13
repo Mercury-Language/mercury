@@ -53,6 +53,7 @@
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_target_util.
