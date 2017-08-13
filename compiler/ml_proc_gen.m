@@ -355,50 +355,17 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             PredProcId, ModuleInfo, !IO)
     ),
 
-    pred_info_get_status(PredInfo, PredStatus),
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    CodeModel = proc_info_interface_code_model(ProcInfo),
-    proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_get_goal(ProcInfo, Goal),
-    MaybeRequireTailrecInfoFD = no,
-    PredProcId = proc(PredId, ProcId),
-
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
 
     some [!Info] (
-        module_info_get_globals(ModuleInfo, Globals),
-        SupportsBreakContinue =
-            globals_target_supports_break_and_continue(Globals),
-        (
-            NoneOrSelf = no_tail_rec,
-            map.init(TailRecMap0)
-        ;
-            NoneOrSelf = self_tail_rec,
-            InputParams =
-                ml_gen_proc_params_inputs_only(ModuleInfo, PredId, ProcId),
-            (
-                SupportsBreakContinue = yes,
-                % If we find a tail call, we will wrap the function body inside
-                % `while (true) { ... break; }', and so the tail call can just
-                % do a `continue', which will continue the next iteration
-                % of the loop.
-                TailRecMechanism0 = tail_rec_via_while_loop
-            ;
-                SupportsBreakContinue = no,
-                % If we find a tail call, we will insert a label at the start
-                % of the function, and so the tail call can just goto
-                % to that label.
-                TailRecMechanism0 = tail_rec_via_start_label("proc_top")
-            ),
-            TailRecTargetInfo0 = tail_rec_target_info(TailRecMechanism0,
-                InputParams, have_not_done_tail_rec),
-            TailRecMap0 = map.singleton(PredProcId, TailRecTargetInfo0)
-        ),
+        compute_initial_tail_rec_map_for_none_or_self(ModuleInfo, NoneOrSelf,
+            PredProcId, TailRecMap0),
         !:Info = ml_gen_info_init(ModuleInfo, Target, ConstStructMap,
-            PredId, ProcId, ProcInfo, TailRecMap0, !.GlobalData),
+            PredProcId, ProcInfo, TailRecMap0, !.GlobalData),
 
+        pred_info_get_status(PredInfo, PredStatus),
         ( if PredStatus = pred_status(status_external(_)) then
             % For Mercury procedures declared `:- pragma external_{pred/func}',
             % we generate an MLDS definition with no function body.
@@ -406,16 +373,16 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             % For example, for C it outputs a function declaration with no
             % corresponding definition, making sure that the function is
             % declared as `extern' rather than `static'.
+            ml_gen_info_proc_params(PredProcId, FuncParams, !.Info, _Info),
             FuncBody = body_external,
-            ClosureWrapperFuncDefns = [],
-            ml_gen_info_proc_params(PredId, ProcId, MLDS_Params,
-                !.Info, _Info),
-            set.init(EnvVarNames)
+            set.init(EnvVarNames),
+            ClosureWrapperFuncDefns = []
         else
             % Set up the initial success continuation, if any.
             % Also figure out which output variables are returned by value
             % (rather than being passed by reference) and remove them from
             % the byref_output_vars field in the ml_gen_info.
+            CodeModel = proc_info_interface_code_model(ProcInfo),
             (
                 ( CodeModel = model_det
                 ; CodeModel = model_semi
@@ -427,7 +394,10 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
                     !Info)
             ),
 
-            modes_to_top_functor_modes(ModuleInfo, Modes, ArgTypes,
+            proc_info_get_headvars(ProcInfo, HeadVars),
+            proc_info_get_argmodes(ProcInfo, ArgModes),
+            pred_info_get_arg_types(PredInfo, ArgTypes),
+            modes_to_top_functor_modes(ModuleInfo, ArgModes, ArgTypes,
                 TopFunctorModes),
             ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, TopFunctorModes,
                 CopiedOutputVars, Goal, LocalVarDefns0, FuncDefns, GoalStmts,
@@ -466,60 +436,117 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
                 ProcLocalVarDefns = [ml_gen_succeeded_var_decl(Context) |
                     OutputVarLocalDefns]
             ),
-            ml_gen_info_proc_params(PredId, ProcId, MLDS_Params, !Info),
+            LocalVarDefns = ProcLocalVarDefns ++ LocalVarDefns0,
+
+            ml_gen_info_proc_params(PredProcId, FuncParams, !Info),
+            ml_gen_info_get_tail_rec_info(!.Info, TailRecInfo),
+            construct_func_body_maybe_wrap_in_loop(PredProcId, Context,
+                LocalVarDefns, FuncDefns, GoalStmts, TailRecInfo, FuncBody,
+                !Specs),
+
+            ml_gen_info_get_env_var_names(!.Info, EnvVarNames),
             ml_gen_info_get_closure_wrapper_defns(!.Info,
                 ClosureWrapperFuncDefns),
-            ml_gen_info_get_global_data(!.Info, !:GlobalData),
-            LocalVarDefns = ProcLocalVarDefns ++ LocalVarDefns0,
-            ml_gen_info_get_tail_rec_info(!.Info, TailRecInfo),
-            TailRecInfo = tail_rec_info(TargetMap, _WarnParams, TailRecSpecs),
-            !:Specs = TailRecSpecs ++ !.Specs,
-            ( if
-                map.search(TargetMap, PredProcId, TailRecTargetInfo),
-                TailRecTargetInfo = tail_rec_target_info(TailRecMechanism,
-                    _InputParams, HaveDoneTailRec),
-                HaveDoneTailRec = have_done_tail_rec
-            then
-                % XXX Use better comment, e.g. "setup for optimized tail calls"
-                CommentStmt = ml_stmt_atomic(
-                    comment("setup for tailcalls optimized into a loop"),
-                    Context),
-                % XXX We *should* generate the following code, but ...
-                (
-                    TailRecMechanism = tail_rec_via_while_loop,
-                    BreakStmt = ml_stmt_goto(goto_break, Context),
-                    LoopBodyStmt = ml_stmt_block(LocalVarDefns, FuncDefns,
-                        [CommentStmt] ++ GoalStmts ++ [BreakStmt], Context),
-                    FuncBodyStmt = ml_stmt_while(may_loop_zero_times,
-                        ml_const(mlconst_true), LoopBodyStmt, Context)
-                ;
-                    TailRecMechanism = tail_rec_via_start_label(StartLabel),
-                    LoopTopLabelStmt = ml_stmt_label(StartLabel, Context),
-                    FuncBodyStmt = ml_stmt_block(LocalVarDefns, FuncDefns,
-                        [CommentStmt, LoopTopLabelStmt] ++ GoalStmts, Context)
-                )
-            else
-                FuncBodyStmt = ml_gen_block(LocalVarDefns, FuncDefns,
-                    GoalStmts, Context)
-            ),
-            FuncBody = body_defined_here(FuncBodyStmt),
-            ml_gen_info_get_env_var_names(!.Info, EnvVarNames)
+            ml_gen_info_get_global_data(!.Info, !:GlobalData)
         )
     ),
 
+    construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
+        EnvVarNames, FuncDefn),
+    !:FuncDefns = ClosureWrapperFuncDefns ++ [FuncDefn | !.FuncDefns].
+
+:- pred compute_initial_tail_rec_map_for_none_or_self(module_info::in,
+    none_or_self_tail_rec::in, pred_proc_id::in, tail_rec_target_map::out)
+    is det.
+
+compute_initial_tail_rec_map_for_none_or_self(ModuleInfo, NoneOrSelf,
+        PredProcId, TailRecMap0) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    SupportsBreakContinue =
+        globals_target_supports_break_and_continue(Globals),
+    (
+        NoneOrSelf = no_tail_rec,
+        map.init(TailRecMap0)
+    ;
+        NoneOrSelf = self_tail_rec,
+        InputParams =
+            ml_gen_proc_params_inputs_only_no_gc_stmts(ModuleInfo, PredProcId),
+        (
+            SupportsBreakContinue = yes,
+            % If we find a tail call, we will wrap the function body inside
+            % `while (true) { ... break; }', and so the tail call can just
+            % do a `continue', which will continue the next iteration
+            % of the loop.
+            TailRecMechanism0 = tail_rec_via_while_loop
+        ;
+            SupportsBreakContinue = no,
+            % If we find a tail call, we will insert a label at the start
+            % of the function, and so the tail call can just goto
+            % to that label.
+            TailRecMechanism0 = tail_rec_via_start_label("proc_top")
+        ),
+        TailRecTargetInfo0 = tail_rec_target_info(TailRecMechanism0,
+            InputParams, have_not_done_tail_rec),
+        TailRecMap0 = map.singleton(PredProcId, TailRecTargetInfo0)
+    ).
+
+:- pred construct_func_body_maybe_wrap_in_loop(pred_proc_id::in,
+    prog_context::in, list(mlds_local_var_defn)::in,
+    list(mlds_function_defn)::in, list(mlds_stmt)::in, tail_rec_info::in,
+    mlds_function_body::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+construct_func_body_maybe_wrap_in_loop(PredProcId, Context,
+        LocalVarDefns, FuncDefns, GoalStmts, TailRecInfo, FuncBody, !Specs) :-
+    TailRecInfo = tail_rec_info(TargetMap, _WarnParams, TailRecSpecs),
+    !:Specs = TailRecSpecs ++ !.Specs,
+    ( if
+        map.search(TargetMap, PredProcId, TailRecTargetInfo),
+        TailRecTargetInfo = tail_rec_target_info(TailRecMechanism,
+            _InputParams, HaveDoneTailRec),
+        HaveDoneTailRec = have_done_tail_rec
+    then
+        Comment = comment("setup for tailcalls optimized into a loop"),
+        CommentStmt = ml_stmt_atomic(Comment, Context),
+        (
+            TailRecMechanism = tail_rec_via_while_loop,
+            BreakStmt = ml_stmt_goto(goto_break, Context),
+            LoopBodyStmt = ml_stmt_block(LocalVarDefns, FuncDefns,
+                [CommentStmt] ++ GoalStmts ++ [BreakStmt], Context),
+            FuncBodyStmt = ml_stmt_while(may_loop_zero_times,
+                ml_const(mlconst_true), LoopBodyStmt, Context)
+        ;
+            TailRecMechanism = tail_rec_via_start_label(StartLabel),
+            LoopTopLabelStmt = ml_stmt_label(StartLabel, Context),
+            FuncBodyStmt = ml_stmt_block(LocalVarDefns, FuncDefns,
+                [CommentStmt, LoopTopLabelStmt] ++ GoalStmts, Context)
+        )
+    else
+        FuncBodyStmt = ml_gen_block(LocalVarDefns, FuncDefns,
+            GoalStmts, Context)
+    ),
+    FuncBody = body_defined_here(FuncBodyStmt).
+
+:- pred construct_func_defn(module_info::in, pred_proc_id_info::in,
+    mlds_func_params::in, mlds_function_body::in, set(string)::in,
+    mlds_function_defn::out) is det.
+
+construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
+        EnvVarNames, FuncDefn) :-
+    PredProcIdInfo = pred_proc_id_info(PredProcId, PredInfo, ProcInfo),
+    PredProcId = proc(PredId, ProcId),
+    ml_gen_proc_label(ModuleInfo, PredProcId, _ModuleName, PlainFuncName),
     proc_info_get_context(ProcInfo, ProcContext),
-    ml_gen_proc_label(ModuleInfo, PredId, ProcId,
-        _ModuleName, PlainFuncName),
     DeclFlags = ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId),
     MaybePredProcId = yes(PredProcId),
     pred_info_get_attributes(PredInfo, Attributes),
     attributes_to_attribute_list(Attributes, AttributeList),
     MLDS_Attributes =
         list.map(attribute_to_mlds_attribute(ModuleInfo), AttributeList),
+    MaybeRequireTailrecInfoFD = no,
     FuncDefn = mlds_function_defn(mlds_function_name(PlainFuncName),
-        ProcContext, DeclFlags, MaybePredProcId, MLDS_Params,
-        FuncBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfoFD),
-    !:FuncDefns = ClosureWrapperFuncDefns ++ [FuncDefn | !.FuncDefns].
+        ProcContext, DeclFlags, MaybePredProcId, FuncParams, FuncBody,
+        MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfoFD).
 
 %---------------------------------------------------------------------------%
 %
@@ -592,9 +619,8 @@ ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
             % For det functions, the function result variable is returned by
             % value, and any remaining output variables are passed by
             % reference.
-            ml_gen_info_get_pred_id(!.Info, PredId),
-            ml_gen_info_get_proc_id(!.Info, ProcId),
-            ml_is_output_det_function(ModuleInfo, PredId, ProcId, ResultVar)
+            ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
+            ml_is_output_det_function(ModuleInfo, PredProcId, ResultVar)
         then
             CopiedOutputVars = [ResultVar],
             list.delete_all(OutputVars, ResultVar, ByRefOutputVars)

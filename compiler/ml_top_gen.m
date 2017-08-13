@@ -202,18 +202,19 @@ ml_gen_init_global_data(ModuleInfo, Target, GlobalData) :-
 ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
     PragmaExportedProc = pragma_exported_proc(Lang, PredId, ProcId,
         ExportName, Context),
-    ml_gen_proc_label(ModuleInfo, PredId, ProcId, ModuleName, PlainName),
+    PredProcId = proc(PredId, ProcId),
+    ml_gen_proc_label(ModuleInfo, PredProcId, ModuleName, PlainName),
     MLDS_Name = qual_function_name(ModuleName, mlds_function_name(PlainName)),
-    ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams),
+    ml_gen_export_proc_params(ModuleInfo, PredProcId, FuncParams),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_univ_quant_tvars(PredInfo, UnivQTVars),
     Defn = ml_pragma_export(Lang, ExportName, MLDS_Name, FuncParams,
         UnivQTVars, Context).
 
-:- pred ml_gen_export_proc_params(module_info::in, pred_id::in, proc_id::in,
+:- pred ml_gen_export_proc_params(module_info::in, pred_proc_id::in,
     mlds_func_params::out) is det.
 
-ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams) :-
+ml_gen_export_proc_params(ModuleInfo, PredProcId, FuncParams) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     ( if
@@ -222,7 +223,8 @@ ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams) :-
         ),
         globals.set_option(det_copy_out, bool(no), Globals, GlobalsByRef),
         module_info_set_globals(GlobalsByRef, ModuleInfo, ModuleInfoByRef),
-        FuncParamsByRef = ml_gen_proc_params(ModuleInfoByRef, PredId, ProcId),
+        FuncParamsByRef = ml_gen_proc_params_no_gc_stmts(ModuleInfoByRef,
+            PredProcId),
         FuncParamsByRef = mlds_func_params(Args, ReturnTypes),
         (
             ReturnTypes = [],
@@ -236,7 +238,7 @@ ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams) :-
     then
         FuncParams = FuncParamsByRef
     else
-        FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId)
+        FuncParams = ml_gen_proc_params_no_gc_stmts(ModuleInfo, PredProcId)
     ).
 
 :- pred has_ptr_type(mlds_argument::in) is semidet.

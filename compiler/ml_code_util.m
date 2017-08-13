@@ -89,7 +89,7 @@
     % These procedures need to handled specially: for such functions,
     % we map the Mercury function result to an MLDS return value.
     %
-:- pred ml_is_output_det_function(module_info::in, pred_id::in, proc_id::in,
+:- pred ml_is_output_det_function(module_info::in, pred_proc_id::in,
     prog_var::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -159,14 +159,14 @@
     % Generate the mlds_function_name and module name for the entry point
     % function corresponding to a given procedure.
     %
-:- pred ml_gen_proc_label(module_info::in, pred_id::in, proc_id::in,
+:- pred ml_gen_proc_label(module_info::in, pred_proc_id::in,
     mlds_module_name::out, mlds_plain_func_name::out) is det.
 
     % Generate an mlds_function_name for a continuation function with the
     % given sequence number. The pred_id and proc_id specify the procedure
     % that this continuation function is part of.
     %
-:- func ml_gen_nondet_label(module_info, pred_id, proc_id,
+:- func ml_gen_nondet_label(module_info, pred_proc_id,
     mlds_maybe_aux_func_id) = mlds_plain_func_name.
 
     % Allocate a new function label and return an rval containing the
@@ -180,7 +180,7 @@
 
     % Generate the mlds_pred_label and module name for a given procedure.
     %
-:- pred ml_gen_pred_label(module_info::in, pred_id::in, proc_id::in,
+:- pred ml_gen_pred_label(module_info::in, pred_proc_id::in,
     mlds_pred_label::out, mlds_module_name::out) is det.
 
 :- pred ml_gen_pred_label_from_rtti(module_info::in, rtti_proc_label::in,
@@ -630,9 +630,8 @@ ml_gen_nondet_label_func(Info, MaybeAux, Context, Stmt, Func) :-
 ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func) :-
     % Compute the function name.
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    ml_gen_info_get_pred_id(Info, PredId),
-    ml_gen_info_get_proc_id(Info, ProcId),
-    FuncName = ml_gen_nondet_label(ModuleInfo, PredId, ProcId, MaybeAux),
+    ml_gen_info_get_pred_proc_id(Info, PredProcId),
+    FuncName = ml_gen_nondet_label(ModuleInfo, PredProcId, MaybeAux),
 
     % Compute the function definition.
     DeclFlags = ml_gen_label_func_decl_flags,
@@ -654,8 +653,8 @@ ml_gen_label_func_decl_flags = DeclFlags :-
     PerInstance = per_instance,
     DeclFlags = init_function_decl_flags(Access, PerInstance).
 
-ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+ml_is_output_det_function(ModuleInfo, PredProcId, RetArgVar) :-
+    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     pred_info_is_pred_or_func(PredInfo) = pf_function,
     proc_info_interface_code_model(ProcInfo) = model_det,
 
@@ -785,21 +784,21 @@ ml_java_mercury_enum_class = EnumClassDefn :-
 % Code for generating mlds_function_names.
 %
 
-ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_ModuleName, MLDS_Name) :-
-    ml_gen_func_label(ModuleInfo, PredId, ProcId, proc_func, MLDS_ModuleName,
+ml_gen_proc_label(ModuleInfo, PredProcId, MLDS_ModuleName, MLDS_Name) :-
+    ml_gen_func_label(ModuleInfo, PredProcId, proc_func, MLDS_ModuleName,
         MLDS_Name).
 
-ml_gen_nondet_label(ModuleInfo, PredId, ProcId, MaybeAux) = MLDS_Name :-
-    ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeAux,
+ml_gen_nondet_label(ModuleInfo, PredProcId, MaybeAux) = MLDS_Name :-
+    ml_gen_func_label(ModuleInfo, PredProcId, MaybeAux,
         _MLDS_ModuleName, MLDS_Name).
 
-:- pred ml_gen_func_label(module_info::in, pred_id::in, proc_id::in,
+:- pred ml_gen_func_label(module_info::in, pred_proc_id::in,
     mlds_maybe_aux_func_id::in,
     mlds_module_name::out, mlds_plain_func_name::out) is det.
 
-ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeAux,
-        ModuleName, FuncName) :-
-    ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, ModuleName),
+ml_gen_func_label(ModuleInfo, PredProcId, MaybeAux, ModuleName, FuncName) :-
+    ml_gen_pred_label(ModuleInfo, PredProcId, PredLabel, ModuleName),
+    PredProcId = proc(PredId, ProcId),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
     FuncName = mlds_plain_func_name(FuncLabel, PredId).
@@ -807,10 +806,8 @@ ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeAux,
 ml_gen_new_func_label(MaybeParams, MaybeAux, FuncLabelRval, !Info) :-
     ml_gen_info_new_aux_func_id(MaybeAux, !Info),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_info_get_pred_id(!.Info, PredId),
-    ml_gen_info_get_proc_id(!.Info, ProcId),
-    ml_gen_pred_label(ModuleInfo, PredId, ProcId,
-        PredLabel, PredModule),
+    ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
+    ml_gen_pred_label(ModuleInfo, PredProcId, PredLabel, PredModule),
     ml_gen_info_use_gcc_nested_functions(!.Info, UseNestedFuncs),
     (
         MaybeParams = yes(Params),
@@ -826,13 +823,15 @@ ml_gen_new_func_label(MaybeParams, MaybeAux, FuncLabelRval, !Info) :-
         ),
         Signature = mlds_func_signature(ArgTypes, [])
     ),
+    PredProcId = proc(_PredId, ProcId),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
     QualFuncLabel = qual_func_label(PredModule, FuncLabel),
     FuncLabelRval = ml_const(mlconst_code_addr(
         mlds_code_addr(QualFuncLabel, Signature))).
 
-ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
+ml_gen_pred_label(ModuleInfo, PredProcId, MLDS_PredLabel, MLDS_Module) :-
+    PredProcId = proc(PredId, ProcId),
     RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel,
         MLDS_PredLabel, MLDS_Module).
@@ -896,7 +895,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
         ),
         ( if
             PredOrFunc = pf_function,
-            not ml_is_output_det_function(ModuleInfo, PredId, ProcId, _)
+            not ml_is_output_det_function(ModuleInfo, proc(PredId, ProcId), _)
         then
             NonOutputFunc = yes
         else

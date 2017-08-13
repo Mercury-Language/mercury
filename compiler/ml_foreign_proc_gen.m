@@ -507,10 +507,9 @@ ml_gen_hash_define_mr_alloc_id(C_Codes, Context, HashDefine, HashUndef,
         string.sub_string_search(C_Code, "MR_ALLOC_ID", _)
     then
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        ml_gen_info_get_pred_id(!.Info, PredId),
-        ml_gen_info_get_proc_id(!.Info, ProcId),
+        ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
+        ml_gen_proc_label(ModuleInfo, PredProcId, _Module, ProcLabel),
         ml_gen_info_get_global_data(!.Info, GlobalData0),
-        ml_gen_proc_label(ModuleInfo, PredId, ProcId, _Module, ProcLabel),
         ml_gen_alloc_site(mlds_function_name(ProcLabel), no, 0, Context,
             AllocId, GlobalData0, GlobalData),
         ml_gen_info_set_global_data(GlobalData, !Info),
@@ -533,9 +532,8 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
     % not the one that the pragma foreign_code originally came from.
     % There may not be any function address for the latter, e.g. if it
     % has been inlined and the original definition optimized away.
-    ml_gen_info_get_pred_id(Info, PredId),
-    ml_gen_info_get_proc_id(Info, ProcId),
-    ml_gen_proc_label(ModuleInfo, PredId, ProcId, Module, PlainFuncName),
+    ml_gen_info_get_pred_proc_id(Info, PredProcId),
+    ml_gen_proc_label(ModuleInfo, PredProcId, Module, PlainFuncName),
     HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
         target_code_function_name(
             qual_function_name(Module, mlds_function_name(PlainFuncName))),

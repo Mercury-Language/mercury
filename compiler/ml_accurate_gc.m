@@ -156,7 +156,7 @@ ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context, GCStmt,
         MLDS_DeclType = mercury_type_to_mlds_type(ModuleInfo, DeclType),
         ml_type_might_contain_pointers_for_gc(MLDS_DeclType) = yes,
         % Don't generate GC tracing code in no_type_info_builtins.
-        ml_gen_info_get_pred_id(!.Info, PredId),
+        ml_gen_info_get_pred_proc_id(!.Info, proc(PredId, _ProcId)),
         predicate_id(ModuleInfo, PredId, PredModule, PredName, PredArity),
         not no_type_info_builtin(PredModule, PredName, PredArity)
     then
@@ -407,9 +407,8 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
 
 ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo0),
-    ml_gen_info_get_pred_id(!.Info, PredId),
-    ml_gen_info_get_proc_id(!.Info, ProcId),
-    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+    ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
+    module_info_pred_proc_info(ModuleInfo0, PredProcId,
         PredInfo0, ProcInfo0),
 
     % Call polymorphism.m to generate the HLDS code to create the type_infos.
@@ -422,7 +421,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
         "got errors while making type_info_var"),
 
     % Save the new information back in the ml_gen_info.
-    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+    module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),

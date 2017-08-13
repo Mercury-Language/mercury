@@ -150,7 +150,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     ArgNames = ml_gen_local_var_names(VarSet, ArgVars),
     PredOrFunc = generic_call_pred_or_func(GenericCall),
     determinism_to_code_model(Determinism, CodeModel),
-    Params0 = ml_gen_params(ModuleInfo, ArgNames,
+    Params0 = ml_gen_params_no_gc_stmts(ModuleInfo, ArgNames,
         BoxedArgTypes, ArgModes, PredOrFunc, CodeModel),
 
     % Insert the `closure_arg' parameter.
@@ -423,9 +423,7 @@ ml_gen_plain_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
             ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
         )
     else
-        ml_gen_info_get_pred_id(!.Info, CallerPredId),
-        ml_gen_info_get_proc_id(!.Info, CallerProcId),
-        CallerPredProcId = proc(CallerPredId, CallerProcId),
+        ml_gen_info_get_pred_proc_id(!.Info, CallerPredProcId),
         WarnParams = TailRecInfo0 ^ tri_warn_params,
         Specs0 = TailRecInfo0 ^ tri_msgs,
         maybe_report_nontail_recursive_call(ModuleInfo,
@@ -478,11 +476,12 @@ ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
 
     % Compute the function signature.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
+    PredProcId = proc(PredId, ProcId),
+    Params = ml_gen_proc_params_no_gc_stmts(ModuleInfo, PredProcId),
     Signature = mlds_get_func_signature(Params),
 
     % Compute the function address.
-    ml_gen_proc_addr_rval(PredId, ProcId, _FuncProcLabel, FuncRval, !Info),
+    ml_gen_proc_addr_rval(PredProcId, _FuncProcLabel, FuncRval, !Info),
 
     % Compute the callee's Mercury argument types and modes.
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
@@ -544,14 +543,15 @@ ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
 
     % Generate an rval containing the address of the specified procedure.
     %
-:- pred ml_gen_proc_addr_rval(pred_id::in, proc_id::in, mlds_proc_label::out,
+:- pred ml_gen_proc_addr_rval(pred_proc_id::in, mlds_proc_label::out,
     mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_proc_addr_rval(PredId, ProcId, ProcLabel, CodeAddrRval, !Info) :-
+ml_gen_proc_addr_rval(PredProcId, ProcLabel, CodeAddrRval, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
-    ml_gen_info_proc_params(PredId, ProcId, Params, !Info),
+    ml_gen_pred_label(ModuleInfo, PredProcId, PredLabel, PredModule),
+    ml_gen_info_proc_params(PredProcId, Params, !Info),
     Signature = mlds_get_func_signature(Params),
+    PredProcId = proc(_PredId, ProcId),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     FuncLabel = mlds_func_label(ProcLabel, proc_func),
     QualFuncLabel = qual_func_label(PredModule, FuncLabel),

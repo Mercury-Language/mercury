@@ -56,6 +56,7 @@
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.type_ctor_info.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.
 :- import_module libs.globals.
@@ -1641,8 +1642,8 @@ gen_wrapper_func_and_initializer(ModuleInfo, Target, NumExtra, RttiProcId,
         PredId = RttiProcId ^ rpl_pred_id,
         ProcId = RttiProcId ^ rpl_proc_id,
         module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-        !:Info = ml_gen_info_init(ModuleInfo, Target, map.init, PredId, ProcId,
-            ProcInfo, map.init, !.GlobalData),
+        !:Info = ml_gen_info_init(ModuleInfo, Target, map.init,
+            proc(PredId, ProcId), ProcInfo, map.init, !.GlobalData),
         ml_gen_info_bump_counters(!Info),
 
         % Now we can safely go ahead and generate the wrapper function.
@@ -1669,7 +1670,7 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Initializer :-
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     FuncLabel = mlds_func_label(ProcLabel, proc_func),
     QualFuncLabel = qual_func_label(PredModule, FuncLabel),
-    Params = ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId),
+    Params = ml_gen_proc_params_from_rtti_no_gc_stmts(ModuleInfo, RttiProcId),
     Signature = mlds_get_func_signature(Params),
     CodeAddr = mlds_code_addr(QualFuncLabel, Signature),
     ProcAddrRval = ml_const(mlconst_code_addr(CodeAddr)),
