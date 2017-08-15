@@ -765,7 +765,6 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
     const char      *problem = NULL;
     MR_bool         quiet = MR_FALSE;
     MR_bool         xml = MR_FALSE;
-    MR_bool         web = MR_FALSE;
 
     // Set this to NULL to avoid uninitialization warnings.
 
