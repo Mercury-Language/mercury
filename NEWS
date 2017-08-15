@@ -265,6 +265,7 @@ Changes to the Mercury standard library:
 
 * The following predicates and functions have been added to the char module:
 
+    - is_ascii/1
     - is_decimal_digit/1
     - is_base_digit/2
     - int_to_binary_digit/2, det_int_to_binary_digit/1

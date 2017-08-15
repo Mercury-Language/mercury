@@ -114,6 +114,10 @@
 
 %---------------------------------------------------------------------------%
 
+    % True iff the character is in the ASCII range (0-127).
+    %
+:- pred is_ascii(char::in) is semidet.
+
     % True iff the character is a whitespace character in the ASCII range,
     % i.e. a space, tab, newline, carriage return, form-feed, or vertical tab.
     %
@@ -612,6 +616,11 @@ lower_upper('y', 'Y').
 lower_upper('z', 'Z').
 
 %---------------------------------------------------------------------------%
+
+is_ascii(Char) :-
+    Code = char.to_int(Char),
+    Code >= 0x00,
+    Code =< 0x7f.
 
 % The information here is duplicated in lookup_token_action in lexer.m.
 % If you update this; you will also need update that.
