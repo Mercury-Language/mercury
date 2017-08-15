@@ -373,10 +373,8 @@ js_string(Stream, String, !IO) :-
 escape_and_put_char(Stream, Char, !IO) :-
     ( if escape_char(Char, EscapedCharStr) then
         io.write_string(Stream, EscapedCharStr, !IO)
-    else if char.is_ascii(Char) then
-        io.write_char(Stream, Char, !IO)
     else
-        put_unicode_escape(Stream, Char, !IO)
+        io.write_char(Stream, Char, !IO)
     ).
 
 :- pred escape_char(char::in, string::out) is semidet.
@@ -389,21 +387,6 @@ escape_char('\f', "\\f").
 escape_char('\n', "\\n").
 escape_char('\r', "\\r").
 escape_char('\t', "\\t").
-
-:- pred put_unicode_escape(io.output_stream::in, char::in, io::di, io::uo)
-    is det.
-
-put_unicode_escape(Stream, Char, !IO) :-
-    ( if char.to_utf16(Char, CodeUnits) then
-        list.foldl(put_hex_digits(Stream), CodeUnits, !IO)
-    else
-        put_hex_digits(Stream, 0xfffd, !IO)
-    ).
-
-:- pred put_hex_digits(io.output_stream::in, int::in, io::di, io::uo) is det.
-
-put_hex_digits(Stream, Int, !IO) :-
-    io.format(Stream, "\\u%04x", [i(Int)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.term_to_html.
