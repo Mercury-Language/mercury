@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2008,2010,2012 The University of Melbourne.
+// Copyright (C) 2017 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -51,6 +52,13 @@ static  void        MR_trace_browse_goal_xml(MR_ConstString name,
                         MR_Word arg_list, MR_Word is_func,
                         MR_BrowseCallerType caller, MR_BrowseFormat format);
 
+// Functions to invoke the user's web browser on terms or goals.
+static  void        MR_trace_browse_web(MR_Word type_info, MR_Word value,
+                        MR_BrowseCallerType caller, MR_BrowseFormat format);
+static  void        MR_trace_browse_goal_web(MR_ConstString name,
+                        MR_Word arg_list, MR_Word is_func,
+                        MR_BrowseCallerType caller, MR_BrowseFormat format);
+
 static  void        MR_trace_cmd_stack_2(MR_EventInfo *event_info,
                         MR_bool detailed, MR_FrameLimit frame_limit,
                         int line_limit);
@@ -68,7 +76,7 @@ static  MR_bool     MR_trace_options_stack_trace(MR_bool *print_all,
                         MR_FrameLimit *frame_limit,
                         char ***words, int *word_count);
 static  MR_bool     MR_trace_options_format(MR_BrowseFormat *format,
-                        MR_bool *xml, char ***words, int *word_count);
+                        MR_bool *xml, MR_bool *web, char ***words, int *word_count);
 static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         const char **server_cmd, const char **server_name,
                         MR_Unsigned *timeout, MR_bool *force, MR_bool *verbose,
@@ -209,6 +217,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
 {
     MR_BrowseFormat     format;
     MR_bool             xml;
+    MR_bool             web;
     const char          *problem;
     MR_Unsigned         action;
     MR_Unsigned         lo_action;
@@ -216,11 +225,14 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
     static MR_bool      have_next_io_action = MR_FALSE;
     static MR_Unsigned  next_io_action = 0;
 
-    if (! MR_trace_options_format(&format, &xml, &words, &word_count)) {
+    if (! MR_trace_options_format(&format, &xml, &web, &words, &word_count)) {
         // The usage message has already been printed.
         ;
     } else if (xml) {
         // The --xml option is not valid for print.
+        MR_trace_usage_cur_cmd();
+    } else if (web) {
+        // The --web option is not valid for print.
         MR_trace_usage_cur_cmd();
     } else if (word_count == 1) {
         problem = MR_trace_browse_one_goal(MR_mdb_out,
@@ -450,18 +462,22 @@ MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
 {
     MR_BrowseFormat     format;
     MR_bool             xml;
+    MR_bool             web;
     MR_IoActionNum      action;
     MR_GoalBrowser      goal_browser;
     MR_Browser          browser;
     const char          *problem;
 
-    if (! MR_trace_options_format(&format, &xml, &words, &word_count)) {
+    if (! MR_trace_options_format(&format, &xml, &web, &words, &word_count)) {
         // The usage message has already been printed.
         ;
     } else {
         if (xml) {
             goal_browser = MR_trace_browse_goal_xml;
             browser = MR_trace_browse_xml;
+        } else if (web) {
+            goal_browser = MR_trace_browse_goal_web;
+            browser = MR_trace_browse_web;
         } else {
             goal_browser = MR_trace_browse_goal_internal;
             browser = MR_trace_browse_internal;
@@ -749,6 +765,7 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
     const char      *problem = NULL;
     MR_bool         quiet = MR_FALSE;
     MR_bool         xml = MR_FALSE;
+    MR_bool         web = MR_FALSE;
 
     // Set this to NULL to avoid uninitialization warnings.
 
@@ -1033,6 +1050,28 @@ MR_trace_browse_goal_xml(MR_ConstString name, MR_Word arg_list,
     MR_trace_save_and_invoke_xml_browser(browser_term);
 }
 
+static void
+MR_trace_browse_web(MR_Word type_info, MR_Word value,
+    MR_BrowseCallerType caller, MR_BrowseFormat format)
+{
+    MR_Word     browser_term;
+
+    browser_term = MR_type_value_to_browser_term((MR_TypeInfo) type_info,
+        value);
+
+    MR_trace_save_and_invoke_web_browser(browser_term);
+}
+
+static void
+MR_trace_browse_goal_web(MR_ConstString name, MR_Word arg_list,
+    MR_Word is_func, MR_BrowseCallerType caller, MR_BrowseFormat format)
+{
+    MR_Word     browser_term;
+
+    browser_term = MR_synthetic_to_browser_term(name, arg_list, is_func);
+    MR_trace_save_and_invoke_web_browser(browser_term);
+}
+
 // Implement the `view' command. First, check if there is a server attached.
 // If so, either stop it or abort the command, depending on whether '-f'
 // was given. Then, if a server name was not supplied, start a new server
@@ -1261,19 +1300,21 @@ static struct MR_option MR_trace_format_opts[] =
     { "verbose",    MR_no_argument, NULL,   'v' },
     { "pretty",     MR_no_argument, NULL,   'p' },
     { "xml",        MR_no_argument, NULL,   'x' },
+    { "web",        MR_no_argument, NULL,   'w' },
     { NULL,         MR_no_argument, NULL,   0   }
 };
 
 static MR_bool
-MR_trace_options_format(MR_BrowseFormat *format, MR_bool *xml, char ***words,
-    int *word_count)
+MR_trace_options_format(MR_BrowseFormat *format, MR_bool *xml, MR_bool *web,
+    char ***words, int *word_count)
 {
     int c;
 
     *format = MR_BROWSE_DEFAULT_FORMAT;
     *xml = MR_FALSE;
+    *web = MR_FALSE;
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "frvpx",
+    while ((c = MR_getopt_long(*word_count, *words, "frvpxw",
         MR_trace_format_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -1296,6 +1337,12 @@ MR_trace_options_format(MR_BrowseFormat *format, MR_bool *xml, char ***words,
 
             case 'x':
                 *xml = MR_TRUE;
+                *web = MR_FALSE;
+                break;
+
+            case 'w':
+                *web = MR_TRUE;
+                *xml = MR_FALSE;
                 break;
 
             default:

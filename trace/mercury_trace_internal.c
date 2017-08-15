@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2012 The University of Melbourne.
+// Copyright (C) 2017 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -1570,6 +1571,8 @@ static const MR_TraceCmdTableEntry  MR_trace_command_table[] =
     { "parameter", "xml_browser_cmd", MR_trace_cmd_xml_browser_cmd,
         NULL, MR_trace_null_completer },
     { "parameter", "xml_tmp_filename", MR_trace_cmd_xml_tmp_filename,
+        NULL, MR_trace_null_completer },
+    { "parameter", "web_browser_cmd", MR_trace_cmd_web_browser_cmd,
         NULL, MR_trace_null_completer },
     { "parameter", "format", MR_trace_cmd_format,
         MR_trace_format_cmd_args, MR_trace_null_completer },

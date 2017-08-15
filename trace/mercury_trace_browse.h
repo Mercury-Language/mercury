@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
+// Copyright (C) 2017 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -77,6 +78,10 @@ extern  void        MR_trace_browse_external(MR_Word type_info, MR_Word value,
 // Browse a term using an XML browser.
 
 extern  void        MR_trace_save_and_invoke_xml_browser(MR_Word browser_term);
+
+// Browse a term using a web browser.
+
+extern  void        MR_trace_save_and_invoke_web_browser(MR_Word browser_term);
 
 // Display a term non-interactively.
 

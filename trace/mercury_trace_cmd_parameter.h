@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2007 The University of Melbourne.
+// Copyright (C) 2017 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -104,6 +105,7 @@ extern  MR_TraceCmdFunc     MR_trace_cmd_pass_trace_counts;
 extern  MR_TraceCmdFunc     MR_trace_cmd_max_io_actions;
 extern  MR_TraceCmdFunc     MR_trace_cmd_xml_browser_cmd;
 extern  MR_TraceCmdFunc     MR_trace_cmd_xml_tmp_filename;
+extern  MR_TraceCmdFunc     MR_trace_cmd_web_browser_cmd;
 extern  MR_TraceCmdFunc     MR_trace_cmd_format;
 extern  MR_TraceCmdFunc     MR_trace_cmd_format_param;
 extern  MR_TraceCmdFunc     MR_trace_cmd_alias;

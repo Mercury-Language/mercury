@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2006 The University of Melbourne.
+// Copyright (C) 2017 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -118,6 +119,23 @@ MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
 
     MR_TRACE_CALL_MERCURY(
         ML_BROWSE_browse_term_xml(browser_term,
+            MR_wrap_output_stream(&mdb_out),
+            MR_wrap_output_stream(&mdb_err),
+            MR_trace_browser_persistent_state);
+    );
+}
+
+void
+MR_trace_save_and_invoke_web_browser(MR_Word browser_term)
+{
+    MercuryFile mdb_out;
+    MercuryFile mdb_err;
+
+    MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+    MR_c_file_to_mercury_file(MR_mdb_err, &mdb_err);
+
+    MR_TRACE_CALL_MERCURY(
+        ML_BROWSE_browse_term_web(browser_term,
             MR_wrap_output_stream(&mdb_out),
             MR_wrap_output_stream(&mdb_err),
             MR_trace_browser_persistent_state);

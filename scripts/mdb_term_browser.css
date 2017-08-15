@@ -1,0 +1,25 @@
+/*
+** Copyright (C) 2017 The Mercury team.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+body {
+    font-family: Sans-Serif;
+}
+div.search-container {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+li.jstree-node a span.pos {
+    color: blue;
+}
+li.jstree-node a span.name {
+    color: purple;
+}
+li.jstree-node a span {
+    padding-right: 0.5em;
+}
+.jstree-anchor, .jstree-animated, .jstree-wholerow {
+    transition: none !important;
+}

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,6 +28,7 @@
 :- import_module mdb.browser_info.
 :- import_module mdb.browser_term.
 
+:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -152,6 +154,18 @@
     io.output_stream::in, io.output_stream::in,
     browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
+    % Save BrowserTerm in an HTML file and launch the web browser specified
+    % by the web_browser_cmd field in the browser_persistent_state.
+    %
+:- pred save_and_browse_browser_term_web(browser_term::in,
+    io.output_stream::in, io.output_stream::in,
+    browser_persistent_state::in, io::di, io::uo) is cc_multi.
+
+    % Exported for term_to_html.
+    %
+:- pred browser_term_to_html_flat_string(browser_term::in, string::out,
+    bool::out, io::di, io::uo) is cc_multi.
+
 %---------------------------------------------------------------------------%
 
     % Remove "/dir/../" sequences from a list of directories to yield
@@ -179,9 +193,10 @@
 :- import_module mdb.parse.
 :- import_module mdb.frame.
 :- import_module mdb.sized_pretty.
+:- import_module mdb.term_to_html.
 
-:- import_module bool.
 :- import_module deconstruct.
+:- import_module dir.
 :- import_module getopt.
 :- import_module int.
 :- import_module map.
@@ -190,6 +205,7 @@
 :- import_module stream.
 :- import_module stream.string_writer.
 :- import_module string.
+:- import_module string.builder.
 :- import_module term_io.
 :- import_module term_to_xml.
 :- import_module type_desc.
@@ -224,6 +240,10 @@
 :- pragma foreign_export("C",
     save_and_browse_browser_term_xml(in, in, in, in, di, uo),
     "ML_BROWSE_browse_term_xml").
+
+:- pragma foreign_export("C",
+    save_and_browse_browser_term_web(in, in, in, in, di, uo),
+    "ML_BROWSE_browse_term_web").
 
 %---------------------------------------------------------------------------%
 %
@@ -682,7 +702,8 @@ portray_flat(Debugger, BrowserTerm, Params, !IO) :-
     browser_term_size_left_from_max(BrowserTerm, max_print_size,
         RemainingSize),
     ( if RemainingSize >= 0 then
-        portray_flat_write_browser_term(BrowserTerm, !IO)
+        io.output_stream(Stream, !IO),
+        portray_flat_write_browser_term(Stream, BrowserTerm, !IO)
     else
         io.get_stream_db(StreamDb, !IO),
         BrowserDb = browser_db(StreamDb),
@@ -691,31 +712,37 @@ portray_flat(Debugger, BrowserTerm, Params, !IO) :-
         write_string_debugger(Debugger, Str, !IO)
     ).
 
-:- pred portray_flat_write_browser_term(browser_term::in,
-    io::di, io::uo) is cc_multi.
+:- pred portray_flat_write_browser_term(Stream::in, browser_term::in,
+    State::di, State::uo) is cc_multi
+    <= (stream.writer(Stream, string, State),
+        stream.writer(Stream, character, State)).
 
-portray_flat_write_browser_term(plain_term(Univ), !IO) :-
-    io.output_stream(Stream, !IO),
+portray_flat_write_browser_term(Stream, plain_term(Univ), !IO) :-
     string_writer.write_univ(Stream, include_details_cc, Univ, !IO).
-portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn),
+portray_flat_write_browser_term(Stream, synthetic_term(Functor, Args, MaybeReturn),
         !IO) :-
-    io.write_string(Functor, !IO),
-    io.output_stream(Stream, !IO),
+    put(Stream, Functor, !IO),
     (
         Args = []
     ;
         Args = [_ | _],
-        io.write_string("(", !IO),
-        io.write_list(Args, ", ", write_univ_or_unbound(Stream), !IO),
-        io.write_string(")", !IO)
+        put(Stream, "(", !IO),
+        put_list(Stream, write_univ_or_unbound, put_comma_space, Args, !IO),
+        put(Stream, ")", !IO)
     ),
     (
         MaybeReturn = yes(Return),
-        io.write_string(" = ", !IO),
+        put(Stream, " = ", !IO),
         string_writer.write_univ(Stream, include_details_cc, Return, !IO)
     ;
         MaybeReturn = no
     ).
+
+:- pred put_comma_space(Stream::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
+put_comma_space(Stream, !State) :-
+    put(Stream, ", ", !State).
 
 :- pred portray_verbose(debugger::in, browser_term::in, format_params::in,
     io::di, io::uo) is cc_multi.
@@ -793,12 +820,14 @@ browser_term_size_left_from_max(BrowserTerm, MaxSize, RemainingSize) :-
         list.foldl(term_size_left_from_max, Args, MaxArgsSize, RemainingSize)
     ).
 
-:- pred write_univ_or_unbound(io.output_stream::in, univ::in, io::di, io::uo)
-    is cc_multi.
+:- pred write_univ_or_unbound(Stream::in, univ::in, State::di, State::uo)
+    is cc_multi
+    <= (stream.writer(Stream, string, State),
+        stream.writer(Stream, character, State)).
 
 write_univ_or_unbound(Stream, Univ, !IO) :-
     ( if univ_to_type(Univ, _ `with_type` unbound) then
-        io.write_char(Stream, '_', !IO)
+        put_char(Stream, '_', !IO)
     else
         string_writer.write_univ(Stream, include_details_cc, Univ, !IO)
     ).
@@ -1436,6 +1465,135 @@ launch_xml_browser(OutStream, ErrStream, CommandStr, !IO) :-
         Result = error(Error),
         io.write_string(ErrStream, "mdb: Error launching browser: "
             ++ string.string(Error) ++ ".\n", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+save_and_browse_browser_term_web(Term, OutStream, ErrStream, State, !IO) :-
+    get_mdb_dir(MaybeMdbDir, !IO),
+    (
+        MaybeMdbDir = yes(MdbDir),
+        MaybeBrowserCmd = State ^ web_browser_cmd,
+        (
+            MaybeBrowserCmd = yes(BrowserCmd),
+            io.get_temp_directory(TmpDir, !IO),
+            io.make_temp_file(TmpDir, "mdb", ".html", TmpResult, !IO),
+            (
+                TmpResult = ok(TmpFileName0),
+                ( if string.suffix(TmpFileName0, ".html") then
+                    TmpFileName = TmpFileName0
+                else
+                    % Work around io.make_temp_file ignoring suffix.
+                    io.remove_file(TmpFileName, _, !IO),
+                    TmpFileName = TmpFileName0 ++ ".html"
+                ),
+                save_term_to_file_web(TmpFileName, Term, MdbDir,
+                    SaveResult, !IO),
+                (
+                    SaveResult = ok(_),
+                    % We should actually quote the file name.
+                    CommandStr = BrowserCmd ++ " " ++ TmpFileName,
+                    launch_web_browser(OutStream, ErrStream, CommandStr, !IO)
+                ;
+                    SaveResult = error(Error),
+                    io.error_message(Error, Msg),
+                    io.write_string(ErrStream,
+                        "Error opening file `" ++ TmpFileName ++ "': ", !IO),
+                    io.write_string(ErrStream, Msg, !IO),
+                    io.nl(!IO)
+                )
+            ;
+                TmpResult = error(Error),
+                io.error_message(Error, Msg),
+                io.write_string(ErrStream, "Error opening temporary file: ",
+                    !IO),
+                io.write_string(ErrStream, Msg, !IO),
+                io.nl(!IO)
+            )
+        ;
+            MaybeBrowserCmd = no,
+            io.write_string(ErrStream, "mdb: You need to issue a " ++
+                "\"web_browser_cmd '<command>'\" command first.\n", !IO)
+        )
+    ;
+        MaybeMdbDir = no,
+        io.write_string(ErrStream,
+            "Could not determine directory containing mdb files.\n", !IO)
+    ).
+
+:- pred get_mdb_dir(maybe(string)::out, io::di, io::uo) is det.
+
+get_mdb_dir(Res, !IO) :-
+    get_environment_var("MERCURY_DEBUGGER_INIT", MaybeValue, !IO),
+    ( if
+        MaybeValue = yes(Path),
+        dir.path_name_is_absolute(Path),
+        dir.split_name(Path, MdbDir, "mdbrc")
+    then
+        Res = yes(MdbDir)
+    else
+        Res = no
+    ).
+
+:- pred save_term_to_file_web(string::in, browser_term::in, string::in,
+    io.res(io.output_stream)::out, io::di, io::uo) is cc_multi.
+
+save_term_to_file_web(FileName, BrowserTerm, MdbDir, FileStreamRes,
+        !IO) :-
+    io.open_output(FileName, FileStreamRes, !IO),
+    (
+        FileStreamRes = ok(OutputStream),
+        term_to_html.write_html_doc(OutputStream, BrowserTerm, MdbDir, _, !IO),
+        io.close_output(OutputStream, !IO)
+    ;
+        FileStreamRes = error(_)
+    ).
+
+:- pred launch_web_browser(io.output_stream::in, io.output_stream::in,
+    string::in, io::di, io::uo) is det.
+
+launch_web_browser(OutStream, ErrStream, CommandStr, !IO) :-
+    io.write_string(OutStream, "Launching web browser...\n", !IO),
+    io.flush_output(OutStream, !IO),
+    io.call_system_return_signal(CommandStr, Result, !IO),
+    (
+        Result = ok(ExitStatus),
+        (
+            ExitStatus = exited(ExitCode),
+            ( if ExitCode = 0 then
+                true
+            else
+                io.write_string(ErrStream,
+                    "mdb: The command `" ++ CommandStr ++
+                    "' terminated with a non-zero exit code.\n", !IO)
+            )
+        ;
+            ExitStatus = signalled(_),
+            io.write_string(ErrStream, "mdb: The browser was killed.\n", !IO)
+        )
+    ;
+        Result = error(Error),
+        io.write_string(ErrStream, "mdb: Error launching browser: "
+            ++ string.string(Error) ++ ".\n", !IO)
+    ).
+
+browser_term_to_html_flat_string(BrowserTerm, Str, Elided, !IO) :-
+    % Mimic portray_flat. We can afford larger sizes in a web browser due to
+    % proportional fonts and horizontal scrolling.
+    MaxTermSize = 120,
+    browser_term_size_left_from_max(BrowserTerm, MaxTermSize, RemainingSize),
+    ( if RemainingSize >= 0 then
+        portray_flat_write_browser_term(string.builder.handle, BrowserTerm,
+            string.builder.init, State),
+        Str = to_string(State),
+        Elided = no
+    else
+        io.get_stream_db(StreamDb, !IO),
+        BrowserDb = browser_db(StreamDb),
+        MaxSize = 10,
+        MaxDepth = 5,
+        browser_term_to_string(BrowserDb, BrowserTerm, MaxSize, MaxDepth, Str),
+        Elided = yes
     ).
 
 %---------------------------------------------------------------------------%

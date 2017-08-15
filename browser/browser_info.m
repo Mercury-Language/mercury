@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -187,6 +188,9 @@
 :- pred info_set_xml_tmp_filename(string::in,
     browser_info::in, browser_info::out) is det.
 
+:- pred info_set_web_browser_cmd(string::in,
+    browser_info::in, browser_info::out) is det.
+
 %---------------------------------------------------------------------------%
 
     % A data type that holds persistent browser settings.
@@ -201,6 +205,10 @@
 
 :- func browser_persistent_state ^ xml_tmp_filename = maybe(string).
 :- func browser_persistent_state ^ xml_tmp_filename := maybe(string) =
+    browser_persistent_state.
+
+:- func browser_persistent_state ^ web_browser_cmd = maybe(string).
+:- func browser_persistent_state ^ web_browser_cmd := maybe(string) =
     browser_persistent_state.
 
     % Initialize the persistent browser state with default values.
@@ -435,6 +443,11 @@ info_set_xml_tmp_filename(FileName, !Info) :-
     set_xml_tmp_filename_from_mdb(FileName, PersistentState0, PersistentState),
     !Info ^ bri_state := PersistentState.
 
+info_set_web_browser_cmd(Cmd, !Info) :-
+    PersistentState0 = !.Info ^ bri_state,
+    set_web_browser_cmd_from_mdb(Cmd, PersistentState0, PersistentState),
+    !Info ^ bri_state := PersistentState.
+
 %---------------------------------------------------------------------------%
 
 %
@@ -549,6 +562,32 @@ set_xml_tmp_filename_from_mdb(FileName, !Browser) :-
         !Browser ^ xml_tmp_filename := yes(FileName)
     ).
 
+:- pred get_web_browser_cmd_from_mdb(browser_persistent_state::in,
+    string::out) is det.
+:- pragma foreign_export("C", get_web_browser_cmd_from_mdb(in, out),
+    "ML_BROWSE_get_web_browser_cmd_from_mdb").
+
+get_web_browser_cmd_from_mdb(Browser, Command) :-
+    MaybeCommand = Browser ^ web_browser_cmd,
+    (
+        MaybeCommand = no,
+        Command = ""
+    ;
+        MaybeCommand = yes(Command)
+    ).
+
+:- pred set_web_browser_cmd_from_mdb(string::in,
+    browser_persistent_state::in, browser_persistent_state::out) is det.
+:- pragma foreign_export("C", set_web_browser_cmd_from_mdb(in, in, out),
+    "ML_BROWSE_set_web_browser_cmd_from_mdb").
+
+set_web_browser_cmd_from_mdb(Command, !Browser) :-
+    ( if Command = "" then
+        !Browser ^ web_browser_cmd := no
+    else
+        !Browser ^ web_browser_cmd := yes(Command)
+    ).
+
 %---------------------------------------------------------------------------%
 %
 % The following functions allow C code to create Mercury values of type bool.
@@ -579,7 +618,10 @@ mercury_bool_no = no.
                 xml_browser_cmd         :: maybe(string),
 
                 % The file to save XML to before launching the browser.
-                xml_tmp_filename        :: maybe(string)
+                xml_tmp_filename        :: maybe(string),
+
+                % The command to launch the user's preferred web browser.
+                web_browser_cmd         :: maybe(string)
             ).
 
 :- type caller_params
@@ -617,7 +659,7 @@ init_persistent_state(State) :-
     Browse = caller_type_browse_defaults,
     PrintAll = caller_type_print_all_defaults,
     State = browser_persistent_state(Print, Browse, PrintAll,
-        num_printed_io_actions_default, no, no).
+        num_printed_io_actions_default, no, no, no).
 
 :- func caller_type_print_defaults = caller_params.
 
@@ -699,7 +741,8 @@ set_browser_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting,
     maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
     !:State = browser_persistent_state(PParams, BParams, AParams,
         !.State ^ num_printed_io_actions,
-        !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename).
+        !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename,
+        !.State ^ web_browser_cmd).
 
 set_browser_param_with_caller_type(CallerType, P0, B0, A0, F0, Pr0, V0, NPr0,
         Setting, !State) :-
@@ -726,7 +769,8 @@ set_browser_param_with_caller_type(CallerType, P0, B0, A0, F0, Pr0, V0, NPr0,
     maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
     !:State = browser_persistent_state(PParams, BParams, AParams,
         !.State ^ num_printed_io_actions,
-        !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename).
+        !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename,
+        !.State ^ web_browser_cmd).
 
 set_browser_param_maybe_caller_type(FromBrowser, MaybeCallerType,
         F0, Pr0, V0, NPr0, Setting, !State) :-
@@ -1091,7 +1135,8 @@ send_term_to_socket(Term, !IO) :-
 
 browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
     Browser = browser_persistent_state(PrintParams, BrowseParams,
-        PrintAllParams, NumIOActions, MaybeXMLBrowserCmd, MaybeXMLTmpFileName),
+        PrintAllParams, NumIOActions, MaybeXMLBrowserCmd, MaybeXMLTmpFileName,
+        MaybeWebBrowserCmd),
     (
         MDBCommandFormat = yes,
         ParamCmds =
@@ -1122,8 +1167,18 @@ browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
         else
             XMLTmpFileNameCmd = ""
         ),
+        ( if
+            MaybeWebBrowserCmd = yes(WebBrowserCmd),
+            WebBrowserCmd \= ""
+        then
+            WebBrowserCmdCmd =
+                "web_browser_cmd " ++ WebBrowserCmd ++ "\n"
+        else
+            WebBrowserCmdCmd = ""
+        ),
         Desc = ParamCmds ++ NumIOActionCmd ++
-            XMLBrowserCmdCmd ++ XMLTmpFileNameCmd
+            XMLBrowserCmdCmd ++ XMLTmpFileNameCmd ++
+            WebBrowserCmdCmd
     ;
         MDBCommandFormat = no,
         ParamDesc =

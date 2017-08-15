@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2007 The University of Melbourne.
+// Copyright (C) 2017 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -740,6 +741,44 @@ MR_trace_cmd_xml_tmp_filename(char **words, int word_count,
             fprintf(MR_mdb_out, "The XML tmp filename is %s\n", file);
         } else {
             fprintf(MR_mdb_out, "The XML tmp filename has not been set.\n");
+        }
+    } else {
+        MR_trace_usage_cur_cmd();
+    }
+
+    return KEEP_INTERACTING;
+}
+
+MR_Next
+MR_trace_cmd_web_browser_cmd(char **words, int word_count,
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
+{
+    if (word_count == 2) {
+        char    *copied_value;
+        char    *aligned_value;
+
+        copied_value = (char *) MR_GC_malloc(strlen(words[1]) + 1);
+        strcpy(copied_value, words[1]);
+        MR_TRACE_USE_HP(
+            MR_make_aligned_string(aligned_value, copied_value);
+        );
+        MR_TRACE_CALL_MERCURY(
+            ML_BROWSE_set_web_browser_cmd_from_mdb(aligned_value,
+                MR_trace_browser_persistent_state,
+                &MR_trace_browser_persistent_state);
+        );
+    } else if (word_count == 1) {
+        MR_String   command;
+
+        MR_TRACE_CALL_MERCURY(
+            ML_BROWSE_get_web_browser_cmd_from_mdb(
+                MR_trace_browser_persistent_state, &command);
+        );
+
+        if (command != NULL && strlen(command) > 0) {
+            fprintf(MR_mdb_out, "The web browser command is %s\n", command);
+        } else {
+            fprintf(MR_mdb_out, "The web browser command has not been set.\n");
         }
     } else {
         MR_trace_usage_cur_cmd();

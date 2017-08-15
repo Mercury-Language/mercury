@@ -54,7 +54,15 @@ DEBUGGER_SCRIPTS = $(CONF_DEBUG_SCRIPTS) 	\
 		xul_tree.xsl			\
 		mdb_open			\
 		mdb_grep			\
-		mdb_track
+		mdb_track			\
+		mdb_term_browser.js		\
+		mdb_term_browser.css		\
+		jquery.slim.min.js		\
+		jstree.min.js			\
+		jstree.style.min.css		\
+		32px.png			\
+		40px.png			\
+		throbber.gif
 
 EMACS_SCRIPTS = gud.el
 

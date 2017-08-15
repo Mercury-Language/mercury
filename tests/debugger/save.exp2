@@ -107,6 +107,7 @@ format_param -A -p lines 2
 max_io_actions 20
 xml_browser_cmd ZZZ
 xml_tmp_filename ZZZ
+web_browser_cmd ZZZ
 trust save
 trust std lib
 list_context_lines 2

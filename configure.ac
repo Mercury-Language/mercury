@@ -5321,6 +5321,26 @@ AC_SUBST(DEFAULT_XML_BROWSER_CMD)
 AC_SUBST(DEFAULT_XML_TMP_FILENAME)
 
 #-----------------------------------------------------------------------------#
+#
+# Set the default web_browser_cmd.
+#
+
+AC_PATH_PROGS(WEB_BROWSER, xdg-open, "")
+case "$host" in
+    *apple*darwin*)
+        DEFAULT_WEB_BROWSER_CMD="open"
+        ;;
+    *-cygwin* | *mingw*)
+        DEFAULT_WEB_BROWSER_CMD="start"
+        ;;
+    *)
+        DEFAULT_WEB_BROWSER_CMD="xdg-open"
+        ;;
+esac
+
+AC_SUBST(DEFAULT_WEB_BROWSER_CMD)
+
+#-----------------------------------------------------------------------------#
 
 # We need to check that any existing .c files are compatible with the selected
 # grade with respect to whether --highlevel-code was used to generate them.

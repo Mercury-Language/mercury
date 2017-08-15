@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2006 The University of Melbourne.
+% Copyright (C) 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,8 +41,9 @@
 :- include_module frame.
 :- include_module parse.
 :- include_module sized_pretty.
-:- include_module util.
 :- include_module term_rep.
+:- include_module term_to_html.
+:- include_module util.
 
     % XXX these modules are more generally useful, but the
     % dynamic linking library is not yet installed anywhere.
