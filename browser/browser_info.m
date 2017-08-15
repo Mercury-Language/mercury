@@ -316,8 +316,8 @@
 
 :- pred send_term_to_socket(term_browser_response::in, io::di, io::uo) is det.
 
-:- pred browser_params_to_string(browser_persistent_state::in, bool::in,
-    string::out) is det.
+:- pred browser_params_to_string(browser_persistent_state::in, string::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1130,86 +1130,50 @@ send_term_to_socket(Term, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", browser_params_to_string(in, in, out),
+:- pragma foreign_export("C", browser_params_to_string(in, out),
     "ML_BROWSE_browser_params_to_string").
 
-browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
+browser_params_to_string(Browser, Desc) :-
     Browser = browser_persistent_state(PrintParams, BrowseParams,
         PrintAllParams, NumIOActions, MaybeXMLBrowserCmd, MaybeXMLTmpFileName,
         MaybeWebBrowserCmd),
-    (
-        MDBCommandFormat = yes,
-        ParamCmds =
-            caller_params_to_mdb_command("-P ", PrintParams) ++
-            caller_params_to_mdb_command("-B ", BrowseParams) ++
-            caller_params_to_mdb_command("-A ", PrintAllParams),
-        NumIOActionCmd =
-            "max_io_actions " ++ int_to_string(NumIOActions) ++ "\n",
-        ( if
-            MaybeXMLBrowserCmd = yes(XMLBrowserCmd),
-            % XMLBrowserCmd shouldn't be "" if MaybeXMLBrowserCmd is yes,
-            % but better safe than sorry.
-            XMLBrowserCmd \= ""
-        then
-            XMLBrowserCmdCmd =
-                "xml_browser_cmd " ++ XMLBrowserCmd ++ "\n"
-        else
-            XMLBrowserCmdCmd = ""
-        ),
-        ( if
-            MaybeXMLTmpFileName = yes(XMLTmpFileName),
-            % XMLTmpFileName shouldn't be "" if MaybeXMLTmpFileName is yes,
-            % but better safe than sorry.
-            XMLTmpFileName \= ""
-        then
-            XMLTmpFileNameCmd =
-                "xml_tmp_filename " ++ XMLTmpFileName ++ "\n"
-        else
-            XMLTmpFileNameCmd = ""
-        ),
-        ( if
-            MaybeWebBrowserCmd = yes(WebBrowserCmd),
-            WebBrowserCmd \= ""
-        then
-            WebBrowserCmdCmd =
-                "web_browser_cmd " ++ WebBrowserCmd ++ "\n"
-        else
-            WebBrowserCmdCmd = ""
-        ),
-        Desc = ParamCmds ++ NumIOActionCmd ++
-            XMLBrowserCmdCmd ++ XMLTmpFileNameCmd ++
-            WebBrowserCmdCmd
-    ;
-        MDBCommandFormat = no,
-        ParamDesc =
-            "Print parameters:\n" ++
-            caller_params_to_desc(PrintParams) ++
-            "Browse parameters:\n" ++
-            caller_params_to_desc(BrowseParams) ++
-            "Print all parameters:\n" ++
-            caller_params_to_desc(PrintAllParams),
-        NumIOActionDesc =
-            "Maximum number of I/O actions printed: " ++
-                int_to_string(NumIOActions) ++ "\n",
-        (
-            MaybeXMLBrowserCmd = yes(XMLBrowserCmd),
-            XMLBrowserCmdDesc =
-                "XML browser command:    " ++ XMLBrowserCmd ++ "\n"
-        ;
-            MaybeXMLBrowserCmd = no,
-            XMLBrowserCmdDesc = ""
-        ),
-        (
-            MaybeXMLTmpFileName = yes(XMLTmpFileName),
-            XMLTmpFileNameDesc =
-                "XML temporary filename: " ++ XMLTmpFileName ++ "\n"
-        ;
-            MaybeXMLTmpFileName = no,
-            XMLTmpFileNameDesc = ""
-        ),
-        Desc = ParamDesc ++ NumIOActionDesc ++
-            XMLBrowserCmdDesc ++ XMLTmpFileNameDesc
-    ).
+    ParamCmds =
+        caller_params_to_mdb_command("-P ", PrintParams) ++
+        caller_params_to_mdb_command("-B ", BrowseParams) ++
+        caller_params_to_mdb_command("-A ", PrintAllParams),
+    NumIOActionCmd =
+        "max_io_actions " ++ int_to_string(NumIOActions) ++ "\n",
+    ( if
+        MaybeXMLBrowserCmd = yes(XMLBrowserCmd),
+        % XMLBrowserCmd shouldn't be "" if MaybeXMLBrowserCmd is yes,
+        % but better safe than sorry.
+        XMLBrowserCmd \= ""
+    then
+        XMLBrowserCmdCmd = "xml_browser_cmd " ++ XMLBrowserCmd ++ "\n"
+    else
+        XMLBrowserCmdCmd = ""
+    ),
+    ( if
+        MaybeXMLTmpFileName = yes(XMLTmpFileName),
+        % XMLTmpFileName shouldn't be "" if MaybeXMLTmpFileName is yes,
+        % but better safe than sorry.
+        XMLTmpFileName \= ""
+    then
+        XMLTmpFileNameCmd = "xml_tmp_filename " ++ XMLTmpFileName ++ "\n"
+    else
+        XMLTmpFileNameCmd = ""
+    ),
+    ( if
+        MaybeWebBrowserCmd = yes(WebBrowserCmd),
+        WebBrowserCmd \= ""
+    then
+        WebBrowserCmdCmd = "web_browser_cmd " ++ WebBrowserCmd ++ "\n"
+    else
+        WebBrowserCmdCmd = ""
+    ),
+    Desc = ParamCmds ++ NumIOActionCmd ++
+        XMLBrowserCmdCmd ++ XMLTmpFileNameCmd ++
+        WebBrowserCmdCmd.
 
 :- func caller_params_to_mdb_command(string, caller_params) = string.
 

@@ -91,12 +91,10 @@ extern  void        MR_trace_print_goal(MR_ConstString name, MR_Word arg_list,
                         MR_Word is_func, MR_BrowseCallerType caller,
                         MR_BrowseFormat format);
 
-// Print all the browser parameters. If mdb_command_format is true, print them
-// in the form of the mdb commands required to recreate this state; otherwise,
-// print them in a user-friendly form.
+// Print all the browser parameters in the form of the mdb commands required to
+// recreate this state.
 
-extern  void        MR_trace_print_all_browser_params(FILE *fp,
-                        MR_bool mdb_command_format);
+extern  void        MR_trace_print_all_browser_params(FILE *fp);
 
 // Invoke an interactive query.
 

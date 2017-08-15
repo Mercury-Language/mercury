@@ -167,7 +167,7 @@ MR_trace_cmd_save(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_fatal_error("save cmd: invalid default scope");
         }
 
-        MR_trace_print_all_browser_params(fp, MR_TRUE);
+        MR_trace_print_all_browser_params(fp);
         MR_decl_print_all_trusted(fp, MR_TRUE);
 
         if (MR_dice_fail_trace_counts_file != NULL) {

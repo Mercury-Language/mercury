@@ -329,14 +329,14 @@ MR_trace_print_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 }
 
 void
-MR_trace_print_all_browser_params(FILE *fp, MR_bool mdb_command_format)
+MR_trace_print_all_browser_params(FILE *fp)
 {
     MR_String   param_string;
 
     MR_trace_browse_ensure_init();
     MR_TRACE_CALL_MERCURY(
         ML_BROWSE_browser_params_to_string(MR_trace_browser_persistent_state,
-            (MR_Word)mdb_command_format, &param_string);
+            &param_string);
     );
 
     fputs(param_string, fp);
