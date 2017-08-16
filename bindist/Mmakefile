@@ -31,7 +31,7 @@ UTILS		= $(INSTALL_PREFIX)/bin/mkinit$(EXT_FOR_EXE) \
 
 README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
 		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
-		  ../TODO ../VERSION ../README.*
+		  ../TODO ../VERSION ../README.* ../LICENSE
 
 INSTALL_SCRIPTS	= ../scripts/c2init ../scripts/mmc \
 		../scripts/mercury_update_interface ../scripts/mgnuc \

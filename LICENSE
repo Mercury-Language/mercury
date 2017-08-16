@@ -1,0 +1,141 @@
+The Mercury implementation is free software.
+It is Copyright (C) 1993-2012 The University of Melbourne and
+Copyright (C) 2013-2017 The Mercury team.
+
+The compiler and tools are distributed under the terms of the GNU
+General Public License.  See the file COPYING for copying permission.
+
+The Mercury libraries and runtime (the files in the library, trace,
+browser, ssdb, mdbcomp, runtime and java/runtime subdirectories) are
+distributed under the terms of the GNU Library General Public License.
+See the file COPYING.LIB for copying permissions for those files.
+
+If those licensing arrangements are not satisfactory, please
+contact us.  We are willing to offer alternative arrangements,
+if the need should arise.
+
+--------
+
+The subdirectory `boehm_gc' contains a slightly modified copy of version
+7.4.2 of the conservative garbage collector distributed by Hans Boehm:
+
+    Copyright (c) 1988, 1989 Hans-J. Boehm, Alan J. Demers
+    Copyright (c) 1991-1996 by Xerox Corporation. All rights reserved.
+    Copyright (c) 1996-1999 by Silicon Graphics. All rights reserved.
+    Copyright (c) 1999-2011 by Hewlett-Packard Development Company.
+
+    The file boehm_gc/linux_threads.c is also
+
+        Copyright (c) 1998 by Fergus Henderson. All rights reserved.
+
+    The files boehm_gc/Makefile.am, and boehm_gc/configure.in are
+
+        Copyright (c) 2001 by Red Hat Inc. All rights reserved.
+
+	THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY EXPRESSED
+	OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
+
+	Permission is hereby granted to use or copy this program
+	for any purpose,  provided the above notices are retained on all copies.
+	Permission to modify the code and to distribute modified code is granted,
+	provided the above notices are retained, and a notice that the code was
+	modified is included with the above copyright notice.
+
+	A few files have other copyright holders. A few of the files needed
+	to use the GNU-style build procedure come with a modified GPL license
+	that appears not to significantly restrict use of the collector, though
+	use of those files for a purpose other than building the collector may
+	require the resulting code to be covered by the GPL.
+
+    The atomic_ops library (libatomic_ops) contains some code that
+    is covered by the GNU General Public License, but is not needed by, nor
+    linked into the collector library or Mercury. It is included here only
+    because the libatomic_ops distribution is included in its entirety.
+
+--------
+
+A few files (config.guess, config.sub) are derived from code that is
+copyright by the Free Software Foundation, Inc, and are distributed
+under the GNU General Public License version 2.
+
+--------
+
+The program `texi2html' in the `doc' directory is copyright by CERN
+and is distributed under the GNU General Public
+License version 2:
+
+	This program is the intellectual property of the European
+	Laboratory for Particle Physics (known as CERN).  No guarantee
+	whatsoever is provided by CERN.  No liability whatsoever is
+	accepted for any loss or damage of any kind resulting from any
+	defect or inaccuracy in this information or code.
+
+--------
+
+The following file is from the jquery project, distributed under the
+following license:
+
+    scripts/jquery.slim.min.js
+
+	Copyright JS Foundation and other contributors, https://js.foundation/
+
+	Permission is hereby granted, free of charge, to any person obtaining
+	a copy of this software and associated documentation files (the
+	"Software"), to deal in the Software without restriction, including
+	without limitation the rights to use, copy, modify, merge, publish,
+	distribute, sublicense, and/or sell copies of the Software, and to
+	permit persons to whom the Software is furnished to do so, subject to
+	the following conditions:
+
+	The above copyright notice and this permission notice shall be
+	included in all copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+	EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+	MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+	NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+	LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+	OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+	WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+--------
+
+The following files are from the jstree project, distributed under the
+following license:
+
+    scripts/jstree.min.js
+    scripts/jstree.style.min.css
+    scripts/32px.png
+    scripts/40px.png
+    scripts/throbber.gif
+
+	Copyright (c) 2014 Ivan Bozhanov
+
+	Permission is hereby granted, free of charge, to any person
+	obtaining a copy of this software and associated documentation
+	files (the "Software"), to deal in the Software without
+	restriction, including without limitation the rights to use,
+	copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the
+	Software is furnished to do so, subject to the following
+	conditions:
+
+	The above copyright notice and this permission notice shall be
+	included in all copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+	EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+	OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+	NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+	HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+	WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+	FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+	OTHER DEALINGS IN THE SOFTWARE.
+
+--------
+
+The files in the `samples' directory are either public domain, or
+distributed under the GNU General Public License.
+
+THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
+EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
