@@ -40,6 +40,7 @@
 :- include_module declarative_user.
 :- include_module frame.
 :- include_module parse.
+:- include_module percent_encoding.
 :- include_module sized_pretty.
 :- include_module term_rep.
 :- include_module term_to_html.

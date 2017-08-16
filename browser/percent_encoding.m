@@ -14,7 +14,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module percent_encoding.
+:- module mdb.percent_encoding.
 :- interface.
 
     % Apply percent-encoding to a path segment.
@@ -153,5 +153,5 @@ unreserved_char_in_path_segment(C) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module percent_encoding.
+:- end_module mdb.percent_encoding.
 %---------------------------------------------------------------------------%

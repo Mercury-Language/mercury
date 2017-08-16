@@ -43,7 +43,7 @@
 :- import_module univ.
 
 :- import_module mdb.browse.
-:- import_module percent_encoding.
+:- import_module mdb.percent_encoding.
 
 %---------------------------------------------------------------------------%
 
