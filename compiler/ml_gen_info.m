@@ -500,14 +500,40 @@ ml_gen_info_add_env_var_name(Name, !Info) :-
                 % ml_code_gen before we start generating code for procedures. 
 /*  8 */        mgri_const_struct_map   :: map(int, ml_ground_term),
 
-                % Definitions of functions or global constants which should be
-                % inserted before the definition of the function for the
-                % current procedure.
-                % 
-                % XXX The get function of this field used to have the comment
-                % "Get the partial mapping from variables to lvals.", which
-                % is quite far from the above, and (based on the name) is
-                % much more likely to be correct.
+                % Normally, we convert each HLDS variable to its own MLDS lval
+                % each time the HLDS code refers it, using a simple
+                % determininistic algorithm (the ml_gen_var function).
+                % However, inside a commit scope, we currently translate
+                % the output variables of that scope not to the MLDS lval
+                % that the code outside the commit uses to refer to the
+                % variable, but to a local *copy* of that variable;
+                % when the goal inside the commit succeeds, we then assign
+                % the value of the local copy to the MLDS variable used
+                % outside the scope. The var_lvals field maps each output var
+                % of every commit scope we are in to the local copy MLDS
+                % variable.
+                %
+                % Currenly, this complexity is not actually necessary for the
+                % C backend, which has nondet_copy_out set to "no". When the
+                % output variable is generated, the code inside the commit
+                % could assign its new value to the usual MLDS variable
+                % (the one returned by ml_gen_var) directly. I (zs) have
+                % just tried a bootcheck which did that, and it works.
+                %
+                % However, in the future, when we generate implicitly
+                % AND-parallel MLDS code, this could come in useful for C as
+                % well. This is because it is possible for an output variable
+                % of a commit scope to become many times inside the scope
+                % before the scope as a whole succeeds, if each binding but
+                % the last is followed by a local failure. We want to signal
+                % any consumer of the variable *outside* the scope that
+                % the variable has actually been bound only when the commit
+                % scope succeeds and *its usual MLDS variable* is assigned to,
+                % while we want to signal any consumer *inside* the scope
+                % when *the local copy* is assigned to. The distinction
+                % would then give us two separate assignments to follow with
+                % two separate signal operations for two separate classes
+                % of consumers.
 /*  9 */        mgri_var_lvals          :: map(prog_var, mlds_lval),
 
                 % The set of used environment variables. Writeable.

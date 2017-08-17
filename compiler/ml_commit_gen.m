@@ -188,7 +188,6 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
-:- import_module map.
 :- import_module maybe.
 :- import_module set.
 
@@ -242,9 +241,9 @@ ml_gen_commit(Goal, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         %       commit_func();
         %   #endif
 
+        ml_gen_info_get_var_lvals(!.Info, OrigVarLvalMap),
         ml_gen_maybe_make_locals_for_output_args(GoalInfo,
-            OutputArgLocalVarDefns, CopyLocalsToOutputArgs, OrigVarLvalMap,
-            !Info),
+            OutputArgLocalVarDefns, CopyLocalsToOutputArgs, !Info),
 
         % Generate the `success()' function.
         ml_gen_new_func_label(no, SuccessFuncLabel, SuccessFuncLabelRval,
@@ -318,9 +317,9 @@ ml_gen_commit(Goal, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         %       commit_func();
         %       #endif
 
+        ml_gen_info_get_var_lvals(!.Info, OrigVarLvalMap),
         ml_gen_maybe_make_locals_for_output_args(GoalInfo,
-            OutputArgLocalVarDefns, CopyLocalsToOutputArgs, OrigVarLvalMap,
-            !Info),
+            OutputArgLocalVarDefns, CopyLocalsToOutputArgs, !Info),
 
         % Generate the `success()' function.
         ml_gen_new_func_label(no, SuccessFuncLabel, SuccessFuncLabelRval,
@@ -450,12 +449,10 @@ maybe_put_commit_in_own_func(LocalVarDefn0, FuncDefn0, TryCommitStmts,
     %
 :- pred ml_gen_maybe_make_locals_for_output_args(hlds_goal_info::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
-    map(prog_var, mlds_lval)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
-        CopyLocalsToOutputArgs, OrigVarLvalMap, !Info) :-
-    ml_gen_info_get_var_lvals(!.Info, OrigVarLvalMap),
+        CopyLocalsToOutputArgs, !Info) :-
     ml_gen_info_get_globals(!.Info, Globals),
     globals.lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),
     (
