@@ -1484,7 +1484,7 @@ save_and_browse_browser_term_web(Term, OutStream, ErrStream, State, !IO) :-
                     TmpFileName = TmpFileName0
                 else
                     % Work around io.make_temp_file ignoring suffix.
-                    io.remove_file(TmpFileName, _, !IO),
+                    io.remove_file(TmpFileName0, _, !IO),
                     TmpFileName = TmpFileName0 ++ ".html"
                 ),
                 save_term_to_file_web(TmpFileName, Term, MdbDir,
@@ -1512,8 +1512,10 @@ save_and_browse_browser_term_web(Term, OutStream, ErrStream, State, !IO) :-
             )
         ;
             MaybeBrowserCmd = no,
-            io.write_string(ErrStream, "mdb: You need to issue a " ++
-                "\"web_browser_cmd '<command>'\" command first.\n", !IO)
+            io.write_string(ErrStream,
+                "mdb: You need to specify the shell command that launches " ++
+                "your preferred web browser, by issuing an mdb command " ++
+                "\"web_browser_cmd <command>\".\n", !IO)
         )
     ;
         MaybeMdbDir = no,

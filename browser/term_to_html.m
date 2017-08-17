@@ -308,8 +308,8 @@ flatten_list(Term, ElementUnivs) :-
 
 % Helpers for writing out JavaScript values within an HTML <script> element.
 % We do not generate indented output because we may need to write large,
-% deeply nested terms quickly, and have the web browser parse the file as
-% quickly as possible.
+% deeply nested terms quickly, and we want the web browser to parse the file
+% as quickly as possible.
 
 :- pred js_begin_object(io.output_stream::in, io::di, io::uo) is det.
 
