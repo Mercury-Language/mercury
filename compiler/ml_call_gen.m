@@ -389,6 +389,8 @@ ml_gen_plain_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
             FuncInputArgs, InputRvals,
             InitStmts, AssignStmts, TempDefns),
 
+        LocalVarDefns = TempDefns,
+        FuncDefns = [],
         (
             TailRecMechanism = tail_rec_via_while_loop,
             GotoTarget = goto_continue
@@ -397,19 +399,7 @@ ml_gen_plain_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
             GotoTarget = goto_label(StartLabel)
         ),
         GotoStmt = ml_stmt_goto(GotoTarget, Context),
-
-        % XXX We should use the following:
-        % LocalVarDefns = TempDefns,
-        % FuncDefns = [],
-        % Stmts = [CommentStmt] ++ InitStmts ++ AssignStmts ++ [GotoStmt] 
-
-        AssignVarsStmt = ml_stmt_block(TempDefns, [],
-            InitStmts ++ AssignStmts, Context),
-        CallReplaceStmts = [CommentStmt, AssignVarsStmt, GotoStmt],
-        Stmt = ml_stmt_block([], [], CallReplaceStmts, Context),
-        LocalVarDefns = [],
-        FuncDefns = [],
-        Stmts = [Stmt],
+        Stmts = [CommentStmt] ++ InitStmts ++ AssignStmts ++ [GotoStmt],
 
         (
             HaveDone0 = have_done_tail_rec
