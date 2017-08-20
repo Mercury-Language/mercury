@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,23 +52,23 @@
 :- pred builtin_unify_uint(uint::in, uint::in) is semidet.
 :- pred builtin_compare_uint(comparison_result::uo, uint::in, uint::in) is det.
 
-:- pred builtin_unify_int8(T::in, T::in) is semidet.
-:- pred builtin_compare_int8(comparison_result::uo, T::in, T::in) is det.
+:- pred builtin_unify_int8(int8::in, int8::in) is semidet.
+:- pred builtin_compare_int8(comparison_result::uo, int8::in, int8::in) is det.
 
-:- pred builtin_unify_uint8(T::in, T::in) is semidet.
-:- pred builtin_compare_uint8(comparison_result::uo, T::in, T::in) is det.
+:- pred builtin_unify_uint8(uint8::in, uint8::in) is semidet.
+:- pred builtin_compare_uint8(comparison_result::uo, uint8::in, uint8::in) is det.
 
-:- pred builtin_unify_int16(T::in, T::in) is semidet.
-:- pred builtin_compare_int16(comparison_result::uo, T::in, T::in) is det.
+:- pred builtin_unify_int16(int16::in, int16::in) is semidet.
+:- pred builtin_compare_int16(comparison_result::uo, int16::in, int16::in) is det.
 
-:- pred builtin_unify_uint16(T::in, T::in) is semidet.
-:- pred builtin_compare_uint16(comparison_result::uo, T::in, T::in) is det.
+:- pred builtin_unify_uint16(uint16::in, uint16::in) is semidet.
+:- pred builtin_compare_uint16(comparison_result::uo, uint16::in, uint16::in) is det.
 
-:- pred builtin_unify_int32(T::in, T::in) is semidet.
-:- pred builtin_compare_int32(comparison_result::uo, T::in, T::in) is det.
+:- pred builtin_unify_int32(int32::in, int32::in) is semidet.
+:- pred builtin_compare_int32(comparison_result::uo, int32::in, int32::in) is det.
 
-:- pred builtin_unify_uint32(T::in, T::in) is semidet.
-:- pred builtin_compare_uint32(comparison_result::uo, T::in, T::in) is det.
+:- pred builtin_unify_uint32(uint32::in, uint32::in) is semidet.
+:- pred builtin_compare_uint32(comparison_result::uo, uint32::in, uint32::in) is det.
 
 :- pred builtin_unify_character(character::in, character::in) is semidet.
 :- pred builtin_compare_character(comparison_result::uo, character::in,
@@ -154,13 +155,25 @@
 :- import_module char.
 :- import_module float.
 :- import_module int.
+:- import_module int8.
+:- import_module int16.
+:- import_module int32.
 :- import_module uint.
+:- import_module uint8.
+:- import_module uint16.
+:- import_module uint32.
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
 
 :- pragma inline(builtin_compare_int/3).
 :- pragma inline(builtin_compare_uint/3).
+:- pragma inline(builtin_compare_int8/3).
+:- pragma inline(builtin_compare_uint8/3).
+:- pragma inline(builtin_compare_int16/3).
+:- pragma inline(builtin_compare_uint16/3).
+:- pragma inline(builtin_compare_int32/3).
+:- pragma inline(builtin_compare_uint32/3).
 :- pragma inline(builtin_compare_character/3).
 :- pragma inline(builtin_compare_string/3).
 :- pragma inline(builtin_compare_float/3).
@@ -187,88 +200,70 @@ builtin_compare_uint(R, X, Y) :-
         R = (>)
     ).
 
-builtin_unify_int8(_, _) :-
-    ( if semidet_succeed then
-        sorry("unify for int8")
-    else
-        semidet_succeed
-    ).
+builtin_unify_int8(X, X).
 
-builtin_compare_int8(R, _, _) :-
-    ( if semidet_succeed then
-        sorry("compare for int8")
-    else
+builtin_compare_int8(R, X, Y) :-
+    ( if X < Y then
+        R = (<)
+    else if X = Y then
         R = (=)
+    else
+        R = (>)
     ).
 
-builtin_unify_uint8(_, _) :-
-    ( if semidet_succeed then
-        sorry("unify for uint8")
-    else
-        semidet_succeed
-    ).
+builtin_unify_uint8(X, X).
 
-builtin_compare_uint8(R, _, _) :-
-    ( if semidet_succeed then
-        sorry("compare for uint8")
-    else
+builtin_compare_uint8(R, X, Y) :-
+    ( if X < Y then
+        R = (<)
+    else if X = Y then
         R = (=)
+    else
+        R = (>)
     ).
 
-builtin_unify_int16(_, _) :-
-    ( if semidet_succeed then
-        sorry("unify for int16")
-    else
-        semidet_succeed
-    ).
+builtin_unify_int16(X, X).
 
-builtin_compare_int16(R, _, _) :-
-    ( if semidet_succeed then
-        sorry("compare for int16")
-    else
+builtin_compare_int16(R, X, Y) :-
+    ( if X < Y then
+        R = (<)
+    else if X = Y then
         R = (=)
+    else
+        R = (>)
     ).
 
-builtin_unify_uint16(_, _) :-
-    ( if semidet_succeed then
-        sorry("unify for uint16")
-    else
-        semidet_succeed
-    ).
+builtin_unify_uint16(X, X).
 
-builtin_compare_uint16(R, _, _) :-
-    ( if semidet_succeed then
-        sorry("compare for uint16")
-    else
+builtin_compare_uint16(R, X, Y) :-
+    ( if X < Y then
+        R = (<)
+    else if X = Y then
         R = (=)
+    else
+        R = (>)
     ).
 
-builtin_unify_int32(_, _) :-
-    ( if semidet_succeed then
-        sorry("unify for int32")
-    else
-        semidet_succeed
-    ).
+builtin_unify_int32(X, X).
 
-builtin_compare_int32(R, _, _) :-
-    ( if semidet_succeed then
-        sorry("compare for int32")
-    else
+builtin_compare_int32(R, X, Y) :-
+    ( if X < Y then
+        R = (<)
+    else if X = Y then
         R = (=)
+    else
+        R = (>)
     ).
 
-builtin_unify_uint32(_, _) :-
-    ( if semidet_succeed then
-        sorry("unify for uint32")
-    else
-        semidet_succeed
-    ).
+builtin_unify_uint32(X, X).
 
-builtin_compare_uint32(R, _, _) :-
-    ( if semidet_succeed then
-        sorry("compare for uint32")
-    else
+builtin_compare_uint32(R, X, Y) :-
+    ( if X < Y then
+        R = (<)
+    else if X = Y then
         R = (=)
+    else
+        R = (>)
     ).
 
 builtin_unify_character(C, C).

@@ -2,6 +2,7 @@
 % vim:ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2010-2011 The University of Melbourne
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -187,7 +188,13 @@
 :- instance doc(doc).
 :- instance doc(string).
 :- instance doc(int).
+:- instance doc(int8).
+:- instance doc(int16).
+:- instance doc(int32).
 :- instance doc(uint).
+:- instance doc(uint8).
+:- instance doc(uint16).
+:- instance doc(uint32).
 :- instance doc(float).
 :- instance doc(char).
 
@@ -414,12 +421,22 @@ doc(X) = doc(int.max_int, X).
 
 %---------------------------------------------------------------------------%
 
-:- instance doc(doc)     where [ doc(_, Doc)    = Doc            ].
-:- instance doc(string)  where [ doc(_, String) = text(String)   ].
-:- instance doc(uint)    where [ doc(_, UInt) = text(uint_to_string(UInt))].
-:- instance doc(int)     where [ doc(_, Int)    = poly(i(Int))   ].
-:- instance doc(float)   where [ doc(_, Float)  = poly(f(Float)) ].
-:- instance doc(char)    where [ doc(_, Char)   = poly(c(Char))  ].
+:- instance doc(doc)    where [ doc(_, Doc)    = Doc            ].
+:- instance doc(string) where [ doc(_, String) = text(String)   ].
+:- instance doc(int)    where [ doc(_, Int)    = poly(i(Int))   ].
+:- instance doc(int8)   where [ doc(_, Int8) = text(int8_to_string(Int8))].
+:- instance doc(int16) where [ doc(_, Int16) = text(int16_to_string(Int16))].
+:- instance doc(int32) where [ doc(_, Int32) = text(int32_to_string(Int32))].
+:- instance doc(uint)   where [ doc(_, UInt) = text(uint_to_string(UInt))].
+:- instance doc(uint8)  where [ doc(_, UInt8) = text(uint8_to_string(UInt8))].
+:- instance doc(uint16) where [
+    doc(_, UInt16) = text(uint16_to_string(UInt16))
+].
+:- instance doc(uint32) where [
+    doc(_, UInt32) = text(uint32_to_string(UInt32))
+].
+:- instance doc(float)  where [ doc(_, Float)  = poly(f(Float)) ].
+:- instance doc(char)   where [ doc(_, Char)   = poly(c(Char))  ].
 
 %---------------------------------------------------------------------------%
 

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2001, 2003-2012 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -728,15 +729,45 @@ make_functor_cons_id(Functor, Arity, ConsId) :-
         Functor = term.atom(Name),
         ConsId = cons(unqualified(Name), Arity, cons_id_dummy_type_ctor)
     ;
-        Functor = term.integer(Base, Integer, Signedness, size_word),
+        Functor = term.integer(Base, Integer, Signedness, Size),
         (
             Signedness = signed,
-            source_integer_to_int(Base, Integer, Int),
-            ConsId = int_const(Int)
+            (
+                Size = size_word,
+                source_integer_to_int(Base, Integer, Int),
+                ConsId = int_const(Int)
+            ;
+                Size = size_8_bit,
+                integer.to_int8(Integer, Int8),
+                ConsId = int8_const(Int8)
+            ;
+                Size = size_16_bit,
+                integer.to_int16(Integer, Int16),
+                ConsId = int16_const(Int16)
+            ;
+                Size = size_32_bit,
+                integer.to_int32(Integer, Int32),
+                ConsId = int32_const(Int32)
+            )
         ;
             Signedness = unsigned,
-            integer.to_uint(Integer, UInt),
-            ConsId = uint_const(UInt)
+            (
+                Size = size_word,
+                integer.to_uint(Integer, UInt),
+                ConsId = uint_const(UInt)
+            ;
+                Size = size_8_bit,
+                integer.to_uint8(Integer, UInt8),
+                ConsId = uint8_const(UInt8)
+            ;
+                Size = size_16_bit,
+                integer.to_uint16(Integer, UInt16),
+                ConsId = uint16_const(UInt16)
+            ;
+                Size = size_32_bit,
+                integer.to_uint32(Integer, UInt32),
+                ConsId = uint32_const(UInt32)
+            )
         )
     ;
         Functor = term.string(String),

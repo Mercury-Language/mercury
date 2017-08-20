@@ -219,6 +219,36 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
             integer.to_uint(Integer, UInt),
             type_to_univ(UInt, Univ)
         ;
+            TypeCtorName = "int8",
+            Functor = integer(_Base, Integer, signed, size_8_bit),
+            integer.to_int8(Integer, Int8),
+            type_to_univ(Int8, Univ)
+        ;
+            TypeCtorName = "uint8",
+            Functor = integer(_Base, Integer, unsigned, size_8_bit),
+            integer.to_uint8(Integer, UInt8),
+            type_to_univ(UInt8, Univ)
+        ;
+            TypeCtorName = "int16",
+            Functor = integer(_Base, Integer, signed, size_16_bit),
+            integer.to_int16(Integer, Int16),
+            type_to_univ(Int16, Univ)
+        ;
+            TypeCtorName = "uint16",
+            Functor = integer(_Base, Integer, unsigned, size_16_bit),
+            integer.to_uint16(Integer, UInt16),
+            type_to_univ(UInt16, Univ)
+        ;
+            TypeCtorName = "int32",
+            Functor = integer(_Base, Integer, signed, size_32_bit),
+            integer.to_int32(Integer, Int32),
+            type_to_univ(Int32, Univ)
+        ;
+            TypeCtorName = "uint32",
+            Functor = integer(_Base, Integer, unsigned, size_32_bit),
+            integer.to_uint32(Integer, UInt32),
+            type_to_univ(UInt32, Univ)
+        ;
             TypeCtorName = "float",
             Functor = float(Float),
             type_to_univ(Float, Univ)
@@ -299,6 +329,30 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
             TypeTerm = functor(atom("uint"), [], _),
             term_to_uint(ValueTerm, UInt),
             Univ = univ(UInt)
+        ;
+            TypeTerm = functor(atom("int8"), [], _),
+            term_to_int8(ValueTerm, Int8),
+            Univ = univ(Int8)
+        ;
+            TypeTerm = functor(atom("uint8"), [], _),
+            term_to_uint8(ValueTerm, UInt8),
+            Univ = univ(UInt8)
+        ;
+            TypeTerm = functor(atom("int16"), [], _),
+            term_to_int16(ValueTerm, Int16),
+            Univ = univ(Int16)
+        ;
+            TypeTerm = functor(atom("uint16"), [], _),
+            term_to_uint16(ValueTerm, UInt16),
+            Univ = univ(UInt16)
+        ;
+            TypeTerm = functor(atom("int32"), [], _),
+            term_to_int32(ValueTerm, Int32),
+            Univ = univ(Int32)
+        ;
+            TypeTerm = functor(atom("uint32"), [], _),
+            term_to_uint32(ValueTerm, UInt32),
+            Univ = univ(UInt32)
         ;
             TypeTerm = functor(atom("string"), [], _),
             ValueTerm = functor(string(String), [], _),

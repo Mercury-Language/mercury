@@ -1,7 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -445,22 +446,22 @@ dump_const(MaybeProcLabel, Const) = Str :-
         Str = uint_to_string(U)
     ;
         Const = llconst_int8(I8),
-        Str = int_to_string(I8)
+        Str = int8_to_string(I8)
     ;
         Const = llconst_uint8(U8),
-        Str = int_to_string(U8)
+        Str = uint8_to_string(U8)
     ;
         Const = llconst_int16(I16),
-        Str = int_to_string(I16)
+        Str = int16_to_string(I16)
     ;
         Const = llconst_uint16(U16),
-        Str = int_to_string(U16)
+        Str = uint16_to_string(U16)
     ;
         Const = llconst_int32(I32),
-        Str = int_to_string(I32)
+        Str = int32_to_string(I32)
     ;
         Const = llconst_uint32(U32),
-        Str = int_to_string(U32)
+        Str = uint32_to_string(U32)
     ;
         Const = llconst_foreign(F, _),
         Str = F

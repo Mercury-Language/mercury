@@ -191,6 +191,60 @@
     %
 :- func det_to_uint(integer) = uint.
 
+    % Convert an integer to an int8.
+    % Fails if the integer is not in the range [-128, 127].
+    %
+:- pred to_int8(integer::in, int8::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_int8(integer) = int8.
+
+    % Convert an integer to a uint8.
+    % Fails if the integer is not in the range [0, 255].
+    %
+:- pred to_uint8(integer::in, uint8::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_uint8(integer) = uint8.
+
+    % Convert an integer to an int16.
+    % Fails if the integer is not in the range [-32768, 32767].
+    %
+:- pred to_int16(integer::in, int16::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_int16(integer) = int16.
+
+    % Convert an integer to a uint16.
+    % Fails if the integer is not in the range [0, 65535].
+    %
+:- pred to_uint16(integer::in, uint16::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_uint16(integer) = uint16.
+
+    % Convert an integer to an int32.
+    % Fails if the integer is not in the range [-2147483648, 2147483647].
+    %
+:- pred to_int32(integer::in, int32::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_int32(integer) = int32.
+
+    % Convert an integer to a uint32.
+    % Fails if the integer is not in range [0, 4294967295].
+    %
+:- pred to_uint32(integer::in, uint32::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_uint32(integer) = uint32.
+
 %---------------------%
 
     % Convert an integer to a float.
@@ -214,13 +268,37 @@
 
 %---------------------------------------------------------------------------%
 
-    % Convert int to integer.
+    % Convert an int to integer.
     %
 :- func integer(int) = integer.
 
     % Convert a uint to an integer.
     %
 :- func from_uint(uint) = integer.
+
+    % Convert an int8 to an integer.
+    %
+:- func from_int8(int8) = integer.
+
+    % Convert a uint8 to an integer.
+    %
+:- func from_uint8(uint8) = integer.
+
+    % Convert an int16 to an integer.
+    %
+:- func from_int16(int16) = integer.
+
+    % Convert a uint16 to an integer.
+    %
+:- func from_uint16(uint16) = integer.
+
+    % Convert an int32 to an integer.
+    %
+:- func from_int32(int32) = integer.
+
+    % Convert a uint32 to an integer.
+    %
+:- func from_uint32(uint32) = integer.
 
     % Convert a string to an integer. The string must contain only digits
     % [0-9], optionally preceded by a plus or minus sign. If the string does
@@ -257,11 +335,17 @@
 :- import_module exception.
 :- import_module float.
 :- import_module int.
+:- import_module int8.
+:- import_module int16.
+:- import_module int32.
 :- import_module list.
 :- import_module math.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
+:- import_module uint8.
+:- import_module uint16.
+:- import_module uint32.
 
 %---------------------------------------------------------------------------%
 
@@ -404,6 +488,13 @@ chop(N, Div, Mod) :-
 chop_uint(N, Div, Mod) :-
     % See the comments in chop/3.
     Div = N `uint.unchecked_right_shift` log2base,
+    Mod = N /\ cast_from_int(basemask).
+
+:- pred chop_uint32(uint32::in, uint32::out, uint32::out) is det.
+
+chop_uint32(N, Div, Mod) :-
+    % See the comments in chop/3.
+    Div = N `uint32.unchecked_right_shift` log2base,
     Mod = N /\ cast_from_int(basemask).
 
 %---------------------%
@@ -1320,6 +1411,98 @@ det_to_uint(Integer) = UInt :-
 
 %---------------------------------------------------------------------------%
 
+to_int8(Integer, Int8) :-
+    Integer = i(_Sign, [Digit]),
+    int8.from_int(Digit, Int8).
+
+det_to_int8(Integer) = Int8 :-
+    ( if integer.to_int8(Integer, Int8Prime) then
+        Int8 = Int8Prime
+    else
+        throw(math.domain_error(
+            "integer.det_to_int8: domain error (conversion would overflow)"))
+    ).
+
+%---------------------------------------------------------------------------%
+
+to_uint8(Integer, UInt8) :-
+    Integer = i(_Sign, [Digit]),
+    uint8.from_int(Digit, UInt8).
+
+det_to_uint8(Integer) = UInt8 :-
+    ( if integer.to_uint8(Integer, UInt8Prime) then
+        UInt8 = UInt8Prime
+    else
+        throw(math.domain_error(
+            "integer.det_to_uint8: domain error (conversion would overflow)"))
+    ).
+
+%---------------------------------------------------------------------------%
+
+to_int16(Integer, Int16) :-
+    integer.to_int(Integer, Int),
+    int16.from_int(Int, Int16).
+
+det_to_int16(Integer) = Int16 :-
+    ( if integer.to_int16(Integer, Int16Prime) then
+        Int16 = Int16Prime
+    else
+        throw(math.domain_error(
+            "integer.det_to_int16: domain error (conversion would overflow)"))
+    ).
+
+%---------------------------------------------------------------------------%
+
+to_uint16(Integer, UInt16) :-
+    integer.to_int(Integer, Int),
+    uint16.from_int(Int, UInt16).
+
+det_to_uint16(Integer) = UInt16 :-
+    ( if integer.to_uint16(Integer, UInt16Prime) then
+        UInt16 = UInt16Prime
+    else
+        throw(math.domain_error(
+            "integer.det_to_uint16: domain error (conversion would overflow)"))
+    ).
+
+%---------------------------------------------------------------------------%
+
+to_int32(Integer, Int32) :-
+    integer.to_int(Integer, Int),
+    int32.from_int(Int, Int32).
+
+det_to_int32(Integer) = Int32 :-
+    ( if integer.to_int32(Integer, Int32Prime) then
+        Int32 = Int32Prime
+    else
+        throw(math.domain_error(
+            "integer.det_to_int32: domain error (conversion would overflow"))
+    ).
+
+%---------------------------------------------------------------------------%
+
+to_uint32(Integer, UInt32) :-
+    Integer >= integer.zero,
+    Integer =< integer.from_uint32(uint32.max_uint32),
+    Integer = i(_Sign, Digits),
+    UInt32 = uint32_list(Digits, uint32.cast_from_int(0)).
+
+:- func uint32_list(list(int), uint32) = uint32.
+
+uint32_list([], Accum) = Accum.
+uint32_list([H | T], Accum) =
+    uint32_list(T, Accum * cast_from_int(base) + cast_from_int(H)).
+
+det_to_uint32(Integer) = UInt32 :-
+    ( if integer.to_uint32(Integer, UInt32Prime) then
+        UInt32 = UInt32Prime
+    else
+        throw(math.domain_error(
+            "integer.det_to_uint32: domain error (conversion would overflow"))
+    ).
+
+%---------------------------------------------------------------------------%
+
 float(i(_, List)) = float_list(float.float(base), 0.0, List).
 
 :- func float_list(float, float, list(int)) = float.
@@ -1585,6 +1768,53 @@ uint_to_digits_2(U, Tail) = Result :-
         Tail = i(Length, Digits),
         chop_uint(U, Div, Mod),
         Result = uint_to_digits_2(Div,
+            i(Length + 1, [cast_to_int(Mod) | Digits]))
+    ).
+
+%---------------------------------------------------------------------------%
+
+from_int8(I8) = Integer :-
+    I = int8.to_int(I8),
+    Integer = integer(I).
+
+from_uint8(U8) = Integer :-
+    I = uint8.to_int(U8),
+    Integer = integer(I).
+
+from_int16(I16) = Integer :-
+    I = int16.to_int(I16),
+    Integer = integer(I).
+
+from_uint16(U16) = Integer :-
+    I = uint16.to_int(U16),
+    Integer = integer(I).
+
+from_int32(I32) = Integer :-
+    I = int32.to_int(I32),
+    Integer = integer(I).
+
+from_uint32(U32) = Integer :-
+    ( if U32 = cast_from_int(0) then
+        Integer = integer.zero
+    else if U32 < cast_from_int(base) then
+        Integer = i(1, [cast_to_int(U32)])
+    else
+        Integer = uint32_to_digits(U32)
+    ).
+
+:- func uint32_to_digits(uint32) = integer.
+
+uint32_to_digits(U) = uint32_to_digits_2(U, integer.zero).
+
+:- func uint32_to_digits_2(uint32, integer) = integer.
+
+uint32_to_digits_2(U, Tail) = Result :-
+    ( if U = cast_from_int(0) then
+        Result = Tail
+    else
+        Tail = i(Length, Digits),
+        chop_uint32(U, Div, Mod),
+        Result = uint32_to_digits_2(Div,
             i(Length + 1, [cast_to_int(Mod) | Digits]))
     ).
 

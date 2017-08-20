@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -705,13 +706,12 @@ cons_table_optimize(!ConsTable) :-
             % the specified unsigned integer value. This is used for uint
             % constants.
 
-            % XXX FIXED SIZE INT
-    ;       int_tag_int8(int)
-    ;       int_tag_uint8(int)
-    ;       int_tag_int16(int)
-    ;       int_tag_uint16(int)
-    ;       int_tag_int32(int)
-    ;       int_tag_uint32(int).
+    ;       int_tag_int8(int8)
+    ;       int_tag_uint8(uint8)
+    ;       int_tag_int16(int16)
+    ;       int_tag_uint16(uint16)
+    ;       int_tag_int32(int32)
+    ;       int_tag_uint32(uint32).
 
 :- type reserved_address
     --->    null_pointer

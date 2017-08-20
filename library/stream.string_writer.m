@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2011 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,6 +31,24 @@
     <= stream.writer(Stream, string, State).
 
 :- pred put_uint(Stream::in, uint::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
+:- pred put_int8(Stream::in, int8::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
+:- pred put_uint8(Stream::in, uint8::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
+:- pred put_int16(Stream::in, int16::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
+:- pred put_uint16(Stream::in, uint16::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
+:- pred put_int32(Stream::in, int32::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
+:- pred put_uint32(Stream::in, uint32::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
 :- pred put_float(Stream::in, float::in, State::di, State::uo) is det
@@ -181,6 +200,18 @@
             (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_uint/4,
             (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_int8/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_uint8/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_int16/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_uint16/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_int32/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_uint32/4,
+            (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_float/4,
             (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_char/4,
@@ -232,6 +263,105 @@ put_uint(Stream, UInt, !State) :-
         )
     else
         put(Stream, string.uint_to_string(UInt), !State)
+    ).
+
+put_int8(Stream, Int8, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_int8(IOStream, Int8, unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error("stream.string_writer.put_int8: unexpected type error")
+        )
+    else
+        put(Stream, string.int8_to_string(Int8), !State)
+    ).
+
+put_uint8(Stream, UInt8, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_uint8(IOStream, UInt8,
+            unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error("stream.string_writer.put_uint8: unexpected type error")
+        )
+    else
+        put(Stream, string.uint8_to_string(UInt8), !State)
+    ).
+
+put_int16(Stream, Int16, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_int16(IOStream, Int16, unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error("stream.string_writer.put_int16: unexpected type error")
+        )
+    else
+        put(Stream, string.int16_to_string(Int16), !State)
+    ).
+
+put_uint16(Stream, UInt16, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_uint16(IOStream, UInt16,
+            unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error("stream.string_writer.put_uint16: unexpected type error")
+        )
+    else
+        put(Stream, string.uint16_to_string(UInt16), !State)
+    ).
+
+put_int32(Stream, Int32, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_int32(IOStream, Int32, unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error("stream.string_writer.put_int32: unexpected type error")
+        )
+    else
+        put(Stream, string.int32_to_string(Int32), !State)
+    ).
+
+put_uint32(Stream, UInt32, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_uint32(IOStream, UInt32,
+            unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error("stream.string_writer.put_uint32: unexpected type error")
+        )
+    else
+        put(Stream, string.uint32_to_string(UInt32), !State)
     ).
 
 put_float(Stream, Float, !State) :-
@@ -294,6 +424,18 @@ print(Stream, NonCanon, Term, !State) :-
         put(Stream, Char, !State)
     else if dynamic_cast(Term, UInt : uint) then
         put(Stream, uint_to_string(UInt), !State)
+    else if dynamic_cast(Term, Int8 : int8) then
+        put(Stream, int8_to_string(Int8), !State)
+    else if dynamic_cast(Term, UInt8 : uint8) then
+        put(Stream, uint8_to_string(UInt8), !State)
+    else if dynamic_cast(Term, Int16 : int16) then
+        put(Stream, int16_to_string(Int16), !State)
+    else if dynamic_cast(Term, UInt16 : uint16) then
+        put(Stream, uint16_to_string(UInt16), !State)
+    else if dynamic_cast(Term, Int32 : int32) then
+        put(Stream, int32_to_string(Int32), !State)
+    else if dynamic_cast(Term, UInt32 : uint32) then
+        put(Stream, uint32_to_string(UInt32), !State)
     else if dynamic_cast(Term, OrigUniv) then
         write_univ(Stream, OrigUniv, !State)
     else if dynamic_cast(Term, BigInt) then
@@ -397,6 +539,24 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     else if univ_to_type(Univ, UInt) then
         put_uint(Stream, UInt, !State),
         put_char(Stream, 'u', !State)
+    else if univ_to_type(Univ, Int8) then
+        put_int8(Stream, Int8, !State),
+        put(Stream, "i8", !State)
+    else if univ_to_type(Univ, UInt8) then
+        put_uint8(Stream, UInt8, !State),
+        put(Stream, "u8", !State)
+    else if univ_to_type(Univ, Int16) then
+        put_int16(Stream, Int16, !State),
+        put(Stream, "i16", !State)
+    else if univ_to_type(Univ, UInt16) then
+        put_uint16(Stream, UInt16, !State),
+        put(Stream, "u16", !State)
+    else if univ_to_type(Univ, Int32)then
+        put_int32(Stream, Int32, !State),
+        put(Stream, "i32", !State)
+    else if univ_to_type(Univ, UInt32) then
+        put_uint32(Stream, UInt32, !State),
+        put(Stream, "u32", !State)
     else if univ_to_type(Univ, Float) then
         put_float(Stream, Float, !State)
     else if univ_to_type(Univ, Bitmap) then

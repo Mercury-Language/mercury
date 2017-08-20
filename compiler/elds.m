@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007, 2010-2011 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,12 +216,12 @@
     --->    elds_char(char)
     ;       elds_int(int)
     ;       elds_uint(uint)
-    ;       elds_int8(int)    % XXX FIXED SIZE INT
-    ;       elds_uint8(int)
-    ;       elds_int16(int)
-    ;       elds_uint16(int)
-    ;       elds_int32(int)
-    ;       elds_uint32(int)
+    ;       elds_int8(int8)
+    ;       elds_uint8(uint8)
+    ;       elds_int16(int16)
+    ;       elds_uint16(uint16)
+    ;       elds_int32(int32)
+    ;       elds_uint32(uint32)
     ;       elds_float(float)
 
     ;       elds_binary(string)

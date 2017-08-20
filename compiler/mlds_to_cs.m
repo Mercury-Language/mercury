@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -3460,7 +3461,6 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ; Op = int_div(int_type_int8)
         ; Op = int_mod(int_type_int8)
         ; Op = bitwise_and(int_type_int8)
-        ; Op = bitwise_or(int_type_int8)
         ; Op = bitwise_xor(int_type_int8)
         ; Op = unchecked_left_shift(int_type_int8)
         ; Op = unchecked_right_shift(int_type_int8)
@@ -3470,6 +3470,17 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         io.write_string(" ", !IO),
         output_binary_op_for_csharp(Op, !IO),
         io.write_string(" ", !IO),
+        output_rval_for_csharp(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        % The special treatment of bitwise-or here is necessary to avoid
+        % warning CS0675 from the C# compiler.
+        Op = bitwise_or(int_type_int8),
+        io.write_string("(sbyte)((byte)", !IO),
+        output_rval_for_csharp(Info, X, !IO),
+        io.write_string(" ", !IO),
+        output_binary_op_for_csharp(Op, !IO),
+        io.write_string(" (byte)", !IO),
         output_rval_for_csharp(Info, Y, !IO),
         io.write_string(")", !IO)
     ;
@@ -3607,22 +3618,22 @@ output_rval_const_for_csharp(Info, Const, !IO) :-
         output_uint_const_for_csharp(U, !IO)
     ;
         Const = mlconst_int8(N),
-        output_int_const_for_csharp(N, !IO)
+        output_int8_const_for_csharp(N, !IO)
     ;
         Const = mlconst_uint8(N),
-        output_int_const_for_csharp(N, !IO)
+        output_uint8_const_for_csharp(N, !IO)
     ;
         Const = mlconst_int16(N),
-        output_int_const_for_csharp(N, !IO)
+        output_int16_const_for_csharp(N, !IO)
     ;
         Const = mlconst_uint16(N),
-        output_int_const_for_csharp(N, !IO)
+        output_uint16_const_for_csharp(N, !IO)
     ;
         Const = mlconst_int32(N),
-        output_int_const_for_csharp(N, !IO)
+        output_int32_const_for_csharp(N, !IO)
     ;
         Const = mlconst_uint32(N),
-        output_int_const_for_csharp(N, !IO)
+        output_uint32_const_for_csharp(N, !IO)
     ;
         Const = mlconst_char(N),
         io.write_string("( ", !IO),
@@ -3728,6 +3739,37 @@ output_int_const_for_csharp(N, !IO) :-
 
 output_uint_const_for_csharp(U, !IO) :-
     io.write_uint(U, !IO),
+    io.write_string("U", !IO).
+
+:- pred output_int8_const_for_csharp(int8::in, io::di, io::uo) is det.
+
+output_int8_const_for_csharp(I8, !IO) :-
+    io.write_int8(I8, !IO).
+
+:- pred output_uint8_const_for_csharp(uint8::in, io::di, io::uo) is det.
+
+output_uint8_const_for_csharp(U8, !IO) :-
+    io.write_uint8(U8, !IO).
+
+:- pred output_int16_const_for_csharp(int16::in, io::di, io::uo) is det.
+
+output_int16_const_for_csharp(I16, !IO) :-
+    io.write_int16(I16, !IO).
+
+:- pred output_uint16_const_for_csharp(uint16::in, io::di, io::uo) is det.
+
+output_uint16_const_for_csharp(U16, !IO) :-
+    io.write_uint16(U16, !IO).
+
+:- pred output_int32_const_for_csharp(int32::in, io::di, io::uo) is det.
+
+output_int32_const_for_csharp(I32, !IO) :-
+    io.write_int32(I32, !IO).
+
+:- pred output_uint32_const_for_csharp(uint32::in, io::di, io::uo) is det.
+
+output_uint32_const_for_csharp(U32, !IO) :-
+    io.write_uint32(U32, !IO),
     io.write_string("U", !IO).
 
 %---------------------------------------------------------------------------%

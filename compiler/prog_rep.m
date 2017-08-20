@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -868,12 +868,12 @@ cons_id_rep(cons(SymName, _, _)) =
 cons_id_rep(tuple_cons(_)) = "{}".
 cons_id_rep(int_const(Int)) = string.int_to_string(Int).
 cons_id_rep(uint_const(UInt)) = string.uint_to_string(UInt).
-cons_id_rep(int8_const(Int8)) = string.int_to_string(Int8).
-cons_id_rep(uint8_const(UInt8)) = string.int_to_string(UInt8).
-cons_id_rep(int16_const(Int16)) = string.int_to_string(Int16).
-cons_id_rep(uint16_const(UInt16)) = string.int_to_string(UInt16).
-cons_id_rep(int32_const(Int32)) = string.int_to_string(Int32).
-cons_id_rep(uint32_const(UInt32)) = string.int_to_string(UInt32).
+cons_id_rep(int8_const(Int8)) = string.int8_to_string(Int8).
+cons_id_rep(uint8_const(UInt8)) = string.uint8_to_string(UInt8).
+cons_id_rep(int16_const(Int16)) = string.int16_to_string(Int16).
+cons_id_rep(uint16_const(UInt16)) = string.uint16_to_string(UInt16).
+cons_id_rep(int32_const(Int32)) = string.int32_to_string(Int32).
+cons_id_rep(uint32_const(UInt32)) = string.uint32_to_string(UInt32).
 cons_id_rep(float_const(Float)) = string.float_to_string(Float).
 cons_id_rep(char_const(Char)) = string.char_to_string(Char).
 cons_id_rep(string_const(String)) = """" ++ String ++ """".

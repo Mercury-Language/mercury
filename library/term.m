@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2015-2017 The Mercury team.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -149,13 +149,37 @@
 
 :- pred term_to_int(term(T)::in, int::out) is semidet.
 
+:- pred term_to_int8(term(T)::in, int8::out) is semidet.
+
+:- pred term_to_int16(term(T)::in, int16::out) is semidet.
+
+:- pred term_to_int32(term(T)::in, int32::out) is semidet.
+
 :- pred term_to_uint(term(T)::in, uint::out) is semidet.
+
+:- pred term_to_uint8(term(T)::in, uint8::out) is semidet.
+
+:- pred term_to_uint16(term(T)::in, uint16::out) is semidet.
+
+:- pred term_to_uint32(term(T)::in, uint32::out) is semidet.
 
 :- pred decimal_term_to_int(term(T)::in, int::out) is semidet.
 
 :- func int_to_decimal_term(int, context) = term(T).
 
+:- func int8_to_decimal_term(int8, context) = term(T).
+
+:- func int16_to_decimal_term(int16, context) = term(T).
+
+:- func int32_to_decimal_term(int32, context) = term(T).
+
 :- func uint_to_decimal_term(uint, context) = term(T).
+
+:- func uint8_to_decimal_term(uint8, context) = term(T).
+
+:- func uint16_to_decimal_term(uint16, context) = term(T).
+
+:- func uint32_to_decimal_term(uint32, context) = term(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -794,10 +818,40 @@ term_to_int(Term, Int) :-
     Const = integer(_Base, Integer, signed, size_word),
     integer.to_int(Integer, Int).
 
+term_to_int8(Term, Int8) :-
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, signed, size_8_bit),
+    integer.to_int8(Integer, Int8).
+
+term_to_int16(Term, Int16) :-
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, signed, size_16_bit),
+    integer.to_int16(Integer, Int16).
+
+term_to_int32(Term, Int32) :-
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, signed, size_32_bit),
+    integer.to_int32(Integer, Int32).
+
 term_to_uint(Term, UInt) :-
     Term = functor(Const, [], _Context),
     Const = integer(_Base, Integer, unsigned, size_word),
     integer.to_uint(Integer, UInt).
+
+term_to_uint8(Term, UInt8) :-
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, unsigned, size_8_bit),
+    integer.to_uint8(Integer, UInt8).
+
+term_to_uint16(Term, UInt16) :-
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, unsigned, size_16_bit),
+    integer.to_uint16(Integer, UInt16).
+
+term_to_uint32(Term, UInt32) :-
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, unsigned, size_32_bit),
+    integer.to_uint32(Integer, UInt32).
 
 decimal_term_to_int(Term, Int) :-
     Term = functor(Const, [], _Context),
@@ -808,8 +862,38 @@ int_to_decimal_term(Int, Context) = Term :-
     Const = integer(base_10, integer(Int), signed, size_word),
     Term = functor(Const, [], Context).
 
+int8_to_decimal_term(Int8, Context) = Term :-
+    Const = integer(base_10, integer.from_int8(Int8), signed,
+        size_8_bit),
+    Term = functor(Const, [], Context).
+
+int16_to_decimal_term(Int16, Context) = Term :-
+    Const = integer(base_10, integer.from_int16(Int16), signed,
+        size_16_bit),
+    Term = functor(Const, [], Context).
+
+int32_to_decimal_term(Int32, Context) = Term :-
+    Const = integer(base_10, integer.from_int32(Int32), signed,
+        size_32_bit),
+    Term = functor(Const, [], Context).
+
 uint_to_decimal_term(UInt, Context) = Term :-
     Const = integer(base_10, integer.from_uint(UInt), unsigned, size_word),
+    Term = functor(Const, [], Context).
+
+uint8_to_decimal_term(UInt8, Context) = Term :-
+    Const = integer(base_10, integer.from_uint8(UInt8), unsigned,
+        size_8_bit),
+    Term = functor(Const, [], Context).
+
+uint16_to_decimal_term(UInt16, Context) = Term :-
+    Const = integer(base_10, integer.from_uint16(UInt16), unsigned,
+        size_16_bit),
+    Term = functor(Const, [], Context).
+
+uint32_to_decimal_term(UInt32, Context) = Term :-
+    Const = integer(base_10, integer.from_uint32(UInt32), unsigned,
+        size_32_bit),
     Term = functor(Const, [], Context).
 
 %---------------------------------------------------------------------------%

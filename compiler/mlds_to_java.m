@@ -1,8 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2011 The University of Melbourne.
-% Copyright (C) 2013-2016 The Mercury team.
+% Copyright (C) 2000-2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -119,6 +119,9 @@
 :- import_module cord.
 :- import_module digraph.
 :- import_module int.
+:- import_module int8.
+:- import_module int16.
+:- import_module int32.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -4628,22 +4631,22 @@ output_rval_const_for_java(Info, Const, !IO) :-
         output_int_const_for_java(uint.cast_to_int(U), !IO)
     ;
         Const = mlconst_int8(I8),
-        output_int_const_for_java(I8, !IO)
+        io.write_int8(I8, !IO)
     ;
         Const = mlconst_uint8(U8),
-        output_int_const_for_java(U8, !IO)
+        io.write_int8(int8.cast_from_uint8(U8), !IO)
     ;
         Const = mlconst_int16(I16),
-        output_int_const_for_java(I16, !IO)
+        io.write_int16(I16, !IO)
     ;
         Const = mlconst_uint16(U16),
-        output_int_const_for_java(U16, !IO)
+        io.write_int16(int16.cast_from_uint16(U16), !IO)
     ;
         Const = mlconst_int32(I32),
-        output_int_const_for_java(I32, !IO)
+        io.write_int32(I32, !IO)
     ;
         Const = mlconst_uint32(U32),
-        output_int_const_for_java(U32, !IO)
+        io.write_int32(int32.cast_from_uint32(U32), !IO)
     ;
         Const = mlconst_char(N),
         io.write_string("(", !IO),

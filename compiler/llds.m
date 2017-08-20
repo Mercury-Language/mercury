@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1201,16 +1202,18 @@
 :- type rval_const
     --->    llconst_true
     ;       llconst_false
+
     ;       llconst_int(int)
     ;       llconst_uint(uint)
 
-            % XXX FIXED SIZE INT
-    ;       llconst_int8(int)
-    ;       llconst_uint8(int)
-    ;       llconst_int16(int)
-    ;       llconst_uint16(int)
-    ;       llconst_int32(int)
-    ;       llconst_uint32(int)
+    ;       llconst_int8(int8)
+    ;       llconst_uint8(uint8)
+
+    ;       llconst_int16(int16)
+    ;       llconst_uint16(uint16)
+
+    ;       llconst_int32(int32)
+    ;       llconst_uint32(uint32)
 
     ;       llconst_foreign(string, llds_type)
             % A constant in the target language.

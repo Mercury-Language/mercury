@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2001-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2014-2016 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2741,37 +2742,43 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
         TypeCtorRep = tcr_int8,
-        Functor = "<<int8>>",
+        det_dynamic_cast(Term, Int8),
+        Functor = string.int8_to_string(Int8) ++ "i8",
         Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_uint8,
-        Functor = "<<uint8>>",
+        det_dynamic_cast(Term, UInt8),
+        Functor = string.uint8_to_string(UInt8) ++ "u8",
         Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_int16,
-        Functor = "<<int16>>",
+        det_dynamic_cast(Term, Int16),
+        Functor = string.int16_to_string(Int16) ++ "i16",
         Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_uint16,
-        Functor = "<<uint16>>",
+        det_dynamic_cast(Term, UInt16),
+        Functor = string.uint16_to_string(UInt16) ++ "u16",
         Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_int32,
-        Functor = "<<int32>>",
+        det_dynamic_cast(Term, Int32),
+        Functor = string.int32_to_string(Int32) ++ "i32",
         Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_uint32,
-        Functor = "<<uint32>>",
+        det_dynamic_cast(Term, UInt32),
+        Functor = string.uint32_to_string(UInt32) ++ "u32",
         Ordinal = -1,
         Arity = 0,
         Arguments = []

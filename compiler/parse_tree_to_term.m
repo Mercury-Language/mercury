@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2016 The Mercury team.
+% Copyright (C) 2015-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -654,27 +654,27 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
     ;
         ConsId = int8_const(Int8),
         term.context_init(Context),
-        Term = int_to_decimal_term(Int8, Context)
+        Term = int8_to_decimal_term(Int8, Context)
     ;
         ConsId = uint8_const(UInt8),
         term.context_init(Context),
-        Term = int_to_decimal_term(UInt8, Context)
+        Term = uint8_to_decimal_term(UInt8, Context)
     ;
         ConsId = int16_const(Int16),
         term.context_init(Context),
-        Term = int_to_decimal_term(Int16, Context)
+        Term = int16_to_decimal_term(Int16, Context)
     ;
         ConsId = uint16_const(UInt16),
         term.context_init(Context),
-        Term = int_to_decimal_term(UInt16, Context)
+        Term = uint16_to_decimal_term(UInt16, Context)
     ;
         ConsId = int32_const(Int32),
         term.context_init(Context),
-        Term = int_to_decimal_term(Int32, Context)
+        Term = int32_to_decimal_term(Int32, Context)
     ;
         ConsId = uint32_const(UInt32),
         term.context_init(Context),
-        Term = int_to_decimal_term(UInt32, Context)
+        Term = uint32_to_decimal_term(UInt32, Context)
     ;
         ConsId = float_const(Float),
         term.context_init(Context),

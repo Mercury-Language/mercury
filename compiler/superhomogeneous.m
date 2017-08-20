@@ -1,7 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2012,2014 The University of Melbourne.
+% Copyright (C) 2005-2012 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -739,50 +740,57 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !Specs) :-
             Size = size_word,
             (
                 Signedness = signed,
-                ( if source_integer_to_int(Base, Integer, Int) then
-                    ConsId = int_const(Int)
-                else
-                    BasePrefix = integer_base_prefix(Base),
-                    IntString = integer.to_base_string(Integer,
-                        integer_base_int(Base)),
-                    Pieces = [words("Error: the integer literal"),
-                        quote(BasePrefix ++ IntString),
-                        words("is too big to be represented on this machine."),
-                        nl],
-                    Msg = simple_msg(Context, [always(Pieces)]),
-                    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                        [Msg]),
-                    !:Specs = [Spec | !.Specs],
-                    % This is a dummy.
-                    ConsId = int_const(0)
-                )
+                parse_integer_cons_id(Context, Base, Integer, "", "",
+                    source_integer_to_int(Base), (func(I) = int_const(I)),
+                    ConsId, !Specs)
             ;
                 Signedness = unsigned,
-                ( if integer.to_uint(Integer, UInt) then
-                    ConsId = uint_const(UInt)
-                else
-                    BasePrefix = integer_base_prefix(Base),
-                    IntString = integer.to_base_string(Integer,
-                        integer_base_int(Base)),
-                    Pieces = [words("Error: the unsigned integer literal"),
-                        quote(BasePrefix ++ IntString ++ "u"),
-                        words("is too big to be represented on this machine."),
-                        nl],
-                    Msg = simple_msg(Context, [always(Pieces)]),
-                    Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                        [Msg]),
-                    !:Specs = [Spec | !.Specs],
-                    % This is a dummy.
-                    ConsId = int_const(0)
-                )
+                parse_integer_cons_id(Context, Base, Integer, "unsigned", "u",
+                    integer.to_uint, (func(I) = uint_const(I)),
+                    ConsId, !Specs)
             )
         ;
-            ( Size = size_8_bit
-            ; Size = size_16_bit
-            ; Size = size_32_bit
-            ; Size = size_64_bit
-            ),
-            Pieces = [words("Error: fixed size integers"),
+            Size = size_8_bit,
+            (
+                Signedness = signed,
+                parse_integer_cons_id(Context, Base, Integer, "8-bit", "i8",
+                    integer.to_int8, (func(I) = int8_const(I)),
+                    ConsId, !Specs)
+            ;
+                Signedness = unsigned,
+                parse_integer_cons_id(Context, Base, Integer, "unsigned 8-bit",
+                    "u8", integer.to_uint8, (func(I) = uint8_const(I)),
+                    ConsId, !Specs)
+            )
+        ;
+            Size = size_16_bit,
+            (
+                Signedness = signed,
+                parse_integer_cons_id(Context, Base, Integer, "16-bit", "i16",
+                    integer.to_int16, (func(I) = int16_const(I)),
+                    ConsId, !Specs)
+            ;
+                Signedness = unsigned,
+                parse_integer_cons_id(Context, Base, Integer, "unsigned 16-bit",
+                    "u16", integer.to_uint16, (func(I) = uint16_const(I)),
+                    ConsId, !Specs)
+            )
+        ;
+            Size = size_32_bit,
+            (
+                Signedness = signed,
+                parse_integer_cons_id(Context, Base, Integer, "32-bit", "i32",
+                    integer.to_int32, (func(I) = int32_const(I)),
+                    ConsId, !Specs)
+            ;
+                Signedness = unsigned,
+                parse_integer_cons_id(Context, Base, Integer, "unsigned 32-bit",
+                    "u32", integer.to_uint32, (func(I) = uint32_const(I)),
+                    ConsId, !Specs)
+            )
+        ;
+            Size = size_64_bit,
+            Pieces = [words("Error: 64-bit integer types"),
                 words("are not (yet) supported.")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
@@ -800,6 +808,31 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !Specs) :-
     ;
         Functor = term.implementation_defined(Name),
         ConsId = impl_defined_const(Name)
+    ).
+
+:- pred parse_integer_cons_id(term.context::in, integer_base::in, integer::in, string::in,
+    string::in, pred(integer, T)::in(pred(in, out) is semidet),
+    (func(T) = cons_id)::in, cons_id::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_integer_cons_id(Context, Base, Integer, IntDesc, IntSuffixStr, ConvPred,
+        ToConsIdPred, ConsId, !Specs) :-
+    ( if ConvPred(Integer, Int) then
+        ConsId = ToConsIdPred(Int)
+    else
+        BasePrefix = integer_base_prefix(Base),
+        IntString = integer.to_base_string(Integer,
+            integer_base_int(Base)),
+        Pieces = [words("Error: the"), words(IntDesc), words("integer literal"),
+            quote(BasePrefix ++ IntString ++ IntSuffixStr),
+            words("is outside the range of that type."),
+            nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [Msg]),
+        !:Specs = [Spec | !.Specs],
+        % This is a dummy.
+        ConsId = int_const(0)
     ).
 
     % See whether Atom indicates a term with special syntax.

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2009-2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -183,6 +184,42 @@
 :- pred output_uint_expr(io.text_output_stream::in, uint::in,
     io::di, io::uo) is det.
 :- pred output_uint_expr_cur_stream(uint::in, io::di, io::uo) is det.
+
+    % Write out an int8 as a C expression.
+    %
+:- pred output_int8_expr(io.text_output_stream::in, int8::in,
+    io::di, io::uo) is det.
+:- pred output_int8_expr_cur_stream(int8::in, io::di, io::uo) is det.
+
+    % Write out a uint8 as a C expression.
+    %
+:- pred output_uint8_expr(io.text_output_stream::in, uint8::in,
+    io::di, io::uo) is det.
+:- pred output_uint8_expr_cur_stream(uint8::in, io::di, io::uo) is det.
+
+    % Write out an int16 as a C expression.
+    %
+:- pred output_int16_expr(io.text_output_stream::in, int16::in,
+    io::di, io::uo) is det.
+:- pred output_int16_expr_cur_stream(int16::in, io::di, io::uo) is det.
+
+    % Write out a uint16 as a C expression.
+    %
+:- pred output_uint16_expr(io.text_output_stream::in, uint16::in,
+    io::di, io::uo) is det.
+:- pred output_uint16_expr_cur_stream(uint16::in, io::di, io::uo) is det.
+
+    % Write out an int32 as a C expression.
+    %
+:- pred output_int32_expr(io.text_output_stream::in, int32::in,
+    io::di, io::uo) is det.
+:- pred output_int32_expr_cur_stream(int32::in, io::di, io::uo) is det.
+
+    % Write out a uint32 as a C expression.
+    %
+:- pred output_uint32_expr(io.text_output_stream::in, uint32::in,
+    io::di, io::uo) is det.
+:- pred output_uint32_expr_cur_stream(uint32::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -777,6 +814,67 @@ output_uint_expr(Stream, N, !IO) :-
 output_uint_expr_cur_stream(N, !IO) :-
     io.output_stream(Stream, !IO),
     output_uint_expr(Stream, N, !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Fixed size integer literals.
+%
+
+% The INTn_C and UINTn_C macros used here are defined in stdint.h.
+
+output_int8_expr(Stream, N, !IO) :-
+    io.write_string(Stream, "INT8_C(", !IO),
+    io.write_int8(Stream, N, !IO),
+    io.write_string(Stream, ")", !IO).
+
+output_int8_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_int8_expr(Stream, N, !IO).
+
+output_uint8_expr(Stream, N, !IO) :-
+    io.write_string(Stream, "UINT8_C(", !IO),
+    io.write_uint8(Stream, N, !IO),
+    io.write_string(Stream, ")", !IO).
+
+output_uint8_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_uint8_expr(Stream, N, !IO).
+
+output_int16_expr(Stream, N, !IO) :-
+    io.write_string(Stream, "INT16_C(", !IO),
+    io.write_int16(Stream, N, !IO),
+    io.write_string(Stream, ")", !IO).
+
+output_int16_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_int16_expr(Stream, N, !IO).
+
+output_uint16_expr(Stream, N, !IO) :-
+    io.write_string(Stream, "UINT16_C(", !IO),
+    io.write_uint16(Stream, N, !IO),
+    io.write_string(Stream, ")", !IO).
+
+output_uint16_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_uint16_expr(Stream, N, !IO).
+
+output_int32_expr(Stream, N, !IO) :-
+    io.write_string(Stream, "INT32_C(", !IO),
+    io.write_int32(Stream, N, !IO),
+    io.write_string(Stream, ")", !IO).
+
+output_int32_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_int32_expr(Stream, N, !IO).
+
+output_uint32_expr(Stream, N, !IO) :-
+    io.write_string(Stream, "UINT32_C(", !IO),
+    io.write_uint32(Stream, N, !IO),
+    io.write_string(Stream, ")", !IO).
+
+output_uint32_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_uint32_expr(Stream, N, !IO).
 
 %---------------------------------------------------------------------------%
 %

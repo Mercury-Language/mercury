@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -371,29 +372,23 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
         ConsId = uint_const(UInt),
         String = uint_to_string(UInt)
     ;
-        % XXX FIXED SIZE INT
         ConsId = int8_const(Int8),
-        string.int_to_string(Int8, String)
+        String = string.int8_to_string(Int8)
     ;
-        % XXX FIXED SIZE INT
         ConsId = uint8_const(UInt8),
-        string.int_to_string(UInt8, String)
+        String = string.uint8_to_string(UInt8)
     ;
-        % XXX FIXED SIZE INT
         ConsId = int16_const(Int16),
-        string.int_to_string(Int16, String)
+        String = string.int16_to_string(Int16)
     ;
-        % XXX FIXED SIZE INT
         ConsId = uint16_const(UInt16),
-        string.int_to_string(UInt16, String)
+        String = string.uint16_to_string(UInt16)
     ;
-        % XXX FIXED SIZE INT
         ConsId = int32_const(Int32),
-        string.int_to_string(Int32, String)
+        String = string.int32_to_string(Int32)
     ;
-        % XXX FIXED SIZE INT
         ConsId = uint32_const(UInt32),
-        string.int_to_string(UInt32, String)
+        String = string.uint32_to_string(UInt32)
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)

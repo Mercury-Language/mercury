@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -681,32 +682,38 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
     ;
         ConsId = int8_const(Int8),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer(Int8), signed, size_8_bit),
+            term.integer(base_10, integer.from_int8(Int8), signed,
+                size_8_bit),
             ArgVars)
     ;
         ConsId = uint8_const(UInt8),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer(UInt8), unsigned, size_8_bit),
+            term.integer(base_10, integer.from_uint8(UInt8), unsigned,
+                size_8_bit),
             ArgVars)
     ;
         ConsId = int16_const(Int16),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer(Int16), signed, size_16_bit),
+            term.integer(base_10, integer.from_int16(Int16), signed,
+                size_16_bit),
             ArgVars)
     ;
         ConsId = uint16_const(UInt16),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer(UInt16), unsigned, size_16_bit),
+            term.integer(base_10, integer.from_uint16(UInt16), unsigned,
+                size_16_bit),
             ArgVars)
     ;
         ConsId = int32_const(Int32),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer(Int32), signed, size_32_bit),
+            term.integer(base_10, integer.from_int32(Int32), signed,
+                size_32_bit),
             ArgVars)
     ;
         ConsId = uint32_const(UInt32),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer(UInt32), unsigned, size_32_bit),
+            term.integer(base_10, integer.from_uint32(UInt32), unsigned,
+                size_32_bit),
             ArgVars)
     ;
         ConsId = float_const(Float),
@@ -867,22 +874,22 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
         String = uint_to_string(UInt) ++ "u"
     ;
         ConsId = int8_const(Int8),
-        string.int_to_string(Int8, String)
+        String = string.int8_to_string(Int8) ++ "i8"
     ;
         ConsId = uint8_const(UInt8),
-        string.int_to_string(UInt8, String)
+        String = string.uint8_to_string(UInt8) ++ "u8"
     ;
         ConsId = int16_const(Int16),
-        string.int_to_string(Int16, String)
+        String = string.int16_to_string(Int16) ++ "i16"
     ;
         ConsId = uint16_const(UInt16),
-        string.int_to_string(UInt16, String)
+        String = string.uint16_to_string(UInt16) ++ "u16"
     ;
         ConsId = int32_const(Int32),
-        string.int_to_string(Int32, String)
+        String = string.int32_to_string(Int32) ++ "i32"
     ;
         ConsId = uint32_const(UInt32),
-        string.int_to_string(UInt32, String)
+        String = string.uint32_to_string(UInt32) ++ "u32"
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)

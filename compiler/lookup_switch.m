@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2015, 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -943,6 +944,16 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
 
 %-----------------------------------------------------------------------------%
 
+    % XXX FIXED SIZE INTS
+    % These imports can be deleted once support for fixed size integer literals
+    % has bootstrapped.
+:- import_module int8.
+:- import_module uint8.
+:- import_module int16.
+:- import_module uint16.
+:- import_module int32.
+:- import_module uint32.
+
 default_value_for_type(lt_bool) = const(llconst_int(0)).
 default_value_for_type(lt_int_least8) = const(llconst_int(0)).
 default_value_for_type(lt_uint_least8) = const(llconst_int(0)).
@@ -952,13 +963,12 @@ default_value_for_type(lt_int_least32) = const(llconst_int(0)).
 default_value_for_type(lt_uint_least32) = const(llconst_int(0)).
 default_value_for_type(lt_int(int_type_int)) = const(llconst_int(0)).
 default_value_for_type(lt_int(int_type_uint)) = const(llconst_uint(0u)).
-% XXX FIXED SIZE INT.
-default_value_for_type(lt_int(int_type_int8)) = const(llconst_int8(0)).
-default_value_for_type(lt_int(int_type_uint8)) = const(llconst_uint8(0)).
-default_value_for_type(lt_int(int_type_int16)) = const(llconst_int16(0)).
-default_value_for_type(lt_int(int_type_uint16)) = const(llconst_uint16(0)).
-default_value_for_type(lt_int(int_type_int32)) = const(llconst_int32(0)).
-default_value_for_type(lt_int(int_type_uint32)) = const(llconst_uint32(0)).
+default_value_for_type(lt_int(int_type_int8)) = const(llconst_int8(cast_from_int(0))).
+default_value_for_type(lt_int(int_type_uint8)) = const(llconst_uint8(cast_from_int(0))).
+default_value_for_type(lt_int(int_type_int16)) = const(llconst_int16(cast_from_int(0))).
+default_value_for_type(lt_int(int_type_uint16)) = const(llconst_uint16(cast_from_int(0))).
+default_value_for_type(lt_int(int_type_int32)) = const(llconst_int32(cast_from_int(0))).
+default_value_for_type(lt_int(int_type_uint32)) = const(llconst_uint32(cast_from_int(0))).
 default_value_for_type(lt_float) = const(llconst_float(0.0)).
 default_value_for_type(lt_string) = const(llconst_string("")).
 default_value_for_type(lt_data_ptr) = const(llconst_int(0)).

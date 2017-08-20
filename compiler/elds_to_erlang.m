@@ -1,7 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2011 The University of Melbourne.
+% Copyright (C) 2007-2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -782,29 +783,28 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
         io.write_uint(UInt, !IO),
         space(!IO)
     ;
-        % XXX FIXED SIZE INT
         Term = elds_int8(Int8),
-        io.write_int(Int8, !IO),
+        io.write_int8(Int8, !IO),
         space(!IO)
     ;
         Term = elds_uint8(UInt8),
-        io.write_int(UInt8, !IO),
+        io.write_uint8(UInt8, !IO),
         space(!IO)
     ;
         Term = elds_int16(Int16),
-        io.write_int(Int16, !IO),
+        io.write_int16(Int16, !IO),
         space(!IO)
     ;
         Term = elds_uint16(UInt16),
-        io.write_int(UInt16, !IO),
+        io.write_uint16(UInt16, !IO),
         space(!IO)
     ;
         Term = elds_int32(Int32),
-        io.write_int(Int32, !IO),
+        io.write_int32(Int32, !IO),
         space(!IO)
     ;
         Term = elds_uint32(UInt32),
-        io.write_int(UInt32, !IO),
+        io.write_uint32(UInt32, !IO),
         space(!IO)
     ;
         Term = elds_float(Float),

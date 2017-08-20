@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2001, 2003-2006, 2009-2011 The University of Melbourne.
+% Copyright (C) 2014-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -171,12 +172,12 @@
     --->    leaf(T)
     ;       int_const(int)
     ;       uint_const(uint)
-    ;       int8_const(int)     % XXX FIXED SIZE INTS
-    ;       uint8_const(int)    % XXX FIXED SIZE INTS
-    ;       int16_const(int)    % XXX FIXED SIZE INTS
-    ;       uint16_const(int)   % XXX FIXED SIZE INTS
-    ;       int32_const(int)    % XXX FIXED SIZE INTS
-    ;       uint32_const(int)   % XXX FIXED SIZE INTS
+    ;       int8_const(int8)
+    ;       uint8_const(uint8)
+    ;       int16_const(int16)
+    ;       uint16_const(uint16)
+    ;       int32_const(int32)
+    ;       uint32_const(uint32)
     ;       float_const(float)
     ;       unary(unary_op, simple_expr(T))
     ;       binary(binary_op, simple_expr(T), simple_expr(T)).

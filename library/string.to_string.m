@@ -104,7 +104,8 @@ value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 
 value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
     % We need to special-case the builtin types:
-    %   int, uint, char, float, string
+    %   int, uint, int8, uint8, int16, uint16, int32, uint32
+    %   char, float, string
     %   type_info, univ, c_pointer, array
     %   and private_builtin.type_info
 
@@ -116,6 +117,18 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         add_revstring(string.int_to_string(Int), !Rs)
     else if dynamic_cast(X, UInt) then
         add_revstring(string.uint_to_string(UInt) ++ "u", !Rs)
+    else if dynamic_cast(X, Int8) then
+        add_revstring(string.int8_to_string(Int8) ++ "i8", !Rs)
+    else if dynamic_cast(X, UInt8) then
+        add_revstring(string.uint8_to_string(UInt8) ++ "u8", !Rs)
+    else if dynamic_cast(X, Int16) then
+        add_revstring(string.int16_to_string(Int16) ++ "i16", !Rs)
+    else if dynamic_cast(X, UInt16) then
+        add_revstring(string.uint16_to_string(UInt16) ++ "u16", !Rs)
+    else if dynamic_cast(X, Int32) then
+        add_revstring(string.int32_to_string(Int32) ++ "i32", !Rs)
+    else if dynamic_cast(X, UInt32) then
+        add_revstring(string.uint32_to_string(UInt32) ++ "u32", !Rs)
     else if dynamic_cast(X, Float) then
         add_revstring(string.float_to_string(Float), !Rs)
     else if dynamic_cast(X, Bitmap) then

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -5204,22 +5205,22 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         c_util.output_uint_expr_cur_stream(U, !IO)
     ;
         Const = mlconst_int8(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_int8_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_uint8(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_uint8_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_int16(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_int16_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_uint16(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_uint16_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_int32(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_int32_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_uint32(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_uint32_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_char(C),
         io.write_string("(MR_Char) ", !IO),

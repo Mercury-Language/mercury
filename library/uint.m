@@ -58,6 +58,8 @@
 :- mode uo   + in  = in is det.
 :- mode in   + uo  = in is det.
 
+:- func plus(uint, uint) = uint.
+
     % Subtraction.
     %
 :- func uint - uint = uint.
@@ -65,9 +67,12 @@
 :- mode uo   - in   = in is det.
 :- mode in   - uo   = in is det.
 
+:- func minus(uint, uint) = uint.
+
     % Multiplication.
     %
 :- func (uint::in) * (uint::in) = (uint::uo) is det.
+:- func times(uint, uint) = uint.
 
     % Maximum.
     %
@@ -253,6 +258,7 @@ det_from_int(I) = U :-
     U = I;
 ").
 
+%---------------------------------------------------------------------------%
 
 cast_from_int(_) = _ :-
     sorry($module, "uint.cast_from_int/1 NYI for Erlang").

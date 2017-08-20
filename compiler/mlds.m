@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2011 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1801,12 +1802,12 @@
     ;       mlconst_false
     ;       mlconst_int(int)
     ;       mlconst_uint(uint)
-    ;       mlconst_int8(int)
-    ;       mlconst_uint8(int)
-    ;       mlconst_int16(int)
-    ;       mlconst_uint16(int)
-    ;       mlconst_int32(int)
-    ;       mlconst_uint32(int)
+    ;       mlconst_int8(int8)
+    ;       mlconst_uint8(uint8)
+    ;       mlconst_int16(int16)
+    ;       mlconst_uint16(uint16)
+    ;       mlconst_int32(int32)
+    ;       mlconst_uint32(uint32)
     ;       mlconst_enum(int, mlds_type)
     ;       mlconst_char(int)
     ;       mlconst_float(float)

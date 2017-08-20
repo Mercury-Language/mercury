@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2016 The Mercury team.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -498,11 +498,29 @@
 :- pred write_int(int::in, io::di, io::uo) is det.
 :- pred write_int(io.text_output_stream::in, int::in, io::di, io::uo) is det.
 
+:- pred write_int8(int8::in, io::di, io::uo) is det.
+:- pred write_int8(io.text_output_stream::in, int8::in, io::di, io::uo) is det.
+
+:- pred write_int16(int16::in, io::di, io::uo) is det.
+:- pred write_int16(io.text_output_stream::in, int16::in, io::di, io::uo) is det.
+
+:- pred write_int32(int32::in, io::di, io::uo) is det.
+:- pred write_int32(io.text_output_stream::in, int32::in, io::di, io::uo) is det.
+
     % Writes an unsigned integer to the current output stream
     % or to the specified output stream.
     %
 :- pred write_uint(uint::in, io::di, io::uo) is det.
 :- pred write_uint(io.text_output_stream::in, uint::in, io::di, io::uo) is det.
+
+:- pred write_uint8(uint8::in, io::di, io::uo) is det.
+:- pred write_uint8(io.text_output_stream::in, uint8::in, io::di, io::uo) is det.
+
+:- pred write_uint16(uint16::in, io::di, io::uo) is det.
+:- pred write_uint16(io.text_output_stream::in, uint16::in, io::di, io::uo) is det.
+
+:- pred write_uint32(uint32::in, io::di, io::uo) is det.
+:- pred write_uint32(io.text_output_stream::in, uint32::in, io::di, io::uo) is det.
 
     % Writes a floating point number to the current output stream
     % or to the specified output stream.
@@ -1523,7 +1541,13 @@
 :- instance stream.writer(text_output_stream, char,   io).
 :- instance stream.writer(text_output_stream, float,  io).
 :- instance stream.writer(text_output_stream, int,    io).
+:- instance stream.writer(text_output_stream, int8,   io).
+:- instance stream.writer(text_output_stream, int16,  io).
+:- instance stream.writer(text_output_stream, int32,  io).
 :- instance stream.writer(text_output_stream, uint,   io).
+:- instance stream.writer(text_output_stream, uint8,  io).
+:- instance stream.writer(text_output_stream, uint16, io).
+:- instance stream.writer(text_output_stream, uint8,  io).
 :- instance stream.writer(text_output_stream, string, io).
 :- instance stream.writer(text_output_stream, univ,   io).
 :- instance stream.line_oriented(text_output_stream, io).
@@ -5316,6 +5340,7 @@ set_op_table(_OpTable, !IO).
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 
 #ifdef MR_HAVE_SYS_WAIT_H
@@ -7762,9 +7787,33 @@ write_int(Val, !IO) :-
     output_stream(Stream, !IO),
     write_int(Stream, Val, !IO).
 
+write_int8(Val, !IO) :-
+    output_stream(Stream, !IO),
+    write_int8(Stream, Val, !IO).
+
+write_int16(Val, !IO) :-
+    output_stream(Stream, !IO),
+    write_int16(Stream, Val, !IO).
+
+write_int32(Val, !IO) :-
+    output_stream(Stream, !IO),
+    write_int32(Stream, Val, !IO).
+
 write_uint(Val, !IO) :-
     output_stream(Stream, !IO),
     write_uint(Stream, Val, !IO).
+
+write_uint8(Val, !IO) :-
+    output_stream(Stream, !IO),
+    write_uint8(Stream, Val, !IO).
+
+write_uint16(Val, !IO) :-
+    output_stream(Stream, !IO),
+    write_uint16(Stream, Val, !IO).
+
+write_uint32(Val, !IO) :-
+    output_stream(Stream, !IO),
+    write_uint32(Stream, Val, !IO).
 
 write_float(Val, !IO) :-
     output_stream(Stream, !IO),
@@ -7869,13 +7918,13 @@ binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
 %
 
 write_string(output_stream(Stream), Message, !IO) :-
-    write_string_2(Stream, Message, Error, !IO),
+    do_write_string(Stream, Message, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred write_string_2(stream::in, string::in, system_error::out,
+:- pred do_write_string(stream::in, string::in, system_error::out,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    write_string_2(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
+    do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -7893,13 +7942,13 @@ write_string(output_stream(Stream), Message, !IO) :-
 ").
 
 write_char(output_stream(Stream), Character, !IO) :-
-    write_char_2(Stream, Character, Error, !IO),
+    do_write_char(Stream, Character, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred write_char_2(stream::in, char::in, system_error::out, io::di, io::uo)
+:- pred do_write_char(stream::in, char::in, system_error::out, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    write_char_2(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
+    do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -7925,13 +7974,13 @@ write_char(output_stream(Stream), Character, !IO) :-
 ").
 
 write_int(output_stream(Stream), Val, !IO) :-
-    write_int_2(Stream, Val, Error, !IO),
+    do_write_int(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred write_int_2(stream::in, int::in, system_error::out, io::di, io::uo)
+:- pred do_write_int(stream::in, int::in, system_error::out, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    write_int_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -7942,14 +7991,68 @@ write_int(output_stream(Stream), Val, !IO) :-
     }
 ").
 
-write_uint(output_stream(Stream), Val, !IO) :-
-    write_uint_2(Stream, Val, Error, !IO),
+write_int8(output_stream(Stream), Val, !IO) :-
+    do_write_int8(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred write_uint_2(stream::in, uint::in, system_error::out, io::di, io::uo)
+:- pred do_write_int8(stream::in, int8::in, system_error::out, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    write_uint_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    if (ML_fprintf(Stream, ""%"" PRId8, Val) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+write_int16(output_stream(Stream), Val, !IO) :-
+    do_write_int16(Stream, Val, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_int16(stream::in, int16::in, system_error::out, io::di, io::uo)
+    is det.
+:- pragma foreign_proc("C",
+    do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    if (ML_fprintf(Stream, ""%"" PRId16, Val) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+write_int32(output_stream(Stream), Val, !IO) :-
+    do_write_int32(Stream, Val, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_int32(stream::in, int32::in, system_error::out, io::di, io::uo)
+    is det.
+:- pragma foreign_proc("C",
+    do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    if (ML_fprintf(Stream, ""%"" PRId32, Val) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+write_uint(output_stream(Stream), Val, !IO) :-
+    do_write_uint(Stream, Val, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_uint(stream::in, uint::in, system_error::out, io::di, io::uo)
+    is det.
+:- pragma foreign_proc("C",
+    do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -7960,14 +8063,68 @@ write_uint(output_stream(Stream), Val, !IO) :-
     }
 ").
 
-write_float(output_stream(Stream), Val, !IO) :-
-    write_float_2(Stream, Val, Error, !IO),
+write_uint8(output_stream(Stream), Val, !IO) :-
+    do_write_uint8(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred write_float_2(stream::in, float::in, system_error::out, io::di, io::uo)
+:- pred do_write_uint8(stream::in, uint8::in, system_error::out, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    write_float_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    if (ML_fprintf(Stream, ""%"" PRIu8, Val) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+write_uint16(output_stream(Stream), Val, !IO) :-
+    do_write_uint16(Stream, Val, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_uint16(stream::in, uint16::in, system_error::out, io::di, io::uo)
+    is det.
+:- pragma foreign_proc("C",
+    do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    if (ML_fprintf(Stream, ""%"" PRIu16, Val) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+write_uint32(output_stream(Stream), Val, !IO) :-
+    do_write_uint32(Stream, Val, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_uint32(stream::in, uint32::in, system_error::out, io::di, io::uo)
+    is det.
+:- pragma foreign_proc("C",
+    do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    if (ML_fprintf(Stream, ""%"" PRIu32, Val) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+write_float(output_stream(Stream), Val, !IO) :-
+    do_write_float(Stream, Val, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_float(stream::in, float::in, system_error::out, io::di, io::uo)
+    is det.
+:- pragma foreign_proc("C",
+    do_write_float(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -7981,13 +8138,13 @@ write_float(output_stream(Stream), Val, !IO) :-
 ").
 
 write_byte(binary_output_stream(Stream), Byte, !IO) :-
-    write_byte_2(Stream, Byte, Error, !IO),
+    do_write_byte(Stream, Byte, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred write_byte_2(stream::in, int::in, system_error::out, io::di, io::uo)
+:- pred do_write_byte(stream::in, int::in, system_error::out, io::di, io::uo)
     is det.
 :- pragma foreign_proc("C",
-    write_byte_2(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
+    do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
@@ -8121,7 +8278,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 % C# missing binary_stream_offset_2
 
 :- pragma foreign_proc("C#",
-    write_string_2(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
+    do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -8133,7 +8290,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    write_char_2(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
+    do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -8166,7 +8323,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    write_int_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -8178,7 +8335,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    write_uint_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -8190,7 +8347,79 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    write_byte_2(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
+    do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        io.mercury_print_string(Stream, Val.ToString());
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        io.mercury_print_string(Stream, Val.ToString());
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        io.mercury_print_string(Stream, Val.ToString());
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        io.mercury_print_string(Stream, Val.ToString());
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        io.mercury_print_string(Stream, Val.ToString());
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        io.mercury_print_string(Stream, Val.ToString());
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -8253,7 +8482,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    write_string_2(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
+    do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -8265,7 +8494,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    write_char_2(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
+    do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -8280,7 +8509,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    write_int_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
@@ -8292,7 +8521,69 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    write_uint_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        ((io.MR_TextOutputFile) Stream).write(
+            java.lang.Integer.toString(Val & 0xff));
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        ((io.MR_TextOutputFile) Stream).write(
+            java.lang.Integer.toString(Val & 0xffff));
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
@@ -8305,7 +8596,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    write_float_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_float(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     io.MR_TextOutputFile stream = (io.MR_TextOutputFile) Stream;
@@ -8329,7 +8620,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    write_byte_2(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
+    do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
@@ -8398,7 +8689,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    write_char_2(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
+    do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     mercury__io:mercury_write_char(Stream, Character),
@@ -8407,7 +8698,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    write_int_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     mercury__io:mercury_write_int(Stream, Val),
@@ -8416,7 +8707,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    write_uint_2(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     mercury__io:mercury_write_int(Stream, Val),
@@ -8425,7 +8716,61 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    write_string_2(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
+    do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    mercury__io:mercury_write_int(Stream, Val),
+    % mercury_write_int does not return errors yet.
+    Error = ok
+").
+
+:- pragma foreign_proc("Erlang",
+    do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    mercury__io:mercury_write_int(Stream, Val),
+    % mercury_write_int does not return errors yet.
+    Error = ok
+").
+
+:- pragma foreign_proc("Erlang",
+    do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    mercury__io:mercury_write_int(Stream, Val),
+    % mercury_write_int does not return errors yet.
+    Error = ok
+").
+
+:- pragma foreign_proc("Erlang",
+    do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    mercury__io:mercury_write_int(Stream, Val),
+    % mercury_write_int does not return errors yet.
+    Error = ok
+").
+
+:- pragma foreign_proc("Erlang",
+    do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    mercury__io:mercury_write_int(Stream, Val),
+    % mercury_write_int does not return errors yet.
+    Error = ok
+").
+
+:- pragma foreign_proc("Erlang",
+    do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    mercury__io:mercury_write_int(Stream, Val),
+    % mercury_write_int does not return errors yet.
+    Error = ok
+").
+
+:- pragma foreign_proc("Erlang",
+    do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     mercury__io:mercury_write_string(Stream, Message),
@@ -8434,7 +8779,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    write_byte_2(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
+    do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     mercury__io:mercury_write_char(Stream, Byte),
@@ -8456,8 +8801,8 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
     Error = mercury__io:mercury_sync(Stream)
 ").
 
-write_float_2(Stream, Float, Error, !IO) :-
-    write_string_2(Stream, string.float_to_string(Float), Error, !IO).
+do_write_float(Stream, Float, Error, !IO) :-
+    do_write_string(Stream, string.float_to_string(Float), Error, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -11243,10 +11588,46 @@ result_to_stream_result(error(Error)) = error(Error).
     pred(put/4) is write_int
 ].
 
+:- instance stream.writer(output_stream, int8, io)
+    where
+[
+    pred(put/4) is write_int8
+].
+
+:- instance stream.writer(output_stream, int16, io)
+    where
+[
+    pred(put/4) is write_int16
+].
+
+:- instance stream.writer(output_stream, int32, io)
+    where
+[
+    pred(put/4) is write_int32
+].
+
 :- instance stream.writer(output_stream, uint, io)
     where
 [
     pred(put/4) is write_uint
+].
+
+:- instance stream.writer(output_stream, uint8, io)
+    where
+[
+    pred(put/4) is write_uint8
+].
+
+:- instance stream.writer(output_stream, uint16, io)
+    where
+[
+    pred(put/4) is write_uint16
+].
+
+:- instance stream.writer(output_stream, uint32, io)
+    where
+[
+    pred(put/4) is write_uint32
 ].
 
 :- instance stream.writer(output_stream, string, io)

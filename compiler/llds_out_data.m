@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -1218,22 +1219,22 @@ output_rval_const(Info, Const, !IO) :-
         c_util.output_uint_expr_cur_stream(N, !IO)
     ;
         Const = llconst_int8(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_int8_expr_cur_stream(N, !IO)
     ;
         Const = llconst_uint8(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_uint8_expr_cur_stream(N, !IO)
     ;
         Const = llconst_int16(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_int16_expr_cur_stream(N, !IO)
     ;
         Const = llconst_uint16(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_uint16_expr_cur_stream(N, !IO)
     ;
         Const = llconst_int32(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_int32_expr_cur_stream(N, !IO)
     ;
         Const = llconst_uint32(N),
-        c_util.output_int_expr_cur_stream(N, !IO)
+        c_util.output_uint32_expr_cur_stream(N, !IO)
     ;
         Const = llconst_foreign(Value, Type),
         io.write_char('(', !IO),
