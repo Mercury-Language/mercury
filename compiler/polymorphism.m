@@ -657,7 +657,7 @@ polymorphism_process_clause_info(ModuleInfo0, PredInfo0, !ClausesInfo, !:Info,
     poly_info_get_var_types(!.Info, VarTypes),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
     set_clause_list(Clauses, ClausesRep),
-    map.init(TVarNameMap), % This is only used while adding the clauses.
+    init_vartypes(TVarNameMap), % This is only used while adding the clauses.
     !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
         VarTypes, HeadVars, ClausesRep, ItemNumbers,
         RttiVarMaps, HaveForeignClauses, HadSyntaxErrors).

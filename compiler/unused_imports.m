@@ -53,6 +53,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
+:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
@@ -659,7 +660,7 @@ proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
     % given that the average number of proc_infos per pred_info typically
     % hovers in the 1.01-to-1.2 range.
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    map.foldl_values(mer_type_used_modules(Visibility), VarTypes,
+    foldl_var_types(mer_type_used_modules(Visibility), VarTypes,
         !UsedModules),
 
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),

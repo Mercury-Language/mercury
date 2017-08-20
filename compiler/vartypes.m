@@ -89,6 +89,9 @@
     pred(mer_type, mer_type, T, T)::in(pred(in, out, in, out) is det),
     vartypes::in, vartypes::out, T::in, T::out) is det.
 
+:- pred foldl_var_types(pred(mer_type, T, T)::in(pred(in, in, out) is det),
+    vartypes::in, T::in, T::out) is det.
+
 :- type prog_var_set_types
     --->    prog_var_set_types(prog_varset, vartypes).
 
@@ -201,6 +204,9 @@ transform_var_types(Transform, !VarTypes) :-
 
 transform_foldl_var_types(Transform, !VarTypes, !Acc) :-
     map.map_values_foldl(Transform, !VarTypes, !Acc).
+
+foldl_var_types(Pred, VarTypes, !Acc) :-
+    map.foldl_values(Pred, VarTypes, !Acc).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.vartypes.
