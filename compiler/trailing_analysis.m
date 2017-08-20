@@ -105,7 +105,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
