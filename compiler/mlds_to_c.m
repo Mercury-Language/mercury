@@ -4900,11 +4900,7 @@ mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
             io.write_string(")", !IO)
         )
     else if
-        ( Type = mercury_type(builtin_type(builtin_type_char), _, _)
-        ; Type = mlds_native_char_type
-        ; Type = mlds_native_bool_type
-        ; Type = mlds_native_int_type
-        )
+        type_is_smaller_than_word(Type)
     then
         % We cast first to MR_Word, and then to MR_Box.
         % This is done to avoid spurious warnings about "cast from
@@ -4916,6 +4912,36 @@ mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
         io.write_string("((MR_Box) (", !IO),
         mlds_output_rval(Opts, Expr, !IO),
         io.write_string("))", !IO)
+    ).
+
+    % Succeeds if the given type is smaller than a word.
+    % On some platforms the type may be equal in size to a word.
+    %
+:- pred type_is_smaller_than_word(mlds_type::in) is semidet.
+
+type_is_smaller_than_word(Type) :-
+    (
+        Type = mercury_type(builtin_type(BuiltinType), _, _),
+        (
+            BuiltinType = builtin_type_char
+        ;
+            BuiltinType = builtin_type_int(IntType),
+            % The following integer types are all (potentially) smaller
+            % than MR_Word.
+            ( IntType = int_type_int8
+            ; IntType = int_type_uint8
+            ; IntType = int_type_int16
+            ; IntType = int_type_uint16
+            ; IntType = int_type_int32
+            ; IntType = int_type_uint32
+            )
+        )
+    ;
+        Type = mlds_native_char_type
+    ;
+        Type = mlds_native_bool_type
+    ;
+        Type = mlds_native_int_type
     ).
 
     % Return `yes' if the specified rval is an address (possibly tagged and/or
@@ -4994,11 +5020,7 @@ mlds_output_unboxed_rval(Opts, Type, Expr, !IO) :-
         mlds_output_rval(Opts, Expr, !IO),
         io.write_string(")", !IO)
     else if
-        ( Type = mercury_type(builtin_type(builtin_type_char), _, _)
-        ; Type = mlds_native_char_type
-        ; Type = mlds_native_bool_type
-        ; Type = mlds_native_int_type
-        )
+        type_is_smaller_than_word(Type)
     then
         % We cast first to MR_Word, and then to the desired type.
         % This is done to avoid spurious warnings about "cast from
