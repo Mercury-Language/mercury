@@ -6000,7 +6000,7 @@ uint16_to_string(_) = _ :-
     int32_to_string(I32::in) = (S::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    char buffer[11]; // 1 for sign, 9 for digits, 1 for nul.
+    char buffer[12]; // 1 for sign, 10 for digits, 1 for nul.
     sprintf(buffer, ""%"" PRId32, I32);
     MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
     strcpy(S, buffer);
@@ -6029,7 +6029,7 @@ int32_to_string(_) = _ :-
     uint32_to_string(U32::in) = (S::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    char buffer[10]; // 9 for digits, 1 for nul.
+    char buffer[11]; // 10 for digits, 1 for nul.
     sprintf(buffer, ""%"" PRIu32, U32);
     MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
     strcpy(S, buffer);
