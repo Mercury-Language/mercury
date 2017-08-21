@@ -618,6 +618,8 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 	NON_PROFDEEP_PROGS = \
 		$(NON_PROFDEEP_PROGS_2) \
 		allow_stubs \
+		arith_int8 \
+		arith_uint8 \
 		bitmap_empty \
 		bitmap_test \
 		bit_buffer_test \
