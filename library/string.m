@@ -5972,7 +5972,7 @@ int16_to_string(_) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     char buffer[6]; // 5 for digits, 1 for nul.
-    sprintf(buffer, ""%"" PRIu16, (MR_Unsigned)U16);
+    sprintf(buffer, ""%"" PRIu16, U16);
     MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
     strcpy(S, buffer);
 ").
