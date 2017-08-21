@@ -1412,8 +1412,12 @@ det_to_uint(Integer) = UInt :-
 %---------------------------------------------------------------------------%
 
 to_int8(Integer, Int8) :-
-    Integer = i(_Sign, [Digit]),
-    int8.from_int(Digit, Int8).
+    ( if is_zero(Integer) then
+        Int8 = int8.cast_from_int(0)
+    else
+        Integer = i(_, [Digit]),
+        int8.from_int(Digit, Int8)
+    ).
 
 det_to_int8(Integer) = Int8 :-
     ( if integer.to_int8(Integer, Int8Prime) then
@@ -1426,8 +1430,12 @@ det_to_int8(Integer) = Int8 :-
 %---------------------------------------------------------------------------%
 
 to_uint8(Integer, UInt8) :-
-    Integer = i(_Sign, [Digit]),
-    uint8.from_int(Digit, UInt8).
+    ( if is_zero(Integer) then
+        UInt8 = uint8.cast_from_int(0)
+    else
+        Integer = i(_, [Digit]),
+        uint8.from_int(Digit, UInt8)
+    ).
 
 det_to_uint8(Integer) = UInt8 :-
     ( if integer.to_uint8(Integer, UInt8Prime) then
