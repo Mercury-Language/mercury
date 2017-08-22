@@ -15,6 +15,7 @@ MAYBE_J1 =
 # not be included in this list; we handle those specially (see below).
 
 MULTIMODULE_PROGS= \
+	abstract_eqv \
 	duplicate_instance_2 \
 	exported_unify \
 	exported_unify3 \

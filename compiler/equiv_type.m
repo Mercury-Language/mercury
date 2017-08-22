@@ -127,9 +127,13 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
         map.init(!:InstEqvMap),
         build_eqv_maps_in_item_blocks(SrcItemBlocks0,
             !TypeEqvMap, !InstEqvMap),
-        build_eqv_maps_in_item_blocks(DirectIntItemBlocks0,
+        list.filter(non_abstract_imported_int_item_block,
+            DirectIntItemBlocks0, NonAbstractDirectIntItemBlocks0),
+        build_eqv_maps_in_item_blocks(NonAbstractDirectIntItemBlocks0,
             !TypeEqvMap, !InstEqvMap),
-        build_eqv_maps_in_item_blocks(IndirectIntItemBlocks0,
+        list.filter(non_abstract_imported_int_item_block,
+            IndirectIntItemBlocks0, NonAbstractIndirectIntItemBlocks0),
+        build_eqv_maps_in_item_blocks(NonAbstractIndirectIntItemBlocks0,
             !TypeEqvMap, !InstEqvMap),
         build_eqv_maps_in_item_blocks(IntForOptItemBlocks0,
             !TypeEqvMap, !InstEqvMap),
@@ -194,6 +198,19 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
 :- type pred_or_func_decl_type
     --->    type_decl
     ;       mode_decl.
+
+:- pred non_abstract_imported_int_item_block(
+    item_block(int_module_section)::in) is semidet.
+
+non_abstract_imported_int_item_block(ItemBlock) :-
+    ItemBlock = item_block(Section, _, _, _, _),
+    require_complete_switch [Section]
+    (
+        Section = ims_imported_or_used(_, _, _, _)
+    ;
+        Section = ims_abstract_imported(_, _),
+        fail
+    ).
 
 :- pred build_eqv_maps_in_item_blocks(list(item_block(MS))::in,
     type_eqv_map::in, type_eqv_map::out,
