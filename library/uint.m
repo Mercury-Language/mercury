@@ -129,7 +129,7 @@
     %
 :- func (uint::in) << (int::in) = (uint::uo) is det.
 
-    % unchecked_lift_shift(X, Y) is the same as X << Y except that the
+    % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, bits_per_uint).
     % It will typically be be implemented more efficiently than X << Y.
     %

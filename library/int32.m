@@ -147,7 +147,7 @@
     %
 :- func (int32::in) << (int::in) = (int32::uo) is det.
 
-    % unchecked_lift_shift(X, Y) is the same as X << Y except that the
+    % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, 32).
     % It will typically be be implemented more efficiently than X << Y.
     %
