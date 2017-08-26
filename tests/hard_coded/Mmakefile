@@ -627,6 +627,12 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		bitmap_empty \
 		bitmap_test \
 		bit_buffer_test \
+		cmp_int16 \
+		cmp_int32 \
+		cmp_int8 \
+		cmp_uint16 \
+		cmp_uint32 \
+		cmp_uint8 \
 		dir_test \
 		final_excp \
 		init_excp \
