@@ -20,10 +20,16 @@ SIMPLE_NONLOOP_PROGS = \
 	fast_loose \
 	fib \
 	fib_float \
+	fib_int16 \
+	fib_int32 \
+	fib_int8 \
 	fib_list \
 	fib_stats \
 	fib_string \
 	fib_uint \
+	fib_uint16 \
+	fib_uint32 \
+	fib_uint8 \
 	loopcheck_no_loop \
 	loopcheck_nondet_no_loop \
 	mercury_java_parser_dead_proc_elim_bug \

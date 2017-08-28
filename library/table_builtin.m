@@ -1239,6 +1239,36 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_lookup_insert_uint(ml_trie_node::in, uint::in,
     ml_trie_node::out) is det.
 
+    % Lookup or insert a signed 8-bit integer in the given table.
+    %
+:- impure pred table_lookup_insert_int8(ml_trie_node::in, int8::in,
+    ml_trie_node::out) is det.
+
+    % Lookup or insert an unsigned 8-bit integer in the given table.
+    %
+:- impure pred table_lookup_insert_uint8(ml_trie_node::in, uint8::in,
+    ml_trie_node::out) is det.
+
+    % Lookup or insert a signed 16-bit integer in the given table.
+    %
+:- impure pred table_lookup_insert_int16(ml_trie_node::in, int16::in,
+    ml_trie_node::out) is det.
+
+    % Lookup or insert an unsigned 16-bit integer in the given table.
+    %
+:- impure pred table_lookup_insert_uint16(ml_trie_node::in, uint16::in,
+    ml_trie_node::out) is det.
+
+    % Lookup or insert a signed 32-bit integer in the given table.
+    %
+:- impure pred table_lookup_insert_int32(ml_trie_node::in, int32::in,
+    ml_trie_node::out) is det.
+
+    % Lookup or insert an unsigned 32-bit integer in the given table.
+    %
+:- impure pred table_lookup_insert_uint32(ml_trie_node::in, uint32::in,
+    ml_trie_node::out) is det.
+
     % Lookup or insert an integer in the given table.
     %
 :- impure pred table_lookup_insert_start_int(ml_trie_node::in, int::in,
@@ -1317,6 +1347,42 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_save_uint_answer(ml_answer_block::in, int::in, uint::in)
     is det.
 
+    % Save a signed 8-bit integer answer in the given answer block at the
+    % given offset.
+    %
+:- impure pred table_save_int8_answer(ml_answer_block::in, int::in, int8::in)
+    is det.
+
+    % Save an unsigned 8-bit integer answer in the given answer block at the
+    % given offset.
+    %
+:- impure pred table_save_uint8_answer(ml_answer_block::in, int::in, uint8::in)
+    is det.
+
+    % Save a signed 16-bit integer answer in the given answer block at the
+    % given offset.
+    %
+:- impure pred table_save_int16_answer(ml_answer_block::in, int::in, int16::in)
+    is det.
+
+    % Save an unsigned 16-bit integer answer in the given answer block at the
+    % given offset.
+    %
+:- impure pred table_save_uint16_answer(ml_answer_block::in, int::in, uint16::in)
+    is det.
+
+    % Save a signed 32-bit integer answer in the given answer block at the
+    % given offset.
+    %
+:- impure pred table_save_int32_answer(ml_answer_block::in, int::in, int32::in)
+    is det.
+
+    % Save an unsigned 32-bit integer answer in the given answer block at the
+    % given offset.
+    %
+:- impure pred table_save_uint32_answer(ml_answer_block::in, int::in, uint32::in)
+    is det.
+
     % Save a character answer in the given answer block at the given
     % offset.
     %
@@ -1357,6 +1423,42 @@ pretend_to_generate_value(Bogus) :-
     %
 :- semipure pred table_restore_uint_answer(ml_answer_block::in, int::in,
     uint::out) is det.
+
+    % Restore a signed 8-bit integer answer from the given answer block at the
+    % given offset.
+    %
+:- semipure pred table_restore_int8_answer(ml_answer_block::in, int::in,
+    int8::out) is det.
+
+    % Restore an unsigned 8-bit integer answer from the given answer block at
+    % the given offset.
+    %
+:- semipure pred table_restore_uint8_answer(ml_answer_block::in, int::in,
+    uint8::out) is det.
+
+    % Restore a signed 16-bit integer answer from the given answer block at the
+    % given offset.
+    %
+:- semipure pred table_restore_int16_answer(ml_answer_block::in, int::in,
+    int16::out) is det.
+
+    % Restore an unsigned 16-bit integer answer from the given answer block at
+    % the given offset.
+    %
+:- semipure pred table_restore_uint16_answer(ml_answer_block::in, int::in,
+    uint16::out) is det.
+
+    % Restore a signed 32-bit integer answer from the given answer block at the
+    % given offset.
+    %
+:- semipure pred table_restore_int32_answer(ml_answer_block::in, int::in,
+    int32::out) is det.
+
+    % Restore an unsigned 32-bit integer answer from the given answer block at
+    % the given offset.
+    %
+:- semipure pred table_restore_uint32_answer(ml_answer_block::in, int::in,
+    uint32::out) is det.
 
     % Restore a character answer from the given answer block at the
     % given offset.
@@ -1434,6 +1536,48 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 "
     MR_tbl_lookup_insert_start_int(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE,
         T0, S, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_int8(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_int8(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_uint8(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_uint8(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_int16(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_int16(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_uint16(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_uint16(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_int32(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_int32(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_uint32(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_uint32(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
@@ -1538,6 +1682,48 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
 :- pragma foreign_proc("C",
+    table_save_int8_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_save_int8_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_save_uint8_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_save_uint8_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_save_int16_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_save_int16_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_save_uint16_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_save_uint16_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_save_int32_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_save_int32_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_save_uint32_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_save_uint32_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
     table_save_char_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
@@ -1585,6 +1771,48 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_uint_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_restore_int8_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_restore_int8_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_restore_uint8_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_restore_uint8_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_restore_int16_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_restore_int16_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_restore_uint16_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_restore_uint16_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_restore_int32_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_restore_int32_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_restore_uint32_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_restore_uint32_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
