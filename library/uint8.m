@@ -35,6 +35,8 @@
 
 :- func to_int(uint8) = int.
 
+%---------------------------------------------------------------------------%
+
     % Less than.
     %
 :- pred (uint8::in) < (uint8::in) is semidet.
@@ -267,7 +269,7 @@ X div Y = X // Y.
 
 :- pragma inline('//'/2).
 X // Y = Div :-
-    ( if Y = cast_from_int(0) then
+    ( if Y = 0u8 then
         throw(math.domain_error("uint.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
@@ -280,7 +282,7 @@ X mod Y = X rem Y.
 
 :- pragma inline(rem/2).
 X rem Y = Rem :-
-    ( if Y = cast_from_int(0) then
+    ( if Y = 0u8 then
         throw(math.domain_error("uint8.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
@@ -316,11 +318,11 @@ min(X, Y) =
 
 :- pragma inline(even/1).
 even(X) :-
-    (X /\ cast_from_int(1)) = cast_from_int(0).
+    (X /\ 1u8) = 0u8.
 
 :- pragma inline(odd/1).
 odd(X) :-
-    (X /\ cast_from_int(1)) \= cast_from_int(0).
+    (X /\ 1u8) \= 0u8.
 
 %---------------------------------------------------------------------------%
 

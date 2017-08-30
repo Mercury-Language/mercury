@@ -318,19 +318,19 @@ cast_from_uint8(_) = _ :-
 X div Y = Div :-
     Trunc = X // Y,
     ( if
-        ( X >= cast_from_int(0), Y >= cast_from_int(0)
-        ; X < cast_from_int(0), Y < cast_from_int(0)
-        ; X rem Y = cast_from_int(0)
+        ( X >= 0i8, Y >= 0i8
+        ; X < 0i8, Y < 0i8
+        ; X rem Y = 0i8
         )
     then
         Div = Trunc
     else
-        Div = Trunc - cast_from_int(1)
+        Div = Trunc - 1i8
     ).
 
 :- pragma inline('//'/2).
 X // Y = Div :-
-    ( if Y = cast_from_int(0) then
+    ( if Y = 0i8 then
         throw(math.domain_error("int8.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
@@ -343,7 +343,7 @@ X mod Y = X - (X div Y) * Y.
 
 :- pragma inline(rem/2).
 X rem Y = Rem :-
-    ( if Y = cast_from_int(0) then
+    ( if Y = 0i8 then
         throw(math.domain_error("int8.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
@@ -379,17 +379,17 @@ min(X, Y) =
 
 :- pragma inline(even/1).
 even(X) :-
-    (X /\ cast_from_int(1)) = cast_from_int(0).
+    (X /\ 1i8) = 0i8.
 
 :- pragma inline(odd/1).
 odd(X) :-
-    (X /\ cast_from_int(1)) \= cast_from_int(0).
+    (X /\ 1i8) \= 0i8.
 
 %---------------------------------------------------------------------------%
 
-min_int8 = cast_from_int(-128).
+min_int8 = -128_i8.
 
-max_int8 = cast_from_int(127).
+max_int8 = 127_i8.
 
 %---------------------------------------------------------------------------%
 

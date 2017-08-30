@@ -321,19 +321,19 @@ min(X, Y) =
 X div Y = Div :-
     Trunc = X // Y,
     ( if
-        ( X >= cast_from_int(0), Y >= cast_from_int(0)
-        ; X < cast_from_int(0), Y < cast_from_int(0)
-        ; X rem Y = cast_from_int(0)
+        ( X >= 0i16, Y >= 0i16
+        ; X < 0i16, Y < 0i16
+        ; X rem Y = 0i16
         )
     then
         Div = Trunc
     else
-        Div = Trunc - cast_from_int(1)
+        Div = Trunc - 1i16
     ).
 
 :- pragma inline('//'/2).
 X // Y = Div :-
-    ( if Y = cast_from_int(0) then
+    ( if Y = 0i16 then
         throw(math.domain_error("int16.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
@@ -346,7 +346,7 @@ X mod Y = X - (X div Y) * Y.
 
 :- pragma inline(rem/2).
 X rem Y = Rem :-
-    ( if Y = cast_from_int(0) then
+    ( if Y = 0i16 then
         throw(math.domain_error("int16.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
@@ -374,17 +374,17 @@ X >> Y = Result :-
 
 :- pragma inline(even/1).
 even(X) :-
-    (X /\ cast_from_int(1)) = cast_from_int(0).
+    (X /\ 1i16) = 0i16.
 
 :- pragma inline(odd/1).
 odd(X) :-
-    (X /\ cast_from_int(1)) \= cast_from_int(0).
+    (X /\ 1i16) \= 0i16.
 
 %---------------------------------------------------------------------------%
 
-min_int16 = cast_from_int(-32_768).
+min_int16 = -32_768_i16.
 
-max_int16 = cast_from_int(32_767).
+max_int16 = 32_767_i16.
 
 %---------------------------------------------------------------------------%
 

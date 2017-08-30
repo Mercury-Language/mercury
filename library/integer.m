@@ -1413,7 +1413,7 @@ det_to_uint(Integer) = UInt :-
 
 to_int8(Integer, Int8) :-
     ( if is_zero(Integer) then
-        Int8 = int8.cast_from_int(0)
+        Int8 = 0i8
     else
         Integer = i(_, [Digit]),
         int8.from_int(Digit, Int8)
@@ -1431,7 +1431,7 @@ det_to_int8(Integer) = Int8 :-
 
 to_uint8(Integer, UInt8) :-
     ( if is_zero(Integer) then
-        UInt8 = uint8.cast_from_int(0)
+        UInt8 = 0u8
     else
         Integer = i(_, [Digit]),
         uint8.from_int(Digit, UInt8)
@@ -1493,7 +1493,7 @@ to_uint32(Integer, UInt32) :-
     Integer >= integer.zero,
     Integer =< integer.from_uint32(uint32.max_uint32),
     Integer = i(_Sign, Digits),
-    UInt32 = uint32_list(Digits, uint32.cast_from_int(0)).
+    UInt32 = uint32_list(Digits, 0u32).
 
 :- func uint32_list(list(int), uint32) = uint32.
 
@@ -1802,7 +1802,7 @@ from_int32(I32) = Integer :-
     Integer = integer(I).
 
 from_uint32(U32) = Integer :-
-    ( if U32 = cast_from_int(0) then
+    ( if U32 = 0u32 then
         Integer = integer.zero
     else if U32 < cast_from_int(base) then
         Integer = i(1, [cast_to_int(U32)])
@@ -1817,7 +1817,7 @@ uint32_to_digits(U) = uint32_to_digits_2(U, integer.zero).
 :- func uint32_to_digits_2(uint32, integer) = integer.
 
 uint32_to_digits_2(U, Tail) = Result :-
-    ( if U = cast_from_int(0) then
+    ( if U = 0u32 then
         Result = Tail
     else
         Tail = i(Length, Digits),
