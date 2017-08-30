@@ -67,6 +67,7 @@ MCFLAGS-pack_args_reuse     =	--structure-reuse
 MCFLAGS-reuse_double        =	--ctgc
 MCFLAGS-reuse_ho            =	--ctgc --no-optimise-higher-order
 MCFLAGS-sharing_comb	    =	--ctgc --structure-sharing-widening 2
+MCFLAGS-shift_test          =   --no-warn-obsolete
 MCFLAGS-simplify_multi_arm_switch = -O3
 MCFLAGS-spawn_native	    =	--no-ansi-c
 MCFLAGS-string_substring    =	--no-warn-obsolete

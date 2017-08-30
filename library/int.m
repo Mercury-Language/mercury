@@ -178,10 +178,19 @@
 
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
-    % To be precise, if Y is negative, the result is
-    % X div (2^(-Y)), otherwise the result is X * (2^Y).
+    % The bit positions vacated by the shift are filled by zeros.
+    % Throws an exception if Y is not in [0, bits_per_int).
     %
 :- func (int::in) << (int::in) = (int::uo) is det.
+
+    % legacy_left_shift(X, Y) returns X "left shifted" by Y bits.
+    % To be precise, if Y is negative, the result is X div (2^(-Y)), otherwise
+    % the result is X * (2^Y).
+    %
+    % NOTE: this function is deprecated and may be removed in a future release.
+    %
+:- pragma obsolete(legacy_left_shift/2).
+:- func legacy_left_shift(int::in, int::in) = (int::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y
     % except that the behaviour is undefined if Y is negative,
@@ -191,11 +200,18 @@
 :- func unchecked_left_shift(int::in, int::in) = (int::uo) is det.
 
     % Right shift.
-    % X >> Y returns X "arithmetic right shifted" by Y bits.
-    % To be precise, if Y is negative, the result is
-    % X * (2^(-Y)), otherwise the result is X div (2^Y).
+    % X >> Y returns X "right shifted" by Y bits.
+    % The bit positions vacated by the shift are filled by the sign bit.
+    % Throws an exception if Y is not in [0, bits_per_int).
     %
 :- func (int::in) >> (int::in) = (int::uo) is det.
+
+    % legacy_right_shift(X, Y) returns X "arithmetic right shifted" by Y bits.
+    % To be precise, if Y is negative, the result is X * (2^(-Y)), otherwise
+    % the result is X div (2^Y).
+    %
+:- pragma obsolete(legacy_right_shift/2).
+:- func legacy_right_shift(int::in, int::in) = (int::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y
     % except that the behaviour is undefined if Y is negative,
@@ -698,6 +714,14 @@ log2_loop(CurX, CurLogXSoFar, CeilLogX) :-
 %---------------------------------------------------------------------------%
 
 X << Y = Z :-
+    ( if Y `unsigned_lt` bits_per_int then
+        Z = unchecked_left_shift(X, Y)
+    else
+        Msg = "int.(<<): second operand is out of range",
+        throw(math.domain_error(Msg))
+    ).
+
+legacy_left_shift(X, Y) = Z :-
     bits_per_int(IntBits),
     ( if Y >= 0 then
         ( if Y >= IntBits then
@@ -714,6 +738,14 @@ X << Y = Z :-
     ).
 
 X >> Y = Z :-
+    ( if Y `unsigned_lt` bits_per_int then
+        Z = unchecked_right_shift(X, Y)
+    else
+        Msg = "int.(<<): second operand is out of range",
+        throw(math.domain_error(Msg))
+    ).
+
+legacy_right_shift(X, Y) = Z :-
     % Note: this assumes two's complement arithmetic.
     % tests/hard_coded/shift_test.m will fail if this is not the case.
     bits_per_int(IntBits),
@@ -730,6 +762,36 @@ X >> Y = Z :-
             Z = unchecked_left_shift(X, -Y)
         )
     ).
+
+% We define unsigned less than as a foreign_proc here in order to avoid this
+% module having to import uint.
+% XXX we should probably provide unsigned_lt as a builtin for ints.
+%
+:- pred unsigned_lt(int::in, int::in) is semidet.
+:- pragma foreign_proc("C",
+    unsigned_lt(A::in, B::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    SUCCESS_INDICATOR = (MR_Unsigned)A < (MR_Unsigned)B;
+").
+
+:- pragma foreign_proc("C#",
+    unsigned_lt(A::in, B::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (uint)A < (uint)B;
+").
+
+:- pragma foreign_proc("Java",
+    unsigned_lt(A::in, B::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (A & 0xffffffffL) < (B & 0xffffffffL);
+").
+
+:- pragma no_determinism_warning(unsigned_lt/2).
+unsigned_lt(_, _) :-
+    sorry($module, "int.unsigned_lt/2 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 

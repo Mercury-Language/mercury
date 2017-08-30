@@ -44,7 +44,9 @@ Changes that may break compatibility:
   type names are:
 
       int
+      int{8,16,32}
       uint
+      uint{8,16,32}
       float
       character
       string
@@ -104,6 +106,12 @@ Changes that may break compatibility:
   Code that relies on the old representation of integer constants used by
   the term or lexer modules may use the `old_term_parser' library in the
   extras instead.
+
+* We have changed the semantics of int.(<<) and int.(>>) so that they throw
+  an exception if their second operand is not in [0, bits_per_int).  For now,
+  the old behaviour of these operations is provided by the functions
+  int.legacy_left_shift/2 and int.legacy_right_shift/2.  These functions
+  will be deleted in a future release.
 
 Changes to the Mercury language:
 

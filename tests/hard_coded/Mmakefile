@@ -626,6 +626,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		arith_uint8 \
 		bitmap_empty \
 		bitmap_test \
+		bitwise_int \
 		bitwise_int16 \
 		bitwise_int32 \
 		bitwise_int8 \
