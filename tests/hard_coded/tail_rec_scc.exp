@@ -1,1 +1,3 @@
-42
+p(42, 0) = 42
+s(0, 1) = succeeded 1
+s(1, 2) = failed
