@@ -534,11 +534,17 @@
                 mgvd_type               :: mlds_type,
                 mgvd_init               :: mlds_initializer,
 
-                % If accurate GC is enabled, we associate with each variable
-                % the code needed to initialise or trace that variable when
-                % doing GC (in the compiler-generated gc trace functions).
-                % XXX MLDS_DEFN
-                % These shouldn't be needed on *global* variables used
+                % If accurate GC is enabled, we associate with each global
+                % variable the compiler-generated gc trace functions that will
+                % tell the accurate collector what roots (i.e. pointers to
+                % heap cells allocated by the accurate gc system) exist inside
+                % that global variable.
+                %
+                % This field may contain gc_no_stmt if the variable contains
+                % no such roots, either because its contents are fully static
+                % (i.e. the global variable is actually a global constant),
+                % or because all its dynamic parts point to heap memory
+                % allocated by some other system (e.g. plain non-gc malloc).
                 % as constants.
                 mgvd_gc                 :: mlds_gc_statement
             ).
@@ -1738,9 +1744,9 @@
     ;       ml_mkword(mlds_tag, mlds_rval)
             % Given a pointer and a tag, mkword returns a tagged pointer.
             %
-            % (XXX It might be more consistent to make this a binary_op,
-            % with the tag argument just being an rval, rather than
-            % having `mkword' be a separate kind of rval.)
+            % In theory, we could make `mkword' a binary_op, but this
+            % representation is tighther: it makes clear that the tag
+            % we want to put on is *always* a constant.
 
     ;       ml_const(mlds_rval_const)
 
