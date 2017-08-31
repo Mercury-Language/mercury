@@ -1390,10 +1390,10 @@ mlds_output_pragma_export_input_defns(Opts, Arg, !IO) :-
     Arg = mlds_argument(LocalVarName, Type, _GCStmt),
     io.write_string("\t", !IO),
     get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
-    mlds_output_data_decl_ho(Opts,
-        mlds_output_type_prefix, mlds_output_type_suffix_no_size,
-        mlds_output_local_var_name, BoxedLocalVarName,
-        Type, !IO),
+    mlds_output_type_prefix(Opts, Type, !IO),
+    io.write_char(' ', !IO),
+    mlds_output_local_var_name(BoxedLocalVarName, !IO),
+    mlds_output_type_suffix_no_size(Opts, Type, !IO),
     io.write_string(";\n", !IO).
 
 :- pred mlds_output_pragma_export_output_defns(mlds_to_c_opts::in,
@@ -1403,10 +1403,11 @@ mlds_output_pragma_export_output_defns(Opts, Arg, !IO) :-
     Arg = mlds_argument(LocalVarName, Type, _GCStmt),
     io.write_string("\t", !IO),
     get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
-    mlds_output_data_decl_ho(Opts,
-        mlds_output_type_prefix, mlds_output_type_suffix_no_size,
-        mlds_output_local_var_name, BoxedLocalVarName,
-        pointed_to_type(Type), !IO),
+    PointedToType = pointed_to_type(Type),
+    mlds_output_type_prefix(Opts, PointedToType, !IO),
+    io.write_char(' ', !IO),
+    mlds_output_local_var_name(BoxedLocalVarName, !IO),
+    mlds_output_type_suffix_no_size(Opts, PointedToType, !IO),
     io.write_string(";\n", !IO).
 
 :- func pointed_to_type(mlds_type) = mlds_type.
@@ -1593,15 +1594,14 @@ mlds_output_function_decls(Opts, Indent, ModuleName,
 :- pred mlds_output_global_var_decl_opts(mlds_to_c_opts::in, indent::in,
     mlds_module_name::in, mlds_global_var_defn::in, io::di, io::uo) is det.
 
-mlds_output_global_var_decl_opts(Opts, Indent, ModuleName, GlobalVarDefn,
+mlds_output_global_var_decl_opts(Opts, Indent, MLDS_ModuleName, GlobalVarDefn,
         !IO) :-
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
         Type, Initializer, _GCStmt),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
     mlds_output_global_var_decl_flags(Flags, forward_decl, !IO),
-    QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
-    mlds_output_global_var_decl(Opts, QualGlobalVarName, Type,
+    mlds_output_global_var_decl(Opts, MLDS_ModuleName, GlobalVarName, Type,
         get_initializer_array_size(Initializer), !IO),
     io.write_string(";\n", !IO).
 
@@ -2000,8 +2000,8 @@ mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
 :- pred mlds_output_global_var_defn(mlds_to_c_opts::in, indent::in, bool::in,
     mlds_module_name::in, mlds_global_var_defn::in, io::di, io::uo) is det.
 
-mlds_output_global_var_defn(Opts, Indent, Separate, ModuleName, GlobalVarDefn,
-        !IO) :-
+mlds_output_global_var_defn(Opts, Indent, Separate,
+        MLDS_ModuleName, GlobalVarDefn, !IO) :-
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
         Type, Initializer, GCStmt),
     (
@@ -2013,8 +2013,7 @@ mlds_output_global_var_defn(Opts, Indent, Separate, ModuleName, GlobalVarDefn,
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
     mlds_output_global_var_decl_flags(Flags, definition, !IO),
-    QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
-    mlds_output_global_var_decl(Opts, QualGlobalVarName, Type,
+    mlds_output_global_var_decl(Opts, MLDS_ModuleName, GlobalVarName, Type,
         get_initializer_array_size(Initializer), !IO),
     mlds_output_initializer(Opts, Type, Initializer, !IO),
     io.write_string(";\n", !IO),
@@ -2318,47 +2317,34 @@ mlds_output_enum_constant(Opts, Indent, EnumModuleName, FieldVarDefn, !IO) :-
 %
 
 :- pred mlds_output_global_var_decl(mlds_to_c_opts::in,
-    qual_global_var_name::in, mlds_type::in, initializer_array_size::in,
-    io::di, io::uo) is det.
+    mlds_module_name::in, mlds_global_var_name::in, mlds_type::in,
+    initializer_array_size::in, io::di, io::uo) is det.
 
-mlds_output_global_var_decl(Opts, GlobalVarName, Type, InitializerSize, !IO) :-
-    mlds_output_data_decl_ho(Opts,
-        mlds_output_type_prefix, mlds_output_data_decl_2(InitializerSize),
-        mlds_output_fully_qualified_global_var_name, GlobalVarName, Type, !IO).
+mlds_output_global_var_decl(Opts, MLDS_ModuleName, GlobalVarName, Type,
+        InitializerSize, !IO) :-
+    mlds_output_type_prefix(Opts, Type, !IO),
+    io.write_char(' ', !IO),
+    mlds_output_fully_qualified_global_var_name(
+        qual_global_var_name(MLDS_ModuleName, GlobalVarName), !IO),
+    mlds_output_type_suffix(Opts, Type, InitializerSize, !IO).
 
 :- pred mlds_output_local_var_decl(mlds_to_c_opts::in, mlds_local_var_name::in,
     mlds_type::in, initializer_array_size::in, io::di, io::uo) is det.
 
 mlds_output_local_var_decl(Opts, LocalVarName, Type, InitializerSize, !IO) :-
-    mlds_output_data_decl_ho(Opts,
-        mlds_output_type_prefix, mlds_output_data_decl_2(InitializerSize),
-        mlds_output_local_var_name, LocalVarName, Type, !IO).
+    mlds_output_type_prefix(Opts, Type, !IO),
+    io.write_char(' ', !IO),
+    mlds_output_local_var_name(LocalVarName, !IO),
+    mlds_output_type_suffix(Opts, Type, InitializerSize, !IO).
 
 :- pred mlds_output_field_var_decl(mlds_to_c_opts::in, qual_field_var_name::in,
     mlds_type::in, initializer_array_size::in, io::di, io::uo) is det.
 
 mlds_output_field_var_decl(Opts, FieldVarName, Type, InitializerSize, !IO) :-
-    mlds_output_data_decl_ho(Opts,
-        mlds_output_type_prefix, mlds_output_data_decl_2(InitializerSize),
-        mlds_output_fully_qualified_field_var_name, FieldVarName, Type, !IO).
-
-:- pred mlds_output_data_decl_2(initializer_array_size::in, mlds_to_c_opts::in,
-    mlds_type::in, io::di, io::uo) is det.
-
-mlds_output_data_decl_2(InitializerSize, Opts, Type, !IO) :-
-    mlds_output_type_suffix(Opts, Type, InitializerSize, !IO).
-
-:- pred mlds_output_data_decl_ho(mlds_to_c_opts::in,
-    output_type::in(output_type), output_type::in(output_type),
-    pred(T, io, io)::in(pred(in, di, uo) is det), T::in, mlds_type::in,
-    io::di, io::uo) is det.
-
-mlds_output_data_decl_ho(Opts, OutputPrefix, OutputSuffix, OutputVarName,
-        VarName, Type, !IO) :-
-    OutputPrefix(Opts, Type, !IO),
+    mlds_output_type_prefix(Opts, Type, !IO),
     io.write_char(' ', !IO),
-    OutputVarName(VarName, !IO),
-    OutputSuffix(Opts, Type, !IO).
+    mlds_output_fully_qualified_field_var_name(FieldVarName, !IO),
+    mlds_output_type_suffix(Opts, Type, InitializerSize, !IO).
 
 :- pred mlds_output_initializer(mlds_to_c_opts::in, mlds_type::in,
     mlds_initializer::in, io::di, io::uo) is det.
@@ -2599,8 +2585,10 @@ mlds_output_param(Opts, OutputPrefix, OutputSuffix, Indent,
     Arg = mlds_argument(LocalVarName, Type, GCStmt),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_data_decl_ho(Opts, OutputPrefix, OutputSuffix,
-        mlds_output_local_var_name, LocalVarName, Type, !IO),
+    OutputPrefix(Opts, Type, !IO),
+    io.write_char(' ', !IO),
+    mlds_output_local_var_name(LocalVarName, !IO),
+    OutputSuffix(Opts, Type, !IO),
     mlds_output_gc_statement(Opts, Indent, GCStmt, "\n", !IO).
 
 :- pred mlds_output_func_type_prefix(mlds_to_c_opts::in, mlds_func_params::in,
