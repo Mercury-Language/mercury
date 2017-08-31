@@ -353,30 +353,7 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C",
-    max_uint32 = (U::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    U = UINT32_MAX;
-").
-
-:- pragma foreign_proc("C#",
-    max_uint32 = (U::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    U = uint.MaxValue;
-").
-
-:- pragma foreign_proc("Java",
-    max_uint32 = (U::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    U = 0xffffffff;
-").
-
-:- pragma no_determinism_warning(max_uint32/0).
-max_uint32 = _ :-
-    sorry($module, "uint32.max_uint32/0 NYI for Erlang").
+max_uint32 = 4_294_967_295_u32.
 
 %---------------------------------------------------------------------------%
 

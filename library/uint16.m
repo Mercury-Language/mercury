@@ -177,6 +177,8 @@
     %
 :- func \ (uint16::in) = (uint16::uo) is det.
 
+:- func max_uint16 = uint16.
+
     % Convert a uint16 to a pretty_printer.doc for formatting.
     %
 :- func uint16_to_doc(uint16) = pretty_printer.doc.
@@ -323,6 +325,10 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1u16) \= 0u16.
+
+%---------------------------------------------------------------------------%
+
+max_uint16 = 65_535_u16.
 
 %---------------------------------------------------------------------------%
 

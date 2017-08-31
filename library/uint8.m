@@ -177,6 +177,8 @@
     %
 :- func \ (uint8::in) = (uint8::uo) is det.
 
+:- func max_uint8 = uint8.
+
     % Convert an uint8 to a pretty_printer.doc for formatting.
     %
 :- func uint8_to_doc(uint8) = pretty_printer.doc.
@@ -323,6 +325,10 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1u8) \= 0u8.
+
+%---------------------------------------------------------------------------%
+
+max_uint8 = 255_u8.
 
 %---------------------------------------------------------------------------%
 

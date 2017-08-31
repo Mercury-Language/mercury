@@ -193,6 +193,10 @@
     %
 :- func \ (int32::in) = (int32::uo) is det.
 
+:- func min_int32 = int32.
+
+:- func max_int32 = int32.
+
     % Convert a int32 to a pretty_printer.doc for formatting.
     %
 :- func int32_to_doc(int32) = pretty_printer.doc.
@@ -401,6 +405,12 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1i32) \= 0i32.
+
+%---------------------------------------------------------------------------%
+
+min_int32 = -2_147_483_648_i32.
+
+max_int32 = 2_147_483_647_i32.
 
 %---------------------------------------------------------------------------%
 
