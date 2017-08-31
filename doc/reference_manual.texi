@@ -312,10 +312,19 @@ A character-code literal is @samp{0'} followed by any single character.
 
 Decimal, binary, octal and hexadecimal literals may be optionally terminated by
 a suffix that indicates whether the literal represents a signed or unsigned
-integer.
-The suffix @samp{i} indicates that the literal is a signed integer.
-The suffix @samp{u} indicates that the literal is an unsigned integer.
-Integer literals without such a terminating suffix are considered to be signed.
+integer and what the size of that integer is.
+These suffixes are:
+@multitable {i_or_no_suffix} {Unsigned} {Implementation_defined}
+@headitem Suffix @tab Signedness @tab Size
+@item @code{i} or no suffix   @tab Signed   @tab Implementation-defined
+@item @code{i8}               @tab Signed   @tab 8-bit
+@item @code{i16}              @tab Signed   @tab 16-bit
+@item @code{i32}              @tab Signed   @tab 32-bit
+@item @code{u}                @tab Unsigned @tab Implementation-defined
+@item @code{u8}               @tab Unsigned @tab 8-bit
+@item @code{u16}              @tab Unsigned @tab 16-bit
+@item @code{u32}              @tab Unsigned @tab 32-bit
+@end multitable
 
 For decimal, binary, octal and hexadecimal literals, an arbitrary number of
 underscores (@samp{_}) may be inserted between the digits.  An arbitrary number
@@ -1991,9 +2000,11 @@ type classes (@pxref{Type classes}), and existentially quantified types
 Certain special types are builtin, or are defined in the Mercury library:
 
 @table @asis
-@item Primitive types: @code{char}, @code{int}, @code{uint}, @code{float}, @code{string}.
-There is a special syntax for constants of type @code{int}, @code{uint}, @code{float},
-and @code{string}.  (For @code{char}, the standard syntax suffices.)
+@item Primitive types: @code{char}, @code{int}, @code{int8}, @code{int16},
+@code{int32}, @code{uint}, @code{uint8}, @code{uint16}, @code{uint32},
+@code{float}, @code{string}.
+There is a special syntax for constants for all primitive types except
+@code{char}.  (For @code{char}, the standard syntax suffices.)
 
 @item Predicate types: @code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
 @itemx Function types: @code{(func) = T}, @code{func(T1) = T},
@@ -2597,8 +2608,8 @@ Furthermore, different platforms often have their own natural orderings
 which are not necessarily consistent with each other.
 As such, the standard ordering for most types is not fully defined.
 
-For the primitive types @code{int} and @code{uint} the standard ordering is the
-usual numerical ordering.
+For the primitive integer types, the standard ordering is the usual numerical
+ordering.
 Implementations should reject code containing overflowing integer literals.
 
 For the primitive type @code{float},
@@ -5249,10 +5260,8 @@ For the low-level C backend, e.g. the asm_fast grades, the type of this
 variable will be @code{MR_Word}.
 For the high-level C backend, e.g. the hlc grades, the type of this variable
 depends upon the Mercury type of the mutable.
-For mutables of the Mercury types @code{int}, @code{uint}, @code{float},
-@code{char} and @code{string}, the corresponding C types will be
-@code{MR_Integer}, @code{MR_Unsigned}, @code{MR_Float}, @code{MR_Char} and
-@code{MR_String} respectively.
+For mutables of a Mercury primitive type, the corresponding C type is given by
+the mapping in @ref{C data passing conventions}.
 For mutables of any other type the corresponding C type will be @code{MR_Word}.
 
 This attribute is not currently implemented for the non-C backends.
@@ -6801,7 +6810,7 @@ then the behaviour is undefined --- your program may misbehave or crash.)
 
 If there are both Mercury definitions and foreign_proc definitions for 
 a procedure and/or foreign_proc definitions for different languages,
-it is implementation defined which definition is used.
+it is implementation-defined which definition is used.
 
 For pure and semipure procedures, the declarative semantics of the foreign_proc
 definitions must be the same as that of the Mercury code.
@@ -7136,13 +7145,13 @@ The Mercury primitive types are mapped to the following C types:
 @multitable {Mercury_type} {MR_Unsigned}
 @headitem Mercury type @tab C type
   @item @code{int}    @tab @code{MR_Integer}
-@c  @item @code{int8}   @tab @code{int8_t}
-@c  @item @code{int16}  @tab @code{int16_t}
-@c  @item @code{int32}  @tab @code{int32_t}
+  @item @code{int8}   @tab @code{int8_t}
+  @item @code{int16}  @tab @code{int16_t}
+  @item @code{int32}  @tab @code{int32_t}
   @item @code{uint}   @tab @code{MR_Unsigned}
-@c  @item @code{uint8}   @tab @code{uint8_t}
-@c  @item @code{uint16}  @tab @code{uint16_t}
-@c  @item @code{uint32}  @tab @code{uint32_t}
+  @item @code{uint8}  @tab @code{uint8_t}
+  @item @code{uint16} @tab @code{uint16_t}
+  @item @code{uint32} @tab @code{uint32_t}
   @item @code{float}  @tab @code{MR_Float}
   @item @code{char}   @tab @code{MR_Char}
   @item @code{string} @tab @code{MR_String}
@@ -7233,13 +7242,13 @@ Infrastructure (CLI) and C# types:
 @multitable {Mercury_type} {System_String} {double}
   @headitem Mercury type @tab CLI type @tab C# type
   @item @code{int}    @tab @code{System.Int32}  @tab @code{int}
-@c  @item @code{int8}   @tab @code{System.Int8}   @tab @code{sbyte}
-@c  @item @code{int16}  @tab @code{System.Int16}  @tab @code{short}
-@c  @item @code{int32}  @tab @code{System.Int32}  @tab @code{int}
+  @item @code{int8}   @tab @code{System.Int8}   @tab @code{sbyte}
+  @item @code{int16}  @tab @code{System.Int16}  @tab @code{short}
+  @item @code{int32}  @tab @code{System.Int32}  @tab @code{int}
   @item @code{uint}   @tab @code{System.UInt32} @tab @code{uint}
-@c  @item @code{uint8}   @tab @code{System.UInt8}   @tab @code{byte}
-@c  @item @code{uint16}  @tab @code{System.UInt16}  @tab @code{ushort}
-@c  @item @code{uint32}  @tab @code{System.UInt32}  @tab @code{uint}
+  @item @code{uint8}  @tab @code{System.UInt8}  @tab @code{byte}
+  @item @code{uint16} @tab @code{System.UInt16} @tab @code{ushort}
+  @item @code{uint32} @tab @code{System.UInt32} @tab @code{uint}
   @item @code{float}  @tab @code{System.Double} @tab @code{double}
   @item @code{char}   @tab @code{System.Int32}  @tab @code{int}
   @item @code{string} @tab @code{System.String} @tab @code{string}
@@ -7362,13 +7371,13 @@ The Mercury primitive types are mapped to the following Java types:
 @multitable {Mercury_type} {java_lang_String}
   @headitem Mercury type @tab Java type
   @item @code{int}    @tab @code{int}
-@c  @item @code{int8}   @tab @code{byte}
-@c  @item @code{int16}  @tab @code{short}
-@c  @item @code{int32}  @tab @code{int}
+  @item @code{int8}   @tab @code{byte}
+  @item @code{int16}  @tab @code{short}
+  @item @code{int32}  @tab @code{int}
   @item @code{uint}   @tab @code{int}
-@c  @item @code{uint8}   @tab @code{byte}
-@c  @item @code{uint16}  @tab @code{short}
-@c  @item @code{uint32}  @tab @code{int}
+  @item @code{uint8}  @tab @code{byte}
+  @item @code{uint16} @tab @code{short}
+  @item @code{uint32} @tab @code{int}
   @item @code{float}  @tab @code{double}
   @item @code{char}   @tab @code{int}
   @item @code{string} @tab @code{java.lang.String}
