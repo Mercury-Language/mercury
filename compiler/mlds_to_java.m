@@ -3568,12 +3568,16 @@ output_switch_default_for_java(Info, Indent, FuncInfo, Context, Default,
 output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO) :-
     (
         AtomicStmt = comment(Comment),
-        % XXX We should escape any "*/"'s in the Comment. We should also split
-        % the comment into lines and indent each line appropriately.
-        output_n_indents(Indent, !IO),
-        io.write_string("/* ", !IO),
-        io.write_string(Comment, !IO),
-        io.write_string(" */\n", !IO)
+        ( if Comment = "" then
+            io.nl(!IO)
+        else
+            % XXX We should escape any "*/"'s in the Comment. We should also
+            % split the comment into lines and indent each line appropriately.
+            output_n_indents(Indent, !IO),
+            io.write_string("/* ", !IO),
+            io.write_string(Comment, !IO),
+            io.write_string(" */\n", !IO)
+        )
     ;
         AtomicStmt = assign(Lval, Rval),
         output_n_indents(Indent, !IO),

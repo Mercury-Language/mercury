@@ -662,6 +662,8 @@
 
     ;       gcc_local_labels
     ;       prefer_switch
+    ;       prefer_while_loop_over_jump_self
+    ;       prefer_while_loop_over_jump_mutual
     ;       opt_no_return_calls
 
     % Optimization Options
@@ -816,7 +818,8 @@
 
     %   - MLDS
     ;       optimize_tailcalls
-    ;       optimize_tailcalls_codegen      % XXX bootstrapping option
+    ;       optimize_tailcalls_codegen          % XXX bootstrapping option
+    ;       optimize_tailcalls_codegen_mutual   % XXX bootstrapping option
     ;       optimize_initializations
     ;       eliminate_local_vars
     ;       generate_trail_ops_inline
@@ -1544,6 +1547,8 @@ option_defaults_2(code_gen_option, [
     fact_table_hash_percent_full        -   int(90),
     gcc_local_labels                    -   bool(no),
     prefer_switch                       -   bool(yes),
+    prefer_while_loop_over_jump_self    -   bool(yes),
+    prefer_while_loop_over_jump_mutual  -   bool(no),
     opt_no_return_calls                 -   bool(yes)
 ]).
 option_defaults_2(special_optimization_option, [
@@ -1710,6 +1715,7 @@ option_defaults_2(optimization_option, [
     % MLDS
     optimize_tailcalls                  -   bool(no),
     optimize_tailcalls_codegen          -   bool(yes),
+    optimize_tailcalls_codegen_mutual   -   bool(yes),
     optimize_initializations            -   bool(no),
     eliminate_local_vars                -   bool(no),
     generate_trail_ops_inline           -   bool(yes),
@@ -2464,6 +2470,10 @@ long_option("fact-table-hash-percent-full",
                     fact_table_hash_percent_full).
 long_option("gcc-local-labels",     gcc_local_labels).
 long_option("prefer-switch",        prefer_switch).
+long_option("prefer-while-loop-over-jump-self",
+                                    prefer_while_loop_over_jump_self).
+long_option("prefer-while-loop-over-jump-mutual",
+                                    prefer_while_loop_over_jump_mutual).
 long_option("opt-no-return-calls",  opt_no_return_calls).
 
 % optimization options
@@ -2694,6 +2704,10 @@ long_option("optimize-tailcalls",   optimize_tailcalls).
 long_option("optimise-tailcalls",   optimize_tailcalls).
 long_option("optimize-tailcalls-codegen",   optimize_tailcalls_codegen).
 long_option("optimise-tailcalls-codegen",   optimize_tailcalls_codegen).
+long_option("optimize-tailcalls-codegen-mutual",
+                                    optimize_tailcalls_codegen_mutual).
+long_option("optimise-tailcalls-codegen-mutual",
+                                    optimize_tailcalls_codegen_mutual).
 long_option("optimize-initializations", optimize_initializations).
 long_option("optimise-initializations", optimize_initializations).
 long_option("eliminate-local-vars", eliminate_local_vars).
@@ -5139,6 +5153,23 @@ options_help_code_generation -->
 %       "\tGenerate code using computed gotos rather than switches.",
 %       "\tThis makes the generated code less readable, but potentially",
 %       "\tslightly more efficient.",
+%       "\tThis option has no effect unless the `--high-level-code' option",
+%       "\tis enabled.",
+% These options are for implementors only, for use in testing and benchmarking.
+%       "--prefer-while-loop-over-jump-self",
+%       "\tGenerate code for tail-recursive single procedures using an",
+%       "\tinfinite while loop, with tail calls being done by a continue.",
+%       "\tThe alternative is a label at the start of the procedure,",
+%       "\twith tail calls being done by a jump to the label.",
+%       "\tThis option has no effect unless the `--high-level-code' option",
+%       "\tis enabled.",
+%       "--prefer-while-loop-over-jump-mutual",
+%       "\tGenerate code for tail-recursive-SCCs using an infinite while loop",
+%       "\twrapped around a switch, with one switch arm for each procedure",
+%       "\tin the TSCC, with tail calls being done by setting the value of",
+%       "\tthe switched-on variable and a continue. The alternative is",
+%       "\ta simple label before the code of each procedure, with tail calls",
+%       "\tbeing done by a jump to the label.",
 %       "\tThis option has no effect unless the `--high-level-code' option",
 %       "\tis enabled.",
 % This optimization is for implementors only. Turning this option on provides

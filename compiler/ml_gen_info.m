@@ -31,6 +31,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module counter.
 :- import_module list.
 :- import_module map.
 :- import_module set.
@@ -205,22 +206,17 @@
 :- pred ml_gen_info_add_env_var_name(string::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-:- type tail_rec_mechanism
-    --->    tail_rec_via_while_loop
-            % The procedure body is wrapped in a "while (true)" loop,
-            % tail recursive calls are converted to "continue" statements,
-            % and the normal exit at the end of the procedure body
-            % is done by a "break".
+:- type have_we_done_self_tail_rec
+    --->    have_not_done_self_tail_rec
+    ;       have_done_self_tail_rec.
 
-    ;       tail_rec_via_start_label(string).
-            % The procedure body starts with a label with the given name,
-            % tail recursive calls are converted to "goto label" statements,
-            % and the normal exit at the end of the procedure body
-            % requires no special handling.
+:- type have_we_done_mutual_tail_rec
+    --->    have_not_done_mutual_tail_rec
+    ;       have_done_mutual_tail_rec.
 
-:- type have_we_done_tail_rec
-    --->    have_not_done_tail_rec
-    ;       have_done_tail_rec.
+:- type have_we_done_nontail_rec
+    --->    have_not_done_nontail_rec
+    ;       have_done_nontail_rec.
 
     % This map should have an entry for each procedure in the TSCC.
     % The set of keys in the map won't change and neither will
@@ -232,36 +228,153 @@
 :- type tail_rec_target_map == map(pred_proc_id, tail_rec_target_info).
 :- type tail_rec_target_info
     --->    tail_rec_target_info(
-                % The target at the start of the procedure.
-                tail_rec_mechanism,
+                % The identifying small sequence number of this procedure
+                % in its TSCC. These numbers are assigned sequentially
+                % starting at 1, and are wrapped up in function symbol
+                % to distinguish them from other integers.
+                trti_id                     :: proc_id_in_tscc,
 
                 % The list of the *input* arguments of the procedure.
-                list(mlds_argument),
+                trti_input_args             :: list(mlds_argument),
 
-                % Have we generated a jump to that target?
-                have_we_done_tail_rec
+                % The next three fields say whether we have called
+                % this procedure in various ways. They are updated as
+                % we compile *all* the procedures in the TSCC.
+
+                % In a tail call from itself?
+                trti_done_self_tail_rec     :: have_we_done_self_tail_rec,
+
+                % In a tail call from another procedure in the TSCC?
+                trti_done_mutual_tail_rec   :: have_we_done_mutual_tail_rec,
+
+                % In a NONtail call, from anywhere in the TSCC?
+                trti_done_nontail_rec       :: have_we_done_nontail_rec
             ).
+
+:- type tail_rec_loop_kind
+    --->    tail_rec_loop_while_continue
+    ;       tail_rec_loop_label_goto.
+
+:- type tscc_kind
+    --->    tscc_self_rec_only
+    ;       tscc_self_and_mutual_rec.
 
 :- type tail_rec_info
     --->    tail_rec_info(
-                tri_target_map      :: tail_rec_target_map,
-                tri_warn_params     :: warn_non_tail_rec_params,
-                tri_msgs            :: list(error_spec)
+                % If a procedure has an entry in tri_target_map, then
+                % calls to that procedure should look at the corresponding
+                % value. They should update the field that says whether
+                % the actual kind of call has occurred, and they can turn
+                % tail calls into assignments to the trti_input_args,
+                % followed by a transfer of control to the start of the callee.
+                tri_target_map              :: tail_rec_target_map,
+
+                % These two fields say how that transfer of control should be
+                % done. The tri_loop_kind field says whether the procedure body
+                % should start with a label, so that tail calls are a goto
+                % to that label, or whether the procedure body or bodies
+                % are wrapped up in an infinite while loop, with tail calls
+                % jumping back to its start via a "continue" statement.
+                % The tri_tscc_kind field says whether the loop contains
+                % just procedure body, or several. In the latter case,
+                % each procedure will either have its own label,
+                % or the body of the while loop will be a switch on
+                % lvnc_tscc_proc_selector, with each procedure body
+                % being one of the cases of the switch. The id of the label,
+                % or the value of the selector, is given by the trti_id field
+                % of the callee in tri_target_map.
+                tri_tscc_kind               :: tscc_kind,
+                tri_loop_kind               :: tail_rec_loop_kind,
+
+                % The parameter settings governing the generation of warning
+                % messages about recursive calls that are not *tail* recursive,
+                % as set by the option values that apply to this compiler
+                % invocation. Used only to set the value of the next field.
+                tri_default_warn_params     :: warn_non_tail_rec_params,
+
+                % The parameter settings governing the generation of warning
+                % messages about recursive calls that are not *tail* recursive,
+                % as they apply to the procedure whose MLDS code is now being
+                % generated. Set from tri_default_warn_params, but may be
+                % overridden by procedure-specific pragmas.
+                tri_proc_warn_params        :: warn_non_tail_rec_params,
+
+                % The warning messages we have generated.
+                tri_msgs                    :: list(error_spec)
             ).
+
+:- func generate_tail_rec_start_label(tscc_kind, proc_id_in_tscc) = mlds_label.
 
 %---------------------------------------------------------------------------%
 %
-% Initialize the ml_gen_info.
+% Initialize the ml_gen_info, which contains the state of the code generator
+% while it generates MLDS code for a HLDS procedure.
 %
+% When the HLDS procedure is part of a TSCC of several mutually-tail-recursive
+% procedures, we bundle we generate for each procedure into a single piece of
+% code for *each* entry procedure of the TSCC. To help prevent accidental name
+% collisions between the compiler-generated local variables of the different
+% procedures, we get those procedures to use non-overlapping sets of sequence
+% numbers in the names of those compiler-generated variables, by
+%
+% - creating an initial set of counters (the sources of those sequence numbers)
+%   before starting to generate code for a TSCC, and
+% - threading the values of those counters from one procedure to the next,
+%   by calling ml_gen_info_final to pick up the values of those counters
+%   after code generation is finished for one procedure, and passing them
+%   to ml_gen_info_init when starting to generate code for the next procedure.
+%
+% The ml_gen_tscc_info structure contains not just these counters, but also
+% information about tail recursion. By definition, the procedures in a TSCC
+% contain tail recursive calls to the same set of procedures (the procedures
+% of the TSCC), but TSCCs are computed from calls in the HLDS. A call that is
+% a tail call in the HLDS is sometimes not a tail call in the MLDS, which can
+% happen if making the call a tail call would leave a dangling reference.
+% We therefore need to record whether each procedure in the TSCC has an
+% *MLDS* tail call generated to it from any of the *other* procedures
+% in the TSCC, because if it doesn't, then its MLDS code isn't actually
+% mutually-tail-recursive, and it should be handled as such. (This is because
+% the code we generate for only *self*-tail-recursive procedures has lower
+% overhead than the code we generate for *mutually*-tail-recursive procedures.)
+
+:- type ml_gen_tscc_info
+    --->    ml_gen_tscc_info(
+                mgti_func_label_counter     :: counter,
+                mgti_label_counter          :: counter,
+                mgti_aux_var_counter        :: counter,
+                mgti_cond_var_counter       :: counter,
+                mgti_conv_var_counter       :: counter,
+                mgti_tail_rec_info          :: tail_rec_info
+            ).
+
+:- func init_ml_gen_tscc_info(module_info, tail_rec_target_map, tscc_kind)
+    = ml_gen_tscc_info.
 
     % Initialize the ml_gen_info, so that it is ready for generating code
-    % for the given procedure. The last argument records the persistent
+    % for the given procedure. The second last argument records the persistent
     % information accumulated by the code generator so far during the
-    % processing of previous procedures.
+    % processing of previous procedures. The role of the last argument
+    % is described above.
     %
 :- func ml_gen_info_init(module_info, mlds_target_lang, ml_const_struct_map,
-    pred_proc_id, proc_info, tail_rec_target_map, ml_global_data)
-    = ml_gen_info.
+    pred_proc_id, proc_info, ml_global_data, ml_gen_tscc_info) = ml_gen_info.
+
+    % ml_gen_info_final(Info, EnvVarNames, ClosureWrapperDefns, GlobalData,
+    %   TsccInfo):
+    %
+    % Return
+    %
+    % - the values of those fields that are actually part of the MLDS
+    %   structure we are generating (EnvVarNames, ClosureWrapperDefns and
+    %   GlobalData),
+    % - the values of the counters that our caller may need when
+    %   initializating the *next* ml_gen_info (in TsccInfo),
+    % - the values of the fields that the code generator needs
+    %   to decide what code to generate for this procedure (in TsccInfo).
+    %
+:- pred ml_gen_info_final(ml_gen_info::in, set(string)::out,
+    list(mlds_function_defn)::out, ml_global_data::out, ml_gen_tscc_info::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -324,10 +437,11 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module libs.options.
+:- import_module ml_backend.ml_target_util.
 
-:- import_module counter.
 :- import_module int.
 :- import_module stack.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -430,6 +544,18 @@ ml_gen_info_add_env_var_name(Name, !Info) :-
     ml_gen_info_set_env_var_names(EnvVarNames, !Info).
 
 %---------------------------------------------------------------------------%
+
+generate_tail_rec_start_label(TsccKind, Id) = Label :-
+    (
+        TsccKind = tscc_self_rec_only,
+        Label = "top_of_proc"
+    ;
+        TsccKind = tscc_self_and_mutual_rec,
+        Id = proc_id_in_tscc(IdNum),
+        Label = string.format("top_of_proc_%d", [i(IdNum)])
+    ).
+
+%---------------------------------------------------------------------------%
 %
 % The definition of the `ml_gen_info' ADT.
 %
@@ -498,6 +624,7 @@ ml_gen_info_add_env_var_name(Name, !Info) :-
 
                 % The map of the constant ground structures generated by
                 % ml_code_gen before we start generating code for procedures. 
+                % Read-only.
 /*  8 */        mgri_const_struct_map   :: map(int, ml_ground_term),
 
                 % Normally, we convert each HLDS variable to its own MLDS lval
@@ -534,6 +661,8 @@ ml_gen_info_add_env_var_name(Name, !Info) :-
                 % would then give us two separate assignments to follow with
                 % two separate signal operations for two separate classes
                 % of consumers.
+                %
+                % Writeable.
 /*  9 */        mgri_var_lvals          :: map(prog_var, mlds_lval),
 
                 % The set of used environment variables. Writeable.
@@ -546,12 +675,15 @@ ml_gen_info_add_env_var_name(Name, !Info) :-
                 % tail recursion optimization, this maps the label of that
                 % procedure to (a) the information we need to generate
                 % the code to jump to the start of that procedure, and
-                % (b) a record of whether we *have* generated such a jump.
+                % (b) a record of whether we *have* generated (either tail-
+                % or nontail-) calls to this procedure.
                 %
                 % This field also contains the information we need to generate
                 % the right set of warnings for calls marked as tail recursive
                 % by mark_tail_calls.m but which we cannot actually turn
                 % into tail calls, and the warnings so generated.
+                %
+                % Writeable.
                 mgri_tail_rec_info      :: tail_rec_info
             ).
 
@@ -598,8 +730,59 @@ ml_gen_info_add_env_var_name(Name, !Info) :-
 % 22    352575         0         2   0.00%      disabled_warnings
 % 23     77250    341887     45872  88.17%      used_succeeded_var
 
+%---------------------------------------------------------------------------%
+
+:- pragma inline(init_ml_gen_tscc_info/3).
+
+init_ml_gen_tscc_info(ModuleInfo, TailRecTargetMap, TsccKind) = TsccInfo :-
+    % XXX FuncLabelCounter needs to start at 1 rather than 0,
+    % otherwise the transformation for adding the shadow stack
+    % for accurate garbage collection does not work properly,
+    % and we will end up generating two C functions with the same name
+    % (see ml_elim_nested.gen_gc_trace_func/8 for details).
+    counter.init(1, FuncLabelCounter),
+    counter.init(0, LabelCounter),
+    counter.init(0, AuxVarCounter),
+    counter.init(0, CondVarCounter),
+    counter.init(0, ConvVarCounter),
+
+    module_info_get_globals(ModuleInfo, Globals),
+    SupportsBreakContinue =
+        globals_target_supports_break_and_continue(Globals),
+    (
+        TsccKind = tscc_self_rec_only,
+        PreferBreakContinueOption = prefer_while_loop_over_jump_self
+    ;
+        TsccKind = tscc_self_and_mutual_rec,
+        PreferBreakContinueOption = prefer_while_loop_over_jump_mutual
+    ),
+    globals.lookup_bool_option(Globals, PreferBreakContinueOption,
+        PreferBreakContinue),
+    ( if
+        SupportsBreakContinue = yes,
+        PreferBreakContinue = yes
+    then
+        % If we find a tail call, we will wrap the function body inside
+        % `while (true) { ... break; }', and so the tail call can just
+        % do a `continue', which will continue the next iteration
+        % of the loop.
+        LoopKind = tail_rec_loop_while_continue
+    else
+        % If we find a tail call, we will insert a label at the start
+        % of the function, and so the tail call can just goto
+        % to that label.
+        LoopKind = tail_rec_loop_label_goto
+    ),
+    get_default_warn_parms(Globals, DefaultWarnParams),
+    Specs0 = [],
+    TailRecInfo = tail_rec_info(TailRecTargetMap, TsccKind, LoopKind,
+        DefaultWarnParams, DefaultWarnParams, Specs0),
+
+    TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
+        AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo).
+
 ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
-        TailRecTargetMap, GlobalData) = Info :-
+        GlobalData, TsccInfo) = Info :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     globals.get_gc_method(Globals, GC),
@@ -611,16 +794,15 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
     ByRefOutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
         VarTypes),
 
-    % XXX This needs to start at 1 rather than 0 otherwise the transformation
-    % for adding the shadow stack for accurate garbage collection does not work
-    % properly and we will end up generating two C functions with the same
-    % name (see ml_elim_nested.gen_gc_trace_func/8 for details).
-    %
-    counter.init(1, FuncLabelCounter),
-    counter.init(0, LabelCounter),
-    counter.init(0, AuxVarCounter),
-    counter.init(0, CondVarCounter),
-    counter.init(0, ConvVarCounter),
+    TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
+        AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo0),
+    TailRecInfo0 = tail_rec_info(TailRecTargetMap, TsccKind, LoopKind,
+        DefaultWarnParams, _, Specs0),
+    maybe_override_warn_params_for_proc(ProcInfo, DefaultWarnParams,
+        ProcWarnParams),
+    TailRecInfo = tail_rec_info(TailRecTargetMap, TsccKind, LoopKind,
+        DefaultWarnParams, ProcWarnParams, Specs0),
+
     map.init(ConstVarMap),
     stack.init(SuccContStack),
     map.init(VarLvals),
@@ -628,11 +810,6 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
     set.init(EnvVarNames),
     set.init(DisabledWarnings),
     UsedSucceededVar = no,
-    get_default_warn_parms(Globals, DefaultWarnParams),
-    maybe_override_warn_params_for_proc(ProcInfo, DefaultWarnParams,
-        ProcWarnParams),
-    Specs0 = [],
-    TailRecInfo = tail_rec_info(TailRecTargetMap, ProcWarnParams, Specs0),
 
     RareInfo = ml_gen_rare_info(
         ModuleInfo,
@@ -665,6 +842,44 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
         RareInfo,
         SubInfo
     ).
+
+ml_gen_info_final(Info, EnvVarNames, ClosureWrapperDefns, GlobalData,
+        TsccInfo) :-
+    Info = ml_gen_info(
+        _ConstVarMap,
+        FuncLabelCounter,
+        ConvVarCounter,
+        _UsedSucceededVar,
+        ClosureWrapperDefns,
+        GlobalData,
+        RareInfo,
+        SubInfo
+    ),
+    RareInfo = ml_gen_rare_info(
+        _ModuleInfo,
+        _PredProcId,
+        _VarSet,
+        _VarTypes,
+        _HighLevelData,
+        _Target,
+        _GC,
+        _ConstStructMap,
+        _VarLvals,
+        EnvVarNames,
+        _DisabledWarnings,
+        TailRecInfo
+    ),
+    SubInfo = ml_gen_sub_info(
+        _ByRefOutputVars,
+        LabelCounter,
+        AuxVarCounter,
+        CondVarCounter,
+        _SuccContStack
+    ),
+    TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
+        AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo).
+
+%---------------------------------------------------------------------------%
 
 :- pred ml_gen_info_get_func_counter(ml_gen_info::in, counter::out) is det.
 :- pred ml_gen_info_get_conv_var_counter(ml_gen_info::in, counter::out) is det.

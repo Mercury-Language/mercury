@@ -10,10 +10,11 @@
 % Main author: zs.
 %
 % This module's functions are intended to generate short descriptions
-% of parts of the HLDS for use in debugging messages. Whereas the code
-% in hlds_out.m is intended to completely describe a given construct,
-% the code here is intended to orient programmers about what part of the HLDS
-% is currently being processed.
+% of parts of the HLDS for use in debugging messages, and as comments
+% in generated code. Whereas the code in hlds_out.m is intended to
+% completely describe a given construct, the code here is intended
+% to orient programmers about what part of the HLDS is currently
+% being processed.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -23,6 +24,7 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -47,12 +49,17 @@
     %
 :- func describe_var(prog_varset, prog_var) = string.
 
+    % Return a description of the given procedure of the given predicate.
+    %
+:- func describe_proc_from_id(module_info, pred_proc_id) = string.
+:- func describe_proc(pred_info, proc_id) = string.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_out.
@@ -175,6 +182,8 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
     Line = term.context_line(Context),
     FullDesc = Desc ++ "@" ++ int_to_string(Line).
 
+%---------------------------------------------------------------------------%
+
 describe_args(_, []) = "".
 describe_args(VarSet, [HeadVar | TailVars]) =
     "(" ++
@@ -182,13 +191,47 @@ describe_args(VarSet, [HeadVar | TailVars]) =
     string.append_list(list.map(describe_comma_var(VarSet), TailVars)) ++
     ")".
 
-describe_var(VarSet, Var) =
-    mercury_var_to_string(VarSet, print_name_and_num, Var).
-
 :- func describe_comma_var(prog_varset, prog_var) = string.
 
 describe_comma_var(VarSet, Var) =
     ", " ++ mercury_var_to_string(VarSet, print_name_and_num, Var).
+
+%---------------------------------------------------------------------------%
+
+describe_var(VarSet, Var) =
+    mercury_var_to_string(VarSet, print_name_and_num, Var).
+
+%---------------------------------------------------------------------------%
+
+describe_proc_from_id(ModuleInfo, PredProcId) = ProcDesc :-
+    PredProcId = proc(PredId, ProcId),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcDesc = describe_proc(PredInfo, ProcId).
+
+describe_proc(PredInfo, ProcId) = ProcDesc :-
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_origin(PredInfo, Origin),
+    ( if Origin = origin_special_pred(SpecialId, TypeCtor) then
+        FullPredName = string.format("%s_for_%s",
+            [s(get_special_pred_id_generic_name(SpecialId)),
+            s(arg_type_ctor_name_to_string(TypeCtor))])
+    else
+        FullPredName = PredName
+    ),
+    ProcDesc = string.format("%s %s.%s/%d-%d",
+        [s(pred_or_func_to_str(PredOrFunc)),
+        s(sym_name_to_string(ModuleName)),
+        s(FullPredName), i(Arity), i(proc_id_to_int(ProcId))]).
+
+:- func arg_type_ctor_name_to_string(type_ctor) = string.
+
+arg_type_ctor_name_to_string(TypeCtor) = TypeCtorStr :-
+    TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+    TypeCtorStr = string.format("%s_%d",
+        [s(sym_name_to_string(TypeCtorSymName)), i(TypeCtorArity)]).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_desc.

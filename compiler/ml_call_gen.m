@@ -383,38 +383,74 @@ ml_gen_plain_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
 
         ml_gen_info_get_module_name(!.Info, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        TailRecTargetInfo0 = tail_rec_target_info(TailRecMechanism,
-            FuncInputArgs, HaveDone0),
+        TailRecTargetInfo0 = tail_rec_target_info(IdInTSCC, FuncInputArgs,
+            HaveDoneSelfTailRec0, HaveDoneMutualTailRec0, HaveDoneNonTailRec),
         tail_rec_call_assign_input_args(MLDS_ModuleName, Context,
-            FuncInputArgs, InputRvals,
-            InitStmts, AssignStmts, TempDefns),
-
-        LocalVarDefns = TempDefns,
+            FuncInputArgs, InputRvals, InitStmts, AssignStmts, LocalVarDefns),
         FuncDefns = [],
+        LoopKind = TailRecInfo0 ^ tri_loop_kind,
+        TsccKind = TailRecInfo0 ^ tri_tscc_kind,
         (
-            TailRecMechanism = tail_rec_via_while_loop,
+            LoopKind = tail_rec_loop_while_continue,
+            (
+                TsccKind = tscc_self_rec_only,
+                SetSelectorStmts = []
+            ;
+                TsccKind = tscc_self_and_mutual_rec,
+                IdInTSCC = proc_id_in_tscc(TsccProcNum),
+                SetSelectorStmt = ml_stmt_atomic(
+                    assign(
+                        ml_local_var(lvn_comp_var(lvnc_tscc_proc_selector),
+                            ml_int_type),
+                        ml_const(mlconst_int(TsccProcNum))),
+                    Context),
+                SetSelectorStmts = [SetSelectorStmt]
+            ),
             GotoTarget = goto_continue
         ;
-            TailRecMechanism = tail_rec_via_start_label(StartLabel),
+            LoopKind = tail_rec_loop_label_goto,
+            SetSelectorStmts = [],
+            StartLabel = generate_tail_rec_start_label(TsccKind, IdInTSCC),
             GotoTarget = goto_label(StartLabel)
         ),
         GotoStmt = ml_stmt_goto(GotoTarget, Context),
-        Stmts = [CommentStmt] ++ InitStmts ++ AssignStmts ++ [GotoStmt],
+        Stmts = [CommentStmt] ++ InitStmts ++ AssignStmts ++
+            SetSelectorStmts ++ [GotoStmt],
 
-        (
-            HaveDone0 = have_done_tail_rec
-        ;
-            HaveDone0 = have_not_done_tail_rec,
-            TailRecTargetInfo = tail_rec_target_info(TailRecMechanism,
-                FuncInputArgs, have_done_tail_rec),
-            map.det_update(PredProcId, TailRecTargetInfo,
-                TailRecMap0, TailRecMap),
-            TailRecInfo = TailRecInfo0 ^ tri_target_map := TailRecMap,
-            ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+        ml_gen_info_get_pred_proc_id(!.Info, proc(CurPredId, CurProcId)),
+        ( if
+            PredId = CurPredId,
+            ProcId = CurProcId
+        then
+            (
+                HaveDoneSelfTailRec0 = have_done_self_tail_rec
+            ;
+                HaveDoneSelfTailRec0 = have_not_done_self_tail_rec,
+                TailRecTargetInfo = tail_rec_target_info(IdInTSCC,
+                    FuncInputArgs, have_done_self_tail_rec,
+                    HaveDoneMutualTailRec0, HaveDoneNonTailRec),
+                map.det_update(PredProcId, TailRecTargetInfo,
+                    TailRecMap0, TailRecMap),
+                TailRecInfo = TailRecInfo0 ^ tri_target_map := TailRecMap,
+                ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+            )
+        else
+            (
+                HaveDoneMutualTailRec0 = have_done_mutual_tail_rec
+            ;
+                HaveDoneMutualTailRec0 = have_not_done_mutual_tail_rec,
+                TailRecTargetInfo = tail_rec_target_info(IdInTSCC,
+                    FuncInputArgs, HaveDoneSelfTailRec0,
+                    have_done_mutual_tail_rec, HaveDoneNonTailRec),
+                map.det_update(PredProcId, TailRecTargetInfo,
+                    TailRecMap0, TailRecMap),
+                TailRecInfo = TailRecInfo0 ^ tri_target_map := TailRecMap,
+                ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+            )
         )
     else
         ml_gen_info_get_pred_proc_id(!.Info, CallerPredProcId),
-        WarnParams = TailRecInfo0 ^ tri_warn_params,
+        WarnParams = TailRecInfo0 ^ tri_proc_warn_params,
         Specs0 = TailRecInfo0 ^ tri_msgs,
         maybe_report_nontail_recursive_call(ModuleInfo,
             CallerPredProcId, PredProcId, Context, WarnParams, Specs0, Specs),
@@ -529,6 +565,20 @@ ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
         LocalVarDefns = ConvOutputDefns ++ CallAndConvOutputLocalVarDefns,
         FuncDefns = CallAndConvOutputFuncDefns,
         Stmts = CallAndConvOutputStmts
+    ),
+
+    % If this is a non-tail call to a procedure in the current TSCC (if any),
+    % we need to mark the callee as being an entry point.
+    ml_gen_info_get_tail_rec_info(!.Info, TailRecInfo0),
+    TargetMap0 = TailRecInfo0 ^ tri_target_map,
+    ( if map.search(TargetMap0, PredProcId, TargetInfo0) then
+        TargetInfo = TargetInfo0 ^ trti_done_nontail_rec
+            := have_done_nontail_rec,
+        map.det_update(PredProcId, TargetInfo, TargetMap0, TargetMap),
+        TailRecInfo = TailRecInfo0 ^ tri_target_map := TargetMap,
+        ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+    else
+        true
     ).
 
     % Generate an rval containing the address of the specified procedure.

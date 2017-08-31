@@ -78,6 +78,7 @@
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
@@ -107,7 +108,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
@@ -1346,38 +1346,9 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
 %---------------------------------------------------------------------------%
 
-:- type type_giving_arg
-    --->    last_arg
-    ;       last_but_one_arg.
-
 push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    ModuleName = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    pred_info_get_origin(PredInfo, Origin),
-    ( if Origin = origin_special_pred(SpecialId, TypeCtor) then
-        find_arg_type_ctor_name(TypeCtor, TypeName),
-        SpecialPredName = get_special_pred_id_generic_name(SpecialId),
-        FullPredName = SpecialPredName ++ "_for_" ++ TypeName
-    else
-        FullPredName = PredName
-    ),
-    % XXX if ModuleNameString ends with [0-9] and/or FullPredName starts with
-    % [0-9] then ideally we should use "'.'" rather than just ".".
-    PushMsg = pred_or_func_to_str(PredOrFunc) ++ " " ++
-        sym_name_to_string(ModuleName) ++ "." ++
-        FullPredName ++ "/" ++ int_to_string(Arity) ++ "-" ++
-        int_to_string(proc_id_to_int(ProcId)).
-
-:- pred find_arg_type_ctor_name((type_ctor)::in, string::out) is det.
-
-find_arg_type_ctor_name(TypeCtor, TypeName) :-
-    TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-    TypeCtorName = sym_name_to_string(TypeCtorSymName),
-    string.int_to_string(TypeCtorArity, ArityStr),
-    string.append_list([TypeCtorName, "_", ArityStr], TypeName).
+    PushMsg = describe_proc(PredInfo, ProcId).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

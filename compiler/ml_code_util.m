@@ -91,6 +91,8 @@
     %
 :- pred ml_is_output_det_function(module_info::in, pred_proc_id::in,
     prog_var::out) is semidet.
+:- pred proc_is_output_det_function(module_info::in,
+    pred_info::in, proc_info::in, prog_var::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -223,8 +225,8 @@
 
     % Generate the MLDS variable names for a list of variables.
     %
-:- func ml_gen_local_var_names(prog_varset, list(prog_var))
-    = list(mlds_local_var_name).
+:- func ml_gen_local_var_names(prog_varset::in, list(prog_var)::in)
+    = (list(mlds_local_var_name)::out(list_skel(lvn_prog_var))) is det.
 
     % Generate the MLDS variable name for a variable.
     %
@@ -655,6 +657,9 @@ ml_gen_label_func_decl_flags = DeclFlags :-
 
 ml_is_output_det_function(ModuleInfo, PredProcId, RetArgVar) :-
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    proc_is_output_det_function(ModuleInfo, PredInfo, ProcInfo, RetArgVar).
+
+proc_is_output_det_function(ModuleInfo, PredInfo, ProcInfo, RetArgVar) :-
     pred_info_is_pred_or_func(PredInfo) = pf_function,
     proc_info_interface_code_model(ProcInfo) = model_det,
 
@@ -970,8 +975,10 @@ ml_variable_type(Info, Var, Type) :-
     ml_gen_info_get_var_types(Info, VarTypes),
     lookup_var_type(VarTypes, Var, Type).
 
-ml_gen_local_var_names(VarSet, Vars) =
-    list.map(ml_gen_local_var_name(VarSet), Vars).
+ml_gen_local_var_names(_VarSet, []) = [].
+ml_gen_local_var_names(VarSet, [Var | Vars]) = [MLDSVarName | MLDSVarNames] :-
+    MLDSVarName = ml_gen_local_var_name(VarSet, Var),
+    MLDSVarNames = ml_gen_local_var_names(VarSet, Vars).
 
 ml_gen_local_var_name(VarSet, Var) = MLDSVarName :-
     term.var_to_int(Var, VarNumber),

@@ -32,6 +32,7 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module map.
 
 %---------------------------------------------------------------------------%
 %
@@ -83,6 +84,72 @@
 :- pred ml_gen_info_params(list(mlds_local_var_name)::in, list(mer_type)::in,
     list(mer_mode)::in, pred_or_func::in, code_model::in,
     mlds_func_params::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+    % ml_gen_tscc_arg_decls(ModuleInfo, Vars, Types, Modes, VarSet, Context,
+    %     ProcIdInTscc, NextInArgNum0, NextOutArgNum0, NumOutputs,
+    %     !OutArgNames, TsccInArgs, TsccInLocalVarDefns, TsccArgs,
+    %     OwnLocalVarDefns, CopyTsccToOwnStmts) :-
+    %
+    % Given a procedure in a TSCC and information about its argument list
+    % in the form of the arguments' variable names (Vars), types (Types),
+    % and modes (Modes), return the information the code generator needs
+    %
+    % - to generate code for tail calls to this procedure, from other
+    %   procedures in the TSCC as well from itself, and
+    % - to generate parameter passing code in the procedure's prologue.
+    %
+    % The former is needed before we can start generating code for *any*
+    % of the procedures in the TSCC.
+    % 
+    % Parameter passing between the procedures in a TSCC is done by
+    % giving each procedure its own list of lvn_tscc_proc_input_vars
+    % (representing the formal input parameters) and having each tail call
+    % assign the actual input parameters to these. Results are returned
+    % through lvn_tscc_output_vars, each of which contains the address
+    % of the memory slot where the result should be stored.
+    % Both lvn_tscc_proc_input_vars and lvn_tscc_output_vars include
+    % an argument sequence number, with separate sequences for input and
+    % output arguments. These sequences start at 1, so all top level calls
+    % to ml_gen_tscc_arg_decls should pass 1 as both NextInArgNum0 and
+    % NextOutArgNum0. ml_gen_tscc_arg_decls returns the total number of
+    % output arguments, to allow our caller to do a sanity check (requiring
+    % all procedures in a TSCC to have the same number of output arguments).
+    %
+    % ml_gen_tscc_arg_decls will record the names of the output arguments
+    % in !OutArgNames, if the initial value of !.OutArgNames contains no
+    % such record.
+    %
+    % The value returned in TsccInArgs will be a list of the
+    % lvn_tscc_proc_input_vars of the input arguments only. This is used
+    % during the generation of code for tailcalls.
+    %
+    % The value returned in TsccInLocalVarDefns will be a local var definition
+    % of each variable in TsccInArgs. This is used to define those variables
+    % in copies of the TSCC code that are *not* for this procedure.
+    %
+    % The value returned in TsccArgs a list of all the arguments of the
+    % procedure, both input and output, in declaration order. This will be
+    % the argument list of the copy of the TSCC for this procedure,
+    % and thus it will define the lvn_tscc_proc_input_vars in that copy.
+    % (Thus the lvn_tscc_proc_input_vars will be defined by exactly one of
+    % TsccInLocalVarDefns and TsccInArgs in each copy.)
+    %
+    % Each procedure's part in the TSCC defines local MLDS variables for each
+    % argument, both input and output (returned in OwnLocalVarDefns), and
+    % its code starts by copying the values of each lvn_tscc_proc_input_var
+    % *and* lvn_tscc_output_var to the local var (from OwnLocalVarDefns)
+    % corresponding to them. For input argument, this copies the value;
+    % for output arguments, this copies the address where the argument's value
+    % should be put. These assignments are returned in CopyTsccToOwnStmts.
+    %
+:- pred ml_gen_tscc_arg_decls(module_info::in,
+    list(mlds_local_var_name)::in(list_skel(lvn_prog_var)),
+    list(mer_type)::in, list(top_functor_mode)::in, prog_varset::in,
+    prog_context::in, proc_id_in_tscc::in, int::in, int::in, int::out,
+    map(int, string)::in, map(int, string)::out,
+    list(mlds_argument)::out, list(mlds_local_var_defn)::out,
+    list(mlds_argument)::out, list(mlds_local_var_defn)::out,
+    list(mlds_stmt)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -405,6 +472,14 @@ ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOut, WhatParams,
                 FuncArgs = TailFuncArgs,
                 RetTypes = TailRetTypes
             ;
+                HeadMode = top_in,
+                % For inputs, generate an argument.
+                HeadMLDS_ArgType = HeadMLDS_Type,
+                ml_gen_arg_decl(HeadVar, HeadType, HeadMLDS_ArgType,
+                    HeadFuncArg, !MaybeInfo),
+                FuncArgs = [HeadFuncArg | TailFuncArgs],
+                RetTypes = TailRetTypes
+            ;
                 HeadMode = top_out,
                 (
                     WhatParams = input_params_only,
@@ -427,14 +502,6 @@ ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOut, WhatParams,
                         RetTypes = TailRetTypes
                     )
                 )
-            ;
-                HeadMode = top_in,
-                % For inputs, generate an argument.
-                HeadMLDS_ArgType = HeadMLDS_Type,
-                ml_gen_arg_decl(HeadVar, HeadType, HeadMLDS_ArgType,
-                    HeadFuncArg, !MaybeInfo),
-                FuncArgs = [HeadFuncArg | TailFuncArgs],
-                RetTypes = TailRetTypes
             )
         )
     else
@@ -465,6 +532,112 @@ ml_gen_arg_decl(Var, Type, MLDS_ArgType, FuncArg, !MaybeInfo) :-
         !:MaybeInfo = no
     ),
     FuncArg = mlds_argument(Var, MLDS_ArgType, GCStmt).
+
+%---------------------%
+
+ml_gen_tscc_arg_decls(ModuleInfo, Vars, Types, Modes, VarSet, Context,
+        ProcIdInTscc, NextInArgNum0, NextOutArgNum0, NumOutputs, !OutArgNames,
+        TsccInArgs, TsccInLocalVarDefns, TsccArgs, OwnLocalVarDefns,
+        CopyTsccToOwnStmts) :-
+    ( if
+        Vars = [],
+        Types = [],
+        Modes = []
+    then
+        NumOutputs = NextOutArgNum0,
+        TsccInArgs = [],
+        TsccInLocalVarDefns = [],
+        TsccArgs = [],
+        OwnLocalVarDefns = [],
+        CopyTsccToOwnStmts = []
+    else if
+        Vars = [HeadVar | TailVars],
+        Types = [HeadType | TailTypes],
+        Modes = [HeadMode | TailModes]
+    then
+        HeadIsDummy = check_dummy_type(ModuleInfo, HeadType),
+        (
+            HeadIsDummy = is_dummy_type,
+            % Exclude types such as io.state, etc.
+            ml_gen_tscc_arg_decls(ModuleInfo, TailVars, TailTypes, TailModes,
+                VarSet, Context,
+                ProcIdInTscc, NextInArgNum0, NextOutArgNum0, NumOutputs,
+                !OutArgNames, TsccInArgs, TsccInLocalVarDefns,
+                TsccArgs, OwnLocalVarDefns, CopyTsccToOwnStmts)
+        ;
+            HeadIsDummy = is_not_dummy_type,
+            HeadVarName = ml_local_var_name_to_string(HeadVar),
+            HeadMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, HeadType),
+            (
+                HeadMode = top_unused,
+                % Also exclude values with arg_mode `top_unused'.
+                ml_gen_tscc_arg_decls(ModuleInfo,
+                    TailVars, TailTypes, TailModes,
+                    VarSet, Context,
+                    ProcIdInTscc, NextInArgNum0, NextOutArgNum0, NumOutputs,
+                    !OutArgNames, TsccInArgs, TsccInLocalVarDefns,
+                    TsccArgs, OwnLocalVarDefns, CopyTsccToOwnStmts)
+            ;
+                (
+                    HeadMode = top_in,
+                    InArgNum = NextInArgNum0,
+                    NextInArgNum = NextInArgNum0 + 1,
+                    NextOutArgNum = NextOutArgNum0,
+                    HeadTsccVar = lvn_tscc_proc_input_var(ProcIdInTscc,
+                        InArgNum, HeadVarName),
+                    HeadMLDS_ArgType = HeadMLDS_Type,
+                    HeadTsccArg = mlds_argument(HeadTsccVar, HeadMLDS_ArgType,
+                        gc_no_stmt),
+                    HeadTsccInArgs = [HeadTsccArg],
+                    HeadTsccInLocalVarDefn = mlds_local_var_defn(HeadTsccVar,
+                        Context, HeadMLDS_ArgType, no_initializer, gc_no_stmt),
+                    HeadTsccInLocalVarDefns = [HeadTsccInLocalVarDefn]
+                ;
+                    HeadMode = top_out,
+                    OutArgNum = NextOutArgNum0,
+                    NextInArgNum = NextInArgNum0,
+                    NextOutArgNum = NextOutArgNum0 + 1,
+                    ( if
+                        map.search(!.OutArgNames, OutArgNum, OldOutArgName)
+                    then
+                        OutArgName = OldOutArgName
+                    else
+                        OutArgName = HeadVarName,
+                        map.det_insert(OutArgNum, OutArgName, !OutArgNames)
+                    ),
+                    HeadTsccVar = lvn_tscc_output_var(OutArgNum, OutArgName),
+                    HeadMLDS_ArgType = mlds_ptr_type(HeadMLDS_Type),
+                    HeadTsccArg = mlds_argument(HeadTsccVar, HeadMLDS_ArgType,
+                        gc_no_stmt),
+                    HeadTsccInArgs = [],
+                    HeadTsccInLocalVarDefns = []
+                ),
+                HeadOwnLocalVarDefn = mlds_local_var_defn(HeadVar, Context,
+                    HeadMLDS_ArgType, no_initializer, gc_no_stmt),
+                HeadCopyTsccToOwnStmt = ml_stmt_atomic(
+                    assign(ml_local_var(HeadVar, HeadMLDS_ArgType),
+                        ml_lval(ml_local_var(HeadTsccVar, HeadMLDS_ArgType))),
+                    Context),
+                ml_gen_tscc_arg_decls(ModuleInfo,
+                    TailVars, TailTypes, TailModes,
+                    VarSet, Context,
+                    ProcIdInTscc, NextInArgNum, NextOutArgNum, NumOutputs,
+                    !OutArgNames, TailTsccInArgs, TailTsccInLocalVarDefns,
+                    TailTsccArgs, TailOwnLocalVarDefns,
+                    TailCopyTsccToOwnStmts),
+                TsccInArgs = HeadTsccInArgs ++ TailTsccInArgs,
+                TsccInLocalVarDefns =
+                    HeadTsccInLocalVarDefns ++ TailTsccInLocalVarDefns,
+                TsccArgs = [HeadTsccArg | TailTsccArgs],
+                OwnLocalVarDefns =
+                    [HeadOwnLocalVarDefn | TailOwnLocalVarDefns],
+                CopyTsccToOwnStmts =
+                    [HeadCopyTsccToOwnStmt | TailCopyTsccToOwnStmts]
+            )
+        )
+    else
+        unexpected($pred, "length mismatch")
+    ).
 
 %---------------------------------------------------------------------------%
 %
@@ -604,9 +777,8 @@ ml_gen_arg(VarName, VarLval, CallerType, CalleeType, Mode,
         )
     ).
 
-    % ml_gen_mem_addr(Lval) returns a value equal to &Lval.
-    % For the case where Lval = *Rval, for some Rval,
-    % we optimize &*Rval to just Rval.
+    % ml_gen_mem_addr(Lval) returns a value equal to &Lval. For the case
+    % where Lval = *Rval for some Rval, we optimize &*Rval to just Rval.
     %
 :- func ml_gen_mem_addr(mlds_lval) = mlds_rval.
 
