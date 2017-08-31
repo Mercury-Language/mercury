@@ -958,13 +958,13 @@ mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns], !IO) :-
 
 mlds_output_calls_to_register_tci(_ModuleName, [], !IO).
 mlds_output_calls_to_register_tci(ModuleName,
-        [TypeCtorInfoDefn | TypeCtorInfoDefns], !IO) :-
-    GlobalVarName = TypeCtorInfoDefn ^ mgvd_name,
+        [GlobalVarDefn | GlobalVarDefns], !IO) :-
+    GlobalVarName = GlobalVarDefn ^ mgvd_name,
     io.write_string("\tMR_register_type_ctor_info(&", !IO),
     mlds_output_fully_qualified_global_var_name(
         qual_global_var_name(ModuleName, GlobalVarName), !IO),
     io.write_string(");\n", !IO),
-    mlds_output_calls_to_register_tci(ModuleName, TypeCtorInfoDefns, !IO).
+    mlds_output_calls_to_register_tci(ModuleName, GlobalVarDefns, !IO).
 
     % Generate call to MR_register_alloc_sites.
     %
