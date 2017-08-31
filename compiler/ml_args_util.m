@@ -211,10 +211,10 @@ ml_append_return_statement(CodeModel, CopiedOutputVarLvals, Context,
         !Stmts, !Info) :-
     (
         CodeModel = model_semi,
-        ml_gen_test_success(Succeeded, !Info),
+        ml_gen_test_success(SucceededRval, !Info),
         CopiedOutputVarRvals = list.map(func(Lval) = ml_lval(Lval),
             CopiedOutputVarLvals),
-        ReturnedRvals = [Succeeded | CopiedOutputVarRvals],
+        ReturnedRvals = [SucceededRval | CopiedOutputVarRvals],
         ReturnStmt = ml_stmt_return(ReturnedRvals, Context),
         !:Stmts = !.Stmts ++ [ReturnStmt]
     ;
@@ -223,11 +223,18 @@ ml_append_return_statement(CodeModel, CopiedOutputVarLvals, Context,
             CopiedOutputVarLvals = [_ | _],
             CopiedOutputVarRvals = list.map(func(Lval) = ml_lval(Lval),
                 CopiedOutputVarLvals),
-            ReturnStmt = ml_stmt_return(CopiedOutputVarRvals, Context),
-            !:Stmts = !.Stmts ++ [ReturnStmt]
+            ReturnStmt = ml_stmt_return(CopiedOutputVarRvals, Context)
         ;
-            CopiedOutputVarLvals = []
-        )
+            CopiedOutputVarLvals = [],
+            % This return statement is not needed in the usual case
+            % where the code we generate for a HLDS procedure is the
+            % entirety of an MLDS function, since the end of the function
+            % acts as an implicit return, but it *is* needed when the MLDS
+            % function also contains the code of other HLDS procedures
+            % in the same TSCC.
+            ReturnStmt = ml_stmt_return([], Context)
+        ),
+        !:Stmts = !.Stmts ++ [ReturnStmt]
     ;
         CodeModel = model_non
     ).

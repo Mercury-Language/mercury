@@ -1138,22 +1138,6 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
             [i(ProcNumInTscc), s(ProcDesc)]),
         CommentStmt = ml_stmt_atomic(comment(ProcDescComment), ProcContext),
 
-        (
-            TsccCodeModel = tscc_det,
-            CodeModel = model_det,
-            % We currently don't handle det functions that return their
-            % result via a return value. Our ancestors should ensure that
-            % we don't get here PredProcId is such a function.
-            % XXX We should generalize this code so that we *can* handle
-            % such model_det functions.
-            ReturnValues = []
-        ;
-            TsccCodeModel = tscc_semi,
-            CodeModel = model_semi,
-            ReturnValues = [ml_const(mlconst_true)]
-        ),
-        ReturnStmt = ml_stmt_return(ReturnValues, ProcContext),
-
         % For now, the code we generate returns all output variables
         % by reference. Our ancestors should ensure we get here only
         % the target platform does not use copy-out parameter passing,
@@ -1164,6 +1148,9 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         % copy-out parameter passing.
         CopiedOutputVars = [],
 
+        ( TsccCodeModel = tscc_det, CodeModel = model_det
+        ; TsccCodeModel = tscc_semi, CodeModel = model_semi
+        ),
         proc_info_get_goal(ProcInfo, Goal),
         ml_gen_proc_body(CodeModel, HeadVars, HeadTypes, TopFunctorModes,
             CopiedOutputVars, Goal, LocalVarDefns0, FuncDefns, GoalStmts,
@@ -1175,7 +1162,6 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         ml_gen_info_proc_params(PredProcId, FuncParams, !Info),
         ml_gen_info_final(!.Info, EnvVarNames,
             ClosureWrapperFuncDefns, !:GlobalData, !:TsccInfo),
-        GoalReturnStmts = GoalStmts ++ [ReturnStmt],
 
         TailRecInfo1 = !.TsccInfo ^ mgti_tail_rec_info,
         TailRecSpecs = TailRecInfo1 ^ tri_msgs,
@@ -1183,7 +1169,7 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         !TsccInfo ^ mgti_tail_rec_info := TailRecInfo,
 
         PredProcCode = pred_proc_code(PredProcIdArgsInfo, FuncParams,
-            LocalVarDefns, FuncDefns, CommentStmt, GoalReturnStmts,
+            LocalVarDefns, FuncDefns, CommentStmt, GoalStmts,
             ClosureWrapperFuncDefns, EnvVarNames, TailRecSpecs)
     ).
 
