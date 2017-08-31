@@ -791,7 +791,7 @@ legacy_right_shift(X, Y) = Z :-
 
 :- pragma no_determinism_warning(unsigned_lt/2).
 unsigned_lt(_, _) :-
-    sorry($module, "int.unsigned_lt/2 NYI for Erlang").
+    private_builtin.sorry("int.unsigned_lt/2 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
