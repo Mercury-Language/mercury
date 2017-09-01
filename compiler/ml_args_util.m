@@ -229,10 +229,18 @@ ml_append_return_statement(CodeModel, AlwaysAddReturn, CopiedOutputVarLvals,
             CopiedOutputVarLvals = [],
             % This return statement is not needed in the usual case
             % where the code we generate for a HLDS procedure is the
-            % entirety of an MLDS function, since the end of the function
+            % entirety of an MLDS function (when our caller should pass
+            % AlwaysAddReturn = no), since the end of the function
             % acts as an implicit return, but it *is* needed when the MLDS
             % function also contains the code of other HLDS procedures
-            % in the same TSCC.
+            % in the same TSCC (when our caller should pass AlwaysAddReturn
+            % = yes).
+            %
+            % Note that adding a return statement after the body of a procedure
+            % that throws an exception may, if this fact is visible to the
+            % target language compiler, cause that compiler to generate an
+            % error. The Java compiler does this when the body of a HLDS
+            % procedure is defined by Java code that does a throw.
             (
                 AlwaysAddReturn = no
             ;
