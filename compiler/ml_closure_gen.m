@@ -885,7 +885,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
 
     % Add an appropriate `return' statement.
-    ml_append_return_statement(CodeModel, WrapperCopyOutLvals, Context,
+    ml_append_return_statement(CodeModel, no, WrapperCopyOutLvals, Context,
         Stmts1, Stmts, !Info),
 
     % Generate code to declare and initialize the local variables

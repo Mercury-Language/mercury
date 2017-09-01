@@ -42,7 +42,7 @@
     % Append an appropriate `return' statement for the given code_model
     % and returning the given lvals, if needed.
     %
-:- pred ml_append_return_statement(code_model::in,
+:- pred ml_append_return_statement(code_model::in, bool::in,
     list(mlds_lval)::in, prog_context::in,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -207,8 +207,8 @@
 % Code for various utility routines.
 %
 
-ml_append_return_statement(CodeModel, CopiedOutputVarLvals, Context,
-        !Stmts, !Info) :-
+ml_append_return_statement(CodeModel, AlwaysAddReturn, CopiedOutputVarLvals,
+        Context, !Stmts, !Info) :-
     (
         CodeModel = model_semi,
         ml_gen_test_success(SucceededRval, !Info),
@@ -223,7 +223,8 @@ ml_append_return_statement(CodeModel, CopiedOutputVarLvals, Context,
             CopiedOutputVarLvals = [_ | _],
             CopiedOutputVarRvals = list.map(func(Lval) = ml_lval(Lval),
                 CopiedOutputVarLvals),
-            ReturnStmt = ml_stmt_return(CopiedOutputVarRvals, Context)
+            ReturnStmt = ml_stmt_return(CopiedOutputVarRvals, Context),
+            !:Stmts = !.Stmts ++ [ReturnStmt]
         ;
             CopiedOutputVarLvals = [],
             % This return statement is not needed in the usual case
@@ -232,9 +233,14 @@ ml_append_return_statement(CodeModel, CopiedOutputVarLvals, Context,
             % acts as an implicit return, but it *is* needed when the MLDS
             % function also contains the code of other HLDS procedures
             % in the same TSCC.
-            ReturnStmt = ml_stmt_return([], Context)
-        ),
-        !:Stmts = !.Stmts ++ [ReturnStmt]
+            (
+                AlwaysAddReturn = no
+            ;
+                AlwaysAddReturn = yes,
+                ReturnStmt = ml_stmt_return([], Context),
+                !:Stmts = !.Stmts ++ [ReturnStmt]
+            )
+        )
     ;
         CodeModel = model_non
     ).
