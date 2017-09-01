@@ -370,7 +370,12 @@ partition_scc_procs(ModuleInfo, [PredProcId | PredProcIds],
             % and the initial implementation of mutual tail recursion
             % is simpler without this extra complication.
             not proc_is_output_det_function(ModuleInfo, PredInfo, ProcInfo, _),
-            % ZZZ
+            % To prevent control just falling through to the next procedure
+            % body once it reaches the end of the previous procedure body
+            % in the TSCC, we put a return statement at the end of each
+            % procedure body. This will generate an error from some target
+            % language compilers (e.g. Java) if its knows that this return
+            % statement is not reachable.
             SolnCount \= at_most_zero
         then
             (
