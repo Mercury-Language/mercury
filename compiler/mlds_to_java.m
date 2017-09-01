@@ -4635,15 +4635,19 @@ output_rval_const_for_java(Info, Const, !IO) :-
         output_int_const_for_java(uint.cast_to_int(U), !IO)
     ;
         Const = mlconst_int8(I8),
+        io.write_string("(byte)", !IO),
         io.write_int8(I8, !IO)
     ;
         Const = mlconst_uint8(U8),
+        io.write_string("(byte)", !IO),
         io.write_int8(int8.cast_from_uint8(U8), !IO)
     ;
         Const = mlconst_int16(I16),
+        io.write_string("(short)", !IO),
         io.write_int16(I16, !IO)
     ;
         Const = mlconst_uint16(U16),
+        io.write_string("(short)", !IO),
         io.write_int16(int16.cast_from_uint16(U16), !IO)
     ;
         Const = mlconst_int32(I32),
