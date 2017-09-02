@@ -2328,13 +2328,13 @@ output_stmts_for_csharp(Info, Indent, FuncInfo, [Stmt | Stmts],
     ( if set.member(can_fall_through, StmtExitMethods) then
         output_stmts_for_csharp(Info, Indent, FuncInfo, Stmts,
             StmtsExitMethods, !IO),
-        ExitMethods0 = StmtExitMethods `set.union` StmtsExitMethods,
+        ExitMethods0 = set.union(StmtExitMethods, StmtsExitMethods),
         ( if set.member(can_fall_through, StmtsExitMethods) then
             ExitMethods = ExitMethods0
         else
             % If the last statement could not complete normally
             % the current block can no longer complete normally.
-            ExitMethods = ExitMethods0 `set.delete` can_fall_through
+            ExitMethods = set.delete(ExitMethods0, can_fall_through)
         )
     else
         % Don't output any more statements from the current list since
@@ -2348,271 +2348,353 @@ output_stmts_for_csharp(Info, Indent, FuncInfo, [Stmt | Stmts],
 
 output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     (
-        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, Stmts, Context),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("{\n", !IO),
-        (
-            LocalVarDefns = [_ | _],
-            list.foldl(
-                output_local_var_defn_for_csharp(Info, Indent + 1,
-                    oa_force_init),
-                LocalVarDefns, !IO),
-            io.write_string("\n", !IO)
-        ;
-            LocalVarDefns = []
-        ),
-        (
-            FuncDefns = [_ | _],
-            list.foldl(
-                output_function_defn_for_csharp(Info, Indent + 1,
-                    oa_force_init),
-                FuncDefns, !IO),
-            io.write_string("\n", !IO)
-        ;
-            FuncDefns = []
-        ),
-        output_stmts_for_csharp(Info, Indent + 1, FuncInfo, Stmts,
-            ExitMethods, !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("}\n", !IO)
+        Stmt = ml_stmt_block(_, _, _, _),
+        output_stmt_block_for_csharp(Info, Indent, FuncInfo, Stmt,
+            ExitMethods, !IO)
     ;
-        Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
-        (
-            Kind = may_loop_zero_times,
-            indent_line_after_context(Info ^ csoi_line_numbers, Context,
-                Indent, !IO),
-            io.write_string("while (", !IO),
-            output_rval_for_csharp(Info, Cond, !IO),
-            io.write_string(")\n", !IO),
-            % The contained statement is reachable iff the while statement is
-            % reachable and the condition expression is not a constant
-            % expression whose value is false.
-            ( if Cond = ml_const(mlconst_false) then
-                indent_line_after_context(Info ^ csoi_line_numbers, Context,
-                    Indent, !IO),
-                io.write_string("{  /* Unreachable code */  }\n", !IO),
-                ExitMethods = set.make_singleton_set(can_fall_through)
-            else
-                output_stmt_for_csharp(Info, Indent + 1, FuncInfo,
-                    BodyStmt, StmtExitMethods, !IO),
-                ExitMethods =
-                    while_exit_methods_for_csharp(Cond, StmtExitMethods)
-            )
-        ;
-            Kind = loop_at_least_once,
-            indent_line_after_context(Info ^ csoi_line_numbers, Context,
-                Indent, !IO),
-            io.write_string("do\n", !IO),
-            output_stmt_for_csharp(Info, Indent + 1, FuncInfo, BodyStmt,
-                StmtExitMethods, !IO),
-            indent_line_after_context(Info ^ csoi_line_numbers, Context,
-                Indent, !IO),
-            io.write_string("while (", !IO),
-            output_rval_for_csharp(Info, Cond, !IO),
-            io.write_string(");\n", !IO),
-            ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
-        )
+        Stmt = ml_stmt_while(_, _, _, _),
+        output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt,
+            ExitMethods, !IO)
     ;
-        Stmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse, Context),
-        % We need to take care to avoid problems caused by the dangling else
-        % ambiguity.
-        ( if
-            % For examples of the form
-            %
-            %   if (...)
-            %       if (...)
-            %           ...
-            %   else
-            %       ...
-            %
-            % we need braces around the inner `if', otherwise they wouldn't
-            % parse they way we want them to.
-
-            MaybeElse = yes(_),
-            Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
-        then
-            Then = ml_stmt_block([], [], [Then0], ThenContext)
-        else
-            Then = Then0
-        ),
-
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("if (", !IO),
-        output_rval_for_csharp(Info, Cond, !IO),
-        io.write_string(")\n", !IO),
-        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Then,
-            ThenExitMethods, !IO),
-        (
-            MaybeElse = yes(Else),
-            indent_line_after_context(Info ^ csoi_line_numbers, Context,
-                Indent, !IO),
-            io.write_string("else\n", !IO),
-            output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Else,
-                ElseExitMethods, !IO),
-            % An if-then-else statement can complete normally iff the
-            % then-statement can complete normally or the else-statement
-            % can complete normally.
-            ExitMethods = ThenExitMethods `set.union` ElseExitMethods
-        ;
-            MaybeElse = no,
-            % An if-then statement can complete normally iff it is reachable.
-            ExitMethods = ThenExitMethods `set.union`
-                set.make_singleton_set(can_fall_through)
-        )
+        Stmt = ml_stmt_if_then_else(_, _, _, _),
+        output_stmt_if_then_else_for_csharp(Info, Indent, FuncInfo, Stmt,
+            ExitMethods, !IO)
     ;
-        Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, Context),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("switch (", !IO),
-        output_rval_for_csharp(Info, Val, !IO),
-        io.write_string(") {\n", !IO),
-        output_switch_cases_for_csharp(Info, Indent + 1, FuncInfo, Context,
-            Cases, Default, ExitMethods, !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("}\n", !IO)
+        Stmt = ml_stmt_switch(_, _, _, _, _, _),
+        output_stmt_switch_for_csharp(Info, Indent, FuncInfo, Stmt,
+            ExitMethods, !IO)
     ;
         Stmt = ml_stmt_label(_, _),
         unexpected($pred, "labels not supported in C#.")
     ;
-        Stmt = ml_stmt_goto(goto_label(_), _),
-        unexpected($pred, "gotos not supported in C#.")
-    ;
-        Stmt = ml_stmt_goto(goto_break, Context),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("break;\n", !IO),
-        ExitMethods = set.make_singleton_set(can_break)
-    ;
-        Stmt = ml_stmt_goto(goto_continue, Context),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("continue;\n", !IO),
-        ExitMethods = set.make_singleton_set(can_continue)
+        Stmt = ml_stmt_goto(_, _),
+        output_stmt_goto_for_csharp(Info, Indent, FuncInfo, Stmt,
+            ExitMethods, !IO)
     ;
         Stmt = ml_stmt_computed_goto(_, _, _),
         unexpected($pred, "computed gotos not supported in C#.")
     ;
-        Stmt = ml_stmt_call(Signature, FuncRval, CallArgs,
-            Results, IsTailCall, _Markers, Context),
-        Signature = mlds_func_signature(ArgTypes, RetTypes),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("{\n", !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent + 1, !IO),
-        (
-            Results = [],
-            OutArgs = []
-        ;
-            Results = [Lval | Lvals],
-            output_lval_for_csharp(Info, Lval, !IO),
-            io.write_string(" = ", !IO),
-            OutArgs = list.map(func(X) = ml_mem_addr(X), Lvals)
-        ),
-        ( if FuncRval = ml_const(mlconst_code_addr(_)) then
-            % This is a standard method call.
-            CloseBracket = ""
-        else
-            % This is a call using a method pointer.
-            TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
-            io.format("((%s) ", [s(TypeString)], !IO),
-            CloseBracket = ")"
-        ),
-        output_call_rval_for_csharp(Info, FuncRval, !IO),
-        io.write_string(CloseBracket, !IO),
-        io.write_string("(", !IO),
-        io.write_list(CallArgs ++ OutArgs, ", ",
-            output_rval_for_csharp(Info), !IO),
-        io.write_string(");\n", !IO),
-
-        % This is to tell the C# compiler that a call to an erroneous procedure
-        % will not fall through. --pw
-        (
-            IsTailCall = ordinary_call
-        ;
-            IsTailCall = tail_call
-        ;
-            IsTailCall = no_return_call,
-            indent_line_after_context(Info ^ csoi_line_numbers, Context,
-                Indent  + 1, !IO),
-            io.write_string("throw new runtime.UnreachableDefault();\n", !IO)
-        ),
-
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("}\n", !IO),
-        ExitMethods = set.make_singleton_set(can_fall_through)
+        Stmt = ml_stmt_call(_, _, _, _, _, _, _),
+        output_stmt_call_for_csharp(Info, Indent, FuncInfo, Stmt,
+            ExitMethods, !IO)
     ;
-        Stmt = ml_stmt_return(Results, Context),
-        (
-            Results = [],
-            indent_line_after_context(Info ^ csoi_line_numbers, Context,
-                Indent, !IO),
-            io.write_string("return;\n", !IO)
-        ;
-            Results = [Rval | Rvals],
-            % The first return value is returned directly.
-            % Subsequent return values are assigned to out parameters.
-            list.foldl2(output_assign_out_params(Info, Indent),
-                Rvals, 2, _, !IO),
-            indent_line_after_context(Info ^ csoi_line_numbers, Context,
-                Indent, !IO),
-            io.write_string("return ", !IO),
-            output_rval_for_csharp(Info, Rval, !IO),
-            io.write_string(";\n", !IO)
-        ),
-        ExitMethods = set.make_singleton_set(can_return)
+        Stmt = ml_stmt_return(_, _),
+        output_stmt_return_for_csharp(Info, Indent, FuncInfo, Stmt,
+            ExitMethods, !IO)
     ;
-        Stmt = ml_stmt_do_commit(Ref, Context),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        output_rval_for_csharp(Info, Ref, !IO),
-        io.write_string(" = new runtime.Commit();\n", !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("throw ", !IO),
-        output_rval_for_csharp(Info, Ref, !IO),
-        io.write_string(";\n", !IO),
-        ExitMethods = set.make_singleton_set(can_throw)
+        Stmt = ml_stmt_do_commit(_, _),
+        output_stmt_do_commit_for_csharp(Info, Indent, FuncInfo, Stmt,
+            ExitMethods, !IO)
     ;
-        Stmt = ml_stmt_try_commit(_Ref, BodyStmt, HandlerStmt, Context),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("try\n", !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("{\n", !IO),
-        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, BodyStmt,
-            TryExitMethods0, !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("}\n", !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("catch (runtime.Commit commit_variable)\n",
-            !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("{\n", !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent + 1, !IO),
-        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, HandlerStmt,
-            CatchExitMethods, !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("}\n", !IO),
-        ExitMethods = (TryExitMethods0 `set.delete` can_throw)
-            `set.union`  CatchExitMethods
+        Stmt = ml_stmt_try_commit(_, _, _, _),
+        output_stmt_try_commit_for_csharp(Info, Indent, FuncInfo, Stmt,
+            ExitMethods, !IO)
     ;
         Stmt = ml_stmt_atomic(AtomicStatement, Context),
         output_atomic_stmt_for_csharp(Info, Indent, AtomicStatement,
             Context, !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
     ).
+
+:- pred output_stmt_block_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_stmt::in(ml_stmt_is_block),
+    exit_methods::out, io::di, io::uo) is det.
+:- pragma inline(output_stmt_block_for_csharp/7).
+
+output_stmt_block_for_csharp(Info, Indent, FuncInfo, Stmt,
+        ExitMethods, !IO) :-
+    Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, Stmts, Context),
+    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    io.write_string("{\n", !IO),
+    (
+        LocalVarDefns = [_ | _],
+        list.foldl(
+            output_local_var_defn_for_csharp(Info, Indent + 1, oa_force_init),
+            LocalVarDefns, !IO),
+        io.write_string("\n", !IO)
+    ;
+        LocalVarDefns = []
+    ),
+    (
+        FuncDefns = [_ | _],
+        list.foldl(
+            output_function_defn_for_csharp(Info, Indent + 1, oa_force_init),
+            FuncDefns, !IO),
+        io.write_string("\n", !IO)
+    ;
+        FuncDefns = []
+    ),
+    output_stmts_for_csharp(Info, Indent + 1, FuncInfo, Stmts,
+        ExitMethods, !IO),
+    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    io.write_string("}\n", !IO).
+
+:- pred output_stmt_while_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_stmt::in(ml_stmt_is_while),
+    exit_methods::out, io::di, io::uo) is det.
+:- pragma inline(output_stmt_while_for_csharp/7).
+
+output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt,
+        ExitMethods, !IO) :-
+    Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
+    (
+        Kind = may_loop_zero_times,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
+        io.write_string("while (", !IO),
+        output_rval_for_csharp(Info, Cond, !IO),
+        io.write_string(")\n", !IO),
+        % The contained statement is reachable iff the while statement is
+        % reachable and the condition expression is not a constant
+        % expression whose value is false.
+        ( if Cond = ml_const(mlconst_false) then
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
+                Indent, !IO),
+            io.write_string("{  /* Unreachable code */  }\n", !IO),
+            ExitMethods = set.make_singleton_set(can_fall_through)
+        else
+            output_stmt_for_csharp(Info, Indent + 1, FuncInfo,
+                BodyStmt, StmtExitMethods, !IO),
+            ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
+        )
+    ;
+        Kind = loop_at_least_once,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
+        io.write_string("do\n", !IO),
+        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, BodyStmt,
+            StmtExitMethods, !IO),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
+        io.write_string("while (", !IO),
+        output_rval_for_csharp(Info, Cond, !IO),
+        io.write_string(");\n", !IO),
+        ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
+    ).
+
+:- pred output_stmt_if_then_else_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_stmt::in(ml_stmt_is_if_then_else),
+    exit_methods::out, io::di, io::uo) is det.
+:- pragma inline(output_stmt_if_then_else_for_csharp/7).
+
+output_stmt_if_then_else_for_csharp(Info, Indent, FuncInfo, Stmt,
+        ExitMethods, !IO) :-
+    Stmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse, Context),
+    % We need to take care to avoid problems caused by the dangling else
+    % ambiguity.
+    ( if
+        % For examples of the form
+        %
+        %   if (...)
+        %       if (...)
+        %           ...
+        %   else
+        %       ...
+        %
+        % we need braces around the inner `if', otherwise they wouldn't
+        % parse they way we want them to.
+
+        MaybeElse = yes(_),
+        Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
+    then
+        Then = ml_stmt_block([], [], [Then0], ThenContext)
+    else
+        Then = Then0
+    ),
+
+    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    io.write_string("if (", !IO),
+    output_rval_for_csharp(Info, Cond, !IO),
+    io.write_string(")\n", !IO),
+    output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Then,
+        ThenExitMethods, !IO),
+    (
+        MaybeElse = yes(Else),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
+        io.write_string("else\n", !IO),
+        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Else,
+            ElseExitMethods, !IO),
+        % An if-then-else statement can complete normally iff the
+        % then-statement can complete normally or the else-statement
+        % can complete normally.
+        ExitMethods = set.union(ThenExitMethods, ElseExitMethods)
+    ;
+        MaybeElse = no,
+        % An if-then statement can complete normally iff it is reachable.
+        ExitMethods = set.insert(ThenExitMethods, can_fall_through)
+    ).
+
+:- pred output_stmt_switch_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_stmt::in(ml_stmt_is_switch),
+    exit_methods::out, io::di, io::uo) is det.
+:- pragma inline(output_stmt_switch_for_csharp/7).
+
+output_stmt_switch_for_csharp(Info, Indent, FuncInfo, Stmt,
+        ExitMethods, !IO) :-
+    Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, Context),
+    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    io.write_string("switch (", !IO),
+    output_rval_for_csharp(Info, Val, !IO),
+    io.write_string(") {\n", !IO),
+    output_switch_cases_for_csharp(Info, Indent + 1, FuncInfo, Context,
+        Cases, Default, ExitMethods, !IO),
+    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    io.write_string("}\n", !IO).
+
+:- pred output_stmt_goto_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_stmt::in(ml_stmt_is_goto),
+    exit_methods::out, io::di, io::uo) is det.
+:- pragma inline(output_stmt_goto_for_csharp/7).
+
+output_stmt_goto_for_csharp(Info, Indent, _FuncInfo, Stmt,
+        ExitMethods, !IO) :-
+    Stmt = ml_stmt_goto(Target, Context),
+    (
+        Target = goto_label(_),
+        unexpected($pred, "gotos not supported in C#.")
+    ;
+        Target = goto_break,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
+        io.write_string("break;\n", !IO),
+        ExitMethods = set.make_singleton_set(can_break)
+    ;
+        Target = goto_continue,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
+        io.write_string("continue;\n", !IO),
+        ExitMethods = set.make_singleton_set(can_continue)
+    ).
+
+:- pred output_stmt_call_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_stmt::in(ml_stmt_is_call),
+    exit_methods::out, io::di, io::uo) is det.
+:- pragma inline(output_stmt_call_for_csharp/7).
+
+output_stmt_call_for_csharp(Info, Indent, _FuncInfo, Stmt,
+        ExitMethods, !IO) :-
+    Stmt = ml_stmt_call(Signature, FuncRval, CallArgs, Results,
+        IsTailCall, _Markers, Context),
+    Signature = mlds_func_signature(ArgTypes, RetTypes),
+    indent_line_after_context(Info ^ csoi_line_numbers, Context,
+        Indent, !IO),
+    io.write_string("{\n", !IO),
+    indent_line_after_context(Info ^ csoi_line_numbers, Context,
+        Indent + 1, !IO),
+    (
+        Results = [],
+        OutArgs = []
+    ;
+        Results = [Lval | Lvals],
+        output_lval_for_csharp(Info, Lval, !IO),
+        io.write_string(" = ", !IO),
+        OutArgs = list.map(func(X) = ml_mem_addr(X), Lvals)
+    ),
+    ( if FuncRval = ml_const(mlconst_code_addr(_)) then
+        % This is a standard method call.
+        CloseBracket = ""
+    else
+        % This is a call using a method pointer.
+        TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
+        io.format("((%s) ", [s(TypeString)], !IO),
+        CloseBracket = ")"
+    ),
+    output_call_rval_for_csharp(Info, FuncRval, !IO),
+    io.write_string(CloseBracket, !IO),
+    io.write_string("(", !IO),
+    io.write_list(CallArgs ++ OutArgs, ", ",
+        output_rval_for_csharp(Info), !IO),
+    io.write_string(");\n", !IO),
+
+    % This is to tell the C# compiler that a call to an erroneous procedure
+    % will not fall through. --pw
+    (
+        IsTailCall = ordinary_call
+    ;
+        IsTailCall = tail_call
+    ;
+        IsTailCall = no_return_call,
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent  + 1, !IO),
+        io.write_string("throw new runtime.UnreachableDefault();\n", !IO)
+    ),
+
+    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    io.write_string("}\n", !IO),
+    ExitMethods = set.make_singleton_set(can_fall_through).
+
+:- pred output_stmt_return_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_stmt::in(ml_stmt_is_return),
+    exit_methods::out, io::di, io::uo) is det.
+:- pragma inline(output_stmt_return_for_csharp/7).
+
+output_stmt_return_for_csharp(Info, Indent, _FuncInfo, Stmt,
+        ExitMethods, !IO) :-
+    Stmt = ml_stmt_return(Results, Context),
+    (
+        Results = [],
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
+        io.write_string("return;\n", !IO)
+    ;
+        Results = [Rval | Rvals],
+        % The first return value is returned directly.
+        % Subsequent return values are assigned to out parameters.
+        list.foldl2(output_assign_out_params(Info, Indent), Rvals, 2, _, !IO),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent, !IO),
+        io.write_string("return ", !IO),
+        output_rval_for_csharp(Info, Rval, !IO),
+        io.write_string(";\n", !IO)
+    ),
+    ExitMethods = set.make_singleton_set(can_return).
+
+:- pred output_stmt_do_commit_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_stmt::in(ml_stmt_is_do_commit),
+    exit_methods::out, io::di, io::uo) is det.
+:- pragma inline(output_stmt_do_commit_for_csharp/7).
+
+output_stmt_do_commit_for_csharp(Info, Indent, _FuncInfo, Stmt,
+        ExitMethods, !IO) :-
+    Stmt = ml_stmt_do_commit(Ref, Context),
+    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    output_rval_for_csharp(Info, Ref, !IO),
+    io.write_string(" = new runtime.Commit();\n", !IO),
+    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    io.write_string("throw ", !IO),
+    output_rval_for_csharp(Info, Ref, !IO),
+    io.write_string(";\n", !IO),
+    ExitMethods = set.make_singleton_set(can_throw).
+
+:- pred output_stmt_try_commit_for_csharp(csharp_out_info::in, indent::in,
+    func_info_csj::in, mlds_stmt::in(ml_stmt_is_try_commit),
+    exit_methods::out, io::di, io::uo) is det.
+:- pragma inline(output_stmt_try_commit_for_csharp/7).
+
+output_stmt_try_commit_for_csharp(Info, Indent, FuncInfo, Stmt,
+        ExitMethods, !IO) :-
+    Stmt = ml_stmt_try_commit(_Ref, BodyStmt, HandlerStmt, Context),
+    LineNumbers = Info ^ csoi_line_numbers,
+    indent_line_after_context(LineNumbers, Context, Indent, !IO),
+    io.write_string("try\n", !IO),
+    indent_line_after_context(LineNumbers, Context, Indent, !IO),
+    io.write_string("{\n", !IO),
+    output_stmt_for_csharp(Info, Indent + 1, FuncInfo, BodyStmt,
+        TryExitMethods0, !IO),
+    indent_line_after_context(LineNumbers, Context, Indent, !IO),
+    io.write_string("}\n", !IO),
+    indent_line_after_context(LineNumbers, Context, Indent, !IO),
+    io.write_string("catch (runtime.Commit commit_variable)\n", !IO),
+    indent_line_after_context(LineNumbers, Context, Indent, !IO),
+    io.write_string("{\n", !IO),
+    indent_line_after_context(LineNumbers, Context, Indent + 1, !IO),
+    output_stmt_for_csharp(Info, Indent + 1, FuncInfo, HandlerStmt,
+        CatchExitMethods, !IO),
+    indent_line_after_context(LineNumbers, Context, Indent, !IO),
+    io.write_string("}\n", !IO),
+    ExitMethods = set.union(set.delete(TryExitMethods0, can_throw),
+        CatchExitMethods).
 
 %---------------------------------------------------------------------------%
 %
@@ -2635,12 +2717,11 @@ while_exit_methods_for_csharp(Cond, BlockExitMethods) = ExitMethods :-
         not set.member(can_break, BlockExitMethods)
     then
         % Cannot complete normally.
-        ExitMethods0 = BlockExitMethods `set.delete` can_fall_through
+        ExitMethods0 = set.delete(BlockExitMethods, can_fall_through)
     else
-        ExitMethods0 = BlockExitMethods `set.insert` can_fall_through
+        ExitMethods0 = set.insert(BlockExitMethods, can_fall_through)
     ),
-    ExitMethods = (ExitMethods0 `set.delete` can_continue)
-        `set.delete` can_break.
+    ExitMethods = set.delete_list(ExitMethods0, [can_continue, can_break]).
 
 %---------------------------------------------------------------------------%
 %
@@ -2676,12 +2757,12 @@ output_switch_cases_for_csharp(Info, Indent, FuncInfo, Context,
     output_switch_cases_for_csharp(Info, Indent, FuncInfo, Context, Cases,
         Default, CasesExitMethods, !IO),
     ( if set.member(can_break, CaseExitMethods0) then
-        CaseExitMethods = (CaseExitMethods0 `set.delete` can_break)
-            `set.insert` can_fall_through
+        CaseExitMethods = set.insert(set.delete(CaseExitMethods0, can_break),
+            can_fall_through)
     else
         CaseExitMethods = CaseExitMethods0
     ),
-    ExitMethods = CaseExitMethods `set.union` CasesExitMethods.
+    ExitMethods = set.union(CaseExitMethods, CasesExitMethods).
 
 :- pred output_switch_case_for_csharp(csharp_out_info::in, indent::in,
     func_info_csj::in, prog_context::in, mlds_switch_case::in,
@@ -2699,8 +2780,8 @@ output_switch_case_for_csharp(Info, Indent, FuncInfo, Context, Case,
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent + 1, !IO),
         io.write_string("break;\n", !IO),
-        ExitMethods = (StmtExitMethods `set.insert` can_break)
-            `set.delete` can_fall_through
+        ExitMethods = set.delete(set.insert(StmtExitMethods, can_break),
+            can_fall_through)
     else
         % Don't output `break' since it would be unreachable.
         ExitMethods = StmtExitMethods
