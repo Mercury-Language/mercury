@@ -99,6 +99,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
+:- import_module char.
 :- import_module cord.
 :- import_module float.
 :- import_module int.
@@ -558,11 +559,11 @@ mlds_output_env_var_decl(EnvVarName, !IO) :-
 mlds_output_hdr_start(Opts, Indent, ModuleName, !IO) :-
     mlds_output_auto_gen_comment(Opts, ModuleName, !IO),
     output_n_indents(Indent, !IO),
-    io.write_string("/* :- module ", !IO),
+    io.write_string("// :- module ", !IO),
     prog_out.write_sym_name(ModuleName, !IO),
-    io.write_string(". */\n", !IO),
+    io.write_string(".\n", !IO),
     output_n_indents(Indent, !IO),
-    io.write_string("/* :- interface. */\n", !IO),
+    io.write_string("// :- interface.\n", !IO),
     io.nl(!IO),
     output_n_indents(Indent, !IO),
     io.write_string("#ifndef MR_HEADER_GUARD_", !IO),
@@ -607,11 +608,11 @@ mlds_output_src_start(Opts, Indent, ModuleName, ForeignCode,
         InitPreds, FinalPreds, EnvVarNames, !IO) :-
     mlds_output_auto_gen_comment(Opts, ModuleName, !IO),
     output_n_indents(Indent, !IO),
-    io.write_string("/* :- module ", !IO),
+    io.write_string("// :- module ", !IO),
     prog_out.write_sym_name(ModuleName, !IO),
-    io.write_string(". */\n", !IO),
+    io.write_string(".\n", !IO),
     output_n_indents(Indent, !IO),
-    io.write_string("/* :- implementation. */\n", !IO),
+    io.write_string("// :- implementation.\n", !IO),
     mlds_output_src_bootstrap_defines(!IO),
     io.nl(!IO),
     mlds_output_init_and_final_comments(ModuleName, InitPreds, FinalPreds,
@@ -708,23 +709,23 @@ mlds_output_hdr_end(Opts, Indent, ModuleName, !IO) :-
         )
     ),
     output_n_indents(Indent, !IO),
-    io.write_string("#endif /* MR_HEADER_GUARD_", !IO),
+    io.write_string("#endif // MR_HEADER_GUARD_", !IO),
     prog_out.write_sym_name(ModuleName, !IO),
-    io.write_string(" */\n", !IO),
+    io.nl(!IO),
     io.nl(!IO),
     output_n_indents(Indent, !IO),
-    io.write_string("/* :- end_interface ", !IO),
+    io.write_string("// :- end_interface ", !IO),
     prog_out.write_sym_name(ModuleName, !IO),
-    io.write_string(". */\n", !IO).
+    io.write_string(".\n", !IO).
 
 :- pred mlds_output_src_end(indent::in, mercury_module_name::in,
     io::di, io::uo) is det.
 
 mlds_output_src_end(Indent, ModuleName, !IO) :-
     output_n_indents(Indent, !IO),
-    io.write_string("/* :- end_module ", !IO),
+    io.write_string("// :- end_module ", !IO),
     prog_out.write_sym_name(ModuleName, !IO),
-    io.write_string(". */\n", !IO).
+    io.write_string(".\n", !IO).
 
     % Output a C comment saying that the file was automatically generated
     % (and giving details such as the compiler version).
@@ -2120,10 +2121,10 @@ mlds_output_gc_statement(Opts, Indent, GCStmt, MaybeNewLine, !IO) :-
     ;
         (
             GCStmt = gc_trace_code(Stmt),
-            Label = "#if 0 /* GC trace code */\n"
+            Label = "#if 0 // GC trace code\n"
         ;
             GCStmt = gc_initialiser(Stmt),
-            Label = "#if 0 /* GC initialiser */\n"
+            Label = "#if 0 // GC initialiser\n"
         ),
         io.write_string(MaybeNewLine, !IO),
         io.write_string(Label, !IO),
@@ -2453,13 +2454,13 @@ mlds_output_pred_proc_id(Opts, proc(PredId, ProcId), !IO) :-
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
-        io.write_string("/* pred_id: ", !IO),
+        io.write_string("// pred_id: ", !IO),
         pred_id_to_int(PredId, PredIdNum),
         io.write_int(PredIdNum, !IO),
         io.write_string(", proc_id: ", !IO),
         proc_id_to_int(ProcId, ProcIdNum),
         io.write_int(ProcIdNum, !IO),
-        io.write_string(" */\n", !IO)
+        io.nl(!IO)
     ;
         Comments = no
     ).
@@ -3471,12 +3472,6 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
         true
     ).
 
-% :- pred mlds_output_virtuality(virtuality::in, io::di, io::uo) is det.
-%
-% mlds_output_virtuality(virtual, !IO) :-
-%     io.write_string("virtual ", !IO).
-% mlds_output_virtuality(non_virtual, !IO).
-
 :- pred mlds_output_overridability(overridability::in, io::di, io::uo) is det.
 
 mlds_output_overridability(sealed, !IO) :-
@@ -3488,12 +3483,6 @@ mlds_output_overridability(overridable, !IO).
 mlds_output_constness(const, !IO) :-
     io.write_string("const ", !IO).
 mlds_output_constness(modifiable, !IO).
-
-% :- pred mlds_output_abstractness(abstractness::in, io::di, io::uo) is det.
-%
-% mlds_output_abstractness(abstract, !IO) :-
-%     io.write_string("/* abstract */ ", !IO).
-% mlds_output_abstractness(concrete, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -4252,12 +4241,8 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
         ( if Comment = "" then
             io.nl(!IO)
         else
-            % XXX We should escape any "*/"'s in the Comment. We should also
-            % split the comment into lines and indent each line appropriately.
-            output_n_indents(Indent, !IO),
-            io.write_string("/* ", !IO),
-            io.write_string(Comment, !IO),
-            io.write_string(" */\n", !IO)
+            CommentLines = split_at_separator(char.is_line_separator, Comment),
+            write_comment_lines(Indent, CommentLines, !IO)
         )
     ;
         AtomicStmt = assign(Lval, Rval),
@@ -4322,6 +4307,20 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
         unexpected($pred, "outline_foreign_proc is not used in C backend")
     ).
 
+:- pred write_comment_lines(int::in, list(string)::in, io::di, io::uo) is det.
+
+write_comment_lines(_Indent, [], !IO).
+write_comment_lines(Indent, [CommentLine | CommentLines], !IO) :-
+    ( if CommentLine = "" then
+        io.nl(!IO)
+    else
+        output_n_indents(Indent, !IO),
+        io.write_string("// ", !IO),
+        io.write_string(CommentLine, !IO),
+        io.nl(!IO)
+    ),
+    write_comment_lines(Indent, CommentLines, !IO).
+
 :- pred mlds_output_stmt_atomic_new_object(mlds_to_c_opts::in, indent::in,
     mlds_atomic_statement::in(atomic_stmt_is_new_object), prog_context::in,
     io::di, io::uo) is det.
@@ -4375,8 +4374,8 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
             NeedsForwardingSpace = yes,
             c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
             output_n_indents(Indent + 1, !IO),
-            io.write_string("/* reserve space for " ++
-                "GC forwarding pointer*/\n", !IO),
+            io.write_string("// reserve space for GC forwarding pointer\n",
+                !IO),
             c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
             output_n_indents(Indent + 1, !IO),
             io.write_string("MR_hp_alloc(1);\n", !IO)
