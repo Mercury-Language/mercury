@@ -4513,11 +4513,19 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_or(int_type_uint8)
         ; Op = bitwise_xor(int_type_uint8)
         ; Op = unchecked_left_shift(int_type_uint8)
-        ; Op = unchecked_right_shift(int_type_uint8)
         ),
         io.write_string("(byte)(", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(" ", !IO),
+        output_binary_op_for_java(Op, !IO),
+        io.write_string(" ", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Op = unchecked_right_shift(int_type_uint8),
+        io.write_string("(byte)(((", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(") & 0xff) ", !IO),
         output_binary_op_for_java(Op, !IO),
         io.write_string(" ", !IO),
         output_rval_for_java(Info, Y, !IO),
@@ -4564,11 +4572,19 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_or(int_type_uint16)
         ; Op = bitwise_xor(int_type_uint16)
         ; Op = unchecked_left_shift(int_type_uint16)
-        ; Op = unchecked_right_shift(int_type_uint16)
         ),
         io.write_string("(short)(", !IO),
         output_rval_for_java(Info, X, !IO),
         io.write_string(" ", !IO),
+        output_binary_op_for_java(Op, !IO),
+        io.write_string(" ", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Op = unchecked_right_shift(int_type_uint16),
+        io.write_string("(short)(((", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(") & 0xffff) ", !IO),
         output_binary_op_for_java(Op, !IO),
         io.write_string(" ", !IO),
         output_rval_for_java(Info, Y, !IO),

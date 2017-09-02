@@ -329,6 +329,7 @@ ORDINARY_PROGS =	\
 	test_cord2 \
 	test_imported_no_tag \
 	test_infinity \
+	test_int_hash \
 	test_keys_and_values \
 	test_pretty_printer \
 	test_pretty_printer_defaults \
@@ -509,7 +510,6 @@ ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 		pragma_export \
 		runtime_opt \
 		target_mlobjs \
-		test_int_hash \
         	weak_ptr
 else
 	C_ONLY_PROGS =

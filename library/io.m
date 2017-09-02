@@ -8557,6 +8557,19 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
+    do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    try {
+        ((io.MR_TextOutputFile) Stream).write(
+            java.lang.Long.toString(Val & 0xffffffffL));
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
     do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "

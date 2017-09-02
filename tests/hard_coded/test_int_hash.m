@@ -108,6 +108,20 @@ next(N, !X) :-
     H = N;
 ").
 
+:- pragma foreign_proc("C#",
+    cint_hash(N::in, H::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    uint key = (uint) N;
+    uint c2=0x27d4eb2d; // a prime or an odd constant
+    key = (key ^ 61) ^ (key >> 16);
+    key = key + (key << 3);
+    key = key ^ (key >> 4);
+    key = key * c2;
+    key = key ^ (key >> 15);
+    H = (int)key;
+").
+
 %---------------------------------------------------------------------------%
 :- end_module test_int_hash.
 %---------------------------------------------------------------------------%
