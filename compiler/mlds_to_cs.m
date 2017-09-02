@@ -2404,12 +2404,15 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
 output_stmt_block_for_csharp(Info, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, Stmts, Context),
-    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    BraceIndent = Indent,
+    BlockIndent = Indent + 1,
+    indent_line_after_context(Info ^ csoi_line_numbers, Context,
+        BraceIndent, !IO),
     io.write_string("{\n", !IO),
     (
         LocalVarDefns = [_ | _],
         list.foldl(
-            output_local_var_defn_for_csharp(Info, Indent + 1, oa_force_init),
+            output_local_var_defn_for_csharp(Info, BlockIndent, oa_force_init),
             LocalVarDefns, !IO),
         io.write_string("\n", !IO)
     ;
@@ -2418,15 +2421,16 @@ output_stmt_block_for_csharp(Info, Indent, FuncInfo, Stmt,
     (
         FuncDefns = [_ | _],
         list.foldl(
-            output_function_defn_for_csharp(Info, Indent + 1, oa_force_init),
+            output_function_defn_for_csharp(Info, BlockIndent, oa_force_init),
             FuncDefns, !IO),
         io.write_string("\n", !IO)
     ;
         FuncDefns = []
     ),
-    output_stmts_for_csharp(Info, Indent + 1, FuncInfo, Stmts,
+    output_stmts_for_csharp(Info, BlockIndent, FuncInfo, Stmts,
         ExitMethods, !IO),
-    indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
+    indent_line_after_context(Info ^ csoi_line_numbers, Context,
+        BraceIndent, !IO),
     io.write_string("}\n", !IO).
 
 :- pred output_stmt_while_for_csharp(csharp_out_info::in, indent::in,
@@ -2437,6 +2441,7 @@ output_stmt_block_for_csharp(Info, Indent, FuncInfo, Stmt,
 output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
+    scope_indent(BodyStmt, Indent, ScopeIndent),
     (
         Kind = may_loop_zero_times,
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
@@ -2450,11 +2455,15 @@ output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt,
         ( if Cond = ml_const(mlconst_false) then
             indent_line_after_context(Info ^ csoi_line_numbers, Context,
                 Indent, !IO),
-            io.write_string("{  /* Unreachable code */  }\n", !IO),
+            io.write_string("{\n", !IO),
+            output_n_indents(Indent + 1, !IO),
+            io.write_string("/* Unreachable code */\n", !IO),
+            output_n_indents(Indent, !IO),
+            io.write_string("}\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         else
-            output_stmt_for_csharp(Info, Indent + 1, FuncInfo,
-                BodyStmt, StmtExitMethods, !IO),
+            output_stmt_for_csharp(Info, ScopeIndent, FuncInfo, BodyStmt,
+                StmtExitMethods, !IO),
             ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
         )
     ;
@@ -2462,7 +2471,7 @@ output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt,
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("do\n", !IO),
-        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, BodyStmt,
+        output_stmt_for_csharp(Info, ScopeIndent, FuncInfo, BodyStmt,
             StmtExitMethods, !IO),
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
@@ -2506,14 +2515,16 @@ output_stmt_if_then_else_for_csharp(Info, Indent, FuncInfo, Stmt,
     io.write_string("if (", !IO),
     output_rval_for_csharp(Info, Cond, !IO),
     io.write_string(")\n", !IO),
-    output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Then,
+    scope_indent(Then, Indent, ThenScopeIndent),
+    output_stmt_for_csharp(Info, ThenScopeIndent, FuncInfo, Then,
         ThenExitMethods, !IO),
     (
         MaybeElse = yes(Else),
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("else\n", !IO),
-        output_stmt_for_csharp(Info, Indent + 1, FuncInfo, Else,
+        scope_indent(Else, Indent, ElseScopeIndent),
+        output_stmt_for_csharp(Info, ElseScopeIndent, FuncInfo, Else,
             ElseExitMethods, !IO),
         % An if-then-else statement can complete normally iff the
         % then-statement can complete normally or the else-statement

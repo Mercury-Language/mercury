@@ -3086,13 +3086,14 @@ output_statement_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
 
 output_stmt_block_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
-    output_n_indents(Indent, !IO),
+    BraceIndent = Indent,
+    BlockIndent = Indent + 1,
+    output_n_indents(BraceIndent, !IO),
     io.write_string("{\n", !IO),
     (
         LocalVarDefns = [_ | _],
         list.foldl(
-            output_local_var_defn_for_java(Info, Indent + 1,
-                oa_force_init),
+            output_local_var_defn_for_java(Info, BlockIndent, oa_force_init),
             LocalVarDefns, !IO),
         io.write_string("\n", !IO)
     ;
@@ -3101,17 +3102,16 @@ output_stmt_block_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     (
         FuncDefns = [_ | _],
         list.foldl(
-            output_function_defn_for_java(Info, Indent + 1,
-                oa_force_init),
+            output_function_defn_for_java(Info, BlockIndent, oa_force_init),
             FuncDefns, !IO),
         io.write_string("\n", !IO)
     ;
         FuncDefns = []
     ),
-    output_statements_for_java(Info, Indent + 1, FuncInfo, SubStmts,
+    output_statements_for_java(Info, BlockIndent, FuncInfo, SubStmts,
         ExitMethods, !IO),
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
-        Context, Indent, !IO),
+        Context, BraceIndent, !IO),
     io.write_string("}\n", !IO).
 
 :- pred output_stmt_while_for_java(java_out_info::in, indent::in,
@@ -3121,6 +3121,7 @@ output_stmt_block_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
 
 output_stmt_while_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
+    scope_indent(BodyStmt, Indent, ScopeIndent),
     (
         Kind = may_loop_zero_times,
         output_n_indents(Indent, !IO),
@@ -3132,18 +3133,22 @@ output_stmt_while_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
         % whose value is false.
         ( if Cond = ml_const(mlconst_false) then
             output_n_indents(Indent, !IO),
-            io.write_string("{  /* Unreachable code */  }\n", !IO),
+            io.write_string("{\n", !IO),
+            output_n_indents(Indent + 1, !IO),
+            io.write_string("/* Unreachable code */\n", !IO),
+            output_n_indents(Indent, !IO),
+            io.write_string("}\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         else
-            output_statement_for_java(Info, Indent + 1, FuncInfo,
-                BodyStmt, StmtExitMethods, !IO),
+            output_statement_for_java(Info, ScopeIndent, FuncInfo, BodyStmt,
+                StmtExitMethods, !IO),
             ExitMethods = while_exit_methods_for_java(Cond, StmtExitMethods)
         )
     ;
         Kind = loop_at_least_once,
         output_n_indents(Indent, !IO),
         io.write_string("do\n", !IO),
-        output_statement_for_java(Info, Indent + 1, FuncInfo, BodyStmt,
+        output_statement_for_java(Info, ScopeIndent, FuncInfo, BodyStmt,
             StmtExitMethods, !IO),
         indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
@@ -3188,14 +3193,16 @@ output_stmt_if_then_else_for_java(Info, Indent, FuncInfo, Stmt,
     io.write_string("if (", !IO),
     output_rval_for_java(Info, Cond, !IO),
     io.write_string(")\n", !IO),
-    output_statement_for_java(Info, Indent + 1, FuncInfo, Then,
+    scope_indent(Then, Indent, ThenScopeIndent),
+    output_statement_for_java(Info, ThenScopeIndent, FuncInfo, Then,
         ThenExitMethods, !IO),
     (
         MaybeElse = yes(Else),
         indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("else\n", !IO),
-        output_statement_for_java(Info, Indent + 1, FuncInfo, Else,
+        scope_indent(Else, Indent, ElseScopeIndent),
+        output_statement_for_java(Info, ElseScopeIndent, FuncInfo, Else,
             ElseExitMethods, !IO),
         % An if-then-else statement can complete normally iff the
         % then-statement can complete normally or the else-statement
