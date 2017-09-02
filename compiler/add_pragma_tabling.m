@@ -661,8 +661,7 @@ table_info_c_global_var_name(ModuleInfo, SimpleCallId, ProcId) = VarName :-
         MLDS_PredLabel = mlds_user_pred_label(PredOrFunc, MaybeModuleName,
             PredName, Arity, CodeModel, NoReturnValue),
         MLDS_ProcLabel = mlds_proc_label(MLDS_PredLabel, ProcId),
-        VarName = sym_name_mangle(ModuleName) ++ "__" ++
-            mlds_tabling_data_name(MLDS_ProcLabel, tabling_info)
+        VarName = mlds_tabling_data_name(MLDS_ProcLabel, tabling_info)
     ;
         HighLevelCode = no,
         proc_id_to_int(ProcId, ProcIdInt),

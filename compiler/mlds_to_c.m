@@ -956,15 +956,15 @@ mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns], !IO) :-
 :- pred mlds_output_calls_to_register_tci(mlds_module_name::in,
     list(mlds_global_var_defn)::in, io::di, io::uo) is det.
 
-mlds_output_calls_to_register_tci(_ModuleName, [], !IO).
-mlds_output_calls_to_register_tci(ModuleName,
+mlds_output_calls_to_register_tci(_MLDS_ModuleName, [], !IO).
+mlds_output_calls_to_register_tci(MLDS_ModuleName,
         [GlobalVarDefn | GlobalVarDefns], !IO) :-
     GlobalVarName = GlobalVarDefn ^ mgvd_name,
     io.write_string("\tMR_register_type_ctor_info(&", !IO),
-    mlds_output_fully_qualified_global_var_name(
-        qual_global_var_name(ModuleName, GlobalVarName), !IO),
+    mlds_output_maybe_qualified_global_var_name(MLDS_ModuleName,
+        GlobalVarName, !IO),
     io.write_string(");\n", !IO),
-    mlds_output_calls_to_register_tci(ModuleName, GlobalVarDefns, !IO).
+    mlds_output_calls_to_register_tci(MLDS_ModuleName, GlobalVarDefns, !IO).
 
     % Generate call to MR_register_alloc_sites.
     %
@@ -2004,6 +2004,20 @@ mlds_output_global_var_defn(Opts, Indent, Separate,
         MLDS_ModuleName, GlobalVarDefn, !IO) :-
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
         Type, Initializer, GCStmt),
+    Flags = mlds_global_var_decl_flags(Access, _Constness),
+    ShouldModuleQual = should_module_qualify_global_var_name(GlobalVarName),
+    ( if
+        Access = gvar_acc_whole_program,
+        ShouldModuleQual = no,
+        % Some rtti variables are supposed to be exported without being module
+        % qualified.
+        GlobalVarName \= gvn_rtti_var(_)
+    then
+        unexpected($pred,
+            "whole-program visible global var is not module qualified")
+    else
+        true
+    ),
     (
         Separate = yes,
         io.nl(!IO)
@@ -2324,8 +2338,8 @@ mlds_output_global_var_decl(Opts, MLDS_ModuleName, GlobalVarName, Type,
         InitializerSize, !IO) :-
     mlds_output_type_prefix(Opts, Type, !IO),
     io.write_char(' ', !IO),
-    mlds_output_fully_qualified_global_var_name(
-        qual_global_var_name(MLDS_ModuleName, GlobalVarName), !IO),
+    mlds_output_maybe_qualified_global_var_name(MLDS_ModuleName, GlobalVarName,
+        !IO),
     mlds_output_type_suffix(Opts, Type, InitializerSize, !IO).
 
 :- pred mlds_output_local_var_decl(mlds_to_c_opts::in, mlds_local_var_name::in,
@@ -2670,20 +2684,36 @@ mlds_output_fully_qualified_function_name(QualFuncName, !IO) :-
     ),
     mlds_output_function_name(FuncName, !IO).
 
-:- pred mlds_output_fully_qualified_global_var_name(qual_global_var_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_maybe_qualified_global_var_name(mlds_module_name::in,
+    mlds_global_var_name::in, io::di, io::uo) is det.
 
-mlds_output_fully_qualified_global_var_name(QualGlobalVarName, !IO) :-
-    QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
-    ( if
-        GlobalVarName = gvn_rtti_var(RttiId),
-        module_qualify_name_of_rtti_id(RttiId) = no
-    then
-        true
-    else
+mlds_output_maybe_qualified_global_var_name(ModuleName, GlobalVarName, !IO) :-
+    ShouldModuleQual = should_module_qualify_global_var_name(GlobalVarName),
+    (
+        ShouldModuleQual = no
+    ;
+        ShouldModuleQual = yes,
         output_qual_name_prefix_c(ModuleName, !IO)
     ),
     mlds_output_global_var_name(GlobalVarName, !IO).
+
+:- func should_module_qualify_global_var_name(mlds_global_var_name) = bool.
+
+should_module_qualify_global_var_name(GlobalVarName) = ShouldModuleQual :-
+    (
+        GlobalVarName = gvn_rtti_var(RttiId),
+        ShouldModuleQual = module_qualify_name_of_rtti_id(RttiId)
+    ;
+        ( GlobalVarName = gvn_const_var(_, _)
+        ; GlobalVarName = gvn_tabling_var(_, _)
+        ),
+        ShouldModuleQual = no
+    ;
+        GlobalVarName = gvn_dummy_var,
+        % The reference is to private_builtin.dummy_var, which is not in the
+        % current module (unless we are compiling private_builtin.m).
+        ShouldModuleQual = yes
+    ).
 
 :- pred mlds_output_fully_qualified_field_var_name(qual_field_var_name::in,
     io::di, io::uo) is det.
@@ -2851,8 +2881,8 @@ mlds_pred_label_to_string(PredLabel) = Str :-
             int_to_string(TypeArity)
     ).
 
-mlds_tabling_data_name(ProcLabel, Id) =
-    tabling_info_id_str(Id) ++ "_for_" ++
+mlds_tabling_data_name(ProcLabel, TablingId) =
+    tabling_info_id_str(TablingId) ++ "_for_" ++
         mlds_proc_label_to_string(mlds_std_tabling_proc_label(ProcLabel)).
 
 :- pred mlds_output_global_var_name(mlds_global_var_name::in,
@@ -2868,8 +2898,8 @@ mlds_output_global_var_name(GlobalVarName, !IO) :-
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
         io.write_string(RttiAddrName, !IO)
     ;
-        GlobalVarName = gvn_tabling_var(ProcLabel, Id),
-        io.write_string(mlds_tabling_data_name(ProcLabel, Id), !IO)
+        GlobalVarName = gvn_tabling_var(ProcLabel, TablingId),
+        io.write_string(mlds_tabling_data_name(ProcLabel, TablingId), !IO)
     ;
         GlobalVarName = gvn_dummy_var,
         io.write_string("dummy_var", !IO)
@@ -4663,11 +4693,14 @@ mlds_output_lval(Opts, Lval, !IO) :-
         io.write_string("*", !IO),
         mlds_output_bracketed_rval(Opts, Rval, !IO)
     ;
-        Lval = ml_target_global_var_ref(GobalVar),
-        io.write_string(global_var_name(GobalVar), !IO)
+        Lval = ml_target_global_var_ref(GlobalVar),
+        io.write_string(global_var_name(GlobalVar), !IO)
     ;
-        Lval = ml_global_var(GlobalVarName, _VarType),
-        mlds_output_fully_qualified_global_var_name(GlobalVarName, !IO)
+        Lval = ml_global_var(QualGlobalVarName, _VarType),
+        QualGlobalVarName =
+            qual_global_var_name(MLDS_ModuleName, GlobalVarName),
+        mlds_output_maybe_qualified_global_var_name(MLDS_ModuleName,
+            GlobalVarName, !IO)
     ;
         Lval = ml_local_var(LocalVarName, _VarType),
         mlds_output_local_var_name(LocalVarName, !IO)
@@ -5278,45 +5311,30 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         mlds_output_mangled_name(ml_local_var_name_to_string(LocalVarName),
             !IO)
     ;
-        Const = mlconst_data_addr_global_var(ModuleName, GlobalVarName),
-        io.write_string("&", !IO),
-        % XXX Does this duplicate the code that prints global var names?
-        mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName), !IO),
-        io.write_string("__", !IO),
-        mlds_output_global_var_name(GlobalVarName, !IO)
-    ;
-        Const = mlconst_data_addr_rtti(ModuleName, RttiId),
-        % If it is an array type, then we just use the name;
-        % otherwise, we must prefix the name with `&'.
-        ( if rtti_id_has_array_type(RttiId) = is_array then
-            true
-        else
-            io.write_string("&", !IO)
-        ),
-        ModuleQual = module_qualify_name_of_rtti_id(RttiId),
         (
-            ModuleQual = no
+            Const =
+                mlconst_data_addr_global_var(MLDS_ModuleName, GlobalVarName),
+            IsArray = not_array
         ;
-            ModuleQual = yes,
-            mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName),
-                !IO),
-            io.write_string("__", !IO)
+            Const = mlconst_data_addr_rtti(MLDS_ModuleName, RttiId),
+            GlobalVarName = gvn_rtti_var(RttiId),
+            IsArray = rtti_id_has_array_type(RttiId)
+        ;
+            Const = mlconst_data_addr_tabling(QualProcLabel, TablingId),
+            QualProcLabel = qual_proc_label(MLDS_ModuleName, ProcLabel),
+            GlobalVarName = gvn_tabling_var(ProcLabel, TablingId),
+            IsArray = tabling_id_has_array_type(TablingId)
         ),
-        rtti.id_to_c_identifier(RttiId, RttiAddrName),
-        io.write_string(RttiAddrName, !IO)
-    ;
-        Const = mlconst_data_addr_tabling(QualProcLabel, TablingId),
         % If it is an array type, then we just use the name;
         % otherwise, we must prefix the name with `&'.
-        ( if tabling_id_has_array_type(TablingId) = is_array then
-            true
-        else
+        (
+            IsArray = is_array
+        ;
+            IsArray = not_array,
             io.write_string("&", !IO)
         ),
-        QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
-        mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName), !IO),
-        io.write_string("__", !IO),
-        io.write_string(mlds_tabling_data_name(ProcLabel, TablingId), !IO)
+        mlds_output_maybe_qualified_global_var_name(MLDS_ModuleName,
+            GlobalVarName, !IO)
     ;
         Const = mlconst_null(_),
         io.write_string("NULL", !IO)
