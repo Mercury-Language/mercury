@@ -317,7 +317,7 @@
     %
 :- pred is_space_separator(char::in) is semidet.
 
-    % True iff the character  is a Unicode Line Separator code point, that is a
+    % True iff the character is a Unicode Line Separator code point, that is a
     % code point in General Category `Separator,line' (`Zl').
     %
 :- pred is_line_separator(char::in) is semidet.
