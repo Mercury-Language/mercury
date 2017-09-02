@@ -320,7 +320,7 @@ ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
 project_pred_proc_id_info_id(PredProcIdInfo) = PredProcId :-
     PredProcIdInfo = pred_proc_id_info(PredProcId, _, _, _).
 
-    % Partition the procedures in an SCC into following four categories.
+    % Partition the procedures in an SCC into the following four categories.
     %
     % - Those that don't contain any tail calls (NoneIdInfos).
     % - Those that in which we can only optimize self recursive tail calls,
@@ -751,14 +751,14 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
         %
         % Caveat 2:
         % If the MLDS code we generated for any of MutualPredProcIds contained
-        % any function definitions nested inside of them, then we have problem.
-        % The scheme shown above would create M copies of each such nested
-        % function definition, with M > 1. In the usual case of us generating
-        % code non-nested code, ml_elim_nested.m would hoist out such nested
-        % definitions M times, leading to the M copies of the hoisted-out
-        % definitions. Therefore, until we teach ml_elim_nested.m not to do
-        % that, we abandon the optimization of mutually recursive tail calls
-        % in the presence of such nested function definitions.
+        % any function definitions nested inside of them, then we have
+        % a problem. The scheme shown above would create M copies of each
+        % such nested function definition, with M > 1. In the usual case of
+        % us generating non-nested code, ml_elim_nested.m would hoist out
+        % such nested definitions M times, leading to the M copies of the
+        % hoisted-out definitions. Therefore, until we teach ml_elim_nested.m
+        % not to do that, we abandon the optimization of mutually recursive
+        % tail calls in the presence of such nested function definitions.
         ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap,
             TsccCodeModel, PredProcIds, _NonTailEntryPredProcIds,
             NoMutualPredProcIds, MutualPredProcIds, MutualPredProcCodes,

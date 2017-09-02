@@ -311,11 +311,12 @@
 % while it generates MLDS code for a HLDS procedure.
 %
 % When the HLDS procedure is part of a TSCC of several mutually-tail-recursive
-% procedures, we bundle we generate for each procedure into a single piece of
-% code for *each* entry procedure of the TSCC. To help prevent accidental name
-% collisions between the compiler-generated local variables of the different
-% procedures, we get those procedures to use non-overlapping sets of sequence
-% numbers in the names of those compiler-generated variables, by
+% procedures, we bundle the code we generate for each procedure into
+% a single piece of code for *each* entry procedure of the TSCC.
+% To help prevent accidental name collisions between the compiler-generated
+% local variables of the different procedures, we get those procedures
+% to use non-overlapping sets of sequence numbers in the names of those
+% compiler-generated variables, by
 %
 % - creating an initial set of counters (the sources of those sequence numbers)
 %   before starting to generate code for a TSCC, and

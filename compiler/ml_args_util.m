@@ -88,7 +88,7 @@
     % ml_gen_tscc_arg_decls(ModuleInfo, Vars, Types, Modes, VarSet, Context,
     %     ProcIdInTscc, NextInArgNum0, NextOutArgNum0, NumOutputs,
     %     !OutArgNames, TsccInArgs, TsccInLocalVarDefns, TsccArgs,
-    %     OwnLocalVarDefns, CopyTsccToOwnStmts) :-
+    %     OwnLocalVarDefns, CopyTsccToOwnStmts):
     %
     % Given a procedure in a TSCC and information about its argument list
     % in the form of the arguments' variable names (Vars), types (Types),
@@ -127,7 +127,7 @@
     % of each variable in TsccInArgs. This is used to define those variables
     % in copies of the TSCC code that are *not* for this procedure.
     %
-    % The value returned in TsccArgs a list of all the arguments of the
+    % The value returned in TsccArgs is a list of all the arguments of the
     % procedure, both input and output, in declaration order. This will be
     % the argument list of the copy of the TSCC for this procedure,
     % and thus it will define the lvn_tscc_proc_input_vars in that copy.
