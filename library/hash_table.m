@@ -266,6 +266,7 @@
     % Default hash_preds for ints and strings and everything (buwahahaha!)
     %
 :- pred int_hash(int::in, int::out) is det.
+:- pred uint_hash(uint::in, int::out) is det.
 :- pred float_hash(float::in, int::out) is det.
 :- pred char_hash(char::in, int::out) is det.
 :- pred string_hash(string::in, int::out) is det.
@@ -284,6 +285,7 @@
 :- import_module list.
 :- import_module pair.
 :- import_module string.
+:- import_module uint.
 :- import_module univ.
 
 %---------------------------------------------------------------------------%
@@ -789,41 +791,41 @@ fold3_p(P, List, !A, !B, !C) :-
 
 %---------------------------------------------------------------------------%
 
-    % From http://www.concentric.net/~Ttwang/tech/inthash.htm
-    %   public int hash32shift(int key)
-    %   public long hash64shift(long key)
-    %
-:- pragma foreign_proc("C",
-    int_hash(N::in, H::out),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    const int c2 = 0x27d4eb2d; /* a prime or an odd constant */
-    MR_Unsigned key;
+% The integer hash functions below are originally from:
+%
+%  http://www.concentric.net/~Ttwang/tech/inthash.htm
+%
+% The above link is now dead; the last version can be found at:
+%
+%  https://web.archive.org/web/20121102023700/http://www.concentric.net/~Ttwang/tech/inthash.htm
+%
+% The algorithms from that page that we use are:
+%
+%   public int hash32shiftmult(int key)
+%   public long hash64shift(long key)
 
-    key = N;
+int_hash(Key, Hash) :-
+    UKey = uint.cast_from_int(Key),
+    uint_hash(UKey, Hash).
 
-    if (sizeof(MR_Word) == 4) {
-        key = (key ^ 61) ^ (key >> 16);
-        key = key + (key << 3);
-        key = key ^ (key >> 4);
-        key = key * c2;
-        key = key ^ (key >> 15);
-    } else {
-        key = (~key) + (key << 21); /* key = (key << 21) - key - 1; */
-        key = key ^ (key >> 24);
-        key = (key + (key << 3)) + (key << 8); /* key * 265 */
-        key = key ^ (key >> 14);
-        key = (key + (key << 2)) + (key << 4); /* key * 21 */
-        key = key ^ (key >> 28);
-        key = key + (key << 31);
-    }
-
-    H = key;
-").
-
-int_hash(N, N).
-    % For use on non-C backends.
-    % There are almost certainly better ones out there...
+uint_hash(!.Key, Hash) :-
+    C2 = 0x_27d4_eb2d_u, % A prime or odd constant.
+    ( if bits_per_uint = 32 then
+        !:Key = (!.Key `xor` 61_u) `xor` (!.Key >> 16),
+        !:Key = !.Key + (!.Key << 3),
+        !:Key = !.Key `xor` (!.Key >> 4),
+        !:Key = !.Key * C2,
+        !:Key = !.Key `xor` (!.Key >> 15)
+    else
+        !:Key = (\ !.Key) + (!.Key << 21), % !:Key = (!.Key << 21) - !.Key - 1
+        !:Key = !.Key `xor` (!.Key >> 24),
+        !:Key = (!.Key + (!.Key << 3)) + (!.Key << 8), % !.Key * 245
+        !:Key = !.Key `xor` (!.Key >> 14),
+        !:Key = (!.Key + (!.Key << 2)) + (!.Key << 4), % !.Key * 21
+        !:Key = !.Key `xor` (!.Key >> 28),
+        !:Key = !.Key + (!.Key << 31)
+    ),
+    Hash = uint.cast_to_int(!.Key).
 
 float_hash(F, float.hash(F)).
     % There are almost certainly better ones out there...

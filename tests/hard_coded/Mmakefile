@@ -509,6 +509,7 @@ ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 		pragma_export \
 		runtime_opt \
 		target_mlobjs \
+		test_int_hash \
         	weak_ptr
 else
 	C_ONLY_PROGS =
