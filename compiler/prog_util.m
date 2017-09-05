@@ -690,7 +690,7 @@ cons_id_arity(ConsId) = Arity :-
         ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_entry_desc(_)
         ),
-        unexpected($module, $pred, "unexpected cons_id")
+        unexpected($pred, "unexpected cons_id")
     ).
 
 cons_id_maybe_arity(cons(_, Arity, _)) = yes(Arity).
@@ -784,7 +784,7 @@ det_make_functor_cons_id(Functor, Arity, ConsId) :-
     ( if make_functor_cons_id(Functor, Arity, ConsIdPrime) then
         ConsId = ConsIdPrime
     else
-        unexpected($module, $pred, "make_functor_cons_id failed")
+        unexpected($pred, "make_functor_cons_id failed")
     ).
 
 source_integer_to_int(Base, Integer, Int) :-
@@ -862,13 +862,11 @@ make_n_fresh_vars_loop(BaseName, Cur, Max, Vars, !VarSet) :-
     ).
 
 pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
-    list.length(PredArgs, NumPredArgs),
-    NumFuncArgs = NumPredArgs - 1,
-    ( if list.split_list(NumFuncArgs, PredArgs, FuncArgs0, [FuncReturn0]) then
-        FuncArgs = FuncArgs0,
-        FuncReturn = FuncReturn0
+    ( if list.split_last(PredArgs, FuncArgsPrime, FuncReturnPrime) then
+        FuncArgs = FuncArgsPrime,
+        FuncReturn = FuncReturnPrime
     else
-        unexpected($module, $pred, "function missing return value?")
+        unexpected($pred, "function missing return value?")
     ).
 
 get_state_args(Args0, Args, State0, State) :-
@@ -882,7 +880,7 @@ get_state_args_det(Args0, Args, State0, State) :-
         State0 = State0Prime,
         State = StatePrime
     else
-        unexpected($module, $pred, "get_state_args failed")
+        unexpected($pred, "get_state_args failed")
     ).
 
 %-----------------------------------------------------------------------------%
