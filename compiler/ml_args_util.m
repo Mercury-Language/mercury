@@ -39,10 +39,14 @@
 % Various utility routines used for MLDS code generation.
 %
 
+:- type solo_or_tscc
+    --->    sot_solo
+    ;       sot_tscc.
+
     % Append an appropriate `return' statement for the given code_model
     % and returning the given lvals, if needed.
     %
-:- pred ml_append_return_statement(code_model::in, bool::in,
+:- pred ml_append_return_statement(code_model::in, solo_or_tscc::in,
     list(mlds_lval)::in, prog_context::in,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -207,7 +211,7 @@
 % Code for various utility routines.
 %
 
-ml_append_return_statement(CodeModel, AlwaysAddReturn, CopiedOutputVarLvals,
+ml_append_return_statement(CodeModel, SoloOrTscc, CopiedOutputVarLvals,
         Context, !Stmts, !Info) :-
     (
         CodeModel = model_semi,
@@ -230,11 +234,10 @@ ml_append_return_statement(CodeModel, AlwaysAddReturn, CopiedOutputVarLvals,
             % This return statement is not needed in the usual case
             % where the code we generate for a HLDS procedure is the
             % entirety of an MLDS function (when our caller should pass
-            % AlwaysAddReturn = no), since the end of the function
-            % acts as an implicit return, but it *is* needed when the MLDS
-            % function also contains the code of other HLDS procedures
-            % in the same TSCC (when our caller should pass AlwaysAddReturn
-            % = yes).
+            % sot_solo), since the end of the function acts as an implicit
+            % return, but it *is* needed when the MLDS function also contains
+            % the code of other HLDS procedures in the same TSCC (when our
+            % caller should pass sot_tscc).
             %
             % Note that adding a return statement after the body of a procedure
             % that throws an exception may, if this fact is visible to the
@@ -242,9 +245,9 @@ ml_append_return_statement(CodeModel, AlwaysAddReturn, CopiedOutputVarLvals,
             % error. The Java compiler does this when the body of a HLDS
             % procedure is defined by Java code that does a throw.
             (
-                AlwaysAddReturn = no
+                SoloOrTscc = sot_solo
             ;
-                AlwaysAddReturn = yes,
+                SoloOrTscc = sot_tscc,
                 ReturnStmt = ml_stmt_return([], Context),
                 !:Stmts = !.Stmts ++ [ReturnStmt]
             )

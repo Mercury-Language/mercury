@@ -504,7 +504,7 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             modes_to_top_functor_modes(ModuleInfo, HeadModes, HeadTypes,
                 TopFunctorModes),
             proc_info_get_goal(ProcInfo, Goal),
-            ml_gen_proc_body(CodeModel, no, HeadVars, HeadTypes,
+            ml_gen_proc_body(CodeModel, sot_solo, HeadVars, HeadTypes,
                 TopFunctorModes, CopiedOutputVars, Goal,
                 LocalVarDefns0, FuncDefns, GoalStmts, !Info),
             ml_gen_post_process_locals(ProcInfo, ProcContext,
@@ -1161,9 +1161,9 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         ; TsccCodeModel = tscc_semi, CodeModel = model_semi
         ),
         proc_info_get_goal(ProcInfo, Goal),
-        ml_gen_proc_body(CodeModel, yes, HeadVars, HeadTypes, TopFunctorModes,
-            CopiedOutputVars, Goal, LocalVarDefns0, FuncDefns, GoalStmts,
-            !Info),
+        ml_gen_proc_body(CodeModel, sot_tscc, HeadVars, HeadTypes,
+            TopFunctorModes, CopiedOutputVars, Goal,
+            LocalVarDefns0, FuncDefns, GoalStmts, !Info),
         ml_gen_post_process_locals(ProcInfo, ProcContext,
             HeadVars, HeadTypes,
             CopiedOutputVars, LocalVarDefns0, LocalVarDefns, !Info),
@@ -1517,13 +1517,13 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
 
     % Generate the code for a procedure body.
     %
-:- pred ml_gen_proc_body(code_model::in, bool::in, list(prog_var)::in,
+:- pred ml_gen_proc_body(code_model::in, solo_or_tscc::in, list(prog_var)::in,
     list(mer_type)::in, list(top_functor_mode)::in, list(prog_var)::in,
     hlds_goal::in,
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_proc_body(CodeModel, AlwaysAddReturn, HeadVars, ArgTypes,
+ml_gen_proc_body(CodeModel, SoloOrTscc, HeadVars, ArgTypes,
         TopFunctorModes, CopiedOutputVars, Goal, LocalVarDefns, FuncDefns,
         Stmts, !Info) :-
     Goal = hlds_goal(_, GoalInfo),
@@ -1572,7 +1572,7 @@ ml_gen_proc_body(CodeModel, AlwaysAddReturn, HeadVars, ArgTypes,
     ),
 
     % Finally append an appropriate `return' statement, if needed.
-    ml_append_return_statement(CodeModel, AlwaysAddReturn,
+    ml_append_return_statement(CodeModel, SoloOrTscc,
         CopiedOutputVarOriginalLvals, Context, Stmts1, Stmts, !Info).
 
     % In certain cases -- for example existentially typed procedures,
