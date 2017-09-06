@@ -15,14 +15,14 @@
 % About multiple outputs: C# supports pass-by-reference so the first thought is
 % to just let the MLDS code generator use `out' parameters to handle multiple
 % outputs. But to reference a method, we have to assign it to a delegate with a
-% matching signature, which needs to be declared.  Although we can parameterise
+% matching signature, which needs to be declared. Although we can parameterise
 % the types, we cannot parameterise the argument modes (in/out), so we would
 % need 2^n delegates to cover all methods of arity n.
 %
 % Instead, we generate code as if C# supported multiple return values.
-% The first return value is returned as usual.  The second and later return
+% The first return value is returned as usual. The second and later return
 % values are assigned to `out' parameters, which we always place after any
-% input arguments.  That way we don't need to declare delegates with all
+% input arguments. That way we don't need to declare delegates with all
 % possible permutations of in/out parameters.
 %
 %---------------------------------------------------------------------------%
@@ -47,14 +47,11 @@
 
 :- implementation.
 
-    % XXX needed for c_util.output_quoted_string,
-    %     c_util.output_quoted_multi_string, and
-    %     c_util.make_float_literal.
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.c_util.
+:- import_module backend_libs.c_util.       % for output_quoted_string*
 :- import_module backend_libs.rtti.
-:- import_module hlds.hlds_pred.           % for pred_proc_id.
+:- import_module hlds.hlds_pred.            % for pred_proc_id
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -63,13 +60,13 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_global_data.
-:- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
+:- import_module ml_backend.ml_type_gen.    % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
 :- import_module ml_backend.mlds_to_target_util.
 :- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.file_names.    % for mercury_std_library_name.
+:- import_module parse_tree.file_names.     % for mercury_std_library_name
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -100,18 +97,6 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     Indent = 0,
     output_to_file(Globals, SourceFile,
         output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
-
-%---------------------------------------------------------------------------%
-%
-% Utility predicates for various purposes.
-%
-
-    % Succeeds iff a given string matches the unqualified interface name
-    % of a interface in Mercury's C# runtime system.
-    %
-:- pred interface_is_special_for_csharp(string::in) is semidet.
-
-interface_is_special_for_csharp("MercuryType").
 
 %---------------------------------------------------------------------------%
 %
@@ -149,7 +134,7 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         make_code_addr_map_for_csharp(RevSeqNumCodeAddrs, map.init, CodeAddrs)
     ),
 
-    % Get the foreign code for C#
+    % Get the foreign code for C#.
     % XXX We should not ignore _Imports.
     ForeignCode = mlds_get_csharp_foreign_code(AllForeignCode),
     ForeignCode = mlds_foreign_code(ForeignDeclCodes, ForeignBodyCodes,
@@ -316,7 +301,7 @@ mlds_get_csharp_foreign_code(AllForeignCode) = ForeignCode :-
 %
 
     % Exports are converted into forwarding methods that are given the
-    % specified name.  These simply call the exported procedure.
+    % specified name. These simply call the exported procedure.
     %
     % NOTE: the forwarding methods must be declared public as they might
     % be referred to within foreign_procs that are inlined across module
@@ -340,7 +325,7 @@ output_export_for_csharp(Info, Indent, Export, !IO) :-
 
     output_n_indents(Indent, !IO),
     io.write_string("public static ", !IO),
-    % XXX C# has generics
+    % XXX C# has generics.
     % output_generic_tvars(UnivQTVars, !IO),
     io.nl(!IO),
     output_n_indents(Indent, !IO),
@@ -376,8 +361,8 @@ output_export_for_csharp(Info, Indent, Export, !IO) :-
         )
     ;
         ReturnTypes = [RetTypeB | _],
-        % The cast is required when the exported method uses generics but the
-        % underlying method does not use generics (i.e. returns Object).
+        % The cast is required when the exported method uses generics, but
+        % the underlying method does not use generics (i.e. returns Object).
         io.write_string("return (", !IO),
         output_type_for_csharp(Info, RetTypeB, !IO),
         io.write_string(") ", !IO),
@@ -496,7 +481,7 @@ output_method_ptr_constant(Info, Indent, CodeAddr, Name, !IO) :-
 
 output_env_var_definition_for_csharp(Indent, EnvVarName, !IO) :-
     % We use int because the generated code compares against zero, and changing
-    % that is more trouble than it's worth as it affects the C backends.
+    % that is more trouble than it is worth, as it affects the C backends.
     output_n_indents(Indent, !IO),
     io.write_string("private static int mercury_envvar_", !IO),
     io.write_string(EnvVarName, !IO),
@@ -555,19 +540,21 @@ output_static_constructor(MercuryModuleName, Indent, StaticConstructors,
         ClassName),
     io.write_string(ClassName, !IO),
     io.write_string("() {\n", !IO),
-    WriteCall = (pred(MethodName::in, !.IO::di, !:IO::uo) is det :-
-        output_n_indents(Indent + 1, !IO),
-        io.write_string(MethodName, !IO),
-        io.write_string("();\n", !IO)
-    ),
+    WriteCall =
+        ( pred(MethodName::in, !.IO::di, !:IO::uo) is det :-
+            output_n_indents(Indent + 1, !IO),
+            io.write_string(MethodName, !IO),
+            io.write_string("();\n", !IO)
+        ),
     list.foldl(WriteCall, StaticConstructors, !IO),
-    WriteFinal = (pred(FinalPred::in, !.IO::di, !:IO::uo) is det :-
-        output_n_indents(Indent + 1, !IO),
-        list.foldl(io.write_string, [
-            "System.AppDomain.CurrentDomain.ProcessExit += ",
-            "(sender, ev) => ", FinalPred, "();\n"
-        ], !IO)
-    ),
+    WriteFinal =
+        ( pred(FinalPred::in, !.IO::di, !:IO::uo) is det :-
+            output_n_indents(Indent + 1, !IO),
+            list.foldl(io.write_string, [
+                "System.AppDomain.CurrentDomain.ProcessExit += ",
+                "(sender, ev) => ", FinalPred, "();\n"
+            ], !IO)
+        ),
     list.foldl(WriteFinal, FinalPreds, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("}\n", !IO).
@@ -633,8 +620,7 @@ output_global_var_defn_for_csharp(Info, Indent, OutputAux, GlobalVarDefn,
 :- pred output_local_var_defn_for_csharp(csharp_out_info::in, indent::in,
     output_aux::in, mlds_local_var_defn::in, io::di, io::uo) is det.
 
-output_local_var_defn_for_csharp(Info, Indent, OutputAux, LocalVarDefn,
-        !IO) :-
+output_local_var_defn_for_csharp(Info, Indent, OutputAux, LocalVarDefn, !IO) :-
     output_n_indents(Indent, !IO),
     LocalVarDefn = mlds_local_var_defn(LocalVarName, _Context,
         Type, Initializer, _),
@@ -645,8 +631,7 @@ output_local_var_defn_for_csharp(Info, Indent, OutputAux, LocalVarDefn,
 :- pred output_field_var_defn_for_csharp(csharp_out_info::in, indent::in,
     output_aux::in, mlds_field_var_defn::in, io::di, io::uo) is det.
 
-output_field_var_defn_for_csharp(Info, Indent, OutputAux, FieldVarDefn,
-        !IO) :-
+output_field_var_defn_for_csharp(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
     output_n_indents(Indent, !IO),
     FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, Flags,
         Type, Initializer, _),
@@ -785,8 +770,8 @@ output_class_kind_for_csharp(Kind, !IO) :-
     ).
 
     % Output superclass that this class extends and interfaces implemented.
-    % C# does not support multiple inheritance, so more than one superclass is
-    % an error.
+    % C# does not support multiple inheritance, so more than one superclass
+    % is an error.
     %
 :- pred output_supers_list(csharp_out_info::in, indent::in,
     list(mlds_class_id)::in, list(mlds_interface_id)::in,
@@ -819,9 +804,7 @@ output_supers_list(Info, Indent, BaseClasses, Interfaces, !IO) :-
 :- pred interface_to_string(mlds_interface_id::in, string::out) is det.
 
 interface_to_string(Interface, String) :-
-    ( if
-        Interface = mlds_class_type(QualClassName, Arity, _)
-    then
+    ( if Interface = mlds_class_type(QualClassName, Arity, _) then
         QualClassName = qual_class_name(ModuleQualifier, _QualKind, ClassName),
         SymName = mlds_module_name_to_sym_name(ModuleQualifier),
         mangle_sym_name_for_csharp(SymName, module_qual, ".", ModuleNameStr),
@@ -837,6 +820,13 @@ interface_to_string(Interface, String) :-
     else
         unexpected($pred, "interface was not a class")
     ).
+
+    % Succeeds iff a given string matches the unqualified interface name
+    % of a interface in Mercury's C# runtime system.
+    %
+:- pred interface_is_special_for_csharp(string::in) is semidet.
+
+interface_is_special_for_csharp("MercuryType").
 
 %---------------------------------------------------------------------------%
 %
@@ -1181,7 +1171,7 @@ output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO) :-
         ),
         io.write_string(" = ", !IO),
         % Due to cyclic references, we need to separate the allocation and
-        % initialisation steps of RTTI structures.  If InitStyle is alloc_only
+        % initialisation steps of RTTI structures. If InitStyle is alloc_only,
         % then we output an initializer to allocate a structure without filling
         % in the fields.
         (
@@ -1294,9 +1284,9 @@ output_initializer_body_for_csharp(Info, Initializer, MaybeType, !IO) :-
 
 output_initializer_body_list_for_csharp(Info, Inits, !IO) :-
     io.write_list(Inits, ",\n\t\t",
-        (pred(Init::in, !.IO::di, !:IO::uo) is det :-
-            output_initializer_body_for_csharp(Info, Init, no, !IO)),
-        !IO).
+        ( pred(Init::in, !.IO::di, !:IO::uo) is det :-
+            output_initializer_body_for_csharp(Info, Init, no, !IO)
+        ), !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1442,7 +1432,7 @@ output_return_types_for_csharp(Info, RetTypes, OutParams, !IO) :-
         OutParams = []
     ;
         RetTypes = [RetType | OutParams],
-        % The first return value is returned directly.  Any further return
+        % The first return value is returned directly. Any further return
         % values are returned via out parameters.
         output_type_for_csharp(Info, RetType, !IO)
     ).
@@ -1797,10 +1787,9 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         else if
             Type = c_pointer_type
         then
-            % The c_pointer type is used in the c back-end as a generic way
+            % The c_pointer type is used in the C back-end as a generic way
             % to pass foreign types to automatically generated Compare and
-            % Unify code. When compiling to C# we must instead use
-            % object.
+            % Unify code. When compiling to C# we must instead use object.
             String = "/* c_pointer */ object",
             ArrayDims = []
         else
@@ -3065,9 +3054,9 @@ output_lval_for_csharp(Info, Lval, !IO) :-
                 output_bracketed_rval_for_csharp(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
             else if PtrRval = ml_self(_) then
-                % Suppress type cast on `this' keyword.  This makes a
-                % difference when assigning to `final' member variables in
-                % constructor functions.
+                % Suppress type cast on `this' keyword. This makes a difference
+                % when assigning to `final' member variables in constructor
+                % functions.
                 output_rval_for_csharp(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
             else
@@ -3232,12 +3221,11 @@ output_cast_rval_for_csharp(Info, Type, Expr, !IO) :-
         )
     then
         % XXX We really should be able to tell if we are casting a
-        % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
+        % TypeCtorInfo or a TypeInfo. Julien says that is probably going to
         % be rather difficult as the compiler doesn't keep track of where
-        % type_ctor_infos are acting as type_infos properly.
+        % type_ctor_infos are acting as type_infos properly. (zs agrees.)
         maybe_output_comment_for_csharp(Info, "cast", !IO),
-        io.write_string("runtime.TypeInfo_Struct.maybe_new(",
-            !IO),
+        io.write_string("runtime.TypeInfo_Struct.maybe_new(", !IO),
         output_rval_for_csharp(Info, Expr, !IO),
         io.write_string(")", !IO)
     else if
