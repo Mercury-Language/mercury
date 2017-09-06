@@ -1219,17 +1219,23 @@ construct_tscc_entry_proc(ModuleInfo, LoopKind, TsccCodeModel, PredProcCodes,
         ProcStmtInfos, SelectorVarDefns, Stmts),
     LocalVarDefns = SelectorVarDefns ++ TsccInLocalDefns,
 
-    Comment1 = comment("Setup for mutual tailcalls optimized into a loop."),
-    CommentStmt1 = ml_stmt_atomic(Comment1, EntryProcContext),
-    Comment2 = comment("The mutually recursive procedures are:"),
-    CommentStmt2 = ml_stmt_atomic(Comment2, EntryProcContext),
+    EntryIdInTscc = proc_id_in_tscc(EntryIdInTsccNum),
+    EntryProcDesc = describe_proc_from_id(ModuleInfo, EntryProc),
+    Comment0 = string.format("The code for TSCC PROC %d: %s",
+        [i(EntryIdInTsccNum), s(EntryProcDesc)]),
+    CommentStmt0 = ml_stmt_atomic(comment(Comment0), EntryProcContext),
+    Comment1 = "Setup for mutual tailcalls optimized into a loop.",
+    CommentStmt1 = ml_stmt_atomic(comment(Comment1), EntryProcContext),
+    Comment2 = "The mutually recursive procedures are:",
+    CommentStmt2 = ml_stmt_atomic(comment(Comment2), EntryProcContext),
     EmptyComment = comment(""),
     EmptyCommentStmt = ml_stmt_atomic(EmptyComment, EntryProcContext),
     ProcDescCommentStmts =
         list.map(func(PPC) = PPC ^ ppc_desc_comment_stmt, PredProcCodes),
 
     FuncBodyStmts =
-        [CommentStmt1, CommentStmt2, EmptyCommentStmt | ProcDescCommentStmts]
+        [CommentStmt0, CommentStmt1, CommentStmt2, EmptyCommentStmt
+            | ProcDescCommentStmts]
         ++ [EmptyCommentStmt | EntryProcDescComments] ++ Stmts,
 
     FuncBodyStmt = ml_stmt_block(LocalVarDefns, [],
