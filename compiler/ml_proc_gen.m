@@ -494,8 +494,7 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
                 ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info)
             ;
                 CodeModel = model_non,
-                ml_set_up_initial_succ_cont(ModuleInfo, CopiedOutputVars,
-                    !Info)
+                ml_set_up_initial_succ_cont(CopiedOutputVars, !Info)
             ),
 
             proc_info_get_headvars(ProcInfo, HeadVars),
@@ -1459,8 +1458,7 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
 
 ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
     ml_gen_info_get_byref_output_vars(!.Info, OutputVars),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, det_copy_out, DetCopyOut),
+    ml_gen_info_get_det_copy_out(!.Info, DetCopyOut),
     (
         % If --det-copy-out is enabled, all non-dummy output variables are
         % returned by value, rather than passing them by reference.
@@ -1493,12 +1491,11 @@ ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
     % the byref_output_vars field in the ml_gen_info, and construct the
     % initial success continuation.
     %
-:- pred ml_set_up_initial_succ_cont(module_info::in, list(prog_var)::out,
+:- pred ml_set_up_initial_succ_cont(list(prog_var)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),
+ml_set_up_initial_succ_cont(NondetCopiedOutputVars, !Info) :-
+    ml_gen_info_get_nondet_copy_out(!.Info, NondetCopyOut),
     (
         NondetCopyOut = yes,
         % For --nondet-copy-out, we generate local variables for the output

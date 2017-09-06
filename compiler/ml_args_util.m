@@ -21,8 +21,6 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_gen_info.
@@ -175,16 +173,6 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
-%
-% Miscellaneous routines.
-%
-
-    % Get the value of the appropriate --det-copy-out or --nondet-copy-out
-    % option, depending on the code model.
-    %
-:- func get_copy_out_option(globals, code_model) = bool.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -192,6 +180,8 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.program_representation.
 :- import_module ml_backend.ml_accurate_gc.
@@ -774,16 +764,16 @@ ml_gen_arg(VarName, VarLval, CallerType, CalleeType, Mode,
                     ;
                         % If the target language allows multiple return values,
                         % then use them.
-                        ml_gen_info_get_globals(!.Info, Globals),
-                        get_copy_out_option(Globals, CodeModel) = yes
+                        ml_gen_info_get_copy_out(!.Info, CodeModel, CopyOut),
+                        CopyOut = yes
                     )
                 then
                     !:OutputLvals = [ArgLval | !.OutputLvals],
                     ml_gen_type(!.Info, CalleeType, OutputType),
                     !:OutputTypes = [OutputType | !.OutputTypes]
                 else
-                    % Otherwise use the traditional C style of passing the
-                    % address of the output value.
+                    % Otherwise use the traditional C style of passing
+                    % the address where the output value should be put.
                     !:InputRvals = [ml_gen_mem_addr(ArgLval) | !.InputRvals]
                 )
             ;
@@ -813,6 +803,11 @@ ml_gen_mem_addr(Lval) =
 %
 % Miscellaneous routines.
 %
+
+    % Get the value of the appropriate --det-copy-out or --nondet-copy-out
+    % option, depending on the code model.
+    %
+:- func get_copy_out_option(globals, code_model) = bool.
 
 get_copy_out_option(Globals, CodeModel) = CopyOut :-
     (

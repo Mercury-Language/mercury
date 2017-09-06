@@ -81,9 +81,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.mark_tail_calls.
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -631,8 +628,7 @@ ml_gen_mlds_call(Signature, FuncRval, ArgRvals0, RetLvals0,
         ),
         % For --nondet-copy-out, the output arguments will be passed to the
         % continuation rather than being returned.
-        ml_gen_info_get_globals(!.Info, Globals),
-        globals.lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),
+        ml_gen_info_get_nondet_copy_out(!.Info, NondetCopyOut),
         (
             NondetCopyOut = yes,
             RetLvals = []

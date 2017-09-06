@@ -179,9 +179,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module ml_backend.ml_accurate_gc.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
@@ -453,8 +450,7 @@ maybe_put_commit_in_own_func(LocalVarDefn0, FuncDefn0, TryCommitStmts,
 
 ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
         CopyLocalsToOutputArgs, !Info) :-
-    ml_gen_info_get_globals(!.Info, Globals),
-    globals.lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),
+    ml_gen_info_get_nondet_copy_out(!.Info, NondetCopyOut),
     (
         NondetCopyOut = yes,
         Context = goal_info_get_context(GoalInfo),

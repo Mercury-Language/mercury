@@ -47,9 +47,8 @@
     % Generates a wrapper function which unboxes the input arguments,
     % calls the specified procedure, passing it some extra arguments
     % from the closure, and then boxes the output arguments.
-    % It adds the definition of this wrapper function to the extra_defns
-    % field in the ml_gen_info, and returns the wrapper function's
-    % rval and type.
+    % It adds the definition of this wrapper function to the extra_defns field
+    % in the ml_gen_info, and returns the wrapper function's rval and type.
     %
     % The ClosureKind parameter specifies whether the closure is
     %
@@ -85,7 +84,6 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.continuation_info. % for `generate_closure_layout'
 :- import_module ll_backend.llds.              % for `layout_locn'
@@ -754,7 +752,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 
     % Generate code to declare and initialize the closure pointer,
     % if needed.
-    % XXX We should use a struct type for the closure, but currently we're
+    % XXX We should use a struct type for the closure, but currently we are
     % using a low-level data representation in the closure.
     %
     % #if 0 // HIGH_LEVEL_DATA
@@ -801,7 +799,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         CodeModel = model_semi
     ;
         CodeModel = model_non,
-        globals.lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),
+        ml_gen_info_get_nondet_copy_out(!.Info, NondetCopyOut),
         (
             NondetCopyOut = yes,
             map.from_corresponding_lists(WrapperHeadVarLvals,
@@ -811,8 +809,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
                 WrapperBoxedVarTypes),
             WrapperOutputTypes = map.apply_to_list(WrapperOutputLvals,
                 WrapperBoxedVarTypes),
-            ml_initial_cont(!.Info, WrapperOutputLvals,
-                WrapperOutputTypes, InitialCont)
+            ml_initial_cont(!.Info, WrapperOutputLvals, WrapperOutputTypes,
+                InitialCont)
         ;
             NondetCopyOut = no,
             ml_initial_cont(!.Info, [], [], InitialCont)
@@ -821,7 +819,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
 
     % Generate code to call the function:
-    % XXX currently we're using a low-level data representation in the closure.
+    % XXX Currently, we are using a low-level data representation
+    % in the closure.
     %
     %   foo(
     % #if HIGH_LEVEL_DATA
@@ -1038,8 +1037,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
         ;
             ArgTopFunctorMode = top_out,
             % Handle output variables.
-            ml_gen_info_get_globals(!.Info, Globals),
-            CopyOut = get_copy_out_option(Globals, CodeModel),
+            ml_gen_info_get_copy_out(!.Info, CodeModel, CopyOut),
             IsDummy = check_dummy_type(ModuleInfo, Type),
             ( if
                 (
