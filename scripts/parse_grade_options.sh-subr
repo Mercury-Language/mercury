@@ -58,11 +58,6 @@
     --no-high-level-data)
         highlevel_data=false ;;
 
-    --gcc-nested-functions)
-        gcc_nested_functions=true ;;
-    --no-gcc-nested-functions)
-        gcc_nested_functions=false ;;
-
     --asm-labels)
         asm_labels=true ;;
     --no-asm-labels)
@@ -235,7 +230,6 @@
 
         target=c
         highlevel_code=false
-        gcc_nested_functions=false
         highlevel_data=false
         asm_labels=false
         non_local_gotos=false
@@ -275,7 +269,6 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=true
-                    gcc_nested_functions=false
                     highlevel_data=true
                     ;;
                 java)
@@ -284,7 +277,6 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=true
-                    gcc_nested_functions=false
                     highlevel_data=true
                     ;;
                 erlang)
@@ -293,7 +285,6 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=true
-                    gcc_nested_functions=false
                     highlevel_data=true
                     ;;
                 hl)
@@ -301,7 +292,6 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=true
-                    gcc_nested_functions=false
                     highlevel_data=true
                     ;;
                 hlc)
@@ -309,23 +299,6 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=true
-                    gcc_nested_functions=false
-                    highlevel_data=false
-                    ;;
-                hl_nest)
-                    asm_labels=false
-                    non_local_gotos=false
-                    global_regs=false
-                    highlevel_code=true
-                    gcc_nested_functions=true
-                    highlevel_data=true
-                    ;;
-                hlc_nest)
-                    asm_labels=false
-                    non_local_gotos=false
-                    global_regs=false
-                    highlevel_code=true
-                    gcc_nested_functions=true
                     highlevel_data=false
                     ;;
                 asm_fast)
@@ -334,7 +307,6 @@
                     non_local_gotos=true
                     global_regs=true
                     highlevel_code=false
-                    gcc_nested_functions=false
                     highlevel_data=false
                     ;;
                 asm_jump)
@@ -343,7 +315,6 @@
                     non_local_gotos=true
                     global_regs=false
                     highlevel_code=false
-                    gcc_nested_functions=false
                     highlevel_data=false
                     ;;
                 fast)
@@ -352,7 +323,6 @@
                     non_local_gotos=true
                     global_regs=true
                     highlevel_code=false
-                    gcc_nested_functions=false
                     highlevel_data=false
                     ;;
                 jump)
@@ -361,7 +331,6 @@
                     non_local_gotos=true
                     global_regs=false
                     highlevel_code=false
-                    gcc_nested_functions=false
                     highlevel_data=false
                     ;;
                 reg)
@@ -370,7 +339,6 @@
                     non_local_gotos=false
                     global_regs=true
                     highlevel_code=false
-                    gcc_nested_functions=false
                     highlevel_data=false
                     ;;
                 none)
@@ -379,7 +347,6 @@
                     non_local_gotos=false
                     global_regs=false
                     highlevel_code=false
-                    gcc_nested_functions=false
                     highlevel_data=false
                     ;;
 

@@ -866,8 +866,6 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         %     (In theory --low-level-data should work too, but there is
         %     no reason to bother supporting it.)
         %   - unboxed floats
-        %   - turning off nested functions
-        %     Because Java doesn't support nested functions.
         %   - using copy-out for both det and nondet output arguments
         %     Because Java doesn't support pass-by-reference.
         %   - using no tags
@@ -894,7 +892,6 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(highlevel_code, bool(yes), !Globals),
         globals.set_option(highlevel_data, bool(yes), !Globals),
         globals.set_option(unboxed_float, bool(yes), !Globals),
-        globals.set_option(gcc_nested_functions, bool(no), !Globals),
         globals.set_option(nondet_copy_out, bool(yes), !Globals),
         globals.set_option(det_copy_out, bool(yes), !Globals),
         globals.set_option(num_tag_bits, int(0), !Globals),
@@ -977,10 +974,6 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     option_implies(highlevel_code, gcc_non_local_gotos, bool(no), !Globals),
     option_implies(highlevel_code, gcc_global_registers, bool(no), !Globals),
     option_implies(highlevel_code, asm_labels, bool(no), !Globals),
-
-    % --no-gcc-nested-functions implies --no-gcc-local-labels.
-    option_neg_implies(gcc_nested_functions, gcc_local_labels, bool(no),
-        !Globals),
 
     % --no-mlds-optimize implies --no-optimize-tailcalls.
     option_neg_implies(optimize, optimize_tailcalls, bool(no), !Globals),

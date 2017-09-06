@@ -597,28 +597,15 @@ extern  void        MR_print_answerblock(FILE *fp,
 ////////////////////////////////////////////////////////////////////////////
 
 #ifdef  MR_HIGHLEVEL_CODE
-    #ifdef MR_USE_GCC_NESTED_FUNCTIONS
-        extern void MR_CALL
-            mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
-                MR_Box record, MR_Box *answer_block_ptr,
-                MR_NestedCont cont);
+    extern void MR_CALL
+         mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
+            MR_Box record, MR_Box *answer_block_ptr,
+            MR_Cont cont, void *cont_env_ptr);
 
-        extern void MR_CALL
-            mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
-                MR_Box record, MR_Box *answer_block_ptr,
-                MR_NestedCont cont);
-    #else   // ! MR_USE_GCC_NESTED_FUNCTIONS
-        extern void MR_CALL
-             mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
-                MR_Box record, MR_Box *answer_block_ptr,
-                MR_Cont cont, void *cont_env_ptr);
-
-        extern void MR_CALL
-             mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
-                MR_Box record, MR_Box *answer_block_ptr,
-                MR_Cont cont, void *cont_env_ptr);
-    #endif // MR_USE_GCC_NESTED_FUNCTIONS
-
+    extern void MR_CALL
+         mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
+            MR_Box record, MR_Box *answer_block_ptr,
+            MR_Cont cont, void *cont_env_ptr);
 #else   // ! MR_HIGHLEVEL_CODE
   #define MR_MEMO_NON_RET_ALL_NONDET_ENTRY                              \
     MR_proc_entry_user_name(table_builtin,                              \

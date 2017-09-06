@@ -132,7 +132,6 @@
 //
 // MR_HIGHLEVEL_CODE
 // MR_HIGHLEVEL_DATA
-// MR_USE_GCC_NESTED_FUNCTIONS
 // MR_USE_GCC_GLOBAL_REGISTERS
 // MR_USE_GCC_NONLOCAL_GOTOS
 // MR_USE_ASM_LABELS
@@ -160,7 +159,6 @@
 // See the documentation for
 //    --high-level-code
 //    --high-level-data
-//    --gcc-nested-functions
 //    --gcc-global-registers
 //    --gcc-non-local-gotos
 //    --gcc-asm-labels

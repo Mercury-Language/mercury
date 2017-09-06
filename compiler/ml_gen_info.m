@@ -56,11 +56,6 @@
 :- pred ml_gen_info_get_module_name(ml_gen_info::in, mercury_module_name::out)
     is det.
 
-    % Look up the --gcc-nested-functions option.
-    %
-:- pred ml_gen_info_use_gcc_nested_functions(ml_gen_info::in, bool::out)
-    is det.
-
     % Look up the --put-commit-in-nested-func option.
     %
 :- pred ml_gen_info_put_commit_in_own_func(ml_gen_info::in, bool::out) is det.
@@ -461,11 +456,6 @@ ml_gen_info_get_globals(Info, Globals) :-
 ml_gen_info_get_module_name(Info, ModuleName) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName).
-
-ml_gen_info_use_gcc_nested_functions(Info, UseNestedFuncs) :-
-    ml_gen_info_get_globals(Info, Globals),
-    globals.lookup_bool_option(Globals, gcc_nested_functions,
-        UseNestedFuncs).
 
 ml_gen_info_put_commit_in_own_func(Info, PutCommitInNestedFunc) :-
     ml_gen_info_get_globals(Info, Globals),

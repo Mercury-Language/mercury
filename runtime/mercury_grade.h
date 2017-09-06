@@ -91,22 +91,15 @@
     #define MR_GRADE_OPT_PART_1         "hlc"
   #endif
 
-  #ifdef MR_USE_GCC_NESTED_FUNCTIONS
-    #define MR_GRADE_PART_2             MR_PASTE2(MR_GRADE_PART_1, _nest)
-    #define MR_GRADE_OPT_PART_2         MR_GRADE_OPT_PART_1  "_nest"
-  #else
-    #define MR_GRADE_PART_2             MR_GRADE_PART_1
-    #define MR_GRADE_OPT_PART_2         MR_GRADE_OPT_PART_1
-  #endif
+  // Grade component 2 used to specify the use/nonuse of gcc nested functions.
 
   // This grade component is repeated below version information.
-
   #ifdef MR_THREAD_SAFE
-    #define MR_GRADE_PART_3             MR_PASTE2(MR_GRADE_PART_2, _par)
-    #define MR_GRADE_OPT_PART_3         MR_GRADE_OPT_PART_2 ".par"
+    #define MR_GRADE_PART_3             MR_PASTE2(MR_GRADE_PART_1, _par)
+    #define MR_GRADE_OPT_PART_3         MR_GRADE_OPT_PART_1 ".par"
   #else
-    #define MR_GRADE_PART_3             MR_GRADE_PART_2
-    #define MR_GRADE_OPT_PART_3         MR_GRADE_OPT_PART_2
+    #define MR_GRADE_PART_3             MR_GRADE_PART_1
+    #define MR_GRADE_OPT_PART_3         MR_GRADE_OPT_PART_1
   #endif
 
 #else // ! MR_HIGHLEVEL_CODE

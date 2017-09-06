@@ -210,15 +210,9 @@ mlds_backend(!HLDS, !:MLDS, !:Specs, !DumpInfo, !IO) :-
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 30, "gc_frames", !IO),
 
-    globals.lookup_bool_option(Globals, gcc_nested_functions, NestedFuncs),
-    (
-        NestedFuncs = no,
-        maybe_write_string(Verbose, "% Flattening nested functions...\n", !IO),
-        ml_elim_nested(hoist_nested_funcs, Globals, MLDS_Target, !MLDS),
-        maybe_write_string(Verbose, "% done.\n", !IO)
-    ;
-        NestedFuncs = yes
-    ),
+    maybe_write_string(Verbose, "% Flattening nested functions...\n", !IO),
+    ml_elim_nested(hoist_nested_funcs, Globals, MLDS_Target, !MLDS),
+    maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 35, "nested_funcs", !IO),
 

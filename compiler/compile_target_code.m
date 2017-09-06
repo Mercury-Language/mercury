@@ -599,15 +599,6 @@ gather_grade_defines(Globals, GradeDefines) :-
         HighLevelCode = no,
         HighLevelCodeOpt = ""
     ),
-    globals.lookup_bool_option(Globals, gcc_nested_functions,
-        GCC_NestedFunctions),
-    (
-        GCC_NestedFunctions = yes,
-        NestedFunctionsOpt = "-DMR_USE_GCC_NESTED_FUNCTIONS "
-    ;
-        GCC_NestedFunctions = no,
-        NestedFunctionsOpt = ""
-    ),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
         HighLevelData = yes,
@@ -904,7 +895,6 @@ gather_grade_defines(Globals, GradeDefines) :-
     ),
     string.append_list([
         HighLevelCodeOpt,
-        NestedFunctionsOpt,
         HighLevelDataOpt,
         RegOpt, GotoOpt, AsmOpt,
         ParallelOpt,

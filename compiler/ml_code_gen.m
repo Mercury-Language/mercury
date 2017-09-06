@@ -393,28 +393,6 @@
 %
 % This back-end is still not yet 100% complete.
 %
-% Done:
-%   - function prototypes
-%   - code generation for det, semidet, and nondet predicates/functions:
-%       - conjunctions
-%       - disjunctions
-%       - negation
-%       - if-then-else
-%       - predicate/function calls
-%       - higher-order calls
-%       - unifications
-%           - assignment
-%           - simple tests
-%           - constructions
-%           - deconstructions
-%       - switches
-%       - commits
-%       - `pragma foreign_proc'
-%   - RTTI
-%   - high level data representation
-%     (i.e. generate MLDS type declarations for user-defined types)
-%   - support trailing
-%
 % TODO:
 %   - XXX define compare & unify preds for RTTI types
 %   - XXX need to generate correct layout information for closures
@@ -422,22 +400,9 @@
 %   - XXX fix ANSI/ISO C conformance of the generated code
 %
 % UNIMPLEMENTED FEATURES:
-%   - test --det-copy-out
-%   - fix --gcc-nested-functions (need forward declarations for
-%     nested functions)
-%   - support debugging (with mdb)
 %   - support genuine parallel conjunction
-%   - support fact tables
-%   - support accurate GC
 %
 % POTENTIAL EFFICIENCY IMPROVEMENTS:
-%   - optimize unboxed float on DEC Alphas.
-%   - generate better code for switches:
-%       - optimize switches so that the recursive case comes first
-%         (see switch_gen.m).
-%       - apply the reverse tag test optimization
-%         for types with two functors (see unify_gen.m)
-%       - binary search switches
 %   - generate local declarations for the `succeeded' variable;
 %     this would help in nondet code, because it would avoid
 %     the need to access the outermost function's `succeeded'

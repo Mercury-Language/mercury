@@ -192,15 +192,8 @@ ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context, GCStmt,
     % get boxed in some circumstances, because if they are boxed then they will
     % be represented as mlds_generic_type.
     %
-    % Note that with --gcc-nested-functions, cont_type will be a function
-    % pointer that may point to a trampoline function, which might in fact
-    % contain pointers. But the pointers will only be pointers to code and
-    % pointers to the stack, not pointers to the heap, so we don't need to
-    % trace them for accurate GC. Hence we can return `no' here for
-    % mlds_cont_type.
-    %
-    % Similarly, the only pointers in type_ctor_infos and base_typeclass_infos
-    % are to static code and/or static data, which do not need to be traced.
+    % The only pointers in type_ctor_infos and base_typeclass_infos are
+    % to static code and/or static data, which do not need to be traced.
     %
 :- func ml_type_might_contain_pointers_for_gc(mlds_type) = bool.
 

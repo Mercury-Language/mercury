@@ -618,15 +618,8 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
     ).
 
 ml_gen_nondet_label_func(Info, MaybeAux, Context, Stmt, Func) :-
-    ml_gen_info_use_gcc_nested_functions(Info, UseNested),
-    (
-        UseNested = yes,
-        FuncParams = mlds_func_params([], [])
-    ;
-        UseNested = no,
-        ml_declare_env_ptr_arg(EnvPtrArg),
-        FuncParams = mlds_func_params([EnvPtrArg], [])
-    ),
+    ml_declare_env_ptr_arg(EnvPtrArg),
+    FuncParams = mlds_func_params([EnvPtrArg], []),
     ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func).
 
 ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func) :-
@@ -813,19 +806,12 @@ ml_gen_new_func_label(MaybeParams, MaybeAux, FuncLabelRval, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
     ml_gen_pred_label(ModuleInfo, PredProcId, PredLabel, PredModule),
-    ml_gen_info_use_gcc_nested_functions(!.Info, UseNestedFuncs),
     (
         MaybeParams = yes(Params),
         Signature = mlds_get_func_signature(Params)
     ;
         MaybeParams = no,
-        (
-            UseNestedFuncs = yes,
-            ArgTypes = []
-        ;
-            UseNestedFuncs = no,
-            ArgTypes = [mlds_generic_env_ptr_type]
-        ),
+        ArgTypes = [mlds_generic_env_ptr_type],
         Signature = mlds_func_signature(ArgTypes, [])
     ),
     PredProcId = proc(_PredId, ProcId),
@@ -1528,17 +1514,9 @@ ml_skip_dummy_argument_types([], [_ | _], _, _, _) :-
 ml_gen_call_current_success_cont(Context, Stmt, !Info) :-
     ml_gen_info_current_success_cont(!.Info, SuccCont),
     SuccCont = success_cont(FuncRval, EnvPtrRval, ArgTypes0, ArgLvals0),
+    ArgTypes = ArgTypes0 ++ [mlds_generic_env_ptr_type],
     ArgRvals0 = list.map(func(Lval) = ml_lval(Lval), ArgLvals0),
-    ml_gen_info_use_gcc_nested_functions(!.Info, UseNestedFuncs),
-    (
-        UseNestedFuncs = yes,
-        ArgTypes = ArgTypes0,
-        ArgRvals = ArgRvals0
-    ;
-        UseNestedFuncs = no,
-        ArgTypes = ArgTypes0 ++ [mlds_generic_env_ptr_type],
-        ArgRvals =ArgRvals0 ++ [EnvPtrRval]
-    ),
+    ArgRvals =ArgRvals0 ++ [EnvPtrRval],
     RetTypes = [],
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     RetLvals = [],

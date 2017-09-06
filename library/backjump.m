@@ -132,17 +132,10 @@ backjump(Id) :-
 
 #include <setjmp.h>
 
-#ifdef MR_USE_GCC_NESTED_FUNCTIONS
-    #define MR_CONT_PARAMS      MR_NestedCont cont
-    #define MR_CONT_PARAM_TYPES MR_NestedCont
-    #define MR_CONT_ARGS        cont
-    #define MR_CONT_CALL()      (*cont)()
-#else
-    #define MR_CONT_PARAMS      MR_Cont cont, void *cont_env
-    #define MR_CONT_PARAM_TYPES MR_Cont, void *
-    #define MR_CONT_ARGS        cont, cont_env
-    #define MR_CONT_CALL()      cont(cont_env)
-#endif
+#define MR_CONT_PARAMS      MR_Cont cont, void *cont_env
+#define MR_CONT_PARAM_TYPES MR_Cont, void *
+#define MR_CONT_ARGS        cont, cont_env
+#define MR_CONT_CALL()      cont(cont_env)
 
 void MR_CALL
 mercury__backjump__builtin_choice_id_1_p_0(MR_BackJumpChoiceId *id, MR_CONT_PARAMS);

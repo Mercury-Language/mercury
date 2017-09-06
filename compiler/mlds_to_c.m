@@ -146,8 +146,6 @@
                 m2co_line_numbers           :: bool,
                 m2co_foreign_line_numbers   :: bool,
                 m2co_auto_comments          :: bool,
-                m2co_gcc_local_labels       :: bool,
-                m2co_gcc_nested_functions   :: bool,
                 m2co_highlevel_data         :: bool,
                 m2co_profile_calls          :: bool,
                 m2co_profile_memory         :: bool,
@@ -170,8 +168,6 @@ init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
     globals.lookup_bool_option(Globals, line_numbers_around_foreign_code,
         ForeignLineNumbers),
     globals.lookup_bool_option(Globals, auto_comments, Comments),
-    globals.lookup_bool_option(Globals, gcc_local_labels, GccLabels),
-    globals.lookup_bool_option(Globals, gcc_nested_functions, GccNested),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
@@ -190,8 +186,8 @@ init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
     globals.get_gc_method(Globals, GCMethod),
     StdFuncDecls = no,
     Opts = mlds_to_c_opts(SourceFileName,
-        LineNumbers, ForeignLineNumbers, Comments, GccLabels, GccNested,
-        HighLevelData, ProfileCalls, ProfileMemory, ProfileTime, ProfileAny,
+        LineNumbers, ForeignLineNumbers, Comments, HighLevelData,
+        ProfileCalls, ProfileMemory, ProfileTime, ProfileAny,
         Target, GCMethod, StdFuncDecls, Globals).
 
 %---------------------------------------------------------------------------%
@@ -3046,14 +3042,7 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
         MLDS_Type = mlds_cont_type(ArgTypes),
         (
             ArgTypes = [],
-            GCC_NestedFuncs = Opts ^ m2co_gcc_nested_functions,
-            (
-                GCC_NestedFuncs = yes,
-                io.write_string("MR_NestedCont", !IO)
-            ;
-                GCC_NestedFuncs = no,
-                io.write_string("MR_Cont", !IO)
-            )
+            io.write_string("MR_Cont", !IO)
         ;
             ArgTypes = [_ | _],
             % This case only happens for --nondet-copy-out.
@@ -3061,14 +3050,7 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
         )
     ;
         MLDS_Type = mlds_commit_type,
-        GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
-        (
-            GCC_LocalLabels = yes,
-            io.write_string("__label__", !IO)
-        ;
-            GCC_LocalLabels = no,
-            io.write_string("jmp_buf", !IO)
-        )
+        io.write_string("jmp_buf", !IO)
     ;
         MLDS_Type = mlds_rtti_type(RttiIdMaybeElement),
         rtti_id_maybe_element_c_type(RttiIdMaybeElement, CType, _IsArray),
@@ -3215,14 +3197,7 @@ mlds_output_type_suffix(Opts, MLDS_Type, ArraySize, !IO) :-
             io.write_string(")(", !IO),
             io.write_list(ArgTypes, ", ", mlds_output_type(Opts), !IO),
             % add the type for the environment parameter, if needed
-            GCC_NestedFuncs = Opts ^ m2co_gcc_nested_functions,
-            (
-                GCC_NestedFuncs = no,
-                io.write_string(", void *", !IO)
-            ;
-                GCC_NestedFuncs = yes
-            ),
-            io.write_string(")", !IO)
+            io.write_string(", void *)", !IO)
         )
     ;
         MLDS_Type = mlds_rtti_type(RttiIdMaybeElement),
@@ -3577,22 +3552,7 @@ mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO) :-
     ),
     (
         LocalVarDefns = [_ | _],
-        GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
-        (
-            GCC_LocalLabels = yes,
-            % GNU C __label__ declarations must precede ordinary variable
-            % declarations.
-            list.filter(local_var_defn_is_commit_type, LocalVarDefns,
-                LabelDefns, NonLabelDefns),
-            mlds_output_local_var_defns(Opts, BlockIndent, no,
-                LabelDefns, !IO),
-            mlds_output_local_var_defns(Opts, BlockIndent, no,
-                NonLabelDefns, !IO)
-        ;
-            GCC_LocalLabels = no,
-            mlds_output_local_var_defns(Opts, BlockIndent, no,
-                LocalVarDefns, !IO)
-        ),
+        mlds_output_local_var_defns(Opts, BlockIndent, no, LocalVarDefns, !IO),
         io.write_string("\n", !IO)
     ;
         LocalVarDefns = []
@@ -4114,23 +4074,13 @@ mlds_output_stmt_return(Opts, Indent, Stmt, !IO) :-
 mlds_output_stmt_do_commit(Opts, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_do_commit(Ref, _Context),
     output_n_indents(Indent, !IO),
-    GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
-    (
-        GCC_LocalLabels = yes,
-        % Output "goto <Ref>".
-        io.write_string("goto ", !IO),
-        mlds_output_rval(Opts, Ref, !IO)
-    ;
-        GCC_LocalLabels = no,
-        % Output "MR_builtin_longjmp(<Ref>, 1)". This is a macro that
-        % expands to either the standard longjmp() or the GNU C's
-        % __builtin_longjmp(). Note that the second argument to GNU
-        % C's __builtin_longjmp() *must* be `1'.
-        io.write_string("MR_builtin_longjmp(", !IO),
-        mlds_output_rval(Opts, Ref, !IO),
-        io.write_string(", 1)", !IO)
-    ),
-    io.write_string(";\n", !IO).
+    % Output "MR_builtin_longjmp(<Ref>, 1)". This is a macro that expands
+    % to either the standard longjmp() or the GNU C's __builtin_longjmp().
+    % Note that the second argument to GNU C's __builtin_longjmp()
+    % *must* be `1'.
+    io.write_string("MR_builtin_longjmp(", !IO),
+    mlds_output_rval(Opts, Ref, !IO),
+    io.write_string(", 1);\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -4144,87 +4094,47 @@ mlds_output_stmt_do_commit(Opts, Indent, Stmt, !IO) :-
 
 mlds_output_stmt_try_commit(Opts, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_try_commit(Ref, BodyStmt0, HandlerStmt, Context),
-    GCC_LocalLabels = Opts ^ m2co_gcc_local_labels,
-    (
-        GCC_LocalLabels = yes,
+    % Output the following:
+    %
+    %   if (MR_builtin_setjmp(<Ref>) == 0)
+    %       <Stmt>
+    %   else
+    %       <Handler>
+    %
+    % MR_builtin_setjmp() expands to either the standard setjmp()
+    % or GNU C's __builtin_setjmp().
+    %
+    % Note that ISO C says that any non-volatile variables that are local
+    % to the function containing the setjmp() and which are modified between
+    % the setjmp() and the longjmp() become indeterminate after the longjmp().
+    % The MLDS code generator handles that by generating each commit
+    % in its own nested function, with the local variables remaining
+    % in the containing function. This ensures that none of the variables
+    % which get modified between the setjmp() and the longjmp() and which get
+    % referenced after the longjmp() are local variables in the function
+    % containing the setjmp(), so we don't need to mark them as volatile.
+    % XXX Soon there won't be any nested functions.
 
-        % Output the following:
-        %
-        %       <Stmt>
-        %       goto <Ref>_done;
-        %   <Ref>:
-        %       <Handler>
-        %   <Ref>_done:
-        %       ;
+    % We need to take care to avoid problems caused by the
+    % dangling else ambiguity.
+    ( if BodyStmt0 = ml_stmt_if_then_else(_, _, no, Context) then
+        BodyStmt = ml_stmt_block([], [], [BodyStmt0], Context)
+    else
+        BodyStmt = BodyStmt0
+    ),
 
-        % Note that <Ref> should be just variable name, not a complicated
-        % expression. If not, the C compiler will catch it.
+    output_n_indents(Indent, !IO),
+    io.write_string("if (MR_builtin_setjmp(", !IO),
+    mlds_output_lval(Opts, Ref, !IO),
+    io.write_string(") == 0)\n", !IO),
 
-        mlds_output_statement(Opts, Indent, FuncInfo, BodyStmt0, !IO),
+    mlds_output_statement(Opts, Indent + 1, FuncInfo, BodyStmt, !IO),
 
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("goto ", !IO),
-        mlds_output_lval(Opts, Ref, !IO),
-        io.write_string("_done;\n", !IO),
+    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Indent, !IO),
+    io.write_string("else\n", !IO),
 
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent - 1, !IO),
-        mlds_output_lval(Opts, Ref, !IO),
-        io.write_string(":\n", !IO),
-
-        mlds_output_statement(Opts, Indent, FuncInfo, HandlerStmt, !IO),
-
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent - 1, !IO),
-        mlds_output_lval(Opts, Ref, !IO),
-        io.write_string("_done:\t;\n", !IO)
-    ;
-        GCC_LocalLabels = no,
-
-        % Output the following:
-        %
-        %   if (MR_builtin_setjmp(<Ref>) == 0)
-        %       <Stmt>
-        %   else
-        %       <Handler>
-        %
-        % MR_builtin_setjmp() expands to either the standard setjmp()
-        % or GNU C's __builtin_setjmp().
-        %
-        % Note that ISO C says that any non-volatile variables that are
-        % local to the function containing the setjmp() and which are
-        % modified between the setjmp() and the longjmp() become
-        % indeterminate after the longjmp(). The MLDS code generator
-        % handles that by generating each commit in its own nested
-        % function, with the local variables remaining in the containing
-        % function. This ensures that none of the variables which get
-        % modified between the setjmp() and the longjmp() and which get
-        % referenced after the longjmp() are local variables in the
-        % function containing the setjmp(), so we don't need to mark them
-        % as volatile.
-
-        % We need to take care to avoid problems caused by the
-        % dangling else ambiguity.
-        ( if BodyStmt0 = ml_stmt_if_then_else(_, _, no, Context) then
-            BodyStmt = ml_stmt_block([], [], [BodyStmt0], Context)
-        else
-            BodyStmt = BodyStmt0
-        ),
-
-        output_n_indents(Indent, !IO),
-        io.write_string("if (MR_builtin_setjmp(", !IO),
-        mlds_output_lval(Opts, Ref, !IO),
-        io.write_string(") == 0)\n", !IO),
-
-        mlds_output_statement(Opts, Indent + 1, FuncInfo, BodyStmt, !IO),
-
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("else\n", !IO),
-
-        mlds_output_statement(Opts, Indent + 1, FuncInfo, HandlerStmt, !IO)
-    ).
+    mlds_output_statement(Opts, Indent + 1, FuncInfo, HandlerStmt, !IO).
 
 %---------------------------------------------------------------------------%
 %

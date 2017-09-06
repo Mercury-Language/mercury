@@ -138,7 +138,7 @@ esac
 # versions of Darwin needs to use the C compiler to make that distinction.
 # In particular, if we wish to build a 32-bit Mercury installation on
 # x86_64 machine, then we need to tell configure that we are using the
-# 32-bit C compiler.  If we didn't call the AC_PROG_CC macro at this point
+# 32-bit C compiler. If we didn't call the AC_PROG_CC macro at this point
 # then configure's --with-cc option would not do that.
 
 AC_PROG_CC
@@ -149,7 +149,7 @@ AC_SUBST([CC])
 export CC
 
 # NOTE: AC_PROG_CC will set the variable GCC if it thinks the C compiler is
-# GCC.  However, it also sets it if the C compiler is clang -- because they
+# GCC. However, it also sets it if the C compiler is clang -- because they
 # both define __GNUC__ -- do *NOT* use the GCC variable to check the C compiler
 # type, instead use the value of C_COMPILER_TYPE (defined below).
 #
@@ -165,13 +165,13 @@ case "$mercury_cv_cc_type" in
         MERCURY_CLANG_VERSION
         C_COMPILER_TYPE="clang_${mercury_cv_clang_version}"
     ;;
-    
+
     gcc)
         MERCURY_HAVE_GCC=yes
         MERCURY_GCC_VERSION
         C_COMPILER_TYPE="gcc_${mercury_cv_gcc_version}"
     ;;
-    
+
     msvc)
         MERCURY_HAVE_MSVC=yes
         MERCURY_MSVC_VERSION
@@ -251,7 +251,7 @@ then
             exit 1
             fi
         ;;
-    esac 
+    esac
 fi
 
 #-----------------------------------------------------------------------------#
@@ -281,7 +281,7 @@ AC_SUBST(DEFAULT_MERCURY_DEBUGGER_DOC)
 # MMC_INVOKE_CMD is the command used to invoke mercury_compile in scripts/mmc.
 # On MSYS (MinGW) we cannot use exec, since exec will not find the file because
 # it will expect a path relative to the MSYS home directory and will not work
-# with a full Windows path.  A full Windows path, however must be used for the
+# with a full Windows path. A full Windows path, however must be used for the
 # prefix so that mercury_compile will find the standard library.
 #
 case "$host" in
@@ -615,8 +615,8 @@ fi
 if test "$BOOTSTRAP_MC" = ""
 then
     # If we do not have a working bootstrap Mercury compiler, then work out
-    # whether any .c files we do have were compiled with --highlevel code or
-    # not.  At this point we only check a single file -- this is enough to
+    # whether any .c files we do have were compiled with high level code or
+    # not. At this point we only check a single file -- this is enough to
     # allow us to determine a value for BOOTSTRAP_GRADE below -- we check
     # any other pre-generated .c files as part of the call to
     # mercury_check_c_files() later on.
@@ -653,7 +653,7 @@ then
 
         "")
             # This corresponds to the case where we compile using
-            # $PREFIX/bin/mercury_compile.  Since we can (hopefully)
+            # $PREFIX/bin/mercury_compile. Since we can (hopefully)
             # regenerate any .c files, it is irrelevant whether we used
             # --highlevel-code or not when compiling any existing ones.
             ;;
@@ -912,8 +912,8 @@ AC_SUBST(EXEEXT)
 # We need to ensure that CFLAGS does not contain `-g', because
 # on some (broken) distributions of Linux (specifically Debian 0.93R6),
 # the `-lc' and `-lg' libraries have different contents; specifically,
-# only the latter contains memalign().  We need to make sure that the
-# test for memalign() doesn't use `-g', since `ml' doesn't use `-g'.
+# only the latter contains memalign(). We need to make sure that the test
+# for memalign() doesn't use `-g', since `ml' doesn't use `-g'.
 CFLAGS="-O"
 
 # We need to define _XOPEN_SOURCE when building boehm on Darwin 10
@@ -945,14 +945,14 @@ esac
 
 # Test whether specific command line options are supported by the C compiler.
 # We do this by attempting to compile a program with the option whose presence
-# we are testing for.  This will not work for MSVC since it prints a warning
-# about any unknown options and then proceeds as normal.  There is no way to
+# we are testing for. This will not work for MSVC since it prints a warning
+# about any unknown options and then proceeds as normal. There is no way to
 # tell it to treat that warning as an error (in particular, this warning is not
 # affected by the -WX option).
 
 if test "$MERCURY_HAVE_MSVC" = "yes"
 then
-    
+
     CFLAGS_FOR_ERRMSG_FILTER=""
     CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS=
     CFLAGS_FOR_NO_REORDER_FUNCTIONS=""
@@ -1040,7 +1040,7 @@ AC_SUBST(CFLAGS_FOR_ERRMSG_FILTER)
 
 #-----------------------------------------------------------------------------#
 # Make sure we search /usr/local/include and /usr/local/lib for
-# header files and libraries.  GNU C normally searches /usr/local/include
+# header files and libraries. GNU C normally searches /usr/local/include
 # by default, but (inconsistently) on some systems, such as Solaris,
 # it does _not_ search /usr/local/lib.
 # The user might also be using a different C compiler that
@@ -1076,9 +1076,8 @@ else
     AC_MSG_RESULT([no])
 fi
 
-# Determine if we are on a system which has a restricted
-# command line length.  This is true if we are building
-# under mingw or using the MS C compiler
+# Determine if we are on a system which has a restricted command line length.
+# This is true if we are building under mingw or using the MS C compiler.
 RESTRICTED_COMMAND_LINE_OPT=
 case "$host" in
     *mingw*)
@@ -1164,11 +1163,10 @@ else
     LD_LIBFLAGS_FOR_DEBUG="-g"
 
     # On Linux ELF, the linker option `-export-dynamic' is needed to make
-    # symbols exported for use in code linked in with dlopen(),
-    # which is used for interactive queries in the
-    # Mercury debugger.  For gcc, this linker option can be enabled by
-    # passing either `-rdynamic' or `-Wl,-export-dynamic' to gcc;
-    # we use the former.
+    # symbols exported for use in code linked in with dlopen(), which is used
+    # for interactive queries in the Mercury debugger. For gcc, this
+    # linker option can be enabled by passing either `-rdynamic' or
+    # `-Wl,-export-dynamic' to gcc; we use the former.
     #
     case $FULLARCH in
         *-linux*)
@@ -1187,7 +1185,7 @@ else
     # we need to pass the `-c' option to ranlib.
     # Otherwise, "common" symbols, i.e. "int foo;" without an initializer,
     # do not get included in the archive table of contents, and so
-    # don't get found during linking.  Whose !@#$ing idea was it to make
+    # don't get found during linking. Whose !@#$ing idea was it to make
     # that brain-damaged and non-standard-conforming mode the default?
     case "$host" in
         *apple*darwin*)
@@ -1236,8 +1234,8 @@ AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
 enable_symlinks_opt=no
 AC_ARG_ENABLE(symlinks,
    AC_HELP_STRING([--enable-symlinks],
-                  [enable symbolic links.  This is the default on all
-                   systems except Windows.  On Windows you can force
+                  [enable symbolic links. This is the default on all
+                   systems except Windows. On Windows you can force
                    symbolic links to be used by giving this option.
                    Note that symbolic links will only work on Windows if
                    you are using the Cygwin version of GCC.]),
@@ -2507,8 +2505,8 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 #-----------------------------------------------------------------------------#
 # There is a problem on some BSD based systems that FD_ZERO is defined
 # defined in terms of bzero() but the appropriate header file for bzero()
-# is not automatically included.  The following deals with this situation
-# on MacOS 10.3.  (It appears to be fixed in MacOS 10.4.)
+# is not automatically included. The following deals with this situation
+# on MacOS 10.3. (It appears to be fixed in MacOS 10.4.)
 
 AC_MSG_CHECKING(to see if strings.h is needed for bzero)
 AC_CACHE_VAL(mercury_cv_bzero_needs_strings_header, [
@@ -2584,7 +2582,7 @@ AC_SUBST(MR_DARWIN_SETJMP_WORKAROUND)
 # prologue and expects them to be valid later on, which doesn't work with
 # non-local gotos, since we jump directly into the middle of a function.
 # (Actually I don't know if `-fno-functions-cse' is really needed.
-# Maybe you can get away without it.  But better to err on the safe side...)
+# Maybe you can get away without it. But better to err on the safe side...)
 #
 # For x86, x86-64 and possibly other architectures, when using non-local
 # gotos with gcc 4.x we need `-fno-move-loop-invariants'.
@@ -2630,12 +2628,11 @@ case "$ac_cv_prog_gcc" in yes)
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS"
             CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
             ;;
-        # We need a special-case hack here, because the auto-config
-        # gets it wrong on the Alpha: the little example program
-        # works fine in fast.gc mode, but big programs don't,
-        # due to problems with the `gp' register.  Ideally we
-        # ought to write a big enough example program to trigger
-        # the problem, but that would be too much work.
+        # We need a special-case hack here, because the auto-config gets it
+        # wrong on the Alpha: the little example program works fine
+        # in fast.gc mode, but big programs don't, due to problems with
+        # the `gp' register. Ideally we ought to write a big enough example
+        # program to trigger the problem, but that would be too much work.
         alpha*-dec-*)
             MERCURY_MSG(
 "asm labels work on the Alpha but plain gcc labels do not")
@@ -2643,7 +2640,7 @@ case "$ac_cv_prog_gcc" in yes)
             mercury_cv_gcc_labels=no
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
             ;;
-        # Similarly for rs6000
+        # Similarly for rs6000.
         rs6000-*)
             MERCURY_MSG("gcc labels do not work on the RS/6000")
             mercury_cv_asm_labels=no
@@ -2691,9 +2688,8 @@ case "$C_COMPILER_TYPE" in
         ;;
     *)
         # XXX Pass -fno-reorder-functions when using GCC 4.6 onwards with
-        # the global register or non-local goto extensions.  This works
-        # around problems in *.par* grades.  (See bug #294 for further
-        # details.)
+        # the global register or non-local goto extensions. This works around
+        # problems in *.par* grades. (See bug #294 for further details.)
         CFLAGS_FOR_REGS="$CFLAGS_FOR_REGS $CFLAGS_FOR_NO_REORDER_FUNCTIONS"
         CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_REORDER_FUNCTIONS"
         ;;
@@ -2708,7 +2704,7 @@ esac
 # processes those references just fine, but some other part of gcc seems
 # to forget that fact when it generates the warnings. We therefore filter
 # out those warnings with util/mfiltercc.
-# 
+#
 # Versions of gcc from 4.8 onward generate this warning not on a single line,
 # which is what mfiltercc looks for, but as a very long multiline message,
 # tracing the several macros involved, and putting arrow (carets) under their
@@ -3204,7 +3200,7 @@ case "$host" in
                 if test "$MR_HAVE_PTHREAD_H" = 1
                 then
                     # By default the MinGW port of GCC targets the i386
-                    # architecture.  We need to tell it to target a later
+                    # architecture. We need to tell it to target a later
                     # architecture for the GCC built-in atomic ops to be
                     # available.
                     CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -march=i686"
@@ -3325,8 +3321,8 @@ fi
 
 #-----------------------------------------------------------------------------#
 
-# On some systems a prefix is attached to exported symbols.  We need to
-# account for this when checking object files for namespace cleanliness.
+# On some systems a prefix is attached to exported symbols. We need to account
+# for this when checking object files for namespace cleanliness.
 
 SYMPREFIX=
 
@@ -3345,7 +3341,7 @@ AC_SUBST([SYMPREFIX])
 #
 
 # BEST_LLDS_BASE_GRADE is the most efficient of the LLDS->C base grades
-# that can be supported.  If the user explicitly chooses a base grade
+# that can be supported. If the user explicitly chooses a base grade
 # using --with-llds-base-grade then we use that instead.
 #
 # NOTE: the base grade can also be one of asm_jump, fast and jump.
@@ -3406,7 +3402,7 @@ case "$mercury_cv_user_base_grade" in
 esac
 
 # Force the use of the none grade on Apple x86_64 systems when using
-# GCC 4.1 or 4.2.  The asm_fast and reg grades do not work with those versions.
+# GCC 4.1 or 4.2. The asm_fast and reg grades do not work with those versions.
 # They do work properly on x86_64 systems with GCC version 4.3 onwards.
 #
 case "$C_COMPILER_TYPE" in
@@ -3495,8 +3491,8 @@ esac
 
 # BOOTSTRAP_GRADE is the most efficient grade which we can use to bootstrap the
 # compiler from the source distribution, if there is no installed Mercury
-# compiler.  This grade needs to be one for which the C files are compatible
-# with the C files that we ship in the source distribution.  The C files in the
+# compiler. This grade needs to be one for which the C files are compatible
+# with the C files that we ship in the source distribution. The C files in the
 # source distribution are generated in hlc.gc.pregen or asm_fast.gc.pregen.
 # In the former case, we _must_ use the grade hlc.gc.pregen, in the latter case
 # we can, in principle, use any of the base LLDS grades (it's the same C code).
@@ -3534,7 +3530,7 @@ if test "$BOOTSTRAP_MC" = ""; then
 ****    after installation is complete you may reinstall
 ****    from scratch to have a faster compiler.
 ****    NOTE: before reinstalling from scratch, ensure that the
-****    source tree is clean by running \`make realclean'.  Not doing
+****    source tree is clean by running \`make realclean'. Not doing
 ****    this may result in a broken Mercury installation.])
 else
     GRADE=$BEST_GRADE_FOR_COMPILER
@@ -3743,13 +3739,10 @@ else
     LIBGRADES="$GC_LIBGRADES"
 fi
 
-# Add `hlc' (--high-level-code, i.e. MLDS back-end) grades
+# Add `hlc' (--high-level-code, i.e. MLDS back-end) grades.
 LIBGRADES="$LIBGRADES hlc.gc"
-if test "$enable_inefficient_grades" = yes -a "$GCC" = yes ; then
-    LIBGRADES="$LIBGRADES hlc_nest.gc"
-fi
 
-# Add `.agc' (--gc accurate) grades
+# Add `.agc' (--gc accurate) grades.
 # Currently only hlc.agc is supported.
 if test "$enable_agc_grades" = yes; then
     LIBGRADES="$LIBGRADES hlc.agc"
@@ -4232,7 +4225,7 @@ int main() {
 #if __GNUC__ >= 3
     /* gcc 3.1 seems to have problems with structure assignment
        and global registers, but which this simple test case
-       does not trigger.  So just force the test to fail for gcc 3.x. */
+       does not trigger. So just force the test to fail for gcc 3.x. */
     exit(1);
 #else
     exit(0);
@@ -4277,9 +4270,9 @@ DEPLOYMENT_TARGET="no"
 case "$host" in
     *apple*darwin*)
         case "$mercury_cv_macosx_deployment_target" in
-            # NOTE: the sw_vers utility tells us which version of Mac OS X we are
-            # using as opposed to which version of Darwin we are using.  uname
-            # only reports the latter.
+            # NOTE: the sw_vers utility tells us which version of Mac OS X
+            # we are using as opposed to which version of Darwin we are using.
+            # uname only reports the latter.
             auto)
                 DEPLOYMENT_TARGET=`sw_vers -productVersion | cut -d \. -f 1 -f 2`
                 ;;
@@ -4452,26 +4445,23 @@ case "$host" in
         # (well, at least they are shared on disk -- although the code is
         # not shared at runtime), and using `-fpic' would reduce efficiency.
         #
-        # It works because the Solaris dynamic linker will
-        # actually do the fixups at runtime for non-PIC code.
-        # (The code is mapped copy-on-write, and when the linker
-        # does the fixups, it gets copied.  Hence the lack of
-        # runtime sharing.)
-        # We need to link with `gcc -shared -mimpure-text'
-        # rather than `gcc -shared', because `gcc -shared'
-        # passes `-z text' to the linker, which causes it to
+        # It works because the Solaris dynamic linker will actually do
+        # the fixups at runtime for non-PIC code. (The code is mapped
+        # copy-on-write, and when the linker does the fixups, it gets copied.
+        # Hence the lack of runtime sharing.) We need to link with
+        # `gcc -shared -mimpure-text' rather than `gcc -shared', because
+        # `gcc -shared' passes `-z text' to the linker, which causes it to
         # report an error if any runtime fixups would be needed.
         #
         # If you *do* use `-fpic', you must also use `-DMR_PIC'.
         #
-        # See runtime/mercury_goto.h for the code that handles PIC
-        # on SPARCs.
+        # See runtime/mercury_goto.h for the code that handles PIC on SPARCs.
         # Note that mixing PIC and non-PIC code is fine on SPARCs.
 
         EXT_FOR_SHARED_LIB=so
         ;;
     *-cygwin*)
-        # disabled for now, since it hasn't been tested
+        # Disabled for now, since it hasn't been tested.
         # xxx_MSG_RESULT(yes)
         # EXT_FOR_SHARED_LIB=dll
         # USE_DLLS=yes
@@ -4494,7 +4484,7 @@ case "$host" in
         ;;
     *apple*darwin*)
         # If the compiler is gcc or clang then use Darwin style dynamic
-        # linking.  Otherwise use static linking.
+        # linking. Otherwise use static linking.
         case "$C_COMPILER_TYPE" in
             gcc*|clang*)
                 AC_MSG_RESULT(yes)
@@ -4558,24 +4548,24 @@ case "$mercury_cv_cc_type" in
     gcc*)
         # We no longer pass -ansi to GCC on any system for the following
         # reasons:
+        #
         # * It restricts the dialect of C used to C90 and that prevents us
-        #   from using various C99 library features.  Every version of GCC we
-        #   support provides those features so there is no point in doing
-        #   this.  
+        #   from using various C99 library features. Every version of GCC we
+        #   support provides those features so there is no point in doing this.
         # * It causes complications with the header files on some systems.
-        #   Notably with the definitions of the types off_t and off64_t on MinGW
-        #   systems.
+        #   Notably with the definitions of the types off_t and off64_t
+        #   on MinGW systems.
         # * This setting also affects the compilation of user written C code in
         #   foreign_proc and foreign code pragmas.
         #
-        # NOTE: the --no-ansi option supported by the mgnuc script does more than
-        # simply pass the value of CFLAGS_FOR_ANSI to the C compiler.
+        # NOTE: the --no-ansi option supported by the mgnuc script does
+        # more than simply pass the value of CFLAGS_FOR_ANSI to the C compiler.
         # (See that script for details.)
-        # 
+        #
         CFLAGS_FOR_ANSI=
 
-        # For a full list of the other gcc warnings that we don't
-        # enable, and why, see scripts/mgnuc.in.
+        # For a full list of the other gcc warnings that we don't enable,
+        # and why, see scripts/mgnuc.in.
         CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
 
         # Enabling -fomit-frame-pointer causes setjmp/longjmp to misbehave
@@ -4611,9 +4601,9 @@ case "$mercury_cv_cc_type" in
         # XXX we need go through the warning and optimization options for clang
         # more carefully.
         CFLAGS_FOR_WARNINGS="-w"
-   
+
         # Disable C compiler optimizations for old versions of clang.
-        # (See above for details.) 
+        # (See above for details.)
         case "$C_COMPILER_TYPE" in
             clang_0_*|clang_1_*|clang_2_*)
                 CFLAGS_FOR_OPT="-O0 -fomit-frame-pointer"
@@ -4703,8 +4693,8 @@ case "$FULLARCH" in
 esac
 
 # We can't put the call to MSG_CHECKING at the start of the case statement
-# above, because of the nested check in the lcc case.  So we just put it
-# here immediately before the MSG_RESULT call.
+# above, because of the nested check in the lcc case. So we just put it here
+# immediately before the MSG_RESULT call.
 AC_MSG_CHECKING([options for static linking])
 AC_MSG_RESULT($LD_STATIC_FLAGS)
 case "$LD_STATIC_FLAGS" in
@@ -5102,13 +5092,13 @@ LIBS="$save_LIBS"
 #-----------------------------------------------------------------------------#
 #
 # Add an option that enables the external debugger support.
-# By default, external debugger support is enabled if and only if
-# sockets work.  But it is also possible to explicitly disable this
-# by passing the `--disable-extern-debug' option.  This is needed on
-# some platforms because the test for sockets working sometimes gets
-# some false positives (e.g. if they work with dynamic linking but
-# not static linking, then the test will pass, but it will cause
-# problems later on when we try to link things statically).
+# By default, external debugger support is enabled if and only if sockets work.
+# But it is also possible to explicitly disable this by passing the
+# `--disable-extern-debug' option. This is needed on some platforms because
+# the test for sockets working sometimes gets some false positives
+# (e.g. if they work with dynamic linking but not static linking,
+# then the test will pass, but it will cause problems later on
+# when we try to link things statically).
 #
 
 AC_ARG_ENABLE(extern-debug,
@@ -5276,8 +5266,8 @@ AC_SUBST(HWLOC_STATIC_LIBS)
 #
 
 # We only require flex and bison if we are going to compile the trace
-# directory.  We don't need them if we are reconfiguring an existing
-# installation.  We omit these tests in that case because otherwise users
+# directory. We don't need them if we are reconfiguring an existing
+# installation. We omit these tests in that case because otherwise users
 # would have to flex and bison available in order to install the binary
 # distribution.
 #
@@ -5463,10 +5453,10 @@ AC_SUBST(CSHPATH)
 
 #-----------------------------------------------------------------------------#
 
-# When running the debugger tests we want to use the local mdbrc
-# file, not the installed one, so that we can test changes
-# to this file without having to install first.  We therefore create
-# a copy of the mdbrc.in for use with the test suite.
+# When running the debugger tests we want to use the local mdbrc file,
+# not the installed one, so that we can test changes to this file
+# without having to install first. We therefore create a copy of the mdbrc.in
+# for use with the test suite.
 
 test_mdbrc=tests/mdbrc
 
@@ -5587,10 +5577,10 @@ case $reconfiguring in no)
     rm -f conftest.junk
 
     # The --prefix is hard-coded in the scripts, which are regenerated
-    # every time you run configure, and also (unfortunately) in the .so
-    # files.  The following rm commands are here to ensure that things
-    # will work correctly if you rerun configure with a new --prefix and
-    # then don't do a `make clean' before running `make'.
+    # every time you run configure, and also (unfortunately) in the .so files.
+    # The following rm commands are here to ensure that things will work
+    # correctly if you rerun configure with a new --prefix and then
+    # don't do a `make clean' before running `make'.
     rm -f runtime/libmer_rt.so library/libmer_std.so bytecode/libmbi.so
     rm -f trace/libmer_trace.so browser/libmer_browser.so
     rm -f mdbcomp/libmer_mdbcomp.so

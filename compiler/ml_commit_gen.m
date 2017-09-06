@@ -409,17 +409,9 @@ maybe_put_commit_in_own_func(LocalVarDefn0, FuncDefn0, TryCommitStmts,
             CommitFuncBody, CommitFuncDefn),
 
         % Generate the call to `commit_func();'
-        ml_gen_info_use_gcc_nested_functions(!.Info, UseNestedFuncs),
-        (
-            UseNestedFuncs = yes,
-            ArgRvals = [],
-            ArgTypes = []
-        ;
-            UseNestedFuncs = no,
-            ml_get_env_ptr(EnvPtrRval),
-            ArgRvals = [EnvPtrRval],
-            ArgTypes = [mlds_generic_env_ptr_type]
-        ),
+        ml_get_env_ptr(EnvPtrRval),
+        ArgRvals = [EnvPtrRval],
+        ArgTypes = [mlds_generic_env_ptr_type],
         RetTypes = [],
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         CallKind = ordinary_call,

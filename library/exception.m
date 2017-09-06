@@ -711,15 +711,9 @@ catch_impl(Pred, Handler, T) :-
 
   #ifdef MR_HIGHLEVEL_CODE
 
-  #ifdef MR_USE_GCC_NESTED_FUNCTIONS
-    #define MR_CONT_PARAMS      MR_NestedCont cont
-    #define MR_CONT_PARAM_TYPES MR_NestedCont
-    #define MR_CONT_ARGS        cont
-  #else
     #define MR_CONT_PARAMS      MR_Cont cont, void *cont_env
     #define MR_CONT_PARAM_TYPES MR_Cont, void *
     #define MR_CONT_ARGS        cont, cont_env
-  #endif
 
     /* det */
     void MR_CALL
@@ -1103,66 +1097,6 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
     }
 }
 
-  #ifdef MR_USE_GCC_NESTED_FUNCTIONS
-
-void MR_CALL
-mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
-    MR_Pred pred, MR_Pred handler_pred, MR_Box *output,
-    MR_NestedCont cont)
-{
-    ML_ExceptionHandler this_handler;
-    ML_DECLARE_AGC_HANDLER
-
-    auto void MR_CALL success_cont(void);
-    void MR_CALL success_cont(void) {
-        /*
-        ** If we reach here, it means that
-        ** the nondet goal has succeeded, so we
-        ** need to restore the previous exception
-        ** handler before calling its continuation
-        */
-        ML_SET_EXCEPTION_HANDLER(this_handler.prev);
-        (*cont)();
-
-        /*
-        ** If we get here, it means that the continuation
-        ** has failed, and so we are about to redo the
-        ** nondet goal. Thus we need to re-establish
-        ** its exception handler.
-        */
-        ML_SET_EXCEPTION_HANDLER(&this_handler);
-    }
-
-    this_handler.prev = ML_GET_EXCEPTION_HANDLER();
-    ML_SET_EXCEPTION_HANDLER(&this_handler);
-
-    ML_INSTALL_AGC_HANDLER(type_info, handler_pred);
-
-    #ifdef MR_DEBUG_JMPBUFS
-    fprintf(stderr, ""noncatch setjmp %p\\n"", this_handler.handler);
-    #endif
-
-    if (setjmp(this_handler.handler) == 0) {
-        ML_call_goal_non_handcoded(type_info, pred, output,
-            success_cont);
-        ML_SET_EXCEPTION_HANDLER(this_handler.prev);
-        ML_UNINSTALL_AGC_HANDLER();
-    } else {
-    #ifdef MR_DEBUG_JMPBUFS
-        fprintf(stderr, ""noncatch caught jmp %p\\n"", this_handler.handler);
-    #endif
-
-        ML_SET_EXCEPTION_HANDLER(this_handler.prev);
-        ML_UNINSTALL_AGC_HANDLER();
-        ML_call_handler_det_handcoded(
-            ML_AGC_LOCAL(type_info), ML_AGC_LOCAL(handler_pred),
-            this_handler.exception, output);
-        (*cont)();
-    }
-}
-
-  #else /* ! MR_USE_GCC_NESTED_FUNCTIONS */
-
 struct ML_catch_env {
     ML_ExceptionHandler this_handler;
     MR_Cont             cont;
@@ -1238,8 +1172,6 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
         cont(cont_env);
     }
 }
-
-  #endif /* ! MR_USE_GCC_NESTED_FUNCTIONS */
 
 #endif /* MR_HIGHLEVEL_CODE */
 ").

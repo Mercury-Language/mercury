@@ -18,8 +18,7 @@
 // The continuation function types used for implementing
 // nondeterministic procedures.
 
-typedef void MR_CALL (*MR_NestedCont) (void); // for --gcc-nested-functions
-typedef void MR_CALL (*MR_Cont) (void *);     // for --no-gcc-nested-functions
+typedef void MR_CALL (*MR_Cont) (void *);
 
 // The types uses to represent the Mercury builtin types,
 // MR_Char, MR_Float, MR_Integer, MR_String, and MR_ConstString,

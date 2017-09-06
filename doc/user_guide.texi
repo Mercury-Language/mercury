@@ -7054,8 +7054,8 @@ Write the unqualified version of the short interface to
 @itemx --make-private-interface
 @findex --make-priv-int
 @findex --make-private-interface
-Write the module's private interface (used for compiling
-nested sub-modules) to @file{@var{module}.int0}.
+Write the module's private interface (used for compiling nested sub-modules)
+to @file{@var{module}.int0}.
 
 @sp 1
 @item --make-opt-int

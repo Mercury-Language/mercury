@@ -275,11 +275,6 @@ case $highlevel_data in
     false)      HLD_OPTS="" ;;
 esac
 
-case $gcc_nested_functions in
-    true)       NEST_OPTS="-DMR_USE_GCC_NESTED_FUNCTIONS" ;;
-    false)      NEST_OPTS="" ;;
-esac
-
 case $asm_labels in
     true)       ASM_OPTS="-DMR_USE_ASM_LABELS" ;;
     false)      ASM_OPTS="" ;;

@@ -425,15 +425,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         ContEnvGCStmt = gc_no_stmt,
         ContEnvArg = mlds_argument(ContEnvVarName, ContEnvType,
             ContEnvGCStmt),
-        globals.lookup_bool_option(Globals, gcc_nested_functions,
-            NestedFunctions),
-        (
-            NestedFunctions = yes,
-            FuncArgs = FuncArgs0 ++ [ContArg]
-        ;
-            NestedFunctions = no,
-            FuncArgs = FuncArgs0 ++ [ContArg, ContEnvArg]
-        )
+        FuncArgs = FuncArgs0 ++ [ContArg, ContEnvArg]
     ),
     FuncParams = mlds_func_params(FuncArgs, RetTypes).
 

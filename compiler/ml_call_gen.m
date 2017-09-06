@@ -618,14 +618,7 @@ ml_gen_mlds_call(Signature, FuncRval, ArgRvals0, RetLvals0,
             Cont, FuncDefns, !Info),
         % Append the success continuation to the ordinary arguments.
         Cont = success_cont(FuncPtrRval, EnvPtrRval, _, _),
-        ml_gen_info_use_gcc_nested_functions(!.Info, UseNestedFuncs),
-        (
-            UseNestedFuncs = yes,
-            ArgRvals = ArgRvals0 ++ [FuncPtrRval]
-        ;
-            UseNestedFuncs = no,
-            ArgRvals = ArgRvals0 ++ [FuncPtrRval, EnvPtrRval]
-        ),
+        ArgRvals = ArgRvals0 ++ [FuncPtrRval, EnvPtrRval],
         % For --nondet-copy-out, the output arguments will be passed to the
         % continuation rather than being returned.
         ml_gen_info_get_nondet_copy_out(!.Info, NondetCopyOut),
@@ -733,15 +726,8 @@ ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
 
 ml_gen_cont_params(OutputArgTypes, Params, !Info) :-
     ml_gen_cont_params_loop(OutputArgTypes, 1, Args0),
-    ml_gen_info_use_gcc_nested_functions(!.Info, UseNestedFuncs),
-    (
-        UseNestedFuncs = yes,
-        Args = Args0
-    ;
-        UseNestedFuncs = no,
-        ml_declare_env_ptr_arg(EnvPtrArg),
-        Args = Args0 ++ [EnvPtrArg]
-    ),
+    ml_declare_env_ptr_arg(EnvPtrArg),
+    Args = Args0 ++ [EnvPtrArg],
     Params = mlds_func_params(Args, []).
 
 :- pred ml_gen_cont_params_loop(list(mlds_type)::in, int::in,

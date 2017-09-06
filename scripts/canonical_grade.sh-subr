@@ -38,7 +38,7 @@ case $asm_labels in
 esac
 
 case $highlevel_code,$highlevel_data,$GRADE,$target in
-	true,true,none,*)		
+	true,true,none,*)
 		case $target in
 			c|asm)	GRADE="hl" ;;
 			csharp) GRADE="csharp" ;;
@@ -51,7 +51,7 @@ case $highlevel_code,$highlevel_data,$GRADE,$target in
 				;;
 		esac
 		;;
-	true,false,none,*)	
+	true,false,none,*)
 		case $target in
 			c|asm)	GRADE="hlc" ;;
 			*)
@@ -76,11 +76,6 @@ case $highlevel_code,$highlevel_data,$GRADE,$target in
 		;;
 esac
 
-case $gcc_nested_functions,$highlevel_code in
-	true,true)	GRADE="${GRADE}_nest" ;;
-	*)		;;
-esac
-	
 case $thread_safe,$threadscope in
 	true,false)	    GRADE="$GRADE.par" ;;
     true,true)      GRADE="$GRADE.par.threadscope" ;;
