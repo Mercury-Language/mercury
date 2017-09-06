@@ -2749,6 +2749,13 @@ output_qual_name_prefix_c(ModuleName, !IO) :-
     io.write_string(MangledModuleName, !IO),
     io.write_string("__", !IO).
 
+:- func qual_name_prefix_c(mlds_module_name) = string.
+
+qual_name_prefix_c(ModuleName) = ModuleNamePrefix :-
+    SymName = mlds_module_name_to_sym_name(ModuleName),
+    MangledModuleName = sym_name_mangle(SymName),
+    ModuleNamePrefix = MangledModuleName ++ "__".
+
 :- pred mlds_output_module_name(mercury_module_name::in, io::di, io::uo)
     is det.
 
@@ -2993,25 +3000,19 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
             % the enumeration might not be word-sized, which would cause
             % problems for e.g. `std_util.arg/2'. So we just use `MR_Integer',
             % and output the actual enumeration type as a comment.
-            io.write_string("MR_Integer /* actually `enum ", !IO),
-            output_qual_name_prefix_c(ModuleName, !IO),
-            mlds_output_mangled_name(ClassName, !IO),
-            io.write_char('_', !IO),
-            io.write_int(Arity, !IO),
-            io.write_string("_e' */", !IO)
+            io.format("MR_Integer /* actually `enum %s%s_%d_e' */",
+                [s(qual_name_prefix_c(ModuleName)), s(name_mangle(ClassName)),
+                i(Arity)], !IO)
         ;
             ( ClassKind = mlds_class
             ; ClassKind = mlds_interface
             ; ClassKind = mlds_struct
             ),
             % For struct types, it is OK to output an incomplete type, since
-            % don't use these types directly; we only use pointers to them.
-            io.write_string("struct ", !IO),
-            output_qual_name_prefix_c(ModuleName, !IO),
-            mlds_output_mangled_name(ClassName, !IO),
-            io.write_char('_', !IO),
-            io.write_int(Arity, !IO),
-            io.write_string("_s", !IO)
+            % we don't use these types directly; we only use pointers to them.
+            io.format("struct %s%s_%d_s",
+                [s(qual_name_prefix_c(ModuleName)), s(name_mangle(ClassName)),
+                i(Arity)], !IO)
         )
     ;
         MLDS_Type = mlds_ptr_type(Type),
@@ -3055,7 +3056,7 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
             )
         ;
             ArgTypes = [_ | _],
-            % This case only happens for --nondet-copy-out
+            % This case only happens for --nondet-copy-out.
             io.write_string("void MR_CALL (*", !IO)
         )
     ;
