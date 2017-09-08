@@ -913,7 +913,7 @@ ml_gen_var_list(Info, [Var | Vars], [Lval | Lvals]) :-
     ml_gen_var_list(Info, Vars, Lvals).
 
 ml_gen_var(Info, Var, Lval) :-
-    % First check the var_lvals override mappingelse if an lval has been set
+    % First check the var_lvals override mapping; if an lval has been set
     % for this variable, use it.
 
     ml_gen_info_get_var_lvals(Info, VarLvals),
