@@ -65,6 +65,78 @@ main(!IO) :-
     io.write_uint(UIntValue, !IO),
     io.nl(!IO),
 
+    % Test handling int8s.
+    %
+    Int8 = 42i8,
+    type_to_term(Int8, Int8Term : term(generic)),
+    io.write_string("Term: ", !IO),
+    term_io.write_term(VarSet, Int8Term, !IO),
+    io.nl(!IO),
+    det_term_to_type(Int8Term, Int8Value : int8),
+    io.write_string("Type: ", !IO),
+    io.write_int8(Int8Value, !IO),
+    io.nl(!IO),
+
+    % Test handling uint8s.
+    %
+    UInt8 = 42u8,
+    type_to_term(UInt8, UInt8Term : term(generic)),
+    io.write_string("Term: ", !IO),
+    term_io.write_term(VarSet, UInt8Term, !IO),
+    io.nl(!IO),
+    det_term_to_type(UInt8Term, UInt8Value : uint8),
+    io.write_string("Type: ", !IO),
+    io.write_uint8(UInt8Value, !IO),
+    io.nl(!IO),
+
+    % Test handling int16s.
+    %
+    Int16 = 42i16,
+    type_to_term(Int16, Int16Term : term(generic)),
+    io.write_string("Term: ", !IO),
+    term_io.write_term(VarSet, Int16Term, !IO),
+    io.nl(!IO),
+    det_term_to_type(Int16Term, Int16Value : int16),
+    io.write_string("Type: ", !IO),
+    io.write_int16(Int16Value, !IO),
+    io.nl(!IO),
+
+    % Test handling uint16s.
+    %
+    UInt16 = 42u16,
+    type_to_term(UInt16, UInt16Term : term(generic)),
+    io.write_string("Term: ", !IO),
+    term_io.write_term(VarSet, UInt16Term, !IO),
+    io.nl(!IO),
+    det_term_to_type(UInt16Term, UInt16Value : uint16),
+    io.write_string("Type: ", !IO),
+    io.write_uint16(UInt16Value, !IO),
+    io.nl(!IO),
+
+    % Test handling int32s.
+    %
+    Int32 = 42i32,
+    type_to_term(Int32, Int32Term : term(generic)),
+    io.write_string("Term: ", !IO),
+    term_io.write_term(VarSet, Int32Term, !IO),
+    io.nl(!IO),
+    det_term_to_type(Int32Term, Int32Value : int32),
+    io.write_string("Type: ", !IO),
+    io.write_int32(Int32Value, !IO),
+    io.nl(!IO),
+
+    % Test handling uint32s.
+    %
+    UInt32 = 42u32,
+    type_to_term(UInt32, UInt32Term : term(generic)),
+    io.write_string("Term: ", !IO),
+    term_io.write_term(VarSet, UInt32Term, !IO),
+    io.nl(!IO),
+    det_term_to_type(UInt32Term, UInt32Value : uint32),
+    io.write_string("Type: ", !IO),
+    io.write_uint32(UInt32Value, !IO),
+    io.nl(!IO),
+
     % Test handling of floats.
     %
     Float = 12345.6789,

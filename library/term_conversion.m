@@ -470,6 +470,36 @@ univ_to_term_special_case(ModuleName, TypeCtorName, TypeArgs, Univ, Context,
             Functor = integer(base_10, integer.from_uint(UInt), unsigned,
                 size_word)
         ;
+            TypeCtorName = "int8",
+            det_univ_to_type(Univ, Int8),
+            Functor = integer(base_10, integer.from_int8(Int8), signed,
+                size_8_bit)
+        ;
+            TypeCtorName = "uint8",
+            det_univ_to_type(Univ, UInt8),
+            Functor = integer(base_10, integer.from_uint8(UInt8), unsigned,
+                size_8_bit)
+        ;
+            TypeCtorName = "int16",
+            det_univ_to_type(Univ, Int16),
+            Functor = integer(base_10, integer.from_int16(Int16), signed,
+                size_16_bit)
+        ;
+            TypeCtorName = "uint16",
+            det_univ_to_type(Univ, UInt16),
+            Functor = integer(base_10, integer.from_uint16(UInt16), unsigned,
+                size_16_bit)
+        ;
+            TypeCtorName = "int32",
+            det_univ_to_type(Univ, Int32),
+            Functor = integer(base_10, integer.from_int32(Int32), signed,
+                size_32_bit)
+        ;
+            TypeCtorName = "uint32",
+            det_univ_to_type(Univ, UInt32),
+            Functor = integer(base_10, integer.from_uint32(UInt32), unsigned,
+                size_32_bit)
+        ;
             TypeCtorName = "float",
             det_univ_to_type(Univ, Float),
             Functor = float(Float)
