@@ -157,64 +157,62 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         ),
         assign_enum_constants(TypeCtor, Ctors, InitTag, !CtorTags),
         ReservedAddr = does_not_use_reserved_address
+    else if
+        % Try representing it as a no-tag type.
+        type_ctor_should_be_notag(Globals, TypeCtor, ReservedTagPragma,
+            Ctors, UserEqCmp, SingleFunctorName, SingleArgType,
+            MaybeSingleArgName)
+    then
+        SingleConsId = cons(SingleFunctorName, 1, TypeCtor),
+        map.det_insert(SingleConsId, no_tag, !CtorTags),
+        % XXX What if SingleArgType uses reserved addresses?
+        ReservedAddr = does_not_use_reserved_address,
+        DuTypeKind = du_type_kind_notag(SingleFunctorName, SingleArgType,
+            MaybeSingleArgName)
     else
-        ( if
-            % Try representing it as a no-tag type.
-            type_ctor_should_be_notag(Globals, TypeCtor, ReservedTagPragma,
-                Ctors, UserEqCmp, SingleFunctorName, SingleArgType,
-                MaybeSingleArgName)
-        then
-            SingleConsId = cons(SingleFunctorName, 1, TypeCtor),
-            map.det_insert(SingleConsId, no_tag, !CtorTags),
-            % XXX What if SingleArgType uses reserved addresses?
-            ReservedAddr = does_not_use_reserved_address,
-            DuTypeKind = du_type_kind_notag(SingleFunctorName, SingleArgType,
-                MaybeSingleArgName)
+        DuTypeKind = du_type_kind_general,
+        ( if NumTagBits = 0 then
+            (
+                ReservedTagPragma = uses_reserved_tag,
+                % XXX Need to fix this.
+                % This occurs for the .NET and Java backends.
+                sorry("make_tags", "--reserve-tag with num_tag_bits = 0")
+            ;
+                ReservedTagPragma = does_not_use_reserved_tag
+            ),
+            % Assign reserved addresses to the constants, if possible.
+            separate_out_constants(Ctors, Constants, Functors),
+            assign_reserved_numeric_addresses(TypeCtor, Constants,
+                LeftOverConstants0, !CtorTags, 0, NumReservedAddresses,
+                does_not_use_reserved_address, ReservedAddr1),
+            (
+                HighLevelCode = yes,
+                assign_reserved_symbolic_addresses(TypeCtor,
+                    LeftOverConstants0, LeftOverConstants,
+                    !CtorTags, 0, NumReservedObjects,
+                    ReservedAddr1, ReservedAddr)
+            ;
+                HighLevelCode = no,
+                % Reserved symbolic addresses are not supported for the
+                % LLDS back-end.
+                LeftOverConstants = LeftOverConstants0,
+                ReservedAddr = ReservedAddr1
+            ),
+            % Assign shared_with_reserved_address(...) representations
+            % for the remaining constructors.
+            RemainingCtors = LeftOverConstants ++ Functors,
+            list.filter_map(is_reserved_address_tag,
+                map.values(!.CtorTags), ReservedAddresses),
+            assign_unshared_tags(TypeCtor, RemainingCtors, 0, 0,
+                ReservedAddresses, !CtorTags)
         else
-            DuTypeKind = du_type_kind_general,
-            ( if NumTagBits = 0 then
-                (
-                    ReservedTagPragma = uses_reserved_tag,
-                    % XXX Need to fix this.
-                    % This occurs for the .NET and Java backends.
-                    sorry("make_tags", "--reserve-tag with num_tag_bits = 0")
-                ;
-                    ReservedTagPragma = does_not_use_reserved_tag
-                ),
-                % Assign reserved addresses to the constants, if possible.
-                separate_out_constants(Ctors, Constants, Functors),
-                assign_reserved_numeric_addresses(TypeCtor, Constants,
-                    LeftOverConstants0, !CtorTags, 0, NumReservedAddresses,
-                    does_not_use_reserved_address, ReservedAddr1),
-                (
-                    HighLevelCode = yes,
-                    assign_reserved_symbolic_addresses(TypeCtor,
-                        LeftOverConstants0, LeftOverConstants,
-                        !CtorTags, 0, NumReservedObjects,
-                        ReservedAddr1, ReservedAddr)
-                ;
-                    HighLevelCode = no,
-                    % Reserved symbolic addresses are not supported for the
-                    % LLDS back-end.
-                    LeftOverConstants = LeftOverConstants0,
-                    ReservedAddr = ReservedAddr1
-                ),
-                % Assign shared_with_reserved_address(...) representations
-                % for the remaining constructors.
-                RemainingCtors = LeftOverConstants ++ Functors,
-                list.filter_map(is_reserved_address_tag,
-                    map.values(!.CtorTags), ReservedAddresses),
-                assign_unshared_tags(TypeCtor, RemainingCtors, 0, 0,
-                    ReservedAddresses, !CtorTags)
-            else
-                MaxTag = max_num_tags(NumTagBits) - 1,
-                separate_out_constants(Ctors, Constants, Functors),
-                assign_constant_tags(TypeCtor, Constants, InitTag, NextTag,
-                    !CtorTags),
-                assign_unshared_tags(TypeCtor, Functors, NextTag, MaxTag,
-                    [], !CtorTags),
-                ReservedAddr = does_not_use_reserved_address
-            )
+            MaxTag = max_num_tags(NumTagBits) - 1,
+            separate_out_constants(Ctors, Constants, Functors),
+            assign_constant_tags(TypeCtor, Constants, InitTag, NextTag,
+                !CtorTags),
+            assign_unshared_tags(TypeCtor, Functors, NextTag, MaxTag,
+                [], !CtorTags),
+            ReservedAddr = does_not_use_reserved_address
         )
     ).
 
