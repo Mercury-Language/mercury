@@ -102,7 +102,7 @@
     %
     % The former is needed before we can start generating code for *any*
     % of the procedures in the TSCC.
-    % 
+    %
     % Parameter passing between the procedures in a TSCC is done by
     % giving each procedure its own list of lvn_tscc_proc_input_vars
     % (representing the formal input parameters) and having each tail call
@@ -187,7 +187,6 @@
 :- import_module ml_backend.ml_accurate_gc.
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module maybe.
@@ -247,6 +246,46 @@ ml_append_return_statement(CodeModel, SoloOrTscc, CopiedOutputVarLvals,
     ).
 
 %---------------------------------------------------------------------------%
+
+:- type copy_out_when
+    --->    copy_out_never
+    ;       copy_out_only_last_arg
+    ;       copy_out_always.
+
+    % Decide how the interface of a procedure should handle output arguments.
+    %
+    % One way we can handle an output argument is to return it
+    % via a return statement. The MLDS code generator calls this "copy out".
+    %
+    % The other way is to have the caller pass a pointer for the output arg,
+    % and have the callee return the value by assigning through that pointer.
+    %
+    % This returns an indication whether we should use the first approach
+    % for none (copy_out_never), just one (copy_out_only_last_arg) or
+    % all (copy_out_always) of a procedure's output arguments.
+    %
+:- func compute_when_to_copy_out(bool, code_model, pred_or_func)
+    = copy_out_when.
+
+compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc) = CopyOutWhen :-
+    (
+        CopyOut = yes,
+        CopyOutWhen = copy_out_always
+    ;
+        CopyOut = no,
+        ( if
+            CodeModel = model_det,
+            PredOrFunc = pf_function
+        then
+            % Return the result argument (i.e. the last argument)
+            % of a procedure if that procedure is a det function.
+            CopyOutWhen = copy_out_only_last_arg
+        else
+            CopyOutWhen = copy_out_never
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 %
 % Code for generating function declarations (i.e. mlds_func_params).
 %
@@ -299,11 +338,9 @@ ml_gen_info_proc_params(PredProcId, FuncParams, !Info) :-
 ml_gen_proc_params_inputs_only_no_gc_stmts(ModuleInfo, PredProcId)
         = FuncArgs :-
     get_raw_data_for_proc_params(ModuleInfo, PredProcId, _PredInfo, HeadTypes,
-        TopFunctorModes, HeadVarNames, _PredOrFunc, CodeModel),
-    module_info_get_globals(ModuleInfo, Globals),
-    CopyOut = get_copy_out_option(Globals, CodeModel),
+        TopFunctorModes, HeadVarNames, _PredOrFunc, _CodeModel),
     ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, TopFunctorModes,
-        CopyOut, input_params_only, FuncArgs, RetTypes, no, _),
+        copy_out_never, input_params_only, FuncArgs, RetTypes, no, _),
     expect(unify(RetTypes, []), $pred, "RetTypes != []").
 
 ml_gen_proc_params_from_rtti_no_gc_stmts(ModuleInfo, RttiProcId)
@@ -366,32 +403,13 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         CodeModel, WhatParams, FuncParams, !MaybeInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     CopyOut = get_copy_out_option(Globals, CodeModel),
+    CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
     ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
-        CopyOut, WhatParams, FuncArgs0, RetTypes0, !MaybeInfo),
+        CopyOutWhen, WhatParams, FuncArgs0, RetTypes0, !MaybeInfo),
     (
         CodeModel = model_det,
-        % For model_det Mercury functions whose result argument has an
-        % output mode, make the result into the MLDS return type.
-        ( if
-            RetTypes0 = [],
-            PredOrFunc = pf_function,
-            pred_args_to_func_args(HeadModes, _, ResultMode),
-            ResultMode = top_out,
-            pred_args_to_func_args(HeadTypes, _, ResultType),
-            check_dummy_type(ModuleInfo, ResultType) = is_not_dummy_type
-        then
-            pred_args_to_func_args(FuncArgs0, FuncArgs, RetArg),
-            RetArg = mlds_argument(_RetArgName, RetTypePtr, _GCStmt),
-            ( if RetTypePtr = mlds_ptr_type(RetType) then
-                RetTypes = [RetType]
-            else
-                unexpected($pred,
-                    "output mode function result doesn't have pointer type")
-            )
-        else
-            FuncArgs = FuncArgs0,
-            RetTypes = RetTypes0
-        )
+        FuncArgs = FuncArgs0,
+        RetTypes = RetTypes0
     ;
         CodeModel = model_semi,
         % For model_semi procedures, return a bool.
@@ -413,8 +431,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         ContVarName = lvn_comp_var(lvnc_cont),
         % The cont variable always points to code, not to the heap,
         % so the GC never needs to trace it.
-        ContGCStmt = gc_no_stmt,
-        ContArg = mlds_argument(ContVarName, ContType, ContGCStmt),
+        ContArg = mlds_argument(ContVarName, ContType, gc_no_stmt),
         ContEnvType = mlds_generic_env_ptr_type,
         ContEnvVarName = lvn_comp_var(lvnc_cont_env_ptr),
         % The cont_env_ptr always points to the stack, since continuation
@@ -422,9 +439,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         % put_nondet_env_on_heap is true, which won't be the case when doing
         % our own GC -- this is enforced in handle_options.m).
         % So the GC doesn't need to trace it.
-        ContEnvGCStmt = gc_no_stmt,
-        ContEnvArg = mlds_argument(ContEnvVarName, ContEnvType,
-            ContEnvGCStmt),
+        ContEnvArg = mlds_argument(ContEnvVarName, ContEnvType, gc_no_stmt),
         FuncArgs = FuncArgs0 ++ [ContArg, ContEnvArg]
     ),
     FuncParams = mlds_func_params(FuncArgs, RetTypes).
@@ -437,7 +452,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
     % only if !.MaybeInfo is yes(_).
     %
 :- pred ml_gen_arg_decls(module_info, list(mlds_local_var_name),
-    list(mer_type), list(top_functor_mode), bool, what_params,
+    list(mer_type), list(top_functor_mode), copy_out_when, what_params,
     list(mlds_argument), mlds_return_types,
     maybe(ml_gen_info), maybe(ml_gen_info)).
 :- mode ml_gen_arg_decls(in, in, in, in, in, in(is_in), out, out,
@@ -447,7 +462,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
 :- mode ml_gen_arg_decls(in, in, in, in, in, in(is_inout), out, out,
     in(is_yes), out(is_yes)) is det.
 
-ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOut, WhatParams,
+ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOutWhen, WhatParams,
         FuncArgs, RetTypes, !MaybeInfo) :-
     ( if
         Vars = [],
@@ -462,7 +477,7 @@ ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOut, WhatParams,
         Modes = [HeadMode | TailModes]
     then
         ml_gen_arg_decls(ModuleInfo, TailVars, TailTypes, TailModes,
-            CopyOut, WhatParams, TailFuncArgs, TailRetTypes, !MaybeInfo),
+            CopyOutWhen, WhatParams, TailFuncArgs, TailRetTypes, !MaybeInfo),
         HeadIsDummy = check_dummy_type(ModuleInfo, HeadType),
         (
             HeadIsDummy = is_dummy_type,
@@ -493,13 +508,18 @@ ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOut, WhatParams,
                     RetTypes = TailRetTypes
                 ;
                     WhatParams = input_and_output_params,
-                    (
-                        CopyOut = yes,
+                    ( if
+                        (
+                            CopyOutWhen = copy_out_only_last_arg,
+                            TailVars = []
+                        ;
+                            CopyOutWhen = copy_out_always
+                        )
+                    then
                         % For by-value outputs, generate a return type.
                         FuncArgs = TailFuncArgs,
                         RetTypes = [HeadMLDS_Type | TailRetTypes]
-                    ;
-                        CopyOut = no,
+                    else
                         % For by-reference outputs, generate an argument.
                         HeadMLDS_ArgType = mlds_ptr_type(HeadMLDS_Type),
                         ml_gen_arg_decl(HeadVar, HeadType, HeadMLDS_ArgType,
@@ -654,6 +674,24 @@ ml_gen_args(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         PredOrFunc, CodeModel, Context, ForClosureWrapper, WhatParams, ArgNum,
         !:InputRvals, !:OutputLvals, !:OutputTypes,
         !:ConvOutputDefns, !:ConvOutputStmts, !Info) :-
+    ml_gen_info_get_copy_out(!.Info, CodeModel, CopyOut),
+    CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
+    ml_gen_args_loop(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
+        CopyOutWhen, Context, ForClosureWrapper, WhatParams, ArgNum,
+        !:InputRvals, !:OutputLvals, !:OutputTypes,
+        !:ConvOutputDefns, !:ConvOutputStmts, !Info).
+
+:- pred ml_gen_args_loop(list(mlds_local_var_name)::in, list(mlds_lval)::in,
+    list(mer_type)::in, list(mer_type)::in, list(mer_mode)::in,
+    copy_out_when::in, prog_context::in, bool::in, what_params::in, int::in,
+    list(mlds_rval)::out, list(mlds_lval)::out, list(mlds_type)::out,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_args_loop(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
+        CopyOutWhen, Context, ForClosureWrapper, WhatParams, ArgNum,
+        !:InputRvals, !:OutputLvals, !:OutputTypes,
+        !:ConvOutputDefns, !:ConvOutputStmts, !Info) :-
     ( if
         VarNames = [],
         VarLvals = [],
@@ -673,14 +711,13 @@ ml_gen_args(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         CalleeTypes = [CalleeType | CalleeTypesTail],
         Modes = [Mode | ModesTail]
     then
-        ml_gen_args(VarNamesTail, VarLvalsTail, CallerTypesTail,
-            CalleeTypesTail, ModesTail, PredOrFunc, CodeModel, Context,
+        ml_gen_args_loop(VarNamesTail, VarLvalsTail, CallerTypesTail,
+            CalleeTypesTail, ModesTail, CopyOutWhen, Context,
             ForClosureWrapper, WhatParams, ArgNum + 1,
             !:InputRvals, !:OutputLvals, !:OutputTypes,
             !:ConvOutputDefns, !:ConvOutputStmts, !Info),
-        ml_gen_arg(VarName, VarLval, CallerType, CalleeType, Mode,
-            PredOrFunc, CodeModel, Context, ForClosureWrapper, WhatParams,
-            ArgNum, VarNamesTail,
+        ml_gen_arg(VarName, VarLval, CallerType, CalleeType, Mode, CopyOutWhen,
+            Context, ForClosureWrapper, WhatParams, ArgNum, VarNamesTail,
             !InputRvals, !OutputLvals, !OutputTypes,
             !ConvOutputDefns, !ConvOutputStmts, !Info)
     else
@@ -688,20 +725,18 @@ ml_gen_args(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
     ).
 
 :- pred ml_gen_arg(mlds_local_var_name::in, mlds_lval::in, mer_type::in,
-    mer_type::in, mer_mode::in, pred_or_func::in, code_model::in,
-    prog_context::in, bool::in, what_params::in, int::in,
-    list(mlds_local_var_name)::in,
+    mer_type::in, mer_mode::in, copy_out_when::in, prog_context::in, bool::in,
+    what_params::in, int::in, list(mlds_local_var_name)::in,
     list(mlds_rval)::in, list(mlds_rval)::out,
     list(mlds_lval)::in, list(mlds_lval)::out,
     list(mlds_type)::in, list(mlds_type)::out,
     list(mlds_local_var_defn)::in, list(mlds_local_var_defn)::out,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
-:- pragma inline(ml_gen_arg/24).
+:- pragma inline(ml_gen_arg/23).
 
-ml_gen_arg(VarName, VarLval, CallerType, CalleeType, Mode,
-        PredOrFunc, CodeModel, Context, ForClosureWrapper, WhatParams,
-        ArgNum, VarNamesTail,
+ml_gen_arg(VarName, VarLval, CallerType, CalleeType, Mode, CopyOutWhen,
+        Context, ForClosureWrapper, WhatParams, ArgNum, VarNamesTail,
         !InputRvals, !OutputLvals, !OutputTypes,
         !ConvOutputDefns, !ConvOutputStmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -747,17 +782,10 @@ ml_gen_arg(VarName, VarLval, CallerType, CalleeType, Mode,
 
                 ( if
                     (
-                        % If this is the result argument of a model_det
-                        % function, and it has an output mode (tested above),
-                        % then return it as a value.
-                        VarNamesTail = [],
-                        CodeModel = model_det,
-                        PredOrFunc = pf_function
+                        CopyOutWhen = copy_out_only_last_arg,
+                        VarNamesTail = []
                     ;
-                        % If the target language allows multiple return values,
-                        % then use them.
-                        ml_gen_info_get_copy_out(!.Info, CodeModel, CopyOut),
-                        CopyOut = yes
+                        CopyOutWhen = copy_out_always
                     )
                 then
                     !:OutputLvals = [ArgLval | !.OutputLvals],
