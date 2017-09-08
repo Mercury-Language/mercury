@@ -1,0 +1,13 @@
+from_int(-2147483648) = <<out-of-range>>
+from_int(-128) = <<out-of-range>>
+from_int(-1) = <<out-of-range>>
+from_int(0) = 0
+from_int(1) = 1
+from_int(2) = 2
+from_int(8) = 8
+from_int(10) = 10
+from_int(16) = 16
+from_int(127) = 127
+from_int(255) = 255
+from_int(256) = <<out-of-range>>
+from_int(2147483647) = <<out-of-range>>
