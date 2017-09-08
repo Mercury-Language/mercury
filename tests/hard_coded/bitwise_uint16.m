@@ -170,7 +170,7 @@ shift_amounts = [
 
     MR_allocate_aligned_string_msg(S, 16, MR_ALLOC_ID);
     S[16] = '\\0';
-    while (i >= 0) {
+    while (i > 0) {
         i--;
         S[i] = (U & 1) ? '1' : '0';
         U = U >> 1;

@@ -174,7 +174,7 @@ shift_amounts = [
 
     MR_allocate_aligned_string_msg(S, ML_BITS_PER_UINT, MR_ALLOC_ID);
     S[ML_BITS_PER_UINT] = '\\0';
-    while (i >= 0) {
+    while (i > 0) {
         i--;
         S[i] = (U & 1) ? '1' : '0';
         U = U >> 1;
