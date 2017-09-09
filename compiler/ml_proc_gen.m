@@ -477,7 +477,8 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             % For example, for C it outputs a function declaration with no
             % corresponding definition, making sure that the function is
             % declared as `extern' rather than `static'.
-            ml_gen_info_proc_params(PredProcId, FuncParams, !.Info, _Info),
+            ml_gen_info_proc_params(PredProcId, FuncParams,
+                _ByRefOutputVars, _CopiedOutputVars, !.Info, _Info),
             FuncBody = body_external,
             set.init(EnvVarNames),
             ClosureWrapperFuncDefns = []
@@ -487,14 +488,20 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             % (rather than being passed by reference) and remove them from
             % the byref_output_vars field in the ml_gen_info.
             CodeModel = proc_info_interface_code_model(ProcInfo),
+            ml_gen_info_proc_params(PredProcId, FuncParams,
+                ByRefOutputVars, CopiedOutputVars, !.Info, _Info),
+            ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info),
             (
                 ( CodeModel = model_det
                 ; CodeModel = model_semi
-                ),
-                ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info)
+                )
             ;
                 CodeModel = model_non,
-                ml_set_up_initial_succ_cont(CopiedOutputVars, !Info)
+                ml_gen_var_list(!.Info, CopiedOutputVars, OutputVarLvals),
+                ml_variable_types(!.Info, CopiedOutputVars, OutputVarTypes),
+                ml_initial_cont(!.Info, OutputVarLvals, OutputVarTypes,
+                    InitialCont),
+                ml_gen_info_push_success_cont(InitialCont, !Info)
             ),
 
             proc_info_get_headvars(ProcInfo, HeadVars),
@@ -510,7 +517,6 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
                 HeadVars, HeadTypes, CopiedOutputVars,
                 LocalVarDefns0, LocalVarDefns, !Info),
 
-            ml_gen_info_proc_params(PredProcId, FuncParams, !Info),
             ml_gen_info_final(!.Info, EnvVarNames,
                 ClosureWrapperFuncDefns, !:GlobalData, TsccInfo),
             TailRecInfo = TsccInfo ^ mgti_tail_rec_info,
@@ -1146,15 +1152,16 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
             [i(ProcNumInTscc), s(ProcDesc)]),
         CommentStmt = ml_stmt_atomic(comment(ProcDescComment), ProcContext),
 
+        ml_gen_info_proc_params(PredProcId, FuncParams,
+            ByRefOutputVars, CopiedOutputVars, !Info),
+        ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info),
         % For now, the code we generate returns all output variables
         % by reference. Our ancestors should ensure we get here only
         % the target platform does not use copy-out parameter passing,
         % and that no procedure in the TSCC has a return value.
-        % Thus we don't need the following line.
-        % ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info)
         % XXX We should generalize this code so that we *can* handle
         % copy-out parameter passing.
-        CopiedOutputVars = [],
+        expect(unify(CopiedOutputVars, []), $pred, "CopiedOutputVars != []"),
 
         ( TsccCodeModel = tscc_det, CodeModel = model_det
         ; TsccCodeModel = tscc_semi, CodeModel = model_semi
@@ -1167,7 +1174,6 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
             HeadVars, HeadTypes,
             CopiedOutputVars, LocalVarDefns0, LocalVarDefns, !Info),
 
-        ml_gen_info_proc_params(PredProcId, FuncParams, !Info),
         ml_gen_info_final(!.Info, EnvVarNames,
             ClosureWrapperFuncDefns, !:GlobalData, !:TsccInfo),
 
@@ -1454,69 +1460,6 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
     ),
     PerInstance = one_copy,
     DeclFlags = init_function_decl_flags(Access, PerInstance).
-
-    % For model_det and model_semi procedures, figure out which output
-    % variables are returned by value (rather than being passed by reference)
-    % and remove them from the byref_output_vars field in the ml_gen_info.
-    %
-:- pred ml_det_copy_out_vars(module_info::in, list(prog_var)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
-    ml_gen_info_get_byref_output_vars(!.Info, OutputVars),
-    ml_gen_info_get_det_copy_out(!.Info, DetCopyOut),
-    (
-        % If --det-copy-out is enabled, all non-dummy output variables are
-        % returned by value, rather than passing them by reference.
-        DetCopyOut = yes,
-        ByRefOutputVars = [],
-        ml_gen_info_get_var_types(!.Info, VarTypes),
-        list.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), OutputVars,
-            _, CopiedOutputVars)
-    ;
-        DetCopyOut = no,
-        ( if
-            % For det functions, the function result variable is returned by
-            % value, and any remaining output variables are passed by
-            % reference.
-            ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
-            ml_is_output_det_function(ModuleInfo, PredProcId, ResultVar)
-        then
-            CopiedOutputVars = [ResultVar],
-            list.delete_all(OutputVars, ResultVar, ByRefOutputVars)
-        else
-            % Otherwise, all output vars are passed by reference.
-            CopiedOutputVars = [],
-            ByRefOutputVars = OutputVars
-        )
-    ),
-    ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info).
-
-    % For model_non procedures, figure out which output variables are returned
-    % by value (rather than being passed by reference) and remove them from
-    % the byref_output_vars field in the ml_gen_info, and construct the
-    % initial success continuation.
-    %
-:- pred ml_set_up_initial_succ_cont(list(prog_var)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_set_up_initial_succ_cont(NondetCopiedOutputVars, !Info) :-
-    ml_gen_info_get_nondet_copy_out(!.Info, NondetCopyOut),
-    (
-        NondetCopyOut = yes,
-        % For --nondet-copy-out, we generate local variables for the output
-        % variables and then pass them to the continuation, rather than
-        % passing them by reference.
-        ml_gen_info_get_byref_output_vars(!.Info, NondetCopiedOutputVars),
-        ml_gen_info_set_byref_output_vars([], !Info)
-    ;
-        NondetCopyOut = no,
-        NondetCopiedOutputVars = []
-    ),
-    ml_gen_var_list(!.Info, NondetCopiedOutputVars, OutputVarLvals),
-    ml_variable_types(!.Info, NondetCopiedOutputVars, OutputVarTypes),
-    ml_initial_cont(!.Info, OutputVarLvals, OutputVarTypes, InitialCont),
-    ml_gen_info_push_success_cont(InitialCont, !Info).
 
     % Generate the code for a procedure body.
     %

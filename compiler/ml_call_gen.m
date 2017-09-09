@@ -147,8 +147,8 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     ArgNames = ml_gen_local_var_names(VarSet, ArgVars),
     PredOrFunc = generic_call_pred_or_func(GenericCall),
     determinism_to_code_model(Determinism, CodeModel),
-    Params0 = ml_gen_params_no_gc_stmts(ModuleInfo, ArgNames,
-        BoxedArgTypes, ArgModes, PredOrFunc, CodeModel),
+    ml_gen_params_no_gc_stmts(ModuleInfo, PredOrFunc, CodeModel,
+        ArgVars, ArgNames, BoxedArgTypes, ArgModes, Params0),
 
     % Insert the `closure_arg' parameter.
     %
@@ -586,7 +586,8 @@ ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
 ml_gen_proc_addr_rval(PredProcId, ProcLabel, CodeAddrRval, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_pred_label(ModuleInfo, PredProcId, PredLabel, PredModule),
-    ml_gen_info_proc_params(PredProcId, Params, !Info),
+    ml_gen_info_proc_params(PredProcId, Params,
+        _ByRefOutputVars, _CopiedOutputVars, !Info),
     Signature = mlds_get_func_signature(Params),
     PredProcId = proc(_PredId, ProcId),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),

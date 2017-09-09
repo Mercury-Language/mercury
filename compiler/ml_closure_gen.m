@@ -707,26 +707,26 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     else
         unexpected($pred, "list.drop failed")
     ),
-    WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1,
-        list.length(WrapperHeadVars)),
-    ml_gen_info_params(WrapperHeadVarNames, WrapperBoxedArgTypes,
-        WrapperArgModes, PredOrFunc, CodeModel, WrapperParams0, !Info),
+    NumWrapperHeadVars = list.length(WrapperHeadVars),
+    WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1, NumWrapperHeadVars),
+    % We can't generate correct gc statements for the wrapper args, because
+    % we don't have type_infos for the type variables in WrapperBoxedArgTypes.
+    % We handle this by simply not generating such statements, since they are
+    % not needed anyway. The WrapperParams are only live in the time interval
+    % from the entry point of the wrapper function to its call to the wrapped
+    % function, and since the code executed in that interval does not allocate
+    % any memory (it has only an assignment to `closure_arg' and some unbox
+    % operations), it cannot trigger garbage collection.
+    ml_gen_params_no_gc_stmts(ModuleInfo, PredOrFunc, CodeModel,
+        WrapperHeadVars, WrapperHeadVarNames, WrapperBoxedArgTypes,
+        WrapperArgModes, WrapperParams0),
     WrapperParams0 = mlds_func_params(WrapperArgs0, WrapperRetType),
-    % The GC handling for the wrapper arguments is wrong, because we don't have
-    % type_infos for the type variables in WrapperBoxedArgTypes. We handle this
-    % by just deleting it, since it turns out that it is not needed anyway.
-    % We don't need to trace the WrapperParams for accurate GC, since the
-    % WrapperParams are only live in the time from the entry of the wrapper
-    % function to when it calls the wrapped function, and garbage collection
-    % can't occur in that time, since there are no allocations (only an
-    % assignment to `closure_arg' and some unbox operations).
-    WrapperArgs1 = list.map(arg_delete_gc_statement, WrapperArgs0),
 
     % Then insert the `closure_arg' parameter, if needed.
     (
         ClosureKind = special_pred_closure,
         MaybeClosureA = no,
-        WrapperArgs = WrapperArgs1
+        WrapperArgs = WrapperArgs0
     ;
         ( ClosureKind = higher_order_proc_closure
         ; ClosureKind = typeclass_info_closure
@@ -740,7 +740,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         ClosureArg = mlds_argument(ClosureArgName, ClosureArgType,
             ClosureArgGCStmt),
         MaybeClosureA = yes({ClosureArgType, ClosureArgName}),
-        WrapperArgs = [ClosureArg | WrapperArgs1]
+        WrapperArgs = [ClosureArg | WrapperArgs0]
     ),
     WrapperParams = mlds_func_params(WrapperArgs, WrapperRetType),
 
@@ -924,12 +924,6 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         WrapperFuncBody, WrapperFuncDefn, !Info),
     WrapperFuncType = mlds_func_type(WrapperParams),
     ml_gen_info_add_closure_wrapper_defn(WrapperFuncDefn, !Info).
-
-:- func arg_delete_gc_statement(mlds_argument) = mlds_argument.
-
-arg_delete_gc_statement(Argument0) = Argument :-
-    Argument0 = mlds_argument(Name, Type, _GCStmt),
-    Argument = mlds_argument(Name, Type, gc_no_stmt).
 
     % Generate the GC trace code for `closure_arg' or `closure'
     % (see ml_gen_closure_wrapper above).

@@ -62,7 +62,15 @@
     %
 :- func ml_gen_proc_params_no_gc_stmts(module_info, pred_proc_id)
     = mlds_func_params.
+
+    % Generate the function prototype for the given procedure, filling in
+    % the gc statement slots, and return
+    %
+    % (a) the list of nondummy by-ref output arguments, and
+    % (b) the list of nondummy copied output arguments.
+    %
 :- pred ml_gen_info_proc_params(pred_proc_id::in, mlds_func_params::out,
+    list(prog_var)::out, list(prog_var)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate the function prototype for *only the input arguments*
@@ -80,12 +88,9 @@
     % Generate the function prototype for a procedure with the
     % given argument names, types, modes, and code model.
     %
-:- func ml_gen_params_no_gc_stmts(module_info, list(mlds_local_var_name),
-    list(mer_type), list(mer_mode), pred_or_func, code_model)
-    = mlds_func_params.
-:- pred ml_gen_info_params(list(mlds_local_var_name)::in, list(mer_type)::in,
-    list(mer_mode)::in, pred_or_func::in, code_model::in,
-    mlds_func_params::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_params_no_gc_stmts(module_info::in, pred_or_func::in,
+    code_model::in, list(prog_var)::in, list(mlds_local_var_name)::in,
+    list(mer_type)::in, list(mer_mode)::in, mlds_func_params::out) is det.
 
     % ml_gen_tscc_arg_decls(ModuleInfo, Vars, Types, Modes, VarSet, Context,
     %     ProcIdInTscc, NextInArgNum0, NextOutArgNum0, NumOutputs,
@@ -188,6 +193,7 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.prog_data_foreign.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -290,35 +296,134 @@ compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc) = CopyOutWhen :-
 % Code for generating function declarations (i.e. mlds_func_params).
 %
 
-:- pred get_raw_data_for_proc_params(module_info::in, pred_proc_id::in,
-    pred_info::out, list(mer_type)::out, list(top_functor_mode)::out,
-    list(mlds_local_var_name)::out, pred_or_func::out, code_model::out) is det.
+    % The information that ml_gen_arg_decls needs about an argument.
+    %
+:- type var_mvar_type_mode
+    --->    var_mvar_type_mode(
+                prog_var,               % The argument in the HLDS.
+                mlds_local_var_name,    % The argument in the MLDS.
+                mer_type,               % The type of the argument.
+                top_functor_mode        % Is the arg input, output, or neither?
+            ).
 
-get_raw_data_for_proc_params(ModuleInfo, PredProcId, PredInfo, HeadTypes,
-        TopFunctorModes, HeadVarNames, PredOrFunc, CodeModel) :-
+:- pred get_raw_data_for_proc_params(module_info::in, pred_proc_id::in,
+    pred_info::out, pred_or_func::out, code_model::out,
+    list(var_mvar_type_mode)::out) is det.
+% Some of our callers don't need all our outputs.
+:- pragma inline(get_raw_data_for_proc_params/6).
+
+get_raw_data_for_proc_params(ModuleInfo, PredProcId, PredInfo,
+        PredOrFunc, CodeModel, Tuples) :-
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
+    proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
     pred_info_get_arg_types(PredInfo, HeadTypes),
     proc_info_get_argmodes(ProcInfo, HeadModes),
-    modes_to_top_functor_modes(ModuleInfo, HeadModes, HeadTypes,
-        TopFunctorModes),
-    proc_info_get_varset(ProcInfo, VarSet),
-    HeadVarNames = ml_gen_local_var_names(VarSet, HeadVars),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    CodeModel = proc_info_interface_code_model(ProcInfo).
+    package_vars_types_modes(ModuleInfo, VarSet,
+        HeadVars, HeadTypes, HeadModes, Tuples).
+
+:- pred package_vars_types_modes(module_info::in, prog_varset::in,
+    list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
+    list(var_mvar_type_mode)::out) is det.
+
+package_vars_types_modes(ModuleInfo, VarSet, Vars, Types, Modes, Tuples) :-
+    ( if
+        Vars = [],
+        Types = [],
+        Modes = []
+    then
+        Tuples = []
+    else if
+        Vars = [HeadVar | TailVars],
+        Types = [HeadType | TailTypes],
+        Modes = [HeadMode | TailModes]
+    then
+        package_vars_types_modes(ModuleInfo, VarSet,
+            TailVars, TailTypes, TailModes, TailTuples),
+        mode_to_top_functor_mode(ModuleInfo, HeadMode, HeadType,
+            HeadTopFunctorMode),
+        HeadMLDSVarName = ml_gen_local_var_name(VarSet, HeadVar),
+        HeadTuple = var_mvar_type_mode(HeadVar, HeadMLDSVarName, HeadType,
+            HeadTopFunctorMode),
+        Tuples = [HeadTuple | TailTuples]
+    else
+        unexpected($pred, "length mismatch")
+    ).
+
+:- pred package_vars_mvars_types_modes(module_info::in, list(prog_var)::in,
+    list(mlds_local_var_name)::in, list(mer_type)::in, list(mer_mode)::in,
+    list(var_mvar_type_mode)::out) is det.
+
+package_vars_mvars_types_modes(ModuleInfo,
+        Vars, MLDSVarNames, Types, Modes, Tuples) :-
+    ( if
+        Vars = [],
+        MLDSVarNames = [],
+        Types = [],
+        Modes = []
+    then
+        Tuples = []
+    else if
+        Vars = [HeadVar | TailVars],
+        MLDSVarNames = [HeadMLDSVarName | TailMLDSVarNames],
+        Types = [HeadType | TailTypes],
+        Modes = [HeadMode | TailModes]
+    then
+        package_vars_mvars_types_modes(ModuleInfo, TailVars, TailMLDSVarNames,
+            TailTypes, TailModes, TailTuples),
+        mode_to_top_functor_mode(ModuleInfo, HeadMode, HeadType,
+            HeadTopFunctorMode),
+        HeadTuple = var_mvar_type_mode(HeadVar, HeadMLDSVarName, HeadType,
+            HeadTopFunctorMode),
+        Tuples = [HeadTuple | TailTuples]
+    else
+        unexpected($pred, "length mismatch")
+    ).
+
+:- pred package_rtti_vars_types_topmodes(
+    assoc_list(prog_var, prog_var_name)::in,
+    list(mer_type)::in, list(top_functor_mode)::in,
+    list(var_mvar_type_mode)::out) is det.
+
+package_rtti_vars_types_topmodes(VarPairs, Types, TopFunctorModes, Tuples) :-
+    ( if
+        VarPairs = [],
+        Types = [],
+        TopFunctorModes = []
+    then
+        Tuples = []
+    else if
+        VarPairs = [HeadVarPair | TailVarPairs],
+        Types = [HeadType | TailTypes],
+        TopFunctorModes = [HeadTopFunctorMode | TailTopFunctorModes]
+    then
+        package_rtti_vars_types_topmodes(TailVarPairs, TailTypes,
+            TailTopFunctorModes, TailTuples),
+        HeadVarPair = HeadVar - HeadVarName,
+        term.var_to_int(HeadVar, HeadVarNum),
+        HeadMLDSVarName = lvn_prog_var(HeadVarName, HeadVarNum),
+        HeadTuple = var_mvar_type_mode(HeadVar, HeadMLDSVarName, HeadType,
+            HeadTopFunctorMode),
+        Tuples = [HeadTuple | TailTuples]
+    else
+        unexpected($pred, "length mismatch")
+    ).
 
 %---------------------%
 
 ml_gen_proc_params_no_gc_stmts(ModuleInfo, PredProcId) = FuncParams :-
-    get_raw_data_for_proc_params(ModuleInfo, PredProcId, _PredInfo, HeadTypes,
-        TopFunctorModes, HeadVarNames, PredOrFunc, CodeModel),
-    ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, TopFunctorModes,
-        PredOrFunc, CodeModel, input_and_output_params, FuncParams, no, _).
+    get_raw_data_for_proc_params(ModuleInfo, PredProcId, _PredInfo,
+        PredOrFunc, CodeModel, Tuples),
+    ml_gen_params_base(ModuleInfo, PredOrFunc, CodeModel,
+        input_and_output_params, Tuples, FuncParams, _ByRef, _Copied, no, _).
 
-ml_gen_info_proc_params(PredProcId, FuncParams, !Info) :-
+ml_gen_info_proc_params(PredProcId, FuncParams,
+        ByRefOutputVars, CopiedOutputVars, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    get_raw_data_for_proc_params(ModuleInfo, PredProcId, PredInfo, HeadTypes,
-        TopFunctorModes, HeadVarNames, PredOrFunc, CodeModel),
+    get_raw_data_for_proc_params(ModuleInfo, PredProcId, PredInfo,
+        PredOrFunc, CodeModel, Tuples),
     % We must not generate GC tracing code for no_type_info_builtin procedures,
     % because the generated GC tracing code would refer to type_infos
     % that don't get passed.
@@ -326,54 +431,42 @@ ml_gen_info_proc_params(PredProcId, FuncParams, !Info) :-
     PredName = pred_info_name(PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
     ( if no_type_info_builtin(PredModule, PredName, PredArity) then
-        ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes,
-            TopFunctorModes, PredOrFunc, CodeModel, input_and_output_params,
-            FuncParams, no, _)
+        ml_gen_params_base(ModuleInfo, PredOrFunc, CodeModel,
+            input_and_output_params, Tuples, FuncParams,
+            ByRefOutputVars, CopiedOutputVars, no, _)
     else
-        ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes,
-            TopFunctorModes, PredOrFunc, CodeModel, input_and_output_params,
-            FuncParams, yes(!.Info), yes(!:Info))
+        ml_gen_params_base(ModuleInfo, PredOrFunc, CodeModel,
+            input_and_output_params, Tuples, FuncParams,
+            ByRefOutputVars, CopiedOutputVars, yes(!.Info), yes(!:Info))
     ).
 
 ml_gen_proc_params_inputs_only_no_gc_stmts(ModuleInfo, PredProcId)
         = FuncArgs :-
-    get_raw_data_for_proc_params(ModuleInfo, PredProcId, _PredInfo, HeadTypes,
-        TopFunctorModes, HeadVarNames, _PredOrFunc, _CodeModel),
-    ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, TopFunctorModes,
-        copy_out_never, input_params_only, FuncArgs, RetTypes, no, _),
+    get_raw_data_for_proc_params(ModuleInfo, PredProcId, _PredInfo,
+        _PredOrFunc, _CodeModel, Tuples),
+    ml_gen_arg_decls(ModuleInfo, copy_out_never, input_params_only, Tuples,
+        FuncArgs, RetTypes, _ByRef, _Copied, no, _),
     expect(unify(RetTypes, []), $pred, "RetTypes != []").
 
 ml_gen_proc_params_from_rtti_no_gc_stmts(ModuleInfo, RttiProcId)
         = FuncParams :-
-    HeadVars = RttiProcId ^ rpl_proc_headvars,
-    ArgTypes = RttiProcId ^ rpl_proc_arg_types,
-    TopFunctorModes = RttiProcId ^ rpl_proc_top_modes,
     PredOrFunc = RttiProcId ^ rpl_pred_or_func,
     Detism = RttiProcId ^ rpl_proc_interface_detism,
     determinism_to_code_model(Detism, CodeModel),
-    HeadVarNames = list.map(
-        ( func(Var - Name) = Result :-
-            term.var_to_int(Var, N),
-            Result = lvn_prog_var(Name, N)
-        ), HeadVars),
-    ml_gen_params_base(ModuleInfo, HeadVarNames, ArgTypes, TopFunctorModes,
-        PredOrFunc, CodeModel, input_and_output_params, FuncParams, no, _).
+    HeadVars = RttiProcId ^ rpl_proc_headvars,
+    ArgTypes = RttiProcId ^ rpl_proc_arg_types,
+    TopFunctorModes = RttiProcId ^ rpl_proc_top_modes,
+    package_rtti_vars_types_topmodes(HeadVars, ArgTypes, TopFunctorModes,
+        Tuples),
+    ml_gen_params_base(ModuleInfo, PredOrFunc, CodeModel,
+        input_and_output_params, Tuples, FuncParams, _ByRef, _Copied, no, _).
 
-ml_gen_params_no_gc_stmts(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
-        PredOrFunc, CodeModel) = FuncParams :-
-    modes_to_top_functor_modes(ModuleInfo, HeadModes, HeadTypes,
-        TopFunctorModes),
-    ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, TopFunctorModes,
-        PredOrFunc, CodeModel, input_and_output_params, FuncParams, no, _).
-
-ml_gen_info_params(HeadVarNames, HeadTypes, HeadModes,
-        PredOrFunc, CodeModel, FuncParams, !Info) :-
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    modes_to_top_functor_modes(ModuleInfo, HeadModes, HeadTypes,
-        TopFunctorModes),
-    ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, TopFunctorModes,
-        PredOrFunc, CodeModel, input_and_output_params, FuncParams,
-        yes(!.Info), yes(!:Info)).
+ml_gen_params_no_gc_stmts(ModuleInfo, PredOrFunc, CodeModel,
+        HeadVars, HeadMLDSVarNames, HeadTypes, HeadModes, FuncParams) :-
+    package_vars_mvars_types_modes(ModuleInfo, HeadVars, HeadMLDSVarNames,
+        HeadTypes, HeadModes, Tuples),
+    ml_gen_params_base(ModuleInfo, PredOrFunc, CodeModel,
+        input_and_output_params, Tuples, FuncParams, _ByRef, _Copied, no, _).
 
 :- inst is_in for what_params/0
     --->    input_params_only.
@@ -388,24 +481,23 @@ ml_gen_info_params(HeadVarNames, HeadTypes, HeadModes,
     % The mlds_arguments in the generated parameters have the gc stmt field
     % filled in only if !.MaybeInfo is yes(_).
     %
-:- pred ml_gen_params_base(module_info, list(mlds_local_var_name),
-    list(mer_type), list(top_functor_mode), pred_or_func,
-    code_model, what_params,
-    mlds_func_params, maybe(ml_gen_info), maybe(ml_gen_info)).
-:- mode ml_gen_params_base(in, in, in, in, in, in, in(is_in), out,
+:- pred ml_gen_params_base(module_info, pred_or_func, code_model, what_params,
+    list(var_mvar_type_mode), mlds_func_params,
+    list(prog_var), list(prog_var), maybe(ml_gen_info), maybe(ml_gen_info)).
+:- mode ml_gen_params_base(in, in, in, in(is_in), in, out, out, out,
     in(is_no), out(is_no)) is det.
-:- mode ml_gen_params_base(in, in, in, in, in, in, in(is_inout), out,
+:- mode ml_gen_params_base(in, in, in, in(is_inout), in, out, out, out,
     in(is_no), out(is_no)) is det.
-:- mode ml_gen_params_base(in, in, in, in, in, in, in(is_inout), out,
+:- mode ml_gen_params_base(in, in, in, in(is_inout), in, out, out, out,
     in(is_yes), out(is_yes)) is det.
 
-ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
-        CodeModel, WhatParams, FuncParams, !MaybeInfo) :-
+ml_gen_params_base(ModuleInfo, PredOrFunc, CodeModel, WhatParams, Tuples,
+        FuncParams, ByRefOutputVars, CopiedOutputVars, !MaybeInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     CopyOut = get_copy_out_option(Globals, CodeModel),
     CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
-    ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
-        CopyOutWhen, WhatParams, FuncArgs0, RetTypes0, !MaybeInfo),
+    ml_gen_arg_decls(ModuleInfo, CopyOutWhen, WhatParams, Tuples,
+        FuncArgs0, RetTypes0, ByRefOutputVars, CopiedOutputVars, !MaybeInfo),
     (
         CodeModel = model_det,
         FuncArgs = FuncArgs0,
@@ -451,87 +543,87 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
     % The generated mlds_arguments have the gc stmt field filled in
     % only if !.MaybeInfo is yes(_).
     %
-:- pred ml_gen_arg_decls(module_info, list(mlds_local_var_name),
-    list(mer_type), list(top_functor_mode), copy_out_when, what_params,
-    list(mlds_argument), mlds_return_types,
-    maybe(ml_gen_info), maybe(ml_gen_info)).
-:- mode ml_gen_arg_decls(in, in, in, in, in, in(is_in), out, out,
+:- pred ml_gen_arg_decls(module_info, copy_out_when, what_params,
+    list(var_mvar_type_mode), list(mlds_argument), mlds_return_types,
+    list(prog_var), list(prog_var), maybe(ml_gen_info), maybe(ml_gen_info)).
+:- mode ml_gen_arg_decls(in, in, in(is_in), in, out, out, out, out,
     in(is_no), out(is_no)) is det.
-:- mode ml_gen_arg_decls(in, in, in, in, in, in(is_inout), out, out,
+:- mode ml_gen_arg_decls(in, in, in(is_inout), in, out, out, out, out,
     in(is_no), out(is_no)) is det.
-:- mode ml_gen_arg_decls(in, in, in, in, in, in(is_inout), out, out,
+:- mode ml_gen_arg_decls(in, in, in(is_inout), in, out, out, out, out,
     in(is_yes), out(is_yes)) is det.
 
-ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOutWhen, WhatParams,
-        FuncArgs, RetTypes, !MaybeInfo) :-
-    ( if
-        Vars = [],
-        Types = [],
-        Modes = []
-    then
-        FuncArgs = [],
-        RetTypes = []
-    else if
-        Vars = [HeadVar | TailVars],
-        Types = [HeadType | TailTypes],
-        Modes = [HeadMode | TailModes]
-    then
-        ml_gen_arg_decls(ModuleInfo, TailVars, TailTypes, TailModes,
-            CopyOutWhen, WhatParams, TailFuncArgs, TailRetTypes, !MaybeInfo),
-        HeadIsDummy = check_dummy_type(ModuleInfo, HeadType),
+ml_gen_arg_decls(_, _, _, [], [], [], [], [], !MaybeInfo).
+ml_gen_arg_decls(ModuleInfo, CopyOutWhen, WhatParams, [HeadTuple | TailTuples],
+        FuncArgs, RetTypes, ByRefOutputVars, CopiedOutputVars, !MaybeInfo) :-
+    ml_gen_arg_decls(ModuleInfo, CopyOutWhen, WhatParams, TailTuples,
+        TailFuncArgs, TailRetTypes, TailByRefOutputVars, TailCopiedOutputVars,
+        !MaybeInfo),
+
+    HeadTuple = var_mvar_type_mode(HeadVar, HeadMLDSVar, HeadType, HeadMode),
+    HeadIsDummy = check_dummy_type(ModuleInfo, HeadType),
+    (
+        HeadIsDummy = is_dummy_type,
+        % Exclude types such as io.state, etc.
+        FuncArgs = TailFuncArgs,
+        RetTypes = TailRetTypes,
+        ByRefOutputVars = TailByRefOutputVars,
+        CopiedOutputVars = TailCopiedOutputVars
+    ;
+        HeadIsDummy = is_not_dummy_type,
+        HeadMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, HeadType),
         (
-            HeadIsDummy = is_dummy_type,
-            % Exclude types such as io.state, etc.
+            HeadMode = top_unused,
+            % Also exclude values with arg_mode `top_unused'.
             FuncArgs = TailFuncArgs,
-            RetTypes = TailRetTypes
+            RetTypes = TailRetTypes,
+            ByRefOutputVars = TailByRefOutputVars,
+            CopiedOutputVars = TailCopiedOutputVars
         ;
-            HeadIsDummy = is_not_dummy_type,
-            HeadMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, HeadType),
+            HeadMode = top_in,
+            % For inputs, generate an argument.
+            HeadMLDS_ArgType = HeadMLDS_Type,
+            ml_gen_arg_decl(HeadMLDSVar, HeadType, HeadMLDS_ArgType,
+                HeadFuncArg, !MaybeInfo),
+            FuncArgs = [HeadFuncArg | TailFuncArgs],
+            RetTypes = TailRetTypes,
+            ByRefOutputVars = TailByRefOutputVars,
+            CopiedOutputVars = TailCopiedOutputVars
+        ;
+            HeadMode = top_out,
             (
-                HeadMode = top_unused,
-                % Also exclude values with arg_mode `top_unused'.
+                WhatParams = input_params_only,
                 FuncArgs = TailFuncArgs,
-                RetTypes = TailRetTypes
+                RetTypes = TailRetTypes,
+                ByRefOutputVars = TailByRefOutputVars,
+                CopiedOutputVars = TailCopiedOutputVars
             ;
-                HeadMode = top_in,
-                % For inputs, generate an argument.
-                HeadMLDS_ArgType = HeadMLDS_Type,
-                ml_gen_arg_decl(HeadVar, HeadType, HeadMLDS_ArgType,
-                    HeadFuncArg, !MaybeInfo),
-                FuncArgs = [HeadFuncArg | TailFuncArgs],
-                RetTypes = TailRetTypes
-            ;
-                HeadMode = top_out,
-                (
-                    WhatParams = input_params_only,
-                    FuncArgs = TailFuncArgs,
-                    RetTypes = TailRetTypes
-                ;
-                    WhatParams = input_and_output_params,
-                    ( if
-                        (
-                            CopyOutWhen = copy_out_only_last_arg,
-                            TailVars = []
-                        ;
-                            CopyOutWhen = copy_out_always
-                        )
-                    then
-                        % For by-value outputs, generate a return type.
-                        FuncArgs = TailFuncArgs,
-                        RetTypes = [HeadMLDS_Type | TailRetTypes]
-                    else
-                        % For by-reference outputs, generate an argument.
-                        HeadMLDS_ArgType = mlds_ptr_type(HeadMLDS_Type),
-                        ml_gen_arg_decl(HeadVar, HeadType, HeadMLDS_ArgType,
-                            HeadFuncArg, !MaybeInfo),
-                        FuncArgs = [HeadFuncArg | TailFuncArgs],
-                        RetTypes = TailRetTypes
+                WhatParams = input_and_output_params,
+                ( if
+                    (
+                        CopyOutWhen = copy_out_only_last_arg,
+                        TailTuples = []
+                    ;
+                        CopyOutWhen = copy_out_always
                     )
+                then
+                    % For by-value outputs, generate a return type.
+                    FuncArgs = TailFuncArgs,
+                    RetTypes = [HeadMLDS_Type | TailRetTypes],
+                    ByRefOutputVars = TailByRefOutputVars,
+                    CopiedOutputVars = [HeadVar | TailCopiedOutputVars]
+                else
+                    % For by-reference outputs, generate an argument.
+                    HeadMLDS_ArgType = mlds_ptr_type(HeadMLDS_Type),
+                    ml_gen_arg_decl(HeadMLDSVar, HeadType, HeadMLDS_ArgType,
+                        HeadFuncArg, !MaybeInfo),
+                    FuncArgs = [HeadFuncArg | TailFuncArgs],
+                    RetTypes = TailRetTypes,
+                    ByRefOutputVars = [HeadVar | TailByRefOutputVars],
+                    CopiedOutputVars = TailCopiedOutputVars
                 )
             )
         )
-    else
-        unexpected($pred, "length mismatch")
     ).
 
     % Given an argument variable, its actual type and its arg type,

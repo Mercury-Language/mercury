@@ -352,11 +352,15 @@
 :- func init_ml_gen_tscc_info(module_info, tail_rec_target_map, tscc_kind)
     = ml_gen_tscc_info.
 
-    % Initialize the ml_gen_info, so that it is ready for generating code
-    % for the given procedure. The second last argument records the persistent
-    % information accumulated by the code generator so far during the
-    % processing of previous procedures. The role of the last argument
-    % is described above.
+    % Initialize the ml_gen_info, so that it is almost ready for
+    % generating code for the given procedure. (The "almost" is because
+    % the caller still needs to set the byref_output_vars field. We don't
+    % set it to a meaningful value here, because the code for setting it
+    % itself needs an ml_gen_info.)
+    %
+    % The second last argument records the persistent information
+    % accumulated by the code generator so far during the processing of
+    % previous procedures. The role of the last argument is described above.
     %
 :- func ml_gen_info_init(module_info, mlds_target_lang, ml_const_struct_map,
     pred_proc_id, proc_info, ml_global_data, ml_gen_tscc_info) = ml_gen_info.
@@ -438,8 +442,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_util.
 :- import_module libs.options.
 :- import_module ml_backend.ml_target_util.
 
@@ -801,12 +803,9 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
     globals.lookup_bool_option(Globals, det_copy_out, DetCopyOut),
     globals.lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),
 
-    proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    proc_info_get_argmodes(ProcInfo, HeadModes),
-    ByRefOutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
-        VarTypes),
+    ByRefOutputVars = [],
 
     TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
         AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo0),
