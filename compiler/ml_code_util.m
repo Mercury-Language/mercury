@@ -944,8 +944,8 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
         VarLval = ml_local_var(VarName, MLDS_Type),
 
         % Output variables may be passed by reference...
-        ml_gen_info_get_byref_output_vars(Info, OutputVars),
-        ( if list.member(Var, OutputVars) then
+        ml_gen_info_get_byref_output_vars(Info, ByRefOutputVars),
+        ( if list.member(Var, ByRefOutputVars) then
             Lval = ml_mem_ref(ml_lval(VarLval), MLDS_Type)
         else
             Lval = VarLval
