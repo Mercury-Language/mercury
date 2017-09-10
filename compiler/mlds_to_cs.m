@@ -3828,21 +3828,25 @@ output_uint_const_for_csharp(U, !IO) :-
 :- pred output_int8_const_for_csharp(int8::in, io::di, io::uo) is det.
 
 output_int8_const_for_csharp(I8, !IO) :-
+    io.write_string("(sbyte)", !IO),
     io.write_int8(I8, !IO).
 
 :- pred output_uint8_const_for_csharp(uint8::in, io::di, io::uo) is det.
 
 output_uint8_const_for_csharp(U8, !IO) :-
+    io.write_string("(byte)", !IO),
     io.write_uint8(U8, !IO).
 
 :- pred output_int16_const_for_csharp(int16::in, io::di, io::uo) is det.
 
 output_int16_const_for_csharp(I16, !IO) :-
+    io.write_string("(short)", !IO),
     io.write_int16(I16, !IO).
 
 :- pred output_uint16_const_for_csharp(uint16::in, io::di, io::uo) is det.
 
 output_uint16_const_for_csharp(U16, !IO) :-
+    io.write_string("(ushort)", !IO),
     io.write_uint16(U16, !IO).
 
 :- pred output_int32_const_for_csharp(int32::in, io::di, io::uo) is det.

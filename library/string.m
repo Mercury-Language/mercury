@@ -5891,7 +5891,7 @@ uint_to_string(_) = _ :-
 ").
 
 :- pragma foreign_proc("C#",
-    int_to_string(I8::in) = (S::uo),
+    int8_to_string(I8::in) = (S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     S = I8.ToString();
