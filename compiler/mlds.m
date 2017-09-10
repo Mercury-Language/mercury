@@ -2521,9 +2521,10 @@ mlds_get_arg_types(Parameters) = ArgTypes :-
     GetArgType = (func(mlds_argument(_, Type, _)) = Type),
     ArgTypes = list.map(GetArgType, Parameters).
 
-mlds_get_func_signature(mlds_func_params(Parameters, RetTypes)) =
-        mlds_func_signature(ParamTypes, RetTypes) :-
-    ParamTypes = mlds_get_arg_types(Parameters).
+mlds_get_func_signature(Params) = Signature :-
+    Params = mlds_func_params(Parameters, RetTypes),
+    ParamTypes = mlds_get_arg_types(Parameters),
+    Signature = mlds_func_signature(ParamTypes, RetTypes).
 
 %---------------------------------------------------------------------------%
 
