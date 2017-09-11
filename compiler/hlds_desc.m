@@ -63,6 +63,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 :- import_module string.
 :- import_module term.
@@ -212,7 +213,8 @@ describe_proc(PredInfo, ProcId) = ProcDesc :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    Arity0 = pred_info_orig_arity(PredInfo),
+    adjust_func_arity(PredOrFunc, Arity, Arity0),
     pred_info_get_origin(PredInfo, Origin),
     ( if Origin = origin_special_pred(SpecialId, TypeCtor) then
         FullPredName = string.format("%s_for_%s",
