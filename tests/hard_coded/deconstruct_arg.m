@@ -117,6 +117,13 @@ main -->
     test_all(4), newline,
         % test unigned integers
     test_all(561u), newline,
+        % test fixed size integers.
+    test_all(42i8), newline,
+    test_all(42u8), newline,
+    test_all(42i16), newline,
+    test_all(42u16), newline,
+    test_all(42i32), newline,
+    test_all(43u32), newline,
         % test univ.
     { type_to_univ(["hi! I'm a univ!"], Univ) },
     test_all(Univ), newline,
