@@ -321,6 +321,14 @@ test_builtins -->
     % test unsigned integers
     test_all(42u), newline,
 
+    % test fixed size integers.
+    test_all(42i8), newline,
+    test_all(42u8), newline,
+    test_all(42i16), newline,
+    test_all(42u16), newline,
+    test_all(42i32), newline,
+    test_all(42u32), newline,
+
     % test univ.
     % { type_to_univ(["hi! I'm a univ!"], Univ) },
     % test_all(Univ), newline,
