@@ -362,7 +362,7 @@ ml_gen_pseudo_type_info(ModuleInfo, Target, PseudoTypeInfo, Rval, Type,
 
                 % Generate definitions of any type_infos and pseudo_type_infos
                 % referenced by this pseudo_type_info.
-                % ZZZ is this guaranteed to add nothing?
+                % XXX Is this guaranteed to add nothing? (zs)
                 list.foldl(
                     ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, Target),
                     arg_maybe_pseudo_type_infos(PseudoTypeInfo), !GlobalData)
@@ -409,7 +409,7 @@ ml_gen_type_info(ModuleInfo, Target, TypeInfo, Rval, Type, !GlobalData) :-
 
             % Generate definitions of any type_infos referenced
             % by this type_info.
-            % ZZZ is this guaranteed to add nothing?
+            % XXX Is this guaranteed to add nothing? (zs)
             list.foldl(ml_gen_type_info_defn(ModuleInfo, Target),
                 arg_type_infos(TypeInfo), !GlobalData)
         )
@@ -684,8 +684,11 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ProcArity = list.length(ProcHeadVars),
     ProcHeadVarNames = ml_gen_local_var_names(ProcVarSet, ProcHeadVars),
 
-    % allocate some fresh type variables to use as the Mercury types
+    % Allocate some fresh type variables to use as the Mercury types
     % of the boxed arguments.
+    % XXX While the type variables that ml_make_boxed_types returns,
+    % it creates out of thin air, there is no guarantee that they won't collide
+    % with the type variables used by any of the other constructs we process.
     ProcBoxedArgTypes = ml_make_boxed_types(ProcArity),
 
     % Compute the parameters for the wrapper function
@@ -719,7 +722,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % operations), it cannot trigger garbage collection.
     ml_gen_params_no_gc_stmts(ModuleInfo, PredOrFunc, CodeModel,
         WrapperHeadVars, WrapperHeadVarNames, WrapperBoxedArgTypes,
-        WrapperArgModes, WrapperParams0),
+        WrapperArgModes, ArgTuples, WrapperParams0),
     WrapperParams0 = mlds_func_params(WrapperArgs0, WrapperRetType),
 
     % Then insert the `closure_arg' parameter, if needed.
@@ -746,8 +749,9 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 
     % Also compute the lvals for the parameters,
     % and local declarations for any by-value output parameters.
-    ml_gen_wrapper_arg_lvals(WrapperHeadVarNames, WrapperBoxedArgTypes,
-        WrapperArgModes, PredOrFunc, CodeModel, Context, 1,
+    ml_gen_info_get_copy_out(!.Info, CodeModel, CopyOut),
+    CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
+    ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, 1, ArgTuples,
         WrapperHeadVarDefns, WrapperHeadVarLvals, WrapperCopyOutLvals, !Info),
 
     % Generate code to declare and initialize the closure pointer,
@@ -805,8 +809,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
             map.from_corresponding_lists(WrapperHeadVarLvals,
                 WrapperBoxedArgTypes, WrapperBoxedVarTypes),
             WrapperOutputLvals = select_output_things(ModuleInfo,
-                WrapperHeadVarLvals, WrapperArgModes,
-                WrapperBoxedVarTypes),
+                WrapperHeadVarLvals, WrapperArgModes, WrapperBoxedVarTypes),
             WrapperOutputTypes = map.apply_to_list(WrapperOutputLvals,
                 WrapperBoxedVarTypes),
             ml_initial_cont(!.Info, WrapperOutputLvals, WrapperOutputTypes,
@@ -854,10 +857,11 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         MaybeClosureC = no,
         ClosureArgLvals = []
     ),
-    CallLvals = list.append(ClosureArgLvals, WrapperHeadVarLvals),
-    ForClosureWrapper = yes,
-    ml_gen_plain_non_tail_call(PredId, ProcId, ProcHeadVarNames, CallLvals,
-        ProcBoxedArgTypes, CodeModel, Context, ForClosureWrapper,
+    CallLvals = ClosureArgLvals ++ WrapperHeadVarLvals,
+    create_for_closure_wrapper_args(ProcHeadVarNames, CallLvals,
+        ProcBoxedArgTypes, ForClosureWrapperArgs),
+    ml_gen_plain_non_tail_call(PredId, ProcId,
+        CodeModel, Context, ForClosureWrapperArgs,
         LocalVarDefns0, FuncDefns, Stmts0, !Info),
 
     % Insert the stuff to declare and initialize the closure.
@@ -925,6 +929,31 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     WrapperFuncType = mlds_func_type(WrapperParams),
     ml_gen_info_add_closure_wrapper_defn(WrapperFuncDefn, !Info).
 
+:- pred create_for_closure_wrapper_args(list(mlds_local_var_name)::in,
+    list(mlds_lval)::in, list(mer_type)::in,
+    list(ml_call_arg)::out(list_skel(fcw))) is det.
+
+create_for_closure_wrapper_args(VarNames, VarLvals, VarTypes, Args) :-
+    ( if
+        VarNames = [],
+        VarLvals = [],
+        VarTypes = []
+    then
+        Args = []
+    else if
+        VarNames = [HeadVarName | TailVarNames],
+        VarLvals = [HeadVarLval | TailVarLvals],
+        VarTypes = [HeadVarType | TailVarTypes]
+    then
+        create_for_closure_wrapper_args(TailVarNames, TailVarLvals,
+            TailVarTypes, TailArgs),
+        HeadArg =
+            arg_for_closure_wrapper(HeadVarName, HeadVarLval, HeadVarType),
+        Args = [HeadArg | TailArgs]
+    else
+        unexpected($pred, "length mismatch")
+    ).
+
     % Generate the GC trace code for `closure_arg' or `closure'
     % (see ml_gen_closure_wrapper above).
     %
@@ -986,92 +1015,74 @@ ml_gen_wrapper_head_var_names(Num, Max) = VarNames :-
         VarNames = [HeadVarName | TailVarNames]
     ).
 
-    % ml_gen_wrapper_arg_lvals(HeadVarNames, Types, ArgModes, PredOrFunc,
-    %   CodeModel, Context, ArgNum, LocalVarDefns, HeadVarLvals, CopyOutLvals):
+    % ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum, ArgTuples,
+    %   LocalVarDefns, HeadVarLvals, CopyOutLvals, !Info):
     %
-    % Generate lvals for the specified head variables passed in the specified
-    % modes. Also generate local definitions for output variables, if those
-    % output variables will be copied out, rather than passed by reference.
+    % Generate lvals for the head variables specified in ArgTuples
+    % passed in the modes specified with them. Also generate local definitions
+    % for the output variables that will be copied out, rather than passed
+    % by reference.
     %
-:- pred ml_gen_wrapper_arg_lvals(list(mlds_local_var_name)::in,
-    list(mer_type)::in, list(mer_mode)::in, pred_or_func::in, code_model::in,
-    prog_context::in, int::in, list(mlds_local_var_defn)::out,
-    list(mlds_lval)::out, list(mlds_lval)::out,
+:- pred ml_gen_wrapper_arg_lvals(copy_out_when::in, prog_context::in,
+    int::in, list(var_mvar_type_mode)::in,
+    list(mlds_local_var_defn)::out, list(mlds_lval)::out, list(mlds_lval)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
-        ArgNum, Defns, Lvals, CopyOutLvals, !Info) :-
-    ( if
-        Names = [],
-        Types = [],
-        Modes = []
-    then
-        Lvals = [],
-        CopyOutLvals = [],
-        Defns = []
-    else if
-        Names = [Name | NamesTail],
-        Types = [Type | TypesTail],
-        Modes = [Mode | ModesTail]
-    then
-        ml_gen_wrapper_arg_lvals(NamesTail, TypesTail, ModesTail, PredOrFunc,
-            CodeModel, Context, ArgNum + 1, DefnsTail, LvalsTail,
-            CopyOutLvalsTail, !Info),
-        ml_gen_type(!.Info, Type, MLDS_Type),
-        VarLval = ml_local_var(Name, MLDS_Type),
-        ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        mode_to_top_functor_mode(ModuleInfo, Mode, Type, ArgTopFunctorMode),
-        (
-            ( ArgTopFunctorMode = top_in
-            ; ArgTopFunctorMode = top_unused
-            ),
-            Lval = VarLval,
-            CopyOutLvals = CopyOutLvalsTail,
-            Defns = DefnsTail
-        ;
-            ArgTopFunctorMode = top_out,
-            % Handle output variables.
-            ml_gen_info_get_copy_out(!.Info, CodeModel, CopyOut),
-            IsDummy = check_dummy_type(ModuleInfo, Type),
-            ( if
-                (
-                    CopyOut = yes
-                ;
-                    % For model_det functions, output mode function results
-                    % are mapped to MLDS return values.
-                    PredOrFunc = pf_function,
-                    CodeModel = model_det,
-                    ArgTopFunctorMode = top_out,
-                    TypesTail = [],
-                    IsDummy = is_not_dummy_type
-                )
-            then
-                % Output arguments are copied out, so we need to generate
-                % a local declaration for them here.
-                Lval = VarLval,
-                (
-                    IsDummy = is_dummy_type,
-                    CopyOutLvals = CopyOutLvalsTail,
-                    Defns = DefnsTail
-                ;
-                    IsDummy = is_not_dummy_type,
-                    CopyOutLvals = [Lval | CopyOutLvalsTail],
-                    ml_gen_local_for_output_arg(Name, Type,
-                        ArgNum, Context, Defn, !Info),
-                    Defns = [Defn | DefnsTail]
-                )
-            else
-                % Output arguments are passed by reference, so we need to
-                % dereference them.
-                Lval = ml_mem_ref(ml_lval(VarLval), MLDS_Type),
-                CopyOutLvals = CopyOutLvalsTail,
-                Defns = DefnsTail
-            )
+ml_gen_wrapper_arg_lvals(_, _, _, [], [], [], [], !Info).
+ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum,
+        [HeadArgTuple | TailArgTuples], Defns, Lvals, CopyOutLvals, !Info) :-
+    ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum + 1,
+        TailArgTuples, TailDefns, TailLvals, TailCopyOutLvals, !Info),
+    HeadArgTuple = var_mvar_type_mode(_Var, MLDSVarName, Type, TopFunctorMode),
+    ml_gen_type(!.Info, Type, MLDS_Type),
+    VarLval = ml_local_var(MLDSVarName, MLDS_Type),
+    % XXX This code does ignores dummy values if they are copied outputs,
+    % but not when they are (a) byref outputs, or (b) inputs. Why?
+    % Is it an oversight?
+    (
+        ( TopFunctorMode = top_in
+        ; TopFunctorMode = top_unused
         ),
-        Lvals = [Lval | LvalsTail]
-    else
-        unexpected($pred, "length mismatch")
-    ).
+        HeadLval = VarLval,
+        CopyOutLvals = TailCopyOutLvals,
+        Defns = TailDefns
+    ;
+        TopFunctorMode = top_out,
+        % Handle output variables.
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        IsDummy = check_dummy_type(ModuleInfo, Type),
+        ( if
+            (
+                CopyOutWhen = copy_out_only_last_arg,
+                TailArgTuples = [],
+                IsDummy = is_not_dummy_type
+            ;
+                CopyOutWhen = copy_out_always
+            )
+        then
+            % Output arguments are copied out, so we need to generate
+            % a local declaration for them here.
+            HeadLval = VarLval,
+            (
+                IsDummy = is_dummy_type,
+                CopyOutLvals = TailCopyOutLvals,
+                Defns = TailDefns
+            ;
+                IsDummy = is_not_dummy_type,
+                CopyOutLvals = [HeadLval | TailCopyOutLvals],
+                ml_gen_local_for_output_arg(MLDSVarName, Type, ArgNum, Context,
+                    HeadDefn, !Info),
+                Defns = [HeadDefn | TailDefns]
+            )
+        else
+            % Output arguments are passed by reference, so we need to
+            % dereference them.
+            HeadLval = ml_mem_ref(ml_lval(VarLval), MLDS_Type),
+            CopyOutLvals = TailCopyOutLvals,
+            Defns = TailDefns
+        )
+    ),
+    Lvals = [HeadLval | TailLvals].
 
     % This is used for accurate GC with the MLDS->C back-end.
     % It generates the following variable declarations:

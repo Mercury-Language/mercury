@@ -223,8 +223,8 @@ ml_gen_export_proc_params(ModuleInfo, PredProcId, FuncParams) :-
         ),
         globals.set_option(det_copy_out, bool(no), Globals, GlobalsByRef),
         module_info_set_globals(GlobalsByRef, ModuleInfo, ModuleInfoByRef),
-        FuncParamsByRef = ml_gen_proc_params_no_gc_stmts(ModuleInfoByRef,
-            PredProcId),
+        ml_gen_proc_params_no_gc_stmts(ModuleInfoByRef, PredProcId,
+            _ArgTuples, FuncParamsByRef),
         FuncParamsByRef = mlds_func_params(Args, ReturnTypes),
         (
             ReturnTypes = [],
@@ -238,7 +238,8 @@ ml_gen_export_proc_params(ModuleInfo, PredProcId, FuncParams) :-
     then
         FuncParams = FuncParamsByRef
     else
-        FuncParams = ml_gen_proc_params_no_gc_stmts(ModuleInfo, PredProcId)
+        ml_gen_proc_params_no_gc_stmts(ModuleInfo, PredProcId,
+            _ArgTuples, FuncParams)
     ).
 
 :- pred has_ptr_type(mlds_argument::in) is semidet.

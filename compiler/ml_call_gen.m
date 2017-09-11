@@ -21,12 +21,12 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -39,29 +39,31 @@
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-    % ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals, ArgTypes,
-    %   CodeModel, Context, GoalInfo, ForClosureWrapper,
-    %   LocalVarDefns, FuncDefns, Stmts):
+    % ml_gen_plain_call(PredId, ProcId, CodeModel, GoalInfo,
+    %   Args, LocalVarDefns, FuncDefns, Stmts):
     %
     % Generate MLDS code for a plain HLDS procedure call, making sure to
     % box/unbox the arguments if necessary.
     %
-    % If ForClosureWrapper = for_closure_wrapper, then the type_info
-    % for type variables in CallerType may not be available in the current
-    % procedure, so the GC tracing code for temps introduced for
+    % If the arguments are arg_for_closure_wrapper, then the type_info
+    % for type variables in the caller type may not be available in the
+    % current procedure, so the GC tracing code for temps introduced for
     % boxing/unboxing (if any) should obtain the type_info from the
     % corresponding entry in the `type_params' local.
     %
-:- pred ml_gen_plain_call(pred_id::in, proc_id::in,
-    list(mlds_local_var_name)::in, list(mlds_lval)::in, list(mer_type)::in,
-    code_model::in, prog_context::in, hlds_goal_info::in, bool::in,
-    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
-:- pred ml_gen_plain_non_tail_call(pred_id::in, proc_id::in,
-    list(mlds_local_var_name)::in, list(mlds_lval)::in, list(mer_type)::in,
-    code_model::in, prog_context::in, bool::in,
-    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_plain_call(pred_id::in, proc_id::in, code_model::in,
+    hlds_goal_info::in, list(prog_var)::in, list(mlds_local_var_defn)::out,
+    list(mlds_function_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+:- pred ml_gen_plain_non_tail_call(pred_id, proc_id, code_model, prog_context,
+    list(ml_call_arg),
+    list(mlds_local_var_defn), list(mlds_function_defn), list(mlds_stmt),
+    ml_gen_info, ml_gen_info).
+:- mode ml_gen_plain_non_tail_call(in, in, in, in, in(list_skel(not_fcw)),
+    out, out, out, in, out) is det.
+:- mode ml_gen_plain_non_tail_call(in, in, in, in, in(list_skel(fcw)),
+    out, out, out, in, out) is det.
 
     % Generate MLDS code for a call to a builtin procedure.
     %
@@ -84,12 +86,12 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_optimize.
 :- import_module ml_backend.ml_tailcall.
 :- import_module parse_tree.prog_data_foreign.
 
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -148,7 +150,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     PredOrFunc = generic_call_pred_or_func(GenericCall),
     determinism_to_code_model(Determinism, CodeModel),
     ml_gen_params_no_gc_stmts(ModuleInfo, PredOrFunc, CodeModel,
-        ArgVars, ArgNames, BoxedArgTypes, ArgModes, Params0),
+        ArgVars, ArgNames, BoxedArgTypes, ArgModes, _ArgTuples, Params0),
 
     % Insert the `closure_arg' parameter.
     %
@@ -221,11 +223,10 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % Generate code to box/unbox the arguments and compute the list of properly
     % converted rvals/lvals to pass as the function call's arguments and
     % return values.
-    ml_gen_var_list(!.Info, ArgVars, ArgLvals),
-    ml_variable_types(!.Info, ArgVars, ActualArgTypes),
-    ml_gen_args(ArgNames, ArgLvals, ActualArgTypes, BoxedArgTypes,
-        ArgModes, PredOrFunc, CodeModel, Context, no,
-        input_and_output_params, 1, InputRvals, OutputLvals, OutputTypes,
+    CallerArgs = wrap_plain_not_fcw_args(ArgVars),
+    ml_gen_args(PredOrFunc, CodeModel, Context, input_and_output_params,
+        BoxedArgTypes, ArgModes, CallerArgs,
+        InputRvals, OutputLvals, OutputTypes,
         ConvArgLocalVarDefns, ConvOutputStmts, !Info),
     ClosureRval = ml_unop(unbox(ClosureArgType), ml_lval(ClosureLval)),
 
@@ -320,46 +321,43 @@ ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info) :-
 % Code for ordinary calls.
 %
 
-ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
-        CodeModel, Context, GoalInfo, ForClosureWrapper,
+ml_gen_plain_call(PredId, ProcId, CodeModel, GoalInfo, ArgVars,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
+    Context = goal_info_get_context(GoalInfo),
     ( if
         goal_info_has_feature(GoalInfo, feature_self_or_mutual_tail_rec_call)
     then
-        ml_gen_plain_tail_call(PredId, ProcId, ArgNames, ArgLvals,
-            ActualArgTypes, CodeModel, Context, ForClosureWrapper,
+        ml_gen_plain_tail_call(PredId, ProcId, CodeModel, Context, ArgVars,
             LocalVarDefns, FuncDefns, Stmts, !Info)
     else
-        ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals,
-            ActualArgTypes, CodeModel, Context, ForClosureWrapper,
-            LocalVarDefns, FuncDefns, Stmts, !Info)
+        % We change representation because ml_closure_gen.m also calls
+        % ml_gen_plain_non_tail_call with a different mechanism for specifying
+        % the actual parameters.
+        CallerArgs = wrap_plain_not_fcw_args(ArgVars),
+        ml_gen_plain_non_tail_call(PredId, ProcId, CodeModel, Context,
+            CallerArgs, LocalVarDefns, FuncDefns, Stmts, !Info)
     ).
 
-:- pred ml_gen_plain_tail_call(pred_id::in, proc_id::in,
-    list(mlds_local_var_name)::in, list(mlds_lval)::in, list(mer_type)::in,
-    code_model::in, prog_context::in, bool::in,
-    list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_plain_tail_call(pred_id::in, proc_id::in, code_model::in,
+    prog_context::in, list(prog_var)::in, list(mlds_local_var_defn)::out,
+    list(mlds_function_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_plain_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
-        CodeModel, Context, ForClosureWrapper,
-        LocalVarDefns, FuncDefns, Stmts, !Info) :-
-    expect(unify(ForClosureWrapper, no), $pred,
-        "tail recursive closure wrapper call"),
-
+ml_gen_plain_tail_call(PredId, ProcId, CodeModel, Context,
+        ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info) :-
     % Compute the callee's Mercury argument types and modes.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_arg_types(PredInfo, PredArgTypes),
-    proc_info_get_argmodes(ProcInfo, ArgModes),
+    pred_info_get_arg_types(PredInfo, CalleeArgTypes),
+    proc_info_get_argmodes(ProcInfo, CalleeArgModes),
 
     % Generate code to box/unbox the arguments and compute the list of
     % properly converted rvals/lvals to pass as the function call's
     % *input* arguments. We don't need to handle the output arguments.
-    ml_gen_args(ArgNames, ArgLvals, ActualArgTypes, PredArgTypes,
-        ArgModes, PredOrFunc, CodeModel, Context,
-        ForClosureWrapper, input_params_only, 1,
+    CallerArgs = wrap_plain_not_fcw_args(ArgVars),
+    ml_gen_args(PredOrFunc, CodeModel, Context, input_params_only,
+        CalleeArgTypes, CalleeArgModes, CallerArgs,
         InputRvals, OutputLvals, OutputTypes,
         ConvOutputDefns, ConvOutputStmts, !Info),
     expect(unify(OutputLvals, []), $pred, "OutputLvals != []"),
@@ -375,8 +373,8 @@ ml_gen_plain_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
         may_rvals_yield_dangling_stack_ref(InputRvals)
             = will_not_yield_dangling_stack_ref
     then
-        CommentStmt = ml_stmt_atomic(comment("direct tailcall eliminated"),
-            Context),
+        CommentStmt =
+            ml_stmt_atomic(comment("direct tailcall eliminated"), Context),
 
         ml_gen_info_get_module_name(!.Info, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
@@ -454,13 +452,11 @@ ml_gen_plain_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
         TailRecInfo = TailRecInfo0 ^ tri_msgs := Specs,
         ml_gen_info_set_tail_rec_info(TailRecInfo, !Info),
 
-        ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals,
-            ActualArgTypes, CodeModel, Context, ForClosureWrapper,
-            LocalVarDefns, FuncDefns, Stmts, !Info)
+        ml_gen_plain_non_tail_call(PredId, ProcId, CodeModel, Context,
+            CallerArgs, LocalVarDefns, FuncDefns, Stmts, !Info)
     ).
 
-ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
-        CodeModel, Context, ForClosureWrapper,
+ml_gen_plain_non_tail_call(PredId, ProcId, CodeModel, Context, CallerArgs,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
     % Generate the various parts of the code that is needed
     % for a procedure call:
@@ -500,7 +496,7 @@ ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
     % Compute the function signature.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     PredProcId = proc(PredId, ProcId),
-    Params = ml_gen_proc_params_no_gc_stmts(ModuleInfo, PredProcId),
+    ml_gen_proc_params_no_gc_stmts(ModuleInfo, PredProcId, _ArgTuples, Params),
     Signature = mlds_get_func_signature(Params),
 
     % Compute the function address.
@@ -509,15 +505,14 @@ ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
     % Compute the callee's Mercury argument types and modes.
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_arg_types(PredInfo, PredArgTypes),
-    proc_info_get_argmodes(ProcInfo, ArgModes),
+    pred_info_get_arg_types(PredInfo, CalleeArgTypes),
+    proc_info_get_argmodes(ProcInfo, CalleeArgModes),
 
     % Generate code to box/unbox the arguments and compute the list of
     % properly converted rvals/lvals to pass as the function call's arguments
     % and return values.
-    ml_gen_args(ArgNames, ArgLvals, ActualArgTypes, PredArgTypes,
-        ArgModes, PredOrFunc, CodeModel, Context,
-        ForClosureWrapper, input_and_output_params, 1,
+    ml_gen_args(PredOrFunc, CodeModel, Context, input_and_output_params,
+        CalleeArgTypes, CalleeArgModes, CallerArgs,
         InputRvals, OutputLvals, OutputTypes,
         ConvOutputDefns, ConvOutputStmts, !Info),
 
@@ -586,7 +581,7 @@ ml_gen_plain_non_tail_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
 ml_gen_proc_addr_rval(PredProcId, ProcLabel, CodeAddrRval, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_pred_label(ModuleInfo, PredProcId, PredLabel, PredModule),
-    ml_gen_info_proc_params(PredProcId, Params,
+    ml_gen_info_proc_params(PredProcId, _ArgTuples, Params,
         _ByRefOutputVars, _CopiedOutputVars, !Info),
     Signature = mlds_get_func_signature(Params),
     PredProcId = proc(_PredId, ProcId),

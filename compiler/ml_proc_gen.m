@@ -38,8 +38,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_desc.
@@ -477,7 +475,7 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             % For example, for C it outputs a function declaration with no
             % corresponding definition, making sure that the function is
             % declared as `extern' rather than `static'.
-            ml_gen_info_proc_params(PredProcId, FuncParams,
+            ml_gen_info_proc_params(PredProcId, _Tuples, FuncParams,
                 _ByRefOutputVars, _CopiedOutputVars, !.Info, _Info),
             FuncBody = body_external,
             set.init(EnvVarNames),
@@ -488,7 +486,7 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             % (rather than being passed by reference) and remove them from
             % the byref_output_vars field in the ml_gen_info.
             CodeModel = proc_info_interface_code_model(ProcInfo),
-            ml_gen_info_proc_params(PredProcId, FuncParams,
+            ml_gen_info_proc_params(PredProcId, ArgTuples, FuncParams,
                 ByRefOutputVars, CopiedOutputVars, !.Info, _Info),
             ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info),
             (
@@ -504,18 +502,11 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
                 ml_gen_info_push_success_cont(InitialCont, !Info)
             ),
 
-            proc_info_get_headvars(ProcInfo, HeadVars),
-            proc_info_get_argmodes(ProcInfo, HeadModes),
-            pred_info_get_arg_types(PredInfo, HeadTypes),
-            modes_to_top_functor_modes(ModuleInfo, HeadModes, HeadTypes,
-                TopFunctorModes),
             proc_info_get_goal(ProcInfo, Goal),
-            ml_gen_proc_body(CodeModel, sot_solo, HeadVars, HeadTypes,
-                TopFunctorModes, CopiedOutputVars, Goal,
-                LocalVarDefns0, FuncDefns, GoalStmts, !Info),
-            ml_gen_post_process_locals(ProcInfo, ProcContext,
-                HeadVars, HeadTypes, CopiedOutputVars,
-                LocalVarDefns0, LocalVarDefns, !Info),
+            ml_gen_proc_body(CodeModel, sot_solo, ArgTuples, CopiedOutputVars,
+                Goal, LocalVarDefns0, FuncDefns, GoalStmts, !Info),
+            ml_gen_post_process_locals(ProcInfo, ProcContext, ArgTuples,
+                CopiedOutputVars, LocalVarDefns0, LocalVarDefns, !Info),
 
             ml_gen_info_final(!.Info, EnvVarNames,
                 ClosureWrapperFuncDefns, !:GlobalData, TsccInfo),
@@ -620,7 +611,7 @@ construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
 % The code we generate follows the pattern shown by the following (simplified)
 % example, which is for a TSCC containing two det procedures,
 % a(AIn1, AIn2, AOut1) and b(BIn1, BIn2, BIn3, BOut1):
-% 
+%
 % a_3(
 %   MR_Word tscc_proc_1_input_1,
 %   MR_Word tscc_proc_1_input_2,
@@ -629,7 +620,7 @@ construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
 %   MR_Word tscc_proc_2_input_1;
 %   MR_Word tscc_proc_2_input_2;
 %   MR_Word tscc_proc_2_input_3;
-% 
+%
 %   goto top_of_proc_1;
 % top_of_proc_1:
 %   {
@@ -656,7 +647,7 @@ construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
 %     return;
 %   }
 % }
-% 
+%
 % b_4(
 %   MR_Word tscc_proc_2_input_1,
 %   MR_Word tscc_proc_2_input_2,
@@ -665,7 +656,7 @@ construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
 % {
 %   MR_Word tscc_proc_1_input_1;
 %   MR_Word tscc_proc_1_input_2;
-% 
+%
 %   goto top_of_proc_2;
 %   ... the rest is the same as in a_3().
 % }
@@ -798,7 +789,7 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
 %               set.intersect(PredProcIds, SCCEntryPredProcIds),
 %           ExternalEntryPredProcIds =
 %               set.union(SCCEntryPredProcIdsInTSCC, TSCCEntryPredProcIds),
-%    
+%
 %           MutualEntryPredProcIds =
 %               set.difference(
 %                   set.union(ExternalEntryPredProcIds,
@@ -992,9 +983,7 @@ separate_mutually_recursive_procs(NoMutualTailRecProcs,
 
                 % The variable names of the procedure's arguments,
                 % their types and modes.
-                ppiai_head_vars                 :: list(prog_var),
-                ppiai_head_var_types            :: list(mer_type),
-                ppiai_head_var_modes            :: list(top_functor_mode),
+                ppiai_arg_tuples                :: list(var_mvar_type_mode),
 
                 % Local variable definitions of the tscc variables
                 % for the input arguments of the procedure only.
@@ -1052,22 +1041,19 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
     !:ProcNum = !.ProcNum + 1,
 
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
     pred_info_get_arg_types(PredInfo, HeadTypes),
     proc_info_get_argmodes(ProcInfo, HeadModes),
-    modes_to_top_functor_modes(ModuleInfo, HeadModes, HeadTypes,
-        TopFunctorModes),
-    proc_info_get_varset(ProcInfo, VarSet),
-    HeadVarNames = ml_gen_local_var_names(VarSet, HeadVars),
 
     proc_info_get_goal(ProcInfo, Goal),
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     ProcContext = goal_info_get_context(GoalInfo),
 
-    ml_gen_tscc_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, TopFunctorModes,
-        VarSet, ProcContext, IdInTscc, 1, 1, NumOutputs, !OutArgNames,
-        TsccInArgs, TsccInLocalVarDefns, TsccArgs, OwnLocalVarDefns,
-        CopyTsccToOwnStmts),
+    ml_gen_tscc_arg_params(ModuleInfo, ProcContext, IdInTscc, VarSet,
+        HeadVars, HeadTypes, HeadModes, ArgTuples, 1, 1, NumOutputs,
+        !OutArgNames, TsccInArgs, TsccInLocalVarDefns, TsccArgs,
+        OwnLocalVarDefns, CopyTsccToOwnStmts),
     (
         !.MaybeNumOutputs = no,
         !:MaybeNumOutputs = yes(NumOutputs)
@@ -1077,7 +1063,7 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
             "different procedures in TSCC have different number of outputs")
     ),
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId, PredInfo, ProcInfo,
-        ProcContext, IdInTscc, HeadVars, HeadTypes, TopFunctorModes,
+        ProcContext, IdInTscc, ArgTuples,
         TsccInLocalVarDefns, TsccArgs, OwnLocalVarDefns, CopyTsccToOwnStmts),
     TailRecTargetInfo0 = tail_rec_target_info(IdInTscc, TsccInArgs,
         have_not_done_self_tail_rec, have_not_done_mutual_tail_rec,
@@ -1113,9 +1099,9 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
 ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         PredProcIdArgsInfo, PredProcCode, !GlobalData, !TsccInfo) :-
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId, PredInfo, ProcInfo,
-        ProcContext, ProcIdInTscc, HeadVars, HeadTypes, TopFunctorModes,
-        _TsscInLocalVarDefns, _TsccArgs, _OwnLocalVarDefns,
-        _CopyTsccToOwnStmts),
+        ProcContext, ProcIdInTscc, ArgTuples,
+        _TsscInLocalVarDefns, _TsccArgs,
+        _OwnLocalVarDefns, _CopyTsccToOwnStmts),
 
     trace [io(!IO)] (
         write_proc_progress_message("% Generating in-TSCC MLDS code for ",
@@ -1152,8 +1138,10 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
             [i(ProcNumInTscc), s(ProcDesc)]),
         CommentStmt = ml_stmt_atomic(comment(ProcDescComment), ProcContext),
 
-        ml_gen_info_proc_params(PredProcId, FuncParams,
+        ml_gen_info_proc_params(PredProcId, ProcArgTuples, FuncParams,
             ByRefOutputVars, CopiedOutputVars, !Info),
+        expect(unify(ArgTuples, ProcArgTuples), $pred,
+            "ArgTuples != ProcArgTuples"),
         ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info),
         % For now, the code we generate returns all output variables
         % by reference. Our ancestors should ensure we get here only
@@ -1167,11 +1155,9 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         ; TsccCodeModel = tscc_semi, CodeModel = model_semi
         ),
         proc_info_get_goal(ProcInfo, Goal),
-        ml_gen_proc_body(CodeModel, sot_tscc, HeadVars, HeadTypes,
-            TopFunctorModes, CopiedOutputVars, Goal,
-            LocalVarDefns0, FuncDefns, GoalStmts, !Info),
-        ml_gen_post_process_locals(ProcInfo, ProcContext,
-            HeadVars, HeadTypes,
+        ml_gen_proc_body(CodeModel, sot_tscc, ArgTuples, CopiedOutputVars,
+            Goal, LocalVarDefns0, FuncDefns, GoalStmts, !Info),
+        ml_gen_post_process_locals(ProcInfo, ProcContext, ArgTuples,
             CopiedOutputVars, LocalVarDefns0, LocalVarDefns, !Info),
 
         ml_gen_info_final(!.Info, EnvVarNames,
@@ -1284,8 +1270,7 @@ construct_func_body_for_tscc(EntryProc, PredProcCode, ProcStmtInfo,
         GoalLocalVarDefns, GoalFuncDefns, _DescCommentStmt, GoalStmts,
         _ClosureWrapperFuncDefns, _EnvVarNames, _TailRecSpecs),
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId,
-        PredInfo, ProcInfo, ProcContext, IdInTscc,
-        _HeadVars, _HeadTypes, _TopFunctorModes,
+        PredInfo, ProcInfo, ProcContext, IdInTscc, _ArgTuples,
         TsccInLocalVarDefns, TsccArgs, OwnLocalVarDefns, CopyTsccToOwnStmts),
     ( if PredProcId = EntryProc then
         expect(unify(!.MaybeEntryProcInfo, no), $pred,
@@ -1463,15 +1448,13 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
 
     % Generate the code for a procedure body.
     %
-:- pred ml_gen_proc_body(code_model::in, solo_or_tscc::in, list(prog_var)::in,
-    list(mer_type)::in, list(top_functor_mode)::in, list(prog_var)::in,
-    hlds_goal::in,
+:- pred ml_gen_proc_body(code_model::in, solo_or_tscc::in,
+    list(var_mvar_type_mode)::in, list(prog_var)::in, hlds_goal::in,
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_proc_body(CodeModel, SoloOrTscc, HeadVars, ArgTypes,
-        TopFunctorModes, CopiedOutputVars, Goal, LocalVarDefns, FuncDefns,
-        Stmts, !Info) :-
+ml_gen_proc_body(CodeModel, SoloOrTscc, ArgTuples, CopiedOutputVars, Goal,
+        LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
 
@@ -1486,9 +1469,8 @@ ml_gen_proc_body(CodeModel, SoloOrTscc, HeadVars, ArgTypes,
     % we append below, we want the original vars, not their cast versions.
 
     ml_gen_var_list(!.Info, CopiedOutputVars, CopiedOutputVarOriginalLvals),
-    ml_gen_convert_headvars(HeadVars, ArgTypes, TopFunctorModes,
-        CopiedOutputVars, Context, ConvLocalVarDefns,
-        ConvInputStmts, ConvOutputStmts, !Info),
+    ml_gen_convert_headvars(ArgTuples, CopiedOutputVars, Context,
+        ConvLocalVarDefns, ConvInputStmts, ConvOutputStmts, !Info),
     ( if
         ConvLocalVarDefns = [],
         ConvInputStmts = [],
@@ -1527,91 +1509,72 @@ ml_gen_proc_body(CodeModel, SoloOrTscc, HeadVars, ArgTypes,
     % In such cases, we need to box/unbox/cast them to the right type.
     % This procedure handles that.
     %
-:- pred ml_gen_convert_headvars(list(prog_var)::in, list(mer_type)::in,
-    list(top_functor_mode)::in, list(prog_var)::in, prog_context::in,
-    list(mlds_local_var_defn)::out,
-    list(mlds_stmt)::out, list(mlds_stmt)::out,
+:- pred ml_gen_convert_headvars(list(var_mvar_type_mode)::in,
+    list(prog_var)::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_convert_headvars(Vars, HeadTypes, TopFunctorModes, CopiedOutputVars,
-        Context, LocalVarDefns, InputStmts, OutputStmts, !Info) :-
+ml_gen_convert_headvars([], _CopiedOutputVars, _Context, [], [], [], !Info).
+ml_gen_convert_headvars([ArgTuple | ArgTuples], CopiedOutputVars, Context,
+        LocalVarDefns, InputStmts, OutputStmts, !Info) :-
+    ArgTuple = var_mvar_type_mode(Var, MLDSVarName, HeadType, TopFunctorMode),
+    ml_variable_type(!.Info, Var, BodyType),
     ( if
-        Vars = [],
-        HeadTypes = [],
-        TopFunctorModes = []
+        % An argument doesn't need any conversion if ...
+        (
+            % ... its type is the same in the head as in the body
+            % (modulo contexts), or ...
+            map.init(Subst0),
+            type_unify(HeadType, BodyType, [], Subst0, Subst),
+            map.is_empty(Subst)
+        ;
+            % ... if it is unused.
+            TopFunctorMode = top_unused
+        )
     then
-        LocalVarDefns = [],
-        InputStmts = [],
-        OutputStmts = []
-    else if
-        Vars = [Var | VarsTail],
-        HeadTypes = [HeadType | HeadTypesTail],
-        TopFunctorModes = [TopFunctorMode | TopFunctorModesTail]
-    then
-        ml_variable_type(!.Info, Var, BodyType),
+        ml_gen_convert_headvars(ArgTuples, CopiedOutputVars, Context,
+            LocalVarDefns, InputStmts, OutputStmts, !Info)
+    else
+        % Generate the lval for the head variable.
+        ml_gen_var_with_type(!.Info, Var, HeadType, HeadVarLval),
+
+        % Generate code to box or unbox that head variable,
+        % to convert its type from HeadType to BodyType.
+        ml_gen_box_or_unbox_lval(HeadType, BodyType, bp_native_if_possible,
+            HeadVarLval, MLDSVarName, Context, no, 0, BodyLval,
+            ConvLocalVarDefns, ConvInputStmts, ConvOutputStmts, !Info),
+
+        % Ensure that for any uses of this variable in the procedure body,
+        % we use the BodyLval (which has type BodyType) rather than the
+        % HeadVarLval (which has type HeadType).
+        ml_gen_info_set_var_lval(Var, BodyLval, !Info),
+
+        ml_gen_convert_headvars(ArgTuples, CopiedOutputVars, Context,
+            LocalVarDefnsTail, InputStmtsTail, OutputStmtsTail, !Info),
+
+        % Add the code to convert this input or output.
+        ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),
         ( if
-            % An argument doesn't need any conversion if ...
-            (
-                % ... its type is the same in the head as in the body
-                % (modulo contexts), or ...
-                map.init(Subst0),
-                type_unify(HeadType, BodyType, [], Subst0, Subst),
-                map.is_empty(Subst)
-            ;
-                % ... if it is unused.
-                TopFunctorMode = top_unused
+            ( list.member(Var, ByRefOutputVars)
+            ; list.member(Var, CopiedOutputVars)
             )
         then
-            ml_gen_convert_headvars(VarsTail, HeadTypesTail,
-                TopFunctorModesTail, CopiedOutputVars, Context,
-                LocalVarDefns, InputStmts, OutputStmts, !Info)
+            InputStmts = InputStmtsTail,
+            OutputStmts = OutputStmtsTail ++ ConvOutputStmts
         else
-            % Generate the lval for the head variable.
-            ml_gen_var_with_type(!.Info, Var, HeadType, HeadVarLval),
-
-            % Generate code to box or unbox that head variable,
-            % to convert its type from HeadType to BodyType.
-            ml_gen_info_get_varset(!.Info, VarSet),
-            VarName = ml_gen_local_var_name(VarSet, Var),
-            ml_gen_box_or_unbox_lval(HeadType, BodyType, bp_native_if_possible,
-                HeadVarLval, VarName, Context, no, 0, BodyLval,
-                ConvLocalVarDefns, ConvInputStmts, ConvOutputStmts, !Info),
-
-            % Ensure that for any uses of this variable in the procedure body,
-            % we use the BodyLval (which has type BodyType) rather than the
-            % HeadVarLval (which has type HeadType).
-            ml_gen_info_set_var_lval(Var, BodyLval, !Info),
-
-            ml_gen_convert_headvars(VarsTail, HeadTypesTail,
-                TopFunctorModesTail, CopiedOutputVars, Context,
-                LocalVarDefnsTail, InputStmtsTail, OutputStmtsTail, !Info),
-
-            % Add the code to convert this input or output.
-            ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),
-            ( if
-                ( list.member(Var, ByRefOutputVars)
-                ; list.member(Var, CopiedOutputVars)
-                )
-            then
-                InputStmts = InputStmtsTail,
-                OutputStmts = OutputStmtsTail ++ ConvOutputStmts
-            else
-                InputStmts = ConvInputStmts ++ InputStmtsTail,
-                OutputStmts = OutputStmtsTail
-            ),
-            LocalVarDefns = ConvLocalVarDefns ++ LocalVarDefnsTail
-        )
-    else
-        unexpected($pred, "length mismatch")
+            InputStmts = ConvInputStmts ++ InputStmtsTail,
+            OutputStmts = OutputStmtsTail
+        ),
+        LocalVarDefns = ConvLocalVarDefns ++ LocalVarDefnsTail
     ).
 
 :- pred ml_gen_post_process_locals(proc_info::in, prog_context::in,
-    list(prog_var)::in, list(mer_type)::in, list(prog_var)::in,
+    list(var_mvar_type_mode)::in, list(prog_var)::in,
     list(mlds_local_var_defn)::in, list(mlds_local_var_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_post_process_locals(ProcInfo, Context, HeadVars, HeadTypes,
-        CopiedOutputVars, LocalVarDefns0, LocalVarDefns, !Info) :-
+ml_gen_post_process_locals(ProcInfo, Context, ArgTuples, CopiedOutputVars,
+        LocalVarDefns0, LocalVarDefns, !Info) :-
     % This would generate all the local variables at the top of
     % the function:
     %   ml_gen_all_local_var_decls(Goal,
@@ -1631,6 +1594,10 @@ ml_gen_post_process_locals(ProcInfo, Context, HeadVars, HeadTypes,
         proc_info_get_vartypes(ProcInfo, VarTypes),
         % Note that for headvars we must use the types from
         % the procedure interface, not from the procedure body.
+        HeadVars = list.map((func(var_mvar_type_mode(HV, _, _, _)) = HV),
+            ArgTuples),
+        HeadTypes = list.map((func(var_mvar_type_mode(_, _, HT, _)) = HT),
+            ArgTuples),
         vartypes_overlay_corresponding_lists(HeadVars, HeadTypes,
             VarTypes, UpdatedVarTypes),
         ml_gen_local_var_decls(VarSet, UpdatedVarTypes,

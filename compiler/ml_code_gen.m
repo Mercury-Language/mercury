@@ -494,7 +494,6 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
 
-:- import_module bool.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
@@ -526,13 +525,13 @@ ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info) :-
 
 ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    Context = goal_info_get_context(GoalInfo),
 
     % Generate the local variables for this goal.
     ml_gen_info_get_var_types(!.Info, VarTypes),
     find_vars_to_declare(VarTypes, GoalExpr, GoalInfo, VarsToDeclare),
 
     ml_gen_info_get_varset(!.Info, VarSet),
+    Context = goal_info_get_context(GoalInfo),
     ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsToDeclare, VarDefns,
         !Info),
 
@@ -570,14 +569,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
         GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         (
             BuiltinState = not_builtin,
-            ml_gen_var_list(!.Info, ArgVars, ArgLvals),
-            ml_gen_info_get_varset(!.Info, VarSet),
-            ArgNames = ml_gen_local_var_names(VarSet, ArgVars),
-            ml_variable_types(!.Info, ArgVars, ActualArgTypes),
-            ForClosureWrapper = no,
-            ml_gen_plain_call(PredId, ProcId, ArgNames, ArgLvals,
-                ActualArgTypes, CodeModel,
-                Context, GoalInfo, ForClosureWrapper,
+            ml_gen_plain_call(PredId, ProcId, CodeModel, GoalInfo, ArgVars,
                 LocalVarDefns, FuncDefns, Stmts, !Info)
         ;
             BuiltinState = inline_builtin,
