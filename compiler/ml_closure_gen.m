@@ -78,7 +78,6 @@
 :- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
@@ -752,7 +751,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ml_gen_info_get_copy_out(!.Info, CodeModel, CopyOut),
     CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
     ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, 1, ArgTuples,
-        WrapperHeadVarDefns, WrapperHeadVarLvals, WrapperCopyOutLvals, !Info),
+        WrapperHeadVarDefns, WrapperHeadVarLvals, WrapperCopyOutLvals,
+        WrapperOutputLvalsTypes, !Info),
 
     % Generate code to declare and initialize the closure pointer,
     % if needed.
@@ -806,17 +806,10 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         ml_gen_info_get_nondet_copy_out(!.Info, NondetCopyOut),
         (
             NondetCopyOut = yes,
-            map.from_corresponding_lists(WrapperHeadVarLvals,
-                WrapperBoxedArgTypes, WrapperBoxedVarTypes),
-            WrapperOutputLvals = select_output_things(ModuleInfo,
-                WrapperHeadVarLvals, WrapperArgModes, WrapperBoxedVarTypes),
-            WrapperOutputTypes = map.apply_to_list(WrapperOutputLvals,
-                WrapperBoxedVarTypes),
-            ml_initial_cont(!.Info, WrapperOutputLvals, WrapperOutputTypes,
-                InitialCont)
+            ml_initial_cont(!.Info, WrapperOutputLvalsTypes, InitialCont)
         ;
             NondetCopyOut = no,
-            ml_initial_cont(!.Info, [], [], InitialCont)
+            ml_initial_cont(!.Info, [], InitialCont)
         ),
         ml_gen_info_push_success_cont(InitialCont, !Info)
     ),
@@ -1026,13 +1019,15 @@ ml_gen_wrapper_head_var_names(Num, Max) = VarNames :-
 :- pred ml_gen_wrapper_arg_lvals(copy_out_when::in, prog_context::in,
     int::in, list(var_mvar_type_mode)::in,
     list(mlds_local_var_defn)::out, list(mlds_lval)::out, list(mlds_lval)::out,
+    assoc_list(mlds_lval, mer_type)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_wrapper_arg_lvals(_, _, _, [], [], [], [], !Info).
+ml_gen_wrapper_arg_lvals(_, _, _, [], [], [], [], [], !Info).
 ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum,
-        [HeadArgTuple | TailArgTuples], Defns, Lvals, CopyOutLvals, !Info) :-
-    ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum + 1,
-        TailArgTuples, TailDefns, TailLvals, TailCopyOutLvals, !Info),
+        [HeadArgTuple | TailArgTuples], Defns, Lvals, CopyOutLvals,
+        OutputLvalsTypes, !Info) :-
+    ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum + 1, TailArgTuples,
+        TailDefns, TailLvals, TailCopyOutLvals, TailOutputLvalsTypes, !Info),
     HeadArgTuple = var_mvar_type_mode(_Var, MLDSVarName, Type, TopFunctorMode),
     ml_gen_type(!.Info, Type, MLDS_Type),
     VarLval = ml_local_var(MLDSVarName, MLDS_Type),
@@ -1044,8 +1039,9 @@ ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum,
         ; TopFunctorMode = top_unused
         ),
         HeadLval = VarLval,
+        Defns = TailDefns,
         CopyOutLvals = TailCopyOutLvals,
-        Defns = TailDefns
+        OutputLvalsTypes = TailOutputLvalsTypes
     ;
         TopFunctorMode = top_out,
         % Handle output variables.
@@ -1065,22 +1061,23 @@ ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum,
             HeadLval = VarLval,
             (
                 IsDummy = is_dummy_type,
-                CopyOutLvals = TailCopyOutLvals,
-                Defns = TailDefns
+                Defns = TailDefns,
+                CopyOutLvals = TailCopyOutLvals
             ;
                 IsDummy = is_not_dummy_type,
-                CopyOutLvals = [HeadLval | TailCopyOutLvals],
                 ml_gen_local_for_output_arg(MLDSVarName, Type, ArgNum, Context,
                     HeadDefn, !Info),
-                Defns = [HeadDefn | TailDefns]
+                Defns = [HeadDefn | TailDefns],
+                CopyOutLvals = [HeadLval | TailCopyOutLvals]
             )
         else
             % Output arguments are passed by reference, so we need to
             % dereference them.
             HeadLval = ml_mem_ref(ml_lval(VarLval), MLDS_Type),
-            CopyOutLvals = TailCopyOutLvals,
-            Defns = TailDefns
-        )
+            Defns = TailDefns,
+            CopyOutLvals = TailCopyOutLvals
+        ),
+        OutputLvalsTypes = [VarLval - Type | TailOutputLvalsTypes]
     ),
     Lvals = [HeadLval | TailLvals].
 

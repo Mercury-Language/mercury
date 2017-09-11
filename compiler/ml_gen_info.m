@@ -31,6 +31,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
 :- import_module list.
@@ -153,13 +154,11 @@
                 % will not be used.
                 mlds_rval,
 
-                % The argument types, if any.
-                list(mlds_type),
-
-                % The arguments, if any. The arguments will only be non-empty
-                % if the --nondet-copy-out option is enabled. They do not
-                % include the environment pointer.
-                list(mlds_lval)
+                % The arguments, together with their types, if there are any.
+                % (We do not include the environment pointer in this list.)
+                % The list will be non-empty only if the --nondet-copy-out
+                % option is enabled.
+                assoc_list(mlds_lval, mlds_type)
             ).
 
     % The ml_gen_info contains a stack of success continuations.

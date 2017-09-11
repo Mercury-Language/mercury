@@ -495,10 +495,9 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
                 )
             ;
                 CodeModel = model_non,
-                ml_gen_var_list(!.Info, CopiedOutputVars, OutputVarLvals),
-                ml_variable_types(!.Info, CopiedOutputVars, OutputVarTypes),
-                ml_initial_cont(!.Info, OutputVarLvals, OutputVarTypes,
-                    InitialCont),
+                list.map(get_var_mlds_lval_and_type(!.Info),
+                    CopiedOutputVars, OutputVarLvalTypes),
+                ml_initial_cont(!.Info, OutputVarLvalTypes, InitialCont),
                 ml_gen_info_push_success_cont(InitialCont, !Info)
             ),
 
@@ -520,6 +519,13 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
     construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
         EnvVarNames, FuncDefn),
     !:FuncDefns = ClosureWrapperFuncDefns ++ [FuncDefn | !.FuncDefns].
+
+:- pred get_var_mlds_lval_and_type(ml_gen_info::in, prog_var::in,
+    pair(mlds_lval, mer_type)::out) is det.
+
+get_var_mlds_lval_and_type(Info, Var, VarLval - Type) :-
+    ml_gen_var(Info, Var, VarLval),
+    ml_variable_type(Info, Var, Type).
 
 :- pred compute_initial_tail_rec_map_for_none_or_self(module_info::in,
     none_or_self_tail_rec::in, pred_proc_id::in, tail_rec_target_map::out)

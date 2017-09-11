@@ -35,6 +35,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
@@ -399,8 +400,8 @@
     % The output variable lvals and types need to be supplied when generating
     % a continuation using --nondet-copy-out, otherwise they should be empty.
     %
-:- pred ml_initial_cont(ml_gen_info::in, list(mlds_lval)::in,
-    list(mer_type)::in, success_cont::out) is det.
+:- pred ml_initial_cont(ml_gen_info::in, assoc_list(mlds_lval, mer_type)::in,
+    success_cont::out) is det.
 
     % Generate code to call the current success continuation.
     % This is used for generating success when in a model_non context.
@@ -598,7 +599,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 
         % generate <First && succ_func()>
         ml_get_env_ptr(EnvPtrRval),
-        SuccessCont = success_cont(RestFuncLabelRval, EnvPtrRval, [], []),
+        SuccessCont = success_cont(RestFuncLabelRval, EnvPtrRval, []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
         DoGenFirst(FirstLocalVarDefns, FirstFuncDefns, FirstStmts, !Info),
         ml_gen_info_pop_success_cont(!Info),
@@ -1473,53 +1474,52 @@ ml_gen_set_cond_var(CondVar, Value, Context, Stmt) :-
 
 %---------------------------------------------------------------------------%
 
-ml_initial_cont(Info, OutputVarLvals0, OutputVarTypes0, Cont) :-
-    ml_gen_info_get_module_info(Info, ModuleInfo),
-    ml_skip_dummy_argument_types(OutputVarTypes0, OutputVarLvals0,
-        ModuleInfo, OutputVarTypes, OutputVarLvals),
-    list.map(ml_gen_type(Info), OutputVarTypes, MLDS_OutputVarTypes),
+ml_initial_cont(Info, OutputVarLvalsTypes, Cont) :-
+    % We expect OutputVarLvalsTypes to be empty if `--nondet-copy-out'
+    % is not enabled.
+    ml_skip_dummy_argument_types(Info,
+        OutputVarLvalsTypes, OutputVarLvalsMLDSTypes),
 
-    % We expect OutputVarlvals0 and OutputVarTypes0 to be empty if
-    % `--nondet-copy-out' is not enabled.
-
+    assoc_list.values(OutputVarLvalsMLDSTypes, OutputVarMLDSTypes),
     ContLval = ml_local_var(lvn_comp_var(lvnc_cont),
-        mlds_cont_type(MLDS_OutputVarTypes)),
+        mlds_cont_type(OutputVarMLDSTypes)),
     ContEnvLval = ml_local_var(lvn_comp_var(lvnc_cont_env_ptr),
         mlds_generic_env_ptr_type),
     Cont = success_cont(ml_lval(ContLval), ml_lval(ContEnvLval),
-        MLDS_OutputVarTypes, OutputVarLvals).
+        OutputVarLvalsMLDSTypes).
 
-:- pred ml_skip_dummy_argument_types(list(mer_type)::in, list(T)::in,
-    module_info::in, list(mer_type)::out, list(T)::out) is det.
+:- pred ml_skip_dummy_argument_types(ml_gen_info::in,
+    assoc_list(mlds_lval, mer_type)::in,
+    assoc_list(mlds_lval, mlds_type)::out) is det.
 
-ml_skip_dummy_argument_types([], [], _, [], []).
-ml_skip_dummy_argument_types([Type | Types0], [Var | Vars0], ModuleInfo,
-        Types, Vars) :-
-    ml_skip_dummy_argument_types(Types0, Vars0, ModuleInfo, Types1, Vars1),
+ml_skip_dummy_argument_types(_, [], []).
+ml_skip_dummy_argument_types(Info, [Lval - Type | LvalsTypes],
+        LvalsMLDSTypes) :-
+    ml_skip_dummy_argument_types(Info, LvalsTypes, TailLvalsMLDSTypes),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
     IsDummy = check_dummy_type(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
-        Types = Types1,
-        Vars = Vars1
+        LvalsMLDSTypes = TailLvalsMLDSTypes
     ;
         IsDummy = is_not_dummy_type,
-        Types = [Type | Types1],
-        Vars = [Var | Vars1]
+        ml_gen_type(Info, Type, MLDSType),
+        LvalsMLDSTypes = [Lval - MLDSType |  TailLvalsMLDSTypes]
     ).
-ml_skip_dummy_argument_types([_ | _], [], _, _, _) :-
-    unexpected($pred, "length mismatch").
-ml_skip_dummy_argument_types([], [_ | _], _, _, _) :-
-    unexpected($pred, "length mismatch").
 
 ml_gen_call_current_success_cont(Context, Stmt, !Info) :-
     ml_gen_info_current_success_cont(!.Info, SuccCont),
-    SuccCont = success_cont(FuncRval, EnvPtrRval, ArgTypes0, ArgLvals0),
-    ArgTypes = ArgTypes0 ++ [mlds_generic_env_ptr_type],
+    SuccCont = success_cont(FuncRval, EnvPtrRval, ArgTypesLvals0),
+
+    assoc_list.keys_and_values(ArgTypesLvals0, ArgLvals0, ArgTypes0),
     ArgRvals0 = list.map(func(Lval) = ml_lval(Lval), ArgLvals0),
-    ArgRvals =ArgRvals0 ++ [EnvPtrRval],
+    ArgRvals = ArgRvals0 ++ [EnvPtrRval],
+    RetLvals = [],
+
+    ArgTypes = ArgTypes0 ++ [mlds_generic_env_ptr_type],
     RetTypes = [],
     Signature = mlds_func_signature(ArgTypes, RetTypes),
-    RetLvals = [],
+
     CallKind = ordinary_call,
     set.init(Markers),
     Stmt = ml_stmt_call(Signature, FuncRval, ArgRvals, RetLvals,

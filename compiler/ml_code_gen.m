@@ -939,7 +939,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 
         % Generate <Cond && then_func()>.
         ml_get_env_ptr(EnvPtrRval),
-        SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval, [], []),
+        SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval, []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
         ml_gen_goal(model_non, Cond, CondLocalVarDefns, CondFuncDefns,
             CondStmts, !Info),

@@ -28,6 +28,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module map.
@@ -244,12 +245,12 @@
     %
 :- pred ml_gen_args(pred_or_func, code_model, prog_context, what_params,
     list(mer_type), list(mer_mode), list(ml_call_arg),
-    list(mlds_rval), list(mlds_lval), list(mlds_type),
+    list(mlds_rval), assoc_list(mlds_lval, mlds_type),
     list(mlds_local_var_defn), list(mlds_stmt), ml_gen_info, ml_gen_info).
 :- mode ml_gen_args(in, in, in, in, in, in, in(list_skel(not_fcw)),
-    out, out, out, out, out, in, out) is det.
+    out, out, out, out, in, out) is det.
 :- mode ml_gen_args(in, in, in, in, in, in, in(list_skel(fcw)),
-    out, out, out, out, out, in, out) is det.
+    out, out, out, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -267,7 +268,6 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.prog_data_foreign.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -817,28 +817,25 @@ wrap_plain_not_fcw_args([Var | Vars]) =
     [arg_not_for_closure_wrapper(Var) | wrap_plain_not_fcw_args(Vars)].
 
 ml_gen_args(PredOrFunc, CodeModel, Context, WhatParams,
-        CalleeTypes, CalleeModes, CallerArgs,
-        !:InputRvals, !:OutputLvals, !:OutputTypes,
+        CalleeTypes, CalleeModes, CallerArgs, !:InputRvals, !:OutputLvalsTypes,
         !:ConvOutputDefns, !:ConvOutputStmts, !Info) :-
     ml_gen_info_get_copy_out(!.Info, CodeModel, CopyOut),
     CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
     ml_gen_args_loop(CopyOutWhen, Context, WhatParams, 1,
-        CalleeTypes, CalleeModes, CallerArgs,
-        !:InputRvals, !:OutputLvals, !:OutputTypes,
+        CalleeTypes, CalleeModes, CallerArgs, !:InputRvals, !:OutputLvalsTypes,
         !:ConvOutputDefns, !:ConvOutputStmts, !Info).
 
 :- pred ml_gen_args_loop(copy_out_when, prog_context, what_params, int,
     list(mer_type), list(mer_mode), list(ml_call_arg),
-    list(mlds_rval), list(mlds_lval), list(mlds_type),
+    list(mlds_rval), assoc_list(mlds_lval, mlds_type),
     list(mlds_local_var_defn), list(mlds_stmt), ml_gen_info, ml_gen_info).
 :- mode ml_gen_args_loop(in, in, in, in, in, in, in(list_skel(not_fcw)),
-    out, out, out, out, out, in, out) is det.
+    out, out, out, out, in, out) is det.
 :- mode ml_gen_args_loop(in, in, in, in, in, in, in(list_skel(fcw)),
-    out, out, out, out, out, in, out) is det.
+    out, out, out, out, in, out) is det.
 
 ml_gen_args_loop(CopyOutWhen, Context, WhatParams, ArgNum,
-        CalleeTypes, CalleeModes, CallerArgs,
-        !:InputRvals, !:OutputLvals, !:OutputTypes,
+        CalleeTypes, CalleeModes, CallerArgs, !:InputRvals, !:OutputLvalsTypes,
         !:ConvOutputDefns, !:ConvOutputStmts, !Info) :-
     ( if
         CalleeTypes = [],
@@ -846,8 +843,7 @@ ml_gen_args_loop(CopyOutWhen, Context, WhatParams, ArgNum,
         CallerArgs = []
     then
         !:InputRvals = [],
-        !:OutputLvals = [],
-        !:OutputTypes = [],
+        !:OutputLvalsTypes = [],
         !:ConvOutputDefns = [],
         !:ConvOutputStmts = []
     else if
@@ -857,11 +853,11 @@ ml_gen_args_loop(CopyOutWhen, Context, WhatParams, ArgNum,
     then
         ml_gen_args_loop(CopyOutWhen, Context, WhatParams, ArgNum + 1,
             CalleeTypesTail, CalleeModesTail, CallerArgsTail,
-            !:InputRvals, !:OutputLvals, !:OutputTypes,
+            !:InputRvals, !:OutputLvalsTypes,
             !:ConvOutputDefns, !:ConvOutputStmts, !Info),
         ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
-            CalleeType, CalleeMode, CallerArg,
-            CallerArgsTail, !InputRvals, !OutputLvals, !OutputTypes,
+            CalleeType, CalleeMode, CallerArg, CallerArgsTail,
+            !InputRvals, !OutputLvalsTypes,
             !ConvOutputDefns, !ConvOutputStmts, !Info)
     else
         unexpected($pred, "length mismatch")
@@ -869,19 +865,19 @@ ml_gen_args_loop(CopyOutWhen, Context, WhatParams, ArgNum,
 
 :- pred ml_gen_arg(copy_out_when, prog_context, what_params, int,
     mer_type, mer_mode, ml_call_arg, list(ml_call_arg),
-    list(mlds_rval), list(mlds_rval), list(mlds_lval), list(mlds_lval),
-    list(mlds_type), list(mlds_type),
+    list(mlds_rval), list(mlds_rval),
+    assoc_list(mlds_lval, mlds_type), assoc_list(mlds_lval, mlds_type),
     list(mlds_local_var_defn), list(mlds_local_var_defn),
     list(mlds_stmt), list(mlds_stmt), ml_gen_info, ml_gen_info).
 :- mode ml_gen_arg(in, in, in, in, in, in, in(not_fcw),
-    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+    in, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode ml_gen_arg(in, in, in, in, in, in, in(fcw),
-    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
-:- pragma inline(ml_gen_arg/20).
+    in, in, out, in, out, in, out, in, out, in, out) is det.
+:- pragma inline(ml_gen_arg/18).
 
 ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
         CalleeType, CalleeMode, CallerArg,
-        CallerArgsTail, !InputRvals, !OutputLvals, !OutputTypes,
+        CallerArgsTail, !InputRvals, !OutputLvalsTypes,
         !ConvOutputDefns, !ConvOutputStmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     mode_to_top_functor_mode(ModuleInfo, CalleeMode, CalleeType,
@@ -946,9 +942,9 @@ ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
                         CopyOutWhen = copy_out_always
                     )
                 then
-                    !:OutputLvals = [ArgLval | !.OutputLvals],
                     ml_gen_type(!.Info, CalleeType, OutputType),
-                    !:OutputTypes = [OutputType | !.OutputTypes]
+                    !:OutputLvalsTypes =
+                        [ArgLval - OutputType | !.OutputLvalsTypes]
                 else
                     % Otherwise use the traditional C style of passing
                     % the address where the output value should be put.
