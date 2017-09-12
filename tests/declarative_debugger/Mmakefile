@@ -470,8 +470,9 @@ track_through_catch.out: track_through_catch track_through_catch.inp
 	|| { grep . $@ /dev/null; exit 1; }
 
 typed_unify.out: typed_unify typed_unify.inp
-	$(MDB_STD) ./typed_unify < typed_unify.inp > \
-		typed_unify.out 2>&1 \
+	$(MDB_STD) ./typed_unify < typed_unify.inp 2>&1 | \
+		sed -e 's/univ.m:[0-9]*/univ.m:NNNN/g' \
+		> typed_unify.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 propositional.out: propositional propositional.inp
