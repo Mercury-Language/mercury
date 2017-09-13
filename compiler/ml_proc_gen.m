@@ -230,12 +230,13 @@ ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
             NonePredProcIdInfos, SelfPredProcIdInfos0,
             MutualDetPredProcIdInfos0, MutualSemiPredProcIdInfos0),
 
-        % The predicates called by ml_gen_tscc have not (yet) been taught
-        % how to handle copy out of output arguments, and (for now) they
-        % always generate gc_no_stmt as the gc annotation on MLDS function
-        % parameters. Until those limitations are fixed, don't give
-        % any work to ml_gen_tscc in circumstances where they would bite,
-        % or when the user has requested that it not be given any work.
+        % The predicates called by ml_gen_tscc have been taught how to handle
+        % copy-out output arguments, but this has not yet been tested, and
+        % (for now) they always generate gc_no_stmt as the gc annotation
+        % on MLDS function parameters. Until those limitations are fixed,
+        % don't give any work to ml_gen_tscc in circumstances where
+        % they would bite, or when the user has requested that it not be given
+        % any work.
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, det_copy_out, DetCopyOut),
         globals.get_gc_method(Globals, GC),
@@ -256,15 +257,13 @@ ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
 
         % Translate the procedures we cannot apply tail call optimization to.
         list.foldl3(
-            ml_gen_proc(ModuleInfo, Target, ConstStructMap,
-                no_tail_rec),
+            ml_gen_proc(ModuleInfo, Target, ConstStructMap, no_tail_rec),
             NonePredProcIdInfos, !FuncDefns, !GlobalData, !Specs),
 
         % Translate the procedures to which we can apply only self-tail-call
         % optimization.
         list.foldl3(
-            ml_gen_proc(ModuleInfo, Target, ConstStructMap,
-                self_tail_rec),
+            ml_gen_proc(ModuleInfo, Target, ConstStructMap, self_tail_rec),
             SelfPredProcIdInfos, !FuncDefns, !GlobalData, !Specs),
 
         % Translate the procedures to which we can apply mutual-tail-call
@@ -363,11 +362,6 @@ partition_scc_procs(ModuleInfo, [PredProcId | PredProcIds],
             HasMutualTailRecCall),
         ( if
             HasMutualTailRecCall = has_mutual_tail_rec_call,
-            % XXX This limitation exists for now because handling return values
-            % need to be handled separately from other output arguments,
-            % and the initial implementation of mutual tail recursion
-            % is simpler without this extra complication.
-            not proc_is_output_det_function(ModuleInfo, PredInfo, ProcInfo, _),
             % To prevent control just falling through to the next procedure
             % body once it reaches the end of the previous procedure body
             % in the TSCC, we put a return statement at the end of each
@@ -502,8 +496,12 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             ),
 
             proc_info_get_goal(ProcInfo, Goal),
-            ml_gen_proc_body(CodeModel, sot_solo, ArgTuples, CopiedOutputVars,
-                Goal, LocalVarDefns0, FuncDefns, GoalStmts, !Info),
+            ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars,
+                Goal, LocalVarDefns0, FuncDefns, GoalStmts0, !Info),
+            list.map(get_var_rval(!.Info),
+                CopiedOutputVars, CopiedOutputVarRvals),
+            ml_append_return_statement(CodeModel, ProcContext,
+                CopiedOutputVarRvals, GoalStmts0, GoalStmts),
             ml_gen_post_process_locals(ProcInfo, ProcContext, ArgTuples,
                 CopiedOutputVars, LocalVarDefns0, LocalVarDefns, !Info),
 
@@ -526,6 +524,12 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
 get_var_mlds_lval_and_type(Info, Var, VarLval - Type) :-
     ml_gen_var(Info, Var, VarLval),
     ml_variable_type(Info, Var, Type).
+
+:- pred get_var_rval(ml_gen_info::in, prog_var::in, mlds_rval::out) is det.
+
+get_var_rval(Info, Var, VarRval) :-
+    ml_gen_var(Info, Var, VarLval),
+    VarRval = ml_lval(VarLval).
 
 :- pred compute_initial_tail_rec_map_for_none_or_self(module_info::in,
     none_or_self_tail_rec::in, pred_proc_id::in, tail_rec_target_map::out)
@@ -761,22 +765,47 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
         % hoisted-out definitions. Therefore, until we teach ml_elim_nested.m
         % not to do that, we abandon the optimization of mutually recursive
         % tail calls in the presence of such nested function definitions.
+        %
+        % Caveat 3.
+        % The code in mark_tail_calls.m looks for tail calls by looking
+        % at the argument lists of procedures. These argument lists treat
+        % a variable representing the result of functions the same as
+        % a variable representing the last argument of a predicate.
+        % On the other hand, on the C backend, the MLDS uses two *different*
+        % mechanisms to return these arguments; it returns function results
+        % via return statements, while it uses pass-by-reference for all
+        % other output arguments. Currently, ml_gen_tscc_trial handles this
+        % by returning CanGenerateTscc = can_not_generate_code_for_tscc
+        % if the procedures in the TSCC it is given don't all have the same
+        % vector of return values.
+        % XXX When a TSCC contains both predicates and functions, the two
+        % must present different signatures to their callers *outside* the
+        % TSCC, because those callers expect those different signatures.
+        % However, *inside* the TSCC, we could generate code that ignores
+        % the distinction, the obvious way of doing that being to use
+        % the tail call version of the calling convention intended for
+        % predicates for all intra-TSCC tail calls. However, using different
+        % conventions for intra- and inter-TSCC parameter passing would
+        % complicate the code both here and in ml_args_util.m, and for now
+        % at least, I (zs) don't see that the potential benefits justify
+        % the costs.
+        %
         ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap,
             TsccCodeModel, PredProcIds, _NonTailEntryPredProcIds,
             NoMutualPredProcIds, MutualPredProcIds, MutualPredProcCodes,
-            MutualContainsNestedFuncs, MutualEnvVarNames,
+            CanGenerateTscc, MutualEnvVarNames,
             MutualClosureWrapperFuncDefns, MutualTailRecSpecs,
             LoopKind, !.GlobalData, TrialGlobalData),
         (
-            MutualContainsNestedFuncs = contains_nested_funcs,
+            CanGenerateTscc = can_not_generate_code_for_tscc,
             OutsideTsccPredProcIds = PredProcIds
         ;
-            MutualContainsNestedFuncs = does_not_contain_nested_funcs,
+            CanGenerateTscc = can_generate_code_for_tscc,
             OutsideTsccPredProcIds = NoMutualPredProcIds,
             !:Specs = MutualTailRecSpecs ++ !.Specs,
             !:GlobalData = TrialGlobalData,
 
-            % Caveat 3:
+            % Caveat 4:
             % XXX We SHOULD add to TSCCEntryPredProcIds the procedures in
             % PredProcIds that are called from the procedures in SCC that are
             % NOT in this TSCC. We do that for procedures that are in the
@@ -825,7 +854,7 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
             StartCommentStmts = [],
 
             list.map(
-                construct_tscc_entry_proc(ModuleInfo, LoopKind, TsccCodeModel,
+                construct_tscc_entry_proc(ModuleInfo, LoopKind,
                     MutualPredProcCodes, MutualEnvVarNames, StartCommentStmts),
                 set.to_sorted_list(MutualPredProcIds), TSCCFuncDefns),
             !:FuncDefns = MutualClosureWrapperFuncDefns ++ TSCCFuncDefns ++
@@ -839,6 +868,10 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
             !FuncDefns, !GlobalData, !Specs)
     ).
 
+:- type can_we_generate_code_for_tscc
+    --->    can_not_generate_code_for_tscc
+    ;       can_generate_code_for_tscc.
+
     % Generate a representation of the codes to go under each "top_of_proc_i"
     % label in the scheme above, but also return the information our caller
     % needs to prepare for handling caveats 1 and 2.
@@ -847,21 +880,21 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
     ml_const_struct_map::in, tscc_code_model::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     set(pred_proc_id)::out, set(pred_proc_id)::out, list(pred_proc_code)::out,
-    maybe_contains_nested_funcs::out, set(string)::out,
+    can_we_generate_code_for_tscc::out, set(string)::out,
     list(mlds_function_defn)::out, list(error_spec)::out,
     tail_rec_loop_kind::out, ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         PredProcIds, NonTailEntryPredProcIds,
         NoMutualPredProcIds, MutualPredProcIds, MutualPredProcCodes,
-        MutualContainsNestedFuncs, MutualEnvVarNames,
+        CanGenerateTscc, MutualEnvVarNames,
         MutualClosureWrapperFuncDefns, MutualTailRecSpecs,
         LoopKind, !GlobalData) :-
     % Compute the information we need for generating tail calls
     % to any of the procedures in the TSCC.
-    list.map_foldl4(compute_initial_tail_rec_map_for_mutual(ModuleInfo),
+    list.map_foldl5(compute_initial_tail_rec_map_for_mutual(ModuleInfo),
         set.to_sorted_list(PredProcIds), PredProcIdArgsInfos,
-        1, _, no, _MaybeNumOutputs,
+        1, _, maybe.no, _, can_generate_code_for_tscc, CanGenerateTscc0,
         map.init, _OutArgNames, map.init, TailRecMap0),
 
     % Translate each procedure in the TSCC into a representation of the
@@ -879,11 +912,23 @@ ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
     LoopKind = TailRecInfo ^ tri_loop_kind,
     map.foldl2(accumulate_entry_procs, TargetMap,
         set.init, NonTailEntryPredProcIds, set.init, NoMutualPredProcIds0),
-    % Prepare for caveats 1 and 2.
+    % Returning NoMutualPredProcIds separately from MutualPredProcIds
+    % handles caveat 1.
     separate_mutually_recursive_procs(NoMutualPredProcIds0, PredProcCodes,
         NoMutualPredProcIds, MutualPredProcIds, MutualPredProcCodes,
         MutualContainsNestedFuncs, MutualClosureWrapperFuncDefns,
-        MutualEnvVarNames, MutualTailRecSpecs).
+        MutualEnvVarNames, MutualTailRecSpecs),
+
+    ( if
+        % Handle caveat 2.
+        MutualContainsNestedFuncs = does_not_contain_nested_funcs,
+        % Handle caveat 3.
+        CanGenerateTscc0 = can_generate_code_for_tscc
+    then
+        CanGenerateTscc = can_generate_code_for_tscc
+    else
+        CanGenerateTscc = can_not_generate_code_for_tscc
+    ).
 
 :- pred accumulate_entry_procs(pred_proc_id::in, tail_rec_target_info::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
@@ -997,11 +1042,12 @@ separate_mutually_recursive_procs(NoMutualTailRecProcs,
 
                 % Argument definitions for the TSCC variables for all
                 % the arguments of the procedure, both input and output,
-                % in their original order.
-                ppiai_tscc_args                 :: list(mlds_argument),
+                % in their original order, and the types of the returned
+                % arguments.
+                ppiai_tscc_func_params          :: mlds_func_params,
 
-                % The tscc variables for the input arguments of procedure i
-                % in the TSCC will be defined
+                % The lvn_tscc_proc_input_var variables for the input arguments
+                % of procedure i in the TSCC will be defined
                 %
                 % - in the argument list of the MLDS function,
                 %   if the MLDS function is for procedure j with i = j; and
@@ -1009,23 +1055,39 @@ separate_mutually_recursive_procs(NoMutualTailRecProcs,
                 % - at the top of the body of the MLDS function,
                 %   if the MLDS function is for procedure j with i != j.
                 %
-                % The tscc variables for the output arguments will always
-                % be defined in the argument list of the MLDS function.
+                % The lvn_tscc_output_var variables for the byref output
+                % arguments will always be defined in the argument list
+                % of the MLDS function. The tscc variables for the copied-out
+                % output arguments will always be defined at the top of
+                % the body of the MLDS function.
 
                 % Local variable definitions of the own variables
                 % for all the arguments of the procedure. These go at the
                 % top of the block that implements the body this procedure.
                 ppiai_own_local_var_defns       :: list(mlds_local_var_defn),
 
-                % Statements that, for each argument of the procedure,
-                % both input and output, assign the tscc variable for
-                % that argument to the two variable for that argument.
-                % These go at the top of the block that implements
-                % the body this procedure. (The big example above merges
-                % these assignments statements into the local variable
-                % definitions as initializations, but this merging is
-                % actually done later, by ml_optimize.m.)
-                ppiai_tscc_to_own_copy_stmts    :: list(mlds_stmt)
+                % Statements that, for each input and byref output argument
+                % of the procedure, assign the tscc variable for that argument
+                % to the own variable for that argument. These go at the top
+                % of the block that implements the body this procedure.
+                % (The big example above merges these assignments statements
+                % into the local variable definitions as initializations,
+                % but this merging is actually done later, by ml_optimize.m.)
+                ppiai_tscc_to_own_copy_stmts    :: list(mlds_stmt),
+
+                % Statements that, for each copied output argument of the
+                % procedure, assign the own variable for that argument
+                % to the tscc variable for that argument. These go at the end
+                % of the block that implements the body this procedure,
+                % just before the return statement that returns the values
+                % of the assigned-to variables (plus maybe a success
+                % indication).
+                ppiai_own_to_tscc_copy_stmts    :: list(mlds_stmt),
+
+                % The vector of rvals to return in the procedure's return
+                % statement. May be empty if there are no copied output
+                % arguments.
+                ppiai_return_rvals              :: list(mlds_rval)
             ).
 
     % Compute the map that tells the code generator how to translate
@@ -1034,19 +1096,22 @@ separate_mutually_recursive_procs(NoMutualTailRecProcs,
     % TSCC that is convenient to compute at the same time.
     %
 :- pred compute_initial_tail_rec_map_for_mutual(module_info::in,
-    pred_proc_id::in, pred_proc_id_args_info::out,
-    int::in, int::out, maybe(int)::in, maybe(int)::out,
+    pred_proc_id::in, pred_proc_id_args_info::out, int::in, int::out,
+    maybe(list(mlds_type))::in, maybe(list(mlds_type))::out,
+    can_we_generate_code_for_tscc::in, can_we_generate_code_for_tscc::out,
     map(int, string)::in, map(int, string)::out,
     tail_rec_target_map::in, tail_rec_target_map::out) is det.
 
 compute_initial_tail_rec_map_for_mutual(ModuleInfo,
-        PredProcId, PredProcIdArgsInfo,
-        !ProcNum, !MaybeNumOutputs, !OutArgNames, !TailRecMap0) :-
+        PredProcId, PredProcIdArgsInfo, !ProcNum,
+        !MaybeReturnTypes, !CanGenerateTscc, !OutArgNames, !TailRecMap0) :-
     ThisProcNum = !.ProcNum,
     IdInTscc = proc_id_in_tscc(ThisProcNum),
     !:ProcNum = !.ProcNum + 1,
 
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+    CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
     pred_info_get_arg_types(PredInfo, HeadTypes),
@@ -1056,21 +1121,27 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     ProcContext = goal_info_get_context(GoalInfo),
 
-    ml_gen_tscc_arg_params(ModuleInfo, ProcContext, IdInTscc, VarSet,
-        HeadVars, HeadTypes, HeadModes, ArgTuples, 1, 1, NumOutputs,
-        !OutArgNames, TsccInArgs, TsccInLocalVarDefns, TsccArgs,
-        OwnLocalVarDefns, CopyTsccToOwnStmts),
+    ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel,
+        ProcContext, IdInTscc, VarSet,
+        HeadVars, HeadTypes, HeadModes, ArgTuples,
+        !OutArgNames, TsccInArgs, TsccInLocalVarDefns, FuncParams,
+        OwnLocalVarDefns, CopyTsccToOwnStmts, CopyOwnToTsccStmts, ReturnRvals),
+    FuncParams = mlds_func_params(_, ReturnTypes),
     (
-        !.MaybeNumOutputs = no,
-        !:MaybeNumOutputs = yes(NumOutputs)
+        !.MaybeReturnTypes = no,
+        !:MaybeReturnTypes = yes(ReturnTypes)
     ;
-        !.MaybeNumOutputs = yes(OldNumOutputs),
-        expect(unify(OldNumOutputs, NumOutputs), $pred,
-            "different procedures in TSCC have different number of outputs")
+        !.MaybeReturnTypes = yes(OldReturnTypes),
+        ( if ReturnTypes \= OldReturnTypes then
+            % The different procedures in the TSCC have different return types.
+            !:CanGenerateTscc = can_not_generate_code_for_tscc
+        else
+            true
+        )
     ),
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId, PredInfo, ProcInfo,
-        ProcContext, IdInTscc, ArgTuples,
-        TsccInLocalVarDefns, TsccArgs, OwnLocalVarDefns, CopyTsccToOwnStmts),
+        ProcContext, IdInTscc, ArgTuples, TsccInLocalVarDefns, FuncParams,
+        OwnLocalVarDefns, CopyTsccToOwnStmts, CopyOwnToTsccStmts, ReturnRvals),
     TailRecTargetInfo0 = tail_rec_target_info(IdInTscc, TsccInArgs,
         have_not_done_self_tail_rec, have_not_done_mutual_tail_rec,
         have_not_done_nontail_rec),
@@ -1106,8 +1177,8 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         PredProcIdArgsInfo, PredProcCode, !GlobalData, !TsccInfo) :-
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId, PredInfo, ProcInfo,
         ProcContext, ProcIdInTscc, ArgTuples,
-        _TsscInLocalVarDefns, _TsccArgs,
-        _OwnLocalVarDefns, _CopyTsccToOwnStmts),
+        _TsscInLocalVarDefns, _TsccArgs, _OwnLocalVarDefns,
+        _CopyTsccToOwnStmts, _CopyOwnToTsccStmts, _ReturnRvals),
 
     trace [io(!IO)] (
         write_proc_progress_message("% Generating in-TSCC MLDS code for ",
@@ -1149,19 +1220,11 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         expect(unify(ArgTuples, ProcArgTuples), $pred,
             "ArgTuples != ProcArgTuples"),
         ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info),
-        % For now, the code we generate returns all output variables
-        % by reference. Our ancestors should ensure we get here only
-        % the target platform does not use copy-out parameter passing,
-        % and that no procedure in the TSCC has a return value.
-        % XXX We should generalize this code so that we *can* handle
-        % copy-out parameter passing.
-        expect(unify(CopiedOutputVars, []), $pred, "CopiedOutputVars != []"),
-
         ( TsccCodeModel = tscc_det, CodeModel = model_det
         ; TsccCodeModel = tscc_semi, CodeModel = model_semi
         ),
         proc_info_get_goal(ProcInfo, Goal),
-        ml_gen_proc_body(CodeModel, sot_tscc, ArgTuples, CopiedOutputVars,
+        ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars,
             Goal, LocalVarDefns0, FuncDefns, GoalStmts, !Info),
         ml_gen_post_process_locals(ProcInfo, ProcContext, ArgTuples,
             CopiedOutputVars, LocalVarDefns0, LocalVarDefns, !Info),
@@ -1183,10 +1246,10 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
     % wrap them up in an MLDS function that implements EntryProc.
     %
 :- pred construct_tscc_entry_proc(module_info::in, tail_rec_loop_kind::in,
-    tscc_code_model::in, list(pred_proc_code)::in, set(string)::in,
+    list(pred_proc_code)::in, set(string)::in,
     list(mlds_stmt)::in, pred_proc_id::in, mlds_function_defn::out) is det.
 
-construct_tscc_entry_proc(ModuleInfo, LoopKind, TsccCodeModel, PredProcCodes,
+construct_tscc_entry_proc(ModuleInfo, LoopKind, PredProcCodes,
         EnvVarNames, EntryProcDescComments, EntryProc, FuncDefn) :-
     trace [io(!IO)] (
         write_proc_progress_message("% Generating MLDS code for ",
@@ -1200,17 +1263,9 @@ construct_tscc_entry_proc(ModuleInfo, LoopKind, TsccCodeModel, PredProcCodes,
         unexpected($pred, "MaybeEntryProcInfo = no")
     ;
         MaybeEntryProcInfo = yes(EntryProcInfo),
-        EntryProcInfo =
-            entry_proc_info(EntryIdInTscc, EntryPredProcIdInfo, EntryProcArgs)
+        EntryProcInfo = entry_proc_info(EntryIdInTscc, EntryPredProcIdInfo,
+            EntryProcParams)
     ),
-    (
-        TsccCodeModel = tscc_det,
-        ReturnArgTypes = []
-    ;
-        TsccCodeModel = tscc_semi,
-        ReturnArgTypes = [mlds_native_bool_type]
-    ),
-    EntryProcParams = mlds_func_params(EntryProcArgs, ReturnArgTypes),
     EntryPredProcIdInfo = pred_proc_id_info(_EntryPredProcId,
         _EntryPredInfo, _EntryProcInfo, EntryProcContext),
     wrap_proc_stmts(LoopKind, EntryIdInTscc, EntryProcContext,
@@ -1219,7 +1274,7 @@ construct_tscc_entry_proc(ModuleInfo, LoopKind, TsccCodeModel, PredProcCodes,
 
     EntryIdInTscc = proc_id_in_tscc(EntryIdInTsccNum),
     EntryProcDesc = describe_proc_from_id(ModuleInfo, EntryProc),
-    Comment0 = string.format("The code for TSCC PROC %d: %s",
+    Comment0 = string.format("The code for TSCC PROC %d: %s.",
         [i(EntryIdInTsccNum), s(EntryProcDesc)]),
     CommentStmt0 = ml_stmt_atomic(comment(Comment0), EntryProcContext),
     Comment1 = "Setup for mutual tailcalls optimized into a loop.",
@@ -1246,7 +1301,7 @@ construct_tscc_entry_proc(ModuleInfo, LoopKind, TsccCodeModel, PredProcCodes,
     --->    entry_proc_info(
                 proc_id_in_tscc,
                 pred_proc_id_info,
-                list(mlds_argument)
+                mlds_func_params
             ).
 
 :- type proc_stmt_info
@@ -1277,19 +1332,23 @@ construct_func_body_for_tscc(EntryProc, PredProcCode, ProcStmtInfo,
         _ClosureWrapperFuncDefns, _EnvVarNames, _TailRecSpecs),
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId,
         PredInfo, ProcInfo, ProcContext, IdInTscc, _ArgTuples,
-        TsccInLocalVarDefns, TsccArgs, OwnLocalVarDefns, CopyTsccToOwnStmts),
+        TsccInLocalVarDefns, FuncParams, OwnLocalVarDefns,
+        CopyTsccToOwnStmts, CopyOwnToTsccStmts, ReturnRvals),
     ( if PredProcId = EntryProc then
         expect(unify(!.MaybeEntryProcInfo, no), $pred,
             "!.MaybeEntryProcInfo != no"),
         PredProcIdInfo = pred_proc_id_info(PredProcId, PredInfo, ProcInfo,
             ProcContext),
-        EntryProcInfo = entry_proc_info(IdInTscc, PredProcIdInfo, TsccArgs),
+        EntryProcInfo = entry_proc_info(IdInTscc, PredProcIdInfo, FuncParams),
         !:MaybeEntryProcInfo = yes(EntryProcInfo)
     else
         !:LocalVarDefns = !.LocalVarDefns ++ TsccInLocalVarDefns
     ),
+    ReturnStmt = ml_stmt_return(ReturnRvals, ProcContext),
+    AllStmts =
+        CopyTsccToOwnStmts ++ GoalStmts ++ CopyOwnToTsccStmts ++ [ReturnStmt],
     ProcStmt = ml_stmt_block(OwnLocalVarDefns ++ GoalLocalVarDefns,
-        GoalFuncDefns, CopyTsccToOwnStmts ++ GoalStmts, ProcContext),
+        GoalFuncDefns, AllStmts, ProcContext),
     ProcStmtInfo = proc_stmt_info(IdInTscc, ProcStmt, ProcContext).
 
 %---------------------%
@@ -1454,12 +1513,12 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
 
     % Generate the code for a procedure body.
     %
-:- pred ml_gen_proc_body(code_model::in, solo_or_tscc::in,
+:- pred ml_gen_proc_body(code_model::in,
     list(var_mvar_type_mode)::in, list(prog_var)::in, hlds_goal::in,
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_proc_body(CodeModel, SoloOrTscc, ArgTuples, CopiedOutputVars, Goal,
+ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
@@ -1474,7 +1533,6 @@ ml_gen_proc_body(CodeModel, SoloOrTscc, ArgTuples, CopiedOutputVars, Goal,
     % variables (if any) here, since for the return statement that
     % we append below, we want the original vars, not their cast versions.
 
-    ml_gen_var_list(!.Info, CopiedOutputVars, CopiedOutputVarOriginalLvals),
     ml_gen_convert_headvars(ArgTuples, CopiedOutputVars, Context,
         ConvLocalVarDefns, ConvInputStmts, ConvOutputStmts, !Info),
     ( if
@@ -1483,7 +1541,7 @@ ml_gen_proc_body(CodeModel, SoloOrTscc, ArgTuples, CopiedOutputVars, Goal,
         ConvOutputStmts = []
     then
         % No boxing/unboxing/casting required.
-        ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts1, !Info)
+        ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info)
     else
         DoGenGoal = ml_gen_goal(CodeModel, Goal),
 
@@ -1500,14 +1558,10 @@ ml_gen_proc_body(CodeModel, SoloOrTscc, ArgTuples, CopiedOutputVars, Goal,
             ),
         ml_combine_conj(CodeModel, Context, DoGenGoal, DoConvOutputs,
             LocalVarDefns0, FuncDefns0, Stmts0, !Info),
-        Stmts1 = ConvInputStmts ++ Stmts0,
+        Stmts = ConvInputStmts ++ Stmts0,
         LocalVarDefns = ConvLocalVarDefns ++ LocalVarDefns0,
         FuncDefns = FuncDefns0
-    ),
-
-    % Finally append an appropriate `return' statement, if needed.
-    ml_append_return_statement(CodeModel, SoloOrTscc,
-        CopiedOutputVarOriginalLvals, Context, Stmts1, Stmts, !Info).
+    ).
 
     % In certain cases -- for example existentially typed procedures,
     % or unification/compare procedures for equivalence types --

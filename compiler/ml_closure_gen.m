@@ -751,7 +751,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ml_gen_info_get_copy_out(!.Info, CodeModel, CopyOut),
     CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
     ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, 1, ArgTuples,
-        WrapperHeadVarDefns, WrapperHeadVarLvals, WrapperCopyOutLvals,
+        WrapperHeadVarDefns, WrapperHeadVarLvals, WrapperCopyOutRvals,
         WrapperOutputLvalsTypes, !Info),
 
     % Generate code to declare and initialize the closure pointer,
@@ -881,8 +881,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
 
     % Add an appropriate `return' statement.
-    ml_append_return_statement(CodeModel, sot_solo, WrapperCopyOutLvals,
-        Context, Stmts1, Stmts, !Info),
+    ml_append_return_statement(CodeModel, Context, WrapperCopyOutRvals,
+        Stmts1, Stmts),
 
     % Generate code to declare and initialize the local variables
     % needed for accurate GC.
@@ -1018,16 +1018,16 @@ ml_gen_wrapper_head_var_names(Num, Max) = VarNames :-
     %
 :- pred ml_gen_wrapper_arg_lvals(copy_out_when::in, prog_context::in,
     int::in, list(var_mvar_type_mode)::in,
-    list(mlds_local_var_defn)::out, list(mlds_lval)::out, list(mlds_lval)::out,
+    list(mlds_local_var_defn)::out, list(mlds_lval)::out, list(mlds_rval)::out,
     assoc_list(mlds_lval, mer_type)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_wrapper_arg_lvals(_, _, _, [], [], [], [], [], !Info).
 ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum,
-        [HeadArgTuple | TailArgTuples], Defns, Lvals, CopyOutLvals,
+        [HeadArgTuple | TailArgTuples], Defns, Lvals, CopyOutRvals,
         OutputLvalsTypes, !Info) :-
     ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum + 1, TailArgTuples,
-        TailDefns, TailLvals, TailCopyOutLvals, TailOutputLvalsTypes, !Info),
+        TailDefns, TailLvals, TailCopyOutRvals, TailOutputLvalsTypes, !Info),
     HeadArgTuple = var_mvar_type_mode(_Var, MLDSVarName, Type, TopFunctorMode),
     ml_gen_type(!.Info, Type, MLDS_Type),
     VarLval = ml_local_var(MLDSVarName, MLDS_Type),
@@ -1040,7 +1040,7 @@ ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum,
         ),
         HeadLval = VarLval,
         Defns = TailDefns,
-        CopyOutLvals = TailCopyOutLvals,
+        CopyOutRvals = TailCopyOutRvals,
         OutputLvalsTypes = TailOutputLvalsTypes
     ;
         TopFunctorMode = top_out,
@@ -1062,20 +1062,20 @@ ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum,
             (
                 IsDummy = is_dummy_type,
                 Defns = TailDefns,
-                CopyOutLvals = TailCopyOutLvals
+                CopyOutRvals = TailCopyOutRvals
             ;
                 IsDummy = is_not_dummy_type,
                 ml_gen_local_for_output_arg(MLDSVarName, Type, ArgNum, Context,
                     HeadDefn, !Info),
                 Defns = [HeadDefn | TailDefns],
-                CopyOutLvals = [HeadLval | TailCopyOutLvals]
+                CopyOutRvals = [ml_lval(HeadLval) | TailCopyOutRvals]
             )
         else
             % Output arguments are passed by reference, so we need to
             % dereference them.
             HeadLval = ml_mem_ref(ml_lval(VarLval), MLDS_Type),
             Defns = TailDefns,
-            CopyOutLvals = TailCopyOutLvals
+            CopyOutRvals = TailCopyOutRvals
         ),
         OutputLvalsTypes = [VarLval - Type | TailOutputLvalsTypes]
     ),
