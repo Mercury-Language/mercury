@@ -200,7 +200,7 @@
 "
     if (I < 0) {
         SUCCESS_INDICATOR = MR_FALSE;
-    } else if (I > (MR_Integer) INT32_MAX) {
+    } else if ((uint64_t)I > (uint64_t)UINT32_MAX) {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
         U = (uint32_t) I;

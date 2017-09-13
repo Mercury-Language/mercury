@@ -131,8 +131,10 @@ ORDINARY_PROGS =	\
 	free_free_mode \
 	from_ground_term_bug \
 	from_int_int16 \
+	from_int_int32 \
 	from_int_int8 \
 	from_int_uint16 \
+	from_int_uint32 \
 	from_int_uint8 \
 	func_and_pred \
 	func_ctor_ambig \
