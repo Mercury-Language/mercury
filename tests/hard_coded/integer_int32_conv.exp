@@ -1,0 +1,49 @@
+*** Testing int32 -> integer conversion ***
+
+int32 = -2147483648, integer = -2147483648
+int32 = -32768, integer = -32768
+int32 = -128, integer = -128
+int32 = -64, integer = -64
+int32 = -32, integer = -32
+int32 = -1, integer = -1
+int32 = 0, integer = 0
+int32 = 1, integer = 1
+int32 = 2, integer = 2
+int32 = 4, integer = 4
+int32 = 8, integer = 8
+int32 = 10, integer = 10
+int32 = 16, integer = 16
+int32 = 32, integer = 32
+int32 = 64, integer = 64
+int32 = 127, integer = 127
+int32 = 16383, integer = 16383
+int32 = 16384, integer = 16384
+int32 = 16385, integer = 16385
+int32 = 32767, integer = 32767
+int32 = 2147483647, integer = 2147483647
+
+*** Testing integer -> int32 conversion ***
+
+integer = -9223372036854775808, int32 = <<OUT-OF-RANGE>>
+integer = -4294967296, int32 = <<OUT-OF-RANGE>>
+integer = -2147483649, int32 = <<OUT-OF-RANGE>>
+integer = -2147483648, int32 = -2147483648
+integer = -32768, int32 = -32768
+integer = -2, int32 = -2
+integer = -1, int32 = -1
+integer = 0, int32 = 0
+integer = 1, int32 = 1
+integer = 2, int32 = 2
+integer = 16383, int32 = 16383
+integer = 16384, int32 = 16384
+integer = 16385, int32 = 16385
+integer = 32767, int32 = 32767
+integer = 1073741824, int32 = 1073741824
+integer = 2147483647, int32 = 2147483647
+integer = 2147483648, int32 = <<OUT-OF-RANGE>>
+integer = 4294967295, int32 = <<OUT-OF-RANGE>>
+integer = 4294967296, int32 = <<OUT-OF-RANGE>>
+integer = 4294967297, int32 = <<OUT-OF-RANGE>>
+integer = 9223372036854775808, int32 = <<OUT-OF-RANGE>>
+integer = 18446744073709551615, int32 = <<OUT-OF-RANGE>>
+integer = 18446744073709551616, int32 = <<OUT-OF-RANGE>>

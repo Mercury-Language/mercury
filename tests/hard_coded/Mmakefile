@@ -173,6 +173,9 @@ ORDINARY_PROGS =	\
 	int_fold_up_down \
 	int_range_ops \
 	integer_test \
+	integer_int16_conv \
+	integer_int32_conv \
+	integer_int8_conv \
 	integer_uint_conv \
 	integer_uint16_conv \
 	integer_uint32_conv \

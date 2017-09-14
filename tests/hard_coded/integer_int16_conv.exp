@@ -1,0 +1,45 @@
+*** Testing int16 -> integer conversion ***
+
+int16 = -32768, integer = -32768
+int16 = -128, integer = -128
+int16 = -64, integer = -64
+int16 = -32, integer = -32
+int16 = -1, integer = -1
+int16 = 0, integer = 0
+int16 = 1, integer = 1
+int16 = 2, integer = 2
+int16 = 4, integer = 4
+int16 = 8, integer = 8
+int16 = 10, integer = 10
+int16 = 16, integer = 16
+int16 = 32, integer = 32
+int16 = 64, integer = 64
+int16 = 127, integer = 127
+int16 = 16383, integer = 16383
+int16 = 16384, integer = 16384
+int16 = 16385, integer = 16385
+int16 = 32767, integer = 32767
+
+*** Testing integer -> int16 conversion ***
+
+integer = -9223372036854775808, int16 = <<OUT-OF-RANGE>>
+integer = -4294967296, int16 = <<OUT-OF-RANGE>>
+integer = -2147483648, int16 = <<OUT-OF-RANGE>>
+integer = -32768, int16 = -32768
+integer = -2, int16 = -2
+integer = -1, int16 = -1
+integer = 0, int16 = 0
+integer = 1, int16 = 1
+integer = 2, int16 = 2
+integer = 16383, int16 = 16383
+integer = 16384, int16 = 16384
+integer = 16385, int16 = 16385
+integer = 32767, int16 = 32767
+integer = 1073741824, int16 = <<OUT-OF-RANGE>>
+integer = 2147483648, int16 = <<OUT-OF-RANGE>>
+integer = 4294967295, int16 = <<OUT-OF-RANGE>>
+integer = 4294967296, int16 = <<OUT-OF-RANGE>>
+integer = 4294967297, int16 = <<OUT-OF-RANGE>>
+integer = 9223372036854775808, int16 = <<OUT-OF-RANGE>>
+integer = 18446744073709551615, int16 = <<OUT-OF-RANGE>>
+integer = 18446744073709551616, int16 = <<OUT-OF-RANGE>>
