@@ -1,0 +1,40 @@
+*** Testing uint32 -> integer conversion ***
+
+uint32 = 0, integer = 0
+uint32 = 1, integer = 1
+uint32 = 2, integer = 2
+uint32 = 4, integer = 4
+uint32 = 8, integer = 8
+uint32 = 10, integer = 10
+uint32 = 16, integer = 16
+uint32 = 32, integer = 32
+uint32 = 64, integer = 64
+uint32 = 16383, integer = 16383
+uint32 = 16384, integer = 16384
+uint32 = 16385, integer = 16385
+uint32 = 32768, integer = 32768
+uint32 = 65536, integer = 65536
+uint32 = 2147483647, integer = 2147483647
+uint32 = 4294967295, integer = 4294967295
+
+*** Testing integer -> uint32 conversion ***
+
+integer = -9223372036854775808, uint32 = <<OUT-OF-RANGE>>
+integer = -4294967296, uint32 = <<OUT-OF-RANGE>>
+integer = -2147483648, uint32 = <<OUT-OF-RANGE>>
+integer = -2, uint32 = <<OUT-OF-RANGE>>
+integer = -1, uint32 = <<OUT-OF-RANGE>>
+integer = 0, uint32 = 0
+integer = 1, uint32 = 1
+integer = 2, uint32 = 2
+integer = 16383, uint32 = 16383
+integer = 16384, uint32 = 16384
+integer = 16385, uint32 = 16385
+integer = 1073741824, uint32 = 1073741824
+integer = 2147483648, uint32 = 2147483648
+integer = 4294967295, uint32 = 4294967295
+integer = 4294967296, uint32 = <<OUT-OF-RANGE>>
+integer = 4294967297, uint32 = <<OUT-OF-RANGE>>
+integer = 9223372036854775808, uint32 = <<OUT-OF-RANGE>>
+integer = 18446744073709551615, uint32 = <<OUT-OF-RANGE>>
+integer = 18446744073709551616, uint32 = <<OUT-OF-RANGE>>
