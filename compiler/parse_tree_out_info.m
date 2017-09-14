@@ -332,37 +332,37 @@ output_uint(U, Str0, Str) :-
 :- pred output_int8(int8::in, string::di, string::uo) is det.
 
 output_int8(I8, Str0, Str) :-
-    S = string.int8_to_string(I8),
+    S = string.int8_to_string(I8) ++ "i8",
     string.append(Str0, S, Str).
 
 :- pred output_uint8(uint8::in, string::di, string::uo) is det.
 
 output_uint8(U8, Str0, Str) :-
-    S = string.uint8_to_string(U8),
+    S = string.uint8_to_string(U8) ++ "u8",
     string.append(Str0, S, Str).
 
 :- pred output_int16(int16::in, string::di, string::uo) is det.
 
 output_int16(I16, Str0, Str) :-
-    S = string.int16_to_string(I16),
+    S = string.int16_to_string(I16) ++ "i16",
     string.append(Str0, S, Str).
 
 :- pred output_uint16(uint16::in, string::di, string::uo) is det.
 
 output_uint16(U16, Str0, Str) :-
-    S = string.uint16_to_string(U16),
+    S = string.uint16_to_string(U16) ++ "u16",
     string.append(Str0, S, Str).
 
 :- pred output_int32(int32::in, string::di, string::uo) is det.
 
 output_int32(I32, Str0, Str) :-
-    S = string.int32_to_string(I32),
+    S = string.int32_to_string(I32) ++ "i32",
     string.append(Str0, S, Str).
 
 :- pred output_uint32(uint32::in, string::di, string::uo) is det.
 
 output_uint32(U32, Str0, Str) :-
-    S = string.uint32_to_string(U32),
+    S = string.uint32_to_string(U32) ++ "u32",
     string.append(Str0, S, Str).
 
 :- pred output_float(float::in, string::di, string::uo) is det.

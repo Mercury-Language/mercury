@@ -1,0 +1,8 @@
+invalid_int16_inst.m:015: In clause for `main(di, uo)':
+invalid_int16_inst.m:015:   in argument 1 of call to function
+invalid_int16_inst.m:015:   `invalid_int16_inst.foo'/1:
+invalid_int16_inst.m:015:   mode error: variable `N' has instantiatedness
+invalid_int16_inst.m:015:   `unique(7i16)',
+invalid_int16_inst.m:015:   expected instantiatedness was
+invalid_int16_inst.m:015:   `bound(2i16 ; 4i16 ; 6i16)'.
+For more information, recompile with `-E'.
