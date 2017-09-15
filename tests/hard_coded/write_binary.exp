@@ -126,6 +126,36 @@ ok... test passed:
 ok... test passed:
 4
 4
+ok... test passed:
+651
+651
+ok... test passed:
+-128
+-128
+ok... test passed:
+127
+127
+ok... test passed:
+255
+255
+ok... test passed:
+-32768
+-32768
+ok... test passed:
+32767
+32767
+ok... test passed:
+65535
+65535
+ok... test passed:
+-2147483648
+-2147483648
+ok... test passed:
+2147483647
+2147483647
+ok... test passed:
+4294967295
+4294967295
 next text is expected to fail:
 test failed:
 exception(univ_cons("error reading term back in again"))

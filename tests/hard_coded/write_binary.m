@@ -147,9 +147,23 @@ test_builtins(!IO) :-
     do_test(11.28324983E-22, !IO),
     do_test(22.3954899E22, !IO),
 
-    % test integers
+    % test ints
     do_test(-65, !IO),
     do_test(4, !IO),
+
+    % Test uints.
+    do_test(651u, !IO),
+
+    % Test fixed-size ints.
+    do_test(-128i8, !IO),
+    do_test(127i8, !IO),
+    do_test(255u8, !IO),
+    do_test(-32768i16, !IO),
+    do_test(32767i16, !IO),
+    do_test(65535u16, !IO),
+    do_test(-2147483648i32, !IO),
+    do_test(2147483647i32, !IO),
+    do_test(4294967295u32, !IO),
 
 %%% XXX currently we do not pass this test!
 %%%     % test univ.
