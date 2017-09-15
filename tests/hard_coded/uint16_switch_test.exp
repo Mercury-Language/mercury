@@ -1,0 +1,9 @@
+foo(0u16, _) ==> <<FALSE>>
+foo(1u16, "one")
+foo(2u16, _) ==> <<FALSE>>
+foo(3u16, "three")
+foo(4u16, _) ==> <<FALSE>>
+foo(5u16, "five")
+foo(6u16, _) ==> <<FALSE>>
+foo(7u16, "seven")
+foo(8u16, _) ==> <<FALSE>>
