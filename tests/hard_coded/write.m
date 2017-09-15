@@ -135,9 +135,23 @@ test_builtins(!IO) :-
     io.write(11.28324983E-22, !IO), newline(!IO),
     io.write(22.3954899E22, !IO), newline(!IO),
 
-    % Test integers.
+    % Test ints.
     io.write(-65, !IO), newline(!IO),
     io.write(4, !IO), newline(!IO),
+
+    % Test uints.
+    io.write(651u, !IO), newline(!IO),
+
+    % Test fixed-size ints.
+    io.write(-128i8, !IO), newline(!IO),
+    io.write(127i8, !IO), newline(!IO),
+    io.write(255u8, !IO), newline(!IO),
+    io.write(-32768i16, !IO), newline(!IO),
+    io.write(32767i16, !IO), newline(!IO),
+    io.write(65535u16, !IO), newline(!IO),
+    io.write(-2147483648i32, !IO), newline(!IO),
+    io.write(2147483647i32, !IO), newline(!IO),
+    io.write(4294967295u32, !IO), newline(!IO),
 
     % Test univ.
     type_to_univ(["hi! I'm a univ!"], Univ),

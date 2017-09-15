@@ -1,7 +1,7 @@
 var("X") + int(3) * var("X^2") ; (type)
 { type }
-{ ':-' }
-':-'
+{ '?-' }
+'?-'
 { blah }
 blah ; (type), (type) * blah ; (type)
 ((blah ; blah), blah) * blah ; blah
@@ -35,6 +35,16 @@ TESTING BUILTINS
 2.23954899E23
 -65
 4
+651u
+-128i8
+127i8
+255u8
+-32768i16
+32767i16
+65535u16
+-2147483648i32
+2147483647i32
+4294967295u32
 univ_cons(["hi! I\'m a univ!"])
 '<<predicate>>'
 
