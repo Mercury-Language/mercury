@@ -498,12 +498,21 @@
 :- pred write_int(int::in, io::di, io::uo) is det.
 :- pred write_int(io.text_output_stream::in, int::in, io::di, io::uo) is det.
 
+    % Write a signed 8-bit integer to the current output stream
+    % or to the specified output stream.
+    %
 :- pred write_int8(int8::in, io::di, io::uo) is det.
 :- pred write_int8(io.text_output_stream::in, int8::in, io::di, io::uo) is det.
 
+    % Write a signed 16-bit integer to the current output stream
+    % or to the specified output stream.
+    %
 :- pred write_int16(int16::in, io::di, io::uo) is det.
 :- pred write_int16(io.text_output_stream::in, int16::in, io::di, io::uo) is det.
 
+    % Write a signed 32-bit integer to the current output stream
+    % or to the specified output stream.
+    %
 :- pred write_int32(int32::in, io::di, io::uo) is det.
 :- pred write_int32(io.text_output_stream::in, int32::in, io::di, io::uo) is det.
 
@@ -513,12 +522,21 @@
 :- pred write_uint(uint::in, io::di, io::uo) is det.
 :- pred write_uint(io.text_output_stream::in, uint::in, io::di, io::uo) is det.
 
+    % Write an unsigned 8-bit integer to the current output stream
+    % or to the specified output stream.
+    %
 :- pred write_uint8(uint8::in, io::di, io::uo) is det.
 :- pred write_uint8(io.text_output_stream::in, uint8::in, io::di, io::uo) is det.
 
+    % Write an unsigned 16-bit integer to the current output stream
+    % or to the specified output stream.
+    %
 :- pred write_uint16(uint16::in, io::di, io::uo) is det.
 :- pred write_uint16(io.text_output_stream::in, uint16::in, io::di, io::uo) is det.
 
+    % Write an unsigned 32-bit integer to the current output stream
+    % or to the specified output stream.
+    %
 :- pred write_uint32(uint32::in, io::di, io::uo) is det.
 :- pred write_uint32(io.text_output_stream::in, uint32::in, io::di, io::uo) is det.
 
@@ -814,6 +832,20 @@
 :- pred read_byte(io.binary_input_stream::in, io.result(int)::out,
     io::di, io::uo) is det.
 
+    % Reads a single signed 8-bit integer from the current binary input
+    % stream or from the specified binary input stream.
+    %
+:- pred read_binary_int8(io.result(int8)::out, io::di, io::uo) is det.
+:- pred read_binary_int8(io.binary_input_stream::in, io.result(int8)::out,
+    io::di, io::uo) is det.
+
+    % Reads a single unsigned 8-bit integer from the current binary input
+    % stream or from the specified binary input stream.
+    %
+:- pred read_binary_uint8(io.result(uint8)::out, io::di, io::uo) is det.
+:- pred read_binary_uint8(io.binary_input_stream::in, io.result(uint8)::out,
+    io::di, io::uo) is det.
+
     % Fill a bitmap from the current binary input stream
     % or from the specified binary input stream.
     % Return the number of bytes read. On end-of-file, the number of
@@ -979,6 +1011,20 @@
 :- pred write_byte(int::in, io::di, io::uo) is det.
 :- pred write_byte(io.binary_output_stream::in, int::in, io::di, io::uo)
     is det.
+
+    % Writes a signed 8-bit integer to the current binary output stream
+    % or to the specified binary output stream.
+    %
+:- pred write_binary_int8(int8::in, io::di, io::uo) is det.
+:- pred write_binary_int8(io.binary_output_stream::in, int8::in,
+    io::di, io::uo) is det.
+
+    % Writes an unsigned 8-bit integer to the current binary output stream
+    % or to the specified binary output stream.
+    %
+:- pred write_binary_uint8(uint8::in, io::di, io::uo) is det.
+:- pred write_binary_uint8(io.binary_output_stream::in, uint8::in,
+    io::di, io::uo) is det.
 
     % Write a bitmap to the current binary output stream
     % or to the specified binary output stream. The bitmap must not contain
@@ -1777,6 +1823,7 @@
 :- import_module dir.
 :- import_module exception.
 :- import_module int.
+:- import_module int8.
 :- import_module parser.
 :- import_module require.
 :- import_module stream.string_writer.
@@ -1784,6 +1831,7 @@
 :- import_module term_conversion.
 :- import_module term_io.
 :- import_module type_desc.
+:- import_module uint8.
 
 :- use_module rtti_implementation.
 :- use_module table_builtin.
@@ -2126,6 +2174,44 @@ read_byte(binary_input_stream(Stream), Result, !IO) :-
     (
         Result0 = ok,
         Result = ok(Byte)
+    ;
+        Result0 = eof,
+        Result = eof
+    ;
+        Result0 = error,
+        make_err_msg(Error, "read failed: ", Msg),
+        Result = error(io_error(Msg))
+    ).
+
+read_binary_int8(Result, !IO) :-
+    binary_input_stream(Stream, !IO),
+    read_binary_int8(Stream, Result, !IO).
+
+read_binary_int8(binary_input_stream(Stream), Result, !IO) :-
+    read_byte_val(input_stream(Stream), Result0, Int, Error, !IO),
+    (
+        Result0 = ok,
+        Int8 = cast_from_int(Int),
+        Result = ok(Int8)
+    ;
+        Result0 = eof,
+        Result = eof
+    ;
+        Result0 = error,
+        make_err_msg(Error, "read failed: ", Msg),
+        Result = error(io_error(Msg))
+    ).
+
+read_binary_uint8(Result, !IO) :-
+    binary_input_stream(Stream, !IO),
+    read_binary_uint8(Stream, Result, !IO).
+
+read_binary_uint8(binary_input_stream(Stream), Result, !IO) :-
+    read_byte_val(input_stream(Stream), Result0, Int, Error, !IO),
+    (
+        Result0 = ok,
+        UInt8 = cast_from_int(Int),
+        Result = ok(UInt8)
     ;
         Result0 = eof,
         Result = eof
@@ -7819,9 +7905,22 @@ write_float(Val, !IO) :-
     output_stream(Stream, !IO),
     write_float(Stream, Val, !IO).
 
+%---------------------------------------------------------------------------%
+%
+% Output predicates (with output to mercury_current_binary_output).
+%
+
 write_byte(Byte, !IO) :-
     binary_output_stream(Stream, !IO),
     write_byte(Stream, Byte, !IO).
+
+write_binary_int8(Int8, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary_int8(Stream, Int8, !IO).
+
+write_binary_uint8(UInt8, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary_uint8(Stream, UInt8, !IO).
 
 write_bitmap(Bitmap, !IO) :-
     binary_output_stream(Stream, !IO),
@@ -8139,6 +8238,16 @@ write_float(output_stream(Stream), Val, !IO) :-
 
 write_byte(binary_output_stream(Stream), Byte, !IO) :-
     do_write_byte(Stream, Byte, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+write_binary_int8(binary_output_stream(Stream), Int8, !IO) :-
+    Int = int8.to_int(Int8),
+    do_write_byte(Stream, Int, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+write_binary_uint8(binary_output_stream(Stream), UInt8, !IO) :-
+    Int = uint8.to_int(UInt8),
+    do_write_byte(Stream, Int, Error, !IO),
     throw_on_output_error(Error, !IO).
 
 :- pred do_write_byte(stream::in, int::in, system_error::out, io::di, io::uo)
