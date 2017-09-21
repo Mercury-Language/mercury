@@ -233,8 +233,8 @@
 
     % Predicates can be marked with various boolean flags, called "markers".
 
-    % An abstract set of pred_markers.
-:- type pred_markers.
+    % A set of pred_markers.
+:- type pred_markers == set(pred_marker).
 
 :- type pred_marker
     --->    marker_stub
@@ -1828,8 +1828,6 @@ pred_info_get_sym_name(PredInfo, SymName) :-
     SymName = qualified(Module, Name).
 
 %-----------------------------------------------------------------------------%
-
-:- type pred_markers == set(pred_marker).
 
 init_markers(set.init).
 

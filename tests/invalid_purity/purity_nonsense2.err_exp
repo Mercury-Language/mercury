@@ -4,8 +4,8 @@ purity_nonsense2.m:010: Syntax error at token 'mode': unexpected token at start
 purity_nonsense2.m:010:   of (sub)term.
 purity_nonsense2.m:012: Error: no clauses for predicate `undefined'/0.
 purity_nonsense2.m:014: Error: `:- pragma promise_pure' declaration for
-purity_nonsense2.m:014:   `purity_nonsense2.undefined2'/0 without corresponding
-purity_nonsense2.m:014:   `:- pred' or `:- func' declaration.
+purity_nonsense2.m:014:   `undefined2'/0 without corresponding `:- pred' or
+purity_nonsense2.m:014:   `:- func' declaration.
 purity_nonsense2.m:016: Error: clause for predicate `purity_nonsense2.e12'/0
 purity_nonsense2.m:016:   without corresponding `:- pred' declaration.
 purity_nonsense2.m:017: In clause for predicate `e12'/0:

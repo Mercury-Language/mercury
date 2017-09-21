@@ -31,8 +31,8 @@
     prog_context::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred report_undefined_pred_or_func_error(sym_name::in, int::in,
-    prog_context::in, list(format_component)::in,
+:- pred report_undefined_pred_or_func_error(sym_name::in,
+    arity::in, list(arity)::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Similar to report_undeclared_mode_error, but gives less information.
@@ -75,6 +75,7 @@
 
 :- import_module bool.
 :- import_module set.
+:- import_module string.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -101,13 +102,24 @@ report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         [Msg1, Msg2] ++ ExtraMsgs),
     !:Specs = [Spec | !.Specs].
 
-report_undefined_pred_or_func_error(Name, Arity, Context, DescPieces,
-        !Specs) :-
-    Pieces = [words("Error:") | DescPieces] ++ [words("for"),
-        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+report_undefined_pred_or_func_error(Name, Arity, OtherArities, Context,
+        DescPieces, !Specs) :-
+    MainPieces = [words("Error:") | DescPieces] ++ [words("for"),
+        unqual_sym_name_and_arity(sym_name_arity(Name, Arity)),
         words("without corresponding"), decl("pred"), words("or"),
-        decl("func"), words("declaration.")],
-    Msg = simple_msg(Context, [always(Pieces)]),
+        decl("func"), words("declaration."), nl],
+    (
+        OtherArities = [],
+        OtherArityPieces = []
+    ;
+        OtherArities = [_ | _],
+        list.map(string.int_to_string, OtherArities, OtherArityStrs),
+        OtherArityPieces = [unqual_sym_name(Name), words("does exist with"),
+            words(choose_number(OtherArityStrs, "arity", "arities"))] ++
+            list_to_pieces(OtherArityStrs) ++
+            [suffix("."), nl]
+    ),
+    Msg = simple_msg(Context, [always(MainPieces ++ OtherArityPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 

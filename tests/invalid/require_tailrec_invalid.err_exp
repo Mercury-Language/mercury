@@ -1,19 +1,16 @@
 require_tailrec_invalid.m:014: Error: `:- pragma require_tail_recursion'
 require_tailrec_invalid.m:014:   declaration in module interface.
 require_tailrec_invalid.m:021: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:021:   for
-require_tailrec_invalid.m:021:   `require_tailrec_invalid.non_existent_pred'/3
-require_tailrec_invalid.m:021:   without corresponding `:- pred' or `:- func'
+require_tailrec_invalid.m:021:   for `non_existent_pred'/3 without
+require_tailrec_invalid.m:021:   corresponding `:- pred' or `:- func'
 require_tailrec_invalid.m:021:   declaration.
 require_tailrec_invalid.m:022: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:022:   for
-require_tailrec_invalid.m:022:   `require_tailrec_invalid.non_existent_proc'/2
-require_tailrec_invalid.m:022:   without corresponding `:- pred' or `:- func'
+require_tailrec_invalid.m:022:   for `non_existent_proc'/2 without
+require_tailrec_invalid.m:022:   corresponding `:- pred' or `:- func'
 require_tailrec_invalid.m:022:   declaration.
 require_tailrec_invalid.m:023: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:023:   for
-require_tailrec_invalid.m:023:   `require_tailrec_invalid.non_existent_func_proc'/1
-require_tailrec_invalid.m:023:   without corresponding `:- pred' or `:- func'
+require_tailrec_invalid.m:023:   for `non_existent_func_proc'/1 without
+require_tailrec_invalid.m:023:   corresponding `:- pred' or `:- func'
 require_tailrec_invalid.m:023:   declaration.
 require_tailrec_invalid.m:026: Error: no such mode for
 require_tailrec_invalid.m:026:   `require_tailrec_invalid.length'/2 in
@@ -46,9 +43,8 @@ require_tailrec_invalid.m:050: Error: unrecognised
 require_tailrec_invalid.m:050:   `:- pragma require_tail_recursion' attribute:
 require_tailrec_invalid.m:050:   `blahblahblah'.
 require_tailrec_invalid.m:054: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:054:   for `require_tailrec_invalid.blahblahblah'/0
-require_tailrec_invalid.m:054:   without corresponding `:- pred' or `:- func'
-require_tailrec_invalid.m:054:   declaration.
+require_tailrec_invalid.m:054:   for `blahblahblah'/0 without corresponding
+require_tailrec_invalid.m:054:   `:- pred' or `:- func' declaration.
 require_tailrec_invalid.m:056: Error: expected attribute list for
 require_tailrec_invalid.m:056:   `:- pragma require_tail_recursion'
 require_tailrec_invalid.m:056:   declaration, got `Woop'.

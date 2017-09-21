@@ -1,6 +1,7 @@
-bad_consider_used.m:032: Error: `:- pragma consider_used' declaration for
-bad_consider_used.m:032:   `bad_consider_used.q'/3 without corresponding
-bad_consider_used.m:032:   `:- pred' or `:- func' declaration.
-bad_consider_used.m:033: Error: `:- pragma consider_used' declaration for
-bad_consider_used.m:033:   `bad_consider_used.g'/2 without corresponding
-bad_consider_used.m:033:   `:- pred' or `:- func' declaration.
+bad_consider_used.m:032: Error: `:- pragma consider_used' declaration for `q'/3
+bad_consider_used.m:032:   without corresponding `:- pred' or `:- func'
+bad_consider_used.m:032:   declaration.
+bad_consider_used.m:032:   `q' does exist with arity 2.
+bad_consider_used.m:033: Error: `:- pragma consider_used' declaration for `g'/2
+bad_consider_used.m:033:   without corresponding `:- pred' or `:- func'
+bad_consider_used.m:033:   declaration.

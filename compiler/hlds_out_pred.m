@@ -1346,6 +1346,8 @@ write_marker(Marker, !IO) :-
     marker_name(Marker, Name),
     io.write_string(Name, !IO).
 
+% For markers that we add to a predicate because of a pragma on that predicate,
+% the marker name MUST correspond to the name of the pragma.
 marker_name(marker_stub, "stub").
 marker_name(marker_builtin_stub, "builtin_stub").
 marker_name(marker_infer_type, "infer_type").

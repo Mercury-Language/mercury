@@ -67,18 +67,24 @@ add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
         !ModuleInfo, !Specs) :-
     FPEInfo = pragma_info_foreign_proc_export(Lang, PrednameModesPF,
         ExportedName),
-    PrednameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
+    PrednameModesPF = pred_name_modes_pf(PredSymName, Modes, PredOrFunc),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     list.length(Modes, Arity),
     predicate_table_lookup_pf_sym_arity(PredTable, may_be_partially_qualified,
-        PredOrFunc, Name, Arity, PredIds),
+        PredOrFunc, PredSymName, Arity, PredIds),
     (
         PredIds = [],
         (
             MaybeAttrs = item_origin_user,
-            report_undefined_pred_or_func_error(Name, Arity, Context,
-                [pragma_decl("foreign_export"), words("declaration")],
-                !Specs)
+            predicate_table_lookup_pf_sym(PredTable,
+                may_be_partially_qualified, PredOrFunc, PredSymName,
+                AllArityPredIds),
+            module_info_get_preds(!.ModuleInfo, Preds),
+            find_pred_arities_other_than(Preds, AllArityPredIds, Arity,
+                OtherArities),
+            DescPieces = [pragma_decl("foreign_export"), words("declaration")],
+            report_undefined_pred_or_func_error(PredSymName, Arity,
+                OtherArities, Context, DescPieces, !Specs)
         ;
             MaybeAttrs = item_origin_compiler(CompilerAttrs),
             % We do not warn about errors in export pragmas created by
@@ -94,7 +100,7 @@ add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
     ;
         PredIds = [PredId],
         add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs,
-            Lang, Name, PredId, Modes, ExportedName, Context,
+            Lang, PredSymName, PredId, Modes, ExportedName, Context,
             !ModuleInfo, !Specs)
     ;
         PredIds = [_, _ | _],
@@ -122,8 +128,9 @@ add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context,
     prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
-        PredId, Modes, ExportedName, Context, !ModuleInfo, !Specs) :-
+add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang,
+        PredSymName, PredId, Modes, ExportedName, Context,
+        !ModuleInfo, !Specs) :-
     predicate_table_get_preds(PredTable, Preds),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, Procs),
@@ -185,7 +192,7 @@ add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
     else
         (
             MaybeAttrs = item_origin_user,
-            report_undefined_mode_error(Name, Arity, Context,
+            report_undefined_mode_error(PredSymName, Arity, Context,
                 [pragma_decl("foreign_export"), words("declaration")],
                 !Specs)
         ;

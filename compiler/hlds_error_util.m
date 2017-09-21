@@ -9,9 +9,9 @@
 % File: hlds_error_util.m.
 % Main author: zs.
 %
-% This module contains code that can be helpful in the formatting of
-% error messages. It builds upon parse_tree.error_util, and extends it
-% with predicates that access HLDS data structures.
+% This module contains code that can be helpful in the generation or
+% formatting of error messages. It builds upon parse_tree.error_util,
+% and extends it with predicates that access HLDS data structures.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -21,6 +21,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.
@@ -68,6 +69,19 @@
 
 :- func describe_several_call_sites(module_info, should_module_qualify,
     assoc_list(pred_proc_id, prog_context)) = list(format_component).
+
+%-----------------------------------------------------------------------------%
+
+    % Return the arities that the given pred_ids have.
+    %
+:- pred find_pred_arities(pred_table::in, list(pred_id)::in,
+    list(arity)::out) is det.
+
+    % Return the set of arities that the given pred_ids have,
+    % other than the given arity.
+    %
+:- pred find_pred_arities_other_than(pred_table::in, list(pred_id)::in,
+    arity::in, list(arity)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -127,8 +141,10 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
+:- import_module map.
 :- import_module string.
 :- import_module require.
+:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -287,6 +303,27 @@ arg_modes_to_string(InstVarSet, ArgModes) = Str :-
             ArgModes),
         Str = "(" ++ ArgsStr ++ ")"
     ).
+
+%-----------------------------------------------------------------------------%
+
+find_pred_arities(PredTable, PredIds, Arities) :-
+    find_pred_arities_set(PredTable, PredIds, AritiesSet),
+    set.to_sorted_list(AritiesSet, Arities).
+
+find_pred_arities_other_than(PredTable, PredIds, Arity, OtherArities) :-
+    find_pred_arities_set(PredTable, PredIds, AritiesSet),
+    set.delete(Arity, AritiesSet, OtherAritiesSet),
+    set.to_sorted_list(OtherAritiesSet, OtherArities).
+
+:- pred find_pred_arities_set(pred_table::in, list(pred_id)::in,
+    set(arity)::out) is det.
+
+find_pred_arities_set(_, [], set.init).
+find_pred_arities_set(PredTable, [PredId | PredIds], AritiesSet) :-
+    find_pred_arities_set(PredTable, PredIds, AritiesSet0),
+    map.lookup(PredTable, PredId, PredInfo),
+    Arity = pred_info_orig_arity(PredInfo),
+    set.insert(Arity, AritiesSet0, AritiesSet).
 
 %-----------------------------------------------------------------------------%
 

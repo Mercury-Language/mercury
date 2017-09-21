@@ -67,8 +67,10 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
     ),
     (
         PredIds = [],
-        report_undefined_pred_or_func_error(SymName, Arity, Context,
-            [pragma_decl("type_spec"), words("declaration")], !Specs)
+        % XXX We should compute a valid value for OtherArities.
+        OtherArities = [],
+        report_undefined_pred_or_func_error(SymName, Arity, OtherArities,
+            Context, [pragma_decl("type_spec"), words("declaration")], !Specs)
     ;
         PredIds = [_ | _],
         list.foldl3(add_pragma_type_spec_for_pred(TSInfo, Context), PredIds,
