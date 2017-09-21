@@ -171,7 +171,9 @@ GRADESTRING = $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
 BOEHM_CFLAGS = @ENABLE_BOEHM_LARGE_CONFIG@ \
 	@ENABLE_BOEHM_USE_MMAP@ \
 	@ENABLE_BOEHM_USE_MUNMAP@ \
-	@ENABLE_BOEHM_XOPEN_SOURCE@
+	@ENABLE_BOEHM_XOPEN_SOURCE@ \
+	@BOEHM_NO_GETCONTEXT@ \
+	@BOEHM_HAVE_DL_ITERATE_PTR@
 
 # Additional options to pass to the C compiler when building Boehm-GC for
 # threads.

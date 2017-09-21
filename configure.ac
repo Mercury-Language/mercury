@@ -1373,7 +1373,7 @@ mercury_check_for_functions \
         access sleep opendir readdir closedir mkdir symlink readlink \
         gettimeofday setenv putenv _putenv posix_spawn sched_setaffinity \
         sched_getaffinity sched_getcpu sched_yield mkstemp mkdtemp \
-        setrlimit fma
+        setrlimit fma getcontext dl_iterate_phdr
 
 mercury_check_for_stdio_functions \
         snprintf _snprintf vsnprintf _vsnprintf
@@ -3318,6 +3318,23 @@ if test "$mercury_cv_thread_local_storage" = yes; then
             ;;
     esac
 fi
+
+#-----------------------------------------------------------------------------#
+
+# It is necessary to pass -DNO_GETCONTEXT and -DHAVE_DL_ITERATE_PHDR when
+# building Boehm GC with musl libc.
+
+case $ac_cv_func_getcontext in
+    yes) BOEHM_NO_GETCONTEXT= ;;
+    no)  BOEHM_NO_GETCONTEXT="-DNO_GETCONTEXT" ;;
+esac
+AC_SUBST(BOEHM_NO_GETCONTEXT)
+
+case $ac_cv_func_dl_iterate_phdr in
+    yes) BOEHM_HAVE_DL_ITERATE_PTR="-DHAVE_DL_ITERATE_PHDR" ;;
+    no)  BOEHM_HAVE_DL_ITERATE_PTR= ;;
+esac
+AC_SUBST(BOEHM_HAVE_DL_ITERATE_PTR)
 
 #-----------------------------------------------------------------------------#
 
