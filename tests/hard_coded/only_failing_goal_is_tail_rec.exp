@@ -1,0 +1,2 @@
+foo_foo(foo_bar(bar_foo(foo_bar(bar_int(41))))) -> success
+foo_foo(foo_bar(bar_foo(foo_bar(bar_int(43))))) -> failure

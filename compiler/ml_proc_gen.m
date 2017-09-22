@@ -1220,12 +1220,26 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         expect(unify(ArgTuples, ProcArgTuples), $pred,
             "ArgTuples != ProcArgTuples"),
         ml_gen_info_set_byref_output_vars(ByRefOutputVars, !Info),
-        ( TsccCodeModel = tscc_det, CodeModel = model_det
-        ; TsccCodeModel = tscc_semi, CodeModel = model_semi
+        (
+            TsccCodeModel = tscc_det,
+            CodeModel = model_det,
+            InitSucceededStmts = []
+        ;
+            TsccCodeModel = tscc_semi,
+            CodeModel = model_semi,
+            % In some model_semi predicates, the only goal in their body
+            % that can fail is a tail recursive call. The InitSucceededStmt
+            % ensures that the success indicator variable (a) gets declared,
+            % and (b) contains a meaningful and correct value on execution
+            % paths that don't include the tail recursive call.
+            ml_gen_set_success(ml_const(mlconst_true), ProcContext,
+                InitSucceededStmt, !Info),
+            InitSucceededStmts = [InitSucceededStmt]
         ),
         proc_info_get_goal(ProcInfo, Goal),
         ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars,
-            Goal, LocalVarDefns0, FuncDefns, GoalStmts, !Info),
+            Goal, LocalVarDefns0, FuncDefns, GoalStmts0, !Info),
+        GoalStmts = InitSucceededStmts ++ GoalStmts0,
         ml_gen_post_process_locals(ProcInfo, ProcContext, ArgTuples,
             CopiedOutputVars, LocalVarDefns0, LocalVarDefns, !Info),
 
