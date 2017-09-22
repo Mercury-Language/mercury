@@ -1610,6 +1610,8 @@
 :- instance stream.stream(binary_output_stream, io).
 :- instance stream.output(binary_output_stream, io).
 :- instance stream.writer(binary_output_stream, byte, io).
+:- instance stream.writer(binary_output_stream, int8, io).
+:- instance stream.writer(binary_output_stream, uint8, io).
 :- instance stream.writer(binary_output_stream, bitmap.slice, io).
 :- instance stream.seekable(binary_output_stream, io).
 
@@ -11851,6 +11853,18 @@ res_to_stream_res(error(E)) = error(E).
     where
 [
     pred(put/4) is write_byte
+].
+
+:- instance stream.writer(binary_output_stream, int8, io)
+    where
+[
+    pred(put/4) is write_binary_int8
+].
+
+:- instance stream.writer(binary_output_stream, uint8, io)
+    where
+[
+    pred(put/4) is write_binary_uint8
 ].
 
 :- instance stream.writer(binary_output_stream, bitmap, io)
