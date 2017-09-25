@@ -195,6 +195,12 @@
     %
 :- func \ (int16::in) = (int16::uo) is det.
 
+    % reverse_bytes(A) = B:
+    % B is the value that results from reversing the bytes in the
+    % representation of A.
+    %
+:- func reverse_bytes(int16) = int16.
+
 :- func min_int16 = int16.
 
 :- func max_int16 = int16.
@@ -385,6 +391,33 @@ odd(X) :-
 min_int16 = -32_768_i16.
 
 max_int16 = 32_767_i16.
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = (int16_t) MR_uint16_reverse_bytes((uint16_t)A);
+").
+
+:- pragma foreign_proc("C#",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = (short) ((A & 0x00ffU) << 8 | (A & 0xff00U) >> 8);
+").
+
+:- pragma foreign_proc("Java",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Short.reverseBytes(A);
+").
+
+:- pragma no_determinism_warning(reverse_bytes/1).
+reverse_bytes(_) = _ :-
+    sorry($module, "int16.reverse_bytes/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 

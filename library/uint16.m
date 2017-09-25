@@ -179,6 +179,12 @@
     %
 :- func \ (uint16::in) = (uint16::uo) is det.
 
+    % reverse_bytes(A) = B:
+    % B is the value that results from reversing the bytes in the
+    % representation of A.
+    %
+:- func reverse_bytes(uint16) = uint16.
+
 :- func max_uint16 = uint16.
 
     % Convert a uint16 to a pretty_printer.doc for formatting.
@@ -356,6 +362,25 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1u16) \= 0u16.
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    B = MR_uint16_reverse_bytes(A);
+").
+
+:- pragma foreign_proc("Java",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Short.reverseBytes(A);
+").
+
+reverse_bytes(A) = B :-
+    B = (A >> 8) \/ (A << 8).
 
 %---------------------------------------------------------------------------%
 

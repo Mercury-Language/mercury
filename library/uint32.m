@@ -177,6 +177,12 @@
     %
 :- func \ (uint32::in) = (uint32::uo) is det.
 
+    % reverse_bytes(A) = B:
+    % B is the value that results from reversing the bytes in the
+    % representation of A.
+    %
+:- func reverse_bytes(uint32) = uint32.
+
 :- func max_uint32 = uint32.
 
     % Convert a uint32 to a pretty_printer.doc for formatting.
@@ -380,6 +386,28 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1u32) \= 0u32.
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    B = MR_uint32_reverse_bytes(A);
+").
+
+:- pragma foreign_proc("Java",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Integer.reverseBytes(A);
+").
+
+reverse_bytes(A) = B :-
+    B = ((A /\ 0x_0000_00ff_u32) << 24) \/
+        ((A /\ 0x_0000_ff00_u32) << 8)  \/
+        ((A /\ 0x_00ff_0000_u32) >> 8)  \/
+        ((A /\ 0x_ff00_0000_u32) >> 24).
 
 %---------------------------------------------------------------------------%
 

@@ -193,6 +193,12 @@
     %
 :- func \ (int32::in) = (int32::uo) is det.
 
+    % reverse_bytes(A) = B:
+    % B is the value that results from reversing the bytes in the
+    % representation of A.
+    %
+:- func reverse_bytes(int32) = int32.
+
 :- func min_int32 = int32.
 
 :- func max_int32 = int32.
@@ -405,6 +411,38 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1i32) \= 0i32.
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    B = (int32_t) MR_uint32_reverse_bytes((uint32_t)A);
+").
+
+:- pragma foreign_proc("C#",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    uint u_A = (uint) A;
+
+    B = (int) ((u_A & 0x000000ffU) << 24  |
+               (u_A & 0x0000ff00U) << 8   |
+               (u_A & 0x00ff0000U) >> 8   |
+               (u_A & 0xff000000U) >> 24);
+").
+
+:- pragma foreign_proc("Java",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Integer.reverseBytes(A);
+").
+
+:- pragma no_determinism_warning(reverse_bytes/1).
+reverse_bytes(_) = _ :-
+    sorry($module, "int32.reverse_bytes/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
