@@ -263,7 +263,7 @@ cast_from_int(_) = _ :-
 ").
 
 :- pragma foreign_proc("Java",
-    cast_from_int(I16::in) = (U16::out),
+    cast_from_int16(I16::in) = (U16::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U16 = I16;
