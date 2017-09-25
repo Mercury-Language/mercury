@@ -31,6 +31,9 @@ getopt_io.m
 hash_table.m
 injection.m
 int.m
+int16.m
+int32.m
+int8.m
 integer.m
 io.m
 lazy.m
@@ -88,6 +91,9 @@ tree234.m
 tree_bitset.m
 type_desc.m
 uint.m
+uint8.m
+uint16.m
+uint32.m
 unit.m
 univ.m
 varset.m
