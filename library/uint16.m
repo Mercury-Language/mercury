@@ -33,6 +33,8 @@
 
 :- func cast_from_int(int) = uint16.
 
+:- func cast_from_int16(int16) = uint16.
+
 :- func to_int(uint16) = int.
 
 %--------------------------------------------------------------------------%
@@ -237,6 +239,35 @@ det_from_int(I) = U16 :-
 cast_from_int(_) = _ :-
     sorry($module, "uint16.cast_from_int/1 NYI for Erlang").
 
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_int16(I16::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U16 = (uint16_t) I16;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_int16(I6::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (ushort) I16;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_int(I16::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = I16;
+").
+
+:- pragma no_determinism_warning(cast_from_int16/1).
+cast_from_int16(_) = _ :-
+    sorry($module, "uint16.cast_from_int16/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",

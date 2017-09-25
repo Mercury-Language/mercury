@@ -1012,6 +1012,8 @@
 :- pred write_byte(io.binary_output_stream::in, int::in, io::di, io::uo)
     is det.
 
+%---------------------%
+
     % Writes a signed 8-bit integer to the current binary output stream
     % or to the specified binary output stream.
     %
@@ -1025,6 +1027,75 @@
 :- pred write_binary_uint8(uint8::in, io::di, io::uo) is det.
 :- pred write_binary_uint8(io.binary_output_stream::in, uint8::in,
     io::di, io::uo) is det.
+
+%---------------------%
+
+    % The following predicates write multibyte integer values to the current
+    % binary output stream or to the specified output stream.
+    %
+    % These names of these predicates have the form:
+    %
+    %    write_binary_<TYPE><SUFFIX>
+    %
+    % where <TYPE> is the name of one of the Mercury multibyte fixed size
+    % integer types. <SUFFIX> is optional and specifies the byte order in
+    % which the integer value is written to the stream.  It may be one of:
+    %
+    %     no suffix - native byte order of the underlying platform.
+    %     "_le"     - little endian byte order.
+    %     "_be"     - big endian byte order.
+    %
+:- pred write_binary_int16(int16::in, io::di, io::uo) is det.
+:- pred write_binary_int16(io.binary_output_stream::in, int16::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_int16_le(int16::in, io::di, io::uo) is det.
+:- pred write_binary_int16_le(io.binary_output_stream::in, int16::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_int16_be(int16::in, io::di, io::uo) is det.
+:- pred write_binary_int16_be(io.binary_output_stream::in, int16::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_uint16(uint16::in, io::di, io::uo) is det.
+:- pred write_binary_uint16(io.binary_output_stream::in, uint16::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_uint16_le(uint16::in, io::di, io::uo) is det.
+:- pred write_binary_uint16_le(io.binary_output_stream::in, uint16::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_uint16_be(uint16::in, io::di, io::uo) is det.
+:- pred write_binary_uint16_be(io.binary_output_stream::in, uint16::in,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+:- pred write_binary_int32(int32::in, io::di, io::uo) is det.
+:- pred write_binary_int32(io.binary_output_stream::in, int32::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_int32_le(int32::in, io::di, io::uo) is det.
+:- pred write_binary_int32_le(io.binary_output_stream::in, int32::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_int32_be(int32::in, io::di, io::uo) is det.
+:- pred write_binary_int32_be(io.binary_output_stream::in, int32::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_uint32(uint32::in, io::di, io::uo) is det.
+:- pred write_binary_uint32(io.binary_output_stream::in, uint32::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_uint32_le(uint32::in, io::di, io::uo) is det.
+:- pred write_binary_uint32_le(io.binary_output_stream::in, uint32::in,
+    io::di, io::uo) is det.
+
+:- pred write_binary_uint32_be(uint32::in, io::di, io::uo) is det.
+:- pred write_binary_uint32_be(io.binary_output_stream::in, uint32::in,
+    io::di, io::uo) is det.
+
+%---------------------%
 
     % Write a bitmap to the current binary output stream
     % or to the specified binary output stream. The bitmap must not contain
@@ -1049,6 +1120,8 @@
 :- pred write_bitmap(io.binary_output_stream, bitmap, int, int, io, io).
 %:- mode write_bitmap(in, bitmap_ui, in, in, di, uo) is det.
 :- mode write_bitmap(in, in, in, in, di, uo) is det.
+
+%---------------------%
 
     % Flush the output buffer of the current binary output stream.
     % or of the specified binary output stream.
@@ -1834,6 +1907,8 @@
 :- import_module term_io.
 :- import_module type_desc.
 :- import_module uint8.
+:- import_module uint16.
+:- import_module uint32.
 
 :- use_module rtti_implementation.
 :- use_module table_builtin.
@@ -7924,6 +7999,64 @@ write_binary_uint8(UInt8, !IO) :-
     binary_output_stream(Stream, !IO),
     write_binary_uint8(Stream, UInt8, !IO).
 
+%---------------------%
+
+write_binary_int16(Int16, !IO) :-
+    UInt16 = uint16.cast_from_int16(Int16),
+    write_binary_uint16(UInt16, !IO).
+
+write_binary_int16_le(Int16, !IO) :-
+    UInt16 = uint16.cast_from_int16(Int16),
+    write_binary_uint16_le(UInt16, !IO).
+
+write_binary_int16_be(Int16, !IO) :-
+    UInt16 = uint16.cast_from_int16(Int16),
+    write_binary_uint16_be(UInt16, !IO).
+
+%---------------------%
+
+write_binary_uint16(UInt16, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary_uint16(Stream, UInt16, !IO).
+
+write_binary_uint16_le(UInt16, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary_uint16_le(Stream, UInt16, !IO).
+
+write_binary_uint16_be(UInt16, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary_uint16_be(Stream, UInt16, !IO).
+
+%---------------------%
+
+write_binary_int32(Int32, !IO) :-
+    UInt32 = uint32.cast_from_int32(Int32),
+    write_binary_uint32(UInt32, !IO).
+
+write_binary_int32_le(Int32, !IO) :-
+    UInt32 = uint32.cast_from_int32(Int32),
+    write_binary_uint32_le(UInt32, !IO).
+
+write_binary_int32_be(Int32, !IO) :-
+    UInt32 = uint32.cast_from_int32(Int32),
+    write_binary_uint32_be(UInt32, !IO).
+
+%---------------------%
+
+write_binary_uint32(UInt32, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary_uint32(Stream, UInt32, !IO).
+
+write_binary_uint32_le(UInt32, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary_uint32_le(Stream, UInt32, !IO).
+
+write_binary_uint32_be(UInt32, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary_uint32_be(Stream, UInt32, !IO).
+
+%---------------------%
+
 write_bitmap(Bitmap, !IO) :-
     binary_output_stream(Stream, !IO),
     write_bitmap(Stream, Bitmap, !IO).
@@ -7931,6 +8064,8 @@ write_bitmap(Bitmap, !IO) :-
 write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     binary_output_stream(Stream, !IO),
     write_bitmap(Stream, Bitmap, Start, NumBytes, !IO).
+
+%---------------------%
 
 flush_output(!IO) :-
     output_stream(Stream, !IO),
@@ -8015,7 +8150,7 @@ binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Output predicates (with output to the specified stream).
+% Output predicates (with output to the specified text stream).
 %
 
 write_string(output_stream(Stream), Message, !IO) :-
@@ -8186,8 +8321,8 @@ write_uint16(output_stream(Stream), Val, !IO) :-
     do_write_uint16(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_uint16(stream::in, uint16::in, system_error::out, io::di, io::uo)
-    is det.
+:- pred do_write_uint16(stream::in, uint16::in, system_error::out,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
@@ -8204,8 +8339,8 @@ write_uint32(output_stream(Stream), Val, !IO) :-
     do_write_uint32(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_uint32(stream::in, uint32::in, system_error::out, io::di, io::uo)
-    is det.
+:- pred do_write_uint32(stream::in, uint32::in, system_error::out,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
@@ -8238,6 +8373,11 @@ write_float(output_stream(Stream), Val, !IO) :-
     }
 ").
 
+%---------------------------------------------------------------------------%
+%
+% Output predicates (with output to the specifed binary stream).
+%
+
 write_byte(binary_output_stream(Stream), Byte, !IO) :-
     do_write_byte(Stream, Byte, Error, !IO),
     throw_on_output_error(Error, !IO).
@@ -8266,6 +8406,360 @@ write_binary_uint8(binary_output_stream(Stream), UInt8, !IO) :-
         Error = 0;
     }
 ").
+
+%---------------------%
+
+write_binary_int16(Stream, Int16, !IO) :-
+    UInt16 = uint16.cast_from_int16(Int16),
+    write_binary_uint16(Stream, UInt16, !IO).
+
+write_binary_uint16(binary_output_stream(Stream), UInt16, !IO) :-
+    do_write_binary_uint16(Stream, UInt16, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_binary_uint16(stream::in, uint16::in, system_error::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_write_binary_uint16(Stream::in, U16::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    if (MR_WRITE(*Stream, (unsigned char *)(&U16), 2) != 2) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_binary_uint16(Stream::in, U16::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
+        buffer.order(java.nio.ByteOrder.nativeOrder());
+        buffer.putShort(U16);
+        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 2);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_binary_uint16(Stream::in, U16::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    byte[] bytes = BitConverter.GetBytes(U16);
+    try {
+        Stream.stream.Write(bytes, 0, 2);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+%---------------------%
+
+write_binary_int16_le(Stream, Int16, !IO) :-
+    UInt16 = uint16.cast_from_int16(Int16),
+    write_binary_uint16_le(Stream, UInt16, !IO).
+
+write_binary_uint16_le(binary_output_stream(Stream), UInt16, !IO) :-
+    do_write_binary_uint16_le(Stream, UInt16, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_binary_uint16_le(stream::in, uint16::in, system_error::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_write_binary_uint16_le(Stream::in, U16::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    #if defined(MR_BIG_ENDIAN)
+        U16 = MR_uint16_reverse_bytes(U16);
+    #endif
+
+    if (MR_WRITE(*Stream, (unsigned char *)(&U16), 2) != 2) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_binary_uint16_le(Stream::in, U16::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
+        buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        buffer.putShort(U16);
+        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 2);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_binary_uint16_le(Stream::in, U16::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    byte[] bytes = BitConverter.GetBytes(U16);
+    if (!BitConverter.IsLittleEndian) {
+        Array.Reverse(bytes);
+    }
+    try {
+        Stream.stream.Write(bytes, 0, 2);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+write_binary_int16_be(Stream, Int16, !IO) :-
+    UInt16 = uint16.cast_from_int16(Int16),
+    write_binary_uint16_be(Stream, UInt16, !IO).
+
+write_binary_uint16_be(binary_output_stream(Stream), UInt16, !IO) :-
+    do_write_binary_uint16_be(Stream, UInt16, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_binary_uint16_be(stream::in, uint16::in, system_error::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_write_binary_uint16_be(Stream::in, U16::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    #if defined(MR_LITTLE_ENDIAN)
+        U16 = MR_uint16_reverse_bytes(U16);
+    #endif
+
+    if (MR_WRITE(*Stream, (unsigned char *)(&U16), 2) != 2) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_binary_uint16_be(Stream::in, U16::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
+        // Order in a byte buffer is big endian by default.
+        buffer.putShort(U16);
+        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 2);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_binary_uint16_be(Stream::in, U16::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    byte[] bytes = BitConverter.GetBytes(U16);
+    if (BitConverter.IsLittleEndian) {
+        Array.Reverse(bytes);
+    }
+    try {
+        Stream.stream.Write(bytes, 0, 2);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+%---------------------%
+
+write_binary_int32(Stream, Int32, !IO) :-
+    UInt32 = uint32.cast_from_int32(Int32),
+    write_binary_uint32(Stream, UInt32, !IO).
+
+write_binary_uint32(binary_output_stream(Stream), UInt32, !IO) :-
+    do_write_binary_uint32(Stream, UInt32, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_binary_uint32(stream::in, uint32::in, system_error::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_write_binary_uint32(Stream::in, U32::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    if (MR_WRITE(*Stream, (unsigned char *)(&U32), 4) != 4) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_binary_uint32(Stream::in, U32::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
+        buffer.order(java.nio.ByteOrder.nativeOrder());
+        buffer.putInt(U32);
+        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 4);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_binary_uint32(Stream::in, U32::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    byte[] bytes = BitConverter.GetBytes(U32);
+    try {
+        Stream.stream.Write(bytes, 0, 4);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+%---------------------%
+
+write_binary_int32_le(Stream, Int32, !IO) :-
+    UInt32 = uint32.cast_from_int32(Int32),
+    write_binary_uint32_le(Stream, UInt32, !IO).
+
+write_binary_uint32_le(binary_output_stream(Stream), UInt32, !IO) :-
+    do_write_binary_uint32_le(Stream, UInt32, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_binary_uint32_le(stream::in, uint32::in, system_error::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_write_binary_uint32_le(Stream::in, U32::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    #if defined(MR_BIG_ENDIAN)
+        U32 = MR_uint32_reverse_bytes(U32);
+    #endif
+
+    if (MR_WRITE(*Stream, (unsigned char *)(&U32), 4) != 4) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_binary_uint32_le(Stream::in, U32::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
+        buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        buffer.putInt(U32);
+        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 4);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_binary_uint32_le(Stream::in, U32::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    byte[] bytes = BitConverter.GetBytes(U32);
+    if (!BitConverter.IsLittleEndian) {
+        Array.Reverse(bytes);
+    }
+    try {
+        Stream.stream.Write(bytes, 0, 4);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+%---------------------%
+
+write_binary_int32_be(Stream, Int32, !IO) :-
+    UInt32 = uint32.cast_from_int32(Int32),
+    write_binary_uint32_be(Stream, UInt32, !IO).
+
+write_binary_uint32_be(binary_output_stream(Stream), UInt32, !IO) :-
+    do_write_binary_uint32_be(Stream, UInt32, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+:- pred do_write_binary_uint32_be(stream::in, uint32::in, system_error::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_write_binary_uint32_be(Stream::in, U32::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    #if defined(MR_LITTLE_ENDIAN)
+        U32 = MR_uint32_reverse_bytes(U32);
+    #endif
+
+    if (MR_WRITE(*Stream, (unsigned char *)(&U32), 4) != 4) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_binary_uint32_be(Stream::in, U32::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
+        // Order in a byte buffer is big endian by default.
+        buffer.putInt(U32);
+        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 4);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_binary_uint32_be(Stream::in, U32::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    byte[] bytes = BitConverter.GetBytes(U32);
+    if (BitConverter.IsLittleEndian) {
+        Array.Reverse(bytes);
+    }
+    try {
+        Stream.stream.Write(bytes, 0, 4);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+%---------------------%
 
 write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
     ( if NumBytes = Bitmap ^ num_bytes then
@@ -8349,6 +8843,8 @@ write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
     % mercury_write_binary does not return errors yet.
     Error = ok
 ").
+
+%---------------------%
 
 flush_output(output_stream(Stream), !IO) :-
     flush_output_2(Stream, Error, !IO),

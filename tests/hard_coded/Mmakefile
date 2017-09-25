@@ -394,6 +394,7 @@ ORDINARY_PROGS =	\
 	write \
 	write_array \
 	write_binary_int8 \
+	write_binary_multibyte_int \
 	write_binary_uint8 \
 	write_float_special \
 	write_reg1 \

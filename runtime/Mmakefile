@@ -60,6 +60,7 @@ HDRS = \
 	mercury_hgc.h				\
 	mercury_hlc_types.h			\
 	mercury_ho_call.h			\
+	mercury_int.h				\
 	mercury_imp.h				\
 	mercury_init.h				\
 	mercury_label.h				\

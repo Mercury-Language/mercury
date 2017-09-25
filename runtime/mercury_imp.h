@@ -44,6 +44,7 @@
 #include    "mercury_file.h"
 #include    "mercury_string.h"
 #include    "mercury_float.h"
+#include    "mercury_int.h"
 #include    "mercury_stack_trace.h"
 #include    "mercury_accurate_gc.h"
 #include    "mercury_stack_layout.h"
