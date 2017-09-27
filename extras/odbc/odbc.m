@@ -1693,7 +1693,7 @@ odbc_do_cleanup_statement(MODBC_Statement *statement)
     int i;
     SQLRETURN rc;
 
-    if (stat != NULL) {
+    if (statement != NULL) {
         MR_DEBUG(printf(""cleaning up statement\\n""));
         if (statement->row != NULL) {
             for (i = 1; i <= statement->num_columns; i++) {
