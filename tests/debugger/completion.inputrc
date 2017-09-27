@@ -8,5 +8,8 @@ set show-all-if-ambiguous on
 # Disable --More-- prompt when completion list fills screen.
 set page-completions off
 
+# Make sure a standardized screen width is used.
+set completion-display-width 80
+
 # Make the completion requests show up in the input file.
 @: complete
