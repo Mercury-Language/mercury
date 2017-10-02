@@ -341,7 +341,8 @@
 % Misc. operations on input streams.
 %
 
-    % Discard all the whitespace from the specified stream.
+    % Discard all the whitespace characters satisfying `char.is_whitespace'
+    % from the specified stream.
     %
 :- pred ignore_whitespace(Stream::in, result(Error)::out,
     State::di, State::uo)
@@ -456,7 +457,7 @@ ignore_whitespace(Stream, Result, !State) :-
         Result = eof
     ;
         CharResult = ok(Char),
-        ( if is_whitespace(Char) then
+        ( if char.is_whitespace(Char) then
             ignore_whitespace(Stream, Result, !State)
         else
             unget(Stream, Char, !State),

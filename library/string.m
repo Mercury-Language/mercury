@@ -854,22 +854,22 @@
 
     % strip(String):
     %
-    % Returns `String' minus any initial and trailing whitespace characters
-    % in the ASCII range.
+    % Returns `String' minus any initial and trailing ASCII whitespace
+    % characters, i.e. characters satisfying `char.is_whitespace'.
     %
 :- func strip(string) = string.
 
     % lstrip(String):
     %
-    % Return `String' minus any initial whitespace characters
-    % in the ASCII range.
+    % Return `String' minus any initial ASCII whitespace characters,
+    % i.e. characters satisfying `char.is_whitespace'.
     %
 :- func lstrip(string) = string.
 
     % rstrip(String):
     %
-    % Returns `String' minus any trailing whitespace characters
-    % in the ASCII range.
+    % Returns `String' minus any trailing ASCII whitespace characters,
+    % i.e. characters satisfying `char.is_whitespace'.
     %
 :- func rstrip(string) = string.
 
@@ -913,6 +913,9 @@
     % constraint. If any one word exceeds N code points in length, then
     % it will be broken over two (or more) lines. Sequences of whitespace
     % characters are replaced by a single space.
+    %
+    % See `char.is_whitespace' for the definition of whitespace characters
+    % used by this predicate.
     %
 :- func word_wrap(string, int) = string.
 
@@ -4896,13 +4899,13 @@ chomp(S) = Chomp :-
     ).
 
 strip(S0) = S :-
-    L = prefix_length(is_whitespace, S0),
-    R = suffix_length(is_whitespace, S0),
+    L = prefix_length(char.is_whitespace, S0),
+    R = suffix_length(char.is_whitespace, S0),
     S = between(S0, L, length(S0) - R).
 
-lstrip(S) = lstrip_pred(is_whitespace, S).
+lstrip(S) = lstrip_pred(char.is_whitespace, S).
 
-rstrip(S) = rstrip_pred(is_whitespace, S).
+rstrip(S) = rstrip_pred(char.is_whitespace, S).
 
 lstrip_pred(P, S) = right(S, length(S) - prefix_length(P, S)).
 

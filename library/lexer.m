@@ -89,6 +89,9 @@
     % Keep reading until we encounter either an `end' token
     % (i.e. a full stop followed by whitespace) or the end-of-file.
     %
+    % See `char.is_whitespace' for the definition of whitespace characters
+    % used by this predicate.
+    %
 :- pred get_token_list(token_list::out, io::di, io::uo) is det.
 :- pred get_token_list(io.text_input_stream::in, token_list::out,
     io::di, io::uo) is det.
@@ -106,6 +109,9 @@
     % reach MaxOffset. (MaxOffset must be =< the length of the string.)
     % Return the tokens scanned in Tokens, and return the position one
     % character past the end of the last token in FinalPos.
+    %
+    % See `char.is_whitespace' for the definition of whitespace characters
+    % used by this predicate.
     %
 :- pred string_get_token_list_max(string::in, offset::in, token_list::out,
     posn::in, posn::out) is det.

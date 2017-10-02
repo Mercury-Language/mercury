@@ -118,8 +118,14 @@
     %
 :- pred is_ascii(char::in) is semidet.
 
-    % True iff the character is a whitespace character in the ASCII range,
-    % i.e. a space, tab, newline, carriage return, form-feed, or vertical tab.
+    % True iff the character is a whitespace character in the ASCII range:
+    %
+    %   U+0020  space
+    %   U+0009  tab
+    %   U+000A  line feed
+    %   U+000B  vertical tab
+    %   U+000C  form feed
+    %   U+000D  carriage return
     %
 :- pred is_whitespace(char::in) is semidet.
 

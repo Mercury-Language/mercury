@@ -340,6 +340,9 @@
     % Performs word wrapping at the end of line, taking whitespace sequences
     % as delimiters separating words.
     %
+    % See `char.is_whitespace' for the definition of whitespace characters
+    % used by this predicate.
+    %
 :- func word_wrapped(string) = doc.
 
     % Convert arbitrary terms to docs. This requires std_util.functor/3 to work

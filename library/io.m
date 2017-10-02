@@ -141,6 +141,9 @@
     % Read a whitespace delimited word from the current input stream
     % or from the specified stream.
     %
+    % See `char.is_whitespace' for the definition of whitespace characters
+    % used by this predicate.
+    %
 :- pred read_word(io.result(list(char))::out, io::di, io::uo) is det.
 :- pred read_word(io.text_input_stream::in, io.result(list(char))::out,
     io::di, io::uo) is det.
@@ -318,6 +321,9 @@
     % - If it encounters an I/O error, then it also returns
     %   `error(Message, LineNumber)'.
     %
+    % See `char.is_whitespace' for the definition of whitespace characters
+    % used by this predicate.
+    %
 :- pred read(io.read_result(T)::out, io::di, io::uo) is det.
 :- pred read(io.text_input_stream::in, io.read_result(T)::out,
     io::di, io::uo) is det.
@@ -345,8 +351,8 @@
 :- pred read_from_string(string::in, string::in, int::in,
     read_result(T)::out, posn::in, posn::out) is det.
 
-    % Discards all the whitespace from the current stream
-    % or from the specified stream.
+    % Discards all the whitespace characters satisfying `char.is_whitespace'
+    % from the current stream or from the specified stream.
     %
 :- pred ignore_whitespace(io.result::out, io::di, io::uo) is det.
 :- pred ignore_whitespace(io.text_input_stream::in, io.result::out,
