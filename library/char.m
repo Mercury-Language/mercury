@@ -121,9 +121,9 @@
     % True iff the character is a whitespace character in the ASCII range:
     %
     %   U+0020  space
-    %   U+0009  tab
+    %   U+0009  character tabulation (horizontal tab)
     %   U+000A  line feed
-    %   U+000B  vertical tab
+    %   U+000B  line tabulation (vertical tab)
     %   U+000C  form feed
     %   U+000D  carriage return
     %
