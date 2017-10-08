@@ -7,7 +7,7 @@ Java bytecode suitable for running the Java SE runtime system.  The port is
 mostly complete, but some parts of the Mercury standard library are not yet
 implemented (for a full list see the FAQ below).
 
-The port requires Java SE 6 or higher -- older versions of Java are *not*
+The port requires Java SE 8 or higher -- older versions of Java are *not*
 supported.
 
 PREREQUISITES

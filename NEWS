@@ -96,7 +96,7 @@ Changes that may break compatibility:
   replaced with `oa' and `ia' respectively.
 
 * The minimum version of the Java platform required by Mercury's Java
-  backend is now Java SE 6.
+  backend is now Java SE 8.
 
 * The representation of integer constants in the standard library's term and
   lexer modules has been generalised.  The base, signedness and size of each

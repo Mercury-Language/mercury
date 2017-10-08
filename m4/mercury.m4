@@ -492,7 +492,7 @@ if test "$JAVAC" != "" -a "$JAVA_INTERPRETER" != "" -a "$JAR" != ""; then
 	cat > conftest.java << EOF
 		// This program simply retrieves the constant
 		// specifying the version number of the Java SDK and
-		// checks it is at least 1.6, printing "Hello, world"
+		// checks it is at least 1.8, printing "Hello, world"
 		// if successful.
 		public class conftest {
 		    public static void main (String[[]] args) {
@@ -512,7 +512,7 @@ if test "$JAVAC" != "" -a "$JAVA_INTERPRETER" != "" -a "$JAR" != ""; then
 				version = 0f;
 			}
 
-			if (version >= 1.6) {
+			if (version >= 1.8) {
 				System.out.println("Hello, world\n");
 			} else {
 				System.out.println("Nope, sorry.\n");
