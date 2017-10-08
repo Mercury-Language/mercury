@@ -66,8 +66,8 @@
     %
 :- pred from_int(int::in, char::out) is semidet.
 
-    % Converts an integer to its corresponding character. Aborts
-    % if there isn't one.
+    % Converts an integer to its corresponding character.
+    % Throws an exception if there isn't one.
     %
 :- func det_from_int(int) = char.
 :- pred det_from_int(int::in, char::out) is det.

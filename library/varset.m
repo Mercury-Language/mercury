@@ -96,8 +96,8 @@
     is det.
 
     % Delete the names and values for a sorted list of variables.
-    % (If the list is not sorted, the result will be either an abort
-    % or incorrect output.)
+    % (If the list is not sorted, the predicate or function will
+    % either throw an exception of return incorrect output.)
     %
 :- func delete_sorted_vars(varset(T), list(var(T))) = varset(T).
 :- pred delete_sorted_vars(list(var(T))::in,

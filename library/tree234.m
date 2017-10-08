@@ -64,7 +64,7 @@
 
     % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next lower key instead.
-    % Aborts if there is no key with the given or lower value.
+    % Throws an exception if there is no key with the given or lower value.
     %
 :- pred lower_bound_lookup(tree234(K, V)::in, K::in, K::out, V::out)
     is det.
@@ -78,7 +78,7 @@
 
     % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next higher key instead.
-    % Aborts if there is no key with the given or higher value.
+    % Throws an exception if there is no key with the given or higher value.
     %
 :- pred upper_bound_lookup(tree234(K, V)::in, K::in, K::out, V::out)
     is det.

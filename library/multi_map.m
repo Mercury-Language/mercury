@@ -65,14 +65,14 @@
 
     % If the multi_map has an entry for the given key,
     % succeed once for each of the corresponding values.
-    % Otherwise, abort.
+    % Otherwise, throw an exception.
     %
 :- func lookup(multi_map(K, V), K) = list(V).
 :- pred lookup(multi_map(K, V)::in, K::in, list(V)::out) is det.
 
     % If the multi_map has an entry for the given key,
     % succeed once for each of the corresponding values.
-    % Otherwise, abort.
+    % Otherwise, throw an exception.
     %
 :- pred nondet_lookup(multi_map(K, V)::in, K::in, V::out) is nondet.
 
@@ -93,7 +93,7 @@
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
     % Add the given key-value pair to the multi_map.
-    % Abort if the key already exists.
+    % Throw an exception if the key already exists.
     %
 :- func det_insert(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred det_insert(K::in, V::in,
@@ -106,7 +106,7 @@
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
     % Add the given key-value pair to the multi_map.
-    % Abort if the key does not already exist.
+    % Throw an exception if the key does not already exist.
     %
 :- func det_update(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred det_update(K::in, V::in,
@@ -119,7 +119,7 @@
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
     % Replace the list of values corresponding to the given key.
-    % Aborts if the key does not already exist.
+    % Throws an exception if the key does not already exist.
     %
 :- func det_replace(multi_map(K, V), K, list(V)) = multi_map(K, V).
 :- pred det_replace(K::in, list(V)::in,
@@ -166,7 +166,7 @@
 
     % Delete a key from a multi_map and return the list of values
     % previously corresponding to it.
-    % Abort if the key is not present.
+    % Throw an exception if the key is not present.
     %
 :- pred det_remove(K::in, list(V)::out,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
@@ -253,7 +253,7 @@
     % Convert the corresponding elements of a list of keys and a
     % list of values (which must be of the same length) to a multi_map.
     % A key may occur more than once in the list of keys.
-    % Abort if the two lists are not the same length.
+    % Throw an exception if the two lists are not the same length.
     %
 :- func from_corresponding_lists(list(K), list(V))
     = multi_map(K, V).
@@ -263,8 +263,8 @@
     % Convert the corresponding elements of a list of keys and a
     % *list of lists* of values to a multi_map.
     % A key may *not* occur more than once in the list of keys.
-    % Abort if the two lists are not the same length, or if a key
-    % does occur more than once in the list of keys.
+    % Throw an exception if the two lists are not the same length,
+    % or if a key does occur more than once in the list of keys.
     %
 :- func from_corresponding_list_lists(list(K), list(list(V)))
     = multi_map(K, V).

@@ -33,7 +33,8 @@
 :- func reverse_members(assoc_list(K, V)) = assoc_list(V, K).
 :- pred reverse_members(assoc_list(K, V)::in, assoc_list(V, K)::out) is det.
 
-    % Zip together two lists; abort if they are of different lengths.
+    % Zip together two lists.
+    % Throw an exception if they are of different lengths.
     %
 :- func from_corresponding_lists(list(K), list(V)) = assoc_list(K, V).
 :- pred from_corresponding_lists(list(K)::in, list(V)::in,

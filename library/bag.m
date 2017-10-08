@@ -116,7 +116,7 @@
 :- pred remove(T::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove one occurrence of a particular value from a bag.
-    % Abort if the item does not exist in the bag.
+    % Throw an exception if the item does not exist in the bag.
     %
 :- func det_remove(bag(T), T) = bag(T).
 :- pred det_remove(T::in, bag(T)::in, bag(T)::out) is det.
@@ -135,8 +135,8 @@
 :- pred remove_list(list(T)::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove a list of values from a bag. Duplicates are removed from the bag
-    % the appropriate number of times.  Abort if any of the items in the list
-    % do not exist in the bag.
+    % the appropriate number of times. Throw an exception if any of the items
+    % in the list do not exist in the bag.
     %
 :- func det_remove_list(bag(T), list(T)) = bag(T).
 :- pred det_remove_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
@@ -147,7 +147,8 @@
 :- pred remove_set(set(T)::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove a set of values from a bag. Each value is removed once.
-    % Abort if any of the items in the set do not exist in the bag.
+    % Throw an exception if any of the items in the set do not exist in the
+    % bag.
     %
 :- func det_remove_set(bag(T), set(T)) = bag(T).
 :- pred det_remove_set(set(T)::in, bag(T)::in, bag(T)::out) is det.

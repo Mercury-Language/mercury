@@ -33,7 +33,7 @@
 %   fails if node to remove doesn't exist in the tree.
 %
 % lookup:
-%   Aborts program if key looked up doesn't exist.
+%   Throws an exception if key looked up doesn't exist.
 % search:
 %   Fails if key looked up doesn't exist.
 %

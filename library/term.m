@@ -680,7 +680,7 @@
 %
 
     % Convert a list of terms which are all vars into a list of vars.
-    % Abort (call error/1) if the list contains any non-variables.
+    % Throw an exception if the list contains any non-variables.
     %
 :- func term_list_to_var_list(list(term(T))) = list(var(T)).
 

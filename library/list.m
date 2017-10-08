@@ -226,7 +226,7 @@
     %
 :- pred nth_member_search(list(T)::in, T::in, int::out) is semidet.
 
-    % A deterministic version of nth_member_search, which aborts
+    % A deterministic version of nth_member_search, which throws an exception
     % instead of failing if the element is not found in the list.
     % NOTE_TO_IMPLEMENTORS XXX This pred is identical
     % NOTE_TO_IMPLEMENTORS to det_index1_of_first_occurrence.
@@ -341,7 +341,7 @@
 
     % det_replace_nth(List0, N, R) = List is true iff List is List0
     % with N'th element replaced with R.
-    % Aborts if N < 1 or if length of List0 < N.
+    % Throws an exception if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
 :- func det_replace_nth(list(T), int, T) = list(T).
@@ -487,8 +487,8 @@
 
     % det_split_list(N, List, Start, End):
     %
-    % A deterministic version of split_list, which aborts instead
-    % of failing if `N' is not in 0 .. length(List).
+    % A deterministic version of split_list, which throws an exception
+    % instead of failing if `N' is not in 0 .. length(List).
     %
 :- pred det_split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
     is det.
@@ -507,8 +507,8 @@
     %
 :- pred last(list(T)::in, T::out) is semidet.
 
-    % A deterministic version of last, which aborts instead of failing
-    % if the input list is empty.
+    % A deterministic version of last, which throws an exception instead of
+    % failing if the input list is empty.
     %
 :- func det_last(list(T)) = T.
 :- pred det_last(list(T)::in, T::out) is det.
@@ -518,8 +518,8 @@
     %
 :- pred split_last(list(T)::in, list(T)::out, T::out) is semidet.
 
-    % A deterministic version of split_last, which aborts instead of
-    % failing if the input list is empty.
+    % A deterministic version of split_last, which throws an exception
+    % instead of failing if the input list is empty.
     %
 :- pred det_split_last(list(T)::in, list(T)::out, T::out) is det.
 
@@ -559,7 +559,7 @@
     % det_drop(N, List, End):
     %
     % `End' is the remainder of `List' after removing the first `N' elements.
-    % Aborts if `N' is not in `0 .. length(List)'.
+    % Throws an exception if `N' is not in `0 .. length(List)'.
     % See also: split_list.
     %
 :- pred det_drop(int::in, list(T)::in, list(T)::out) is det.

@@ -764,7 +764,8 @@
 :- pred remove_suffix(string::in, string::in, string::out) is semidet.
 
     % det_remove_suffix(String, Suffix) returns the same value as
-    % remove_suffix, except it aborts if String does not end with Suffix.
+    % remove_suffix, except it throws an exception if String does not end
+    % with Suffix.
     %
 :- func det_remove_suffix(string, string) = string.
 

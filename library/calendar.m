@@ -125,7 +125,7 @@
 :- pred init_date(year::in, month::in, day_of_month::in, hour::in,
     minute::in, second::in, microsecond::in, date::out) is semidet.
 
-    % Same as above, but aborts if the date is invalid.
+    % Same as above, but throws an exception if the date is invalid.
     %
 :- func det_init_date(year, month, day_of_month, hour, minute, second,
     microsecond) = date.
@@ -143,7 +143,7 @@
     %
 :- pred date_from_string(string::in, date::out) is semidet.
 
-    % Same as above, but aborts if the string is not a valid date.
+    % Same as above, but throws an exception if the string is not a valid date.
     %
 :- func det_date_from_string(string) = date.
 
@@ -257,7 +257,7 @@
     %
 :- pred duration_from_string(string::in, duration::out) is semidet.
 
-    % Same as above, but aborts if the duration string is invalid.
+    % Same as above, but throws an exception if the duration string is invalid.
     %
 :- func det_duration_from_string(string) = duration.
 

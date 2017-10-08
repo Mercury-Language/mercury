@@ -59,7 +59,7 @@
 
     % det_univ_to_type(Univ, Object).
     %
-    % The same as the forwards mode of univ_to_type, but aborts
+    % The same as the forwards mode of univ_to_type, but throws an exception
     % if univ_to_type fails.
     %
 :- pred det_univ_to_type(univ::in, T::out) is det.

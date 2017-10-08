@@ -30,7 +30,7 @@
     % concrete representation.
     %
     % The value `do_not_allow' means that in such circumstances the
-    % predicate should abort.
+    % predicate should cause a runtime abort.
     %
     % The value `canonicalize' means that in such circumstances the
     % predicate should return a constant giving the identity of the type,
@@ -130,7 +130,7 @@
     % Given a data item, return the number of the functor,
     % suitable for use by construct.construct, and the arity.
     % Fail if the item does not have a discriminated union type.
-    % Abort if the type has user-defined equality.
+    % Cause a runtime abort if the type has user-defined equality.
     %
 :- pred functor_number(T::in, functor_number_lex::out, int::out) is semidet.
 
@@ -139,7 +139,7 @@
     % Given a data item, return the number of the functor,
     % suitable for use by construct.construct, and the arity.
     % Fail if the item does not have a discriminated union type.
-    % Don't abort if the type has user-defined equality.
+    % Do not cause a runtime abort if the type has user-defined equality.
     %
 :- pred functor_number_cc(T::in, functor_number_lex::out,
     int::out) is cc_nondet.
@@ -190,7 +190,7 @@
     % det_arg(Data, NonCanon, Index, Argument)
     %
     % Same as arg/4, except that for cases where arg/4 would fail,
-    % det_arg/4 will abort.
+    % det_arg/4 will throw an exception.
     %
 :- some [ArgT] pred det_arg(T, noncanon_handling, int, ArgT).
 :- mode det_arg(in, in(do_not_allow), in, out) is det.
@@ -201,7 +201,7 @@
     % det_named_arg(Data, NonCanon, Name, Argument)
     %
     % Same as named_arg/4, except that for cases where named_arg/4 would fail,
-    % det_named_arg/4 will abort.
+    % det_named_arg/4 will throw an exception.
     %
 :- some [ArgT] pred det_named_arg(T, noncanon_handling, string, ArgT).
 :- mode det_named_arg(in, in(do_not_allow), in, out) is det.

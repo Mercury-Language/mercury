@@ -72,7 +72,7 @@
 :- pragma type_spec(insert/4, P = int).
 
     % Insert key K with priority P into the given priority search queue.
-    % Abort if the key already exists.
+    % Throw an exception if the key already exists.
     %
 :- func det_insert(psqueue(P, K), P, K) = psqueue(P, K).
 :- pred det_insert(P::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.

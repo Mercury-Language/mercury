@@ -67,7 +67,7 @@
     type_desc::out) is semidet.
 
     % Convert a pseudo_type_desc describing a ground type to a type_desc.
-    % If the pseudo_type_desc describes a non-ground type, abort.
+    % Throw an exception if the pseudo_type_desc describes a non-ground type.
     %
 :- func det_ground_pseudo_type_desc_to_type_desc(pseudo_type_desc) = type_desc.
 
@@ -202,8 +202,8 @@
     % det_make_type(TypeCtor, TypeArgs):
     %
     % Returns the type formed by applying the specified type constructor
-    % to the specified argument types. Aborts if the length of `TypeArgs'
-    % is not the same as the arity of `TypeCtor'.
+    % to the specified argument types. Throws an exception if the length of
+    % `TypeArgs' is not the same as the arity of `TypeCtor'.
     %
 :- func det_make_type(type_ctor_desc, list(type_desc)) = type_desc.
 

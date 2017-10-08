@@ -72,17 +72,19 @@
 
 :- pred member(map(K, V)::in, K::out, V::out) is nondet.
 
-    % Search map for key.
+    % Return the value associated with the given key in the map.
+    % Fail if the map does not contain that key.
     %
 :- func search(map(K, V), K) = V is semidet.
 :- pred search(map(K, V)::in, K::in, V::out) is semidet.
 
-    % Search map for key, but abort if search fails.
+    % Return the value associated with the given key in the map.
+    % Throw an exception if the map does not contain that key.
     %
 :- func lookup(map(K, V), K) = V.
 :- pred lookup(map(K, V)::in, K::in, V::out) is det.
 
-    % Search map for data.
+    % Search the map for key-value pairs with the given value.
     %
 :- pred inverse_search(map(K, V)::in, V::in, K::out) is nondet.
 
@@ -95,7 +97,7 @@
 
     % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next lower key instead.
-    % Aborts if there is no key with the given or lower value.
+    % Throws an exception if there is no key with the given or lower value.
     %
 :- pred lower_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
 
@@ -108,7 +110,7 @@
 
     % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next higher key instead.
-    % Aborts if there is no key with the given or higher value.
+    % Throws an exception if there is no key with the given or higher value.
     %
 :- pred upper_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
 
@@ -116,7 +118,7 @@
     %
 :- func max_key(map(K, V)) = K is semidet.
 
-    % As above, but abort if there is no largest key.
+    % As above, but throw an exception if there is no largest key.
     %
 :- func det_max_key(map(K, V)) = K.
 
@@ -124,7 +126,7 @@
     %
 :- func min_key(map(K,V)) = K is semidet.
 
-    % As above, but abort if there is no smallest key.
+    % As above, but throw an exception if there is no smallest key.
     %
 :- func det_min_key(map(K, V)) = K.
 
@@ -135,7 +137,7 @@
 :- pred insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Insert a new key and corresponding value into a map.
-    % Abort if the key already exists.
+    % Throw an exception if the key already exists.
     %
 :- func det_insert(map(K, V), K, V) = map(K, V).
 :- pred det_insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
@@ -172,7 +174,7 @@
 :- pred update(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Update the value corresponding to a given key
-    % Abort if the key doesn't already exist.
+    % Throw an exception if the key doesn't already exist.
     %
 :- func det_update(map(K, V), K, V) = map(K, V).
 :- pred det_update(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
@@ -193,8 +195,8 @@
 :- pred transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
     map(K, V)::in, map(K, V)::out) is semidet.
 
-    % Same as transform_value/4, but aborts instead of failing if the
-    % key is not found.
+    % Same as transform_value/4, but throws an exception if the key is not
+    % found.
     %
 :- func det_transform_value(func(V) = V, K, map(K, V)) = map(K, V).
 :- pred det_transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
@@ -265,7 +267,8 @@
 
     % Apply delete/3 to a sorted list of keys. The fact that the list
     % is sorted may make this more efficient. (If the list is not sorted,
-    % the result will be either an abort or incorrect output.)
+    % the predicate or function will either throw an exception or return
+    % incorrect output.)
     %
 :- func delete_sorted_list(map(K, V), list(K)) = map(K, V).
 :- pred delete_sorted_list(list(K)::in, map(K, V)::in, map(K, V)::out)
@@ -277,7 +280,7 @@
 :- pred remove(K::in, V::out, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Delete a key-value pair from a map and return the value.
-    % Abort if the key is not present.
+    % Throw an exception if the key is not present.
     %
 :- pred det_remove(K::in, V::out, map(K, V)::in, map(K, V)::out) is det.
 
@@ -743,7 +746,7 @@
 :- mode intersect(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode intersect(pred(in, in, out) is det, in, in, out) is det.
 
-    % Calls intersect. Aborts if intersect fails.
+    % Calls intersect. Throws an exception if intersect fails.
     %
 :- func det_intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- mode det_intersect(func(in, in) = out is semidet, in, in) = out is det.
@@ -779,7 +782,7 @@
 :- mode union(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode union(pred(in, in, out) is det, in, in, out) is det.
 
-    % Calls union. Aborts if union fails.
+    % Calls union. Throws an exception if union fails.
     %
 :- func det_union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- mode det_union(func(in, in) = out is semidet, in, in) = out is det.

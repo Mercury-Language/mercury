@@ -122,7 +122,7 @@
     % with corresponding value OldV, set MaybeOldV to yes(OldV). If it
     % is not in the bimap, then insert it with value V. The value of V
     % should be guaranteed to be different to all the values already
-    % in !.Bimap. If it isn't, this predicate will abort.
+    % in !.Bimap. If it isn't, this predicate will throw an exception.
     %
 :- pred search_insert(K::in, V::in, maybe(V)::out,
     bimap(K, V)::in, bimap(K, V)::out) is det.

@@ -63,7 +63,7 @@
 :- pred search_key(digraph(T)::in, T::in, digraph_key(T)::out) is semidet.
 
     % lookup_key returns the key associated with a vertex.
-    % Aborts if the vertex is not in the graph.
+    % Throws an exception if the vertex is not in the graph.
     %
 :- func lookup_key(digraph(T), T) = digraph_key(T).
 :- pred lookup_key(digraph(T)::in, T::in, digraph_key(T)::out) is det.
