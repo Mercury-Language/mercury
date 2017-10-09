@@ -30,6 +30,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -413,8 +414,8 @@
     set(goal_warning)::out) is det.
 :- pred ml_gen_info_get_tail_rec_info(ml_gen_info::in,
     tail_rec_info::out) is det.
-:- pred ml_gen_info_get_byref_output_vars(ml_gen_info::in, list(prog_var)::out)
-    is det.
+:- pred ml_gen_info_get_byref_output_vars(ml_gen_info::in,
+    set_of_progvar::out) is det.
 
 :- pred ml_gen_info_set_const_var_map(map(prog_var, ml_ground_term)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -434,7 +435,7 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_tail_rec_info(tail_rec_info::in,
     ml_gen_info::in, ml_gen_info::out) is det.
-:- pred ml_gen_info_set_byref_output_vars(list(prog_var)::in,
+:- pred ml_gen_info_set_byref_output_vars(set_of_progvar::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -706,7 +707,7 @@ generate_tail_rec_start_label(TsccKind, Id) = Label :-
                 % (We used to store the list of output arguments that are
                 % returned as values in another field, but we don't need that
                 % information anymore.)
-/*  1 */        mgsi_byref_output_vars  :: list(prog_var),
+/*  1 */        mgsi_byref_output_vars  :: set_of_progvar,
 
 /*  2 */        mgsi_label_counter      :: counter,
 /*  3 */        mgsi_aux_var_counter    :: counter,
@@ -804,7 +805,7 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
 
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    ByRefOutputVars = [],
+    set_of_var.init(ByRefOutputVars),
 
     TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
         AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo0),

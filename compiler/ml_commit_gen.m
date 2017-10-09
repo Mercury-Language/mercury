@@ -448,8 +448,7 @@ ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
         Context = goal_info_get_context(GoalInfo),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),
-        VarsToCopy = set_of_var.intersect(
-            set_of_var.list_to_set(ByRefOutputVars), NonLocals),
+        VarsToCopy = set_of_var.intersect(ByRefOutputVars, NonLocals),
         ml_gen_make_locals_for_output_args(
             set_of_var.to_sorted_list(VarsToCopy),
             Context, LocalVarDecls, CopyLocalsToOutputArgs, !Info)

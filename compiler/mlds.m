@@ -1679,7 +1679,8 @@
 
     ;       ml_mem_ref(
                 % The rval should have originally come from a mem_addr rval.
-                % The type is the type of the value being dereferenced.
+                % The type is the type of the value being dereferenced,
+                % i.e. the type of the pointed-to value.
 
                 mlds_rval,
                 mlds_type
@@ -1963,46 +1964,48 @@
             % succeeds.
 
     ;       lvn_tscc_proc_input_var(proc_id_in_tscc, int, string)
+    ;       lvn_tscc_output_var(int, string)
+    ;       lvn_tscc_output_var_ptr(int, string)
+    ;       lvn_tscc_output_var_succeeded
+            % All four of these are used when we generate code for
+            % a set of mutually *tail* recursive procedures.
+            % (Such procedures form a TSCC, i.e. an SCC of a dependency
+            % graph formed only from tail calls.)
+            %
+            % Our general scheme for optimizing mutually recursive tail calls
+            % in TSCCs is described in notes/mlds_tail_recursion.html.
+            % Here we just document the meanings of these MLDS variables.
+            %
             % lvn_tscc_proc_input_var(ProcIdInTscc, ArgNum, VarName) represents
             % one of the input arguments of one of the procedures in a TSCC
             % (tail-call SCC); the ProcIdInTscc and ArgNum say which.
             % The VarName is the output of ml_local_var_name_to_string
             % on the name of the actual variable representing that argument.
             %
-            % We use these variables because when generating code for e.g.
-            % procedure p, we don't want to generate any mlds_local_var_names
-            % containing variable numbers that come from any varset
-            % other than p's own. So in such TSCCs, (a) we set up the mapping
-            % from member procedures to their list of lvn_tscc_proc_input_vars
-            % before we start generating code for any of the procedures,
-            % (b) we implement (both self- and mutual) tail recursive calls
-            % by assigning the call's actual input parameters to the
-            % lvn_tscc_proc_input_vars of the callee, which (c) the start
-            % of each procedure in the TSCC then copies to the MLDS variables
-            % representing the appropriate HLDS headvars.
-
-    ;       lvn_tscc_output_var(int, string)
-            % lvn_tscc_output_var(ArgNum, VarName) represents
-            % one of the output arguments of a TSCC (tail-call SCC);
-            % the ArgNum say which.
+            % lvn_tscc_output_var(ArgNum, VarName) represents one of the
+            % output arguments of a TSCC (tail-call SCC); the ArgNum say which.
+            % Note that while each procedure in a TSCC has its own list
+            % of inputs arguments, all procedures in a TSCC, by definition,
+            % return a list of output arguments that is identical in everything
+            % except possibly name. This allows us to use a single variable
+            % to represent e.g. output arg N of *every* procedure in the TSCC;
+            % This is why lvn_tscc_output_vars don't have a ProcIdInTscc field.
+            % (The VarName recorded in a lvn_tscc_output_var is the name of
+            % the output argument in *one* of the procedures in the TSCC.)
             %
-            % While each procedure in a TSCC has its own list of inputs,
-            % all procedures in a TSCC, by definition, have the same list
-            % of *outputs*. This is why unlike lvn_tscc_proc_input_vars,
-            % lvn_tscc_output_vars don't have a ProcIdInTscc field.
+            % An lvn_tscc_output_var will contain the value of the
+            % corresponding output argument. For arguments passed by
+            % reference, we need a way to store the address passed to us
+            % by the caller as the address at which the value being output
+            % should be put. An lvn_tscc_output_var_ptr contains this address.
             %
-            % While the corresponding output arguments of the procedures
-            % in a TSCC must all agree in type and mode, they may differ
-            % in name. The VarName recorded here is the name of the output
-            % argument in *one* of the procedures in the TSCC.
-            %
-            % We currently generate code by TSCCs only if all output arguments
-            % are passed by reference, so all lvn_tscc_output_vars represent
-            % addresses. We assign the address in each lvn_tscc_output_var
-            % to the MLDS variable representing the corresponding HLDS variable
-            % at the start of the procedure's code, which is also a pointer.
-            % Procedures in the TSCC set the values of their output arguments
-            % by assigning through (their local copies of) these pointers.
+            % Model semi procedures implicitly have an extra output argument:
+            % the procedure's success/failure indicator. We store this
+            % indicator in a lvn_tscc_output_var_succeeded variable,
+            % which functions as a special kind of lvn_tscc_output_var.
+            % The success indicator is always returned by value, so we
+            % don't need a lvn_tscc_output_var_succeeded_ptr variable
+            % in the MLDS.
 
     ;       lvn_field_var_as_local(mlds_field_var_name)
             % When we (specifically, ml_elim_nested.m) create continuation
@@ -2795,6 +2798,12 @@ ml_local_var_name_to_string(LocalVar) = Str :-
     ;
         LocalVar = lvn_tscc_output_var(ArgNum, VarName),
         Str = string.format("tscc_output_%d_%s", [i(ArgNum), s(VarName)])
+    ;
+        LocalVar = lvn_tscc_output_var_ptr(ArgNum, VarName),
+        Str = string.format("tscc_output_ptr_%d_%s", [i(ArgNum), s(VarName)])
+    ;
+        LocalVar = lvn_tscc_output_var_succeeded,
+        Str = string.format("tscc_output_succeeded", [])
     ;
         LocalVar = lvn_field_var_as_local(FieldVar),
         Str = ml_field_var_name_to_string(FieldVar)

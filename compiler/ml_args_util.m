@@ -132,34 +132,61 @@
 
     % ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel, Context,
     %     ProcIdInTscc, VarSet, Vars, Types, Modes, ArgTuples, !OutArgNames,
-    %     TsccInArgs, TsccInLocalVarDefns, FuncParams, OwnLocalVarDefns,
-    %     CopyTsccToOwnStmts, CopyOwnToTsccStmts, ReturnRvals):
+    %     TsccInArgs, FuncParams, ReturnRvalsTypes, OutVarsTypes,
+    %     OwnLocalVarDefns, TsccInLocalVarDefns, TsccOutLocalVarDefns,
+    %     CopyTsccInToOwnStmts, CopyOwnToTsccOutStmts,
+    %     CopyOutValThroughPtrStmts) :-
+    %
+    % For background and terminology used in this predicate and its
+    % description, see notes/mlds_tail_recursion.html.
     %
     % The inputs of this predicate describe a procedure in a TSCC
-    % (PredOrFunc, CodeModel, Context, ProcIdInTscc, VarSet) and its arguments
+    % (PredOrFunc, CodeModel, Context, ProcIdInTscc, VarSet) and its argument
     % list (Vars, Types, and Modes). The outputs return information about the
     % arguments in a more conveniently packaged form (ArgTuples), as well as
-    % the information the code generator needs
+    % the information the code generator needs to generate parameter passing
+    % code both for the wrapped procedures and the container procedures.
+    % Specifically, we return information that is needed
     %
     % - to generate code for tail calls to this procedure, from other
     %   procedures in the TSCC as well from itself,
-    % - to generate parameter passing code in the procedure's prologue, and
-    % - to generate the return statement in the procedure's epilogue.
+    % - to generate the signature of container procedures,
+    % - to generate the declarations at the start of container procedures,
+    % - to generate code at the start of the wrapped procedure for copying
+    %   input arguments from the tscc variables in which the TSCC gets them
+    %   to the procedure's own variables,
+    % - to generate code at the end of the wrapped procedure for copying
+    %   output arguments from the procedure's own variables to the variables
+    %   in which the TSCC expects them, and
+    % - to generate code at the end of the container procedure to return
+    %   the output arguments to the caller.
     %
     % The info about tail calls is needed before we can start generating code
     % for *any* of the procedures in the TSCC.
     %
-    % Parameter passing between the procedures in a TSCC is done by
-    % giving each procedure its own list of lvn_tscc_proc_input_vars
-    % (representing the formal input parameters) and having each tail call
-    % assign the actual input parameters to these. Results are returned
-    % through lvn_tscc_output_vars. For the usual case of byref output
-    % arguments, each lvn_tscc_output_var contains the address of the memory
-    % slot where the result should be stored. For copied out output vars
-    % (when the code-model-specific copy-out option is not set, this is
-    % just the return values of det functions; when it is set, this is all
-    % outputs) the body of the procedure will assign to lvn_tscc_output_var,
-    % and its value will be returned to the caller via the return statement.
+    % (Arguments whose type is a dummy type or whose mode is "unused"
+    % don't participate in parameter passing, so this predicate ignores them.
+    % All the discussion below uses "arguments" as shorthand for "arguments
+    % of non-dummy types whose modes are not unused.)
+    %
+    % For each input argument, this predicate creates a corresponding
+    % lvn_tscc_proc_input_var, while for each output argument, it creates
+    % a corresponding lvn_tscc_output_var. Model semi procedures have
+    % a success indication as an extra output, and for such procedures
+    % we create a corresponding lvn_tscc_output_var_succeeded variable.
+    % We call the MLDS variables representing the procedure's input and
+    % output HLDS variables the procedure's own variables, while we call
+    % the lvn_tscc_proc_input_vars and lvn_tscc_output_vars (including
+    % lvn_tscc_output_var_succeededs) the TSCC in and out variables
+    % respectively.
+    %
+    % Wrapped procedures always get their inputs in TSCC in variables
+    % (both from the caller and from each other at tail calls), and they
+    % always put their results in the TSCC out variables. For output
+    % arguments passed by reference, this predicate will create an
+    % lvn_tscc_output_var_ptr variable (the argument's TSCC out ptr variable)
+    % to hold the address of the memory location where the value of the
+    % argument should be put on return.
     %
     % Both lvn_tscc_proc_input_vars and lvn_tscc_output_vars include
     % an argument sequence number, with separate sequences for input and
@@ -172,49 +199,85 @@
     % in the TSCC. These names are stored in !OutArgNames across calls to
     % ml_gen_tscc_arg_params.
     %
-    % The value returned in TsccInArgs will be a list of the
-    % lvn_tscc_proc_input_vars of the input arguments only. This is used
-    % during the generation of code for tailcalls.
+    % The value we return in TsccInArgs will be a list of the
+    % lvn_tscc_proc_input_vars of the input arguments only. Every tail call
+    % will assign a value to every lvn_tscc_proc_input_var of the callee.
     %
-    % The value returned in TsccInLocalVarDefns will be a local var definition
-    % of each variable in TsccInArgs. This is used to define those variables
-    % in copies of the TSCC code that are *not* for this procedure.
-    % (This is we ensure that each lvn_tscc_proc_input_var will be defined
-    % by exactly one of TsccInLocalVarDefns and TsccInArgs in each copy.)
+    % The next three parameters, FuncParams, ReturnRvalsTypes and OutArgNames,
+    % describe the signature of the container functions. FuncParams is intended
+    % to be put directly into the func_params slot in the container
+    % procedure's mlds_function: it lists the names and types of the arguments
+    % (which will be the procedure's TSCC in variables, and the TSCC out ptr
+    % variables of the output arguments returned by reference) in declaration
+    % order, and the types of the output arguments that are returned by value
+    % (including the success indicator for model semi procedures).
+    % ReturnRvalsTypes is intended to be put almost directly into the return
+    % statements of container functions. It gives the rvals and types of the
+    % output args returned by value, with the rvals being just the values of
+    % their TSCC out variables. The value in OutVarsTypes just lists the names
+    % of all the TSCC out variables together with their types. It is not meant
+    % to be used in the construction of any MLDS construct; it is meant purely
+    % to be used in a sanity check. Every procedure in a TSCC should get
+    % the exact same OutVarsTypes value; any mismatch indicates a compiler bug.
+    % The reason why OutVarsTypes is separate from FuncParams is that it is
+    % possible for two procedures in the TSCC to return the exact same vector
+    % of arguments (so that they can tail call each other), but not return those
+    % arguments the same way. This can happen when one procedure comes from
+    % a predicate (which in C returns all its outputs via reference), while
+    % another comes from a function (which in C returns its last argument,
+    % the result argument, via the return value).
     %
-    % The value returned in FuncParams will be the signature of the function.
-    % The function's arguments will be a list of all the input arguments and
-    % all the byref output arguments of the procedure, in declaration order;
-    % the returns will be a list of all the copied-out output arguments,
-    % again in declaration order, possibly preceded by a success indicator
-    % (if the code model is model_semi). ReturnRvals will contain the
-    % the rvals representing all the copied-out output arguments, which should
-    % all be returned together in a retun statement. These will consist
-    % of the copied-out output arguments' lvn_tscc_output_vars, again
-    % possibly preceded by a success indicator.
+    % When generating code for a procedure that is *not* in a TSCC,
+    % the declaration of its MLDS function would define the MLDS variables
+    % of the some of the procedure's arguments (specifically, the inputs).
+    % The signatures of MLDS container functions defining a procedure in a TSCC
+    % never define any of the procedure's own variables of the arguments;
+    % they all need to be defined at the top of the container function.
+    % OwnLocalVarDefns will contain these definitions.
     %
-    % Each procedure's part in the TSCC defines local MLDS variables for each
-    % argument, both input and output (returned in OwnLocalVarDefns). Its code
-    % starts by copying the values of each lvn_tscc_proc_input_var
-    % and each byref lvn_tscc_output_var to the corresponding local var.
-    % For input arguments, this copies the value; for byref output arguments,
-    % this copies the address where the argument's value should be put.
-    % These assignments are returned in CopyTsccToOwnStmts. This will be
-    % followed by the code of the procedure body, which in turn will be
-    % followed by CopyOwnToTsccStmts, which will copy each of the procedure's
-    % copied-out output vars (if there are any) to its corresponding
-    % lvn_tscc_output_var. After this, a return statement constructed around
-    % ReturnRvals will then return these (and maybe a success indication)
-    % to the caller.
+    % The values of TsccInLocalVarDefns and TsccOutLocalVarDefns are also
+    % destined for the top of container functions; they will contain
+    % the local variable definitions of the TSCC in and out variables
+    % respectively.
+    %
+    % For container function's argument list will define the TSCC in variables
+    % of the procedure that the container function is for, but the top of
+    % that container function must define the TSCC in variables of all the
+    % *other* procedures in the TSCC. (This is how we ensure that each
+    % lvn_tscc_proc_input_var of each TSCC procedure will be defined by
+    % exactly one of TsccInLocalVarDefns and FuncParams in each container
+    % function.)
+    %
+    % The TSCC out variables (which are *not* specific to a given procedure
+    % in the TSCC) are never defined in container function signatures.
+    % If an output argument is returned by reference, the argument list
+    % contain the TSCC out ptr variable, not the TSCC out variable, while
+    % if the argument is returned by value, then only its type will be listed
+    % in the return types part of the signature. This is why the top of the
+    % container function must include the contents of TsccOutLocalVarDefns.
+    %
+    % Each wrapped procedure starts by copying the values of its TSCC in
+    % variables to their corresponding own variables; CopyTsccInToOwnStmts
+    % contains this code. Each wrapped procedure ends by copying the values
+    % of its own variables (including the success indicator, if present)
+    % to the corresponding TSCC out variables; CopyOwnToTsccOutStmts
+    % contains this code. If any output arguments are to be returned
+    % via reference, then the epilogue of the container function must copy
+    % the values of those arguments from their TSCC out variables to the
+    % address pointed to by their TSCC out ptr variables;
+    % CopyOutValThroughPtrStmts contains this code.
     %
 :- pred ml_gen_tscc_arg_params(module_info::in, pred_or_func::in,
     code_model::in, prog_context::in, proc_id_in_tscc::in, prog_varset::in,
     list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
     list(var_mvar_type_mode)::out,
     map(int, string)::in, map(int, string)::out,
-    list(mlds_argument)::out, list(mlds_local_var_defn)::out,
-    mlds_func_params::out, list(mlds_local_var_defn)::out,
-    list(mlds_stmt)::out, list(mlds_stmt)::out, list(mlds_rval)::out) is det.
+    list(mlds_argument)::out, mlds_func_params::out,
+    assoc_list(mlds_rval, mlds_type)::out,
+    assoc_list(mlds_local_var_name, mlds_type)::out,
+    list(mlds_local_var_defn)::out, list(mlds_local_var_defn)::out,
+    list(mlds_local_var_defn)::out,
+    list(mlds_stmt)::out, list(mlds_stmt)::out, list(mlds_stmt)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -705,8 +768,10 @@ ml_gen_arg_decl(Var, Type, MLDS_ArgType, FuncArg, !MaybeInfo) :-
 
 ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel, Context,
         ProcIdInTscc, VarSet, Vars, Types, Modes, ArgTuples, !OutArgNames,
-        TsccInArgs, TsccInLocalVarDefns, FuncParams, OwnLocalVarDefns,
-        CopyTsccToOwnStmts, CopyOwnToTsccStmts, ReturnRvals) :-
+        TsccInArgs, FuncParams, ReturnRvalsTypes, OutVarsTypes,
+        OwnLocalVarDefns, TsccInLocalVarDefns, TsccOutLocalVarDefns,
+        CopyTsccInToOwnStmts, CopyOwnToTsccOutStmts,
+        CopyOutValThroughPtrStmts) :-
     module_info_get_globals(ModuleInfo, Globals),
     CopyOut = get_copy_out_option(Globals, CodeModel),
     CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
@@ -714,44 +779,69 @@ ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel, Context,
         ArgTuples),
     NextInArgNum0 = 1,
     NextOutArgNum0 = 1,
-    ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context, ProcIdInTscc,
-        ArgTuples, NextInArgNum0, NextOutArgNum0, !OutArgNames,
-        TsccInArgs, TsccInLocalVarDefns, TsccArgs, ReturnTypes0, ReturnRvals0,
-        OwnLocalVarDefns, CopyTsccToOwnStmts, CopyOwnToTsccStmts),
+    ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context,
+        ProcIdInTscc, ArgTuples, NextInArgNum0, NextOutArgNum0,
+        !OutArgNames, TsccInArgs, TsccArgs, ReturnRvalsTypes0, OutVarsTypes0,
+        OwnLocalVarDefns, TsccInLocalVarDefns, TsccOutLocalVarDefns0,
+        CopyTsccInToOwnStmts,
+        CopyOwnToTsccOutStmts0, CopyOutValThroughPtrStmts),
     (
         CodeModel = model_det,
-        ReturnTypes = ReturnTypes0,
-        ReturnRvals = ReturnRvals0
+        ReturnRvalsTypes = ReturnRvalsTypes0,
+        OutVarsTypes = OutVarsTypes0,
+        TsccOutLocalVarDefns = TsccOutLocalVarDefns0,
+        CopyOwnToTsccOutStmts = CopyOwnToTsccOutStmts0
     ;
         CodeModel = model_semi,
-        SucceededVar = lvn_comp_var(lvnc_succeeded),
         SucceededType = mlds_native_bool_type,
-        SucceededLval = ml_local_var(SucceededVar, SucceededType),
-        SucceededRval = ml_lval(SucceededLval),
-        ReturnTypes = [SucceededType | ReturnTypes0],
-        ReturnRvals = [SucceededRval | ReturnRvals0]
+
+        SucceededOwnVar = lvn_comp_var(lvnc_succeeded),
+        SucceededOwnLval = ml_local_var(SucceededOwnVar, SucceededType),
+        SucceededOwnRval = ml_lval(SucceededOwnLval),
+
+        SucceededTsccOutVar = lvn_tscc_output_var_succeeded,
+        SucceededTsccOutLval =
+            ml_local_var(SucceededTsccOutVar, SucceededType),
+        SucceededTsccOutRval = ml_lval(SucceededTsccOutLval),
+
+        SucceededTsccOutVarDefn = mlds_local_var_defn(SucceededTsccOutVar,
+            Context, SucceededType, no_initializer, gc_no_stmt),
+        CopySucceededStmt = ml_stmt_atomic(
+            assign(SucceededTsccOutLval, SucceededOwnRval),
+            Context),
+
+        ReturnRvalsTypes =
+            [SucceededTsccOutRval - SucceededType | ReturnRvalsTypes0],
+        OutVarsTypes = [SucceededTsccOutVar - SucceededType | OutVarsTypes0],
+        TsccOutLocalVarDefns =
+            [SucceededTsccOutVarDefn | TsccOutLocalVarDefns0],
+        CopyOwnToTsccOutStmts = [CopySucceededStmt | CopyOwnToTsccOutStmts0]
     ;
         CodeModel = model_non,
         unexpected($pred, "model_non")
     ),
+    assoc_list.values(ReturnRvalsTypes, ReturnTypes),
     FuncParams = mlds_func_params(TsccArgs, ReturnTypes).
 
 :- pred ml_gen_tscc_arg_decls(module_info::in, copy_out_when::in,
     prog_context::in, proc_id_in_tscc::in, list(var_mvar_type_mode)::in,
     int::in, int::in, map(int, string)::in, map(int, string)::out,
-    list(mlds_argument)::out, list(mlds_local_var_defn)::out,
-    list(mlds_argument)::out, list(mlds_type)::out, list(mlds_rval)::out,
-    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
-    list(mlds_stmt)::out) is det.
+    list(mlds_argument)::out, list(mlds_argument)::out,
+    assoc_list(mlds_rval, mlds_type)::out,
+    assoc_list(mlds_local_var_name, mlds_type)::out,
+    list(mlds_local_var_defn)::out, list(mlds_local_var_defn)::out,
+    list(mlds_local_var_defn)::out,
+    list(mlds_stmt)::out, list(mlds_stmt)::out, list(mlds_stmt)::out) is det.
 
 ml_gen_tscc_arg_decls(_ModuleInfo, _CopyOutWhen, _Context, _ProcIdInTscc, [],
         _NextInArgNum0, _NextOutArgNum0, !OutArgNames,
-        [], [], [], [], [], [], [], []).
+        [], [], [], [], [], [], [], [], [], []).
 ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context, ProcIdInTscc,
         [HeadTuple | TailTuples], NextInArgNum0, NextOutArgNum0,
-        !OutArgNames, TsccInArgs, TsccInLocalVarDefns,
-        TsccArgs, ReturnTypes, ReturnRvals,
-        OwnLocalVarDefns, CopyTsccToOwnStmts, CopyOwnToTsccStmts) :-
+        !OutArgNames, TsccInArgs, TsccArgs, ReturnRvalsTypes, OutVarsTypes,
+        OwnLocalVarDefns, TsccInLocalVarDefns, TsccOutLocalVarDefns,
+        CopyTsccInToOwnStmts,
+        CopyOwnToTsccOutStmts, CopyOutValThroughPtrStmts) :-
     HeadTuple =
         var_mvar_type_mode(_HeadVar, HeadMLDSVarName, HeadType, HeadMode),
     HeadIsDummy = check_dummy_type(ModuleInfo, HeadType),
@@ -759,10 +849,12 @@ ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context, ProcIdInTscc,
         HeadIsDummy = is_dummy_type,
         % Exclude types such as io.state, etc.
         ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context,
-            ProcIdInTscc, TailTuples, NextInArgNum0, NextOutArgNum0,
-            !OutArgNames, TsccInArgs, TsccInLocalVarDefns,
-            TsccArgs, ReturnTypes, ReturnRvals,
-            OwnLocalVarDefns, CopyTsccToOwnStmts, CopyOwnToTsccStmts)
+            ProcIdInTscc, TailTuples,
+            NextInArgNum0, NextOutArgNum0, !OutArgNames,
+            TsccInArgs, TsccArgs, ReturnRvalsTypes, OutVarsTypes,
+            OwnLocalVarDefns, TsccInLocalVarDefns, TsccOutLocalVarDefns,
+            CopyTsccInToOwnStmts,
+            CopyOwnToTsccOutStmts, CopyOutValThroughPtrStmts)
     ;
         HeadIsDummy = is_not_dummy_type,
         HeadVarNameStr = ml_local_var_name_to_string(HeadMLDSVarName),
@@ -771,38 +863,43 @@ ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context, ProcIdInTscc,
             HeadMode = top_unused,
             % Also exclude values with arg_mode `top_unused'.
             ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context,
-                ProcIdInTscc, TailTuples, NextInArgNum0, NextOutArgNum0,
-                !OutArgNames, TsccInArgs, TsccInLocalVarDefns,
-                TsccArgs, ReturnTypes, ReturnRvals,
-                OwnLocalVarDefns, CopyTsccToOwnStmts, CopyOwnToTsccStmts)
+                ProcIdInTscc, TailTuples,
+                NextInArgNum0, NextOutArgNum0, !OutArgNames,
+                TsccInArgs, TsccArgs, ReturnRvalsTypes, OutVarsTypes,
+                OwnLocalVarDefns, TsccInLocalVarDefns,
+                TsccOutLocalVarDefns, CopyTsccInToOwnStmts,
+                CopyOwnToTsccOutStmts, CopyOutValThroughPtrStmts)
         ;
             (
                 HeadMode = top_in,
                 InArgNum = NextInArgNum0,
                 NextInArgNum = NextInArgNum0 + 1,
                 NextOutArgNum = NextOutArgNum0,
-                HeadTsccVar = lvn_tscc_proc_input_var(ProcIdInTscc,
+                HeadTsccInVar = lvn_tscc_proc_input_var(ProcIdInTscc,
                     InArgNum, HeadVarNameStr),
-                HeadMLDS_ArgType = HeadMLDS_Type,
-                HeadTsccArg = mlds_argument(HeadTsccVar, HeadMLDS_ArgType,
-                    gc_no_stmt),
-                HeadTsccArgs = [HeadTsccArg],
-                HeadReturnTypes = [],
-                HeadReturnRvals = [],
-                HeadOwnLocalVarDefn = mlds_local_var_defn(HeadMLDSVarName,
-                    Context, HeadMLDS_ArgType, no_initializer, gc_no_stmt),
                 HeadMLDSVarLval =
-                    ml_local_var(HeadMLDSVarName, HeadMLDS_ArgType),
-                HeadTsccVarLval =
-                    ml_local_var(HeadTsccVar, HeadMLDS_ArgType),
-                HeadTsccInArgs = [HeadTsccArg],
-                HeadTsccInLocalVarDefn = mlds_local_var_defn(HeadTsccVar,
-                    Context, HeadMLDS_ArgType, no_initializer, gc_no_stmt),
-                HeadTsccInLocalVarDefns = [HeadTsccInLocalVarDefn],
-                HeadCopyTsccToOwnStmts = [ml_stmt_atomic(
-                    assign(HeadMLDSVarLval, ml_lval(HeadTsccVarLval)),
+                    ml_local_var(HeadMLDSVarName, HeadMLDS_Type),
+                HeadTsccInVarLval =
+                    ml_local_var(HeadTsccInVar, HeadMLDS_Type),
+                HeadTsccInArg = mlds_argument(HeadTsccInVar, HeadMLDS_Type,
+                    gc_no_stmt),
+
+                HeadTsccInArgs = [HeadTsccInArg],
+                HeadTsccArgs = [HeadTsccInArg],
+                HeadReturnRvalsTypes = [],
+                HeadOutVarsTypes = [],
+
+                HeadOwnLocalVarDefn = mlds_local_var_defn(HeadMLDSVarName,
+                    Context, HeadMLDS_Type, no_initializer, gc_no_stmt),
+                HeadTsccInLocalVarDefns = [mlds_local_var_defn(HeadTsccInVar,
+                    Context, HeadMLDS_Type, no_initializer, gc_no_stmt)],
+                HeadTsccOutLocalVarDefns = [],
+
+                HeadCopyTsccInToOwnStmts = [ml_stmt_atomic(
+                    assign(HeadMLDSVarLval, ml_lval(HeadTsccInVarLval)),
                     Context)],
-                HeadCopyOwnToTsccStmts = []
+                HeadCopyOwnToTsccOutStmts = [],
+                HeadCopyOutValThroughPtrStmts = []
             ;
                 HeadMode = top_out,
                 OutArgNum = NextOutArgNum0,
@@ -814,9 +911,29 @@ ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context, ProcIdInTscc,
                     OutArgName = HeadVarNameStr,
                     map.det_insert(OutArgNum, OutArgName, !OutArgNames)
                 ),
+                HeadMLDSVarLval = ml_local_var(HeadMLDSVarName, HeadMLDS_Type),
+                HeadTsccOutVarValue =
+                    lvn_tscc_output_var(OutArgNum, OutArgName),
+                HeadTsccOutVarValueLval =
+                    ml_local_var(HeadTsccOutVarValue, HeadMLDS_Type),
+
                 HeadTsccInArgs = [],
+                % HeadTsccArgs in if-then-else below
+                % HeadReturnRvalsTypes in if-then-else below
+                HeadOutVarsTypes = [HeadTsccOutVarValue - HeadMLDS_Type],
+
+                HeadOwnLocalVarDefn = mlds_local_var_defn(HeadMLDSVarName,
+                    Context, HeadMLDS_Type, no_initializer, gc_no_stmt),
                 HeadTsccInLocalVarDefns = [],
-                HeadTsccVar = lvn_tscc_output_var(OutArgNum, OutArgName),
+                HeadTsccOutLocalVarDefns =
+                    [mlds_local_var_defn(HeadTsccOutVarValue,
+                        Context, HeadMLDS_Type, no_initializer, gc_no_stmt)],
+
+                HeadCopyTsccInToOwnStmts = [],
+                HeadCopyOwnToTsccOutStmts = [ml_stmt_atomic(
+                    assign(HeadTsccOutVarValueLval, ml_lval(HeadMLDSVarLval)),
+                    Context)],
+                % HeadCopyOutValThroughPtrStmts in if-then-else below
                 ( if
                     (
                         CopyOutWhen = copy_out_only_last_arg,
@@ -826,58 +943,56 @@ ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context, ProcIdInTscc,
                     )
                 then
                     % This is a by-value output.
-                    HeadMLDS_ArgType = HeadMLDS_Type,
+                    HeadReturnRval = ml_lval(HeadTsccOutVarValueLval),
+
                     HeadTsccArgs = [],
-                    HeadReturnTypes = [HeadMLDS_ArgType],
-                    HeadReturnRvals = [ml_lval(HeadTsccVarLval)],
-                    HeadOwnLocalVarDefn = mlds_local_var_defn(HeadTsccVar,
-                        Context, HeadMLDS_ArgType, no_initializer, gc_no_stmt),
-                    HeadMLDSVarLval =
-                        ml_local_var(HeadMLDSVarName, HeadMLDS_ArgType),
-                    HeadTsccVarLval =
-                        ml_local_var(HeadTsccVar, HeadMLDS_ArgType),
-                    HeadCopyTsccToOwnStmts = [],
-                    HeadCopyOwnToTsccStmts = [ml_stmt_atomic(
-                        assign(HeadTsccVarLval, ml_lval(HeadMLDSVarLval)),
-                        Context)]
+                    HeadReturnRvalsTypes = [HeadReturnRval - HeadMLDS_Type],
+                    HeadCopyOutValThroughPtrStmts = []
                 else
                     % This is a by-reference output.
-                    HeadMLDS_ArgType = mlds_ptr_type(HeadMLDS_Type),
-                    HeadTsccArg = mlds_argument(HeadTsccVar, HeadMLDS_ArgType,
-                        gc_no_stmt),
-                    HeadTsccArgs = [HeadTsccArg],
-                    HeadReturnTypes = [],
-                    HeadReturnRvals = [],
-                    HeadOwnLocalVarDefn = mlds_local_var_defn(HeadMLDSVarName,
-                        Context, HeadMLDS_ArgType, no_initializer, gc_no_stmt),
-                    HeadMLDSVarLval =
-                        ml_local_var(HeadMLDSVarName, HeadMLDS_ArgType),
-                    HeadTsccVarLval =
-                        ml_local_var(HeadTsccVar, HeadMLDS_ArgType),
-                    HeadCopyTsccToOwnStmts = [ml_stmt_atomic(
-                        assign(HeadMLDSVarLval, ml_lval(HeadTsccVarLval)),
-                        Context)],
-                    HeadCopyOwnToTsccStmts = []
+                    HeadMLDS_PtrType = mlds_ptr_type(HeadMLDS_Type),
+                    HeadTsccOutVarPtr =
+                        lvn_tscc_output_var_ptr(OutArgNum, OutArgName),
+                    HeadTsccOutVarPtrLval =
+                        ml_local_var(HeadTsccOutVarPtr, HeadMLDS_PtrType),
+                    HeadTsccPtrArg = mlds_argument(HeadTsccOutVarPtr,
+                        HeadMLDS_PtrType, gc_no_stmt),
+
+                    HeadTsccArgs = [HeadTsccPtrArg],
+                    HeadReturnRvalsTypes = [],
+                    HeadCopyOutValThroughPtrStmts = [ml_stmt_atomic(
+                        assign(ml_mem_ref(
+                            ml_lval(HeadTsccOutVarPtrLval), HeadMLDS_Type),
+                            ml_lval(HeadTsccOutVarValueLval)),
+                        Context)]
                 )
             ),
             ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context,
-                ProcIdInTscc, TailTuples, NextInArgNum, NextOutArgNum,
-                !OutArgNames, TailTsccInArgs, TailTsccInLocalVarDefns,
-                TailTsccArgs, TailReturnTypes, TailReturnRvals,
-                TailOwnLocalVarDefns, TailCopyTsccToOwnStmts,
-                TailCopyOwnToTsccStmts),
+                ProcIdInTscc, TailTuples,
+                NextInArgNum, NextOutArgNum, !OutArgNames,
+                TailTsccInArgs, TailTsccArgs,
+                TailReturnRvalsTypes, TailOutVarsTypes,
+                TailOwnLocalVarDefns, TailTsccInLocalVarDefns,
+                TailTsccOutLocalVarDefns,
+                TailCopyTsccInToOwnStmts, TailCopyOwnToTsccOutStmts,
+                TailCopyOutValThroughPtrStmts),
             TsccInArgs = HeadTsccInArgs ++ TailTsccInArgs,
+            TsccArgs = HeadTsccArgs ++ TailTsccArgs,
+            ReturnRvalsTypes = HeadReturnRvalsTypes ++ TailReturnRvalsTypes,
+            OutVarsTypes = HeadOutVarsTypes ++ TailOutVarsTypes,
+
+            OwnLocalVarDefns = [HeadOwnLocalVarDefn | TailOwnLocalVarDefns],
             TsccInLocalVarDefns =
                 HeadTsccInLocalVarDefns ++ TailTsccInLocalVarDefns,
-            TsccArgs = HeadTsccArgs ++ TailTsccArgs,
-            ReturnTypes = HeadReturnTypes ++ TailReturnTypes,
-            ReturnRvals = HeadReturnRvals ++ TailReturnRvals,
-            OwnLocalVarDefns =
-                [HeadOwnLocalVarDefn | TailOwnLocalVarDefns],
-            CopyTsccToOwnStmts =
-                HeadCopyTsccToOwnStmts ++ TailCopyTsccToOwnStmts,
-            CopyOwnToTsccStmts =
-                HeadCopyOwnToTsccStmts ++ TailCopyOwnToTsccStmts
+            TsccOutLocalVarDefns =
+                HeadTsccOutLocalVarDefns ++ TailTsccOutLocalVarDefns,
+
+            CopyTsccInToOwnStmts =
+                HeadCopyTsccInToOwnStmts ++ TailCopyTsccInToOwnStmts,
+            CopyOwnToTsccOutStmts =
+                HeadCopyOwnToTsccOutStmts ++ TailCopyOwnToTsccOutStmts,
+            CopyOutValThroughPtrStmts =
+                HeadCopyOutValThroughPtrStmts ++ TailCopyOutValThroughPtrStmts
         )
     ).
 

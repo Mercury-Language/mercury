@@ -503,6 +503,7 @@
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.set_of_var.
 
 :- import_module map.
 :- import_module pair.
@@ -946,7 +947,7 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
 
         % Output variables may be passed by reference...
         ml_gen_info_get_byref_output_vars(Info, ByRefOutputVars),
-        ( if list.member(Var, ByRefOutputVars) then
+        ( if set_of_var.member(ByRefOutputVars, Var) then
             Lval = ml_mem_ref(ml_lval(VarLval), MLDS_Type)
         else
             Lval = VarLval
