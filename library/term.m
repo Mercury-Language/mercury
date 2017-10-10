@@ -1159,19 +1159,23 @@ is_ground_list([Term | Terms]) :-
 
 %---------------------------------------------------------------------------%
 
-is_ground_in_bindings(variable(V, _), Bindings) :-
-    map.search(Bindings, V, Binding),
-    is_ground_in_bindings(Binding, Bindings).
-is_ground_in_bindings(functor(_, Args, _), Bindings) :-
-    is_ground_in_bindings_list(Args, Bindings).
+is_ground_in_bindings(Term, Bindings) :-
+    (
+        Term = variable(Var, _),
+        map.search(Bindings, Var, BoundTerm),
+        is_ground_in_bindings(BoundTerm, Bindings)
+    ;
+        Term = functor(_, ArgTerms, _),
+        are_ground_in_bindings(ArgTerms, Bindings)
+    ).
 
-:- pred is_ground_in_bindings_list(list(term(T))::in, substitution(T)::in)
+:- pred are_ground_in_bindings(list(term(T))::in, substitution(T)::in)
     is semidet.
 
-is_ground_in_bindings_list([], _Bindings).
-is_ground_in_bindings_list([Term | Terms], Bindings) :-
+are_ground_in_bindings([], _Bindings).
+are_ground_in_bindings([Term | Terms], Bindings) :-
     is_ground_in_bindings(Term, Bindings),
-    is_ground_in_bindings_list(Terms, Bindings).
+    are_ground_in_bindings(Terms, Bindings).
 
 %---------------------------------------------------------------------------%
 
