@@ -411,23 +411,23 @@ set_dump_opts_for_clauses(Info, ClausesInfo) :-
     list(clause)::in, io::di, io::uo) is det.
 
 write_clauses(Info, Lang, ModuleInfo, PredId, PredOrFunc, VarSet, TypeQual,
-        VarNamePrint, Indent, HeadVars, Clauses, !IO) :-
-    HeadVarList = proc_arg_vector_to_list(HeadVars),
+        VarNamePrint, Indent, HeadVarsVector, Clauses, !IO) :-
+    HeadVars = proc_arg_vector_to_list(HeadVarsVector),
+    term.var_list_to_term_list(HeadVars, HeadTerms),
     write_clauses_loop(Info, Lang, ModuleInfo, PredId, PredOrFunc,
-        VarSet, TypeQual, VarNamePrint, Indent, HeadVarList, Clauses, 1, !IO).
+        VarSet, TypeQual, VarNamePrint, Indent, HeadTerms, Clauses, 1, !IO).
 
 :- pred write_clauses_loop(hlds_out_info::in, output_lang::in, module_info::in,
     pred_id::in, pred_or_func::in, prog_varset::in, maybe_vartypes::in,
-    var_name_print::in, int::in, list(prog_var)::in, list(clause)::in,
+    var_name_print::in, int::in, list(prog_term)::in, list(clause)::in,
     int::in, io::di, io::uo) is det.
 
-write_clauses_loop(Info, Lang, ModuleInfo, PredId, PredOrFunc,
-        VarSet, TypeQual, VarNamePrint, Indent, HeadVars, Clauses, ClauseNum,
-        !IO) :-
+write_clauses_loop(Info, Lang, ModuleInfo, PredId, PredOrFunc, VarSet,
+        TypeQual, VarNamePrint, Indent, HeadTerms, Clauses, ClauseNum, !IO) :-
     (
+        Clauses = []
+    ;
         Clauses = [FirstClause | LaterClauses],
-        % ZZZ
-        term.var_list_to_term_list(HeadVars, HeadTerms),
         io.write_string("% clause ", !IO),
         io.write_int(ClauseNum, !IO),
         io.write_string("\n", !IO),
@@ -435,10 +435,8 @@ write_clauses_loop(Info, Lang, ModuleInfo, PredId, PredOrFunc,
             VarSet, TypeQual, VarNamePrint, write_actual_modes, Indent,
             HeadTerms, FirstClause, !IO),
         write_clauses_loop(Info, Lang, ModuleInfo,PredId, PredOrFunc,
-            VarSet, TypeQual, VarNamePrint, Indent, HeadVars, LaterClauses,
+            VarSet, TypeQual, VarNamePrint, Indent, HeadTerms, LaterClauses,
             ClauseNum + 1, !IO)
-    ;
-        Clauses = []
     ).
 
 write_clause(Info, Lang, ModuleInfo,PredId, PredOrFunc, VarSet, TypeQual,
