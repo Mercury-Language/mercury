@@ -37,6 +37,18 @@
 
 :- func to_int(uint16) = int.
 
+    % from_bytes_le(LSB, MSB) = U16:
+    % U16 is the uint16 whose least and most significant bytes are given by the
+    % uint8s LSB and MSB respectively.
+    %
+:- func from_bytes_le(uint8, uint8) = uint16.
+
+    % from_bytes_be(MSB, LSB) = U16:
+    % U16 is the uint16 whose least and most significant bytes are given by the
+    % uint8s LSB and MSB respectively.
+    %
+:- func from_bytes_be(uint8, uint8) = uint16.
+
 %--------------------------------------------------------------------------%
 
     % Less than.
@@ -301,6 +313,44 @@ cast_from_int16(_) = _ :-
 :- pragma no_determinism_warning(to_int/1).
 to_int(_) = _ :-
     sorry($module, "uint16.to_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    from_bytes_le(LSB::in, MSB::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    unsigned char *uint16_bytes = (unsigned char *) &U16;
+#if defined(MR_BIG_ENDIAN)
+    uint16_bytes[0] = MSB;
+    uint16_bytes[1] = LSB;
+#else
+    uint16_bytes[0] = LSB;
+    uint16_bytes[1] = MSB;
+#endif
+").
+
+:- pragma foreign_proc("Java",
+    from_bytes_le(LSB::in, MSB::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (short) (MSB << java.lang.Byte.SIZE | (LSB & 0x00ff));
+").
+
+:- pragma foreign_proc("C#",
+    from_bytes_le(LSB::in, MSB::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (ushort) (MSB << 8 | (LSB & 0x00ff));
+").
+
+from_bytes_le(_, _) = _ :-
+    sorry($module, "uint16.from_bytes_le/2 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+from_bytes_be(MSB, LSB) =
+    from_bytes_le(LSB, MSB).
 
 %---------------------------------------------------------------------------%
 
