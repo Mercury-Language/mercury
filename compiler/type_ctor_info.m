@@ -1047,16 +1047,18 @@ make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
     %
 :- func make_functor_number_map(list(constructor)) = list(int).
 
-make_functor_number_map(Ctors) = Map :-
-    % ZZZ
-    CtorNames : assoc_list(sym_name, int) =
-            list.map(
-                (func(Ctor) = Ctor ^ cons_name - length(Ctor ^ cons_args)),
-                Ctors),
-    SortedNameArityMap =
-            map.from_corresponding_lists(list.sort(CtorNames),
-                0 `..` (length(Ctors) - 1)),
-    Map = map.apply_to_list(CtorNames, SortedNameArityMap).
+make_functor_number_map(OrdinalCtors) = OrdinalToLexicographicSeqNums :-
+    OrdinalCtorNames = list.map(ctor_name_arity, OrdinalCtors),
+    list.sort(OrdinalCtorNames, LexicographicCtorNames),
+    LexicographicSeqNums = 0 `..` (list.length(OrdinalCtors) - 1),
+    map.from_corresponding_lists(LexicographicCtorNames, LexicographicSeqNums,
+        LexicographicCtorNameToSeqNumMap),
+    map.apply_to_list(OrdinalCtorNames, LexicographicCtorNameToSeqNumMap,
+        OrdinalToLexicographicSeqNums).
+
+:- func ctor_name_arity(constructor) = {sym_name, arity}.
+
+ctor_name_arity(Ctor) = {Ctor ^ cons_name, list.length(Ctor ^ cons_args)}.
 
 %---------------------------------------------------------------------------%
 
