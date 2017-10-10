@@ -450,7 +450,7 @@ opt_exporting_pred_is_likely_worthwhile(ModuleInfo, PredId, PredInfo,
     ).
 
 :- pred may_opt_export_pred(pred_id::in, pred_info::in, set(pred_id)::in)
-    is semidet. 
+    is semidet.
 
 may_opt_export_pred(PredId, PredInfo, TypeSpecForcePreds) :-
     % Predicates with `class_method' markers contain class_method_call
@@ -931,7 +931,7 @@ module_qualify_unify_rhs(RHS0, RHS, DoWrite, !IntermodInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred gather_opt_export_instances(intermod_info::in, intermod_info::out)
-    is det. 
+    is det.
 
 gather_opt_export_instances(!IntermodInfo) :-
     intermod_info_get_module_info(!.IntermodInfo, ModuleInfo),
@@ -2201,16 +2201,17 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
     % except if the `Term' is a lambda expression.
     %
     % At least two problems occur if this is not done:
-    % - in some cases where nested unique modes were accepted by
-    %   mode analysis, the extra aliasing added by the extra level
-    %   of headvar unifications caused mode analysis to report
-    %   an error (ground expected unique), when analysing the
-    %   clauses read in from `.opt' files.
+    %
+    % - in some cases where nested unique modes were accepted by mode analysis,
+    %   the extra aliasing added by the extra level of headvar unifications
+    %   caused mode analysis to report an error (ground expected unique),
+    %   when analysing the clauses read in from `.opt' files.
+    %
     % - only HeadVar unifications may be reordered with impure goals,
-    %   so a mode error results for the second level of headvar
-    %   unifications added when the clauses are read in again from
-    %   the `.opt' file. Clauses containing impure goals are not
-    %   written to the `.opt' file for this reason.
+    %   so a mode error results for the second level of headvar unifications
+    %   added when the clauses are read in again from the `.opt' file.
+    %   Clauses containing impure goals are not written to the `.opt' file
+    %   for this reason.
     %
 :- pred strip_headvar_unifications(list(prog_var)::in,
     clause::in, list(prog_term)::out, clause::out) is det.
@@ -2225,7 +2226,7 @@ strip_headvar_unifications(HeadVars, Clause0, HeadTerms, Clause) :-
             [], Goals, HeadVarMap0, HeadVarMap)
     then
         list.map(
-            (pred(HeadVar0::in, HeadTerm::out) is det :-
+            ( pred(HeadVar0::in, HeadTerm::out) is det :-
                 ( if map.search(HeadVarMap, HeadVar0, HeadTerm0) then
                     HeadTerm = HeadTerm0
                 else
@@ -2285,8 +2286,8 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
             fail
         )
     then
-        % Don't strip the headvar unifications if one of the
-        % headvars appears twice. This should probably never happen.
+        % Don't strip the headvar unifications if one of the headvars
+        % appears twice. This should probably never happen.
         map.insert(LHSVar, RHSTerm, !HeadVarMap),
         RevGoals1 = RevGoals0
     else
