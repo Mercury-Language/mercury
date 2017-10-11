@@ -121,7 +121,7 @@ MCFLAGS-predmode                = --verbose-error-messages
 MCFLAGS-prog_io_erroneous       = --verbose-error-messages
 
 MCFLAGS-require_tailrec_1       = -O0 --optimise-tailcalls --no-warn-non-tail-recursion
-MCFLAGS-require_tailrec_2       = -O0 --optimise-tailcalls --warn-non-tail-recursion self
+MCFLAGS-require_tailrec_2       = -O0 --optimise-tailcalls --warn-non-tail-recursion self -E
 MCFLAGS-require_tailrec_3       = -O0 --optimise-tailcalls --warn-non-tail-recursion self-and-mutual
 MCFLAGS-require_tailrec_invalid = --allow-stubs --no-warn-stubs
 

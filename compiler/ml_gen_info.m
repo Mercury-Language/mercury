@@ -21,14 +21,13 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.mark_tail_calls.
+:- import_module hlds.mark_tail_calls.      % for nontail_rec_call_reason
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -207,17 +206,27 @@
 :- pred ml_gen_info_get_copy_out(ml_gen_info::in, code_model::in, bool::out)
     is det.
 
-:- type have_we_done_self_tail_rec
-    --->    have_not_done_self_tail_rec
-    ;       have_done_self_tail_rec.
+:- type target_of_self_tail_rec_call
+    --->    is_not_target_of_self_trcall
+    ;       is_target_of_self_trcall.
 
-:- type have_we_done_mutual_tail_rec
-    --->    have_not_done_mutual_tail_rec
-    ;       have_done_mutual_tail_rec.
+:- type target_of_mutual_tail_rec_call
+    --->    is_not_target_of_mutual_trcall
+    ;       is_target_of_mutual_trcall.
 
-:- type have_we_done_nontail_rec
-    --->    have_not_done_nontail_rec
-    ;       have_done_nontail_rec.
+:- type nontail_rec_call_warn_status
+    --->    nontail_rec_call_warn_disabled
+    ;       nontail_rec_call_warn_enabled.
+
+:- type nontail_rec_call
+    --->    nontail_rec_call(
+                ntrc_caller                 :: pred_proc_id,
+                ntrc_callee                 :: pred_proc_id,
+                ntrc_context                :: prog_context,
+                ntrc_reason                 :: nontail_rec_call_reason,
+                ntrc_obviousness            :: nontail_rec_obviousness,
+                ntrc_warn_status            :: nontail_rec_call_warn_status
+            ).
 
     % This map should have an entry for each procedure in the TSCC.
     % The set of keys in the map won't change and neither will
@@ -226,30 +235,51 @@
     % procedure, but if the code generator *does* generate such
     % a tail recursive call, it should set the
     % have_we_done_tail_rec field to have_done_tail_rec.
-:- type tail_rec_target_map == map(pred_proc_id, tail_rec_target_info).
-:- type tail_rec_target_info
-    --->    tail_rec_target_info(
-                % The identifying small sequence number of this procedure
-                % in its TSCC. These numbers are assigned sequentially
-                % starting at 1, and are wrapped up in function symbol
-                % to distinguish them from other integers.
-                trti_id                     :: proc_id_in_tscc,
-
-                % The list of the *input* arguments of the procedure.
-                trti_input_args             :: list(mlds_argument),
+:- type in_scc_map == map(pred_proc_id, in_scc_info).
+:- type in_scc_info
+    --->    in_scc_info(
+                % If this procedure is in the TSCC of the procedure we are
+                % currently generating code for, this field contains the
+                % information we need to generate tail recursive calls to it.
+                isi_maybe_in_tscc           :: maybe_in_tscc_target_info,
 
                 % The next three fields say whether we have called
                 % this procedure in various ways. They are updated as
                 % we compile *all* the procedures in the TSCC.
 
                 % In a tail call from itself?
-                trti_done_self_tail_rec     :: have_we_done_self_tail_rec,
+                isi_is_target_of_self_tr    :: target_of_self_tail_rec_call,
 
                 % In a tail call from another procedure in the TSCC?
-                trti_done_mutual_tail_rec   :: have_we_done_mutual_tail_rec,
+                isi_is_target_of_mutual_tr  :: target_of_mutual_tail_rec_call,
 
-                % In a NONtail call, from anywhere in the TSCC?
-                trti_done_nontail_rec       :: have_we_done_nontail_rec
+                % In a NONtail call, from anywhere in the *SCC*?
+                % This list gives, for each non-tail call to this procedure
+                % from *any* procedure in its SCC (including itself),
+                % the details of the call site.
+                %
+                % We use this field to gather a list of all the calls between
+                % the procedures in the TSCC that are *not* tail recursive.
+                % We store it in pieces, with one piece for each callee,
+                % because we already have the infrastructure for this
+                % in the form of the in_scc_map, and because storing
+                % the list as a whole in a data structure that is always
+                % passed along next to the in_scc_map would incur
+                % greater overheads, in both space and time, than this field.
+                isi_is_target_of_non_tail_rec :: list(nontail_rec_call)
+            ).
+
+:- type maybe_in_tscc_target_info
+    --->    not_in_tscc
+    ;       in_tscc(
+                % The identifying small sequence number of this procedure
+                % in its TSCC. These numbers are assigned sequentially
+                % starting at 1, and are wrapped up in function symbol
+                % to distinguish them from other integers.
+                itti_id                     :: proc_id_in_tscc,
+
+                % The list of the *input* arguments of the procedure.
+                itti_input_args             :: list(mlds_argument)
             ).
 
 :- type tail_rec_loop_kind
@@ -268,7 +298,7 @@
                 % the actual kind of call has occurred, and they can turn
                 % tail calls into assignments to the trti_input_args,
                 % followed by a transfer of control to the start of the callee.
-                tri_target_map              :: tail_rec_target_map,
+                tri_in_scc_map              :: in_scc_map,
 
                 % These two fields say how that transfer of control should be
                 % done. The tri_loop_kind field says whether the procedure body
@@ -284,24 +314,8 @@
                 % being one of the cases of the switch. The id of the label,
                 % or the value of the selector, is given by the trti_id field
                 % of the callee in tri_target_map.
-                tri_tscc_kind               :: tscc_kind,
                 tri_loop_kind               :: tail_rec_loop_kind,
-
-                % The parameter settings governing the generation of warning
-                % messages about recursive calls that are not *tail* recursive,
-                % as set by the option values that apply to this compiler
-                % invocation. Used only to set the value of the next field.
-                tri_default_warn_params     :: warn_non_tail_rec_params,
-
-                % The parameter settings governing the generation of warning
-                % messages about recursive calls that are not *tail* recursive,
-                % as they apply to the procedure whose MLDS code is now being
-                % generated. Set from tri_default_warn_params, but may be
-                % overridden by procedure-specific pragmas.
-                tri_proc_warn_params        :: warn_non_tail_rec_params,
-
-                % The warning messages we have generated.
-                tri_msgs                    :: list(error_spec)
+                tri_tscc_kind               :: tscc_kind
             ).
 
 :- func generate_tail_rec_start_label(tscc_kind, proc_id_in_tscc) = mlds_label.
@@ -349,8 +363,8 @@
                 mgti_tail_rec_info          :: tail_rec_info
             ).
 
-:- func init_ml_gen_tscc_info(module_info, tail_rec_target_map, tscc_kind)
-    = ml_gen_tscc_info.
+:- pred init_ml_gen_tscc_info(module_info::in, in_scc_map::in, tscc_kind::in,
+    ml_gen_tscc_info::out) is det.
 
     % Initialize the ml_gen_info, so that it is almost ready for
     % generating code for the given procedure. (The "almost" is because
@@ -746,9 +760,9 @@ generate_tail_rec_start_label(TsccKind, Id) = Label :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(init_ml_gen_tscc_info/3).
+:- pragma inline(init_ml_gen_tscc_info/4).
 
-init_ml_gen_tscc_info(ModuleInfo, TailRecTargetMap, TsccKind) = TsccInfo :-
+init_ml_gen_tscc_info(ModuleInfo, InSccMap, TsccKind, TsccInfo) :-
     % XXX FuncLabelCounter needs to start at 1 rather than 0,
     % otherwise the transformation for adding the shadow stack
     % for accurate garbage collection does not work properly,
@@ -787,11 +801,7 @@ init_ml_gen_tscc_info(ModuleInfo, TailRecTargetMap, TsccKind) = TsccInfo :-
         % to that label.
         LoopKind = tail_rec_loop_label_goto
     ),
-    get_default_warn_parms(Globals, DefaultWarnParams),
-    Specs0 = [],
-    TailRecInfo = tail_rec_info(TailRecTargetMap, TsccKind, LoopKind,
-        DefaultWarnParams, DefaultWarnParams, Specs0),
-
+    TailRecInfo = tail_rec_info(InSccMap, LoopKind, TsccKind),
     TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
         AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo).
 
@@ -808,13 +818,7 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
     set_of_var.init(ByRefOutputVars),
 
     TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
-        AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo0),
-    TailRecInfo0 = tail_rec_info(TailRecTargetMap, TsccKind, LoopKind,
-        DefaultWarnParams, _, Specs0),
-    maybe_override_warn_params_for_proc(ProcInfo, DefaultWarnParams,
-        ProcWarnParams),
-    TailRecInfo = tail_rec_info(TailRecTargetMap, TsccKind, LoopKind,
-        DefaultWarnParams, ProcWarnParams, Specs0),
+        AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo),
 
     map.init(ConstVarMap),
     stack.init(SuccContStack),

@@ -1,0 +1,28 @@
+require_tailrec_1.m:040: In mode number 1 of predicate `map1'/3:
+require_tailrec_1.m:040:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:047: In mode number 1 of predicate `map2'/3:
+require_tailrec_1.m:047:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:055: In mode number 1 of function `even1'/1:
+require_tailrec_1.m:055:   warning: mutually recursive call to function
+require_tailrec_1.m:055:   `require_tailrec_1.odd1'/1 is not tail recursive.
+require_tailrec_1.m:064: In mode number 1 of function `odd1'/1:
+require_tailrec_1.m:064:   warning: mutually recursive call to function
+require_tailrec_1.m:064:   `require_tailrec_1.even1'/1 is tail recursive, but
+require_tailrec_1.m:064:   tail recursion optimization cannot be applied to it,
+require_tailrec_1.m:064:   because the *callee* cannot reach the caller via
+require_tailrec_1.m:064:   tail calls only.
+require_tailrec_1.m:075: In mode number 1 of predicate `qsortapp_1'/2:
+require_tailrec_1.m:075:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:093: In mode number 1 of predicate `qsortapp_3'/2:
+require_tailrec_1.m:093:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:102: In mode number 1 of predicate `qsortapp_4'/2:
+require_tailrec_1.m:102:   error: self-recursive call is not tail recursive.
+require_tailrec_1.m:111: In mode number 1 of predicate `qsortapp_5'/2:
+require_tailrec_1.m:111:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:120: In mode number 1 of predicate `qsortapp_6'/2:
+require_tailrec_1.m:120:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:127: In `:- pragma require_tail_recursion' for function
+require_tailrec_1.m:127:   `cons'/2:
+require_tailrec_1.m:127:   warning: the code defining this function contains no
+require_tailrec_1.m:127:   recursive calls at all, tail-recursive or otherwise.
+For more information, recompile with `-E'.

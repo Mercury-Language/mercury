@@ -110,8 +110,10 @@ ml_gen_preds(Target, ConstStructMap, FuncDefns,
     else
         OptTailCalls = no_tail_call_opt_in_code_gen
     ),
-    ml_gen_sccs(!.ModuleInfo, OptTailCalls, Target, ConstStructMap,
-        BottomUpSCCsWithEntryPoints, [], FuncDefns, !GlobalData, !Specs).
+    get_default_warn_parms(Globals, DefaultWarnParams),
+    ml_gen_sccs(!.ModuleInfo, OptTailCalls, DefaultWarnParams, Target,
+        ConstStructMap, BottomUpSCCsWithEntryPoints,
+        [], FuncDefns, !GlobalData, !Specs).
 
 :- pred ml_find_procs_for_code_gen(
     assoc_list(pred_id, pred_info)::in,
@@ -193,38 +195,102 @@ requantify_codegen_proc(ProcId, !ProcTable) :-
     ;       tail_call_opt_in_code_gen(maybe_tail_call_opt_mutual).
 
 :- pred ml_gen_sccs(module_info::in, maybe_tail_call_opt_in_code_gen::in,
-    mlds_target_lang::in, ml_const_struct_map::in,
-    list(scc_with_entry_points)::in,
+    warn_non_tail_rec_params::in, mlds_target_lang::in,
+    ml_const_struct_map::in, list(scc_with_entry_points)::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-ml_gen_sccs(_, _, _, _, [], !FuncDefns, !GlobalData, !Specs).
-ml_gen_sccs(ModuleInfo, OptTailCalls, Target, ConstStructMap, [SCCE | SCCEs],
-        !FuncDefns, !GlobalData, !Specs) :-
-    ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
-        !FuncDefns, !GlobalData, !Specs),
-    ml_gen_sccs(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCEs,
-        !FuncDefns, !GlobalData, !Specs).
+ml_gen_sccs(_, _, _, _, _, [], !FuncDefns, !GlobalData, !Specs).
+ml_gen_sccs(ModuleInfo, OptTailCalls, DefaultWarnParams, Target,
+        ConstStructMap, [SCCE | SCCEs], !FuncDefns, !GlobalData, !Specs) :-
+    ml_gen_scc(ModuleInfo, OptTailCalls, DefaultWarnParams, Target,
+        ConstStructMap, SCCE, !FuncDefns, !GlobalData, !Specs),
+    ml_gen_sccs(ModuleInfo, OptTailCalls, DefaultWarnParams, Target,
+        ConstStructMap, SCCEs, !FuncDefns, !GlobalData, !Specs).
 
 %---------------------------------------------------------------------------%
 
 :- pred ml_gen_scc(module_info::in, maybe_tail_call_opt_in_code_gen::in,
-    mlds_target_lang::in, ml_const_struct_map::in, scc_with_entry_points::in,
+    warn_non_tail_rec_params::in, mlds_target_lang::in,
+    ml_const_struct_map::in, scc_with_entry_points::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
-        !FuncDefns, !GlobalData, !Specs) :-
+ml_gen_scc(ModuleInfo, OptTailCalls, DefaultWarnParams, Target,
+        ConstStructMap, SCCE, !FuncDefns, !GlobalData, !Specs) :-
+    ml_gen_scc_code(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
+        InSccMap, !FuncDefns, !GlobalData),
+    map.foldl_values(gather_nontail_rec_calls, InSccMap, [], NonTailRecCalls),
+    ( if
+        % If we were trying to implement recursive calls as tail calls, ...
+        OptTailCalls = tail_call_opt_in_code_gen(_),
+        % ... but some recursive calls turned out NOT to be implementable
+        % as tail calls, ...
+        NonTailRecCalls = [_ | _]
+    then
+        % ... then generate messages for them, if the appropriate settings
+        % call for such messages.
+        %
+        % Having a list of all the non-tail recursive calls in the SCC
+        % in one place should allow a future diff to report, in cases
+        % where the caller and callee are in different TSCCs, exactly
+        % which recursive calls being non-tail calls prevent them from
+        % being in the same TSCC.
+        list.foldl(report_nontail_rec_call(ModuleInfo, DefaultWarnParams), 
+            NonTailRecCalls, !Specs)
+    else
+        true
+    ).
+
+:- pred gather_nontail_rec_calls(in_scc_info::in,
+    list(nontail_rec_call)::in, list(nontail_rec_call)::out) is det.
+
+gather_nontail_rec_calls(InSccInfo, !NonTailRecCalls) :-
+    !:NonTailRecCalls =
+        InSccInfo ^ isi_is_target_of_non_tail_rec ++ !.NonTailRecCalls.
+
+:- pred report_nontail_rec_call(module_info::in,
+    warn_non_tail_rec_params::in, nontail_rec_call::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_nontail_rec_call(ModuleInfo, DefaultWarnParams, NonTailRecCall,
+        !Specs) :-
+    NonTailRecCall = nontail_rec_call(Caller, Callee, Context,
+        Reason, Obviousness, Status),
+    (
+        Status = nontail_rec_call_warn_disabled
+    ;
+        Status = nontail_rec_call_warn_enabled,
+        module_info_pred_proc_info(ModuleInfo, Caller, _PredInfo, ProcInfo),
+        maybe_override_warn_params_for_proc(ProcInfo,
+            DefaultWarnParams, ProcWarnParams),
+        maybe_report_nontail_recursive_call(ModuleInfo, Caller, Callee,
+            Context, Reason, Obviousness, ProcWarnParams, !Specs)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred ml_gen_scc_code(module_info::in, maybe_tail_call_opt_in_code_gen::in,
+    mlds_target_lang::in, ml_const_struct_map::in, scc_with_entry_points::in,
+    in_scc_map::out,
+    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_scc_code(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
+        !:InSccMap, !FuncDefns, !GlobalData) :-
     SCCE = scc_with_entry_points(PredProcIds, CalledFromHigherSCCs,
         ExportedProcs),
     set.union(CalledFromHigherSCCs, ExportedProcs, SCCEntryProcs),
+
+    set.fold(add_to_in_scc_map, PredProcIds, map.init, !:InSccMap),
     (
         OptTailCalls = no_tail_call_opt_in_code_gen,
         set.foldl3(
             ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap,
-                no_tail_rec), PredProcIds, !FuncDefns, !GlobalData, !Specs)
+                no_tail_rec),
+            PredProcIds, !FuncDefns, !GlobalData, !InSccMap)
     ;
         OptTailCalls = tail_call_opt_in_code_gen(OptTailCallsMutual),
         partition_scc_procs(ModuleInfo, set.to_sorted_list(PredProcIds),
@@ -259,13 +325,13 @@ ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
         % Translate the procedures we cannot apply tail call optimization to.
         list.foldl3(
             ml_gen_proc(ModuleInfo, Target, ConstStructMap, no_tail_rec),
-            NonePredProcIdInfos, !FuncDefns, !GlobalData, !Specs),
+            NonePredProcIdInfos, !FuncDefns, !GlobalData, !InSccMap),
 
         % Translate the procedures to which we can apply only self-tail-call
         % optimization.
         list.foldl3(
             ml_gen_proc(ModuleInfo, Target, ConstStructMap, self_tail_rec),
-            SelfPredProcIdInfos, !FuncDefns, !GlobalData, !Specs),
+            SelfPredProcIdInfos, !FuncDefns, !GlobalData, !InSccMap),
 
         % Translate the procedures to which we can apply mutual-tail-call
         % optimization as well.
@@ -290,20 +356,42 @@ ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
         list.foldl3(
             ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap,
                 self_tail_rec),
-            DetLonePredProcIds, !FuncDefns, !GlobalData, !Specs),
+            DetLonePredProcIds, !FuncDefns, !GlobalData, !InSccMap),
         list.foldl3(
             ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap,
                 self_tail_rec),
-            SemiLonePredProcIds, !FuncDefns, !GlobalData, !Specs),
+            SemiLonePredProcIds, !FuncDefns, !GlobalData, !InSccMap),
         list.foldl3(
             ml_gen_tscc(ModuleInfo, Target, ConstStructMap, SCCEntryProcs,
                 tscc_det),
-            DetNonTrivialTSCCEntries, !FuncDefns, !GlobalData, !Specs),
+            DetNonTrivialTSCCEntries, !FuncDefns, !GlobalData, !InSccMap),
         list.foldl3(
             ml_gen_tscc(ModuleInfo, Target, ConstStructMap, SCCEntryProcs,
                 tscc_semi),
-            SemiNonTrivialTSCCEntries, !FuncDefns, !GlobalData, !Specs)
+            SemiNonTrivialTSCCEntries, !FuncDefns, !GlobalData, !InSccMap)
     ).
+
+%---------------------%
+
+:- pred add_to_in_scc_map(pred_proc_id::in, in_scc_map::in, in_scc_map::out)
+    is det.
+
+add_to_in_scc_map(PredProcId, !InSccMap) :-
+    InSccInfo = in_scc_info(not_in_tscc,
+        is_not_target_of_self_trcall, is_not_target_of_mutual_trcall, []),
+    map.det_insert(PredProcId, InSccInfo, !InSccMap).
+
+:- pred reset_in_scc_map(in_scc_map::in, in_scc_map::out) is det.
+
+reset_in_scc_map(!InSccMap) :-
+    map.map_values_only(reset_scc_info, !InSccMap).
+
+:- pred reset_scc_info(in_scc_info::in, in_scc_info::out) is det.
+
+reset_scc_info(!InSccInfo) :-
+    !InSccInfo ^ isi_maybe_in_tscc := not_in_tscc.
+
+%---------------------%
 
 :- type pred_proc_id_info
     --->    pred_proc_id_info(
@@ -317,6 +405,8 @@ ml_gen_scc(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
 
 project_pred_proc_id_info_id(PredProcIdInfo) = PredProcId :-
     PredProcIdInfo = pred_proc_id_info(PredProcId, _, _, _).
+
+%---------------------%
 
     % Partition the procedures in an SCC into the following four categories.
     %
@@ -420,10 +510,10 @@ partition_tsccs([TSCC | TSCCs], !:LonePredProcIds, !:NonTrivialTSCCS) :-
     ml_const_struct_map::in, none_or_self_tail_rec::in, pred_proc_id::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    in_scc_map::in, in_scc_map::out) is det.
 
 ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
-        PredProcId, !FuncDefns, !GlobalData, !Specs) :-
+        PredProcId, !FuncDefns, !GlobalData, !InSccMap) :-
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
     Goal = hlds_goal(_GoalExpr, GoalInfo),
@@ -431,7 +521,7 @@ ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
     PredProcIdInfo =
         pred_proc_id_info(PredProcId, PredInfo, ProcInfo, ProcContext),
     ml_gen_proc(ModuleInfo, Target, ConstStructMap,
-        NoneOrSelf, PredProcIdInfo, !FuncDefns, !GlobalData, !Specs).
+        NoneOrSelf, PredProcIdInfo, !FuncDefns, !GlobalData, !InSccMap).
 
 %---------------------%
 
@@ -443,10 +533,10 @@ ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
     ml_const_struct_map::in, none_or_self_tail_rec::in, pred_proc_id_info::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    in_scc_map::in, in_scc_map::out) is det.
 
 ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
-        PredProcIdInfo, !FuncDefns, !GlobalData, !Specs) :-
+        PredProcIdInfo, !FuncDefns, !GlobalData, !InSccMap) :-
     PredProcIdInfo =
         pred_proc_id_info(PredProcId, PredInfo, ProcInfo, ProcContext),
     trace [io(!IO)] (
@@ -455,10 +545,11 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
     ),
 
     some [!Info] (
+        reset_in_scc_map(!InSccMap),
         compute_initial_tail_rec_map_for_none_or_self(ModuleInfo, NoneOrSelf,
-            PredProcId, TailRecMap0),
-        TsccInfo0 = init_ml_gen_tscc_info(ModuleInfo, TailRecMap0,
-            tscc_self_rec_only),
+            PredProcId, !InSccMap),
+        init_ml_gen_tscc_info(ModuleInfo, !.InSccMap, tscc_self_rec_only,
+            TsccInfo0),
         !:Info = ml_gen_info_init(ModuleInfo, Target, ConstStructMap,
             PredProcId, ProcInfo, !.GlobalData, TsccInfo0),
 
@@ -515,9 +606,9 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             ml_gen_info_final(!.Info, EnvVarNames,
                 ClosureWrapperFuncDefns, !:GlobalData, TsccInfo),
             TailRecInfo = TsccInfo ^ mgti_tail_rec_info,
+            !:InSccMap = TailRecInfo ^ tri_in_scc_map,
             construct_func_body_maybe_wrap_in_loop(PredProcId, ProcContext,
-                LocalVarDefns, FuncDefns, GoalStmts, TailRecInfo, FuncBody,
-                !Specs)
+                LocalVarDefns, FuncDefns, GoalStmts, TailRecInfo, FuncBody)
         )
     ),
 
@@ -539,42 +630,42 @@ get_var_rval(Info, Var, VarRval) :-
     VarRval = ml_lval(VarLval).
 
 :- pred compute_initial_tail_rec_map_for_none_or_self(module_info::in,
-    none_or_self_tail_rec::in, pred_proc_id::in, tail_rec_target_map::out)
-    is det.
+    none_or_self_tail_rec::in, pred_proc_id::in,
+    in_scc_map::in, in_scc_map::out) is det.
 
 compute_initial_tail_rec_map_for_none_or_self(ModuleInfo, NoneOrSelf,
-        PredProcId, TailRecMap0) :-
+        PredProcId, !InSccMap) :-
     (
-        NoneOrSelf = no_tail_rec,
-        map.init(TailRecMap0)
+        NoneOrSelf = no_tail_rec
+        % Nothing to do.
     ;
         NoneOrSelf = self_tail_rec,
         InputParams =
             ml_gen_proc_params_inputs_only_no_gc_stmts(ModuleInfo, PredProcId),
-        TailRecTargetInfo0 = tail_rec_target_info(proc_id_in_tscc(1),
-            InputParams, have_not_done_self_tail_rec,
-            have_not_done_mutual_tail_rec, have_not_done_nontail_rec),
-        TailRecMap0 = map.singleton(PredProcId, TailRecTargetInfo0)
+        map.lookup(!.InSccMap, PredProcId, InSccInfo0),
+        InSccInfo = InSccInfo0 ^ isi_maybe_in_tscc :=
+            in_tscc(proc_id_in_tscc(1), InputParams),
+        map.det_update(PredProcId, InSccInfo, !InSccMap)
     ).
 
 :- pred construct_func_body_maybe_wrap_in_loop(pred_proc_id::in,
     prog_context::in, list(mlds_local_var_defn)::in,
     list(mlds_function_defn)::in, list(mlds_stmt)::in, tail_rec_info::in,
-    mlds_function_body::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mlds_function_body::out) is det.
 
 construct_func_body_maybe_wrap_in_loop(PredProcId, Context,
-        LocalVarDefns, FuncDefns, GoalStmts, TailRecInfo, FuncBody, !Specs) :-
-    TailRecInfo = tail_rec_info(TargetMap, TsccKind, LoopKind,
-        _WarnDefaultParams, _WarnProcParams, TailRecSpecs),
+        LocalVarDefns, FuncDefns, GoalStmts, TailRecInfo, FuncBody) :-
+    TailRecInfo = tail_rec_info(InSccMap, LoopKind, TsccKind),
     expect(unify(TsccKind, tscc_self_rec_only), $pred,
         "TsccKind != tscc_self_rec_only"),
-    !:Specs = TailRecSpecs ++ !.Specs,
+    map.lookup(InSccMap, PredProcId, InSccInfo),
     ( if
-        map.search(TargetMap, PredProcId, TailRecTargetInfo),
-        TailRecTargetInfo = tail_rec_target_info(IdInTscc, _InputParams,
-            HaveDoneSelfTailRec, _HaveDoneMutualTailRec, _HaveDoneNonTailRec),
-        HaveDoneSelfTailRec = have_done_self_tail_rec
+        InSccInfo = in_scc_info(MaybeInTscc,
+            IsTargetOfSelfTRCall, _IsTargetOfMutualTRCall,
+            _IsTargetOfNonTailRec),
+        IsTargetOfSelfTRCall = is_target_of_self_trcall,
+        % We cannot have done self-tail-recursion if MaybeInTscc = not_in_tscc.
+        MaybeInTscc = in_tscc(IdInTscc, _TsccInArgs)
     then
         Comment = comment("setup for tailcalls optimized into a loop"),
         CommentStmt = ml_stmt_atomic(Comment, Context),
@@ -593,8 +684,8 @@ construct_func_body_maybe_wrap_in_loop(PredProcId, Context,
                 [CommentStmt, LoopTopLabelStmt] ++ GoalStmts, Context)
         )
     else
-        FuncBodyStmt = ml_gen_block(LocalVarDefns, FuncDefns,
-            GoalStmts, Context)
+        FuncBodyStmt =
+            ml_gen_block(LocalVarDefns, FuncDefns, GoalStmts, Context)
     ),
     FuncBody = body_defined_here(FuncBodyStmt).
 
@@ -638,10 +729,10 @@ construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
     scc_with_entry_points::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    in_scc_map::in, in_scc_map::out) is det.
 
 ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
-        TsccCodeModel, TSCCE, !FuncDefns, !GlobalData, !Specs) :-
+        TsccCodeModel, TSCCE, !FuncDefns, !GlobalData, !InSccMap) :-
     TSCCE = scc_with_entry_points(PredProcIds, _CalledFromHigherTSCCs,
         _ExportedTSCCPredProcIds),
     PredProcIdList = set.to_sorted_list(PredProcIds),
@@ -653,7 +744,7 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
         % For a TSCC containing just one procedure, we neither need nor want
         % the extra overhead required for managing *mutual* tail recursion.
         ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap, self_tail_rec,
-            SinglePredProcId, !FuncDefns, !GlobalData, !Specs)
+            SinglePredProcId, !FuncDefns, !GlobalData, !InSccMap)
     ;
         PredProcIdList = [_, _ | _],
         % Try to compile each procedure in the TSCC into the MLDS code
@@ -716,16 +807,16 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
         ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap,
             TsccCodeModel, PredProcIds, _NonTailEntryPredProcIds,
             NoMutualPredProcIds, MutualPredProcIds, MutualPredProcCodes,
-            CanGenerateTscc, MutualEnvVarNames,
-            MutualClosureWrapperFuncDefns, MutualTailRecSpecs,
-            LoopKind, !.GlobalData, TrialGlobalData),
+            CanGenerateTscc, MutualEnvVarNames, MutualClosureWrapperFuncDefns,
+            LoopKind, !.InSccMap, TrialInSccMap,
+            !.GlobalData, TrialGlobalData),
         (
             CanGenerateTscc = can_not_generate_code_for_tscc,
             OutsideTsccPredProcIds = PredProcIds
         ;
             CanGenerateTscc = can_generate_code_for_tscc,
             OutsideTsccPredProcIds = NoMutualPredProcIds,
-            !:Specs = MutualTailRecSpecs ++ !.Specs,
+            !:InSccMap = TrialInSccMap,
             !:GlobalData = TrialGlobalData,
 
             % Caveat 4:
@@ -788,7 +879,7 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
             ml_gen_proc_lookup(ModuleInfo, Target, ConstStructMap,
                 self_tail_rec),
             set.to_sorted_list(OutsideTsccPredProcIds),
-            !FuncDefns, !GlobalData, !Specs)
+            !FuncDefns, !GlobalData, !InSccMap)
     ).
 
 :- type can_we_generate_code_for_tscc
@@ -804,26 +895,27 @@ ml_gen_tscc(ModuleInfo, Target, ConstStructMap, _SCCEntryPredProcIds,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     set(pred_proc_id)::out, set(pred_proc_id)::out, list(pred_proc_code)::out,
     can_we_generate_code_for_tscc::out, set(string)::out,
-    list(mlds_function_defn)::out, list(error_spec)::out,
-    tail_rec_loop_kind::out, ml_global_data::in, ml_global_data::out) is det.
+    list(mlds_function_defn)::out, tail_rec_loop_kind::out,
+    in_scc_map::in, in_scc_map::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         PredProcIds, NonTailEntryPredProcIds,
         NoMutualPredProcIds, MutualPredProcIds, MutualPredProcCodes,
         CanGenerateTscc, MutualEnvVarNames,
-        MutualClosureWrapperFuncDefns, MutualTailRecSpecs,
-        LoopKind, !GlobalData) :-
+        MutualClosureWrapperFuncDefns, LoopKind, !InSccMap, !GlobalData) :-
     % Compute the information we need for generating tail calls
     % to any of the procedures in the TSCC.
+    reset_in_scc_map(!InSccMap),
     list.map_foldl5(compute_initial_tail_rec_map_for_mutual(ModuleInfo),
         set.to_sorted_list(PredProcIds), PredProcIdArgsInfos,
         1, _, maybe.no, _, can_generate_code_for_tscc, CanGenerateTscc0,
-        map.init, _OutArgNames, map.init, TailRecMap0),
+        map.init, _OutArgNames, !InSccMap),
 
     % Translate each procedure in the TSCC into a representation of the
     % code that will go under "top_of_proc_i".
-    TsccInfo0 = init_ml_gen_tscc_info(ModuleInfo, TailRecMap0,
-        tscc_self_and_mutual_rec),
+    init_ml_gen_tscc_info(ModuleInfo, !.InSccMap, tscc_self_and_mutual_rec,
+        TsccInfo0),
     list.map_foldl2(
         ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap,
             TsccCodeModel),
@@ -831,16 +923,16 @@ ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         !GlobalData, TsccInfo0, TsccInfo),
 
     TailRecInfo = TsccInfo ^ mgti_tail_rec_info,
-    TargetMap = TailRecInfo ^ tri_target_map,
+    !:InSccMap = TailRecInfo ^ tri_in_scc_map,
     LoopKind = TailRecInfo ^ tri_loop_kind,
-    map.foldl2(accumulate_entry_procs, TargetMap,
+    map.foldl2(accumulate_entry_procs, !.InSccMap,
         set.init, NonTailEntryPredProcIds, set.init, NoMutualPredProcIds0),
     % Returning NoMutualPredProcIds separately from MutualPredProcIds
     % handles caveat 1.
     separate_mutually_recursive_procs(NoMutualPredProcIds0, PredProcCodes,
         NoMutualPredProcIds, MutualPredProcIds, MutualPredProcCodes,
         MutualContainsNestedFuncs, MutualClosureWrapperFuncDefns,
-        MutualEnvVarNames, MutualTailRecSpecs),
+        MutualEnvVarNames),
 
     ( if
         % Handle caveat 2.
@@ -853,25 +945,25 @@ ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         CanGenerateTscc = can_not_generate_code_for_tscc
     ).
 
-:- pred accumulate_entry_procs(pred_proc_id::in, tail_rec_target_info::in,
+:- pred accumulate_entry_procs(pred_proc_id::in, in_scc_info::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-accumulate_entry_procs(PredProcId, TargetInfo,
+accumulate_entry_procs(PredProcId, InSccInfo,
         !NonTailEntryPredProcIds, !NoMutualTailRecPredProcIds) :-
-    HaveDoneNonTailRec = TargetInfo ^ trti_done_nontail_rec,
+    IsTargetOfNonTRCalls = InSccInfo ^ isi_is_target_of_non_tail_rec,
     (
-        HaveDoneNonTailRec = have_not_done_nontail_rec
+        IsTargetOfNonTRCalls = []
     ;
-        HaveDoneNonTailRec = have_done_nontail_rec,
+        IsTargetOfNonTRCalls = [_ | _],
         set.insert(PredProcId, !NonTailEntryPredProcIds)
     ),
-    HaveDoneMutualTailRec = TargetInfo ^ trti_done_mutual_tail_rec,
+    IsTargetOfMutualTRCall = InSccInfo ^ isi_is_target_of_mutual_tr,
     (
-        HaveDoneMutualTailRec = have_not_done_mutual_tail_rec,
+        IsTargetOfMutualTRCall = is_not_target_of_mutual_trcall,
         set.insert(PredProcId, !NoMutualTailRecPredProcIds)
     ;
-        HaveDoneMutualTailRec = have_done_mutual_tail_rec
+        IsTargetOfMutualTRCall = is_target_of_mutual_trcall
     ).
 
     % separate_mutually_recursive_procs(NoMutualTailRecProcs, PredProcCodes,
@@ -890,23 +982,22 @@ accumulate_entry_procs(PredProcId, TargetInfo,
     list(pred_proc_code)::in,
     set(pred_proc_id)::out, set(pred_proc_id)::out, list(pred_proc_code)::out,
     maybe_contains_nested_funcs::out, list(mlds_function_defn)::out,
-    set(string)::out, list(error_spec)::out) is det.
+    set(string)::out) is det.
 
 separate_mutually_recursive_procs(_NoMutualTailRecProcs, [],
-        set.init, set.init, [], does_not_contain_nested_funcs, [],
-        set.init, []).
+        set.init, set.init, [], does_not_contain_nested_funcs, [], set.init).
 separate_mutually_recursive_procs(NoMutualTailRecProcs,
         [PredProcCode | PredProcCodes],
         !:NoMutualPredProcIds, !:MutualPredProcIds, !:MutualPredProcCodes,
         !:MutualContainsNestedFuncs, !:MutualClosureWrapperFuncDefns,
-        !:MutualEnvVarNames, !:MutualTailRecSpecs) :-
+        !:MutualEnvVarNames) :-
     separate_mutually_recursive_procs(NoMutualTailRecProcs, PredProcCodes,
         !:NoMutualPredProcIds, !:MutualPredProcIds, !:MutualPredProcCodes,
         !:MutualContainsNestedFuncs, !:MutualClosureWrapperFuncDefns,
-        !:MutualEnvVarNames, !:MutualTailRecSpecs),
+        !:MutualEnvVarNames),
     PredProcCode = pred_proc_code(PredProcIdArgsInfo,
         _FuncParams, _LocalVarDefns, FuncDefns, DescCommentStmt, GoalStmts,
-        ProcClosureWrapperFuncDefns, ProcEnvVarNames, ProcTailRecSpecs),
+        ProcClosureWrapperFuncDefns, ProcEnvVarNames),
     PredProcId = PredProcIdArgsInfo ^ ppiai_pred_proc_id,
     ( if set.member(PredProcId, NoMutualTailRecProcs) then
         set.insert(PredProcId, !NoMutualPredProcIds)
@@ -929,8 +1020,7 @@ separate_mutually_recursive_procs(NoMutualTailRecProcs,
         !:MutualPredProcCodes = [PredProcCode | !.MutualPredProcCodes],
         !:MutualClosureWrapperFuncDefns =
             ProcClosureWrapperFuncDefns ++ !.MutualClosureWrapperFuncDefns,
-        set.union(ProcEnvVarNames, !MutualEnvVarNames),
-        !:MutualTailRecSpecs = ProcTailRecSpecs ++ !.MutualTailRecSpecs
+        set.union(ProcEnvVarNames, !MutualEnvVarNames)
     ).
 
     % The pred_proc_id_args_info structure contains the information we generate
@@ -1040,11 +1130,11 @@ separate_mutually_recursive_procs(NoMutualTailRecProcs,
     maybe(assoc_list(mlds_local_var_name, mlds_type))::out,
     can_we_generate_code_for_tscc::in, can_we_generate_code_for_tscc::out,
     map(int, string)::in, map(int, string)::out,
-    tail_rec_target_map::in, tail_rec_target_map::out) is det.
+    in_scc_map::in, in_scc_map::out) is det.
 
 compute_initial_tail_rec_map_for_mutual(ModuleInfo,
         PredProcId, PredProcIdArgsInfo, !ProcNum,
-        !MaybeOutVarsTypes, !CanGenerateTscc, !OutArgNames, !TailRecMap0) :-
+        !MaybeOutVarsTypes, !CanGenerateTscc, !OutArgNames, !InSccMap) :-
     ThisProcNum = !.ProcNum,
     IdInTscc = proc_id_in_tscc(ThisProcNum),
     !:ProcNum = !.ProcNum + 1,
@@ -1084,10 +1174,10 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
         ProcContext, IdInTscc, ArgTuples, FuncParams, ReturnRvalsTypes,
         OwnLocalVarDefns, TsccInLocalVarDefns, TsccValueLocalVarDefns,
         CopyTsccToOwnStmts, CopyOwnToTsccStmts, CopyOutValThroughPtrStmts),
-    TailRecTargetInfo0 = tail_rec_target_info(IdInTscc, TsccInArgs,
-        have_not_done_self_tail_rec, have_not_done_mutual_tail_rec,
-        have_not_done_nontail_rec),
-    map.det_insert(PredProcId, TailRecTargetInfo0, !TailRecMap0).
+    map.lookup(!.InSccMap, PredProcId, InSccInfo0),
+    InSccInfo = InSccInfo0 ^ isi_maybe_in_tscc :=
+        in_tscc(IdInTscc, TsccInArgs),
+    map.det_update(PredProcId, InSccInfo, !InSccMap).
 
     % Each value of this type records the results of invoking the code
     % generator on the body of procedure in a TSCC.
@@ -1101,8 +1191,7 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
                 ppc_desc_comment_stmt       :: mlds_stmt,
                 ppc_goal_stmts              :: list(mlds_stmt),
                 ppc_closure_wrapper_funcs   :: list(mlds_function_defn),
-                ppc_env_var_names           :: set(string),
-                ppc_tail_rec_specs          :: list(error_spec)
+                ppc_env_var_names           :: set(string)
             ).
 
     % Translate the body of the given procedure to MLDS, and return the
@@ -1130,15 +1219,6 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
     ),
 
     some [!Info] (
-        % We initialize the tri_msgs field to be the empty before starting
-        % to generate code for a procedure, and have finished generating that
-        % code and we have picked the list of accumulated messages, we reset
-        % the field to empty again. Therefore the field should always be empty
-        % *between* procedures.
-        TailRecInfo0 = !.TsccInfo ^ mgti_tail_rec_info,
-        TailRecSpecs0 = TailRecInfo0 ^ tri_msgs,
-        expect(unify(TailRecSpecs0, []), $pred, "TailRecSpecs0 != []"),
-
         !:Info = ml_gen_info_init(ModuleInfo, Target, ConstStructMap,
             PredProcId, ProcInfo, !.GlobalData, !.TsccInfo),
 
@@ -1197,14 +1277,9 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         ml_gen_info_final(!.Info, EnvVarNames,
             ClosureWrapperFuncDefns, !:GlobalData, !:TsccInfo),
 
-        TailRecInfo1 = !.TsccInfo ^ mgti_tail_rec_info,
-        TailRecSpecs = TailRecInfo1 ^ tri_msgs,
-        TailRecInfo = TailRecInfo1 ^ tri_msgs := [],
-        !TsccInfo ^ mgti_tail_rec_info := TailRecInfo,
-
         PredProcCode = pred_proc_code(PredProcIdArgsInfo, FuncParams,
             LocalVarDefns, FuncDefns, CommentStmt, GoalStmts,
-            ClosureWrapperFuncDefns, EnvVarNames, TailRecSpecs)
+            ClosureWrapperFuncDefns, EnvVarNames)
     ).
 
     % Given the results of translating each procedure in a TSCC into MLDS code,
@@ -1302,7 +1377,7 @@ construct_func_body_for_tscc(EntryProc, PredProcCode,
         ProcStmtInfo, !MaybeEntryProcInfo, !NonEntryTsccInLocalVarDefns) :-
     PredProcCode = pred_proc_code(PredProcIdArgsInfo, _FuncParams,
         GoalLocalVarDefns, GoalFuncDefns, _DescCommentStmt, GoalStmts,
-        _ClosureWrapperFuncDefns, _EnvVarNames, _TailRecSpecs),
+        _ClosureWrapperFuncDefns, _EnvVarNames),
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId,
         PredInfo, ProcInfo, ProcContext, IdInTscc, _ArgTuples,
         FuncParams, ReturnRvalsTypes,

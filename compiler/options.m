@@ -173,6 +173,7 @@
     ;       warn_non_tail_recursion_self
     ;       warn_non_tail_recursion_mutual
     ;       warn_non_tail_recursion
+    ;       warn_obvious_non_tail_recursion
     ;       warn_target_code
     ;       warn_up_to_date
     ;       warn_stubs
@@ -1171,6 +1172,7 @@ option_defaults_2(warning_option, [
     warn_non_tail_recursion_self        -   bool(no),
     warn_non_tail_recursion_mutual      -   bool(no),
     warn_non_tail_recursion             -   maybe_string_special,
+    warn_obvious_non_tail_recursion     -   bool(no),
     warn_target_code                    -   bool(yes),
     warn_up_to_date                     -   bool(yes),
     warn_stubs                          -   bool(yes),
@@ -2070,6 +2072,8 @@ long_option("warn-non-tail-recursion-self",
 long_option("warn-non-tail-recursion-mutual",
                     warn_non_tail_recursion_mutual).
 long_option("warn-non-tail-recursion",  warn_non_tail_recursion).
+long_option("warn-obvious-non-tail-recursion",
+                    warn_obvious_non_tail_recursion).
 long_option("warn-target-code",         warn_target_code).
 long_option("warn-up-to-date",          warn_up_to_date).
 long_option("warn-stubs",               warn_stubs).
@@ -3320,6 +3324,7 @@ style_warning_options = [
     warn_implicit_stream_calls,
     warn_non_tail_recursion_self,
     warn_non_tail_recursion_mutual,
+    warn_obvious_non_tail_recursion,
     warn_dead_procs,
     warn_dead_preds,
     warn_known_bad_format_calls,
@@ -3830,9 +3835,19 @@ options_help_warning -->
         "--no-warn-undefined-options-variables",
         "\tDo not warn about references to undefined variables in",
         "\toptions files with `--make'.",
+% These are the internal options that implement --warn-non-tail-recursion.
+%       "--warn-non-tail-recursion-self",
+%       "\tWarn about any self recursive calls that are not tail recursive.",
+%       "--warn-non-tail-recursion-mutual",
+%       "\tWarn about any mutually recursive calls that are not",
+%       "\ttail recursive.",
         "--warn-non-tail-recursion <type>",
         "\tWarn about recursive calls that are not tail calls,",
         "\t<type> may be ""self"", ""self-and-mutual"" or ""none"".",
+        "--warn-obvious-non-tail-recursion",
+        "\tWarn about recursive calls that are not tail calls",
+        "\teven if they obviously cannot be tail calls,",
+        "\tbecause they are followed by other recursive calls.",
         "--no-warn-up-to-date",
         "\tDo not warn if targets specified on the command line",
         "\twith `--make' are already up-to-date.",

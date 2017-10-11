@@ -1,0 +1,28 @@
+require_tailrec_3.m:028: In mode number 1 of function `even1'/1:
+require_tailrec_3.m:028:   warning: mutually recursive call to function
+require_tailrec_3.m:028:   `require_tailrec_3.odd1'/1 is not tail recursive.
+require_tailrec_3.m:034: In mode number 1 of function `odd1'/1:
+require_tailrec_3.m:034:   warning: mutually recursive call to function
+require_tailrec_3.m:034:   `require_tailrec_3.even1'/1 is tail recursive, but
+require_tailrec_3.m:034:   tail recursion optimization cannot be applied to it,
+require_tailrec_3.m:034:   because the *callee* cannot reach the caller via
+require_tailrec_3.m:034:   tail calls only.
+require_tailrec_3.m:043: In mode number 1 of function `even2'/1:
+require_tailrec_3.m:043:   error: mutually recursive call to function
+require_tailrec_3.m:043:   `require_tailrec_3.odd2'/1 is not tail recursive.
+require_tailrec_3.m:049: In mode number 1 of function `odd2'/1:
+require_tailrec_3.m:049:   warning: mutually recursive call to function
+require_tailrec_3.m:049:   `require_tailrec_3.even2'/1 is tail recursive, but
+require_tailrec_3.m:049:   tail recursion optimization cannot be applied to it,
+require_tailrec_3.m:049:   because the *callee* cannot reach the caller via
+require_tailrec_3.m:049:   tail calls only.
+require_tailrec_3.m:058: In mode number 1 of function `even3'/1:
+require_tailrec_3.m:058:   warning: mutually recursive call to function
+require_tailrec_3.m:058:   `require_tailrec_3.odd3'/1 is not tail recursive.
+require_tailrec_3.m:064: In mode number 1 of function `odd3'/1:
+require_tailrec_3.m:064:   warning: mutually recursive call to function
+require_tailrec_3.m:064:   `require_tailrec_3.even3'/1 is tail recursive, but
+require_tailrec_3.m:064:   tail recursion optimization cannot be applied to it,
+require_tailrec_3.m:064:   because the *callee* cannot reach the caller via
+require_tailrec_3.m:064:   tail calls only.
+For more information, recompile with `-E'.

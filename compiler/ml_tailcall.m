@@ -585,7 +585,8 @@ maybe_warn_tailcalls(TCallInfo, CodeAddr, Markers, Context, !InBodyInfo) :-
                 SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
                 Specs0 = !.InBodyInfo ^ tibi_specs,
                 add_message_for_nontail_self_recursive_call(SimpleCallId,
-                    ProcId, Context, WarnOrError, Specs0, Specs),
+                    ProcId, Context, ntrcr_program, WarnOrError,
+                    Specs0, Specs),
                 !InBodyInfo ^ tibi_specs := Specs
             )
         )

@@ -245,6 +245,7 @@ ok_to_duplicate(feature_hide_debug_event) = no.
 ok_to_duplicate(feature_deep_self_tail_rec_call) = no.
 ok_to_duplicate(feature_debug_self_tail_rec_call) = no.
 ok_to_duplicate(feature_self_or_mutual_tail_rec_call) = no.
+ok_to_duplicate(feature_obvious_nontail_rec_call) = no.
 ok_to_duplicate(feature_keep_constant_binding) = no.
 ok_to_duplicate(feature_save_deep_excp_vars) = no.
 ok_to_duplicate(feature_dont_warn_singleton) = yes.

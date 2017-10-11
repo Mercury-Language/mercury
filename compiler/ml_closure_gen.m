@@ -81,12 +81,13 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
+:- import_module hlds.mark_tail_calls.          % for ntrcr_program
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.
-:- import_module ll_backend.continuation_info. % for `generate_closure_layout'
-:- import_module ll_backend.llds.              % for `layout_locn'
-:- import_module ll_backend.stack_layout.      % for `represent_locn_as_int'
+:- import_module ll_backend.continuation_info.  % for `generate_closure_layout'
+:- import_module ll_backend.llds.               % for `layout_locn'
+:- import_module ll_backend.stack_layout.       % for `represent_locn_as_int'
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_accurate_gc.
@@ -796,7 +797,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     ),
 
     % If the wrapper function is model_non, then set up the initial success
-    % continuation; this is needed by ml_gen_call which we call below.
+    % continuation; this is needed by ml_gen_plain_non_tail_call,
+    % which we call below.
     (
         CodeModel = model_det
     ;
@@ -830,7 +832,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     %   );
     %
     % `Offset' specifies the offset to add to the argument number to
-    % get the field number within the closure.  (Argument numbers start
+    % get the field number within the closure. (Argument numbers start
     % from 1, and field numbers start from 0.)
     (
         MaybeClosureC = yes(ClosureLval1),
@@ -853,8 +855,9 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     CallLvals = ClosureArgLvals ++ WrapperHeadVarLvals,
     create_for_closure_wrapper_args(ProcHeadVarNames, CallLvals,
         ProcBoxedArgTypes, ForClosureWrapperArgs),
-    ml_gen_plain_non_tail_call(PredId, ProcId,
-        CodeModel, Context, ForClosureWrapperArgs,
+    set.init(Features),
+    ml_gen_plain_non_tail_call(proc(PredId, ProcId), CodeModel, Context,
+        ForClosureWrapperArgs, ntrcr_program, Features,
         LocalVarDefns0, FuncDefns, Stmts0, !Info),
 
     % Insert the stuff to declare and initialize the closure.

@@ -6640,10 +6640,22 @@ Implies the next two options.
 Warn about any recursive calls that are not tail recursive.
 @var{type} may be @samp{self}, @samp{self-and-mutual} or @samp{none}.
 
+@c @sp 1
+@c @item --warn-non-tail-recursion-self
+@c @findex --warn-non-tail-recursion-self
+@c Warn about any self recursive calls that are not tail recursive.
+
+@c @sp 1
+@c @item --warn-non-tail-recursion-mutual
+@c @findex --warn-non-tail-recursion-mutual
+@c Warn about any mutually recursive calls that are not tail recursive.
+
 @sp 1
-@item --warn-non-tail-recursion-self
-@findex --warn-non-tail-recursion-self
-Warn about any directly recursive calls that are not tail recursive.
+@item --warn-obvious-non-tail-recursion
+@findex --warn-obvious-non-tail-recursion
+Warn about recursive calls that are not tail calls
+even if they obviously cannot be tail calls,
+because they are followed by other recursive calls.
 
 @sp 1
 @item --no-warn-target-code

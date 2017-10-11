@@ -1366,6 +1366,12 @@
             % This marker is used by inlining, and (in the future) by the MLDS
             % code generator.
 
+    ;       feature_obvious_nontail_rec_call
+            % This goal represents a recursive call that is not a tail call,
+            % but we don't necessarily want to generate a warning for it,
+            % since it is followed by a later recursive call (which may or
+            % may not be a tail call).
+
     ;       feature_keep_constant_binding
             % This feature should only be attached to unsafe_cast goals
             % that cast a value of an user-defined type to an integer.

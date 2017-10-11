@@ -21,6 +21,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.mark_tail_calls.          % for nontail_rec_call_reason
 :- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
@@ -28,6 +29,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -56,13 +58,13 @@
     list(mlds_function_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-:- pred ml_gen_plain_non_tail_call(pred_id, proc_id, code_model, prog_context,
-    list(ml_call_arg),
+:- pred ml_gen_plain_non_tail_call(pred_proc_id, code_model, prog_context,
+    list(ml_call_arg), nontail_rec_call_reason, set(goal_feature),
     list(mlds_local_var_defn), list(mlds_function_defn), list(mlds_stmt),
     ml_gen_info, ml_gen_info).
-:- mode ml_gen_plain_non_tail_call(in, in, in, in, in(list_skel(not_fcw)),
+:- mode ml_gen_plain_non_tail_call(in, in, in, in(list_skel(not_fcw)), in, in,
     out, out, out, in, out) is det.
-:- mode ml_gen_plain_non_tail_call(in, in, in, in, in(list_skel(fcw)),
+:- mode ml_gen_plain_non_tail_call(in, in, in, in(list_skel(fcw)), in, in,
     out, out, out, in, out) is det.
 
     % Generate MLDS code for a call to a builtin procedure.
@@ -82,7 +84,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
-:- import_module hlds.mark_tail_calls.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -98,7 +99,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -322,33 +322,37 @@ ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info) :-
 % Code for ordinary calls.
 %
 
-ml_gen_plain_call(PredId, ProcId, CodeModel, GoalInfo, ArgVars,
+ml_gen_plain_call(CalleePredId, CalleeProcId, CodeModel, GoalInfo, ArgVars,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
+    CalleePredProcId = proc(CalleePredId, CalleeProcId),
     Context = goal_info_get_context(GoalInfo),
-    ( if
-        goal_info_has_feature(GoalInfo, feature_self_or_mutual_tail_rec_call)
-    then
-        ml_gen_plain_tail_call(PredId, ProcId, CodeModel, Context, ArgVars,
+    Features = goal_info_get_features(GoalInfo),
+    ( if set.contains(Features, feature_self_or_mutual_tail_rec_call) then
+        ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context,
+            ArgVars, Features,
             LocalVarDefns, FuncDefns, Stmts, !Info)
     else
         % We change representation because ml_closure_gen.m also calls
         % ml_gen_plain_non_tail_call with a different mechanism for specifying
         % the actual parameters.
         CallerArgs = wrap_plain_not_fcw_args(ArgVars),
-        ml_gen_plain_non_tail_call(PredId, ProcId, CodeModel, Context,
-            CallerArgs, LocalVarDefns, FuncDefns, Stmts, !Info)
+        ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel, Context,
+            CallerArgs, ntrcr_program, Features,
+            LocalVarDefns, FuncDefns, Stmts, !Info)
     ).
 
-:- pred ml_gen_plain_tail_call(pred_id::in, proc_id::in, code_model::in,
-    prog_context::in, list(prog_var)::in, list(mlds_local_var_defn)::out,
+:- pred ml_gen_plain_tail_call(pred_proc_id::in, code_model::in,
+    prog_context::in, list(prog_var)::in, set(goal_feature)::in,
+    list(mlds_local_var_defn)::out,
     list(mlds_function_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_plain_tail_call(PredId, ProcId, CodeModel, Context,
-        ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info) :-
+ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
+        LocalVarDefns, FuncDefns, Stmts, !Info) :-
     % Compute the callee's Mercury argument types and modes.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, CalleePredProcId,
+        PredInfo, ProcInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_arg_types(PredInfo, CalleeArgTypes),
     proc_info_get_argmodes(ProcInfo, CalleeArgModes),
@@ -366,98 +370,107 @@ ml_gen_plain_tail_call(PredId, ProcId, CodeModel, Context,
     expect(unify(ConvOutputStmts, []), $pred, "ConvOutputStmts != []"),
 
     ml_gen_info_get_tail_rec_info(!.Info, TailRecInfo0),
-    TailRecMap0 = TailRecInfo0 ^ tri_target_map,
-    PredProcId = proc(PredId, ProcId),
-    ( if
-        map.search(TailRecMap0, PredProcId, TailRecTargetInfo0),
-        may_rvals_yield_dangling_stack_ref(InputRvals)
-            = will_not_yield_dangling_stack_ref
-    then
-        CommentStmt =
-            ml_stmt_atomic(comment("direct tailcall eliminated"), Context),
-
-        ml_gen_info_get_module_name(!.Info, ModuleName),
-        MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        TailRecTargetInfo0 = tail_rec_target_info(IdInTSCC, FuncInputArgs,
-            HaveDoneSelfTailRec0, HaveDoneMutualTailRec0, HaveDoneNonTailRec),
-        tail_rec_call_assign_input_args(MLDS_ModuleName, Context,
-            FuncInputArgs, InputRvals, InitStmts, AssignStmts, LocalVarDefns),
-        FuncDefns = [],
-        LoopKind = TailRecInfo0 ^ tri_loop_kind,
-        TsccKind = TailRecInfo0 ^ tri_tscc_kind,
+    InSccMap0 = TailRecInfo0 ^ tri_in_scc_map,
+    % The callee of this tail call will be in InSccMap0 only if it can
+    % call the caller back directly or indirectly.
+    ( if map.search(InSccMap0, CalleePredProcId, InSccInfo0) then
+        InSccInfo0 = in_scc_info(MaybeInTscc, 
+            IsTargetOfSelfTRCall0, IsTargetOfMutualTRCall0, _),
         (
-            LoopKind = tail_rec_loop_while_continue,
+            MaybeInTscc = in_tscc(IdInTSCC, FuncInputArgs),
+            DanglingStackRef = may_rvals_yield_dangling_stack_ref(InputRvals),
             (
-                TsccKind = tscc_self_rec_only,
-                SetSelectorStmts = []
-            ;
-                TsccKind = tscc_self_and_mutual_rec,
-                IdInTSCC = proc_id_in_tscc(TsccProcNum),
-                SetSelectorStmt = ml_stmt_atomic(
-                    assign(
-                        ml_local_var(lvn_comp_var(lvnc_tscc_proc_selector),
-                            ml_int_type),
-                        ml_const(mlconst_int(TsccProcNum))),
+                DanglingStackRef = will_not_yield_dangling_stack_ref,
+                CommentStmt =
+                    ml_stmt_atomic(comment("direct tailcall eliminated"),
                     Context),
-                SetSelectorStmts = [SetSelectorStmt]
-            ),
-            GotoTarget = goto_continue
-        ;
-            LoopKind = tail_rec_loop_label_goto,
-            SetSelectorStmts = [],
-            StartLabel = generate_tail_rec_start_label(TsccKind, IdInTSCC),
-            GotoTarget = goto_label(StartLabel)
-        ),
-        GotoStmt = ml_stmt_goto(GotoTarget, Context),
-        Stmts = [CommentStmt] ++ InitStmts ++ AssignStmts ++
-            SetSelectorStmts ++ [GotoStmt],
 
-        ml_gen_info_get_pred_proc_id(!.Info, proc(CurPredId, CurProcId)),
-        ( if
-            PredId = CurPredId,
-            ProcId = CurProcId
-        then
-            (
-                HaveDoneSelfTailRec0 = have_done_self_tail_rec
+                ml_gen_info_get_module_name(!.Info, ModuleName),
+                MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+                tail_rec_call_assign_input_args(MLDS_ModuleName, Context,
+                    FuncInputArgs, InputRvals, InitStmts, AssignStmts,
+                    LocalVarDefns),
+                FuncDefns = [],
+                LoopKind = TailRecInfo0 ^ tri_loop_kind,
+                TsccKind = TailRecInfo0 ^ tri_tscc_kind,
+                (
+                    LoopKind = tail_rec_loop_while_continue,
+                    (
+                        TsccKind = tscc_self_rec_only,
+                        SetSelectorStmts = []
+                    ;
+                        TsccKind = tscc_self_and_mutual_rec,
+                        IdInTSCC = proc_id_in_tscc(TsccProcNum),
+                        SelectorVar = lvn_comp_var(lvnc_tscc_proc_selector),
+                        SelectorLval = ml_local_var(SelectorVar, ml_int_type),
+                        SetSelectorStmt = ml_stmt_atomic(
+                            assign(SelectorLval,
+                                ml_const(mlconst_int(TsccProcNum))),
+                            Context),
+                        SetSelectorStmts = [SetSelectorStmt]
+                    ),
+                    GotoTarget = goto_continue
+                ;
+                    LoopKind = tail_rec_loop_label_goto,
+                    SetSelectorStmts = [],
+                    StartLabel = generate_tail_rec_start_label(TsccKind,
+                        IdInTSCC),
+                    GotoTarget = goto_label(StartLabel)
+                ),
+                GotoStmt = ml_stmt_goto(GotoTarget, Context),
+                Stmts = [CommentStmt] ++ InitStmts ++ AssignStmts ++
+                    SetSelectorStmts ++ [GotoStmt],
+
+                ml_gen_info_get_pred_proc_id(!.Info, CallerPredProcId),
+                ( if CalleePredProcId = CallerPredProcId then
+                    (
+                        IsTargetOfSelfTRCall0 = is_target_of_self_trcall
+                    ;
+                        IsTargetOfSelfTRCall0 = is_not_target_of_self_trcall,
+                        InSccInfo = InSccInfo0 ^ isi_is_target_of_self_tr
+                            := is_target_of_self_trcall,
+                        map.det_update(CalleePredProcId, InSccInfo,
+                            InSccMap0, InSccMap),
+                        TailRecInfo = TailRecInfo0 ^
+                            tri_in_scc_map := InSccMap,
+                        ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+                    )
+                else
+                    (
+                        IsTargetOfMutualTRCall0 = is_target_of_mutual_trcall
+                    ;
+                        IsTargetOfMutualTRCall0 =
+                            is_not_target_of_mutual_trcall,
+                        InSccInfo = InSccInfo0 ^ isi_is_target_of_mutual_tr
+                            := is_target_of_mutual_trcall,
+                        map.det_update(CalleePredProcId, InSccInfo,
+                            InSccMap0, InSccMap),
+                        TailRecInfo = TailRecInfo0 ^
+                            tri_in_scc_map := InSccMap,
+                        ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+                    )
+                )
             ;
-                HaveDoneSelfTailRec0 = have_not_done_self_tail_rec,
-                TailRecTargetInfo = tail_rec_target_info(IdInTSCC,
-                    FuncInputArgs, have_done_self_tail_rec,
-                    HaveDoneMutualTailRec0, HaveDoneNonTailRec),
-                map.det_update(PredProcId, TailRecTargetInfo,
-                    TailRecMap0, TailRecMap),
-                TailRecInfo = TailRecInfo0 ^ tri_target_map := TailRecMap,
-                ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+                DanglingStackRef = may_yield_dangling_stack_ref,
+                ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel,
+                    Context, CallerArgs,
+                    ntrcr_mlds_in_tscc_stack_ref, Features,
+                    LocalVarDefns, FuncDefns, Stmts, !Info)
             )
-        else
-            (
-                HaveDoneMutualTailRec0 = have_done_mutual_tail_rec
-            ;
-                HaveDoneMutualTailRec0 = have_not_done_mutual_tail_rec,
-                TailRecTargetInfo = tail_rec_target_info(IdInTSCC,
-                    FuncInputArgs, HaveDoneSelfTailRec0,
-                    have_done_mutual_tail_rec, HaveDoneNonTailRec),
-                map.det_update(PredProcId, TailRecTargetInfo,
-                    TailRecMap0, TailRecMap),
-                TailRecInfo = TailRecInfo0 ^ tri_target_map := TailRecMap,
-                ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
-            )
+        ;
+            MaybeInTscc = not_in_tscc,
+            ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel,
+                Context, CallerArgs, ntrcr_mlds_in_scc_not_in_tscc, Features,
+                LocalVarDefns, FuncDefns, Stmts, !Info)
         )
     else
-        ml_gen_info_get_pred_proc_id(!.Info, CallerPredProcId),
-        WarnParams = TailRecInfo0 ^ tri_proc_warn_params,
-        Specs0 = TailRecInfo0 ^ tri_msgs,
-        maybe_report_nontail_recursive_call(ModuleInfo,
-            CallerPredProcId, PredProcId, Context, WarnParams, Specs0, Specs),
-        TailRecInfo = TailRecInfo0 ^ tri_msgs := Specs,
-        ml_gen_info_set_tail_rec_info(TailRecInfo, !Info),
-
-        ml_gen_plain_non_tail_call(PredId, ProcId, CodeModel, Context,
-            CallerArgs, LocalVarDefns, FuncDefns, Stmts, !Info)
+        ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel,
+            Context, CallerArgs, ntrcr_program, Features,
+            LocalVarDefns, FuncDefns, Stmts, !Info)
     ).
 
-ml_gen_plain_non_tail_call(PredId, ProcId, CodeModel, Context, CallerArgs,
-        LocalVarDefns, FuncDefns, Stmts, !Info) :-
+ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel, Context, CallerArgs,
+        NonTailCallReason, Features, LocalVarDefns, FuncDefns, Stmts, !Info) :-
     % Generate the various parts of the code that is needed
     % for a procedure call:
     %
@@ -495,15 +508,16 @@ ml_gen_plain_non_tail_call(PredId, ProcId, CodeModel, Context, CallerArgs,
 
     % Compute the function signature.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    PredProcId = proc(PredId, ProcId),
-    ml_gen_proc_params_no_gc_stmts(ModuleInfo, PredProcId, _ArgTuples, Params),
+    ml_gen_proc_params_no_gc_stmts(ModuleInfo, CalleePredProcId,
+        _ArgTuples, Params),
     Signature = mlds_get_func_signature(Params),
 
     % Compute the function address.
-    ml_gen_proc_addr_rval(PredProcId, _FuncProcLabel, FuncRval, !Info),
+    ml_gen_proc_addr_rval(CalleePredProcId, _FuncProcLabel, FuncRval, !Info),
 
     % Compute the callee's Mercury argument types and modes.
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, CalleePredProcId,
+        PredInfo, ProcInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_arg_types(PredInfo, CalleeArgTypes),
     proc_info_get_argmodes(ProcInfo, CalleeArgModes),
@@ -562,12 +576,28 @@ ml_gen_plain_non_tail_call(PredId, ProcId, CodeModel, Context, CallerArgs,
     % If this is a non-tail call to a procedure in the current TSCC (if any),
     % we need to mark the callee as being an entry point.
     ml_gen_info_get_tail_rec_info(!.Info, TailRecInfo0),
-    TargetMap0 = TailRecInfo0 ^ tri_target_map,
-    ( if map.search(TargetMap0, PredProcId, TargetInfo0) then
-        TargetInfo = TargetInfo0 ^ trti_done_nontail_rec
-            := have_done_nontail_rec,
-        map.det_update(PredProcId, TargetInfo, TargetMap0, TargetMap),
-        TailRecInfo = TailRecInfo0 ^ tri_target_map := TargetMap,
+    InSccMap0 = TailRecInfo0 ^ tri_in_scc_map,
+    ( if map.search(InSccMap0, CalleePredProcId, InSccInfo0) then
+        ml_gen_info_get_pred_proc_id(!.Info, CallerPredProcId),
+        ml_gen_info_get_disabled_warnings(!.Info, Warnings),
+        ( if set.contains(Warnings, goal_warning_non_tail_recursive_calls) then
+            Status = nontail_rec_call_warn_disabled
+        else
+            Status = nontail_rec_call_warn_enabled
+        ),
+        ( if set.contains(Features, feature_obvious_nontail_rec_call) then
+            Obviousness = obvious_nontail_rec
+        else
+            Obviousness = non_obvious_nontail_rec
+        ),
+        NonTailRecCall = nontail_rec_call(CallerPredProcId, CalleePredProcId,
+            Context, NonTailCallReason, Obviousness, Status),
+        NonTailRecCalls0 = InSccInfo0 ^ isi_is_target_of_non_tail_rec,
+        NonTailRecCalls = [NonTailRecCall | NonTailRecCalls0],
+        InSccInfo = InSccInfo0 ^ isi_is_target_of_non_tail_rec
+            := NonTailRecCalls,
+        map.det_update(CalleePredProcId, InSccInfo, InSccMap0, InSccMap),
+        TailRecInfo = TailRecInfo0 ^ tri_in_scc_map := InSccMap,
         ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
     else
         true
