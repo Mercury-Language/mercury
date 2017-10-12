@@ -381,74 +381,82 @@ ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
             DanglingStackRef = may_rvals_yield_dangling_stack_ref(InputRvals),
             (
                 DanglingStackRef = will_not_yield_dangling_stack_ref,
-                CommentStmt =
-                    ml_stmt_atomic(comment("direct tailcall eliminated"),
-                    Context),
+                ml_gen_info_get_func_nest_depth(!.Info, FuncNestDepth),
+                ( if FuncNestDepth = 0 then
+                    CommentStmt =
+                        ml_stmt_atomic(comment("direct tailcall eliminated"),
+                        Context),
 
-                ml_gen_info_get_module_name(!.Info, ModuleName),
-                MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-                tail_rec_call_assign_input_args(MLDS_ModuleName, Context,
-                    FuncInputArgs, InputRvals, InitStmts, AssignStmts,
-                    LocalVarDefns),
-                FuncDefns = [],
-                LoopKind = TailRecInfo0 ^ tri_loop_kind,
-                TsccKind = TailRecInfo0 ^ tri_tscc_kind,
-                (
-                    LoopKind = tail_rec_loop_while_continue,
+                    ml_gen_info_get_module_name(!.Info, ModuleName),
+                    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+                    tail_rec_call_assign_input_args(MLDS_ModuleName, Context,
+                        FuncInputArgs, InputRvals, InitStmts, AssignStmts,
+                        LocalVarDefns),
+                    FuncDefns = [],
+                    LoopKind = TailRecInfo0 ^ tri_loop_kind,
+                    TsccKind = TailRecInfo0 ^ tri_tscc_kind,
                     (
-                        TsccKind = tscc_self_rec_only,
-                        SetSelectorStmts = []
+                        LoopKind = tail_rec_loop_while_continue,
+                        (
+                            TsccKind = tscc_self_rec_only,
+                            SetSelectorStmts = []
+                        ;
+                            TsccKind = tscc_self_and_mutual_rec,
+                            IdInTSCC = proc_id_in_tscc(TsccProcNum),
+                            SelectorVar = lvn_comp_var(lvnc_tscc_proc_selector),
+                            SelectorLval = ml_local_var(SelectorVar, ml_int_type),
+                            SetSelectorStmt = ml_stmt_atomic(
+                                assign(SelectorLval,
+                                    ml_const(mlconst_int(TsccProcNum))),
+                                Context),
+                            SetSelectorStmts = [SetSelectorStmt]
+                        ),
+                        GotoTarget = goto_continue
                     ;
-                        TsccKind = tscc_self_and_mutual_rec,
-                        IdInTSCC = proc_id_in_tscc(TsccProcNum),
-                        SelectorVar = lvn_comp_var(lvnc_tscc_proc_selector),
-                        SelectorLval = ml_local_var(SelectorVar, ml_int_type),
-                        SetSelectorStmt = ml_stmt_atomic(
-                            assign(SelectorLval,
-                                ml_const(mlconst_int(TsccProcNum))),
-                            Context),
-                        SetSelectorStmts = [SetSelectorStmt]
+                        LoopKind = tail_rec_loop_label_goto,
+                        SetSelectorStmts = [],
+                        StartLabel = generate_tail_rec_start_label(TsccKind,
+                            IdInTSCC),
+                        GotoTarget = goto_label(StartLabel)
                     ),
-                    GotoTarget = goto_continue
-                ;
-                    LoopKind = tail_rec_loop_label_goto,
-                    SetSelectorStmts = [],
-                    StartLabel = generate_tail_rec_start_label(TsccKind,
-                        IdInTSCC),
-                    GotoTarget = goto_label(StartLabel)
-                ),
-                GotoStmt = ml_stmt_goto(GotoTarget, Context),
-                Stmts = [CommentStmt] ++ InitStmts ++ AssignStmts ++
-                    SetSelectorStmts ++ [GotoStmt],
+                    GotoStmt = ml_stmt_goto(GotoTarget, Context),
+                    Stmts = [CommentStmt] ++ InitStmts ++ AssignStmts ++
+                        SetSelectorStmts ++ [GotoStmt],
 
-                ml_gen_info_get_pred_proc_id(!.Info, CallerPredProcId),
-                ( if CalleePredProcId = CallerPredProcId then
-                    (
-                        IsTargetOfSelfTRCall0 = is_target_of_self_trcall
-                    ;
-                        IsTargetOfSelfTRCall0 = is_not_target_of_self_trcall,
-                        InSccInfo = InSccInfo0 ^ isi_is_target_of_self_tr
-                            := is_target_of_self_trcall,
-                        map.det_update(CalleePredProcId, InSccInfo,
-                            InSccMap0, InSccMap),
-                        TailRecInfo = TailRecInfo0 ^
-                            tri_in_scc_map := InSccMap,
-                        ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+                    ml_gen_info_get_pred_proc_id(!.Info, CallerPredProcId),
+                    ( if CalleePredProcId = CallerPredProcId then
+                        (
+                            IsTargetOfSelfTRCall0 = is_target_of_self_trcall
+                        ;
+                            IsTargetOfSelfTRCall0 = is_not_target_of_self_trcall,
+                            InSccInfo = InSccInfo0 ^ isi_is_target_of_self_tr
+                                := is_target_of_self_trcall,
+                            map.det_update(CalleePredProcId, InSccInfo,
+                                InSccMap0, InSccMap),
+                            TailRecInfo = TailRecInfo0 ^
+                                tri_in_scc_map := InSccMap,
+                            ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+                        )
+                    else
+                        (
+                            IsTargetOfMutualTRCall0 = is_target_of_mutual_trcall
+                        ;
+                            IsTargetOfMutualTRCall0 =
+                                is_not_target_of_mutual_trcall,
+                            InSccInfo = InSccInfo0 ^ isi_is_target_of_mutual_tr
+                                := is_target_of_mutual_trcall,
+                            map.det_update(CalleePredProcId, InSccInfo,
+                                InSccMap0, InSccMap),
+                            TailRecInfo = TailRecInfo0 ^
+                                tri_in_scc_map := InSccMap,
+                            ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
+                        )
                     )
                 else
-                    (
-                        IsTargetOfMutualTRCall0 = is_target_of_mutual_trcall
-                    ;
-                        IsTargetOfMutualTRCall0 =
-                            is_not_target_of_mutual_trcall,
-                        InSccInfo = InSccInfo0 ^ isi_is_target_of_mutual_tr
-                            := is_target_of_mutual_trcall,
-                        map.det_update(CalleePredProcId, InSccInfo,
-                            InSccMap0, InSccMap),
-                        TailRecInfo = TailRecInfo0 ^
-                            tri_in_scc_map := InSccMap,
-                        ml_gen_info_set_tail_rec_info(TailRecInfo, !Info)
-                    )
+                    ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel,
+                        Context, CallerArgs,
+                        ntrcr_mlds_model_non_in_cont_func, Features,
+                        LocalVarDefns, FuncDefns, Stmts, !Info)
                 )
             ;
                 DanglingStackRef = may_yield_dangling_stack_ref,

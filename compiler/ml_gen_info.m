@@ -163,14 +163,21 @@
 
     % The ml_gen_info contains a stack of success continuations.
     % The following routines provide access to that stack.
-
+    %
 :- pred ml_gen_info_push_success_cont(success_cont::in,
     ml_gen_info::in, ml_gen_info::out) is det.
-
 :- pred ml_gen_info_pop_success_cont(ml_gen_info::in, ml_gen_info::out) is det.
-
 :- pred ml_gen_info_current_success_cont(ml_gen_info::in, success_cont::out)
     is det.
+
+    % The ml_gen_info contains a record of how many nested functions
+    % we are inside. These predicates provide access to the nesting depth.
+    %
+:- pred ml_gen_info_increment_func_nest_depth(
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_decrement_func_nest_depth(
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_get_func_nest_depth(ml_gen_info::in, int::out) is det.
 
     % We keep a partial mapping from vars to lvals. This is used in special
     % cases to override the normal lval for a variable. ml_gen_var will check
@@ -543,6 +550,16 @@ ml_gen_info_current_success_cont(Info, SuccCont) :-
     ml_gen_info_get_success_cont_stack(Info, Stack),
     stack.det_top(Stack, SuccCont).
 
+ml_gen_info_increment_func_nest_depth(!Info) :-
+    ml_gen_info_get_func_nest_depth(!.Info, Depth0),
+    Depth = Depth0 + 1,
+    ml_gen_info_set_func_nest_depth(Depth, !Info).
+
+ml_gen_info_decrement_func_nest_depth(!Info) :-
+    ml_gen_info_get_func_nest_depth(!.Info, Depth0),
+    Depth = Depth0 - 1,
+    ml_gen_info_set_func_nest_depth(Depth, !Info).
+
 ml_gen_info_set_var_lval(Var, Lval, !Info) :-
     ml_gen_info_get_var_lvals(!.Info, VarLvals0),
     map.set(Var, Lval, VarLvals0, VarLvals),
@@ -727,7 +744,8 @@ generate_tail_rec_start_label(TsccKind, Id) = Label :-
 /*  3 */        mgsi_aux_var_counter    :: counter,
 /*  4 */        mgsi_cond_var_counter   :: counter,
 
-/*  5 */        mgsi_success_cont_stack :: stack(success_cont)
+/*  5 */        mgsi_success_cont_stack :: stack(success_cont),
+/*  6 */        mgsi_func_nest_depth    :: int
             ).
 
 % Access stats for the ml_gen_info structure:
@@ -822,6 +840,7 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
 
     map.init(ConstVarMap),
     stack.init(SuccContStack),
+    FuncNestDepth = 0,
     map.init(VarLvals),
     ClosureWrapperDefns = [],
     set.init(EnvVarNames),
@@ -849,7 +868,8 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
         LabelCounter,
         AuxVarCounter,
         CondVarCounter,
-        SuccContStack
+        SuccContStack,
+        FuncNestDepth
     ),
     Info = ml_gen_info(
         ConstVarMap,
@@ -895,7 +915,8 @@ ml_gen_info_final(Info, EnvVarNames, ClosureWrapperDefns, GlobalData,
         LabelCounter,
         AuxVarCounter,
         CondVarCounter,
-        _SuccContStack
+        _SuccContStack,
+        _FuncNestDepth
     ),
     TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
         AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo).
@@ -962,6 +983,8 @@ ml_gen_info_get_cond_var_counter(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_cond_var_counter.
 ml_gen_info_get_success_cont_stack(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_success_cont_stack.
+ml_gen_info_get_func_nest_depth(Info, X) :-
+    X = Info ^ mgi_sub_info ^ mgsi_func_nest_depth.
 
 :- pred ml_gen_info_set_func_counter(counter::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -978,6 +1001,8 @@ ml_gen_info_get_success_cont_stack(Info, X) :-
 :- pred ml_gen_info_set_cond_var_counter(counter::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_success_cont_stack(stack(success_cont)::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_func_nest_depth(int::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_info_set_const_var_map(X, !Info) :-
@@ -1063,6 +1088,10 @@ ml_gen_info_set_cond_var_counter(X, !Info) :-
 ml_gen_info_set_success_cont_stack(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
     SubInfo = SubInfo0 ^ mgsi_success_cont_stack := X,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_func_nest_depth(X, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_func_nest_depth := X,
     !Info ^ mgi_sub_info := SubInfo.
 
 %---------------------------------------------------------------------------%

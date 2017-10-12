@@ -435,30 +435,24 @@ partition_scc_procs(ModuleInfo, [PredProcId | PredProcIds],
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     ProcContext = goal_info_get_context(GoalInfo),
     IdInfo = pred_proc_id_info(PredProcId, PredInfo, ProcInfo, ProcContext),
+    proc_info_get_has_tail_rec_call(ProcInfo, HasTailRecCall),
+    HasTailRecCall =
+        has_tail_rec_call(HasSelfTailRecCall, HasMutualTailRecCall),
     CodeModel = proc_info_interface_code_model(ProcInfo),
     (
-        % Tail recursion optimization does not apply to model_non procedures.
-        % XXX Actually, ml_tailcall.m can and does find *some* opportunities
-        % for tail calls in model_non procedures. It would be nice to teach
-        % this module as well how to exploit such opportunities, but applying
-        % mutual tail recursion optimization in only det and semidet procedures
-        % does capture *almost all* of the available benefit.
         ( CodeModel = model_det
         ; CodeModel = model_semi
         ),
         proc_info_interface_determinism(ProcInfo, Detism),
         determinism_components(Detism, _CanFail, SolnCount),
-        proc_info_get_has_tail_rec_call(ProcInfo, HasTailRecCall),
-        HasTailRecCall = has_tail_rec_call(HasSelfTailRecCall,
-            HasMutualTailRecCall),
         ( if
             HasMutualTailRecCall = has_mutual_tail_rec_call,
             % To prevent control just falling through to the next procedure
             % body once it reaches the end of the previous procedure body
-            % in the TSCC, we put a return statement at the end of each
+            % in the TSCC, we put a goto or break statement at the end of each
             % procedure body. This will generate an error from some target
-            % language compilers (e.g. Java) if its knows that this return
-            % statement is not reachable.
+            % language compilers (e.g. Java) if its knows that this statement
+            % is not reachable.
             SolnCount \= at_most_zero
         then
             (
@@ -479,7 +473,18 @@ partition_scc_procs(ModuleInfo, [PredProcId | PredProcIds],
         )
     ;
         CodeModel = model_non,
-        !:NoneIdInfos = [IdInfo | !.NoneIdInfos]
+        % Mutual tail recursion optimization does not apply to model_non
+        % procedures (at least not yet). It would be nice to teach this module
+        % how to exploit such opportunities, but applying mutual tail recursion
+        % optimization to only det and semidet procedures does capture
+        % *almost all* of the available benefit.
+        (
+            HasSelfTailRecCall = has_self_tail_rec_call,
+            !:SelfIdInfos = [IdInfo | !.SelfIdInfos]
+        ;
+            HasSelfTailRecCall = has_no_self_tail_rec_call,
+            !:NoneIdInfos = [IdInfo | !.NoneIdInfos]
+        )
     ).
 
 :- pred partition_tsccs(list(scc_with_entry_points)::in,
@@ -607,8 +612,9 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
                 ClosureWrapperFuncDefns, !:GlobalData, TsccInfo),
             TailRecInfo = TsccInfo ^ mgti_tail_rec_info,
             !:InSccMap = TailRecInfo ^ tri_in_scc_map,
-            construct_func_body_maybe_wrap_in_loop(PredProcId, ProcContext,
-                LocalVarDefns, FuncDefns, GoalStmts, TailRecInfo, FuncBody)
+            construct_func_body_maybe_wrap_in_loop(PredProcId, CodeModel,
+                ProcContext, LocalVarDefns, FuncDefns, GoalStmts,
+                TailRecInfo, FuncBody)
         )
     ),
 
@@ -649,25 +655,31 @@ compute_initial_tail_rec_map_for_none_or_self(ModuleInfo, NoneOrSelf,
     ).
 
 :- pred construct_func_body_maybe_wrap_in_loop(pred_proc_id::in,
-    prog_context::in, list(mlds_local_var_defn)::in,
+    code_model::in, prog_context::in, list(mlds_local_var_defn)::in,
     list(mlds_function_defn)::in, list(mlds_stmt)::in, tail_rec_info::in,
     mlds_function_body::out) is det.
 
-construct_func_body_maybe_wrap_in_loop(PredProcId, Context,
+construct_func_body_maybe_wrap_in_loop(PredProcId, CodeModel, Context,
         LocalVarDefns, FuncDefns, GoalStmts, TailRecInfo, FuncBody) :-
     TailRecInfo = tail_rec_info(InSccMap, LoopKind, TsccKind),
     expect(unify(TsccKind, tscc_self_rec_only), $pred,
         "TsccKind != tscc_self_rec_only"),
     map.lookup(InSccMap, PredProcId, InSccInfo),
+    InSccInfo = in_scc_info(MaybeInTscc,
+        IsTargetOfSelfTRCall, _IsTargetOfMutualTRCall, _IsTargetOfNonTailRec),
     ( if
-        InSccInfo = in_scc_info(MaybeInTscc,
-            IsTargetOfSelfTRCall, _IsTargetOfMutualTRCall,
-            _IsTargetOfNonTailRec),
         IsTargetOfSelfTRCall = is_target_of_self_trcall,
-        % We cannot have done self-tail-recursion if MaybeInTscc = not_in_tscc.
+        % We cannot have done self-tail-recursion if MaybeInTscc = not_in_tscc,
+        % though the compiler doesn't know that.
         MaybeInTscc = in_tscc(IdInTscc, _TsccInArgs)
     then
-        Comment = comment("setup for tailcalls optimized into a loop"),
+        ( CodeModel = model_det,  CodeModelStr = "model_det"
+        ; CodeModel = model_semi, CodeModelStr = "model_semi"
+        ; CodeModel = model_non,  CodeModelStr = "model_non"
+        ),
+        string.format("setup for %s tailcalls optimized into a loop",
+            [s(CodeModelStr)], CommentStr),
+        Comment = comment(CommentStr),
         CommentStmt = ml_stmt_atomic(Comment, Context),
         (
             LoopKind = tail_rec_loop_while_continue,

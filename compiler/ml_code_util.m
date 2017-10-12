@@ -607,7 +607,9 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 
         % generate the `succ_func'
         % push nesting level
+        ml_gen_info_increment_func_nest_depth(!Info),
         DoGenRest(RestLocalVarDefns, RestFuncDefns, RestStmts, !Info),
+        ml_gen_info_decrement_func_nest_depth(!Info),
         RestStmt = ml_gen_block(RestLocalVarDefns, RestFuncDefns, RestStmts,
             Context),
         % pop nesting level

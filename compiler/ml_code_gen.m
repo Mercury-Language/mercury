@@ -951,7 +951,9 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         ThenContext = goal_info_get_context(ThenGoalInfo),
         ml_gen_set_cond_var(CondVar, ml_const(mlconst_true),
             ThenContext, SetCondTrue),
+        ml_gen_info_increment_func_nest_depth(!Info),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
+        ml_gen_info_decrement_func_nest_depth(!Info),
         ThenFuncBody =
             ml_stmt_block([], [], [SetCondTrue, ThenStmt], ThenContext),
         % pop nesting level
@@ -968,7 +970,6 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
             ElseStmt, no, Context),
 
         % Package it all up in the right order.
-        % XXX MLDS_DEFN
         LocalVarDefns = [CondVarDecl | CondLocalVarDefns],
         FuncDefns = CondFuncDefns ++ [ThenFuncDefn],
         Stmts = [SetCondFalse | CondStmts] ++ [IfStmt]

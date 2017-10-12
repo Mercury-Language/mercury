@@ -151,11 +151,17 @@
             % generator can't optimize it because the caller and the callee,
             % although they are in the same SCC, are not in the same *T*SCC.
 
-    ;       ntrcr_mlds_in_tscc_stack_ref.
+    ;       ntrcr_mlds_in_tscc_stack_ref
             % The call is a tail call in the program, but the MLDS code
             % generator can't optimize it. The caller and the callee
             % are in the same TSCC, but making the call a tail call
             % would leave at least one dangling stack reference.
+
+    ;       ntrcr_mlds_model_non_in_cont_func.
+            % The call is a tail call in the program, but the MLDS code
+            % generator can't optimize it, because the call site is not
+            % in the main function of its predicate, but in a separate
+            % continuation function.
 
 :- type nontail_rec_obviousness
     --->    non_obvious_nontail_rec
@@ -512,25 +518,21 @@ do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
     proc_info_interface_determinism(!.ProcInfo, Detism),
     determinism_components(Detism, _CanFail, SolnCount),
     (
-        % In at_most_many procedures, we cannot in general know at compile time
-        % whether we can delete the current stack frame at a tail call.
-        %
         % For at_most_zero procedures, there is no point in handling tail calls
         % specially.
-        ( SolnCount = at_most_many
-        ; SolnCount = at_most_zero
-        ),
+        SolnCount = at_most_zero,
         WasProcChanged = proc_was_not_changed
     ;
         ( SolnCount = at_most_one
+        ; SolnCount = at_most_many
         ; SolnCount = at_most_many_cc
         ),
 
-        % It is reasonably common that we don't need to check for tail calls
-        % at all.
         Params = tail_rec_params(MaybeSelfFeature, MaybeMutualFeature,
             MaybeRecordTailCalls, WarnNonTailRecParams),
         ( if
+            % It is reasonably common that we don't need to check
+            % for tail calls at all.
             MaybeSelfFeature = no,
             MaybeMutualFeature = no,
             MaybeRecordTailCalls = do_not_record_tail_recursion,
@@ -1196,6 +1198,12 @@ nontail_rec_call_reason_to_pieces(Reason, Context,
             words("but tail recursion optimization cannot be applied to it,"),
             words("because that would leave dangling stack references"),
             words("in the generated target language code."), nl],
+        VerboseMsgs = []
+    ;
+        Reason = ntrcr_mlds_model_non_in_cont_func,
+        ReasonPieces = [words("is tail recursive,"),
+            words("but tail recursion optimization cannot be applied to it,"),
+            words("because it occurs after a choice point."), nl],
         VerboseMsgs = []
     ).
 
