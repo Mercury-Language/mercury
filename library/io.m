@@ -1981,12 +1981,12 @@ using System.Security.Principal;
     // but we keep them for consistency with the C code.
 
 #if MR_HIGHLEVEL_DATA
-    static tree234.Tree234_2            ML_io_stream_db
-                                            = new tree234.Tree234_2.Empty_0();
-    static univ.Univ_0                  ML_io_user_globals;
+    public static tree234.Tree234_2 ML_io_stream_db =
+        new tree234.Tree234_2.Empty_0();
+    public static univ.Univ_0   ML_io_user_globals;
 #else
-    static object[]                     ML_io_stream_db;
-    static object[]                     ML_io_user_globals;
+    public static object[] ML_io_stream_db;
+    public static object[] ML_io_user_globals;
 #endif
 
     // a counter used to generate unique stream ids
