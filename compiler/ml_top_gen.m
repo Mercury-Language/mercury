@@ -84,9 +84,9 @@ ml_code_gen(Target, MLDS, !ModuleInfo, !Specs) :-
     module_info_user_final_pred_c_names(!.ModuleInfo, FinalPreds),
     ml_gen_preds(Target, ConstStructMap, PredDefns, GlobalData1, GlobalData,
         !ModuleInfo, !Specs),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData, TypeDefns,
-        TableStructDefns, PredDefns,
-        InitPreds, FinalPreds, ExportedEnums).
+    MLDS = mlds(ModuleName, Imports, GlobalData, TypeDefns,
+        TableStructDefns, PredDefns, InitPreds, FinalPreds,
+        ForeignCode, ExportedEnums).
 
 :- pred ml_gen_foreign_code(module_info::in,
     map(foreign_language, mlds_foreign_code)::out) is det.

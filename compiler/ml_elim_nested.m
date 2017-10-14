@@ -478,9 +478,9 @@
 %---------------------------------------------------------------------------%
 
 ml_elim_nested(Action, Globals, Target, MLDS0, MLDS) :-
-    MLDS0 = mlds(ModuleName, ForeignCode, Imports, GlobalData0,
-        TypeDefns0, TableStructDefns, ProcDefns0,
-        InitPreds, FinalPreds, ExportedEnums),
+    MLDS0 = mlds(ModuleName, Imports, GlobalData0, TypeDefns0,
+        TableStructDefns, ProcDefns0, InitPreds, FinalPreds,
+        ForeignCode, ExportedEnums),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_global_data_get_closure_wrapper_func_defns(GlobalData0,
         WrapperFuncsCord),
@@ -494,9 +494,9 @@ ml_elim_nested(Action, Globals, Target, MLDS0, MLDS) :-
         GlobalData0, GlobalData),
     EnvTypeDefns = cord.to_list(EnvTypeDefnsCord),
     TypeDefns = TypeDefns0 ++ EnvTypeDefns,
-    MLDS = mlds(ModuleName, ForeignCode, Imports, GlobalData,
-        TypeDefns, TableStructDefns, ProcDefns,
-        InitPreds, FinalPreds, ExportedEnums).
+    MLDS = mlds(ModuleName, Imports, GlobalData, TypeDefns,
+        TableStructDefns, ProcDefns, InitPreds, FinalPreds,
+        ForeignCode, ExportedEnums).
 
 :- pred ml_elim_nested_defns_in_funcs(action, mlds_module_name,
     globals, mlds_target_lang, list(mlds_function_defn),

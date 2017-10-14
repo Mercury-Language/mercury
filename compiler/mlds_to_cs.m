@@ -108,9 +108,9 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
 
 output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
-    MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData,
+    MLDS = mlds(ModuleName, Imports, GlobalData,
         TypeDefns, TableStructDefns, ProcDefns,
-        InitPreds, FinalPreds, ExportedEnums),
+        InitPreds, FinalPreds, AllForeignCode, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
         RttiDefns, CellDefns, ClosureWrapperFuncDefns),
