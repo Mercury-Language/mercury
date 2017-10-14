@@ -511,8 +511,7 @@ ml_elim_nested_defns_in_funcs(_, _, _, _, [], !FuncDefnsCord, !ClassDefnsCord).
 ml_elim_nested_defns_in_funcs(Action, ModuleName, Globals, Target,
         [FuncDefn | FuncDefns], !FuncDefnsCord, !ClassDefnsCord) :-
     FuncDefn = mlds_function_defn(Name, _Context, _Flags,
-        _PredProcId, _Params0, _Body0, _Attributes,
-        _EnvVarNames, _MaybeRequiretailrecInfo),
+        _PredProcId, _Params0, _Body0, _EnvVarNames, _MaybeRequiretailrecInfo),
     % Don't add GC tracing code to the gc_trace/1 primitive!
     % (Doing so would just slow things down unnecessarily.)
     % And since it is implemented as a foreign proc, it has no
@@ -556,7 +555,7 @@ ml_elim_nested_defns_in_funcs(Action, ModuleName, Globals, Target,
 ml_elim_nested_defns_in_func(Action, ModuleName, Globals, Target, FuncDefn0,
         !FuncDefnsCord, !ClassDefnsCord) :-
     FuncDefn0 = mlds_function_defn(Name, Context, Flags, PredProcId,
-        Params0, Body0, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
+        Params0, Body0, EnvVarNames, MaybeRequiretailrecInfo),
     (
         Body0 = body_external,
         !:FuncDefnsCord = cord.snoc(!.FuncDefnsCord, FuncDefn0)
@@ -689,7 +688,7 @@ ml_elim_nested_defns_in_func(Action, ModuleName, Globals, Target, FuncDefn0,
         Params = mlds_func_params(Arguments, RetValues),
         FuncDefn = mlds_function_defn(Name, Context, Flags,
             PredProcId, Params, body_defined_here(FuncBody),
-            Attributes, EnvVarNames, MaybeRequiretailrecInfo),
+            EnvVarNames, MaybeRequiretailrecInfo),
         !:FuncDefnsCord = cord.snoc(!.FuncDefnsCord, FuncDefn)
     ).
 
@@ -1061,11 +1060,10 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDefn, GCTraceStmts,
     Stmt = ml_stmt_block([FramePointerDefn], [], GCTraceStmts, Context),
     DeclFlags = ml_gen_gc_trace_func_decl_flags,
     MaybePredProcId = no,
-    Attributes = [],
     EnvVarNames = set.init,
     GCTraceFuncDefn = mlds_function_defn(GCTraceFuncName,
         Context, DeclFlags, MaybePredProcId, FuncParams,
-        body_defined_here(Stmt), Attributes, EnvVarNames, no).
+        body_defined_here(Stmt), EnvVarNames, no).
 
     % Return the declaration flags appropriate for a procedure definition.
     %
@@ -1159,7 +1157,7 @@ convert_local_to_field(LocalVarDefn) = FieldVarDefn :-
 ml_insert_init_env(Action, TypeName, FunctionDefn0, FunctionDefn,
         !InsertedEnv) :-
     FunctionDefn0 = mlds_function_defn(Name, Context, Flags, PredProcId,
-        Params, Body, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
+        Params, Body, EnvVarNames, MaybeRequiretailrecInfo),
     ( if
         Body = body_defined_here(FuncBody0),
         EnvPtrVar = lvn_comp_var(lvnc_env_ptr),
@@ -1179,7 +1177,7 @@ ml_insert_init_env(Action, TypeName, FunctionDefn0, FunctionDefn,
         FuncBody = ml_stmt_block([EnvPtrDefn], [],
             [InitEnvPtr, FuncBody0], Context),
         FunctionDefn = mlds_function_defn(Name, Context, Flags,
-            PredProcId, Params, body_defined_here(FuncBody), Attributes,
+            PredProcId, Params, body_defined_here(FuncBody),
             EnvVarNames, MaybeRequiretailrecInfo),
         !:InsertedEnv = have_inserted_env
     else
@@ -1613,7 +1611,7 @@ flatten_nested_function_defns(Action,
 
 flatten_nested_function_defn(Action, FuncDefn0, FuncDefns, !Info) :-
     FuncDefn0 = mlds_function_defn(Name, Context, Flags0, PredProcId, Params,
-        FuncBody0, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
+        FuncBody0, EnvVarNames, MaybeRequiretailrecInfo),
     % Recursively flatten the nested function.
     flatten_function_body(Action, FuncBody0, FuncBody, !Info),
 
@@ -1629,7 +1627,7 @@ flatten_nested_function_defn(Action, FuncDefn0, FuncDefns, !Info) :-
         Flags = Flags0
     ),
     FuncDefn = mlds_function_defn(Name, Context, Flags, PredProcId, Params,
-        FuncBody, Attributes, EnvVarNames, MaybeRequiretailrecInfo),
+        FuncBody, EnvVarNames, MaybeRequiretailrecInfo),
     (
         Action = hoist_nested_funcs,
         % Note that we assume that we can safely hoist stuff inside nested
@@ -2323,7 +2321,7 @@ function_defns_contains_matching_defn(Filter, [FuncDefn | FuncDefns]) :-
 
 function_defn_contains_matching_defn(Filter, FuncDefn) :-
     FuncDefn = mlds_function_defn(_Name, _Ctxt, _Flags, _PredProcId, _Params,
-        FunctionBody, _Attrs, _EnvVarNames, _MaybeRequiretailrecInfo),
+        FunctionBody, _EnvVarNames, _MaybeRequiretailrecInfo),
     FunctionBody = body_defined_here(Stmt),
     statement_contains_matching_defn(Filter, Stmt).
 

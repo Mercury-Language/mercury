@@ -219,9 +219,8 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
 
 mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls,
         FuncDefn0, FuncDefn, !Specs) :-
-    FuncDefn0 = mlds_function_defn(Name, Context, Flags,
-        MaybePredProcId, Params, FuncBody0, Attributes,
-        EnvVarNames, MaybeRequireTailrecInfo),
+    FuncDefn0 = mlds_function_defn(Name, Context, Flags, MaybePredProcId,
+        Params, FuncBody0, EnvVarNames, MaybeRequireTailrecInfo),
     (
         FuncBody0 = body_external,
         FuncDefn = FuncDefn0
@@ -244,9 +243,8 @@ mark_tailcalls_in_function_defn(ModuleInfo, ModuleName, WarnTailCalls,
         InBodyInfo = tc_in_body_info(FoundRecCall, !:Specs),
 
         FuncBody = body_defined_here(BodyStmt),
-        FuncDefn = mlds_function_defn(Name, Context, Flags,
-            MaybePredProcId, Params, FuncBody, Attributes,
-            EnvVarNames, MaybeRequireTailrecInfo),
+        FuncDefn = mlds_function_defn(Name, Context, Flags, MaybePredProcId,
+            Params, FuncBody, EnvVarNames, MaybeRequireTailrecInfo),
 
         (
             MaybePredProcId = no

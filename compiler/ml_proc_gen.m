@@ -707,21 +707,17 @@ construct_func_body_maybe_wrap_in_loop(PredProcId, CodeModel, Context,
 
 construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
         EnvVarNames, FuncDefn) :-
-    PredProcIdInfo = pred_proc_id_info(PredProcId, PredInfo, ProcInfo,
+    PredProcIdInfo = pred_proc_id_info(PredProcId, _PredInfo, ProcInfo,
         _ProcContext),
     PredProcId = proc(PredId, ProcId),
     ml_gen_proc_label(ModuleInfo, PredProcId, _ModuleName, PlainFuncName),
     proc_info_get_context(ProcInfo, ProcContext),
     DeclFlags = ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId),
     MaybePredProcId = yes(PredProcId),
-    pred_info_get_attributes(PredInfo, Attributes),
-    attributes_to_attribute_list(Attributes, AttributeList),
-    MLDS_Attributes =
-        list.map(attribute_to_mlds_attribute(ModuleInfo), AttributeList),
     MaybeRequireTailrecInfoFD = no,
     FuncDefn = mlds_function_defn(mlds_function_name(PlainFuncName),
         ProcContext, DeclFlags, MaybePredProcId, FuncParams, FuncBody,
-        MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfoFD).
+        EnvVarNames, MaybeRequireTailrecInfoFD).
 
 %---------------------------------------------------------------------------%
 %
@@ -1586,12 +1582,6 @@ append_to_stmt(BaseStmt, EndStmt) = Stmts :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- func attribute_to_mlds_attribute(module_info, pred_attribute)
-    = mlds_attribute.
-
-attribute_to_mlds_attribute(ModuleInfo, custom(Type)) =
-    custom(mercury_type_to_mlds_type(ModuleInfo, Type)).
 
     % Return the declaration flags appropriate for a procedure definition.
     %

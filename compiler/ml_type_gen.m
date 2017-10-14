@@ -927,11 +927,9 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
     CtorFlags = init_function_decl_flags(acc_public, per_instance),
     Params = mlds_func_params(Args, ReturnValues),
     Stmt = ml_stmt_block([], [], InitMembers, Context),
-    Attributes = [],
     EnvVarNames = set.init,
     CtorDefn = mlds_function_defn(FunctionName, Context,
-        CtorFlags, no, Params, body_defined_here(Stmt), Attributes,
-        EnvVarNames, no).
+        CtorFlags, no, Params, body_defined_here(Stmt), EnvVarNames, no).
 
     % Get the name and type from the field description, for use as a
     % constructor argument name and type.

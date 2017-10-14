@@ -696,7 +696,6 @@
                 mfd_param               :: mlds_func_params,
 
                 mfd_body                :: mlds_function_body,
-                mfd_attributes          :: list(mlds_attribute),
 
                 % The set of environment variables referred to
                 % by the function body.
@@ -810,15 +809,6 @@
 :- type mlds_function_body
     --->    body_defined_here(mlds_stmt)
     ;       body_external.
-
-%---------------------%
-
-    % XXX Document me.
-    % ZZZ
-:- type mlds_attribute
-    --->    custom(
-                mlds_type
-            ).
 
 %---------------------%
 

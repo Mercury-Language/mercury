@@ -71,9 +71,8 @@ rename_class_names_in_field_var_defn(Renaming, FieldVarDefn0, FieldVarDefn) :-
         Type, Initializer, GCStmt).
 
 rename_class_names_in_function_defn(Renaming, FuncDefn0, FuncDefn) :-
-    FuncDefn0 = mlds_function_defn(Name, Context, Flags,
-        MaybePPId, FuncParams0, FuncBody0, Attributes, EnvVarNames,
-        MaybeRequireTailrecInfo),
+    FuncDefn0 = mlds_function_defn(Name, Context, Flags, MaybePredProcId,
+        FuncParams0, FuncBody0, EnvVarNames, MaybeRequireTailrecInfo),
     rename_class_names_in_func_params(Renaming, FuncParams0, FuncParams),
     (
         FuncBody0 = body_defined_here(Stmt0),
@@ -83,9 +82,8 @@ rename_class_names_in_function_defn(Renaming, FuncDefn0, FuncDefn) :-
         FuncBody0 = body_external,
         FuncBody = body_external
     ),
-    FuncDefn = mlds_function_defn(Name, Context, Flags,
-        MaybePPId, FuncParams, FuncBody, Attributes, EnvVarNames,
-        MaybeRequireTailrecInfo).
+    FuncDefn = mlds_function_defn(Name, Context, Flags, MaybePredProcId,
+        FuncParams, FuncBody, EnvVarNames, MaybeRequireTailrecInfo).
 
 rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn) :-
     ClassDefn0 = mlds_class_defn(Name, Context, Flags, ClassKind,

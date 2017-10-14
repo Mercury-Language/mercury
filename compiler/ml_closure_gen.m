@@ -992,13 +992,11 @@ ml_gen_wrapper_func(MaybeAux, FuncParams, Context, Stmt, FunctionDefn,
     ml_gen_label_func(!.Info, MaybeAux, FuncParams, Context, Stmt,
         FunctionDefn0),
     FunctionDefn0 = mlds_function_defn(Name, Ctxt, DeclFlags0,
-        MaybePredProcId, DefnFuncParams, Body, Attributes,
-        EnvVarNames, TailRec),
+        MaybePredProcId, DefnFuncParams, Body, EnvVarNames, TailRec),
     set_function_access(acc_private, DeclFlags0, DeclFlags1),
     set_function_per_instance(one_copy, DeclFlags1, DeclFlags),
     FunctionDefn = mlds_function_defn(Name, Ctxt, DeclFlags,
-        MaybePredProcId, DefnFuncParams, Body, Attributes,
-        EnvVarNames, TailRec).
+        MaybePredProcId, DefnFuncParams, Body, EnvVarNames, TailRec).
 
 :- func ml_gen_wrapper_head_var_names(int, int) = list(mlds_local_var_name).
 

@@ -1607,7 +1607,7 @@ mlds_output_global_var_decl_opts(Opts, Indent, MLDS_ModuleName, GlobalVarDefn,
 
 mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
-        MaybePredProcId, Params, MaybeBody, _Attrs,
+        MaybePredProcId, Params, MaybeBody,
         _EnvVarNames, _MaybeRequireTailrecInfo),
 
     % If we are using --high-level-data, then for function declarations,
@@ -2079,7 +2079,7 @@ mlds_output_field_var_defn(Opts, Indent, Separate, ModuleName, FieldVarDefn,
 
 mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
-        MaybePredProcId, Params, MaybeBody, _Attributes,
+        MaybePredProcId, Params, MaybeBody,
         _EnvVarNames, _MaybeRequireTailrecInfo),
     io.nl(!IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),

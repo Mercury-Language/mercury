@@ -636,11 +636,9 @@ ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func) :-
     DeclFlags = ml_gen_label_func_decl_flags,
     MaybePredProcId = no,
     Body = body_defined_here(Stmt),
-    Attributes = [],
     EnvVarNames = set.init,
     Func = mlds_function_defn(mlds_function_name(FuncName), Context,
-        DeclFlags, MaybePredProcId, FuncParams, Body, Attributes,
-        EnvVarNames, no).
+        DeclFlags, MaybePredProcId, FuncParams, Body, EnvVarNames, no).
 
     % Return the declaration flags appropriate for a label func (a label func
     % is a function used as a continuation when generating nondet code).

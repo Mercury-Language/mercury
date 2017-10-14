@@ -646,7 +646,7 @@ output_field_var_defn_for_csharp(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
 output_function_defn_for_csharp(Info, Indent, OutputAux, FunctionDefn, !IO) :-
     output_n_indents(Indent, !IO),
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
-        MaybePredProcId, Params, MaybeBody, _Attributes, _EnvVarNames,
+        MaybePredProcId, Params, MaybeBody, _EnvVarNames,
         _MaybeRequireTailrecInfo),
     (
         MaybeBody = body_external,

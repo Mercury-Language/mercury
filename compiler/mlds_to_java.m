@@ -840,11 +840,9 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         CtorFunctionName = mlds_function_export("<constructor>"),
         CtorFlags = init_function_decl_flags(acc_public, per_instance),
         Params = mlds_func_params(CtorArgs, CtorReturnValues),
-        Attributes = [],
         EnvVarNames = set.init,
         CtorDefn = mlds_function_defn(CtorFunctionName, Context, CtorFlags,
-            no, Params, body_defined_here(CtorStmt), Attributes,
-            EnvVarNames, no),
+            no, Params, body_defined_here(CtorStmt), EnvVarNames, no),
         CtorDefns = [CtorDefn]
     ),
 
@@ -951,11 +949,10 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
     MethodFlags = ml_gen_member_decl_flags,
     MethodParams = mlds_func_params(MethodArgs, MethodRets),
     MethodMaybeId = no,
-    MethodAttribs = [],
     MethodEnvVarNames = set.init,
     MethodDefn = mlds_function_defn(MethodName, Context, MethodFlags,
         MethodMaybeId, MethodParams, body_defined_here(Stmt),
-        MethodAttribs, MethodEnvVarNames, no).
+        MethodEnvVarNames, no).
 
 :- pred create_generic_arg(int::in, mlds_local_var_name::out,
     mlds_argument::out) is det.
@@ -1386,9 +1383,8 @@ output_field_var_defn_for_java(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
     output_aux::in, mlds_function_defn::in, io::di, io::uo) is det.
 
 output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
-    FunctionDefn = mlds_function_defn(Name, Context, Flags,
-        MaybePredProcId, Params, MaybeBody, _Attributes,
-        _EnvVarNames, _MaybeRequireTailrecInfo),
+    FunctionDefn = mlds_function_defn(Name, Context, Flags, MaybePredProcId,
+        Params, MaybeBody, _EnvVarNames, _MaybeRequireTailrecInfo),
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
     (

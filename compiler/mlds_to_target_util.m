@@ -447,7 +447,7 @@ add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
 %---------------------------------------------------------------------------%
 
 accumulate_env_var_names(FuncDefn, !EnvVarNames) :-
-    FuncDefn = mlds_function_defn(_, _, _, _, _, _, _, EnvVarNames, _),
+    FuncDefn = mlds_function_defn(_, _, _, _, _, _, EnvVarNames, _),
     set.union(EnvVarNames, !EnvVarNames).
 
 %---------------------------------------------------------------------------%
@@ -518,7 +518,7 @@ method_ptrs_in_function_defns([FuncDefn | FuncDefns], !CodeAddrsInConsts) :-
 
 method_ptrs_in_function_defn(FuncDefn, !CodeAddrsInConsts) :-
     FuncDefn = mlds_function_defn(_, _, _, _MaybeID, _Params, Body,
-        _Attributes, _EnvVars, _MaybeRequireTailrecInfo),
+        _EnvVars, _MaybeRequireTailrecInfo),
     (
         Body = body_defined_here(Stmt),
         method_ptrs_in_statement(Stmt, !CodeAddrsInConsts)

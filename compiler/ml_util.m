@@ -168,7 +168,7 @@
 
 func_defns_contain_main([FuncDefn | FuncDefns]) :-
     ( if
-        FuncDefn = mlds_function_defn(FuncName, _, _, _, _, _, _, _, _),
+        FuncDefn = mlds_function_defn(FuncName, _, _, _, _, _, _, _),
         FuncName = mlds_function_name(PlainFuncName),
         PlainFuncName = mlds_plain_func_name(FuncLabel, _),
         FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
@@ -658,7 +658,7 @@ local_var_defn_contains_var(LocalVarDefn, SearchVarName) = ContainsVar :-
 
 function_defn_contains_var(FuncDefn, SearchVarName) = ContainsVar :-
     FuncDefn = mlds_function_defn(_Name, _Ctxt, _Flags, _PredProcId, _Params,
-        Body, _Attrs, _EnvVarNames, _MaybeRequireTailrecInfo),
+        Body, _EnvVarNames, _MaybeRequireTailrecInfo),
     (
         Body = body_external,
         ContainsVar = no

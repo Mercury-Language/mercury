@@ -133,17 +133,15 @@ mlds_optimize(Globals, !MLDS) :-
     mlds_function_defn::in, mlds_function_defn::out) is det.
 
 optimize_in_function_defn(ModuleName, Globals, FuncDefn0, FuncDefn) :-
-    FuncDefn0 = mlds_function_defn(Name, Context, Flags,
-        PredProcId, Params, FuncBody0, Attributes, EnvVarNames,
-        MaybeRequireTailrecInfo),
+    FuncDefn0 = mlds_function_defn(Name, Context, Flags, PredProcId,
+        Params, FuncBody0, EnvVarNames, MaybeRequireTailrecInfo),
     OptInfo = opt_info(Globals, ModuleName, Name, Params),
 
     optimize_func(OptInfo, Context, FuncBody0, FuncBody1),
     optimize_in_function_body(OptInfo, FuncBody1, FuncBody),
 
-    FuncDefn = mlds_function_defn(Name, Context, Flags,
-        PredProcId, Params, FuncBody, Attributes, EnvVarNames,
-        MaybeRequireTailrecInfo).
+    FuncDefn = mlds_function_defn(Name, Context, Flags, PredProcId,
+        Params, FuncBody, EnvVarNames, MaybeRequireTailrecInfo).
 
 :- pred optimize_in_function_body(opt_info::in,
     mlds_function_body::in, mlds_function_body::out) is det.
@@ -1373,7 +1371,7 @@ eliminate_var_in_local_var_defn(LocalVarDefn0, LocalVarDefn, !VarElimInfo) :-
 
 eliminate_var_in_function_defn(FuncDefn0, FuncDefn, !VarElimInfo) :-
     FuncDefn0 = mlds_function_defn(Name, Context, Flags, Id, Params,
-        Body0, Attributes, EnvVarNames, MaybeRequireTailrecInfo),
+        Body0, EnvVarNames, MaybeRequireTailrecInfo),
     (
         Body0 = body_external,
         Body = Body0
@@ -1383,7 +1381,7 @@ eliminate_var_in_function_defn(FuncDefn0, FuncDefn, !VarElimInfo) :-
         Body = body_defined_here(Stmt)
     ),
     FuncDefn = mlds_function_defn(Name, Context, Flags, Id, Params,
-        Body, Attributes, EnvVarNames, MaybeRequireTailrecInfo).
+        Body, EnvVarNames, MaybeRequireTailrecInfo).
 
 :- pred eliminate_var_in_initializer(
     mlds_initializer::in, mlds_initializer::out,
