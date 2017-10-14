@@ -66,7 +66,7 @@
     % arguments specify additional constants to insert at the start of the
     % argument list.
     %
-:- pred ml_gen_new_object(maybe(cons_id)::in, maybe(ctor_name)::in,
+:- pred ml_gen_new_object(maybe(cons_id)::in, maybe(qual_ctor_id)::in,
     mlds_tag::in, bool::in, prog_var::in,
     list(mlds_rval)::in, list(mlds_type)::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
@@ -608,9 +608,10 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
         sorry($pred, "construct_in_region NYI")
     ).
 
-:- pred ml_gen_new_object_dynamically(maybe(cons_id)::in, maybe(ctor_name)::in,
-    maybe(mlds_tag)::in, bool::in, prog_var::in, mlds_lval::in, mer_type::in,
-    mlds_type::in, list(mlds_rval)::in, list(mlds_type)::in,
+:- pred ml_gen_new_object_dynamically(maybe(cons_id)::in,
+    maybe(qual_ctor_id)::in, maybe(mlds_tag)::in, bool::in,
+    prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
+    list(mlds_rval)::in, list(mlds_type)::in,
     list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
     list(int)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -686,8 +687,8 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
 
 %---------------------------------------------------------------------------%
 
-:- pred ml_gen_new_object_statically(maybe(cons_id)::in, maybe(ctor_name)::in,
-    maybe(mlds_tag)::in,
+:- pred ml_gen_new_object_statically(maybe(cons_id)::in,
+    maybe(qual_ctor_id)::in, maybe(mlds_tag)::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_rval)::in, list(mlds_type)::in,
     list(prog_var)::in, list(mer_type)::in,
@@ -789,8 +790,8 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     AssignStmt = ml_gen_assign(VarLval, Rval, Context),
     Stmts = [AssignStmt].
 
-:- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in, maybe(ctor_name)::in,
-    mlds_tag::in, maybe(mlds_tag)::in, bool::in,
+:- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
+    maybe(qual_ctor_id)::in, mlds_tag::in, maybe(mlds_tag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_rval)::in, list(mlds_type)::in,
     list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
@@ -1217,7 +1218,7 @@ ml_gen_box_extra_const_rval_list_lld(_, _, [], [_ | _], _, !GlobalData) :-
 ml_gen_box_extra_const_rval_list_lld(_, _, [_ | _], [], _, !GlobalData) :-
     unexpected($pred, "length mismatch").
 
-:- pred ml_cons_name(mlds_target_lang::in, cons_id::in, ctor_name::out)
+:- pred ml_cons_name(mlds_target_lang::in, cons_id::in, qual_ctor_id::out)
     is det.
 
 ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-

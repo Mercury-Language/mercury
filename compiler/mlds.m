@@ -1480,7 +1480,7 @@
                 maybe(mlds_rval),
 
                 % The name of the constructor to invoke.
-                maybe(ctor_name),
+                maybe(qual_ctor_id),
 
                 % The arguments to the constructor.
                 % Any arguments which are supposed to be packed together should
@@ -1629,8 +1629,6 @@
     --->    ctor_id(mlds_class_name, arity).
 :- type qual_ctor_id
     --->    qual_ctor_id(mlds_module_name, mlds_qual_kind, mlds_ctor_id).
-    % XXX Why do we need/want this synonym?
-:- type ctor_name == qual_ctor_id.
 
     % Trail management.
     % For documentation, see the corresponding LLDS instructions in llds.m.
