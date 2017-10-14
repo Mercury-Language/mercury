@@ -264,10 +264,10 @@ det_info_get_module_info(DetInfo, X) :-
     X = DetInfo ^ di_module_info.
 det_info_get_pred_proc_id(DetInfo, X) :-
     X = DetInfo ^ di_pred_proc_id.
-det_info_get_vartypes(DetInfo, X) :-
-    X = DetInfo ^ di_vartypes.
 det_info_get_varset(DetInfo, X) :-
     X = DetInfo ^ di_varset.
+det_info_get_vartypes(DetInfo, X) :-
+    X = DetInfo ^ di_vartypes.
 det_info_get_pess_extra_vars(DetInfo, X) :-
     X = DetInfo ^ di_pess_extra_vars.
 det_info_get_has_format_call(DetInfo, X) :-

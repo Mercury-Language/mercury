@@ -188,8 +188,6 @@
                 mci_goal_path_map       :: map(pred_id, goal_forward_path_map)
             ).
 
-mci_set_pred_id(MCI, PredId) = MCI ^ mci_pred_id := PredId.
-
 :- type threshold
     --->    threshold(mode_constraint_var).
 
@@ -199,6 +197,8 @@ init_mode_constraint_info(Simple) = MCI :-
     PredId = hlds_pred.initial_pred_id,
     MCI = mode_constraint_info(VarSet, bimap.init, PredId, stack.init,
         map.init, map.init, set_of_var.init, ZeroVar, Simple, map.init).
+
+mci_set_pred_id(MCI, PredId) = MCI ^ mci_pred_id := PredId.
 
 :- type robdd_var == var(mc_type).
 

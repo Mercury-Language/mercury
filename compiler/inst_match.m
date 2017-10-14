@@ -123,16 +123,6 @@
 :- pred inst_is_at_least_as_instantiated(mer_inst::in, mer_inst::in,
     mer_type::in, module_info::in) is semidet.
 
-    % unique_matches_initial(A, B) succeeds if A >= B in the ordering
-    % clobbered < mostly_clobbered < shared < mostly_unique < unique
-    %
-:- pred unique_matches_initial(uniqueness::in, uniqueness::in) is semidet.
-
-    % unique_matches_final(A, B) succeeds if A >= B in the ordering
-    % clobbered < mostly_clobbered < shared < mostly_unique < unique
-    %
-:- pred unique_matches_final(uniqueness::in, uniqueness::in) is semidet.
-
     % inst_matches_binding(InstA, InstB, Type, ModuleInfo):
     %
     % Succeed iff the binding of InstA is definitely exactly the same as
@@ -148,6 +138,18 @@
     %
 :- pred inst_matches_binding_allow_any_any(mer_inst::in, mer_inst::in,
     mer_type::in, module_info::in) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+    % unique_matches_initial(A, B) succeeds if A >= B in the ordering
+    % clobbered < mostly_clobbered < shared < mostly_unique < unique
+    %
+:- pred unique_matches_initial(uniqueness::in, uniqueness::in) is semidet.
+
+    % unique_matches_final(A, B) succeeds if A >= B in the ordering
+    % clobbered < mostly_clobbered < shared < mostly_unique < unique
+    %
+:- pred unique_matches_final(uniqueness::in, uniqueness::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -741,37 +743,6 @@ ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Determine what kind of uniqueness comparison we are doing and then do it.
-    % If we are doing a "match" then call unique_matches_initial to do the
-    % comparison. If we are comparing "instantiatedness" then the uniqueness
-    % comparison is the reverse of when we are doing a match so call
-    % unique_matches_initial with the arguments reversed.
-    %
-:- pred compare_uniqueness(uniqueness_comparison::in,
-    uniqueness::in, uniqueness::in) is semidet.
-
-compare_uniqueness(uc_match, InstA, InstB) :-
-    unique_matches_initial(InstA, InstB).
-compare_uniqueness(uc_instantiated, InstA, InstB) :-
-    unique_matches_initial(InstB, InstA).
-
-unique_matches_initial(unique, _).
-unique_matches_initial(mostly_unique, mostly_unique).
-unique_matches_initial(mostly_unique, shared).
-unique_matches_initial(mostly_unique, mostly_clobbered).
-unique_matches_initial(mostly_unique, clobbered).
-unique_matches_initial(shared, shared).
-unique_matches_initial(shared, mostly_clobbered).
-unique_matches_initial(shared, clobbered).
-unique_matches_initial(mostly_clobbered, mostly_clobbered).
-unique_matches_initial(mostly_clobbered, clobbered).
-unique_matches_initial(clobbered, clobbered).
-
-unique_matches_final(A, B) :-
-    unique_matches_initial(A, B).
-
-%-----------------------------------------------------------------------------%
-
 :- pred compare_bound_inst_list_uniq(uniqueness_comparison::in,
     list(bound_inst)::in, uniqueness::in, module_info::in) is semidet.
 
@@ -1058,6 +1029,8 @@ inst_is_at_least_as_instantiated(InstA, InstB, Type, ModuleInfo) :-
         ground_matches_bound_if_complete),
     inst_matches_initial_mt(InstA, InstB, yes(Type), Info0, _).
 
+%-----------------------------------------------------------------------------%
+
 inst_matches_binding(InstA, InstB, Type, ModuleInfo) :-
     Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, no,
         ground_matches_bound_if_complete),
@@ -1235,6 +1208,37 @@ bound_inst_list_matches_binding([X | Xs], [Y | Ys], MaybeType, !Info) :-
         % need to check that [X | Xs] matches_binding Ys.
         bound_inst_list_matches_binding([X | Xs], Ys, MaybeType, !Info)
     ).
+
+%-----------------------------------------------------------------------------%
+
+    % Determine what kind of uniqueness comparison we are doing and then do it.
+    % If we are doing a "match" then call unique_matches_initial to do the
+    % comparison. If we are comparing "instantiatedness" then the uniqueness
+    % comparison is the reverse of when we are doing a match so call
+    % unique_matches_initial with the arguments reversed.
+    %
+:- pred compare_uniqueness(uniqueness_comparison::in,
+    uniqueness::in, uniqueness::in) is semidet.
+
+compare_uniqueness(uc_match, InstA, InstB) :-
+    unique_matches_initial(InstA, InstB).
+compare_uniqueness(uc_instantiated, InstA, InstB) :-
+    unique_matches_initial(InstB, InstA).
+
+unique_matches_initial(unique, _).
+unique_matches_initial(mostly_unique, mostly_unique).
+unique_matches_initial(mostly_unique, shared).
+unique_matches_initial(mostly_unique, mostly_clobbered).
+unique_matches_initial(mostly_unique, clobbered).
+unique_matches_initial(shared, shared).
+unique_matches_initial(shared, mostly_clobbered).
+unique_matches_initial(shared, clobbered).
+unique_matches_initial(mostly_clobbered, mostly_clobbered).
+unique_matches_initial(mostly_clobbered, clobbered).
+unique_matches_initial(clobbered, clobbered).
+
+unique_matches_final(A, B) :-
+    unique_matches_initial(A, B).
 
 %-----------------------------------------------------------------------------%
 

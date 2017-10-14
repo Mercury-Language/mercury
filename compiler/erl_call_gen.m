@@ -41,45 +41,6 @@
     list(mer_type)::in, code_model::in, prog_context::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
-:- inst ground_higher_order
-    --->    higher_order(ground, ground, ground, ground).
-
-    % Generate ELDS code for a higher order call.
-    %
-:- pred erl_gen_higher_order_call(generic_call::in(ground_higher_order),
-    prog_vars::in, list(mer_mode)::in, determinism::in, prog_context::in,
-    maybe(elds_expr)::in, elds_expr::out,
-    erl_gen_info::in, erl_gen_info::out) is det.
-
-:- inst ground_class_method
-    --->    class_method(ground, ground, ground, ground).
-
-    % Generate ELDS code for a class method call.
-    %
-:- pred erl_gen_class_method_call(generic_call::in(ground_class_method),
-    prog_vars::in, list(mer_mode)::in, determinism::in, prog_context::in,
-    maybe(elds_expr)::in, elds_expr::out,
-    erl_gen_info::in, erl_gen_info::out) is det.
-
-    % Generate ELDS code for a call to a builtin procedure.
-    %
-:- pred erl_gen_builtin(pred_id::in, proc_id::in, prog_vars::in,
-    code_model::in, prog_context::in, maybe(elds_expr)::in, elds_expr::out,
-    erl_gen_info::in, erl_gen_info::out) is det.
-
-    % Generate ELDS code for a cast. The list of argument variables
-    % must have only two elements, the input and the output.
-    %
-:- pred erl_gen_cast(prog_context::in, prog_vars::in, maybe(elds_expr)::in,
-    elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
-
-    % Generate ELDS code for a call to foreign proc.
-    %
-:- pred erl_gen_foreign_proc_call(list(foreign_arg)::in,
-    maybe(trace_expr(trace_runtime))::in, pragma_foreign_proc_impl::in,
-    code_model::in, prog_context::in, maybe(elds_expr)::in,
-    elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
-
 %-----------------------------------------------------------------------------%
 
     % erl_make_call(CodeModel, CallTarget, InputVars, OutputVars,
@@ -100,6 +61,47 @@
 :- pred erl_make_call_replace_dummies(erl_gen_info::in, code_model::in,
     elds_call_target::in, prog_vars::in, prog_vars::in, maybe(elds_expr)::in,
     elds_expr::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- inst ground_higher_order
+    --->    higher_order(ground, ground, ground, ground).
+
+    % Generate ELDS code for a higher order call.
+    %
+:- pred erl_gen_higher_order_call(generic_call::in(ground_higher_order),
+    prog_vars::in, list(mer_mode)::in, determinism::in, prog_context::in,
+    maybe(elds_expr)::in, elds_expr::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+:- inst ground_class_method
+    --->    class_method(ground, ground, ground, ground).
+
+    % Generate ELDS code for a class method call.
+    %
+:- pred erl_gen_class_method_call(generic_call::in(ground_class_method),
+    prog_vars::in, list(mer_mode)::in, determinism::in, prog_context::in,
+    maybe(elds_expr)::in, elds_expr::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+    % Generate ELDS code for a cast. The list of argument variables
+    % must have only two elements, the input and the output.
+    %
+:- pred erl_gen_cast(prog_context::in, prog_vars::in, maybe(elds_expr)::in,
+    elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
+
+    % Generate ELDS code for a call to a builtin procedure.
+    %
+:- pred erl_gen_builtin(pred_id::in, proc_id::in, prog_vars::in,
+    code_model::in, prog_context::in, maybe(elds_expr)::in, elds_expr::out,
+    erl_gen_info::in, erl_gen_info::out) is det.
+
+    % Generate ELDS code for a call to foreign proc.
+    %
+:- pred erl_gen_foreign_proc_call(list(foreign_arg)::in,
+    maybe(trace_expr(trace_runtime))::in, pragma_foreign_proc_impl::in,
+    code_model::in, prog_context::in, maybe(elds_expr)::in,
+    elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

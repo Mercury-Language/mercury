@@ -526,6 +526,20 @@ do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         true
     ).
 
+write_goal_list(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
+        Indent, Separator, Goals, !IO) :-
+    (
+        Goals = [HeadGoal | TailGoals],
+        write_indent(Indent, !IO),
+        io.write_string(Separator, !IO),
+        do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
+            Indent + 1, "\n", HeadGoal, !IO),
+        write_goal_list(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
+            Indent, Separator, TailGoals, !IO)
+    ;
+        Goals = []
+    ).
+
 :- pred write_llds_code_gen_info(hlds_out_info::in, hlds_goal_info::in,
     prog_varset::in, var_name_print::in, int::in, io::di, io::uo) is det.
 
@@ -781,20 +795,6 @@ write_is_conditional(IsConditional, !IO) :-
 %
 % Write out goal expressions.
 %
-
-write_goal_list(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
-        Indent, Separator, Goals, !IO) :-
-    (
-        Goals = [HeadGoal | TailGoals],
-        write_indent(Indent, !IO),
-        io.write_string(Separator, !IO),
-        do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
-            Indent + 1, "\n", HeadGoal, !IO),
-        write_goal_list(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
-            Indent, Separator, TailGoals, !IO)
-    ;
-        Goals = []
-    ).
 
 :- pred write_goal_expr(hlds_out_info::in, module_info::in,
     prog_varset::in, maybe_vartypes::in, var_name_print::in,

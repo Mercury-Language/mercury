@@ -91,19 +91,19 @@
     list(prog_var)::out, list(prog_var)::out, list(prog_var)::out,
     list(prog_var)::out) is det.
 
-    % Divide the given list of arguments and the arg_infos into three lists:
-    % the inputs, the outputs, and the unused arguments, in that order.
-    %
-:- pred partition_args(assoc_list(prog_var, arg_info)::in,
-    assoc_list(prog_var, arg_info)::out,
-    assoc_list(prog_var, arg_info)::out,
-    assoc_list(prog_var, arg_info)::out) is det.
-
     % Divide the given list of arguments and the arg_infos into two
     % lists: those which are treated as inputs by the calling convention
     % and those which are treated as outputs by the calling convention.
     %
 :- pred partition_args(assoc_list(prog_var, arg_info)::in,
+    assoc_list(prog_var, arg_info)::out,
+    assoc_list(prog_var, arg_info)::out) is det.
+
+    % Divide the given list of arguments and the arg_infos into three lists:
+    % the inputs, the outputs, and the unused arguments, in that order.
+    %
+:- pred partition_args(assoc_list(prog_var, arg_info)::in,
+    assoc_list(prog_var, arg_info)::out,
     assoc_list(prog_var, arg_info)::out,
     assoc_list(prog_var, arg_info)::out) is det.
 

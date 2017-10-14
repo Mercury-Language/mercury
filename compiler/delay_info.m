@@ -53,6 +53,17 @@
 :- pred delay_info_delay_goal(mode_error_info::in, hlds_goal::in,
     delay_info::in, delay_info::out) is det.
 
+    % Mark all variables as having been bound.
+    % This will allow all previously delayed goals to change status
+    % from "delayed" to "pending". They will be woken up the next time
+    % we get back to their conjunction.
+    %
+    % The reason why we need this is that when we hit a goal which cannot
+    % succeed, we need to wake up all the delayed goals, so that we don't get
+    % mode errors in the following unreachable code.
+    %
+:- pred delay_info_bind_all_vars(delay_info::in, delay_info::out) is det.
+
     % Mark a list of variables as having been bound.
     % This may allow a previously delayed goal to change status
     % from "delayed" to "pending".
@@ -67,17 +78,6 @@
     %
 :- pred delay_info_bind_var(prog_var::in, delay_info::in, delay_info::out)
     is det.
-
-    % Mark all variables as having been bound.
-    % This will allow all previously delayed goals to change status
-    % from "delayed" to "pending". They will be woken up the next time
-    % we get back to their conjunction.
-    %
-    % The reason why we need this is that when we hit a goal which cannot
-    % succeed, we need to wake up all the delayed goals, so that we don't get
-    % mode errors in the following unreachable code.
-    %
-:- pred delay_info_bind_all_vars(delay_info::in, delay_info::out) is det.
 
     % delay_info_wakeup_goals(Goals, !DelayInfo):
     %

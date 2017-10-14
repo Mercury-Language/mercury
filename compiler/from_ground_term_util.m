@@ -140,6 +140,16 @@
 
 %---------------------------------------------------------------------------%
 
+project_kept_goal(MarkedGoal, Goal) :-
+    (
+        MarkedGoal = fgt_kept_goal(Goal, _, _)
+    ;
+        MarkedGoal = fgt_broken_goal(_, _, _),
+        unexpected($module, $pred, "broken goal")
+    ).
+
+%---------------------------------------------------------------------------%
+
     % Has a goal or sequence of goals broken the fgt{i,c} invariants?
     %
 :- type maybe_kept
@@ -350,16 +360,6 @@ lookup_and_remove_arg_vars_insert_fgt([Var | Vars], Order, !GoalCord,
     is det.
 
 project_build_info_goal_cord(fgt_build_info(_, GoalCord), GoalCord).
-
-%---------------------------------------------------------------------------%
-
-project_kept_goal(MarkedGoal, Goal) :-
-    (
-        MarkedGoal = fgt_kept_goal(Goal, _, _)
-    ;
-        MarkedGoal = fgt_broken_goal(_, _, _),
-        unexpected($module, $pred, "broken goal")
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.from_ground_term_util.

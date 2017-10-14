@@ -197,6 +197,8 @@
     %
 :- func erl_expr_size(elds_expr) = int.
 
+%-----------------------------------------------------------------------------%
+
     % maybe_simplify_nested_cases(Expr0, Expr)
     %
     % Simplify Expr0 if it is a case expression of a specific form, otherwise
@@ -426,119 +428,6 @@ erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap,
         NotBoundList = set_of_var.to_sorted_list(NotBound),
         Assignments = list.map(var_eq_false, NotBoundList),
         Statement = join_exprs(elds_block(Assignments), Statement0)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-    % Simplify nested case expressions of a specific form:
-    %
-    %   case                        % OuterCaseExpr
-    %     (begin
-    %         Expr ...,             % InnerPreamble
-    %         case InnerCond of     % InnerCaseExpr
-    %             P1 -> M1;
-    %             P2 -> M2;
-    %             ...
-    %             PN -> MN
-    %         end
-    %     end)
-    %   of
-    %     M1 -> R1;                 % OuterCases
-    %     M2 -> R2;
-    %     ...
-    %     MN -> RN
-    %   end
-    %
-    % As a special case, the last pattern MN in the outer case expression may
-    % be replaced by _ (the anonymous variable) and still match.
-    %
-    % ===>
-    %
-    %   case InnerCond of
-    %       P1 -> R1;
-    %       P2 -> R2;
-    %       ...
-    %       PN -> RN
-    %   end
-    %
-maybe_simplify_nested_cases(Expr0, Expr) :-
-    ( if maybe_simplify_nested_cases_2(Expr0, Expr1) then
-        Expr = Expr1
-    else
-        Expr = Expr0
-    ).
-
-:- pred maybe_simplify_nested_cases_2(elds_expr::in, elds_expr::out)
-    is semidet.
-
-maybe_simplify_nested_cases_2(OuterCaseExpr, FinalExpr) :-
-    OuterCaseExpr = elds_case_expr(OuterCond, OuterCases),
-    (
-        OuterCond = elds_case_expr(InnerCond, InnerCases),
-        InnerPreamble = []
-    ;
-        OuterCond = elds_block(OuterCondExprs),
-        list.split_last(OuterCondExprs, InnerPreamble, InnerCaseExpr),
-        InnerCaseExpr = elds_case_expr(InnerCond, InnerCases)
-    ),
-    match_inner_outer_cases(OuterCases, InnerCases, NewCases),
-    FinalExpr = elds_block(InnerPreamble ++
-        [elds_case_expr(InnerCond, NewCases)]).
-
-:- pred match_inner_outer_cases(list(elds_case)::in, list(elds_case)::in,
-    list(elds_case)::out) is semidet.
-
-match_inner_outer_cases([], [], []).
-match_inner_outer_cases([OC | OCs], [IC | ICs], [NC | NCs]) :-
-    OC = elds_case(OuterPat, OuterExpr),
-    IC = elds_case(InnerPat, elds_term(InnerTerm)),
-    non_variable_term(InnerTerm),
-    (
-        % The value returned by the inner case expression should match the
-        % pattern in the outer case expression.
-        InnerTerm = OuterPat
-    ;
-        % If the last outer pattern is _ then allow it to match any inner
-        % expression.
-        OuterPat = elds_anon_var,
-        OCs = []
-    ),
-    NC = elds_case(InnerPat, OuterExpr),
-    match_inner_outer_cases(OCs, ICs, NCs).
-
-:- pred non_variable_term(elds_term::in) is semidet.
-
-non_variable_term(Term) :-
-    require_complete_switch [Term]
-    (
-        ( Term = elds_char(_)
-        ; Term = elds_int(_)
-        ; Term = elds_uint(_)
-        ; Term = elds_int8(_)
-        ; Term = elds_uint8(_)
-        ; Term = elds_int16(_)
-        ; Term = elds_uint16(_)
-        ; Term = elds_int32(_)
-        ; Term = elds_uint32(_)
-        ; Term = elds_float(_)
-        ; Term = elds_binary(_)
-        ; Term = elds_list_of_ints(_)
-        ; Term = elds_atom_raw(_)
-        ; Term = elds_atom(_)
-        )
-    ;
-        Term = elds_tuple(SubTerms),
-        all [SubTerm] (
-            list.member(elds_term(SubTerm), SubTerms)
-        =>
-            non_variable_term(SubTerm)
-        )
-    ;
-        ( Term = elds_var(_)
-        ; Term = elds_fixed_name_var(_)
-        ; Term = elds_anon_var
-        ),
-        fail
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1025,6 +914,119 @@ erl_case_size(Case) = Size :-
 :- func sum(list(int)) = int.
 
 sum(Xs) = list.foldl(int.plus, Xs, 0).
+
+%-----------------------------------------------------------------------------%
+
+maybe_simplify_nested_cases(Expr0, Expr) :-
+    % Simplify nested case expressions of a specific form:
+    %
+    %   case                        % OuterCaseExpr
+    %     (begin
+    %         Expr ...,             % InnerPreamble
+    %         case InnerCond of     % InnerCaseExpr
+    %             P1 -> M1;
+    %             P2 -> M2;
+    %             ...
+    %             PN -> MN
+    %         end
+    %     end)
+    %   of
+    %     M1 -> R1;                 % OuterCases
+    %     M2 -> R2;
+    %     ...
+    %     MN -> RN
+    %   end
+    %
+    % As a special case, the last pattern MN in the outer case expression may
+    % be replaced by _ (the anonymous variable) and still match.
+    %
+    % ===>
+    %
+    %   case InnerCond of
+    %       P1 -> R1;
+    %       P2 -> R2;
+    %       ...
+    %       PN -> RN
+    %   end
+    %
+    ( if maybe_simplify_nested_cases_2(Expr0, Expr1) then
+        Expr = Expr1
+    else
+        Expr = Expr0
+    ).
+
+:- pred maybe_simplify_nested_cases_2(elds_expr::in, elds_expr::out)
+    is semidet.
+
+maybe_simplify_nested_cases_2(OuterCaseExpr, FinalExpr) :-
+    OuterCaseExpr = elds_case_expr(OuterCond, OuterCases),
+    (
+        OuterCond = elds_case_expr(InnerCond, InnerCases),
+        InnerPreamble = []
+    ;
+        OuterCond = elds_block(OuterCondExprs),
+        list.split_last(OuterCondExprs, InnerPreamble, InnerCaseExpr),
+        InnerCaseExpr = elds_case_expr(InnerCond, InnerCases)
+    ),
+    match_inner_outer_cases(OuterCases, InnerCases, NewCases),
+    FinalExpr = elds_block(InnerPreamble ++
+        [elds_case_expr(InnerCond, NewCases)]).
+
+:- pred match_inner_outer_cases(list(elds_case)::in, list(elds_case)::in,
+    list(elds_case)::out) is semidet.
+
+match_inner_outer_cases([], [], []).
+match_inner_outer_cases([OC | OCs], [IC | ICs], [NC | NCs]) :-
+    OC = elds_case(OuterPat, OuterExpr),
+    IC = elds_case(InnerPat, elds_term(InnerTerm)),
+    non_variable_term(InnerTerm),
+    (
+        % The value returned by the inner case expression should match the
+        % pattern in the outer case expression.
+        InnerTerm = OuterPat
+    ;
+        % If the last outer pattern is _ then allow it to match any inner
+        % expression.
+        OuterPat = elds_anon_var,
+        OCs = []
+    ),
+    NC = elds_case(InnerPat, OuterExpr),
+    match_inner_outer_cases(OCs, ICs, NCs).
+
+:- pred non_variable_term(elds_term::in) is semidet.
+
+non_variable_term(Term) :-
+    require_complete_switch [Term]
+    (
+        ( Term = elds_char(_)
+        ; Term = elds_int(_)
+        ; Term = elds_uint(_)
+        ; Term = elds_int8(_)
+        ; Term = elds_uint8(_)
+        ; Term = elds_int16(_)
+        ; Term = elds_uint16(_)
+        ; Term = elds_int32(_)
+        ; Term = elds_uint32(_)
+        ; Term = elds_float(_)
+        ; Term = elds_binary(_)
+        ; Term = elds_list_of_ints(_)
+        ; Term = elds_atom_raw(_)
+        ; Term = elds_atom(_)
+        )
+    ;
+        Term = elds_tuple(SubTerms),
+        all [SubTerm] (
+            list.member(elds_term(SubTerm), SubTerms)
+        =>
+            non_variable_term(SubTerm)
+        )
+    ;
+        ( Term = elds_var(_)
+        ; Term = elds_fixed_name_var(_)
+        ; Term = elds_anon_var
+        ),
+        fail
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -1520,6 +1520,121 @@ make_any_inst_list_lives([Inst0 | Insts0], Live, [ArgLive | ArgLives],
 
 %---------------------------------------------------------------------------%
 
+make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
+    (
+        ( Inst0 = not_reached
+        ; Inst0 = free
+        ; Inst0 = free(_)
+        ),
+        Inst = Inst0
+    ;
+        Inst0 = any(Uniq0, HOInstInfo),
+        make_mostly_uniq(Uniq0, Uniq),
+        Inst = any(Uniq, HOInstInfo)
+    ;
+        Inst0 = bound(Uniq0, _InstResults0, BoundInsts0),
+        % XXX could improve efficiency by avoiding recursion here
+        make_mostly_uniq(Uniq0, Uniq),
+        make_mostly_uniq_bound_inst_list(BoundInsts0, BoundInsts, !ModuleInfo),
+        % XXX A better approximation of InstResults is probably possible.
+        Inst = bound(Uniq, inst_test_no_results, BoundInsts)
+    ;
+        Inst0 = ground(Uniq0, PredInst),
+        make_mostly_uniq(Uniq0, Uniq),
+        Inst = ground(Uniq, PredInst)
+    ;
+        Inst0 = inst_var(_),
+        unexpected($module, $pred, "free inst var")
+    ;
+        Inst0 = constrained_inst_vars(InstVars, SubInst0),
+        make_mostly_uniq_inst(SubInst0, SubInst, !ModuleInfo),
+        ( if inst_matches_final(SubInst, SubInst0, !.ModuleInfo) then
+            Inst = constrained_inst_vars(InstVars, SubInst)
+        else
+            Inst = SubInst
+        )
+    ;
+        Inst0 = abstract_inst(_, _),
+        unexpected($module, $pred, "abstract_inst")
+    ;
+        Inst0 = defined_inst(InstName),
+        % Check whether the inst name is already in the mostly_uniq_inst table.
+        module_info_get_inst_table(!.ModuleInfo, InstTable0),
+        inst_table_get_mostly_uniq_insts(InstTable0, MostlyUniqInstTable0),
+        search_insert_mostly_uniq_inst(InstName, MaybeMaybeInst,
+            MostlyUniqInstTable0, MostlyUniqInstTable1),
+        (
+            MaybeMaybeInst = yes(MaybeInst),
+            (
+                MaybeInst = inst_known(MostlyUniqInst)
+            ;
+                MaybeInst = inst_unknown,
+                MostlyUniqInst = defined_inst(InstName)
+            )
+        ;
+            MaybeMaybeInst = no,
+            % We have inserted InstName into the table with value
+            % `inst_unknown'.
+            inst_table_set_mostly_uniq_insts(MostlyUniqInstTable1,
+                InstTable0, InstTable1),
+            module_info_set_inst_table(InstTable1, !ModuleInfo),
+
+            % Expand the inst name, and invoke ourself recursively on its
+            % expansion.
+            inst_lookup(!.ModuleInfo, InstName, SubInst0),
+            inst_expand(!.ModuleInfo, SubInst0, SubInst1),
+            make_mostly_uniq_inst(SubInst1, MostlyUniqInst, !ModuleInfo),
+
+            % Now that we have determined the resulting Inst, store the
+            % appropriate value `known(MostlyUniqInst)' in the
+            % mostly_uniq_inst table.
+            module_info_get_inst_table(!.ModuleInfo, InstTable2),
+            inst_table_get_mostly_uniq_insts(InstTable2, MostlyUniqInstTable2),
+            det_update_mostly_uniq_inst(InstName, inst_known(MostlyUniqInst),
+                MostlyUniqInstTable2, MostlyUniqInstTable),
+            inst_table_set_mostly_uniq_insts(MostlyUniqInstTable,
+                InstTable2, InstTable),
+            module_info_set_inst_table(InstTable, !ModuleInfo)
+        ),
+        % Avoid expanding recursive insts.
+        ( if
+            inst_contains_inst_name(MostlyUniqInst, !.ModuleInfo, InstName)
+        then
+            Inst = defined_inst(InstName)
+        else
+            Inst = MostlyUniqInst
+        )
+    ).
+
+:- pred make_mostly_uniq(uniqueness::in, uniqueness::out) is det.
+
+make_mostly_uniq(unique, mostly_unique).
+make_mostly_uniq(mostly_unique, mostly_unique).
+make_mostly_uniq(shared, shared).
+make_mostly_uniq(mostly_clobbered, mostly_clobbered).
+make_mostly_uniq(clobbered, clobbered).
+
+:- pred make_mostly_uniq_bound_inst_list(list(bound_inst)::in,
+    list(bound_inst)::out, module_info::in, module_info::out) is det.
+
+make_mostly_uniq_bound_inst_list([], [], !ModuleInfo).
+make_mostly_uniq_bound_inst_list([Bound0 | Bounds0], [Bound | Bounds],
+        !ModuleInfo) :-
+    Bound0 = bound_functor(ConsId, ArgInsts0),
+    make_mostly_uniq_inst_list(ArgInsts0, ArgInsts, !ModuleInfo),
+    Bound = bound_functor(ConsId, ArgInsts),
+    make_mostly_uniq_bound_inst_list(Bounds0, Bounds, !ModuleInfo).
+
+:- pred make_mostly_uniq_inst_list(list(mer_inst)::in, list(mer_inst)::out,
+    module_info::in, module_info::out) is det.
+
+make_mostly_uniq_inst_list([], [], !ModuleInfo).
+make_mostly_uniq_inst_list([Inst0 | Insts0], [Inst | Insts], !ModuleInfo) :-
+    make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo),
+    make_mostly_uniq_inst_list(Insts0, Insts, !ModuleInfo).
+
+%---------------------------------------------------------------------------%
+
 :- pred maybe_make_shared_inst_list(list(mer_inst)::in, list(is_live)::in,
     list(mer_inst)::out, module_info::in, module_info::out) is det.
 
@@ -1678,121 +1793,6 @@ make_shared_bound_inst_list([Bound0 | Bounds0], [Bound | Bounds],
     make_shared_inst_list(ArgInsts0, ArgInsts, !ModuleInfo),
     Bound = bound_functor(ConsId, ArgInsts),
     make_shared_bound_inst_list(Bounds0, Bounds, !ModuleInfo).
-
-%---------------------------------------------------------------------------%
-
-make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
-    (
-        ( Inst0 = not_reached
-        ; Inst0 = free
-        ; Inst0 = free(_)
-        ),
-        Inst = Inst0
-    ;
-        Inst0 = any(Uniq0, HOInstInfo),
-        make_mostly_uniq(Uniq0, Uniq),
-        Inst = any(Uniq, HOInstInfo)
-    ;
-        Inst0 = bound(Uniq0, _InstResults0, BoundInsts0),
-        % XXX could improve efficiency by avoiding recursion here
-        make_mostly_uniq(Uniq0, Uniq),
-        make_mostly_uniq_bound_inst_list(BoundInsts0, BoundInsts, !ModuleInfo),
-        % XXX A better approximation of InstResults is probably possible.
-        Inst = bound(Uniq, inst_test_no_results, BoundInsts)
-    ;
-        Inst0 = ground(Uniq0, PredInst),
-        make_mostly_uniq(Uniq0, Uniq),
-        Inst = ground(Uniq, PredInst)
-    ;
-        Inst0 = inst_var(_),
-        unexpected($module, $pred, "free inst var")
-    ;
-        Inst0 = constrained_inst_vars(InstVars, SubInst0),
-        make_mostly_uniq_inst(SubInst0, SubInst, !ModuleInfo),
-        ( if inst_matches_final(SubInst, SubInst0, !.ModuleInfo) then
-            Inst = constrained_inst_vars(InstVars, SubInst)
-        else
-            Inst = SubInst
-        )
-    ;
-        Inst0 = abstract_inst(_, _),
-        unexpected($module, $pred, "abstract_inst")
-    ;
-        Inst0 = defined_inst(InstName),
-        % Check whether the inst name is already in the mostly_uniq_inst table.
-        module_info_get_inst_table(!.ModuleInfo, InstTable0),
-        inst_table_get_mostly_uniq_insts(InstTable0, MostlyUniqInstTable0),
-        search_insert_mostly_uniq_inst(InstName, MaybeMaybeInst,
-            MostlyUniqInstTable0, MostlyUniqInstTable1),
-        (
-            MaybeMaybeInst = yes(MaybeInst),
-            (
-                MaybeInst = inst_known(MostlyUniqInst)
-            ;
-                MaybeInst = inst_unknown,
-                MostlyUniqInst = defined_inst(InstName)
-            )
-        ;
-            MaybeMaybeInst = no,
-            % We have inserted InstName into the table with value
-            % `inst_unknown'.
-            inst_table_set_mostly_uniq_insts(MostlyUniqInstTable1,
-                InstTable0, InstTable1),
-            module_info_set_inst_table(InstTable1, !ModuleInfo),
-
-            % Expand the inst name, and invoke ourself recursively on its
-            % expansion.
-            inst_lookup(!.ModuleInfo, InstName, SubInst0),
-            inst_expand(!.ModuleInfo, SubInst0, SubInst1),
-            make_mostly_uniq_inst(SubInst1, MostlyUniqInst, !ModuleInfo),
-
-            % Now that we have determined the resulting Inst, store the
-            % appropriate value `known(MostlyUniqInst)' in the
-            % mostly_uniq_inst table.
-            module_info_get_inst_table(!.ModuleInfo, InstTable2),
-            inst_table_get_mostly_uniq_insts(InstTable2, MostlyUniqInstTable2),
-            det_update_mostly_uniq_inst(InstName, inst_known(MostlyUniqInst),
-                MostlyUniqInstTable2, MostlyUniqInstTable),
-            inst_table_set_mostly_uniq_insts(MostlyUniqInstTable,
-                InstTable2, InstTable),
-            module_info_set_inst_table(InstTable, !ModuleInfo)
-        ),
-        % Avoid expanding recursive insts.
-        ( if
-            inst_contains_inst_name(MostlyUniqInst, !.ModuleInfo, InstName)
-        then
-            Inst = defined_inst(InstName)
-        else
-            Inst = MostlyUniqInst
-        )
-    ).
-
-:- pred make_mostly_uniq(uniqueness::in, uniqueness::out) is det.
-
-make_mostly_uniq(unique, mostly_unique).
-make_mostly_uniq(mostly_unique, mostly_unique).
-make_mostly_uniq(shared, shared).
-make_mostly_uniq(mostly_clobbered, mostly_clobbered).
-make_mostly_uniq(clobbered, clobbered).
-
-:- pred make_mostly_uniq_bound_inst_list(list(bound_inst)::in,
-    list(bound_inst)::out, module_info::in, module_info::out) is det.
-
-make_mostly_uniq_bound_inst_list([], [], !ModuleInfo).
-make_mostly_uniq_bound_inst_list([Bound0 | Bounds0], [Bound | Bounds],
-        !ModuleInfo) :-
-    Bound0 = bound_functor(ConsId, ArgInsts0),
-    make_mostly_uniq_inst_list(ArgInsts0, ArgInsts, !ModuleInfo),
-    Bound = bound_functor(ConsId, ArgInsts),
-    make_mostly_uniq_bound_inst_list(Bounds0, Bounds, !ModuleInfo).
-
-:- pred make_mostly_uniq_inst_list(list(mer_inst)::in, list(mer_inst)::out,
-    module_info::in, module_info::out) is det.
-
-make_mostly_uniq_inst_list([], [], !ModuleInfo).
-make_mostly_uniq_inst_list([Inst0 | Insts0], [Inst | Insts], !ModuleInfo) :-
-    make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo),
-    make_mostly_uniq_inst_list(Insts0, Insts, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 

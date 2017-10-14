@@ -112,8 +112,8 @@
     simplify_tasks::out) is det.
 :- pred simplify_info_get_module_info(simplify_info::in, module_info::out)
     is det.
-:- pred simplify_info_get_var_types(simplify_info::in, vartypes::out) is det.
 :- pred simplify_info_get_varset(simplify_info::in, prog_varset::out) is det.
+:- pred simplify_info_get_var_types(simplify_info::in, vartypes::out) is det.
 :- pred simplify_info_get_should_requantify(simplify_info::in, bool::out)
     is det.
 :- pred simplify_info_get_should_rerun_det(simplify_info::in, bool::out)
@@ -149,9 +149,9 @@
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_module_info(module_info::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_var_types(vartypes::in,
-    simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_varset(prog_varset::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_var_types(vartypes::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_should_requantify(
     simplify_info::in, simplify_info::out) is det.

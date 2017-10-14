@@ -69,16 +69,6 @@
 :- pred mode_reordering(pred_constraints_map::in, mc_var_map::in,
     list(list(pred_id))::in, module_info::in, module_info::out) is det.
 
-    % dump_goal_paths(ModuleInfo, PredIds, !IO)
-    %
-    % Dumps the goal paths of each goal in the order they appear for each
-    % predicate in PredIds for the purposes of visually checking re-ordering.
-    %
-:- pred dump_goal_paths(module_info::in, list(pred_id)::in, io::di, io::uo)
-    is det.
-
-%-----------------------------------------------------------------------------%
-
     % add_ordering_constraint(Constraint, !OCI) adds Constraint
     % to the ordering constraints store. It fails if it immediately
     % detects a contradiction (at the moment, this means it has
@@ -97,6 +87,16 @@
     %
 :- pred add_lt_constraint(conjunct_id::in, conjunct_id::in,
     ordering_constraints_info::in, ordering_constraints_info::out) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+    % dump_goal_paths(ModuleInfo, PredIds, !IO)
+    %
+    % Dumps the goal paths of each goal in the order they appear for each
+    % predicate in PredIds for the purposes of visually checking re-ordering.
+    %
+:- pred dump_goal_paths(module_info::in, list(pred_id)::in, io::di, io::uo)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

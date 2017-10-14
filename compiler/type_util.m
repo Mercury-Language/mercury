@@ -947,15 +947,6 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
 
 %-----------------------------------------------------------------------------%
 
-update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic) :-
-    (
-        !.MayUseAtomic = may_not_use_atomic_alloc
-        % There is no point in testing Type.
-    ;
-        !.MayUseAtomic = may_use_atomic_alloc,
-        !:MayUseAtomic = type_may_use_atomic_alloc(ModuleInfo, Type)
-    ).
-
 type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
     TypeCategory = classify_type(ModuleInfo, Type),
     (
@@ -989,6 +980,15 @@ type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
         ; TypeCategory = ctor_cat_user(_) % for direct_dummy, alloc is moot
         ),
         TypeMayUseAtomic = may_not_use_atomic_alloc
+    ).
+
+update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic) :-
+    (
+        !.MayUseAtomic = may_not_use_atomic_alloc
+        % There is no point in testing Type.
+    ;
+        !.MayUseAtomic = may_use_atomic_alloc,
+        !:MayUseAtomic = type_may_use_atomic_alloc(ModuleInfo, Type)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1150,17 +1150,6 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
     apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes).
 
-cons_id_is_existq_cons(ModuleInfo, VarType, ConsId) :-
-    cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, _).
-
-:- pred cons_id_is_existq_cons_return_defn(module_info::in, mer_type::in,
-    cons_id::in, hlds_cons_defn::out) is semidet.
-
-cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, ConsDefn) :-
-    type_to_ctor(VarType, TypeCtor),
-    get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-    ConsDefn ^ cons_exist_tvars = [_ | _].
-
 get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     % XXX We should look it up in a type_ctor-specific table, not a global one.
     module_info_get_cons_table(ModuleInfo, Ctors),
@@ -1185,6 +1174,17 @@ get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
     construct_type(TypeCtor, TypeCtorArgs, RetType),
     CtorDefn = ctor_defn(TypeVarSet, ExistQVars, KindMap, Constraints,
         ArgTypes, RetType).
+
+cons_id_is_existq_cons(ModuleInfo, VarType, ConsId) :-
+    cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, _).
+
+:- pred cons_id_is_existq_cons_return_defn(module_info::in, mer_type::in,
+    cons_id::in, hlds_cons_defn::out) is semidet.
+
+cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, ConsDefn) :-
+    type_to_ctor(VarType, TypeCtor),
+    get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+    ConsDefn ^ cons_exist_tvars = [_ | _].
 
 %-----------------------------------------------------------------------------%
 

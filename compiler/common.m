@@ -106,6 +106,16 @@
 
 %---------------------------------------------------------------------------%
 
+    % Assorted stuff used here that the rest of the simplify package
+    % does not need to know about.
+    %
+:- type common_info.
+:- func common_info_init = common_info.
+
+    % Clear the list of structs seen since the last stack flush.
+    %
+:- pred common_info_clear_structs(common_info::in, common_info::out) is det.
+
     % If we find a construction that constructs a cell identical to one we
     % have seen before, replace the construction with an assignment from the
     % variable that already holds that cell.
@@ -144,16 +154,6 @@
     %
 :- pred common_vars_are_equivalent(prog_var::in, prog_var::in,
     common_info::in) is semidet.
-
-    % Assorted stuff used here that the rest of the simplify package
-    % does not need to know about.
-    %
-:- type common_info.
-:- func common_info_init = common_info.
-
-    % Clear the list of structs seen since the last stack flush.
-    %
-:- pred common_info_clear_structs(common_info::in, common_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

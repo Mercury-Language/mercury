@@ -30,11 +30,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_switches_in_module(module_info::in, module_info::out) is det.
-
 :- type switch_detect_info.
 
 :- func init_switch_detect_info(module_info) = switch_detect_info.
+
+:- pred detect_switches_in_module(module_info::in, module_info::out) is det.
 
 :- pred detect_switches_in_proc(switch_detect_info::in,
     proc_info::in, proc_info::out) is det.

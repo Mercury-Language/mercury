@@ -92,18 +92,6 @@ output_byte(Val, !IO) :-
         unexpected($module, $pred, "byte does not fit in eight bits")
     ).
 
-output_short(Val, !IO) :-
-    output_int(16, Val, !IO).
-
-short_to_byte_list(Val, Bytes) :-
-    int_to_byte_list(16, Val, Bytes).
-
-output_int32(IntVal, !IO) :-
-    output_int(32, IntVal, !IO).
-
-int32_to_byte_list(IntVal, List) :-
-    int_to_byte_list(32, IntVal, List).
-
 output_int(IntVal, !IO) :-
     int.bits_per_int(IntBits),
     ( IntBits > bytecode_int_bits ->
@@ -121,6 +109,18 @@ int_to_byte_list(IntVal, Bytes) :-
     ;
         int_to_byte_list(bytecode_int_bits, IntVal, Bytes)
     ).
+
+output_int32(IntVal, !IO) :-
+    output_int(32, IntVal, !IO).
+
+int32_to_byte_list(IntVal, List) :-
+    int_to_byte_list(32, IntVal, List).
+
+output_short(Val, !IO) :-
+    output_int(16, Val, !IO).
+
+short_to_byte_list(Val, Bytes) :-
+    int_to_byte_list(16, Val, Bytes).
 
 :- pred output_int(int::in, int::in, io::di, io::uo) is det.
 

@@ -65,16 +65,16 @@
 :- pred unique_modes_check_goal(hlds_goal::in, hlds_goal::out,
     mode_info::in, mode_info::out) is det.
 
-    % Prepare for checking a disjunct in a disjunction.
-    %
-:- pred prepare_for_disjunct(hlds_goal::in, determinism::in,
-    set_of_progvar::in, mode_info::in, mode_info::out) is det.
-
     % Make all nondet-live variables whose current inst
     % is `unique' become `mostly_unique'.
     %
 :- pred make_all_nondet_live_vars_mostly_uniq(mode_info::in, mode_info::out)
     is det.
+
+    % Prepare for checking a disjunct in a disjunction.
+    %
+:- pred prepare_for_disjunct(hlds_goal::in, determinism::in,
+    set_of_progvar::in, mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

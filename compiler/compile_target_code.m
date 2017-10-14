@@ -55,7 +55,7 @@
 :- pred compile_java_files(globals::in, io.output_stream::in, list(string)::in,
     bool::out, io::di, io::uo) is det.
 
-    % compile_csharp_file(Globals, ErrorStream, C#File, DLLFile, Succeeded,
+    % compile_csharp_file(Globals, ErrorStream, CSharpFile, DLLFile, Succeeded,
     %   !IO)
     %
 :- pred compile_csharp_file(globals::in, io.output_stream::in,
@@ -97,6 +97,18 @@
     module_name::in, list(module_name)::in, maybe(file_name)::out,
     io::di, io::uo) is det.
 
+    % link_module_list(ModulesToLink, ExtraObjFiles, Globals, Succeeded, !IO):
+    %
+    % The elements of ModulesToLink are the output of
+    % `module_name_to_filename(ModuleName, "", no, ModuleToLink)'
+    % for each module in the program.
+    %
+    % The Globals are supplied late to allow mercury_compile.m to partially
+    % apply the ModuleToLink and ExtraObjFiles arguments.
+    %
+:- pred link_module_list(list(string)::in, list(string)::in,
+    globals::in, bool::out, io::di, io::uo) is det.
+
 :- type linked_target_type
     --->    executable
     ;       static_library
@@ -124,18 +136,6 @@
 :- pred post_link_make_symlink_or_copy(globals::in, io.output_stream::in,
     linked_target_type::in, module_name::in, bool::out, bool::out,
     io::di, io::uo) is det.
-
-    % link_module_list(ModulesToLink, ExtraObjFiles, Globals, Succeeded, !IO):
-    %
-    % The elements of ModulesToLink are the output of
-    % `module_name_to_filename(ModuleName, "", no, ModuleToLink)'
-    % for each module in the program.
-    %
-    % The Globals are supplied late to allow mercury_compile.m to partially
-    % apply the ModuleToLink and ExtraObjFiles arguments.
-    %
-:- pred link_module_list(list(string)::in, list(string)::in,
-    globals::in, bool::out, io::di, io::uo) is det.
 
     % shared_libraries_supported(Globals, SharedLibsSupported)
     %
@@ -245,107 +245,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-
-%-----------------------------------------------------------------------------%
-
-compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
-        CSharpFileName0, DLLFileName, Succeeded, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Compiling `", !IO),
-    maybe_write_string(Verbose, CSharpFileName, !IO),
-    maybe_write_string(Verbose, "':\n", !IO),
-    globals.lookup_string_option(Globals, csharp_compiler, CSC),
-    globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
-    join_string_list(CSCFlagsList, "", "", " ", CSCFlags),
-
-    % XXX This is because the MS C# compiler doesn't understand
-    % / as a directory separator.
-    CSharpFileName = string.replace_all(CSharpFileName0, "/", "\\\\"),
-
-    globals.lookup_bool_option(Globals, target_debug, Debug),
-    (
-        Debug = yes,
-        % XXX This needs testing before it can be enabled (see the comments
-        % for install_debug_library in library/Mmakefile).
-
-        % DebugOpt = "-debug+ -debug:full "
-        DebugOpt = ""
-    ;
-        Debug = no,
-        DebugOpt = ""
-    ),
-
-    % XXX Should we use a separate dll_directories options?
-    % NOTE: we use the -option style options in preference to the /option
-    % style in order to avoid problems with POSIX style shells.
-    globals.lookup_accumulating_option(Globals, link_library_directories,
-        DLLDirs),
-    DLLDirOpts = "-lib:Mercury/dlls " ++
-        string.append_list(list.condense(list.map(
-            (func(DLLDir) = ["-lib:", DLLDir, " "]), DLLDirs))),
-
-    ModuleName = ModuleAndImports ^ mai_module_name,
-    ( if mercury_std_library_module_name(ModuleName) then
-        Prefix = "-addmodule:"
-    else
-        Prefix = "-r:"
-    ),
-    ForeignImportModules = ModuleAndImports ^ mai_foreign_import_modules,
-    ForeignDeps = list.map(
-        (func(FI) = foreign_import_module_name_from_module(FI, ModuleName)),
-        set.to_sorted_list(
-            get_all_foreign_import_module_infos(ForeignImportModules))),
-    IntDeps = ModuleAndImports ^ mai_int_deps,
-    ImpDeps = ModuleAndImports ^ mai_imp_deps,
-    set.union(IntDeps, ImpDeps, IntImpDeps),
-    set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
-    ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
-    list.map_foldl(
-        ( pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(Globals, do_not_create_dirs, ".dll",
-                Mod, FileName, IO0, IO),
-            Result = [Prefix, FileName, " "]
-        ), set.to_sorted_list(ReferencedDlls), ReferencedDllsList, !IO),
-    ReferencedDllsStr = string.append_list(
-        list.condense(ReferencedDllsList)),
-
-    string.append_list([CSC, DebugOpt,
-        " -t:library ", DLLDirOpts, CSCFlags, ReferencedDllsStr,
-        " -out:", DLLFileName, " ", CSharpFileName], Command),
-    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
-        Succeeded, !IO).
-
-    % Generate the list of .NET DLLs which could be referred to by this module
-    % (including the module itself).
-    %
-    % If we are compiling a module within the standard library we should
-    % reference the runtime DLLs and all other library DLLs. If we are
-    % outside the library we should just reference mercury.dll (which will
-    % contain all the DLLs).
-    %
-:- func referenced_dlls(module_name, set(module_name)) = set(module_name).
-
-referenced_dlls(Module, DepModules0) = Modules :-
-    set.insert(Module, DepModules0, DepModules),
-
-    % If we are not compiling a module in the mercury std library, then
-    % replace all the std library dlls with one reference to mercury.dll.
-    ( if mercury_std_library_module_name(Module) then
-        % In the standard library we need to add the runtime dlls.
-        AddedModules =
-            [unqualified("mercury_dotnet"), unqualified("mercury_il")],
-        set.insert_list(AddedModules, DepModules, Modules)
-    else
-        F = ( func(M) =
-                ( if mercury_std_library_module_name(M) then
-                    unqualified("mercury")
-                else
-                    % A sub module is located in the top level assembly.
-                    unqualified(outermost_qualifier(M))
-                )
-            ),
-        Modules = set.map(F, DepModules)
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1101,6 +1000,107 @@ is_minus_j_flag(FlagStr) :-
 
 %-----------------------------------------------------------------------------%
 
+compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
+        CSharpFileName0, DLLFileName, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose, "% Compiling `", !IO),
+    maybe_write_string(Verbose, CSharpFileName, !IO),
+    maybe_write_string(Verbose, "':\n", !IO),
+    globals.lookup_string_option(Globals, csharp_compiler, CSC),
+    globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
+    join_string_list(CSCFlagsList, "", "", " ", CSCFlags),
+
+    % XXX This is because the MS C# compiler doesn't understand
+    % / as a directory separator.
+    CSharpFileName = string.replace_all(CSharpFileName0, "/", "\\\\"),
+
+    globals.lookup_bool_option(Globals, target_debug, Debug),
+    (
+        Debug = yes,
+        % XXX This needs testing before it can be enabled (see the comments
+        % for install_debug_library in library/Mmakefile).
+
+        % DebugOpt = "-debug+ -debug:full "
+        DebugOpt = ""
+    ;
+        Debug = no,
+        DebugOpt = ""
+    ),
+
+    % XXX Should we use a separate dll_directories options?
+    % NOTE: we use the -option style options in preference to the /option
+    % style in order to avoid problems with POSIX style shells.
+    globals.lookup_accumulating_option(Globals, link_library_directories,
+        DLLDirs),
+    DLLDirOpts = "-lib:Mercury/dlls " ++
+        string.append_list(list.condense(list.map(
+            (func(DLLDir) = ["-lib:", DLLDir, " "]), DLLDirs))),
+
+    ModuleName = ModuleAndImports ^ mai_module_name,
+    ( if mercury_std_library_module_name(ModuleName) then
+        Prefix = "-addmodule:"
+    else
+        Prefix = "-r:"
+    ),
+    ForeignImportModules = ModuleAndImports ^ mai_foreign_import_modules,
+    ForeignDeps = list.map(
+        (func(FI) = foreign_import_module_name_from_module(FI, ModuleName)),
+        set.to_sorted_list(
+            get_all_foreign_import_module_infos(ForeignImportModules))),
+    IntDeps = ModuleAndImports ^ mai_int_deps,
+    ImpDeps = ModuleAndImports ^ mai_imp_deps,
+    set.union(IntDeps, ImpDeps, IntImpDeps),
+    set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
+    ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
+    list.map_foldl(
+        ( pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
+            module_name_to_file_name(Globals, do_not_create_dirs, ".dll",
+                Mod, FileName, IO0, IO),
+            Result = [Prefix, FileName, " "]
+        ), set.to_sorted_list(ReferencedDlls), ReferencedDllsList, !IO),
+    ReferencedDllsStr = string.append_list(
+        list.condense(ReferencedDllsList)),
+
+    string.append_list([CSC, DebugOpt,
+        " -t:library ", DLLDirOpts, CSCFlags, ReferencedDllsStr,
+        " -out:", DLLFileName, " ", CSharpFileName], Command),
+    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
+        Succeeded, !IO).
+
+    % Generate the list of .NET DLLs which could be referred to by this module
+    % (including the module itself).
+    %
+    % If we are compiling a module within the standard library we should
+    % reference the runtime DLLs and all other library DLLs. If we are
+    % outside the library we should just reference mercury.dll (which will
+    % contain all the DLLs).
+    %
+:- func referenced_dlls(module_name, set(module_name)) = set(module_name).
+
+referenced_dlls(Module, DepModules0) = Modules :-
+    set.insert(Module, DepModules0, DepModules),
+
+    % If we are not compiling a module in the mercury std library, then
+    % replace all the std library dlls with one reference to mercury.dll.
+    ( if mercury_std_library_module_name(Module) then
+        % In the standard library we need to add the runtime dlls.
+        AddedModules =
+            [unqualified("mercury_dotnet"), unqualified("mercury_il")],
+        set.insert_list(AddedModules, DepModules, Modules)
+    else
+        F = ( func(M) =
+                ( if mercury_std_library_module_name(M) then
+                    unqualified("mercury")
+                else
+                    % A sub module is located in the top level assembly.
+                    unqualified(outermost_qualifier(M))
+                )
+            ),
+        Modules = set.map(F, DepModules)
+    ).
+
+%-----------------------------------------------------------------------------%
+
 compile_erlang_file(Globals, ErrorStream, ErlangFile, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Compiling `", !IO),
@@ -1292,69 +1292,6 @@ invoke_mkinit(Globals, InitFileStream, Verbosity,
         io.write_string(io.stderr_stream, ErrorMessage, !IO),
         io.nl(!IO),
         MkInitOK = no
-    ).
-
-%-----------------------------------------------------------------------------%
-
-link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
-    globals.lookup_string_option(Globals, output_file_name, OutputFileName0),
-    ( if OutputFileName0 = "" then
-        (
-            Modules = [Module | _],
-            OutputFileName = Module
-        ;
-            Modules = [],
-            unexpected($module, $pred, "no modules")
-        )
-    else
-        OutputFileName = OutputFileName0
-    ),
-
-    file_name_to_module_name(OutputFileName, MainModuleName),
-
-    globals.lookup_bool_option(Globals, compile_to_shared_lib,
-        CompileToSharedLib),
-    (
-        CompileToSharedLib = yes,
-        TargetType = shared_library
-    ;
-        CompileToSharedLib = no,
-        TargetType = executable
-    ),
-    get_object_code_type(Globals, TargetType, PIC),
-    maybe_pic_object_file_extension(Globals, PIC, Obj),
-
-    io.output_stream(OutputStream, !IO),
-    join_module_list(Globals, Modules, Obj, ObjectsList, !IO),
-    (
-        TargetType = executable,
-        list.map(
-            (pred(ModuleStr::in, ModuleName::out) is det :-
-                file_name_to_module_name(dir.det_basename(ModuleStr),
-                    ModuleName)
-            ), Modules, ModuleNames),
-        MustCompile = yes,
-        do_make_init_obj_file(Globals, OutputStream, MustCompile,
-            MainModuleName, ModuleNames, InitObjResult, !IO)
-    ;
-        TargetType = shared_library,
-        InitObjResult = yes("")
-    ),
-    (
-        InitObjResult = yes(InitObjFileName),
-        globals.lookup_accumulating_option(Globals, link_objects,
-            ExtraLinkObjectsList),
-        AllObjects0 = ObjectsList ++ ExtraLinkObjectsList ++ ExtraObjFiles,
-        ( if InitObjFileName = "" then
-            AllObjects = AllObjects0
-        else
-            AllObjects = [InitObjFileName | AllObjects0]
-        ),
-        link(Globals, OutputStream, TargetType, MainModuleName, AllObjects,
-            Succeeded, !IO)
-    ;
-        InitObjResult = no,
-        Succeeded = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1666,6 +1603,69 @@ compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
         MaybeCompare = yes(Compare)
     else
         MaybeCompare = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
+link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
+    globals.lookup_string_option(Globals, output_file_name, OutputFileName0),
+    ( if OutputFileName0 = "" then
+        (
+            Modules = [Module | _],
+            OutputFileName = Module
+        ;
+            Modules = [],
+            unexpected($module, $pred, "no modules")
+        )
+    else
+        OutputFileName = OutputFileName0
+    ),
+
+    file_name_to_module_name(OutputFileName, MainModuleName),
+
+    globals.lookup_bool_option(Globals, compile_to_shared_lib,
+        CompileToSharedLib),
+    (
+        CompileToSharedLib = yes,
+        TargetType = shared_library
+    ;
+        CompileToSharedLib = no,
+        TargetType = executable
+    ),
+    get_object_code_type(Globals, TargetType, PIC),
+    maybe_pic_object_file_extension(Globals, PIC, Obj),
+
+    io.output_stream(OutputStream, !IO),
+    join_module_list(Globals, Modules, Obj, ObjectsList, !IO),
+    (
+        TargetType = executable,
+        list.map(
+            (pred(ModuleStr::in, ModuleName::out) is det :-
+                file_name_to_module_name(dir.det_basename(ModuleStr),
+                    ModuleName)
+            ), Modules, ModuleNames),
+        MustCompile = yes,
+        do_make_init_obj_file(Globals, OutputStream, MustCompile,
+            MainModuleName, ModuleNames, InitObjResult, !IO)
+    ;
+        TargetType = shared_library,
+        InitObjResult = yes("")
+    ),
+    (
+        InitObjResult = yes(InitObjFileName),
+        globals.lookup_accumulating_option(Globals, link_objects,
+            ExtraLinkObjectsList),
+        AllObjects0 = ObjectsList ++ ExtraLinkObjectsList ++ ExtraObjFiles,
+        ( if InitObjFileName = "" then
+            AllObjects = AllObjects0
+        else
+            AllObjects = [InitObjFileName | AllObjects0]
+        ),
+        link(Globals, OutputStream, TargetType, MainModuleName, AllObjects,
+            Succeeded, !IO)
+    ;
+        InitObjResult = no,
+        Succeeded = no
     ).
 
 %-----------------------------------------------------------------------------%
