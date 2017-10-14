@@ -400,14 +400,6 @@
             % (or at least not verifiably correct) format calls, which
             % would be no-ops on predicates that do not have this marker.
 
-    % An abstract set of attributes.
-:- type pred_attributes.
-
-:- type pred_attribute
-    --->    custom(mer_type).
-            % A custom attribute, intended to be associated
-            % with this predicate in the underlying implementation.
-
 :- type pred_transformation
     --->    transform_higher_order_specialization(
                 % Sequence number among the higher order specializations
@@ -655,8 +647,6 @@
     goal_type::out) is det.
 :- pred pred_info_get_markers(pred_info::in,
     pred_markers::out) is det.
-:- pred pred_info_get_attributes(pred_info::in,
-    pred_attributes::out) is det.
 :- pred pred_info_get_arg_types(pred_info::in,
     list(mer_type)::out) is det.
 :- pred pred_info_get_typevarset(pred_info::in,
@@ -895,31 +885,6 @@
 :- pred marker_list_to_markers(list(pred_marker)::in, pred_markers::out)
     is det.
 
-    % Create an empty set of attributes.
-    %
-:- pred init_attributes(pred_attributes::out) is det.
-
-    % Check if a particular is in the set.
-    %
-:- pred check_attribute(pred_attributes::in, pred_attribute::in) is semidet.
-
-    % Add a attribute to the set.
-    %
-:- pred add_attribute(pred_attribute::in,
-    pred_attributes::in, pred_attributes::out) is det.
-
-    % Remove a attribute from the set.
-    %
-:- pred remove_attribute(pred_attribute::in,
-    pred_attributes::in, pred_attributes::out) is det.
-
-    % Convert the set to and from a list.
-    %
-:- pred attributes_to_attribute_list(pred_attributes::in,
-    list(pred_attribute)::out) is det.
-:- pred attribute_list_to_attributes(list(pred_attribute)::in,
-    pred_attributes::out) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1066,9 +1031,6 @@ calls_are_fully_qualified(Markers) =
                 % are clauses or foreign_code(...) pragmas.
                 psi_goal_type                   :: goal_type,
 
-                % Various attributes.
-                psi_attributes                  :: pred_attributes,
-
                 % Kinds of the type vars.
                 psi_tvar_kind_map               :: tvar_kind_map,
 
@@ -1128,7 +1090,6 @@ pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
         ClassConstraintMap, ClausesInfo, VarNameRemap, PredInfo) :-
     % argument Context
     % argument GoalType
-    init_attributes(Attributes),
     map.init(Kinds),
     % XXX kind inference:
     % we assume all tvars have kind `star'.
@@ -1144,7 +1105,7 @@ pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
     set.init(Assertions),
     InstanceMethodArgTypes = [],
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
-        Attributes, Kinds, ExistQVarBindings, HeadTypeParams,
+        Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, InstanceMethodArgTypes),
@@ -1172,7 +1133,6 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
     % argument Context
     CurUserDecl = maybe.no,
     GoalType = goal_type_clause,
-    init_attributes(Attributes),
     map.init(Kinds),
     % XXX kind inference:
     % we assume all tvars have kind `star'.
@@ -1189,7 +1149,7 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
     InstanceMethodArgTypes = [],
 
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
-        Attributes, Kinds, ExistQVarBindings, HeadTypeParams,
+        Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, InstanceMethodArgTypes),
@@ -1353,8 +1313,6 @@ pred_info_get_goal_type(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_goal_type.
 pred_info_get_markers(!.PI, X) :-
     X = !.PI ^ pi_markers.
-pred_info_get_attributes(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_attributes.
 pred_info_get_arg_types(!.PI, X) :-
     X = !.PI ^ pi_arg_types.
 pred_info_get_typevarset(!.PI, X) :-
@@ -1848,25 +1806,6 @@ markers_to_marker_list(MarkerSet, Markers) :-
 
 marker_list_to_markers(Markers, MarkerSet) :-
     set.list_to_set(Markers, MarkerSet).
-
-:- type pred_attributes == set(pred_attribute).
-
-init_attributes(set.init).
-
-check_attribute(AttributeSet, Attribute) :-
-    set.member(Attribute, AttributeSet).
-
-add_attribute(Attribute, !AttributeSet) :-
-    set.insert(Attribute, !AttributeSet).
-
-remove_attribute(Attribute, !AttributeSet) :-
-    set.delete(Attribute, !AttributeSet).
-
-attributes_to_attribute_list(AttributeSet, Attributes) :-
-    set.to_sorted_list(AttributeSet, Attributes).
-
-attribute_list_to_attributes(Attributes, AttributeSet) :-
-    set.list_to_set(Attributes, AttributeSet).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
