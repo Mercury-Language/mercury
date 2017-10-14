@@ -458,11 +458,6 @@
 :- func mlds_append_class_qualifier_module_qual(mlds_module_name,
     mlds_class_name, arity) = mlds_module_name.
 
-    % Append a wrapper class qualifier to the module name and leave the
-    % package name unchanged.
-    %
-:- func mlds_append_wrapper_class(mlds_module_name) = mlds_module_name.
-
     % Append an arbitrary qualifier to the module name and leave the package
     % name unchanged.
     %
@@ -682,14 +677,6 @@
                 mfvdf_per_instance      :: per_instance,
                 mfvdf_constness         :: constness
             ).
-
-    % When targetting languages such as C#, and Java, which don't support
-    % global methods or global variables, we need to wrap all the generated
-    % global functions and global data inside a wrapper class. This function
-    % returns the name to use for the wrapper class.
-    %
-    % ZZZ
-:- func wrapper_class_name = string.
 
 %---------------------------------------------------------------------------%
 %
@@ -2532,8 +2519,6 @@ mlds_append_class_qualifier_base(Package, Module, ClassName, ClassArity)
     string.format("%s_%d", [s(ClassName), i(ClassArity)], ClassQualifier),
     ModuleName = mlds_module_name(Package, qualified(Module, ClassQualifier)).
 
-mlds_append_wrapper_class(Name) = mlds_append_name(Name, wrapper_class_name).
-
 mlds_append_name(mlds_module_name(Package, Module), Name)
     = mlds_module_name(Package, qualified(Module, Name)).
 
@@ -2550,10 +2535,6 @@ get_initializer_array_size(no_initializer) = no_size.
 get_initializer_array_size(init_obj(_)) = no_size.
 get_initializer_array_size(init_struct(_, _)) = no_size.
 get_initializer_array_size(init_array(Elems)) = array_size(list.length(Elems)).
-
-%---------------------------------------------------------------------------%
-
-wrapper_class_name = "mercury_code".
 
 %---------------------------------------------------------------------------%
 
