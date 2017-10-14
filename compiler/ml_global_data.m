@@ -635,7 +635,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         % The "modifiable" is only to shut up a gcc warning about constant
         % fields.
         StructTypeFlags =
-            init_class_decl_flags(class_private, sealed, modifiable),
+            mlds_class_decl_flags(class_private, sealed, modifiable),
         StructTypeDefn = mlds_class_defn(StructTypeClassName, Context,
             StructTypeFlags, ClassKind, [], [], [], [],
             FieldDefns, [], [], CtorDefns),

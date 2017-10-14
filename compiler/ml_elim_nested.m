@@ -841,7 +841,8 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         BaseClasses = []
     ),
     EnvTypeClassName = mlds_type_name(EnvClassName, 0),
-    EnvTypeFlags = env_type_decl_flags,
+    EnvTypeFlags =
+        mlds_class_decl_flags(class_private, overridable, modifiable),
     Fields0 = list.map(convert_local_to_field, LocalVars),
 
     % Extract the GC tracing code from the fields.
@@ -1058,21 +1059,12 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDefn, GCTraceStmts,
 
     % Construct the function definition.
     Stmt = ml_stmt_block([FramePointerDefn], [], GCTraceStmts, Context),
-    DeclFlags = ml_gen_gc_trace_func_decl_flags,
+    DeclFlags = mlds_function_decl_flags(func_private, one_copy),
     MaybePredProcId = no,
     EnvVarNames = set.init,
     GCTraceFuncDefn = mlds_function_defn(GCTraceFuncName,
         Context, DeclFlags, MaybePredProcId, FuncParams,
         body_defined_here(Stmt), EnvVarNames, no).
-
-    % Return the declaration flags appropriate for a procedure definition.
-    %
-:- func ml_gen_gc_trace_func_decl_flags = mlds_function_decl_flags.
-
-ml_gen_gc_trace_func_decl_flags = DeclFlags :-
-    Access = acc_private,
-    PerInstance = one_copy,
-    DeclFlags = init_function_decl_flags(Access, PerInstance).
 
 :- pred extract_gc_statements(
     mlds_field_var_defn::in, mlds_field_var_defn::out,
@@ -1234,17 +1226,6 @@ ml_conv_arg_to_var(Context, Arg, LocalVarDefn) :-
     Arg = mlds_argument(VarName, Type, GCStmt),
     LocalVarDefn = mlds_local_var_defn(VarName, Context, Type,
         no_initializer, GCStmt).
-
-    % Return the declaration flags appropriate for an environment struct
-    % type declaration.
-    %
-:- func env_type_decl_flags = mlds_class_decl_flags.
-
-env_type_decl_flags = DeclFlags :-
-    Access = class_private,
-    Overridability = overridable,
-    Constness = modifiable,
-    DeclFlags = init_class_decl_flags(Access, Overridability, Constness).
 
 :- func ml_stack_chain_var = mlds_lval.
 
@@ -1620,8 +1601,7 @@ flatten_nested_function_defn(Action, FuncDefn0, FuncDefns, !Info) :-
     % top level.
     (
         Action = hoist_nested_funcs,
-        set_function_access(acc_private, Flags0, Flags1),
-        set_function_per_instance(one_copy, Flags1, Flags)
+        Flags = mlds_function_decl_flags(func_private, one_copy)
     ;
         Action = chain_gc_stack_frames,
         Flags = Flags0

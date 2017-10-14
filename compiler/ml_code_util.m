@@ -633,22 +633,12 @@ ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func) :-
     FuncName = ml_gen_nondet_label(ModuleInfo, PredProcId, MaybeAux),
 
     % Compute the function definition.
-    DeclFlags = ml_gen_label_func_decl_flags,
+    DeclFlags = mlds_function_decl_flags(func_local, per_instance),
     MaybePredProcId = no,
     Body = body_defined_here(Stmt),
     EnvVarNames = set.init,
     Func = mlds_function_defn(mlds_function_name(FuncName), Context,
         DeclFlags, MaybePredProcId, FuncParams, Body, EnvVarNames, no).
-
-    % Return the declaration flags appropriate for a label func (a label func
-    % is a function used as a continuation when generating nondet code).
-    %
-:- func ml_gen_label_func_decl_flags = mlds_function_decl_flags.
-
-ml_gen_label_func_decl_flags = DeclFlags :-
-    Access = acc_local,
-    PerInstance = per_instance,
-    DeclFlags = init_function_decl_flags(Access, PerInstance).
 
 ml_is_output_det_function(ModuleInfo, PredProcId, RetArgVar) :-
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),

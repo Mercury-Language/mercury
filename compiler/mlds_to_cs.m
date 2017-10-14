@@ -2151,8 +2151,7 @@ output_field_var_decl_flags_for_csharp(Flags, !IO) :-
     mlds_function_decl_flags::in, io::di, io::uo) is det.
 
 output_function_decl_flags_for_csharp(Info, Flags, !IO) :-
-    Access = get_function_access(Flags),
-    PerInstance = get_function_per_instance(Flags),
+    Flags = mlds_function_decl_flags(Access, PerInstance),
     output_access_for_csharp(Info, Access, !IO),
     output_per_instance_for_csharp(PerInstance, !IO).
 
@@ -2160,6 +2159,7 @@ output_function_decl_flags_for_csharp(Info, Flags, !IO) :-
     mlds_class_decl_flags::in, mlds_class_kind::in, io::di, io::uo) is det.
 
 output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
+    Flags = mlds_class_decl_flags(Access, Overridable0, Constness),
     (
         (
             % `static' keyword not allowed on enumerations.
@@ -2169,7 +2169,7 @@ output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
             Kind = mlds_class
         ),
         PerInstance = per_instance,
-        Overridable = get_class_overridability(Flags)
+        Overridable = Overridable0
     ;
         % `static' and `sealed' not wanted or allowed on structs.
         Kind = mlds_struct,
@@ -2178,10 +2178,8 @@ output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
     ;
         Kind = mlds_interface,
         PerInstance = one_copy,
-        Overridable = get_class_overridability(Flags)
+        Overridable = Overridable0
     ),
-    Access = get_class_access(Flags),
-    Constness = get_class_constness(Flags),
     output_class_access_for_csharp(Access, !IO),
     output_per_instance_for_csharp(PerInstance, !IO),
     output_overridability_for_csharp(Overridable, !IO),
@@ -2199,24 +2197,18 @@ output_global_var_access_for_csharp(_Info, Access, !IO) :-
         io.write_string("private ", !IO)
     ).
 
-:- pred output_access_for_csharp(csharp_out_info::in, access::in,
+:- pred output_access_for_csharp(csharp_out_info::in, function_access::in,
     io::di, io::uo) is det.
 
 output_access_for_csharp(_Info, Access, !IO) :-
     (
-        Access = acc_public,
+        Access = func_public,
         io.write_string("public ", !IO)
     ;
-        Access = acc_private,
+        Access = func_private,
         io.write_string("private ", !IO)
-%   ;
-%       Access = acc_protected,
-%       io.write_string("protected ", !IO)
-%   ;
-%       Access = acc_default,
-%       maybe_output_comment_for_csharp(Info, "default", !IO)
     ;
-        Access = acc_local
+        Access = func_local
     ).
 
 :- pred output_class_access_for_csharp(class_access::in,

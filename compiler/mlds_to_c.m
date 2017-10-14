@@ -2272,8 +2272,8 @@ field_var_defn_is_static_member(FieldVarDefn) :-
 :- pred function_defn_is_static_member(mlds_function_defn::in) is semidet.
 
 function_defn_is_static_member(FuncDefn) :-
-    Flags = FuncDefn ^ mfd_decl_flags,
-    get_function_per_instance(Flags) = one_copy.
+    FuncDefn ^ mfd_decl_flags = mlds_function_decl_flags(_Access, PerInstance),
+    PerInstance = one_copy.
 
     % Convert a base class class_id into a member variable
     % that holds the value of the base class.
@@ -3300,8 +3300,7 @@ mlds_output_field_var_decl_flags(Opts, Flags, DeclOrDefn, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_function_decl_flags(Opts, Flags, DeclOrDefn, MaybeBody, !IO) :-
-    Access = get_function_access(Flags),
-    PerInstance = get_function_per_instance(Flags),
+    Flags = mlds_function_decl_flags(Access, PerInstance),
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
@@ -3324,10 +3323,7 @@ mlds_output_function_decl_flags(Opts, Flags, DeclOrDefn, MaybeBody, !IO) :-
     mlds_class_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
 
 mlds_output_class_decl_flags(Opts, Flags, _DeclOrDefn, !IO) :-
-    Access = get_class_access(Flags),
-    Overridability = get_class_overridability(Flags),
-    Constness = get_class_constness(Flags),
-
+    Flags = mlds_class_decl_flags(Access, Overridability, Constness),
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
@@ -3339,13 +3335,13 @@ mlds_output_class_decl_flags(Opts, Flags, _DeclOrDefn, !IO) :-
     mlds_output_overridability(Overridability, !IO),
     mlds_output_constness(Constness, !IO).
 
-:- pred mlds_output_access_comment(access::in, io::di, io::uo) is det.
+:- pred mlds_output_access_comment(function_access::in, io::di, io::uo) is det.
 
-mlds_output_access_comment(acc_public, !IO) :-
+mlds_output_access_comment(func_public, !IO) :-
     io.write_string("/* public: */ ", !IO).
-mlds_output_access_comment(acc_private, !IO) :-
+mlds_output_access_comment(func_private, !IO) :-
     io.write_string("/* private: */ ", !IO).
-mlds_output_access_comment(acc_local, !IO) :-
+mlds_output_access_comment(func_local, !IO) :-
     io.write_string("/* local: */ ", !IO).
 
 :- pred mlds_output_class_access_comment(class_access::in,
@@ -3411,7 +3407,7 @@ mlds_output_field_var_extern(DeclOrDefn, !IO) :-
     % should precede the call to this predicate with (optionally-enabled)
     % comments saying whether it is `private', `one_copy', or both.
     %
-:- pred mlds_output_extern_or_static(access::in, per_instance::in,
+:- pred mlds_output_extern_or_static(function_access::in, per_instance::in,
     decl_or_defn::in, defn_kind::in, io::di, io::uo) is det.
 
 mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
@@ -3419,9 +3415,9 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
     % on DefnKind, DeclOrDefn and then Access and PerInstance.
     ( if
         (
-            Access = acc_private
+            Access = func_private
         ;
-            Access = acc_local,
+            Access = func_local,
             PerInstance = one_copy
         ),
         % Don't output "static" on types.
@@ -3441,7 +3437,7 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
         ( DefnKind = dk_func_not_external
         ; DefnKind = dk_func_external
         ),
-        Access = acc_local
+        Access = func_local
     then
         io.write_string("auto ", !IO)
     else

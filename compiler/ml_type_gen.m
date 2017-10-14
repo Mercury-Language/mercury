@@ -924,7 +924,7 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
     % Note that the name of constructor is determined by the backend
     % convention.
     FunctionName = mlds_function_export("<constructor>"),
-    CtorFlags = init_function_decl_flags(acc_public, per_instance),
+    CtorFlags = mlds_function_decl_flags(func_public, per_instance),
     Params = mlds_func_params(Args, ReturnValues),
     Stmt = ml_stmt_block([], [], InitMembers, Context),
     EnvVarNames = set.init,
@@ -1128,17 +1128,11 @@ ml_gen_equality_members(_, []).
 % Routines for generating declaration flags.
 %
 
-ml_gen_type_decl_flags = DeclFlags :-
-    % XXX are these right?
-    Access = class_public,
-    Overridability = overridable,
-    Constness = modifiable,
-    DeclFlags = init_class_decl_flags(Access, Overridability, Constness).
+ml_gen_type_decl_flags =
+    mlds_class_decl_flags(class_public, overridable, modifiable).
 
-ml_gen_member_decl_flags = DeclFlags :-
-    Access = acc_public,
-    PerInstance = per_instance,
-    DeclFlags = init_function_decl_flags(Access, PerInstance).
+ml_gen_member_decl_flags =
+    mlds_function_decl_flags(func_public, per_instance).
 
 ml_gen_member_data_decl_flags =
     mlds_field_var_decl_flags(per_instance, modifiable).

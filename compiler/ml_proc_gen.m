@@ -1591,12 +1591,11 @@ append_to_stmt(BaseStmt, EndStmt) = Stmts :-
 ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ( if procedure_is_exported(ModuleInfo, PredInfo, ProcId) then
-        Access = acc_public
+        Access = func_public
     else
-        Access = acc_private
+        Access = func_private
     ),
-    PerInstance = one_copy,
-    DeclFlags = init_function_decl_flags(Access, PerInstance).
+    DeclFlags = mlds_function_decl_flags(Access, one_copy).
 
     % Generate the code for a procedure body.
     %

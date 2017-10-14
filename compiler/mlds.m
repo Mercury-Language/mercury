@@ -614,6 +614,13 @@
                 mcd_ctors           :: list(mlds_function_defn)
             ).
 
+:- type mlds_class_decl_flags
+    --->    mlds_class_decl_flags(
+                mcdf_access         :: class_access,
+                mcdf_overridability :: overridability,
+                mcdf_constness      :: constness
+            ).
+
 :- type qual_class_name
     --->    qual_class_name(mlds_module_name, mlds_qual_kind, mlds_class_name).
 :- type qual_type_name
@@ -705,6 +712,12 @@
                 mfd_tail_rec            :: maybe(require_tail_recursion)
             ).
 
+:- type mlds_function_decl_flags
+    --->    mlds_function_decl_flags(
+                mfdf_access         :: function_access,
+                mfdf_per_instance   :: per_instance
+            ).
+
 %---------------------%
 
 :- type qual_function_name
@@ -748,13 +761,12 @@
     --->    mlds_func_label(
                 mlds_proc_label,
 
-                % The second field will be "no" for the MLDS function
+                % The second field will be proc_func for the MLDS function
                 % we generate for a HLDS procedure as a whole, but it will be
-                % "yes(N)" for the Nth auxiliary MLDS function we generate
-                % for that procedure, e.g. to handle backtracking.
-                % (It is actually N, not N-1, because mlds_aux_func_seq_nums
-                % start at 1.)
-                % XXX
+                % some other function symbol wrapper around N for the Nth
+                % auxiliary MLDS function we generate for that procedure,
+                % e.g. to handle backtracking. (It is actually N, not N-1,
+                % because mlds_aux_func_seq_nums start at 1.)
                 mlds_maybe_aux_func_id
             ).
 
@@ -874,30 +886,25 @@
     --->    gvar_acc_module_only
     ;       gvar_acc_whole_program.
 
-:- type constness
-    --->    modifiable
-    ;       const.
-
-:- type access
-    % The following used for class members (this includes globals,
-    % which are actually members of the top-level package)
-
-    --->    acc_public
-            % Accessible to anyone.
-    ;       acc_private
-            % Only accessible to the class.
-
-    % The following is used for entities defined in a block/2 mlds_stmt,
-    % i.e. local variables and nested functions.
-
-    ;       acc_local.
-            % Only accessible within the block in which the entity
-            % (variable or nested function) is defined.
-
     % The accessibility of classes themselves.
 :- type class_access
     --->    class_public
     ;       class_private.
+
+:- type function_access
+    --->    func_public
+            % Accessible to anyone.
+
+    ;       func_private
+            % Accessible only to the module or class that defines the function.
+
+    ;       func_local.
+            % Accessible only within the block in which this (nested) function
+            % is defined.
+
+:- type constness
+    --->    modifiable
+    ;       const.
 
 :- type per_instance
     --->    one_copy
@@ -913,39 +920,6 @@
     --->    overridable
     ;       sealed.     % i.e. the class cannot be inherited from,
                         % or the virtual method is not overridable.
-
-%---------------------%
-
-:- type mlds_function_decl_flags.
-
-:- func init_function_decl_flags(access, per_instance)
-    = mlds_function_decl_flags.
-
-:- func get_function_access(mlds_function_decl_flags) = access.
-:- func get_function_per_instance(mlds_function_decl_flags) = per_instance.
-
-:- pred set_function_access(access::in,
-    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
-:- pred set_function_per_instance(per_instance::in,
-    mlds_function_decl_flags::in, mlds_function_decl_flags::out) is det.
-
-%---------------------%
-
-:- type mlds_class_decl_flags.
-
-:- func init_class_decl_flags(class_access, overridability, constness)
-    = mlds_class_decl_flags.
-
-:- func get_class_access(mlds_class_decl_flags) = class_access.
-:- func get_class_overridability(mlds_class_decl_flags) = overridability.
-:- func get_class_constness(mlds_class_decl_flags) = constness.
-
-:- pred set_class_access(class_access::in,
-    mlds_class_decl_flags::in, mlds_class_decl_flags::out) is det.
-:- pred set_class_overridability(overridability::in,
-    mlds_class_decl_flags::in, mlds_class_decl_flags::out) is det.
-:- pred set_class_constness(constness::in,
-    mlds_class_decl_flags::in, mlds_class_decl_flags::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -2603,68 +2577,6 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         unexpected($module, $pred, "target erlang")
     ),
     MLDSType = mlds_foreign_type(ForeignType).
-
-%---------------------------------------------------------------------------%
-%
-% The flags contain the following information:
-%
-% access,               % public/private/protected
-% member_type,          % static/per_instance
-% virtuality,           % virtual/non_virtual
-% overridability,       % sealed/overridable (class/funcs only)
-% constness,            % const/modifiable  (data only)
-% is_abstract,          % abstract/concrete
-%
-% Note that the compiler can pack all the enumeration arguments together,
-% though a cell will still be allocated.
-%
-
-%---------------------------------------------------------------------------%
-
-:- type mlds_function_decl_flags
-    --->    mlds_function_decl_flags(
-                mfdf_access         :: access,
-                mfdf_per_instance   :: per_instance
-            ).
-
-init_function_decl_flags(Access, PerInstance) =
-    mlds_function_decl_flags(Access, PerInstance).
-
-get_function_access(Flags) = X :-
-    X = Flags ^ mfdf_access.
-get_function_per_instance(Flags) = X :-
-    X = Flags ^ mfdf_per_instance.
-
-set_function_access(Access, !Flags) :-
-    !Flags ^ mfdf_access := Access.
-set_function_per_instance(PerInstance, !Flags) :-
-    !Flags ^ mfdf_per_instance := PerInstance.
-
-%---------------------------------------------------------------------------%
-
-:- type mlds_class_decl_flags
-    --->    mlds_class_decl_flags(
-                mcdf_access         :: class_access,
-                mcdf_overridability :: overridability,
-                mcdf_constness      :: constness
-            ).
-
-init_class_decl_flags(Access, Overridability, Constness) =
-    mlds_class_decl_flags(Access, Overridability, Constness).
-
-get_class_access(Flags) = X :-
-    X = Flags ^ mcdf_access.
-get_class_overridability(Flags) = X :-
-    X = Flags ^ mcdf_overridability.
-get_class_constness(Flags) = X :-
-    X = Flags ^ mcdf_constness.
-
-set_class_access(Access, !Flags) :-
-    !Flags ^ mcdf_access := Access.
-set_class_overridability(Overridability, !Flags) :-
-    !Flags ^ mcdf_overridability := Overridability.
-set_class_constness(Constness, !Flags) :-
-    !Flags ^ mcdf_constness := Constness.
 
 %---------------------------------------------------------------------------%
 

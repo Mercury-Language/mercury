@@ -991,10 +991,9 @@ ml_gen_wrapper_func(MaybeAux, FuncParams, Context, Stmt, FunctionDefn,
     % XXX MLDS_DEFN: pass the needed flags to ml_gen_label_func
     ml_gen_label_func(!.Info, MaybeAux, FuncParams, Context, Stmt,
         FunctionDefn0),
-    FunctionDefn0 = mlds_function_defn(Name, Ctxt, DeclFlags0,
+    FunctionDefn0 = mlds_function_defn(Name, Ctxt, _DeclFlags0,
         MaybePredProcId, DefnFuncParams, Body, EnvVarNames, TailRec),
-    set_function_access(acc_private, DeclFlags0, DeclFlags1),
-    set_function_per_instance(one_copy, DeclFlags1, DeclFlags),
+    DeclFlags = mlds_function_decl_flags(func_private, one_copy),
     FunctionDefn = mlds_function_defn(Name, Ctxt, DeclFlags,
         MaybePredProcId, DefnFuncParams, Body, EnvVarNames, TailRec).
 

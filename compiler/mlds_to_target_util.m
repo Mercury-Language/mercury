@@ -250,12 +250,13 @@ global_var_defn_is_private(GlobalVarDefn) :-
     GlobalVarDefn ^ mgvd_decl_flags ^ mgvdf_access = gvar_acc_module_only.
 
 function_defn_is_private(FuncDefn) :-
-    FuncFlags = FuncDefn ^ mfd_decl_flags,
-    get_function_access(FuncFlags) = acc_private.
+    FuncDefn ^ mfd_decl_flags = mlds_function_decl_flags(Access, _PerInstance),
+    Access = func_private.
 
 class_defn_is_private(ClassDefn) :-
-    ClassFlags = ClassDefn ^ mcd_decl_flags,
-    get_class_access(ClassFlags) = class_private.
+    ClassDefn ^ mcd_decl_flags =
+        mlds_class_decl_flags(Access, _Overridability, _Constness),
+    Access = class_private.
 
 local_var_defn_is_commit_type(LocalVarDefn) :-
     LocalVarDefn ^ mlvd_type = mlds_commit_type.
