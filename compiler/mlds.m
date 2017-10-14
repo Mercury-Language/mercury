@@ -950,7 +950,6 @@
 %---------------------------------------------------------------------------%
 %
 % Types.
-% ZZZ
 %
 
 :- type mlds_type
@@ -2381,8 +2380,7 @@
             % This MLDS variable represents the global variable that holds
             % the pointer to the current chain of frames.
 
-    ;       mcv_saved_stack_chain(int)
-            % ZZZ
+    ;       lvnc_saved_stack_chain(int)
             % This MLDS variable represents a locally-saved copy of the
             % global variable represented by lvnc_stack_chain.
 
@@ -2965,7 +2963,7 @@ ml_local_var_name_to_string(LocalVar) = Str :-
             CompVar = lvnc_stack_chain,
             Str = "stack_chain"
         ;
-            CompVar = mcv_saved_stack_chain(Id),
+            CompVar = lvnc_saved_stack_chain(Id),
             Str = string.format("saved_stack_chain_%d", [i(Id)])
         ;
             CompVar = lvnc_args,

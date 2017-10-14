@@ -2508,7 +2508,7 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 :- func gen_saved_stack_chain_var(int, prog_context) = mlds_local_var_defn.
 
 gen_saved_stack_chain_var(Id, Context) = Defn :-
-    Name = lvn_comp_var(mcv_saved_stack_chain(Id)),
+    Name = lvn_comp_var(lvnc_saved_stack_chain(Id)),
     Type = ml_stack_chain_type,
     Initializer = no_initializer,
     % The saved stack chain never needs to be traced by the GC,
@@ -2528,7 +2528,7 @@ gen_saved_stack_chain_var(Id, Context) = Defn :-
     mlds_stmt::out, mlds_stmt::out) is det.
 
 gen_save_and_restore_of_stack_chain_var(Id, Context, SaveStmt, RestoreStmt) :-
-    SavedStackChain = ml_local_var(lvn_comp_var(mcv_saved_stack_chain(Id)),
+    SavedStackChain = ml_local_var(lvn_comp_var(lvnc_saved_stack_chain(Id)),
         ml_stack_chain_type),
     SaveAssignment = assign(SavedStackChain, ml_lval(ml_stack_chain_var)),
     SaveStmt = ml_stmt_atomic(SaveAssignment, Context),
