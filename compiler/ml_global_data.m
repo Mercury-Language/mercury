@@ -612,6 +612,14 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         ml_gen_vector_cell_field_types(Context, FieldFlags,
             TypeRawNum, 0, ArgTypes, FieldNames, FieldDefns, FieldInfos),
 
+        StructClassName = "vector_common_type_" ++ TypeRawNumStr,
+        QualStructClassName =
+            qual_class_name(MLDS_ModuleName, module_qual, StructClassName),
+        StructType = mlds_class_type(QualStructClassName, 0, mlds_struct),
+        % The "modifiable" is only to shut up a gcc warning about constant
+        % fields.
+        StructClassFlags =
+            mlds_class_decl_flags(class_private, sealed, modifiable),
         (
             Target = ml_target_c,
             ClassKind = mlds_struct,
@@ -629,28 +637,17 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
                 Context),
             CtorDefns = [CtorDefn]
         ),
-
-        StructTypeName = "vector_common_type_" ++ TypeRawNumStr,
-        StructTypeClassName = mlds_type_name(StructTypeName, 0),
-        % The "modifiable" is only to shut up a gcc warning about constant
-        % fields.
-        StructTypeFlags =
-            mlds_class_decl_flags(class_private, sealed, modifiable),
-        StructTypeDefn = mlds_class_defn(StructTypeClassName, Context,
-            StructTypeFlags, ClassKind, [], [], [], [],
+        StructClassDefn = mlds_class_defn(StructClassName, 0, Context,
+            StructClassFlags, ClassKind, [], [], [], [],
             FieldDefns, [], [], CtorDefns),
 
-        QualStructTypeName =
-            qual_class_name(MLDS_ModuleName, module_qual, StructTypeName),
-        StructType = mlds_class_type(QualStructTypeName, 0, mlds_struct),
-
         MLDS_ClassModuleName = mlds_append_class_qualifier_module_qual(
-            MLDS_ModuleName, StructTypeName, 0),
+            MLDS_ModuleName, StructClassName, 0),
         make_named_fields(MLDS_ClassModuleName, StructType, FieldNames,
             FieldIds),
 
-        CellGroup = ml_vector_cell_group(StructType, StructTypeDefn, FieldIds,
-            0, cord.empty),
+        CellGroup = ml_vector_cell_group(StructType, StructClassDefn,
+            FieldIds, 0, cord.empty),
 
         CellGroupMap0 = !.GlobalData ^ mgd_vector_cell_group_map,
         map.det_insert(TypeNum, CellGroup, CellGroupMap0, CellGroupMap),

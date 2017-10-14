@@ -1651,7 +1651,7 @@ mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
 :- pragma consider_used(mlds_output_class_decl_opts/6).
 
 mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
+    ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, Kind,
         _Imports, _BaseClasses, _Implements,
         _TypeParams, _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
 
@@ -1665,8 +1665,8 @@ mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
         mlds_output_class_decl_flags(Opts, Flags, forward_decl, !IO),
-        QualTypeName = qual_type_name(ModuleName, module_qual, TypeName),
-        mlds_output_class_decl(Indent, QualTypeName, ClassDefn, !IO),
+        mlds_output_class_decl(Indent, ModuleName, ClassName, Arity, ClassDefn,
+            !IO),
         io.write_string(";\n", !IO)
     ).
 
@@ -2099,7 +2099,7 @@ mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     mlds_module_name::in, mlds_class_defn::in, io::di, io::uo) is det.
 
 mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(_TypeName, Context, Flags, _Kind,
+    ClassDefn = mlds_class_defn(_ClassName, _Arity, Context, Flags, _Kind,
         _Imports, _BaseClasses, _Implements, _TypeParams,
         _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
     io.nl(!IO),
@@ -2139,17 +2139,17 @@ mlds_output_gc_statement(Opts, Indent, GCStmt, MaybeNewLine, !IO) :-
 % Code to output type declarations/definitions
 %
 
-:- pred mlds_output_class_decl(indent::in, qual_type_name::in,
-    mlds_class_defn::in, io::di, io::uo) is det.
+:- pred mlds_output_class_decl(indent::in, mlds_module_name::in,
+    mlds_class_name::in, arity::in, mlds_class_defn::in,
+    io::di, io::uo) is det.
 
-mlds_output_class_decl(_Indent, QualTypeName, ClassDefn, !IO) :-
-    QualTypeName = qual_type_name(ModuleName, _QualKind, TypeName),
+mlds_output_class_decl(_Indent, ModuleName, ClassName, Arity, ClassDefn, !IO) :-
     ClassKind = ClassDefn ^ mcd_kind,
     (
         ClassKind = mlds_enum,
         io.write_string("enum ", !IO),
         output_qual_name_prefix_c(ModuleName, !IO),
-        mlds_output_type_name(TypeName, !IO),
+        mlds_output_class_name_arity(ClassName, Arity, !IO),
         io.write_string("_e", !IO)
     ;
         ( ClassKind = mlds_class
@@ -2158,7 +2158,7 @@ mlds_output_class_decl(_Indent, QualTypeName, ClassDefn, !IO) :-
         ),
         io.write_string("struct ", !IO),
         output_qual_name_prefix_c(ModuleName, !IO),
-        mlds_output_type_name(TypeName, !IO),
+        mlds_output_class_name_arity(ClassName, Arity, !IO),
         io.write_string("_s", !IO)
     ).
 
@@ -2167,7 +2167,7 @@ mlds_output_class_decl(_Indent, QualTypeName, ClassDefn, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(TypeName, Context, _Flags,
+    ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, _Flags,
         Kind, _Imports, BaseClasses, _Implements, _TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     expect(unify(MemberMethods, []), $pred,
@@ -2178,7 +2178,6 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     % enumeration constants and for the nested classes that we generate for
     % constructors of discriminated union types.) Here we compute the
     % appropriate qualifier.
-    TypeName = mlds_type_name(ClassName, ClassArity),
     ClassModuleName = mlds_append_class_qualifier_module_qual(ModuleName,
         ClassName, ClassArity),
 
@@ -2229,8 +2228,8 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     % `target_uses_empty_base_classes' before generating empty structs.)
     % Hence we don't need to check for empty structs here.
 
-    QualTypeName = qual_type_name(ModuleName, module_qual, TypeName),
-    mlds_output_class_decl(Indent, QualTypeName, ClassDefn, !IO),
+    mlds_output_class_decl(Indent, ModuleName, ClassName, ClassArity,
+        ClassDefn, !IO),
     io.write_string(" {\n", !IO),
     (
         Kind = mlds_enum,
@@ -2759,13 +2758,13 @@ mlds_output_module_name(ModuleName, !IO) :-
     MangledModuleName = sym_name_mangle(ModuleName),
     io.write_string(MangledModuleName, !IO).
 
-:- pred mlds_output_type_name(mlds_type_name::in, io::di, io::uo) is det.
+:- pred mlds_output_class_name_arity(mlds_class_name::in, arity::in,
+    io::di, io::uo) is det.
 
-mlds_output_type_name(TypeName, !IO) :-
+mlds_output_class_name_arity(ClassName, Arity, !IO) :-
     % XXX We should avoid appending the arity if it is not needed.
-    TypeName = mlds_type_name(Name, Arity),
-    MangledName = name_mangle(Name),
-    io.write_string(MangledName, !IO),
+    MangledClassName = name_mangle(ClassName),
+    io.write_string(MangledClassName, !IO),
     io.write_char('_', !IO),
     io.write_int(Arity, !IO).
 

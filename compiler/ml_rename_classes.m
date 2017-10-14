@@ -86,7 +86,7 @@ rename_class_names_in_function_defn(Renaming, FuncDefn0, FuncDefn) :-
         FuncParams, FuncBody, EnvVarNames, MaybeRequireTailrecInfo).
 
 rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn) :-
-    ClassDefn0 = mlds_class_defn(Name, Context, Flags, ClassKind,
+    ClassDefn0 = mlds_class_defn(ClassName, Arity, Context, Flags, ClassKind,
         Imports, Inherits, Implements, TypeParams,
         MemberFields0, MemberClasses0, MemberMethods0, Ctors0),
     list.map(rename_class_names_in_field_var_defn(Renaming),
@@ -96,7 +96,7 @@ rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn) :-
     list.map(rename_class_names_in_function_defn(Renaming),
         MemberMethods0, MemberMethods),
     list.map(rename_class_names_in_function_defn(Renaming), Ctors0, Ctors),
-    ClassDefn = mlds_class_defn(Name, Context, Flags, ClassKind,
+    ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, ClassKind,
         Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors).
 

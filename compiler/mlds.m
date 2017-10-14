@@ -585,7 +585,8 @@
     %
 :- type mlds_class_defn
     --->    mlds_class_defn(
-                mcd_type_name       :: mlds_type_name,
+                mcd_class_name      :: mlds_class_name,
+                mcd_class_arity     :: arity,
                 mcd_context         :: prog_context,
                 mcd_decl_flags      :: mlds_class_decl_flags,
 
@@ -623,22 +624,10 @@
 
 :- type qual_class_name
     --->    qual_class_name(mlds_module_name, mlds_qual_kind, mlds_class_name).
-:- type qual_type_name
-    --->    qual_type_name(mlds_module_name, mlds_qual_kind, mlds_type_name).
-            % XXX Given the definition of mlds_type_name, it may be better
-            % to have qual_type_name be defined as a pair of a qual_class_name
-            % and an arity, since that doesn't require taking off the
-            % qualification and putting it back in a different place
-            % when adding an arity to a class name.
-
 :- type mlds_class_name == string.
-:- type mlds_type_name
-    --->    mlds_type_name(
-                mlds_class_name,
-                arity
-            ).
 
     % Hmm... this is tentative.
+    % XXX
 :- type mlds_class_id == mlds_type.
 :- type mlds_interface_id == mlds_type.
 

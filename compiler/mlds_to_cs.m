@@ -685,7 +685,7 @@ output_function_defn_for_csharp(Info, Indent, OutputAux, FunctionDefn, !IO) :-
 
 output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     output_n_indents(Indent, !IO),
-    ClassDefn = mlds_class_defn(TypeName, _Context, Flags, Kind,
+    ClassDefn = mlds_class_defn(ClassName, ClassArity, _Context, Flags, Kind,
         _Imports, BaseClasses, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     expect(unify(MemberMethods, []), $pred,
@@ -710,8 +710,7 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     !Info ^ csoi_univ_tvars := TypeParams,
 
     output_class_kind_for_csharp(Kind, !IO),
-    TypeName = mlds_type_name(ClassName, Arity),
-    output_unqual_class_name_for_csharp(ClassName, Arity, !IO),
+    output_unqual_class_name_for_csharp(ClassName, ClassArity, !IO),
     OutputGenerics = !.Info ^ csoi_output_generics,
     (
         OutputGenerics = do_output_generics,
@@ -740,13 +739,13 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
         list.filter(field_var_defn_is_enum_const,
             MemberFields, EnumConstMemberFields),
         % XXX Why +2?
-        output_enum_constants_for_csharp(!.Info, Indent + 2, TypeName,
+        output_enum_constants_for_csharp(!.Info, Indent + 2,
             EnumConstMemberFields, !IO)
     ),
     io.nl(!IO),
     list.foldl(
         output_function_defn_for_csharp(!.Info, Indent + 1,
-            oa_cname(TypeName)),
+            oa_cname(ClassName, ClassArity)),
         Ctors, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("}\n\n", !IO).
@@ -834,17 +833,18 @@ interface_is_special_for_csharp("MercuryType").
 %
 
 :- pred output_enum_constants_for_csharp(csharp_out_info::in, indent::in,
-    mlds_type_name::in, list(mlds_field_var_defn)::in, io::di, io::uo) is det.
+    list(mlds_field_var_defn)::in,
+    io::di, io::uo) is det.
 
-output_enum_constants_for_csharp(Info, Indent, EnumName, EnumConsts, !IO) :-
+output_enum_constants_for_csharp(Info, Indent, EnumConsts, !IO) :-
     io.write_list(EnumConsts, "\n",
-        output_enum_constant_for_csharp(Info, Indent, EnumName), !IO),
+        output_enum_constant_for_csharp(Info, Indent), !IO),
     io.nl(!IO).
 
 :- pred output_enum_constant_for_csharp(csharp_out_info::in, indent::in,
-    mlds_type_name::in, mlds_field_var_defn::in, io::di, io::uo) is det.
+    mlds_field_var_defn::in, io::di, io::uo) is det.
 
-output_enum_constant_for_csharp(Info, Indent, _EnumName, FieldVarDefn, !IO) :-
+output_enum_constant_for_csharp(Info, Indent, FieldVarDefn, !IO) :-
     FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, _Flags,
         _Type, Initializer, _GCStmt),
     (
@@ -1176,7 +1176,7 @@ output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO) :-
         % in the fields.
         (
             ( OutputAux = oa_none
-            ; OutputAux = oa_cname(_)
+            ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_force_init
             ),
             output_initializer_body_for_csharp(Info, Initializer,
@@ -1195,7 +1195,7 @@ output_initializer_for_csharp(Info, OutputAux, Type, Initializer, !IO) :-
             io.write_string(get_type_initializer(Info, Type), !IO)
         ;
             ( OutputAux = oa_none
-            ; OutputAux = oa_cname(_)
+            ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_alloc_only
             )
         )
@@ -1402,10 +1402,10 @@ output_func_decl_for_csharp(Info, Indent, FuncName, OutputAux, Signature,
         !IO) :-
     Signature = mlds_func_params(Parameters, RetTypes),
     ( if
-        OutputAux = oa_cname(ClassName),
+        OutputAux = oa_cname(ClassName, ClassArity),
         FuncName = mlds_function_export("<constructor>")
     then
-        output_type_name_for_csharp(ClassName, !IO),
+        output_class_name_arity_for_csharp(ClassName, ClassArity, !IO),
         OutParams = []
     else
         output_return_types_for_csharp(Info, RetTypes, RestRetTypes, !IO),
@@ -1578,12 +1578,18 @@ output_function_name_for_csharp(FunctionName, !IO) :-
     function_name_to_string_for_csharp(FunctionName, FunctionNameStr),
     write_identifier_string_for_csharp(FunctionNameStr, !IO).
 
-:- pred output_type_name_for_csharp(mlds_type_name::in, io::di, io::uo)
-    is det.
+:- pred output_class_name_arity_for_csharp(mlds_class_name::in, arity::in,
+    io::di, io::uo) is det.
 
-output_type_name_for_csharp(TypeName, !IO) :-
-    type_name_to_string_for_csharp(TypeName, TypeNameStr),
-    write_identifier_string_for_csharp(TypeNameStr, !IO).
+output_class_name_arity_for_csharp(ClassName, ClassArity, !IO) :-
+    class_name_arity_to_string_for_csharp(ClassName, ClassArity, Str),
+    write_identifier_string_for_csharp(Str, !IO).
+
+:- pred class_name_arity_to_string_for_csharp(mlds_class_name::in, arity::in,
+    string::out) is det.
+
+class_name_arity_to_string_for_csharp(ClassName, ClassArity, String) :-
+    unqual_class_name_to_string_for_csharp(ClassName, ClassArity, String).
 
 :- pred write_identifier_string_for_csharp(string::in, io::di, io::uo) is det.
 
@@ -1601,12 +1607,6 @@ write_identifier_string_for_csharp(String, !IO) :-
     else
         io.write_string(String, !IO)
     ).
-
-:- pred type_name_to_string_for_csharp(mlds_type_name::in, string::out) is det.
-
-type_name_to_string_for_csharp(TypeName, String) :-
-    TypeName = mlds_type_name(Name, Arity),
-    unqual_class_name_to_string_for_csharp(Name, Arity, String).
 
 :- pred function_name_to_string_for_csharp(mlds_function_name::in, string::out)
     is det.

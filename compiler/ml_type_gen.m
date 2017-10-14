@@ -276,7 +276,7 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns) :-
     list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
 
 ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
-        MaybeEqualityMembers, !Defns) :-
+        MaybeEqualityMembers, !ClassDefns) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     % Generate the class name.
@@ -312,13 +312,12 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
     get_type_defn_tparams(TypeDefn, TypeVars),
 
     % Put it all together.
-    MLDS_TypeName = mlds_type_name(MLDS_ClassName, MLDS_ClassArity),
-    MLDS_TypeFlags = ml_gen_type_decl_flags,
-    MLDS_TypeDefn = mlds_class_defn(MLDS_TypeName, Context,
-        MLDS_TypeFlags, mlds_enum, Imports, Inherits, Implements,
+    ClassFlags = ml_gen_type_decl_flags,
+    ClassDefn = mlds_class_defn(MLDS_ClassName, MLDS_ClassArity, Context,
+        ClassFlags, mlds_enum, Imports, Inherits, Implements,
         TypeVars, Members, [], [], []),
 
-    !:Defns = [MLDS_TypeDefn | !.Defns].
+    !:ClassDefns = [ClassDefn | !.ClassDefns].
 
 :- func ml_gen_hld_enum_value_member(prog_context) = mlds_field_var_defn.
 
@@ -478,7 +477,7 @@ ml_gen_hld_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
     list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
 
 ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, Ctors, TagValues,
-        MaybeEqualityMembers, !Defns) :-
+        MaybeEqualityMembers, !ClassDefns) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     % Generate the class name.
@@ -558,13 +557,12 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, Ctors, TagValues,
     MemberFields =
         MaybeEqualityMembers ++ TagFieldVarMembers ++ CtorMemberFields,
     MemberClasses = TagClassMembers ++ CtorMemberClasses,
-    MLDS_TypeName = mlds_type_name(BaseClassName, BaseClassArity),
-    MLDS_TypeFlags = ml_gen_type_decl_flags,
-    Defn = mlds_class_defn(MLDS_TypeName, Context,
-        MLDS_TypeFlags, mlds_class, Imports, Inherits, Implements, TypeParams,
+    MLDS_ClassFlags = ml_gen_type_decl_flags,
+    ClassDefn = mlds_class_defn(BaseClassName, BaseClassArity, Context,
+        MLDS_ClassFlags, mlds_class, Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, [], BaseClassCtorMethods),
 
-    !:Defns = [Defn | !.Defns].
+    !:ClassDefns = [ClassDefn | !.ClassDefns].
 
 :- pred ml_num_ctors_that_need_secondary_tag(type_ctor::in,
     cons_tag_values::in, list(constructor)::in,
@@ -645,7 +643,7 @@ ml_gen_hld_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
     mlds_class_defn::out, mlds_class_id::out) is det.
 
 ml_gen_hld_secondary_tag_class(Context, BaseClassQualifier, BaseClassId,
-        Members, Target, MLDS_TypeDefn, SecondaryTagClassId) :-
+        Members, Target, MLDS_ClassDefn, SecondaryTagClassId) :-
     % Generate the class name for the secondary tag class.
     % Note: the secondary tag class is nested inside the
     % base class for this type.
@@ -676,10 +674,9 @@ ml_gen_hld_secondary_tag_class(Context, BaseClassQualifier, BaseClassId,
     TypeParams = [],
 
     % Put it all together.
-    MLDS_TypeName = mlds_type_name(UnqualClassName, ClassArity),
-    MLDS_TypeFlags = ml_gen_type_decl_flags,
-    MLDS_TypeDefn = mlds_class_defn(MLDS_TypeName, Context,
-        MLDS_TypeFlags, mlds_class, Imports, Inherits, Implements,
+    MLDS_ClassFlags = ml_gen_type_decl_flags,
+    MLDS_ClassDefn = mlds_class_defn(UnqualClassName, ClassArity, Context,
+        MLDS_ClassFlags, mlds_class, Imports, Inherits, Implements,
         TypeParams, Members, [], [], Ctors).
 
     % Generate definitions corresponding to a constructor of a discriminated
@@ -877,12 +874,10 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
             get_type_defn_tparams(TypeDefn, TypeParams),
 
             % Put it all together.
-            SubClassTypeName = mlds_type_name(UnqualCtorName, CtorArity),
-            SubClassTypeFlags = ml_gen_type_decl_flags,
-            SubClassDefn = mlds_class_defn(SubClassTypeName, Context,
-                SubClassTypeFlags, mlds_class,
-                Imports, Inherits, Implements, TypeParams,
-                SubClassFields, [], [], SubClassCtors),
+            SubClassFlags = ml_gen_type_decl_flags,
+            SubClassDefn = mlds_class_defn(UnqualCtorName, CtorArity, Context,
+                SubClassFlags, mlds_class, Imports, Inherits, Implements,
+                TypeParams, SubClassFields, [], [], SubClassCtors),
 
             BaseClassFields = BaseClassFields0,
             BaseClassClasses = [SubClassDefn | BaseClassClasses0],

@@ -812,7 +812,7 @@ ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
     list(mlds_function_defn)::out) is det.
 
 ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
-        ModuleName, FuncName, Globals, EnvTypeDefn, EnvDefns, InitEnv,
+        ModuleName, FuncName, Globals, EnvClassDefn, EnvDefns, InitEnv,
         GCTraceFuncDefns) :-
     % Generate the following type:
     %
@@ -840,8 +840,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         EnvTypeKind = mlds_struct,
         BaseClasses = []
     ),
-    EnvTypeClassName = mlds_type_name(EnvClassName, 0),
-    EnvTypeFlags =
+    EnvClassFlags =
         mlds_class_decl_flags(class_private, overridable, modifiable),
     Fields0 = list.map(convert_local_to_field, LocalVars),
 
@@ -877,8 +876,8 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     Interfaces = [],
     TypeParams = [],
     Ctors = [],
-    EnvTypeDefn = mlds_class_defn(EnvTypeClassName, Context,
-        EnvTypeFlags, EnvTypeKind, Imports, BaseClasses, Interfaces,
+    EnvClassDefn = mlds_class_defn(EnvClassName, 0, Context,
+        EnvClassFlags, EnvTypeKind, Imports, BaseClasses, Interfaces,
         TypeParams, Fields, [], [], Ctors),
 
     % Generate the following variable declaration:

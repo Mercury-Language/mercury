@@ -45,7 +45,7 @@
     --->    oa_none
             % Nothing special.
 
-    ;       oa_cname(mlds_type_name)
+    ;       oa_cname(mlds_class_name, arity)
             % Pass down the class name if a definition is a constructor; this
             % is needed since the class name is not available for a constructor
             % in the MLDS.
@@ -538,7 +538,7 @@ method_ptrs_in_class_defns([ClassDefn | ClassDefns], !CodeAddrsInConsts) :-
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
 
 method_ptrs_in_class_defn(ClassDefn, !CodeAddrsInConsts) :-
-    ClassDefn = mlds_class_defn(_, _, _, _, _, _, _, _,
+    ClassDefn = mlds_class_defn(_, _, _, _, _, _, _, _, _,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     method_ptrs_in_field_var_defns(MemberFields, !CodeAddrsInConsts),
     method_ptrs_in_class_defns(MemberClasses, !CodeAddrsInConsts),

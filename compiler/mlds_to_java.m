@@ -867,10 +867,9 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     TypeParams = [],
 
     % Put it all together.
-    ClassTypeName = mlds_type_name(ClassName, 0),
     ClassContext = term.context_init,
     ClassFlags = mlds_class_decl_flags(class_private, sealed, const),
-    ClassDefn = mlds_class_defn(ClassTypeName, ClassContext, ClassFlags,
+    ClassDefn = mlds_class_defn(ClassName, 0, ClassContext, ClassFlags,
         mlds_class, ClassImports, ClassExtends, ClassImplements,
         TypeParams, FieldVarDefns, [], [MethodDefn], CtorDefns),
 
@@ -1091,21 +1090,18 @@ add_to_address_map_2(FlippedClassName, [CodeAddr | CodeAddrs], I,
     map(mlds_class_name, mlds_class_name)::out) is det.
 
 maybe_shorten_long_class_name(!ClassDefn, !Renaming) :-
-    !.ClassDefn = mlds_class_defn(TypeName0, _Context, Flags, _ClassKind,
-        _Imports, _Inherits, _Implements, _TypeParams,
+    !.ClassDefn = mlds_class_defn(ClassName0, _ClassArity, _Context, Flags,
+        _ClassKind, _Imports, _Inherits, _Implements, _TypeParams,
         _MemberFields0, _MemberClasses0, _MemberMethods0, _Ctors0),
     Flags = mlds_class_decl_flags(Access, _Overridability, _Constness),
     (
         % We only rename private classes for now.
         Access = class_private,
-        TypeName0 = mlds_type_name(ClassName0, Arity),
         ClassName = shorten_class_name(ClassName0),
         ( if ClassName = ClassName0 then
             true
         else
-            TypeName = mlds_type_name(ClassName, Arity),
-            !ClassDefn ^ mcd_type_name := TypeName,
-
+            !ClassDefn ^ mcd_class_name := ClassName,
             map.det_insert(ClassName0, ClassName, !Renaming)
         )
     ;
@@ -1415,7 +1411,7 @@ output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
     mlds_class_defn::in, io::di, io::uo) is det.
 
 output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(TypeName, Context, Flags, Kind,
+    ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags, Kind,
         _Imports, BaseClasses, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     indent_line_after_context(!.Info ^ joi_line_numbers, marker_comment,
@@ -1432,8 +1428,7 @@ output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
     ),
 
     output_class_kind_for_java(Kind, !IO),
-    TypeName = mlds_type_name(ClassName, Arity),
-    output_unqual_class_name_for_java(ClassName, Arity, !IO),
+    output_unqual_class_name_for_java(ClassName, ClassArity, !IO),
     OutputGenerics = !.Info ^ joi_output_generics,
     (
         OutputGenerics = do_output_generics,
@@ -1465,15 +1460,16 @@ output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
         list.filter(field_var_defn_is_enum_const,
             MemberFields, EnumConstFields),
         % XXX Why +2?
-        output_enum_constants_for_java(!.Info, Indent + 2, TypeName,
-            EnumConstFields, !IO),
+        output_enum_constants_for_java(!.Info, Indent + 2,
+            ClassName, ClassArity, EnumConstFields, !IO),
         io.nl(!IO),
         % XXX Why +2?
-        output_enum_ctor_for_java(Indent + 2, TypeName, !IO)
+        output_enum_ctor_for_java(Indent + 2, ClassName, ClassArity, !IO)
     ),
     io.nl(!IO),
     list.foldl(
-        output_function_defn_for_java(!.Info, Indent + 1, oa_cname(TypeName)),
+        output_function_defn_for_java(!.Info, Indent + 1,
+            oa_cname(ClassName, ClassArity)),
         Ctors, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("}\n\n", !IO).
@@ -1557,13 +1553,13 @@ output_interface(Interface, !IO) :-
 
     % Output a (Java) constructor for the class representing the enumeration.
     %
-:- pred output_enum_ctor_for_java(indent::in, mlds_type_name::in,
+:- pred output_enum_ctor_for_java(indent::in, mlds_class_name::in, arity::in,
     io::di, io::uo) is det.
 
-output_enum_ctor_for_java(Indent, TypeName, !IO) :-
+output_enum_ctor_for_java(Indent, ClassName, ClassArity, !IO) :-
     output_n_indents(Indent, !IO),
     io.write_string("private ", !IO),
-    output_type_name_for_java(TypeName, !IO),
+    output_class_name_arity_for_java(ClassName, ClassArity, !IO),
     io.write_string("(int val) {\n", !IO),
     output_n_indents(Indent + 1, !IO),
     % Call the MercuryEnum constructor, which will set the MR_value field.
@@ -1572,17 +1568,22 @@ output_enum_ctor_for_java(Indent, TypeName, !IO) :-
     io.write_string("}\n", !IO).
 
 :- pred output_enum_constants_for_java(java_out_info::in, indent::in,
-    mlds_type_name::in, list(mlds_field_var_defn)::in, io::di, io::uo) is det.
+    mlds_class_name::in, arity::in, list(mlds_field_var_defn)::in,
+    io::di, io::uo) is det.
 
-output_enum_constants_for_java(Info, Indent, EnumName, EnumConsts, !IO) :-
+output_enum_constants_for_java(Info, Indent, ClassName, ClassArity,
+        EnumConsts, !IO) :-
     io.write_list(EnumConsts, "\n",
-        output_enum_constant_for_java(Info, Indent, EnumName), !IO),
+        output_enum_constant_for_java(Info, Indent, ClassName, ClassArity),
+        !IO),
     io.nl(!IO).
 
 :- pred output_enum_constant_for_java(java_out_info::in, indent::in,
-    mlds_type_name::in, mlds_field_var_defn::in, io::di, io::uo) is det.
+    mlds_class_name::in, arity::in, mlds_field_var_defn::in,
+    io::di, io::uo) is det.
 
-output_enum_constant_for_java(_Info, Indent, EnumName, FieldVarDefn, !IO) :-
+output_enum_constant_for_java(_Info, Indent, ClassName, ClassArity,
+        FieldVarDefn, !IO) :-
     FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, _Flags,
         _Type, Initializer, _GCStmt),
     % Make a static instance of the constant. The MLDS doesn't retain enum
@@ -1594,9 +1595,9 @@ output_enum_constant_for_java(_Info, Indent, EnumName, FieldVarDefn, !IO) :-
         ( if Rval = ml_const(mlconst_enum(N, _)) then
             output_n_indents(Indent, !IO),
             io.write_string("public static final ", !IO),
-            output_type_name_for_java(EnumName, !IO),
+            output_class_name_arity_for_java(ClassName, ClassArity, !IO),
             io.format(" K%d = new ", [i(N)], !IO),
-            output_type_name_for_java(EnumName, !IO),
+            output_class_name_arity_for_java(ClassName, ClassArity, !IO),
             io.format("(%d); ", [i(N)], !IO),
 
             io.write_string(" /* ", !IO),
@@ -1923,7 +1924,7 @@ output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO) :-
         % in the fields.
         (
             ( OutputAux = oa_none
-            ; OutputAux = oa_cname(_)
+            ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_force_init
             ),
             output_initializer_body_for_java(Info, Initializer,
@@ -1942,7 +1943,7 @@ output_initializer_for_java(Info, OutputAux, Type, Initializer, !IO) :-
             io.write_string(get_java_type_initializer(Type), !IO)
         ;
             ( OutputAux = oa_none
-            ; OutputAux = oa_cname(_)
+            ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_alloc_only
             )
         )
@@ -2152,10 +2153,10 @@ output_func_for_java(Info, Indent, FuncName, OutputAux, Context, Signature,
 output_func_decl_for_java(Info, Indent, FuncName, OutputAux, Signature, !IO) :-
     Signature = mlds_func_params(Parameters, RetTypes),
     ( if
-        OutputAux = oa_cname(ClassName),
+        OutputAux = oa_cname(ClassName, ClassArity),
         FuncName = mlds_function_export("<constructor>")
     then
-        output_type_name_for_java(ClassName, !IO)
+        output_class_name_arity_for_java(ClassName, ClassArity, !IO)
     else
         output_return_types_for_java(Info, RetTypes, !IO),
         io.write_char(' ', !IO),
@@ -2309,11 +2310,11 @@ qual_class_name_to_string_for_java(QualClassName, Arity, String) :-
         String = QualString ++ "." ++ UnqualString
     ).
 
-:- pred output_type_name_for_java(mlds_type_name::in, io::di, io::uo) is det.
+:- pred output_class_name_arity_for_java(mlds_class_name::in, arity::in,
+    io::di, io::uo) is det.
 
-output_type_name_for_java(TypeName, !IO) :-
-    TypeName = mlds_type_name(Name, Arity),
-    output_unqual_class_name_for_java(Name, Arity, !IO).
+output_class_name_arity_for_java(ClassName, ClassArity, !IO) :-
+    output_unqual_class_name_for_java(ClassName, ClassArity, !IO).
 
 :- pred output_function_name_for_java(mlds_function_name::in, io::di, io::uo)
     is det.
