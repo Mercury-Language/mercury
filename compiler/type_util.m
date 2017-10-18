@@ -142,8 +142,8 @@
     % A type is a dummy type in one of three cases:
     %
     % - its principal type constructor is a builtin dummy type constructor
-    %   such as io.state or store.store(S)
-    % - it has only a single function symbol with zero arguments,
+    %   such as io.state or store.store(S);
+    % - it has only a single function symbol with zero arguments;
     % - it has only a single function symbol with one argument, which is itself
     %   a dummy type.
     %
