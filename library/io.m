@@ -8389,7 +8389,8 @@ write_byte(binary_output_stream(Stream), Byte, !IO) :-
     throw_on_output_error(Error, !IO).
 
 write_binary_int8(binary_output_stream(Stream), Int8, !IO) :-
-    Int = int8.to_int(Int8),
+    UInt8 = uint8.cast_from_int8(Int8),
+    Int = uint8.to_int(UInt8),
     do_write_byte(Stream, Int, Error, !IO),
     throw_on_output_error(Error, !IO).
 

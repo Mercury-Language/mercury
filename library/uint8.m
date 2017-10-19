@@ -33,6 +33,8 @@
 
 :- func cast_from_int(int) = uint8.
 
+:- func cast_from_int8(int8) = uint8.
+
 :- func to_int(uint8) = int.
 
 %---------------------------------------------------------------------------%
@@ -236,6 +238,34 @@ det_from_int(I) = U8 :-
 :- pragma no_determinism_warning(cast_from_int/1).
 cast_from_int(_) = _ :-
     sorry($module, "uint8.cast_from_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_int8(I8::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U8 = (uint8_t) I8;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_int8(I8::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = (byte) I8;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_int8(I8::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = I8;
+").
+
+:- pragma no_determinism_warning(cast_from_int8/1).
+cast_from_int8(_) = _ :-
+    sorry($module, "uint8.cast_from_int8/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
