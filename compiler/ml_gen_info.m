@@ -793,31 +793,46 @@ init_ml_gen_tscc_info(ModuleInfo, InSccMap, TsccKind, TsccInfo) :-
     counter.init(0, ConvVarCounter),
 
     module_info_get_globals(ModuleInfo, Globals),
-    SupportsBreakContinue =
-        globals_target_supports_break_and_continue(Globals),
+    globals.get_target(Globals, Target),
+    % Can we implement tail calls by adding a label at the start of
+    % the function, translating tail calls into a goto to that label?
+    SupportsGoto = target_supports_goto(Target),
+    % Can we implement tail calls by wrapping the function body inside
+    % `while (true) { ... break; }', translating tail calls into `continue'?
+    % Yes: all the current MLDS target languages support break and continue.
+    % SupportsBreakContinue = target_supports_break_and_continue(Target),
+    SupportsBreakContinue = yes,
     (
-        TsccKind = tscc_self_rec_only,
-        PreferBreakContinueOption = prefer_while_loop_over_jump_self
-    ;
-        TsccKind = tscc_self_and_mutual_rec,
-        PreferBreakContinueOption = prefer_while_loop_over_jump_mutual
-    ),
-    globals.lookup_bool_option(Globals, PreferBreakContinueOption,
-        PreferBreakContinue),
-    ( if
+%       SupportsBreakContinue = no,
+%       SupportsGoto = no,
+%       unexpected($pred, "SupportsGoto = SupportsBreakContinue = no")
+%   ;
+%       SupportsBreakContinue = no,
+%       SupportsGoto = yes,
+%       LoopKind = tail_rec_loop_label_goto
+%   ;
         SupportsBreakContinue = yes,
-        PreferBreakContinue = yes
-    then
-        % If we find a tail call, we will wrap the function body inside
-        % `while (true) { ... break; }', and so the tail call can just
-        % do a `continue', which will continue the next iteration
-        % of the loop.
+        SupportsGoto = no,
         LoopKind = tail_rec_loop_while_continue
-    else
-        % If we find a tail call, we will insert a label at the start
-        % of the function, and so the tail call can just goto
-        % to that label.
-        LoopKind = tail_rec_loop_label_goto
+    ;
+        SupportsBreakContinue = yes,
+        SupportsGoto = yes,
+        (
+            TsccKind = tscc_self_rec_only,
+            PreferBreakContinueOption = prefer_while_loop_over_jump_self
+        ;
+            TsccKind = tscc_self_and_mutual_rec,
+            PreferBreakContinueOption = prefer_while_loop_over_jump_mutual
+        ),
+        globals.lookup_bool_option(Globals, PreferBreakContinueOption,
+            PreferBreakContinue),
+        (
+            PreferBreakContinue = no,
+            LoopKind = tail_rec_loop_label_goto
+        ;
+            PreferBreakContinue = yes,
+            LoopKind = tail_rec_loop_while_continue
+        )
     ),
     TailRecInfo = tail_rec_info(InSccMap, LoopKind, TsccKind),
     TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
