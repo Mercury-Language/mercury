@@ -84,7 +84,6 @@ target_supports_string_switch(target_erlang) =
 target_supports_computed_goto(target_c) = yes.
 target_supports_computed_goto(target_csharp) = yes.
 target_supports_computed_goto(target_java) = no.
-% target_supports_computed_goto(c_sharp) = no.
 target_supports_computed_goto(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
@@ -97,7 +96,6 @@ target_supports_goto(target_erlang) =
 target_supports_break_and_continue(target_c) = yes.
 target_supports_break_and_continue(target_csharp) = yes.
 target_supports_break_and_continue(target_java) = yes.
-% target_supports_break_and_continue(target_c_sharp) = yes.
 target_supports_break_and_continue(target_erlang) = _ :-
     unexpected($module, $pred, "target erlang").
 
