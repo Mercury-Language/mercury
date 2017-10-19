@@ -1195,7 +1195,7 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
         ;
             ( MLDS_Type = mlds_cont_type(_)
             ; MLDS_Type = mlds_commit_type
-            ; MLDS_Type = mlds_class_type(_, _, _)
+            ; MLDS_Type = mlds_class_type(_)
             ; MLDS_Type = mlds_array_type(_)
             ; MLDS_Type = mlds_mostly_generic_array_type(_)
             ; MLDS_Type = mlds_func_type(_)
@@ -1652,7 +1652,7 @@ mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
 
 mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, Kind,
-        _Imports, _BaseClasses, _Implements,
+        _Imports, _Inherits, _Implements,
         _TypeParams, _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
 
     % ANSI C does not permit forward declarations of enumeration types.
@@ -1977,14 +1977,16 @@ mlds_type_contains_type(mlds_func_type(Parameters), Type) :-
 mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
     ( if
         (
-            Type = mlds_class_type(_Name, _Arity, Kind),
+            Type = mlds_class_type(ClassId),
+            ClassId = mlds_class_id(_Name, _Arity, Kind),
             Kind \= mlds_enum,
             ClassType = Type
         ;
             Type = mercury_type(MercuryType, ctor_cat_user(_), _),
             type_to_ctor(MercuryType, TypeCtor),
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-            ClassType = mlds_class_type(ClassName, ClassArity, mlds_class)
+            ClassId = mlds_class_id(ClassName, ClassArity, mlds_class),
+            ClassType = mlds_class_type(ClassId)
         )
     then
         output_n_indents(Indent, !IO),
@@ -2100,7 +2102,7 @@ mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
 
 mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(_ClassName, _Arity, Context, Flags, _Kind,
-        _Imports, _BaseClasses, _Implements, _TypeParams,
+        _Imports, _Inherits, _Implements, _TypeParams,
         _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
     io.nl(!IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
@@ -2168,7 +2170,7 @@ mlds_output_class_decl(_Indent, ModuleName, ClassName, Arity, ClassDefn, !IO) :-
 
 mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, _Flags,
-        Kind, _Imports, BaseClasses, _Implements, _TypeParams,
+        Kind, _Imports, Inherits, _Implements, _TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     expect(unify(MemberMethods, []), $pred,
         "MemberMethods != []"),
@@ -2212,9 +2214,24 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     % XXX this should be conditional: only when compiling to C,
     % not when compiling to C++
 
-    list.map_foldl(mlds_make_base_class(Context),
-        BaseClasses, BaseFieldVarDefns,
-        1, _),
+    (
+        Inherits = inherits_nothing,
+        BaseFieldVarDefns = []
+    ;
+        Inherits = inherits_class(BaseClassId),
+        BaseVarName = fvn_base_class(1),
+        Type = mlds_class_type(BaseClassId),
+        % We only need GC tracing code for top-level variables,
+        % not for base classes.
+        GCStmt = gc_no_stmt,
+        BaseFieldVarDefns = [mlds_field_var_defn(BaseVarName, Context,
+            ml_gen_public_field_decl_flags, Type, no_initializer, GCStmt)]
+    ;
+        Inherits = inherits_generic_env_ptr_type,
+        % This should happen only if the target language requires
+        % put_nondet_env_on_heap to be "yes"; for C, it should be "no".
+        unexpected($pred, "inherits_generic_env_ptr_type")
+    ),
 
     % Output the class declaration and the class members.
     % We treat enumerations specially.
@@ -2273,22 +2290,6 @@ field_var_defn_is_static_member(FieldVarDefn) :-
 function_defn_is_static_member(FuncDefn) :-
     FuncDefn ^ mfd_decl_flags = mlds_function_decl_flags(_Access, PerInstance),
     PerInstance = one_copy.
-
-    % Convert a base class class_id into a member variable
-    % that holds the value of the base class.
-    %
-:- pred mlds_make_base_class(prog_context::in, mlds_class_id::in,
-    mlds_field_var_defn::out, int::in, int::out) is det.
-
-mlds_make_base_class(Context, ClassId, FieldVarDefn, BaseNum0, BaseNum) :-
-    BaseVarName = fvn_base_class(BaseNum0),
-    Type = ClassId,
-    % We only need GC tracing code for top-level variables,
-    % not for base classes.
-    GCStmt = gc_no_stmt,
-    FieldVarDefn = mlds_field_var_defn(BaseVarName, Context,
-        ml_gen_public_field_decl_flags, Type, no_initializer, GCStmt),
-    BaseNum = BaseNum0 + 1.
 
     % Output the definitions of the enumeration constants
     % for an enumeration type.
@@ -2984,7 +2985,8 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
         % XXX target asm no longer exists, so no longer need to do this.
         io.write_string("MR_Box", !IO)
     ;
-        MLDS_Type = mlds_class_type(QualClassName, Arity, ClassKind),
+        MLDS_Type = mlds_class_type(ClassId),
+        ClassId = mlds_class_id(QualClassName, Arity, ClassKind),
         QualClassName = qual_class_name(ModuleName, _QualKind, ClassName),
         (
             ClassKind = mlds_enum,
@@ -3152,7 +3154,8 @@ mlds_output_mercury_user_type_name(Opts, TypeCtor, CtorCat, !IO) :-
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
     (
         CtorCat = ctor_cat_enum(_),
-        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
+        ClassId = mlds_class_id(ClassName, ClassArity, mlds_enum),
+        MLDS_Type = mlds_class_type(ClassId)
     ;
         ( CtorCat = ctor_cat_builtin(_)
         ; CtorCat = ctor_cat_higher_order
@@ -3163,8 +3166,9 @@ mlds_output_mercury_user_type_name(Opts, TypeCtor, CtorCat, !IO) :-
         ; CtorCat = ctor_cat_system(_)
         ; CtorCat = ctor_cat_user(_)
         ),
-        ClassType = mlds_class_type(ClassName, ClassArity, mlds_class),
-        MLDS_Type = mlds_ptr_type(ClassType)
+        ClassId = mlds_class_id(ClassName, ClassArity, mlds_class),
+        Type = mlds_class_type(ClassId),
+        MLDS_Type = mlds_ptr_type(Type)
     ),
     mlds_output_type_prefix(Opts, MLDS_Type, !IO).
 
@@ -3229,7 +3233,7 @@ mlds_output_type_suffix(Opts, MLDS_Type, ArraySize, !IO) :-
         ; MLDS_Type = mlds_native_char_type
         % XXX Currently we can't output a type suffix.
         ; MLDS_Type = mlds_foreign_type(_)
-        ; MLDS_Type = mlds_class_type(_, _, _)
+        ; MLDS_Type = mlds_class_type(_)
         ; MLDS_Type = mlds_ptr_type(_)
         ; MLDS_Type = mlds_generic_type
         ; MLDS_Type = mlds_generic_env_ptr_type
@@ -4439,7 +4443,7 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
         ; Type = mlds_native_float_type
         ; Type = mlds_native_char_type
         ; Type = mlds_foreign_type(_)
-        ; Type = mlds_class_type(_, _, _)
+        ; Type = mlds_class_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)

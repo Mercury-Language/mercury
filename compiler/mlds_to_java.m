@@ -722,7 +722,8 @@ output_exported_enum_for_java(Info, Indent, ExportedEnum, !IO) :-
     (
         Lang = lang_java,
         ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum),
+        MLDS_Type =
+            mlds_class_type(mlds_class_id(ClassName, ClassArity, mlds_enum)),
         % We reverse the list so the constants are printed out in order.
         list.reverse(ExportedConstants0, ExportedConstants),
         list.foldl(
@@ -821,7 +822,8 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         % Create the constructor function.
         QualClassName =
             qual_class_name(MLDS_ModuleName, module_qual, ClassName),
-        ClassType = mlds_class_type(QualClassName, 0, mlds_class),
+        ClassType =
+            mlds_class_type(mlds_class_id(QualClassName, 0, mlds_class)),
 
         FieldName =
             qual_field_var_name(MLDS_ModuleName, type_qual, fvn_ptr_num),
@@ -861,16 +863,16 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
 
     % Create class components.
     ClassImports = [],
-    ClassExtends = [],
-    InterfaceDefn = mlds_class_type(Interface, 0, mlds_interface),
-    ClassImplements = [InterfaceDefn],
+    ClassInherits = inherits_nothing,
+    InterfaceId = mlds_interface_id(Interface, 0, mlds_interface),
+    ClassImplements = [InterfaceId],
     TypeParams = [],
 
     % Put it all together.
     ClassContext = term.context_init,
     ClassFlags = mlds_class_decl_flags(class_private, sealed, const),
     ClassDefn = mlds_class_defn(ClassName, 0, ClassContext, ClassFlags,
-        mlds_class, ClassImports, ClassExtends, ClassImplements,
+        mlds_class, ClassImports, ClassInherits, ClassImplements,
         TypeParams, FieldVarDefns, [], [MethodDefn], CtorDefns),
 
     add_to_address_map(ClassName, CodeAddrs, !AddrOfMap).
@@ -1412,7 +1414,7 @@ output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
 
 output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags, Kind,
-        _Imports, BaseClasses, Implements, TypeParams,
+        _Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     indent_line_after_context(!.Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
@@ -1438,7 +1440,7 @@ output_class_defn_for_java(!.Info, Indent, ClassDefn, !IO) :-
     ),
     io.nl(!IO),
 
-    output_extends_list(!.Info, Indent + 1, BaseClasses, !IO),
+    output_inherits_list(!.Info, Indent + 1, Inherits, !IO),
     output_implements_list(Indent + 1, Implements, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
@@ -1491,17 +1493,25 @@ output_class_kind_for_java(Kind, !IO) :-
     % Output superclass that this class extends. Java does not support
     % multiple inheritance, so more than one superclass is an error.
     %
-:- pred output_extends_list(java_out_info::in, indent::in,
-    list(mlds_class_id)::in, io::di, io::uo) is det.
+:- pred output_inherits_list(java_out_info::in, indent::in,
+    mlds_class_inherits::in, io::di, io::uo) is det.
 
-output_extends_list(_, _, [], !IO).
-output_extends_list(Info, Indent, [SuperClass], !IO) :-
-    output_n_indents(Indent, !IO),
-    io.write_string("extends ", !IO),
-    output_type_for_java(Info, SuperClass, !IO),
-    io.nl(!IO).
-output_extends_list(_, _, [_, _ | _], _, _) :-
-    unexpected($pred, "multiple inheritance not supported in Java").
+output_inherits_list(Info, Indent, Inherits, !IO) :-
+    (
+        Inherits = inherits_nothing
+    ;
+        (
+            Inherits = inherits_class(BaseClassId),
+            BaseType = mlds_class_type(BaseClassId)
+        ;
+            Inherits = inherits_generic_env_ptr_type,
+            BaseType = mlds_generic_env_ptr_type
+        ),
+        output_n_indents(Indent, !IO),
+        io.write_string("extends ", !IO),
+        output_type_for_java(Info, BaseType, !IO),
+        io.nl(!IO)
+    ).
 
     % Output list of interfaces that this class implements.
     %
@@ -1522,24 +1532,19 @@ output_implements_list(Indent, InterfaceList, !IO)  :-
 :- pred output_interface(mlds_interface_id::in, io::di, io::uo) is det.
 
 output_interface(Interface, !IO) :-
-    ( if
-        Interface = mlds_class_type(QualClassName, Arity, _)
-    then
-        QualClassName = qual_class_name(ModuleQualifier, QualKind, ClassName),
-        SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-        mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind),
-            ".", ModuleNameStr),
-        io.format("%s.%s", [s(ModuleNameStr), s(ClassName)], !IO),
+    Interface = mlds_interface_id(QualClassName, Arity, _),
+    QualClassName = qual_class_name(ModuleQualifier, QualKind, ClassName),
+    SymName = mlds_module_name_to_sym_name(ModuleQualifier),
+    mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind),
+        ".", ModuleNameStr),
+    io.format("%s.%s", [s(ModuleNameStr), s(ClassName)], !IO),
 
-        % Check if the interface is one of the ones in the runtime system.
-        % If it is, we don't need to output the arity.
-        ( if interface_is_special_for_java(ClassName) then
-            true
-        else
-            io.format("%d", [i(Arity)], !IO)
-        )
+    % Check if the interface is one of the ones in the runtime system.
+    % If it is, we don't need to output the arity.
+    ( if interface_is_special_for_java(ClassName) then
+        true
     else
-        unexpected($pred, "interface was not a class")
+        io.format("%d", [i(Arity)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1888,7 +1893,7 @@ get_java_type_initializer(Type) = Initializer :-
         ( Type = mlds_mercury_array_type(_)
         ; Type = mlds_cont_type(_)
         ; Type = mlds_commit_type
-        ; Type = mlds_class_type(_, _, _)
+        ; Type = mlds_class_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)
@@ -2545,7 +2550,7 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
             unexpected($pred, "erlang foreign_type")
         )
     ;
-        MLDS_Type = mlds_class_type(Name, Arity, _ClassKind),
+        MLDS_Type = mlds_class_type(mlds_class_id(Name, Arity, _ClassKind)),
         qual_class_name_to_string_for_java(Name, Arity, String),
         ArrayDims = []
     ;
@@ -2697,10 +2702,12 @@ mercury_user_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
     ( if CtorCat = ctor_cat_enum(_) then
-        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
+        ClassKind = mlds_enum
     else
-        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
+        ClassKind = mlds_class
     ),
+    MLDS_Type =
+        mlds_class_type(mlds_class_id(ClassName, ClassArity, ClassKind)),
     type_to_string_for_java(Info, MLDS_Type, TypeString, ArrayDims),
     OutputGenerics = Info ^ joi_output_generics,
     (
@@ -4177,7 +4184,7 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
         ( MLDS_Type = mlds_mercury_array_type(_)
         ; MLDS_Type = mlds_cont_type(_)
         ; MLDS_Type = mlds_commit_type
-        ; MLDS_Type = mlds_class_type(_, _, _)
+        ; MLDS_Type = mlds_class_type(_)
         ; MLDS_Type = mlds_array_type(_)
         ; MLDS_Type = mlds_mostly_generic_array_type(_)
         ; MLDS_Type = mlds_ptr_type(_)

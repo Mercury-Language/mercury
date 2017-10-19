@@ -420,7 +420,8 @@ output_exported_enum_for_csharp(Info, Indent, ExportedEnum, !IO) :-
     (
         Lang = lang_csharp,
         ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum),
+        ClassId = mlds_class_id(ClassName, ClassArity, mlds_enum),
+        MLDS_Type = mlds_class_type(ClassId),
         % We reverse the list so the constants are printed out in order.
         list.reverse(ExportedConstants0, ExportedConstants),
         list.foldl(
@@ -686,7 +687,7 @@ output_function_defn_for_csharp(Info, Indent, OutputAux, FunctionDefn, !IO) :-
 output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     output_n_indents(Indent, !IO),
     ClassDefn = mlds_class_defn(ClassName, ClassArity, _Context, Flags, Kind,
-        _Imports, BaseClasses, Implements, TypeParams,
+        _Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     expect(unify(MemberMethods, []), $pred,
         "MemberMethods != []"),
@@ -720,7 +721,7 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
     ),
     io.nl(!IO),
 
-    output_supers_list(!.Info, Indent + 1, BaseClasses, Implements, !IO),
+    output_supers_list(!.Info, Indent + 1, Inherits, Implements, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
     (
@@ -773,22 +774,25 @@ output_class_kind_for_csharp(Kind, !IO) :-
     % is an error.
     %
 :- pred output_supers_list(csharp_out_info::in, indent::in,
-    list(mlds_class_id)::in, list(mlds_interface_id)::in,
+    mlds_class_inherits::in, list(mlds_interface_id)::in,
     io::di, io::uo) is det.
 
-output_supers_list(Info, Indent, BaseClasses, Interfaces, !IO) :-
+output_supers_list(Info, Indent, Inherits, Interfaces, !IO) :-
     list.map(interface_to_string, Interfaces, Strings0),
     (
-        BaseClasses = [],
+        Inherits = inherits_nothing,
         Strings = Strings0
     ;
-        BaseClasses = [BaseClass],
-        type_to_string_for_csharp(Info, BaseClass, BaseClassString,
+        Inherits = inherits_class(BaseClassId),
+        BaseClassType = mlds_class_type(BaseClassId),
+        type_to_string_for_csharp(Info, BaseClassType, BaseClassString,
             _ArrayDims),
         Strings = [BaseClassString | Strings0]
     ;
-        BaseClasses = [_, _ | _],
-        unexpected($pred, "multiple inheritance not supported")
+        Inherits = inherits_generic_env_ptr_type,
+        type_to_string_for_csharp(Info, mlds_generic_env_ptr_type,
+            EnvPtrTypeString, _ArrayDims),
+        Strings = [EnvPtrTypeString | Strings0]
     ),
     (
         Strings = []
@@ -802,22 +806,19 @@ output_supers_list(Info, Indent, BaseClasses, Interfaces, !IO) :-
 
 :- pred interface_to_string(mlds_interface_id::in, string::out) is det.
 
-interface_to_string(Interface, String) :-
-    ( if Interface = mlds_class_type(QualClassName, Arity, _) then
-        QualClassName = qual_class_name(ModuleQualifier, _QualKind, ClassName),
-        SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-        mangle_sym_name_for_csharp(SymName, module_qual, ".", ModuleNameStr),
+interface_to_string(InterfaceId, String) :-
+    InterfaceId = mlds_interface_id(QualClassName, Arity, _),
+    QualClassName = qual_class_name(ModuleQualifier, _QualKind, ClassName),
+    SymName = mlds_module_name_to_sym_name(ModuleQualifier),
+    mangle_sym_name_for_csharp(SymName, module_qual, ".", ModuleNameStr),
 
-        % Check if the interface is one of the ones in the runtime system.
-        % If it is, we don't need to output the arity.
-        ( if interface_is_special_for_csharp(ClassName) then
-            String = string.format("%s.%s", [s(ModuleNameStr), s(ClassName)])
-        else
-            String = string.format("%s.%s%d",
-                [s(ModuleNameStr), s(ClassName), i(Arity)])
-        )
+    % Check if the interface is one of the ones in the runtime system.
+    % If it is, we don't need to output the arity.
+    ( if interface_is_special_for_csharp(ClassName) then
+        String = string.format("%s.%s", [s(ModuleNameStr), s(ClassName)])
     else
-        unexpected($pred, "interface was not a class")
+        String = string.format("%s.%s%d",
+            [s(ModuleNameStr), s(ClassName), i(Arity)])
     ).
 
     % Succeeds iff a given string matches the unqualified interface name
@@ -1128,7 +1129,7 @@ get_type_initializer(Info, Type) = Initializer :-
         ( Type = mlds_mercury_array_type(_)
         ; Type = mlds_cont_type(_)
         ; Type = mlds_commit_type
-        ; Type = mlds_class_type(_, _, _)
+        ; Type = mlds_class_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)
@@ -1855,7 +1856,8 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
             unexpected($pred, "erlang foreign_type")
         )
     ;
-        MLDS_Type = mlds_class_type(Name, Arity, _ClassKind),
+        MLDS_Type = mlds_class_type(ClassId),
+        ClassId = mlds_class_id(Name, Arity, _ClassKind),
         qual_class_name_to_string_for_csharp(Name, Arity, String),
         ArrayDims = []
     ;
@@ -1997,10 +1999,12 @@ mercury_user_type_to_string_csharp(Info, Type, CtorCat, String, ArrayDims) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
     ( if CtorCat = ctor_cat_enum(_) then
-        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
+        ClassKind = mlds_enum
     else
-        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
+        ClassKind = mlds_class
     ),
+    ClassId = mlds_class_id(ClassName, ClassArity, ClassKind),
+    MLDS_Type = mlds_class_type(ClassId),
     type_to_string_for_csharp(Info, MLDS_Type, TypeString, ArrayDims),
     OutputGenerics = Info ^ csoi_output_generics,
     (
@@ -3338,7 +3342,7 @@ csharp_builtin_type(Type, TargetType) :-
         ; Type = mlds_mercury_array_type(_)
         ; Type = mlds_cont_type(_)
         ; Type = mlds_commit_type
-        ; Type = mlds_class_type(_, _, _)
+        ; Type = mlds_class_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)

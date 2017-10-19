@@ -951,7 +951,8 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             MaybeConsId = yes(ConsId),
             ConsId = cons(CtorSymName, CtorArity, _TypeCtor),
             (
-                MLDS_Type = mlds_class_type(QualTypeName, TypeArity, _)
+                MLDS_Type =
+                    mlds_class_type(mlds_class_id(QualTypeName, TypeArity, _))
             ;
                 MLDS_Type = mercury_type(MercuryType, ctor_cat_user(_), _),
                 type_to_ctor(MercuryType, TypeCtor),
@@ -967,9 +968,10 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             QualTypeName = qual_class_name(MLDS_Module, _QualKind, TypeName),
             ClassQualifier = mlds_append_class_qualifier_module_qual(
                 MLDS_Module, TypeName, TypeArity),
-            ConstType = mlds_class_type(
+            QualClassName =
                 qual_class_name(ClassQualifier, type_qual, CtorName),
-                CtorArity, mlds_class)
+            ClassId = mlds_class_id(QualClassName, CtorArity, mlds_class),
+            ConstType = mlds_class_type(ClassId)
         else if
             % Convert mercury_types for user-defined types to the corresponding
             % `mlds_class_type'. This is needed because these types get
@@ -980,7 +982,8 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             type_to_ctor(MercuryType, TypeCtor)
         then
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-            ConstType = mlds_class_type(ClassName, ClassArity, mlds_class)
+            ClassId = mlds_class_id(ClassName, ClassArity, mlds_class),
+            ConstType = mlds_class_type(ClassId)
         else if
             % For tuples, a similar issue arises; we want tuple constants
             % to have array type, not the pointer type MR_Tuple.
@@ -2337,8 +2340,8 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
 
     % Put it all together.
     QualClassName = qual_class_name(ClassQualifier, ClassQualKind, ClassName),
-    ClassPtrType = mlds_ptr_type(mlds_class_type(QualClassName, ClassArity,
-        mlds_class)),
+    ClassId = mlds_class_id(QualClassName, ClassArity, mlds_class),
+    ClassPtrType = mlds_ptr_type(mlds_class_type(ClassId)),
     FieldQualifier = mlds_append_class_qualifier(Target, ClassQualifier,
         ClassQualKind, ClassName, ClassArity),
     QualifiedFieldName =
@@ -2361,16 +2364,16 @@ ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
         % In this case, there is only one functor for the type (other than
         % reserved_address constants), and so the class name is determined
         % by the type name.
-        ClassPtrType = mlds_ptr_type(mlds_class_type(QualTypeName,
-            TypeArity, mlds_class)),
+        ClassId = mlds_class_id(QualTypeName, TypeArity, mlds_class),
+        ClassPtrType = mlds_ptr_type(mlds_class_type(ClassId)),
         QualifiedFieldName =
             qual_field_var_name(TypeQualifier, type_qual, FieldName)
     ;
         UsesBaseClass = tag_does_not_use_base_class,
         % In this case, the class name is determined by the constructor.
         QualConsName = qual_class_name(TypeQualifier, type_qual, ConsName),
-        ClassPtrType = mlds_ptr_type(mlds_class_type(QualConsName,
-            ConsArity, mlds_class)),
+        ClassId = mlds_class_id(QualConsName, ConsArity, mlds_class),
+        ClassPtrType = mlds_ptr_type(mlds_class_type(ClassId)),
         FieldQualifier = mlds_append_class_qualifier(Target, TypeQualifier,
             type_qual, ConsName, ConsArity),
         QualifiedFieldName =

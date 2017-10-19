@@ -615,7 +615,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         StructClassName = "vector_common_type_" ++ TypeRawNumStr,
         QualStructClassName =
             qual_class_name(MLDS_ModuleName, module_qual, StructClassName),
-        StructType = mlds_class_type(QualStructClassName, 0, mlds_struct),
+        StructClassId = mlds_class_id(QualStructClassName, 0, mlds_struct),
         % The "modifiable" is only to shut up a gcc warning about constant
         % fields.
         StructClassFlags =
@@ -632,19 +632,20 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
                 Target = ml_target_csharp,
                 ClassKind = mlds_struct
             ),
-            CtorDefn = ml_gen_constructor_function(Target, StructType,
-                StructType, MLDS_ModuleName, StructType, no, FieldInfos,
+            CtorDefn = ml_gen_constructor_function(Target, StructClassId,
+                StructClassId, MLDS_ModuleName, StructClassId, no, FieldInfos,
                 Context),
             CtorDefns = [CtorDefn]
         ),
         StructClassDefn = mlds_class_defn(StructClassName, 0, Context,
-            StructClassFlags, ClassKind, [], [], [], [],
+            StructClassFlags, ClassKind, [], inherits_nothing, [], [],
             FieldDefns, [], [], CtorDefns),
 
         MLDS_ClassModuleName = mlds_append_class_qualifier_module_qual(
             MLDS_ModuleName, StructClassName, 0),
+        StructType = mlds_class_type(StructClassId),
         make_named_fields(MLDS_ClassModuleName, StructType, FieldNames,
-            FieldIds),
+           FieldIds),
 
         CellGroup = ml_vector_cell_group(StructType, StructClassDefn,
             FieldIds, 0, cord.empty),

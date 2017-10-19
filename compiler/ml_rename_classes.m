@@ -113,14 +113,16 @@ rename_class_names_in_type(Renaming, !Type) :-
         list.map(rename_class_names_in_type(Renaming), RetTypes0, RetTypes),
         !:Type = mlds_cont_type(RetTypes)
     ;
-        !.Type = mlds_class_type(QualClassName0, Arity, ClassKind),
+        !.Type = mlds_class_type(ClassId0),
+        ClassId0 = mlds_class_id(QualClassName0, Arity, ClassKind),
         QualClassName0 = qual_class_name(ModuleName, QualKind, ClassName0),
         ( if
             Renaming = class_name_renaming(ModuleName, RenamingMap),
             map.search(RenamingMap, ClassName0, ClassName)
         then
             QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
-            !:Type = mlds_class_type(QualClassName, Arity, ClassKind)
+            ClassId = mlds_class_id(QualClassName, Arity, ClassKind),
+            !:Type = mlds_class_type(ClassId)
         else
             true
         )

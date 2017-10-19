@@ -203,8 +203,8 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
         MightContainPointers =
             ml_type_category_might_contain_pointers(TypeCategory)
     ;
-        Type = mlds_class_type(_, _, Category),
-        ( if Category = mlds_enum then
+        Type = mlds_class_type(mlds_class_id(_, _, ClassKind)),
+        ( if ClassKind = mlds_enum then
             MightContainPointers = no
         else
             MightContainPointers = yes

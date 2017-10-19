@@ -595,8 +595,8 @@
                 % Imports these classes (or modules, packages, ...).
                 mcd_imports         :: list(mlds_import),
 
-                % Inherits these base classes.
-                mcd_inherits        :: list(mlds_class_id),
+                % Inherits these base classes (unless it is an env class).
+                mcd_inherits        :: mlds_class_inherits,
 
                 % Implements these interfaces.
                 mcd_implements      :: list(mlds_interface_id),
@@ -622,26 +622,34 @@
                 mcdf_constness      :: constness
             ).
 
+:- type mlds_class_inherits
+    --->    inherits_nothing
+            % There is no base class.
+
+    ;       inherits_class(mlds_class_id)
+            % There is one base class. (We don't have a case for more than one
+            % base class, because (a) none of the (current) MLDS target
+            % languages support multiple inheritance; (b) even if some did,
+            % we may not want to use that capability.
+
+    ;       inherits_generic_env_ptr_type.
+            % There is no base class, but there is a base *type*, and it is
+            % mlds_generic_env_ptr_type. Used only to implement environment
+            % structures, and only when put_nondet_env_on_heap is set,
+            % which means only when targeting C# or Java.
+
 :- type qual_class_name
     --->    qual_class_name(mlds_module_name, mlds_qual_kind, mlds_class_name).
 :- type mlds_class_name == string.
 
-    % Hmm... this is tentative.
-    % XXX
-:- type mlds_class_id == mlds_type.
-:- type mlds_interface_id == mlds_type.
+:- type mlds_class_id
+    --->    mlds_class_id(qual_class_name, arity, mlds_class_kind).
+:- type mlds_interface_id
+    --->    mlds_interface_id(qual_class_name, arity, mlds_class_kind).
 
 :- type mlds_class_kind
-    --->    mlds_class     % A generic class: can inherit other classes and
-                           % interfaces (but most targets will only support
-                           % single inheritance, so usually there will be
-                           % at most one class).
-
-%   ;       mlds_package   % A class with only static members (can only
-                           % inherit other packages). Unlike other kinds
-                           % of classes, packages should not be used as types.
-                           % XXX We don't actually generate any classes
-                           % whose mlds_class_kind is mlds_package.
+    --->    mlds_class     % A generic class: can inherit a class and
+                           % interfaces.
 
     ;       mlds_interface % A class with no variable data members (can only
                            % inherit other interfaces).
@@ -990,9 +998,7 @@
     ;       mlds_class_type(
                 % MLDS types defined using mlds_class_defn.
 
-                qual_class_name,
-                arity,
-                mlds_class_kind
+                mlds_class_id
             )
 
     ;       mlds_array_type(mlds_type)
@@ -1611,9 +1617,6 @@
 
     % Constructor id.
     %
-    % XXX An mlds_ctor_id is structurally identical to an mlds_type_name,
-    % and a qual_ctor_id is structurally identical to a qual_type_name.
-    % Why the duplication?
 :- type mlds_ctor_id
     --->    ctor_id(mlds_class_name, arity).
 :- type qual_ctor_id

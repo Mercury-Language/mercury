@@ -144,15 +144,15 @@
 :- func ml_make_boxed_type = mer_type.
 :- func ml_make_boxed_types(arity) = list(mer_type).
 
-    % Return the MLDS type corresponding to the `jmercury.runtime.MercuryType'
-    % interface.
+    % Return the interface id corresponding to the
+    % `jmercury.runtime.MercuryType' interface.
     %
-:- func ml_java_mercury_type_interface = mlds_type.
+:- func ml_java_mercury_type_interface = mlds_interface_id.
 
-    % Return the MLDS type corresponding to the `jmercury.runtime.MercuryEnum'
-    % class.
+    % Return the class id corresponding to the
+    % `jmercury.runtime.MercuryEnum' class.
     %
-:- func ml_java_mercury_enum_class = mlds_type.
+:- func ml_java_mercury_enum_class = mlds_class_id.
 
 %---------------------------------------------------------------------------%
 %
@@ -760,14 +760,14 @@ ml_java_mercury_type_interface = TypeInterfaceDefn :-
         mercury_module_name_to_mlds(java_mercury_runtime_package_name),
     TypeInterface =
         qual_class_name(InterfaceModuleName, module_qual, "MercuryType"),
-    TypeInterfaceDefn = mlds_class_type(TypeInterface, 0, mlds_interface).
+    TypeInterfaceDefn = mlds_interface_id(TypeInterface, 0, mlds_interface).
 
-ml_java_mercury_enum_class = EnumClassDefn :-
+ml_java_mercury_enum_class = EnumClassId :-
     InterfaceModuleName =
         mercury_module_name_to_mlds(java_mercury_runtime_package_name),
     EnumClass =
         qual_class_name(InterfaceModuleName, module_qual, "MercuryEnum"),
-    EnumClassDefn = mlds_class_type(EnumClass, 0, mlds_class).
+    EnumClassId = mlds_class_id(EnumClass, 0, mlds_class).
 
 %---------------------------------------------------------------------------%
 %
