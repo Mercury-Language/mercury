@@ -1140,6 +1140,30 @@ then
         cd $root
     fi
 
+    # In the java grade replace the generated mercury_compile wrapper script
+    # will not set the CLASSPATH correctly when building stage 3.  Replace it
+    # with one that will.
+    #
+    if test "$grade" = "java"
+    then
+cat > $root/$stage2dir/compiler/mercury_compile << EOF
+#!/bin/sh
+case \$WINDIR in
+   '') SEP=':' ;;
+   *)  SEP=';' ;;
+esac
+CLASSPATH=$root/$stage2dir/compiler/mercury_compile.jar\${SEP}$root/$stage2dir/library/mer_rt.jar\${SEP}$root/$stage2dir/library/mer_std.jar\${SEP}$root/$stage2dir/mdbcomp/mer_mdbcomp.jar
+export CLASSPATH
+JAVA=\${JAVA:-/usr/bin/java}
+exec "\$JAVA" jmercury.mercury_compile "\$@"
+EOF
+
+       # The Java version of the Mercury runtime does not currently support
+       # most of the runtime options and will abort if they are passed to it.
+       MERCURY_OPTIONS=
+       export MERCURY_OPTIONS
+    fi
+
     MERCURY_COMPILER=$root/$stage2dir/compiler/mercury_compile
     export MERCURY_COMPILER
 
