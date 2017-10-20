@@ -1155,7 +1155,7 @@ esac
 CLASSPATH=$root/$stage2dir/compiler/mercury_compile.jar\${SEP}$root/$stage2dir/library/mer_rt.jar\${SEP}$root/$stage2dir/library/mer_std.jar\${SEP}$root/$stage2dir/mdbcomp/mer_mdbcomp.jar
 export CLASSPATH
 JAVA=\${JAVA:-/usr/bin/java}
-exec "\$JAVA" jmercury.mercury_compile "\$@"
+exec "\$JAVA" -Xss32m jmercury.mercury_compile "\$@"
 EOF
 
        # The Java version of the Mercury runtime does not currently support
