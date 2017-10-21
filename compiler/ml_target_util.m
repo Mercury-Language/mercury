@@ -82,13 +82,15 @@ target_supports_string_switch(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
 target_supports_computed_goto(target_c) = yes.
-target_supports_computed_goto(target_csharp) = yes.
+target_supports_computed_goto(target_csharp) = no.
 target_supports_computed_goto(target_java) = no.
 target_supports_computed_goto(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
 target_supports_goto(target_c) = yes.
-target_supports_goto(target_csharp) = yes.
+% XXX C# *does* support gotos but mlds_to_cs.m currently aborts if it
+% encounters them.
+target_supports_goto(target_csharp) = no.
 target_supports_goto(target_java) = no.
 target_supports_goto(target_erlang) =
     unexpected($module, $pred, "target erlang").
