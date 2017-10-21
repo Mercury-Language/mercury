@@ -741,7 +741,7 @@ X >> Y = Z :-
     ( if Y `unsigned_lt` bits_per_int then
         Z = unchecked_right_shift(X, Y)
     else
-        Msg = "int.(<<): second operand is out of range",
+        Msg = "int.(>>): second operand is out of range",
         throw(math.domain_error(Msg))
     ).
 
