@@ -125,3 +125,7 @@ MCFLAGS-mode_robdd.implications = -O0
 MCFLAGS-libs.options += --erlang-switch-on-strings-as-atoms
 
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses
+
+# Both of these modules make use of the legacy version of right shift.
+MCFLAGS-ml_backend.mlds_to_java += --no-warn-obsolete
+MCFLAGS-ml_backend.mlds_to_cs += --no-warn-obsolete

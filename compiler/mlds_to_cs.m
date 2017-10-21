@@ -3804,7 +3804,7 @@ output_int_const_for_csharp(N, !IO) :-
     then
         io.write_int(N, !IO)
     else if
-        N >> 32 = 0,
+        N `legacy_right_shift` 32 = 0,
         N /\ 0x80000000 = 0x80000000
     then
         % The bit pattern fits in 32 bits, but is too big for a positive
