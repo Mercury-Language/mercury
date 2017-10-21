@@ -302,7 +302,7 @@ while test $# -gt 0; do
 
     --target)
         case "$2" in
-        c|java)  target="$2"; shift ;;
+        c|java|csharp)  target="$2"; shift ;;
         *)  echo "unknown target \`$2'" 1>&2; exit 1 ;;
         esac
         ;;
@@ -431,24 +431,32 @@ then
     test_grade="$grade"
 fi
 
-# For the Java grade we must use mmc --make and should disable the namespace
-# cleanliness check.
+# For the C# and Java grades we must use mmc --make and should disable the
+# namespace cleanliness check.
 #
-if test "$grade" = "java"
-then
-    target=java
-    use_mmc_make=yes
-    use_subdirs=yes
-    check_namespace=false
-fi
-
+case "$grade" in
+    java)
+        target=java
+        use_mmc_make=yes
+        use_subdirs=yes
+        check_namespace=false
+        ;;
+    csharp)
+        target=csharp
+        use_mmc_make=yes
+        use_subdirs=yes
+        check_namespace=false
+        ;;
+esac
 case $use_subdirs in
    yes)
         cs_subdir=Mercury/cs/
+        css_subdir=Mercury/css/
         javas_subdir=Mercury/javas/
         ;;
     no)
         cs_subdir=
+        css_subdir=
         javas_subdir=
         ;;
 esac
@@ -457,6 +465,12 @@ case $target in
     c)
         target_ext=c
         target_subdir=$cs_subdir
+        target_opt=
+        ;;
+
+    csharp)
+        target_ext=cs
+        target_subdir=$css_subdir
         target_opt=
         ;;
 
