@@ -960,8 +960,20 @@ then
             exit 1
         fi
 
+        # For the csharp grade Mmake.workspace needs to see the grade setting
+        # when it defines MLLIBS, otherwise we will try to reference a separate
+        # Mercury runtime assembly, which we do not have for the csharp grade.
+        # As per README.Csharp, we need to set GRADE as part of the command
+        # line that invokes mmake.
+        if test "$grade" = "csharp"
+        then
+            ENVGRADE="GRADE=$grade"
+        else
+            ENVGRADE=
+        fi
+
         if (cd $stage2dir/library && \
-            $MMAKE $mmake_opts $jfactor all-ints mercury)
+            $MMAKE $mmake_opts $jfactor all-ints mercury $ENVGRADE)
         then
             echo "building of stage 2 library successful"
         else
@@ -970,7 +982,7 @@ then
         fi
 
         if (cd $stage2dir/mdbcomp && \
-            $MMAKE $mmake_opts $jfactor library)
+            $MMAKE $mmake_opts $jfactor library $ENVGRADE)
         then
             echo "building of stage 2 mdbcomp successful"
         else
@@ -979,7 +991,7 @@ then
         fi
 
         if (cd $stage2dir/browser && \
-            $MMAKE $mmake_opts $jfactor library)
+            $MMAKE $mmake_opts $jfactor library $ENVGRADE)
         then
             echo "building of stage 2 browser successful"
         else
@@ -988,7 +1000,7 @@ then
         fi
 
         if (cd $stage2dir/ssdb && \
-            $MMAKE $mmake_opts $jfactor library)
+            $MMAKE $mmake_opts $jfactor library $ENVGRADE)
         then
             echo "building of stage 2 ssdb successful"
         else
@@ -997,7 +1009,7 @@ then
         fi
 
         if (cd $stage2dir/trace && \
-            $MMAKE $mmake_opts $jfactor trace)
+            $MMAKE $mmake_opts $jfactor trace $ENVGRADE)
         then
             echo "building of stage 2 trace successful"
         else
@@ -1016,7 +1028,7 @@ then
         fi
 
         if (cd $stage2dir/compiler && \
-            $MMAKE $mmake_opts $jfactor mercury_compile)
+            $MMAKE $mmake_opts $jfactor mercury_compile $ENVGRADE)
         then
             echo "building of stage 2 compiler successful"
         else
@@ -1035,7 +1047,7 @@ then
             unset MERCURY_CONFIG_DIR && \
             unset MERCURY_STDLIB_DIR && \
             mmake $mmake_opts depend && \
-            mmake $mmake_opts $jfactor all)
+            mmake $mmake_opts $jfactor all $ENVGRADE)
         then
             echo "building of stage 2 slice successful"
         else
@@ -1044,7 +1056,7 @@ then
         fi
 
         if (cd $stage2dir && \
-            $MMAKE $mmake_opts MMAKEFLAGS=$jfactor all)
+            $MMAKE $mmake_opts MMAKEFLAGS=$jfactor all $ENVGRADE)
         then
             echo "building of stage 2 successful"
         else
