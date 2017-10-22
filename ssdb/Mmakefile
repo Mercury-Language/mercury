@@ -220,14 +220,16 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs javas
+.PHONY: os cs css javas
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(SSDB_LIB_NAME).os)
 cs: $($(SSDB_LIB_NAME).cs)
+css: $($(SSDB_LIB_NAME).css)
 javas: $($(SSDB_LIB_NAME).javas)
 else
 os: $(SSDB_LIB_NAME).os
 cs: $(SSDB_LIB_NAME).cs
+css: $(SSDB_LIB_NAME).css
 javas: $(SSDB_LIB_NAME).javas
 endif
 

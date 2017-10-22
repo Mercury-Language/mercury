@@ -229,7 +229,7 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs javas
+.PHONY: os cs css javas
 os: $(mdprof_cgi.os) $(os_subdir)mdprof_cgi_init.o
 os: $(mdprof_test.os) $(os_subdir)mdprof_test_init.o
 os: $(mdprof_dump.os) $(os_subdir)mdprof_dump_init.o
@@ -242,6 +242,12 @@ cs: $(mdprof_dump.cs) $(cs_subdir)mdprof_dump_init.c
 cs: $(mdprof_create_feedback.cs) $(cs_subdir)mdprof_create_feedback_init.c
 cs: $(mdprof_report_feedback.cs) $(cs_subdir)mdprof_report_feedback_init.c
 cs: $(mdprof_procrep.cs) $(cs_subdir)mdprof_procrep_init.c
+css: $(mdprof_cgi.css)
+css: $(mdprof_test.css)
+css: $(mdprof_dump.css)
+css: $(mdprof_create_feedback.css)
+css: $(mdprof_report_feedback.css)
+css: $(mdprof_procrep.css)
 javas: $(mdprof_cgi.javas)
 javas: $(mdprof_test.javas)
 javas: $(mdprof_dump.javas)

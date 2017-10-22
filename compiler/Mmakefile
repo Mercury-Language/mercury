@@ -191,15 +191,17 @@ dates:
 #-----------------------------------------------------------------------------#
 
 # Note that the cs and os targets don't build mercury_compile_init.{c,o}
-.PHONY: os cs opts
+.PHONY: os cs css javas opts
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MC_PROG).os)
 cs: $($(MC_PROG).cs)
+css: $($(MC_PROG).css)
 javas: $($(MC_PROG).javas)
 opts: $($(MC_PROG).opts)
 else
 os: $(MC_PROG).os
 cs: $(MC_PROG).cs
+css: $(MC_PROG).css
 javas: $(MC_PROG).javas
 opts: $(MC_PROG).opts
 endif

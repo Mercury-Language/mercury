@@ -259,10 +259,12 @@ dates:
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(STD_LIB_NAME).os)
 cs: $($(STD_LIB_NAME).cs)
+css: $($(STD_LIB_NAME).css)
 javas: $($(STD_LIB_NAME).javas)
 else
 os: $(STD_LIB_NAME).os
 cs: $(STD_LIB_NAME).cs
+css: $(STD_LIB_NAME).css
 javas: $(STD_LIB_NAME).javas
 endif
 

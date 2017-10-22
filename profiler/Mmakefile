@@ -93,9 +93,10 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs javas
+.PHONY: os cs css javas
 os: $(mercury_profile.os) $(os_subdir)mercury_profile_init.o
 cs: $(mercury_profile.cs) $(cs_subdir)mercury_profile_init.c
+css: $(mercury_profile.css)
 javas: $(mercury_profile.javas)
 
 #-----------------------------------------------------------------------------#

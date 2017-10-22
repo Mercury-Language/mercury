@@ -190,14 +190,16 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs javas
+.PHONY: os cs css javas
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MDBCOMP_LIB_NAME).os)
 cs: $($(MDBCOMP_LIB_NAME).cs)
+css: $($(MDBCOMP_LIB_NAME).css)
 javas: $($(MDBCOMP_LIB_NAME).javas)
 else
 os: $(MDBCOMP_LIB_NAME).os
 cs: $(MDBCOMP_LIB_NAME).cs
+css: $(MDBCOMP_LIB_NAME).css
 javas: $(MDBCOMP_LIB_NAME).javas
 endif
 
