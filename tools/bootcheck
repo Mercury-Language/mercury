@@ -1190,6 +1190,20 @@ EOF
        export MERCURY_OPTIONS
     fi
 
+    # In the csharp grade we also need to replace generated mercury_compile
+    # wrapper script.
+    # XXX the following only works with Mono.
+    if test "$grade" = "csharp"
+    then
+cat > $root/$stage2dir/compiler/mercury_compile << EOF
+#!/bin/sh
+MONO_PATH=\$MONO_PATH:$root/$stage2dir/library:$root/$stage2dir/mdbcomp
+export MONO_PATH
+CLI_INTERPRETER=\${CLI_INTERPRETER:-/usr/bin/mono}
+exec "\$CLI_INTERPRETER" "$root/$stage2dir/compiler/mercury_compile.exe" "\$@"
+EOF
+    fi
+
     MERCURY_COMPILER=$root/$stage2dir/compiler/mercury_compile
     export MERCURY_COMPILER
 
