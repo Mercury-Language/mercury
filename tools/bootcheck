@@ -452,7 +452,7 @@ case $use_subdirs in
    yes)
         cs_subdir=Mercury/cs/
         css_subdir=Mercury/css/
-        javas_subdir=Mercury/javas/
+        javas_subdir=Mercury/javas/jmercury/
         ;;
     no)
         cs_subdir=
@@ -1442,7 +1442,7 @@ EOF
         # `mercury_compile_init.c', so we only compare the `.c'
         # files present in the stage 3 directory.
         for file in $stage3dir/$dir/${target_subdir}*.${target_ext}; do
-            diff -u $stage2dir/$dir/${cs_subdir}`basename $file` $file \
+            diff -u $stage2dir/$dir/${target_subdir}`basename $file` $file \
             || diff_status=1
         done
     done
