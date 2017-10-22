@@ -70,7 +70,7 @@ MCFLAGS += --flags SLICE_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
-ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
 MLOBJS =
 endif
 
@@ -192,7 +192,7 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ls
+.PHONY: os cs javas
 os:	$(mslice.os) $(mdice.os) $(mtc_union.os) \
 	$(os_subdir)mslice_init.o $(os_subdir)mdice_init.o \
 	$(os_subdir)mtc_union.o $(os_subdir)mcov.o \
@@ -201,6 +201,7 @@ cs:	$(mslice.cs) $(mdice.cs) $(mtc_union.cs) \
 	$(cs_subdir)mslice_init.c $(cs_subdir)mdice_init.c \
 	$(cs_subdir)mtc_union.c $(cs_subdir)mcov.c \
 	$(cs_subdir)mtc_diff.c
+javas:	$(mslice.javas) $(mdice.javas) $(mtc_union.javas)
 
 #-----------------------------------------------------------------------------#
 

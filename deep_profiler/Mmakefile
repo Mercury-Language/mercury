@@ -100,7 +100,7 @@ endif
 # currently not C#, Java or Erlang implementations. We need to pass
 # `--allow-stubs' in order to compile it.
 #
-ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -152,7 +152,7 @@ $(MDBCOMP_MODULES): %: $(MDBCOMP_DIR)/%
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
-ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
 mdprof_cgi:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mdprof_cgi:		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 mdprof_test:		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
@@ -229,7 +229,7 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs
+.PHONY: os cs javas
 os: $(mdprof_cgi.os) $(os_subdir)mdprof_cgi_init.o
 os: $(mdprof_test.os) $(os_subdir)mdprof_test_init.o
 os: $(mdprof_dump.os) $(os_subdir)mdprof_dump_init.o
@@ -242,6 +242,12 @@ cs: $(mdprof_dump.cs) $(cs_subdir)mdprof_dump_init.c
 cs: $(mdprof_create_feedback.cs) $(cs_subdir)mdprof_create_feedback_init.c
 cs: $(mdprof_report_feedback.cs) $(cs_subdir)mdprof_report_feedback_init.c
 cs: $(mdprof_procrep.cs) $(cs_subdir)mdprof_procrep_init.c
+javas: $(mdprof_cgi.javas)
+javas: $(mdprof_test.javas)
+javas: $(mdprof_dump.javas)
+javas: $(mdprof_create_feedback.javas)
+javas: $(mdprof_report_feedback.javas)
+javas: $(mdprof_procrep.javas)
 
 #-----------------------------------------------------------------------------#
 

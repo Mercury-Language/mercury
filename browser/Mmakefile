@@ -222,13 +222,15 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs
+.PHONY: os cs javas
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(BROWSER_LIB_NAME).os)
 cs: $($(BROWSER_LIB_NAME).cs)
+javas: $($(BROWSER_LIB_NAME).javas)
 else
 os: $(BROWSER_LIB_NAME).os
 cs: $(BROWSER_LIB_NAME).cs
+javas: $(BROWSER_LIB_NAME).javas
 endif
 
 #-----------------------------------------------------------------------------#

@@ -195,10 +195,12 @@ dates:
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MC_PROG).os)
 cs: $($(MC_PROG).cs)
+javas: $($(MC_PROG).javas)
 opts: $($(MC_PROG).opts)
 else
 os: $(MC_PROG).os
 cs: $(MC_PROG).cs
+javas: $(MC_PROG).javas
 opts: $(MC_PROG).opts
 endif
 
