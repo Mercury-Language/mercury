@@ -20,6 +20,7 @@ ORDINARY_PROGS =	\
 	array_test2 \
 	bag_various \
 	bidirectional \
+	bigtest \
 	binary_stdin \
 	binary_stdout \
 	boyer \
@@ -280,6 +281,7 @@ ORDINARY_PROGS =	\
 	require_scopes \
 	rev_arith \
 	reverse_arith \
+	rnd \
 	rtree_test \
 	rtti_strings \
 	seek_test \
@@ -568,15 +570,6 @@ else
   endif
 endif
 
-# These tests trigger a bug in lcc
-ifeq "$(findstring lcc,$(shell $(MGNUC) -v 2>&1))" "lcc"
-	BROKEN_FOR_LCC_PROGS =
-else
-	BROKEN_FOR_LCC_PROGS = \
-		bigtest \
-		rnd
-endif
-
 # These tests require the implementation to support closure layouts
 CLOSURE_LAYOUT_PROGS = \
 	copy_pred \
@@ -775,7 +768,6 @@ endif
 PROGS = \
 	$(ORDINARY_PROGS) \
 	$(PROF_PROGS) \
-	$(BROKEN_FOR_LCC_PROGS) \
 	$(CLOSURE_LAYOUT_PROGS) \
 	$(NON_PROFDEEP_PROGS) \
 	$(BACKEND_PROGS) \
