@@ -76,8 +76,8 @@ target_supports_int_switch(target_erlang) =
 
 target_supports_string_switch(target_c) = no.
 target_supports_string_switch(target_csharp) = yes.
-target_supports_string_switch(target_java) = no.
-    % String switches were added in Java 7.
+target_supports_string_switch(target_java) = yes.
+    % String switches were added in Java 7, and we now require 8.
 target_supports_string_switch(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
