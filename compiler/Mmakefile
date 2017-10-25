@@ -57,21 +57,6 @@ ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS)
 MLFLAGS      += --shared
 C2INITARGS   += $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
 
-
-# Work-around for a fixed limit: on alpha-dec-osf3.2, if we compile with
-# `-O5', then when linking mercury_compile we get an error message of the form
-#
-#   /usr/bin/ld:
-#	Too many GOT entries in object file '/usr/lib/cmplrs/cc/libexc_init.a';
-#	Found 8190 (6660 locals + 1530 globals) but max is 8189
-#
-# unless we link it statically.
-#
-ifeq ($(FULLARCH),alpha-dec-osf3.2)
-MLFLAGS += --static
-MCFLAGS += --linkage static
-endif
-
 # -Xmx256m doesn't always seem to be enough memory to build the compiler.
 # This bumps up the memory when building the compiler if the javac executable
 # accepts the -J-Xmx flag, without bumping up the memory requirements in
