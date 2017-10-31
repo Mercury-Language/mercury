@@ -526,12 +526,14 @@ cs_subdir=$(SUBDIR)cs/
 dlls_subdir=$(SUBDIR)dlls/
 os_subdir=$(SUBDIR)os/
 javas_subdir=$(SUBDIR)javas/
+css_subdir=$(SUBDIR)css/
 dirs_subdir=$(SUBDIR)dirs/
 c_dates_subdir=$(SUBDIR)c_dates/
 s_dates_subdir=$(SUBDIR)s_dates/
 pic_s_dates_subdir=$(SUBDIR)pic_s_dates/
 java_dates_subdir=$(SUBDIR)java_dates/
 classes_subdir=$(SUBDIR)classs/
+cs_dates_subdir=$(SUBDIR)cs_dates/
 err_dates_subdir=$(SUBDIR)err_dates/
 
 else
@@ -560,12 +562,14 @@ cs_subdir=
 dlls_subdir=
 os_subdir=
 javas_subdir=
+css_subdir=
 dirs_subdir=
 c_dates_subdir=
 s_dates_subdir=
 pic_s_dates_subdir=
 java_dates_subdir=
 classes_subdir=
+cs_dates_subdir=
 err_dates_subdir=
 
 endif

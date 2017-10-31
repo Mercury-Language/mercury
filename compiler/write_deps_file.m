@@ -1259,6 +1259,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
             [s(ModuleMakeVarName)])]),
     add_mmake_entry(MmakeVarClasses, !MmakeFile),
 
+    MmakeVarCss = mmake_var_defn(ModuleMakeVarName ++ ".css",
+        string.format("$(%s.mods:%%=$(css_subdir)%%.cs)",
+            [s(ModuleMakeVarName)])),
+    add_mmake_entry(MmakeVarCss, !MmakeFile),
+
     MmakeVarDirs = mmake_var_defn(ModuleMakeVarName ++ ".dirs",
         string.format("$(%s.mods:%%=$(dirs_subdir)%%.dir)",
             [s(ModuleMakeVarName)])),
@@ -1305,6 +1310,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         string.format("$(%s.mods:%%=$(java_dates_subdir)%%.java_date)",
             [s(ModuleMakeVarName)])),
     add_mmake_entry(MmakeVarJavaDates, !MmakeFile),
+
+    MmakeVarCsDates = mmake_var_defn(ModuleMakeVarName ++ ".cs_dates",
+        string.format("$(%s.mods:%%=$(cs_dates_subdir)%%.cs_date)",
+            [s(ModuleMakeVarName)])),
+    add_mmake_entry(MmakeVarCsDates, !MmakeFile),
 
     MmakeVarDs = mmake_var_defn(ModuleMakeVarName ++ ".ds",
         string.format("$(%s.mods:%%=$(ds_subdir)%%.d)",
