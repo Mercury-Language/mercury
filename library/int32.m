@@ -37,6 +37,20 @@
 
 :- func to_int(int32) = int.
 
+    % from_bytes_le(Byte0, Byte1, Byte2, Byte3) = I32:
+    % I32 is the int32 whose bytes are given in little-endian order by the
+    % arguments from left-to-right (i.e. Byte0 is the least significant byte
+    % and Byte3 is the most significant byte).
+    %
+:- func from_bytes_le(uint8, uint8, uint8, uint8) = int32.
+
+    % from_bytes_be(Byte0, Byte1, Byte2, Byte3) = U32:
+    % I32 is the int32 whose bytes are given in big-endian order by the
+    % arguments in left-to-right order (i.e. Byte0 is the most significant
+    % byte and Byte3 is the least significant byte).
+    %
+:- func from_bytes_be(uint8, uint8, uint8, uint8) = int32.
+
 %---------------------------------------------------------------------------%
 
     % Less than.
@@ -339,6 +353,51 @@ cast_from_uint32(_) = _ :-
 :- pragma no_determinism_warning(to_int/1).
 to_int(_) = _ :-
     sorry($module, "int32.to_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    from_bytes_le(Byte0::in, Byte1::in, Byte2::in, Byte3::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    unsigned char *int32_bytes = (unsigned char *) &I32;
+#if defined(MR_BIG_ENDIAN)
+    int32_bytes[0] = Byte3;
+    int32_bytes[1] = Byte2;
+    int32_bytes[2] = Byte1;
+    int32_bytes[3] = Byte2;
+#else
+    int32_bytes[0] = Byte0;
+    int32_bytes[1] = Byte1;
+    int32_bytes[2] = Byte2;
+    int32_bytes[3] = Byte3;
+#endif
+").
+
+:- pragma foreign_proc("Java",
+    from_bytes_le(Byte0::in, Byte1::in, Byte2::in, Byte3::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I32 = (Byte3 & 0xff) << 24 |
+          (Byte2 & 0xff) << 16 |
+          (Byte1 & 0xff) << 8  |
+          (Byte0 & 0xff);
+").
+
+:- pragma foreign_proc("C#",
+    from_bytes_le(Byte0::in, Byte1::in, Byte2::in, Byte3::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I32 = (Byte3 << 24 | Byte2 << 16 | Byte1 << 8 | Byte0);
+").
+
+from_bytes_le(_, _, _, _) = _ :-
+    sorry($module, "int32.from_bytes_le/4 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+from_bytes_be(Byte3, Byte2, Byte1, Byte0) =
+    from_bytes_le(Byte0, Byte1, Byte2, Byte3).
 
 %---------------------------------------------------------------------------%
 
