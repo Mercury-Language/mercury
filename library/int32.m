@@ -44,7 +44,7 @@
     %
 :- func from_bytes_le(uint8, uint8, uint8, uint8) = int32.
 
-    % from_bytes_be(Byte0, Byte1, Byte2, Byte3) = U32:
+    % from_bytes_be(Byte0, Byte1, Byte2, Byte3) = I32:
     % I32 is the int32 whose bytes are given in big-endian order by the
     % arguments in left-to-right order (i.e. Byte0 is the most significant
     % byte and Byte3 is the least significant byte).
