@@ -812,7 +812,18 @@ create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     file_name::in, io.text_output_stream::in, io::di, io::uo) is det.
 
 write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
-    get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
+    io.get_environment_var("MERCURY_STAGE2_LAUNCHER_BASE", MaybeStage2Base,
+        !IO),
+    (
+        MaybeStage2Base = no,
+        get_mercury_std_libs_for_java(Globals, MercuryStdLibs)
+    ;
+        MaybeStage2Base = yes(Stage2Base),
+        MercuryStdLibs = [
+            Stage2Base / "library/mer_rt.jar",
+            Stage2Base / "library/mer_std.jar"
+        ]
+    ),
     globals.lookup_accumulating_option(Globals, java_classpath,
         UserClasspath),
     % We prepend the .class files' directory and the current CLASSPATH.
@@ -851,6 +862,8 @@ write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
     %
     % 4. The path of the Java interpreter must be a Unix style path as it will
     % be invoked directly from the MSYS shell.
+    %
+    % XXX TODO: handle MERCURY_STAGE2_LAUNCHER_BASE for this case.
     %
 :- pred write_java_msys_shell_script(globals::in, module_name::in,
     file_name::in, io.text_output_stream::in, io::di, io::uo) is det.

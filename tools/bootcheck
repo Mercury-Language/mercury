@@ -1707,6 +1707,12 @@ then
         WORKSPACE_FLAGS=yes
         export WORKSPACE_FLAGS
 
+        if test "$grade" = "java"
+        then
+            MERCURY_STAGE2_LAUNCHER_BASE=$root/$stage2dir
+            export MERCURY_STAGE2_LAUNCHER_BASE
+        fi
+
         case $error_file_only in
             true)
                 if test ! -f ${tests_prefix}tests/runtests.errs
