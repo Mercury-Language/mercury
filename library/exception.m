@@ -651,7 +651,7 @@ exc_univ_value(Univ) = univ.univ_value(Univ).
 % higher-order pred terms.
 %
 % The C# and Java backends implement catch_impl/3 using mode-specific
-% foreign_procs -- the following pragma is necessary in order to avoid a
+% foreign_procs -- the following pragma is necessary in order to avoid
 % compilation errors in the presence of the fib about purity.
 :- pragma promise_equivalent_clauses(catch_impl/3).
 :- /* impure */
