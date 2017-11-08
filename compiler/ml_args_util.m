@@ -61,14 +61,17 @@
     % Decide how the interface of a procedure should handle output arguments.
     %
     % One way we can handle an output argument is to return it
-    % via a return statement. The MLDS code generator calls this "copy out".
+    % via a return statement. The MLDS code generator calls this
+    % a "copy out" output argument.
     %
     % The other way is to have the caller pass a pointer for the output arg,
     % and have the callee return the value by assigning through that pointer.
+    % The MLDS code generator calls this a "byref" output argument.
     %
-    % This returns an indication whether we should use the first approach
-    % for none (copy_out_never), just one (copy_out_only_last_arg) or
-    % all (copy_out_always) of a procedure's output arguments.
+    % This function tells its caller for which set of a procedure's output
+    % arguments it should use the first approach: for none (copy_out_never),
+    % for the last one only (copy_out_only_last_arg), or for all of them
+    % (copy_out_always).
     %
 :- func compute_when_to_copy_out(bool, code_model, pred_or_func)
     = copy_out_when.
