@@ -1375,8 +1375,7 @@ output_field_var_defn_for_java(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
 output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
     FunctionDefn = mlds_function_defn(Name, Context, Flags, MaybePredProcId,
         Params, MaybeBody, _EnvVarNames, _MaybeRequireTailrecInfo),
-    indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
-        Context, Indent, !IO),
+    io.nl(!IO),
     (
         MaybeBody = body_external,
         % This is just a function declaration, with no body.
@@ -1384,14 +1383,16 @@ output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
         % so just output the declaration as a comment.
         % (Note that the actual definition of an external procedure
         % must be given in `pragma java_code' in the same module.)
-        PreStr = "/* external:\n",
+        io.write_string("/*\nexternal:\n", !IO),
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
+            Context, Indent, !IO),
         PostStr = "*/\n"
     ;
         MaybeBody = body_defined_here(_),
-        PreStr = "",
+        indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
+            Context, Indent, !IO),
         PostStr = ""
     ),
-    io.write_string(PreStr, !IO),
     output_function_decl_flags_for_java(Info, Flags, !IO),
     (
         MaybePredProcId = no
@@ -2133,11 +2134,14 @@ output_rtti_array_assignments_for_java(Info, Indent, GlobalVarName,
 
 output_func_for_java(Info, Indent, FuncName, OutputAux, Context, Signature,
         MaybeBody, !IO) :-
+    output_func_decl_for_java(Info, Indent, FuncName, OutputAux,
+        Signature, !IO),
+    io.write_string("\n", !IO),
     (
+        MaybeBody = body_external
+        % The signature above will be printed inside a comment.
+    ;
         MaybeBody = body_defined_here(Body),
-        output_func_decl_for_java(Info, Indent, FuncName, OutputAux,
-            Signature, !IO),
-        io.write_string("\n", !IO),
         indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
         io.write_string("{\n", !IO),
@@ -2146,9 +2150,7 @@ output_func_for_java(Info, Indent, FuncName, OutputAux, Context, Signature,
             _ExitMethods, !IO),
         indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
-        io.write_string("}\n", !IO)    % end the function
-    ;
-        MaybeBody = body_external
+        io.write_string("}\n", !IO)
     ).
 
 :- pred output_func_decl_for_java(java_out_info::in, indent::in,
@@ -2164,7 +2166,8 @@ output_func_decl_for_java(Info, Indent, FuncName, OutputAux, Signature, !IO) :-
         output_class_name_arity_for_java(ClassName, ClassArity, !IO)
     else
         output_return_types_for_java(Info, RetTypes, !IO),
-        io.write_char(' ', !IO),
+        io.nl(!IO),
+        output_n_indents(Indent, !IO),
         output_function_name_for_java(FuncName, !IO)
     ),
     output_params_for_java(Info, Indent, Parameters, !IO).
@@ -3349,13 +3352,12 @@ output_stmt_call_for_java(Info, Indent, _FuncInfo, Stmt,
 output_stmt_return_for_java(Info, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_return(Results, _Context),
+    output_n_indents(Indent, !IO),
     (
         Results = [],
-        output_n_indents(Indent, !IO),
         io.write_string("return;\n", !IO)
     ;
         Results = [Rval],
-        output_n_indents(Indent, !IO),
         io.write_string("return ", !IO),
         output_rval_for_java(Info, Rval, !IO),
         io.write_string(";\n", !IO)
@@ -3431,10 +3433,9 @@ output_stmt_try_commit_for_java(Info, Indent, FuncInfo, Stmt,
 :- func while_exit_methods_for_java(mlds_rval, exit_methods) = exit_methods.
 
 while_exit_methods_for_java(Cond, BlockExitMethods) = ExitMethods :-
-    % A while statement cannot complete normally if its condition
-    % expression is a constant expression with value true, and it
-    % doesn't contain a reachable break statement that exits the
-    % while statement.
+    % A while statement cannot complete normally if its condition expression
+    % is a constant expression with value true, and it doesn't contain
+    % a reachable break statement that exits the while statement.
     ( if
         % XXX This is not a sufficient way of testing for a Java
         % "constant expression", though determining these accurately
