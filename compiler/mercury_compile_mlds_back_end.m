@@ -424,7 +424,11 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
     globals.lookup_accumulating_option(Globals, dump_mlds_pred_name,
         DumpPredNames),
     StageNumStr = stage_num_str(StageNum),
-    ( if should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) then
+    globals.get_target(Globals, Target),
+    ( if
+        should_dump_stage(StageNum, StageNumStr, StageName, DumpStages),
+        Target = target_c
+    then
         maybe_write_string(Verbose, "% Dumping out MLDS as C...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         DumpSuffix = "_dump." ++ StageNumStr ++ "-" ++ StageName,
@@ -440,22 +444,38 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
         true
     ),
     ( if
-        should_dump_stage(StageNum, StageNumStr, StageName, VerboseDumpStages)
+        (
+            should_dump_stage(StageNum, StageNumStr, StageName,
+                VerboseDumpStages)
+        ;
+            Target \= target_c,
+            should_dump_stage(StageNum, StageNumStr, StageName, DumpStages)
+        )
     then
+        (
+            DumpPredNames = [],
+            Doc = pprint.to_doc(MLDS)
+        ;
+            DumpPredNames = [_ | _],
+            ProcDefns = MLDS ^ mlds_proc_defns,
+            list.filter(func_defn_has_name_in_list(DumpPredNames), ProcDefns,
+                SelectedProcDefns),
+            Doc = pprint.to_doc(SelectedProcDefns)
+        ),
         maybe_write_string(Verbose, "% Dumping out raw MLDS...\n", !IO),
         ModuleName = mlds_get_module_name(MLDS),
         module_name_to_file_name(Globals, do_create_dirs, ".mlds_dump",
             ModuleName, BaseFileName, !IO),
         DumpFile = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName,
-        dump_mlds(Globals, DumpFile, MLDS, !IO),
+        dump_mlds_doc(Globals, DumpFile, Doc, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     else
         true
     ).
 
-:- pred dump_mlds(globals::in, string::in, mlds::in, io::di, io::uo) is det.
+:- pred dump_mlds_doc(globals::in, string::in, doc::in, io::di, io::uo) is det.
 
-dump_mlds(Globals, DumpFile, MLDS, !IO) :-
+dump_mlds_doc(Globals, DumpFile, Doc, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_write_string(Verbose, "% Dumping out MLDS to `", !IO),
@@ -466,7 +486,7 @@ dump_mlds(Globals, DumpFile, MLDS, !IO) :-
     (
         Res = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
-        pprint.write(80, pprint.to_doc(MLDS), !IO),
+        pprint.write(80, Doc, !IO),
         io.nl(!IO),
         io.set_output_stream(OutputStream, _, !IO),
         io.close_output(FileStream, !IO),

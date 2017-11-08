@@ -60,6 +60,9 @@
 :- pred output_c_dump_preds(mlds::in, globals::in, string::in,
     list(string)::in, io::di, io::uo) is det.
 
+:- pred func_defn_has_name_in_list(list(string)::in, mlds_function_defn::in)
+    is semidet.
+
 :- func mlds_tabling_data_name(mlds_proc_label, proc_tabling_struct_id)
     = string.
 
@@ -271,6 +274,15 @@ output_c_dump_preds(MLDS, Globals, Suffix, DumpPredNames, !IO) :-
             ProcDefns),
         _Succeeded, !IO).
 
+func_defn_has_name_in_list(DumpPredNames, FuncDefn) :-
+    FuncDefn ^ mfd_function_name = mlds_function_name(PlainFuncName),
+    PlainFuncName = mlds_plain_func_name(FuncLabel, _),
+    FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
+    ProcLabel = mlds_proc_label(PredLabel, _ProcId),
+    PredLabel = mlds_user_pred_label(_PredOrFunc, _DeclModule, Name,
+        _Arity, _CodeModel, _MaybeReturnValue),
+    list.member(Name, DumpPredNames).
+
 :- pred mlds_output_named_function_defns(mlds_to_c_opts::in,
     list(string)::in, mlds_module_name::in, list(mlds_function_defn)::in,
     io::di, io::uo) is det.
@@ -278,16 +290,7 @@ output_c_dump_preds(MLDS, Globals, Suffix, DumpPredNames, !IO) :-
 mlds_output_named_function_defns(_Opts, _DumpPredNames, _ModuleName, [], !IO).
 mlds_output_named_function_defns(Opts, DumpPredNames, ModuleName,
         [FuncDefn | FuncDefns], !IO) :-
-    FuncName = FuncDefn ^ mfd_function_name,
-    ( if
-        FuncName = mlds_function_name(PlainFuncName),
-        PlainFuncName = mlds_plain_func_name(FuncLabel, _),
-        FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
-        ProcLabel = mlds_proc_label(PredLabel, _ProcId),
-        PredLabel = mlds_user_pred_label(_PredOrFunc, _DeclModule, Name,
-            _Arity, _CodeModel, _MaybeReturnValue),
-        list.member(Name, DumpPredNames)
-    then
+    ( if func_defn_has_name_in_list(DumpPredNames, FuncDefn) then
         Indent = 0,
         mlds_output_function_defn(Opts, Indent, ModuleName, FuncDefn, !IO)
     else
