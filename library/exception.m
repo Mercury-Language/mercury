@@ -650,7 +650,10 @@ exc_univ_value(Univ) = univ.univ_value(Univ).
 % unsorted_solutions/2 and unsorted_aggregate/2 predicates that take impure
 % higher-order pred terms.
 %
-% :- pragma promise_pure(catch_impl/3).
+% The C# and Java backends implement catch_impl/3 using mode-specific
+% foreign_procs -- the following pragma is necessary in order to avoid a
+% compilation errors in the presence of the fib about purity.
+:- pragma promise_equivalent_clauses(catch_impl/3).
 :- /* impure */
    pred catch_impl(pred(T), handler(T), T).
 :- mode catch_impl(pred(out) is det,       in(handler), out) is det.
