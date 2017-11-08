@@ -31,8 +31,8 @@
 
 :- type version_hash_table(K, V).
 
-:- type hash_pred(K) == ( pred(K,  int)        ).
-:- inst hash_pred    == ( pred(in, out) is det ).
+:- type hash_pred(K) == (pred(K,  int)).
+:- inst hash_pred    == (pred(in, out) is det).
 
     % init(HashPred, N, MaxOccupancy)
     % constructs a new hash table with initial size 2 ^ N that is

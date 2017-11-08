@@ -607,7 +607,7 @@
     ;       four(K, V, K, V, K, V, tree234(K, V), tree234(K, V),
                 tree234(K, V), tree234(K, V)).
 
-:- inst uniq_tree234(K, V) ==
+:- inst uniq_tree234(K, V) for tree234/2 ==
     unique((
         empty
     ;   two(K, V, uniq_tree234(K, V), uniq_tree234(K, V))
@@ -617,7 +617,7 @@
             uniq_tree234(K, V), uniq_tree234(K, V))
     )).
 
-:- inst uniq_tree234_gg ==
+:- inst uniq_tree234_gg for tree234/2 ==
     unique((
         empty
     ;   two(ground, ground, uniq_tree234_gg, uniq_tree234_gg)
@@ -658,15 +658,18 @@
 :- import_module set.
 :- import_module string.
 
-:- inst two(K, V, T)   ---> two(K, V, T, T).
-:- inst three(K, V, T) ---> three(K, V, K, V, T, T, T).
-:- inst four(K, V, T)  ---> four(K, V, K, V, K, V, T, T, T, T).
+:- inst two(K, V, T) for tree234/2
+    --->    two(K, V, T, T).
+:- inst three(K, V, T) for tree234/2
+    --->    three(K, V, K, V, T, T, T).
+:- inst four(K, V, T) for tree234/2
+    --->    four(K, V, K, V, K, V, T, T, T, T).
 
 :- inst uniq_two(K, V, T)   == unique(two(K, V, T, T)).
 :- inst uniq_three(K, V, T) == unique(three(K, V, K, V, T, T, T)).
 :- inst uniq_four(K, V, T)  == unique(four(K, V, K, V, K, V, T, T, T, T)).
 
-:- inst tree234_nonempty
+:- inst tree234_nonempty for tree234/2
     --->    two(ground, ground, ground, ground)
     ;       three(ground, ground, ground, ground,
                 ground, ground, ground)

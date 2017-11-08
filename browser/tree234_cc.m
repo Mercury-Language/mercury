@@ -153,9 +153,12 @@ search(T, K, MaybeV) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- inst two(K, V, T)   ---> two(K, V, T, T).
-:- inst three(K, V, T) ---> three(K, V, K, V, T, T, T).
-:- inst four(K, V, T)  ---> four(K, V, K, V, K, V, T, T, T, T).
+:- inst two(K, V, T) for tree234_cc/2
+    --->    two(K, V, T, T).
+:- inst three(K, V, T) for tree234_cc/2
+    --->    three(K, V, K, V, T, T, T).
+:- inst four(K, V, T) for tree234_cc/2
+    --->    four(K, V, K, V, K, V, T, T, T, T).
 
 :- mode out_two  == out(two(ground, ground, ground)).
 :- mode in_two   == in(two(ground, ground, ground)).

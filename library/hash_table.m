@@ -46,7 +46,8 @@
 
     % XXX This is all fake until the compiler can handle nested unique modes.
     %
-:- inst hash_table == bound(ht(ground, ground, hash_pred, array)).
+:- inst hash_table for hash_table/2
+    == bound(ht(ground, ground, hash_pred, array)).
 :- mode hash_table_ui == in(hash_table).
 :- mode hash_table_di == di(hash_table).
 :- mode hash_table_uo == out(hash_table).

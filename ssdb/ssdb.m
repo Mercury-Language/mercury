@@ -274,11 +274,11 @@
     --->    bp_state_enabled
     ;       bp_state_disabled.
 
-:- inst either_call
+:- inst either_call for ssdb_event_type/0
     --->    ssdb_call
     ;       ssdb_call_nondet.
 
-:- inst either_fail
+:- inst either_fail for ssdb_event_type/0
     --->    ssdb_fail
     ;       ssdb_fail_nondet.
 

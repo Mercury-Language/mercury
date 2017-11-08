@@ -189,22 +189,22 @@
     % Each to be assigned expression is guaranteed to be either in a form
     % acceptable for a test rval, or in the form of a variable.
 
-:- inst simple_code
+:- inst simple_code for simple_code/1
     --->    assign(ground, simple_assign_expr)
     ;       ref_assign(ground, ground)
     ;       test(simple_test_expr)
     ;       noop(ground).
 
-:- inst simple_assign_expr
+:- inst simple_assign_expr for simple_expr/1
     --->    unary(ground, simple_arg_expr)
     ;       binary(ground, simple_arg_expr, simple_arg_expr)
     ;       leaf(ground).
 
-:- inst simple_test_expr
+:- inst simple_test_expr for simple_expr/1
     --->    unary(ground, simple_arg_expr)
     ;       binary(ground, simple_arg_expr, simple_arg_expr).
 
-:- inst simple_arg_expr
+:- inst simple_arg_expr for simple_expr/1
     --->    leaf(ground)
     ;       int_const(ground)
     ;       float_const(ground).

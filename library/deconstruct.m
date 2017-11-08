@@ -45,13 +45,16 @@
     ;       canonicalize
     ;       include_details_cc.
 
-:- inst do_not_allow ---> do_not_allow.
-:- inst canonicalize ---> canonicalize.
-:- inst include_details_cc ---> include_details_cc.
-:- inst canonicalize_or_do_not_allow
+:- inst do_not_allow for noncanon_handling/0
+    --->    do_not_allow.
+:- inst canonicalize for noncanon_handling/0
+    --->    canonicalize.
+:- inst include_details_cc for noncanon_handling/0
+    --->    include_details_cc.
+:- inst canonicalize_or_do_not_allow for noncanon_handling/0
     --->    do_not_allow
     ;       canonicalize.
-:- inst do_not_allow_or_include_details_cc
+:- inst do_not_allow_or_include_details_cc for noncanon_handling/0
     --->    do_not_allow
     ;       include_details_cc.
 

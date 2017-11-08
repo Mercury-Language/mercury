@@ -105,9 +105,9 @@
                 need_qualifier
             ).
 
-:- inst ims_item(I)             % XXX for ims_item/1
+:- inst ims_item(I) for ims_item/1
     --->    ims_item(ground, I).
-:- inst sec_item(I)             % XXX for sec_item/1
+:- inst sec_item(I) for sec_item/1
     --->    sec_item(ground, I).
 
 :- pred wrap_with_section_info(sec_info::in, T::in, sec_item(T)::out) is det.

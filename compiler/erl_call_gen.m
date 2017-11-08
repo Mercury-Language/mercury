@@ -64,7 +64,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- inst ground_higher_order
+:- inst ground_higher_order for generic_call/0
     --->    higher_order(ground, ground, ground, ground).
 
     % Generate ELDS code for a higher order call.
@@ -74,7 +74,7 @@
     maybe(elds_expr)::in, elds_expr::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
-:- inst ground_class_method
+:- inst ground_class_method for generic_call/0
     --->    class_method(ground, ground, ground, ground).
 
     % Generate ELDS code for a class method call.

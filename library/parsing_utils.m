@@ -59,7 +59,7 @@
     % signatures.
     %
 :- type parser(T) == pred(src, T, ps, ps).
-:- inst parser == ( pred(in, out, in, out) is semidet ).
+:- inst parser == (pred(in, out, in, out) is semidet).
 
     % The following are for parsers that also transform a separate state value.
     %

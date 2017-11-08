@@ -481,7 +481,7 @@ expand_try_goals_in_if_then_else(Instmap0, Cond0, Cond, Then0, Then,
 
 %-----------------------------------------------------------------------------%
 
-:- inst try_goal
+:- inst try_goal for shorthand_goal_expr/0
     --->    try_goal(ground, ground, ground).
 
 :- pred expand_try_goal(instmap::in, shorthand_goal_expr::in(try_goal),

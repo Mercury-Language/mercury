@@ -348,7 +348,7 @@
 :- pred det_trace_node_from_id(S::in, R::in, trace_node(R)::out) is det
     <= annotated_trace(S, R).
 
-:- inst trace_node_call
+:- inst trace_node_call for trace_node/1
     --->    node_call(ground, ground, ground, ground, ground,
                 ground, ground, ground, ground, ground
             ).
@@ -356,7 +356,7 @@
 :- pred call_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_call))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_redo
+:- inst trace_node_redo for trace_node/1
     --->    node_redo(ground, ground, ground, ground, ground).
 
     % maybe_redo_node_from_id/3 fails if the argument is a
@@ -366,7 +366,7 @@
     trace_node(R)::out(trace_node_redo)) is semidet
     <= annotated_trace(S, R).
 
-:- inst trace_node_exit
+:- inst trace_node_exit for trace_node/1
     --->    node_exit(ground, ground, ground, ground, ground,
                 ground, ground, ground
             ).
@@ -374,26 +374,26 @@
 :- pred exit_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_exit))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_cond
+:- inst trace_node_cond for trace_node/1
     --->    node_cond(ground, ground, ground).
 
 :- pred cond_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_cond))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_neg
+:- inst trace_node_neg for trace_node/1
     --->    node_neg(ground, ground, ground).
 
 :- pred neg_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_neg))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_first_disj
+:- inst trace_node_first_disj for trace_node/1
     --->    node_first_disj(ground, ground).
 
 :- pred first_disj_node_from_id(S::in, R::in,
     trace_node(R)::out(trace_node_first_disj)) is det
     <= annotated_trace(S, R).
 
-:- inst trace_node_disj
+:- inst trace_node_disj for trace_node/1
     --->    node_first_disj(ground, ground)
     ;       node_later_disj(ground, ground, ground).
 
@@ -679,7 +679,7 @@ step_left_in_contour(Store, Node) = Prec :-
 :- mode find_prev_contour(in, in, out) is semidet.
 :- mode find_prev_contour(in, in(trace_node_reverse), out) is det.
 
-:- inst trace_node_reverse
+:- inst trace_node_reverse for trace_node/1
     --->    node_fail(ground, ground, ground, ground, ground, ground)
     ;       node_redo(ground, ground, ground, ground, ground)
     ;       node_neg_fail(ground, ground, ground).

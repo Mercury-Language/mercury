@@ -3111,7 +3111,7 @@ det_dynamic_cast(Term, Actual) :-
 
 same_array_elem_type(_, _).
 
-:- inst usereq
+:- inst usereq for type_ctor_rep/0
     --->    tcr_enum_usereq
     ;       tcr_foreign_enum_usereq
     ;       tcr_du_usereq
@@ -4698,12 +4698,26 @@ type_ctor_search_functor_number_map(_, _, _) :-
 :- pragma foreign_type("Java", notag_functor_desc,
     "jmercury.runtime.NotagFunctorDesc").
 
-:- inst du == bound(tcr_du ; tcr_du_usereq ; tcr_reserved_addr ;
-    tcr_reserved_addr_usereq).
-:- inst enum == bound(tcr_enum ; tcr_enum_usereq ; tcr_dummy).
-:- inst foreign_enum == bound(tcr_foreign_enum ; tcr_foreign_enum_usereq).
-:- inst notag == bound(tcr_notag ; tcr_notag_usereq ;
-    tcr_notag_ground ; tcr_notag_ground_usereq).
+:- inst du for type_ctor_rep/0
+    --->    tcr_du
+    ;       tcr_du_usereq
+    ;       tcr_reserved_addr
+    ;       tcr_reserved_addr_usereq.
+
+:- inst enum for type_ctor_rep/0
+    --->    tcr_enum
+    ;       tcr_enum_usereq
+    ;       tcr_dummy.
+
+:- inst foreign_enum for type_ctor_rep/0
+    --->    tcr_foreign_enum
+    ;       tcr_foreign_enum_usereq.
+
+:- inst notag for type_ctor_rep/0
+    --->    tcr_notag
+    ;       tcr_notag_usereq
+    ;       tcr_notag_ground
+    ;       tcr_notag_ground_usereq.
 
 :- func du_functor_desc(type_ctor_rep, int, type_functors) = du_functor_desc.
 :- mode du_functor_desc(in(du), in, in) = out is det.

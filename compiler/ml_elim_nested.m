@@ -436,9 +436,9 @@
     ;       chain_gc_stack_frames.
             % Add shadow stack for supporting accurate GC.
 
-:- inst hoist
+:- inst hoist for action/0
     --->    hoist_nested_funcs.
-:- inst chain
+:- inst chain for action/0
     --->    chain_gc_stack_frames.
 
     % Process the whole MLDS, performing the indicated action.
@@ -1536,7 +1536,7 @@ flatten_default(Action, Default0, Default, !Info) :-
     %       }
     %   }
     %
-:- inst try_commit
+:- inst try_commit for mlds_stmt/0
     --->    ml_stmt_try_commit(ground, ground, ground, ground).
 
 :- pred save_and_restore_stack_chain(mlds_stmt::in(try_commit),

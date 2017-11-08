@@ -1438,7 +1438,7 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
 
 %---------------------------------------------------------------------------%
 
-:- inst stored_goal_plain_call
+:- inst stored_goal_plain_call for goal_store.stored_goal/0
     --->    stored_goal(goal_plain_call, ground).
 
     % Do a goal_store_lookup where the result is known to be a call.

@@ -95,7 +95,7 @@
     --->    ok(T)
     ;       error(T, io.error).
 
-:- inst maybe_partial_res(T)
+:- inst maybe_partial_res(T) for maybe_partial_res/1
     --->    ok(T)
     ;       error(T, ground).
 

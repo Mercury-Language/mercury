@@ -29,9 +29,9 @@
     --->    must_rename
     ;       need_not_rename.
 
-:- inst must_rename
+:- inst must_rename for must_rename/0
     --->    must_rename.
-:- inst need_not_rename
+:- inst need_not_rename for must_rename/0
     --->    need_not_rename.
 
 :- pred rename_vars_in_term(must_rename, map(var(V), var(V)),

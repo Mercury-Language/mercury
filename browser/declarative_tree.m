@@ -1827,7 +1827,7 @@ edt_subtree_details(Store, dynamic(Ref), Event, SeqNo, CallPreceding) :-
     SeqNo = CallNode ^ call_seq,
     CallPreceding = CallNode ^ call_preceding.
 
-:- inst edt_return_node
+:- inst edt_return_node for trace_node/1
     --->    node_exit(ground, ground, ground, ground, ground, ground, ground,
                 ground)
     ;       node_fail(ground, ground, ground, ground, ground, ground)

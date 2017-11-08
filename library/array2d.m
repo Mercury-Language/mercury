@@ -31,7 +31,7 @@
     %
 :- type array2d(T).
 
-:- inst array2d
+:- inst array2d for array2d/1
     --->    array2d(ground, ground, array).
 
     % XXX These are work-arounds until we get nested uniqueness working.

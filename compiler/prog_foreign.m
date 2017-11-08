@@ -116,7 +116,7 @@
     % Sub-type of foreign_language for languages for which
     % we generate external files for foreign code.
     %
-:- inst lang_gen_ext_file
+:- inst lang_gen_ext_file for globals.foreign_language/0
     --->    lang_c
     ;       lang_csharp.
 

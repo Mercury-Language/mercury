@@ -27,11 +27,11 @@
     --->    no
     ;       yes(T).
 
-:- inst maybe(I)
+:- inst maybe(I) for maybe/1
     --->    no
     ;       yes(I).
 
-:- inst maybe_yes(I)
+:- inst maybe_yes(I) for maybe/1
     --->    yes(I).
 
 :- type maybe_error
@@ -45,11 +45,11 @@
     --->    ok(T)
     ;       error(E).
 
-:- inst maybe_error(I)
+:- inst maybe_error(I) for maybe_error/2
     --->    ok(I)
     ;       error(ground).
 
-:- inst maybe_error_ok(I)
+:- inst maybe_error_ok(I) for maybe_error/2
     --->    ok(I).
 
 :- type maybe_errors(T) == maybe_errors(T, string).
@@ -59,11 +59,7 @@
     --->    ok(T)
     ;       error(E, list(E)).
 
-:- inst maybe_errors(I)
-    --->    ok(I)
-    ;       error(ground).
-
-:- inst maybe_errors_ok(I)
+:- inst maybe_errors_ok(I) for maybe_errors/2
     --->    ok(I).
 
     % map_maybe(P, yes(Value0), yes(Value)) :- P(Value, Value).

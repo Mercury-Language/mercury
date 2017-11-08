@@ -196,7 +196,7 @@
 
 :- import_module io.
 
-:- inst shallow_or_deep % for ssdb_trace_level
+:- inst shallow_or_deep for globals.ssdb_trace_level/0
     --->    shallow
     ;       deep.
 

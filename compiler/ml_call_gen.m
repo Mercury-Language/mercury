@@ -129,7 +129,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info)
     ).
 
-:- inst main_generic_call
+:- inst main_generic_call for generic_call/0
     --->    higher_order(ground, ground, ground, ground)
     ;       class_method(ground, ground, ground, ground).
 

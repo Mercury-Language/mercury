@@ -41,14 +41,14 @@
     % instantiation does not work completely, for information see the
     % LIMITATIONS file distributed with Mercury.
     %
-:- inst list_skel(I)
+:- inst list_skel(I) for list/1
     --->    []
     ;       [I | list_skel(I)].
 :- inst list(I) == list_skel(I).
 
-:- inst empty_list
+:- inst empty_list for list/1
     --->    [].
-:- inst non_empty_list
+:- inst non_empty_list for list/1
     --->    [ground | ground].
 
 %---------------------------------------------------------------------------%

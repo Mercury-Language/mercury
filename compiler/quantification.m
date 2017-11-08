@@ -122,11 +122,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- inst ordinary_nonlocals_maybe_lambda
+:- inst ordinary_nonlocals_maybe_lambda for nonlocals_to_recompute/0
     --->    ordinary_nonlocals_maybe_lambda.
-:- inst ordinary_nonlocals_no_lambda
+:- inst ordinary_nonlocals_no_lambda for nonlocals_to_recompute/0
     --->    ordinary_nonlocals_no_lambda.
-:- inst code_gen_nonlocals_no_lambda
+:- inst code_gen_nonlocals_no_lambda for nonlocals_to_recompute/0
     --->    code_gen_nonlocals_no_lambda.
 
 %-----------------------------------------------------------------------------%

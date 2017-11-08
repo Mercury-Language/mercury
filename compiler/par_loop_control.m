@@ -242,7 +242,7 @@ proc_is_self_recursive(DepInfo, PredProcId) :-
     % This subtype of seen usable recursion is the set of values for which we
     % should keep searching.
     %
-:- inst seen_usable_recursion_continue
+:- inst seen_usable_recursion_continue for seen_usable_recursion/0
     --->    have_not_seen_recursive_call
     ;       seen_one_recursive_call_on_every_branch
     ;       seen_usable_recursion_in_par_conj(ground).

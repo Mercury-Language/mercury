@@ -248,13 +248,13 @@
 
     % Recursion types for which call costs at any level can be calculated.
     %
-:- inst recursion_type_known_costs
+:- inst recursion_type_known_costs for recursion_type/0
     --->    rt_not_recursive
     ;       rt_single(ground, ground, ground, ground, ground).
 
     % Recursion types for which call costs at any level can not be calculated.
     %
-:- inst recursion_type_unknown_costs
+:- inst recursion_type_unknown_costs for recursion_type/0
     --->    rt_divide_and_conquer(ground, ground)
     ;       rt_mutual_recursion(ground)
     ;       rt_other(ground)

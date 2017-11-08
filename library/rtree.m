@@ -243,7 +243,7 @@
     ;       four(K, rtree_2(K, V), K, rtree_2(K, V), K, rtree_2(K, V), K,
                 rtree_2(K, V)).
 
-:- inst four ==
+:- inst four for rtree_2/2 ==
     bound(four(ground, ground, ground, ground, ground, ground, ground,
         ground)).
 

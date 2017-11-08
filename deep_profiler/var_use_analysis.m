@@ -605,7 +605,7 @@ prepare_for_proc_var_first_use(CliquePtr, PDPtr, ArgNum, RecursionType, Depth,
                 cost_before_use     :: float
             ).
 
-:- inst found_first_use_found
+:- inst found_first_use_found for found_first_use/0
     --->    found_first_use(ground).
 
 :- type var_first_use_static_info
@@ -630,14 +630,14 @@ prepare_for_proc_var_first_use(CliquePtr, PDPtr, ArgNum, RecursionType, Depth,
                 fui_rec_info            :: first_use_rec_info
             ).
 
-:- inst var_first_use_static_info
+:- inst var_first_use_static_info for var_first_use_static_info/0
     --->    var_first_use_static_info(
                 ground, ground, ground, ground, ground, ground, ground, ground,
                 recursion_type_known_costs,
                 ground, ground
             ).
 
-:- inst var_first_use_static_info_rec
+:- inst var_first_use_static_info_rec for var_first_use_static_info/0
     --->    var_first_use_static_info(
                 ground, ground, ground, ground, ground, ground, ground, ground,
                 recursion_type_known_costs,
@@ -652,10 +652,10 @@ prepare_for_proc_var_first_use(CliquePtr, PDPtr, ArgNum, RecursionType, Depth,
             )
     ;       no_recursion_info.
 
-:- inst first_use_rec_info
+:- inst first_use_rec_info for first_use_rec_info/0
     --->    first_use_rec_info(ground, ground).
 
-:- inst no_recursion_info
+:- inst no_recursion_info for first_use_rec_info/0
     --->    no_recursion_info.
 
 :- type recursive_case
@@ -758,6 +758,7 @@ goal_var_first_use(RevGoalPath, Goal, StaticInfo, !CostSoFar, FoundFirstUse) :-
     ).
 
 :- inst atomic_goal_rep_call
+    for mdbcomp.program_representation.atomic_goal_rep/0
     --->    plain_call_rep(ground, ground, ground)
     ;       higher_order_call_rep(ground, ground)
     ;       method_call_rep(ground, ground, ground).
@@ -930,6 +931,7 @@ get_call_site_dynamic_var_use_time(CliquePtr, CSDPtr,
     ).
 
 :- inst atomic_trivial_goal_rep
+    for mdbcomp.program_representation.atomic_goal_rep/0
     --->    unify_construct_rep(ground, ground, ground)
     ;       unify_deconstruct_rep(ground, ground, ground)
     ;       partial_construct_rep(ground, ground, ground)

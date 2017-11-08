@@ -49,7 +49,7 @@
 
     % A subtype of the above, with a mandatory command field.
     %
-:- inst deep_query_with_cmd
+:- inst deep_query_with_cmd for deep_query/0
     --->    deep_query(bound(yes(ground)), ground, ground).
 
 :- type cmd

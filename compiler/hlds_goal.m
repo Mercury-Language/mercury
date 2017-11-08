@@ -224,35 +224,35 @@
             % the construction of the HLDS, so most passes of the compiler
             % will just call error/1 if they occur.
 
-:- inst goal_expr_unify
+:- inst goal_expr_unify for hlds_goal_expr/0
     --->    unify(ground, ground, ground, ground, ground).
-:- inst goal_expr_plain_call
+:- inst goal_expr_plain_call for hlds_goal_expr/0
     --->    plain_call(ground, ground, ground, ground, ground, ground).
-:- inst goal_expr_generic_call
+:- inst goal_expr_generic_call for hlds_goal_expr/0
     --->    generic_call(ground, ground, ground, ground, ground).
-:- inst goal_expr_foreign_proc
+:- inst goal_expr_foreign_proc for hlds_goal_expr/0
     --->    call_foreign_proc(ground, ground, ground, ground, ground,
                 ground, ground).
-:- inst goal_expr_conj
+:- inst goal_expr_conj for hlds_goal_expr/0
     --->    conj(ground, ground).
-:- inst goal_expr_plain_conj
+:- inst goal_expr_plain_conj for hlds_goal_expr/0
     --->    conj(bound(plain_conj), ground).
-:- inst goal_expr_parallel_conj
+:- inst goal_expr_parallel_conj for hlds_goal_expr/0
     --->    conj(bound(parallel_conj), ground).
-:- inst goal_expr_disj
+:- inst goal_expr_disj for hlds_goal_expr/0
     --->    disj(ground).
-:- inst goal_expr_switch
+:- inst goal_expr_switch for hlds_goal_expr/0
     --->    switch(ground, ground, ground).
-:- inst goal_expr_ite
+:- inst goal_expr_ite for hlds_goal_expr/0
     --->    if_then_else(ground, ground, ground, ground).
-:- inst goal_expr_neg
+:- inst goal_expr_neg for hlds_goal_expr/0
     --->    negation(ground).
-:- inst goal_expr_scope
+:- inst goal_expr_scope for hlds_goal_expr/0
     --->    scope(ground, ground).
-:- inst goal_expr_shorthand
+:- inst goal_expr_shorthand for hlds_goal_expr/0
     --->    shorthand(ground).
 
-:- inst goal_plain_call
+:- inst goal_plain_call for hlds_goal/0
     --->    hlds_goal(goal_expr_plain_call, ground).
 
 :- type conj_type
@@ -776,7 +776,7 @@
                 rhs_lambda_goal     :: hlds_goal
             ).
 
-:- inst rhs_lambda_goal
+:- inst rhs_lambda_goal for unify_rhs/0
     --->    rhs_lambda_goal(ground, ground, ground, ground, ground, ground,
                 ground, ground, ground).
 
@@ -920,15 +920,15 @@
                 compl_unify_typeinfos   :: list(prog_var)
             ).
 
-:- inst unification_construct
+:- inst unification_construct for unification/0
     --->    construct(ground, ground, ground, ground, ground, ground, ground).
-:- inst unification_deconstruct
+:- inst unification_deconstruct for unification/0
     --->    deconstruct(ground, ground, ground, ground, ground, ground).
-:- inst unification_assign
+:- inst unification_assign for unification/0
     --->    assign(ground, ground).
-:- inst unification_simple_test
+:- inst unification_simple_test for unification/0
     --->    simple_test(ground, ground).
-:- inst unification_complicated_unify
+:- inst unification_complicated_unify for unification/0
     --->    complicated_unify(ground, ground, ground).
 
 :- type term_size_value

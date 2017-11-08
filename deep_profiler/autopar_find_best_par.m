@@ -187,7 +187,7 @@ gg_get_details(gg_multiple(Index, Num, P), Index, Num, P).
                 gfp_num_calls               :: int
             ).
 
-:- inst goals_for_parallelisation
+:- inst goals_for_parallelisation for goals_for_parallelisation/0
     --->    goals_for_parallelisation(
                 ground, ground, ground,
                 non_empty_list,

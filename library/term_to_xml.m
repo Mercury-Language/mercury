@@ -107,7 +107,7 @@
     % An XML document must have an element at the top level.
     % The following inst is used to enforce this restriction.
     %
-:- inst xml_doc
+:- inst xml_doc for xml/0
     --->    elem(
                 ground, % element_name
                 ground, % attributes
@@ -141,7 +141,7 @@
     ;       no_dtd.
             % Do not include any DOCTYPE information.
 
-:- inst non_embedded_dtd
+:- inst non_embedded_dtd for maybe_dtd/0
     --->    external_dtd(ground)
     ;       no_dtd.
 
@@ -243,7 +243,7 @@
     ;       unique
     ;       custom(element_pred).
 
-:- inst element_mapping
+:- inst element_mapping for element_mapping/0
     --->    simple
     ;       unique
     ;       custom(element_pred).

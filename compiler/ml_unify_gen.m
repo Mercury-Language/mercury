@@ -160,7 +160,7 @@
 :- import_module unit.
 :- import_module varset.
 
-:- inst no_or_direct_arg_tag
+:- inst no_or_direct_arg_tag for cons_tag/0
     --->    no_tag
     ;       direct_arg_tag(ground).
 

@@ -61,7 +61,7 @@
 :- mode cons_id_to_term(in, in, in, out, in, out) is semidet.
 :- mode cons_id_to_term(in(termable_cons_id), in, in, out, in, out) is det.
 
-:- inst termable_cons_id
+:- inst termable_cons_id for cons_id/0
     --->    cons(ground, ground, ground)
     ;       tuple_cons(ground)
     ;       int_const(ground)

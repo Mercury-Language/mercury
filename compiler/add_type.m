@@ -230,7 +230,7 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus,
 
 %---------------------%
 
-:- inst type_defn_mercury
+:- inst type_defn_mercury for type_defn/0
     --->    parse_tree_du_type(ground)
     ;       parse_tree_eqv_type(ground)
     ;       parse_tree_solver_type(ground).
@@ -483,7 +483,7 @@ merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
         Body = hlds_foreign_type(ForeignTypeBody)
     ).
 
-:- inst hlds_type_body_du
+:- inst hlds_type_body_du for hlds_type_body/0
     --->    hlds_du_type(ground, ground, ground, ground, ground,
                 ground, ground, ground, ground).
 

@@ -1876,14 +1876,8 @@ specialize_sequences_in_cases([Case0 | Cases0], [Case | Cases], !SpecInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- inst call_goal_expr
-    == bound(plain_call(ground, ground, ground, ground, ground, ground)).
-
-:- inst call_goal
-    == bound(hlds_goal(call_goal_expr, ground)).
-
 :- pred maybe_specialize_call_and_goals(list(hlds_goal)::in,
-    hlds_goal::in(call_goal), list(hlds_goal)::in,
+    hlds_goal::in(goal_plain_call), list(hlds_goal)::in,
     list(hlds_goal)::out, list(hlds_goal)::out,
     set_of_progvar::in, spec_info::in, spec_info::out) is det.
 
@@ -2104,7 +2098,7 @@ find_relevant_pushable_signal_goals([Goal | Goals], PredProcId, CallVars,
 
 :- pred specialize_dep_par_call(
     list(future_var_pair)::in, list(future_var_pair)::in,
-    hlds_goal::in(call_goal), maybe(hlds_goal)::out,
+    hlds_goal::in(goal_plain_call), maybe(hlds_goal)::out,
     spec_info::in, spec_info::out) is det.
 
 specialize_dep_par_call(WaitPairs, SignalPairs, Goal0, MaybeGoal, !SpecInfo) :-
@@ -2727,7 +2721,7 @@ should_we_push_wait_in_cases(Var, [Case | Cases], SeenWait, CostBeforeWait) :-
     % The should we signal code only makes sense when its input is one of
     % these values for !.Signal.
     %
-:- inst cost_after_signal_in
+:- inst cost_after_signal_in for cost_after_signal/0
     --->    not_seen_signal
     ;       seen_signal_negligible_cost_after.
 

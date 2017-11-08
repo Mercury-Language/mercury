@@ -439,7 +439,7 @@
     %
 :- type interval(T) == {T, T}. % inclusive
 
-:- inst node
+:- inst node for diet/1
     --->    node(ground, ground, ground, ground).
 
 %---------------------------------------------------------------------------%

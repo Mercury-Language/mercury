@@ -22,9 +22,9 @@
     --->    (T1 - T2).
 :- type pair(T) ==  pair(T, T).
 
-:- inst pair(I1, I2)
+:- inst pair(I1, I2) for pair/2
     --->    (I1 - I2).
-:- inst pair(I) ==  pair(I, I).
+:- inst pair(I) == pair(I, I).
 
     % Return the first element of the pair.
     %

@@ -207,7 +207,7 @@
     % trusted predicates. mdb.declarative_oracle.answer_known/3 returns
     % answers of this subtype.
     %
-:- inst known_answer
+:- inst known_answer for decl_answer/1
     --->    truth_value(ground, ground)
     ;       ignore(ground).
 

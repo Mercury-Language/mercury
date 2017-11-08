@@ -312,7 +312,7 @@
     % This isn't really unique. See the comments on the `uniq_array' type
     % in library/array.m.
     %
-:- inst uniq_goal_attr_array
+:- inst uniq_goal_attr_array for goal_attr_array/1
     --->    goal_attr_array(uniq_array).
 
 :- mode gaa_di == di(uniq_goal_attr_array).

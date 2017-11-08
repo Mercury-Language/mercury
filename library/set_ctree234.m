@@ -1004,9 +1004,12 @@ superset(SuperSet, Set) :-
 
 %---------------------------------------------------------------------------%
 
-:- inst two(E, T)   ---> two(E, T, T).
-:- inst three(E, T) ---> three(E, E, T, T, T).
-:- inst four(E, T)  ---> four(E, E, E, T, T, T, T).
+:- inst two(E, T) for set_tree234/1
+    --->    two(E, T, T).
+:- inst three(E, T) for set_tree234/1
+    --->    three(E, E, T, T, T).
+:- inst four(E, T) for set_tree234/1
+    --->    four(E, E, E, T, T, T, T).
 
 :- mode out_two  == out(two(ground, ground)).
 :- mode in_two   == in(two(ground, ground)).

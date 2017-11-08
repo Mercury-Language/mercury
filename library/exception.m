@@ -51,7 +51,7 @@
     ;       failed
     ;       exception(univ).
 
-:- inst cannot_fail
+:- inst cannot_fail for exception_result/1
     --->    succeeded(ground)
     ;       exception(ground).
 
@@ -139,9 +139,9 @@
 :- mode try_all(pred(out) is multi,   out, out) is cc_multi.
 :- mode try_all(pred(out) is nondet,  out, out) is cc_multi.
 
-:- inst []
+:- inst [] for list/1
     --->    [].
-:- inst nil_or_singleton_list
+:- inst nil_or_singleton_list for list/1
     --->    []
     ;       [ground].
 
@@ -650,7 +650,7 @@ exc_univ_value(Univ) = univ.univ_value(Univ).
 % unsorted_solutions/2 and unsorted_aggregate/2 predicates that take impure
 % higher-order pred terms.
 %
-:- pragma promise_pure(catch_impl/3).
+% :- pragma promise_pure(catch_impl/3).
 :- /* impure */
    pred catch_impl(pred(T), handler(T), T).
 :- mode catch_impl(pred(out) is det,       in(handler), out) is det.

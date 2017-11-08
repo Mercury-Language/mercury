@@ -683,13 +683,13 @@
             % the same as the two rval arguments in the original lc_spawn_off
             % instruction.
 
-:- inst instr_llcall
+:- inst instr_llcall for instr/0
     --->    llcall(ground, ground, ground, ground, ground, ground).
-:- inst instr_goto
+:- inst instr_goto for instr/0
     --->    goto(ground).
-:- inst instr_if_val
+:- inst instr_if_val for instr/0
     --->    if_val(ground, ground).
-:- inst instr_foreign_proc_code
+:- inst instr_foreign_proc_code for instr/0
     --->    foreign_proc_code(ground, ground, ground, ground, ground,
                 ground, ground, ground, ground, ground).
 

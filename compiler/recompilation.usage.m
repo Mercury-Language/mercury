@@ -355,9 +355,8 @@ write_simple_item_matches_4(Qualifier - ModuleName, !IO) :-
         mercury_output_bracketed_sym_name(ModuleName, !IO)
     ).
 
-:- pred write_pred_or_func_matches(item_type::in(pred_or_func),
-    resolved_used_items::in, bool::in, bool::out,
-    io::di, io::uo) is det.
+:- pred write_pred_or_func_matches(item_type::in(pred_or_func_item),
+    resolved_used_items::in, bool::in, bool::out, io::di, io::uo) is det.
 
 write_pred_or_func_matches(ItemType, UsedItems, !WriteComma, !IO) :-
     Ids = extract_pred_or_func_set(UsedItems, ItemType),
@@ -368,7 +367,7 @@ write_pred_or_func_matches(ItemType, UsedItems, !WriteComma, !IO) :-
         write_pred_or_func_matches_2(ItemType, Ids, !IO)
     ).
 
-:- pred write_pred_or_func_matches_2(item_type::in(pred_or_func),
+:- pred write_pred_or_func_matches_2(item_type::in(pred_or_func_item),
     resolved_pred_or_func_set::in, io::di, io::uo) is det.
 
 write_pred_or_func_matches_2(ItemType, ItemSet, !IO) :-

@@ -73,13 +73,12 @@
     --->    item_name(sym_name, arity).
 
 :- type item_type
-    --->    type_abstract_item  % Just the name of the type, not its body.
-                                % It is common for a value of a type to
-                                % be passed through a predicate without
-                                % inspecting the value -- such predicates
-                                % do not need to be recompiled if the
-                                % body of the type changes (except for
-                                % equivalence types).
+    --->    type_abstract_item
+            % Just the name of the type, not its body. It is common
+            % for a value of a type to be passed through a predicate without
+            % inspecting the value -- such predicates do not need to be
+            % recompiled if the body of the type changes (except for
+            % equivalence types).
     ;       type_body_item
     ;       mode_item
     ;       inst_item
@@ -90,20 +89,20 @@
     ;       mutable_item
     ;       foreign_proc_item.
 
-:- inst simple_item
+:- inst simple_item for item_type/0
     --->    type_abstract_item
     ;       type_body_item
     ;       mode_item
     ;       inst_item
     ;       typeclass_item.
 
-:- inst pred_or_func
+:- inst pred_or_func_item for item_type/0
     --->    predicate_item
     ;       function_item.
 
 :- pred is_simple_item_type(item_type::(ground >> simple_item)) is semidet.
 
-:- pred is_pred_or_func_item_type(item_type::(ground >> pred_or_func))
+:- pred is_pred_or_func_item_type(item_type::(ground >> pred_or_func_item))
     is semidet.
 
 :- pred string_to_item_type(string, item_type).
@@ -111,7 +110,7 @@
 :- mode string_to_item_type(out, in) is det.
 
 :- func pred_or_func_to_item_type(pred_or_func::in)
-    = (item_type::out(pred_or_func)) is det.
+    = (item_type::out(pred_or_func_item)) is det.
 
 :- func type_ctor_to_item_name(type_ctor) = item_name.
 :- func inst_id_to_item_name(inst_id) = item_name.
@@ -201,9 +200,9 @@
     item_id_set(Simple, PorF, Cons)::out) is det.
 
 :- func extract_pred_or_func_set(item_id_set(Simple, PorF, Cons)::in,
-    item_type::in(pred_or_func)) = (PorF::out) is det.
+    item_type::in(pred_or_func_item)) = (PorF::out) is det.
 
-:- pred update_pred_or_func_set(item_type::in(pred_or_func), PorF::in,
+:- pred update_pred_or_func_set(item_type::in(pred_or_func_item), PorF::in,
     item_id_set(Simple, PorF, Cons)::in,
     item_id_set(Simple, PorF, Cons)::out) is det.
 

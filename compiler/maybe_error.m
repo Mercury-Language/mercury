@@ -37,19 +37,19 @@
     --->    error4(list(error_spec))
     ;       ok4(T1, T2, T3, T4).
 
-:- inst maybe1(I)
+:- inst maybe1(I) for maybe1/1
     --->    error1(ground)
     ;       ok1(I).
 
-:- inst maybe2(I1, I2)
+:- inst maybe2(I1, I2) for maybe2/2
     --->    error2(ground)
     ;       ok2(I1, I2).
 
-:- inst maybe3(I1, I2, I3)
+:- inst maybe3(I1, I2, I3) for maybe3/3
     --->    error3(ground)
     ;       ok3(I1, I2, I3).
 
-:- inst maybe4(I1, I2, I3, I4)
+:- inst maybe4(I1, I2, I3, I4) for maybe4/4
     --->    error4(ground)
     ;       ok4(I1, I2, I3, I4).
 

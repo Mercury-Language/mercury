@@ -370,7 +370,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
     --->    no_error
     ;       arg_not_type_variable(int).
 
-:- inst instance_arg_result_error
+:- inst instance_arg_result_error for instance_arg_result/0
     --->    arg_not_type_variable(ground).
 
 :- pred each_arg_is_a_type_variable(set(mer_type)::in,

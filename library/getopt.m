@@ -212,7 +212,7 @@
                     set(OptionType))
             ).
 
-:- inst option_ops ==
+:- inst option_ops for option_ops/1 ==
     bound((
         option_ops(
             pred(in, out) is semidet,               % short_option
@@ -238,7 +238,7 @@
         )
     )).
 
-:- inst option_ops_track ==
+:- inst option_ops_track for option_ops_track/1 ==
     bound((
         option_ops_track(
             pred(in, out) is semidet,               % short_option
@@ -395,7 +395,7 @@
                 special_handler :: option_ops_special(OptionType)
             ).
 
-:- inst option_ops_internal ==
+:- inst option_ops_internal for option_ops_internal/1 ==
     bound((
         option_ops_internal(
             pred(in, out) is semidet,               % short_option
