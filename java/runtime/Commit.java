@@ -9,6 +9,9 @@
 package jmercury.runtime;
 
 public class Commit extends java.lang.Error {
-
+    public Throwable fillInStackTrace() {
+        // Do nothing.
+        return this;
+    }
 }
 
