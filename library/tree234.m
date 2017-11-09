@@ -665,9 +665,12 @@
 :- inst four(K, V, T) for tree234/2
     --->    four(K, V, K, V, K, V, T, T, T, T).
 
-:- inst uniq_two(K, V, T)   == unique(two(K, V, T, T)).
-:- inst uniq_three(K, V, T) == unique(three(K, V, K, V, T, T, T)).
-:- inst uniq_four(K, V, T)  == unique(four(K, V, K, V, K, V, T, T, T, T)).
+:- inst uniq_two(K, V, T) for tree234/2
+    == unique(two(K, V, T, T)).
+:- inst uniq_three(K, V, T) for tree234/2
+    == unique(three(K, V, K, V, T, T, T)).
+:- inst uniq_four(K, V, T) for tree234/2
+    == unique(four(K, V, K, V, K, V, T, T, T, T)).
 
 :- inst tree234_nonempty for tree234/2
     --->    two(ground, ground, ground, ground)

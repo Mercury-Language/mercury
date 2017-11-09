@@ -40,10 +40,10 @@
 
 :- type update_pred_task
     --->    update_pred_error(pred_error_task).
-:- inst update_pred_task ==
-    bound(
-            update_pred_error(pred_error_task)
-    ).
+
+:- inst update_pred_task for update_pred_task/0
+    --->    update_pred_error(pred_error_task).
+
 :- mode update_pred_task == update_pred_task >> update_pred_task.
 
 :- pred process_all_nonimported_preds_errors(
@@ -125,16 +125,16 @@
     ;       update_module_pred(module_pred_task)
     ;       update_module_cookie(module_cookie_task, univ)
     ;       update_module_pred_cookie(module_pred_cookie_task, univ).
-:- inst update_proc_task ==
-    bound(
-            update_proc(proc_task)
-        ;   update_proc_ids(proc_ids_task)
-        ;   update_proc_ids_pred(proc_ids_pred_task)
-        ;   update_module(module_task)
-        ;   update_module_pred(module_pred_task)
-        ;   update_module_cookie(module_cookie_task, ground)
-        ;   update_module_pred_cookie(module_pred_cookie_task, ground)
-    ).
+
+:- inst update_proc_task for update_proc_task/0
+    --->    update_proc(proc_task)
+    ;       update_proc_ids(proc_ids_task)
+    ;       update_proc_ids_pred(proc_ids_pred_task)
+    ;       update_module(module_task)
+    ;       update_module_pred(module_pred_task)
+    ;       update_module_cookie(module_cookie_task, ground)
+    ;       update_module_pred_cookie(module_pred_cookie_task, ground).
+
 :- mode update_proc_task == update_proc_task >> update_proc_task.
 
 %-----------------------------------------------------------------------------%
@@ -253,21 +253,19 @@ process_nonimported_pred(Task, PredId, !ModuleInfo, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst par_proc_task ==
-    bound(
-            update_proc(proc_task)
-        ;   update_proc_ids(proc_ids_task)
-        ;   update_proc_ids_pred(proc_ids_pred_task)
-    ).
+:- inst par_proc_task for update_proc_task/0
+    --->    update_proc(proc_task)
+    ;       update_proc_ids(proc_ids_task)
+    ;       update_proc_ids_pred(proc_ids_pred_task).
+
 :- mode par_proc_task == par_proc_task >> par_proc_task.
 
-:- inst seq_proc_task ==
-    bound(
-            update_module(module_task)
-        ;   update_module_pred(module_pred_task)
-        ;   update_module_cookie(module_cookie_task, ground)
-        ;   update_module_pred_cookie(module_pred_cookie_task, ground)
-    ).
+:- inst seq_proc_task for update_proc_task/0
+    --->    update_module(module_task)
+    ;       update_module_pred(module_pred_task)
+    ;       update_module_cookie(module_cookie_task, ground)
+    ;       update_module_pred_cookie(module_pred_cookie_task, ground).
+
 :- mode seq_proc_task == seq_proc_task >> seq_proc_task.
 
 process_all_nonimported_procs(Task, !ModuleInfo) :-

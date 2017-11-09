@@ -28,8 +28,8 @@
 :- type tfeirn == tfeirn(generic).
 
 :- inst tfeirn == ground. % XXX
-:- inst norm_tfeirn --->
-	mode_robdd(ground, ground, ground, ground, ground, bound(yes)).
+:- inst norm_tfeirn for tfeirn/1
+    --->    mode_robdd(ground, ground, ground, ground, ground, bound(yes)).
 
 :- mode di_tfeirn == in. % XXX
 :- mode uo_tfeirn == out. % XXX
