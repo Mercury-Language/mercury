@@ -1321,8 +1321,8 @@ construct_tscc_entry_proc(ModuleInfo, LoopKind, PredProcCodes,
         _EntryPredInfo, _EntryProcInfo, EntryProcContext),
     make_container_proc(LoopKind, EntryCopyOutValThroughPtrStmts,
         EntryReturnRvals, EntryIdInTscc, EntryProcContext, ProcStmtInfos,
-        SelectorVarDefns, Stmts),
-    FuncBodyLocalVarDefns = SelectorVarDefns ++
+        ContainerVarDefns, Stmts),
+    FuncBodyLocalVarDefns = ContainerVarDefns ++
         NonEntryTsccInLocalVarDefns ++ EntryTsccOutLocalVarDefns,
 
     EntryIdInTscc = proc_id_in_tscc(EntryIdInTsccNum),
@@ -1423,24 +1423,18 @@ construct_func_body_for_tscc(EntryProc, PredProcCode,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out) is det.
 
 make_container_proc(LoopKind, CopyOutValThroughPtrStmts, ReturnRvals,
-        EntryProc, EntryProcContext, ProcStmtInfos, SelectorVarDefns, Stmts) :-
+        EntryProc, EntryProcContext, ProcStmtInfos, ContainerVarDefns, Stmts) :-
     ReturnStmt = ml_stmt_return(ReturnRvals, EntryProcContext),
     (
         LoopKind = tail_rec_loop_label_goto,
-        EndLabel = "tscc_end",
-        EndLabelStmt = ml_stmt_label(EndLabel, EntryProcContext),
-        GotoEndStmt = ml_stmt_goto(goto_label(EndLabel), EntryProcContext),
-        make_container_proc_with_label_goto(GotoEndStmt, EndLabelStmt,
-            CopyOutValThroughPtrStmts, ReturnStmt, EntryProc, EntryProcContext,
-            ProcStmtInfos, Stmts),
-        SelectorVarDefns = []
+        make_container_proc_with_label_goto(CopyOutValThroughPtrStmts,
+            ReturnStmt, EntryProc, EntryProcContext, ProcStmtInfos, Stmts),
+        ContainerVarDefns = []
     ;
         LoopKind = tail_rec_loop_while_continue,
-        GotoEndStmt = ml_stmt_goto(goto_break, EntryProcContext),
-        make_container_proc_with_while_continue(GotoEndStmt,
-            CopyOutValThroughPtrStmts, ReturnStmt, EntryProc, EntryProcContext,
-            ProcStmtInfos, SelectorVarDefn, Stmts),
-        SelectorVarDefns = [SelectorVarDefn]
+        make_container_proc_with_while_continue(CopyOutValThroughPtrStmts,
+            ReturnStmt, EntryProc, EntryProcContext, ProcStmtInfos,
+            ContainerVarDefns, Stmts)
     ).
 
 %---------------------%
@@ -1452,11 +1446,13 @@ make_container_proc(LoopKind, CopyOutValThroughPtrStmts, ReturnRvals,
     % top_of_proc_1:
     %   <copy tscc args 1 to own args 1>
     %   <body of TSCC proc 1>
+    %   <copy own output args 1 to tscc output args>
     %   goto EndLabel;
     % ...
     % top_of_proc_N:
     %   <copy tscc args N to own args N>
     %   <body of TSCC proc N>
+    %   <copy own output args N to tscc output args>
     %   goto EndLabel;
     % EndLabel:
     %   <for tscc byref output args, copy value to *ptr>
@@ -1467,13 +1463,15 @@ make_container_proc(LoopKind, CopyOutValThroughPtrStmts, ReturnRvals,
     % - assign the actual parameters to tscc args i, and
     % - goto `top_of_proc_i'.
     %
-:- pred make_container_proc_with_label_goto(mlds_stmt::in, mlds_stmt::in,
-    list(mlds_stmt)::in, mlds_stmt::in, proc_id_in_tscc::in, prog_context::in,
-    list(proc_stmt_info)::in, list(mlds_stmt)::out) is det.
+:- pred make_container_proc_with_label_goto(list(mlds_stmt)::in, mlds_stmt::in,
+    proc_id_in_tscc::in, prog_context::in, list(proc_stmt_info)::in,
+    list(mlds_stmt)::out) is det.
 
-make_container_proc_with_label_goto(GotoEndStmt, EndLabelStmt,
-        CopyOutValThroughPtrStmts, ReturnStmt, EntryProc, EntryProcContext,
-        ProcStmtInfos, WrappedStmts) :-
+make_container_proc_with_label_goto(CopyOutValThroughPtrStmts, ReturnStmt,
+        EntryProc, EntryProcContext, ProcStmtInfos, WrappedStmts) :-
+    EndLabel = "tscc_end",
+    EndLabelStmt = ml_stmt_label(EndLabel, EntryProcContext),
+    GotoEndStmt = ml_stmt_goto(goto_label(EndLabel), EntryProcContext),
     list.map(make_wrapped_proc_with_label_goto(GotoEndStmt), ProcStmtInfos,
         ProcWrappedStmtLists),
     list.condense(ProcWrappedStmtLists, ProcWrappedStmts),
@@ -1492,26 +1490,32 @@ make_wrapped_proc_with_label_goto(GotoEndStmt, ProcStmtInfo, LabelProcStmts) :-
     StartLabel =
         generate_tail_rec_start_label(tscc_self_and_mutual_rec, IdInTscc),
     StartLabelStmt = ml_stmt_label(StartLabel, ProcContext),
-    LabelProcStmts = [StartLabelStmt | append_to_stmt(ProcStmt, GotoEndStmt)].
+    LabelProcStmts =
+        [StartLabelStmt | append_to_stmt(ProcStmt, [GotoEndStmt])].
 
 %---------------------%
 
     % We wrap the statements we generate for each TSCC procedure like this:
     %
-    % proc_selector = <entry_proc>;;
-    % while (true) {
+    % proc_selector = <entry_proc>;
+    % while (keep_doing_tail_calls) {
     %   switch (proc_selector) {
     %       case 1:
-    %           <copy tscc args 1 to own args 1>
+    %           <copy tscc input args 1 to own input args 1>
     %           <body of TSCC proc 1>
-    %           return;
+    %           <copy own output args 1 to tscc output args>
+    %           break;
     %       ...
     %       case N:
     %           <copy tscc args N to own args N>
     %           <body of TSCC proc N>
-    %           return;
+    %           <copy own output args N to tscc output args>
+    %           break;
     %   }
+    %   break;
     % }
+    % <for tscc byref output args, copy value to *ptr>
+    % return <tscc copied output args>;
     %
     % A tail call to TSCC proc i can just
     %
@@ -1519,27 +1523,29 @@ make_wrapped_proc_with_label_goto(GotoEndStmt, ProcStmtInfo, LabelProcStmts) :-
     % - set proc_selector to i, and
     % - execute `continue'.
     %
-:- pred make_container_proc_with_while_continue(mlds_stmt::in,
-    list(mlds_stmt)::in, mlds_stmt::in,
-    proc_id_in_tscc::in, prog_context::in, list(proc_stmt_info)::in,
-    mlds_local_var_defn::out, list(mlds_stmt)::out) is det.
+:- pred make_container_proc_with_while_continue(list(mlds_stmt)::in,
+    mlds_stmt::in, proc_id_in_tscc::in, prog_context::in,
+    list(proc_stmt_info)::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out) is det.
 
-make_container_proc_with_while_continue(GotoEndStmt, CopyOutValThroughPtrStmts,
-        ReturnStmt, EntryProc, ProcContext, ProcStmtInfos,
-        SelectorVarDefn, WrappedStmts) :-
-    list.map_foldl(make_wrapped_proc_with_while_continue(GotoEndStmt),
+make_container_proc_with_while_continue(CopyOutValThroughPtrStmts, ReturnStmt,
+        EntryProc, EntryProcContext, ProcStmtInfos,
+        ContainerVarDefns, WrappedStmts) :-
+    GotoEndStmts = [ml_stmt_goto(goto_break, EntryProcContext)],
+    list.map_foldl(make_wrapped_proc_with_while_continue(GotoEndStmts),
         ProcStmtInfos, SwitchCases, set.init, PossibleSwitchValues),
 
     SelectorVar = lvn_comp_var(lvnc_tscc_proc_selector),
     SelectorType = mlds_native_int_type,
-    SelectorVarDefn = mlds_local_var_defn(SelectorVar, ProcContext,
+    SelectorVarDefn = mlds_local_var_defn(SelectorVar, EntryProcContext,
         SelectorType, no_initializer, gc_no_stmt),
+    ContainerVarDefns = [SelectorVarDefn],
 
     EntryProc = proc_id_in_tscc(EntryProcNum),
     SelectorVarLval = ml_local_var(SelectorVar, SelectorType),
     SetSelectorStmt = ml_stmt_atomic(
         assign(SelectorVarLval, ml_const(mlconst_int(EntryProcNum))),
-        ProcContext),
+        EntryProcContext),
 
     set.to_sorted_list(PossibleSwitchValues, PossibleSwitchValuesList),
     SwitchMin = list.det_head(PossibleSwitchValuesList),
@@ -1547,38 +1553,41 @@ make_container_proc_with_while_continue(GotoEndStmt, CopyOutValThroughPtrStmts,
     SwitchRange = mlds_switch_range(SwitchMin, SwitchMax),
     Default = default_is_unreachable,
     SwitchStmt = ml_stmt_switch(SelectorType, ml_lval(SelectorVarLval),
-        SwitchRange, SwitchCases, Default, ProcContext),
+        SwitchRange, SwitchCases, Default, EntryProcContext),
+    BreakStmt = ml_stmt_goto(goto_break, EntryProcContext),
+    SwitchBreakStmt = ml_stmt_block([], [], [SwitchStmt, BreakStmt],
+        EntryProcContext),
     LoopStmt = ml_stmt_while(may_loop_zero_times,
-        ml_const(mlconst_true), SwitchStmt, ProcContext),
+        ml_const(mlconst_true), SwitchBreakStmt, EntryProcContext),
     WrappedStmts = [SetSelectorStmt, LoopStmt] ++
         CopyOutValThroughPtrStmts ++ [ReturnStmt].
 
-:- pred make_wrapped_proc_with_while_continue(mlds_stmt::in,
+:- pred make_wrapped_proc_with_while_continue(list(mlds_stmt)::in,
     proc_stmt_info::in, mlds_switch_case::out, set(int)::in, set(int)::out)
     is det.
 
-make_wrapped_proc_with_while_continue(GotoEndStmt, ProcStmtInfo, SwitchCase,
+make_wrapped_proc_with_while_continue(GotoEndStmts, ProcStmtInfo, SwitchCase,
         !PossibleSwitchValues) :-
     ProcStmtInfo = proc_stmt_info(IdInTscc, ProcStmt, ProcContext),
     IdInTscc = proc_id_in_tscc(IdInTsccNum),
     MatchCond = match_value(ml_const(mlconst_int(IdInTsccNum))),
-    SwitchStmt = ml_gen_block([], [], append_to_stmt(ProcStmt, GotoEndStmt),
+    SwitchStmt = ml_gen_block([], [], append_to_stmt(ProcStmt, GotoEndStmts),
         ProcContext),
     SwitchCase = mlds_switch_case(MatchCond, [], SwitchStmt),
     set.insert(IdInTsccNum, !PossibleSwitchValues).
 
 %---------------------%
 
-:- func append_to_stmt(mlds_stmt, mlds_stmt) = list(mlds_stmt).
+:- func append_to_stmt(mlds_stmt, list(mlds_stmt)) = list(mlds_stmt).
 
-append_to_stmt(BaseStmt, EndStmt) = Stmts :-
+append_to_stmt(BaseStmt, EndStmts) = Stmts :-
     ( if
         BaseStmt = ml_stmt_block(LocalVarDefns, FuncDefns, BaseStmts, Context)
     then
         Stmts = [ml_stmt_block(LocalVarDefns, FuncDefns,
-            BaseStmts ++ [EndStmt], Context)]
+            BaseStmts ++ EndStmts, Context)]
     else
-        Stmts = [BaseStmt, EndStmt]
+        Stmts = [BaseStmt | EndStmts]
     ).
 
 %---------------------------------------------------------------------------%
