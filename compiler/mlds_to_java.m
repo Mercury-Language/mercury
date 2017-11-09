@@ -1383,27 +1383,33 @@ output_function_defn_for_java(Info, Indent, OutputAux, FunctionDefn, !IO) :-
         % so just output the declaration as a comment.
         % (Note that the actual definition of an external procedure
         % must be given in `pragma java_code' in the same module.)
-        io.write_string("/*\nexternal:\n", !IO),
+        %
+        % XXX For now, we print only the name of the function.
+        % We would like to print the whole declaration in a comment,
+        % but that does not work. For some argument types in the function
+        % declaration, we may print a comment before the Java type
+        % (see type_to_string_for_java). This would yield nested comments,
+        % which Java does not allow.
         indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
-        PostStr = "*/\n"
+        io.write_string("// external: ", !IO),
+        output_function_name_for_java(Name, !IO),
+        io.nl(!IO)
     ;
         MaybeBody = body_defined_here(_),
         indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
-        PostStr = ""
-    ),
-    output_function_decl_flags_for_java(Info, Flags, !IO),
-    (
-        MaybePredProcId = no
-    ;
-        MaybePredProcId = yes(PredProcid),
-        maybe_output_pred_proc_id_comment(Info ^ joi_auto_comments,
-            PredProcid, !IO)
-    ),
-    output_func_for_java(Info, Indent, Name, OutputAux, Context,
-        Params, MaybeBody, !IO),
-    io.write_string(PostStr, !IO).
+        output_function_decl_flags_for_java(Info, Flags, !IO),
+        (
+            MaybePredProcId = no
+        ;
+            MaybePredProcId = yes(PredProcid),
+            maybe_output_pred_proc_id_comment(Info ^ joi_auto_comments,
+                PredProcid, !IO)
+        ),
+        output_func_for_java(Info, Indent, Name, OutputAux, Context,
+            Params, MaybeBody, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 %
