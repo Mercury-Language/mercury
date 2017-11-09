@@ -186,6 +186,7 @@
     ;       warn_unknown_format_calls
     ;       warn_obsolete
     ;       warn_insts_without_matching_type
+    ;       warn_insts_with_functors_without_type
     ;       warn_unused_imports
     ;       inform_ite_instead_of_switch
     ;       inform_incomplete_switch
@@ -1185,6 +1186,7 @@ option_defaults_2(warning_option, [
     warn_unknown_format_calls           -   bool(no),
     warn_obsolete                       -   bool(yes),
     warn_insts_without_matching_type    -   bool(yes),
+    warn_insts_with_functors_without_type - bool(no),
         % XXX disabled by default until someone
         % removes all the unused imports from
         % the compiler itself which is compiled
@@ -2088,6 +2090,8 @@ long_option("warn-unknown-format-calls", warn_unknown_format_calls).
 long_option("warn-obsolete",            warn_obsolete).
 long_option("warn-insts-without-matching-type",
                                         warn_insts_without_matching_type).
+long_option("warn-insts-with-functors-without-type",
+                    warn_insts_with_functors_without_type).
 long_option("warn-unused-imports",      warn_unused_imports).
 long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
 long_option("inform-incomplete-switch", inform_incomplete_switch).
@@ -3330,6 +3334,7 @@ style_warning_options = [
     warn_known_bad_format_calls,
     warn_unknown_format_calls,
     warn_insts_without_matching_type,
+    warn_insts_with_functors_without_type,
     inform_ite_instead_of_switch,
     inform_incomplete_switch,
     warn_suspicious_foreign_procs,
@@ -3759,6 +3764,9 @@ options_help_warning -->
         "--no-warn-insts-without-matching-type",
         "\tDo not warn about insts that are not consistent with any",
         "\tof the types in scope.",
+        "--warn-insts-with-functors-without-type",
+        "\tWarn about insts that do specify functors but do not specify",
+        "\twhat type they are for.",
         % XXX disabled until compiler unused_imports,
         % don't forget to update the user_guide.texi
         % "--no-warn-unused-imports",

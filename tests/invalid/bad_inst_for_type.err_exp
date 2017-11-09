@@ -19,9 +19,9 @@ bad_inst_for_type.m:040:   For `f2b'/2, maybe you meant `f2b'/1.
 bad_inst_for_type.m:053: Error: inst `c3'/0 is declared to be for type
 bad_inst_for_type.m:053:   `character'/0, but its top level function symbol
 bad_inst_for_type.m:053:   `bb'/0 is not a function symbol of that type.
-bad_inst_for_type.m:068: Error: inst `x1'/0, is specified to be for a given
-bad_inst_for_type.m:068:   type constructor, but it is not defined to be
-bad_inst_for_type.m:068:   equivalent to a `bound' inst.
+bad_inst_for_type.m:068: Error: inst `x1'/0 is specified to be for a given type
+bad_inst_for_type.m:068:   constructor, but it is not defined to be equivalent
+bad_inst_for_type.m:068:   to a `bound' inst.
 bad_inst_for_type.m:074: Error: inst `i3'/0 is declared to be for type
 bad_inst_for_type.m:074:   `bad_inst_for_type.t3'/0, but its top level function
 bad_inst_for_type.m:074:   symbol `f3'/4 is not a function symbol of that type.

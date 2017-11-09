@@ -38,6 +38,8 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.make_hlds_error.
+:- import_module libs.
+:- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
 
@@ -81,7 +83,27 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         EqvInst = bound(_, _, _),
         (
             MaybeForType = no,
-            IFTC = iftc_applicable_not_known
+            IFTC = iftc_applicable_not_known,
+            Here = inst_status_defined_in_this_module(InstStatus),
+            (
+                Here = yes,
+                ShortInstSymName = unqualified(unqualify_name(InstSymName)),
+                Pieces = [words("Warning: inst"),
+                    qual_sym_name_and_arity(
+                        sym_name_arity(ShortInstSymName, InstArity)),
+                    words("includes references to function symbols,"),
+                    words("but does not declare what type constructor"),
+                    words("it is for."), nl],
+                Option = warn_insts_with_functors_without_type,
+                Msg = simple_msg(Context,
+                    [option_is_set(Option, yes, [always(Pieces)])]),
+                Severity =
+                    severity_conditional(Option, yes, severity_warning, no),
+                Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+                !:Specs = [Spec | !.Specs]
+            ;
+                Here = no
+            )
         ;
             MaybeForType = yes(ForType),
             IFTC = iftc_applicable_declared(ForType)
@@ -106,7 +128,6 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
             Pieces = [words("Error: inst"),
                 qual_sym_name_and_arity(
                     sym_name_arity(ShortInstSymName, InstArity)),
-                suffix(","),
                 words("is specified to be for a given type constructor,"),
                 words("but it is not defined to be equivalent to a"),
                 quote("bound"), words("inst."), nl],

@@ -6487,6 +6487,13 @@ Do not warn about insts that are not consistent with any
 types in scope.
 
 @sp 1
+@item --warn-insts-with-functors-without-type
+@findex --no-warn-insts-with-functors-without-type
+@findex --warn-insts-with-functors-without--type
+Warn about insts that do specify functors but do not specify
+what type they are for.
+
+@sp 1
 @c @item --no-warn-unused-imports
 @item --warn-unused-imports
 @findex --no-warn-unused-imports
