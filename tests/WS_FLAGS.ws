@@ -15,4 +15,6 @@
 --c-include-directory @WORKSPACE@/ssdb
 --c-include-directory @WORKSPACE@/ssdb/Mercury/mihs
 --linkage shared
+--csharp-flags -lib:@WORKSPACE@/library
+--csharp-flags -r:mer_std.dll
 --config-file @WORKSPACE@/scripts/Mercury.config.bootstrap
