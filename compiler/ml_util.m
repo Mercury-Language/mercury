@@ -248,7 +248,7 @@ stmt_contains_statement(Stmt, SubStmt) :-
         ; Stmt = ml_stmt_goto(_, _Context)
         ; Stmt = ml_stmt_computed_goto(_Rval, _Labels, _Context)
         ; Stmt = ml_stmt_call(_Sig, _Func, _Args, _RetLvals, _TailCall,
-            _Markers, _Context)
+            _Context)
         ; Stmt = ml_stmt_return(_Rvals, _Context)
         ; Stmt = ml_stmt_do_commit(_Ref, _Context)
         ; Stmt = ml_stmt_atomic(_AtomicStmt, _Context)
@@ -377,8 +377,7 @@ statement_contains_var(Stmt, SearchVarName) = ContainsVar :-
         Stmt = ml_stmt_computed_goto(Rval, _Labels, _Context),
         ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
-        Stmt = ml_stmt_call(_Sig, Func, Args, RetLvals, _TailCall,
-            _Markers, _Context),
+        Stmt = ml_stmt_call(_Sig, Func, Args, RetLvals, _TailCall, _Context),
         FuncContainsVar = rval_contains_var(Func, SearchVarName),
         (
             FuncContainsVar = yes,
@@ -879,7 +878,7 @@ get_mlds_stmt_context(Stmt) = Context :-
     ; Stmt = ml_stmt_try_commit(_, _, _, Context)
     ; Stmt = ml_stmt_do_commit(_, Context)
     ; Stmt = ml_stmt_return(_, Context)
-    ; Stmt = ml_stmt_call(_, _, _, _, _, _, Context)
+    ; Stmt = ml_stmt_call(_, _, _, _, _, Context)
     ; Stmt = ml_stmt_atomic(_, Context)
     ).
 

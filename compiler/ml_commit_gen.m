@@ -186,7 +186,6 @@
 
 :- import_module bool.
 :- import_module maybe.
-:- import_module set.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -419,9 +418,8 @@ maybe_put_commit_in_own_func(LocalVarDefn0, FuncDefn0, TryCommitStmts,
         RetTypes = [],
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         CallKind = ordinary_call,
-        set.init(Markers),
         CallStmt = ml_stmt_call(Signature, CommitFuncLabelRval, ArgRvals,
-            [], CallKind, Markers, Context),
+            [], CallKind, Context),
         % Package it all up.
         LocalVarDefns = [],
         FuncDefns = [CommitFuncDefn],

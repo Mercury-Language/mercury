@@ -65,7 +65,6 @@
 :- import_module ml_backend.ml_top_gen.             % HLDS -> MLDS
 :- import_module ml_backend.rtti_to_mlds.           % HLDS/RTTI -> MLDS
 :- import_module ml_backend.ml_elim_nested.         % MLDS -> MLDS
-:- import_module ml_backend.ml_tailcall.            % MLDS -> MLDS
 :- import_module ml_backend.ml_optimize.            % MLDS -> MLDS
 :- import_module ml_backend.mlds_to_c.              % MLDS -> C
 :- import_module ml_backend.mlds_to_java.           % MLDS -> Java
@@ -143,31 +142,9 @@ mlds_backend(!HLDS, !:MLDS, !:Specs, !DumpInfo, !IO) :-
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 10, "rtti", !IO),
 
-    % Detection of tail calls needs to occur before the
-    % chain_gc_stack_frame pass of ml_elim_nested, because we need to
-    % unlink the stack frame from the stack chain before tail calls.
-    globals.lookup_bool_option(Globals, optimize_tailcalls, OptimizeTailCalls),
-    globals.lookup_bool_option(Globals, optimize_tailcalls_codegen,
-        OptimizeTailCallsCodegen),
-    ( if
-        OptimizeTailCalls = yes,
-        OptimizeTailCallsCodegen = no
-    then
-        maybe_write_string(Verbose, "% Detecting tail calls...\n", !IO),
-        ml_mark_tailcalls(Globals, !.HLDS, TailCallSpecs, !MLDS),
-        !:Specs = TailCallSpecs ++ !.Specs,
-        maybe_write_string(Verbose, "% done.\n", !IO)
-    else
-        true
-    ),
-    maybe_report_stats(Stats, !IO),
-    maybe_dump_mlds(Globals, !.MLDS, 20, "tailcalls", !IO),
-
     % Run the ml_optimize pass before ml_elim_nested, so that we eliminate
     % as many local variables as possible before the ml_elim_nested
-    % transformations. We also want to do tail recursion optimization before
-    % ml_elim_nested, since this means that the stack-handling code for
-    % accurate GC will go outside the loop rather than inside the loop.
+    % transformations.
     %
     % However, we need to disable optimize_initializations, because
     % ml_elim_nested doesn't correctly handle code containing initializations.
@@ -343,12 +320,8 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
 maybe_mark_tail_rec_calls_hlds(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, optimize_tailcalls, OptimizeTailCalls),
-    globals.lookup_bool_option(Globals, optimize_tailcalls_codegen,
-        OptimizeTailCallsCodegen),
-    ( if
+    (
         OptimizeTailCalls = yes,
-        OptimizeTailCallsCodegen = yes
-    then
         maybe_write_string(Verbose, "% Marking tail recursive calls...", !IO),
         maybe_flush_output(Verbose, !IO),
         module_info_rebuild_dependency_info(!HLDS, DepInfo),
@@ -356,8 +329,8 @@ maybe_mark_tail_rec_calls_hlds(Verbose, Stats, !HLDS, !Specs, !IO) :-
             DepInfo, !HLDS, !Specs),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    else
-        true
+    ;
+        OptimizeTailCalls = no
     ).
 
 :- pred mlds_gen_rtti_data(module_info::in, mlds_target_lang::in,

@@ -1191,10 +1191,6 @@
                 % or a no-return call?
                 ml_call_kind,
 
-                % The set of special treatments that apply to this call.
-                % Almost always the empty set.
-                set(ml_call_marker),
-
                 prog_context
             )
 
@@ -1279,8 +1275,7 @@
 :- inst ml_stmt_is_computed_goto for mlds_stmt/0
     --->    ml_stmt_computed_goto(ground, ground, ground).
 :- inst ml_stmt_is_call for mlds_stmt/0
-    --->    ml_stmt_call(ground, ground, ground, ground,
-                ground, ground, ground).
+    --->    ml_stmt_call(ground, ground, ground, ground, ground, ground).
 :- inst ml_stmt_is_return for mlds_stmt/0
     --->    ml_stmt_return(ground, ground).
 :- inst ml_stmt_is_try_commit for mlds_stmt/0
@@ -1382,19 +1377,6 @@
                             % (this is a special case of a tail call).
     ;       tail_call       % A tail call.
     ;       ordinary_call.  % Just an ordinary call.
-
-    % The `ml_call_marker' type lists the ways in which the MLDS backend's
-    % handling of a call should deviate from the usual course of events.
-    %
-:- type ml_call_marker
-    --->    mcm_disable_non_tail_rec_warning.
-            % Don't generate a warning we would otherwise generate
-            % if this call is (a) recursive, but (b) not *tail* recursive.
-            %
-            % For the reason why this information is attached to a call
-            % in the MLDS, as well as being expressed as a scope in the HLDS,
-            % see the comment at the top of ml_tailcall.m (which generates
-            % such warnings during compilations that target the MLDS backend).
 
 %---------------------------------------------------------------------------%
 %

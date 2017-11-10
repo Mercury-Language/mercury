@@ -2359,7 +2359,7 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
         Stmt = ml_stmt_computed_goto(_, _, _),
         unexpected($pred, "computed gotos not supported in C#.")
     ;
-        Stmt = ml_stmt_call(_, _, _, _, _, _, _),
+        Stmt = ml_stmt_call(_, _, _, _, _, _),
         output_stmt_call_for_csharp(Info, Indent, FuncInfo, Stmt,
             ExitMethods, !IO)
     ;
@@ -2571,7 +2571,7 @@ output_stmt_goto_for_csharp(Info, Indent, _FuncInfo, Stmt,
 output_stmt_call_for_csharp(Info, Indent, _FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_call(Signature, FuncRval, CallArgs, Results,
-        IsTailCall, _Markers, Context),
+        IsTailCall, Context),
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     indent_line_after_context(Info ^ csoi_line_numbers, Context,
         Indent, !IO),

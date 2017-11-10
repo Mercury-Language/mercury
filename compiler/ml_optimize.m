@@ -12,15 +12,10 @@
 % This module runs various optimizations on the MLDS.
 %
 % Currently the optimizations we do here are
-%   - turning self-tailcalls into loops;
+%
 %   - converting assignments to local variables into variable initializers.
 %   - eliminating initialized local variables entirely,
 %     by replacing occurrences of such variables with their initializer
-%
-% Note that tailcall detection is done in ml_tailcall.m.
-% It might be nice to move the detection here, and do both the
-% loop transformation (in the case of self-tailcalls) and marking
-% tailcalls at the same time.
 %
 % Ultimately this module should just consist of a skeleton to traverse
 % the MLDS, and should call various optimization modules along the way.
@@ -102,7 +97,6 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
-:- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_util.
 
 :- import_module bool.
@@ -136,10 +130,7 @@ optimize_in_function_defn(ModuleName, Globals, FuncDefn0, FuncDefn) :-
     FuncDefn0 = mlds_function_defn(Name, Context, Flags, PredProcId,
         Params, FuncBody0, EnvVarNames, MaybeRequireTailrecInfo),
     OptInfo = opt_info(Globals, ModuleName, Name, Params),
-
-    optimize_func(OptInfo, Context, FuncBody0, FuncBody1),
-    optimize_in_function_body(OptInfo, FuncBody1, FuncBody),
-
+    optimize_in_function_body(OptInfo, FuncBody0, FuncBody),
     FuncDefn = mlds_function_defn(Name, Context, Flags, PredProcId,
         Params, FuncBody, EnvVarNames, MaybeRequireTailrecInfo).
 
@@ -186,7 +177,7 @@ optimize_in_stmts(OptInfo, !Stmts) :-
 
 optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
     (
-        Stmt0 = ml_stmt_call(_, _, _, _, _, _, _),
+        Stmt0 = ml_stmt_call(_, _, _, _, _, _),
         optimize_in_call_stmt(OptInfo, Stmt0, Stmt)
     ;
         Stmt0 = ml_stmt_block(LocalVarDefns0, FuncDefns0, SubStmts0, Context),
@@ -300,32 +291,12 @@ optimize_in_default(OptInfo, Default0, Default) :-
 :- pred optimize_in_call_stmt(opt_info::in,
     mlds_stmt::in(ml_stmt_is_call), mlds_stmt::out) is det.
 
-optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
-    Stmt0 = ml_stmt_call(_Signature, FuncRval, CallArgRvals,
-        _Results, _IsTailCall, _Markers, Context),
+optimize_in_call_stmt(_OptInfo, Stmt0, Stmt) :-
+    Stmt0 = ml_stmt_call(_Signature, FuncRval, CallArgRvals, _Results,
+        _IsTailCall, Context),
     % If we have a self-tailcall, assign to the arguments and
     % then goto the top of the tailcall loop.
-    Globals = OptInfo ^ oi_globals,
-    globals.lookup_bool_option(Globals, optimize_tailcalls, OptTailCalls),
     ( if
-        OptTailCalls = yes,
-        ModuleName = OptInfo ^ oi_module_name,
-        FunctionName = OptInfo ^ oi_func_name,
-        stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName,
-            FunctionName, Stmt0)
-    then
-        CommentStmt = ml_stmt_atomic(comment("direct tailcall eliminated"),
-            Context),
-        GotoStmt = ml_stmt_goto(tailcall_loop_top(Globals), Context),
-        OptInfo ^ oi_func_params = mlds_func_params(FuncArgs, _RetTypes),
-        tail_rec_call_assign_input_args(ModuleName, Context,
-            FuncArgs, CallArgRvals, InitStmts, AssignStmts, TempDefns),
-        AssignVarsStmt = ml_stmt_block(TempDefns, [],
-            InitStmts ++ AssignStmts, Context),
-
-        CallReplaceStmts = [CommentStmt, AssignVarsStmt, GotoStmt],
-        Stmt = ml_stmt_block([], [], CallReplaceStmts, Context)
-    else if
         % Convert calls to `mark_hp' and `restore_hp' to the corresponding
         % MLDS instructions. This ensures that they get generated as
         % inline code. (Without this they won't, since HLDS inlining doesn't
@@ -357,35 +328,6 @@ optimize_in_call_stmt(OptInfo, Stmt0, Stmt) :-
     else
         Stmt = Stmt0
     ).
-
-    % This specifies how we should branch to the top of the loop
-    % introduced by tailcall optimization.
-    %
-:- func tailcall_loop_top(globals) = mlds_goto_target.
-
-tailcall_loop_top(Globals) = Target :-
-    SupportsBreakContinue =
-        globals_target_supports_break_and_continue(Globals),
-    (
-        SupportsBreakContinue = yes,
-        % The function body has been wrapped inside
-        % `while (true) { ... break; }', and so to branch to the top of the
-        % function, we just do a `continue' which will continue the next
-        % iteration of the loop.
-        Target = goto_continue
-    ;
-        SupportsBreakContinue = no,
-        % A label has been inserted at the start of the function, and so to
-        % branch to the top of the function, we just branch to that label.
-        Target = goto_label(tailcall_loop_label_name)
-    ).
-
-    % The label name we use for the top of the loop introduced by
-    % tailcall optimization, when we are doing it with labels & gotos.
-    %
-:- func tailcall_loop_label_name = string.
-
-tailcall_loop_label_name = "loop_top".
 
 %----------------------------------------------------------------------------
 
@@ -442,130 +384,6 @@ tail_rec_call_assign_input_args(ModuleName, Context,
     ).
 
 %----------------------------------------------------------------------------
-
-:- pred optimize_func(opt_info::in, prog_context::in,
-    mlds_function_body::in, mlds_function_body::out) is det.
-
-optimize_func(OptInfo, Context, Body0, Body) :-
-    (
-        Body0 = body_external,
-        Body = body_external
-    ;
-        Body0 = body_defined_here(Stmt0),
-        optimize_func_stmt(OptInfo, Context, Stmt0, Stmt),
-        Body = body_defined_here(Stmt)
-    ).
-
-:- pred optimize_func_stmt(opt_info::in, prog_context::in,
-    mlds_stmt::in, mlds_stmt::out) is det.
-
-optimize_func_stmt(OptInfo, Context, Stmt0, Stmt) :-
-    Globals = OptInfo ^ oi_globals,
-    ( if
-        globals.lookup_bool_option(Globals, optimize_tailcalls, yes),
-        % Does Stmt0 contain a call that we will turn into a tail call?
-        %
-        % We *could* avoid the non-deterministic enumeration of all the
-        % statements nested inside Stmt0 by (a) optimizing Stmt0 first,
-        % and (b) recording whether we *did* turn a call into a tail call.
-        % However, at the moment the optimize_in_* predicates don't return
-        % any outputs, so making them return this flag would have a
-        % nontrivial cost. At the moment, the nondet enumeration here
-        % is not expensive enough to warrant testing whether using the flag
-        % would be faster.
-        ModuleName = OptInfo ^ oi_module_name,
-        FunctionName = OptInfo ^ oi_func_name,
-        some [SubStmt] (
-            statement_is_or_contains_statement(Stmt0, SubStmt),
-            stmt_is_self_recursive_call_replaceable_with_jump_to_top(
-                ModuleName, FunctionName, SubStmt)
-        )
-    then
-        CommentStmt =
-            ml_stmt_atomic(comment("tailcall optimized into a loop"), Context),
-        % The loop can be defined either using while, break, and continue,
-        % or using a label and goto. We prefer to use the former, if possible,
-        % since it is a higher-level construct that may help the back-end
-        % compiler's optimizer.
-        SupportsBreakContinue =
-            globals_target_supports_break_and_continue(Globals),
-        (
-            SupportsBreakContinue = yes,
-            % Wrap a while loop around the function body:
-            %
-            %   while (true) {
-            %       /* tailcall optimized into a loop */
-            %       <function body goes here>
-            %       break;
-            %   }
-            %
-            % Any tail calls in the function body will be replaced
-            % with `continue' statements.
-            BreakStmt = ml_stmt_goto(goto_break, Context),
-            Stmt = ml_stmt_while(may_loop_zero_times, ml_const(mlconst_true),
-                ml_stmt_block([], [], [CommentStmt, Stmt0, BreakStmt],
-                    Context),
-                Context)
-        ;
-            SupportsBreakContinue = no,
-            % Add a loop_top label at the start of the function body:
-            %
-            %   {
-            %   loop_top:
-            %       /* tailcall optimized into a loop */
-            %       <function body goes here>
-            %   }
-            %
-            % Any tail calls in the function body will be replaced
-            % with `goto loop_top' statements.
-            LoopTopStmt = ml_stmt_label(tailcall_loop_label_name, Context),
-            Stmt = ml_stmt_block([], [], [CommentStmt, LoopTopStmt, Stmt0],
-                Context)
-        )
-    else
-        Stmt = Stmt0
-    ).
-
-    % stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName,
-    %   FuncName, Stmt):
-    %
-    % True if Stmt is a directly recursive call
-    % (to qual(ModuleName, module_qual, FuncName)) which we can optimize
-    % into a jump back to the start of the function.
-    %
-:- pred stmt_is_self_recursive_call_replaceable_with_jump_to_top(
-    mlds_module_name::in, mlds_function_name::in, mlds_stmt::in) is semidet.
-
-stmt_is_self_recursive_call_replaceable_with_jump_to_top(ModuleName, FuncName,
-        Stmt) :-
-    Stmt = ml_stmt_call(_Signature, CalleeRval, _CallArgRvals,
-        _Results, CallKind, _Markers, _Context),
-
-    % Check if this call has been marked by ml_tailcall.m as one that
-    % can be optimized as a tail call.
-    %
-    % Note that a no_return_call may allocate lots of stack frames
-    % before it aborts the program. Optimizing such calls as tail calls
-    % allows the running program to give the user the program's *intended*
-    % abort message, not a message about stack exhaustion.
-    (
-        ( CallKind = tail_call
-        ; CallKind = no_return_call
-        ),
-        CallKindIsReplaceable = yes
-    ;
-        CallKind = ordinary_call,
-        CallKindIsReplaceable = no
-    ),
-    CallKindIsReplaceable = yes,
-
-    % Is this a self-recursive call?
-    % We test this *after* we test CallKind, because the CallKind test
-    % is both (a) cheaper, and (b) significantly more likely to fail.
-    CalleeRval = ml_const(mlconst_code_addr(CodeAddr)),
-    code_address_is_for_this_function(CodeAddr, ModuleName, FuncName).
-
-%---------------------------------------------------------------------------%
 
     % If the list of statements contains a block with no local variables,
     % then bring the block up one level. This optimization is needed to avoid
@@ -777,7 +595,7 @@ statement_affects_lvals(Lvals, Stmt, Affects) :-
         ),
         Affects = yes
     ;
-        Stmt = ml_stmt_call(_, _, _, _, _, _, _),
+        Stmt = ml_stmt_call(_, _, _, _, _, _),
         % A call can update local variables even without referring to them
         % explicitly, by referring to the environment in which they reside.
         Affects = yes
@@ -1551,12 +1369,12 @@ eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo) :-
         Stmt = ml_stmt_computed_goto(Rval, Labels, Context)
     ;
         Stmt0 = ml_stmt_call(Sig, Func0, Args0, RetLvals0, TailCall,
-            Markers, Context),
+            Context),
         eliminate_var_in_rval(Func0, Func, !VarElimInfo),
         eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
         eliminate_var_in_lvals(RetLvals0, RetLvals, !VarElimInfo),
         Stmt = ml_stmt_call(Sig, Func, Args, RetLvals, TailCall,
-            Markers, Context)
+            Context)
     ;
         Stmt0 = ml_stmt_return(Rvals0, Context),
         eliminate_var_in_rvals(Rvals0, Rvals, !VarElimInfo),

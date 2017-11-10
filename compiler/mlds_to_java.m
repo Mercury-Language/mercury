@@ -1016,7 +1016,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
         CallRetLvals = [ReturnLval]
     ),
     CallStmt = ml_stmt_call(OrigFuncSignature, CallRval, CallArgs,
-        CallRetLvals, ordinary_call, set.init, Context),
+        CallRetLvals, ordinary_call, Context),
 
     % Create a return statement that returns the result of the call to the
     % original method, boxed as a java.lang.Object.
@@ -3056,7 +3056,7 @@ output_statement_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
         Stmt = ml_stmt_computed_goto(_, _, _),
         unexpected($pred, "computed gotos not supported in Java.")
     ;
-        Stmt = ml_stmt_call(_, _, _, _, _, _, _),
+        Stmt = ml_stmt_call(_, _, _, _, _, _),
         output_stmt_call_for_java(Info, Indent, FuncInfo, Stmt,
             ExitMethods, !IO)
     ;
@@ -3239,8 +3239,8 @@ output_stmt_switch_for_java(Info, Indent, FuncInfo, Stmt,
 
 output_stmt_call_for_java(Info, Indent, _FuncInfo, Stmt,
         ExitMethods, !IO) :-
-    Stmt = ml_stmt_call(Signature, FuncRval, CallArgs,
-        Results, _IsTailCall, _Markers, Context),
+    Stmt = ml_stmt_call(Signature, FuncRval, CallArgs, Results,
+        _IsTailCall, Context),
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),

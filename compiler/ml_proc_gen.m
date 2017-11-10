@@ -93,21 +93,12 @@ ml_gen_preds(Target, ConstStructMap, FuncDefns,
 
     % Optimize tail calls only if asked.
     module_info_get_globals(!.ModuleInfo, Globals),
-    ( if
-        globals.lookup_bool_option(Globals, optimize_tailcalls, yes),
-        globals.lookup_bool_option(Globals, optimize_tailcalls_codegen, yes)
-    then
-        globals.lookup_bool_option(Globals, optimize_tailcalls_codegen_mutual,
-            TailCallsMutual),
-        (
-            TailCallsMutual = no,
-            OptTailCallsMutual = no_tail_call_opt_mutual
-        ;
-            TailCallsMutual = yes,
-            OptTailCallsMutual = tail_call_opt_mutual
-        ),
-        OptTailCalls = tail_call_opt_in_code_gen(OptTailCallsMutual)
-    else
+    globals.lookup_bool_option(Globals, optimize_tailcalls, TailCalls),
+    (
+        TailCalls = yes,
+        OptTailCalls = tail_call_opt_in_code_gen
+    ;
+        TailCalls = no,
         OptTailCalls = no_tail_call_opt_in_code_gen
     ),
     get_default_warn_parms(Globals, DefaultWarnParams),
@@ -186,13 +177,9 @@ requantify_codegen_proc(ProcId, !ProcTable) :-
     requantify_proc_general(ordinary_nonlocals_no_lambda, ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, !ProcTable).
 
-:- type maybe_tail_call_opt_mutual
-    --->    no_tail_call_opt_mutual
-    ;       tail_call_opt_mutual.
-
 :- type maybe_tail_call_opt_in_code_gen
     --->    no_tail_call_opt_in_code_gen
-    ;       tail_call_opt_in_code_gen(maybe_tail_call_opt_mutual).
+    ;       tail_call_opt_in_code_gen.
 
 :- pred ml_gen_sccs(module_info::in, maybe_tail_call_opt_in_code_gen::in,
     warn_non_tail_rec_params::in, mlds_target_lang::in,
@@ -225,7 +212,7 @@ ml_gen_scc(ModuleInfo, OptTailCalls, DefaultWarnParams, Target,
     map.foldl_values(gather_nontail_rec_calls, InSccMap, [], NonTailRecCalls),
     ( if
         % If we were trying to implement recursive calls as tail calls, ...
-        OptTailCalls = tail_call_opt_in_code_gen(_),
+        OptTailCalls = tail_call_opt_in_code_gen,
         % ... but some recursive calls turned out NOT to be implementable
         % as tail calls, ...
         NonTailRecCalls = [_ | _]
@@ -292,32 +279,26 @@ ml_gen_scc_code(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
                 no_tail_rec),
             PredProcIds, !FuncDefns, !GlobalData, !InSccMap)
     ;
-        OptTailCalls = tail_call_opt_in_code_gen(OptTailCallsMutual),
+        OptTailCalls = tail_call_opt_in_code_gen,
         partition_scc_procs(ModuleInfo, set.to_sorted_list(PredProcIds),
             NonePredProcIdInfos, SelfPredProcIdInfos0,
             MutualDetPredProcIdInfos0, MutualSemiPredProcIdInfos0),
 
-        % The predicates called by ml_gen_tscc have been taught how to handle
-        % copy-out output arguments, but this has not yet been tested, and
-        % (for now) they always generate gc_no_stmt as the gc annotation
-        % on MLDS function parameters. Until those limitations are fixed,
-        % don't give any work to ml_gen_tscc in circumstances where
-        % they would bite, or when the user has requested that it not be given
-        % any work.
+        % The predicates called by ml_gen_tscc always generate gc_no_stmt
+        % as the gc annotation on MLDS function parameters. Until this
+        % limitation is fixed, don't give any work to ml_gen_tscc in
+        % circumstances where it would bite.
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_gc_method(Globals, GC),
-        ( if
-            GC \= gc_accurate,
-            OptTailCallsMutual = tail_call_opt_mutual
-        then
-            SelfPredProcIdInfos = SelfPredProcIdInfos0,
-            MutualDetPredProcIdInfos = MutualDetPredProcIdInfos0,
-            MutualSemiPredProcIdInfos = MutualSemiPredProcIdInfos0
-        else
+        ( if GC = gc_accurate then
             SelfPredProcIdInfos = SelfPredProcIdInfos0 ++
                 MutualDetPredProcIdInfos0 ++ MutualSemiPredProcIdInfos0,
             MutualDetPredProcIdInfos = [],
             MutualSemiPredProcIdInfos = []
+        else
+            SelfPredProcIdInfos = SelfPredProcIdInfos0,
+            MutualDetPredProcIdInfos = MutualDetPredProcIdInfos0,
+            MutualSemiPredProcIdInfos = MutualSemiPredProcIdInfos0
         ),
 
         % Translate the procedures we cannot apply tail call optimization to.
@@ -1823,7 +1804,7 @@ does_stmt_contain_nested_func_defn(Stmt, !ContainsNestedFuncs) :-
         ( Stmt = ml_stmt_label(_Label, _Context)
         ; Stmt = ml_stmt_goto(_Target, _Context)
         ; Stmt = ml_stmt_computed_goto(_Rval, _Targets, _Context)
-        ; Stmt = ml_stmt_call(_Sig, _Callee, _Args, _Ret, _Kind, _M, _Context)
+        ; Stmt = ml_stmt_call(_Sig, _Callee, _Args, _Ret, _Kind, _Context)
         ; Stmt = ml_stmt_return(_RetVals, _Context)
         ; Stmt = ml_stmt_do_commit(_Rval, _Context)
         ; Stmt = ml_stmt_atomic(_Atomic, _Context)

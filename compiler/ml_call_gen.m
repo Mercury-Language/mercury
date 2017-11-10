@@ -89,7 +89,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_optimize.
-:- import_module ml_backend.ml_tailcall.
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module assoc_list.
@@ -374,7 +373,7 @@ ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
     % The callee of this tail call will be in InSccMap0 only if it can
     % call the caller back directly or indirectly.
     ( if map.search(InSccMap0, CalleePredProcId, InSccInfo0) then
-        InSccInfo0 = in_scc_info(MaybeInTscc, 
+        InSccInfo0 = in_scc_info(MaybeInTscc,
             IsTargetOfSelfTRCall0, IsTargetOfMutualTRCall0, _),
         (
             MaybeInTscc = in_tscc(IdInTSCC, FuncInputArgs),
@@ -403,8 +402,10 @@ ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
                         ;
                             TsccKind = tscc_self_and_mutual_rec,
                             IdInTSCC = proc_id_in_tscc(TsccProcNum),
-                            SelectorVar = lvn_comp_var(lvnc_tscc_proc_selector),
-                            SelectorLval = ml_local_var(SelectorVar, ml_int_type),
+                            SelectorVar =
+                                lvn_comp_var(lvnc_tscc_proc_selector),
+                            SelectorLval =
+                                ml_local_var(SelectorVar, ml_int_type),
                             SetSelectorStmt = ml_stmt_atomic(
                                 assign(SelectorLval,
                                     ml_const(mlconst_int(TsccProcNum))),
@@ -428,7 +429,8 @@ ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
                         (
                             IsTargetOfSelfTRCall0 = is_target_of_self_trcall
                         ;
-                            IsTargetOfSelfTRCall0 = is_not_target_of_self_trcall,
+                            IsTargetOfSelfTRCall0 =
+                                is_not_target_of_self_trcall,
                             InSccInfo = InSccInfo0 ^ isi_is_target_of_self_tr
                                 := is_target_of_self_trcall,
                             map.det_update(CalleePredProcId, InSccInfo,
@@ -439,7 +441,8 @@ ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
                         )
                     else
                         (
-                            IsTargetOfMutualTRCall0 = is_target_of_mutual_trcall
+                            IsTargetOfMutualTRCall0 =
+                                is_target_of_mutual_trcall
                         ;
                             IsTargetOfMutualTRCall0 =
                                 is_not_target_of_mutual_trcall,
@@ -688,14 +691,8 @@ ml_gen_mlds_call(Signature, FuncRval, ArgRvals0, RetLvalsTypes0,
     else
         CallKind = ordinary_call
     ),
-    ml_gen_info_get_disabled_warnings(!.Info, Warnings),
-    ( if set.contains(Warnings, goal_warning_non_tail_recursive_calls) then
-        Markers = set.make_singleton_set(mcm_disable_non_tail_rec_warning)
-    else
-        set.init(Markers)
-    ),
     Stmt = ml_stmt_call(Signature, FuncRval, ArgRvals, RetLvals,
-        CallKind, Markers, Context),
+        CallKind, Context),
     Stmts = [Stmt].
 
 :- pred ml_gen_success_cont(assoc_list(mlds_lval, mlds_type)::in,
@@ -881,6 +878,174 @@ ml_gen_simple_expr(unary(Op, Expr)) =
     ml_unop(std_unop(Op), ml_gen_simple_expr(Expr)).
 ml_gen_simple_expr(binary(Op, ExprA, ExprB)) =
     ml_binop(Op, ml_gen_simple_expr(ExprA), ml_gen_simple_expr(ExprB)).
+
+%---------------------------------------------------------------------------%
+%
+% Find out if the specified lvals/rvals might evaluate to the addresses of
+% local variables (or fields of local variables) or nested functions.
+%
+
+:- type may_yield_dangling_stack_ref
+    --->    may_yield_dangling_stack_ref
+    ;       will_not_yield_dangling_stack_ref.
+
+:- func may_rvals_yield_dangling_stack_ref(list(mlds_rval)) =
+    may_yield_dangling_stack_ref.
+
+may_rvals_yield_dangling_stack_ref([]) = will_not_yield_dangling_stack_ref.
+may_rvals_yield_dangling_stack_ref([Rval | Rvals])
+        = MayYieldDanglingStackRef :-
+    MayYieldDanglingStackRef0 =
+        may_rval_yield_dangling_stack_ref(Rval),
+    (
+        MayYieldDanglingStackRef0 = may_yield_dangling_stack_ref,
+        MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+    ;
+        MayYieldDanglingStackRef0 = will_not_yield_dangling_stack_ref,
+        MayYieldDanglingStackRef =
+            may_rvals_yield_dangling_stack_ref(Rvals)
+    ).
+
+:- func may_rval_yield_dangling_stack_ref(mlds_rval)
+    = may_yield_dangling_stack_ref.
+
+may_rval_yield_dangling_stack_ref(Rval) = MayYieldDanglingStackRef :-
+    (
+        Rval = ml_lval(_Lval),
+        % Passing the _value_ of an lval is fine.
+        MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+    ;
+        Rval = ml_mkword(_Tag, SubRval),
+        MayYieldDanglingStackRef =
+            may_rval_yield_dangling_stack_ref(SubRval)
+    ;
+        Rval = ml_const(Const),
+        MayYieldDanglingStackRef = may_const_yield_dangling_stack_ref(Const)
+    ;
+        Rval = ml_unop(_Op, SubRval),
+        MayYieldDanglingStackRef =
+            may_rval_yield_dangling_stack_ref(SubRval)
+    ;
+        Rval = ml_binop(_Op, SubRvalA, SubRvalB),
+        MayYieldDanglingStackRefA =
+            may_rval_yield_dangling_stack_ref(SubRvalA),
+        (
+            MayYieldDanglingStackRefA = may_yield_dangling_stack_ref,
+            MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+        ;
+            MayYieldDanglingStackRefA = will_not_yield_dangling_stack_ref,
+            MayYieldDanglingStackRef =
+                may_rval_yield_dangling_stack_ref(SubRvalB)
+        )
+    ;
+        Rval = ml_mem_addr(Lval),
+        % Passing the address of an lval is a problem,
+        % if that lval names a local variable.
+        MayYieldDanglingStackRef =
+            may_lval_yield_dangling_stack_ref(Lval)
+    ;
+        Rval = ml_vector_common_row_addr(_VectorCommon, RowRval),
+        MayYieldDanglingStackRef =
+            may_rval_yield_dangling_stack_ref(RowRval)
+    ;
+        ( Rval = ml_scalar_common(_)
+        ; Rval = ml_scalar_common_addr(_)
+        ; Rval = ml_self(_)
+        ),
+        MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+    ).
+
+    % Find out if the specified lval might be a local variable
+    % (or a field of a local variable).
+    %
+:- func may_lval_yield_dangling_stack_ref(mlds_lval)
+    = may_yield_dangling_stack_ref.
+
+may_lval_yield_dangling_stack_ref(Lval) = MayYieldDanglingStackRef :-
+    (
+        Lval = ml_local_var(_Var0, _),
+        MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+    ;
+        Lval = ml_field(_MaybeTag, Rval, _FieldId, _, _),
+        MayYieldDanglingStackRef = may_rval_yield_dangling_stack_ref(Rval)
+    ;
+        ( Lval = ml_mem_ref(_, _)
+        ; Lval = ml_global_var(_, _)
+        ; Lval = ml_target_global_var_ref(_)
+        ),
+        % We assume that the addresses of local variables are only ever
+        % passed down to other functions, or assigned to, so a mem_ref lval
+        % can never refer to a local variable.
+        MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+    ).
+
+    % Find out if the specified const might be the address of a local variable
+    % or nested function.
+    %
+    % The addresses of local variables are probably not consts, at least
+    % not unless those variables are declared as static (i.e. `one_copy'),
+    % so it might be safe to allow all data_addr_consts here, but currently
+    % we just take a conservative approach.
+    %
+:- func may_const_yield_dangling_stack_ref(mlds_rval_const)
+    = may_yield_dangling_stack_ref.
+
+may_const_yield_dangling_stack_ref(Const) = MayYieldDanglingStackRef :-
+    (
+        Const = mlconst_code_addr(CodeAddr),
+        ( if function_is_local(CodeAddr) then
+            MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+        else
+            MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+        )
+    ;
+        Const = mlconst_data_addr_local_var(_VarName),
+        MayYieldDanglingStackRef = may_yield_dangling_stack_ref
+    ;
+        ( Const = mlconst_true
+        ; Const = mlconst_false
+        ; Const = mlconst_int(_)
+        ; Const = mlconst_uint(_)
+        ; Const = mlconst_int8(_)
+        ; Const = mlconst_uint8(_)
+        ; Const = mlconst_int16(_)
+        ; Const = mlconst_uint16(_)
+        ; Const = mlconst_int32(_)
+        ; Const = mlconst_uint32(_)
+        ; Const = mlconst_enum(_, _)
+        ; Const = mlconst_char(_)
+        ; Const = mlconst_foreign(_, _, _)
+        ; Const = mlconst_float(_)
+        ; Const = mlconst_string(_)
+        ; Const = mlconst_multi_string(_)
+        ; Const = mlconst_named_const(_, _)
+        ; Const = mlconst_data_addr_rtti(_, _)
+        ; Const = mlconst_data_addr_tabling(_, _)
+        ; Const = mlconst_data_addr_global_var(_, _)
+        ; Const = mlconst_null(_)
+        ),
+        MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
+    ).
+
+    % Check whether the specified function is defined locally (i.e. as a
+    % nested function).
+    %
+:- pred function_is_local(mlds_code_addr::in) is semidet.
+
+function_is_local(CodeAddr) :-
+    CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
+    QualFuncLabel = qual_func_label(_ModuleName, FuncLabel),
+    FuncLabel = mlds_func_label(_ProcLabel, MaybeAux),
+    require_complete_switch [MaybeAux]
+    (
+        MaybeAux = proc_func,
+        fail
+    ;
+        ( MaybeAux = proc_aux_func(_)
+        ; MaybeAux = gc_trace_for_proc_func
+        ; MaybeAux = gc_trace_for_proc_aux_func(_)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_call_gen.

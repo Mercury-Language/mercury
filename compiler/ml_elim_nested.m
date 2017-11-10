@@ -574,8 +574,7 @@ ml_elim_nested_defns_in_func(Action, ModuleName, Globals, Target, FuncDefn0,
         % Also, for accurate GC, add code to save and restore the stack chain
         % pointer at any `try_commit' statements.
 
-        ElimInfo0 = elim_info_init(ModuleName, EnvClassId, EnvPtrTypeName,
-            Target),
+        ElimInfo0 = elim_info_init(EnvClassId, EnvPtrTypeName, Target),
         Params0 = mlds_func_params(Arguments0, RetValues),
         ml_maybe_add_args(Action, Arguments0, FuncBody0, ModuleName,
             Context, ElimInfo0, ElimInfo1),
@@ -1439,13 +1438,11 @@ flatten_statement(Action, Stmt0, Stmt, !Info) :-
         fixup_rval(Action, !.Info, Rval0, Rval),
         Stmt = ml_stmt_computed_goto(Rval, Labels, Context)
     ;
-        Stmt0 = ml_stmt_call(Sig, Func0, Args0, RetLvals0, TailCall,
-            Markers, Context),
+        Stmt0 = ml_stmt_call(Sig, Func0, Args0, RetLvals0, TailCall, Context),
         fixup_rval(Action, !.Info, Func0, Func),
         fixup_rvals(Action, !.Info, Args0, Args),
         fixup_lvals(Action, !.Info, RetLvals0, RetLvals),
-        Stmt = ml_stmt_call(Sig, Func, Args, RetLvals, TailCall,
-            Markers, Context)
+        Stmt = ml_stmt_call(Sig, Func, Args, RetLvals, TailCall, Context)
     ;
         Stmt0 = ml_stmt_return(Rvals0, Context),
         fixup_rvals(Action, !.Info, Rvals0, Rvals),
@@ -2244,7 +2241,7 @@ statement_contains_matching_defn(Filter, Stmt) :-
         ; Stmt = ml_stmt_goto(_Target, _Context)
         ; Stmt = ml_stmt_computed_goto(_Rval, _Labels, _Context)
         ; Stmt = ml_stmt_call(_Sig, _Func, _Args, _RetLvals, _TailCall,
-            _Markers, _Context)
+            _Context)
         ; Stmt = ml_stmt_return(_Rvals, _Context)
         ; Stmt = ml_stmt_do_commit(_Ref, _Context)
         ; Stmt = ml_stmt_atomic(_AtomicStmt, _Context)
@@ -2355,8 +2352,7 @@ add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info) :-
         add_unchain_stack_to_default(Action, Default0, Default, !Info),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default, Context)
     ;
-        Stmt0 = ml_stmt_call(_Sig, _Func, _Args, RetLvals, CallKind,
-            _Markers, Context),
+        Stmt0 = ml_stmt_call(_Sig, _Func, _Args, RetLvals, CallKind, Context),
         add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context,
             Stmt, !Info)
     ;
@@ -2526,9 +2522,6 @@ gen_save_and_restore_of_stack_chain_var(Id, Context, SaveStmt, RestoreStmt) :-
 
 :- type elim_info
     --->    elim_info(
-                % The name of the current module.
-                ei_module_name                  :: mlds_module_name,
-
                 % The lists of local variables for each of the containing
                 % functions, innermost first.
                 % XXX this is not used.
@@ -2559,16 +2552,13 @@ gen_save_and_restore_of_stack_chain_var(Id, Context, SaveStmt, RestoreStmt) :-
                 ei_target_lang                  :: mlds_target_lang
             ).
 
-:- func elim_info_init(mlds_module_name, mlds_class_id, mlds_type,
+:- func elim_info_init(mlds_class_id, mlds_type,
     mlds_target_lang) = elim_info.
 
-elim_info_init(ModuleName, EnvClassId, EnvPtrTypeName, Target) =
-    % OuterVars = [],
-    elim_info(ModuleName, cord.init, cord.init, EnvClassId, EnvPtrTypeName,
+elim_info_init(EnvClassId, EnvPtrTypeName, Target) =
+    elim_info(cord.init, cord.init, EnvClassId, EnvPtrTypeName,
         counter.init(0), Target).
 
-:- func elim_info_get_module_name(elim_info) = mlds_module_name.
-% :- func elim_info_get_outer_vars(elim_info) = outervars.
 :- func elim_info_get_local_vars(elim_info) = cord(mlds_local_var_defn).
 :- func elim_info_get_env_type_name(elim_info) = mlds_class_id.
 :- func elim_info_get_env_ptr_type_name(elim_info) = mlds_type.
@@ -2577,10 +2567,6 @@ elim_info_init(ModuleName, EnvClassId, EnvPtrTypeName, Target) =
 :- pred elim_info_set_local_vars(cord(mlds_local_var_defn)::in,
     elim_info::in, elim_info::out) is det.
 
-elim_info_get_module_name(ElimInfo) = X :-
-    X = ElimInfo ^ ei_module_name.
-% elim_info_get_outer_vars(ElimInfo) = X :-
-%   X = ElimInfo ^ ei_outer_vars.
 elim_info_get_local_vars(ElimInfo) = X :-
     X = ElimInfo ^ ei_local_vars.
 elim_info_get_env_type_name(ElimInfo) = X :-

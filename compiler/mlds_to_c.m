@@ -3506,7 +3506,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
         mlds_output_stmt_computed_goto(Opts, Indent, Stmt, !IO)
     ;
         Stmt = ml_stmt_call(_Signature, _FuncRval, _CallArgs,
-            _Results, _IsTailCall, _Markers, _Context),
+            _Results, _IsTailCall, _Context),
         mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
         Stmt = ml_stmt_return(_Results, _Context),
@@ -3865,7 +3865,7 @@ mlds_output_computed_goto_label(Opts, Context, Indent, Label, Count0, Count,
 
 mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_call(Signature, FuncRval, CallArgs, Results,
-        IsTailCall, _Markers, Context),
+        IsTailCall, Context),
     FuncInfo = func_info_c(CallerName, CallerSignature),
 
     % We need to ensure that we generate a single C statement here,
