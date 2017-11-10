@@ -658,14 +658,18 @@ log10(X) = Log :-
 "
     Log10 = System.Math.Log10(X);
 ").
+:- pragma foreign_proc("Java",
+    unchecked_log10(X::in) = (Log10::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Log10 = java.lang.Math.log10(X);
+").
 :- pragma foreign_proc("Erlang",
     unchecked_log10(X::in) = (Log10::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log10 = math:log10(X)
 ").
-% Java doesn't have a built-in log10, so default to mercury here.
-unchecked_log10(X) = math.unchecked_ln(X) / math.unchecked_ln(10.0).
 
 log2(X) = Log :-
     ( if math_domain_checks, X =< 0.0 then
