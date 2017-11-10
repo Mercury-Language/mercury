@@ -305,10 +305,8 @@ ml_gen_scc_code(ModuleInfo, OptTailCalls, Target, ConstStructMap, SCCE,
         % they would bite, or when the user has requested that it not be given
         % any work.
         module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, det_copy_out, DetCopyOut),
         globals.get_gc_method(Globals, GC),
         ( if
-            DetCopyOut = no,
             GC \= gc_accurate,
             OptTailCallsMutual = tail_call_opt_mutual
         then

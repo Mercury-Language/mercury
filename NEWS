@@ -501,6 +501,11 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury compiler:
 
+* We have extended tail call optimization from self recursive calls only
+  to mutually recursive calls as well, when generating high level C code,
+  C# code, or Java code. (The compiler has long been able apply tail call
+  optimization to mutually recursive calls when generating low level C code.)
+
 * We have added a new option --warn-dead-preds. While the existing option
   --warn-dead-procs asks the compiler to generate warnings for every
   unused procedure of the module being compiled, the new option asks
