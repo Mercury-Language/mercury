@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2007, 2011-2012 The University of Melbourne.
+% Copyright (C) 2014, 2016-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -21,7 +22,7 @@
 % The benefit of having the Mercury library perform the checks instead is
 % that Mercury will tell you in which function or predicate the error
 % occurred, as well as giving you a stack trace if that is enabled; with
-% the unchecked operations  you only have the information that the
+% the unchecked operations you only have the information that the
 % floating-point exception signal handler gives you.
 %
 %---------------------------------------------------------------------------%
@@ -246,7 +247,7 @@
 
     #define ML_FLOAT_E      2.7182818284590452354
     #define ML_FLOAT_PI     3.1415926535897932384
-    #define ML_FLOAT_LN2        0.69314718055994530941
+    #define ML_FLOAT_LN2    0.69314718055994530941
 
 "). % end pragma foreign_decl
 
@@ -313,26 +314,26 @@
 %
     % Pythagoras' number
 :- pragma foreign_proc("C",
-    math.pi = (Pi::out),
+    pi = (Pi::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Pi = ML_FLOAT_PI;
 ").
 :- pragma foreign_proc("C#",
-    math.pi = (Pi::out),
+    pi = (Pi::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Pi = System.Math.PI;
 ").
 :- pragma foreign_proc("Java",
-    math.pi = (Pi::out),
+    pi = (Pi::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Pi = java.lang.Math.PI;
 ").
 :- pragma foreign_proc("Erlang",
-    math.pi = (Pi::out),
+    pi = (Pi::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Pi = math:pi()
@@ -346,20 +347,20 @@ pi = 3.1415926535897932384626433832795029.
 
     % Base of natural logarithms
 :- pragma foreign_proc("C",
-    math.e = (E::out),
+    e = (E::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     E = ML_FLOAT_E;
 ").
 :- pragma foreign_proc("C#",
-    math.e = (E::out),
+    e = (E::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     E = System.Math.E;
 ").
 :- pragma foreign_proc("Java",
-    math.e = (E::out),
+    e = (E::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     E = java.lang.Math.E;
@@ -372,26 +373,26 @@ pi = 3.1415926535897932384626433832795029.
 e = 2.7182818284590452353602874713526625.
 
 :- pragma foreign_proc("C",
-    math.ceiling(Num::in) = (Ceil::out),
+    ceiling(Num::in) = (Ceil::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Ceil = ceil(Num);
 ").
 :- pragma foreign_proc("C#",
-    math.ceiling(Num::in) = (Ceil::out),
+    ceiling(Num::in) = (Ceil::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ceil = System.Math.Ceiling(Num);
 ").
 :- pragma foreign_proc("Java",
-    math.ceiling(Num::in) = (Ceil::out),
+    ceiling(Num::in) = (Ceil::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ceil = java.lang.Math.ceil(Num);
 ").
 :- pragma foreign_proc("Erlang",
-    math.ceiling(Num::in) = (Ceil::out),
+    ceiling(Num::in) = (Ceil::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     T = erlang:trunc(Num),
@@ -404,26 +405,26 @@ e = 2.7182818284590452353602874713526625.
 ").
 
 :- pragma foreign_proc("C",
-    math.floor(Num::in) = (Floor::out),
+    floor(Num::in) = (Floor::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Floor = floor(Num);
 ").
 :- pragma foreign_proc("C#",
-    math.floor(Num::in) = (Floor::out),
+    floor(Num::in) = (Floor::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Floor = System.Math.Floor(Num);
 ").
 :- pragma foreign_proc("Java",
-    math.floor(Num::in) = (Floor::out),
+    floor(Num::in) = (Floor::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Floor = java.lang.Math.floor(Num);
 ").
 :- pragma foreign_proc("Erlang",
-    math.floor(Num::in) = (Floor::out),
+    floor(Num::in) = (Floor::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     T = erlang:trunc(Num),
@@ -436,14 +437,14 @@ e = 2.7182818284590452353602874713526625.
 ").
 
 :- pragma foreign_proc("C",
-    math.round(Num::in) = (Rounded::out),
+    round(Num::in) = (Rounded::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Rounded = floor(Num+0.5);
 ").
 :- pragma foreign_proc("C#",
-    math.round(Num::in) = (Rounded::out),
+    round(Num::in) = (Rounded::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // XXX the semantics of System.Math.Round() are not the same as ours.
@@ -451,13 +452,13 @@ e = 2.7182818284590452353602874713526625.
     Rounded = System.Math.Floor(Num+0.5);
 ").
 :- pragma foreign_proc("Java",
-    math.round(Num::in) = (Rounded::out),
+    round(Num::in) = (Rounded::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Rounded = java.lang.Math.round(Num);
 ").
 :- pragma foreign_proc("Erlang",
-    math.round(Num::in) = (Rounded::out),
+    round(Num::in) = (Rounded::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Rounded = float(round(Num))
@@ -470,31 +471,31 @@ sqrt(X) = SquareRoot :-
     ( if math_domain_checks, X < 0.0 then
         throw(domain_error("math.sqrt"))
     else
-        SquareRoot = math.unchecked_sqrt(X)
+        SquareRoot = unchecked_sqrt(X)
     ).
 
 :- pragma foreign_proc("C",
-    math.unchecked_sqrt(X::in) = (SquareRoot::out),
+    unchecked_sqrt(X::in) = (SquareRoot::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     SquareRoot = sqrt(X);
 ").
 :- pragma foreign_proc("C#",
-    math.unchecked_sqrt(X::in) = (SquareRoot::out),
-    [thread_safe, promise_pure],
+    unchecked_sqrt(X::in) = (SquareRoot::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     SquareRoot = System.Math.Sqrt(X);
 ").
 :- pragma foreign_proc("Java",
-    math.unchecked_sqrt(X::in) = (SquareRoot::out),
-    [thread_safe, promise_pure],
+    unchecked_sqrt(X::in) = (SquareRoot::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     SquareRoot = java.lang.Math.sqrt(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.unchecked_sqrt(X::in) = (SquareRoot::out),
-    [thread_safe, promise_pure],
+    unchecked_sqrt(X::in) = (SquareRoot::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     SquareRoot = math:sqrt(X)
 ").
@@ -550,7 +551,7 @@ pow(X, Y) = Res :-
     ).
 
 :- pragma foreign_proc("C",
-    math.unchecked_pow(X::in, Y::in) = (Res::out),
+    unchecked_pow(X::in, Y::in) = (Res::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -558,47 +559,47 @@ pow(X, Y) = Res :-
 ").
 
 :- pragma foreign_proc("C#",
-    math.unchecked_pow(X::in, Y::in) = (Res::out),
-    [thread_safe, promise_pure],
+    unchecked_pow(X::in, Y::in) = (Res::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Res = System.Math.Pow(X, Y);
 ").
 
 :- pragma foreign_proc("Java",
-    math.unchecked_pow(X::in, Y::in) = (Res::out),
-    [thread_safe, promise_pure],
+    unchecked_pow(X::in, Y::in) = (Res::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Res = java.lang.Math.pow(X, Y);
 ").
 
 :- pragma foreign_proc("Erlang",
-    math.unchecked_pow(X::in, Y::in) = (Res::out),
-    [thread_safe, promise_pure],
+    unchecked_pow(X::in, Y::in) = (Res::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Res = math:pow(X, Y)
 ").
 
 :- pragma foreign_proc("C",
-    math.exp(X::in) = (Exp::out),
+    exp(X::in) = (Exp::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Exp = exp(X);
 ").
 :- pragma foreign_proc("C#",
-    math.exp(X::in) = (Exp::out),
+    exp(X::in) = (Exp::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Exp = System.Math.Exp(X);
 ").
 :- pragma foreign_proc("Java",
-    math.exp(X::in) = (Exp::out),
+    exp(X::in) = (Exp::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Exp = java.lang.Math.exp(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.exp(X::in) = (Exp::out),
+    exp(X::in) = (Exp::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Exp = math:exp(X)
@@ -612,27 +613,27 @@ ln(X) = Log :-
     ).
 
 :- pragma foreign_proc("C",
-    math.unchecked_ln(X::in) = (Log::out),
+    unchecked_ln(X::in) = (Log::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Log = log(X);
 ").
 :- pragma foreign_proc("C#",
-    math.unchecked_ln(X::in) = (Log::out),
-    [thread_safe, promise_pure],
+    unchecked_ln(X::in) = (Log::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log = System.Math.Log(X);
 ").
 :- pragma foreign_proc("Java",
-    math.unchecked_ln(X::in) = (Log::out),
-    [thread_safe, promise_pure],
+    unchecked_ln(X::in) = (Log::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log = java.lang.Math.log(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.unchecked_ln(X::in) = (Log::out),
-    [thread_safe, promise_pure],
+    unchecked_ln(X::in) = (Log::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log = math:log(X)
 ").
@@ -645,21 +646,21 @@ log10(X) = Log :-
     ).
 
 :- pragma foreign_proc("C",
-    math.unchecked_log10(X::in) = (Log10::out),
+    unchecked_log10(X::in) = (Log10::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Log10 = log10(X);
 ").
 :- pragma foreign_proc("C#",
-    math.unchecked_log10(X::in) = (Log10::out),
-    [thread_safe, promise_pure],
+    unchecked_log10(X::in) = (Log10::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log10 = System.Math.Log10(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.unchecked_log10(X::in) = (Log10::out),
-    [thread_safe, promise_pure],
+    unchecked_log10(X::in) = (Log10::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log10 = math:log10(X)
 ").
@@ -674,21 +675,21 @@ log2(X) = Log :-
     ).
 
 :- pragma foreign_proc("C",
-    math.unchecked_log2(X::in) = (Log2::out),
+    unchecked_log2(X::in) = (Log2::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Log2 = log(X) / ML_FLOAT_LN2;
 ").
 :- pragma foreign_proc("C#",
-    math.unchecked_log2(X::in) = (Log2::out),
-    [thread_safe, promise_pure],
+    unchecked_log2(X::in) = (Log2::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log2 = System.Math.Log(X) / ML_FLOAT_LN2;
 ").
 :- pragma foreign_proc("Java",
-    math.unchecked_log2(X::in) = (Log2::out),
-    [thread_safe, promise_pure],
+    unchecked_log2(X::in) = (Log2::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log2 = java.lang.Math.log(X) / ML_FLOAT_LN2;
 ").
@@ -708,15 +709,15 @@ log(B, X) = Log :-
     ).
 
 :- pragma foreign_proc("C",
-    math.unchecked_log(B::in, X::in) = (Log::out),
+    unchecked_log(B::in, X::in) = (Log::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Log = log(X) / log(B);
 ").
 :- pragma foreign_proc("C#",
-    math.unchecked_log(B::in, X::in) = (Log::out),
-    [thread_safe, promise_pure],
+    unchecked_log(B::in, X::in) = (Log::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log = System.Math.Log(X, B);
 ").
@@ -725,59 +726,59 @@ log(B, X) = Log :-
 unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
 
 :- pragma foreign_proc("C",
-    math.sin(X::in) = (Sin::out),
+    sin(X::in) = (Sin::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Sin = sin(X);
 ").
 :- pragma foreign_proc("C#",
-    math.sin(X::in) = (Sin::out),
+    sin(X::in) = (Sin::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Sin = System.Math.Sin(X);
 ").
 :- pragma foreign_proc("Java",
-    math.sin(X::in) = (Sin::out),
+    sin(X::in) = (Sin::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Sin = java.lang.Math.sin(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.sin(X::in) = (Sin::out),
+    sin(X::in) = (Sin::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Sin = math:sin(X)
 ").
 
 :- pragma foreign_proc("C",
-    math.cos(X::in) = (Cos::out),
+    cos(X::in) = (Cos::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Cos = cos(X);
 ").
 :- pragma foreign_proc("C#",
-    math.cos(X::in) = (Cos::out),
+    cos(X::in) = (Cos::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Cos = System.Math.Cos(X);
 ").
 :- pragma foreign_proc("Java",
-    math.cos(X::in) = (Cos::out),
+    cos(X::in) = (Cos::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Cos = java.lang.Math.cos(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.cos(X::in) = (Cos::out),
+    cos(X::in) = (Cos::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Cos = math:cos(X)
 ").
 
 :- pragma foreign_proc("C",
-    math.tan(X::in) = (Tan::out),
+    tan(X::in) = (Tan::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -815,27 +816,27 @@ asin(X) = ASin :-
     ).
 
 :- pragma foreign_proc("C",
-    math.unchecked_asin(X::in) = (ASin::out),
+    unchecked_asin(X::in) = (ASin::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     ASin = asin(X);
 ").
 :- pragma foreign_proc("C#",
-    math.unchecked_asin(X::in) = (ASin::out),
-    [thread_safe, promise_pure],
+    unchecked_asin(X::in) = (ASin::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     ASin = System.Math.Asin(X);
 ").
 :- pragma foreign_proc("Java",
-    math.unchecked_asin(X::in) = (ASin::out),
-    [thread_safe, promise_pure],
+    unchecked_asin(X::in) = (ASin::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     ASin = java.lang.Math.asin(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.unchecked_asin(X::in) = (ASin::out),
-    [thread_safe, promise_pure],
+    unchecked_asin(X::in) = (ASin::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     ASin = math:asin(X)
 ").
@@ -853,27 +854,27 @@ acos(X) = ACos :-
     ).
 
 :- pragma foreign_proc("C",
-    math.unchecked_acos(X::in) = (ACos::out),
+    unchecked_acos(X::in) = (ACos::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     ACos = acos(X);
 ").
 :- pragma foreign_proc("C#",
-    math.unchecked_acos(X::in) = (ACos::out),
-    [thread_safe, promise_pure],
+    unchecked_acos(X::in) = (ACos::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     ACos = System.Math.Acos(X);
 ").
 :- pragma foreign_proc("Java",
-    math.unchecked_acos(X::in) = (ACos::out),
-    [thread_safe, promise_pure],
+    unchecked_acos(X::in) = (ACos::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     ACos = java.lang.Math.acos(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.unchecked_acos(X::in) = (ACos::out),
-    [thread_safe, promise_pure],
+    unchecked_acos(X::in) = (ACos::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     ACos = math:acos(X)
 ").
@@ -886,71 +887,71 @@ acos(X) = ACos :-
     ATan = atan(X);
 ").
 :- pragma foreign_proc("C#",
-    math.atan(X::in) = (ATan::out),
+    atan(X::in) = (ATan::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     ATan = System.Math.Atan(X);
 ").
 :- pragma foreign_proc("Java",
-    math.atan(X::in) = (ATan::out),
+    atan(X::in) = (ATan::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     ATan = java.lang.Math.atan(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.atan(X::in) = (ATan::out),
+    atan(X::in) = (ATan::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     ATan = math:atan(X)
 ").
 
 :- pragma foreign_proc("C",
-    math.atan2(Y::in, X::in) = (ATan2::out),
+    atan2(Y::in, X::in) = (ATan2::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     ATan2 = atan2(Y, X);
 ").
 :- pragma foreign_proc("C#",
-    math.atan2(Y::in, X::in) = (ATan2::out),
+    atan2(Y::in, X::in) = (ATan2::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     ATan2 = System.Math.Atan2(Y, X);
 ").
 :- pragma foreign_proc("Java",
-    math.atan2(Y::in, X::in) = (ATan2::out),
+    atan2(Y::in, X::in) = (ATan2::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     ATan2 = java.lang.Math.atan2(Y, X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.atan2(Y::in, X::in) = (ATan2::out),
+    atan2(Y::in, X::in) = (ATan2::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     ATan2 = math:atan2(Y, X)
 ").
 
 :- pragma foreign_proc("C",
-    math.sinh(X::in) = (Sinh::out),
+    sinh(X::in) = (Sinh::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Sinh = sinh(X);
 ").
 :- pragma foreign_proc("Java",
-    math.sinh(X::in) = (Sinh::out),
+    sinh(X::in) = (Sinh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Sinh = java.lang.Math.sinh(X);
 ").
 :- pragma foreign_proc("C#",
-    math.sinh(X::in) = (Sinh::out),
+    sinh(X::in) = (Sinh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Sinh = System.Math.Sinh(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.sinh(X::in) = (Sinh::out),
+    sinh(X::in) = (Sinh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Sinh = math:sinh(X)
@@ -960,26 +961,26 @@ sinh(X) = Sinh :-
     Sinh = (exp(X)-exp(-X)) / 2.0.
 
 :- pragma foreign_proc("C",
-    math.cosh(X::in) = (Cosh::out),
+    cosh(X::in) = (Cosh::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Cosh = cosh(X);
 ").
 :- pragma foreign_proc("Java",
-    math.cosh(X::in) = (Cosh::out),
+    cosh(X::in) = (Cosh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Cosh = java.lang.Math.cosh(X);
 ").
 :- pragma foreign_proc("C#",
-    math.cosh(X::in) = (Cosh::out),
+    cosh(X::in) = (Cosh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Cosh = System.Math.Cosh(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.cosh(X::in) = (Cosh::out),
+    cosh(X::in) = (Cosh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Cosh = math:cosh(X)
@@ -989,26 +990,26 @@ cosh(X) = Cosh :-
     Cosh = (exp(X)+exp(-X)) / 2.0.
 
 :- pragma foreign_proc("C",
-    math.tanh(X::in) = (Tanh::out),
+    tanh(X::in) = (Tanh::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Tanh = tanh(X);
 ").
 :- pragma foreign_proc("Java",
-    math.tanh(X::in) = (Tanh::out),
+    tanh(X::in) = (Tanh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Tanh = java.lang.Math.tanh(X);
 ").
 :- pragma foreign_proc("C#",
-    math.tanh(X::in) = (Tanh::out),
+    tanh(X::in) = (Tanh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Tanh = System.Math.Tanh(X);
 ").
 :- pragma foreign_proc("Erlang",
-    math.tanh(X::in) = (Tanh::out),
+    tanh(X::in) = (Tanh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Tanh = math:tanh(X)
@@ -1020,7 +1021,7 @@ tanh(X) = Tanh :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    math.have_fma,
+    have_fma,
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -1035,7 +1036,7 @@ have_fma :-
     semidet_false.
 
 :- pragma foreign_proc("C",
-    math.fma(X::in, Y::in, Z::in) = (FMA::out),
+    fma(X::in, Y::in, Z::in) = (FMA::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
