@@ -343,13 +343,10 @@ tail_rec_call_assign_input_args(ModuleName, Context,
         !:InitStmts, !:AssignStmts, !:TempDefns),
 
     Arg = mlds_argument(VarName, Type, _ArgGCStmt),
-    ( if
-        % Don't bother assigning a variable to itself.
-        ArgRval = ml_lval(ml_local_var(VarName, _VarType))
-    then
+    % Don't bother assigning a variable to itself.
+    ( if ArgRval = ml_lval(ml_local_var(VarName, _VarType)) then
         true
     else
-
         ( if VarName = lvn_prog_var(VarNameStr, VarNum) then
             NextValueName = lvn_prog_var_next_value(VarNameStr, VarNum)
         else
