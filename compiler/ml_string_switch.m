@@ -2216,7 +2216,7 @@ ml_wrap_loop_break(CodeModel, LoopPresent, Context, MaybeStopLoopVarLval,
             then
                 BreakCommentStmt = ml_stmt_atomic(
                     comment("break out of search loop"), Context),
-                BreakStmt = ml_stmt_goto(goto_break, Context),
+                BreakStmt = ml_stmt_goto(goto_break_loop, Context),
                 BodyStmt =
                     ml_stmt_block(MatchDefns, [],
                         MatchStmts ++ [BreakCommentStmt, BreakStmt], Context),

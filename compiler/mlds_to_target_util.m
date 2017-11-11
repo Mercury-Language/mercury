@@ -92,6 +92,22 @@
 
 %---------------------------------------------------------------------------%
 
+    % The modules that write out MLDS statements use this type to check
+    % whether goto_break_switch and goto_break_loop are used in the context
+    % they were meant for.
+    %
+:- type break_context
+    --->    bc_none
+            % We are inside neither a loop nor a switch.
+
+    ;       bc_switch
+            % The nearest enclosing structure we can break from is a switch.
+
+    ;       bc_loop.
+            % The nearest enclosing structure we can break from is a loop.
+
+%---------------------------------------------------------------------------%
+
 :- type func_info_csj
     --->    func_info_csj(
                 func_info_params    :: mlds_func_params
@@ -591,8 +607,9 @@ method_ptrs_in_statement(Stmt, !CodeAddrsInConsts) :-
     ;
         Stmt = ml_stmt_goto(Target, _Context),
         (
-            ( Target = goto_break
-            ; Target = goto_continue
+            ( Target = goto_break_switch
+            ; Target = goto_break_loop
+            ; Target = goto_continue_loop
             )
         ;
             Target = goto_label(_),

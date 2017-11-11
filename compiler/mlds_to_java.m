@@ -3040,18 +3040,44 @@ output_statement_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
         Stmt = ml_stmt_label(_, _),
         unexpected($pred, "labels not supported in Java.")
     ;
-        Stmt = ml_stmt_goto(goto_label(_), _),
-        unexpected($pred, "gotos not supported in Java.")
-    ;
-        Stmt = ml_stmt_goto(goto_break, _),
-        output_n_indents(Indent, !IO),
-        io.write_string("break;\n", !IO),
-        ExitMethods = set.make_singleton_set(can_break)
-    ;
-        Stmt = ml_stmt_goto(goto_continue, _),
-        output_n_indents(Indent, !IO),
-        io.write_string("continue;\n", !IO),
-        ExitMethods = set.make_singleton_set(can_continue)
+        Stmt = ml_stmt_goto(Target, _),
+        (
+            Target = goto_label(_),
+            unexpected($pred, "gotos not supported in Java.")
+        ;
+            Target = goto_break_switch,
+            BreakContext = Info ^ joi_break_context,
+            (
+                BreakContext = bc_switch,
+                output_n_indents(Indent, !IO),
+                io.write_string("break;\n", !IO),
+                ExitMethods = set.make_singleton_set(can_break)
+            ;
+                ( BreakContext = bc_none
+                ; BreakContext = bc_loop
+                ),
+                unexpected($pred, "goto_break_switch not in switch")
+            )
+        ;
+            Target = goto_break_loop,
+            BreakContext = Info ^ joi_break_context,
+            (
+                BreakContext = bc_loop,
+                output_n_indents(Indent, !IO),
+                io.write_string("break;\n", !IO),
+                ExitMethods = set.make_singleton_set(can_break)
+            ;
+                ( BreakContext = bc_none
+                ; BreakContext = bc_switch
+                ),
+                unexpected($pred, "goto_break_loop not in loop")
+            )
+        ;
+            Target = goto_continue_loop,
+            output_n_indents(Indent, !IO),
+            io.write_string("continue;\n", !IO),
+            ExitMethods = set.make_singleton_set(can_continue)
+        )
     ;
         Stmt = ml_stmt_computed_goto(_, _, _),
         unexpected($pred, "computed gotos not supported in Java.")
@@ -3138,7 +3164,8 @@ output_stmt_while_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
             io.write_string("}\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         else
-            output_statement_for_java(Info, ScopeIndent, FuncInfo, BodyStmt,
+            BodyInfo = Info ^ joi_break_context := bc_loop,
+            output_statement_for_java(BodyInfo, ScopeIndent, FuncInfo, BodyStmt,
                 StmtExitMethods, !IO),
             ExitMethods = while_exit_methods_for_java(Cond, StmtExitMethods)
         )
@@ -3146,7 +3173,8 @@ output_stmt_while_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
         Kind = loop_at_least_once,
         output_n_indents(Indent, !IO),
         io.write_string("do\n", !IO),
-        output_statement_for_java(Info, ScopeIndent, FuncInfo, BodyStmt,
+        BodyInfo = Info ^ joi_break_context := bc_loop,
+        output_statement_for_java(BodyInfo, ScopeIndent, FuncInfo, BodyStmt,
             StmtExitMethods, !IO),
         indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
             Context, Indent, !IO),
@@ -3226,7 +3254,8 @@ output_stmt_switch_for_java(Info, Indent, FuncInfo, Stmt,
     io.write_string("switch (", !IO),
     output_rval_maybe_with_enum_for_java(Info, Val, !IO),
     io.write_string(") {\n", !IO),
-    output_switch_cases_for_java(Info, Indent + 1, FuncInfo, Context,
+    CaseInfo = Info ^ joi_break_context := bc_switch,
+    output_switch_cases_for_java(CaseInfo, Indent + 1, FuncInfo, Context,
         Cases, Default, ExitMethods, !IO),
     indent_line_after_context(Info ^ joi_line_numbers, marker_comment,
         Context, Indent, !IO),
@@ -5016,6 +5045,7 @@ count_new_lines(C, !N, Prev, C) :-
 
 %---------------------------------------------------------------------------%
 
+    % Keep the enum fields together, so they can be packed into one word.
 :- type java_out_info
     --->    java_out_info(
                 % These are static.
@@ -5029,6 +5059,7 @@ count_new_lines(C, !N, Prev, C) :-
 
                 % These are dynamic.
                 joi_output_generics :: output_generics,
+                joi_break_context   :: break_context,
                 joi_univ_tvars      :: list(tvar)
             ).
 
@@ -5045,7 +5076,7 @@ init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap) = Info :-
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     Info = java_out_info(ModuleInfo, AutoComments,
         LineNumbers, ForeignLineNumbers, MLDS_ModuleName, SourceFileName,
-        AddrOfMap, do_not_output_generics, []).
+        AddrOfMap, do_not_output_generics, bc_none, []).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_java.

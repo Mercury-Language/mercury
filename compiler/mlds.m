@@ -1348,12 +1348,17 @@
     --->    goto_label(mlds_label)
             % Branch to the specified label.
 
-    ;       goto_break
-            % Branch to just after the end of the immediately enclosing loop
-            % or switch, just like a C/C++/Java `break' statement.
+    ;       goto_break_switch
+            % Branch to just after the end of the immediately enclosing switch,
+            % just like a C/C++/Java `break' statement.
             % Not supported by all target languages.
 
-    ;       goto_continue.
+    ;       goto_break_loop
+            % Branch to just after the end of the immediately enclosing loop
+            % just like a C/C++/Java `break' statement.
+            % Not supported by all target languages.
+
+    ;       goto_continue_loop.
             % Branch to the end of the loop body for the immediately enclosing
             % loop, just like a C/C++/Java/C# `continue' statement.
             % Not supported by all target languages.

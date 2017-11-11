@@ -2423,8 +2423,7 @@ output_stmt_block_for_csharp(Info, Indent, FuncInfo, Stmt,
     exit_methods::out, io::di, io::uo) is det.
 :- pragma inline(output_stmt_while_for_csharp/7).
 
-output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt,
-        ExitMethods, !IO) :-
+output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
     Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
     scope_indent(BodyStmt, Indent, ScopeIndent),
     (
@@ -2447,7 +2446,8 @@ output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt,
             io.write_string("}\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         else
-            output_stmt_for_csharp(Info, ScopeIndent, FuncInfo, BodyStmt,
+            BodyInfo = Info ^ csoi_break_context := bc_loop,
+            output_stmt_for_csharp(BodyInfo, ScopeIndent, FuncInfo, BodyStmt,
                 StmtExitMethods, !IO),
             ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
         )
@@ -2456,7 +2456,8 @@ output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt,
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("do\n", !IO),
-        output_stmt_for_csharp(Info, ScopeIndent, FuncInfo, BodyStmt,
+        BodyInfo = Info ^ csoi_break_context := bc_loop,
+        output_stmt_for_csharp(BodyInfo, ScopeIndent, FuncInfo, BodyStmt,
             StmtExitMethods, !IO),
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
@@ -2533,7 +2534,8 @@ output_stmt_switch_for_csharp(Info, Indent, FuncInfo, Stmt,
     io.write_string("switch (", !IO),
     output_rval_for_csharp(Info, Val, !IO),
     io.write_string(") {\n", !IO),
-    output_switch_cases_for_csharp(Info, Indent + 1, FuncInfo, Context,
+    CaseInfo = Info ^ csoi_break_context := bc_switch,
+    output_switch_cases_for_csharp(CaseInfo, Indent + 1, FuncInfo, Context,
         Cases, Default, ExitMethods, !IO),
     indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent, !IO),
     io.write_string("}\n", !IO).
@@ -2543,20 +2545,43 @@ output_stmt_switch_for_csharp(Info, Indent, FuncInfo, Stmt,
     exit_methods::out, io::di, io::uo) is det.
 :- pragma inline(output_stmt_goto_for_csharp/7).
 
-output_stmt_goto_for_csharp(Info, Indent, _FuncInfo, Stmt,
-        ExitMethods, !IO) :-
+output_stmt_goto_for_csharp(Info, Indent, _FuncInfo, Stmt, ExitMethods, !IO) :-
     Stmt = ml_stmt_goto(Target, Context),
     (
         Target = goto_label(_),
         unexpected($pred, "gotos not supported in C#.")
     ;
-        Target = goto_break,
-        indent_line_after_context(Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string("break;\n", !IO),
-        ExitMethods = set.make_singleton_set(can_break)
+        Target = goto_break_switch,
+        BreakContext = Info ^ csoi_break_context,
+        (
+            BreakContext = bc_switch,
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
+                Indent, !IO),
+            io.write_string("break;\n", !IO),
+            ExitMethods = set.make_singleton_set(can_break)
+        ;
+            ( BreakContext = bc_none
+            ; BreakContext = bc_loop
+            ),
+            unexpected($pred, "goto_break_switch not in switch")
+        )
     ;
-        Target = goto_continue,
+        Target = goto_break_loop,
+        BreakContext = Info ^ csoi_break_context,
+        (
+            BreakContext = bc_loop,
+            indent_line_after_context(Info ^ csoi_line_numbers, Context,
+                Indent, !IO),
+            io.write_string("break;\n", !IO),
+            ExitMethods = set.make_singleton_set(can_break)
+        ;
+            ( BreakContext = bc_none
+            ; BreakContext = bc_switch
+            ),
+            unexpected($pred, "goto_break_loop not in loop")
+        )
+    ;
+        Target = goto_continue_loop,
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("continue;\n", !IO),
@@ -3959,6 +3984,7 @@ output_pragma_warning_restore(!IO) :-
 
 %---------------------------------------------------------------------------%
 
+    % Keep the enum fields together, so they can be packed into one word.
 :- type csharp_out_info
     --->    csharp_out_info(
                 % These are static.
@@ -3972,6 +3998,7 @@ output_pragma_warning_restore(!IO) :-
 
                 % These are dynamic.
                 csoi_output_generics        :: output_generics,
+                csoi_break_context          :: break_context,
                 csoi_univ_tvars             :: list(tvar)
             ).
 
@@ -3988,7 +4015,7 @@ init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs) = Info :-
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     Info = csharp_out_info(ModuleInfo, AutoComments,
         LineNumbers, ForeignLineNumbers, MLDS_ModuleName, SourceFileName,
-        CodeAddrs, do_not_output_generics, []).
+        CodeAddrs, do_not_output_generics,  bc_none, []).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs.

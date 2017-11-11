@@ -127,7 +127,12 @@
     % needs, in a form that can be looked up much more quickly than by calling
     % lookup_bool_option.
     %
-    % Each field in the first batch of fields is named after the option
+    % The first batch of fields contains all the non-enum fields, to allow
+    % all the enum fields to be stored in a single word. (We need the whole
+    % globals as a field, despite storing the option values we want separately,
+    % because module_name_to_file_name takes Globals as an argument.)
+    %
+    % Each field in the second batch of fields is named after the option
     % whose value it holds, though the value of the m2co_line_numbers field
     % is overridden by the value of the line_numbers_for_c_headers when
     % generating C header files.
@@ -142,8 +147,12 @@
     % m2co_std_func_decl is `yes' if want to use standard argument names
     % in function declarations.
     %
+    % We use m2co_break_context to check whether goto_break_{switch,loop}s
+    % are used in the intended contexts.
+    %
 :- type mlds_to_c_opts
     --->    mlds_to_c_opts(
+                m2co_all_globals            :: globals,
                 m2co_source_filename        :: string,
 
                 m2co_line_numbers           :: bool,
@@ -153,15 +162,13 @@
                 m2co_profile_calls          :: bool,
                 m2co_profile_memory         :: bool,
                 m2co_profile_time           :: bool,
-
                 m2co_need_to_init           :: bool,
-
                 m2co_target                 :: compilation_target,
                 m2co_gc_method              :: gc_method,
 
                 m2co_std_func_decl          :: bool,
 
-                m2co_all_globals            :: globals
+                m2co_break_context          :: break_context
             ).
 
 :- func init_mlds_to_c_opts(globals, string) = mlds_to_c_opts.
@@ -181,17 +188,18 @@ init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
         ; ProfileTime = yes
         )
     then
-        ProfileAny = yes
+        NeedToInit = yes
     else
-        ProfileAny = no
+        NeedToInit = no
     ),
     globals.get_target(Globals, Target),
     globals.get_gc_method(Globals, GCMethod),
     StdFuncDecls = no,
-    Opts = mlds_to_c_opts(SourceFileName,
+    BreakContext = bc_none,
+    Opts = mlds_to_c_opts(Globals, SourceFileName,
         LineNumbers, ForeignLineNumbers, Comments, HighLevelData,
-        ProfileCalls, ProfileMemory, ProfileTime, ProfileAny,
-        Target, GCMethod, StdFuncDecls, Globals).
+        ProfileCalls, ProfileMemory, ProfileTime, NeedToInit,
+        Target, GCMethod, StdFuncDecls, BreakContext).
 
 %---------------------------------------------------------------------------%
 
@@ -3500,7 +3508,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
         mlds_output_stmt_label(Indent, Stmt, !IO)
     ;
         Stmt = ml_stmt_goto(_Target, _Context),
-        mlds_output_stmt_goto(Indent, Stmt, !IO)
+        mlds_output_stmt_goto(Opts, Indent, Stmt, !IO)
     ;
         Stmt = ml_stmt_computed_goto(_Expr, _Labels, _Context),
         mlds_output_stmt_computed_goto(Opts, Indent, Stmt, !IO)
@@ -3584,18 +3592,19 @@ mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO) :-
 mlds_output_stmt_while(Opts, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
     scope_indent(BodyStmt, Indent, ScopeIndent),
+    BodyOpts = Opts ^ m2co_break_context := bc_loop,
     (
         Kind = may_loop_zero_times,
         output_n_indents(Indent, !IO),
         io.write_string("while (", !IO),
         mlds_output_rval(Opts, Cond, !IO),
         io.write_string(")\n", !IO),
-        mlds_output_statement(Opts, ScopeIndent, FuncInfo, BodyStmt, !IO)
+        mlds_output_statement(BodyOpts, ScopeIndent, FuncInfo, BodyStmt, !IO)
     ;
         Kind = loop_at_least_once,
         output_n_indents(Indent, !IO),
         io.write_string("do\n", !IO),
-        mlds_output_statement(Opts, ScopeIndent, FuncInfo, BodyStmt, !IO),
+        mlds_output_statement(BodyOpts, ScopeIndent, FuncInfo, BodyStmt, !IO),
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Indent, !IO),
         io.write_string("while (", !IO),
@@ -3694,12 +3703,13 @@ mlds_output_stmt_switch(Opts, Indent, FuncInfo, Stmt, !IO) :-
     io.write_string("switch (", !IO),
     mlds_output_rval(Opts, Val, !IO),
     io.write_string(") {\n", !IO),
+    CaseOpts = Opts ^ m2co_break_context := bc_switch,
     % We put the default case first, so that if it is unreachable,
     % it will get merged in with the first case.
-    mlds_output_switch_default(Opts, Indent + 1, FuncInfo, Context,
+    mlds_output_switch_default(CaseOpts, Indent + 1, FuncInfo, Context,
         Default, !IO),
     list.foldl(
-        mlds_output_switch_case(Opts, Indent + 1, FuncInfo, Context),
+        mlds_output_switch_case(CaseOpts, Indent + 1, FuncInfo, Context),
         Cases, !IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
@@ -3793,11 +3803,11 @@ mlds_output_label_name(LabelName, !IO) :-
 % Output gotos.
 %
 
-:- pred mlds_output_stmt_goto(indent::in, mlds_stmt::in(ml_stmt_is_goto),
-    io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_goto/4).
+:- pred mlds_output_stmt_goto(mlds_to_c_opts::in, indent::in,
+    mlds_stmt::in(ml_stmt_is_goto), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_goto/5).
 
-mlds_output_stmt_goto(Indent, Stmt, !IO) :-
+mlds_output_stmt_goto(Opts, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_goto(Target, _Context),
     output_n_indents(Indent, !IO),
     (
@@ -3806,10 +3816,31 @@ mlds_output_stmt_goto(Indent, Stmt, !IO) :-
         mlds_output_label_name(LabelName, !IO),
         io.write_string(";\n", !IO)
     ;
-        Target = goto_break,
-        io.write_string("break;\n", !IO)
+        Target = goto_break_switch,
+        BreakContext = Opts ^ m2co_break_context,
+        (
+            BreakContext = bc_switch,
+            io.write_string("break;\n", !IO)
+        ;
+            ( BreakContext = bc_none
+            ; BreakContext = bc_loop
+            ),
+            unexpected($pred, "goto_break_switch not in switch")
+        )
     ;
-        Target = goto_continue,
+        Target = goto_break_loop,
+        BreakContext = Opts ^ m2co_break_context,
+        (
+            BreakContext = bc_loop,
+            io.write_string("break;\n", !IO)
+        ;
+            ( BreakContext = bc_none
+            ; BreakContext = bc_switch
+            ),
+            unexpected($pred, "goto_break_loop not in loop")
+        )
+    ;
+        Target = goto_continue_loop,
         io.write_string("continue;\n", !IO)
     ).
 

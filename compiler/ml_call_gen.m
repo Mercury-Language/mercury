@@ -412,7 +412,7 @@ ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
                                 Context),
                             SetSelectorStmts = [SetSelectorStmt]
                         ),
-                        GotoTarget = goto_continue
+                        GotoTarget = goto_continue_loop
                     ;
                         LoopKind = tail_rec_loop_label_goto,
                         SetSelectorStmts = [],
