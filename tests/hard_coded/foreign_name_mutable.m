@@ -31,27 +31,22 @@ main(!IO) :-
 :- pred increment_global(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    increment_global(IO0::di, IO::uo),
+    increment_global(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     FOO++;
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C#",
-    increment_global(IO0::di, IO::uo),
+    increment_global(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
-        int x = (int) FOO;
-        FOO = (object) (x + 1);
-    IO = IO0;
+    FOO++;
 ").
 
 :- pragma foreign_proc("Java",
-    increment_global(IO0::di, IO::uo),
+    increment_global(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
-    int x = (Integer) FOO;
-    FOO = x + 1;
-    IO = IO0;
+    FOO++;
 ").
