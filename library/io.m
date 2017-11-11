@@ -2159,8 +2159,14 @@ init_current_streams(!IO) :-
     set_binary_input_stream(StdinBinary, _, !IO),
     set_binary_output_stream(StdoutBinary, _, !IO).
 
-    % XXX Ditto for C#?
-    %
+:- pragma foreign_proc("C#",
+    init_current_streams(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    // Do nothing in the C# grade -- setting the current streams is handled
+    // during class initialization.
+").
+
 :- pragma foreign_proc("Java",
     init_current_streams(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],

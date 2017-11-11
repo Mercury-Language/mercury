@@ -571,6 +571,7 @@ write_main_driver_for_csharp(Indent, ClassName, !IO) :-
     io.write_string("{\n", !IO),
     Body = [
         "try {",
+        "   library.ML_std_library_init();",
         "   " ++ ClassName ++ ".main_2_p_0();",
         "} catch (runtime.Exception e) {",
         "   exception.ML_report_uncaught_exception(",

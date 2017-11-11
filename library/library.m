@@ -368,6 +368,8 @@ mercury_std_library_module("version_store").
 
 :- pragma foreign_export("C", std_library_init(di, uo),
     "ML_std_library_init").
+:- pragma foreign_export("C#", std_library_init(di, uo),
+    "ML_std_library_init").
 :- pragma foreign_export("Java", std_library_init(di, uo),
     "ML_std_library_init").
 :- pragma foreign_export("Erlang", std_library_init(di, uo),
