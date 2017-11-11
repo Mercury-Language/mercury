@@ -159,6 +159,7 @@
                 m2co_foreign_line_numbers   :: bool,
                 m2co_auto_comments          :: bool,
                 m2co_highlevel_data         :: bool,
+                m2co_single_prec_float      :: bool,
                 m2co_profile_calls          :: bool,
                 m2co_profile_memory         :: bool,
                 m2co_profile_time           :: bool,
@@ -179,6 +180,7 @@ init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
         ForeignLineNumbers),
     globals.lookup_bool_option(Globals, auto_comments, Comments),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
     globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
     globals.lookup_bool_option(Globals, profile_time, ProfileTime),
@@ -198,7 +200,7 @@ init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
     BreakContext = bc_none,
     Opts = mlds_to_c_opts(Globals, SourceFileName,
         LineNumbers, ForeignLineNumbers, Comments, HighLevelData,
-        ProfileCalls, ProfileMemory, ProfileTime, NeedToInit,
+        SinglePrecFloat, ProfileCalls, ProfileMemory, ProfileTime, NeedToInit,
         Target, GCMethod, StdFuncDecls, BreakContext).
 
 %---------------------------------------------------------------------------%
@@ -5304,8 +5306,7 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
 mlds_output_float_bits(Opts, Float, !IO) :-
     expect(unify(Opts ^ m2co_highlevel_data, yes), $pred,
         "should only be required with --high-level-data"),
-    Globals = Opts ^ m2co_all_globals,
-    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
+    SinglePrecFloat = Opts ^ m2co_single_prec_float,
     (
         SinglePrecFloat = yes,
         String = float32_bits_string(Float)
