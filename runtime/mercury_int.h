@@ -15,6 +15,8 @@
 
 #if defined(MR_GNUC) || defined(MR_CLANG)
   #define MR_uint16_reverse_bytes(U) __builtin_bswap16((U))
+#elif defined(MR_MSVC)
+  #define MR_uint16_reverse_bytes(U) _byteswap_ushort((U))
 #else
   #define MR_uint16_reverse_bytes(U) (((U & 0xff00) >> 8) | \
                                       ((U & 0x00ff) << 8))
@@ -22,6 +24,8 @@
 
 #if defined(MR_GNUC) || defined(MR_CLANG)
   #define MR_uint32_reverse_bytes(U) __builtin_bswap32((U))
+#elif defined(MR_MSVC)
+  #define MR_uint32_reverse_bytes(U) _byteswap_ulong((U))
 #else
   #define MR_uint32_reverse_bytes(U) ((U & UINT32_C(0x000000ff)) << 24 | \
                                       (U & UINT32_C(0x0000ff00)) << 8  | \
