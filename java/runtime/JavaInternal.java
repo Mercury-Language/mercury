@@ -20,7 +20,7 @@ package jmercury.runtime;
  * The class also contains utility methods and other objects such as a
  * reference to the thread pool.
  *
- * No instance of this class is ever created, all it's members and methods
+ * No instance of this class is ever created, all of its members and methods
  * are static.
  */
 public class JavaInternal {
