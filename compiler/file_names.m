@@ -132,7 +132,7 @@
     %   FileName, !IO):
     %
     % Returns the filename to use when compiling fact table files.
-    % If 'MkDir' is do_create_dirs, then create any directories needed.
+    % If `MkDir' is do_create_dirs, then create any directories needed.
     %
 :- pred fact_table_file_name(globals::in, module_name::in, file_name::in,
     string::in, maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
@@ -316,7 +316,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
     globals.lookup_string_option(Globals, shared_library_extension,
         SharedLibExt),
     ( if
-        % If we're searching for (rather than writing) a `.mih' file,
+        % If we are searching for (rather than writing) a `.mih' file,
         % use the plain file name. This is so that searches for files
         % in installed libraries will work. `--c-include-directory' is
         % set so that searches for files in the current directory will work.
@@ -506,7 +506,7 @@ make_file_name(Globals, SubDirNames, Search, MkDir, BaseName, Ext, FileName,
         UseGradeSubdirs = yes,
         file_is_arch_or_grade_dependent(Globals, Ext),
 
-        % If we're searching for (rather than writing) the file, just search
+        % If we are searching for (rather than writing) the file, just search
         % in Mercury/<ext>s. This is so that searches for files in installed
         % libraries work. `--intermod-directories' is set so this will work.
 
