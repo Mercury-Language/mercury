@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------e
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------e
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -91,51 +91,35 @@
 %---------------------------------------------------------------------------%
 
 parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
-    ( if
-        Term = term.functor(term.atom(":-"), [DeclTerm], _DeclContext)
-    then
+    ( if Term = term.functor(term.atom(":-"), [DeclTerm], _DeclContext) then
+        parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
+            SeqNum, MaybeIOM)
+    else
+        parse_clause_term_item_or_marker(ModuleName, VarSet, Term,
+            SeqNum, MaybeIOM)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred parse_decl_term_item_or_marker(module_name::in, varset::in, term::in,
+    int::in, maybe1(item_or_marker)::out) is det.
+:- pragma inline(parse_decl_term_item_or_marker/5).
+
+parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
+    SeqNum, MaybeIOM) :-
+    ( if DeclTerm = term.functor(term.atom(Functor), ArgTerms, Context) then
         ( if
-            DeclTerm = term.functor(term.atom(Functor), ArgTerms, Context)
+            parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
+                decl_is_not_in_class, Context, SeqNum, MaybeIOMPrime)
         then
-            ( if
-                parse_decl_item_or_marker(ModuleName, VarSet,
-                    Functor, ArgTerms, decl_is_not_in_class,
-                    Context, SeqNum, MaybeIOMPrime)
-            then
-                MaybeIOM = MaybeIOMPrime
-            else
-                Spec = decl_functor_is_not_valid(Term, Functor),
-                MaybeIOM = error1([Spec])
-            )
+            MaybeIOM = MaybeIOMPrime
         else
-            Spec = decl_is_not_an_atom(VarSet, Term),
+            Spec = decl_functor_is_not_valid(DeclTerm, Functor),
             MaybeIOM = error1([Spec])
         )
-    else if
-        Term = term.functor(term.atom("-->"), [DCGHeadTerm, DCGBodyTerm],
-            DCGContext)
-    then
-        % Term is a DCG clause.
-        parse_dcg_clause(ModuleName, VarSet, DCGHeadTerm, DCGBodyTerm,
-            DCGContext, SeqNum, MaybeIOM)
     else
-        % Term is a clause; either a fact or a rule.
-        ( if
-            Term = term.functor(term.atom(":-"),
-                [HeadTermPrime, BodyTermPrime], TermContext)
-        then
-            % Term is a rule.
-            HeadTerm = HeadTermPrime,
-            BodyTerm = BodyTermPrime,
-            ClauseContext = TermContext
-        else
-            % Term is a fact.
-            HeadTerm = Term,
-            ClauseContext = get_term_context(HeadTerm),
-            BodyTerm = term.functor(term.atom("true"), [], ClauseContext)
-        ),
-        parse_clause(ModuleName, VarSet, HeadTerm, BodyTerm,
-            ClauseContext, SeqNum, MaybeIOM)
+        Spec = decl_is_not_an_atom(VarSet, DeclTerm),
+        MaybeIOM = error1([Spec])
     ).
 
 :- func decl_is_not_an_atom(varset, term) = error_spec.
@@ -225,13 +209,15 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         ; Functor = "all", QuantType = quant_type_univ
         ),
         parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms,
-            IsInClass, Context, SeqNum, QuantType, cord.init, cord.init, MaybeIOM)
+            IsInClass, Context, SeqNum, QuantType, cord.init, cord.init,
+            MaybeIOM)
     ;
         ( Functor = "=>", QuantType = quant_type_exist
         ; Functor = "<=", QuantType = quant_type_univ
         ),
         parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms,
-            IsInClass, Context, SeqNum, QuantType, cord.init, cord.init, MaybeIOM)
+            IsInClass, Context, SeqNum, QuantType, cord.init, cord.init,
+            MaybeIOM)
     ;
         ( Functor = "impure", Purity = purity_impure
         ; Functor = "semipure", Purity = purity_semipure
@@ -285,7 +271,8 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     maybe1(item_or_marker)::out) is semidet.
 
 parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
-        IsInClass, Context, SeqNum, PurityAttrs0, QuantConstrAttrs0, MaybeIOM) :-
+        IsInClass, Context, SeqNum, PurityAttrs0, QuantConstrAttrs0,
+        MaybeIOM) :-
     % By coincidence, the kinds of items that may have purity,
     % quantification and/or constraint attributes on them, i.e.
     % the set item_pred_decl and item_mode_decl, is exactly the
@@ -336,15 +323,15 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         ; Functor = "<=", QuantType = quant_type_univ
         ),
         parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms,
-            IsInClass, Context, SeqNum, QuantType, PurityAttrs0, QuantConstrAttrs0,
-            MaybeIOM)
+            IsInClass, Context, SeqNum, QuantType, PurityAttrs0,
+            QuantConstrAttrs0, MaybeIOM)
     ;
         ( Functor = "impure", Purity = purity_impure
         ; Functor = "semipure", Purity = purity_semipure
         ),
         parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms,
-            IsInClass, Context, SeqNum, Purity, PurityAttrs0, QuantConstrAttrs0,
-            MaybeIOM)
+            IsInClass, Context, SeqNum, Purity, PurityAttrs0,
+            QuantConstrAttrs0, MaybeIOM)
 %   ;
 %       ( Functor = "promise_exclusive", PromiseType = promise_type_exclusive
 %       ; Functor = "promise_exhaustive", PromiseType = promise_type_exhaustive
@@ -356,7 +343,39 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
 %           PromiseType, UnivQuantVars, MaybeIOM)
     ).
 
-%-----------------------------------------------------------------------------e
+%---------------------------------------------------------------------------%
+
+:- pred parse_clause_term_item_or_marker(module_name::in, varset::in, term::in,
+    int::in, maybe1(item_or_marker)::out) is det.
+:- pragma inline(parse_clause_term_item_or_marker/5).
+
+parse_clause_term_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
+    ( if
+        Term = term.functor(term.atom("-->"), [DCGHeadTerm, DCGBodyTerm],
+            DCGContext)
+    then
+        % Term is a DCG clause.
+        parse_dcg_clause(ModuleName, VarSet, DCGHeadTerm, DCGBodyTerm,
+            DCGContext, SeqNum, MaybeIOM)
+    else
+        % Term is a clause; either a fact or a rule.
+        ( if
+            Term = term.functor(term.atom(":-"),
+                [HeadTermPrime, BodyTermPrime], TermContext)
+        then
+            % Term is a rule.
+            HeadTerm = HeadTermPrime,
+            BodyTerm = BodyTermPrime,
+            ClauseContext = TermContext
+        else
+            % Term is a fact.
+            HeadTerm = Term,
+            ClauseContext = get_term_context(HeadTerm),
+            BodyTerm = term.functor(term.atom("true"), [], ClauseContext)
+        ),
+        parse_clause(ModuleName, VarSet, HeadTerm, BodyTerm,
+            ClauseContext, SeqNum, MaybeIOM)
+    ).
 
 parse_class_method_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
     TermContext = get_term_context(Term),
@@ -431,8 +450,9 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
     quantifier_type::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context, SeqNum,
-        QuantType, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
+parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
+        Context, SeqNum, QuantType, !.PurityAttrs, !.QuantConstrAttrs,
+        MaybeIOM) :-
     ( if ArgTerms = [SubTerm, ConstraintsTerm] then
         ConstrAttr = qca_constraint(QuantType, ConstraintsTerm),
         !:QuantConstrAttrs = cord.snoc(!.QuantConstrAttrs, ConstrAttr),
@@ -452,8 +472,9 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
     purity::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context, SeqNum,
-        Purity, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
+parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
+        Context, SeqNum, Purity, !.PurityAttrs, !.QuantConstrAttrs,
+        MaybeIOM) :-
     ( if ArgTerms = [SubTerm] then
         PurityAttr = purity_attr(Purity),
         !:PurityAttrs = cord.snoc(!.PurityAttrs, PurityAttr),
@@ -562,8 +583,8 @@ parse_section_marker(Functor, ArgTerms, Context, SeqNum, Section, MaybeIOM) :-
     string::in, list(term)::in, prog_context::in, int::in,
     incl_imp_use::in, maybe1(item_or_marker)::out) is det.
 
-parse_incl_imp_use_items(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
-        IIU, MaybeIOM) :-
+parse_incl_imp_use_items(ModuleName, VarSet, Functor, ArgTerms, Context,
+        SeqNum, IIU, MaybeIOM) :-
     (
         IIU = iiu_include_module,
         Parser = parse_implicitly_qualified_module_name(ModuleName, VarSet)
@@ -824,7 +845,8 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
             IsInClass = decl_is_not_in_class,
             PredOrFuncDeclPieces = [p_or_f(PredOrFunc), words("declaration:")]
         ),
-        DetismContextPieces = cord.from_list([words("In")] ++ PredOrFuncDeclPieces),
+        DetismContextPieces =
+            cord.from_list([words("In")] ++ PredOrFuncDeclPieces),
         parse_determinism_suffix(VarSet, DetismContextPieces, Term,
             BeforeDetismTerm, MaybeMaybeDetism),
         WithInstContextPieces = cord.from_list([
@@ -976,8 +998,8 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                         MaybeInconsistentSpec = no,
                         Origin = item_origin_user,
                         ItemPredDecl = item_pred_decl_info(Functor, PredOrFunc,
-                            TypesAndModes, WithType, WithInst, MaybeDet, Origin,
-                            TypeVarSet, InstVarSet, ExistQVars,
+                            TypesAndModes, WithType, WithInst, MaybeDet,
+                            Origin, TypeVarSet, InstVarSet, ExistQVars,
                             Purity, Constraints, Context, SeqNum),
                         Item = item_pred_decl(ItemPredDecl),
                         MaybeIOM = ok1(iom_item(Item))
