@@ -1646,7 +1646,7 @@ functor_subtype_info_to_string(FunctorSubtypeInfo, TargetPrefixes, String) :-
 
 type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
     TargetPrefixes =
-        target_prefixes("private_builtin.", "runtime.TypeCtorRep."),
+        target_prefixes("jmercury.runtime.TypeCtorRep.", "runtime.TypeCtorRep."),
     TypeCtorDetails = TypeCtorData ^ tcr_rep_details,
     (
         TypeCtorDetails = tcd_enum(TypeCtorUserEq, _, _, _, IsDummy, _),

@@ -1800,6 +1800,10 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
     }
 
     // TypeCtorRep constants
+    //
+    // NOTE: the actual definitions of these constants are now in
+    // java/runtime/TypeCtorRep.java.  These copies are for backwards
+    // compatibility with existing code -- they will eventually be removed.
     public static final int MR_TYPECTOR_REP_ENUM                    = 0;
     public static final int MR_TYPECTOR_REP_ENUM_USEREQ             = 1;
     public static final int MR_TYPECTOR_REP_DU                      = 2;

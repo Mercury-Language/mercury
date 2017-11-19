@@ -741,9 +741,9 @@ type_ctor_arity(TypeCtor) = Arity :-
 
     /* Handle variable arity types. */
     switch (tci.type_ctor_rep.value) {
-        case private_builtin.MR_TYPECTOR_REP_PRED:
-        case private_builtin.MR_TYPECTOR_REP_FUNC:
-        case private_builtin.MR_TYPECTOR_REP_TUPLE:
+        case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
+        case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
+        case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE:
             tci = new TypeCtorInfo_Struct(tci, TypeInfo.args.length);
             break;
         default:
@@ -791,9 +791,9 @@ make_type_ctor_desc(_, _, _) :-
 
     /* Handle variable arity types. */
     switch (tci.type_ctor_rep.value) {
-        case private_builtin.MR_TYPECTOR_REP_PRED:
-        case private_builtin.MR_TYPECTOR_REP_FUNC:
-        case private_builtin.MR_TYPECTOR_REP_TUPLE:
+        case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
+        case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
+        case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE:
             tci = new TypeCtorInfo_Struct(tci, Arity);
             break;
         default:

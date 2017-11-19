@@ -263,9 +263,9 @@
 :- pragma foreign_code("Java",
 "
     public static final Type_ctor_rep_0[] static_type_ctor_rep
-        = new Type_ctor_rep_0[private_builtin.MR_TYPECTOR_REP_MAX];
+        = new Type_ctor_rep_0[jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_MAX];
     static {
-        for (int i = 0; i < private_builtin.MR_TYPECTOR_REP_MAX; i++) {
+        for (int i = 0; i < jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_MAX; i++) {
             static_type_ctor_rep[i] = new Type_ctor_rep_0(i);
         }
     }
@@ -2105,8 +2105,8 @@ is_exist_pseudo_type_info(_, _) :-
 
             switch (tc.type_ctor_rep.value) {
 
-            case private_builtin.MR_TYPECTOR_REP_ENUM:
-            case private_builtin.MR_TYPECTOR_REP_ENUM_USEREQ:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_ENUM:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_ENUM_USEREQ:
                 EnumFunctorDesc[] functors_enum =
                     tc.type_functors.functors_enum();
                 if (FunctorNumber >= 0 && FunctorNumber < functors_enum.length)
@@ -2116,19 +2116,19 @@ is_exist_pseudo_type_info(_, _) :-
                 }
                 break;
 
-            case private_builtin.MR_TYPECTOR_REP_FOREIGN_ENUM:
-            case private_builtin.MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
-            case private_builtin.MR_TYPECTOR_REP_NOTAG:
-            case private_builtin.MR_TYPECTOR_REP_NOTAG_USEREQ:
-            case private_builtin.MR_TYPECTOR_REP_NOTAG_GROUND:
-            case private_builtin.MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-            case private_builtin.MR_TYPECTOR_REP_RESERVED_ADDR:
-            case private_builtin.MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FOREIGN_ENUM:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_NOTAG:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_NOTAG_USEREQ:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_NOTAG_GROUND:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_RESERVED_ADDR:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
                 /* These don't exist in the Java backend yet. */
                 break;
 
-            case private_builtin.MR_TYPECTOR_REP_DU:
-            case private_builtin.MR_TYPECTOR_REP_DU_USEREQ:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_DU:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_DU_USEREQ:
                 DuFunctorDesc[] functor_descs = tc.type_functors.functors_du();
                 if (FunctorNumber >= 0 && FunctorNumber < functor_descs.length)
                 {
@@ -2142,12 +2142,12 @@ is_exist_pseudo_type_info(_, _) :-
                 }
                 break;
 
-            case private_builtin.MR_TYPECTOR_REP_TUPLE:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE:
                 int arity = TypeInfo.args.length;
                 new_data = ML_univ_list_to_array(ArgList, arity);
                 break;
 
-            case private_builtin.MR_TYPECTOR_REP_DUMMY:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_DUMMY:
                 if (FunctorNumber == 0 &&
                     ArgList instanceof list.List_1.F_nil_0)
                 {
@@ -2155,142 +2155,142 @@ is_exist_pseudo_type_info(_, _) :-
                 }
                 break;
 
-            case private_builtin.MR_TYPECTOR_REP_INT:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_INT:
                 /* ints don't have functor ordinals. */
                 throw new Error(
                     ""cannot construct int with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_UINT:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT:
                 /* ints don't have functor ordinals. */
                 throw new Error(
                     ""cannot construct uint with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_FLOAT:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FLOAT:
                 /* floats don't have functor ordinals. */
                 throw new Error(
                     ""cannot construct float with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_CHAR:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_CHAR:
                 /* chars don't have functor ordinals. */
                 throw new Error(
                     ""cannot construct chars with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_STRING:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_STRING:
                 /* strings don't have functor ordinals. */
                 throw new Error(
                     ""cannot construct strings with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_BITMAP:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_BITMAP:
                 /* bitmaps don't have functor ordinals. */
                 throw new Error(
                     ""cannot construct bitmaps with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_EQUIV:
-            case private_builtin.MR_TYPECTOR_REP_EQUIV_GROUND:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_EQUIV:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_EQUIV_GROUND:
                 /* These should be eliminated above. */
                 throw new Error(""equiv type in construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_VOID:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_VOID:
                 /* These should be eliminated above. */
                 throw new Error(
                     ""cannot construct void values with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_FUNC:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
                 throw new Error(
                     ""cannot construct functions with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_PRED:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
                 throw new Error(
                     ""cannot construct predicates with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_SUBGOAL:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_SUBGOAL:
                 throw new Error(
                     ""cannot construct subgoals with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_TYPEDESC:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TYPEDESC:
                 throw new Error(
                     ""cannot construct type_descs with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_TYPECTORDESC:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TYPECTORDESC:
                 throw new Error(
                     ""cannot construct type_descs with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_PSEUDOTYPEDESC:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_PSEUDOTYPEDESC:
                 throw new Error(
                     ""cannot construct pseudotype_descs with "" +
                     ""construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_TYPEINFO:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TYPEINFO:
                 throw new Error(
                     ""cannot construct type_infos with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_TYPECTORINFO:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TYPECTORINFO:
                 throw new Error(
                     ""cannot construct type_ctor_infos with "" +
                     ""construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_TYPECLASSINFO:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TYPECLASSINFO:
                 throw new Error(
                     ""cannot construct type_class_infos with "" +
                     ""construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_BASETYPECLASSINFO:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_BASETYPECLASSINFO:
                 throw new Error(
                     ""cannot construct base_type_class_infos "" +
                     ""with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_SUCCIP:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_SUCCIP:
                 throw new Error(
                     ""cannot construct succips with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_HP:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_HP:
                 throw new Error(
                     ""cannot construct hps with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_CURFR:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_CURFR:
                 throw new Error(
                     ""cannot construct curfrs with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_MAXFR:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_MAXFR:
                 throw new Error(
                     ""cannot construct maxfrs with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_REDOFR:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_REDOFR:
                 throw new Error(
                     ""cannot construct redofrs with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_REDOIP:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_REDOIP:
                 throw new Error(
                     ""cannot construct redoips with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_TRAIL_PTR:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TRAIL_PTR:
                 throw new Error(
                     ""cannot construct trail_ptrs with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_TICKET:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TICKET:
                 throw new Error(
                     ""cannot construct tickets with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_C_POINTER:
-            case private_builtin.MR_TYPECTOR_REP_STABLE_C_POINTER:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_C_POINTER:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_STABLE_C_POINTER:
                 throw new Error(
                     ""cannot construct c_pointers with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_ARRAY:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_ARRAY:
                 throw new Error(
                     ""cannot construct arrays with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_REFERENCE:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_REFERENCE:
                 throw new Error(
                     ""cannot construct references with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_FOREIGN:
-            case private_builtin.MR_TYPECTOR_REP_STABLE_FOREIGN:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FOREIGN:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_STABLE_FOREIGN:
                 throw new Error(
                     ""cannot construct values of foreign types "" +
                     ""with construct.construct"");
 
-            case private_builtin.MR_TYPECTOR_REP_UNKNOWN:
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_UNKNOWN:
                 throw new Error(
                     ""cannot construct values of unknown types "" +
                     ""with construct.construct"");
@@ -4499,7 +4499,7 @@ type_ctor_module_name(_) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (TypeCtorInfo.type_ctor_rep.value
-            == private_builtin.MR_TYPECTOR_REP_TUPLE) {
+            == jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE) {
         Name = ""{}"";
     } else {
         Name = TypeCtorInfo.type_ctor_name;
