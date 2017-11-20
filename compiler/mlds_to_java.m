@@ -454,7 +454,7 @@ output_java_decl(Info, Indent, DeclCode, !IO) :-
     ).
 
 :- pred output_java_body_code(java_out_info::in, indent::in,
-    foreign_body_code::in, io::di, io.state::uo) is det.
+    foreign_body_code::in, io::di, io::uo) is det.
 
 output_java_body_code(Info, Indent, ForeignBodyCode, !IO) :-
     ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),

@@ -246,7 +246,7 @@ output_csharp_decl(Info, Indent, DeclCode, !IO) :-
     ).
 
 :- pred output_csharp_body_code(csharp_out_info::in, indent::in,
-    foreign_body_code::in, io::di, io.state::uo) is det.
+    foreign_body_code::in, io::di, io::uo) is det.
 
 output_csharp_body_code(Info, Indent, ForeignBodyCode, !IO) :-
     ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
