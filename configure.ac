@@ -554,7 +554,7 @@ EOF
             --halt-at-warn \
             $link_static_opt conftest \
             --erlang-native-code \
-            --trace-goal-only-locals-2017-07-05 \
+            --warn-insts-with-functors-without-type \
             --no-ssdb \
             </dev/null >&AC_FD_CC 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
