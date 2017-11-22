@@ -31,13 +31,11 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Given a possible module qualified sym_name and a list of
-    % argument types and a context, construct a term. This is
-    % used to construct types.
+    % Given a possible module qualified sym_name and a list of argument types
+    % and a context, construct a term. This is used to construct types.
     %
 :- pred construct_qualified_term(sym_name::in, list(term(T))::in,
     term(T)::out) is det.
-
 :- pred construct_qualified_term_with_context(sym_name::in, list(term(T))::in,
     prog_context::in, term(T)::out) is det.
 
@@ -211,14 +209,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % We need to "unparse" the sym_name to construct the properly
-    % module qualified term.
-    %
-:- func sym_name_and_args_to_term(sym_name, list(term(T)), prog_context) =
-    term(T).
-
-%-----------------------------------------------------------------------------%
-
     % Convert a list of goals into a conjunction.
     %
 :- func goal_list_to_conj(prog_context, list(goal)) = goal.
@@ -243,20 +233,21 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-construct_qualified_term(SymName, Args, Term) :-
+construct_qualified_term(SymName, ArgTerms, Term) :-
     term.context_init(Context),
-    construct_qualified_term_with_context(SymName, Args, Context, Term).
+    construct_qualified_term_with_context(SymName, ArgTerms, Context, Term).
 
-construct_qualified_term_with_context(SymName, Args, Context, Term) :-
+construct_qualified_term_with_context(SymName, ArgTerms, Context, Term) :-
     (
-        SymName = qualified(Module, Name),
-        construct_qualified_term_with_context(Module, [], Context, ModuleTerm),
-        UnqualifiedTerm = term.functor(term.atom(Name), Args, Context),
+        SymName = qualified(ModuleSymName, Name),
+        construct_qualified_term_with_context(ModuleSymName, [], Context,
+            ModuleTerm),
+        UnqualifiedTerm = term.functor(term.atom(Name), ArgTerms, Context),
         Term = term.functor(term.atom("."),
             [ModuleTerm, UnqualifiedTerm], Context)
     ;
         SymName = unqualified(Name),
-        Term = term.functor(term.atom(Name), Args, Context)
+        Term = term.functor(term.atom(Name), ArgTerms, Context)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -905,32 +896,6 @@ get_new_tvars([TVar | TVars], VarSet, !TVarSet, !TVarNameMap, !TVarRenaming) :-
         )
     ),
     get_new_tvars(TVars, VarSet, !TVarSet, !TVarNameMap, !TVarRenaming).
-
-%-----------------------------------------------------------------------------%
-
-sym_name_and_args_to_term(unqualified(Name), Xs, Context) =
-    term.functor(term.atom(Name), Xs, Context).
-
-sym_name_and_args_to_term(qualified(ModuleNames, Name), Xs, Context) =
-    sym_name_and_term_to_term(ModuleNames,
-        term.functor(term.atom(Name), Xs, Context), Context).
-
-:- func sym_name_and_term_to_term(module_name, term(T), prog_context) =
-    term(T).
-
-sym_name_and_term_to_term(Qualifier, InnerTerm, Context) = Term :-
-    (
-        Qualifier = unqualified(InnerQualifier),
-        QualifierTerm =
-            term.functor(term.atom(InnerQualifier), [], Context)
-    ;
-        Qualifier = qualified(OuterQualifier, InnerQualifier),
-        InnerQualifierTerm =
-            term.functor(term.atom(InnerQualifier), [], Context),
-        QualifierTerm = sym_name_and_term_to_term(OuterQualifier,
-            InnerQualifierTerm, Context)
-    ),
-    Term = term.functor(term.atom("."), [QualifierTerm, InnerTerm], Context).
 
 %-----------------------------------------------------------------------------%
 
