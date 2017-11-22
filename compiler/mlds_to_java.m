@@ -851,7 +851,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     % Create a method that calls the original predicates.
     generate_call_method(Arity, CodeAddrs, MethodDefn),
 
-    ( if Arity =< max_specialised_method_ptr_arity then
+    ( if is_specialised_method_ptr_arity(Arity) then
         InterfaceName = "MethodPtr" ++ string.from_int(Arity)
     else
         InterfaceName = "MethodPtrN"
@@ -877,6 +877,12 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
 
     add_to_address_map(ClassName, CodeAddrs, !AddrOfMap).
 
+:- pred is_specialised_method_ptr_arity(int::in) is semidet.
+
+is_specialised_method_ptr_arity(Arity) :-
+    Arity > 0,  % No specialised method ptr for arity zero predicates.
+    Arity =< max_specialised_method_ptr_arity.
+
     % The highest arity for which there is a specialised MethodPtr<n>
     % interface.
     %
@@ -891,7 +897,7 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
     % Create the arguments to the call method. For low arities, the method
     % takes n arguments directly. For higher arities, the arguments are
     % passed in as an array.
-    ( if Arity =< max_specialised_method_ptr_arity then
+    ( if is_specialised_method_ptr_arity(Arity) then
         list.map2(create_generic_arg, 1 .. Arity, ArgNames, MethodArgs),
         InputArgs = cmi_separate(ArgNames)
     else
@@ -3322,7 +3328,7 @@ output_stmt_call_for_java(Info, Indent, _FuncInfo, Stmt,
         ),
 
         list.length(CallArgs, Arity),
-        ( if Arity =< max_specialised_method_ptr_arity then
+        ( if is_specialised_method_ptr_arity(Arity) then
             io.write_string("((jmercury.runtime.MethodPtr", !IO),
             io.write_int(Arity, !IO),
             io.write_string(") ", !IO),
