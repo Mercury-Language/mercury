@@ -6695,12 +6695,12 @@ fair search rule; and so forth.
 * Using foreign types from Mercury::   How to use a type defined in         
 				       a different programming language
 				       in Mercury code.
-* Using Mercury enumerations in foreign code:: How to use an enumeration type
-                                               defined in Mercury in a
-                                               different programming language.
 * Using foreign enumerations in Mercury code:: How to use an enumeration type
                                                 defined in a foreign language
                                                 in Mercury code.
+* Using Mercury enumerations in foreign code:: How to use an enumeration type
+                                               defined in Mercury in a
+                                               different programming language.
 * Adding foreign declarations::        How to add declarations of
   				       entities in other programming
 				       languages.
@@ -7664,6 +7664,58 @@ compatibility is described in the language specific information below.
 
 @c -----------------------------------------------------------------------
 
+@node Using foreign enumerations in Mercury code
+@section Using foreign enumerations in Mercury code
+
+The values used to represent a Mercury enumeration type in a foreign
+language may be explicitly assigned by the programmer using a declaration
+of the form:
+
+@example
+:- pragma foreign_enum("@var{Lang}", @var{MercuryType}, @var{CtorValues}).
+@end example
+
+@var{CtorValues} is a list of pairs of the form:
+
+@example
+@group
+[
+    ctor_0 - "ForeignValue_0",
+    ctor_1 - "ForeignValue_1",
+    @dots{}
+    ctor_N - "ForeignValue_N"
+]
+@end group
+@end example
+
+The first element of each pair is a constructor of the type @var{MercuryType},
+and the second is a value in the language @var{Lang} that will be used
+to represent that constructor.
+The mapping defined by this list of pairs must form a bijection.
+
+Mercury implementations may impose further foreign language-specific 
+restrictions on the form that values used to represent enumeration
+constructors may take.
+See the language specific information below for details.
+
+The Mercury implementation is not required to check the validity of
+foreign enumeration values.
+
+A @samp{pragma foreign_enum} declaration must occur in the implementation
+section of the module that defines the type @var{MercuryType}.
+It is an error if the type @var{MercuryType} is the subject of more than
+one @samp{pragma foreign_enum} declaration for a given foreign language.
+
+Note that the default comparison for types that are the subject of a
+@samp{pragma foreign_enum} declaration will be defined by the foreign
+values, rather than the order of the constructors in the
+type declaration (as is usually the case).
+
+@c XXX we need to specify a behaviour when there are multiple supported
+@c foreign languages.  
+
+@c -----------------------------------------------------------------------
+
 @node Using Mercury enumerations in foreign code
 @section Using Mercury enumerations in foreign code
 
@@ -7751,58 +7803,6 @@ refer to imported types, subject to the usual visibility restrictions.
 
 A @samp{pragma foreign_export_enum} declaration may only occur in the
 implementation section of a module.
-
-@c -----------------------------------------------------------------------
-
-@node Using foreign enumerations in Mercury code
-@section Using foreign enumerations in Mercury code
-
-The values used to represent a Mercury enumeration type in a foreign
-language may be explicitly assigned by the programmer using a declaration
-of the form:
-
-@example
-:- pragma foreign_enum("@var{Lang}", @var{MercuryType}, @var{CtorValues}).
-@end example
-
-@var{CtorValues} is a list of pairs of the form:
-
-@example
-@group
-[
-    ctor_0 - "ForeignValue_0",
-    ctor_1 - "ForeignValue_1",
-    @dots{}
-    ctor_N - "ForeignValue_N"
-]
-@end group
-@end example
-
-The first element of each pair is a constructor of the type @var{MercuryType},
-and the second is a value in the language @var{Lang} that will be used
-to represent that constructor.
-The mapping defined by this list of pairs must form a bijection.
-
-Mercury implementations may impose further foreign language-specific 
-restrictions on the form that values used to represent enumeration
-constructors may take.
-See the language specific information below for details.
-
-The Mercury implementation is not required to check the validity of
-foreign enumeration values.
-
-A @samp{pragma foreign_enum} declaration must occur in the implementation
-section of the module that defines the type @var{MercuryType}.
-It is an error if the type @var{MercuryType} is the subject of more than
-one @samp{pragma foreign_enum} declaration for a given foreign language.
-
-Note that the default comparison for types that are the subject of a
-@samp{pragma foreign_enum} declaration will be defined by the foreign
-values, rather than the order of the constructors in the
-type declaration (as is usually the case).
-
-@c XXX we need to specify a behaviour when there are multiple supported
-@c foreign languages.  
 
 @c -----------------------------------------------------------------------
 
