@@ -7619,30 +7619,33 @@ states that on the C backends, values of the given type
 can be passed to and from Mercury code without boxing,
 via simple casts, which is faster.
 This requires the type to be either an integer type or a pointer type,
-and requires its size to be the same as or less than the size of @samp{MR_Word}.
-Since deciding whether a C type satisfies this condition
-requires knowledge of the Mercury implementation,
-and violations are very likely to result in
-the generated executable silently doing the wrong thing,
-we do not recommend the use of assertions
-unless you are an implementor of the Mercury system.
+and requires it to be castable to @samp{MR_Word} and back
+without loss of information
+(which means that its size may not be greater than the size of @samp{MR_Word}).
 
 The @samp{word_aligned_pointer} assertion implies
 @samp{can_pass_as_mercury_type} and additionally states that values of the
 given type are pointer values clear in the tag bits.
 It allows the Mercury implementation to avoid boxing values of the given type
 when the type appears as the sole argument of a data constructor.
-We do not recommend use of the assertion without a specific need or knowledge
-of the Mercury implementation.
 
 The @samp{stable} assertion is meaningful
 only in the presence of the @samp{can_pass_as_mercury_type}
 or @samp{word_aligned_pointer} assertions.
 It states that either the C type is an integer type,
 or it is a pointer type pointing to memory that will never change.
-Together, these assertions are sufficient to allow tabling
-(@pxref{Tabled evaluation}) and the @samp{compare_representation}
-primitive to work on values of such types.
+Together, these assertions are sufficient to allow
+tabling (@pxref{Tabled evaluation})
+and the @samp{compare_representation} primitive
+to work on values of such types.
+
+Violations of any of these assertions are very likely to result
+in the generated executable silently doing the wrong thing,
+giving no clue to where the problem might be.
+Since deciding whether a C type satisfies the conditions of these assertions
+requires knowledge of the internals of the Mercury implementation,
+we do not recommend the use of any of these assertions
+unless you are confident of your expertise in those internals.
 
 As with discriminated union types, programmers can specify the unification
 @w{and/or} comparison predicates to use for values of the type using the
