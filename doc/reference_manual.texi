@@ -7667,15 +7667,69 @@ compatibility is described in the language specific information below.
 @node Using foreign enumerations in Mercury code
 @section Using foreign enumerations in Mercury code
 
-The values used to represent a Mercury enumeration type in a foreign
-language may be explicitly assigned by the programmer using a declaration
-of the form:
+While a @samp{pragma foreign_type} declaration
+imports a foreign @emph{type} into Mercury,
+a @samp{pragma foreign_enum} declaration
+imports @emph{the values of the constants of an enumeration type} into Mercury.
+
+Given an enumeration type such as
+@example
+:- type unix_file_permissions
+    --->    user_read
+    ;       user_write
+    ;       user_executable
+    ;       group_read
+    ;       group_write
+    ;       group_executable
+    ;       other_read
+    ;       other_write
+    ;       other_executable.
+@end example
+
+the values used to represent each constant
+are usually decided by the Mercury compiler.
+However, the values assigned this way
+may not match the values expected by foreign language code
+that uses values of the enumeration,
+and even if they happen to match,
+programmers probably would not want to @emph{rely} on this coincidence.
+
+This is why Mercury supports a mechanism that allows programmers
+to specify the representation of each constant in an enumeration type
+when generating code for a given target language.
+This mechanism is the @samp{pragma foreign_enum} declaration,
+which looks like this:
+
+@example
+@group
+:- pragma foreign_enum("C", unix_file_permissions,
+[
+    user_read        - "S_IRUSR",
+    user_write       - "S_IWUSR",
+    user_executable  - "S_IXUSR",
+    group_read       - "S_IRGRP",
+    group_write      - "S_IWGRP",
+    group_executable - "S_IXGRP",
+    other_read       - "S_IROTH",
+    other_write      - "S_IWOTH",
+    other_executable - "S_IXOTH"
+]).
+@end group
+@end example
+
+(Unix systems have a standard header file
+that defines each of @samp{S_IRUSR}, @dots{}, @samp{S_IXOTH}
+as macros that each expand to an integer constant;
+these constants happen @emph{not} to be the ones
+that the Mercury compiler would assign to those constants.)
+
+The general form of @samp{pragma foreign_enum} declarations is
 
 @example
 :- pragma foreign_enum("@var{Lang}", @var{MercuryType}, @var{CtorValues}).
 @end example
 
-@var{CtorValues} is a list of pairs of the form:
+where @var{CtorValues} is a list of pairs of the form:
 
 @example
 @group
@@ -7688,74 +7742,96 @@ of the form:
 @end group
 @end example
 
-The first element of each pair is a constructor of the type @var{MercuryType},
-and the second is a value in the language @var{Lang} that will be used
-to represent that constructor.
-The mapping defined by this list of pairs must form a bijection.
+The first element of each pair
+is a constant (function symbol of arity 0) of the type @var{MercuryType},
+and the second is either a numeric or a symbolic name
+for the integer value in the language @var{Lang}
+that the programmer wants to be used to represent that constructor.
 
-Mercury implementations may impose further foreign language-specific 
-restrictions on the form that values used to represent enumeration
-constructors may take.
+The mapping defined by this list of pairs must form a bijection,
+i.e. the list must map distinct constructors to distinct values,
+and vice versa.
+The Mercury compiler is not required to check this, because it can't;
+even if two symbolic names (such as C macros) are distinct,
+they may expand to the same integer in the target language.
+
+Mercury implementations may impose
+further foreign-language-specific restrictions
+on the form that values used to represent enumeration constructors may take.
 See the language specific information below for details.
 
-The Mercury implementation is not required to check the validity of
-foreign enumeration values.
-
-A @samp{pragma foreign_enum} declaration must occur in the implementation
-section of the module that defines the type @var{MercuryType}.
-It is an error if the type @var{MercuryType} is the subject of more than
-one @samp{pragma foreign_enum} declaration for a given foreign language.
-
-Note that the default comparison for types that are the subject of a
-@samp{pragma foreign_enum} declaration will be defined by the foreign
-values, rather than the order of the constructors in the
-type declaration (as is usually the case).
+It is an error for any given @var{MercuryType}
+to be the subject of more than one @samp{pragma foreign_enum} declaration
+for any given foreign language,
+since that would amount to an attempt
+to specify two or more (probably) conflicting representations
+for each of the type's function symbols.
 
 @c XXX we need to specify a behaviour when there are multiple supported
 @c foreign languages.  
+
+A @samp{pragma foreign_enum} declaration must occur in the implementation
+section of the module that defines the type @var{MercuryType}.
+
+Note that the default comparison for types
+that are the subject of a @samp{pragma foreign_enum} declaration
+will be defined by the foreign values,
+rather than the order of the constructors in the type declaration
+(as would otherwise be the case).
 
 @c -----------------------------------------------------------------------
 
 @node Using Mercury enumerations in foreign code
 @section Using Mercury enumerations in foreign code
 
-Values of Mercury enumeration types can be made available to code in the
-bodies of @samp{foreign_proc} and @samp{foreign_code} pragmas via
-a declaration of the form:
+A @samp{pragma foreign_enum} declaration
+imports the values of the constants of an enumeration type into Mercury.
+However, sometimes one needs the reverse:
+the ability to @emph{export}
+the values of the constants of an enumeration type
+(whether those values were assigned by @samp{foreign_enum} pragmas or not)
+from Mercury to foreign language code in
+@samp{foreign_proc} and @samp{foreign_code} pragmas.
+This is what @samp{pragma foreign_export_enum} declarations are for.
+
+These pragmas have the following general form:
 
 @example
 :- pragma foreign_export_enum("@var{Lang}", @var{MercuryType},
     @var{Attributes}, @var{Overrides}).
 @end example
 
-This causes the compiler to create a symbolic name in language
-@var{Lang} for each of the constructors of @var{MercuryType}.
-The symbolic name allows the foreign code to create a value
-corresponding to that of the constructor it represents.
+When given such a pragma,
+the compiler will define a symbolic name in language @var{Lang}
+for each of the constructors of @var{MercuryType}
+(which must be an enumeration type).
+Each symbolic name allows code in that foreign language
+to create a value corresponding to that of the constructor it represents.
 (The exact mechanism used depends upon the foreign language;
 see the language specific information below for further details.)
 
-For each foreign language there is a default mapping between the name
-of a Mercury constructor and its symbolic name in the language @var{Lang}.
-This default mapping is not required to map every valid constructor name
-to a valid name in language @var{Lang}; where it does not the programmer
-must specify a valid symbolic name.
-The programmer may also choose to map a constructor to a symbolic name
-that differs from the one supplied by the default mapping for language
-@var{Lang}.
-@var{Overrides} is a list whose elements are pairs of constructor names
-and strings.
-The latter specify the name that the implementation should use as the
-symbolic name in the foreign language.
+For each foreign language,
+there is a default mapping between the name of a Mercury constructor
+and its symbolic name in the language @var{Lang}.
+This default mapping is not required
+to map every valid constructor name to a valid name in language @var{Lang};
+where it does not, the programmer must specify a valid symbolic name.
+The programmer may also choose to map a constructor
+to a symbolic name that differs from
+the one supplied by the default mapping for language @var{Lang}.
+@var{Overrides} is a list
+whose elements are pairs of constructor names and strings.
+The latter specify the name that the implementation should use
+as the symbolic name in the foreign language.
 @var{Overrides} has the following form:
 
 @example
 [cons_I - "symbol_I", @dots{}, cons_J - "symbol_J"]
 @end example
 
-This can be used to provide either a valid symbolic name where the
-default mapping does not, or to override a valid symbolic name
-generated by the default mapping.
+This can be used to provide
+either a valid symbolic name where the default mapping does not,
+or to override a valid symbolic name generated by the default mapping.
 This argument may be omitted if @var{Overrides} is empty.
 
 The argument @var{Attributes} is a list of optional attributes.
@@ -7766,43 +7842,53 @@ The following attributes must be supported by all Mercury implementations.
 @table @asis
  
 @item @samp{prefix(@var{Prefix})}
-Prefix each symbolic name, regardless of how it was generated, with
-the string @var{Prefix}.
-At most one @samp{prefix} attribute may be specified for a
-@samp{pragma foreign_export_enum} declaration.
+Prefix each symbolic name, regardless of how it was generated,
+with the string @var{Prefix}.
+A @samp{pragma foreign_export_enum} declaration
+may contain at most one @samp{prefix} attribute.
 
 @item @samp{uppercase}
-Convert any alphabetic characters in a Mercury constructor name
-to uppercase when generating the symbolic name using the default
-mapping.
+Convert any alphabetic characters in a Mercury constructor name to uppercase
+when generating the symbolic name using the default mapping.
 Symbolic names specified by the programmer using @var{Overrides}
 are not affected by this attribute.
-If the @samp{prefix} attribute is also specified, then the prefix
-is added to the symbolic name @emph{after} the conversion to
-uppercase has been performed, i.e. the characters in the prefix
+If the @samp{prefix} attribute is also specified,
+then the prefix is added to the symbolic name
+@emph{after} the conversion to uppercase has been performed,
+i.e. the characters in the prefix
 are not affected by the @samp{uppercase} attribute.
 
 @end table
 
-The implementation does not check the validity of a symbolic name
-in the foreign language until after the effects of any attributes
-have been applied.
-This means that attributes may cause an otherwise valid symbolic name
-to become invalid or vice versa.
+The implementation does not check
+the validity of a symbolic name in the foreign language
+until after the effects of any attributes have been applied.
+This means that attributes may cause
+an otherwise valid symbolic name to become invalid, or vice versa.
+
+A Mercury module may contain @samp{pragma foreign_export_enum} declarations
+that refer to imported types, subject to the usual visibility restrictions.
+
+A Mercury module, or program, may contain
+more than one @samp{pragma foreign_export_enum} declaration
+for a given Mercury type for a given language.
+This can be useful when a project is transitioning
+from using one naming scheme for Mercury constants in foreign code
+to another naming scheme.
 
 It is an error if the mapping between constructors and symbolic names
+in a @samp{pragma foreign_export_enum} declaration
 does not form a bijection.
-A program can contain multiple @samp{pragma foreign_export_enum}
-declarations for a single Mercury type.
-The implementation is not required to check that the symbolic names
-generated by separate @samp{pragma foreign_export_enum} declarations
-are unique.
+It is also an error
+if two separate @samp{pragma foreign_export_enum} declarations
+for a given foreign language, @emph{whether or not for the same type},
+specify the same symbolic name,
+since in that case, the Mercury compiler would generate
+two conflicting definitions for that symbolic name.
+However, the Mercury implementation is not required to check either condition.
 
-A module may contain @samp{pragma foreign_export_enum} declarations that
-refer to imported types, subject to the usual visibility restrictions.
-
-A @samp{pragma foreign_export_enum} declaration may only occur in the
-implementation section of a module.
+A @samp{pragma foreign_export_enum} declaration
+may occur only in the implementation section of a module.
 
 @c -----------------------------------------------------------------------
 
