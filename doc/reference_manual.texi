@@ -8089,9 +8089,9 @@ Use the string @code{"Erlang"} to set the foreign language to Erlang.
 
 @menu
 * Using pragma foreign_type for C 	 :: Declaring C types in Mercury
-* Using pragma foreign_export_enum for C :: Using Mercury enumerations in C
 * Using pragma foreign_enum for C        :: Assigning Mercury enumerations
                                             values in C
+* Using pragma foreign_export_enum for C :: Using Mercury enumerations in C
 * Using pragma foreign_proc for C 	 :: Calling C code from Mercury
 * Using pragma foreign_export for C      :: Calling Mercury code from C
 * Using pragma foreign_decl for C 	 :: Including C declarations in Mercury
@@ -8191,6 +8191,13 @@ We strongly recommend the use of @samp{pragma foreign_type} instead of
 @code{c_pointer} as the use of @samp{pragma foreign_type} results in
 more type-safe code.
 
+@node Using pragma foreign_enum for C
+@subsubsection Using pragma foreign_enum for C
+
+Foreign enumeration values in C must be constants of type @code{MR_Integer}.
+They may be specified as either integer literals or via preprocessor macros
+that expand to integer literals.
+
 @node Using pragma foreign_export_enum for C
 @subsubsection Using pragma foreign_export_enum for C
 
@@ -8212,13 +8219,6 @@ the Mercury constructor @samp{foo} would be @code{foo}.
 
 @c It would be useful if there were some documented way of mapping
 @c these things into [0, N - 1], e.g. for array lookups.
-
-@node Using pragma foreign_enum for C
-@subsubsection Using pragma foreign_enum for C
-
-Foreign enumeration values in C must be constants of type @code{MR_Integer}.
-They may be specified as either integer literals or via preprocessor macros
-that expand to integer literals.
 
 @node Using pragma foreign_proc for C
 @subsubsection Using pragma foreign_proc for C
@@ -8496,9 +8496,9 @@ Mercury User's Guide.
 
 @menu
 * Using pragma foreign_type for C#	:: Declaring C# types in Mercury
-* Using pragma foreign_export_enum for C# :: Using Mercury enumerations in C#
 * Using pragma foreign_enum for C#      :: Assigning Mercury enumerations
                                            values in C#
+* Using pragma foreign_export_enum for C# :: Using Mercury enumerations in C#
 * Using pragma foreign_proc for C# 	:: Calling C# code from Mercury
 * Using pragma foreign_export for C#    :: Calling Mercury code from C#
 * Using pragma foreign_decl for C# 	:: Including C# declarations in Mercury
@@ -8524,6 +8524,13 @@ Furthermore, any Mercury procedure exported with @samp{pragma foreign_export}
 will use @var{C#-Type} as the type for any
 parameters whose Mercury type is @var{MercuryTypeName}.
 
+@node Using pragma foreign_enum for C#
+@subsubsection Using pragma foreign_enum for C#
+
+Foreign enumeration values in C# must be a constant value expression
+which is a valid initializer within an enumeration of underlying
+type @code{int}.
+
 @node Using pragma foreign_export_enum for C#
 @subsubsection Using pragma foreign_export_enum for C#
 
@@ -8535,13 +8542,6 @@ The default mapping used by @samp{pragma foreign_export_enum}
 declarations for C# is to use the Mercury constructor name as the
 base of the symbolic name.  For example, the symbolic name for
 the Mercury constructor @samp{foo} would be @code{foo}.
-
-@node Using pragma foreign_enum for C#
-@subsubsection Using pragma foreign_enum for C#
-
-Foreign enumeration values in C# must be a constant value expression
-which is a valid initializer within an enumeration of underlying
-type @code{int}.
 
 @node Using pragma foreign_proc for C#
 @subsubsection Using pragma foreign_proc for C#
@@ -8683,10 +8683,10 @@ For example:
 
 @menu
 * Using pragma foreign_type for Java :: Declaring Java types in Mercury
-* Using pragma foreign_export_enum for Java :: Using Mercury enumerations in
-                                               Java
 * Using pragma foreign_enum for Java :: Assigning Mercury enumerations
                                         values in Java
+* Using pragma foreign_export_enum for Java :: Using Mercury enumerations in
+                                               Java
 * Using pragma foreign_proc for Java :: Calling Java code from Mercury
 * Using pragma foreign_export for Java :: Calling Mercury from Java code
 * Using pragma foreign_decl for Java :: Including Java declarations in Mercury
@@ -8713,6 +8713,11 @@ Furthermore, any Mercury procedure exported with @samp{pragma foreign_export}
 will use @var{JavaType} as the type for any
 parameters whose Mercury type is @var{MercuryTypeName}.
 
+@node Using pragma foreign_enum for Java
+@subsubsection Using pragma foreign_enum for Java
+
+@samp{pragma foreign_enum} is currently not supported for Java.
+
 @node Using pragma foreign_export_enum for Java
 @subsubsection Using pragma foreign_export_enum for Java
 
@@ -8728,11 +8733,6 @@ The default mapping used by @samp{pragma foreign_export_enum}
 declarations for Java is to use the Mercury constructor name as the
 base of the symbolic name.  For example, the symbolic name for
 the Mercury constructor @samp{foo} would be @code{foo}.
-
-@node Using pragma foreign_enum for Java
-@subsubsection Using pragma foreign_enum for Java
-
-@samp{pragma foreign_enum} is currently not supported for Java.
 
 @node Using pragma foreign_proc for Java
 @subsubsection Using pragma foreign_proc for Java
