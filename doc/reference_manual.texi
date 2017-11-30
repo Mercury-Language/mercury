@@ -7672,6 +7672,10 @@ imports a foreign @emph{type} into Mercury,
 a @samp{pragma foreign_enum} declaration
 imports @emph{the values of the constants of an enumeration type} into Mercury.
 
+While languages such as C have special syntax for defining enumeration types,
+in Mercury, an enumeration type is simply an ordinary discriminated union type
+whose function symbols all have arity zero.
+
 Given an enumeration type such as
 @example
 :- type unix_file_permissions
@@ -7702,7 +7706,7 @@ which looks like this:
 
 @example
 @group
-:- pragma foreign_enum("C", unix_file_permissions,
+:- pragma foreign_enum("C", unix_file_permissions/0,
 [
     user_read        - "S_IRUSR",
     user_write       - "S_IWUSR",
@@ -7751,7 +7755,7 @@ that the programmer wants to be used to represent that constructor.
 The mapping defined by this list of pairs must form a bijection,
 i.e. the list must map distinct constructors to distinct values,
 and vice versa.
-The Mercury compiler is not required to check this, because it can't;
+The Mercury compiler is not required to check this, because it cannot;
 even if two symbolic names (such as C macros) are distinct,
 they may expand to the same integer in the target language.
 
