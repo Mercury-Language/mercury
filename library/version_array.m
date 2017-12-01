@@ -144,6 +144,7 @@
 :- func size(version_array(T)) = int.
 
     % max(Z) = size(A) - 1.
+    % Returns -1 for an empty array.
     %
 :- func max(version_array(T)) = int.
 

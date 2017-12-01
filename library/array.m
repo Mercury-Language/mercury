@@ -152,6 +152,7 @@
 :- mode least_index(in) = out is det.
 
     % max returns the upper bound of the array.
+    % Returns -1 for an empty array.
     %
 :- pred max(array(_T), int).
 %:- mode max(array_ui, out) is det.

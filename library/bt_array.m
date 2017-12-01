@@ -54,6 +54,7 @@
 :- func min(bt_array(_T)) = int.
 
     % Returns the upper bound of the array.
+    % Returns lower bound - 1 for an empty array.
     %
 :- pred max(bt_array(_T)::in, int::out) is det.
 :- func max(bt_array(_T)) = int.
