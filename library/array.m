@@ -152,7 +152,8 @@
 :- mode least_index(in) = out is det.
 
     % max returns the upper bound of the array.
-    % Returns -1 for an empty array.
+    % Returns lower bound - 1 for an empty array
+    % (always -1 in this implementation).
     %
 :- pred max(array(_T), int).
 %:- mode max(array_ui, out) is det.
@@ -177,7 +178,8 @@
 %:- mode size(array_ui) = out is det.
 :- mode size(in) = out is det.
 
-    % bounds returns the upper and lower bounds of an array.
+    % bounds(Array, Min, Max) returns the lower and upper bounds of an array.
+    % The upper bound will be lower bound - 1 for an empty array.
     % Note: in this implementation, the lower bound is always zero.
     %
 :- pred bounds(array(_T), int, int).

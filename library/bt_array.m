@@ -65,7 +65,8 @@
 :- pred size(bt_array(_T)::in, int::out) is det.
 :- func size(bt_array(_T)) = int.
 
-    % bounds returns the upper and lower bounds of a bt_array.
+    % bounds(Array, Min, Max) returns the lower and upper bounds of a bt_array.
+    % The upper bound will be the lower bound - 1 for an empty array.
     %
 :- pred bounds(bt_array(_T)::in, int::out, int::out) is det.
 
