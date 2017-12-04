@@ -822,8 +822,8 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         % XXX Why ask for the timestamp if we then ignore it?
         read_module_src(Globals, "Getting dependencies for module",
-            do_not_ignore_errors, do_not_search, ModuleName, SourceFileName,
-            always_read_module(do_return_timestamp), _,
+            do_not_ignore_errors, do_not_search, ModuleName, [],
+            SourceFileName, always_read_module(do_return_timestamp), _,
             ParseTreeSrc, Specs0, Errors, !IO),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
         ( if set.is_non_empty(FatalErrors) then

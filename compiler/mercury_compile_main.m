@@ -1315,7 +1315,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             % being created in the wrong directory.
             read_module_src(Globals0, "Reading module",
                 do_not_ignore_errors, do_not_search,
-                ModuleName, SourceFileName,
+                ModuleName, [], SourceFileName,
                 always_read_module(ReturnTimestamp), MaybeTimestamp,
                 ParseTreeSrc, Specs, Errors, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),

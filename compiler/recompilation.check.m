@@ -272,7 +272,7 @@ should_recompile_3(VersionStream, Globals, IsSubModule, FindTargetFiles,
         % If the module has changed, recompile.
         ModuleName = !.Info ^ rci_module_name,
         read_module_src(Globals, "Reading module",
-            do_not_ignore_errors, do_search, ModuleName, FileName,
+            do_not_ignore_errors, do_search, ModuleName, [], FileName,
             dont_read_module_if_match(RecordedTimestamp), MaybeNewTimestamp,
             ParseTree, Specs, Errors, !IO),
         ( if

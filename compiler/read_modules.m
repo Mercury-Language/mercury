@@ -30,6 +30,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 %
@@ -138,7 +139,7 @@
     %
 :- pred read_module_src(globals::in, string::in,
     maybe_ignore_errors::in, maybe_search::in,
-    module_name::in, file_name::out,
+    module_name::in, list(term.context)::in, file_name::out,
     read_module_and_timestamps::in, maybe(timestamp)::out,
     parse_tree_src::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
@@ -240,11 +241,11 @@
 :- import_module dir.
 :- import_module set.
 :- import_module string.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
-read_module_src(Globals, Descr, IgnoreErrors, Search, ModuleName, FileName,
+read_module_src(Globals, Descr, IgnoreErrors, Search,
+        ModuleName, ExpectationContexts, FileName,
         ReadModuleAndTimestamps, MaybeTimestamp,
         ParseTreeSrc, Specs, Errors, !IO) :-
     read_module_begin(Globals, Descr, Search, ModuleName, fk_src,
@@ -254,9 +255,9 @@ read_module_src(Globals, Descr, IgnoreErrors, Search, ModuleName, FileName,
     % in the current directory but the full match occurs in a search directory.
     search_for_module_source_and_stream(Globals, SearchDirs,
         InterfaceSearchDirs, ModuleName, MaybeFileNameAndStream, !IO),
-    actually_read_module_src(Globals, ModuleName, MaybeFileNameAndStream,
-        ReadModuleAndTimestamps, MaybeTimestampRes, ParseTreeSrc0,
-        ModuleSpecs, Errors, !IO),
+    actually_read_module_src(Globals, ModuleName, ExpectationContexts,
+        MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
+        ParseTreeSrc0, ModuleSpecs, Errors, !IO),
     ParseTreeSrc0 = parse_tree_src(_ActualModuleName, ActualModuleNameContext,
         ComponentsCord),
     % If ModuleName = ActualModuleName, this obviously does the right thing.
@@ -280,7 +281,7 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
         FileName0, VeryVerbose, _InterfaceSearchDirs, SearchDirs, !IO),
     search_for_file_and_stream(SearchDirs, FileName0,
         MaybeFileNameAndStream, !IO),
-    actually_read_module_int(IntFileKind, Globals, ModuleName,
+    actually_read_module_int(IntFileKind, Globals, ModuleName, [],
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
         ParseTreeInt, ModuleSpecs, Errors, !IO),
     ParseTreeInt = parse_tree_int(_ActualModuleName, _IntFileKind,
@@ -330,7 +331,7 @@ read_module_src_from_file(Globals, FileName, Descr, Search,
     ),
     search_for_file_and_stream(SearchDirs, FullFileName,
         MaybeFileNameAndStream, !IO),
-    actually_read_module_src(Globals, DefaultModuleName,
+    actually_read_module_src(Globals, DefaultModuleName, [],
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
         ParseTreeSrc, Specs0, Errors, !IO),
     check_timestamp(Globals, FullFileName, MaybeTimestampRes, MaybeTimestamp,

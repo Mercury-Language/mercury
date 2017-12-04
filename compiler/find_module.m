@@ -258,7 +258,7 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
             BaseName = ""
         ),
         file_name_to_module_name(BaseName, DefaultModuleName),
-        peek_at_file(FileStream, DefaultModuleName, FileName, ModuleName,
+        peek_at_file(FileStream, DefaultModuleName, [], FileName, ModuleName,
             Specs, !IO),
         io.close_input(FileStream, !IO),
         MaybeModuleName = yes(ModuleName),

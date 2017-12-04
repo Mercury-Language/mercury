@@ -95,6 +95,7 @@
 :- import_module cord.
 :- import_module list.
 :- import_module set.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
@@ -117,17 +118,17 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
 %-----------------------------------------------------------------------------%
 
 generate_deps_map(Globals, ModuleName, Search, !DepsMap, !IO) :-
-    generate_deps_map_loop(Globals, set.make_singleton_set(ModuleName), Search,
+    generate_deps_map_loop(Globals, map.singleton(ModuleName, []), Search,
         !DepsMap, !IO).
 
 :- pred generate_deps_map_loop(globals::in,
-    set(module_name)::in, maybe_search::in,
+    map(module_name, list(term.context))::in, maybe_search::in,
     deps_map::in, deps_map::out, io::di, io::uo) is det.
 
 generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO) :-
-    ( if set.remove_least(Module, !Modules) then
-        generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap,
-            !IO),
+    ( if map.remove_smallest(Module, ExpectationContexts, !Modules) then
+        generate_deps_map_step(Globals, Module, ExpectationContexts,
+            !Modules, Search, !DepsMap, !IO),
         generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO)
     else
         % If we can't remove the smallest, then the set of modules to be
@@ -135,22 +136,27 @@ generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO) :-
         true
     ).
 
-:- pred generate_deps_map_step(globals::in, module_name::in,
-    set(module_name)::in, set(module_name)::out,
+:- pred generate_deps_map_step(globals::in,
+    module_name::in, list(term.context)::in,
+    map(module_name, list(term.context))::in,
+    map(module_name, list(term.context))::out,
     maybe_search::in, deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
+generate_deps_map_step(Globals, Module, ExpectationContexts,
+        !Modules, Search, !DepsMap, !IO) :-
     % Look up the module's dependencies, and determine whether
     % it has been processed yet.
-    lookup_dependencies(Globals, Module, Search, Done, ModuleImports,
+    lookup_dependencies(Globals, Module, ExpectationContexts, Search, Deps0,
         !DepsMap, !IO),
 
     % If the module hadn't been processed yet, then add its imports, parents,
     % and public children to the list of dependencies we need to generate,
     % and mark it as having been processed.
+    Deps0 = deps(Done0, ModuleImports),
     (
-        Done = not_yet_processed,
-        map.set(Module, deps(already_processed, ModuleImports), !DepsMap),
+        Done0 = not_yet_processed,
+        Deps = deps(already_processed, ModuleImports),
+        map.det_update(Module, Deps, !DepsMap),
         ForeignImportedModules = ModuleImports ^ mai_foreign_import_modules,
         ForeignImportedModuleNames =
             get_all_foreign_import_modules(ForeignImportedModules),
@@ -163,35 +169,55 @@ generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
         % We could keep a list of the modules we have already processed
         % and subtract it from ModulesToAddSet here, but doing that
         % actually leads to a small slowdown.
-        set.union(ModulesToAdd, !Modules)
+        %
+        % XXX For each module we add to !Modules, we currently specify
+        % the context of the ":- module" declaration of the module containing
+        % the ":- include_module" or ":- import_module" item that gives the
+        % module its fully qualified name. We should instead pass the contexts
+        % of the ":- include_module" and ":- import_module" items themselves.
+        % However, this would require retaining those contexts in the
+        % module_and_imports structure.
+        ModuleNameContext = ModuleImports ^ mai_module_name_context,
+        set.foldl(add_module_name_and_context(ModuleNameContext),
+            ModulesToAdd, !Modules)
     ;
-        Done = already_processed
+        Done0 = already_processed
+    ).
+
+:- pred add_module_name_and_context(term.context::in, module_name::in,
+    map(module_name, list(term.context))::in,
+    map(module_name, list(term.context))::out) is det.
+
+add_module_name_and_context(Context, ModuleName, !Modules) :-
+    ( if map.search(!.Modules, ModuleName, OldContexts) then
+        map.det_update(ModuleName, [Context | OldContexts], !Modules)
+    else
+        map.det_insert(ModuleName, [Context], !Modules)
     ).
 
     % Look up a module in the dependency map.
     % If we don't know its dependencies, read the module and
     % save the dependencies in the dependency map.
     %
-:- pred lookup_dependencies(globals::in, module_name::in, maybe_search::in,
-    have_processed::out, module_and_imports::out,
-    deps_map::in, deps_map::out, io::di, io::uo) is det.
+:- pred lookup_dependencies(globals::in,
+    module_name::in, list(term.context)::in, maybe_search::in,
+    deps::out, deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-lookup_dependencies(Globals, ModuleName, Search, Done, ModuleImports, !DepsMap,
-        !IO) :-
-    ( if
-        map.search(!.DepsMap, ModuleName, deps(DonePrime, ModuleImportsPrime))
-    then
-        Done = DonePrime,
-        ModuleImports = ModuleImportsPrime
+lookup_dependencies(Globals, ModuleName, ExpectationContexts, Search, Deps,
+        !DepsMap, !IO) :-
+    ( if map.search(!.DepsMap, ModuleName, DepsPrime) then
+        Deps = DepsPrime
     else
-        read_dependencies(Globals, ModuleName, Search, ModuleImportsList, !IO),
+        read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
+            ModuleImportsList, !IO),
         list.foldl(insert_into_deps_map, ModuleImportsList, !DepsMap),
-        map.lookup(!.DepsMap, ModuleName, deps(Done, ModuleImports))
+        map.lookup(!.DepsMap, ModuleName, Deps)
     ).
 
 insert_into_deps_map(ModuleImports, !DepsMap) :-
     module_and_imports_get_module_name(ModuleImports, ModuleName),
-    map.set(ModuleName, deps(not_yet_processed, ModuleImports), !DepsMap).
+    Deps = deps(not_yet_processed, ModuleImports),
+    map.set(ModuleName, Deps, !DepsMap).
 
     % Read a module to determine the (direct) dependencies of that module
     % and any nested sub-modules it contains. Return the module_and_imports
@@ -199,14 +225,15 @@ insert_into_deps_map(ModuleImports, !DepsMap) :-
     % If we cannot do better, return a dummy module_and_imports structure
     % for the named module.
     %
-:- pred read_dependencies(globals::in, module_name::in, maybe_search::in,
-    list(module_and_imports)::out, io::di, io::uo) is det.
+:- pred read_dependencies(globals::in, module_name::in, list(term.context)::in,
+    maybe_search::in, list(module_and_imports)::out, io::di, io::uo) is det.
 
-read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
+read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
+        ModuleAndImportsList, !IO) :-
     % XXX If _SrcSpecs contains error messages, the parse tree may not be
     % complete, and the rest of this predicate may work on incorrect data.
     read_module_src(Globals, "Getting dependencies for module",
-        ignore_errors, Search, ModuleName, FileName0,
+        ignore_errors, Search, ModuleName, ExpectationContexts, FileName0,
         always_read_module(dont_return_timestamp), _,
         ParseTreeSrc, SrcSpecs, Errors, !IO),
     ParseTreeSrc = parse_tree_src(_ModuleNameSrc0, _ModuleNameContext0,

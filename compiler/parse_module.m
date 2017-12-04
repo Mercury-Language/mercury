@@ -88,6 +88,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.parse_error.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
 :- import_module io.
@@ -97,7 +98,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % peek_at_file(DefaultModuleName, SourceFileName, ModuleName, Specs, !IO):
+    % peek_at_file(DefaultModuleName, DefaultExpectationContexts,
+    %   SourceFileName, ModuleName, Specs, !IO):
     %
     % When looking for a module, we sometimes want to see what the file says
     % about what Mercury module is stored in it. So we read the first thing
@@ -106,12 +108,14 @@
     % DefaultModuleName as ModuleName.
     % XXX ITEM_LIST In the latter case, we should return an error indication.
     %
-:- pred peek_at_file(io.text_input_stream::in, module_name::in, file_name::in,
+:- pred peek_at_file(io.text_input_stream::in,
+    module_name::in, list(prog_context)::in, file_name::in,
     module_name::out, list(error_spec)::out, io::di, io::uo) is det.
 
-    % actually_read_module_src(Globals, DefaultModuleName,
-    %     MaybeFileNameAndStream, ReadModuleAndTimestamps,
-    %     MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO):
+    % actually_read_module_src(Globals,
+    %   DefaultModuleName, DefaultExpectationContexts,
+    %   MaybeFileNameAndStream, ReadModuleAndTimestamps,
+    %   MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO):
     %
     % Read a Mercury source program from FileNameAndStream, if it exists.
     % Close the stream when the reading is done. Return the parse tree
@@ -123,27 +127,31 @@
     % read the comments on read_module_src in read_modules.m.
     % XXX ITEM_LIST Move actually_read_module_{src,int,opt} to read_modules.m.
     %
-:- pred actually_read_module_src(globals::in, module_name::in,
+:- pred actually_read_module_src(globals::in,
+    module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     parse_tree_src::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
-    % actually_read_module_int(IntFileKind, Globals, DefaultModuleName,
-    %     MaybeFileNameAndStream, ReadModuleAndTimestamps,
-    %     MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO):
+    % actually_read_module_int(IntFileKind, Globals,
+    %   DefaultModuleName, DefaultExpectationContexts,
+    %   MaybeFileNameAndStream, ReadModuleAndTimestamps,
+    %   MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO):
     %
     % Analogous to actually_read_module_src, but opens the IntFileKind
     % interface file for DefaultModuleName.
     %
 :- pred actually_read_module_int(int_file_kind::in, globals::in,
-    module_name::in, maybe_error(path_name_and_stream)::in,
+    module_name::in, list(prog_context)::in,
+    maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     parse_tree_int::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
     % actually_read_module_opt(OptFileKind, Globals, FileName,
-    %     DefaultModuleName, ParseTree, Specs, Errors, !IO):
+    %   DefaultModuleName, DefaultExpectationContexts, ParseTree,
+    %   Specs, Errors, !IO):
     %
     % Analogous to actually_read_module_src, but opens the OptFileKind
     % optimization file for DefaultModuleName. It differs in being
@@ -152,16 +160,17 @@
     % if the actual module name doesn't match the expected module name.
     %
 :- pred actually_read_module_opt(opt_file_kind::in, globals::in,
-    file_name::in, module_name::in, parse_tree_opt::out,
-    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
+    file_name::in, module_name::in, list(prog_context)::in,
+    parse_tree_opt::out, list(error_spec)::out, read_module_errors::out,
+    io::di, io::uo) is det.
 
 :- type maybe_require_module_decl
     --->    dont_require_module_decl
     ;       require_module_decl.
 
     % check_module_has_expected_name(FileName,
-    %   ExpectedModuleName, ActualModuleName, MaybeActualModuleNameContext,
-    %   Specs):
+    %   ExpectedModuleName, ExpectationContexts,
+    %   ActualModuleName, MaybeActualModuleNameContext, Specs):
     %
     % Check that ActualModuleName is equal to ExpectedModuleName. If it isn't,
     % generate an error message about FileName containing the wrong module.
@@ -177,8 +186,8 @@
     % is hidden by the polymorphism provided by the FileInfo type variable.
     %
 :- pred check_module_has_expected_name(file_name::in,
-    module_name::in, module_name::in, maybe(term.context)::in,
-    list(error_spec)::out) is det.
+    module_name::in, list(prog_context)::in,
+    module_name::in, maybe(term.context)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -190,7 +199,6 @@
 :- import_module parse_tree.parse_item.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_types.
-:- import_module parse_tree.prog_data.
 :- import_module recompilation.
 
 :- import_module bool.
@@ -210,10 +218,11 @@
 
 %---------------------------------------------------------------------------%
 
-peek_at_file(Stream, DefaultModuleName, SourceFileName0,
-        ModuleName, Specs, !IO) :-
+peek_at_file(Stream, DefaultModuleName, DefaultExpectationContexts,
+        SourceFileName0, ModuleName, Specs, !IO) :-
     counter.init(1, SeqNumCounter0),
-    read_first_module_decl(Stream, dont_require_module_decl, DefaultModuleName,
+    read_first_module_decl(Stream, dont_require_module_decl,
+        DefaultModuleName, DefaultExpectationContexts,
         ModuleDeclPresent, SourceFileName0, _SourceFileName,
         SeqNumCounter0, _SeqNumCounter, [], Specs, set.init, _Errors, !IO),
     (
@@ -229,20 +238,24 @@ peek_at_file(Stream, DefaultModuleName, SourceFileName0,
 
 %---------------------------------------------------------------------------%
 
-actually_read_module_src(Globals, DefaultModuleName,
+actually_read_module_src(Globals,
+        DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO) :-
-    do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
+    do_actually_read_module(Globals,
+        DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_src, read_parse_tree_src,
         ParseTree, Specs, Errors, !IO).
 
 %---------------------%
 
-actually_read_module_int(IntFileKind, Globals, DefaultModuleName,
+actually_read_module_int(IntFileKind, Globals,
+        DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO) :-
-    do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
+    do_actually_read_module(Globals,
+        DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
         read_parse_tree_int(IntFileKind),
@@ -250,24 +263,26 @@ actually_read_module_int(IntFileKind, Globals, DefaultModuleName,
 
 %---------------------%
 
-actually_read_module_opt(OptFileKind, Globals, FileName, DefaultModuleName,
+actually_read_module_opt(OptFileKind, Globals, FileName,
+        DefaultModuleName, DefaultExpectationContexts,
         ParseTreeOpt, Specs, Errors, !IO) :-
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
     search_for_file_and_stream(Dirs, FileName, MaybeFileNameAndStream, !IO),
-    do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
+    do_actually_read_module(Globals,
+        DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
         always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(OptFileKind),
         read_parse_tree_opt(OptFileKind),
         ParseTreeOpt, ItemSpecs, Errors, !IO),
     ModuleName = ParseTreeOpt ^ pto_module_name,
-    check_module_has_expected_name(FileName, DefaultModuleName, ModuleName,
-        no, NameSpecs),
+    check_module_has_expected_name(FileName, DefaultModuleName,
+        DefaultExpectationContexts,ModuleName, no, NameSpecs),
     Specs = ItemSpecs ++ NameSpecs.
 
 %---------------------%
 
-check_module_has_expected_name(FileName, ExpectedName, ActualName,
-        MaybeActualContext, Specs) :-
+check_module_has_expected_name(FileName, ExpectedName, ExpectationContexts,
+        ActualName, MaybeActualContext, Specs) :-
     ( if ActualName = ExpectedName then
         Specs = []
     else
@@ -279,7 +294,7 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName,
         else
             MaybeContext = no
         ),
-        Pieces = [words("Error: file"), quote(FileName),
+        MainPieces = [words("Error: file"), quote(FileName),
             words("contains the wrong module."),
             words("Expected module"), qual_sym_name(ExpectedName), suffix(","),
             words("found module"), qual_sym_name(ActualName), suffix("."), nl],
@@ -296,20 +311,33 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName,
         % non-misleading name.
         Severity = severity_conditional(warn_wrong_module_name,
             yes, severity_error, no),
-        Component = option_is_set(warn_wrong_module_name, yes,
-            [always(Pieces)]),
-        Msg = error_msg(MaybeContext, treat_as_first, 0, [Component]),
-        Spec = error_spec(Severity, phase_module_name, [Msg]),
+        MainComponent = option_is_set(warn_wrong_module_name, yes,
+            [always(MainPieces)]),
+        MainMsg = error_msg(MaybeContext, treat_as_first, 0,
+            [MainComponent]),
+        list.sort_and_remove_dups(ExpectationContexts,
+            SortedExpectationContexts),
+        list.map(expectation_context_to_msg, SortedExpectationContexts,
+            SubMsgs),
+        Spec = error_spec(Severity, phase_module_name, [MainMsg | SubMsgs]),
         Specs = [Spec]
     ).
+
+:- pred expectation_context_to_msg(prog_context::in, error_msg::out) is det.
+
+expectation_context_to_msg(Context, SubMsg) :-
+    SubPieces = [words("This module specifies the expected name."), nl],
+    SubComponent = option_is_set(warn_wrong_module_name, yes,
+        [always(SubPieces)]),
+    SubMsg = simple_msg(Context, [SubComponent]).
 
 %---------------------%
 
 :- type read_parse_tree(PT) ==
     pred(io.text_input_stream, string, globals, module_name,
-        PT, list(error_spec), read_module_errors, io, io).
+        list(prog_context), PT, list(error_spec), read_module_errors, io, io).
 :- inst read_parse_tree ==
-    (pred(in, in,in,  in, out, out, out, di, uo) is det).
+    (pred(in, in,in, in, in, out, out, out, di, uo) is det).
 
 :- type make_dummy_parse_tree(PT) == pred(module_name, PT).
 :- inst make_dummy_parse_tree == (pred(in, out) is det).
@@ -343,14 +371,16 @@ make_dummy_parse_tree_opt(OptFileKind, ModuleName, ParseTree) :-
     % takes place inside ReadParseTree, which will be one of
     % read_parse_tree_src, read_parse_tree_int and read_parse_tree_src.
     %
-:- pred do_actually_read_module(globals::in, module_name::in,
+:- pred do_actually_read_module(globals::in,
+    module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     make_dummy_parse_tree(PT)::in(make_dummy_parse_tree),
     read_parse_tree(PT)::in(read_parse_tree), PT::out,
     list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
 
-do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
+do_actually_read_module(Globals, DefaultModuleName, DefaultExpectationContexts,
+        MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MakeDummyParseTree, ReadParseTree, ParseTree, Specs, Errors, !IO) :-
     (
@@ -389,7 +419,8 @@ do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
             set.init(Errors)
         else
             ReadParseTree(FileStream, FileStreamName, Globals,
-                DefaultModuleName, ParseTree, Specs, Errors, !IO)
+                DefaultModuleName, DefaultExpectationContexts,
+                ParseTree, Specs, Errors, !IO)
         ),
         io.close_input(FileStream, !IO)
     ;
@@ -420,19 +451,22 @@ do_actually_read_module(Globals, DefaultModuleName, MaybeFileNameAndStream,
     % Read an optimization file (.opt or .trans_opt) from standard input.
     %
 :- pred read_parse_tree_opt(opt_file_kind::in,
-    io.text_input_stream::in, string::in, globals::in, module_name::in,
+    io.text_input_stream::in, string::in, globals::in,
+    module_name::in, list(prog_context)::in,
     parse_tree_opt::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
 read_parse_tree_opt(OptFileKind, Stream, SourceFileName0, Globals,
-        DefaultModuleName, ParseTree, !:Specs, !:Errors, !IO) :-
+        DefaultModuleName, DefaultExpectationContexts,
+        ParseTree, !:Specs, !:Errors, !IO) :-
     !:Specs = [],
     set.init(!:Errors),
     counter.init(1, SeqNumCounter0),
 
     % We handle the first module declaration specially. Read the documentation
     % on read_first_module_decl for the reason.
-    read_first_module_decl(Stream, require_module_decl, DefaultModuleName,
+    read_first_module_decl(Stream, require_module_decl,
+        DefaultModuleName, DefaultExpectationContexts,
         ModuleDeclPresent, SourceFileName0, SourceFileName1,
         SeqNumCounter0, SeqNumCounter1, !Specs, !Errors, !IO),
     (
@@ -494,19 +528,22 @@ read_parse_tree_opt(OptFileKind, Stream, SourceFileName0, Globals,
     % Read an interface file (.int0, .int3, .int2 or .int).
     %
 :- pred read_parse_tree_int(int_file_kind::in,
-    io.text_input_stream::in, string::in, globals::in, module_name::in,
+    io.text_input_stream::in, string::in, globals::in,
+    module_name::in, list(prog_context)::in,
     parse_tree_int::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
 read_parse_tree_int(IntFileKind, Stream, SourceFileName0, Globals,
-        DefaultModuleName, ParseTree, !:Specs, !:Errors, !IO) :-
+        DefaultModuleName, DefaultExpectationContexts, ParseTree,
+        !:Specs, !:Errors, !IO) :-
     !:Specs = [],
     set.init(!:Errors),
     counter.init(1, SeqNumCounter0),
 
     % We handle the first module declaration specially. Read the documentation
     % on read_first_module_decl for the reason.
-    read_first_module_decl(Stream, require_module_decl, DefaultModuleName,
+    read_first_module_decl(Stream, require_module_decl,
+        DefaultModuleName, DefaultExpectationContexts,
         ModuleDeclPresent, SourceFileName0, SourceFileName1,
         SeqNumCounter0, SeqNumCounter1, !Specs, !Errors, !IO),
     (
@@ -831,10 +868,11 @@ read_item_sequence_in_hdr_file_without_section_marker(Stream, Globals,
 %---------------------------------------------------------------------------%
 
 :- pred read_parse_tree_src(io.text_input_stream::in, string::in, globals::in,
-    module_name::in, parse_tree_src::out,
+    module_name::in, list(prog_context)::in, parse_tree_src::out,
     list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
 
-read_parse_tree_src(Stream, !.SourceFileName, Globals, DefaultModuleName,
+read_parse_tree_src(Stream, !.SourceFileName, Globals,
+        DefaultModuleName, DefaultExpectationContexts,
         ParseTree, !:Specs, !:Errors, !IO) :-
     some [!SeqNumCounter] (
         !:Specs = [],
@@ -844,7 +882,7 @@ read_parse_tree_src(Stream, !.SourceFileName, Globals, DefaultModuleName,
         % We handle the first module declaration specially. Read the
         % documentation on read_first_module_decl for the reason.
         read_first_module_decl(Stream, dont_require_module_decl,
-            DefaultModuleName, ModuleDeclPresent,
+            DefaultModuleName, DefaultExpectationContexts, ModuleDeclPresent,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
         (
             ModuleDeclPresent = no_module_decl_present(InitLookAhead),
@@ -1247,14 +1285,16 @@ handle_module_end_marker(CurModuleName, ContainingModules, IOMVarSet, IOMTerm,
     % what it is that we are parsing before we can parse it!
     %
 :- pred read_first_module_decl(io.text_input_stream::in,
-    maybe_require_module_decl::in, module_name::in,
+    maybe_require_module_decl::in,
+    module_name::in, list(prog_context)::in,
     maybe_module_decl_present::out,
     file_name::in, file_name::out, counter::in, counter::out,
     list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out,
     io::di, io::uo) is det.
 
-read_first_module_decl(Stream, RequireModuleDecl, DefaultModuleName,
+read_first_module_decl(Stream, RequireModuleDecl,
+        DefaultModuleName, DefaultExpectationContexts,
         ModuleDeclPresent, !SourceFileName, !SeqNumCounter,
         !Specs, !Errors, !IO) :-
     % Parse the first term, treating it as occurring within the scope
@@ -1269,7 +1309,8 @@ read_first_module_decl(Stream, RequireModuleDecl, DefaultModuleName,
             FirstIOM = iom_marker_src_file(!:SourceFileName),
             % Apply and then skip `pragma source_file' decls, by calling
             % ourselves recursively with the new source file name.
-            read_first_module_decl(Stream, RequireModuleDecl, DefaultModuleName,
+            read_first_module_decl(Stream, RequireModuleDecl,
+                DefaultModuleName, DefaultExpectationContexts,
                 ModuleDeclPresent, !SourceFileName, !SeqNumCounter,
                 !Specs, !Errors, !IO)
         ;
@@ -1295,8 +1336,8 @@ read_first_module_decl(Stream, RequireModuleDecl, DefaultModuleName,
                     right_module_decl_present(ModuleName, ModuleNameContext)
             else
                 check_module_has_expected_name(!.SourceFileName,
-                    DefaultModuleName, StartModuleName, yes(ModuleNameContext),
-                    NameSpecs),
+                    DefaultModuleName, DefaultExpectationContexts,
+                    StartModuleName, yes(ModuleNameContext), NameSpecs),
                 !:Specs = NameSpecs ++ !.Specs,
                 set.insert(rme_unexpected_module_name, !Errors),
 
