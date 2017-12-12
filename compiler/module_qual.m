@@ -235,6 +235,7 @@
 
 :- import_module bool.
 :- import_module map.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module set.
 :- import_module term.
@@ -554,9 +555,16 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         ImportDepsC, UseDepsC),
     get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksD,
         ImportDepsD, UseDepsD),
-    ImportedModules = set.union_list(
-        [ImportDepsA, ImportDepsB, ImportDepsC, ImportDepsD,
-        UseDepsA, UseDepsB, UseDepsC, UseDepsD]),
+    ImportedModules = set.union_list([
+        set.sorted_list_to_set(multi_map.keys(ImportDepsA)),
+        set.sorted_list_to_set(multi_map.keys(ImportDepsB)),
+        set.sorted_list_to_set(multi_map.keys(ImportDepsC)),
+        set.sorted_list_to_set(multi_map.keys(ImportDepsD)),
+        set.sorted_list_to_set(multi_map.keys(UseDepsA)),
+        set.sorted_list_to_set(multi_map.keys(UseDepsB)),
+        set.sorted_list_to_set(multi_map.keys(UseDepsC)),
+        set.sorted_list_to_set(multi_map.keys(UseDepsD))
+    ]),
     set.init(InstanceModules),
     ExportedInstancesFlag = no,
     globals.lookup_bool_option(Globals, warn_interface_imports_in_parents,

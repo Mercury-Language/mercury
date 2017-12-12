@@ -41,6 +41,8 @@
 
 :- implementation.
 
+:- import_module list.
+:- import_module multi_map.
 :- import_module set.
 
 :- type deps_graph_key == digraph_key(module_name).
@@ -94,7 +96,8 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
 add_int_deps(ModuleKey, ModuleImports, !DepsGraph) :-
     AddDep = add_dep(ModuleKey),
     set.fold(AddDep, ModuleImports ^ mai_parent_deps, !DepsGraph),
-    set.fold(AddDep, ModuleImports ^ mai_int_deps, !DepsGraph).
+    list.foldl(AddDep, multi_map.keys(ModuleImports ^ mai_int_deps),
+        !DepsGraph).
 
     % Add direct implementation dependencies for a module to the
     % implementation deps graph.
@@ -108,7 +111,7 @@ add_imp_deps(ModuleKey, ModuleImports, !DepsGraph) :-
     add_int_deps(ModuleKey, ModuleImports, !DepsGraph),
     % then we add the impl deps
     module_and_imports_get_imp_deps(ModuleImports, ImpDeps),
-    set.fold(add_dep(ModuleKey), ImpDeps, !DepsGraph).
+    list.foldl(add_dep(ModuleKey), multi_map.keys(ImpDeps), !DepsGraph).
 
     % Add parent implementation dependencies for the given Parent module
     % to the implementation deps graph values for the given ModuleKey.

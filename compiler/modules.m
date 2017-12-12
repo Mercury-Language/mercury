@@ -125,6 +125,7 @@
 :- import_module cord.
 :- import_module dir.
 :- import_module map.
+:- import_module multi_map.
 :- import_module require.
 :- import_module term.
 :- import_module string.
@@ -139,8 +140,10 @@
 :- pred grab_maybe_qual_imported_modules(file_name::in, module_name::in,
     which_grab::in, raw_compilation_unit::in,
     list(src_item_block)::out, module_and_imports::out,
-    set(module_name)::out, set(module_name)::out,
-    set(module_name)::out, set(module_name)::out, io::di, io::uo) is det.
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out, io::di, io::uo) is det.
 
 grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
         WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports,
@@ -174,7 +177,7 @@ grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
         MaybeTimestampMap = no,
 
         raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
-        set.init(PublicChildren),
+        map.init(PublicChildren),
 
         FactDeps = [],
         ForeignIncludeFiles = cord.init
@@ -206,7 +209,11 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
         grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
             WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports,
-            !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed, !IO),
+            IntImportedMap, IntUsedMap, ImpImportedMap, ImpUsedMap, !IO),
+        set.sorted_list_to_set(map.keys(IntImportedMap), !:IntImported),
+        set.sorted_list_to_set(map.keys(IntUsedMap), !:IntUsed),
+        set.sorted_list_to_set(map.keys(ImpImportedMap), !:ImpImported),
+        set.sorted_list_to_set(map.keys(ImpUsedMap), !:ImpUsed),
 
         RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
             RawItemBlocks),
@@ -216,10 +223,15 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         Ancestors = set.list_to_set(get_ancestors(ModuleName)),
 
         !:Specs = [],
-        IntOrImpImportedOrUsed = set.union_list([
-            !.IntImported, !.IntUsed, !.ImpImported, !.ImpUsed]),
         warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
-            Ancestors, IntOrImpImportedOrUsed, !Specs),
+            Ancestors, !.IntImported, !Specs),
+        warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
+            Ancestors, !.IntUsed, !Specs),
+        warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
+            Ancestors, !.ImpImported, !Specs),
+        warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
+            Ancestors, !.ImpUsed, !Specs),
+
         warn_if_duplicate_use_import_decls(ModuleName, ModuleNameContext,
             !IntImported, !IntUsed, !ImpImported, !ImpUsed, IntUsedImpImported,
             !Specs),
@@ -229,7 +241,11 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         % XXX Why are these added to the interface, and not the implementation
         % dependencies?
         get_implicit_dependencies_in_item_blocks(Globals, SrcItemBlocks,
-            ImplicitIntImported, ImplicitIntUsed),
+            ImplicitIntImportedMap, ImplicitIntUsedMap),
+        set.sorted_list_to_set(map.keys(ImplicitIntImportedMap),
+            ImplicitIntImported),
+        set.sorted_list_to_set(map.keys(ImplicitIntUsedMap),
+            ImplicitIntUsed),
         set.union(ImplicitIntImported, !IntImported),
         set.union(ImplicitIntUsed, !IntUsed),
 
@@ -354,7 +370,11 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         % XXX _SrcItemBlocks
         grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
             WhichGrab, RawCompUnit, _SrcItemBlocks, !:ModuleAndImports,
-            !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed, !IO),
+            IntImportedMap, IntUsedMap, ImpImportedMap, ImpUsedMap, !IO),
+        set.sorted_list_to_set(map.keys(IntImportedMap), !:IntImported),
+        set.sorted_list_to_set(map.keys(IntUsedMap), !:IntUsed),
+        set.sorted_list_to_set(map.keys(ImpImportedMap), !:ImpImported),
+        set.sorted_list_to_set(map.keys(ImpUsedMap), !:ImpUsed),
 
         RawCompUnit = raw_compilation_unit(ModuleName, _ModuleNameContext,
             RawItemBlocks),
@@ -366,7 +386,11 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         % XXX Why are these added to the interface, and not the implementation
         % dependencies?
         get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
-            ImplicitIntImported, ImplicitIntUsed),
+            ImplicitIntImportedMap, ImplicitIntUsedMap),
+        set.sorted_list_to_set(map.keys(ImplicitIntImportedMap),
+            ImplicitIntImported),
+        set.sorted_list_to_set(map.keys(ImplicitIntUsedMap),
+            ImplicitIntUsed),
         set.union(ImplicitIntImported, !IntImported),
         set.union(ImplicitIntUsed, !IntUsed),
 
@@ -455,7 +479,8 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
 %---------------------------------------------------------------------------%
 
 :- pred get_src_item_blocks_public_children(raw_compilation_unit::in,
-    list(src_item_block)::out, set(module_name)::out) is det.
+    list(src_item_block)::out, multi_map(module_name, prog_context)::out)
+    is det.
 
 get_src_item_blocks_public_children(RawCompUnit,
         SrcItemBlocks, PublicChildren) :-
@@ -466,16 +491,17 @@ get_src_item_blocks_public_children(RawCompUnit,
     % submodules. We do that by splitting out the implementation declarations
     % and putting them in a special `sms_impl_but_exported_to_submodules'
     % section.
-    ( if set.is_empty(Children) then
+    ( if map.is_empty(Children) then
         raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
-        set.init(PublicChildren)
+        map.init(PublicChildren)
     else
         get_int_and_impl(dont_include_impl_types, RawCompUnit,
             IFileItemBlocks, NoIFileItemBlocks),
         raw_item_blocks_to_src(IFileItemBlocks, IFileSrcItemBlocks),
         raw_item_blocks_to_split_src(NoIFileItemBlocks, NoIFileSrcItemBlocks),
         SrcItemBlocks = IFileSrcItemBlocks ++ NoIFileSrcItemBlocks,
-        get_included_modules_in_item_blocks(IFileItemBlocks, PublicChildren)
+        get_included_modules_in_item_blocks(IFileItemBlocks,
+            PublicChildren)
     ).
 
 :- pred raw_item_blocks_to_src(list(item_block(module_section))::in,
@@ -875,8 +901,8 @@ process_module_long_interfaces(Globals, HaveReadModuleMapInt, Why, NeedQual,
             % Have we already processed FirstModule.IntFileKind?
             ( FirstModule = ModuleName
             ; set.member(FirstModule, !.ModuleAndImports ^ mai_parent_deps)
-            ; set.member(FirstModule, !.ModuleAndImports ^ mai_int_deps)
-            ; set.member(FirstModule, !.ModuleAndImports ^ mai_imp_deps)
+            ; map.search(!.ModuleAndImports ^ mai_int_deps, FirstModule, _)
+            ; map.search(!.ModuleAndImports ^ mai_imp_deps, FirstModule, _)
             )
         then
             maybe_log_augment_decision(Why, "long", FirstModule, IntFileKind,
@@ -1010,8 +1036,8 @@ process_module_short_interfaces(Globals, HaveReadModuleMapInt, Why,
             % Have we already processed FirstModule.IntFileKind?
             ( FirstModule = !.ModuleAndImports ^ mai_module_name
             ; set.member(FirstModule, !.ModuleAndImports ^ mai_parent_deps)
-            ; set.member(FirstModule, !.ModuleAndImports ^ mai_int_deps)
-            ; set.member(FirstModule, !.ModuleAndImports ^ mai_imp_deps)
+            ; map.search(!.ModuleAndImports ^ mai_int_deps, FirstModule, _)
+            ; map.search(!.ModuleAndImports ^ mai_imp_deps, FirstModule, _)
             ; set.member(FirstModule, !.ModuleAndImports ^ mai_indirect_deps)
             )
         then
@@ -1052,7 +1078,9 @@ process_module_private_interface(Globals, HaveReadModuleMapInt,
         NewIntSection, NewImpSection, SectionAppend,
         _IntAvails, _ImpAvails, ItemBlocks, !ModuleAndImports, !IO),
     get_dependencies_in_item_blocks(ItemBlocks,
-        AncDirectImports, AncDirectUses),
+        AncDirectImportsMap, AncDirectUsesMap),
+    set.sorted_list_to_set(map.keys(AncDirectImportsMap), AncDirectImports),
+    set.sorted_list_to_set(map.keys(AncDirectUsesMap), AncDirectUses),
     set.union(AncDirectImports, !DirectImports),
     set.union(AncDirectUses, !DirectUses).
 
@@ -1074,8 +1102,12 @@ process_module_long_interface(Globals, HaveReadModuleMapInt, NeedQual,
         HaveReadModuleMapInt, Module,
         NewIntSection, NewImpSection, SectionAppend,
         IntAvails, ImpAvails, _ItemBlocks, !ModuleAndImports, !IO),
-    get_dependencies_in_avails(IntAvails, IntImports, IntUses),
-    get_dependencies_in_avails(ImpAvails, ImpImports, ImpUses),
+    get_dependencies_in_avails(IntAvails, IntImportsMap, IntUsesMap),
+    get_dependencies_in_avails(ImpAvails, ImpImportsMap, ImpUsesMap),
+    set.sorted_list_to_set(map.keys(IntImportsMap), IntImports),
+    set.sorted_list_to_set(map.keys(IntUsesMap), IntUses),
+    set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports),
+    set.sorted_list_to_set(map.keys(ImpUsesMap), ImpUses),
     !:IntImportsUses = set.union_list([!.IntImportsUses, IntImports, IntUses]),
     !:ImpImportsUses = set.union_list([!.ImpImportsUses, ImpImports, ImpUses]).
 
@@ -1097,8 +1129,12 @@ process_module_short_interface(Globals, HaveReadModuleMapInt,
         HaveReadModuleMapInt, Module,
         NewIntSection, NewImpSection, SectionAppend,
         IntAvails, ImpAvails, _ItemBlocks, !ModuleAndImports, !IO),
-    get_dependencies_in_avails(IntAvails, IntImports, IntUses),
-    get_dependencies_in_avails(ImpAvails, ImpImports, ImpUses),
+    get_dependencies_in_avails(IntAvails, IntImportsMap, IntUsesMap),
+    get_dependencies_in_avails(ImpAvails, ImpImportsMap, ImpUsesMap),
+    set.sorted_list_to_set(map.keys(IntImportsMap), IntImports),
+    set.sorted_list_to_set(map.keys(IntUsesMap), IntUses),
+    set.sorted_list_to_set(map.keys(ImpImportsMap), ImpImports),
+    set.sorted_list_to_set(map.keys(ImpUsesMap), ImpUses),
     !:IntImportsUses = set.union_list([!.IntImportsUses, IntImports, IntUses]),
     !:ImpImportsUses = set.union_list([!.ImpImportsUses, ImpImports, ImpUses]).
 
@@ -1183,7 +1219,9 @@ process_module_interface_general(Globals, ProcessInterfaceKind,
             maybe_record_timestamp(Module, IntFileKind, NeedQual,
                 MaybeTimestamp, !ModuleAndImports),
             ModImpImports0 = !.ModuleAndImports ^ mai_imp_deps,
-            set.insert(Module, ModImpImports0, ModImpImports),
+            % XXX We should get our caller to give us a nondummy context.
+            multi_map.add(Module, term.context_init,
+                ModImpImports0, ModImpImports),
             !ModuleAndImports ^ mai_imp_deps := ModImpImports
         else
             true
@@ -1216,9 +1254,10 @@ maybe_log_augment_decision(Why, Kind, ModuleName, IntFileKind, Read, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred make_module_and_imports(file_name::in, module_name::in,
-    module_name::in, prog_context::in, list(src_item_block)::in,
-    list(error_spec)::in, set(module_name)::in, set(module_name)::in,
+:- pred make_module_and_imports(file_name::in,
+    module_name::in, module_name::in, prog_context::in,
+    list(src_item_block)::in, list(error_spec)::in,
+    multi_map(module_name, prog_context)::in, set(module_name)::in,
     list(string)::in, foreign_include_file_infos::in,
     maybe(module_timestamp_map)::in, module_and_imports::out) is det.
 
@@ -1237,10 +1276,10 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
     add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
         sms_interface, SrcItemBlocks0, SrcItemBlocks),
     set.init(Ancestors),
-    set.init(IntDeps),
-    set.init(ImpDeps),
+    map.init(IntDeps),
+    map.init(ImpDeps),
     set.init(IndirectDeps),
-    set.init(IncludeDeps),
+    map.init(IncludeDeps),
     ForeignImports = init_foreign_import_modules,
     set.init(Errors),
     Module = module_and_imports(SourceFileName, SourceFileModuleName,
@@ -1534,8 +1573,10 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
     ModuleName = !.ModuleAndImports ^ mai_module_name,
     Ancestors0 = !.ModuleAndImports ^ mai_parent_deps,
-    IntDeps0 = !.ModuleAndImports ^ mai_int_deps,
-    ImpDeps0 = !.ModuleAndImports ^ mai_imp_deps,
+    IntDepsMap0 = !.ModuleAndImports ^ mai_int_deps,
+    ImpDepsMap0 = !.ModuleAndImports ^ mai_imp_deps,
+    set.sorted_list_to_set(map.keys(IntDepsMap0), IntDeps0),
+    set.sorted_list_to_set(map.keys(ImpDepsMap0), ImpDeps0),
     OptFiles = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
     globals.lookup_bool_option(Globals, read_opt_files_transitively,
         Transitive),
@@ -1592,9 +1633,15 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
 
     % Figure out which .int files are needed by the .opt files
     get_dependencies_in_item_blocks(OptItemBlocks,
-        NewImportDeps0, NewUseDeps0),
+        NewImportDepsMap0, NewUseDepsMap0),
     get_implicit_dependencies_in_item_blocks(Globals, OptItemBlocks,
-        NewImplicitImportDeps0, NewImplicitUseDeps0),
+        NewImplicitImportDepsMap0, NewImplicitUseDepsMap0),
+    set.sorted_list_to_set(map.keys(NewUseDepsMap0), NewUseDeps0),
+    set.sorted_list_to_set(map.keys(NewImportDepsMap0), NewImportDeps0),
+    set.sorted_list_to_set(map.keys(NewImplicitImportDepsMap0),
+        NewImplicitImportDeps0),
+    set.sorted_list_to_set(map.keys(NewImplicitUseDepsMap0),
+        NewImplicitUseDeps0),
     NewDeps = set.union_list(
         [NewImportDeps0, NewUseDeps0,
         NewImplicitImportDeps0, NewImplicitUseDeps0,
@@ -1711,7 +1758,11 @@ read_optimization_interfaces(Globals, Transitive,
         NewUseDeps0 = set.list_to_set(
             list.map(avail_use_info_module_name, OptUses)),
         get_implicit_dependencies_in_items(Globals, OptItems,
-            NewImplicitImportDeps0, NewImplicitUseDeps0),
+            NewImplicitImportDepsMap0, NewImplicitUseDepsMap0),
+        set.sorted_list_to_set(map.keys(NewImplicitImportDepsMap0),
+            NewImplicitImportDeps0),
+        set.sorted_list_to_set(map.keys(NewImplicitUseDepsMap0),
+            NewImplicitUseDeps0),
         NewDepsSet0 = set.union_list([NewUseDeps0,
             NewImplicitImportDeps0, NewImplicitUseDeps0]),
         set.difference(NewDepsSet0, ModulesProcessed0, NewDepsSet),

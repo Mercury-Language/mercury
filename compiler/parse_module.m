@@ -316,6 +316,8 @@ check_module_has_expected_name(FileName, ExpectedName, ExpectationContexts,
         MainMsg = error_msg(MaybeContext, treat_as_first, 0,
             [MainComponent]),
         list.sort_and_remove_dups(ExpectationContexts,
+            SortedExpectationContexts0),
+        list.delete_all(SortedExpectationContexts0, term.context_init,
             SortedExpectationContexts),
         list.map(expectation_context_to_msg, SortedExpectationContexts,
             SubMsgs),
@@ -326,7 +328,7 @@ check_module_has_expected_name(FileName, ExpectedName, ExpectationContexts,
 :- pred expectation_context_to_msg(prog_context::in, error_msg::out) is det.
 
 expectation_context_to_msg(Context, SubMsg) :-
-    SubPieces = [words("This module specifies the expected name."), nl],
+    SubPieces = [words("The expected name is specified here."), nl],
     SubComponent = option_is_set(warn_wrong_module_name, yes,
         [always(SubPieces)]),
     SubMsg = simple_msg(Context, [SubComponent]).

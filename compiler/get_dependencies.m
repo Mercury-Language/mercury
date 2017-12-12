@@ -24,11 +24,12 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
-:- import_module set.
+:- import_module multi_map.
 
 %-----------------------------------------------------------------------------%
 
@@ -45,9 +46,11 @@
     % dependencies.
     %
 :- pred get_dependencies_in_avails(list(item_avail)::in,
-    set(module_name)::out, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out) is det.
 :- pred get_dependencies_in_item_blocks(list(item_block(MS))::in,
-    set(module_name)::out, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out) is det.
 
     % get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocs,
     %   IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps):
@@ -67,8 +70,10 @@
     % dependencies.
     %
 :- pred get_dependencies_int_imp_in_raw_item_blocks(list(raw_item_block)::in,
-    set(module_name)::out, set(module_name)::out,
-    set(module_name)::out, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out) is det.
 
     % get_implicit_dependencies_in_*(Globals, Items/ItemBlocks,
     %   ImportDeps, UseDeps):
@@ -82,10 +87,12 @@
     %
 :- pred get_implicit_dependencies_in_item_blocks(globals::in,
     list(item_block(MS))::in,
-    set(module_name)::out, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out) is det.
 :- pred get_implicit_dependencies_in_items(globals::in,
     list(item)::in,
-    set(module_name)::out, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out) is det.
 
     % Get the fact table dependencies for the given list of items.
     %
@@ -105,7 +112,6 @@
 
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.maybe_error.
 
@@ -121,11 +127,13 @@
 
 get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps) :-
     get_dependencies_in_item_blocks_acc(ItemBlocks,
-        set.init, ImportDeps, set.init, UseDeps).
+        multi_map.init, ImportDeps, multi_map.init, UseDeps).
 
 :- pred get_dependencies_in_item_blocks_acc(list(item_block(MS))::in,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out) is det.
 
 get_dependencies_in_item_blocks_acc([], !ImportDeps, !UseDeps).
 get_dependencies_in_item_blocks_acc([ItemBlock | ItemBlocks],
@@ -140,15 +148,19 @@ get_dependencies_in_item_blocks_acc([ItemBlock | ItemBlocks],
 get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
         IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps) :-
     get_dependencies_in_int_imp_in_raw_item_blocks_acc(RawItemBlocks,
-        set.init, IntImportDeps, set.init, IntUseDeps,
-        set.init, ImpImportDeps, set.init, ImpUseDeps).
+        multi_map.init, IntImportDeps, multi_map.init, IntUseDeps,
+        multi_map.init, ImpImportDeps, multi_map.init, ImpUseDeps).
 
 :- pred get_dependencies_in_int_imp_in_raw_item_blocks_acc(
     list(raw_item_block)::in,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out) is det.
 
 get_dependencies_in_int_imp_in_raw_item_blocks_acc([],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
@@ -170,20 +182,22 @@ get_dependencies_in_int_imp_in_raw_item_blocks_acc(
 
 get_dependencies_in_avails(Avails, ImportDeps, UseDeps) :-
     get_dependencies_in_avails_acc(Avails,
-        set.init, ImportDeps, set.init, UseDeps).
+        multi_map.init, ImportDeps, multi_map.init, UseDeps).
 
 :- pred get_dependencies_in_avails_acc(list(item_avail)::in,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out) is det.
 
 get_dependencies_in_avails_acc([], !ImportDeps, !UseDeps).
 get_dependencies_in_avails_acc([Avail | Avails], !ImportDeps, !UseDeps) :-
     (
-        Avail = avail_import(avail_import_info(ModuleName, _, _)),
-        set.insert(ModuleName, !ImportDeps)
+        Avail = avail_import(avail_import_info(ModuleName, Context, _)),
+        multi_map.add(ModuleName, Context, !ImportDeps)
     ;
-        Avail = avail_use(avail_use_info(ModuleName, _, _)),
-        set.insert(ModuleName, !UseDeps)
+        Avail = avail_use(avail_use_info(ModuleName, Context, _)),
+        multi_map.add(ModuleName, Context, !UseDeps)
     ),
     get_dependencies_in_avails_acc(Avails, !ImportDeps, !UseDeps).
 
@@ -205,12 +219,15 @@ get_implicit_dependencies_in_item_blocks(Globals, ItemBlocks,
         ImportDeps, UseDeps).
 
 :- pred compute_implicit_import_needs(globals::in, implicit_import_needs::in,
-    set(module_name)::out, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out) is det.
 
 compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         !:ImportDeps, !:UseDeps) :-
-    !:ImportDeps = set.make_singleton_set(mercury_public_builtin_module),
-    !:UseDeps = set.make_singleton_set(mercury_private_builtin_module),
+    multi_map.add(mercury_public_builtin_module, term.context_init,
+        multi_map.init, !:ImportDeps),
+    multi_map.add(mercury_private_builtin_module, term.context_init,
+        multi_map.init, !:UseDeps),
     ImplicitImportNeeds = implicit_import_needs(
         ItemsNeedTabling, ItemsNeedTablingStatistics,
         ItemsNeedSTM, ItemsNeedException,
@@ -221,10 +238,12 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
     % to import mercury_table_statistics_module.
     (
         ItemsNeedTabling = do_need_tabling,
-        set.insert(mercury_table_builtin_module, !UseDeps),
+        multi_map.add(mercury_table_builtin_module, term.context_init,
+            !UseDeps),
         (
             ItemsNeedTablingStatistics = do_need_tabling_statistics,
-            set.insert(mercury_table_statistics_module, !UseDeps)
+            multi_map.add(mercury_table_statistics_module, term.context_init,
+                !UseDeps)
         ;
             ItemsNeedTablingStatistics = dont_need_tabling_statistics
         )
@@ -244,47 +263,52 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
                 globals.lookup_bool_option(Globals, trace_table_io, yes)
             )
         then
-            set.insert(mercury_table_builtin_module, !UseDeps)
+            multi_map.add(mercury_table_builtin_module, term.context_init,
+                !UseDeps)
         else
             true
         )
     ),
     (
         ItemsNeedSTM = do_need_stm,
-        set.insert_list([mercury_stm_builtin_module, mercury_exception_module,
-            mercury_univ_module], !UseDeps)
+        multi_map.add(mercury_stm_builtin_module, term.context_init, !UseDeps),
+        multi_map.add(mercury_exception_module, term.context_init, !UseDeps),
+        multi_map.add(mercury_univ_module, term.context_init, !UseDeps)
     ;
         ItemsNeedSTM = dont_need_stm
     ),
     (
         ItemsNeedException = do_need_exception,
-        set.insert(mercury_exception_module, !UseDeps)
+        multi_map.add(mercury_exception_module, term.context_init, !UseDeps)
     ;
         ItemsNeedException = dont_need_exception
     ),
     (
         ItemsNeedStringFormat = do_need_string_format,
-        set.insert_list([mercury_string_format_module,
-            mercury_string_parse_util_module], !UseDeps)
+        multi_map.add(mercury_string_format_module, term.context_init,
+            !UseDeps),
+        multi_map.add(mercury_string_parse_util_module, term.context_init,
+            !UseDeps)
     ;
         ItemsNeedStringFormat = dont_need_string_format
     ),
     (
         ItemsNeedStreamFormat = do_need_stream_format,
-        set.insert(mercury_stream_module, !UseDeps)
+        multi_map.add(mercury_stream_module, term.context_init, !UseDeps)
     ;
         ItemsNeedStreamFormat = dont_need_stream_format
     ),
     (
         ItemsNeedIO = do_need_io,
-        set.insert(mercury_io_module, !UseDeps)
+        multi_map.add(mercury_io_module, term.context_init, !UseDeps)
     ;
         ItemsNeedIO = dont_need_io
     ),
     globals.lookup_bool_option(Globals, profile_deep, Deep),
     (
         Deep = yes,
-        set.insert(mercury_profiling_builtin_module, !UseDeps)
+        multi_map.add(mercury_profiling_builtin_module, term.context_init,
+            !UseDeps)
     ;
         Deep = no
     ),
@@ -297,7 +321,8 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
                 record_term_sizes_as_cells, yes)
         )
     then
-        set.insert(mercury_term_size_prof_builtin_module, !UseDeps)
+        multi_map.add(mercury_term_size_prof_builtin_module, term.context_init,
+            !UseDeps)
     else
         true
     ),
@@ -309,14 +334,15 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         HighLevelCode = no,
         Parallel = yes
     then
-        set.insert(mercury_par_builtin_module, !UseDeps)
+        multi_map.add(mercury_par_builtin_module, term.context_init, !UseDeps)
     else
         true
     ),
     globals.lookup_bool_option(Globals, use_regions, UseRegions),
     (
         UseRegions = yes,
-        set.insert(mercury_region_builtin_module, !UseDeps)
+        multi_map.add(mercury_region_builtin_module, term.context_init,
+            !UseDeps)
     ;
         UseRegions = no
     ),
@@ -333,7 +359,8 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
             DisableSSDB = yes
         ;
             DisableSSDB = no,
-            set.insert(mercury_ssdb_builtin_module, !UseDeps)
+            multi_map.add(mercury_ssdb_builtin_module, term.context_init,
+                !UseDeps)
         )
     ).
 

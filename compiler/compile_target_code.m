@@ -242,6 +242,7 @@
 
 :- import_module dir.
 :- import_module getopt_io.
+:- import_module multi_map.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -1047,8 +1048,10 @@ compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
         (func(FI) = foreign_import_module_name_from_module(FI, ModuleName)),
         set.to_sorted_list(
             get_all_foreign_import_module_infos(ForeignImportModules))),
-    IntDeps = ModuleAndImports ^ mai_int_deps,
-    ImpDeps = ModuleAndImports ^ mai_imp_deps,
+    IntDeps = set.sorted_list_to_set(
+        multi_map.keys(ModuleAndImports ^ mai_int_deps)),
+    ImpDeps = set.sorted_list_to_set(
+        multi_map.keys(ModuleAndImports ^ mai_imp_deps)),
     set.union(IntDeps, ImpDeps, IntImpDeps),
     set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
     ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),

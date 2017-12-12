@@ -106,6 +106,7 @@
 :- import_module parse_tree.find_module.        % XXX undesirable dependency
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_error.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
@@ -118,10 +119,12 @@
 :- import_module dir.
 :- import_module library.
 :- import_module map.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module require.
 :- import_module sparse_bitset.
 :- import_module string.
+:- import_module term.
 
 %---------------------------------------------------------------------------%
 
@@ -273,13 +276,16 @@ generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
 generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         !MmakeFile, !IO) :-
     ModuleAndImports = module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, _ModuleNameContext, ParentDeps, IntDeps, ImpDeps,
-        IndirectDeps, _Children, InclDeps, NestedDeps, FactDeps0,
+        ModuleName, _ModuleNameContext, ParentDeps, IntDepsMap, ImpDepsMap,
+        IndirectDeps, _Children, InclDepsMap, NestedDeps, FactDeps0,
         ForeignImportModules0, ForeignIncludeFilesCord,
         ContainsForeignCode, _ContainsForeignExport,
         SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
         OptItemBlocksCord, IntForOptItemBlocksCord, _ModuleVersionNumbersCord,
         _Specs, _Error, _Timestamps, _HasMain, _Dir),
+    set.sorted_list_to_set(multi_map.keys(IntDepsMap), IntDeps),
+    set.sorted_list_to_set(multi_map.keys(ImpDepsMap), ImpDeps),
+    set.sorted_list_to_set(multi_map.keys(InclDepsMap), InclDeps),
 
     ModuleNameString = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),
@@ -1011,7 +1017,10 @@ generate_dependencies_write_d_file(Globals, Dep,
 
         module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
         get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
+            IndirectOptDepsMap),
+        set.sorted_list_to_set(multi_map.keys(IndirectOptDepsMap),
             IndirectOptDeps),
+
         globals.lookup_bool_option(Globals, intermodule_optimization,
             Intermod),
         (
@@ -1019,14 +1028,16 @@ generate_dependencies_write_d_file(Globals, Dep,
             % Be conservative with inter-module optimization -- assume a
             % module depends on the `.int', `.int2' and `.opt' files
             % for all transitively imported modules.
-            IntDeps = IndirectOptDeps,
-            ImpDeps = IndirectOptDeps,
+            IntDepsMap = IndirectOptDepsMap,
+            ImpDepsMap = IndirectOptDepsMap,
             IndirectDeps = IndirectOptDeps
         ;
             Intermod = no,
-            get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDeps),
-            get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDeps),
+            get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDepsMap),
+            get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDepsMap),
             get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
+                IndirectDepsMap),
+            set.sorted_list_to_set(multi_map.keys(IndirectDepsMap),
                 IndirectDeps)
         ),
 
@@ -1055,8 +1066,8 @@ generate_dependencies_write_d_file(Globals, Dep,
         ),
         !ModuleAndImports ^ mai_foreign_import_modules := ForeignImportModules,
 
-        module_and_imports_set_int_deps(IntDeps, !ModuleAndImports),
-        module_and_imports_set_imp_deps(ImpDeps, !ModuleAndImports),
+        module_and_imports_set_int_deps(IntDepsMap, !ModuleAndImports),
+        module_and_imports_set_imp_deps(ImpDepsMap, !ModuleAndImports),
         module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports),
 
         % Compute the trans-opt dependencies for this module. To avoid
@@ -1089,7 +1100,7 @@ generate_dependencies_write_d_file(Globals, Dep,
     ).
 
 :- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
-    set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::out) is det.
 
 get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
     digraph.add_vertex(ModuleName, ModuleKey, DepsGraph0, DepsGraph),
@@ -1097,9 +1108,9 @@ get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
     AddKeyDep =
         ( pred(Key::in, Deps0::in, Deps::out) is det :-
             digraph.lookup_vertex(DepsGraph, Key, Dep),
-            set.insert(Dep, Deps0, Deps)
+            multi_map.add(Dep, term.context_init, Deps0, Deps)
         ),
-    sparse_bitset.foldl(AddKeyDep, DepsKeysSet, set.init, Dependencies).
+    sparse_bitset.foldl(AddKeyDep, DepsKeysSet, multi_map.init, Dependencies).
 
 %---------------------------------------------------------------------------%
 
@@ -1140,7 +1151,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     ModulesWithSubModules = list.filter(
         ( pred(Module::in) is semidet :-
             map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-            set.non_empty(ModuleImports ^ mai_children)
+            not multi_map.is_empty(ModuleImports ^ mai_children)
         ), Modules),
 
     make_module_file_names_with_suffix(Globals, "", ModulesWithSubModules,
@@ -1848,7 +1859,7 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
         Intermod = yes,
         some [ModuleAndImports] (
             map.member(DepsMap, _, deps(_, ModuleAndImports)),
-            set.non_empty(ModuleAndImports ^ mai_children)
+            not multi_map.is_empty(ModuleAndImports ^ mai_children)
         )
     then
         % The `.int0' files only need to be installed with

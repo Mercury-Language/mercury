@@ -34,6 +34,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module multi_map.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -97,10 +98,36 @@
     % in later.
     %
     % When compiling or when making interface files, the same sort of thing
-    % applies: initially all the list(module_name) fields except the public
-    % children field are set to empty lists, and then we add ancestor
-    % modules and imported modules to their respective lists as we process
-    % the interface files for those imported or ancestor modules.
+    % applies: initially all the fields containing module names except the
+    % public children field are set to contain no modules, and then
+    % we add ancestor modules and imported modules to their respective fields
+    % as we process the interface files for those imported or ancestor modules.
+    %
+    % The mai_int_deps and mai_imp_deps fields record, for each imported
+    % module name, the list of contexts in which those imports occur.
+    % (Most modules are imported just once, but you may import a module
+    % more than once.) The contexts are used when printing error messages
+    % about unexpected module names,which most of the time are about
+    % unexpected module *qualifications* of those module names.
+    % When "mmc --generate-dependencies" first finds an import of module a.c,
+    % and then later finds that c.m contains module b.c, not module a.c,
+    % and the name a.c happens to b correct (which is usually the case after
+    % moving module c from package a to package b), the programmer will
+    % probably want to know *where* he/she needs to change a.c to b.c.
+    %
+    % Since ":- include_module" declarations act similarly in establishing
+    % such expectations, the mai_children and mai_public_children fields
+    % also record their contexts. Every child module should have exactly one
+    % include_module declaration for it, but we record a *list* of contexts
+    % for each child module anyway, to allow them to be treated the same way
+    % as the mai_int_deps and mai_imp_deps fields.
+    %
+    % For some imports (e.g. implicit imports), there is no valid context
+    % we can record. For those, we record term.context_init instead.
+    % (We can't record no context at all, since multi_map makes no distinction
+    % between a key in the map that has a empty list of associated values,
+    % and a key that is not in the map at all. We *do* want to keep a record
+    % of every imported module, even if we have no context for the import.)
     %
 :- type module_and_imports
     --->    module_and_imports(
@@ -122,20 +149,24 @@
 
                 % The set of modules it directly imports in the interface
                 % (imports via ancestors count as direct).
-                mai_int_deps                    :: set(module_name),
+                mai_int_deps                    :: multi_map(module_name,
+                                                    prog_context),
 
                 % The set of modules it directly imports in the
                 % implementation.
-                mai_imp_deps                    :: set(module_name),
+                mai_imp_deps                    :: multi_map(module_name,
+                                                    prog_context),
 
                 % The set of modules it indirectly imports.
                 mai_indirect_deps               :: set(module_name),
 
-                mai_children                    :: set(module_name),
+                mai_children                    :: multi_map(module_name,
+                                                    prog_context),
 
                 % The set of its public children, i.e. child modules that
                 % it includes in the interface section.
-                mai_public_children             :: set(module_name),
+                mai_public_children             :: multi_map(module_name,
+                                                    prog_context),
 
                 % The modules included in the same source file. This field
                 % is only set for the top-level module in each file.
@@ -191,18 +222,20 @@
 :- pred module_and_imports_get_module_name_context(module_and_imports::in,
     prog_context::out) is det.
 :- pred module_and_imports_get_imp_deps(module_and_imports::in,
-    set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::out) is det.
 :- pred module_and_imports_get_errors(module_and_imports::in,
     read_module_errors::out) is det.
 
     % Set the interface dependencies.
     %
-:- pred module_and_imports_set_int_deps(set(module_name)::in,
+:- pred module_and_imports_set_int_deps(
+    multi_map(module_name, prog_context)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
     % Set the implementation dependencies.
     %
-:- pred module_and_imports_set_imp_deps(set(module_name)::in,
+:- pred module_and_imports_set_imp_deps(
+    multi_map(module_name, prog_context)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
     % Set the indirect dependencies.
@@ -275,25 +308,25 @@
 
 %-----------------------------------------------------------------------------%
 
-module_and_imports_get_source_file_name(Module, X) :-
-    X = Module ^ mai_source_file_name.
-module_and_imports_get_module_name(Module, X) :-
-    X = Module ^ mai_module_name.
-module_and_imports_get_module_name_context(Module, X) :-
-    X = Module ^ mai_module_name_context.
-module_and_imports_get_imp_deps(Module, X) :-
-    X = Module ^ mai_imp_deps.
-module_and_imports_get_errors(Module, X) :-
-    X = Module ^ mai_errors.
+module_and_imports_get_source_file_name(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_source_file_name.
+module_and_imports_get_module_name(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_module_name.
+module_and_imports_get_module_name_context(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_module_name_context.
+module_and_imports_get_imp_deps(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_imp_deps.
+module_and_imports_get_errors(ModuleAndImports, X) :-
+    X = ModuleAndImports ^ mai_errors.
 
-module_and_imports_set_int_deps(IntDeps, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_int_deps := IntDeps.
-module_and_imports_set_imp_deps(ImpDeps, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_imp_deps := ImpDeps.
-module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_indirect_deps := IndirectDeps.
-module_and_imports_set_errors(Errors, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_errors := Errors.
+module_and_imports_set_int_deps(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_int_deps := X.
+module_and_imports_set_imp_deps(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_imp_deps := X.
+module_and_imports_set_indirect_deps(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_indirect_deps := X.
+module_and_imports_set_errors(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_errors := X.
 
 module_and_imports_add_specs(NewSpecs, !ModuleAndImports) :-
     Specs0 = !.ModuleAndImports ^ mai_specs,
@@ -378,9 +411,9 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         ImplImportDeps0, ImplUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
         ImplicitImplImportDeps, ImplicitImplUseDeps),
-    set.union(ImplicitImplImportDeps, ImplImportDeps0, ImplImportDeps),
-    set.union(ImplicitImplUseDeps, ImplUseDeps0, ImplUseDeps),
-    set.union(ImplImportDeps, ImplUseDeps, ImplementationDeps),
+    multi_map.merge(ImplicitImplImportDeps, ImplImportDeps0, ImplImportDeps),
+    multi_map.merge(ImplicitImplUseDeps, ImplUseDeps0, ImplUseDeps),
+    multi_map.merge(ImplImportDeps, ImplUseDeps, ImplementationDeps),
 
     get_interface(dont_include_impl_types, RawCompUnit0, RawCompUnit),
     RawCompUnit = raw_compilation_unit(_, _, InterfaceItemBlocks),
@@ -388,10 +421,12 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         InterfaceImportDeps0, InterfaceUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, InterfaceItemBlocks,
         ImplicitInterfaceImportDeps, ImplicitInterfaceUseDeps),
-    set.union(ImplicitInterfaceImportDeps, InterfaceImportDeps0,
+    multi_map.merge(ImplicitInterfaceImportDeps, InterfaceImportDeps0,
         InterfaceImportDeps),
-    set.union(ImplicitInterfaceUseDeps, InterfaceUseDeps0, InterfaceUseDeps),
-    set.union(InterfaceImportDeps, InterfaceUseDeps, InterfaceDeps),
+    multi_map.merge(ImplicitInterfaceUseDeps, InterfaceUseDeps0,
+        InterfaceUseDeps),
+    multi_map.merge(InterfaceImportDeps, InterfaceUseDeps,
+        InterfaceDeps),
 
     % We don't fill in the indirect dependencies yet.
     set.init(IndirectDeps),

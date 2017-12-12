@@ -52,8 +52,9 @@
 
 :- import_module digraph.
 :- import_module dir.
-:- import_module int.
 :- import_module getopt_io.
+:- import_module int.
+:- import_module multi_map.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
@@ -893,7 +894,7 @@ collect_modules_with_children(Globals, ModuleName, !ParentModules,
     (
         MaybeImports = yes(Imports),
         Children = Imports ^ mai_children,
-        ( if set.is_empty(Children) then
+        ( if multi_map.is_empty(Children) then
             true
         else
             !:ParentModules = [ModuleName | !.ParentModules]
@@ -1329,7 +1330,7 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
         (
             AnyIntermod = yes,
             % `.int0' files are imported by `.opt' files.
-            ( if set.is_empty(ModuleAndImports ^ mai_children) then
+            ( if multi_map.is_empty(ModuleAndImports ^ mai_children) then
                 Exts = ["opt"]
             else
                 Exts = ["int0", "opt"]

@@ -42,6 +42,7 @@
 :- import_module cord.
 :- import_module list.
 :- import_module maybe.
+:- import_module multi_map.
 :- import_module set.
 :- import_module term.
 
@@ -610,7 +611,7 @@
     % declarations in ItemBlocks.
     %
 :- pred get_included_modules_in_item_blocks(list(item_block(MS))::in,
-    set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::out) is det.
 
 :- type import_or_use
     --->    import_decl
@@ -1447,22 +1448,27 @@ get_item_context(Item) = Context :-
 
 get_included_modules_in_item_blocks(ItemBlocks, IncludedModuleNames) :-
     get_included_modules_in_item_blocks_acc(ItemBlocks,
-        set.init, IncludedModuleNames).
+        multi_map.init, IncludedModuleNames).
 
 :- pred get_included_modules_in_item_blocks_acc(list(item_block(MS))::in,
-    set(module_name)::in, set(module_name)::out) is det.
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out) is det.
 
 get_included_modules_in_item_blocks_acc([], !IncludedModuleNames).
 get_included_modules_in_item_blocks_acc([ItemBlock | ItemBlocks],
         !IncludedModuleNames) :-
     ItemBlock = item_block(_, _, Incls, _Avails, _Items),
-    ModuleNames = list.map(project_item_include_module_name, Incls),
-    set.insert_list(ModuleNames, !IncludedModuleNames),
+    list.foldl(get_included_modules_in_item_include_acc, Incls,
+        !IncludedModuleNames),
     get_included_modules_in_item_blocks_acc(ItemBlocks, !IncludedModuleNames).
 
-:- func project_item_include_module_name(item_include) = module_name.
+:- pred get_included_modules_in_item_include_acc(item_include::in,
+    multi_map(module_name, prog_context)::in,
+    multi_map(module_name, prog_context)::out) is det.
 
-project_item_include_module_name(item_include(ModuleName, _, _)) = ModuleName.
+get_included_modules_in_item_include_acc(Incl, !IncludedModuleNames) :-
+    Incl = item_include(ModuleName, Context, _SeqNum),
+    multi_map.add(ModuleName, Context, !IncludedModuleNames).
 
 avail_is_import(Avail) :-
     Avail = avail_import(_).

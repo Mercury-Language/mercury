@@ -94,6 +94,8 @@
 
 :- import_module cord.
 :- import_module list.
+:- import_module multi_map.
+:- import_module pair.
 :- import_module set.
 :- import_module term.
 
@@ -158,28 +160,30 @@ generate_deps_map_step(Globals, Module, ExpectationContexts,
         Deps = deps(already_processed, ModuleImports),
         map.det_update(Module, Deps, !DepsMap),
         ForeignImportedModules = ModuleImports ^ mai_foreign_import_modules,
+        % We could keep a list of the modules we have already processed
+        % and subtract it from the sets of modules we add here, but doing that
+        % actually leads to a small slowdown.
+        ModuleNameContext = ModuleImports ^ mai_module_name_context,
+        ParentModuleNames = ModuleImports ^ mai_parent_deps,
         ForeignImportedModuleNames =
             get_all_foreign_import_modules(ForeignImportedModules),
-        ModulesToAdd = set.union_list(
-            [ModuleImports ^ mai_parent_deps,
-            ModuleImports ^ mai_int_deps,
-            ModuleImports ^ mai_imp_deps,
-            ModuleImports ^ mai_public_children, % a.k.a. incl_deps
-            ForeignImportedModuleNames]),
-        % We could keep a list of the modules we have already processed
-        % and subtract it from ModulesToAddSet here, but doing that
-        % actually leads to a small slowdown.
-        %
-        % XXX For each module we add to !Modules, we currently specify
-        % the context of the ":- module" declaration of the module containing
-        % the ":- include_module" or ":- import_module" item that gives the
-        % module its fully qualified name. We should instead pass the contexts
-        % of the ":- include_module" and ":- import_module" items themselves.
-        % However, this would require retaining those contexts in the
-        % module_and_imports structure.
-        ModuleNameContext = ModuleImports ^ mai_module_name_context,
         set.foldl(add_module_name_and_context(ModuleNameContext),
-            ModulesToAdd, !Modules)
+            ParentModuleNames, !Modules),
+        set.foldl(add_module_name_and_context(ModuleNameContext),
+            ForeignImportedModuleNames, !Modules),
+
+        multi_map.to_assoc_list(ModuleImports ^ mai_int_deps,
+            IntDepsModuleNamesContexts),
+        multi_map.to_assoc_list(ModuleImports ^ mai_imp_deps,
+            ImpDepsModuleNamesContexts),
+        multi_map.to_assoc_list(ModuleImports ^ mai_public_children,
+            ChildrenModuleNamesContexts),
+        list.foldl(add_module_name_with_contexts,
+            IntDepsModuleNamesContexts, !Modules),
+        list.foldl(add_module_name_with_contexts,
+            ImpDepsModuleNamesContexts, !Modules),
+        list.foldl(add_module_name_with_contexts,
+            ChildrenModuleNamesContexts, !Modules)
     ;
         Done0 = already_processed
     ).
@@ -193,6 +197,18 @@ add_module_name_and_context(Context, ModuleName, !Modules) :-
         map.det_update(ModuleName, [Context | OldContexts], !Modules)
     else
         map.det_insert(ModuleName, [Context], !Modules)
+    ).
+
+:- pred add_module_name_with_contexts(
+    pair(module_name, list(term.context))::in,
+    map(module_name, list(term.context))::in,
+    map(module_name, list(term.context))::out) is det.
+
+add_module_name_with_contexts(ModuleName - NewContexts, !Modules) :-
+    ( if map.search(!.Modules, ModuleName, OldContexts) then
+        map.det_update(ModuleName, NewContexts ++ OldContexts, !Modules)
+    else
+        map.det_insert(ModuleName, NewContexts, !Modules)
     ).
 
     % Look up a module in the dependency map.

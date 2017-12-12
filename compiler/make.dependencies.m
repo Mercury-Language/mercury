@@ -191,8 +191,9 @@
 
 :- import_module assoc_list.
 :- import_module cord.
-:- import_module int.
 :- import_module dir.
+:- import_module int.
+:- import_module multi_map.
 
 %-----------------------------------------------------------------------------%
 %
@@ -781,8 +782,8 @@ non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
         % is a submodule, then it may depend on things imported only by its
         % ancestors.
         %
-        set.to_sorted_list(ModuleAndImports ^ mai_int_deps, IntDeps),
-        set.to_sorted_list(ModuleAndImports ^ mai_imp_deps, ImpDeps),
+        multi_map.keys(ModuleAndImports ^ mai_int_deps, IntDeps),
+        multi_map.keys(ModuleAndImports ^ mai_imp_deps, ImpDeps),
         module_names_to_index_set(IntDeps, DepsInt, !Info),
         module_names_to_index_set(ImpDeps, DepsImp, !Info),
         Modules0 = union(DepsInt, DepsImp),
@@ -1133,22 +1134,31 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                     % Anywhere the interface of the child module is needed,
                     % the parent must also have been imported.
                     DependenciesType = interface_imports,
-                    ImportsToCheck = Imports ^ mai_int_deps
+                    set.sorted_list_to_set(multi_map.keys(
+                        Imports ^ mai_int_deps), IntDeps),
+                    ImportsToCheck = IntDeps
                 ;
                     DependenciesType = all_dependencies,
+                    set.sorted_list_to_set(multi_map.keys(
+                        Imports ^ mai_int_deps), IntDeps),
+                    set.sorted_list_to_set(multi_map.keys(
+                        Imports ^ mai_imp_deps), ImpDeps),
+                    set.sorted_list_to_set(multi_map.keys(
+                        Imports ^ mai_children), Children),
                     ImportsToCheck = set.union_list([
-                        Imports ^ mai_int_deps,
-                        Imports ^ mai_imp_deps,
+                        IntDeps, ImpDeps, Children,
                         Imports ^ mai_parent_deps,
-                        Imports ^ mai_children,
                         get_all_foreign_import_modules(
                             Imports ^ mai_foreign_import_modules)
                     ])
                 ;
                     DependenciesType = all_imports,
+                    set.sorted_list_to_set(multi_map.keys(
+                        Imports ^ mai_int_deps), IntDeps),
+                    set.sorted_list_to_set(multi_map.keys(
+                        Imports ^ mai_imp_deps), ImpDeps),
                     ImportsToCheck = set.union_list([
-                        Imports ^ mai_int_deps,
-                        Imports ^ mai_imp_deps,
+                        IntDeps, ImpDeps,
                         Imports ^ mai_parent_deps,
                         get_all_foreign_import_modules(
                             Imports ^ mai_foreign_import_modules)

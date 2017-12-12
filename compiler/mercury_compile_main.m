@@ -108,6 +108,7 @@
 :- import_module getopt_io.
 :- import_module map.
 :- import_module maybe.
+:- import_module multi_map.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -1963,8 +1964,11 @@ maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
             % the .opt or .trans opt file, then import the trans_opt files
             % for all the modules that are imported (or used), and for all
             % ancestor modules.
-            TransOptFiles = set.union_list([Imports0 ^ mai_parent_deps,
-                Imports0 ^ mai_int_deps, Imports0 ^ mai_imp_deps]),
+            TransOptFiles = set.union_list([
+                Imports0 ^ mai_parent_deps,
+                set.sorted_list_to_set(multi_map.keys(Imports0 ^ mai_int_deps)),
+                set.sorted_list_to_set(multi_map.keys(Imports0 ^ mai_imp_deps))
+            ]),
             set.to_sorted_list(TransOptFiles, TransOptFilesList),
             grab_trans_opt_files(Globals, TransOptFilesList, Imports1, Imports,
                 Error2, !IO)
