@@ -283,12 +283,22 @@ generate_test(VarA, VarB, Code, !CI, !CLD) :-
         produce_variable(VarA, CodeA, ValA, !.CI, !CLD),
         produce_variable(VarB, CodeB, ValB, !.CI, !CLD),
         Type = variable_type(!.CI, VarA),
-        ( if Type = builtin_type(builtin_type_string) then
-            Op = str_eq
-        else if Type = builtin_type(builtin_type_float) then
-            Op = float_eq
+        ( if Type = builtin_type(BuiltinType) then
+            (
+                BuiltinType = builtin_type_string,
+                Op = str_eq
+            ;
+                BuiltinType = builtin_type_float,
+                Op = float_eq
+            ;
+                BuiltinType = builtin_type_char,
+                Op = eq(int_type_int)
+            ;
+                BuiltinType = builtin_type_int(IntType),
+                Op = eq(IntType)
+            )
         else
-            % XXX FIXED SIZE AND UINTS??
+            % The else branch handles enumerations.
             Op = eq(int_type_int)
         ),
         fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode, !CI, !CLD),
