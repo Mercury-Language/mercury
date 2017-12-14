@@ -133,13 +133,13 @@ mercury_structured_unify_mode_list_to_string(Insts, Indent, Lang, InclAddr,
     mercury_format_structured_unify_mode_list(Insts, 1, Indent, Lang, InclAddr,
         InstVarSet, "", String).
 
-:- pred mercury_format_structured_unify_mode_list(list(unify_mode)::in, int::in,
-    int::in, output_lang::in, incl_addr::in, inst_varset::in, U::di, U::uo)
-    is det <= output(U).
+:- pred mercury_format_structured_unify_mode_list(list(unify_mode)::in,
+    int::in, int::in, output_lang::in, incl_addr::in, inst_varset::in,
+    U::di, U::uo) is det <= output(U).
 
 mercury_format_structured_unify_mode_list([], _, _, _, _, _, !U).
-mercury_format_structured_unify_mode_list([UnifyMode | UnifyModes], ArgNum, Indent,
-        Lang, InclAddr, InstVarSet, !U) :-
+mercury_format_structured_unify_mode_list([UnifyMode | UnifyModes], ArgNum,
+        Indent, Lang, InclAddr, InstVarSet, !U) :-
     mercury_format_tabs(Indent, !U),
     add_string("argument ", !U),
     add_int(ArgNum, !U),

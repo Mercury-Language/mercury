@@ -97,7 +97,8 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         quote(TermStr), suffix(","), words("whose arity"),
                         words("is not zero or two."), nl],
                     Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                        [simple_msg(get_term_context(Term),
+                            [always(Pieces)])]),
                     MaybeIOM = error1([Spec])
                 )
             )
@@ -146,7 +147,8 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         words("whose arity is not zero or two:"),
                         words(TermStr), suffix("."), nl],
                     Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                        [simple_msg(get_term_context(Term),
+                            [always(Pieces)])]),
                     MaybeIOM = error1([Spec])
                 )
             )

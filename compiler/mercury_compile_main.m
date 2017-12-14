@@ -1966,8 +1966,10 @@ maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
             % ancestor modules.
             TransOptFiles = set.union_list([
                 Imports0 ^ mai_parent_deps,
-                set.sorted_list_to_set(multi_map.keys(Imports0 ^ mai_int_deps)),
-                set.sorted_list_to_set(multi_map.keys(Imports0 ^ mai_imp_deps))
+                set.sorted_list_to_set(
+                    multi_map.keys(Imports0 ^ mai_int_deps)),
+                set.sorted_list_to_set(
+                    multi_map.keys(Imports0 ^ mai_imp_deps))
             ]),
             set.to_sorted_list(TransOptFiles, TransOptFilesList),
             grab_trans_opt_files(Globals, TransOptFilesList, Imports1, Imports,

@@ -224,11 +224,11 @@
     % the exact same OutVarsTypes value; any mismatch indicates a compiler bug.
     % The reason why OutVarsTypes is separate from FuncParams is that it is
     % possible for two procedures in the TSCC to return the exact same vector
-    % of arguments (so that they can tail call each other), but not return those
-    % arguments the same way. This can happen when one procedure comes from
-    % a predicate (which in C returns all its outputs via reference), while
-    % another comes from a function (which in C returns its last argument,
-    % the result argument, via the return value).
+    % of arguments (so that they can tail call each other), but not return
+    % those arguments the same way. This can happen when one procedure comes
+    % from a predicate (which in C returns all its outputs via reference),
+    % while another comes from a function (which in C returns its last
+    % argument, the result argument, via the return value).
     %
     % When generating code for a procedure that is *not* in a TSCC,
     % the declaration of its MLDS function would define the MLDS variables

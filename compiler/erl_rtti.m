@@ -194,7 +194,8 @@ convert_enum_functor(EnumFunctor, FunctorNum, ErlangFunctor) :-
     is det.
 
 convert_du_functor(Functor, FunctorNum, ErlangFunctor) :-
-    Functor = du_functor(Name, Arity, Ordinal, _, ArgInfos, Exist, SubtypeInfo),
+    Functor = du_functor(Name, Arity, Ordinal, _, ArgInfos, Exist,
+        SubtypeInfo),
     ErlangFunctor = erlang_du_functor(Name, Arity, Ordinal, FunctorNum,
         erlang_atom_raw(Name), ArgInfos, Exist, SubtypeInfo).
 

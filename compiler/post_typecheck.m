@@ -280,7 +280,8 @@ find_constrained_goals(PredInfo, Constraints) = Goals :-
     solutions(FindGoals, Goals).
 
 :- pred gather_constraint_ids(map(prog_constraint, set(constraint_id))::in,
-    prog_constraint::in, list(set(constraint_id))::in, list(set(constraint_id))::out) is det.
+    prog_constraint::in,
+    list(set(constraint_id))::in, list(set(constraint_id))::out) is det.
 
 gather_constraint_ids(ReverseConstraintMap, Constraint, !ConstraintIdSets) :-
     % Note that not all unproven constraints will appear in the reverse

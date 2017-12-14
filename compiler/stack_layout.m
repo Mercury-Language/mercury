@@ -1388,7 +1388,8 @@ add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter) :-
                 eti_rev_proc_var_names          :: list(int),
                 eti_rev_proc_event_layouts      :: list(layout_slot_name),
                 eti_rev_table_io_entry_datas    :: list(table_io_entry_data),
-                eti_rev_exec_traces             :: list(proc_layout_exec_trace),
+                eti_rev_exec_traces             :: list(
+                                                    proc_layout_exec_trace),
 
                 eti_table_io_entry_map          :: map(pred_proc_id,
                                                     layout_slot_name)

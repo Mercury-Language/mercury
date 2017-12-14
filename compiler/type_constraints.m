@@ -1163,7 +1163,8 @@ unify_types(A, B, Type) :-
             B = higher_order_type(PorF, ArgsB, HOInstInfo, Purity, Lambda),
             ( if list.same_length(ArgsA, ArgsB) then
                 list.map_corresponding(unify_types, ArgsA, ArgsB, Args),
-                Type = higher_order_type(PorF, Args, HOInstInfo, Purity, Lambda)
+                Type = higher_order_type(PorF, Args, HOInstInfo, Purity,
+                    Lambda)
             else
                 fail
             )

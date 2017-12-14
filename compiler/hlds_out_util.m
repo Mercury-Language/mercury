@@ -677,7 +677,8 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
     ;
         ConsId = uint_const(UInt),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_uint(UInt), unsigned, size_word),
+            term.integer(base_10, integer.from_uint(UInt), unsigned,
+                size_word),
             ArgVars)
     ;
         ConsId = int8_const(Int8),

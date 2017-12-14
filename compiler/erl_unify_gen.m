@@ -213,8 +213,8 @@ erl_gen_construct(Var, ConsId, Args, ArgTypes, ArgModes, _Context, Statement,
         Statement = join_exprs(elds_block(AssignFreeVars), Construct)
     ).
 
-:- func assign_free_var(module_info, prog_var, mer_type, unify_mode) = elds_expr
-    is semidet.
+:- func assign_free_var(module_info, prog_var, mer_type, unify_mode)
+    = elds_expr is semidet.
 
 assign_free_var(ModuleInfo, Var, ArgType, ArgMode) = var_eq_false(Var) :-
     ArgMode = unify_modes_lhs_rhs(_, RHSFromToInsts),

@@ -494,7 +494,8 @@ reuse_as_count_conditions(unconditional) = 0.
 reuse_as_count_conditions(conditional(Conds)) = list.length(Conds).
 
 reuse_as_rename_using_module_info(ModuleInfo, PPId, ActualArgs, ActualTypes,
-        CallerTypeVarSet, CallerExternalTypeParams, FormalReuse, ActualReuse) :-
+        CallerTypeVarSet, CallerExternalTypeParams,
+        FormalReuse, ActualReuse) :-
     VarRenaming = get_variable_renaming(ModuleInfo, PPId, ActualArgs),
     TypeSubst = get_type_substitution(ModuleInfo, PPId, ActualTypes,
         CallerTypeVarSet, CallerExternalTypeParams),

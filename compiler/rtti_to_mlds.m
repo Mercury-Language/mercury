@@ -262,7 +262,8 @@ gen_init_rtti_data_defn(ModuleInfo, Target, RttiData, !GlobalData) :-
     tc_decl::in, mlds_global_var_name::in, rtti_id::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_type_class_decl_defn(ModuleInfo, Target, TCDecl, Name, RttiId, !GlobalData) :-
+gen_type_class_decl_defn(ModuleInfo, Target, TCDecl, Name, RttiId,
+        !GlobalData) :-
     TCDecl = tc_decl(TCId, Version, Supers),
     TCId = tc_id(TCName, TVarNames, MethodIds),
     TCName = tc_name(ModuleSymName, ClassName, Arity),
@@ -659,7 +660,8 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
     ;
         TypeCtorDetails = tcd_reserved(_, MaybeResFunctors, ResFunctors,
             DuByPtag, MaybeResByName, FunctorNumberMap),
-        list.foldl(gen_maybe_res_functor_desc(ModuleInfo, Target, RttiTypeCtor),
+        list.foldl(
+            gen_maybe_res_functor_desc(ModuleInfo, Target, RttiTypeCtor),
             MaybeResFunctors, !GlobalData),
         gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor,
             ResFunctors, DuByPtag, !GlobalData),

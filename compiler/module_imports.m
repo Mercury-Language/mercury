@@ -196,7 +196,8 @@
                 mai_direct_int_blocks_cord      :: cord(int_item_block),
                 mai_indirect_int_blocks_cord    :: cord(int_item_block),
                 mai_opt_blocks_cord             :: cord(opt_item_block),
-                mai_int_for_opt_blocks_cord     :: cord(int_for_opt_item_block),
+                mai_int_for_opt_blocks_cord     :: cord(
+                                                    int_for_opt_item_block),
                 mai_module_version_numbers      :: module_version_numbers_map,
 
                 % Whether an error has been encountered when reading in

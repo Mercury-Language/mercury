@@ -193,7 +193,8 @@
 :- func inst_status_is_exported_to_non_submodules(inst_status) = bool.
 :- func mode_status_is_exported_to_non_submodules(mode_status) = bool.
 :- func pred_status_is_exported_to_non_submodules(pred_status) = bool.
-:- func typeclass_status_is_exported_to_non_submodules(typeclass_status) = bool.
+:- func typeclass_status_is_exported_to_non_submodules(typeclass_status)
+    = bool.
 :- func instance_status_is_exported_to_non_submodules(instance_status) = bool.
 
     % Returns yes if the status indicates that the item was in any way imported

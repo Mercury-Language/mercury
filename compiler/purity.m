@@ -1439,8 +1439,8 @@ warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
 
-:- func warn_unnecessary_purity_promise(module_info, pred_info, pred_id, purity)
-    = error_spec.
+:- func warn_unnecessary_purity_promise(module_info, pred_info, pred_id,
+    purity) = error_spec.
 
 warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         = Spec :-

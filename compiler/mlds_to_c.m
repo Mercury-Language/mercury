@@ -1588,7 +1588,8 @@ mlds_output_global_var_decls(Opts, Indent, ModuleName,
     io.nl(!IO),
     mlds_output_global_var_decl_opts(Opts, Indent, ModuleName, GlobalVarDefn,
         !IO),
-    mlds_output_global_var_decls(Opts, Indent, ModuleName, GlobalVarDefns, !IO).
+    mlds_output_global_var_decls(Opts, Indent, ModuleName, GlobalVarDefns,
+        !IO).
 
 :- pred mlds_output_function_decls(mlds_to_c_opts::in, indent::in,
     mlds_module_name::in, list(mlds_function_defn)::in,
@@ -2158,7 +2159,8 @@ mlds_output_gc_statement(Opts, Indent, GCStmt, MaybeNewLine, !IO) :-
     mlds_class_name::in, arity::in, mlds_class_defn::in,
     io::di, io::uo) is det.
 
-mlds_output_class_decl(_Indent, ModuleName, ClassName, Arity, ClassDefn, !IO) :-
+mlds_output_class_decl(_Indent, ModuleName, ClassName, Arity, ClassDefn,
+        !IO) :-
     ClassKind = ClassDefn ^ mcd_kind,
     (
         ClassKind = mlds_enum,

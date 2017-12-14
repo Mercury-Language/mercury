@@ -262,9 +262,12 @@ build_vars_to_zones_in_goal(CurZone, Goal, !TraceCounter, !VarsToZones) :-
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         record_vars_in_zone(CurZone, Vars, !VarsToZones),
-        build_vars_to_zones_in_goal(CurZone, Cond, !TraceCounter, !VarsToZones),
-        build_vars_to_zones_in_goal(CurZone, Then, !TraceCounter, !VarsToZones),
-        build_vars_to_zones_in_goal(CurZone, Else, !TraceCounter, !VarsToZones)
+        build_vars_to_zones_in_goal(CurZone, Cond,
+            !TraceCounter, !VarsToZones),
+        build_vars_to_zones_in_goal(CurZone, Then,
+            !TraceCounter, !VarsToZones),
+        build_vars_to_zones_in_goal(CurZone, Else,
+            !TraceCounter, !VarsToZones)
     ;
         GoalExpr = shorthand(ShortHand),
         (

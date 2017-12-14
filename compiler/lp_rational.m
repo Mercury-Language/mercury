@@ -1770,7 +1770,7 @@ separate_vectors(Matrix, Var, Pos, Neg, Zero, NumZeros) :-
 classify_vector(Var, Vector0, !Pos, !Neg, !Zero, !Num) :-
     ( Coefficient = Vector0 ^ terms ^ elem(Var) ->
         Vector0 = vector(Label, Terms0, Const0),
-        normalize_vector(Var, Terms0, Const0, Terms, Const),
+        normalize_vector(Var, Terms0, Terms, Const0, Const),
         Vector1 = vector(Label, Terms, Const),
         ( if Coefficient > zero then
             list.cons(Vector1, !Pos)
@@ -2045,16 +2045,17 @@ init_cc_map(Vars) = list.foldl(InitMap, Vars, map.init) :-
 % Predicates for normalizing vectors and constraints.
 %
 
-    % normalize_vector(Var, Terms0, Const0, Terms, Const):
+    % normalize_vector(Var, Terms0, Terms, Const0, Const):
     %
     % Multiply the given vector by a scalar appropriate to make the
     % coefficient of the given variable in the vector one. Throws an exception
     % if `Var' has a zero coefficient.
     %
-:- pred normalize_vector(lp_var::in, map(lp_var, lp_coefficient)::in,
-    lp_constant::in, map(lp_var, lp_coefficient)::out, lp_constant::out) is det.
+:- pred normalize_vector(lp_var::in,
+    map(lp_var, lp_coefficient)::in, map(lp_var, lp_coefficient)::out,
+    lp_constant::in, lp_constant::out) is det.
 
-normalize_vector(Var, !.Terms, !.Constant, !:Terms, !:Constant) :-
+normalize_vector(Var, !Terms, !Constant) :-
     ( if map.search(!.Terms, Var, Coefficient) then
         ( if Coefficient = zero then
             unexpected($module, $pred, "zero coefficient in vector")

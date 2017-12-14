@@ -1303,11 +1303,12 @@ generate_det_deconstruction(Var, Cons, Args, Modes, ArgWidths, Code,
         Code, CI, !CLD).
 
 :- pred generate_det_deconstruction_2(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(unify_mode)::in, list(arg_width)::in, cons_tag::in,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    list(prog_var)::in, list(unify_mode)::in, list(arg_width)::in,
+    cons_tag::in, llds_code::out,
+    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
-        Code, CI, !CLD) :-
+generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag, Code,
+        CI, !CLD) :-
     % For constants, if the deconstruction is det, then we already know
     % the value of the constant, so Code = empty.
     (

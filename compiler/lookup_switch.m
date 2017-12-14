@@ -891,7 +891,8 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode,
             const(llconst_int(WordBits - 1)))
     ),
     HasBit = binop(bitwise_and(int_type_int),
-        binop(unchecked_left_shift(int_type_int), const(llconst_int(1)), BitNum),
+        binop(unchecked_left_shift(int_type_int),
+            const(llconst_int(1)), BitNum),
         Word),
     fail_if_rval_is_false(HasBit, CheckCode, !CI, !CLD).
 

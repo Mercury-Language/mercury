@@ -1402,7 +1402,8 @@ construct_func_body_for_tscc(EntryProc, PredProcCode,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out) is det.
 
 make_container_proc(LoopKind, CopyOutValThroughPtrStmts, ReturnRvals,
-        EntryProc, EntryProcContext, ProcStmtInfos, ContainerVarDefns, Stmts) :-
+        EntryProc, EntryProcContext, ProcStmtInfos, ContainerVarDefns,
+        Stmts) :-
     ReturnStmt = ml_stmt_return(ReturnRvals, EntryProcContext),
     (
         LoopKind = tail_rec_loop_label_goto,

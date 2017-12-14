@@ -375,7 +375,8 @@ parse_structure_reuse_conditions(Term) = ReuseConditions :-
             Cons = "[|]",
             Args = [FirstTupleTerm, RestTuplesTerm]
         then
-            ReuseConditions = [parse_structure_reuse_condition(FirstTupleTerm) |
+            ReuseConditions =
+                [parse_structure_reuse_condition(FirstTupleTerm) |
                 parse_structure_reuse_conditions(RestTuplesTerm)]
         else if
             Cons = "[]"

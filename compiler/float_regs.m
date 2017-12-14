@@ -345,7 +345,8 @@ add_arg_regs_in_from_to_insts_seen(ModuleInfo, Seen, VarType,
     mer_mode::in, mer_mode::out) is det.
 
 add_arg_regs_in_mode(ModuleInfo, VarType, ArgMode0, ArgMode) :-
-    add_arg_regs_in_mode_seen(ModuleInfo, set.init, VarType, ArgMode0, ArgMode).
+    add_arg_regs_in_mode_seen(ModuleInfo, set.init, VarType,
+        ArgMode0, ArgMode).
 
 :- pred add_arg_regs_in_mode_seen(module_info::in, set(inst_name)::in,
     mer_type::in, mer_mode::in, mer_mode::out) is det.

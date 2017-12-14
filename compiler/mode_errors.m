@@ -811,8 +811,8 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         % More than half the insts are ground, so it is likely that they
         % were *all* intended to be ground, but not all actually *are* ground,
         % which is likely to be the bug.
-        CommonPieces = [words("The variable"), VarNamePiece, words("is ground"),
-            words("in"), int_fixed(NumGroundInsts),
+        CommonPieces = [words("The variable"), VarNamePiece,
+            words("is ground"), words("in"), int_fixed(NumGroundInsts),
             words("out of"), int_fixed(NumAllInsts), words("branches."), nl],
         VerbosePieces =
             [words("It has the following instantiation states."), nl],

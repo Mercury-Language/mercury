@@ -753,40 +753,40 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !Specs) :-
             Size = size_8_bit,
             (
                 Signedness = signed,
-                parse_integer_cons_id(Context, Base, Integer, "8-bit", "i8",
-                    integer.to_int8, (func(I) = int8_const(I)),
-                    ConsId, !Specs)
+                parse_integer_cons_id(Context, Base, Integer,
+                    "8-bit", "i8", integer.to_int8,
+                    (func(I) = int8_const(I)), ConsId, !Specs)
             ;
                 Signedness = unsigned,
-                parse_integer_cons_id(Context, Base, Integer, "unsigned 8-bit",
-                    "u8", integer.to_uint8, (func(I) = uint8_const(I)),
-                    ConsId, !Specs)
+                parse_integer_cons_id(Context, Base, Integer,
+                    "unsigned 8-bit", "u8", integer.to_uint8,
+                    (func(I) = uint8_const(I)), ConsId, !Specs)
             )
         ;
             Size = size_16_bit,
             (
                 Signedness = signed,
-                parse_integer_cons_id(Context, Base, Integer, "16-bit", "i16",
-                    integer.to_int16, (func(I) = int16_const(I)),
-                    ConsId, !Specs)
+                parse_integer_cons_id(Context, Base, Integer,
+                    "16-bit", "i16", integer.to_int16,
+                    (func(I) = int16_const(I)), ConsId, !Specs)
             ;
                 Signedness = unsigned,
-                parse_integer_cons_id(Context, Base, Integer, "unsigned 16-bit",
-                    "u16", integer.to_uint16, (func(I) = uint16_const(I)),
-                    ConsId, !Specs)
+                parse_integer_cons_id(Context, Base, Integer,
+                    "unsigned 16-bit", "u16", integer.to_uint16,
+                    (func(I) = uint16_const(I)), ConsId, !Specs)
             )
         ;
             Size = size_32_bit,
             (
                 Signedness = signed,
-                parse_integer_cons_id(Context, Base, Integer, "32-bit", "i32",
-                    integer.to_int32, (func(I) = int32_const(I)),
-                    ConsId, !Specs)
+                parse_integer_cons_id(Context, Base, Integer,
+                    "32-bit", "i32", integer.to_int32,
+                    (func(I) = int32_const(I)), ConsId, !Specs)
             ;
                 Signedness = unsigned,
-                parse_integer_cons_id(Context, Base, Integer, "unsigned 32-bit",
-                    "u32", integer.to_uint32, (func(I) = uint32_const(I)),
-                    ConsId, !Specs)
+                parse_integer_cons_id(Context, Base, Integer,
+                    "unsigned 32-bit", "u32", integer.to_uint32,
+                    (func(I) = uint32_const(I)), ConsId, !Specs)
             )
         ;
             Size = size_64_bit,
@@ -810,10 +810,10 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !Specs) :-
         ConsId = impl_defined_const(Name)
     ).
 
-:- pred parse_integer_cons_id(term.context::in, integer_base::in, integer::in, string::in,
-    string::in, pred(integer, T)::in(pred(in, out) is semidet),
-    (func(T) = cons_id)::in, cons_id::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred parse_integer_cons_id(term.context::in, integer_base::in,
+    integer::in, string::in, string::in,
+    pred(integer, T)::in(pred(in, out) is semidet), (func(T) = cons_id)::in,
+    cons_id::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 parse_integer_cons_id(Context, Base, Integer, IntDesc, IntSuffixStr, ConvPred,
         ToConsIdPred, ConsId, !Specs) :-
@@ -823,10 +823,10 @@ parse_integer_cons_id(Context, Base, Integer, IntDesc, IntSuffixStr, ConvPred,
         BasePrefix = integer_base_prefix(Base),
         IntString = integer.to_base_string(Integer,
             integer_base_int(Base)),
-        Pieces = [words("Error: the"), words(IntDesc), words("integer literal"),
+        Pieces = [words("Error: the"), words(IntDesc),
+            words("integer literal"),
             quote(BasePrefix ++ IntString ++ IntSuffixStr),
-            words("is outside the range of that type."),
-            nl],
+            words("is outside the range of that type."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [Msg]),

@@ -1731,7 +1731,8 @@ pair_up_insts([], [_ | _], _) :-
     unexpected($module, $pred, "mismatched list lengths").
 pair_up_insts([_ | _], [], _) :-
     unexpected($module, $pred, "mismatched list lengths").
-pair_up_insts([InstA | InstsA], [InstB | InstsB], [FromToInst | FromToInsts]) :-
+pair_up_insts([InstA | InstsA], [InstB | InstsB],
+        [FromToInst | FromToInsts]) :-
     FromToInst = from_to_insts(InstA, InstB),
     pair_up_insts(InstsA, InstsB, FromToInsts).
 

@@ -2346,7 +2346,8 @@
             % as the boundaries of a binary search or slot numbers in the
             % hash tables used to implement switches.
             % The integer is a sequence number (unique within the procedure)
-            % allocated from a counter that is shared between all lvnc_aux_vars.
+            % allocated from a counter that is shared between all
+            % lvnc_aux_vars.
 
 :- type mlds_compiler_aux_var
     --->    mcav_commit

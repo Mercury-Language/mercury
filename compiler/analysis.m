@@ -717,7 +717,8 @@ record_request(AnalysisName, ModuleName, FuncId, CallPattern, !Info) :-
 
 record_request_2(CallerModule, AnalysisName, ModuleName, FuncId, CallPattern,
         !Info) :-
-    ( if map.search(!.Info ^ analysis_requests, ModuleName, ModuleResults0) then
+    RequestMap = !.Info ^ analysis_requests,
+    ( if map.search(RequestMap, ModuleName, ModuleResults0) then
         ModuleResults1 = ModuleResults0
     else
         ModuleResults1 = map.init
