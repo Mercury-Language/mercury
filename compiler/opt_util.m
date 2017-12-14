@@ -1060,9 +1060,8 @@ is_const_condition(unop(Op, Rval1), Taken) :-
     Op = logical_not,
     is_const_condition(Rval1, Taken1),
     bool.not(Taken1, Taken).
-% XXX FIXED SIZE INTS - we should handle the other integer types here.
 is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
-    Op = eq(int_type_int),
+    Op = eq(_),
     Rval1 = Rval2,
     Taken = yes.
 
