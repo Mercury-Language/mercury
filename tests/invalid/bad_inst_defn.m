@@ -17,3 +17,12 @@
 :- inst test3(A, A) ---> [] ; [A | mylistskel(A)].
 
 :- inst test4(A, A, B, B) ---> [] ; [A | mylistskel(B)].
+
+:- type t
+    --->    a
+    ;       b
+    ;       c.
+
+:- inst i for t/0
+    ;       b               % The ; should be ---> instead.
+    ;       c.

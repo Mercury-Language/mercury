@@ -78,8 +78,9 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm,
                 Context, SeqNum, MaybeIOM)
         else
-            Pieces = [words("Error:"), quote("=="), words("expected in"),
-                decl("inst"), words("definition."), nl],
+            Pieces = [words("Error: expected either"),
+                quote("=="), words("or"), quote("--->"),
+                words("at start of"), decl("inst"), words("definition."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(InstDefnTerm),
                     [always(Pieces)])]),
