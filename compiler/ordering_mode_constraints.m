@@ -217,7 +217,9 @@ pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
         % XXX Maybe move this outside of this predicate - then
         % the predicate can assume that the correct procedures
         % have been created and that they have the correct bodies.
-        copy_module_clauses_to_procs([PredId], !ModuleInfo),
+        % XXX Indeed, this job *should* have been done *before* this pass
+        % was invoked.
+        copy_clauses_to_procs_for_pred_in_module_info(PredId, !ModuleInfo),
 
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo1),
 

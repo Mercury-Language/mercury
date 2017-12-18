@@ -71,7 +71,9 @@ mode_ordering(PredConstraintMap, SCCs, !ModuleInfo, !IO) :-
     module_info::in, module_info::out) is det.
 
 mode_ordering_scc(PredConstraintMap, SCC, !ModuleInfo) :-
-    copy_module_clauses_to_procs(SCC, !ModuleInfo),
+    % XXX This call to copy_clauses_to_procs_for_preds_in_module_info
+    % should *not* be necessary.
+    copy_clauses_to_procs_for_preds_in_module_info(SCC, !ModuleInfo),
     list.foldl(mode_ordering_pred(PredConstraintMap, SCC), SCC, !ModuleInfo).
 
 :- pred mode_ordering_pred(pred_constraint_map::in, list(pred_id)::in,

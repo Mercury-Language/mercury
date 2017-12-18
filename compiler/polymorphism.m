@@ -464,7 +464,7 @@ maybe_polymorphism_process_pred(PredId, !SafeToContinue,
         no_type_info_builtin(PredModule, PredName, PredArity)
     then
         % Just copy the clauses to the proc_infos.
-        copy_module_clauses_to_procs([PredId], !ModuleInfo)
+        copy_clauses_to_procs_for_pred_in_module_info(PredId, !ModuleInfo)
     else
         polymorphism_process_pred_msg(PredId, !SafeToContinue,
             !Specs, !ModuleInfo)
@@ -724,7 +724,7 @@ polymorphism_process_valid_proc(PredInfo, ClausesInfo, ExtraArgModes,
             proc_info_set_varset(VarSet, !ProcInfo),
             proc_info_set_vartypes(VarTypes, !ProcInfo)
         else
-            copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo)
+            copy_clauses_to_proc_in_proc_info(ProcId, ClausesInfo, !ProcInfo)
         ),
 
         % Add the ExtraArgModes to the proc_info argmodes.
