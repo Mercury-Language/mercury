@@ -44,6 +44,7 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
@@ -97,18 +98,18 @@ copy_clauses_to_procs(!PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, ProcMap0),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
     ProcIds = pred_info_all_non_imported_procids(!.PredInfo),
-    copy_clauses_to_procs_2(ProcIds, ClausesInfo, ProcMap0, ProcMap),
+    copy_pred_clauses_to_proc(ProcIds, ClausesInfo, ProcMap0, ProcMap),
     pred_info_set_proc_table(ProcMap, !PredInfo).
 
-:- pred copy_clauses_to_procs_2(list(proc_id)::in, clauses_info::in,
+:- pred copy_pred_clauses_to_proc(list(proc_id)::in, clauses_info::in,
     proc_table::in, proc_table::out) is det.
 
-copy_clauses_to_procs_2([], _, !ProcMap).
-copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, !ProcMap) :-
+copy_pred_clauses_to_proc([], _, !ProcMap).
+copy_pred_clauses_to_proc([ProcId | ProcIds], ClausesInfo, !ProcMap) :-
     map.lookup(!.ProcMap, ProcId, ProcInfo0),
     copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, !ProcMap),
-    copy_clauses_to_procs_2(ProcIds, ClausesInfo, !ProcMap).
+    copy_pred_clauses_to_proc(ProcIds, ClausesInfo, !ProcMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -118,7 +119,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo) :-
     % The "replacement" is the replacement of the pred_info's clauses_rep
     % with the goal in the proc_info; the clauses_rep won't be needed again.
     get_clause_list_for_replacement(ClausesRep0, Clauses),
-    select_matching_clauses(Clauses, ProcId, MatchingClauses),
+    select_matching_clauses(ProcId, Clauses, MatchingClauses),
     get_clause_disjuncts_and_warnings(MatchingClauses, ClausesDisjuncts,
         StateVarWarnings),
     (
@@ -136,7 +137,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo) :-
                 MaybeTraceRuntimeCond, _),
             % Use the original variable names for the headvars of foreign_proc
             % clauses, not the introduced `HeadVar__n' names.
-            VarSet = list.foldl(set_arg_names, Args, VarSet0),
+            list.foldl(set_arg_names, Args, VarSet0, VarSet),
             expect(unify(ExtraArgs, []), $module, $pred, "extra_args"),
             expect(unify(MaybeTraceRuntimeCond, no), $module, $pred,
                 "trace runtime cond")
@@ -156,8 +157,8 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo) :-
         ),
         Goal = SingleGoal
     ;
-        % We use the context of the first clause, unless there weren't
-        % any clauses at all, in which case we use the context of the
+        % We use the context of the first clause, unless there were
+        % no clauses at all, in which case we use the context of the
         % mode declaration.
         (
             ClausesDisjuncts = [FirstGoal, _ | _],
@@ -168,28 +169,27 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo) :-
             proc_info_get_context(!.ProcInfo, Context)
         ),
 
+        VarSet = VarSet0,
+
         % Convert the list of clauses into a disjunction,
         % and construct a goal_info for the disjunction.
 
-        VarSet = VarSet0,
-        goal_info_init(GoalInfo0),
-        goal_info_set_context(Context, GoalInfo0, GoalInfo1),
-
-        % The non-local vars are just the head variables.
+        % The nonlocal vars are just the head variables.
         NonLocalVars =
             set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
-        goal_info_set_nonlocals(NonLocalVars, GoalInfo1, GoalInfo2),
 
         % The disjunction is impure/semipure if any of the disjuncts
         % is impure/semipure.
-        ( if contains_nonpure_goal(ClausesDisjuncts) then
-            PurityList = list.map(goal_get_purity, ClausesDisjuncts),
-            Purity = list.foldl(worst_purity, PurityList, purity_pure),
-            goal_info_set_purity(Purity, GoalInfo2, GoalInfo)
-        else
-            GoalInfo2 = GoalInfo
-        ),
+        accumulate_disjunction_purity(ClausesDisjuncts,
+            purity_pure, DisjunctionPurity),
 
+        % The InstMapDelta and Detism are just placeholders; they will be
+        % overridden by the actual computed values later.
+        instmap_delta_init_unreachable(InstMapDelta),
+        Detism = detism_erroneous,
+
+        goal_info_init(NonLocalVars, InstMapDelta, Detism,
+            DisjunctionPurity, Context, GoalInfo),
         Goal = hlds_goal(disj(ClausesDisjuncts), GoalInfo)
     ),
     % XXX ARGVEC - when the proc_info is converted to use proc_arg_vectors
@@ -198,45 +198,42 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo) :-
     proc_info_set_body(VarSet, VarTypes, HeadVarList, Goal, RttiInfo,
         !ProcInfo).
 
-:- pred contains_nonpure_goal(list(hlds_goal)::in) is semidet.
+%-----------------------------------------------------------------------------%
 
-contains_nonpure_goal([Goal | Goals]) :-
-    (
-        goal_get_purity(Goal) \= purity_pure
-    ;
-        contains_nonpure_goal(Goals)
-    ).
+:- pred select_matching_clauses(proc_id::in,
+    list(clause)::in, list(clause)::out) is det.
 
-:- func set_arg_names(foreign_arg, prog_varset) = prog_varset.
+select_matching_clauses(ProcId, Clauses, MatchingClauses) :-
+    % To allow us to process even *very* long lists of clauses without
+    % running out of stack, we have to keep select_matching_clauses_loop
+    % tail recursive. We do this by making it add each matching clause
+    % it processes to the *front* of the list of so-far-detected-to-be-matching
+    % clauses, which computes the list of matching clauses in reverse.
+    RevMatchingClauses0 = [],
+    select_matching_clauses_acc(ProcId, Clauses,
+        RevMatchingClauses0, RevMatchingClauses),
+    list.reverse(RevMatchingClauses, MatchingClauses).
 
-set_arg_names(Arg, !.Vars) = !:Vars :-
-    Var = foreign_arg_var(Arg),
-    MaybeNameMode = foreign_arg_maybe_name_mode(Arg),
-    (
-        MaybeNameMode = yes(foreign_arg_name_mode(Name, _)),
-        varset.name_var(Var, Name, !Vars)
-    ;
-        MaybeNameMode = no
-    ).
+:- pred select_matching_clauses_acc(proc_id::in, list(clause)::in, 
+    list(clause)::in, list(clause)::out) is det.
 
-:- pred select_matching_clauses(list(clause)::in, proc_id::in,
-    list(clause)::out) is det.
-
-select_matching_clauses([], _, []).
-select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
-    select_matching_clauses(Clauses, ProcId, MatchingClausesTail),
+select_matching_clauses_acc(_, [], !RevMatchingClauses).
+select_matching_clauses_acc(ProcId, [Clause | Clauses], !RevMatchingClauses) :-
     ApplicableProcIds = Clause ^ clause_applicable_procs,
     (
         ApplicableProcIds = all_modes,
-        MatchingClauses = [Clause | MatchingClausesTail]
+        !:RevMatchingClauses = [Clause | !.RevMatchingClauses]
     ;
         ApplicableProcIds = selected_modes(ProcIds),
         ( if list.member(ProcId, ProcIds) then
-            MatchingClauses = [Clause | MatchingClausesTail]
+            !:RevMatchingClauses = [Clause | !.RevMatchingClauses]
         else
-            MatchingClauses = MatchingClausesTail
+            true
         )
-    ).
+    ),
+    select_matching_clauses_acc(ProcId, Clauses, !RevMatchingClauses).
+
+%-----------------------------------------------------------------------------%
 
 :- pred get_clause_disjuncts_and_warnings(list(clause)::in,
     list(hlds_goal)::out, list(error_spec)::out) is det.
@@ -249,6 +246,32 @@ get_clause_disjuncts_and_warnings([Clause | Clauses], Disjuncts, Warnings) :-
     get_clause_disjuncts_and_warnings(Clauses, LaterDisjuncts, LaterWarnings),
     Disjuncts = FirstDisjuncts ++ LaterDisjuncts,
     Warnings = FirstWarnings ++ LaterWarnings.
+
+%-----------------------------------------------------------------------------%
+
+:- pred set_arg_names(foreign_arg::in, prog_varset::in, prog_varset::out)
+    is det.
+
+set_arg_names(Arg, !Vars) :-
+    Var = foreign_arg_var(Arg),
+    MaybeNameMode = foreign_arg_maybe_name_mode(Arg),
+    (
+        MaybeNameMode = yes(foreign_arg_name_mode(Name, _)),
+        varset.name_var(Var, Name, !Vars)
+    ;
+        MaybeNameMode = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred accumulate_disjunction_purity(list(hlds_goal)::in,
+    purity::in, purity::out) is det.
+
+accumulate_disjunction_purity([], !Purity).
+accumulate_disjunction_purity([Disjunct | Disjuncts], !Purity) :-
+    DisjunctPurity = goal_get_purity(Disjunct),
+    !:Purity = worst_purity(!.Purity, DisjunctPurity),
+    accumulate_disjunction_purity(Disjuncts, !Purity).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.clause_to_proc.
