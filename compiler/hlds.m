@@ -35,6 +35,7 @@
 :- include_module vartypes.
 
 % Modules for creating the HLDS.
+:- include_module default_func_mode.
 :- include_module hhf.
 :- include_module make_hlds.
 :- include_module make_tags.

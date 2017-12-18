@@ -34,8 +34,11 @@
 % Implementation-defined literals.
 :- include_module implementation_defined_literals.
 
-% Polymorphism transformation.
+% Populating proc_infos from the clauses.
 :- include_module clause_to_proc.
+
+% Polymorphism transformation.
+:- include_module introduce_exists_casts.
 :- include_module polymorphism.
 
 % Preprocessing user insts in the inst table for mode analysis.

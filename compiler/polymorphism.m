@@ -388,6 +388,7 @@
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
+:- import_module check_hlds.introduce_exists_casts.
 :- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.from_ground_term_util.
@@ -436,7 +437,7 @@
 % (and in fact everything except the pred_info argtypes), the second to fix up
 % the pred_info argtypes. The reason we need two passes is that the first pass
 % looks at the argtypes of the called predicates, and so we need to make
-% sure we don't muck them up before we've finished the first pass.
+% sure we don't muck them up before we have finished the first pass.
 
 polymorphism_process_module(!ModuleInfo, SafeToContinue, Specs) :-
     module_info_get_preds(!.ModuleInfo, Preds0),

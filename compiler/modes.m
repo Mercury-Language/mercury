@@ -135,6 +135,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
+:- import_module check_hlds.introduce_exists_casts.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.

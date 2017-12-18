@@ -51,8 +51,7 @@
 :- include_module hlds.make_hlds.make_hlds_passes.du_type_layout.
 :- include_module hlds.make_hlds.make_hlds_passes.make_hlds_separate_items.
 
-:- import_module check_hlds.
-:- import_module check_hlds.clause_to_proc.
+:- import_module hlds.default_func_mode.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_class.
 :- import_module hlds.make_hlds.add_clause.

@@ -608,6 +608,11 @@ of the make_hlds module in the hlds package.
 <dd>
     Handles type and mode declarations for predicates.
 
+<dt> default_func_mode.m
+<dd>
+    If a function has no declared mode,
+    this module adds to it the standard default mode.
+
 <dt> add_type.m
 <dd>
     Handles the declarations of types.
@@ -996,6 +1001,9 @@ so that the compiler does the right thing for options such as
     optimization of goals with no output variables doesn't do the
     wrong thing for goals whose only output is the type_info for
     an existentially quantified type parameter.)
+    <p>
+    polymorphism.m subcontracts parts of its job to introduce_exists_casts.m,
+    which sometimes is also invoked from modes.m.
     <p>
     This phase also
     converts higher-order predicate terms into lambda expressions,

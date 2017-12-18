@@ -44,8 +44,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.clause_to_proc.
+:- import_module hlds.default_func_mode.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
