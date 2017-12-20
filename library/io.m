@@ -3911,7 +3911,7 @@ file_id(FileName, Result, !IO) :-
 :- type buffer ---> buffer(array(char)).
 
     % XXX Extend the workaround for no `ui' modes in array.m.
-:- inst uniq_buffer == bound(buffer(uniq_array)).
+:- inst uniq_buffer for buffer/0 == bound(buffer(uniq_array)).
 :- mode buffer_di == di(uniq_buffer).
 :- mode buffer_uo == out(uniq_buffer).
 
