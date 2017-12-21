@@ -30,12 +30,17 @@
     % of the predicate, we select the clauses for that mode, disjoin them
     % together, and save this in the proc_info.
     %
-:- pred copy_clauses_to_procs_for_preds_in_module_info(list(pred_id)::in,
+:- pred copy_clauses_to_proc_for_all_valid_procs(
     module_info::in, module_info::out) is det.
 :- pred copy_clauses_to_procs_for_pred_in_module_info(pred_id::in,
     module_info::in, module_info::out) is det.
-:- pred copy_clauses_to_proc_in_proc_info(proc_id::in, clauses_info::in,
+:- pred copy_clauses_to_proc_in_proc_info(clauses_info::in, proc_id::in,
     proc_info::in, proc_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- pred copy_clauses_to_nonmethod_procs_for_preds_in_module_info(
+    list(pred_id)::in, module_info::in, module_info::out) is det.
 
 :- pred should_copy_clauses_to_procs(pred_info::in) is semidet.
 
@@ -64,31 +69,91 @@
 
 %-----------------------------------------------------------------------------%
 
-copy_clauses_to_procs_for_preds_in_module_info(PredIds, !ModuleInfo) :-
+copy_clauses_to_proc_for_all_valid_procs(!ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
-    list.foldl(maybe_copy_pred_clauses_to_procs_in_pred_table, PredIds,
+    map.keys(PredTable0, PredIds),
+    list.foldl(copy_pred_clauses_to_procs_in_pred_table, PredIds,
         PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
 copy_clauses_to_procs_for_pred_in_module_info(PredId, !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
-    maybe_copy_pred_clauses_to_procs_in_pred_table(PredId,
+    copy_pred_clauses_to_procs_in_pred_table(PredId,
+        PredTable0, PredTable),
+    module_info_set_preds(PredTable, !ModuleInfo).
+
+:- pred copy_pred_clauses_to_procs_in_pred_table(pred_id::in,
+    pred_table::in, pred_table::out) is det.
+
+copy_pred_clauses_to_procs_in_pred_table(PredId, !PredTable) :-
+    map.lookup(!.PredTable, PredId, PredInfo0),
+    copy_clauses_to_procs_in_pred_info(PredId, PredInfo0, PredInfo),
+    map.det_update(PredId, PredInfo, !PredTable).
+
+:- pred copy_clauses_to_procs_in_pred_info(pred_id::in,
+    pred_info::in, pred_info::out) is det.
+
+copy_clauses_to_procs_in_pred_info(PredId, !PredInfo) :-
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
+    pred_info_get_proc_table(!.PredInfo, ProcMap0),
+    map.map_values(
+        copy_clauses_to_maybe_imported_proc_in_proc_info(!.PredInfo,
+            ClausesInfo, PredId),
+        ProcMap0, ProcMap),
+    pred_info_set_proc_table(ProcMap, !PredInfo).
+
+:- pred copy_clauses_to_maybe_imported_proc_in_proc_info(
+    pred_info::in, clauses_info::in, pred_id::in, proc_id::in,
+    proc_info::in, proc_info::out) is det.
+
+copy_clauses_to_maybe_imported_proc_in_proc_info(PredInfo, ClausesInfo,
+        _PredId, ProcId, !ProcInfo) :-
+    ( if
+        (
+            pred_info_is_imported(PredInfo)
+        ;
+            pred_info_is_pseudo_imported(PredInfo),
+            hlds_pred.in_in_unification_proc_id(ProcId)
+        )
+    then
+        % We need to set these fields in the proc_info here, because
+        % some parts of the compiler (e.g. unused_args.m) depend on
+        % these fields being valid even for imported procedures.
+
+        % XXX ARGVEC - when the proc_info uses the proc_arg_vector,
+        % just pass the headvar vector directly to the proc_info.
+        clauses_info_get_headvars(ClausesInfo, HeadVars),
+        HeadVarList = proc_arg_vector_to_list(HeadVars),
+        clauses_info_get_varset(ClausesInfo, VarSet),
+        clauses_info_get_vartypes(ClausesInfo, VarTypes),
+        clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),
+        proc_info_set_headvars(HeadVarList, !ProcInfo),
+        proc_info_set_varset(VarSet, !ProcInfo),
+        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
+    else
+        copy_clauses_to_proc_in_proc_info(ClausesInfo, ProcId, !ProcInfo)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+copy_clauses_to_nonmethod_procs_for_preds_in_module_info(PredIds,
+        !ModuleInfo) :-
+    module_info_get_preds(!.ModuleInfo, PredTable0),
+    list.foldl(copy_pred_clauses_to_nonmethod_procs_in_pred_table, PredIds,
         PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
     % For each mode of the given predicate, copy the clauses relevant
     % to the mode and the current backend to the proc_info.
     %
-    % This is not the only predicate in the compiler that does this task;
-    % the other is polymorphism.process_proc.
-    %
-:- pred maybe_copy_pred_clauses_to_procs_in_pred_table(pred_id::in,
+:- pred copy_pred_clauses_to_nonmethod_procs_in_pred_table(pred_id::in,
     pred_table::in, pred_table::out) is det.
 
-maybe_copy_pred_clauses_to_procs_in_pred_table(PredId, !PredTable) :-
+copy_pred_clauses_to_nonmethod_procs_in_pred_table(PredId, !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
     ( if should_copy_clauses_to_procs(PredInfo0) then
-        copy_clauses_to_procs_in_pred_info(PredInfo0, PredInfo),
+        copy_clauses_to_procs_in_pred_info(PredId, PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, !PredTable)
     else
         true
@@ -100,29 +165,9 @@ should_copy_clauses_to_procs(PredInfo) :-
     pred_info_get_markers(PredInfo, PredMarkers),
     not check_marker(PredMarkers, marker_class_method).
 
-:- pred copy_clauses_to_procs_in_pred_info(pred_info::in, pred_info::out)
-    is det.
-
-copy_clauses_to_procs_in_pred_info(!PredInfo) :-
-    pred_info_get_proc_table(!.PredInfo, ProcMap0),
-    pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
-    ProcIds = pred_info_all_non_imported_procids(!.PredInfo),
-    copy_clauses_to_proc_in_procmap(ProcIds, ClausesInfo, ProcMap0, ProcMap),
-    pred_info_set_proc_table(ProcMap, !PredInfo).
-
-:- pred copy_clauses_to_proc_in_procmap(list(proc_id)::in, clauses_info::in,
-    proc_table::in, proc_table::out) is det.
-
-copy_clauses_to_proc_in_procmap([], _, !ProcMap).
-copy_clauses_to_proc_in_procmap([ProcId | ProcIds], ClausesInfo, !ProcMap) :-
-    map.lookup(!.ProcMap, ProcId, ProcInfo0),
-    copy_clauses_to_proc_in_proc_info(ProcId, ClausesInfo, ProcInfo0, ProcInfo),
-    map.det_update(ProcId, ProcInfo, !ProcMap),
-    copy_clauses_to_proc_in_procmap(ProcIds, ClausesInfo, !ProcMap).
-
 %-----------------------------------------------------------------------------%
 
-copy_clauses_to_proc_in_proc_info(ProcId, ClausesInfo, !ProcInfo) :-
+copy_clauses_to_proc_in_proc_info(ClausesInfo, ProcId, !ProcInfo) :-
     ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars, ClausesRep0,
         _ItemNumbers, RttiInfo, _HaveForeignClauses, _HadSyntaxError),
     % The "replacement" is the replacement of the pred_info's clauses_rep

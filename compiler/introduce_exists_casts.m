@@ -23,13 +23,13 @@
     %
     % This version is used by modes.m.
     %
-:- pred introduce_exists_casts(list(pred_id)::in, module_info::in,
-    module_info::out) is det.
+:- pred introduce_exists_casts(list(pred_id)::in,
+    module_info::in, module_info::out) is det.
 
     % This version is used by polymorphism.m.
     %
-:- pred introduce_exists_casts_proc(module_info::in, pred_info::in,
-    proc_info::in, proc_info::out) is det.
+:- pred introduce_exists_casts_poly(pred_id::in,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -62,14 +62,14 @@
 
 introduce_exists_casts(PredIds, !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
-    list.foldl(introduce_exists_casts_pred(!.ModuleInfo), PredIds,
+    list.foldl(maybe_introduce_exists_casts_pred(!.ModuleInfo), PredIds,
         PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
-:- pred introduce_exists_casts_pred(module_info::in, pred_id::in,
+:- pred maybe_introduce_exists_casts_pred(module_info::in, pred_id::in,
     pred_table::in, pred_table::out) is det.
 
-introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
+maybe_introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
     ( if
         % Optimise the common case: predicates with no existentially typed
@@ -100,6 +100,23 @@ introduce_exists_casts_procs(ModuleInfo, PredInfo, [ProcId | ProcIds],
     introduce_exists_casts_proc(ModuleInfo, PredInfo, ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, !Procs),
     introduce_exists_casts_procs(ModuleInfo, PredInfo, ProcIds, !Procs).
+
+%-----------------------------------------------------------------------------%
+
+introduce_exists_casts_poly(PredId, !ModuleInfo) :-
+    module_info_get_preds(!.ModuleInfo, PredMap0),
+    map.lookup(PredMap0, PredId, PredInfo0),
+    pred_info_get_proc_table(PredInfo0, ProcMap0),
+    map.map_values_only(introduce_exists_casts_proc(!.ModuleInfo, PredInfo0),
+        ProcMap0, ProcMap),
+    pred_info_set_proc_table(ProcMap, PredInfo0, PredInfo),
+    map.det_update(PredId, PredInfo, PredMap0, PredMap),
+    module_info_set_preds(PredMap, !ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred introduce_exists_casts_proc(module_info::in, pred_info::in,
+    proc_info::in, proc_info::out) is det.
 
 introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),

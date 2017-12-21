@@ -79,6 +79,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.check_for_missing_type_defns.
 :- import_module check_hlds.check_typeclass.
+:- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.cse_detection.
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.implementation_defined_literals.
@@ -487,7 +488,8 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_polymorphism(Verbose, Stats, PolySafeToContinue, !HLDS, !Specs, !IO),
+    maybe_polymorphism(Verbose, Stats, ExistsCastPredIds, PolySafeToContinue,
+        !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 30, "polymorphism", !DumpInfo, !IO),
 
     (
@@ -496,12 +498,19 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
     ;
         PolySafeToContinue = safe_to_continue,
 
+        clause_to_proc(Verbose, Stats, !HLDS, !Specs, !IO),
+        maybe_dump_hlds(!.HLDS, 31, "clause_to_proc", !DumpInfo, !IO),
+
+        post_copy_polymorphism_pass(Verbose, Stats, ExistsCastPredIds,
+            !HLDS, !Specs, !IO),
+        maybe_dump_hlds(!.HLDS, 32, "post_copy_polymorphism", !DumpInfo, !IO),
+
         maybe_warn_about_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO),
-        maybe_dump_hlds(!.HLDS, 31, "unused_imports", !DumpInfo, !IO),
+        maybe_dump_hlds(!.HLDS, 33, "unused_imports", !DumpInfo, !IO),
 
         % XXX Convert the mode constraints pass to use error_specs.
         maybe_mode_constraints(Verbose, Stats, !HLDS, !IO),
-        maybe_dump_hlds(!.HLDS, 33, "mode_constraints", !DumpInfo, !IO),
+        maybe_dump_hlds(!.HLDS, 34, "mode_constraints", !DumpInfo, !IO),
 
         modecheck(Verbose, Stats, !HLDS, FoundModeError, ModesSafeToContinue,
             !Specs, !IO),
@@ -612,11 +621,13 @@ subst_implementation_defined_literals(Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_polymorphism(bool::in, bool::in, maybe_safe_to_continue::out,
+:- pred maybe_polymorphism(bool::in, bool::in,
+    list(pred_id)::out, maybe_safe_to_continue::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_polymorphism(Verbose, Stats, SafeToContinue, !HLDS, !Specs, !IO) :-
+maybe_polymorphism(Verbose, Stats, ExistsCastPredIds, SafeToContinue,
+        !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
 
@@ -631,7 +642,8 @@ maybe_polymorphism(Verbose, Stats, SafeToContinue, !HLDS, !Specs, !IO) :-
             "% Transforming polymorphic unifications...\n", !IO)
     ),
     maybe_flush_output(Verbose, !IO),
-    polymorphism_process_module(!HLDS, SafeToContinue, PolySpecs),
+    polymorphism_process_module(!HLDS, ExistsCastPredIds,
+        SafeToContinue, PolySpecs),
     !:Specs = PolySpecs ++ !.Specs,
     (
         VeryVerbose = no,
@@ -641,6 +653,34 @@ maybe_polymorphism(Verbose, Stats, SafeToContinue, !HLDS, !Specs, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO)
     ),
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_report_stats(Stats, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred clause_to_proc(bool::in, bool::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+clause_to_proc(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_string(Verbose, "% Copying clauses to proceduress...", !IO),
+    copy_clauses_to_proc_for_all_valid_procs(!HLDS),
+    maybe_write_string(Verbose, " done.\n", !IO),
+    maybe_report_stats(Stats, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred post_copy_polymorphism_pass(bool::in, bool::in,
+    list(pred_id)::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+post_copy_polymorphism_pass(Verbose, Stats, ExistsCastPredIds, !HLDS,
+        !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_string(Verbose, "% Post copy polymorphism...", !IO),
+    post_copy_polymorphism(ExistsCastPredIds, !HLDS),
+    maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
 %---------------------------------------------------------------------------%

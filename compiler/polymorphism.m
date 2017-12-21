@@ -200,7 +200,8 @@
     % Run the polymorphism pass over the whole HLDS.
     %
 :- pred polymorphism_process_module(module_info::in, module_info::out,
-    maybe_safe_to_continue::out, list(error_spec)::out) is det.
+    list(pred_id)::out, maybe_safe_to_continue::out, list(error_spec)::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -214,6 +215,11 @@
     % polymorphism has been run if the predicate to be processed calls
     % any polymorphic predicates which require type_infos or typeclass_infos
     % to be added to the argument list.
+    %
+    % For backwards compatibility, this predicate also does the tasks
+    % that older versions of the polymorphism pass used to do: copying
+    % goals from clauses to procedures, and doing the post-copying parts
+    % of the polymorphism transformation.
     %
 :- pred polymorphism_process_generated_pred(pred_id::in,
     module_info::in, module_info::out) is det.
@@ -383,6 +389,14 @@
     vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 %---------------------------------------------------------------------------%
+
+    % Do the parts of the polymorphism transformation that need to be done
+    % *after* goals have been copied from clauses to procedures.
+    %
+:- pred post_copy_polymorphism(list(pred_id)::in,
+    module_info::in, module_info::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -439,15 +453,16 @@
 % looks at the argtypes of the called predicates, and so we need to make
 % sure we don't muck them up before we have finished the first pass.
 
-polymorphism_process_module(!ModuleInfo, SafeToContinue, Specs) :-
+polymorphism_process_module(!ModuleInfo, ExistsCastPredIds,
+        SafeToContinue, Specs) :-
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.keys(Preds0, PredIds0),
     list.foldl3(maybe_polymorphism_process_pred, PredIds0,
         safe_to_continue, SafeToContinue, [], Specs, !ModuleInfo),
     module_info_get_preds(!.ModuleInfo, Preds1),
     map.keys(Preds1, PredIds1),
-    list.foldl(fixup_pred_polymorphism, PredIds1, !ModuleInfo),
-    expand_class_method_bodies(!ModuleInfo).
+    list.foldl2(fixup_pred_polymorphism, PredIds1, [], ExistsCastPredIds,
+        !ModuleInfo).
 
 :- pred maybe_polymorphism_process_pred(pred_id::in,
     maybe_safe_to_continue::in, maybe_safe_to_continue::out,
@@ -463,8 +478,7 @@ maybe_polymorphism_process_pred(PredId, !SafeToContinue,
         PredArity = pred_info_orig_arity(PredInfo),
         no_type_info_builtin(PredModule, PredName, PredArity)
     then
-        % Just copy the clauses to the proc_infos.
-        copy_clauses_to_procs_for_pred_in_module_info(PredId, !ModuleInfo)
+        true
     else
         polymorphism_process_pred_msg(PredId, !SafeToContinue,
             !Specs, !ModuleInfo)
@@ -473,9 +487,10 @@ maybe_polymorphism_process_pred(PredId, !SafeToContinue,
 %---------------------------------------------------------------------------%
 
 :- pred fixup_pred_polymorphism(pred_id::in,
+    list(pred_id)::in, list(pred_id)::out,
     module_info::in, module_info::out) is det.
 
-fixup_pred_polymorphism(PredId, !ModuleInfo) :-
+fixup_pred_polymorphism(PredId, !ExistsCastPredIds, !ModuleInfo) :-
     % Recompute the arg types by finding the headvars and the var->type mapping
     % (from the clauses_info) and applying the type mapping to the extra
     % headvars to get the new arg types. Note that we are careful to only apply
@@ -511,27 +526,14 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
         type_list_subsumes(ArgTypes0, OldHeadVarTypes, Subn),
         not map.is_empty(Subn)
     then
-        pred_info_set_existq_tvar_binding(Subn, PredInfo1, PredInfo2),
-        polymorphism_introduce_exists_casts_pred(!.ModuleInfo,
-            PredInfo2, PredInfo)
+        pred_info_set_existq_tvar_binding(Subn, PredInfo1, PredInfo),
+        !:ExistsCastPredIds = [PredId | !.ExistsCastPredIds]
     else
         PredInfo = PredInfo1
     ),
 
     map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
-
-:- pred polymorphism_introduce_exists_casts_pred(module_info::in,
-    pred_info::in, pred_info::out) is det.
-
-polymorphism_introduce_exists_casts_pred(ModuleInfo, !PredInfo) :-
-    pred_info_get_proc_table(!.PredInfo, Procs0),
-    map.map_values_only(
-        (pred(!.ProcInfo::in, !:ProcInfo::out) is det :-
-            % Add the extra goals to each procedure.
-            introduce_exists_casts_proc(ModuleInfo, !.PredInfo, !ProcInfo)
-        ), Procs0, Procs),
-    pred_info_set_proc_table(Procs, !PredInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -565,7 +567,9 @@ polymorphism_process_generated_pred(PredId, !ModuleInfo) :-
         "generated pred has errors"),
     expect(unify(SafeToContinue, safe_to_continue), $pred,
         "generated pred has errors"),
-    fixup_pred_polymorphism(PredId, !ModuleInfo).
+    fixup_pred_polymorphism(PredId, [], ExistsPredIds, !ModuleInfo),
+    copy_clauses_to_procs_for_pred_in_module_info(PredId, !ModuleInfo),
+    list.foldl(introduce_exists_casts_poly, ExistsPredIds, !ModuleInfo).
 
 :- mutable(selected_pred, bool, no, ground, [untrailed]).
 :- mutable(level, int, 0, ground, [untrailed]).
@@ -613,13 +617,10 @@ polymorphism_process_pred(PredId, SafeToContinue, !Specs, !ModuleInfo) :-
         !:Specs = PredSpecs ++ !.Specs
     ),
 
-    % Do a pass over the proc_infos, copying the relevant information
-    % from the clauses_info and the poly_info, and updating all the argmodes
-    % with modes for the extra arguments.
-
+    % Do a pass over the proc_infos, updating all the argmodes with
+    % modes for the extra arguments.
     pred_info_get_proc_table(PredInfo2, ProcMap0),
-    map.map_values(
-        polymorphism_process_valid_proc(PredInfo2, ClausesInfo, ExtraArgModes),
+    map.map_values_only(add_extra_arg_modes_to_proc(ExtraArgModes),
         ProcMap0, ProcMap),
     pred_info_set_proc_table(ProcMap, PredInfo2, PredInfo),
 
@@ -692,41 +693,11 @@ polymorphism_process_clause(PredInfo0, OldHeadVars, NewHeadVars,
         !Clause ^ clause_body := Goal
     ).
 
-:- pred polymorphism_process_valid_proc(pred_info::in, clauses_info::in,
-    poly_arg_vector(mer_mode)::in, proc_id::in,
+:- pred add_extra_arg_modes_to_proc(poly_arg_vector(mer_mode)::in,
     proc_info::in, proc_info::out) is det.
 
-polymorphism_process_valid_proc(PredInfo, ClausesInfo, ExtraArgModes,
-        ProcId, !ProcInfo) :-
+add_extra_arg_modes_to_proc(ExtraArgModes, !ProcInfo) :-
     ( if proc_info_is_valid_mode(!.ProcInfo) then
-        % Copy all the information from the clauses_info into the proc_info.
-        ( if
-            (
-                pred_info_is_imported(PredInfo)
-            ;
-                pred_info_is_pseudo_imported(PredInfo),
-                hlds_pred.in_in_unification_proc_id(ProcId)
-            )
-        then
-            % We need to set these fields in the proc_info here, because
-            % some parts of the compiler (e.g. unused_args.m) depend on
-            % these fields being valid even for imported procedures.
-
-            % XXX ARGVEC - when the proc_info uses the proc_arg_vector just
-            % pass the headvar vector directly to the proc_info.
-            clauses_info_get_headvars(ClausesInfo, HeadVars),
-            HeadVarList = proc_arg_vector_to_list(HeadVars),
-            clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),
-            clauses_info_get_varset(ClausesInfo, VarSet),
-            clauses_info_get_vartypes(ClausesInfo, VarTypes),
-            proc_info_set_headvars(HeadVarList, !ProcInfo),
-            proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
-            proc_info_set_varset(VarSet, !ProcInfo),
-            proc_info_set_vartypes(VarTypes, !ProcInfo)
-        else
-            copy_clauses_to_proc_in_proc_info(ProcId, ClausesInfo, !ProcInfo)
-        ),
-
         % Add the ExtraArgModes to the proc_info argmodes.
         % XXX ARGVEC - revisit this when the proc_info uses proc_arg_vectors.
         proc_info_get_argmodes(!.ProcInfo, ArgModes1),
@@ -4098,6 +4069,9 @@ build_type_info_type(Type, TypeInfoType) :-
 
 %---------------------------------------------------------------------------%
 
+post_copy_polymorphism(ExistsCastPredIds, !ModuleInfo) :-
+    list.foldl(introduce_exists_casts_poly, ExistsCastPredIds, !ModuleInfo),
+
     % Expand the bodies of all class methods. Class methods for imported
     % classes are only expanded if we are performing type specialization,
     % so that method lookups for imported classes can be optimized.
@@ -4105,13 +4079,10 @@ build_type_info_type(Type, TypeInfoType) :-
     % The expansion involves inserting a class_method_call with the appropriate
     % arguments, which is responsible for extracting the appropriate part
     % of the dictionary.
-    %
-:- pred expand_class_method_bodies(module_info::in, module_info::out) is det.
 
-expand_class_method_bodies(!ModuleInfo) :-
-    module_info_get_class_table(!.ModuleInfo, Classes),
+    module_info_get_class_table(!.ModuleInfo, ClassMap),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    map.keys(Classes, ClassIds0),
+    map.keys(ClassMap, ClassIds0),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, user_guided_type_specialization,
@@ -4125,7 +4096,7 @@ expand_class_method_bodies(!ModuleInfo) :-
         TypeSpec = yes,
         ClassIds = ClassIds0
     ),
-    map.apply_to_list(ClassIds, Classes, ClassDefns),
+    map.apply_to_list(ClassIds, ClassMap, ClassDefns),
     list.foldl(expand_class_method_bodies_in_defn, ClassDefns, !ModuleInfo).
 
 :- pred class_id_is_from_given_module(module_name::in, class_id::in)
@@ -4154,9 +4125,7 @@ expand_class_method_body(ClassProc, !ProcNum, !ModuleInfo) :-
     % post_typecheck.m deletes proc_ids corresponding to indistinguishable
     % modes from the proc_table but does *not* delete any references to those
     % proc_ids from the class table.
-    %
     ( if map.search(ProcTable0, ProcId, ProcInfo0) then
-
         % Find which of the constraints on the pred is the one introduced
         % because it is a class method.
         pred_info_get_class_context(PredInfo0, ClassContext),

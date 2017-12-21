@@ -267,7 +267,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         map.lookup(!.ProcMap, ProcId, !:ProcInfo),
         proc_info_set_can_process(cannot_process_yet, !ProcInfo),
 
-        copy_clauses_to_proc_in_proc_info(ProcId, ClausesInfo, !ProcInfo),
+        copy_clauses_to_proc_in_proc_info(ClausesInfo, ProcId, !ProcInfo),
 
         proc_info_get_goal(!.ProcInfo, !:Goal),
         set_goal_contexts(Context, !Goal),
