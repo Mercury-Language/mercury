@@ -3908,10 +3908,13 @@ file_id(FileName, Result, !IO) :-
     % XXX It would be better to use a char_array type rather than array(char).
     % This is because on the Java and IL backends indexing into an array whose
     % element type is known statically requires less overhead.
-:- type buffer ---> buffer(array(char)).
+:- type buffer
+    --->    buffer(array(char)).
 
     % XXX Extend the workaround for no `ui' modes in array.m.
-:- inst uniq_buffer for buffer/0 == bound(buffer(uniq_array)).
+:- inst uniq_buffer for buffer/0
+    --->    buffer(uniq_array).
+
 :- mode buffer_di == di(uniq_buffer).
 :- mode buffer_uo == out(uniq_buffer).
 
