@@ -436,19 +436,8 @@ add_builtin_type_ctor_special_preds_in_builtin_module(TypeCtor, !ModuleInfo) :-
     % but we *get here* only if we are compiling the public builtin module.
     TypeStatus = type_status(status_local),
     construct_type(TypeCtor, [], Type),
-
-    % XXX We call `eagerly_add_special_preds' instead of `add_special_preds'
-    % to bypass a call to `special_pred_is_generated_lazily' which calls
-    % `classify_type_ctor'. `classify_type_ctor' knows about unqualified
-    % builtin types, but not the qualified types like `builtin.int'/0 from
-    % `builtin_type_ctors_with_no_hlds_type_defn'. Eventually it tries to
-    % look up the builtin type from the type definition table, and aborts as
-    % it won't find it.
-    %
-    % The special preds for these types shouldn't be generated lazily anyway.
-
-    eagerly_add_special_preds(TVarSet, Type, TypeCtor, Body, Context,
-        TypeStatus, !ModuleInfo).
+    add_special_preds(TVarSet, Type, TypeCtor, Body, Context, TypeStatus,
+        !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

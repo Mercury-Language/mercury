@@ -831,7 +831,12 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
 
     TypeCtor = type_ctor(TypeSymName, Arity),
     ( if
-        TypeSymName = unqualified(TypeName),
+        (
+            TypeSymName = unqualified(TypeName)
+        ;
+            TypeSymName = qualified(ModuleSymName, TypeName),
+            ModuleSymName = mercury_private_builtin_module
+        ),
         Arity = 0,
         ( if int_type_to_string(IntType, TypeName) then
             TypeCategoryPrime = ctor_cat_builtin(cat_builtin_int(IntType))
