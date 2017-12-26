@@ -32,11 +32,10 @@
 % and `func(T1) = T2', `func(T1, T2) = T3', `func(T1, T2, T3) = T4', ...
 % are builtin and are implemented using special code in the type-checker.
 
-    % The type c_pointer can be used by predicates that use the
-    % C interface.
+    % The type c_pointer can be used by predicates that use the C interface.
     %
-    % NOTE: we strongly recommend using a `foreign_type' pragma instead
-    %       of using this type.
+    % NOTE: We *strongly* recommend using a `foreign_type' pragma instead
+    % of using this type.
     %
 :- type c_pointer.
 
@@ -156,9 +155,9 @@
     % `unsafe_promise_unique(X, Y)' is the same as `Y = X' except that
     % the compiler will assume that `Y' is unique.
     %
-    % Note that misuse of this predicate may lead to unsound results: if
-    % there is more than one reference to the data in question, i.e. it is
-    % not `unique', then the behaviour is undefined.
+    % Note that misuse of this predicate may lead to unsound results:
+    % if there is more than one reference to the data in question,
+    % i.e. it is not `unique', then the behaviour is undefined.
     % (If you lie to the compiler, the compiler will get its revenge!)
     %
 :- func unsafe_promise_unique(T::in) = (T::uo) is det.
@@ -176,8 +175,8 @@
     % inst any is equivalent to ground for non-polymorphic non-solver
     % type values.)
     %
-    % Do not call this on solver type values unless you are absolutely
-    % sure that they are semantically ground.
+    % Do not call this on solver type values unless you are *absolutely sure*
+    % that they are semantically ground.
     %
 :- func unsafe_cast_any_to_ground(T::ia) = (T::out) is det.
 
@@ -252,9 +251,10 @@
     % X is =, <, or > Y in the standard ordering.
     %
 :- pred compare(comparison_result, T, T).
-    % Note to implementors: the modes must appear in this order:
-    % compiler/higher_order.m depends on it, as does
-    % compiler/simplify.m (for the inequality simplification.)
+    % NOTE_TO_IMPLEMENTORS The modes must appear in this order:
+    % NOTE_TO_IMPLEMENTORS compiler/higher_order.m depends on it, as does
+    % NOTE_TO_IMPLEMENTORS compiler/simplify.m (for the inequality
+    % NOTE_TO_IMPLEMENTORS simplification.)
 :- mode compare(uo, in, in) is det.
 :- mode compare(uo, ui, ui) is det.
 :- mode compare(uo, ui, in) is det.
@@ -912,7 +912,7 @@ __Compare____tuple_0_0(object x, object y)
         }
 
         // We'll only copy objects of Mercury-defined types. We could copy
-        // more but that's what we do for C backends and it's enough.
+        // more but that is what we do for C backends and it is enough.
         // We don't copy enumeration instances.
         if (!(original instanceof jmercury.runtime.MercuryType)) {
             return original;
