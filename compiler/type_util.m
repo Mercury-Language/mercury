@@ -896,7 +896,7 @@ classify_type_ctor_if_special(TypeCtor, TypeCategory) :-
             TypeSymName = unqualified(_TypeName)
         ;
             TypeSymName = qualified(ModuleSymName, _TypeName),
-            ModuleSymName = mercury_private_builtin_module
+            ModuleSymName = mercury_public_builtin_module
         ),
         Arity = 0
     ;
@@ -925,8 +925,7 @@ classify_type_ctor_if_special(TypeCtor, TypeCategory) :-
         ;
             TypeName = "store",
             TypeSymName = qualified(ModuleSymName, _TypeName),
-            ModuleSymName =
-                mercury_std_lib_module_name(unqualified("store")),
+            ModuleSymName = mercury_std_lib_module_name(unqualified("store")),
             Arity = 1
         ),
         TypeCategory = ctor_cat_builtin_dummy
@@ -959,14 +958,20 @@ classify_type_ctor_if_special(TypeCtor, TypeCategory) :-
         ),
         % XXX zs: Having two conditions that look so different seems wrong.
         TypeCategory = ctor_cat_higher_order
-%   ;
-%       % XXX The previous version of classify_type_ctor had code equivalent
-%       % to this, but the compiler does not recognize a type named tuple/0.
-%       TypeName = "tuple",
-%       TypeSymName = qualified(ModuleSymName, _TypeName),
-%       ModuleSymName = mercury_public_builtin_module,
-%       Arity = 0,
-%       TypeCategory = ctor_cat_tuple
+    ;
+        % XXX The compiler does not recognize any type named tuple/0 in
+        % user code, but it nevertheless needs to know about this type,
+        % because the compiler itself generates references to it. The
+        % type_infos for tuples types (whose type name is "{}", not "tuple")
+        % reference the hand-written type_ctor_info for the type named "tuple".
+        % Since the name of the type is part of the name of the target language
+        % variable holding the type_ctor_info, it helps if it does not contain
+        % nonalphanumeric characters.
+        TypeName = "tuple",
+        TypeSymName = qualified(ModuleSymName, _TypeName),
+        ModuleSymName = mercury_public_builtin_module,
+        Arity = 0,
+        TypeCategory = ctor_cat_tuple
     ;
         TypeName = "{}",
         TypeSymName = unqualified(_TypeName),
