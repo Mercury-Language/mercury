@@ -575,22 +575,15 @@ type_to_ctor_det(Type, TypeCtor) :-
     type_to_ctor_and_args_det(Type, TypeCtor, _Args).
 
 type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
+    % Please keep this code in sync with classify_type_ctor_if_special.
+    % XXX Unlike classify_type_ctor_if_special, this code here does NOT test
+    % for mercury_public_builtin_module as ModuleSymName. This preserves
+    % old behavior, but I (zs) think that it may nevertheless be a bug,
+    % either here, or in classify_type_ctor_if_special.
     TypeCtor = type_ctor(SymName, _Arity),
-    get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr),
     (
-        PorFStr = "pred",
-        PredOrFunc = pf_predicate
-    ;
-        PorFStr = "func",
-        PredOrFunc = pf_function
-    ).
-
-:- pred get_purity_and_eval_method(sym_name::in, purity::out,
-    lambda_eval_method::out, string::out) is semidet.
-
-get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
-    (
-        SymName = qualified(unqualified(Qualifier), PorFStr),
+        SymName = qualified(ModuleSymName, PorFStr),
+        ModuleSymName = unqualified(Qualifier), 
         (
             Qualifier = "impure",
             Purity = purity_impure,
@@ -604,8 +597,16 @@ get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
         SymName = unqualified(PorFStr),
         EvalMethod = lambda_normal,
         Purity = purity_pure
+    ),
+    (
+        PorFStr = "pred",
+        PredOrFunc = pf_predicate
+    ;
+        PorFStr = "func",
+        PredOrFunc = pf_function
     ).
 
+% Please keep this code in sync with classify_type_ctor_if_special.
 type_ctor_is_tuple(type_ctor(unqualified("{}"), _)).
 
 type_list_to_var_list([], []).
@@ -803,6 +804,7 @@ builtin_type_ctors_with_no_hlds_type_defn =
     ].
 
 check_builtin_dummy_type_ctor(TypeCtor) = IsBuiltinDummy :-
+    % Please keep this code in sync with classify_type_ctor_if_special.
     TypeCtor = type_ctor(CtorSymName, TypeArity),
     ( if
         CtorSymName = qualified(ModuleName, TypeName),

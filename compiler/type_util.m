@@ -826,92 +826,152 @@ classify_type(ModuleInfo, VarType) = TypeCategory :-
     ).
 
 classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
-    % Please keep the code of this predicate in sync with the code of
-    % classify_type_ctor_and_defn.
-
-    TypeCtor = type_ctor(TypeSymName, Arity),
-    ( if
-        (
-            TypeSymName = unqualified(TypeName)
-        ;
-            TypeSymName = qualified(ModuleSymName, TypeName),
-            ModuleSymName = mercury_private_builtin_module
-        ),
-        Arity = 0,
-        ( if int_type_to_string(IntType, TypeName) then
-            TypeCategoryPrime = ctor_cat_builtin(cat_builtin_int(IntType))
-        else
-            (
-                TypeName = "character",
-                TypeCategoryPrime = ctor_cat_builtin(cat_builtin_char)
-            ;
-                TypeName = "float",
-                TypeCategoryPrime = ctor_cat_builtin(cat_builtin_float)
-            ;
-                TypeName = "string",
-                TypeCategoryPrime = ctor_cat_builtin(cat_builtin_string)
-            ;
-                TypeName = "void",
-                TypeCategoryPrime = ctor_cat_void
-            )
-        )
-    then
+    ( if classify_type_ctor_if_special(TypeCtor, TypeCategoryPrime) then
         TypeCategory = TypeCategoryPrime
-    else if
-        TypeSymName = qualified(ModuleSymName, TypeName),
-        ModuleSymName = mercury_public_builtin_module,
-        Arity = 0,
-        (
-            TypeName = "pred",
-            TypeCategoryPrime = ctor_cat_higher_order
-        ;
-            TypeName = "func",
-            TypeCategoryPrime = ctor_cat_higher_order
-        ;
-            TypeName = "tuple",
-            TypeCategoryPrime = ctor_cat_tuple
-        ;
-            TypeName = "void",
-            TypeCategoryPrime = ctor_cat_void
-        )
-    then
-        TypeCategory = TypeCategoryPrime
-    else if
-        TypeSymName = qualified(ModuleSymName, TypeName),
-        ModuleSymName = mercury_private_builtin_module,
-        Arity = 0,
-        (
-            TypeName = "type_info",
-            TypeCategoryPrime = ctor_cat_system(cat_system_type_info)
-        ;
-            TypeName = "type_ctor_info",
-            TypeCategoryPrime = ctor_cat_system(cat_system_type_ctor_info)
-        ;
-            TypeName = "typeclass_info",
-            TypeCategoryPrime = ctor_cat_system(cat_system_typeclass_info)
-        ;
-            TypeName = "base_typeclass_info",
-            TypeCategoryPrime = ctor_cat_system(cat_system_base_typeclass_info)
-        )
-    then
-        TypeCategory = TypeCategoryPrime
-    else if
-        check_builtin_dummy_type_ctor(TypeCtor) = is_builtin_dummy_type_ctor
-    then
-        TypeCategory = ctor_cat_builtin_dummy
-    else if
-        type_ctor_is_higher_order(TypeCtor, _, _, _)
-    then
-        TypeCategory = ctor_cat_higher_order
-    else if
-        type_ctor_is_tuple(TypeCtor)
-    then
-        TypeCategory = ctor_cat_tuple
     else
         module_info_get_type_table(ModuleInfo, TypeTable),
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         TypeCategory = classify_type_defn_body(TypeBody)
+    ).
+
+:- pred classify_type_ctor_if_special(type_ctor::in, type_ctor_category::out)
+    is semidet.
+
+classify_type_ctor_if_special(TypeCtor, TypeCategory) :-
+    % Please keep the code of this predicate in sync with the code of
+    % classify_type_defn_body.
+    %
+    % Please also keep the relevant parts of this code in sync with
+    %
+    % - builtin_type_to_string
+    % - int_type_to_string
+    % - type_ctor_is_higher_order
+    % - type_ctor_is_tuple
+    % - check_builtin_dummy_type_ctor
+    %
+    TypeCtor = type_ctor(TypeSymName, Arity),
+    ( TypeSymName = unqualified(TypeName)
+    ; TypeSymName = qualified(_ModuleSymName, TypeName)
+    ),
+    (
+        (
+            TypeName = "int",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int))
+        ;
+            TypeName = "uint",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint))
+        ;
+            TypeName = "int8",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int8))
+        ;
+            TypeName = "uint8",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint8))
+        ;
+            TypeName = "int16",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int16))
+        ;
+            TypeName = "uint16",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint16))
+        ;
+            TypeName = "int32",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int32))
+        ;
+            TypeName = "uint32",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint32))
+        ;
+            TypeName = "character",
+            TypeCategory = ctor_cat_builtin(cat_builtin_char)
+        ;
+            TypeName = "float",
+            TypeCategory = ctor_cat_builtin(cat_builtin_float)
+        ;
+            TypeName = "string",
+            TypeCategory = ctor_cat_builtin(cat_builtin_string)
+        ;
+            TypeName = "void",
+            TypeCategory = ctor_cat_void
+        ),
+        (
+            TypeSymName = unqualified(_TypeName)
+        ;
+            TypeSymName = qualified(ModuleSymName, _TypeName),
+            ModuleSymName = mercury_private_builtin_module
+        ),
+        Arity = 0
+    ;
+        (
+            TypeName = "type_info",
+            TypeCategory = ctor_cat_system(cat_system_type_info)
+        ;
+            TypeName = "type_ctor_info",
+            TypeCategory = ctor_cat_system(cat_system_type_ctor_info)
+        ;
+            TypeName = "typeclass_info",
+            TypeCategory = ctor_cat_system(cat_system_typeclass_info)
+        ;
+            TypeName = "base_typeclass_info",
+            TypeCategory = ctor_cat_system(cat_system_base_typeclass_info)
+        ),
+        TypeSymName = qualified(ModuleSymName, _TypeName),
+        ModuleSymName = mercury_private_builtin_module,
+        Arity = 0
+    ;
+        (
+            TypeName = "state",
+            TypeSymName = qualified(ModuleSymName, _TypeName),
+            ModuleSymName = mercury_io_module,
+            Arity = 0
+        ;
+            TypeName = "store",
+            TypeSymName = qualified(ModuleSymName, _TypeName),
+            ModuleSymName =
+                mercury_std_lib_module_name(unqualified("store")),
+            Arity = 1
+        ),
+        TypeCategory = ctor_cat_builtin_dummy
+    ;
+        (
+            TypeName = "pred"
+        ;
+            TypeName = "func"
+        ),
+        % The previous version of classify_type_ctor was implemented
+        % as a series of nested if-then-elses, with two conditions
+        % that could recognize higher order type constructors.
+        (
+            % This was the first condition.
+            TypeSymName = qualified(ModuleSymName, _TypeName),
+            ModuleSymName = mercury_public_builtin_module,
+            Arity = 0
+        ;
+            % This was the second condition.
+            (
+                TypeSymName = unqualified(_TypeName)
+            ;
+                TypeSymName = qualified(ModuleSymName, _TypeName),
+                ModuleSymName = unqualified(Qualifier),
+                ( Qualifier = "impure"
+                ; Qualifier = "semipure"
+                )
+            )
+            % The arity may be anything.
+        ),
+        % XXX zs: Having two conditions that look so different seems wrong.
+        TypeCategory = ctor_cat_higher_order
+%   ;
+%       % XXX The previous version of classify_type_ctor had code equivalent
+%       % to this, but the compiler does not recognize a type named tuple/0.
+%       TypeName = "tuple",
+%       TypeSymName = qualified(ModuleSymName, _TypeName),
+%       ModuleSymName = mercury_public_builtin_module,
+%       Arity = 0,
+%       TypeCategory = ctor_cat_tuple
+    ;
+        TypeName = "{}",
+        TypeSymName = unqualified(_TypeName),
+        % The arity may be anything.
+        TypeCategory = ctor_cat_tuple
     ).
 
 classify_type_defn_body(TypeBody) = TypeCategory :-

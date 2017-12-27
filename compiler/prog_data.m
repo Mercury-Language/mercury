@@ -594,6 +594,8 @@ is_builtin_type_sym_name(SymName) :-
 is_builtin_type_name(Name) :-
     builtin_type_to_string(_, Name).
 
+% Please keep this code in sync with int_type_to_string and
+% classify_type_ctor_if_special.
 builtin_type_to_string(builtin_type_int(int_type_int), "int").
 builtin_type_to_string(builtin_type_int(int_type_uint), "uint").
 builtin_type_to_string(builtin_type_int(int_type_int8), "int8").
@@ -606,6 +608,8 @@ builtin_type_to_string(builtin_type_float, "float").
 builtin_type_to_string(builtin_type_string, "string").
 builtin_type_to_string(builtin_type_char, "character").
 
+% Please keep this code in sync with builtin_type_to_string and
+% classify_type_ctor_if_special.
 int_type_to_string(int_type_int, "int").
 int_type_to_string(int_type_uint,  "uint").
 int_type_to_string(int_type_int8, "int8").
