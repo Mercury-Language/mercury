@@ -436,8 +436,14 @@ add_builtin_type_ctor_special_preds_in_builtin_module(TypeCtor, !ModuleInfo) :-
     % but we *get here* only if we are compiling the public builtin module.
     TypeStatus = type_status(status_local),
     construct_type(TypeCtor, [], Type),
-    add_special_preds(TVarSet, Type, TypeCtor, Body, Context, TypeStatus,
-        !ModuleInfo).
+    % XXX This call should be to add_special_preds, not the eagerly_ version.
+    % However, for some reason, when generating C# code, if we don't add
+    % the special preds now, we don't add them ever, which can cause compiler
+    % aborts when we try to generate the type's type_ctor_info structure
+    % (since we need to put references to the type's unify and compare
+    % predicates into that structure.)
+    eagerly_add_special_preds(TVarSet, Type, TypeCtor, Body, Context,
+        TypeStatus, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
