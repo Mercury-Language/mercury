@@ -3825,13 +3825,21 @@ strip_mercury_and_mangle_sym_name_for_csharp(SymName) = MangledSymName :-
 :- pred output_int_const_for_csharp(int::in, io::di, io::uo) is det.
 
 output_int_const_for_csharp(N, !IO) :-
+    % You may wish to see the comment on output_int_const_for_java
+    % in mlds_to_java.m.
     ( if
-        N < 0
-    then
-        io.write_int(N, !IO)
-    else if
-        N `legacy_right_shift` 32 = 0,
-        N /\ 0x80000000 = 0x80000000
+        N >= 0,
+        N /\ 0x80000000 = 0x80000000,
+
+        % The next six lines are the result of inlining
+        % "N `legacy_right_shift` 32 = 0" here and simplifying.
+        % We don't want to call legacy_right_shift because it is obsolete.
+        bits_per_int(IntBits),
+        ( if IntBits > 32 then
+            unchecked_right_shift(N, 32) = 0
+        else
+            true
+        )
     then
         % The bit pattern fits in 32 bits, but is too big for a positive
         % integer. The C# compiler will give an error about this, unless we

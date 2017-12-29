@@ -4869,11 +4869,19 @@ output_int_const_for_java(N, !IO) :-
     % a Java compiler would rightly complain because the integer is too large
     % to fit in a 32-bit int. However, it won't complain if the literal is
     % expressed in hexadecimal (nor as the negative decimal -1).
-    ( if N < 0 then
-        io.write_int(N, !IO)
-    else if
-        N `legacy_right_shift` 32 = 0,
-        N /\ 0x80000000 = 0x80000000
+    ( if
+        N >= 0,
+        N /\ 0x80000000 = 0x80000000,
+
+        % The next six lines are the result of inlining
+        % "N `legacy_right_shift` 32 = 0" here and simplifying.
+        % We don't want to call legacy_right_shift because it is obsolete.
+        bits_per_int(IntBits),
+        ( if IntBits > 32 then
+            unchecked_right_shift(N, 32) = 0
+        else
+            true
+        )
     then
         % The bit pattern fits in 32 bits, but is too large to write as a
         % positive decimal. This branch is unreachable on a 32-bit compiler.
