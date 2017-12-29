@@ -12,6 +12,13 @@
 % Takes a list of files which contains the callgraph of a Mercury module
 % and approximately topologically sorts them to standard output.
 %
+% XXX This program uses the "relation" module. Since that module was deleted
+% from the Mercury standard library several years ago, this program
+% must have been nonfunctional for at least as long.
+%
+% Anyone who wants to make it work again will have make it use the digraph
+% module instead of the relation module.
+%
 %---------------------------------------------------------------------------%
 
 :- module atsort_callgraph.
@@ -41,7 +48,7 @@ main(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-    % Builds the  call graph located in the *.prof files.
+    % Builds the call graph located in the *.prof files.
     %
 :- pred build_call_graph(list(string)::in,
     relation(string)::in, relation(string)::out, io::di, io::uo) is det.
@@ -88,7 +95,7 @@ process_prof_file_2(!CallGraph, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred print_cliques(list(set(string)::in), io::di, io::uo) is det.
+:- pred print_cliques(list(set(string))::in, io::di, io::uo) is det.
 
 print_cliques([], !IO).
 print_cliques([Clique | Cliques], !IO) :-
