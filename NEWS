@@ -499,6 +499,10 @@ Changes to the Mercury standard library:
   - det_insert_duplicates/4
   - det_insert_duplicates/3
 
+* We have added the following predicate to the bitmap module:
+
+  - is_empty/1
+
 Changes to the Mercury compiler:
 
 * We have extended tail call optimization from self recursive calls only

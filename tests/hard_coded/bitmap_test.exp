@@ -235,15 +235,15 @@ First read succeeded
 Second read succeeded
 First read succeeded
 Second read succeeded
-Found exception as expected: bitmap_error("bitmap.bit: index -1 is out of bounds [0 - 64).")
-Found exception as expected: bitmap_error("bitmap.bit: index 64 is out of bounds [0 - 64).")
-Found exception as expected: bitmap_error("bitmap.bit: index 73 is out of bounds [0 - 64).")
+Found exception as expected: bitmap_error("bitmap.bit: bit index -1 is out of bounds [0, 64).")
+Found exception as expected: bitmap_error("bitmap.bit: bit index 64 is out of bounds [0, 64).")
+Found exception as expected: bitmap_error("bitmap.bit: bit index 73 is out of bounds [0, 64).")
 Found exception as expected: bitmap_error("copy_bits (source): 32 bits starting at bit -1 is out of bounds [0, 64).")
 Found exception as expected: bitmap_error("copy_bits (source): 32 bits starting at bit 33 is out of bounds [0, 64).")
 Found exception as expected: bitmap_error("copy_bits (destination): 32 bits starting at bit 33 is out of bounds [0, 64).")
-Found exception as expected: bitmap_error("bitmap.bits: index -1 is out of bounds [0 - 64).")
-Found exception as expected: bitmap_error("bitmap.bits: index 33 is out of bounds [0 - 64).")
+Found exception as expected: bitmap_error("bitmap.bits: bit index -1 is out of bounds [0, 64).")
+Found exception as expected: bitmap_error("bitmap.bits: bit index 33 is out of bounds [0, 64).")
 Found exception as expected: bitmap_error("bitmap.bits: number of bits must be between 0 and `int.bits_per_int\'.")
 Found exception as expected: bitmap_error("bitmap.bits: number of bits must be between 0 and `int.bits_per_int\'.")
-Found exception as expected: bitmap_error("bitmap.bits: index 65 is out of bounds [0 - 64).")
-Found exception as expected: bitmap_error("bitmap.bits: index -1 is out of bounds [0 - 64).")
+Found exception as expected: bitmap_error("bitmap.bits: bit index 65 is out of bounds [0, 64).")
+Found exception as expected: bitmap_error("bitmap.bits: bit index -1 is out of bounds [0, 64).")

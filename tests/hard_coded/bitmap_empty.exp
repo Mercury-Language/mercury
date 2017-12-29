@@ -21,21 +21,21 @@ ok
 -- det_num_bytes
 0
 -- ^bit
-expected: bitmap_error("bitmap.bit: index 0 is out of bounds [0 - 0).")
+expected: bitmap_error("bitmap.bit: bit index 0 is out of bounds [0, 0).")
 -- ^bits
 0
 -- ^bits:=
 "<0:>"
 -- ^byte
-expected: bitmap_error("bitmap.byte: index 0 is out of bounds [0 - 0).")
+expected: bitmap_error("bitmap.byte: byte index 0 is out of bounds [0, 0).")
 -- ^byte:=
-expected: bitmap_error("bitmap.\'byte :=\': index 0 is out of bounds [0 - 0).")
+expected: bitmap_error("bitmap.\'byte :=\': byte index 0 is out of bounds [0, 0).")
 -- slice
 slice_ctor("<0:>", 0, 0)
 -- byte_slice
 slice_ctor("<0:>", 0, 0)
 -- flip
-expected: bitmap_error("bitmap.flip: index 0 is out of bounds [0 - 0).")
+expected: bitmap_error("bitmap.flip: bit index 0 is out of bounds [0, 0).")
 -- complement
 "<0:>"
 -- union

@@ -2,6 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2007, 2009-2011 The University of Melbourne
+% Copyright (C) 2013-2017 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -114,6 +115,13 @@
     % Return the number of bits in a byte (always 8).
     %
 :- func bits_per_byte = int.
+
+    % is_empty(Bitmap):
+    % True iff Bitmap is a bitmap containint zero bits.
+    %
+:- pred is_empty(bitmap).
+%:- mode is_empty(bitmap_ui) is semidet.
+:- mode is_empty(in) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -278,18 +286,18 @@
 
 %---------------------------------------------------------------------------%
 
-    % Slice = bitmap.slice(BM, StartIndex, NumBits)
+    % Slice = slice(BM, StartIndex, NumBits)
     %
     % A bitmap slice represents the sub-range of a bitmap of NumBits bits
     % starting at bit index StartIndex. Throws an exception if the slice
     % is not within the bounds of the bitmap.
     %
-:- type bitmap.slice.
-:- func bitmap.slice(bitmap, bit_index, num_bits) = bitmap.slice.
+:- type slice.
+:- func slice(bitmap, bit_index, num_bits) = bitmap.slice.
 
     % As above, but use byte indices.
     %
-:- func bitmap.byte_slice(bitmap, byte_index, num_bytes) = bitmap.slice.
+:- func byte_slice(bitmap, byte_index, num_bytes) = slice.
 
     % Access functions for slices.
     %
@@ -412,7 +420,7 @@
 
     % Used by io.m.
 
-    % throw_bounds_error(BM, PredName, Index, NumBits)
+    % throw_bounds_error(BM, PredName, Index, NumBits):
     %
 :- pred throw_bounds_error(bitmap::in, string::in, bit_index::in, num_bits::in)
     is erroneous.
@@ -430,7 +438,7 @@
 
 init(N, B) = BM :-
     ( if N < 0 then
-        throw_bitmap_error("bitmap.init: negative size") = _ : int
+        throw_bitmap_error("bitmap.init: negative size")
     else
         X    = initializer(B),
         BM0  = initialize_bitmap(allocate_bitmap(N), N, X),
@@ -549,21 +557,26 @@ bits_per_byte = 8.
 
 %---------------------------------------------------------------------------%
 
-BM ^ bit(I) =
+is_empty(BM) :-
+    BM ^ num_bits = 0.
+
+%---------------------------------------------------------------------------%
+
+BM ^ bit(I) = B :-
     ( if in_range(BM, I) then
-        BM ^ unsafe_bit(I)
+        B = BM ^ unsafe_bit(I)
     else
-        throw_bounds_error(BM, "bitmap.bit", I)
+        throw_bit_bounds_error(BM, "bitmap.bit", I)
     ).
 
 BM ^ unsafe_bit(I) =
     ( if unsafe_is_set(BM, I) then yes else no ).
 
-(BM ^ bit(I) := B) =
-    ( if in_range(BM, I) then
-        BM ^ unsafe_bit(I) := B
+(!.BM ^ bit(I) := B) = !:BM :-
+    ( if in_range(!.BM, I) then
+        !BM ^ unsafe_bit(I) := B
     else
-        throw_bounds_error(BM, "bitmap.'bit :='", I)
+        throw_bit_bounds_error(!.BM, "bitmap.'bit :='", I)
     ).
 
 (BM ^ unsafe_bit(I) := yes) = unsafe_set(BM, I).
@@ -571,14 +584,14 @@ BM ^ unsafe_bit(I) =
 
 %---------------------------------------------------------------------------%
 
-BM ^ bits(FirstBit, NumBits) =
+BM ^ bits(FirstBit, NumBits) = Word :-
     ( if
         FirstBit >= 0,
         NumBits >= 0,
         NumBits =< int.bits_per_int,
         in_range_rexcl(BM, FirstBit + NumBits)
     then
-        BM ^ unsafe_bits(FirstBit, NumBits)
+        Word = BM ^ unsafe_bits(FirstBit, NumBits)
     else if
         ( NumBits < 0
         ; NumBits > int.bits_per_int
@@ -587,7 +600,7 @@ BM ^ bits(FirstBit, NumBits) =
         throw_bitmap_error("bitmap.bits: number of bits must be between " ++
             "0 and `int.bits_per_int'.")
     else
-        throw_bounds_error(BM, "bitmap.bits", FirstBit)
+        throw_bit_bounds_error(BM, "bitmap.bits", FirstBit)
     ).
 
 BM ^ unsafe_bits(FirstBit, NumBits) = Bits :-
@@ -635,14 +648,14 @@ extract_bits_from_byte_index(ByteIndex, FirstBitIndex,
 
 %---------------------------------------------------------------------------%
 
-(BM ^ bits(FirstBit, NumBits) := Bits) =
+(!.BM ^ bits(FirstBit, NumBits) := Bits) = !:BM :-
     ( if
         FirstBit >= 0,
         NumBits >= 0,
         NumBits =< int.bits_per_int,
-        in_range_rexcl(BM, FirstBit + NumBits)
+        in_range_rexcl(!.BM, FirstBit + NumBits)
     then
-        BM ^ unsafe_bits(FirstBit, NumBits) := Bits
+        !BM ^ unsafe_bits(FirstBit, NumBits) := Bits
     else if
         ( NumBits < 0
         ; NumBits > int.bits_per_int
@@ -652,7 +665,7 @@ extract_bits_from_byte_index(ByteIndex, FirstBitIndex,
             "bitmap.'bits :=': number of bits must be between " ++
             "0 and `int.bits_per_int'.")
     else
-        throw_bounds_error(BM, "bitmap.'bits :='", FirstBit)
+        throw_bit_bounds_error(!.BM, "bitmap.'bits :='", FirstBit)
     ).
 
 (BM0 ^ unsafe_bits(FirstBit, NumBits) := Bits) = BM :-
@@ -694,11 +707,11 @@ set_bits_in_byte_index(ByteIndex, LastBitIndex, NumBitsThisByte, Bits, !BM) :-
 
 %---------------------------------------------------------------------------%
 
-BM ^ byte(N) =
+BM ^ byte(N) = Byte :-
     ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1) then
-        BM ^ unsafe_byte(N)
+        Byte = BM ^ unsafe_byte(N)
     else
-        throw_bounds_error(BM, "bitmap.byte", N)
+        throw_byte_bounds_error(BM, "bitmap.byte", N)
     ).
 
 _ ^ unsafe_byte(_) = _ :-
@@ -736,11 +749,11 @@ _ ^ unsafe_byte(_) = _ :-
 
 %---------------------------------------------------------------------------%
 
-(BM ^ byte(N) := Byte) =
-    ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1) then
-        BM ^ unsafe_byte(N) := Byte
+(!.BM ^ byte(N) := Byte) = !:BM :-
+    ( if N >= 0, in_range(!.BM, N * bits_per_byte + bits_per_byte - 1) then
+        !BM ^ unsafe_byte(N) := Byte
     else
-        throw_bounds_error(BM, "bitmap.'byte :='", N)
+        throw_byte_bounds_error(!.BM, "bitmap.'byte :='", N)
     ).
 
 (_ ^ unsafe_byte(_) := _) = _ :-
@@ -782,45 +795,48 @@ _ ^ unsafe_byte(_) = _ :-
 
 %---------------------------------------------------------------------------%
 
-flip(BM, I) =
-    ( if in_range(BM, I) then
-        unsafe_flip(BM, I)
+flip(!.BM, I) = !:BM :-
+    flip(I, !BM).
+
+flip(I, !BM) :-
+    ( if in_range(!.BM, I) then
+        !:BM = unsafe_flip(!.BM, I)
     else
-        throw_bounds_error(BM, "bitmap.flip", I)
+        throw_bit_bounds_error(!.BM, "bitmap.flip", I)
     ).
 
-flip(I, BM, flip(BM, I)).
+set(!.BM, I) = !:BM :-
+    set(I, !BM).
 
-set(BM, I) =
-    ( if in_range(BM, I) then
-        unsafe_set(BM, I)
+set(I, !BM) :-
+    ( if in_range(!.BM, I) then
+        !:BM = unsafe_set(!.BM, I)
     else
-        throw_bounds_error(BM, "bitmap.set", I)
+        throw_bit_bounds_error(!.BM, "bitmap.set", I)
     ).
 
-set(I, BM, set(BM, I)).
+clear(!.BM, I) = !:BM :-
+    clear(I, !BM).
 
-clear(BM, I) =
-    ( if in_range(BM, I) then
-        unsafe_clear(BM, I)
+clear(I, !BM) :-
+    ( if in_range(!.BM, I) then
+        !:BM = unsafe_clear(!.BM, I)
     else
-        throw_bounds_error(BM, "bitmap.clear", I)
+        throw_bit_bounds_error(!.BM, "bitmap.clear", I)
     ).
-
-clear(I, BM, clear(BM, I)).
 
 is_set(BM, I) :-
     ( if in_range(BM, I) then
         unsafe_is_set(BM, I)
     else
-        throw_bounds_error(BM, "bitmap.is_set", I) = _ : int
+        throw_bit_bounds_error(BM, "bitmap.is_set", I)
     ).
 
 is_clear(BM, I) :-
     ( if in_range(BM, I) then
         unsafe_is_clear(BM, I)
     else
-        throw_bounds_error(BM, "bitmap.is_clear", I) = _ : int
+        throw_bit_bounds_error(BM, "bitmap.is_clear", I)
     ).
 
 %---------------------------------------------------------------------------%
@@ -926,8 +942,8 @@ shrink_without_copying(!.BM, NewSize) = !:BM :-
     ( if 0 =< NewSize, NewSize =< !.BM ^ num_bits then
         !:BM = !.BM ^ num_bits := NewSize
     else
-        throw_bounds_error(!.BM,
-            "bitmap.shrink_without_copying", NewSize) = _ : int
+        throw_bit_bounds_error(!.BM,
+            "bitmap.shrink_without_copying", NewSize)
     ).
 
 :- func 'num_bits :='(bitmap, num_bits) = bitmap.
@@ -1030,30 +1046,30 @@ complement_2(ByteI, BM0) = BM :-
 
 %---------------------------------------------------------------------------%
 
-union(BMa, BMb) =
+union(BMa, BMb) = BMc :-
     ( if num_bits(BMa) = num_bits(BMb) then
-        zip((\/), BMa, BMb)
+        BMc = zip((\/), BMa, BMb)
     else
         throw_bitmap_error("bitmap.union: bitmaps not the same size")
     ).
 
-intersect(BMa, BMb) =
+intersect(BMa, BMb) = BMc :-
     ( if num_bits(BMa) = num_bits(BMb) then
-        zip((/\), BMa, BMb)
+        BMc = zip((/\), BMa, BMb)
     else
         throw_bitmap_error("bitmap.intersect: bitmaps not the same size")
     ).
 
-difference(BMa, BMb) =
+difference(BMa, BMb) = BMc :-
     ( if num_bits(BMa) = num_bits(BMb) then
-        zip((func(X, Y) = (X /\ \Y)), BMa, BMb)
+        BMc = zip((func(X, Y) = (X /\ \Y)), BMa, BMb)
     else
         throw_bitmap_error("bitmap.difference: bitmaps not the same size")
     ).
 
-xor(BMa, BMb) =
+xor(BMa, BMb) = BMc :-
     ( if num_bits(BMa) = num_bits(BMb) then
-        zip((func(X, Y) = (X `xor` Y)), BMa, BMb)
+        BMc = zip((func(X, Y) = (X `xor` Y)), BMa, BMb)
     else
         throw_bitmap_error("bitmap.xor: bitmaps not the same size")
     ).
@@ -1121,16 +1137,17 @@ copy_bits_in_bitmap(SrcBM, SrcStartBit, DestStartBit, NumBits) =
 % :- mode copy_bits(in, bitmap_ui, in, bitmap_di, in, in) = bitmap_uo is det.
 :- mode copy_bits(in, in, in, bitmap_di, in, in) = bitmap_uo is det.
 
-copy_bits(SameBM, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
+copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit, NumBits)
+        = !:DestBM :-
     ( if
         NumBits >= 0,
         SrcStartBit >= 0,
         DestStartBit >= 0,
         in_range_rexcl(SrcBM, SrcStartBit + NumBits),
-        in_range_rexcl(DestBM, DestStartBit + NumBits)
+        in_range_rexcl(!.DestBM, DestStartBit + NumBits)
     then
-        unsafe_copy_bits(SameBM, SrcBM, SrcStartBit,
-            DestBM, DestStartBit, NumBits)
+        !:DestBM = unsafe_copy_bits(SameBM, SrcBM, SrcStartBit,
+            !.DestBM, DestStartBit, NumBits)
     else
         ( if
             ( NumBits < 0
@@ -1142,10 +1159,10 @@ copy_bits(SameBM, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
                 SrcStartBit, NumBits)
         else if
             ( DestStartBit < 0
-            ; not in_range(DestBM, DestStartBit + NumBits - 1)
+            ; not in_range(!.DestBM, DestStartBit + NumBits - 1)
             )
         then
-            throw_bounds_error(DestBM, "copy_bits (destination)",
+            throw_bounds_error(!.DestBM, "copy_bits (destination)",
                 DestStartBit, NumBits)
         else
             throw_bitmap_error("bitmap.copy_bits: failed to diagnose error")
@@ -1271,19 +1288,20 @@ copy_bytes_in_bitmap(SrcBM, SrcStartByteIndex, DestStartByteIndex, NumBytes) =
 :- mode copy_bytes(in, in, in,
     bitmap_di, in, in) = bitmap_uo is det.
 
-copy_bytes(SameBM, SrcBM, SrcStartByte, DestBM, DestStartByte, NumBytes) =
+copy_bytes(SameBM, SrcBM, SrcStartByte, !.DestBM, DestStartByte, NumBytes)
+        = !:DestBM :-
     ( if
         NumBytes = 0
     then
-        DestBM
+        true
     else if
         NumBytes > 0,
         SrcStartByte >= 0,
         byte_in_range(SrcBM, SrcStartByte + NumBytes - 1),
         DestStartByte >= 0,
-        byte_in_range(DestBM, DestStartByte + NumBytes - 1)
+        byte_in_range(!.DestBM, DestStartByte + NumBytes - 1)
     then
-        unsafe_copy_bytes(SameBM, SrcBM, SrcStartByte, DestBM,
+        !:DestBM = unsafe_copy_bytes(SameBM, SrcBM, SrcStartByte, !.DestBM,
             DestStartByte, NumBytes)
     else
         throw_bitmap_error("bitmap.copy_bytes: out of range")
@@ -2005,42 +2023,35 @@ set_bits_in_byte(Byte0, FirstBit, NumBits, Bits) = Byte :-
 
 %---------------------------------------------------------------------------%
 
-    % throw_bounds_error(BM, PredName, Index)
+    % throw_bit_bounds_error(BM, PredName, BitIndex):
     %
-:- func throw_bounds_error(bitmap, string, bit_index) = _ is erroneous.
+:- pred throw_bit_bounds_error(bitmap::in, string::in, bit_index::in) is erroneous.
 
-throw_bounds_error(BM, Pred, Index) =
-    throw_bitmap_error(
-        % XXX Why is the bounds "[x - y)" in throw_bitmap_error/3
-        % versus "[x, y)" in throw_bounds_error/4?
-        string.format(
-            "%s: index %d is out of bounds [0 - %d).",
-            [s(Pred), i(Index), i(BM ^ num_bits)])).
+throw_bit_bounds_error(BM, Pred, BitIndex) :-
+    string.format(
+        "%s: bit index %d is out of bounds [0, %d).",
+        [s(Pred), i(BitIndex), i(BM ^ num_bits)], Msg),
+    throw_bitmap_error(Msg).
 
-    % throw_bounds_error(BM, PredName, Index, NumBits)
+    % throw_byte_bounds_error(BM, PredName, ByteIndex):
     %
-:- func throw_bounds_error(bitmap, string, bit_index, num_bits) = _
-    is erroneous.
+:- pred throw_byte_bounds_error(bitmap::in, string::in, byte_index::in) is erroneous.
 
-throw_bounds_error(BM, Pred, Index, NumBits) = _ :-
-    throw_bounds_error(BM, Pred, Index, NumBits).
+throw_byte_bounds_error(BM, Pred, ByteIndex) :-
+    string.format(
+        "%s: byte index %d is out of bounds [0, %d).",
+        [s(Pred), i(ByteIndex), i(BM ^ num_bits / bits_per_byte)], Msg),
+    throw_bitmap_error(Msg).
 
 throw_bounds_error(BM, Pred, Index, NumBits) :-
     ( if NumBits < 0 then
         string.format("%s: negative number of bits: %d.",
             [s(Pred), i(NumBits)], Msg)
     else
-        % XXX Why is the bounds "[x - y)" in throw_bitmap_error/3
-        % versus "[x, y)" in throw_bounds_error/4?
         string.format(
             "%s: %d bits starting at bit %d is out of bounds [0, %d).",
             [s(Pred), i(NumBits), i(Index), i(BM ^ num_bits)], Msg)
     ),
-    throw_bitmap_error(Msg).
-
-:- func throw_bitmap_error(string) = _ is erroneous.
-
-throw_bitmap_error(Msg) = _ :-
     throw_bitmap_error(Msg).
 
 :- pred throw_bitmap_error(string::in) is erroneous.
