@@ -135,8 +135,8 @@
 %      world
 %
 % 6. label("Look! ", line ++
-%                    group("Goodbye " ++
-%                          nest(3, line ++ group("cruel " ++ line ++ "world"))))
+%        group("Goodbye " ++
+%              nest(3, line ++ group("cruel " ++ line ++ "world"))))
 %
 %   Look! Goodbye cruel world
 %

@@ -2025,7 +2025,8 @@ set_bits_in_byte(Byte0, FirstBit, NumBits, Bits) = Byte :-
 
     % throw_bit_bounds_error(BM, PredName, BitIndex):
     %
-:- pred throw_bit_bounds_error(bitmap::in, string::in, bit_index::in) is erroneous.
+:- pred throw_bit_bounds_error(bitmap::in, string::in, bit_index::in)
+    is erroneous.
 
 throw_bit_bounds_error(BM, Pred, BitIndex) :-
     string.format(
@@ -2035,7 +2036,8 @@ throw_bit_bounds_error(BM, Pred, BitIndex) :-
 
     % throw_byte_bounds_error(BM, PredName, ByteIndex):
     %
-:- pred throw_byte_bounds_error(bitmap::in, string::in, byte_index::in) is erroneous.
+:- pred throw_byte_bounds_error(bitmap::in, string::in, byte_index::in)
+    is erroneous.
 
 throw_byte_bounds_error(BM, Pred, ByteIndex) :-
     string.format(

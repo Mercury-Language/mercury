@@ -514,13 +514,15 @@
     % or to the specified output stream.
     %
 :- pred write_int16(int16::in, io::di, io::uo) is det.
-:- pred write_int16(io.text_output_stream::in, int16::in, io::di, io::uo) is det.
+:- pred write_int16(io.text_output_stream::in, int16::in, io::di, io::uo)
+    is det.
 
     % Write a signed 32-bit integer to the current output stream
     % or to the specified output stream.
     %
 :- pred write_int32(int32::in, io::di, io::uo) is det.
-:- pred write_int32(io.text_output_stream::in, int32::in, io::di, io::uo) is det.
+:- pred write_int32(io.text_output_stream::in, int32::in, io::di, io::uo)
+    is det.
 
     % Writes an unsigned integer to the current output stream
     % or to the specified output stream.
@@ -532,19 +534,22 @@
     % or to the specified output stream.
     %
 :- pred write_uint8(uint8::in, io::di, io::uo) is det.
-:- pred write_uint8(io.text_output_stream::in, uint8::in, io::di, io::uo) is det.
+:- pred write_uint8(io.text_output_stream::in, uint8::in, io::di, io::uo)
+    is det.
 
     % Write an unsigned 16-bit integer to the current output stream
     % or to the specified output stream.
     %
 :- pred write_uint16(uint16::in, io::di, io::uo) is det.
-:- pred write_uint16(io.text_output_stream::in, uint16::in, io::di, io::uo) is det.
+:- pred write_uint16(io.text_output_stream::in, uint16::in, io::di, io::uo)
+    is det.
 
     % Write an unsigned 32-bit integer to the current output stream
     % or to the specified output stream.
     %
 :- pred write_uint32(uint32::in, io::di, io::uo) is det.
-:- pred write_uint32(io.text_output_stream::in, uint32::in, io::di, io::uo) is det.
+:- pred write_uint32(io.text_output_stream::in, uint32::in, io::di, io::uo)
+    is det.
 
     % Writes a floating point number to the current output stream
     % or to the specified output stream.
@@ -8264,8 +8269,8 @@ write_int16(output_stream(Stream), Val, !IO) :-
     do_write_int16(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_int16(stream::in, int16::in, system_error::out, io::di, io::uo)
-    is det.
+:- pred do_write_int16(stream::in, int16::in, system_error::out,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
@@ -8282,8 +8287,8 @@ write_int32(output_stream(Stream), Val, !IO) :-
     do_write_int32(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_int32(stream::in, int32::in, system_error::out, io::di, io::uo)
-    is det.
+:- pred do_write_int32(stream::in, int32::in, system_error::out,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
@@ -8318,8 +8323,8 @@ write_uint8(output_stream(Stream), Val, !IO) :-
     do_write_uint8(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_uint8(stream::in, uint8::in, system_error::out, io::di, io::uo)
-    is det.
+:- pred do_write_uint8(stream::in, uint8::in, system_error::out,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
@@ -8372,8 +8377,8 @@ write_float(output_stream(Stream), Val, !IO) :-
     do_write_float(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_float(stream::in, float::in, system_error::out, io::di, io::uo)
-    is det.
+:- pred do_write_float(stream::in, float::in, system_error::out,
+    io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     do_write_float(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,

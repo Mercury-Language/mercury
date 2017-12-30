@@ -1532,12 +1532,12 @@ map.union(CommonPred, Map1, Map2, Common) :-
     %
 :- pred map.union_loop(assoc_list(K, V), assoc_list(K, V), pred(V, V, V),
     assoc_list(K, V), assoc_list(K, V)).
-:- mode map.union_loop(in(bound([])), in, pred(in, in, out) is semidet, in, out)
-    is semidet.
+:- mode map.union_loop(in(bound([])), in, pred(in, in, out) is semidet,
+    in, out) is semidet.
 :- mode map.union_loop(in(bound([])), in, pred(in, in, out) is det, in, out)
     is det.
-:- mode map.union_loop(in, in(bound([])), pred(in, in, out) is semidet, in, out)
-    is semidet.
+:- mode map.union_loop(in, in(bound([])), pred(in, in, out) is semidet,
+    in, out) is semidet.
 :- mode map.union_loop(in, in(bound([])), pred(in, in, out) is det, in, out)
     is det.
 :- mode map.union_loop(in, in, pred(in, in, out) is semidet, in, out)

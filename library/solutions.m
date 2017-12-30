@@ -180,18 +180,18 @@
     % first building a list of all the solutions.
     %
 :- pred do_while(pred(T), pred(T, bool, T2, T2), T2, T2).
-:- mode do_while(pred(out) is multi, pred(in, out, in, out) is det, in, out)
-    is cc_multi.
-:- mode do_while(pred(out) is multi, pred(in, out, di, uo) is det, di, uo)
-    is cc_multi.
-:- mode do_while(pred(out) is multi, pred(in, out, di, uo) is cc_multi, di, uo)
-    is cc_multi.
-:- mode do_while(pred(out) is nondet, pred(in, out, in, out) is det, in, out)
-    is cc_multi.
-:- mode do_while(pred(out) is nondet, pred(in, out, di, uo) is det, di, uo)
-    is cc_multi.
-:- mode do_while(pred(out) is nondet, pred(in, out, di, uo) is cc_multi, di, uo)
-    is cc_multi.
+:- mode do_while(pred(out) is multi, pred(in, out, in, out) is det,
+    in, out) is cc_multi.
+:- mode do_while(pred(out) is multi, pred(in, out, di, uo) is det,
+    di, uo) is cc_multi.
+:- mode do_while(pred(out) is multi, pred(in, out, di, uo) is cc_multi,
+    di, uo) is cc_multi.
+:- mode do_while(pred(out) is nondet, pred(in, out, in, out) is det,
+    in, out) is cc_multi.
+:- mode do_while(pred(out) is nondet, pred(in, out, di, uo) is det,
+    di, uo) is cc_multi.
+:- mode do_while(pred(out) is nondet, pred(in, out, di, uo) is cc_multi,
+    di, uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

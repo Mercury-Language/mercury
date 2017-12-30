@@ -794,7 +794,8 @@
     % map(T, L) = M:
     % map(T, L, M):
     %
-    % Apply the closure T to transform the elements of L into the elements of M.
+    % Apply the closure T to transform the elements of L
+    % into the elements of M.
     %
 :- func map(func(X) = Y, list(X)) = list(Y).
 :- pred map(pred(X, Y), list(X), list(Y)).

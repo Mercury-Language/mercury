@@ -2190,12 +2190,12 @@ string_get_binary_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
             string_get_binary_2(String, !.LastDigit, Len, Posn1, Token,
                 Context, !Posn)
         else if Char = 'u' then
-            string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, base_2,
-                unsigned, Token, !Posn),
+            string_get_integer_size_suffix(String, Len, Posn1,
+                LastDigitPosn, base_2, unsigned, Token, !Posn),
             string_get_context(Posn1, Context, !Posn)
         else if Char = 'i' then
-            string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, base_2,
-                signed, Token, !Posn),
+            string_get_integer_size_suffix(String, Len, Posn1,
+                LastDigitPosn, base_2, signed, Token, !Posn),
             string_get_context(Posn1, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
@@ -2330,12 +2330,12 @@ string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
             string_get_octal_2(String, !.LastDigit, Len, Posn1, Token, Context,
                 !Posn)
         else if Char = 'u' then
-            string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, base_8,
-                unsigned, Token, !Posn),
+            string_get_integer_size_suffix(String, Len, Posn1,
+                LastDigitPosn, base_8, unsigned, Token, !Posn),
             string_get_context(Posn1, Context, !Posn)
         else if Char = 'i' then
-            string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, base_8,
-                signed, Token, !Posn),
+            string_get_integer_size_suffix(String, Len, Posn1,
+                LastDigitPosn, base_8, signed, Token, !Posn),
             string_get_context(Posn1, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
@@ -2470,12 +2470,12 @@ string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context, !Posn) :-
             string_get_hex_2(String, !.LastDigit, Len, Posn1, Token, Context,
                 !Posn)
         else if Char = 'u' then
-            string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, base_16,
-                unsigned, Token, !Posn),
+            string_get_integer_size_suffix(String, Len, Posn1,
+                LastDigitPosn, base_16, unsigned, Token, !Posn),
             string_get_context(Posn1, Context, !Posn)
         else if Char = 'i' then
-            string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, base_16,
-                signed, Token, !Posn),
+            string_get_integer_size_suffix(String, Len, Posn1,
+                LastDigitPosn, base_16, signed, Token, !Posn),
             string_get_context(Posn1, Context, !Posn)
         else
             (
@@ -2635,8 +2635,8 @@ string_get_number(String, !.LastDigit, Len, Posn0, Token, Context, !Posn) :-
         string_get_context(Posn0, Context, !Posn)
     ).
 
-:- pred get_integer_size_suffix(io.input_stream::in, list(char)::in, integer_base::in,
-    signedness::in, token::out, io::di, io::uo) is det.
+:- pred get_integer_size_suffix(io.input_stream::in, list(char)::in,
+    integer_base::in, signedness::in, token::out, io::di, io::uo) is det.
 
 get_integer_size_suffix(Stream, RevChars, Base, Signedness, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
@@ -2683,7 +2683,8 @@ get_integer_size_suffix_2(Stream, RevChars, Base, Signedness, ExpectedNextChar,
     ;
         Result = ok,
         ( if Char = ExpectedNextChar then
-            rev_char_list_to_int(RevChars, Base, Signedness, ExpectedSize, Token)
+            rev_char_list_to_int(RevChars, Base, Signedness, ExpectedSize,
+                Token)
         else
             Token = error("invalid integer size suffix")
         )
@@ -2693,8 +2694,8 @@ get_integer_size_suffix_2(Stream, RevChars, Base, Signedness, ExpectedNextChar,
     posn::in, integer_base::in, signedness::in, token::out,
     posn::in, posn::out) is det.
 
-string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, Base, Signedness,
-        Token, !Posn) :-
+string_get_integer_size_suffix(String, Len, Posn1, LastDigitPosn, Base,
+        Signedness, Token, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = '8' then
             grab_string(String, Posn1, DigitString, LastDigitPosn, _),

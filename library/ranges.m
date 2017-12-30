@@ -255,7 +255,8 @@
 :- mode range_foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode range_foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
 :- mode range_foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode range_foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode range_foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo)
+    is semidet.
 :- mode range_foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 
     % As above, but with two accumulators.

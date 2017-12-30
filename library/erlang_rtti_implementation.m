@@ -1759,7 +1759,8 @@ type_info(_) = type_info :-
                     TypeCtorInfo = FirstElement()
             end
     end,
-    % io:format(""TypeInfo: ~p~nTypeCtorInfo: ~p~n"", [TypeInfo, TypeCtorInfo]),
+    % io:format(""TypeInfo: ~p~nTypeCtorInfo: ~p~n"",
+    %   [TypeInfo, TypeCtorInfo]),
     void
 ").
 
@@ -2165,7 +2166,8 @@ det_unimplemented(S) :-
     Res = Pred(A, B, C, X, Y)
 ").
 :- pragma foreign_proc("Erlang",
-    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
+    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in,
+        X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Res = Pred(A, B, C, D, X, Y)

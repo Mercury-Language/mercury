@@ -271,7 +271,8 @@ put_int8(Stream, Int8, !State) :-
         dynamic_cast(!.State, IOState0),
         dynamic_cast(Stream, IOStream)
     then
-        io.write_int8(IOStream, Int8, unsafe_promise_unique(IOState0), IOState),
+        io.write_int8(IOStream, Int8,
+            unsafe_promise_unique(IOState0), IOState),
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
@@ -304,7 +305,8 @@ put_int16(Stream, Int16, !State) :-
         dynamic_cast(!.State, IOState0),
         dynamic_cast(Stream, IOStream)
     then
-        io.write_int16(IOStream, Int16, unsafe_promise_unique(IOState0), IOState),
+        io.write_int16(IOStream, Int16,
+            unsafe_promise_unique(IOState0), IOState),
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else
@@ -337,7 +339,8 @@ put_int32(Stream, Int32, !State) :-
         dynamic_cast(!.State, IOState0),
         dynamic_cast(Stream, IOStream)
     then
-        io.write_int32(IOStream, Int32, unsafe_promise_unique(IOState0), IOState),
+        io.write_int32(IOStream, Int32,
+            unsafe_promise_unique(IOState0), IOState),
         ( if dynamic_cast(IOState, !:State) then
             !:State = unsafe_promise_unique(!.State)
         else

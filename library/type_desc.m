@@ -1110,7 +1110,8 @@ get_type_info_for_type_info = TypeDesc :-
 
 :- pragma foreign_code("Erlang", "
     '__Unify____type_desc_0_0'(X0, Y0) ->
-        Res = mercury__erlang_rtti_implementation:compare_type_infos_3_p_0(X0, Y0),
+        Res = mercury__erlang_rtti_implementation:compare_type_infos_3_p_0(
+            X0, Y0),
         case Res of
             { '=' } -> {};
             _ -> fail

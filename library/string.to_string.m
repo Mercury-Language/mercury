@@ -208,14 +208,14 @@ same_private_builtin_type(_, _).
 
 :- pred ordinary_term_to_revstrings(noncanon_handling, ops.table,
     ops.priority, T, revstrings, revstrings).
-:- mode ordinary_term_to_revstrings(in(do_not_allow), in, in, in, in, out)
-    is det.
-:- mode ordinary_term_to_revstrings(in(canonicalize), in, in, in, in, out)
-    is det.
-:- mode ordinary_term_to_revstrings(in(include_details_cc), in, in, in, in, out)
-    is cc_multi.
-:- mode ordinary_term_to_revstrings(in, in, in, in, in, out)
-    is cc_multi.
+:- mode ordinary_term_to_revstrings(in(do_not_allow),
+    in, in, in, in, out) is det.
+:- mode ordinary_term_to_revstrings(in(canonicalize),
+    in, in, in, in, out) is det.
+:- mode ordinary_term_to_revstrings(in(include_details_cc),
+    in, in, in, in, out) is cc_multi.
+:- mode ordinary_term_to_revstrings(in,
+    in, in, in, in, out) is cc_multi.
 
 ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
     deconstruct(X, NonCanon, Functor, _Arity, Args),

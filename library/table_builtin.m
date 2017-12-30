@@ -1126,7 +1126,8 @@ table_mm_fill_answer_block_shortcut(_) :-
     ** it always overrides the predicate body.
     */
     /* mention G to shut up the warning */
-    MR_fatal_error(""table_mmos_answer_is_not_duplicate_shortcut: direct call"");
+    MR_fatal_error(
+        ""table_mmos_answer_is_not_duplicate_shortcut: direct call"");
 ").
 
 :- pragma external_pred(table_mmos_consume_next_answer_nondet/2).
@@ -1368,8 +1369,8 @@ pretend_to_generate_value(Bogus) :-
     % Save an unsigned 16-bit integer answer in the given answer block at the
     % given offset.
     %
-:- impure pred table_save_uint16_answer(ml_answer_block::in, int::in, uint16::in)
-    is det.
+:- impure pred table_save_uint16_answer(ml_answer_block::in, int::in,
+    uint16::in) is det.
 
     % Save a signed 32-bit integer answer in the given answer block at the
     % given offset.
@@ -1380,8 +1381,8 @@ pretend_to_generate_value(Bogus) :-
     % Save an unsigned 32-bit integer answer in the given answer block at the
     % given offset.
     %
-:- impure pred table_save_uint32_answer(ml_answer_block::in, int::in, uint32::in)
-    is det.
+:- impure pred table_save_uint32_answer(ml_answer_block::in, int::in,
+    uint32::in) is det.
 
     % Save a character answer in the given answer block at the given
     % offset.

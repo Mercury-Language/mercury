@@ -2357,7 +2357,9 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
     MR_Word * saved_solns_heap_ptr;
 
     /* Switch to the solutions heap. */
-    if (MR_ENGINE(MR_eng_heap_zone) == MR_EXCEPTION_STRUCT->MR_excp_heap_zone) {
+    if (MR_ENGINE(MR_eng_heap_zone) ==
+        MR_EXCEPTION_STRUCT->MR_excp_heap_zone)
+    {
         swap_heaps();
     }
 
@@ -2365,8 +2367,8 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 
     /*
     ** MR_deep_copy() the exception to the solutions heap.
-    ** Note that we need to save/restore the hp register, if it
-    ** is transient, before/after calling MR_deep_copy().
+    ** Note that we need to save/restore the hp register, if it is transient,
+    ** before/after calling MR_deep_copy().
     */
     assert(MR_EXCEPTION_STRUCT->MR_excp_heap_ptr <=
         MR_EXCEPTION_STRUCT->MR_excp_heap_zone->MR_zone_top);
@@ -2395,7 +2397,8 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
     MR_restore_transient_registers();
 
     /* Reset the solutions heap. */
-    assert(MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr <= saved_solns_heap_ptr);
+    assert(MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr
+        <= saved_solns_heap_ptr);
     assert(saved_solns_heap_ptr <= MR_sol_hp);
     if (catch_code_model == MR_MODEL_NON_HANDLER) {
         /*

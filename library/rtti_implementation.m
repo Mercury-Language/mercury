@@ -262,10 +262,13 @@
 
 :- pragma foreign_code("Java",
 "
-    public static final Type_ctor_rep_0[] static_type_ctor_rep
-        = new Type_ctor_rep_0[jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_MAX];
+    public static final Type_ctor_rep_0[] static_type_ctor_rep = new
+        Type_ctor_rep_0[jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_MAX];
     static {
-        for (int i = 0; i < jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_MAX; i++) {
+        for (int i = 0;
+            i < jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_MAX;
+            i++)
+        {
             static_type_ctor_rep[i] = new Type_ctor_rep_0(i);
         }
     }
@@ -1141,7 +1144,8 @@ get_var_arity_typeinfo_arity(_) = _ :-
     % simply returned with no attempt to extract the type infos from terms.
     % cf. MR_create_pseudo_type_info
     %
-:- func create_pseudo_type_info(type_info, pseudo_type_info) = pseudo_type_info.
+:- func create_pseudo_type_info(type_info, pseudo_type_info)
+    = pseudo_type_info.
 
 create_pseudo_type_info(TypeInfo, PseudoTypeInfo) = ArgPseudoTypeInfo :-
     ( if is_exist_pseudo_type_info(PseudoTypeInfo, _VarNum) then
@@ -1409,8 +1413,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 "
     runtime.MethodPtr6_r1<object, object, object, object, object, object, bool>
         pred
-        = (runtime.MethodPtr6_r1<object, object, object, object, object, object,
-            bool>) Pred;
+        = (runtime.MethodPtr6_r1<object, object, object, object, object,
+            object, bool>) Pred;
     SUCCESS_INDICATOR = pred(A, B, C, D, X, Y);
 ").
 :- pragma foreign_proc("C#",
@@ -1418,8 +1422,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr7_r1<object, object, object, object, object, object, object,
-        bool> pred =
+    runtime.MethodPtr7_r1<object, object, object, object, object, object,
+        object, bool> pred =
         (runtime.MethodPtr7_r1<object, object, object, object, object, object,
             object, bool>) Pred;
     SUCCESS_INDICATOR = pred(A, B, C, D, E, X, Y);
@@ -1457,18 +1461,19 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     runtime.MethodPtr5_r1<object, object, object, object, object, object> pred
-        = (runtime.MethodPtr5_r1<object, object, object, object, object, object>)
-            Pred;
+        = (runtime.MethodPtr5_r1<object, object, object, object, object,
+            object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, C, X, Y);
 ").
 :- pragma foreign_proc("C#",
-    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
+    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in,
+        Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     runtime.MethodPtr6_r1<object, object, object, object, object, object,
             object> pred
-        = (runtime.MethodPtr6_r1<object, object, object, object, object, object,
-            object>) Pred;
+        = (runtime.MethodPtr6_r1<object, object, object, object, object,
+            object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, C, D, X, Y);
 
 ").
@@ -1479,8 +1484,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 "
     runtime.MethodPtr7_r1<object, object, object, object, object, object,
             object, object> pred
-        = (runtime.MethodPtr7_r1<object, object, object, object, object, object,
-            object, object>) Pred;
+        = (runtime.MethodPtr7_r1<object, object, object, object, object,
+            object, object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, C, D, E, X, Y);
 ").
 
@@ -1562,7 +1567,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, X, Y);
 ").
 :- pragma foreign_proc("Java",
-    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
+    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in,
+        Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr6 P = (jmercury.runtime.MethodPtr6) Pred;
@@ -1798,7 +1804,8 @@ is_exist_pseudo_type_info(_, _) :-
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_EQUIV:
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_EQUIV_GROUND:
                 /* These should be eliminated above. */
-                throw new System.Exception(""equiv type in construct.construct"");
+                throw new System.Exception(
+                    ""equiv type in construct.construct"");
 
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_VOID:
                 /* These should be eliminated above. */

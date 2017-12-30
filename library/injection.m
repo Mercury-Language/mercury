@@ -473,7 +473,8 @@ det_set_from_assoc_list(A, I,
 
 insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
         injection(F, R) :-
-    P = ( pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
+    P = ( pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out)
+                is semidet :-
             map.insert(K, V, !F),
             map.insert(V, K, !R)
         ),

@@ -897,7 +897,8 @@ __Compare____tuple_0_0(object x, object y)
             return null;
         }
 
-        final java.lang.Class<T> cls = (java.lang.Class<T>) original.getClass();
+        final java.lang.Class<T> cls =
+            (java.lang.Class<T>) original.getClass();
 
         if (cls.isArray()) {
             int length = java.lang.reflect.Array.getLength(original);
@@ -1175,14 +1176,16 @@ __Compare____tuple_0_0(object x, object y)
     __Unify____tuple_0_0(java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
-        throw new java.lang.Error (""unify/2 for tuple types not implemented"");
+        throw new java.lang.Error (
+            ""unify/2 for tuple types not implemented"");
     }
 
     public static boolean
     __Unify____func_0_0(java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
-        throw new java.lang.Error (""unify/2 for tuple types not implemented"");
+        throw new java.lang.Error (
+            ""unify/2 for tuple types not implemented"");
     }
 
 

@@ -405,7 +405,8 @@ MR_def_label(par_builtin__lc_wait_free_slot_2_0,1)
         MR_Unsigned     lcs_idx;
 
         lc = (MR_LoopControl *) MR_sv(1);
-        MR_lc_wait_free_slot(lc, lcs_idx, MR_LABEL_AP(par_builtin__lc_wait_free_slot_2_0_i1));
+        MR_lc_wait_free_slot(lc, lcs_idx,
+            MR_LABEL_AP(par_builtin__lc_wait_free_slot_2_0_i1));
         MR_r1 = (MR_Word)lcs_idx;
     }
 #else

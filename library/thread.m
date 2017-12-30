@@ -515,8 +515,9 @@ INIT mercury_sys_init_thread_modules
 #if defined(MR_THREAD_SAFE)
   #include  <pthread.h>
 
-  static MR_bool ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id);
-  static void *ML_exclusive_thread_wrapper(void *arg);
+  static MR_bool ML_create_exclusive_thread(MR_Word goal,
+                    MR_String *thread_id);
+  static void   *ML_exclusive_thread_wrapper(void *arg);
 
   typedef struct ML_ThreadWrapperArgs ML_ThreadWrapperArgs;
   struct ML_ThreadWrapperArgs {
@@ -564,7 +565,8 @@ INIT mercury_sys_init_thread_modules
 
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    thread_err = pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper, &args);
+    thread_err =
+        pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper, &args);
     pthread_attr_destroy(&attrs);
 
     if (thread_err == 0) {
@@ -688,7 +690,8 @@ call_back_to_mercury(Goal, ThreadId, !IO) :-
     MR_thread_barrier_count--;
   #ifdef MR_HIGHLEVEL_CODE
     if (MR_thread_barrier_count == 0) {
-        MR_COND_SIGNAL(&MR_thread_barrier_cond, ""ML_decr_thread_barrier_count"");
+        MR_COND_SIGNAL(&MR_thread_barrier_cond,
+            ""ML_decr_thread_barrier_count"");
     }
   #else
     if (MR_thread_barrier_count == 0) {

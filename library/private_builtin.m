@@ -56,19 +56,24 @@
 :- pred builtin_compare_int8(comparison_result::uo, int8::in, int8::in) is det.
 
 :- pred builtin_unify_uint8(uint8::in, uint8::in) is semidet.
-:- pred builtin_compare_uint8(comparison_result::uo, uint8::in, uint8::in) is det.
+:- pred builtin_compare_uint8(comparison_result::uo, uint8::in, uint8::in)
+    is det.
 
 :- pred builtin_unify_int16(int16::in, int16::in) is semidet.
-:- pred builtin_compare_int16(comparison_result::uo, int16::in, int16::in) is det.
+:- pred builtin_compare_int16(comparison_result::uo, int16::in, int16::in)
+    is det.
 
 :- pred builtin_unify_uint16(uint16::in, uint16::in) is semidet.
-:- pred builtin_compare_uint16(comparison_result::uo, uint16::in, uint16::in) is det.
+:- pred builtin_compare_uint16(comparison_result::uo, uint16::in, uint16::in)
+    is det.
 
 :- pred builtin_unify_int32(int32::in, int32::in) is semidet.
-:- pred builtin_compare_int32(comparison_result::uo, int32::in, int32::in) is det.
+:- pred builtin_compare_int32(comparison_result::uo, int32::in, int32::in)
+    is det.
 
 :- pred builtin_unify_uint32(uint32::in, uint32::in) is semidet.
-:- pred builtin_compare_uint32(comparison_result::uo, uint32::in, uint32::in) is det.
+:- pred builtin_compare_uint32(comparison_result::uo, uint32::in, uint32::in)
+    is det.
 
 :- pred builtin_unify_character(character::in, character::in) is semidet.
 :- pred builtin_compare_character(comparison_result::uo, character::in,

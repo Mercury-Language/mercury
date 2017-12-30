@@ -155,8 +155,8 @@ resize(BM0, N, B) = BM :-
         Mask    = bitsmask(M - 1),          % For bits we need to preserve.
         Bits    = \(Mask) /\ X,             % Bits we need to fill in.
         BM2     = (( BM1
-                        ^ elem(0)      := N )
-                        ^ elem(Offset) := (BM1 ^ elem(Offset) /\ Mask) \/ Bits),
+                    ^ elem(0)      := N )
+                    ^ elem(Offset) := (BM1 ^ elem(Offset) /\ Mask) \/ Bits),
         BM      = clear_filler_bits(BM2)
     ).
 

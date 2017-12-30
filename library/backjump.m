@@ -138,7 +138,8 @@ backjump(Id) :-
 #define MR_CONT_CALL()      cont(cont_env)
 
 void MR_CALL
-mercury__backjump__builtin_choice_id_1_p_0(MR_BackJumpChoiceId *id, MR_CONT_PARAMS);
+mercury__backjump__builtin_choice_id_1_p_0(
+    MR_BackJumpChoiceId *id, MR_CONT_PARAMS);
 
 void MR_CALL
 mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id);
@@ -178,7 +179,8 @@ mercury__backjump__builtin_choice_id_1_p_0(MR_Integer *id, MR_CONT_PARAMS)
         MR_CONT_CALL();
     } else {
     #ifdef MR_DEBUG_JMPBUFS
-        fprintf(stderr, ""choice caught jmp %p\\n"", this_handler.MR_bjh_handler);
+        fprintf(stderr, ""choice caught jmp %p\\n"",
+            this_handler.MR_bjh_handler);
     #endif
     }
 

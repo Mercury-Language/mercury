@@ -1964,11 +1964,13 @@ do_foldl_pred(P, [H | T], !Acc) :-
 :- mode leaf_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode leaf_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode leaf_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode leaf_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode leaf_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo)
+    is semidet.
 :- mode leaf_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode leaf_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode leaf_foldl_pred(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode leaf_foldl_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode leaf_foldl_pred(pred(in, in, out) is cc_multi, in, in, out)
+    is cc_multi.
 :- mode leaf_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
 :- pragma type_spec(leaf_foldl_pred/4, T = int).
@@ -2080,11 +2082,11 @@ foldr2(P, Set, !AccA, !AccB) :-
 :- pragma type_spec(do_foldr_pred/4, T = int).
 :- pragma type_spec(do_foldr_pred/4, T = var(_)).
 
-    % We don't just use list.foldr here because the overhead of allocating
-    % the closure for fold_bits is significant for the compiler's runtime,
-    % so it's best to avoid that even if `--optimize-higher-order' is not set.
 do_foldr_pred(_, [], !Acc).
 do_foldr_pred(P, [H | T], !Acc) :-
+    % We don't just use list.foldr here because the overhead of allocating
+    % the closure for fold_bits is significant for the compiler's runtime,
+    % so it is best to avoid that even if `--optimize-higher-order' is not set.
     do_foldr_pred(P, T, !Acc),
     Components = H ^ components,
     (
@@ -2101,16 +2103,17 @@ do_foldr_pred(P, [H | T], !Acc) :-
 :- mode leaf_foldr_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode leaf_foldr_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode leaf_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode leaf_foldr_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode leaf_foldr_pred(pred(in, in, out) is cc_multi, in, in, out)
+    is cc_multi.
 
 :- pragma type_spec(leaf_foldr_pred/4, T = int).
 :- pragma type_spec(leaf_foldr_pred/4, T = var(_)).
 
-    % We don't just use list.foldr here because the overhead of allocating
-    % the closure for fold_bits is significant for the compiler's runtime,
-    % so it's best to avoid that even if `--optimize-higher-order' is not set.
 leaf_foldr_pred(_, [], !Acc).
 leaf_foldr_pred(P, [H | T], !Acc) :-
+    % We don't just use list.foldr here because the overhead of allocating
+    % the closure for fold_bits is significant for the compiler's runtime,
+    % so it is best to avoid that even if `--optimize-higher-order' is not set.
     leaf_foldr_pred(P, T, !Acc),
     fold_bits(high_to_low, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
         !Acc).
@@ -2137,11 +2140,11 @@ leaf_foldr_pred(P, [H | T], !Acc) :-
 :- pragma type_spec(do_foldr2_pred/6, T = int).
 :- pragma type_spec(do_foldr2_pred/6, T = var(_)).
 
-    % We don't just use list.foldr here because the overhead of allocating
-    % the closure for fold_bits is significant for the compiler's runtime,
-    % so it's best to avoid that even if `--optimize-higher-order' is not set.
 do_foldr2_pred(_, [], !AccA, !AccB).
 do_foldr2_pred(P, [H | T], !AccA, !AccB) :-
+    % We don't just use list.foldr here because the overhead of allocating
+    % the closure for fold_bits is significant for the compiler's runtime,
+    % so it is best to avoid that even if `--optimize-higher-order' is not set.
     do_foldr2_pred(P, T, !AccA, !AccB),
     Components = H ^ components,
     (
@@ -2174,11 +2177,11 @@ do_foldr2_pred(P, [H | T], !AccA, !AccB) :-
 :- pragma type_spec(leaf_foldr2_pred/6, T = int).
 :- pragma type_spec(leaf_foldr2_pred/6, T = var(_)).
 
-    % We don't just use list.foldr here because the overhead of allocating
-    % the closure for fold_bits is significant for the compiler's runtime,
-    % so it's best to avoid that even if `--optimize-higher-order' is not set.
 leaf_foldr2_pred(_, [], !AccA, !AccB).
 leaf_foldr2_pred(P, [H | T], !AccA, !AccB) :-
+    % We don't just use list.foldr here because the overhead of allocating
+    % the closure for fold_bits is significant for the compiler's runtime,
+    % so it is best to avoid that even if `--optimize-higher-order' is not set.
     leaf_foldr2_pred(P, T, !AccA, !AccB),
     fold2_bits(high_to_low, P, H ^ leaf_offset, H ^ leaf_bits, bits_per_int,
         !AccA, !AccB).
@@ -3075,7 +3078,8 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
                 ),
                 find_interior_nodes_at_parent_offset(HeadSubLevelB,
                     HeadInteriorNodesB,
-                    ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA, NodesB)
+                    ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA,
+                    NodesB)
             )
         else
             % ListA's range is after HeadB's range.
@@ -3133,8 +3137,8 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
             ( if HeadA ^ limit_offset =< InteriorNodeB ^ init_offset then
                 % All of the region covered by HeadA is before the region
                 % covered by InteriorNodeB.
-                descend_and_difference_one(LevelA, TailA, LevelB, InteriorNodeB,
-                    LevelTail, ListTail),
+                descend_and_difference_one(LevelA, TailA,
+                    LevelB, InteriorNodeB, LevelTail, ListTail),
                 trace [compile_time(flag("tree-bitset-checks"))] (
                     expect(unify(LevelTail, LevelA),
                         $module, $pred, "LevelTail != LevelA")
@@ -3870,11 +3874,11 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
         OutList = [ListHead | OutTail]
     ).
 
-%     % Our basic approach of raising both operands to the same level simplifies
-%     % the code (by allowing the reuse of the basic pattern and the helper
-%     % predicates of the union predicate), but searching the larger set for the
-%     % range of the smaller set and starting the operation there would be more
-%     % efficient in both time and space.
+%     % Our basic approach of raising both operands to the same level
+%     % simplifies the code (by allowing the reuse of the basic pattern
+%     % and the helper predicates of the union predicate), but searching
+%     % the larger set for the range of the smaller set and starting
+%     % the operation there would be more efficient in both time and space.
 %     (
 %         DivideByList = leaf_list(DivideByLeafNodes),
 %         List = leaf_list(LeafNodes),
@@ -4018,7 +4022,8 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 % leaflist_difference([], [], []).
 % leaflist_difference([], [_ | _], []).
 % leaflist_difference(ListA @ [_ | _], [], ListA).
-% leaflist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
+% leaflist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
+%         List) :-
 %     OffsetA = HeadA ^ leaf_offset,
 %     OffsetB = HeadB ^ leaf_offset,
 %     ( if OffsetA = OffsetB then
@@ -4062,8 +4067,8 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %                 LeafNodes = [_ | _],
 %                 Components = leaf_list(LeafNodes),
 %                 interiorlist_difference(TailA, TailB, Tail),
-%                 Head = interior_node(HeadA ^ init_offset, HeadA ^ limit_offset,
-%                     Components),
+%                 Head = interior_node(HeadA ^ init_offset,
+%                     HeadA ^ limit_offset, Components),
 %                 List = [Head | Tail]
 %             )
 %         ;
@@ -4091,8 +4096,8 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %                 InteriorNodes = [_ | _],
 %                 Components = interior_list(LevelA, InteriorNodes),
 %                 interiorlist_difference(TailA, TailB, Tail),
-%                 Head = interior_node(HeadA ^ init_offset, HeadA ^ limit_offset,
-%                     Components),
+%                 Head = interior_node(HeadA ^ init_offset,
+%                     HeadA ^ limit_offset, Components),
 %                 List = [Head | Tail]
 %             )
 %         )
