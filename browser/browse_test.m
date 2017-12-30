@@ -24,12 +24,13 @@
 :- import_module mdb.
 :- import_module mdb.browse.
 :- import_module mdb.browser_info.
+:- import_module mdb.browser_term.
 
 :- import_module assoc_list.
-:- import_module int.
 :- import_module list.
 :- import_module string.
 :- import_module tree234.
+:- import_module univ.
 
 main(!IO) :-
     Filename = "/etc/fstab",
@@ -46,13 +47,16 @@ main(!IO) :-
         browser_info.init_persistent_state(State0),
         io.write_string("list:", !IO),
         io.nl(!IO),
-        browse.browse(AssocList, StdIn, StdOut, _, State0, State1, !IO),
+        browse_browser_term_no_modes(plain_term(univ(AssocList)),
+            StdIn, StdOut, _, State0, State1, !IO),
         io.write_string("tree:", !IO),
         io.nl(!IO),
-        browse.browse(Tree, StdIn, StdOut, _, State1, State2, !IO),
+        browse_browser_term_no_modes(plain_term(univ(Tree)),
+            StdIn, StdOut, _, State1, State2, !IO),
         io.write_string("stream:", !IO),
         io.nl(!IO),
-        browse.browse(StdIn, StdIn, StdOut, _, State2, _, !IO),
+        browse_browser_term_no_modes(plain_term(univ(StdIn)),
+            StdIn, StdOut, _, State2, _, !IO),
         io.set_exit_status(EXIT_SUCCESS, !IO)
     else
         io.write_string("Can't open input file.\n", !IO),

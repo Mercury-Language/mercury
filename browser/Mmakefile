@@ -41,6 +41,12 @@ Mmake.browser.params:
 # can be found by `mmc --make'.
 include Mercury.options
 
+# XXX To prevent bitrot in the programs covered by "all", this should be:
+# MAIN_TARGET=all
+# However, we noticed this fact too late: fatal bit rot has already occurred.
+# The browse_test program requires access to the mdbcomp package, whose
+# modules are now in another directory, and the declarative_test program
+# requires updates to its own source code.
 MAIN_TARGET=main
 
 MERCURY_MAIN_LIB_MODULES=$(BROWSER_LIB_NAME)
