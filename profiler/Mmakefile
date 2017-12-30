@@ -30,13 +30,16 @@ MCFLAGS += --flags PROF_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
+# XXX We should have listed atsort_callgraph here, but now it is too late;
+# due to bitrot, it does not compile anymore.
+.PHONY: all
+all:	mercury_profile demangle_test $(TAGS_FILE_EXISTS)
+
 .PHONY: depend
-depend:	mercury_profile.depend
+depend:	mercury_profile.depend demangle_test.depend
 
 mercury_profile.depend: PROF_FLAGS
-
-.PHONY: all
-all:	mercury_profile $(TAGS_FILE_EXISTS)
+demangle_test.depend: PROF_FLAGS
 
 #-----------------------------------------------------------------------------#
 
