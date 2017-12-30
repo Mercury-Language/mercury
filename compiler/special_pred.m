@@ -113,7 +113,7 @@
     type_ctor::in, hlds_type_body::in) is semidet.
 
     % Is this a builtin type whose special predicates are defined in Mercury?
-    % If yes, return the name of the type.type
+    % If yes, return the name of the type.
     %
 :- pred is_builtin_type_special_preds_defined_in_mercury(type_ctor::in,
     string::out) is semidet.
@@ -340,6 +340,8 @@ can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, TypeBody) :-
 is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
     Builtin = mercury_public_builtin_module,
     TypeCtor = type_ctor(qualified(Builtin, TypeName), 0),
+    % XXX Treating "pred" as a builtin type without also treating "func"
+    % the same way looks wrong to me. -zs
     ( is_builtin_type_name(TypeName)
     ; TypeName = "pred"
     ).
