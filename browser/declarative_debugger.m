@@ -295,8 +295,8 @@
     %
     % Initialise a new diagnoser with the given properties.
     %
-:- pred diagnoser_state_init(io.input_stream::in,
-    io.output_stream::in, browser_info.browser_persistent_state::in,
+:- pred diagnoser_state_init(io.input_stream::in, io.output_stream::in,
+    browser_info.browser_persistent_state::in,
     help.system::in, diagnoser_state(R)::out) is det.
 
 :- pred diagnosis(S::in, analysis_type(edt_node(R))::in,
