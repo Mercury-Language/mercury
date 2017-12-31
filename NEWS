@@ -499,9 +499,12 @@ Changes to the Mercury standard library:
   - det_insert_duplicates/4
   - det_insert_duplicates/3
 
-* We have added the following predicate to the bitmap module:
+* We have added the following predicates and functions  to the bitmap module:
 
   - is_empty/1
+  - det_from_string/1
+  - get_uint8/1, unsafe_get_uint8/1
+  - set_uint8/4, unsafe_set_uint8/4
 
 Changes to the Mercury compiler:
 

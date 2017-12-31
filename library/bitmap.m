@@ -117,7 +117,7 @@
 :- func bits_per_byte = int.
 
     % is_empty(Bitmap):
-    % True iff Bitmap is a bitmap containint zero bits.
+    % True iff Bitmap is a bitmap containing zero bits.
     %
 :- pred is_empty(bitmap).
 %:- mode is_empty(bitmap_ui) is semidet.
@@ -172,9 +172,10 @@
 % Get or set the given numbered byte (multiply ByteNumber by
 % bits_per_byte to get the bit index of the start of the byte).
 %
-% The bits are stored in or taken from the least significant bits
-% of the integer.
-% The unsafe versions do not check whether the byte is in range.
+% The bits are stored in or taken from the least significant bits of an int.
+% The safe versions will throw an exception if the given ByteNumber is out of
+% bounds.  Final partial bytes are out of bounds.  The unsafe versions do not
+% check whether the byte is in range.
 %
 
 :- func bitmap      ^ byte(byte_index) = byte.
@@ -190,6 +191,25 @@
 
 :- func (bitmap     ^ unsafe_byte(byte_index)   := byte) = bitmap.
 :- mode (bitmap_di  ^ unsafe_byte(in)           := in)   = bitmap_uo is det.
+
+%
+% Versions of the above that set or take uint8 values instead of a byte stored
+% in the least significant bits of an int.
+%
+
+:- func get_uint8(bitmap, byte_index) = uint8.
+%:- mode get_uint8(bitmap_ui, in) = out is det.
+:- mode get_uint8(in, in) = out is det.
+
+:- func unsafe_get_uint8(bitmap, byte_index) = uint8.
+%:- mode unsafe_get_uint8(bitmap_ui, in) = out is det.
+:- mode unsafe_get_uint8(in, in) = out is det.
+
+:- pred set_uint8(byte_index::in, uint8::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo) is det.
+
+:- pred unsafe_set_uint8(byte_index::in, uint8::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -393,9 +413,15 @@
 :- mode to_string(in) = out is det.
 
     % Convert a string created by to_string back into a bitmap.
+    % Fails if the string is not of the form created by to_string.
     %
 :- func from_string(string) = bitmap.
 :- mode from_string(in) = bitmap_uo is semidet.
+
+    % As above, but throws an exception instead of failing.
+    %
+:- func det_from_string(string) = bitmap.
+:- mode det_from_string(in) = bitmap_uo is det.
 
     % Convert a bitmap to a string of `1' and `0' characters, where
     % the bytes are separated by `.'.
@@ -432,6 +458,7 @@
 :- import_module char.
 :- import_module exception.
 :- import_module int.
+:- import_module require.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -708,7 +735,7 @@ set_bits_in_byte_index(ByteIndex, LastBitIndex, NumBitsThisByte, Bits, !BM) :-
 %---------------------------------------------------------------------------%
 
 BM ^ byte(N) = Byte :-
-    ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1) then
+    ( if byte_in_range(BM, N) then
         Byte = BM ^ unsafe_byte(N)
     else
         throw_byte_bounds_error(BM, "bitmap.byte", N)
@@ -749,8 +776,46 @@ _ ^ unsafe_byte(_) = _ :-
 
 %---------------------------------------------------------------------------%
 
+get_uint8(BM, N) = U8 :-
+    ( if byte_in_range(BM, N) then
+        U8 = unsafe_get_uint8(BM, N)
+    else
+        throw_byte_bounds_error(BM, "bitmap.get_uint8", N)
+    ).
+
+:- pragma foreign_proc("C",
+    unsafe_get_uint8(BM::in, N::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    U8 = (uint8_t) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_uint8(BM::in, N::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = BM.elements[N];
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_uint8(BM::in, N::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = BM.elements[N];
+").
+
+:- pragma foreign_proc("Erlang",
+    unsafe_get_uint8(BM::in, N::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Bin, _} = BM,
+    <<_:N/binary, U8/integer, _/binary>> = Bin
+").
+
+%---------------------------------------------------------------------------%
+
 (!.BM ^ byte(N) := Byte) = !:BM :-
-    ( if N >= 0, in_range(!.BM, N * bits_per_byte + bits_per_byte - 1) then
+    ( if byte_in_range(!.BM, N) then
         !BM ^ unsafe_byte(N) := Byte
     else
         throw_byte_bounds_error(!.BM, "bitmap.'byte :='", N)
@@ -790,6 +855,49 @@ _ ^ unsafe_byte(_) = _ :-
     {Bin0, NumBits} = BM0,
     <<Left:N/binary, _/integer, Right/binary>> = Bin0,
     Bin = <<Left/binary, Byte/integer, Right/binary>>,
+    BM = {Bin, NumBits}
+").
+
+%---------------------------------------------------------------------------%
+
+set_uint8(N, U8, !BM) :-
+    ( if byte_in_range(!.BM, N) then
+        unsafe_set_uint8(N, U8, !BM)
+    else
+        throw_byte_bounds_error(!.BM, "bitmap.set_uint", N)
+    ).
+
+:- pragma foreign_proc("C",
+    unsafe_set_uint8(N::in, U8::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) U8;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_uint8(N::in, U8::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) U8;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_uint8(N::in, U8::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) U8;
+").
+
+:- pragma foreign_proc("Erlang",
+    unsafe_set_uint8(N::in, U8::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    {Bin0, NumBits} = BM0,
+    <<Left:N/binary, _/integer, Right/binary>> = Bin0,
+    Bin = <<Left/binary, U8/integer, Right/binary>>,
     BM = {Bin, NumBits}
 ").
 
@@ -1617,6 +1725,13 @@ from_string(Str) = BM :-
         hex_chars_to_bitmap(Str, AfterColon, End, 0, BM0, BM)
     else
         fail
+    ).
+
+det_from_string(Str) =
+    ( if BM = from_string(Str) then
+        BM
+    else
+        unexpected($pred, "bitmap.from_string failed")
     ).
 
 :- pred hex_chars_to_bitmap(string::in, int::in, int::in, byte_index::in,

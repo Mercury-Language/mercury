@@ -1,19 +1,55 @@
 Bitmap: 
 ^ byte(-1): bitmap.byte: byte index -1 is out of bounds [0, 0).
+get_uint(-1): bitmap.get_uint8: byte index -1 is out of bounds [0, 0).
 ^ byte(0): bitmap.byte: byte index 0 is out of bounds [0, 0).
+get_uint(0): bitmap.get_uint8: byte index 0 is out of bounds [0, 0).
 ^ byte(1): bitmap.byte: byte index 1 is out of bounds [0, 0).
+get_uint(1): bitmap.get_uint8: byte index 1 is out of bounds [0, 0).
 
 Bitmap: 00000000.00000000.00000000
 ^ byte(-1): bitmap.byte: byte index -1 is out of bounds [0, 3).
+get_uint(-1): bitmap.get_uint8: byte index -1 is out of bounds [0, 3).
 ^ byte(0): 0
+get_uint(0): 0
 ^ byte(1): 0
+get_uint(1): 0
 ^ byte(2): 0
+get_uint(2): 0
 ^ byte(3): bitmap.byte: byte index 3 is out of bounds [0, 3).
+get_uint(3): bitmap.get_uint8: byte index 3 is out of bounds [0, 3).
 ^ byte(4): bitmap.byte: byte index 4 is out of bounds [0, 3).
+get_uint(4): bitmap.get_uint8: byte index 4 is out of bounds [0, 3).
 
 Bitmap: 00000000.00000000.0
 ^ byte(-1): bitmap.byte: byte index -1 is out of bounds [0, 2).
+get_uint(-1): bitmap.get_uint8: byte index -1 is out of bounds [0, 2).
 ^ byte(0): 0
+get_uint(0): 0
 ^ byte(1): 0
+get_uint(1): 0
 ^ byte(2): bitmap.byte: byte index 2 is out of bounds [0, 2).
+get_uint(2): bitmap.get_uint8: byte index 2 is out of bounds [0, 2).
 ^ byte(3): bitmap.byte: byte index 3 is out of bounds [0, 2).
+get_uint(3): bitmap.get_uint8: byte index 3 is out of bounds [0, 2).
+
+Bitmap: 11111111.00000000.11111111
+^ byte(-1): bitmap.byte: byte index -1 is out of bounds [0, 3).
+get_uint(-1): bitmap.get_uint8: byte index -1 is out of bounds [0, 3).
+^ byte(0): 255
+get_uint(0): 255
+^ byte(1): 0
+get_uint(1): 0
+^ byte(2): 255
+get_uint(2): 255
+^ byte(3): bitmap.byte: byte index 3 is out of bounds [0, 3).
+get_uint(3): bitmap.get_uint8: byte index 3 is out of bounds [0, 3).
+
+Bitmap: 11110000.00001111
+^ byte(-1): bitmap.byte: byte index -1 is out of bounds [0, 2).
+get_uint(-1): bitmap.get_uint8: byte index -1 is out of bounds [0, 2).
+^ byte(0): 240
+get_uint(0): 240
+^ byte(1): 15
+get_uint(1): 15
+^ byte(2): bitmap.byte: byte index 2 is out of bounds [0, 2).
+get_uint(2): bitmap.get_uint8: byte index 2 is out of bounds [0, 2).
