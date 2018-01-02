@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999, 2002, 2004-2012 The University of Melbourne.
+% Copyright (C) 2013, 2015-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -109,7 +110,7 @@ usage(!IO) :-
     io.write_strings(StdErr, [
         "Mercury Profiler, version ", Version, ", on ", Fullarch, ".\n",
         "Copyright (C) 1995-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2017 The Mercury team\n",
+        "Copyright (C) 2013-2018 The Mercury team\n",
             "Usage: ", ProgName, " [<options>] [<files>]\n",
             "Use `", ProgName, " --help' for more information.\n"
         ], !IO).
@@ -122,7 +123,7 @@ long_usage(!IO) :-
     io.write_strings([
         "Mercury Profiler, version ", Version, ", on ", Fullarch, ".\n",
         "Copyright (C) 1995-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2017 The Mercury team\n\n",
+        "Copyright (C) 2013-2018 The Mercury team\n\n",
             "Usage: ", ProgName, " [<options>] [<files>]\n",
         "\n",
         "Description:\n",
