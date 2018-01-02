@@ -134,7 +134,6 @@
 :- import_module check_hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
@@ -287,12 +286,7 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody, TypeStatus) :-
     hlds_type_body::in, type_status::in) is semidet.
 
 special_pred_is_generated_lazily_2(ModuleInfo, TypeBody, TypeStatus) :-
-    (
-        type_status_defined_in_this_module(TypeStatus) = no
-    ;
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, special_preds, no)
-    ),
+    type_status_defined_in_this_module(TypeStatus) = no,
 
     % We can't generate clauses for unification predicates for foreign types
     % lazily because they call the polymorphic procedure

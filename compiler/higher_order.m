@@ -1235,12 +1235,10 @@ maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
         MaybeContext, _SymName0),
     module_info_pred_proc_info(ModuleInfo0, CalledPred, CalledProc,
         CalleePredInfo, CalleeProcInfo),
-    module_info_get_globals(ModuleInfo0, Globals),
-    globals.lookup_bool_option(Globals, special_preds, HaveSpecialPreds),
     ( if
         % Look for calls to unify/2 and compare/3 that can be specialized.
         specialize_special_pred(CalledPred, CalledProc, Args0,
-            MaybeContext, GoalInfo, HaveSpecialPreds, GoalExpr1, !Info)
+            MaybeContext, GoalInfo, GoalExpr1, !Info)
     then
         GoalExpr = GoalExpr1,
         !Info ^ hoi_changed := ho_changed
@@ -2209,12 +2207,11 @@ find_typeclass_info_components(ModuleInfo, KnownVarMap,
     % returning a specialized goal.
     %
 :- pred specialize_special_pred(pred_id::in, proc_id::in, list(prog_var)::in,
-    maybe(call_unify_context)::in, hlds_goal_info::in, bool::in,
-    hlds_goal_expr::out, higher_order_info::in, higher_order_info::out)
-    is semidet.
+    maybe(call_unify_context)::in, hlds_goal_info::in, hlds_goal_expr::out,
+    higher_order_info::in, higher_order_info::out) is semidet.
 
 specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
-        OrigGoalInfo, HaveSpecialPreds, Goal, !Info) :-
+        OrigGoalInfo, Goal, !Info) :-
     ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
     ProcInfo0 = !.Info ^ hoi_proc_info,
     KnownVarMap = !.Info ^ hoi_known_var_map,
@@ -2310,27 +2307,23 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
                 MaybeContext, OrigGoalInfo, Goal, !Info)
         else
             call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
-                TypeInfoArgs, SpecialPredArgs, MaybeContext, HaveSpecialPreds,
-                Goal, !Info)
+                TypeInfoArgs, SpecialPredArgs, MaybeContext, Goal, !Info)
         )
     else
         call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
-            TypeInfoArgs, SpecialPredArgs, MaybeContext, HaveSpecialPreds,
-            Goal, !Info)
+            TypeInfoArgs, SpecialPredArgs, MaybeContext, Goal, !Info)
     ).
 
 :- pred call_type_specific_unify_or_compare(mer_type::in, special_pred_id::in,
     list(prog_var)::in, list(prog_var)::in,
-    maybe(call_unify_context)::in, bool::in, hlds_goal_expr::out,
+    maybe(call_unify_context)::in, hlds_goal_expr::out,
     higher_order_info::in, higher_order_info::out) is semidet.
 
 call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
-        TypeInfoArgs, SpecialPredArgs, MaybeContext, HaveSpecialPreds, Goal,
-        !Info) :-
+        TypeInfoArgs, SpecialPredArgs, MaybeContext, Goal, !Info) :-
     % We can only specialize unifications and comparisons to call the
     % type-specific unify or compare predicate if we are generating
     % such predicates.
-    HaveSpecialPreds = yes,
     find_special_proc(SpecialPredType, SpecialId, SymName, SpecialPredId,
         SpecialProcId, !Info),
     ( if type_is_higher_order(SpecialPredType) then

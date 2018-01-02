@@ -135,8 +135,8 @@ eagerly_add_special_preds(TVarSet, Type, TypeCtor, TypeBody, Context,
         can_generate_special_pred_clauses_for_type(!.ModuleInfo, TypeCtor,
             TypeBody)
     then
-        add_special_pred(spec_pred_unify, TVarSet, Type, TypeCtor, TypeBody,
-            Context, TypeStatus, !ModuleInfo),
+        add_special_pred_for_real(spec_pred_unify, TVarSet, Type,
+            TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo),
         ThisModule = type_status_defined_in_this_module(TypeStatus),
         (
             ThisModule = yes,
@@ -167,8 +167,8 @@ eagerly_add_special_preds(TVarSet, Type, TypeCtor, TypeBody, Context,
             then
                 true
             else
-                add_special_pred_decl(spec_pred_compare, TVarSet, Type,
-                    TypeCtor, Context, TypeStatus, !ModuleInfo)
+                add_special_pred_decl_for_real(spec_pred_compare, TVarSet,
+                    Type, TypeCtor, Context, TypeStatus, !ModuleInfo)
             )
         )
     else
@@ -184,60 +184,10 @@ eagerly_add_special_preds(TVarSet, Type, TypeCtor, TypeBody, Context,
 add_special_pred_list([], _, _, _, _, _, _, !ModuleInfo).
 add_special_pred_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
         TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo) :-
-    add_special_pred(SpecialPredId, TVarSet, Type,
+    do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
         TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo),
     add_special_pred_list(SpecialPredIds, TVarSet, Type,
         TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo).
-
-:- pred add_special_pred(special_pred_id::in, tvarset::in, mer_type::in,
-    type_ctor::in, hlds_type_body::in, prog_context::in, type_status::in,
-    module_info::in, module_info::out) is det.
-
-add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
-        TypeStatus0, !ModuleInfo) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, special_preds, GenSpecialPreds),
-    (
-        GenSpecialPreds = yes,
-        do_add_special_pred_for_real(SpecialPredId, TVarSet,
-            Type, TypeCtor, TypeBody, Context, TypeStatus0, !ModuleInfo)
-    ;
-        GenSpecialPreds = no,
-        (
-            SpecialPredId = spec_pred_unify,
-            % XXX STATUS
-            add_special_pred_unify_status(TypeBody, TypeStatus0, TypeStatus),
-            do_add_special_pred_for_real(SpecialPredId, TVarSet,
-                Type, TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo)
-        ;
-            SpecialPredId = spec_pred_index
-        ;
-            SpecialPredId = spec_pred_compare,
-            (
-                TypeBody = hlds_du_type(_, _, _, _, MaybeUserEq, _, _, _, _),
-                (
-                    MaybeUserEq = yes(_),
-                    % The compiler generated comparison procedure prints
-                    % an error message, since comparisons of types with
-                    % user-defined equality are not allowed.
-                    % We get the runtime system to invoke this procedure
-                    % instead of printing the error message itself, because
-                    % it is easier to generate a good error message in Mercury
-                    % code than in C code.
-                    do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
-                        TypeCtor, TypeBody, Context, TypeStatus0, !ModuleInfo)
-                ;
-                    MaybeUserEq = no
-                )
-            ;
-                ( TypeBody = hlds_eqv_type(_)
-                ; TypeBody = hlds_foreign_type(_)
-                ; TypeBody = hlds_solver_type(_)
-                ; TypeBody = hlds_abstract_type(_)
-                )
-            )
-        )
-    ).
 
 do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
         TypeBody, Context, TypeStatus0, !ModuleInfo) :-
@@ -321,35 +271,10 @@ adjust_types_with_special_preds_in_private_builtin(Type) = NormalizedType :-
 add_special_pred_decl_list([], _, _, _, _, _, !ModuleInfo).
 add_special_pred_decl_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
         TypeCtor, Context, TypeStatus, !ModuleInfo) :-
-    add_special_pred_decl(SpecialPredId, TVarSet, Type,
+    do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type,
         TypeCtor, Context, TypeStatus, !ModuleInfo),
     add_special_pred_decl_list(SpecialPredIds, TVarSet, Type,
         TypeCtor, Context, TypeStatus, !ModuleInfo).
-
-:- pred add_special_pred_decl(special_pred_id::in, tvarset::in, mer_type::in,
-    type_ctor::in, prog_context::in, type_status::in,
-    module_info::in, module_info::out) is det.
-
-add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor,
-        Context, TypeStatus, !ModuleInfo) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, special_preds, GenSpecialPreds),
-    (
-        GenSpecialPreds = yes,
-        do_add_special_pred_decl_for_real(SpecialPredId,
-            TVarSet, Type, TypeCtor, Context, TypeStatus, !ModuleInfo)
-    ;
-        GenSpecialPreds = no,
-        (
-            SpecialPredId = spec_pred_unify,
-            do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
-                Type, TypeCtor, Context, TypeStatus, !ModuleInfo)
-        ;
-            SpecialPredId = spec_pred_compare
-        ;
-            SpecialPredId = spec_pred_index
-        )
-    ).
 
 do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         Context, TypeStatus, !ModuleInfo) :-

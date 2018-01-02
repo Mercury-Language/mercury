@@ -72,12 +72,10 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -236,36 +234,20 @@ builtin_type_defn = TypeDefn :-
 gen_type_ctor_gen_info(ModuleInfo, TypeCtor, ModuleName, TypeName, TypeArity,
         TypeDefn, TypeCtorGenInfo) :-
     hlds_data.get_type_defn_status(TypeDefn, Status),
-    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_special_pred_maps(ModuleInfo, SpecMaps),
-    globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
-    ( if
-        (
-            SpecialPreds = yes
-        ;
-            SpecialPreds = no,
-            hlds_data.get_type_defn_body(TypeDefn, Body),
-            Body ^ du_type_usereq = yes(_UserDefinedEquality)
-        )
-    then
-        UnifyMap = SpecMaps ^ spm_unify_map,
-        map.lookup(UnifyMap, TypeCtor, UnifyPredId),
-        special_pred_mode_num(spec_pred_unify, UnifyProcInt),
-        proc_id_to_int(UnifyProcId, UnifyProcInt),
-        Unify = proc(UnifyPredId, UnifyProcId),
 
-        CompareMap = SpecMaps ^ spm_compare_map,
-        map.lookup(CompareMap, TypeCtor, ComparePredId),
-        special_pred_mode_num(spec_pred_compare, CompareProcInt),
-        proc_id_to_int(CompareProcId, CompareProcInt),
-        Compare = proc(ComparePredId, CompareProcId)
-    else
-        lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
-            "unused", pf_predicate, 0, only_mode, PredId, ProcId),
-        Unused = proc(PredId, ProcId),
-        Unify = Unused,
-        Compare = Unused
-    ),
+    UnifyMap = SpecMaps ^ spm_unify_map,
+    map.lookup(UnifyMap, TypeCtor, UnifyPredId),
+    special_pred_mode_num(spec_pred_unify, UnifyProcInt),
+    proc_id_to_int(UnifyProcId, UnifyProcInt),
+    Unify = proc(UnifyPredId, UnifyProcId),
+
+    CompareMap = SpecMaps ^ spm_compare_map,
+    map.lookup(CompareMap, TypeCtor, ComparePredId),
+    special_pred_mode_num(spec_pred_compare, CompareProcInt),
+    proc_id_to_int(CompareProcId, CompareProcInt),
+    Compare = proc(ComparePredId, CompareProcId),
+
     TypeCtorGenInfo = type_ctor_gen_info(TypeCtor, ModuleName, TypeName,
         TypeArity, Status, TypeDefn, Unify, Compare).
 

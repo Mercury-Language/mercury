@@ -192,7 +192,6 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
         determinism_components(Detism, CanFail, at_most_one),
         lookup_mode_num(ModuleInfo, TypeCtor, UnifyMode, Detism, ProcId),
         module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
         globals.lookup_bool_option(Globals, can_compare_compound_values,
             CanCompareCompoundValues),
         ( if
@@ -209,18 +208,11 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
             call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo0, Call)
         else if
             hlds_pred.in_in_unification_proc_id(ProcId),
-            (
-                SpecialPreds = no
-            ;
-                SpecialPreds = yes,
-
-                % For most imported types we only generate unification
-                % predicate declarations if they are needed for complicated
-                % unifications other than proc_id 0. higher_order.m will
-                % specialize these cases if possible.
-                %
-                special_pred_is_generated_lazily(ModuleInfo, TypeCtor)
-            )
+            % For most imported types we only generate unification
+            % predicate declarations if they are needed for complicated
+            % unifications other than proc_id 0. higher_order.m will
+            % specialize these cases if possible.
+            special_pred_is_generated_lazily(ModuleInfo, TypeCtor)
         then
             make_type_info_vars([Type], TypeInfoVars, ExtraGoals, !Info),
             ( if TypeInfoVars = [TypeInfoVarPrime] then

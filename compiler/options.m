@@ -581,10 +581,16 @@
             % definitions. Once the modified compiler is installed on all
             % relevant machines, the option can be turned off again.
 
-    ;       special_preds
+%   ;       special_preds
             % Generate unify and compare preds. For measurement only.
             % Code generated with this set to `no' is unlikely to actually
             % work.
+            % Disabled to allow the code paths for generating special preds
+            % to be simplified. If this option is ever needed again, which
+            % I (zs) do not think is likely, it should be implemented
+            % differently: by generating the special predicates, and then
+            % not writing them out. The logic for *that* should be a lot
+            % simpler.
 
     ;       type_ctor_info
             % Generate type_ctor_info structures. For measurement only --
@@ -1476,7 +1482,6 @@ option_defaults_2(internal_use_option, [
     lexically_order_constructors        -   bool(no),
     delay_partial_instantiations        -   bool(no),
     allow_defn_of_builtins              -   bool(no),
-    special_preds                       -   bool(yes),
     type_ctor_info                      -   bool(yes),
     type_ctor_layout                    -   bool(yes),
     type_ctor_functors                  -   bool(yes),
@@ -2419,7 +2424,6 @@ long_option("lexically-order-constructors",
                                     lexically_order_constructors).
 long_option("delay-partial-instantiations", delay_partial_instantiations).
 long_option("allow-defn-of-builtins",           allow_defn_of_builtins).
-long_option("special-preds",        special_preds).
 long_option("type-ctor-info",       type_ctor_info).
 long_option("type-ctor-layout",     type_ctor_layout).
 long_option("type-ctor-functors",   type_ctor_functors).
