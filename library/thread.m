@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2001, 2003-2004, 2006-2008, 2010-2011 The University
 % of Melbourne.
-% Copyright (C) 2014-2017 The Mercury Team.
+% Copyright (C) 2014-2018 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -405,17 +405,15 @@ spawn_native(Goal, Res, !IO) :-
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    // Only available in .NET 4.0.
-    // System.Threading.Yield();
+    System.Threading.Thread.Yield();
 ").
 
 :- pragma foreign_proc("Java",
-    yield(IO0::di, IO::uo),
+    yield(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
     java.lang.Thread.yield();
-    IO = IO0;
 ").
 
 yield(!IO).

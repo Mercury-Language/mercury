@@ -1,5 +1,6 @@
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1999,2001-2004, 2006-2012 The University of Melbourne.
+# Copyright (C) 2013-2018 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -256,10 +257,10 @@ MS_AL=`basename "$MS_AL"`
 AC_PATH_PROGS([CLI_INTERPRETER], [mono])
 
 # Check for the C# (C sharp) compiler.
-# mcs is the Mono C# compiler targetting all runtimes
-# dmcs is the Mono C# compiler targeting the 4.0 runtime
-# gmcs is the Mono C# compiler targeting the 2.0 runtime (with generics).
-# cscc is the DotGNU C# compiler.
+# csc is the Microsoft C# compiler.
+# mcs is the Mono C# compiler targetting all runtime versions.
+# (dmcs and gmcs are older aliases for the Mono C# compiler which we do
+#  not use.)
 
 AC_CACHE_SAVE
 case "$mercury_cv_with_csharp_compiler" in
@@ -272,7 +273,7 @@ case "$mercury_cv_with_csharp_compiler" in
         exit 1
         ;;
     "")
-        CSC_COMPILERS="csc mcs dmcs gmcs cscc"
+        CSC_COMPILERS="csc mcs"
         ;;
     *)
         CSC_COMPILERS="$mercury_cv_with_csharp_compiler"
@@ -382,14 +383,6 @@ case "$CSC" in
     ;;
 
     mcs*)
-        CSHARP_COMPILER_TYPE=mono
-    ;;
-
-    dmcs*)
-        CSHARP_COMPILER_TYPE=mono
-    ;;
-
-    gmcs*)
         CSHARP_COMPILER_TYPE=mono
     ;;
 
