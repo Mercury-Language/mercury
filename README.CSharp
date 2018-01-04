@@ -10,31 +10,12 @@ bytecode suitable for running on the .NET or Mono runtime systems.
 The port is mostly complete, but some parts of the Mercury standard
 library are not yet implemented (for a full list see the FAQ below).
 
-The port is currently targeted at C# 2.0 or higher.
+The port is targeted at C# 5.0 or higher.
 
 PREREQUISITES
 
-In order to try this system you will need
-
-        - Either Microsoft.NET or Mono 2.8 or above.
-
-
-VERSIONS OF THE .NET FRAMEWORK ON MONO
-
-On Mono, the C# compiler has a number of aliases: gmcs, mcs, dmcs.  The alias
-with which the C# compiler is invoked controls which version of the .NET
-framework is used by default.  For Mono 2.8, the defaults are:
-
-    gmcs - .NET version 2.0
-    dmcs - .NET version 4.0
-    mcs  - .NET version 2.0
-
-You can specify what C# compiler Mercury should use at configuration time using
-configure's `--with-csharp-compiler' option.  The output from the configure
-script will report which version of the .NET framework is going be used, for
-example:
-
-    checking version of .NET libraries... 4.0.0.0
+In order to use this port you will need either Microsoft.NET 4.5 or above,
+or Mono 4.0 or above.
 
 -----------------------------------------------------------------------------
 
