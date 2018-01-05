@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2016 The Mercury team.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -209,6 +209,8 @@
     ;       tcr_uint16
     ;       tcr_int32
     ;       tcr_uint32
+    ;       tcr_int64
+    ;       tcr_uint64
     ;       tcr_unknown.
 
     % We keep all the other types abstract.
@@ -906,6 +908,8 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
         ; TypeCtorRep = tcr_uint16
         ; TypeCtorRep = tcr_int32
         ; TypeCtorRep = tcr_uint32
+        ; TypeCtorRep = tcr_int64
+        ; TypeCtorRep = tcr_uint64
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string
@@ -1017,6 +1021,8 @@ get_functor_impl(TypeInfo, FunctorNumber,
         ; TypeCtorRep = tcr_uint16
         ; TypeCtorRep = tcr_int32
         ; TypeCtorRep = tcr_uint32
+        ; TypeCtorRep = tcr_int64
+        ; TypeCtorRep = tcr_uint64
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string
@@ -1254,6 +1260,8 @@ type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
         ; TypeCtorRep = tcr_uint16
         ; TypeCtorRep = tcr_int32
         ; TypeCtorRep = tcr_uint32
+        ; TypeCtorRep = tcr_int64
+        ; TypeCtorRep = tcr_uint64
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_string
@@ -2790,6 +2798,20 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
+        TypeCtorRep = tcr_int64,
+        % XXX INT64
+        Functor = "<<int64>>",
+        Ordinal = -1,
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = tcr_uint64,
+        % XXX INT64
+        Functor = "<<uint64>>",
+        Ordinal = -1,
+        Arity = 0,
+        Arguments = []
+    ;
         TypeCtorRep = tcr_char,
         det_dynamic_cast(Term, Char),
         Functor = string.from_char_list(['\'', Char, '\'']),
@@ -3062,6 +3084,8 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
         ; TypeCtorRep = tcr_uint16
         ; TypeCtorRep = tcr_int32
         ; TypeCtorRep = tcr_uint32
+        ; TypeCtorRep = tcr_int64
+        ; TypeCtorRep = tcr_uint64
         ; TypeCtorRep = tcr_char
         ; TypeCtorRep = tcr_float
         ; TypeCtorRep = tcr_string

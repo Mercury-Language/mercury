@@ -2199,10 +2199,12 @@ int
 int8
 int16
 int32
+int64
 uint
 uint8
 uint16
 uint32
+uint64
 float
 character
 string
@@ -7148,10 +7150,12 @@ The Mercury primitive types are mapped to the following C types:
   @item @code{int8}   @tab @code{int8_t}
   @item @code{int16}  @tab @code{int16_t}
   @item @code{int32}  @tab @code{int32_t}
+@c  @item @code{int64}  @tab @code{int64_t}
   @item @code{uint}   @tab @code{MR_Unsigned}
   @item @code{uint8}  @tab @code{uint8_t}
   @item @code{uint16} @tab @code{uint16_t}
   @item @code{uint32} @tab @code{uint32_t}
+@c  @item @code{uint64} @tab @code{uint64_t}
   @item @code{float}  @tab @code{MR_Float}
   @item @code{char}   @tab @code{MR_Char}
   @item @code{string} @tab @code{MR_String}
@@ -7245,10 +7249,12 @@ Infrastructure (CLI) and C# types:
   @item @code{int8}   @tab @code{System.Int8}   @tab @code{sbyte}
   @item @code{int16}  @tab @code{System.Int16}  @tab @code{short}
   @item @code{int32}  @tab @code{System.Int32}  @tab @code{int}
+@c  @item @code{int64}  @tab @code{System.Int64}  @tab @code{long}
   @item @code{uint}   @tab @code{System.UInt32} @tab @code{uint}
   @item @code{uint8}  @tab @code{System.UInt8}  @tab @code{byte}
   @item @code{uint16} @tab @code{System.UInt16} @tab @code{ushort}
   @item @code{uint32} @tab @code{System.UInt32} @tab @code{uint}
+@c  @item @code{uint64} @tab @code{System.UInt64} @tab @code{ulong}
   @item @code{float}  @tab @code{System.Double} @tab @code{double}
   @item @code{char}   @tab @code{System.Int32}  @tab @code{int}
   @item @code{string} @tab @code{System.String} @tab @code{string}
@@ -7374,10 +7380,12 @@ The Mercury primitive types are mapped to the following Java types:
   @item @code{int8}   @tab @code{byte}
   @item @code{int16}  @tab @code{short}
   @item @code{int32}  @tab @code{int}
+@c  @item @code{int64}  @tab @code{long}
   @item @code{uint}   @tab @code{int}
   @item @code{uint8}  @tab @code{byte}
   @item @code{uint16} @tab @code{short}
   @item @code{uint32} @tab @code{int}
+@c  @item @code{uint64}  @tab @code{long}
   @item @code{float}  @tab @code{double}
   @item @code{char}   @tab @code{int}
   @item @code{string} @tab @code{java.lang.String}

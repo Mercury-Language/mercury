@@ -1240,6 +1240,12 @@ table_trie_step_desc(TVarSet, Step) = Str :-
         Step = table_trie_step_int(int_type_uint32),
         Str = "uint32"
     ;
+        Step = table_trie_step_int(int_type_int64),
+        Str = "int64"
+    ;
+        Step = table_trie_step_int(int_type_uint64),
+        Str = "uint64"
+    ;
         Step = table_trie_step_char,
         Str = "char"
     ;

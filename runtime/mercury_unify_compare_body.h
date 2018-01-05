@@ -680,6 +680,46 @@ start_label:
                 return_unify_answer(builtin, float, 0, fx == fy);
 #endif
             }
+        
+        case MR_TYPECTOR_REP_INT64:
+            {
+                int64_t   fx, fy;
+
+                fx = MR_word_to_int64(x);
+                fy = MR_word_to_int64(y);
+#ifdef  select_compare_code
+                if (fx == fy) {
+                    return_compare_answer(builtin, int64, 0, MR_COMPARE_EQUAL);
+                } else if (fx < fy) {
+                    return_compare_answer(builtin, int64, 0, MR_COMPARE_LESS);
+                } else {
+                    return_compare_answer(builtin, int64, 0,
+                        MR_COMPARE_GREATER);
+                }
+#else
+                return_unify_answer(builtin, int64, 0, fx == fy);
+#endif
+            }
+        
+        case MR_TYPECTOR_REP_UINT64:
+            {
+                uint64_t   fx, fy;
+
+                fx = MR_word_to_uint64(x);
+                fy = MR_word_to_uint64(y);
+#ifdef  select_compare_code
+                if (fx == fy) {
+                    return_compare_answer(builtin, uint64, 0, MR_COMPARE_EQUAL);
+                } else if (fx < fy) {
+                    return_compare_answer(builtin, uint64, 0, MR_COMPARE_LESS);
+                } else {
+                    return_compare_answer(builtin, uint64, 0,
+                        MR_COMPARE_GREATER);
+                }
+#else
+                return_unify_answer(builtin, uint64, 0, fx == fy);
+#endif
+            }
 
         case MR_TYPECTOR_REP_STRING:
             {

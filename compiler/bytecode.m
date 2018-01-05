@@ -1188,6 +1188,38 @@ binop_code(bitwise_or(int_type_uint32),  153).
 binop_code(bitwise_xor(int_type_uint32), 154).
 binop_code(unchecked_left_shift(int_type_uint32),  155).
 binop_code(unchecked_right_shift(int_type_uint32), 156).
+binop_code(eq(int_type_int64),       157).
+binop_code(ne(int_type_int64),       158).
+binop_code(int_lt(int_type_int64),   159).
+binop_code(int_gt(int_type_int64),   160).
+binop_code(int_le(int_type_int64),   161).
+binop_code(int_ge(int_type_int64),   162).
+binop_code(int_add(int_type_int64),  163).
+binop_code(int_sub(int_type_int64),  164).
+binop_code(int_mul(int_type_int64),  165).
+binop_code(int_div(int_type_int64),  166).
+binop_code(int_mod(int_type_int64),  167).
+binop_code(bitwise_and(int_type_int64), 168).
+binop_code(bitwise_or(int_type_int64),  169).
+binop_code(bitwise_xor(int_type_int64), 170).
+binop_code(unchecked_left_shift(int_type_int64), 171).
+binop_code(unchecked_right_shift(int_type_int64), 172).
+binop_code(eq(int_type_uint64),       173).
+binop_code(ne(int_type_uint64),       174).
+binop_code(int_lt(int_type_uint64),   175).
+binop_code(int_gt(int_type_uint64),   176).
+binop_code(int_le(int_type_uint64),   177).
+binop_code(int_ge(int_type_uint64),   178).
+binop_code(int_add(int_type_uint64),  179).
+binop_code(int_sub(int_type_uint64),  180).
+binop_code(int_mul(int_type_uint64),  181).
+binop_code(int_div(int_type_uint64),  182).
+binop_code(int_mod(int_type_uint64),  183).
+binop_code(bitwise_and(int_type_uint64), 184).
+binop_code(bitwise_or(int_type_uint64),  185).
+binop_code(bitwise_xor(int_type_uint64), 186).
+binop_code(unchecked_left_shift(int_type_uint64),  187).
+binop_code(unchecked_right_shift(int_type_uint64), 188).
 
 :- pred binop_debug(binary_op::in, string::out) is det.
 
@@ -1348,6 +1380,38 @@ binop_debug(bitwise_or(int_type_uint32),  "|(uint32)").
 binop_debug(bitwise_xor(int_type_uint32), "^(uint32)").
 binop_debug(unchecked_left_shift(int_type_uint32), "<<(uint32)").
 binop_debug(unchecked_right_shift(int_type_uint32), ">>(uint32)").
+binop_debug(eq(int_type_int64),      "==(int64)").
+binop_debug(ne(int_type_int64),      "!=(int64)").
+binop_debug(int_lt(int_type_int64),  "<(int64)").
+binop_debug(int_gt(int_type_int64),  ">(int64)").
+binop_debug(int_le(int_type_int64),  "<=(int64)").
+binop_debug(int_ge(int_type_int64),  ">=(int64)").
+binop_debug(int_add(int_type_int64), "+(int64)").
+binop_debug(int_sub(int_type_int64), "-(int64)").
+binop_debug(int_mul(int_type_int64), "*(int64)").
+binop_debug(int_div(int_type_int64), "/(int64)").
+binop_debug(int_mod(int_type_int64), "mod(int64)").
+binop_debug(bitwise_and(int_type_int64), "&(int64)").
+binop_debug(bitwise_or(int_type_int64), "|(int64)").
+binop_debug(bitwise_xor(int_type_int64), "^(int64)").
+binop_debug(unchecked_left_shift(int_type_int64), "<<(int64)").
+binop_debug(unchecked_right_shift(int_type_int64), ">>(int64)").
+binop_debug(eq(int_type_uint64),      "==(uint64)").
+binop_debug(ne(int_type_uint64),      "!=(uint64)").
+binop_debug(int_lt(int_type_uint64),  "<(uint64)").
+binop_debug(int_gt(int_type_uint64),  ">(uint64)").
+binop_debug(int_le(int_type_uint64),  "<=(uint64)").
+binop_debug(int_ge(int_type_uint64),  ">=(uint64)").
+binop_debug(int_add(int_type_uint64), "+(uint64)").
+binop_debug(int_sub(int_type_uint64), "-(uint64)").
+binop_debug(int_mul(int_type_uint64), "*(uint64)").
+binop_debug(int_div(int_type_uint64), "/(uint64)").
+binop_debug(int_mod(int_type_uint64), "mod(uint64").
+binop_debug(bitwise_and(int_type_uint64), "&(uint64)").
+binop_debug(bitwise_or(int_type_uint64),  "|(uint64)").
+binop_debug(bitwise_xor(int_type_uint64), "^(uint64)").
+binop_debug(unchecked_left_shift(int_type_uint64), "<<(uint64)").
+binop_debug(unchecked_right_shift(int_type_uint64), ">>(uint64)").
 
 :- pred unop_code(unary_op::in, int::out) is det.
 
@@ -1372,6 +1436,8 @@ unop_code(bitwise_complement(int_type_int16), 17).
 unop_code(bitwise_complement(int_type_uint16), 18).
 unop_code(bitwise_complement(int_type_int32), 19).
 unop_code(bitwise_complement(int_type_uint32), 20).
+unop_code(bitwise_complement(int_type_int64), 21).
+unop_code(bitwise_complement(int_type_uint64), 22).
 
 :- pred unop_debug(unary_op::in, string::out) is det.
 
@@ -1396,6 +1462,8 @@ unop_debug(bitwise_complement(int_type_int16), "bitwise_complement(int16)").
 unop_debug(bitwise_complement(int_type_uint16), "bitwise_complement(uint16)").
 unop_debug(bitwise_complement(int_type_int32), "bitwise_complement(int32)").
 unop_debug(bitwise_complement(int_type_uint32), "bitwise_complement(uint32)").
+unop_debug(bitwise_complement(int_type_int64), "bitwise_complement(int64)").
+unop_debug(bitwise_complement(int_type_uint64), "bitwise_complement(uint64)").
 
 %---------------------------------------------------------------------------%
 

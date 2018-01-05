@@ -468,6 +468,8 @@ add_dependency_arcs_in_cons(DepGraph, WhatEdges, Caller, ConsId, !DepArcs) :-
         ; ConsId = uint16_const(_)
         ; ConsId = int32_const(_)
         ; ConsId = uint32_const(_)
+        ; ConsId = int64_const(_)
+        ; ConsId = uint64_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

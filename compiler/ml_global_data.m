@@ -46,6 +46,10 @@
     --->    have_unboxed_floats
     ;       do_not_have_unboxed_floats.
 
+:- type have_unboxed_int64s
+    --->    have_unboxed_int64s
+    ;       do_not_have_unboxed_int64s.
+
 :- type ml_scalar_cell_map ==
     map(ml_scalar_common_type_num, ml_scalar_cell_group).
 
@@ -84,11 +88,14 @@
     % Initialize the ml_global_data structure to a value that represents
     % no global data structures known yet.
     %
-:- func ml_global_data_init(use_common_cells, have_unboxed_floats) =
-    ml_global_data.
+:- func ml_global_data_init(use_common_cells, have_unboxed_floats,
+    have_unboxed_int64s) = ml_global_data.
 
 :- func ml_global_data_have_unboxed_floats(ml_global_data) =
     have_unboxed_floats.
+
+:- func ml_global_data_have_unboxed_int64s(ml_global_data) =
+    have_unboxed_int64s.
 
     % ml_global_data_get_all_global_defns(GlobalData,
     %     ScalarCellGroupMap, VectorCellGroupMap, AllocIds,
@@ -237,6 +244,7 @@
                 mgd_pdup_rval_type_map          :: ml_rtti_rval_type_map,
                 mgd_use_common_cells            :: use_common_cells,
                 mgd_have_unboxed_floats         :: have_unboxed_floats,
+                mgd_have_unboxed_int64s         :: have_unboxed_int64s,
                 mgd_const_counter               :: counter,
 
                 mgd_cell_defns                  :: cord(mlds_global_var_defn),
@@ -257,20 +265,24 @@
 
 %---------------------------------------------------------------------------%
 
-ml_global_data_init(UseCommonCells, HaveUnboxedFloats) = GlobalData :-
+ml_global_data_init(UseCommonCells, HaveUnboxedFloats, HaveUnboxedInt64s) =
+        GlobalData :-
     GlobalData = ml_global_data(map.init, UseCommonCells, HaveUnboxedFloats,
-        counter.init(1), cord.init, cord.init, cord.init,
+        HaveUnboxedInt64s, counter.init(1), cord.init, cord.init, cord.init,
         counter.init(1), map.init, map.init, map.init, map.init,
         counter.init(0), bimap.init).
 
 ml_global_data_have_unboxed_floats(GlobalData) =
     GlobalData ^ mgd_have_unboxed_floats.
 
+ml_global_data_have_unboxed_int64s(GlobalData) =
+    GlobalData ^ mgd_have_unboxed_int64s.
+
 ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, AllocIds,
         RttiDefns, CellDefns, ClosureWrapperFuncDefns) :-
     GlobalData = ml_global_data(_PDupRvalTypeMap, _UseCommonCells,
-        _HaveUnboxedFloats, _ConstCounter,
+        _HaveUnboxedFloats, _HaveUnboxedInt64s, _ConstCounter,
         CellDefnsCord, RttiDefnsCord, ClosureWrapperFuncDefnsCord,
         _TypeNumCounter,
         _ScalarTypeNumMap, ScalarCellGroupMap,
@@ -765,6 +777,8 @@ cons_id_to_alloc_site_string(ConsId) = TypeStr :-
         ; ConsId = uint16_const(_)
         ; ConsId = int32_const(_)
         ; ConsId = uint32_const(_)
+        ; ConsId = int64_const(_)
+        ; ConsId = uint64_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

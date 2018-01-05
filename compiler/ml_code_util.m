@@ -707,6 +707,12 @@ ml_int_tag_to_rval_const(IntTag, MerType, MLDS_Type) = Rval :-
     ;
         IntTag = int_tag_uint32(UInt32),
         Rval = ml_const(mlconst_uint32(UInt32))
+    ;
+        IntTag = int_tag_int64(Int64),
+        Rval = ml_const(mlconst_int64(Int64))
+    ;
+        IntTag = int_tag_uint64(UInt64),
+        Rval = ml_const(mlconst_uint64(UInt64))
     ).
 
 %---------------------------------------------------------------------------%

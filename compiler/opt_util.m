@@ -2623,6 +2623,8 @@ replace_labels_rval_const(Const0, Const, ReplMap) :-
         ; Const0 = llconst_uint16(_)
         ; Const0 = llconst_int32(_)
         ; Const0 = llconst_uint32(_)
+        ; Const0 = llconst_int64(_)
+        ; Const0 = llconst_uint64(_)
         ; Const0 = llconst_foreign(_, _)
         ; Const0 = llconst_float(_)
         ; Const0 = llconst_string(_)

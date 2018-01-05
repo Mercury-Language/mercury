@@ -609,6 +609,8 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UINT16),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_INT32),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UINT32),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_INT64),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UINT64),
     // MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     // MR_TYPE_CTOR_STATS depends on this.
 
@@ -685,6 +687,8 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "UINT16",                                                           \
     "INT32",                                                            \
     "UINT32",                                                           \
+    "INT64",                                                            \
+    "UINT64",                                                           \
     "UNKNOWN"
 
 extern  MR_ConstString  MR_ctor_rep_name[];
@@ -1445,6 +1449,12 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
   #define MR_UINT32_CTOR_ADDR                                             \
       (MR_Word *) &mercury__builtin__builtin__type_ctor_info_uint32_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint32, 0)
+  #define MR_INT64_CTOR_ADDR                                              \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_int64_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int64, 0)
+  #define MR_UINT64_CTOR_ADDR                                             \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_uint64_0
+      // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, uint64, 0)
   #define MR_FLOAT_CTOR_ADDR                                              \
       (MR_Word *) &mercury__builtin__builtin__type_ctor_info_float_0
       // (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)

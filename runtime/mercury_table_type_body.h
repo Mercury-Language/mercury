@@ -336,6 +336,16 @@
             MR_TABLE_UINT32(STATS, DEBUG, BACK, table_next, table, data);
             table = table_next;
             return table;
+        
+        case MR_TYPECTOR_REP_INT64:
+            MR_TABLE_INT64(STATS, DEBUG, BACK, table_next, table, data);
+            table = table_next;
+            return table;
+
+        case MR_TYPECTOR_REP_UINT64:
+            MR_TABLE_UINT64(STATS, DEBUG, BACK, table_next, table, data);
+            table = table_next;
+            return table;
 
         case MR_TYPECTOR_REP_CHAR:
             MR_TABLE_CHAR(STATS, DEBUG, BACK, table_next, table, data);

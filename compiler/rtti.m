@@ -2418,6 +2418,10 @@ table_trie_step_to_c(table_trie_step_int(int_type_int32),
     "MR_TABLE_STEP_INT32", no).
 table_trie_step_to_c(table_trie_step_int(int_type_uint32),
     "MR_TABLE_STEP_UINT32", no).
+table_trie_step_to_c(table_trie_step_int(int_type_int64),
+    "MR_TABLE_STEP_INT64", no).
+table_trie_step_to_c(table_trie_step_int(int_type_uint64),
+    "MR_TABLE_STEP_UINT64", no).
 table_trie_step_to_c(table_trie_step_char, "MR_TABLE_STEP_CHAR", no).
 table_trie_step_to_c(table_trie_step_string, "MR_TABLE_STEP_STRING", no).
 table_trie_step_to_c(table_trie_step_float, "MR_TABLE_STEP_FLOAT", no).

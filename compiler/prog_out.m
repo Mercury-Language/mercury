@@ -390,6 +390,12 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
         ConsId = uint32_const(UInt32),
         String = string.uint32_to_string(UInt32)
     ;
+        ConsId = int64_const(Int64),
+        String = string.int_to_string(Int64) % XXX INT64
+    ;
+        ConsId = uint64_const(UInt64),
+        String = string.int_to_string(UInt64) % XXX INT64
+    ;
         ConsId = float_const(Float),
         String = float_to_string(Float)
     ;

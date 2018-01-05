@@ -61,8 +61,10 @@ public class TypeCtorRep implements java.io.Serializable {
         public static final int MR_TYPECTOR_REP_UINT16                  = 50;
         public static final int MR_TYPECTOR_REP_INT32                   = 51;
         public static final int MR_TYPECTOR_REP_UINT32                  = 52;
-        public static final int MR_TYPECTOR_REP_UNKNOWN                 = 53;
-        public static final int MR_TYPECTOR_REP_MAX                     = 54;
+        public static final int MR_TYPECTOR_REP_INT64                   = 53;
+        public static final int MR_TYPECTOR_REP_UINT64                  = 54;
+        public static final int MR_TYPECTOR_REP_UNKNOWN                 = 55;
+        public static final int MR_TYPECTOR_REP_MAX                     = 56;
 
         // Instance variable for TypeCtorRep objects.
 	

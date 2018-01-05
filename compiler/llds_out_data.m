@@ -593,6 +593,10 @@ output_llds_type(lt_int(int_type_int32), !IO) :-
     io.write_string("int32_t", !IO).
 output_llds_type(lt_int(int_type_uint32), !IO) :-
     io.write_string("uint32_t", !IO).
+output_llds_type(lt_int(int_type_int64), !IO) :-
+    io.write_string("int64_t", !IO).
+output_llds_type(lt_int(int_type_uint64), !IO) :-
+    io.write_string("uint64_t", !IO).
 output_llds_type(lt_float, !IO) :-
     io.write_string("MR_Float", !IO).
 output_llds_type(lt_word, !IO) :-
@@ -1236,6 +1240,12 @@ output_rval_const(Info, Const, !IO) :-
         Const = llconst_uint32(N),
         c_util.output_uint32_expr_cur_stream(N, !IO)
     ;
+        Const = llconst_int64(N),
+        c_util.output_int64_expr_cur_stream(N, !IO)
+    ;
+        Const = llconst_uint64(N),
+        c_util.output_uint64_expr_cur_stream(N, !IO)
+    ;
         Const = llconst_foreign(Value, Type),
         io.write_char('(', !IO),
         output_llds_type_cast(Type, !IO),
@@ -1387,6 +1397,12 @@ builtin_type_to_type_ctor_addr(Name, Macro) :-
     ;
         Name = "uint32",
         Macro = "MR_UINT32_CTOR_ADDR"
+    ;
+        Name = "int64",
+        Macro = "MR_INT64_CTOR_ADDR"
+    ;
+        Name = "uint64",
+        Macro = "MR_UINT64_CTOR_ADDR"
     ;
         Name = "float",
         Macro = "MR_FLOAT_CTOR_ADDR"

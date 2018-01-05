@@ -933,6 +933,8 @@ qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
         ; ConsId0 = uint16_const(_)
         ; ConsId0 = int32_const(_)
         ; ConsId0 = uint32_const(_)
+        ; ConsId0 = int64_const(_)
+        ; ConsId0 = uint64_const(_)
         ; ConsId0 = float_const(_)
         ; ConsId0 = char_const(_)
         ; ConsId0 = string_const(_)

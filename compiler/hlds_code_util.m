@@ -111,6 +111,12 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         ConsId = uint32_const(UInt32),
         Tag = int_tag(int_tag_uint32(UInt32))
     ;
+        ConsId = int64_const(Int64),
+        Tag = int_tag(int_tag_int64(Int64))
+    ;
+        ConsId = uint64_const(UInt64),
+        Tag = int_tag(int_tag_uint64(UInt64))
+    ;
         ConsId = float_const(Float),
         Tag = float_tag(Float)
     ;

@@ -653,8 +653,25 @@ convert_type_to_mercury(Rval, Type, TargetArgLoc, ConvertedRval) :-
             % is signed.
             ConvertedRval = "(MR_UnsignedChar) " ++ Rval
         ;
-            BuiltinType = builtin_type_int(_),
-            ConvertedRval = Rval
+            BuiltinType = builtin_type_int(IntType),
+            (
+                ( IntType = int_type_int
+                ; IntType = int_type_uint
+                ; IntType = int_type_int8
+                ; IntType = int_type_uint8
+                ; IntType = int_type_int16
+                ; IntType = int_type_uint16
+                ; IntType = int_type_int32
+                ; IntType = int_type_uint32
+                ),
+                ConvertedRval = Rval
+            ;
+                IntType = int_type_int64,
+                ConvertedRval = "MR_int64_to_word(" ++ Rval ++ ")"
+            ;
+                IntType = int_type_uint64,
+                ConvertedRval = "MR_uint64_to_word(" ++ Rval ++ ")"
+            )
         )
     ;
         ( Type = type_variable(_, _)
@@ -683,9 +700,27 @@ convert_type_from_mercury(SourceArgLoc, Rval, Type, ConvertedRval) :-
                 ConvertedRval = Rval
             )
         ;
-            ( BuiltinType = builtin_type_int(_)
-            ; BuiltinType = builtin_type_char
-            ),
+            BuiltinType = builtin_type_int(IntType),
+            (
+                ( IntType = int_type_int
+                ; IntType = int_type_uint
+                ; IntType = int_type_int8
+                ; IntType = int_type_uint8
+                ; IntType = int_type_int16
+                ; IntType = int_type_uint16
+                ; IntType = int_type_int32
+                ; IntType = int_type_uint32
+                ),
+                ConvertedRval = Rval
+            ;
+                IntType = int_type_int64,
+                ConvertedRval = "MR_word_to_int64(" ++ Rval ++ ")"
+            ;
+                IntType = int_type_uint64,
+                ConvertedRval = "MR_word_to_uint64(" ++ Rval ++ ")"
+            )
+        ;
+            BuiltinType = builtin_type_char,
             ConvertedRval = Rval
         )
     ;
@@ -961,6 +996,8 @@ foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
             ; IntTagType = int_tag_uint16(_)
             ; IntTagType = int_tag_int32(_)
             ; IntTagType = int_tag_uint32(_)
+            ; IntTagType = int_tag_int64(_)
+            ; IntTagType = int_tag_uint64(_)
             ),
             unexpected($module, $pred, "enum constant requires an int tag")
         )

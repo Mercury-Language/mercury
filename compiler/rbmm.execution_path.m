@@ -236,6 +236,8 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
         ; MainConsId = uint16_const(_UInt16)
         ; MainConsId = int32_const(_Int32)
         ; MainConsId = uint32_const(_UInt32)
+        ; MainConsId = int64_const(_Int64)
+        ; MainConsId = uint64_const(_UInt64)
         ; MainConsId = float_const(_Float)
         ; MainConsId = char_const(_Char)
         ; MainConsId = string_const(_String)

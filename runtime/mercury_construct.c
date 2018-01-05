@@ -166,6 +166,8 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_UINT16:
     case MR_TYPECTOR_REP_INT32:
     case MR_TYPECTOR_REP_UINT32:
+    case MR_TYPECTOR_REP_INT64:
+    case MR_TYPECTOR_REP_UINT64:
     case MR_TYPECTOR_REP_CHAR:
     case MR_TYPECTOR_REP_FLOAT:
     case MR_TYPECTOR_REP_STRING:
@@ -329,6 +331,8 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_UINT16:
         case MR_TYPECTOR_REP_INT32:
         case MR_TYPECTOR_REP_UINT32:
+        case MR_TYPECTOR_REP_INT64:
+        case MR_TYPECTOR_REP_UINT64:
         case MR_TYPECTOR_REP_CHAR:
         case MR_TYPECTOR_REP_FLOAT:
         case MR_TYPECTOR_REP_STRING:

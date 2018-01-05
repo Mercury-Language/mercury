@@ -174,6 +174,8 @@
     ;       etcr_uint16
     ;       etcr_int32
     ;       etcr_uint32
+    ;       etcr_int64
+    ;       etcr_uint64
     ;       etcr_float
     ;       etcr_char
     ;       etcr_string
@@ -885,6 +887,20 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
+        TypeCtorRep = etcr_int64,
+        % XXX INT64
+        Functor = "<<int64>>",
+        FunctorNumber = 0,
+        Arity = 0,
+        Arguments = []
+    ;
+        TypeCtorRep = etcr_uint64,
+        % XXX INT64
+        Functor = "<<uint64>>",
+        FunctorNumber = 0,
+        Arity = 0,
+        Arguments = []
+    ;
         TypeCtorRep = etcr_float,
         det_dynamic_cast(Term, Float),
         Functor = float_to_string(Float),
@@ -1252,6 +1268,8 @@ num_functors(TypeInfo, MaybeNumFunctors) :-
         ; TypeCtorRep = etcr_uint16
         ; TypeCtorRep = etcr_int32
         ; TypeCtorRep = etcr_uint32
+        ; TypeCtorRep = etcr_int64
+        ; TypeCtorRep = etcr_uint64
         ; TypeCtorRep = etcr_float
         ; TypeCtorRep = etcr_char
         ; TypeCtorRep = etcr_string
@@ -1376,6 +1394,8 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
         ; TypeCtorRep = etcr_uint16
         ; TypeCtorRep = etcr_int32
         ; TypeCtorRep = etcr_uint32
+        ; TypeCtorRep = etcr_int64
+        ; TypeCtorRep = etcr_uint64
         ; TypeCtorRep = etcr_float
         ; TypeCtorRep = etcr_char
         ; TypeCtorRep = etcr_string
@@ -1535,6 +1555,8 @@ construct(TypeDesc, Index, Args) = Term :-
         ; TypeCtorRep = etcr_uint16
         ; TypeCtorRep = etcr_int32
         ; TypeCtorRep = etcr_uint32
+        ; TypeCtorRep = etcr_int64
+        ; TypeCtorRep = etcr_uint64
         ; TypeCtorRep = etcr_float
         ; TypeCtorRep = etcr_char
         ; TypeCtorRep = etcr_string

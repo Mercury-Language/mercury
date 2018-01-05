@@ -69,7 +69,9 @@
     ;       table_step_int16
     ;       table_step_uint16
     ;       table_step_int32
-    ;       table_step_uint32.
+    ;       table_step_uint32
+    ;       table_step_int64
+    ;       table_step_uint64.
 
 :- type table_step_stats
     --->    table_step_stats(

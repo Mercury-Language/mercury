@@ -346,6 +346,8 @@ ml_gen_hld_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
             ; IntTag = int_tag_uint16(_)
             ; IntTag = int_tag_int32(_)
             ; IntTag = int_tag_uint32(_)
+            ; IntTag = int_tag_int64(_)
+            ; IntTag = int_tag_uint64(_)
             ),
             unexpected($pred, "enum constant needs int tag")
         )
@@ -1200,6 +1202,8 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
             ; IntTag = int_tag_uint16(_)
             ; IntTag = int_tag_int32(_)
             ; IntTag = int_tag_uint32(_)
+            ; IntTag = int_tag_int64(_)
+            ; IntTag = int_tag_uint64(_)
             ),
             unexpected($pred,
                 "enum constant requires an int or foreign tag")

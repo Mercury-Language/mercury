@@ -499,6 +499,12 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
             BuiltinType = builtin_type_int(int_type_uint32),
             mq_info_set_module_used(InInt, unqualified("uint32"), !Info)
         ;
+            BuiltinType = builtin_type_int(int_type_int64),
+            mq_info_set_module_used(InInt, unqualified("int64"), !Info)
+        ;
+            BuiltinType = builtin_type_int(int_type_uint64),
+            mq_info_set_module_used(InInt, unqualified("uint64"), !Info)
+        ;
             BuiltinType = builtin_type_float,
             mq_info_set_module_used(InInt, unqualified("float"), !Info)
         ;
@@ -747,6 +753,8 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
         ; ConsId = uint16_const(_)
         ; ConsId = int32_const(_)
         ; ConsId = uint32_const(_)
+        ; ConsId = int64_const(_)
+        ; ConsId = uint64_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

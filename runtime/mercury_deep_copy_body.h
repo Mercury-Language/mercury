@@ -416,6 +416,66 @@ try_again:
     case MR_TYPECTOR_REP_UINT32: // fallthru
     case MR_TYPECTOR_REP_CHAR:
         return data;
+    
+    case MR_TYPECTOR_REP_INT64:
+        #ifdef MR_BOXED_INT64S
+            {
+                MR_Word    *data_value;
+
+                assert(MR_tag(data) == 0);
+                data_value = (MR_Word *) MR_body(data, MR_mktag(0));
+
+                RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
+
+                {
+                    MR_restore_transient_hp();
+#ifdef MR_HIGHLEVEL_CODE
+                    // We can't use MR_int64_to_word, since it uses MR_hp,
+                    // which in grade hlc.par.gc will be a reference to
+                    // thread-local storage that we haven't allocated.
+
+                    new_data = (MR_Word) MR_box_int64(MR_unbox_int64(data));
+#else
+                    new_data = MR_int64_to_word(MR_word_to_int64(data));
+#endif
+                    MR_save_transient_hp();
+                    leave_forwarding_pointer(data_value, 0, new_data);
+                }
+            }
+        #else
+            new_data = data;
+        #endif
+        return new_data;
+    
+    case MR_TYPECTOR_REP_UINT64:
+        #ifdef MR_BOXED_INT64S
+            {
+                MR_Word    *data_value;
+
+                assert(MR_tag(data) == 0);
+                data_value = (MR_Word *) MR_body(data, MR_mktag(0));
+
+                RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
+
+                {
+                    MR_restore_transient_hp();
+#ifdef MR_HIGHLEVEL_CODE
+                    // We can't use MR_uint64_to_word, since it uses MR_hp,
+                    // which in grade hlc.par.gc will be a reference to
+                    // thread-local storage that we haven't allocated.
+
+                    new_data = (MR_Word) MR_box_uint64(MR_unbox_uint64(data));
+#else
+                    new_data = MR_uint64_to_word(MR_word_to_uint64(data));
+#endif
+                    MR_save_transient_hp();
+                    leave_forwarding_pointer(data_value, 0, new_data);
+                }
+            }
+        #else
+            new_data = data;
+        #endif
+        return new_data;
 
     case MR_TYPECTOR_REP_FLOAT:
         #ifdef MR_BOXED_FLOAT

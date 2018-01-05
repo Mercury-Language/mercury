@@ -463,6 +463,12 @@ dump_const(MaybeProcLabel, Const) = Str :-
         Const = llconst_uint32(U32),
         Str = uint32_to_string(U32)
     ;
+        Const = llconst_int64(I64),
+        Str = int_to_string(I64)  % XXX INT64.
+    ;
+        Const = llconst_uint64(U64),
+        Str = int_to_string(U64)  % XXX INT64.
+    ;
         Const = llconst_foreign(F, _),
         Str = F
     ;

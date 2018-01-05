@@ -750,6 +750,8 @@ method_ptrs_in_rval(Rval, !CodeAddrsInConsts) :-
             ; RvalConst = mlconst_uint16(_)
             ; RvalConst = mlconst_int32(_)
             ; RvalConst = mlconst_uint32(_)
+            ; RvalConst = mlconst_int64(_)
+            ; RvalConst = mlconst_uint64(_)
             ; RvalConst = mlconst_char(_)
             ; RvalConst = mlconst_enum(_, _)
             ; RvalConst = mlconst_foreign(_, _, _)

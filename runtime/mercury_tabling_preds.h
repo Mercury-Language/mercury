@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2004-2007 The University of Melbourne.
+// Copyright (C) 2016-2018 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -32,6 +33,10 @@
         MR_tbl_lookup_insert_int32(NULL, MR_FALSE, MR_FALSE, a, b, c)
 #define MR_table_lookup_insert_uint32(a, b, c)                              \
         MR_tbl_lookup_insert_uint32(NULL, MR_FALSE, MR_FALSE, a, b, c)
+#define MR_table_lookup_insert_int64(a, b, c)                               \
+        MR_tbl_lookup_insert_int64(NULL, MR_FALSE, MR_FALSE, a, b, c)
+#define MR_table_lookup_insert_uint64(a, b, c)                              \
+        MR_tbl_lookup_insert_uint64(NULL, MR_FALSE, MR_FALSE, a, b, c)
 #define MR_table_lookup_insert_start_int(a, b, c, d)                        \
         MR_tbl_lookup_insert_start_int(NULL, MR_FALSE, MR_FALSE, a, b, c, d)
 #define MR_table_lookup_insert_char(a, b, c)                                \
@@ -73,6 +78,10 @@
         MR_tbl_save_any_answer(MR_FALSE, a, b, c)
 #define MR_table_save_uint32_answer(a, b, c)                                \
         MR_tbl_save_any_answer(MR_FALSE, a, b, c)
+#define MR_table_save_int64_answer(a, b, c)                                 \
+        MR_tbl_save_any_answer(MR_FALSE, a, b, c)
+#define MR_table_save_uint64_answer(a, b, c)                                \
+        MR_tbl_save_any_answer(MR_FALSE, a, b, c)
 #define MR_table_save_char_answer(a, b, c)                                  \
         MR_tbl_save_char_answer(MR_FALSE, a, b, c)
 #define MR_table_save_string_answer(a, b, c)                                \
@@ -99,6 +108,10 @@
 #define MR_table_restore_int32_answer(a, b, c)                              \
         MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
 #define MR_table_restore_uint32_answer(a, b, c)                             \
+        MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
+#define MR_table_restore_int64_answer(a, b, c)                              \
+        MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
+#define MR_table_restore_uint64_answer(a, b, c)                             \
         MR_tbl_restore_any_answer(MR_FALSE, a, b, c)
 #define MR_table_restore_char_answer(a, b, c)                               \
         MR_tbl_restore_char_answer(MR_FALSE, a, b, c)
@@ -225,6 +238,16 @@
         MR_TABLE_UINT32(stats, debug, back, T, T0, (MR_Unsigned) V);        \
     } while (0)
 
+#define MR_tbl_lookup_insert_int64(stats, debug, back, T0, V, T)            \
+    do {                                                                    \
+        MR_TABLE_INT64(stats, debug, back, T, T0, V);                       \
+    } while (0)
+
+#define MR_tbl_lookup_insert_uint64(stats, debug, back, T0, V, T)           \
+    do {                                                                    \
+        MR_TABLE_UINT64(stats, debug, back, T, T0, V);                      \
+    } while (0)
+
 #define MR_tbl_lookup_insert_start_int(stats, debug, back, T0, S, V, T)     \
     do {                                                                    \
         MR_TABLE_START_INT(stats, debug, back, T, T0,                       \
@@ -340,6 +363,18 @@
             &MR_TYPE_CTOR_INFO_NAME(builtin, uint32, 0));                   \
     } while (0)
 
+#define MR_tbl_save_int64_answer(debug, AB, Offset, V)                      \
+    do {                                                                    \
+        MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
+            &MR_TYPE_CTOR_INFO_NAME(builtin, int64, 0));                    \
+    } while (0)
+
+#define MR_tbl_save_uint64_answer(debug, AB, Offset, V)                     \
+    do {                                                                    \
+        MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
+            &MR_TYPE_CTOR_INFO_NAME(builtin, uint64, 0));                   \
+    } while (0)
+
 #define MR_tbl_save_char_answer(debug, AB, Offset, V)                       \
     do {                                                                    \
         MR_TABLE_SAVE_ANSWER(debug, AB, Offset, V,                          \
@@ -409,6 +444,16 @@
 #define MR_tbl_restore_uint32_answer(debug, AB, Offset, V)                  \
     do {                                                                    \
         V = (uint32_t) MR_TABLE_GET_ANSWER(debug, AB, Offset);              \
+    } while (0)
+
+#define MR_tbl_restore_int64_answer(debug, AB, Offset, V)                   \
+    do {                                                                    \
+        V = (int64_t) MR_TABLE_GET_ANSWER(debug, AB, Offset);               \
+    } while (0)
+
+#define MR_tbl_restore_uint64_answer(debug, AB, Offset, V)                  \
+    do {                                                                    \
+        V = (uint64_t) MR_TABLE_GET_ANSWER(debug, AB, Offset);              \
     } while (0)
 
 #define MR_tbl_restore_char_answer(debug, AB, Offset, V)                    \

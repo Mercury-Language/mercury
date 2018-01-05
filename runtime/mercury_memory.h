@@ -329,7 +329,7 @@ struct MR_AllocSiteInfo_Struct {
 #define MR_ALLOC_SITE_NONE      ((void *) 0)
 #ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
     // These must match the entries in mercury_heap_profile.c.
-    extern MR_AllocSiteInfo         MR_builtin_alloc_sites[7];
+    extern MR_AllocSiteInfo         MR_builtin_alloc_sites[9];
     #define MR_ALLOC_SITE_RUNTIME   ((void *) &MR_builtin_alloc_sites[0])
     #define MR_ALLOC_SITE_FLOAT     ((void *) &MR_builtin_alloc_sites[1])
     #define MR_ALLOC_SITE_STRING    ((void *) &MR_builtin_alloc_sites[2])
@@ -337,6 +337,8 @@ struct MR_AllocSiteInfo_Struct {
     #define MR_ALLOC_SITE_FOREIGN   ((void *) &MR_builtin_alloc_sites[4])
     #define MR_ALLOC_SITE_TABLING   ((void *) &MR_builtin_alloc_sites[5])
     #define MR_ALLOC_SITE_STM       ((void *) &MR_builtin_alloc_sites[6])
+    #define MR_ALLOC_SITE_INT64     ((void *) &MR_builtin_alloc_sites[7])
+    #define MR_ALLOC_SITE_UINT64    ((void *) &MR_builtin_alloc_sites[8])
 #else
     #define MR_ALLOC_ID             MR_ALLOC_SITE_NONE
     #define MR_ALLOC_SITE_RUNTIME   MR_ALLOC_SITE_NONE
@@ -346,6 +348,8 @@ struct MR_AllocSiteInfo_Struct {
     #define MR_ALLOC_SITE_FOREIGN   MR_ALLOC_SITE_NONE
     #define MR_ALLOC_SITE_TABLING   MR_ALLOC_SITE_NONE
     #define MR_ALLOC_SITE_STM       MR_ALLOC_SITE_NONE
+    #define MR_ALLOC_SITE_INT64     MR_ALLOC_SITE_NONE
+    #define MR_ALLOC_SITE_UINT64    MR_ALLOC_SITE_NONE
 #endif
 
 extern  void    *MR_new_object_func(size_t num_bytes,

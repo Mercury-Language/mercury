@@ -3669,6 +3669,12 @@ type_save_category(CtorCat, Name) :-
         CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
         Name = "uint32"
     ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
+        Name = "int64"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
+        Name = "uint64"
+    ;
         CtorCat = ctor_cat_builtin(cat_builtin_float),
         Name = "float"
     ;

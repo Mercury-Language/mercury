@@ -113,6 +113,8 @@
     ;       uint16_const(uint16)
     ;       int32_const(int32)
     ;       uint32_const(uint32)
+    ;       int64_const(int)    % XXX INT64
+    ;       uint64_const(int)   % XXX INT64
     ;       float_const(float)
     ;       char_const(char)
     ;       string_const(string)
@@ -236,6 +238,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
         ; ConsId = uint16_const(_)
         ; ConsId = int32_const(_)
         ; ConsId = uint32_const(_)
+        ; ConsId = int64_const(_)
+        ; ConsId = uint64_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)
@@ -528,7 +532,9 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       int_type_int16
     ;       int_type_uint16
     ;       int_type_int32
-    ;       int_type_uint32.
+    ;       int_type_uint32
+    ;       int_type_int64
+    ;       int_type_uint64.
 
 :- pred is_builtin_type_sym_name(sym_name::in) is semidet.
 
@@ -604,6 +610,8 @@ builtin_type_to_string(builtin_type_int(int_type_int16), "int16").
 builtin_type_to_string(builtin_type_int(int_type_uint16), "uint16").
 builtin_type_to_string(builtin_type_int(int_type_int32), "int32").
 builtin_type_to_string(builtin_type_int(int_type_uint32), "uint32").
+builtin_type_to_string(builtin_type_int(int_type_int64), "int64").
+builtin_type_to_string(builtin_type_int(int_type_uint64), "uint64").
 builtin_type_to_string(builtin_type_float, "float").
 builtin_type_to_string(builtin_type_string, "string").
 builtin_type_to_string(builtin_type_char, "character").
@@ -618,6 +626,8 @@ int_type_to_string(int_type_int16, "int16").
 int_type_to_string(int_type_uint16,  "uint16").
 int_type_to_string(int_type_int32, "int32").
 int_type_to_string(int_type_uint32, "uint32").
+int_type_to_string(int_type_int64, "int64").
+int_type_to_string(int_type_uint64, "uint64").
 
 tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
     varset.merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming).

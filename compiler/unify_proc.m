@@ -402,6 +402,12 @@ generate_builtin_unify(CtorCat, X, Y, Context, Clause, !Info) :-
         CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
         Name = "builtin_unify_uint32"
     ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
+        Name = "builtin_unify_int64"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
+        Name = "builtin_unify_uint64"
+    ;
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         Name = "builtin_unify_character"
     ;
@@ -738,6 +744,12 @@ generate_builtin_compare(CtorCat, Res, X, Y, Context, Clause, !Info) :-
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
         Name = "builtin_compare_uint32"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
+        Name = "builtin_compare_int64"
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
+        Name = "builtin_compare_uint64"
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         Name = "builtin_compare_character"

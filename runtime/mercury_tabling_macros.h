@@ -14,6 +14,8 @@
 
 #include "mercury_deep_copy.h"  // for MR_make_permanent
 
+#include <inttypes.h>
+
 #define MR_RAW_TABLE_ANY(table, type_info, value)                           \
     MR_table_type((table), (type_info), (value))
 
@@ -115,6 +117,18 @@
 
 #define MR_RAW_TABLE_UINT32_STATS(stats, table, value)                      \
     MR_word_hash_lookup_or_add_stats((stats), (table), (MR_Word)(value));
+
+#define MR_RAW_TABLE_INT64(table, value)                                    \
+    MR_int64_hash_lookup_or_add((table), (int64_t)(value));
+
+#define MR_RAW_TABLE_INT64_STATS(stats, table, value)                       \
+    MR_int64_hash_lookup_or_add_stats((stats), (table), (int64_t)(value));
+
+#define MR_RAW_TABLE_UINT64(table, value)                                   \
+    MR_uint64_hash_lookup_or_add((table), (uint64_t)(value));
+
+#define MR_RAW_TABLE_UINT64_STATS(stats, table, value)                      \
+    MR_uint64_hash_lookup_or_add_stats((stats), (table), (uint64_t)(value));
 
 #define MR_RAW_TABLE_CHAR(table, value)                                     \
     MR_int_hash_lookup_or_add((table), (value));
@@ -351,6 +365,33 @@
         if (MR_tabledebug) {                                                \
             printf("TABLE %p: uint32 %lu => %p\n",                          \
                 (t0), (unsigned long) (value), (t));                        \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_INT64(stats, debug, back, t, t0, value)                    \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_INT64_STATS((stats), (t0), (value));         \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_INT64((t0), (value));                        \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: int64 %" PRId64 " => %p\n",                   \
+                (t0), (int64_t) (value), (t));                              \
+        }                                                                   \
+    } while (0)
+
+
+#define MR_TABLE_UINT64(stats, debug, back, t, t0, value)                   \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_UINT64_STATS((stats), (t0), (value));        \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_UINT64((t0), (value));                       \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: uint64 %" PRIu64 " => %p\n",                  \
+                (t0), (uint64_t) (value), (t));                             \
         }                                                                   \
     } while (0)
 

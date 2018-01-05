@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2012 The University of Melbourne.
+% Copyright (C) 2013, 2015-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -82,8 +83,8 @@
 
 :- type static_cell_info.
 
-:- func init_static_cell_info(module_name, have_unboxed_floats, bool)
-    = static_cell_info.
+:- func init_static_cell_info(module_name, have_unboxed_floats,
+    have_unboxed_int64s, bool) = static_cell_info.
 
 :- pred add_scalar_static_cell(list(typed_rval)::in, data_id::out,
     static_cell_info::in, static_cell_info::out) is det.
@@ -98,8 +99,9 @@
     list(alloc_site_info)::out, map(alloc_site_id, layout_slot_name)::out)
     is det.
 
-:- pred find_general_llds_types(have_unboxed_floats::in, list(mer_type)::in,
-    list(list(rval))::in, list(llds_type)::out) is semidet.
+:- pred find_general_llds_types(have_unboxed_floats::in,
+    have_unboxed_int64s::in, list(mer_type)::in, list(list(rval))::in,
+    list(llds_type)::out) is semidet.
 
 :- pred add_vector_static_cell(list(llds_type)::in,
     list(list(rval))::in, data_id::out,
@@ -112,13 +114,15 @@
     list(scalar_common_data_array)::out, list(vector_common_data_array)::out)
     is det.
 
-    % Given an rval, the value of the --unboxed_float option and the width of
-    % the constructor argument, figure out the type the rval would have as an
-    % argument. Normally that's the same as its usual type; the exception is
-    % that for boxed floats, the type is data_ptr (i.e. the type of the boxed
-    % value) rather than float (the type of the unboxed value).
+    % Given an rval, the value of the --unboxed-float option, the value of the
+    % --unboxed-int64s and the width of the constructor argument, figure out
+    % the type the rval would have as an argument. Normally that's the same as
+    % its usual type; the exception is that for boxed floats, boxed int64s and
+    % boxed uint64s the type is data_ptr (i.e. the type of the boxed value)
+    % rather than float, int64, uint64 (the type of the unboxed value).
     %
-:- func rval_type_as_arg(have_unboxed_floats, arg_width, rval) = llds_type.
+:- func rval_type_as_arg(have_unboxed_floats,have_unboxed_int64s, arg_width,
+    rval) = llds_type.
 
 %-----------------------------------------------------------------------------%
 
@@ -330,6 +334,7 @@ make_alloc_id_map(AllocSite, Slot, Slot + 1, !Map) :-
     --->    static_cell_sub_info(
                 scsi_module_name            :: module_name, % base file name
                 scsi_unbox_float            :: have_unboxed_floats,
+                scsi_unbox_int64s           :: have_unboxed_int64s,
                 scsi_common_data            :: bool
             ).
 
@@ -354,8 +359,9 @@ make_alloc_id_map(AllocSite, Slot, Slot + 1, !Map) :-
                 sci_vector_cell_group_map   :: vector_type_cell_map
             ).
 
-init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
-    SubInfo0 = static_cell_sub_info(BaseName, UnboxFloat, CommonData),
+init_static_cell_info(BaseName, UnboxFloat, UnboxInt64s, CommonData) = Info0 :-
+    SubInfo0 = static_cell_sub_info(BaseName, UnboxFloat, UnboxInt64s,
+        CommonData),
     Info0 = static_cell_info(SubInfo0, counter.init(0), bimap.init,
         map.init, map.init).
 
@@ -363,8 +369,10 @@ init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
 
 add_scalar_static_cell_natural_types(Args, DataId, !Info) :-
     UnboxFloat = !.Info ^ sci_sub_info ^ scsi_unbox_float,
+    UnboxInt64s = !.Info ^ sci_sub_info ^ scsi_unbox_int64s,
     ArgWidth = full_word,
-    list.map(associate_natural_type(UnboxFloat, ArgWidth), Args, TypedArgs),
+    list.map(associate_natural_type(UnboxFloat, UnboxInt64s, ArgWidth),
+        Args, TypedArgs),
     add_scalar_static_cell(TypedArgs, DataId, !Info).
 
 add_scalar_static_cell(TypedArgs0, DataId, !Info) :-
@@ -473,30 +481,32 @@ search_scalar_static_cell_offset(Info, DataId, Offset, Rval) :-
 
 %-----------------------------------------------------------------------------%
 
-find_general_llds_types(UnboxFloat, Types, [Vector | Vectors], LLDSTypes) :-
+find_general_llds_types(UnboxFloat, UnboxInt64s, Types, [Vector | Vectors],
+        LLDSTypes) :-
     ArgWidth = full_word,
-    list.map(natural_type(UnboxFloat, ArgWidth), Vector, LLDSTypes0),
-    find_general_llds_types_2(UnboxFloat, Types, Vectors,
+    list.map(natural_type(UnboxFloat, UnboxInt64s, ArgWidth), Vector,
+        LLDSTypes0),
+    find_general_llds_types_2(UnboxFloat, UnboxInt64s, Types, Vectors,
         LLDSTypes0, LLDSTypes).
 
-:- pred find_general_llds_types_2(have_unboxed_floats::in, list(mer_type)::in,
-    list(list(rval))::in, list(llds_type)::in, list(llds_type)::out)
-    is semidet.
+:- pred find_general_llds_types_2(have_unboxed_floats::in,
+    have_unboxed_int64s::in, list(mer_type)::in, list(list(rval))::in,
+    list(llds_type)::in, list(llds_type)::out) is semidet.
 
-find_general_llds_types_2(_UnboxFloat, _Types, [], !LLDSTypes).
-find_general_llds_types_2(UnboxFloat, Types, [Vector | Vectors], !LLDSTypes) :-
-    find_general_llds_types_in_cell(UnboxFloat, Types, Vector, !LLDSTypes),
-    find_general_llds_types_2(UnboxFloat, Types, Vectors, !LLDSTypes).
+find_general_llds_types_2(_UnboxFloat, _UnboxInt64s, _Types, [], !LLDSTypes).
+find_general_llds_types_2(UnboxFloat, UnboxInt64s, Types, [Vector | Vectors], !LLDSTypes) :-
+    find_general_llds_types_in_cell(UnboxFloat, UnboxInt64s, Types, Vector, !LLDSTypes),
+    find_general_llds_types_2(UnboxFloat, UnboxInt64s, Types, Vectors, !LLDSTypes).
 
 :- pred find_general_llds_types_in_cell(have_unboxed_floats::in,
-    list(mer_type)::in, list(rval)::in, list(llds_type)::in,
-    list(llds_type)::out) is semidet.
+    have_unboxed_int64s::in, list(mer_type)::in, list(rval)::in,
+    list(llds_type)::in, list(llds_type)::out) is semidet.
 
-find_general_llds_types_in_cell(_UnboxFloat, [], [], [], []).
-find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
-        [LLDSType0 | LLDSTypes0], [LLDSType | LLDSTypes]) :-
+find_general_llds_types_in_cell(_UnboxFloat, _UnboxInt64s, [], [], [], []).
+find_general_llds_types_in_cell(UnboxFloat, UnboxInt64s, [_Type | Types],
+        [Rval | Rvals], [LLDSType0 | LLDSTypes0], [LLDSType | LLDSTypes]) :-
     ArgWidth = full_word,
-    natural_type(UnboxFloat, ArgWidth, Rval, NaturalType),
+    natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, NaturalType),
     % For user-defined types, some function symbols may be constants
     % (whose representations yield integer rvals) while others may be
     % non-constants (whose representations yield data_ptr rvals).
@@ -524,7 +534,7 @@ find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
     else
         fail
     ),
-    find_general_llds_types_in_cell(UnboxFloat, Types, Rvals,
+    find_general_llds_types_in_cell(UnboxFloat, UnboxInt64s, Types, Rvals,
         LLDSTypes0, LLDSTypes).
 
 %-----------------------------------------------------------------------------%
@@ -689,13 +699,13 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
 
 %-----------------------------------------------------------------------------%
 
-rval_type_as_arg(UnboxedFloat, ArgWidth, Rval) = Type :-
-    natural_type(UnboxedFloat, ArgWidth, Rval, Type).
+rval_type_as_arg(UnboxedFloat, UnboxedInt64s, ArgWidth, Rval) = Type :-
+    natural_type(UnboxedFloat, UnboxedInt64s, ArgWidth, Rval, Type).
 
-:- pred natural_type(have_unboxed_floats::in, arg_width::in, rval::in,
-    llds_type::out) is det.
+:- pred natural_type(have_unboxed_floats::in, have_unboxed_int64s::in,
+    arg_width::in, rval::in, llds_type::out) is det.
 
-natural_type(UnboxFloat, ArgWidth, Rval, Type) :-
+natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, Type) :-
     llds.rval_type(Rval, Type0),
     ( if
         Type0 = lt_float,
@@ -703,15 +713,24 @@ natural_type(UnboxFloat, ArgWidth, Rval, Type) :-
         ArgWidth \= double_word
     then
         Type = lt_data_ptr
+    else if
+        ( Type0 = lt_int(int_type_int64)
+        ; Type0 = lt_int(int_type_uint64)
+        ),
+        UnboxInt64s = do_not_have_unboxed_int64s,
+        ArgWidth \= double_word
+    then
+        Type = lt_data_ptr
     else
         Type = Type0
     ).
 
-:- pred associate_natural_type(have_unboxed_floats::in, arg_width::in,
-    rval::in, typed_rval::out) is det.
+:- pred associate_natural_type(have_unboxed_floats::in,
+    have_unboxed_int64s::in, arg_width::in, rval::in, typed_rval::out) is det.
 
-associate_natural_type(UnboxFloat, ArgWidth, Rval, typed_rval(Rval, Type)) :-
-    natural_type(UnboxFloat, ArgWidth, Rval, Type).
+associate_natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval,
+        typed_rval(Rval, Type)) :-
+    natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, Type).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1352,6 +1371,8 @@ remap_rval_const(Remap, Const0, Const) :-
         ; Const0 = llconst_uint16(_)
         ; Const0 = llconst_int32(_)
         ; Const0 = llconst_uint32(_)
+        ; Const0 = llconst_int64(_)
+        ; Const0 = llconst_uint64(_)
         ; Const0 = llconst_foreign(_, _)
         ; Const0 = llconst_float(_)
         ; Const0 = llconst_string(_)

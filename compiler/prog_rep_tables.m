@@ -365,6 +365,12 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
         ;
             BuiltinType = builtin_type_int(int_type_uint32),
             Selector = 19
+        ;
+            BuiltinType = builtin_type_int(int_type_int64),
+            Selector = 20
+        ;
+            BuiltinType = builtin_type_int(int_type_uint64),
+            Selector = 21
         ),
         TypeBytesCord = cord.singleton(Selector)
     ;

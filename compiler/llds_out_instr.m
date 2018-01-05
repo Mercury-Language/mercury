@@ -2089,10 +2089,49 @@ output_foreign_proc_output(Info, Output, !IO) :-
                     io.write_string("(MR_UnsignedChar) ", !IO),
                     io.write_string(VarName, !IO)
                 ;
-                    BuiltinType = builtin_type_int(_),
-                    output_lval_as_word(Info, Lval, !IO),
-                    io.write_string(" = ", !IO),
-                    io.write_string(VarName, !IO)
+                    BuiltinType = builtin_type_int(IntType),
+                    (
+                        ( IntType = int_type_int
+                        ; IntType = int_type_uint
+                        ; IntType = int_type_int8
+                        ; IntType = int_type_uint8
+                        ; IntType = int_type_int16
+                        ; IntType = int_type_uint16
+                        ; IntType = int_type_int32
+                        ; IntType = int_type_uint32
+                        ),
+                        output_lval_as_word(Info, Lval, !IO),
+                        io.write_string(" = ", !IO),
+                        io.write_string(VarName, !IO)
+                    ;
+                        IntType = int_type_int64,
+                        llds.lval_type(Lval, ActualType),
+                        ( if ActualType = lt_int(int_type_int64) then
+                            output_lval(Info, Lval, !IO),
+                            io.write_string(" = ", !IO),
+                            io.write_string(VarName, !IO)
+                        else
+                            output_lval_as_word(Info, Lval, !IO),
+                            io.write_string(" = ", !IO),
+                            io.write_string("MR_int64_to_word(", !IO),
+                            io.write_string(VarName, !IO),
+                            io.write_string(")", !IO)
+                        )
+                    ;
+                        IntType = int_type_uint64,
+                        llds.lval_type(Lval, ActualType),
+                        ( if ActualType = lt_int(int_type_uint64) then
+                            output_lval(Info, Lval, !IO),
+                            io.write_string(" = ", !IO),
+                            io.write_string(VarName, !IO)
+                        else
+                            output_lval_as_word(Info, Lval, !IO),
+                            io.write_string(" = ", !IO),
+                            io.write_string("MR_uint64_to_word(", !IO),
+                            io.write_string(VarName, !IO),
+                            io.write_string(")", !IO)
+                        )
+                    )
                 )
             else
                 output_lval_as_word(Info, Lval, !IO),

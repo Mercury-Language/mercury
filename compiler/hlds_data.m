@@ -711,7 +711,9 @@ cons_table_optimize(!ConsTable) :-
     ;       int_tag_int16(int16)
     ;       int_tag_uint16(uint16)
     ;       int_tag_int32(int32)
-    ;       int_tag_uint32(uint32).
+    ;       int_tag_uint32(uint32)
+    ;       int_tag_int64(int)   % XXX INT64.
+    ;       int_tag_uint64(int). % XXX INT64.
 
 :- type reserved_address
     --->    null_pointer

@@ -40,9 +40,11 @@ static  void    MR_table_assert_failed(const char *file, unsigned line);
 // the same.
 
 typedef struct MR_IntHashTableSlot_Struct       MR_IntHashTableSlot;
+typedef struct MR_Int64HashTableSlot_Struct     MR_Int64HashTableSlot;
+typedef struct MR_UInt64HashTableSlot_Struct    MR_UInt64HashTableSlot;
 typedef struct MR_FloatHashTableSlot_Struct     MR_FloatHashTableSlot;
 typedef struct MR_StringHashTableSlot_Struct    MR_StringHashTableSlot;
-typedef struct MR_BitmapHashTableSlot_Struct MR_BitmapHashTableSlot;
+typedef struct MR_BitmapHashTableSlot_Struct    MR_BitmapHashTableSlot;
 typedef struct MR_WordHashTableSlot_Struct      MR_WordHashTableSlot;
 
 typedef struct MR_AllocRecord_Struct            MR_AllocRecord;
@@ -57,6 +59,18 @@ struct MR_FloatHashTableSlot_Struct {
     MR_FloatHashTableSlot   *next;
     MR_TableNode            data;
     MR_Float                key;
+};
+
+struct MR_Int64HashTableSlot_Struct {
+    MR_Int64HashTableSlot   *next;
+    MR_TableNode            data;
+    int64_t                 key;
+};
+
+struct MR_UInt64HashTableSlot_Struct {
+    MR_UInt64HashTableSlot  *next;
+    MR_TableNode            data;
+    uint64_t                key;
 };
 
 struct MR_StringHashTableSlot_Struct {
@@ -79,6 +93,8 @@ struct MR_WordHashTableSlot_Struct {
 
 typedef union {
     MR_IntHashTableSlot     *int_slot_ptr;
+    MR_Int64HashTableSlot   *int64_slot_ptr;
+    MR_UInt64HashTableSlot  *uint64_slot_ptr;
     MR_FloatHashTableSlot   *float_slot_ptr;
     MR_StringHashTableSlot  *string_slot_ptr;
     MR_BitmapHashTableSlot  *bitmap_slot_ptr;
@@ -307,7 +323,7 @@ next_prime(MR_Integer old_size)
 MR_TrieNode
 MR_int_hash_lookup_or_add(MR_TrieNode t, MR_Integer key)
 {
-#define key_format              "%ld"
+#define key_format              "ld"
 #define key_cast                long
 #define table_type              MR_IntHashTableSlot
 #define table_field             int_slot_ptr
@@ -330,7 +346,7 @@ MR_TrieNode
 MR_int_hash_lookup_or_add_stats(MR_TableStepStats *stats,
     MR_TrieNode t, MR_Integer key)
 {
-#define key_format              "%ld"
+#define key_format              "ld"
 #define key_cast                long
 #define table_type              MR_IntHashTableSlot
 #define table_field             int_slot_ptr
@@ -352,11 +368,145 @@ MR_int_hash_lookup_or_add_stats(MR_TableStepStats *stats,
 MR_TrieNode
 MR_int_hash_lookup(MR_TrieNode t, MR_Integer key)
 {
-#define key_format              "%ld"
+#define key_format              "ld"
 #define key_cast                long
 #define table_type              MR_IntHashTableSlot
 #define table_field             int_slot_ptr
 #define hash(key)               (key)
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_TRUE
+#include "mercury_tabling_stats_nodefs.h"
+#include "mercury_hash_lookup_or_add_body.h"
+#include "mercury_tabling_stats_undefs.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_int64_hash_lookup_or_add(MR_TrieNode t, int64_t key)
+{
+#define key_format              PRId64
+#define key_cast                int64_t
+#define table_type              MR_Int64HashTableSlot
+#define table_field             int64_slot_ptr
+#define hash(key)               (MR_hash_int64(key))
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_FALSE
+#include "mercury_tabling_stats_nodefs.h"
+#include "mercury_hash_lookup_or_add_body.h"
+#include "mercury_tabling_stats_undefs.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_int64_hash_lookup_or_add_stats(MR_TableStepStats *stats,
+    MR_TrieNode t, int64_t key)
+{
+#define key_format              PRId64
+#define key_cast                int64_t 
+#define table_type              MR_Int64HashTableSlot
+#define table_field             int64_slot_ptr
+#define hash(key)               (MR_hash_int64(key))
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_FALSE
+#include "mercury_tabling_stats_defs.h"
+#include "mercury_hash_lookup_or_add_body.h"
+#include "mercury_tabling_stats_undefs.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_int64_hash_lookup(MR_TrieNode t, int64_t key)
+{
+#define key_format              PRId64
+#define key_cast                int64_t 
+#define table_type              MR_Int64HashTableSlot
+#define table_field             int64_slot_ptr
+#define hash(key)               (MR_hash_int64(key))
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_TRUE
+#include "mercury_tabling_stats_nodefs.h"
+#include "mercury_hash_lookup_or_add_body.h"
+#include "mercury_tabling_stats_undefs.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_uint64_hash_lookup_or_add(MR_TrieNode t, uint64_t key)
+{
+#define key_format              PRIu64
+#define key_cast                uint64_t
+#define table_type              MR_UInt64HashTableSlot
+#define table_field             uint64_slot_ptr
+#define hash(key)               (MR_hash_uint64(key))
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_FALSE
+#include "mercury_tabling_stats_nodefs.h"
+#include "mercury_hash_lookup_or_add_body.h"
+#include "mercury_tabling_stats_undefs.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_uint64_hash_lookup_or_add_stats(MR_TableStepStats *stats,
+    MR_TrieNode t, uint64_t key)
+{
+#define key_format              PRIu64
+#define key_cast                uint64_t 
+#define table_type              MR_UInt64HashTableSlot
+#define table_field             uint64_slot_ptr
+#define hash(key)               (MR_hash_uint64(key))
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_FALSE
+#include "mercury_tabling_stats_defs.h"
+#include "mercury_hash_lookup_or_add_body.h"
+#include "mercury_tabling_stats_undefs.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_uint64_hash_lookup(MR_TrieNode t, uint64_t key)
+{
+#define key_format              PRIu64
+#define key_cast                uint64_t 
+#define table_type              MR_UInt64HashTableSlot
+#define table_field             uint64_slot_ptr
+#define hash(key)               (MR_hash_uint64(key))
 #define equal_keys(k1, k2)      ((k1) == (k2))
 #define lookup_only             MR_TRUE
 #include "mercury_tabling_stats_nodefs.h"
@@ -378,7 +528,7 @@ MR_int_hash_lookup(MR_TrieNode t, MR_Integer key)
 MR_TrieNode
 MR_float_hash_lookup_or_add(MR_TrieNode t, MR_Float key)
 {
-#define key_format              "%f"
+#define key_format              "f"
 #define key_cast                double
 #define table_type              MR_FloatHashTableSlot
 #define table_field             float_slot_ptr
@@ -401,7 +551,7 @@ MR_TrieNode
 MR_float_hash_lookup_or_add_stats(MR_TableStepStats *stats,
     MR_TrieNode t, MR_Float key)
 {
-#define key_format              "%f"
+#define key_format              "f"
 #define key_cast                double
 #define table_type              MR_FloatHashTableSlot
 #define table_field             float_slot_ptr
@@ -423,7 +573,7 @@ MR_float_hash_lookup_or_add_stats(MR_TableStepStats *stats,
 MR_TrieNode
 MR_float_hash_lookup(MR_TrieNode t, MR_Float key)
 {
-#define key_format              "%f"
+#define key_format              "f"
 #define key_cast                double
 #define table_type              MR_FloatHashTableSlot
 #define table_field             float_slot_ptr
@@ -445,7 +595,7 @@ MR_float_hash_lookup(MR_TrieNode t, MR_Float key)
 MR_TrieNode
 MR_string_hash_lookup_or_add(MR_TrieNode t, MR_ConstString key)
 {
-#define key_format              "%s"
+#define key_format              "s"
 #define key_cast                const char *
 #define table_type              MR_StringHashTableSlot
 #define table_field             string_slot_ptr
@@ -468,7 +618,7 @@ MR_TrieNode
 MR_string_hash_lookup_or_add_stats(MR_TableStepStats *stats,
     MR_TrieNode t, MR_ConstString key)
 {
-#define key_format              "%s"
+#define key_format              "s"
 #define key_cast                const char *
 #define table_type              MR_StringHashTableSlot
 #define table_field             string_slot_ptr
@@ -490,7 +640,7 @@ MR_string_hash_lookup_or_add_stats(MR_TableStepStats *stats,
 MR_TrieNode
 MR_string_hash_lookup(MR_TrieNode t, MR_ConstString key)
 {
-#define key_format              "%s"
+#define key_format              "s"
 #define key_cast                const char *
 #define table_type              MR_StringHashTableSlot
 #define table_field             string_slot_ptr
@@ -512,7 +662,7 @@ MR_string_hash_lookup(MR_TrieNode t, MR_ConstString key)
 MR_TrieNode
 MR_bitmap_hash_lookup_or_add(MR_TrieNode t, MR_ConstBitmapPtr key)
 {
-#define key_format              "%d"
+#define key_format              "d"
 #define key_cast                void *
 #define table_type              MR_BitmapHashTableSlot
 #define table_field             bitmap_slot_ptr
@@ -535,7 +685,7 @@ MR_TrieNode
 MR_bitmap_hash_lookup_or_add_stats(MR_TableStepStats *stats,
     MR_TrieNode t, MR_ConstBitmapPtr key)
 {
-#define key_format              "%d"
+#define key_format              "d"
 #define key_cast                MR_Word
 #define table_type              MR_BitmapHashTableSlot
 #define table_field             bitmap_slot_ptr
@@ -557,7 +707,7 @@ MR_bitmap_hash_lookup_or_add_stats(MR_TableStepStats *stats,
 MR_TrieNode
 MR_bitmap_hash_lookup(MR_TrieNode t, MR_ConstBitmapPtr key)
 {
-#define key_format              "%d"
+#define key_format              "d"
 #define key_cast                MR_Word
 #define table_type              MR_BitmapHashTableSlot
 #define table_field             bitmap_slot_ptr
@@ -579,7 +729,7 @@ MR_bitmap_hash_lookup(MR_TrieNode t, MR_ConstBitmapPtr key)
 MR_TrieNode
 MR_word_hash_lookup_or_add(MR_TrieNode t, MR_Word key)
 {
-#define key_format              "%d"
+#define key_format              "d"
 #define key_cast                MR_Word
 #define table_type              MR_WordHashTableSlot
 #define table_field             word_slot_ptr
@@ -602,7 +752,7 @@ MR_TrieNode
 MR_word_hash_lookup_or_add_stats(MR_TableStepStats *stats,
     MR_TrieNode t, MR_Word key)
 {
-#define key_format              "%d"
+#define key_format              "d"
 #define key_cast                MR_Word
 #define table_type              MR_WordHashTableSlot
 #define table_field             word_slot_ptr
@@ -624,7 +774,7 @@ MR_word_hash_lookup_or_add_stats(MR_TableStepStats *stats,
 MR_TrieNode
 MR_word_hash_lookup(MR_TrieNode t, MR_Word key)
 {
-#define key_format              "%d"
+#define key_format              "d"
 #define key_cast                MR_Word
 #define table_type              MR_WordHashTableSlot
 #define table_field             word_slot_ptr

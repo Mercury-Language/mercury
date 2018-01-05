@@ -104,6 +104,11 @@
 
 #undef  MR_BOXED_FLOAT
 
+// MR_BOXED_INT64S: defined if int64_t and uint64_t is wider than a MR_Word,
+// i.e. on 32-bit architectures.
+
+#undef  MR_BOXED_INT64S
+
 // The following macros are defined iff the corresponding header file
 // is available:
 //

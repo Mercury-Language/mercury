@@ -2325,6 +2325,14 @@ AC_SUBST(MR_LONG_DOUBLE_IS_64_BIT)
 
 #-----------------------------------------------------------------------------#
 
+# XXX INT64 -- while we are boostrapping the changes that introduce int64
+# and uint64, we always box them.  Support for unboxed 64-bit integer types
+# will be enabled later.
+
+AC_DEFINE(MR_BOXED_INT64S)
+
+#-----------------------------------------------------------------------------#
+
 # The number of detstack slots (words) that a MR_SyncTerm occupies.
 SYNC_TERM_SIZE=3
 AC_SUBST(SYNC_TERM_SIZE)

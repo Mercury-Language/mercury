@@ -2804,6 +2804,8 @@ builtin_atomic_type(int16_const(_), "int16").
 builtin_atomic_type(uint16_const(_), "uint16").
 builtin_atomic_type(int32_const(_), "int32").
 builtin_atomic_type(uint32_const(_), "uint32").
+builtin_atomic_type(int64_const(_), "int64").
+builtin_atomic_type(uint64_const(_), "uint64").
 builtin_atomic_type(float_const(_), "float").
 builtin_atomic_type(char_const(_), "character").
 builtin_atomic_type(string_const(_), "string").

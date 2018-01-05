@@ -467,6 +467,12 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
         SimpleExpr = uint32_const(UInt32),
         Expr = elds_term(elds_uint32(UInt32))
     ;
+        SimpleExpr = int64_const(Int64),
+        Expr = elds_term(elds_int64(Int64))
+    ;
+        SimpleExpr = uint64_const(UInt64),
+        Expr = elds_term(elds_uint64(UInt64))
+    ;
         SimpleExpr = float_const(Float),
         Expr = elds_term(elds_float(Float))
     ;

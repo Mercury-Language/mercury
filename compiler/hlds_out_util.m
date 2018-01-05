@@ -717,6 +717,18 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
                 size_32_bit),
             ArgVars)
     ;
+        ConsId = int64_const(Int64),
+        Str = functor_to_string(VarSet, VarNamePrint,
+            term.integer(base_10, integer(Int64), signed,
+                size_64_bit),
+            ArgVars)
+    ;
+        ConsId = uint64_const(UInt64),
+        Str = functor_to_string(VarSet, VarNamePrint,
+            term.integer(base_10, integer(UInt64), unsigned,
+                size_64_bit),
+            ArgVars)
+    ;
         ConsId = float_const(Float),
         Str = functor_to_string(VarSet, VarNamePrint,
             term.float(Float), ArgVars)
@@ -891,6 +903,14 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
     ;
         ConsId = uint32_const(UInt32),
         String = string.uint32_to_string(UInt32) ++ "u32"
+    ;
+        % XXX INT64.
+        ConsId = int64_const(Int64),
+        String = string.int_to_string(Int64) ++ "i64"
+    ;
+        % XXX INT64.
+        ConsId = uint64_const(UInt64),
+        String = string.int_to_string(UInt64) ++ "u64"
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)

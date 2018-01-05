@@ -2666,6 +2666,12 @@ mercury_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
         String = "short",
         ArrayDims = []
     ;
+        ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64))
+        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64))
+        ),
+        String = "long",
+        ArrayDims = []
+    ;
         CtorCat = ctor_cat_builtin(cat_builtin_string),
         String = "java.lang.String",
         ArrayDims = []
@@ -4176,6 +4182,13 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
                 JavaBoxedType = "java.lang.Short",
                 UnboxMethod = "shortValue"
             ;
+                ( BuiltinType = builtin_type_int(int_type_int64)
+                ; BuiltinType = builtin_type_int(int_type_uint64)
+                ),
+                JavaUnboxedType = "long",
+                JavaBoxedType = "java.lang.Long",
+                UnboxMethod = "longValue"
+            ;
                 BuiltinType = builtin_type_float,
                 JavaUnboxedType = "double",
                 JavaBoxedType = "java.lang.Double",
@@ -4326,6 +4339,8 @@ output_std_unop_for_java(Info, UnaryOp, Expr, !IO) :-
         ; UnaryOp = bitwise_complement(int_type_uint), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_int32), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_uint32), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_int64), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_uint64), UnaryOpStr = "~"
         ; UnaryOp = logical_not, UnaryOpStr = "!"
         ; UnaryOp = hash_string,  UnaryOpStr = "mercury.String.hash_1_f_0"
         ; UnaryOp = hash_string2, UnaryOpStr = "mercury.String.hash2_1_f_0"
@@ -4444,6 +4459,28 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_xor(int_type_uint32)
         ; Op = unchecked_left_shift(int_type_uint32)
         ; Op = unchecked_right_shift(int_type_uint32)
+        ; Op = int_lt(int_type_int64)
+        ; Op = int_gt(int_type_int64)
+        ; Op = int_le(int_type_int64)
+        ; Op = int_ge(int_type_int64)
+        ; Op = int_add(int_type_int64)
+        ; Op = int_sub(int_type_int64)
+        ; Op = int_mul(int_type_int64)
+        ; Op = int_div(int_type_int64)
+        ; Op = int_mod(int_type_int64)
+        ; Op = bitwise_and(int_type_int64)
+        ; Op = bitwise_or(int_type_int64)
+        ; Op = bitwise_xor(int_type_int64)
+        ; Op = unchecked_left_shift(int_type_int64)
+        ; Op = unchecked_right_shift(int_type_int64)
+        ; Op = int_add(int_type_uint64)
+        ; Op = int_sub(int_type_uint64)
+        ; Op = int_mul(int_type_uint64)
+        ; Op = bitwise_and(int_type_uint64)
+        ; Op = bitwise_or(int_type_uint64)
+        ; Op = bitwise_xor(int_type_uint64)
+        ; Op = unchecked_left_shift(int_type_uint64)
+        ; Op = unchecked_right_shift(int_type_uint64)
         ; Op = logical_and
         ; Op = logical_or
         ; Op = eq(_)
@@ -4514,6 +4551,20 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         output_rval_for_java(Info, Y, !IO),
         io.write_string(") & 0xffffffffL))", !IO)
     ;
+        ( Op = int_lt(int_type_uint64), RelOpStr = "<"
+        ; Op = int_gt(int_type_uint64), RelOpStr = ">"
+        ; Op = int_le(int_type_uint64), RelOpStr = "<="
+        ; Op = int_ge(int_type_uint64), RelOpStr = ">="
+        ),
+        io.write_string("(java.lang.Long.compareUnsigned(", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(", ", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(") ", !IO),
+        io.write_string(RelOpStr, !IO),
+        io.write_string(" 0)", !IO)
+
+    ;
         ( Op = int_div(int_type_uint)
         ; Op = int_mod(int_type_uint)
         ; Op = int_div(int_type_uint32)
@@ -4526,6 +4577,20 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         io.write_string(" ((", !IO),
         output_rval_for_java(Info, Y, !IO),
         io.write_string(") & 0xffffffffL)))", !IO)
+    ;
+        Op = int_div(int_type_uint64),
+        io.write_string("java.lang.Long.divideUnsigned(", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(", ", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Op = int_mod(int_type_uint64),
+        io.write_string("java.lang.Long.remainderUnsigned(", !IO),
+        output_rval_for_java(Info, X, !IO),
+        io.write_string(", ", !IO),
+        output_rval_for_java(Info, Y, !IO),
+        io.write_string(")", !IO)
     ;
         ( Op = int_add(int_type_int8)
         ; Op = int_sub(int_type_int8)
@@ -4714,6 +4779,7 @@ output_binary_op_for_java(Op, !IO) :-
             ; IntType = int_type_int8
             ; IntType = int_type_int16
             ; IntType = int_type_int32
+            ; IntType = int_type_int64
             ),
             OpStr = ">>"
         ;
@@ -4721,6 +4787,7 @@ output_binary_op_for_java(Op, !IO) :-
             ; IntType = int_type_uint8
             ; IntType = int_type_uint16
             ; IntType = int_type_uint32
+            ; IntType = int_type_uint64
             ),
             OpStr = ">>>"
         ),
@@ -4787,6 +4854,16 @@ output_rval_const_for_java(Info, Const, !IO) :-
     ;
         Const = mlconst_uint32(U32),
         io.write_int32(int32.cast_from_uint32(U32), !IO)
+    ;
+        % XXX INT64.
+        Const = mlconst_int64(I64),
+        io.write_int(I64, !IO),
+        io.write_string("L", !IO)
+    ;
+        % XXX INT64.
+        Const = mlconst_uint64(U64),
+        io.write_int(U64, !IO),
+        io.write_string("L", !IO)
     ;
         Const = mlconst_char(N),
         io.write_string("(", !IO),

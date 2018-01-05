@@ -1215,6 +1215,9 @@
     ;       llconst_int32(int32)
     ;       llconst_uint32(uint32)
 
+    ;       llconst_int64(int)   % XXX INT64
+    ;       llconst_uint64(int)  % XXX INT64
+
     ;       llconst_foreign(string, llds_type)
             % A constant in the target language.
             % It may be a #defined constant in C which is why
@@ -1496,6 +1499,10 @@
     --->    have_static_code_addresses
     ;       do_not_have_static_code_addresses.
 
+:- type have_unboxed_int64s
+    --->    have_unboxed_int64s
+    ;       do_not_have_unboxed_int64s.
+
 :- type exprn_opts
     --->    exprn_opts(
                 non_local_gotos         :: have_non_local_gotos,
@@ -1505,7 +1512,8 @@
                 det_stack_float_width   :: stack_slot_width,
                 static_ground_cells     :: have_static_ground_cells,
                 static_ground_floats    :: have_static_ground_floats,
-                static_code_addresses   :: have_static_code_addresses
+                static_code_addresses   :: have_static_code_addresses,
+                unboxed_int64s          :: have_unboxed_int64s
             ).
 
 :- func get_nonlocal_gotos(exprn_opts) = have_non_local_gotos.
@@ -1516,6 +1524,7 @@
 :- func get_static_ground_cells(exprn_opts) = have_static_ground_cells.
 :- func get_static_ground_floats(exprn_opts) = have_static_ground_floats.
 :- func get_static_code_addresses(exprn_opts) = have_static_code_addresses.
+:- func get_unboxed_int64s(exprn_opts) = have_unboxed_int64s.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1688,6 +1697,8 @@ const_type(llconst_int16(_), lt_int(int_type_int16)).
 const_type(llconst_uint16(_), lt_int(int_type_uint16)).
 const_type(llconst_int32(_), lt_int(int_type_int32)).
 const_type(llconst_uint32(_), lt_int(int_type_uint32)).
+const_type(llconst_int64(_), lt_int(int_type_int64)).
+const_type(llconst_uint64(_), lt_int(int_type_uint64)).
 const_type(llconst_foreign(_, Type), Type).
 const_type(llconst_float(_), lt_float).
 const_type(llconst_string(_), lt_string).
@@ -1790,6 +1801,7 @@ get_float_registers(ExprnOpts) = ExprnOpts ^ float_registers.
 get_det_stack_float_width(ExprnOpts) = ExprnOpts ^ det_stack_float_width.
 get_static_ground_floats(ExprnOpts) = ExprnOpts ^ static_ground_floats.
 get_static_code_addresses(ExprnOpts) = ExprnOpts ^ static_code_addresses.
+get_unboxed_int64s(ExprnOpts) = ExprnOpts ^ unboxed_int64s.
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.llds.

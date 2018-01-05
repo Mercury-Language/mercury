@@ -179,6 +179,7 @@ CFILES = \
 	mercury_heap_profile.c			\
 	mercury_hgc.c				\
 	mercury_ho_call.c			\
+	mercury_int.c				\
 	mercury_label.c				\
 	mercury_layout_util.c			\
 	mercury_memory.c			\

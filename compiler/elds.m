@@ -222,6 +222,8 @@
     ;       elds_uint16(uint16)
     ;       elds_int32(int32)
     ;       elds_uint32(uint32)
+    ;       elds_int64(int)    % XXX INT64.
+    ;       elds_uint64(int)   % XXX INT64.
     ;       elds_float(float)
 
     ;       elds_binary(string)

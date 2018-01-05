@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2001-2007, 2012 The University of Melbourne.
+// Copyright (C) 2013, 2015-2018 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -115,6 +116,7 @@
 //  instead, but it is not yet safe to throw exceptions across the C interface.
 
 #include <stdio.h>
+#include <inttypes.h>
 #include "mercury_library_types.h" // for MR_ArrayType
 #include "mercury_layout_util.h"   // for MR_materialize_closure_type_params
 #include "mercury_ho_call.h"       // for MR_ClosureId etc
@@ -893,6 +895,44 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 data_word = *data_word_ptr;
                 sprintf(buf, "%" MR_INTEGER_LENGTH_MODIFIER "uu32",
                     (MR_Unsigned) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  // EXPAND_FUNCTOR_FIELD
+
+            handle_zero_arity_args();
+            return;
+        
+        case MR_TYPECTOR_REP_INT64:
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word data_word;
+                char    buf[500];
+                int64_t i64;
+                char    *str;
+
+                data_word = *data_word_ptr;
+                i64 = MR_word_to_int64(data_word);
+                sprintf(buf, "%" PRId64 "i64", i64);
+                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
+                expand_info->EXPAND_FUNCTOR_FIELD = str;
+            }
+#endif  // EXPAND_FUNCTOR_FIELD
+
+            handle_zero_arity_args();
+            return;
+        
+        case MR_TYPECTOR_REP_UINT64:
+#ifdef  EXPAND_FUNCTOR_FIELD
+            {
+                MR_Word     data_word;
+                char        buf[500];
+                uint64_t    u64;
+                char        *str;
+
+                data_word = *data_word_ptr;
+                u64 = MR_word_to_uint64(data_word);
+                sprintf(buf, "%" PRIu64 "u64", u64);
                 MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }

@@ -98,6 +98,7 @@
 :- import_module int8.
 :- import_module int16.
 :- import_module int32.
+:- import_module int64.
 :- import_module integer.
 :- import_module io.
 :- import_module lazy.
@@ -155,6 +156,7 @@
 :- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
+:- import_module uint64.
 :- import_module unit.
 :- import_module univ.
 :- import_module varset.
@@ -275,6 +277,7 @@ mercury_std_library_module("int").
 mercury_std_library_module("int8").
 mercury_std_library_module("int16").
 mercury_std_library_module("int32").
+mercury_std_library_module("int64").
 mercury_std_library_module("integer").
 mercury_std_library_module("io").
 mercury_std_library_module("lazy").
@@ -350,6 +353,7 @@ mercury_std_library_module("uint").
 mercury_std_library_module("uint8").
 mercury_std_library_module("uint16").
 mercury_std_library_module("uint32").
+mercury_std_library_module("uint64").
 mercury_std_library_module("unit").
 mercury_std_library_module("univ").
 mercury_std_library_module("varset").

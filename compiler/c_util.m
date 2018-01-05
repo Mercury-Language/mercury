@@ -221,6 +221,18 @@
     io::di, io::uo) is det.
 :- pred output_uint32_expr_cur_stream(uint32::in, io::di, io::uo) is det.
 
+    % Write out an int64 as a C expression.
+    %
+:- pred output_int64_expr(io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
+:- pred output_int64_expr_cur_stream(int::in, io::di, io::uo) is det.
+
+    % Write out a uint64 as a C expression.
+    %
+:- pred output_uint64_expr(io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
+:- pred output_uint64_expr_cur_stream(int::in, io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %
 % Float literals.
@@ -875,6 +887,24 @@ output_uint32_expr(Stream, N, !IO) :-
 output_uint32_expr_cur_stream(N, !IO) :-
     io.output_stream(Stream, !IO),
     output_uint32_expr(Stream, N, !IO).
+
+output_int64_expr(Stream, N, !IO) :-
+    io.write_string(Stream, "INT64_C(", !IO),
+    io.write_int(Stream, N, !IO),
+    io.write_string(Stream, ")", !IO).
+
+output_int64_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_int64_expr(Stream, N, !IO).
+
+output_uint64_expr(Stream, N, !IO) :-
+    io.write_string(Stream, "UINT64_C(", !IO),
+    io.write_int(Stream, N, !IO),
+    io.write_string(Stream, ")", !IO).
+
+output_uint64_expr_cur_stream(N, !IO) :-
+    io.output_stream(Stream, !IO),
+    output_uint64_expr(Stream, N, !IO).
 
 %---------------------------------------------------------------------------%
 %

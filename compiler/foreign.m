@@ -319,6 +319,12 @@ exported_builtin_type_to_c_string(BuiltinType) = CTypeName :-
         ;
             IntType = int_type_uint32,
             CTypeName = "uint32_t"
+        ;
+            IntType = int_type_int64,
+            CTypeName = "int64_t"
+        ;
+            IntType = int_type_uint64,
+            CTypeName = "uint64_t"
         )
     ;
         BuiltinType = builtin_type_float,
@@ -358,6 +364,12 @@ exported_builtin_type_to_csharp_string(BuiltinType) = CsharpTypeName :-
         ;
             IntType = int_type_uint32,
             CsharpTypeName = "uint"
+        ;
+            IntType = int_type_int64,
+            CsharpTypeName = "long"
+        ;
+            IntType = int_type_uint64,
+            CsharpTypeName = "ulong"
         )
     ;
         BuiltinType = builtin_type_float,
@@ -397,6 +409,12 @@ exported_builtin_type_to_java_string(BuiltinType) = JavaTypeName :-
         ;
             IntType = int_type_uint32,
             JavaTypeName = "int"
+        ;
+            IntType = int_type_int64,
+            JavaTypeName = "long"
+        ;
+            IntType = int_type_uint64,
+            JavaTypeName = "long"
         )
     ;
         BuiltinType = builtin_type_float,

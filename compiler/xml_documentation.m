@@ -715,6 +715,10 @@ cons_id_to_xml(int32_const(_)) = _ :-
     unexpected($file, $pred, "NYI int32").
 cons_id_to_xml(uint32_const(_)) = _ :-
     unexpected($file, $pred, "NYI uint32").
+cons_id_to_xml(int64_const(_)) = _ :-
+    unexpected($file, $pred, "NYI int64").
+cons_id_to_xml(uint64_const(_)) = _ :-
+    unexpected($file, $pred, "NYI uint64").
 cons_id_to_xml(float_const(F)) = tagged_float("float", F).
 cons_id_to_xml(char_const(C)) = tagged_char("char", C).
 cons_id_to_xml(string_const(S)) = tagged_string("string", S).

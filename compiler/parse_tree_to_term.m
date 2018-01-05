@@ -676,6 +676,14 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         term.context_init(Context),
         Term = uint32_to_decimal_term(UInt32, Context)
     ;
+        ConsId = int64_const(Int64),
+        term.context_init(Context),
+        Term = int_to_decimal_term(Int64, Context) % XXX INT64
+    ;
+        ConsId = uint64_const(UInt64),
+        term.context_init(Context),
+        Term = int_to_decimal_term(UInt64, Context) % XXX INT64
+    ;
         ConsId = float_const(Float),
         term.context_init(Context),
         Term = term.functor(term.float(Float), [], Context)

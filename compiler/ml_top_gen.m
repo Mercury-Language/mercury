@@ -188,7 +188,16 @@ ml_gen_init_global_data(ModuleInfo, Target, GlobalData) :-
         UnboxedFloats = no,
         HaveUnboxedFloats = do_not_have_unboxed_floats
     ),
-    GlobalData = ml_global_data_init(UseCommonCells, HaveUnboxedFloats).
+    globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64s),
+    (
+        UnboxedInt64s = yes,
+        HaveUnboxedInt64s = have_unboxed_int64s
+    ;
+        UnboxedInt64s = no,
+        HaveUnboxedInt64s = do_not_have_unboxed_int64s
+    ),
+    GlobalData = ml_global_data_init(UseCommonCells, HaveUnboxedFloats,
+        HaveUnboxedInt64s).
 
 %---------------------------------------------------------------------------%
 %

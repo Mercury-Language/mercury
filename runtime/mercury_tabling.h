@@ -256,7 +256,9 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_INT16),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_UINT16),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_INT32),
-    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_UINT32)
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_UINT32),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_INT64),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_UINT64)
 } MR_TableTrieStep;
 
 typedef MR_Unsigned MR_Counter;
@@ -374,6 +376,16 @@ extern  MR_TrieNode MR_int_hash_lookup_or_add(MR_TrieNode table,
 extern  MR_TrieNode MR_int_hash_lookup_or_add_stats(
                         MR_TableStepStats *stats, MR_TrieNode table,
                         MR_Integer key);
+extern  MR_TrieNode MR_int64_hash_lookup_or_add(MR_TrieNode table,
+                        int64_t key);
+extern  MR_TrieNode MR_int64_hash_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        int64_t key);
+extern  MR_TrieNode MR_uint64_hash_lookup_or_add(MR_TrieNode table,
+                        uint64_t key);
+extern  MR_TrieNode MR_uint64_hash_lookup_or_add_stats(
+                        MR_TableStepStats *stats, MR_TrieNode table,
+                        uint64_t key);
 extern  MR_TrieNode MR_float_hash_lookup_or_add(MR_TrieNode table,
                         MR_Float key);
 extern  MR_TrieNode MR_float_hash_lookup_or_add_stats(
@@ -470,6 +482,10 @@ extern  MR_TrieNode MR_table_type_stats_debug_back(MR_TableStepStats *stats,
 
 extern  MR_TrieNode MR_int_hash_lookup(MR_TrieNode table,
                         MR_Integer key);
+extern  MR_TrieNode MR_int64_hash_lookup(MR_TrieNode table,
+                        int64_t key);
+extern  MR_TrieNode MR_uint64_hash_lookup(MR_TrieNode table,
+                        uint64_t key);
 extern  MR_TrieNode MR_float_hash_lookup(MR_TrieNode table,
                         MR_Float key);
 extern  MR_TrieNode MR_string_hash_lookup(MR_TrieNode table,

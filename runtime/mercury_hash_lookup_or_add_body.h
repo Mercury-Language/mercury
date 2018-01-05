@@ -15,7 +15,7 @@
     MR_Integer          home;
     MR_TABLE_DECLARE_KEY_COMPARE_COUNT
 
-    debug_key_msg(key, key_format, key_cast);
+    debug_key_msg(key, "%"key_format, key_cast);
 
     // Deref the table pointer.
     table = t->MR_hash_table;

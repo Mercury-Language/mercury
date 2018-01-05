@@ -1093,6 +1093,12 @@ get_type_initializer(Info, Type) = Initializer :-
             ),
             Initializer = "0U"
         ;
+            CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
+            Initializer = "0L"
+        ;
+            CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
+            Initializer = "0UL"
+        ;
             CtorCat = ctor_cat_builtin(cat_builtin_char),
             Initializer = "'\\u0000'"
         ;
@@ -1992,6 +1998,8 @@ int_type_to_csharp_type(int_type_int16) = "short".
 int_type_to_csharp_type(int_type_uint16) = "ushort".
 int_type_to_csharp_type(int_type_int32) = "int".
 int_type_to_csharp_type(int_type_uint32) = "uint".
+int_type_to_csharp_type(int_type_int64) = "long".
+int_type_to_csharp_type(int_type_uint64) = "ulong".
 
 :- pred mercury_user_type_to_string_csharp(csharp_out_info::in, mer_type::in,
     type_ctor_category::in, string::out, list(int)::out) is det.
@@ -3406,6 +3414,8 @@ output_std_unop_for_csharp(Info, UnaryOp, Expr, !IO) :-
         ; UnaryOp = bitwise_complement(int_type_uint), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_int32), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_uint32), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_int64), UnaryOpStr = "~"
+        ; UnaryOp = bitwise_complement(int_type_uint64), UnaryOpStr = "~"
         ; UnaryOp = logical_not, UnaryOpStr = "!"
         ; UnaryOp = hash_string,  UnaryOpStr = "mercury.String.hash_1_f_0"
         ; UnaryOp = hash_string2, UnaryOpStr = "mercury.String.hash2_1_f_0"
@@ -3538,6 +3548,26 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_xor(int_type_uint32)
         ; Op = unchecked_left_shift(int_type_uint32)
         ; Op = unchecked_right_shift(int_type_uint32)
+        ; Op = int_add(int_type_int64)
+        ; Op = int_sub(int_type_int64)
+        ; Op = int_mul(int_type_int64)
+        ; Op = int_div(int_type_int64)
+        ; Op = int_mod(int_type_int64)
+        ; Op = bitwise_and(int_type_int64)
+        ; Op = bitwise_or(int_type_int64)
+        ; Op = bitwise_xor(int_type_int64)
+        ; Op = unchecked_left_shift(int_type_int64)
+        ; Op = unchecked_right_shift(int_type_int64)
+        ; Op = int_add(int_type_uint64)
+        ; Op = int_sub(int_type_uint64)
+        ; Op = int_mul(int_type_uint64)
+        ; Op = int_div(int_type_uint64)
+        ; Op = int_mod(int_type_uint64)
+        ; Op = bitwise_and(int_type_uint64)
+        ; Op = bitwise_or(int_type_uint64)
+        ; Op = bitwise_xor(int_type_uint64)
+        ; Op = unchecked_left_shift(int_type_uint64)
+        ; Op = unchecked_right_shift(int_type_uint64)
         ; Op = float_plus
         ; Op = float_minus
         ; Op = float_times
@@ -3741,6 +3771,12 @@ output_rval_const_for_csharp(Info, Const, !IO) :-
         Const = mlconst_uint32(N),
         output_uint32_const_for_csharp(N, !IO)
     ;
+        Const = mlconst_int64(N),
+        output_int64_const_for_csharp(N, !IO)
+    ;
+        Const = mlconst_uint64(N),
+        output_uint64_const_for_csharp(N, !IO)
+    ;
         Const = mlconst_char(N),
         io.write_string("( ", !IO),
         output_int_const_for_csharp(N, !IO),
@@ -3889,6 +3925,18 @@ output_int32_const_for_csharp(I32, !IO) :-
 output_uint32_const_for_csharp(U32, !IO) :-
     io.write_uint32(U32, !IO),
     io.write_string("U", !IO).
+
+:- pred output_int64_const_for_csharp(int::in, io::di, io::uo) is det.
+
+output_int64_const_for_csharp(I64, !IO) :-
+    io.write_int(I64, !IO),
+    io.write_string("L", !IO).
+
+:- pred output_uint64_const_for_csharp(int::in, io::di, io::uo) is det.
+
+output_uint64_const_for_csharp(U64, !IO) :-
+    io.write_int(U64, !IO),
+    io.write_string("UL", !IO).
 
 %---------------------------------------------------------------------------%
 

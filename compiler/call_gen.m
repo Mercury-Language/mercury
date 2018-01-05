@@ -753,6 +753,8 @@ convert_simple_expr(int16_const(Int16)) = const(llconst_int16(Int16)).
 convert_simple_expr(uint16_const(UInt16)) = const(llconst_uint16(UInt16)).
 convert_simple_expr(int32_const(Int32)) = const(llconst_int32(Int32)).
 convert_simple_expr(uint32_const(UInt32)) = const(llconst_uint32(UInt32)).
+convert_simple_expr(int64_const(Int64)) = const(llconst_int64(Int64)).
+convert_simple_expr(uint64_const(UInt64)) = const(llconst_uint64(UInt64)).
 convert_simple_expr(float_const(Float)) = const(llconst_float(Float)).
 convert_simple_expr(unary(UnOp, Expr)) =
     unop(UnOp, convert_simple_expr(Expr)).

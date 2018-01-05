@@ -2311,7 +2311,9 @@ cell_is_constant(VarStateMap, ExprnOpts, [CellArg | CellArgs],
         fail
     ),
     expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval),
-    LldsType = rval_type_as_arg(get_unboxed_floats(ExprnOpts), ArgWidth, Rval),
+    UnboxedFloats = get_unboxed_floats(ExprnOpts),
+    UnboxedInt64s = get_unboxed_int64s(ExprnOpts),
+    LldsType = rval_type_as_arg(UnboxedFloats, UnboxedInt64s, ArgWidth, Rval),
     cell_is_constant(VarStateMap, ExprnOpts, CellArgs, TypedRvals).
 
     % expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval):

@@ -2261,6 +2261,14 @@ ml_gen_int_tag_test_rval(IntTag, Type, ModuleInfo, Rval) = TagTestRval :-
         IntTag = int_tag_uint32(UInt32),
         TagTestRval = ml_binop(eq(int_type_uint32), Rval,
             ml_const(mlconst_uint32(UInt32)))
+    ;
+        IntTag = int_tag_int64(Int64),
+        TagTestRval = ml_binop(eq(int_type_int64), Rval,
+            ml_const(mlconst_int64(Int64)))
+    ;
+        IntTag = int_tag_uint64(UInt64),
+        TagTestRval = ml_binop(eq(int_type_uint64), Rval,
+            ml_const(mlconst_uint64(UInt64)))
     ).
 
 ml_gen_secondary_tag_rval(ModuleInfo, Target, PrimaryTagVal, VarType, Rval) =
@@ -3200,6 +3208,12 @@ int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag) = Const :-
     ;
         IntTag = int_tag_uint32(UInt32),
         Const = mlconst_uint32(UInt32)
+    ;
+        IntTag = int_tag_int64(Int64),
+        Const = mlconst_int64(Int64)
+    ;
+        IntTag = int_tag_uint64(UInt64),
+        Const = mlconst_uint64(UInt64)
     ).
 
 %---------------------------------------------------------------------------%

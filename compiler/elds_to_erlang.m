@@ -811,6 +811,14 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
         output_float(Float, !IO),
         space(!IO)
     ;
+        Term = elds_int64(Int64),
+        io.write_int(Int64, !IO),   % XXX INT64.
+        space(!IO)
+    ;
+        Term = elds_uint64(UInt64),
+        io.write_int(UInt64, !IO),  % XXX INT64.
+        space(!IO)
+    ;
         Term = elds_binary(String),
         io.write_string("<<""", !IO),
         write_with_escaping(in_string, String, !IO),

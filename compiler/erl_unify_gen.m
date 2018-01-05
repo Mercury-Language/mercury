@@ -72,6 +72,8 @@
     ;       uint16_const(ground)
     ;       int32_const(ground)
     ;       uint32_const(ground)
+    ;       int64_const(ground)
+    ;       uint64_const(ground)
     ;       float_const(ground)
     ;       char_const(ground)
     ;       string_const(ground).
@@ -306,6 +308,12 @@ cons_id_to_term(ConsId, Args, DummyVarReplacement, Term, !Info) :-
         ConsId = uint32_const(UInt32),
         Term = elds_uint32(UInt32)
     ;
+        ConsId = int64_const(Int64),
+        Term = elds_int64(Int64)
+    ;
+        ConsId = uint64_const(UInt64),
+        Term = elds_uint64(UInt64)
+    ;
         ConsId = float_const(Float),
         Term = elds_float(Float)
     ;
@@ -328,6 +336,8 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         ; ConsId = uint16_const(_)
         ; ConsId = int32_const(_)
         ; ConsId = uint32_const(_)
+        ; ConsId = int64_const(_)
+        ; ConsId = uint64_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

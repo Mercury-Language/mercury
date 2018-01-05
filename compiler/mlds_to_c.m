@@ -3112,6 +3112,12 @@ mlds_output_mercury_type_prefix(Opts, Type, CtorCat, !IO) :-
         CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
         io.write_string("uint32_t", !IO)
     ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
+        io.write_string("int64_t", !IO)
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
+        io.write_string("uint64_t", !IO)
+    ;
         CtorCat = ctor_cat_builtin(cat_builtin_string),
         io.write_string("MR_String", !IO)
     ;
@@ -4872,6 +4878,20 @@ mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
             io.write_string(")", !IO)
         )
     else if
+        Type = mercury_type(builtin_type(BuiltinType), _,  _),
+        BuiltinType = builtin_type_int(int_type_int64)
+    then
+        io.write_string("MR_box_int64(", !IO),
+        mlds_output_rval(Opts, Expr, !IO),
+        io.write_string(")", !IO)
+    else if
+        Type = mercury_type(builtin_type(BuiltinType), _, _),
+        BuiltinType = builtin_type_int(int_type_uint64)
+    then
+        io.write_string("MR_box_uint64", !IO),
+        mlds_output_rval(Opts, Expr, !IO),
+        io.write_string(")", !IO)
+    else if
         type_is_smaller_than_word(Type)
     then
         % We cast first to MR_Word, and then to MR_Box.
@@ -4972,6 +4992,8 @@ is_an_address(Rval) = IsAddr :-
             ; Const = mlconst_uint16(_)
             ; Const = mlconst_int32(_)
             ; Const = mlconst_uint32(_)
+            ; Const = mlconst_int64(_)
+            ; Const = mlconst_uint64(_)
             ; Const = mlconst_float(_)
             ; Const = mlconst_foreign(_, _, _)
             ),
@@ -4989,6 +5011,20 @@ mlds_output_unboxed_rval(Opts, Type, Expr, !IO) :-
         )
     then
         io.write_string("MR_unbox_float(", !IO),
+        mlds_output_rval(Opts, Expr, !IO),
+        io.write_string(")", !IO)
+    else if
+        Type = mercury_type(builtin_type(BuiltinType), _, _),
+        BuiltinType = builtin_type_int(int_type_int64)
+    then
+        io.write_string("MR_unbox_int64(", !IO),
+        mlds_output_rval(Opts, Expr, !IO),
+        io.write_string(")", !IO)
+    else if
+        Type = mercury_type(builtin_type(BuiltinType), _, _),
+        BuiltinType = builtin_type_int(int_type_uint64)
+    then
+        io.write_string("MR_unbox_uint64(", !IO),
         mlds_output_rval(Opts, Expr, !IO),
         io.write_string(")", !IO)
     else if
@@ -5215,6 +5251,12 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
     ;
         Const = mlconst_uint32(N),
         c_util.output_uint32_expr_cur_stream(N, !IO)
+    ;
+        Const = mlconst_int64(N),
+        c_util.output_int64_expr_cur_stream(N, !IO)
+    ;
+        Const = mlconst_uint64(N),
+        c_util.output_uint64_expr_cur_stream(N, !IO)
     ;
         Const = mlconst_char(C),
         io.write_string("(MR_Char) ", !IO),

@@ -288,6 +288,18 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstId,
                     ForTypeCtor = uint32_type_ctor,
                     MaybeForTypeKind = yes(ftk_int(int_type_uint32))
                 else if
+                    sym_name_for_builtin_type(ForTypeCtorName, "int64"),
+                    ForTypeCtorArity = 0
+                then
+                    ForTypeCtor = int64_type_ctor,
+                    MaybeForTypeKind = yes(ftk_int(int_type_int64))
+                else if
+                    sym_name_for_builtin_type(ForTypeCtorName, "uint64"),
+                    ForTypeCtorArity = 0
+                then
+                    ForTypeCtor = uint64_type_ctor,
+                    MaybeForTypeKind = yes(ftk_int(int_type_uint64))
+                else if
                     sym_name_for_builtin_type(ForTypeCtorName, "float"),
                     ForTypeCtorArity = 0
                 then
@@ -436,6 +448,12 @@ type_defn_or_builtin_to_type_ctor(TypeDefnOrBuiltin, TypeCtor) :-
         ;
             BuiltinType = builtin_type_int(int_type_uint32),
             TypeCtor = type_ctor(unqualified("uint32"), 0)
+        ;
+            BuiltinType = builtin_type_int(int_type_int64),
+            TypeCtor = type_ctor(unqualified("int64"), 0)
+        ;
+            BuiltinType = builtin_type_int(int_type_uint64),
+            TypeCtor = type_ctor(unqualified("uint64"), 0)
         ;
             BuiltinType = builtin_type_float,
             TypeCtor = type_ctor(unqualified("float"), 0)
@@ -592,6 +610,20 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
     ;
         ConsId = uint32_const(_),
         ( if ForTypeKind = ftk_int(int_type_uint32) then
+            true
+        else
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+        )
+    ;
+        ConsId = int64_const(_),
+        ( if ForTypeKind = ftk_int(int_type_int64) then
+            true
+        else
+            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+        )
+    ;
+        ConsId = uint64_const(_),
+        ( if ForTypeKind = ftk_int(int_type_uint64) then
             true
         else
             !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
@@ -793,6 +825,12 @@ get_possible_types_for_bound_inst(FunctorsToTypesMap, BoundInst, MaybeTypes) :-
         ;
             ConsId = uint32_const(_),
             IntType = int_type_uint32
+        ;
+            ConsId = int64_const(_),
+            IntType = int_type_int64
+        ;
+            ConsId = uint64_const(_),
+            IntType = int_type_uint64
         ),
         MaybeTypes = yes([type_builtin(builtin_type_int(IntType))])
     ;
@@ -917,6 +955,12 @@ maybe_issue_type_match_error(InstId, InstDefn, ForTypeKind, IFTC, Mismatches,
         ;
             ForTypeKind = ftk_int(int_type_uint32),
             ForTypeCtor = uint32_type_ctor
+        ;
+            ForTypeKind = ftk_int(int_type_int64),
+            ForTypeCtor = int64_type_ctor
+        ;
+            ForTypeKind = ftk_int(int_type_uint64),
+            ForTypeCtor = uint64_type_ctor
         ;
             ForTypeKind = ftk_float,
             ForTypeCtor = float_type_ctor
@@ -1320,6 +1364,20 @@ find_mismatches_from_builtin(ExpectedBuiltinType, CurNum,
             record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
         )
     ;
+        ExpectedBuiltinType = builtin_type_int(int_type_int64),
+        ( if ConsId = int64_const(_) then
+            true
+        else
+            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        )
+    ;
+        ExpectedBuiltinType = builtin_type_int(int_type_uint64),
+        ( if ConsId = uint64_const(_) then
+            true
+        else
+            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        )
+    ;
         ExpectedBuiltinType = builtin_type_float,
         ( if ConsId = float_const(_) then
             true
@@ -1498,6 +1556,12 @@ type_defn_or_builtin_to_string(TypeDefnOrBuiltin) = Str :-
         ;
             BuiltinType = builtin_type_int(int_type_uint32),
             Str = "uint32"
+        ;
+            BuiltinType = builtin_type_int(int_type_int64),
+            Str = "int64"
+        ;
+            BuiltinType = builtin_type_int(int_type_uint64),
+            Str = "uint64"
         ;
             BuiltinType = builtin_type_float,
             Str = "float"

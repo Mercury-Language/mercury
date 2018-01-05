@@ -212,11 +212,13 @@ is_lookup_switch(BranchStart, GetTag, TaggedCases, GoalInfo, StoreMap,
     ),
     get_exprn_opts(!.CI, ExprnOpts),
     UnboxFloats = get_unboxed_floats(ExprnOpts),
+    UnboxInt64s = get_unboxed_int64s(ExprnOpts),
     map.to_assoc_list(CaseSolnMap, CaseSolns),
     % This generates CaseValues in reverse order of index, but given that
     % we only use CaseValues to find out the right OutLLDSTypes, this is OK.
     project_solns_to_rval_lists(CaseSolns, [], CaseValues),
-    find_general_llds_types(UnboxFloats, OutTypes, CaseValues, OutLLDSTypes),
+    find_general_llds_types(UnboxFloats, UnboxInt64s, OutTypes, CaseValues,
+        OutLLDSTypes),
     LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutLLDSTypes,
         Liveness).
 
@@ -960,6 +962,10 @@ default_value_for_type(lt_int(int_type_int16)) = const(llconst_int16(0i16)).
 default_value_for_type(lt_int(int_type_uint16)) = const(llconst_uint16(0u16)).
 default_value_for_type(lt_int(int_type_int32)) = const(llconst_int32(0i32)).
 default_value_for_type(lt_int(int_type_uint32)) = const(llconst_uint32(0u32)).
+% XXX INT64.
+default_value_for_type(lt_int(int_type_int64)) = const(llconst_int64(0)).
+% XXX INT64.
+default_value_for_type(lt_int(int_type_uint64)) = const(llconst_uint64(0)).
 default_value_for_type(lt_float) = const(llconst_float(0.0)).
 default_value_for_type(lt_string) = const(llconst_string("")).
 default_value_for_type(lt_data_ptr) = const(llconst_int(0)).

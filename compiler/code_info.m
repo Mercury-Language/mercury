@@ -529,8 +529,16 @@ init_exprn_opts(Globals) = ExprnOpts :-
         OptStaticCodeAddr = no,
         StaticCodeAddrs = do_not_have_static_code_addresses
     ),
+    globals.lookup_bool_option(Globals, unboxed_int64s, OptUBI64s),
+    (
+        OptUBI64s = yes,
+        UBI64s = have_unboxed_int64s
+    ;
+        OptUBI64s = no,
+        UBI64s = do_not_have_unboxed_int64s
+    ),
     ExprnOpts = exprn_opts(NLG, ASM, UBF, UseFloatRegs, DetStackFloatWidth,
-        SGCell, SGFloat, StaticCodeAddrs).
+        SGCell, SGFloat, StaticCodeAddrs, UBI64s).
 
 :- pred max_var_slot(stack_slots::in, int::out) is det.
 

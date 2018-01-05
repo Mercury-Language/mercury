@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2017-2018 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -119,8 +119,16 @@ llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
         OptUnboxFloat = no,
         UnboxFloats = do_not_have_unboxed_floats
     ),
+    globals.lookup_bool_option(Globals, unboxed_int64s, OptUnboxInt64s),
+    (
+        OptUnboxInt64s = yes,
+        UnboxInt64s = have_unboxed_int64s
+    ;
+        OptUnboxInt64s = no,
+        UnboxInt64s = do_not_have_unboxed_int64s
+    ),
     StaticCellInfo0 = init_static_cell_info(ModuleName, UnboxFloats,
-        DoCommonData),
+        UnboxInt64s, DoCommonData),
     module_info_get_ts_rev_string_table(!.HLDS, TSStringTableSize,
         TSRevStringTable),
     global_data_init(StaticCellInfo0, TSStringTableSize, TSRevStringTable,

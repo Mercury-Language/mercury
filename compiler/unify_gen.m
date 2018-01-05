@@ -2194,6 +2194,14 @@ int_tag_to_const_and_int_type(IntTag, Const, Type) :-
         IntTag = int_tag_uint32(UInt32),
         Const = llconst_uint32(UInt32),
         Type = int_type_uint32
+    ;
+        IntTag = int_tag_int64(Int64),
+        Const = llconst_int64(Int64),
+        Type = int_type_int64
+    ;
+        IntTag = int_tag_uint64(UInt64),
+        Const = llconst_uint64(UInt64),
+        Type = int_type_uint64
     ).
 
 :- pred generate_ground_term_args(list(prog_var)::in, list(arg_width)::in,

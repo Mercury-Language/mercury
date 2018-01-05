@@ -46,6 +46,8 @@ MR_DEFINE_TYPE_CTOR_INFO(builtin, int16, 0, INT16);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, uint16, 0, UINT16);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, int32, 0, INT32);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, uint32, 0, UINT32);
+MR_DEFINE_TYPE_CTOR_INFO(builtin, int64, 0, INT64);
+MR_DEFINE_TYPE_CTOR_INFO(builtin, uint64, 0, UINT64);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, character, 0, CHAR);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, string, 0, STRING);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, float, 0, FLOAT);
@@ -151,6 +153,18 @@ mercury__builtin____Unify____int32_0_0(int32_t x, int32_t y)
 
 MR_bool MR_CALL
 mercury__builtin____Unify____uint32_0_0(uint32_t x, uint32_t y)
+{
+    return x == y;
+}
+ 
+MR_bool MR_CALL
+mercury__builtin____Unify____int64_0_0(int64_t x, int64_t y)
+{
+    return x == y;
+}
+
+MR_bool MR_CALL
+mercury__builtin____Unify____uint64_0_0(uint64_t x, uint64_t y)
 {
     return x == y;
 }
@@ -354,6 +368,24 @@ mercury__builtin____Compare____int32_0_0(
 void MR_CALL
 mercury__builtin____Compare____uint32_0_0(
     MR_Comparison_Result *result, uint32_t x, uint32_t y)
+{
+    *result = (x > y ? MR_COMPARE_GREATER :
+          x == y ? MR_COMPARE_EQUAL :
+          MR_COMPARE_LESS);
+}
+ 
+void MR_CALL
+mercury__builtin____Compare____int64_0_0(
+    MR_Comparison_Result *result, int64_t x, int64_t y)
+{
+    *result = (x > y ? MR_COMPARE_GREATER :
+          x == y ? MR_COMPARE_EQUAL :
+          MR_COMPARE_LESS);
+}
+
+void MR_CALL
+mercury__builtin____Compare____uint64_0_0(
+    MR_Comparison_Result *result, uint64_t x, uint64_t y)
 {
     *result = (x > y ? MR_COMPARE_GREATER :
           x == y ? MR_COMPARE_EQUAL :
@@ -565,6 +597,20 @@ mercury__builtin__do_unify__uint32_0_0(MR_Box x, MR_Box y)
 }
 
 MR_bool MR_CALL
+mercury__builtin__do_unify__int64_0_0(MR_Box x, MR_Box y)
+{
+    return mercury__builtin____Unify____int64_0_0(
+        MR_unbox_int64(x), MR_unbox_int64(y));
+}
+
+MR_bool MR_CALL
+mercury__builtin__do_unify__uint64_0_0(MR_Box x, MR_Box y)
+{
+    return mercury__builtin____Unify____uint64_0_0(
+        MR_unbox_uint64(x), MR_unbox_uint64(y));
+}
+ 
+MR_bool MR_CALL
 mercury__builtin__do_unify__string_0_0(MR_Box x, MR_Box y)
 {
     return mercury__builtin____Unify____string_0_0(
@@ -760,6 +806,22 @@ mercury__builtin__do_compare__uint32_0_0(
     mercury__builtin____Compare____uint32_0_0(result,
         (uint32_t) (MR_Word) x, (uint32_t) (MR_Word) y);
 }
+ 
+void MR_CALL
+mercury__builtin__do_compare__int64_0_0(
+    MR_Comparison_Result *result, MR_Box x, MR_Box y)
+{
+    mercury__builtin____Compare____int64_0_0(result,
+       MR_unbox_int64(x), MR_unbox_int64(y));
+}
+
+void MR_CALL
+mercury__builtin__do_compare__uint64_0_0(
+    MR_Comparison_Result *result, MR_Box x, MR_Box y)
+{
+    mercury__builtin____Compare____uint64_0_0(result,
+        MR_unbox_uint64(x), MR_unbox_uint64(y));
+}
 
 void MR_CALL
 mercury__builtin__do_compare__string_0_0(
@@ -953,6 +1015,8 @@ MR_UNIFY_COMPARE_REP_DECLS(builtin, int16, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, uint16, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, int32, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, uint32, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, int64, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, uint64, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, string, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, float, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, character, 0)
@@ -989,6 +1053,8 @@ MR_UNIFY_COMPARE_REP_DEFNS(builtin, int16, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, uint16, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, int32, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, uint32, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, int64, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, uint64, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, string, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, float, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, character, 0)
@@ -1068,6 +1134,8 @@ MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, int16, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, uint16, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, int32, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, uint32, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, int64, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, uint64, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, string, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, float, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, character, 0);
@@ -1107,6 +1175,8 @@ MR_BEGIN_MODULE(mercury_builtin_types)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, uint16, 0)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, int32, 0)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, uint32, 0)
+    MR_UNIFY_COMPARE_REP_LABELS(builtin, int64, 0)
+    MR_UNIFY_COMPARE_REP_LABELS(builtin, uint64, 0)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, string, 0)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, float, 0)
     MR_UNIFY_COMPARE_REP_LABELS(builtin, character, 0)
@@ -1295,6 +1365,48 @@ MR_BEGIN_CODE
                             (uint32_t) MR_r1 < (uint32_t) MR_r2 ?       \
                                 MR_COMPARE_LESS :                       \
                             MR_COMPARE_GREATER);
+
+#include "mercury_hand_unify_compare_body.h"
+
+#undef  module
+#undef  type
+#undef  arity
+#undef  unify_code
+#undef  compare_code
+ 
+////////////////////////////////////////////////////////////////////////////
+ 
+#define module          builtin
+#define type            int64
+#define arity           0
+#define unify_code      MR_r1 = (MR_word_to_int64(MR_r1)                \
+                            == MR_word_to_int64(MR_r2));
+#define compare_code    int64_t i1 = MR_word_to_int64(MR_r1);           \
+                        int64_t i2 = MR_word_to_int64(MR_r2);           \
+                        MR_r1 = ((i1 > i2) ? MR_COMPARE_GREATER :       \
+                            (i1 < i2) ? MR_COMPARE_LESS :               \
+                            MR_COMPARE_EQUAL);
+
+#include "mercury_hand_unify_compare_body.h"
+
+#undef  module
+#undef  type
+#undef  arity
+#undef  unify_code
+#undef  compare_code
+
+////////////////////////////////////////////////////////////////////////////
+
+#define module          builtin
+#define type            uint64
+#define arity           0
+#define unify_code      MR_r1 = (MR_word_to_uint64(MR_r1)               \
+                            == MR_word_to_uint64(MR_r2));
+#define compare_code    uint64_t i1 = MR_word_to_uint64(MR_r1);         \
+                        uint64_t i2 = MR_word_to_uint64(MR_r2);         \
+                        MR_r1 = ((i1 > i2) ? MR_COMPARE_GREATER :       \
+                            (i1 < i2) ? MR_COMPARE_LESS :               \
+                            MR_COMPARE_EQUAL);
 
 #include "mercury_hand_unify_compare_body.h"
 
@@ -1945,6 +2057,8 @@ mercury_sys_init_mercury_builtin_types_init(void)
     MR_init_entry(mercury__builtin____Unify____uint16_0_0);
     MR_init_entry(mercury__builtin____Unify____int32_0_0);
     MR_init_entry(mercury__builtin____Unify____uint32_0_0);
+    MR_init_entry(mercury__builtin____Unify____int64_0_0);
+    MR_init_entry(mercury__builtin____Unify____uint64_0_0);
     MR_init_entry(mercury__builtin____Unify____string_0_0);
     MR_init_entry(mercury__builtin____Unify____float_0_0);
     MR_init_entry(mercury__builtin____Unify____character_0_0);
@@ -1961,6 +2075,8 @@ mercury_sys_init_mercury_builtin_types_init(void)
     MR_init_entry(mercury__builtin____Compare____uint16_0_0);
     MR_init_entry(mercury__builtin____Compare____int32_0_0);
     MR_init_entry(mercury__builtin____Compare____uint32_0_0);
+    MR_init_entry(mercury__builtin____Compare____int64_0_0);
+    MR_init_entry(mercury__builtin____Compare____uint64_0_0);
     MR_init_entry(mercury__builtin____Compare____float_0_0);
     MR_init_entry(mercury__builtin____Compare____string_0_0);
     MR_init_entry(mercury__builtin____Compare____character_0_0);
@@ -1983,6 +2099,8 @@ mercury_sys_init_mercury_builtin_types_init(void)
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, uint16, 0);
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, int32, 0);
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, uint32, 0);
+    MR_INIT_TYPE_CTOR_INFO_MNA(builtin, int64, 0);
+    MR_INIT_TYPE_CTOR_INFO_MNA(builtin, uint64, 0);
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, string, 0);
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, float, 0);
     MR_INIT_TYPE_CTOR_INFO_MNA(builtin, character, 0);
@@ -2023,6 +2141,8 @@ mercury_sys_init_mercury_builtin_types_init_type_tables(void)
     MR_REGISTER_TYPE_CTOR_INFO(builtin, uint16, 0);
     MR_REGISTER_TYPE_CTOR_INFO(builtin, int32, 0);
     MR_REGISTER_TYPE_CTOR_INFO(builtin, uint32, 0);
+    MR_REGISTER_TYPE_CTOR_INFO(builtin, int64, 0);
+    MR_REGISTER_TYPE_CTOR_INFO(builtin, uint64, 0);
     MR_REGISTER_TYPE_CTOR_INFO(builtin, string, 0);
     MR_REGISTER_TYPE_CTOR_INFO(builtin, float, 0);
     MR_REGISTER_TYPE_CTOR_INFO(builtin, character, 0);
@@ -2065,6 +2185,8 @@ mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *deep_fp,
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, uint16, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, int32, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, uint32, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, int64, 0);
+    MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, uint64, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, string, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, float, 0);
     MR_WRITE_OUT_PROC_STATIC_LAYOUTS(deep_fp, builtin, character, 0);

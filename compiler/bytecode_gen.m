@@ -599,6 +599,12 @@ gen_unify(Unification, ByteInfo, Code) :-
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
             sorry($module, $pred, "uint32")
         ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
+            sorry($module, $pred, "int64")
+        ;
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
+            sorry($module, $pred, "uint64")
+        ;
             TypeCategory = ctor_cat_builtin(cat_builtin_char),
             TestId = char_test
         ;
@@ -805,6 +811,12 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ConsId = uint32_const(_),
         unexpected($file, $pred, "uint32")
     ;
+        ConsId = int64_const(_),
+        unexpected($file, $pred, "int64")
+    ;
+        ConsId = uint64_const(_),
+        unexpected($file, $pred, "uint64")
+    ;
         ConsId = float_const(FloatVal),
         ByteConsId = byte_float_const(FloatVal)
     ;
@@ -878,6 +890,8 @@ map_cons_tag(int_tag(IntTagType), ByteConsTag) :-
         ; IntTagType = int_tag_uint16(_)
         ; IntTagType = int_tag_int32(_)
         ; IntTagType = int_tag_uint32(_)
+        ; IntTagType = int_tag_int64(_)
+        ; IntTagType = int_tag_uint64(_)
         ),
         sorry($module, $pred, "bytecode with uint or fixed size int")
     ).

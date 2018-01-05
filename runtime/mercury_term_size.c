@@ -322,6 +322,26 @@ try_again:
 #endif
             return 0;
 
+        // XXX Maybe we should also print the value of the term in the int64,
+        // uint64 and float cases?
+        case MR_TYPECTOR_REP_INT64:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf(
+                    "MR_term_size: int64 %p\n", (void *) term);
+            }
+#endif
+            return 0;
+
+        case MR_TYPECTOR_REP_UINT64:
+#ifdef MR_DEBUG_TERM_SIZES
+            if (MR_heapdebug && MR_lld_print_enabled) {
+                printf(
+                    "MR_term_size: uint64 %p\n", (void *) term);
+            }
+#endif
+            return 0;
+
         case MR_TYPECTOR_REP_CHAR:
 #ifdef MR_DEBUG_TERM_SIZES
             if (MR_heapdebug && MR_lld_print_enabled) {

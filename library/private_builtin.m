@@ -75,6 +75,14 @@
 :- pred builtin_compare_uint32(comparison_result::uo, uint32::in, uint32::in)
     is det.
 
+:- pred builtin_unify_int64(T::in, T::in) is semidet.
+:- pred builtin_compare_int64(comparison_result::uo, T::in, T::in)
+    is det.
+
+:- pred builtin_unify_uint64(T::in, T::in) is semidet.
+:- pred builtin_compare_uint64(comparison_result::uo, T::in, T::in)
+    is det.
+
 :- pred builtin_unify_character(character::in, character::in) is semidet.
 :- pred builtin_compare_character(comparison_result::uo, character::in,
     character::in) is det.
@@ -269,6 +277,34 @@ builtin_compare_uint32(R, X, Y) :-
         R = (=)
     else
         R = (>)
+    ).
+
+builtin_unify_int64(_, _) :-
+    ( if semidet_succeed then
+        sorry("unify for int64")
+    else
+        semidet_succeed
+    ).
+
+builtin_compare_int64(Result, _, _) :-
+    ( if semidet_succeed then
+        sorry("compare for int64")
+    else
+        Result = (=)
+    ).
+
+builtin_unify_uint64(_, _) :-
+    ( if semidet_succeed then
+        sorry("unify for uint64")
+    else
+        semidet_succeed
+    ).
+
+builtin_compare_uint64(Result, _, _) :-
+    ( if semidet_succeed then
+        sorry("compare for uint64")
+    else
+        Result = (=)
     ).
 
 builtin_unify_character(C, C).
@@ -1862,8 +1898,10 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
     public static final int MR_TYPECTOR_REP_UINT16                  = 50;
     public static final int MR_TYPECTOR_REP_INT32                   = 51;
     public static final int MR_TYPECTOR_REP_UINT32                  = 52;
-    public static final int MR_TYPECTOR_REP_UNKNOWN                 = 53;
-    public static final int MR_TYPECTOR_REP_MAX                     = 54;
+    public static final int MR_TYPECTOR_REP_INT64                   = 53;
+    public static final int MR_TYPECTOR_REP_UINT64                  = 54;
+    public static final int MR_TYPECTOR_REP_UNKNOWN                 = 55;
+    public static final int MR_TYPECTOR_REP_MAX                     = 56;
 
     public static final int MR_SECTAG_NONE              = 0;
     public static final int MR_SECTAG_NONE_DIRECT_ARG   = 1;

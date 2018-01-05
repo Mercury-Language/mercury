@@ -243,7 +243,7 @@ static void     write_var_size_counts(FILE *fp, const char *prefix,
                     MR_VarSizeCount *node);
 static const char *maybe_filename(const char *s);
 
-#define MR_NUM_BUILTIN_ALLOC_SITES  7
+#define MR_NUM_BUILTIN_ALLOC_SITES  9
 
 MR_AllocSiteInfo MR_builtin_alloc_sites[MR_NUM_BUILTIN_ALLOC_SITES] = {
     // These must match the macros in mercury_memory.h.
@@ -253,7 +253,9 @@ MR_AllocSiteInfo MR_builtin_alloc_sites[MR_NUM_BUILTIN_ALLOC_SITES] = {
     { NULL, "unknown", 0, "type_info/0",        0 },
     { NULL, "unknown", 0, "<foreign>",          0 },
     { NULL, "unknown", 0, "<tabling structs>",  0 },
-    { NULL, "unknown", 0, "<stm structs>",      0 }
+    { NULL, "unknown", 0, "<stm structs>",      0 },
+    { NULL, "unknown", 0, "int64.int64/0",      MR_INT64_WORDS },
+    { NULL, "unknown", 0, "uint64.uint64/0",    MR_UINT64_WORDS }
 };
 
 void

@@ -178,6 +178,8 @@
     ;       uint16_const(uint16)
     ;       int32_const(int32)
     ;       uint32_const(uint32)
+    ;       int64_const(int) % XXX INT64
+    ;       uint64_const(int) % XX INT64
     ;       float_const(float)
     ;       unary(unary_op, simple_expr(T))
     ;       binary(binary_op, simple_expr(T), simple_expr(T)).
@@ -314,6 +316,8 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
         ; ModuleName = "uint16", IntType = int_type_uint16
         ; ModuleName = "int32", IntType = int_type_int32
         ; ModuleName = "uint32", IntType = int_type_uint32
+        ; ModuleName = "int64", IntType = int_type_int64
+        ; ModuleName = "uint64", IntType = int_type_uint64
         ),
         (
             PredName = "+",

@@ -104,6 +104,8 @@
     ;       builtin_type_uint16_rep
     ;       builtin_type_int32_rep
     ;       builtin_type_uint32_rep
+    ;       builtin_type_int64_rep
+    ;       builtin_type_uint64_rep
     ;       builtin_type_float_rep
     ;       builtin_type_string_rep
     ;       builtin_type_char_rep.
@@ -1412,6 +1414,12 @@ read_encoded_type(ByteCode, StringTable, TypeTable, TypeRep, !Pos) :-
     ;
         Selector = 19,
         TypeRep = builtin_type_rep(builtin_type_uint32_rep)
+    ;
+        Selector = 20,
+        TypeRep = builtin_type_rep(builtin_type_int64_rep)
+    ;
+        Selector = 21,
+        TypeRep = builtin_type_rep(builtin_type_uint64_rep)
     ).
 
 %---------------------%

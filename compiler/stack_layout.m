@@ -2208,8 +2208,10 @@ represent_locn_or_const_as_int_rval(Params, LvalOrConst, Rval, Type,
     ;
         LvalOrConst = const(_Const),
         UnboxedFloats = Params ^ slp_unboxed_floats,
+        UnboxedInt64s = Params ^ slp_unboxed_int64s,
         ArgWidth = full_word,
-        LLDSType = rval_type_as_arg(UnboxedFloats, ArgWidth, LvalOrConst),
+        LLDSType = rval_type_as_arg(UnboxedFloats, UnboxedInt64s, ArgWidth,
+            LvalOrConst),
         add_scalar_static_cell([typed_rval(LvalOrConst, LLDSType)], DataId,
             !StaticCellInfo),
         Rval = const(llconst_data_addr(DataId, no)),
@@ -2594,7 +2596,10 @@ represent_determinism_rval(Detism,
                 slp_unboxed_floats          :: have_unboxed_floats,
 
                 % Do we want to include information about labels' line numbers?
-                slp_rtti_line_numbers       :: bool
+                slp_rtti_line_numbers       :: bool,
+
+                % Do we have unboxed 64-bit integer types?
+                slp_unboxed_int64s          :: have_unboxed_int64s
             ).
 
 :- func init_stack_layout_params(module_info) = stack_layout_params.
@@ -2613,6 +2618,7 @@ init_stack_layout_params(ModuleInfo) = Params :-
     globals.lookup_bool_option(Globals, rtti_line_numbers, RttiLineNumbers),
     globals.lookup_int_option(Globals, layout_compression_limit,
         CompressLimit),
+    globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64sOpt),
     (
         UnboxedFloatOpt = no,
         UnboxedFloat = do_not_have_unboxed_floats
@@ -2627,9 +2633,16 @@ init_stack_layout_params(ModuleInfo) = Params :-
         CommonLayoutData = yes,
         CompressArrays = yes(CompressLimit)
     ),
+    (
+        UnboxedInt64sOpt = no,
+        UnboxedInt64s = do_not_have_unboxed_int64s
+    ;
+        UnboxedInt64sOpt = yes,
+        UnboxedInt64s = have_unboxed_int64s
+    ),
     Params = stack_layout_params(ModuleInfo, TraceLevel, TraceSuppress,
         DeepProfiling, AgcLayout, TraceLayout, ProcIdLayout, CompressArrays,
-        StaticCodeAddr, UnboxedFloat, RttiLineNumbers).
+        StaticCodeAddr, UnboxedFloat, RttiLineNumbers, UnboxedInt64s).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.stack_layout.

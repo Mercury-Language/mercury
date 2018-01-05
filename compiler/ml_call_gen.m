@@ -873,6 +873,8 @@ ml_gen_simple_expr(int16_const(Int16)) = ml_const(mlconst_int16(Int16)).
 ml_gen_simple_expr(uint16_const(UInt16)) = ml_const(mlconst_uint16(UInt16)).
 ml_gen_simple_expr(int32_const(Int32)) = ml_const(mlconst_int32(Int32)).
 ml_gen_simple_expr(uint32_const(UInt32)) = ml_const(mlconst_uint32(UInt32)).
+ml_gen_simple_expr(int64_const(Int64)) = ml_const(mlconst_int64(Int64)).
+ml_gen_simple_expr(uint64_const(UInt64)) = ml_const(mlconst_uint64(UInt64)).
 ml_gen_simple_expr(float_const(Float)) = ml_const(mlconst_float(Float)).
 ml_gen_simple_expr(unary(Op, Expr)) =
     ml_unop(std_unop(Op), ml_gen_simple_expr(Expr)).
@@ -1012,6 +1014,8 @@ may_const_yield_dangling_stack_ref(Const) = MayYieldDanglingStackRef :-
         ; Const = mlconst_uint16(_)
         ; Const = mlconst_int32(_)
         ; Const = mlconst_uint32(_)
+        ; Const = mlconst_int64(_)
+        ; Const = mlconst_uint64(_)
         ; Const = mlconst_enum(_, _)
         ; Const = mlconst_char(_)
         ; Const = mlconst_foreign(_, _, _)

@@ -481,6 +481,7 @@
 
     ;       conf_low_tag_bits
     ;       unboxed_float
+    ;       unboxed_int64s
     ;       unboxed_enums
     ;       unboxed_no_tag_types
     ;       arg_pack_bits
@@ -1439,6 +1440,7 @@ option_defaults_2(compilation_model_option, [
                                         % above default with a value determined
                                         % at configuration time.
     unboxed_float                       -   bool(no),
+    unboxed_int64s                      -   bool(no),
     unboxed_enums                       -   bool(yes),
     unboxed_no_tag_types                -   bool(yes),
     arg_pack_bits                       -   int(-1),
@@ -2386,6 +2388,7 @@ long_option("bits-per-word",        bits_per_word).
 long_option("bytes-per-word",       bytes_per_word).
 long_option("conf-low-tag-bits",    conf_low_tag_bits).
 long_option("unboxed-float",        unboxed_float).
+long_option("unboxed-int64s",       unboxed_int64s).
 long_option("unboxed-enums",        unboxed_enums).
 long_option("unboxed-no-tag-types", unboxed_no_tag_types).
 long_option("arg-pack-bits",        arg_pack_bits).
@@ -4924,12 +4927,20 @@ options_help_compilation_model -->
         % This is a developer only option.
 %       "--unboxed-float",
 %       "(This option is not for general use.)",
-%       "\tDon't box floating point numbers.",
+%       "\tDo not box floating point numbers.",
 %       "\tThis assumes that a Mercury float will fit in a word.",
-%       "\tThe C code needs to be compiled with `-UBOXED_FLOAT'.",
+%       "\tThe C code needs to be compiled with `-UMR_BOXED_FLOAT'.",
 %       "\tIt may also need to be compiled with",
-%       "\t`-DUSE_SINGLE_PREC_FLOAT', if double precision",
+%       "\t`-DMR_USE_SINGLE_PREC_FLOAT', if double precision",
 %       "\tfloats don't fit into a word."
+
+%        % This is a developer only option.
+%        "--unboxed-int64s",
+%        "(This option is not for general use.)",
+%        "\tDo not box 64-bit integer numbers",
+%        "\tThis assumes that word size of the target machine is at least",
+%        "\t64-bits in size.",
+%        "\tThe C code needs to be compiled iwth `-UMR_BOXED_INT64S'.",
 
         % This is a developer only option.
 %       "--no-unboxed-enums",

@@ -1808,6 +1808,8 @@
     ;       mlconst_uint16(uint16)
     ;       mlconst_int32(int32)
     ;       mlconst_uint32(uint32)
+    ;       mlconst_int64(int)  % XXX INT64.
+    ;       mlconst_uint64(int) % XXX INT64.
     ;       mlconst_enum(int, mlds_type)
     ;       mlconst_char(int)
     ;       mlconst_float(float)

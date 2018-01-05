@@ -880,6 +880,12 @@ classify_type_ctor_if_special(TypeCtor, TypeCategory) :-
             TypeName = "uint32",
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint32))
         ;
+            TypeName = "int64",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int64))
+        ;
+            TypeName = "uint64",
+            TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint64))
+        ;
             TypeName = "character",
             TypeCategory = ctor_cat_builtin(cat_builtin_char)
         ;
