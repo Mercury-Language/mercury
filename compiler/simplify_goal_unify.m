@@ -208,7 +208,8 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
             call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo0, Call)
         else if
             hlds_pred.in_in_unification_proc_id(ProcId),
-            % For most imported types we only generate unification
+
+            % For most imported types, we only generate unification
             % predicate declarations if they are needed for complicated
             % unifications other than proc_id 0. higher_order.m will
             % specialize these cases if possible.
