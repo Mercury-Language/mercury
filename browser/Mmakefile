@@ -33,20 +33,14 @@ LINK_STDLIB_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 -include Mmake.browser.params
 
-# Override the default rule in `mmake --use-mmc-make' that asks `mmc' to
-# create a missing optional params file.
+# Override the default rule in `mmake --use-mmc-make' that asks `mmc'
+# to create a missing optional params file.
 Mmake.browser.params:
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options,
+# so they can be found by `mmc --make'.
 include Mercury.options
 
-# XXX To prevent bitrot in the programs covered by "all", this should be:
-# MAIN_TARGET=all
-# However, we noticed this fact too late: fatal bit rot has already occurred.
-# The browse_test program requires access to the mdbcomp package, whose
-# modules are now in another directory, and the declarative_test program
-# requires updates to its own source code.
 MAIN_TARGET=main
 
 MERCURY_MAIN_LIB_MODULES=$(BROWSER_LIB_NAME)
@@ -146,7 +140,7 @@ endif
 main:	library $(TAGS_FILE_EXISTS)
 
 .PHONY: all
-all:	library $(TAGS_FILE_EXISTS) browse_test declarative_test
+all:	library $(TAGS_FILE_EXISTS)
 
 .PHONY: library
 
@@ -155,6 +149,19 @@ library: $(LIBS)
 .PHONY: depend
 depend:	MDB_FLAGS $(DEPENDS)
 $(DEPENDS): Mercury.modules
+
+# XXX To prevent bitrot, aux should list the auxiliary programs
+# that are needed only during development, and not by ordinary users.
+# However, we noticed this fact too late: fatal bit rot has already occurred.
+# The browse_test program requires access to the mdbcomp package, whose
+# modules are now in another directory, and the declarative_test program
+# requires updates to its own source code.
+# aux:	browse_test declarative_test
+.PHONY: aux
+aux:
+
+.PHONY: depend_aux
+depend_aux: browse_test.depend declarative_test.depend
 
 .NOTPARALLEL:
 

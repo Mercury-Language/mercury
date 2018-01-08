@@ -935,7 +935,7 @@ then
         case $use_mmc_make in
             yes)
                 # The rules to generate *_FLAGS files from *_FLAGS.in files
-                # will not run if we are using `mmc --make' so run them now.
+                # will not run if we are using `mmc --make', so run them now.
                 if (cd $stage2dir && \
                     $MMAKE compiler/COMP_FLAGS library/LIB_FLAGS \
                     mdbcomp/MDBCOMP_FLAGS \
@@ -950,9 +950,16 @@ then
         esac
 
         if (cd $stage2dir && \
-            $MMAKE $mmake_opts dep_library dep_mdbcomp \
-            dep_browser dep_ssdb dep_compiler \
-            dep_slice dep_profiler dep_deep_profiler dep_mfilterjavac)
+            $MMAKE $mmake_opts \
+            dep_library \
+            dep_mdbcomp \
+            dep_browser dep_browser_aux \
+            dep_ssdb \
+            dep_compiler \
+            dep_slice \
+            dep_profiler dep_profiler_aux \
+            dep_deep_profiler \
+            dep_mfilterjavac)
         then
             echo "building of stage 2 dependencies successful"
         else
@@ -960,7 +967,7 @@ then
             exit 1
         fi
 
-        # For the csharp grade Mmake.workspace needs to see the grade setting
+        # For the csharp grade, Mmake.workspace needs to see the grade setting
         # when it defines MLLIBS, otherwise we will try to reference a separate
         # Mercury runtime assembly, which we do not have for the csharp grade.
         # As per README.Csharp, we need to set GRADE as part of the command
@@ -991,7 +998,7 @@ then
         fi
 
         if (cd $stage2dir/browser && \
-            $MMAKE $mmake_opts $jfactor library $ENVGRADE)
+            $MMAKE $mmake_opts $jfactor library aux $ENVGRADE)
         then
             echo "building of stage 2 browser successful"
         else
@@ -1052,6 +1059,21 @@ then
             echo "building of stage 2 slice successful"
         else
             echo "building of stage 2 slice not successful"
+            exit 1
+        fi
+
+        if (cd $stage2dir/profiler && \
+            unset MMAKE && \
+            unset MMAKE_VPATH && \
+            unset MMAKE_DIR && \
+            unset MERCURY_CONFIG_DIR && \
+            unset MERCURY_STDLIB_DIR && \
+            mmake $mmake_opts depend depend_aux && \
+            mmake $mmake_opts $jfactor all aux $ENVGRADE)
+        then
+            echo "building of stage 2 profiler successful"
+        else
+            echo "building of stage 2 profiler not successful"
             exit 1
         fi
 

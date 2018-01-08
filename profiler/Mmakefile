@@ -30,20 +30,21 @@ MCFLAGS += --flags PROF_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
-# XXX We *should* list demangle_test here, but doing so causes problems
-# with compiling the source distribution. Either the source distribution
-# should include the compiled form of demangle_test, or the compilation
-# of demangle_test shoul be done by default only by tools/bootcheck,
-# and not by an ordinary invocation of make/mmake.
-# XXX We should have listed atsort_callgraph along with demangle_test,
-# but now it is too late; due to bitrot, it does not compile anymore.
 .PHONY: all
 all:	mercury_profile $(TAGS_FILE_EXISTS)
 
 .PHONY: depend
-# XXX As explained above, this should be
-# depend:	mercury_profile.depend demangle_test.depend
 depend:	mercury_profile.depend
+
+# XXX We should list atsort_callgraph along with demangle_test, in both
+# the aux and depend_aux targets, but now it is too late; due to bitrot,
+# it does not compile anymore.
+#
+# NOTE: if you add any programs here, you will need to modify the rule
+# for dep_profiler_aux in ../Mmakefile.
+aux:	demangle_test
+
+depend_aux: demangle_test.depend
 
 mercury_profile.depend: PROF_FLAGS
 demangle_test.depend: PROF_FLAGS
