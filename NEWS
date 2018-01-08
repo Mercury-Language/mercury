@@ -544,7 +544,7 @@ Changes to the Mercury compiler:
   applies only to predicates and functions defined by Mercury clauses;
   the second applies to predicates and functions defined by either
   Mercury clauses or foreign procedures.
-  
+
   The option --warn-inconsistent-pred-order is a shorter synonym for
   --warn-inconsistent-pred-order-clauses.
 
@@ -598,8 +598,7 @@ Changes to the Mercury compiler:
 
 * We have disabled the old --num-reserved-objects option.
 
-* We have upgraded to the bundled Boehm GC to 7.6.0 and libatomic_ops to
-  7.4.4.
+* We have upgraded the bundled Boehm GC and libatomic_ops to 7.6.2.
 
 Change to the Mercury debugger:
 
