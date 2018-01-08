@@ -30,13 +30,20 @@ MCFLAGS += --flags PROF_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
-# XXX We should have listed atsort_callgraph here, but now it is too late;
-# due to bitrot, it does not compile anymore.
+# XXX We *should* list demangle_test here, but doing so causes problems
+# with compiling the source distribution. Either the source distribution
+# should include the compiled form of demangle_test, or the compilation
+# of demangle_test shoul be done by default only by tools/bootcheck,
+# and not by an ordinary invocation of make/mmake.
+# XXX We should have listed atsort_callgraph along with demangle_test,
+# but now it is too late; due to bitrot, it does not compile anymore.
 .PHONY: all
-all:	mercury_profile demangle_test $(TAGS_FILE_EXISTS)
+all:	mercury_profile $(TAGS_FILE_EXISTS)
 
 .PHONY: depend
-depend:	mercury_profile.depend demangle_test.depend
+# XXX As explained above, this should be
+# depend:	mercury_profile.depend demangle_test.depend
+depend:	mercury_profile.depend
 
 mercury_profile.depend: PROF_FLAGS
 demangle_test.depend: PROF_FLAGS
