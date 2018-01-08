@@ -505,7 +505,7 @@ if test "$JAVAC" != "" -a "$JAVA_INTERPRETER" != "" -a "$JAR" != ""; then
 				version = 0f;
 			}
 
-			if (version >= 1.8) {
+			if (version >= 1.8f) {
 				System.out.println("Hello, world\n");
 			} else {
 				System.out.println("Nope, sorry.\n");
