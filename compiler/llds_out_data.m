@@ -1421,8 +1421,8 @@ output_rval_as_type(Info, Rval, DesiredType, !IO) :-
         output_rval(Info, Rval, !IO)
     else
         % We need to convert to the right type first.
-        % Conversions to/from float must be treated specially;
-        % for the others, we can just use a cast.
+        % Conversions to/from float, int64 and uint64 must be treated
+        % specially; for the others, we can just use a cast.
         ( if DesiredType = lt_float then
             io.write_string("MR_word_to_float(", !IO),
             output_rval(Info, Rval, !IO),
@@ -1432,6 +1432,30 @@ output_rval_as_type(Info, Rval, DesiredType, !IO) :-
                 output_float_rval_as_word(Info, Rval, !IO)
             else if DesiredType = lt_data_ptr then
                 output_float_rval_as_data_ptr(Info, Rval, !IO)
+            else
+                unexpected($file, $pred, "type error")
+            )
+        else if DesiredType = lt_int(int_type_int64) then
+            io.write_string("MR_word_to_int64(", !IO),
+            output_rval(Info, Rval, !IO),
+            io.write_string(")", !IO)
+        else if ActualType = lt_int(int_type_int64) then
+            ( if DesiredType = lt_word then
+                output_int64_rval_as_word(Info, Rval, !IO)
+            else if DesiredType = lt_data_ptr then
+                output_int64_rval_as_data_ptr(Info, Rval, !IO)
+            else
+                unexpected($file, $pred, "type error")
+            )
+        else if DesiredType = lt_int(int_type_uint64) then
+            io.write_string("MR_word_to_uint64(", !IO),
+            output_rval(Info, Rval, !IO),
+            io.write_string(")", !IO)
+        else if ActualType = lt_int(int_type_uint64) then
+            ( if DesiredType = lt_word then
+                output_uint64_rval_as_word(Info, Rval, !IO)
+            else if DesiredType = lt_data_ptr then
+                output_uint64_rval_as_data_ptr(Info, Rval, !IO)
             else
                 unexpected($file, $pred, "type error")
             )
@@ -1508,6 +1532,70 @@ output_float_rval(Info, Rval, IsPtr, !IO) :-
         output_rval(Info, Rval, !IO),
         io.write_string(")", !IO)
     ).
+
+    % Output a int64 rval, converted to type `MR_Word *'
+    %
+:- pred output_int64_rval_as_data_ptr(llds_out_info::in, rval::in,
+    io::di, io::uo) is det.
+
+output_int64_rval_as_data_ptr(Info, Rval, !IO) :-
+    output_int64_rval(Info, Rval, yes, !IO).
+
+    % Output a int64 rval, converted to type `MR_Word'
+    %
+:- pred output_int64_rval_as_word(llds_out_info::in, rval::in,
+    io::di, io::uo) is det.
+
+output_int64_rval_as_word(Info, Rval, !IO) :-
+    output_int64_rval(Info, Rval, no, !IO).
+
+    % Output a int64 rval, converted to type `MR_Word' or `MR_Word *'
+    %
+:- pred output_int64_rval(llds_out_info::in, rval::in, bool::in,
+    io::di, io::uo) is det.
+
+output_int64_rval(Info, Rval, IsPtr, !IO) :-
+    (
+        IsPtr = yes,
+        output_llds_type_cast(lt_data_ptr, !IO)
+    ;
+        IsPtr = no
+    ),
+    io.write_string("MR_int64_to_word(", !IO),
+    output_rval(Info, Rval, !IO),
+    io.write_string(")", !IO).
+
+    % Output a uint64 rval, converted to type `MR_Word *'
+    %
+:- pred output_uint64_rval_as_data_ptr(llds_out_info::in, rval::in,
+    io::di, io::uo) is det.
+
+output_uint64_rval_as_data_ptr(Info, Rval, !IO) :-
+    output_uint64_rval(Info, Rval, yes, !IO).
+
+    % Output a uint64 rval, converted to type `MR_Word'
+    %
+:- pred output_uint64_rval_as_word(llds_out_info::in, rval::in,
+    io::di, io::uo) is det.
+
+output_uint64_rval_as_word(Info, Rval, !IO) :-
+    output_uint64_rval(Info, Rval, no, !IO).
+
+    % Output a uint64 rval, converted to type `MR_Word' or `MR_Word *'
+    %
+:- pred output_uint64_rval(llds_out_info::in, rval::in, bool::in,
+    io::di, io::uo) is det.
+
+output_uint64_rval(Info, Rval, IsPtr, !IO) :-
+    (
+        IsPtr = yes,
+        output_llds_type_cast(lt_data_ptr, !IO)
+    ;
+        IsPtr = no
+    ),
+    io.write_string("MR_uint64_to_word(", !IO),
+    output_rval(Info, Rval, !IO),
+    io.write_string(")", !IO).
 
 :- pred is_aligned_dword_ptr(rval::in, rval::in, mem_ref::out) is semidet.
 
