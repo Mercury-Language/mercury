@@ -6,17 +6,17 @@
 % for this example, because it didn't properly escape special characters
 % such as \ in some of the C strings that it generated.
 
-:- module int64.
+:- module unescaped_special_char.
 
 :- interface.
 
-:- type int64.
+:- type myint64.
 
-:- func int64 /\ int64 = int64.
+:- func myint64 /\ myint64 = myint64.
 
 :- implementation.
 
-:- type int64 == int.
+:- type myint64 == int.
 
 :- pragma foreign_proc("C",
     (A::in) /\ (B::in) = (C::out),

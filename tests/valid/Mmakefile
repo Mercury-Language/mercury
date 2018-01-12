@@ -148,7 +148,6 @@ OTHER_PROGS = \
 	inst_perf_bug_1 \
 	inst_perf_bug_2 \
 	instmap_generic_failure \
-	int64 \
 	lambda_inference\
 	lambda_instmap_bug \
 	lambda_instmap_bug2 \
@@ -244,6 +243,7 @@ OTHER_PROGS = \
 	unbound_inst_var \
 	unbound_tvar_in_lambda \
 	undead_proc \
+	unescaped_special_char \
 	unify_dummy \
 	uniq_mode_inf_bug \
 	uniq_unify \
