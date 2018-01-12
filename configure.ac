@@ -4686,20 +4686,6 @@ case "$C_COMPILER_TYPE" in
         ;;
 esac
 case "$FULLARCH" in
-    *-linux*)
-        # On Linux, if we're linking statically, we need to pass
-        # `-defsym _DYNAMIC=0' to the linker, to avoid undefined references
-        # to _DYNAMIC in boehm_gc/dyn_load.c. (We might eventually need
-        # similar treatment for other OSs too.)
-        case "$C_COMPILER_TYPE" in
-            gcc*)
-                LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
-                ;;
-            clang*)
-                LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
-                ;;
-        esac
-        ;;
     *-sun-solaris*)
         case "$COMPILER" in
             cc)
