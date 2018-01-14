@@ -44,9 +44,9 @@ Changes that may break compatibility:
   type names are:
 
       int
-      int{8,16,32}
+      int{8,16,32,64}
       uint
-      uint{8,16,32}
+      uint{8,16,32,64}
       float
       character
       string
@@ -112,6 +112,10 @@ Changes that may break compatibility:
   the old behaviour of these operations is provided by the functions
   int.legacy_left_shift/2 and int.legacy_right_shift/2.  These functions
   will be deleted in a future release.
+
+* We have changed the semantics of int.abs/1 so that it throws an exception
+  if its argument is equal to int.min_int.  The old behaviour of this function
+  is provided by the the new function int.unchecked_abs/1.
 
 Changes to the Mercury language:
 
@@ -386,9 +390,10 @@ Changes to the Mercury standard library:
   queue ADT.  This is a blend between a priority queue and a map.  This was
   contributed by Matthias Güdemann.
 
-* We have added the following predicate to the int module:
+* The following predicates and functions have been added to the int module:
 
   - all_true_in_range/3
+  - nabs/1
 
 * We have added a predicate named is_dummy_context to the term module.
 

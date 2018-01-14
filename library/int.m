@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -52,10 +53,23 @@
 
 %---------------------------------------------------------------------------%
 
-    % Absolute value.
+    % abs(X) returns the absolute value of X.
+    % Throws an exception if X = int.min_int.
     %
 :- func abs(int) = int.
 :- pred abs(int::in, int::out) is det.
+
+    % unchecked_abs(X) returns the absolute value of X, except that the result
+    % is undefined if X = int.min_int.
+    %
+:- func unchecked_abs(int) = int.
+
+    % nabs(X) returns the negative absolute value of X.
+    % Unlike abs/1 this function is defined for X = int.min_int.
+    %
+:- func nabs(int) = int.
+
+%---------------------------------------------------------------------------%
 
     % Maximum.
     %
@@ -584,11 +598,27 @@ abs(Num) = Abs :-
     abs(Num, Abs).
 
 abs(Num, Abs) :-
-    ( if Num < 0 then
-        Abs = 0 - Num
+    ( if Num = int.min_int then
+        throw(software_error("int.abs: abs(min_int) would overflow"))
     else
-        Abs = Num
+        Abs = unchecked_abs(Num)
     ).
+
+unchecked_abs(Num) =
+    ( if Num < 0 then
+        0 - Num
+    else
+        Num
+    ).
+
+nabs(Num) =
+    ( if Num > 0 then
+        -Num
+    else
+        Num
+    ).
+
+%---------------------------------------------------------------------------%
 
 max(X, Y) = Max :-
     max(X, Y, Max).
