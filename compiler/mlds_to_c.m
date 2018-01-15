@@ -4888,7 +4888,7 @@ mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
         Type = mercury_type(builtin_type(BuiltinType), _, _),
         BuiltinType = builtin_type_int(int_type_uint64)
     then
-        io.write_string("MR_box_uint64", !IO),
+        io.write_string("MR_box_uint64(", !IO),
         mlds_output_rval(Opts, Expr, !IO),
         io.write_string(")", !IO)
     else if
