@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017 The Mercury team.
+% Copyright (C) 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -71,6 +71,33 @@
 
 %---------------------------------------------------------------------------%
 
+    % abs(X) returns the absolute value of X.
+    % Throws an exception if X = int32.min_int32.
+    %
+:- func abs(int32) = int32.
+
+    % unchecked_abs(X) returns the absolute value of X, except that the result
+    % is undefined if X = int32.min_int32.
+    %
+:- func unchecked_abs(int32) = int32.
+
+    % nabs(X) returns the negative absolute value of X.
+    % Unlike abs/1 this function is defined for X = int32.min_int32.
+    %
+:- func nabs(int32) = int32.
+
+%---------------------------------------------------------------------------%
+
+    % Maximum.
+    %
+:- func max(int32, int32) = int32.
+
+    % Minimum.
+    %
+:- func min(int32, int32) = int32.
+
+%---------------------------------------------------------------------------%
+
     % Unary plus.
     %
 :- func + (int32::in) = (int32::uo) is det.
@@ -101,14 +128,6 @@
     %
 :- func (int32::in) * (int32::in) = (int32::uo) is det.
 :- func times(int32, int32) = int32.
-
-    % Maximum.
-    %
-:- func max(int32, int32) = int32.
-
-    % Minimum.
-    %
-:- func min(int32, int32) = int32.
 
     % Flooring integer division.
     % Truncates towards minus infinity, e.g. (-10_i32) div 3_i32 = (-4_i32).
@@ -451,6 +470,29 @@ X >> Y = Result :-
     else
         Msg = "uint.(>>): second operand is out of range",
         throw(math.domain_error(Msg))
+    ).
+
+%---------------------------------------------------------------------------%
+
+abs(Num) =
+    ( if Num = int32.min_int32 then
+        throw(software_error("int32.abs: abs(min_int32) would overflow"))
+    else
+        unchecked_abs(Num)
+    ).
+
+unchecked_abs(Num) =
+    ( if Num < 0i32 then
+        0i32 - Num
+    else
+        Num
+    ).
+
+nabs(Num) =
+    ( if Num > 0i32 then
+        -Num
+    else
+        Num
     ).
 
 %---------------------------------------------------------------------------%

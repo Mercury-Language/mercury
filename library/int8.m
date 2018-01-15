@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017 The Mercury team.
+% Copyright (C) 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -53,6 +53,23 @@
     % Greater than or equal.
     %
 :- pred (int8::in) >= (int8::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
+    % abs(X) returns the absolute value of X.
+    % Throws an exception if X = int8.min_int8.
+    %
+:- func abs(int8) = int8.
+
+    % unchecked_abs(X) returns the absolute value of X, except that the result
+    % is undefined if X = int8.min_int8.
+    %
+:- func unchecked_abs(int8) = int8.
+
+    % nabs(X) returns the negative absolute value of X.
+    % Unlike abs/1 this function is defined for X = int8.min_int8.
+    %
+:- func nabs(int8) = int8.
 
 %---------------------------------------------------------------------------%
 
@@ -365,6 +382,29 @@ X >> Y = Result :-
     else
         Msg = "int8.(>>): second operand is out of range",
         throw(math.domain_error(Msg))
+    ).
+
+%---------------------------------------------------------------------------%
+
+abs(Num) =
+    ( if Num = int8.min_int8 then
+        throw(software_error("int8.abs: abs(min_int8) would overflow"))
+    else
+        unchecked_abs(Num)
+    ).
+
+unchecked_abs(Num) =
+    ( if Num < 0i8 then
+        0i8 - Num
+    else
+        Num
+    ).
+
+nabs(Num) =
+    ( if Num > 0i8 then
+        -Num
+    else
+        Num
     ).
 
 %---------------------------------------------------------------------------%

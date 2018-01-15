@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017 The Mercury team.
+% Copyright (C) 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -66,6 +66,23 @@
     % Greater than or equal.
     %
 :- pred (int16::in) >= (int16::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
+    % abs(X) returns the absolute value of X.
+    % Throws an exception if X = int16.min_int16.
+    %
+:- func abs(int16) = int16.
+
+    % unchecked_abs(X) returns the absolute value of X, except that the result
+    % is undefined if X = int16.min_int16.
+    %
+:- func unchecked_abs(int16) = int16.
+
+    % nabs(X) returns the negative absolute value of X.
+    % Unlike abs/1 this function is defined for X = int16.min_int16.
+    %
+:- func nabs(int16) = int16.
 
 %---------------------------------------------------------------------------%
 
@@ -363,6 +380,29 @@ from_bytes_le(_, _) = _ :-
 
 from_bytes_be(MSB, LSB) =
     from_bytes_le(LSB, MSB).
+
+%---------------------------------------------------------------------------%
+
+abs(Num) =
+    ( if Num = int16.min_int16 then
+        throw(software_error("int16.abs: abs(min_int16) would overflow"))
+    else
+        unchecked_abs(Num)
+    ).
+
+unchecked_abs(Num) =
+    ( if Num < 0i16 then
+        0i16 - Num
+    else
+        Num
+    ).
+
+nabs(Num) =
+    ( if Num > 0i16 then
+        -Num
+    else
+        Num
+    ).
 
 %---------------------------------------------------------------------------%
 

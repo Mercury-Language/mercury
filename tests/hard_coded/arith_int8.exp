@@ -30,6 +30,38 @@
 - 16 = -16
 - 127 = -127
 
+*** Test unary operation 'abs' ***
+
+abs -128 = <<exception>>
+abs -16 = 16
+abs -10 = 10
+abs -8 = 8
+abs -2 = 2
+abs -1 = 1
+abs 0 = 0
+abs 1 = 1
+abs 2 = 2
+abs 8 = 8
+abs 10 = 10
+abs 16 = 16
+abs 127 = 127
+
+*** Test unary operation 'nabs' ***
+
+nabs -128 = -128
+nabs -16 = -16
+nabs -10 = -10
+nabs -8 = -8
+nabs -2 = -2
+nabs -1 = -1
+nabs 0 = 0
+nabs 1 = -1
+nabs 2 = -2
+nabs 8 = -8
+nabs 10 = -10
+nabs 16 = -16
+nabs 127 = -127
+
 *** Test binary operation '+' ***
 
 -128 + -128 = 0

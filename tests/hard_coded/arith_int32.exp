@@ -28,6 +28,36 @@
 - 32767 = -32767
 - 2147483647 = -2147483647
 
+*** Test unary operation 'abs' ***
+
+abs -2147483648 = <<exception>>
+abs -32768 = 32768
+abs -128 = 128
+abs 0 = 0
+abs 1 = 1
+abs 2 = 2
+abs 8 = 8
+abs 10 = 10
+abs 16 = 16
+abs 127 = 127
+abs 32767 = 32767
+abs 2147483647 = 2147483647
+
+*** Test unary operation 'nabs' ***
+
+nabs -2147483648 = -2147483648
+nabs -32768 = -32768
+nabs -128 = -128
+nabs 0 = 0
+nabs 1 = -1
+nabs 2 = -2
+nabs 8 = -8
+nabs 10 = -10
+nabs 16 = -16
+nabs 127 = -127
+nabs 32767 = -32767
+nabs 2147483647 = -2147483647
+
 *** Test binary operation '+' ***
 
 -2147483648 + -2147483648 = 0
