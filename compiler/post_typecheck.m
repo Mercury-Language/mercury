@@ -21,10 +21,6 @@
 % These actions cannot be done until after type inference is complete,
 % so they need to be done in a pass *after* the typecheck pass.
 %
-% For efficiency reasons, we don't dedicate a pass to these actions, and
-% instead invoke them during the purity analysis pass. The routines here
-% are called from purity.m, not from mercury_compile*.m.
-%
 % A few other related actions that have similar constraints on when they
 % should be done are handled by resolve_unify_functor.m, by check_promise.m,
 % or by code in purity.m itself.

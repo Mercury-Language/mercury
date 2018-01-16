@@ -6,7 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% This module checks that exported promises refer only to exported entities.
+% This module checks that exported promises refer only to exported entities,
+% and stores each kind of promise in its own table.
 %
 %---------------------------------------------------------------------------%
 
@@ -15,27 +16,12 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
-    % Purity checking should call post_typecheck_finish_promise on every
-    % predicate that implements a promise, with the third arg saying
-    % what kind of promise it is.
-    %
-    % This predicate records the promise in the relevant promise table 
-    % (the assertion table or the promise_ex table). It then removes the
-    % predicate implementing the promise from the list of the pred ids
-    % that future compiler passes should process.
-    %
-    % If the assertion is in the interface, we check that it doesn't refer
-    % to any symbols which are local to that module.
-    %
-:- pred check_and_store_promise(pred_id::in, pred_info::in,
-    promise_type::in, module_info::in, module_info::out,
+:- pred check_promises_in_module(module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -48,10 +34,12 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
@@ -59,21 +47,62 @@
 
 %---------------------------------------------------------------------------%
 
-check_and_store_promise(PredId, PredInfo, PromiseType,
-        !ModuleInfo, !Specs) :-
-    % Store the declaration in the appropriate table and get the goal
-    % for the promise.
-    store_promise(PredId, PredInfo, PromiseType, !ModuleInfo, Goal),
+check_promises_in_module(!ModuleInfo, !Specs) :-
+    module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds0),
+    check_promises_in_preds(ValidPredIds0, [], ToInvalidatePredIds,
+        !ModuleInfo, !Specs),
+    module_info_make_pred_ids_invalid(ToInvalidatePredIds, !ModuleInfo).
 
-    % Remove the predicate from further processing.
-    module_info_make_pred_id_invalid(PredId, !ModuleInfo),
+:- pred check_promises_in_preds(list(pred_id)::in,
+    list(pred_id)::in, list(pred_id)::out,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-    % If the promise is in the interface, then ensure that it doesn't refer
-    % to any local symbols.
-    ( if pred_info_is_exported(PredInfo) then
-        check_in_interface_promise_goal(!.ModuleInfo, PredInfo, Goal, !Specs)
-    else
-        true
+check_promises_in_preds([], !ToInvalidatePredIds, !ModuleInfo, !Specs).
+check_promises_in_preds([PredId | PredIds],
+        !ToInvalidatePredIds, !ModuleInfo, !Specs) :-
+    check_promises_in_pred(PredId,
+        !ToInvalidatePredIds, !ModuleInfo, !Specs),
+    check_promises_in_preds(PredIds,
+        !ToInvalidatePredIds, !ModuleInfo, !Specs).
+
+    % If the given predicate is a promise, this predicate records that promise
+    % in the relevant promise table (which will be either the assertion table
+    % or the promise_ex table). It then also marks the predicate for deletion
+    % from the list of the pred ids that future compiler passes should process.
+    %
+    % If the assertion is in the interface, we check that it doesn't refer
+    % to any symbols which are local to that module.
+    %
+:- pred check_promises_in_pred(pred_id::in,
+    list(pred_id)::in, list(pred_id)::out,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_promises_in_pred(PredId, !ToInvalidatePredIds, !ModuleInfo, !Specs) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    pred_info_get_goal_type(PredInfo, GoalType),
+    (
+        GoalType = goal_type_promise(PromiseType),
+
+        % Store the declaration in the appropriate table and get the goal
+        % for the promise.
+        store_promise(PredId, PredInfo, PromiseType, !ModuleInfo, Goal),
+
+        !:ToInvalidatePredIds = [PredId | !.ToInvalidatePredIds],
+
+        ( if pred_info_is_exported(PredInfo) then
+            check_in_interface_promise_goal(!.ModuleInfo, PredInfo, Goal,
+                !Specs)
+        else
+            true
+        )
+    ;
+        ( GoalType = goal_type_clause
+        ; GoalType = goal_type_foreign
+        ; GoalType = goal_type_clause_and_foreign
+        ; GoalType = goal_type_none
+        )
     ).
 
 %---------------------%
@@ -86,7 +115,7 @@ check_and_store_promise(PredId, PredInfo, PromiseType,
 
 store_promise(PredId, PredInfo, PromiseType, !ModuleInfo, Goal) :-
     (
-        % Case for assertions.
+        % Assertions.
         PromiseType = promise_type_true,
         module_info_get_assertion_table(!.ModuleInfo, AssertTable0),
         assertion_table_add_assertion(PredId, AssertionId,
@@ -95,7 +124,7 @@ store_promise(PredId, PredInfo, PromiseType, !ModuleInfo, Goal) :-
         assertion.assert_id_goal(!.ModuleInfo, AssertionId, Goal),
         assertion.record_preds_used_in(Goal, AssertionId, !ModuleInfo)
     ;
-        % Case for exclusivity.
+        % Exclusivity promises.
         ( PromiseType = promise_type_exclusive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
@@ -105,7 +134,7 @@ store_promise(PredId, PredInfo, PromiseType, !ModuleInfo, Goal) :-
         list.foldl(exclusive_table_add(PredId), PredIds, Table0, Table),
         module_info_set_exclusive_table(Table, !ModuleInfo)
     ;
-        % Case for exhaustiveness -- XXX not yet implemented.
+        % Exhaustiveness promises -- XXX not yet implemented.
         PromiseType = promise_type_exhaustive,
         get_promise_ex_goal(PredInfo, Goal)
     ).

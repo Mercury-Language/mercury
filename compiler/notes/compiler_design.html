@@ -949,10 +949,6 @@ so that the compiler does the right thing for options such as
         checking pass, because they depend on type analysis being
         already complete.
     <li>
-        check_promise.m records each promise in the appropriate table
-        (the assertion table or the promise_ex table), and removes them
-        from further processing as predicates.
-    <li>
         check_for_missing_type_defns.m checks for locally defined types
         that have an abstract definition but no corresponding
         concrete definition.
@@ -973,15 +969,22 @@ so that the compiler does the right thing for options such as
 <dd>
     purity.m is responsible for purity checking, as well as
     defining the <CODE>purity</CODE> type and a few public
-    operations on it. It also calls post_typecheck.m to
-    complete the handling of predicate
-    overloading for cases which typecheck.m is unable to handle,
-    and to check for unbound type variables.
-    Elimination of double negation is also done here; that needs to
-    be done after quantification analysis and before mode analysis.
-    Calls to `private_builtin.unsafe_type_cast/2' are converted
-    into `generic_call(unsafe_cast, ...)' goals here.
+    operations on it. It also does some tasks that are logically
+    part of typechecking but which cannot be done until after
+    the main part typechecking is complete.
+    (This is separate from the work done by post_typecheck.m.)
+    purity.m also does two other miscellaneous tasks.
+    The first is the elimination of double negations;
+    that needs to be done after quantification but before mode analysis.
+    The other is converting calls to `private_builtin.unsafe_type_cast/2'
+    into `generic_call(unsafe_cast, ...)' goals.
     <p>
+
+<dt> promises
+<dd>
+    check_promise.m records each promise in the appropriate table
+    (the assertion table or the promise_ex table), and removes them
+    from further processing as predicates.
 
 <dt> implementation-defined literals
 <dd>

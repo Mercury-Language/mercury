@@ -78,6 +78,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.check_for_missing_type_defns.
+:- import_module check_hlds.check_promise.
 :- import_module check_hlds.check_typeclass.
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.cse_detection.
@@ -328,6 +329,9 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
 
             puritycheck(Verbose, Stats, !HLDS, !Specs, !IO),
             maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
+
+            check_promises(Verbose, Stats, !HLDS, !Specs, !IO),
+            maybe_dump_hlds(!.HLDS, 22, "puritycheck", !DumpInfo, !IO),
 
             ( if OpModeAugment = opmau_typecheck_only then
                 true
@@ -600,6 +604,29 @@ puritycheck(Verbose, Stats, !HLDS, !Specs, !IO) :-
         PurityErrors = no,
         maybe_write_string(Verbose,
             "% Program is purity-correct.\n", !IO)
+    ),
+    maybe_report_stats(Stats, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred check_promises(bool::in, bool::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+check_promises(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    maybe_write_string(Verbose, "% Checking any promises...\n", !IO),
+    check_promises_in_module(!HLDS, [], PromiseSpecs),
+    !:Specs = PromiseSpecs ++ !.Specs,
+    module_info_get_globals(!.HLDS, Globals),
+    PromiseErrors = contains_errors(Globals, PromiseSpecs),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    (
+        PromiseErrors = yes,
+        maybe_write_string(Verbose,
+            "% Program contains error(s) in promises.\n", !IO)
+    ;
+        PromiseErrors = no,
+        maybe_write_string(Verbose,
+            "% All promises are correct.\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
 
