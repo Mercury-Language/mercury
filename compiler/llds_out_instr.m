@@ -1978,11 +1978,33 @@ output_foreign_proc_input(Info, Input, !IO) :-
             MaybeForeignTypeInfo = no,
             io.write_string(VarName, !IO),
             io.write_string(" = ", !IO),
-            ( if OrigType = builtin_type(builtin_type_string) then
-                output_llds_type_cast(lt_string, !IO),
-                output_rval_as_type(Info, Rval, lt_word, !IO)
-            else if OrigType = builtin_type(builtin_type_float) then
-                output_rval_as_type(Info, Rval, lt_float, !IO)
+            ( if OrigType = builtin_type(BuiltinType) then
+                (
+                    BuiltinType = builtin_type_string,
+                    output_llds_type_cast(lt_string, !IO),
+                    output_rval_as_type(Info, Rval, lt_word, !IO)
+                ;
+                    BuiltinType = builtin_type_float,
+                    output_rval_as_type(Info, Rval, lt_float, !IO)
+                ;
+                    BuiltinType = builtin_type_int(int_type_int64),
+                    output_rval_as_type(Info, Rval, lt_int(int_type_int64), !IO)
+                ;
+                    BuiltinType = builtin_type_int(int_type_uint64),
+                    output_rval_as_type(Info, Rval, lt_int(int_type_uint64), !IO)
+                ;
+                    ( BuiltinType = builtin_type_char
+                    ; BuiltinType = builtin_type_int(int_type_int)
+                    ; BuiltinType = builtin_type_int(int_type_uint)
+                    ; BuiltinType = builtin_type_int(int_type_int8)
+                    ; BuiltinType = builtin_type_int(int_type_uint8)
+                    ; BuiltinType = builtin_type_int(int_type_int16)
+                    ; BuiltinType = builtin_type_int(int_type_uint16)
+                    ; BuiltinType = builtin_type_int(int_type_int32)
+                    ; BuiltinType = builtin_type_int(int_type_uint32)
+                    ),
+                    output_rval_as_type(Info, Rval, lt_word, !IO)
+                )
             else
                 output_rval_as_type(Info, Rval, lt_word, !IO)
             )
