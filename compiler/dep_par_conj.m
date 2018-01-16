@@ -349,8 +349,7 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
     % parallel conjuncts to the variables they share.
     %
 :- pred sync_dep_par_conjs_in_goal(hlds_goal::in, hlds_goal::out,
-    instmap::in, instmap::out, sync_info::in, sync_info::out)
-    is det.
+    instmap::in, instmap::out, sync_info::in, sync_info::out) is det.
 
 sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
@@ -362,8 +361,7 @@ sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
             conj_list_to_goal(Goals, GoalInfo0, Goal)
         ;
             ConjType = parallel_conj,
-            Goal0InstmapDelta =
-                goal_info_get_instmap_delta(Goal0 ^ hlds_goal_info),
+            Goal0InstmapDelta = goal_info_get_instmap_delta(Goal0 ^ hg_info),
             ( if instmap_delta_is_unreachable(Goal0InstmapDelta) then
                 % If the instmap becomes unreachable then calculating the
                 % produces and consumers for the dependant parallel conjunction
@@ -592,7 +590,7 @@ sync_dep_par_proc_body(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
     ( if set_of_var.is_empty(NonlocalSharedVars) then
         true
     else
-        GoalInfo0 = !.Goal ^ hlds_goal_info,
+        GoalInfo0 = !.Goal ^ hg_info,
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
         consumed_and_produced_vars(ModuleInfo, InstMap, InstMapDelta0,
             NonlocalSharedVars, ConsumedVarsList, ProducedVarsList),
@@ -632,7 +630,7 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
     ( if set_of_var.is_empty(NonlocalSharedVars) then
         true
     else
-        GoalInfo0 = !.Goal ^ hlds_goal_info,
+        GoalInfo0 = !.Goal ^ hg_info,
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
         consumed_and_produced_vars(ModuleInfo, !.InstMap, InstMapDelta0,
             NonlocalSharedVars, ConsumedVarsList, ProducedVarsList),
@@ -946,8 +944,7 @@ insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
     map.lookup(FutureMap, ConsumedVar, FutureVar),
     make_wait_goal(ModuleInfo, !.VarTypes, FutureVar, ConsumedVar, WaitGoal),
-    conjoin_goals_update_goal_infos(Goal0 ^ hlds_goal_info, WaitGoal, Goal0,
-        Goal).
+    conjoin_goals_update_goal_infos(Goal0 ^ hg_info, WaitGoal, Goal0, Goal).
 
 :- pred insert_wait_after_goal(module_info::in, future_map::in,
     prog_var::in, hlds_goal::in, hlds_goal::out,
@@ -957,8 +954,7 @@ insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
     map.lookup(FutureMap, ConsumedVar, FutureVar),
     make_wait_goal(ModuleInfo, !.VarTypes, FutureVar, ConsumedVar, WaitGoal),
-    conjoin_goals_update_goal_infos(Goal0 ^ hlds_goal_info, Goal0, WaitGoal,
-        Goal).
+    conjoin_goals_update_goal_infos(Goal0 ^ hg_info, Goal0, WaitGoal, Goal).
 
     % Insert a wait for ConsumedVar in the first goal in the conjunction
     % that references it. Any later conjuncts will get the waited-for variable
@@ -997,7 +993,7 @@ insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
                 FutureMap, ConsumedVar, WaitedOnAllSuccessPaths,
                 LaterGoals0, LaterGoals, !VarSet, !VarTypes)
         ),
-        ( if FirstGoal ^ hlds_goal_expr = conj(plain_conj, FirstGoalConj) then
+        ( if FirstGoal ^ hg_expr = conj(plain_conj, FirstGoalConj) then
             Goals = FirstGoalConj ++ LaterGoals
         else
             Goals = [FirstGoal | LaterGoals]
@@ -1222,8 +1218,8 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                 unexpected($module, $pred, "shorthand")
             )
         else
-            % We expected this goal to produce the variable that we're looking
-            % for.
+            % We expected this goal to produce the variable that
+            % we are looking for.
             unexpected($module, $pred, "ProducedVar is not in nonlocals")
         )
     ;
@@ -1243,8 +1239,7 @@ insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
     make_signal_goal(ModuleInfo, FutureMap, ProducedVar, !.VarTypes,
         SignalGoal),
-    conjoin_goals_update_goal_infos(Goal0 ^ hlds_goal_info, Goal0, SignalGoal,
-        Goal).
+    conjoin_goals_update_goal_infos(Goal0 ^ hg_info, Goal0, SignalGoal, Goal).
 
 :- pred insert_signal_in_plain_conj(module_info::in, future_map::in,
     prog_var::in, list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1265,7 +1260,7 @@ insert_signal_in_plain_conj(ModuleInfo, FutureMap, ProducedVar,
             "ProducedVar not in ChangedVars"),
         insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
             Goal0, Goal1, !VarSet, !VarTypes),
-        ( if Goal1 ^ hlds_goal_expr = conj(plain_conj, GoalConjs1) then
+        ( if Goal1 ^ hg_expr = conj(plain_conj, GoalConjs1) then
             Goals = GoalConjs1 ++ Goals0
         else
             Goals = [Goal1 | Goals0]
@@ -1365,7 +1360,7 @@ reorder_indep_par_conj_2(_, _, _, [], [], !ModuleInfo).
 reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [Goal | Goals0],
         Goals, !ModuleInfo) :-
     apply_instmap_delta(InstMapBefore,
-        goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+        goal_info_get_instmap_delta(Goal ^ hg_info),
         InstMapBeforeGoals0),
     reorder_indep_par_conj_2(SCC, VarTypes, InstMapBeforeGoals0, Goals0,
         Goals1, !ModuleInfo),
@@ -1408,13 +1403,11 @@ push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
         % InstMapBeforeGoalAfterPivot represents the inst map before Goal given
         % that it has already been swapped with PivotGoal, that is PivotGoal
         % occurs before Goal.
-        PivotInstMapDelta =
-            goal_info_get_instmap_delta(PivotGoal ^ hlds_goal_info),
+        PivotInstMapDelta = goal_info_get_instmap_delta(PivotGoal ^ hg_info),
         apply_instmap_delta(InstMapBeforeGoal, PivotInstMapDelta,
             InstMapBeforeGoalAfterPivot),
 
-        GoalInstMapDelta =
-            goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+        GoalInstMapDelta = goal_info_get_instmap_delta(Goal ^ hg_info),
         apply_instmap_delta(InstMapBeforeGoalAfterPivot, GoalInstMapDelta,
             InstMapAfterPivotAndGoal),
 
@@ -1494,7 +1487,7 @@ find_procs_scc([SCC | SCCs], PredProcId, PredProcsSCC) :-
 :- type done_par_procs == map(par_proc_call_pattern, new_par_proc).
 
     % A map from specialised pred proc ids back to the pred proc id of the
-    % procedure that they're based on.
+    % procedure that they are based on.
     %
 :- type rev_proc_map == map(pred_proc_id, pred_proc_id).
 
@@ -1802,7 +1795,7 @@ specialize_sequences_in_goal(Goal0, Goal, !SpecInfo) :-
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         ( if Reason = from_ground_term(_, from_ground_term_construct) then
-            % We don't pu either wait or signal operations in such scopes,
+            % We don't put either wait or signal operations in such scopes,
             % so there is nothing to specialize.
             Goal = Goal0
         else
@@ -1900,7 +1893,7 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
         % opt_imported procedures.
         list.member(ProcId, pred_info_non_imported_procids(PredInfo)),
 
-        % This test avoids some problems we've had with pushing signals and
+        % This test avoids some problems we have had with pushing signals and
         % waits into callees, in some cases incorrect code is generated.
         % See also a similar check in get_or_create_spec_par_proc/6.
         %
@@ -2249,7 +2242,7 @@ should_add_get_goal(NonLocals, FwdGoals, future_var_pair(_, Var)) :-
         % then we should also add a get_future variable call. We don't need to
         % check RevGoals, the only reason the variable might be mentioned there
         % would be because it was previously partially instantiated. But since
-        % we're adding a get_future call that does not make sense. I'm
+        % we are adding a get_future call that does not make sense. I'm
         % assuming that only free -> ground instantiation state changes are
         % allowed for these variables.
         member(Goal, FwdGoals),

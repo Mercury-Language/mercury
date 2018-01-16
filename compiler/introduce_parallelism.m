@@ -288,7 +288,7 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
     ),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
-    Context = goal_info_get_context(Goal0 ^ hlds_goal_info),
+    Context = goal_info_get_context(Goal0 ^ hg_info),
     term.context_file(Context, FileName),
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
     % VarNumRep is not used by goal_to_goal_rep, var_num_1_byte
@@ -368,7 +368,7 @@ maybe_parallelise_goal(PredInfo, ProgRepInfo, VarNameTable, Instmap0, CPC,
 
 maybe_parallelise_conj(ProgRepInfo, VarNameTable, CPC, Instmap0,
         Goal0, MaybeGoal) :-
-    Goal0 = hlds_goal(GoalExpr0, _GoalInfo0),
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     % We have reached the point indicated by the goal path.
     % Find the conjuncts that we wish to parallelise.
     cpc_get_first_goal(CPC, FirstGoalRep),
@@ -379,7 +379,7 @@ maybe_parallelise_conj(ProgRepInfo, VarNameTable, CPC, Instmap0,
             Instmap0, found_first_goal(GoalsBefore, FirstGoal, OtherGoals))
     then
         GoalsBeforeInstDeltas = list.map(
-            (func(G) = goal_info_get_instmap_delta(G ^ hlds_goal_info)),
+            (func(G) = goal_info_get_instmap_delta(G ^ hg_info)),
             GoalsBefore),
         list.foldl(apply_instmap_delta_sv, GoalsBeforeInstDeltas,
             Instmap0, Instmap),
@@ -391,7 +391,7 @@ maybe_parallelise_conj(ProgRepInfo, VarNameTable, CPC, Instmap0,
                 ParConjunction, RemainingGoals),
             Conjuncts = GoalsBefore ++ ParConjunction ++ RemainingGoals,
             GoalExpr = conj(plain_conj, Conjuncts),
-            MaybeGoal = ok(hlds_goal(GoalExpr, Goal0 ^ hlds_goal_info))
+            MaybeGoal = ok(hlds_goal(GoalExpr, GoalInfo0))
         ;
             MaybeParConjunction = error(Error),
             MaybeGoal = error(Error)
@@ -443,7 +443,7 @@ find_first_goal(GoalRep, [Goal | Goals], ProcRepInfo, VarNameTable, !.Instmap,
     then
         Result = found_first_goal([], Goal, Goals)
     else
-        InstmapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+        InstmapDelta = goal_info_get_instmap_delta(Goal ^ hg_info),
         apply_instmap_delta_sv(InstmapDelta, !Instmap),
         find_first_goal(GoalRep, Goals, ProcRepInfo, VarNameTable, !.Instmap,
             Result0),
@@ -551,7 +551,7 @@ build_seq_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
             pard_goal_match_hlds_goal(ProcRepInfo, VarNameTable, !.Instmap,
                 GoalRep, Goal)
         then
-            InstmapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+            InstmapDelta = goal_info_get_instmap_delta(Goal ^ hg_info),
             apply_instmap_delta_sv(InstmapDelta, !Instmap),
             build_seq_conjuncts(ProcRepInfo, VarNameTable, GoalReps,
                 MaybeConjs0, !Goals, !Instmap),

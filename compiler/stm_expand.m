@@ -2384,7 +2384,7 @@ create_plain_conj(GoalsInConj, ConjGoal) :-
     goal_list_instmap_delta(GoalsInConj, InstMapDelta),
     goal_list_determinism(GoalsInConj, Detism),
     goal_list_purity(GoalsInConj, Purity),
-    GoalAInfo = list.det_head(GoalsInConj) ^ hlds_goal_info,
+    GoalAInfo = list.det_head(GoalsInConj) ^ hg_info,
     Context = goal_info_get_context(GoalAInfo),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         ConjGoalInfo),

@@ -840,7 +840,7 @@ par_conj_loop_control(Info, Conjuncts0, IsLastGoal, GoalInfo, Goal, !VarSet,
     % the goal_info of Goal0 appropriately. Why call it if we then immediately
     % overwrite the goal_info?
     create_conj_from_list(Conjuncts, plain_conj, Goal0),
-    Goal1 = Goal0 ^ hlds_goal_info := GoalInfo,
+    Goal1 = Goal0 ^ hg_info := GoalInfo,
     fixup_goal_info(Info, Goal1, Goal).
 
     % Process each of the conjuncts, building the new expression from them.
@@ -858,7 +858,7 @@ rewrite_nonrecursive_par_conjuncts(Info, UseParentStack,
 
     % Add a join_and_terminate goal to the end of Conjunct0 forming Conjunct.
     create_join_and_terminate_goal(Info, LCVar, LCSVar, JoinAndTerminateGoal),
-    Conjunct0GoalInfo = Conjunct0 ^ hlds_goal_info,
+    Conjunct0GoalInfo = Conjunct0 ^ hg_info,
     goal_to_conj_list(Conjunct0, Conjunct0Goals),
     ConjunctGoals = Conjunct0Goals ++ [JoinAndTerminateGoal],
     some [!NonLocals] (
@@ -1083,7 +1083,7 @@ combine_use_parent_stack(lc_create_frame_on_child_stack,
 
 goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
         !Goal) :-
-    GoalInfo0 = !.Goal ^ hlds_goal_info,
+    GoalInfo0 = !.Goal ^ hg_info,
     GoalId = goal_info_get_goal_id(GoalInfo0),
     ( if
         % This goal is one of the transformed parallel conjunctions,
@@ -1097,14 +1097,16 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
         FixupGoalInfo = do_not_fixup_goal_info
     else if
         % This goal is a base case, insert the barrier.
-        not ( some [Callee] (
-            goal_calls(!.Goal, Callee),
-            (
-                Callee = Info ^ lci_rec_pred_proc_id
-            ;
-                Callee = Info ^ lci_inner_pred_proc_id
+        not (
+            some [Callee] (
+                goal_calls(!.Goal, Callee),
+                (
+                    Callee = Info ^ lci_rec_pred_proc_id
+                ;
+                    Callee = Info ^ lci_inner_pred_proc_id
+                )
             )
-        ) )
+        )
     then
         goal_to_conj_list(!.Goal, Conjs0),
         create_finish_loop_control_goal(Info, FinishLCGoal),
@@ -1175,16 +1177,16 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
             GoalExpr0 = shorthand(_),
             unexpected($module, $pred, "shorthand")
         ),
-        !Goal ^ hlds_goal_expr := GoalExpr,
+        !Goal ^ hg_expr := GoalExpr,
         (
             FixupGoalInfo = fixup_goal_info,
             some [!NonLocals, !GoalInfo] (
-                !:GoalInfo = !.Goal ^ hlds_goal_info,
+                !:GoalInfo = !.Goal ^ hg_info,
                 !:NonLocals = goal_info_get_nonlocals(!.GoalInfo),
                 set_of_var.insert(Info ^ lci_lc_var, !NonLocals),
                 goal_info_set_nonlocals(!.NonLocals, !GoalInfo),
                 goal_info_set_purity(purity_impure, !GoalInfo),
-                !Goal ^ hlds_goal_info := !.GoalInfo
+                !Goal ^ hg_info := !.GoalInfo
             )
         ;
             FixupGoalInfo = do_not_fixup_goal_info
@@ -1349,7 +1351,7 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
     proc_info_get_headvars(!.ProcInfo, HeadVars0),
     proc_info_get_inferred_determinism(!.ProcInfo, Detism),
     proc_info_get_goal(!.ProcInfo, OrigGoal),
-    OrigInstmapDelta = goal_info_get_instmap_delta(OrigGoal ^ hlds_goal_info),
+    OrigInstmapDelta = goal_info_get_instmap_delta(OrigGoal ^ hg_info),
     some [!VarSet, !VarTypes] (
         % Re-build the variables in the procedure with smaller sets.
         varset.init(!:VarSet),
@@ -1407,7 +1409,7 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
                 [GetNumContextsGoal, LCCreateGoal, InnerProcCallGoal]),
             ConjGoalInfo),
 
-        OrigPurity = goal_info_get_purity(OrigGoal ^ hlds_goal_info),
+        OrigPurity = goal_info_get_purity(OrigGoal ^ hg_info),
         (
             OrigPurity = purity_impure,
             % The impurity introduced by this transformation does not need

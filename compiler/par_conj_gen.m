@@ -371,7 +371,7 @@ generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI, !CLD) :-
 
     get_known_variables(!.CLD, KnownVars),
     KnownVarsSet = set_of_var.list_to_set(KnownVars),
-    NonLocalsSet = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
+    NonLocalsSet = goal_info_get_nonlocals(Goal ^ hg_info),
     InputVarsSet = set_of_var.intersect(NonLocalsSet, KnownVarsSet),
     InputVars = set_of_var.to_sorted_list(InputVarsSet),
     save_variables_on_stack(InputVars, SaveCode, !.CI, !CLD),

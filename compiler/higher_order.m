@@ -774,7 +774,7 @@ set_pre_branch_info(pre_branch_info(KnownVarMap), !Info) :-
     post_branch_info::out) is det.
 
 get_post_branch_info_for_goal(HOInfo, Goal, PostBranchInfo) :-
-    InstMapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+    InstMapDelta = goal_info_get_instmap_delta(Goal ^ hg_info),
     ( if instmap_delta_is_reachable(InstMapDelta) then
         Reachability = reachable
     else

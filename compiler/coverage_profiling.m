@@ -301,8 +301,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
             AddedImpurityInner),
         % A scope may cut away solutions, if it does we don't know the number
         % of solutions of the scoped goal.
-        ScopedGoalDetism =
-            ScopeGoal0 ^ hlds_goal_info ^ goal_info_get_determinism,
+        ScopedGoalDetism = goal_info_get_determinism(ScopeGoal0 ^ hg_info),
         ( if ScopedGoalDetism = Detism then
             NextCoverageBeforeKnown0 = CoverageAfterScopedGoalKnown
         else
@@ -439,8 +438,7 @@ coverage_prof_second_pass_disj(DPInfo, CoverageBeforeKnown,
     ( if
         DPInfo = dp_goal_info(goal_is_mdprof_inst, _),
         Disjuncts0 = [FirstDisjunct0, SecondDisjunct],
-        goal_info_get_determinism(SecondDisjunct ^ hlds_goal_info) =
-            detism_failure
+        goal_info_get_determinism(SecondDisjunct ^ hg_info) = detism_failure
         % XXX: zs: Would this be a better test here?
         % goal_has_feature(SecondDisjunct, feature_preserve_backtrack_into)
         % pbone: I don't think so, the deep profiler doesn't seem to add this
@@ -497,7 +495,7 @@ coverage_prof_second_pass_disj_2(DPInfo,
     % Insert the coverage point if we decided to above.
     (
         InsertCP = yes,
-        DisjId = goal_info_get_goal_id(HeadDisjunct0 ^ hlds_goal_info),
+        DisjId = goal_info_get_goal_id(HeadDisjunct0 ^ hg_info),
         ContainingGoalMap = !.Info ^ ci_containing_goal_map,
         DisjPath = goal_id_to_reverse_path(ContainingGoalMap, DisjId),
         HeadCoveragePoint = coverage_point_info(DisjPath, cp_type_branch_arm),
@@ -595,7 +593,7 @@ coverage_prof_second_pass_switchcase_2(DPInfo, SwitchCanFail,
     % Possibly insert coverage point at the start of the case.
     (
         InsertCP = yes,
-        CaseId = goal_info_get_goal_id(Goal0 ^ hlds_goal_info),
+        CaseId = goal_info_get_goal_id(Goal0 ^ hg_info),
         ContainingGoalMap = !.Info ^ ci_containing_goal_map,
         CasePath = goal_id_to_reverse_path(ContainingGoalMap, CaseId),
         CoveragePoint = coverage_point_info(CasePath, cp_type_branch_arm),
@@ -663,7 +661,7 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
         ContainingGoalMap = !.Info ^ ci_containing_goal_map,
         (
             CoverageKnownBeforeThen0 = coverage_before_unknown,
-            ThenId = goal_info_get_goal_id(Then0 ^ hlds_goal_info),
+            ThenId = goal_info_get_goal_id(Then0 ^ hg_info),
             ThenPath = goal_id_to_reverse_path(ContainingGoalMap, ThenId),
             InsertCPThen = yes(coverage_point_info(ThenPath,
                 cp_type_branch_arm))
@@ -673,9 +671,9 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
         ),
         CoverageKnownBeforeThen = coverage_before_known,
 
-        ElseId = goal_info_get_goal_id(Else0 ^ hlds_goal_info),
+        ElseId = goal_info_get_goal_id(Else0 ^ hg_info),
         ElsePath = goal_id_to_reverse_path(ContainingGoalMap, ElseId),
-        CondDetism = goal_info_get_determinism(Cond ^ hlds_goal_info),
+        CondDetism = goal_info_get_determinism(Cond ^ hg_info),
         determinism_components(CondDetism, _, CondSolns),
         (
             CondSolns = at_most_many,
@@ -835,7 +833,7 @@ has_port_counts_after(Goal, PCDirect, PCBefore, PC) :-
         % then they can be used to determine how often execution reaches the
         % point after this goal.
 
-        Detism = goal_info_get_determinism(Goal ^ hlds_goal_info),
+        Detism = goal_info_get_determinism(Goal ^ hg_info),
         has_port_counts_if_det(Detism, PCBefore, PC)
     ).
 

@@ -1124,7 +1124,7 @@ find_failure_constraint_for_goal(Info, Goal) = AbstractGoal :-
     then
         AbstractGoal = AbstractGoal0
     else
-        NonLocalProgVars0 = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
+        NonLocalProgVars0 = goal_info_get_nonlocals(Goal ^ hg_info),
         NonLocalProgVars = set_of_var.to_sorted_list(NonLocalProgVars0),
         NonLocalSizeVars = prog_vars_to_size_vars(Info ^ tti_size_var_map,
             NonLocalProgVars),

@@ -317,14 +317,14 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
     ;
         GoalExpr0 = negation(SubGoal0),
         mode_order_goal(SubGoal0, SubGoal, !MOI),
-        goal_info_copy_mode_var_sets(SubGoal ^ hlds_goal_info, !GoalInfo),
+        goal_info_copy_mode_var_sets(SubGoal ^ hg_info, !GoalInfo),
         GoalExpr = negation(SubGoal)
     ;
         % XXX We should special-case the handling of from_ground_term_construct
         % scopes.
         GoalExpr0 = scope(Reason, SubGoal0),
         mode_order_goal(SubGoal0, SubGoal, !MOI),
-        goal_info_copy_mode_var_sets(SubGoal ^ hlds_goal_info, !GoalInfo),
+        goal_info_copy_mode_var_sets(SubGoal ^ hg_info, !GoalInfo),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = if_then_else(Locals, Cond0, Then0, Else0),
@@ -341,7 +341,7 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         !GoalInfo ^ need_visible_vars :=
             NeedVars `set_of_var.difference` !.GoalInfo ^ make_visible_vars,
 
-        combine_mode_vars_sets(Else ^ hlds_goal_info, !GoalInfo),
+        combine_mode_vars_sets(Else ^ hg_info, !GoalInfo),
         GoalExpr = if_then_else(Locals, Cond, Then, Else)
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
@@ -444,7 +444,7 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
     ProdMap =
         map.foldl((func(I, G, PM0) =
             list.foldl((func(V, PM1) = map.det_insert(PM1, V, I)),
-                set_of_var.to_sorted_list(G ^ hlds_goal_info ^ producing_vars),
+                set_of_var.to_sorted_list(G ^ hg_info ^ producing_vars),
                 PM0)
         ), GoalMap, map.init),
 
@@ -452,13 +452,12 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
         map.foldl((func(I, G, MVM0) =
             list.foldl((func(V, MVM1) = map.set(MVM1, V, I)),
             % XXX disjunction required!
-                set_of_var.to_sorted_list(
-                    G ^ hlds_goal_info ^ make_visible_vars),
+                set_of_var.to_sorted_list(G ^ hg_info ^ make_visible_vars),
                 MVM0)
         ), GoalMap, map.init),
 
     Graph = map.foldl((func(I, G, !.R) = !:R :-
-        GI = G ^ hlds_goal_info,
+        GI = G ^ hg_info,
         digraph.add_vertex(I, Key0, !R),
         !:R = list.foldl((func(V, !.R1) = !:R1 :-
                 ( Index1 = map.search(ProdMap, V) ->

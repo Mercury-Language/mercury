@@ -47,8 +47,8 @@
 
 :- type hlds_goal
     --->    hlds_goal(
-                hlds_goal_expr      :: hlds_goal_expr,
-                hlds_goal_info      :: hlds_goal_info
+                hg_expr             :: hlds_goal_expr,
+                hg_info             :: hlds_goal_info
             ).
 
 :- func get_hlds_goal_expr(hlds_goal) = hlds_goal_expr.
@@ -1803,8 +1803,8 @@
 
 %-----------------------------------------------------------------------------%
 
-get_hlds_goal_expr(Goal) = Goal ^ hlds_goal_expr.
-get_hlds_goal_info(Goal) = Goal ^ hlds_goal_info.
+get_hlds_goal_expr(Goal) = Goal ^ hg_expr.
+get_hlds_goal_info(Goal) = Goal ^ hg_info.
 
 foreign_arg_var(Arg) = Arg ^ arg_var.
 foreign_arg_maybe_name_mode(Arg) = Arg ^ arg_name_mode.

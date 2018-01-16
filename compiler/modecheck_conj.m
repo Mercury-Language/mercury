@@ -347,7 +347,7 @@ filter_headvar_unification_goals(HeadVars, DelayedGoals,
     is semidet.
 
 is_headvar_unification_goal(HeadVars, delayed_goal(_, _, Goal)) :-
-    Goal ^ hlds_goal_expr = unify(Var, RHS, _, _, _),
+    Goal ^ hg_expr = unify(Var, RHS, _, _, _),
     (
         list.member(Var, HeadVars)
     ;

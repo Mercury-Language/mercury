@@ -120,8 +120,8 @@ is_recursive_call(Goal, CodeInfo) :-
     %
 :- func contains_only_builtins(hlds_goal) = bool.
 
-contains_only_builtins(Goal) =
-    contains_only_builtins_expr(Goal ^ hlds_goal_expr).
+contains_only_builtins(hlds_goal(GoalExpr, _)) =
+    contains_only_builtins_expr(GoalExpr).
 
 :- func contains_only_builtins_expr(hlds_goal_expr) = bool.
 

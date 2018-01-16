@@ -185,7 +185,7 @@ scc_reordering(PredConstraintsMap, VarMap, SCC0, !ModuleInfo) :-
         SCC0, _, SCC),
 
     list.filter(
-        (pred(PredId::in) is semidet :-
+        ( pred(PredId::in) is semidet :-
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_infer_modes(PredInfo)
         ), SCC, PredsToInfer, PredsToCheck),
@@ -500,12 +500,12 @@ make_conjuncts_nonlocal_repvars(PredId, Goals, RepvarMap) :-
     prog_var_at_conjuncts_map::in, prog_var_at_conjuncts_map::out) is det.
 
 make_conjunct_nonlocal_repvars(PredId, Goal, !RepvarMap) :-
-    GoalInfo = Goal ^ hlds_goal_info,
+    Goal = hlds_goal(_, GoalInfo),
     Nonlocals = goal_info_get_nonlocals(GoalInfo),
     GoalId = goal_info_get_goal_id(GoalInfo),
 
     set_of_var.fold(
-        (pred(NL::in, RMap0::in, RMap::out) is det :-
+        ( pred(NL::in, RMap0::in, RMap::out) is det :-
             multi_map.set(NL, NL `in` PredId `at` GoalId, RMap0, RMap)
         ),
         Nonlocals, !RepvarMap).

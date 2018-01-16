@@ -1167,7 +1167,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
         count_load_stores_in_cases(Cases, CountInfo, !CountState)
     ;
         GoalExpr = negation(SubGoal),
-        goal_info_get_resume_point(SubGoal ^ hlds_goal_info, ResumePoint),
+        goal_info_get_resume_point(SubGoal ^ hg_info, ResumePoint),
         (
             ResumePoint = resume_point(LiveVars, _ResumeLocs),
             cls_require_flushed(CountInfo, LiveVars, !CountState)
@@ -1178,7 +1178,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
         count_load_stores_in_goal(SubGoal, CountInfo, !CountState)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        goal_info_get_resume_point(Cond ^ hlds_goal_info, ResumePoint),
+        goal_info_get_resume_point(Cond ^ hg_info, ResumePoint),
         (
             ResumePoint = resume_point(LiveVars, _ResumeLocs),
             cls_require_flushed(CountInfo, LiveVars, !CountState),
@@ -1191,8 +1191,8 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
                 ResetCountInfo, ElseCountInfo),
 
             ProcCounts = CountInfo ^ ci_proc_counts,
-            ThenGoalId = goal_info_get_goal_id(Then ^ hlds_goal_info),
-            ElseGoalId = goal_info_get_goal_id(Else ^ hlds_goal_info),
+            ThenGoalId = goal_info_get_goal_id(Then ^ hg_info),
+            ElseGoalId = goal_info_get_goal_id(Else ^ hg_info),
             get_ite_relative_frequencies(ProcCounts,
                 CountInfo ^ ci_rev_goal_path_map,
                 ThenGoalId, ElseGoalId, ThenRelFreq, ElseRelFreq),
@@ -1329,7 +1329,7 @@ count_load_stores_in_conj([Goal | Goals], CountInfo, !CountState) :-
 
 count_load_stores_in_disj([], _CountInfo, !CountState).
 count_load_stores_in_disj([Goal | Goals], CountInfo, !CountState) :-
-    GoalInfo = Goal ^ hlds_goal_info,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_resume_point(GoalInfo, ResumePoint),
     (
         ResumePoint = resume_point(LiveVars, _ResumeLocs),
@@ -1353,7 +1353,7 @@ count_load_stores_in_disj([Goal | Goals], CountInfo, !CountState) :-
 count_load_stores_in_cases([], _CountInfo, !CountState).
 count_load_stores_in_cases([Case | Cases], CountInfo, !CountState) :-
     Case = case(_MainConsId, _OtherConsIds, Goal),
-    GoalInfo = Goal ^ hlds_goal_info,
+    Goal = hlds_goal(_, GoalInfo),
     goal_info_get_resume_point(GoalInfo, ResumePoint),
     (
         ResumePoint = resume_point(LiveVars, _ResumeLocs),

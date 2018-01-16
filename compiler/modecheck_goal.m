@@ -1094,7 +1094,7 @@ modecheck_specializable_ground_term(SubGoal, TermVar, TermVarInst,
         % If TermVar is created by an impure unification, which is
         % possible for solver types, it is possible for UnifyTermGoal
         % to contain a unification other than one involving TermVar.
-        UnifyTermGoal ^ hlds_goal_expr = unify(TermVar, _, _, _, _),
+        UnifyTermGoal ^ hg_expr = unify(TermVar, _, _, _, _),
         all_plain_construct_unifies([UnifyTermGoal | UnifyArgGoals])
     then
         ( if TermVarInst = free then

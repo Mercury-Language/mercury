@@ -1188,9 +1188,9 @@ deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
     is det.
 
 deep_prof_mark_goal_as_not_mdprof_inst(Goal0, Goal) :-
-    GoalInfo0 = Goal0 ^ hlds_goal_info,
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     goal_info_set_mdprof_inst(goal_is_not_mdprof_inst, GoalInfo0, GoalInfo),
-    Goal = Goal0 ^ hlds_goal_info := GoalInfo.
+    Goal = hlds_goal(GoalExpr0, GoalInfo).
 
 :- pred deep_prof_transform_conj(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out, bool::out,

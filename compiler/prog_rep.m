@@ -608,7 +608,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
 conj_to_conj_rep(_, _, [], []).
 conj_to_conj_rep(Info, Instmap0, [Conj | Conjs], [ConjRep | ConjReps]) :-
     goal_to_goal_rep(Info, Instmap0, Conj, ConjRep),
-    GoalInfo = Conj ^ hlds_goal_info,
+    GoalInfo = Conj ^ hg_info,
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(Instmap0, InstmapDelta, Instmap1),
     conj_to_conj_rep(Info, Instmap1, Conjs, ConjReps).
