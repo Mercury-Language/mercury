@@ -985,6 +985,25 @@ output_rval(Info, Rval, !IO) :-
                 % so if both args are unsigned, we don't need to cast them to
                 % MR_Integer.
                 ( Op = eq(_) ; Op = ne(_) ),
+
+                % Don't apply this special case for 64-bit integer types since
+                % they may be boxed.
+                require_complete_switch [IntType] (
+                    ( IntType = int_type_int
+                    ; IntType = int_type_uint
+                    ; IntType = int_type_int8
+                    ; IntType = int_type_uint8
+                    ; IntType = int_type_int16
+                    ; IntType = int_type_uint16
+                    ; IntType = int_type_int32
+                    ; IntType = int_type_uint32
+                    )
+                ;
+                    ( IntType = int_type_int64
+                    ; IntType = int_type_uint64
+                    ),
+                    fail
+                ),
                 llds.rval_type(SubRvalA, SubRvalAType),
                 ( SubRvalAType = lt_word
                 ; SubRvalAType = lt_int(int_type_uint)
@@ -1804,7 +1823,24 @@ direct_field_int_constant(lt_int_least16) = yes.
 direct_field_int_constant(lt_uint_least16) = yes.
 direct_field_int_constant(lt_int_least32) = yes.
 direct_field_int_constant(lt_uint_least32) = yes.
-direct_field_int_constant(lt_int(_)) = yes.
+direct_field_int_constant(lt_int(IntType)) = Result :-
+    (
+        ( IntType = int_type_int
+        ; IntType = int_type_uint
+        ; IntType = int_type_int8
+        ; IntType = int_type_uint8
+        ; IntType = int_type_int16
+        ; IntType = int_type_uint16
+        ; IntType = int_type_int32
+        ; IntType = int_type_uint32
+        ),
+        Result = yes
+    ;
+        ( IntType = int_type_int64
+        ; IntType = int_type_uint64
+        ),
+        Result = no
+    ).
 direct_field_int_constant(lt_float) = no.
 direct_field_int_constant(lt_string) = no.
 direct_field_int_constant(lt_data_ptr) = no.
