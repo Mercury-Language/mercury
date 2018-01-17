@@ -89,6 +89,9 @@
   #define MR_int64_to_word(i) ((MR_Word)(i))
   #define MR_uint64_to_word(u) ((MR_Word)(u))
 
+  #define MR_word_to_int64(w) ((int64_t)(w))
+  #define MR_word_to_uint64(w) ((uint64_t)(w))
+
 #endif // not MR_BOXED_INT64S
 
 extern MR_Integer MR_hash_int64(int64_t);
