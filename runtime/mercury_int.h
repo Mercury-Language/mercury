@@ -83,9 +83,6 @@
   #define MR_make_hp_int64_aligned() ((void)0)
   #define MR_make_hp_uint64_aligned() ((void)0)
 
-  #define MR_int64_const(i) MR_int64_to_word(i)
-  #define MR_uint64_const(u) MR_uint64_to_word(u)
-
   #define MR_int64_to_word(i) ((MR_Word)(i))
   #define MR_uint64_to_word(u) ((MR_Word)(u))
 
