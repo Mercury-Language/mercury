@@ -1490,10 +1490,16 @@ det_to_int32(Integer) = Int32 :-
 %---------------------------------------------------------------------------%
 
 to_uint32(Integer, UInt32) :-
-    Integer >= integer.zero,
-    Integer =< integer.from_uint32(uint32.max_uint32),
-    Integer = i(_Sign, Digits),
+    Integer = i(Sign, Digits),
+    Sign >= 0,     % i.e. Integer >= 0.
+    Integer =< integer_max_uint32,
     UInt32 = uint32_list(Digits, 0u32).
+
+    % Return max_uint32 as an integer.
+    %
+:- func integer_max_uint32 = integer.
+
+integer_max_uint32 = i(3, [15, 16383, 16383]).
 
 :- func uint32_list(list(int), uint32) = uint32.
 
