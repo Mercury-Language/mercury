@@ -343,41 +343,47 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         TypeBody = hlds_du_type(Ctors, ConsTagMap, CheaperTagTest, DuTypeKind,
             MaybeUserEqComp, MaybeDirectArgCtors, ReservedTag, ReservedAddr,
             Foreign),
+        io.nl(!IO),
+        write_constructors(TVarSet, TypeCtor, ConsTagMap, Indent, Ctors, !IO),
         (
             CheaperTagTest = no_cheaper_tag_test
         ;
             CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
                 CheapConsId, CheapConsTag),
             write_indent(Indent, !IO),
-            io.write_string("/* cheaper tag test: ", !IO),
+            io.write_string("% cheaper tag test:\n", !IO),
+            write_indent(Indent, !IO),
+            io.write_string("%   from ", !IO),
             io.write_string(cons_id_and_arity_to_string(ExpConsId), !IO),
             io.write_string(" tag ", !IO),
             io.print(ExpConsTag, !IO),
-            io.write_string(" -> ", !IO),
+            io.nl(!IO),
+            write_indent(Indent, !IO),
+            io.write_string("%   to   ", !IO),
             io.write_string(cons_id_and_arity_to_string(CheapConsId), !IO),
             io.write_string(" tag ", !IO),
             io.print(CheapConsTag, !IO),
-            io.write_string(" */\n", !IO)
+            io.nl(!IO)
         ),
         (
             DuTypeKind = du_type_kind_mercury_enum,
             write_indent(Indent, !IO),
-            io.write_string("/* KIND enumeration */\n", !IO)
+            io.write_string("% KIND enumeration\n", !IO)
         ;
             DuTypeKind = du_type_kind_foreign_enum(Lang),
             write_indent(Indent, !IO),
-            io.write_string("/* KIND foreign enumeration for ", !IO),
+            io.write_string("% KIND foreign enumeration for ", !IO),
             io.write_string(foreign_language_string(Lang), !IO),
-            io.write_string(" */\n", !IO)
+            io.nl(!IO)
         ;
             DuTypeKind = du_type_kind_direct_dummy,
             write_indent(Indent, !IO),
-            io.write_string("/* KIND dummy */\n", !IO)
+            io.write_string("% KIND dummy\n", !IO)
         ;
             DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
                 MaybeArgName),
             write_indent(Indent, !IO),
-            io.write_string("/* KIND notag: ", !IO),
+            io.write_string("% KIND notag: ", !IO),
             write_sym_name(FunctorName, !IO),
             io.write_string(", ", !IO),
             mercury_output_type(TVarSet, print_name_only, ArgType, !IO),
@@ -389,38 +395,36 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
                 MaybeArgName = no,
                 io.write_string("no arg name", !IO)
             ),
-            io.write_string(" */\n", !IO)
+            io.nl(!IO)
         ;
             DuTypeKind = du_type_kind_general,
             write_indent(Indent, !IO),
-            io.write_string("/* KIND general */\n", !IO)
+            io.write_string("% KIND general\n", !IO)
         ),
         (
             ReservedTag = uses_reserved_tag,
             write_indent(Indent, !IO),
-            io.write_string("/* reserved_tag */\n", !IO)
+            io.write_string("% reserved_tag\n", !IO)
         ;
             ReservedTag = does_not_use_reserved_tag
         ),
         (
             ReservedAddr = uses_reserved_address,
             write_indent(Indent, !IO),
-            io.write_string("/* reserved_address */\n", !IO)
+            io.write_string("% reserved_address\n", !IO)
         ;
             ReservedAddr = does_not_use_reserved_address
         ),
-        write_constructors(TVarSet, TypeCtor, ConsTagMap, Indent, Ctors, !IO),
         MercInfo = Info ^ hoi_mercury_to_mercury,
         mercury_output_where_attributes(MercInfo, TVarSet, no, MaybeUserEqComp,
             MaybeDirectArgCtors, !IO),
         (
             Foreign = yes(_),
             write_indent(Indent, !IO),
-            io.write_string("/* has foreign_type */\n", !IO)
+            io.write_string("% has foreign_type\n", !IO)
         ;
             Foreign = no
-        ),
-        io.write_string(".\n", !IO)
+        )
     ;
         TypeBody = hlds_eqv_type(Type),
         io.write_string(" == ", !IO),
@@ -452,48 +456,51 @@ write_constructors(TVarSet, TagValues, TypeCtor, Indent, Ctors, !IO) :-
         unexpected($module, $pred, "empty constructor list")
     ;
         Ctors = [HeadCtor | TailCtors],
-        write_indent(Indent, !IO),
-        io.write_string("--->    ", !IO),
-        write_ctor(TVarSet, TagValues, TypeCtor, HeadCtor, !IO),
-        (
-            TailCtors = []
-        ;
-            TailCtors = [_ | _],
-            io.write_string("\n", !IO),
-            write_constructors_loop(TVarSet, TagValues, TypeCtor, Indent,
-                TailCtors, !IO)
-        )
+        ArrowOrSemi0 = "--->    ",
+        write_constructors_loop(TVarSet, TagValues, TypeCtor, Indent,
+            ArrowOrSemi0, HeadCtor, TailCtors, !IO)
     ).
 
 :- pred write_constructors_loop(tvarset::in, type_ctor::in,
-    cons_tag_values::in, int::in, list(constructor)::in,
-    io::di, io::uo) is det.
+    cons_tag_values::in, int::in, string::in,
+    constructor::in, list(constructor)::in, io::di, io::uo) is det.
 
-write_constructors_loop(_TVarSet, _TypeCtor, _TagValues, _Indent, [], !IO).
-write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent, [Ctor | Ctors],
-        !IO) :-
+write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent,
+        ArrowOrSemi0, HeadCtor, TailCtors, !IO) :-
     write_indent(Indent, !IO),
-    io.write_string(";       ", !IO),
-    write_ctor(TVarSet, TypeCtor, TagValues, Ctor, !IO),
+    io.write_string(ArrowOrSemi0, !IO),
+    ArrowOrSemi = ";       ",
     (
-        Ctors = []
+        TailCtors = [],
+        MaybePeriodNL = ".\n"
     ;
-        Ctors = [_ | _],
-        io.write_string("\n", !IO),
-        write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent, Ctors,
-            !IO)
+        TailCtors = [_ | _],
+        MaybePeriodNL = "\n"
+    ),
+    write_ctor(TVarSet, TypeCtor, TagValues, Indent, MaybePeriodNL,
+        HeadCtor, !IO),
+    (
+        TailCtors = []
+    ;
+        TailCtors = [HeadTailCtor | TailTailCtors],
+        write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent,
+            ArrowOrSemi, HeadTailCtor, TailTailCtors, !IO)
     ).
 
 :- pred write_ctor(tvarset::in, type_ctor::in, cons_tag_values::in,
-    constructor::in, io::di, io::uo) is det.
+    int::in, string::in, constructor::in, io::di, io::uo) is det.
 
-write_ctor(TVarSet, TypeCtor, TagValues, Ctor, !IO) :-
+write_ctor(TVarSet, TypeCtor, TagValues, Indent, MaybePeriodNL, Ctor, !IO) :-
     mercury_output_ctor(TVarSet, Ctor, !IO),
+    io.write_string(MaybePeriodNL, !IO),
     Ctor = ctor(_, _, Name, _Args, Arity, _),
     ConsId = cons(Name, Arity, TypeCtor),
     ( if map.search(TagValues, ConsId, TagValue) then
-        io.write_string("\t% tag: ", !IO),
-        io.print(TagValue, !IO)
+        write_indent(Indent, !IO),
+        io.write_string("        ", !IO),   % The same width as ArrowOrSemi.
+        io.write_string("% tag: ", !IO),
+        io.print(TagValue, !IO),
+        io.nl(!IO)
     else
         true
     ).
