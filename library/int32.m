@@ -460,7 +460,7 @@ X << Y = Result :-
     ( if cast_from_int(Y) < 32u then
         Result = unchecked_left_shift(X, Y)
     else
-        Msg = "uint.(<<): second operand is out of range",
+        Msg = "int32.(<<): second operand is out of range",
         throw(math.domain_error(Msg))
     ).
 
@@ -468,7 +468,7 @@ X >> Y = Result :-
     ( if cast_from_int(Y) < 32u then
         Result = unchecked_right_shift(X, Y)
     else
-        Msg = "uint.(>>): second operand is out of range",
+        Msg = "int32.(>>): second operand is out of range",
         throw(math.domain_error(Msg))
     ).
 
