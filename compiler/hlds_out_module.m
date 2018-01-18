@@ -52,7 +52,11 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_out.hlds_out_pred.
-:- import_module hlds.pred_table.
+% XXX :- import_module hlds.pred_table.
+% We actually use a type equivalence from pred_table.m (specifically,
+% the fact that pred_table is a map), but we get an unused import warning
+% for the above line anyway. The import is commented out until the code
+% that generates the warning is fixed.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
@@ -94,16 +98,35 @@ write_hlds(Indent, ModuleInfo, !IO) :-
         DumpPredIdStrs),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_name,
         DumpPredNames),
+    globals.lookup_bool_option(Globals, dump_hlds_spec_preds, DumpSpecPreds0),
+    globals.lookup_accumulating_option(Globals, dump_hlds_spec_preds_for,
+        DumpSpecPredTypeNames),
     write_header(Indent, ModuleInfo, !IO),
     Info = init_hlds_out_info(Globals, output_debug),
     Lang = output_debug,
-    DumpOptions = Info ^ hoi_dump_hlds_options,
+    DumpOptions0 = Info ^ hoi_dump_hlds_options,
+    (
+        DumpSpecPredTypeNames = [],
+        DumpSpecPreds = DumpSpecPreds0
+    ;
+        DumpSpecPredTypeNames = [_ | _],
+        DumpSpecPreds = yes
+    ),
+    (
+        DumpSpecPreds = no,
+        DumpOptions = DumpOptions0
+    ;
+        DumpSpecPreds = yes,
+        % Print unify (and compare and index) predicates.
+        DumpOptions = DumpOptions0 ++ "U"
+    ),
     ( if
         % If the user specifically requested one or more predicates and/or
         % functions to be dumped, they won't be interested in the types,
         % insts etc.
         ( DumpPredIdStrs = [_ | _]
         ; DumpPredNames = [_ | _]
+        ; DumpSpecPreds = yes
         )
     then
         true
@@ -147,9 +170,13 @@ write_hlds(Indent, ModuleInfo, !IO) :-
     else
         true
     ),
-    ( if string.contains_char(DumpOptions, 'x') then
-        module_info_get_preds(ModuleInfo, PredTable),
-        write_preds(Info, Lang, Indent, ModuleInfo, PredTable, !IO)
+    ( if
+        ( string.contains_char(DumpOptions, 'x')
+        ; DumpSpecPreds = yes
+        )
+    then
+        write_preds(Info, DumpSpecPreds, DumpSpecPredTypeNames,
+            Lang, Indent, ModuleInfo, !IO)
     else
         true
     ),
@@ -1164,22 +1191,33 @@ write_arg_tabling_methods(Prefix, [MaybeMethod | MaybeMethods], !IO) :-
 % Write out the predicate table.
 %
 
-:- pred write_preds(hlds_out_info::in, output_lang::in, int::in,
-    module_info::in, pred_table::in, io::di, io::uo) is det.
+:- pred write_preds(hlds_out_info::in, bool::in, list(string)::in,
+    output_lang::in, int::in, module_info::in, io::di, io::uo) is det.
 
-write_preds(Info, Lang, Indent, ModuleInfo, PredTable, !IO) :-
+write_preds(Info, DumpSpecPreds, DumpSpecPredTypeNames, Lang, Indent,
+        ModuleInfo, !IO) :-
     io.write_string("%-------- Predicates --------\n\n", !IO),
     write_indent(Indent, !IO),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.to_assoc_list(PredTable, PredIdsInfos),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, dump_hlds_pred_name_order,
-        NameOrder),
     (
-        NameOrder = no,
-        PrintPredIdsInfos = PredIdsInfos
+        DumpSpecPreds = no,
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, dump_hlds_pred_name_order,
+            NameOrder),
+        (
+            NameOrder = no,
+            PrintPredIdsInfos = PredIdsInfos
+        ;
+            NameOrder = yes,
+            list.sort(compare_in_name_order, PredIdsInfos, PrintPredIdsInfos)
+        )
     ;
-        NameOrder = yes,
-        list.sort(compare_in_name_order, PredIdsInfos, PrintPredIdsInfos)
+        DumpSpecPreds = yes,
+        map.init(SpecPredMap0),
+        list.foldl(add_spec_preds_to_map(DumpSpecPredTypeNames), PredIdsInfos,
+            SpecPredMap0, SpecPredMap),
+        map.values(SpecPredMap, PrintPredIdsInfos)
     ),
     list.foldl(maybe_write_pred(Info, Lang, Indent, ModuleInfo),
         PrintPredIdsInfos, !IO).
@@ -1201,6 +1239,32 @@ compare_in_name_order(PredIdA - PredInfoA, PredIdB - PredInfoB, Result) :-
     ;
         NameResult = (=),
         compare(Result, PredIdA, PredIdB)
+    ).
+
+:- pred add_spec_preds_to_map(list(string)::in, pair(pred_id, pred_info)::in,
+    map({type_ctor, special_pred_id}, pair(pred_id, pred_info))::in,
+    map({type_ctor, special_pred_id}, pair(pred_id, pred_info))::out) is det.
+
+add_spec_preds_to_map(DumpSpecPredTypeNames, PredIdInfo, !SpecPredMap) :-
+    PredIdInfo = _PredId - PredInfo,
+    pred_info_get_origin(PredInfo, Origin),
+    ( if Origin = origin_special_pred(SpecialPredId, TypeCtor) then
+        (
+            DumpSpecPredTypeNames = [],
+            map.det_insert({TypeCtor, SpecialPredId}, PredIdInfo, !SpecPredMap)
+        ;
+            DumpSpecPredTypeNames = [_ | _],
+            TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
+            TypeCtorName = unqualify_name(TypeCtorSymName),
+            ( if list.member(TypeCtorName, DumpSpecPredTypeNames) then
+                map.det_insert({TypeCtor, SpecialPredId}, PredIdInfo,
+                    !SpecPredMap)
+            else
+                true
+            )
+        )
+    else
+        true
     ).
 
 :- pred maybe_write_pred(hlds_out_info::in, output_lang::in, int::in,

@@ -331,6 +331,8 @@
     ;       dump_hlds_pred_id
     ;       dump_hlds_pred_name
     ;       dump_hlds_pred_name_order
+    ;       dump_hlds_spec_preds
+    ;       dump_hlds_spec_preds_for
     ;       dump_hlds_alias
     ;       dump_hlds_options
     ;       dump_hlds_inst_limit
@@ -1322,6 +1324,8 @@ option_defaults_2(aux_output_option, [
     dump_hlds_pred_id                   -   accumulating([]),
     dump_hlds_pred_name                 -   accumulating([]),
     dump_hlds_pred_name_order           -   bool(no),
+    dump_hlds_spec_preds                -   bool(no),
+    dump_hlds_spec_preds_for            -   accumulating([]),
     dump_hlds_alias                     -   string(""),
     dump_hlds_options                   -   string(""),
     dump_hlds_inst_limit                -   int(100),
@@ -2257,6 +2261,8 @@ long_option("dump-hlds-pred-id",        dump_hlds_pred_id).
 long_option("dump-hlds-pred-name",      dump_hlds_pred_name).
 long_option("dump-hlds-pred-name-order", dump_hlds_pred_name_order).
 long_option("dump-hlds-alias",          dump_hlds_alias).
+long_option("dump-hlds-spec-preds",     dump_hlds_spec_preds).
+long_option("dump-hlds-spec-preds-for", dump_hlds_spec_preds_for).
 long_option("dump-hlds-options",        dump_hlds_options).
 long_option("dump-hlds-inst-limit",     dump_hlds_inst_limit).
 long_option("dump-hlds-file-suffix",    dump_hlds_file_suffix).
@@ -4344,6 +4350,16 @@ options_help_aux_output -->
 %       "--dump-hlds-pred-name-order",
 %       "\tDump the predicates in the HLDS ordered by name",
 %       "\tnot ordered by pred id.",
+% This option is for developers only.
+%       "--dump-hlds-spec-preds",
+%       "\tWith `--dump-hlds', dump the special (unify, compare, and index)",
+%       "\tpredicates not in pred-id order, but in alphabetical order",
+%       "\tby type constructor.",
+% This option is for developers only.
+%       "--dump-hlds-spec-preds-for <typename>",
+%       "\tDump only the special (unify, compare, and index) predicates",
+%       "\tfor the types named by the (possibly multiple) occurrences",
+%       "\tof this option.",
 % This option is for developers only.
 %       "-D, --dump-hlds-alias <dump-alias>",
 %       "\tWith `--dump-hlds', include extra detail in the dump.",
