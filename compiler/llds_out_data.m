@@ -707,13 +707,16 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
         Rval = mkword_hole(_)
     ;
         Rval = const(Const),
-        ( if Const = llconst_code_addr(CodeAddress) then
+        (
+            Const = llconst_code_addr(CodeAddress),
             output_record_code_addr_decls_format(Info, CodeAddress,
                 FirstIndent, LaterIndent, !N, !DeclSet, !IO)
-        else if Const = llconst_data_addr(DataId, _) then
+        ;
+            Const = llconst_data_addr(DataId, _),
             output_record_data_id_decls_format(Info, DataId,
                 FirstIndent, LaterIndent, !N, !DeclSet, !IO)
-        else if Const = llconst_float(FloatVal) then
+        ;
+            Const = llconst_float(FloatVal),
             % If floats are boxed, but are allocated statically, then for each
             % float constant which we might want to box we declare a static
             % const variable holding that constant.
@@ -741,8 +744,27 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             else
                 true
             )
-        else
-            true
+        ;
+            Const = llconst_int64(_)
+            % XXX INT64
+        ;
+            Const = llconst_uint64(_)
+            % XXX INT64
+        ;
+            ( Const = llconst_true
+            ; Const = llconst_false
+            ; Const = llconst_int(_)
+            ; Const = llconst_uint(_)
+            ; Const = llconst_int8(_)
+            ; Const = llconst_uint8(_)
+            ; Const = llconst_int16(_)
+            ; Const = llconst_uint16(_)
+            ; Const = llconst_int32(_)
+            ; Const = llconst_uint32(_)
+            ; Const = llconst_foreign(_, _)
+            ; Const = llconst_string(_)
+            ; Const = llconst_multi_string(_)
+            )
         )
     ;
         Rval = unop(_, SubRvalA),
