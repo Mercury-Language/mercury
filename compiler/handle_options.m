@@ -730,6 +730,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(num_tag_bits, int(2), !Globals),
         globals.set_option(arg_pack_bits, int(32), !Globals),
         globals.set_option(unboxed_float, bool(no), !Globals),
+        globals.set_option(unboxed_int64s, bool(no), !Globals),
         globals.set_option(single_prec_float, bool(no), !Globals),
         globals.set_option(allow_double_word_fields, bool(no), !Globals)
     ;
@@ -866,6 +867,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         %     (In theory --low-level-data should work too, but there is
         %     no reason to bother supporting it.)
         %   - unboxed floats
+        %   - unboxed 64-bit integers
         %   - using copy-out for both det and nondet output arguments
         %     Because Java doesn't support pass-by-reference.
         %   - using no tags
@@ -892,6 +894,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(highlevel_code, bool(yes), !Globals),
         globals.set_option(highlevel_data, bool(yes), !Globals),
         globals.set_option(unboxed_float, bool(yes), !Globals),
+        globals.set_option(unboxed_int64s, bool(yes), !Globals),
         globals.set_option(nondet_copy_out, bool(yes), !Globals),
         globals.set_option(det_copy_out, bool(yes), !Globals),
         globals.set_option(num_tag_bits, int(0), !Globals),
@@ -914,6 +917,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         %   - gc_method `automatic' and no heap reclamation on failure
         %     Because GC is handled automatically by the Erlang implementation.
         %   - unboxed floats
+        %   - unboxed 64-bit integers
         %   - delay-partial-instantiations
         %   - no-can-compare-constants-as-ints
         %   - can-compare-compound-values
@@ -925,6 +929,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_gc_method(gc_automatic, !Globals),
         globals.set_option(gc, string("automatic"), !Globals),
         globals.set_option(unboxed_float, bool(yes), !Globals),
+        globals.set_option(unboxed_int64s, bool(yes), !Globals),
         globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
             !Globals),
         globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
@@ -2362,7 +2367,7 @@ postprocess_options_lowlevel(!Globals) :-
         StaticGroundInt64s = yes
     ;
         UnboxedInt64s = no,
-        StaticGroundInt64s=  yes
+        StaticGroundInt64s = yes
     ),
     globals.set_option(static_ground_int64s, bool(StaticGroundInt64s),
         !Globals),
