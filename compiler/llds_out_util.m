@@ -60,6 +60,8 @@
                 lout_unboxed_float              :: bool,
                 lout_det_stack_dword_alignment  :: bool,
                 lout_static_ground_floats       :: bool,
+                lout_unboxed_int64s             :: bool,
+                lout_static_ground_int64s       :: bool,
                 lout_use_macro_for_redo_fail    :: bool,
                 lout_trace_level                :: trace_level,
                 lout_globals                    :: globals
@@ -79,6 +81,8 @@
 
 :- type decl_id
     --->    decl_float_label(string)
+    ;       decl_int64_label(string)
+    ;       decl_uint64_label(string)
     ;       decl_common_type(type_num)
     ;       decl_code_addr(code_addr)
     ;       decl_rtti_id(rtti_id)
@@ -140,6 +144,9 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
     double_width_floats_on_det_stack(Globals, DetStackDwordAligment),
     globals.lookup_bool_option(Globals, static_ground_floats,
         StaticGroundFloats),
+    globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64s),
+    globals.lookup_bool_option(Globals, static_ground_int64s,
+        StaticGroundInt64s),
     globals.lookup_bool_option(Globals, use_macro_for_redo_fail,
         UseMacroForRedoFail),
     globals.get_trace_level(Globals, TraceLevel),
@@ -150,7 +157,8 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
         EmitCLoops, GenerateBytecode, LocalThreadEngineBase,
         ProfileCalls, ProfileTime, ProfileMemory, ProfileDeep,
         UnboxedFloat, DetStackDwordAligment, StaticGroundFloats,
-        UseMacroForRedoFail, TraceLevel, Globals).
+        UnboxedInt64s, StaticGroundInt64s, UseMacroForRedoFail,
+        TraceLevel, Globals).
 
 output_set_line_num(OutputLineNumbers, Context, !IO) :-
     (

@@ -512,6 +512,14 @@ init_exprn_opts(Globals) = ExprnOpts :-
         FloatDwords = no,
         DetStackFloatWidth = single_width
     ),
+    globals.lookup_bool_option(Globals, unboxed_int64s, OptUBI64s),
+    (
+        OptUBI64s = yes,
+        UBI64s = have_unboxed_int64s
+    ;
+        OptUBI64s = no,
+        UBI64s = do_not_have_unboxed_int64s
+    ),
     globals.lookup_bool_option(Globals, static_ground_floats, OptSGFloat),
     (
         OptSGFloat = yes,
@@ -519,6 +527,14 @@ init_exprn_opts(Globals) = ExprnOpts :-
     ;
         OptSGFloat = no,
         SGFloat = do_not_have_static_ground_floats
+    ),
+    globals.lookup_bool_option(Globals, static_ground_int64s, OptSGInt64s),
+    (
+        OptSGInt64s = yes,
+        SGInt64s = have_static_ground_int64s
+    ;
+        OptSGInt64s = no,
+        SGInt64s = do_not_have_static_ground_int64s
     ),
     globals.lookup_bool_option(Globals, static_code_addresses,
         OptStaticCodeAddr),
@@ -529,16 +545,8 @@ init_exprn_opts(Globals) = ExprnOpts :-
         OptStaticCodeAddr = no,
         StaticCodeAddrs = do_not_have_static_code_addresses
     ),
-    globals.lookup_bool_option(Globals, unboxed_int64s, OptUBI64s),
-    (
-        OptUBI64s = yes,
-        UBI64s = have_unboxed_int64s
-    ;
-        OptUBI64s = no,
-        UBI64s = do_not_have_unboxed_int64s
-    ),
     ExprnOpts = exprn_opts(NLG, ASM, UBF, UseFloatRegs, DetStackFloatWidth,
-        SGCell, SGFloat, StaticCodeAddrs, UBI64s).
+        UBI64s, SGCell, SGFloat, SGInt64s, StaticCodeAddrs).
 
 :- pred max_var_slot(stack_slots::in, int::out) is det.
 

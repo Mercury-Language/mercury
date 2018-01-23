@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2017 The Mercury team.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -118,6 +118,10 @@
     % identifier. Different rvals must be given different names.
     %
 :- pred float_const_expr_name(rval::in, string::out) is semidet.
+
+:- pred int64_const_expr_name(rval::in, string::out) is semidet.
+
+:- pred uint64_const_expr_name(rval::in, string::out) is semidet.
 
     % output_record_data_addr_decls(Info, DataId, ...) outputs the
     % declarations of any static constants, etc. that need to be declared
@@ -745,11 +749,55 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
                 true
             )
         ;
-            Const = llconst_int64(_)
-            % XXX INT64
+            Const = llconst_int64(Int64Val),
+            UnboxedInt64s = Info ^ lout_unboxed_int64s,
+            StaticGroundInt64s = Info ^ lout_static_ground_int64s,
+            ( if
+                UnboxedInt64s = no,
+                StaticGroundInt64s = yes
+            then
+                int64_literal_name(Int64Val, Int64Name),
+                Int64Label = decl_int64_label(Int64Name),
+                ( if decl_set_is_member(Int64Label, !.DeclSet) then
+                    true
+                else
+                    decl_set_insert(Int64Label, !DeclSet),
+                    Int64String = c_util.make_int64_literal(Int64Val),
+                    output_indent(FirstIndent, LaterIndent, !.N, !IO),
+                    !:N = !.N + 1,
+                    io.write_strings(["static const int64_t ",
+                        "mercury_int64_const_", Int64Name, " = ",
+                        Int64String, ";\n"
+                    ], !IO)
+                )
+            else
+                true
+            )
         ;
-            Const = llconst_uint64(_)
-            % XXX INT64
+            Const = llconst_uint64(UInt64Val),
+            UnboxedInt64s = Info ^ lout_unboxed_int64s,
+            StaticGroundInt64s = Info ^ lout_static_ground_int64s,
+            ( if
+                UnboxedInt64s = no,
+                StaticGroundInt64s = Info ^ lout_static_ground_int64s
+            then
+                uint64_literal_name(UInt64Val, UInt64Name),
+                UInt64Label = decl_uint64_label(UInt64Name),
+                ( if decl_set_is_member(UInt64Label, !.DeclSet) then
+                    true
+                else
+                    decl_set_insert(UInt64Label, !DeclSet),
+                    UInt64String = c_util.make_uint64_literal(UInt64Val),
+                    output_indent(FirstIndent, LaterIndent, !.N, !IO),
+                    !:N = !.N + 1,
+                    io.write_strings(["static const uint64_t ",
+                        "mercury_uint64_const_", UInt64Name, " = ",
+                        UInt64String, ";\n"
+                    ], !IO)
+                )
+            else
+                true
+            )
         ;
             ( Const = llconst_true
             ; Const = llconst_false
@@ -1596,15 +1644,37 @@ output_int64_rval_as_word(Info, Rval, !IO) :-
     io::di, io::uo) is det.
 
 output_int64_rval(Info, Rval, IsPtr, !IO) :-
-    (
-        IsPtr = yes,
-        output_llds_type_cast(lt_data_ptr, !IO)
-    ;
-        IsPtr = no
-    ),
-    io.write_string("MR_int64_to_word(", !IO),
-    output_rval(Info, Rval, !IO),
-    io.write_string(")", !IO).
+    % For int64 constants, if we're using boxed 64-bit integers and
+    % --static-ground-int64s is enabled, we just refer to the static const
+    % which we declared earlier.
+    UnboxInt64s = Info ^ lout_unboxed_int64s,
+    StaticGroundInt64s = Info ^ lout_static_ground_int64s,
+    ( if
+        UnboxInt64s = no,
+        StaticGroundInt64s = yes,
+        int64_const_expr_name(Rval, Int64Name)
+    then
+        (
+            IsPtr = yes,
+            Cast = lt_data_ptr
+        ;
+            IsPtr = no,
+            Cast = lt_word
+        ),
+        output_llds_type_cast(Cast, !IO),
+        io.write_string("&mercury_int64_const_", !IO),
+        io.write_string(Int64Name, !IO)
+    else
+        (
+            IsPtr = yes,
+            output_llds_type_cast(lt_data_ptr, !IO)
+        ;
+            IsPtr = no
+        ),
+        io.write_string("MR_int64_to_word(", !IO),
+        output_rval(Info, Rval, !IO),
+        io.write_string(")", !IO)
+    ).
 
     % Output a uint64 rval, converted to type `MR_Word *'
     %
@@ -1628,15 +1698,37 @@ output_uint64_rval_as_word(Info, Rval, !IO) :-
     io::di, io::uo) is det.
 
 output_uint64_rval(Info, Rval, IsPtr, !IO) :-
-    (
-        IsPtr = yes,
-        output_llds_type_cast(lt_data_ptr, !IO)
-    ;
-        IsPtr = no
-    ),
-    io.write_string("MR_uint64_to_word(", !IO),
-    output_rval(Info, Rval, !IO),
-    io.write_string(")", !IO).
+    % For uint64 constants, if we're using boxed 64-bit integers and
+    % --static-ground-int64s is enabled, we just refer to the static const
+    % which we declared earlier.
+    UnboxInt64s = Info ^ lout_unboxed_int64s,
+    StaticGroundInt64s = Info ^ lout_static_ground_int64s,
+    ( if
+        UnboxInt64s = no,
+        StaticGroundInt64s = yes,
+        uint64_const_expr_name(Rval, UInt64Name)
+    then
+        (
+            IsPtr = yes,
+            Cast = lt_data_ptr
+        ;
+            IsPtr = no,
+            Cast = lt_word
+        ),
+        output_llds_type_cast(Cast, !IO),
+        io.write_string("&mercury_uint64_const_", !IO),
+        io.write_string(UInt64Name, !IO)
+    else
+        (
+            IsPtr = yes,
+            output_llds_type_cast(lt_data_ptr, !IO)
+        ;
+            IsPtr = no
+        ),
+        io.write_string("MR_uint64_to_word(", !IO),
+        output_rval(Info, Rval, !IO),
+        io.write_string(")", !IO)
+    ).
 
 :- pred is_aligned_dword_ptr(rval::in, rval::in, mem_ref::out) is semidet.
 
@@ -1922,6 +2014,35 @@ float_op_name(float_plus, "plus").
 float_op_name(float_minus, "minus").
 float_op_name(float_times, "times").
 float_op_name(float_divide, "divide").
+
+%----------------------------------------------------------------------------%
+
+    % Given an rval which is a signed 64-bit integer literal, return
+    % a name for that rval that is suitable for use in a C identifier.
+    % Different rvals must be given different names.
+    %
+:- pred int64_literal_name(int::in, string::out) is det.
+
+int64_literal_name(Int64, Int64Name) :-
+    Int64Name0 = int_to_string(Int64),
+    string.replace_all(Int64Name0, "-", "neg", Int64Name).
+
+    % Given an rval which is an unsigned 64-bit integer literal, return
+    % a name for that rval that is suitable for use in a C identifier.
+    % Different rvals must be given different names.
+    %
+:- pred uint64_literal_name(int::in, string::out) is det.
+
+uint64_literal_name(UInt64, UInt64Name) :-
+    UInt64Name = int_to_string(UInt64). % XXX INT64.
+
+int64_const_expr_name(Expr, Name) :-
+    Expr = const(llconst_int64(Int64)),
+    int64_literal_name(Int64, Name).
+
+uint64_const_expr_name(Expr, Name) :-
+    Expr = const(llconst_uint64(UInt64)),
+    uint64_literal_name(UInt64, Name).
 
 %----------------------------------------------------------------------------%
 %

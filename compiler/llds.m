@@ -1487,6 +1487,10 @@
     --->    use_float_registers
     ;       do_not_use_float_registers.
 
+:- type have_unboxed_int64s
+    --->    have_unboxed_int64s
+    ;       do_not_have_unboxed_int64s.
+
 :- type have_static_ground_cells
     --->    have_static_ground_cells
     ;       do_not_have_static_ground_cells.
@@ -1495,13 +1499,14 @@
     --->    have_static_ground_floats
     ;       do_not_have_static_ground_floats.
 
+:- type have_static_ground_int64s
+    --->    have_static_ground_int64s
+    ;       do_not_have_static_ground_int64s.
+
 :- type have_static_code_addresses
     --->    have_static_code_addresses
     ;       do_not_have_static_code_addresses.
 
-:- type have_unboxed_int64s
-    --->    have_unboxed_int64s
-    ;       do_not_have_unboxed_int64s.
 
 :- type exprn_opts
     --->    exprn_opts(
@@ -1510,10 +1515,11 @@
                 unboxed_floats          :: have_unboxed_floats,
                 float_registers         :: use_float_registers,
                 det_stack_float_width   :: stack_slot_width,
+                unboxed_int64s          :: have_unboxed_int64s,
                 static_ground_cells     :: have_static_ground_cells,
                 static_ground_floats    :: have_static_ground_floats,
-                static_code_addresses   :: have_static_code_addresses,
-                unboxed_int64s          :: have_unboxed_int64s
+                static_ground_int64s    :: have_static_ground_int64s,
+                static_code_addresses   :: have_static_code_addresses
             ).
 
 :- func get_nonlocal_gotos(exprn_opts) = have_non_local_gotos.
@@ -1521,10 +1527,11 @@
 :- func get_unboxed_floats(exprn_opts) = have_unboxed_floats.
 :- func get_float_registers(exprn_opts) = use_float_registers.
 :- func get_det_stack_float_width(exprn_opts) = stack_slot_width.
+:- func get_unboxed_int64s(exprn_opts) = have_unboxed_int64s.
 :- func get_static_ground_cells(exprn_opts) = have_static_ground_cells.
 :- func get_static_ground_floats(exprn_opts) = have_static_ground_floats.
+:- func get_static_ground_int64s(exprn_opts) = have_static_ground_int64s.
 :- func get_static_code_addresses(exprn_opts) = have_static_code_addresses.
-:- func get_unboxed_int64s(exprn_opts) = have_unboxed_int64s.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1800,6 +1807,7 @@ get_unboxed_floats(ExprnOpts) = ExprnOpts ^ unboxed_floats.
 get_float_registers(ExprnOpts) = ExprnOpts ^ float_registers.
 get_det_stack_float_width(ExprnOpts) = ExprnOpts ^ det_stack_float_width.
 get_static_ground_floats(ExprnOpts) = ExprnOpts ^ static_ground_floats.
+get_static_ground_int64s(ExprnOpts) = ExprnOpts ^ static_ground_int64s.
 get_static_code_addresses(ExprnOpts) = ExprnOpts ^ static_code_addresses.
 get_unboxed_int64s(ExprnOpts) = ExprnOpts ^ unboxed_int64s.
 

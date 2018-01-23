@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -818,6 +818,7 @@
 
     ;       static_ground_cells
     ;       static_ground_floats
+    ;       static_ground_int64s
     ;       static_code_addresses
 
     ;       use_atomic_cells
@@ -1715,6 +1716,7 @@ option_defaults_2(optimization_option, [
     switch_multi_rec_base_first         -   bool(yes),
     static_ground_cells                 -   bool(no),
     static_ground_floats                -   bool(no),
+    static_ground_int64s                -   bool(no),
     static_code_addresses               -   bool(no),
     use_atomic_cells                    -   bool(no),
     middle_rec                          -   bool(no),
@@ -2698,6 +2700,8 @@ long_option("switch-multi-rec-base-first",  switch_multi_rec_base_first).
 long_option("static-ground-terms",  static_ground_cells).
 % static_ground_floats should be set only in handle_options.m.
 % long_option("static-ground-floats", static_ground_floats).
+% static_ground_int64s should be set only in handle_options.m.
+% long_option("static-ground-int64s", static_ground_int64s).
 % static_code_addresses should be set only in handle_options.m.
 % long_option("static-code-addresses", static_code_addresses).
 long_option("use-atomic-cells",     use_atomic_cells).

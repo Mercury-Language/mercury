@@ -2355,6 +2355,18 @@ postprocess_options_lowlevel(!Globals) :-
     globals.set_option(static_ground_floats, bool(StaticGroundFloats),
         !Globals),
 
+    % Ditto for 64-bit integers.
+    globals.lookup_bool_option(!.Globals, unboxed_int64s, UnboxedInt64s),
+    (
+        UnboxedInt64s = yes,
+        StaticGroundInt64s = yes
+    ;
+        UnboxedInt64s = no,
+        StaticGroundInt64s=  yes
+    ),
+    globals.set_option(static_ground_int64s, bool(StaticGroundInt64s),
+        !Globals),
+
     % The setting of static_code_addresses is governed only by the settings
     % of gcc_non_local_gotos and asm_labels.
     globals.lookup_bool_option(!.Globals, gcc_non_local_gotos, NonLocalGotos),

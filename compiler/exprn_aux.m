@@ -127,8 +127,14 @@ const_is_constant(Const, ExprnOpts, IsConst) :-
         ( Const = llconst_int64(_)
         ; Const = llconst_uint64(_)
         ),
-        % XXX INT64.
-        IsConst = yes
+        SGInt64s = ExprnOpts ^ static_ground_int64s,
+        (
+            SGInt64s = have_static_ground_int64s,
+            IsConst = yes
+        ;
+            SGInt64s = do_not_have_static_ground_int64s,
+            IsConst = no
+        )
     ;
         Const = llconst_float(_),
         SGFloats = ExprnOpts ^ static_ground_floats,

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2017 The Mercury team.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -221,11 +221,21 @@
     io::di, io::uo) is det.
 :- pred output_uint32_expr_cur_stream(uint32::in, io::di, io::uo) is det.
 
+    % Convert a uint64 to a string suitable for use as a C uint64_t literal.
+    % Note that the result is not suitable for use with C# or Java.
+    %
+:- func make_int64_literal(int/*XXX INT64*/) = string.
+
     % Write out an int64 as a C expression.
     %
 :- pred output_int64_expr(io.text_output_stream::in, int::in,
     io::di, io::uo) is det.
 :- pred output_int64_expr_cur_stream(int::in, io::di, io::uo) is det.
+
+    % Convert a uint64 to a string suitable for use as a C uint64_t literal.
+    % Note that the result is not suitable for use with C# or Java.
+    %
+:- func make_uint64_literal(int/*XXX INT64*/) = string.
 
     % Write out a uint64 as a C expression.
     %
@@ -884,6 +894,10 @@ output_uint32_expr(Stream, N, !IO) :-
     io.write_uint32(Stream, N, !IO),
     io.write_string(Stream, ")", !IO).
 
+make_int64_literal(N) = Literal :-
+    NStr = int_to_string(N),
+    string.format("INT64_C(%s)", [s(NStr)], Literal).
+
 output_uint32_expr_cur_stream(N, !IO) :-
     io.output_stream(Stream, !IO),
     output_uint32_expr(Stream, N, !IO).
@@ -896,6 +910,10 @@ output_int64_expr(Stream, N, !IO) :-
 output_int64_expr_cur_stream(N, !IO) :-
     io.output_stream(Stream, !IO),
     output_int64_expr(Stream, N, !IO).
+
+make_uint64_literal(N) = Literal :-
+    NStr = int_to_string(N),
+    string.format("UINT64_C(%s)", [s(NStr)], Literal).
 
 output_uint64_expr(Stream, N, !IO) :-
     io.write_string(Stream, "UINT64_C(", !IO),
