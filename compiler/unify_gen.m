@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1716,47 +1717,59 @@ generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Type, Code,
 
 generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, unboxed_float, UB),
+    globals.lookup_bool_option(Globals, unboxed_float, OptUnboxedFloats),
     (
-        UB = yes,
+        OptUnboxedFloats = yes,
         UnboxedFloats = have_unboxed_floats
     ;
-        UB = no,
+        OptUnboxedFloats = no,
         UnboxedFloats = do_not_have_unboxed_floats
+    ),
+    globals.lookup_bool_option(Globals, unboxed_int64s, OptUnboxedInt64s),
+    (
+        OptUnboxedInt64s = yes,
+        UnboxedInt64s = have_unboxed_int64s
+    ;
+        OptUnboxedInt64s = no,
+        UnboxedInt64s = do_not_have_unboxed_int64s
     ),
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
     const_struct_db_get_structs(ConstStructDb, ConstStructs),
     global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
-    list.foldl2(generate_const_struct(ModuleInfo, UnboxedFloats), ConstStructs,
-        map.init, ConstStructMap, StaticCellInfo0, StaticCellInfo),
+    list.foldl2(
+        generate_const_struct(ModuleInfo, UnboxedFloats, UnboxedInt64s),
+        ConstStructs, map.init, ConstStructMap,
+        StaticCellInfo0, StaticCellInfo),
     global_data_set_static_cell_info(StaticCellInfo, !GlobalData).
 
-:- pred generate_const_struct(module_info::in, have_unboxed_floats::in,
+:- pred generate_const_struct(module_info::in,
+    have_unboxed_floats::in, have_unboxed_int64s::in,
     pair(int, const_struct)::in,
     const_struct_map::in, const_struct_map::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-generate_const_struct(ModuleInfo, UnboxedFloats, ConstNum - ConstStruct,
-        !ConstStructMap, !StaticCellInfo) :-
+generate_const_struct(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+        ConstNum - ConstStruct, !ConstStructMap, !StaticCellInfo) :-
     ConstStruct = const_struct(ConsId, ConstArgs, _, _),
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     get_cons_arg_widths(ModuleInfo, ConsId, ConstArgs, ConsArgWidths),
-    generate_const_struct_rval(ModuleInfo, UnboxedFloats, !.ConstStructMap,
-        ConsId, ConsTag, ConstArgs, ConsArgWidths, Rval, !StaticCellInfo),
+    generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+        !.ConstStructMap, ConsId, ConsTag, ConstArgs, ConsArgWidths, Rval,
+        !StaticCellInfo),
     map.det_insert(ConstNum, Rval, !ConstStructMap).
 
 :- pred generate_const_struct_rval(module_info::in, have_unboxed_floats::in,
-    const_struct_map::in, cons_id::in, cons_tag::in,
+    have_unboxed_int64s::in, const_struct_map::in, cons_id::in, cons_tag::in,
     list(const_struct_arg)::in, list(arg_width)::in, typed_rval::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
-        ConsId, ConsTag, ConstArgs, ConsArgWidths, TypedRval,
+generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+        ConstStructMap, ConsId, ConsTag, ConstArgs, ConsArgWidths, TypedRval,
         !StaticCellInfo) :-
     (
         ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
-        generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
-            ConsId, ActualConsTag, ConstArgs, ConsArgWidths,
+        generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConsId, ActualConsTag, ConstArgs, ConsArgWidths,
             TypedRval, !StaticCellInfo)
     ;
         ConsTag = no_tag,
@@ -1764,7 +1777,8 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
             ConstArgs = [ConstArg],
             det_single_arg_width(ConsArgWidths, ConsArgWidth),
             generate_const_struct_arg(ModuleInfo, UnboxedFloats,
-                ConstStructMap, ConstArg, ConsArgWidth, ArgTypedRval),
+                UnboxedInt64s, ConstStructMap, ConstArg, ConsArgWidth,
+                ArgTypedRval),
             TypedRval = ArgTypedRval
         ;
             ( ConstArgs = []
@@ -1778,7 +1792,8 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
             ConstArgs = [ConstArg],
             det_single_arg_width(ConsArgWidths, ConsArgWidth),
             generate_const_struct_arg(ModuleInfo, UnboxedFloats,
-                ConstStructMap, ConstArg, ConsArgWidth, ArgTypedRval),
+                UnboxedInt64s, ConstStructMap, ConstArg, ConsArgWidth,
+                ArgTypedRval),
             ArgTypedRval = typed_rval(ArgRval, _RvalType),
             Rval = mkword(Ptag, ArgRval),
             TypedRval = typed_rval(Rval, lt_data_ptr)
@@ -1795,8 +1810,8 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
         ;
             ConsTag = unshared_tag(Ptag)
         ),
-        generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
-            ConstArgs, ConsArgWidths, ArgTypedRvals),
+        generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConstArgs, ConsArgWidths, ArgTypedRvals),
         pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
         add_scalar_static_cell(PackArgTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
@@ -1805,8 +1820,8 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
         TypedRval = typed_rval(Rval, lt_data_ptr)
     ;
         ConsTag = shared_remote_tag(Ptag, Stag),
-        generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
-            ConstArgs, ConsArgWidths, ArgTypedRvals),
+        generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConstArgs, ConsArgWidths, ArgTypedRvals),
         pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
         StagTypedRval = typed_rval(const(llconst_int(Stag)),
             lt_int(int_type_int)),
@@ -1837,21 +1852,23 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
     ).
 
 :- pred generate_const_struct_args(module_info::in, have_unboxed_floats::in,
-    const_struct_map::in, list(const_struct_arg)::in, list(arg_width)::in,
-    list(typed_rval)::out) is det.
+    have_unboxed_int64s::in, const_struct_map::in,
+    list(const_struct_arg)::in, list(arg_width)::in, list(typed_rval)::out)
+    is det.
 
-generate_const_struct_args(ModuleInfo, UnboxedFloats, ConstStructMap,
-        ConstArgs, ArgWidths, TypedRvals) :-
+generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+        ConstStructMap, ConstArgs, ArgWidths, TypedRvals) :-
     list.map_corresponding(
-        generate_const_struct_arg(ModuleInfo, UnboxedFloats, ConstStructMap),
+        generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap),
         ConstArgs, ArgWidths, TypedRvals).
 
 :- pred generate_const_struct_arg(module_info::in, have_unboxed_floats::in,
-    const_struct_map::in, const_struct_arg::in, arg_width::in, typed_rval::out)
-    is det.
+    have_unboxed_int64s::in, const_struct_map::in, const_struct_arg::in,
+    arg_width::in, typed_rval::out) is det.
 
-generate_const_struct_arg(ModuleInfo, UnboxedFloats, ConstStructMap,
-        ConstArg, ArgWidth, TypedRval) :-
+generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+        ConstStructMap, ConstArg, ArgWidth, TypedRval) :-
     (
         ConstArg = csa_const_struct(ConstNum),
         map.lookup(ConstStructMap, ConstNum, TypedRval)
@@ -1859,14 +1876,15 @@ generate_const_struct_arg(ModuleInfo, UnboxedFloats, ConstStructMap,
         ConstArg = csa_constant(ConsId, _),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats,
-            ConstStructMap, ConsTag, ArgWidth, TypedRval)
+            UnboxedInt64s, ConstStructMap, ConsTag, ArgWidth, TypedRval)
     ).
 
 :- pred generate_const_struct_arg_tag(module_info::in, have_unboxed_floats::in,
-    const_struct_map::in, cons_tag::in, arg_width::in, typed_rval::out) is det.
+    have_unboxed_int64s::in, const_struct_map::in, cons_tag::in,
+    arg_width::in, typed_rval::out) is det.
 
-generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
-        ConsTag, ArgWidth, TypedRval) :-
+generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+        ConstStructMap, ConsTag, ArgWidth, TypedRval) :-
     (
         (
             ConsTag = string_tag(String),
@@ -1875,7 +1893,29 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
         ;
             ConsTag = int_tag(IntTag),
             int_tag_to_const_and_int_type(IntTag, Const, IntType),
-            Type = lt_int(IntType)
+            (
+                ( IntType = int_type_int64
+                ; IntType = int_type_uint64
+                ),
+                (
+                    UnboxedInt64s = have_unboxed_int64s,
+                    Type = lt_int(IntType)
+                ;
+                    UnboxedInt64s = do_not_have_unboxed_int64s,
+                    Type = lt_data_ptr
+                )
+            ;
+                ( IntType = int_type_int
+                ; IntType = int_type_uint
+                ; IntType = int_type_int8
+                ; IntType = int_type_uint8
+                ; IntType = int_type_int16
+                ; IntType = int_type_uint16
+                ; IntType = int_type_int32
+                ; IntType = int_type_uint32
+                ),
+                Type = lt_int(IntType)
+            )
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $module, $pred,
@@ -1912,7 +1952,7 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
     ;
         ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
         generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats,
-            ConstStructMap, ActualConsTag, ArgWidth, TypedRval)
+            UnboxedInt64s, ConstStructMap, ActualConsTag, ArgWidth, TypedRval)
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
