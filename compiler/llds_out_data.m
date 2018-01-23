@@ -779,7 +779,7 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             StaticGroundInt64s = Info ^ lout_static_ground_int64s,
             ( if
                 UnboxedInt64s = no,
-                StaticGroundInt64s = Info ^ lout_static_ground_int64s
+                StaticGroundInt64s = yes
             then
                 uint64_literal_name(UInt64Val, UInt64Name),
                 UInt64Label = decl_uint64_label(UInt64Name),
