@@ -1026,8 +1026,34 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
 type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
     TypeCategory = classify_type(ModuleInfo, Type),
     (
-        ( TypeCategory = ctor_cat_builtin(cat_builtin_int(_))
-        ; TypeCategory = ctor_cat_builtin(cat_builtin_char)
+        TypeCategory = ctor_cat_builtin(cat_builtin_int(IntType)),
+        (
+            ( IntType = int_type_int
+            ; IntType = int_type_uint
+            ; IntType = int_type_int8
+            ; IntType = int_type_uint8
+            ; IntType = int_type_int16
+            ; IntType = int_type_uint16
+            ; IntType = int_type_int32
+            ; IntType = int_type_uint32
+            ),
+            TypeMayUseAtomic = may_use_atomic_alloc
+        ;
+            ( IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, unboxed_int64s, UBI64),
+            (
+                UBI64 = yes,
+                TypeMayUseAtomic = may_use_atomic_alloc
+            ;
+                UBI64 = no,
+                TypeMayUseAtomic = may_not_use_atomic_alloc
+            )
+        )
+    ;
+        ( TypeCategory = ctor_cat_builtin(cat_builtin_char)
         ; TypeCategory = ctor_cat_enum(_)
         ; TypeCategory = ctor_cat_builtin_dummy
         ; TypeCategory = ctor_cat_system(cat_system_type_ctor_info)
