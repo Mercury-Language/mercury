@@ -623,6 +623,8 @@ ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
         ;
             MutableSpecial = mutable_special_case,
             % The code for mutables is generated in the frontend.
+            % XXX does this code need to be updated for the other
+            % integer types?
             ( if Type = int_type then
                 MLDS_Type = mlds_native_int_type
             else
