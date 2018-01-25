@@ -493,17 +493,65 @@ write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent,
 write_ctor(TVarSet, TypeCtor, TagValues, Indent, MaybePeriodNL, Ctor, !IO) :-
     mercury_output_ctor(TVarSet, Ctor, !IO),
     io.write_string(MaybePeriodNL, !IO),
-    Ctor = ctor(_, _, Name, _Args, Arity, _),
+    Ctor = ctor(_, _, Name, Args, Arity, _),
     ConsId = cons(Name, Arity, TypeCtor),
     ( if map.search(TagValues, ConsId, TagValue) then
         write_indent(Indent, !IO),
         io.write_string("        ", !IO),   % The same width as ArrowOrSemi.
         io.write_string("% tag: ", !IO),
         io.print(TagValue, !IO),
-        io.nl(!IO)
+        AllFull = all_args_are_full_word(Args),
+        (
+            AllFull = yes,
+            io.write_string(", unpacked args\n", !IO)
+        ;
+            AllFull = no,
+            io.nl(!IO),
+            write_indent(Indent, !IO),
+            io.write_string("        ", !IO),
+            io.write_string("% packed arg widths:\n", !IO),
+            write_arg_widths(Indent, Args, !IO)
+        )
     else
+        % If we have no tag information for this type, then we haven't started
+        % trying to pack constructors' arguments yet.
         true
     ).
+
+:- func all_args_are_full_word(list(constructor_arg)) = bool.
+
+all_args_are_full_word([]) = yes.
+all_args_are_full_word([Arg | Args]) = AllFull :-
+    Arg = ctor_arg(_MaybeFieldName, _Type, Width, _Context),
+    ( if Width = full_word then
+        AllFull = all_args_are_full_word(Args)
+    else
+        AllFull = no
+    ).
+
+:- pred write_arg_widths(int::in, list(constructor_arg)::in,
+    io::di, io::uo) is det.
+
+write_arg_widths(_, [], !IO).
+write_arg_widths(Indent, [Arg | Args], !IO) :-
+    Arg = ctor_arg(_MaybeFieldName, _Type, Width, _Context),
+    write_indent(Indent, !IO),
+    io.write_string("        ", !IO),
+    (
+        Width = full_word,
+        io.write_string("full_word\n", !IO)
+    ;
+        Width = double_word,
+        io.write_string("double_word\n", !IO)
+    ;
+        Width = partial_word_first(Mask),
+        io.format("partial_word_first <mask %x>\n", [i(Mask)], !IO)
+    ;
+        Width = partial_word_shifted(Shift, Mask),
+        io.format("partial_word_shifted <shift %d, mask %x>\n",
+            [i(Shift), i(Mask)], !IO)
+    ),
+    write_arg_widths(Indent, Args, !IO).
 
 %-----------------------------------------------------------------------------%
 %
