@@ -510,7 +510,7 @@ write_ctor(TVarSet, TypeCtor, TagValues, Indent, MaybePeriodNL, Ctor, !IO) :-
             write_indent(Indent, !IO),
             io.write_string("        ", !IO),
             io.write_string("% packed arg widths:\n", !IO),
-            write_arg_widths(Indent, Args, !IO)
+            write_arg_widths(Indent, 1, 0, Args, !IO)
         )
     else
         % If we have no tag information for this type, then we haven't started
@@ -529,29 +529,47 @@ all_args_are_full_word([Arg | Args]) = AllFull :-
         AllFull = no
     ).
 
-:- pred write_arg_widths(int::in, list(constructor_arg)::in,
+    % write_arg_widths(Indent, CurArgNum, !.Offset, Args, !IO):
+    %
+    % CurArgNum should be the argument number of the first argument
+    % in Args (if any).
+    %
+    % !.Offset should be the offset within the constructor's heap cell
+    % of the first argument in Args *that begins a word*. If the first
+    % argument in Args does *not* begin a word (i.e. it is
+    % partial_word_shifted), then its storage will be within the word
+    % at offset !.Offset - 1.
+    % 
+:- pred write_arg_widths(int::in, int::in, int::in, list(constructor_arg)::in,
     io::di, io::uo) is det.
 
-write_arg_widths(_, [], !IO).
-write_arg_widths(Indent, [Arg | Args], !IO) :-
+write_arg_widths(_, _, _, [], !IO).
+write_arg_widths(Indent, CurArgNum, !.Offset, [Arg | Args], !IO) :-
     Arg = ctor_arg(_MaybeFieldName, _Type, Width, _Context),
     write_indent(Indent, !IO),
     io.write_string("        ", !IO),
     (
         Width = full_word,
-        io.write_string("full_word\n", !IO)
+        io.format("%% arg %d: full_word at offset %d\n",
+            [i(CurArgNum), i(!.Offset)], !IO),
+        !:Offset = !.Offset + 1
     ;
         Width = double_word,
-        io.write_string("double_word\n", !IO)
+        io.format("%% arg %d: double_word at offsets %d-%d\n",
+            [i(CurArgNum), i(!.Offset), i(!.Offset + 1)], !IO),
+        !:Offset = !.Offset + 2
     ;
         Width = partial_word_first(Mask),
-        io.format("partial_word_first <mask %x>\n", [i(Mask)], !IO)
+        io.format("%% arg %d: partial_word_first at offset %d, mask %x\n",
+            [i(CurArgNum), i(!.Offset), i(Mask)], !IO),
+        !:Offset = !.Offset + 1
     ;
         Width = partial_word_shifted(Shift, Mask),
-        io.format("partial_word_shifted <shift %d, mask %x>\n",
-            [i(Shift), i(Mask)], !IO)
+        io.format("%% arg %d: partial_word_shifted " ++
+            "at offset %d, shift %d, mask %x\n",
+            [i(CurArgNum), i(!.Offset - 1), i(Shift), i(Mask)], !IO)
     ),
-    write_arg_widths(Indent, Args, !IO).
+    write_arg_widths(Indent, CurArgNum + 1, !.Offset, Args, !IO).
 
 %-----------------------------------------------------------------------------%
 %
