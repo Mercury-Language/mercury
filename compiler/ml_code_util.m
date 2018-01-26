@@ -1010,6 +1010,7 @@ ml_must_box_field_type(ModuleInfo, Type, Width) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
+    globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64s),
     (
         ( Target = target_c
         ; Target = target_csharp
@@ -1017,20 +1018,56 @@ ml_must_box_field_type(ModuleInfo, Type, Width) :-
         ),
         classify_type(ModuleInfo, Type) = Category,
         MustBox = ml_must_box_field_type_category(Category, UnboxedFloat,
-            Width)
+            UnboxedInt64s, Width)
     ;
         Target = target_java,
         MustBox = no
     ),
     MustBox = yes.
 
-:- func ml_must_box_field_type_category(type_ctor_category, bool, arg_width)
-    = bool.
+:- func ml_must_box_field_type_category(type_ctor_category, bool, bool,
+    arg_width) = bool.
 
-ml_must_box_field_type_category(CtorCat, UnboxedFloat, Width) = MustBox :-
+ml_must_box_field_type_category(CtorCat, UnboxedFloat, UnboxedInt64s,
+        Width) = MustBox :-
     (
-        ( CtorCat = ctor_cat_builtin(cat_builtin_int(_))
-        ; CtorCat = ctor_cat_builtin(cat_builtin_string)
+        CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
+        (
+            ( IntType = int_type_int
+            ; IntType = int_type_uint
+            ; IntType = int_type_int8
+            ; IntType = int_type_uint8
+            ; IntType = int_type_int16
+            ; IntType = int_type_uint16
+            ; IntType = int_type_int32
+            ; IntType = int_type_uint32
+            ),
+            MustBox = no
+        ;
+            ( IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            (
+                UnboxedInt64s = yes,
+                MustBox = no
+            ;
+                UnboxedInt64s = no,
+                (
+                    Width = full_word,
+                    MustBox=  yes
+                ;
+                    Width = double_word,
+                    unexpected($pred, "double word for 64-bit integer")
+                ;
+                    ( Width = partial_word_first(_)
+                    ; Width = partial_word_shifted(_, _)
+                    ),
+                    unexpected($pred, "partial word for 64-bit integer")
+                )
+            )
+        )
+    ;
+        ( CtorCat = ctor_cat_builtin(cat_builtin_string)
         ; CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_higher_order
         ; CtorCat = ctor_cat_tuple
@@ -1106,6 +1143,35 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
             % may be further cast to pointer types.
             BoxedRval = ml_unop(box(MLDS_Type), Rval)
         )
+    else if
+        MLDS_Type = mercury_type(builtin_type(builtin_type_int(IntType)), _, _),
+        ( IntType = int_type_int64, ConstVarKind = mgcv_int64
+        ; IntType = int_type_uint64, ConstVarKind = mgcv_uint64
+        ),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_target(Globals, Target),
+        Target = target_c
+    then
+        HaveUnboxedInt64s = ml_global_data_have_unboxed_int64s(!.GlobalData),
+        ( if
+            HaveUnboxedInt64s = do_not_have_unboxed_int64s,
+            DoubleWidth = no
+        then
+            % Generate a local static constant for this int64 / uint64.
+            module_info_get_name(ModuleInfo, ModuleName),
+            MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+            Initializer = init_obj(Rval),
+            ml_gen_static_scalar_const_addr(MLDS_ModuleName, ConstVarKind,
+                MLDS_Type, Initializer, Context, ConstAddrRval, !GlobalData),
+
+            % Return as the boxed rval the address of that constant,
+            % cast to mlds_generic_type.
+            BoxedRval = ml_unop(cast(mlds_generic_type), ConstAddrRval)
+        else
+            % This is not a real box, but a cast. The "box" is required as it
+            % may be further cast to pointer types.
+            BoxedRval = ml_unop(box(MLDS_Type), Rval)
+        )
     else
         BoxedRval = ml_unop(box(MLDS_Type), Rval)
     ).
@@ -1145,6 +1211,31 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
             % If converting from float, box and then cast the result.
             SourceType = builtin_type(builtin_type_float),
             DestType \= builtin_type(builtin_type_float)
+        then
+            MLDS_SourceType =
+                mercury_type_to_mlds_type(ModuleInfo, SourceType),
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
+            ArgRval = ml_unop(cast(MLDS_DestType),
+                ml_unop(box(MLDS_SourceType), VarRval))
+        else if
+            % If converting to int64 / uint64, cast to mlds_generic_type and
+            % then unbox.
+            DestType = builtin_type(builtin_type_int(IntType)),
+            ( IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            SourceType \= builtin_type(builtin_type_int(IntType))
+        then
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
+            ArgRval = ml_unop(unbox(MLDS_DestType),
+                ml_unop(cast(mlds_generic_type), VarRval))
+        else if
+            % If converting from int64 / uint64, box then cast the result.
+            SourceType = builtin_type(builtin_type_int(IntType)),
+            ( IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            DestType \= builtin_type(builtin_type_int(IntType))
         then
             MLDS_SourceType =
                 mercury_type_to_mlds_type(ModuleInfo, SourceType),

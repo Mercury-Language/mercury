@@ -1986,6 +1986,8 @@
 :- type mlds_global_const_var
     --->    mgcv_const_var
     ;       mgcv_float
+    ;       mgcv_int64
+    ;       mgcv_uint64
     ;       mgcv_closure_layout
     ;       mgcv_typevar_vector
     ;       mgcv_bit_vector.
@@ -2633,6 +2635,12 @@ ml_global_const_var_name_to_string(ConstVar, Num) = Str :-
     ;
         ConstVar = mgcv_float,
         ConstVarStr = "float"
+    ;
+        ConstVar = mgcv_int64,
+        ConstVarStr = "int64"
+    ;
+        ConstVar = mgcv_uint64,
+        ConstVarStr = "uint64"
     ;
         ConstVar = mgcv_closure_layout,
         ConstVarStr = "closure_layout"
