@@ -624,9 +624,9 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
     % for them (boxing/unboxing if needed).
     ml_gen_var_list(!.Info, ArgVars, ArgLvals),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    get_maybe_cons_id_arg_types(ModuleInfo, MaybeConsId, ArgTypes, VarType,
-        ConsArgTypes, ConsArgWidths),
-    NumExtraRvals = length(ExtraRvals),
+    maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId,
+        ArgTypes, ConsArgTypes, ConsArgWidths),
+    NumExtraRvals = list.length(ExtraRvals),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
     (
@@ -703,8 +703,8 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     ml_gen_info_get_target(!.Info, Target),
 
-    get_maybe_cons_id_arg_types(ModuleInfo, MaybeConsId, ArgTypes, VarType,
-        ConsArgTypes, ConsArgWidths),
+    maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId,
+        ArgTypes, ConsArgTypes, ConsArgWidths),
 
     some [!GlobalData] (
         % Generate rvals for the arguments.
@@ -1036,81 +1036,6 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
         BoxedFieldType = type_variable(TypeVar, kind_star)
     else
         BoxedFieldType = FieldType
-    ).
-
-:- pred get_maybe_cons_id_arg_types(module_info::in, maybe(cons_id)::in,
-    list(mer_type)::in, mer_type::in, list(mer_type)::out,
-    list(arg_width)::out) is det.
-
-get_maybe_cons_id_arg_types(ModuleInfo, MaybeConsId, ArgTypes, Type,
-        ConsArgTypes, ConsArgWidths) :-
-    (
-        MaybeConsId = yes(ConsId),
-        constructor_arg_types(ModuleInfo, ConsId, ArgTypes, Type,
-            ConsArgTypes, ConsArgWidths)
-    ;
-        MaybeConsId = no,
-        % It is a closure. In this case, the arguments are all boxed.
-        Length = list.length(ArgTypes),
-        ConsArgTypes = ml_make_boxed_types(Length),
-        ConsArgWidths = list.duplicate(Length, full_word)
-    ).
-
-:- pred constructor_arg_types(module_info::in, cons_id::in, list(mer_type)::in,
-    mer_type::in, list(mer_type)::out, list(arg_width)::out) is det.
-
-constructor_arg_types(ModuleInfo, ConsId, ArgTypes, Type,
-        ConsArgTypes, ConsArgWidths) :-
-    ( if
-        ConsId = cons(_, _, _),
-        not is_introduced_type_info_type(Type)
-    then
-        % Determine the type_ctor, and then look up the data constructor.
-        type_to_ctor_det(Type, TypeCtor),
-        ( if
-            type_util.get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
-        then
-            ConsArgDefns = ConsDefn ^ cons_args,
-            list.map2(
-                ( pred(C::in, CType::out, CWidth::out) is det :-
-                    C = ctor_arg(_, CType, CWidth, _)
-                ),
-                ConsArgDefns, ConsArgTypes0, ConsArgWidths0),
-
-            % There may have been additional types inserted to hold the
-            % type_infos and type_class_infos for existentially quantified
-            % types. We can get these from the ArgTypes.
-
-            NumExtraArgs = list.length(ArgTypes) - list.length(ConsArgTypes0),
-            ExtraArgTypes = list.take_upto(NumExtraArgs, ArgTypes),
-            ExtraArgWidths = list.duplicate(NumExtraArgs, full_word),
-            ConsArgTypes = ExtraArgTypes ++ ConsArgTypes0,
-            ConsArgWidths = ExtraArgWidths ++ ConsArgWidths0
-        else if
-            % If we did not find a constructor definition, maybe that is
-            % because this type was a built-in tuple type.
-            type_is_tuple(Type, _)
-        then
-            % In this case, the argument types are all fresh variables.
-            % Note that we do not need to worry about using the right varset
-            % here, since all we really care about at this point is whether
-            % something is a type variable or not, not which type variable
-            % it is.
-            Length = list.length(ArgTypes),
-            ConsArgTypes = ml_make_boxed_types(Length),
-            ConsArgWidths = list.duplicate(Length, full_word)
-        else
-            % Type_util.get_cons_defn shouldn't have failed.
-            unexpected($pred, "get_cons_defn failed")
-        )
-    else
-        % For cases when ConsId \= hlds_cons(_, _) and it is not a tuple,
-        % as can happen e.g. for closures and type_infos, we assume that
-        % the arguments all have the right type already.
-        % XXX is this the right thing to do?
-        ConsArgTypes = ArgTypes,
-        Length = list.length(ArgTypes),
-        ConsArgWidths = list.duplicate(Length, full_word)
     ).
 
 :- func ml_gen_mktag(int) = mlds_rval.
@@ -1546,15 +1471,13 @@ ml_tag_offset_and_argnum(Tag, TagBits, Offset, ArgNum) :-
 
 ml_field_names_and_types(Info, Type, ConsId, ArgTypes, Fields) :-
     % Lookup the field types for the arguments of this cons_id.
-    Context = term.context_init,
-    MakeUnnamedField = (func(FieldType) =
-        % Tuples and extra fields are word-sized.
-        ctor_arg(no, FieldType, full_word, Context)
-    ),
-    ( if
-        type_is_tuple(Type, _),
-        list.length(ArgTypes, TupleArity)
-    then
+    MakeUnnamedField =
+        ( func(FieldType) =
+            % Tuples and extra fields are word-sized.
+            ctor_arg(no, FieldType, full_word, term.context_init)
+        ),
+    ( if type_is_tuple(Type, _) then
+        list.length(ArgTypes, TupleArity),
         % The argument types for tuples are unbound type variables.
         FieldTypes = ml_make_boxed_types(TupleArity),
         Fields = list.map(MakeUnnamedField, FieldTypes)
@@ -2665,50 +2588,13 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
         !GlobalData, !GroundTermMap) :-
     % This code (loosely) follows the code of ml_gen_new_object.
 
-    % This part does a simplied version of the job of
-    % get_maybe_cons_id_arg_types.
     lookup_var_types(VarTypes, Args, ArgTypes),
-    ( if
-        ConsId = cons(_, _, _),
-        not is_introduced_type_info_type(VarType)
-    then
-        % Determine the type_ctor, and then look up the data constructor.
-        type_to_ctor_det(VarType, TypeCtor),
-        ( if
-            type_util.get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
-        then
-            ConsArgDefns = ConsDefn ^ cons_args,
-            % XXX the compiler crashes if you try to write this with list.map2
-            ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgDefns),
-            ConsArgWidths = list.map(func(C) = C ^ arg_width, ConsArgDefns),
-            NumExtraArgs = list.length(Args) - list.length(ConsArgTypes),
-            % If the scope contains existentially typed constructions,
-            % then polymorphism should have changed its scope_reason
-            % away from from_ground_term_construct.
-            expect(unify(NumExtraArgs, 0), $pred,
-                "extra args in from_ground_term_construct scope")
-        else if
-            % If we didn't find a constructor definition, maybe that is because
-            % this type was a built-in tuple type.
-            type_is_tuple(VarType, _)
-        then
-            % In this case, the argument types are all fresh variables.
-            % Note that we do not need to worry about using the right varset
-            % here, since all we really care about at this point is whether
-            % something is a type variable or not, not which type variable
-            % it is.
-            Length = list.length(Args),
-            ConsArgTypes = ml_make_boxed_types(Length),
-            ConsArgWidths = list.duplicate(Length, full_word)
-        else
-            % Type_util.get_cons_defn shouldn't have failed.
-            unexpected($pred, "get_cons_defn failed")
-        )
-    else
-        Length = list.length(ArgTypes),
-        ConsArgTypes = ArgTypes,
-        ConsArgWidths = list.duplicate(Length, full_word)
-    ),
+    % If the scope contains existentially typed constructions,
+    % then polymorphism should have changed its scope_reason away from
+    % from_ground_term_construct. Therefore the static struct we are
+    % constructing should not need any extra type_info or typeclass_info args.
+    cons_id_arg_types_and_widths(ModuleInfo, may_not_have_extra_args,
+        VarType, ConsId, Args, ArgTypes, ConsArgTypes, ConsArgWidths),
     (
         HighLevelData = yes,
         construct_ground_term_initializers_hld(ModuleInfo, Context,
@@ -2721,39 +2607,10 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
         construct_ground_term_initializers_lld(ModuleInfo, Context,
             ArgConsArgWidths, ArgRvals1, !GlobalData, !GroundTermMap)
     ),
-    pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals1, ArgRvals,
-        unit, _, unit, _),
-    ArgInitializers = list.map(func(Init) = init_obj(Init), ArgRvals),
-
-    % By construction, boxing the rvals in ExtraInitializers would be a no-op.
-    SubInitializers = ExtraInitializers ++ ArgInitializers,
-
-    % Generate a local static constant for this term.
-    ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
-        ml_tag_uses_base_class(ConsTag), yes(ConsId)),
-    % XXX If the secondary tag is in a base class, then ideally its
-    % initializer should be wrapped in `init_struct([init_obj(X)])'
-    % rather than just `init_obj(X)' -- the fact that we don't leads to
-    % some warnings from GNU C about missing braces in initializers.
-    ( if ConstType = mlds_array_type(_) then
-        Initializer = init_array(SubInitializers)
-    else
-        Initializer = init_struct(ConstType, SubInitializers)
-    ),
-    module_info_get_name(ModuleInfo, ModuleName),
-    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var, ConstType,
-        Initializer, Context, ConstDataAddrRval, !GlobalData),
-
-    % Assign the (possibly tagged) address of the local static constant
-    % to the variable.
-    ( if Ptag = 0 then
-        TaggedRval = ConstDataAddrRval
-    else
-        TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
-    ),
-    Rval = ml_unop(cast(MLDS_Type), TaggedRval),
-    GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
+    construct_static_ground_term(ModuleInfo, Target, HighLevelData,
+        Context, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
+        ArgRvals1, ConsArgWidths, ExtraInitializers,
+        GroundTerm, !GlobalData),
     map.det_insert(Var, GroundTerm, !GroundTermMap).
 
 %---------------------------------------------------------------------------%
@@ -2970,54 +2827,21 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
     ml_const_struct_map::in, ml_const_struct_map::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
-        Ptag, ExtraInitializers, Args, !ConstStructMap, !GlobalData) :-
+ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
+        ConsTag, Ptag, ExtraInitializers, Args,
+        !ConstStructMap, !GlobalData) :-
     % This code (loosely) follows the code of
     % ml_gen_ground_term_conjunct_compound.
 
     Target = Info ^ mcsi_target,
     ModuleInfo = Info ^ mcsi_module_info,
-    ( if
-        ConsId = cons(_, _, _),
-        not is_introduced_type_info_type(Type)
-    then
-        % Determine the type_ctor, and then look up the data constructor.
-        type_to_ctor_det(Type, TypeCtor),
-        ( if
-            type_util.get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
-        then
-            ConsArgDefns = ConsDefn ^ cons_args,
-            % XXX the compiler crashes if you try to write this with list.map2
-            % ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgDefns),
-            ConsArgWidths = list.map(func(C) = C ^ arg_width, ConsArgDefns),
-            NumExtraArgs = list.length(Args) - list.length(ConsArgDefns),
-            % If the scope contains existentially typed constructions,
-            % then polymorphism should have changed its scope_reason
-            % away from from_ground_term_construct.
-            expect(unify(NumExtraArgs, 0), $pred,
-                "extra args in static const struct")
-        else if
-            % If we didn't find a constructor definition, maybe that is because
-            % this type was a built-in tuple type.
-            type_is_tuple(Type, _)
-        then
-            % In this case, the argument types are all fresh variables.
-            % Note that we do not need to worry about using the right varset
-            % here, since all we really care about at this point is whether
-            % something is a type variable or not, not which type variable
-            % it is.
-            Length = list.length(Args),
-            % ConsArgTypes = ml_make_boxed_types(Length),
-            ConsArgWidths = list.duplicate(Length, full_word)
-        else
-            % Type_util.get_cons_defn shouldn't have failed.
-            unexpected($pred, "get_cons_defn failed")
-        )
-    else
-        Length = list.length(Args),
-        % ConsArgTypes = ArgTypes,
-        ConsArgWidths = list.duplicate(Length, full_word)
-    ),
+    % DummyArgTypes won't be used, because we ignore _ConsArgTypes.
+    DummyArgTypes = [],
+    % XXX TYPE_REPN The may_not_have_extra_args preserves old behavior,
+    % but may be a bug. It depend on whether we ever put terms into the
+    % const struct db that need extra args.
+    cons_id_arg_types_and_widths(ModuleInfo, may_not_have_extra_args,
+        VarType, ConsId, Args, DummyArgTypes, _ConsArgTypes, ConsArgWidths),
     HighLevelData = Info ^ mcsi_high_level_data,
     ( if
         (
@@ -3035,39 +2859,10 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         unexpected($file, $pred,
             "Constant structures are not supported for this grade")
     ),
-    pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals1, ArgRvals,
-        unit, _, unit, _),
-    ArgInitializers = list.map(func(Init) = init_obj(Init), ArgRvals),
-
-    % By construction, boxing the rvals in ExtraInitializers would be a no-op.
-    SubInitializers = ExtraInitializers ++ ArgInitializers,
-
-    % Generate a local static constant for this term.
-    ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
-        ml_tag_uses_base_class(ConsTag), yes(ConsId)),
-    % XXX If the secondary tag is in a base class, then ideally its
-    % initializer should be wrapped in `init_struct([init_obj(X)])'
-    % rather than just `init_obj(X)' -- the fact that we don't leads to
-    % some warnings from GNU C about missing braces in initializers.
-    ( if ConstType = mlds_array_type(_) then
-        Initializer = init_array(SubInitializers)
-    else
-        Initializer = init_struct(ConstType, SubInitializers)
-    ),
-    module_info_get_name(ModuleInfo, ModuleName),
-    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var, ConstType,
-        Initializer, term.context_init, ConstDataAddrRval, !GlobalData),
-
-    % Assign the (possibly tagged) address of the local static constant
-    % to the variable.
-    ( if Ptag = 0 then
-        TaggedRval = ConstDataAddrRval
-    else
-        TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
-    ),
-    Rval = ml_unop(cast(MLDS_Type), TaggedRval),
-    GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
+    construct_static_ground_term(ModuleInfo, Target, HighLevelData,
+        term.context_init, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
+        ArgRvals1, ConsArgWidths, ExtraInitializers,
+        GroundTerm, !GlobalData),
     map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
 
 :- pred ml_gen_const_struct_args(ml_const_struct_info::in,
@@ -3175,7 +2970,8 @@ ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
         unexpected($pred, "unexpected tag")
     ).
 
-:- func int_tag_to_mlds_rval_const(mer_type, mlds_type, int_tag) = mlds_rval_const.
+:- func int_tag_to_mlds_rval_const(mer_type, mlds_type, int_tag)
+    = mlds_rval_const.
 
 int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag) = Const :-
     (
@@ -3355,6 +3151,168 @@ ml_bitwise_or(RvalA, RvalB) = Rval :-
 
 ml_bitwise_and(Rval, Mask) =
     ml_binop(bitwise_and(int_type_int), Rval, ml_const(mlconst_int(Mask))).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_cons_id_arg_types_and_widths(module_info::in, mer_type::in,
+    maybe(cons_id)::in, list(mer_type)::in,
+    list(mer_type)::out, list(arg_width)::out) is det.
+
+maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId, ArgTypes,
+        ConsArgTypes, ConsArgWidths) :-
+    (
+        MaybeConsId = yes(ConsId),
+        cons_id_arg_types_and_widths(ModuleInfo, may_have_extra_args,
+            VarType, ConsId, ArgTypes, ArgTypes, ConsArgTypes, ConsArgWidths)
+    ;
+        MaybeConsId = no,
+        % It is a closure. In this case, the arguments are all boxed.
+        Length = list.length(ArgTypes),
+        ConsArgTypes = ml_make_boxed_types(Length),
+        ConsArgWidths = list.duplicate(Length, full_word)
+    ).
+
+:- type may_have_extra_args
+    --->    may_not_have_extra_args
+    ;       may_have_extra_args.
+
+    % cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
+    %     ConsId, Args, ArgTypes, ConsArgTypes, ConsArgWidths):
+    %
+    % We are constructing a structure (either on the heap or in static memory).
+    % VarType is the type of the whole structure, ConsId is the functor,
+    % and the length of Args gives the number of the functor's visible
+    % arguments. (If MayHaveExtraArgs = may_have_extra_args, then the
+    % visible arguments may be prefaced by extra type_info and/or
+    % typeclass_info arguments added to describe some existentially typed
+    % visible arguments.)
+    %
+    % The job of this predicate is to return the types of all the functor's
+    % arguments (of which the types of the actual argument variables
+    % will be an instance), and the widths of all the arguments.
+    % ("All" the arguments means that this includes any extra arguments as
+    % well.)
+    %
+    % In some circumstances, the types of the non-extra arguments are taken
+    % from ArgTypes. One of our callers does not need the value of
+    % ConsArgTypes; such callers can supply dummy values for ArgTypes,
+    % if they also pass may_not_have_extra_args.
+    %
+:- pred cons_id_arg_types_and_widths(module_info,
+    may_have_extra_args, mer_type, cons_id, list(T), list(mer_type),
+    list(mer_type), list(arg_width)).
+:- mode cons_id_arg_types_and_widths(in, in(bound(may_have_extra_args)),
+    in, in, in, in, out, out) is det.
+:- mode cons_id_arg_types_and_widths(in, in(bound(may_not_have_extra_args)),
+    in, in, in, in, out, out) is det.
+
+cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
+        ConsId, Args, ArgTypes, ConsArgTypes, ConsArgWidths) :-
+    ( if
+        ConsId = cons(_, _, _),
+        not is_introduced_type_info_type(VarType)
+    then
+        type_to_ctor_det(VarType, TypeCtor),
+        ( if
+            type_util.get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
+        then
+            ConsArgDefns = ConsDefn ^ cons_args,
+            ConsArgTypes0 = list.map(func(C) = C ^ arg_type, ConsArgDefns),
+            ConsArgWidths0 = list.map(func(C) = C ^ arg_width, ConsArgDefns),
+            (
+                MayHaveExtraArgs = may_not_have_extra_args,
+                ConsArgTypes = ConsArgTypes0,
+                ConsArgWidths = ConsArgWidths0,
+                NumExtraArgs = list.length(Args) - list.length(ConsArgTypes),
+                expect(unify(NumExtraArgs, 0), $pred,
+                    "extra args in static struct")
+            ;
+                MayHaveExtraArgs = may_have_extra_args,
+                % There may have been additional types inserted to hold the
+                % type_infos and type_class_infos for existentially quantified
+                % types. We can get these from the ArgTypes.
+
+                NumExtraArgs =
+                    list.length(ArgTypes) - list.length(ConsArgTypes0),
+                ExtraArgTypes = list.take_upto(NumExtraArgs, ArgTypes),
+                ExtraArgWidths = list.duplicate(NumExtraArgs, full_word),
+                ConsArgTypes = ExtraArgTypes ++ ConsArgTypes0,
+                ConsArgWidths = ExtraArgWidths ++ ConsArgWidths0
+            )
+        else if
+            % If we didn't find a constructor definition, maybe that is
+            % because this type was a built-in type.
+            type_is_tuple(VarType, _)
+        then
+            % In this case, the argument types are all fresh variables.
+            % Note that we do not need to worry about using the right varset
+            % here, since all we really care about at this point is whether
+            % something is a type variable or not, not which type variable
+            % it is.
+            Length = list.length(Args),
+            ConsArgTypes = ml_make_boxed_types(Length),
+            ConsArgWidths = list.duplicate(Length, full_word)
+        else
+            % The only builtin types that can allocate structures
+            % are tuples and the RTTI-related types. Both should have been
+            % handled by code above.
+            unexpected($pred, "get_cons_defn failed")
+        )
+    else
+        % For cases when ConsId \= hlds_cons(_, _) and it is not a tuple,
+        % as can happen e.g. for closures and type_infos, we assume that
+        % the arguments all have the right type already.
+        % XXX is this the right thing to do?
+        Length = list.length(Args),
+        ConsArgTypes = ArgTypes,
+        ConsArgWidths = list.duplicate(Length, full_word)
+    ).
+
+:- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
+    bool::in, prog_context::in, mer_type::in, mlds_type::in,
+    cons_id::in, cons_tag::in, int::in,
+    list(mlds_rval)::in, list(arg_width)::in, list(mlds_initializer)::in,
+    ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
+
+%---------------------------------------------------------------------------%
+
+construct_static_ground_term(ModuleInfo, Target, HighLevelData,
+        Context, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
+        ArgRvals0, ConsArgWidths, ExtraInitializers,
+        GroundTerm, !GlobalData) :-
+    pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals0, ArgRvals,
+        unit, _, unit, _),
+    ArgInitializers = list.map(func(Init) = init_obj(Init), ArgRvals),
+
+    % By construction, boxing the rvals in ExtraInitializers would be a no-op.
+    SubInitializers = ExtraInitializers ++ ArgInitializers,
+
+    % Generate a local static constant for this term.
+    ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
+        ml_tag_uses_base_class(ConsTag), yes(ConsId)),
+    % XXX If the secondary tag is in a base class, then ideally its
+    % initializer should be wrapped in `init_struct([init_obj(X)])'
+    % rather than just `init_obj(X)' -- the fact that we don't leads to
+    % some warnings from GNU C about missing braces in initializers.
+    ( if ConstType = mlds_array_type(_) then
+        Initializer = init_array(SubInitializers)
+    else
+        Initializer = init_struct(ConstType, SubInitializers)
+    ),
+    module_info_get_name(ModuleInfo, ModuleName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var, ConstType,
+        Initializer, Context, ConstDataAddrRval, !GlobalData),
+
+    % Assign the (possibly tagged) address of the local static constant
+    % to the variable.
+    ( if Ptag = 0 then
+        TaggedRval = ConstDataAddrRval
+    else
+        TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
+    ),
+    Rval = ml_unop(cast(MLDS_Type), TaggedRval),
+    GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_unify_gen.
