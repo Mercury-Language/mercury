@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury team.
+% Copyright (C) 2016, 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -47,7 +47,6 @@ solver_var_name("mercuryfile",                  svar_ac_merc_file).
 solver_var_name("backend",                      svar_backend).
 solver_var_name("datarep",                      svar_datarep).
 solver_var_name("target",                       svar_target).
-solver_var_name("nested_funcs",                 svar_nested_funcs).
 solver_var_name("gcc_conf",                     svar_gcc_conf).
 solver_var_name("low_tag_bits_use",             svar_low_tag_bits_use).
 solver_var_name("stack_len",                    svar_stack_len).
@@ -103,9 +102,6 @@ solver_var_value_name("c",                      svalue_target_c).
 solver_var_value_name("csharp",                 svalue_target_csharp).
 solver_var_value_name("java",                   svalue_target_java).
 solver_var_value_name("erlang",                 svalue_target_erlang).
-
-solver_var_value_name("no_nest",                svalue_nested_funcs_no).
-solver_var_value_name("nest",                   svalue_nested_funcs_yes).
 
 solver_var_value_name("none",                   svalue_gcc_conf_none).
 solver_var_value_name("reg",                    svalue_gcc_conf_reg).

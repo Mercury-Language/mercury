@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury team.
+% Copyright (C) 2016, 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -174,7 +174,6 @@
 :- type mlds_target
     --->    mlds_target_c(
                 mlds_c_dararep,
-                grade_var_nested_funcs,
                 mlds_c_thread_safe,
                 c_trail,
                 grade_var_merc_file,
@@ -238,14 +237,13 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
     % on Target in the mlds case: having two deconstructs that each pick up
     % *some* arguments is vulnerable to not picking up some arguments
     % in *either*.
-    GradeVars = grade_vars(Pregen, Backend, _, _, _, _, _, _, _,
+    GradeVars = grade_vars(Pregen, Backend, _, _, _, _, _, _,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
 
     (
         Pregen = grade_var_pregen_yes,
         GradeVars = grade_vars(_Pregen, _Backend, Target, DataRep,
-            NestedFuncs, GccConf,
-            LowTagBitsUse, StackLen, Trail, TrailSegments,
+            GccConf, LowTagBitsUse, StackLen, Trail, TrailSegments,
             MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, SSDebug, TargetDebug,
@@ -255,8 +253,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             "Target != grade_var_target_c"),
         expect(unify(DataRep, grade_var_datarep_heap_cells), $pred,
             "pregen but DataRep != grade_var_datarep_heap_cells"),
-        expect(unify(NestedFuncs, grade_var_nested_funcs_no), $pred,
-            "pregen but NestedFuncs != grade_var_nested_funcs_no"),
         expect(unify(LowTagBitsUse, grade_var_low_tag_bits_use_2), $pred,
             "pregen but LowTagBitsUse != grade_var_low_tag_bits_use_2"),
         % XXX This is for version 0 of the specification,
@@ -341,8 +337,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             Backend = grade_var_backend_llds,
 
             GradeVars = grade_vars(_Pregen, _Backend, Target, DataRep,
-                NestedFuncs, GccConf,
-                LowTagBitsUse, StackLen, Trail, TrailSegments,
+                GccConf, LowTagBitsUse, StackLen, Trail, TrailSegments,
                 MinimalModel, ThreadSafe, Gc,
                 DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
                 TermSizeProf, Debug, SSDebug, TargetDebug,
@@ -352,8 +347,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 "Target != grade_var_target_c"),
             expect(unify(DataRep, grade_var_datarep_heap_cells), $pred,
                 "DataRep != grade_var_datarep_heap_cells"),
-            expect(unify(NestedFuncs, grade_var_nested_funcs_no), $pred,
-                "NestedFuncs != grade_var_nested_funcs_no"),
             expect(unify(SSDebug, grade_var_ssdebug_no), $pred,
                 "SSDebug != grade_var_ssdebug_no"),
             (
@@ -505,8 +498,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             Backend = grade_var_backend_mlds,
 
             GradeVars = grade_vars(_Pregen, _Backend, Target, DataRep,
-                NestedFuncs, GccConf,
-                LowTagBitsUse, StackLen, Trail, TrailSegments,
+                GccConf, LowTagBitsUse, StackLen, Trail, TrailSegments,
                 MinimalModel, ThreadSafe, Gc,
                 DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
                 TermSizeProf, Debug, SSDebug, TargetDebug,
@@ -587,9 +579,8 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                     Trail = grade_var_trail_yes,
                     CTrail = c_trail_yes(TrailSegments)
                 ),
-                TargetC = mlds_target_c(MLDSCDataRep, NestedFuncs,
-                    MLDSCThreadSafe, CTrail,
-                    MercFile, LowTagBitsUse, MercFloat),
+                TargetC = mlds_target_c(MLDSCDataRep, MLDSCThreadSafe,
+                    CTrail, MercFile, LowTagBitsUse, MercFloat),
                 GradeStructure = grade_mlds(TargetC, TargetDebug)
             ;
                 ( Target = grade_var_target_csharp
@@ -597,8 +588,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 ),
                 expect(unify(DataRep, grade_var_datarep_classes), $pred,
                     "DataRep != grade_var_datarep_classes"),
-                expect(unify(NestedFuncs, grade_var_nested_funcs_no), $pred,
-                    "NestedFuncs != grade_var_nested_funcs_no"),
                 expect(unify(ThreadSafe, grade_var_thread_safe_target_native),
                     $pred,
                     "ThreadSafe != grade_var_thread_safe_target_native"),
@@ -648,8 +637,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             Backend = grade_var_backend_elds,
 
             GradeVars = grade_vars(_Pregen, _Backend, Target, DataRep,
-                NestedFuncs, GccConf,
-                _LowTagBitsUse, StackLen, Trail, TrailSegments,
+                GccConf, _LowTagBitsUse, StackLen, Trail, TrailSegments,
                 MinimalModel, ThreadSafe, Gc,
                 DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
                 TermSizeProf, Debug, SSDebug, TargetDebug,
@@ -662,8 +650,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 "Target != grade_var_target_erlang"),
             expect(unify(DataRep, grade_var_datarep_erlang), $pred,
                 "DataRep != grade_var_datarep_erlang"),
-            expect(unify(NestedFuncs, grade_var_nested_funcs_no), $pred,
-                "NestedFuncs != grade_var_nested_funcs_no"),
             expect(unify(GccConf, grade_var_gcc_conf_none), $pred,
                 "GccConf != grade_var_gcc_conf_none"),
             expect(unify(StackLen, grade_var_stack_len_std), $pred,

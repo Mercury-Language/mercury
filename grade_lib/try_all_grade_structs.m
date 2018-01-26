@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury team.
+% Copyright (C) 2016, 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -202,9 +202,6 @@ generate_mlds_c_target(MLDSCTarget) :-
     ( MLDSCDataRep = mlds_c_datarep_heap_cells
     ; MLDSCDataRep = mlds_c_datarep_classes
     ),
-    ( NestedFuncs = grade_var_nested_funcs_no
-    ; NestedFuncs = grade_var_nested_funcs_yes
-    ),
     (
         generate_c_gc(CGc),
         (
@@ -231,7 +228,7 @@ generate_mlds_c_target(MLDSCTarget) :-
     MercFile = grade_var_merc_file_no,
     generate_grade_var_low_tag_bits_use(LowTagBitsUse),
     generate_grade_var_merc_float(MercFloat),
-    MLDSCTarget = mlds_target_c(MLDSCDataRep, NestedFuncs, MLDSCThreadSafe,
+    MLDSCTarget = mlds_target_c(MLDSCDataRep, MLDSCThreadSafe,
         CTrail, MercFile, LowTagBitsUse, MercFloat).
 
 %---------------------%

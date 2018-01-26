@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury team.
+% Copyright (C) 2016, 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -43,7 +43,6 @@
     ;       svar_backend
     ;       svar_datarep
     ;       svar_target
-    ;       svar_nested_funcs
     ;       svar_gcc_conf
     ;       svar_low_tag_bits_use
     ;       svar_stack_len
@@ -110,9 +109,6 @@
     ;       svalue_target_csharp
     ;       svalue_target_java
     ;       svalue_target_erlang
-
-    ;       svalue_nested_funcs_no
-    ;       svalue_nested_funcs_yes
 
     ;       svalue_gcc_conf_none       % used for non-LLDS backends
     ;       svalue_gcc_conf_reg
@@ -344,8 +340,6 @@ init_solver_var_specs(SpecsVersion) = Specs :-
         solver_var_spec(svar_target,
             [svalue_target_c, svalue_target_csharp,
             svalue_target_java, svalue_target_erlang]),
-        solver_var_spec(svar_nested_funcs,
-            [svalue_nested_funcs_no, svalue_nested_funcs_yes]),
 
         solver_var_spec(svar_gcc_conf,
             % XXX The order of preference here is partially speed,
@@ -578,18 +572,6 @@ init_requirement_specs = [
 %       (svar_target `being` svalue_target_erlang) `implies_that`
 %       (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
 %   ),
-
-% Requirements of values of svar_nested_funcs.
-    requirement_spec(
-        "Using gcc nested functions requires the MLDS backend.",
-        (svar_nested_funcs `being` svalue_nested_funcs_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_mlds])
-    ),
-    requirement_spec(
-        "Using gcc nested functions requires targeting C.",
-        (svar_nested_funcs `being` svalue_nested_funcs_yes) `implies_that`
-        (svar_target `is_one_of` [svalue_target_c])
-    ),
 
 % Requirements of values of svar_gcc_conf.
     % These requirements are expressed in reverse.

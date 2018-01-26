@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury team.
+% Copyright (C) 2016, 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,7 +51,6 @@
                 gv_backend              :: grade_var_backend,
                 gv_target               :: grade_var_target,
                 gv_datarep              :: grade_var_datarep,
-                gv_nested_funcs         :: grade_var_nested_funcs,
                 gv_gcc_conf             :: grade_var_gcc_conf,
                 gv_low_tag_bits_use     :: grade_var_low_tag_bits_use,
                 gv_stack_len            :: grade_var_stack_len,
@@ -229,7 +228,6 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     map.det_remove(svar_backend, Backend, !SuccMap),
     map.det_remove(svar_target, Target, !SuccMap),
     map.det_remove(svar_datarep, DataRep, !SuccMap),
-    map.det_remove(svar_nested_funcs, NestedFuncs, !SuccMap),
     map.det_remove(svar_gcc_conf, GccConf, !SuccMap),
     map.det_remove(svar_low_tag_bits_use, LowTagBitsUse, !SuccMap),
     map.det_remove(svar_stack_len, StackLen, !SuccMap),
@@ -293,14 +291,6 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         GradeVarDataRep = grade_var_datarep_erlang
     else
         unexpected($pred, "unexpected value of DataRep")
-    ),
-
-    ( if NestedFuncs = svalue_nested_funcs_no then
-        GradeVarNestedFuncs = grade_var_nested_funcs_no
-    else if NestedFuncs = svalue_nested_funcs_yes then
-        GradeVarNestedFuncs = grade_var_nested_funcs_yes
-    else
-        unexpected($pred, "unexpected value of NestedFuncs")
     ),
 
     ( if GccConf = svalue_gcc_conf_none then
@@ -514,7 +504,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     ),
 
     GradeVars = grade_vars(GradeVarPregen, GradeVarBackend,
-        GradeVarTarget, GradeVarDataRep, GradeVarNestedFuncs,
+        GradeVarTarget, GradeVarDataRep,
         GradeVarGccConf, GradeVarLowTagBitsUse, GradeVarStackLen,
         GradeVarTrail, GradeVarTrailSegments,
         GradeVarMinimalModel, GradeVarThreadSafe, GradeVarGc,
