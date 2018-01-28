@@ -1,7 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2007, 2009-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -623,6 +624,10 @@ erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int32)) =
     elds_term(make_enum_alternative("etcr_int32")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_uint32)) =
     elds_term(make_enum_alternative("etcr_uint32")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_int64)) =
+    elds_term(make_enum_alternative("etcr_int64")).
+erlang_type_ctor_rep(erlang_builtin(builtin_ctor_uint64)) =
+    elds_term(make_enum_alternative("etcr_uint64")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_float)) =
     elds_term(make_enum_alternative("etcr_float")).
 erlang_type_ctor_rep(erlang_builtin(builtin_ctor_char)) =

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2263,6 +2264,14 @@ cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) :-
         ConsId = uint32_const(_),
         BuiltinTypeName = "uint32",
         BuiltinType = builtin_type_int(int_type_uint32)
+    ;
+        ConsId = int64_const(_),
+        BuiltinTypeName = "int64",
+        BuiltinType = builtin_type_int(int_type_int64)
+    ;
+        ConsId = uint64_const(_),
+        BuiltinTypeName = "uint64",
+        BuiltinType = builtin_type_int(int_type_uint64)
     ;
         ConsId = float_const(_),
         BuiltinTypeName = "float",

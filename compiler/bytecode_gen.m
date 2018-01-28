@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -507,6 +508,33 @@ map_arg(ByteInfo, Expr, ByteArg) :-
     ;
         Expr = float_const(FloatVal),
         ByteArg = byte_arg_float_const(FloatVal)
+    ;
+        Expr = uint_const(UIntVal),
+        ByteArg = byte_arg_uint_const(UIntVal)
+    ;
+        Expr = int8_const(Int8Val),
+        ByteArg = byte_arg_int8_const(Int8Val)
+    ;
+        Expr = uint8_const(UInt8Val),
+        ByteArg = byte_arg_uint8_const(UInt8Val)
+    ;
+        Expr = int16_const(Int16Val),
+        ByteArg = byte_arg_int16_const(Int16Val)
+    ;
+        Expr = uint16_const(UInt16Val),
+        ByteArg = byte_arg_uint16_const(UInt16Val)
+    ;
+        Expr = int32_const(Int32Val),
+        ByteArg = byte_arg_int32_const(Int32Val)
+    ;
+        Expr = uint32_const(UInt32Val),
+        ByteArg = byte_arg_uint32_const(UInt32Val)
+    ;
+        Expr = int64_const(Int64Val),
+        ByteArg = byte_arg_int64_const(Int64Val)
+    ;
+        Expr = uint64_const(UInt64Val),
+        ByteArg = byte_arg_uint64_const(UInt64Val)
     ).
 
 %---------------------------------------------------------------------------%

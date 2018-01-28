@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -427,6 +428,8 @@ builtin_type_ctor("builtin", "int16", 0, builtin_ctor_int16).
 builtin_type_ctor("builtin", "uint16", 0, builtin_ctor_uint16).
 builtin_type_ctor("builtin", "int32", 0, builtin_ctor_int32).
 builtin_type_ctor("builtin", "uint32", 0, builtin_ctor_uint32).
+builtin_type_ctor("builtin", "int64", 0, builtin_ctor_int64).
+builtin_type_ctor("builtin", "uint64", 0, builtin_ctor_uint64).
 builtin_type_ctor("builtin", "string", 0, builtin_ctor_string).
 builtin_type_ctor("builtin", "float", 0, builtin_ctor_float).
 builtin_type_ctor("builtin", "character", 0, builtin_ctor_char).

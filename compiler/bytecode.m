@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -116,7 +117,16 @@
 :- type byte_arg
     --->    byte_arg_var(byte_var)
     ;       byte_arg_int_const(int)
-    ;       byte_arg_float_const(float).
+    ;       byte_arg_float_const(float)
+    ;       byte_arg_uint_const(uint)
+    ;       byte_arg_int8_const(int8)
+    ;       byte_arg_uint8_const(uint8)
+    ;       byte_arg_int16_const(int16)
+    ;       byte_arg_uint16_const(uint16)
+    ;       byte_arg_int32_const(int32)
+    ;       byte_arg_uint32_const(uint32)
+    ;       byte_arg_int64_const(int)   % XXX INT64
+    ;       byte_arg_uint64_const(int). % XXX INT64
 
 :- type byte_dir
     --->    to_arg
@@ -593,6 +603,24 @@ output_arg(byte_arg_int_const(IntVal), !IO) :-
 output_arg(byte_arg_float_const(FloatVal), !IO) :-
     output_byte(2, !IO),
     output_float(FloatVal, !IO).
+output_arg(byte_arg_uint_const(_), _, _) :-
+    unexpected($pred, "NYI uint constants in bytecode").
+output_arg(byte_arg_int8_const(_), _, _) :-
+    unexpected($pred, "NYI int8 constants in bytecode").
+output_arg(byte_arg_uint8_const(_), _, _) :-
+    unexpected($pred, "NYI uint8 constants in bytecode").
+output_arg(byte_arg_int16_const(_), _, _) :-
+    unexpected($pred, "NYI int16 constants in bytecode").
+output_arg(byte_arg_uint16_const(_), _, _) :-
+    unexpected($pred, "NYI uint16 constants in bytecode").
+output_arg(byte_arg_int32_const(_), _, _) :-
+    unexpected($pred, "NYI int32 constants in bytecode").
+output_arg(byte_arg_uint32_const(_), _, _) :-
+    unexpected($pred, "NYI uint32 constants in bytecode").
+output_arg(byte_arg_int64_const(_), _, _) :-
+    unexpected($pred, "NYI int64 constants in bytecode").
+output_arg(byte_arg_uint64_const(_), _, _) :-
+    unexpected($pred, "NYI uint64 constants in bytecode").
 
 :- pred debug_arg(byte_arg::in, io::di, io::uo) is det.
 
@@ -602,6 +630,33 @@ debug_arg(byte_arg_var(Var), !IO) :-
 debug_arg(byte_arg_int_const(IntVal), !IO) :-
     debug_string("int", !IO),
     debug_int(IntVal, !IO).
+debug_arg(byte_arg_uint_const(UIntVal), !IO) :-
+    debug_string("uint", !IO),
+    debug_uint(UIntVal, !IO).
+debug_arg(byte_arg_int8_const(Int8Val), !IO) :-
+    debug_string("int8", !IO),
+    debug_int8(Int8Val, !IO).
+debug_arg(byte_arg_uint8_const(UInt8Val), !IO) :-
+    debug_string("uint8", !IO),
+    debug_uint8(UInt8Val, !IO).
+debug_arg(byte_arg_int16_const(Int16Val), !IO) :-
+    debug_string("int16", !IO),
+    debug_int16(Int16Val, !IO).
+debug_arg(byte_arg_uint16_const(UInt16Val), !IO) :-
+    debug_string("uint16", !IO),
+    debug_uint16(UInt16Val, !IO).
+debug_arg(byte_arg_int32_const(Int32Val), !IO) :-
+    debug_string("int32", !IO),
+    debug_int32(Int32Val, !IO).
+debug_arg(byte_arg_uint32_const(UInt32Val), !IO) :-
+    debug_string("uint32", !IO),
+    debug_uint32(UInt32Val, !IO).
+debug_arg(byte_arg_int64_const(Int64Val), !IO) :-
+    debug_string("int64", !IO),
+    debug_int64(Int64Val, !IO).
+debug_arg(byte_arg_uint64_const(UInt64Val), !IO) :-
+    debug_string("uint64", !IO),
+    debug_uint64(UInt64Val, !IO).
 debug_arg(byte_arg_float_const(FloatVal), !IO) :-
     debug_string("float", !IO),
     debug_float(FloatVal, !IO).
@@ -1489,6 +1544,60 @@ debug_string(Val, !IO) :-
 :- pred debug_int(int::in, io::di, io::uo) is det.
 
 debug_int(Val, !IO) :-
+    io.write_int(Val, !IO),
+    io.write_char(' ', !IO).
+
+:- pred debug_uint(uint::in, io::di, io::uo) is det.
+
+debug_uint(Val, !IO) :-
+    io.write_uint(Val, !IO),
+    io.write_char(' ', !IO).
+
+:- pred debug_int8(int8::in, io::di, io::uo) is det.
+
+debug_int8(Val, !IO) :-
+    io.write_int8(Val, !IO),
+    io.write_char(' ', !IO).
+
+:- pred debug_uint8(uint8::in, io::di, io::uo) is det.
+
+debug_uint8(Val, !IO) :-
+    io.write_uint8(Val, !IO),
+    io.write_char(' ', !IO).
+
+:- pred debug_int16(int16::in, io::di, io::uo) is det.
+
+debug_int16(Val, !IO) :-
+    io.write_int16(Val, !IO),
+    io.write_char(' ', !IO).
+
+:- pred debug_uint16(uint16::in, io::di, io::uo) is det.
+
+debug_uint16(Val, !IO) :-
+    io.write_uint16(Val, !IO),
+    io.write_char(' ', !IO).
+
+:- pred debug_int32(int32::in, io::di, io::uo) is det.
+
+debug_int32(Val, !IO) :-
+    io.write_int32(Val, !IO),
+    io.write_char(' ', !IO).
+
+:- pred debug_uint32(uint32::in, io::di, io::uo) is det.
+
+debug_uint32(Val, !IO) :-
+    io.write_uint32(Val, !IO),
+    io.write_char(' ', !IO).
+
+:- pred debug_int64(int::in, io::di, io::uo) is det.
+
+debug_int64(Val, !IO) :-
+    io.write_int(Val, !IO),
+    io.write_char(' ', !IO).
+
+:- pred debug_uint64(int::in, io::di, io::uo) is det.
+
+debug_uint64(Val, !IO) :-
     io.write_int(Val, !IO),
     io.write_char(' ', !IO).
 

@@ -440,6 +440,8 @@
     ;       builtin_ctor_uint16
     ;       builtin_ctor_int32
     ;       builtin_ctor_uint32
+    ;       builtin_ctor_int64
+    ;       builtin_ctor_uint64
     ;       builtin_ctor_float
     ;       builtin_ctor_char
     ;       builtin_ctor_string
@@ -1764,6 +1766,8 @@ builtin_ctor_rep_to_string(builtin_ctor_int16, "MR_TYPECTOR_REP_INT16").
 builtin_ctor_rep_to_string(builtin_ctor_uint16, "MR_TYPECTOR_REP_UINT16").
 builtin_ctor_rep_to_string(builtin_ctor_int32, "MR_TYPECTOR_REP_INT32").
 builtin_ctor_rep_to_string(builtin_ctor_uint32, "MR_TYPECTOR_REP_UINT32").
+builtin_ctor_rep_to_string(builtin_ctor_int64, "MR_TYPECTOR_REP_INT64").
+builtin_ctor_rep_to_string(builtin_ctor_uint64, "MR_TYPECTOR_REP_UINT64").
 builtin_ctor_rep_to_string(builtin_ctor_string, "MR_TYPECTOR_REP_STRING").
 builtin_ctor_rep_to_string(builtin_ctor_float, "MR_TYPECTOR_REP_FLOAT").
 builtin_ctor_rep_to_string(builtin_ctor_char, "MR_TYPECTOR_REP_CHAR").

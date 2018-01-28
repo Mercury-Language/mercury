@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2001, 2003-2006, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -209,6 +209,15 @@
 :- inst simple_arg_expr for simple_expr/1
     --->    leaf(ground)
     ;       int_const(ground)
+    ;       uint_const(ground)
+    ;       int8_const(ground)
+    ;       uint8_const(ground)
+    ;       int16_const(ground)
+    ;       uint16_const(ground)
+    ;       int32_const(ground)
+    ;       uint32_const(ground)
+    ;       int64_const(ground)
+    ;       uint64_const(ground)
     ;       float_const(ground).
 
 %-----------------------------------------------------------------------------%
@@ -361,8 +370,9 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ;
                 Args = [X, Y],
                 ProcNum = 0,
+                IntZeroConst = make_int_zero_const(IntType),
                 Code = assign(Y,
-                    binary(int_sub(IntType), int_const(0), leaf(X)))
+                    binary(int_sub(IntType), IntZeroConst, leaf(X)))
             )
         ;
             PredName = "xor", Args = [X, Y, Z],
@@ -448,6 +458,22 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             Code = test(binary(CompareOp, leaf(X), leaf(Y)))
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func make_int_zero_const(int_type::in)
+    = (simple_expr(T)::out(simple_arg_expr)) is det.
+
+make_int_zero_const(int_type_int)    = int_const(0).
+make_int_zero_const(int_type_int8)   = int8_const(0i8).
+make_int_zero_const(int_type_int16)  = int16_const(0i16).
+make_int_zero_const(int_type_int32)  = int32_const(0i32).
+make_int_zero_const(int_type_int64)  = int64_const(0).
+make_int_zero_const(int_type_uint)   = uint_const(0u).
+make_int_zero_const(int_type_uint8)  = uint8_const(0u8).
+make_int_zero_const(int_type_uint16) = uint16_const(0u16).
+make_int_zero_const(int_type_uint32) = uint32_const(0u32).
+make_int_zero_const(int_type_uint64) = uint64_const(0).
 
 %-----------------------------------------------------------------------------%
 :- end_module backend_libs.builtin_ops.
