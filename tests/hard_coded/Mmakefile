@@ -601,6 +601,8 @@ CLOSURE_LAYOUT_PROGS = \
 #     not yet implemented for arrays.
 #
 # XXX we fail some of the commented-out tests in write_binary
+#
+# XXX bug441
 
 # The following tests are passed only in some grades.
 
