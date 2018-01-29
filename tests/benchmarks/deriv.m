@@ -18,23 +18,21 @@
 :- import_module int.
 :- import_module io.
 
-:- type expr --->   x
-        ;   num(int)
-        ;   expr + expr
-        ;   expr - expr
-        ;   expr * expr
-        ;   expr / expr
-        ;   - expr
-        ;   power(expr, int)
-        ;   log(expr)
-        ;   exp(expr)
-        .
+:- type expr
+    --->    x
+    ;       num(int)
+    ;       expr + expr
+    ;       expr - expr
+    ;       expr * expr
+    ;       expr / expr
+    ;       - expr
+    ;       power(expr, int)
+    ;       log(expr)
+    ;       exp(expr).
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
-:- pred main4(expr, expr, expr, expr).
-:- mode main4(out, out, out, out) is semidet.
+:- pred main4(expr::out, expr::out, expr::out, expr::out) is semidet.
 
 :- implementation.
 
@@ -54,23 +52,13 @@ main -->
         []
     ).
 
-:- pred times10(expr).
-:- mode times10(out) is semidet.
+main4(E1, E2, E3, E4) :-
+    ops8(E1),
+    divide10(E2),
+    log10(E3),
+    times10(E4).
 
-:- pred log10(expr).
-:- mode log10(out) is semidet.
-
-:- pred ops8(expr).
-:- mode ops8(out) is semidet.
-
-:- pred divide10(expr).
-:- mode divide10(out) is semidet.
-
-:- pred d(expr, expr, expr).
-:- mode d(in, in, out) is semidet.
-
-:- pred print_expr(expr, io__state, io__state).
-:- mode print_expr(in, di, uo) is det.
+:- pred print_expr(expr::in, io::di, io::uo) is det.
 
 print_expr(x) -->
     io__write_string("x").
@@ -119,23 +107,27 @@ print_expr(-E) -->
     print_expr(E),
     io__write_string(")").
 
-main4(E1, E2, E3, E4) :-
-    ops8(E1),
-    divide10(E2),
-    log10(E3),
-    times10(E4).
+:- pred times10(expr::out) is semidet.
 
 times10(E) :-
     d(x * x * x * x * x * x * x * x * x * x * x, x, E).
 
+:- pred log10(expr::out) is semidet.
+
 log10(E) :-
     d(log(log(log(log(log(log(log(log(log(log(x)))))))))), x, E).
+
+:- pred ops8(expr::out) is semidet.
 
 ops8(E) :-
     d((x + num(1)) * ((power(x, 2) + num(2)) * (power(x, 3) + num(3))), x, E).
 
+:- pred divide10(expr::out) is semidet.
+
 divide10(E) :-
     d(x / x / x / x / x / x / x / x / x / x / x, x, E).
+
+:- pred d(expr::in, expr::in, expr::out) is semidet.
 
 d(U + V, X, DU + DV) :-
     d(U, X, DU),
