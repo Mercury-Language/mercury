@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007-2012 The University of Melbourne.
-% Copyright (C) 2013-2017 The Mercury team.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -812,11 +812,11 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
         space(!IO)
     ;
         Term = elds_int64(Int64),
-        io.write_int(Int64, !IO),   % XXX INT64.
+        io.write_int64(Int64, !IO),
         space(!IO)
     ;
         Term = elds_uint64(UInt64),
-        io.write_int(UInt64, !IO),  % XXX INT64.
+        io.write_uint64(UInt64, !IO),
         space(!IO)
     ;
         Term = elds_binary(String),

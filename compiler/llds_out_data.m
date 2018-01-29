@@ -2021,20 +2021,20 @@ float_op_name(float_divide, "divide").
     % a name for that rval that is suitable for use in a C identifier.
     % Different rvals must be given different names.
     %
-:- pred int64_literal_name(int::in, string::out) is det.
+:- pred int64_literal_name(int64::in, string::out) is det.
 
 int64_literal_name(Int64, Int64Name) :-
-    Int64Name0 = int_to_string(Int64),
+    Int64Name0 = int64_to_string(Int64),
     string.replace_all(Int64Name0, "-", "neg", Int64Name).
 
     % Given an rval which is an unsigned 64-bit integer literal, return
     % a name for that rval that is suitable for use in a C identifier.
     % Different rvals must be given different names.
     %
-:- pred uint64_literal_name(int::in, string::out) is det.
+:- pred uint64_literal_name(uint64::in, string::out) is det.
 
 uint64_literal_name(UInt64, UInt64Name) :-
-    UInt64Name = int_to_string(UInt64). % XXX INT64.
+    UInt64Name = uint64_to_string(UInt64).
 
 int64_const_expr_name(Expr, Name) :-
     Expr = const(llconst_int64(Int64)),

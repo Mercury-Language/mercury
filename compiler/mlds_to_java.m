@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2017 The Mercury team.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -122,6 +122,7 @@
 :- import_module int8.
 :- import_module int16.
 :- import_module int32.
+:- import_module int64.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -4858,14 +4859,12 @@ output_rval_const_for_java(Info, Const, !IO) :-
         Const = mlconst_uint32(U32),
         io.write_int32(int32.cast_from_uint32(U32), !IO)
     ;
-        % XXX INT64.
         Const = mlconst_int64(I64),
-        io.write_int(I64, !IO),
+        io.write_int64(I64, !IO),
         io.write_string("L", !IO)
     ;
-        % XXX INT64.
         Const = mlconst_uint64(U64),
-        io.write_int(U64, !IO),
+        io.write_int64(int64.cast_from_uint64(U64), !IO),
         io.write_string("L", !IO)
     ;
         Const = mlconst_char(N),

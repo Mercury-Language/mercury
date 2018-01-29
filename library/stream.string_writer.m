@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +49,12 @@
     <= stream.writer(Stream, string, State).
 
 :- pred put_uint32(Stream::in, uint32::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
+:- pred put_int64(Stream::in, int64::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+
+:- pred put_uint64(Stream::in, uint64::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
 :- pred put_float(Stream::in, float::in, State::di, State::uo) is det
@@ -212,6 +218,10 @@
             (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_uint32/4,
             (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_int64/4,
+            (Stream = io.output_stream, State = io.state)).
+:- pragma type_spec(put_uint64/4,
+            (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_float/4,
             (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_char/4,
@@ -367,6 +377,40 @@ put_uint32(Stream, UInt32, !State) :-
         put(Stream, string.uint32_to_string(UInt32), !State)
     ).
 
+put_int64(Stream, Int64, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_int64(IOStream, Int64,
+            unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error("stream.string_writer.put_int64: unexpected type error")
+        )
+    else
+        put(Stream, string.int64_to_string(Int64), !State)
+    ).
+
+put_uint64(Stream, UInt64, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_uint64(IOStream, UInt64,
+            unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error("stream.string_writer.put_uint64: unexpected type error")
+        )
+    else
+        put(Stream, string.uint64_to_string(UInt64), !State)
+    ).
+
 put_float(Stream, Float, !State) :-
     ( if
         % Handle the common I/O case more efficiently.
@@ -439,6 +483,10 @@ print(Stream, NonCanon, Term, !State) :-
         put(Stream, int32_to_string(Int32), !State)
     else if dynamic_cast(Term, UInt32 : uint32) then
         put(Stream, uint32_to_string(UInt32), !State)
+    else if dynamic_cast(Term, Int64 : int64) then
+        put(Stream, int64_to_string(Int64), !State)
+    else if dynamic_cast(Term, UInt64 : uint64) then
+        put(Stream, uint64_to_string(UInt64), !State)
     else if dynamic_cast(Term, OrigUniv) then
         write_univ(Stream, OrigUniv, !State)
     else if dynamic_cast(Term, BigInt) then
@@ -560,6 +608,12 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     else if univ_to_type(Univ, UInt32) then
         put_uint32(Stream, UInt32, !State),
         put(Stream, "u32", !State)
+    else if univ_to_type(Univ, Int64)then
+        put_int64(Stream, Int64, !State),
+        put(Stream, "i64", !State)
+    else if univ_to_type(Univ, UInt64) then
+        put_uint64(Stream, UInt64, !State),
+        put(Stream, "u64", !State)
     else if univ_to_type(Univ, Float) then
         put_float(Stream, Float, !State)
     else if univ_to_type(Univ, Bitmap) then

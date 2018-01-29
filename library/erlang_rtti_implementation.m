@@ -888,15 +888,15 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
         TypeCtorRep = etcr_int64,
-        % XXX INT64
-        Functor = "<<int64>>",
+        det_dynamic_cast(Term, Int64),
+        Functor = string.int64_to_string(Int64) ++ "i64",
         FunctorNumber = 0,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = etcr_uint64,
-        % XXX INT64
-        Functor = "<<uint64>>",
+        det_dynamic_cast(Term, UInt64),
+        Functor = string.uint64_to_string(UInt64) ++ "u64",
         FunctorNumber = 0,
         Arity = 0,
         Arguments = []

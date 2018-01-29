@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -719,13 +719,13 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
     ;
         ConsId = int64_const(Int64),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer(Int64), signed,
+            term.integer(base_10, integer.from_int64(Int64), signed,
                 size_64_bit),
             ArgVars)
     ;
         ConsId = uint64_const(UInt64),
         Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer(UInt64), unsigned,
+            term.integer(base_10, integer.from_uint64(UInt64), unsigned,
                 size_64_bit),
             ArgVars)
     ;
@@ -904,13 +904,11 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
         ConsId = uint32_const(UInt32),
         String = string.uint32_to_string(UInt32) ++ "u32"
     ;
-        % XXX INT64.
         ConsId = int64_const(Int64),
-        String = string.int_to_string(Int64) ++ "i64"
+        String = string.int64_to_string(Int64) ++ "i64"
     ;
-        % XXX INT64.
         ConsId = uint64_const(UInt64),
-        String = string.int_to_string(UInt64) ++ "u64"
+        String = string.uint64_to_string(UInt64) ++ "u64"
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)

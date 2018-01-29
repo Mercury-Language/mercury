@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2000, 2003-2007, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -245,6 +245,24 @@
     %
 :- func det_to_uint32(integer) = uint32.
 
+    % Convert an integer to an int64.
+    % Fails if the integer is not in the range [-2147483648, 2147483647].
+    %
+:- pred to_int64(integer::in, int64::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_int64(integer) = int64.
+
+    % Convert an integer to a uint64.
+    % Fails if the integer is not in range [0, 4294967295].
+    %
+:- pred to_uint64(integer::in, uint64::out) is semidet.
+
+    % As above, but throws an exception rather than failing.
+    %
+:- func det_to_uint64(integer) = uint64.
+
 %---------------------%
 
     % Convert an integer to a float.
@@ -300,6 +318,14 @@
     %
 :- func from_uint32(uint32) = integer.
 
+    % Convert an int64 to an integer.
+    %
+:- func from_int64(int64) = integer.
+
+    % Convert a uint64 to an integer.
+    %
+:- func from_uint64(uint64) = integer.
+
     % Convert a string to an integer. The string must contain only digits
     % [0-9], optionally preceded by a plus or minus sign. If the string does
     % not match this syntax, then the predicate fails.
@@ -338,6 +364,7 @@
 :- import_module int8.
 :- import_module int16.
 :- import_module int32.
+:- import_module int64.
 :- import_module list.
 :- import_module math.
 :- import_module require.
@@ -346,6 +373,7 @@
 :- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
+:- import_module uint64.
 
 %---------------------------------------------------------------------------%
 
@@ -495,6 +523,20 @@ chop_uint(N, Div, Mod) :-
 chop_uint32(N, Div, Mod) :-
     % See the comments in chop/3.
     Div = N `uint32.unchecked_right_shift` log2base,
+    Mod = N /\ cast_from_int(basemask).
+
+:- pred chop_int64(int64::in, int64::out, int64::out) is det.
+
+chop_int64(N, Div, Mod) :-
+    % See the comments in chop/3.
+    Div = N `int64.unchecked_right_shift` log2base,
+    Mod = N /\ from_int(basemask).
+
+:- pred chop_uint64(uint64::in, uint64::out, uint64::out) is det.
+
+chop_uint64(N, Div, Mod) :-
+    % See the comments in chop/3.
+    Div = N `uint64.unchecked_right_shift` log2base,
     Mod = N /\ cast_from_int(basemask).
 
 %---------------------%
@@ -1517,6 +1559,74 @@ det_to_uint32(Integer) = UInt32 :-
 
 %---------------------------------------------------------------------------%
 
+to_int64(Integer, Int64) :-
+    Integer = i(Sign, Digits),
+    compare(SignRes, Sign, 0),
+    (
+        SignRes = (<),
+        Integer >= integer_min_int64,
+        Int64 = int64_list(Digits, from_int(0))
+    ;
+        SignRes = (=),
+        Int64 = from_int(0)
+    ;
+        SignRes = (>),
+        Integer =< integer_max_int64,
+        Int64 = int64_list(Digits, from_int(0))
+    ).
+
+:- func integer_min_int64 = integer.
+
+integer_min_int64 = i(-5, [-128, 0, 0, 0, 0]).
+
+:- func integer_max_int64 = integer.
+
+integer_max_int64 = i(5, [127, 16383, 16383, 16383, 16383]).
+
+:- func int64_list(list(int), int64) = int64.
+
+int64_list([], Accum) = Accum.
+int64_list([H | T], Accum) =
+    int64_list(T, Accum * from_int(base) + from_int(H)).
+
+det_to_int64(Integer) = Int64 :-
+    ( if integer.to_int64(Integer, Int64Prime) then
+        Int64 = Int64Prime
+    else
+        throw(math.domain_error(
+            "integer.det_to_int64: domain error (conversion would overflow"))
+    ).
+
+%---------------------------------------------------------------------------%
+
+to_uint64(Integer, UInt64) :-
+    Integer = i(Sign, Digits),
+    Sign >= 0, % i.e. Integer >= 0.
+    Integer =< integer_max_uint64,
+    UInt64 = uint64_list(Digits, uint64.cast_from_int(0)).
+
+    % Return max_uint64 as an integer.
+    %
+:- func integer_max_uint64 = integer.
+
+integer_max_uint64 = i(5, [255, 16383, 16383, 16383, 16383]).
+
+:- func uint64_list(list(int), uint64) = uint64.
+
+uint64_list([], Accum) = Accum.
+uint64_list([H | T], Accum) =
+    uint64_list(T, Accum * cast_from_int(base) + cast_from_int(H)).
+
+det_to_uint64(Integer) = UInt64 :-
+    ( if integer.to_uint64(Integer, UInt64Prime) then
+        UInt64 = UInt64Prime
+    else
+        throw(math.domain_error(
+            "integer.det_to_uint64: domain error (conversion would overflow"))
+    ).
+
+%---------------------------------------------------------------------------%
+
 float(i(_, List)) = float_list(float.float(base), 0.0, List).
 
 :- func float_list(float, float, list(int)) = float.
@@ -1829,6 +1939,75 @@ uint32_to_digits_2(U, Tail) = Result :-
         Tail = i(Length, Digits),
         chop_uint32(U, Div, Mod),
         Result = uint32_to_digits_2(Div,
+            i(Length + 1, [cast_to_int(Mod) | Digits]))
+    ).
+
+from_int64(I64) = Integer :-
+    ( if
+        I64 = from_int(0)
+    then
+        Integer = integer.zero
+    else if
+        I64 > from_int(0),
+        I64 < from_int(base)
+    then
+        Integer = i(1, [cast_to_int(I64)])
+    else if
+        I64 < from_int(0),
+        I64 > from_int(-base)
+    then
+        Integer = i(-1, [cast_to_int(I64)])
+    else
+        ( if I64 = int64.min_int64 then
+            Integer = integer.from_int64(I64 + from_int(1)) - integer.one
+        else
+            Magnitude = pos_int64_to_digits(int64.abs(I64)),
+            ( if I64 < int64.from_int(0) then
+                Integer = big_neg(Magnitude)
+            else
+                Integer = Magnitude
+            )
+        )
+    ).
+
+:- func pos_int64_to_digits(int64) = integer.
+
+pos_int64_to_digits(D) = pos_int64_to_digits_2(D, integer.zero).
+
+:- func pos_int64_to_digits_2(int64, integer) = integer.
+
+pos_int64_to_digits_2(D, Tail) = Result :-
+    ( if D = int64.from_int(0) then
+        Result = Tail
+    else
+        Tail = i(Length, Digits),
+        chop_int64(D, Div, Mod),
+        Result = pos_int64_to_digits_2(Div,
+            i(Length + 1, [cast_to_int(Mod) | Digits]))
+    ).
+
+from_uint64(U64) = Integer :-
+    ( if U64 = cast_from_int(0) then
+        Integer = integer.zero
+    else if U64 < cast_from_int(base) then
+        Integer = i(1, [cast_to_int(U64)])
+    else
+        Integer = uint64_to_digits(U64)
+    ).
+
+:- func uint64_to_digits(uint64) = integer.
+
+uint64_to_digits(U) = uint64_to_digits_2(U, integer.zero).
+
+:- func uint64_to_digits_2(uint64, integer) = integer.
+
+uint64_to_digits_2(U, Tail) = Result :-
+    ( if U = cast_from_int(0) then
+        Result = Tail
+    else
+        Tail = i(Length, Digits),
+        chop_uint64(U, Div, Mod),
+        Result = uint64_to_digits_2(Div,
             i(Length + 1, [cast_to_int(Mod) | Digits]))
     ).
 

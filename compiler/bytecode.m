@@ -125,8 +125,8 @@
     ;       byte_arg_uint16_const(uint16)
     ;       byte_arg_int32_const(int32)
     ;       byte_arg_uint32_const(uint32)
-    ;       byte_arg_int64_const(int)   % XXX INT64
-    ;       byte_arg_uint64_const(int). % XXX INT64
+    ;       byte_arg_int64_const(int64)
+    ;       byte_arg_uint64_const(uint64).
 
 :- type byte_dir
     --->    to_arg
@@ -1589,16 +1589,16 @@ debug_uint32(Val, !IO) :-
     io.write_uint32(Val, !IO),
     io.write_char(' ', !IO).
 
-:- pred debug_int64(int::in, io::di, io::uo) is det.
+:- pred debug_int64(int64::in, io::di, io::uo) is det.
 
 debug_int64(Val, !IO) :-
-    io.write_int(Val, !IO),
+    io.write_int64(Val, !IO),
     io.write_char(' ', !IO).
 
-:- pred debug_uint64(int::in, io::di, io::uo) is det.
+:- pred debug_uint64(uint64::in, io::di, io::uo) is det.
 
 debug_uint64(Val, !IO) :-
-    io.write_int(Val, !IO),
+    io.write_uint64(Val, !IO),
     io.write_char(' ', !IO).
 
 :- pred debug_float(float::in, io::di, io::uo) is det.

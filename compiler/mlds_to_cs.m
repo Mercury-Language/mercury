@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2017 The Mercury team.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -3929,16 +3929,16 @@ output_uint32_const_for_csharp(U32, !IO) :-
     io.write_uint32(U32, !IO),
     io.write_string("U", !IO).
 
-:- pred output_int64_const_for_csharp(int::in, io::di, io::uo) is det.
+:- pred output_int64_const_for_csharp(int64::in, io::di, io::uo) is det.
 
 output_int64_const_for_csharp(I64, !IO) :-
-    io.write_int(I64, !IO),
+    io.write_int64(I64, !IO),
     io.write_string("L", !IO).
 
-:- pred output_uint64_const_for_csharp(int::in, io::di, io::uo) is det.
+:- pred output_uint64_const_for_csharp(uint64::in, io::di, io::uo) is det.
 
 output_uint64_const_for_csharp(U64, !IO) :-
-    io.write_int(U64, !IO),
+    io.write_uint64(U64, !IO),
     io.write_string("UL", !IO).
 
 %---------------------------------------------------------------------------%

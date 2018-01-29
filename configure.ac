@@ -406,6 +406,10 @@ then
         :- type bear ---> brown ; black ; teddy.
         :- pragma foreign_export_enum("Java", bear/0).
 
+        :- pred check_int64(int64::in, int64::out) is det.
+
+        check_int64(X, X).
+       
         :- pred my_uint_xor(uint32::in, uint32::out) is det.
 
         my_uint_xor(A, B) :-

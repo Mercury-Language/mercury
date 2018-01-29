@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 University of Melbourne.
-% Copyright (C) 2015-2017 The Mercury team.
+% Copyright (C) 2015-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -874,8 +874,8 @@ cons_id_rep(int16_const(Int16)) = string.int16_to_string(Int16).
 cons_id_rep(uint16_const(UInt16)) = string.uint16_to_string(UInt16).
 cons_id_rep(int32_const(Int32)) = string.int32_to_string(Int32).
 cons_id_rep(uint32_const(UInt32)) = string.uint32_to_string(UInt32).
-cons_id_rep(int64_const(Int64)) = string.int_to_string(Int64).    % XXX INT64.
-cons_id_rep(uint64_const(UInt64)) = string.int_to_string(UInt64). % XXX INT64.
+cons_id_rep(int64_const(Int64)) = string.int64_to_string(Int64).
+cons_id_rep(uint64_const(UInt64)) = string.uint64_to_string(UInt64).
 cons_id_rep(float_const(Float)) = string.float_to_string(Float).
 cons_id_rep(char_const(Char)) = string.char_to_string(Char).
 cons_id_rep(string_const(String)) = """" ++ String ++ """".

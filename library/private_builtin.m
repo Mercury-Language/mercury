@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2012 The University of Melbourne.
-% Copyright (C) 2013-2017 The Mercury team.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -75,12 +75,12 @@
 :- pred builtin_compare_uint32(comparison_result::uo, uint32::in, uint32::in)
     is det.
 
-:- pred builtin_unify_int64(T::in, T::in) is semidet.
-:- pred builtin_compare_int64(comparison_result::uo, T::in, T::in)
+:- pred builtin_unify_int64(int64::in, int64::in) is semidet.
+:- pred builtin_compare_int64(comparison_result::uo, int64::in, int64::in)
     is det.
 
-:- pred builtin_unify_uint64(T::in, T::in) is semidet.
-:- pred builtin_compare_uint64(comparison_result::uo, T::in, T::in)
+:- pred builtin_unify_uint64(uint64::in, uint64::in) is semidet.
+:- pred builtin_compare_uint64(comparison_result::uo, uint64::in, uint64::in)
     is det.
 
 :- pred builtin_unify_character(character::in, character::in) is semidet.
@@ -171,10 +171,12 @@
 :- import_module int8.
 :- import_module int16.
 :- import_module int32.
+:- import_module int64.
 :- import_module uint.
 :- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
+:- import_module uint64.
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
@@ -187,6 +189,8 @@
 :- pragma inline(builtin_compare_uint16/3).
 :- pragma inline(builtin_compare_int32/3).
 :- pragma inline(builtin_compare_uint32/3).
+:- pragma inline(builtin_compare_int64/3).
+:- pragma inline(builtin_compare_uint64/3).
 :- pragma inline(builtin_compare_character/3).
 :- pragma inline(builtin_compare_string/3).
 :- pragma inline(builtin_compare_float/3).
@@ -279,32 +283,26 @@ builtin_compare_uint32(R, X, Y) :-
         R = (>)
     ).
 
-builtin_unify_int64(_, _) :-
-    ( if semidet_succeed then
-        sorry("unify for int64")
+builtin_unify_int64(X, X).
+
+builtin_compare_int64(R, X, Y) :-
+    ( if X < Y then
+        R = (<)
+    else if X = Y then
+        R = (=)
     else
-        semidet_succeed
+        R = (>)
     ).
 
-builtin_compare_int64(Result, _, _) :-
-    ( if semidet_succeed then
-        sorry("compare for int64")
-    else
-        Result = (=)
-    ).
+builtin_unify_uint64(X, X).
 
-builtin_unify_uint64(_, _) :-
-    ( if semidet_succeed then
-        sorry("unify for uint64")
+builtin_compare_uint64(R, X, Y) :-
+    ( if X < Y then
+        R = (<)
+    else if X = Y then
+        R = (=)
     else
-        semidet_succeed
-    ).
-
-builtin_compare_uint64(Result, _, _) :-
-    ( if semidet_succeed then
-        sorry("compare for uint64")
-    else
-        Result = (=)
+        R = (>)
     ).
 
 builtin_unify_character(C, C).

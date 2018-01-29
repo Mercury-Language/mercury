@@ -1215,8 +1215,8 @@
     ;       llconst_int32(int32)
     ;       llconst_uint32(uint32)
 
-    ;       llconst_int64(int)   % XXX INT64
-    ;       llconst_uint64(int)  % XXX INT64
+    ;       llconst_int64(int64)
+    ;       llconst_uint64(uint64)
 
     ;       llconst_foreign(string, llds_type)
             % A constant in the target language.

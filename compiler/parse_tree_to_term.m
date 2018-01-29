@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2017 The Mercury team.
+% Copyright (C) 2015-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -678,11 +678,11 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
     ;
         ConsId = int64_const(Int64),
         term.context_init(Context),
-        Term = int_to_decimal_term(Int64, Context) % XXX INT64
+        Term = int64_to_decimal_term(Int64, Context)
     ;
         ConsId = uint64_const(UInt64),
         term.context_init(Context),
-        Term = int_to_decimal_term(UInt64, Context) % XXX INT64
+        Term = uint64_to_decimal_term(UInt64, Context)
     ;
         ConsId = float_const(Float),
         term.context_init(Context),

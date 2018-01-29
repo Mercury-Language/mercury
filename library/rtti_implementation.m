@@ -2799,15 +2799,15 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
         TypeCtorRep = tcr_int64,
-        % XXX INT64
-        Functor = "<<int64>>",
+        det_dynamic_cast(Term, Int64),
+        Functor = string.int64_to_string(Int64) ++ "i64",
         Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_uint64,
-        % XXX INT64
-        Functor = "<<uint64>>",
+        det_dynamic_cast(Term, UInt64),
+        Functor = string.uint64_to_string(UInt64) ++ "u64",
         Ordinal = -1,
         Arity = 0,
         Arguments = []

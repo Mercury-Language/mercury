@@ -177,10 +177,12 @@ ORDINARY_PROGS =	\
 	int32_from_bytes \
 	integer_int16_conv \
 	integer_int32_conv \
+	integer_int64_conv \
 	integer_int8_conv \
 	integer_test \
 	integer_uint16_conv \
 	integer_uint32_conv \
+	integer_uint64_conv \
 	integer_uint8_conv \
 	integer_uint_conv \
 	intermod_c_code \
@@ -639,9 +641,11 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		allow_stubs \
 		arith_int16 \
 		arith_int32 \
+		arith_int64 \
 		arith_int8 \
 		arith_uint16 \
 		arith_uint32 \
+		arith_uint64 \
 		arith_uint8 \
 		bitmap_bytes \
 		bitmap_empty \
@@ -649,16 +653,20 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		bitwise_int \
 		bitwise_int16 \
 		bitwise_int32 \
+		bitwise_int64 \
 		bitwise_int8 \
 		bitwise_uint16 \
 		bitwise_uint32 \
+		bitwise_uint64 \
 		bitwise_uint8 \
 		bit_buffer_test \
 		cmp_int16 \
 		cmp_int32 \
+		cmp_int64 \
 		cmp_int8 \
 		cmp_uint16 \
 		cmp_uint32 \
+		cmp_uint64 \
 		cmp_uint8 \
 		dir_test \
 		final_excp \

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017 The Mercury team.
+% Copyright (C) 2015-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -113,6 +113,8 @@
     pred add_uint16(uint16::in, U::di, U::uo) is det,
     pred add_int32(int32::in, U::di, U::uo) is det,
     pred add_uint32(uint32::in, U::di, U::uo) is det,
+    pred add_int64(int64::in, U::di, U::uo) is det,
+    pred add_uint64(uint64::in, U::di, U::uo) is det,
     pred add_float(float::in, U::di, U::uo) is det,
     pred add_purity_prefix(purity::in, U::di, U::uo) is det,
     pred add_quoted_atom(string::in, U::di, U::uo) is det,
@@ -204,6 +206,8 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_uint16/3) is write_uint16_literal,
     pred(add_int32/3) is write_int32_literal,
     pred(add_uint32/3) is write_uint32_literal,
+    pred(add_int64/3) is write_int64_literal,
+    pred(add_uint64/3) is write_uint64_literal,
     pred(add_float/3) is io.write_float,
     pred(add_purity_prefix/3) is prog_out.write_purity_prefix,
     pred(add_quoted_atom/3) is term_io.quote_atom,
@@ -228,6 +232,8 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_uint16/3) is output_uint16,
     pred(add_int32/3) is output_int32,
     pred(add_uint32/3) is output_uint32,
+    pred(add_int64/3) is output_int64,
+    pred(add_uint64/3) is output_uint64,
     pred(add_float/3) is output_float,
     pred(add_purity_prefix/3) is output_purity_prefix,
     pred(add_quoted_atom/3) is output_quoted_atom,
@@ -283,6 +289,18 @@ write_int32_literal(Int32, !IO) :-
 write_uint32_literal(UInt32, !IO) :-
     io.write_uint32(UInt32, !IO),
     io.write_string("u32", !IO).
+
+:- pred write_int64_literal(int64::in, io::di, io::uo) is det.
+
+write_int64_literal(Int64, !IO) :-
+    io.write_int64(Int64, !IO),
+    io.write_string("i64", !IO).
+
+:- pred write_uint64_literal(uint64::in, io::di, io::uo) is det.
+
+write_uint64_literal(UInt64, !IO) :-
+    io.write_uint64(UInt64, !IO),
+    io.write_string("u64", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -363,6 +381,18 @@ output_int32(I32, Str0, Str) :-
 
 output_uint32(U32, Str0, Str) :-
     S = string.uint32_to_string(U32) ++ "u32",
+    string.append(Str0, S, Str).
+
+:- pred output_int64(int64::in, string::di, string::uo) is det.
+
+output_int64(I64, Str0, Str) :-
+    S = string.int64_to_string(I64) ++ "i64",
+    string.append(Str0, S, Str).
+
+:- pred output_uint64(uint64::in, string::di, string::uo) is det.
+
+output_uint64(U64, Str0, Str) :-
+    S = string.uint64_to_string(U64) ++ "u64",
     string.append(Str0, S, Str).
 
 :- pred output_float(float::in, string::di, string::uo) is det.

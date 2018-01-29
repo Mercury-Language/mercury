@@ -178,8 +178,8 @@
     ;       uint16_const(uint16)
     ;       int32_const(int32)
     ;       uint32_const(uint32)
-    ;       int64_const(int) % XXX INT64
-    ;       uint64_const(int) % XX INT64
+    ;       int64_const(int64)
+    ;       uint64_const(uint64)
     ;       float_const(float)
     ;       unary(unary_op, simple_expr(T))
     ;       binary(binary_op, simple_expr(T), simple_expr(T)).
@@ -229,6 +229,11 @@
 
 :- import_module require.
 :- import_module string.
+
+% XXX INT64 - this are only required until 64-bit integer literals are
+% bootstrapped.
+:- import_module int64.
+:- import_module uint64.
 
 %-----------------------------------------------------------------------------%
 
@@ -468,12 +473,12 @@ make_int_zero_const(int_type_int)    = int_const(0).
 make_int_zero_const(int_type_int8)   = int8_const(0i8).
 make_int_zero_const(int_type_int16)  = int16_const(0i16).
 make_int_zero_const(int_type_int32)  = int32_const(0i32).
-make_int_zero_const(int_type_int64)  = int64_const(0).
+make_int_zero_const(int_type_int64)  = int64_const(from_int(0)).
 make_int_zero_const(int_type_uint)   = uint_const(0u).
 make_int_zero_const(int_type_uint8)  = uint8_const(0u8).
 make_int_zero_const(int_type_uint16) = uint16_const(0u16).
 make_int_zero_const(int_type_uint32) = uint32_const(0u32).
-make_int_zero_const(int_type_uint64) = uint64_const(0).
+make_int_zero_const(int_type_uint64) = uint64_const(cast_from_int(0)).
 
 %-----------------------------------------------------------------------------%
 :- end_module backend_libs.builtin_ops.

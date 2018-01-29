@@ -1,0 +1,52 @@
+*** Testing int64 -> integer conversion ***
+
+int64 = -9223372036854775808, integer = -9223372036854775808
+int64 = -2147483648, integer = -2147483648
+int64 = -32768, integer = -32768
+int64 = -128, integer = -128
+int64 = -64, integer = -64
+int64 = -32, integer = -32
+int64 = -1, integer = -1
+int64 = 0, integer = 0
+int64 = 1, integer = 1
+int64 = 2, integer = 2
+int64 = 4, integer = 4
+int64 = 8, integer = 8
+int64 = 10, integer = 10
+int64 = 16, integer = 16
+int64 = 32, integer = 32
+int64 = 64, integer = 64
+int64 = 127, integer = 127
+int64 = 16383, integer = 16383
+int64 = 16384, integer = 16384
+int64 = 16385, integer = 16385
+int64 = 32767, integer = 32767
+int64 = 2147483647, integer = 2147483647
+int64 = 9223372036854775807, integer = 9223372036854775807
+
+*** Testing integer -> int64 conversion ***
+
+integer = -9223372036854775808, int64 = -9223372036854775808
+integer = -4294967296, int64 = -4294967296
+integer = -2147483649, int64 = -2147483649
+integer = -2147483648, int64 = -2147483648
+integer = -32768, int64 = -32768
+integer = -2, int64 = -2
+integer = -1, int64 = -1
+integer = 0, int64 = 0
+integer = 1, int64 = 1
+integer = 2, int64 = 2
+integer = 16383, int64 = 16383
+integer = 16384, int64 = 16384
+integer = 16385, int64 = 16385
+integer = 32767, int64 = 32767
+integer = 1073741824, int64 = 1073741824
+integer = 2147483647, int64 = 2147483647
+integer = 2147483648, int64 = 2147483648
+integer = 4294967295, int64 = 4294967295
+integer = 4294967296, int64 = 4294967296
+integer = 4294967297, int64 = 4294967297
+integer = 9223372036854775807, int64 = 9223372036854775807
+integer = 9223372036854775808, int64 = <<OUT-OF-RANGE>>
+integer = 18446744073709551615, int64 = <<OUT-OF-RANGE>>
+integer = 18446744073709551616, int64 = <<OUT-OF-RANGE>>

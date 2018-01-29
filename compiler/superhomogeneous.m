@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -791,14 +791,17 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !Specs) :-
             )
         ;
             Size = size_64_bit,
-            Pieces = [words("Error: 64-bit integer types"),
-                words("are not (yet) supported.")],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
-            !:Specs = [Spec | !.Specs],
-            % This is a dummy.
-            ConsId = int_const(0)
+            (
+                Signedness = signed,
+                parse_integer_cons_id(Context, Base, Integer,
+                    "64-bit", "i64", integer.to_int64,
+                    (func(I) = int64_const(I)), ConsId, !Specs)
+            ;
+                Signedness = unsigned,
+                parse_integer_cons_id(Context, Base, Integer,
+                    "unsigned 64-bit", "u64", integer.to_uint64,
+                    (func(I) = uint64_const(I)), ConsId, !Specs)
+            )
         )
     ;
         Functor = term.string(String),

@@ -191,10 +191,12 @@
 :- instance doc(int8).
 :- instance doc(int16).
 :- instance doc(int32).
+:- instance doc(int64).
 :- instance doc(uint).
 :- instance doc(uint8).
 :- instance doc(uint16).
 :- instance doc(uint32).
+:- instance doc(uint64).
 :- instance doc(float).
 :- instance doc(char).
 
@@ -430,6 +432,7 @@ doc(X) = doc(int.max_int, X).
 :- instance doc(int8)   where [ doc(_, Int8) = text(int8_to_string(Int8))].
 :- instance doc(int16) where [ doc(_, Int16) = text(int16_to_string(Int16))].
 :- instance doc(int32) where [ doc(_, Int32) = text(int32_to_string(Int32))].
+:- instance doc(int64) where [ doc(_, Int64) = text(int64_to_string(Int64))].
 :- instance doc(uint)   where [ doc(_, UInt) = text(uint_to_string(UInt))].
 :- instance doc(uint8)  where [ doc(_, UInt8) = text(uint8_to_string(UInt8))].
 :- instance doc(uint16) where [
@@ -437,6 +440,9 @@ doc(X) = doc(int.max_int, X).
 ].
 :- instance doc(uint32) where [
     doc(_, UInt32) = text(uint32_to_string(UInt32))
+].
+:- instance doc(uint64) where [
+    doc(_, UInt64) = text(uint64_to_string(UInt64))
 ].
 :- instance doc(float)  where [ doc(_, Float)  = poly(f(Float)) ].
 :- instance doc(char)   where [ doc(_, Char)   = poly(c(Char))  ].

@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -173,6 +173,8 @@
 
 :- func int32_to_decimal_term(int32, context) = term(T).
 
+:- func int64_to_decimal_term(int64, context) = term(T).
+
 :- func uint_to_decimal_term(uint, context) = term(T).
 
 :- func uint8_to_decimal_term(uint8, context) = term(T).
@@ -180,6 +182,8 @@
 :- func uint16_to_decimal_term(uint16, context) = term(T).
 
 :- func uint32_to_decimal_term(uint32, context) = term(T).
+
+:- func uint64_to_decimal_term(uint64, context) = term(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -877,6 +881,11 @@ int32_to_decimal_term(Int32, Context) = Term :-
         size_32_bit),
     Term = functor(Const, [], Context).
 
+int64_to_decimal_term(Int64, Context) = Term :-
+    Const = integer(base_10, integer.from_int64(Int64), signed,
+        size_64_bit),
+    Term = functor(Const, [], Context).
+
 uint_to_decimal_term(UInt, Context) = Term :-
     Const = integer(base_10, integer.from_uint(UInt), unsigned, size_word),
     Term = functor(Const, [], Context).
@@ -894,6 +903,11 @@ uint16_to_decimal_term(UInt16, Context) = Term :-
 uint32_to_decimal_term(UInt32, Context) = Term :-
     Const = integer(base_10, integer.from_uint32(UInt32), unsigned,
         size_32_bit),
+    Term = functor(Const, [], Context).
+
+uint64_to_decimal_term(UInt64, Context) = Term :-
+    Const = integer(base_10, integer.from_uint64(UInt64), unsigned,
+        size_64_bit),
     Term = functor(Const, [], Context).
 
 %---------------------------------------------------------------------------%

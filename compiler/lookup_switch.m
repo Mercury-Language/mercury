@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017 The Mercury team.
+% Copyright (C) 2015, 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,6 +178,8 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module int64.  % XXX INT64 - remove once int64 literals bootstrapped.
+:- import_module uint64. % XXX INT64 - ditto for uint64 literals.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -963,9 +965,9 @@ default_value_for_type(lt_int(int_type_uint16)) = const(llconst_uint16(0u16)).
 default_value_for_type(lt_int(int_type_int32)) = const(llconst_int32(0i32)).
 default_value_for_type(lt_int(int_type_uint32)) = const(llconst_uint32(0u32)).
 % XXX INT64.
-default_value_for_type(lt_int(int_type_int64)) = const(llconst_int64(0)).
+default_value_for_type(lt_int(int_type_int64)) = const(llconst_int64(int64.from_int(0))).
 % XXX INT64.
-default_value_for_type(lt_int(int_type_uint64)) = const(llconst_uint64(0)).
+default_value_for_type(lt_int(int_type_uint64)) = const(llconst_uint64(uint64.cast_from_int(0))).
 default_value_for_type(lt_float) = const(llconst_float(0.0)).
 default_value_for_type(lt_string) = const(llconst_string("")).
 default_value_for_type(lt_data_ptr) = const(llconst_int(0)).

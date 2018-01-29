@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -113,8 +113,8 @@
     ;       uint16_const(uint16)
     ;       int32_const(int32)
     ;       uint32_const(uint32)
-    ;       int64_const(int)    % XXX INT64
-    ;       uint64_const(int)   % XXX INT64
+    ;       int64_const(int64)
+    ;       uint64_const(uint64)
     ;       float_const(float)
     ;       char_const(char)
     ;       string_const(string)

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1993-2011 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -391,10 +391,10 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
         String = string.uint32_to_string(UInt32)
     ;
         ConsId = int64_const(Int64),
-        String = string.int_to_string(Int64) % XXX INT64
+        String = string.int64_to_string(Int64)
     ;
         ConsId = uint64_const(UInt64),
-        String = string.int_to_string(UInt64) % XXX INT64
+        String = string.uint64_to_string(UInt64)
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)

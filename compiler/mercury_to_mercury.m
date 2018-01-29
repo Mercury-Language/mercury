@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -286,10 +287,10 @@ mercury_format_cons_id(NeedsBrackets, ConsId, !U) :-
         add_uint32(UInt32, !U)
     ;
         ConsId = int64_const(Int64),
-        add_int(Int64, !U) % XXX INT64
+        add_int64(Int64, !U)
     ;
         ConsId = uint64_const(UInt64),
-        add_int(UInt64, !U) % XXX INT64
+        add_uint64(UInt64, !U)
     ;
         ConsId = float_const(Float),
         add_float(Float, !U)

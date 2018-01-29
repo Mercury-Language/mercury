@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017 The Mercury team.
+% Copyright (C) 2015-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -499,6 +499,16 @@ univ_to_term_special_case(ModuleName, TypeCtorName, TypeArgs, Univ, Context,
             det_univ_to_type(Univ, UInt32),
             Functor = integer(base_10, integer.from_uint32(UInt32), unsigned,
                 size_32_bit)
+        ;
+            TypeCtorName = "int64",
+            det_univ_to_type(Univ, Int64),
+            Functor = integer(base_10, integer.from_int64(Int64), signed,
+                size_64_bit)
+        ;
+            TypeCtorName = "uint64",
+            det_univ_to_type(Univ, UInt64),
+            Functor = integer(base_10, integer.from_uint64(UInt64), unsigned,
+                size_64_bit)
         ;
             TypeCtorName = "float",
             det_univ_to_type(Univ, Float),

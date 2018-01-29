@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2017 The Mercury team.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1241,7 +1241,7 @@
     %
 :- func uint_to_string(uint::in) = (string::uo) is det.
 
-    % Convert a signed/unsigned 8/16/32 bit integer to a string.
+    % Convert a signed/unsigned 8/16/32/64 bit integer to a string.
     %
 :- func int8_to_string(int8::in) = (string::uo) is det.
 :- func uint8_to_string(uint8::in) = (string::uo) is det.
@@ -1249,6 +1249,8 @@
 :- func uint16_to_string(uint16::in) = (string::uo) is det.
 :- func int32_to_string(int32::in) = (string::uo) is det.
 :- func uint32_to_string(uint32::in) = (string::uo) is det.
+:- func int64_to_string(int64::in) = (string::uo) is det.
+:- func uint64_to_string(uint64::in) = (string::uo) is det.
 
     % Convert a float to a string.
     % In the current implementation, the resulting float will be in the form
@@ -6055,6 +6057,64 @@ int32_to_string(_) = _ :-
 
 uint32_to_string(_) = _ :-
     sorry($module, "string.uint32_to_string/1").
+
+%---------------------%
+
+:- pragma foreign_proc("C",
+    int64_to_string(I64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    char buffer[21]; // 1 for sign, 19 for digits, 1 for nul.
+    sprintf(buffer, ""%"" PRId64, I64);
+    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
+    strcpy(S, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    int64_to_string(I64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = I64.ToString();
+").
+
+:- pragma foreign_proc("Java",
+    int64_to_string(I64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = java.lang.Long.toString(I64);
+").
+
+int64_to_string(_) = _ :-
+    sorry($module, "string.int64_to_string/1").
+
+%---------------------%
+
+:- pragma foreign_proc("C",
+    uint64_to_string(U64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    char buffer[20]; // 19 for digits, 1 for nul.
+    sprintf(buffer, ""%"" PRIu64, U64);
+    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
+    strcpy(S, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    uint64_to_string(U64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = U64.ToString();
+").
+
+:- pragma foreign_proc("Java",
+    uint64_to_string(U64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = java.lang.Long.toUnsignedString(U64);
+").
+
+uint64_to_string(_) = _ :-
+    sorry($module, "string.uint64_to_string/1").
 
 %---------------------%
 

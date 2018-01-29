@@ -224,24 +224,24 @@
     % Convert a uint64 to a string suitable for use as a C uint64_t literal.
     % Note that the result is not suitable for use with C# or Java.
     %
-:- func make_int64_literal(int/*XXX INT64*/) = string.
+:- func make_int64_literal(int64) = string.
 
     % Write out an int64 as a C expression.
     %
-:- pred output_int64_expr(io.text_output_stream::in, int::in,
+:- pred output_int64_expr(io.text_output_stream::in, int64::in,
     io::di, io::uo) is det.
-:- pred output_int64_expr_cur_stream(int::in, io::di, io::uo) is det.
+:- pred output_int64_expr_cur_stream(int64::in, io::di, io::uo) is det.
 
     % Convert a uint64 to a string suitable for use as a C uint64_t literal.
     % Note that the result is not suitable for use with C# or Java.
     %
-:- func make_uint64_literal(int/*XXX INT64*/) = string.
+:- func make_uint64_literal(uint64) = string.
 
     % Write out a uint64 as a C expression.
     %
-:- pred output_uint64_expr(io.text_output_stream::in, int::in,
+:- pred output_uint64_expr(io.text_output_stream::in, uint64::in,
     io::di, io::uo) is det.
-:- pred output_uint64_expr_cur_stream(int::in, io::di, io::uo) is det.
+:- pred output_uint64_expr_cur_stream(uint64::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -331,6 +331,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module int64.
 :- import_module integer.
 :- import_module require.
 :- import_module string.
@@ -894,30 +895,38 @@ output_uint32_expr(Stream, N, !IO) :-
     io.write_uint32(Stream, N, !IO),
     io.write_string(Stream, ")", !IO).
 
-make_int64_literal(N) = Literal :-
-    NStr = int_to_string(N),
-    string.format("INT64_C(%s)", [s(NStr)], Literal).
-
 output_uint32_expr_cur_stream(N, !IO) :-
     io.output_stream(Stream, !IO),
     output_uint32_expr(Stream, N, !IO).
 
+make_int64_literal(N) = Literal :-
+    ( if N = min_int64 then
+        Literal = "INT64_MIN"
+    else
+        NStr = int64_to_string(N),
+        string.format("INT64_C(%s)", [s(NStr)], Literal)
+    ).
+
 output_int64_expr(Stream, N, !IO) :-
-    io.write_string(Stream, "INT64_C(", !IO),
-    io.write_int(Stream, N, !IO),
-    io.write_string(Stream, ")", !IO).
+    ( if N = min_int64 then
+        io.write_string("INT64_MIN", !IO)
+    else
+        io.write_string(Stream, "INT64_C(", !IO),
+        io.write_int64(Stream, N, !IO),
+        io.write_string(Stream, ")", !IO)
+    ).
 
 output_int64_expr_cur_stream(N, !IO) :-
     io.output_stream(Stream, !IO),
     output_int64_expr(Stream, N, !IO).
 
 make_uint64_literal(N) = Literal :-
-    NStr = int_to_string(N),
+    NStr = uint64_to_string(N),
     string.format("UINT64_C(%s)", [s(NStr)], Literal).
 
 output_uint64_expr(Stream, N, !IO) :-
     io.write_string(Stream, "UINT64_C(", !IO),
-    io.write_int(Stream, N, !IO),
+    io.write_uint64(Stream, N, !IO),
     io.write_string(Stream, ")", !IO).
 
 output_uint64_expr_cur_stream(N, !IO) :-
