@@ -1990,8 +1990,8 @@ float_const_binop_expr_name(Op, Arg1, Arg2, Name) :-
     % to ensure that different rvals get different names.
     Name = OpName ++ "_" ++ Arg1Name ++ "_" ++ Arg2Name.
 
-    % Given an rval which is a floating point literal, return
-    % a name for that rval that is suitable for use in a C identifier.
+    % Given an rval which is a floating point literal, return a name for that
+    % rval that is suitable for use as a suffix of a C identifier.
     % Different rvals must be given different names.
     %
 :- pred float_literal_name(float::in, string::out) is det.
@@ -2017,8 +2017,8 @@ float_op_name(float_divide, "divide").
 
 %----------------------------------------------------------------------------%
 
-    % Given an rval which is a signed 64-bit integer literal, return
-    % a name for that rval that is suitable for use in a C identifier.
+    % Given an rval which is a signed 64-bit integer literal, return a name for
+    % that rval that is suitable for use as a suffix of a C identifier.
     % Different rvals must be given different names.
     %
 :- pred int64_literal_name(int64::in, string::out) is det.
@@ -2027,8 +2027,8 @@ int64_literal_name(Int64, Int64Name) :-
     Int64Name0 = int64_to_string(Int64),
     string.replace_all(Int64Name0, "-", "neg", Int64Name).
 
-    % Given an rval which is an unsigned 64-bit integer literal, return
-    % a name for that rval that is suitable for use in a C identifier.
+    % Given an rval which is an unsigned 64-bit integer literal, return a name
+    % for that rval that is suitable for use as a suffix of a C identifier.
     % Different rvals must be given different names.
     %
 :- pred uint64_literal_name(uint64::in, string::out) is det.

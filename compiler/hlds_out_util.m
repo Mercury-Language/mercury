@@ -227,7 +227,6 @@
 
 :- import_module assoc_list.
 :- import_module int.
-:- import_module integer.
 :- import_module map.
 :- import_module string.
 :- import_module term_io.
@@ -672,62 +671,34 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
             next_to_graphic_token, term.atom("{}"), ArgVars)
     ;
         ConsId = int_const(Int),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer(Int), signed, size_word), ArgVars)
+        Str = int_to_string(Int)
     ;
         ConsId = uint_const(UInt),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_uint(UInt), unsigned,
-                size_word),
-            ArgVars)
+        Str = uint_to_string(UInt) ++ "u"
     ;
         ConsId = int8_const(Int8),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_int8(Int8), signed,
-                size_8_bit),
-            ArgVars)
+        Str = int8_to_string(Int8) ++ "i8"
     ;
         ConsId = uint8_const(UInt8),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_uint8(UInt8), unsigned,
-                size_8_bit),
-            ArgVars)
+        Str = uint8_to_string(UInt8) ++ "u8"
     ;
         ConsId = int16_const(Int16),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_int16(Int16), signed,
-                size_16_bit),
-            ArgVars)
+        Str = int16_to_string(Int16) ++ "i16"
     ;
         ConsId = uint16_const(UInt16),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_uint16(UInt16), unsigned,
-                size_16_bit),
-            ArgVars)
+        Str = uint16_to_string(UInt16) ++ "u16"
     ;
         ConsId = int32_const(Int32),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_int32(Int32), signed,
-                size_32_bit),
-            ArgVars)
+        Str = int32_to_string(Int32) ++ "i32"
     ;
         ConsId = uint32_const(UInt32),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_uint32(UInt32), unsigned,
-                size_32_bit),
-            ArgVars)
+        Str = uint32_to_string(UInt32) ++ "u32"
     ;
         ConsId = int64_const(Int64),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_int64(Int64), signed,
-                size_64_bit),
-            ArgVars)
+        Str = int64_to_string(Int64) ++ "i64"
     ;
         ConsId = uint64_const(UInt64),
-        Str = functor_to_string(VarSet, VarNamePrint,
-            term.integer(base_10, integer.from_uint64(UInt64), unsigned,
-                size_64_bit),
-            ArgVars)
+        Str = uint64_to_string(UInt64) ++ "u64"
     ;
         ConsId = float_const(Float),
         Str = functor_to_string(VarSet, VarNamePrint,

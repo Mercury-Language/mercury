@@ -81,8 +81,8 @@
 
 :- type decl_id
     --->    decl_float_label(string)
-    ;       decl_int64_label(string)
-    ;       decl_uint64_label(string)
+    ;       decl_int64_label(string)    % XXX INT64 - use int64 here.
+    ;       decl_uint64_label(string)   % XXX INT64 - use uint64 here.
     ;       decl_common_type(type_num)
     ;       decl_code_addr(code_addr)
     ;       decl_rtti_id(rtti_id)

@@ -193,7 +193,7 @@
 "
     if (I < 0) {
         SUCCESS_INDICATOR = MR_FALSE;
-    } else if ((uint64_t)I > (uint64_t)UINT32_MAX) {
+    } else if ((uint64_t)I > (uint64_t)INT64_MAX) {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
         U = (uint64_t) I;

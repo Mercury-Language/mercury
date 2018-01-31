@@ -55,12 +55,12 @@
     %
 :- func abs(int64) = int64.
 
-    % unchecked_abs(X) retursn the absolute value of X, except that if the
+    % unchecked_abs(X) returns the absolute value of X, except that if the
     % result is undefined if X = int64.min_int64.
     %
 :- func unchecked_abs(int64) = int64.
 
-    % nabs(X) retursn the negative absolute value of X.
+    % nabs(X) returns the negative absolute value of X.
     % Unlike abs/1 this function is defined for X = int64.min_int64.
     %
 :- func nabs(int64) = int64.
