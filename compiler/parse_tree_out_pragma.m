@@ -206,9 +206,6 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
         Pragma = pragma_fact_table(FactTableInfo),
         mercury_format_pragma_fact_table(FactTableInfo, !IO)
     ;
-        Pragma = pragma_reserve_tag(TypeCtor),
-        mercury_output_pragma_reserve_tag(TypeCtor, !IO)
-    ;
         Pragma = pragma_oisu(OISUInfo),
         mercury_output_pragma_oisu(OISUInfo, !IO)
     ;
@@ -1288,23 +1285,6 @@ mercury_format_pragma_fact_table(FactTableInfo, !U) :-
     add_string(", ", !U),
     add_quoted_string(FileName, !U),
     add_string(").\n", !U).
-
-%---------------------------------------------------------------------------%
-%
-% Output a reserve_tag pragma.
-%
-
-:- pred mercury_output_pragma_reserve_tag(type_ctor::in,
-    io::di, io::uo) is det.
-
-mercury_output_pragma_reserve_tag(TypeCtor, !IO) :-
-    TypeCtor = type_ctor(TypeName, TypeArity),
-    io.write_string(":- pragma reserve_tag(", !IO),
-    mercury_output_bracketed_sym_name_ngt(next_to_graphic_token, TypeName,
-        !IO),
-    io.write_string("/", !IO),
-    io.write_int(TypeArity, !IO),
-    io.write_string(").\n", !IO).
 
 %---------------------------------------------------------------------------%
 %

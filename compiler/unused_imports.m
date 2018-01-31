@@ -431,7 +431,7 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
         DefinedInThisModule = yes,
         Visibility = type_visibility(TypeStatus),
         (
-            TypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, _),
             list.foldl(ctor_used_modules(Visibility), Ctors, !UsedModules)
         ;
             TypeBody = hlds_eqv_type(EqvType),
@@ -450,9 +450,15 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 ctor_used_modules(Visibility, Ctor, !UsedModules) :-
-    Ctor = ctor(_, Constraints, _, Args, _, _),
-    list.foldl(prog_constraint_used_modules(Visibility), Constraints,
-        !UsedModules),
+    Ctor = ctor(MaybeExistConstraints, _, Args, _, _),
+    (
+        MaybeExistConstraints = no_exist_constraints
+    ;
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(_, Constraints),
+        list.foldl(prog_constraint_used_modules(Visibility), Constraints,
+            !UsedModules)
+    ),
     list.foldl(
         ( pred(Arg::in, !.M::in, !:M::out) is det :-
             mer_type_used_modules(Visibility, Arg ^ arg_type, !M)

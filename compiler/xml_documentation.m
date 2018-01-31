@@ -388,7 +388,7 @@ type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
 
 :- func type_xml_tag(hlds_type_body) = string.
 
-type_xml_tag(hlds_du_type(_, _, _, _, _, _, _, _, _)) = "du_type".
+type_xml_tag(hlds_du_type(_, _, _, _)) = "du_type".
 type_xml_tag(hlds_eqv_type(_)) = "eqv_type".
 type_xml_tag(hlds_foreign_type(_)) = "foreign_type".
 type_xml_tag(hlds_solver_type(_)) = "solver_type".
@@ -404,7 +404,7 @@ type_param_to_xml(TVarset, TVar) = Xml :-
 
 type_body_to_xml(C, TVarSet, TypeDefnBody) = Xmls :-
     (
-        TypeDefnBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
+        TypeDefnBody = hlds_du_type(Ctors, _, _, _),
         Xmls =
             [xml_list("constructors", constructor_to_xml(C, TVarSet), Ctors)]
     ;
@@ -428,24 +428,32 @@ type_body_to_xml(C, TVarSet, TypeDefnBody) = Xmls :-
 :- func constructor_to_xml(comments, tvarset, constructor) = xml.
 
 constructor_to_xml(C, TVarset, Ctor) = Xml :-
-    Ctor = ctor(Exists, Constraints, Name, Args, Arity, Context),
+    Ctor = ctor(MaybeExistConstraints, Name, Args, Arity, Context),
+    (
+        MaybeExistConstraints = no_exist_constraints,
+        ExistQVars = [],
+        Constraints = []
+    ;
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints)
+    ),
     Id = attr("id", sym_name_and_arity_to_id("ctor", Name, Arity)),
     XmlName = name_to_xml(Name),
     XmlContext = prog_context_to_xml(Context),
     XmlArgs = xml_list("ctor_args", constructor_arg_to_xml(C, TVarset), Args),
-    XmlExistVars = xml_list("ctor_exist_vars", type_param_to_xml(TVarset),
-        Exists),
+    XmlExistQVars = xml_list("ctor_exist_vars", type_param_to_xml(TVarset),
+        ExistQVars),
     XmlConstraints =
         xml_list("ctor_constraints", prog_constraint_to_xml(TVarset),
             Constraints),
     Xml0 = elem("constructor", [Id],
-        [XmlName, XmlContext, XmlArgs, XmlExistVars, XmlConstraints]),
+        [XmlName, XmlContext, XmlArgs, XmlExistQVars, XmlConstraints]),
     Xml = maybe_add_comment(C, Context, Xml0).
 
 :- func constructor_arg_to_xml(comments, tvarset, constructor_arg) = xml.
 
 constructor_arg_to_xml(C, TVarset, CtorArg) = Xml :-
-    CtorArg = ctor_arg(MaybeCtorFieldName, Type, _Width, Context),
+    CtorArg = ctor_arg(MaybeCtorFieldName, Type, Context),
     XmlType = elem("arg_type", [], [mer_type_to_xml(TVarset, Type)]),
     XmlContext = prog_context_to_xml(Context),
     (

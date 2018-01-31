@@ -24,6 +24,7 @@
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 

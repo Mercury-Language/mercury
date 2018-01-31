@@ -26,7 +26,6 @@
 :- interface.
 
 :- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
@@ -43,7 +42,6 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
-:- import_module maybe.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -132,38 +130,6 @@
     found_invalid_type::out, found_invalid_inst_or_mode::out,
     module_info::out, list(error_spec)::out) is det.
 
-:- pred add_new_proc(prog_context::in, int::in, arity::in,
-    inst_varset::in, list(mer_mode)::in,
-    maybe(list(mer_mode))::in, maybe(list(is_live))::in,
-    detism_decl::in, maybe(determinism)::in,
-    is_address_taken::in, has_parallel_conj::in,
-    pred_info::in, pred_info::out, proc_id::out) is det.
-
-    % add_special_pred_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
-    %   TypeBody, TypeContext, TypeStatus, !ModuleInfo).
-    %
-    % Add declarations and clauses for a special predicate.
-    % This is used by unify_proc.m to add a unification predicate
-    % for an imported type for which special predicates are being
-    % generated only when a unification procedure is requested
-    % during mode analysis.
-    %
-:- pred add_special_pred_for_real(special_pred_id::in, tvarset::in,
-    mer_type::in, type_ctor::in, hlds_type_body::in, prog_context::in,
-    type_status::in, module_info::in, module_info::out) is det.
-
-    % add_special_pred_decl_for_real(SpecialPredId, TVarSet,
-    %   Type, TypeCtor, TypeContext, TypeStatus, !ModuleInfo).
-    %
-    % Add declarations for a special predicate.
-    % This is used by higher_order.m when specializing an in-in
-    % unification for an imported type for which unification procedures
-    % are generated lazily.
-    %
-:- pred add_special_pred_decl_for_real(special_pred_id::in,
-    tvarset::in, mer_type::in, type_ctor::in, prog_context::in,
-    type_status::in, module_info::in, module_info::out) is det.
-
     % Given the definition for a predicate or function from a
     % type class instance declaration, produce the clauses_info
     % for that definition.
@@ -192,13 +158,10 @@
 :- include_module add_mode.
 :- include_module add_mutable_aux_preds.
 :- include_module add_pragma.
-:- include_module add_pred.
 :- include_module add_solver.
-:- include_module add_special_pred.
 :- include_module add_type.
 :- include_module field_access.
 :- include_module goal_expr_to_goal.
-:- include_module make_hlds_error.
 :- include_module make_hlds_passes.
 :- include_module make_hlds_warn.
 :- include_module qual_info.
@@ -206,8 +169,6 @@
 :- include_module superhomogeneous.
 
 :- import_module hlds.make_hlds.add_class.
-:- import_module hlds.make_hlds.add_pred.
-:- import_module hlds.make_hlds.add_special_pred.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds.qual_info.
 
@@ -226,25 +187,6 @@ parse_tree_to_hlds(AugCompilationUnit, Globals, DumpBaseFileName,
     do_parse_tree_to_hlds(AugCompilationUnit, Globals, DumpBaseFileName,
         MQInfo0, TypeEqvMap, UsedModules, QualInfo,
         FoundInvalidType, FoundInvalidMode, ModuleInfo, Specs).
-
-add_new_proc(Context, ItemNumber, Arity,
-        InstVarSet, ArgModes, MaybeDeclaredArgModes,
-        MaybeArgLives, DetismDecl, MaybeDet, IsAddressTaken,
-        HasParallelConj, PredInfo0, PredInfo, ModeId) :-
-    do_add_new_proc(Context, ItemNumber, Arity,
-        InstVarSet, ArgModes, MaybeDeclaredArgModes,
-        MaybeArgLives, DetismDecl, MaybeDet, IsAddressTaken,
-        HasParallelConj, PredInfo0, PredInfo, ModeId).
-
-add_special_pred_for_real(SpecialPredId, TVarSet,
-        Type0, TypeCtor, TypeBody, Context, Status0, !ModuleInfo) :-
-    do_add_special_pred_for_real(SpecialPredId, TVarSet,
-        Type0, TypeCtor, TypeBody, Context, Status0, !ModuleInfo).
-
-add_special_pred_decl_for_real(SpecialPredId, TVarSet,
-        Type, TypeCtor, Context, Status0, !ModuleInfo) :-
-    do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
-        Type, TypeCtor, Context, Status0, !ModuleInfo).
 
 produce_instance_method_clauses(InstanceProcDefn,
         PredOrFunc, PredArity, ArgTypes, Markers, Context, Status,

@@ -137,7 +137,7 @@
     % Their meanings are documented there.
     %
 :- type type_ctor_flag
-    --->    reserve_tag_flag
+    --->    reserve_tag_flag            % XXX TYPE_REPN This is obsolete.
     ;       variable_arity_flag
     ;       kind_of_du_flag.
 
@@ -149,8 +149,8 @@
     % enum, du, reserved and notag. Enum is for types that define only
     % constants. Notag is for types that define only one unary functor.
     % Reserved is for types in which at least one functor is represented
-    % using a reserved value, which may be the address of an object or a
-    % small integer (including zero). Du is for all other types.
+    % using a reserved value, which may be a small integer (including zero).
+    % Du is for all other types.
     %
     % All four alternatives have four kinds of information.
     %
@@ -860,11 +860,6 @@
     % Extract the reserved address from a reserved address functor descriptor.
     %
 :- func res_addr_rep(reserved_functor) = reserved_address.
-
-    % Reserved addresses can be numeric or symbolic. Succeed if the
-    % one passed is numeric.
-    %
-:- pred res_addr_is_numeric(reserved_address::in) is semidet.
 
     % Return true iff the given type of RTTI data structure includes
     % code addresses.
@@ -1897,17 +1892,6 @@ maybe_res_functor_rtti_name(res_func(ResFunctor)) =
     type_ctor_res_functor_desc(ResFunctor ^ res_ordinal).
 
 res_addr_rep(ResFunctor) = ResFunctor ^ res_rep.
-
-res_addr_is_numeric(ResAddr) :-
-    require_complete_switch [ResAddr]
-    (
-        ( ResAddr = null_pointer
-        ; ResAddr = small_pointer(_)
-        )
-    ;
-        ResAddr = reserved_object(_, _, _),
-        fail
-    ).
 
 rtti_id_would_include_code_addr(ctor_rtti_id(_, RttiName)) =
     ctor_rtti_name_would_include_code_addr(RttiName).

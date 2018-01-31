@@ -597,6 +597,7 @@ split_items_into_clauses_and_decls([Item | Items],
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
         ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         ),
         !:RevImpDecls = [Item | !.RevImpDecls]
@@ -1084,8 +1085,9 @@ process_module_private_interface(Globals, HaveReadModuleMapInt,
     set.union(AncDirectImports, !DirectImports),
     set.union(AncDirectUses, !DirectUses).
 
-:- pred process_module_long_interface(globals::in, have_read_module_int_map::in,
-    need_qualifier::in, module_name::in, int_file_kind::in,
+:- pred process_module_long_interface(globals::in,
+    have_read_module_int_map::in, need_qualifier::in,
+    module_name::in, int_file_kind::in,
     int_section_maker(MS)::in, int_section_maker(MS)::in,
     section_appender(MS)::in(section_appender),
     set(module_name)::in, set(module_name)::out,

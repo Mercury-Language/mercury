@@ -6,21 +6,40 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module hlds.make_hlds.add_pragma.add_foreign_enum.
+:- module hlds.add_foreign_enum.
 :- interface.
 
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module map.
+:- import_module maybe.
 
-:- pred add_pragma_foreign_export_enum(pragma_info_foreign_export_enum::in,
-    type_status::in, prog_context::in, module_info::in, module_info::out,
+% XXX TYPE_REPN order of predicates
+:- pred add_pragma_foreign_export_enum(item_foreign_export_enum_info::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_pragma_foreign_enum(pragma_info_foreign_enum::in,
-    type_status::in, prog_context::in, module_info::in, module_info::out,
+%-----------------------------------------------------------------------------%
+
+:- type type_ctor_foreign_enums
+    --->    type_ctor_foreign_enums(
+                tcfe_lang_contexts      :: map(foreign_language, prog_context),
+                tcfe_tag_values         :: maybe({cons_id_to_tag_map,
+                                                foreign_language})
+            ).
+
+:- type type_ctor_to_foreign_enums_map
+    == map(type_ctor, type_ctor_foreign_enums).
+
+:- pred add_pragma_foreign_enum(module_info::in, item_foreign_enum_info::in,
+    type_ctor_to_foreign_enums_map::in, type_ctor_to_foreign_enums_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -29,12 +48,17 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.c_util.
+:- import_module hlds.make_hlds_error.
+:- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_item.
 
 :- import_module assoc_list.
 :- import_module bimap.
-:- import_module map.
+:- import_module bool.
 :- import_module pair.
 :- import_module require.
 :- import_module set_tree234.
@@ -42,8 +66,10 @@
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
-        !ModuleInfo, Specs0, Specs) :-
+add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
+        Specs0, Specs) :-
+    ItemForeignExportEnum = item_foreign_export_enum_info(FEEInfo,
+        _ItemMercuryStatus, Context, _SeqNum),
     FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
         Attributes, Overrides),
     TypeCtor = type_ctor(TypeName, TypeArity),
@@ -77,11 +103,17 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
                     not_enum_non_du(NonDu), !ErrorSeveritiesPieces)
             ;
                 % XXX How should we handle IsForeignType here?
-                TypeBody = hlds_du_type(Ctors, TagValues, _CheaperTagTest,
-                    DuTypeKind, _MaybeUserEq, _MaybeDirectArgCtors,
-                    ReservedTag, _ReservedAddr, _IsForeignType),
-                report_if_reserved_tag(TypeName, TypeArity, ReservedTag,
-                    !ErrorSeveritiesPieces),
+                TypeBody = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn,
+                    _IsForeignType),
+                (
+                    MaybeRepn = no,
+                    unexpected($pred, "MaybeRepn = no")
+                ;
+                    MaybeRepn = yes(Repn)
+                ),
+                Repn = du_type_repn(TagValues, _ConsRepns, _ConsCtorMap,
+                    _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors,
+                    _ReservedAddr),
                 find_enum_nonenum_cons_ids(map.keys(TagValues),
                     [], _EnumSymNames, [], NonEnumConsIds),
                 (
@@ -89,8 +121,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
                     ; DuTypeKind = du_type_kind_notag(_, _, _)
                     ),
                     report_not_enum_type(TypeName, TypeArity,
-                        not_enum_du(ReservedTag, NonEnumConsIds),
-                        !ErrorSeveritiesPieces)
+                        not_enum_du(NonEnumConsIds), !ErrorSeveritiesPieces)
                 ;
                     ( DuTypeKind = du_type_kind_mercury_enum
                     ; DuTypeKind = du_type_kind_foreign_enum(_)
@@ -98,7 +129,8 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
                     )
                 ),
 
-                Attributes = export_enum_attributes(MaybePrefix, MakeUpperCase),
+                Attributes =
+                    export_enum_attributes(MaybePrefix, MakeUpperCase),
                 (
                     MaybePrefix = yes(Prefix)
                 ;
@@ -368,8 +400,17 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo,
-        Specs0, Specs) :-
+add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
+        !TypeCtorForeignEnumMap, Specs0, Specs) :-
+    ItemForeignExportEnum = item_foreign_enum_info(FEInfo, ItemMercuryStatus,
+        Context, SeqNum),
+    % XXX we shouldn't have to construct ItemPragmaInfo to do the
+    % wrongly-in-interface test.
+    ItemPragmaInfo = item_pragma_info(pragma_foreign_enum(FEInfo),
+        item_origin_user, Context, SeqNum),
+    report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
+        Specs0, Specs1),
+    item_mercury_status_to_type_status(ItemMercuryStatus, PragmaStatus),
     FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignTagValues),
     TypeCtor = type_ctor(TypeName, TypeArity),
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
@@ -382,7 +423,8 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo,
         !:Specs = [],
         report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces),
 
-        module_info_get_type_table(!.ModuleInfo, TypeTable0),
+        % XXX TYPE_REPN Delete any unneeded 0 suffixes on variable names.
+        module_info_get_type_table(ModuleInfo, TypeTable0),
         ( if search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0) then
             get_type_defn_status(TypeDefn0, TypeStatus),
             % Either both the type and the pragma are defined in this module,
@@ -432,96 +474,97 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo,
                     NonDu = "a foreign type"
                 ),
                 report_not_enum_type(TypeName, TypeArity,
-                    not_enum_non_du(NonDu), !ErrorSeveritiesPieces)
+                    not_enum_non_du(NonDu), !ErrorSeveritiesPieces),
+                list.foldl(
+                    add_error_severity_pieces(Context, ContextPieces),
+                    !.ErrorSeveritiesPieces, !Specs)
             ;
-                TypeBody0 = hlds_du_type(Ctors, OldTagValues, CheaperTagTest,
-                    DuTypeKind0, MaybeUserEq, MaybeDirectArgCtors,
-                    ReservedTag, ReservedAddr, IsForeignType),
-                report_if_reserved_tag(TypeName, TypeArity, ReservedTag,
-                    !ErrorSeveritiesPieces),
-                find_enum_nonenum_cons_ids(map.keys(OldTagValues),
+                TypeBody0 = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn0,
+                    _IsForeignType),
+                expect(unify(MaybeRepn0, no), $pred, "MaybeRepn0 != no"),
+
+                list.map(constructor_to_cons_id(TypeCtor),
+                    Ctors, ConsIds),
+                find_enum_nonenum_cons_ids(ConsIds,
                     [], EnumSymNames, [], NonEnumConsIds),
+                (
+                    NonEnumConsIds = []
+                ;
+                    NonEnumConsIds = [_ | _],
+                    report_not_enum_type(TypeName, TypeArity,
+                        not_enum_du(NonEnumConsIds), !ErrorSeveritiesPieces)
+                ),
 
                 % Work out what language's foreign_enum pragma we should be
                 % looking at for the current compilation target language.
-                module_info_get_globals(!.ModuleInfo, Globals),
+                module_info_get_globals(ModuleInfo, Globals),
                 globals.get_target(Globals, TargetLanguage),
                 LangForForeignEnums =
                     target_lang_to_foreign_enum_lang(TargetLanguage),
-                (
-                    ( DuTypeKind0 = du_type_kind_general
-                    ; DuTypeKind0 = du_type_kind_notag(_, _, _)
-                    ),
-                    report_not_enum_type(TypeName, TypeArity,
-                        not_enum_du(ReservedTag, NonEnumConsIds),
-                        !ErrorSeveritiesPieces)
-                ;
-                    DuTypeKind0 = du_type_kind_foreign_enum(_),
-                    ( if
-                        ( LangForForeignEnums \= Lang
-                        ; PragmaStatus = type_status(status_opt_imported)
-                        )
-                    then
-                        true
-                    else
-                        % XXX appending ContextPieces (as below) makes this
-                        % read awkwardly -- also we should report the location
-                        % of the duplicate foreign_enum pragmas.
-                        MultiplePragmasErrorPieces = [words("error: "),
-                            qual_sym_name_and_arity(
-                                sym_name_arity(TypeName, TypeArity)),
-                            words("has multiple foreign_enum pragmas.")],
-                        !:ErrorSeveritiesPieces =
-                            [{severity_error, MultiplePragmasErrorPieces} |
-                                !.ErrorSeveritiesPieces]
-                    )
-                ;
-                    ( DuTypeKind0 = du_type_kind_direct_dummy
-                    ; DuTypeKind0 = du_type_kind_mercury_enum
-                    ),
-                    expect(unify(NonEnumConsIds, []), $pred,
-                        "direct_dummy or mercury_enum with non-enum cons_id(s)")
-                ),
 
-                DuTypeKind = du_type_kind_foreign_enum(Lang),
                 list.foldl(gather_ctor_name, Ctors,
                     set_tree234.init, CtorNameSet),
                 build_foreign_enum_tag_map(Context, ContextPieces,
                     CtorNameSet, TypeName, ForeignTagValues,
                     MaybeForeignTagMap, !Specs),
-                ( if
-                    LangForForeignEnums = Lang,
-                    MaybeForeignTagMap = yes(ForeignTagMap)
-                then
+                (
+                    MaybeForeignTagMap = no,
+                    MaybeTagValues = no
+                ;
+                    MaybeForeignTagMap = yes(ForeignTagMap),
                     list.foldl2(
                         make_foreign_tag(TypeCtor, Lang, ForeignTagMap),
-                        EnumSymNames, map.init, TagValues, [], UnmappedCtors),
+                        EnumSymNames, map.init, TagValues0, [], UnmappedCtors),
+                    MaybeTagValues = yes(TagValues0),
                     (
                         UnmappedCtors = []
                     ;
                         UnmappedCtors = [_ | _],
                         add_foreign_enum_unmapped_ctors_error(Context,
                             ContextPieces, UnmappedCtors, !Specs)
-                    ),
-                    ( if
-                        !.ErrorSeveritiesPieces = [],
-                        !.Specs = []
-                    then
-                        TypeBody = hlds_du_type(Ctors, TagValues,
-                            CheaperTagTest, DuTypeKind, MaybeUserEq,
-                            MaybeDirectArgCtors, ReservedTag, ReservedAddr,
-                            IsForeignType),
-                        set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
-                        replace_type_ctor_defn(TypeCtor, TypeDefn,
-                            TypeTable0, TypeTable),
-                        module_info_set_type_table(TypeTable, !ModuleInfo)
-                    else
-                        true
                     )
+                ),
+
+                list.foldl(
+                    add_error_severity_pieces(Context, ContextPieces),
+                    !.ErrorSeveritiesPieces, !Specs),
+
+                ( if
+                    MaybeTagValues = yes(TagValues),
+                    Lang = LangForForeignEnums,
+                    !.Specs = []
+                then
+                    MaybeTagValuesToSet = yes({TagValues, Lang})
                 else
-                    % If there are no matching foreign_enum pragmas for
-                    % this target language, then don't do anything.
-                    true
+                    MaybeTagValuesToSet = no
+                ),
+
+                ( if map.search(!.TypeCtorForeignEnumMap, TypeCtor, TCFE0) then
+                    TCFE0 = type_ctor_foreign_enums(LangContextMap0,
+                        _OldMaybeTagValues),
+                    ( if map.search(LangContextMap0, Lang, OldContext) then
+                        maybe_add_duplicate_foreign_enum_error(
+                            TypeName, TypeArity, Lang, PragmaStatus,
+                            OldContext, Context, !Specs),
+                        TCFE1 = TCFE0
+                    else
+                        map.det_insert(Lang, Context,
+                            LangContextMap0, LangContextMap),
+                        TCFE1 = TCFE0 ^ tcfe_lang_contexts := LangContextMap
+                    ),
+                    (
+                        MaybeTagValuesToSet = no,
+                        TCFE = TCFE1
+                    ;
+                        MaybeTagValuesToSet = yes(_),
+                        TCFE = TCFE1 ^ tcfe_tag_values := MaybeTagValuesToSet
+                    ),
+                    map.det_update(TypeCtor, TCFE, !TypeCtorForeignEnumMap)
+                else
+                    LangContextMap = map.singleton(Lang, Context),
+                    TCFE = type_ctor_foreign_enums(LangContextMap,
+                        MaybeTagValuesToSet),
+                    map.det_insert(TypeCtor, TCFE, !TypeCtorForeignEnumMap)
                 )
             )
         else
@@ -530,15 +573,15 @@ add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo,
             % will have already done so.
             true
         ),
-        (
-            !.ErrorSeveritiesPieces = [_ | _],
-            list.foldl(add_error_severity_pieces(Context, ContextPieces),
-                !.ErrorSeveritiesPieces, !Specs)
-        ;
-            !.ErrorSeveritiesPieces = []
-        ),
-        Specs = !.Specs ++ Specs0
+        Specs = !.Specs ++ Specs1
     ).
+
+:- pred constructor_to_cons_id(type_ctor::in, constructor::in, cons_id::out)
+    is det.
+
+constructor_to_cons_id(TypeCtor, Ctor, ConsId) :-
+    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+    ConsId = cons(SymName, Arity, TypeCtor).
 
 :- pred gather_ctor_name(constructor::in,
     set_tree234(string)::in, set_tree234(string)::out) is det.
@@ -560,29 +603,30 @@ build_foreign_enum_tag_map(Context, ContextPieces, CtorNameSet, TypeName,
     ;
         TypeName = unqualified(_),
         unexpected($module, $pred,
-            "unqualified type name while processing foreign tags.")
+            "unqualified type name while processing foreign enum tags")
     ),
     list.map_foldl2(
         fixup_foreign_tag_val_qualification(CtorNameSet, TypeModuleName),
-        ForeignTagValues0, ForeignTagValues1, [], BadCtors, [], UnknownCtors),
+        ForeignTagValues0, ForeignTagValues,
+        [], BadQualCtors, [], UnknownCtors),
     (
         UnknownCtors = []
     ;
         UnknownCtors = [_ | _],
-        add_unknown_ctors_error(Context, ContextPieces, UnknownCtors, !Specs)
+        add_unknown_ctors_error(Context, ContextPieces, UnknownCtors,
+            !Specs)
     ),
-    ( if
-        BadCtors = [],
-        UnknownCtors = []
-    then
-        ( if bimap.from_assoc_list(ForeignTagValues1, ForeignTagValues) then
-            ForeignTagMap = ForeignTagValues ^ forward_map,
-            MaybeForeignTagMap = yes(ForeignTagMap)
-        else
-            add_foreign_enum_bijection_error(Context, ContextPieces, !Specs),
-            MaybeForeignTagMap = no
-        )
+    (
+        BadQualCtors = []
+    ;
+        BadQualCtors = [_ | _],
+        add_bad_qual_ctors_error(Context, ContextPieces, BadQualCtors, !Specs)
+    ),
+    ( if bimap.from_assoc_list(ForeignTagValues, ForeignTagBiMap) then
+        ForeignTagMap = ForeignTagBiMap ^ forward_map,
+        MaybeForeignTagMap = yes(ForeignTagMap)
     else
+        add_foreign_enum_bijection_error(Context, ContextPieces, !Specs),
         MaybeForeignTagMap = no
     ).
 
@@ -598,7 +642,7 @@ build_foreign_enum_tag_map(Context, ContextPieces, CtorNameSet, TypeName,
     list(sym_name)::in, list(sym_name)::out) is det.
 
 fixup_foreign_tag_val_qualification(CtorNameSet, TypeModuleName, !NamesAndTags,
-        !BadCtors, !UnknownCtors) :-
+        !BadQualCtors, !UnknownCtors) :-
     !.NamesAndTags = CtorSymName0 - ForeignTag,
     (
         CtorSymName0 = unqualified(Name),
@@ -608,11 +652,11 @@ fixup_foreign_tag_val_qualification(CtorNameSet, TypeModuleName, !NamesAndTags,
         ( if partial_sym_name_matches_full(CtorModuleName, TypeModuleName) then
             CtorSymName = qualified(TypeModuleName, Name)
         else
-            !:BadCtors = [CtorSymName0 | !.BadCtors],
+            !:BadQualCtors = [CtorSymName0 | !.BadQualCtors],
             CtorSymName = CtorSymName0
         )
     ),
-    ( if CtorNameSet `set_tree234.contains` Name then
+    ( if set_tree234.contains(CtorNameSet, Name) then
         true
     else
         !:UnknownCtors = [CtorSymName0 | !.UnknownCtors]
@@ -646,15 +690,15 @@ find_enum_nonenum_cons_ids([ConsId | ConsIds],
 
 :- pred make_foreign_tag(type_ctor::in, foreign_language::in,
     map(sym_name, string)::in, sym_name::in,
-    cons_tag_values::in, cons_tag_values::out,
+    cons_id_to_tag_map::in, cons_id_to_tag_map::out,
     list(sym_name)::in, list(sym_name)::out) is det.
 
 make_foreign_tag(TypeCtor, ForeignLanguage, ForeignTagMap, ConsSymName,
-        !ConsTagValues, !UnmappedCtors) :-
+        !ConsIdToTagMap, !UnmappedCtors) :-
     ( if map.search(ForeignTagMap, ConsSymName, ForeignTagValue) then
         ForeignTag = foreign_tag(ForeignLanguage, ForeignTagValue),
         ConsId = cons(ConsSymName, 0, TypeCtor),
-        map.set(ConsId, ForeignTag, !ConsTagValues)
+        map.set(ConsId, ForeignTag, !ConsIdToTagMap)
     else
         !:UnmappedCtors = [ConsSymName | !.UnmappedCtors]
     ).
@@ -731,6 +775,22 @@ add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred add_bad_qual_ctors_error(prog_context::in, format_components::in,
+    list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
+    HasOrHave = choose_number(Ctors, "symbol has", "symbols have"),
+    ErrorPieces = [words("error: the following"),
+        words(HasOrHave), words("a module qualification"),
+        words("that is not compatible with the type definition:"),
+        nl_indent_delta(2)] ++
+        unqual_ctors_to_line_pieces(Ctors, [suffix(".")]),
+    Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+%-----------------------------------------------------------------------------%
+
 :- pred add_foreign_enum_bijection_error(prog_context::in,
     format_components::in, list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -757,6 +817,33 @@ add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
     Msg = simple_msg(Context, [always(ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_add_duplicate_foreign_enum_error(sym_name::in, arity::in,
+    foreign_language::in, type_status::in, prog_context::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_add_duplicate_foreign_enum_error(TypeName, TypeArity, Lang, PragmaStatus,
+        OldContext, Context, !Specs) :-
+    ( if PragmaStatus = type_status(status_opt_imported) then
+        true
+    else
+        TypeSymNameArity = sym_name_arity(TypeName, TypeArity),
+        LangStr = mercury_foreign_language_to_string(Lang),
+        CurPieces = [words("Error: duplicate foreign_enum pragma"),
+            words("for type constructor"),
+            qual_sym_name_and_arity(TypeSymNameArity),
+            words("and target language"), fixed(LangStr), suffix("."), nl],
+        OldPieces = [words("The first foreign_enum pragma"),
+            words("for"), qual_sym_name_and_arity(TypeSymNameArity),
+            words("and"), fixed(LangStr), words("was here."), nl],
+        CurMsg = simple_msg(Context, [always(CurPieces)]),
+        OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [CurMsg, OldMsg]),
+        !:Specs = [Spec | !.Specs]
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -792,30 +879,8 @@ report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces) :-
         true
     ).
 
-:- pred report_if_reserved_tag(sym_name::in, arity::in, uses_reserved_tag::in,
-    list({error_severity, list(format_component)})::in,
-    list({error_severity, list(format_component)})::out) is det.
-
-report_if_reserved_tag(TypeName, TypeArity, ReservedTag,
-        !ErrorSeveritiesPieces) :-
-    (
-        ReservedTag = does_not_use_reserved_tag
-    ;
-        ReservedTag = uses_reserved_tag,
-        ReservedTagErrorPieces = [words("error: "),
-            words("this pragma conflicts with"),
-            words("the reserve_tag pragma on "),
-            unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            suffix("."), nl],
-        !:ErrorSeveritiesPieces =
-            [{severity_error, ReservedTagErrorPieces} | !.ErrorSeveritiesPieces]
-    ).
-
 :- type not_enum_info
     --->    not_enum_du(
-                % Does the type have a reserved tag?
-                uses_reserved_tag,
-
                 % The non-enum cons_ids.
                 list(cons_id)
             )
@@ -839,15 +904,10 @@ report_not_enum_type(TypeName, TypeArity, NotEnumInfo,
         !:ErrorSeveritiesPieces =
             [{severity_error, ErrorPieces} | !.ErrorSeveritiesPieces]
     ;
-        NotEnumInfo = not_enum_du(ReservedTag, NonEnumConsIds),
+        NotEnumInfo = not_enum_du(NonEnumConsIds),
         list.sort_and_remove_dups(NonEnumConsIds, SortedNonEnumConsIds),
         (
-            SortedNonEnumConsIds = [],
-            expect(unify(ReservedTag, uses_reserved_tag), $pred,
-                "no non-enum cons_ids, but no reserved tag")
-            % We don't want to generate an error saying "not an enumeration
-            % type" here, because the type would have been an enumeration
-            % type before the reservation of a tag made that impossible.
+            SortedNonEnumConsIds = []
         ;
             SortedNonEnumConsIds = [_ | _],
             ConsIdPieces =
@@ -872,5 +932,5 @@ wrap_unqual_cons_id_and_maybe_arity(ConsId) =
     unqual_cons_id_and_maybe_arity(ConsId).
 
 %----------------------------------------------------------------------------%
-:- end_module hlds.make_hlds.add_pragma.add_foreign_enum.
+:- end_module hlds.add_foreign_enum.
 %----------------------------------------------------------------------------%

@@ -2058,7 +2058,7 @@ variable_assignment_constraint(Context, Var, Type, !TCInfo) :-
 
 functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
         !TCInfo) :-
-    ConsDefn = hlds_cons_defn(TypeCtor, FunctorTVarSet, TypeParams0, _, _, _,
+    ConsDefn = hlds_cons_defn(TypeCtor, FunctorTVarSet, TypeParams0, _, _,
         FuncArgs, _),
     Context = goal_info_get_context(Info),
     GoalId = goal_info_get_goal_id(Info),
@@ -2190,7 +2190,7 @@ get_case_goal(Case, Case ^ case_goal).
 
 :- pred get_ctor_arg_type(constructor_arg::in, mer_type::out) is det.
 
-get_ctor_arg_type(ctor_arg(_, Type, _, _), Type).
+get_ctor_arg_type(ctor_arg(_, Type, _), Type).
 
 :- func tvar_to_type(tvar) = mer_type.
 

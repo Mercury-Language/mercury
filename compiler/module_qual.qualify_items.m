@@ -303,6 +303,29 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         qualify_mutable(InInt, ItemMutable0, ItemMutable, !Info, !Specs),
         Item = item_mutable(ItemMutable)
     ;
+        Item0 = item_type_repn(ItemTypeRepnInfo0),
+        ItemTypeRepnInfo0 = item_type_repn_info(TypeCtorSymName, ArgTVars,
+            RepInfo0, TVarSet, Context, SeqNum),
+        (
+            ( RepInfo0 = tcrepn_is_direct_dummy
+            ; RepInfo0 = tcrepn_is_notag
+            ; RepInfo0 = tcrepn_fits_in_n_bits(_)
+            ; RepInfo0 = tcrepn_has_direct_arg_functors(_)
+            ),
+            RepInfo = RepInfo0
+        ;
+            RepInfo0 = tcrepn_is_eqv_to(EqvType0),
+            list.length(ArgTVars, TypeCtorArity),
+            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+            ErrorContext = mqec_type_repn(Context, TypeCtor),
+            qualify_type(InInt, ErrorContext, EqvType0, EqvType,
+                !Info, !Specs),
+            RepInfo = tcrepn_is_eqv_to(EqvType)
+        ),
+        ItemTypeRepnInfo = item_type_repn_info(TypeCtorSymName, ArgTVars,
+            RepInfo, TVarSet, Context, SeqNum),
+        Item = item_type_repn(ItemTypeRepnInfo)
+    ;
         Item0 = item_pragma(ItemPragma0),
         ItemPragma0 = item_pragma_info(Pragma0, Origin, Context, SeqNum),
         qualify_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs),
@@ -401,16 +424,25 @@ qualify_constructors(InInt, ContainingTypeCtor,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor, !Info, !Specs) :-
-    Ctor0 = ctor(ExistQVars, Constraints0, FunctionSymbolSymName, Args0,
+    Ctor0 = ctor(MaybeExistConstraints0, FunctionSymbolSymName, Args0,
         Arity, Context),
     FunctionSymbolName = unqualify_name(FunctionSymbolSymName),
-    ConstraintErrorContext = mqcec_type_defn_constructor(Context,
-        ContainingTypeCtor, FunctionSymbolName),
-    qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs),
+    (
+        MaybeExistConstraints0 = no_exist_constraints,
+        MaybeExistConstraints = no_exist_constraints
+    ;
+        MaybeExistConstraints0 = exist_constraints(
+            cons_exist_constraints(ExistQVars, Constraints0)),
+        ConstraintErrorContext = mqcec_type_defn_constructor(Context,
+            ContainingTypeCtor, FunctionSymbolName),
+        qualify_prog_constraint_list(InInt, ConstraintErrorContext,
+            Constraints0, Constraints, !Info, !Specs),
+        MaybeExistConstraints = exist_constraints(
+            cons_exist_constraints(ExistQVars, Constraints))
+    ),
     qualify_constructor_args(InInt, ContainingTypeCtor, FunctionSymbolName,
         0, Args0, Args, !Info, !Specs),
-    Ctor = ctor(ExistQVars, Constraints, FunctionSymbolSymName, Args,
+    Ctor = ctor(MaybeExistConstraints, FunctionSymbolSymName, Args,
         Arity, Context).
 
 :- pred qualify_constructor_args(mq_in_interface::in,
@@ -435,11 +467,11 @@ qualify_constructor_args(InInt, ContainingTypeCtor, FunctionSymbol,
 
 qualify_constructor_arg(InInt, ContainingTypeCtor, FunctionSymbol, ArgNum,
         Arg0, Arg, !Info, !Specs) :-
-    Arg0 = ctor_arg(MaybeFieldName, Type0, Width, Context),
+    Arg0 = ctor_arg(MaybeFieldName, Type0, Context),
     ErrorContext = mqec_constructor_arg(Context, ContainingTypeCtor,
         FunctionSymbol, ArgNum, MaybeFieldName),
     qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-    Arg = ctor_arg(MaybeFieldName, Type, Width, Context).
+    Arg = ctor_arg(MaybeFieldName, Type, Context).
 
 :- pred qualify_type_list(mq_in_interface::in, mq_error_context::in,
     list(mer_type)::in, list(mer_type)::out, mq_info::in, mq_info::out,
@@ -515,7 +547,8 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
         ),
         Type = Type0
     ;
-        Type0 = higher_order_type(PorF, Args0, HOInstInfo0, Purity, EvalMethod),
+        Type0 = higher_order_type(PorF, Args0, HOInstInfo0, Purity,
+            EvalMethod),
         % XXX We could pass a more specific error context.
         qualify_type_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
         % XXX We could pass a more specific error context.
@@ -547,15 +580,15 @@ qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
         !Info, !Specs) :-
     TypeCtor0 = type_ctor(SymName0, Arity),
     ( if is_builtin_atomic_type(TypeCtor0) then
-        SymName = SymName0
+        TypeCtor = TypeCtor0
     else
         TypeCtorId0 = mq_id(SymName0, Arity),
         mq_info_get_types(!.Info, Types),
         % XXX We could pass a more specific error context.
         find_unique_match(InInt, ErrorContext, Types, type_id,
-            TypeCtorId0, SymName, !Info, !Specs)
-    ),
-    TypeCtor = type_ctor(SymName, Arity).
+            TypeCtorId0, SymName, !Info, !Specs),
+        TypeCtor = type_ctor(SymName, Arity)
+    ).
 
     % is_builtin_atomic_type(TypeCtor):
     %
@@ -1110,19 +1143,15 @@ qualify_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
         ),
         Pragma = Pragma0
     ;
-        Pragma0 = pragma_reserve_tag(_TypeCtor0),
-        % XXX We should be module qualifying TypeCtor0 here,
-        % not in add_pragma.m. However, the code in add_pragma.m
-        % does generate better error messages than qualify_type_ctor does;
-        % this implies we should fix qualify_type_ctor.
-        Pragma = Pragma0
-    ;
         Pragma0 = pragma_foreign_export_enum(FEEInfo0),
         FEEInfo0 = pragma_info_foreign_export_enum(Lang, TypeCtor0,
             Attributes, Overrides),
         ErrorContext = mqec_pragma(Context, Pragma0),
+        mq_info_get_suppress_found_undef(!.Info, OldSuppressUndef),
+        mq_info_set_suppress_found_undef(suppress_found_undef, !Info),
         qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
             !Info, !Specs),
+        mq_info_set_suppress_found_undef(OldSuppressUndef, !Info),
         FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
             Attributes, Overrides),
         Pragma = pragma_foreign_export_enum(FEEInfo)

@@ -126,7 +126,7 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
     ;
         PragmaName = "foreign_type",
         parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm,
-            PragmaTerms, Context, SeqNum, ok1(no), MaybeIOM)
+            PragmaTerms, Context, SeqNum, ok1(canon), MaybeIOM)
     ;
         PragmaName = "foreign_decl",
         parse_pragma_foreign_decl_pragma(VarSet, ErrorTerm,
@@ -247,15 +247,6 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         parse_pragma_require_tail_recursion(ModuleName, PragmaTerms,
             ErrorTerm, VarSet, Context, SeqNum, MaybeIOM)
     ;
-        PragmaName = "reserve_tag",
-        MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-            TypeCtor = type_ctor(Name, Arity),
-            Pragma = pragma_reserve_tag(TypeCtor)
-        ),
-        parse_name_arity_pragma(ModuleName, PragmaName,
-            "type", MakePragma, PragmaTerms, ErrorTerm,
-            VarSet, Context, SeqNum, MaybeIOM)
-    ;
         PragmaName = "oisu",
         parse_oisu_pragma(ModuleName, VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
@@ -373,10 +364,10 @@ parse_pragma_source_file(PragmaTerms, Context, MaybeIOM) :-
 
 :- pred parse_pragma_foreign_type(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
-    maybe1(maybe(unify_compare))::in, maybe1(item_or_marker)::out) is det.
+    maybe1(maybe_canonical)::in, maybe1(item_or_marker)::out) is det.
 
 parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
-        Context, SeqNum, MaybeMaybeUC, MaybeIOM) :-
+        Context, SeqNum, MaybeMaybeCanonical, MaybeIOM) :-
     ( if
         (
             PragmaTerms = [LangTerm, MercuryTypeTerm, ForeignTypeTerm],
@@ -397,8 +388,7 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             words("In second argument of"), pragma_decl("foreign_type"),
             words("declaration:")
         ]),
-        parse_type_defn_head(
-            tdhpc_foreign_type_pragma(TypeDefnHeadContextPieces),
+        parse_type_defn_head(TypeDefnHeadContextPieces,
             ModuleName, VarSet, MercuryTypeTerm, MaybeTypeDefnHead),
         ForeignTypeContextPieces = cord.from_list([
             words("In third argument of"), pragma_decl("foreign_type"),
@@ -426,11 +416,11 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeTypeDefnHead = ok2(MercuryTypeSymName, MercuryParams),
             MaybeForeignType = ok1(ForeignType),
             AssertionSpecs = [],
-            MaybeMaybeUC = ok1(MaybeUC)
+            MaybeMaybeCanonical = ok1(MaybeCanonical)
         then
             varset.coerce(VarSet, TVarSet),
             TypeDetailsForeign =
-                type_details_foreign(ForeignType, MaybeUC, Assertions),
+                type_details_foreign(ForeignType, MaybeCanonical, Assertions),
             ItemTypeDefn = item_type_defn_info(MercuryTypeSymName,
                 MercuryParams, parse_tree_foreign_type(TypeDetailsForeign),
                 TVarSet, Context, SeqNum),
@@ -441,7 +431,7 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 get_any_errors2(MaybeTypeDefnHead) ++
                 get_any_errors1(MaybeForeignType) ++
                 AssertionSpecs ++
-                get_any_errors1(MaybeMaybeUC),
+                get_any_errors1(MaybeMaybeCanonical),
             MaybeIOM = error1(Specs)
         )
     else
@@ -645,6 +635,9 @@ parse_export_enum_attributes(VarSet, AttributesTerm, AttributesResult) :-
     Attributes0 = default_export_enum_attributes,
     ConflictingAttributes = [],
     ( if
+        % XXX TYPE_REPN Generate different error messages for
+        % (a) the failure of list_term_to_term_list, and
+        % (b) the failure of any of the invocations of parse_export_enum_attr.
         list_term_to_term_list(AttributesTerm, AttributesTerms),
         map_parser(parse_export_enum_attr(VarSet), AttributesTerms,
             MaybeAttrList),

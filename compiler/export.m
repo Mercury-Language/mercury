@@ -932,10 +932,10 @@ exported_enum_is_for_c(ExportedEnumInfo) :-
 output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
         ExportedEnumInfo, !IO) :-
     ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor,
-        NameMapping, Ctors, TagValues),
+        NameMapping, Ctors, ConsIdToTagMap),
     expect(unify(Lang, lang_c), $module, $pred, "Lang != lang_c"),
     list.foldl(
-        foreign_const_name_and_tag(TypeCtor, NameMapping, TagValues),
+        foreign_const_name_and_tag(TypeCtor, NameMapping, ConsIdToTagMap),
         Ctors, cord.init, ForeignNamesAndTagsCord),
     ForeignNamesAndTags = cord.list(ForeignNamesAndTagsCord),
     term.context_file(Context, File),
@@ -974,15 +974,15 @@ output_exported_enum_constname_tag(Stream, ConstName - Tag, !IO) :-
     ).
 
 :- pred foreign_const_name_and_tag(type_ctor::in, map(sym_name, string)::in,
-    cons_tag_values::in, constructor::in,
+    cons_id_to_tag_map::in, constructor::in,
     cord(pair(string, exported_enum_tag_rep))::in,
     cord(pair(string, exported_enum_tag_rep))::out) is det.
 
-foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
+foreign_const_name_and_tag(TypeCtor, Mapping, ConsIdToTagMap, Ctor,
         !NamesAndTagsCord) :-
-    Ctor = ctor(_, _, QualifiedCtorName, _Args, Arity, _),
+    Ctor = ctor(_, QualifiedCtorName, _Args, Arity, _),
     ConsId = cons(QualifiedCtorName, Arity, TypeCtor),
-    map.lookup(TagValues, ConsId, TagVal),
+    map.lookup(ConsIdToTagMap, ConsId, TagVal),
     (
         TagVal = int_tag(IntTagType),
         (

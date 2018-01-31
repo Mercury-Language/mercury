@@ -276,8 +276,20 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- type type_details_du
     --->    type_details_du(
+                % The list of data constructors (function symbols) defined
+                % by the type constructor.
                 du_ctors            :: list(constructor),
-                du_user_uc          :: maybe(unify_compare),
+
+                % Does the type constructor definition specify
+                % a unification and/or comparison predicate for its instances?
+                du_canonical        :: maybe_canonical,
+
+                % Is any of the data constructors in du_ctors using the
+                % direct_arg optimization, in which its representation is a
+                % tagged pointer to a representation of its single argument
+                % (which must be a *non*-tagged pointer to a heap cell)?
+                % XXX TYPE_REPN This information should NOT be in type_defn
+                % items, but in separate type_representation items.
                 du_direct_arg       :: maybe(list(sym_name_and_arity))
             ).
 
@@ -288,22 +300,34 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- type type_details_abstract
     --->    abstract_type_general
-    ;       abstract_enum_type(int)
-            % The abstract type is known to be an enumeration type, requiring
-            % the given number of bits required to represent.
+
+    ;       abstract_type_fits_in_n_bits(int)
+            % The abstract type is an enumeration type, requiring
+            % the given number of bits to represent.
+            % XXX TYPE_REPN The part about "is an enumeration type"
+            % is a temporary limitation. In the future, we will also use this
+            % for the abstract versions of other types that can fit in less
+            % then one word, including builtin types such as int8.
+
+    ;       abstract_dummy_type
+            % The abstract type is a dummy type.
+
+    ;       abstract_notag_type
+            % The abstract type is a no_tag type.
+
     ;       abstract_solver_type.
             % An abstract solver type.
 
 :- type type_details_solver
     --->    type_details_solver(
                 solver_details      :: solver_type_details,
-                solver_user_uc      :: maybe(unify_compare)
+                solver_canonical    :: maybe_canonical
             ).
 
 :- type type_details_foreign
     --->    type_details_foreign(
                 foreign_lang_type   :: foreign_language_type,
-                foreign_user_uc     :: maybe(unify_compare),
+                foreign_canonical   :: maybe_canonical,
                 foreign_assertions  :: foreign_type_assertions
             ).
 
@@ -357,29 +381,38 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- type constructor
     --->    ctor(
-                cons_exist          :: existq_tvars,
-                cons_constraints    :: list(prog_constraint),
-                % Existential constraints.
+                % Existential constraints, if any.
+                cons_maybe_exist    :: maybe_cons_exist_constraints,
 
-                cons_name           :: sym_name,
                 % The cons_id should be cons(SymName, Arity, TypeCtor)
                 % for user-defined types, and tuple_cons(Arity) for the
                 % system-defined tuple types.
+                cons_name           :: sym_name,
 
                 cons_args           :: list(constructor_arg),
 
-                cons_num_args       :: int,
                 % We precompute the number of arguments once, to save having
                 % to recompute it many times later.
+                cons_num_args       :: int,
 
                 cons_context        :: prog_context
+            ).
+
+:- type maybe_cons_exist_constraints
+    --->    no_exist_constraints
+    ;       exist_constraints(cons_exist_constraints).
+
+:- type cons_exist_constraints
+    --->    cons_exist_constraints(
+                % Neither list may be empty.
+                cons_exist          :: existq_tvars,
+                cons_constraints    :: list(prog_constraint)
             ).
 
 :- type constructor_arg
     --->    ctor_arg(
                 arg_field_name      :: maybe(ctor_field_name),
                 arg_type            :: mer_type,
-                arg_width           :: arg_width,
                 arg_context         :: prog_context
             ).
 
@@ -416,20 +449,23 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       partial_word_first(int)         % mask
     ;       partial_word_shifted(int, int). % shift, mask
 
-    % unify_compare gives the user-defined unification and/or comparison
+    % The noncanon functor gives the user-defined unification and/or comparison
     % predicates for a noncanonical type, if they are known. The value
-    % `abstract_noncanonical_type' represents a type whose definition uses
-    % the syntax `where type_is_abstract_noncanonical' and has been read
-    % from a .int2 file. This means we know that the type has a
-    % noncanonical representation, but we don't know what the
-    % unification/comparison predicates are.
+    % noncanon_abstract represents a type whose definition uses the syntax
+    % `where type_is_abstract_noncanonical' and has been read from an
+    % .int2 file. This means we know that the type has a noncanonical
+    % representation, but we don't know what the unification or comparison
+    % predicates are.
     %
-:- type unify_compare
-    --->    unify_compare(
-                uc_unify                :: maybe(equality_pred),
-                uc_compare              :: maybe(comparison_pred)
-            )
-    ;       abstract_noncanonical_type(is_solver_type).
+:- type maybe_canonical
+    --->    canon
+    ;       noncanon(noncanonical).
+    
+:- type noncanonical
+    --->    noncanon_uni_cmp(equality_pred, comparison_pred)
+    ;       noncanon_uni_only(equality_pred)
+    ;       noncanon_cmp_only(comparison_pred)
+    ;       noncanon_abstract(is_solver_type).
 
     % The `where' attributes of a solver type definition must begin
     % with
@@ -571,10 +607,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     % existentially quantified
     %
 :- type existq_tvars == list(tvar).
-
-:- type uses_reserved_tag
-    --->    uses_reserved_tag
-    ;       does_not_use_reserved_tag.
 
 :- type uses_reserved_address
     --->    uses_reserved_address

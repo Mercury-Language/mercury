@@ -176,6 +176,15 @@
 :- pred mq_info_get_found_undef_typeclass(mq_info::in,
     maybe_found_undef_typeclass::out) is det.
 
+:- type maybe_suppress_found_undef
+    --->    do_not_suppress_found_undef
+    ;       suppress_found_undef.
+
+:- pred mq_info_get_suppress_found_undef(mq_info::in,
+    maybe_suppress_found_undef::out) is det.
+:- pred mq_info_set_suppress_found_undef(maybe_suppress_found_undef::in,
+    mq_info::in, mq_info::out) is det.
+
 :- pred mq_info_get_recompilation_info(mq_info::in,
     maybe(recompilation_info)::out) is det.
 :- pred mq_info_set_recompilation_info(maybe(recompilation_info)::in,
@@ -508,6 +517,13 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
                 mqsi_found_undef_mode           :: maybe_found_undef_mode,
                 mqsi_found_undef_typeclass      :: maybe_found_undef_typeclass,
 
+                % Do we want to suppress the recording of an undef type, inst,
+                % mode or typeclass, as such? We sometimes do, when the error
+                % won't prevent us from continuing on to later compiler passes.
+                % (We still generate error messages in such instances, of
+                % course.)
+                mqsi_suppress_found_undef       :: maybe_suppress_found_undef,
+
                 % Do we want to report errors.
                 mqsi_should_report_errors       :: maybe_should_report_errors,
                 mqsi_warn_parents_imports       ::
@@ -519,6 +535,9 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
 
 :- type mq_info
     --->    mq_info(
+                % Keep the size of the main mq_info structure at eight fields,
+                % as this allows Boehm gc to allocate memory blocks that don't
+                % have wasted unused space.
                 mqi_sub_info                    :: mq_sub_info,
 
                 % Sets of all modules, types, insts, modes, and typeclasses
@@ -580,9 +599,10 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         WarnUnusedImportsInParents = should_warn_unused_imports_in_parents
     ),
     SubInfo = mq_sub_info(ModuleName, ImportedModules, InstanceModules,
-        ExportedInstancesFlag, did_not_find_undef_type,
-        did_not_find_undef_inst, did_not_find_undef_mode,
-        did_not_find_undef_typeclass,
+        ExportedInstancesFlag,
+        did_not_find_undef_type, did_not_find_undef_inst,
+        did_not_find_undef_mode, did_not_find_undef_typeclass,
+        do_not_suppress_found_undef,
         ReportErrors, WarnUnusedImportsInParents, 0),
 
     id_set_init(ModuleIdSet),
@@ -657,6 +677,8 @@ mq_info_get_found_undef_mode(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_found_undef_mode.
 mq_info_get_found_undef_typeclass(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_found_undef_typeclass.
+mq_info_get_suppress_found_undef(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_suppress_found_undef.
 mq_info_get_should_report_errors(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_should_report_errors.
 mq_info_get_should_warn_unused_imports_in_parents(Info, X) :-
@@ -721,23 +743,31 @@ mq_info_set_found_undef_mode(!Info) :-
 mq_info_set_found_undef_typeclass(!Info) :-
     X = found_undef_typeclass,
     !Info ^ mqi_sub_info ^ mqsi_found_undef_typeclass := X.
+mq_info_set_suppress_found_undef(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_suppress_found_undef := X.
 
 :- pred mq_info_record_undef_mq_id(id_type::in,
     mq_info::in, mq_info::out) is det.
 
 mq_info_record_undef_mq_id(IdType, !Info) :-
+    mq_info_get_suppress_found_undef(!.Info, SuppressFoundUndef),
     (
-        IdType = type_id,
-        mq_info_set_found_undef_type(!Info)
+        SuppressFoundUndef = suppress_found_undef
     ;
-        IdType = inst_id,
-        mq_info_set_found_undef_inst(!Info)
-    ;
-        IdType = mode_id,
-        mq_info_set_found_undef_mode(!Info)
-    ;
-        IdType = class_id,
-        mq_info_set_found_undef_typeclass(!Info)
+        SuppressFoundUndef = do_not_suppress_found_undef,
+        (
+            IdType = type_id,
+            mq_info_set_found_undef_type(!Info)
+        ;
+            IdType = inst_id,
+            mq_info_set_found_undef_inst(!Info)
+        ;
+            IdType = mode_id,
+            mq_info_set_found_undef_mode(!Info)
+        ;
+            IdType = class_id,
+            mq_info_set_found_undef_typeclass(!Info)
+        )
     ).
 
 %---------------------------------------------------------------------------%

@@ -10,18 +10,23 @@
 %
 % Utility predicates for writing out warning and error messages when
 % building the HLDS. Error messages specific to a given submodule of
-% make_hlds.m are in that specific submodule; this submodule is for error
-% messages that are needed by more than one submodule.
+% make_hlds.m are in that specific submodule; this module is for error messages
+% that are either needed by more than one submodule of make_hlds.m, or are
+% needed outside make_hlds.m.
 %
 %-----------------------------------------------------------------------------%
 
-:- module hlds.make_hlds.make_hlds_error.
+:- module hlds.make_hlds_error.
 :- interface.
 
+:- import_module hlds.hlds_module.
+:- import_module hlds.status.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 
@@ -54,6 +59,11 @@
 :- pred error_is_exported(prog_context::in, format_components::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+    % Check for invalid pragmas in interface sections.
+    %
+:- pred report_if_pragma_is_wrongly_in_interface(item_mercury_status::in,
+    item_pragma_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
@@ -62,7 +72,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_errors.
 :- import_module hlds.hlds_error_util.
-:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
@@ -74,6 +84,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
+:- import_module maybe.
 :- import_module set.
 :- import_module string.
 :- import_module varset.
@@ -282,5 +293,30 @@ error_is_exported(Context, ItemPieces, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %----------------------------------------------------------------------------%
-:- end_module hlds.make_hlds.make_hlds_error.
+
+report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
+        !Specs) :-
+    ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, _SeqNum),
+    ( if
+        % Is the pragma in the interface?
+        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+        ItemExport = item_export_anywhere,
+
+        % Is the pragma *wrongly* in the interface?
+        pragma_allowed_in_interface(Pragma) = no,
+
+        % Is there any point in generating an error message about the pragma?
+        % If the pragma was created by the compiler, then the *real* problem
+        % is whatever bug in the compiler caused it to *create* this pragma,
+        % and the user cannot do anything about that bug.
+        MaybeAttrs = item_origin_user
+    then
+        ContextPieces = pragma_context_pieces(Pragma),
+        error_is_exported(Context, ContextPieces, !Specs)
+    else
+        true
+    ).
+
+%----------------------------------------------------------------------------%
+:- end_module hlds.make_hlds_error.
 %----------------------------------------------------------------------------%

@@ -22,12 +22,6 @@
 :- inst item_pragma_info_inst(I) for item_pragma_info/0
     --->    item_pragma_info(I, ground, ground, ground).
 
-:- inst pragma_reserve_tag_inst for pragma_type/0
-    --->    pragma_reserve_tag(ground).
-
-:- inst pragma_foreign_enum_inst for pragma_type/0
-    --->    pragma_foreign_enum(ground).
-
 :- inst pragma_pass_2_inst for pragma_type/0
     --->    pragma_foreign_decl(ground)
     ;       pragma_foreign_code(ground)
@@ -50,8 +44,7 @@
     ;       pragma_does_not_terminate(ground)
     ;       pragma_check_termination(ground)
     ;       pragma_mode_check_clauses(ground)
-    ;       pragma_require_feature_set(ground)
-    ;       pragma_foreign_export_enum(ground).
+    ;       pragma_require_feature_set(ground).
 
 :- inst pragma_pass_3_inst for pragma_type/0
     --->    pragma_foreign_proc(ground)
@@ -65,26 +58,12 @@
     ;       pragma_structure_sharing(ground)
     ;       pragma_structure_reuse(ground).
 
-:- inst ims_pragma_reserve_tag ==
-    ims_item(item_pragma_info_inst(pragma_reserve_tag_inst)).
-:- inst ims_pragma_foreign_enum ==
-    ims_item(item_pragma_info_inst(pragma_foreign_enum_inst)).
 :- inst ims_pragma_pass_2 ==
     ims_item(item_pragma_info_inst(pragma_pass_2_inst)).
 :- inst ims_pragma_pass_3 ==
     ims_item(item_pragma_info_inst(pragma_pass_3_inst)).
 
 %-----------------------------------------------------------------------------%
-
-:- pred add_reserve_tag_pragmas(
-    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_reserve_tag)),
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-:- pred add_foreign_enum_pragmas(
-    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_foreign_enum)),
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pass_2_pragmas(
     list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_pass_2)),
@@ -101,22 +80,19 @@
 
 :- implementation.
 
-:- include_module hlds.make_hlds.add_pragma.add_foreign_enum.
 :- include_module hlds.make_hlds.add_pragma.add_pragma_tabling.
 :- include_module hlds.make_hlds.add_pragma.add_pragma_type_spec.
 
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_foreign_proc.
-:- import_module hlds.make_hlds.add_pragma.add_foreign_enum.
 :- import_module hlds.make_hlds.add_pragma.add_pragma_tabling.
 :- import_module hlds.make_hlds.add_pragma.add_pragma_type_spec.
-:- import_module hlds.make_hlds.add_pred.
-:- import_module hlds.make_hlds.make_hlds_error.
-:- import_module hlds.make_tags.
+:- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
@@ -139,22 +115,13 @@
 :- import_module int.
 :- import_module io.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
-
-add_reserve_tag_pragmas([], !ModuleInfo, !Specs).
-add_reserve_tag_pragmas([SectionItem | SectionItems], !ModuleInfo, !Specs) :-
-    add_reserve_tag_pragma(SectionItem, !ModuleInfo, !Specs),
-    add_reserve_tag_pragmas(SectionItems, !ModuleInfo, !Specs).
-
-add_foreign_enum_pragmas([], !ModuleInfo, !Specs).
-add_foreign_enum_pragmas([SectionItem | SectionItems], !ModuleInfo, !Specs) :-
-    add_foreign_enum_pragma(SectionItem, !ModuleInfo, !Specs),
-    add_foreign_enum_pragmas(SectionItems, !ModuleInfo, !Specs).
 
 add_pass_2_pragmas([], !ModuleInfo, !Specs).
 add_pass_2_pragmas([SectionItem | SectionItems], !ModuleInfo, !Specs) :-
@@ -166,69 +133,6 @@ add_pass_3_pragmas([SectionItem | SectionItems],
         !ModuleInfo, !QualInfo, !Specs) :-
     add_pass_3_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs),
     add_pass_3_pragmas(SectionItems, !ModuleInfo, !QualInfo, !Specs).
-
-%-----------------------------------------------------------------------------%
-
-    % Check for invalid pragmas in the `interface' section.
-    %
-:- pred report_if_pragma_is_wrongly_in_interface(item_mercury_status::in,
-    item_pragma_info::in, list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(report_if_pragma_is_wrongly_in_interface/4).
-
-report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
-        !Specs) :-
-    ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, _SeqNum),
-    ( if
-        % Is the pragma in the interface?
-        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
-        ItemExport = item_export_anywhere,
-
-        % Is the pragma *wrongly* in the interface?
-        pragma_allowed_in_interface(Pragma) = no,
-
-        % Is there any point in generating an error message about the pragma?
-        % If the pragma was created by the compiler, then the *real* problem
-        % is whatever bug in the compiler caused it to *create* this pragma,
-        % and the user cannot do anything about that bug.
-        MaybeAttrs = item_origin_user
-    then
-        ContextPieces = pragma_context_pieces(Pragma),
-        error_is_exported(Context, ContextPieces, !Specs)
-    else
-        true
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred add_reserve_tag_pragma(
-    ims_item(item_pragma_info)::in(ims_pragma_reserve_tag),
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_reserve_tag_pragma(SectionItem, !ModuleInfo, !Specs) :-
-    SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
-    ItemPragmaInfo = item_pragma_info(Pragma, _MaybeAttrs, Context, _SeqNum),
-    Pragma = pragma_reserve_tag(TypeCtor),
-    item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
-    add_pragma_reserve_tag(TypeCtor, TypeStatus, Context,
-        !ModuleInfo, !Specs).
-
-%-----------------------------------------------------------------------------%
-
-:- pred add_foreign_enum_pragma(
-    ims_item(item_pragma_info)::in(ims_pragma_foreign_enum),
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_foreign_enum_pragma(SectionItem, !ModuleInfo, !Specs) :-
-    SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
-    report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
-        !Specs),
-    ItemPragmaInfo = item_pragma_info(Pragma, _MaybeAttrs, Context, _SeqNum),
-    Pragma = pragma_foreign_enum(FEInfo),
-    item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
-    add_pragma_foreign_enum(FEInfo, TypeStatus, Context,
-        !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
@@ -454,11 +358,6 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
         RFSInfo = pragma_info_require_feature_set(FeatureSet),
         check_required_feature_set(FeatureSet, ItemMercuryStatus, Context,
             !ModuleInfo, !Specs)
-    ;
-        Pragma = pragma_foreign_export_enum(FEEInfo),
-        item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
-        add_pragma_foreign_export_enum(FEEInfo, TypeStatus, Context,
-            !ModuleInfo, !Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -656,7 +555,8 @@ add_pragma_require_tail_recursion(Pragma, Context, !ModuleInfo, !Specs) :-
                 map.lookup(Procs0, ProcId, Proc),
                 add_pragma_require_tail_recursion_proc(
                     Pragma ^ rtr_require_tailrec, Context,
-                    PredSymNameArity, ProcId - Proc, PredInfo0, PredInfo, !Specs)
+                    PredSymNameArity, ProcId - Proc,
+                    PredInfo0, PredInfo, !Specs)
             else
                 Pieces = [words("Error: no such mode for"),
                     qual_sym_name_and_arity(PredSymNameArity), words("in"),
@@ -1318,96 +1218,6 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
         PragmaVars0 = [PragmaVar | PragmaVarsTail]
     else
         PragmaVars0 = []
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred add_pragma_reserve_tag(type_ctor::in, type_status::in,
-    prog_context::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
-    TypeCtor = type_ctor(TypeName, TypeArity),
-    module_info_get_type_table(!.ModuleInfo, TypeTable0),
-    ( if search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0) then
-        hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
-        hlds_data.get_type_defn_status(TypeDefn0, TypeStatus),
-        ( if
-            (
-                TypeStatus = PragmaStatus
-            ;
-                TypeStatus = type_status(status_abstract_exported),
-                ( PragmaStatus = type_status(status_local)
-                ; PragmaStatus = type_status(status_exported_to_submodules)
-                )
-            )
-        then
-            (
-                TypeBody0 = hlds_du_type(Body, _CtorTags0, _CheaperTagTest,
-                    _DuTypeKind, MaybeUserEqComp, MaybeDirectArgCtors,
-                    ReservedTag0, _ReservedAddr, IsForeign),
-                ( if
-                    ReservedTag0 = uses_reserved_tag,
-                    % Make doubly sure that we don't get any spurious warnings
-                    % with intermodule optimization ...
-                    TypeStatus \= type_status(status_opt_imported)
-                then
-                    ErrorPieces = [words("warning: multiple"),
-                        pragma_decl("reserved_tag"),
-                        words("declarations for the same type."), nl],
-                    MaybeError = yes({severity_warning, ErrorPieces})
-                else
-                    MaybeError = no
-                ),
-
-                % We passed all the semantic checks. Mark the type as having
-                % a reserved tag, and recompute the constructor tags.
-                ReservedTag = uses_reserved_tag,
-                module_info_get_globals(!.ModuleInfo, Globals),
-                assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor,
-                    ReservedTag, Globals, CtorTags, ReservedAddr, DuTypeKind),
-                TypeBody = hlds_du_type(Body, CtorTags, no_cheaper_tag_test,
-                    DuTypeKind, MaybeUserEqComp, MaybeDirectArgCtors,
-                    ReservedTag, ReservedAddr, IsForeign),
-                hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
-                replace_type_ctor_defn(TypeCtor, TypeDefn,
-                    TypeTable0, TypeTable),
-                module_info_set_type_table(TypeTable, !ModuleInfo)
-            ;
-                ( TypeBody0 = hlds_eqv_type(_)
-                ; TypeBody0 = hlds_foreign_type(_)
-                ; TypeBody0 = hlds_solver_type(_)
-                ; TypeBody0 = hlds_abstract_type(_)
-                ),
-                ErrorPieces = [words("error:"),
-                    qual_sym_name_and_arity(
-                        sym_name_arity(TypeName, TypeArity)),
-                    words("is not a discriminated union type."), nl],
-                MaybeError = yes({severity_error, ErrorPieces})
-            )
-        else
-            ErrorPieces = [words("error:"), pragma_decl("reserve_tag"),
-                words("declaration must have"),
-                words("the same visibility as the type definition.")],
-            MaybeError = yes({severity_error, ErrorPieces})
-        )
-    else
-        ErrorPieces = [words("error: undefined type"),
-            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            suffix("."), nl],
-        MaybeError = yes({severity_error, ErrorPieces})
-    ),
-    (
-        MaybeError = no
-    ;
-        MaybeError = yes({Severity, MaybeErrorPieces}),
-        ContextPieces = [words("In"), pragma_decl("reserve_tag"),
-            words("declaration for"),
-            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            suffix(":"), nl],
-        Msg = simple_msg(Context, [always(ContextPieces ++ MaybeErrorPieces)]),
-        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
     ).
 
 %-----------------------------------------------------------------------------%

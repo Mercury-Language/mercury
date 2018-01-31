@@ -164,9 +164,11 @@ is_integral_type(MLDSType) = IsIntegral :-
             ; CtorCat = ctor_cat_variable
             ; CtorCat = ctor_cat_void
             ; CtorCat = ctor_cat_system(_)
-            ; CtorCat = ctor_cat_user(cat_user_notag)
             ; CtorCat = ctor_cat_user(cat_user_general)
+            ; CtorCat = ctor_cat_user(cat_user_notag)
+            ; CtorCat = ctor_cat_user(cat_user_abstract_notag)
             ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+            ; CtorCat = ctor_cat_user(cat_user_abstract_dummy)
             ),
             IsIntegral = no
         ;

@@ -2502,9 +2502,11 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
             lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             ( if
-                Ctors = TypeBody ^ du_type_ctors,
-                TypeBody ^ du_type_kind = du_type_kind_mercury_enum,
-                TypeBody ^ du_type_usereq  = no
+                TypeBody = hlds_du_type(Ctors, MaybeCanonical, MaybeRepn,
+                    _MaybeForeign),
+                MaybeCanonical = canon,
+                MaybeRepn = yes(Repn),
+                Repn ^ dur_kind = du_type_kind_mercury_enum
             then
                 list.length(Ctors, EnumRange)
             else

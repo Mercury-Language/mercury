@@ -99,13 +99,13 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_data.
 :- import_module hlds.make_goal.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
+:- import_module maybe.
 :- import_module term.
 :- import_module varset.
 

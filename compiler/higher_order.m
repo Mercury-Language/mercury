@@ -2239,7 +2239,8 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     Args = [TypeInfoVar | SpecialPredArgs],
     map.search(KnownVarMap, TypeInfoVar,
         known_const(_TypeInfoConsId, TypeInfoVarArgs)),
-    type_to_ctor(SpecialPredType, type_ctor(_, TypeArity)),
+    type_to_ctor(SpecialPredType, SpecialPredTypeCtor),
+    SpecialPredTypeCtor = type_ctor(_, TypeArity),
     ( if TypeArity = 0 then
         TypeInfoArgs = []
     else
@@ -2326,7 +2327,8 @@ call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
     % We can only specialize unifications and comparisons to call the
     % type-specific unify or compare predicate if we are generating
     % such predicates.
-    find_special_proc(SpecialPredType, SpecialId, SymName, SpecialPredId,
+    type_to_ctor_det(SpecialPredType, SpecialPredTypeCtor),
+    find_special_proc(SpecialPredTypeCtor, SpecialId, SymName, SpecialPredId,
         SpecialProcId, !Info),
     ( if type_is_higher_order(SpecialPredType) then
         % Builtin_*_pred are special cases which don't need the type-info
@@ -2372,8 +2374,9 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
         MaybeResult = yes(ComparisonResult),
         find_builtin_type_with_equivalent_compare(ModuleInfo,
             SpecialPredType, CompareType, NeedIntCast),
-        polymorphism.get_special_proc_det(CompareType, spec_pred_compare,
-            ModuleInfo, SymName, SpecialPredId, SpecialProcId),
+        type_to_ctor_det(CompareType, CompareTypeCtor),
+        polymorphism.get_special_proc_det(ModuleInfo, CompareTypeCtor,
+            spec_pred_compare, SymName, SpecialPredId, SpecialProcId),
         (
             NeedIntCast = no,
             NewCallArgs = [ComparisonResult, Arg1, Arg2],
@@ -2438,8 +2441,9 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
         % Build a new call with the unwrapped arguments.
         find_builtin_type_with_equivalent_compare(ModuleInfo, WrappedType,
             CompareType, NeedIntCast),
-        polymorphism.get_special_proc_det(CompareType, spec_pred_compare,
-            ModuleInfo, SymName, SpecialPredId, SpecialProcId),
+        type_to_ctor_det(CompareType, CompareTypeCtor),
+        polymorphism.get_special_proc_det(ModuleInfo, CompareTypeCtor,
+            spec_pred_compare, SymName, SpecialPredId, SpecialProcId),
         (
             NeedIntCast = no,
             NewCallArgs = [ComparisonResult, UnwrappedArg1, UnwrappedArg2],
@@ -2468,21 +2472,20 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
         )
     ).
 
-:- pred find_special_proc(mer_type::in, special_pred_id::in, sym_name::out,
+:- pred find_special_proc(type_ctor::in, special_pred_id::in, sym_name::out,
     pred_id::out, proc_id::out,
     higher_order_info::in, higher_order_info::out) is semidet.
 
-find_special_proc(Type, SpecialId, SymName, PredId, ProcId, !Info) :-
+find_special_proc(TypeCtor, SpecialId, SymName, PredId, ProcId, !Info) :-
     ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
     ( if
-        polymorphism.get_special_proc(Type, SpecialId, ModuleInfo0, SymName0,
-            PredId0, ProcId0)
+        polymorphism.get_special_proc(ModuleInfo0, TypeCtor, SpecialId,
+            SymName0, PredId0, ProcId0)
     then
         SymName = SymName0,
         PredId = PredId0,
         ProcId = ProcId0
     else
-        type_to_ctor(Type, TypeCtor),
         special_pred_is_generated_lazily(ModuleInfo0, TypeCtor),
         (
             SpecialId = spec_pred_compare,

@@ -199,27 +199,34 @@ process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor, TypeDefn,
 special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
         = NeedsTermCheck :-
     get_type_defn_body(TypeDefn, TypeBody),
-    get_user_unify_compare(ModuleInfo, TypeBody, MaybeUnifyCompare),
+    get_user_unify_compare(ModuleInfo, TypeBody, MaybeCanonical),
     (
-        MaybeUnifyCompare = yes(UnifyCompare),
+        MaybeCanonical = noncanon(NonCanonical),
         (
-            UnifyCompare = unify_compare(MaybeUnify, MaybeCompare),
+            ( NonCanonical = noncanon_uni_cmp(_, _)
+            ; NonCanonical = noncanon_uni_only(_)
+            ; NonCanonical = noncanon_cmp_only(_)
+            ),
             (
                 SpecialPredId = spec_pred_unify,
                 (
-                    MaybeUnify = yes(_),
+                    ( NonCanonical = noncanon_uni_cmp(_, _)
+                    ; NonCanonical = noncanon_uni_only(_)
+                    ),
                     NeedsTermCheck = yes
                 ;
-                    MaybeUnify = no,
+                    NonCanonical = noncanon_cmp_only(_),
                     NeedsTermCheck = no
                 )
             ;
                 SpecialPredId = spec_pred_compare,
                 (
-                    MaybeCompare = yes(_),
+                    ( NonCanonical = noncanon_uni_cmp(_, _)
+                    ; NonCanonical = noncanon_cmp_only(_)
+                    ),
                     NeedsTermCheck = yes
                 ;
-                    MaybeCompare = no,
+                    NonCanonical = noncanon_uni_only(_),
                     NeedsTermCheck = no
                 )
             ;
@@ -230,11 +237,11 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
                 NeedsTermCheck = no
             )
         ;
-            UnifyCompare = abstract_noncanonical_type(_),
-            unexpected($pred, "type is local and abstract_noncanonical")
+            NonCanonical = noncanon_abstract(_),
+            unexpected($pred, "type is local yet it is noncanon_abstract")
         )
     ;
-        MaybeUnifyCompare = no,
+        MaybeCanonical = canon,
         NeedsTermCheck = no
     ).
 
@@ -242,29 +249,29 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
     % and returns the relevant information about which predicates implement it.
     %
 :- pred get_user_unify_compare(module_info::in, hlds_type_body::in,
-    maybe(unify_compare)::out) is det.
+    maybe_canonical::out) is det.
 
-get_user_unify_compare(ModuleInfo, TypeBody, MaybeUnifyCompare) :-
+get_user_unify_compare(ModuleInfo, TypeBody, MaybeCanonical) :-
     (
-        TypeBody = hlds_du_type(_, _, _, _, MaybeUnifyCompare, _, _, _, _)
+        TypeBody = hlds_du_type(_, MaybeCanonical, _, _)
     ;
         TypeBody = hlds_solver_type(DetailsSolver),
-        DetailsSolver = type_details_solver(_, MaybeUnifyCompare)
+        DetailsSolver = type_details_solver(_, MaybeCanonical)
     ;
         TypeBody = hlds_foreign_type(ForeignTypeBody),
         ( if
             foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
-                ForeignTypeBody, UnifyCompare)
+                ForeignTypeBody, NonCanonical)
         then
-            MaybeUnifyCompare = yes(UnifyCompare)
+            MaybeCanonical = noncanon(NonCanonical)
         else
-            MaybeUnifyCompare = no
+            MaybeCanonical = canon
         )
     ;
         ( TypeBody = hlds_abstract_type(_)
         ; TypeBody = hlds_eqv_type(_)
         ),
-        MaybeUnifyCompare = no
+        MaybeCanonical = canon
     ).
 
 :- pred generate_non_term_user_special_warning(prog_context::in,

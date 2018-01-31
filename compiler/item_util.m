@@ -33,6 +33,10 @@
     % and made det, returning the unchanged item if it does not need to be made
     % abstract (so we can use det switches instead semidet tests in the code).
     %
+    % XXX TYPE_REPN The operation of both of those predicates should be changed
+    % to remove representation from type_defn items and to put it into separate
+    % type_repn items instead.
+    %
 :- pred maybe_make_abstract_type_defn(short_int_file_kind::in,
     item_type_defn_info::in, item_type_defn_info::out) is det.
 
@@ -76,21 +80,24 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
     TypeDefn = ItemTypeDefn ^ td_ctor_defn,
     (
         TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(Ctors, MaybeUserEqComp,
+        DetailsDu = type_details_du(Ctors, MaybeCanonical,
             MaybeDirectArgCtors),
         % For the `.int2' files, we need the full definitions of
         % discriminated union types. Even if the functors for a type
         % are not used within a module, we may need to know them for
         % comparing insts, e.g. for comparing `ground' and `bound(...)'.
+        % XXX zs: That may be so, but writing out the type definition
+        % unchanged, without something on it that says "use these functors
+        % *only* for these purposes", is a bug in my opinion.
         (
             ShortIntFileKind = sifk_int2,
             (
-                MaybeUserEqComp = no,
+                MaybeCanonical = canon,
                 MaybeAbstractItemTypeDefn = ItemTypeDefn
             ;
-                MaybeUserEqComp = yes(_UserEqComp),
+                MaybeCanonical = noncanon(_NonCanonical),
                 AbstractDetailsDu = type_details_du(Ctors,
-                    yes(abstract_noncanonical_type(non_solver_type)),
+                    noncanon(noncanon_abstract(non_solver_type)),
                     MaybeDirectArgCtors),
                 AbstractTypeDefn = parse_tree_du_type(AbstractDetailsDu),
                 MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
@@ -98,8 +105,12 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
             )
         ;
             ShortIntFileKind = sifk_int3,
-            ( if du_type_is_enum(Ctors, NumBits) then
-                AbstractDetails = abstract_enum_type(NumBits)
+            ( if du_type_is_enum(DetailsDu, NumBits) then
+                AbstractDetails = abstract_type_fits_in_n_bits(NumBits)
+            else if du_type_is_notag(Ctors, MaybeCanonical) then
+                AbstractDetails = abstract_notag_type
+            else if du_type_is_dummy(DetailsDu) then
+                AbstractDetails = abstract_dummy_type
             else
                 AbstractDetails = abstract_type_general
             ),
@@ -107,9 +118,8 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
                 := parse_tree_abstract_type(AbstractDetails)
         )
     ;
-        TypeDefn = parse_tree_abstract_type(AbstractDetails),
-        MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails)
+        TypeDefn = parse_tree_abstract_type(_AbstractDetails),
+        MaybeAbstractItemTypeDefn = ItemTypeDefn
     ;
         TypeDefn = parse_tree_solver_type(_),
         % rafe: XXX we need to also export the details of the
@@ -134,24 +144,26 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
         ;
             ShortIntFileKind = sifk_int3,
             % XXX is this right for solver types?
+            % XXX TYPE_REPN is this right for types that are
+            % eqv to enums, or to known size ints/uints?
             AbstractDetails = abstract_type_general,
             MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
                 := parse_tree_abstract_type(AbstractDetails)
         )
     ;
         TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        DetailsForeign = type_details_foreign(ForeignType, MaybeUserEqComp,
+        DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
             Assertions),
         % We always need the definitions of foreign types
         % to handle inter-language interfacing correctly.
         % However, we want to abstract away any unify and compare predicates.
         (
-            MaybeUserEqComp = no,
+            MaybeCanonical = canon,
             MaybeAbstractItemTypeDefn = ItemTypeDefn
         ;
-            MaybeUserEqComp = yes(_UserEqComp),
+            MaybeCanonical = noncanon(_NonCanonical),
             AbsttactDetailsForeign = type_details_foreign(ForeignType,
-                yes(abstract_noncanonical_type(non_solver_type)), Assertions),
+                noncanon(noncanon_abstract(non_solver_type)), Assertions),
             AbstractTypeDefn = parse_tree_foreign_type(AbsttactDetailsForeign),
             MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
                 AbstractTypeDefn
@@ -179,6 +191,8 @@ make_instance_abstract(ItemInstance0) = ItemInstance :-
 %-----------------------------------------------------------------------------%
 
 item_needs_imports(Item) = NeedsImports :-
+    % XXX This function is too crude;
+    % it should find out *what* imports we need.
     (
         Item = item_type_defn(ItemTypeDefn),
         ( if ItemTypeDefn ^ td_ctor_defn = parse_tree_abstract_type(_) then
@@ -199,6 +213,7 @@ item_needs_imports(Item) = NeedsImports :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
         ),
         NeedsImports = yes
     ;
@@ -262,7 +277,6 @@ item_needs_foreign_imports(Item) = Langs :-
             ; Pragma = pragma_oisu(_)
             ; Pragma = pragma_tabled(_)
             ; Pragma = pragma_fact_table(_)
-            ; Pragma = pragma_reserve_tag(_)
             ; Pragma = pragma_promise_eqv_clauses(_)
             ; Pragma = pragma_promise_pure(_)
             ; Pragma = pragma_promise_semipure(_)
@@ -289,6 +303,7 @@ item_needs_foreign_imports(Item) = Langs :-
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
+        ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         ),
         Langs = []

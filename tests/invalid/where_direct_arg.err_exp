@@ -3,7 +3,7 @@ where_direct_arg.m:014:   symbol whose arity is not 1.
 where_direct_arg.m:014: Error: the `direct_arg' attribute lists the function
 where_direct_arg.m:014:   symbol `nonexistent'/1 which is not in the type
 where_direct_arg.m:014:   definition.
-where_direct_arg.m:018: Error: invalid `where ...' attributes for abstract
+where_direct_arg.m:018: Error: invalid `where ...' attribute for abstract
 where_direct_arg.m:018:   non-solver type.
 where_direct_arg.m:020: Error: solver type definitions cannot have `direct_arg'
 where_direct_arg.m:020:   attributes.

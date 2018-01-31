@@ -109,6 +109,7 @@
 
 :- import_module check_hlds.typeclasses.
 :- import_module check_hlds.type_util.
+:- import_module hlds.add_pred.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
@@ -271,7 +272,7 @@ is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn, Type,
                     true
                 )
             ;
-                ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _)
+                ( TypeBody = hlds_du_type(_, _, _, _)
                 ; TypeBody = hlds_foreign_type(_)
                 ; TypeBody = hlds_solver_type(_)
                 ; TypeBody = hlds_abstract_type(_)
@@ -348,7 +349,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
                     is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn,
                         EqvType, N, _, !SeenTypes, !Specs)
                 ;
-                    ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _)
+                    ( TypeBody = hlds_du_type(_, _, _, _)
                     ; TypeBody = hlds_foreign_type(_)
                     ; TypeBody = hlds_solver_type(_)
                     ; TypeBody = hlds_abstract_type(_)
@@ -1695,7 +1696,7 @@ check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs) :-
 check_ctor_constraints(ModuleInfo, TypeCtor - TypeDefn, !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
-        Body = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
+        Body = hlds_du_type(Ctors, _, _, _),
         list.foldl(check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn),
             Ctors, !Specs)
     ;
@@ -1711,8 +1712,17 @@ check_ctor_constraints(ModuleInfo, TypeCtor - TypeDefn, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn, Ctor, !Specs) :-
-    Ctor = ctor(ExistQVars, Constraints, _, CtorArgs, _, _),
-    ArgTypes = list.map(func(ctor_arg(_, T, _, _)) = T, CtorArgs),
+    Ctor = ctor(MaybeExistConstraints, _, CtorArgs, _, _),
+    (
+        MaybeExistConstraints = no_exist_constraints,
+        % XXX TYPE_REPN Should not need rest of this procedure's body.
+        ExistQVars = [],
+        Constraints = [] 
+    ;
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints)
+    ),
+    ArgTypes = list.map(func(ctor_arg(_, T, _)) = T, CtorArgs),
     type_vars_list(ArgTypes, ArgTVars),
     list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
         ArgTVars, ExistQArgTVars),

@@ -295,11 +295,15 @@
 
 :- type type_ctor_cat_enum
     --->    cat_enum_mercury
+            % XXX TYPE_REPN Should we add an arg specifying
+            % the number of bits needed to store the enum?
     ;       cat_enum_foreign.
 
 :- type type_ctor_cat_user
     --->    cat_user_direct_dummy
+    ;       cat_user_abstract_dummy
     ;       cat_user_notag
+    ;       cat_user_abstract_notag
     ;       cat_user_general.
 
     % Given a constant and an arity, return a type_ctor.
@@ -329,44 +333,41 @@
 :- pred qualify_cons_id(list(prog_var)::in, cons_id::in,
     cons_id::out, cons_id::out) is det.
 
-    % This type is used to return information about a constructor definition,
-    % extracted from the hlds_type_defn and hlds_cons_defn data types.
-    %
-:- type ctor_defn
-    --->    ctor_defn(
-                ctor_tvars          :: tvarset,
-                ctor_existq_tvars   :: existq_tvars,
-                ctor_tvar_kinds     :: tvar_kind_map,
-                                    % kinds of existq_tvars
-                ctor_constraints    :: list(prog_constraint),
-                                    % existential constraints
-                ctor_arg_types      :: list(mer_type),
-                                    % functor argument types
-                ctor_result_type    :: mer_type
-                                    % functor result type
-            ).
-
     % Given a list of constructors for a type, check whether that type
     % is a private_builtin.type_info/0 or similar type.
     %
 :- pred type_constructors_are_type_info(list(constructor)::in) is semidet.
 
+    % type_ctor_should_be_notag(Globals, TypeCtor, ReservedTag, TypeDetailsDu,
+    %   SingleFunctorName, SingleArgType, MaybeSingleArgName):
+    %
+    % Succeed if the type constructor with the given name (TypeCtor) and
+    % details (TypeDetailsDu) is a no_tag type. If it is, return the name
+    % of its single function symbol, the type of its one argument,
+    % and its name (if any).
+    %
+:- pred type_ctor_should_be_notag(globals::in, type_ctor::in,
+    list(constructor)::in, maybe_canonical::in,
+    sym_name::out, mer_type::out, maybe(string)::out) is semidet.
+
+% XXX TYPE_REPN The du_type_is_* tests should be done just once when computing
+% du_type_kind. If we can achieve that, these predicates should not be here.
+
+    % Is the discriminated union type with the given list of constructors
+    % a notag type?
+    %
+:- pred du_type_is_notag(list(constructor)::in, maybe_canonical::in)
+    is semidet.
+
     % Is the discriminated union type with the given list of constructors
     % an enum? Is yes, return the number of bits required to represent it.
     %
-:- pred du_type_is_enum(list(constructor)::in, int::out) is semidet.
+:- pred du_type_is_enum(type_details_du::in, int::out) is semidet.
 
-    % type_ctor_should_be_notag(Globals, TypeCtor, ReservedTag, Ctors,
-    %   MaybeUserEqComp, SingleFunctorName, SingleArgType, MaybeSingleArgName):
+    % Is the discriminated union type with the given list of constructors
+    % a dummy type?
     %
-    % Succeed if the type constructor with the given name (TypeCtor) and
-    % details (ReservedTag, Ctors, MaybeUserEqComp) is a no_tag type. If it is,
-    % return the name of its single function symbol, the type of its one
-    % argument, and its name (if any).
-    %
-:- pred type_ctor_should_be_notag(globals::in, type_ctor::in,
-    uses_reserved_tag::in, list(constructor)::in, maybe(unify_compare)::in,
-    sym_name::out, mer_type::out, maybe(string)::out) is semidet.
+:- pred du_type_is_dummy(type_details_du::in) is semidet.
 
     % Unify (with occurs check) two types with respect to a type substitution
     % and update the type bindings. The third argument is a list of type
@@ -629,6 +630,11 @@ type_vars(Type, TVars) :-
     list.reverse(RevTVars, TVarsDups),
     list.remove_dups(TVarsDups, TVars).
 
+type_vars_list(Types, TVars) :-
+    type_vars_list_2(Types, [], RevTVars),
+    list.reverse(RevTVars, TVarsDups),
+    list.remove_dups(TVarsDups, TVars).
+
 :- pred type_vars_2(mer_type::in, list(tvar)::in, list(tvar)::out) is det.
 
 type_vars_2(type_variable(Var, _), Vs, [Var | Vs]).
@@ -644,11 +650,6 @@ type_vars_2(apply_n_type(Var, Args, _), !V) :-
     type_vars_list_2(Args, !V).
 type_vars_2(kinded_type(Type, _), !V) :-
     type_vars_2(Type, !V).
-
-type_vars_list(Types, TVars) :-
-    type_vars_list_2(Types, [], RevTVars),
-    list.reverse(RevTVars, TVarsDups),
-    list.remove_dups(TVarsDups, TVars).
 
 :- pred type_vars_list_2(list(mer_type)::in, list(tvar)::in, list(tvar)::out)
     is det.
@@ -716,8 +717,8 @@ construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, ArgModes,
         Detism, Type) :-
     PredInstInfo = pred_inst_info(pf_predicate, ArgModes, arg_reg_types_unset,
         Detism),
-    Type = higher_order_type(pf_predicate, ArgTypes, higher_order(PredInstInfo),
-        Purity, EvalMethod).
+    Type = higher_order_type(pf_predicate, ArgTypes,
+        higher_order(PredInstInfo), Purity, EvalMethod).
 
 construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
         Type) :-
@@ -958,23 +959,11 @@ qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
 %-----------------------------------------------------------------------------%
 
 type_constructors_are_type_info(Ctors) :-
-    type_is_single_ctor_single_arg(Ctors, Ctor, _, _),
-    ctor_is_type_info(Ctor).
-
-:- pred type_is_single_ctor_single_arg(list(constructor)::in, sym_name::out,
-    mer_type::out, maybe(ctor_field_name)::out) is semidet.
-
-type_is_single_ctor_single_arg(Ctors, Ctor, ArgType, MaybeArgName) :-
-    Ctors = [SingleCtor],
-    SingleCtor = ctor(ExistQVars, _Constraints, Ctor,
-        [ctor_arg(MaybeArgName, ArgType, _, _)], 1, _Ctxt),
-    ExistQVars = [].
-
-:- pred ctor_is_type_info(sym_name::in) is semidet.
-
-ctor_is_type_info(Ctor) :-
-    unqualify_private_builtin(Ctor, Name),
-    name_is_type_info(Name).
+    Ctors = [Ctor],
+    Ctor = ctor(MaybeExistConstraints, FunctorName, [_CtorArg], 1, _Context),
+    unqualify_private_builtin(FunctorName, Name),
+    name_is_type_info(Name),
+    MaybeExistConstraints = no_exist_constraints.
 
     % If the sym_name is in the private_builtin module, unqualify it,
     % otherwise fail. All, user-defined types should be module-qualified
@@ -996,47 +985,64 @@ name_is_type_info("base_typeclass_info").
 
 %-----------------------------------------------------------------------------%
 
-du_type_is_enum(Ctors, NumBits) :-
+du_type_is_enum(DuDetails, NumBits) :-
+    DuDetails = type_details_du(Ctors, _MaybeCanonical, _MaybeDirectArgCtors),
     Ctors = [_, _ | _],
-    all [Ctor] (
-        list.member(Ctor, Ctors)
-    => (
-        Ctor = ctor(ExistQTVars, ExistConstraints, _Name, Args, _Arity,
-            _Context),
-        ExistQTVars = [],
-        ExistConstraints = [],
-        Args = []
-    )),
-    list.length(Ctors, NumFunctors),
+    all_functors_are_enum(Ctors, 0, NumFunctors),
     int.log2(NumFunctors, NumBits).
+
+:- pred all_functors_are_enum(list(constructor)::in,
+    int::in, int::out) is semidet.
+
+all_functors_are_enum([], !NumFunctors).
+all_functors_are_enum([Ctor | Ctors], !NumFunctors) :-
+    Ctor = ctor(MaybeExistConstraints, _Name, Args, _Arity, _Context),
+    Args = [],
+    MaybeExistConstraints = no_exist_constraints,
+    !:NumFunctors = !.NumFunctors + 1,
+    all_functors_are_enum(Ctors, !NumFunctors).
 
 %-----------------------------------------------------------------------------%
 
-type_ctor_should_be_notag(Globals, _TypeCtor, ReserveTagPragma, Ctors,
-        MaybeUserEqCmp, SingleFunctorName, SingleArgType,
-        MaybeSingleArgName) :-
-    ReserveTagPragma = does_not_use_reserved_tag,
+type_ctor_should_be_notag(Globals, _TypeCtor, Ctors, MaybeCanonical,
+        FunctorName, ArgType, MaybeArgName) :-
     globals.lookup_bool_option(Globals, unboxed_no_tag_types, yes),
-    MaybeUserEqCmp = no,
+    du_type_is_notag_return_info(Ctors, MaybeCanonical, FunctorName, ArgType,
+        MaybeArgName).
 
-    type_is_single_ctor_single_arg(Ctors, SingleFunctorName, SingleArgType,
-        MaybeCtorFieldName),
+du_type_is_notag(Ctors, MaybeCanonical) :-
+    du_type_is_notag_return_info(Ctors, MaybeCanonical, _, _, _).
 
-    % We do not handle unary tuples as no_tag types -- they are rare enough
-    % that it is not worth the implementation effort.
-    %
-    % XXX Since the tuple type constructor doesn't have a HLDS type defn body,
-    % will this test ever fail? Even if it can fail, we should test TypeCtor,
-    % not SingleFunctorName.
-    SingleFunctorName \= unqualified("{}"),
+:- pred du_type_is_notag_return_info(list(constructor)::in,
+    maybe_canonical::in,
+    sym_name::out, mer_type::out, maybe(string)::out) is semidet.
+:- pragma inline(du_type_is_notag_return_info/5).
 
-    (
-        MaybeCtorFieldName = no,
-        MaybeSingleArgName = no
-    ;
-        MaybeCtorFieldName = yes(ctor_field_name(SymName, _)),
-        MaybeSingleArgName = yes(unqualify_name(SymName))
+du_type_is_notag_return_info(Ctors, MaybeCanonical,
+        FunctorName, ArgType, MaybeArgName) :-
+    Ctors = [Ctor],
+    Ctor = ctor(MaybeExistConstraints, FunctorName, [CtorArg], 1, _Context),
+    MaybeCanonical = canon,
+    MaybeExistConstraints = no_exist_constraints,
+
+    require_det (
+        CtorArg = ctor_arg(MaybeFieldName, ArgType, _),
+        (
+            MaybeFieldName = no,
+            MaybeArgName = no
+        ;
+            MaybeFieldName = yes(ctor_field_name(SymName, _)),
+            MaybeArgName = yes(unqualify_name(SymName))
+        )
     ).
+
+du_type_is_dummy(DuDetails) :-
+    DuDetails = type_details_du(Ctors, MaybeCanonical, MaybeDirectArgCtors),
+    MaybeCanonical = canon,
+    MaybeDirectArgCtors = no,
+    Ctors = [Ctor],
+    Ctor = ctor(MaybeExistConstraints, _FunctorName, [], 0, _Context),
+    MaybeExistConstraints = no_exist_constraints.
 
 %-----------------------------------------------------------------------------%
 %

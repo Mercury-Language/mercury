@@ -386,6 +386,7 @@
     ;       item_initialise(item_initialise_info)
     ;       item_finalise(item_finalise_info)
     ;       item_mutable(item_mutable_info)
+    ;       item_type_repn(item_type_repn_info)
     ;       item_nothing(item_nothing_info).
 
 :- type item_clause_info
@@ -550,10 +551,9 @@
     --->    item_mutable_info(
                 % :- mutable(var_name, type, inst, value, attrs).
                 mut_name                        :: string,
-                % The mut_type and mut_inst fields are subject to
-                % expansion in equiv_type.m; the mut_orig_type and
-                % mut_orig_inst fields aren't. The latter are used
-                % to improve error reporting.
+                % The mut_type and mut_inst fields are subject to expansion
+                % in equiv_type.m; the mut_orig_type and mut_orig_inst fields
+                % are not. The latter are used to improve error reporting.
                 mut_orig_type                   :: mer_type,
                 mut_type                        :: mer_type,
                 mut_orig_inst                   :: mer_inst,
@@ -563,6 +563,25 @@
                 mut_attrs                       :: mutable_var_attributes,
                 mut_context                     :: prog_context,
                 mut_seq_num                     :: int
+            ).
+
+:- type item_type_repn_info
+    --->    item_type_repn_info(
+                % `:- type_representation ...':
+                % An item added by the compiler to a .int3 file
+                % to tell readers of that file the information they need
+                % to correctly reconstruct the representation of the given
+                % type constructor, even when that information is supposed
+                % to be invisible to them semantically.
+                % There should be at most one such item for any type_ctor
+                % in the .int3 file of its defining module.
+                % The sym_name should be fully qualified.
+                tr_ctor                         :: sym_name,
+                tr_ctor_arg_tvars               :: list(tvar),
+                tr_ctor_repn_info               :: type_ctor_repn_info,
+                tr_tvarset                      :: tvarset,
+                tr_context                      :: prog_context,
+                tr_seq_num                      :: int
             ).
 
 :- type item_nothing_info
@@ -786,6 +805,22 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Information about the representations of types defined in other modules.
+%
+
+:- type type_ctor_repn_info
+    --->    tcrepn_is_direct_dummy
+    ;       tcrepn_is_notag
+    ;       tcrepn_is_eqv_to(
+                % XXX TYPE_REPN maybe nonword
+                % XXX TYPE_REPN maybe notag
+                mer_type
+            )
+    ;       tcrepn_fits_in_n_bits(int)
+    ;       tcrepn_has_direct_arg_functors(list(sym_name_and_arity)).
+
+%-----------------------------------------------------------------------------%
+%
 % Pragmas.
 %
 
@@ -811,7 +846,6 @@
     ;       pragma_require_tail_recursion(pragma_info_require_tail_recursion)
     ;       pragma_tabled(pragma_info_tabled)
     ;       pragma_fact_table(pragma_info_fact_table)
-    ;       pragma_reserve_tag(type_ctor)
     ;       pragma_oisu(pragma_info_oisu)
     ;       pragma_promise_eqv_clauses(pred_name_arity)
     ;       pragma_promise_pure(pred_name_arity)
@@ -1440,6 +1474,9 @@ get_item_context(Item) = Context :-
         Item = item_mutable(ItemMutable),
         Context = ItemMutable ^ mut_context
     ;
+        Item = item_type_repn(ItemTypeRepn),
+        Context = ItemTypeRepn ^ tr_context
+    ;
         Item = item_nothing(ItemNothing),
         Context = ItemNothing ^ nothing_context
     ).
@@ -1561,10 +1598,10 @@ set_mutable_var_thread_local(ThreadLocal, !Attributes) :-
 pragma_allowed_in_interface(Pragma) = Allowed :-
     % XXX This comment is out of date.
     % pragma `obsolete', `terminates', `does_not_terminate'
-    % `termination_info', `check_termination', `reserve_tag' and
-    % `foreign_enum' pragma declarations are supposed to go in the
-    % interface, but all other pragma declarations are implementation details
-    % only, and should go in the implementation.
+    % `termination_info', `check_termination', `foreign_enum' and
+    % pragma declarations are supposed to go in the interface,
+    % but all other pragma declarations are implementation details only,
+    % and should go in the implementation.
 
     (
         ( Pragma = pragma_foreign_code(_)
@@ -1591,13 +1628,12 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ),
         Allowed = no
     ;
-        % Note that `reserve_tag' and `direct_arg' must be in the interface
-        % iff the corresponding type definition is in the interface. This is
-        % checked in make_hlds.
+        % Note that `direct_arg' must be in the interface iff
+        % the corresponding type definition is in the interface.
+        % This is checked in make_hlds.
         ( Pragma = pragma_foreign_enum(_)
         ; Pragma = pragma_foreign_import_module(_)
         ; Pragma = pragma_obsolete(_)
-        ; Pragma = pragma_reserve_tag(_)
         ; Pragma = pragma_type_spec(_)
         ; Pragma = pragma_termination_info(_)
         ; Pragma = pragma_termination2_info(_)
@@ -1702,7 +1738,7 @@ pragma_context_pieces(Pragma) = ContextPieces :-
         ContextPieces = [pragma_decl("trailing_info"), words("declaration")]
     ;
         Pragma = pragma_mm_tabling_info(_),
-        ContextPieces = [pragma_decl("tabling_info"), words("declaration")]
+        ContextPieces = [pragma_decl("mm_tabling_info"), words("declaration")]
     ;
         Pragma = pragma_require_feature_set(_),
         ContextPieces = [pragma_decl("require_feature_set"),
@@ -1717,9 +1753,6 @@ pragma_context_pieces(Pragma) = ContextPieces :-
     ;
         Pragma = pragma_obsolete(_),
         ContextPieces = [pragma_decl("obsolete"), words("declaration")]
-    ;
-        Pragma = pragma_reserve_tag(_),
-        ContextPieces = [pragma_decl("reserve_tag"), words("declaration")]
     ;
         Pragma = pragma_type_spec(_),
         ContextPieces = [pragma_decl("type_spec"), words("declaration")]
@@ -1857,6 +1890,7 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         ; Item = item_promise(_)
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
+        ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         )
     ).
@@ -1980,7 +2014,6 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
         ; Pragma = pragma_promise_semipure(_)
         ; Pragma = pragma_require_feature_set(_)
         ; Pragma = pragma_require_tail_recursion(_)
-        ; Pragma = pragma_reserve_tag(_)
         ; Pragma = pragma_structure_reuse(_)
         ; Pragma = pragma_structure_sharing(_)
         ; Pragma = pragma_oisu(_)

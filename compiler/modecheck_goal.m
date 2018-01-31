@@ -1334,9 +1334,16 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             lookup_var_type(VarTypes, Arg1, ArgType1),
             type_to_ctor(ArgType1, ArgTypeCtor1),
             lookup_type_ctor_defn(TypeTable, ArgTypeCtor1, CtorDefn),
-            get_type_defn_body(CtorDefn, Body),
-            ConsTagValues = Body ^ du_type_cons_tag_values,
-            map.lookup(ConsTagValues, ConsId, ConsTag),
+            get_type_defn_body(CtorDefn, TypeDefnBody),
+            TypeDefnBody = hlds_du_type(_, _, MaybeTypeRepn, _),
+            (
+                MaybeTypeRepn = no,
+                unexpected($pred, "MaybeTypeRepn = no")
+            ;
+                MaybeTypeRepn = yes(TypeRepn)
+            ),
+            ConsIdToTagMap = TypeRepn ^ dur_cons_id_to_tag_map,
+            map.lookup(ConsIdToTagMap, ConsId, ConsTag),
             ConsTag = shared_local_tag(_, LocalTag)
         then
             BoundFunctor = bound_functor(int_const(LocalTag), []),

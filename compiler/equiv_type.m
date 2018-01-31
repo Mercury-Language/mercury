@@ -436,6 +436,10 @@ replace_in_item(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
         ),
         Item = Item0,
         Specs = []
+    ;
+        Item0 = item_type_repn(_),
+        % XXX TYPE_REPN Implement this.
+        unexpected($pred, "item_type_repn nyi")
     ).
 
 :- pred replace_in_type_defn_info(module_name::in,
@@ -698,7 +702,6 @@ replace_in_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         ; Pragma0 = pragma_promise_pure(_)
         ; Pragma0 = pragma_promise_semipure(_)
         ; Pragma0 = pragma_require_feature_set(_)
-        ; Pragma0 = pragma_reserve_tag(_)
         ; Pragma0 = pragma_structure_reuse(_)
         ; Pragma0 = pragma_structure_sharing(_)
         ; Pragma0 = pragma_oisu(_)
@@ -1014,12 +1017,21 @@ replace_in_ctors_location(MaybeRecord, TypeEqvMap, !Ctors, !VarSet,
 
 replace_in_ctor(MaybeRecord, TypeEqvMap, Ctor0, Ctor,
         !VarSet, !EquivTypeInfo, !UsedModules) :-
-    Ctor0 = ctor(ExistQVars, Constraints0, CtorName, CtorArgs0, Arity, Ctxt),
+    Ctor0 = ctor(MaybeExistConstraints0, CtorName, CtorArgs0, Arity, Ctxt),
     replace_in_ctor_arg_list(MaybeRecord, TypeEqvMap,
         CtorArgs0, CtorArgs, _, !VarSet, !EquivTypeInfo, !UsedModules),
-    replace_in_prog_constraint_list(MaybeRecord, TypeEqvMap,
-        Constraints0, Constraints, !VarSet, !EquivTypeInfo, !UsedModules),
-    Ctor = ctor(ExistQVars, Constraints, CtorName, CtorArgs, Arity, Ctxt).
+    (
+        MaybeExistConstraints0 = no_exist_constraints,
+        MaybeExistConstraints = no_exist_constraints
+    ;
+        MaybeExistConstraints0 = exist_constraints(
+            cons_exist_constraints(ExistQVars, Constraints0)),
+        replace_in_prog_constraint_list(MaybeRecord, TypeEqvMap,
+            Constraints0, Constraints, !VarSet, !EquivTypeInfo, !UsedModules),
+        MaybeExistConstraints = exist_constraints(
+            cons_exist_constraints(ExistQVars, Constraints))
+    ),
+    Ctor = ctor(MaybeExistConstraints, CtorName, CtorArgs, Arity, Ctxt).
 
 %---------------------------------------------------------------------------%
 
@@ -1088,38 +1100,27 @@ replace_in_type_list_location_circ_2(MaybeRecord, TypeEqvMap, Seen,
 
 replace_in_ctor_arg_list(MaybeRecord, TypeEqvMap, !Args,
         ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules) :-
-    replace_in_ctor_arg_list_2(MaybeRecord, TypeEqvMap, [], !Args,
+    replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, [], !Args,
         no, ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules).
 
-:- pred replace_in_ctor_arg_list_2(maybe_record_sym_name_use::in,
+:- pred replace_in_ctor_arg_list_loop(maybe_record_sym_name_use::in,
     type_eqv_map::in, list(type_ctor)::in,
     list(constructor_arg)::in, list(constructor_arg)::out,
     bool::in, bool::out, tvarset::in, tvarset::out,
     eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_ctor_arg_list_2(_MaybeRecord, _TypeEqvMap, _Seen, [], [],
+replace_in_ctor_arg_list_loop(_MaybeRecord, _TypeEqvMap, _Seen, [], [],
         !Circ, !VarSet, !EquivTypeInfo, !UsedModules).
-replace_in_ctor_arg_list_2(MaybeRecord, TypeEqvMap, Seen,
+replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, Seen,
         [Arg0 | Args0], [Arg | Args],
         !Circ, !VarSet, !EquivTypeInfo, !UsedModules) :-
-    Arg0 = ctor_arg(Name, Type0, Width, Context),
+    Arg0 = ctor_arg(Name, Type0, Context),
     replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap, Seen,
         Type0, Type, _, ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules),
-    (
-        Width = full_word
-    ;
-        Width = double_word
-    ;
-        ( Width = partial_word_first(_)
-        ; Width = partial_word_shifted(_, _)
-        ),
-        expect(unify(Type, Type0), $module, $pred,
-            "changed type of packed argument")
-    ),
-    Arg = ctor_arg(Name, Type, Width, Context),
+    Arg = ctor_arg(Name, Type, Context),
     !:Circ = bool.or(!.Circ, ContainsCirc),
-    replace_in_ctor_arg_list_2(MaybeRecord, TypeEqvMap, Seen, Args0, Args,
+    replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, Seen, Args0, Args,
         !Circ, !VarSet, !EquivTypeInfo, !UsedModules).
 
 %---------------------------------------------------------------------------%
@@ -1178,7 +1179,8 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
             !VarSet, !EquivTypeInfo, !UsedModules),
         (
             Changed = yes,
-            Type = higher_order_type(PorF, Args, HOInstInfo, Purity, EvalMethod)
+            Type = higher_order_type(PorF, Args, HOInstInfo, Purity,
+                EvalMethod)
         ;
             Changed = no,
             Type = Type0

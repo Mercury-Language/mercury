@@ -17,7 +17,7 @@
 %   - The pred/mode declarations for local predicates that the
 %     above clauses use.
 %   - Non-exported types, insts and modes used by the above
-%   - Pragma reserve_tag, foreign_enum, or foreign_type declarations for
+%   - Pragma foreign_enum, or foreign_type declarations for
 %     any types output due to the line above
 %   - :- import_module declarations to import stuff used by the above.
 %   - pragma declarations for the exported preds.
@@ -1181,9 +1181,8 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
     ( if should_opt_export_type_defn(ModuleName, TypeCtor, TypeDefn0) then
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         (
-            TypeBody0 = hlds_du_type(Ctors, Tags, CheaperTagTest, Enum,
-                MaybeUserEqComp0, MaybeDirectArgCtors, ReservedTag,
-                ReservedAddr, MaybeForeign0),
+            TypeBody0 = hlds_du_type(Ctors, MaybeUserEqComp0, MaybeRepn,
+                MaybeForeign0),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
 
@@ -1213,9 +1212,8 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
                     MaybeUserEqComp0, MaybeUserEqComp, !IntermodInfo),
                 MaybeForeign = MaybeForeign0
             ),
-            TypeBody = hlds_du_type(Ctors, Tags, CheaperTagTest, Enum,
-                MaybeUserEqComp, MaybeDirectArgCtors, ReservedTag,
-                ReservedAddr, MaybeForeign),
+            TypeBody = hlds_du_type(Ctors, MaybeUserEqComp, MaybeRepn,
+                MaybeForeign),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
             TypeBody0 = hlds_foreign_type(ForeignTypeBody0),
@@ -1324,37 +1322,48 @@ resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
     ).
 
 :- pred resolve_unify_compare_overloading(module_info::in,
-    type_ctor::in, maybe(unify_compare)::in, maybe(unify_compare)::out,
+    type_ctor::in, maybe_canonical::in, maybe_canonical::out,
     intermod_info::in, intermod_info::out) is det.
 
 resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
-        MaybeUnifyCompare0, MaybeUnifyCompare, !IntermodInfo) :-
+        MaybeCanonical0, MaybeCanonical, !IntermodInfo) :-
     (
-        MaybeUnifyCompare0 = no,
-        MaybeUnifyCompare = no
+        MaybeCanonical0 = canon,
+        MaybeCanonical = MaybeCanonical0
     ;
-        MaybeUnifyCompare0 =
-            yes(abstract_noncanonical_type(IsSolverType)),
-        MaybeUnifyCompare =
-            yes(abstract_noncanonical_type(IsSolverType))
-    ;
-        MaybeUnifyCompare0 =
-            yes(unify_compare(MaybeUserEq0, MaybeUserCompare0)),
-        resolve_user_special_pred_overloading(ModuleInfo, spec_pred_unify,
-            TypeCtor, MaybeUserEq0, MaybeUserEq, !IntermodInfo),
-        resolve_user_special_pred_overloading(ModuleInfo, spec_pred_compare,
-            TypeCtor, MaybeUserCompare0, MaybeUserCompare, !IntermodInfo),
-        MaybeUnifyCompare =
-            yes(unify_compare(MaybeUserEq, MaybeUserCompare))
+        MaybeCanonical0 = noncanon(NonCanonical0),
+        (
+            NonCanonical0 = noncanon_abstract(_IsSolverType),
+            MaybeCanonical = MaybeCanonical0
+        ;
+            NonCanonical0 = noncanon_uni_cmp(Uni0, Cmp0),
+            resolve_user_special_pred_overloading(ModuleInfo,
+                spec_pred_unify, TypeCtor, Uni0, Uni, !IntermodInfo),
+            resolve_user_special_pred_overloading(ModuleInfo,
+                spec_pred_compare, TypeCtor, Cmp0, Cmp, !IntermodInfo),
+            NonCanonical = noncanon_uni_cmp(Uni, Cmp),
+            MaybeCanonical = noncanon(NonCanonical)
+        ;
+            NonCanonical0 = noncanon_uni_only(Uni0),
+            resolve_user_special_pred_overloading(ModuleInfo,
+                spec_pred_unify, TypeCtor, Uni0, Uni, !IntermodInfo),
+            NonCanonical = noncanon_uni_only(Uni),
+            MaybeCanonical = noncanon(NonCanonical)
+        ;
+            NonCanonical0 = noncanon_cmp_only(Cmp0),
+            resolve_user_special_pred_overloading(ModuleInfo,
+                spec_pred_compare, TypeCtor, Cmp0, Cmp, !IntermodInfo),
+            NonCanonical = noncanon_cmp_only(Cmp),
+            MaybeCanonical = noncanon(NonCanonical)
+        )
     ).
 
 :- pred resolve_user_special_pred_overloading(module_info::in,
-    special_pred_id::in, type_ctor::in, maybe(sym_name)::in,
-    maybe(sym_name)::out, intermod_info::in, intermod_info::out) is det.
+    special_pred_id::in, type_ctor::in, sym_name::in, sym_name::out,
+    intermod_info::in, intermod_info::out) is det.
 
-resolve_user_special_pred_overloading(_, _, _, no, no, !IntermodInfo).
 resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
-        TypeCtor, yes(Pred0), yes(Pred), !IntermodInfo) :-
+        TypeCtor, Pred0, Pred, !IntermodInfo) :-
     module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
     lookup_special_pred_maps(SpecialPredMaps, SpecialId, TypeCtor,
         SpecialPredId),
@@ -1535,12 +1544,19 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     TypeCtor = type_ctor(Name, _Arity),
     (
-        Body = hlds_du_type(Ctors, _, _, _, MaybeUserEqComp,
-            MaybeDirectArgCtors,
-            _, _, _),
-        TypeBody = parse_tree_du_type(DetailsDu),
+        Body = hlds_du_type(Ctors, MaybeUserEqComp, MaybeRepnA, _MaybeForeign),
+        (
+            MaybeRepnA = no,
+            unexpected($pred, "MaybeRepnA = no")
+        ;
+            MaybeRepnA = yes(RepnA),
+            MaybeDirectArgCtors = RepnA ^ dur_direct_arg_ctors
+        ),
+        % XXX TYPE_REPN We should output information about any direct args
+        % as a separate type_repn item.
         DetailsDu = type_details_du(Ctors, MaybeUserEqComp,
-            MaybeDirectArgCtors)
+            MaybeDirectArgCtors),
+        TypeBody = parse_tree_du_type(DetailsDu)
     ;
         Body = hlds_eqv_type(EqvType),
         TypeBody = parse_tree_eqv_type(type_details_eqv(EqvType))
@@ -1560,8 +1576,11 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
     mercury_output_item(MercInfo, MainItem, !IO),
     ( if
-        ( Body = hlds_foreign_type(ForeignTypeBody)
-        ; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
+        (
+            Body = hlds_foreign_type(ForeignTypeBody)
+        ;
+            Body = hlds_du_type(_, _, _, MaybeForeignTypeBody),
+            MaybeForeignTypeBody = yes(ForeignTypeBody)
         ),
         ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
             MaybeCSharp, MaybeErlang)
@@ -1628,23 +1647,13 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         true
     ),
     ( if
-        ReservedTag = Body ^ du_type_reserved_tag,
-        ReservedTag = uses_reserved_tag
-    then
-        % The pragma's origin isn't printed, so what origin we pass here
-        % doesn't matter.
-        ReserveItemPragma = item_pragma_info(pragma_reserve_tag(TypeCtor),
-            item_origin_user, Context, -1),
-        ReserveItem = item_pragma(ReserveItemPragma),
-        mercury_output_item(MercInfo, ReserveItem, !IO)
-    else
-        true
-    ),
-    ( if
-        Body = hlds_du_type(_, ConsTagVals, _, DuTypeKind, _, _, _, _, _),
+        Body = hlds_du_type(_, _, MaybeRepnC, _),
+        MaybeRepnC = yes(RepnC),
+        RepnC = du_type_repn(ConsIdToTagMap, _, _, _, DuTypeKind, _, _),
         DuTypeKind = du_type_kind_foreign_enum(Lang)
     then
-        map.foldl(gather_foreign_enum_value_pair, ConsTagVals, [],
+        % XXX TYPE_REPN Consider iterating over the dur_ctor_repns instead.
+        map.foldl(gather_foreign_enum_value_pair, ConsIdToTagMap, [],
             ForeignEnumVals),
         FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignEnumVals),
         ForeignPragma = pragma_foreign_enum(FEInfo),

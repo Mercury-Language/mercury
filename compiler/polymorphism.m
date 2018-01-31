@@ -312,11 +312,13 @@
 
     % Look up the pred_id and proc_id for a type specific
     % unification/comparison/index/initialise predicate.
+    % XXX TYPE_REPN These predicates, and get_category_name, should NOT be
+    % in this module.
     %
-:- pred get_special_proc(mer_type::in, special_pred_id::in,
-    module_info::in, sym_name::out, pred_id::out, proc_id::out) is semidet.
-:- pred get_special_proc_det(mer_type::in, special_pred_id::in,
-    module_info::in, sym_name::out, pred_id::out, proc_id::out) is det.
+:- pred get_special_proc(module_info::in, type_ctor::in,
+    special_pred_id::in, sym_name::out, pred_id::out, proc_id::out) is semidet.
+:- pred get_special_proc_det(module_info::in, type_ctor::in,
+    special_pred_id::in, sym_name::out, pred_id::out, proc_id::out) is det.
 
     % Convert a higher order pred term to a lambda goal.
     %
@@ -1795,19 +1797,39 @@ create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
 polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
         ActualArgTypes, ActualRetType, GoalInfo,
         ExtraVars, ExtraGoals, !Info) :-
-    CtorDefn = ctor_defn(CtorTypeVarSet, CtorExistQVars, CtorKindMap,
-        CtorExistentialConstraints, CtorArgTypes, CtorRetType),
+    CtorDefn = ctor_defn(CtorTypeVarSet, CtorKindMap,
+        CtorMaybeExistConstraints, CtorArgTypes, CtorRetType),
 
     % Rename apart the type variables in the constructor definition.
     poly_info_get_typevarset(!.Info, TypeVarSet0),
     tvarset_merge_renaming(TypeVarSet0, CtorTypeVarSet, TypeVarSet,
         CtorToParentRenaming),
-    apply_variable_renaming_to_tvar_list(CtorToParentRenaming,
-        CtorExistQVars, ParentExistQVars),
+    (
+        CtorMaybeExistConstraints = exist_constraints(CtorExistConstraints),
+        CtorExistConstraints =
+            cons_exist_constraints(CtorExistQVars, CtorExistentialConstraints),
+        apply_variable_renaming_to_tvar_list(CtorToParentRenaming,
+            CtorExistQVars, ParentExistQVars),
+        apply_variable_renaming_to_prog_constraint_list(CtorToParentRenaming,
+            CtorExistentialConstraints, ParentExistentialConstraints),
+        list.length(ParentExistentialConstraints, NumExistentialConstraints),
+
+        % Compute the set of _unconstrained_ existentially quantified type
+        % variables, and then apply the type bindings to those type variables
+        % to figure out what types they are bound to.
+        constraint_list_get_tvars(ParentExistentialConstraints,
+            ParentExistConstrainedTVars),
+        list.delete_elems(ParentExistQVars, ParentExistConstrainedTVars,
+            ParentUnconstrainedExistQVars),
+        apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
+            ParentUnconstrainedExistQVars, ActualExistentialTypes)
+    ;
+        CtorMaybeExistConstraints = no_exist_constraints,
+        NumExistentialConstraints = 0,
+        ActualExistentialTypes = []
+    ),
     apply_variable_renaming_to_tvar_kind_map(CtorToParentRenaming,
         CtorKindMap, ParentKindMap),
-    apply_variable_renaming_to_prog_constraint_list(CtorToParentRenaming,
-        CtorExistentialConstraints, ParentExistentialConstraints),
     apply_variable_renaming_to_type_list(CtorToParentRenaming,
         CtorArgTypes, ParentArgTypes),
     apply_variable_renaming_to_type(CtorToParentRenaming, CtorRetType,
@@ -1822,7 +1844,6 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
     % Create type_class_info variables for the type class constraints.
     poly_info_get_constraint_map(!.Info, ConstraintMap),
     GoalId = goal_info_get_goal_id(GoalInfo),
-    list.length(ParentExistentialConstraints, NumExistentialConstraints),
     Context = goal_info_get_context(GoalInfo),
     (
         IsExistConstr = is_exist_constr,
@@ -1840,16 +1861,6 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
         make_existq_typeclass_info_vars(ActualExistentialConstraints, Context,
             ExtraTypeClassVars, ExtraTypeClassGoals, !Info)
     ),
-
-    % Compute the set of _unconstrained_ existentially quantified type
-    % variables, and then apply the type bindings to those type variables
-    % to figure out what types they are bound to.
-    constraint_list_get_tvars(ParentExistentialConstraints,
-        ParentExistConstrainedTVars),
-    list.delete_elems(ParentExistQVars, ParentExistConstrainedTVars,
-        ParentUnconstrainedExistQVars),
-    apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
-        ParentUnconstrainedExistQVars, ActualExistentialTypes),
 
     % Create type_info variables for the _unconstrained_ existentially
     % quantified type variables.
@@ -3519,13 +3530,13 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         )
     ).
 
-get_special_proc(Type, SpecialPredId, ModuleInfo, PredName, PredId, ProcId) :-
-    TypeCategory = classify_type(ModuleInfo, Type),
+get_special_proc(ModuleInfo, TypeCtor, SpecialPredId,
+        PredName, PredId, ProcId) :-
+    TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
     get_category_name(TypeCategory) = MaybeCategoryName,
     (
         MaybeCategoryName = no,
         module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
-        type_to_ctor_det(Type, TypeCtor),
         search_special_pred_maps(SpecialPredMaps, SpecialPredId, TypeCtor,
             PredId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -3543,10 +3554,10 @@ get_special_proc(Type, SpecialPredId, ModuleInfo, PredName, PredId, ProcId) :-
         PredName = qualified(mercury_private_builtin_module, Name)
     ).
 
-get_special_proc_det(Type, SpecialPredId, ModuleInfo, PredName,
+get_special_proc_det(ModuleInfo, TypeCtor, SpecialPredId, PredName,
         PredId, ProcId) :-
     ( if
-        get_special_proc(Type, SpecialPredId, ModuleInfo,
+        get_special_proc(ModuleInfo, TypeCtor, SpecialPredId,
             PredNamePrime, PredIdPrime, ProcIdPrime)
     then
         PredName = PredNamePrime,

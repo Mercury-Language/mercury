@@ -57,7 +57,7 @@ main(!IO) :-
     baz - "600"
 ]).
 
-:- pragma reserve_tag(foo/0).
+% :- pragma reserve_tag(foo/0). This pragma is not supported anymore.
 
 %---------------------------------------------------------------------------%
 

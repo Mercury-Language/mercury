@@ -41,10 +41,12 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
+:- import_module hlds.add_pred.
 :- import_module hlds.error_msg_inst.
+:- import_module hlds.hlds_data.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
-:- import_module hlds.make_hlds.make_hlds_error.
+:- import_module hlds.make_hlds_error.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -60,6 +62,7 @@
 
 :- import_module bool.
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module varset.

@@ -973,13 +973,14 @@ arg_insts_match_ctor_subtypes(ArgInsts, ConsId, Type, ModuleInfo) :-
     ( if
         type_to_ctor(Type, TypeCtor),
         get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-        ConsDefn = hlds_cons_defn(_, _, _, _, ExistQVars, _, ConsArgs, _),
+        ConsDefn = hlds_cons_defn(_, _, _, _,
+            MaybeExistConstraints, ConsArgs, _),
         % Some builtin types have constructors with arguments that are not
         % reflected in the constructor definition, and which return an
         % empty list.
         ConsArgs = [_ | _],
         % XXX Handle existentially quantified constructors.
-        ExistQVars = []
+        MaybeExistConstraints = no_exist_constraints
     then
         arg_insts_match_ctor_subtypes_2(ArgInsts, ConsArgs, ModuleInfo)
     else
@@ -1019,13 +1020,14 @@ propagate_ctor_subtypes_into_arg_insts(ConsId, Type, !ArgInsts, ModuleInfo) :-
     ( if
         type_to_ctor(Type, TypeCtor),
         get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-        ConsDefn = hlds_cons_defn(_, _, _, _, ExistQVars, _, ConsArgs, _),
+        ConsDefn = hlds_cons_defn(_, _, _, _,
+            MaybeExistConstraints, ConsArgs, _),
         % Some builtin types have constructors with arguments that are not
         % reflected in the constructor definition, and which return an
         % empty list.
         ConsArgs = [_ | _],
         % XXX Handle existentially quantified constructors.
-        ExistQVars = []
+        MaybeExistConstraints = no_exist_constraints
     then
         propagate_ctor_subtypes_into_arg_insts_2(ConsArgs, !ArgInsts)
     else

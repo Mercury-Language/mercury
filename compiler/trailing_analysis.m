@@ -787,6 +787,7 @@ trail_check_type_2(ModuleInfo, Type, TypeCtorCat) = Status :-
         ; TypeCtorCat = ctor_cat_void
         ; TypeCtorCat = ctor_cat_builtin_dummy
         ; TypeCtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ; TypeCtorCat = ctor_cat_user(cat_user_abstract_dummy)
         ),
         Status = trail_will_not_modify
     ;
@@ -796,6 +797,7 @@ trail_check_type_2(ModuleInfo, Type, TypeCtorCat) = Status :-
         ( TypeCtorCat = ctor_cat_tuple
         ; TypeCtorCat = ctor_cat_enum(_)
         ; TypeCtorCat = ctor_cat_user(cat_user_notag)
+        ; TypeCtorCat = ctor_cat_user(cat_user_abstract_notag)
         ; TypeCtorCat = ctor_cat_user(cat_user_general)
         ),
         type_to_ctor_and_args_det(Type, _TypeCtor, Args),

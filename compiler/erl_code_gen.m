@@ -913,15 +913,22 @@ cons_id_size(ModuleInfo, Type, ConsId) = Size :-
     then
         % There will be a cell for each existential type variable
         % which isn't mentioned in a typeclass constraint and
-        % a cell for each constraint and for each arg.
+        % for each constraint, as well as for each arg.
 
-        Constraints = ConsDefn ^ cons_constraints,
-        constraint_list_get_tvars(Constraints, ConstrainedTVars),
-        ExistTVars = ConsDefn ^ cons_exist_tvars,
-        UnconstrainedTVars = list.delete_elems(ExistTVars, ConstrainedTVars),
-
-        Size = list.length(UnconstrainedTVars) + list.length(Constraints) +
-            list.length(ConsDefn ^ cons_args)
+        list.length(ConsDefn ^ cons_args, NumArgs),
+        MaybeExistConstraints = ConsDefn ^ cons_maybe_exist,
+        (
+            MaybeExistConstraints = no_exist_constraints,
+            Size = NumArgs
+        ;
+            MaybeExistConstraints = exist_constraints(
+                cons_exist_constraints(ExistTVars, Constraints)),
+            constraint_list_get_tvars(Constraints, ConstrainedTVars),
+            UnconstrainedTVars =
+                list.delete_elems(ExistTVars, ConstrainedTVars),
+            Size = NumArgs +
+                list.length(UnconstrainedTVars) + list.length(Constraints)
+        )
     else
         Size = 0
     ).

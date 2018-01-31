@@ -44,16 +44,16 @@
 
 :- implementation.
 
+:- import_module hlds.add_pred.
 :- import_module hlds.default_func_mode.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.add_clause.
-:- import_module hlds.make_hlds.add_pred.
-:- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.
+:- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
@@ -67,6 +67,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
 :- import_module set.
 :- import_module varset.

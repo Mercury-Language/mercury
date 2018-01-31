@@ -151,7 +151,7 @@ find_weights(ModuleInfo, Weights) :-
 find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
-        TypeBody = hlds_du_type(Constructors, _, _, _, _, _, _, _, _),
+        TypeBody = hlds_du_type(Constructors, _, _, _),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         list.foldl(find_weights_for_cons(TypeCtor, TypeParams),
             Constructors, !Weights)
@@ -179,7 +179,7 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
 % of counted arguments.
 
 find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
-    Ctor = ctor(_ExistQVars, _Constraints, SymName, Args, Arity, _),
+    Ctor = ctor(_MaybeExistConstraints, SymName, Args, Arity, _Context),
     ( if Arity > 0 then
         find_and_count_nonrec_args(Args, TypeCtor, Params,
             NumNonRec, ArgInfos0),
@@ -507,6 +507,7 @@ zero_size_type_category(CtorCat, ZeroSize) :-
     (
         ( CtorCat = ctor_cat_builtin(_)
         ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_dummy)
         ; CtorCat = ctor_cat_void
         ; CtorCat = ctor_cat_system(_)
         ; CtorCat = ctor_cat_higher_order
@@ -516,6 +517,7 @@ zero_size_type_category(CtorCat, ZeroSize) :-
         ZeroSize = yes
     ;
         ( CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_notag)
         ; CtorCat = ctor_cat_user(cat_user_general)
         ; CtorCat = ctor_cat_tuple
         ; CtorCat = ctor_cat_variable

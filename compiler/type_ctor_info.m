@@ -234,7 +234,6 @@ builtin_type_defn = TypeDefn :-
 
 gen_type_ctor_gen_info(ModuleInfo, TypeCtor, ModuleName, TypeName, TypeArity,
         TypeDefn, TypeCtorGenInfo) :-
-    hlds_data.get_type_defn_status(TypeDefn, Status),
     module_info_get_special_pred_maps(ModuleInfo, SpecMaps),
 
     UnifyMap = SpecMaps ^ spm_unify_map,
@@ -249,6 +248,7 @@ gen_type_ctor_gen_info(ModuleInfo, TypeCtor, ModuleName, TypeName, TypeArity,
     proc_id_to_int(CompareProcId, CompareProcInt),
     Compare = proc(ComparePredId, CompareProcId),
 
+    hlds_data.get_type_defn_status(TypeDefn, Status),
     TypeCtorGenInfo = type_ctor_gen_info(TypeCtor, ModuleName, TypeName,
         TypeArity, Status, TypeDefn, Unify, Compare).
 
@@ -282,7 +282,7 @@ construct_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
     rtti_data::out) is det.
 
 construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
-    TypeCtorGenInfo = type_ctor_gen_info(TypeCtor, ModuleName, TypeName,
+    TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
         TypeArity, _Status, HldsDefn, UnifyPredProcId, ComparePredProcId),
     UnifyPredProcId = proc(UnifyPredId, UnifyProcId),
     UnifyProcLabel = make_rtti_proc_label(ModuleInfo,
@@ -329,13 +329,13 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             % similar to those for abstract types.
             TypeBody = hlds_solver_type(DetailsSolver),
             DetailsSolver =
-                type_details_solver(SolverTypeDetails, _MaybeUserEqComp),
+                type_details_solver(SolverTypeDetails, _MaybeCanonical),
             RepnType = SolverTypeDetails ^ std_representation_type,
             % There can be no existentially typed args to an equivalence.
-            UnivTvars = TypeArity,
-            ExistTvars = [],
+            UnivTVars = TypeArity,
+            ExistTVars = [],
             pseudo_type_info.construct_maybe_pseudo_type_info(RepnType,
-                UnivTvars, ExistTvars, MaybePseudoTypeInfo),
+                UnivTVars, ExistTVars, MaybePseudoTypeInfo),
             Details = tcd_eqv(MaybePseudoTypeInfo)
         ;
             TypeBody = hlds_foreign_type(ForeignBody),
@@ -350,34 +350,40 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         ;
             TypeBody = hlds_eqv_type(Type),
             % There can be no existentially typed args to an equivalence.
-            UnivTvars = TypeArity,
-            ExistTvars = [],
+            UnivTVars = TypeArity,
+            ExistTVars = [],
             pseudo_type_info.construct_maybe_pseudo_type_info(Type,
-                UnivTvars, ExistTvars, MaybePseudoTypeInfo),
+                UnivTVars, ExistTVars, MaybePseudoTypeInfo),
             Details = tcd_eqv(MaybePseudoTypeInfo)
         ;
-            TypeBody = hlds_du_type(Ctors, ConsTagMap, _CheaperTagTest,
-                DuTypeKind, MaybeUserEqComp, _MaybeDirectArgCtors,
-                ReservedTag, ReservedAddr, _IsForeignType),
+            TypeBody = hlds_du_type(_Ctors, MaybeCanonical, MaybeRepn,
+                _IsForeignType),
             (
-                MaybeUserEqComp = yes(_),
+                MaybeRepn = no,
+                unexpected($pred, "MaybeRepn = no")
+            ;
+                MaybeRepn = yes(Repn),
+                Repn = du_type_repn(_ConsTagMap, CtorRepns, _ConsCtorMap,
+                    _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors,
+                    ReservedAddr)
+            ),
+            (
+                MaybeCanonical = noncanon(_),
                 EqualityAxioms = user_defined
             ;
-                MaybeUserEqComp = no,
+                MaybeCanonical = canon,
                 EqualityAxioms = standard
             ),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
-                make_mercury_enum_details(TypeCtor, Ctors, ConsTagMap,
-                    ReservedTag, EqualityAxioms, Details)
+                make_mercury_enum_details(CtorRepns, EqualityAxioms, Details)
             ;
                 DuTypeKind = du_type_kind_foreign_enum(Lang),
-                make_foreign_enum_details(TypeCtor, Lang, Ctors, ConsTagMap,
-                    ReservedTag, EqualityAxioms, Details)
+                make_foreign_enum_details(Lang, CtorRepns, EqualityAxioms,
+                    Details)
             ;
                 DuTypeKind = du_type_kind_direct_dummy,
-                make_mercury_enum_details(TypeCtor, Ctors, ConsTagMap,
-                    ReservedTag, EqualityAxioms, Details)
+                make_mercury_enum_details(CtorRepns, EqualityAxioms, Details)
             ;
                 DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
                     MaybeArgName),
@@ -385,22 +391,16 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                     MaybeArgName, EqualityAxioms, Details)
             ;
                 DuTypeKind = du_type_kind_general,
-                make_du_details(TypeCtor, Ctors, ConsTagMap, TypeArity,
-                    EqualityAxioms, ReservedAddr, ModuleInfo, Details)
+                make_du_details(ModuleInfo, CtorRepns, TypeArity,
+                    EqualityAxioms, ReservedAddr, Details)
             )
         )
     ),
     some [!Flags] (
         !:Flags = set.init,
         (
-            TypeBody = hlds_du_type(_, _, _, _, _, _, BodyReservedTag, _, _),
-            set.insert(kind_of_du_flag, !Flags),
-            (
-                BodyReservedTag = uses_reserved_tag,
-                set.insert(reserve_tag_flag, !Flags)
-            ;
-                BodyReservedTag = does_not_use_reserved_tag
-            )
+            TypeBody = hlds_du_type(_, _, _, _),
+            set.insert(kind_of_du_flag, !Flags)
         ;
             ( TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_foreign_type(_)
@@ -495,11 +495,11 @@ type_ctor_info_rtti_version = 17.
 make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
         Details) :-
     FunctorName = unqualify_name(SymName),
-    NumUnivTvars = TypeArity,
+    NumUnivTVars = TypeArity,
     % There can be no existentially typed args to the functor in a notag type.
-    ExistTvars = [],
+    ExistTVars = [],
     pseudo_type_info.construct_maybe_pseudo_type_info(ArgType,
-        NumUnivTvars, ExistTvars, MaybePseudoTypeInfo),
+        NumUnivTVars, ExistTVars, MaybePseudoTypeInfo),
     ( if ArgType = higher_order_type(_, _, higher_order(_), _, _) then
         FunctorSubtypeInfo = functor_subtype_exists
     else
@@ -515,34 +515,26 @@ make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
 
     % Make the functor and layout tables for an enum type.
     %
-:- pred make_mercury_enum_details(type_ctor::in, list(constructor)::in,
-    cons_tag_values::in, uses_reserved_tag::in, equality_axioms::in,
-    type_ctor_details::out) is det.
+:- pred make_mercury_enum_details(list(constructor_repn)::in,
+    equality_axioms::in, type_ctor_details::out) is det.
 
-make_mercury_enum_details(TypeCtor, Ctors, ConsTagMap, ReserveTag,
-        EqualityAxioms, Details) :-
-    (
-        ReserveTag = uses_reserved_tag,
-        unexpected($module, $pred, "enum with reserved tag")
-    ;
-        ReserveTag = does_not_use_reserved_tag
-    ),
-    make_enum_functors(TypeCtor, Ctors, 0, ConsTagMap, EnumFunctors),
+make_mercury_enum_details(CtorRepns, EqualityAxioms, Details) :-
+    make_enum_functors(CtorRepns, 0, EnumFunctors),
     ValueMap0 = map.init,
     NameMap0 = map.init,
     list.foldl2(make_enum_maps, EnumFunctors,
         ValueMap0, ValueMap, NameMap0, NameMap),
     (
-        Ctors = [],
+        CtorRepns = [],
         unexpected($module, $pred, "enum with no ctors")
     ;
-        Ctors = [_],
+        CtorRepns = [_],
         IsDummy = yes
     ;
-        Ctors = [_, _ | _],
+        CtorRepns = [_, _ | _],
         IsDummy = no
     ),
-    FunctorNumberMap = make_functor_number_map(Ctors),
+    FunctorNumberMap = make_functor_number_map(CtorRepns),
     Details = tcd_enum(EqualityAxioms, EnumFunctors, ValueMap, NameMap,
         IsDummy, FunctorNumberMap).
 
@@ -554,28 +546,23 @@ make_mercury_enum_details(TypeCtor, Ctors, ConsTagMap, ReserveTag,
     % sort this list on functor name, which is how the type functors structure
     % is constructed.
     %
-:- pred make_enum_functors(type_ctor::in, list(constructor)::in,
-    int::in, cons_tag_values::in, list(enum_functor)::out) is det.
+:- pred make_enum_functors(list(constructor_repn)::in, int::in,
+    list(enum_functor)::out) is det.
 
-make_enum_functors(_, [], _, _, []).
-make_enum_functors(TypeCtor, [Functor | Functors], NextOrdinal, ConsTagMap,
+make_enum_functors([], _, []).
+make_enum_functors([FunctorRepn | FunctorRepns], NextOrdinal,
         [EnumFunctor | EnumFunctors]) :-
-    Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs, Arity,
-        _Context),
-    expect(unify(ExistTvars, []), $module, $pred,
-        "existential arguments in functor in enum"),
-    expect(unify(Constraints, []), $module, $pred,
-        "class constraints on functor in enum"),
+    FunctorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag,
+        _FunctorArgRepns, Arity, _Context),
+    expect(unify(MaybeExistConstraints, no_exist_constraints), $module, $pred,
+        "existential constraints in functor in enum"),
     expect(unify(Arity, 0), $module, $pred,
         "functor in enum has nonzero arity"),
-    ConsId = cons(SymName, list.length(FunctorArgs), TypeCtor),
-    map.lookup(ConsTagMap, ConsId, ConsTag),
     expect(unify(ConsTag, int_tag(int_tag_int(NextOrdinal))), $module, $pred,
         "mismatch on constant assigned to functor in enum"),
     FunctorName = unqualify_name(SymName),
     EnumFunctor = enum_functor(FunctorName, NextOrdinal),
-    make_enum_functors(TypeCtor, Functors, NextOrdinal + 1, ConsTagMap,
-        EnumFunctors).
+    make_enum_functors(FunctorRepns, NextOrdinal + 1, EnumFunctors).
 
 :- pred make_enum_maps(enum_functor::in,
     map(int, enum_functor)::in, map(int, enum_functor)::out,
@@ -590,25 +577,17 @@ make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
 
     % Make the functor and layout tables for a foreign enum type.
     %
-:- pred make_foreign_enum_details(type_ctor::in, foreign_language::in,
-    list(constructor)::in, cons_tag_values::in, uses_reserved_tag::in,
-    equality_axioms::in, type_ctor_details::out) is det.
+:- pred make_foreign_enum_details(foreign_language::in,
+    list(constructor_repn)::in, equality_axioms::in,
+    type_ctor_details::out) is det.
 
-make_foreign_enum_details(TypeCtor, Lang, Ctors, ConsTagMap, ReserveTag,
-        EqualityAxioms, Details) :-
-    (
-        ReserveTag = uses_reserved_tag,
-        unexpected($module, $pred, "foreign enum with reserved tag")
-    ;
-        ReserveTag = does_not_use_reserved_tag
-    ),
-    make_foreign_enum_functors(TypeCtor, Lang, Ctors, 0, ConsTagMap,
-        ForeignEnumFunctors),
+make_foreign_enum_details(Lang, CtorRepns, EqualityAxioms, Details) :-
+    make_foreign_enum_functors(Lang, CtorRepns, 0, ForeignEnumFunctors),
     OrdinalMap0 = map.init,
     NameMap0 = map.init,
     list.foldl2(make_foreign_enum_maps, ForeignEnumFunctors,
         OrdinalMap0, OrdinalMap, NameMap0, NameMap),
-    FunctorNumberMap = make_functor_number_map(Ctors),
+    FunctorNumberMap = make_functor_number_map(CtorRepns),
     Details = tcd_foreign_enum(Lang, EqualityAxioms, ForeignEnumFunctors,
         OrdinalMap, NameMap, FunctorNumberMap).
 
@@ -620,23 +599,19 @@ make_foreign_enum_details(TypeCtor, Lang, Ctors, ConsTagMap, ReserveTag,
     % caller to sort this list on functor name, which is how the type functors
     % structure is constructed.
     %
-:- pred make_foreign_enum_functors(type_ctor::in, foreign_language::in,
-    list(constructor)::in, int::in, cons_tag_values::in,
+:- pred make_foreign_enum_functors(foreign_language::in,
+    list(constructor_repn)::in, int::in,
     list(foreign_enum_functor)::out) is det.
 
-make_foreign_enum_functors(_, _, [], _, _, []).
-make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
-        ConsTagMap, [ForeignEnumFunctor | ForeignEnumFunctors]) :-
-    Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs,
-        Arity, _Context),
-    expect(unify(ExistTvars, []), $module, $pred,
-        "existential arguments in functor in foreign enum"),
-    expect(unify(Constraints, []), $module, $pred,
-        "class constraints on functor in foreign enum"),
+make_foreign_enum_functors(_, [], _, []).
+make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], NextOrdinal,
+        [ForeignEnumFunctor | ForeignEnumFunctors]) :-
+    FunctorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag,
+        _FunctorArgRepns, Arity, _Context),
+    expect(unify(MaybeExistConstraints, no_exist_constraints), $module, $pred,
+        "existential constraints in functor in enum"),
     expect(unify(Arity, 0), $module, $pred,
         "functor in foreign enum has nonzero arity"),
-    ConsId = cons(SymName, list.length(FunctorArgs), TypeCtor),
-    map.lookup(ConsTagMap, ConsId, ConsTag),
     (
         ConsTag = foreign_tag(ForeignTagLang, ForeignTagValue0),
         expect(unify(Lang, ForeignTagLang), $module, $pred,
@@ -669,8 +644,8 @@ make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
     FunctorName = unqualify_name(SymName),
     ForeignEnumFunctor = foreign_enum_functor(FunctorName, NextOrdinal,
         ForeignTagValue),
-    make_foreign_enum_functors(TypeCtor, Lang, Functors, NextOrdinal + 1,
-        ConsTagMap, ForeignEnumFunctors).
+    make_foreign_enum_functors(Lang, FunctorRepns, NextOrdinal + 1,
+        ForeignEnumFunctors).
 
 :- pred make_foreign_enum_maps(foreign_enum_functor::in,
     map(int, foreign_enum_functor)::in,
@@ -705,14 +680,13 @@ is_reserved_functor(res_func(ResFunctor)) = ResFunctor.
     % Make the functor and layout tables for a du type
     % (including reserved_addr types).
     %
-:- pred make_du_details(type_ctor::in, list(constructor)::in,
-    cons_tag_values::in, int::in, equality_axioms::in,
-    uses_reserved_address::in, module_info::in, type_ctor_details::out) is det.
+:- pred make_du_details(module_info::in, list(constructor_repn)::in,
+    int::in, equality_axioms::in, uses_reserved_address::in,
+    type_ctor_details::out) is det.
 
-make_du_details(TypeCtor, Ctors, ConsTagMap, TypeArity, EqualityAxioms,
-        ReservedAddr, ModuleInfo, Details) :-
-    make_maybe_res_functors(TypeCtor, Ctors, 0, ConsTagMap, TypeArity,
-        ModuleInfo, MaybeResFunctors),
+make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, ReservedAddr,
+        Details) :-
+    make_maybe_res_functors(ModuleInfo, Ctors, 0, TypeArity, MaybeResFunctors),
     DuFunctors = list.filter_map(is_du_functor, MaybeResFunctors),
     ResFunctors = list.filter_map(is_reserved_functor, MaybeResFunctors),
     list.foldl(make_du_ptag_ordered_table, DuFunctors,
@@ -752,31 +726,29 @@ make_du_details(TypeCtor, Ctors, ConsTagMap, TypeArity, EqualityAxioms,
     % TagMap groups the rttis into groups depending on their primary tags;
     % this is how the type layout structure is constructed.
     %
-:- pred make_maybe_res_functors(type_ctor::in, list(constructor)::in, int::in,
-    cons_tag_values::in, int::in, module_info::in,
-    list(maybe_reserved_functor)::out) is det.
+:- pred make_maybe_res_functors(module_info::in, list(constructor_repn)::in,
+    int::in, int::in, list(maybe_reserved_functor)::out) is det.
 
-make_maybe_res_functors(_, [], _, _, _, _, []).
-make_maybe_res_functors(TypeCtor, [Functor | Functors], NextOrdinal,
-        ConsTagMap, TypeArity, ModuleInfo,
-        [MaybeResFunctor | MaybeResFunctors]) :-
-    Functor = ctor(ExistTvars, Constraints, SymName, ConstructorArgs,
-        Arity, _Ctxt),
+make_maybe_res_functors(_, [], _, _, []).
+make_maybe_res_functors(ModuleInfo, [CtorRepn | CtorRepns],
+        NextOrdinal, TypeArity, [MaybeResFunctor | MaybeResFunctors]) :-
+    CtorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag,
+        ConsArgRepns, Arity, _Context),
     FunctorName = unqualify_name(SymName),
-    ConsId = cons(SymName, list.length(ConstructorArgs), TypeCtor),
-    map.lookup(ConsTagMap, ConsId, ConsTag),
     get_maybe_reserved_rep(ConsTag, ConsRep),
-    list.map_foldl(generate_du_arg_info(TypeArity, ExistTvars),
-        ConstructorArgs, ArgInfos, functor_subtype_none, FunctorSubtypeInfo),
     (
-        ExistTvars = [],
+        MaybeExistConstraints = no_exist_constraints,
+        ExistTVars = [],
         MaybeExistInfo = no
     ;
-        ExistTvars = [_ | _],
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(ExistTVars, Constraints),
         module_info_get_class_table(ModuleInfo, ClassTable),
-        generate_exist_into(ExistTvars, Constraints, ClassTable, ExistInfo),
+        generate_exist_into(ExistTVars, Constraints, ClassTable, ExistInfo),
         MaybeExistInfo = yes(ExistInfo)
     ),
+    list.map_foldl(generate_du_arg_info(TypeArity, ExistTVars),
+        ConsArgRepns, ArgInfos, functor_subtype_none, FunctorSubtypeInfo),
     (
         ConsRep = du_rep(DuRep),
         DuFunctor = du_functor(FunctorName, Arity, NextOrdinal, DuRep,
@@ -790,8 +762,8 @@ make_maybe_res_functors(TypeCtor, [Functor | Functors], NextOrdinal,
         ResFunctor = reserved_functor(FunctorName, NextOrdinal, ResRep),
         MaybeResFunctor = res_func(ResFunctor)
     ),
-    make_maybe_res_functors(TypeCtor, Functors, NextOrdinal + 1, ConsTagMap,
-        TypeArity, ModuleInfo, MaybeResFunctors).
+    make_maybe_res_functors(ModuleInfo, CtorRepns,
+        NextOrdinal + 1, TypeArity, MaybeResFunctors).
 
 :- pred get_maybe_reserved_rep(cons_tag::in, maybe_reserved_rep::out) is det.
 
@@ -842,13 +814,13 @@ get_maybe_reserved_rep(ConsTag, ConsRep) :-
         unexpected($module, $pred, "bad cons_tag for du function symbol")
     ).
 
-:- pred generate_du_arg_info(int::in, existq_tvars::in, constructor_arg::in,
-    du_arg_info::out, functor_subtype_info::in, functor_subtype_info::out)
-    is det.
+:- pred generate_du_arg_info(int::in, existq_tvars::in,
+    constructor_arg_repn::in, du_arg_info::out,
+    functor_subtype_info::in, functor_subtype_info::out) is det.
 
-generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo,
+generate_du_arg_info(NumUnivTVars, ExistTVars, ConsArgRepn, ArgInfo,
         !FunctorSubtypeInfo) :-
-    ConstructorArg = ctor_arg(MaybeCtorFieldName, ArgType, ArgWidth, _Ctxt),
+    ConsArgRepn = ctor_arg_repn(MaybeCtorFieldName, ArgType, ArgWidth, _Ctxt),
     (
         MaybeCtorFieldName = yes(ctor_field_name(SymName, _)),
         ArgName = unqualify_name(SymName),
@@ -860,7 +832,7 @@ generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo,
     % The C runtime cannot yet handle the "self" type representation,
     % so we do not generate it here.
     pseudo_type_info.construct_maybe_pseudo_type_info(ArgType,
-        NumUnivTvars, ExistTvars, MaybePseudoTypeInfo),
+        NumUnivTVars, ExistTVars, MaybePseudoTypeInfo),
     (
         MaybePseudoTypeInfo = plain(TypeInfo),
         MaybePseudoTypeInfoOrSelf = plain(TypeInfo)
@@ -1030,7 +1002,7 @@ make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
     % Construct the array mapping ordinal constructor numbers
     % to lexicographic constructor numbers.
     %
-:- func make_functor_number_map(list(constructor)) = list(int).
+:- func make_functor_number_map(list(constructor_repn)) = list(int).
 
 make_functor_number_map(OrdinalCtors) = OrdinalToLexicographicSeqNums :-
     OrdinalCtorNames = list.map(ctor_name_arity, OrdinalCtors),
@@ -1041,9 +1013,9 @@ make_functor_number_map(OrdinalCtors) = OrdinalToLexicographicSeqNums :-
     map.apply_to_list(OrdinalCtorNames, LexicographicCtorNameToSeqNumMap,
         OrdinalToLexicographicSeqNums).
 
-:- func ctor_name_arity(constructor) = {sym_name, arity}.
+:- func ctor_name_arity(constructor_repn) = {sym_name, arity}.
 
-ctor_name_arity(Ctor) = {Ctor ^ cons_name, list.length(Ctor ^ cons_args)}.
+ctor_name_arity(Ctor) = {Ctor ^ cr_name, list.length(Ctor ^ cr_args)}.
 
 %---------------------------------------------------------------------------%
 

@@ -375,6 +375,7 @@
 
 :- import_module int.
 :- import_module io.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 
@@ -523,6 +524,8 @@ type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
         ( CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
         ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_dummy)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_notag)
         ; CtorCat = ctor_cat_tuple
         ; CtorCat = ctor_cat_system(_)
         ; CtorCat = ctor_cat_variable
@@ -628,7 +631,14 @@ find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
             search_type_ctor_defn(TypeTable, SwitchVarTypeCtor,
                 SwitchVarTypeDefn),
             hlds_data.get_type_defn_body(SwitchVarTypeDefn, SwitchVarTypeBody),
-            SwitchVarTypeBody ^ du_type_reserved_addr = uses_reserved_address
+            SwitchVarTypeBody = hlds_du_type(_, _, MaybeRepn, _),
+            (
+                MaybeRepn = no,
+                unexpected($pred, "MaybeRepn = no")
+            ;
+                MaybeRepn = yes(Repn),
+                Repn ^ dur_reserved_addr = uses_reserved_address
+            )
         )
     then
         MayUseSmartIndexing = may_not_use_smart_indexing
@@ -676,9 +686,9 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _, _),
-            map.count(ConsTable, TypeRange),
-            Max = TypeRange - 1
+            TypeBody = hlds_du_type(Constructors, _, _, _),
+            list.length(Constructors, NumConstructors),
+            Max = NumConstructors - 1
         ;
             ( TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_foreign_type(_)
@@ -1153,9 +1163,17 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
-        TypeBody = hlds_du_type(_, ConsTable, _, _, _, _, _, _, _),
-        map.to_assoc_list(ConsTable, ConsList),
-        assoc_list.values(ConsList, TagList)
+        TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+        (
+            MaybeRepn = no,
+            unexpected($pred, "MaybeRepn = no")
+        ;
+            MaybeRepn = yes(du_type_repn(ConsTable, _, _, _, _, _, _)),
+            % XXX TYPE_REPN could just get get_ptag_counts_loop to loop over
+            % constructor_repns.
+            map.to_assoc_list(ConsTable, ConsList),
+            assoc_list.values(ConsList, TagList)
+        )
     ;
         ( TypeBody = hlds_eqv_type(_)
         ; TypeBody = hlds_foreign_type(_)

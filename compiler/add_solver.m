@@ -70,14 +70,15 @@
 
 :- implementation.
 
+:- import_module hlds.add_pred.
 :- import_module hlds.make_hlds.add_foreign_proc.
-:- import_module hlds.make_hlds.add_pred.
 :- import_module libs.globals.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
 :- import_module map.
+:- import_module maybe.
 :- import_module string.
 :- import_module varset.
 

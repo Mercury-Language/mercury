@@ -83,6 +83,7 @@
 
 :- import_module cord.
 :- import_module maybe.
+:- import_module require.
 :- import_module set.
 :- import_module term.
 
@@ -305,7 +306,6 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
             ; Pragma = pragma_oisu(_)
             ; Pragma = pragma_tabled(_)
             ; Pragma = pragma_fact_table(_)
-            ; Pragma = pragma_reserve_tag(_)
             ; Pragma = pragma_promise_eqv_clauses(_)
             ; Pragma = pragma_promise_pure(_)
             ; Pragma = pragma_promise_semipure(_)
@@ -335,6 +335,10 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
         ; Item = item_nothing(_)
         ),
         MaybeIFileItem = no
+    ;
+        Item = item_type_repn(_),
+        % XXX TYPE_REPN Implement this.
+        unexpected($pred, "item_type_repn")
     ).
 
 %---------------------------------------------------------------------------%

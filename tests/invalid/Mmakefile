@@ -354,9 +354,10 @@ SINGLEMODULE= \
 	wrong_arity_function \
 	wrong_type_arity
 
-# The following require that num_tag_bits >= 1
-RESERVE_TAG_MODULES = \
-	reserve_tag
+# The following require that num_tag_bits >= 1.
+# NOTE We don't support reserving tags anymore.
+# RESERVE_TAG_MODULES = \
+# 	reserve_tag
 
 # The following require a trailing grade
 TRAILED_MODULES = \
@@ -407,11 +408,12 @@ else
 endif
 
 # The java, csharp and erlang grades compile with num_tag_bits = 0.
-ifneq "$(filter java% csharp% erlang%,$(GRADE))" ""
-	RESERVE_TAG_PROGS =
-else
-	RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)
-endif
+# NOTE We don't support reserving tags anymore.
+# ifneq "$(filter java% csharp% erlang%,$(GRADE))" ""
+# 	RESERVE_TAG_PROGS =
+# else
+# 	RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)
+# endif
 
 ifeq "$(filter tr%,$(GRADE))" ""
 	TRAILED_PROGS =
@@ -429,7 +431,6 @@ TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
 
 SINGLEMODULE_PROGS = $(SINGLEMODULE) \
 	$(C_INTERFACE_PROGS) \
-	$(RESERVE_TAG_PROGS) \
 	$(TRAILED_PROGS) \
 	$(TYPE_SPEC_PROGS) \
 	$(NON_PROFDEEP_PROGS)

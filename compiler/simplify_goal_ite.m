@@ -423,33 +423,23 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
 
 can_switch_on_type(TypeBody) = CanSwitchOnType :-
     (
-        TypeBody = hlds_du_type(_Ctors, _TagValues, _CheaperTagTest,
-            DuTypeKind, _UserEq, _DirectArgCtors, _ReservedTag, _ReservedAddr,
+        TypeBody = hlds_du_type(Ctors, _MaybeUserEq, _MaybeRepn,
             _MaybeForeignType),
-        % We don't care about _UserEq, since the unification with *any* functor
-        % of the type indicates that we are deconstructing the physical
+        % We don't care about _MaybeUserEq, since the unification with *any*
+        % functor of the type indicates that we are deconstructing the physical
         % representation, not the logical value.
         %
-        % We don't care about _ReservedTag or _ReservedAddr, since those are
-        % only implementation details.
+        % We don't care about _MaybeRepn, since that contains only
+        % implementation details (which may be of interest when a code
+        % generator decides *how* to implement the switch, but which cannot
+        % affected *whether* we can implement the switch).
         %
         % We don't care about _MaybeForeignType, since the unification with
         % *any* functor of the type means that either there is no foreign type
         % version, or we are using the Mercury version of the type.
-        (
-            ( DuTypeKind = du_type_kind_mercury_enum
-            ; DuTypeKind = du_type_kind_foreign_enum(_)
-            ; DuTypeKind = du_type_kind_general
-            ),
+        ( if Ctors = [_, _ | _] then
             CanSwitchOnType = yes
-        ;
-            ( DuTypeKind = du_type_kind_direct_dummy
-            ; DuTypeKind = du_type_kind_notag(_, _, _)
-            ),
-            % We should have already got a warning that the condition cannot
-            % fail; a warning about using a switch would therefore be redundant
-            % (as well as confusing, since you cannot have a switch with one
-            % arm for the one function symbol).
+        else
             CanSwitchOnType = no
         )
     ;

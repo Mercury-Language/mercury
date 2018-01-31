@@ -44,8 +44,8 @@ bad_foreign_type.m:066:   `comparison is <<comparison pred name>>'.
 bad_foreign_type.m:071: Error: type `bar'/0 defined as foreign_type without
 bad_foreign_type.m:071:   being declared.
 bad_foreign_type.m:075: In second argument of `:- pragma foreign_type'
-bad_foreign_type.m:075:   declaration: error: expected a type name declared
-bad_foreign_type.m:075:   using a `:- type' declaration, got type variable `T'.
+bad_foreign_type.m:075:   declaration: error: expected a type constructor and
+bad_foreign_type.m:075:   zero or more type variables as arguments, got `T'.
 bad_foreign_type.m:081: In third argument of `:- pragma foreign_type'
 bad_foreign_type.m:081:   declaration: error: foreign type descriptor for
 bad_foreign_type.m:081:   language `C' must be a non-empty string.

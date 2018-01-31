@@ -157,6 +157,7 @@ lookup_special_pred_maps(SpecMaps, SpecialPredId, TypeCtor, PredId) :-
 
 :- pred select_special_pred_map(special_pred_maps::in,
     special_pred_id::in, map(type_ctor, pred_id)::out) is det.
+:- pragma inline(select_special_pred_map/3).
 
 select_special_pred_map(SpecMaps, SpecialPredId, SpecMap) :-
     (
@@ -247,13 +248,19 @@ special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
 %-----------------------------------------------------------------------------%
 
 special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
-    CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
+    ( if classify_type_ctor_if_special(TypeCtor, CtorCat0) then
+        MaybeCtorCat = yes(CtorCat0)
+    else
+        MaybeCtorCat = no
+    ),
     (
-        CtorCat = ctor_cat_tuple
+        MaybeCtorCat = yes(ctor_cat_tuple)
     ;
-        ( CtorCat = ctor_cat_user(_)
-        ; CtorCat = ctor_cat_enum(_)
-        ; is_introduced_type_info_type_category(CtorCat) = yes
+        (
+            MaybeCtorCat = no
+        ;
+            MaybeCtorCat = yes(CtorCat),
+            is_introduced_type_info_type_category(CtorCat) = yes
         ),
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
@@ -271,13 +278,19 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody, TypeStatus) :-
     TypeBody \= hlds_solver_type(_),
     TypeBody \= hlds_abstract_type(abstract_solver_type),
 
-    CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
+    ( if classify_type_ctor_if_special(TypeCtor, CtorCat0) then
+        MaybeCtorCat = yes(CtorCat0)
+    else
+        MaybeCtorCat = no
+    ),
     (
-        CtorCat = ctor_cat_tuple
+        MaybeCtorCat = yes(ctor_cat_tuple)
     ;
-        ( CtorCat = ctor_cat_user(_)
-        ; CtorCat = ctor_cat_enum(_)
-        ; is_introduced_type_info_type_category(CtorCat) = yes
+        (
+            MaybeCtorCat = no
+        ;
+            MaybeCtorCat = yes(CtorCat),
+            is_introduced_type_info_type_category(CtorCat) = yes
         ),
         special_pred_is_generated_lazily_2(ModuleInfo, TypeBody, TypeStatus)
     ).
@@ -303,19 +316,43 @@ special_pred_is_generated_lazily_2(ModuleInfo, TypeBody, TypeStatus) :-
 
 special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, TypeBody) :-
     (
-        SpecialPredId = spec_pred_unify,
-        type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
-            unify_compare(_, _))
-    ;
-        SpecialPredId = spec_pred_compare,
-        type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
-            unify_compare(_, UserCmp)),
-        UserCmp = yes(_)
+        (
+            SpecialPredId = spec_pred_unify,
+            type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
+                NonCanonical),
+            require_complete_switch [NonCanonical]
+            (
+                ( NonCanonical = noncanon_uni_cmp(_, _)
+                ; NonCanonical = noncanon_uni_only(_)
+                ; NonCanonical = noncanon_cmp_only(_)
+                )
+            ;
+                NonCanonical = noncanon_abstract(_),
+                fail
+            )
+        ;
+            SpecialPredId = spec_pred_compare,
+            type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
+                NonCanonical),
+            require_complete_switch [NonCanonical]
+            (
+                ( NonCanonical = noncanon_uni_cmp(_, _)
+                ; NonCanonical = noncanon_cmp_only(_)
+                )
+            ;
+                ( NonCanonical = noncanon_uni_only(_)
+                ; NonCanonical = noncanon_abstract(_)
+                ),
+                fail
+            )
+        )
     ;
         Ctors = TypeBody ^ du_type_ctors,
-        list.member(Ctor, Ctors),
-        Ctor = ctor(ExistQTVars, _, _, _, _, _),
-        ExistQTVars = [_ | _]
+        some [Ctor] (
+            list.member(Ctor, Ctors),
+            Ctor = ctor(MaybeExistConstraints, _, _, _, _),
+            MaybeExistConstraints = exist_constraints(_)
+        )
     ).
 
 can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, TypeBody) :-
@@ -328,8 +365,11 @@ can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, TypeBody) :-
         is_builtin_type_special_preds_defined_in_mercury(TypeCtor, _)
     ),
     not type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody),
-    not type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
-        abstract_noncanonical_type(_IsSolverType)).
+    not (
+        type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
+            NonCanonical),
+        NonCanonical = noncanon_abstract(_IsSolverType)
+    ).
 
 is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
     Builtin = mercury_public_builtin_module,

@@ -283,8 +283,9 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
     % ml_gen_construct generates code for a construction unification.
     %
 :- pred ml_gen_construct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(unify_mode)::in, list(int)::in, how_to_construct::in,
+    prog_context::in, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         Context, Stmts, !Info) :-
@@ -520,8 +521,9 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
     %
 :- pred ml_gen_compound(cons_id::in, int::in, maybe(int)::in,
     tag_uses_base_class::in, prog_var::in, list(prog_var)::in,
-    list(unify_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(unify_mode)::in, list(int)::in, how_to_construct::in,
+    prog_context::in, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
         TakeAddr, HowToConstruct, Context, Stmts, !Info) :-
@@ -1467,47 +1469,47 @@ ml_tag_offset_and_argnum(Tag, TagBits, Offset, ArgNum) :-
     % of the field types.
     %
 :- pred ml_field_names_and_types(ml_gen_info::in, mer_type::in,
-    cons_id::in, list(mer_type)::in, list(constructor_arg)::out) is det.
+    cons_id::in, list(mer_type)::in, list(constructor_arg_repn)::out) is det.
 
-ml_field_names_and_types(Info, Type, ConsId, ArgTypes, Fields) :-
+ml_field_names_and_types(Info, Type, ConsId, ArgTypes, CtorArgRepns) :-
     % Lookup the field types for the arguments of this cons_id.
     MakeUnnamedField =
         ( func(FieldType) =
             % Tuples and extra fields are word-sized.
-            ctor_arg(no, FieldType, full_word, term.context_init)
+            ctor_arg_repn(no, FieldType, full_word, term.context_init)
         ),
     ( if type_is_tuple(Type, _) then
         list.length(ArgTypes, TupleArity),
         % The argument types for tuples are unbound type variables.
         FieldTypes = ml_make_boxed_types(TupleArity),
-        Fields = list.map(MakeUnnamedField, FieldTypes)
+        CtorArgRepns = list.map(MakeUnnamedField, FieldTypes)
     else
         ml_gen_info_get_module_info(Info, ModuleInfo),
         type_to_ctor_det(Type, TypeCtor),
-        get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-        Fields0 = ConsDefn ^ cons_args,
+        get_cons_repn_defn_det(ModuleInfo, TypeCtor, ConsId, ConsRepnDefn),
+        CtorArgRepns0 = ConsRepnDefn ^ cr_args,
 
         % Add the fields for any type_infos and/or typeclass_infos inserted
         % for existentially quantified data types. For these, we just copy
         % the types from the ArgTypes.
         NumArgs = list.length(ArgTypes),
-        NumFieldTypes0 = list.length(Fields0),
+        NumFieldTypes0 = list.length(CtorArgRepns0),
         NumExtraTypes = NumArgs - NumFieldTypes0,
         ExtraFieldTypes = list.take_upto(NumExtraTypes, ArgTypes),
-        ExtraFields = list.map(MakeUnnamedField, ExtraFieldTypes),
-        Fields = ExtraFields ++ Fields0
+        ExtraCtorArgRepns = list.map(MakeUnnamedField, ExtraFieldTypes),
+        CtorArgRepns = ExtraCtorArgRepns ++ CtorArgRepns0
     ).
 
-:- pred ml_gen_unify_args(cons_id::in, list(prog_var)::in, list(unify_mode)::in,
-    list(mer_type)::in, list(constructor_arg)::in, mer_type::in,
-    mlds_lval::in, field_offset::in, int::in, cons_tag::in,
+:- pred ml_gen_unify_args(cons_id::in, list(prog_var)::in,
+    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg_repn)::in,
+    mer_type::in, mlds_lval::in, field_offset::in, int::in, cons_tag::in,
     prog_context::in, list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out)
     is det.
 
-ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
-        Offset, ArgNum, Tag, Context, Stmts, !Info) :-
+ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, CtorArgRepns, VarType,
+        VarLval, Offset, ArgNum, Tag, Context, Stmts, !Info) :-
     ( if
-        ml_gen_unify_args_2(ConsId, Args, Modes, ArgTypes, Fields,
+        ml_gen_unify_args_loop(ConsId, Args, Modes, ArgTypes, CtorArgRepns,
             VarType, VarLval, Offset, ArgNum, Tag, Context,
             [], Stmts0, !Info)
     then
@@ -1516,30 +1518,31 @@ ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
         unexpected($pred, "length mismatch")
     ).
 
-:- pred ml_gen_unify_args_2(cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg)::in,
+:- pred ml_gen_unify_args_loop(cons_id::in, list(prog_var)::in,
+    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg_repn)::in,
     mer_type::in, mlds_lval::in, field_offset::in, int::in,
     cons_tag::in, prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is semidet.
 
-ml_gen_unify_args_2(_, [], [], [], _, _, _, _, _, _, _, !Stmts, !Info).
-ml_gen_unify_args_2(ConsId, [Arg | Args], [Mode | Modes], [ArgType | ArgTypes],
-        [Field | Fields], VarType, VarLval, Offset, ArgNum, Tag,
-        Context, !Stmts, !Info) :-
-    ml_next_field_offset(Field, Fields, Offset, Offset1),
+ml_gen_unify_args_loop(_, [], [], [], _, _, _, _, _, _, _, !Stmts, !Info).
+ml_gen_unify_args_loop(ConsId, [Arg | Args], [Mode | Modes],
+        [ArgType | ArgTypes], [CtorArgRepn | CtorArgRepns],
+        VarType, VarLval, Offset, ArgNum, Tag, Context, !Stmts, !Info) :-
+    ml_next_field_offset(CtorArgRepn, CtorArgRepns, Offset, Offset1),
     ArgNum1 = ArgNum + 1,
-    ml_gen_unify_args_2(ConsId, Args, Modes, ArgTypes, Fields, VarType,
-        VarLval, Offset1, ArgNum1, Tag, Context, !Stmts, !Info),
-    ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
-        Offset, ArgNum, Tag, Context, !Stmts, !Info).
+    ml_gen_unify_args_loop(ConsId, Args, Modes, ArgTypes, CtorArgRepns,
+        VarType, VarLval, Offset1, ArgNum1, Tag, Context, !Stmts, !Info),
+    ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, CtorArgRepn,
+        VarType, VarLval, Offset, ArgNum, Tag, Context, !Stmts, !Info).
 
-:- pred ml_next_field_offset(constructor_arg::in, list(constructor_arg)::in,
+:- pred ml_next_field_offset(constructor_arg_repn::in,
+    list(constructor_arg_repn)::in,
     field_offset::in, field_offset::out) is det.
 
 ml_next_field_offset(_, [], Offset, Offset).
 ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
-    CurArg = ctor_arg(_, _, CurWidth, _),
-    NextArg = ctor_arg(_, _, NextWidth, _),
+    CurArg = ctor_arg_repn(_, _, CurWidth, _),
+    NextArg = ctor_arg_repn(_, _, NextWidth, _),
     (
         CurWidth = full_word,
         (
@@ -1595,20 +1598,20 @@ ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
     ).
 
 :- pred ml_gen_unify_args_for_reuse(cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg)::in,
+    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg_repn)::in,
     list(int)::in, mer_type::in, mlds_lval::in, field_offset::in,
     int::in, cons_tag::in, prog_context::in,
     list(mlds_stmt)::out, list(take_addr_info)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
+ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, CtorArgRepns, TakeAddr,
         VarType, VarLval, Offset, ArgNum, Tag, Context, Stmts, TakeAddrInfos,
         !Info) :-
     ( if
         Args = [],
         Modes = [],
         ArgTypes = [],
-        Fields = []
+        CtorArgRepns = []
     then
         Stmts = [],
         TakeAddrInfos = []
@@ -1616,19 +1619,20 @@ ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
         Args = [Arg | Args1],
         Modes = [Mode | Modes1],
         ArgTypes = [ArgType | ArgTypes1],
-        Fields = [Field | Fields1]
+        CtorArgRepns = [CtorArgRepn | CtorArgRepns1]
     then
-        ml_next_field_offset(Field, Fields1, Offset, Offset1),
+        % XXX TYPE_REPN Store the offsets in CtorArgRepn.
+        ml_next_field_offset(CtorArgRepn, CtorArgRepns1, Offset, Offset1),
         ArgNum1 = ArgNum + 1,
         ( if TakeAddr = [ArgNum | TakeAddr1] then
             ml_gen_unify_args_for_reuse(ConsId, Args1, Modes1, ArgTypes1,
-                Fields1, TakeAddr1, VarType, VarLval, Offset1, ArgNum1,
+                CtorArgRepns1, TakeAddr1, VarType, VarLval, Offset1, ArgNum1,
                 Tag, Context, Stmts, TakeAddrInfos0, !Info),
 
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_info_get_high_level_data(!.Info, HighLevelData),
-            FieldType = Field ^ arg_type,
-            FieldWidth = Field ^ arg_width,
+            FieldType = CtorArgRepn ^ car_type,
+            FieldWidth = CtorArgRepn ^ car_width,
             ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
                 BoxedFieldType),
             ml_gen_type(!.Info, FieldType, MLDS_FieldType),
@@ -1638,9 +1642,9 @@ ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
             TakeAddrInfos = [TakeAddrInfo | TakeAddrInfos0]
         else
             ml_gen_unify_args_for_reuse(ConsId, Args1, Modes1, ArgTypes1,
-                Fields1, TakeAddr, VarType, VarLval, Offset1, ArgNum1,
+                CtorArgRepns1, TakeAddr, VarType, VarLval, Offset1, ArgNum1,
                 Tag, Context, Stmts0, TakeAddrInfos, !Info),
-            ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field,
+            ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, CtorArgRepn,
                 VarType, VarLval, Offset, ArgNum, Tag, Context,
                 Stmts0, Stmts, !Info)
         )
@@ -1649,16 +1653,16 @@ ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
     ).
 
 :- pred ml_gen_unify_arg(cons_id::in, prog_var::in, unify_mode::in,
-    mer_type::in, constructor_arg::in, mer_type::in, mlds_lval::in,
+    mer_type::in, constructor_arg_repn::in, mer_type::in, mlds_lval::in,
     field_offset::in, int::in, cons_tag::in, prog_context::in,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_arg(ConsId, ArgVar, Mode, ArgType, CtorArg, VarType, VarLval,
+ml_gen_unify_arg(ConsId, ArgVar, Mode, ArgType, CtorArgRepn, VarType, VarLval,
         Offset, ArgNum, Tag, Context, !Stmts, !Info) :-
-    MaybeFieldName = CtorArg ^ arg_field_name,
-    FieldType = CtorArg ^ arg_type,
-    FieldWidth = CtorArg ^ arg_width,
+    MaybeFieldName = CtorArgRepn ^ car_field_name,
+    FieldType = CtorArgRepn ^ car_type,
+    FieldWidth = CtorArgRepn ^ car_width,
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     (
         % With the low-level data representation, we access all fields
@@ -1671,9 +1675,7 @@ ml_gen_unify_arg(ConsId, ArgVar, Mode, ArgType, CtorArg, VarType, VarLval,
         % except for tuple types.
         HighLevelData = yes,
         ml_gen_info_get_target(!.Info, Target),
-        ( if
-            type_is_tuple(VarType, _)
-        then
+        ( if type_is_tuple(VarType, _) then
             Offset = offset(OffsetInt),
             FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt)))
         else
@@ -2236,18 +2238,19 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     (
-        TypeDefnBody =
-            hlds_du_type(Ctors, TagValues, _, _, _, _, _ReservedTag, _, _),
-        % XXX We probably shouldn't ignore ReservedTag here.
+        TypeDefnBody = hlds_du_type(_, _, MaybeRepn, _),
+        (
+            MaybeRepn = no,
+            unexpected($pred, "MaybeRepn = no")
+        ;
+            MaybeRepn = yes(Repn)
+        ),
+        CtorRepns = Repn ^ dur_ctor_repns,
+        ctors_with_and_without_secondary_tag(CtorRepns,
+            0, NumWith, 0, NumWithout),
         ( if
-            some [Ctor] (
-                list.member(Ctor, Ctors),
-                ml_uses_secondary_tag(TypeCtor, TagValues, Ctor, _)
-            ),
-            some [Ctor] (
-                list.member(Ctor, Ctors),
-                not ml_uses_secondary_tag(TypeCtor, TagValues, Ctor, _)
-            )
+            NumWith > 0,
+            NumWithout > 0
         then
             ClassQualifier = mlds_append_class_qualifier_module_qual(
                 MLDS_Module, TypeName, TypeArity),
@@ -2278,6 +2281,24 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
     QualifiedFieldName =
         qual_field_var_name(FieldQualifier, type_qual, fvn_data_tag),
     FieldId = ml_field_named(QualifiedFieldName, ClassPtrType).
+
+    % XXX TYPE_REPN Fix the redundancy between this predicate and
+    % ml_num_ctors_that_need_secondary_tag.
+    %
+:- pred ctors_with_and_without_secondary_tag(list(constructor_repn)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+ctors_with_and_without_secondary_tag([],
+        !NumWith, !NumWithout).
+ctors_with_and_without_secondary_tag([CtorRepn | CtorRepns],
+        !NumWith, !NumWithout) :-
+    ( if ml_uses_secondary_tag(CtorRepn, _) then
+        !:NumWith = !.NumWith + 1
+    else
+        !:NumWithout = !.NumWithout + 1
+    ),
+    ctors_with_and_without_secondary_tag(CtorRepns,
+        !NumWith, !NumWithout).
 
 :- func ml_gen_field_id(mlds_target_lang, mer_type, cons_tag,
     mlds_class_name, arity, mlds_field_var_name) = mlds_field_id.
@@ -2319,60 +2340,8 @@ ml_gen_reserved_address(_ModuleInfo, ResAddr, MLDS_Type) = Rval :-
         ResAddr = null_pointer,
         Rval = ml_const(mlconst_null(MLDS_Type))
     ;
-        ResAddr = small_pointer(Int),
+        ResAddr = small_int_as_pointer(Int),
         Rval = ml_unop(cast(MLDS_Type), ml_const(mlconst_int(Int)))
-    ;
-        ResAddr = reserved_object(_TypeCtor, _QualCtorName, _CtorArity),
-        unexpected($pred, "reserved_object")
-        % Before we stopped supporting reserved objects (2017 aug 8),
-        % we used to use the following code for them, which doesnt work
-        % anymore, because local variables are no longer qualified
-        % either by module or by type. To make this code again, you will
-        % need to add a new kind of constant mlds_rval: the address of
-        % a *field* variable, as opposed to the address of a local variable.
-        % This should work, because field variables can still be module-
-        % or type-qualified. (zs)
-%       (
-%           QualCtorName = qualified(ModuleName, CtorName),
-%           MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-%           TypeCtor = type_ctor(TypeName, TypeArity),
-%           UnqualTypeName = unqualify_name(TypeName),
-%           MLDS_TypeName = mlds_append_class_qualifier_module_qual(
-%               MLDS_ModuleName, UnqualTypeName, TypeArity),
-%           FieldVarName = fvn_reserved_obj_name(CtorName, CtorArity),
-%           LocalVarName = lvn_field_var_as_local(FieldVarName),
-%           Rval0 = ml_const(
-%               mlconst_data_addr_local_var(MLDS_TypeName, LocalVarName)),
-%
-%           % The MLDS type of the reserved object may be a class derived from
-%           % the base class for this Mercury type. So for some back-ends,
-%           % we need to insert a (down-)cast here to convert from the derived
-%           % class to the base class. In particular, this is needed to avoid
-%           % compiler warnings in the C code generated by the MLDS->C
-%           % back-end. But inserting the cast could slow down the generated
-%           % code for the .NET back-end (where the JIT probably doesn't
-%           % optimize downcasts). So we only do it if the back-end
-%           % requires it.
-%           % XXX The .NET backend does not exist anymore.
-%
-%           module_info_get_globals(ModuleInfo, Globals),
-%           globals.get_target(Globals, Target),
-%           SupportsInheritance = target_supports_inheritence(Target),
-%           (
-%               SupportsInheritance = yes,
-%               Rval = Rval0
-%           ;
-%               SupportsInheritance = no,
-%               CastMLDS_Type = mlds_ptr_type(mlds_class_type(
-%                   qual_class_name(MLDS_ModuleName, module_qual,
-%                       UnqualTypeName),
-%                   TypeArity, mlds_class)),
-%               Rval = ml_unop(cast(CastMLDS_Type), Rval0)
-%           )
-%       ;
-%           QualCtorName = unqualified(_),
-%           unexpected($pred, "unqualified ctor name")
-%       )
     ).
 
 %---------------------------------------------------------------------------%
@@ -3214,11 +3183,11 @@ cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
     then
         type_to_ctor_det(VarType, TypeCtor),
         ( if
-            type_util.get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
+            get_cons_repn_defn(ModuleInfo, TypeCtor, ConsId, ConsRepnDefn)
         then
-            ConsArgDefns = ConsDefn ^ cons_args,
-            ConsArgTypes0 = list.map(func(C) = C ^ arg_type, ConsArgDefns),
-            ConsArgWidths0 = list.map(func(C) = C ^ arg_width, ConsArgDefns),
+            ConsArgDefns = ConsRepnDefn ^ cr_args,
+            ConsArgTypes0 = list.map(func(C) = C ^ car_type, ConsArgDefns),
+            ConsArgWidths0 = list.map(func(C) = C ^ car_width, ConsArgDefns),
             (
                 MayHaveExtraArgs = may_not_have_extra_args,
                 ConsArgTypes = ConsArgTypes0,

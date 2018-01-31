@@ -52,7 +52,6 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
-:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.superhomogeneous.
 :- import_module libs.globals.
@@ -62,14 +61,15 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_rename.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
 :- import_module io.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.

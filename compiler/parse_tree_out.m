@@ -87,7 +87,7 @@
 %
 
 :- pred mercury_output_where_attributes(merc_out_info::in, tvarset::in,
-    maybe(solver_type_details)::in, maybe(unify_compare)::in,
+    maybe(solver_type_details)::in, maybe_canonical::in,
     maybe(list(sym_name_and_arity))::in, io::di, io::uo) is det.
 
 :- pred mercury_output_ctor(tvarset::in, constructor::in, io::di, io::uo)
@@ -585,6 +585,9 @@ mercury_output_item(Info, Item, !IO) :-
         Item = item_mutable(ItemMutable),
         mercury_output_item_mutable(Info, ItemMutable, !IO)
     ;
+        Item = item_type_repn(ItemTypeRepn),
+        mercury_output_item_type_repn(Info, ItemTypeRepn, !IO)
+    ;
         Item = item_nothing(_ItemNothing)
     ).
 
@@ -604,7 +607,9 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
         TypeDefn = parse_tree_abstract_type(DetailsAbstract),
         (
             ( DetailsAbstract = abstract_type_general
-            ; DetailsAbstract = abstract_enum_type(_)
+            ; DetailsAbstract = abstract_dummy_type
+            ; DetailsAbstract = abstract_notag_type
+            ; DetailsAbstract = abstract_type_fits_in_n_bits(_)
             ),
             IsSolverType = non_solver_type
         ;
@@ -615,12 +620,22 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
         mercury_output_term_nq(TypeVarSet, print_name_only,
             next_to_graphic_token, TypeTerm, !IO),
         (
-            DetailsAbstract = abstract_enum_type(NumBits),
+            DetailsAbstract = abstract_type_fits_in_n_bits(NumBits),
+            % XXX TYPE_REPN Instead of adding this information to the
+            % generated type definition, generate and write out
+            % a separate type_repn item instead.
             mercury_output_where_abstract_enum_type(NumBits, !IO)
         ;
-            DetailsAbstract = abstract_type_general
+            ( DetailsAbstract = abstract_dummy_type
+            ; DetailsAbstract = abstract_notag_type
+            )
+            % XXX TYPE_REPN The same concern applies here, but these
+            % kinds of abstract types are not yet generated anywhere,
+            % so we don't have anything to do for them.
         ;
-            DetailsAbstract = abstract_solver_type
+            ( DetailsAbstract = abstract_type_general
+            ; DetailsAbstract = abstract_solver_type
+            )
         ),
         io.write_string(".\n", !IO)
     ;
@@ -633,25 +648,25 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
         io.write_string(".\n", !IO)
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(Ctors, MaybeUserEqComp, MaybeDirectArgs),
+        DetailsDu = type_details_du(Ctors, MaybeCanonical, MaybeDirectArgs),
         mercury_output_begin_type_decl(non_solver_type, !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm, !IO),
         mercury_output_ctors(TypeVarSet, yes, Ctors, !IO),
-        mercury_output_where_attributes(Info, TypeVarSet, no, MaybeUserEqComp,
+        mercury_output_where_attributes(Info, TypeVarSet, no, MaybeCanonical,
             MaybeDirectArgs, !IO),
         io.write_string(".\n", !IO)
     ;
         TypeDefn = parse_tree_solver_type(DetailsSolver),
         DetailsSolver =
-            type_details_solver(SolverTypeDetails, MaybeUserEqComp),
+            type_details_solver(SolverTypeDetails, MaybeCanonical),
         mercury_output_begin_type_decl(solver_type, !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm, !IO),
         mercury_output_where_attributes(Info, TypeVarSet,
-            yes(SolverTypeDetails), MaybeUserEqComp, no, !IO),
+            yes(SolverTypeDetails), MaybeCanonical, no, !IO),
         io.write_string(".\n", !IO)
     ;
         TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        DetailsForeign = type_details_foreign(ForeignType, MaybeUserEqComp,
+        DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
             foreign_type_assertions(Assertions)),
         io.write_string(":- pragma foreign_type(", !IO),
         (
@@ -692,7 +707,7 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
             io.write_string("]", !IO)
         ),
         io.write_string(")", !IO),
-        mercury_output_where_attributes(Info, TypeVarSet, no, MaybeUserEqComp,
+        mercury_output_where_attributes(Info, TypeVarSet, no, MaybeCanonical,
             no, !IO),
         io.write_string(".\n", !IO)
     ).
@@ -715,70 +730,82 @@ mercury_output_begin_type_decl(IsSolverType, !IO) :-
     ).
 
 mercury_output_where_attributes(Info, TypeVarSet,
-        MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgs, !IO) :-
+        MaybeSolverTypeDetails, MaybeCanonical, MaybeDirectArgs, !IO) :-
     ( if
         MaybeSolverTypeDetails = no,
-        MaybeUserEqComp        = no,
-        MaybeDirectArgs        = no
+        MaybeCanonical = canon,
+        MaybeDirectArgs = no
     then
         true
     else
-        ( if
-            MaybeUserEqComp = yes(UserEqComp),
-            UserEqComp = unify_compare(MaybeUnifyPred0, MaybeComparePred0)
-        then
-            MaybeUnifyPred   = MaybeUnifyPred0,
-            MaybeComparePred = MaybeComparePred0
-        else
-            MaybeUnifyPred   = no,
-            MaybeComparePred = no
-        ),
         io.write_string("\n\twhere\t", !IO),
-        ( if MaybeUserEqComp = yes(abstract_noncanonical_type(_)) then
+        (
+            MaybeCanonical = noncanon(noncanon_abstract(_)),
+            MaybeUniPred = no,
+            MaybeCmpPred = no,
             io.write_string("type_is_abstract_noncanonical", !IO)
-        else
+        ;
+            (
+                MaybeCanonical = canon,
+                MaybeUniPred = no,
+                MaybeCmpPred = no
+            ;
+                MaybeCanonical = noncanon(noncanon_uni_cmp(UniPred, CmpPred)),
+                MaybeUniPred = yes(UniPred),
+                MaybeCmpPred = yes(CmpPred)
+            ;
+                MaybeCanonical = noncanon(noncanon_uni_only(UniPred)),
+                MaybeUniPred = yes(UniPred),
+                MaybeCmpPred = no
+            ;
+                MaybeCanonical = noncanon(noncanon_cmp_only(CmpPred)),
+                MaybeUniPred = no,
+                MaybeCmpPred = yes(CmpPred)
+            ),
             (
                 MaybeSolverTypeDetails = yes(SolverTypeDetails),
                 mercury_output_solver_type_details(Info, TypeVarSet,
                     SolverTypeDetails, !IO),
                 ( if
-                    (   MaybeUnifyPred = yes(_)
-                    ;   MaybeComparePred = yes(_)
-                    )
+                    MaybeUniPred = no,
+                    MaybeCmpPred = no,
+                    MaybeDirectArgs = no
                 then
-                    io.write_string(",\n\t\t", !IO)
-                else
                     true
+                else
+                    io.write_string(",\n\t\t", !IO)
                 )
             ;
                 MaybeSolverTypeDetails = no
             )
         ),
         (
-            MaybeUnifyPred = yes(UnifyPredName),
+            MaybeUniPred = yes(UniPredName),
             io.write_string("equality is ", !IO),
-            mercury_output_bracketed_sym_name(UnifyPredName, !IO),
-            (
-                MaybeComparePred = yes(_),
+            mercury_output_bracketed_sym_name(UniPredName, !IO),
+            ( if
+                MaybeCmpPred = no,
+                MaybeDirectArgs = no
+            then
+                true
+            else
                 io.write_string(",\n\t\t", !IO)
-            ;
-                MaybeComparePred = no
             )
         ;
-            MaybeUnifyPred = no
+            MaybeUniPred = no
         ),
         (
-            MaybeComparePred = yes(ComparePredName),
+            MaybeCmpPred = yes(CmpPredName),
             io.write_string("comparison is ", !IO),
-            mercury_output_bracketed_sym_name(ComparePredName, !IO),
+            mercury_output_bracketed_sym_name(CmpPredName, !IO),
             (
+                MaybeDirectArgs = no
+            ;
                 MaybeDirectArgs = yes(_),
                 io.write_string(",\n\t\t", !IO)
-            ;
-                MaybeDirectArgs = no
             )
         ;
-            MaybeComparePred = no
+            MaybeCmpPred = no
         ),
         (
             MaybeDirectArgs = yes(DirectArgFunctors),
@@ -788,6 +815,8 @@ mercury_output_where_attributes(Info, TypeVarSet,
         ;
             MaybeDirectArgs = no
         )
+        % If you add code to print any more atttributes here, you must change
+        % the conditions above for printing the commas before them.
     ).
 
 :- pred mercury_output_solver_type_details(merc_out_info::in, tvarset::in,
@@ -825,6 +854,8 @@ mercury_output_solver_type_details(Info, TypeVarSet, Details, !IO) :-
 mercury_output_where_abstract_enum_type(NumBits, !IO) :-
     io.write_string("\n\twhere\t", !IO),
     io.write_string("type_is_abstract_enum(", !IO),
+    % XXX TYPE_REPN
+    % io.write_string("type_is_representable_in_n_bits(", !IO),
     io.write_int(NumBits, !IO),
     io.write_string(")", !IO).
 
@@ -849,19 +880,22 @@ mercury_output_ctors(VarSet, First, [Ctor | Ctors], !IO) :-
     mercury_output_ctors(VarSet, no, Ctors, !IO).
 
 mercury_output_ctor(TypeVarSet, Ctor, !IO) :-
-    Ctor = ctor(ExistQVars, Constraints, SymName, Args, Arity, _Ctxt),
+    Ctor = ctor(MaybeExistConstraints, SymName, Args, Arity, _Ctxt),
 
     % We will have attached the module name to the type definition,
     % so there is no point adding it to the constructor as well.
     Name = unqualify_name(SymName),
-    mercury_output_quantifier(TypeVarSet, print_name_only, ExistQVars, !IO),
     (
-        ExistQVars = [],
+        MaybeExistConstraints = no_exist_constraints,
+        Constraints = [],
         ParenWrap = no
     ;
-        ExistQVars = [_ | _],
-        ParenWrap = yes,
-        io.write_string("(", !IO)
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints), 
+        mercury_output_quantifier(TypeVarSet, print_name_only, ExistQVars,
+            !IO),
+        io.write_string("(", !IO),
+        ParenWrap = yes
     ),
     % We need to quote ';'/2, '{}'/2, '=>'/2, and 'some'/2.
     % XXX I (zs) think that we should not allow these as constructor names.
@@ -912,7 +946,7 @@ mercury_output_ctor(TypeVarSet, Ctor, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_ctor_arg(TVarSet, Arg, !IO) :-
-    Arg = ctor_arg(Name, Type, _Width, _Context),
+    Arg = ctor_arg(Name, Type, _Context),
     mercury_output_ctor_arg_name_prefix(Name, !IO),
     mercury_output_type(TVarSet, print_name_only, Type, !IO).
 
@@ -1413,6 +1447,44 @@ mercury_output_item_mutable(Info, ItemMutable, !IO) :-
     mercury_output_inst(Lang, varset.init, Inst, !IO),
     io.write_string(", ", !IO),
     io.print(Attrs, !IO),
+    io.write_string(").\n", !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred mercury_output_item_type_repn(merc_out_info::in,
+    item_type_repn_info::in, io::di, io::uo) is det.
+
+mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
+    ItemTypeRepn = item_type_repn_info(TypeCtorSymName, ArgTVars, RepnInfo,
+        TVarSet, _Context, _SeqNum),
+    io.write_string(":- type_representation(", !IO),
+    mercury_output_sym_name(TypeCtorSymName, !IO),
+    io.write_string(", [", !IO),
+    io.write_list(ArgTVars, ", ",
+        mercury_output_var(TVarSet, print_num_only), !IO),
+    io.write_string("], ", !IO),
+    (
+        RepnInfo = tcrepn_is_direct_dummy,
+        io.write_string("is_direct_dummy", !IO)
+    ;
+        RepnInfo = tcrepn_is_notag,
+        io.write_string("is_notag", !IO)
+    ;
+        RepnInfo = tcrepn_fits_in_n_bits(NumBits),
+        io.write_string("fits_in_n_bits(", !IO),
+        io.write_int(NumBits, !IO),
+        io.write_string(")", !IO)
+    ;
+        RepnInfo = tcrepn_is_eqv_to(EqvType),
+        io.write_string("is_eqv_to(", !IO),
+        mercury_output_type(TVarSet, print_num_only, EqvType, !IO),
+        io.write_string(")", !IO)
+    ;
+        RepnInfo = tcrepn_has_direct_arg_functors(SymNameAndArities),
+        io.write_string("has_direct_arg_functors([", !IO),
+        io.write_list(SymNameAndArities, ", ", write_sym_name_and_arity, !IO),
+        io.write_string("])", !IO)
+    ),
     io.write_string(").\n", !IO).
 
 %---------------------------------------------------------------------------%

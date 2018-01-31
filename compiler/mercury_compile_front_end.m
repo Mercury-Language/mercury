@@ -103,11 +103,11 @@
 :- import_module check_hlds.typecheck.
 :- import_module check_hlds.unique_modes.
 :- import_module check_hlds.unused_imports.
+:- import_module hlds.du_type_layout.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.
-:- import_module hlds.make_tags.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -153,16 +153,20 @@ frontend_pass(OpModeAugment, QualInfo0,
         FoundUndefTypeError = no,
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
 
-        maybe_write_string(Verbose,
-            "% Post-processing type definitions...\n", !IO),
-        post_process_type_defns(!HLDS, PostTypeSpecs),
-        PostTypeErrors = contains_errors(Globals, PostTypeSpecs),
-        bool.or(PostTypeErrors, !FoundError),
-        maybe_dump_hlds(!.HLDS, 3, "typedefn", !DumpInfo, !IO),
+        % It would be nice to move the decide_type_repns pass later,
+        % possibly all the way to the end of the semantic analysis passes,
+        % to make sure that semantic analysis does not depend on implementation
+        % details.
+        %
+        % Unfortunately, this would require a large amount of extra work,
+        % for reasons that are documented at the top of du_type_layout.m.
+        globals.lookup_bool_option(Globals, statistics, Stats),
+        decide_type_repns_pass(Verbose, Stats, !HLDS, !Specs, !IO),
+        maybe_dump_hlds(!.HLDS, 3, "decide_type_repns", !DumpInfo, !IO),
 
         maybe_write_string(Verbose, "% Checking typeclasses...\n", !IO),
         check_typeclasses(!HLDS, QualInfo0, QualInfo, [], TypeClassSpecs),
-        !:Specs = PostTypeSpecs ++ TypeClassSpecs ++ !.Specs,
+        !:Specs = TypeClassSpecs ++ !.Specs,
         maybe_dump_hlds(!.HLDS, 5, "typeclass", !DumpInfo, !IO),
         set_module_recomp_info(QualInfo, !HLDS),
 
@@ -324,14 +328,14 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
             % is done during the purity pass, and errors in the resolution
             % of such overloading are type errors. However, the code that
             % does this resolution depends on the absence of the other type
-            % errors that post_typecheck.m is designed to discover. (See
-            % Mantis bug 113.)
+            % errors that post_typecheck.m is designed to discover.
+            % (See Mantis bug 113.)
 
             puritycheck(Verbose, Stats, !HLDS, !Specs, !IO),
             maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
 
             check_promises(Verbose, Stats, !HLDS, !Specs, !IO),
-            maybe_dump_hlds(!.HLDS, 22, "puritycheck", !DumpInfo, !IO),
+            maybe_dump_hlds(!.HLDS, 22, "check_promises", !DumpInfo, !IO),
 
             ( if OpModeAugment = opmau_typecheck_only then
                 true
@@ -561,6 +565,8 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
                 !HLDS, !Specs, !IO),
 
             % Work out whether we encountered any errors.
+            MaybeWorstSpecsSeverity =
+                worst_severity_in_specs(Globals, !.Specs),
             module_info_get_num_errors(!.HLDS, NumErrors),
             io.get_exit_status(ExitStatus, !IO),
             ( if
@@ -570,6 +576,13 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
                 FoundOISUError = no,
                 FoundTryError = no,
                 NumErrors = 0,
+                (
+                    MaybeWorstSpecsSeverity = no
+                ;
+                    MaybeWorstSpecsSeverity = yes(WorstSpecsSeverity),
+                    worst_severity(WorstSpecsSeverity,
+                        actual_severity_warning) = actual_severity_warning
+                ),
                 % Strictly speaking, we shouldn't need to check
                 % the exit status. But the values returned for FoundModeError
                 % etc. aren't always correct.
@@ -584,6 +597,21 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
     maybe_dump_hlds(!.HLDS, 99, "front_end", !DumpInfo, !IO).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred decide_type_repns_pass(bool::in, bool::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+decide_type_repns_pass(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_string(Verbose,
+        "% Deciding type representations...\n", !IO),
+    decide_type_repns(!HLDS, !Specs),
+    maybe_write_string(Verbose, "% done.\n", !IO),
+    maybe_report_stats(Stats, !IO).
+
 %---------------------------------------------------------------------------%
 
 :- pred puritycheck(bool::in, bool::in, module_info::in, module_info::out,
@@ -1140,12 +1168,13 @@ maybe_generate_style_warnings(Verbose, Stats, !HLDS, !Specs, !IO) :-
         InconsistentPredOrderForeignProcs),
     (
         InconsistentPredOrderForeignProcs = no,
-        InconsistentPredOrderClauses = no,
-        InconsistentPredOrder = no
-    ;
-        InconsistentPredOrderForeignProcs = no,
-        InconsistentPredOrderClauses = yes,
-        InconsistentPredOrder = yes(only_clauses)
+        (
+            InconsistentPredOrderClauses = no,
+            InconsistentPredOrder = no
+        ;
+            InconsistentPredOrderClauses = yes,
+            InconsistentPredOrder = yes(only_clauses)
+        )
     ;
         InconsistentPredOrderForeignProcs = yes,
         InconsistentPredOrder = yes(clauses_and_foreign_procs)

@@ -22,4 +22,5 @@ bigtest.m:014: Error: no mode declaration for predicate `p'/1.
 bigtest.m:014:   (Use `--infer-modes' to enable mode inference.)
 bigtest.m:020: Error: the type name `=' is reserved for the Mercury
 bigtest.m:020:   implementation.
-bigtest.m:020: Error: type parameters must be variables: (t3 = (t1 + t2)).
+bigtest.m:020: On the left hand side of type definition: error: type parameters
+bigtest.m:020:   must be variables, but `t3' and `(t1 + t2)' are not.

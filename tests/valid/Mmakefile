@@ -291,8 +291,8 @@ CTGC_PROGS = \
 	sharing_loop3 \
 	table_no_attr
 
-RESERVE_TAG_PROGS = \
-	reserve_tag
+# RESERVE_TAG_PROGS = \
+# 	reserve_tag
 
 CONSTRAINT_TYPECHECK_PROGS = \
 	ambig_functor \

@@ -1055,7 +1055,7 @@ find_items_used_by_type_and_mode(TypeAndMode, !Info) :-
 
 find_items_used_by_type_body(TypeBody, !Info) :-
     (
-        TypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
+        TypeBody = hlds_du_type(Ctors, _, _, _),
         list.foldl(find_items_used_by_ctor, Ctors, !Info)
     ;
         TypeBody = hlds_eqv_type(EqvType),
@@ -1073,8 +1073,14 @@ find_items_used_by_type_body(TypeBody, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_ctor(Ctor, !Info) :-
-    Ctor = ctor(_, Constraints, _, CtorArgs, _, _),
-    find_items_used_by_class_constraints(Constraints, !Info),
+    Ctor = ctor(MaybeExistConstraints, _, CtorArgs, _, _),
+    (
+        MaybeExistConstraints = no_exist_constraints
+    ;
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(_, Constraints),
+        find_items_used_by_class_constraints(Constraints, !Info)
+    ),
     list.foldl(find_items_used_by_ctor_arg, CtorArgs, !Info).
 
 :- pred find_items_used_by_ctor_arg(constructor_arg::in,

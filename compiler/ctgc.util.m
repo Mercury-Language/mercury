@@ -190,12 +190,14 @@ type_category_needs_sharing_analysis(CtorCat) = NeedsSharingAnalysis :-
         ; CtorCat = ctor_cat_void
         ; CtorCat = ctor_cat_system(_)
         ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_dummy)
         ),
         NeedsSharingAnalysis = no
     ;
         ( CtorCat = ctor_cat_variable
         ; CtorCat = ctor_cat_tuple
         ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_notag)
         ; CtorCat = ctor_cat_user(cat_user_general)
         ),
         NeedsSharingAnalysis = yes
@@ -217,7 +219,9 @@ type_category_top_cell_may_be_reusable(CtorCat) = Reusable :-
         ; CtorCat = ctor_cat_void
         ; CtorCat = ctor_cat_system(_)
         ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_dummy)
         ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_notag)
         ),
         Reusable = no
     ;

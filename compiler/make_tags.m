@@ -42,11 +42,10 @@
 % them.
 % XXX As of 2017 aug 8, we don't support --num-reserved-objects.
 %
-% If there is a `pragma reserve_tag' declaration for the type, or if the
-% `--reserve-tag' option is set, then we reserve the first primary tag (for
-% representing unbound variables). This is used by HAL, for Herbrand
-% constraints (i.e. Prolog-style logic variables). This also disables
-% enumerations and no_tag types.
+% XXX TYPE_REPN
+% This module should be merged into du_type_layout. This would allow
+% the whole du type layout process to be simplified, which is a practical
+% prerequisite for more aggressive data structure optimizations.
 %
 %-----------------------------------------------------------------------------%
 
@@ -62,12 +61,11 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
-    % assign_constructor_tags(Constructors, MaybeUserEq, TypeCtor,
-    %   ReservedTagPragma, Globals, TagValues, IsEnum):
+    % assign_constructor_tags(Globals, TypeCtor, Constructors, MaybeUserEq,
+    %   TagValues, UsesReservedAddr, DuTypeKinds):
     %
     % Assign a constructor tag to each constructor for a discriminated union
     % type, and determine whether (a) the type representation uses reserved
@@ -75,9 +73,8 @@
     % (`Globals' is passed because exact way in which this is done is
     % dependent on a compilation option.)
     %
-:- pred assign_constructor_tags(list(constructor)::in,
-    maybe(unify_compare)::in, type_ctor::in, uses_reserved_tag::in,
-    globals::in, cons_tag_values::out,
+:- pred assign_constructor_tags(globals::in, type_ctor::in,
+    maybe_canonical::in, list(constructor)::in, cons_id_to_tag_map::out,
     uses_reserved_address::out, du_type_kind::out) is det.
 
     % For data types with exactly two alternatives, one of which is a constant,
@@ -86,13 +83,13 @@
     %
     % The type must not use reserved tags or reserved addresses.
     %
-:- pred compute_cheaper_tag_test(cons_tag_values::in,
+:- pred compute_cheaper_tag_test(cons_id_to_tag_map::in,
     maybe_cheaper_tag_test::out) is det.
 
     % Look for general du type definitions that can be converted into
     % direct arg type definitions.
     %
-:- pred post_process_type_defns(module_info::in, module_info::out,
+:- pred post_process_types_direct_args(module_info::in, module_info::out,
     list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -101,6 +98,7 @@
 :- implementation.
 
 :- import_module hlds.status.
+:- import_module hlds.du_type_layout.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -113,12 +111,13 @@
 :- import_module int.
 :- import_module io.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
 
-assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
+assign_constructor_tags(Globals, TypeCtor, UserEqCmp, Ctors,
         !:CtorTags, ReservedAddr, DuTypeKind) :-
     % Work out how many tag bits and reserved addresses we have available.
     globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
@@ -129,39 +128,27 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
     % As of 2017 aug 8, there is no longer any way to specify any value
     % for num_reserved_objects other than the default, which is zero.
     expect(unify(NumReservedObjects, 0), $pred, "NumReservedObjects != 0"),
-    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-
-    % Determine if we need to reserve a tag for use by HAL's Herbrand
-    % constraint solver. (This also disables enumerations and no_tag types.)
-    (
-        ReservedTagPragma = uses_reserved_tag,
-        InitTag = 1
-    ;
-        ReservedTagPragma = does_not_use_reserved_tag,
-        InitTag = 0
-    ),
 
     % Now assign them.
+    InitTag = 0,
     map.init(!:CtorTags),
     ( if
         % Try representing the type as an enumeration: all the constructors
         % must be constant, and we must be allowed to make unboxed enums.
-        globals.lookup_bool_option(Globals, unboxed_enums, yes),
         ctors_are_all_constants(Ctors),
-        ReservedTagPragma = does_not_use_reserved_tag
+        globals.lookup_bool_option(Globals, unboxed_enums, yes)
     then
         ( if Ctors = [_] then
             DuTypeKind = du_type_kind_direct_dummy
         else
             DuTypeKind = du_type_kind_mercury_enum
         ),
-        assign_enum_constants(TypeCtor, Ctors, InitTag, !CtorTags),
+        assign_enum_constants(TypeCtor, InitTag, Ctors, !CtorTags),
         ReservedAddr = does_not_use_reserved_address
     else if
         % Try representing it as a no-tag type.
-        type_ctor_should_be_notag(Globals, TypeCtor, ReservedTagPragma,
-            Ctors, UserEqCmp, SingleFunctorName, SingleArgType,
-            MaybeSingleArgName)
+        type_ctor_should_be_notag(Globals, TypeCtor, Ctors, UserEqCmp,
+            SingleFunctorName, SingleArgType, MaybeSingleArgName)
     then
         SingleConsId = cons(SingleFunctorName, 1, TypeCtor),
         map.det_insert(SingleConsId, no_tag, !CtorTags),
@@ -172,32 +159,11 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
     else
         DuTypeKind = du_type_kind_general,
         ( if NumTagBits = 0 then
-            (
-                ReservedTagPragma = uses_reserved_tag,
-                % XXX Need to fix this.
-                % This occurs for the .NET and Java backends.
-                sorry("make_tags", "--reserve-tag with num_tag_bits = 0")
-            ;
-                ReservedTagPragma = does_not_use_reserved_tag
-            ),
             % Assign reserved addresses to the constants, if possible.
             separate_out_constants(Ctors, Constants, Functors),
             assign_reserved_numeric_addresses(TypeCtor, Constants,
-                LeftOverConstants0, !CtorTags, 0, NumReservedAddresses,
-                does_not_use_reserved_address, ReservedAddr1),
-            (
-                HighLevelCode = yes,
-                assign_reserved_symbolic_addresses(TypeCtor,
-                    LeftOverConstants0, LeftOverConstants,
-                    !CtorTags, 0, NumReservedObjects,
-                    ReservedAddr1, ReservedAddr)
-            ;
-                HighLevelCode = no,
-                % Reserved symbolic addresses are not supported for the
-                % LLDS back-end.
-                LeftOverConstants = LeftOverConstants0,
-                ReservedAddr = ReservedAddr1
-            ),
+                LeftOverConstants, !CtorTags, 0, NumReservedAddresses,
+                does_not_use_reserved_address, ReservedAddr),
             % Assign shared_with_reserved_address(...) representations
             % for the remaining constructors.
             RemainingCtors = LeftOverConstants ++ Functors,
@@ -221,19 +187,19 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
 
 is_reserved_address_tag(reserved_address_tag(RA), RA).
 
-:- pred assign_enum_constants(type_ctor::in, list(constructor)::in, int::in,
-    cons_tag_values::in, cons_tag_values::out) is det.
+:- pred assign_enum_constants(type_ctor::in, int::in, list(constructor)::in,
+    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_enum_constants(_, [], _, !CtorTags).
-assign_enum_constants(TypeCtor, [Ctor | Ctors], Val, !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
-    ConsId = cons(Name, Arity, TypeCtor),
+assign_enum_constants(_, _, [], !CtorTags).
+assign_enum_constants(TypeCtor, Val, [Ctor | Ctors], !CtorTags) :-
+    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+    ConsId = cons(SymName, Arity, TypeCtor),
     Tag = int_tag(int_tag_int(Val)),
     % We call set instead of det_insert because we don't want types
     % that erroneously contain more than one copy of a cons_id to crash
     % the compiler.
     map.set(ConsId, Tag, !CtorTags),
-    assign_enum_constants(TypeCtor, Ctors, Val + 1, !CtorTags).
+    assign_enum_constants(TypeCtor, Val + 1, Ctors, !CtorTags).
 
     % Assign the representations null_pointer, small_pointer(1),
     % small_pointer(2), ..., small_pointer(N) to the constructors,
@@ -241,7 +207,7 @@ assign_enum_constants(TypeCtor, [Ctor | Ctors], Val, !CtorTags) :-
     %
 :- pred assign_reserved_numeric_addresses(type_ctor::in,
     list(constructor)::in, list(constructor)::out,
-    cons_tag_values::in, cons_tag_values::out, int::in, int::in,
+    cons_id_to_tag_map::in, cons_id_to_tag_map::out, int::in, int::in,
     uses_reserved_address::in, uses_reserved_address::out) is det.
 
 assign_reserved_numeric_addresses(_, [], [], !CtorTags, _, _, !ReservedAddr).
@@ -250,12 +216,12 @@ assign_reserved_numeric_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
     ( if Address >= NumReservedAddresses then
         LeftOverConstants = [Ctor | Ctors]
     else
-        Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
-        ConsId = cons(Name, Arity, TypeCtor),
+        Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+        ConsId = cons(SymName, Arity, TypeCtor),
         ( if Address = 0 then
             Tag = reserved_address_tag(null_pointer)
         else
-            Tag = reserved_address_tag(small_pointer(Address))
+            Tag = reserved_address_tag(small_int_as_pointer(Address))
         ),
         % We call set instead of det_insert because we don't want types
         % that erroneously contain more than one copy of a cons_id to crash
@@ -266,34 +232,8 @@ assign_reserved_numeric_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
             !CtorTags, Address + 1, NumReservedAddresses, !ReservedAddr)
     ).
 
-    % Assign reserved_object(CtorName, CtorArity) representations
-    % to the specified constructors.
-    %
-:- pred assign_reserved_symbolic_addresses(type_ctor::in,
-    list(constructor)::in, list(constructor)::out,
-    cons_tag_values::in, cons_tag_values::out, int::in, int::in,
-    uses_reserved_address::in, uses_reserved_address::out) is det.
-
-assign_reserved_symbolic_addresses(_, [], [], !CtorTags, _, _, !ReservedAddr).
-assign_reserved_symbolic_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
-        !CtorTags, Num, Max, !ReservedAddr) :-
-    ( if Num >= Max then
-        LeftOverConstants = [Ctor | Ctors]
-    else
-        Ctor = ctor(_ExistQVars, _Constraints, Name, Args, Arity, _Ctxt),
-        Tag = reserved_address_tag(reserved_object(TypeCtor, Name, Arity)),
-        ConsId = cons(Name, list.length(Args), TypeCtor),
-        % We call set instead of det_insert because we don't want types
-        % that erroneously contain more than one copy of a cons_id to crash
-        % the compiler.
-        map.set(ConsId, Tag, !CtorTags),
-        !:ReservedAddr = uses_reserved_address,
-        assign_reserved_symbolic_addresses(TypeCtor, Ctors, LeftOverConstants,
-            !CtorTags, Num + 1, Max, !ReservedAddr)
-    ).
-
 :- pred assign_constant_tags(type_ctor::in, list(constructor)::in,
-    int::in, int::out, cons_tag_values::in, cons_tag_values::out) is det.
+    int::in, int::out, cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
 assign_constant_tags(TypeCtor, Constants, InitTag, NextTag, !CtorTags) :-
     % If there are no constants, don't do anything. Otherwise, allocate the
@@ -315,13 +255,13 @@ assign_constant_tags(TypeCtor, Constants, InitTag, NextTag, !CtorTags) :-
 
 :- pred assign_unshared_tags(type_ctor::in, list(constructor)::in,
     int::in, int::in, list(reserved_address)::in,
-    cons_tag_values::in, cons_tag_values::out) is det.
+    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
 assign_unshared_tags(_, [], _, _, _, !CtorTags).
 assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
-    ConsId = cons(Name, Arity, TypeCtor),
+    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+    ConsId = cons(SymName, Arity, TypeCtor),
     ( if
         % If there is only one functor, give it the "single_functor" (untagged)
         % representation, rather than giving it unshared_tag(0).
@@ -359,13 +299,13 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
 
 :- pred assign_shared_remote_tags(type_ctor::in, list(constructor)::in,
     int::in, int::in, list(reserved_address)::in,
-    cons_tag_values::in, cons_tag_values::out) is det.
+    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
 assign_shared_remote_tags(_, [], _, _, _, !CtorTags).
 assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
         ReservedAddresses, !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
-    ConsId = cons(Name, Arity, TypeCtor),
+    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+    ConsId = cons(SymName, Arity, TypeCtor),
     Tag = maybe_add_reserved_addresses(ReservedAddresses,
         shared_remote_tag(PrimaryVal, SecondaryVal)),
     % We call set instead of det_insert because we don't want types
@@ -377,13 +317,13 @@ assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
         ReservedAddresses, !CtorTags).
 
 :- pred assign_shared_local_tags(type_ctor::in, list(constructor)::in,
-    int::in, int::in, cons_tag_values::in, cons_tag_values::out) is det.
+    int::in, int::in, cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
 assign_shared_local_tags(_, [], _, _, !CtorTags).
 assign_shared_local_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
         !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
-    ConsId = cons(Name, Arity, TypeCtor),
+    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+    ConsId = cons(SymName, Arity, TypeCtor),
     Tag = shared_local_tag(PrimaryVal, SecondaryVal),
     % We call set instead of det_insert because we don't want types
     % that erroneously contain more than one copy of a cons_id to crash
@@ -434,7 +374,7 @@ compute_cheaper_tag_test(CtorTagMap, CheaperTagTest) :-
 
 %-----------------------------------------------------------------------------%
 
-post_process_type_defns(!HLDS, Specs) :-
+post_process_types_direct_args(!HLDS, Specs) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_target(Globals, Target),
     (
@@ -492,13 +432,14 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
         MaxTag, TypeCtor, TypeDefn, !TypeTable, !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
-        Body = hlds_du_type(Ctors, _ConsTagValues, _MaybeCheaperTagTest,
-            DuKind, MaybeUserEqComp, MaybeAssertedDirectArgCtors,
-            ReservedTag, ReservedAddr, MaybeForeign),
+        Body = hlds_du_type(Ctors, _MaybeCanonical, MaybeRepn0, MaybeForeign),
         ( if
-            Ctors = [_, _ | _],
+            MaybeRepn0 = yes(Repn0),
+            Repn0 = du_type_repn(_ConsIdToTagMap, CtorRepns0, _CtorRepnMap,
+                _MaybeCheaperTagTest, DuKind, MaybeAssertedDirectArgCtors,
+                ReservedAddr),
+            CtorRepns0 = [_, _ | _],
             DuKind = du_type_kind_general,
-            ReservedTag = does_not_use_reserved_tag,
             ReservedAddr = does_not_use_reserved_address,
             MaybeForeign = no,
             TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
@@ -542,9 +483,9 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
                     assign_unshared_tags(TypeCtor,
                         LeftOverDirectArgFunctors ++ NonDirectArgFunctors,
                         !.NextTag, MaxTag, [], !CtorTags),
-                    DirectArgConsTagValues = !.CtorTags
+                    DirectArgConsIdToTagMap = !.CtorTags
                 ),
-                compute_cheaper_tag_test(DirectArgConsTagValues,
+                compute_cheaper_tag_test(DirectArgConsIdToTagMap,
                     MaybeCheaperTagTest),
                 DirectArgFunctorNames =
                     list.map(constructor_to_sym_name_and_arity,
@@ -558,10 +499,13 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
                 ;
                     DebugTypeRep = no
                 ),
-                DirectArgBody = hlds_du_type(Ctors, DirectArgConsTagValues,
-                    MaybeCheaperTagTest, DuKind, MaybeUserEqComp,
-                    yes(DirectArgFunctorNames), ReservedTag, ReservedAddr,
-                    MaybeForeign),
+                list.map_foldl(
+                    update_repn_of_ctor(TypeCtor, DirectArgConsIdToTagMap),
+                    CtorRepns0, CtorRepns, map.init, CtorRepnMap),
+                DirectArgRepn = du_type_repn(DirectArgConsIdToTagMap,
+                    CtorRepns, CtorRepnMap, MaybeCheaperTagTest, DuKind,
+                    yes(DirectArgFunctorNames), ReservedAddr),
+                DirectArgBody = Body ^ du_type_repn := yes(DirectArgRepn),
                 set_type_defn_body(DirectArgBody, TypeDefn, DirectArgTypeDefn),
                 replace_type_ctor_defn(TypeCtor, DirectArgTypeDefn, !TypeTable)
             ),
@@ -587,19 +531,21 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
 
 is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
         AssertedDirectArgCtors, Ctor) :-
-    Ctor = ctor(ExistQTVars, ExistConstraints, ConsName, ConsArgs, Arity,
+    Ctor = ctor(MaybeExistConstraints, ConsSymName, ConsArgs, ConsArity,
         _CtorContext),
-    ExistQTVars = [],
-    ExistConstraints = [],
+    MaybeExistConstraints = no_exist_constraints,
     ConsArgs = [ConsArg],
-    expect(unify(Arity, 1), $module, $pred, "Arity != 1"),
-    ConsArg = ctor_arg(_MaybeFieldName, ArgType, _ArgWidth, _ArgContext),
+    expect(unify(ConsArity, 1), $module, $pred, "ConsArity != 1"),
+    ConsArg = ctor_arg(_MaybeFieldName, ArgType, _ArgContext),
     type_to_ctor_and_args(ArgType, ArgTypeCtor, ArgTypeCtorArgTypes),
 
+    % XXX TYPE_REPN Repeating the tests on the properties of the *type*
+    % for every *constructor* of the type is wasteful.
+    ConsConsId = sym_name_arity(ConsSymName, ConsArity),
     ( if
         % Trust the `direct_arg' attribute of an imported type.
         type_status_is_imported(TypeStatus) = yes,
-        list.contains(AssertedDirectArgCtors, sym_name_arity(ConsName, Arity))
+        list.contains(AssertedDirectArgCtors, ConsConsId)
     then
         ArgCond = direct_arg_asserted
     else if
@@ -611,8 +557,10 @@ is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
         ArgCond = arg_type_is_word_aligned_pointer
     else
         search_type_ctor_defn(TypeTable, ArgTypeCtor, ArgTypeDefn),
-        get_type_defn_body(ArgTypeDefn, ArgBody),
-        ( if is_foreign_type_for_target(ArgBody, Target, Assertions) then
+        get_type_defn_body(ArgTypeDefn, ArgTypeDefnBody),
+        ( if
+            is_foreign_type_for_target(ArgTypeDefnBody, Target, Assertions)
+        then
             % Foreign types are acceptable arguments if asserted that their
             % values are word-aligned pointers.
             asserted_word_aligned_pointer(Assertions),
@@ -629,26 +577,32 @@ is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
             % (mercury_deep_copy_body.h), and maybe during some other
             % operations.
 
-            ArgBody = hlds_du_type(ArgCtors, ArgConsTagValues,
-                ArgMaybeCheaperTagTest, ArgDuKind, _ArgMaybeUserEqComp,
-                ArgDirectArgCtors, ArgReservedTag, ArgReservedAddr,
-                ArgMaybeForeign),
+            ArgTypeDefnBody = hlds_du_type(ArgCtors, _ArgMaybeUserEqComp,
+                ArgMaybeRepn, ArgMaybeForeign),
+            (
+                ArgMaybeRepn = no,
+                unexpected($pred, "ArgMaybeRepn = no")
+            ;
+                ArgMaybeRepn = yes(ArgRepn)
+            ),
+            ArgRepn = du_type_repn(ArgConsIdToTagMap, ArgCtorRepns,
+                _ArgConsCtorMap, ArgMaybeCheaperTagTest, ArgDuKind,
+                ArgDirectArgCtors, ArgReservedAddr),
             ArgCtors = [_],
+            ArgCtorRepns = [_],
             ArgMaybeCheaperTagTest = no_cheaper_tag_test,
             ArgDuKind = du_type_kind_general,
             ArgDirectArgCtors = no,
-            ArgReservedTag = does_not_use_reserved_tag,
             ArgReservedAddr = does_not_use_reserved_address,
             ArgMaybeForeign = no,
 
-            map.to_assoc_list(ArgConsTagValues, ArgConsTagValueList),
-            ArgConsTagValueList = [ArgConsTagValue],
-            ArgConsTagValue = _ConsId - single_functor_tag,
+            map.to_assoc_list(ArgConsIdToTagMap, ArgConsIdTagList),
+            ArgConsIdTagList = [ArgConsIdTag],
+            ArgConsIdTag = _ConsId - single_functor_tag,
 
             ( if
                 type_status_defined_in_this_module(TypeStatus) = yes,
-                list.contains(AssertedDirectArgCtors,
-                    sym_name_arity(ConsName, Arity))
+                list.contains(AssertedDirectArgCtors, ConsConsId)
             then
                 ArgCond = direct_arg_asserted
             else
@@ -832,7 +786,7 @@ module_visibilities_allow_direct_arg(TypeStatus, ArgCond) = AllowDirectArg :-
 
 is_foreign_type_for_target(TypeBody, Target, Assertions) :-
     (
-        TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, MaybeForeignType),
+        TypeBody = hlds_du_type(_, _, _, MaybeForeignType),
         MaybeForeignType = yes(ForeignType)
     ;
         TypeBody = hlds_foreign_type(ForeignType)
@@ -853,12 +807,12 @@ is_foreign_type_for_target(TypeBody, Target, Assertions) :-
 
 :- pred assign_direct_arg_tags(type_ctor::in, list(constructor)::in,
     int::in, int::out, int::in, list(constructor)::out,
-    cons_tag_values::in, cons_tag_values::out) is det.
+    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
 assign_direct_arg_tags(_, [], !Val, _, [], !CtorTags).
 assign_direct_arg_tags(TypeCtor, [Ctor | Ctors], !Val, MaxTag, LeftOverCtors,
         !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
+    Ctor = ctor(_MaybeExistConstraints, Name, _Args, Arity, _Ctxt),
     ConsId = cons(Name, Arity, TypeCtor),
     ( if
         % If we are about to run out of unshared tags, stop, and return
@@ -884,10 +838,9 @@ assign_direct_arg_tags(TypeCtor, [Ctor | Ctors], !Val, MaxTag, LeftOverCtors,
 check_incorrect_direct_arg_assertions(_AssertedDirectArgCtors, [], !Specs).
 check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
         !Specs) :-
-    ( if
-        Ctor = ctor(_, _, SymName, _Args, Arity, Context),
-        list.contains(AssertedDirectArgCtors, sym_name_arity(SymName, Arity))
-    then
+    Ctor = ctor(_, SymName, _Args, Arity, Context),
+    SymNameArity = sym_name_arity(SymName, Arity),
+    ( if list.contains(AssertedDirectArgCtors, SymNameArity) then
         Pieces = [words("Error:"),
             unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
             words("cannot be represented as a direct pointer to its"),
@@ -903,7 +856,7 @@ check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
 
 :- func constructor_to_sym_name_and_arity(constructor) = sym_name_and_arity.
 
-constructor_to_sym_name_and_arity(ctor(_, _, Name, _Args, Arity, _)) =
+constructor_to_sym_name_and_arity(ctor(_, Name, _Args, Arity, _)) =
     sym_name_arity(Name, Arity).
 
 :- pred output_direct_arg_functor_summary(module_name::in, type_ctor::in,
@@ -932,7 +885,7 @@ max_num_tags(NumTagBits) = MaxTags :-
 
 ctors_are_all_constants([]).
 ctors_are_all_constants([Ctor | Rest]) :-
-    Ctor = ctor(_ExistQVars, _Constraints, _Name, Args, _, _Ctxt),
+    Ctor = ctor(_MaybeExistConstraints, _Name, Args, _, _Ctxt),
     Args = [],
     ctors_are_all_constants(Rest).
 

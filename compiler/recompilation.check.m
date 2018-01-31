@@ -994,6 +994,7 @@ check_item_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         )
     ).
@@ -1231,7 +1232,7 @@ check_type_defn_ambiguity_with_functor(NeedQualifier, TypeCtor, TypeDefn,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_functor_ambiguities(NeedQualifier, TypeCtor, Ctor, !Info) :-
-    Ctor = ctor(_, _, Name, Args, Arity, _),
+    Ctor = ctor(_, Name, Args, Arity, _),
     TypeCtorItem = type_ctor_to_item_name(TypeCtor),
     ResolvedCtor = resolved_functor_constructor(TypeCtorItem),
     check_functor_ambiguities_by_name(NeedQualifier, Name,
@@ -1246,7 +1247,7 @@ check_functor_ambiguities(NeedQualifier, TypeCtor, Ctor, !Info) :-
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_field_ambiguities(NeedQualifier, ResolvedCtor, CtorArg, !Info) :-
-    CtorArg = ctor_arg(MaybeCtorFieldName, _, _, _),
+    CtorArg = ctor_arg(MaybeCtorFieldName, _, _),
     (
         MaybeCtorFieldName = no
     ;

@@ -305,6 +305,14 @@ process_item_for_private_interface(ModuleName, Section, Item,
         )
         % Don't include in either section of the private interface.
     ;
+        Item = item_type_repn(_)
+        % process_item_for_private_interface should be invoked only on items
+        % from the *source file*, not on items read from any interface file.
+        % Any occurrence of item_type_repns in the source file should have been
+        % caught and reported by the parsing code. If through some bug
+        % they make it here, neither reporting them again nor aborting the
+        % compiler is likely to be helpful.
+    ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         AllowedInInterface = pragma_allowed_in_interface(Pragma),
@@ -511,6 +519,9 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
                     ParseTreeInt1, MaybeTimestamp, !IO),
                 % XXX ITEM_LIST Couldn't we get ShortIntItems and
                 % ShortImpItems without constructing BothRawItemBlocks?
+                % XXX Yes, we could, but we call
+                % get_short_interface_from_raw_item_blocks
+                % from someplace else as well.
                 int_imp_items_to_item_blocks(ModuleNameContext,
                     ms_interface, ms_implementation,
                     !.IntIncls, !.ImpIncls, !.IntAvails, !.ImpAvails,
@@ -771,7 +782,7 @@ find_removable_abstract_exported_types(IntTypesMap,
             list.member(Defn - _, ImpTypeDefnPairs)
         => (
             Defn = parse_tree_abstract_type(Details),
-            Details \= abstract_enum_type(_)
+            Details \= abstract_type_fits_in_n_bits(_)
         )),
         multi_map.contains(IntTypesMap, ImpTypeCtor)
     then
@@ -939,8 +950,11 @@ make_impl_type_abstract(TypeDefnMap, !TypeDefnPairs) :-
             % Leave dummy types alone.
             true
         else
-            ( if du_type_is_enum(Ctors, NumBits) then
-                Details = abstract_enum_type(NumBits)
+            ( if du_type_is_enum(DetailsDu, NumBits) then
+                % XXX TYPE_REPN We should also generate fits_in_n_bits
+                % if the original type is a less-than-word-sized builtin,
+                % such as int8.
+                Details = abstract_type_fits_in_n_bits(NumBits)
             else
                 Details = abstract_type_general
             ),
@@ -963,29 +977,28 @@ make_impl_type_abstract(TypeDefnMap, !TypeDefnPairs) :-
     % NOTE: changes here may require changes to `type_util.check_dummy_type'.
     %
 :- pred constructor_list_represents_dummy_argument_type(type_defn_map::in,
-    list(constructor)::in, maybe(unify_compare)::in,
+    list(constructor)::in, maybe_canonical::in,
     maybe(list(sym_name_and_arity))::in) is semidet.
 
 constructor_list_represents_dummy_argument_type(TypeDefnMap,
-        Ctors, MaybeEqCmp, MaybeDirectArgCtors) :-
+        Ctors, MaybeCanonical, MaybeDirectArgCtors) :-
     constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
-        Ctors, MaybeEqCmp, MaybeDirectArgCtors, []).
+        Ctors, MaybeCanonical, MaybeDirectArgCtors, []).
 
 :- pred constructor_list_represents_dummy_argument_type_2(type_defn_map::in,
-    list(constructor)::in, maybe(unify_compare)::in,
+    list(constructor)::in, maybe_canonical::in,
     maybe(list(sym_name_and_arity))::in, list(mer_type)::in) is semidet.
 
-constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor], no, no,
-        CoveredTypes) :-
-    Ctor = ctor(ExistQTVars, Constraints, _Name, Args, _Arity, _Context),
-    ExistQTVars = [],
-    Constraints = [],
+constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor],
+        canon, no, CoveredTypes) :-
+    Ctor = ctor(MaybeExistConstraints, _Name, Args, _Arity, _Context),
+    MaybeExistConstraints = no_exist_constraints,
     (
         % A single zero-arity constructor.
         Args = []
     ;
         % A constructor with a single dummy argument.
-        Args = [ctor_arg(_, ArgType, _, _)],
+        Args = [ctor_arg(_, ArgType, _)],
         ctor_arg_is_dummy_type(TypeDefnMap, ArgType, CoveredTypes) = yes
     ).
 
@@ -1108,7 +1121,7 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
         DetailsDu = type_details_du(Ctors, MaybeEqCmp, MaybeDirectArgCtors),
         ( if
             map.search(InterfaceTypeMap, TypeCtor, _),
-            du_type_is_enum(Ctors, _NumBits)
+            du_type_is_enum(DetailsDu, _NumBits)
         then
             set.insert(TypeCtor, !AbsImplExpEnumTypeCtors)
         else if
@@ -1224,7 +1237,7 @@ type_to_type_ctor_set(Type, !TypeCtors) :-
 
 ctors_to_type_ctor_set([], !TypeCtors).
 ctors_to_type_ctor_set([Ctor | Ctors], !TypeCtors) :-
-    Ctor = ctor(_, _, _, ConsArgs, _, _),
+    Ctor = ctor(_, _, ConsArgs, _, _),
     cons_args_to_type_ctor_set(ConsArgs, !TypeCtors),
     ctors_to_type_ctor_set(Ctors, !TypeCtors).
 
@@ -1233,7 +1246,7 @@ ctors_to_type_ctor_set([Ctor | Ctors], !TypeCtors) :-
 
 cons_args_to_type_ctor_set([], !TypeCtors).
 cons_args_to_type_ctor_set([Arg | Args], !TypeCtors) :-
-    Arg = ctor_arg(_, Type, _, _),
+    Arg = ctor_arg(_, Type, _),
     type_to_type_ctor_set(Type, !TypeCtors),
     cons_args_to_type_ctor_set(Args, !TypeCtors).
 
@@ -1314,6 +1327,7 @@ accumulate_requirements_of_impl_typeclass_in_item(Item, !Modules) :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         )
     ).
@@ -1429,6 +1443,7 @@ report_and_strip_clauses_in_items_loop([Item0 | Items0],
         ; Item0 = item_initialise(_)
         ; Item0 = item_finalise(_)
         ; Item0 = item_mutable(_)
+        ; Item0 = item_type_repn(_)
         ; Item0 = item_nothing(_)
         ),
         !:RevItems = [Item0 | !.RevItems]
@@ -1514,7 +1529,10 @@ actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
 %---------------------------------------------------------------------------%
 
     % Given a module interface (the contents of its .int file), extract
-    % the short interface part of that module (the contents of its .int2 file),
+    % the short interface part of that module (the contents of its .int2 file).
+    % (XXX This is wrong; it is ALSO used to extract the .int3 file from
+    % a source file.)
+    %
     % This should be the exported type/typeclass/inst/mode declarations,
     % but not the exported pred or constructor declarations. If the module
     % interface imports other modules, then the short interface needs to
@@ -1607,9 +1625,11 @@ get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         )
         % Do not include Item in !ItemsCord.
+        % XXX TYPE_REPN Is this the right thing to do for item_type_repn?
     ),
     get_short_interface_from_items_acc(Kind, Items, !ItemsCord).
 
@@ -1765,8 +1785,10 @@ strip_unnecessary_impl_defns_in_items([Item | Items],
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         ),
+        % XXX TYPE_REPN Is this the right thing to do for item_type_repn?
         !:ItemsCord = cord.snoc(!.ItemsCord, Item)
     ),
     strip_unnecessary_impl_defns_in_items(Items,
@@ -1805,6 +1827,7 @@ strip_foreign_import_items([Item | Items], !ItemsCord) :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
+        ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         ),
         !:ItemsCord = cord.snoc(!.ItemsCord, Item)
@@ -2187,7 +2210,6 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
             ; Pragma = pragma_no_detism_warning(_)
             ; Pragma = pragma_tabled(_)
             ; Pragma = pragma_fact_table(_)
-            ; Pragma = pragma_reserve_tag(_)
             ; Pragma = pragma_oisu(_)
             ; Pragma = pragma_promise_eqv_clauses(_)
             ; Pragma = pragma_promise_pure(_)
@@ -2217,6 +2239,7 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         ( Item = item_promise(_)
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
+        ; Item = item_type_repn(_)
         ),
         set.insert(Item, !SortableItems)
     ;

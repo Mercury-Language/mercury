@@ -18,7 +18,7 @@
 
 % The parse tree data type itself.
 % The parse tree is split in two. The parts defined in prog_item are needed
-% only by the frontend of the compiler, the parts in prog_data are needed
+% only by the frontend of the compiler, the parts in prog_data* are needed
 % throughout.
 :- include_module prog_item.
 :- include_module prog_data.
@@ -41,6 +41,7 @@
    :- include_module parse_sym_name.
    :- include_module parse_type_defn.
    :- include_module parse_type_name.
+   :- include_module parse_type_repn.
    :- include_module parse_class.
    :- include_module parse_vars.
 

@@ -168,7 +168,7 @@
                 type_ctor,
                 map(sym_name, string),
                 list(constructor),
-                cons_tag_values
+                cons_id_to_tag_map
             ).
 
 :- type proc_analysis_kind
@@ -334,6 +334,8 @@
     set(pred_proc_id)::out) is det.
 :- pred module_info_get_ts_rev_string_table(module_info::in, int::out,
     list(string)::out) is det.
+:- pred module_info_get_type_repn_dec(module_info::in,
+    type_repn_decision_data::out) is det.
 
     % The setter predicates. Please keep the order of declarations here
     % and the order of the clauses below in sync with the order of the
@@ -417,6 +419,8 @@
 :- pred module_info_set_oisu_procs(set(pred_proc_id)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_ts_rev_string_table(int::in, list(string)::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_type_repn_dec(type_repn_decision_data::in,
     module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -587,6 +591,59 @@
     list(pred_proc_id)::out) is det.
 :- pred module_info_user_final_pred_procs(module_info::in,
     list(pred_proc_id)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- type item_foreign_enum_info
+    --->    item_foreign_enum_info(
+                fe_pragma       :: pragma_info_foreign_enum,
+                fe_status       :: item_mercury_status,
+                fe_context      :: prog_context,
+                fe_seq_num      :: int
+            ).
+
+:- type item_foreign_export_enum_info
+    --->    item_foreign_export_enum_info(
+                fee_pragma      :: pragma_info_foreign_export_enum,
+                fee_status      :: item_mercury_status,
+                fee_context     :: prog_context,
+                fee_seq_num     :: int
+            ).
+
+    % The information needed by the pass that decides type representations.
+    % The first three fields contain information that it uses make its
+    % decisions; the fourth contains information that says what it should *do*
+    % with the results of its decisions.
+    %
+:- type type_repn_decision_data
+    --->    type_repn_decision_data(
+                % The contents of type_repn items read in from the interface
+                % files of other modules, containing information about the
+                % representations of the types defined in those modules.
+                trdd_type_repns         :: list(item_type_repn_info),
+
+                % The contents of direct_arg clauses in type definitions
+                % read in from the interface files of other modules,
+                % containing information about the direct_arg part of the
+                % representations of those types.
+                %
+                % XXX TYPE_REPN In the future, this information should *also*
+                % be stored in type_repn items.
+                trdd_direct_arg_map     :: map(type_ctor,
+                                                list(sym_name_and_arity)),
+
+                % The contents of foreign_enum pragmas read in either
+                % from interface files of other modules, or the source file
+                % of the module being compiled, giving the foreign language
+                % definition of a type.
+                trdd_foreign_enums      :: list(item_foreign_enum_info),
+
+                % The contents of foreign_export_enum pragmas read in
+                % from the source file of the module being compiled,
+                % asking the compiler to generate definitions
+                % of the named types in the named foreign languages.
+                trdd_foreign_exports    :: list(item_foreign_export_enum_info)
+            ).
 
 %---------------------------------------------------------------------------%
 
@@ -798,7 +855,10 @@
                 % tables, see global_data.m, the LLDS introduces strings during
                 % the HLDS->LLDS transformation of parallel conjunctions.
                 mri_ts_string_table_size        :: int,
-                mri_ts_rev_string_table         :: list(string)
+                mri_ts_rev_string_table         :: list(string),
+
+                % Information needed to decide type representations.
+                mri_type_repn_dec               :: type_repn_decision_data
             ).
 
 module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
@@ -931,6 +991,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     set.init(OISUProcs),
     TSStringTableSize = 0,
     TSRevStringTable = [],
+    TypeRepnDecision = type_repn_decision_data([], map.init, [], []),
 
     ModuleRareInfo = module_rare_info(
         ModuleName,
@@ -969,7 +1030,8 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         OISUMap,
         OISUProcs,
         TSStringTableSize,
-        TSRevStringTable),
+        TSRevStringTable,
+        TypeRepnDecision),
 
     predicate_table_init(PredicateTable),
     TypeTable = init_type_table,
@@ -1160,6 +1222,8 @@ module_info_get_oisu_procs(MI, X) :-
 module_info_get_ts_rev_string_table(MI, X, Y) :-
     X = MI ^ mi_rare_info ^ mri_ts_string_table_size,
     Y = MI ^ mi_rare_info ^ mri_ts_rev_string_table.
+module_info_get_type_repn_dec(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_type_repn_dec.
 
 %---------------------------------------------------------------------------%
 %
@@ -1284,6 +1348,8 @@ module_info_set_oisu_procs(X, !MI) :-
 module_info_set_ts_rev_string_table(X, Y, !MI) :-
     !MI ^ mi_rare_info ^ mri_ts_string_table_size := X,
     !MI ^ mi_rare_info ^ mri_ts_rev_string_table := Y.
+module_info_set_type_repn_dec(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_type_repn_dec := X.
 
 %---------------------------------------------------------------------------%
 

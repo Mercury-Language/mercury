@@ -1241,22 +1241,14 @@ gen_du_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap,
 
 gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor, ResFunctors,
         DuByPtag, !GlobalData) :-
-    ResFunctorReps = list.map(res_addr_rep, ResFunctors),
-    list.filter(res_addr_is_numeric, ResFunctorReps,
-        NumericResFunctorReps, SymbolicResFunctorReps),
-    list.length(NumericResFunctorReps, NumNumericResFunctorReps),
-    list.length(SymbolicResFunctorReps, NumSymbolicResFunctorReps),
+    % We do not support symbolic reserved addresses anymore.
+    list.length(ResFunctors, NumNumericResFunctorReps),
+    NumSymbolicResFunctorReps = 0,
+    ResAddrInitializer = gen_init_null_pointer(mlds_generic_type),
+
     module_info_get_name(ModuleInfo, ModuleName),
     gen_res_addr_functor_table(ModuleName, RttiTypeCtor, ResFunctors,
         !GlobalData),
-    ( if NumSymbolicResFunctorReps = 0 then
-        ResAddrInitializer = gen_init_null_pointer(mlds_generic_type)
-    else
-        gen_res_addrs_list(ModuleInfo, RttiTypeCtor,
-            SymbolicResFunctorReps, !GlobalData),
-        ResAddrInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_res_addrs)
-    ),
     gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, DuByPtag, !GlobalData),
     RttiName = type_ctor_res_value_ordered_table,
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
@@ -1281,17 +1273,6 @@ gen_res_addr_functor_table(ModuleName, RttiTypeCtor, ResFunctors,
     Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
     RttiName = type_ctor_res_addr_functors,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
-        !GlobalData).
-
-:- pred gen_res_addrs_list(module_info::in, rtti_type_ctor::in,
-    list(reserved_address)::in, ml_global_data::in, ml_global_data::out)
-    is det.
-
-gen_res_addrs_list(ModuleInfo, RttiTypeCtor, ResAddrs, !GlobalData) :-
-    Initializer =
-        gen_init_array(gen_init_reserved_address(ModuleInfo), ResAddrs),
-    RttiName = type_ctor_res_addrs,
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
 
@@ -1611,10 +1592,11 @@ gen_init_special_pred(ModuleInfo, Target, RttiProcIdUniv, Initializer,
     % if necessary.
     det_univ_to_type(RttiProcIdUniv, RttiProcId),
     ( if RttiProcId ^ rpl_proc_arity = 0 then
-        % If there are no arguments, then there's no unboxing to do,
+        % If there are no arguments, then there is no unboxing to do,
         % so we don't need a wrapper. (This case can occur with
         % --no-special-preds, where the procedure will be
         % private_builtin.unused/0.)
+        % XXX --no-special-preds does not exist anymore.
         Initializer = gen_init_proc_id(ModuleInfo, RttiProcId)
     else
         NumExtra = 0,
@@ -1859,7 +1841,6 @@ add_rtti_defn_arcs_lval(DefnGlobalVarName, Lval, !Graph) :-
         Lval = ml_local_var(_, _)
     ;
         Lval = ml_global_var(_, _)
-        % ZZZ
     ).
 
 :- pred add_rtti_defn_arcs_const(mlds_global_var_name::in,

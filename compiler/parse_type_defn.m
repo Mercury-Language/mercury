@@ -24,7 +24,6 @@
 
 :- import_module cord.
 :- import_module list.
-:- import_module maybe.
 :- import_module term.
 :- import_module varset.
 
@@ -40,21 +39,13 @@
     list(term)::in, prog_context::in, int::in, is_solver_type::in,
     maybe1(item_or_marker)::out) is det.
 
-    % Are we parsing the type defn head in a `:- type' declaration or in the
-    % the second argument of a foreign_type pragma?
-    %
-:- type type_defn_head_parse_context
-    --->    tdhpc_type_defn
-    ;       tdhpc_foreign_type_pragma(cord(format_component)).
-
-    % parse_type_defn_head(ParseContext, ModuleName, VarSet, Head,
-    %   HeadResult):
+    % parse_type_defn_head(ParseContext, ModuleName, VarSet, Head, HeadResult):
     %
     % Check the head of a type definition for errors.
     %
     % Exported to parse_pragma.m for use when parsing foreign type pragmas.
     %
-:- pred parse_type_defn_head(type_defn_head_parse_context::in,
+:- pred parse_type_defn_head(cord(format_component)::in,
     module_name::in, varset::in, term::in,
     maybe2(sym_name, list(type_param))::out) is det.
 
@@ -67,7 +58,7 @@
     % Exported to parse_pragma.m for use when parsing foreign type pragmas.
     %
 :- pred parse_where_unify_compare(module_name::in, varset::in, term::in,
-    maybe1(maybe(unify_compare))::out) is det.
+    maybe1(maybe_canonical)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -86,6 +77,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bag.
+:- import_module maybe.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -170,14 +162,16 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         SolverSpecs = []
     ),
 
-    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+    ContextPieces =
+        cord.from_list([words("On the left hand side of type definition:")]),
+    parse_type_defn_head(ContextPieces, ModuleName, VarSet, HeadTerm,
         MaybeTypeCtorAndArgs),
     du_type_rhs_ctors_and_where_terms(BodyTerm, CtorsTerm, MaybeWhereTerm),
     parse_maybe_exist_quant_constructors(ModuleName, VarSet, CtorsTerm,
         MaybeOneOrMoreCtors),
     (
         MaybeWhereTerm = no,
-        MaybeWhere = ok3(no, no, no)
+        MaybeWhere = ok3(no, canon, no)
     ;
         MaybeWhereTerm = yes(WhereTerm),
         parse_type_decl_where_term(non_solver_type, ModuleName, VarSet,
@@ -187,8 +181,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         SolverSpecs = [],
         MaybeTypeCtorAndArgs = ok2(Name, Params),
         MaybeOneOrMoreCtors = ok1(OneOrMoreCtors),
-        MaybeWhere = ok3(SolverTypeDetails, MaybeUserEqComp,
-            MaybeDirectArgIs)
+        MaybeWhere = ok3(SolverTypeDetails, MaybeCanonical, MaybeDirectArgIs)
     then
         % We asked parse_type_decl_where_term to return an error if
         % WhereTerm contains solver attributes, so we shouldn't get here
@@ -209,7 +202,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         (
             ErrorSpecs = [],
             varset.coerce(VarSet, TypeVarSet),
-            DetailsDu = type_details_du(Ctors, MaybeUserEqComp,
+            DetailsDu = type_details_du(Ctors, MaybeCanonical,
                 MaybeDirectArgIs),
             TypeDefn = parse_tree_du_type(DetailsDu),
             ItemTypeDefn = item_type_defn_info(Name, Params, TypeDefn,
@@ -327,10 +320,36 @@ parse_constructor(ModuleName, VarSet, ExistQVars, Term, MaybeConstructor) :-
         MaybeConstructor = error1(Specs)
     ;
         MaybeConstraints = ok1(Constraints),
+        (
+            ExistQVars = [],
+            (
+                Constraints = [],
+                MaybeExistConstraints = no_exist_constraints,
+                MCSpecs = []
+            ;
+                Constraints = [_ | _],
+                MCPieces = [words("Error: since there are no"),
+                    words("existentially quantified arguments,"),
+                    words("there should be no constraints on them."), nl],
+                MCSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Term), [always(MCPieces)])]),
+                MCSpecs = [MCSpec],
+                % This dummy value of MaybeExistConstraints won't be used
+                % due to the error.
+                MaybeExistConstraints = no_exist_constraints
+            )
+        ;
+            ExistQVars = [_ | _],
+            MaybeExistConstraints = exist_constraints(
+                cons_exist_constraints(ExistQVars, Constraints)),
+            MCSpecs = []
+        ),
         ( if
             % Note that as a special case, one level of curly braces around
             % the constructor are ignored. This is to allow you to define
             % ';'/2 and 'some'/2 constructors.
+            % XXX I (zs) don't think that this is a good idea; I think such
+            % constructors are much more likely to be confusing than useful.
             BeforeConstraintsTerm = term.functor(term.atom("{}"),
                 [InsideBracesTerm], _Context)
         then
@@ -343,19 +362,27 @@ parse_constructor(ModuleName, VarSet, ExistQVars, Term, MaybeConstructor) :-
             VarSet, ContextPieces, MaybeFunctorAndArgTerms),
         (
             MaybeFunctorAndArgTerms = error2(Specs),
-            MaybeConstructor  = error1(Specs)
+            MaybeConstructor = error1(MCSpecs ++ Specs)
         ;
             MaybeFunctorAndArgTerms = ok2(Functor, ArgTerms),
             MaybeConstructorArgs = convert_constructor_arg_list(ModuleName,
                 VarSet, ArgTerms),
             (
                 MaybeConstructorArgs = error1(Specs),
-                MaybeConstructor = error1(Specs)
+                MaybeConstructor = error1(MCSpecs ++ Specs)
             ;
                 MaybeConstructorArgs = ok1(ConstructorArgs),
-                Ctor = ctor(ExistQVars, Constraints, Functor, ConstructorArgs,
-                    list.length(ConstructorArgs), get_term_context(MainTerm)),
-                MaybeConstructor = ok1(Ctor)
+                (
+                    MCSpecs = [],
+                    list.length(ConstructorArgs, Arity),
+                    MainTermContext = get_term_context(MainTerm),
+                    Ctor = ctor(MaybeExistConstraints, Functor,
+                        ConstructorArgs, Arity, MainTermContext),
+                    MaybeConstructor = ok1(Ctor)
+                ;
+                    MCSpecs = [_ | _],
+                    MaybeConstructor = error1(MCSpecs)
+                )
             )
         )
     ).
@@ -424,8 +451,7 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
     (
         MaybeType = ok1(Type),
         Context = get_term_context(TypeTerm),
-        % Initially every argument is assumed to occupy one word.
-        Arg = ctor_arg(MaybeCtorFieldName, Type, full_word, Context),
+        Arg = ctor_arg(MaybeCtorFieldName, Type, Context),
         MaybeTailArgs =
             convert_constructor_arg_list(ModuleName, VarSet, Terms),
         (
@@ -445,8 +471,15 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
 
 process_du_ctors(_Params, _, _, [], !Specs).
 process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
-    Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs, _Arity,
-        _Context),
+    Ctor = ctor(MaybeExistConstraints, _CtorName, CtorArgs, _Arity, _Context),
+    (
+        MaybeExistConstraints = no_exist_constraints,
+        ExistQVars = [],
+        Constraints = []
+    ;
+        MaybeExistConstraints = exist_constraints(
+            cons_exist_constraints(ExistQVars, Constraints))
+    ),
     ( if
         % Check that all type variables in the ctor are either explicitly
         % existentially quantified or occur in the head of the type.
@@ -454,7 +487,8 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
         type_vars_list(CtorArgTypes, VarsInCtorArgTypes0),
         list.sort_and_remove_dups(VarsInCtorArgTypes0, VarsInCtorArgTypes),
-        list.filter(list.contains(ExistQVars ++ Params), VarsInCtorArgTypes,
+        ExistQVarsParams = ExistQVars ++ Params,
+        list.filter(list.contains(ExistQVarsParams), VarsInCtorArgTypes,
             _ExistQOrParamVars, NotExistQOrParamVars),
         NotExistQOrParamVars = [_ | _]
     then
@@ -566,8 +600,7 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
         !Specs) :-
     DirectArgCtor = sym_name_arity(SymName, Arity),
     ( if find_constructor(Ctors, SymName, Arity, Ctor) then
-        Ctor = ctor(ExistQVars, _Constraints, _SymName, _Args, _Arity,
-            _Context),
+        Ctor = ctor(MaybeExistConstraints, _SymName, _Args, _Arity, _Context),
         ( if Arity \= 1 then
             Pieces = [words("Error: the"), quote("direct_arg"),
                 words("attribute contains a function symbol whose arity"),
@@ -577,9 +610,9 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
             !:Specs = [Spec | !.Specs]
         else
             (
-                ExistQVars = []
+                MaybeExistConstraints = no_exist_constraints
             ;
-                ExistQVars = [_ | _],
+                MaybeExistConstraints = exist_constraints(_),
                 Pieces = [words("Error: the"), quote("direct_arg"),
                     words("attribute contains a function symbol"),
                     unqual_sym_name_and_arity(DirectArgCtor),
@@ -606,7 +639,7 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
     constructor::out) is semidet.
 
 find_constructor([Ctor | Ctors], SymName, Arity, NamedCtor) :-
-    ( if Ctor = ctor(_, _, SymName, _Args, Arity, _) then
+    ( if Ctor = ctor(_, SymName, _Args, Arity, _) then
         NamedCtor = Ctor
     else
         find_constructor(Ctors, SymName, Arity, NamedCtor)
@@ -633,12 +666,14 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             [simple_msg(get_term_context(HeadTerm), [always(SolverPieces)])]),
         SolverSpecs = [SolverSpec]
     ),
-    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+    HeadContextPieces =
+        cord.from_list([words("On the left hand side of type definition:")]),
+    parse_type_defn_head(HeadContextPieces, ModuleName, VarSet, HeadTerm,
         MaybeNameAndParams),
-    % XXX Should pass more correct ContextPieces.
-    ContextPieces = cord.init,
-    parse_type(no_allow_ho_inst_info(wnhii_eqv_type_defn_body),
-        VarSet, ContextPieces, BodyTerm, MaybeType),
+    % XXX Should pass more correct BodyContextPieces.
+    BodyContextPieces = cord.init,
+    parse_type(no_allow_ho_inst_info(wnhii_eqv_type_defn_body), VarSet,
+        BodyContextPieces, BodyTerm, MaybeType),
     ( if
         SolverSpecs = [],
         MaybeNameAndParams = ok2(Name, ParamTVars),
@@ -669,7 +704,12 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
 %---------------------------------------------------------------------------%
 
     % Parse a type definition which consists only of a `where' block.
-    % This is either an abstract enumeration type, or a solver type.
+    % This can be
+    %
+    % - an abstract enumeration type,
+    % - an abstract dummy type,
+    % - an abstract notag type, or
+    % - a solver type.
     %
 :- pred parse_where_block_type_defn(module_name::in, varset::in, term::in,
     term::in, prog_context::in, int::in, is_solver_type::in,
@@ -679,7 +719,7 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
         Context, SeqNum, IsSolverType, MaybeIOM) :-
     (
         IsSolverType = non_solver_type,
-        parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm,
+        parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm,
             BodyTerm, Context, SeqNum, MaybeIOM)
     ;
         IsSolverType = solver_type,
@@ -689,7 +729,7 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
             MaybeWhere = error3(Specs),
             MaybeIOM = error1(Specs)
         ;
-            MaybeWhere = ok3(MaybeSolverTypeDetails, MaybeUserEqComp,
+            MaybeWhere = ok3(MaybeSolverTypeDetails, MaybeCanonical,
                 MaybeDirectArgCtors),
             (
                 MaybeDirectArgCtors = yes(_),
@@ -703,40 +743,51 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
             ;
                 MaybeDirectArgCtors = no,
                 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
-                    MaybeSolverTypeDetails, MaybeUserEqComp, Context, SeqNum,
+                    MaybeSolverTypeDetails, MaybeCanonical, Context, SeqNum,
                     MaybeIOM)
             )
         )
     ).
 
-:- pred parse_where_type_is_abstract_enum(module_name::in, varset::in,
+:- pred parse_where_type_is_abstract(module_name::in, varset::in,
     term::in, term::in, prog_context::in, int::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
+parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
         Context, SeqNum, MaybeIOM) :-
+    ContextPieces =
+        cord.from_list([words("On the left hand side of type definition:")]),
     varset.coerce(VarSet, TypeVarSet),
-    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+    parse_type_defn_head(ContextPieces, ModuleName, VarSet, HeadTerm,
         MaybeNameParams),
     ( if
-        BodyTerm = term.functor(term.atom("type_is_abstract_enum"), Args, _)
+        BodyTerm = term.functor(term.atom(AttrName), Args, _),
+        ( AttrName = "type_is_abstract_enum"
+        ; AttrName = "type_is_representable_in_n_bits"
+        )
     then
-        ( if
-            Args = [Arg],
-            decimal_term_to_int(Arg, NumBits)
-        then
-            TypeDefn0 = parse_tree_abstract_type(abstract_enum_type(NumBits)),
-            MaybeTypeDefn = ok1(TypeDefn0)
+        ( if Args = [Arg] then
+            ( if decimal_term_to_int(Arg, NumBits) then
+                TypeDefn0 = parse_tree_abstract_type(
+                    abstract_type_fits_in_n_bits(NumBits)),
+                MaybeTypeDefn = ok1(TypeDefn0)
+            else
+                Pieces = [words("Error: the argument of"), quote(AttrName),
+                    words("is not a positive integer."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(Context, [always(Pieces)])]),
+                MaybeTypeDefn = error1([Spec])
+            )
         else
-            Pieces = [words("Error: invalid argument for"),
-                words("type_is_abstract_enum."), nl],
+            Pieces = [words("Error:"), quote(AttrName),
+                words("should have exactly one argument."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(Context, [always(Pieces)])]),
             MaybeTypeDefn = error1([Spec])
         )
     else
         Pieces = [words("Error: invalid"), quote("where ..."),
-            words("attributes for abstract non-solver type."), nl],
+            words("attribute for abstract non-solver type."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         MaybeTypeDefn = error1([Spec])
@@ -756,13 +807,15 @@ parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
     ).
 
 :- pred parse_solver_type_base(module_name::in, varset::in, term::in,
-    maybe(solver_type_details)::in, maybe(unify_compare)::in,
+    maybe(solver_type_details)::in, maybe_canonical::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
-        MaybeSolverTypeDetails, MaybeUserEqComp, Context, SeqNum, MaybeIOM) :-
+        MaybeSolverTypeDetails, MaybeCanonical, Context, SeqNum, MaybeIOM) :-
+    ContextPieces = cord.from_list([words("On the left hand side of"),
+        words("solver type definition:")]),
     varset.coerce(VarSet, TVarSet),
-    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+    parse_type_defn_head(ContextPieces, ModuleName, VarSet, HeadTerm,
         MaybeNameParams),
     (
         MaybeSolverTypeDetails = yes(_),
@@ -791,7 +844,7 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
     then
         TypeDefn = parse_tree_solver_type(DetailsSolver),
         DetailsSolver =
-            type_details_solver(SolverTypeDetails, MaybeUserEqComp),
+            type_details_solver(SolverTypeDetails, MaybeCanonical),
         ItemTypeDefn = item_type_defn_info(SymName, ParamTVars, TypeDefn,
             TVarSet, Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),
@@ -812,7 +865,9 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
 
 parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
         IsSolverType, MaybeIOM) :-
-    parse_type_defn_head(tdhpc_type_defn, ModuleName, VarSet, HeadTerm,
+    ContextPieces =
+        cord.from_list([words("On the left hand side of type definition:")]),
+    parse_type_defn_head(ContextPieces, ModuleName, VarSet, HeadTerm,
         MaybeTypeCtorAndArgs),
     (
         MaybeTypeCtorAndArgs = error2(Specs),
@@ -822,6 +877,9 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
         varset.coerce(VarSet, TypeVarSet),
         (
             IsSolverType = non_solver_type,
+            % XXX TYPE_REPN This looks wrong to me (zs), because there are
+            % non-solver types for whose abstract versions can be described
+            % by more specific values of AbstractTypeDetails.
             AbstractTypeDetails = abstract_type_general
         ;
             IsSolverType = solver_type,
@@ -843,7 +901,7 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
 
 :- pred parse_type_decl_where_term(is_solver_type::in, module_name::in,
     varset::in, term::in,
-    maybe3(maybe(solver_type_details), maybe(unify_compare),
+    maybe3(maybe(solver_type_details), maybe_canonical,
         maybe(list(sym_name_and_arity)))::out) is det.
 
 parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
@@ -874,6 +932,9 @@ parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
         parse_where_attribute(parse_where_is("comparison",
                 parse_where_pred_is(ModuleName, VarSet)),
             MaybeComparisonIs, !MaybeTerm),
+        % XXX TYPE_REPN We should stop accepting direct_arg information
+        % in where clauses on the type definition itself after switch to
+        % including direct_arg information in separate type_repn items instead.
         parse_where_attribute(parse_where_is("direct_arg",
                 parse_where_direct_arg_is(ModuleName, VarSet)),
             MaybeDirectArgIs, !MaybeTerm),
@@ -903,7 +964,7 @@ parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
         Term0
     ).
 
-parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeUnifyCompare) :-
+parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeMaybeCanonical) :-
     some [!MaybeTerm] (
         !:MaybeTerm = yes(Term0),
         parse_where_attribute(parse_where_type_is_abstract_noncanonical,
@@ -953,23 +1014,23 @@ parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeUnifyCompare) :-
                 EqualityIs = no,
                 ComparisonIs = no
             then
-                MaybeUnifyCompare =
-                    ok1(yes(abstract_noncanonical_type(non_solver_type)))
+                MaybeMaybeCanonical =
+                    ok1(noncanon(noncanon_abstract(non_solver_type)))
             else
                 Spec = abstract_noncanonical_excludes_others(Term0),
-                MaybeUnifyCompare = error1([Spec])
+                MaybeMaybeCanonical = error1([Spec])
             )
         ;
             TypeIsAbstractNoncanonical = no,
-            MaybeUC = maybe_unify_compare(EqualityIs, ComparisonIs),
-            MaybeUnifyCompare = ok1(MaybeUC)
+            MaybeCanonical = maybe_unify_compare(EqualityIs, ComparisonIs),
+            MaybeMaybeCanonical = ok1(MaybeCanonical)
         )
     else
         Specs =
             get_any_errors1(MaybeEqualityIs) ++
             get_any_errors1(MaybeComparisonIs) ++
             get_any_errors1(MaybeWhereEnd),
-        MaybeUnifyCompare = error1(Specs)
+        MaybeMaybeCanonical = error1(Specs)
     ).
 
     % parse_where_attribute(Parser, Result, MaybeTerm, MaybeTailTerm) handles
@@ -1152,9 +1213,9 @@ parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
         MaybeFunctor = ok1(sym_name_arity(Name, Arity))
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected functor"),
-            words("name/arity for"), quote("direct_arg"),
-            words("attribute, not"), quote(TermStr), suffix("."), nl],
+        Pieces = [words("Error: expected functor name/arity for"),
+            quote("direct_arg"), words("attribute, not"),
+            quote(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
         MaybeFunctor = error1([Spec])
@@ -1166,7 +1227,7 @@ parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
     maybe1(maybe(equality_pred)), maybe1(maybe(comparison_pred)),
     maybe1(maybe(list(sym_name_and_arity))),
     maybe1(unit), term)
-    = maybe3(maybe(solver_type_details), maybe(unify_compare),
+    = maybe3(maybe(solver_type_details), maybe_canonical,
         maybe(list(sym_name_and_arity))).
 
 make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
@@ -1207,7 +1268,7 @@ make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
     maybe(list(item_mutable_info)),
     maybe(equality_pred), maybe(comparison_pred),
     maybe(list(sym_name_and_arity)), term)
-    = maybe3(maybe(solver_type_details), maybe(unify_compare),
+    = maybe3(maybe(solver_type_details), maybe_canonical,
         maybe(list(sym_name_and_arity))).
 
 make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
@@ -1228,7 +1289,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
             DirectArgIs      = maybe.no
         then
             MaybeWhereDetails =
-                ok3(no, yes(abstract_noncanonical_type(IsSolverType)), no)
+                ok3(no, noncanon(noncanon_abstract(IsSolverType)), no)
         else
             Spec = abstract_noncanonical_excludes_others(WhereTerm),
             MaybeWhereDetails = error3([Spec])
@@ -1275,17 +1336,10 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                 SolverTypeDetails = solver_type_details(RepnType,
                     GroundInst, AnyInst, MutableInfos),
                 MaybeSolverTypeDetails = yes(SolverTypeDetails),
-                ( if
-                    MaybeEqPred = no,
-                    MaybeCmpPred = no
-                then
-                    MaybeUnifyCompare = no
-                else
-                    MaybeUnifyCompare = yes(unify_compare(
-                        MaybeEqPred, MaybeCmpPred))
-                ),
+                MaybeCanonical =
+                    maybe_unify_compare(MaybeEqPred, MaybeCmpPred),
                 MaybeWhereDetails = ok3(MaybeSolverTypeDetails,
-                    MaybeUnifyCompare, no)
+                    MaybeCanonical, no)
             else if
                 RepresentationIs = no
             then
@@ -1315,8 +1369,8 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                         [always(Pieces)])]),
                 MaybeWhereDetails = error3([Spec])
             else
-                MaybeUC = maybe_unify_compare(EqualityIs, ComparisonIs),
-                MaybeWhereDetails = ok3(no, MaybeUC, DirectArgIs)
+                MaybeCanonical = maybe_unify_compare(EqualityIs, ComparisonIs),
+                MaybeWhereDetails = ok3(no, MaybeCanonical, DirectArgIs)
             )
         )
     ).
@@ -1332,16 +1386,25 @@ abstract_noncanonical_excludes_others(Term) = Spec :-
         [simple_msg(get_term_context(Term), [always(Pieces)])]).
 
 :- func maybe_unify_compare(maybe(equality_pred), maybe(comparison_pred))
-    = maybe(unify_compare).
+    = maybe_canonical.
 
-maybe_unify_compare(MaybeEqPred, MaybeCmpPred) =
-    ( if
-        MaybeEqPred = no,
-        MaybeCmpPred = no
-    then
-        no
-    else
-        yes(unify_compare(MaybeEqPred, MaybeCmpPred))
+maybe_unify_compare(MaybeUniPred, MaybeCmpPred) = MaybeCanonical :-
+    (
+        MaybeUniPred = no,
+        MaybeCmpPred = no,
+        MaybeCanonical = canon
+    ;
+        MaybeUniPred = no,
+        MaybeCmpPred = yes(CmpPred),
+        MaybeCanonical = noncanon(noncanon_cmp_only(CmpPred))
+    ;
+        MaybeUniPred = yes(UniPred),
+        MaybeCmpPred = yes(CmpPred),
+        MaybeCanonical = noncanon(noncanon_uni_cmp(UniPred, CmpPred))
+    ;
+        MaybeUniPred = yes(UniPred),
+        MaybeCmpPred = no,
+        MaybeCanonical = noncanon(noncanon_uni_only(UniPred))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1349,46 +1412,35 @@ maybe_unify_compare(MaybeEqPred, MaybeCmpPred) =
 % Predicates useful for parsing several kinds of type definitions.
 %
 
-parse_type_defn_head(ParseContext, ModuleName, VarSet, HeadTerm,
+parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
         MaybeTypeCtorAndArgs) :-
     (
-        HeadTerm = term.variable(Var, Context),
-        (
-            ParseContext = tdhpc_type_defn,
-            Pieces = [
-                words("Error: variable on left hand side of type definition."),
-                nl
-            ]
-        ;
-            ParseContext = tdhpc_foreign_type_pragma(ContextPieces),
-            VarName = varset.lookup_name(VarSet, Var),
-            Pieces = cord.list(ContextPieces) ++ [
-                words("error: expected a type name declared"),
-                words("using a"), decl("type"), words("declaration, got"),
-                words("type variable"), quote(VarName), suffix(".")
-            ]
-        ),
+        Term = term.variable(_Var, Context),
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = cord.list(ContextPieces) ++
+            [lower_case_next_if_not_first,
+            words("Error: expected a type constructor"),
+            words("and zero or more type variables as arguments,"),
+            words("got"), quote(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         MaybeTypeCtorAndArgs = error2([Spec])
     ;
-        HeadTerm = term.functor(_, _, HeadContext),
+        Term = term.functor(_Functor, _ArgTerms, Context),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, Term, VarSet,
+            ContextPieces, MaybeSymNameArgs),
         (
-            ParseContext = tdhpc_type_defn,
-            ContextPieces = cord.singleton(words("In type definition:"))
-        ;
-            ParseContext = tdhpc_foreign_type_pragma(ContextPieces)
-        ),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-            VarSet, ContextPieces, HeadResult),
-        (
-            HeadResult = error2(Specs),
+            MaybeSymNameArgs = error2(Specs),
             MaybeTypeCtorAndArgs = error2(Specs)
         ;
-            HeadResult = ok2(SymName, ArgTerms),
-            % Check that all the head args are variables.
-            check_user_type_name(SymName, HeadContext, NameSpecs),
-            ( if term_list_to_var_list(ArgTerms, ParamVars) then
+            MaybeSymNameArgs = ok2(SymName, ArgTerms),
+            % Check that SymName is allowed to be a type constructor name.
+            check_user_type_name(SymName, Context, NameSpecs),
+            % Check that all the ArgTerms are variables.
+            term_list_to_var_list_and_nonvars(ArgTerms, ParamVars,
+                NonVarArgTerms),
+            (
+                NonVarArgTerms = [],
                 % Check that all the ParamVars are distinct.
                 bag.from_list(ParamVars, ParamsBag),
                 bag.to_list_only_duplicates(ParamsBag, DupParamVars),
@@ -1406,23 +1458,49 @@ parse_type_defn_head(ParseContext, ModuleName, VarSet, HeadTerm,
                     DupParamVars = [_ | _],
                     DupParamVarNames = list.map(
                         mercury_var_to_name_only(VarSet), DupParamVars),
-                    Pieces = [words("Error: type parameters")] ++
-                        list_to_pieces(DupParamVarNames) ++
-                        [words("are duplicated in the LHS"),
-                        words("of this type definition."), nl],
+                    Params = choose_number(DupParamVars,
+                        "the parameter", "the parameters"),
+                    IsOrAre = is_or_are(DupParamVars),
+                    Pieces = cord.list(ContextPieces) ++
+                        [lower_case_next_if_not_first,
+                        words("Error: type parameters must be unique, but"),
+                        words(Params)] ++ list_to_pieces(DupParamVarNames) ++
+                        [words(IsOrAre), words("duplicated."), nl],
                     Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(HeadContext, [always(Pieces)])]),
+                        [simple_msg(Context, [always(Pieces)])]),
                     MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
                 )
-            else
-                HeadTermStr = describe_error_term(VarSet, HeadTerm),
-                Pieces = [words("Error: type parameters must be variables:"),
-                    words(HeadTermStr), suffix(".") ,nl],
+            ;
+                NonVarArgTerms = [_ | _],
+                NonVarArgTermStrs = list.map(describe_error_term(VarSet),
+                    NonVarArgTerms),
+                IsOrAre = is_or_are(NonVarArgTermStrs),
+                Pieces = cord.list(ContextPieces) ++
+                    [lower_case_next_if_not_first,
+                    words("Error: type parameters must be variables, but")] ++
+                    list_to_quoted_pieces(NonVarArgTermStrs) ++
+                    [words(IsOrAre), words("not."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(HeadContext, [always(Pieces)])]),
+                    [simple_msg(Context, [always(Pieces)])]),
                 MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
             )
         )
+    ).
+
+:- pred term_list_to_var_list_and_nonvars(list(term(T))::in,
+    list(var(T))::out, list(term(T))::out) is det.
+
+term_list_to_var_list_and_nonvars([], [], []).
+term_list_to_var_list_and_nonvars([Term | Terms], Vars, NonVars) :-
+    term_list_to_var_list_and_nonvars(Terms, TailVars, TailNonVars),
+    (
+        Term = variable(Var, _),
+        Vars = [Var | TailVars],
+        NonVars = TailNonVars
+    ;
+        Term = functor(_, _, _),
+        Vars = TailVars,
+        NonVars = [Term | TailNonVars]
     ).
 
     % Check that the type name is available to users.

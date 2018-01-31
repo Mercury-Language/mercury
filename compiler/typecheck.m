@@ -3062,7 +3062,14 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
     ),
     module_info_get_cons_table(ModuleInfo, Ctors),
     lookup_cons_table_of_type_ctor(Ctors, TypeCtor, ConsId, ConsDefn),
-    OrigExistTVars = ConsDefn ^ cons_exist_tvars,
+    MaybeExistConstraints = ConsDefn ^ cons_maybe_exist,
+    (
+        MaybeExistConstraints = no_exist_constraints,
+        OrigExistTVars = []
+    ;
+        MaybeExistConstraints = exist_constraints(
+            cons_exist_constraints(OrigExistTVars, _))
+    ),
     (
         AccessType = get,
         ConsAction = do_not_flip_constraints,
@@ -3474,7 +3481,7 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     % or some related data structure.
 
     HLDS_ConsDefn = hlds_cons_defn(TypeCtor, ConsTypeVarSet, ConsTypeParams,
-        ConsTypeKinds, ExistQVars0, ExistProgConstraints, Args, _),
+        ConsTypeKinds, MaybeExistConstraints, Args, _),
     ArgTypes = list.map(func(C) = C ^ arg_type, Args),
     typecheck_info_get_types(Info, TypeTable),
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
@@ -3522,7 +3529,7 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
         ConsTypeInfo = error(abstract_imported_type)
     else if
         Action = flip_constraints_for_new,
-        ExistQVars0 = []
+        MaybeExistConstraints = no_exist_constraints
     then
         % Do not allow 'new' constructors except on existential types.
         ConsTypeInfo = error(new_on_non_existential_type(TypeCtor))
@@ -3531,6 +3538,14 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
             ConsTypeArgs),
         construct_type(TypeCtor, ConsTypeArgs, ConsType),
         UnivProgConstraints = [],
+        (
+            MaybeExistConstraints = no_exist_constraints,
+            ExistQVars0 = [],
+            ExistProgConstraints = []
+        ;
+            MaybeExistConstraints = exist_constraints(
+                cons_exist_constraints(ExistQVars0, ExistProgConstraints))
+        ),
         (
             Action = do_not_flip_constraints,
             ProgConstraints = constraints(UnivProgConstraints,

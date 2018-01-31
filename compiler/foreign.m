@@ -79,7 +79,7 @@
     % assertions applicable to that backend.
     %
 :- pred foreign_type_body_to_exported_type(module_info::in,
-    foreign_type_body::in, sym_name::out, maybe(unify_compare)::out,
+    foreign_type_body::in, sym_name::out, maybe_canonical::out,
     foreign_type_assertions::out) is det.
 
     % Does the foreign_type_body contain a definition usable
@@ -92,7 +92,7 @@
     % the current backend use a user-defined comparison predicate.
     %
 :- pred foreign_type_body_has_user_defined_eq_comp_pred(module_info::in,
-    foreign_type_body::in, unify_compare::out) is semidet.
+    foreign_type_body::in, noncanonical::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -183,7 +183,7 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
                 ForeignTypeName, _, Assertions),
             ExportType = exported_type_foreign(ForeignTypeName, Assertions)
         ;
-            ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _)
+            ( TypeBody = hlds_du_type(_, _, _, _)
             ; TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_solver_type(_)
             ; TypeBody = hlds_abstract_type(_)
@@ -501,10 +501,10 @@ have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-
     ).
 
 foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body,
-        UserEqComp) :-
+        NonCanonical) :-
     foreign_type_body_to_exported_type(ModuleInfo, Body, _,
-        MaybeUserEqComp, _),
-    MaybeUserEqComp = yes(UserEqComp).
+        MaybeCanonical, _),
+    MaybeCanonical = noncanon(NonCanonical).
 
 %-----------------------------------------------------------------------------%
 

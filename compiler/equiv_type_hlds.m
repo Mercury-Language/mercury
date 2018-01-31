@@ -118,7 +118,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !TypeEqvMap, !EqvExportTypes) :-
             IsExported = no
         )
     ;
-        ( Body = hlds_du_type(_, _, _, _, _, _, _, _, _)
+        ( Body = hlds_du_type(_, _, _, _)
         ; Body = hlds_foreign_type(_)
         ; Body = hlds_solver_type(_)
         ; Body = hlds_abstract_type(_)
@@ -167,7 +167,7 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
     maybe_start_recording_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
-        Body0 = hlds_du_type(Ctors0, _, _, _, _, _, _, _, _),
+        Body0 = hlds_du_type(Ctors0, _, _, _),
         equiv_type.replace_in_ctors(TypeEqvMap, Ctors0, Ctors,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         Body = Body0 ^ du_type_ctors := Ctors
@@ -481,32 +481,22 @@ replace_in_cons_table(TypeEqvMap, !ConsTable) :-
 
 replace_in_cons_defn(TypeEqvMap, ConsDefn0, ConsDefn) :-
     ConsDefn0 = hlds_cons_defn(TypeCtor, TVarSet0, TypeParams, KindMap,
-        ExistQTVars, ProgConstraints, ConstructorArgs0, Context),
+        MaybeExistConstraints, ConstructorArgs0, Context),
     list.map_foldl(replace_in_constructor_arg(TypeEqvMap),
         ConstructorArgs0, ConstructorArgs, TVarSet0, TVarSet),
     ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
-        ExistQTVars, ProgConstraints, ConstructorArgs, Context).
+        MaybeExistConstraints, ConstructorArgs, Context).
 
 :- pred replace_in_constructor_arg(type_eqv_map::in,
     constructor_arg::in, constructor_arg::out,
     tvarset::in, tvarset::out) is det.
 
 replace_in_constructor_arg(TypeEqvMap, CtorArg0, CtorArg, !TVarSet) :-
-    CtorArg0 = ctor_arg(MaybeFieldName, Type0, Width, Context),
+    CtorArg0 = ctor_arg(MaybeFieldName, Type0, Context),
     replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, no, _),
     (
         Changed = yes,
-        (
-            ( Width = full_word
-            ; Width = double_word
-            ),
-            CtorArg = ctor_arg(MaybeFieldName, Type, Width, Context)
-        ;
-            ( Width = partial_word_first(_)
-            ; Width = partial_word_shifted(_, _)
-            ),
-            unexpected($module, $pred, "changed type of packed argument")
-        )
+        CtorArg = ctor_arg(MaybeFieldName, Type, Context)
     ;
         Changed = no,
         CtorArg = CtorArg0

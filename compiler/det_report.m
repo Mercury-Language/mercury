@@ -987,7 +987,7 @@ det_diagnose_orelse_goals([Goal | Goals], InstMap0, Desired, SwitchContexts0,
 
 %-----------------------------------------------------------------------------%
 %
-% There are two reasons why we may want to report that a switch is incomplete: 
+% There are two reasons why we may want to report that a switch is incomplete:
 %
 % - because the switch is wrapped in a require_complete_switch scope, and
 % - because the --inform-incomplete-switch option is set.
@@ -1259,7 +1259,7 @@ reqscope_check_scope(SwitchContexts, Reason, SubGoal, ScopeGoalInfo, InstMap0,
 :- pred is_scope_subgoal_a_sortof_switch(hlds_goal::in,
     prog_context::out, prog_var::out, can_fail::out, list(case)::out)
     is semidet.
-            
+
 is_scope_subgoal_a_sortof_switch(Goal, SwitchContext, SwitchVar,
         CanFail, Cases) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -1311,7 +1311,7 @@ cse_lifted_then_sortof_switch(Conjuncts, SwitchContext, SwitchVar,
         Conjuncts = [Conjunct1, Conjunct2 | TailConjuncts],
         goal_has_feature(Conjunct1, feature_lifted_by_cse),
         cse_lifted_then_sortof_switch([Conjunct2 | TailConjuncts],
-            SwitchContext, SwitchVar, CanFail, Cases) 
+            SwitchContext, SwitchVar, CanFail, Cases)
     ).
 
 :- pred generate_incomplete_switch_spec(why_report_incomplete_switch::in,
@@ -1612,12 +1612,12 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
     det_info_get_module_info(DetInfo, ModuleInfo),
     instmap_lookup_var(InstMap0, Var, VarInst),
     ( if
+        det_info_get_vartypes(DetInfo, VarTypes),
+        lookup_var_type(VarTypes, Var, VarType),
+        type_to_ctor_det(VarType, VarTypeCtor),
         ( if
             inst_is_bound_to_functors(ModuleInfo, VarInst, BoundInsts)
         then
-            det_info_get_vartypes(DetInfo, VarTypes),
-            lookup_var_type(VarTypes, Var, VarType),
-            type_to_ctor_det(VarType, VarTypeCtor),
             bound_insts_to_cons_ids(VarTypeCtor, BoundInsts, BoundConsIds),
             list.sort_and_remove_dups(BoundConsIds, SortedBoundConsIds),
             set_tree234.sorted_list_to_set(SortedBoundConsIds,
@@ -1632,9 +1632,10 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             ( if
                 det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
                 hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-                ConsTable = TypeBody ^ du_type_cons_tag_values
+                TypeBody = hlds_du_type(TypeConstructors, _, _, _)
             then
-                map.keys(ConsTable, SortedTypeConsIds),
+                SortedTypeConsIds =
+                    constructor_cons_ids(VarTypeCtor, TypeConstructors),
                 set_tree234.sorted_list_to_set(SortedTypeConsIds,
                     TypeConsIdsSet),
                 set_tree234.intersect(TypeConsIdsSet, BoundConsIdsSet,
@@ -1645,8 +1646,9 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
         else
             det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-            ConsTable = TypeBody ^ du_type_cons_tag_values,
-            map.keys(ConsTable, SortedTypeConsIds),
+            TypeBody = hlds_du_type(TypeConstructors, _, _, _),
+            SortedTypeConsIds =
+                constructor_cons_ids(VarTypeCtor, TypeConstructors),
             set_tree234.sorted_list_to_set(SortedTypeConsIds, TypeConsIdsSet),
             PossibleConsIdsSet = TypeConsIdsSet
         )
@@ -1741,7 +1743,7 @@ compute_covered_cons_ids([Case | Cases], !CoveredConsIds) :-
 
 cons_id_list_to_pieces(ConsId1, ConsIds2Plus, EndCommaPieces) = Pieces :-
     % If we invoked determinism analysis on this procedure, then it must be
-    % type correct. Since users will know the type of the switched-on variable, 
+    % type correct. Since users will know the type of the switched-on variable,
     % they will know which module defined it, and hence which modules defined
     % its function symbols. Repeating the name of that module for each cons_id
     % is much more likely to be distracting clutter than helpful information.

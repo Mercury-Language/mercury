@@ -226,12 +226,12 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
 get_cons_arg_widths(ModuleInfo, ConsId, Args, AllArgWidths) :-
     ( if
         ConsId = cons(_, _, TypeCtor),
-        get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
+        get_cons_repn_defn(ModuleInfo, TypeCtor, ConsId, ConsRepnDefn)
     then
-        ConsArgs = ConsDefn ^ cons_args,
-        ArgWidths = list.map((func(C) = C ^ arg_width), ConsArgs),
+        ConsArgRepns = ConsRepnDefn ^ cr_args,
+        ArgWidths = list.map((func(C) = C ^ car_width), ConsArgRepns),
         list.length(Args, NumArgs),
-        list.length(ConsArgs, NumConsArgs),
+        list.length(ConsArgRepns, NumConsArgs),
         NumExtraArgs = NumArgs - NumConsArgs,
         ( if NumExtraArgs = 0 then
             AllArgWidths = ArgWidths
@@ -516,10 +516,7 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
 :- func generate_reserved_address(reserved_address) = rval.
 
 generate_reserved_address(null_pointer) = const(llconst_int(0)).
-generate_reserved_address(small_pointer(N)) = const(llconst_int(N)).
-generate_reserved_address(reserved_object(_, _, _)) = _ :-
-    % These should only be used for the MLDS back-end.
-    unexpected($module, $pred, "reserved_object").
+generate_reserved_address(small_int_as_pointer(N)) = const(llconst_int(N)).
 
 %---------------------------------------------------------------------------%
 

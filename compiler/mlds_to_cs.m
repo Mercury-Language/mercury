@@ -159,7 +159,8 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     io.write_string("\n// Cell and tabling definitions\n", !IO),
     output_global_var_decls_for_csharp(Info, Indent + 1, CellDefns, !IO),
-    output_global_var_decls_for_csharp(Info, Indent + 1, TableStructDefns, !IO),
+    output_global_var_decls_for_csharp(Info, Indent + 1, TableStructDefns,
+        !IO),
     output_init_global_var_method_for_csharp(Info, Indent + 1,
         CellDefns ++ TableStructDefns, !IO),
 
@@ -2113,7 +2114,9 @@ hand_defined_type_for_csharp(Type, CtorCat, SubstituteName, ArrayDims) :-
             ArrayDims = []
         ;
             ( CtorCatUser = cat_user_direct_dummy
+            ; CtorCatUser = cat_user_abstract_dummy
             ; CtorCatUser = cat_user_notag
+            ; CtorCatUser = cat_user_abstract_notag
             ),
             fail
         )
@@ -2857,8 +2860,8 @@ output_switch_default_for_csharp(Info, Indent, FuncInfo, Context, Default,
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
             Indent, !IO),
         io.write_string("default: /*NOTREACHED*/\n", !IO),
-        indent_line_after_context(Info ^ csoi_line_numbers, Context, Indent + 1,
-            !IO),
+        indent_line_after_context(Info ^ csoi_line_numbers, Context,
+            Indent + 1, !IO),
         io.write_string("throw new runtime.UnreachableDefault();\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
     ).

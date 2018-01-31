@@ -123,6 +123,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -389,7 +390,14 @@ order_cases(Cases0, Cases, VarType, CodeModel, CanFail, CI) :-
     ( if
         search_type_defn(CI, VarType, VarTypeDefn),
         get_type_defn_body(VarTypeDefn, VarTypeDefnBody),
-        VarTypeDefnBody ^ du_type_reserved_addr = uses_reserved_address
+        VarTypeDefnBody = hlds_du_type(_, _, MaybeRepn, _),
+        (
+            MaybeRepn = no,
+            unexpected($pred, "MaybeRepn = no")
+        ;
+            MaybeRepn = yes(Repn)
+        ),
+        Repn ^ dur_reserved_addr = uses_reserved_address
     then
         separate_reserved_address_cases(Cases0,
             ReservedAddrCases0, NonReservedAddrCases0),

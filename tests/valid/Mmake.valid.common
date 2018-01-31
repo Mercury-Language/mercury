@@ -43,6 +43,7 @@
 #   garbage collection. Debugging is incompatible with ctgc.
 # RESERVE_TAG_PROGS::
 #   The test cases that require num_tag_bits >= 1.
+#   XXX We don't support reserving tags anymore.
 # CONSTRAINT_TYPECHECK_PROGS::
 #   Tests that use constraint based type checking.
 #   XXX These are never enabled.
@@ -119,11 +120,13 @@ else
 	PROGS7 = $(PROGS6)
 endif
 
-ifeq "$(filter java% csharp% erlang%,$(GRADE))" ""
-	OBJ_PROGS = $(PROGS7) $(RESERVE_TAG_PROGS)
-else
-	OBJ_PROGS = $(PROGS7)
-endif
+OBJ_PROGS = $(PROGS7)
+# We don't support reserving tags anymore.
+# ifeq "$(filter java% csharp% erlang%,$(GRADE))" ""
+# 	OBJ_PROGS = $(PROGS7) $(RESERVE_TAG_PROGS)
+# else
+# 	OBJ_PROGS = $(PROGS7)
+# endif
 
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
 	PROGS = $(OBJ_PROGS) $(C_PROGS)

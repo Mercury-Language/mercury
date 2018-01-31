@@ -445,7 +445,9 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
             module_info_get_type_table(ModuleInfo, TypeTable),
             lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-            ConsTable = TypeBody ^ du_type_cons_tag_values
+            TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+            MaybeRepn = yes(Repn),
+            ConsTable = Repn ^ dur_cons_id_to_tag_map
         then
             map.lookup(ConsTable, ConsId, ConsTag),
             ( if ConsTag = no_tag then

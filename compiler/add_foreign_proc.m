@@ -14,6 +14,7 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
+:- import_module maybe.
 
 :- pred add_pragma_foreign_proc_export(item_maybe_attrs::in,
     pragma_info_foreign_proc_export::in, prog_context::in,
@@ -31,13 +32,14 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
+:- import_module hlds.add_pred.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_warn.
+:- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.

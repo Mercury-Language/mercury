@@ -27,7 +27,7 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.make_hlds.make_hlds_error.
+:- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
 :- import_module libs.
@@ -43,6 +43,7 @@
 
 :- import_module assoc_list.
 :- import_module map.
+:- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
 :- import_module require.

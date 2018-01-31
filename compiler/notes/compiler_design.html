@@ -313,6 +313,9 @@ such as pretty-printing.
     prog_data_event.m, prog_data_foreign.m, prog_data_pragma.m,
     prog_data_used_modules.m, prog_item.m and file_kind.m,
     while the code to create it is in the prog_io*.m modules:
+    XXX TYPE_REPN:
+    The module names below have been changed; the documentation
+    should be updated accordingly.
     <ul>
     <li>
         prog_io.m handles the top level tasks of reading in
@@ -607,6 +610,8 @@ of the make_hlds module in the hlds package.
 <dt> add_pred.m
 <dd>
     Handles type and mode declarations for predicates.
+    (Actually in the hlds package because it is called by add_special_pred.m,
+    but does most of its work for the other modules in the make_hlds package.)
 
 <dt> default_func_mode.m
 <dd>
@@ -622,11 +627,6 @@ of the make_hlds module in the hlds package.
     Handles the declarations of insts and modes,
     including checking for circular insts and modes.
 
-<dt> add_special_pred.m
-<dd>
-    Adds unify, compare, and (if needed) index and init predicates
-    to the HLDS as necessary.
-
 <dt> add_solver.m
 <dd>
     Adds to the HLDS the casting predicates needed by solver types.
@@ -640,12 +640,6 @@ of the make_hlds module in the hlds package.
 <dd>
     Handles typeclass and instance declarations.
 
-<dt> du_type_layout.m
-<dd>
-    Decides how values of discriminated union types are laid out in memory.
-    The two main issues it handles are floats (which can be a problem on
-    platforms where they don't fit in words) and the packing of enums.
-
 <dt> qual_info.m
 <dd>
     Handles the abstract data types used for module qualification.
@@ -658,6 +652,9 @@ of the make_hlds module in the hlds package.
 <dt> make_hlds_error.m
 <dd>
     Error messages used by more than one submodule of make_hlds.m.
+    (Actually, make_hlds_error.m is in the hlds package,
+    because it is needed by some other modules that have been moved
+    from the make_hlds package to hlds.)
 
 <dt> add_foreign_proc.m
 <dd>
@@ -689,10 +686,6 @@ Fact table pragmas are handled by fact_table.m
 That module also reads the facts from the declared file
 and compiles them into a separate C file
 used by the foreign_proc body of the relevant predicate.
-
-The conversion of the item list to HLDS also involves make_tags.m,
-which chooses the data representation for each discriminated union type
-by assigning tags to each functor.
 
 <p>
 The HLDS data structure itself is spread over the following modules:
@@ -728,6 +721,35 @@ The HLDS data structure itself is spread over the following modules:
 <li>
     vartypes.m defines the data structure that maps variables to their types.
 </ol>
+
+Some modules implement a pass that decides
+the representation of every type used by the module being compiled:
+
+<dl>
+
+<dt> make_tags.m
+<dd>
+    Logically this module is part of du_type_layout.m.
+    It chooses the tag to use to represent each functor
+    of a discriminated union type.
+
+<dt> du_type_layout.m
+<dd>
+    Decides how values of discriminated union types are laid out in memory.
+    The two main issues it handles are floats (which can be a problem on
+    platforms where they don't fit in words) and the packing of data structures
+    as densely as possible.
+
+    Once the representations of all types are known, this module uses
+    add_special_pred.m to declare, and if need be, define the unify and compare
+    predicate of each type.
+
+<dt> add_special_pred.m
+<dd>
+    Adds unify, compare, and (if the compare predicate needs it)
+    index predicates to the HLDS.
+
+</dl>
 
 <p>
 The module hlds_out.m contains predicates to dump the HLDS to a file.

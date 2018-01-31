@@ -22,6 +22,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -46,6 +47,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_errors.
+:- import_module hlds.add_pred.
 :- import_module hlds.default_func_mode.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
@@ -57,7 +59,6 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
-:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.goal_expr_to_goal.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.

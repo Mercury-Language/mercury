@@ -14,14 +14,20 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module hlds.make_hlds.add_pred.
+:- module hlds.add_pred.
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.make_hlds.
+:- import_module hlds.status.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 :- import_module maybe.
@@ -36,7 +42,7 @@
     maybe(pred_proc_id)::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred do_add_new_proc(prog_context::in, int::in, arity::in,
+:- pred add_new_proc(prog_context::in, int::in, arity::in,
     inst_varset::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
     detism_decl::in, maybe(determinism)::in,
@@ -77,12 +83,14 @@
 :- implementation.
 
 :- import_module hlds.hlds_args.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.make_hlds.make_hlds_error.
+:- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
@@ -480,7 +488,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-do_add_new_proc(Context, ItemNumber, Arity, InstVarSet, ArgModes,
+add_new_proc(Context, ItemNumber, Arity, InstVarSet, ArgModes,
         MaybeDeclaredArgModes, MaybeArgLives, DetismDecl, MaybeDet,
         IsAddressTaken, HasParallelConj, PredInfo0, PredInfo, ModeId) :-
     pred_info_get_proc_table(PredInfo0, Procs0),
@@ -630,7 +638,7 @@ module_do_add_mode(Context, ItemNumber, MaybeItemMercuryStatus, Arity,
     ArgLives = no,
     % Before the simplification pass, HasParallelConj is not meaningful.
     HasParallelConj = has_no_parallel_conj,
-    do_add_new_proc(Context, ItemNumber, Arity, InstVarSet, Modes, yes(Modes),
+    add_new_proc(Context, ItemNumber, Arity, InstVarSet, Modes, yes(Modes),
         ArgLives, DetismDecl, MaybeDet, address_is_not_taken,
         HasParallelConj, !PredInfo, ProcId).
 
@@ -840,5 +848,5 @@ report_field_status_mismatch(Context, CallId, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
-:- end_module hlds.make_hlds.add_pred.
+:- end_module hlds.add_pred.
 %-----------------------------------------------------------------------------%

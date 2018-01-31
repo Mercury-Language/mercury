@@ -483,7 +483,6 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             ; Pragma = pragma_obsolete(_)
             ; Pragma = pragma_no_detism_warning(_)
             ; Pragma = pragma_fact_table(_)
-            ; Pragma = pragma_reserve_tag(_)
             ; Pragma = pragma_oisu(_)
             ; Pragma = pragma_promise_eqv_clauses(_)
             ; Pragma = pragma_promise_pure(_)
@@ -550,6 +549,10 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
         ; Item = item_finalise(_)
         ; Item = item_nothing(_)
         )
+    ;
+        Item = item_type_repn(_),
+        % XXX TYPE_REPN Implement this.
+        unexpected($pred, "item_type_repn nyi")
     ),
     gather_implicit_import_needs_in_items(Items, !ImplicitImportNeeds).
 

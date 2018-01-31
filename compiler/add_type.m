@@ -10,6 +10,9 @@
 %
 % This submodule of make_hlds handles the declarations of new types.
 %
+% XXX TYPE_REPN Consider whether any code in this module should be elsewhere.
+% XXX TYPE_REPN Put the remaining predicates in a top down order.
+%
 %---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_type.
@@ -31,10 +34,12 @@
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Add the constructors and special preds for a type to the HLDS.
+    % Add the constructors of du types to constructor table of the HLDS,
+    % and check that Mercury types defined solely by foreign types
+    % have a definition that works for the target backend.
     %
-:- pred process_type_defn(type_ctor::in, hlds_type_defn::in,
-    found_invalid_type::in, found_invalid_type::out,
+:- pred add_du_ctors_check_foreign_type_for_cur_backend(type_ctor::in,
+    hlds_type_defn::in, found_invalid_type::in, found_invalid_type::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -45,10 +50,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-:- import_module hlds.make_hlds.add_special_pred.
-:- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_passes.
-:- import_module hlds.make_tags.
+:- import_module hlds.make_hlds_error.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
 :- import_module mdbcomp.
@@ -60,6 +63,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module multi_map.
 :- import_module require.
 :- import_module string.
@@ -88,12 +92,12 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
     module_info_get_globals(!.ModuleInfo, Globals),
     list.length(TypeParams, Arity),
     TypeCtor = type_ctor(SymName, Arity),
-    convert_type_defn_to_hlds(ParseTreeTypeDefn, TypeCtor, Globals, Body),
+    convert_type_defn_to_hlds(ParseTreeTypeDefn, TypeCtor, Body, !ModuleInfo),
     ( if
         (
             Body = hlds_abstract_type(_)
         ;
-            Body = hlds_du_type(_, _, _, _, _, _, _, _, _),
+            Body = hlds_du_type(_, _, _, _),
             string.suffix(term.context_file(Context), ".int2")
             % If the type definition comes from a .int2 file then we must
             % treat it as abstract. The constructors may only be used
@@ -357,33 +361,51 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
 % Predicates that help the top level predicates do their jobs.
 %
 
-:- pred convert_type_defn_to_hlds(type_defn::in, type_ctor::in, globals::in,
-    hlds_type_body::out) is det.
+:- pred convert_type_defn_to_hlds(type_defn::in, type_ctor::in,
+    hlds_type_body::out, module_info::in, module_info::out) is det.
 
-convert_type_defn_to_hlds(TypeDefn, TypeCtor, Globals, HLDSBody) :-
+convert_type_defn_to_hlds(TypeDefn, TypeCtor, HLDSBody, !ModuleInfo) :-
     (
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu =
-            type_details_du(Body, MaybeUserEqComp, MaybeDirectArgCtors),
-        % Initially, when we first see the `:- type' definition,
-        % we assign the constructor tags assuming that there is no
-        % `:- pragma reserve_tag' declaration for this type.
-        % (If it turns out that there was one, then we will recompute the
-        % constructor tags by calling assign_constructor_tags again,
-        % with ReservedTagPragma = uses_reserved_tag, when processing
-        % the pragma.)
-        ReservedTagPragma = does_not_use_reserved_tag,
-        assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor,
-            ReservedTagPragma, Globals, CtorTagMap, ReservedAddr, IsEnum),
-        IsForeign = no,
-        ( if ReservedAddr = does_not_use_reserved_address then
-            compute_cheaper_tag_test(CtorTagMap, CheaperTagTest)
-        else
-            CheaperTagTest = no_cheaper_tag_test
-        ),
-        HLDSBody = hlds_du_type(Body, CtorTagMap, CheaperTagTest, IsEnum,
-            MaybeUserEqComp, MaybeDirectArgCtors,
-            ReservedTagPragma, ReservedAddr, IsForeign)
+            type_details_du(Ctors, MaybeUserEqComp, MaybeDirectArgCtors),
+        MaybeRepn = no,
+        MaybeForeign = no,
+        HLDSBody = hlds_du_type(Ctors, MaybeUserEqComp, MaybeRepn,
+            MaybeForeign),
+        (
+            MaybeDirectArgCtors = no
+        ;
+            MaybeDirectArgCtors = yes(DirectArgCtors),
+            % In one test case (submodules/direct_arg_cycle1.m), we insert
+            % the same value of DirectArgCtors into DirectArgMap0 *twice*.
+            %
+            % I (zs) don't know whether this is something that we should allow,
+            % since one of those is from writing a "where direct_arg is"
+            % clause in the *source* code of the program, even though
+            % that syntax was intended to be used only in automatically
+            % generated interface files.
+            %
+            % For now, I left the old behavior.
+            % XXX TYPE_REPN Peter and I agree; we should disallow
+            % "where direct_arg" clauses in type definitions.
+            module_info_get_type_repn_dec(!.ModuleInfo, TypeRepnDec0),
+            DirectArgMap0 = TypeRepnDec0 ^ trdd_direct_arg_map,
+            ( if map.search(DirectArgMap0, TypeCtor, OldDirectArgCtors) then
+                ( if DirectArgCtors = OldDirectArgCtors then
+                    true
+                else
+                    unexpected($pred,
+                        "different DirectArgCtors for same TypeCtor")
+                )
+            else
+                map.det_insert(TypeCtor, DirectArgCtors,
+                    DirectArgMap0, DirectArgMap),
+                TypeRepnDec = TypeRepnDec0 ^ trdd_direct_arg_map
+                    := DirectArgMap,
+                module_info_set_type_repn_dec(TypeRepnDec, !ModuleInfo)
+            )
+        )
     ;
         TypeDefn = parse_tree_eqv_type(type_details_eqv(EqvType)),
         HLDSBody = hlds_eqv_type(EqvType)
@@ -467,11 +489,11 @@ combine_old_and_new_type_status(OldDefn, NewTypeStatus, CombinedTypeStatus,
 merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
     (
         BodyA = hlds_foreign_type(ForeignTypeBodyA),
-        BodyB = hlds_du_type(_, _, _, _, _, _, _, _, _),
+        BodyB = hlds_du_type(_, _, _, _),
         merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, BodyB,
             Body)
     ;
-        BodyA = hlds_du_type(_, _, _, _, _, _, _, _, _),
+        BodyA = hlds_du_type(_, _, _, _),
         BodyB = hlds_foreign_type(ForeignTypeBodyB),
         merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyB, BodyA,
             Body)
@@ -484,8 +506,7 @@ merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
     ).
 
 :- inst hlds_type_body_du for hlds_type_body/0
-    --->    hlds_du_type(ground, ground, ground, ground, ground,
-                ground, ground, ground, ground).
+    --->    hlds_du_type(ground, ground, ground, ground).
 
 :- pred merge_foreign_and_du_type_bodies(globals::in,
     foreign_type_body::in, hlds_type_body::in(hlds_type_body_du),
@@ -493,8 +514,7 @@ merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
 
 merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, DuTypeBodyB,
         Body) :-
-    DuTypeBodyB = hlds_du_type(_Ctors, _TagValues, _CheaperTagTest,
-        _DuTypeKind, _UserEq, _DirectArgCtors, _ReservedTag, _ReservedAddr,
+    DuTypeBodyB = hlds_du_type(_Ctors, _MaybeUserEq, _MaybeRepn,
         MaybeForeignTypeBodyB),
     (
         MaybeForeignTypeBodyB = yes(ForeignTypeBodyB)
@@ -527,8 +547,7 @@ merge_foreign_type_bodies(TypeBodyA, TypeBodyB, TypeBody) :-
     merge_maybe(MaybeJavaA, MaybeJavaB, MaybeJava),
     merge_maybe(MaybeCSharpA, MaybeCSharpB, MaybeCSharp),
     merge_maybe(MaybeErlangA, MaybeErlangB, MaybeErlang),
-    TypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp,
-        MaybeErlang).
+    TypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp, MaybeErlang).
 
 :- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
 
@@ -575,10 +594,10 @@ check_for_dummy_type_with_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         % zero-arity constructor are dummy types. Dummy types are not allowed
         % to have user-defined equality or comparison.
 
-        DetailsDu = type_details_du(Ctors, MaybeUserUC, _MaybeDirectArg),
-        Ctors = [Constructor],
-        Constructor ^ cons_args = [],
-        MaybeUserUC = yes(_),
+        DetailsDu = type_details_du(Ctors, MaybeCanonical, _MaybeDirectArg),
+        Ctors = [Ctor],
+        Ctor ^ cons_args = [],
+        MaybeCanonical = noncanon(_),
         % Only report errors for types defined in this module.
         type_status_defined_in_this_module(TypeStatus) = yes
     then
@@ -727,23 +746,25 @@ check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
     is det.
 
 get_body_is_solver_type(Body, IsSolverType) :-
+    % Please keep in sync with type_body_is_solver_type in type_util.m.
     (
         Body = hlds_solver_type(_),
         IsSolverType = solver_type
     ;
         Body = hlds_abstract_type(Details),
         (
-            Details = abstract_type_general,
-            IsSolverType = non_solver_type
-        ;
-            Details = abstract_enum_type(_),
-            IsSolverType = non_solver_type
-        ;
             Details = abstract_solver_type,
             IsSolverType = solver_type
+        ;
+            ( Details = abstract_type_general
+            ; Details = abstract_dummy_type
+            ; Details = abstract_notag_type
+            ; Details = abstract_type_fits_in_n_bits(_)
+            ),
+            IsSolverType = non_solver_type
         )
     ;
-        ( Body = hlds_du_type(_, _, _, _, _, _, _, _, _)
+        ( Body = hlds_du_type(_, _, _, _)
         ; Body = hlds_eqv_type(_)
         ; Body = hlds_foreign_type(_)
         ),
@@ -851,8 +872,7 @@ check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
             words("on other back-ends, but none for this back-end."), nl],
         Msg = simple_msg(Context,
             [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs],
         FoundInvalidType = found_invalid_type
     ).
@@ -860,19 +880,19 @@ check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
-        !Specs) :-
+add_du_ctors_check_foreign_type_for_cur_backend(TypeCtor, TypeDefn,
+        !FoundInvalidType, !ModuleInfo, !Specs) :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
-    get_type_defn_tparams(TypeDefn, Args),
+    get_type_defn_tparams(TypeDefn, TypeParams),
     get_type_defn_kind_map(TypeDefn, KindMap),
     get_type_defn_body(TypeDefn, Body),
     get_type_defn_status(TypeDefn, Status),
     get_type_defn_ctors_need_qualifier(TypeDefn, NeedQual),
-    module_info_get_globals(!.ModuleInfo, Globals),
     (
-        Body = hlds_du_type(ConsList, _, _, _, UserEqCmp, _DirectArgCtors,
-            ReservedTag, _, _),
+        Body = hlds_du_type(ConsList, _MaybeUserEqCmp, _MaybeRepn,
+            _MaybeForeign),
+        % XXX TYPE_REPN the names of table variables should say so
         module_info_get_cons_table(!.ModuleInfo, Ctors0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         module_info_get_ctor_field_table(!.ModuleInfo, CtorFields0),
@@ -884,7 +904,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
             TypeCtorSymName = qualified(TypeCtorModuleName, _)
         ),
         add_type_defn_ctors(ConsList, TypeCtor, TypeCtorModuleName, TVarSet,
-            Args, KindMap, NeedQual, PQInfo, Status,
+            TypeParams, KindMap, NeedQual, PQInfo, Status,
             CtorFields0, CtorFields, Ctors0, Ctors, [], CtorAddSpecs),
         module_info_set_cons_table(Ctors, !ModuleInfo),
         module_info_set_ctor_field_table(CtorFields, !ModuleInfo),
@@ -895,20 +915,6 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
             CtorAddSpecs = [_ | _],
             !:FoundInvalidType = found_invalid_type,
             !:Specs = CtorAddSpecs ++ !.Specs
-        ),
-
-        % Note that process_type_defn is invoked only *after* all the types
-        % have been added into the HLDS.
-        ( if
-            type_ctor_should_be_notag(Globals, TypeCtor,
-                ReservedTag, ConsList, UserEqCmp, CtorName, CtorArgType, _)
-        then
-            NoTagType = no_tag_type(Args, CtorName, CtorArgType),
-            module_info_get_no_tag_types(!.ModuleInfo, NoTagTypes0),
-            map.set(TypeCtor, NoTagType, NoTagTypes0, NoTagTypes),
-            module_info_set_no_tag_types(NoTagTypes, !ModuleInfo)
-        else
-            true
         )
     ;
         Body = hlds_foreign_type(ForeignTypeBody),
@@ -927,29 +933,6 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
         ; Body = hlds_solver_type(_)
         ; Body = hlds_eqv_type(_)
         )
-    ),
-    (
-        !.FoundInvalidType = found_invalid_type
-        % If there is an error in this type definition, we may not
-        % be able to add the special preds for it correctly.
-        % Even if the errors occurred only in other types, adding the special
-        % predicates for this error-free type wouldn't help us, because
-        % the presence of an invalid type anywhere will prevent the compiler
-        % from going on to process those special predicates. It won't even
-        % look at them to find errors, such as user-defined unify and compare
-        % predicates being not found or having the wrong signature.
-        % XXX If this ever changes, we *should* add the special preds
-        % for error-free type definitions regardless of the presence
-        % of any previous type errors.
-    ;
-        !.FoundInvalidType = did_not_find_invalid_type,
-        % XXX kind inference:
-        % We set the kinds to `star'. This will be different when we have
-        % a kind system.
-        prog_type.var_list_to_type_list(map.init, Args, ArgTypes),
-        construct_type(TypeCtor, ArgTypes, Type),
-        add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
-            !ModuleInfo)
     ).
 
 :- pred add_type_defn_ctors(list(constructor)::in, type_ctor::in,
@@ -981,7 +964,7 @@ add_type_defn_ctors([Ctor | Ctors], TypeCtor, TypeCtorModuleName, TVarSet,
 add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
         TypeParams, KindMap, NeedQual, PQInfo, TypeStatus,
         !FieldNameTable, !ConsTable, !Specs) :-
-    Ctor = ctor(ExistQVars, Constraints, Name, Args, Arity, Context),
+    Ctor = ctor(MaybeExistConstraints, Name, Args, Arity, Context),
     BaseName = unqualify_name(Name),
     QualifiedName = qualified(TypeCtorModuleName, BaseName),
     UnqualifiedName = unqualified(BaseName),
@@ -991,7 +974,7 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
     UnqualifiedConsIdB = cons(UnqualifiedName, Arity, cons_id_dummy_type_ctor),
 
     ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
-        ExistQVars, Constraints, Args, Context),
+        MaybeExistConstraints, Args, Context),
     get_partial_qualifiers(mq_not_used_in_interface, TypeCtorModuleName,
         PQInfo, PartialQuals),
 

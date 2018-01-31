@@ -108,10 +108,10 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
+:- import_module hlds.add_pred.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
-:- import_module hlds.make_hlds.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

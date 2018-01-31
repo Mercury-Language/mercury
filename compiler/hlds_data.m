@@ -81,9 +81,8 @@
                 cons_type_params    :: list(type_param),
                 cons_type_kinds     :: tvar_kind_map,
 
-                % Existential type variables and class constraints.
-                cons_exist_tvars    :: existq_tvars,
-                cons_constraints    :: list(prog_constraint),
+                % Any existential type variables and class constraints.
+                cons_maybe_exist    :: maybe_cons_exist_constraints,
 
                 % The field names and types of the arguments of this functor
                 % (if any).
@@ -324,8 +323,7 @@ replace_cons_defns_in_cons_table(Replace, !ConsTable) :-
     inner_cons_table::in, inner_cons_table::out) is det.
 
 replace_cons_defns_in_inner_cons_table(Replace, !InnerConsTable) :-
-    list.map(replace_cons_defns_in_inner_cons_entry(Replace),
-        !InnerConsTable).
+    list.map(replace_cons_defns_in_inner_cons_entry(Replace), !InnerConsTable).
 
 :- pred replace_cons_defns_in_inner_cons_entry(
     pred(hlds_cons_defn, hlds_cons_defn)::in(pred(in, out) is det),
@@ -339,6 +337,7 @@ replace_cons_defns_in_inner_cons_entry(Replace, !Entry) :-
 cons_table_optimize(!ConsTable) :-
     map.optimize(!ConsTable).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- interface.
@@ -475,25 +474,14 @@ cons_table_optimize(!ConsTable) :-
                 % The ctors for this type.
                 du_type_ctors               :: list(constructor),
 
-                % Their tag values.
-                du_type_cons_tag_values     :: cons_tag_values,
+                % Does this type have user-defined equality and comparison
+                % predicates?
+                du_type_canonical           :: maybe_canonical,
 
-                du_type_cheaper_tag_test    :: maybe_cheaper_tag_test,
-
-                % Is this type an enumeration or a dummy type?
-                du_type_kind                :: du_type_kind,
-
-                % User-defined equality and comparison preds.
-                du_type_usereq              :: maybe(unify_compare),
-
-                % Direct argument functors.
-                du_direct_arg_ctors         :: maybe(list(sym_name_and_arity)),
-
-                % Is there a `:- pragma reserve_tag' pragma for this type?
-                du_type_reserved_tag        :: uses_reserved_tag,
-
-                % Does the type representation use a reserved address?
-                du_type_reserved_addr       :: uses_reserved_address,
+                % Information about the representation of the type.
+                % This field is filled in (i.e. it is set to yes(...))
+                % during the decide_type_repns pass.
+                du_type_repn                :: maybe(du_type_repn),
 
                 % Are there `:- pragma foreign' type declarations for
                 % this type?
@@ -503,6 +491,90 @@ cons_table_optimize(!ConsTable) :-
     ;       hlds_foreign_type(foreign_type_body)
     ;       hlds_solver_type(type_details_solver)
     ;       hlds_abstract_type(type_details_abstract).
+
+    % Return the cons_ids for the given data constructors of the give type
+    % constructor, in a sorted order.
+    %
+:- func constructor_cons_ids(type_ctor, list(constructor)) = list(cons_id).
+
+:- type du_type_repn
+    --->    du_type_repn(
+                % This table maps the constructors of the type (in their
+                % cons_id form) to the tags that represent them.
+                % XXX TYPE_REPN This field should be used only during
+                % the pass that decides the layout of du types; it should
+                % not stored here. The tag used for each constructor
+                % can be found using the du_ctor_map field, which also
+                % returns other information that is typically needed
+                % at the same time.
+                dur_cons_id_to_tag_map      :: cons_id_to_tag_map,
+
+                % This field contains the same constructors as the
+                % du_type_ctors field of the hlds_du_type functor,
+                % but in a form in which has representation information
+                % for both the constructors and their arguments.
+                dur_ctor_repns              :: list(constructor_repn),
+
+                % The cons_ctor_map field maps the name of each constructor
+                % of the type to
+                %
+                % - either the one constructor with that name in the type ctor
+                %   (the usual case), or to
+                % - the list of two or more constructors that share the name
+                %   in the type, which must all have different arities.
+                %
+                % This allows the same lookups as a map from cons_id to
+                % constructor, but is better because the comparisons
+                % at each node in the map are cheaper.
+                %
+                % It is an invariant that the every constructor_repn in the
+                % dur_ctor_repns field occurs as a value in this map exactly
+                % once, and vice versa.
+                dur_ctor_map                :: ctor_name_to_repn_map,
+
+                dur_cheaper_tag_test        :: maybe_cheaper_tag_test,
+
+                % Is this type an enumeration or a dummy type?
+                dur_kind                    :: du_type_kind,
+
+                % Direct argument functors.
+                % XXX TYPE_REPN Include this information in the
+                % constructor_repns in the dur_ctor_repns and dur_ctor_map
+                % fields.
+                dur_direct_arg_ctors        :: maybe(list(sym_name_and_arity)),
+
+                % Does the type representation use a reserved address?
+                dur_reserved_addr           :: uses_reserved_address
+            ).
+
+:- type constructor_repn
+    --->    ctor_repn(
+                % Existential constraints, if any.
+                cr_maybe_exist      :: maybe_cons_exist_constraints,
+
+                % The cons_id should be cons(SymName, Arity, TypeCtor)
+                % for user-defined types, and tuple_cons(Arity) for the
+                % system-defined tuple types.
+                cr_name             :: sym_name,
+
+                cr_tag              :: cons_tag,
+
+                cr_args             :: list(constructor_arg_repn),
+
+                % We precompute the number of arguments once, to save having
+                % to recompute it many times later.
+                cr_num_args         :: int,
+
+                cr_context          :: prog_context
+            ).
+
+:- type constructor_arg_repn
+    --->    ctor_arg_repn(
+                car_field_name      :: maybe(ctor_field_name),
+                car_type            :: mer_type,
+                car_width           :: arg_width,
+                car_context         :: prog_context
+            ).
 
 :- type maybe_cheaper_tag_test
     --->    no_cheaper_tag_test
@@ -519,6 +591,10 @@ cons_table_optimize(!ConsTable) :-
                 dtkfe_language      :: foreign_language
             )
     ;       du_type_kind_direct_dummy
+            % This du type has one function symbol with no arguments.
+            % We call such types *direct* dummy types to distinguish them
+            % from notag types that become dummy from having their
+            % argument type being a dummy type.
     ;       du_type_kind_notag(
                 % A notag type is a dummy type if and only if the type it wraps
                 % is a dummy type.
@@ -544,26 +620,28 @@ cons_table_optimize(!ConsTable) :-
 :- type foreign_type_lang_data(T)
     --->    foreign_type_lang_data(
                 T,
-                maybe(unify_compare),
+                maybe_canonical,
                 foreign_type_assertions
             ).
 
-    % The `cons_tag_values' type stores the information on how a discriminated
-    % union type is represented. For each functor in the d.u. type, it gives
-    % a cons_tag which specifies how that functor and its arguments are
-    % represented.
+    % The cons_id_to_tag_map type maps each the fully qualified cons_id
+    % of each constructor in a discriminated union type to the cons_tag
+    % that represents that cons_id.
     %
-    % XXX At the moment, every value is in the map several times.
-    % One reason for duplicating values is to be able to get at them
-    % with the sym_name in the cons_id key being fully qualified, unqualified,
-    % or anything in between. Another reason is the need to get at them
-    % with the cons_id containing the standard dummy type_ctor before
-    % post-typecheck, and with the actual correct type_ctor after
-    % post-typecheck.
+:- type cons_id_to_tag_map == map(cons_id, cons_tag).
+
+    % The ctor_name_to_repn_map type maps each constructor in a
+    % discriminated union type to the information that describes how
+    % terms with that constructor are represented. The representation
+    % information includes not just the constructor's cons_tag,
+    % but also information about the representation of its arguments.
     %
-    % The key in the map should be just a string/arity pair.
+    % The map is from the name of the constructor to the (usually one,
+    % sometimes two or more) constructors with that name; after the lookup,
+    % code should search the one_or_more to look for the constructor
+    % with the right arity.
     %
-:- type cons_tag_values == map(cons_id, cons_tag).
+:- type ctor_name_to_repn_map == map(string, one_or_more(constructor_repn)).
 
     % A cons_id together with its tag.
     %
@@ -591,8 +669,10 @@ cons_table_optimize(!ConsTable) :-
             % implementation of these is to use boxed double-precision floats.
 
     ;       int_tag(int_tag)
-
-
+            % This means the constant is represented as a word containing
+            % the specified integer value. This is used for enumerations and
+            % character constants, as well as for integer constants of every
+            % possible size and signedness.
 
     ;       foreign_tag(foreign_language, string)
             % This means the constant is represented by the string which is
@@ -719,13 +799,9 @@ cons_table_optimize(!ConsTable) :-
     --->    null_pointer
             % This is for constants which are represented as a null pointer.
 
-    ;       small_pointer(int)
+    ;       small_int_as_pointer(int).
             % This is for constants which are represented as a small integer,
             % cast to a pointer.
-
-    ;       reserved_object(type_ctor, sym_name, arity).
-            % This is for constants which are represented as the address
-            % of a specially reserved global variable.
 
     % The type `tag_bits' holds a primary tag value.
     %
@@ -751,7 +827,7 @@ cons_table_optimize(!ConsTable) :-
     --->    no_tag_type(
                 list(type_param),   % Formal type parameters.
                 sym_name,           % Constructor name.
-                mer_type              % Argument type.
+                mer_type            % Argument type.
             ).
 
     % A type_ctor essentially contains three components. The raw name
@@ -865,7 +941,14 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
 
 get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
     (
-        TypeBody = hlds_du_type(_, _, CheaperTagTest, _, _, _, _, _, _)
+        TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+        (
+            MaybeRepn = no,
+            unexpected($pred, "MaybeRepn = no")
+        ;
+            MaybeRepn = yes(Repn),
+            Repn = du_type_repn(_, _, _, CheaperTagTest, _, _, _)
+        )
     ;
         ( TypeBody = hlds_eqv_type(_)
         ; TypeBody = hlds_foreign_type(_)
@@ -940,39 +1023,38 @@ get_all_type_ctor_defns_2(_Name, TypeCtorTable, !TypeCtorsDefns) :-
     !:TypeCtorsDefns = NameTypeCtorsDefns ++ !.TypeCtorsDefns.
 
 foldl_over_type_ctor_defns(Pred, TypeTable, !Acc) :-
-    map.foldl(foldl_over_type_ctor_defns_2(Pred), TypeTable, !Acc).
+    map.foldl_values(foldl_over_type_ctor_defns_2(Pred), TypeTable, !Acc).
 
 :- pred foldl_over_type_ctor_defns_2(
     pred(type_ctor, hlds_type_defn, T, T)::
         in(pred(in, in, in, out) is det),
-    string::in, type_ctor_table::in, T::in, T::out) is det.
+    type_ctor_table::in, T::in, T::out) is det.
 
-foldl_over_type_ctor_defns_2(Pred, _Name, TypeCtorTable, !Acc) :-
+foldl_over_type_ctor_defns_2(Pred, TypeCtorTable, !Acc) :-
     map.foldl(Pred, TypeCtorTable, !Acc).
 
 foldl2_over_type_ctor_defns(Pred, TypeTable, !AccA, !AccB) :-
-    map.foldl2(foldl2_over_type_ctor_defns_2(Pred), TypeTable, !AccA, !AccB).
+    map.foldl2_values(foldl2_over_type_ctor_defns_2(Pred), TypeTable,
+        !AccA, !AccB).
 
 :- pred foldl2_over_type_ctor_defns_2(
     pred(type_ctor, hlds_type_defn, T, T, U, U)::
         in(pred(in, in, in, out, in, out) is det),
-    string::in, type_ctor_table::in, T::in, T::out, U::in, U::out) is det.
+    type_ctor_table::in, T::in, T::out, U::in, U::out) is det.
 
-foldl2_over_type_ctor_defns_2(Pred, _Name, TypeCtorTable, !AccA, !AccB) :-
+foldl2_over_type_ctor_defns_2(Pred, TypeCtorTable, !AccA, !AccB) :-
     map.foldl2(Pred, TypeCtorTable, !AccA, !AccB).
 
 foldl3_over_type_ctor_defns(Pred, TypeTable, !AccA, !AccB, !AccC) :-
-    map.foldl3(foldl3_over_type_ctor_defns_2(Pred), TypeTable, !AccA, !AccB,
-        !AccC).
+    map.foldl3_values(foldl3_over_type_ctor_defns_2(Pred), TypeTable,
+        !AccA, !AccB, !AccC).
 
 :- pred foldl3_over_type_ctor_defns_2(
     pred(type_ctor, hlds_type_defn, T, T, U, U, V, V)::
         in(pred(in, in, in, out, in, out, in, out) is det),
-    string::in, type_ctor_table::in, T::in, T::out, U::in, U::out,
-        V::in, V::out) is det.
+    type_ctor_table::in, T::in, T::out, U::in, U::out, V::in, V::out) is det.
 
-foldl3_over_type_ctor_defns_2(Pred, _Name, TypeCtorTable, !AccA, !AccB,
-        !AccC) :-
+foldl3_over_type_ctor_defns_2(Pred, TypeCtorTable, !AccA, !AccB, !AccC) :-
     map.foldl3(Pred, TypeCtorTable, !AccA, !AccB, !AccC).
 
 map_foldl_over_type_ctor_defns(Pred, !TypeTable, !Acc) :-
@@ -1070,6 +1152,20 @@ set_type_defn_in_exported_eqv(X, !Defn) :-
     !Defn ^ type_defn_in_exported_eqv := X.
 set_type_defn_prev_errors(X, !Defn) :-
     !Defn ^ type_defn_prev_errors := X.
+
+constructor_cons_ids(TypeCtor, Ctors) = SortedConsIds :-
+    gather_constructor_cons_ids(TypeCtor, Ctors, [], ConsIds),
+    list.sort(ConsIds, SortedConsIds).
+
+:- pred gather_constructor_cons_ids(type_ctor::in, list(constructor)::in,
+    list(cons_id)::in, list(cons_id)::out) is det.
+
+gather_constructor_cons_ids(_TypeCtor, [], !ConsIds).
+gather_constructor_cons_ids(TypeCtor, [Ctor | Ctors], !ConsIds) :-
+    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+    ConsId = cons(SymName, Arity, TypeCtor),
+    !:ConsIds = [ConsId | !.ConsIds],
+    gather_constructor_cons_ids(TypeCtor, Ctors, !ConsIds).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

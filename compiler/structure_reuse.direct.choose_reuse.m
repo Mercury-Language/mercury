@@ -1021,12 +1021,12 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
 cons_has_normal_fields(ModuleInfo, Cons) :-
     (
         Cons = cons(_, _, TypeCtor),
-        get_cons_defn_det(ModuleInfo, TypeCtor, Cons, ConsDefn),
-        ConsArgs = ConsDefn ^ cons_args,
-        all [Arg] (
-            list.member(Arg, ConsArgs)
+        get_cons_repn_defn_det(ModuleInfo, TypeCtor, Cons, ConsRepnDefn),
+        ConsArgRepns = ConsRepnDefn ^ cr_args,
+        all [ArgRepn] (
+            list.member(ArgRepn, ConsArgRepns)
         =>
-            Arg = ctor_arg(_, _, full_word, _)
+            ArgRepn = ctor_arg_repn(_, _, full_word, _)
         )
     ;
         Cons = tuple_cons(_)
@@ -1085,8 +1085,8 @@ needs_update_and(does_not_need_update, does_not_need_update) =
 %-----------------------------------------------------------------------------%
 
     % has_secondary_tag(Var, ConsId, ExplicitSecTag) returns `yes' iff the
-    % variable, Var, with cons_id, ConsId, requires a remote
-    % secondary tag to distinguish between its various functors.
+    % variable, Var, with cons_id, ConsId, requires a remote secondary tag
+    % to distinguish between its various functors.
     %
 :- pred has_secondary_tag(module_info::in, vartypes::in,
     prog_var::in, cons_id::in, bool::out) is det.
@@ -1095,7 +1095,9 @@ has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
     lookup_var_type(VarTypes, Var, Type),
     ( if
         type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-        TypeBody = hlds_du_type(_, ConsTagValues, _, _, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+        MaybeRepn = yes(Repn),
+        Repn = du_type_repn(ConsTagValues, _, _, _, _, _, _),
         map.search(ConsTagValues, ConsId, ConsTag),
         MaybeSecondaryTag = get_secondary_tag(ConsTag),
         MaybeSecondaryTag = yes(_)

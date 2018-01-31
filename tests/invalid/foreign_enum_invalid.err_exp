@@ -11,7 +11,10 @@ foreign_enum_invalid.m:032:   `foreign_enum_invalid.not_a_bijection'/0:
 foreign_enum_invalid.m:032:   error: the mapping between Mercury enumeration
 foreign_enum_invalid.m:032:   values and foreign values does not form a
 foreign_enum_invalid.m:032:   bijection.
-foreign_enum_invalid.m:040: In `:- pragma foreign_enum' declaration for type
-foreign_enum_invalid.m:040:   `foreign_enum_invalid.dup_foreign_enum'/0:
-foreign_enum_invalid.m:040:   error: `foreign_enum_invalid.dup_foreign_enum'/0
-foreign_enum_invalid.m:040:   has multiple foreign_enum pragmas.
+foreign_enum_invalid.m:040: Error: duplicate foreign_enum pragma for type
+foreign_enum_invalid.m:040:   constructor
+foreign_enum_invalid.m:040:   `foreign_enum_invalid.dup_foreign_enum'/0 and
+foreign_enum_invalid.m:040:   target language "C".
+foreign_enum_invalid.m:039:   The first foreign_enum pragma for
+foreign_enum_invalid.m:039:   `foreign_enum_invalid.dup_foreign_enum'/0 and "C"
+foreign_enum_invalid.m:039:   was here.

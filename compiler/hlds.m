@@ -35,9 +35,14 @@
 :- include_module vartypes.
 
 % Modules for creating the HLDS.
+:- include_module add_foreign_enum.
+:- include_module add_pred.
+:- include_module add_special_pred.
+:- include_module du_type_layout.
 :- include_module default_func_mode.
 :- include_module hhf.
 :- include_module make_hlds.
+:- include_module make_hlds_error.
 :- include_module make_tags.
 :- include_module pre_quantification.
 :- include_module quantification.

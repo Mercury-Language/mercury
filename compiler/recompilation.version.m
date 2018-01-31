@@ -267,6 +267,10 @@ gather_in_item(Section, Item, !Info) :-
         ;
             Body = parse_tree_du_type(_),
             % XXX does the abstract_details matter here?
+            % XXX TYPE_REPN zs: yes, it should, when it changes in a way that
+            % affects decisions about the representations of other types
+            % that include the abstract type. That means that *assuming*
+            % this value for AbstractDetails is a BUG.
             AbstractDetails = abstract_type_general,
             AbstractBody = parse_tree_abstract_type(AbstractDetails),
             NameItemTypeDefn = item_type_defn_info(Name, Args, AbstractBody,
@@ -407,6 +411,16 @@ gather_in_item(Section, Item, !Info) :-
         % that need. The only reason why we haven't come across this bug
         % in real life is that (a) promises are very rare, and (b) when
         % they *do* occur, they tend to be very stable.
+    ;
+        Item = item_type_repn(ItemTypeRepn),
+        ItemTypeRepn =
+            item_type_repn_info(TypeCtorSymName, TypeCtorArgs, _, _, _, _),
+        list.length(TypeCtorArgs, TypeCtorArity),
+        TypeCtorItem = item_name(TypeCtorSymName, TypeCtorArity),
+        GatheredItems0 = !.Info ^ gii_gathered_items,
+        add_gathered_item(Item, item_id(type_body_item, TypeCtorItem),
+            Section, GatheredItems0, GatheredItems),
+        !Info ^ gii_gathered_items := GatheredItems
     ;
         ( Item = item_clause(_)
         ; Item = item_initialise(_)
@@ -618,7 +632,6 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         ; PragmaType = pragma_foreign_code(_)
         ; PragmaType = pragma_foreign_export_enum(_)
         ; PragmaType = pragma_foreign_enum(_)
-        ; PragmaType = pragma_reserve_tag(_)
         ; PragmaType = pragma_oisu(_)               % XXX
         ; PragmaType = pragma_require_feature_set(_)
         ; PragmaType = pragma_require_tail_recursion(_)
@@ -802,7 +815,7 @@ are_items_changed([Section1 - Item1 | Items1], [Section2 - Item2 | Items2],
     % a predicate or function declaration to be changed if the names
     % of any of the type variables are changed.
     %
-    % It's important not to compare the varsets for type and instance
+    % It is important not to compare the varsets for type and instance
     % declarations because the declarations we get here may be abstract
     % declarations produced from concrete declarations for use in an
     % interface file. The varsets may contain variables from the discarded
@@ -821,7 +834,7 @@ is_item_changed(Item1, Item2, Changed) :-
         Item1 = item_clause(ItemClause1),
         ItemClause1 = item_clause_info(_, _, PorF, SymName, Args, Goal, _, _),
         % XXX Need to compare the goals properly in clauses and assertions.
-        % That's not necessary at the moment because smart recompilation
+        % That is not necessary at the moment because smart recompilation
         % doesn't work with inter-module optimization yet.
         ( if
             Item2 = item_clause(ItemClause2),
@@ -1035,6 +1048,11 @@ is_item_changed(Item1, Item2, Changed) :-
         else
             Changed = changed
         )
+    ;
+        Item1 = item_type_repn(_),
+        % Type representation item record information derived from
+        % *other items*. They cannot change unless those other items change.
+        Changed = unchanged
     ;
         Item1 = item_nothing(ItemNothing1),
         ItemNothing1 = item_nothing_info(A, _, _),

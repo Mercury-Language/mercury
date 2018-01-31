@@ -2235,7 +2235,8 @@ output_param(Info, Indent, Arg, !IO) :-
 :- pred output_maybe_qualified_global_var_name_for_java(java_out_info::in,
     qual_global_var_name::in, io::di, io::uo) is det.
 
-output_maybe_qualified_global_var_name_for_java(Info, QualGlobalVarName, !IO) :-
+output_maybe_qualified_global_var_name_for_java(Info, QualGlobalVarName,
+        !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
     QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
@@ -2826,7 +2827,9 @@ hand_defined_type_for_java(Type, CtorCat, SubstituteName, ArrayDims) :-
             ArrayDims = []
         ;
             ( CtorCatUser = cat_user_direct_dummy
+            ; CtorCatUser = cat_user_abstract_dummy
             ; CtorCatUser = cat_user_notag
+            ; CtorCatUser = cat_user_abstract_notag
             ),
             fail
         )
@@ -3177,8 +3180,8 @@ output_stmt_while_for_java(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
             ExitMethods = set.make_singleton_set(can_fall_through)
         else
             BodyInfo = Info ^ joi_break_context := bc_loop,
-            output_statement_for_java(BodyInfo, ScopeIndent, FuncInfo, BodyStmt,
-                StmtExitMethods, !IO),
+            output_statement_for_java(BodyInfo, ScopeIndent, FuncInfo,
+                BodyStmt, StmtExitMethods, !IO),
             ExitMethods = while_exit_methods_for_java(Cond, StmtExitMethods)
         )
     ;

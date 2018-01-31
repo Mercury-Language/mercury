@@ -297,13 +297,20 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
     search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
 
     % Overloading resolution ignores the class constraints.
-    ConsDefn = hlds_cons_defn(_, _, _, _, ConsExistQVars, _, ConsArgs, _),
+    ConsDefn = hlds_cons_defn(_, _, _, _, MaybeExistConstraints, ConsArgs, _),
 
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_tvarset(TypeDefn, TypeTVarSet),
     hlds_data.get_type_defn_kind_map(TypeDefn, TypeKindMap),
 
+    (
+        MaybeExistConstraints = no_exist_constraints,
+        ConsExistQVars = []
+    ;
+        MaybeExistConstraints = exist_constraints(
+            cons_exist_constraints(ConsExistQVars, _))
+    ),
     ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgs),
     % XXX is this correct?
     ExistQVars = [],
@@ -465,16 +472,18 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
     % Split the list of argument types at the named field.
     type_to_ctor_det(TermType, TypeCtor),
     get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-    ConsDefn = hlds_cons_defn(_, _, TypeParams, _, ConsExistQVars,
-        ConsConstraints, ConsArgs, _),
+    ConsDefn = hlds_cons_defn(_, _, TypeParams, _, MaybeExistConstraints,
+        ConsArgs, _),
     ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgs),
 
     (
-        ConsExistQVars = [],
+        MaybeExistConstraints = no_exist_constraints,
         ActualArgTypes0 = ConsArgTypes,
         ActualExistQVars = []
     ;
-        ConsExistQVars = [_ | _],
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints =
+            cons_exist_constraints(ConsExistQVars, ConsConstraints),
         % Rename apart the existentially quantified type variables.
         list.length(ConsExistQVars, NumExistQVars),
         pred_info_get_typevarset(!.PredInfo, TVarSet0),
@@ -573,7 +582,7 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
     lookup_type_ctor_defn(TypeTable, TermTypeCtor, TermTypeDefn),
     hlds_data.get_type_defn_body(TermTypeDefn, TermTypeBody),
     (
-        TermTypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
+        TermTypeBody = hlds_du_type(Ctors, _, _, _),
         FieldName = unqualify_name(FieldSymName),
         get_constructor_containing_field_loop(TermTypeCtor, Ctors, FieldName,
             ConsId, FieldNumber)
@@ -593,7 +602,7 @@ get_constructor_containing_field_loop(_, [], _, _, _) :-
     unexpected($module, $pred, "can't find field").
 get_constructor_containing_field_loop(TypeCtor, [Ctor | Ctors],
         UnqualFieldName, ConsId, FieldNumber) :-
-    Ctor = ctor(_, _, SymName, CtorArgs, Arity, _Ctxt),
+    Ctor = ctor(_, SymName, CtorArgs, Arity, _Ctxt),
     ( if
         search_for_named_field(CtorArgs, UnqualFieldName, 1, FieldNumberPrime)
     then

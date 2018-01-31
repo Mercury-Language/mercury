@@ -1,31 +1,48 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: add_special_pred.m.
 %
-% This submodule of make_hlds handles the creation of unify, compare and
-% (if needed) index and init predicates for the types defined or imported
-% by the module being compiled.
+% This module handles the declaration of unify, compare and (if needed)
+% index predicates for the types defined or imported by the module
+% being compiled.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- module hlds.make_hlds.add_special_pred.
+:- module hlds.add_special_pred.
 :- interface.
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module hlds.status.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % do_add_special_pred_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
-    %   TypeBody, TypeContext, TypeStatus, !ModuleInfo).
+:- pred add_special_pred_decl_defns_for_type_maybe_lazily(type_ctor::in,
+    hlds_type_defn::in, module_info::in, module_info::out) is det.
+
+    % This predicate defines unify and compare predicates for the given type.
+    % This can be any type when invoked from the _maybe_lazily version.
+    % When invoked from make_hlds_passes.m, which is the only place outside
+    % this module from where it should be invoked, it is used to generate
+    % unify and compare predicates for some builtin types, using an abstract
+    % type body to signal the fact that these types are builtins.
+    %
+:- pred add_special_pred_decl_defns_for_type_eagerly(tvarset::in,
+    mer_type::in, type_ctor::in, hlds_type_body::in, type_status::in,
+    prog_context::in, module_info::in, module_info::out) is det.
+
+    % add_special_pred_decl_defn(SpecialPredId, TVarSet, Type, TypeCtor,
+    %   TypeBody, TypeStatus, TypeContext, !ModuleInfo).
     %
     % Add declarations and clauses for a special predicate.
     % This is used by unify_proc.m to add a unification predicate
@@ -33,57 +50,68 @@
     % generated only when a unification procedure is requested
     % during mode analysis.
     %
-:- pred do_add_special_pred_for_real(special_pred_id::in, tvarset::in,
-    mer_type::in, type_ctor::in, hlds_type_body::in, prog_context::in,
-    type_status::in, module_info::in, module_info::out) is det.
+:- pred add_special_pred_decl_defn(special_pred_id::in, tvarset::in,
+    mer_type::in, type_ctor::in, hlds_type_body::in, type_status::in,
+    prog_context::in, module_info::in, module_info::out) is det.
 
-    % do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
-    %   Type, TypeCtor, TypeContext, TypeStatus, !ModuleInfo).
+    % add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor,
+    %   TypeStatus, TypeContext, !ModuleInfo).
     %
     % Add declarations for a special predicate.
     % This is used by higher_order.m when specializing an in-in
     % unification for an imported type for which unification procedures
     % are generated lazily.
     %
-:- pred do_add_special_pred_decl_for_real(special_pred_id::in,
-    tvarset::in, mer_type::in, type_ctor::in, prog_context::in,
-    type_status::in, module_info::in, module_info::out) is det.
+:- pred add_special_pred_decl(special_pred_id::in,
+    tvarset::in, mer_type::in, type_ctor::in, type_status::in,
+    prog_context::in, module_info::in, module_info::out) is det.
 
-:- pred add_special_preds(tvarset::in, mer_type::in, type_ctor::in,
-    hlds_type_body::in, prog_context::in, type_status::in,
-    module_info::in, module_info::out) is det.
-
-    % XXX should be used only for a temporary workaround in make_hlds_passes.m
-    %
-:- pred eagerly_add_special_preds(tvarset::in, mer_type::in, type_ctor::in,
-    hlds_type_body::in, prog_context::in, type_status::in,
-    module_info::in, module_info::out) is det.
-
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module check_hlds.
 :- import_module check_hlds.unify_proc.
-:- import_module hlds.make_hlds.add_pred.
+:- import_module hlds.add_pred.
+:- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module libs.options.
-:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module varset.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
+add_special_pred_decl_defns_for_type_maybe_lazily(TypeCtor, TypeDefn,
+        !ModuleInfo) :-
+    get_type_defn_body(TypeDefn, TypeBody),
+    get_type_defn_status(TypeDefn, TypeStatus),
+    ( if
+        special_pred_is_generated_lazily(!.ModuleInfo, TypeCtor, TypeBody,
+            TypeStatus)
+    then
+        true
+    else
+        get_type_defn_tvarset(TypeDefn, TVarSet),
+        get_type_defn_kind_map(TypeDefn, KindMap),
+        get_type_defn_tparams(TypeDefn, TypeParams),
+        prog_type.var_list_to_type_list(KindMap, TypeParams, ArgTypes),
+        construct_type(TypeCtor, ArgTypes, Type),
+        get_type_defn_context(TypeDefn, Context),
+        add_special_pred_decl_defns_for_type_eagerly(TVarSet, Type, TypeCtor,
+            TypeBody, TypeStatus, Context, !ModuleInfo)
+    ).
+
+add_special_pred_decl_defns_for_type_eagerly(TVarSet, Type, TypeCtor, TypeBody,
+        TypeStatus, Context, !ModuleInfo) :-
     % The only place that the index predicate for a type can ever
     % be called from is the compare predicate for that type.
     % The only types whose compare predicates call the type's index
@@ -117,45 +145,17 @@
     % predicates to be defined only for the kinds of types which do not
     % lead unify_proc.generate_index_clauses to abort.
     %
-add_special_preds(TVarSet, Type, TypeCtor, TypeBody, Context, TypeStatus,
-        !ModuleInfo) :-
-    ( if
-        special_pred_is_generated_lazily(!.ModuleInfo, TypeCtor, TypeBody,
-            TypeStatus)
-    then
-        true
-    else
-        eagerly_add_special_preds(TVarSet, Type, TypeCtor, TypeBody, Context,
-            TypeStatus, !ModuleInfo)
-    ).
-
-eagerly_add_special_preds(TVarSet, Type, TypeCtor, TypeBody, Context,
-        TypeStatus, !ModuleInfo) :-
     ( if
         can_generate_special_pred_clauses_for_type(!.ModuleInfo, TypeCtor,
             TypeBody)
     then
-        add_special_pred_for_real(spec_pred_unify, TVarSet, Type,
-            TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo),
+        add_special_pred_decl_defn(spec_pred_unify, TVarSet, Type, TypeCtor,
+            TypeBody, TypeStatus, Context, !ModuleInfo),
         ThisModule = type_status_defined_in_this_module(TypeStatus),
         (
             ThisModule = yes,
-            ( if
-                Ctors = TypeBody ^ du_type_ctors,
-                TypeBody ^ du_type_kind = du_type_kind_general,
-                TypeBody ^ du_type_usereq = no,
-                module_info_get_globals(!.ModuleInfo, Globals),
-                globals.lookup_int_option(Globals, compare_specialization,
-                    CompareSpec),
-                list.length(Ctors, CtorCount),
-                CtorCount > CompareSpec
-            then
-                SpecialPredIds = [spec_pred_index, spec_pred_compare]
-            else
-                SpecialPredIds = [spec_pred_compare]
-            ),
-            add_special_pred_list(SpecialPredIds, TVarSet, Type, TypeCtor,
-                TypeBody, Context, TypeStatus, !ModuleInfo)
+            add_special_pred_decl_defn(spec_pred_compare, TVarSet, Type,
+                TypeCtor, TypeBody, TypeStatus, Context, !ModuleInfo)
         ;
             ThisModule = no,
             % Never add clauses for comparison predicates
@@ -167,30 +167,18 @@ eagerly_add_special_preds(TVarSet, Type, TypeCtor, TypeBody, Context,
             then
                 true
             else
-                add_special_pred_decl_for_real(spec_pred_compare, TVarSet,
-                    Type, TypeCtor, Context, TypeStatus, !ModuleInfo)
+                add_special_pred_decl(spec_pred_compare, TVarSet, Type,
+                    TypeCtor, TypeStatus, Context, !ModuleInfo)
             )
         )
     else
         SpecialPredIds = [spec_pred_unify, spec_pred_compare],
-        add_special_pred_decl_list(SpecialPredIds, TVarSet, Type,
-            TypeCtor, Context, TypeStatus, !ModuleInfo)
+        add_special_pred_decls(SpecialPredIds, TVarSet, Type,
+            TypeCtor, TypeStatus, Context, !ModuleInfo)
     ).
 
-:- pred add_special_pred_list(list(special_pred_id)::in, tvarset::in,
-    mer_type::in, type_ctor::in, hlds_type_body::in, prog_context::in,
-    type_status::in, module_info::in, module_info::out) is det.
-
-add_special_pred_list([], _, _, _, _, _, _, !ModuleInfo).
-add_special_pred_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
-        TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo) :-
-    do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
-        TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo),
-    add_special_pred_list(SpecialPredIds, TVarSet, Type,
-        TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo).
-
-do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
-        TypeBody, Context, TypeStatus0, !ModuleInfo) :-
+add_special_pred_decl_defn(SpecialPredId, TVarSet, Type0, TypeCtor, TypeBody,
+        TypeStatus0, Context, !ModuleInfo) :-
     Type = adjust_types_with_special_preds_in_private_builtin(Type0),
     adjust_special_pred_status(SpecialPredId, TypeStatus0, PredStatus),
     module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps0),
@@ -202,16 +190,20 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
         % XXX STATUS
         PredStatus = pred_status(PredOldStatus),
         TypeStatus = type_status(PredOldStatus),
-        do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
-            Type, TypeCtor, Context, TypeStatus, !ModuleInfo)
+        add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor,
+            TypeStatus, Context, !ModuleInfo)
     ),
     module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps1),
     lookup_special_pred_maps(SpecialPredMaps1, SpecialPredId, TypeCtor,
         PredId),
-    module_info_get_preds(!.ModuleInfo, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
-    % If the type was imported, then the special preds for that
-    % type should be imported too.
+    module_info_get_preds(!.ModuleInfo, PredMap0),
+    map.lookup(PredMap0, PredId, PredInfo0),
+    % If the type was imported, then the special preds for that type
+    % should be imported too.
+    % XXX There are several different shades of "imported", and in this case,
+    % the above comment *should* go into detail about them.
+    % XXX Why isn't the status set correctly by add_special_pred_decl
+    % in the first place?
     ( if
         ( PredStatus = pred_status(status_imported(_))
         ; PredStatus = pred_status(status_pseudo_imported)
@@ -219,13 +211,14 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     then
         pred_info_set_status(PredStatus, PredInfo0, PredInfo1)
     else if
-        TypeBody ^ du_type_usereq = yes(_),
+        TypeBody ^ du_type_canonical = noncanon(_),
         pred_info_get_status(PredInfo0, OldPredStatus),
         OldPredStatus = pred_status(status_pseudo_imported),
         pred_status_is_imported(PredStatus) = no
     then
-        % We can only get here with --no-special-preds if the old
-        % status is from an abstract declaration of the type.
+        % We can only get here with --no-special-preds if the old status
+        % is from an abstract declaration of the type.
+        % XXX The --no-special-preds option does not exist anymore.
         % Since the compiler did not then know that the type definition
         % will specify a user-defined equality predicate, it set up
         % the status as pseudo_imported in order to prevent the
@@ -237,20 +230,36 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     else
         PredInfo1 = PredInfo0
     ),
-    generate_clause_info(SpecialPredId, Type, TypeBody,
-        Context, !.ModuleInfo, ClausesInfo),
-    pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo2),
-    pred_info_get_markers(PredInfo2, Markers2),
-    add_marker(marker_calls_are_fully_qualified, Markers2, Markers),
-    pred_info_set_markers(Markers, PredInfo2, PredInfo3),
-    pred_info_set_origin(origin_special_pred(SpecialPredId, TypeCtor),
-        PredInfo3, PredInfo),
-    map.det_update(PredId, PredInfo, Preds0, Preds),
-    module_info_set_preds(Preds, !ModuleInfo).
+    SpecDefnInfo = spec_pred_defn_info(SpecialPredId, PredId,
+        TVarSet, Type, TypeCtor, TypeBody, TypeStatus0, Context),
+    add_clauses_for_special_pred(SpecDefnInfo, PredInfo1, !ModuleInfo).
+
+:- pred add_clauses_for_special_pred(spec_pred_defn_info::in,
+    pred_info::in, module_info::in, module_info::out) is det.
+
+add_clauses_for_special_pred(SpecDefnInfo, !.PredInfo, !ModuleInfo) :-
+    generate_clauses_for_special_pred(SpecDefnInfo, ClausesInfo, !ModuleInfo),
+    pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+    pred_info_get_markers(!.PredInfo, Markers0),
+    add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
+    pred_info_set_markers(Markers, !PredInfo),
+
+    SpecDefnInfo = spec_pred_defn_info(SpecialPredId, PredId,
+        _TVarSet, _Type, TypeCtor, _TypeBody, _TypeStatus0, _Context),
+
+    % XXX TYPE_REPN This was already done when the predicate was declared.
+    Origin = origin_special_pred(SpecialPredId, TypeCtor),
+    pred_info_set_origin(Origin, !PredInfo),
+
+    module_info_get_preds(!.ModuleInfo, PredMap0),
+    map.det_update(PredId, !.PredInfo, PredMap0, PredMap),
+    module_info_set_preds(PredMap, !ModuleInfo).
 
     % These types need to have the builtin qualifier removed
     % so that their special predicates type check.
     %
+    % XXX TYPE_REPN Check that this operation is idempotent. Otherwise,
+    % storing only Type and not Type0 in spec_pred_defn_info won't work.
 :- func adjust_types_with_special_preds_in_private_builtin(mer_type)
     = mer_type.
 
@@ -264,20 +273,22 @@ adjust_types_with_special_preds_in_private_builtin(Type) = NormalizedType :-
         NormalizedType = Type
     ).
 
-:- pred add_special_pred_decl_list(list(special_pred_id)::in, tvarset::in,
-    mer_type::in, type_ctor::in, prog_context::in,
-    type_status::in, module_info::in, module_info::out) is det.
+%---------------------------------------------------------------------------%
 
-add_special_pred_decl_list([], _, _, _, _, _, !ModuleInfo).
-add_special_pred_decl_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
-        TypeCtor, Context, TypeStatus, !ModuleInfo) :-
-    do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type,
-        TypeCtor, Context, TypeStatus, !ModuleInfo),
-    add_special_pred_decl_list(SpecialPredIds, TVarSet, Type,
-        TypeCtor, Context, TypeStatus, !ModuleInfo).
+:- pred add_special_pred_decls(list(special_pred_id)::in, tvarset::in,
+    mer_type::in, type_ctor::in, type_status::in, prog_context::in,
+    module_info::in, module_info::out) is det.
 
-do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
-        Context, TypeStatus, !ModuleInfo) :-
+add_special_pred_decls([], _, _, _, _, _, !ModuleInfo).
+add_special_pred_decls([SpecialPredId | SpecialPredIds], TVarSet, Type,
+        TypeCtor, TypeStatus, Context, !ModuleInfo) :-
+    add_special_pred_decl(SpecialPredId, TVarSet, Type,
+        TypeCtor, TypeStatus, Context, !ModuleInfo),
+    add_special_pred_decls(SpecialPredIds, TVarSet, Type,
+        TypeCtor, TypeStatus, Context, !ModuleInfo).
+
+add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
+        Context, !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Det),
     PredBaseName = special_pred_name(SpecialPredId, TypeCtor),
@@ -309,7 +320,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     % Should not be any inst vars here so it is ok to use a fresh inst_varset.
     % Before the simplification pass, HasParallelConj is not meaningful.
     HasParallelConj = has_no_parallel_conj,
-    do_add_new_proc(Context, ItemNumber, Arity,
+    add_new_proc(Context, ItemNumber, Arity,
         InstVarSet, ArgModes, yes(ArgModes), ArgLives,
         detism_decl_implicit, yes(Det), address_is_not_taken,
         HasParallelConj, PredInfo0, PredInfo, _ProcId),
@@ -342,9 +353,9 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
 add_special_pred_unify_status(TypeBody, TypeStatus0, TypeStatus) :-
     % XXX STATUS should return pred_status, not type_status
     (
-        TypeBody = hlds_du_type(_, _, _, _, MaybeUserEq, _, _, _, _),
+        TypeBody = hlds_du_type(_, MaybeCanonical, _, _),
         (
-            MaybeUserEq = yes(_),
+            MaybeCanonical = noncanon(_),
             % If the type has user-defined equality, then we create a real
             % unify predicate for it, whose body calls the user-specified
             % predicate. The compiler's usual type checking algorithm
@@ -354,7 +365,7 @@ add_special_pred_unify_status(TypeBody, TypeStatus0, TypeStatus) :-
             % of the chosen predicate.
             TypeStatus = TypeStatus0
         ;
-            MaybeUserEq = no,
+            MaybeCanonical = canon,
             TypeStatus = type_status(status_pseudo_imported)
         )
     ;
@@ -399,6 +410,6 @@ adjust_special_pred_status(SpecialPredId, TypeStatus, !:PredStatus) :-
         true
     ).
 
-%----------------------------------------------------------------------------%
-:- end_module hlds.make_hlds.add_special_pred.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+:- end_module hlds.add_special_pred.
+%---------------------------------------------------------------------------%

@@ -162,13 +162,13 @@ selector_subsumed_by(ModuleInfo, Normalization, S1, S2, MainType, Extension) :-
         normalize_selector_with_type_information(ModuleInfo, MainType,
             S2, NormS2)
     ),
-    (
+    ( if
         only_term_selectors(NormS1),
         only_term_selectors(NormS2)
-    ->
+    then
         % Easy case.
         term_selector_subsumed_by(NormS1, NormS2, Extension)
-    ;
+    else
         selector_subsumed_by_2(ModuleInfo, NormS1, NormS2, MainType, Extension)
     ).
 
@@ -200,20 +200,20 @@ selector_subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
     ;
         A = [AH | AT],
         B = [BH | BT],
-        (
+        ( if
             AH = termsel(ConsIdA, IndexA),
             BH = termsel(ConsIdB, IndexB)
-        ->
+        then
             ConsIdA = ConsIdB,
             IndexA = IndexB,
-            (
+            ( if
                 Type = type_variable(_, _),
                 AT = BT
-            ->
+            then
                 % XXX Avoid an assertion failure when trying to index arguments
                 % of a type variable.  This is probably a hack.
                 Extension = []
-            ;
+            else
                 % If both selectors begin with term selectors, clearly
                 % they must agree on the node to select for the selectors
                 % to be comparable.
@@ -221,7 +221,7 @@ selector_subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
                     IndexA),
                 selector_subsumed_by_2(ModuleInfo, AT, BT, SubType, Extension)
             )
-        ;
+        else
             % If one selector has a term selector at the current position but
             % the other has a type selector, we select the node dictated by the
             % term selector.  We also verify that the type of that node
@@ -229,10 +229,10 @@ selector_subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
             AH = termsel(ConsIdA, IndexA),
             BH = typesel(SubTypeB),
             SubTypeA = det_select_subtype(ModuleInfo, Type, ConsIdA, IndexA),
-            ( SubTypeA = SubTypeB ->
+            ( if SubTypeA = SubTypeB then
                 % Both selectors agree on the subtype to select.
                 selector_subsumed_by_2(ModuleInfo, AT, BT, SubTypeA, Extension)
-            ;
+            else
                 type_contains_subtype(ModuleInfo, SubTypeA, SubTypeB),
                 selector_subsumed_by_2(ModuleInfo, AT, B, SubTypeA, Extension)
             )
@@ -241,28 +241,28 @@ selector_subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
             AH = typesel(SubTypeA),
             BH = termsel(ConsIdB, IndexB),
             SubTypeB = det_select_subtype(ModuleInfo, Type, ConsIdB, IndexB),
-            ( SubTypeA = SubTypeB ->
+            ( if SubTypeA = SubTypeB then
                 % Both selectors agree on the subtype to select.
                 selector_subsumed_by_2(ModuleInfo, AT, BT, SubTypeB, Extension)
-            ;
+            else
                 type_contains_subtype(ModuleInfo, SubTypeB, SubTypeA),
                 selector_subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension)
             )
         ;
             AH = typesel(SubTypeA),
             BH = typesel(SubTypeB),
-            (
+            ( if
                 SubTypeA = SubTypeB
-            ->
+            then
                 % Both selectors begin with type selectors and agree on the
                 % subtype to select.
                 selector_subsumed_by_2(ModuleInfo, AT, BT, SubTypeB, Extension)
-            ;
+            else if
                 % Assume we select node according to the B selector, then check
                 % that the rest of B subsumes A.
                 type_contains_subtype(ModuleInfo, SubTypeB, SubTypeA),
                 selector_subsumed_by_2(ModuleInfo, A, BT, SubTypeB, Extension0)
-            ->
+            then
                 % Don't succeed for something like:
                 %   A   = [typesel(foo)],
                 %   B   = [typesel(bar)],
@@ -271,7 +271,7 @@ selector_subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
                 %   [typesel(bar), typesel(foo)] = [typesel(bar)]
                 Extension0 \= A,
                 Extension = Extension0
-            ;
+            else
                 % Assume we select node according to the A selector, then check
                 % that B subsumes the rest of A.
                 type_contains_subtype(ModuleInfo, SubTypeA, SubTypeB),
@@ -290,9 +290,9 @@ selector_subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
     is semidet.
 
 type_contains_subtype(ModuleInfo, FromType, ToType) :-
-    ( FromType = ToType ->
+    ( if FromType = ToType then
         true
-    ;
+    else
         type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains),
         Contains = yes
     ).
@@ -320,22 +320,22 @@ type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains) :-
     set(mer_type)::in, set(mer_type)::out, bool::out) is det.
 
 type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
-    ( queue.get(FromType, !Queue) ->
-        ( set.contains(!.SeenTypes, FromType) ->
+    ( if queue.get(FromType, !Queue) then
+        ( if set.contains(!.SeenTypes, FromType) then
             type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes,
                 Contains)
-        ;
+        else
             set.insert(FromType, !SeenTypes),
             type_arg_types(ModuleInfo, FromType, ArgTypes),
-            ( list.member(ToType, ArgTypes) ->
+            ( if list.member(ToType, ArgTypes) then
                 Contains = yes
-            ;
+            else
                 queue.put_list(ArgTypes, !Queue),
                 type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes,
                     Contains)
             )
         )
-    ;
+    else
         Contains = no
     ).
 
@@ -347,7 +347,7 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
 
 type_arg_types(ModuleInfo, Type, ArgTypes) :-
     solutions(
-        (pred(ConsIdArgTypes::out) is nondet :-
+        ( pred(ConsIdArgTypes::out) is nondet :-
             cons_id_arg_types(ModuleInfo, Type, _ConsId, ConsIdArgTypes)
         ), ArgTypesLists),
     list.condense(ArgTypesLists, ArgTypes).
@@ -375,9 +375,9 @@ type_of_node(ModuleInfo, StartType, Selector, SubType) :-
 :- func det_select_subtype(module_info, mer_type, cons_id, int) = mer_type.
 
 det_select_subtype(ModuleInfo, Type, ConsID, Position) = SubType :-
-    ( select_subtype(ModuleInfo, Type, ConsID, Position, SubType0) ->
+    ( if select_subtype(ModuleInfo, Type, ConsID, Position, SubType0) then
         SubType = SubType0
-    ;
+    else
         throw(encounter_existential_subtype)
     ).
 
@@ -385,22 +385,30 @@ det_select_subtype(ModuleInfo, Type, ConsID, Position) = SubType :-
     mer_type::out) is semidet.
 
 select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
-    (
+    ( if
         get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsID,
             ArgTypes)
-    ->
+    then
         SubType = list.det_index1(ArgTypes, Position)
-    ;
+    else if
         get_existq_cons_defn(ModuleInfo, Type, ConsID, CtorDefn)
-    ->
-        CtorDefn = ctor_defn(_TVarSet, ExistQVars, _KindMap, _Constraints,
+    then
+        CtorDefn = ctor_defn(_TVarSet, _KindMap, MaybeExistConstraints, 
             ArgTypes, _RetType),
+        (
+            MaybeExistConstraints = no_exist_constraints,
+            % XXX Should be able to optimise following test.
+            ExistQVars = []
+        ;
+            MaybeExistConstraints = exist_constraints(
+                cons_exist_constraints(ExistQVars, _))
+        ),
         SubType = list.det_index1(ArgTypes, Position),
         not (
             SubType = type_variable(TVar, _),
             list.member(TVar, ExistQVars)
         )
-    ;
+    else
         unexpected($module, $pred,
             "type is both existential and non-existential")
     ).
@@ -409,9 +417,9 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
     [allow_reset, specified([promise_implied, value, value, output])]).
 
 normalize_selector_with_type_information(ModuleInfo, Type, !Selector) :-
-    ( is_introduced_type_info_type(Type) ->
+    ( if is_introduced_type_info_type(Type) then
         true
-    ;
+    else
         branch_map_init(BranchMap0),
         branch_map_insert(Type, top_selector, BranchMap0, BranchMap1),
         do_normalize_selector(ModuleInfo, Type, BranchMap1, top_selector,
@@ -426,41 +434,46 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
     (
         !.Selector = [UnitSelector | SelRest],
         CtorCat = classify_type(ModuleInfo, VarType),
-        ( CtorCat = ctor_cat_user(CatUser) ->
+        ( if CtorCat = ctor_cat_user(CatUser) then
             (
-                CatUser = cat_user_general
-            ;
-                CatUser = cat_user_notag
+                ( CatUser = cat_user_general
+                ; CatUser = cat_user_notag
+                ; CatUser = cat_user_abstract_notag
+                )
             ;
                 CatUser = cat_user_direct_dummy,
                 % We should not be producing selectors for dummy types.
                 unexpected($module, $pred, "cat_user_direct_dummy")
+            ;
+                CatUser = cat_user_abstract_dummy,
+                % We should not be producing selectors for dummy types.
+                unexpected($module, $pred, "cat_user_abstract_dummy")
             ),
 
             % If it is either a term-selector of a non-existentially typed
             % functor or is a type-selector, construct the branch map and
             % proceed with normalization. If it is a term-selector of an
             % existentially typed functor, then normalization stops.
-            (
+            ( if
                 (
                     UnitSelector = termsel(ConsId, Index),
                     get_cons_id_non_existential_arg_types(ModuleInfo,
                         VarType, ConsId, ArgTypes),
-                    ( list.index1(ArgTypes, Index, SubType) ->
+                    ( if list.index1(ArgTypes, Index, SubType) then
                         CType = SubType
-                    ;
+                    else
                         unexpected($module, $pred,
                             "accessing nonexistent index")
                     )
                 ;
                     UnitSelector = typesel(CType)
                 )
-            ->
+            then
                 !:Selector = SelRest,
-                ( branch_map_search(BranchMap0, CType, BranchSelector) ->
+                ( if branch_map_search(BranchMap0, CType, BranchSelector) then
                     do_normalize_selector(ModuleInfo, CType, BranchMap0,
                         BranchSelector, !Selector)
-                ;
+                else
                     selector_termshift(SelectorAcc0, [UnitSelector],
                         SelectorAcc1),
                     branch_map_insert(CType, SelectorAcc1,
@@ -468,13 +481,13 @@ do_normalize_selector(ModuleInfo, VarType, BranchMap0,
                     do_normalize_selector(ModuleInfo, CType, BranchMap1,
                         SelectorAcc1, !Selector)
                 )
-            ;
+            else
                 % Existentially typed functor.
                 % XXX awaiting confirmation on this from Nancy but it seems
                 % right to me --pw
                 append(SelectorAcc0, [UnitSelector], !:Selector)
             )
-        ;
+        else
             % If it is not a user type, SelRest is empty anyhow, and
             % normalization stops.
             % Resulting selector = accumulator.sel0
@@ -491,9 +504,9 @@ selector_apply_widening(ModuleInfo, MainType, Selector0, Selector) :-
         Selector = []
     ;
         Selector0 = [_ | _],
-        ( type_of_node(ModuleInfo, MainType, Selector0, SubType) ->
+        ( if type_of_node(ModuleInfo, MainType, Selector0, SubType) then
             Selector = [typesel(SubType)]
-        ;
+        else
             % The node is existentially typed.  Let's just leave the selector
             % as-is.
             Selector = Selector0
@@ -523,12 +536,12 @@ branch_map_search([Type - Sel | TypeSels], KeyType, ValueSel):-
     map.init(Empty),
     % The two types are considered equal if they unify under an
     % empty substitution.
-    (
+    ( if
         type_unify(Type, KeyType, [], Empty, Subst),
         map.is_empty(Subst)
-    ->
+    then
         ValueSel = Sel
-    ;
+    else
         branch_map_search(TypeSels, KeyType, ValueSel)
     ).
 

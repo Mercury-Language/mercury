@@ -253,6 +253,7 @@ ml_type_category_might_contain_pointers(CtorCat) = MayContainPointers :-
         ; CtorCat = ctor_cat_system(cat_system_type_ctor_info)
         ; CtorCat = ctor_cat_system(cat_system_base_typeclass_info)
         ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_dummy)
         ),
         MayContainPointers = no
     ;
@@ -263,6 +264,7 @@ ml_type_category_might_contain_pointers(CtorCat) = MayContainPointers :-
         ; CtorCat = ctor_cat_tuple
         ; CtorCat = ctor_cat_variable
         ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_notag)
         ; CtorCat = ctor_cat_user(cat_user_general)
         ),
         MayContainPointers = yes

@@ -29,6 +29,7 @@
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
+:- import_module hlds.add_pred.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.make_hlds.add_clause.
@@ -54,6 +55,7 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.

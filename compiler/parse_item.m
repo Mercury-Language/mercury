@@ -73,6 +73,7 @@
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_defn.
+:- import_module parse_tree.parse_type_repn.
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.parse_vars.
@@ -190,6 +191,10 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         Functor = "solver",
         parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms,
             Context, SeqNum, MaybeIOM)
+    ;
+        Functor = "type_representation",
+        parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
+            MaybeIOM)
     ;
         Functor = "inst",
         parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,

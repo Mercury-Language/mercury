@@ -48,10 +48,12 @@
 
 :- implementation.
 
-:- include_module hlds.make_hlds.make_hlds_passes.du_type_layout.
 :- include_module hlds.make_hlds.make_hlds_passes.make_hlds_separate_items.
 
+:- import_module hlds.add_pred.
+:- import_module hlds.add_special_pred.
 :- import_module hlds.default_func_mode.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_class.
 :- import_module hlds.make_hlds.add_clause.
@@ -59,14 +61,11 @@
 :- import_module hlds.make_hlds.add_mode.
 :- import_module hlds.make_hlds.add_mutable_aux_preds.
 :- import_module hlds.make_hlds.add_pragma.
-:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.add_solver.
-:- import_module hlds.make_hlds.add_special_pred.
 :- import_module hlds.make_hlds.add_type.
-:- import_module hlds.make_hlds.make_hlds_error.
-:- import_module hlds.make_hlds.make_hlds_passes.du_type_layout.
 :- import_module hlds.make_hlds.make_hlds_passes.make_hlds_separate_items.
 :- import_module hlds.make_hlds.make_hlds_warn.
+:- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.
@@ -85,6 +84,7 @@
 :- import_module bool.
 :- import_module io.
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module varset.
@@ -155,9 +155,14 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         ItemTypeDefnsAbstract, ItemTypeDefnsMercury, ItemTypeDefnsForeign,
         ItemInstDefns, ItemModeDefns, ItemPredDecls, ItemModeDecls,
         ItemPromises, ItemTypeclasses, ItemInstances,
-        ItemInitialises, ItemFinalises, ItemMutables,
-        ItemReserveTagPragmas, ItemForeignEnumPragmas,
+        ItemInitialises, ItemFinalises, ItemMutables, ItemTypeRepns,
+        ItemForeignEnums, ItemForeignExportEnums,
         ItemPragmas2, ItemPragmas3, ItemClauses),
+
+    map.init(DirectArgMap),
+    TypeRepnDec = type_repn_decision_data(ItemTypeRepns, DirectArgMap,
+        ItemForeignEnums, ItemForeignExportEnums), 
+    module_info_set_type_repn_dec(TypeRepnDec, !ModuleInfo),
 
     % The old pass 1.
 
@@ -193,6 +198,13 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     (
         !:SolverAuxPredInfos = [],
         !:SolverItemMutables = [],
+        % XXX TYPE_REPN
+        % - group parse_tree_{du,eqv,solver}_type together in their type;
+        % - have separate_items_in_aug_comp_unit return the definitions of
+        %   (a) abstract, (b) du/eqv/solver and (c) foreign types in lists
+        %   whose elements are of different, specialized types; and
+        % - call specialized versions of add_type_defn in each foldl5 below.
+        % XXX TYPE_REPN consider treating du/eqv/solver type defns separately
         list.foldl5(add_type_defn, ItemTypeDefnsAbstract,
             !ModuleInfo, !FoundInvalidType, !Specs,
             !SolverAuxPredInfos, !SolverItemMutables),
@@ -203,15 +215,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
             !ModuleInfo, !FoundInvalidType, !Specs,
             !SolverAuxPredInfos, !SolverItemMutables),
         SolverAuxPredInfos = !.SolverAuxPredInfos,
-        SolverItemMutables = !.SolverItemMutables,
-
-        % NOTE We loop over ItemReserveTagPragmas and ItemReserveTagPragmas
-        % with a bespoke predicate, not list.foldl2, because list.foldl2
-        % doesn't (yet) know how to preserve their subtype insts.
-        add_reserve_tag_pragmas(ItemReserveTagPragmas,
-            !ModuleInfo, !Specs),
-        add_foreign_enum_pragmas(ItemForeignEnumPragmas,
-            !ModuleInfo, !Specs)
+        SolverItemMutables = !.SolverItemMutables
     ),
 
     % We process inst definitions after all type definitions because
@@ -314,22 +318,18 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % would allow us to generate better error messages.
     (
         !.FoundInvalidType = did_not_find_invalid_type,
-        some [!TypeTable] (
-            % Figure out how arguments should be stored into fields
-            % before constructors are added to the HLDS.
-            module_info_get_type_table(!.ModuleInfo, !:TypeTable),
-            foldl_over_type_ctor_defns(decide_du_type_layout(!.ModuleInfo),
-                !.TypeTable, !TypeTable),
-            module_info_set_type_table(!.TypeTable, !ModuleInfo),
-
-            % Add constructors and special preds to the HLDS. This must
-            % be done after adding all type definitions and all
-            % `:- pragma foreign_type' declarations. If there were errors
-            % in foreign type type declarations, doing this may cause
-            % a compiler abort.
-            foldl3_over_type_ctor_defns(process_type_defn, !.TypeTable,
-                !FoundInvalidType, !ModuleInfo, !Specs)
-        )
+        % Add constructors for du types to the HLDS, and check that
+        % Mercury types defined solely by foreign types have a definition
+        % that works for the target backend.
+        %
+        % This must be done after adding all type definitions and all
+        % `:- pragma foreign_type' declarations. If there were errors
+        % in foreign type type declarations, doing this may cause
+        % a compiler abort.
+        module_info_get_type_table(!.ModuleInfo, TypeTable0),
+        foldl3_over_type_ctor_defns(
+            add_du_ctors_check_foreign_type_for_cur_backend,
+            TypeTable0, !FoundInvalidType, !ModuleInfo, !Specs)
     ;
         !.FoundInvalidType = found_invalid_type
     ),
@@ -392,7 +392,8 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % Check that the declarations for field extraction and update functions
     % are sensible, and generate error messages for the ones that aren't.
     % We can do this only after we have processed every predicate declaration,
-    % as well as everything that affects the type table.
+    % as well as everything that affects either the type table or the
+    % constructor table.
     %
     list.foldl(check_pred_if_field_access_function(!.ModuleInfo),
         ItemPredDecls, !Specs),
@@ -430,20 +431,22 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
 
 add_builtin_type_ctor_special_preds_in_builtin_module(TypeCtor, !ModuleInfo) :-
     varset.init(TVarSet),
-    Body = hlds_abstract_type(abstract_type_general),
     term.context_init(Context),
     % These predicates are local only in the public builtin module,
     % but we *get here* only if we are compiling the public builtin module.
     TypeStatus = type_status(status_local),
     construct_type(TypeCtor, [], Type),
-    % XXX This call should be to add_special_preds, not the eagerly_ version.
-    % However, for some reason, when generating C# code, if we don't add
+    % You cannot construct clauses to unify or compare values of an abstract
+    % type. The abstract body tells the callee to generate code for
+    % a builtin type.
+    Body = hlds_abstract_type(abstract_type_general),
+    % XXX For some reason, when generating C# code, if we don't add
     % the special preds now, we don't add them ever, which can cause compiler
     % aborts when we try to generate the type's type_ctor_info structure
     % (since we need to put references to the type's unify and compare
     % predicates into that structure.)
-    eagerly_add_special_preds(TVarSet, Type, TypeCtor, Body, Context,
-        TypeStatus, !ModuleInfo).
+    add_special_pred_decl_defns_for_type_eagerly(TVarSet,
+        Type, TypeCtor, Body, TypeStatus, Context, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

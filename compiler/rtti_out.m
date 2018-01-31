@@ -1019,11 +1019,8 @@ output_res_functor_defn(Info, RttiTypeCtor, ResFunctor, !DeclSet, !IO) :-
         Rep = null_pointer,
         io.write_string("NULL", !IO)
     ;
-        Rep = small_pointer(SmallPtr),
+        Rep = small_int_as_pointer(SmallPtr),
         io.write_int(SmallPtr, !IO)
-    ;
-        Rep = reserved_object(_, _, _),
-        unexpected($module, $pred, "reserved object")
     ),
     io.write_string("\n};\n", !IO).
 
@@ -1381,13 +1378,9 @@ output_res_addr_functors(RttiTypeCtor, ResFunctor, !IO) :-
 
 output_res_value_ordered_table(Info, RttiTypeCtor, ResFunctors, DuPtagTable,
         !DeclSet, !IO) :-
-    ResFunctorReps = list.map(res_addr_rep, ResFunctors),
-    list.filter(res_addr_is_numeric, ResFunctorReps,
-        NumericResFunctorReps, SymbolicResFunctorReps),
-    list.length(NumericResFunctorReps, NumNumericResFunctorReps),
-    list.length(SymbolicResFunctorReps, NumSymbolicResFunctorReps),
-    expect(unify(NumSymbolicResFunctorReps, 0), $module, $pred,
-        "symbolic functors"),
+    % We do not support symbolic reserved addresses anymore.
+    list.length(ResFunctors, NumNumericResFunctorReps),
+    NumSymbolicResFunctorReps = 0,
 
     output_generic_rtti_data_defn_start(Info,
         ctor_rtti_id(RttiTypeCtor, type_ctor_res_addr_functors),

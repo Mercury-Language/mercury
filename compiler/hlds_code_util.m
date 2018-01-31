@@ -78,6 +78,7 @@
 
 :- import_module char.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -197,8 +198,15 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            TypeBody = hlds_du_type(_, ConsTagTable, _, _, _, _, _, _, _),
-            map.lookup(ConsTagTable, ConsId, Tag)
+            TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+            (
+                MaybeRepn = no,
+                unexpected($pred, "MaybeRepn = no")
+            ;
+                MaybeRepn = yes(Repn),
+                Repn = du_type_repn(ConsTagTable, _, _, _, _, _, _),
+                map.lookup(ConsTagTable, ConsId, Tag)
+            )
         ;
             ( TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_foreign_type(_)

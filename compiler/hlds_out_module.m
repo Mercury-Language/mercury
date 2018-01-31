@@ -338,92 +338,112 @@ write_type_params_loop(TVarSet, [P | Ps], !IO) :-
 :- pred write_type_body(hlds_out_info::in, type_ctor::in, hlds_type_body::in,
     int::in, tvarset::in, io::di, io::uo) is det.
 
-write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
+write_type_body(Info, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
     (
-        TypeBody = hlds_du_type(Ctors, ConsTagMap, CheaperTagTest, DuTypeKind,
-            MaybeUserEqComp, MaybeDirectArgCtors, ReservedTag, ReservedAddr,
-            Foreign),
+        TypeBody = hlds_du_type(Ctors, MaybeUserEqComp, MaybeRepn, Foreign),
         io.nl(!IO),
-        write_constructors(TVarSet, TypeCtor, ConsTagMap, Indent, Ctors, !IO),
-        (
-            CheaperTagTest = no_cheaper_tag_test
-        ;
-            CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
-                CheapConsId, CheapConsTag),
-            write_indent(Indent, !IO),
-            io.write_string("% cheaper tag test:\n", !IO),
-            write_indent(Indent, !IO),
-            io.write_string("%   from ", !IO),
-            io.write_string(cons_id_and_arity_to_string(ExpConsId), !IO),
-            io.write_string(" tag ", !IO),
-            io.print(ExpConsTag, !IO),
-            io.nl(!IO),
-            write_indent(Indent, !IO),
-            io.write_string("%   to   ", !IO),
-            io.write_string(cons_id_and_arity_to_string(CheapConsId), !IO),
-            io.write_string(" tag ", !IO),
-            io.print(CheapConsTag, !IO),
-            io.nl(!IO)
-        ),
-        (
-            DuTypeKind = du_type_kind_mercury_enum,
-            write_indent(Indent, !IO),
-            io.write_string("% KIND enumeration\n", !IO)
-        ;
-            DuTypeKind = du_type_kind_foreign_enum(Lang),
-            write_indent(Indent, !IO),
-            io.write_string("% KIND foreign enumeration for ", !IO),
-            io.write_string(foreign_language_string(Lang), !IO),
-            io.nl(!IO)
-        ;
-            DuTypeKind = du_type_kind_direct_dummy,
-            write_indent(Indent, !IO),
-            io.write_string("% KIND dummy\n", !IO)
-        ;
-            DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
-                MaybeArgName),
-            write_indent(Indent, !IO),
-            io.write_string("% KIND notag: ", !IO),
-            write_sym_name(FunctorName, !IO),
-            io.write_string(", ", !IO),
-            mercury_output_type(TVarSet, print_name_only, ArgType, !IO),
-            io.write_string(", ", !IO),
-            (
-                MaybeArgName = yes(ArgName),
-                io.write_string(ArgName, !IO)
-            ;
-                MaybeArgName = no,
-                io.write_string("no arg name", !IO)
-            ),
-            io.nl(!IO)
-        ;
-            DuTypeKind = du_type_kind_general,
-            write_indent(Indent, !IO),
-            io.write_string("% KIND general\n", !IO)
-        ),
-        (
-            ReservedTag = uses_reserved_tag,
-            write_indent(Indent, !IO),
-            io.write_string("% reserved_tag\n", !IO)
-        ;
-            ReservedTag = does_not_use_reserved_tag
-        ),
-        (
-            ReservedAddr = uses_reserved_address,
-            write_indent(Indent, !IO),
-            io.write_string("% reserved_address\n", !IO)
-        ;
-            ReservedAddr = does_not_use_reserved_address
-        ),
+        MaybeSolverTypeDetails = no,
         MercInfo = Info ^ hoi_mercury_to_mercury,
-        mercury_output_where_attributes(MercInfo, TVarSet, no, MaybeUserEqComp,
-            MaybeDirectArgCtors, !IO),
         (
-            Foreign = yes(_),
+            MaybeRepn = no,
+            write_constructors(TVarSet, Indent, Ctors, !IO),
+            MaybeDirectArgCtors = no,
+            mercury_output_where_attributes(MercInfo, TVarSet,
+                MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
+                !IO),
             write_indent(Indent, !IO),
-            io.write_string("% has foreign_type\n", !IO)
+            io.write_string("% no type representation information yet\n", !IO)
         ;
-            Foreign = no
+            MaybeRepn = yes(Repn),
+            Repn = du_type_repn(_ConsTagMap, CtorRepns, CtorRepnMap,
+                CheaperTagTest, DuTypeKind, MaybeDirectArgCtors, ReservedAddr),
+            write_constructor_repns(TVarSet, Indent, CtorRepns, !IO),
+            (
+                CheaperTagTest = no_cheaper_tag_test
+            ;
+                CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
+                    CheapConsId, CheapConsTag),
+                write_indent(Indent, !IO),
+                io.write_string("% cheaper tag test:\n", !IO),
+                write_indent(Indent, !IO),
+                io.write_string("%   from ", !IO),
+                io.write_string(cons_id_and_arity_to_string(ExpConsId), !IO),
+                io.write_string(" tag ", !IO),
+                io.print(ExpConsTag, !IO),
+                io.nl(!IO),
+                write_indent(Indent, !IO),
+                io.write_string("%   to   ", !IO),
+                io.write_string(cons_id_and_arity_to_string(CheapConsId), !IO),
+                io.write_string(" tag ", !IO),
+                io.print(CheapConsTag, !IO),
+                io.nl(!IO)
+            ),
+            (
+                DuTypeKind = du_type_kind_mercury_enum,
+                write_indent(Indent, !IO),
+                io.write_string("% KIND enumeration\n", !IO)
+            ;
+                DuTypeKind = du_type_kind_foreign_enum(Lang),
+                write_indent(Indent, !IO),
+                io.write_string("% KIND foreign enumeration for ", !IO),
+                io.write_string(foreign_language_string(Lang), !IO),
+                io.nl(!IO)
+            ;
+                DuTypeKind = du_type_kind_direct_dummy,
+                write_indent(Indent, !IO),
+                io.write_string("% KIND dummy\n", !IO)
+            ;
+                DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
+                    MaybeArgName),
+                write_indent(Indent, !IO),
+                io.write_string("% KIND notag: ", !IO),
+                write_sym_name(FunctorName, !IO),
+                io.write_string(", ", !IO),
+                mercury_output_type(TVarSet, print_name_only, ArgType, !IO),
+                io.write_string(", ", !IO),
+                (
+                    MaybeArgName = yes(ArgName),
+                    io.write_string(ArgName, !IO)
+                ;
+                    MaybeArgName = no,
+                    io.write_string("no arg name", !IO)
+                ),
+                io.nl(!IO)
+            ;
+                DuTypeKind = du_type_kind_general,
+                write_indent(Indent, !IO),
+                io.write_string("% KIND general\n", !IO)
+            ),
+            (
+                ReservedAddr = uses_reserved_address,
+                write_indent(Indent, !IO),
+                io.write_string("% reserved_address\n", !IO)
+            ;
+                ReservedAddr = does_not_use_reserved_address
+            ),
+            mercury_output_where_attributes(MercInfo, TVarSet,
+                MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
+                !IO),
+            (
+                Foreign = yes(_),
+                write_indent(Indent, !IO),
+                io.write_string("% has foreign_type\n", !IO)
+            ;
+                Foreign = no
+            ),
+            trace [compile_time(flag("ctor_repn_invariant_check")), io(!TIO)] (
+                list.sort(CtorRepns, SortedCtorRepns),
+                map.foldl_values(accumulate_ctor_repns, CtorRepnMap,
+                    [], MapCtorRepns),
+                list.sort(MapCtorRepns, SortedMapCtorRepns),
+                ( if SortedCtorRepns = SortedMapCtorRepns then
+                    true
+                else
+                    write_indent(Indent, !TIO),
+                    io.write_string(
+                        "% BUG SortedCtorRepns != SortedMapCtorRepns\n", !TIO)
+                )
+            )
         )
     ;
         TypeBody = hlds_eqv_type(Type),
@@ -447,26 +467,45 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         io.write_string(".\n", !IO)
     ).
 
-:- pred write_constructors(tvarset::in, type_ctor::in, cons_tag_values::in,
-    int::in, list(constructor)::in, io::di, io::uo) is det.
+:- pred accumulate_ctor_repns(one_or_more(constructor_repn)::in,
+    list(constructor_repn)::in, list(constructor_repn)::out) is det.
 
-write_constructors(TVarSet, TagValues, TypeCtor, Indent, Ctors, !IO) :-
+accumulate_ctor_repns(one_or_more(HeadCR, TailCRs), !AccCRs) :-
+    !:AccCRs = [HeadCR | TailCRs] ++ !.AccCRs.
+
+:- pred write_constructors(tvarset::in, int::in,
+    list(constructor)::in, io::di, io::uo) is det.
+
+write_constructors(TVarSet, Indent, Ctors, !IO) :-
     (
         Ctors = [],
         unexpected($module, $pred, "empty constructor list")
     ;
         Ctors = [HeadCtor | TailCtors],
         ArrowOrSemi0 = "--->    ",
-        write_constructors_loop(TVarSet, TagValues, TypeCtor, Indent,
-            ArrowOrSemi0, HeadCtor, TailCtors, !IO)
+        write_constructors_loop(TVarSet, Indent, ArrowOrSemi0,
+            HeadCtor, TailCtors, !IO)
     ).
 
-:- pred write_constructors_loop(tvarset::in, type_ctor::in,
-    cons_tag_values::in, int::in, string::in,
+:- pred write_constructor_repns(tvarset::in, int::in,
+    list(constructor_repn)::in, io::di, io::uo) is det.
+
+write_constructor_repns(TVarSet, Indent, CtorRepns, !IO) :-
+    (
+        CtorRepns = [],
+        unexpected($module, $pred, "empty constructor list")
+    ;
+        CtorRepns = [HeadCtorRepn | TailCtorRepns],
+        ArrowOrSemi0 = "--->    ",
+        write_constructor_repns_loop(TVarSet, Indent, ArrowOrSemi0,
+            HeadCtorRepn, TailCtorRepns, !IO)
+    ).
+
+:- pred write_constructors_loop(tvarset::in, int::in, string::in,
     constructor::in, list(constructor)::in, io::di, io::uo) is det.
 
-write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent,
-        ArrowOrSemi0, HeadCtor, TailCtors, !IO) :-
+write_constructors_loop(TVarSet, Indent, ArrowOrSemi0,
+        HeadCtor, TailCtors, !IO) :-
     write_indent(Indent, !IO),
     io.write_string(ArrowOrSemi0, !IO),
     ArrowOrSemi = ";       ",
@@ -477,52 +516,84 @@ write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent,
         TailCtors = [_ | _],
         MaybePeriodNL = "\n"
     ),
-    write_ctor(TVarSet, TypeCtor, TagValues, Indent, MaybePeriodNL,
-        HeadCtor, !IO),
+    write_ctor(TVarSet, MaybePeriodNL, HeadCtor, !IO),
     (
         TailCtors = []
     ;
         TailCtors = [HeadTailCtor | TailTailCtors],
-        write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent,
-            ArrowOrSemi, HeadTailCtor, TailTailCtors, !IO)
+        write_constructors_loop(TVarSet, Indent, ArrowOrSemi,
+            HeadTailCtor, TailTailCtors, !IO)
     ).
 
-:- pred write_ctor(tvarset::in, type_ctor::in, cons_tag_values::in,
-    int::in, string::in, constructor::in, io::di, io::uo) is det.
+:- pred write_constructor_repns_loop(tvarset::in, int::in, string::in,
+    constructor_repn::in, list(constructor_repn)::in, io::di, io::uo) is det.
 
-write_ctor(TVarSet, TypeCtor, TagValues, Indent, MaybePeriodNL, Ctor, !IO) :-
+write_constructor_repns_loop(TVarSet, Indent, ArrowOrSemi0,
+        HeadCtorRepn, TailCtorRepns, !IO) :-
+    write_indent(Indent, !IO),
+    io.write_string(ArrowOrSemi0, !IO),
+    ArrowOrSemi = ";       ",
+    (
+        TailCtorRepns = [],
+        MaybePeriodNL = ".\n"
+    ;
+        TailCtorRepns = [_ | _],
+        MaybePeriodNL = "\n"
+    ),
+    write_ctor_repn(TVarSet, Indent, MaybePeriodNL, HeadCtorRepn, !IO),
+    (
+        TailCtorRepns = []
+    ;
+        TailCtorRepns = [HeadTailCtorRepn | TailTailCtorRepns],
+        write_constructor_repns_loop(TVarSet, Indent, ArrowOrSemi,
+            HeadTailCtorRepn, TailTailCtorRepns, !IO)
+    ).
+
+:- pred write_ctor(tvarset::in, string::in, constructor::in,
+    io::di, io::uo) is det.
+
+write_ctor(TVarSet, MaybePeriodNL, Ctor, !IO) :-
+    mercury_output_ctor(TVarSet, Ctor, !IO),
+    io.write_string(MaybePeriodNL, !IO).
+
+:- pred write_ctor_repn(tvarset::in, int::in, string::in, constructor_repn::in,
+    io::di, io::uo) is det.
+
+write_ctor_repn(TVarSet, Indent, MaybePeriodNL, CtorRepn, !IO) :-
+    CtorRepn = ctor_repn(MaybeExistConstraints, Name, Tag, ArgRepns,
+        Arity, Context),
+    Args = list.map(discard_repn_from_ctor_arg, ArgRepns),
+    Ctor = ctor(MaybeExistConstraints, Name, Args, Arity, Context),
     mercury_output_ctor(TVarSet, Ctor, !IO),
     io.write_string(MaybePeriodNL, !IO),
-    Ctor = ctor(_, _, Name, Args, Arity, _),
-    ConsId = cons(Name, Arity, TypeCtor),
-    ( if map.search(TagValues, ConsId, TagValue) then
+    write_indent(Indent, !IO),
+    io.write_string("        ", !IO),   % The same width as ArrowOrSemi.
+    io.write_string("% tag: ", !IO),
+    io.print(Tag, !IO),
+    AllFull = all_args_are_full_word(ArgRepns),
+    (
+        AllFull = yes,
+        io.write_string(", unpacked args\n", !IO)
+    ;
+        AllFull = no,
+        io.nl(!IO),
         write_indent(Indent, !IO),
-        io.write_string("        ", !IO),   % The same width as ArrowOrSemi.
-        io.write_string("% tag: ", !IO),
-        io.print(TagValue, !IO),
-        AllFull = all_args_are_full_word(Args),
-        (
-            AllFull = yes,
-            io.write_string(", unpacked args\n", !IO)
-        ;
-            AllFull = no,
-            io.nl(!IO),
-            write_indent(Indent, !IO),
-            io.write_string("        ", !IO),
-            io.write_string("% packed arg widths:\n", !IO),
-            write_arg_widths(Indent, 1, 0, Args, !IO)
-        )
-    else
-        % If we have no tag information for this type, then we haven't started
-        % trying to pack constructors' arguments yet.
-        true
+        io.write_string("        ", !IO),
+        io.write_string("% packed arg widths:\n", !IO),
+        write_arg_widths(Indent, 1, 0, ArgRepns, !IO)
     ).
 
-:- func all_args_are_full_word(list(constructor_arg)) = bool.
+:- func discard_repn_from_ctor_arg(constructor_arg_repn) = constructor_arg.
+
+discard_repn_from_ctor_arg(CtorArgRepn) = CtorArg :-
+    CtorArgRepn = ctor_arg_repn(Name, Type, _Width, Context),
+    CtorArg = ctor_arg(Name, Type, Context).
+
+:- func all_args_are_full_word(list(constructor_arg_repn)) = bool.
 
 all_args_are_full_word([]) = yes.
 all_args_are_full_word([Arg | Args]) = AllFull :-
-    Arg = ctor_arg(_MaybeFieldName, _Type, Width, _Context),
+    Arg = ctor_arg_repn(_MaybeFieldName, _Type, Width, _Context),
     ( if Width = full_word then
         AllFull = all_args_are_full_word(Args)
     else
@@ -540,12 +611,12 @@ all_args_are_full_word([Arg | Args]) = AllFull :-
     % partial_word_shifted), then its storage will be within the word
     % at offset !.Offset - 1.
     % 
-:- pred write_arg_widths(int::in, int::in, int::in, list(constructor_arg)::in,
-    io::di, io::uo) is det.
+:- pred write_arg_widths(int::in, int::in, int::in,
+    list(constructor_arg_repn)::in, io::di, io::uo) is det.
 
 write_arg_widths(_, _, _, [], !IO).
 write_arg_widths(Indent, CurArgNum, !.Offset, [Arg | Args], !IO) :-
-    Arg = ctor_arg(_MaybeFieldName, _Type, Width, _Context),
+    Arg = ctor_arg_repn(_MaybeFieldName, _Type, Width, _Context),
     write_indent(Indent, !IO),
     io.write_string("        ", !IO),
     (
