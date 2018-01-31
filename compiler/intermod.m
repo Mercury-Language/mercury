@@ -1649,12 +1649,12 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     ( if
         Body = hlds_du_type(_, _, MaybeRepnC, _),
         MaybeRepnC = yes(RepnC),
-        RepnC = du_type_repn(ConsIdToTagMap, _, _, _, DuTypeKind, _, _),
+        RepnC = du_type_repn(_, CtorRepns, _, _, DuTypeKind, _, _),
         DuTypeKind = du_type_kind_foreign_enum(Lang)
     then
-        % XXX TYPE_REPN Consider iterating over the dur_ctor_repns instead.
-        map.foldl(gather_foreign_enum_value_pair, ConsIdToTagMap, [],
-            ForeignEnumVals),
+        list.foldl(gather_foreign_enum_value_pair, CtorRepns,
+            [], RevForeignEnumVals),
+        list.reverse(RevForeignEnumVals, ForeignEnumVals),
         FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignEnumVals),
         ForeignPragma = pragma_foreign_enum(FEInfo),
         % The pragma's origin isn't printed, so what origin we pass here
@@ -1667,22 +1667,18 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         true
     ).
 
-:- pred gather_foreign_enum_value_pair(cons_id::in, cons_tag::in,
+:- pred gather_foreign_enum_value_pair(constructor_repn::in,
     assoc_list(sym_name, string)::in, assoc_list(sym_name, string)::out)
     is det.
 
-gather_foreign_enum_value_pair(ConsId, ConsTag, !Values) :-
-    ( if ConsId = cons(SymName0, 0, _) then
-        SymName = SymName0
+gather_foreign_enum_value_pair(CtorRepn, !Values) :-
+    CtorRepn = ctor_repn(_, SymName, Tag, _, Arity, _),
+    expect(unify(Arity, 0), $pred, "Arity != 0"),
+    ( if Tag = foreign_tag(_ForeignLang, ForeignTag) then
+        !:Values = [SymName - ForeignTag | !.Values]
     else
-        unexpected($module, $pred, "expected enumeration constant")
-    ),
-    ( if ConsTag = foreign_tag(_ForeignLang, ForeignTag0) then
-        ForeignTag = ForeignTag0
-    else
-        unexpected($module, $pred, "expected foreign tag")
-    ),
-    !:Values = [SymName - ForeignTag | !.Values].
+        unexpected($pred, "expected foreign tag")
+    ).
 
 %---------------------------------------------------------------------------%
 

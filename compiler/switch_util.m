@@ -1168,11 +1168,7 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")
         ;
-            MaybeRepn = yes(du_type_repn(ConsTable, _, _, _, _, _, _)),
-            % XXX TYPE_REPN could just get get_ptag_counts_loop to loop over
-            % constructor_repns.
-            map.to_assoc_list(ConsTable, ConsList),
-            assoc_list.values(ConsList, TagList)
+            MaybeRepn = yes(du_type_repn(_, CtorRepns, _, _, _, _, _))
         )
     ;
         ( TypeBody = hlds_eqv_type(_)
@@ -1182,14 +1178,17 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
         ),
         unexpected($module, $pred, "non-du type")
     ),
+    MaXPrimary0 = -1,
     map.init(PtagCountMap0),
-    get_ptag_counts_loop(TagList, -1, MaxPrimary, PtagCountMap0, PtagCountMap).
+    get_ptag_counts_loop(CtorRepns,
+        MaXPrimary0, MaxPrimary, PtagCountMap0, PtagCountMap).
 
-:- pred get_ptag_counts_loop(list(cons_tag)::in, int::in, int::out,
+:- pred get_ptag_counts_loop(list(constructor_repn)::in, int::in, int::out,
     ptag_count_map::in, ptag_count_map::out) is det.
 
 get_ptag_counts_loop([], !MaxPrimary, !PtagCountMap).
-get_ptag_counts_loop([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
+get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
+    Tag = CtorRepn ^ cr_tag,
     (
         (
             Tag = single_functor_tag,
@@ -1268,7 +1267,7 @@ get_ptag_counts_loop([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ),
         unexpected($module, $pred, "non-du tag")
     ),
-    get_ptag_counts_loop(Tags, !MaxPrimary, !PtagCountMap).
+    get_ptag_counts_loop(CtorRepns, !MaxPrimary, !PtagCountMap).
 
 %-----------------------------------------------------------------------------%
 
