@@ -43,7 +43,6 @@
 :- include_module hhf.
 :- include_module make_hlds.
 :- include_module make_hlds_error.
-:- include_module make_tags.
 :- include_module pre_quantification.
 :- include_module quantification.
 
