@@ -312,45 +312,50 @@ such as pretty-printing.
     The parse tree data structure definition is in prog_data.m,
     prog_data_event.m, prog_data_foreign.m, prog_data_pragma.m,
     prog_data_used_modules.m, prog_item.m and file_kind.m,
-    while the code to create it is in the prog_io*.m modules:
-    XXX TYPE_REPN:
-    The module names below have been changed; the documentation
-    should be updated accordingly.
+    while the code to create it is in the following modules:
     <ul>
     <li>
-        prog_io.m handles the top level tasks of reading in
-        whole Mercury source files.
+        find_module.m locates source files containing Mercury modules.
     <li>
-        prog_io_find.m locates source files containing Mercury modules.
+        parse_module.m handles the top level tasks of reading in
+        whole Mercury source files, interface files, and optimization files.
     <li>
-        prog_io_item.m parses in the top level parts of items,
+        parse_item.m parses in the top level parts of items,
         particularly declarations.
     <li>
-        prog_io_dcg.m parses clauses using Definite Clause Grammar notation.
+        parse_goal.m parses goals.
     <li>
-        prog_io_goal.m parses goals.
+        parse_dcg_goal.m parses goals (and clauses)
+        using Definite Clause Grammar notation.
     <li>
-        prog_io_vars.m parses lists of variables.
+        parse_vars.m parses lists of variables.
     <li>
-        prog_io_type_name.m parses type names, while
-        prog_io_inst_mode_name.m parses inst and mode names.
+        parse_type_name.m parses type names, while
+        parse_inst_mode_name.m parses inst and mode names.
     <li>
-        prog_io_type_defn.m parses type definitions, while
-        prog_io_inst_mode_defn.m parses inst and mode definitions.
+        parse_type_defn.m parses type definitions, while
+        parse_inst_mode_defn.m parses inst and mode definitions.
     <li>
-        prog_io_typeclass.m parses typeclass and instance declarations.
+        parse_type_repn.m parses items that the compiler
+        automatically puts into interface files
+        to give modules that import a type
+        information about the representation of that type.
     <li>
-        prog_io_pragma.m parses pragma declarations.
+        parse_class.m parses typeclass and instance declarations,
+        as well as typeclass and inst constraints on other declaration
+        (such as predicate declarations).
     <li>
-        prog_io_mutable.m parses initialize, finalize and mutable declarations.
+        parse_pragma.m parses pragma declarations.
     <li>
-        prog_io_sym_name.m parses symbol names and specifiers.
+        parse_mutable.m parses initialize, finalize and mutable declarations.
     <li>
-        prog_io_error.m defines the types that represents the possible outcomes
+        parse_sym_name.m parses symbol names.
+    <li>
+        parse_error.m defines the types that represents the possible outcomes
         of parsing a source file.
     <li>
-        prog_io_util.m and prog_io_iom.m define some types and predicates
-        needed by the other prog_io*.m modules.
+        parse_util.m and parse_types.m define some types and predicates
+        needed by the other modules above.
     </ul>
 
     <p>
