@@ -137,46 +137,8 @@
 
 add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
     ( if type_ctor_is_tuple(TypeCtor) then
-        % XXX TYPE_REPN Put this "then" part in a predicate of its own,
-        % parallel to collect_type_defn.
-        TypeCtor = type_ctor(_, TupleArity),
-
-        % Build a hlds_type_body for the tuple constructor, which will
-        % be used by generate_clause_info.
-        varset.init(TVarSet0),
-        varset.new_vars(TupleArity, TupleArgTVars, TVarSet0, TVarSet),
-        prog_type.var_list_to_type_list(map.init, TupleArgTVars,
-            TupleArgTypes),
-
-        % Tuple constructors can't be existentially quantified.
-        MaybeExistConstraints = no_exist_constraints,
-
-        MakeUnnamedField =
-            (func(ArgType) = ctor_arg(no, ArgType, Context)),
-        CtorArgs = list.map(MakeUnnamedField, TupleArgTypes),
-        MakeUnnamedFieldRepn =
-            (func(ArgType) = ctor_arg_repn(no, ArgType, full_word, Context)),
-        CtorArgRepns = list.map(MakeUnnamedFieldRepn, TupleArgTypes),
-
-        CtorSymName = unqualified("{}"),
-        Ctor = ctor(MaybeExistConstraints, CtorSymName,
-            CtorArgs, TupleArity, Context),
-        CtorRepn = ctor_repn(MaybeExistConstraints, CtorSymName,
-            single_functor_tag, CtorArgRepns, TupleArity, Context),
-
-        ConsId = tuple_cons(TupleArity),
-        map.from_assoc_list([ConsId - single_functor_tag], ConsTagValues),
-        map.from_assoc_list(["{}" - one_or_more(CtorRepn, [])], ConsCtorMap),
-        DirectArgCtors = no,
-        Repn = du_type_repn(ConsTagValues, [CtorRepn], ConsCtorMap,
-            no_cheaper_tag_test, du_type_kind_general, DirectArgCtors,
-            does_not_use_reserved_address),
-        MaybeCanonical = canon,
-        IsForeign = no,
-        TypeBody = hlds_du_type([Ctor], MaybeCanonical, yes(Repn), IsForeign),
-        construct_type(TypeCtor, TupleArgTypes, Type),
-
-        term.context_init(Context)
+        collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody,
+            Context)
     else
         collect_type_defn(!.ModuleInfo, TypeCtor, Type, TVarSet, TypeBody,
             Context)
@@ -277,6 +239,49 @@ collect_type_defn(ModuleInfo, TypeCtor, Type, TVarSet, TypeBody, Context) :-
         $pred, "not generated lazily"),
     prog_type.var_list_to_type_list(KindMap, TypeParams, TypeArgs),
     construct_type(TypeCtor, TypeArgs, Type).
+
+:- pred collect_type_defn_for_tuple(type_ctor::in, mer_type::out,
+    tvarset::out, hlds_type_body::out, prog_context::out) is det.
+
+collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
+    TypeCtor = type_ctor(_, TupleArity),
+
+    % Build a hlds_type_body for the tuple constructor, which will
+    % be used by generate_clause_info.
+    varset.init(TVarSet0),
+    varset.new_vars(TupleArity, TupleArgTVars, TVarSet0, TVarSet),
+    prog_type.var_list_to_type_list(map.init, TupleArgTVars,
+        TupleArgTypes),
+
+    % Tuple constructors can't be existentially quantified.
+    MaybeExistConstraints = no_exist_constraints,
+
+    MakeUnnamedField =
+        (func(ArgType) = ctor_arg(no, ArgType, Context)),
+    CtorArgs = list.map(MakeUnnamedField, TupleArgTypes),
+    MakeUnnamedFieldRepn =
+        (func(ArgType) = ctor_arg_repn(no, ArgType, full_word, Context)),
+    CtorArgRepns = list.map(MakeUnnamedFieldRepn, TupleArgTypes),
+
+    CtorSymName = unqualified("{}"),
+    Ctor = ctor(MaybeExistConstraints, CtorSymName,
+        CtorArgs, TupleArity, Context),
+    CtorRepn = ctor_repn(MaybeExistConstraints, CtorSymName,
+        single_functor_tag, CtorArgRepns, TupleArity, Context),
+
+    ConsId = tuple_cons(TupleArity),
+    map.from_assoc_list([ConsId - single_functor_tag], ConsTagValues),
+    map.from_assoc_list(["{}" - one_or_more(CtorRepn, [])], ConsCtorMap),
+    DirectArgCtors = no,
+    Repn = du_type_repn(ConsTagValues, [CtorRepn], ConsCtorMap,
+        no_cheaper_tag_test, du_type_kind_general, DirectArgCtors,
+        does_not_use_reserved_address),
+    MaybeCanonical = canon,
+    IsForeign = no,
+    TypeBody = hlds_du_type([Ctor], MaybeCanonical, yes(Repn), IsForeign),
+    construct_type(TypeCtor, TupleArgTypes, Type),
+
+    term.context_init(Context).
 
 %---------------------------------------------------------------------------%
 % XXX TYPE_REPN The code above this line belongs in add_special_pred.m,
