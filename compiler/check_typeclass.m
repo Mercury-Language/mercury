@@ -1714,29 +1714,26 @@ check_ctor_constraints(ModuleInfo, TypeCtor - TypeDefn, !Specs) :-
 check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn, Ctor, !Specs) :-
     Ctor = ctor(MaybeExistConstraints, _, CtorArgs, _, _),
     (
-        MaybeExistConstraints = no_exist_constraints,
-        % XXX TYPE_REPN Should not need rest of this procedure's body.
-        ExistQVars = [],
-        Constraints = [] 
+        MaybeExistConstraints = no_exist_constraints
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints)
-    ),
-    ArgTypes = list.map(func(ctor_arg(_, T, _)) = T, CtorArgs),
-    type_vars_list(ArgTypes, ArgTVars),
-    list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
-        ArgTVars, ExistQArgTVars),
-    constraint_list_get_tvars(Constraints, ConstrainedTVars),
-    get_type_defn_tvarset(TypeDefn, TVarSet),
-    get_unbound_tvars(ModuleInfo, TVarSet, ExistQArgTVars, ConstrainedTVars,
-        Constraints, UnboundTVars),
-    (
-        UnboundTVars = []
-    ;
-        UnboundTVars = [_ | _],
-        Spec = report_unbound_tvars_in_ctor_context(UnboundTVars, TypeCtor,
-            TypeDefn),
-        !:Specs = [Spec | !.Specs]
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints),
+        ArgTypes = list.map(func(ctor_arg(_, T, _)) = T, CtorArgs),
+        type_vars_list(ArgTypes, ArgTVars),
+        list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
+            ArgTVars, ExistQArgTVars),
+        constraint_list_get_tvars(Constraints, ConstrainedTVars),
+        get_type_defn_tvarset(TypeDefn, TVarSet),
+        get_unbound_tvars(ModuleInfo, TVarSet,
+            ExistQArgTVars, ConstrainedTVars, Constraints, UnboundTVars),
+        (
+            UnboundTVars = []
+        ;
+            UnboundTVars = [_ | _],
+            Spec = report_unbound_tvars_in_ctor_context(UnboundTVars, TypeCtor,
+                TypeDefn),
+            !:Specs = [Spec | !.Specs]
+        )
     ).
 
     % The error messages for ambiguous types are intended to look like this:
