@@ -118,9 +118,9 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
         report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces),
 
         % XXX TYPE_REPN Delete any unneeded 0 suffixes on variable names.
-        module_info_get_type_table(ModuleInfo, TypeTable0),
-        ( if search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0) then
-            get_type_defn_status(TypeDefn0, TypeStatus),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
+            get_type_defn_status(TypeDefn, TypeStatus),
             % Either both the type and the pragma are defined in this module,
             % or they are both imported. Any other combination is illegal.
             IsTypeLocal = type_status_defined_in_this_module(TypeStatus),
@@ -152,19 +152,19 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                         !.ErrorSeveritiesPieces]
             ),
 
-            get_type_defn_body(TypeDefn0, TypeBody0),
+            get_type_defn_body(TypeDefn, TypeBody),
             (
                 (
-                    TypeBody0 = hlds_eqv_type(_),
+                    TypeBody = hlds_eqv_type(_),
                     NonDu = "an equivalence type"
                 ;
-                    TypeBody0 = hlds_abstract_type(_),
+                    TypeBody = hlds_abstract_type(_),
                     NonDu = "an abstract type"
                 ;
-                    TypeBody0 = hlds_solver_type(_),
+                    TypeBody = hlds_solver_type(_),
                     NonDu = "a solver type"
                 ;
-                    TypeBody0 = hlds_foreign_type(_),
+                    TypeBody = hlds_foreign_type(_),
                     NonDu = "a foreign type"
                 ),
                 report_not_enum_type(TypeName, TypeArity,
@@ -173,9 +173,9 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                     add_error_severity_pieces(Context, ContextPieces),
                     !.ErrorSeveritiesPieces, !Specs)
             ;
-                TypeBody0 = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn0,
+                TypeBody = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn,
                     _IsForeignType),
-                expect(unify(MaybeRepn0, no), $pred, "MaybeRepn0 != no"),
+                expect(unify(MaybeRepn, no), $pred, "MaybeRepn != no"),
 
                 list.map(constructor_to_cons_id(TypeCtor),
                     Ctors, ConsIds),
