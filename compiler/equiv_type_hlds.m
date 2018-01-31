@@ -167,10 +167,28 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
     maybe_start_recording_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
-        Body0 = hlds_du_type(Ctors0, _, _, _),
+        Body0 = hlds_du_type(Ctors0, MaybeCanonical, MaybeRepn0, MaybeForeign),
         equiv_type.replace_in_ctors(TypeEqvMap, Ctors0, Ctors,
-            TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
-        Body = Body0 ^ du_type_ctors := Ctors
+            TVarSet0, TVarSet1, EquivTypeInfo0, EquivTypeInfo1),
+        (
+            MaybeRepn0 = no,
+            MaybeRepn = no,
+            TVarSet = TVarSet1,
+            EquivTypeInfo = EquivTypeInfo1
+        ;
+            MaybeRepn0 = yes(Repn0),
+            Repn0 = du_type_repn(ConsIdToTagMap,
+                CtorRepns0, _CtorNameToRepnMap0, CheaperTagTest,
+                DuKind, DirectArgCtors, UsesReservedAddr),
+            list.map_foldl3(replace_in_ctor_repn(TypeEqvMap),
+                CtorRepns0, CtorRepns, map.init, CtorNameToRepnMap,
+                TVarSet1, TVarSet, EquivTypeInfo1, EquivTypeInfo),
+            Repn = du_type_repn(ConsIdToTagMap,
+                CtorRepns, CtorNameToRepnMap, CheaperTagTest,
+                DuKind, DirectArgCtors, UsesReservedAddr),
+            MaybeRepn = yes(Repn)
+        ),
+        Body = hlds_du_type(Ctors, MaybeCanonical, MaybeRepn, MaybeForeign)
     ;
         Body0 = hlds_eqv_type(Type0),
         equiv_type.replace_in_type(TypeEqvMap, Type0, Type, _,
@@ -202,6 +220,51 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
     finish_recording_expanded_items(ItemId, EquivTypeInfo, !MaybeRecompInfo),
     hlds_data.set_type_defn_body(Body, !Defn),
     hlds_data.set_type_defn_tvarset(TVarSet, !Defn).
+
+:- pred replace_in_ctor_repn(type_eqv_map::in,
+    constructor_repn::in, constructor_repn::out,
+    ctor_name_to_repn_map::in, ctor_name_to_repn_map::out,
+    tvarset::in, tvarset::out,
+    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+
+replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
+        !TVarSet, !EquivTypeInfo) :-
+    CtorRepn0 = ctor_repn(MaybeExistConstraints0, CtorName, Tag,
+        CtorArgRepns0, Arity, Context),
+    list.map_foldl2(replace_in_ctor_arg_repn(TypeEqvMap),
+        CtorArgRepns0, CtorArgRepns, !TVarSet, !EquivTypeInfo),
+    (
+        MaybeExistConstraints0 = no_exist_constraints,
+        MaybeExistConstraints = no_exist_constraints
+    ;
+        MaybeExistConstraints0 = exist_constraints(
+            cons_exist_constraints(ExistQVars, Constraints0)),
+        replace_in_prog_constraint_list(TypeEqvMap, Constraints0, Constraints,
+            !TVarSet, !EquivTypeInfo),
+        MaybeExistConstraints = exist_constraints(
+            cons_exist_constraints(ExistQVars, Constraints))
+    ),
+    CtorRepn = ctor_repn(MaybeExistConstraints, CtorName, Tag,
+        CtorArgRepns, Arity, Context),
+    insert_ctor_repn_into_map(CtorRepn, !CtorNameToRepnMap).
+
+:- pred replace_in_ctor_arg_repn(type_eqv_map::in,
+    constructor_arg_repn::in, constructor_arg_repn::out,
+    tvarset::in, tvarset::out,
+    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+
+replace_in_ctor_arg_repn(TypeEqvMap, CtorArgRepn0, CtorArgRepn,
+        !TVarSet, !EquivTypeInfo) :-
+    CtorArgRepn0 = ctor_arg_repn(Name, Type0, Width, Context),
+    replace_in_type(TypeEqvMap, Type0, Type, Changed,
+        !TVarSet, !EquivTypeInfo),
+    (
+        Changed = no,
+        CtorArgRepn = CtorArgRepn0
+    ;
+        Changed = yes,
+        CtorArgRepn = ctor_arg_repn(Name, Type, Width, Context)
+    ).
 
 %-----------------------------------------------------------------------------%
 

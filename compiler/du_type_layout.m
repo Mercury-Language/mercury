@@ -1362,21 +1362,6 @@ update_repn_of_ctor(TypeCtor, ConsTagMap, CtorRepn0, CtorRepn, !CtorRepnMap) :-
     CtorRepn = CtorRepn0 ^ cr_tag := ConsTag,
     insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap).
 
-:- pred insert_ctor_repn_into_map(constructor_repn::in,
-    ctor_name_to_repn_map::in, ctor_name_to_repn_map::out) is det.
-
-insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap) :-
-    SymName = CtorRepn ^ cr_name,
-    Name = unqualify_name(SymName),
-    ( if map.search(!.CtorRepnMap, Name, OldCtorRepns) then
-        OldCtorRepns = one_or_more(FirstOldCtorRepn, LaterOldCtorRepns),
-        CtorRepns = one_or_more(CtorRepn,
-            [FirstOldCtorRepn | LaterOldCtorRepns]),
-        map.det_update(Name, CtorRepns, !CtorRepnMap)
-    else
-        map.det_insert(Name, one_or_more(CtorRepn, []), !CtorRepnMap)
-    ).
-
 %-----------------------------------------------------------------------------%
 %
 % Auxiliary functions and predicates.

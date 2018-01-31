@@ -841,6 +841,9 @@ cons_table_optimize(!ConsTable) :-
 
 :- func get_maybe_cheaper_tag_test(hlds_type_body) = maybe_cheaper_tag_test.
 
+:- pred insert_ctor_repn_into_map(constructor_repn::in,
+    ctor_name_to_repn_map::in, ctor_name_to_repn_map::out) is det.
+
     % The atomic variants of the Boehm gc allocator calls (e.g.
     % GC_malloc_atomic instead of GC_malloc) may yield slightly faster code
     % since atomic blocks are not scanned for included pointers. However,
@@ -956,6 +959,18 @@ get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
         ; TypeBody = hlds_abstract_type(_)
         ),
         CheaperTagTest = no_cheaper_tag_test
+    ).
+
+insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap) :-
+    SymName = CtorRepn ^ cr_name,
+    Name = unqualify_name(SymName),
+    ( if map.search(!.CtorRepnMap, Name, OldCtorRepns) then
+        OldCtorRepns = one_or_more(FirstOldCtorRepn, LaterOldCtorRepns),
+        CtorRepns = one_or_more(CtorRepn,
+            [FirstOldCtorRepn | LaterOldCtorRepns]),
+        map.det_update(Name, CtorRepns, !CtorRepnMap)
+    else
+        map.det_insert(Name, one_or_more(CtorRepn, []), !CtorRepnMap)
     ).
 
 asserted_can_pass_as_mercury_type(foreign_type_assertions(Set)) :-
