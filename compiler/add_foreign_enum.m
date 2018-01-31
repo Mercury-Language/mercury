@@ -117,7 +117,6 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
         !:Specs = [],
         report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces),
 
-        % XXX TYPE_REPN Delete any unneeded 0 suffixes on variable names.
         module_info_get_type_table(ModuleInfo, TypeTable),
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
             get_type_defn_status(TypeDefn, TypeStatus),
