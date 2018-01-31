@@ -137,8 +137,7 @@
     % Their meanings are documented there.
     %
 :- type type_ctor_flag
-    --->    reserve_tag_flag            % XXX TYPE_REPN This is obsolete.
-    ;       variable_arity_flag
+    --->    variable_arity_flag
     ;       kind_of_du_flag.
 
     % A type_ctor_details structure contains all the information that the
@@ -1023,10 +1022,11 @@ encode_type_ctor_flags(FlagSet) = Encoding :-
     % NOTE: the encoding here must match the one in
     % runtime/mercury_type_info.h.
     %
+    % Also note: we used to use 1 to encode types that reserved a tag
+    % for constraint solvers.
+    %
 :- pred encode_type_ctor_flag(type_ctor_flag::in, int::in, int::out) is det.
 
-encode_type_ctor_flag(reserve_tag_flag, !Encoding) :-
-    !:Encoding = !.Encoding + 1.
 encode_type_ctor_flag(variable_arity_flag, !Encoding) :-
     !:Encoding = !.Encoding + 2.
 encode_type_ctor_flag(kind_of_du_flag, !Encoding) :-

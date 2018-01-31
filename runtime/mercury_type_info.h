@@ -1221,8 +1221,8 @@ struct MR_TypeCtorInfo_Struct {
 // The flag bits here must agree with the ones in encode_type_ctor_flag
 // in compiler/rtti.m.
 //
-// The reserve tag flag is set iff the type constructor has reserved the
-// standard primary tag value for representing a variable.
+// We used to have a "reserve tag" flag whose representation was 0x1,
+// but we don't supported reserving tags anymore.
 //
 // The variable arity flag is set for builtin constructors whose arity is
 // variable: at moment, this means functions, predicates and tuples.
@@ -1234,12 +1234,9 @@ struct MR_TypeCtorInfo_Struct {
 // The dummy flag must be set for type constructors whose values are not
 // actually passed around.
 
-#define MR_TYPE_CTOR_FLAG_RESERVE_TAG           0x1
 #define MR_TYPE_CTOR_FLAG_VARIABLE_ARITY        0x2
 #define MR_TYPE_CTOR_FLAG_KIND_OF_DU            0x4
 
-#define MR_type_ctor_has_reserve_tag(tci)                                   \
-    ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_RESERVE_TAG)
 #define MR_type_ctor_has_variable_arity(tci)                                \
     ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_VARIABLE_ARITY)
 #define MR_type_ctor_is_kind_of_du(tci)                                     \
