@@ -2375,8 +2375,8 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
         find_builtin_type_with_equivalent_compare(ModuleInfo,
             SpecialPredType, CompareType, NeedIntCast),
         type_to_ctor_det(CompareType, CompareTypeCtor),
-        polymorphism.get_special_proc_det(ModuleInfo, CompareTypeCtor,
-            spec_pred_compare, SymName, SpecialPredId, SpecialProcId),
+        get_special_proc_det(ModuleInfo, CompareTypeCtor, spec_pred_compare,
+            SymName, SpecialPredId, SpecialProcId),
         (
             NeedIntCast = no,
             NewCallArgs = [ComparisonResult, Arg1, Arg2],
@@ -2442,8 +2442,8 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
         find_builtin_type_with_equivalent_compare(ModuleInfo, WrappedType,
             CompareType, NeedIntCast),
         type_to_ctor_det(CompareType, CompareTypeCtor),
-        polymorphism.get_special_proc_det(ModuleInfo, CompareTypeCtor,
-            spec_pred_compare, SymName, SpecialPredId, SpecialProcId),
+        get_special_proc_det(ModuleInfo, CompareTypeCtor, spec_pred_compare,
+            SymName, SpecialPredId, SpecialProcId),
         (
             NeedIntCast = no,
             NewCallArgs = [ComparisonResult, UnwrappedArg1, UnwrappedArg2],
@@ -2479,8 +2479,8 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
 find_special_proc(TypeCtor, SpecialId, SymName, PredId, ProcId, !Info) :-
     ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
     ( if
-        polymorphism.get_special_proc(ModuleInfo0, TypeCtor, SpecialId,
-            SymName0, PredId0, ProcId0)
+        get_special_proc(ModuleInfo0, TypeCtor, SpecialId, SymName0,
+            PredId0, ProcId0)
     then
         SymName = SymName0,
         PredId = PredId0,

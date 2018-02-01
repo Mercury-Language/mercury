@@ -75,7 +75,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_util.
@@ -1470,7 +1469,7 @@ build_call(Name, ArgVars, Context, Goal, !Info) :-
 build_spec_pred_call(TypeCtor, SpecialPredId, ArgVars, InstmapDelta, Detism,
         Context, Goal, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
-    polymorphism.get_special_proc_det(ModuleInfo, TypeCtor, SpecialPredId,
+    get_special_proc_det(ModuleInfo, TypeCtor, SpecialPredId,
         PredName, PredId, ProcId),
 
     GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no, PredName),

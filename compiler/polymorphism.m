@@ -183,9 +183,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.vartypes.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
@@ -310,16 +307,6 @@
     %
 :- pred build_type_info_type(mer_type::in, mer_type::out) is det.
 
-    % Look up the pred_id and proc_id for a type specific
-    % unification/comparison/index/initialise predicate.
-    % XXX TYPE_REPN These predicates, and get_category_name, should NOT be
-    % in this module.
-    %
-:- pred get_special_proc(module_info::in, type_ctor::in,
-    special_pred_id::in, sym_name::out, pred_id::out, proc_id::out) is semidet.
-:- pred get_special_proc_det(module_info::in, type_ctor::in,
-    special_pred_id::in, sym_name::out, pred_id::out, proc_id::out) is det.
-
     % Convert a higher order pred term to a lambda goal.
     %
 :- pred convert_pred_to_lambda_goal(purity::in, lambda_eval_method::in,
@@ -418,14 +405,16 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
-:- import_module hlds.special_pred.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.goal_path.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
@@ -3528,106 +3517,6 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
                 !Info),
             MCA = no
         )
-    ).
-
-get_special_proc(ModuleInfo, TypeCtor, SpecialPredId,
-        PredName, PredId, ProcId) :-
-    TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
-    get_category_name(TypeCategory) = MaybeCategoryName,
-    (
-        MaybeCategoryName = no,
-        module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
-        search_special_pred_maps(SpecialPredMaps, SpecialPredId, TypeCtor,
-            PredId),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        Module = pred_info_module(PredInfo),
-        Name = pred_info_name(PredInfo),
-        PredName = qualified(Module, Name),
-        special_pred_mode_num(SpecialPredId, ProcInt),
-        proc_id_to_int(ProcId, ProcInt)
-    ;
-        MaybeCategoryName = yes(CategoryName),
-        special_pred_name_arity(SpecialPredId, SpecialName, _, Arity),
-        Name = "builtin_" ++ SpecialName ++ "_" ++ CategoryName,
-        lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
-            Name, pf_predicate, Arity, only_mode, PredId, ProcId),
-        PredName = qualified(mercury_private_builtin_module, Name)
-    ).
-
-get_special_proc_det(ModuleInfo, TypeCtor, SpecialPredId, PredName,
-        PredId, ProcId) :-
-    ( if
-        get_special_proc(ModuleInfo, TypeCtor, SpecialPredId,
-            PredNamePrime, PredIdPrime, ProcIdPrime)
-    then
-        PredName = PredNamePrime,
-        PredId = PredIdPrime,
-        ProcId = ProcIdPrime
-    else
-        unexpected($pred, "get_special_proc failed")
-    ).
-
-:- func get_category_name(type_ctor_category) = maybe(string).
-
-get_category_name(CtorCat) = MaybeName :-
-    (
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int)),
-        MaybeName = yes("int")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint)),
-        MaybeName = yes("uint")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8)),
-        MaybeName = yes("int8")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8)),
-        MaybeName = yes("uint8")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16)),
-        MaybeName = yes("int16")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16)),
-        MaybeName = yes("uint16")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32)),
-        MaybeName = yes("int32")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
-        MaybeName = yes("uint32")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
-        MaybeName = yes("int64")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
-        MaybeName = yes("uint64")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_char),
-        MaybeName = yes("character")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_float),
-        MaybeName = yes("float")
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_string),
-        MaybeName = yes("string")
-    ;
-        CtorCat = ctor_cat_higher_order,
-        MaybeName = yes("pred")
-    ;
-        CtorCat = ctor_cat_tuple,
-        MaybeName = yes("tuple")
-    ;
-        ( CtorCat = ctor_cat_enum(_)
-        ; CtorCat = ctor_cat_builtin_dummy
-        ; CtorCat = ctor_cat_user(_)
-        ; CtorCat = ctor_cat_system(_)
-        ),
-        MaybeName = no
-    ;
-        CtorCat = ctor_cat_variable,
-        unexpected($pred, "variable type")
-    ;
-        CtorCat = ctor_cat_void,
-        unexpected($pred, "void_type")
     ).
 
 init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
