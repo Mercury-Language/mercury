@@ -1092,7 +1092,8 @@ generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, Ctor1, Ctor2,
         umc_explicit, [], UnifyX_Goal),
     create_pure_atomic_complicated_unification(Y, RHS2, Context,
         umc_explicit, [], UnifyY_Goal),
-    make_const_construction(R, compare_cons_id(CompareOp), ReturnResult),
+    make_const_construction(Context, R,
+        compare_cons_id(CompareOp), ReturnResult),
     GoalList = [UnifyX_Goal, UnifyY_Goal, ReturnResult],
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
@@ -1176,8 +1177,10 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, Ctors, Res, X, Y, Goal,
     build_call("builtin_int_gt", [X_Index, Y_Index], Context,
         Call_Greater_Than, !Info),
 
-    make_const_construction(Res, compare_cons_id("<"), Return_Less_Than),
-    make_const_construction(Res, compare_cons_id(">"), Return_Greater_Than),
+    make_const_construction(Context, Res,
+        compare_cons_id("<"), Return_Less_Than),
+    make_const_construction(Context, Res,
+        compare_cons_id(">"), Return_Greater_Than),
 
     create_pure_atomic_complicated_unification(Res, rhs_var(R), Context,
         umc_explicit, [], Return_R),
@@ -1381,7 +1384,8 @@ generate_compare_args(ExistQTVars, [TypedVarPair | TypedVarPairs], R, Context,
             info_new_var(comparison_result_type, R1, !Info),
             build_call(ComparePred, [R1, X, Y], Context, Do_Comparison, !Info),
 
-            make_const_construction(R1, compare_cons_id("="), Check_Equal),
+            make_const_construction(Context, R1,
+                compare_cons_id("="), Check_Equal),
             CheckNotEqual = hlds_goal(negation(Check_Equal), GoalInfo),
 
             create_pure_atomic_complicated_unification(R, rhs_var(R1),
@@ -1401,10 +1405,7 @@ generate_compare_args(ExistQTVars, [TypedVarPair | TypedVarPairs], R, Context,
     hlds_goal::out) is det.
 
 generate_return_equal(ResultVar, Context, Goal) :-
-    % XXX TYPE_REPN
-    % Create a version of make_const_construction that takes a context.
-    make_const_construction(ResultVar, compare_cons_id("="), Goal0),
-    goal_set_context(Context, Goal0, Goal).
+    make_const_construction(Context, ResultVar, compare_cons_id("="), Goal).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1515,7 +1516,7 @@ generate_index_du_case(SpecDefnInfo, X, Index, Ctor, Goal, !N, !Info) :-
     create_pure_atomic_complicated_unification(X,
         rhs_functor(FunctorConsId, is_not_exist_constr, ArgVars),
         Context, umc_explicit, [], UnifyX_Goal),
-    make_int_const_construction(Index, !.N, UnifyIndex_Goal),
+    make_int_const_construction(Context, Index, !.N, UnifyIndex_Goal),
     !:N = !.N + 1,
     GoalList = [UnifyX_Goal, UnifyIndex_Goal],
     goal_info_init(GoalInfo0),
@@ -1588,8 +1589,7 @@ maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes, Goal0, Goal,
         goal_add_feature(feature_pretest_equality_condition,
             EqualityGoal0, EqualityGoal),
         CondGoalExpr = conj(plain_conj, [CastXGoal, CastYGoal, EqualityGoal]),
-        goal_info_init(GoalInfo0),
-        goal_info_set_context(Context, GoalInfo0, ContextGoalInfo),
+        goal_info_init(Context, ContextGoalInfo),
         CondGoal = hlds_goal(CondGoalExpr, ContextGoalInfo),
         (
             MaybeCompareRes = no,
@@ -1597,7 +1597,8 @@ maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes, Goal0, Goal,
             GoalInfo = ContextGoalInfo
         ;
             MaybeCompareRes = yes(Res),
-            make_const_construction(Res, compare_cons_id("="), EqualGoal),
+            make_const_construction(Context, Res,
+                compare_cons_id("="), EqualGoal),
             EqualGoal = hlds_goal(_, EqualGoalInfo),
             InstmapDelta = goal_info_get_instmap_delta(EqualGoalInfo),
             goal_info_set_instmap_delta(InstmapDelta,

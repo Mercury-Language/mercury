@@ -2352,7 +2352,7 @@ specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
         Builtin = mercury_public_builtin_module,
         TypeCtor = type_ctor(qualified(Builtin, "comparison_result"), 0),
         Eq = cons(qualified(mercury_public_builtin_module, "="), 0, TypeCtor),
-        make_const_construction(ComparisonResult, Eq, Goal),
+        make_const_construction(term.context_init, ComparisonResult, Eq, Goal),
         Goal = hlds_goal(GoalExpr, _)
     ).
 

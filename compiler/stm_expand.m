@@ -281,8 +281,8 @@ stm_process_proc(PredId, ProcId, !ModuleInfo) :-
     module_info_set_preds(PredTable, !ModuleInfo).
 
 :- pred stm_process_proc_2(proc_info::in, proc_info::out, pred_id::in,
-    proc_id::in, pred_info::in, pred_info::out, module_info::in,
-    module_info::out) is det.
+    proc_id::in, pred_info::in, pred_info::out,
+    module_info::in, module_info::out) is det.
 
 stm_process_proc_2(!ProcInfo, PredId, ProcId, !PredInfo, !ModuleInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
@@ -404,7 +404,8 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
             %   1. If goal is single, connect the outers and inners
             %   2. Process or_else as if it would be called directly in goal
 
-            stm_create_actual_goal(GoalType, Instmap, FinalInstmap,
+            Context = goal_info_get_context(GoalInfo0),
+            stm_create_actual_goal(Context, GoalType, Instmap, FinalInstmap,
                 Outer, Inner, MainGoal, OrElseGoals, Goal, !Info)
         ;
             ShortHand0 = try_goal(_, _, _),
@@ -415,7 +416,8 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
         )
     ).
 
-:- pred stm_process_conj(instmap::in, hlds_goals::in, hlds_goals::out,
+:- pred stm_process_conj(instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     stm_info::in, stm_info::out) is det.
 
 stm_process_conj(Instmap0, GoalList0, GoalList, !Info) :-
@@ -434,7 +436,8 @@ stm_process_conj(Instmap0, GoalList0, GoalList, !Info) :-
         GoalList = [Goal | Goals]
     ).
 
-:- pred stm_process_disj(instmap::in, hlds_goals::in, hlds_goals::out,
+:- pred stm_process_disj(instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     stm_info::in, stm_info::out) is det.
 
 stm_process_disj(Instmap, GoalList0, GoalList, !Info) :-
@@ -486,16 +489,15 @@ stm_process_switch_cases(Instmap0, [Case0 | Cases0], [Case | Cases], !Info) :-
     % newly created top_level goal. The InitInstmap and FinalInstmap is the
     % instmap before and after the atomic goal respectivly.
     %
-:- pred stm_create_actual_goal(atomic_goal_type::in, instmap::in, instmap::in,
+:- pred stm_create_actual_goal(prog_context::in,
+    atomic_goal_type::in, instmap::in, instmap::in,
     atomic_interface_vars::in, atomic_interface_vars::in, hlds_goal::in,
     list(hlds_goal)::in, hlds_goal::out, stm_info::in, stm_info::out) is det.
 
-stm_create_actual_goal(GoalType, InitInstmap, FinalInstmap, Outer, Inner,
-        MainGoal, OrElseGoals, FinalGoal, !StmInfo) :-
+stm_create_actual_goal(Context, GoalType, InitInstmap, FinalInstmap,
+        Outer, Inner, MainGoal, OrElseGoals, FinalGoal, !StmInfo) :-
     Outer = atomic_interface_vars(OuterDI, OuterUO),
     Inner = atomic_interface_vars(InnerDI, InnerUO),
-
-    % Performs different operations based on the goal type
     (
         GoalType = top_level_atomic_goal,
         create_top_level_goal(InitInstmap, FinalInstmap,
@@ -506,7 +508,7 @@ stm_create_actual_goal(GoalType, InitInstmap, FinalInstmap, Outer, Inner,
         trace [compiletime(flag("debug_stm")), io(!IO)] (
             io.write_string("Creating nested atomic goal\n",!IO)
         ),
-        create_nested_goal(InitInstmap, FinalInstmap,
+        create_nested_goal(Context, InitInstmap, FinalInstmap,
             OuterDI, OuterUO, InnerDI, InnerUO, MainGoal, OrElseGoals,
             FinalGoal, !StmInfo)
     ;
@@ -601,8 +603,9 @@ copy_input_vars_in_goallist(GoalVar, !GoalList) :-
     list.map(CopyInputVarLambda, !GoalList).
 
 :- pred calc_pred_variables_list(instmap::in, instmap::in,
-    hlds_goals::in, list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
-    list(stm_goal_vars)::out, stm_info::in, stm_info::out) is det.
+    list(hlds_goal)::in, list(prog_var)::in,
+    list(prog_var)::in, list(prog_var)::in, list(stm_goal_vars)::out,
+    stm_info::in, stm_info::out) is det.
 
 calc_pred_variables_list(InitInstmap, FinalInstmap, Goals, InnerDIs, InnerUOs,
         IgnoreVarList0, StmGoalVarList, !StmInfo) :-
@@ -670,7 +673,7 @@ calc_pred_variables(InitInstmap, FinalInstmap, Goal,
 
     % Removes all calls to the dummy predicates in a list of goals.
     %
-:- pred remove_tail(hlds_goals::in, hlds_goals::out,
+:- pred remove_tail(list(hlds_goal)::in, list(hlds_goal)::out,
     pair(maybe(prog_var), maybe(prog_var))::out,
 	pair(maybe(prog_var), maybe(prog_var))::out) is det.
 
@@ -751,12 +754,12 @@ strip_goal_calls(Goal0, Goal, StmOutDI, StmOutUO, StmInDI, StmInUO) :-
 
     % Creates a nested atomic goal.
     %
-:- pred create_nested_goal(instmap::in, instmap::in,
+:- pred create_nested_goal(prog_context::in, instmap::in, instmap::in,
     prog_var::in, prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::in, list(hlds_goal)::in, hlds_goal::out,
     stm_info::in, stm_info::out) is det.
 
-create_nested_goal(InitInstmap, FinalInstmap, OuterDI, OuterUO,
+create_nested_goal(Context, InitInstmap, FinalInstmap, OuterDI, OuterUO,
         _InnerDI, _InnerUO, AtomicGoal0, OrElseGoals0, Goal, !StmInfo) :-
     strip_goal_calls(AtomicGoal0, AtomicGoal, MainOuterDI, MainOuterUO,
         MainInnerDI, MainInnerUO),
@@ -805,14 +808,14 @@ create_nested_goal(InitInstmap, FinalInstmap, OuterDI, OuterUO,
                     SInfo::out) is det :-
                 % These predicates should be plain predicates without code to
                 % validate logs.
-                create_simple_wrapper_pred(GoalVars, ResultType, ResultVar,
-                    ThisGoal, PPID, _, SInfo0, SInfo)
+                create_simple_wrapper_pred(Context, GoalVars,
+                    ResultType, ResultVar, ThisGoal, PPID, _, SInfo0, SInfo)
             ),
         map2_in_foldl(CreateWrapperForEachGoal, GoalList, AtomicGoalVarList1,
             PPIDList, !StmInfo),
 
-        create_or_else_pred(AtomicGoalVars, AtomicGoalVarList1, PPIDList,
-            MainInnerDI, MainInnerUO, OrElseCall, !StmInfo),
+        create_or_else_pred(Context, AtomicGoalVars, AtomicGoalVarList1,
+            PPIDList, MainInnerDI, MainInnerUO, OrElseCall, !StmInfo),
         create_var_unify_stm(MainInnerDI, MainOuterDI,
             unify_modes_lhs_rhs(uo_from_to_insts, di_from_to_insts),
             CopyDIVars, !StmInfo),
@@ -843,19 +846,21 @@ create_top_level_goal(InitInstmap, FinalInstmap, OuterDI, OuterUO,
         [MainInnerUO | OrElseInnerUOs], [OuterDI, OuterUO],
         AtomicGoalVarList, !StmInfo),
 
-    create_top_level_pred(AtomicGoalVarList, OuterDI, OuterUO, AtomicGoal,
-        OrElseGoals, Goal, !StmInfo).
+    AtomicGoal = hlds_goal(_, AtomicGoalInfo),
+    Context = goal_info_get_context(AtomicGoalInfo),
+    create_top_level_pred(Context, AtomicGoalVarList, OuterDI, OuterUO,
+        AtomicGoal, OrElseGoals, Goal, !StmInfo).
 
     % Creates the top level predicate. Calling this implicitly creates the
     % rollback and wrapper predicate.
     %
-:- pred create_top_level_pred(list(stm_goal_vars)::in, prog_var::in,
-    prog_var::in, hlds_goal::in, list(hlds_goal)::in, hlds_goal::out,
-    stm_info::in, stm_info::out) is det.
+:- pred create_top_level_pred(prog_context::in, list(stm_goal_vars)::in,
+    prog_var::in, prog_var::in, hlds_goal::in, list(hlds_goal)::in,
+    hlds_goal::out, stm_info::in, stm_info::out) is det.
 
-create_top_level_pred(AtomicGoalVarList, OuterDI, OuterUO, AtomicGoal,
+create_top_level_pred(Context, AtomicGoalVarList, OuterDI, OuterUO, AtomicGoal,
         OrElseGoals, Goal, !StmInfo) :-
-    create_rollback_pred(AtomicGoalVarList, WrapperCall, AtomicGoal,
+    create_rollback_pred(Context, AtomicGoalVarList, WrapperCall, AtomicGoal,
         OrElseGoals, !StmInfo),
 
     common_goal_vars_from_list(AtomicGoalVarList, AtomicGoalVars),
@@ -896,15 +901,16 @@ create_top_level_pred(AtomicGoalVarList, OuterDI, OuterUO, AtomicGoal,
     %
     % The RttiVar variable must contain ...
     %
-:- pred template_if_exceptres_is_cons(prog_var::in, prog_var::in,
-    cons_id::in, hlds_goal::in, hlds_goal::in, hlds_goal::out,
+:- pred template_if_exceptres_is_cons(prog_context::in,
+    prog_var::in, prog_var::in, cons_id::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal::out,
     stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-template_if_exceptres_is_cons(RttiVar, ExceptVar, RollbackExceptCons,
+template_if_exceptres_is_cons(Context, RttiVar, ExceptVar, RollbackExceptCons,
         TrueGoal, FalseGoal, Goal, !NewPredInfo) :-
     create_aux_variable(stm_rollback_exception_type, yes("UnivPayload"),
         UnivPayloadVar, !NewPredInfo),
-    create_aux_variable_assignment(RollbackExceptCons,
+    create_aux_variable_assignment(Context, RollbackExceptCons,
         stm_rollback_exception_type, yes("RollbackExcpt"), AssignGoal,
         RollbackExceptVar, !NewPredInfo),
     create_simple_call(mercury_univ_module, "type_to_univ", pf_predicate,
@@ -949,8 +955,8 @@ template_if_exceptres_is_cons(RttiVar, ExceptVar, RollbackExceptCons,
     % UnlockAfterwards is yes.
     %
 :- pred template_lock_and_validate(prog_var::in, bool::in, hlds_goal::in,
-    hlds_goal::in, hlds_goals::out, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+    hlds_goal::in, list(hlds_goal)::out,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 template_lock_and_validate(StmVar, UnlockAfterwards, ValidGoal, InvalidGoal,
         Goals, !NewPredInfo) :-
@@ -984,13 +990,14 @@ template_lock_and_validate(StmVar, UnlockAfterwards, ValidGoal, InvalidGoal,
     % Lock and validate a number of transactions. The success branch will
     % be passed if all transactions are valid.
     %
-:- pred template_lock_and_validate_many(list(prog_var)::in, bool::in,
-    hlds_goal::in, hlds_goal::in, hlds_goals::out, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred template_lock_and_validate_many(prog_context::in,
+    list(prog_var)::in, bool::in,
+    hlds_goal::in, hlds_goal::in, list(hlds_goal)::out,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-template_lock_and_validate_many(StmVars, UnlockAfterwards, ValidGoal,
+template_lock_and_validate_many(Context, StmVars, UnlockAfterwards, ValidGoal,
         InvalidGoal, Goals, !NewPredInfo) :-
-    create_aux_variable_assignment(stm_validres_valid_functor,
+    create_aux_variable_assignment(Context, stm_validres_valid_functor,
         stm_valid_result_type, yes("IsValidConst"), AssignValidConst,
         IsValidConstVar, !NewPredInfo),
 
@@ -1070,8 +1077,8 @@ template_lock_and_validate_many(StmVars, UnlockAfterwards, ValidGoal,
     %   )
     %
 :- pred create_validate_exception_goal(prog_var::in, prog_var::in,
-    mer_type::in, hlds_goal::in, hlds_goal::out, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+    mer_type::in, hlds_goal::in, hlds_goal::out,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 create_validate_exception_goal(StmVar, ExceptionVar, ReturnType, RecursiveCall,
         Goal, !NewPredInfo) :-
@@ -1124,11 +1131,11 @@ create_retry_handler_branch(StmVar, RecCall, Goal, !NewPredInfo) :-
     % (using predicates from the "univ" module) and create the if-then-else
     % statements which branch on the result.
     %
-:- pred create_test_on_exception(prog_var::in, prog_var::in, mer_type::in,
-    hlds_goal::in, hlds_goal::out, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred create_test_on_exception(prog_context::in, prog_var::in, prog_var::in,
+    mer_type::in, hlds_goal::in, hlds_goal::out,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_test_on_exception(ExceptVar, StmVar, ReturnType, RecCall, Goal,
+create_test_on_exception(Context, ExceptVar, StmVar, ReturnType, RecCall, Goal,
         !NewPredInfo) :-
     create_aux_variable(univ_type, yes("ExceptUnivVar"), ExceptUnivVar,
         !NewPredInfo),
@@ -1149,10 +1156,10 @@ create_test_on_exception(ExceptVar, StmVar, ReturnType, RecCall, Goal,
 
     create_retry_handler_branch(StmVar, RecCall, RetryBranch, !NewPredInfo),
 
-    template_if_exceptres_is_cons(TypeInfoRollbackVar, ExceptUnivVar,
+    template_if_exceptres_is_cons(Context, TypeInfoRollbackVar, ExceptUnivVar,
         stm_rollback_retry_functor, RetryBranch, RethrowBranch, FalseGoal,
         !NewPredInfo),
-    template_if_exceptres_is_cons(TypeInfoRollbackVar, ExceptUnivVar,
+    template_if_exceptres_is_cons(Context, TypeInfoRollbackVar, ExceptUnivVar,
         stm_rollback_exception_functor, TrueGoal, FalseGoal, IfThenElseGoal,
         !NewPredInfo),
     create_plain_conj([DeconstructException] ++ TypeInfoRollbackAssign ++
@@ -1163,13 +1170,13 @@ create_test_on_exception(ExceptVar, StmVar, ReturnType, RecCall, Goal,
     % deconstructs the value returned if no exception is present. It relies
     % on the above predicates to generate code for handling exceptions.
     %
-:- pred create_rollback_handler_goal(stm_goal_vars::in, mer_type::in,
-    prog_var::in, prog_var::in, pred_proc_id::in, hlds_goal::in,
-    hlds_goal::out, stm_info::in, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred create_rollback_handler_goal(prog_context::in, stm_goal_vars::in,
+    mer_type::in, prog_var::in, prog_var::in, pred_proc_id::in, hlds_goal::in,
+    hlds_goal::out, stm_info::in,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_rollback_handler_goal(AtomicGoalVars, ReturnType, StmVarDI, StmVarUO,
-        WrapperID, RecCall, Goal, StmInfo, !NewPredInfo) :-
+create_rollback_handler_goal(Context, AtomicGoalVars, ReturnType,
+        StmVarDI, StmVarUO, WrapperID, RecCall, Goal, StmInfo, !NewPredInfo) :-
     get_input_output_varlist(AtomicGoalVars, InputVars, _),
     get_input_output_types(AtomicGoalVars, StmInfo, InputTypes, _),
     get_input_output_modes(AtomicGoalVars, InputModes, _),
@@ -1216,8 +1223,8 @@ create_rollback_handler_goal(AtomicGoalVars, ReturnType, StmVarDI, StmVarUO,
     % For successfull execution, deconstruct and return true
     deconstruct_output(AtomicGoalVars, ReturnType, ReturnExceptVar,
         Branch_AtomicSuccess, StmInfo, !NewPredInfo),
-    create_test_on_exception(ReturnExceptVar, StmVarUO, ReturnType, RecCall,
-        Branch_AtomicException, !NewPredInfo),
+    create_test_on_exception(Context, ReturnExceptVar, StmVarUO,
+        ReturnType, RecCall, Branch_AtomicException, !NewPredInfo),
 
     create_switch_disjunction(ReturnExceptVar,
         [case(ExceptRes_Failure_Functor, [], Branch_AtomicException),
@@ -1233,11 +1240,12 @@ create_rollback_handler_goal(AtomicGoalVars, ReturnType, StmVarDI, StmVarUO,
     % catching any possible exceptions that might be thrown It is also
     % responsible for handing retries and rollbacks.
     %
-:- pred create_rollback_pred(list(stm_goal_vars)::in, hlds_goal::out,
-    hlds_goal::in, list(hlds_goal)::in, stm_info::in, stm_info::out) is det.
+:- pred create_rollback_pred(prog_context::in, list(stm_goal_vars)::in,
+    hlds_goal::out, hlds_goal::in, list(hlds_goal)::in,
+    stm_info::in, stm_info::out) is det.
 
-create_rollback_pred(AtomicGoalVarList, CallGoal, AtomicGoal, OrElseGoals,
-        !StmInfo) :-
+create_rollback_pred(Context, AtomicGoalVarList, CallGoal, AtomicGoal,
+        OrElseGoals, !StmInfo) :-
     common_goal_vars_from_list(AtomicGoalVarList, AtomicGoalVars),
     get_input_output_varlist(AtomicGoalVars, InputVars, OutputVars),
     get_input_output_types(AtomicGoalVars, !.StmInfo, InputTypes, OutputTypes),
@@ -1247,16 +1255,17 @@ create_rollback_pred(AtomicGoalVarList, CallGoal, AtomicGoal, OrElseGoals,
         InputModes ++ OutputModes, "rollback", AtomicGoal, no, NewPredInfo0,
         CallGoal, !StmInfo),
 
-    create_rollback_pred_2(AtomicGoalVarList, CallGoal,
+    create_rollback_pred_2(Context, AtomicGoalVarList, CallGoal,
         AtomicGoal, OrElseGoals, NewPredInfo0, NewPredInfo, !StmInfo),
     commit_new_pred(NewPredInfo, !StmInfo).
 
-:- pred create_rollback_pred_2(list(stm_goal_vars)::in, hlds_goal::in,
-    hlds_goal::in, list(hlds_goal)::in, stm_new_pred_info::in,
-    stm_new_pred_info::out, stm_info::in, stm_info::out) is det.
+:- pred create_rollback_pred_2(prog_context::in, list(stm_goal_vars)::in,
+    hlds_goal::in, hlds_goal::in, list(hlds_goal)::in,
+    stm_new_pred_info::in, stm_new_pred_info::out,
+    stm_info::in, stm_info::out) is det.
 
-create_rollback_pred_2(AtomicGoalVarList, RecCallGoal, AtomicGoal, OrElseGoals,
-        !NewPredInfo, !StmInfo) :-
+create_rollback_pred_2(Context, AtomicGoalVarList, RecCallGoal,
+        AtomicGoal, OrElseGoals, !NewPredInfo, !StmInfo) :-
     common_goal_vars_from_list(AtomicGoalVarList, AtomicGoalVars),
 
     get_input_output_types(AtomicGoalVars, !.StmInfo, _, OutputTypes),
@@ -1270,14 +1279,15 @@ create_rollback_pred_2(AtomicGoalVarList, RecCallGoal, AtomicGoal, OrElseGoals,
     commit_new_pred(!.NewPredInfo, !StmInfo),
 
     ProcessGoalList = [AtomicGoal | OrElseGoals],
-    create_wrapper_for_goal_list(AtomicGoalVarList, ResultType, ResultVar,
-        ProcessGoalList, WrapperID, _, !StmInfo),
+    create_wrapper_for_goal_list(Context, AtomicGoalVarList,
+        ResultType, ResultVar, ProcessGoalList, WrapperID, _, !StmInfo),
 
     % Stores the up to date module info back into the new predicate info.
     update_new_pred_info(!.StmInfo, !NewPredInfo),
 
-    create_rollback_handler_goal(AtomicGoalVars, ResultType, InnerDI, InnerUO,
-        WrapperID, RecCallGoal, RollbackGoal, !.StmInfo, !NewPredInfo),
+    create_rollback_handler_goal(Context, AtomicGoalVars, ResultType,
+        InnerDI, InnerUO, WrapperID, RecCallGoal, RollbackGoal,
+        !.StmInfo, !NewPredInfo),
     new_pred_set_goal(RollbackGoal, !NewPredInfo),
     run_quantification_over_pred(!NewPredInfo),
     commit_new_pred(!.NewPredInfo, !StmInfo).
@@ -1292,8 +1302,8 @@ create_rollback_pred_2(AtomicGoalVarList, RecCallGoal, AtomicGoal, OrElseGoals,
     %
 :- pred apply_varset_to_preds(prog_var::in, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, prog_var_renaming::in,
-    prog_var_renaming::out) is det.
+    vartypes::in, vartypes::out,
+    prog_var_renaming::in, prog_var_renaming::out) is det.
 
 apply_varset_to_preds(ProgVar, !NewPredVarSet, !NewPredVarTypes,
         !OldPredVarSet, !OldPredVarTypes, !VarMapping) :-
@@ -1309,8 +1319,9 @@ apply_varset_to_preds(ProgVar, !NewPredVarSet, !NewPredVarTypes,
     % di and uo variables.
     %
 :- pred move_variables_to_new_pred(hlds_goal::in, hlds_goal::out,
-    stm_goal_vars::in, prog_var::in, prog_var::in, stm_new_pred_info::in,
-    stm_new_pred_info::out, stm_info::in, stm_info::out) is det.
+    stm_goal_vars::in, prog_var::in, prog_var::in,
+    stm_new_pred_info::in, stm_new_pred_info::out,
+    stm_info::in, stm_info::out) is det.
 
 move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
         InnerDI, InnerUO, !NewPredInfo, !StmInfo) :-
@@ -1349,11 +1360,11 @@ move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
 % Predicates involved in the creation of the wrapper predicate.
 %
 
-:- pred create_wrapper_for_goal_list(list(stm_goal_vars)::in, mer_type::in,
-    prog_var::in, list(hlds_goal)::in, pred_proc_id::out, hlds_goal::out,
-    stm_info::in, stm_info::out) is det.
+:- pred create_wrapper_for_goal_list(prog_context::in, list(stm_goal_vars)::in,
+    mer_type::in, prog_var::in, list(hlds_goal)::in,
+    pred_proc_id::out, hlds_goal::out, stm_info::in, stm_info::out) is det.
 
-create_wrapper_for_goal_list(AtomicGoalVarList, ResultType, ResultVar,
+create_wrapper_for_goal_list(Context, AtomicGoalVarList, ResultType, ResultVar,
         GoalList, PredProcId, CallGoal, !StmInfo) :-
     (
         GoalList = [],
@@ -1366,14 +1377,14 @@ create_wrapper_for_goal_list(AtomicGoalVarList, ResultType, ResultVar,
     ;
         GoalList = [_, _ | _],
 
-        CreateWrapperForEachGoal = (
-                pred(Goal::in, GoalVars::in, PPID::out, SInfo0::in,
-                    SInfo::out) is det :-
-            % These predicates should be plain predicates without code to
-            % validate logs.
-            create_simple_wrapper_pred(GoalVars, ResultType, ResultVar,
-                Goal, PPID, _, SInfo0, SInfo)
-        ),
+        CreateWrapperForEachGoal =
+            ( pred(Goal::in, GoalVars::in, PPID::out,
+                    SInfo0::in, SInfo::out) is det :-
+                % These predicates should be plain predicates without code to
+                % validate logs.
+                create_simple_wrapper_pred(Context, GoalVars,
+                    ResultType, ResultVar, Goal, PPID, _, SInfo0, SInfo)
+            ),
         map2_in_foldl(CreateWrapperForEachGoal, GoalList, AtomicGoalVarList,
             PPIDList, !StmInfo),
 
@@ -1385,8 +1396,8 @@ create_wrapper_for_goal_list(AtomicGoalVarList, ResultType, ResultVar,
         StmDI = AtomicGoalVars ^ vars_innerDI,
         StmUO = AtomicGoalVars ^ vars_innerUO,
 
-        create_or_else_pred(AtomicGoalVars, AtomicGoalVarList1, PPIDList,
-            StmDI, StmUO, NewAtomicGoal, !StmInfo),
+        create_or_else_pred(Context, AtomicGoalVars, AtomicGoalVarList1,
+            PPIDList, StmDI, StmUO, NewAtomicGoal, !StmInfo),
         create_wrapper_pred(AtomicGoalVars, ResultType, ResultVar,
             NewAtomicGoal, PredProcId, CallGoal, !StmInfo)
     ).
@@ -1395,8 +1406,8 @@ create_wrapper_for_goal_list(AtomicGoalVarList, ResultType, ResultVar,
     % created wrapper predicate as well as a goal to call it.
     %
 :- pred create_wrapper_pred(stm_goal_vars::in, mer_type::in, prog_var::in,
-    hlds_goal::in, pred_proc_id::out, hlds_goal::out, stm_info::in,
-    stm_info::out) is det.
+    hlds_goal::in, pred_proc_id::out, hlds_goal::out,
+    stm_info::in, stm_info::out) is det.
 
 create_wrapper_pred(AtomicGoalVars, ResultType, ResultVar0, AtomicGoal,
         PredProcId, CallGoal, !StmInfo) :-
@@ -1457,15 +1468,17 @@ create_wrapper_pred_2(AtomicGoalVars, ResultType, ResultVar0,
     %
 :- pred create_post_wrapper_goal(stm_goal_vars::in, hlds_goal::in,
     mer_type::in, prog_var::in, prog_var::in, prog_var::in, bool::in,
-    hlds_goal::out, stm_info::in, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+    hlds_goal::out, stm_info::in,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 create_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType, ResultVar,
         StmDI, StmUO, CopySTM, Goal, StmInfo, !NewPredInfo) :-
     StmModuleName = mercury_stm_builtin_module,
     ExceptionModuleName = mercury_exception_module,
 
-    construct_output(AtomicGoalVars, ResultType, ResultVar, StmInfo,
+    AtomicGoal = hlds_goal(_, AtomicGoalInfo),
+    Context = goal_info_get_context(AtomicGoalInfo),
+    construct_output(Context, AtomicGoalVars, ResultType, ResultVar, StmInfo,
         AssignResult, !NewPredInfo),
     create_aux_variable(stm_valid_result_type, yes("Stm_Expand_IsValid"),
         IsValidVar, !NewPredInfo),
@@ -1476,7 +1489,8 @@ create_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType, ResultVar,
 
     % Creates the necessary predicate calls.
 
-    create_aux_variable_assignment(RollbackCons, stm_rollback_exception_type,
+    create_aux_variable_assignment(Context,
+        RollbackCons, stm_rollback_exception_type,
         yes("Stm_Expand_Rollback"), ConstRollbackGoal, RollbackVar,
         !NewPredInfo),
     create_simple_call(StmModuleName, "stm_lock", pf_predicate, only_mode,
@@ -1543,20 +1557,22 @@ create_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType, ResultVar,
 
     % Creates a simpler wrapper predicate for or_else branches.
     %
-:- pred create_simple_wrapper_pred(stm_goal_vars::in, mer_type::in,
-    prog_var::in, hlds_goal::in, pred_proc_id::out, hlds_goal::out,
+:- pred create_simple_wrapper_pred(prog_context::in,
+    stm_goal_vars::in, mer_type::in, prog_var::in, hlds_goal::in,
+    pred_proc_id::out, hlds_goal::out,
     stm_info::in, stm_info::out) is det.
 
-create_simple_wrapper_pred(AtomicGoalVars, ResultType, ResultVar0, AtomicGoal,
-        PredProcId, CallGoal, !StmInfo) :-
-    create_simple_wrapper_pred_2(AtomicGoalVars, ResultType, ResultVar0,
-        AtomicGoal, PredProcId, _, CallGoal, !StmInfo).
+create_simple_wrapper_pred(Context, AtomicGoalVars, ResultType, ResultVar0,
+        AtomicGoal, PredProcId, CallGoal, !StmInfo) :-
+    create_simple_wrapper_pred_2(Context, AtomicGoalVars,
+        ResultType, ResultVar0, AtomicGoal, PredProcId, _, CallGoal, !StmInfo).
 
-:- pred create_simple_wrapper_pred_2(stm_goal_vars::in, mer_type::in,
-    prog_var::in, hlds_goal::in, pred_proc_id::out, stm_new_pred_info::out,
+:- pred create_simple_wrapper_pred_2(prog_context::in,
+    stm_goal_vars::in, mer_type::in, prog_var::in, hlds_goal::in,
+    pred_proc_id::out, stm_new_pred_info::out,
     hlds_goal::out, stm_info::in, stm_info::out) is det.
 
-create_simple_wrapper_pred_2(AtomicGoalVars, ResultType, ResultVar0,
+create_simple_wrapper_pred_2(Context, AtomicGoalVars, ResultType, ResultVar0,
         !.AtomicGoal, PredProcId, !:NewPredInfo, CallGoal, !StmInfo) :-
     InnerDI = AtomicGoalVars ^ vars_innerDI,
     InnerUO0 = AtomicGoalVars ^ vars_innerUO,
@@ -1589,9 +1605,9 @@ create_simple_wrapper_pred_2(AtomicGoalVars, ResultType, ResultVar0,
         InnerUO = InnerUO0
     ),
 
-    create_simple_post_wrapper_goal(AtomicGoalVars, !.AtomicGoal, ResultType,
-        ResultVar, InnerDI, InnerUO, CopyStm, WrapperGoal, !.StmInfo,
-        !NewPredInfo),
+    create_simple_post_wrapper_goal(Context, AtomicGoalVars, !.AtomicGoal,
+        ResultType, ResultVar, InnerDI, InnerUO, CopyStm, WrapperGoal,
+        !.StmInfo, !NewPredInfo),
 
     set_head_vars(InputVars ++ [ResultVar, InnerDI, InnerUO], !NewPredInfo),
     new_pred_set_goal(WrapperGoal, !NewPredInfo),
@@ -1600,8 +1616,8 @@ create_simple_wrapper_pred_2(AtomicGoalVars, ResultType, ResultVar0,
     commit_new_pred(!.NewPredInfo, !StmInfo).
 
 % To Remove eventually
-:- pred create_probe_call(string::in, prog_var::in, hlds_goals::out,
-        stm_new_pred_info::in, stm_new_pred_info::out) is det.
+:- pred create_probe_call(string::in, prog_var::in, list(hlds_goal)::out,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 create_probe_call(_Name, _Var, Goals, !NewPredInfo) :-
     Goals = [].
@@ -1611,14 +1627,15 @@ create_probe_call(_Name, _Var, Goals, !NewPredInfo) :-
     % If the value of CopySTM is "yes", a goal unifying the variable in StmDI
     % and the variable in StmUO will be created before the log is validated.
     %
-:- pred create_simple_post_wrapper_goal(stm_goal_vars::in, hlds_goal::in,
-    mer_type::in, prog_var::in, prog_var::in, prog_var::in, bool::in,
-    hlds_goal::out, stm_info::in, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred create_simple_post_wrapper_goal(prog_context::in,
+    stm_goal_vars::in, hlds_goal::in, mer_type::in, prog_var::in,
+    prog_var::in, prog_var::in, bool::in, hlds_goal::out, stm_info::in,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_simple_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType,
-        ResultVar, StmDI, StmUO, CopySTM, Goal, StmInfo, !NewPredInfo) :-
-    construct_output(AtomicGoalVars, ResultType, ResultVar, StmInfo,
+create_simple_post_wrapper_goal(Context, AtomicGoalVars, AtomicGoal,
+        ResultType, ResultVar, StmDI, StmUO, CopySTM, Goal, StmInfo,
+        !NewPredInfo) :-
+    construct_output(Context, AtomicGoalVars, ResultType, ResultVar, StmInfo,
         AssignResult, !NewPredInfo),
 
     create_probe_call("start_of_wrapper", StmDI, Call1, !NewPredInfo),
@@ -1647,12 +1664,13 @@ create_simple_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType,
 
     % or_else(<<inners>>, <<outers>>, <<STM_di>>, <<STM_uo>>) is det.
     %
-:- pred create_or_else_pred(stm_goal_vars::in, list(stm_goal_vars)::in,
-        list(pred_proc_id)::in, prog_var::in, prog_var::in, hlds_goal::out,
-        stm_info::in, stm_info::out) is det.
+:- pred create_or_else_pred(prog_context::in,
+    stm_goal_vars::in, list(stm_goal_vars)::in, list(pred_proc_id)::in,
+    prog_var::in, prog_var::in, hlds_goal::out,
+    stm_info::in, stm_info::out) is det.
 
-create_or_else_pred(AtomicGoalVars, BranchGoalVars, Closures, StmDI, StmUO,
-        CallGoal, !StmInfo) :-
+create_or_else_pred(Context, AtomicGoalVars, BranchGoalVars, Closures,
+        StmDI, StmUO, CallGoal, !StmInfo) :-
     get_input_output_varlist(AtomicGoalVars, InputVars, OutputVars),
     get_input_output_types(AtomicGoalVars, !.StmInfo, InputTypes, OutputTypes),
     get_input_output_modes(AtomicGoalVars, InputModes, OutputModes),
@@ -1674,18 +1692,18 @@ create_or_else_pred(AtomicGoalVars, BranchGoalVars, Closures, StmDI, StmUO,
     set_head_vars(InputVars ++ OutputVars ++ [NewStmDI, NewStmUO],
         NewPredInfo2, NewPredInfo3),
 
-    create_or_else_pred_2(BranchGoalVars, Closures, NewStmDI, NewStmUO,
-        ReturnType, !.StmInfo, NewPredInfo3, NewPredInfo),
+    create_or_else_pred_2(Context, BranchGoalVars, Closures,
+        NewStmDI, NewStmUO, ReturnType, !.StmInfo, NewPredInfo3, NewPredInfo),
 
     commit_new_pred(NewPredInfo, !StmInfo).
 
-:- pred create_or_else_pred_2(list(stm_goal_vars)::in, list(pred_proc_id)::in,
-        prog_var::in, prog_var::in, mer_type::in, stm_info::in,
-        stm_new_pred_info::in, stm_new_pred_info::out) is det.
+:- pred create_or_else_pred_2(prog_context::in,
+    list(stm_goal_vars)::in, list(pred_proc_id)::in,
+    prog_var::in, prog_var::in, mer_type::in, stm_info::in,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_or_else_pred_2(AtomicGoalVars, Closures, StmDI, StmUO, ReturnType,
-        StmInfo, !NewPredInfo) :-
-
+create_or_else_pred_2(Context, AtomicGoalVars, Closures, StmDI, StmUO,
+        ReturnType, StmInfo, !NewPredInfo) :-
     list.length(Closures, ClosureCount),
     create_or_else_inner_stm_vars(ClosureCount, InnerSTMVars, !NewPredInfo),
 
@@ -1694,10 +1712,10 @@ create_or_else_pred_2(AtomicGoalVars, Closures, StmDI, StmUO, ReturnType,
     make_type_info(stm_rollback_exception_type, ExceptRttiVar,
         CreateExceptTypeInfo, !NewPredInfo),
 
-    create_or_else_end_branch(InnerSTMVars, StmDI, StmUO, ExceptRttiVar,
-        EndBranchGoal, !NewPredInfo),
+    create_or_else_end_branch(Context, InnerSTMVars, StmDI, StmUO,
+        ExceptRttiVar, EndBranchGoal, !NewPredInfo),
 
-    create_or_else_branches(AtomicGoalVars, ReturnType, StmDI, StmUO,
+    create_or_else_branches(Context, AtomicGoalVars, ReturnType, StmDI, StmUO,
         InnerSTMVars, ReturnRttiVar, ExceptRttiVar, Closures, EndBranchGoal,
         MainGoal0, StmInfo, !NewPredInfo),
 
@@ -1711,12 +1729,13 @@ create_or_else_pred_2(AtomicGoalVars, Closures, StmDI, StmUO, ReturnType,
     new_pred_set_goal(MainGoal, !NewPredInfo),
     run_quantification_over_pred(!NewPredInfo).
 
-:- pred create_or_else_branches(list(stm_goal_vars)::in, mer_type::in,
+:- pred create_or_else_branches(prog_context::in,
+    list(stm_goal_vars)::in, mer_type::in,
     prog_var::in, prog_var::in, list(prog_var)::in, prog_var::in, prog_var::in,
     list(pred_proc_id)::in, hlds_goal::in, hlds_goal::out, stm_info::in,
     stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_or_else_branches(AtomicGoalVars, ReturnType, OuterStmDIVar,
+create_or_else_branches(Context, AtomicGoalVars, ReturnType, OuterStmDIVar,
         OuterStmUOVar, InnerSTMVars, RttiVar, RollbackExceptionRttiVar,
         WrapperIDs, EndBranch, Goal, StmInfo, !NewPredInfo) :-
     ( if
@@ -1730,10 +1749,10 @@ create_or_else_branches(AtomicGoalVars, ReturnType, OuterStmDIVar,
         InnerSTMVars = [InnerVar | InnerSTMVars0],
         WrapperIDs = [WrapID | WrapperIDs0]
     then
-        create_or_else_branches(AGVs, ReturnType, OuterStmDIVar,
+        create_or_else_branches(Context, AGVs, ReturnType, OuterStmDIVar,
             OuterStmUOVar, InnerSTMVars0, RttiVar, RollbackExceptionRttiVar,
             WrapperIDs0, EndBranch, Goal0, StmInfo, !NewPredInfo),
-        create_or_else_branch(AGV, ReturnType, OuterStmDIVar,
+        create_or_else_branch(Context, AGV, ReturnType, OuterStmDIVar,
             OuterStmUOVar, InnerVar, RttiVar, RollbackExceptionRttiVar,
             WrapID, Goal0, Goal, StmInfo, !NewPredInfo)
     else
@@ -1816,12 +1835,12 @@ map3_in_foldl(Pred, Src1, Src2, Src3, Dest, !Accum) :-
         unexpected($module, $pred, "source list lengths mismatch")
     ).
 
-:- pred create_or_else_end_branch(list(prog_var)::in, prog_var::in,
-    prog_var::in, prog_var::in, hlds_goal::out, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred create_or_else_end_branch(prog_context::in,
+    list(prog_var)::in, prog_var::in, prog_var::in, prog_var::in,
+    hlds_goal::out, stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_or_else_end_branch(StmVars, OuterSTMDI, OuterSTMUO, ExceptionRttiVar,
-        Goal, !NewPredInfo) :-
+create_or_else_end_branch(Context, StmVars, OuterSTMDI, OuterSTMUO,
+        ExceptionRttiVar, Goal, !NewPredInfo) :-
     MakeIntermediateStmVars =
         ( pred(_::in, Var::out, NPI0::in, NPI::out) is det:-
             create_aux_variable(stm_state_type, yes("InterSTM"), Var,
@@ -1857,7 +1876,7 @@ create_or_else_end_branch(StmVars, OuterSTMDI, OuterSTMUO, ExceptionRttiVar,
         only_mode, detism_det, purity_impure, [], [],
         instmap_delta_bind_no_var, UnlockCall, !NewPredInfo),
 
-    create_aux_variable_assignment(stm_rollback_retry_functor,
+    create_aux_variable_assignment(Context, stm_rollback_retry_functor,
         stm_rollback_exception_type, yes("RetryCons"), AssignRetryCons,
         RetryConsVar, !NewPredInfo),
     create_simple_call(mercury_exception_module, "throw", pf_predicate,
@@ -1876,7 +1895,7 @@ create_or_else_end_branch(StmVars, OuterSTMDI, OuterSTMUO, ExceptionRttiVar,
 
     % Failure break
 
-    create_aux_variable_assignment(stm_rollback_exception_functor,
+    create_aux_variable_assignment(Context, stm_rollback_exception_functor,
         stm_rollback_exception_type, yes("RollbackCons"), AssignRollbackCons,
         RollbackConsVar, !NewPredInfo),
     create_simple_call(mercury_exception_module, "throw", pf_predicate,
@@ -1887,8 +1906,8 @@ create_or_else_end_branch(StmVars, OuterSTMDI, OuterSTMUO, ExceptionRttiVar,
     create_plain_conj([UnlockCall, AssignRollbackCons, ThrowCall],
         InvalidGoal),
 
-    template_lock_and_validate_many(StmVars, no, ValidGoal, InvalidGoal,
-        Goals, !NewPredInfo),
+    template_lock_and_validate_many(Context, StmVars, no,
+        ValidGoal, InvalidGoal, Goals, !NewPredInfo),
     create_plain_conj(Goals, Goal).
 
     % Variables are:
@@ -1907,12 +1926,13 @@ create_or_else_end_branch(StmVars, OuterSTMDI, OuterSTMUO, ExceptionRttiVar,
     %   outside this predicate as it needs to be known to the validate & merge
     %   branch.
     %
-:- pred create_or_else_branch(stm_goal_vars::in, mer_type::in, prog_var::in,
+:- pred create_or_else_branch(prog_context::in,
+    stm_goal_vars::in, mer_type::in, prog_var::in,
     prog_var::in, prog_var::in, prog_var::in, prog_var::in,
     pred_proc_id::in, hlds_goal::in, hlds_goal::out, stm_info::in,
     stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_or_else_branch(AtomicGoalVars, ReturnType, OuterStmDIVar,
+create_or_else_branch(Context, AtomicGoalVars, ReturnType, OuterStmDIVar,
         OuterStmUOVar, InnerSTMVar, RttiVar, RollbackExceptionRttiVar,
         WrapperID, RetryBranch, Goal, StmInfo, !NewPredInfo) :-
     get_input_output_varlist(AtomicGoalVars, InputVars, _),
@@ -1986,10 +2006,10 @@ create_or_else_branch(AtomicGoalVars, ReturnType, OuterStmDIVar,
 
     create_plain_conj([DiscardCall, RethrowCall], NotRetryBranch),
 
-    % Code to generate top level goals
-    template_if_exceptres_is_cons(RollbackExceptionRttiVar, ExceptUnivVar,
-        stm_rollback_retry_functor, RetryBranch, NotRetryBranch, IfRetryGoal,
-        !NewPredInfo),
+    % Code to generate top level goals.
+    template_if_exceptres_is_cons(Context,
+        RollbackExceptionRttiVar, ExceptUnivVar, stm_rollback_retry_functor,
+        RetryBranch, NotRetryBranch, IfRetryGoal, !NewPredInfo),
 
     create_plain_conj([DeconstructException, IfRetryGoal], ExceptionBranch),
     create_switch_disjunction(ReturnExceptVar,
@@ -2026,8 +2046,8 @@ make_return_type(Types, ReturnType) :-
     % the return value of the wrapper.
     %
 :- pred deconstruct_output(stm_goal_vars::in, mer_type::in, prog_var::in,
-    hlds_goal::out, stm_info::in, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+    hlds_goal::out, stm_info::in,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 deconstruct_output(AtomicGoalVars, ReturnType, ReturnExceptVar,
         Goal, StmInfo, !NewPredInfo) :-
@@ -2069,19 +2089,20 @@ deconstruct_output(AtomicGoalVars, ReturnType, ReturnExceptVar,
     % values into a single variable to be passed along with the exception
     % result.
     %
-:- pred construct_output(stm_goal_vars::in, mer_type::in, prog_var::in,
-    stm_info::in, hlds_goals::out, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred construct_output(prog_context::in, stm_goal_vars::in,
+    mer_type::in, prog_var::in, stm_info::in, list(hlds_goal)::out,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-construct_output(AtomicGoalVars, ResultType, ResultVar, StmInfo, Goals,
-        !NewPredInfo) :-
+construct_output(Context, AtomicGoalVars, ResultType, ResultVar, StmInfo,
+        Goals, !NewPredInfo) :-
     get_input_output_varlist(AtomicGoalVars, _, OutputVars),
     get_input_output_types(AtomicGoalVars, StmInfo, _, OutputTypes),
     (
         OutputTypes = [],
         % Since a value must be returned, simply return a value which will be
         % discarded.
-        create_const_assign(ResultVar, stm_dummy_output_functor, Goal),
+        make_const_construction(Context,
+            ResultVar, stm_dummy_output_functor, Goal),
         Goals = [Goal]
     ;
         OutputTypes = [_],
@@ -2185,25 +2206,18 @@ create_aux_variable(Type, MaybeName0, Var, !NewPredInfo) :-
     !NewPredInfo ^ new_pred_proc_info := ProcInfo,
     !NewPredInfo ^ new_pred_var_cnt := Cnt.
 
-    % Creates a goal which assigns a variable to a cons_id.
-    %
-:- pred create_const_assign(prog_var::in, cons_id::in, hlds_goal::out)
-    is det.
-
-create_const_assign(Var, Const, AssignmentGoal) :-
-    make_const_construction(Var, Const, AssignmentGoal).
-
     % Creates a new auxiliary variable and a goal which assigns it to a
     % cons_id.
     %
-:- pred create_aux_variable_assignment(cons_id::in, mer_type::in,
-    maybe(string)::in, hlds_goal::out, prog_var::out, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred create_aux_variable_assignment(prog_context::in,
+    cons_id::in, mer_type::in, maybe(string)::in,
+    hlds_goal::out, prog_var::out,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_aux_variable_assignment(Cons, Type, MaybeName, Goal, Var,
+create_aux_variable_assignment(Context, ConsId, Type, MaybeName, Goal, Var,
         !NewPredInfo) :-
     create_aux_variable(Type, MaybeName, Var, !NewPredInfo),
-    create_const_assign(Var, Cons, Goal).
+    make_const_construction(Context, Var, ConsId, Goal).
 
     % Creates a simple test between two variables (using the unify goal).
     %
@@ -2342,8 +2356,8 @@ create_if_then_else(ExistVars, Cond, Then, Else, Detism, Purity, OutGoal,
     % Creates a switch goal.
     %
 :- pred create_switch_disjunction(prog_var::in, list(case)::in,
-    determinism::in, purity::in, hlds_goal::out, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+    determinism::in, purity::in, hlds_goal::out,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 create_switch_disjunction(ProgVar, Cases, Detism, Purity, OutGoal,
         !NewPredInfo) :-
@@ -2358,7 +2372,7 @@ create_switch_disjunction(ProgVar, Cases, Detism, Purity, OutGoal,
     % Creates a promise_purity around a goal for a given purity.
     %
 :- pred create_promise_purity_scope(hlds_goal::in, purity::in,
-        hlds_goal::out) is det.
+    hlds_goal::out) is det.
 
 create_promise_purity_scope(GoalIn, ScopePurity, GoalOut) :-
     GoalIn = hlds_goal(_, GoalInInfo),
@@ -2375,7 +2389,7 @@ create_promise_purity_scope(GoalIn, ScopePurity, GoalOut) :-
 
     % Creates a list of regular conjoined goals.
     %
-:- pred create_plain_conj(hlds_goals::in, hlds_goal::out) is det.
+:- pred create_plain_conj(list(hlds_goal)::in, hlds_goal::out) is det.
 
 create_plain_conj(GoalsInConj, ConjGoal) :-
     Type = plain_conj,
@@ -2392,8 +2406,8 @@ create_plain_conj(GoalsInConj, ConjGoal) :-
 
     % Create typeinfo for use in polymorphic predicates
     %
-:- pred make_type_info(mer_type::in, prog_var::out,
-    hlds_goals::out, stm_new_pred_info::in, stm_new_pred_info::out) is det.
+:- pred make_type_info(mer_type::in, prog_var::out, list(hlds_goal)::out,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 make_type_info(Type, Var, Goals, NewPredInfo0, NewPredInfo) :-
     NewPredInfo0 = stm_new_pred_info(ModuleInfo0, PredId, ProcId,
@@ -2508,8 +2522,8 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
 
     % Sets the head variables of the new predicate.
     %
-:- pred set_head_vars(list(prog_var)::in, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred set_head_vars(list(prog_var)::in,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 set_head_vars(NewHeadVars, !NewPredInfo) :-
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
@@ -2519,8 +2533,8 @@ set_head_vars(NewHeadVars, !NewPredInfo) :-
     % Writes the changes made to the new predicate to the predicate table
     % and returns an updates the stm_info state.
     %
-:- pred commit_new_pred(stm_new_pred_info::in, stm_info::in,
-    stm_info::out) is det.
+:- pred commit_new_pred(stm_new_pred_info::in,
+    stm_info::in, stm_info::out) is det.
 
 commit_new_pred(NewPred, StmInfo0, StmInfo) :-
     StmInfo0 = stm_info(_StmModuleInfo0, OrigPredId, OrigProcId, OrigProcInfo,
@@ -2536,8 +2550,8 @@ commit_new_pred(NewPred, StmInfo0, StmInfo) :-
     % If changes have been made to the stm_info type (specifically the
     % module_info), update these changes in stm_new_pred_info.
     %
-:- pred update_new_pred_info(stm_info::in, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred update_new_pred_info(stm_info::in,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 update_new_pred_info(StmInfo, !NewPredInfo) :-
     ModuleInfo = StmInfo ^ stm_info_module_info,
@@ -2546,8 +2560,8 @@ update_new_pred_info(StmInfo, !NewPredInfo) :-
     % Runs quantification and recalculates the instmap-delta over the
     % new predicate.
     %
-:- pred run_quantification_over_pred(stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred run_quantification_over_pred(
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 run_quantification_over_pred(!NewPredInfo) :-
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
@@ -2561,8 +2575,8 @@ run_quantification_over_pred(!NewPredInfo) :-
 
     % Sets the goal of the new predicate.
     %
-:- pred new_pred_set_goal(hlds_goal::in, stm_new_pred_info::in,
-    stm_new_pred_info::out) is det.
+:- pred new_pred_set_goal(hlds_goal::in,
+    stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 new_pred_set_goal(Goal, !NewPredInfo) :-
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
@@ -2629,8 +2643,8 @@ set_list_val(X, _, X).
     % variables of the original atomic goal. Input variables will have
     % the mode "in" while output variables will have the mode "out".
     %
-:- pred get_input_output_modes(stm_goal_vars::in, list(mer_mode)::out,
-    list(mer_mode)::out) is det.
+:- pred get_input_output_modes(stm_goal_vars::in,
+    list(mer_mode)::out, list(mer_mode)::out) is det.
 
 get_input_output_modes(StmGoalVars, InputModes, OutputModes) :-
     get_input_output_varlist(StmGoalVars, InputVars, OutputVars),
@@ -2639,7 +2653,7 @@ get_input_output_modes(StmGoalVars, InputModes, OutputModes) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Special (dummy) predicate names
+    % Special (dummy) predicate names.
     %
 :- func stm_inner_outer = sym_name.
 :- func stm_outer_inner = sym_name.

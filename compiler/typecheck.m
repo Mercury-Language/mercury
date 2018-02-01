@@ -857,8 +857,9 @@ generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     pred_info_set_markers(Markers, !PredInfo),
 
     % Generate `PredName = "<PredName>"'.
+    pred_info_get_context(!.PredInfo, Context),
     varset.new_named_var("PredName", PredNameVar, !VarSet),
-    make_string_const_construction(PredNameVar, PredName, UnifyGoal),
+    make_string_const_construction(Context, PredNameVar, PredName, UnifyGoal),
 
     % Generate `private_builtin.no_clauses(PredName)'
     % or `private_builtin.sorry(PredName)'
@@ -868,7 +869,6 @@ generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     else
         CalleeName = "no_clauses"
     ),
-    pred_info_get_context(!.PredInfo, Context),
     generate_simple_call(mercury_private_builtin_module, CalleeName,
         pf_predicate, only_mode, detism_det, purity_pure, [PredNameVar], [],
         instmap_delta_bind_no_var, ModuleInfo, Context, CallGoal),

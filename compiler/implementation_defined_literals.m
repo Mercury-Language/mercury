@@ -220,20 +220,20 @@ make_impl_defined_literal(Var, Name, Context, Info, Goal) :-
     Context = term.context(File, Line),
     Info = subst_literals_info(ModuleInfo, PredInfo, PredId),
     ( if Name = "file" then
-        make_string_const_construction(Var, File, Goal)
+        make_string_const_construction(Context, Var, File, Goal)
     else if Name = "line" then
-        make_int_const_construction(Var, Line, Goal)
+        make_int_const_construction(Context, Var, Line, Goal)
     else if Name = "module" then
         ModuleName = pred_info_module(PredInfo),
         Str = sym_name_to_string(ModuleName),
-        make_string_const_construction(Var, Str, Goal)
+        make_string_const_construction(Context, Var, Str, Goal)
     else if Name = "pred" then
         Str = pred_id_to_string(ModuleInfo, PredId),
-        make_string_const_construction(Var, Str, Goal)
+        make_string_const_construction(Context, Var, Str, Goal)
     else if Name = "grade" then
         module_info_get_globals(ModuleInfo, Globals),
         grade_directory_component(Globals, Grade),
-        make_string_const_construction(Var, Grade, Goal)
+        make_string_const_construction(Context, Var, Grade, Goal)
     else
         % These should have been caught during type checking.
         unexpected($module, $pred, "unknown literal")

@@ -60,6 +60,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module term.
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
@@ -76,10 +77,11 @@
 
 evaluate_call(Globals, VarTypes, InstMap,
         ModuleName, ProcName, ModeNum, Args, GoalExpr, !GoalInfo) :-
-    LookupArgs = (func(Var) = arg_hlds_info(Var, Type, Inst) :-
-        instmap_lookup_var(InstMap, Var, Inst),
-        lookup_var_type(VarTypes, Var, Type)
-    ),
+    LookupArgs =
+        ( func(Var) = arg_hlds_info(Var, Type, Inst) :-
+            instmap_lookup_var(InstMap, Var, Inst),
+            lookup_var_type(VarTypes, Var, Type)
+        ),
     ArgHldsInfos = list.map(LookupArgs, Args),
     evaluate_call_2(Globals, ModuleName, ProcName, ModeNum, ArgHldsInfos,
        GoalExpr, !GoalInfo).
@@ -1043,10 +1045,10 @@ make_assignment(OutputArg, InputArg, Goal) :-
     hlds_goal_expr::out) is det.
 
 make_construction_goal_expr(Arg, ConsId, GoalExpr) :-
-    make_const_construction(Arg ^ arg_var, ConsId, Goal),
     % We ignore the generic goal info returned by make_const_construction;
-    % our caller will construct a goal info that is specialized to the
+    % our caller will construct a goal_info that is specialized to the
     % call being replaced.
+    make_const_construction(term.context_init, Arg ^ arg_var, ConsId, Goal),
     Goal = hlds_goal(GoalExpr, _).
 
 %---------------------------------------------------------------------------%

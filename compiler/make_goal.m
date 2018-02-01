@@ -79,16 +79,16 @@
     % Ths cons_id passed to make_const_construction must be fully module
     % qualified.
     %
-:- pred make_int_const_construction(prog_var::in, int::in,
-    hlds_goal::out) is det.
-:- pred make_string_const_construction(prog_var::in, string::in,
-    hlds_goal::out) is det.
-:- pred make_float_const_construction(prog_var::in, float::in,
-    hlds_goal::out) is det.
-:- pred make_char_const_construction(prog_var::in, char::in,
-    hlds_goal::out) is det.
-:- pred make_const_construction(prog_var::in, cons_id::in,
-    hlds_goal::out) is det.
+:- pred make_int_const_construction(prog_context::in,
+    prog_var::in, int::in, hlds_goal::out) is det.
+:- pred make_string_const_construction(prog_context::in,
+    prog_var::in, string::in, hlds_goal::out) is det.
+:- pred make_float_const_construction(prog_context::in,
+    prog_var::in, float::in, hlds_goal::out) is det.
+:- pred make_char_const_construction(prog_context::in,
+    prog_var::in, char::in, hlds_goal::out) is det.
+:- pred make_const_construction(prog_context::in,
+    prog_var::in, cons_id::in, hlds_goal::out) is det.
 
 :- pred make_int_const_construction_alloc(int::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
@@ -150,6 +150,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.set_of_var.
 
+:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -231,71 +232,71 @@ make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
 make_int_const_construction_alloc_in_proc(Int, MaybeName, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(int_type, MaybeName, Var, !ProcInfo),
-    make_int_const_construction(Var, Int, Goal).
+    make_int_const_construction(term.context_init, Var, Int, Goal).
 
 make_string_const_construction_alloc_in_proc(String, MaybeName, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(string_type, MaybeName, Var, !ProcInfo),
-    make_string_const_construction(Var, String, Goal).
+    make_string_const_construction(term.context_init, Var, String, Goal).
 
 make_float_const_construction_alloc_in_proc(Float, MaybeName, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(float_type, MaybeName, Var, !ProcInfo),
-    make_float_const_construction(Var, Float, Goal).
+    make_float_const_construction(term.context_init, Var, Float, Goal).
 
 make_char_const_construction_alloc_in_proc(Char, MaybeName, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(char_type, MaybeName, Var, !ProcInfo),
-    make_char_const_construction(Var, Char, Goal).
+    make_char_const_construction(term.context_init, Var, Char, Goal).
 
 make_const_construction_alloc_in_proc(ConsId, Type, MaybeName, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Type, MaybeName, Var, !ProcInfo),
-    make_const_construction(Var, ConsId, Goal).
+    make_const_construction(term.context_init, Var, ConsId, Goal).
 
 make_int_const_construction_alloc(Int, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
     varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     add_var_type(Var, int_type, !VarTypes),
-    make_int_const_construction(Var, Int, Goal).
+    make_int_const_construction(term.context_init, Var, Int, Goal).
 
 make_string_const_construction_alloc(String, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
     varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     add_var_type(Var, string_type, !VarTypes),
-    make_string_const_construction(Var, String, Goal).
+    make_string_const_construction(term.context_init, Var, String, Goal).
 
 make_float_const_construction_alloc(Float, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
     varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     add_var_type(Var, float_type, !VarTypes),
-    make_float_const_construction(Var, Float, Goal).
+    make_float_const_construction(term.context_init, Var, Float, Goal).
 
 make_char_const_construction_alloc(Char, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
     varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     add_var_type(Var, char_type, !VarTypes),
-    make_char_const_construction(Var, Char, Goal).
+    make_char_const_construction(term.context_init, Var, Char, Goal).
 
 make_const_construction_alloc(ConsId, Type, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
     varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     add_var_type(Var, Type, !VarTypes),
-    make_const_construction(Var, ConsId, Goal).
+    make_const_construction(term.context_init, Var, ConsId, Goal).
 
-make_int_const_construction(Var, Int, Goal) :-
-    make_const_construction(Var, int_const(Int), Goal).
+make_int_const_construction(Context, Var, Int, Goal) :-
+    make_const_construction(Context, Var, int_const(Int), Goal).
 
-make_string_const_construction(Var, String, Goal) :-
-    make_const_construction(Var, string_const(String), Goal).
+make_string_const_construction(Context, Var, String, Goal) :-
+    make_const_construction(Context, Var, string_const(String), Goal).
 
-make_float_const_construction(Var, Float, Goal) :-
-    make_const_construction(Var, float_const(Float), Goal).
+make_float_const_construction(Context, Var, Float, Goal) :-
+    make_const_construction(Context, Var, float_const(Float), Goal).
 
-make_char_const_construction(Var, Char, Goal) :-
-    make_const_construction(Var, char_const(Char), Goal).
+make_char_const_construction(Context, Var, Char, Goal) :-
+    make_const_construction(Context, Var, char_const(Char), Goal).
 
-make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
+make_const_construction(Context, Var, ConsId, Goal) :-
     RHS = rhs_functor(ConsId, is_not_exist_constr, []),
     Inst = bound(unique, inst_test_results_fgtc, [bound_functor(ConsId, [])]),
     UnifyMode = unify_modes_lhs_rhs(
@@ -303,12 +304,14 @@ make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
         from_to_insts(Inst, Inst)),
     Unification = construct(Var, ConsId, [], [],
         construct_dynamically, cell_is_unique, no_construct_sub_info),
-    Context = unify_context(umc_explicit, []),
-    GoalExpr = unify(Var, RHS, UnifyMode, Unification, Context),
+    UnifyContext = unify_context(umc_explicit, []),
+    GoalExpr = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
     NonLocals = set_of_var.make_singleton(Var),
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert_var(Var, Inst, InstMapDelta0, InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo).
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
+        GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 construct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),

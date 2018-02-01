@@ -1710,7 +1710,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
 
     ShroudedPredProcId = shroud_pred_proc_id(proc(GeneratorPredId, ProcId)),
     GeneratorConsId = closure_cons(ShroudedPredProcId, lambda_normal),
-    make_const_construction(GeneratorPredVar, GeneratorConsId,
+    make_const_construction(Context, GeneratorPredVar, GeneratorConsId,
         MakeGeneratorVarGoal),
 
     generate_call_table_lookup_goals(NumberedInputVars,
@@ -2309,7 +2309,7 @@ generate_call_table_lookup_goals(NumberedVars, PredId, ProcId,
         PrefixGoals, MainCodeStr, CallTableTipVarCodeStr) :-
     InfoToPtrCodeStr = "\t" ++ cur_table_node_name ++ " = " ++
         "&" ++ proc_table_info_name ++ "->MR_pt_tablenode;\n",
-    generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
+    generate_get_table_info_goal(PredId, ProcId, Context, !VarSet, !VarTypes,
         proc_table_info_name, InfoArg, GetTableInfoGoal),
     MaybeStatsRef = stats_ref(Statistics, call_table),
     DebugArgStr = get_debug_arg_string(!.TableInfo),
@@ -2320,7 +2320,7 @@ generate_call_table_lookup_goals(NumberedVars, PredId, ProcId,
     PrefixGoals = [GetTableInfoGoal] ++ LookupPrefixGoals,
     % We ignore _StatsPrefixGoals and _StatsExtraArgs because we always
     % include ProcTableInfoVar in the arguments.
-    maybe_record_overall_stats(PredId, ProcId,
+    maybe_record_overall_stats(PredId, ProcId, Context,
         proc_table_info_name, cur_table_node_name,
         MaybeStatsRef, !VarSet, !VarTypes,
         _StatsPrefixGoals, _StatsExtraArgs, StatsCodeStr),
@@ -2349,7 +2349,7 @@ generate_answer_table_lookup_goals(NumberedVars, PredId, ProcId, Statistics,
     generate_table_lookup_goals(NumberedVars, MaybeStatsRef,
         DebugArgStr, BackArgStr, Context, !VarSet, !VarTypes, !TableInfo,
         OutputSteps, LookupArgs, LookupPrefixGoals, LookupCodeStr),
-    maybe_record_overall_stats(PredId, ProcId,
+    maybe_record_overall_stats(PredId, ProcId, Context,
         proc_table_info_name, cur_table_node_name,
         MaybeStatsRef, !VarSet, !VarTypes,
         StatsPrefixGoals, StatsExtraArgs, StatsCodeStr),
@@ -2357,12 +2357,12 @@ generate_answer_table_lookup_goals(NumberedVars, PredId, ProcId, Statistics,
     ForeignArgs = StatsExtraArgs ++ LookupArgs,
     PrefixGoals = StatsPrefixGoals ++ LookupPrefixGoals.
 
-:- pred maybe_record_overall_stats(pred_id::in, proc_id::in,
+:- pred maybe_record_overall_stats(pred_id::in, proc_id::in, prog_context::in,
     string::in, string::in, maybe(string)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     list(hlds_goal)::out, list(foreign_arg)::out, string::out) is det.
 
-maybe_record_overall_stats(PredId, ProcId, InfoVarName, TipVarName,
+maybe_record_overall_stats(PredId, ProcId, Context, InfoVarName, TipVarName,
         MaybeStatsRef, !VarSet, !VarTypes, PrefixGoals, Args, StatsCodeStr) :-
     (
         MaybeStatsRef = no,
@@ -2371,8 +2371,8 @@ maybe_record_overall_stats(PredId, ProcId, InfoVarName, TipVarName,
         StatsCodeStr = ""
     ;
         MaybeStatsRef = yes(StatsRef),
-        generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
-            InfoVarName, Arg, Goal),
+        generate_get_table_info_goal(PredId, ProcId, Context,
+            !VarSet, !VarTypes, InfoVarName, Arg, Goal),
         PrefixGoals = [Goal],
         Args = [Arg],
         StatsCodeStr =
@@ -2384,10 +2384,11 @@ maybe_record_overall_stats(PredId, ProcId, InfoVarName, TipVarName,
     ).
 
 :- pred generate_get_table_info_goal(pred_id::in, proc_id::in,
+    prog_context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     string::in, foreign_arg::out, hlds_goal::out) is det.
 
-generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
+generate_get_table_info_goal(PredId, ProcId, Context, !VarSet, !VarTypes,
         InfoVarName, Arg, Goal) :-
     generate_new_table_var("ProcTableInfo", proc_table_info_type,
         !VarSet, !VarTypes, ProcTableInfoVar),
@@ -2396,7 +2397,7 @@ generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
         proc_table_info_type, bp_native_if_possible),
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
     InfoConsId = tabling_info_const(ShroudedPredProcId),
-    make_const_construction(ProcTableInfoVar, InfoConsId,
+    make_const_construction(Context, ProcTableInfoVar, InfoConsId,
         hlds_goal(GoalExpr, GoalInfo0)),
     goal_info_set_purity(purity_impure, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
