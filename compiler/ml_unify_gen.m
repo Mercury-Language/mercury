@@ -2246,8 +2246,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
             MaybeRepn = yes(Repn)
         ),
         CtorRepns = Repn ^ dur_ctor_repns,
-        ctors_with_and_without_secondary_tag(CtorRepns,
-            0, NumWith, 0, NumWithout),
+        ctors_with_and_without_secondary_tag(CtorRepns, NumWith, NumWithout),
         ( if
             NumWith > 0,
             NumWithout > 0
@@ -2281,24 +2280,6 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
     QualifiedFieldName =
         qual_field_var_name(FieldQualifier, type_qual, fvn_data_tag),
     FieldId = ml_field_named(QualifiedFieldName, ClassPtrType).
-
-    % XXX TYPE_REPN Fix the redundancy between this predicate and
-    % ml_num_ctors_that_need_secondary_tag.
-    %
-:- pred ctors_with_and_without_secondary_tag(list(constructor_repn)::in,
-    int::in, int::out, int::in, int::out) is det.
-
-ctors_with_and_without_secondary_tag([],
-        !NumWith, !NumWithout).
-ctors_with_and_without_secondary_tag([CtorRepn | CtorRepns],
-        !NumWith, !NumWithout) :-
-    ( if ml_uses_secondary_tag(CtorRepn, _) then
-        !:NumWith = !.NumWith + 1
-    else
-        !:NumWithout = !.NumWithout + 1
-    ),
-    ctors_with_and_without_secondary_tag(CtorRepns,
-        !NumWith, !NumWithout).
 
 :- func ml_gen_field_id(mlds_target_lang, mer_type, cons_tag,
     mlds_class_name, arity, mlds_field_var_name) = mlds_field_id.

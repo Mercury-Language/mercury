@@ -100,12 +100,12 @@
 
 %---------------------------------------------------------------------------%
 
-    % ml_uses_secondary_tag(CtorRepn, SecondaryTag):
+    % ctors_with_and_without_secondary_tag(CtorRepns, NumWith, NumWithout):
     %
-    % Check if this constructor uses a secondary tag,
-    % and if so, return the secondary tag's value.
+    % Return the number of constructors with and without secondary tags.
     %
-:- pred ml_uses_secondary_tag(constructor_repn::in, int::out) is semidet.
+:- pred ctors_with_and_without_secondary_tag(list(constructor_repn)::in,
+    int::out, int::out) is det.
 
 :- type tag_uses_base_class
     --->    tag_does_not_use_base_class
@@ -494,9 +494,9 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
     BaseClassQualifier = mlds_append_class_qualifier(Target,
         BaseClassModuleName, QualKind, BaseClassName, BaseClassArity),
 
-    ml_num_ctors_that_need_secondary_tag(CtorRepns,
-        0, NumCtors, 0, NumSecTagCtors),
-    ( if NumSecTagCtors > 0 then
+    ctors_with_and_without_secondary_tag(CtorRepns,
+        NumWithSecTag, NumWithoutSecTag),
+    ( if NumWithSecTag > 0 then
         % Generate the members for the secondary tag.
         TagVarMember = mlds_field_var_defn(fvn_data_tag, Context,
             ml_gen_member_data_decl_flags, mlds_native_int_type,
@@ -511,7 +511,7 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
         % If all the constructors for this type need a secondary tag,
         % then we put the secondary tag members directly in the base class;
         % otherwise, we put it in a separate nested derived class.
-        ( if NumSecTagCtors = NumCtors then
+        ( if NumWithoutSecTag = 0 then
             TagFieldVarMembers = TagFieldVarMembers0,
             TagClassMembers = [],
             TagClassId = BaseClassId
@@ -569,30 +569,30 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
 
     !:ClassDefns = [ClassDefn | !.ClassDefns].
 
-:- pred ml_num_ctors_that_need_secondary_tag(list(constructor_repn)::in,
+%---------------------------------------------------------------------------%
+
+ctors_with_and_without_secondary_tag(CtorRepns, NumWith, NumWithout) :-
+    ctors_with_and_without_secondary_tag_loop(CtorRepns,
+        0, NumWith, 0, NumWithout).
+
+:- pred ctors_with_and_without_secondary_tag_loop(list(constructor_repn)::in,
     int::in, int::out, int::in, int::out) is det.
 
-ml_num_ctors_that_need_secondary_tag([],
-        !NumCtors, !NumSecTagCtors).
-ml_num_ctors_that_need_secondary_tag([CtorRepn | CtorRepns],
-        !NumCtors, !NumSecTagCtors) :-
-    !:NumCtors = !.NumCtors + 1,
+ctors_with_and_without_secondary_tag_loop([],
+        !NumWith, !NumWithout).
+ctors_with_and_without_secondary_tag_loop([CtorRepn | CtorRepns],
+        !NumWith, !NumWithout) :-
     TagVal = CtorRepn ^ cr_tag,
     MaybeSecTag = get_secondary_tag(TagVal),
     (
         MaybeSecTag = yes(_),
-        !:NumSecTagCtors = !.NumSecTagCtors + 1
+        !:NumWith = !.NumWith + 1
     ;
-        MaybeSecTag = no
+        MaybeSecTag = no,
+        !:NumWithout = !.NumWithout + 1
     ),
-    ml_num_ctors_that_need_secondary_tag(CtorRepns,
-        !NumCtors, !NumSecTagCtors).
-
-:- func get_tagval(type_ctor, cons_id_to_tag_map, constructor) = cons_tag.
-
-get_tagval(TypeCtor, ConsIdToTagMap, Ctor) = TagVal :-
-    Ctor = ctor(_MaybeExistConstraints, Name, _Args, Arity, _Ctxt),
-    map.lookup(ConsIdToTagMap, cons(Name, Arity, TypeCtor), TagVal).
+    ctors_with_and_without_secondary_tag_loop(CtorRepns,
+        !NumWith, !NumWithout).
 
 %---------------------------------------------------------------------------%
 
@@ -601,8 +601,10 @@ get_tagval(TypeCtor, ConsIdToTagMap, Ctor) = TagVal :-
 :- pragma consider_used(ml_gen_hld_tag_constant/2).
 
 ml_gen_hld_tag_constant(Context, CtorRepn) = Defns :-
-    % Check if this constructor uses a secondary tag.
-    ( if ml_uses_secondary_tag(CtorRepn, SecondaryTag) then
+    TagVal = CtorRepn ^ cr_tag,
+    MaybeSecondaryTag = get_secondary_tag(TagVal),
+    (
+        MaybeSecondaryTag = yes(SecondaryTag),
         % Generate an MLDS definition for this secondary tag constant.
         % We do this mainly for readability and interoperability. Note that
         % we don't do the same thing for primary tags, so this is most useful
@@ -617,7 +619,8 @@ ml_gen_hld_tag_constant(Context, CtorRepn) = Defns :-
             ml_gen_enum_constant_data_decl_flags, mlds_native_int_type,
             init_obj(ConstValue), gc_no_stmt),
         Defns = [Defn]
-    else
+    ;
+        MaybeSecondaryTag = no,
         Defns = []
     ).
 
@@ -1068,12 +1071,6 @@ ml_gen_const_member_data_decl_flags =
 
 ml_gen_enum_constant_data_decl_flags =
     mlds_field_var_decl_flags(one_copy, const).
-
-%---------------------------------------------------------------------------%
-
-ml_uses_secondary_tag(CtorRepn, SecondaryTag) :-
-    TagVal = CtorRepn ^ cr_tag,
-    get_secondary_tag(TagVal) = yes(SecondaryTag).
 
 %---------------------------------------------------------------------------%
 
