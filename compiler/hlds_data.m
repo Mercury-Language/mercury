@@ -572,6 +572,17 @@ cons_table_optimize(!ConsTable) :-
     --->    ctor_arg_repn(
                 car_field_name      :: maybe(ctor_field_name),
                 car_type            :: mer_type,
+
+                % XXX TYPE_REPN
+                % Consider either adding a new field that specifies
+                % the offset of this argument in the heap cell,
+                % or including that information in the arg_width type.
+                %
+                % XXX TYPE_REPN
+                % Later, we should be able to store arguments next to
+                % the primary tag, if all the arguments fit there
+                % (which means we don't need to use those bits
+                % as a heap pointer).
                 car_width           :: arg_width,
                 car_context         :: prog_context
             ).

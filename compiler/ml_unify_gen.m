@@ -1621,7 +1621,6 @@ ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, CtorArgRepns, TakeAdd
         ArgTypes = [ArgType | ArgTypes1],
         CtorArgRepns = [CtorArgRepn | CtorArgRepns1]
     then
-        % XXX TYPE_REPN Store the offsets in CtorArgRepn.
         ml_next_field_offset(CtorArgRepn, CtorArgRepns1, Offset, Offset1),
         ArgNum1 = ArgNum + 1,
         ( if TakeAddr = [ArgNum | TakeAddr1] then
