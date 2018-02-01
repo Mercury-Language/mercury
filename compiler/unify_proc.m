@@ -45,28 +45,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % add_lazily_generated_unify_pred(TypeCtor, UnifyPredId_for_Type,
-    %   !ModuleInfo):
-    %
-    % For most imported unification procedures, we delay generating
-    % declarations and clauses until we know whether they are actually needed
-    % because there is a complicated unification involving the type.
-    % This predicate is exported for use by higher_order.m when it is
-    % specializing calls to unify/2.
-    %
-:- pred add_lazily_generated_unify_pred(type_ctor::in, pred_id::out,
-    module_info::in, module_info::out) is det.
-
-    % add_lazily_generated_compare_pred_decl(TypeCtor, ComparePredId_for_Type,
-    %   !ModuleInfo):
-    %
-    % Add declarations, but not clauses, for a compare or index predicate.
-    %
-:- pred add_lazily_generated_compare_pred_decl(type_ctor::in, pred_id::out,
-    module_info::in, module_info::out) is det.
-
-%---------------------------------------------------------------------------%
-
 :- type spec_pred_defn_info
     --->    spec_pred_defn_info(
                 spdi_spec_pred_id       :: special_pred_id,
@@ -98,7 +76,6 @@
 :- implementation.
 
 :- import_module check_hlds.polymorphism.
-:- import_module check_hlds.post_typecheck.
 :- import_module check_hlds.type_util.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_util.
@@ -117,7 +94,6 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.prog_item.      % undesirable dependency
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
@@ -126,167 +102,12 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
-    ( if type_ctor_is_tuple(TypeCtor) then
-        collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody,
-            Context)
-    else
-        collect_type_defn(!.ModuleInfo, TypeCtor, Type, TVarSet, TypeBody,
-            Context)
-    ),
-    ( if
-        can_generate_special_pred_clauses_for_type(!.ModuleInfo,
-            TypeCtor, TypeBody)
-    then
-        % If the unification predicate had a status other than TypeStatus,
-        % it should already have been generated.
-        % XXX STATUS this is not an appropriate status for a type.
-        TypeStatus = type_status(status_pseudo_imported),
-        DeclMaybeDefn = decl_and_clauses
-    else
-        TypeStatus = type_status(status_imported(import_locn_implementation)),
-        DeclMaybeDefn = declaration_only
-    ),
-    add_lazily_generated_special_pred(spec_pred_unify, DeclMaybeDefn,
-        TVarSet, Type, TypeCtor, TypeBody, Context, TypeStatus, PredId,
-        !ModuleInfo).
-
-add_lazily_generated_compare_pred_decl(TypeCtor, PredId, !ModuleInfo) :-
-    collect_type_defn(!.ModuleInfo, TypeCtor, Type, TVarSet, TypeBody,
-        Context),
-
-    % If the comparison predicate had a status other than TypeStatus,
-    % it should already have been generated.
-    % XXX STATUS This is NOT the same TypeStatus as in the similarly marked
-    % piece of code above.
-    TypeStatus = type_status(status_imported(import_locn_implementation)),
-    add_lazily_generated_special_pred(spec_pred_compare, declaration_only,
-        TVarSet, Type, TypeCtor, TypeBody, Context, TypeStatus, PredId,
-        !ModuleInfo).
-
-:- pred add_lazily_generated_special_pred(special_pred_id::in,
-    decl_maybe_defn::in, tvarset::in, mer_type::in, type_ctor::in,
-    hlds_type_body::in, context::in, type_status::in, pred_id::out,
-    module_info::in, module_info::out) is det.
-
-add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
-        TypeBody, Context, TypeStatus, PredId, !ModuleInfo) :-
-    % Add the declaration and maybe clauses.
-    (
-        Item = decl_and_clauses,
-        add_special_pred_decl_defn(SpecialId, TVarSet, Type, TypeCtor,
-            TypeBody, TypeStatus, Context, !ModuleInfo)
-    ;
-        Item = declaration_only,
-        add_special_pred_decl(SpecialId, TVarSet, Type, TypeCtor,
-            TypeStatus, Context, !ModuleInfo)
-    ),
-
-    module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps),
-    lookup_special_pred_maps(SpecialPredMaps, SpecialId, TypeCtor, PredId),
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-
-    % The clauses are generated with all type information computed,
-    % so just go on to post_typecheck.
-    (
-        Item = decl_and_clauses,
-        PredInfo1 = PredInfo0
-    ;
-        Item = declaration_only,
-        setup_vartypes_in_clauses_for_imported_pred(PredInfo0, PredInfo1)
-    ),
-    propagate_types_into_modes(!.ModuleInfo, ErrorProcs, PredInfo1, PredInfo),
-    expect(unify(ErrorProcs, []), $pred, "ErrorProcs != []"),
-
-    % Call polymorphism to introduce type_info arguments for polymorphic types.
-    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
-
-    % Note that this will not work if the generated clauses call a polymorphic
-    % predicate which requires type_infos to be added. Such calls can be
-    % generated by generate_clause_info, but unification predicates which
-    % contain such calls are never generated lazily.
-    polymorphism_process_generated_pred(PredId, !ModuleInfo).
-
-:- type decl_maybe_defn
-    --->    declaration_only
-    ;       decl_and_clauses.
-
-:- pred collect_type_defn(module_info::in, type_ctor::in, mer_type::out,
-    tvarset::out, hlds_type_body::out, prog_context::out) is det.
-
-collect_type_defn(ModuleInfo, TypeCtor, Type, TVarSet, TypeBody, Context) :-
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
-    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
-    hlds_data.get_type_defn_kind_map(TypeDefn, KindMap),
-    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
-    hlds_data.get_type_defn_context(TypeDefn, Context),
-
-    expect(
-        special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody,
-            TypeStatus),
-        $pred, "not generated lazily"),
-    prog_type.var_list_to_type_list(KindMap, TypeParams, TypeArgs),
-    construct_type(TypeCtor, TypeArgs, Type).
-
-:- pred collect_type_defn_for_tuple(type_ctor::in, mer_type::out,
-    tvarset::out, hlds_type_body::out, prog_context::out) is det.
-
-collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
-    TypeCtor = type_ctor(_, TupleArity),
-
-    % Build a hlds_type_body for the tuple constructor, which will
-    % be used by generate_clause_info.
-    varset.init(TVarSet0),
-    varset.new_vars(TupleArity, TupleArgTVars, TVarSet0, TVarSet),
-    prog_type.var_list_to_type_list(map.init, TupleArgTVars,
-        TupleArgTypes),
-
-    % Tuple constructors can't be existentially quantified.
-    MaybeExistConstraints = no_exist_constraints,
-
-    MakeUnnamedField =
-        (func(ArgType) = ctor_arg(no, ArgType, Context)),
-    CtorArgs = list.map(MakeUnnamedField, TupleArgTypes),
-    MakeUnnamedFieldRepn =
-        (func(ArgType) = ctor_arg_repn(no, ArgType, full_word, Context)),
-    CtorArgRepns = list.map(MakeUnnamedFieldRepn, TupleArgTypes),
-
-    CtorSymName = unqualified("{}"),
-    Ctor = ctor(MaybeExistConstraints, CtorSymName,
-        CtorArgs, TupleArity, Context),
-    CtorRepn = ctor_repn(MaybeExistConstraints, CtorSymName,
-        single_functor_tag, CtorArgRepns, TupleArity, Context),
-
-    ConsId = tuple_cons(TupleArity),
-    map.from_assoc_list([ConsId - single_functor_tag], ConsTagValues),
-    map.from_assoc_list(["{}" - one_or_more(CtorRepn, [])], ConsCtorMap),
-    DirectArgCtors = no,
-    Repn = du_type_repn(ConsTagValues, [CtorRepn], ConsCtorMap,
-        no_cheaper_tag_test, du_type_kind_general, DirectArgCtors,
-        does_not_use_reserved_address),
-    MaybeCanonical = canon,
-    IsForeign = no,
-    TypeBody = hlds_du_type([Ctor], MaybeCanonical, yes(Repn), IsForeign),
-    construct_type(TypeCtor, TupleArgTypes, Type),
-
-    term.context_init(Context).
-
-%---------------------------------------------------------------------------%
-% XXX TYPE_REPN The code above this line belongs in add_special_pred.m,
-% not here. The predicate generate_clauses_for_special_pred is called *only*
-% from add_special_pred.m; it is NOT called by the code above.
 
 generate_clauses_for_special_pred(SpecDefnInfo, ClauseInfo, !ModuleInfo) :-
     SpecialPredId = SpecDefnInfo ^ spdi_spec_pred_id,

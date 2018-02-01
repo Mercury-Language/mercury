@@ -52,7 +52,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
-:- import_module check_hlds.unify_proc.
+:- import_module hlds.add_special_pred.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
@@ -2489,8 +2489,8 @@ find_special_proc(TypeCtor, SpecialId, SymName, PredId, ProcId, !Info) :-
         special_pred_is_generated_lazily(ModuleInfo0, TypeCtor),
         (
             SpecialId = spec_pred_compare,
-            unify_proc.add_lazily_generated_compare_pred_decl(TypeCtor,
-                PredId, ModuleInfo0, ModuleInfo),
+            add_lazily_generated_compare_pred_decl(TypeCtor, PredId,
+                ModuleInfo0, ModuleInfo),
             ProcId = hlds_pred.initial_proc_id
         ;
             SpecialId = spec_pred_index,
@@ -2509,7 +2509,7 @@ find_special_proc(TypeCtor, SpecialId, SymName, PredId, ProcId, !Info) :-
             % added. This case shouldn't come up unless an optimization does
             % reordering which requires rescheduling a conjunction.
 
-            unify_proc.add_lazily_generated_unify_pred(TypeCtor, PredId,
+            add_lazily_generated_unify_pred(TypeCtor, PredId,
                 ModuleInfo0, ModuleInfo),
             hlds_pred.in_in_unification_proc_id(ProcId)
         ),
