@@ -76,9 +76,6 @@
 %---------------------------------------------------------------------------%
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
-    % XXX ITEM_LIST We should do this ONLY if the top level functor
-    % of SinglePragmaTerm0, (PragmaName below) says that this is
-    % the kind of pragma for which a "where part" may LEGALLY be present.
     ( if
         PragmaTerms = [PragmaTerm],
         PragmaTerm = term.functor(term.atom(PragmaName), PragmaArgTerms,
