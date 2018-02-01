@@ -242,14 +242,7 @@ add_clauses_for_special_pred(SpecDefnInfo, !.PredInfo, !ModuleInfo) :-
     pred_info_get_markers(!.PredInfo, Markers0),
     add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
     pred_info_set_markers(Markers, !PredInfo),
-
-    SpecDefnInfo = spec_pred_defn_info(SpecialPredId, PredId,
-        _TVarSet, _Type, TypeCtor, _TypeBody, _TypeStatus0, _Context),
-
-    % XXX TYPE_REPN This was already done when the predicate was declared.
-    Origin = origin_special_pred(SpecialPredId, TypeCtor),
-    pred_info_set_origin(Origin, !PredInfo),
-
+    PredId = SpecDefnInfo ^ spdi_pred_id,
     module_info_get_preds(!.ModuleInfo, PredMap0),
     map.det_update(PredId, !.PredInfo, PredMap0, PredMap),
     module_info_set_preds(PredMap, !ModuleInfo).
