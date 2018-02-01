@@ -630,29 +630,11 @@ maybe_parse_export_enum_attributes(VarSet, yes(AttributesTerm),
 
 parse_export_enum_attributes(VarSet, AttributesTerm, AttributesResult) :-
     Attributes0 = default_export_enum_attributes,
-    ConflictingAttributes = [],
-    ( if
-        % XXX TYPE_REPN Generate different error messages for
-        % (a) the failure of list_term_to_term_list, and
-        % (b) the failure of any of the invocations of parse_export_enum_attr.
-        list_term_to_term_list(AttributesTerm, AttributesTerms),
+    ( if list_term_to_term_list(AttributesTerm, AttributesTerms) then
         map_parser(parse_export_enum_attr(VarSet), AttributesTerms,
             MaybeAttrList),
-        MaybeAttrList = ok1(CollectedAttributes)
-    then
-        ( if
-            list.member(ConflictA - ConflictB, ConflictingAttributes),
-            list.member(ConflictA, CollectedAttributes),
-            list.member(ConflictB, CollectedAttributes)
-        then
-            % XXX Print the conflicting attributes themselves.
-            Pieces = [words("Error: conflicting attributes in"),
-                pragma_decl("foreign_export_enum"), words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(AttributesTerm),
-                    [always(Pieces)])]),
-            AttributesResult = error1([Spec])
-        else
+        (
+            MaybeAttrList = ok1(CollectedAttributes),
             % Check that the prefix attribute is specified at most once.
             IsPrefixAttr =
                 ( pred(A::in) is semidet :-
@@ -663,8 +645,8 @@ parse_export_enum_attributes(VarSet, AttributesTerm, AttributesResult) :-
                 ( PrefixAttributes = []
                 ; PrefixAttributes = [_]
                 ),
-                list.foldl(process_export_enum_attribute, CollectedAttributes,
-                    Attributes0, Attributes),
+                list.foldl(process_export_enum_attribute,
+                    CollectedAttributes, Attributes0, Attributes),
                 AttributesResult = ok1(Attributes)
             ;
                 PrefixAttributes = [_, _ | _],
@@ -678,10 +660,16 @@ parse_export_enum_attributes(VarSet, AttributesTerm, AttributesResult) :-
                         [always(Pieces)])]),
                 AttributesResult = error1([Spec])
             )
+        ;
+            MaybeAttrList = error1(AttrSpecs),
+            AttributesResult = error1(AttrSpecs)
         )
     else
-        Pieces = [words("Error: malformed attributes list in"),
-            pragma_decl("foreign_export_enum"), words("declaration."), nl],
+        AttributesStr = describe_error_term(VarSet, AttributesTerm),
+        Pieces = [words("Error: expected a list of attributes"),
+            words("in the third argument of a"),
+            pragma_decl("foreign_export_enum"), words("declaration,"),
+            words("got"), quote(AttributesStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(AttributesTerm), [always(Pieces)])]),
         AttributesResult = error1([Spec])
@@ -718,7 +706,7 @@ parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: unrecognised attribute in"),
             pragma_decl("foreign_export_enum"), words("declaration:"),
-            words(TermStr), suffix("."), nl],
+            quote(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
         MaybeAttribute = error1([Spec])
@@ -1906,22 +1894,20 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
         (
             MaybeFeatureList = ok1(FeatureList),
             ConflictingFeatures = [
-                reqf_single_prec_float - reqf_double_prec_float,
-                reqf_parallel_conj     - reqf_trailing
+                conflict(reqf_single_prec_float, reqf_double_prec_float,
+                    "floats cannot be both single- and double-precision"),
+                conflict(reqf_parallel_conj, reqf_trailing,
+                    "trailing works only with sequential conjunctions")
             ],
-            ( if
-                list.member(ConflictA - ConflictB, ConflictingFeatures),
-                list.member(ConflictA, FeatureList),
-                list.member(ConflictB, FeatureList)
-            then
-                FeatureListStr = describe_error_term(VarSet, FeatureListTerm),
-                Pieces = [words("Error: conflicting features in feature set:"),
-                    nl, words(FeatureListStr), suffix("."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(FeatureListTerm),
-                        [always(Pieces)])]),
-                MaybeIOM = error1([Spec])
-            else
+            FeatureListContext = get_term_context(FeatureListTerm),
+            report_any_conflicts(FeatureListContext,
+                "conflicting features in feature set",
+                ConflictingFeatures, FeatureList, ConflictSpecs),
+            (
+                ConflictSpecs = [_ | _],
+                MaybeIOM = error1(ConflictSpecs)
+            ;
+                ConflictSpecs = [],
                 (
                     FeatureList = [],
                     ItemNothing = item_nothing_info(no, Context, SeqNum),
@@ -2067,47 +2053,95 @@ parse_pragma_foreign_decl_pragma(VarSet, ErrorTerm, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-
     InvalidDeclPieces = [words("Error: invalid"),
         pragma_decl("foreign_decl"), words("declaration:")],
-    ( if
+    (
+        (
+            PragmaTerms = []
+        ;
+            PragmaTerms = [_]
+        ),
+        Pieces = [words("Error: a"), pragma_decl("foreign_decl"),
+            words("declaration requires at least two arguments"),
+            words("(a language specification and"),
+            words("the foreign language declaration itself)."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
+    ;
         (
             PragmaTerms = [LangTerm, HeaderTerm],
-            IsLocal = foreign_decl_is_exported
+            IsLocal = foreign_decl_is_exported,
+            IsLocalSpecs = []
         ;
             PragmaTerms = [LangTerm, IsLocalTerm, HeaderTerm],
-            parse_foreign_decl_is_local(IsLocalTerm, IsLocal)
-        )
-    then
-        ( if term_to_foreign_language(LangTerm, ForeignLanguage) then
-            ( if
-                parse_foreign_literal_or_include(HeaderTerm, LiteralOrInclude)
-            then
-                FDInfo = pragma_info_foreign_decl(ForeignLanguage, IsLocal,
-                    LiteralOrInclude),
-                Pragma = pragma_foreign_decl(FDInfo),
-                ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                    Context, SeqNum),
-                Item = item_pragma(ItemPragma),
-                MaybeIOM = ok1(iom_item(Item))
+            ( if parse_foreign_decl_is_local(IsLocalTerm, IsLocalPrime) then
+                IsLocal = IsLocalPrime,
+                IsLocalSpecs = []
             else
-                Pieces = InvalidDeclPieces ++
-                    [words("expected string or include_file for"),
-                    words("foreign declaration code."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(HeaderTerm),
-                        [always(Pieces)])]),
-                MaybeIOM = error1([Spec])
+                IsLocal = foreign_decl_is_exported, % Dummy, won't be used.
+                IsLocalStr = describe_error_term(VarSet, IsLocalTerm),
+                IsLocalPieces = [words("Error: the second argument"),
+                    words("of a"), pragma_decl("foreign_decl"),
+                    words("declaration must be either"), quote("local"),
+                    words("or"), quote("exported"), suffix(":"),
+                    words("got"), quote(IsLocalStr), suffix("."), nl],
+                IsLocalSpec = error_spec(severity_error,
+                    phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(IsLocalTerm),
+                        [always(IsLocalPieces)])]),
+                IsLocalSpecs = [IsLocalSpec]
             )
+        ),
+        ( if term_to_foreign_language(LangTerm, ForeignLanguagePrime) then
+            ForeignLanguage = ForeignLanguagePrime,
+            LangSpecs = []
         else
-            Pieces = InvalidDeclPieces ++
-                [words("invalid language parameter."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            ForeignLanguage = lang_c,   % Dummy, won't be used.
+            LangStr = describe_error_term(VarSet, LangTerm),
+            LangPieces = InvalidDeclPieces ++
+                [words("invalid language parameter"),
+                quote(LangStr), suffix("."), nl],
+            LangSpec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(LangTerm),
-                    [always(Pieces)])]),
-            MaybeIOM = error1([Spec])
+                    [always(LangPieces)])]),
+            LangSpecs = [LangSpec]
+        ),
+        ( if parse_foreign_literal_or_include(HeaderTerm, LitOrInclPrime) then
+            LiteralOrInclude = LitOrInclPrime,
+            LitInclSpecs = []
+        else
+            LiteralOrInclude = floi_literal(""),    % Dummy, won't be used.
+            LitInclStr = describe_error_term(VarSet, HeaderTerm),
+            LitInclPieces = InvalidDeclPieces ++
+                [words("expected string or include_file for"),
+                words("foreign declaration code, got"),
+                quote(LitInclStr), suffix("."), nl],
+            LitInclSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeaderTerm),
+                    [always(LitInclPieces)])]),
+            LitInclSpecs = [LitInclSpec]
+        ),
+        ( if
+            IsLocalSpecs = [],
+            LangSpecs = [],
+            LitInclSpecs = []
+        then
+            FDInfo = pragma_info_foreign_decl(ForeignLanguage, IsLocal,
+                LiteralOrInclude),
+            Pragma = pragma_foreign_decl(FDInfo),
+            ItemPragma = item_pragma_info(Pragma, item_origin_user,
+                Context, SeqNum),
+            Item = item_pragma(ItemPragma),
+            MaybeIOM = ok1(iom_item(Item))
+        else
+            MaybeIOM = error1(IsLocalSpecs ++ LangSpecs ++ LitInclSpecs)
         )
-    else
-        TermStr = describe_error_term(VarSet, ErrorTerm),
-        Pieces = [words("Error: invalid"), pragma_decl("foreign_decl"),
-            words("declaration:"), words(TermStr), suffix("."), nl],
+    ;
+        PragmaTerms = [_, _, _, _ | _],
+        Pieces = [words("Error: a"), pragma_decl("foreign_decl"),
+            words("declaration may have at most three arguments"),
+            words("(a language specification,"),
+            words("a local/exported indication, and"),
+            words("the foreign language declaration itself)."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeIOM = error1([Spec])
@@ -2452,6 +2486,7 @@ parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
     (
         MaybeAttrList = ok1(AttrList),
         ( if
+            % XXX Consider using report_any_conflicts instead.
             some [Conflict1, Conflict2] (
                 list.member(Conflict1 - Conflict2, ConflictingAttributes),
                 list.member(Conflict1, AttrList),
@@ -3512,7 +3547,7 @@ convert_maybe_list(What, MaybeVarSet, Term, Pred, UnrecognizedPieces,
         (
             MaybeVarSet = yes(VarSet),
             TermStr = describe_error_term(VarSet, Term),
-            Pieces = UnrecognizedPieces ++ [suffix(","), words("not"),
+            Pieces = UnrecognizedPieces ++ [suffix(","), words("got"),
                 quote(TermStr), suffix("."), nl]
         ;
             MaybeVarSet = no,

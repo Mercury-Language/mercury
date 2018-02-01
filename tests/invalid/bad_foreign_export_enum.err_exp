@@ -17,7 +17,9 @@ bad_foreign_export_enum.m:029: In second argument of
 bad_foreign_export_enum.m:029:   `:- pragma foreign_export_enum' declaration:
 bad_foreign_export_enum.m:029:   error: expected name/arity for type, got
 bad_foreign_export_enum.m:029:   `fruit'.
-bad_foreign_export_enum.m:030: Error: malformed attributes list in
-bad_foreign_export_enum.m:030:   `:- pragma foreign_export_enum' declaration.
+bad_foreign_export_enum.m:030: Error: expected a list of attributes in the
+bad_foreign_export_enum.m:030:   third argument of a
+bad_foreign_export_enum.m:030:   `:- pragma foreign_export_enum' declaration,
+bad_foreign_export_enum.m:030:   got `1234'.
 bad_foreign_export_enum.m:031: Error: expected list of mapping elements, not
 bad_foreign_export_enum.m:031:   `5678'.

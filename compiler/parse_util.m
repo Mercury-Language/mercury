@@ -55,7 +55,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % ok(SymName, Args - MaybeFuncRetArg) ; error(Msg, Term).
+    % Either ok2(SymName, Args - MaybeFuncRetArg) or error2(Specs).
 :- type maybe_pred_or_func(T) == maybe2(sym_name, pair(list(T), maybe(T))).
 
 :- pred parse_pred_or_func_and_args(term(T)::in,
@@ -113,6 +113,30 @@
 
 :- pred map_parser(parser(T)::parser, list(term)::in, maybe1(list(T))::out)
     is det.
+
+%---------------------------------------------------------------------------%
+
+    % A value of this type such as
+    %
+    %   conflict(single_prec_float, double_prec_float,
+    %       "floats cannot be both single- and double-precision")
+    %
+    % gives two different options that may not be specified together
+    % in a list of options, together with the error message to print
+    % if a user nevertheless does specify them together.
+    %
+:- type conflict(T)
+    --->    conflict(T, T, string).
+
+    % report_any_conflicts(Context, ConflictingWhatInWhat, Conflicts,
+    %   Specified, Spec):
+    %
+    % For each pair of elements in Specified that Conflicts says should
+    % *not* be present together, generate an error message from the third
+    % field of the relevent member of Conflicts.
+    %
+:- pred report_any_conflicts(prog_context::in, string::in,
+    list(conflict(T))::in, list(T)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -317,6 +341,34 @@ map_parser(Parser, [Head | Tail], Result) :-
         HeadResult = ok1(HeadItem),
         TailResult = ok1(TailItems),
         Result = ok1([HeadItem | TailItems])
+    ).
+
+%---------------------------------------------------------------------------%
+
+report_any_conflicts(Context, ConflictingWhatInWhat, Conflicts, Specified,
+        Specs) :-
+    list.foldl(
+        accumulate_conflict_specs(Context, ConflictingWhatInWhat, Specified),
+        Conflicts, [], Specs).
+
+:- pred accumulate_conflict_specs(prog_context::in, string::in,
+    list(T)::in, conflict(T)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+accumulate_conflict_specs(Context, ConflictingWhatInWhat, Specified,
+        Conflict, !Specs) :-
+    Conflict = conflict(A, B, Diagnosis),
+    ( if
+        list.member(A, Specified),
+        list.member(B, Specified)
+    then
+        Pieces = [words("Error:"), words(ConflictingWhatInWhat),
+            suffix(":"), nl, words(Diagnosis), suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%

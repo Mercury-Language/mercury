@@ -1,18 +1,29 @@
-bad_foreign_decl.m:017: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:017:   foreign_decl("C").
-bad_foreign_decl.m:021: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:021:   foreign_decl("C", local, "", "").
+bad_foreign_decl.m:017: Error: a `:- pragma foreign_decl' declaration requires
+bad_foreign_decl.m:017:   at least two arguments (a language specification and
+bad_foreign_decl.m:017:   the foreign language declaration itself).
+bad_foreign_decl.m:021: Error: a `:- pragma foreign_decl' declaration may have
+bad_foreign_decl.m:021:   at most three arguments (a language specification, a
+bad_foreign_decl.m:021:   local/exported indication, and the foreign language
+bad_foreign_decl.m:021:   declaration itself).
 bad_foreign_decl.m:025: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:025:   invalid language parameter.
+bad_foreign_decl.m:025:   invalid language parameter `"InvalidLanguage"'.
 bad_foreign_decl.m:029: Error: invalid `:- pragma foreign_decl' declaration:
 bad_foreign_decl.m:029:   expected string or include_file for foreign
-bad_foreign_decl.m:029:   declaration code.
-bad_foreign_decl.m:033: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:033:   foreign_decl("C", lcoal, "").
-bad_foreign_decl.m:037: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:037:   foreign_decl("C", 4444, "").
+bad_foreign_decl.m:029:   declaration code, got `1234'.
+bad_foreign_decl.m:033: Error: the second argument of a
+bad_foreign_decl.m:033:   `:- pragma foreign_decl' declaration must be either
+bad_foreign_decl.m:033:   `local' or `exported': got `lcoal'.
+bad_foreign_decl.m:037: Error: the second argument of a
+bad_foreign_decl.m:037:   `:- pragma foreign_decl' declaration must be either
+bad_foreign_decl.m:037:   `local' or `exported': got `4444'.
 bad_foreign_decl.m:041: Error: invalid `:- pragma foreign_decl' declaration:
 bad_foreign_decl.m:041:   expected string or include_file for foreign
-bad_foreign_decl.m:041:   declaration code.
-bad_foreign_decl.m:050: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:050:   foreign_decl("InvalidLanguage", lcoal, 7777).
+bad_foreign_decl.m:041:   declaration code, got `include_file(5555)'.
+bad_foreign_decl.m:051: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:051:   invalid language parameter `"InvalidLanguage"'.
+bad_foreign_decl.m:052: Error: the second argument of a
+bad_foreign_decl.m:052:   `:- pragma foreign_decl' declaration must be either
+bad_foreign_decl.m:052:   `local' or `exported': got `lcoal'.
+bad_foreign_decl.m:053: Error: invalid `:- pragma foreign_decl' declaration:
+bad_foreign_decl.m:053:   expected string or include_file for foreign
+bad_foreign_decl.m:053:   declaration code, got `7777'.
