@@ -1575,12 +1575,22 @@ to_int64(Integer, Int64) :-
         Int64 = int64_list(Digits, from_int(0))
     ).
 
+    % Return min_int64 as an integer.
+    %
 :- func integer_min_int64 = integer.
 
+    %  128 * 2^(14*4) + 0 * 2^(14*3) + ... + 0 * 2^(14*0)
+    %  = 2^7 * 2^56 + 0 ... + 0
+    %  = 2^63.
 integer_min_int64 = i(-5, [-128, 0, 0, 0, 0]).
 
+    % Return max_int64 as an integer.
+    %
 :- func integer_max_int64 = integer.
 
+    % 127 * 2^(14*4) + 16383 * 2^(14*3) + ... + 16383 * 2^(14*0)
+    % = (2^7  - 1) * 2^56 + (2^14 - 1) * 2^42 + ... + (2^14 - 1) * 1
+    % = 2^63 - 1.
 integer_max_int64 = i(5, [127, 16383, 16383, 16383, 16383]).
 
 :- func int64_list(list(int), int64) = int64.
@@ -1609,6 +1619,10 @@ to_uint64(Integer, UInt64) :-
     %
 :- func integer_max_uint64 = integer.
 
+    % 255 * 2^(14*4) + 16383 * 2^(14*3) + ... + 16383 * 2(14*0)
+    % = (2^8 - 1) * 2^56 + (2^14 - 1) * 2^42 + ... + (2^14 - 1) * 2^0
+    % = 2^64 - 2^56 + 2^56 - 2^42 + ... + 2^14 - 1
+    % = 2^64 - 1.
 integer_max_uint64 = i(5, [255, 16383, 16383, 16383, 16383]).
 
 :- func uint64_list(list(int), uint64) = uint64.
@@ -1957,16 +1971,16 @@ from_int64(I64) = Integer :-
         I64 > from_int(-base)
     then
         Integer = i(-1, [cast_to_int(I64)])
+    else if I64 = int64.min_int64 then
+        % If we were to call int64.abs with mint_int64 as an argument it would
+        % overflow.
+        Integer = integer.from_int64(I64 + from_int(1)) - integer.one
     else
-        ( if I64 = int64.min_int64 then
-            Integer = integer.from_int64(I64 + from_int(1)) - integer.one
+        Magnitude = pos_int64_to_digits(int64.abs(I64)),
+        ( if I64 < int64.from_int(0) then
+            Integer = big_neg(Magnitude)
         else
-            Magnitude = pos_int64_to_digits(int64.abs(I64)),
-            ( if I64 < int64.from_int(0) then
-                Integer = big_neg(Magnitude)
-            else
-                Integer = Magnitude
-            )
+            Integer = Magnitude
         )
     ).
 

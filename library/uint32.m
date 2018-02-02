@@ -147,7 +147,7 @@
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, 32).
-    % It will typically be be implemented more efficiently than X << Y.
+    % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(uint32::in, int::in) = (uint32::uo) is det.
 
@@ -251,9 +251,10 @@ from_int(_, _) :-
     sorry($module, "uint32.from_int NYI for Erlang").
 
 det_from_int(I) = U :-
-    ( if from_int(I, U0)
-    then U = U0
-    else error("uint32.det_from_int: cannot convert int to uint32")
+    ( if from_int(I, U0) then
+        U = U0
+    else
+        error("uint32.det_from_int: cannot convert int to uint32")
     ).
 
 %---------------------------------------------------------------------------%

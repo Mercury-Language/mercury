@@ -17,6 +17,8 @@
 :- module uint64.
 :- interface.
 
+:- import_module pretty_printer.
+
 %---------------------------------------------------------------------------%
 
     % from_int(I, U64):
@@ -129,7 +131,7 @@
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, 64).
-    % It will typically be be implemented more efficiently than X << Y.
+    % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(uint64::in, int::in) = (uint64::uo) is det.
 
@@ -175,6 +177,10 @@
 
 :- func max_uint64 = uint64.
 
+    % Convert a uint64 to a pretty_printer.doc for formatting.
+    %
+:- func uint64_to_doc(uint64) = pretty_printer.doc.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -183,6 +189,7 @@
 :- import_module exception.
 :- import_module math.
 :- import_module require.
+:- import_module string.
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
@@ -222,9 +229,10 @@ from_int(_, _) :-
     sorry($module, "uint64.from_int NYI for Erlang").
 
 det_from_int(I) = U :-
-    ( if from_int(I, U0)
-    then U = U0
-    else error("uint64.det_from_int: cannot convert int to uint64")
+    ( if from_int(I, U0) then
+        U = U0
+    else
+        error("uint64.det_from_int: cannot convert int to uint64")
     ).
 
 %---------------------------------------------------------------------------%
@@ -371,4 +379,10 @@ odd(X) :-
 max_uint64 = _ :-
     sorry($module, "uint64.max_uint64/1 NYI for Erlang").
 
+%---------------------------------------------------------------------------%
+
+uint64_to_doc(X) = str(string.uint64_to_string(X)).
+
+%---------------------------------------------------------------------------%
+:- end_module uint64.
 %---------------------------------------------------------------------------%

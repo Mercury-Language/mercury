@@ -135,7 +135,7 @@
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, 8).
-    % It will typically be be implemented more efficiently than X << Y.
+    % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(uint8::in, int::in) = (uint8::uo) is det.
 

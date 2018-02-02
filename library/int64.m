@@ -55,12 +55,12 @@
     %
 :- func abs(int64) = int64.
 
-    % unchecked_abs(X) returns the absolute value of X, except that if the
-    % result is undefined if X = int64.min_int64.
+    % unchecked_abs(X) returns the absolute value of X, except that the result
+    % is undefined if X = int64.min_int64.
     %
 :- func unchecked_abs(int64) = int64.
 
-    % nabs(X) returns the negative absolute value of X.
+    % nabs(X) returns the negative of the absolute value of X.
     % Unlike abs/1 this function is defined for X = int64.min_int64.
     %
 :- func nabs(int64) = int64.
@@ -161,7 +161,7 @@
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, 64).
-    % It will typically be be implemented more efficiently than X << Y.
+    % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int64::in, int::in) = (int64::uo) is det.
 
@@ -209,7 +209,7 @@
 
 :- func max_int64 = int64.
 
-    % Convert a int64 to a pretty_printer.doc for formatting.
+    % Convert an int64 to a pretty_printer.doc for formatting.
     %
 :- func int64_to_doc(int64) = pretty_printer.doc.
 

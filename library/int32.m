@@ -81,7 +81,7 @@
     %
 :- func unchecked_abs(int32) = int32.
 
-    % nabs(X) returns the negative absolute value of X.
+    % nabs(X) returns the negative of the absolute value of X.
     % Unlike abs/1 this function is defined for X = int32.min_int32.
     %
 :- func nabs(int32) = int32.
@@ -182,7 +182,7 @@
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, 32).
-    % It will typically be be implemented more efficiently than X << Y.
+    % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int32::in, int::in) = (int32::uo) is det.
 
@@ -236,7 +236,7 @@
 
 :- func max_int32 = int32.
 
-    % Convert a int32 to a pretty_printer.doc for formatting.
+    % Convert an int32 to a pretty_printer.doc for formatting.
     %
 :- func int32_to_doc(int32) = pretty_printer.doc.
 

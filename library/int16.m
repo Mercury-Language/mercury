@@ -79,7 +79,7 @@
     %
 :- func unchecked_abs(int16) = int16.
 
-    % nabs(X) returns the negative absolute value of X.
+    % nabs(X) returns the negative of the absolute value of X.
     % Unlike abs/1 this function is defined for X = int16.min_int16.
     %
 :- func nabs(int16) = int16.
@@ -180,7 +180,7 @@
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, 16).
-    % It will typically be be implemented more efficiently than X << Y.
+    % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int16::in, int::in) = (int16::uo) is det.
 
