@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017 The Mercury team.
+% Copyright (C) 2015-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -10,7 +10,7 @@
 %
 % The task of the first half of this module is to check foreign_enum pragmas
 % and gather from them the information that du_type_layout.m will use
-% to help decide the representations of the types named in those pragras.
+% to help decide the representations of the types named in those pragmas.
 %
 % The task of the second half of this module is to check foreign_export_enum
 % pragmas, and to record the information from the correct ones in the
@@ -65,7 +65,7 @@
     % exported information in the target language file it emits
     % (when compiling for the applicable backend). If it is not correct,
     % add the applicable error message(s) to the list.
-    % 
+    %
 :- pred add_pragma_foreign_export_enum(item_foreign_export_enum_info::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
