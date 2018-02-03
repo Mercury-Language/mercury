@@ -6093,7 +6093,7 @@ int64_to_string(_) = _ :-
     uint64_to_string(U64::in) = (S::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    char buffer[20]; // 19 for digits, 1 for nul.
+    char buffer[21]; // 20 for digits, 1 for nul.
     sprintf(buffer, ""%"" PRIu64, U64);
     MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
     strcpy(S, buffer);
