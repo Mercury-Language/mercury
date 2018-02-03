@@ -1270,6 +1270,16 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_lookup_insert_uint32(ml_trie_node::in, uint32::in,
     ml_trie_node::out) is det.
 
+    % Lookup or insert a signed 64-bit integer in the given table.
+    %
+:- impure pred table_lookup_insert_int64(ml_trie_node::in, int64::in,
+    ml_trie_node::out) is det.
+
+    % Lookup or insert an unsigned 64-bit integer in the given table.
+    %
+:- impure pred table_lookup_insert_uint64(ml_trie_node::in, uint64::in,
+    ml_trie_node::out) is det.
+
     % Lookup or insert an integer in the given table.
     %
 :- impure pred table_lookup_insert_start_int(ml_trie_node::in, int::in,
@@ -1384,6 +1394,18 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_save_uint32_answer(ml_answer_block::in, int::in,
     uint32::in) is det.
 
+    % Save a signed 64-bit integer answer in the given answer block at the
+    % given offset.
+    %
+:- impure pred table_save_int64_answer(ml_answer_block::in, int::in, int64::in)
+    is det.
+
+    % Save an unsigned 64-bit integer answer in the given answer block at the
+    % given offset.
+    %
+:- impure pred table_save_uint64_answer(ml_answer_block::in, int::in,
+    uint64::in) is det.
+
     % Save a character answer in the given answer block at the given
     % offset.
     %
@@ -1460,6 +1482,18 @@ pretend_to_generate_value(Bogus) :-
     %
 :- semipure pred table_restore_uint32_answer(ml_answer_block::in, int::in,
     uint32::out) is det.
+
+    % Restore a signed 64-bit integer answer from the given answer block at the
+    % given offset.
+    %
+:- semipure pred table_restore_int64_answer(ml_answer_block::in, int::in,
+    int64::out) is det.
+
+    % Restore an unsigned 64-bit integer answer from the given answer block at
+    % the given offset.
+    %
+:- semipure pred table_restore_uint64_answer(ml_answer_block::in, int::in,
+    uint64::out) is det.
 
     % Restore a character answer from the given answer block at the
     % given offset.
@@ -1579,6 +1613,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_uint32(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_int64(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_int64(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_uint64(T0::in, V::in, T::out),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_lookup_insert_uint64(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
@@ -1725,6 +1773,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
 :- pragma foreign_proc("C",
+    table_save_int64_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_save_int64_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_save_uint64_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_tbl_save_uint64_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
     table_save_char_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
@@ -1817,6 +1879,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
 :- pragma foreign_proc("C",
+    table_restore_int64_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_restore_int64_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_restore_uint64_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
+"
+    MR_tbl_restore_uint64_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
     table_restore_char_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
@@ -1879,6 +1955,54 @@ table_lookup_insert_start_int(_, _, _, _) :-
     impure private_builtin.imp,
     private_builtin.sorry("table_lookup_insert_start_int").
 
+table_lookup_insert_int8(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int8").
+
+table_lookup_insert_uint8(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint8").
+
+table_lookup_insert_int16(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int16").
+
+table_lookup_insert_uint16(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint16").
+
+table_lookup_insert_int32(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int32").
+
+table_lookup_insert_uint32(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint32").
+
+table_lookup_insert_int64(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int64").
+
+table_lookup_insert_uint64(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint64").
+
 table_lookup_insert_char(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -1938,6 +2062,54 @@ table_save_uint_answer(_, _, _) :-
     % matching foreign_proc version.
     impure private_builtin.imp,
     private_builtin.sorry("table_save_uint_answer").
+
+table_save_int8_answer(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int8_answer").
+
+table_save_uint8_answer(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint8_answer").
+
+table_save_int16_answer(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int16_answer").
+
+table_save_uint16_answer(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint16_answer").
+
+table_save_int32_answer(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int32_answer").
+
+table_save_uint32_answer(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint32_answer").
+
+table_save_int64_answer(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int64_answer").
+
+table_save_uint64_answer(_, _, _) :-
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint64_answer").
 
 table_save_char_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
