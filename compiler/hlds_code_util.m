@@ -193,28 +193,9 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
             Tag = single_functor_tag
         )
     ;
-        ConsId = cons(_Name, _Arity, TypeCtor),
-        module_info_get_type_table(ModuleInfo, TypeTable),
-        lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        (
-            TypeBody = hlds_du_type(_, _, MaybeRepn, _),
-            (
-                MaybeRepn = no,
-                unexpected($pred, "MaybeRepn = no")
-            ;
-                MaybeRepn = yes(Repn),
-                Repn = du_type_repn(ConsTagTable, _, _, _, _, _, _),
-                map.lookup(ConsTagTable, ConsId, Tag)
-            )
-        ;
-            ( TypeBody = hlds_eqv_type(_)
-            ; TypeBody = hlds_foreign_type(_)
-            ; TypeBody = hlds_solver_type(_)
-            ; TypeBody = hlds_abstract_type(_)
-            ),
-            unexpected($module, $pred, "type is not d.u. type")
-        )
+        ConsId = cons(_Name, _Arity, _TypeCtor),
+        get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepn),
+        Tag = ConsRepn ^ cr_tag
     ).
 
 %-----------------------------------------------------------------------------%

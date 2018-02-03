@@ -440,16 +440,10 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
         then
             FreeOfCost = no
         else if
-            type_to_ctor(Type, TypeCtor),
             ModuleInfo = IntParams ^ ip_module_info,
-            module_info_get_type_table(ModuleInfo, TypeTable),
-            lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-            TypeBody = hlds_du_type(_, _, MaybeRepn, _),
-            MaybeRepn = yes(Repn),
-            ConsTable = Repn ^ dur_cons_id_to_tag_map
+            get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn)
         then
-            map.lookup(ConsTable, ConsId, ConsTag),
+            ConsTag = ConsRepn ^ cr_tag,
             ( if ConsTag = no_tag then
                 FreeOfCost = yes
             else

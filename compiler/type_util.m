@@ -261,9 +261,9 @@
     hlds_cons_defn::out) is semidet.
 :- pred get_cons_defn_det(module_info::in, type_ctor::in, cons_id::in,
     hlds_cons_defn::out) is det.
-:- pred get_cons_repn_defn(module_info::in, type_ctor::in, cons_id::in,
+:- pred get_cons_repn_defn(module_info::in, cons_id::in,
     constructor_repn::out) is semidet.
-:- pred get_cons_repn_defn_det(module_info::in, type_ctor::in, cons_id::in,
+:- pred get_cons_repn_defn_det(module_info::in, cons_id::in,
     constructor_repn::out) is det.
 
     % This type is used to return information about a constructor definition,
@@ -1344,14 +1344,14 @@ get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
         unexpected($module, $pred, "get_cons_defn failed")
     ).
 
-get_cons_repn_defn(ModuleInfo, TypeCtor, ConsId, ConsIdConsRepn) :-
+get_cons_repn_defn(ModuleInfo, ConsId, ConsIdConsRepn) :-
+    ConsId = cons(ConsSymName, ConsArity, TypeCtor),
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
     TypeBody = hlds_du_type(_, _, MaybeRepn, _),
     MaybeRepn = yes(Repn),
     Repn = du_type_repn(_ConsTagMap, _ConsRepns, ConsRepnMap, _, _, _, _),
-    ConsId = cons(ConsSymName, ConsArity, _ConsTypeCtor),
     ConsName = unqualify_name(ConsSymName),
     map.search(ConsRepnMap, ConsName, MatchingConsRepns),
     MatchingConsRepns = one_or_more(HeadConsRepn, TailConsRepns),
@@ -1372,10 +1372,8 @@ find_cons_repn_with_given_arity(ConsArity,
             HeadTailConsRepn, TailTailConsRepns, ConsIdConsRepn)
     ).
 
-get_cons_repn_defn_det(ModuleInfo, TypeCtor, ConsId, ConsRepnDefn) :-
-    ( if
-        get_cons_repn_defn(ModuleInfo, TypeCtor, ConsId, ConsRepnDefnPrime)
-    then
+get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn) :-
+    ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefnPrime) then
         ConsRepnDefn = ConsRepnDefnPrime
     else
         unexpected($module, $pred, "get_cons_repn_defn failed")

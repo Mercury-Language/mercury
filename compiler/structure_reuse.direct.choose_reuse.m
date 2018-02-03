@@ -1020,8 +1020,8 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
 
 cons_has_normal_fields(ModuleInfo, Cons) :-
     (
-        Cons = cons(_, _, TypeCtor),
-        get_cons_repn_defn_det(ModuleInfo, TypeCtor, Cons, ConsRepnDefn),
+        Cons = cons(_, _, _),
+        get_cons_repn_defn_det(ModuleInfo, Cons, ConsRepnDefn),
         ConsArgRepns = ConsRepnDefn ^ cr_args,
         all [ArgRepn] (
             list.member(ArgRepn, ConsArgRepns)

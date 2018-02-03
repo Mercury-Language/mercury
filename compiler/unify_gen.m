@@ -224,10 +224,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
     list(T)::in, list(arg_width)::out) is det.
 
 get_cons_arg_widths(ModuleInfo, ConsId, Args, AllArgWidths) :-
-    ( if
-        ConsId = cons(_, _, TypeCtor),
-        get_cons_repn_defn(ModuleInfo, TypeCtor, ConsId, ConsRepnDefn)
-    then
+    ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
         ConsArgRepns = ConsRepnDefn ^ cr_args,
         ArgWidths = list.map((func(C) = C ^ car_width), ConsArgRepns),
         list.length(Args, NumArgs),

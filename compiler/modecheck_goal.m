@@ -118,6 +118,7 @@
 :- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.polymorphism.
+:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
@@ -138,7 +139,6 @@
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_rename.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bag.
@@ -1329,22 +1329,8 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             instmap_lookup_var(InstMap, Arg1, Inst1),
             Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-            module_info_get_type_table(ModuleInfo, TypeTable),
-            mode_info_get_var_types(!.ModeInfo, VarTypes),
-            lookup_var_type(VarTypes, Arg1, ArgType1),
-            type_to_ctor(ArgType1, ArgTypeCtor1),
-            lookup_type_ctor_defn(TypeTable, ArgTypeCtor1, CtorDefn),
-            get_type_defn_body(CtorDefn, TypeDefnBody),
-            TypeDefnBody = hlds_du_type(_, _, MaybeTypeRepn, _),
-            (
-                MaybeTypeRepn = no,
-                unexpected($pred, "MaybeTypeRepn = no")
-            ;
-                MaybeTypeRepn = yes(TypeRepn)
-            ),
-            ConsIdToTagMap = TypeRepn ^ dur_cons_id_to_tag_map,
-            map.lookup(ConsIdToTagMap, ConsId, ConsTag),
-            ConsTag = shared_local_tag(_, LocalTag)
+            get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn),
+            ConsRepn ^ cr_tag = shared_local_tag(_, LocalTag)
         then
             BoundFunctor = bound_functor(int_const(LocalTag), []),
             BoundInst = bound(Unique, inst_test_results_fgtc, [BoundFunctor]),

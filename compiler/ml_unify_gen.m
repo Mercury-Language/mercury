@@ -1485,8 +1485,7 @@ ml_field_names_and_types(Info, Type, ConsId, ArgTypes, CtorArgRepns) :-
         CtorArgRepns = list.map(MakeUnnamedField, FieldTypes)
     else
         ml_gen_info_get_module_info(Info, ModuleInfo),
-        type_to_ctor_det(Type, TypeCtor),
-        get_cons_repn_defn_det(ModuleInfo, TypeCtor, ConsId, ConsRepnDefn),
+        get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
         CtorArgRepns0 = ConsRepnDefn ^ cr_args,
 
         % Add the fields for any type_infos and/or typeclass_infos inserted
@@ -3161,10 +3160,7 @@ cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
         ConsId = cons(_, _, _),
         not is_introduced_type_info_type(VarType)
     then
-        type_to_ctor_det(VarType, TypeCtor),
-        ( if
-            get_cons_repn_defn(ModuleInfo, TypeCtor, ConsId, ConsRepnDefn)
-        then
+        ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
             ConsArgDefns = ConsRepnDefn ^ cr_args,
             ConsArgTypes0 = list.map(func(C) = C ^ car_type, ConsArgDefns),
             ConsArgWidths0 = list.map(func(C) = C ^ car_width, ConsArgDefns),
