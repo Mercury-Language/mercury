@@ -892,10 +892,9 @@ add_du_ctors_check_foreign_type_for_cur_backend(TypeCtor, TypeDefn,
     (
         Body = hlds_du_type(ConsList, _MaybeUserEqCmp, _MaybeRepn,
             _MaybeForeign),
-        % XXX TYPE_REPN the names of table variables should say so
-        module_info_get_cons_table(!.ModuleInfo, Ctors0),
+        module_info_get_cons_table(!.ModuleInfo, CtorMap0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
-        module_info_get_ctor_field_table(!.ModuleInfo, CtorFields0),
+        module_info_get_ctor_field_table(!.ModuleInfo, CtorFieldMap0),
         TypeCtor = type_ctor(TypeCtorSymName, _),
         (
             TypeCtorSymName = unqualified(_),
@@ -905,9 +904,9 @@ add_du_ctors_check_foreign_type_for_cur_backend(TypeCtor, TypeDefn,
         ),
         add_type_defn_ctors(ConsList, TypeCtor, TypeCtorModuleName, TVarSet,
             TypeParams, KindMap, NeedQual, PQInfo, Status,
-            CtorFields0, CtorFields, Ctors0, Ctors, [], CtorAddSpecs),
-        module_info_set_cons_table(Ctors, !ModuleInfo),
-        module_info_set_ctor_field_table(CtorFields, !ModuleInfo),
+            CtorFieldMap0, CtorFieldMap, CtorMap0, CtorMap, [], CtorAddSpecs),
+        module_info_set_cons_table(CtorMap, !ModuleInfo),
+        module_info_set_ctor_field_table(CtorFieldMap, !ModuleInfo),
 
         (
             CtorAddSpecs = []
