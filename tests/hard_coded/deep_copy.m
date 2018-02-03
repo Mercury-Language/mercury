@@ -51,13 +51,13 @@
     ;       zoom(int)
     ;       zap(int, float)
     ;       zip(int, int)
-    ;       zop(float, float). 
+    ;       zop(float, float).
 
 :- type poly(A, B)
     --->    poly_one(A)
     ;       poly_two(B)
     ;       poly_three(B, A, poly(B, A))
-    ;       poly_four(A, B). 
+    ;       poly_four(A, B).
 
 :- type no_tag
     --->    qwerty(int).
@@ -227,6 +227,24 @@ test_builtins -->
         % test integers
     test_all(-65),
     test_all(4),
+
+    test_all(561u),
+
+    test_all(-10i8),
+    test_all(11i8),
+    test_all(12u8),
+
+    test_all(-13i16),
+    test_all(14i16),
+    test_all(15i16),
+
+    test_all(-16i32),
+    test_all(17i32),
+    test_all(18u32),
+
+    test_all(-19i64),
+    test_all(20i64),
+    test_all(21u64),
 
         % test univ.
     { type_to_univ(["hi! I'm a univ!"], Univ) },
