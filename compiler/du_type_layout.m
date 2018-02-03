@@ -297,11 +297,6 @@ assign_constructor_tags(Globals, TypeCtor, UserEqCmp, Ctors,
     globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
     globals.lookup_int_option(Globals, num_reserved_addresses,
         NumReservedAddresses),
-    globals.lookup_int_option(Globals, num_reserved_objects,
-        NumReservedObjects),
-    % As of 2017 aug 8, there is no longer any way to specify any value
-    % for num_reserved_objects other than the default, which is zero.
-    expect(unify(NumReservedObjects, 0), $pred, "NumReservedObjects != 0"),
 
     % Now assign them.
     InitTag = 0,
@@ -309,8 +304,7 @@ assign_constructor_tags(Globals, TypeCtor, UserEqCmp, Ctors,
     ( if
         % Try representing the type as an enumeration: all the constructors
         % must be constant, and we must be allowed to make unboxed enums.
-        ctors_are_all_constants(Ctors),
-        globals.lookup_bool_option(Globals, unboxed_enums, yes)
+        ctors_are_all_constants(Ctors)
     then
         ( if Ctors = [_] then
             DuTypeKind = du_type_kind_direct_dummy

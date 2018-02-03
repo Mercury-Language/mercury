@@ -471,7 +471,6 @@
     ;       tags
     ;       num_tag_bits
     ;       num_reserved_addresses
-    ;       num_reserved_objects
     ;       bits_per_word
     ;       bytes_per_word
             % The undocumented conf_low_tag_bits option is used by the `mmc'
@@ -484,7 +483,6 @@
     ;       conf_low_tag_bits
     ;       unboxed_float
     ;       unboxed_int64s
-    ;       unboxed_enums
     ;       unboxed_no_tag_types
     ;       arg_pack_bits
     ;       allow_double_word_fields
@@ -1433,7 +1431,6 @@ option_defaults_2(compilation_model_option, [
                                         % use the value of conf_low_tag_bits
                                         % instead
     num_reserved_addresses              -   int(0),
-    num_reserved_objects                -   int(0),
     bits_per_word                       -   int(32),
                                         % A good default for the current
                                         % generation of architectures.
@@ -1446,7 +1443,6 @@ option_defaults_2(compilation_model_option, [
                                         % at configuration time.
     unboxed_float                       -   bool(no),
     unboxed_int64s                      -   bool(no),
-    unboxed_enums                       -   bool(yes),
     unboxed_no_tag_types                -   bool(yes),
     arg_pack_bits                       -   int(-1),
                                         % -1 is a special value which means use
@@ -2389,15 +2385,11 @@ long_option("single-precision-float",   single_prec_float).
 long_option("tags",                 tags).
 long_option("num-tag-bits",         num_tag_bits).
 long_option("num-reserved-addresses",   num_reserved_addresses).
-% As of 2017 aug 8, we no longer support reserved objects.
-% See the (very short) discussion on mercury-developers.
-% long_option("num-reserved-objects", num_reserved_objects).
 long_option("bits-per-word",        bits_per_word).
 long_option("bytes-per-word",       bytes_per_word).
 long_option("conf-low-tag-bits",    conf_low_tag_bits).
 long_option("unboxed-float",        unboxed_float).
 long_option("unboxed-int64s",       unboxed_int64s).
-long_option("unboxed-enums",        unboxed_enums).
 long_option("unboxed-no-tag-types", unboxed_no_tag_types).
 long_option("arg-pack-bits",        arg_pack_bits).
 long_option("allow-double-word-fields", allow_double_word_fields).
@@ -4929,10 +4921,6 @@ options_help_compilation_model -->
         "--num-reserved-addresses <n>  (This option is not for general use.)",
         "\tTreat the integer values from 0 up to <n> - 1 as reserved",
         "\taddresses that can be used to represent nullary constructors",
-        "\t(constants) of discriminated union types.",
-        "--num-reserved-objects <n>    (This option is not for general use.)",
-        "\tAllocate up to <n> global objects per type,",
-        "\tfor representing nullary constructors",
         "\t(constants) of discriminated union types."
 
         % The --conf-low-tag-bits option is reserved for use
@@ -4961,11 +4949,6 @@ options_help_compilation_model -->
 %        "\tThis assumes that word size of the target machine is at least",
 %        "\t64-bits in size.",
 %        "\tThe C code needs to be compiled iwth `-UMR_BOXED_INT64S'.",
-
-        % This is a developer only option.
-%       "--no-unboxed-enums",
-%       "(This option is not for general use.)",
-%       "\tBox enumerations. This option is disabled by default.",
 
         % This is a developer only option.
 %       "--no-unboxed-no-tag-types",
