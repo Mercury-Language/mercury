@@ -315,14 +315,14 @@ abs(Num) = Abs :-
     ).
 
 unchecked_abs(Num) =
-    ( if Num < from_int(0) then
-        from_int(0) - Num
+    ( if Num < 0i64 then
+        0i64 - Num
     else
         Num
     ).
 
 nabs(Num) =
-    ( if Num > from_int(0) then
+    ( if Num > 0i64 then
         -Num
     else
         Num
@@ -333,19 +333,19 @@ nabs(Num) =
 X div Y = Div :-
     Trunc = X // Y,
     ( if
-        ( X >= from_int(0), Y >= from_int(0)
-        ; X < from_int(0), Y < from_int(0)
-        ; X rem Y = from_int(0)
+        ( X >= 0i64, Y >= 0i64
+        ; X < 0i64, Y < 0i64
+        ; X rem Y = 0i64
         )
     then
         Div = Trunc
     else
-        Div = Trunc - from_int(1)
+        Div = Trunc - 1i64
     ).
 
 :- pragma inline('//'/2).
 X // Y = Div :-
-    ( if Y = from_int(0) then
+    ( if Y = 0i64 then
         throw(math.domain_error("int64.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
@@ -358,7 +358,7 @@ X mod Y = X  - (X div Y) * Y.
 
 :- pragma inline(rem/2).
 X rem Y = Rem :-
-    ( if Y = from_int(0) then
+    ( if Y = 0i64 then
         throw(math.domain_error("int64.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
@@ -394,65 +394,17 @@ min(X, Y) =
 
 :- pragma inline(even/1).
 even(X) :-
-    (X /\ from_int(1)) = from_int(0).
+    (X /\ 1i64) = 0i64.
 
 :- pragma inline(odd/1).
 odd(X) :-
-    (X /\ from_int(1)) \= from_int(0).
+    (X /\ 1i64) \= 0i64.
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C",
-    min_int64 = (I64::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    I64 = INT64_MIN;
-").
+min_int64 = -9_223_372_036_854_775_808_i64.
 
-:- pragma foreign_proc("C#",
-    min_int64 = (I64::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    I64 = System.Int64.MinValue;
-").
-
-:- pragma foreign_proc("Java",
-    min_int64 = (I64::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    I64 = java.lang.Long.MIN_VALUE;
-").
-
-:- pragma no_determinism_warning(min_int64/0).
-min_int64 = _ :-
-    sorry($module, "NYI min_int64/9 for Erlang").
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    max_int64 = (I64::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    I64 = INT64_MAX;
-").
-
-:- pragma foreign_proc("C#",
-    max_int64 = (I64::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    I64 = System.Int64.MaxValue;
-").
-
-:- pragma foreign_proc("Java",
-    max_int64 = (I64::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    I64 = java.lang.Long.MAX_VALUE;
-").
-
-:- pragma no_determinism_warning(max_int64/0).
-max_int64 = _ :-
-    sorry($module, "NYI max_int64/9 for Erlang").
+max_int64 = 9_223_372_036_854_775_807_i64.
 
 %---------------------------------------------------------------------------%
 

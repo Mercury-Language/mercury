@@ -297,7 +297,7 @@ X div Y = X // Y.
 
 :- pragma inline('//'/2).
 X // Y = Div :-
-    ( if Y = cast_from_int(0) then
+    ( if Y = 0u64 then
         throw(math.domain_error("uint64.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
@@ -310,7 +310,7 @@ X mod Y = X rem Y.
 
 :- pragma inline(rem/2).
 X rem Y = Rem :-
-    ( if Y = cast_from_int(0) then
+    ( if Y = 0u64 then
         throw(math.domain_error("uint64.rem: division by zero"))
     else
         Rem = unchecked_rem(X, Y)
@@ -346,38 +346,15 @@ min(X, Y) =
 
 :- pragma inline(even/1).
 even(X) :-
-    (X /\ cast_from_int(1)) = cast_from_int(0).
+    (X /\ 1u64) = 0u64.
 
 :- pragma inline(odd/1).
 odd(X) :-
-    (X /\ cast_from_int(1)) \= cast_from_int(0).
+    (X /\ 1u64) \= 0u64.
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C",
-    max_uint64 = (U64::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    U64 = UINT64_MAX;
-").
-
-:- pragma foreign_proc("C#",
-    max_uint64 = (U64::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    U64 = ulong.MaxValue;
-").
-
-:- pragma foreign_proc("Java",
-    max_uint64 = (U64::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    U64 = 0xffffffffffffffffL;
-").
-
-:- pragma no_determinism_warning(max_uint64/0).
-max_uint64 = _ :-
-    sorry($module, "uint64.max_uint64/1 NYI for Erlang").
+max_uint64 = 18_446_744_073_709_551_615_u64.
 
 %---------------------------------------------------------------------------%
 

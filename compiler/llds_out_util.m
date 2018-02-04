@@ -1,7 +1,8 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009, 2011 The University of Melbourne.
+% Copyright (C) 2013-2016, 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -81,8 +82,8 @@
 
 :- type decl_id
     --->    decl_float_label(string)
-    ;       decl_int64_label(string)    % XXX INT64 - use int64 here.
-    ;       decl_uint64_label(string)   % XXX INT64 - use uint64 here.
+    ;       decl_int64_label(int64)
+    ;       decl_uint64_label(uint64)
     ;       decl_common_type(type_num)
     ;       decl_code_addr(code_addr)
     ;       decl_rtti_id(rtti_id)

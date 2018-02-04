@@ -178,8 +178,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module int64.  % XXX INT64 - remove once int64 literals bootstrapped.
-:- import_module uint64. % XXX INT64 - ditto for uint64 literals.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -964,10 +962,8 @@ default_value_for_type(lt_int(int_type_int16)) = const(llconst_int16(0i16)).
 default_value_for_type(lt_int(int_type_uint16)) = const(llconst_uint16(0u16)).
 default_value_for_type(lt_int(int_type_int32)) = const(llconst_int32(0i32)).
 default_value_for_type(lt_int(int_type_uint32)) = const(llconst_uint32(0u32)).
-% XXX INT64.
-default_value_for_type(lt_int(int_type_int64)) = const(llconst_int64(int64.from_int(0))).
-% XXX INT64.
-default_value_for_type(lt_int(int_type_uint64)) = const(llconst_uint64(uint64.cast_from_int(0))).
+default_value_for_type(lt_int(int_type_int64)) = const(llconst_int64(0i64)).
+default_value_for_type(lt_int(int_type_uint64)) = const(llconst_uint64(0u64)).
 default_value_for_type(lt_float) = const(llconst_float(0.0)).
 default_value_for_type(lt_string) = const(llconst_string("")).
 default_value_for_type(lt_data_ptr) = const(llconst_int(0)).

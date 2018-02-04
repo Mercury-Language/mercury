@@ -756,12 +756,12 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
                 UnboxedInt64s = no,
                 StaticGroundInt64s = yes
             then
-                int64_literal_name(Int64Val, Int64Name),
-                Int64Label = decl_int64_label(Int64Name),
+                Int64Label = decl_int64_label(Int64Val),
                 ( if decl_set_is_member(Int64Label, !.DeclSet) then
                     true
                 else
                     decl_set_insert(Int64Label, !DeclSet),
+                    int64_literal_name(Int64Val, Int64Name),
                     Int64String = c_util.make_int64_literal(Int64Val),
                     output_indent(FirstIndent, LaterIndent, !.N, !IO),
                     !:N = !.N + 1,
@@ -781,12 +781,12 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
                 UnboxedInt64s = no,
                 StaticGroundInt64s = yes
             then
-                uint64_literal_name(UInt64Val, UInt64Name),
-                UInt64Label = decl_uint64_label(UInt64Name),
+                UInt64Label = decl_uint64_label(UInt64Val),
                 ( if decl_set_is_member(UInt64Label, !.DeclSet) then
                     true
                 else
                     decl_set_insert(UInt64Label, !DeclSet),
+                    uint64_literal_name(UInt64Val, UInt64Name),
                     UInt64String = c_util.make_uint64_literal(UInt64Val),
                     output_indent(FirstIndent, LaterIndent, !.N, !IO),
                     !:N = !.N + 1,
