@@ -727,7 +727,7 @@ make_functor_cons_id(Functor, Arity, ConsId) :-
         Functor = term.integer(Base, Integer, Signedness, Size),
         (
             Signedness = signed,
-            (
+            require_complete_switch [Size] (
                 Size = size_word,
                 source_integer_to_int(Base, Integer, Int),
                 ConsId = int_const(Int)
@@ -743,10 +743,14 @@ make_functor_cons_id(Functor, Arity, ConsId) :-
                 Size = size_32_bit,
                 integer.to_int32(Integer, Int32),
                 ConsId = int32_const(Int32)
+            ;
+                Size = size_64_bit,
+                integer.to_int64(Integer, Int64),
+                ConsId = int64_const(Int64)
             )
         ;
             Signedness = unsigned,
-            (
+            require_complete_switch [Size] (
                 Size = size_word,
                 integer.to_uint(Integer, UInt),
                 ConsId = uint_const(UInt)
@@ -762,6 +766,10 @@ make_functor_cons_id(Functor, Arity, ConsId) :-
                 Size = size_32_bit,
                 integer.to_uint32(Integer, UInt32),
                 ConsId = uint32_const(UInt32)
+            ;
+                Size = size_64_bit,
+                integer.to_uint64(Integer, UInt64),
+                ConsId = uint64_const(UInt64)
             )
         )
     ;

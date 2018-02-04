@@ -190,6 +190,7 @@ SINGLEMODULE= \
 	invalid_int \
 	invalid_int16_inst \
 	invalid_int32_inst \
+	invalid_int64_inst \
 	invalid_int8_inst \
 	invalid_main \
 	invalid_mllibs \
@@ -200,6 +201,7 @@ SINGLEMODULE= \
 	invalid_uint_inst \
 	invalid_uint16_inst \
 	invalid_uint32_inst \
+	invalid_uint64_inst \
 	invalid_uint8_inst \
 	io_in_ite_cond \
 	kind \
