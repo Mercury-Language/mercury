@@ -124,6 +124,8 @@ main -->
     test_all(42u16), newline,
     test_all(42i32), newline,
     test_all(43u32), newline,
+    test_all(66i64), newline,
+    test_all(67u64), newline,
         % test univ.
     { type_to_univ(["hi! I'm a univ!"], Univ) },
     test_all(Univ), newline,

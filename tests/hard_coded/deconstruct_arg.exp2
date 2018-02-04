@@ -250,6 +250,34 @@ deconstruct deconstruct: functor 43u32 arity 0
 deconstruct limited deconstruct 3 of 43
 functor 43u32 arity 0 []
 
+deconstruct functor: 66i64/0
+deconstruct argument 0 of 66 doesn't exist
+deconstruct argument 1 of 66 doesn't exist
+deconstruct argument 2 of 66 doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor 66i64 arity 0
+[]
+deconstruct limited deconstruct 3 of 66
+functor 66i64 arity 0 []
+
+deconstruct functor: 67u64/0
+deconstruct argument 0 of 67 doesn't exist
+deconstruct argument 1 of 67 doesn't exist
+deconstruct argument 2 of 67 doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor 67u64 arity 0
+[]
+deconstruct limited deconstruct 3 of 67
+functor 67u64 arity 0 []
+
 deconstruct functor: univ_cons/1
 deconstruct argument 0 of ["hi! I\'m a univ!"] is ["hi! I\'m a univ!"]
 deconstruct argument 1 of ["hi! I\'m a univ!"] doesn't exist
