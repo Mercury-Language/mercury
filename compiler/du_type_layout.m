@@ -879,16 +879,9 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
                         !NextTag, !CtorTags),
                     % We prefer to allocate primary tags to direct argument
                     % functors.
-                    (
-                        NonDirectArgFunctors = [],
-                        MaxTagForDirect = MaxTag
-                    ;
-                        NonDirectArgFunctors = [_ | _],
-                        MaxTagForDirect = MaxTag - 1
-                    ),
                     assign_direct_arg_tags(TypeCtor, DirectArgFunctors,
-                        !NextTag, MaxTagForDirect, LeftOverDirectArgFunctors,
-                        !CtorTags),
+                        !NextTag, MaxTag, NonDirectArgFunctors,
+                        LeftOverDirectArgFunctors, !CtorTags),
                     assign_unshared_tags(TypeCtor,
                         LeftOverDirectArgFunctors ++ NonDirectArgFunctors,
                         !.NextTag, MaxTag, [], !CtorTags),
@@ -1215,19 +1208,21 @@ is_foreign_type_for_target(TypeBody, Target, Assertions) :-
     ).
 
 :- pred assign_direct_arg_tags(type_ctor::in, list(constructor)::in,
-    int::in, int::out, int::in, list(constructor)::out,
+    int::in, int::out, int::in, list(constructor)::in, list(constructor)::out,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_direct_arg_tags(_, [], !Val, _, [], !CtorTags).
-assign_direct_arg_tags(TypeCtor, [Ctor | Ctors], !Val, MaxTag, LeftOverCtors,
-        !CtorTags) :-
+assign_direct_arg_tags(_, [], !Val, _, _, [], !CtorTags).
+assign_direct_arg_tags(TypeCtor, [Ctor | Ctors], !Val, MaxTag,
+        NonDirectArgFunctors, LeftOverCtors, !CtorTags) :-
     Ctor = ctor(_MaybeExistConstraints, Name, _Args, Arity, _Ctxt),
     ConsId = cons(Name, Arity, TypeCtor),
     ( if
         % If we are about to run out of unshared tags, stop, and return
         % the leftovers.
         !.Val = MaxTag,
-        Ctors = [_ | _]
+        ( Ctors = [_ | _]
+        ; NonDirectArgFunctors = [_ | _]
+        )
     then
         LeftOverCtors = [Ctor | Ctors]
     else
@@ -1237,8 +1232,8 @@ assign_direct_arg_tags(TypeCtor, [Ctor | Ctors], !Val, MaxTag, LeftOverCtors,
         % the compiler.
         map.set(ConsId, Tag, !CtorTags),
         !:Val = !.Val + 1,
-        assign_direct_arg_tags(TypeCtor, Ctors, !Val, MaxTag, LeftOverCtors,
-            !CtorTags)
+        assign_direct_arg_tags(TypeCtor, Ctors, !Val, MaxTag,
+            NonDirectArgFunctors, LeftOverCtors, !CtorTags)
     ).
 
 :- pred check_incorrect_direct_arg_assertions(list(sym_name_and_arity)::in,
