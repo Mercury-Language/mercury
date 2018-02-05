@@ -50,6 +50,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_out.hlds_out_pred.

@@ -24,6 +24,7 @@
 :- include_module hlds_clauses.
 :- include_module hlds_data.
 :- include_module hlds_goal.
+:- include_module hlds_inst_mode.
 :- include_module hlds_llds.
 :- include_module hlds_module.
 :- include_module hlds_pred.

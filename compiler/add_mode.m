@@ -35,7 +35,7 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds_error.
 :- import_module libs.

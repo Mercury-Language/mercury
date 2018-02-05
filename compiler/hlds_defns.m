@@ -52,6 +52,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

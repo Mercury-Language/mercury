@@ -196,6 +196,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_module.
 :- import_module hlds.hlds_out.hlds_out_pred.

@@ -62,6 +62,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_inst_mode.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

@@ -43,7 +43,7 @@
 :- import_module backend_libs.foreign.
 :- import_module hlds.add_pred.
 :- import_module hlds.error_msg_inst.
-:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_inst_mode.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.make_hlds_error.

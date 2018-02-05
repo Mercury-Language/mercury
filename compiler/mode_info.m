@@ -20,8 +20,8 @@
 :- import_module check_hlds.delay_info.
 :- import_module check_hlds.mode_errors.
 :- import_module hlds.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
