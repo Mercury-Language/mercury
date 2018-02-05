@@ -34,6 +34,7 @@
 
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.

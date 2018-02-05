@@ -20,6 +20,7 @@
 :- include_module assertion.
 :- include_module const_struct.
 :- include_module hlds_args.
+:- include_module hlds_class.
 :- include_module hlds_clauses.
 :- include_module hlds_data.
 :- include_module hlds_goal.

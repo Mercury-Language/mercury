@@ -86,6 +86,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.pred_table.
 :- import_module libs.file_util.

@@ -16,6 +16,7 @@
 :- module hlds.hlds_code_util.
 :- interface.
 
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.

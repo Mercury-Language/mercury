@@ -22,6 +22,7 @@
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_errors.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.

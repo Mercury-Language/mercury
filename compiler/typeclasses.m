@@ -20,7 +20,7 @@
 :- import_module check_hlds.type_assign.
 :- import_module check_hlds.typecheck_info.
 :- import_module hlds.
-:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.

@@ -46,7 +46,7 @@
 :- implementation.
 
 :- import_module backend_libs.pseudo_type_info.
-:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.status.

@@ -107,9 +107,10 @@
 
 :- implementation.
 
-:- import_module check_hlds.typeclasses.
 :- import_module check_hlds.type_util.
+:- import_module check_hlds.typeclasses.
 :- import_module hlds.add_pred.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.

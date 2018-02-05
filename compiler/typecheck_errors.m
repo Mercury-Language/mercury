@@ -181,6 +181,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.

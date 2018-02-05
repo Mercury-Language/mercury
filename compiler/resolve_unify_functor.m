@@ -52,6 +52,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.

@@ -44,7 +44,7 @@
 
 :- import_module backend_libs.type_class_info.
 :- import_module hlds.hlds_code_util.
-:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.status.

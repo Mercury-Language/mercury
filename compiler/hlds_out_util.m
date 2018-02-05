@@ -15,10 +15,10 @@
 :- module hlds.hlds_out.hlds_out_util.
 :- interface.
 
+:- import_module hlds.hlds_class.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_data.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.

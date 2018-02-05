@@ -107,6 +107,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.headvar_names.
 :- import_module hlds.hlds_args.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
