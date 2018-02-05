@@ -261,13 +261,14 @@ lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn) :-
     ).
 
 get_all_cons_defns(ConsTable, AllConsDefns) :-
-    map.foldl(accumulate_all_inner_cons_defns, ConsTable, [], AllConsDefns).
+    map.foldl_values(accumulate_all_inner_cons_defns, ConsTable,
+        [], AllConsDefns).
 
-:- pred accumulate_all_inner_cons_defns(string::in, inner_cons_table::in,
+:- pred accumulate_all_inner_cons_defns(inner_cons_table::in,
     assoc_list(cons_id, hlds_cons_defn)::in,
     assoc_list(cons_id, hlds_cons_defn)::out) is det.
 
-accumulate_all_inner_cons_defns(_Name, InnerConsTable, !AllConsDefns) :-
+accumulate_all_inner_cons_defns(InnerConsTable, !AllConsDefns) :-
     list.map(project_inner_cons_entry, InnerConsTable, InnerConsList),
     !:AllConsDefns = InnerConsList ++ !.AllConsDefns.
 
@@ -1038,13 +1039,13 @@ lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) :-
     map.lookup(TypeCtorTable, TypeCtor, TypeDefn).
 
 get_all_type_ctor_defns(TypeTable, TypeCtorsDefns) :-
-    map.foldl(get_all_type_ctor_defns_2, TypeTable, [], TypeCtorsDefns).
+    map.foldl_values(get_all_type_ctor_defns_2, TypeTable, [], TypeCtorsDefns).
 
-:- pred get_all_type_ctor_defns_2(string::in, type_ctor_table::in,
+:- pred get_all_type_ctor_defns_2(type_ctor_table::in,
     assoc_list(type_ctor, hlds_type_defn)::in,
     assoc_list(type_ctor, hlds_type_defn)::out) is det.
 
-get_all_type_ctor_defns_2(_Name, TypeCtorTable, !TypeCtorsDefns) :-
+get_all_type_ctor_defns_2(TypeCtorTable, !TypeCtorsDefns) :-
     map.to_assoc_list(TypeCtorTable, NameTypeCtorsDefns),
     !:TypeCtorsDefns = NameTypeCtorsDefns ++ !.TypeCtorsDefns.
 
