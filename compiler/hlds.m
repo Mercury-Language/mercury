@@ -26,6 +26,7 @@
 :- include_module hlds_llds.
 :- include_module hlds_module.
 :- include_module hlds_pred.
+:- include_module hlds_promise.
 :- include_module hlds_rtti.
 :- include_module inst_graph.
 :- include_module instmap.

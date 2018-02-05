@@ -26,6 +26,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_promise.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.inst_graph.
 :- import_module hlds.instmap.
