@@ -30,7 +30,6 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.
@@ -144,14 +143,12 @@
     % runtime system needs to know about the data representation scheme
     % used by a type constructor.
     %
-    % There are four alternatives that correspond to discriminated union:
-    % enum, du, reserved and notag. Enum is for types that define only
+    % There are three alternatives that correspond to discriminated union:
+    % enum, du, and notag. Enum is for types that define only
     % constants. Notag is for types that define only one unary functor.
-    % Reserved is for types in which at least one functor is represented
-    % using a reserved value, which may be a small integer (including zero).
     % Du is for all other types.
     %
-    % All four alternatives have four kinds of information.
+    % All three alternatives have four kinds of information.
     %
     % First, an indication of whether the type has user-defined equality or
     % not.
@@ -166,12 +163,6 @@
     % Fourth, a table that allows the runtime system to map a printable
     % representation to a value in memory (i.e. to implement the
     % construct operation).
-    %
-    % For types in which some function symbols are represented by reserved
-    % addresses, the third component is in two parts: a list of function
-    % symbols so represented, and a table indexed by the primary tag for
-    % all the other function symbols. The runtime system must check every
-    % element on the list before looking at the primary tag.
     %
     % For notag types, the single functor descriptor fills the roles of
     % the second, third and fourth components.
@@ -202,16 +193,6 @@
                 du_value_table      :: ptag_map,
                 du_name_table       :: map(string, map(int, du_functor)),
                 du_functor_number_mapping
-                                    :: list(int)
-            )
-    ;       tcd_reserved(
-                res_axioms          :: equality_axioms,
-                res_functors        :: list(maybe_reserved_functor),
-                res_value_table_res :: list(reserved_functor),
-                res_value_table_du  :: ptag_map,
-                res_name_table      :: map(string,
-                                            map(int, maybe_reserved_functor)),
-                res_functor_number_mapping
                                     :: list(int)
             )
     ;       tcd_notag(
@@ -271,9 +252,7 @@
                 nt_subtype_info     :: functor_subtype_info
             ).
 
-    % Descriptor for a functor in a du type. Also used for functors in
-    % reserved address types which are not represented by a reserved
-    % address.
+    % Descriptor for a functor in a du type.
     %
     % This type mostly corresponds to the C type MR_DuFunctorDesc.
     %
@@ -286,32 +265,6 @@
                 du_arg_infos        :: list(du_arg_info),
                 du_exist_info       :: maybe(exist_info),
                 du_subtype_info     :: functor_subtype_info
-            ).
-
-    % Descriptor for a functor represented by a reserved address.
-    %
-    % This type corresponds to the C type MR_ReservedAddrFunctorDesc.
-    %
-:- type reserved_functor
-    --->    reserved_functor(
-                res_name            :: string,
-                res_ordinal         :: int,
-                res_rep             :: reserved_address
-            ).
-
-    % Descriptor for a functor in reserved address type.
-    %
-    % This type corresponds to the C type MR_MaybeResAddrFunctorDesc,
-    % although their structure is slightly different in order to make
-    % searches on an array of the C structures as convenient as searches
-    % on a list of values of this Mercury type.
-    %
-:- type maybe_reserved_functor
-    --->    res_func(
-                mrf_res             :: reserved_functor
-            )
-    ;       du_func(
-                mrf_du              :: du_functor
             ).
 
     % Describes the representation of a functor in a general
@@ -659,13 +612,10 @@
     ;       type_ctor_field_names(int)                  % functor ordinal
     ;       type_ctor_field_types(int)                  % functor ordinal
     ;       type_ctor_field_locns(int)                  % functor ordinal
-    ;       type_ctor_res_addrs
-    ;       type_ctor_res_addr_functors
     ;       type_ctor_enum_functor_desc(int)            % functor ordinal
     ;       type_ctor_foreign_enum_functor_desc(int)    % functor ordinal
     ;       type_ctor_notag_functor_desc
     ;       type_ctor_du_functor_desc(int)              % functor ordinal
-    ;       type_ctor_res_functor_desc(int)             % functor ordinal
     ;       type_ctor_enum_name_ordered_table
     ;       type_ctor_enum_value_ordered_table
     ;       type_ctor_foreign_enum_name_ordered_table
@@ -674,9 +624,6 @@
     ;       type_ctor_du_stag_ordered_table(int)        % primary tag
     ;       type_ctor_du_ptag_ordered_table
     ;       type_ctor_du_ptag_layout(int)               % primary tag
-    ;       type_ctor_res_value_ordered_table
-    ;       type_ctor_res_name_ordered_table
-    ;       type_ctor_maybe_res_addr_functor_desc
     ;       type_ctor_functor_number_map
     ;       type_ctor_type_functors
     ;       type_ctor_type_layout
@@ -853,12 +800,6 @@
 :- func enum_functor_rtti_name(enum_functor) = ctor_rtti_name.
 :- func foreign_enum_functor_rtti_name(foreign_enum_functor) = ctor_rtti_name.
 :- func du_functor_rtti_name(du_functor) = ctor_rtti_name.
-:- func res_functor_rtti_name(reserved_functor) = ctor_rtti_name.
-:- func maybe_res_functor_rtti_name(maybe_reserved_functor) = ctor_rtti_name.
-
-    % Extract the reserved address from a reserved address functor descriptor.
-    %
-:- func res_addr_rep(reserved_functor) = reserved_address.
 
     % Return true iff the given type of RTTI data structure includes
     % code addresses.
@@ -1129,13 +1070,10 @@ ctor_rtti_name_is_exported(CtorRttiName) = IsExported :-
         ; CtorRttiName = type_ctor_field_names(_)
         ; CtorRttiName = type_ctor_field_types(_)
         ; CtorRttiName = type_ctor_field_locns(_)
-        ; CtorRttiName = type_ctor_res_addrs
-        ; CtorRttiName = type_ctor_res_addr_functors
         ; CtorRttiName = type_ctor_enum_functor_desc(_)
         ; CtorRttiName = type_ctor_foreign_enum_functor_desc(_)
         ; CtorRttiName = type_ctor_notag_functor_desc
         ; CtorRttiName = type_ctor_du_functor_desc(_)
-        ; CtorRttiName = type_ctor_res_functor_desc(_)
         ; CtorRttiName = type_ctor_enum_name_ordered_table
         ; CtorRttiName = type_ctor_enum_value_ordered_table
         ; CtorRttiName = type_ctor_foreign_enum_name_ordered_table
@@ -1144,9 +1082,6 @@ ctor_rtti_name_is_exported(CtorRttiName) = IsExported :-
         ; CtorRttiName = type_ctor_du_stag_ordered_table(_)
         ; CtorRttiName = type_ctor_du_ptag_ordered_table
         ; CtorRttiName = type_ctor_du_ptag_layout(_)
-        ; CtorRttiName = type_ctor_res_value_ordered_table
-        ; CtorRttiName = type_ctor_res_name_ordered_table
-        ; CtorRttiName = type_ctor_maybe_res_addr_functor_desc
         ; CtorRttiName = type_ctor_functor_number_map
         ; CtorRttiName = type_ctor_type_functors
         ; CtorRttiName = type_ctor_type_layout
@@ -1262,14 +1197,6 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
         string.append_list([ModuleName, "__field_locns_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
-        RttiName = type_ctor_res_addrs,
-        string.append_list([ModuleName, "__reserved_addrs_",
-            TypeName, "_", A_str], Str)
-    ;
-        RttiName = type_ctor_res_addr_functors,
-        string.append_list([ModuleName, "__reserved_addr_functors_",
-            TypeName, "_", A_str], Str)
-    ;
         RttiName = type_ctor_enum_functor_desc(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__enum_functor_desc_",
@@ -1287,11 +1214,6 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
         RttiName = type_ctor_du_functor_desc(Ordinal),
         string.int_to_string(Ordinal, O_str),
         string.append_list([ModuleName, "__du_functor_desc_",
-            TypeName, "_", A_str, "_", O_str], Str)
-    ;
-        RttiName = type_ctor_res_functor_desc(Ordinal),
-        string.int_to_string(Ordinal, O_str),
-        string.append_list([ModuleName, "__reserved_addr_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = type_ctor_enum_name_ordered_table,
@@ -1327,18 +1249,6 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
         string.int_to_string(Ptag, P_str),
         string.append_list([ModuleName, "__du_ptag_layout_",
             TypeName, "_", A_str, "_", P_str], Str)
-    ;
-        RttiName = type_ctor_res_value_ordered_table,
-        string.append_list([ModuleName, "__res_layout_ordered_table_",
-            TypeName, "_", A_str], Str)
-    ;
-        RttiName = type_ctor_res_name_ordered_table,
-        string.append_list([ModuleName, "__res_name_ordered_table_",
-            TypeName, "_", A_str], Str)
-    ;
-        RttiName = type_ctor_maybe_res_addr_functor_desc,
-        string.append_list([ModuleName, "__maybe_res_addr_functor_desc_",
-            TypeName, "_", A_str], Str)
     ;
         RttiName = type_ctor_functor_number_map,
         string.append_list([ModuleName, "__functor_number_map_",
@@ -1681,15 +1591,6 @@ type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
             RepStr = "MR_TYPECTOR_REP_DU_USEREQ"
         )
     ;
-        TypeCtorDetails = tcd_reserved(TypeCtorUserEq, _, _, _, _, _),
-        (
-            TypeCtorUserEq = standard,
-            RepStr = "MR_TYPECTOR_REP_RESERVED_ADDR"
-        ;
-            TypeCtorUserEq = user_defined,
-            RepStr = "MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ"
-        )
-    ;
         TypeCtorDetails = tcd_notag(TypeCtorUserEq, NotagFunctor),
         NotagEqvType = NotagFunctor ^ nt_arg_type,
         (
@@ -1830,17 +1731,6 @@ type_ctor_details_num_ptags(TypeCtorDetails) = NumPtags :-
         map.keys(PtagMap, Ptags),
         list.det_last(Ptags, LastPtag),
         NumPtags = LastPtag + 1
-    ;
-        TypeCtorDetails = tcd_reserved(_, _, _, PtagMap, _, _),
-        map.keys(PtagMap, Ptags),
-        (
-            Ptags = [],
-            NumPtags = -1
-        ;
-            Ptags = [_ | _],
-            list.det_last(Ptags, LastPtag),
-            NumPtags = LastPtag + 1
-        )
     ).
 
 type_ctor_details_num_functors(TypeCtorDetails) = NumFunctors :-
@@ -1853,9 +1743,6 @@ type_ctor_details_num_functors(TypeCtorDetails) = NumFunctors :-
     ;
         TypeCtorDetails = tcd_du(_, DuFunctors, _, _, _),
         list.length(DuFunctors, NumFunctors)
-    ;
-        TypeCtorDetails = tcd_reserved(_, ReservedFunctors, _, _, _, _),
-        list.length(ReservedFunctors, NumFunctors)
     ;
         TypeCtorDetails = tcd_notag(_, _),
         NumFunctors = 1
@@ -1883,16 +1770,6 @@ foreign_enum_functor_rtti_name(EnumFunctor) =
 du_functor_rtti_name(DuFunctor) =
     type_ctor_du_functor_desc(DuFunctor ^ du_ordinal).
 
-res_functor_rtti_name(ResFunctor) =
-    type_ctor_res_functor_desc(ResFunctor ^ res_ordinal).
-
-maybe_res_functor_rtti_name(du_func(DuFunctor)) =
-    type_ctor_du_functor_desc(DuFunctor ^ du_ordinal).
-maybe_res_functor_rtti_name(res_func(ResFunctor)) =
-    type_ctor_res_functor_desc(ResFunctor ^ res_ordinal).
-
-res_addr_rep(ResFunctor) = ResFunctor ^ res_rep.
-
 rtti_id_would_include_code_addr(ctor_rtti_id(_, RttiName)) =
     ctor_rtti_name_would_include_code_addr(RttiName).
 rtti_id_would_include_code_addr(tc_rtti_id(_, TCRttiName)) =
@@ -1908,13 +1785,10 @@ ctor_rtti_name_would_include_code_addr(RttiName) = InclCodeAddr :-
         ; RttiName = type_ctor_field_names(_)
         ; RttiName = type_ctor_field_types(_)
         ; RttiName = type_ctor_field_locns(_)
-        ; RttiName = type_ctor_res_addrs
-        ; RttiName = type_ctor_res_addr_functors
         ; RttiName = type_ctor_enum_functor_desc(_)
         ; RttiName = type_ctor_foreign_enum_functor_desc(_)
         ; RttiName = type_ctor_notag_functor_desc
         ; RttiName = type_ctor_du_functor_desc(_)
-        ; RttiName = type_ctor_res_functor_desc(_)
         ; RttiName = type_ctor_enum_name_ordered_table
         ; RttiName = type_ctor_enum_value_ordered_table
         ; RttiName = type_ctor_foreign_enum_name_ordered_table
@@ -1923,9 +1797,6 @@ ctor_rtti_name_would_include_code_addr(RttiName) = InclCodeAddr :-
         ; RttiName = type_ctor_du_stag_ordered_table(_)
         ; RttiName = type_ctor_du_ptag_ordered_table
         ; RttiName = type_ctor_du_ptag_layout(_)
-        ; RttiName = type_ctor_res_value_ordered_table
-        ; RttiName = type_ctor_res_name_ordered_table
-        ; RttiName = type_ctor_maybe_res_addr_functor_desc
         ; RttiName = type_ctor_functor_number_map
         ; RttiName = type_ctor_type_hashcons_pointer
         ; RttiName = type_ctor_type_functors
@@ -2173,10 +2044,6 @@ ctor_rtti_name_type(type_ctor_field_types(_),
         "PseudoTypeInfo", is_array).
 ctor_rtti_name_type(type_ctor_field_locns(_),
         "DuArgLocn", is_array).
-ctor_rtti_name_type(type_ctor_res_addrs,
-        "ReservedAddr", is_array).
-ctor_rtti_name_type(type_ctor_res_addr_functors,
-        "ReservedAddrFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_enum_functor_desc(_),
         "EnumFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_foreign_enum_functor_desc(_),
@@ -2185,8 +2052,6 @@ ctor_rtti_name_type(type_ctor_notag_functor_desc,
         "NotagFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_du_functor_desc(_),
         "DuFunctorDesc", not_array).
-ctor_rtti_name_type(type_ctor_res_functor_desc(_),
-        "ReservedAddrFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_enum_name_ordered_table,
         "EnumFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_enum_value_ordered_table,
@@ -2203,12 +2068,6 @@ ctor_rtti_name_type(type_ctor_du_ptag_ordered_table,
         "DuPtagLayout", is_array).
 ctor_rtti_name_type(type_ctor_du_ptag_layout(_),
         "DuPtagLayout", not_array).
-ctor_rtti_name_type(type_ctor_res_value_ordered_table,
-        "ReservedAddrTypeLayout", not_array).
-ctor_rtti_name_type(type_ctor_res_name_ordered_table,
-        "MaybeResAddrFunctorDesc", is_array).
-ctor_rtti_name_type(type_ctor_maybe_res_addr_functor_desc,
-        "MaybeResAddrFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_functor_number_map,
         "Integer", is_array).
 ctor_rtti_name_type(type_ctor_type_functors,

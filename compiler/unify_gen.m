@@ -493,27 +493,7 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ConsTag = shared_local_tag(Bits, Num),
         ConstStag = mkword(Bits, unop(mkbody, const(llconst_int(Num)))),
         TestRval = binop(eq(int_type_int), Rval, ConstStag)
-    ;
-        ConsTag = reserved_address_tag(RA),
-        TestRval = binop(eq(int_type_int), Rval, generate_reserved_address(RA))
-    ;
-        ConsTag = shared_with_reserved_addresses_tag(ReservedAddrs, ThisTag),
-        % We first check that the Rval doesn't match any of the ReservedAddrs,
-        % and then check that it matches ThisTag.
-        CheckReservedAddrs = (func(RA, InnerTestRval0) = InnerTestRval :-
-            raw_tag_test(Rval, reserved_address_tag(RA), EqualRA),
-            InnerTestRval = binop(logical_and,
-                unop(logical_not, EqualRA), InnerTestRval0)
-        ),
-        raw_tag_test(Rval, ThisTag, MatchesThisTag),
-        TestRval = list.foldr(CheckReservedAddrs, ReservedAddrs,
-            MatchesThisTag)
     ).
-
-:- func generate_reserved_address(reserved_address) = rval.
-
-generate_reserved_address(null_pointer) = const(llconst_int(0)).
-generate_reserved_address(small_int_as_pointer(N)) = const(llconst_int(N)).
 
 %---------------------------------------------------------------------------%
 
@@ -704,19 +684,6 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         assign_const_to_var(LHSVar, const(llconst_data_addr(DataId, no)),
             !.CI, !CLD),
         Code = empty
-    ;
-        ConsTag = reserved_address_tag(RA),
-        expect(unify(RHSVars, []), $module, $pred,
-            "reserved_address constant has args"),
-        assign_const_to_var(LHSVar, generate_reserved_address(RA), !.CI, !CLD),
-        Code = empty
-    ;
-        ConsTag = shared_with_reserved_addresses_tag(_RAs, ThisTag),
-        % For shared_with_reserved_address, the sharing is only important
-        % for tag tests, not for constructions, so here we just recurse
-        % on the real representation.
-        generate_construction_2(ThisTag, LHSVar, RHSVars, ArgModes, ArgWidths,
-            HowToConstruct0, TakeAddr, MaybeSize, GoalInfo, Code, !CI, !CLD)
     ;
         ConsTag = closure_tag(PredId, ProcId, EvalMethod),
         expect(unify(TakeAddr, []), $module, $pred,
@@ -1317,7 +1284,6 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag, Code,
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = shared_local_tag(_Ptag, _Sectag2)
-        ; Tag = reserved_address_tag(_RA)
         ),
         Code = empty
     ;
@@ -1398,13 +1364,6 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag, Code,
             Fields, ArgVars),
         var_types(CI, Args, ArgTypes),
         generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, CI, !CLD)
-    ;
-        % For shared_with_reserved_address, the sharing is only important
-        % for tag tests, not for det deconstructions, so here we just recurse
-        % on the real representation.
-        Tag = shared_with_reserved_addresses_tag(_RAs, ThisTag),
-        generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths,
-            ThisTag, Code, CI, !CLD)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1748,24 +1707,19 @@ generate_const_struct(ModuleInfo, UnboxedFloats, UnboxedInt64s,
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     get_cons_arg_widths(ModuleInfo, ConsId, ConstArgs, ConsArgWidths),
     generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-        !.ConstStructMap, ConsId, ConsTag, ConstArgs, ConsArgWidths, Rval,
+        !.ConstStructMap, ConsTag, ConstArgs, ConsArgWidths, Rval,
         !StaticCellInfo),
     map.det_insert(ConstNum, Rval, !ConstStructMap).
 
 :- pred generate_const_struct_rval(module_info::in, have_unboxed_floats::in,
-    have_unboxed_int64s::in, const_struct_map::in, cons_id::in, cons_tag::in,
+    have_unboxed_int64s::in, const_struct_map::in, cons_tag::in,
     list(const_struct_arg)::in, list(arg_width)::in, typed_rval::out,
     static_cell_info::in, static_cell_info::out) is det.
 
 generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-        ConstStructMap, ConsId, ConsTag, ConstArgs, ConsArgWidths, TypedRval,
+        ConstStructMap, ConsTag, ConstArgs, ConsArgWidths, TypedRval,
         !StaticCellInfo) :-
     (
-        ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
-        generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, ConsId, ActualConsTag, ConstArgs, ConsArgWidths,
-            TypedRval, !StaticCellInfo)
-    ;
         ConsTag = no_tag,
         (
             ConstArgs = [ConstArg],
@@ -1831,7 +1785,6 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = shared_local_tag(_, _)
-        ; ConsTag = reserved_address_tag(_)
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
@@ -1869,16 +1822,16 @@ generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
     ;
         ConstArg = csa_constant(ConsId, _),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-        generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats,
-            UnboxedInt64s, ConstStructMap, ConsTag, ArgWidth, TypedRval)
+        generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
+            ConsTag, ArgWidth, TypedRval)
     ).
 
-:- pred generate_const_struct_arg_tag(module_info::in, have_unboxed_floats::in,
-    have_unboxed_int64s::in, const_struct_map::in, cons_tag::in,
-    arg_width::in, typed_rval::out) is det.
+:- pred generate_const_struct_arg_tag(have_unboxed_floats::in,
+    have_unboxed_int64s::in, cons_tag::in, arg_width::in,
+    typed_rval::out) is det.
 
-generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-        ConstStructMap, ConsTag, ArgWidth, TypedRval) :-
+generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s, ConsTag, ArgWidth,
+        TypedRval) :-
     (
         (
             ConsTag = string_tag(String),
@@ -1938,15 +1891,6 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ConsTag = shared_local_tag(Ptag, Stag),
         Rval = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
         TypedRval = typed_rval(Rval, lt_data_ptr)
-    ;
-        ConsTag = reserved_address_tag(RA),
-        Rval = generate_reserved_address(RA),
-        rval_type(Rval, Type),
-        TypedRval = typed_rval(Rval, Type)
-    ;
-        ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
-        generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats,
-            UnboxedInt64s, ConstStructMap, ActualConsTag, ArgWidth, TypedRval)
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
@@ -2111,16 +2055,6 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         Rval = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
         ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
         map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
-    ;
-        ConsTag = reserved_address_tag(RA),
-        Rval = generate_reserved_address(RA),
-        rval_type(Rval, RvalType),
-        ActiveGroundTerm = typed_rval(Rval, RvalType),
-        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
-    ;
-        ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
-        generate_ground_term_conjunct_tag(Var, ActualConsTag, Args,
-            ConsArgWidths, UnboxedFloats, !StaticCellInfo, !ActiveMap)
     ;
         ConsTag = no_tag,
         (

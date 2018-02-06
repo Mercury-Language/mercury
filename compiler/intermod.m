@@ -1652,7 +1652,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     ( if
         Body = hlds_du_type(_, _, MaybeRepnC, _),
         MaybeRepnC = yes(RepnC),
-        RepnC = du_type_repn(_, CtorRepns, _, _, DuTypeKind, _, _),
+        RepnC = du_type_repn(_, CtorRepns, _, _, DuTypeKind, _),
         DuTypeKind = du_type_kind_foreign_enum(Lang)
     then
         list.foldl(gather_foreign_enum_value_pair, CtorRepns,

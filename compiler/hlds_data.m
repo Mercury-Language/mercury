@@ -534,10 +534,7 @@ cons_table_optimize(!ConsTable) :-
                 % XXX TYPE_REPN Include this information in the
                 % constructor_repns in the dur_ctor_repns and dur_ctor_map
                 % fields.
-                dur_direct_arg_ctors        :: maybe(list(sym_name_and_arity)),
-
-                % Does the type representation use a reserved address?
-                dur_reserved_addr           :: uses_reserved_address
+                dur_direct_arg_ctors        :: maybe(list(sym_name_and_arity))
             ).
 
 :- type constructor_repn
@@ -760,24 +757,10 @@ cons_table_optimize(!ConsTable) :-
             % but this time the secondary tag is stored in the rest of the
             % main word rather than in the first word of the argument vector.
 
-    ;       no_tag
+    ;       no_tag.
             % This is for types with a single functor of arity one. In this
             % case, we don't need to store the functor, and instead we store
             % the argument directly.
-
-    ;       reserved_address_tag(reserved_address)
-            % This is for constants represented as null pointers, or as
-            % other reserved values in the address space.
-
-    ;       shared_with_reserved_addresses_tag(list(reserved_address),
-                cons_tag).
-            % This is for constructors of discriminated union types where
-            % one or more of the *other* constructors for that type is
-            % represented as a reserved address. Any semidet deconstruction
-            % against a constructor represented as a
-            % shared_with_reserved_addresses cons_tag must check that
-            % the value isn't any of the reserved addresses before testing
-            % for the constructor's own cons_tag.
 
 :- type int_tag
     --->    int_tag_int(int)
@@ -798,14 +781,6 @@ cons_table_optimize(!ConsTable) :-
     ;       int_tag_uint32(uint32)
     ;       int_tag_int64(int64)
     ;       int_tag_uint64(uint64).
-
-:- type reserved_address
-    --->    null_pointer
-            % This is for constants which are represented as a null pointer.
-
-    ;       small_int_as_pointer(int).
-            % This is for constants which are represented as a small integer,
-            % cast to a pointer.
 
     % The type `tag_bits' holds a primary tag value.
     %
@@ -884,7 +859,6 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         ; Tag = foreign_tag(_, _)
         ; Tag = closure_tag(_, _, _)
         ; Tag = no_tag
-        ; Tag = reserved_address_tag(_)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = type_info_const_tag(_)
@@ -907,9 +881,6 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         ; Tag = shared_local_tag(PrimaryTag, _SecondaryTag)
         ),
         MaybePrimaryTag = yes(PrimaryTag)
-    ;
-        Tag = shared_with_reserved_addresses_tag(_RAs, InnerTag),
-        MaybePrimaryTag = get_primary_tag(InnerTag)
     ).
 
 get_secondary_tag(Tag) = MaybeSecondaryTag :-
@@ -927,7 +898,6 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_entry_tag(_, _)
         ; Tag = no_tag
-        ; Tag = reserved_address_tag(_)
         ; Tag = unshared_tag(_PrimaryTag)
         ; Tag = direct_arg_tag(_PrimaryTag)
         ; Tag = single_functor_tag
@@ -941,9 +911,6 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
         ; Tag = shared_local_tag(_PrimaryTag, SecondaryTag)
         ),
         MaybeSecondaryTag = yes(SecondaryTag)
-    ;
-        Tag = shared_with_reserved_addresses_tag(_RAs, InnerTag),
-        MaybeSecondaryTag = get_secondary_tag(InnerTag)
     ).
 
 get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
@@ -954,7 +921,7 @@ get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
             unexpected($pred, "MaybeRepn = no")
         ;
             MaybeRepn = yes(Repn),
-            Repn = du_type_repn(_, _, _, CheaperTagTest, _, _, _)
+            CheaperTagTest = Repn ^ dur_cheaper_tag_test
         )
     ;
         ( TypeBody = hlds_eqv_type(_)

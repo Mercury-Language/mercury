@@ -891,10 +891,9 @@ lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
         search_type_defn(CI, Type, TypeDefn),
         get_type_defn_body(TypeDefn, TypeBody),
         TypeBody = hlds_du_type(_, _, MaybeRepn, _),
-        MaybeRepn = yes(Repn),
-        Repn = du_type_repn(_, _, _, CheaperTagTestPrime, _, _, _)
+        MaybeRepn = yes(Repn)
     then
-        CheaperTagTest = CheaperTagTestPrime
+        CheaperTagTest = Repn ^ dur_cheaper_tag_test
     else
         CheaperTagTest = no_cheaper_tag_test
     ).

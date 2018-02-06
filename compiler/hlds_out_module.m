@@ -358,7 +358,7 @@ write_type_body(Info, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         ;
             MaybeRepn = yes(Repn),
             Repn = du_type_repn(_ConsTagMap, CtorRepns, CtorRepnMap,
-                CheaperTagTest, DuTypeKind, MaybeDirectArgCtors, ReservedAddr),
+                CheaperTagTest, DuTypeKind, MaybeDirectArgCtors),
             write_constructor_repns(TVarSet, Indent, CtorRepns, !IO),
             (
                 CheaperTagTest = no_cheaper_tag_test
@@ -415,13 +415,6 @@ write_type_body(Info, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
                 DuTypeKind = du_type_kind_general,
                 write_indent(Indent, !IO),
                 io.write_string("% KIND general\n", !IO)
-            ),
-            (
-                ReservedAddr = uses_reserved_address,
-                write_indent(Indent, !IO),
-                io.write_string("% reserved_address\n", !IO)
-            ;
-                ReservedAddr = does_not_use_reserved_address
             ),
             mercury_output_where_attributes(MercInfo, TVarSet,
                 MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,

@@ -955,16 +955,6 @@ map_cons_tag(deep_profiling_proc_layout_tag(_, _), _) :-
 map_cons_tag(table_io_entry_tag(_, _), _) :-
     unexpected($module, $pred, "table_io_entry_tag cons tag " ++
         "for non-table_io_entry_desc cons id").
-map_cons_tag(reserved_address_tag(_), _) :-
-    % These should only be generated if the --num-reserved-addresses
-    % or --num-reserved-objects options are used.
-    sorry($module, $pred, "bytecode with --num-reserved-addresses " ++
-        "or --num-reserved-objects").
-map_cons_tag(shared_with_reserved_addresses_tag(_, _), _) :-
-    % These should only be generated if the --num-reserved-addresses
-    % or --num-reserved-objects options are used.
-    sorry($module, $pred, "bytecode with --num-reserved-addresses " ++
-        "or --num-reserved-objects").
 
 %---------------------------------------------------------------------------%
 

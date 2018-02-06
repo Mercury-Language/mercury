@@ -1022,8 +1022,6 @@ foreign_const_name_and_tag(TypeCtor, Mapping, ConsIdToTagMap, Ctor,
         ; TagVal = shared_remote_tag(_, _)
         ; TagVal = shared_local_tag(_, _)
         ; TagVal = no_tag
-        ; TagVal = reserved_address_tag(_)
-        ; TagVal = shared_with_reserved_addresses_tag(_, _)
         ),
         unexpected($module, $pred, "enum constant requires an int tag")
     ),

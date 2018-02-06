@@ -105,12 +105,6 @@
 :- func ml_gen_secondary_tag_rval(module_info, mlds_target_lang, tag_bits,
     mer_type, mlds_rval) = mlds_rval.
 
-    % Generate an MLDS rval for a given reserved address,
-    % cast to the appropriate type.
-    %
-:- func ml_gen_reserved_address(module_info, reserved_address, mlds_type) =
-    mlds_rval.
-
     % Generate MLDS code for a scope that constructs a ground term.
     %
 :- pred ml_gen_ground_term(prog_var::in, hlds_goal::in,
@@ -303,15 +297,6 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
 ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         HowToConstruct, Context, Stmts, !Info) :-
     (
-        % Types for which some other constructor has a reserved_address
-        % -- that only makes a difference when deconstructing, so here we
-        % ignore that, and just recurse on the representation for this
-        % constructor.
-
-        Tag = shared_with_reserved_addresses_tag(_, ThisTag),
-        ml_gen_construct_tag(ThisTag, Type, Var, ConsId, Args, ArgModes,
-            TakeAddr, HowToConstruct, Context, Stmts, !Info)
-    ;
         ( Tag = no_tag
         ; Tag = direct_arg_tag(_)
         ),
@@ -405,7 +390,6 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
-        ; Tag = reserved_address_tag(_)
         ; Tag = shared_local_tag(_, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
@@ -489,16 +473,6 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
     ;
         Tag = table_io_entry_tag(_, _),
         unexpected($pred, "table_io_entry_tag NYI")
-    ;
-        Tag = reserved_address_tag(ReservedAddr),
-        ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        Rval = ml_gen_reserved_address(ModuleInfo, ReservedAddr, MLDS_VarType)
-    ;
-        Tag = shared_with_reserved_addresses_tag(_, ThisTag),
-        % Whether or not some other constructors in the type are represented
-        % by reserved addresses makes a difference only when deconstructing
-        % the term, not when constructing it.
-        ml_gen_constant(ThisTag, VarType, MLDS_VarType, Rval, !Info)
     ;
         % These tags, which are not (necessarily) constants, are handled
         % in ml_gen_construct, so we don't need to handle them here.
@@ -1343,7 +1317,6 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
         ; Tag = shared_local_tag(_Bits1, _Num1)
-        ; Tag = reserved_address_tag(_)
         ),
         Stmts = []
     ;
@@ -1400,13 +1373,6 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
         ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum),
         ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
             VarLval, OffSet, ArgNum, Tag, Context, Stmts, !Info)
-    ;
-        % For shared_with_reserved_address, the sharing is only important
-        % for tag tests, not for det deconstructions, so here we just recurse
-        % on the real representation.
-        Tag = shared_with_reserved_addresses_tag(_, ThisTag),
-        ml_gen_det_deconstruct_tag(ThisTag, Type, Var, ConsId, Args,
-            Modes, Context, Stmts, !Info)
     ).
 
     % Calculate the integer offset used to reference the first field of a
@@ -1436,9 +1402,6 @@ ml_tag_offset_and_argnum(Tag, TagBits, Offset, ArgNum) :-
         Offset = offset(1),
         ArgNum = 1
     ;
-        Tag = shared_with_reserved_addresses_tag(_, SubTag),
-        ml_tag_offset_and_argnum(SubTag, TagBits, Offset, ArgNum)
-    ;
         Tag = ground_term_const_tag(_, SubTag),
         ml_tag_offset_and_argnum(SubTag, TagBits, Offset, ArgNum)
     ;
@@ -1456,7 +1419,6 @@ ml_tag_offset_and_argnum(Tag, TagBits, Offset, ArgNum) :-
         ; Tag = table_io_entry_tag(_, _)
         ; Tag = no_tag
         ; Tag = shared_local_tag(_Bits1, _Num1)
-        ; Tag = reserved_address_tag(_)
         ),
         unexpected($pred, "unexpected tag")
     ).
@@ -2119,26 +2081,6 @@ ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, Rval) = TagTestRval :-
             ml_unop(cast(MLDS_Type),
                 ml_mkword(Bits,
                     ml_unop(std_unop(mkbody), ml_const(mlconst_int(Num))))))
-    ;
-        Tag = reserved_address_tag(ReservedAddr),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-        ReservedAddrRval = ml_gen_reserved_address(ModuleInfo, ReservedAddr,
-            MLDS_Type),
-        TagTestRval = ml_binop(eq(int_type_int), Rval, ReservedAddrRval)
-    ;
-        Tag = shared_with_reserved_addresses_tag(ReservedAddrs, ThisTag),
-        % We first check that the Rval doesn't match any of the ReservedAddrs,
-        % and then check that it matches ThisTag.
-        CheckReservedAddrs =
-            ( func(RA, TestRval0) = TestRval :-
-                EqualRA = ml_gen_tag_test_rval(ModuleInfo, Target,
-                    reserved_address_tag(RA), Type, Rval),
-                TestRval = ml_gen_and(ml_gen_not(EqualRA), TestRval0)
-            ),
-        MatchesThisTag = ml_gen_tag_test_rval(ModuleInfo, Target,
-            ThisTag, Type, Rval),
-        TagTestRval = list.foldr(CheckReservedAddrs, ReservedAddrs,
-            MatchesThisTag)
     ).
 
 :- func ml_gen_int_tag_test_rval(int_tag, mer_type, module_info, mlds_rval) =
@@ -2314,17 +2256,6 @@ ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
 
 %---------------------------------------------------------------------------%
 
-ml_gen_reserved_address(_ModuleInfo, ResAddr, MLDS_Type) = Rval :-
-    (
-        ResAddr = null_pointer,
-        Rval = ml_const(mlconst_null(MLDS_Type))
-    ;
-        ResAddr = small_int_as_pointer(Int),
-        Rval = ml_unop(cast(MLDS_Type), ml_const(mlconst_int(Int)))
-    ).
-
-%---------------------------------------------------------------------------%
-
 ml_gen_ground_term(TermVar, Goal, Stmts, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
@@ -2428,9 +2359,6 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ConsTag = string_tag(String),
             ConstRval = ml_const(mlconst_string(String))
         ;
-            ConsTag = reserved_address_tag(ResAddr),
-            ConstRval = ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type)
-        ;
             ConsTag = shared_local_tag(Ptag, Stag),
             ConstRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag,
                 ml_unop(std_unop(mkbody), ml_const(mlconst_int(Stag)))))
@@ -2453,14 +2381,6 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ; ConsTag = table_io_entry_tag(_, _)
         ),
         unexpected($pred, "bad constant")
-    ;
-        ConsTag = shared_with_reserved_addresses_tag(_, ThisTag),
-        % Whether or not some other constructors in the type are represented
-        % by reserved addresses makes a difference only when deconstructing
-        % the term, not when constructing it.
-        ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData,
-            VarTypes, Var, VarType, MLDS_Type, ConsId, ThisTag, Args, Context,
-            !GlobalData, !GroundTermMap)
     ;
         ( ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
@@ -2686,13 +2606,6 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
 ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         Args, !ConstStructMap, !GlobalData) :-
     (
-        ConsTag = shared_with_reserved_addresses_tag(_, ThisTag),
-        % Whether or not some other constructors in the type are represented
-        % by reserved addresses makes a difference only when deconstructing
-        % the term, not when constructing it.
-        ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId,
-            ThisTag, Args, !ConstStructMap, !GlobalData)
-    ;
         ( ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
         ),
@@ -2750,7 +2663,6 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         ( ConsTag = int_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = string_tag(_)
-        ; ConsTag = reserved_address_tag(_)
         ; ConsTag = shared_local_tag(_, _)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
@@ -2842,17 +2754,15 @@ ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, DoubleWidth,
         ConstArg = csa_constant(ConsId, Type),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-        ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag,
-            Type, MLDS_Type, Rval0)
+        ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval0)
     ),
     ml_gen_box_const_rval(ModuleInfo, term.context_init, MLDS_Type,
         DoubleWidth, Rval0, Rval, !GlobalData).
 
-:- pred ml_gen_const_struct_arg_tag(module_info::in, cons_id::in, cons_tag::in,
-    mer_type::in, mlds_type::in, mlds_rval::out) is det.
+:- pred ml_gen_const_struct_arg_tag(cons_tag::in, mer_type::in, mlds_type::in,
+    mlds_rval::out) is det.
 
-ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
-        Rval) :-
+ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
     (
         ConsTag = int_tag(IntTag),
         RvalConst = int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag),
@@ -2863,9 +2773,6 @@ ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
     ;
         ConsTag = string_tag(String),
         Rval = ml_const(mlconst_string(String))
-    ;
-        ConsTag = reserved_address_tag(ResAddr),
-        Rval = ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type)
     ;
         ConsTag = shared_local_tag(Ptag, Stag),
         Rval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag,
@@ -2889,13 +2796,6 @@ ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
             type_class_base_typeclass_info(ModuleName, Instance)),
         Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
         Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
-    ;
-        ConsTag = shared_with_reserved_addresses_tag(_, ThisTag),
-        % Whether or not some other constructors in the type are represented
-        % by reserved addresses makes a difference only when deconstructing
-        % the term, not when constructing it.
-        ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ThisTag,
-            Type, MLDS_Type, Rval)
     ;
         % Instead of these tags in csa_constants, polymorphism.m builds
         % csa_const_structs.

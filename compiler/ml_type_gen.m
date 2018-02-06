@@ -232,7 +232,7 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns) :-
             MaybeRepn = yes(Repn)
         ),
         Repn = du_type_repn(_TagValues, CtorRepns, _ConsCtorMap,
-            _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors, _ReservedAddr),
+            _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors),
         % XXX We probably shouldn't ignore _ReservedAddr.
         ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
         (
@@ -378,8 +378,6 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
         ; TagVal = shared_remote_tag(_, _)
         ; TagVal = shared_local_tag(_, _)
         ; TagVal = no_tag
-        ; TagVal = reserved_address_tag(_)
-        ; TagVal = shared_with_reserved_addresses_tag(_, _)
         ),
         unexpected($pred, "enum constant needs int or foreign tag")
     ),
@@ -426,14 +424,7 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     %       ...
     %
     %       /*
-    %       ** Reserved objects and/or derived classes,
-    %       ** one for each constructor.
-    %       **
-    %       ** Reserved objects are generated for any constructors
-    %       ** that use a `reserved_address(reserved_object(...))'
-    %       ** representation.
-    %       **
-    %       ** Derived classes are generated for any other constructors;
+    %       ** Derived classes, one for each constructor;
     %       ** these are generated as nested classes avoid name clashes.
     %       ** These will derive either directly from
     %       ** <ClassName> or from <ClassName>::tag_type
@@ -443,9 +434,6 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     %       ** we put the secondary tag members directly in the base class.
     %       */
     %       */
-    % #if ctor1_uses_reserved_object
-    %       static <ClassName> obj_<ctor1>;
-    % #else
     %       static class <ctor1> : public <ClassName> {
     %       public:
     %           /*
@@ -463,7 +451,7 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     %               ...
     %           }
     %       };
-    % #endif
+    %
     %       static class <ctor2> : public <ClassName>::tag_type {
     %       public:
     %           ...
@@ -701,161 +689,144 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
     UnqualCtorName =
         ml_gen_du_ctor_name(Target, TypeCtor, CtorName, CtorArity),
 
-    ( if tagval_is_reserved_addr(TagVal, ReservedAddr) then
-        ( ReservedAddr = null_pointer
-        ; ReservedAddr = small_int_as_pointer(_)
-        ),
-        % For reserved numeric addresses, we don't need to generate
-        % any objects or types.
-        BaseClassFields = BaseClassFields0,
-        BaseClassClasses = BaseClassClasses0,
-        BaseClassCtors = BaseClassCtors0
-    else
-        % Generate the members for this data constructor.
+    % Generate the members for this data constructor.
 
-        % Number any unnamed fields starting from 1.
-        ArgNum0 = 1,
+    % Number any unnamed fields starting from 1.
+    ArgNum0 = 1,
 
-        % Generate class members for the type_infos and typeclass_infos
-        % that hold information about existentially quantified
-        % type variables and type class constraints.
-        % Note that the order of fields is as follows:
-        %   - first typeinfos (for unconstrained type variables)
-        %   - then typeclassinfos (for class constraints)
-        %   - finally the ordinary members
-        (
-            MaybeExistConstraints = no_exist_constraints,
-            % Optimize this common case.
-            PolyFields = [],
-            PolyFieldInfos = [],
-            ArgNum2 = ArgNum0
-        ;
-            MaybeExistConstraints = exist_constraints(ExistConstraints),
-            ExistConstraints =
-                cons_exist_constraints(ExistQTVars, Constraints),
-            constraint_list_get_tvars(Constraints, ConstrainedTVars),
-            list.delete_elems(ExistQTVars, ConstrainedTVars,
-                UnconstrainedTVars),
-            list.map2_foldl(
-                ml_gen_hld_du_ctor_type_info_field(ModuleInfo, Context),
-                UnconstrainedTVars, TypeInfoFields, TypeInfoFieldInfos,
-                ArgNum0, ArgNum1),
-            list.map2_foldl(
-                ml_gen_hld_du_ctor_typeclass_info_field(ModuleInfo, Context),
-                Constraints, TypeClassInfoFields, TypeClassInfoFieldInfos,
-                ArgNum1, ArgNum2),
-            PolyFields = TypeInfoFields ++ TypeClassInfoFields,
-            PolyFieldInfos = TypeInfoFieldInfos ++ TypeClassInfoFieldInfos
-        ),
+    % Generate class members for the type_infos and typeclass_infos
+    % that hold information about existentially quantified
+    % type variables and type class constraints.
+    % Note that the order of fields is as follows:
+    %
+    %   - first typeinfos (for unconstrained type variables)
+    %   - then typeclassinfos (for class constraints)
+    %   - finally the ordinary members
+    (
+        MaybeExistConstraints = no_exist_constraints,
+        % Optimize this common case.
+        PolyFields = [],
+        PolyFieldInfos = [],
+        ArgNum2 = ArgNum0
+    ;
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints =
+            cons_exist_constraints(ExistQTVars, Constraints),
+        constraint_list_get_tvars(Constraints, ConstrainedTVars),
+        list.delete_elems(ExistQTVars, ConstrainedTVars,
+            UnconstrainedTVars),
+        list.map2_foldl(
+            ml_gen_hld_du_ctor_type_info_field(ModuleInfo, Context),
+            UnconstrainedTVars, TypeInfoFields, TypeInfoFieldInfos,
+            ArgNum0, ArgNum1),
+        list.map2_foldl(
+            ml_gen_hld_du_ctor_typeclass_info_field(ModuleInfo, Context),
+            Constraints, TypeClassInfoFields, TypeClassInfoFieldInfos,
+            ArgNum1, ArgNum2),
+        PolyFields = TypeInfoFields ++ TypeClassInfoFields,
+        PolyFieldInfos = TypeInfoFieldInfos ++ TypeClassInfoFieldInfos
+    ),
 
-        % Generate the class members for the ordinary fields
-        % of this constructor.
-        list.map2_foldl(ml_gen_hld_du_ctor_field(ModuleInfo, Context),
-            ArgRepns, OrdinaryFields, OrdinaryFieldInfos, ArgNum2, _ArgNum3),
+    % Generate the class members for the ordinary fields
+    % of this constructor.
+    list.map2_foldl(ml_gen_hld_du_ctor_field(ModuleInfo, Context),
+        ArgRepns, OrdinaryFields, OrdinaryFieldInfos, ArgNum2, _ArgNum3),
 
-        SubClassFields = PolyFields ++ OrdinaryFields,
-        SubClassFieldInfos = PolyFieldInfos ++ OrdinaryFieldInfos,
+    SubClassFields = PolyFields ++ OrdinaryFields,
+    SubClassFieldInfos = PolyFieldInfos ++ OrdinaryFieldInfos,
 
-        % Generate a constructor function to initialize the fields, if needed
-        % (not all back-ends use constructor functions).
-        MaybeSecTagVal = get_secondary_tag(TagVal),
-        UsesConstructors = ml_target_uses_constructors(Target),
-        UsesBaseClass = ml_tag_uses_base_class(TagVal),
-        (
-            UsesConstructors = yes,
-            (
-                UsesBaseClass = tag_uses_base_class,
-                CtorClassId = BaseClassId,
-                CtorClassQualifier = BaseClassQualifier
-            ;
-                UsesBaseClass = tag_does_not_use_base_class,
-                CtorClassId = mlds_class_id(
-                    qual_class_name(BaseClassQualifier, type_qual,
-                        UnqualCtorName),
-                    CtorArity, mlds_class),
-                CtorClassQualifier = mlds_append_class_qualifier(Target,
-                    BaseClassQualifier, type_qual, UnqualCtorName, CtorArity)
-            ),
-            SubClassCtorFunc = ml_gen_constructor_function(Target,
-                BaseClassId, CtorClassId, CtorClassQualifier,
-                SecondaryTagClassId, MaybeSecTagVal, SubClassFieldInfos,
-                Context),
-            % If this constructor is going to go in the base class, then we may
-            % also need to generate an additional zero-argument constructor,
-            % which is used to construct the class that is used for
-            % reserved_objects.
-            % XXX We don't support reserved_object tags anymore.
-            %
-            % The implementation of deep copy in Java grades also depends on
-            % zero-argument constructors.
-            ( if
-                Target = ml_target_java,
-                SubClassFields = [_ | _]
-            then
-                ZeroArgCtorFunc = ml_gen_constructor_function(Target,
-                    BaseClassId, CtorClassId, CtorClassQualifier,
-                    SecondaryTagClassId, no, [], Context),
-                SubClassCtors = [ZeroArgCtorFunc, SubClassCtorFunc]
-            else
-                SubClassCtors = [SubClassCtorFunc]
-            )
-        ;
-            UsesConstructors = no,
-            SubClassCtors = []
-        ),
-
+    % Generate a constructor function to initialize the fields, if needed
+    % (not all back-ends use constructor functions).
+    MaybeSecTagVal = get_secondary_tag(TagVal),
+    UsesConstructors = ml_target_uses_constructors(Target),
+    UsesBaseClass = ml_tag_uses_base_class(TagVal),
+    (
+        UsesConstructors = yes,
         (
             UsesBaseClass = tag_uses_base_class,
-            % Put the members for this constructor directly in the base class.
-            BaseClassFields = SubClassFields ++ BaseClassFields0,
-            BaseClassClasses = BaseClassClasses0,
-            BaseClassCtors = SubClassCtors ++ BaseClassCtors0
+            CtorClassId = BaseClassId,
+            CtorClassQualifier = BaseClassQualifier
         ;
             UsesBaseClass = tag_does_not_use_base_class,
-            % Generate a nested derived class for this constructor,
-            % and put the members for this constructor in that class.
-
-            % We inherit either the base class for this type, or the secondary
-            % tag class, depending on whether we need a secondary tag.
-            % But when targetting C, we want to omit empty base classes.
-            % So if targetting C, don't include any base class if there is
-            % no secondary tag.
-            (
-                MaybeSecTagVal = yes(_),
-                Inherits = inherits_class(SecondaryTagClassId)
-            ;
-                MaybeSecTagVal = no,
-                UsesEmptyBaseClasses = target_uses_empty_base_classes(Target),
-                (
-                    UsesEmptyBaseClasses = yes,
-                    Inherits = inherits_class(BaseClassId)
-                ;
-                    UsesEmptyBaseClasses = no,
-                    Inherits = inherits_nothing
-                )
-            ),
-            Imports = [],
-            Implements = [],
-            get_type_defn_tparams(TypeDefn, TypeParams),
-
-            % Put it all together.
-            SubClassFlags = ml_gen_type_decl_flags,
-            SubClassDefn = mlds_class_defn(UnqualCtorName, CtorArity, Context,
-                SubClassFlags, mlds_class, Imports, Inherits, Implements,
-                TypeParams, SubClassFields, [], [], SubClassCtors),
-
-            BaseClassFields = BaseClassFields0,
-            BaseClassClasses = [SubClassDefn | BaseClassClasses0],
-            BaseClassCtors = BaseClassCtors0
+            CtorClassId = mlds_class_id(
+                qual_class_name(BaseClassQualifier, type_qual,
+                    UnqualCtorName),
+                CtorArity, mlds_class),
+            CtorClassQualifier = mlds_append_class_qualifier(Target,
+                BaseClassQualifier, type_qual, UnqualCtorName, CtorArity)
+        ),
+        SubClassCtorFunc = ml_gen_constructor_function(Target,
+            BaseClassId, CtorClassId, CtorClassQualifier,
+            SecondaryTagClassId, MaybeSecTagVal, SubClassFieldInfos,
+            Context),
+        % If this constructor is going to go in the base class, then we may
+        % also need to generate an additional zero-argument constructor,
+        % which is used to construct the class that is used for
+        % reserved_objects.
+        % XXX We don't support reserved_object tags anymore.
+        %
+        % The implementation of deep copy in Java grades also depends on
+        % zero-argument constructors.
+        ( if
+            Target = ml_target_java,
+            SubClassFields = [_ | _]
+        then
+            ZeroArgCtorFunc = ml_gen_constructor_function(Target,
+                BaseClassId, CtorClassId, CtorClassQualifier,
+                SecondaryTagClassId, no, [], Context),
+            SubClassCtors = [ZeroArgCtorFunc, SubClassCtorFunc]
+        else
+            SubClassCtors = [SubClassCtorFunc]
         )
+    ;
+        UsesConstructors = no,
+        SubClassCtors = []
+    ),
+
+    (
+        UsesBaseClass = tag_uses_base_class,
+        % Put the members for this constructor directly in the base class.
+        BaseClassFields = SubClassFields ++ BaseClassFields0,
+        BaseClassClasses = BaseClassClasses0,
+        BaseClassCtors = SubClassCtors ++ BaseClassCtors0
+    ;
+        UsesBaseClass = tag_does_not_use_base_class,
+        % Generate a nested derived class for this constructor,
+        % and put the members for this constructor in that class.
+
+        % We inherit either the base class for this type, or the secondary
+        % tag class, depending on whether we need a secondary tag.
+        % But when targetting C, we want to omit empty base classes.
+        % So if targetting C, don't include any base class if there is
+        % no secondary tag.
+        (
+            MaybeSecTagVal = yes(_),
+            Inherits = inherits_class(SecondaryTagClassId)
+        ;
+            MaybeSecTagVal = no,
+            UsesEmptyBaseClasses = target_uses_empty_base_classes(Target),
+            (
+                UsesEmptyBaseClasses = yes,
+                Inherits = inherits_class(BaseClassId)
+            ;
+                UsesEmptyBaseClasses = no,
+                Inherits = inherits_nothing
+            )
+        ),
+        Imports = [],
+        Implements = [],
+        get_type_defn_tparams(TypeDefn, TypeParams),
+
+        % Put it all together.
+        SubClassFlags = ml_gen_type_decl_flags,
+        SubClassDefn = mlds_class_defn(UnqualCtorName, CtorArity, Context,
+            SubClassFlags, mlds_class, Imports, Inherits, Implements,
+            TypeParams, SubClassFields, [], [], SubClassCtors),
+
+        BaseClassFields = BaseClassFields0,
+        BaseClassClasses = [SubClassDefn | BaseClassClasses0],
+        BaseClassCtors = BaseClassCtors0
     ).
-
-:- pred tagval_is_reserved_addr(cons_tag::in, reserved_address::out)
-    is semidet.
-
-tagval_is_reserved_addr(reserved_address_tag(RA), RA).
-tagval_is_reserved_addr(shared_with_reserved_addresses_tag(_, TagVal), RA) :-
-    tagval_is_reserved_addr(TagVal, RA).
 
 :- func target_uses_empty_base_classes(mlds_target_lang) = bool.
 
@@ -1082,9 +1053,6 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         Tag = single_functor_tag,
         UsesBaseClass = tag_uses_base_class
     ;
-        Tag = shared_with_reserved_addresses_tag(_RAs, SubTag),
-        UsesBaseClass = ml_tag_uses_base_class(SubTag)
-    ;
         Tag = ground_term_const_tag(_ConstNum, SubTag),
         UsesBaseClass = ml_tag_uses_base_class(SubTag)
     ;
@@ -1105,7 +1073,6 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         ; Tag = shared_remote_tag(_, _)
         ; Tag = shared_local_tag(_, _)
         ; Tag = no_tag
-        ; Tag = reserved_address_tag(_)
         ),
         UsesBaseClass = tag_does_not_use_base_class
     ).
@@ -1186,8 +1153,6 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
         ; TagVal = shared_remote_tag(_, _)
         ; TagVal = shared_local_tag(_, _)
         ; TagVal = no_tag
-        ; TagVal = reserved_address_tag(_)
-        ; TagVal = shared_with_reserved_addresses_tag(_, _)
         ),
         unexpected($pred,
             "enum constant requires an int or foreign tag")

@@ -470,7 +470,6 @@
     % Data representation compilation model options
     ;       tags
     ;       num_tag_bits
-    ;       num_reserved_addresses
     ;       bits_per_word
     ;       bytes_per_word
             % The undocumented conf_low_tag_bits option is used by the `mmc'
@@ -1430,7 +1429,6 @@ option_defaults_2(compilation_model_option, [
                                         % -1 is a special value which means
                                         % use the value of conf_low_tag_bits
                                         % instead
-    num_reserved_addresses              -   int(0),
     bits_per_word                       -   int(32),
                                         % A good default for the current
                                         % generation of architectures.
@@ -2384,7 +2382,6 @@ long_option("single-prec-float",    single_prec_float).
 long_option("single-precision-float",   single_prec_float).
 long_option("tags",                 tags).
 long_option("num-tag-bits",         num_tag_bits).
-long_option("num-reserved-addresses",   num_reserved_addresses).
 long_option("bits-per-word",        bits_per_word).
 long_option("bytes-per-word",       bytes_per_word).
 long_option("conf-low-tag-bits",    conf_low_tag_bits).
@@ -3015,6 +3012,8 @@ long_option("java-generics-2010-04-13",
 long_option("strip-executable-2014-05-05",
                                     compiler_sufficiently_recent).
 long_option("trace-goal-only-locals-2017-07-05",
+                                    compiler_sufficiently_recent).
+long_option("no-reserved-addrs",
                                     compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("ignore-par-conjunctions",
@@ -4917,11 +4916,7 @@ options_help_compilation_model -->
         "\teach word as tag bits (default: low).",
     %   "\t\t`--tags none' implies `--num-tag-bits 0'.",
         "--num-tag-bits <n>            (This option is not for general use.)",
-        "\tUse <n> tag bits.",
-        "--num-reserved-addresses <n>  (This option is not for general use.)",
-        "\tTreat the integer values from 0 up to <n> - 1 as reserved",
-        "\taddresses that can be used to represent nullary constructors",
-        "\t(constants) of discriminated union types."
+        "\tUse <n> tag bits."
 
         % The --conf-low-tag-bits option is reserved for use
         % by the `mmc' script; it is deliberately not documented.

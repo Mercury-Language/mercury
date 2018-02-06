@@ -151,10 +151,6 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
             ErlangFunctors),
         Details = erlang_du(ErlangFunctors)
     ;
-        CtorDetails = tcd_reserved(_, _, _, _, _, _),
-        % Reserved types are not supported on the Erlang backend.
-        unexpected($module, $pred, "reserved")
-    ;
         CtorDetails = tcd_notag(_, NoTagFunctor),
         NoTagFunctor = notag_functor(Name, TypeInfo, ArgName, SubtypeInfo),
         OrigArity = 1,

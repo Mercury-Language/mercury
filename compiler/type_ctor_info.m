@@ -365,8 +365,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ;
                 MaybeRepn = yes(Repn),
                 Repn = du_type_repn(_ConsTagMap, CtorRepns, _ConsCtorMap,
-                    _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors,
-                    ReservedAddr)
+                    _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors)
             ),
             (
                 MaybeCanonical = noncanon(_),
@@ -393,7 +392,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ;
                 DuTypeKind = du_type_kind_general,
                 make_du_details(ModuleInfo, CtorRepns, TypeArity,
-                    EqualityAxioms, ReservedAddr, Details)
+                    EqualityAxioms, Details)
             )
         )
     ),
@@ -637,8 +636,6 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], NextOrdinal,
         ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = shared_local_tag(_, _)
         ; ConsTag = no_tag
-        ; ConsTag = reserved_address_tag(_)
-        ; ConsTag = shared_with_reserved_addresses_tag(_, _)
         ),
         unexpected($module, $pred, "non foreign tag for foreign enum functor")
     ),
@@ -666,58 +663,20 @@ make_foreign_enum_maps(ForeignEnumFunctor, !OrdinalMap, !NameMap) :-
 :- type tag_list == assoc_list(int,
     pair(sectag_locn, map(int, ctor_rtti_name))).
 
-:- type reserved_addr_map == map(reserved_address, rtti_data).
-
-:- func is_du_functor(maybe_reserved_functor::in) = (du_functor::out)
-    is semidet.
-
-is_du_functor(du_func(DuFunctor)) = DuFunctor.
-
-:- func is_reserved_functor(maybe_reserved_functor::in) =
-    (reserved_functor::out) is semidet.
-
-is_reserved_functor(res_func(ResFunctor)) = ResFunctor.
-
     % Make the functor and layout tables for a du type
     % (including reserved_addr types).
     %
 :- pred make_du_details(module_info::in, list(constructor_repn)::in,
-    int::in, equality_axioms::in, uses_reserved_address::in,
-    type_ctor_details::out) is det.
+    int::in, equality_axioms::in, type_ctor_details::out) is det.
 
-make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, ReservedAddr,
-        Details) :-
-    make_maybe_res_functors(ModuleInfo, Ctors, 0, TypeArity, MaybeResFunctors),
-    DuFunctors = list.filter_map(is_du_functor, MaybeResFunctors),
-    ResFunctors = list.filter_map(is_reserved_functor, MaybeResFunctors),
-    list.foldl(make_du_ptag_ordered_table, DuFunctors,
-        map.init, DuPtagTable),
+make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, Details) :-
+    make_du_functors(ModuleInfo, Ctors, 0, TypeArity, DuFunctors),
+    list.foldl(make_du_ptag_ordered_table, DuFunctors, map.init, DuPtagTable),
     FunctorNumberMap = make_functor_number_map(Ctors),
-    (
-        ResFunctors = [],
-        expect(unify(ReservedAddr, does_not_use_reserved_address),
-            $module, $pred, "ReservedAddr is not does_not_use_reserved_addr"),
-        list.foldl(make_du_name_ordered_table, DuFunctors,
-            map.init, DuNameOrderedMap),
-        Details = tcd_du(EqualityAxioms, DuFunctors, DuPtagTable,
-            DuNameOrderedMap, FunctorNumberMap)
-    ;
-        ResFunctors = [_ | _],
-        expect(unify(ReservedAddr, uses_reserved_address),
-            $module, $pred, "ReservedAddr is not uses_reserved_addr"),
-        list.foldl(make_res_name_ordered_table, MaybeResFunctors,
-            map.init, ResNameOrderedMap),
-        Details = tcd_reserved(EqualityAxioms, MaybeResFunctors,
-            ResFunctors, DuPtagTable, ResNameOrderedMap, FunctorNumberMap)
-    ).
-
-:- type maybe_reserved_rep
-    --->    reserved_rep(
-                reserved_address
-            )
-    ;       du_rep(
-                du_rep
-            ).
+    list.foldl(make_du_name_ordered_table, DuFunctors,
+        map.init, DuNameOrderedMap),
+    Details = tcd_du(EqualityAxioms, DuFunctors, DuPtagTable,
+        DuNameOrderedMap, FunctorNumberMap).
 
     % Create a du_functor_desc structure for each functor in a du type.
     % Besides returning a list of the rtti names of their du_functor_desc
@@ -727,16 +686,16 @@ make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, ReservedAddr,
     % TagMap groups the rttis into groups depending on their primary tags;
     % this is how the type layout structure is constructed.
     %
-:- pred make_maybe_res_functors(module_info::in, list(constructor_repn)::in,
-    int::in, int::in, list(maybe_reserved_functor)::out) is det.
+:- pred make_du_functors(module_info::in, list(constructor_repn)::in,
+    int::in, int::in, list(du_functor)::out) is det.
 
-make_maybe_res_functors(_, [], _, _, []).
-make_maybe_res_functors(ModuleInfo, [CtorRepn | CtorRepns],
-        NextOrdinal, TypeArity, [MaybeResFunctor | MaybeResFunctors]) :-
+make_du_functors(_, [], _, _, []).
+make_du_functors(ModuleInfo, [CtorRepn | CtorRepns],
+        NextOrdinal, TypeArity, [DuFunctor | DuFunctors]) :-
     CtorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag,
         ConsArgRepns, Arity, _Context),
     FunctorName = unqualify_name(SymName),
-    get_maybe_reserved_rep(ConsTag, ConsRep),
+    get_du_rep(ConsTag, DuRep),
     (
         MaybeExistConstraints = no_exist_constraints,
         ExistTVars = [],
@@ -750,52 +709,34 @@ make_maybe_res_functors(ModuleInfo, [CtorRepn | CtorRepns],
     ),
     list.map_foldl(generate_du_arg_info(TypeArity, ExistTVars),
         ConsArgRepns, ArgInfos, functor_subtype_none, FunctorSubtypeInfo),
-    (
-        ConsRep = du_rep(DuRep),
-        DuFunctor = du_functor(FunctorName, Arity, NextOrdinal, DuRep,
-            ArgInfos, MaybeExistInfo, FunctorSubtypeInfo),
-        MaybeResFunctor = du_func(DuFunctor)
-    ;
-        ConsRep = reserved_rep(ResRep),
-        expect(unify(Arity, 0), $module, $pred, "bad arity"),
-        expect(unify(ArgInfos, []), $module, $pred, "bad args"),
-        expect(unify(MaybeExistInfo, no), $module, $pred, "bad exist"),
-        ResFunctor = reserved_functor(FunctorName, NextOrdinal, ResRep),
-        MaybeResFunctor = res_func(ResFunctor)
-    ),
-    make_maybe_res_functors(ModuleInfo, CtorRepns,
-        NextOrdinal + 1, TypeArity, MaybeResFunctors).
+    DuFunctor = du_functor(FunctorName, Arity, NextOrdinal, DuRep,
+        ArgInfos, MaybeExistInfo, FunctorSubtypeInfo),
 
-:- pred get_maybe_reserved_rep(cons_tag::in, maybe_reserved_rep::out) is det.
+    make_du_functors(ModuleInfo, CtorRepns,
+        NextOrdinal + 1, TypeArity, DuFunctors).
 
-get_maybe_reserved_rep(ConsTag, ConsRep) :-
+:- pred get_du_rep(cons_tag::in, du_rep::out) is det.
+
+get_du_rep(ConsTag, DuRep) :-
     (
         ConsTag = single_functor_tag,
         ConsPtag = 0,
         SecTagLocn = sectag_locn_none,
-        ConsRep = du_rep(du_ll_rep(ConsPtag, SecTagLocn))
+        DuRep = du_ll_rep(ConsPtag, SecTagLocn)
     ;
         ConsTag = unshared_tag(ConsPtag),
         SecTagLocn = sectag_locn_none,
-        ConsRep = du_rep(du_ll_rep(ConsPtag, SecTagLocn))
+        DuRep = du_ll_rep(ConsPtag, SecTagLocn)
     ;
         ConsTag = direct_arg_tag(ConsPtag),
         SecTagLocn = sectag_locn_none_direct_arg,
-        ConsRep = du_rep(du_ll_rep(ConsPtag, SecTagLocn))
+        DuRep = du_ll_rep(ConsPtag, SecTagLocn)
     ;
         ConsTag = shared_local_tag(ConsPtag, ConsStag),
-        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_locn_local(ConsStag)))
+        DuRep = du_ll_rep(ConsPtag, sectag_locn_local(ConsStag))
     ;
         ConsTag = shared_remote_tag(ConsPtag, ConsStag),
-        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_locn_remote(ConsStag)))
-    ;
-        ConsTag = reserved_address_tag(ReservedAddr),
-        ConsRep = reserved_rep(ReservedAddr)
-    ;
-        ConsTag = shared_with_reserved_addresses_tag(_RAs, ThisTag),
-        % Here we can just ignore the fact that this cons_tag is
-        % shared with reserved addresses.
-        get_maybe_reserved_rep(ThisTag, ConsRep)
+        DuRep = du_ll_rep(ConsPtag, sectag_locn_remote(ConsStag))
     ;
         ( ConsTag = no_tag
         ; ConsTag = string_tag(_)
@@ -973,28 +914,6 @@ make_du_name_ordered_table(DuFunctor, !NameTable) :-
         map.det_update(Name, NameMap, !NameTable)
     else
         NameMap = map.singleton(Arity, DuFunctor),
-        map.det_insert(Name, NameMap, !NameTable)
-    ).
-
-:- pred make_res_name_ordered_table(maybe_reserved_functor::in,
-    map(string, map(int, maybe_reserved_functor))::in,
-    map(string, map(int, maybe_reserved_functor))::out) is det.
-
-make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
-    (
-        MaybeResFunctor = du_func(DuFunctor),
-        Name = DuFunctor ^ du_name,
-        Arity = DuFunctor ^ du_orig_arity
-    ;
-        MaybeResFunctor = res_func(ResFunctor),
-        Name = ResFunctor ^ res_name,
-        Arity = 0
-    ),
-    ( if map.search(!.NameTable, Name, NameMap0) then
-        map.det_insert(Arity, MaybeResFunctor, NameMap0, NameMap),
-        map.det_update(Name, NameMap, !NameTable)
-    else
-        NameMap = map.singleton(Arity, MaybeResFunctor),
         map.det_insert(Name, NameMap, !NameTable)
     ).
 

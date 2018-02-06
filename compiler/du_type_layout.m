@@ -208,7 +208,7 @@ decide_unpacked_du_type_layout(ModuleInfo, DirectArgMap,
         expect(unify(MaybeRepn0, no), $pred, "MaybeRepn0 != no"),
         module_info_get_globals(ModuleInfo, Globals),
         assign_constructor_tags(Globals, TypeCtor, MaybeUserEqComp,
-            Ctors, ConsTagMap0, ReservedAddr, DuKind0),
+            Ctors, ConsTagMap0, DuKind0),
         ( if
             map.search(TypeCtorToForeignEnumMap, TypeCtor, TCFE),
             TCFE = type_ctor_foreign_enums(_LangContextMap,
@@ -223,13 +223,7 @@ decide_unpacked_du_type_layout(ModuleInfo, DirectArgMap,
         ),
         list.map_foldl(add_repn_to_ctor(TypeCtor, ConsTagMap),
             Ctors, CtorRepns, map.init, CtorRepnMap),
-        (
-            ReservedAddr = does_not_use_reserved_address,
-            compute_cheaper_tag_test(ConsTagMap, MaybeCheaperTagTest)
-        ;
-            ReservedAddr = uses_reserved_address,
-            MaybeCheaperTagTest = no_cheaper_tag_test
-        ),
+        compute_cheaper_tag_test(ConsTagMap, MaybeCheaperTagTest),
         % The type_ctors in the keys of DirectArgMap should always be
         % fully module qualified, just like TypeCtor.
         ( if map.search(DirectArgMap, TypeCtor, DirectArgFunctors) then
@@ -238,7 +232,7 @@ decide_unpacked_du_type_layout(ModuleInfo, DirectArgMap,
             MaybeDirectArgFunctors = no
         ),
         Repn = du_type_repn(ConsTagMap, CtorRepns, CtorRepnMap,
-            MaybeCheaperTagTest, DuKind, MaybeDirectArgFunctors, ReservedAddr),
+            MaybeCheaperTagTest, DuKind, MaybeDirectArgFunctors),
         Body = hlds_du_type(Ctors, MaybeUserEqComp, yes(Repn), MaybeForeign),
         set_type_defn_body(Body, TypeDefn, UnpackedTypeDefn),
         replace_type_ctor_defn(TypeCtor, UnpackedTypeDefn, !TypeTable)
@@ -254,7 +248,7 @@ decide_unpacked_du_type_layout(ModuleInfo, DirectArgMap,
 %---------------------------------------------------------------------------%
 
     % assign_constructor_tags(Globals, TypeCtor, Constructors, MaybeUserEq,
-    %   TagValues, UsesReservedAddr, DuTypeKinds):
+    %   TagValues, DuTypeKinds):
     %
     % Assign a tag to each constructor of a type.
     %
@@ -279,24 +273,14 @@ decide_unpacked_du_type_layout(ModuleInfo, DirectArgMap,
     % three-bit tag. These functors are distinguished by a secondary tag
     % which is the first word of the argument vector for those functors.
     %
-    % If there are no tag bits available, then we try using reserved addresses
-    % (e.g. NULL, (void *) 1, (void *) 2, etc.) instead. We split the
-    % constructors into constants and functors, and assign numerical reserved
-    % addresses to the first constants, up to the limit set by
-    % --num-reserved-addresses. Finally, the functors and any remaining
-    % constants are distinguished by a secondary tag, if there are
-    % more than one of them.
-    %
 :- pred assign_constructor_tags(globals::in, type_ctor::in,
     maybe_canonical::in, list(constructor)::in, cons_id_to_tag_map::out,
-    uses_reserved_address::out, du_type_kind::out) is det.
+    du_type_kind::out) is det.
 
 assign_constructor_tags(Globals, TypeCtor, UserEqCmp, Ctors,
-        !:CtorTags, ReservedAddr, DuTypeKind) :-
-    % Work out how many tag bits and reserved addresses we have available.
+        !:CtorTags, DuTypeKind) :-
+    % Work out how many tag bits we have available.
     globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
-    globals.lookup_int_option(Globals, num_reserved_addresses,
-        NumReservedAddresses),
 
     % Now assign them.
     InitTag = 0,
@@ -311,8 +295,7 @@ assign_constructor_tags(Globals, TypeCtor, UserEqCmp, Ctors,
         else
             DuTypeKind = du_type_kind_mercury_enum
         ),
-        assign_enum_constants(TypeCtor, InitTag, Ctors, !CtorTags),
-        ReservedAddr = does_not_use_reserved_address
+        assign_enum_constants(TypeCtor, InitTag, Ctors, !CtorTags)
     else if
         % Try representing it as a no-tag type.
         type_ctor_should_be_notag(Globals, TypeCtor, Ctors, UserEqCmp,
@@ -321,39 +304,22 @@ assign_constructor_tags(Globals, TypeCtor, UserEqCmp, Ctors,
         SingleConsId = cons(SingleFunctorName, 1, TypeCtor),
         map.det_insert(SingleConsId, no_tag, !CtorTags),
         % XXX What if SingleArgType uses reserved addresses?
-        ReservedAddr = does_not_use_reserved_address,
         DuTypeKind = du_type_kind_notag(SingleFunctorName, SingleArgType,
             MaybeSingleArgName)
     else
         DuTypeKind = du_type_kind_general,
         ( if NumTagBits = 0 then
             % Assign reserved addresses to the constants, if possible.
-            separate_out_constants(Ctors, Constants, Functors),
-            assign_reserved_numeric_addresses(TypeCtor, Constants,
-                LeftOverConstants, !CtorTags, 0, NumReservedAddresses,
-                does_not_use_reserved_address, ReservedAddr),
-            % Assign shared_with_reserved_address(...) representations
-            % for the remaining constructors.
-            RemainingCtors = LeftOverConstants ++ Functors,
-            list.filter_map(is_reserved_address_tag,
-                map.values(!.CtorTags), ReservedAddresses),
-            assign_unshared_tags(TypeCtor, RemainingCtors, 0, 0,
-                ReservedAddresses, !CtorTags)
+            assign_unshared_tags(TypeCtor, Ctors, 0, 0, !CtorTags)
         else
             MaxTag = max_num_tags(NumTagBits) - 1,
             separate_out_constants(Ctors, Constants, Functors),
             assign_constant_tags(TypeCtor, Constants, InitTag, NextTag,
                 !CtorTags),
             assign_unshared_tags(TypeCtor, Functors, NextTag, MaxTag,
-                [], !CtorTags),
-            ReservedAddr = does_not_use_reserved_address
+                !CtorTags)
         )
     ).
-
-:- pred is_reserved_address_tag(cons_tag::in, reserved_address::out)
-    is semidet.
-
-is_reserved_address_tag(reserved_address_tag(RA), RA).
 
 :- pred assign_enum_constants(type_ctor::in, int::in, list(constructor)::in,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
@@ -368,37 +334,6 @@ assign_enum_constants(TypeCtor, Val, [Ctor | Ctors], !CtorTags) :-
     % the compiler.
     map.set(ConsId, Tag, !CtorTags),
     assign_enum_constants(TypeCtor, Val + 1, Ctors, !CtorTags).
-
-    % Assign the representations null_pointer, small_pointer(1),
-    % small_pointer(2), ..., small_pointer(N) to the constructors,
-    % until N >= NumReservedAddresses.
-    %
-:- pred assign_reserved_numeric_addresses(type_ctor::in,
-    list(constructor)::in, list(constructor)::out,
-    cons_id_to_tag_map::in, cons_id_to_tag_map::out, int::in, int::in,
-    uses_reserved_address::in, uses_reserved_address::out) is det.
-
-assign_reserved_numeric_addresses(_, [], [], !CtorTags, _, _, !ReservedAddr).
-assign_reserved_numeric_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
-        !CtorTags, Address, NumReservedAddresses, !ReservedAddr) :-
-    ( if Address >= NumReservedAddresses then
-        LeftOverConstants = [Ctor | Ctors]
-    else
-        Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
-        ConsId = cons(SymName, Arity, TypeCtor),
-        ( if Address = 0 then
-            Tag = reserved_address_tag(null_pointer)
-        else
-            Tag = reserved_address_tag(small_int_as_pointer(Address))
-        ),
-        % We call set instead of det_insert because we don't want types
-        % that erroneously contain more than one copy of a cons_id to crash
-        % the compiler.
-        map.set(ConsId, Tag, !CtorTags),
-        !:ReservedAddr = uses_reserved_address,
-        assign_reserved_numeric_addresses(TypeCtor, Ctors, LeftOverConstants,
-            !CtorTags, Address + 1, NumReservedAddresses, !ReservedAddr)
-    ).
 
 :- pred assign_constant_tags(type_ctor::in, list(constructor)::in,
     int::in, int::out, cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
@@ -422,12 +357,11 @@ assign_constant_tags(TypeCtor, Constants, InitTag, NextTag, !CtorTags) :-
     ).
 
 :- pred assign_unshared_tags(type_ctor::in, list(constructor)::in,
-    int::in, int::in, list(reserved_address)::in,
+    int::in, int::in,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_unshared_tags(_, [], _, _, _, !CtorTags).
-assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
-        !CtorTags) :-
+assign_unshared_tags(_, [], _, _, !CtorTags).
+assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, !CtorTags) :-
     Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
     ConsId = cons(SymName, Arity, TypeCtor),
     ( if
@@ -436,8 +370,7 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         Val = 0,
         Ctors = []
     then
-        Tag = maybe_add_reserved_addresses(ReservedAddresses,
-            single_functor_tag),
+        Tag = single_functor_tag,
         % We call set instead of det_insert because we don't want types
         % that erroneously contain more than one copy of a cons_id to crash
         % the compiler.
@@ -449,40 +382,37 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         Ctors = [_ | _]
     then
         assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], MaxTag, 0,
-            ReservedAddresses, !CtorTags)
+            !CtorTags)
     else if
         Val =< MaxTag
     then
-        Tag = maybe_add_reserved_addresses(ReservedAddresses,
-            unshared_tag(Val)),
+        Tag = unshared_tag(Val),
         % We call set instead of det_insert because we don't want types
         % that erroneously contain more than one copy of a cons_id to crash
         % the compiler.
         map.set(ConsId, Tag, !CtorTags),
-        assign_unshared_tags(TypeCtor, Ctors, Val + 1, MaxTag,
-            ReservedAddresses, !CtorTags)
+        assign_unshared_tags(TypeCtor, Ctors, Val + 1, MaxTag, !CtorTags)
     else
         unexpected($module, $pred, "exceeded max tag")
     ).
 
 :- pred assign_shared_remote_tags(type_ctor::in, list(constructor)::in,
-    int::in, int::in, list(reserved_address)::in,
+    int::in, int::in,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_shared_remote_tags(_, [], _, _, _, !CtorTags).
+assign_shared_remote_tags(_, [], _, _, !CtorTags).
 assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
-        ReservedAddresses, !CtorTags) :-
+        !CtorTags) :-
     Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
     ConsId = cons(SymName, Arity, TypeCtor),
-    Tag = maybe_add_reserved_addresses(ReservedAddresses,
-        shared_remote_tag(PrimaryVal, SecondaryVal)),
+    Tag = shared_remote_tag(PrimaryVal, SecondaryVal),
     % We call set instead of det_insert because we don't want types
     % that erroneously contain more than one copy of a cons_id to crash
     % the compiler.
     map.set(ConsId, Tag, !CtorTags),
     SecondaryVal1 = SecondaryVal + 1,
     assign_shared_remote_tags(TypeCtor, Ctors, PrimaryVal, SecondaryVal1,
-        ReservedAddresses, !CtorTags).
+        !CtorTags).
 
 :- pred assign_shared_local_tags(type_ctor::in, list(constructor)::in,
     int::in, int::in, cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
@@ -499,18 +429,6 @@ assign_shared_local_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
     map.set(ConsId, Tag, !CtorTags),
     assign_shared_local_tags(TypeCtor, Ctors, PrimaryVal, SecondaryVal + 1,
         !CtorTags).
-
-:- func maybe_add_reserved_addresses(list(reserved_address), cons_tag) =
-    cons_tag.
-
-maybe_add_reserved_addresses(ReservedAddresses, Tag0) = Tag :-
-    (
-        ReservedAddresses = [],
-        Tag = Tag0
-    ;
-        ReservedAddresses = [_ | _],
-        Tag = shared_with_reserved_addresses_tag(ReservedAddresses, Tag0)
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -845,11 +763,9 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
         ( if
             MaybeRepn0 = yes(Repn0),
             Repn0 = du_type_repn(_ConsIdToTagMap, CtorRepns0, _CtorRepnMap,
-                _MaybeCheaperTagTest, DuKind, MaybeAssertedDirectArgCtors,
-                ReservedAddr),
+                _MaybeCheaperTagTest, DuKind, MaybeAssertedDirectArgCtors),
             CtorRepns0 = [_, _ | _],
             DuKind = du_type_kind_general,
-            ReservedAddr = does_not_use_reserved_address,
             MaybeForeign = no,
             TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
             sym_name_get_module_name(TypeCtorSymName, TypeCtorModule)
@@ -884,7 +800,7 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
                         LeftOverDirectArgFunctors, !CtorTags),
                     assign_unshared_tags(TypeCtor,
                         LeftOverDirectArgFunctors ++ NonDirectArgFunctors,
-                        !.NextTag, MaxTag, [], !CtorTags),
+                        !.NextTag, MaxTag, !CtorTags),
                     DirectArgConsIdToTagMap = !.CtorTags
                 ),
                 compute_cheaper_tag_test(DirectArgConsIdToTagMap,
@@ -906,7 +822,7 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
                     CtorRepns0, CtorRepns, map.init, CtorRepnMap),
                 DirectArgRepn = du_type_repn(DirectArgConsIdToTagMap,
                     CtorRepns, CtorRepnMap, MaybeCheaperTagTest, DuKind,
-                    yes(DirectArgFunctorNames), ReservedAddr),
+                    yes(DirectArgFunctorNames)),
                 DirectArgBody = Body ^ du_type_repn := yes(DirectArgRepn),
                 set_type_defn_body(DirectArgBody, TypeDefn, DirectArgTypeDefn),
                 replace_type_ctor_defn(TypeCtor, DirectArgTypeDefn, !TypeTable)
@@ -989,13 +905,12 @@ is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
             ),
             ArgRepn = du_type_repn(ArgConsIdToTagMap, ArgCtorRepns,
                 _ArgConsCtorMap, ArgMaybeCheaperTagTest, ArgDuKind,
-                ArgDirectArgCtors, ArgReservedAddr),
+                ArgDirectArgCtors),
             ArgCtors = [_],
             ArgCtorRepns = [_],
             ArgMaybeCheaperTagTest = no_cheaper_tag_test,
             ArgDuKind = du_type_kind_general,
             ArgDirectArgCtors = no,
-            ArgReservedAddr = does_not_use_reserved_address,
             ArgMaybeForeign = no,
 
             map.to_assoc_list(ArgConsIdToTagMap, ArgConsIdTagList),

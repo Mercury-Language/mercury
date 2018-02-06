@@ -16,10 +16,8 @@
 :- module ml_backend.ml_util.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.rtti.
-:- import_module hlds.
-:- import_module hlds.hlds_data.
-:- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.globals.          % for foreign_language
 :- import_module ml_backend.mlds.
@@ -132,9 +130,6 @@
 
 :- func gen_init_null_pointer(mlds_type) = mlds_initializer.
 
-:- func gen_init_reserved_address(module_info, reserved_address) =
-    mlds_initializer.
-
 :- func gen_init_maybe(mlds_type, func(T) = mlds_initializer, maybe(T)) =
     mlds_initializer.
 
@@ -155,10 +150,10 @@
 
 :- implementation.
 
-:- import_module backend_libs.
+:- import_module hlds.
+:- import_module hlds.hlds_data.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module ml_backend.ml_unify_gen.
 
 :- import_module int.
 :- import_module solutions.
@@ -854,11 +849,6 @@ gen_init_foreign(Lang, String) =
     init_obj(ml_const(mlconst_foreign(Lang, String, mlds_native_int_type))).
 
 gen_init_null_pointer(Type) = init_obj(ml_const(mlconst_null(Type))).
-
-gen_init_reserved_address(ModuleInfo, ReservedAddress) =
-    % XXX using `mlds_generic_type' here is probably wrong
-    init_obj(ml_gen_reserved_address(ModuleInfo, ReservedAddress,
-        mlds_generic_type)).
 
 gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
 gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).

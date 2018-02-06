@@ -123,7 +123,6 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
-:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -338,8 +337,7 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
 
 order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
         CanFail, GoalInfo, EndLabel, MaybeEnd, Code, !CI, !.CLD) :-
-    order_cases(TaggedCases, OrderedTaggedCases, VarType, CodeModel, CanFail,
-        !.CI),
+    order_cases(TaggedCases, OrderedTaggedCases, CodeModel, CanFail, !.CI),
     type_to_ctor_det(VarType, TypeCtor),
     get_module_info(!.CI, ModuleInfo),
     module_info_get_type_table(ModuleInfo, TypeTable),
@@ -355,18 +353,18 @@ order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
         GoalInfo, EndLabel, no, MaybeEnd, Code, !CI).
 
 :- pred order_cases(list(tagged_case)::in, list(tagged_case)::out,
-    mer_type::in, code_model::in, can_fail::in, code_info::in) is det.
+    code_model::in, can_fail::in, code_info::in) is det.
 
-order_cases(Cases0, Cases, VarType, CodeModel, CanFail, CI) :-
-    % We do ordering here based on four considerations.
+order_cases(Cases0, Cases, CodeModel, CanFail, CI) :-
+    % We do ordering here based on three considerations.
     %
-    % - We try to put tests against reserved addresses first, so later cases
-    %   can assume those tests have already been done.
     % - We try to put cases that can succeed before ones that cannot, since
     %   cases that cannot succeed clearly won't be executed frequently.
+    %
     % - If the recursion structure of the predicate is sufficiently simple that
     %   we can make a good guess at which case will be executed more
     %   frequently, we try to put the frequent case first.
+    %
     % - We try to put cheap-to-execute tests first; for arms with more than one
     %   cons_id, we sum the costs of their tests. The main aim of this is to
     %   reduce the average cost at runtime. For cannot_fail switches, putting
@@ -378,121 +376,14 @@ order_cases(Cases0, Cases, VarType, CodeModel, CanFail, CI) :-
     %
     % Each consideration is implemented by its own predicate, which calls the
     % predicate of the next consideration to decide ties. The predicates for
-    % the four considerations are
+    % the three considerations are
     %
     % - order_cases (this predicate),
-    % - order_cannot_succeed_cases,
     % - order_recursive_cases,
     % - order_tag_test_cost
     %
     % respectively.
 
-    ( if
-        search_type_defn(CI, VarType, VarTypeDefn),
-        get_type_defn_body(VarTypeDefn, VarTypeDefnBody),
-        VarTypeDefnBody = hlds_du_type(_, _, MaybeRepn, _),
-        (
-            MaybeRepn = no,
-            unexpected($pred, "MaybeRepn = no")
-        ;
-            MaybeRepn = yes(Repn)
-        ),
-        Repn ^ dur_reserved_addr = uses_reserved_address
-    then
-        separate_reserved_address_cases(Cases0,
-            ReservedAddrCases0, NonReservedAddrCases0),
-        order_can_and_cannot_succeed_cases(
-            ReservedAddrCases0, ReservedAddrCases,
-            CodeModel, CanFail, CI),
-        order_can_and_cannot_succeed_cases(
-            NonReservedAddrCases0, NonReservedAddrCases,
-            CodeModel, CanFail, CI),
-        Cases = ReservedAddrCases ++ NonReservedAddrCases
-    else
-        % The type is either not a discriminated union type (e.g. in int or
-        % string), or it is a discriminated union type that does not use
-        % reserved addresses.
-        order_can_and_cannot_succeed_cases(Cases0, Cases,
-            CodeModel, CanFail, CI)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred separate_reserved_address_cases(list(tagged_case)::in,
-    list(tagged_case)::out, list(tagged_case)::out) is det.
-
-separate_reserved_address_cases([], [], []).
-separate_reserved_address_cases([TaggedCase | TaggedCases],
-        ReservedAddrCases, NonReservedAddrCases) :-
-    separate_reserved_address_cases(TaggedCases,
-        ReservedAddrCasesTail, NonReservedAddrCasesTail),
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, _),
-    TaggedConsIds = [TaggedMainConsId | TaggedOtherConsIds],
-    ContainsReservedAddr = list_contains_reserved_addr_tag(TaggedConsIds),
-    (
-        ContainsReservedAddr = yes,
-        ReservedAddrCases = [TaggedCase | ReservedAddrCasesTail],
-        NonReservedAddrCases = NonReservedAddrCasesTail
-    ;
-        ContainsReservedAddr = no,
-        ReservedAddrCases = ReservedAddrCasesTail,
-        NonReservedAddrCases = [TaggedCase | NonReservedAddrCasesTail]
-    ).
-
-:- func list_contains_reserved_addr_tag(list(tagged_cons_id)) = bool.
-
-list_contains_reserved_addr_tag([]) = no.
-list_contains_reserved_addr_tag([TaggedConsId | TaggedConsIds]) = Contains :-
-    TaggedConsId = tagged_cons_id(_, ConsTag),
-    HeadContains = is_reserved_addr_tag(ConsTag),
-    (
-        HeadContains = yes,
-        Contains = yes
-    ;
-        HeadContains = no,
-        Contains = list_contains_reserved_addr_tag(TaggedConsIds)
-    ).
-
-:- func is_reserved_addr_tag(cons_tag) = bool.
-
-is_reserved_addr_tag(ConsTag) = IsReservedAddr :-
-    (
-        ConsTag = reserved_address_tag(_),
-        IsReservedAddr = yes
-    ;
-        ConsTag = ground_term_const_tag(_, SubConsTag),
-        IsReservedAddr = is_reserved_addr_tag(SubConsTag)
-    ;
-        ( ConsTag = int_tag(_)
-        ; ConsTag = float_tag(_)
-        ; ConsTag = string_tag(_)
-        ; ConsTag = foreign_tag(_, _)
-        ; ConsTag = closure_tag(_, _, _)
-        ; ConsTag = type_ctor_info_tag(_, _, _)
-        ; ConsTag = base_typeclass_info_tag(_, _, _)
-        ; ConsTag = type_info_const_tag(_)
-        ; ConsTag = typeclass_info_const_tag(_)
-        ; ConsTag = tabling_info_tag(_, _)
-        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
-        ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_)
-        ; ConsTag = direct_arg_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
-        ; ConsTag = shared_local_tag(_, _)
-        ; ConsTag = no_tag
-        ; ConsTag = shared_with_reserved_addresses_tag(_, _)
-        ),
-        IsReservedAddr = no
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred order_can_and_cannot_succeed_cases(
-    list(tagged_case)::in, list(tagged_case)::out,
-    code_model::in, can_fail::in, code_info::in) is det.
-
-order_can_and_cannot_succeed_cases(Cases0, Cases, CodeModel, CanFail, CI) :-
     separate_cannot_succeed_cases(Cases0, CanSucceedCases, CannotSucceedCases),
     (
         CannotSucceedCases = [],

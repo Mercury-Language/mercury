@@ -608,10 +608,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     %
 :- type existq_tvars == list(tvar).
 
-:- type uses_reserved_address
-    --->    uses_reserved_address
-    ;       does_not_use_reserved_address.
-
     % Similar to varset.merge_subst but produces a tvar_renaming
     % instead of a substitution, which is more suitable for types.
     %

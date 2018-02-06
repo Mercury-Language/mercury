@@ -55,7 +55,6 @@
 
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.type_ctor_info.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.
@@ -658,23 +657,6 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
         NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_functor_number_map)
     ;
-        TypeCtorDetails = tcd_reserved(_, MaybeResFunctors, ResFunctors,
-            DuByPtag, MaybeResByName, FunctorNumberMap),
-        list.foldl(
-            gen_maybe_res_functor_desc(ModuleInfo, Target, RttiTypeCtor),
-            MaybeResFunctors, !GlobalData),
-        gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor,
-            ResFunctors, DuByPtag, !GlobalData),
-        gen_maybe_res_name_ordered_table(ModuleInfo, RttiTypeCtor,
-            MaybeResByName, !GlobalData),
-        gen_functor_number_map(RttiTypeCtor, FunctorNumberMap, !GlobalData),
-        LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_res_value_ordered_table),
-        FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_res_name_ordered_table),
-        NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_functor_number_map)
-    ;
         TypeCtorDetails = tcd_notag(_, NotagFunctor),
         gen_functor_number_map(RttiTypeCtor, [0], !GlobalData),
         LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
@@ -854,36 +836,6 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         gen_init_functor_subtype_info(FunctorSubtypeInfo)
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
-
-:- pred gen_res_addr_functor_desc(module_info::in, rtti_type_ctor::in,
-    reserved_functor::in, ml_global_data::in, ml_global_data::out) is det.
-
-gen_res_addr_functor_desc(ModuleInfo, RttiTypeCtor, ResFunctor, !GlobalData) :-
-    ResFunctor = reserved_functor(FunctorName, Ordinal, ReservedAddress),
-    RttiName = type_ctor_res_functor_desc(Ordinal),
-    RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        gen_init_string(FunctorName),
-        gen_init_int(Ordinal),
-        gen_init_reserved_address(ModuleInfo, ReservedAddress)
-    ]),
-    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
-
-:- pred gen_maybe_res_functor_desc(module_info::in, mlds_target_lang::in,
-    rtti_type_ctor::in, maybe_reserved_functor::in,
-    ml_global_data::in, ml_global_data::out) is det.
-
-gen_maybe_res_functor_desc(ModuleInfo, Target, RttiTypeCtor, MaybeResFunctor,
-        !GlobalData) :-
-    (
-        MaybeResFunctor = res_func(ResFunctor),
-        gen_res_addr_functor_desc(ModuleInfo, RttiTypeCtor, ResFunctor,
-            !GlobalData)
-    ;
-        MaybeResFunctor = du_func(DuFunctor),
-        gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
-            !GlobalData)
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1234,94 +1186,6 @@ gen_du_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap,
     RttiName = type_ctor_du_name_ordered_table,
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
-
-:- pred gen_maybe_res_value_ordered_table(module_info::in, rtti_type_ctor::in,
-    list(reserved_functor)::in, map(int, sectag_table)::in,
-    ml_global_data::in, ml_global_data::out) is det.
-
-gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor, ResFunctors,
-        DuByPtag, !GlobalData) :-
-    % We do not support symbolic reserved addresses anymore.
-    list.length(ResFunctors, NumNumericResFunctorReps),
-    NumSymbolicResFunctorReps = 0,
-    ResAddrInitializer = gen_init_null_pointer(mlds_generic_type),
-
-    module_info_get_name(ModuleInfo, ModuleName),
-    gen_res_addr_functor_table(ModuleName, RttiTypeCtor, ResFunctors,
-        !GlobalData),
-    gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, DuByPtag, !GlobalData),
-    RttiName = type_ctor_res_value_ordered_table,
-    RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        gen_init_int(NumNumericResFunctorReps),
-        gen_init_int(NumSymbolicResFunctorReps),
-        ResAddrInitializer,
-        gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_res_addr_functors),
-        gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_du_ptag_ordered_table)
-    ]),
-    rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
-
-:- pred gen_res_addr_functor_table(module_name::in, rtti_type_ctor::in,
-    list(reserved_functor)::in,
-    ml_global_data::in, ml_global_data::out) is det.
-
-gen_res_addr_functor_table(ModuleName, RttiTypeCtor, ResFunctors,
-        !GlobalData) :-
-    FunctorRttiNames = list.map(res_functor_rtti_name, ResFunctors),
-    Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
-        FunctorRttiNames),
-    RttiName = type_ctor_res_addr_functors,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
-        !GlobalData).
-
-:- pred gen_maybe_res_name_ordered_table(module_info::in, rtti_type_ctor::in,
-    map(string, map(int, maybe_reserved_functor))::in,
-    ml_global_data::in, ml_global_data::out) is det.
-
-gen_maybe_res_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap,
-        !GlobalData) :-
-    map.values(NameArityMap, ArityMaps),
-    list.map(map.values, ArityMaps, FunctorLists),
-    list.condense(FunctorLists, Functors),
-    module_info_get_name(ModuleInfo, ModuleName),
-    Initializer = gen_init_array(
-        gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor),
-        Functors),
-    RttiName = type_ctor_res_name_ordered_table,
-    rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
-        !GlobalData).
-
-:- func gen_maybe_res_name_ordered_table_element(module_name, rtti_type_ctor,
-    maybe_reserved_functor) = mlds_initializer.
-
-gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
-        MaybeResFunctor) = Initializer :-
-    RttiName = type_ctor_maybe_res_addr_functor_desc,
-    RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-    Type = mlds_rtti_type(item_type(RttiId)),
-    (
-        MaybeResFunctor = res_func(ResFunctor),
-        Name = ResFunctor ^ res_name,
-        Initializer = init_struct(Type, [
-            gen_init_string(Name),
-            gen_init_int(0),    % arity=0
-            gen_init_bool(yes), % is_reserved = true
-            gen_init_rtti_name(ModuleName, RttiTypeCtor,
-                maybe_res_functor_rtti_name(MaybeResFunctor))
-        ])
-    ;
-        MaybeResFunctor = du_func(DuFunctor),
-        Name = DuFunctor ^ du_name,
-        Initializer = init_struct(Type, [
-            gen_init_string(Name),
-            gen_init_int(DuFunctor ^ du_orig_arity),
-            gen_init_bool(no), % is_reserved = false
-            gen_init_rtti_name(ModuleName, RttiTypeCtor,
-                maybe_res_functor_rtti_name(MaybeResFunctor))
-        ])
-    ).
 
 :- pred gen_functor_number_map(rtti_type_ctor::in, list(int)::in,
     ml_global_data::in, ml_global_data::out) is det.

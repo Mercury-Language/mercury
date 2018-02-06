@@ -807,9 +807,9 @@ check_dummy_type_2(ModuleInfo, Type, CoveredTypes) = IsDummy :-
                         MaybeTypeRepn = no,
                         unexpected($pred, "MaybeTypeRepn = no")
                     ;
-                        MaybeTypeRepn = yes(TypeRepn),
-                        TypeRepn = du_type_repn(_, _, _, _, DuTypeKind, _, _)
+                        MaybeTypeRepn = yes(TypeRepn)
                     ),
+                    DuTypeKind = TypeRepn ^ dur_kind,
                     (
                         DuTypeKind = du_type_kind_direct_dummy,
                         IsDummy = is_dummy_type
@@ -1055,8 +1055,9 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
             MaybeTypeRepn = no,
             unexpected($pred, "MaybeTypeRepn = no")
         ;
-            MaybeTypeRepn = yes(du_type_repn(_, _, _, _, DuTypeKind, _, _))
+            MaybeTypeRepn = yes(Repn)
         ),
+        DuTypeKind = Repn ^ dur_kind,
         (
             DuTypeKind = du_type_kind_mercury_enum,
             TypeCategory = ctor_cat_enum(cat_enum_mercury)
@@ -1352,7 +1353,7 @@ get_cons_repn_defn(ModuleInfo, ConsId, ConsIdConsRepn) :-
     get_type_defn_body(TypeDefn, TypeBody),
     TypeBody = hlds_du_type(_, _, MaybeRepn, _),
     MaybeRepn = yes(Repn),
-    Repn = du_type_repn(_ConsTagMap, _ConsRepns, ConsRepnMap, _, _, _, _),
+    Repn = du_type_repn(_ConsTagMap, _ConsRepns, ConsRepnMap, _, _, _),
     ConsName = unqualify_name(ConsSymName),
     map.search(ConsRepnMap, ConsName, MatchingConsRepns),
     MatchingConsRepns = one_or_more(HeadConsRepn, TailConsRepns),

@@ -952,12 +952,11 @@ verify_match(Background, NewVar, NewCons, NewArgs, PP, !Match) :-
 :- pred compute_reuse_type(background_info::in, prog_var::in, cons_id::in,
     prog_vars::in, deconstruction_spec::in, reuse_type::out) is semidet.
 
-compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
+compute_reuse_type(Background, _NewVar, NewCons, NewCellArgs, DeconSpec,
         ReuseType) :-
-    DeconSpec = decon(DeadVar, _, DeadCons, DeadCellArgs, _),
+    DeconSpec = decon(_DeadVar, _, DeadCons, DeadCellArgs, _),
 
     ModuleInfo = Background ^ back_module_info,
-    VarTypes = Background ^ back_vartypes,
 
     ( if NewCons = DeadCons then
         SameCons = yes
@@ -978,8 +977,8 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
     NewNumArgs \= 0,
 
     % Include the space needed for secondary tags.
-    has_secondary_tag(ModuleInfo, VarTypes, NewVar, NewCons, SecTag),
-    has_secondary_tag(ModuleInfo, VarTypes, DeadVar, DeadCons, DeadSecTag),
+    has_secondary_tag(ModuleInfo, NewCons, SecTag),
+    has_secondary_tag(ModuleInfo, DeadCons, DeadSecTag),
     NewArity = NewNumArgs + (if SecTag = yes then 1 else 0),
     DeadArity = DeadNumArgs + (if DeadSecTag = yes then 1 else 0),
 
@@ -1084,23 +1083,17 @@ needs_update_and(does_not_need_update, does_not_need_update) =
 
 %-----------------------------------------------------------------------------%
 
-    % has_secondary_tag(Var, ConsId, ExplicitSecTag) returns `yes' iff the
-    % variable, Var, with cons_id, ConsId, requires a remote secondary tag
-    % to distinguish between its various functors.
+    % has_secondary_tag(ModuleInfo, ConsId, HasSecTag) returns `yes' iff
+    % ConsId requires a remote secondary tag to distinguish between
+    % the various functors of its type.
     %
-:- pred has_secondary_tag(module_info::in, vartypes::in,
-    prog_var::in, cons_id::in, bool::out) is det.
+:- pred has_secondary_tag(module_info::in, cons_id::in, bool::out) is det.
 
-has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
-    lookup_var_type(VarTypes, Var, Type),
+has_secondary_tag(ModuleInfo, ConsId, SecondaryTag) :-
     ( if
-        type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-        TypeBody = hlds_du_type(_, _, MaybeRepn, _),
-        MaybeRepn = yes(Repn),
-        Repn = du_type_repn(ConsTagValues, _, _, _, _, _, _),
-        map.search(ConsTagValues, ConsId, ConsTag),
-        MaybeSecondaryTag = get_secondary_tag(ConsTag),
-        MaybeSecondaryTag = yes(_)
+        get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn),
+        ConsTag = ConsRepn ^ cr_tag,
+        get_secondary_tag(ConsTag) = yes(_)
     then
         SecondaryTag = yes
     else

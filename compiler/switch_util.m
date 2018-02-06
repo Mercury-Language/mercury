@@ -541,7 +541,6 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
     (
         ( Tag = int_tag(_)
         ; Tag = foreign_tag(_, _)
-        ; Tag = reserved_address_tag(_)
         ; Tag = shared_local_tag(_, _)
         ),
         % You need only a single word compare.
@@ -579,10 +578,6 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         % On non-ASCII strings, this cost depends on the compiler back-end.
         Cost = 1 + 2 * string.length(String)
     ;
-        Tag = shared_with_reserved_addresses_tag(RAs, SubTag),
-        % You need to rule out all reserved addresses before testing SubTag.
-        Cost = 2 * list.length(RAs) + estimate_switch_tag_test_cost(SubTag)
-    ;
         ( Tag = no_tag
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -615,30 +610,6 @@ find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
             SmartIndexingForCategory = is_smart_indexing_allowed_for_category(
                 Globals, SwitchCategory),
             SmartIndexingForCategory = no
-        ;
-            % We cannot use smart indexing if some values in the type
-            % of the switched-on variable are represented by reserved
-            % addresses.
-            %
-            % XXX We could generate better code for some such switches
-            % if we first checked for and handled any reserved addresses
-            % in the type of the switched-on variable, and then used the
-            % usual smart indexing schemes for the other function symbols.
-            module_info_get_type_table(ModuleInfo, TypeTable),
-            type_to_ctor_det(SwitchVarType, SwitchVarTypeCtor),
-            % The search will fail for builtin types, but these won't use
-            % reserved addresses anyway.
-            search_type_ctor_defn(TypeTable, SwitchVarTypeCtor,
-                SwitchVarTypeDefn),
-            hlds_data.get_type_defn_body(SwitchVarTypeDefn, SwitchVarTypeBody),
-            SwitchVarTypeBody = hlds_du_type(_, _, MaybeRepn, _),
-            (
-                MaybeRepn = no,
-                unexpected($pred, "MaybeRepn = no")
-            ;
-                MaybeRepn = yes(Repn),
-                Repn ^ dur_reserved_addr = uses_reserved_address
-            )
         )
     then
         MayUseSmartIndexing = may_not_use_smart_indexing
@@ -1168,7 +1139,8 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")
         ;
-            MaybeRepn = yes(du_type_repn(_, CtorRepns, _, _, _, _, _))
+            MaybeRepn = yes(Repn),
+            CtorRepns = Repn ^ dur_ctor_repns
         )
     ;
         ( TypeBody = hlds_eqv_type(_)
@@ -1262,8 +1234,6 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_entry_tag(_, _)
-        ; Tag = reserved_address_tag(_)
-        ; Tag = shared_with_reserved_addresses_tag(_, _)
         ),
         unexpected($module, $pred, "non-du tag")
     ),
@@ -1366,8 +1336,6 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_entry_tag(_, _)
-        ; Tag = reserved_address_tag(_)
-        ; Tag = shared_with_reserved_addresses_tag(_, _)
         ),
         unexpected($module, $pred, "non-du tag")
     ),

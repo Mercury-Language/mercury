@@ -107,7 +107,6 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.type_ctor_info.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.
 :- import_module libs.globals.
@@ -754,20 +753,6 @@ output_type_ctor_details_defn(Info, RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_du_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = tcd_reserved(_, MaybeResFunctors, ResFunctors,
-            DuByRep, MaybeResByName, FunctorNumberMap),
-        list.foldl2(output_maybe_res_functor_defn(Info, RttiTypeCtor),
-            MaybeResFunctors, !DeclSet, !IO),
-        output_res_value_ordered_table(Info, RttiTypeCtor, ResFunctors,
-            DuByRep, !DeclSet, !IO),
-        output_res_name_ordered_table(Info, RttiTypeCtor, MaybeResByName,
-            !DeclSet, !IO),
-        output_functor_number_map(Info, RttiTypeCtor, FunctorNumberMap,
-            !DeclSet, !IO),
-        MaybeLayoutName = yes(type_ctor_res_value_ordered_table),
-        MaybeFunctorsName = yes(type_ctor_res_name_ordered_table),
-        HaveFunctorNumberMap = yes
-    ;
         TypeCtorDetails = tcd_notag(_, NotagFunctor),
         output_notag_functor_defn(Info, RttiTypeCtor, NotagFunctor,
             !DeclSet, !IO),
@@ -999,43 +984,6 @@ output_functor_subtype_info(FunctorSubtypeInfo, !IO) :-
     ;
         FunctorSubtypeInfo = functor_subtype_exists,
         io.write_string("MR_FUNCTOR_SUBTYPE_EXISTS", !IO)
-    ).
-
-:- pred output_res_functor_defn(llds_out_info::in, rtti_type_ctor::in,
-    reserved_functor::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_res_functor_defn(Info, RttiTypeCtor, ResFunctor, !DeclSet, !IO) :-
-    ResFunctor = reserved_functor(FunctorName, Ordinal, Rep),
-    output_generic_rtti_data_defn_start(Info,
-        ctor_rtti_id(RttiTypeCtor, type_ctor_res_functor_desc(Ordinal)),
-        !DeclSet, !IO),
-    io.write_string(" = {\n\t""", !IO),
-    c_util.output_quoted_string_cur_stream(FunctorName, !IO),
-    io.write_string(""",\n\t", !IO),
-    io.write_int(Ordinal, !IO),
-    io.write_string(",\n\t", !IO),
-    io.write_string("(void *) ", !IO),
-    (
-        Rep = null_pointer,
-        io.write_string("NULL", !IO)
-    ;
-        Rep = small_int_as_pointer(SmallPtr),
-        io.write_int(SmallPtr, !IO)
-    ),
-    io.write_string("\n};\n", !IO).
-
-:- pred output_maybe_res_functor_defn(llds_out_info::in, rtti_type_ctor::in,
-    maybe_reserved_functor::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
-
-output_maybe_res_functor_defn(Info, RttiTypeCtor, MaybeResFunctor,
-        !DeclSet, !IO) :-
-    (
-        MaybeResFunctor = res_func(ResFunctor),
-        output_res_functor_defn(Info, RttiTypeCtor, ResFunctor, !DeclSet, !IO)
-    ;
-        MaybeResFunctor = du_func(DuFunctor),
-        output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1364,91 +1312,6 @@ output_du_ptag_ordered_table_body(RttiTypeCtor,
 
 output_dummy_ptag_layout_defn(!IO) :-
     io.write_string("\t{ 0, MR_SECTAG_VARIABLE, NULL },\n", !IO).
-
-:- pred output_res_addr_functors(rtti_type_ctor::in,
-    reserved_functor::in, io::di, io::uo) is det.
-
-output_res_addr_functors(RttiTypeCtor, ResFunctor, !IO) :-
-    output_ctor_rtti_id(RttiTypeCtor, res_functor_rtti_name(ResFunctor), !IO),
-    io.write_string(",\n", !IO).
-
-:- pred output_res_value_ordered_table(llds_out_info::in, rtti_type_ctor::in,
-    list(reserved_functor)::in, map(int, sectag_table)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_res_value_ordered_table(Info, RttiTypeCtor, ResFunctors, DuPtagTable,
-        !DeclSet, !IO) :-
-    % We do not support symbolic reserved addresses anymore.
-    list.length(ResFunctors, NumNumericResFunctorReps),
-    NumSymbolicResFunctorReps = 0,
-
-    output_generic_rtti_data_defn_start(Info,
-        ctor_rtti_id(RttiTypeCtor, type_ctor_res_addr_functors),
-        !DeclSet, !IO),
-    io.write_string(" = {\n", !IO),
-    list.foldl(output_res_addr_functors(RttiTypeCtor), ResFunctors, !IO),
-    io.write_string("};\n", !IO),
-
-    output_du_ptag_ordered_table(Info, RttiTypeCtor, DuPtagTable,
-        !DeclSet, !IO),
-
-    output_generic_rtti_data_defn_start(Info,
-        ctor_rtti_id(RttiTypeCtor, type_ctor_res_value_ordered_table),
-        !DeclSet, !IO),
-    io.write_string(" = {\n\t""", !IO),
-    io.write_int(NumNumericResFunctorReps, !IO),
-    io.write_string(",\n\t", !IO),
-    io.write_int(NumSymbolicResFunctorReps, !IO),
-    io.write_string(",\n\t", !IO),
-    io.write_string("NULL", !IO),
-    io.write_string(",\n\t", !IO),
-    output_ctor_rtti_id(RttiTypeCtor, type_ctor_res_addr_functors, !IO),
-    io.write_string(",\n\t", !IO),
-    output_ctor_rtti_id(RttiTypeCtor, type_ctor_du_ptag_ordered_table, !IO),
-    io.write_string("\n};\n", !IO).
-
-:- pred output_res_name_ordered_table(llds_out_info::in, rtti_type_ctor::in,
-    map(string, map(int, maybe_reserved_functor))::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_res_name_ordered_table(Info, RttiTypeCtor, NameArityMap,
-        !DeclSet, !IO) :-
-    map.values(NameArityMap, ArityMaps),
-    list.map(map.values, ArityMaps, FunctorLists),
-    list.condense(FunctorLists, Functors),
-    output_generic_rtti_data_defn_start(Info,
-        ctor_rtti_id(RttiTypeCtor, type_ctor_res_name_ordered_table),
-        !DeclSet, !IO),
-    io.write_string(" = {\n\t""", !IO),
-    list.foldl(output_res_name_ordered_table_element(RttiTypeCtor), Functors,
-        !IO),
-    io.write_string("\n};\n", !IO).
-
-:- pred output_res_name_ordered_table_element(rtti_type_ctor::in,
-    maybe_reserved_functor::in, io::di, io::uo) is det.
-
-output_res_name_ordered_table_element(RttiTypeCtor, MaybeResFunctor, !IO) :-
-    io.write_string("\t{ """, !IO),
-    (
-        MaybeResFunctor = res_func(ResFunctor),
-        Name = ResFunctor ^ res_name,
-        io.write_string(Name, !IO),
-        io.write_string(""", ", !IO),
-        io.write_string("0, ", !IO),
-        io.write_string("MR_TRUE, ", !IO)
-    ;
-        MaybeResFunctor = du_func(DuFunctor),
-        Name = DuFunctor ^ du_name,
-        Arity = DuFunctor ^ du_orig_arity,
-        io.write_string(Name, !IO),
-        io.write_string(""", ", !IO),
-        io.write_int(Arity, !IO),
-        io.write_string(", ", !IO),
-        io.write_string("MR_FALSE, ", !IO)
-    ),
-    RttiName = maybe_res_functor_rtti_name(MaybeResFunctor),
-    output_ctor_rtti_id(RttiTypeCtor, RttiName, !IO),
-    io.write_string(" },\n", !IO).
 
 %-----------------------------------------------------------------------------%
 

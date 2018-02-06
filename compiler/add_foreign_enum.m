@@ -445,8 +445,7 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     MaybeRepn = yes(Repn)
                 ),
                 Repn = du_type_repn(TagValues, _ConsRepns, _ConsCtorMap,
-                    _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors,
-                    _ReservedAddr),
+                    _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors),
                 find_enum_nonenum_cons_ids(map.keys(TagValues),
                     [], _EnumSymNames, [], NonEnumConsIds),
                 (

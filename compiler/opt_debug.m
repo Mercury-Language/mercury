@@ -563,12 +563,6 @@ dump_rtti_name(RttiName) = Str :-
         RttiName = type_ctor_field_locns(Ordinal),
         Str = "field_locns_" ++ int_to_string(Ordinal)
     ;
-        RttiName = type_ctor_res_addrs,
-        Str = "res_addrs"
-    ;
-        RttiName = type_ctor_res_addr_functors,
-        Str = "res_addr_functors"
-    ;
         RttiName = type_ctor_enum_functor_desc(Ordinal),
         Str = "enum_functor_desc_" ++ int_to_string(Ordinal)
     ;
@@ -580,9 +574,6 @@ dump_rtti_name(RttiName) = Str :-
     ;
         RttiName = type_ctor_du_functor_desc(Ordinal),
         Str = "du_functor_desc_" ++ int_to_string(Ordinal)
-    ;
-        RttiName = type_ctor_res_functor_desc(Ordinal),
-        Str = "res_functor_desc_" ++ int_to_string(Ordinal)
     ;
         RttiName = type_ctor_enum_name_ordered_table,
         Str = "enum_name_ordered_table"
@@ -607,15 +598,6 @@ dump_rtti_name(RttiName) = Str :-
     ;
         RttiName = type_ctor_du_ptag_layout(Ptag),
         Str = "du_ptag_layout" ++ int_to_string(Ptag)
-    ;
-        RttiName = type_ctor_res_value_ordered_table,
-        Str = "res_value_ordered_table"
-    ;
-        RttiName = type_ctor_res_name_ordered_table,
-        Str = "res_name_ordered_table"
-    ;
-        RttiName = type_ctor_maybe_res_addr_functor_desc,
-        Str = "maybe_res_addr_functor_desc"
     ;
         RttiName = type_ctor_type_layout,
         Str = "type_layout"
