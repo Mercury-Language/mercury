@@ -55,11 +55,12 @@ ERRORCHECK_PROGS = \
 	warn_stubs \
 	warn_succ_ind
 
-# We don't yet pass (or even have a .exp file for) this test.
+# We don't yet pass (or even have a .exp file for) these tests.
+#	missing_singleton_warning
 #	trace_goal_dupl_defn
 #
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-ERRORCHECK_PROGS += unused_args_analysis
+	ERRORCHECK_PROGS += unused_args_analysis
 endif
 
 # We don't run these tests in the erlang grade:
@@ -67,7 +68,7 @@ endif
 #     warn_return  (Erlang doesn't have return statements).
 #
 ifeq "$(filter erlang%,$(GRADE))" ""
-    ERRORCHECK_PROGS += warn_return
+	ERRORCHECK_PROGS += warn_return
 endif
 
 PROGS = $(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
