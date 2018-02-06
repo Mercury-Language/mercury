@@ -305,6 +305,9 @@ NON_DECLDEBUG_PROGS = \
 	bug50 \
 	bug50_full
 
+# XXX The quantification pass can't properly handle the following test case:
+#	bad_singleton_warning
+#
 # XXX The mode system can't handle the following test cases yet:
 #	assoc_list_bug
 #	determinism
