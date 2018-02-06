@@ -22,6 +22,7 @@ SIMPLE_NONLOOP_PROGS = \
 	fib_float \
 	fib_int16 \
 	fib_int32 \
+	fib_int64 \
 	fib_int8 \
 	fib_list \
 	fib_stats \
@@ -29,6 +30,7 @@ SIMPLE_NONLOOP_PROGS = \
 	fib_uint \
 	fib_uint16 \
 	fib_uint32 \
+	fib_uint64 \
 	fib_uint8 \
 	loopcheck_no_loop \
 	loopcheck_nondet_no_loop \
