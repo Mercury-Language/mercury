@@ -125,3 +125,5 @@ MCFLAGS-mode_robdd.implications = -O0
 MCFLAGS-libs.options += --erlang-switch-on-strings-as-atoms
 
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses
+
+MCFLAGS-hlds.hlds_data  += --warn-inconsistent-pred-order-clauses
