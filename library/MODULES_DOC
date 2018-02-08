@@ -95,7 +95,7 @@ uint.m
 uint8.m
 uint16.m
 uint32.m
-uint64
+uint64.m
 unit.m
 univ.m
 varset.m
