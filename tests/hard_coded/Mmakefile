@@ -384,6 +384,7 @@ ORDINARY_PROGS =	\
 	uint32_from_bytes \
 	uint32_switch_test \
 	uint64_from_bytes \
+	uint64_switch_test \
 	uint8_switch_test \
 	uint_switch_test \
 	unicode_test \
