@@ -114,4 +114,20 @@ extern MR_Integer MR_hash_uint64(uint64_t);
                                       (U & UINT32_C(0xff000000)) >> 24 )
 #endif
 
+#if defined(MR_GNUC) || defined(MR_CLANG)
+  #define MR_uint64_reverse_bytes(U) __builtin_bswap64((U))
+#elif defined(MR_MSVC)
+  #define MR_uint64_reverse_bytes(U) _byteswap_uint64((UU))
+#else
+  #define MR_uint64_reverse_bytes(U) \
+        ((U & UINT64_C(0x00000000000000ff)) << 56  | \
+         (U & UINT64_C(0x000000000000ff00)) << 40  | \
+         (U & UINT64_C(0x0000000000ff0000)) << 24  | \
+         (U & UINT64_C(0x00000000ff000000)) << 8   | \
+         (U & UINT64_C(0x000000ff00000000)) >> 8   | \
+         (U & UINT64_C(0x0000ff0000000000)) >> 24  | \
+         (U & UINT64_C(0x00ff000000000000)) >> 40  | \
+         (U & UINT64_C(0xff00000000000000)) >> 56)
+#endif
+
 #endif // not MERCURY_INT_H

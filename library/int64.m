@@ -221,6 +221,12 @@
     %
 :- func \ (int64::in) = (int64::uo) is det.
 
+    % reverse_bytes(A) = B:
+    % B is the value that results from reversing the bytes in the
+    % representation of A.
+    %
+:- func reverse_bytes(int64) = int64.
+
 :- func min_int64 = int64.
 
 :- func max_int64 = int64.
@@ -483,6 +489,42 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1i64) \= 0i64.
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    B = (int64_t) MR_uint64_reverse_bytes((uint64_t)A);
+").
+
+:- pragma foreign_proc("C#",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ulong u_A = (ulong) A;
+
+    B = (long) ((u_A & 0x00000000000000ffUL) << 56  |
+         (u_A & 0x000000000000ff00UL) << 40  |
+         (u_A & 0x0000000000ff0000UL) << 24  |
+         (u_A & 0x00000000ff000000UL) << 8   |
+         (u_A & 0x000000ff00000000UL) >> 8   |
+         (u_A & 0x0000ff0000000000UL) >> 24  |
+         (u_A & 0x00ff000000000000UL) >> 40  |
+         (u_A & 0xff00000000000000UL) >> 56);
+").
+
+:- pragma foreign_proc("Java",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Long.reverseBytes(A);
+").
+
+:- pragma no_determinism_warning(reverse_bytes/1).
+reverse_bytes(_) = _ :-
+    sorry($module, "int64.reverse_bytes/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 

@@ -2,7 +2,8 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 %
-% Test writing of int16, uint16, in32 and uint32 to binary file streams.
+% Test writing of int16, uint16, int32, uint32, int64 and uint64 to binary file
+% streams.
 
 :- module write_binary_multibyte_int.
 :- interface.
@@ -44,6 +45,10 @@ main_2(FileName, !IO) :-
         io.write_binary_int32_be(OutputFile, 0x0d0c0b0a_i32, !IO),
         io.write_binary_uint32_le(OutputFile, 0xddccbbaa_u32, !IO),
         io.write_binary_uint32_be(OutputFile, 0xddccbbaa_u32, !IO),
+        io.write_binary_int64_le(OutputFile, 0x0f0e0d0c0b0a_i64, !IO),
+        io.write_binary_int64_be(OutputFile, 0x0f0e0d0c0b0a_i64, !IO),
+        io.write_binary_uint64_le(OutputFile, 0xffeeddccbbaa_u64, !IO),
+        io.write_binary_uint64_be(OutputFile, 0xffeeddccbbaa_u64, !IO),
         io.close_binary_output(OutputFile, !IO),
 
         io.open_binary_input(FileName, OpenInputResult, !IO),
@@ -53,7 +58,7 @@ main_2(FileName, !IO) :-
             (
                 ReadResult = ok(Bytes),
                 io.close_binary_input(InputFile, !IO),
-                io.write_list(Bytes, " ", print_byte, !IO),
+                io.write_list(Bytes, "\n", print_byte, !IO),
                 io.nl(!IO)
             ;
                 ReadResult = error(IO_Error),

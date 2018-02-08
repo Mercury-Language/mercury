@@ -33,6 +33,8 @@
 
 :- func cast_to_int(uint64) = int.
 
+:- func cast_from_int64(int64) = uint64.
+
     % from_bytes_le(Byte0, Byte1, ..., Byte7) = U64:
     % U64 is the uint64 whose bytes are given in little-endian order by the
     % arguments from left-to-right (i.e. Byte0 is the least significant byte
@@ -191,6 +193,12 @@
     %
 :- func \ (uint64::in) = (uint64::uo) is det.
 
+    % reverse_bytes(A) = B:
+    % B is the value that results from reversing the bytes in the
+    % representation of A.
+    %
+:- func reverse_bytes(uint64) = uint64.
+
 :- func max_uint64 = uint64.
 
     % Convert a uint64 to a pretty_printer.doc for formatting.
@@ -306,6 +314,34 @@ cast_from_int(_) = _ :-
 :- pragma no_determinism_warning(cast_to_int/1).
 cast_to_int(_) = _ :-
     sorry($module, "uint64.cast_to_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_int64(I64::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U64 = (uint64_t) I64;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_int64(I64::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (ulong) I64;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_int64(I64::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = I64;
+").
+
+:- pragma no_determinism_warning(cast_from_int64/1).
+cast_from_int64(_) = _ :-
+    sorry($module, "uint64.cast_from_int64/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
@@ -435,6 +471,32 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1u64) \= 0u64.
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    B = MR_uint64_reverse_bytes(A);
+").
+
+:- pragma foreign_proc("Java",
+    reverse_bytes(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Long.reverseBytes(A);
+").
+
+reverse_bytes(A) = B :-
+    B = ((A /\ 0x_0000_0000_0000_00ff_u64) << 56) \/
+    ((A /\ 0x_0000_0000_0000_ff00_u64) << 40)     \/
+    ((A /\ 0x_0000_0000_00ff_0000_u64) << 24)     \/
+    ((A /\ 0x_0000_0000_ff00_0000_u64) << 8)      \/
+    ((A /\ 0x_0000_00ff_0000_0000_u64) >> 8)      \/
+    ((A /\ 0x_0000_ff00_0000_0000_u64) >> 24)     \/
+    ((A /\ 0x_00ff_0000_0000_0000_u64) >> 40)     \/
+    ((A /\ 0x_ff00_0000_0000_0000_u64) >> 56).
 
 %---------------------------------------------------------------------------%
 
