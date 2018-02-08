@@ -175,6 +175,7 @@ ORDINARY_PROGS =	\
 	int_range_ops \
 	int16_from_bytes \
 	int32_from_bytes \
+	int64_from_bytes \
 	integer_int16_conv \
 	integer_int32_conv \
 	integer_int64_conv \
@@ -382,6 +383,7 @@ ORDINARY_PROGS =	\
 	uint16_switch_test \
 	uint32_from_bytes \
 	uint32_switch_test \
+	uint64_from_bytes \
 	uint8_switch_test \
 	uint_switch_test \
 	unicode_test \

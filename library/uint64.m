@@ -33,6 +33,22 @@
 
 :- func cast_to_int(uint64) = int.
 
+    % from_bytes_le(Byte0, Byte1, ..., Byte7) = U64:
+    % U64 is the uint64 whose bytes are given in little-endian order by the
+    % arguments from left-to-right (i.e. Byte0 is the least significant byte
+    % and Byte7 is the most significant byte).
+    %
+:- func from_bytes_le(uint8, uint8, uint8, uint8, uint8, uint8, uint8,
+    uint8) = uint64.
+
+    % from_bytes_be(Byte0, Byte1, ..., Byte7) = U64:
+    % U64 is the uint64 whose bytes are given in big-endian order by the
+    % arguments in left-to-right order (i.e. Byte0 is the most significant
+    % byte and Byte7 is the least significant byte).
+    %
+:- func from_bytes_be(uint8, uint8, uint8, uint8, uint8, uint8, uint8,
+    uint8) = uint64.
+
 %---------------------------------------------------------------------------%
 
     % Less than.
@@ -290,6 +306,74 @@ cast_from_int(_) = _ :-
 :- pragma no_determinism_warning(cast_to_int/1).
 cast_to_int(_) = _ :-
     sorry($module, "uint64.cast_to_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    from_bytes_le(Byte0::in, Byte1::in, Byte2::in, Byte3::in,
+        Byte4::in, Byte5::in, Byte6::in, Byte7::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    unsigned char *uint64_bytes = (unsigned char *) &U64;
+#if defined(MR_BIG_ENDIAN)
+    uint64_bytes[0] = Byte7;
+    uint64_bytes[1] = Byte6;
+    uint64_bytes[2] = Byte5;
+    uint64_bytes[3] = Byte4;
+    uint64_bytes[4] = Byte3;
+    uint64_bytes[5] = Byte2;
+    uint64_bytes[6] = Byte1;
+    uint64_bytes[7] = Byte0;
+#else
+    uint64_bytes[0] = Byte0;
+    uint64_bytes[1] = Byte1;
+    uint64_bytes[2] = Byte2;
+    uint64_bytes[3] = Byte3;
+    uint64_bytes[4] = Byte4;
+    uint64_bytes[5] = Byte5;
+    uint64_bytes[6] = Byte6;
+    uint64_bytes[7] = Byte7;
+#endif
+").
+
+:- pragma foreign_proc("Java",
+    from_bytes_le(Byte0::in, Byte1::in, Byte2::in, Byte3::in,
+        Byte4::in, Byte5::in, Byte6::in, Byte7::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (long)(Byte7 & 0xff) << 56 |
+          (long)(Byte6 & 0xff) << 48 |
+          (long)(Byte5 & 0xff) << 40 |
+          (long)(Byte4 & 0xff) << 32 |
+          (long)(Byte3 & 0xff) << 24 |
+          (long)(Byte2 & 0xff) << 16 |
+          (long)(Byte1 & 0xff) << 8  |
+          (long)(Byte0 & 0xff);
+").
+
+:- pragma foreign_proc("C#",
+    from_bytes_le(Byte0::in, Byte1::in, Byte2::in, Byte3::in,
+        Byte4::in, Byte5::in, Byte6::in, Byte7::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (ulong) (
+        (ulong)Byte7 << 56 |
+        (ulong)Byte6 << 48 |
+        (ulong)Byte5 << 40 |
+        (ulong)Byte4 << 32 |
+        (ulong)Byte3 << 24 |
+        (ulong)Byte2 << 16 |
+        (ulong)Byte1 << 8  |
+        (ulong)Byte0);
+").
+
+from_bytes_le(_, _, _, _, _, _, _, _) = _ :-
+    sorry($module, "uint64.from_bytes_le/8 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+from_bytes_be(Byte7, Byte6, Byte5,Byte4, Byte3, Byte2, Byte1, Byte0) =
+    from_bytes_le(Byte0, Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7).
 
 %---------------------------------------------------------------------------%
 
