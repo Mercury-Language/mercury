@@ -799,7 +799,27 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 du_type_repn                :: maybe(du_type_repn),
 
                 % Are there `:- pragma foreign' type declarations for
-                % this type?
+                % this type? We need to know when we are generating e.g.
+                % optimization interface files, because we want to make
+                % such files valid in all grades, not just the grade that is
+                % currently selecyed grade. In this case, it is possible
+                % for this field to be a yes(...) wrapped around a foreign
+                % type body that applies to the current grade, which means
+                % that if we were generating code for this module,
+                % the representation we would use for this type would be
+                % the *foreign* type, not the Mercury type.
+                %
+                % If we are generating code, this field will be yes(...)
+                % *only* if the foreign type definitions do not apply
+                % to the current target language, so the type representation
+                % we want to use for this type is the one in the du_type_repn
+                % field. If there *is* a foreign type definition that is valid
+                % for the current target language for this type, then
+                % add_type.m will set the body of this type to
+                % hlds_foreign_type, not hlds_du_type.
+                %
+                % XXX TYPE_REPN We should consider moving the decision point
+                % from add_type.m to du_type_layout.m.
                 du_type_is_foreign_type     :: maybe(foreign_type_body)
             )
     ;       hlds_eqv_type(mer_type)
