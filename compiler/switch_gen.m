@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -154,7 +155,9 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
         MayUseSmartIndexing = may_use_smart_indexing,
         module_info_get_globals(ModuleInfo, Globals),
         (
-            SwitchCategory = atomic_switch,
+            ( SwitchCategory = atomic_switch
+            ; SwitchCategory = int64_switch
+            ),
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
             ( if
                 MaybeIntSwitchInfo =

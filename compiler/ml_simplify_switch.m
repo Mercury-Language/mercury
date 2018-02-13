@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2001, 2003-2011 The University of Melbourne.
+% Copyright (C) 2015-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -66,13 +67,13 @@ ml_simplify_switch(Stmt0, Stmt, !Info) :-
 
         % Is this an int switch?
         Stmt0 = ml_stmt_switch(Type, Rval, Range, Cases, Default, Context),
-        is_integral_type(Type) = yes,
+        is_integral_type(Type, IntType),
 
         % Does the target want us to convert dense int switches
         % into computed gotos?
         globals_target_supports_computed_goto(Globals) = yes,
         not (
-            globals_target_supports_int_switch(Globals) = yes,
+            globals_target_supports_int_type_switch(Globals, IntType) = yes,
             globals.lookup_bool_option(Globals, prefer_switch, yes)
         ),
 
@@ -96,9 +97,9 @@ ml_simplify_switch(Stmt0, Stmt, !Info) :-
         % unless the target prefers switches.
 
         Stmt0 = ml_stmt_switch(Type, Rval, _Range, Cases, Default, Context),
-        is_integral_type(Type) = yes,
+        is_integral_type(Type, IntType),
         not (
-            globals_target_supports_int_switch(Globals) = yes,
+            globals_target_supports_int_type_switch(Globals, IntType) = yes,
             globals.lookup_bool_option(Globals, prefer_switch, yes)
         )
     then
@@ -117,15 +118,18 @@ ml_simplify_switch(Stmt0, Stmt, !Info) :-
         Stmt = Stmt0
     ).
 
-:- func is_integral_type(mlds_type) = bool.
+:- pred is_integral_type(mlds_type::in, int_type::out) is semidet.
 
-is_integral_type(MLDSType) = IsIntegral :-
+is_integral_type(MLDSType, IntType) :-
+    require_complete_switch [MLDSType]
     (
         ( MLDSType = mlds_native_int_type
-        ; MLDSType = mlds_native_uint_type
         ; MLDSType = mlds_native_char_type
         ),
-        IsIntegral = yes
+        IntType = int_type_int
+    ;
+        MLDSType = mlds_native_uint_type,
+        IntType = int_type_uint
     ;
         ( MLDSType = mlds_mercury_array_type(_)
         ; MLDSType = mlds_cont_type(_)
@@ -146,15 +150,16 @@ is_integral_type(MLDSType) = IsIntegral :-
         ; MLDSType = mlds_tabling_type(_)
         ; MLDSType = mlds_unknown_type
         ),
-        IsIntegral = no
+        fail
     ;
         MLDSType = mercury_type(_, CtorCat, _),
-        (
-            ( CtorCat = ctor_cat_builtin(cat_builtin_int(_))
-            ; CtorCat = ctor_cat_builtin(cat_builtin_char)
+        require_complete_switch [CtorCat] (
+            ( CtorCat = ctor_cat_builtin(cat_builtin_char)
             ; CtorCat = ctor_cat_enum(cat_enum_mercury)
             ),
-            IsIntegral = yes
+            IntType = int_type_int
+        ;
+            CtorCat = ctor_cat_builtin(cat_builtin_int(IntType))
         ;
             ( CtorCat = ctor_cat_builtin(cat_builtin_string)
             ; CtorCat = ctor_cat_builtin(cat_builtin_float)
@@ -170,12 +175,12 @@ is_integral_type(MLDSType) = IsIntegral :-
             ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
             ; CtorCat = ctor_cat_user(cat_user_abstract_dummy)
             ),
-            IsIntegral = no
+            fail
         ;
             CtorCat = ctor_cat_enum(cat_enum_foreign),
             % XXX We can switch on foreign enumerations in C, but this may
             % not be the case for the other target languages.
-            IsIntegral = no
+            fail
         )
     ).
 

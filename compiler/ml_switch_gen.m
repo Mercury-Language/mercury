@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -189,6 +190,11 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                 Stmts, !Info),
             Decls = []
         ;
+            SwitchCategory = int64_switch,
+            ml_gen_smart_int64_switch(SwitchVar, CanFail, TaggedCases,
+                CodeModel, Context, Stmts, !Info),
+            Decls = []
+        ;
             SwitchCategory = string_switch,
             ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases,
                 CodeModel, Context, GoalInfo, Decls, Stmts, !Info)
@@ -257,6 +263,26 @@ ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
         ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
             CodeModel, CanFail, Context, Stmts, !Info)
     else
+        ml_switch_generate_if_then_else_chain(TaggedCases,
+            SwitchVar, CodeModel, CanFail, Context, Stmts, !Info)
+    ).
+
+:- pred ml_gen_smart_int64_switch(prog_var::in,
+    can_fail::in, list(tagged_case)::in, code_model::in, prog_context::in,
+    list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_smart_int64_switch(SwitchVar, CanFail,
+        TaggedCases, CodeModel, Context, Stmts, !Info) :-
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    Int64SwitchSupported = globals_target_supports_int64_switch(Globals),
+    (
+        Int64SwitchSupported = yes,
+        ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
+            CodeModel, CanFail, Context, Stmts, !Info)
+    ;
+        Int64SwitchSupported = no,
         ml_switch_generate_if_then_else_chain(TaggedCases,
             SwitchVar, CodeModel, CanFail, Context, Stmts, !Info)
     ).

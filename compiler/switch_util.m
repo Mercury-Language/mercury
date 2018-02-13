@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -75,7 +76,14 @@
 %
 
 :- type switch_category
-    --->    atomic_switch   % a switch on int/char/enum
+    --->    atomic_switch
+            % A switch on int, char, enum or a 8-, 16 or 32-bit signed
+            % or unsigned ineger.
+
+    ;       int64_switch
+            % A switch on a 64-bit integer.
+            % These require special treatment on the Java backend.
+
     ;       string_switch
     ;       tag_switch
     ;       float_switch.
@@ -506,8 +514,26 @@ num_cons_ids_in_tagged_cases_loop([TaggedCase | TaggedCases],
 
 type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
     (
+        CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
+        (
+            ( IntType = int_type_int
+            ; IntType = int_type_uint
+            ; IntType = int_type_int8
+            ; IntType = int_type_uint8
+            ; IntType = int_type_int16
+            ; IntType = int_type_uint16
+            ; IntType = int_type_int32
+            ; IntType = int_type_uint32
+            ),
+            SwitchCat = atomic_switch
+        ;
+            ( IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            SwitchCat = int64_switch
+        )
+    ;
         ( CtorCat = ctor_cat_enum(_)
-        ; CtorCat = ctor_cat_builtin(cat_builtin_int(_))
         ; CtorCat = ctor_cat_builtin(cat_builtin_char)
         ),
         SwitchCat = atomic_switch
@@ -633,6 +659,11 @@ is_smart_indexing_allowed_for_category(Globals, SwitchCategory) = Allowed :-
     ;
         SwitchCategory = float_switch,
         globals.lookup_bool_option(Globals, smart_float_indexing, Allowed)
+    ;
+        SwitchCategory = int64_switch,
+        % We do not have a separate option for controlling smart indexing
+        % of 64-bit integers.
+        globals.lookup_bool_option(Globals, smart_atomic_indexing, Allowed)
     ).
 
 %-----------------------------------------------------------------------------%
