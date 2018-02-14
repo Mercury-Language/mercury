@@ -44,14 +44,16 @@ Ambiguous procedure specification. The matches are:
 4: func int.//2-0 (det)
 5: func int16.//2-0 (det)
 6: func int32.//2-0 (det)
-7: func int8.//2-0 (det)
-8: func rational.//2-0 (det)
-9: func uint.//2-0 (det)
-10: func uint16.//2-0 (det)
-11: func uint32.//2-0 (det)
-12: func uint8.//2-0 (det)
+7: func int64.//2-0 (det)
+8: func int8.//2-0 (det)
+9: func rational.//2-0 (det)
+10: func uint.//2-0 (det)
+11: func uint16.//2-0 (det)
+12: func uint32.//2-0 (det)
+13: func uint64.//2-0 (det)
+14: func uint8.//2-0 (det)
 
-Which do you want to put a breakpoint on (0-12 or *)? 0
+Which do you want to put a breakpoint on (0-14 or *)? 0
  5: + stop  interface func breakpoints.//2-0 (det)
 mdb> break //2
 Ambiguous procedure specification. The matches are:
@@ -62,14 +64,16 @@ Ambiguous procedure specification. The matches are:
 4: func int.//2-0 (det)
 5: func int16.//2-0 (det)
 6: func int32.//2-0 (det)
-7: func int8.//2-0 (det)
-8: func rational.//2-0 (det)
-9: func uint.//2-0 (det)
-10: func uint16.//2-0 (det)
-11: func uint32.//2-0 (det)
-12: func uint8.//2-0 (det)
+7: func int64.//2-0 (det)
+8: func int8.//2-0 (det)
+9: func rational.//2-0 (det)
+10: func uint.//2-0 (det)
+11: func uint16.//2-0 (det)
+12: func uint32.//2-0 (det)
+13: func uint64.//2-0 (det)
+14: func uint8.//2-0 (det)
 
-Which do you want to put a breakpoint on (0-12 or *)? 0
+Which do you want to put a breakpoint on (0-14 or *)? 0
  6: + stop  interface func breakpoints.//2-0 (det)
 mdb> break breakpoints.print_list.-/2
  7: + stop  interface func breakpoints.print_list.-/2-0 (det)
