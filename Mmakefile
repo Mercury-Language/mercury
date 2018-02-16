@@ -350,7 +350,8 @@ tags: 	tags_library \
 	tags_slice \
 	tags_profiler \
 	tags_deep_profiler \
-	tags_runtime
+	tags_runtime \
+	tags_trace
 
 .PHONY: tags_compiler
 tags_compiler:
@@ -387,6 +388,10 @@ tags_deep_profiler:
 .PHONY: tags_runtime
 tags_runtime:
 	+cd runtime && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_trace
+tags_trace:
+	+cd trace && $(SUBDIR_MMAKE) tags
 
 #-----------------------------------------------------------------------------#
 
