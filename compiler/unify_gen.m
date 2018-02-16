@@ -131,7 +131,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
         CodeModel = model_semi
     ;
         CodeModel = model_non,
-        unexpected($module, $pred, "nondet unification")
+        unexpected($pred, "nondet unification")
     ),
     (
         Uni = assign(LHSVar, RHSVar),
@@ -208,7 +208,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
         Uni = simple_test(VarA, VarB),
         (
             CodeModel = model_det,
-            unexpected($module, $pred, "det simple_test")
+            unexpected($pred, "det simple_test")
         ;
             CodeModel = model_semi,
             generate_test(VarA, VarB, Code, !CI, !CLD)
@@ -217,7 +217,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
         % These should have been transformed into calls to unification
         % procedures by polymorphism.m.
         Uni = complicated_unify(_Mode, _CanFail, _TypeInfoVars),
-        unexpected($module, $pred, "complicated unify")
+        unexpected($pred, "complicated unify")
     ).
 
 :- pred get_cons_arg_widths(module_info::in, cons_id::in,
@@ -236,7 +236,7 @@ get_cons_arg_widths(ModuleInfo, ConsId, Args, AllArgWidths) :-
             ExtraArgWidths = list.duplicate(NumExtraArgs, full_word),
             AllArgWidths = ExtraArgWidths ++ ArgWidths
         else
-            unexpected($module, $pred, "too few arguments")
+            unexpected($pred, "too few arguments")
         )
     else
         AllArgWidths = list.duplicate(length(Args), full_word)
@@ -431,7 +431,7 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         TestRval = binop(eq(IntType), Rval, const(Const))
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignVal),
-        expect(unify(ForeignLang, lang_c), $module, $pred,
+        expect(unify(ForeignLang, lang_c), $pred,
             "foreign tag for language other than C"),
         TestRval = binop(eq(int_type_int), Rval,
             const(llconst_foreign(ForeignVal, lt_int(int_type_int))))
@@ -439,34 +439,32 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ConsTag = closure_tag(_, _, _),
         % This should never happen, since the error will be detected
         % during mode checking.
-        unexpected($module, $pred, "Attempted higher-order unification")
+        unexpected($pred, "Attempted higher-order unification")
     ;
         ConsTag = type_ctor_info_tag(_, _, _),
-        unexpected($module, $pred, "Attempted type_ctor_info unification")
+        unexpected($pred, "Attempted type_ctor_info unification")
     ;
         ConsTag = base_typeclass_info_tag(_, _, _),
-        unexpected($module, $pred, "Attempted base_typeclass_info unification")
+        unexpected($pred, "Attempted base_typeclass_info unification")
     ;
         ConsTag = type_info_const_tag(_),
-        unexpected($module, $pred, "Attempted type_info_const_tag unification")
+        unexpected($pred, "Attempted type_info_const_tag unification")
     ;
         ConsTag = typeclass_info_const_tag(_),
-        unexpected($module, $pred,
-            "Attempted typeclass_info_const_tag unification")
+        unexpected($pred, "Attempted typeclass_info_const_tag unification")
     ;
         ConsTag = ground_term_const_tag(_, _),
-        unexpected($module, $pred,
-            "Attempted ground_term_const_tag unification")
+        unexpected($pred, "Attempted ground_term_const_tag unification")
     ;
         ConsTag = tabling_info_tag(_, _),
-        unexpected($module, $pred, "Attempted tabling_info unification")
+        unexpected($pred, "Attempted tabling_info unification")
     ;
         ConsTag = deep_profiling_proc_layout_tag(_, _),
-        unexpected($module, $pred,
+        unexpected($pred,
             "Attempted deep_profiling_proc_layout_tag unification")
     ;
         ConsTag = table_io_entry_tag(_, _),
-        unexpected($module, $pred, "Attempted table_io_entry_tag unification")
+        unexpected($pred, "Attempted table_io_entry_tag unification")
     ;
         ConsTag = no_tag,
         TestRval = const(llconst_true)
@@ -540,7 +538,7 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         Code = empty
     ;
         ConsTag = foreign_tag(Lang, Val),
-        expect(unify(Lang, lang_c), $module, $pred,
+        expect(unify(Lang, lang_c), $pred,
             "foreign_tag for language other than C"),
         ForeignConst = const(llconst_foreign(Val, lt_int(int_type_int))),
         assign_const_to_var(LHSVar, ForeignConst, !.CI, !CLD),
@@ -562,10 +560,10 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
                     Code, !.CI, !CLD)
             ;
                 TakeAddr = [_ | _],
-                unexpected($module, $pred, "notag: take_addr")
+                unexpected($pred, "notag: take_addr")
             )
         else
-            unexpected($module, $pred, "no_tag: arity != 1")
+            unexpected($pred, "no_tag: arity != 1")
         )
     ;
         (
@@ -597,10 +595,10 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
                     ArgMode, Type, Code, !.CI, !CLD)
             ;
                 TakeAddr = [_ | _],
-                unexpected($module, $pred, "direct_arg_tag: take_addr")
+                unexpected($pred, "direct_arg_tag: take_addr")
             )
         else
-            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+            unexpected($pred, "direct_arg_tag: arity != 1")
         )
     ;
         ConsTag = shared_remote_tag(Ptag, Sectag),
@@ -623,7 +621,7 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         Code = empty
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
-        expect(unify(RHSVars, []), $module, $pred,
+        expect(unify(RHSVars, []), $pred,
             "type_ctor_info constant has args"),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
         DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
@@ -633,7 +631,7 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         Code = empty
     ;
         ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
-        expect(unify(RHSVars, []), $module, $pred,
+        expect(unify(RHSVars, []), $pred,
             "base_typeclass_info constant has args"),
         TCName = generate_class_name(ClassId),
         DataId = rtti_data_id(tc_rtti_id(TCName,
@@ -651,7 +649,7 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         assign_expr_to_var(LHSVar, Rval, Code, !CLD)
     ;
         ConsTag = tabling_info_tag(PredId, ProcId),
-        expect(unify(RHSVars, []), $module, $pred,
+        expect(unify(RHSVars, []), $pred,
             "tabling_info constant has args"),
         get_module_info(!.CI, ModuleInfo),
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
@@ -661,7 +659,7 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         Code = empty
     ;
         ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
-        expect(unify(RHSVars, []), $module, $pred,
+        expect(unify(RHSVars, []), $pred,
             "deep_profiling_proc_static has args"),
         get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
@@ -678,7 +676,7 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         Code = empty
     ;
         ConsTag = table_io_entry_tag(PredId, ProcId),
-        expect(unify(RHSVars, []), $module, $pred, "table_io_entry has args"),
+        expect(unify(RHSVars, []), $pred, "table_io_entry has args"),
         PredProcId = proc(PredId, ProcId),
         DataId = layout_slot_id(table_io_entry_id, PredProcId),
         assign_const_to_var(LHSVar, const(llconst_data_addr(DataId, no)),
@@ -686,9 +684,9 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         Code = empty
     ;
         ConsTag = closure_tag(PredId, ProcId, EvalMethod),
-        expect(unify(TakeAddr, []), $module, $pred,
+        expect(unify(TakeAddr, []), $pred,
             "closure_tag has take_addr"),
-        expect(unify(MaybeSize, no), $module, $pred,
+        expect(unify(MaybeSize, no), $pred,
             "closure_tag has size"),
         generate_closure(PredId, ProcId, EvalMethod, LHSVar, RHSVars, GoalInfo,
             Code, !CI, !CLD)
@@ -760,7 +758,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
         Deep = no,
         % XXX If float registers are used, float register arguments are placed
         % after regular register arguments in the hidden arguments vector.
-        % The code below does not handle that layout.
+        % Generate_new_closure_from_old does not (yet) handle that layout.
         globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
         UseFloatRegs = no
     then
@@ -771,134 +769,151 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
             Code = empty
         ;
             CallArgs = [_ | _],
-            get_next_label(LoopStart, !CI),
-            get_next_label(LoopTest, !CI),
-            acquire_reg(reg_r, LoopCounter, !CLD),
-            acquire_reg(reg_r, NumOldArgs, !CLD),
-            acquire_reg(reg_r, NewClosure, !CLD),
-            Zero = const(llconst_int(0)),
-            One = const(llconst_int(1)),
-            Two = const(llconst_int(2)),
-            Three = const(llconst_int(3)),
-            list.length(CallArgs, NumNewArgs),
-            NumNewArgs_Rval = const(llconst_int(NumNewArgs)),
-            NumNewArgsPlusThree = NumNewArgs + 3,
-            NumNewArgsPlusThree_Rval = const(llconst_int(NumNewArgsPlusThree)),
-            produce_variable(CallPred, OldClosureCode, OldClosure, !.CI, !CLD),
-            Context = goal_info_get_context(GoalInfo),
-            maybe_add_alloc_site_info(Context, "closure", NumNewArgsPlusThree,
-                MaybeAllocId, !CI),
-            % The new closure contains a pointer to the old closure.
-            NewClosureMayUseAtomic = may_not_use_atomic_alloc,
-            NewClosureCode = from_list([
-                llds_instr(comment("build new closure from old closure"), ""),
-                llds_instr(
-                    assign(NumOldArgs, lval(field(yes(0), OldClosure, Two))),
-                    "get number of arguments"),
-                llds_instr(incr_hp(NewClosure, no, no,
-                    binop(int_add(int_type_int), lval(NumOldArgs),
-                        NumNewArgsPlusThree_Rval),
-                    MaybeAllocId, NewClosureMayUseAtomic, no, no_llds_reuse),
-                    "allocate new closure"),
-                llds_instr(assign(field(yes(0), lval(NewClosure), Zero),
-                    lval(field(yes(0), OldClosure, Zero))),
-                    "set closure layout structure"),
-                llds_instr(assign(field(yes(0), lval(NewClosure), One),
-                    lval(field(yes(0), OldClosure, One))),
-                    "set closure code pointer"),
-                llds_instr(assign(field(yes(0), lval(NewClosure), Two),
-                    binop(int_add(int_type_int), lval(NumOldArgs),
-                        NumNewArgs_Rval)),
-                    "set new number of arguments"),
-                llds_instr(
-                    assign(NumOldArgs,
-                        binop(int_add(int_type_int), lval(NumOldArgs), Three)),
-                    "set up loop limit"),
-                llds_instr(assign(LoopCounter, Three),
-                    "initialize loop counter"),
-                % It is possible for the number of hidden arguments to be zero,
-                % in which case the body of this loop should not be executed
-                % at all. This is why we jump to the loop condition test.
-                llds_instr(goto(code_label(LoopTest)),
-                    "enter the copy loop at the conceptual top"),
-                llds_instr(label(LoopStart),
-                    "start of loop, nofulljump"),
-                llds_instr(
-                    assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
-                        lval(field(yes(0), OldClosure, lval(LoopCounter)))),
-                    "copy old hidden argument"),
-                llds_instr(
-                    assign(LoopCounter,
-                        binop(int_add(int_type_int), lval(LoopCounter), One)),
-                    "increment loop counter"),
-                llds_instr(label(LoopTest),
-                    "do we have more old arguments to copy? nofulljump"),
-                llds_instr(
-                    if_val(binop(int_lt(int_type_int),
-                        lval(LoopCounter), lval(NumOldArgs)),
-                        code_label(LoopStart)),
-                    "repeat the loop?")
-            ]),
-            generate_extra_closure_args(CallArgs, LoopCounter, NewClosure,
-                ExtraArgsCode, !.CI, !CLD),
-            release_reg(LoopCounter, !CLD),
-            release_reg(NumOldArgs, !CLD),
-            release_reg(NewClosure, !CLD),
-            assign_lval_to_var(Var, NewClosure, AssignCode, !.CI, !CLD),
-            Code = OldClosureCode ++ NewClosureCode ++ ExtraArgsCode ++
-                 AssignCode
+            generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo,
+                Code, !CI, !CLD)
         )
     else
-        CodeAddr = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, no),
-        ProcLabel = extract_proc_label_from_code_addr(CodeAddr),
-        CodeAddrRval = const(llconst_code_addr(CodeAddr)),
-        continuation_info.generate_closure_layout( ModuleInfo, PredId, ProcId,
-            ClosureInfo),
-        module_info_get_name(ModuleInfo, ModuleName),
-        Context = goal_info_get_context(GoalInfo),
-        term.context_file(Context, FileName),
-        term.context_line(Context, LineNumber),
-        GoalId = goal_info_get_goal_id(GoalInfo),
-        GoalId = goal_id(GoalIdNum),
-        GoalIdStr = string.int_to_string(GoalIdNum),
-        get_proc_label(!.CI, CallerProcLabel),
-        get_next_closure_seq_no(SeqNo, !CI),
-        get_static_cell_info(!.CI, StaticCellInfo0),
-        hlds.hlds_pred.pred_info_get_origin(PredInfo, PredOrigin),
-        stack_layout.construct_closure_layout(CallerProcLabel,
-            SeqNo, ClosureInfo, ProcLabel, ModuleName, FileName, LineNumber,
-            PredOrigin, GoalIdStr, StaticCellInfo0, StaticCellInfo,
-            ClosureLayoutTypedRvals, Data),
-        set_static_cell_info(StaticCellInfo, !CI),
-        add_closure_layout(Data, !CI),
-        % For now, closures always have zero size, and the size slot
-        % is never looked at.
-        add_scalar_static_cell(ClosureLayoutTypedRvals, ClosureDataAddr, !CI),
-        ClosureLayoutRval = const(llconst_data_addr(ClosureDataAddr, no)),
-        proc_info_arg_info(ProcInfo, ArgInfo),
-        get_vartypes(!.CI, VarTypes),
-        MayUseAtomic0 = initial_may_use_atomic(ModuleInfo),
-        generate_pred_args(!.CI, VarTypes, Args, ArgInfo, ArgsR, ArgsF,
-            MayUseAtomic0, MayUseAtomic),
-        list.length(ArgsR, NumArgsR),
-        list.length(ArgsF, NumArgsF),
-        NumArgsRF = encode_num_generic_call_vars(NumArgsR, NumArgsF),
-        list.append(ArgsR, ArgsF, ArgsRF),
-        Vector = [
-            cell_arg_full_word(ClosureLayoutRval, complete),
-            cell_arg_full_word(CodeAddrRval, complete),
-            cell_arg_full_word(const(llconst_int(NumArgsRF)), complete)
-            | ArgsRF
-        ],
-        % XXX construct_dynamically is just a dummy value. We just want
-        % something which is not construct_in_region(_).
-        HowToConstruct = construct_dynamically,
-        MaybeSize = no,
-        maybe_add_alloc_site_info(Context, "closure", length(Vector),
-            MaybeAllocId, !CI),
-        assign_cell_to_var(Var, no, 0, Vector, HowToConstruct,
-            MaybeSize, MaybeAllocId, MayUseAtomic, Code, !CI, !CLD)
+        generate_closure_from_scratch(ModuleInfo, PredId, ProcId,
+            PredInfo, ProcInfo, Var, Args, GoalInfo, Code, !CI, !CLD)
     ).
+
+:- pred generate_new_closure_from_old(prog_var::in,
+    prog_var::in, list(prog_var)::in, hlds_goal_info::in, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
+
+generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo, Code,
+        !CI, !CLD) :-
+    get_next_label(LoopStart, !CI),
+    get_next_label(LoopTest, !CI),
+    acquire_reg(reg_r, LoopCounter, !CLD),
+    acquire_reg(reg_r, NumOldArgs, !CLD),
+    acquire_reg(reg_r, NewClosure, !CLD),
+    Zero = const(llconst_int(0)),
+    One = const(llconst_int(1)),
+    Two = const(llconst_int(2)),
+    Three = const(llconst_int(3)),
+    list.length(CallArgs, NumNewArgs),
+    NumNewArgs_Rval = const(llconst_int(NumNewArgs)),
+    NumNewArgsPlusThree = NumNewArgs + 3,
+    NumNewArgsPlusThree_Rval = const(llconst_int(NumNewArgsPlusThree)),
+    produce_variable(CallPred, OldClosureCode, OldClosure, !.CI, !CLD),
+    Context = goal_info_get_context(GoalInfo),
+    maybe_add_alloc_site_info(Context, "closure", NumNewArgsPlusThree,
+        MaybeAllocId, !CI),
+    % The new closure contains a pointer to the old closure.
+    NewClosureMayUseAtomic = may_not_use_atomic_alloc,
+    NewClosureCode = from_list([
+        llds_instr(comment("build new closure from old closure"), ""),
+        llds_instr(
+            assign(NumOldArgs, lval(field(yes(0), OldClosure, Two))),
+            "get number of arguments"),
+        llds_instr(incr_hp(NewClosure, no, no,
+            binop(int_add(int_type_int), lval(NumOldArgs),
+                NumNewArgsPlusThree_Rval),
+            MaybeAllocId, NewClosureMayUseAtomic, no, no_llds_reuse),
+            "allocate new closure"),
+        llds_instr(assign(field(yes(0), lval(NewClosure), Zero),
+            lval(field(yes(0), OldClosure, Zero))),
+            "set closure layout structure"),
+        llds_instr(assign(field(yes(0), lval(NewClosure), One),
+            lval(field(yes(0), OldClosure, One))),
+            "set closure code pointer"),
+        llds_instr(assign(field(yes(0), lval(NewClosure), Two),
+            binop(int_add(int_type_int), lval(NumOldArgs),
+                NumNewArgs_Rval)),
+            "set new number of arguments"),
+        llds_instr(
+            assign(NumOldArgs,
+                binop(int_add(int_type_int), lval(NumOldArgs), Three)),
+            "set up loop limit"),
+        llds_instr(assign(LoopCounter, Three),
+            "initialize loop counter"),
+        % It is possible for the number of hidden arguments to be zero,
+        % in which case the body of this loop should not be executed
+        % at all. This is why we jump to the loop condition test.
+        llds_instr(goto(code_label(LoopTest)),
+            "enter the copy loop at the conceptual top"),
+        llds_instr(label(LoopStart),
+            "start of loop, nofulljump"),
+        llds_instr(
+            assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
+                lval(field(yes(0), OldClosure, lval(LoopCounter)))),
+            "copy old hidden argument"),
+        llds_instr(
+            assign(LoopCounter,
+                binop(int_add(int_type_int), lval(LoopCounter), One)),
+            "increment loop counter"),
+        llds_instr(label(LoopTest),
+            "do we have more old arguments to copy? nofulljump"),
+        llds_instr(
+            if_val(binop(int_lt(int_type_int),
+                lval(LoopCounter), lval(NumOldArgs)),
+                code_label(LoopStart)),
+            "repeat the loop?")
+    ]),
+    generate_extra_closure_args(CallArgs, LoopCounter, NewClosure,
+        ExtraArgsCode, !.CI, !CLD),
+    release_reg(LoopCounter, !CLD),
+    release_reg(NumOldArgs, !CLD),
+    release_reg(NewClosure, !CLD),
+    assign_lval_to_var(Var, NewClosure, AssignCode, !.CI, !CLD),
+    Code = OldClosureCode ++ NewClosureCode ++ ExtraArgsCode ++ AssignCode.
+
+:- pred generate_closure_from_scratch(module_info::in,
+    pred_id::in, proc_id::in, pred_info::in, proc_info::in,
+    prog_var::in, list(prog_var)::in, hlds_goal_info::in, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
+
+generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
+        Var, Args, GoalInfo, Code, !CI, !CLD) :-
+    CodeAddr = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, no),
+    ProcLabel = extract_proc_label_from_code_addr(CodeAddr),
+    CodeAddrRval = const(llconst_code_addr(CodeAddr)),
+    continuation_info.generate_closure_layout( ModuleInfo, PredId, ProcId,
+        ClosureInfo),
+    module_info_get_name(ModuleInfo, ModuleName),
+    Context = goal_info_get_context(GoalInfo),
+    term.context_file(Context, FileName),
+    term.context_line(Context, LineNumber),
+    GoalId = goal_info_get_goal_id(GoalInfo),
+    GoalId = goal_id(GoalIdNum),
+    GoalIdStr = string.int_to_string(GoalIdNum),
+    get_proc_label(!.CI, CallerProcLabel),
+    get_next_closure_seq_no(SeqNo, !CI),
+    get_static_cell_info(!.CI, StaticCellInfo0),
+    hlds.hlds_pred.pred_info_get_origin(PredInfo, PredOrigin),
+    stack_layout.construct_closure_layout(CallerProcLabel, SeqNo, ClosureInfo,
+        ProcLabel, ModuleName, FileName, LineNumber, PredOrigin, GoalIdStr,
+        StaticCellInfo0, StaticCellInfo, ClosureLayoutTypedRvals, Data),
+    set_static_cell_info(StaticCellInfo, !CI),
+    add_closure_layout(Data, !CI),
+    % For now, closures always have zero size, and the size slot
+    % is never looked at.
+    add_scalar_static_cell(ClosureLayoutTypedRvals, ClosureDataAddr, !CI),
+    ClosureLayoutRval = const(llconst_data_addr(ClosureDataAddr, no)),
+    proc_info_arg_info(ProcInfo, ArgInfo),
+    get_vartypes(!.CI, VarTypes),
+    MayUseAtomic0 = initial_may_use_atomic(ModuleInfo),
+    generate_pred_args(!.CI, VarTypes, Args, ArgInfo, ArgsR, ArgsF,
+        MayUseAtomic0, MayUseAtomic),
+    list.length(ArgsR, NumArgsR),
+    list.length(ArgsF, NumArgsF),
+    NumArgsRF = encode_num_generic_call_vars(NumArgsR, NumArgsF),
+    list.append(ArgsR, ArgsF, ArgsRF),
+    Vector = [
+        cell_arg_full_word(ClosureLayoutRval, complete),
+        cell_arg_full_word(CodeAddrRval, complete),
+        cell_arg_full_word(const(llconst_int(NumArgsRF)), complete)
+        | ArgsRF
+    ],
+    % XXX construct_dynamically is just a dummy value. We just want
+    % something which is not construct_in_region(_).
+    HowToConstruct = construct_dynamically,
+    MaybeSize = no,
+    maybe_add_alloc_site_info(Context, "closure", length(Vector),
+        MaybeAllocId, !CI),
+    assign_cell_to_var(Var, no, 0, Vector, HowToConstruct,
+        MaybeSize, MaybeAllocId, MayUseAtomic, Code, !CI, !CLD).
 
 :- pred generate_extra_closure_args(list(prog_var)::in, lval::in,
     lval::in, llds_code::out,
@@ -940,7 +955,7 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
 
 generate_pred_args(_, _, [], _, [], [], !MayUseAtomic).
 generate_pred_args(_, _, [_ | _], [], _, _, !MayUseAtomic) :-
-    unexpected($module, $pred, "insufficient args").
+    unexpected($pred, "insufficient args").
 generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
         ArgsR, ArgsF, !MayUseAtomic) :-
     ArgInfo = arg_info(reg(RegType, _), ArgMode),
@@ -986,12 +1001,12 @@ generate_cons_args(Vars, Types, Modes, Widths, TakeAddr, CI, !:Args,
     !:MayUseAtomic = initial_may_use_atomic(ModuleInfo),
     ( if
         FirstArgNum = 1,
-        generate_cons_args_2(Vars, Types, Modes, Widths, FirstArgNum, TakeAddr,
-            CI, !:Args, !MayUseAtomic)
+        generate_cons_args_loop(Vars, Types, Modes, Widths, FirstArgNum,
+            TakeAddr, CI, !:Args, !MayUseAtomic)
     then
         true
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
     % Create a list of maybe(rval) for the arguments for a construction
@@ -999,16 +1014,27 @@ generate_cons_args(Vars, Types, Modes, Widths, TakeAddr, CI, !:Args,
     % unification, we produce `yes(var(Var))', but if the argument is free,
     % we just produce `no', meaning don't generate an assignment to that field.
     %
-:- pred generate_cons_args_2(list(prog_var)::in, list(mer_type)::in,
+:- pred generate_cons_args_loop(list(prog_var)::in, list(mer_type)::in,
     list(unify_mode)::in, list(arg_width)::in, int::in, list(int)::in,
     code_info::in, list(cell_arg)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
 
-generate_cons_args_2([], [], [], [], _CurArgNum, _TakeAddr, _CI, [],
+generate_cons_args_loop([], [], [], [], _CurArgNum, _TakeAddr, _CI, [],
         !MayUseAtomic).
-generate_cons_args_2([Var | Vars], [Type | Types], [ArgMode | ArgModes],
+generate_cons_args_loop([Var | Vars], [Type | Types], [ArgMode | ArgModes],
         [Width | Widths], CurArgNum, !.TakeAddr, CI, [CellArg | CellArgs],
         !MayUseAtomic) :-
+    generate_cons_arg(Var, Type, ArgMode, Width, CurArgNum,
+        !.TakeAddr, CI, CellArg, !MayUseAtomic),
+    generate_cons_args_loop(Vars, Types, ArgModes, Widths, CurArgNum + 1,
+        !.TakeAddr, CI, CellArgs, !MayUseAtomic).
+
+:- pred generate_cons_arg(prog_var::in, mer_type::in, unify_mode::in,
+    arg_width::in, int::in, list(int)::in, code_info::in, cell_arg::out,
+    may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
+
+generate_cons_arg(Var, Type, ArgMode, Width, CurArgNum,
+        !.TakeAddr, CI, CellArg, !MayUseAtomic) :-
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
     ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
@@ -1021,9 +1047,7 @@ generate_cons_args_2([Var | Vars], [Type | Types], [ArgMode | ArgModes],
             MaybeNull = yes(const(llconst_int(0)))
         ),
         CellArg = cell_arg_take_addr(Var, MaybeNull),
-        !:MayUseAtomic = may_not_use_atomic_alloc,
-        generate_cons_args_2(Vars, Types, ArgModes, Widths, CurArgNum + 1,
-            !.TakeAddr, CI, CellArgs, !MayUseAtomic)
+        !:MayUseAtomic = may_not_use_atomic_alloc
     else
         ArgMode = unify_modes_lhs_rhs(_LHSMode, RHSInsts),
         from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, Type,
@@ -1045,9 +1069,7 @@ generate_cons_args_2([Var | Vars], [Type | Types], [ArgMode | ArgModes],
             ; RHSTopFunctorMode = top_unused
             ),
             CellArg = cell_arg_skip
-        ),
-        generate_cons_args_2(Vars, Types, ArgModes, Widths, CurArgNum + 1,
-            !.TakeAddr, CI, CellArgs, !MayUseAtomic)
+        )
     ).
 
 :- func initial_may_use_atomic(module_info) = may_use_atomic_alloc.
@@ -1239,9 +1261,9 @@ make_fields_and_argvars([Var | Vars], [Width | Widths], Rval, PrevOffset0,
     A = ref(Var),
     make_fields_and_argvars(Vars, Widths, Rval, PrevOffset, TagNum, Fs, As).
 make_fields_and_argvars([], [_ | _], _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 make_fields_and_argvars([_ | _], [], _, _, _, _, _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 
 %---------------------------------------------------------------------------%
 
@@ -1288,16 +1310,16 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag, Code,
         Code = empty
     ;
         Tag = type_info_const_tag(_),
-        unexpected($module, $pred, "type_info_const_tag")
+        unexpected($pred, "type_info_const_tag")
     ;
         Tag = typeclass_info_const_tag(_),
-        unexpected($module, $pred, "typeclass_info_const_tag")
+        unexpected($pred, "typeclass_info_const_tag")
     ;
         Tag = ground_term_const_tag(_, _),
-        unexpected($module, $pred, "ground_term_const_tag")
+        unexpected($pred, "ground_term_const_tag")
     ;
         Tag = table_io_entry_tag(_, _),
-        unexpected($module, $pred, "table_io_entry_tag")
+        unexpected($pred, "table_io_entry_tag")
     ;
         Tag = no_tag,
         ( if
@@ -1330,7 +1352,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag, Code,
                     Code, CI, !CLD)
             )
         else
-            unexpected($module, $pred, "no_tag: arity != 1")
+            unexpected($pred, "no_tag: arity != 1")
         )
     ;
         Tag = single_functor_tag,
@@ -1355,7 +1377,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag, Code,
             generate_direct_arg_deconstruct(Var, Arg, Ptag, Mode, Type, Code,
                 CI, !CLD)
         else
-            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+            unexpected($pred, "direct_arg_tag: arity != 1")
         )
     ;
         Tag = shared_remote_tag(Ptag, _Sectag1),
@@ -1401,21 +1423,21 @@ generate_semi_deconstruction(Var, Tag, Args, Modes, ArgWidths, Code,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_unify_args(Ls, Rs, Ms, Ts, Code, CI, !CLD) :-
-    ( if generate_unify_args_2(Ls, Rs, Ms, Ts, Code0, CI, !CLD) then
+    ( if generate_unify_args_loop(Ls, Rs, Ms, Ts, Code0, CI, !CLD) then
         Code = Code0
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
-:- pred generate_unify_args_2(list(uni_val)::in, list(uni_val)::in,
+:- pred generate_unify_args_loop(list(uni_val)::in, list(uni_val)::in,
     list(unify_mode)::in, list(mer_type)::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is semidet.
 
-generate_unify_args_2([], [], [], [], empty, _CI, !CLD).
-generate_unify_args_2([L | Ls], [R | Rs], [M | Ms], [T | Ts], Code,
+generate_unify_args_loop([], [], [], [], empty, _CI, !CLD).
+generate_unify_args_loop([L | Ls], [R | Rs], [M | Ms], [T | Ts], Code,
         CI, !CLD) :-
     generate_sub_unify(L, R, M, T, CodeA, CI, !CLD),
-    generate_unify_args_2(Ls, Rs, Ms, Ts, CodeB, CI, !CLD),
+    generate_unify_args_loop(Ls, Rs, Ms, Ts, CodeB, CI, !CLD),
     Code = CodeA ++ CodeB.
 
 %---------------------------------------------------------------------------%
@@ -1441,7 +1463,7 @@ generate_sub_unify(L, R, ArgMode, Type, Code, CI, !CLD) :-
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
-        unexpected($module, $pred, "test in arg of [de]construction")
+        unexpected($pred, "test in arg of [de]construction")
     else if
         % Input - Output== assignment ->
         LeftTopFunctorMode = top_in,
@@ -1462,7 +1484,7 @@ generate_sub_unify(L, R, ArgMode, Type, Code, CI, !CLD) :-
         % free-free - ignore
         % XXX I think this will have to change if we start to support aliasing.
     else
-        unexpected($module, $pred, "some strange unify")
+        unexpected($pred, "some strange unify")
     ).
 
 :- pred generate_sub_assign(uni_val::in, uni_val::in, llds_code::out,
@@ -1473,7 +1495,7 @@ generate_sub_assign(Left, Right, Code, CI, !CLD) :-
         Left = lval(_Lval, _),
         Right = lval(_Rval, _),
         % Assignment between two lvalues - cannot happen.
-        unexpected($module, $pred, "lval/lval")
+        unexpected($pred, "lval/lval")
     ;
         Left = lval(Lval0, LeftWidth),
         Right = ref(Var),
@@ -1510,7 +1532,7 @@ generate_sub_assign(Left, Right, Code, CI, !CLD) :-
                     llds_instr(assign(LvalB, SrcB), Comment)
                 ])
             else
-                sorry($module, $pred, "double_word: non-field lval")
+                sorry($pred, "double_word: non-field lval")
             )
         ),
         Code = SourceCode ++ MaterializeCode ++ AssignCode
@@ -1543,7 +1565,7 @@ generate_sub_assign(Left, Right, Code, CI, !CLD) :-
                         assign_field_lval_expr_to_var(Lvar, [LvalA, LvalB],
                             Rval, Code, !CLD)
                     else
-                        sorry($module, $pred, "double_word: non-field lval")
+                        sorry($pred, "double_word: non-field lval")
                     )
                 )
             ;
@@ -1588,13 +1610,13 @@ generate_direct_arg_construct(Var, Arg, Ptag, ArgMode, Type, Code, CI, !CLD) :-
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
-        unexpected($module, $pred, "test in arg of [de]construction")
+        unexpected($pred, "test in arg of [de]construction")
     else if
         % Input - Output == assignment ->
         LeftTopFunctorMode = top_in,
         RightTopFunctorMode = top_out
     then
-        unexpected($module, $pred, "left-to-right data flow in construction")
+        unexpected($pred, "left-to-right data flow in construction")
     else if
         % Output - Input == assignment <-
         LeftTopFunctorMode = top_out,
@@ -1610,7 +1632,7 @@ generate_direct_arg_construct(Var, Arg, Ptag, ArgMode, Type, Code, CI, !CLD) :-
         assign_const_to_var(Var, mkword_hole(Ptag), CI, !CLD),
         Code = empty
     else
-        unexpected($module, $pred, "some strange unify")
+        unexpected($pred, "some strange unify")
     ).
 
     % Generate a direct arg unification between
@@ -1661,9 +1683,9 @@ generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Type, Code,
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
-        unexpected($module, $pred, "test in arg of [de]construction")
+        unexpected($pred, "test in arg of [de]construction")
     else
-        unexpected($module, $pred, "some strange unify")
+        unexpected($pred, "some strange unify")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1732,7 +1754,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ( ConstArgs = []
             ; ConstArgs = [_, _ | _]
             ),
-            unexpected($module, $pred, "no_tag arity != 1")
+            unexpected($pred, "no_tag arity != 1")
         )
     ;
         ConsTag = direct_arg_tag(Ptag),
@@ -1749,7 +1771,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ( ConstArgs = []
             ; ConstArgs = [_, _ | _]
             ),
-            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+            unexpected($pred, "direct_arg_tag: arity != 1")
         )
     ;
         (
@@ -1795,7 +1817,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
-        unexpected($module, $pred, "unexpected tag")
+        unexpected($pred, "unexpected tag")
     ).
 
 :- pred generate_const_struct_args(module_info::in, have_unboxed_floats::in,
@@ -1865,7 +1887,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s, ConsTag, ArgWidth,
             )
         ;
             ConsTag = foreign_tag(Lang, Val),
-            expect(unify(Lang, lang_c), $module, $pred,
+            expect(unify(Lang, lang_c), $pred,
                 "foreign_tag for language other than C"),
             Const = llconst_foreign(Val, lt_int(int_type_int)),
             Type = lt_int(int_type_int)
@@ -1921,7 +1943,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s, ConsTag, ArgWidth,
         ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
-        unexpected($module, $pred, "unexpected tag")
+        unexpected($pred, "unexpected tag")
     ).
 
 :- pred det_single_arg_width(list(arg_width)::in, arg_width::out) is det.
@@ -1933,7 +1955,7 @@ det_single_arg_width(ArgWidths, ArgWidth) :-
         ( ArgWidths = []
         ; ArgWidths = [_, _ | _]
         ),
-        unexpected($module, $pred, "unexpected arg_width list")
+        unexpected($pred, "unexpected arg_width list")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1965,17 +1987,17 @@ generate_ground_term(TermVar, Goal, !CI, !CLD) :-
                     GroundTerm = typed_rval(Rval, _),
                     assign_const_to_var(TermVar, Rval, !.CI, !CLD)
                 else
-                    unexpected($module, $pred, "no active pairs")
+                    unexpected($pred, "no active pairs")
                 )
             else
-                unexpected($module, $pred, "malformed goal")
+                unexpected($pred, "malformed goal")
             )
         else
-            unexpected($module, $pred, "unexpected nonlocal")
+            unexpected($pred, "unexpected nonlocal")
         )
     ;
         NonLocalList = [_, _ | _],
-        unexpected($module, $pred, "unexpected nonlocals")
+        unexpected($pred, "unexpected nonlocals")
     ).
 
 :- type active_ground_term_map == map(prog_var, typed_rval).
@@ -2012,7 +2034,7 @@ generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
         generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
             UnboxedFloats, !StaticCellInfo, !ActiveMap)
     else
-        unexpected($module, $pred, "malformed goal")
+        unexpected($pred, "malformed goal")
     ).
 
 :- pred generate_ground_term_conjunct_tag(prog_var::in, cons_tag::in,
@@ -2033,7 +2055,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
             Type = lt_int(IntType)
         ;
             ConsTag = foreign_tag(Lang, Val),
-            expect(unify(Lang, lang_c), $module, $pred,
+            expect(unify(Lang, lang_c), $pred,
                 "foreign_tag for language other than C"),
             Const = llconst_foreign(Val, lt_int(int_type_int)),
             Type = lt_int(int_type_int)
@@ -2059,14 +2081,14 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         ConsTag = no_tag,
         (
             Args = [],
-            unexpected($module, $pred, "no_tag arity != 1")
+            unexpected($pred, "no_tag arity != 1")
         ;
             Args = [Arg],
             map.det_remove(Arg, RvalType, !ActiveMap),
             map.det_insert(Var, RvalType, !ActiveMap)
         ;
             Args = [_, _ | _],
-            unexpected($module, $pred, "no_tag arity != 1")
+            unexpected($pred, "no_tag arity != 1")
         )
     ;
         (
@@ -2096,7 +2118,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
             ( Args = []
             ; Args = [_, _ | _]
             ),
-            unexpected($module, $pred, "direct_arg_tag: arity != 1")
+            unexpected($pred, "direct_arg_tag: arity != 1")
         )
     ;
         ConsTag = shared_remote_tag(Ptag, Stag),
@@ -2123,7 +2145,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
-        unexpected($module, $pred, "unexpected tag")
+        unexpected($pred, "unexpected tag")
     ).
 
 :- pred int_tag_to_const_and_int_type(int_tag::in, rval_const::out,
@@ -2186,8 +2208,8 @@ generate_ground_term_args(Vars, ConsArgWidths, TypedRvals, !ActiveMap) :-
 
 generate_ground_term_arg(Var, ConsArgWidth, TypedRval, !ActiveMap) :-
     map.det_remove(Var, TypedRval0, !ActiveMap),
-    % Though a standalone float might have needed to boxed, it may be stored in
-    % unboxed form as a constructor argument.
+    % Though a standalone float might have needed to boxed, it may be stored
+    % in unboxed form as a constructor argument.
     ( if
         ConsArgWidth = double_word,
         TypedRval0 = typed_rval(Rval, lt_data_ptr)
@@ -2237,11 +2259,11 @@ shift_combine_arg(CI, CellArgA, Shift, MaybeCellArgB, FinalCellArg, !Code,
                 ShiftCellArgA = cell_arg_full_word(const(llconst_int(NewInt)),
                     Completeness)
             else
-                unexpected($module, $pred, "non-var or int argument")
+                unexpected($pred, "non-var or int argument")
             )
         ;
             CellArgA = cell_arg_double_word(RvalA),
-            expect(unify(Shift, 0), $module, $pred,
+            expect(unify(Shift, 0), $pred,
                 "double word rval cannot be shifted"),
             ( if RvalA = var(Var) then
                 produce_variable(Var, VarCode, VarRval, CI, !CLD),
@@ -2250,14 +2272,14 @@ shift_combine_arg(CI, CellArgA, Shift, MaybeCellArgB, FinalCellArg, !Code,
             else if RvalA = const(llconst_float(_)) then
                 ShiftCellArgA = CellArgA
             else
-                unexpected($module, $pred, "non-var or float argument")
+                unexpected($pred, "non-var or float argument")
             )
         ;
             CellArgA = cell_arg_skip,
             ShiftCellArgA = cell_arg_skip
         ;
             CellArgA = cell_arg_take_addr(_, _),
-            unexpected($module, $pred, "cell_arg_take_addr")
+            unexpected($pred, "cell_arg_take_addr")
         ),
         (
             MaybeCellArgB = yes(CellArgB),
@@ -2280,7 +2302,7 @@ shift_combine_rval_type(ArgA, Shift, MaybeArgB, FinalArg, !Acc1, !Acc2) :-
         ( if TypeA = TypeB then
             FinalRval = binop(bitwise_or(int_type_int), ShiftRvalA, RvalB)
         else
-            unexpected($module, $pred, "mismatched llds_types")
+            unexpected($pred, "mismatched llds_types")
         )
     ;
         MaybeArgB = no,
@@ -2319,7 +2341,7 @@ bitwise_or_cell_arg(CellArgA, CellArgB) = CellArg :-
     ( if bitwise_or_cell_arg(CellArgA, CellArgB, CellArgPrime) then
         CellArg = CellArgPrime
     else
-        unexpected($module, $pred, "invalid combination")
+        unexpected($pred, "invalid combination")
     ).
 
 :- pred bitwise_or_cell_arg(cell_arg::in, cell_arg::in, cell_arg::out)
@@ -2348,9 +2370,9 @@ bitwise_or_cell_arg(CellArgA, CellArgB, CellArg) :-
 
 :- func combine_completeness(completeness, completeness) = completeness.
 
-combine_completeness(complete, complete) = complete.
-combine_completeness(incomplete, complete) = incomplete.
-combine_completeness(complete, incomplete) = incomplete.
+combine_completeness(complete,   complete) =   complete.
+combine_completeness(incomplete, complete) =   incomplete.
+combine_completeness(complete,   incomplete) = incomplete.
 combine_completeness(incomplete, incomplete) = incomplete.
 
 %---------------------------------------------------------------------------%
