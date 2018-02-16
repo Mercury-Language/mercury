@@ -1138,9 +1138,9 @@ construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
     % Normally we would just overwrite the first word of the object
     % in the "from" space, but this can't be done for objects which will be
     % referenced during the garbage collection process.
+    get_globals(!.CI, Globals),
+    globals.get_gc_method(Globals, GCMethod),
     ( if
-        get_globals(!.CI, Globals),
-        globals.get_gc_method(Globals, GCMethod),
         GCMethod = gc_accurate,
         is_introduced_type_info_type(VarType)
     then
@@ -1455,36 +1455,43 @@ generate_sub_unify(L, R, ArgMode, Type, Code, CI, !CLD) :-
         LeftTopFunctorMode),
     from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, Type,
         RightTopFunctorMode),
-    ( if
-        % Input - input == test unification
+    (
         LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_in
-    then
-        % This shouldn't happen, since mode analysis should avoid creating
-        % any tests in the arguments of a construction or deconstruction
-        % unification.
-        unexpected($pred, "test in arg of [de]construction")
-    else if
-        % Input - Output== assignment ->
-        LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_out
-    then
-        generate_sub_assign(R, L, Code, CI, !CLD)
-    else if
-        % Output - Input== assignment <-
+        (
+            RightTopFunctorMode = top_out,
+            % Input - Output== assignment ->
+            generate_sub_assign(R, L, Code, CI, !CLD)
+        ;
+            ( RightTopFunctorMode = top_in
+            ; RightTopFunctorMode = top_unused
+            ),
+            unexpected($pred, "unexpected right arg in left-in sub_unify")
+        )
+    ;
         LeftTopFunctorMode = top_out,
-        RightTopFunctorMode = top_in
-    then
-        generate_sub_assign(L, R, Code, CI, !CLD)
-    else if
+        (
+            RightTopFunctorMode = top_in,
+            % Output - Input== assignment <-
+            generate_sub_assign(L, R, Code, CI, !CLD)
+        ;
+            ( RightTopFunctorMode = top_out
+            ; RightTopFunctorMode = top_unused
+            ),
+            unexpected($pred, "unexpected right arg in left-out sub_unify")
+        )
+    ;
         LeftTopFunctorMode = top_unused,
-        RightTopFunctorMode = top_unused
-    then
-        Code = empty
-        % free-free - ignore
-        % XXX I think this will have to change if we start to support aliasing.
-    else
-        unexpected($pred, "some strange unify")
+        (
+            RightTopFunctorMode = top_unused,
+            % Free-free unification: ignore.
+            % XXX This will have to change if we start to support aliasing.
+            Code = empty
+        ;
+            ( RightTopFunctorMode = top_in
+            ; RightTopFunctorMode = top_out
+            ),
+            unexpected($pred, "unexpected right arg in left-ununsed sub_unify")
+        )
     ).
 
 :- pred generate_sub_assign(uni_val::in, uni_val::in, llds_code::out,
@@ -1602,37 +1609,36 @@ generate_direct_arg_construct(Var, Arg, Ptag, ArgMode, Type, Code, CI, !CLD) :-
         LeftTopFunctorMode),
     from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, Type,
         RightTopFunctorMode),
-    ( if
-        % Input - input == test unification
+    (
         LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_in
-    then
-        % This shouldn't happen, since mode analysis should avoid creating
-        % any tests in the arguments of a construction or deconstruction
-        % unification.
-        unexpected($pred, "test in arg of [de]construction")
-    else if
-        % Input - Output == assignment ->
-        LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_out
-    then
-        unexpected($pred, "left-to-right data flow in construction")
-    else if
-        % Output - Input == assignment <-
+        unexpected($pred, "left arg input in construction")
+    ;
         LeftTopFunctorMode = top_out,
-        RightTopFunctorMode = top_in
-    then
-        assign_expr_to_var(Var, mkword(Ptag, var(Arg)), Code, !CLD)
-    else if
+        (
+            RightTopFunctorMode = top_in,
+            % Output - Input == assignment <-
+            assign_expr_to_var(Var, mkword(Ptag, var(Arg)), Code, !CLD)
+        ;
+            ( RightTopFunctorMode = top_out
+            ; RightTopFunctorMode = top_unused
+            ),
+            unexpected($pred, "unexpected right arg in construction")
+        )
+    ;
         LeftTopFunctorMode = top_unused,
-        RightTopFunctorMode = top_unused
-    then
-        % XXX I think this will have to change if we start to support aliasing.
-        % Construct a tagged pointer to a pointer value which is unknown yet.
-        assign_const_to_var(Var, mkword_hole(Ptag), CI, !CLD),
-        Code = empty
-    else
-        unexpected($pred, "some strange unify")
+        (
+            RightTopFunctorMode = top_unused,
+            % Construct a tagged pointer to a pointer value
+            % which is as yet unknown.
+            % XXX This will have to change if we start to support aliasing.
+            assign_const_to_var(Var, mkword_hole(Ptag), CI, !CLD),
+            Code = empty
+        ;
+            ( RightTopFunctorMode = top_in
+            ; RightTopFunctorMode = top_out
+            ),
+            unexpected($pred, "unexpected right arg in unused construction")
+        )
     ).
 
     % Generate a direct arg unification between
@@ -1651,41 +1657,48 @@ generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Type, Code,
         LeftTopFunctorMode),
     from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, Type,
         RightTopFunctorMode),
-    ( if
-        % Input - Output == assignment ->
+    (
         LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_out
-    then
-        ( if variable_is_forward_live(!.CLD, ArgVar) then
-            BodyRval = binop(body, var(Var), const(llconst_int(Ptag))),
-            assign_expr_to_var(ArgVar, BodyRval, Code, !CLD)
-        else
-            Code = empty
+        (
+            RightTopFunctorMode = top_out,
+            % Input - Output == assignment ->
+            ( if variable_is_forward_live(!.CLD, ArgVar) then
+                BodyRval = binop(body, var(Var), const(llconst_int(Ptag))),
+                assign_expr_to_var(ArgVar, BodyRval, Code, !CLD)
+            else
+                Code = empty
+            )
+        ;
+            ( RightTopFunctorMode = top_in
+            ; RightTopFunctorMode = top_unused
+            ),
+            unexpected($pred, "unexpected right arg in deconstruction")
         )
-    else if
-        % Output - Input == assignment <-
+    ;
         LeftTopFunctorMode = top_out,
-        RightTopFunctorMode = top_in
-    then
-        reassign_mkword_hole_var(Var, Ptag, var(ArgVar), Code, !CLD)
-    else if
+        (
+            RightTopFunctorMode = top_in,
+            % Output - Input == assignment <-
+            reassign_mkword_hole_var(Var, Ptag, var(ArgVar), Code, !CLD)
+        ;
+            ( RightTopFunctorMode = top_out
+            ; RightTopFunctorMode = top_unused
+            ),
+            unexpected($pred, "unexpected right arg in reverse deconstruction")
+        )
+    ;
         LeftTopFunctorMode = top_unused,
-        RightTopFunctorMode = top_unused
-    then
-        Code = empty
-        % free-free - ignore
-        % XXX I think this will have to change if we start to support aliasing.
-    else if
-        % Input - input == test unification
-        LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_in
-    then
-        % This shouldn't happen, since mode analysis should avoid creating
-        % any tests in the arguments of a construction or deconstruction
-        % unification.
-        unexpected($pred, "test in arg of [de]construction")
-    else
-        unexpected($pred, "some strange unify")
+        (
+            RightTopFunctorMode = top_unused,
+            % Free-free unification: ignore.
+            % XXX This will have to change if we start to support aliasing.
+            Code = empty
+        ;
+            ( RightTopFunctorMode = top_in
+            ; RightTopFunctorMode = top_out
+            ),
+            unexpected($pred, "unexpected right arg in unused deconstruction")
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -2225,7 +2238,7 @@ generate_ground_term_arg(Var, ConsArgWidth, TypedRval, !ActiveMap) :-
 pack_ground_term_args(Widths, !TypedRvals) :-
     pack_args(shift_combine_rval_type, Widths, !TypedRvals, unit, _, unit, _).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred shift_combine_arg(code_info::in, cell_arg::in, int::in,
     maybe(cell_arg)::in, cell_arg::out, llds_code::in, llds_code::out,
