@@ -42,6 +42,7 @@
 :- include_module add_pred.
 :- include_module add_special_pred.
 :- include_module du_type_layout.
+:- include_module du_type_layout_old.   % XXX TYPE_REPN This is temporary.
 :- include_module default_func_mode.
 :- include_module hhf.
 :- include_module make_hlds.

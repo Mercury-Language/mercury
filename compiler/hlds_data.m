@@ -649,6 +649,9 @@ cons_table_optimize(!ConsTable) :-
 :- pred get_all_type_ctor_defns(type_table::in,
     assoc_list(type_ctor, hlds_type_defn)::out) is det.
 
+:- pred set_all_type_ctor_defns(assoc_list(type_ctor, hlds_type_defn)::in,
+    type_table::out) is det.
+
 :- pred foldl_over_type_ctor_defns(
     pred(type_ctor, hlds_type_defn, T, T)::
         in(pred(in, in, in, out) is det),
@@ -709,6 +712,8 @@ lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) :-
     map.lookup(TypeTable, Name, TypeCtorTable),
     map.lookup(TypeCtorTable, TypeCtor, TypeDefn).
 
+%---------------------%
+
 get_all_type_ctor_defns(TypeTable, TypeCtorsDefns) :-
     map.foldl_values(get_all_type_ctor_defns_2, TypeTable, [], TypeCtorsDefns).
 
@@ -719,6 +724,66 @@ get_all_type_ctor_defns(TypeTable, TypeCtorsDefns) :-
 get_all_type_ctor_defns_2(TypeCtorTable, !TypeCtorsDefns) :-
     map.to_assoc_list(TypeCtorTable, NameTypeCtorsDefns),
     !:TypeCtorsDefns = NameTypeCtorsDefns ++ !.TypeCtorsDefns.
+
+%---------------------%
+
+set_all_type_ctor_defns(TypeCtorsDefns, TypeTable) :-
+    list.sort(compare_type_ctor_defns_by_name,
+        TypeCtorsDefns, SortedTypeCtorsDefns),
+    gather_type_ctors_by_name(SortedTypeCtorsDefns,
+        [], RevTypeCtorsDefnsByName),
+    map.from_rev_sorted_assoc_list(RevTypeCtorsDefnsByName, TypeTable).
+
+:- pred compare_type_ctor_defns_by_name(
+    pair(type_ctor, hlds_type_defn)::in, pair(type_ctor, hlds_type_defn)::in,
+    comparison_result::out) is det.
+
+compare_type_ctor_defns_by_name(PairA, PairB, Result) :-
+    PairA = TypeCtorA - _TypeDefnA,
+    PairB = TypeCtorB - _TypeDefnB,
+    TypeCtorA = type_ctor(SymNameA, _ArityA),
+    TypeCtorB = type_ctor(SymNameB, _ArityB),
+    NameA = unqualify_name(SymNameA),
+    NameB = unqualify_name(SymNameB),
+    compare(Result, NameA, NameB).
+
+:- pred gather_type_ctors_by_name(assoc_list(type_ctor, hlds_type_defn)::in,
+    assoc_list(string, type_ctor_table)::in,
+    assoc_list(string, type_ctor_table)::out) is det.
+
+gather_type_ctors_by_name([], !RevTypeCtorsDefnsByName).
+gather_type_ctors_by_name([TypeCtorTypeDefn | TypeCtorsTypeDefns0],
+        !RevTypeCtorsDefnsByName) :-
+    TypeCtorTypeDefn = TypeCtor - TypeDefn,
+    TypeCtor = type_ctor(SymName, _Arity),
+    Name = unqualify_name(SymName),
+    TypeCtorTable0 = map.singleton(TypeCtor, TypeDefn),
+    gather_type_ctors_this_name(Name, TypeCtorTable0, TypeCtorTable,
+        TypeCtorsTypeDefns0, TypeCtorsTypeDefns),
+    !:RevTypeCtorsDefnsByName =
+        [Name - TypeCtorTable | !.RevTypeCtorsDefnsByName],
+    gather_type_ctors_by_name(TypeCtorsTypeDefns, !RevTypeCtorsDefnsByName).
+
+:- pred gather_type_ctors_this_name(string::in,
+    type_ctor_table::in, type_ctor_table::out,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    assoc_list(type_ctor, hlds_type_defn)::out) is det.
+
+gather_type_ctors_this_name(_, !TypeCtorTable, [], []).
+gather_type_ctors_this_name(ThisName, !TypeCtorTable, 
+        [TypeCtorTypeDefn | TypeCtorsTypeDefns], LeftOverTypeCtorsTypeDefns) :-
+    TypeCtorTypeDefn = TypeCtor - TypeDefn,
+    TypeCtor = type_ctor(SymName, _Arity),
+    Name = unqualify_name(SymName),
+    ( if Name = ThisName then
+        map.det_insert(TypeCtor, TypeDefn, !TypeCtorTable),
+        gather_type_ctors_this_name(ThisName, !TypeCtorTable, 
+            TypeCtorsTypeDefns, LeftOverTypeCtorsTypeDefns)
+    else
+        LeftOverTypeCtorsTypeDefns = [TypeCtorTypeDefn | TypeCtorsTypeDefns]
+    ).
+
+%---------------------%
 
 foldl_over_type_ctor_defns(Pred, TypeTable, !Acc) :-
     map.foldl_values(foldl_over_type_ctor_defns_2(Pred), TypeTable, !Acc).

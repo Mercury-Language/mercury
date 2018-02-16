@@ -632,8 +632,7 @@
                 %
                 % XXX TYPE_REPN In the future, this information should *also*
                 % be stored in type_repn items.
-                trdd_direct_arg_map     :: map(type_ctor,
-                                                list(sym_name_and_arity)),
+                trdd_direct_arg_map     :: direct_arg_map,
 
                 % The contents of foreign_enum pragmas read in either
                 % from interface files of other modules, or the source file
@@ -647,6 +646,8 @@
                 % of the named types in the named foreign languages.
                 trdd_foreign_exports    :: list(item_foreign_export_enum_info)
             ).
+
+:- type direct_arg_map == map(type_ctor, list(sym_name_and_arity)).
 
 %---------------------------------------------------------------------------%
 
