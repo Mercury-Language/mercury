@@ -58,20 +58,14 @@ extern void     MR_perform_registered_exception_cleanups(void);
 #define MR_COMMON_TYPE(typenum)                                         \
     MR_PASTE2(mercury_type_, typenum)
 
-#define MR_COMMON_NAME(cellnum)                                         \
-    MR_PASTE2(mercury_common_, cellnum)
+#define MR_COMMON_NAME(typenum)                                         \
+    MR_PASTE2(mercury_common_, typenum)
 
 #define MR_COMMON(typenum, cellnum)                                     \
     ((MR_Word *) &MR_COMMON_NAME(typenum)[cellnum])
 
-#define MR_XCOMMON(typenum, cellnum)                                    \
-    ((MR_Word *) &MR_COMMON_NAME(typenum)[cellnum])
-
 #define MR_TAG_COMMON(tag, typenum, cellnum)                            \
     (MR_mkword(MR_mktag(tag), MR_COMMON(typenum, cellnum)))
-
-#define MR_TAG_XCOMMON(tag, typenum, cellnum)                           \
-    (MR_mkword(MR_mktag(tag), MR_XCOMMON(typenum, cellnum)))
 
 ////////////////////////////////////////////////////////////////////////////
 
