@@ -116,12 +116,12 @@
 
     % Given an rval, the value of the --unboxed-float option, the value of the
     % --unboxed-int64s and the width of the constructor argument, figure out
-    % the type the rval would have as an argument. Normally that's the same as
+    % the type the rval would have as an argument. Normally that is the same as
     % its usual type; the exception is that for boxed floats, boxed int64s and
-    % boxed uint64s the type is data_ptr (i.e. the type of the boxed value)
+    % boxed uint64s, the type is data_ptr (i.e. the type of the boxed value)
     % rather than float, int64, uint64 (the type of the unboxed value).
     %
-:- func rval_type_as_arg(have_unboxed_floats,have_unboxed_int64s, arg_width,
+:- func rval_type_as_arg(have_unboxed_floats, have_unboxed_int64s, arg_width,
     rval) = llds_type.
 
 %-----------------------------------------------------------------------------%
@@ -377,7 +377,7 @@ add_scalar_static_cell_natural_types(Args, DataId, !Info) :-
 
 add_scalar_static_cell(TypedArgs0, DataId, !Info) :-
     % If we have an empty cell, place a dummy field in it,
-    % so that the generated C structure isn't empty.
+    % so that the generated C structure is not empty.
     (
         TypedArgs0 = [],
         TypedArgs = [typed_rval(const(llconst_int(-1)), lt_int(int_type_int))]
@@ -481,22 +481,26 @@ search_scalar_static_cell_offset(Info, DataId, Offset, Rval) :-
 
 %-----------------------------------------------------------------------------%
 
-find_general_llds_types(UnboxFloat, UnboxInt64s, Types, [Vector | Vectors],
-        LLDSTypes) :-
+find_general_llds_types(UnboxFloat, UnboxInt64s, Types,
+        [Vector | Vectors], !:LLDSTypes) :-
     ArgWidth = full_word,
-    list.map(natural_type(UnboxFloat, UnboxInt64s, ArgWidth), Vector,
-        LLDSTypes0),
-    find_general_llds_types_2(UnboxFloat, UnboxInt64s, Types, Vectors,
-        LLDSTypes0, LLDSTypes).
+    list.map(natural_type(UnboxFloat, UnboxInt64s, ArgWidth),
+        Vector, !:LLDSTypes),
+    find_general_llds_types_loop(UnboxFloat, UnboxInt64s, Types,
+        Vectors, !LLDSTypes).
 
-:- pred find_general_llds_types_2(have_unboxed_floats::in,
+:- pred find_general_llds_types_loop(have_unboxed_floats::in,
     have_unboxed_int64s::in, list(mer_type)::in, list(list(rval))::in,
     list(llds_type)::in, list(llds_type)::out) is semidet.
 
-find_general_llds_types_2(_UnboxFloat, _UnboxInt64s, _Types, [], !LLDSTypes).
-find_general_llds_types_2(UnboxFloat, UnboxInt64s, Types, [Vector | Vectors], !LLDSTypes) :-
-    find_general_llds_types_in_cell(UnboxFloat, UnboxInt64s, Types, Vector, !LLDSTypes),
-    find_general_llds_types_2(UnboxFloat, UnboxInt64s, Types, Vectors, !LLDSTypes).
+find_general_llds_types_loop(_UnboxFloat, _UnboxInt64s, _Types,
+        [], !LLDSTypes).
+find_general_llds_types_loop(UnboxFloat, UnboxInt64s, Types,
+        [Vector | Vectors], !LLDSTypes) :-
+    find_general_llds_types_in_cell(UnboxFloat, UnboxInt64s, Types,
+        Vector, !LLDSTypes),
+    find_general_llds_types_loop(UnboxFloat, UnboxInt64s, Types,
+        Vectors, !LLDSTypes).
 
 :- pred find_general_llds_types_in_cell(have_unboxed_floats::in,
     have_unboxed_int64s::in, list(mer_type)::in, list(rval)::in,
@@ -706,6 +710,13 @@ rval_type_as_arg(UnboxedFloat, UnboxedInt64s, ArgWidth, Rval) = Type :-
     arg_width::in, rval::in, llds_type::out) is det.
 
 natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, Type) :-
+    % XXX TYPE_REPN The type of the ArgWidth argument should distinguish
+    % ONLY between a full word and a double word; it should NOT include
+    % partial words. This means that the type should be something other than
+    % arg_width.
+    %
+    % XXX TYPE_REPN Replace this if-then-else chain with a complete switch
+    % on Type0.
     llds.rval_type(Rval, Type0),
     ( if
         Type0 = lt_float,
