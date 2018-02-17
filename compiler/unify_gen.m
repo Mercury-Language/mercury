@@ -893,7 +893,7 @@ generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     ClosureLayoutRval = const(llconst_data_addr(ClosureDataAddr, no)),
     proc_info_arg_info(ProcInfo, ArgInfo),
     get_vartypes(!.CI, VarTypes),
-    MayUseAtomic0 = initial_may_use_atomic(ModuleInfo),
+    get_may_use_atomic_alloc(!.CI, MayUseAtomic0),
     generate_pred_args(!.CI, VarTypes, Args, ArgInfo, ArgsR, ArgsF,
         MayUseAtomic0, MayUseAtomic),
     list.length(ArgsR, NumArgsR),
@@ -997,8 +997,7 @@ generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
 
 generate_cons_args(Vars, Types, Modes, Widths, TakeAddr, CI, !:Args,
         !:MayUseAtomic) :-
-    get_module_info(CI, ModuleInfo),
-    !:MayUseAtomic = initial_may_use_atomic(ModuleInfo),
+    get_may_use_atomic_alloc(CI, !:MayUseAtomic),
     ( if
         FirstArgNum = 1,
         generate_cons_args_loop(Vars, Types, Modes, Widths, FirstArgNum,
@@ -1072,19 +1071,6 @@ generate_cons_arg(Var, Type, ArgMode, Width, CurArgNum,
         )
     ).
 
-:- func initial_may_use_atomic(module_info) = may_use_atomic_alloc.
-
-initial_may_use_atomic(ModuleInfo) = InitMayUseAtomic :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
-    (
-        UseAtomicCells = no,
-        InitMayUseAtomic = may_not_use_atomic_alloc
-    ;
-        UseAtomicCells = yes,
-        InitMayUseAtomic = may_use_atomic_alloc
-    ).
-
 :- pred pack_cell_rvals(list(arg_width)::in,
     list(cell_arg)::in, list(cell_arg)::out,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
@@ -1143,9 +1129,7 @@ construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
     % Normally we would just overwrite the first word of the object
     % in the "from" space, but this can't be done for objects which will be
     % referenced during the garbage collection process.
-    % ZZZ
-    get_globals(!.CI, Globals),
-    globals.get_gc_method(Globals, GCMethod),
+    get_gc_method(!.CI, GCMethod),
     ( if
         GCMethod = gc_accurate,
         is_introduced_type_info_type(VarType)
@@ -1177,9 +1161,7 @@ construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
     maybe(alloc_site_id)::out, code_info::in, code_info::out) is det.
 
 maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI) :-
-    % ZZZ
-    get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
+    get_profile_memory(!.CI, ProfileMemory),
     (
         ProfileMemory = yes,
         add_alloc_site_info(Context, VarTypeMsg, Size, AllocId, !CI),

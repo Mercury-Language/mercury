@@ -123,6 +123,10 @@
 :- pred get_opt_region_ops(code_info::in, bool::out) is det.
 :- pred get_auto_comments(code_info::in, bool::out) is det.
 :- pred get_lcmc_null(code_info::in, bool::out) is det.
+:- pred get_profile_memory(code_info::in, bool::out) is det.
+:- pred get_may_use_atomic_alloc(code_info::in,
+    may_use_atomic_alloc::out) is det.
+:- pred get_gc_method(code_info::in, gc_method::out) is det.
 :- pred get_maybe_containing_goal_map(code_info::in,
     maybe(containing_goal_map)::out) is det.
 :- pred get_const_struct_map(code_info::in, const_struct_map::out) is det.
@@ -265,8 +269,14 @@
                 % The setting of --auto-comments.
                 cis_auto_comments       :: bool,
 
-                % The setting of --optimize-constructor-last-call-null.
+                % The settings of --optimize-constructor-last-call-null,
+                % --profile-memory, and --use-atomic-cells.
                 cis_lcmc_null           :: bool,
+                cis_profile_memory      :: bool,
+                cis_may_use_atomic_alloc :: may_use_atomic_alloc,
+
+                % The GC method.
+                cis_gc_method           :: gc_method,
 
                 cis_containing_goal_map :: maybe(containing_goal_map),
 
@@ -392,6 +402,16 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, optimize_constructor_last_call_null,
         LCMCNull),
+    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
+    globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
+    (
+        UseAtomicCells = no,
+        InitMayUseAtomic = may_not_use_atomic_alloc
+    ;
+        UseAtomicCells = yes,
+        InitMayUseAtomic = may_use_atomic_alloc
+    ),
+    globals.get_gc_method(Globals, GCMethod),
     % argument MaybeContainingGoalMap
     % argument ConstStructMap
 
@@ -415,6 +435,9 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         OptRegionOps,
         AutoComments,
         LCMCNull,
+        ProfileMemory,
+        InitMayUseAtomic,
+        GCMethod,
         MaybeContainingGoalMap,
         ConstStructMap
     ),
@@ -644,6 +667,12 @@ get_auto_comments(CI, X) :-
     X = CI ^ code_info_static ^ cis_auto_comments.
 get_lcmc_null(CI, X) :-
     X = CI ^ code_info_static ^ cis_lcmc_null.
+get_profile_memory(CI, X) :-
+    X = CI ^ code_info_static ^ cis_profile_memory.
+get_may_use_atomic_alloc(CI, X) :-
+    X = CI ^ code_info_static ^ cis_may_use_atomic_alloc.
+get_gc_method(CI, X) :-
+    X = CI ^ code_info_static ^ cis_gc_method.
 get_maybe_containing_goal_map(CI, X) :-
     X = CI ^ code_info_static ^ cis_containing_goal_map.
 get_const_struct_map(CI, X) :-
