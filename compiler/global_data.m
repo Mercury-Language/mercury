@@ -732,6 +732,20 @@ natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, Type) :-
         ArgWidth \= double_word
     then
         Type = lt_data_ptr
+    else if
+        ( Type0 = lt_int(int_type_int32)
+        ; Type0 = lt_int(int_type_int16)
+        ; Type0 = lt_int(int_type_int8)
+        )
+    then
+        Type = lt_int(int_type_int)
+    else if
+        ( Type0 = lt_int(int_type_uint32)
+        ; Type0 = lt_int(int_type_uint16)
+        ; Type0 = lt_int(int_type_uint8)
+        )
+    then
+        Type = lt_int(int_type_uint)
     else
         Type = Type0
     ).

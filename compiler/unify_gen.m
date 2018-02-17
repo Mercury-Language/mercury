@@ -1108,6 +1108,11 @@ pack_how_to_construct(ArgWidths, !HowToConstruct) :-
         % If an argument within a packed field needs updating,
         % the field needs updating.
         CellToReuse0 = cell_to_reuse(Var, ConsIds, NeedsUpdates0),
+        % XXX Computing NeedsUpdates directly from ArgWidths and NeedsUpdates0,
+        % *without* going through NeedsUpdates1, would be simpler as well as
+        % faster. (While NeedsUpdates0 and NeedsUpdates are lists,
+        % NeedsUpdates1 is actually a list of lists, and thus more expensive
+        % to allocate.)
         group_same_word_elements(ArgWidths, NeedsUpdates0, NeedsUpdates1),
         list.map(condense_needs_updates, NeedsUpdates1) = NeedsUpdates,
         CellToReuse = cell_to_reuse(Var, ConsIds, NeedsUpdates),
@@ -1132,12 +1137,13 @@ construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
         MayUseAtomic, Code, !CI, !CLD) :-
     VarType = variable_type(!.CI, Var),
     var_type_msg(VarType, VarTypeMsg),
-    % If we're doing accurate GC, then for types which hold RTTI that
+    % If we are doing accurate GC, then for types which hold RTTI that
     % will be traversed by the collector at GC-time, we need to allocate
     % an extra word at the start, to hold the forwarding pointer.
     % Normally we would just overwrite the first word of the object
     % in the "from" space, but this can't be done for objects which will be
     % referenced during the garbage collection process.
+    % ZZZ
     get_globals(!.CI, Globals),
     globals.get_gc_method(Globals, GCMethod),
     ( if
@@ -1171,6 +1177,7 @@ construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
     maybe(alloc_site_id)::out, code_info::in, code_info::out) is det.
 
 maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI) :-
+    % ZZZ
     get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
     (
@@ -1888,15 +1895,18 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s, ConsTag, ArgWidth,
                 )
             ;
                 ( IntType = int_type_int
-                ; IntType = int_type_uint
                 ; IntType = int_type_int8
-                ; IntType = int_type_uint8
                 ; IntType = int_type_int16
-                ; IntType = int_type_uint16
                 ; IntType = int_type_int32
+                ),
+                Type = lt_int(int_type_int)
+            ;
+                ( IntType = int_type_uint
+                ; IntType = int_type_uint8
+                ; IntType = int_type_uint16
                 ; IntType = int_type_uint32
                 ),
-                Type = lt_int(IntType)
+                Type = lt_int(int_type_uint)
             )
         ;
             ConsTag = foreign_tag(Lang, Val),
