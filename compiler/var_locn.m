@@ -2299,10 +2299,10 @@ cell_is_constant(VarStateMap, ExprnOpts, [CellArg | CellArgs],
     require_complete_switch [CellArg]
     (
         CellArg = cell_arg_full_word(Rval0, complete),
-        ArgWidth = full_word
+        NumWords = one_word
     ;
         CellArg = cell_arg_double_word(Rval0),
-        ArgWidth = double_word
+        NumWords = two_words
     ;
         CellArg = cell_arg_take_addr(_, _),
         fail
@@ -2313,7 +2313,7 @@ cell_is_constant(VarStateMap, ExprnOpts, [CellArg | CellArgs],
     expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval),
     UnboxedFloats = get_unboxed_floats(ExprnOpts),
     UnboxedInt64s = get_unboxed_int64s(ExprnOpts),
-    LldsType = rval_type_as_arg(UnboxedFloats, UnboxedInt64s, ArgWidth, Rval),
+    LldsType = rval_type_as_arg(UnboxedFloats, UnboxedInt64s, NumWords, Rval),
     cell_is_constant(VarStateMap, ExprnOpts, CellArgs, TypedRvals).
 
     % expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval):

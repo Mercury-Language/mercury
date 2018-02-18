@@ -114,6 +114,17 @@
     list(scalar_common_data_array)::out, list(vector_common_data_array)::out)
     is det.
 
+%-----------------------------------------------------------------------------%
+
+    % The arguments of functors are stored in memory cells, either on the heap
+    % or in static data. While the arg_width type represents the space taken up
+    % by a single argument of such a functor, the num_words type represents
+    % the space taken up by one *or more* functors, *after* they have been
+    % packed together into words.
+:- type num_words
+    --->    one_word
+    ;       two_words.
+
     % Given an rval, the value of the --unboxed-float option, the value of the
     % --unboxed-int64s and the width of the constructor argument, figure out
     % the type the rval would have as an argument. Normally that is the same as
@@ -121,7 +132,7 @@
     % boxed uint64s, the type is data_ptr (i.e. the type of the boxed value)
     % rather than float, int64, uint64 (the type of the unboxed value).
     %
-:- func rval_type_as_arg(have_unboxed_floats, have_unboxed_int64s, arg_width,
+:- func rval_type_as_arg(have_unboxed_floats, have_unboxed_int64s, num_words,
     rval) = llds_type.
 
 %-----------------------------------------------------------------------------%
@@ -370,8 +381,7 @@ init_static_cell_info(BaseName, UnboxFloat, UnboxInt64s, CommonData) = Info0 :-
 add_scalar_static_cell_natural_types(Args, DataId, !Info) :-
     UnboxFloat = !.Info ^ sci_sub_info ^ scsi_unbox_float,
     UnboxInt64s = !.Info ^ sci_sub_info ^ scsi_unbox_int64s,
-    ArgWidth = full_word,
-    list.map(associate_natural_type(UnboxFloat, UnboxInt64s, ArgWidth),
+    list.map(associate_natural_type(UnboxFloat, UnboxInt64s, one_word),
         Args, TypedArgs),
     add_scalar_static_cell(TypedArgs, DataId, !Info).
 
@@ -483,8 +493,7 @@ search_scalar_static_cell_offset(Info, DataId, Offset, Rval) :-
 
 find_general_llds_types(UnboxFloat, UnboxInt64s, Types,
         [Vector | Vectors], !:LLDSTypes) :-
-    ArgWidth = full_word,
-    list.map(natural_type(UnboxFloat, UnboxInt64s, ArgWidth),
+    list.map(natural_type(UnboxFloat, UnboxInt64s, one_word),
         Vector, !:LLDSTypes),
     find_general_llds_types_loop(UnboxFloat, UnboxInt64s, Types,
         Vectors, !LLDSTypes).
@@ -509,8 +518,8 @@ find_general_llds_types_loop(UnboxFloat, UnboxInt64s, Types,
 find_general_llds_types_in_cell(_UnboxFloat, _UnboxInt64s, [], [], [], []).
 find_general_llds_types_in_cell(UnboxFloat, UnboxInt64s, [_Type | Types],
         [Rval | Rvals], [LLDSType0 | LLDSTypes0], [LLDSType | LLDSTypes]) :-
-    ArgWidth = full_word,
-    natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, NaturalType),
+    NumWords = one_word,
+    natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval, NaturalType),
     % For user-defined types, some function symbols may be constants
     % (whose representations yield integer rvals) while others may be
     % non-constants (whose representations yield data_ptr rvals).
@@ -703,25 +712,20 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
 
 %-----------------------------------------------------------------------------%
 
-rval_type_as_arg(UnboxedFloat, UnboxedInt64s, ArgWidth, Rval) = Type :-
-    natural_type(UnboxedFloat, UnboxedInt64s, ArgWidth, Rval, Type).
+rval_type_as_arg(UnboxedFloat, UnboxedInt64s, NumWords, Rval) = Type :-
+    natural_type(UnboxedFloat, UnboxedInt64s, NumWords, Rval, Type).
 
 :- pred natural_type(have_unboxed_floats::in, have_unboxed_int64s::in,
-    arg_width::in, rval::in, llds_type::out) is det.
+    num_words::in, rval::in, llds_type::out) is det.
 
-natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, Type) :-
-    % XXX TYPE_REPN The type of the ArgWidth argument should distinguish
-    % ONLY between a full word and a double word; it should NOT include
-    % partial words. This means that the type should be something other than
-    % arg_width.
-    %
+natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval, Type) :-
     % XXX TYPE_REPN Replace this if-then-else chain with a complete switch
     % on Type0.
     llds.rval_type(Rval, Type0),
     ( if
         Type0 = lt_float,
         UnboxFloat = do_not_have_unboxed_floats,
-        ArgWidth \= double_word
+        NumWords \= two_words
     then
         Type = lt_data_ptr
     else if
@@ -729,7 +733,7 @@ natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, Type) :-
         ; Type0 = lt_int(int_type_uint64)
         ),
         UnboxInt64s = do_not_have_unboxed_int64s,
-        ArgWidth \= double_word
+        NumWords \= two_words
     then
         Type = lt_data_ptr
     else if
@@ -751,11 +755,11 @@ natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, Type) :-
     ).
 
 :- pred associate_natural_type(have_unboxed_floats::in,
-    have_unboxed_int64s::in, arg_width::in, rval::in, typed_rval::out) is det.
+    have_unboxed_int64s::in, num_words::in, rval::in, typed_rval::out) is det.
 
-associate_natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval,
+associate_natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval,
         typed_rval(Rval, Type)) :-
-    natural_type(UnboxFloat, UnboxInt64s, ArgWidth, Rval, Type).
+    natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval, Type).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
