@@ -715,51 +715,79 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
 rval_type_as_arg(UnboxedFloat, UnboxedInt64s, NumWords, Rval) = Type :-
     natural_type(UnboxedFloat, UnboxedInt64s, NumWords, Rval, Type).
 
+:- pred associate_natural_type(have_unboxed_floats::in,
+    have_unboxed_int64s::in, num_words::in, rval::in, typed_rval::out) is det.
+
+associate_natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval, TypedRval) :-
+    natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval, Type),
+    TypedRval = typed_rval(Rval, Type).
+
 :- pred natural_type(have_unboxed_floats::in, have_unboxed_int64s::in,
     num_words::in, rval::in, llds_type::out) is det.
 
 natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval, Type) :-
-    % XXX TYPE_REPN Replace this if-then-else chain with a complete switch
-    % on Type0.
     llds.rval_type(Rval, Type0),
-    ( if
+    (
         Type0 = lt_float,
-        UnboxFloat = do_not_have_unboxed_floats,
-        NumWords \= two_words
-    then
-        Type = lt_data_ptr
-    else if
+        ( if
+            UnboxFloat = do_not_have_unboxed_floats,
+            NumWords = one_word
+        then
+            Type = lt_data_ptr
+        else
+            Type = Type0
+        )
+    ;
         ( Type0 = lt_int(int_type_int64)
         ; Type0 = lt_int(int_type_uint64)
         ),
-        UnboxInt64s = do_not_have_unboxed_int64s,
-        NumWords \= two_words
-    then
-        Type = lt_data_ptr
-    else if
-        ( Type0 = lt_int(int_type_int32)
+        ( if
+            UnboxInt64s = do_not_have_unboxed_int64s,
+            NumWords = one_word
+        then
+            Type = lt_data_ptr
+        else
+            Type = Type0
+        )
+    ;
+        ( Type0 = lt_int(int_type_int)
+        ; Type0 = lt_int(int_type_int32)
         ; Type0 = lt_int(int_type_int16)
         ; Type0 = lt_int(int_type_int8)
-        )
-    then
+        ),
         Type = lt_int(int_type_int)
-    else if
-        ( Type0 = lt_int(int_type_uint32)
+    ;
+        ( Type0 = lt_int(int_type_uint)
+        ; Type0 = lt_int(int_type_uint32)
         ; Type0 = lt_int(int_type_uint16)
         ; Type0 = lt_int(int_type_uint8)
-        )
-    then
+        ),
         Type = lt_int(int_type_uint)
-    else
+    ;
+        ( Type0 = lt_bool
+        ; Type0 = lt_code_ptr
+        ; Type0 = lt_data_ptr
+        ; Type0 = lt_string
+        ; Type0 = lt_word
+        ),
         Type = Type0
+    ;
+        ( Type0 = lt_int_least8
+        ; Type0 = lt_uint_least8
+        ; Type0 = lt_int_least16
+        ; Type0 = lt_uint_least16
+        ; Type0 = lt_int_least32
+        ; Type0 = lt_uint_least32
+        ),
+        % These LLDS types do not correspond to any Mercury type;
+        % they are intended to be used by the compiler when generating
+        % RTTI data structures, especially layout structures for tools
+        % such as the debugger and the profilers. When creating these
+        % structures, the compiler will *know* exactly what C types
+        % describe the values it wants to generate, so it should not need
+        % to use this predicate to find that out.
+        unexpected($pred, "least type")
     ).
-
-:- pred associate_natural_type(have_unboxed_floats::in,
-    have_unboxed_int64s::in, num_words::in, rval::in, typed_rval::out) is det.
-
-associate_natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval,
-        typed_rval(Rval, Type)) :-
-    natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval, Type).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
