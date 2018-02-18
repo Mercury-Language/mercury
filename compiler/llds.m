@@ -1345,6 +1345,19 @@
     %
 :- type tag ==  int.
 
+    % Each function symbol of this type corresponds to one of the C types
+    % {int,uint}_least{8,16,32}.
+    %
+    % Values of these types are intended for use in static data declarations,
+    % not for data that gets stored in registers, stack slots etc.
+:- type int_least_type
+    --->    int_least8
+    ;       uint_least8
+    ;       int_least16
+    ;       uint_least16
+    ;       int_least32
+    ;       uint_least32.
+
     % We categorize the data types used in the LLDS into a small number of
     % categories, for purposes such as choosing the right sort of register
     % for a given value to avoid unnecessary boxing/unboxing of floats.
@@ -1353,38 +1366,10 @@
     --->    lt_bool
             % A boolean value represented using the C type `MR_Integer'.
 
-    ;       lt_int_least8
-            % A signed value that fits that contains at least eight bits,
-            % represented using the C type MR_int_least8_t. Intended for use
-            % in static data declarations, not for data that gets stored in
-            % registers, stack slots etc.
-
-    ;       lt_uint_least8
-            % An unsigned version of int_least8, represented using the C type
-            % MR_uint_least8_t.
-
-    ;       lt_int_least16
-            % A signed value that fits that contains at least sixteen bits,
-            % represented using the C type MR_int_least16_t. Intended for use
-            % in static data declarations, not for data that gets stored in
-            % registers, stack slots etc.
-
-    ;       lt_uint_least16
-            % An unsigned version of int_least16, represented using the C type
-            % MR_uint_least16_t.
-
-    ;       lt_int_least32
-            % A signed value that fits that contains at least 32 bits,
-            % represented using the C type MR_int_least32_t. Intended for use
-            % in static data declarations, not for data that gets stored in
-            % registers, stack slots etc.
-
-    ;       lt_uint_least32
-            % An unsigned version of intleast_32, represented using the C type
-            % uint_least32_t.
+    ;       lt_int_least(int_least_type)
+            % As documented above.
 
     ;       lt_int(int_type)
-
             % A Mercury `int', represented in C as a value of type `MR_Integer'
             % (which is a signed integral type of the same size as a pointer).
             % Something whose C type is `MR_Unsigned' (the unsigned equivalent

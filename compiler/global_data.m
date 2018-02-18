@@ -772,13 +772,7 @@ natural_type(UnboxFloat, UnboxInt64s, NumWords, Rval, Type) :-
         ),
         Type = Type0
     ;
-        ( Type0 = lt_int_least8
-        ; Type0 = lt_uint_least8
-        ; Type0 = lt_int_least16
-        ; Type0 = lt_uint_least16
-        ; Type0 = lt_int_least32
-        ; Type0 = lt_uint_least32
-        ),
+        Type0 = lt_int_least(_),
         % These LLDS types do not correspond to any Mercury type;
         % they are intended to be used by the compiler when generating
         % RTTI data structures, especially layout structures for tools

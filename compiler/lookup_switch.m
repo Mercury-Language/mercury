@@ -948,12 +948,7 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
 %-----------------------------------------------------------------------------%
 
 default_value_for_type(lt_bool) = const(llconst_int(0)).
-default_value_for_type(lt_int_least8) = const(llconst_int(0)).
-default_value_for_type(lt_uint_least8) = const(llconst_int(0)).
-default_value_for_type(lt_int_least16) = const(llconst_int(0)).
-default_value_for_type(lt_uint_least16) = const(llconst_int(0)).
-default_value_for_type(lt_int_least32) = const(llconst_int(0)).
-default_value_for_type(lt_uint_least32) = const(llconst_int(0)).
+default_value_for_type(lt_int_least(_)) = const(llconst_int(0)).
 default_value_for_type(lt_int(int_type_int)) = const(llconst_int(0)).
 default_value_for_type(lt_int(int_type_uint)) = const(llconst_uint(0u)).
 default_value_for_type(lt_int(int_type_int8)) = const(llconst_int8(0i8)).

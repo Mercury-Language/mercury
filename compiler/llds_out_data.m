@@ -567,20 +567,20 @@ output_llds_type_cast(LLDSType, !IO) :-
     output_llds_type(LLDSType, !IO),
     io.write_string(") ", !IO).
 
-output_llds_type(lt_int_least8, !IO) :-
-    io.write_string("MR_int_least8_t", !IO).
-output_llds_type(lt_uint_least8, !IO) :-
-    io.write_string("MR_uint_least8_t", !IO).
-output_llds_type(lt_int_least16, !IO) :-
-    io.write_string("MR_int_least16_t", !IO).
-output_llds_type(lt_uint_least16, !IO) :-
-    io.write_string("MR_uint_least16_t", !IO).
-output_llds_type(lt_int_least32, !IO) :-
-    io.write_string("MR_int_least32_t", !IO).
-output_llds_type(lt_uint_least32, !IO) :-
-    io.write_string("MR_uint_least32_t", !IO).
 output_llds_type(lt_bool, !IO) :-
     io.write_string("MR_Integer", !IO).
+output_llds_type(lt_int_least(int_least8), !IO) :-
+    io.write_string("MR_int_least8_t", !IO).
+output_llds_type(lt_int_least(uint_least8), !IO) :-
+    io.write_string("MR_uint_least8_t", !IO).
+output_llds_type(lt_int_least(int_least16), !IO) :-
+    io.write_string("MR_int_least16_t", !IO).
+output_llds_type(lt_int_least(uint_least16), !IO) :-
+    io.write_string("MR_uint_least16_t", !IO).
+output_llds_type(lt_int_least(int_least32), !IO) :-
+    io.write_string("MR_int_least32_t", !IO).
+output_llds_type(lt_int_least(uint_least32), !IO) :-
+    io.write_string("MR_uint_least32_t", !IO).
 output_llds_type(lt_int(int_type_int), !IO) :-
     io.write_string("MR_Integer", !IO).
 output_llds_type(lt_int(int_type_uint), !IO) :-
@@ -1930,36 +1930,39 @@ output_tag(Tag, !IO) :-
     io.write_int(Tag, !IO),
     io.write_string(")", !IO).
 
-direct_field_int_constant(lt_bool) = no.
-direct_field_int_constant(lt_int_least8) = yes.
-direct_field_int_constant(lt_uint_least8) = yes.
-direct_field_int_constant(lt_int_least16) = yes.
-direct_field_int_constant(lt_uint_least16) = yes.
-direct_field_int_constant(lt_int_least32) = yes.
-direct_field_int_constant(lt_uint_least32) = yes.
-direct_field_int_constant(lt_int(IntType)) = Result :-
+direct_field_int_constant(LLDSType) = DirectFieldIntConstant :-
     (
-        ( IntType = int_type_int
-        ; IntType = int_type_uint
-        ; IntType = int_type_int8
-        ; IntType = int_type_uint8
-        ; IntType = int_type_int16
-        ; IntType = int_type_uint16
-        ; IntType = int_type_int32
-        ; IntType = int_type_uint32
+        ( LLDSType = lt_bool
+        ; LLDSType = lt_float
+        ; LLDSType = lt_string
+        ; LLDSType = lt_data_ptr
+        ; LLDSType = lt_code_ptr
+        ; LLDSType = lt_word
         ),
-        Result = yes
+        DirectFieldIntConstant = no
     ;
-        ( IntType = int_type_int64
-        ; IntType = int_type_uint64
-        ),
-        Result = no
+        LLDSType = lt_int_least(_),
+        DirectFieldIntConstant = yes
+    ;
+        LLDSType = lt_int(IntType),
+        (
+            ( IntType = int_type_int
+            ; IntType = int_type_uint
+            ; IntType = int_type_int8
+            ; IntType = int_type_uint8
+            ; IntType = int_type_int16
+            ; IntType = int_type_uint16
+            ; IntType = int_type_int32
+            ; IntType = int_type_uint32
+            ),
+            DirectFieldIntConstant = yes
+        ;
+            ( IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            DirectFieldIntConstant = no
+        )
     ).
-direct_field_int_constant(lt_float) = no.
-direct_field_int_constant(lt_string) = no.
-direct_field_int_constant(lt_data_ptr) = no.
-direct_field_int_constant(lt_code_ptr) = no.
-direct_field_int_constant(lt_word) = no.
 
 %----------------------------------------------------------------------------%
 %
