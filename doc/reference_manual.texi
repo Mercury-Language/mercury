@@ -320,10 +320,12 @@ These suffixes are:
 @item @code{i8}               @tab Signed   @tab 8-bit
 @item @code{i16}              @tab Signed   @tab 16-bit
 @item @code{i32}              @tab Signed   @tab 32-bit
+@item @code{i64}              @tab Signed   @tab 64-bit
 @item @code{u}                @tab Unsigned @tab Implementation-defined
 @item @code{u8}               @tab Unsigned @tab 8-bit
 @item @code{u16}              @tab Unsigned @tab 16-bit
 @item @code{u32}              @tab Unsigned @tab 32-bit
+@item @code{u64}              @tab Unsigned @tab 64-bit
 @end multitable
 
 For decimal, binary, octal and hexadecimal literals, an arbitrary number of
@@ -2001,8 +2003,8 @@ Certain special types are builtin, or are defined in the Mercury library:
 
 @table @asis
 @item Primitive types: @code{char}, @code{int}, @code{int8}, @code{int16},
-@code{int32}, @code{uint}, @code{uint8}, @code{uint16}, @code{uint32},
-@code{float}, @code{string}.
+@code{int32}, @code{int64}, @code{uint}, @code{uint8}, @code{uint16},
+@code{uint32}, @code{uint64}, @code{float}, @code{string}.
 There is a special syntax for constants for all primitive types except
 @code{char}.  (For @code{char}, the standard syntax suffices.)
 
@@ -7150,12 +7152,12 @@ The Mercury primitive types are mapped to the following C types:
   @item @code{int8}   @tab @code{int8_t}
   @item @code{int16}  @tab @code{int16_t}
   @item @code{int32}  @tab @code{int32_t}
-@c  @item @code{int64}  @tab @code{int64_t}
+  @item @code{int64}  @tab @code{int64_t}
   @item @code{uint}   @tab @code{MR_Unsigned}
   @item @code{uint8}  @tab @code{uint8_t}
   @item @code{uint16} @tab @code{uint16_t}
   @item @code{uint32} @tab @code{uint32_t}
-@c  @item @code{uint64} @tab @code{uint64_t}
+  @item @code{uint64} @tab @code{uint64_t}
   @item @code{float}  @tab @code{MR_Float}
   @item @code{char}   @tab @code{MR_Char}
   @item @code{string} @tab @code{MR_String}
@@ -7237,6 +7239,16 @@ Omitting the call to @code{MR_word_to_float} in the above example would yield
 incorrect results for implementations where @samp{sizeof(MR_Float)} is greater
 than @samp{sizeof(MR_Word)}.
 
+Similarly, the implementation provides the macros @code{MR_word_to_int64} and
+@code{MR_word_to_uint64} for converting values of type @code{MR_Word} to ones
+of type @code{int64_t} or @code{uint64_t} respectively, and the macros
+@code{MR_int64_to_word} and @code{MR_uint64_to_word} for converting values of
+type @code{int64_t} or @code{uint64_t} respectively to ones of type
+@code{MR_Word}.
+These macros must be used to perform these conversions since for some Mercury
+implementations @samp{sizeof(int64_t)} or @samp{sizeof(uint64_t)} are greater
+than @samp{sizeof(MR_Word)}.
+
 @node C# data passing conventions
 @subsection C# data passing conventions
 
@@ -7249,12 +7261,12 @@ Infrastructure (CLI) and C# types:
   @item @code{int8}   @tab @code{System.Int8}   @tab @code{sbyte}
   @item @code{int16}  @tab @code{System.Int16}  @tab @code{short}
   @item @code{int32}  @tab @code{System.Int32}  @tab @code{int}
-@c  @item @code{int64}  @tab @code{System.Int64}  @tab @code{long}
+  @item @code{int64}  @tab @code{System.Int64}  @tab @code{long}
   @item @code{uint}   @tab @code{System.UInt32} @tab @code{uint}
   @item @code{uint8}  @tab @code{System.UInt8}  @tab @code{byte}
   @item @code{uint16} @tab @code{System.UInt16} @tab @code{ushort}
   @item @code{uint32} @tab @code{System.UInt32} @tab @code{uint}
-@c  @item @code{uint64} @tab @code{System.UInt64} @tab @code{ulong}
+  @item @code{uint64} @tab @code{System.UInt64} @tab @code{ulong}
   @item @code{float}  @tab @code{System.Double} @tab @code{double}
   @item @code{char}   @tab @code{System.Int32}  @tab @code{int}
   @item @code{string} @tab @code{System.String} @tab @code{string}
@@ -7376,23 +7388,23 @@ List_1    list.cons(object head, List_1 tail)
 The Mercury primitive types are mapped to the following Java types:
 @multitable {Mercury_type} {java_lang_String}
   @headitem Mercury type @tab Java type
-  @item @code{int}    @tab @code{int}
-  @item @code{int8}   @tab @code{byte}
-  @item @code{int16}  @tab @code{short}
-  @item @code{int32}  @tab @code{int}
-@c  @item @code{int64}  @tab @code{long}
-  @item @code{uint}   @tab @code{int}
-  @item @code{uint8}  @tab @code{byte}
-  @item @code{uint16} @tab @code{short}
-  @item @code{uint32} @tab @code{int}
-@c  @item @code{uint64}  @tab @code{long}
-  @item @code{float}  @tab @code{double}
-  @item @code{char}   @tab @code{int}
-  @item @code{string} @tab @code{java.lang.String}
+  @item @code{int}     @tab @code{int}
+  @item @code{int8}    @tab @code{byte}
+  @item @code{int16}   @tab @code{short}
+  @item @code{int32}   @tab @code{int}
+  @item @code{int64}   @tab @code{long}
+  @item @code{uint}    @tab @code{int}
+  @item @code{uint8}   @tab @code{byte}
+  @item @code{uint16}  @tab @code{short}
+  @item @code{uint32}  @tab @code{int}
+  @item @code{uint64}  @tab @code{long}
+  @item @code{float}   @tab @code{double}
+  @item @code{char}    @tab @code{int}
+  @item @code{string}  @tab @code{java.lang.String}
 @end multitable
 
-Note that since Java lacks unsigned integer types, Mercury's @code{uint} type
-corresponds to the Java type @code{int}.
+Note that since Java lacks unsigned integer types, Mercury's unsigned integer
+types correspond to signed integer types in Java.
 
 Also, note that the Mercury type @code{char} is mapped like @code{int};
 @emph{not} to the Java type @code{char} because that only holds 16-bit numeric
