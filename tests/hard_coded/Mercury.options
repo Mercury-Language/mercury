@@ -37,6 +37,7 @@ MCFLAGS-ho_float_reg    =       --no-warn-overlapping-scopes
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-one_member	=	-O5
 MCFLAGS-impure_foreign	=	--optimize-duplicate-calls
+MCFLAGS-int8_static_data =	-O0
 MCFLAGS-intermod_c_code =	--intermodule-optimization
 MCFLAGS-intermod_c_code2 =	--intermodule-optimization
 MCFLAGS-intermod_foreign_type = --intermodule-optimization

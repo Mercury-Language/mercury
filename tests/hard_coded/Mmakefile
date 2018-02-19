@@ -673,6 +673,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		cmp_uint8 \
 		dir_test \
 		final_excp \
+		int8_static_data \
 		init_excp \
 		intermod_try_goal \
 		io_globals_deadlock \
