@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
-// Copyright (C) 1997-2011 The University of Melbourne.
+// Copyright (C) 1997-2012 The University of Melbourne.
+// Copyright (C) 2013-2014, 2016-2018 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -499,8 +500,16 @@
   #define MR_GRADE_OPT_PART_18  MR_GRADE_OPT_PART_17
 #endif
 
-#define MR_GRADE                MR_GRADE_PART_18
-#define MR_GRADE_OPT            MR_GRADE_OPT_PART_18
+#if defined(MR_BOXED_INT64S)
+  #define MR_GRADE_PART_19     MR_GRADE_PART_18
+  #define MR_GRADE_OPT_PART_19 MR_GRADE_OPT_PART_18
+#else                          // "ubi64" stands for "unboxed integers 64-bit"
+  #define MR_GRADE_PART_19     MR_PASTE2(MR_GRADE_PART_18, _ubi64)
+  #define MR_GRADE_OPT_PART_19 MR_GRADE_OPT_PART_18
+#endif
+
+#define MR_GRADE                MR_GRADE_PART_19
+#define MR_GRADE_OPT            MR_GRADE_OPT_PART_19
 
 #define MR_GRADE_VAR            MR_PASTE2(MR_grade_,MR_GRADE)
 #define MR_GRADE_STRING         MR_STRINGIFY(MR_GRADE)

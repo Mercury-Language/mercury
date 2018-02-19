@@ -2329,11 +2329,28 @@ AC_SUBST(MR_LONG_DOUBLE_IS_64_BIT)
 
 #-----------------------------------------------------------------------------#
 
-# XXX INT64 -- while we are boostrapping the changes that introduce int64
-# and uint64, we always box them.  Support for unboxed 64-bit integer types
-# will be enabled later.
-
-AC_DEFINE(MR_BOXED_INT64S)
+AC_MSG_CHECKING([whether we can use unboxed 64-bit integers])
+AC_CACHE_VAL([mercury_cv_unboxed_int64s],
+    AC_TRY_RUN([
+    #include <stdint.h>
+    int main() {
+        if (sizeof(uint64_t) == sizeof(void *))
+            exit(0);
+        else
+            exit(1);
+        }],
+        [mercury_cv_unboxed_int64s=yes],
+        [mercury_cv_unboxed_int64s=no],
+        [mercury_cv_unboxed_int64s=no])
+)
+AC_MSG_RESULT($mercury_cv_unboxed_int64s)
+if test "$mercury_cv_unboxed_int64s" = yes; then
+    HAVE_BOXED_INT64S="--unboxed-int64s"
+else
+    AC_DEFINE(MR_BOXED_INT64S)
+    HAVE_BOXED_INT64S="--no-unboxed-int64s"
+fi
+AC_SUBST([HAVE_BOXED_INT64S])
 
 #-----------------------------------------------------------------------------#
 
@@ -5363,11 +5380,13 @@ mercury_check_c_files () {
         *.pregen*)
             need_low_tag_bits=2
             need_unboxed_floats=no
+            need_unboxed_int64s=no
             need_pregen_dist=yes
             ;;
         *)
             need_low_tag_bits=$mercury_cv_low_tag_bits
             need_unboxed_floats=$mercury_cv_unboxed_floats
+            need_unboxed_int64s=$mercury_cv_unboxed_int64s
             need_pregen_dist=no
             ;;
     esac
@@ -5384,6 +5403,8 @@ mercury_check_c_files () {
             if grep "TAG_BITS=$need_low_tag_bits" \
                     confscratch > /dev/null 2>&1 \
                 && grep "UNBOXED_FLOAT=$need_unboxed_floats" \
+                    confscratch > /dev/null 2>&1 \
+                && grep "UNBOXED_INT64S=$need_unbox_int64s" \
                     confscratch > /dev/null 2>&1 \
                 && grep "PREGENERATED_DIST=$need_pregen_dist" \
                     confscratch > /dev/null 2>&1 \
