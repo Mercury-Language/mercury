@@ -249,6 +249,16 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
             integer.to_uint32(Integer, UInt32),
             type_to_univ(UInt32, Univ)
         ;
+            TypeCtorName = "int64",
+            Functor = integer(_Base, Integer, signed, size_64_bit),
+            integer.to_int64(Integer, Int64),
+            type_to_univ(Int64, Univ)
+        ;
+            TypeCtorName = "uint64",
+            Functor = integer(_Base, Integer, unsigned, size_64_bit),
+            integer.to_uint64(Integer, UInt64),
+            type_to_univ(UInt64, Univ)
+        ;
             TypeCtorName = "float",
             Functor = float(Float),
             type_to_univ(Float, Univ)
@@ -353,6 +363,14 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
             TypeTerm = functor(atom("uint32"), [], _),
             term_to_uint32(ValueTerm, UInt32),
             Univ = univ(UInt32)
+        ;
+            TypeTerm = functor(atom("int64"), [], _),
+            term_to_int64(ValueTerm, Int64),
+            Univ = univ(Int64)
+        ;
+            TypeTerm = functor(atom("uint64"), [], _),
+            term_to_uint64(ValueTerm, UInt64),
+            Univ = univ(UInt64)
         ;
             TypeTerm = functor(atom("string"), [], _),
             ValueTerm = functor(string(String), [], _),

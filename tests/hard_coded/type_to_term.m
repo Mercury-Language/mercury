@@ -137,6 +137,30 @@ main(!IO) :-
     io.write_uint32(UInt32Value, !IO),
     io.nl(!IO),
 
+    % Test handling int64s.
+    %
+    Int64 = 561i64,
+    type_to_term(Int64, Int64Term : term(generic)),
+    io.write_string("Term: ", !IO),
+    term_io.write_term(VarSet, Int64Term, !IO),
+    io.nl(!IO),
+    det_term_to_type(Int64Term, Int64Value : int64),
+    io.write_string("Type: ", !IO),
+    io.write_int64(Int64Value, !IO),
+    io.nl(!IO),
+
+    % Test handling uint64s.
+    %
+    UInt64 = 561u64,
+    type_to_term(UInt64, UInt64Term : term(generic)),
+    io.write_string("Term: ", !IO),
+    term_io.write_term(VarSet, UInt64Term, !IO),
+    io.nl(!IO),
+    det_term_to_type(UInt64Term, UInt64Value : uint64),
+    io.write_string("Type: ", !IO),
+    io.write_uint64(UInt64Value, !IO),
+    io.nl(!IO),
+
     % Test handling of floats.
     %
     Float = 12345.6789,

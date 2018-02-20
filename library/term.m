@@ -155,6 +155,8 @@
 
 :- pred term_to_int32(term(T)::in, int32::out) is semidet.
 
+:- pred term_to_int64(term(T)::in, int64::out) is semidet.
+
 :- pred term_to_uint(term(T)::in, uint::out) is semidet.
 
 :- pred term_to_uint8(term(T)::in, uint8::out) is semidet.
@@ -162,6 +164,8 @@
 :- pred term_to_uint16(term(T)::in, uint16::out) is semidet.
 
 :- pred term_to_uint32(term(T)::in, uint32::out) is semidet.
+
+:- pred term_to_uint64(term(T)::in, uint64::out) is semidet.
 
 :- pred decimal_term_to_int(term(T)::in, int::out) is semidet.
 
@@ -837,6 +841,11 @@ term_to_int32(Term, Int32) :-
     Const = integer(_Base, Integer, signed, size_32_bit),
     integer.to_int32(Integer, Int32).
 
+term_to_int64(Term, Int64) :-
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, signed, size_64_bit),
+    integer.to_int64(Integer, Int64).
+
 term_to_uint(Term, UInt) :-
     Term = functor(Const, [], _Context),
     Const = integer(_Base, Integer, unsigned, size_word),
@@ -856,6 +865,11 @@ term_to_uint32(Term, UInt32) :-
     Term = functor(Const, [], _Context),
     Const = integer(_Base, Integer, unsigned, size_32_bit),
     integer.to_uint32(Integer, UInt32).
+
+term_to_uint64(Term, UInt64) :-
+    Term = functor(Const, [], _Context),
+    Const = integer(_Base, Integer, unsigned, size_64_bit),
+    integer.to_uint64(Integer, UInt64).
 
 decimal_term_to_int(Term, Int) :-
     Term = functor(Const, [], _Context),

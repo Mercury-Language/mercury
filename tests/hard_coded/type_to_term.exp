@@ -16,6 +16,10 @@ Term: 42i32
 Type: 42
 Term: 42u32
 Type: 42
+Term: 561i64
+Type: 561
+Term: 561u64
+Type: 561
 Term: 12345.6789
 Type: 12345.6789
 Term: "abcdefghijklmnopqrstuvwxyz"
