@@ -152,6 +152,9 @@ test_builtins(!IO) :-
     io.write(-2147483648i32, !IO), newline(!IO),
     io.write(2147483647i32, !IO), newline(!IO),
     io.write(4294967295u32, !IO), newline(!IO),
+    io.write(-9223372036854775808i64, !IO), newline(!IO),
+    io.write(9223372036854775807i64, !IO), newline(!IO),
+    io.write(18446744073709551615u64, !IO), newline(!IO),
 
     % Test univ.
     type_to_univ(["hi! I'm a univ!"], Univ),
