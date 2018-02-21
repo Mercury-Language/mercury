@@ -671,7 +671,6 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
     MR_bool                     *report;
     MR_EnumFunctorDesc          **enum_functors;
     MR_DuFunctorDesc            **du_functors;
-    MR_MaybeResAddrFunctorDesc  *res_functors;
     MR_NotagFunctorDesc         *notag_functor;
     int                         num_distinct;
     int                         num_ambiguous;
@@ -815,8 +814,6 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
                 case MR_TYPECTOR_REP_DUMMY:
                 case MR_TYPECTOR_REP_DU:
                 case MR_TYPECTOR_REP_DU_USEREQ:
-                case MR_TYPECTOR_REP_RESERVED_ADDR:
-                case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
                 case MR_TYPECTOR_REP_NOTAG:
                 case MR_TYPECTOR_REP_NOTAG_USEREQ:
                 case MR_TYPECTOR_REP_NOTAG_GROUND:
@@ -955,28 +952,6 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
                 }
                 break;
 
-            case MR_TYPECTOR_REP_RESERVED_ADDR:
-            case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-                res_functors =
-                    MR_type_ctor_functors(type_ctor_info).MR_functors_res;
-                i = 0;
-                while (i < type_ctor_info->MR_type_ctor_num_functors) {
-                    functors[functor_num].MR_functor_name =
-                        res_functors[i].MR_maybe_res_name;
-                    functors[functor_num].MR_functor_arity =
-                        res_functors[i].MR_maybe_res_arity;
-                    functors[functor_num].MR_functor_type_module =
-                        type_ctor_info->MR_type_ctor_module_name;
-                    functors[functor_num].MR_functor_type_name =
-                        type_ctor_info->MR_type_ctor_name;
-                    functors[functor_num].MR_functor_type_arity =
-                        type_ctor_info->MR_type_ctor_arity;
-                    functor_num++;
-                    i++;
-                }
-                break;
-                break;
-
             case MR_TYPECTOR_REP_NOTAG:
             case MR_TYPECTOR_REP_NOTAG_USEREQ:
             case MR_TYPECTOR_REP_NOTAG_GROUND:
@@ -998,7 +973,6 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
             default:
                 // Other kinds of types do not have user-defined function
                 // symbols.
-
                 break;
         }
     }

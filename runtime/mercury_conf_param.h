@@ -167,7 +167,6 @@
 //    --no-type-layout
 //    --unboxed-float
 //    --use-trail
-//    --reserve-tag
 //    --use-minimal-model
 //    --minimal-model-debug
 //    --pregenerated-dist

@@ -57,66 +57,8 @@
             table = table_next;
             return table;
 
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-            {
-                int                         i;
-                MR_ReservedAddrTypeLayout   ra_layout;
-
-                ra_layout = MR_type_ctor_layout(type_ctor_info).
-                    MR_layout_reserved_addr;
-
-                // First check if this value is one of
-                // the numeric reserved addresses.
-
-                if ((MR_Unsigned) data <
-                    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
-                {
-                    MR_TABLE_DU(STATS, DEBUG, BACK, table_next, table,
-                        MR_type_ctor_num_functors(type_ctor_info),
-                        ra_layout->MR_ra_constants[data]->
-                            MR_ra_functor_ordinal);
-                    table = table_next;
-                    break;
-                }
-
-                // Next check if this value is one of the
-                // the symbolic reserved addresses.
-
-                for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
-                    if (data == (MR_Word)
-                        ra_layout->MR_ra_res_symbolic_addrs[i])
-                    {
-                        int offset;
-
-                        offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
-                        MR_TABLE_DU(STATS, DEBUG, BACK, table_next, table,
-                            MR_type_ctor_num_functors(type_ctor_info),
-                            ra_layout->MR_ra_constants[offset]->
-                                MR_ra_functor_ordinal);
-                        table = table_next;
-                        // "break" here would just exit the "for" loop
-                        return table;
-                    }
-                }
-
-                // Otherwise, it is not one of the reserved addresses,
-                // so handle it like a normal DU type.
-
-                du_type_layout = ra_layout->MR_ra_other_functors;
-                goto du_type;
-            }
-
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
-            du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
-            // fall through
-
-        // This label handles both the DU case and the second half of the
-        // RESERVED_ADDR case. `du_type_layout' must be set before
-        // this code is entered.
-
-        du_type:
             {
                 MR_MemoryList           allocated_memory_cells = NULL;
                 const MR_DuPtagLayout   *ptag_layout;
@@ -130,6 +72,8 @@
                 int                     meta_args;
                 int                     i;
 
+                du_type_layout =
+                    MR_type_ctor_layout(type_ctor_info).MR_layout_du;
                 ptag = MR_tag(data);
                 ptag_layout = &du_type_layout[ptag];
 
@@ -531,7 +475,9 @@
         case MR_TYPECTOR_REP_REFERENCE:
             MR_fatal_error("Attempt to table a value of a reference type");
 
-        case MR_TYPECTOR_REP_UNKNOWN: // fallthru
+        case MR_TYPECTOR_REP_UNUSED1:
+        case MR_TYPECTOR_REP_UNUSED2:
+        case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error("Unknown layout tag in table_any");
     }
 

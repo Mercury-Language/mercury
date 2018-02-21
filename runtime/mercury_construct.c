@@ -45,8 +45,6 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
 
     switch (MR_type_ctor_rep(type_ctor_info)) {
 
-    case MR_TYPECTOR_REP_RESERVED_ADDR:
-    case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
     case MR_TYPECTOR_REP_DU:
     case MR_TYPECTOR_REP_DU_USEREQ:
         {
@@ -199,6 +197,8 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_REFERENCE:
         return MR_FALSE;
 
+    case MR_TYPECTOR_REP_UNUSED1:
+    case MR_TYPECTOR_REP_UNUSED2:
     case MR_TYPECTOR_REP_UNKNOWN:
         MR_fatal_error("MR_get_functor_info: unknown type_ctor_rep");
     }
@@ -301,8 +301,6 @@ MR_get_num_functors(MR_TypeInfo type_info)
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
         case MR_TYPECTOR_REP_DUMMY:
@@ -364,6 +362,8 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_REFERENCE:
             return -1;
 
+        case MR_TYPECTOR_REP_UNUSED1:
+        case MR_TYPECTOR_REP_UNUSED2:
         case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error("MR_get_num_functors: unknown type_ctor_rep");
     }

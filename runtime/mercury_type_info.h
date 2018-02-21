@@ -588,8 +588,8 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_EQUIV_GROUND),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TUPLE),
-    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_RESERVED_ADDR),
-    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UNUSED1),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UNUSED2),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TYPECTORINFO),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_BASETYPECLASSINFO),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TYPEDESC),
@@ -954,16 +954,6 @@ typedef const MR_NotagFunctorDesc           *MR_NotagFunctorDescPtr;
 
 ////////////////////////////////////////////////////////////////////////////
 
-typedef struct {
-    MR_ConstString      MR_ra_functor_name;
-    MR_int_least32_t    MR_ra_functor_ordinal;
-    MR_ReservedAddr     MR_ra_functor_reserved_addr;
-} MR_ReservedAddrFunctorDesc;
-
-typedef const MR_ReservedAddrFunctorDesc    *MR_ReservedAddrFunctorDescPtr;
-
-////////////////////////////////////////////////////////////////////////////
-
 // This type describes the function symbols that share the same primary tag.
 // The sharers field gives their number, and thus also the size
 // of the array of pointers to functor descriptors pointed to by the
@@ -1033,38 +1023,6 @@ typedef MR_NotagFunctorDesc *MR_NotagTypeLayout;
 
 ////////////////////////////////////////////////////////////////////////////
 
-// This type is used to describe the representation of discriminated unions
-// where one or more constants in the discriminated union are represented
-// using reserved addresses.
-//
-// The MR_ra_num_res_numeric_addrs field contains the number of different
-// reserved numeric addresses. The actual numeric addresses reserved will
-// range from 0 (NULL) to one less than the value of this field.
-//
-// The MR_ra_num_res_symbolic_addrs field contains the number of different
-// reserved symbolic addresses, and the MR_ra_res_symbolic_addrs field
-// contains their values.
-//
-// The MR_ra_constants field points to a vector of descriptors for the
-// functors represented by reserved addresses. The descriptors of the functors
-// with numeric addresses precede those with symbolic addresses. The length of
-// the two parts of the vector are given by the values of the first two fields.
-//
-// The MR_ra_other_functors field describes all the functors in the type that
-// are not represented using reserved addresses.
-
-typedef struct {
-    MR_int_least16_t                    MR_ra_num_res_numeric_addrs;
-    MR_int_least16_t                    MR_ra_num_res_symbolic_addrs;
-    const void * const                  *MR_ra_res_symbolic_addrs;
-    MR_ReservedAddrFunctorDescPtr const *MR_ra_constants;
-    MR_DuTypeLayout                     MR_ra_other_functors;
-} MR_ReservedAddrTypeDesc;
-
-typedef MR_ReservedAddrTypeDesc *MR_ReservedAddrTypeLayout;
-
-////////////////////////////////////////////////////////////////////////////
-
 // This type describes the identity of the type that an equivalence type
 // is equivalent to, and hence its layout.
 //
@@ -1093,8 +1051,8 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
 ////////////////////////////////////////////////////////////////////////////
 
 // This type describes the layout in any kind of discriminated union
-// type: du, enum, foreign_enum, notag, or reserved_addr.
-// In an equivalence type, it gives the identity of the equivalent-to type.
+// type: du, enum, foreign_enum, or notag. In an equivalence type,
+// it gives the identity of the equivalent-to type.
 //
 // The layout_init alternative is used only for static initializers,
 // because ANSI C89 does not allow you to say which member of a union
@@ -1107,37 +1065,20 @@ typedef union {
     MR_EnumTypeLayout           MR_layout_enum;
     MR_ForeignEnumTypeLayout    MR_layout_foreign_enum;
     MR_NotagTypeLayout          MR_layout_notag;
-    MR_ReservedAddrTypeLayout   MR_layout_reserved_addr;
     MR_EquivLayout              MR_layout_equiv;
 } MR_TypeLayout;
 
 ////////////////////////////////////////////////////////////////////////////
 
-typedef union {
-    MR_DuFunctorDesc            *MR_maybe_res_du_ptr;
-    MR_ReservedAddrFunctorDesc  *MR_maybe_res_res_ptr;
-} MR_MaybeResFunctorDescPtr;
-
-typedef struct {
-    MR_ConstString              MR_maybe_res_name;
-    MR_Integer                  MR_maybe_res_arity;
-    MR_bool                     MR_maybe_res_is_res;
-    MR_MaybeResFunctorDescPtr   MR_maybe_res_ptr;
-} MR_MaybeResAddrFunctorDesc;
-
-#define MR_maybe_res_du         MR_maybe_res_ptr.MR_maybe_res_du_ptr
-#define MR_maybe_res_res        MR_maybe_res_ptr.MR_maybe_res_res_ptr
-
 // This type describes the function symbols in any kind of discriminated union
-// type: du, reserved_addr, enum, foreign_enum, and notag.
+// type: du, enum, foreign_enum, and notag.
 //
 // The pointer in the union points to either an array of pointers to functor
-// descriptors (for du, enum and foreign enum types), to an array of functor
-// descriptors (for reserved_addr types) or to a single functor descriptor
-// (for notag types). There is one functor descriptor for each function symbol,
-// and thus the size of the array is given by the num_functors field of the
-// type_ctor_info. Arrays are ordered on the name of the function symbol,
-// and then on arity.
+// descriptors (for du, enum and foreign enum types) or to a single functor
+// descriptor (for notag types). There is one functor descriptor
+// for each function symbol, and thus the size of the array is given by
+// the num_functors field of the type_ctor_info. Arrays are ordered
+// on the name of the function symbol, and then on arity.
 //
 // The intention is that if you have a function symbol you want to represent,
 // you can do binary search on the array for the symbol name and arity.
@@ -1148,7 +1089,6 @@ typedef struct {
 typedef union {
     const void                  *MR_functors_init;
     MR_DuFunctorDesc            **MR_functors_du;
-    MR_MaybeResAddrFunctorDesc  *MR_functors_res;
     MR_EnumFunctorDesc          **MR_functors_enum;
     MR_ForeignEnumFunctorDesc   **MR_functors_foreign_enum;
     MR_NotagFunctorDesc         *MR_functors_notag;
@@ -1228,8 +1168,7 @@ struct MR_TypeCtorInfo_Struct {
 // variable: at moment, this means functions, predicates and tuples.
 //
 // The kind of du flag is set for all discriminated union types, even if
-// their representation is specialized (as enumerations, notag types, reserved
-// address types etc).
+// their representation is specialized (as enumerations, notag types etc).
 //
 // The dummy flag must be set for type constructors whose values are not
 // actually passed around.

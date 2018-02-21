@@ -136,14 +136,6 @@ start_label:
             goto start_label;
 
   #ifdef include_compare_rep_code
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-            // fall through
-  #endif
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
-            MR_fatal_error("sorry, not implemented: "
-                "MR_COMPARE_BY_RTTI for RESERVED_ADDR");
-
-  #ifdef include_compare_rep_code
         case MR_TYPECTOR_REP_ARRAY:
             MR_fatal_error("sorry, not implemented: "
                 "compare_representation for arrays");
@@ -469,13 +461,11 @@ start_label:
         case MR_TYPECTOR_REP_EQUIV_GROUND:
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
         case MR_TYPECTOR_REP_DU:
             // fall through
   #endif
 
         case MR_TYPECTOR_REP_ENUM_USEREQ:
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         case MR_TYPECTOR_REP_DU_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
@@ -951,6 +941,8 @@ start_label:
                 (void *) x == (void *) y);
 #endif
 
+        case MR_TYPECTOR_REP_UNUSED1:
+        case MR_TYPECTOR_REP_UNUSED2:
         case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error(attempt_msg "terms of unknown type");
     }

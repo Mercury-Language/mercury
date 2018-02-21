@@ -559,6 +559,7 @@ EOF
             $link_static_opt conftest \
             --erlang-native-code \
             --warn-insts-with-functors-without-type \
+            --no-no-reserved-addrs \
             --no-ssdb \
             </dev/null >&AC_FD_CC 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&

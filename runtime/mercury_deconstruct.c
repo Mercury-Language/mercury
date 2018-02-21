@@ -144,54 +144,10 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
     }
 
     switch (MR_type_ctor_rep(type_ctor_info)) {
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
-        {
-            MR_ReservedAddrTypeLayout ra_layout;
-
-            ra_layout = MR_type_ctor_layout(type_ctor_info).
-                MR_layout_reserved_addr;
-            data = *term_ptr;
-
-            // First check if this value is one of
-            // the numeric reserved addresses.
-
-            if ((MR_Unsigned) data <
-                (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
-            {
-                // If so, it must be a constant, and constants never have
-                // any arguments.
-
-                return MR_FALSE;
-            }
-
-            // Next check if this value is one of the
-            // the symbolic reserved addresses.
-
-            for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
-                if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i]) {
-                    return MR_FALSE;
-                }
-            }
-
-            // Otherwise, it is not one of the reserved addresses,
-            // so handle it like a normal DU type.
-
-            du_type_layout = ra_layout->MR_ra_other_functors;
-            goto du_type;
-        }
-
         case MR_TYPECTOR_REP_DU_USEREQ:
         case MR_TYPECTOR_REP_DU:
             data = *term_ptr;
             du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
-            // fall through
-
-        // This label handles both the DU case and the second half of the
-        // RESERVED_ADDR case. `du_type_layout' and `data' must both be set
-        // before this code is entered.
-
-        du_type:
             ptag = MR_tag(data);
             ptag_layout = &du_type_layout[ptag];
 
@@ -305,6 +261,8 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
         case MR_TYPECTOR_REP_FOREIGN_ENUM:
         case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+        case MR_TYPECTOR_REP_UNUSED1:
+        case MR_TYPECTOR_REP_UNUSED2:
         case MR_TYPECTOR_REP_UNKNOWN:
             return MR_FALSE;
     }

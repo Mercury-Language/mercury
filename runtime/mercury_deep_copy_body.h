@@ -104,60 +104,16 @@ try_again:
     case MR_TYPECTOR_REP_DUMMY:
         // The value we are asked to copy is a dummy, and the return value
         // won't be looked at either, so what we return doesn't really matter.
-
         return data;
-
-    case MR_TYPECTOR_REP_RESERVED_ADDR:
-    case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-        {
-            int j;
-            MR_ReservedAddrTypeLayout ra_layout;
-
-            ra_layout =
-                MR_type_ctor_layout(type_ctor_info).MR_layout_reserved_addr;
-
-            // First check if this value is one of the numeric
-            // reserved addresses.
-
-            if ((MR_Unsigned) data <
-                (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
-            {
-                return data;
-            }
-
-            // Next check if this value is one of the symbolic
-            // reserved addresses.
-
-            for (j = 0; j < ra_layout->MR_ra_num_res_symbolic_addrs; j++) {
-                if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[j]) {
-                   new_data = data;
-                   // "break" here would just exit the "for" loop
-                   return new_data;
-                }
-            }
-
-            // Otherwise, it is not one of the reserved addresses,
-            // so handle it like a normal DU type.
-
-            du_type_layout = ra_layout->MR_ra_other_functors;
-            goto du_type;
-        }
 
     case MR_TYPECTOR_REP_DU:
     case MR_TYPECTOR_REP_DU_USEREQ:
-        du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
-        // fallthru
-
-    // This label handles both the DU case and the second half of the
-    // RESERVED_ADDR case. `du_type_layout' must be set before
-    // this code is entered.
-
-    du_type:
         {
             MR_Word               *data_value;
             const MR_DuPtagLayout *ptag_layout;
             int                   ptag;
 
+            du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
             ptag = MR_tag(data);
             ptag_layout = &du_type_layout[ptag];
 
@@ -876,6 +832,8 @@ try_again:
         }
         return new_data;
 
+    case MR_TYPECTOR_REP_UNUSED1:
+    case MR_TYPECTOR_REP_UNUSED2:
     case MR_TYPECTOR_REP_UNKNOWN:
         MR_fatal_error("Unknown layout type in deep copy");
     }

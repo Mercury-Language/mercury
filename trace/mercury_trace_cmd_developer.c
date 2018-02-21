@@ -1852,7 +1852,6 @@ MR_print_type_ctor_info(FILE *fp, MR_TypeCtorInfo type_ctor_info,
     MR_TypeCtorRep              rep;
     MR_EnumFunctorDesc          *enum_functor;
     MR_DuFunctorDesc            *du_functor;
-    MR_MaybeResAddrFunctorDesc  *maybe_res_functor;
     MR_NotagFunctorDesc         *notag_functor;
     int                         num_functors;
     int                         i;
@@ -1895,20 +1894,6 @@ MR_print_type_ctor_info(FILE *fp, MR_TypeCtorInfo type_ctor_info,
                     }
                     fprintf(fp, "%s/%d", du_functor->MR_du_functor_name,
                         du_functor-> MR_du_functor_orig_arity);
-                }
-                fprintf(fp, "\n");
-                break;
-
-            case MR_TYPECTOR_REP_RESERVED_ADDR:
-            case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-                for (i = 0; i < num_functors; i++) {
-                    maybe_res_functor = &type_ctor_info->MR_type_ctor_functors.
-                        MR_functors_res[i];
-                    if (i > 0) {
-                        fprintf(fp, ", ");
-                    }
-                    fprintf(fp, "%s/%d", maybe_res_functor->MR_maybe_res_name,
-                        (int) maybe_res_functor-> MR_maybe_res_arity);
                 }
                 fprintf(fp, "\n");
                 break;

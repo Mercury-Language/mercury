@@ -269,7 +269,6 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
     EXPAND_TYPE_NAME *expand_info)
 {
     MR_TypeCtorInfo type_ctor_info;
-    MR_DuTypeLayout du_type_layout;
 #ifdef EXPAND_NAMED_ARG
     // No arm of the switch on type_ctor_rep handles named arguments by
     // default. Only those type_ctor_reps that support named arguments
@@ -382,71 +381,6 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_functor_number(0);
             return;
 
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-            if (noncanon == MR_NONCANON_ABORT) {
-                // XXX should throw an exception
-                MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
-                    ": attempt to deconstruct noncanonical term");
-                return;
-            } else if (noncanon == MR_NONCANON_ALLOW) {
-                handle_noncanonical_name(type_ctor_info);
-                handle_zero_arity_args();
-                return;
-            }
-            // else fall through
-
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
-            {
-                int i;
-                MR_Word data;
-                MR_ReservedAddrTypeLayout ra_layout;
-
-                ra_layout = MR_type_ctor_layout(type_ctor_info).
-                    MR_layout_reserved_addr;
-                data = *data_word_ptr;
-
-                // First check if this value is one of
-                // the numeric reserved addresses.
-
-                if ((MR_Unsigned) data <
-                    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
-                {
-                    handle_functor_name(ra_layout->MR_ra_constants[data]->
-                            MR_ra_functor_name);
-                    handle_type_functor_number(type_ctor_info,
-                            ra_layout->MR_ra_constants[data]->
-                                MR_ra_functor_ordinal);
-                    handle_zero_arity_args();
-                    return;
-                }
-
-                // Next check if this value is one of the
-                // the symbolic reserved addresses.
-
-                for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
-                    if (data == (MR_Word) ra_layout->
-                        MR_ra_res_symbolic_addrs[i])
-                    {
-                        int offset;
-                        offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
-                        handle_functor_name(ra_layout->
-                            MR_ra_constants[offset]->MR_ra_functor_name);
-                        handle_type_functor_number(type_ctor_info,
-                            ra_layout->MR_ra_constants[offset]->
-                                MR_ra_functor_ordinal);
-                        handle_zero_arity_args();
-                        // "break" here would just exit the "for" loop.
-                        return;
-                    }
-                }
-
-                // Otherwise, it is not one of the reserved addresses,
-                // so handle it like a normal DU type.
-
-                du_type_layout = ra_layout->MR_ra_other_functors;
-                goto du_type;
-            }
-
         case MR_TYPECTOR_REP_DU_USEREQ:
             if (noncanon == MR_NONCANON_ABORT) {
                 // XXX Should throw an exception.
@@ -461,15 +395,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             // else fall through
 
         case MR_TYPECTOR_REP_DU:
-            du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
-            // fall through
-
-            // This label handles both the DU case and the second half of the
-            // RESERVED_ADDR case. `du_type_layout' must be set before
-            // this code is entered.
-
-        du_type:
             {
+                MR_DuTypeLayout         du_type_layout;
                 const MR_DuPtagLayout   *ptag_layout;
                 const MR_DuFunctorDesc  *functor_desc;
                 const MR_DuExistInfo    *exist_info;
@@ -480,6 +407,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_Word                 *arg_vector;
                 MR_Word                 direct_arg;
 
+                du_type_layout =
+                    MR_type_ctor_layout(type_ctor_info).MR_layout_du;
                 data = *data_word_ptr;
                 ptag = MR_tag(data);
                 ptag_layout = &du_type_layout[ptag];
@@ -1679,7 +1608,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_zero_arity_args();
             return;
 
-        case MR_TYPECTOR_REP_UNKNOWN:    // fallthru
+        case MR_TYPECTOR_REP_UNUSED1:
+        case MR_TYPECTOR_REP_UNUSED2:
+        case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                 ": cannot expand -- unknown data type");
     }

@@ -447,8 +447,6 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
 
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
             Ordinal = construct_info.functor_info.
                 du_functor_desc->MR_du_functor_ordinal;
             break;
@@ -494,6 +492,8 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
         case MR_TYPECTOR_REP_TICKET:
         case MR_TYPECTOR_REP_FOREIGN:
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
+        case MR_TYPECTOR_REP_UNUSED1:
+        case MR_TYPECTOR_REP_UNUSED2:
         case MR_TYPECTOR_REP_UNKNOWN:
             success = MR_FALSE;
 
@@ -632,42 +632,6 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
             new_data = MR_field(MR_UNIV_TAG, MR_list_head(ArgList),
                 MR_UNIV_OFFSET_FOR_DATA);
             break;
-
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-        /*
-        ** First check whether the functor we want is one of the
-        ** reserved addresses.
-        */
-        {
-            int                                 i;
-            MR_ReservedAddrTypeLayout           ra_layout;
-            int                                 total_reserved_addrs;
-            const MR_ReservedAddrFunctorDesc    *functor_desc;
-
-            ra_layout = MR_type_ctor_layout(type_ctor_info).
-                MR_layout_reserved_addr;
-            total_reserved_addrs = ra_layout->MR_ra_num_res_numeric_addrs
-                + ra_layout->MR_ra_num_res_symbolic_addrs;
-
-            for (i = 0; i < total_reserved_addrs; i++) {
-                functor_desc = ra_layout->MR_ra_constants[i];
-                if (functor_desc->MR_ra_functor_ordinal == FunctorNumber) {
-                    new_data = (MR_Word)
-                    functor_desc->MR_ra_functor_reserved_addr;
-
-                    /* `break' here would just exit the `for' loop */
-                    goto end_of_main_switch;
-                }
-            }
-        }
-
-        /*
-        ** Otherwise, it is not one of the reserved addresses,
-        ** so handle it like a normal DU type.
-        */
-
-        /* fall through */
 
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
@@ -1105,6 +1069,8 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                 ""with construct.construct"");
             break;
 
+        case MR_TYPECTOR_REP_UNUSED1:
+        case MR_TYPECTOR_REP_UNUSED2:
         case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error(
                 ""cannot construct values of unknown types ""
