@@ -1936,9 +1936,12 @@
     --->    mlds_exported_enum(
                 exported_enum_lang      :: foreign_language,
                 exported_enum_context   :: prog_context,
+
+                % mlds_to_cs.m and mlds_to_java.m need to know the type_ctor.
                 exported_enum_type_ctor :: type_ctor,
+
+                % The name of each constant plus the value to initialize it to.
                 exported_enum_constants :: list(mlds_exported_enum_constant)
-                % The name of each constant plus a value to initialize it to.
             ).
 
 :- type mlds_exported_enum_constant

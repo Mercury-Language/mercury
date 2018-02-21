@@ -295,7 +295,7 @@ build_foreign_enum_tag_map(Context, ContextPieces, CtorNameSet, TypeName,
         TypeName = qualified(TypeModuleName, _)
     ;
         TypeName = unqualified(_),
-        unexpected($module, $pred,
+        unexpected($pred,
             "unqualified type name while processing foreign enum tags")
     ),
     list.map_foldl2(
@@ -444,9 +444,11 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                 ;
                     MaybeRepn = yes(Repn)
                 ),
-                Repn = du_type_repn(TagValues, _ConsRepns, _ConsCtorMap,
+                Repn = du_type_repn(_TagValues, CtorRepns, _ConsCtorMap,
                     _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors),
-                find_enum_nonenum_cons_ids(map.keys(TagValues),
+                list.map(constructor_to_cons_id(TypeCtor),
+                    Ctors, ConsIds),
+                find_enum_nonenum_cons_ids(ConsIds,
                     [], _EnumSymNames, [], NonEnumConsIds),
                 (
                     ( DuTypeKind = du_type_kind_general
@@ -475,12 +477,12 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     MaybeOverridesMap = yes(OverridesMap),
                     build_export_enum_name_map(ContextPieces, Lang,
                         TypeName, TypeArity, Context, Prefix,
-                        MakeUpperCase, OverridesMap, Ctors, MaybeMapping,
+                        MakeUpperCase, OverridesMap, CtorRepns, MaybeMapping,
                         !Specs),
                     (
                         MaybeMapping = yes(Mapping),
                         ExportedEnum = exported_enum_info(Lang, Context,
-                            TypeCtor, Mapping, Ctors, TagValues),
+                            TypeCtor, Mapping, CtorRepns),
                         ( if
                             !.ErrorSeveritiesPieces = [],
                             !.Specs = []
@@ -527,8 +529,7 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
         TypeName = qualified(ModuleName, _)
     ;
         TypeName = unqualified(_),
-        unexpected($module, $pred,
-            "unqualified type name while building override map")
+        unexpected($pred, "unqualified type name while building override map")
     ),
     % Strip off module qualifiers that match those of the type being exported.
     % We leave those that do not match so that they can be reported as errors
@@ -566,23 +567,22 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
 :- pred build_export_enum_name_map(format_components::in, foreign_language::in,
     sym_name::in, arity::in, prog_context::in, string::in,
     uppercase_export_enum::in, map(sym_name, string)::in,
-    list(constructor)::in, maybe(map(sym_name, string))::out,
+    list(constructor_repn)::in, maybe(map(sym_name, string))::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
-        Prefix, MakeUpperCase, Overrides0, Ctors, MaybeMapping, !Specs) :-
+        Prefix, MakeUpperCase, Overrides0, CtorRepns, MaybeMapping, !Specs) :-
     (
         TypeName = qualified(TypeModuleQual, _)
     ;
         % The type name should have been module qualified by now.
         TypeName = unqualified(_),
-        unexpected($module, $pred,
-            "unqualified type name for foreign_export_enum")
+        unexpected($pred, "unqualified type name for foreign_export_enum")
     ),
 
     list.foldl3(
         add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, TypeModuleQual),
-        Ctors, Overrides0, Overrides, map.init, NameMap, [], BadCtors),
+        CtorRepns, Overrides0, Overrides, map.init, NameMap, [], BadCtors),
 
     % Check for any remaining user-specified renamings that didn't match
     % the constructors of the type and report errors for them.
@@ -604,7 +604,7 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
                 ( Lang = lang_csharp
                 ; Lang = lang_erlang
                 ),
-                sorry($module, $pred,
+                sorry($pred,
                     "foreign_export_enum pragma for unsupported language")
             ),
             BadCtorsErrorPieces = [
@@ -675,14 +675,14 @@ check_name_map_for_conflicts(Context, ContextPieces, NameMap, MaybeNameMap,
     ).
 
 :- pred add_ctor_to_name_map(foreign_language::in,
-    string::in, uppercase_export_enum::in, sym_name::in, constructor::in,
+    string::in, uppercase_export_enum::in, sym_name::in, constructor_repn::in,
     map(sym_name, string)::in, map(sym_name, string)::out,
     map(sym_name, string)::in, map(sym_name, string)::out,
     list(sym_name)::in, list(sym_name)::out) is det.
 
-add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
+add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, CtorRepn,
         !Overrides, !NameMap, !BadCtors) :-
-    CtorSymName = Ctor ^ cons_name,
+    CtorSymName = CtorRepn ^ cr_name,
     (
         % All of the constructor sym_names should be module qualified by now.
         % We unqualify them before inserting them into the mapping since
@@ -693,15 +693,15 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
         UnqualSymName = unqualified(UnqualCtorName)
     ;
         CtorSymName = unqualified(_),
-        unexpected($module, $pred, "unqualified constructor name")
+        unexpected($pred, "unqualified constructor name")
     ),
 
-    % If the user specified a name for this constructor then use that.
+    % If the user specified a name for this constructor, then use that.
     ( if map.remove(UnqualSymName, UserForeignName, !Overrides) then
         ForeignNameTail = UserForeignName
     else
-        % Otherwise try to derive a name automatically from the
-        % constructor name.
+        % Otherwise try to derive a name automatically
+        % from the constructor name.
         (
             MakeUpperCase = uppercase_export_enum,
             ForeignNameTail = string.to_upper(UnqualCtorName)
@@ -719,14 +719,14 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
         IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
     ;
         Lang = lang_erlang,
-        sorry($module, $pred, "foreign_export_enum for Erlang")
+        sorry($pred, "foreign_export_enum for Erlang")
     ),
     (
         IsValidForeignName = yes,
         map.det_insert(UnqualSymName, ForeignName, !NameMap)
     ;
         IsValidForeignName = no,
-        list.cons(UnqualSymName, !BadCtors)
+        !:BadCtors = [UnqualSymName | !.BadCtors]
     ).
 
 %---------------------------------------------------------------------------%
