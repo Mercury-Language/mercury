@@ -719,14 +719,12 @@ output_exported_enums_for_java(Info, Indent, ExportedEnums, !IO) :-
     mlds_exported_enum::in, io::di, io::uo) is det.
 
 output_exported_enum_for_java(Info, Indent, ExportedEnum, !IO) :-
-    ExportedEnum = mlds_exported_enum(Lang, _, TypeCtor, ExportedConstants0),
+    ExportedEnum = mlds_exported_enum(Lang, _, TypeCtor, ExportedConstants),
     (
         Lang = lang_java,
         ml_gen_type_name(TypeCtor, ClassName, ClassArity),
         MLDS_Type =
             mlds_class_type(mlds_class_id(ClassName, ClassArity, mlds_enum)),
-        % We reverse the list so the constants are printed out in order.
-        list.reverse(ExportedConstants0, ExportedConstants),
         list.foldl(
             output_exported_enum_constant_for_java(Info, Indent, MLDS_Type),
             ExportedConstants, !IO)

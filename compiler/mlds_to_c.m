@@ -1483,12 +1483,10 @@ mlds_output_export_enums(Opts, Indent, ExportedEnums, !IO) :-
 
 mlds_output_export_enum(Opts, _Indent, ExportedEnum, !IO) :-
     ExportedEnum = mlds_exported_enum(Lang, Context, _TypeCtor,
-        ExportConstants0),
+        ExportConstants),
     (
         Lang = lang_c,
         c_output_context(Opts ^ m2co_foreign_line_numbers, Context, !IO),
-        % We reverse the list so the constants are printed out in order.
-        list.reverse(ExportConstants0, ExportConstants),
         list.foldl(mlds_output_exported_enum_constant, ExportConstants, !IO)
     ;
         ( Lang = lang_csharp

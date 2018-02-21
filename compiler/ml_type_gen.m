@@ -149,7 +149,7 @@
     % specific representation. The target specific code generators may
     % further transform it.
     %
-:- pred ml_gen_exported_enums(module_info::in, mlds_exported_enums::out)
+:- pred ml_gen_exported_enums(module_info::in, list(mlds_exported_enum)::out)
     is det.
 
 %---------------------------------------------------------------------------%
@@ -1052,19 +1052,18 @@ ml_gen_exported_enum(ExportedEnumInfo, MLDS_ExportedEnum) :-
     ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
     MLDS_Type = mlds_class_type(
         mlds_class_id(QualifiedClassName, MLDS_ClassArity, mlds_enum)),
-    list.foldl(
+    list.map(
         generate_foreign_enum_constant(Mapping, MLDS_Type),
-        CtorRepns, [], ExportConstants),
+        CtorRepns, ExportConstants),
     MLDS_ExportedEnum = mlds_exported_enum(Lang, Context, TypeCtor,
         ExportConstants).
 
 :- pred generate_foreign_enum_constant(map(sym_name, string)::in,
-    mlds_type::in, constructor_repn::in,
-    list(mlds_exported_enum_constant)::in,
-    list(mlds_exported_enum_constant)::out) is det.
+    mlds_type::in, constructor_repn::in, mlds_exported_enum_constant::out)
+    is det.
 
 generate_foreign_enum_constant(Mapping, MLDS_Type, CtorRepn,
-        !ExportConstants) :-
+        ExportConstant) :-
     CtorRepn = ctor_repn(_, QualSymName, ConsTag, _, Arity, _),
     expect(unify(Arity, 0), $pred, "enum constant arity != 0"),
     enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval),
@@ -1073,8 +1072,7 @@ generate_foreign_enum_constant(Mapping, MLDS_Type, CtorRepn,
     UnqualSymName = unqualified(Name),
     map.lookup(Mapping, UnqualSymName, ForeignName),
     ExportConstant = mlds_exported_enum_constant(ForeignName,
-        init_obj(ConstRval)),
-    !:ExportConstants = [ExportConstant | !.ExportConstants].
+        init_obj(ConstRval)).
 
 :- pred enum_cons_tag_to_ml_const_rval(mlds_type::in, cons_tag::in,
     mlds_rval::out) is det.
