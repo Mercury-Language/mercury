@@ -66,6 +66,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module int64.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -732,42 +733,52 @@ ok_int_const(N, LLDSType) :-
         require_complete_switch [IntLeastType]
         (
             IntLeastType = int_least8,
-            -128 =< N, N < 128
+            -128 =< N, N =< 127
         ;
             IntLeastType = uint_least8,
-            0 =< N, N < 256
+            0 =< N, N =< 255
         ;
             IntLeastType = int_least16,
-            -32768 =< N, N < 32768
+            -32768 =< N, N =< 32767
         ;
             IntLeastType = uint_least16,
-            0 =< N, N < 65536
+            0 =< N, N =< 65535
         ;
-            ( IntLeastType = int_least32
-            ; IntLeastType = uint_least32
+            IntLeastType = int_least32,
+            -2147483648 =< N, N =< 2147483647
+        ;
+            IntLeastType = uint_least32,
+            0 =< N,
+            % The test N =< 4294967295 won't work on 32 bit platforms.
+            ( int.bits_per_int = 32
+            ; int64.from_int(N) =< 4294967295_i64
             )
-            % XXX BUG: The type int may be 64 bit.
         )
     ;
         LLDSType = lt_int(IntType),
         require_complete_switch [IntType]
         (
             IntType = int_type_int8,
-            -128 =< N, N < 128
+            -128 =< N, N =< 127
         ;
             IntType = int_type_uint8,
-            0 =< N, N < 256
+            0 =< N, N =< 255
         ;
             IntType = int_type_int16,
-            -32768 =< N, N < 32768
+            -32768 =< N, N =< 32767
         ;
             IntType = int_type_uint16,
-            0 =< N, N < 65536
+            0 =< N, N =< 65535
         ;
-            ( IntType = int_type_int32
-            ; IntType = int_type_uint32
+            IntType = int_type_int32,
+            -2147483648 =< N, N =< 2147483647
+        ;
+            IntType = int_type_uint32,
+            0 =< N,
+            % The test N =< 4294967295 won't work on 32 bit platforms.
+            ( int.bits_per_int = 32
+            ; int64.from_int(N) =< 4294967295_i64
             )
-            % XXX BUG: The type int may be 64 bit.
         ;
             ( IntType = int_type_int64
             ; IntType = int_type_uint64
