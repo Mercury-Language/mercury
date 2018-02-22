@@ -6,9 +6,9 @@
 % This happened because find_int_lookup_switch_params in switch_util.m
 % said that the inner switch on Thing in classify/2 below needed a bit vector
 % check. It said so because the inner switch does not cover Thing = nothing.
-% However, it does *need* to cover Thing = nothing, because the inner switch
-% is reached only in the arm of the outer switch that is not taken when
-% Thing = nothing.
+% However, it does not *need* to cover Thing = nothing, because the inner
+% switch is reached only in the arm of the outer switch that is not taken
+% when Thing = nothing.
 
 % In general, cannot_fail switches should not need either bit vector
 % or range checks. The compiler abort happensed because the MLDS code generator
