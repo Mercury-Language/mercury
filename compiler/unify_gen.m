@@ -111,10 +111,23 @@
 %---------------------------------------------------------------------------%
 
 :- type uni_val
-    --->    ref(prog_var)
-    ;       lval(lval, arg_width).
-            % The argument may occupy a word, two words, or only part of a
-            % word.
+    --->    uv_var(prog_var)
+    ;       uv_field(uni_field).
+
+:- type uni_field
+    --->    uni_field(tag, rval, int, arg_width).
+            % The first three arguments (Ptag, BaseRval and Offset) represent
+            % the lval of the field, which is
+            % field(yes(Ptag), BaseRval, const(llconst_int(Offset))).
+            % The last argument represents the size of the argument in the
+            % field, which may be a word, two words, or only part of a word.
+
+:- type field_and_arg_var
+    --->    field_and_arg_var(
+                uni_val,            % The field (or var).
+                prog_var,           % The arg_var.
+                mer_type            % Their shared type.
+            ).
 
 :- type field_addr
     --->    field_addr(
@@ -512,21 +525,9 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_construction(LHSVar, ConsId, RHSVars, ArgModes, ArgWidths,
-        HowToConstruct, TakeAddr, MaybeSize, GoalInfo, Code, !CI, !CLD) :-
-    get_module_info(!.CI, ModuleInfo),
-    Tag = cons_id_to_tag(ModuleInfo, ConsId),
-    generate_construction_2(Tag, LHSVar, RHSVars, ArgModes, ArgWidths,
-        HowToConstruct, TakeAddr, MaybeSize, GoalInfo, Code, !CI, !CLD).
-
-:- pred generate_construction_2(cons_tag::in, prog_var::in,
-    list(prog_var)::in, list(unify_mode)::in, list(arg_width)::in,
-    how_to_construct::in,
-    list(int)::in, maybe(term_size_value)::in, hlds_goal_info::in,
-    llds_code::out,
-    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
-
-generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         HowToConstruct0, TakeAddr, MaybeSize, GoalInfo, Code, !CI, !CLD) :-
+    get_module_info(!.CI, ModuleInfo),
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     (
         ConsTag = string_tag(String),
         assign_const_to_var(LHSVar, const(llconst_string(String)), !.CI, !CLD),
@@ -556,8 +557,9 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
             (
                 TakeAddr = [],
                 Type = variable_type(!.CI, RHSVar),
-                generate_sub_unify(ref(LHSVar), ref(RHSVar), ArgMode, Type,
-                    Code, !.CI, !CLD)
+                FieldAndArgVar =
+                    field_and_arg_var(uv_var(LHSVar), RHSVar, Type),
+                generate_sub_unify(FieldAndArgVar, ArgMode, Code, !.CI, !CLD)
             ;
                 TakeAddr = [_ | _],
                 unexpected($pred, "notag: take_addr")
@@ -572,12 +574,25 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
             Ptag = 0
         ;
             ConsTag = unshared_tag(Ptag)
+        ;
+            ConsTag = shared_remote_tag(Ptag, _Sectag)
         ),
-        var_types(!.CI, RHSVars, ArgTypes),
-        generate_cons_args(RHSVars, ArgTypes, ArgModes, ArgWidths, TakeAddr,
+        get_proc_info(!.CI, ProcInfo),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        generate_cons_args(VarTypes, RHSVars, ArgModes, ArgWidths, TakeAddr,
             !.CI, CellArgs0, MayUseAtomic),
-        pack_cell_rvals(ArgWidths, CellArgs0, CellArgs, PackCode, !.CI, !CLD),
+        pack_cell_rvals(ArgWidths, CellArgs0, CellArgs1, PackCode, !.CI, !CLD),
         pack_how_to_construct(ArgWidths, HowToConstruct0, HowToConstruct),
+        (
+            ( ConsTag = single_functor_tag
+            ; ConsTag = unshared_tag(_Ptag)
+            ),
+            CellArgs = CellArgs1
+        ;
+            ConsTag = shared_remote_tag(_Ptag, Sectag),
+            TagArg = cell_arg_full_word(const(llconst_int(Sectag)), complete),
+            CellArgs = [TagArg | CellArgs1]
+        ),
         Context = goal_info_get_context(GoalInfo),
         construct_cell(LHSVar, Ptag, CellArgs, HowToConstruct, MaybeSize,
             Context, MayUseAtomic, ConstructCode, !CI, !CLD),
@@ -600,19 +615,6 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         else
             unexpected($pred, "direct_arg_tag: arity != 1")
         )
-    ;
-        ConsTag = shared_remote_tag(Ptag, Sectag),
-        var_types(!.CI, RHSVars, ArgTypes),
-        generate_cons_args(RHSVars, ArgTypes, ArgModes, ArgWidths, TakeAddr,
-            !.CI, CellArgs0, MayUseAtomic),
-        pack_cell_rvals(ArgWidths, CellArgs0, CellArgs1, PackCode, !.CI, !CLD),
-        pack_how_to_construct(ArgWidths, HowToConstruct0, HowToConstruct),
-        CellArgs = [cell_arg_full_word(const(llconst_int(Sectag)), complete)
-            | CellArgs1],
-        Context = goal_info_get_context(GoalInfo),
-        construct_cell(LHSVar, Ptag, CellArgs, HowToConstruct, MaybeSize,
-            Context, MayUseAtomic, ConstructCode, !CI, !CLD),
-        Code = PackCode ++ ConstructCode
     ;
         ConsTag = shared_local_tag(Ptag, Sectag),
         assign_const_to_var(LHSVar,
@@ -651,7 +653,6 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         ConsTag = tabling_info_tag(PredId, ProcId),
         expect(unify(RHSVars, []), $pred,
             "tabling_info constant has args"),
-        get_module_info(!.CI, ModuleInfo),
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
         DataId = proc_tabling_data_id(ProcLabel, tabling_info),
         assign_const_to_var(LHSVar, const(llconst_data_addr(DataId, no)),
@@ -661,7 +662,6 @@ generate_construction_2(ConsTag, LHSVar, RHSVars, ArgModes, ArgWidths,
         ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
         expect(unify(RHSVars, []), $pred,
             "deep_profiling_proc_static has args"),
-        get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         Origin = RttiProcLabel ^ rpl_pred_info_origin,
         ( if Origin = origin_special_pred(_, _) then
@@ -991,16 +991,16 @@ generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
         ArgsF = [CellArg | ArgsF0]
     ).
 
-:- pred generate_cons_args(list(prog_var)::in, list(mer_type)::in,
+:- pred generate_cons_args(vartypes::in, list(prog_var)::in,
     list(unify_mode)::in, list(arg_width)::in, list(int)::in,
     code_info::in, list(cell_arg)::out, may_use_atomic_alloc::out) is det.
 
-generate_cons_args(Vars, Types, Modes, Widths, TakeAddr, CI, !:Args,
+generate_cons_args(VarTypes, Vars, Modes, Widths, TakeAddr, CI, !:Args,
         !:MayUseAtomic) :-
     get_may_use_atomic_alloc(CI, !:MayUseAtomic),
     ( if
         FirstArgNum = 1,
-        generate_cons_args_loop(Vars, Types, Modes, Widths, FirstArgNum,
+        generate_cons_args_loop(VarTypes, Vars, Modes, Widths, FirstArgNum,
             TakeAddr, CI, !:Args, !MayUseAtomic)
     then
         true
@@ -1013,27 +1013,28 @@ generate_cons_args(Vars, Types, Modes, Widths, TakeAddr, CI, !:Args,
     % unification, we produce `yes(var(Var))', but if the argument is free,
     % we just produce `no', meaning don't generate an assignment to that field.
     %
-:- pred generate_cons_args_loop(list(prog_var)::in, list(mer_type)::in,
+:- pred generate_cons_args_loop(vartypes::in, list(prog_var)::in,
     list(unify_mode)::in, list(arg_width)::in, int::in, list(int)::in,
     code_info::in, list(cell_arg)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
 
-generate_cons_args_loop([], [], [], [], _CurArgNum, _TakeAddr, _CI, [],
+generate_cons_args_loop(_, [], [], [], _CurArgNum, _TakeAddr, _CI, [],
         !MayUseAtomic).
-generate_cons_args_loop([Var | Vars], [Type | Types], [ArgMode | ArgModes],
+generate_cons_args_loop(VarTypes, [Var | Vars], [ArgMode | ArgModes],
         [Width | Widths], CurArgNum, !.TakeAddr, CI, [CellArg | CellArgs],
         !MayUseAtomic) :-
-    generate_cons_arg(Var, Type, ArgMode, Width, CurArgNum,
+    generate_cons_arg(VarTypes, Var, ArgMode, Width, CurArgNum,
         !.TakeAddr, CI, CellArg, !MayUseAtomic),
-    generate_cons_args_loop(Vars, Types, ArgModes, Widths, CurArgNum + 1,
+    generate_cons_args_loop(VarTypes, Vars, ArgModes, Widths, CurArgNum + 1,
         !.TakeAddr, CI, CellArgs, !MayUseAtomic).
 
-:- pred generate_cons_arg(prog_var::in, mer_type::in, unify_mode::in,
+:- pred generate_cons_arg(vartypes::in, prog_var::in, unify_mode::in,
     arg_width::in, int::in, list(int)::in, code_info::in, cell_arg::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
-generate_cons_arg(Var, Type, ArgMode, Width, CurArgNum,
+generate_cons_arg(VarTypes, Var, ArgMode, Width, CurArgNum,
         !.TakeAddr, CI, CellArg, !MayUseAtomic) :-
+    lookup_var_type(VarTypes, Var, Type),
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
     ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
@@ -1212,25 +1213,20 @@ generate_field_take_address_assigns([FieldAddr | FieldAddrs],
 
 %---------------------------------------------------------------------------%
 
-:- pred var_types(code_info::in, list(prog_var)::in, list(mer_type)::out)
-    is det.
-
-var_types(CI, Vars, Types) :-
-    get_proc_info(CI, ProcInfo),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    lookup_var_types(VarTypes, Vars, Types).
-
-%---------------------------------------------------------------------------%
-
     % Construct a pair of lists that associates the fields of a term
     % with variables.
     %
-:- pred make_fields_and_argvars(list(prog_var)::in, list(arg_width)::in,
-    rval::in, int::in, int::in, list(uni_val)::out, list(uni_val)::out) is det.
+:- pred make_fields_and_arg_vars(vartypes::in,
+    list(prog_var)::in, list(arg_width)::in, rval::in, int::in, int::in,
+    list(field_and_arg_var)::out) is det.
 
-make_fields_and_argvars([], [], _, _, _, [], []).
-make_fields_and_argvars([Var | Vars], [Width | Widths], Rval, PrevOffset0,
-        TagNum, [F | Fs], [A | As]) :-
+make_fields_and_arg_vars(_, [], [], _, _, _, []).
+make_fields_and_arg_vars(_, [], [_ | _], _, _, _, _) :-
+    unexpected($pred, "mismatched lists").
+make_fields_and_arg_vars(_, [_ | _], [], _, _, _, _) :-
+    unexpected($pred, "mismatched lists").
+make_fields_and_arg_vars(VarTypes, [Var | Vars], [Width | Widths],
+        Rval, PrevOffset0, Ptag, [FieldAndArgVar | FieldsAndArgVars]) :-
     (
         ( Width = full_word
         ; Width = partial_word_first(_Mask)
@@ -1246,13 +1242,11 @@ make_fields_and_argvars([Var | Vars], [Width | Widths], Rval, PrevOffset0,
         Offset = PrevOffset0 + 1,
         PrevOffset = Offset + 1
     ),
-    F = lval(field(yes(TagNum), Rval, const(llconst_int(Offset))), Width),
-    A = ref(Var),
-    make_fields_and_argvars(Vars, Widths, Rval, PrevOffset, TagNum, Fs, As).
-make_fields_and_argvars([], [_ | _], _, _, _, _, _) :-
-    unexpected($pred, "mismatched lists").
-make_fields_and_argvars([_ | _], [], _, _, _, _, _) :-
-    unexpected($pred, "mismatched lists").
+    Field = uv_field(uni_field(Ptag, Rval, Offset, Width)),
+    lookup_var_type(VarTypes, Var, Type),
+    FieldAndArgVar = field_and_arg_var(Field, Var, Type),
+    make_fields_and_arg_vars(VarTypes, Vars, Widths,
+        Rval, PrevOffset, Ptag, FieldsAndArgVars).
 
 %---------------------------------------------------------------------------%
 
@@ -1268,56 +1262,45 @@ make_fields_and_argvars([_ | _], [], _, _, _, _, _) :-
     list(prog_var)::in, list(unify_mode)::in, list(arg_width)::in,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_det_deconstruction(Var, Cons, Args, Modes, ArgWidths, Code,
+generate_det_deconstruction(Var, ConsId, Args, Modes, ArgWidths, Code,
         CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
-    Tag = cons_id_to_tag(ModuleInfo, Cons),
-    generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
-        Code, CI, !CLD).
-
-:- pred generate_det_deconstruction_2(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(unify_mode)::in, list(arg_width)::in,
-    cons_tag::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
-
-generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag, Code,
-        CI, !CLD) :-
-    % For constants, if the deconstruction is det, then we already know
-    % the value of the constant, so Code = empty.
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     (
-        ( Tag = string_tag(_String)
-        ; Tag = int_tag(_)
-        ; Tag = foreign_tag(_, _)
-        ; Tag = float_tag(_Float)
-        ; Tag = closure_tag(_, _, _)
-        ; Tag = type_ctor_info_tag(_, _, _)
-        ; Tag = base_typeclass_info_tag(_, _, _)
-        ; Tag = tabling_info_tag(_, _)
-        ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = shared_local_tag(_Ptag, _Sectag2)
+        ( ConsTag = string_tag(_String)
+        ; ConsTag = int_tag(_)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = float_tag(_Float)
+        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = shared_local_tag(_Ptag, _Sectag2)
         ),
+        % For constants, if the deconstruction is det, then we already know
+        % the value of the constant.
         Code = empty
     ;
-        Tag = type_info_const_tag(_),
+        ConsTag = type_info_const_tag(_),
         unexpected($pred, "type_info_const_tag")
     ;
-        Tag = typeclass_info_const_tag(_),
+        ConsTag = typeclass_info_const_tag(_),
         unexpected($pred, "typeclass_info_const_tag")
     ;
-        Tag = ground_term_const_tag(_, _),
+        ConsTag = ground_term_const_tag(_, _),
         unexpected($pred, "ground_term_const_tag")
     ;
-        Tag = table_io_entry_tag(_, _),
+        ConsTag = table_io_entry_tag(_, _),
         unexpected($pred, "table_io_entry_tag")
     ;
-        Tag = no_tag,
+        ConsTag = no_tag,
         ( if
             Args = [Arg],
             Modes = [Mode],
             ArgWidths = [_ArgWidth]
         then
             VarType = variable_type(CI, Var),
-            get_module_info(CI, ModuleInfo),
             IsDummy = check_dummy_type(ModuleInfo, VarType),
             (
                 IsDummy = is_dummy_type,
@@ -1337,26 +1320,33 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag, Code,
             ;
                 IsDummy = is_not_dummy_type,
                 ArgType = variable_type(CI, Arg),
-                generate_sub_unify(ref(Var), ref(Arg), Mode, ArgType,
-                    Code, CI, !CLD)
+                FieldAndArgVar = field_and_arg_var(uv_var(Var), Arg, ArgType),
+                generate_sub_unify(FieldAndArgVar, Mode, Code, CI, !CLD)
             )
         else
             unexpected($pred, "no_tag: arity != 1")
         )
     ;
-        Tag = single_functor_tag,
-        % Treat single_functor the same as unshared_tag(0).
-        generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths,
-            unshared_tag(0), Code, CI, !CLD)
-    ;
-        Tag = unshared_tag(Ptag),
+        (
+            ConsTag = single_functor_tag,
+            % Treat single_functor the same as unshared_tag(0).
+            Ptag = 0,
+            PrevOffset = -1     % There is no secondary tag.
+        ;
+            ConsTag = unshared_tag(Ptag),
+            PrevOffset = -1     % There is no secondary tag.
+        ;
+            ConsTag = shared_remote_tag(Ptag, _Sectag1),
+            PrevOffset = 0      % There is a secondary tag.
+        ),
         Rval = var(Var),
-        make_fields_and_argvars(Args, ArgWidths, Rval, -1, Ptag,
-            Fields, ArgVars),
-        var_types(CI, Args, ArgTypes),
-        generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, CI, !CLD)
+        get_proc_info(CI, ProcInfo),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        make_fields_and_arg_vars(VarTypes, Args, ArgWidths,
+            Rval, PrevOffset, Ptag, FieldsAndArgVars),
+        generate_unify_args(FieldsAndArgVars, Modes, Code, CI, !CLD)
     ;
-        Tag = direct_arg_tag(Ptag),
+        ConsTag = direct_arg_tag(Ptag),
         ( if
             Args = [Arg],
             Modes = [Mode],
@@ -1368,13 +1358,6 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag, Code,
         else
             unexpected($pred, "direct_arg_tag: arity != 1")
         )
-    ;
-        Tag = shared_remote_tag(Ptag, _Sectag1),
-        Rval = var(Var),
-        make_fields_and_argvars(Args, ArgWidths, Rval, 0, Ptag,
-            Fields, ArgVars),
-        var_types(CI, Args, ArgTypes),
-        generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, CI, !CLD)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1407,37 +1390,27 @@ generate_semi_deconstruction(Var, Tag, Args, Modes, ArgWidths, Code,
     % Generate code to perform a list of deterministic subunifications
     % for the arguments of a construction.
     %
-:- pred generate_unify_args(list(uni_val)::in, list(uni_val)::in,
-    list(unify_mode)::in, list(mer_type)::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred generate_unify_args(list(field_and_arg_var)::in, list(unify_mode)::in,
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_unify_args(Ls, Rs, Ms, Ts, Code, CI, !CLD) :-
-    ( if generate_unify_args_loop(Ls, Rs, Ms, Ts, Code0, CI, !CLD) then
-        Code = Code0
-    else
-        unexpected($pred, "length mismatch")
-    ).
-
-:- pred generate_unify_args_loop(list(uni_val)::in, list(uni_val)::in,
-    list(unify_mode)::in, list(mer_type)::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is semidet.
-
-generate_unify_args_loop([], [], [], [], empty, _CI, !CLD).
-generate_unify_args_loop([L | Ls], [R | Rs], [M | Ms], [T | Ts], Code,
-        CI, !CLD) :-
-    generate_sub_unify(L, R, M, T, CodeA, CI, !CLD),
-    generate_unify_args_loop(Ls, Rs, Ms, Ts, CodeB, CI, !CLD),
+generate_unify_args([], [], empty, _CI, !CLD).
+generate_unify_args([], [_ | _], _, _, !CLD) :-
+    unexpected($pred, "length mismatch").
+generate_unify_args([_ | _], [], _, _, !CLD) :-
+    unexpected($pred, "length mismatch").
+generate_unify_args([FieldAndArgVar | FieldsAndArgVars], [Mode | Modes],
+        Code, CI, !CLD) :-
+    generate_sub_unify(FieldAndArgVar, Mode, CodeA, CI, !CLD),
+    generate_unify_args(FieldsAndArgVars, Modes, CodeB, CI, !CLD),
     Code = CodeA ++ CodeB.
-
-%---------------------------------------------------------------------------%
 
     % Generate a subunification between two [field | variable].
     %
-:- pred generate_sub_unify(uni_val::in, uni_val::in, unify_mode::in,
-    mer_type::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred generate_sub_unify(field_and_arg_var::in, unify_mode::in,
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_sub_unify(L, R, ArgMode, Type, Code, CI, !CLD) :-
+generate_sub_unify(FieldAndArgVar, ArgMode, Code, CI, !CLD) :-
+    FieldAndArgVar = field_and_arg_var(LeftUniVal, RightVar, Type),
     get_module_info(CI, ModuleInfo),
     ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
     from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, Type,
@@ -1449,7 +1422,19 @@ generate_sub_unify(L, R, ArgMode, Type, Code, CI, !CLD) :-
         (
             RightTopFunctorMode = top_out,
             % Input - Output== assignment ->
-            generate_sub_assign(R, L, Code, CI, !CLD)
+            ( if variable_is_forward_live(!.CLD, RightVar) then
+                (
+                    LeftUniVal = uv_var(LeftVar),
+                    generate_sub_assign_to_var_from_var(RightVar, LeftVar,
+                        Code, CI, !CLD)
+                ;
+                    LeftUniVal = uv_field(LeftField),
+                    generate_sub_assign_to_var_from_field(RightVar, LeftField,
+                        Code, CI, !CLD)
+                )
+            else
+                Code = empty
+            )
         ;
             ( RightTopFunctorMode = top_in
             ; RightTopFunctorMode = top_unused
@@ -1461,7 +1446,20 @@ generate_sub_unify(L, R, ArgMode, Type, Code, CI, !CLD) :-
         (
             RightTopFunctorMode = top_in,
             % Output - Input== assignment <-
-            generate_sub_assign(L, R, Code, CI, !CLD)
+            (
+                LeftUniVal = uv_var(LeftVar),
+                ( if variable_is_forward_live(!.CLD, LeftVar) then
+                    generate_sub_assign_to_var_from_var(LeftVar, RightVar,
+                        Code, CI, !CLD)
+                else
+                    Code = empty
+                )
+            ;
+                LeftUniVal = uv_field(LeftField),
+                % Fields are always considered forward live.
+                generate_sub_assign_to_field_from_var(LeftField, RightVar,
+                    Code, CI, !CLD)
+            )
         ;
             ( RightTopFunctorMode = top_out
             ; RightTopFunctorMode = top_unused
@@ -1483,103 +1481,99 @@ generate_sub_unify(L, R, ArgMode, Type, Code, CI, !CLD) :-
         )
     ).
 
-:- pred generate_sub_assign(uni_val::in, uni_val::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred generate_sub_assign_to_var_from_var(prog_var::in, prog_var::in,
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_sub_assign(Left, Right, Code, CI, !CLD) :-
+generate_sub_assign_to_var_from_var(LeftVar, RightVar, Code, _CI, !CLD) :-
+    % Cache the assignment.
+    assign_var_to_var(LeftVar, RightVar, !CLD),
+    Code = empty.
+
+:- pred generate_sub_assign_to_var_from_field(prog_var::in, uni_field::in,
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+
+generate_sub_assign_to_var_from_field(LeftVar, RightField, Code, CI, !CLD) :-
+    RightField = uni_field(RightPtag, RightBaseRval, RightOffset, RightWidth),
     (
-        Left = lval(_Lval, _),
-        Right = lval(_Rval, _),
-        % Assignment between two lvalues - cannot happen.
-        unexpected($pred, "lval/lval")
+        RightWidth = full_word,
+        RightLval = field(yes(RightPtag), RightBaseRval,
+            const(llconst_int(RightOffset))),
+        assign_lval_to_var(LeftVar, RightLval, Code, CI, !CLD)
     ;
-        Left = lval(Lval0, LeftWidth),
-        Right = ref(Var),
-        % Assignment from a variable to an lvalue - cannot cache
-        % so generate immediately.
-        produce_variable(Var, SourceCode, Source, CI, !CLD),
-        materialize_vars_in_lval(Lval0, Lval, MaterializeCode, CI, !CLD),
         (
-            LeftWidth = full_word,
-            AssignCode = singleton(llds_instr(assign(Lval, Source),
-                "Copy value"))
+            RightWidth = partial_word_first(Mask),
+            RightLval = field(yes(RightPtag), RightBaseRval,
+                const(llconst_int(RightOffset))),
+            RightRval0 = lval(RightLval)
         ;
-            (
-                LeftWidth = partial_word_first(Mask),
-                Shift = 0
-            ;
-                LeftWidth = partial_word_shifted(Shift, Mask)
-            ),
-            ComplementMask = const(llconst_int(\(Mask << Shift))),
-            MaskOld = binop(bitwise_and(int_type_int), lval(Lval),
-                ComplementMask),
-            ShiftNew = maybe_left_shift_rval(Source, Shift),
-            Combined = binop(bitwise_or(int_type_int), MaskOld, ShiftNew),
-            AssignCode = singleton(llds_instr(assign(Lval, Combined),
-                "Update part of word"))
-        ;
-            LeftWidth = double_word,
-            ( if field_offset_pair(Lval, LvalA, LvalB) then
-                SrcA = binop(float_word_bits, Source, const(llconst_int(0))),
-                SrcB = binop(float_word_bits, Source, const(llconst_int(1))),
-                Comment = "Update double word",
-                AssignCode = from_list([
-                    llds_instr(assign(LvalA, SrcA), Comment),
-                    llds_instr(assign(LvalB, SrcB), Comment)
-                ])
-            else
-                sorry($pred, "double_word: non-field lval")
-            )
+            RightWidth = partial_word_shifted(Shift, Mask),
+            RightLval = field(yes(RightPtag), RightBaseRval,
+                const(llconst_int(RightOffset))),
+            RightRval0 = right_shift_rval(lval(RightLval), Shift)
         ),
-        Code = SourceCode ++ MaterializeCode ++ AssignCode
+        RightRval = binop(bitwise_and(int_type_int), RightRval0,
+            const(llconst_int(Mask))),
+        assign_field_lval_expr_to_var(LeftVar, [RightLval], RightRval,
+            Code, !CLD)
     ;
-        Left = ref(Lvar),
-        ( if variable_is_forward_live(!.CLD, Lvar) then
-            (
-                Right = lval(Lval, RightWidth),
-                % Assignment of a value to a variable, generate now.
-                (
-                    RightWidth = full_word,
-                    assign_lval_to_var(Lvar, Lval, Code, CI, !CLD)
-                ;
-                    (
-                        RightWidth = partial_word_first(Mask),
-                        Rval0 = lval(Lval)
-                    ;
-                        RightWidth = partial_word_shifted(Shift, Mask),
-                        Rval0 = right_shift_rval(lval(Lval), Shift)
-                    ),
-                    Rval = binop(bitwise_and(int_type_int), Rval0,
-                        const(llconst_int(Mask))),
-                    assign_field_lval_expr_to_var(Lvar, [Lval], Rval, Code,
-                        !CLD)
-                ;
-                    RightWidth = double_word,
-                    ( if field_offset_pair(Lval, LvalA, LvalB) then
-                        Rval = binop(float_from_dword,
-                            lval(LvalA), lval(LvalB)),
-                        assign_field_lval_expr_to_var(Lvar, [LvalA, LvalB],
-                            Rval, Code, !CLD)
-                    else
-                        sorry($pred, "double_word: non-field lval")
-                    )
-                )
-            ;
-                Right = ref(Rvar),
-                % Assignment of a variable to a variable, so cache it.
-                assign_var_to_var(Lvar, Rvar, !CLD),
-                Code = empty
-            )
-        else
-            Code = empty
-        )
+        RightWidth = double_word,
+        RightLvalA = field(yes(RightPtag), RightBaseRval,
+            const(llconst_int(RightOffset))),
+        RightLvalB = field(yes(RightPtag), RightBaseRval,
+            const(llconst_int(RightOffset + 1))),
+        RightRval = binop(float_from_dword,
+            lval(RightLvalA), lval(RightLvalB)),
+        assign_field_lval_expr_to_var(LeftVar, [RightLvalA, RightLvalB],
+            RightRval, Code, !CLD)
     ).
 
-:- pred field_offset_pair(lval::in, lval::out, lval::out) is semidet.
+:- pred generate_sub_assign_to_field_from_var(uni_field::in, prog_var::in,
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-field_offset_pair(LvalA, LvalA, LvalB) :-
-    LvalA = field(Ptag, Address, const(llconst_int(Offset))),
-    LvalB = field(Ptag, Address, const(llconst_int(Offset + 1))).
+generate_sub_assign_to_field_from_var(LeftField, RightVar, Code, CI, !CLD) :-
+    LeftField = uni_field(LeftPtag, LeftBaseRval0, LeftOffset, LeftWidth),
+    % Assignment from a variable to an lvalue - cannot cache
+    % so generate immediately.
+    produce_variable(RightVar, ProduceRightVarCode, RightRval, CI, !CLD),
+    materialize_vars_in_rval(LeftBaseRval0, LeftBaseRval,
+        MaterializeLeftBaseCode, CI, !CLD),
+    (
+        LeftWidth = full_word,
+        LeftLval = field(yes(LeftPtag), LeftBaseRval,
+            const(llconst_int(LeftOffset))),
+        AssignCode = singleton(llds_instr(assign(LeftLval, RightRval),
+            "Copy value"))
+    ;
+        (
+            LeftWidth = partial_word_first(Mask),
+            Shift = 0
+        ;
+            LeftWidth = partial_word_shifted(Shift, Mask)
+        ),
+        LeftLval = field(yes(LeftPtag), LeftBaseRval,
+            const(llconst_int(LeftOffset))),
+        ComplementMask = const(llconst_int(\(Mask << Shift))),
+        MaskOld = binop(bitwise_and(int_type_int),
+            lval(LeftLval), ComplementMask),
+        ShiftNew = maybe_left_shift_rval(RightRval, Shift),
+        Combined = binop(bitwise_or(int_type_int), MaskOld, ShiftNew),
+        AssignCode = singleton(llds_instr(assign(LeftLval, Combined),
+            "Update part of word"))
+    ;
+        LeftWidth = double_word,
+        LeftLvalA = field(yes(LeftPtag), LeftBaseRval,
+            const(llconst_int(LeftOffset))),
+        LeftLvalB = field(yes(LeftPtag), LeftBaseRval,
+            const(llconst_int(LeftOffset + 1))),
+        SrcA = binop(float_word_bits, RightRval, const(llconst_int(0))),
+        SrcB = binop(float_word_bits, RightRval, const(llconst_int(1))),
+        Comment = "Update double word",
+        AssignCode = from_list([
+            llds_instr(assign(LeftLvalA, SrcA), Comment),
+            llds_instr(assign(LeftLvalB, SrcB), Comment)
+        ])
+    ),
+    Code = ProduceRightVarCode ++ MaterializeLeftBaseCode ++ AssignCode.
 
 %---------------------------------------------------------------------------%
 

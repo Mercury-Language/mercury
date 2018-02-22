@@ -2905,6 +2905,9 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI, !CLD) :-
 :- pred materialize_vars_in_lval(lval::in, lval::out,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
+:- pred materialize_vars_in_rval(rval::in, rval::out,
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+
 :- pred acquire_reg_for_var(prog_var::in, reg_type::in, lval::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
@@ -3154,6 +3157,13 @@ materialize_vars_in_lval(Lval0, Lval, Code, CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
     get_var_locn_info(!.CLD, VarLocnInfo0),
     var_locn_materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code,
+        VarLocnInfo0, VarLocnInfo),
+    set_var_locn_info(VarLocnInfo, !CLD).
+
+materialize_vars_in_rval(Rval0, Rval, Code, CI, !CLD) :-
+    get_module_info(CI, ModuleInfo),
+    get_var_locn_info(!.CLD, VarLocnInfo0),
+    var_locn_materialize_vars_in_rval(ModuleInfo, Rval0, Rval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 

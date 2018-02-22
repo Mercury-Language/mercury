@@ -354,6 +354,11 @@
 :- pred var_locn_materialize_vars_in_lval(module_info::in, lval::in, lval::out,
     llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
+    % The equivalent of var_locn_materialize_vars_in_lval for rvals.
+    %
+:- pred var_locn_materialize_vars_in_rval(module_info::in, rval::in, rval::out,
+    llds_code::out, var_locn_info::in, var_locn_info::out) is det.
+
     % var_locn_get_var_locations(VarLocnInfo, Locations):
     %
     % Returns a map from each live variable that occurs in VarLocnInfo
@@ -2363,8 +2368,12 @@ expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval) :-
 %----------------------------------------------------------------------------%
 
 var_locn_materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code, !VLI) :-
-    var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, [], Lval, Code,
-        !VLI).
+    var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, [], Lval,
+        Code, !VLI).
+
+var_locn_materialize_vars_in_rval(ModuleInfo, Rval0, Rval, Code, !VLI) :-
+    var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, [], Rval,
+        Code, !VLI).
 
 :- pred var_locn_materialize_vars_in_lval_avoid(module_info::in, lval::in,
     list(lval)::in, lval::out, llds_code::out,
