@@ -1,0 +1,20 @@
+thing1 cat1 -> cat1
+thing1 cat2 -> cat1
+thing1 nocat -> cat1
+
+thing2 cat1 -> cat1
+thing2 cat2 -> cat1
+thing2 nocat -> cat1
+
+nothing cat1 -> cat1
+nothing cat2 -> cat2
+nothing nocat -> nocat
+
+thing3 cat1 -> cat2
+thing3 cat2 -> cat2
+thing3 nocat -> cat2
+
+thing4 cat1 -> cat2
+thing4 cat2 -> cat2
+thing4 nocat -> cat2
+

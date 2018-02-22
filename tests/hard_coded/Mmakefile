@@ -31,6 +31,7 @@ ORDINARY_PROGS =	\
 	bug300 \
 	bug383 \
 	bug392 \
+	bug452 \
 	bug_pack_bits \
 	c89_neg_int \
 	c_write_string \

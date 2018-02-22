@@ -757,13 +757,6 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
     Density = switch_density(NumValues, Range),
     Density > ReqDensity,
 
-    % If there are going to be no gaps in the lookup table then we won't need
-    % a bitvector test to see if this switch has a value for this case.
-    ( if NumValues = Range then
-        NeedBitVecCheck0 = dont_need_bit_vec_check
-    else
-        NeedBitVecCheck0 = need_bit_vec_check
-    ),
     (
         SwitchCanFail = can_fail,
         % For can_fail switches, we normally need to check that the variable
@@ -772,6 +765,14 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
         % large enough to hold all of the values for the type, but then we
         % will need to do the bitvector test.
         classify_type(ModuleInfo, SwitchVarType) = TypeCategory,
+        % If there are going to be no gaps in the lookup table, then we
+        % won't need a bitvector test to see if this switch has a value
+        % for this case.
+        ( if NumValues = Range then
+            NeedBitVecCheck0 = dont_need_bit_vec_check
+        else
+            NeedBitVecCheck0 = need_bit_vec_check
+        ),
         ( if
             type_range(ModuleInfo, TypeCategory, SwitchVarType, _, _,
                 TypeRange),
@@ -790,8 +791,11 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
         )
     ;
         SwitchCanFail = cannot_fail,
+        % Even if NumValues \= Range, the cannot_fail guarantees that
+        % the values that are in range but are not covered by any of the cases
+        % won't actually be reached.
         NeedRangeCheck = dont_need_range_check,
-        NeedBitVecCheck = NeedBitVecCheck0,
+        NeedBitVecCheck = dont_need_bit_vec_check,
         FirstVal = LowerLimit,
         LastVal = UpperLimit
     ).
