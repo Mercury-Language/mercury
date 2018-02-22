@@ -158,131 +158,15 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
             ( SwitchCategory = atomic_switch
             ; SwitchCategory = int64_switch
             ),
-            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            ( if
-                MaybeIntSwitchInfo =
-                    int_switch(LowerLimit, UpperLimit, NumValues),
-                % Since lookup switches rely on static ground terms to work
-                % efficiently, there is no point in using a lookup switch
-                % if static ground terms are not enabled. Well, actually,
-                % it is possible that they might be a win in some
-                % circumstances, but it would take a pretty complex heuristic
-                % to get it right, so, lets just use a simple one - no static
-                % ground terms, no lookup switch.
-                globals.lookup_bool_option(Globals, static_ground_cells, yes),
-
-                % Lookup switches do not generate trace events.
-                get_maybe_trace_info(!.CI, MaybeTraceInfo),
-                MaybeTraceInfo = no,
-
-                globals.lookup_int_option(Globals, lookup_switch_size,
-                    LookupSize),
-                NumConsIds >= LookupSize,
-                NumArms > 1,
-                globals.lookup_int_option(Globals, lookup_switch_req_density,
-                    ReqDensity),
-                filter_out_failing_cases_if_needed(CodeModel,
-                    TaggedCases, FilteredTaggedCases,
-                    CanFail, FilteredCanFail),
-                find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
-                    FilteredCanFail, LowerLimit, UpperLimit, NumValues,
-                    ReqDensity, NeedBitVecCheck, NeedRangeCheck,
-                    FirstVal, LastVal),
-                remember_position(!.CLD, BranchStart),
-                is_lookup_switch(BranchStart, get_int_tag, FilteredTaggedCases,
-                    GoalInfo, StoreMap, no, MaybeEnd1, LookupSwitchInfo, !CI)
-            then
-                % We update MaybeEnd1 to MaybeEnd to account for the possible
-                % reservation of temp slots for nondet switches.
-                reset_to_position(BranchStart, !.CI, !:CLD),
-                generate_int_lookup_switch(SwitchVarRval, LookupSwitchInfo,
-                    EndLabel, StoreMap, FirstVal, LastVal,
-                    NeedBitVecCheck, NeedRangeCheck,
-                    MaybeEnd1, MaybeEnd, SwitchCode, !CI, !.CLD)
-            else if
-                MaybeIntSwitchInfo =
-                    int_switch(LowerLimit, UpperLimit, NumValues),
-                globals.lookup_int_option(Globals, dense_switch_size,
-                    DenseSize),
-                NumConsIds >= DenseSize,
-                NumArms > 1,
-                globals.lookup_int_option(Globals, dense_switch_req_density,
-                    ReqDensity),
-                tagged_case_list_is_dense_switch(!.CI, SwitchVarType,
-                    TaggedCases, LowerLimit, UpperLimit, NumValues,
-                    ReqDensity, CanFail, DenseSwitchInfo)
-            then
-                generate_dense_switch(TaggedCases, SwitchVarRval,
-                    SwitchVarName, CodeModel, GoalInfo, DenseSwitchInfo,
-                    EndLabel, no, MaybeEnd, SwitchCode, !CI, !.CLD)
-            else
-                order_and_generate_cases(TaggedCases, SwitchVarRval,
-                    SwitchVarType, SwitchVarName, CodeModel, CanFail,
-                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
-            )
+            generate_atomic_or_int64_switch(ModuleInfo, Globals,
+                CodeModel, CanFail, MaybeIntSwitchInfo, SwitchVarName,
+                SwitchVarType, SwitchVarRval, TaggedCases, GoalInfo,
+                EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
         ;
             SwitchCategory = string_switch,
-            filter_out_failing_cases_if_needed(CodeModel,
-                TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
-            num_cons_ids_in_tagged_cases(FilteredTaggedCases,
-                NumConsIds, NumArms),
-            ( if NumArms > 1 then
-                globals.lookup_int_option(Globals, string_hash_switch_size,
-                    StringHashSwitchSize),
-                globals.lookup_int_option(Globals, string_binary_switch_size,
-                    StringBinarySwitchSize),
-                ( if NumConsIds >= StringHashSwitchSize then
-                    ( if
-                        remember_position(!.CLD, BranchStart),
-                        is_lookup_switch(BranchStart, get_string_tag,
-                            FilteredTaggedCases, GoalInfo, StoreMap,
-                            no, MaybeEnd1, LookupSwitchInfo, !CI)
-                    then
-                        % We update MaybeEnd1 to MaybeEnd to account for the
-                        % possible reservation of temp slots for nondet
-                        % switches.
-                        reset_to_position(BranchStart, !.CI, !:CLD),
-                        generate_string_hash_lookup_switch(SwitchVarRval,
-                            LookupSwitchInfo, FilteredCanFail, EndLabel,
-                            StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
-                            !CI, !.CLD)
-                    else
-                        generate_string_hash_switch(TaggedCases, SwitchVarRval,
-                            SwitchVarName, CodeModel, CanFail, GoalInfo,
-                            EndLabel, MaybeEnd, SwitchCode,
-                            !CI, !.CLD)
-                    )
-                else if NumConsIds >= StringBinarySwitchSize then
-                    ( if
-                        remember_position(!.CLD, BranchStart),
-                        is_lookup_switch(BranchStart, get_string_tag,
-                            FilteredTaggedCases, GoalInfo, StoreMap,
-                            no, MaybeEnd1, LookupSwitchInfo, !CI)
-                    then
-                        % We update MaybeEnd1 to MaybeEnd to account for the
-                        % possible reservation of temp slots for nondet
-                        % switches.
-                        reset_to_position(BranchStart, !.CI, !:CLD),
-                        generate_string_binary_lookup_switch(SwitchVarRval,
-                            LookupSwitchInfo, FilteredCanFail, EndLabel,
-                            StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
-                            !CI, !.CLD)
-                    else
-                        generate_string_binary_switch(TaggedCases,
-                            SwitchVarRval, SwitchVarName, CodeModel, CanFail,
-                            GoalInfo, EndLabel, MaybeEnd, SwitchCode,
-                            !CI, !.CLD)
-                    )
-                else
-                    order_and_generate_cases(TaggedCases, SwitchVarRval,
-                        SwitchVarType, SwitchVarName, CodeModel, CanFail,
-                        GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
-                )
-            else
-                order_and_generate_cases(TaggedCases, SwitchVarRval,
-                    SwitchVarType, SwitchVarName, CodeModel, CanFail,
-                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
-            )
+            generate_string_switch(Globals, CodeModel, CanFail,
+                SwitchVarName, SwitchVarType, SwitchVarRval, TaggedCases,
+                GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
         ;
             SwitchCategory = tag_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
@@ -305,6 +189,150 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
     ),
     Code = SwitchVarCode ++ SwitchCode,
     after_all_branches(StoreMap, MaybeEnd, !.CI, !:CLD).
+
+:- pred generate_atomic_or_int64_switch(module_info::in, globals::in,
+    code_model::in, can_fail::in, maybe_int_switch_info::in,
+    string::in, mer_type::in, rval::in, list(tagged_case)::in,
+    hlds_goal_info::in, label::in, branch_end::out, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
+
+generate_atomic_or_int64_switch(ModuleInfo, Globals, CodeModel, CanFail,
+        MaybeIntSwitchInfo, SwitchVarName, SwitchVarType, SwitchVarRval,
+        TaggedCases, GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
+    num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
+    ( if
+        MaybeIntSwitchInfo =
+            int_switch(LowerLimit, UpperLimit, NumValues),
+        % Since lookup switches rely on static ground terms to work
+        % efficiently, there is no point in using a lookup switch
+        % if static ground terms are not enabled. Well, actually,
+        % it is possible that they might be a win in some
+        % circumstances, but it would take a pretty complex heuristic
+        % to get it right, so, lets just use a simple one - no static
+        % ground terms, no lookup switch.
+        globals.lookup_bool_option(Globals, static_ground_cells, yes),
+
+        % Lookup switches do not generate trace events.
+        get_maybe_trace_info(!.CI, MaybeTraceInfo),
+        MaybeTraceInfo = no,
+
+        globals.lookup_int_option(Globals, lookup_switch_size,
+            LookupSize),
+        NumConsIds >= LookupSize,
+        NumArms > 1,
+        globals.lookup_int_option(Globals, lookup_switch_req_density,
+            ReqDensity),
+        filter_out_failing_cases_if_needed(CodeModel,
+            TaggedCases, FilteredTaggedCases,
+            CanFail, FilteredCanFail),
+        find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
+            FilteredCanFail, LowerLimit, UpperLimit, NumValues,
+            ReqDensity, NeedBitVecCheck, NeedRangeCheck,
+            FirstVal, LastVal),
+        remember_position(!.CLD, BranchStart),
+        goal_info_get_store_map(GoalInfo, StoreMap),
+        is_lookup_switch(BranchStart, get_int_tag, FilteredTaggedCases,
+            GoalInfo, StoreMap, no, MaybeEnd1, LookupSwitchInfo, !CI)
+    then
+        % We update MaybeEnd1 to MaybeEnd to account for the possible
+        % reservation of temp slots for nondet switches.
+        reset_to_position(BranchStart, !.CI, !:CLD),
+        generate_int_lookup_switch(SwitchVarRval, LookupSwitchInfo,
+            EndLabel, StoreMap, FirstVal, LastVal,
+            NeedBitVecCheck, NeedRangeCheck,
+            MaybeEnd1, MaybeEnd, SwitchCode, !CI, !.CLD)
+    else if
+        MaybeIntSwitchInfo =
+            int_switch(LowerLimit, UpperLimit, NumValues),
+        globals.lookup_int_option(Globals, dense_switch_size,
+            DenseSize),
+        NumConsIds >= DenseSize,
+        NumArms > 1,
+        globals.lookup_int_option(Globals, dense_switch_req_density,
+            ReqDensity),
+        tagged_case_list_is_dense_switch(!.CI, SwitchVarType,
+            TaggedCases, LowerLimit, UpperLimit, NumValues,
+            ReqDensity, CanFail, DenseSwitchInfo)
+    then
+        generate_dense_switch(TaggedCases, SwitchVarRval,
+            SwitchVarName, CodeModel, GoalInfo, DenseSwitchInfo,
+            EndLabel, no, MaybeEnd, SwitchCode, !CI, !.CLD)
+    else
+        order_and_generate_cases(TaggedCases, SwitchVarRval,
+            SwitchVarType, SwitchVarName, CodeModel, CanFail,
+            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+    ).
+
+:- pred generate_string_switch(globals::in, code_model::in, can_fail::in,
+    string::in, mer_type::in, rval::in, list(tagged_case)::in,
+    hlds_goal_info::in, label::in, branch_end::out, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
+
+generate_string_switch(Globals, CodeModel, CanFail,
+        SwitchVarName, SwitchVarType, SwitchVarRval,
+        TaggedCases, GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
+    goal_info_get_store_map(GoalInfo, StoreMap),
+    filter_out_failing_cases_if_needed(CodeModel,
+        TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
+    num_cons_ids_in_tagged_cases(FilteredTaggedCases,
+        NumConsIds, NumArms),
+    ( if NumArms > 1 then
+        globals.lookup_int_option(Globals, string_hash_switch_size,
+            StringHashSwitchSize),
+        globals.lookup_int_option(Globals, string_binary_switch_size,
+            StringBinarySwitchSize),
+        ( if NumConsIds >= StringHashSwitchSize then
+            ( if
+                remember_position(!.CLD, BranchStart),
+                is_lookup_switch(BranchStart, get_string_tag,
+                    FilteredTaggedCases, GoalInfo, StoreMap,
+                    no, MaybeEnd1, LookupSwitchInfo, !CI)
+            then
+                % We update MaybeEnd1 to MaybeEnd to account for the
+                % possible reservation of temp slots for nondet
+                % switches.
+                reset_to_position(BranchStart, !.CI, !:CLD),
+                generate_string_hash_lookup_switch(SwitchVarRval,
+                    LookupSwitchInfo, FilteredCanFail, EndLabel,
+                    StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
+                    !CI, !.CLD)
+            else
+                generate_string_hash_switch(TaggedCases, SwitchVarRval,
+                    SwitchVarName, CodeModel, CanFail, GoalInfo,
+                    EndLabel, MaybeEnd, SwitchCode,
+                    !CI, !.CLD)
+            )
+        else if NumConsIds >= StringBinarySwitchSize then
+            ( if
+                remember_position(!.CLD, BranchStart),
+                is_lookup_switch(BranchStart, get_string_tag,
+                    FilteredTaggedCases, GoalInfo, StoreMap,
+                    no, MaybeEnd1, LookupSwitchInfo, !CI)
+            then
+                % We update MaybeEnd1 to MaybeEnd to account for the
+                % possible reservation of temp slots for nondet
+                % switches.
+                reset_to_position(BranchStart, !.CI, !:CLD),
+                generate_string_binary_lookup_switch(SwitchVarRval,
+                    LookupSwitchInfo, FilteredCanFail, EndLabel,
+                    StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
+                    !CI, !.CLD)
+            else
+                generate_string_binary_switch(TaggedCases,
+                    SwitchVarRval, SwitchVarName, CodeModel, CanFail,
+                    GoalInfo, EndLabel, MaybeEnd, SwitchCode,
+                    !CI, !.CLD)
+            )
+        else
+            order_and_generate_cases(TaggedCases, SwitchVarRval,
+                SwitchVarType, SwitchVarName, CodeModel, CanFail,
+                GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+        )
+    else
+        order_and_generate_cases(TaggedCases, SwitchVarRval,
+            SwitchVarType, SwitchVarName, CodeModel, CanFail,
+            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
