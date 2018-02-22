@@ -961,7 +961,7 @@ MR_make_argv(const char *string,
             s++;
             // "double quoted" arg - scan until next double quote.
             while (*s != '"') {
-                if (s == '\0') {
+                if (*s == '\0') {
                     *args_ptr = NULL;
                     *argv_ptr = NULL;
                     *argc_ptr = argc;
