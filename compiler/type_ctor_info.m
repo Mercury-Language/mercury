@@ -364,8 +364,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 unexpected($pred, "MaybeRepn = no")
             ;
                 MaybeRepn = yes(Repn),
-                Repn = du_type_repn(_ConsTagMap, CtorRepns, _ConsCtorMap,
-                    _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors)
+                Repn = du_type_repn(CtorRepns, _ConsCtorMap, _CheaperTagTest,
+                    DuTypeKind, _MaybeDirectArgCtors)
             ),
             (
                 MaybeCanonical = noncanon(_),

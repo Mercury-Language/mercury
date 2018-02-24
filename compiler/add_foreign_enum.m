@@ -38,6 +38,8 @@
 
 %---------------------------------------------------------------------------%
 
+:- type cons_id_to_tag_map == map(cons_id, cons_tag).
+
 :- type type_ctor_foreign_enums
     --->    type_ctor_foreign_enums(
                 tcfe_lang_contexts      :: map(foreign_language, prog_context),
@@ -456,8 +458,8 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                 ;
                     MaybeRepn = yes(Repn)
                 ),
-                Repn = du_type_repn(_TagValues, CtorRepns, _ConsCtorMap,
-                    _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors),
+                Repn = du_type_repn(CtorRepns, _ConsCtorMap, _CheaperTagTest,
+                    DuTypeKind, _MaybeDirectArgCtors),
                 list.map(constructor_to_cons_id(TypeCtor),
                     Ctors, ConsIds),
                 find_enum_nonenum_cons_ids(ConsIds,

@@ -357,8 +357,8 @@ write_type_body(Info, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             io.write_string("% no type representation information yet\n", !IO)
         ;
             MaybeRepn = yes(Repn),
-            Repn = du_type_repn(_ConsTagMap, CtorRepns, CtorRepnMap,
-                CheaperTagTest, DuTypeKind, MaybeDirectArgCtors),
+            Repn = du_type_repn(CtorRepns, CtorRepnMap, CheaperTagTest,
+                DuTypeKind, MaybeDirectArgCtors),
             write_constructor_repns(TVarSet, Indent, CtorRepns, !IO),
             (
                 CheaperTagTest = no_cheaper_tag_test

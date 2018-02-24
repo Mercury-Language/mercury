@@ -1353,7 +1353,7 @@ get_cons_repn_defn(ModuleInfo, ConsId, ConsIdConsRepn) :-
     get_type_defn_body(TypeDefn, TypeBody),
     TypeBody = hlds_du_type(_, _, MaybeRepn, _),
     MaybeRepn = yes(Repn),
-    Repn = du_type_repn(_ConsTagMap, _ConsRepns, ConsRepnMap, _, _, _),
+    Repn = du_type_repn(_, ConsRepnMap, _, _, _),
     ConsName = unqualify_name(ConsSymName),
     map.search(ConsRepnMap, ConsName, MatchingConsRepns),
     MatchingConsRepns = one_or_more(HeadConsRepn, TailConsRepns),

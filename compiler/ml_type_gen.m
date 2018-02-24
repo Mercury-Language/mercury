@@ -231,9 +231,8 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !Defns) :-
         ;
             MaybeRepn = yes(Repn)
         ),
-        Repn = du_type_repn(_TagValues, CtorRepns, _ConsCtorMap,
-            _CheaperTagTest, DuTypeKind, _MaybeDirectArgCtors),
-        % XXX We probably shouldn't ignore _ReservedAddr.
+        Repn = du_type_repn(CtorRepns, _ConsCtorMap, _CheaperTagTest,
+            DuTypeKind, _MaybeDirectArgCtors),
         ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
         (
             ( DuTypeKind = du_type_kind_mercury_enum

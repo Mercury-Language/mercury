@@ -436,8 +436,8 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
         Ctors, CtorRepns, map.init, CtorRepnMap),
     MaybeCheaperTagTest = no_cheaper_tag_test,
     MaybeDirectArgFunctors = no,
-    Repn = du_type_repn(ForeignEnumTagMap, CtorRepns, CtorRepnMap,
-        MaybeCheaperTagTest, DuKind, MaybeDirectArgFunctors),
+    Repn = du_type_repn(CtorRepns, CtorRepnMap, MaybeCheaperTagTest,
+        DuKind, MaybeDirectArgFunctors),
     Body = Body0 ^ du_type_repn := yes(Repn),
     set_type_defn_body(Body, TypeDefn0, TypeDefn),
     TypeCtorTypeDefn = TypeCtor - TypeDefn.
@@ -463,7 +463,7 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
         DuTypeKind = du_type_kind_direct_dummy,
         NumBits = 0,
         SingleCtor = ctor(_MaybeExistConstraints,
-            SingleCtorSymName, _Args, SingleCtorArity, SingleCtorContext),
+            SingleCtorSymName, _Args, _SingleCtorArity, SingleCtorContext),
         % XXX TYPE_REPN Should we have a special dummy_tag?
         % If not, we can use the same code as the enum case.
         % If yes, we can delete all the checks in the code generators
@@ -473,16 +473,12 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
         SingleCtorRepn = ctor_repn(no_exist_constraints,
             SingleCtorSymName, SingleCtorTag, [], 0, SingleCtorContext),
         CtorRepns = [SingleCtorRepn],
-        SingleCtorConsId =
-            cons(SingleCtorSymName, SingleCtorArity, TypeCtor),
-        map.det_insert(SingleCtorConsId, SingleCtorTag,
-            map.init, ConsIdToTagMap),
         insert_ctor_repn_into_map(SingleCtorRepn, map.init, CtorRepnMap)
     ;
         Ctors = [_, _ | _],
         DuTypeKind = du_type_kind_mercury_enum,
-        assign_tags_to_enum_constants(TypeCtor, Ctors, CtorRepns,
-            0, NextTag, map.init, ConsIdToTagMap, map.init, CtorRepnMap),
+        assign_tags_to_enum_constants(Ctors, CtorRepns, 0, NextTag,
+            map.init, CtorRepnMap),
         int.log2(NextTag, NumBits)
     ),
     DirectArgMap = Params ^ ddp_direct_arg_map,
@@ -498,8 +494,8 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
     ),
     MaybeCheaperTagTest = no_cheaper_tag_test,
     MaybeDirectArgFunctors = no,
-    Repn = du_type_repn(ConsIdToTagMap, CtorRepns, CtorRepnMap,
-        MaybeCheaperTagTest, DuTypeKind, MaybeDirectArgFunctors),
+    Repn = du_type_repn(CtorRepns, CtorRepnMap, MaybeCheaperTagTest,
+        DuTypeKind, MaybeDirectArgFunctors),
     Body = Body0 ^ du_type_repn := yes(Repn),
     set_type_defn_body(Body, TypeDefn0, TypeDefn),
     TypeCtorTypeDefn = TypeCtor - TypeDefn,
@@ -507,15 +503,13 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
     ComponentKind = fits_in_n_bits(NumBits, fill_with_zero),
     map.det_insert(TypeCtor, ComponentKind, !ComponentTypeMap).
 
-:- pred assign_tags_to_enum_constants(type_ctor::in,
+:- pred assign_tags_to_enum_constants(
     list(constructor)::in, list(constructor_repn)::out, int::in, int::out,
-    cons_id_to_tag_map::in, cons_id_to_tag_map::out,
     ctor_name_to_repn_map::in, ctor_name_to_repn_map::out) is det.
 
-assign_tags_to_enum_constants(_, [], [],
-        !CurTag, !ConsIdToTagMap, !CtorRepnMap).
-assign_tags_to_enum_constants(TypeCtor, [Ctor | Ctors], [CtorRepn | CtorRepns],
-        !CurTag, !ConsIdToTagMap, !CtorRepnMap) :-
+assign_tags_to_enum_constants([], [], !CurTag, !CtorRepnMap).
+assign_tags_to_enum_constants([Ctor | Ctors], [CtorRepn | CtorRepns],
+        !CurTag, !CtorRepnMap) :-
     Ctor = ctor(MaybeExistConstraints, SymName, Args, Arity, Context),
     expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
         "enum constant has existential constraints"),
@@ -525,12 +519,8 @@ assign_tags_to_enum_constants(TypeCtor, [Ctor | Ctors], [CtorRepn | CtorRepns],
     CtorRepn = ctor_repn(no_exist_constraints, SymName, CtorTag, [], 0,
         Context),
     !:CurTag = !.CurTag + 1,
-    % XXX TYPE_REPN Delete the TypeCtor argument when deleting !ConsIdToTagMap.
-    ConsId = cons(SymName, Arity, TypeCtor),
-    map.det_insert(ConsId, CtorTag, !ConsIdToTagMap),
     insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap),
-    assign_tags_to_enum_constants(TypeCtor, Ctors, CtorRepns,
-        !CurTag, !ConsIdToTagMap, !CtorRepnMap).
+    assign_tags_to_enum_constants(Ctors, CtorRepns, !CurTag, !CtorRepnMap).
 
 %---------------------%
 
@@ -555,8 +545,6 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, Body0,
         SingleCtorTag, [SingleArgRepn], 1, SingleCtorContext),
     insert_ctor_repn_into_map(SingleCtorRepn, map.init, CtorRepnMap),
 
-    SingleConsId = cons(SingleCtorSymName, 1, TypeCtor),
-    ConsIdToTagMap = map.singleton(SingleConsId, no_tag),
     MaybeCheaperTagTest = no_cheaper_tag_test,
     (
         MaybeSingleArgFieldName = no,
@@ -580,8 +568,8 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, Body0,
         true
     ),
     MaybeDirectArgFunctors = no,
-    Repn = du_type_repn(ConsIdToTagMap, [SingleCtorRepn], CtorRepnMap,
-        MaybeCheaperTagTest, DuTypeKind, MaybeDirectArgFunctors),
+    Repn = du_type_repn([SingleCtorRepn], CtorRepnMap, MaybeCheaperTagTest,
+        DuTypeKind, MaybeDirectArgFunctors),
     Body = Body0 ^ du_type_repn := yes(Repn),
     set_type_defn_body(Body, TypeDefn0, TypeDefn),
     TypeCtorTypeDefn = TypeCtor - TypeDefn,
@@ -762,10 +750,10 @@ decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap, TypeCtor,
             unexpected($pred, "unexpected type in MustBeSingleFunctorTagTypes")
         ),
         decide_complex_du_type_single_ctor(ModuleInfo, Params,
-            ComponentTypeMap, TypeCtor, SingleCtor, Repn, !Specs)
+            ComponentTypeMap, SingleCtor, Repn, !Specs)
     else if Ctors = [SingleCtor] then
         decide_complex_du_type_single_ctor(ModuleInfo, Params,
-            ComponentTypeMap, TypeCtor, SingleCtor, Repn, !Specs)
+            ComponentTypeMap, SingleCtor, Repn, !Specs)
     else
         decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
             TypeCtor, TypeDefn0, Ctors, MaybeCanonical, Repn, !Specs)
@@ -774,12 +762,12 @@ decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap, TypeCtor,
 %---------------------------------------------------------------------------%
 
 :- pred decide_complex_du_type_single_ctor(module_info::in,
-    decide_du_params::in, component_type_map::in, type_ctor::in,
+    decide_du_params::in, component_type_map::in,
     constructor::in, du_type_repn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
-        TypeCtor, SingleCtor, Repn, !Specs) :-
+        SingleCtor, Repn, !Specs) :-
     SingleCtor = ctor(MaybeExistConstraints, SingleCtorSymName,
         SingleCtorArgs, SingleCtorArity, SingleCtorContext),
     SingleCtorTag = single_functor_tag,
@@ -789,14 +777,12 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
         SingleCtorSymName, SingleCtorTag,
         SingleCtorArgRepns, SingleCtorArity, SingleCtorContext),
 
-    SingleConsId = cons(SingleCtorSymName, SingleCtorArity, TypeCtor),
-    ConsIdToTagMap = map.singleton(SingleConsId, SingleCtorTag),
     CtorRepnMap = map.singleton(unqualify_name(SingleCtorSymName),
         one_or_more(SingleCtorRepn, [])),
     DuTypeKind = du_type_kind_general,
     MaybeDirectArgFunctors = no,
-    Repn = du_type_repn(ConsIdToTagMap, [SingleCtorRepn], CtorRepnMap,
-        no_cheaper_tag_test, DuTypeKind, MaybeDirectArgFunctors).
+    Repn = du_type_repn([SingleCtorRepn], CtorRepnMap, no_cheaper_tag_test,
+        DuTypeKind, MaybeDirectArgFunctors).
 
 %---------------------------------------------------------------------------%
 
@@ -881,8 +867,8 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
         DirectArgFunctorNames = [_ | _],
         MaybeDirectArgFunctorNames = yes(DirectArgFunctorNames)
     ),
-    Repn = du_type_repn(CtorTagMap, CtorRepns, CtorRepnMap,
-        CheaperTagTest, du_type_kind_general, MaybeDirectArgFunctorNames).
+    Repn = du_type_repn(CtorRepns, CtorRepnMap, CheaperTagTest,
+        du_type_kind_general, MaybeDirectArgFunctorNames).
 
 %---------------------------------------------------------------------------%
 

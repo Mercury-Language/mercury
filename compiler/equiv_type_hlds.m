@@ -178,15 +178,13 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
             EquivTypeInfo = EquivTypeInfo1
         ;
             MaybeRepn0 = yes(Repn0),
-            Repn0 = du_type_repn(ConsIdToTagMap,
-                CtorRepns0, _CtorNameToRepnMap0, CheaperTagTest,
-                DuKind, DirectArgCtors),
+            Repn0 = du_type_repn(CtorRepns0, _CtorNameToRepnMap0,
+                CheaperTagTest, DuKind, DirectArgCtors),
             list.map_foldl3(replace_in_ctor_repn(TypeEqvMap),
                 CtorRepns0, CtorRepns, map.init, CtorNameToRepnMap,
                 TVarSet1, TVarSet, EquivTypeInfo1, EquivTypeInfo),
-            Repn = du_type_repn(ConsIdToTagMap,
-                CtorRepns, CtorNameToRepnMap, CheaperTagTest,
-                DuKind, DirectArgCtors),
+            Repn = du_type_repn(CtorRepns, CtorNameToRepnMap,
+                CheaperTagTest, DuKind, DirectArgCtors),
             MaybeRepn = yes(Repn)
         ),
         Body = hlds_du_type(Ctors, MaybeCanonical, MaybeRepn, MaybeForeign)

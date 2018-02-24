@@ -196,12 +196,6 @@
 
 %---------------------%
 
-    % The cons_id_to_tag_map type maps each the fully qualified cons_id
-    % of each constructor in a discriminated union type to the cons_tag
-    % that represents that cons_id.
-    %
-:- type cons_id_to_tag_map == map(cons_id, cons_tag).
-
     % A cons_id together with its tag.
     %
 :- type tagged_cons_id
@@ -1024,16 +1018,6 @@ set_type_defn_prev_errors(X, !Defn) :-
 
 :- type du_type_repn
     --->    du_type_repn(
-                % This table maps the constructors of the type (in their
-                % cons_id form) to the tags that represent them.
-                % XXX TYPE_REPN This field should be used only during
-                % the pass that decides the layout of du types; it should
-                % not stored here. The tag used for each constructor
-                % can be found using the du_ctor_map field, which also
-                % returns other information that is typically needed
-                % at the same time.
-                dur_cons_id_to_tag_map      :: cons_id_to_tag_map,
-
                 % This field contains the same constructors as the
                 % du_type_ctors field of the hlds_du_type functor,
                 % but in a form in which has representation information
