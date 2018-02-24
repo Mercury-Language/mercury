@@ -1047,8 +1047,8 @@ ml_gen_exported_enums(ModuleInfo, MLDS_ExportedEnums) :-
     mlds_exported_enum::out) is det.
 
 ml_gen_exported_enum(ExportedEnumInfo, MLDS_ExportedEnum) :-
-    ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor, Mapping,
-        CtorRepns),
+    ExportedEnumInfo = exported_enum_info(TypeCtor, CtorRepns, Lang,
+        Mapping, Context),
     ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
     MLDS_Type = mlds_class_type(
         mlds_class_id(QualifiedClassName, MLDS_ClassArity, mlds_enum)),
@@ -1058,19 +1058,18 @@ ml_gen_exported_enum(ExportedEnumInfo, MLDS_ExportedEnum) :-
     MLDS_ExportedEnum = mlds_exported_enum(Lang, Context, TypeCtor,
         ExportConstants).
 
-:- pred generate_foreign_enum_constant(map(sym_name, string)::in,
+:- pred generate_foreign_enum_constant(map(string, string)::in,
     mlds_type::in, constructor_repn::in, mlds_exported_enum_constant::out)
     is det.
 
 generate_foreign_enum_constant(Mapping, MLDS_Type, CtorRepn,
         ExportConstant) :-
-    CtorRepn = ctor_repn(_, QualSymName, ConsTag, _, Arity, _),
+    CtorRepn = ctor_repn(_, SymName, ConsTag, _, Arity, _),
     expect(unify(Arity, 0), $pred, "enum constant arity != 0"),
     enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval),
 
-    Name = unqualify_name(QualSymName),
-    UnqualSymName = unqualified(Name),
-    map.lookup(Mapping, UnqualSymName, ForeignName),
+    Name = unqualify_name(SymName),
+    map.lookup(Mapping, Name, ForeignName),
     ExportConstant = mlds_exported_enum_constant(ForeignName,
         init_obj(ConstRval)).
 

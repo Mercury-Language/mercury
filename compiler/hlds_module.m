@@ -166,11 +166,23 @@
 
 :- type exported_enum_info
     --->    exported_enum_info(
-                foreign_language,
-                prog_context,
-                type_ctor,
-                map(sym_name, string),
-                list(constructor_repn)
+                % The type whose constants we are exporting to a foreign
+                % language.
+                eei_type_ctor               :: type_ctor,
+
+                % The constants we are exporting.
+                eei_constants               :: list(constructor_repn),
+
+                % The language we are exporting to.
+                eei_language                :: foreign_language,
+
+                % This maps the names of the constructors in the Mercury type
+                % to their names in the foreign language.
+                eei_name_map                :: map(string, string),
+
+                % The context of the foreign_export_enum pragma
+                % that asked for all this.
+                eei_context                 :: prog_context
             ).
 
 :- type proc_analysis_kind

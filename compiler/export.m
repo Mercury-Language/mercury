@@ -921,8 +921,7 @@ output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
 :- pred exported_enum_is_for_c(exported_enum_info::in) is semidet.
 
 exported_enum_is_for_c(ExportedEnumInfo) :-
-    ExportedEnumInfo = exported_enum_info(Lang, _, _, _, _),
-    Lang = lang_c.
+    ExportedEnumInfo ^ eei_language = lang_c.
 
 :- pred output_exported_c_enum(io.text_output_stream::in,
     maybe_set_line_numbers::in, maybe(string)::in,
@@ -930,8 +929,8 @@ exported_enum_is_for_c(ExportedEnumInfo) :-
 
 output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
         ExportedEnumInfo, !IO) :-
-    ExportedEnumInfo = exported_enum_info(Lang, Context, _TypeCtor,
-        NameMapping, CtorRepns),
+    ExportedEnumInfo = exported_enum_info(_TypeCtor, CtorRepns, Lang,
+        NameMapping, Context),
     expect(unify(Lang, lang_c), $pred, "Lang != lang_c"),
     list.foldl(foreign_const_name_and_tag(NameMapping),
         CtorRepns, cord.init, ForeignNamesAndTagsCord),
@@ -974,17 +973,16 @@ output_exported_enum_constname_tag(Stream, NameAndTag, !IO) :-
         io.format(Stream, "#define %s %s\n", [s(Name), s(RawStrTag)], !IO)
     ).
 
-:- pred foreign_const_name_and_tag(map(sym_name, string)::in,
+:- pred foreign_const_name_and_tag(map(string, string)::in,
     constructor_repn::in,
     cord(exported_enum_name_and_tag_rep)::in,
     cord(exported_enum_name_and_tag_rep)::out) is det.
 
 foreign_const_name_and_tag(Mapping, CtorRepn, !NamesAndTagsCord) :-
-    CtorRepn = ctor_repn(_, QualSymName, ConsTag, _, Arity, _),
+    CtorRepn = ctor_repn(_, SymName, ConsTag, _, Arity, _),
     expect(unify(Arity, 0), $pred, "enum constant arity != 0"),
-    Name = unqualify_name(QualSymName),
-    UnqualSymName = unqualified(Name),
-    map.lookup(Mapping, UnqualSymName, ForeignName),
+    Name = unqualify_name(SymName),
+    map.lookup(Mapping, Name, ForeignName),
     (
         ConsTag = int_tag(IntTag),
         (

@@ -87,6 +87,7 @@
 :- import_module assoc_list.
 :- import_module bimap.
 :- import_module bool.
+:- import_module cord.
 :- import_module pair.
 :- import_module require.
 :- import_module set_tree234.
@@ -106,16 +107,16 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
         Specs0, Specs1),
     item_mercury_status_to_type_status(ItemMercuryStatus, PragmaStatus),
     FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignTagValues),
-    TypeCtor = type_ctor(TypeName, TypeArity),
+    TypeCtor = type_ctor(TypeSymName, TypeArity),
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
         words("declaration for type"),
-        qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+        qual_sym_name_and_arity(sym_name_arity(TypeSymName, TypeArity)),
         suffix(":"), nl],
 
     some [!ErrorSeveritiesPieces, !Specs] (
         !:ErrorSeveritiesPieces = [],
         !:Specs = [],
-        report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces),
+        report_if_builtin_type(TypeSymName, TypeArity, !ErrorSeveritiesPieces),
 
         module_info_get_type_table(ModuleInfo, TypeTable),
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
@@ -140,11 +141,11 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                 PragmaStatus = type_status(status_exported)
             then
                 add_foreign_enum_pragma_in_interface_error(Context,
-                    TypeName, TypeArity, !Specs)
+                    TypeSymName, TypeArity, !Specs)
             else
                 NotThisModuleErrorPieces = [words("error: "),
                     qual_sym_name_and_arity(
-                        sym_name_arity(TypeName, TypeArity)),
+                        sym_name_arity(TypeSymName, TypeArity)),
                     words("is not defined in this module.")],
                 !:ErrorSeveritiesPieces =
                     [{severity_error, NotThisModuleErrorPieces} |
@@ -166,7 +167,7 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                     TypeBody = hlds_foreign_type(_),
                     NonDu = "a foreign type"
                 ),
-                report_not_enum_type(TypeName, TypeArity,
+                report_not_enum_type(TypeSymName, TypeArity,
                     not_enum_non_du(NonDu), !ErrorSeveritiesPieces),
                 list.foldl(
                     add_error_severity_pieces(Context, ContextPieces),
@@ -184,7 +185,7 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                     NonEnumConsIds = []
                 ;
                     NonEnumConsIds = [_ | _],
-                    report_not_enum_type(TypeName, TypeArity,
+                    report_not_enum_type(TypeSymName, TypeArity,
                         not_enum_du(NonEnumConsIds), !ErrorSeveritiesPieces)
                 ),
 
@@ -198,7 +199,7 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                 list.foldl(gather_ctor_name, Ctors,
                     set_tree234.init, CtorNameSet),
                 build_foreign_enum_tag_map(Context, ContextPieces,
-                    CtorNameSet, TypeName, ForeignTagValues,
+                    TypeSymName, CtorNameSet, ForeignTagValues,
                     MaybeForeignTagMap, !Specs),
                 (
                     MaybeForeignTagMap = no,
@@ -237,7 +238,7 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                         _OldMaybeTagValues),
                     ( if map.search(LangContextMap0, Lang, OldContext) then
                         maybe_add_duplicate_foreign_enum_error(
-                            TypeName, TypeArity, Lang, PragmaStatus,
+                            TypeSymName, TypeArity, Lang, PragmaStatus,
                             OldContext, Context, !Specs),
                         TCFE1 = TCFE0
                     else
@@ -284,17 +285,18 @@ gather_ctor_name(Constructor, !CtorNameSet) :-
     Name = unqualify_name(CtorSymName),
     set_tree234.insert(Name, !CtorNameSet).
 
-:- pred build_foreign_enum_tag_map(prog_context::in, format_components::in,
-    set_tree234(string)::in, sym_name::in, assoc_list(sym_name, string)::in,
+:- pred build_foreign_enum_tag_map(prog_context::in,
+    list(format_component)::in, sym_name::in,
+    set_tree234(string)::in, assoc_list(sym_name, string)::in,
     maybe(map(sym_name, string))::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-build_foreign_enum_tag_map(Context, ContextPieces, CtorNameSet, TypeName,
-        ForeignTagValues0, MaybeForeignTagMap, !Specs) :-
+build_foreign_enum_tag_map(Context, ContextPieces, TypeSymName,
+        CtorNameSet, ForeignTagValues0, MaybeForeignTagMap, !Specs) :-
     (
-        TypeName = qualified(TypeModuleName, _)
+        TypeSymName = qualified(TypeModuleName, _)
     ;
-        TypeName = unqualified(_),
+        TypeSymName = unqualified(_),
         unexpected($pred,
             "unqualified type name while processing foreign enum tags")
     ),
@@ -306,8 +308,7 @@ build_foreign_enum_tag_map(Context, ContextPieces, CtorNameSet, TypeName,
         UnknownCtors = []
     ;
         UnknownCtors = [_ | _],
-        add_unknown_ctors_error(Context, ContextPieces, UnknownCtors,
-            !Specs)
+        add_unknown_ctors_error(Context, ContextPieces, UnknownCtors, !Specs)
     ),
     (
         BadQualCtors = []
@@ -405,18 +406,29 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
         _ItemMercuryStatus, Context, _SeqNum),
     FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
         Attributes, Overrides),
-    TypeCtor = type_ctor(TypeName, TypeArity),
+    TypeCtor = type_ctor(TypeSymName, TypeArity),
     ContextPieces = [words("In"), pragma_decl("foreign_export_enum"),
         words("declaration for type"),
-        qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+        qual_sym_name_and_arity(sym_name_arity(TypeSymName, TypeArity)),
         suffix(":"), nl],
     some [!ErrorSeveritiesPieces, !Specs] (
         !:ErrorSeveritiesPieces = [],
         !:Specs = [],
-        report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces),
+
+        report_if_builtin_type(TypeSymName, TypeArity, !ErrorSeveritiesPieces),
 
         module_info_get_type_table(!.ModuleInfo, TypeTable),
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
+            % If the type is in the type table (i.e. it is neither
+            % a builtin type such as int nor a reference to an undefined type),
+            % then TypeSymName should have been qualified by now.
+            (
+                TypeSymName = qualified(TypeModuleName, _TypeName)
+            ;
+                TypeSymName = unqualified(_),
+                unexpected($pred,
+                    "unqualified type name for foreign_export_enum")
+            ),
             get_type_defn_body(TypeDefn, TypeBody),
             (
                 (
@@ -432,7 +444,7 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     TypeBody = hlds_foreign_type(_),
                     NonDu = "a foreign type"
                 ),
-                report_not_enum_type(TypeName, TypeArity,
+                report_not_enum_type(TypeSymName, TypeArity,
                     not_enum_non_du(NonDu), !ErrorSeveritiesPieces)
             ;
                 % XXX How should we handle IsForeignType here?
@@ -454,7 +466,7 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     ( DuTypeKind = du_type_kind_general
                     ; DuTypeKind = du_type_kind_notag(_, _, _)
                     ),
-                    report_not_enum_type(TypeName, TypeArity,
+                    report_not_enum_type(TypeSymName, TypeArity,
                         not_enum_du(NonEnumConsIds), !ErrorSeveritiesPieces)
                 ;
                     ( DuTypeKind = du_type_kind_mercury_enum
@@ -471,35 +483,26 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     MaybePrefix = no,
                     Prefix = ""
                 ),
-                build_export_enum_overrides_map(TypeName, Context,
-                    ContextPieces, Overrides, MaybeOverridesMap, !Specs),
-                (
-                    MaybeOverridesMap = yes(OverridesMap),
-                    build_export_enum_name_map(ContextPieces, Lang,
-                        TypeName, TypeArity, Context, Prefix,
-                        MakeUpperCase, OverridesMap, CtorRepns, MaybeMapping,
-                        !Specs),
-                    (
-                        MaybeMapping = yes(Mapping),
-                        ExportedEnum = exported_enum_info(Lang, Context,
-                            TypeCtor, Mapping, CtorRepns),
-                        ( if
-                            !.ErrorSeveritiesPieces = [],
-                            !.Specs = []
-                        then
-                            module_info_get_exported_enums(!.ModuleInfo,
-                                ExportedEnums0),
-                            ExportedEnums = [ExportedEnum | ExportedEnums0],
-                            module_info_set_exported_enums(ExportedEnums,
-                                !ModuleInfo)
-                        else
-                            true
-                        )
-                    ;
-                        MaybeMapping = no
-                    )
-                ;
-                    MaybeOverridesMap = no
+                build_export_enum_overrides_map(TypeModuleName, Context,
+                    ContextPieces, CtorRepns, Overrides, OverrideBimap,
+                    !Specs),
+                OverrideMap = bimap.forward_map(OverrideBimap),
+                build_export_enum_name_map(ContextPieces, Context, Lang,
+                    Prefix, MakeUpperCase, OverrideMap, CtorRepns,
+                    NameMap, !Specs),
+                ( if
+                    !.ErrorSeveritiesPieces = [],
+                    !.Specs = []
+                then
+                    ExportedEnum = exported_enum_info(TypeCtor, CtorRepns,
+                        Lang, NameMap, Context),
+                    module_info_get_exported_enums(!.ModuleInfo,
+                        ExportedEnums0),
+                    ExportedEnums = [ExportedEnum | ExportedEnums0],
+                    module_info_set_exported_enums(ExportedEnums,
+                        !ModuleInfo)
+                else
+                    true
                 )
             )
         else
@@ -518,196 +521,233 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
         Specs = !.Specs ++ Specs0
     ).
 
-:- pred build_export_enum_overrides_map(sym_name::in, prog_context::in,
-    format_components::in, assoc_list(sym_name, string)::in,
-    maybe(map(sym_name, string))::out,
+:- pred build_export_enum_overrides_map(module_name::in, prog_context::in,
+    list(format_component)::in, list(constructor_repn)::in,
+    assoc_list(sym_name, string)::in, bimap(string, string)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-build_export_enum_overrides_map(TypeName, Context, ContextPieces,
-        OverridesList0, MaybeOverridesMap, !Specs) :-
-    (
-        TypeName = qualified(ModuleName, _)
-    ;
-        TypeName = unqualified(_),
-        unexpected($pred, "unqualified type name while building override map")
-    ),
-    % Strip off module qualifiers that match those of the type being exported.
-    % We leave those that do not match so that they can be reported as errors
-    % later.
-    StripQualifiers =
-        ( func(Name0) = Name :-
-            (
-                Name0 = qualified(ModuleQualifier, UnqualName),
-                ( if ModuleQualifier = ModuleName then
-                    Name = unqualified(UnqualName)
-                else
-                    Name = Name0
-                )
-            ;
-                Name0 = unqualified(_),
-                Name = Name0
-            )
-        ),
-    OverridesList = assoc_list.map_keys_only(StripQualifiers,
-        OverridesList0),
-    ( if bimap.from_assoc_list(OverridesList, OverridesMap0) then
-        OverridesMap = bimap.forward_map(OverridesMap0),
-        MaybeOverridesMap = yes(OverridesMap)
+build_export_enum_overrides_map(TypeModuleName, Context, ContextPieces,
+        CtorRepns, Overrides, OverrideMap, !Specs) :-
+    build_valid_ctor_names_set(CtorRepns, set_tree234.init, ValidCtorNames),
+
+    SeenCtorNames0 = set_tree234.init,
+    SeenForeignNames0 = set_tree234.init,
+    BadQualCtorSymNamesCord0 = cord.init,
+    InvalidCtorSymNamesCord0 = cord.init,
+    RepeatedCtorNamesCord0 = cord.init,
+    RepeatedForeignNamesCord0 = cord.init,
+    build_export_enum_overrides_map_loop(TypeModuleName, ValidCtorNames,
+        Overrides, bimap.init, OverrideMap,
+        SeenCtorNames0, SeenForeignNames0,
+        BadQualCtorSymNamesCord0, BadQualCtorSymNamesCord,
+        InvalidCtorSymNamesCord0, InvalidCtorSymNamesCord,
+        RepeatedCtorNamesCord0, RepeatedCtorNamesCord,
+        RepeatedForeignNamesCord0, RepeatedForeignNamesCord),
+
+    ( if cord.is_empty(BadQualCtorSymNamesCord) then
+        true
     else
-        MaybeOverridesMap = no,
-        % XXX we should report exactly why it is not a bijective.
-        ErrorPieces = [words("error: "),
+        add_bad_qual_ctors_error(Context, ContextPieces,
+            cord.to_list(BadQualCtorSymNamesCord), !Specs)
+    ),
+    ( if cord.is_empty(InvalidCtorSymNamesCord) then
+        true
+    else
+        add_unknown_ctors_error(Context, ContextPieces,
+            cord.to_list(InvalidCtorSymNamesCord), !Specs)
+    ),
+    RepeatedCtorNames = cord.to_list(RepeatedCtorNamesCord),
+    RepeatedForeignNames = cord.to_list(RepeatedForeignNamesCord),
+    ( if
+        RepeatedCtorNames = [],
+        RepeatedForeignNames = []
+    then
+        true
+    else
+        MainPieces = ContextPieces ++
+            [invis_order_default_start(3), words("error: "),
             words("the user-specified mapping between Mercury and"),
-            words("foreign names does not form a bijection.")],
-        Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
-    ).
-
-:- pred build_export_enum_name_map(format_components::in, foreign_language::in,
-    sym_name::in, arity::in, prog_context::in, string::in,
-    uppercase_export_enum::in, map(sym_name, string)::in,
-    list(constructor_repn)::in, maybe(map(sym_name, string))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
-        Prefix, MakeUpperCase, Overrides0, CtorRepns, MaybeMapping, !Specs) :-
-    (
-        TypeName = qualified(TypeModuleQual, _)
-    ;
-        % The type name should have been module qualified by now.
-        TypeName = unqualified(_),
-        unexpected($pred, "unqualified type name for foreign_export_enum")
-    ),
-
-    list.foldl3(
-        add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, TypeModuleQual),
-        CtorRepns, Overrides0, Overrides, map.init, NameMap, [], BadCtors),
-
-    % Check for any remaining user-specified renamings that didn't match
-    % the constructors of the type and report errors for them.
-
-    ( if map.is_empty(Overrides) then
+            words("foreign names does not form a bijection."), nl],
         (
-            BadCtors = [],
-            check_name_map_for_conflicts(Context, ContextPieces, NameMap,
-                MaybeMapping, !Specs)
+            RepeatedCtorNames = [],
+            CtorNamePieces = []
         ;
-            BadCtors = [_ | _],
-            (
-                Lang = lang_c,
-                What = "C identifiers."
-            ;
-                Lang = lang_java,
-                What = "Java identifiers."
-            ;
-                ( Lang = lang_csharp
-                ; Lang = lang_erlang
-                ),
-                sorry($pred,
-                    "foreign_export_enum pragma for unsupported language")
-            ),
-            BadCtorsErrorPieces = [
-                words("error: not all the constructors of the type"),
-                qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-                words("can be converted into valid " ++ What)
-            ],
-            list.sort(BadCtors, SortedBadCtors),
-            BadCtorComponents = list.map((func(S) = [qual_sym_name(S)]),
-                SortedBadCtors),
-            BadCtorsList = component_list_to_line_pieces(
-                BadCtorComponents, [nl]),
-            BadCtorsVerboseErrorPieces = [words("The following"),
-                words(choose_number(BadCtors, "constructor", "constructors")),
-                words("cannot be converted:"), nl_indent_delta(2)]
-                ++ BadCtorsList,
-            BadCtorsMsg = simple_msg(Context,
-                [always(ContextPieces ++ BadCtorsErrorPieces),
-                verbose_only(verbose_always, BadCtorsVerboseErrorPieces)]),
-            BadCtorsSpec = error_spec(severity_error,
-                phase_parse_tree_to_hlds, [BadCtorsMsg]),
-            !:Specs = [BadCtorsSpec | !.Specs],
-            MaybeMapping = no
-        )
-    else
-        InvalidRenamings = map.keys(Overrides),
-        InvalidRenamingSymNamePieces =
-            list.map((func(S) = [qual_sym_name(S)]), InvalidRenamings),
-        InvalidRenamingPieces = [words("error: the following"),
-            words(choose_number(InvalidRenamings,
-                "constructor does", "constructors do")),
-            words("not match any of the constructors of"),
-            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-            suffix(":"), nl] ++
-            component_list_to_line_pieces(InvalidRenamingSymNamePieces,
-                [suffix("."), nl]),
-        InvalidRenamingMsg = simple_msg(Context,
-            [always(ContextPieces ++ InvalidRenamingPieces)]),
-        InvalidRenamingSpec = error_spec(severity_error,
-            phase_parse_tree_to_hlds, [InvalidRenamingMsg]),
-        !:Specs = [InvalidRenamingSpec | !.Specs],
-        MaybeMapping = no
-        % NOTE: in the presence of this error we do not report if constructors
-        % could not be converted to names in the foreign language.
-    ).
-
-    % Check that the mapping from foreign names to Mercury names is not
-    % one-to-many.
-    %
-:- pred check_name_map_for_conflicts(prog_context::in, format_components::in,
-    map(sym_name, string)::in, maybe(map(sym_name, string))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_name_map_for_conflicts(Context, ContextPieces, NameMap, MaybeNameMap,
-        !Specs) :-
-    NamesAndForeignNames = map.to_assoc_list(NameMap),
-    ( if bimap.from_assoc_list(NamesAndForeignNames, _) then
-        MaybeNameMap = yes(NameMap)
-    else
-        MaybeNameMap = no,
-        % XXX We should report exactly why it is not bijective.
-        ErrorPieces = [words("error:"),
-            words("the mapping between Mercury and foreign names"),
-            words("does not form a bijection."), nl],
-        Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+            RepeatedCtorNames = [_ | _],
+            CtorNamePieces =
+                [words("The following Mercury constructor"),
+                words(choose_number(RepeatedCtorNames,
+                    "name is", "names are")),
+                words("repeated:"), nl_indent_delta(2)] ++
+                list_to_quoted_pieces(RepeatedCtorNames) ++
+                [suffix("."), nl_indent_delta(-2)]
+        ),
+        (
+            RepeatedForeignNames = [],
+            ForeignNamePieces = []
+        ;
+            RepeatedForeignNames = [_ | _],
+            ForeignNamePieces =
+                [words("The following foreign"),
+                words(choose_number(RepeatedForeignNames,
+                    "name is", "names are")),
+                words("repeated:"), nl_indent_delta(2)] ++
+                list_to_quoted_pieces(RepeatedForeignNames) ++
+                [suffix("."), nl_indent_delta(-2)]
+        ),
+        Pieces = MainPieces ++ CtorNamePieces ++ ForeignNamePieces,
+        Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred add_ctor_to_name_map(foreign_language::in,
-    string::in, uppercase_export_enum::in, sym_name::in, constructor_repn::in,
-    map(sym_name, string)::in, map(sym_name, string)::out,
-    map(sym_name, string)::in, map(sym_name, string)::out,
-    list(sym_name)::in, list(sym_name)::out) is det.
+:- pred build_valid_ctor_names_set(list(constructor_repn)::in,
+    set_tree234(string)::in, set_tree234(string)::out) is det.
 
-add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, CtorRepn,
-        !Overrides, !NameMap, !BadCtors) :-
+build_valid_ctor_names_set([], !ValidNamesSet).
+build_valid_ctor_names_set([CtorRepn | CtorRepns], !ValidNamesSet) :-
     CtorSymName = CtorRepn ^ cr_name,
-    (
-        % All of the constructor sym_names should be module qualified by now.
-        % We unqualify them before inserting them into the mapping since
-        % the code in export.m expects that to be done.
+    CtorName = unqualify_name(CtorSymName),
+    set_tree234.insert(CtorName, !ValidNamesSet),
+    build_valid_ctor_names_set(CtorRepns, !ValidNamesSet).
 
-        CtorSymName = qualified(_, _),
-        UnqualCtorName = unqualify_name(CtorSymName),
-        UnqualSymName = unqualified(UnqualCtorName)
-    ;
-        CtorSymName = unqualified(_),
-        unexpected($pred, "unqualified constructor name")
+:- pred build_export_enum_overrides_map_loop(module_name::in,
+    set_tree234(string)::in,
+    assoc_list(sym_name, string)::in,
+    bimap(string, string)::in, bimap(string, string)::out,
+    set_tree234(string)::in, set_tree234(string)::in,
+    cord(sym_name)::in, cord(sym_name)::out,
+    cord(sym_name)::in, cord(sym_name)::out,
+    cord(string)::in, cord(string)::out,
+    cord(string)::in, cord(string)::out) is det.
+
+build_export_enum_overrides_map_loop(_, _, [], !OverrideMap,
+        _SeenCtorNames, _SeenForeignNames,
+        !BadQualCtorSymNames, !InvalidCtorSymNames,
+        !RepeatedCtorNames, !RepeatedForeignNames).
+build_export_enum_overrides_map_loop(TypeModuleName, ValidCtorNames,
+        [Override | Overrides], !OverrideMap,
+        !.SeenCtorNames, !.SeenForeignNames,
+        !BadQualCtorSymNames, !InvalidCtorSymNames,
+        !RepeatedCtorNames, !RepeatedForeignNames) :-
+    Override = CtorSymName - ForeignName,
+    some [!OK] (
+        !:OK = yes,
+        (
+            CtorSymName = qualified(CtorModuleName, CtorName),
+            ( if CtorModuleName = TypeModuleName then
+                true
+            else
+                !:BadQualCtorSymNames =
+                    cord.snoc(!.BadQualCtorSymNames, CtorSymName),
+                !:OK = no
+            )
+        ;
+            CtorSymName = unqualified(CtorName)
+        ),
+        ( if set_tree234.contains(ValidCtorNames, CtorName) then
+            true
+        else
+            !:InvalidCtorSymNames =
+                cord.snoc(!.InvalidCtorSymNames, CtorSymName),
+            !:OK = no
+        ),
+        ( if set_tree234.insert_new(CtorName, !SeenCtorNames) then
+            true
+        else
+            !:RepeatedCtorNames = cord.snoc(!.RepeatedCtorNames, CtorName),
+            !:OK = no
+        ),
+        ( if set_tree234.insert_new(ForeignName, !SeenForeignNames) then
+            true
+        else
+            !:RepeatedForeignNames =
+                cord.snoc(!.RepeatedForeignNames, ForeignName),
+            !:OK = no
+        ),
+        (
+            !.OK = yes,
+            bimap.det_insert(CtorName, ForeignName, !OverrideMap)
+        ;
+            !.OK = no
+        )
     ),
+    build_export_enum_overrides_map_loop(TypeModuleName, ValidCtorNames,
+        Overrides, !OverrideMap,
+        !.SeenCtorNames, !.SeenForeignNames,
+        !BadQualCtorSymNames, !InvalidCtorSymNames,
+        !RepeatedCtorNames, !RepeatedForeignNames).
+
+:- pred build_export_enum_name_map(list(format_component)::in,
+    prog_context::in, foreign_language::in, string::in,
+    uppercase_export_enum::in, map(string, string)::in,
+    list(constructor_repn)::in, map(string, string)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
+        OverrideMap, CtorRepns, NameMap, !Specs) :-
+    list.foldl2(
+        add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap),
+        CtorRepns, map.init, NameMap, cord.init, BadForeignNamesCord),
+
+    BadForeignNames = cord.to_list(BadForeignNamesCord),
+    (
+        BadForeignNames = []
+    ;
+        BadForeignNames = [_ | _],
+        (
+            Lang = lang_c,
+            LangName = "C"
+        ;
+            Lang = lang_java,
+            LangName = "Java"
+        ;
+            ( Lang = lang_csharp
+            ; Lang = lang_erlang
+            ),
+            % XXX The code of add_ctor_to_name_map is OK
+            % with Lang = lang_csharp.
+            sorry($pred, "foreign_export_enum pragma for unsupported language")
+        ),
+        AlwaysPieces = ContextPieces ++
+            [words("error: some of the constructors of the type"),
+            words("cannot be converted into valid identifiers for"),
+            words(LangName), suffix("."), nl],
+        MakeBFNPieces = (func(BadForeignName) = [quote(BadForeignName)]),
+        BadForeignPiecesList = list.map(MakeBFNPieces, BadForeignNames),
+        BadForeignPieces =
+            component_list_to_line_pieces(BadForeignPiecesList, [suffix(".")]),
+        VerbosePieces = [words("The problematic"),
+            words(choose_number(BadForeignNames,
+                "foreign name is:", "foreign names are:")),
+            nl_indent_delta(2)] ++ BadForeignPieces,
+        Msg = simple_msg(Context,
+            [always(AlwaysPieces),
+            verbose_only(verbose_always, VerbosePieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred add_ctor_to_name_map(foreign_language::in, string::in,
+    uppercase_export_enum::in, map(string, string)::in, constructor_repn::in,
+    map(string, string)::in, map(string, string)::out,
+    cord(string)::in, cord(string)::out) is det.
+
+add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
+        !NameMap, !BadForeignNames) :-
+    CtorSymName = CtorRepn ^ cr_name,
+    CtorName = unqualify_name(CtorSymName),
 
     % If the user specified a name for this constructor, then use that.
-    ( if map.remove(UnqualSymName, UserForeignName, !Overrides) then
+    ( if map.search(OverrideMap, CtorName, UserForeignName) then
         ForeignNameTail = UserForeignName
     else
-        % Otherwise try to derive a name automatically
-        % from the constructor name.
+        % Otherwise derive a name automatically from the constructor name.
         (
             MakeUpperCase = uppercase_export_enum,
-            ForeignNameTail = string.to_upper(UnqualCtorName)
+            ForeignNameTail = string.to_upper(CtorName)
         ;
             MakeUpperCase = do_not_uppercase_export_enum,
-            ForeignNameTail = UnqualCtorName
+            ForeignNameTail = CtorName
         )
     ),
     ForeignName = Prefix ++ ForeignNameTail,
@@ -723,10 +763,10 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, CtorRepn,
     ),
     (
         IsValidForeignName = yes,
-        map.det_insert(UnqualSymName, ForeignName, !NameMap)
+        map.det_insert(CtorName, ForeignName, !NameMap)
     ;
         IsValidForeignName = no,
-        !:BadCtors = [UnqualSymName | !.BadCtors]
+        !:BadForeignNames = cord.snoc(!.BadForeignNames, ForeignName)
     ).
 
 %---------------------------------------------------------------------------%
@@ -774,6 +814,8 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
+%---------------------------------------------------------------------------%
+
 :- func unqual_ctors_to_line_pieces(list(sym_name), list(format_component))
     = list(format_component).
 
@@ -787,13 +829,27 @@ unqual_ctor_to_format_component(SymName) = [unqual_sym_name(SymName)].
 
 %---------------------------------------------------------------------------%
 
-:- pred add_unknown_ctors_error(prog_context::in, format_components::in,
+:- func qual_ctors_to_line_pieces(list(sym_name), list(format_component))
+    = list(format_component).
+
+qual_ctors_to_line_pieces(Ctors, Final) = Pieces :-
+    Components = list.map(qual_ctor_to_format_component, Ctors),
+    Pieces = component_list_to_line_pieces(Components, Final).
+
+:- func qual_ctor_to_format_component(sym_name) = list(format_component).
+
+qual_ctor_to_format_component(SymName) = [qual_sym_name(SymName)].
+
+%---------------------------------------------------------------------------%
+
+:- pred add_unknown_ctors_error(prog_context::in, list(format_component)::in,
     list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
     IsOrAre = choose_number(Ctors, "symbol is not a constructor",
         "symbols are not constructors"),
-    ErrorPieces = [words("error: the following"), words(IsOrAre),
+    ErrorPieces = [invis_order_default_start(1),
+        words("error: the following"), words(IsOrAre),
         words("of the type:"), nl_indent_delta(2)] ++
         unqual_ctors_to_line_pieces(Ctors, [suffix(".")]),
     Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
@@ -802,16 +858,17 @@ add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred add_bad_qual_ctors_error(prog_context::in, format_components::in,
+:- pred add_bad_qual_ctors_error(prog_context::in, list(format_component)::in,
     list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
     HasOrHave = choose_number(Ctors, "symbol has", "symbols have"),
-    ErrorPieces = [words("error: the following"),
+    ErrorPieces = [invis_order_default_start(2),
+        words("error: the following"),
         words(HasOrHave), words("a module qualification"),
         words("that is not compatible with the type definition:"),
         nl_indent_delta(2)] ++
-        unqual_ctors_to_line_pieces(Ctors, [suffix(".")]),
+        qual_ctors_to_line_pieces(Ctors, [suffix(".")]),
     Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
@@ -819,7 +876,8 @@ add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
 %---------------------------------------------------------------------------%
 
 :- pred add_foreign_enum_bijection_error(prog_context::in,
-    format_components::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 add_foreign_enum_bijection_error(Context, ContextPieces, !Specs) :-
     ErrorPieces = [words("error: "),
@@ -835,11 +893,11 @@ add_foreign_enum_bijection_error(Context, ContextPieces, !Specs) :-
     sym_name::in, arity::in, list(error_spec)::in, list(error_spec)::out)
     is det.
 
-add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
+add_foreign_enum_pragma_in_interface_error(Context, TypeSymame, TypeArity,
         !Specs) :-
     ErrorPieces = [words("Error: "),
         pragma_decl("foreign_enum"), words("declaration for"),
-        qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+        qual_sym_name_and_arity(sym_name_arity(TypeSymame, TypeArity)),
         words("in module interface."), nl],
     Msg = simple_msg(Context, [always(ErrorPieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -851,12 +909,12 @@ add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
     foreign_language::in, type_status::in, prog_context::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_add_duplicate_foreign_enum_error(TypeName, TypeArity, Lang, PragmaStatus,
-        OldContext, Context, !Specs) :-
+maybe_add_duplicate_foreign_enum_error(TypeSymame, TypeArity, Lang,
+        PragmaStatus, OldContext, Context, !Specs) :-
     ( if PragmaStatus = type_status(status_opt_imported) then
         true
     else
-        TypeSymNameArity = sym_name_arity(TypeName, TypeArity),
+        TypeSymNameArity = sym_name_arity(TypeSymame, TypeArity),
         LangStr = mercury_foreign_language_to_string(Lang),
         CurPieces = [words("Error: duplicate foreign_enum pragma"),
             words("for type constructor"),
@@ -890,15 +948,15 @@ add_error_severity_pieces(Context, ContextPieces, {Severity, ErrorPieces},
     list({error_severity, list(format_component)})::in,
     list({error_severity, list(format_component)})::out) is det.
 
-report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces) :-
+report_if_builtin_type(TypeSymame, TypeArity, !ErrorSeveritiesPieces) :-
     ( if
         % Emit an error message for foreign_enum and foreign_export_enum
         % pragmas for the builtin atomic types.
         TypeArity = 0,
-        is_builtin_type_sym_name(TypeName)
+        is_builtin_type_sym_name(TypeSymame)
     then
         BuiltinErrorPieces = [words("error: "),
-            unqual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            unqual_sym_name_and_arity(sym_name_arity(TypeSymame, TypeArity)),
             words("is a builtin type."), nl],
         !:ErrorSeveritiesPieces = [{severity_error, BuiltinErrorPieces} |
             !.ErrorSeveritiesPieces]
@@ -920,12 +978,13 @@ report_if_builtin_type(TypeName, TypeArity, !ErrorSeveritiesPieces) :-
     list({error_severity, list(format_component)})::in,
     list({error_severity, list(format_component)})::out) is det.
 
-report_not_enum_type(TypeName, TypeArity, NotEnumInfo,
+report_not_enum_type(TypeSymName, TypeArity, NotEnumInfo,
         !ErrorSeveritiesPieces) :-
+    TypeSNA = sym_name_arity(TypeSymName, TypeArity),
     (
         NotEnumInfo = not_enum_non_du(TypeKind),
         ErrorPieces = [words("error: "),
-            qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
+            qual_sym_name_and_arity(TypeSNA),
             words("is not an enumeration type;"),
             words("it is"), words(TypeKind), suffix("."), nl],
         !:ErrorSeveritiesPieces =
@@ -944,10 +1003,10 @@ report_not_enum_type(TypeName, TypeArity, NotEnumInfo,
             ItHasThese = choose_number(SortedNonEnumConsIds,
                 words("It has this non-zero arity constructor:"),
                 words("It has these non-zero arity constructors:")),
-            ErrorPieces = [words("error: "),
-                qual_sym_name_and_arity(sym_name_arity(TypeName, TypeArity)),
-                words("is not an enumeration type."), ItHasThese, nl] ++
-                ConsIdPieces ++ [suffix("."), nl],
+            ErrorPieces = [words("error: "), qual_sym_name_and_arity(TypeSNA),
+                words("is not an enumeration type."), nl, ItHasThese,
+                nl_indent_delta(2)] ++ ConsIdPieces ++
+                [suffix("."), nl_indent_delta(-2)],
             !:ErrorSeveritiesPieces =
                 [{severity_error, ErrorPieces} | !.ErrorSeveritiesPieces]
         )
