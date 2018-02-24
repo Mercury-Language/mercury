@@ -106,8 +106,6 @@
 
 :- implementation.
 
-% ZZZ
-:- import_module hlds.du_type_layout_old.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.add_foreign_enum.
@@ -176,9 +174,6 @@
             ).
 
 decide_type_repns(!ModuleInfo, !Specs) :-
-    du_type_layout_old.decide_type_repns(!.ModuleInfo, OldModuleInfo,
-        !.Specs, _OldSpecs),
-
     module_info_get_type_repn_dec(!.ModuleInfo, TypeRepnDec),
     TypeRepnDec = type_repn_decision_data(TypeRepns, DirectArgMap,
         ForeignEnums, ForeignExportEnums),
@@ -251,27 +246,7 @@ decide_type_repns(!ModuleInfo, !Specs) :-
     % XXX TYPE_REPN Fold over TypeCtorsTypeDefns instead.
     foldl_over_type_ctor_defns(
         add_special_pred_decl_defns_for_type_maybe_lazily,
-        TypeTable, !ModuleInfo),
-
-    compare_type_tables(OldModuleInfo, !.ModuleInfo, !Specs).
-
-:- pred compare_type_tables(module_info::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-compare_type_tables(ModuleInfoA, ModuleInfoB, !Specs) :-
-    module_info_get_type_table(ModuleInfoA, TypeTableA),
-    module_info_get_type_table(ModuleInfoB, TypeTableB),
-    get_all_type_ctor_defns(TypeTableA, TypeCtorDefnsA),
-    get_all_type_ctor_defns(TypeTableB, TypeCtorDefnsB),
-    ( if TypeCtorDefnsA = TypeCtorDefnsB then
-        true
-    else
-        Pieces = [words("Error:"),
-            words("old and new type tables differ."), nl],
-        Msg = simple_msg(term.context_init, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_type_check, [Msg]),
-        !:Specs = [Spec | !.Specs]
-    ).
+        TypeTable, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
