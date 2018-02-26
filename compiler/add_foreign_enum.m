@@ -115,10 +115,10 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
         qual_sym_name_and_arity(sym_name_arity(TypeSymName, TypeArity)),
         suffix(":"), nl],
 
-    some [!ErrorSeveritiesPieces, !Specs] (
-        !:ErrorSeveritiesPieces = [],
+    some [!Specs] (
         !:Specs = [],
-        report_if_builtin_type(TypeSymName, TypeArity, !ErrorSeveritiesPieces),
+        report_if_builtin_type(Context, ContextPieces, TypeSymName, TypeArity,
+            !Specs),
 
         module_info_get_type_table(ModuleInfo, TypeTable),
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
@@ -145,13 +145,15 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                 add_foreign_enum_pragma_in_interface_error(Context,
                     TypeSymName, TypeArity, !Specs)
             else
-                NotThisModuleErrorPieces = [words("error: "),
-                    qual_sym_name_and_arity(
-                        sym_name_arity(TypeSymName, TypeArity)),
-                    words("is not defined in this module.")],
-                !:ErrorSeveritiesPieces =
-                    [{severity_error, NotThisModuleErrorPieces} |
-                        !.ErrorSeveritiesPieces]
+                TypeSNA = sym_name_arity(TypeSymName, TypeArity),
+                NotThisModulePieces = ContextPieces ++
+                    [words("error: "), qual_sym_name_and_arity(TypeSNA),
+                    words("is not defined in this module."), nl],
+                NotThisModuleMsg = simple_msg(Context,
+                    [always(NotThisModulePieces)]),
+                NotThisModuleSpec = error_spec(severity_error,
+                    phase_parse_tree_to_hlds, [NotThisModuleMsg]),
+                !:Specs = [NotThisModuleSpec | !.Specs]
             ),
 
             get_type_defn_body(TypeDefn, TypeBody),
@@ -169,11 +171,8 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                     TypeBody = hlds_foreign_type(_),
                     NonDu = "a foreign type"
                 ),
-                report_not_enum_type(TypeSymName, TypeArity,
-                    not_enum_non_du(NonDu), !ErrorSeveritiesPieces),
-                list.foldl(
-                    add_error_severity_pieces(Context, ContextPieces),
-                    !.ErrorSeveritiesPieces, !Specs)
+                report_not_enum_type(Context, ContextPieces,
+                    TypeSymName, TypeArity, not_enum_non_du(NonDu), !Specs)
             ;
                 TypeBody = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn,
                     _IsForeignType),
@@ -187,8 +186,9 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                     NonEnumConsIds = []
                 ;
                     NonEnumConsIds = [_ | _],
-                    report_not_enum_type(TypeSymName, TypeArity,
-                        not_enum_du(NonEnumConsIds), !ErrorSeveritiesPieces)
+                    report_not_enum_type(Context, ContextPieces,
+                        TypeSymName, TypeArity, not_enum_du(NonEnumConsIds),
+                        !Specs)
                 ),
 
                 % Work out what language's foreign_enum pragma we should be
@@ -220,10 +220,6 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                             ContextPieces, UnmappedCtors, !Specs)
                     )
                 ),
-
-                list.foldl(
-                    add_error_severity_pieces(Context, ContextPieces),
-                    !.ErrorSeveritiesPieces, !Specs),
 
                 ( if
                     MaybeTagValues = yes(TagValues),
@@ -413,11 +409,10 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
         words("declaration for type"),
         qual_sym_name_and_arity(sym_name_arity(TypeSymName, TypeArity)),
         suffix(":"), nl],
-    some [!ErrorSeveritiesPieces, !Specs] (
-        !:ErrorSeveritiesPieces = [],
+    some [!Specs] (
         !:Specs = [],
-
-        report_if_builtin_type(TypeSymName, TypeArity, !ErrorSeveritiesPieces),
+        report_if_builtin_type(Context, ContextPieces, TypeSymName, TypeArity,
+            !Specs),
 
         module_info_get_type_table(!.ModuleInfo, TypeTable),
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
@@ -446,8 +441,8 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     TypeBody = hlds_foreign_type(_),
                     NonDu = "a foreign type"
                 ),
-                report_not_enum_type(TypeSymName, TypeArity,
-                    not_enum_non_du(NonDu), !ErrorSeveritiesPieces)
+                report_not_enum_type(Context, ContextPieces,
+                    TypeSymName, TypeArity, not_enum_non_du(NonDu), !Specs)
             ;
                 % XXX How should we handle IsForeignType here?
                 TypeBody = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn,
@@ -468,8 +463,9 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     ( DuTypeKind = du_type_kind_general
                     ; DuTypeKind = du_type_kind_notag(_, _, _)
                     ),
-                    report_not_enum_type(TypeSymName, TypeArity,
-                        not_enum_du(NonEnumConsIds), !ErrorSeveritiesPieces)
+                    report_not_enum_type(Context, ContextPieces,
+                        TypeSymName, TypeArity, not_enum_du(NonEnumConsIds),
+                        !Specs)
                 ;
                     ( DuTypeKind = du_type_kind_mercury_enum
                     ; DuTypeKind = du_type_kind_foreign_enum(_)
@@ -492,10 +488,8 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                 build_export_enum_name_map(ContextPieces, Context, Lang,
                     Prefix, MakeUpperCase, OverrideMap, CtorRepns,
                     NameMap, !Specs),
-                ( if
-                    !.ErrorSeveritiesPieces = [],
-                    !.Specs = []
-                then
+                (
+                    !.Specs = [],
                     ExportedEnum = exported_enum_info(TypeCtor, CtorRepns,
                         Lang, NameMap, Context),
                     module_info_get_exported_enums(!.ModuleInfo,
@@ -503,8 +497,8 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     ExportedEnums = [ExportedEnum | ExportedEnums0],
                     module_info_set_exported_enums(ExportedEnums,
                         !ModuleInfo)
-                else
-                    true
+                ;
+                    !.Specs = [_ | _]
                 )
             )
         else
@@ -512,13 +506,6 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
             % an error message for it here, since module qualification
             % will have already done so.
             true
-        ),
-        (
-            !.ErrorSeveritiesPieces = [_ | _],
-            list.foldl(add_error_severity_pieces(Context, ContextPieces),
-                !.ErrorSeveritiesPieces, !Specs)
-        ;
-            !.ErrorSeveritiesPieces = []
         ),
         Specs = !.Specs ++ Specs0
     ).
@@ -946,22 +933,24 @@ add_error_severity_pieces(Context, ContextPieces, {Severity, ErrorPieces},
 
 %---------------------------------------------------------------------------%
 
-:- pred report_if_builtin_type(sym_name::in, arity::in,
-    list({error_severity, list(format_component)})::in,
-    list({error_severity, list(format_component)})::out) is det.
+:- pred report_if_builtin_type(prog_context::in, list(format_component)::in,
+    sym_name::in, arity::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_if_builtin_type(TypeSymame, TypeArity, !ErrorSeveritiesPieces) :-
+report_if_builtin_type(Context, ContextPieces, TypeSymame, TypeArity,
+        !Specs) :-
     ( if
         % Emit an error message for foreign_enum and foreign_export_enum
         % pragmas for the builtin atomic types.
         TypeArity = 0,
         is_builtin_type_sym_name(TypeSymame)
     then
-        BuiltinErrorPieces = [words("error: "),
+        Pieces = ContextPieces ++ [words("error: "),
             unqual_sym_name_and_arity(sym_name_arity(TypeSymame, TypeArity)),
             words("is a builtin type."), nl],
-        !:ErrorSeveritiesPieces = [{severity_error, BuiltinErrorPieces} |
-            !.ErrorSeveritiesPieces]
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     else
         true
     ).
@@ -976,21 +965,22 @@ report_if_builtin_type(TypeSymame, TypeArity, !ErrorSeveritiesPieces) :-
                 string
             ).
 
-:- pred report_not_enum_type(sym_name::in, arity::in, not_enum_info::in,
-    list({error_severity, list(format_component)})::in,
-    list({error_severity, list(format_component)})::out) is det.
+:- pred report_not_enum_type(prog_context::in, list(format_component)::in,
+    sym_name::in, arity::in, not_enum_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_not_enum_type(TypeSymName, TypeArity, NotEnumInfo,
-        !ErrorSeveritiesPieces) :-
+report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
+        NotEnumInfo, !Specs) :-
     TypeSNA = sym_name_arity(TypeSymName, TypeArity),
     (
         NotEnumInfo = not_enum_non_du(TypeKind),
-        ErrorPieces = [words("error: "),
+        Pieces = ContextPieces ++ [words("error: "),
             qual_sym_name_and_arity(TypeSNA),
             words("is not an enumeration type;"),
             words("it is"), words(TypeKind), suffix("."), nl],
-        !:ErrorSeveritiesPieces =
-            [{severity_error, ErrorPieces} | !.ErrorSeveritiesPieces]
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ;
         NotEnumInfo = not_enum_du(NonEnumConsIds),
         list.sort_and_remove_dups(NonEnumConsIds, SortedNonEnumConsIds),
@@ -1005,12 +995,14 @@ report_not_enum_type(TypeSymName, TypeArity, NotEnumInfo,
             ItHasThese = choose_number(SortedNonEnumConsIds,
                 words("It has this non-zero arity constructor:"),
                 words("It has these non-zero arity constructors:")),
-            ErrorPieces = [words("error: "), qual_sym_name_and_arity(TypeSNA),
-                words("is not an enumeration type."), nl, ItHasThese,
-                nl_indent_delta(2)] ++ ConsIdPieces ++
+            Pieces = ContextPieces ++ [words("error: "),
+                qual_sym_name_and_arity(TypeSNA),
+                words("is not an enumeration type."), nl,
+                ItHasThese, nl_indent_delta(2)] ++ ConsIdPieces ++
                 [suffix("."), nl_indent_delta(-2)],
-            !:ErrorSeveritiesPieces =
-                [{severity_error, ErrorPieces} | !.ErrorSeveritiesPieces]
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ).
 
