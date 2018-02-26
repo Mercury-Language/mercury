@@ -2083,7 +2083,9 @@ long_option("warn-target-code",         warn_target_code).
 long_option("warn-up-to-date",          warn_up_to_date).
 long_option("warn-stubs",               warn_stubs).
 long_option("warn-dead-procs",          warn_dead_procs).
+long_option("warn-dead-procedures",     warn_dead_procs).
 long_option("warn-dead-preds",          warn_dead_preds).
+long_option("warn-dead-predicates",     warn_dead_preds).
 long_option("warn-table-with-inline",   warn_table_with_inline).
 long_option("warn-non-term-special-preds", warn_non_term_special_preds).
 long_option("warn-known-bad-format-calls", warn_known_bad_format_calls).

@@ -6688,12 +6688,16 @@ is enabled.
 
 @sp 1
 @item --warn-dead-procs
+@item --warn-dead-procedures
 @findex --warn-dead-procs
+@findex --warn-dead-procedures
 Warn about procedures which are never called.
 
 @sp 1
 @item --warn-dead-preds
+@item --warn-dead-predicates
 @findex --warn-dead-preds
+@findex --warn-dead-predicates
 Warn about predicates that have no procedures which are ever called.
 
 @sp 1
