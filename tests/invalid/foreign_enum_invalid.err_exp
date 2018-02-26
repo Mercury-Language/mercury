@@ -8,9 +8,14 @@ foreign_enum_invalid.m:027:   foreign value:
 foreign_enum_invalid.m:027:       `baz'.
 foreign_enum_invalid.m:032: In `:- pragma foreign_enum' declaration for type
 foreign_enum_invalid.m:032:   `foreign_enum_invalid.not_a_bijection'/0:
-foreign_enum_invalid.m:032:   error: the mapping between Mercury enumeration
-foreign_enum_invalid.m:032:   values and foreign values does not form a
-foreign_enum_invalid.m:032:   bijection.
+foreign_enum_invalid.m:032:   error: the specified mapping between the names of
+foreign_enum_invalid.m:032:   Mercury constructors and the corresponding
+foreign_enum_invalid.m:032:   foreign values is inconsistent.
+foreign_enum_invalid.m:032:   The following Mercury constructor name is
+foreign_enum_invalid.m:032:   repeated:
+foreign_enum_invalid.m:032:       `a'.
+foreign_enum_invalid.m:032:   The following foreign value is repeated:
+foreign_enum_invalid.m:032:       `60'.
 foreign_enum_invalid.m:040: Error: duplicate foreign_enum pragma for type
 foreign_enum_invalid.m:040:   constructor
 foreign_enum_invalid.m:040:   `foreign_enum_invalid.dup_foreign_enum'/0 and

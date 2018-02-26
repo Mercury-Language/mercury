@@ -8,16 +8,17 @@
 %
 % This module has two related but separate tasks.
 %
-% The task of the first half of this module is to check foreign_enum pragmas
+% The task of the first part of this module is to check foreign_enum pragmas
 % and gather from them the information that du_type_layout.m will use
 % to help decide the representations of the types named in those pragmas.
 %
-% The task of the second half of this module is to check foreign_export_enum
+% The task of the second part of this module is to check foreign_export_enum
 % pragmas, and to record the information from the correct ones in the
 % module_info for the code generator to use.
 %
-% The "third half" of the module consists of the predicates that generate
-% the error messages for the two previous halves.
+% The third part of the module consists of some utility predicates
+% used by both of the previous parts, many of which are predicates that
+% generate error messages.
 %
 %---------------------------------------------------------------------------%
 
@@ -108,11 +109,11 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
     report_if_pragma_is_wrongly_in_interface(ItemMercuryStatus, ItemPragmaInfo,
         Specs0, Specs1),
     item_mercury_status_to_type_status(ItemMercuryStatus, PragmaStatus),
-    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignTagValues),
+    FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, MercuryForeignTagPairs),
     TypeCtor = type_ctor(TypeSymName, TypeArity),
+    TypeSNA = sym_name_arity(TypeSymName, TypeArity),
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
-        words("declaration for type"),
-        qual_sym_name_and_arity(sym_name_arity(TypeSymName, TypeArity)),
+        words("declaration for type"), qual_sym_name_and_arity(TypeSNA),
         suffix(":"), nl],
 
     some [!Specs] (
@@ -122,6 +123,16 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
 
         module_info_get_type_table(ModuleInfo, TypeTable),
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
+            % If the type is in the type table (i.e. it is neither
+            % a builtin type such as int nor a reference to an undefined type),
+            % then TypeSymName should have been qualified by now.
+            (
+                TypeSymName = qualified(TypeModuleName, _TypeName)
+            ;
+                TypeSymName = unqualified(_),
+                unexpected($pred,
+                    "unqualified type name for foreign_export_enum")
+            ),
             get_type_defn_status(TypeDefn, TypeStatus),
             % Either both the type and the pragma are defined in this module,
             % or they are both imported. Any other combination is illegal.
@@ -145,7 +156,6 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                 add_foreign_enum_pragma_in_interface_error(Context,
                     TypeSymName, TypeArity, !Specs)
             else
-                TypeSNA = sym_name_arity(TypeSymName, TypeArity),
                 NotThisModulePieces = ContextPieces ++
                     [words("error: "), qual_sym_name_and_arity(TypeSNA),
                     words("is not defined in this module."), nl],
@@ -158,38 +168,32 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
 
             get_type_defn_body(TypeDefn, TypeBody),
             (
-                (
-                    TypeBody = hlds_eqv_type(_),
-                    NonDu = "an equivalence type"
-                ;
-                    TypeBody = hlds_abstract_type(_),
-                    NonDu = "an abstract type"
-                ;
-                    TypeBody = hlds_solver_type(_),
-                    NonDu = "a solver type"
-                ;
-                    TypeBody = hlds_foreign_type(_),
-                    NonDu = "a foreign type"
+                ( TypeBody = hlds_eqv_type(_)
+                ; TypeBody = hlds_abstract_type(_)
+                ; TypeBody = hlds_solver_type(_)
+                ; TypeBody = hlds_foreign_type(_)
                 ),
-                report_not_enum_type(Context, ContextPieces,
-                    TypeSymName, TypeArity, not_enum_non_du(NonDu), !Specs)
+                report_not_du_type(Context, ContextPieces,
+                    TypeSymName, TypeArity, TypeBody, !Specs)
             ;
                 TypeBody = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn,
                     _IsForeignType),
                 expect(unify(MaybeRepn, no), $pred, "MaybeRepn != no"),
 
-                list.map(constructor_to_cons_id(TypeCtor),
-                    Ctors, ConsIds),
-                find_enum_nonenum_cons_ids(ConsIds,
-                    [], EnumSymNames, [], NonEnumConsIds),
-                (
-                    NonEnumConsIds = []
-                ;
-                    NonEnumConsIds = [_ | _],
-                    report_not_enum_type(Context, ContextPieces,
-                        TypeSymName, TypeArity, not_enum_du(NonEnumConsIds),
-                        !Specs)
-                ),
+                build_mercury_foreign_map(TypeModuleName,
+                    TypeSymName, TypeArity, for_foreign_enum,
+                    Context, ContextPieces, Ctors,
+                    MercuryForeignTagPairs, MercuryForeignTagBimap, !Specs),
+                MercuryForeignTagNames =
+                    bimap.to_assoc_list(MercuryForeignTagBimap),
+                list.map(
+                    map_cons_id_to_foreign_tag(TypeCtor, TypeModuleName,
+                        Lang),
+                    MercuryForeignTagNames, ConsIdForeignTags),
+                % Converting each name to a cons_id would preserve the order,
+                % but bimap.to_assoc_list does not guarantee an order,
+                % and unlike map.m, bimap.m does not have to_sorted_assoc_list.
+                map.from_assoc_list(ConsIdForeignTags, ConsIdToTagMap),
 
                 % Work out what language's foreign_enum pragma we should be
                 % looking at for the current compilation target language.
@@ -198,35 +202,11 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
                 LangForForeignEnums =
                     target_lang_to_foreign_enum_lang(TargetLanguage),
 
-                list.foldl(gather_ctor_name, Ctors,
-                    set_tree234.init, CtorNameSet),
-                build_foreign_enum_tag_map(Context, ContextPieces,
-                    TypeSymName, CtorNameSet, ForeignTagValues,
-                    MaybeForeignTagMap, !Specs),
-                (
-                    MaybeForeignTagMap = no,
-                    MaybeTagValues = no
-                ;
-                    MaybeForeignTagMap = yes(ForeignTagMap),
-                    list.foldl2(
-                        make_foreign_tag(TypeCtor, Lang, ForeignTagMap),
-                        EnumSymNames, map.init, TagValues0, [], UnmappedCtors),
-                    MaybeTagValues = yes(TagValues0),
-                    (
-                        UnmappedCtors = []
-                    ;
-                        UnmappedCtors = [_ | _],
-                        add_foreign_enum_unmapped_ctors_error(Context,
-                            ContextPieces, UnmappedCtors, !Specs)
-                    )
-                ),
-
                 ( if
-                    MaybeTagValues = yes(TagValues),
                     Lang = LangForForeignEnums,
                     !.Specs = []
                 then
-                    MaybeTagValuesToSet = yes({TagValues, Lang})
+                    MaybeTagValuesToSet = yes({ConsIdToTagMap, Lang})
                 else
                     MaybeTagValuesToSet = no
                 ),
@@ -268,93 +248,6 @@ add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
         Specs = !.Specs ++ Specs1
     ).
 
-:- pred constructor_to_cons_id(type_ctor::in, constructor::in, cons_id::out)
-    is det.
-
-constructor_to_cons_id(TypeCtor, Ctor, ConsId) :-
-    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
-    ConsId = cons(SymName, Arity, TypeCtor).
-
-:- pred gather_ctor_name(constructor::in,
-    set_tree234(string)::in, set_tree234(string)::out) is det.
-
-gather_ctor_name(Constructor, !CtorNameSet) :-
-    CtorSymName = Constructor ^ cons_name,
-    Name = unqualify_name(CtorSymName),
-    set_tree234.insert(Name, !CtorNameSet).
-
-:- pred build_foreign_enum_tag_map(prog_context::in,
-    list(format_component)::in, sym_name::in,
-    set_tree234(string)::in, assoc_list(sym_name, string)::in,
-    maybe(map(sym_name, string))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-build_foreign_enum_tag_map(Context, ContextPieces, TypeSymName,
-        CtorNameSet, ForeignTagValues0, MaybeForeignTagMap, !Specs) :-
-    (
-        TypeSymName = qualified(TypeModuleName, _)
-    ;
-        TypeSymName = unqualified(_),
-        unexpected($pred,
-            "unqualified type name while processing foreign enum tags")
-    ),
-    list.map_foldl2(
-        fixup_foreign_tag_val_qualification(CtorNameSet, TypeModuleName),
-        ForeignTagValues0, ForeignTagValues,
-        [], BadQualCtors, [], UnknownCtors),
-    (
-        UnknownCtors = []
-    ;
-        UnknownCtors = [_ | _],
-        add_unknown_ctors_error(Context, ContextPieces, UnknownCtors, !Specs)
-    ),
-    (
-        BadQualCtors = []
-    ;
-        BadQualCtors = [_ | _],
-        add_bad_qual_ctors_error(Context, ContextPieces, BadQualCtors, !Specs)
-    ),
-    ( if bimap.from_assoc_list(ForeignTagValues, ForeignTagBiMap) then
-        ForeignTagMap = ForeignTagBiMap ^ forward_map,
-        MaybeForeignTagMap = yes(ForeignTagMap)
-    else
-        add_foreign_enum_bijection_error(Context, ContextPieces, !Specs),
-        MaybeForeignTagMap = no
-    ).
-
-    % The constructor names we get from the parse tree may be unqualified
-    % but the ones we match against in the HLDS are not. Module qualify them.
-    %
-    % XXX module_qual.m should really be doing this rather than add_pragma.m.
-    %
-:- pred fixup_foreign_tag_val_qualification(set_tree234(string)::in,
-    module_name::in,
-    pair(sym_name, string)::in, pair(sym_name, string)::out,
-    list(sym_name)::in, list(sym_name)::out,
-    list(sym_name)::in, list(sym_name)::out) is det.
-
-fixup_foreign_tag_val_qualification(CtorNameSet, TypeModuleName, !NamesAndTags,
-        !BadQualCtors, !UnknownCtors) :-
-    !.NamesAndTags = CtorSymName0 - ForeignTag,
-    (
-        CtorSymName0 = unqualified(Name),
-        CtorSymName = qualified(TypeModuleName, Name)
-    ;
-        CtorSymName0 = qualified(CtorModuleName, Name),
-        ( if partial_sym_name_matches_full(CtorModuleName, TypeModuleName) then
-            CtorSymName = qualified(TypeModuleName, Name)
-        else
-            !:BadQualCtors = [CtorSymName0 | !.BadQualCtors],
-            CtorSymName = CtorSymName0
-        )
-    ),
-    ( if set_tree234.contains(CtorNameSet, Name) then
-        true
-    else
-        !:UnknownCtors = [CtorSymName0 | !.UnknownCtors]
-    ),
-    !:NamesAndTags = CtorSymName - ForeignTag.
-
     % For a given target language work out which language's foreign_enum
     % pragma we should be looking at.
     %
@@ -366,34 +259,15 @@ target_lang_to_foreign_enum_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_enum_lang(target_java) = lang_java.
 target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
 
-:- pred find_enum_nonenum_cons_ids(list(cons_id)::in,
-    list(sym_name)::in, list(sym_name)::out,
-    list(cons_id)::in, list(cons_id)::out) is det.
+:- pred map_cons_id_to_foreign_tag(type_ctor::in, module_name::in,
+    foreign_language::in,
+    pair(string, string)::in, pair(cons_id, cons_tag)::out) is det.
 
-find_enum_nonenum_cons_ids([], !EnumSymNames, !NonEnumConsIds).
-find_enum_nonenum_cons_ids([ConsId | ConsIds],
-        !EnumSymNames, !NonEnumConsIds) :-
-    ( if ConsId = cons(ConsSymName, 0, _) then
-        !:EnumSymNames = [ConsSymName | !.EnumSymNames]
-    else
-        !:NonEnumConsIds = [ConsId | !.NonEnumConsIds]
-    ),
-    find_enum_nonenum_cons_ids(ConsIds, !EnumSymNames, !NonEnumConsIds).
-
-:- pred make_foreign_tag(type_ctor::in, foreign_language::in,
-    map(sym_name, string)::in, sym_name::in,
-    cons_id_to_tag_map::in, cons_id_to_tag_map::out,
-    list(sym_name)::in, list(sym_name)::out) is det.
-
-make_foreign_tag(TypeCtor, ForeignLanguage, ForeignTagMap, ConsSymName,
-        !ConsIdToTagMap, !UnmappedCtors) :-
-    ( if map.search(ForeignTagMap, ConsSymName, ForeignTagValue) then
-        ForeignTag = foreign_tag(ForeignLanguage, ForeignTagValue),
-        ConsId = cons(ConsSymName, 0, TypeCtor),
-        map.set(ConsId, ForeignTag, !ConsIdToTagMap)
-    else
-        !:UnmappedCtors = [ConsSymName | !.UnmappedCtors]
-    ).
+map_cons_id_to_foreign_tag(TypeCtor, TypeModuleName, ForeignLanguage,
+        CtorName - ForeignTagName, ConsId - ForeignTag) :-
+    CtorSymName = qualified(TypeModuleName, CtorName),
+    ConsId = cons(CtorSymName, 0, TypeCtor),
+    ForeignTag = foreign_tag(ForeignLanguage, ForeignTagName).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -428,50 +302,29 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
             ),
             get_type_defn_body(TypeDefn, TypeBody),
             (
-                (
-                    TypeBody = hlds_eqv_type(_),
-                    NonDu = "an equivalence type"
-                ;
-                    TypeBody = hlds_abstract_type(_),
-                    NonDu = "an abstract type"
-                ;
-                    TypeBody = hlds_solver_type(_),
-                    NonDu = "a solver type"
-                ;
-                    TypeBody = hlds_foreign_type(_),
-                    NonDu = "a foreign type"
+                ( TypeBody = hlds_eqv_type(_)
+                ; TypeBody = hlds_abstract_type(_)
+                ; TypeBody = hlds_solver_type(_)
+                ; TypeBody = hlds_foreign_type(_)
                 ),
-                report_not_enum_type(Context, ContextPieces,
-                    TypeSymName, TypeArity, not_enum_non_du(NonDu), !Specs)
+                report_not_du_type(Context, ContextPieces,
+                    TypeSymName, TypeArity, TypeBody, !Specs)
             ;
-                % XXX How should we handle IsForeignType here?
                 TypeBody = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn,
                     _IsForeignType),
                 (
                     MaybeRepn = no,
                     unexpected($pred, "MaybeRepn = no")
                 ;
-                    MaybeRepn = yes(Repn)
+                    MaybeRepn = yes(Repn),
+                    CtorRepns = Repn ^ dur_ctor_repns
                 ),
-                Repn = du_type_repn(CtorRepns, _ConsCtorMap, _CheaperTagTest,
-                    DuTypeKind, _MaybeDirectArgCtors),
-                list.map(constructor_to_cons_id(TypeCtor),
-                    Ctors, ConsIds),
-                find_enum_nonenum_cons_ids(ConsIds,
-                    [], _EnumSymNames, [], NonEnumConsIds),
-                (
-                    ( DuTypeKind = du_type_kind_general
-                    ; DuTypeKind = du_type_kind_notag(_, _, _)
-                    ),
-                    report_not_enum_type(Context, ContextPieces,
-                        TypeSymName, TypeArity, not_enum_du(NonEnumConsIds),
-                        !Specs)
-                ;
-                    ( DuTypeKind = du_type_kind_mercury_enum
-                    ; DuTypeKind = du_type_kind_foreign_enum(_)
-                    ; DuTypeKind = du_type_kind_direct_dummy
-                    )
-                ),
+
+                build_mercury_foreign_map(TypeModuleName,
+                    TypeSymName, TypeArity, for_foreign_export_enum,
+                    Context, ContextPieces, Ctors, Overrides, OverrideBimap,
+                    !Specs),
+                OverrideMap = bimap.forward_map(OverrideBimap),
 
                 Attributes =
                     export_enum_attributes(MaybePrefix, MakeUpperCase),
@@ -481,10 +334,6 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     MaybePrefix = no,
                     Prefix = ""
                 ),
-                build_export_enum_overrides_map(TypeModuleName, Context,
-                    ContextPieces, CtorRepns, Overrides, OverrideBimap,
-                    !Specs),
-                OverrideMap = bimap.forward_map(OverrideBimap),
                 build_export_enum_name_map(ContextPieces, Context, Lang,
                     Prefix, MakeUpperCase, OverrideMap, CtorRepns,
                     NameMap, !Specs),
@@ -510,14 +359,31 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
         Specs = !.Specs ++ Specs0
     ).
 
-:- pred build_export_enum_overrides_map(module_name::in, prog_context::in,
-    list(format_component)::in, list(constructor_repn)::in,
+%---------------------------------------------------------------------------%
+
+:- type for_fe_or_fee
+    --->    for_foreign_enum
+    ;       for_foreign_export_enum.
+
+:- pred build_mercury_foreign_map(module_name::in,
+    sym_name::in, arity::in, for_fe_or_fee::in, prog_context::in,
+    list(format_component)::in, list(constructor)::in,
     assoc_list(sym_name, string)::in, bimap(string, string)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-build_export_enum_overrides_map(TypeModuleName, Context, ContextPieces,
-        CtorRepns, Overrides, OverrideMap, !Specs) :-
-    build_valid_ctor_names_set(CtorRepns, set_tree234.init, ValidCtorNames),
+build_mercury_foreign_map(TypeModuleName, TypeSymName, TypeArity,
+        ForWhat, Context, ContextPieces, Ctors, Overrides, OverrideMap,
+        !Specs) :-
+    find_nonenum_ctors_build_valid_ctor_names(Ctors,
+        set_tree234.init, ValidCtorNames, cord.init, NonEnumSNAsCord),
+
+    ( if cord.is_empty(NonEnumSNAsCord) then
+        true
+    else
+        NotEnumInfo = not_enum_du(cord.to_list(NonEnumSNAsCord)),
+        report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
+            NotEnumInfo, !Specs)
+    ),
 
     SeenCtorNames0 = set_tree234.init,
     SeenForeignNames0 = set_tree234.init,
@@ -525,9 +391,9 @@ build_export_enum_overrides_map(TypeModuleName, Context, ContextPieces,
     InvalidCtorSymNamesCord0 = cord.init,
     RepeatedCtorNamesCord0 = cord.init,
     RepeatedForeignNamesCord0 = cord.init,
-    build_export_enum_overrides_map_loop(TypeModuleName, ValidCtorNames,
+    build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
         Overrides, bimap.init, OverrideMap,
-        SeenCtorNames0, SeenForeignNames0,
+        SeenCtorNames0, SeenCtorNames, SeenForeignNames0,
         BadQualCtorSymNamesCord0, BadQualCtorSymNamesCord,
         InvalidCtorSymNamesCord0, InvalidCtorSymNamesCord,
         RepeatedCtorNamesCord0, RepeatedCtorNamesCord,
@@ -553,10 +419,33 @@ build_export_enum_overrides_map(TypeModuleName, Context, ContextPieces,
     then
         true
     else
+        % How should we describe the contents of RepeatedForeignNames
+        % in error messages: as "names" or "values"?
+        %
+        % (The variable is RepeatedForeignNames because
+        % RepeatedForeignNamesOrValues would be too long.)
+        (
+            ForWhat = for_foreign_export_enum,
+            % Foreign_export_enums specify name of the foreign lval
+            % (variable name or macro name) to set to the representation
+            % of the Mercury constant chosen by the Mercury compiler.
+            NameOrValue = "name",
+            NamesOrValues = "names"
+        ;
+            ForWhat = for_foreign_enum,
+            % Foreign_enums tell the Mercury compiler what rval it should
+            % use to represent the Mercury constant. The rval may be
+            % the value of a variable, but it may also be a constant
+            % (or possibly even a constant expression).
+            NameOrValue = "value",
+            NamesOrValues = "values"
+        ),
         MainPieces = ContextPieces ++
             [invis_order_default_start(3), words("error: "),
-            words("the user-specified mapping between Mercury and"),
-            words("foreign names does not form a bijection."), nl],
+            words("the specified mapping between"),
+            words("the names of Mercury constructors"),
+            words("and the corresponding foreign"), words(NamesOrValues),
+            words("is inconsistent."), nl],
         (
             RepeatedCtorNames = [],
             CtorNamePieces = []
@@ -578,7 +467,7 @@ build_export_enum_overrides_map(TypeModuleName, Context, ContextPieces,
             ForeignNamePieces =
                 [words("The following foreign"),
                 words(choose_number(RepeatedForeignNames,
-                    "name is", "names are")),
+                    NameOrValue ++ " is", NamesOrValues ++ " are")),
                 words("repeated:"), nl_indent_delta(2)] ++
                 list_to_quoted_pieces(RepeatedForeignNames) ++
                 [suffix("."), nl_indent_delta(-2)]
@@ -587,35 +476,59 @@ build_export_enum_overrides_map(TypeModuleName, Context, ContextPieces,
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
+    ),
+    (
+        ForWhat = for_foreign_export_enum
+    ;
+        ForWhat = for_foreign_enum,
+        set_tree234.difference(ValidCtorNames, SeenCtorNames, UnseenCtorNames),
+        set_tree234.to_sorted_list(UnseenCtorNames, UnseenCtorNamesList),
+        (
+            UnseenCtorNamesList = []
+        ;
+            UnseenCtorNamesList = [_ | _],
+            add_foreign_enum_unmapped_ctors_error(Context, ContextPieces,
+                UnseenCtorNamesList, !Specs)
+        )
     ).
 
-:- pred build_valid_ctor_names_set(list(constructor_repn)::in,
-    set_tree234(string)::in, set_tree234(string)::out) is det.
+:- pred find_nonenum_ctors_build_valid_ctor_names(list(constructor)::in,
+    set_tree234(string)::in, set_tree234(string)::out,
+    cord(sym_name_and_arity)::in, cord(sym_name_and_arity)::out) is det.
 
-build_valid_ctor_names_set([], !ValidNamesSet).
-build_valid_ctor_names_set([CtorRepn | CtorRepns], !ValidNamesSet) :-
-    CtorSymName = CtorRepn ^ cr_name,
+find_nonenum_ctors_build_valid_ctor_names([], !ValidNamesSet, !NonEnumSNAs).
+find_nonenum_ctors_build_valid_ctor_names([Ctor | Ctors],
+        !ValidNamesSet, !NonEnumSNAs) :-
+    CtorSymName = Ctor ^ cons_name,
+    CtorArity = Ctor ^ cons_num_args,
+    ( if CtorArity = 0 then
+        true
+    else
+        CtorSNA = sym_name_arity(CtorSymName, CtorArity),
+        !:NonEnumSNAs = cord.snoc(!.NonEnumSNAs, CtorSNA)
+    ),
     CtorName = unqualify_name(CtorSymName),
     set_tree234.insert(CtorName, !ValidNamesSet),
-    build_valid_ctor_names_set(CtorRepns, !ValidNamesSet).
+    find_nonenum_ctors_build_valid_ctor_names(Ctors,
+        !ValidNamesSet, !NonEnumSNAs).
 
-:- pred build_export_enum_overrides_map_loop(module_name::in,
+:- pred build_ctor_name_to_foreign_name_map_loop(module_name::in,
     set_tree234(string)::in,
     assoc_list(sym_name, string)::in,
     bimap(string, string)::in, bimap(string, string)::out,
-    set_tree234(string)::in, set_tree234(string)::in,
+    set_tree234(string)::in, set_tree234(string)::out, set_tree234(string)::in,
     cord(sym_name)::in, cord(sym_name)::out,
     cord(sym_name)::in, cord(sym_name)::out,
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out) is det.
 
-build_export_enum_overrides_map_loop(_, _, [], !OverrideMap,
-        _SeenCtorNames, _SeenForeignNames,
+build_ctor_name_to_foreign_name_map_loop(_, _, [], !OverrideMap,
+        !SeenCtorNames, _SeenForeignNames,
         !BadQualCtorSymNames, !InvalidCtorSymNames,
         !RepeatedCtorNames, !RepeatedForeignNames).
-build_export_enum_overrides_map_loop(TypeModuleName, ValidCtorNames,
+build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
         [Override | Overrides], !OverrideMap,
-        !.SeenCtorNames, !.SeenForeignNames,
+        !SeenCtorNames, !.SeenForeignNames,
         !BadQualCtorSymNames, !InvalidCtorSymNames,
         !RepeatedCtorNames, !RepeatedForeignNames) :-
     Override = CtorSymName - ForeignName,
@@ -660,9 +573,9 @@ build_export_enum_overrides_map_loop(TypeModuleName, ValidCtorNames,
             !.OK = no
         )
     ),
-    build_export_enum_overrides_map_loop(TypeModuleName, ValidCtorNames,
+    build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
         Overrides, !OverrideMap,
-        !.SeenCtorNames, !.SeenForeignNames,
+        !SeenCtorNames, !.SeenForeignNames,
         !BadQualCtorSymNames, !InvalidCtorSymNames,
         !RepeatedCtorNames, !RepeatedForeignNames).
 
@@ -763,14 +676,14 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
 
 :- pred add_foreign_enum_unmapped_ctors_error(prog_context::in,
     list(format_component)::in,
-    list(sym_name)::in(non_empty_list),
+    list(string)::in(non_empty_list),
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
+add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
         !Specs) :-
-    list.sort(Ctors0, Ctors),
-    list.split_upto(10, Ctors, CtorsStart, CtorsEnd),
-    DoOrDoes = choose_number(Ctors, "constructor does", "constructors do"),
+    list.sort(CtorNames0, CtorNames),
+    list.split_upto(10, CtorNames, CtorsStart, CtorsEnd),
+    DoOrDoes = choose_number(CtorNames, "constructor does", "constructors do"),
     PrefixPieces = ContextPieces ++ [
         words("error: the following"), words(DoOrDoes),
         words("not have a foreign value:")
@@ -779,7 +692,7 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
         CtorsEnd = [],
         CtorsPieces =
             [nl_indent_delta(2)] ++
-            unqual_ctors_to_line_pieces(Ctors, [suffix(".")]) ++
+            ctor_names_to_line_pieces(CtorNames, [suffix(".")]) ++
             [nl_indent_delta(-2)],
         CtorsComponent = always(CtorsPieces)
     ;
@@ -787,21 +700,33 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, Ctors0,
         list.length(CtorsEnd, NumEndCtors),
         NonVerboseCtorsPieces =
             [nl_indent_delta(2)] ++
-            unqual_ctors_to_line_pieces(CtorsStart,
+            ctor_names_to_line_pieces(CtorsStart,
                 [suffix(","), fixed("...")]) ++
             [nl_indent_delta(-2), words("and"),
             int_fixed(NumEndCtors), words("more."), nl],
         VerboseCtorsPieces =
             [nl_indent_delta(2)] ++
-            unqual_ctors_to_line_pieces(Ctors, [suffix(".")]) ++
+            ctor_names_to_line_pieces(CtorNames, [suffix(".")]) ++
             [nl_indent_delta(-2)],
         CtorsComponent =
             verbose_and_nonverbose(VerboseCtorsPieces, NonVerboseCtorsPieces)
     ),
-    Msg = simple_msg(Context,
-        [always(PrefixPieces), CtorsComponent]),
+    Msg = simple_msg(Context, [always(PrefixPieces), CtorsComponent]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+%---------------------------------------------------------------------------%
+
+:- func ctor_names_to_line_pieces(list(string), list(format_component))
+    = list(format_component).
+
+ctor_names_to_line_pieces(CtorNames, Final) = Pieces :-
+    Components = list.map(ctor_name_to_format_component, CtorNames),
+    Pieces = component_list_to_line_pieces(Components, Final).
+
+:- func ctor_name_to_format_component(string) = list(format_component).
+
+ctor_name_to_format_component(CtorName) = [quote(CtorName)].
 
 %---------------------------------------------------------------------------%
 
@@ -864,20 +789,6 @@ add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred add_foreign_enum_bijection_error(prog_context::in,
-    list(format_component)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_foreign_enum_bijection_error(Context, ContextPieces, !Specs) :-
-    ErrorPieces = [words("error: "),
-        words("the mapping between Mercury enumeration values and"),
-        words("foreign values does not form a bijection."), nl],
-    Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-%---------------------------------------------------------------------------%
-
 :- pred add_foreign_enum_pragma_in_interface_error(prog_context::in,
     sym_name::in, arity::in, list(error_spec)::in, list(error_spec)::out)
     is det.
@@ -921,18 +832,6 @@ maybe_add_duplicate_foreign_enum_error(TypeSymame, TypeArity, Lang,
 
 %---------------------------------------------------------------------------%
 
-:- pred add_error_severity_pieces(prog_context::in, list(format_component)::in,
-    {error_severity, list(format_component)}::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_error_severity_pieces(Context, ContextPieces, {Severity, ErrorPieces},
-        !Specs) :-
-    Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
-    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-%---------------------------------------------------------------------------%
-
 :- pred report_if_builtin_type(prog_context::in, list(format_component)::in,
     sym_name::in, arity::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -957,13 +856,41 @@ report_if_builtin_type(Context, ContextPieces, TypeSymame, TypeArity,
 
 :- type not_enum_info
     --->    not_enum_du(
-                % The non-enum cons_ids.
-                list(cons_id)
+                % The non-enum sym_names and their (nonzero) arities.
+                list(sym_name_and_arity)
             )
     ;       not_enum_non_du(
                 % What kind of non-du type is it?
                 string
             ).
+
+:- inst non_du_type_body for hlds_type_body/0
+    --->    hlds_eqv_type(ground)
+    ;       hlds_foreign_type(ground)
+    ;       hlds_solver_type(ground)
+    ;       hlds_abstract_type(ground).
+
+:- pred report_not_du_type(prog_context::in, list(format_component)::in,
+    sym_name::in, arity::in, hlds_type_body::in(non_du_type_body),
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_not_du_type(Context, ContextPieces, TypeSymName, TypeArity, TypeBody,
+        !Specs) :-
+    (
+        TypeBody = hlds_eqv_type(_),
+        TypeKindDesc = "an equivalence type"
+    ;
+        TypeBody = hlds_abstract_type(_),
+        TypeKindDesc = "an abstract type"
+    ;
+        TypeBody = hlds_solver_type(_),
+        TypeKindDesc = "a solver type"
+    ;
+        TypeBody = hlds_foreign_type(_),
+        TypeKindDesc = "a foreign type"
+    ),
+    report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
+        not_enum_non_du(TypeKindDesc), !Specs).
 
 :- pred report_not_enum_type(prog_context::in, list(format_component)::in,
     sym_name::in, arity::in, not_enum_info::in,
@@ -973,43 +900,43 @@ report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
         NotEnumInfo, !Specs) :-
     TypeSNA = sym_name_arity(TypeSymName, TypeArity),
     (
-        NotEnumInfo = not_enum_non_du(TypeKind),
+        NotEnumInfo = not_enum_non_du(TypeKindDesc),
         Pieces = ContextPieces ++ [words("error: "),
             qual_sym_name_and_arity(TypeSNA),
             words("is not an enumeration type;"),
-            words("it is"), words(TypeKind), suffix("."), nl],
+            words("it is"), words(TypeKindDesc), suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ;
-        NotEnumInfo = not_enum_du(NonEnumConsIds),
-        list.sort_and_remove_dups(NonEnumConsIds, SortedNonEnumConsIds),
+        NotEnumInfo = not_enum_du(NonEnumSNAs),
+        % NOTE Sorting would put the non-constant constructors into
+        % alphabetical order; without sorting, they are in declaration order.
+        % Printing them in declaration order seems more useful to me -zs.
+
+        % list.sort_and_remove_dups(NonEnumSNAs, OrderedNonEnumSNAs),
+        OrderedNonEnumSNAs = NonEnumSNAs,
         (
-            SortedNonEnumConsIds = []
+            OrderedNonEnumSNAs = []
         ;
-            SortedNonEnumConsIds = [_ | _],
-            ConsIdPieces =
+            OrderedNonEnumSNAs = [_ | _],
+            SNAPieces =
                 component_list_to_pieces("and",
-                    list.map(wrap_unqual_cons_id_and_maybe_arity,
-                        SortedNonEnumConsIds)),
-            ItHasThese = choose_number(SortedNonEnumConsIds,
+                    list.map(func(SNA) = unqual_sym_name_and_arity(SNA),
+                        OrderedNonEnumSNAs)),
+            ItHasThese = choose_number(OrderedNonEnumSNAs,
                 words("It has this non-zero arity constructor:"),
                 words("It has these non-zero arity constructors:")),
             Pieces = ContextPieces ++ [words("error: "),
                 qual_sym_name_and_arity(TypeSNA),
                 words("is not an enumeration type."), nl,
-                ItHasThese, nl_indent_delta(2)] ++ ConsIdPieces ++
+                ItHasThese, nl_indent_delta(2)] ++ SNAPieces ++
                 [suffix("."), nl_indent_delta(-2)],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         )
     ).
-
-:- func wrap_unqual_cons_id_and_maybe_arity(cons_id) = format_component.
-
-wrap_unqual_cons_id_and_maybe_arity(ConsId) =
-    unqual_cons_id_and_maybe_arity(ConsId).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.add_foreign_enum.
