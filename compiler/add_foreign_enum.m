@@ -97,6 +97,10 @@
 :- import_module string.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Part 1: the implementation of foreign_enums.
+%
 
 add_pragma_foreign_enum(ModuleInfo, ItemForeignExportEnum,
         !TypeCtorForeignEnumMap, Specs0, Specs) :-
@@ -271,6 +275,9 @@ map_cons_id_to_foreign_tag(TypeCtor, TypeModuleName, ForeignLanguage,
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+%
+% Part 2: the implementation of foreign_export_enums.
+%
 
 add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
         Specs0, Specs) :-
@@ -359,7 +366,104 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
         Specs = !.Specs ++ Specs0
     ).
 
+:- pred build_export_enum_name_map(list(format_component)::in,
+    prog_context::in, foreign_language::in, string::in,
+    uppercase_export_enum::in, map(string, string)::in,
+    list(constructor_repn)::in, map(string, string)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
+        OverrideMap, CtorRepns, NameMap, !Specs) :-
+    list.foldl2(
+        add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap),
+        CtorRepns, map.init, NameMap, cord.init, BadForeignNamesCord),
+
+    BadForeignNames = cord.to_list(BadForeignNamesCord),
+    (
+        BadForeignNames = []
+    ;
+        BadForeignNames = [_ | _],
+        (
+            Lang = lang_c,
+            LangName = "C"
+        ;
+            Lang = lang_java,
+            LangName = "Java"
+        ;
+            ( Lang = lang_csharp
+            ; Lang = lang_erlang
+            ),
+            % XXX The code of add_ctor_to_name_map is OK
+            % with Lang = lang_csharp.
+            sorry($pred, "foreign_export_enum pragma for unsupported language")
+        ),
+        AlwaysPieces = ContextPieces ++
+            [words("error: some of the constructors of the type"),
+            words("cannot be converted into valid identifiers for"),
+            words(LangName), suffix("."), nl],
+        MakeBFNPieces = (func(BadForeignName) = [quote(BadForeignName)]),
+        BadForeignPiecesList = list.map(MakeBFNPieces, BadForeignNames),
+        BadForeignPieces =
+            component_list_to_line_pieces(BadForeignPiecesList, [suffix(".")]),
+        VerbosePieces = [words("The problematic"),
+            words(choose_number(BadForeignNames,
+                "foreign name is:", "foreign names are:")),
+            nl_indent_delta(2)] ++ BadForeignPieces,
+        Msg = simple_msg(Context,
+            [always(AlwaysPieces),
+            verbose_only(verbose_always, VerbosePieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred add_ctor_to_name_map(foreign_language::in, string::in,
+    uppercase_export_enum::in, map(string, string)::in, constructor_repn::in,
+    map(string, string)::in, map(string, string)::out,
+    cord(string)::in, cord(string)::out) is det.
+
+add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
+        !NameMap, !BadForeignNames) :-
+    CtorSymName = CtorRepn ^ cr_name,
+    CtorName = unqualify_name(CtorSymName),
+
+    % If the user specified a name for this constructor, then use that.
+    ( if map.search(OverrideMap, CtorName, UserForeignName) then
+        ForeignNameTail = UserForeignName
+    else
+        % Otherwise derive a name automatically from the constructor name.
+        (
+            MakeUpperCase = uppercase_export_enum,
+            ForeignNameTail = string.to_upper(CtorName)
+        ;
+            MakeUpperCase = do_not_uppercase_export_enum,
+            ForeignNameTail = CtorName
+        )
+    ),
+    ForeignName = Prefix ++ ForeignNameTail,
+    (
+        ( Lang = lang_c
+        ; Lang = lang_java
+        ; Lang = lang_csharp
+        ),
+        IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
+    ;
+        Lang = lang_erlang,
+        sorry($pred, "foreign_export_enum for Erlang")
+    ),
+    (
+        IsValidForeignName = yes,
+        map.det_insert(CtorName, ForeignName, !NameMap)
+    ;
+        IsValidForeignName = no,
+        !:BadForeignNames = cord.snoc(!.BadForeignNames, ForeignName)
+    ).
+
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Part 3: utilities that help implement both foreign_enums and
+% foreign_export_enums.
+%
 
 :- type for_fe_or_fee
     --->    for_foreign_enum
@@ -578,98 +682,6 @@ build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
         !SeenCtorNames, !.SeenForeignNames,
         !BadQualCtorSymNames, !InvalidCtorSymNames,
         !RepeatedCtorNames, !RepeatedForeignNames).
-
-:- pred build_export_enum_name_map(list(format_component)::in,
-    prog_context::in, foreign_language::in, string::in,
-    uppercase_export_enum::in, map(string, string)::in,
-    list(constructor_repn)::in, map(string, string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
-        OverrideMap, CtorRepns, NameMap, !Specs) :-
-    list.foldl2(
-        add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap),
-        CtorRepns, map.init, NameMap, cord.init, BadForeignNamesCord),
-
-    BadForeignNames = cord.to_list(BadForeignNamesCord),
-    (
-        BadForeignNames = []
-    ;
-        BadForeignNames = [_ | _],
-        (
-            Lang = lang_c,
-            LangName = "C"
-        ;
-            Lang = lang_java,
-            LangName = "Java"
-        ;
-            ( Lang = lang_csharp
-            ; Lang = lang_erlang
-            ),
-            % XXX The code of add_ctor_to_name_map is OK
-            % with Lang = lang_csharp.
-            sorry($pred, "foreign_export_enum pragma for unsupported language")
-        ),
-        AlwaysPieces = ContextPieces ++
-            [words("error: some of the constructors of the type"),
-            words("cannot be converted into valid identifiers for"),
-            words(LangName), suffix("."), nl],
-        MakeBFNPieces = (func(BadForeignName) = [quote(BadForeignName)]),
-        BadForeignPiecesList = list.map(MakeBFNPieces, BadForeignNames),
-        BadForeignPieces =
-            component_list_to_line_pieces(BadForeignPiecesList, [suffix(".")]),
-        VerbosePieces = [words("The problematic"),
-            words(choose_number(BadForeignNames,
-                "foreign name is:", "foreign names are:")),
-            nl_indent_delta(2)] ++ BadForeignPieces,
-        Msg = simple_msg(Context,
-            [always(AlwaysPieces),
-            verbose_only(verbose_always, VerbosePieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
-    ).
-
-:- pred add_ctor_to_name_map(foreign_language::in, string::in,
-    uppercase_export_enum::in, map(string, string)::in, constructor_repn::in,
-    map(string, string)::in, map(string, string)::out,
-    cord(string)::in, cord(string)::out) is det.
-
-add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
-        !NameMap, !BadForeignNames) :-
-    CtorSymName = CtorRepn ^ cr_name,
-    CtorName = unqualify_name(CtorSymName),
-
-    % If the user specified a name for this constructor, then use that.
-    ( if map.search(OverrideMap, CtorName, UserForeignName) then
-        ForeignNameTail = UserForeignName
-    else
-        % Otherwise derive a name automatically from the constructor name.
-        (
-            MakeUpperCase = uppercase_export_enum,
-            ForeignNameTail = string.to_upper(CtorName)
-        ;
-            MakeUpperCase = do_not_uppercase_export_enum,
-            ForeignNameTail = CtorName
-        )
-    ),
-    ForeignName = Prefix ++ ForeignNameTail,
-    (
-        ( Lang = lang_c
-        ; Lang = lang_java
-        ; Lang = lang_csharp
-        ),
-        IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
-    ;
-        Lang = lang_erlang,
-        sorry($pred, "foreign_export_enum for Erlang")
-    ),
-    (
-        IsValidForeignName = yes,
-        map.det_insert(CtorName, ForeignName, !NameMap)
-    ;
-        IsValidForeignName = no,
-        !:BadForeignNames = cord.snoc(!.BadForeignNames, ForeignName)
-    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
