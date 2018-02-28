@@ -1087,7 +1087,7 @@ write_unification(Info, ModuleInfo, ProgVarSet, InstVarSet, VarNamePrint,
                 TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
                 write_indent(Indent, !IO),
                 TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
-                io.format("%% cons_id type_ctor: %s/%d",
+                io.format("%% cons_id type_ctor: %s/%d\n",
                     [s(TypeCtorSymNameStr), i(TypeCtorArity)], !IO)
             else
                 true
