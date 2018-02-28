@@ -744,10 +744,10 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassId,
             qual_field_var_name(EnvModuleName, type_qual,
                 fvn_env_field_from_local_var(VarName)),
             EnvPtrTypeName),
-        Tag = yes(0),
+        MaybePtag = yes(0),
         EnvPtrVarName = env_ptr_var(Action),
         EnvPtr = ml_lval(ml_local_var(EnvPtrVarName, EnvPtrTypeName)),
-        EnvArgLval = ml_field(Tag, EnvPtr, FieldName, FieldType,
+        EnvArgLval = ml_field(MaybePtag, EnvPtr, FieldName, FieldType,
             EnvPtrTypeName),
         ArgRval = ml_lval(ml_local_var(VarName, FieldType)),
         AssignToEnv = assign(EnvArgLval, ArgRval),
@@ -2110,8 +2110,8 @@ fixup_var(Action, Info, ThisVarName, ThisVarType, Lval) :-
             qual_field_var_name(EnvModuleName, type_qual,
                 fvn_env_field_from_local_var(ThisVarName)),
             EnvPtrVarType),
-        Tag = yes(0),
-        Lval = ml_field(Tag, EnvPtr, FieldName, FieldType, EnvPtrVarType)
+        MaybePtag = yes(0),
+        Lval = ml_field(MaybePtag, EnvPtr, FieldName, FieldType, EnvPtrVarType)
     else if
         % Check for references to the env_ptr itself.
         % For those, the code generator will have left the type as
@@ -2480,10 +2480,10 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
     %   stack_chain = MR_hl_field(stack_chain, 0);
 
     StackChain = ml_stack_chain_var,
-    Tag = yes(0),
+    Ptag = yes(0),
     PrevFieldId = ml_field_offset(ml_const(mlconst_int(0))),
     PrevFieldType = mlds_generic_type,
-    PrevFieldRval = ml_lval(ml_field(Tag, ml_lval(StackChain), PrevFieldId,
+    PrevFieldRval = ml_lval(ml_field(Ptag, ml_lval(StackChain), PrevFieldId,
         PrevFieldType, EnvPtrTypeName)),
     Assignment = assign(StackChain, PrevFieldRval),
     UnchainFrame = ml_stmt_atomic(Assignment, Context).

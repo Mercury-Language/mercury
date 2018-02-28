@@ -1444,9 +1444,9 @@
                 % The target to assign the new object's address to.
                 mlds_lval,
 
-                % A (primary) tag to tag the address with before assigning
+                % A primary tag to tag the address with before assigning
                 % the result to the target.
-                maybe(mlds_tag),
+                maybe(mlds_ptag),
 
                 % Indicates whether or not the first argument in the list (see
                 % below) is a secondary tag. For target languages with
@@ -1634,9 +1634,9 @@
     ;       exception
     ;       gc.
 
-    % A tag should be a small non-negative integer.
+    % A primary tag should be a small non-negative integer.
     %
-:- type mlds_tag == int.
+:- type mlds_ptag == int.
 
 %---------------------------------------------------------------------------%
 %
@@ -1669,7 +1669,7 @@
                 % responsibility to insert the necessary code to handle
                 % boxing/unboxing.
 
-                field_tag       :: maybe(mlds_tag),
+                field_ptag      :: maybe(mlds_ptag),
                 field_addr      :: mlds_rval,
                 field_field_id  :: mlds_field_id,
                 field_type      :: mlds_type,
@@ -1751,11 +1751,11 @@
             % The value of an `lval' rval is just the value stored in
             % the specified lval.
 
-    ;       ml_mkword(mlds_tag, mlds_rval)
-            % Given a pointer and a tag, mkword returns a tagged pointer.
+    ;       ml_mkword(mlds_ptag, mlds_rval)
+            % Given a pointer and a primary tag, return a tagged pointer.
             %
             % In theory, we could make `mkword' a binary_op, but this
-            % representation is tighther: it makes clear that the tag
+            % representation is tighter: it makes clear that the tag
             % we want to put on is *always* a constant.
 
     ;       ml_const(mlds_rval_const)

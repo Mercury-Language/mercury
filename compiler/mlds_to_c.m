@@ -4218,7 +4218,7 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
         mlds_output_rval(Opts, Rval, !IO),
         io.write_string(");\n", !IO)
     ;
-        AtomicStmt = new_object(_Target, _MaybeTag, _ExplicitSecTag, _Type,
+        AtomicStmt = new_object(_Target, _MaybePtag, _ExplicitSecTag, _Type,
             _MaybeSize, _MaybeCtorName, _ArgRvalsTypes, _MayUseAtomic,
             _MaybeAllocId),
         mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context,
@@ -4279,8 +4279,8 @@ write_comment_lines(Indent, [CommentLine | CommentLines], !IO) :-
 :- pragma inline(mlds_output_stmt_atomic_new_object/6).
 
 mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
-    AtomicStmt = new_object(Target, MaybeTag, _ExplicitSecTag, Type, MaybeSize,
-        _MaybeCtorName, ArgRvalsTypes, MayUseAtomic, MaybeAllocId),
+    AtomicStmt = new_object(Target, MaybePtag, _ExplicitSecTag, Type,
+        MaybeSize, _MaybeCtorName, ArgRvalsTypes, MayUseAtomic, MaybeAllocId),
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
 
@@ -4349,15 +4349,15 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
     write_lval_or_string(Opts, Base, !IO),
     io.write_string(" = ", !IO),
     (
-        MaybeTag = yes(Tag),
+        MaybePtag = yes(Ptag),
         mlds_output_cast(Opts, Type, !IO),
         io.write_string("MR_mkword(", !IO),
-        mlds_output_tag(Tag, !IO),
+        mlds_output_ptag(Ptag, !IO),
         io.write_string(", ", !IO),
         EndMkword = ")"
     ;
-        MaybeTag = no,
-        Tag = 0,
+        MaybePtag = no,
+        Ptag = 0,
         % XXX We shouldn't need the cast here, but currently the type that
         % we include in the call to MR_new_object() is not always correct.
         mlds_output_cast(Opts, Type, !IO),
@@ -4398,7 +4398,7 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
         io.write_string(BaseVarName1, !IO),
         io.write_string(";\n", !IO)
     ),
-    mlds_output_init_args(ArgRvalsTypes, Context, 0, Base, Tag,
+    mlds_output_init_args(ArgRvalsTypes, Context, 0, Base, Ptag,
         Opts, Indent + 1, !IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
@@ -4519,12 +4519,12 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
     ;       ls_string(string).
 
 :- pred mlds_output_init_args(list(mlds_typed_rval)::in,
-    prog_context::in, int::in, lval_or_string::in, mlds_tag::in,
+    prog_context::in, int::in, lval_or_string::in, mlds_ptag::in,
     mlds_to_c_opts::in, indent::in, io::di, io::uo) is det.
 
 mlds_output_init_args([], _, _, _, _, _, _, !IO).
 mlds_output_init_args([ArgRvalType | ArgRvalsTypes], Context,
-        ArgNum, Base, Tag, Opts, Indent, !IO) :-
+        ArgNum, Base, Ptag, Opts, Indent, !IO) :-
     % The MR_hl_field() macro expects its argument to have type MR_Box,
     % so we need to box the arguments if they aren't already boxed.
     % Hence the use of mlds_output_boxed_rval below.
@@ -4536,7 +4536,7 @@ mlds_output_init_args([ArgRvalType | ArgRvalsTypes], Context,
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("MR_hl_field(", !IO),
-    mlds_output_tag(Tag, !IO),
+    mlds_output_ptag(Ptag, !IO),
     io.write_string(", ", !IO),
     write_lval_or_string(Opts, Base, !IO),
     io.write_string(", ", !IO),
@@ -4546,7 +4546,7 @@ mlds_output_init_args([ArgRvalType | ArgRvalsTypes], Context,
     mlds_output_boxed_rval(Opts, ArgType, ArgRval, !IO),
     io.write_string(";\n", !IO),
     mlds_output_init_args(ArgRvalsTypes, Context,
-        ArgNum + 1, Base, Tag, Opts, Indent, !IO).
+        ArgNum + 1, Base, Ptag, Opts, Indent, !IO).
 
 :- pred write_lval_or_string(mlds_to_c_opts::in, lval_or_string::in,
     io::di, io::uo) is det.
@@ -4570,7 +4570,7 @@ write_lval_or_string(Opts, Base, !IO) :-
 
 mlds_output_lval(Opts, Lval, !IO) :-
     (
-        Lval = ml_field(MaybeTag, PtrRval, FieldId, FieldType, PtrType),
+        Lval = ml_field(MaybePtag, PtrRval, FieldId, FieldType, PtrType),
         (
             FieldId = ml_field_offset(OffsetRval),
             ( if
@@ -4586,12 +4586,12 @@ mlds_output_lval(Opts, Lval, !IO) :-
             then
                 io.write_string("(", !IO),
                 (
-                    MaybeTag = yes(Tag),
+                    MaybePtag = yes(Ptag),
                     io.write_string("MR_hl_field(", !IO),
-                    mlds_output_tag(Tag, !IO),
+                    mlds_output_ptag(Ptag, !IO),
                     io.write_string(", ", !IO)
                 ;
-                    MaybeTag = no,
+                    MaybePtag = no,
                     io.write_string("MR_hl_mask_field(", !IO),
                     io.write_string("(MR_Word) ", !IO)
                 ),
@@ -4607,7 +4607,7 @@ mlds_output_lval(Opts, Lval, !IO) :-
         ;
             FieldId = ml_field_named(QualFieldVarName, CtorType),
             io.write_string("(", !IO),
-            ( if MaybeTag = yes(0) then
+            ( if MaybePtag = yes(0) then
                 ( if PtrType = CtorType then
                     true
                 else
@@ -4623,13 +4623,13 @@ mlds_output_lval(Opts, Lval, !IO) :-
             else
                 mlds_output_cast(Opts, CtorType, !IO),
                 (
-                    MaybeTag = yes(Tag),
+                    MaybePtag = yes(Ptag),
                     io.write_string("MR_body(", !IO),
                     mlds_output_rval(Opts, PtrRval, !IO),
                     io.write_string(", ", !IO),
-                    mlds_output_tag(Tag, !IO)
+                    mlds_output_ptag(Ptag, !IO)
                 ;
-                    MaybeTag = no,
+                    MaybePtag = no,
                     io.write_string("MR_strip_tag(", !IO),
                     mlds_output_rval(Opts, PtrRval, !IO)
                 ),
@@ -4731,14 +4731,14 @@ mlds_output_rval(Opts, Rval, !IO) :-
         % the MR_hl_const_field() macro, not the MR_hl_field() macro,
         % to avoid warnings about discarding const,
         % and similarly for MR_mask_field.
-        %   ( if Lval = ml_lval_field(MaybeTag, Rval, FieldNum, _, _) then
+        %   ( if Lval = ml_lval_field(MaybePtag, Rval, FieldNum, _, _) then
         %       (
-        %           MaybeTag = yes(Tag),
+        %           MaybePtag = yes(Ptag),
         %           io.write_string("MR_hl_const_field(", !IO),
-        %           mlds_output_tag(Tag, !IO),
+        %           mlds_output_ptag(Ptag, !IO),
         %           io.write_string(", ", !IO)
         %       ;
-        %           MaybeTag = no,
+        %           MaybePtag = no,
         %           io.write_string("MR_hl_const_mask_field(", !IO)
         %       ),
         %       mlds_output_rval(Rval, !IO),
@@ -4749,9 +4749,9 @@ mlds_output_rval(Opts, Rval, !IO) :-
         %       mlds_output_lval(Lval, !IO)
         %   ).
     ;
-        Rval = ml_mkword(Tag, BaseRval),
+        Rval = ml_mkword(Ptag, BaseRval),
         io.write_string("MR_mkword(", !IO),
-        mlds_output_tag(Tag, !IO),
+        mlds_output_ptag(Ptag, !IO),
         io.write_string(", ", !IO),
         mlds_output_rval(Opts, BaseRval, !IO),
         io.write_string(")", !IO)
@@ -4939,7 +4939,7 @@ type_is_smaller_than_word(Type) :-
 
 is_an_address(Rval) = IsAddr :-
     (
-        Rval = ml_mkword(_Tag, SubRval),
+        Rval = ml_mkword(_Ptag, SubRval),
         IsAddr = is_an_address(SubRval)
     ;
         Rval = ml_unop(UnOp, SubRval),
@@ -5360,19 +5360,19 @@ mlds_output_float_bits(Opts, Float, !IO) :-
     is semidet.
 
 is_aligned_dword_field(X, Y, ml_mem_addr(Lval)) :-
-    X = ml_lval(ml_field(Tag, Addr, FieldIdX, Type, PtrType) @ Lval),
-    Y = ml_lval(ml_field(Tag, Addr, FieldIdY, Type, PtrType)),
+    X = ml_lval(ml_field(Ptag, Addr, FieldIdX, Type, PtrType) @ Lval),
+    Y = ml_lval(ml_field(Ptag, Addr, FieldIdY, Type, PtrType)),
     FieldIdX = ml_field_offset(ml_const(mlconst_int(Offset))),
     FieldIdY = ml_field_offset(ml_const(mlconst_int(Offset + 1))),
     int.even(Offset).
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_tag(mlds_tag::in, io::di, io::uo) is det.
+:- pred mlds_output_ptag(mlds_ptag::in, io::di, io::uo) is det.
 
-mlds_output_tag(Tag, !IO) :-
+mlds_output_ptag(Ptag, !IO) :-
     io.write_string("MR_mktag(", !IO),
-    io.write_int(Tag, !IO),
+    io.write_int(Ptag, !IO),
     io.write_string(")", !IO).
 
 %---------------------------------------------------------------------------%

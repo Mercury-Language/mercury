@@ -67,7 +67,7 @@
     % argument list.
     %
 :- pred ml_gen_new_object(maybe(cons_id)::in, maybe(qual_ctor_id)::in,
-    mlds_tag::in, bool::in, prog_var::in, list(mlds_typed_rval)::in,
+    mlds_ptag::in, bool::in, prog_var::in, list(mlds_typed_rval)::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -571,7 +571,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
     ).
 
 :- pred ml_gen_new_object_dynamically(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, maybe(mlds_tag)::in, bool::in,
+    maybe(qual_ctor_id)::in, maybe(mlds_ptag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in,
     list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
@@ -647,7 +647,7 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
 %---------------------------------------------------------------------------%
 
 :- pred ml_gen_new_object_statically(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, maybe(mlds_tag)::in,
+    maybe(qual_ctor_id)::in, maybe(mlds_ptag)::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in, list(prog_var)::in, list(mer_type)::in,
     prog_context::in, list(mlds_stmt)::out,
@@ -751,14 +751,14 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     Stmts = [AssignStmt].
 
 :- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, mlds_tag::in, maybe(mlds_tag)::in, bool::in,
+    maybe(qual_ctor_id)::in, mlds_ptag::in, maybe(mlds_ptag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in,
     list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
     list(int)::in, cell_to_reuse::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
+ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, MaybePtag,
         ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
         ExtraTypedRvals, ArgVars, ArgTypes, ArgModes, TakeAddr,
         CellToReuse, Context, Stmts, !Info) :-
@@ -788,7 +788,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
     ml_gen_var(!.Info, ReuseVar, Var2Lval),
 
     list.filter(
-        (pred(ReuseTag::in) is semidet :-
+        ( pred(ReuseTag::in) is semidet :-
             ReuseTag \= PrimaryTag
         ), ReusePrimaryTags, DifferentTags),
     (
@@ -822,13 +822,13 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
         Fields, TakeAddr, VarType, VarLval, OffSet, ArgNum, ConsIdTag,
         Context, FieldStmts, TakeAddrInfos, !Info),
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
-        MaybeTag, Context, !.Info, TakeAddrStmts),
+        MaybePtag, Context, !.Info, TakeAddrStmts),
     ThenStmts = ExtraRvalStmts ++ FieldStmts ++ TakeAddrStmts,
     ThenStmt = ml_stmt_block([], [], ThenStmts, Context),
 
     % If the reassignment isn't possible because the target is statically
     % allocated then fall back to dynamic allocation.
-    ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
+    ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
         ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
         construct_dynamically, Context, DynamicStmts, !Info),
     ElseStmt = ml_stmt_block([], [], DynamicStmts, Context),
@@ -837,12 +837,12 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
     Stmts = [HeapTestStmt, IfStmt].
 
 :- pred ml_gen_field_take_address_assigns(list(take_addr_info)::in,
-    mlds_lval::in, mlds_type::in, maybe(mlds_tag)::in, prog_context::in,
+    mlds_lval::in, mlds_type::in, maybe(mlds_ptag)::in, prog_context::in,
     ml_gen_info::in, list(mlds_stmt)::out) is det.
 
 ml_gen_field_take_address_assigns([], _, _, _, _, _, []).
 ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
-        CellLval, CellType, MaybeTag, Context, Info, [Assign | Assigns]) :-
+        CellLval, CellType, MaybePtag, Context, Info, [Assign | Assigns]) :-
     TakeAddrInfo = take_addr_info(AddrVar, Offset, _ConsArgType, FieldType),
 
     ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -857,7 +857,7 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         % after a *recursive* call, since recursive calls tend to generate
         % values of recursive (i.e. discriminated union) types. -zs
         Offset = offset(OffsetInt),
-        SourceRval = ml_mem_addr(ml_field(MaybeTag, ml_lval(CellLval),
+        SourceRval = ml_mem_addr(ml_field(MaybePtag, ml_lval(CellLval),
             ml_field_offset(ml_const(mlconst_int(OffsetInt))),
             FieldType, CellType)),
         ml_gen_var(Info, AddrVar, AddrLval),
@@ -874,7 +874,7 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         Assign = ml_gen_assign(AddrLval, ml_lval(CellLval), Context)
     ),
     ml_gen_field_take_address_assigns(TakeAddrInfos, CellLval, CellType,
-        MaybeTag, Context, Info, Assigns).
+        MaybePtag, Context, Info, Assigns).
 
     % Return the MLDS type suitable for constructing a constant static
     % ground term with the specified cons_id.
@@ -1000,7 +1000,7 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
 
 :- func ml_gen_mktag(int) = mlds_rval.
 
-ml_gen_mktag(Tag) = ml_unop(std_unop(mktag), ml_const(mlconst_int(Tag))).
+ml_gen_mktag(Ptag) = ml_unop(std_unop(mktag), ml_const(mlconst_int(Ptag))).
 
 :- func ml_cast_cons_tag(mlds_type::in, cons_tag::in(no_or_direct_arg_tag),
     mlds_rval::in) = (mlds_rval::out) is det.
@@ -1801,13 +1801,13 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
     is semidet.
 
 ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) :-
-    FieldLval = ml_field(Tag, Address, FieldIdA, _, PtrType),
+    FieldLval = ml_field(Ptag, Address, FieldIdA, _, PtrType),
     FieldIdA = ml_field_offset(FieldOffsetA),
     ( if FieldOffsetA = ml_const(mlconst_int(Offset)) then
         FieldIdB = ml_field_offset(ml_const(mlconst_int(Offset + 1))),
         SubstType = mlds_generic_type,
-        FieldLvalA = ml_field(Tag, Address, FieldIdA, SubstType, PtrType),
-        FieldLvalB = ml_field(Tag, Address, FieldIdB, SubstType, PtrType)
+        FieldLvalA = ml_field(Ptag, Address, FieldIdA, SubstType, PtrType),
+        FieldLvalB = ml_field(Ptag, Address, FieldIdB, SubstType, PtrType)
     else
         sorry($pred, "unexpected field offset")
     ).
@@ -2075,12 +2075,12 @@ ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, Rval) = TagTestRval :-
         Tag = single_functor_tag,
         TagTestRval = ml_const(mlconst_true)
     ;
-        ( Tag = unshared_tag(UnsharedTagNum)
-        ; Tag = direct_arg_tag(UnsharedTagNum)
+        ( Tag = unshared_tag(UnsharedPtag)
+        ; Tag = direct_arg_tag(UnsharedPtag)
         ),
         RvalTag = ml_unop(std_unop(tag), Rval),
         UnsharedTag = ml_unop(std_unop(mktag),
-            ml_const(mlconst_int(UnsharedTagNum))),
+            ml_const(mlconst_int(UnsharedPtag))),
         TagTestRval = ml_binop(eq(int_type_int), RvalTag, UnsharedTag)
     ;
         Tag = shared_remote_tag(PrimaryTagNum, SecondaryTagNum),
@@ -2164,7 +2164,7 @@ ml_gen_int_tag_test_rval(IntTag, Type, ModuleInfo, Rval) = TagTestRval :-
             ml_const(mlconst_uint64(UInt64)))
     ).
 
-ml_gen_secondary_tag_rval(ModuleInfo, Target, PrimaryTagVal, VarType, Rval) =
+ml_gen_secondary_tag_rval(ModuleInfo, Target, PrimaryTag, VarType, Rval) =
         SecondaryTagField :-
     MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
     module_info_get_globals(ModuleInfo, Globals),
@@ -2176,13 +2176,13 @@ ml_gen_secondary_tag_rval(ModuleInfo, Target, PrimaryTagVal, VarType, Rval) =
         % it back to the right type here.
         SecondaryTagField =
             ml_unop(unbox(mlds_native_int_type),
-                ml_lval(ml_field(yes(PrimaryTagVal), Rval,
+                ml_lval(ml_field(yes(PrimaryTag), Rval,
                     ml_field_offset(ml_const(mlconst_int(0))),
                     mlds_generic_type, MLDS_VarType)))
     ;
         HighLevelData = yes,
         FieldId = ml_gen_hl_tag_field_id(ModuleInfo, Target, VarType),
-        SecondaryTagField = ml_lval(ml_field(yes(PrimaryTagVal), Rval,
+        SecondaryTagField = ml_lval(ml_field(yes(PrimaryTag), Rval,
             FieldId, mlds_native_int_type, MLDS_VarType))
     ).
 
