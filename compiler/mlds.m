@@ -1428,8 +1428,8 @@
     % Heap management.
 
     ;       delete_object(mlds_rval)
-            % Compile time garbage collect (ie explicitly
-            % deallocate) the memory used by the lval.
+            % Compile time garbage collect (i.e. explicitly deallocate)
+            % the memory at the address given by the rval.
 
     ;       new_object(
                 % new_object(Target, Tag, Type, Size, CtorName,
