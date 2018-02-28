@@ -286,16 +286,6 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
     % Figure out how this cons_id is represented.
     ml_variable_type(!.Info, Var, Type),
     ml_cons_id_to_tag(!.Info, ConsId, Tag),
-    ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
-        HowToConstruct, Context, Stmts, !Info).
-
-:- pred ml_gen_construct_tag(cons_tag::in, mer_type::in, prog_var::in,
-    cons_id::in, list(prog_var)::in, list(unify_mode)::in, list(int)::in,
-    how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
-        HowToConstruct, Context, Stmts, !Info) :-
     (
         ( Tag = no_tag
         ; Tag = direct_arg_tag(_)
@@ -1300,17 +1290,6 @@ ml_gen_extra_arg_assign([ExtraRval | ExtraRvals], [ExtraType | ExtraTypes],
 ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
     ml_variable_type(!.Info, Var, Type),
     ml_cons_id_to_tag(!.Info, ConsId, Tag),
-    ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
-        Stmts, !Info).
-
-:- pred ml_gen_det_deconstruct_tag(cons_tag::in, mer_type::in, prog_var::in,
-    cons_id::in, list(prog_var)::in, list(unify_mode)::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
-        Stmts, !Info) :-
-    % For constants, if the deconstruction is det, then we already know
-    % the value of the constant, so Stmts = [].
     (
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_IntTag)
@@ -1318,6 +1297,8 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
         ; Tag = float_tag(_Float)
         ; Tag = shared_local_tag(_Bits1, _Num1)
         ),
+        % For constants, if the deconstruction is det, then we already know
+        % the value of the constant, so Stmts = [].
         Stmts = []
     ;
         ( Tag = closure_tag(_, _, _)
@@ -1638,16 +1619,14 @@ ml_gen_unify_arg(ConsId, ArgVar, Mode, ArgType, CtorArgRepn, VarType, VarLval,
         ( if type_is_tuple(VarType, _) then
             Offset = offset(OffsetInt),
             FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt)))
-        else
+        else if ConsId = cons(ConsName, ConsArity, TypeCtor) then
+            UnqualConsName = ml_gen_du_ctor_name(Target, TypeCtor,
+                ConsName, ConsArity),
             FieldName = ml_gen_hld_field_name(MaybeFieldName, ArgNum),
-            ( if ConsId = cons(ConsName, ConsArity, TypeCtor) then
-                UnqualConsName = ml_gen_du_ctor_name(Target, TypeCtor,
-                    ConsName, ConsArity),
-                FieldId = ml_gen_field_id(Target, VarType, Tag, UnqualConsName,
-                    ConsArity, FieldName)
-            else
-                unexpected($pred, "invalid cons_id")
-            )
+            FieldId = ml_gen_field_id(Target, VarType, Tag, UnqualConsName,
+                ConsArity, FieldName)
+        else
+            unexpected($pred, "invalid cons_id")
         )
     ),
     % Box the field type, if needed.
