@@ -2262,7 +2262,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
         )
     then
         ( if
-            check_dummy_type(ModuleInfo, SpecialPredType) = is_dummy_type
+            is_type_a_dummy(ModuleInfo, SpecialPredType) = is_dummy_type
         then
             specialize_unify_or_compare_pred_for_dummy(MaybeResult, Goal,
                 !Info)

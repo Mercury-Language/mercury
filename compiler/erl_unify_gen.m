@@ -111,7 +111,7 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
         Unification = assign(TargetVar, SourceVar),
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
         erl_variable_type(!.Info, TargetVar, VarType),
-        IsDummy = check_dummy_type(ModuleInfo, VarType),
+        IsDummy = is_type_a_dummy(ModuleInfo, VarType),
         (
             IsDummy = is_dummy_type,
             Statement = expr_or_void(MaybeSuccessExpr)
@@ -127,7 +127,7 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
             "simple_test not semidet"),
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
         erl_variable_type(!.Info, Var1, VarType),
-        IsDummy = check_dummy_type(ModuleInfo, VarType),
+        IsDummy = is_type_a_dummy(ModuleInfo, VarType),
         (
             IsDummy = is_dummy_type,
             Statement = expr_or_void(MaybeSuccessExpr)
@@ -159,7 +159,7 @@ erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
         ),
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
         erl_variable_type(!.Info, Var, VarType),
-        IsDummy = check_dummy_type(ModuleInfo, VarType),
+        IsDummy = is_type_a_dummy(ModuleInfo, VarType),
         (
             IsDummy = is_dummy_type,
             Statement = expr_or_void(MaybeSuccessExpr)
@@ -223,7 +223,7 @@ assign_free_var(ModuleInfo, Var, ArgType, ArgMode) = var_eq_false(Var) :-
     not (
         from_to_insts_to_top_functor_mode(ModuleInfo, RHSFromToInsts, ArgType,
             top_in),
-        check_dummy_type(ModuleInfo, ArgType) = is_not_dummy_type
+        is_type_a_dummy(ModuleInfo, ArgType) = is_not_dummy_type
         % XXX ml_unify_gen also checks if ConsArgType is dummy type,
         % do we need to do the same?
     ).

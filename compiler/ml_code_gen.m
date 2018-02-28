@@ -1169,7 +1169,7 @@ ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
         !Info) :-
     lookup_var_type(VarTypes, Var, Type),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    IsDummy = check_dummy_type(ModuleInfo, Type),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
         % No declaration needed for this variable.

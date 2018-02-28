@@ -900,7 +900,7 @@ variable_type(CI, Var) = Type :-
 variable_is_of_dummy_type(CI, Var) = IsDummy :-
     VarType = variable_type(CI, Var),
     get_module_info(CI, ModuleInfo),
-    IsDummy = check_dummy_type(ModuleInfo, VarType).
+    IsDummy = is_type_a_dummy(ModuleInfo, VarType).
 
 search_type_defn(CI, Type, TypeDefn) :-
     get_module_info(CI, ModuleInfo),

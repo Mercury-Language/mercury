@@ -1914,7 +1914,7 @@ output_foreign_proc_inputs(Info, [Input | Inputs], !IO) :-
             % For other dummy types we must output an assignment because
             % code in the foreign_proc body may examine the value.
             type_to_ctor_and_args(VarType, VarTypeCtor, []),
-            check_builtin_dummy_type_ctor(VarTypeCtor) =
+            is_type_ctor_a_builtin_dummy(VarTypeCtor) =
                 is_builtin_dummy_type_ctor
         then
             true

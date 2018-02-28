@@ -166,7 +166,7 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
         expect(unify(CodeModel, model_det), $pred, "assign not det"),
         ml_variable_type(!.Info, TargetVar, Type),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        IsDummyType = check_dummy_type(ModuleInfo, Type),
+        IsDummyType = is_type_a_dummy(ModuleInfo, Type),
         (
             % Skip dummy argument types, since they will not have been
             % declared.
@@ -1228,8 +1228,8 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         ( if
             from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, ArgType,
                 top_in),
-            check_dummy_type(ModuleInfo, ArgType) = is_not_dummy_type,
-            check_dummy_type(ModuleInfo, ConsArgType) = is_not_dummy_type
+            is_either_type_a_dummy(ModuleInfo, ArgType, ConsArgType) =
+                neither_is_dummy_type
         then
             ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, BoxedArgType,
                 bp_native_if_possible, ml_lval(Lval), Rval)
@@ -1692,9 +1692,8 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
         RightTopFunctorMode),
     ( if
         % Skip dummy argument types, since they will not have been declared.
-        ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
-        ; check_dummy_type(ModuleInfo, FieldType) = is_dummy_type
-        )
+        is_either_type_a_dummy(ModuleInfo, ArgType, FieldType) =
+            at_least_one_is_dummy_type
     then
         true
     else
@@ -1856,10 +1855,9 @@ ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
     from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
         RightTopFunctorMode),
     ( if
-        % Skip dummy argument types, since they will not have been declared.
-        ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
-        ; check_dummy_type(ModuleInfo, VarType) = is_dummy_type
-        )
+        % Dummy argument types won't have been declared.
+        is_either_type_a_dummy(ModuleInfo, ArgType, VarType) =
+            at_least_one_is_dummy_type
     then
         unexpected($pred, "dummy unify")
     else
@@ -1933,10 +1931,9 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
     from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
         RightTopFunctorMode),
     ( if
-        % Skip dummy argument types, since they will not have been declared.
-        ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
-        ; check_dummy_type(ModuleInfo, VarType) = is_dummy_type
-        )
+        % Dummy argument types won't have been declared.
+        is_either_type_a_dummy(ModuleInfo, ArgType, VarType) =
+            at_least_one_is_dummy_type
     then
         unexpected($pred, "dummy unify")
     else

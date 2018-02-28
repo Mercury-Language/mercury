@@ -471,7 +471,7 @@ ml_gen_make_locals_for_output_args([Var | Vars], Context,
         !Info),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_variable_type(!.Info, Var, Type),
-    IsDummy = check_dummy_type(ModuleInfo, Type),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
         LocalDefns = LocalDefns0,

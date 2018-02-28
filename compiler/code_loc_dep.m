@@ -3308,7 +3308,7 @@ key_var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var - _ArgInfo) :-
 
 valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
     lookup_var_type(VarTypes, Var, Type),
-    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type,
+    is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type,
     ( if
         ( Lval = stackvar(N)
         ; Lval = parent_stackvar(N)

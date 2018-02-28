@@ -241,21 +241,18 @@ erl_maybe_gen_simple_special_pred(ModuleInfo, PredId, ProcId,
     special_pred_name_arity(SpecialId, _, PredName, PredArity),
     proc_info_get_headvars(ProcInfo, Args),
     proc_info_get_vartypes(ProcInfo, VarTypes),
+    lookup_var_type(VarTypes, Y, Type),
+    is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type,
+    type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
     (
         SpecialId = spec_pred_unify,
         in_in_unification_proc_id(ProcId),
         list.reverse(Args, [Y, X | _]),
-        lookup_var_type(VarTypes, Y, Type),
-        check_dummy_type(ModuleInfo, Type) = is_not_dummy_type,
-        type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
         erl_gen_simple_in_in_unification(ModuleInfo, PredId, ProcId, X, Y,
             ProcDefn)
     ;
         SpecialId = spec_pred_compare,
         list.reverse(Args, [Y, X, _Res | _]),
-        lookup_var_type(VarTypes, Y, Type),
-        check_dummy_type(ModuleInfo, Type) = is_not_dummy_type,
-        type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
         erl_gen_simple_compare(ModuleInfo, PredId, ProcId, X, Y, ProcDefn)
     ),
     !:Defns = [ProcDefn | !.Defns].
@@ -1020,7 +1017,7 @@ maybe_create_closure_for_success_expr(NonLocals, MaybeSuccessExpr0,
 :- func non_dummy_var(module_info, prog_var, mer_type) = prog_var is semidet.
 
 non_dummy_var(ModuleInfo, Var, Type) = Var :-
-    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
+    is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type.
 
 :- pred ground_var_in_instmap(prog_var::in, instmap::in, instmap::out) is det.
 

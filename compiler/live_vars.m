@@ -124,7 +124,7 @@ set_dummy_array_elements(_, [], !DummyTypeArray, !DummyVars).
 set_dummy_array_elements(ModuleInfo, [VarType | VarsTypes],
         !DummyTypeArray, !DummyVars) :-
     VarType = Var - Type,
-    IsDummyType = check_dummy_type(ModuleInfo, Type),
+    IsDummyType = is_type_a_dummy(ModuleInfo, Type),
     (
         IsDummyType = is_dummy_type,
         array.set(to_int(Var), IsDummyType, !DummyTypeArray),

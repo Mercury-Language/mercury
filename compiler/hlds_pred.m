@@ -3672,11 +3672,11 @@ ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
 
 var_is_of_dummy_type(ModuleInfo, VarTypes, Var) :-
     lookup_var_type(VarTypes, Var, Type),
-    check_dummy_type(ModuleInfo, Type) = is_dummy_type.
+    is_type_a_dummy(ModuleInfo, Type) = is_dummy_type.
 
 var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var) :-
     lookup_var_type(VarTypes, Var, Type),
-    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
+    is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type.
 
 %-----------------------------------------------------------------------------%
 

@@ -275,7 +275,7 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
     ),
     ( if
         MaybeVarMode = yes(foreign_arg_name_mode(ArgName, Mode)),
-        check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
+        is_type_a_dummy(ModuleInfo, OrigType) = is_not_dummy_type,
         not var_is_singleton(ArgName)
     then
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, TopFunctorMode),
@@ -702,7 +702,7 @@ ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    IsDummy = check_dummy_type(ModuleInfo, VarType),
+    IsDummy = is_type_a_dummy(ModuleInfo, VarType),
     (
         IsDummy = is_dummy_type,
         % The variable may not have been declared, so we need to generate
@@ -838,7 +838,7 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
     ( if
         MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         not var_is_singleton(ArgName),
-        check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
+        is_type_a_dummy(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_out)
     then
         % Create a target lval with the right type for *internal* use in the
@@ -903,7 +903,7 @@ ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
     ( if
         MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         not var_is_singleton(ArgName),
-        check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
+        is_type_a_dummy(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_out)
     then
         ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,

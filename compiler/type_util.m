@@ -161,7 +161,20 @@
     % NOTE: changes here may require changes to
     % `constructor_list_represents_dummy_argument_type'.
     %
-:- func check_dummy_type(module_info, mer_type) = is_dummy_type.
+:- func is_type_a_dummy(module_info, mer_type) = is_dummy_type.
+
+:- type is_either_dummy_type
+    --->    at_least_one_is_dummy_type
+    ;       neither_is_dummy_type.
+
+    % Return at_least_one_is_dummy_type if *either* of the two types
+    % is a dummy type.
+    %
+    % Usually used to check the "dummyness" of both the type of an argument
+    % in both the caller and the callee of a call.
+    %
+:- func is_either_type_a_dummy(module_info, mer_type, mer_type) =
+    is_either_dummy_type.
 
     % A test for types that are defined in Mercury, but whose definitions
     % are `lies', i.e. they are not sufficiently accurate for RTTI
@@ -775,13 +788,32 @@ type_is_existq_type(ModuleInfo, Type) :-
         Constructor ^ cons_maybe_exist = exist_constraints(_)
     ).
 
-check_dummy_type(ModuleInfo, Type) =
-    check_dummy_type_2(ModuleInfo, Type, []).
+is_type_a_dummy(ModuleInfo, Type) = IsDummy :-
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    IsDummy = is_type_a_dummy_loop(TypeTable, Type, []).
 
-:- func check_dummy_type_2(module_info, mer_type, list(mer_type))
+is_either_type_a_dummy(ModuleInfo, TypeA, TypeB) = IsDummy :-
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    IsDummyA = is_type_a_dummy_loop(TypeTable, TypeA, []),
+    (
+        IsDummyA = is_dummy_type,
+        IsDummy = at_least_one_is_dummy_type
+    ;
+        IsDummyA = is_not_dummy_type,
+        IsDummyB = is_type_a_dummy_loop(TypeTable, TypeB, []),
+        (
+            IsDummyB = is_dummy_type,
+            IsDummy = at_least_one_is_dummy_type
+        ;
+            IsDummyB = is_not_dummy_type,
+            IsDummy = neither_is_dummy_type
+        )
+    ).
+
+:- func is_type_a_dummy_loop(type_table, mer_type, list(mer_type))
     = is_dummy_type.
 
-check_dummy_type_2(ModuleInfo, Type, CoveredTypes) = IsDummy :-
+is_type_a_dummy_loop(TypeTable, Type, CoveredTypes) = IsDummy :-
     % Since the sizes of types in any given program is bounded, this test
     % will ensure termination.
     ( if list.member(Type, CoveredTypes) then
@@ -790,13 +822,12 @@ check_dummy_type_2(ModuleInfo, Type, CoveredTypes) = IsDummy :-
     else if type_to_ctor_and_args(Type, TypeCtor, ArgTypes) then
         % Keep this in sync with is_dummy_argument_type_with_constructors
         % above.
-        IsBuiltinDummy = check_builtin_dummy_type_ctor(TypeCtor),
+        IsBuiltinDummy = is_type_ctor_a_builtin_dummy(TypeCtor),
         (
             IsBuiltinDummy = is_builtin_dummy_type_ctor,
             IsDummy = is_dummy_type
         ;
             IsBuiltinDummy = is_not_builtin_dummy_type_ctor,
-            module_info_get_type_table(ModuleInfo, TypeTable),
             % This can fail for some builtin type constructors such as func,
             % pred, and tuple, none of which are dummy types.
             ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
@@ -820,15 +851,15 @@ check_dummy_type_2(ModuleInfo, Type, CoveredTypes) = IsDummy :-
                         ),
                         IsDummy = is_not_dummy_type
                     ;
-                        DuTypeKind = du_type_kind_notag(_, SingleArgTypeInDefn
-                            , _),
+                        DuTypeKind = du_type_kind_notag(_, SingleArgTypeInDefn,
+                            _),
                         get_type_defn_tparams(TypeDefn, TypeParams),
                         map.from_corresponding_lists(TypeParams, ArgTypes,
                             Subst),
                         apply_subst_to_type(Subst, SingleArgTypeInDefn,
                             SingleArgType),
-                        IsDummy = check_dummy_type_2(ModuleInfo, SingleArgType,
-                            [Type | CoveredTypes])
+                        IsDummy = is_type_a_dummy_loop(TypeTable,
+                            SingleArgType, [Type | CoveredTypes])
                     )
                 ;
                     ( TypeBody = hlds_eqv_type(_)
@@ -1464,7 +1495,7 @@ cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
 
 type_not_stored_in_region(Type, ModuleInfo) :-
     ( type_is_atomic(ModuleInfo, Type)
-    ; check_dummy_type(ModuleInfo, Type) = is_dummy_type
+    ; is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
     ; Type = type_info_type
     ; Type = type_ctor_info_type
     ; type_is_var(Type)

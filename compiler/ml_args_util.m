@@ -677,7 +677,7 @@ ml_gen_arg_decls(ModuleInfo, CopyOutWhen, WhatParams, [HeadTuple | TailTuples],
         !MaybeInfo),
 
     HeadTuple = var_mvar_type_mode(HeadVar, HeadMLDSVar, HeadType, HeadMode),
-    HeadIsDummy = check_dummy_type(ModuleInfo, HeadType),
+    HeadIsDummy = is_type_a_dummy(ModuleInfo, HeadType),
     (
         HeadIsDummy = is_dummy_type,
         % Exclude types such as io.state, etc.
@@ -847,7 +847,7 @@ ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context, ProcIdInTscc,
         CopyOwnToTsccOutStmts, CopyOutValThroughPtrStmts) :-
     HeadTuple =
         var_mvar_type_mode(_HeadVar, HeadMLDSVarName, HeadType, HeadMode),
-    HeadIsDummy = check_dummy_type(ModuleInfo, HeadType),
+    HeadIsDummy = is_type_a_dummy(ModuleInfo, HeadType),
     (
         HeadIsDummy = is_dummy_type,
         % Exclude types such as io.state, etc.
@@ -1076,7 +1076,7 @@ ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     mode_to_top_functor_mode(ModuleInfo, CalleeMode, CalleeType,
         CalleeArgTopFunctorMode),
-    CalleeIsDummy = check_dummy_type(ModuleInfo, CalleeType),
+    CalleeIsDummy = is_type_a_dummy(ModuleInfo, CalleeType),
     (
         CalleeIsDummy = is_dummy_type
         % Exclude arguments of type io.state etc.
@@ -1100,7 +1100,7 @@ ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
         ;
             CalleeArgTopFunctorMode = top_in,
             % It is an input argument.
-            CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
+            CallerIsDummy = is_type_a_dummy(ModuleInfo, CallerType),
             (
                 CallerIsDummy = is_dummy_type,
                 % The variable may not have been declared, so we need to

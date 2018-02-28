@@ -292,7 +292,7 @@ ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info) :-
         ArgTypes = [SrcType, DestType]
     then
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        IsDummy = check_dummy_type(ModuleInfo, DestType),
+        IsDummy = is_type_a_dummy(ModuleInfo, DestType),
         (
             IsDummy = is_dummy_type,
             Stmts = []
@@ -813,7 +813,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
                 % introduced for types such as io.state.
                 Lval = ml_local_var(_VarName, VarType),
                 VarType = mercury_type(ProgDataType, _, _),
-                check_dummy_type(ModuleInfo, ProgDataType) = is_dummy_type
+                is_type_a_dummy(ModuleInfo, ProgDataType) = is_dummy_type
             then
                 Stmts = []
             else

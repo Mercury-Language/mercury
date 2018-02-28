@@ -658,7 +658,7 @@ proc_is_output_det_function(ModuleInfo, PredInfo, ProcInfo, RetArgVar) :-
     pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
 
     RetTopFunctorMode = top_out,
-    check_dummy_type(ModuleInfo, RetArgType) = is_not_dummy_type.
+    is_type_a_dummy(ModuleInfo, RetArgType) = is_not_dummy_type.
 
 %---------------------------------------------------------------------------%
 %
@@ -927,7 +927,7 @@ ml_gen_var(Info, Var, Lval) :-
 
 ml_gen_var_with_type(Info, Var, Type, Lval) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    IsDummy = check_dummy_type(ModuleInfo, Type),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
         % The variable won't have been declared, so we need to generate
@@ -1344,7 +1344,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         % Create the lval for the variable and use it for the argument lval.
         ArgLval = ml_local_var(ArgVarName, MLDS_CalleeType),
 
-        CallerIsDummy = check_dummy_type(ModuleInfo, CallerType),
+        CallerIsDummy = is_type_a_dummy(ModuleInfo, CallerType),
         (
             CallerIsDummy = is_dummy_type,
             % If it is a dummy argument type (e.g. io.state),
@@ -1585,7 +1585,7 @@ ml_skip_dummy_argument_types(Info, [Lval - Type | LvalsTypes],
         LvalsMLDSTypes) :-
     ml_skip_dummy_argument_types(Info, LvalsTypes, TailLvalsMLDSTypes),
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    IsDummy = check_dummy_type(ModuleInfo, Type),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
         LvalsMLDSTypes = TailLvalsMLDSTypes

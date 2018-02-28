@@ -1229,7 +1229,7 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
         materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
         var_locn_get_vartypes(!.VLI, VarTypes),
         lookup_var_type(VarTypes, Var, Type),
-        IsDummy = check_dummy_type(ModuleInfo, Type),
+        IsDummy = is_type_a_dummy(ModuleInfo, Type),
         (
             IsDummy = is_dummy_type,
             AssignCode = empty
@@ -1322,7 +1322,7 @@ var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
     ),
     var_locn_get_vartypes(!.VLI, VarTypes),
     lookup_var_type(VarTypes, DepVar, DepVarType),
-    IsDummy = check_dummy_type(ModuleInfo, DepVarType),
+    IsDummy = is_type_a_dummy(ModuleInfo, DepVarType),
     (
         IsDummy = is_dummy_type,
         AssignCode = empty
@@ -1630,7 +1630,7 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
             ),
             var_locn_get_vartypes(!.VLI, VarTypes),
             lookup_var_type(VarTypes, Var, Type),
-            IsDummy = check_dummy_type(ModuleInfo, Type),
+            IsDummy = is_type_a_dummy(ModuleInfo, Type),
             (
                 IsDummy = is_dummy_type,
                 AssignCode = empty

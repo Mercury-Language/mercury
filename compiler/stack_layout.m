@@ -2000,7 +2000,7 @@ construct_liveval_array_slots([VarInfo | VarInfos], ModuleInfo, VarNumMap,
         TypeRval, VarNum, !StaticCellInfo),
     ( if
         LiveValueType = live_value_var(_, _, Type, _),
-        check_dummy_type(ModuleInfo, Type) = is_dummy_type,
+        is_type_a_dummy(ModuleInfo, Type) = is_dummy_type,
         % We want to preserve I/O states in registers.
         not (
             Locn = locn_direct(reg(_, _))

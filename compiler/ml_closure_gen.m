@@ -1046,7 +1046,7 @@ ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum,
         TopFunctorMode = top_out,
         % Handle output variables.
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        IsDummy = check_dummy_type(ModuleInfo, Type),
+        IsDummy = is_type_a_dummy(ModuleInfo, Type),
         ( if
             (
                 CopyOutWhen = copy_out_only_last_arg,

@@ -1220,7 +1220,7 @@ trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
         !TVars, !VarInfos, VarCode ++ VarsCode, CI, !CLD) :-
     lookup_var_type(VarTypes, Var, Type),
     get_module_info(CI, ModuleInfo),
-    IsDummy = check_dummy_type(ModuleInfo, Type),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
         VarCode = empty
@@ -1273,7 +1273,7 @@ build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos], ModuleInfo,
         ArgMode = top_in,
         not inst_is_clobbered(ModuleInfo, Inst),
         lookup_var_type(VarTypes, Var, Type),
-        check_dummy_type(ModuleInfo, Type) = is_not_dummy_type
+        is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type
     then
         FailVars = [Var | FailVars0]
     else

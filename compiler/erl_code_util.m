@@ -357,7 +357,7 @@ erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
             OptDummyArgs = opt_dummy_args,
             % Exclude arguments of type io.state etc.
             % Also exclude those with arg_mode `top_unused'.
-            ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
+            ( is_type_a_dummy(ModuleInfo, ArgType) = is_dummy_type
             ; TopFunctorMode = top_unused
             )
         then
@@ -415,7 +415,7 @@ erl_bound_nonlocals_in_goal(Info, InstMap, Goal, BoundNonLocals) :-
 is_bound_and_not_dummy(ModuleInfo, VarTypes, InstMap, InstmapDelta, Var) :-
     var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstmapDelta, Var),
     lookup_var_type(VarTypes, Var, Type),
-    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
+    is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type.
 
 erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap,
         Statement0, Statement) :-
@@ -435,7 +435,7 @@ erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap,
 erl_var_or_dummy_replacement(ModuleInfo, VarTypes, DummyVarReplacement, Var) =
     ( if
         search_var_type(VarTypes, Var, Type),
-        check_dummy_type(ModuleInfo, Type) = is_dummy_type
+        is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
     then
         elds_term(DummyVarReplacement)
     else

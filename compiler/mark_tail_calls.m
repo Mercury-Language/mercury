@@ -609,7 +609,7 @@ is_output(ModuleInfo, Mode, Type) :-
         false
     ;
         TopFunctorMode = top_out,
-        IsDummy = check_dummy_type(ModuleInfo, Type),
+        IsDummy = is_type_a_dummy(ModuleInfo, Type),
         require_complete_switch [IsDummy]
         (
             IsDummy = is_not_dummy_type

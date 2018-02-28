@@ -1301,7 +1301,7 @@ generate_det_deconstruction(Var, ConsId, Args, Modes, ArgWidths, Code,
             ArgWidths = [_ArgWidth]
         then
             VarType = variable_type(CI, Var),
-            IsDummy = check_dummy_type(ModuleInfo, VarType),
+            IsDummy = is_type_a_dummy(ModuleInfo, VarType),
             (
                 IsDummy = is_dummy_type,
                 % We must handle this case specially. If we didn't, the

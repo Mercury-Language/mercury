@@ -413,7 +413,7 @@ get_export_info_for_lang_c(ModuleInfo, Preds, PredId, ProcId,
             pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
                 arg_info(RetArgLoc, RetArgMode) - RetType),
             RetArgMode = top_out,
-            check_dummy_type(ModuleInfo, RetType) = is_not_dummy_type
+            is_type_a_dummy(ModuleInfo, RetType) = is_not_dummy_type
         then
             ExportRetType = foreign.to_exported_type(ModuleInfo, RetType),
             CRetType = exported_type_to_string(lang_c, ExportRetType),
@@ -473,7 +473,7 @@ get_export_info_for_lang_c(ModuleInfo, Preds, PredId, ProcId,
 
 include_arg(ModuleInfo, arg_info(_Loc, Mode) - Type) :-
     Mode \= top_unused,
-    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type.
+    is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type.
 
     % get_argument_declarations(Args, NameThem, DeclString):
     %

@@ -163,7 +163,7 @@ var_to_expr_or_false(ModuleInfo, VarTypes, Var) = Expr :-
         % The variable may not be in VarTypes if it did not exist in the
         % HLDS, i.e. we invented the variable. Those should be kept.
         search_var_type(VarTypes, Var, Type),
-        check_dummy_type(ModuleInfo, Type) = is_dummy_type
+        is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
     then
         Expr = elds_term(elds_false)
     else
@@ -351,7 +351,7 @@ erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-
         ArgTypes = [_SrcType, DestType]
     then
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
-        IsDummy = check_dummy_type(ModuleInfo, DestType),
+        IsDummy = is_type_a_dummy(ModuleInfo, DestType),
         (
             IsDummy = is_dummy_type,
             Statement = expr_or_void(MaybeSuccessExpr)
@@ -390,7 +390,7 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
                 % We need to avoid generating assignments to dummy variables
                 % introduced for types such as io.state.
                 lookup_var_type(VarTypes, Lval, LvalType),
-                check_dummy_type(ModuleInfo, LvalType) = is_dummy_type
+                is_type_a_dummy(ModuleInfo, LvalType) = is_dummy_type
             then
                 Statement = expr_or_void(MaybeSuccessExpr)
             else

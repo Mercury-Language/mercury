@@ -175,7 +175,7 @@ generate_clauses_for_special_pred(SpecDefnInfo, ClauseInfo, !ModuleInfo) :-
 generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     Context = SpecDefnInfo ^ spdi_context,
-    IsDummy = check_builtin_dummy_type_ctor(TypeCtor),
+    IsDummy = is_type_ctor_a_builtin_dummy(TypeCtor),
     (
         IsDummy = is_builtin_dummy_type_ctor,
         generate_unify_proc_body_dummy(Context, X, Y, Clause, !Info)
@@ -205,7 +205,7 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
                 )
             ;
                 TypeBody = hlds_eqv_type(EqvType),
-                EqvIsDummy = check_dummy_type(ModuleInfo, EqvType),
+                EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
                 (
                     EqvIsDummy = is_dummy_type,
                     % Treat this type as if it were a dummy type itself.
@@ -248,7 +248,7 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
                         Clause, !Info)
                 ;
                     DuTypeKind = du_type_kind_notag(_, ArgType, _),
-                    ArgIsDummy = check_dummy_type(ModuleInfo, ArgType),
+                    ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
                     (
                         ArgIsDummy = is_dummy_type,
                         % Treat this type as if it were a dummy type
@@ -589,7 +589,7 @@ unify_var_lists(ExistQTVars, [TypedVarPair | TypedVarPairs], [Goal | Goals],
     term.context_init(Context),
     ( if
         info_get_module_info(!.Info, ModuleInfo),
-        check_dummy_type(ModuleInfo, Type) = is_dummy_type
+        is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
     then
         Goal = true_goal
     else if
@@ -623,7 +623,7 @@ unify_var_lists(ExistQTVars, [TypedVarPair | TypedVarPairs], [Goal | Goals],
 generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     Context = SpecDefnInfo ^ spdi_context,
-    IsDummy = check_builtin_dummy_type_ctor(TypeCtor),
+    IsDummy = is_type_ctor_a_builtin_dummy(TypeCtor),
     (
         IsDummy = is_builtin_dummy_type_ctor,
         generate_compare_proc_body_dummy(Context, Res, X, Y, Clause, !Info)
@@ -653,7 +653,7 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
                 )
             ;
                 TypeBody = hlds_eqv_type(EqvType),
-                EqvIsDummy = check_dummy_type(ModuleInfo, EqvType),
+                EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
                 (
                     EqvIsDummy = is_dummy_type,
                     % Treat this type as if it were a dummy type itself.
@@ -696,7 +696,7 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
                         Res, X, Y, Clause, !Info)
                 ;
                     DuTypeKind = du_type_kind_notag(_, ArgType, _),
-                    ArgIsDummy = check_dummy_type(ModuleInfo, ArgType),
+                    ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
                     (
                         ArgIsDummy = is_dummy_type,
                         % Treat this type as if it were a dummy type
@@ -1368,7 +1368,7 @@ generate_compare_args(ExistQTVars, [TypedVarPair | TypedVarPairs], R, Context,
     ),
     info_get_module_info(!.Info, ModuleInfo),
 
-    IsDummy = check_dummy_type(ModuleInfo, Type),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
         % X and Y contain dummy values, so there is nothing to compare.

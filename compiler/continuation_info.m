@@ -697,7 +697,7 @@ generate_resume_layout_for_vars([Var - LvalSet | VarLvals], InstMap,
         VarTypes, ProcInfo, ModuleInfo, !VarInfos, !TVars) :-
     ( if
         lookup_var_type(VarTypes, Var, Type),
-        check_dummy_type(ModuleInfo, Type) = is_dummy_type
+        is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
     then
         true
     else

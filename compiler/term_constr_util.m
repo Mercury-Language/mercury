@@ -278,7 +278,7 @@ is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
     ;
         % We don't include dummy types in the constraints - they won't tell us
         % anything useful.
-        check_dummy_type(ModuleInfo, Type) = is_dummy_type
+        is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
     ).
 
 add_context_to_constr_termination_info(no, _, no).
@@ -290,14 +290,16 @@ add_context_to_constr_termination_info(yes(can_loop(_)), Context,
 %-----------------------------------------------------------------------------%
 
 substitute_size_vars(Constraints0, SubstMap) = Constraints :-
-    SubVarInCoeff = (func(OldVar - Rat) = NewVar - Rat :-
-        map.lookup(SubstMap, OldVar, NewVar)
-    ),
-    SubVarInEqn = (func(Constr0) = Constr :-
-        deconstruct_constraint(Constr0, Coeffs0, Op, Rat),
-        Coeffs = list.map(SubVarInCoeff, Coeffs0),
-        Constr = construct_constraint(Coeffs, Op, Rat)
-    ),
+    SubVarInCoeff =
+        ( func(OldVar - Rat) = NewVar - Rat :-
+            map.lookup(SubstMap, OldVar, NewVar)
+        ),
+    SubVarInEqn =
+        ( func(Constr0) = Constr :-
+            deconstruct_constraint(Constr0, Coeffs0, Op, Rat),
+            Coeffs = list.map(SubVarInCoeff, Coeffs0),
+            Constr = construct_constraint(Coeffs, Op, Rat)
+        ),
     Constraints = list.map(SubVarInEqn, Constraints0).
 
 %-----------------------------------------------------------------------------%
@@ -387,10 +389,11 @@ maybe_write_proc_name(PPId, String, ModuleInfo, _, !IO) :-
     io.nl(!IO).
 
 write_size_vars(Varset, Vars, !IO) :-
-    WriteSizeVar = (pred(Var::in, !.IO::di, !:IO::uo) is det :-
-        varset.lookup_name(Varset, Var, Name),
-        io.write_string(Name, !IO)
-    ),
+    WriteSizeVar =
+        ( pred(Var::in, !.IO::di, !:IO::uo) is det :-
+            varset.lookup_name(Varset, Var, Name),
+            io.write_string(Name, !IO)
+        ),
     io.write_char('[', !IO),
     io.write_list(Vars, ", ", WriteSizeVar, !IO),
     io.write_char(']', !IO).

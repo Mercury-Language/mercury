@@ -1014,7 +1014,7 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
             Arity = list.length(TypeArgs),
             TypeCtor = type_ctor(SymName, Arity),
             ( if
-                check_builtin_dummy_type_ctor(TypeCtor)
+                is_type_ctor_a_builtin_dummy(TypeCtor)
                     = is_builtin_dummy_type_ctor
             then
                 IsDummyType = yes

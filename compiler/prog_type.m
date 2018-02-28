@@ -237,7 +237,7 @@
     % Is the given type constructor a dummy type irrespective
     % of its definition?
     %
-:- func check_builtin_dummy_type_ctor(type_ctor) = is_builtin_dummy_type_ctor.
+:- func is_type_ctor_a_builtin_dummy(type_ctor) = is_builtin_dummy_type_ctor.
 
 :- pred type_is_io_state(mer_type::in) is semidet.
 
@@ -807,7 +807,7 @@ builtin_type_ctors_with_no_hlds_type_defn =
       type_ctor(qualified(mercury_public_builtin_module, "tuple"), 0)
     ].
 
-check_builtin_dummy_type_ctor(TypeCtor) = IsBuiltinDummy :-
+is_type_ctor_a_builtin_dummy(TypeCtor) = IsBuiltinDummy :-
     % Please keep this code in sync with classify_type_ctor_if_special.
     TypeCtor = type_ctor(CtorSymName, TypeArity),
     ( if
