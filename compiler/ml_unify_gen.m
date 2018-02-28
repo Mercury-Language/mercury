@@ -1565,9 +1565,9 @@ ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
     list(mlds_stmt)::out, list(take_addr_info)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, CtorArgRepns, TakeAddr,
-        VarType, VarLval, Offset, ArgNum, Tag, Context, Stmts, TakeAddrInfos,
-        !Info) :-
+ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, CtorArgRepns,
+        TakeAddr, VarType, VarLval, Offset, ArgNum, Tag, Context,
+        Stmts, TakeAddrInfos, !Info) :-
     ( if
         Args = [],
         Modes = [],
@@ -1697,104 +1697,136 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
         )
     then
         true
-    else if
-        % Both input: it is a test unification.
-        LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_in
-    then
-        % This shouldn't happen, since mode analysis should avoid creating
-        % any tests in the arguments of a construction or deconstruction
-        % unification.
-        unexpected($pred, "test in arg of [de]construction")
-    else if
-        % Input - output: it is an assignment to the RHS.
-        LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_out
-    then
+    else
         (
-            ( FieldWidth = full_word
-            ; FieldWidth = partial_word_first(_)
-            ; FieldWidth = partial_word_shifted(_, _)
-            ),
-            ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
-                bp_native_if_possible, ml_lval(FieldLval), FieldRval),
+            LeftTopFunctorMode = top_in,
             (
-                FieldWidth = full_word,
-                Stmt = ml_gen_assign(ArgLval, FieldRval, Context)
+                RightTopFunctorMode = top_in,
+                % Both input: it is a test unification.
+                % This shouldn't happen, since mode analysis should avoid
+                % creating any tests in the arguments of a construction
+                % or deconstruction unification.
+                unexpected($pred, "test in arg of [de]construction")
             ;
-                FieldWidth = partial_word_first(Mask),
-                UnpackRval = ml_bitwise_and(FieldRval, Mask),
-                Stmt = ml_gen_assign(ArgLval, UnpackRval, Context)
+                RightTopFunctorMode = top_out,
+                % Input - output: it is an assignment to the RHS.
+                ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
+                    FieldLval, FieldType, FieldWidth, Context, !Stmts)
             ;
-                FieldWidth = partial_word_shifted(Shift, Mask),
-                UnpackRval = ml_bitwise_and(ml_rshift(FieldRval, Shift), Mask),
-                Stmt = ml_gen_assign(ArgLval, UnpackRval, Context)
+                RightTopFunctorMode = top_unused,
+                unexpected($pred, "some strange unify")
             )
         ;
-            FieldWidth = double_word,
-            ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
-                FieldRval = ml_binop(float_from_dword,
-                    ml_lval(FieldLvalA), ml_lval(FieldLvalB))
-            else
-                ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
-                    bp_native_if_possible, ml_lval(FieldLval), FieldRval)
-            ),
-            Stmt = ml_gen_assign(ArgLval, FieldRval, Context)
-        ),
-        !:Stmts = [Stmt | !.Stmts]
-    else if
-        % Output - input: it is an assignment to the LHS.
-        LeftTopFunctorMode = top_out,
-        RightTopFunctorMode = top_in
-    then
-        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
-            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
-        (
-            FieldWidth = full_word,
-            Stmt = ml_gen_assign(FieldLval, ArgRval, Context),
-            !:Stmts = [Stmt | !.Stmts]
-        ;
+            LeftTopFunctorMode = top_out,
             (
-                FieldWidth = partial_word_first(Mask),
-                Shift = 0
+                RightTopFunctorMode = top_in,
+                % Output - input: it is an assignment to the LHS.
+                ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
+                    ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
+                    Context, !Stmts)
             ;
-                FieldWidth = partial_word_shifted(Shift, Mask)
-            ),
-            CastVal = ml_unop(unbox(mlds_native_int_type), ml_lval(FieldLval)),
-            MaskOld = ml_bitwise_and(CastVal, \ (Mask << Shift)),
-            ShiftNew = ml_lshift(ArgRval, Shift),
-            Combined = ml_bitwise_or(MaskOld, ShiftNew),
-            Stmt = ml_gen_assign(FieldLval, Combined, Context),
-            !:Stmts = [Stmt | !.Stmts]
+                ( RightTopFunctorMode = top_out
+                ; RightTopFunctorMode = top_unused
+                ),
+                unexpected($pred, "some strange unify")
+            )
         ;
-            FieldWidth = double_word,
-            ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
-                FloatWordA = ml_binop(float_word_bits, ArgRval,
-                    ml_const(mlconst_int(0))),
-                FloatWordB = ml_binop(float_word_bits, ArgRval,
-                    ml_const(mlconst_int(1))),
-                ml_type_as_field(ModuleInfo, HighLevelData, int_type,
-                    full_word, IntFieldType),
-                ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
-                    bp_native_if_possible, FloatWordA, ArgRvalA),
-                ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
-                    bp_native_if_possible, FloatWordB, ArgRvalB),
-                StmtA = ml_gen_assign(FieldLvalA, ArgRvalA, Context),
-                StmtB = ml_gen_assign(FieldLvalB, ArgRvalB, Context),
-                !:Stmts = [StmtA, StmtB | !.Stmts]
-            else
-                Stmt = ml_gen_assign(FieldLval, ArgRval, Context),
-                !:Stmts = [Stmt | !.Stmts]
+            LeftTopFunctorMode = top_unused,
+            (
+                RightTopFunctorMode = top_unused
+                % Unused - unused: the unification has no effect.
+            ;
+                ( RightTopFunctorMode = top_in
+                ; RightTopFunctorMode = top_out
+                ),
+                unexpected($pred, "some strange unify")
             )
         )
-    else if
-        % Unused - unused: the unification has no effect.
-        LeftTopFunctorMode = top_unused,
-        RightTopFunctorMode = top_unused
-    then
-        true
-    else
-        unexpected($pred, "some strange unify")
+    ).
+
+:- pred ml_gen_sub_unify_assign_right(module_info::in,
+    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_width::in,
+    prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
+
+ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
+        FieldLval, FieldType, FieldWidth, Context, !Stmts) :-
+    (
+        ( FieldWidth = full_word
+        ; FieldWidth = partial_word_first(_)
+        ; FieldWidth = partial_word_shifted(_, _)
+        ),
+        ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
+            bp_native_if_possible, ml_lval(FieldLval), FieldRval),
+        (
+            FieldWidth = full_word,
+            Stmt = ml_gen_assign(ArgLval, FieldRval, Context)
+        ;
+            FieldWidth = partial_word_first(Mask),
+            UnpackRval = ml_bitwise_and(FieldRval, Mask),
+            Stmt = ml_gen_assign(ArgLval, UnpackRval, Context)
+        ;
+            FieldWidth = partial_word_shifted(Shift, Mask),
+            UnpackRval = ml_bitwise_and(ml_rshift(FieldRval, Shift), Mask),
+            Stmt = ml_gen_assign(ArgLval, UnpackRval, Context)
+        )
+    ;
+        FieldWidth = double_word,
+        ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
+            FieldRval = ml_binop(float_from_dword,
+                ml_lval(FieldLvalA), ml_lval(FieldLvalB))
+        else
+            ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
+                bp_native_if_possible, ml_lval(FieldLval), FieldRval)
+        ),
+        Stmt = ml_gen_assign(ArgLval, FieldRval, Context)
+    ),
+    !:Stmts = [Stmt | !.Stmts].
+
+:- pred ml_gen_sub_unify_assign_left(module_info::in, bool::in,
+    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_width::in,
+    prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
+
+ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
+        ArgLval, ArgType, FieldLval, FieldType, FieldWidth, Context, !Stmts) :-
+    ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
+        bp_native_if_possible, ml_lval(ArgLval), ArgRval),
+    (
+        FieldWidth = full_word,
+        Stmt = ml_gen_assign(FieldLval, ArgRval, Context),
+        !:Stmts = [Stmt | !.Stmts]
+    ;
+        (
+            FieldWidth = partial_word_first(Mask),
+            Shift = 0
+        ;
+            FieldWidth = partial_word_shifted(Shift, Mask)
+        ),
+        CastVal = ml_unop(unbox(mlds_native_int_type), ml_lval(FieldLval)),
+        MaskOld = ml_bitwise_and(CastVal, \ (Mask << Shift)),
+        ShiftNew = ml_lshift(ArgRval, Shift),
+        Combined = ml_bitwise_or(MaskOld, ShiftNew),
+        Stmt = ml_gen_assign(FieldLval, Combined, Context),
+        !:Stmts = [Stmt | !.Stmts]
+    ;
+        FieldWidth = double_word,
+        ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
+            FloatWordA = ml_binop(float_word_bits, ArgRval,
+                ml_const(mlconst_int(0))),
+            FloatWordB = ml_binop(float_word_bits, ArgRval,
+                ml_const(mlconst_int(1))),
+            ml_type_as_field(ModuleInfo, HighLevelData, int_type,
+                full_word, IntFieldType),
+            ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
+                bp_native_if_possible, FloatWordA, ArgRvalA),
+            ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
+                bp_native_if_possible, FloatWordB, ArgRvalB),
+            StmtA = ml_gen_assign(FieldLvalA, ArgRvalA, Context),
+            StmtB = ml_gen_assign(FieldLvalB, ArgRvalB, Context),
+            !:Stmts = [StmtA, StmtB | !.Stmts]
+        else
+            Stmt = ml_gen_assign(FieldLval, ArgRval, Context),
+            !:Stmts = [Stmt | !.Stmts]
+        )
     ).
 
 :- pred ml_field_offset_pair(mlds_lval::in, mlds_lval::out, mlds_lval::out)
@@ -1830,48 +1862,63 @@ ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
         )
     then
         unexpected($pred, "dummy unify")
-    else if
-        % Both input: it is a test unification.
-        LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_in
-    then
-        % This shouldn't happen, since mode analysis should avoid creating
-        % any tests in the arguments of a construction or deconstruction
-        % unification.
-        unexpected($pred, "test in arg of [de]construction")
-    else if
-        % Input - output: it is an assignment to the RHS.
-        LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_out
-    then
-        unexpected($pred, "left-to-right data flow in construction")
-    else if
-        % Output - input: it is an assignment to the LHS.
-        LeftTopFunctorMode = top_out,
-        RightTopFunctorMode = top_in
-    then
-        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
-            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-        CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
-        Stmt = ml_gen_assign(VarLval, CastRval, Context),
-        Stmts = [Stmt]
-    else if
-        % Unused - unused: it is a partial assignment to the LHS
-        % where the tag is known but the argument isn't.
-        LeftTopFunctorMode = top_unused,
-        RightTopFunctorMode = top_unused
-    then
-        MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
-            bp_native_if_possible, ml_const(mlconst_null(MLDS_ArgType)),
-            ArgRval),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-        CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
-        Stmt = ml_gen_assign(VarLval, CastRval, Context),
-        Stmts = [Stmt]
     else
-        unexpected($pred, "some strange unify")
+        true
+    ),
+    (
+        LeftTopFunctorMode = top_in,
+        (
+            RightTopFunctorMode = top_in,
+            % Both input: it is a test unification.
+            % This shouldn't happen, since mode analysis should avoid creating
+            % any tests in the arguments of a construction or deconstruction
+            % unification.
+            unexpected($pred, "test in arg of [de]construction")
+        ;
+            RightTopFunctorMode = top_out,
+            % Input - output: it is an assignment to the RHS.
+            unexpected($pred, "left-to-right data flow in construction")
+        ;
+            RightTopFunctorMode = top_unused,
+            unexpected($pred, "some strange unify")
+        )
+    ;
+        LeftTopFunctorMode = top_out,
+        (
+            RightTopFunctorMode = top_in,
+            % Output - input: it is an assignment to the LHS.
+            ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
+                bp_native_if_possible, ml_lval(ArgLval), ArgRval),
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+            CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
+            Stmt = ml_gen_assign(VarLval, CastRval, Context),
+            Stmts = [Stmt]
+        ;
+            ( RightTopFunctorMode = top_out
+            ; RightTopFunctorMode = top_unused
+            ),
+            unexpected($pred, "some strange unify")
+        )
+    ;
+        LeftTopFunctorMode = top_unused,
+        (
+            RightTopFunctorMode = top_unused,
+            % Unused - unused: it is a partial assignment to the LHS
+            % where the tag is known but the argument isn't.
+            MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+            ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
+                bp_native_if_possible, ml_const(mlconst_null(MLDS_ArgType)),
+                ArgRval),
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+            CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
+            Stmt = ml_gen_assign(VarLval, CastRval, Context),
+            Stmts = [Stmt]
+        ;
+            ( RightTopFunctorMode = top_in
+            ; RightTopFunctorMode = top_out
+            ),
+            unexpected($pred, "some strange unify")
+        )
     ).
 
 :- pred ml_gen_direct_arg_deconstruct(module_info::in, unify_mode::in, int::in,
@@ -1892,46 +1939,61 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
         )
     then
         unexpected($pred, "dummy unify")
-    else if
-        % Both input: it is a test unification.
-        LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_in
-    then
-        % This shouldn't happen, since mode analysis should avoid creating
-        % any tests in the arguments of a construction or deconstruction
-        % unification.
-        unexpected($pred, "test in arg of [de]construction")
-    else if
-        % Input - output: it is an assignment to the RHS.
-        LeftTopFunctorMode = top_in,
-        RightTopFunctorMode = top_out
-    then
-        ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
-            bp_native_if_possible, ml_lval(VarLval), VarRval),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-        CastRval = ml_unop(cast(MLDS_Type),
-            ml_binop(body, VarRval, ml_const(mlconst_int(Ptag)))),
-        Stmt = ml_gen_assign(ArgLval, CastRval, Context),
-        Stmts = [Stmt]
-    else if
-        % Output - input: it is an assignment to the LHS.
-        LeftTopFunctorMode = top_out,
-        RightTopFunctorMode = top_in
-    then
-        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
-            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-        CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
-        Stmt = ml_gen_assign(VarLval, CastRval, Context),
-        Stmts = [Stmt]
-    else if
-        % Unused - unused: the unification has no effect.
-        LeftTopFunctorMode = top_unused,
-        RightTopFunctorMode = top_unused
-    then
-        Stmts = []
     else
-        unexpected($pred, "some strange unify")
+        true
+    ),
+    (
+        LeftTopFunctorMode = top_in,
+        (
+            RightTopFunctorMode = top_in,
+            % Both input: it is a test unification.
+            % This shouldn't happen, since mode analysis should avoid creating
+            % any tests in the arguments of a construction or deconstruction
+            % unification.
+            unexpected($pred, "test in arg of [de]construction")
+        ;
+            RightTopFunctorMode = top_out,
+            % Input - output: it is an assignment to the RHS.
+            ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
+                bp_native_if_possible, ml_lval(VarLval), VarRval),
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+            CastRval = ml_unop(cast(MLDS_Type),
+                ml_binop(body, VarRval, ml_const(mlconst_int(Ptag)))),
+            Stmt = ml_gen_assign(ArgLval, CastRval, Context),
+            Stmts = [Stmt]
+        ;
+            RightTopFunctorMode = top_unused,
+            unexpected($pred, "some strange unify")
+        )
+    ;
+        LeftTopFunctorMode = top_out,
+        (
+            RightTopFunctorMode = top_in,
+            % Output - input: it is an assignment to the LHS.
+            ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
+                bp_native_if_possible, ml_lval(ArgLval), ArgRval),
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+            CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
+            Stmt = ml_gen_assign(VarLval, CastRval, Context),
+            Stmts = [Stmt]
+        ;
+            ( RightTopFunctorMode = top_out
+            ; RightTopFunctorMode = top_unused
+            ),
+            unexpected($pred, "some strange unify")
+        )
+    ;
+        LeftTopFunctorMode = top_unused,
+        (
+            RightTopFunctorMode = top_unused,
+            % Unused - unused: the unification has no effect.
+            Stmts = []
+        ;
+            ( RightTopFunctorMode = top_in
+            ; RightTopFunctorMode = top_out
+            ),
+            unexpected($pred, "some strange unify")
+        )
     ).
 
 %---------------------------------------------------------------------------%
