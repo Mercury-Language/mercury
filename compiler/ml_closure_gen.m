@@ -150,8 +150,10 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     WrapperFuncType = mlds_generic_type,
     ClosureLayoutRval = ml_unop(box(ClosureLayoutType0), ClosureLayoutRval0),
     ClosureLayoutType = mlds_generic_type,
-    ExtraArgRvals = [ClosureLayoutRval, WrapperFuncRval, NumArgsRval],
-    ExtraArgTypes = [ClosureLayoutType, WrapperFuncType, NumArgsType],
+    ExtraArgRvalsTypes =
+        [ml_typed_rval(ClosureLayoutRval, ClosureLayoutType),
+        ml_typed_rval(WrapperFuncRval, WrapperFuncType),
+        ml_typed_rval(NumArgsRval, NumArgsType)],
 
     % The pointer will not be tagged (i.e. the tag will be zero).
     MaybeConsId = no,
@@ -161,7 +163,7 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
 
     % Generate a `new_object' statement (or static constant) for the closure.
     ml_gen_new_object(MaybeConsId, MaybeConsName, PTag, MaybeSTag,
-        Var, ExtraArgRvals, ExtraArgTypes, ArgVars, ArgModes, [],
+        Var, ExtraArgRvalsTypes, ArgVars, ArgModes, [],
         HowToConstruct, Context, Stmts, !Info).
 
     % Generate a value for the closure layout struct.

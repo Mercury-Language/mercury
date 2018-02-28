@@ -4219,7 +4219,7 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
         io.write_string(");\n", !IO)
     ;
         AtomicStmt = new_object(_Target, _MaybeTag, _ExplicitSecTag, _Type,
-            _MaybeSize, _MaybeCtorName, _Args, _ArgTypes, _MayUseAtomic,
+            _MaybeSize, _MaybeCtorName, _ArgRvalsTypes, _MayUseAtomic,
             _MaybeAllocId),
         mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context,
             !IO)
@@ -4280,7 +4280,7 @@ write_comment_lines(Indent, [CommentLine | CommentLines], !IO) :-
 
 mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
     AtomicStmt = new_object(Target, MaybeTag, _ExplicitSecTag, Type, MaybeSize,
-        _MaybeCtorName, Args, ArgTypes, MayUseAtomic, MaybeAllocId),
+        _MaybeCtorName, ArgRvalsTypes, MayUseAtomic, MaybeAllocId),
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
 
@@ -4294,8 +4294,9 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
     else
         % It doesn't matter what string we pick for BaseVarName,
         % as long as its declaration doesn't hide any of the variables
-        % inside Args. This is not hard to ensure, since the printed
-        % forms of the variables inside Args all include "__".
+        % inside ArgRvalsTypes. This is not hard to ensure, since the printed
+        % forms of the variables inside ArgRvalsTypes all include "__".
+        % XXX Actually, they don't include "__" anymore.
         BaseVarName = "base",
         Base = ls_string(BaseVarName),
         c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
@@ -4397,7 +4398,7 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
         io.write_string(BaseVarName1, !IO),
         io.write_string(";\n", !IO)
     ),
-    mlds_output_init_args(Args, ArgTypes, Context, 0, Base, Tag,
+    mlds_output_init_args(ArgRvalsTypes, Context, 0, Base, Tag,
         Opts, Indent + 1, !IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
@@ -4517,16 +4518,12 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
     --->    ls_lval(mlds_lval)
     ;       ls_string(string).
 
-:- pred mlds_output_init_args(list(mlds_rval)::in, list(mlds_type)::in,
+:- pred mlds_output_init_args(list(mlds_typed_rval)::in,
     prog_context::in, int::in, lval_or_string::in, mlds_tag::in,
     mlds_to_c_opts::in, indent::in, io::di, io::uo) is det.
 
-mlds_output_init_args([_ | _], [], _, _, _, _, _, _, !IO) :-
-    unexpected($pred, "length mismatch").
-mlds_output_init_args([], [_ | _], _, _, _, _, _, _, !IO) :-
-    unexpected($pred, "length mismatch").
-mlds_output_init_args([], [], _, _, _, _, _, _, !IO).
-mlds_output_init_args([Arg | Args], [ArgType | ArgTypes], Context,
+mlds_output_init_args([], _, _, _, _, _, _, !IO).
+mlds_output_init_args([ArgRvalType | ArgRvalsTypes], Context,
         ArgNum, Base, Tag, Opts, Indent, !IO) :-
     % The MR_hl_field() macro expects its argument to have type MR_Box,
     % so we need to box the arguments if they aren't already boxed.
@@ -4545,9 +4542,10 @@ mlds_output_init_args([Arg | Args], [ArgType | ArgTypes], Context,
     io.write_string(", ", !IO),
     io.write_int(ArgNum, !IO),
     io.write_string(") = ", !IO),
-    mlds_output_boxed_rval(Opts, ArgType, Arg, !IO),
+    ArgRvalType = ml_typed_rval(ArgRval, ArgType),
+    mlds_output_boxed_rval(Opts, ArgType, ArgRval, !IO),
     io.write_string(";\n", !IO),
-    mlds_output_init_args(Args, ArgTypes, Context,
+    mlds_output_init_args(ArgRvalsTypes, Context,
         ArgNum + 1, Base, Tag, Opts, Indent, !IO).
 
 :- pred write_lval_or_string(mlds_to_c_opts::in, lval_or_string::in,

@@ -906,7 +906,7 @@ ml_create_env(Action, EnvClassName, EnvClassId, LocalVars, Context,
         NewObj = [
             ml_stmt_atomic(
                 new_object(ml_local_var(EnvVarName, EnvTypeName), no, no,
-                    EnvTypeName, no, no, [], [], MayUseAtomic, MaybeAllocId),
+                    EnvTypeName, no, no, [], MayUseAtomic, MaybeAllocId),
                 Context)
         ]
     ;
@@ -1761,6 +1761,7 @@ ml_need_to_hoist_defn(QualVarName, FuncDefn) :-
 % fixup_target_code_components:
 % fixup_target_code_component:
 % fixup_trail_op:
+% fixup_typed_rvals:
 % fixup_rvals:
 % fixup_rval:
 % fixup_lvals:
@@ -1830,12 +1831,12 @@ fixup_atomic_stmt(Action, Info, Atomic0, Atomic) :-
         Atomic = delete_object(Rval)
     ;
         Atomic0 = new_object(Target0, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic,
+            MaybeSize, MaybeCtorName, ArgRvalsTypes0, MayUseAtomic,
             MaybeAllocId),
         fixup_lval(Action, Info, Target0, Target),
-        fixup_rvals(Action, Info, Args0, Args),
+        fixup_typed_rvals(Action, Info, ArgRvalsTypes0, ArgRvalsTypes),
         Atomic = new_object(Target, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic,
+            MaybeSize, MaybeCtorName, ArgRvalsTypes, MayUseAtomic,
             MaybeAllocId)
     ;
         Atomic0 = mark_hp(Lval0),
@@ -1948,6 +1949,19 @@ fixup_trail_op(Action, Info, Op0, Op) :-
         fixup_rval(Action, Info, Rval0, Rval),
         Op = prune_tickets_to(Rval)
     ).
+
+:- pred fixup_typed_rvals(action, elim_info,
+    list(mlds_typed_rval), list(mlds_typed_rval)).
+:- mode fixup_typed_rvals(in(hoist), in, in, out) is det.
+:- mode fixup_typed_rvals(in(chain), in, in, out) is det.
+
+fixup_typed_rvals(_, _, [], []).
+fixup_typed_rvals(Action, Info,
+        [TypedRval0 | TypedRvals0], [TypedRval | TypedRvals]) :-
+    TypedRval0 = ml_typed_rval(Rval0, Type),
+    fixup_rval(Action, Info, Rval0, Rval),
+    TypedRval = ml_typed_rval(Rval, Type),
+    fixup_typed_rvals(Action, Info, TypedRvals0, TypedRvals).
 
 :- pred fixup_rvals(action, elim_info, list(mlds_rval), list(mlds_rval)).
 :- mode fixup_rvals(in(hoist), in, in, out) is det.

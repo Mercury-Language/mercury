@@ -323,13 +323,13 @@ rename_class_names_in_atomic(Renaming, !Stmt) :-
         !:Stmt = delete_object(Rval)
     ;
         !.Stmt = new_object(TargetLval0, MaybeTag, ExplicitSecTag, Type0,
-            MaybeSize, MaybeCtorName, Args0, ArgTypes0, MayUseAtomic, AllocId),
+            MaybeSize, MaybeCtorName, ArgRvalsTypes0, MayUseAtomic, AllocId),
         rename_class_names_in_lval(Renaming, TargetLval0, TargetLval),
         rename_class_names_in_type(Renaming, Type0, Type),
-        list.map(rename_class_names_in_rval(Renaming), Args0, Args),
-        list.map(rename_class_names_in_type(Renaming), ArgTypes0, ArgTypes),
+        list.map(rename_class_names_in_typed_rval(Renaming),
+            ArgRvalsTypes0, ArgRvalsTypes),
         !:Stmt = new_object(TargetLval, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic, AllocId)
+            MaybeSize, MaybeCtorName, ArgRvalsTypes, MayUseAtomic, AllocId)
     ;
         !.Stmt = inline_target_code(Lang, Components0),
         (
@@ -393,6 +393,15 @@ rename_class_names_in_field_id(Renaming, !FieldId) :-
         rename_class_names_in_type(Renaming, Type0, Type),
         !:FieldId = ml_field_named(Name, Type)
     ).
+
+:- pred rename_class_names_in_typed_rval(class_name_renaming::in,
+    mlds_typed_rval::in, mlds_typed_rval::out) is det.
+
+rename_class_names_in_typed_rval(Renaming, !TypedRval) :-
+    !.TypedRval = ml_typed_rval(Rval0, Type0),
+    rename_class_names_in_rval(Renaming, Rval0, Rval),
+    rename_class_names_in_type(Renaming, Type0, Type),
+    !:TypedRval = ml_typed_rval(Rval, Type).
 
 :- pred rename_class_names_in_rval(class_name_renaming::in,
     mlds_rval::in, mlds_rval::out) is det.

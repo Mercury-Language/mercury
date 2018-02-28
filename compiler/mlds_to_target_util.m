@@ -641,13 +641,13 @@ method_ptrs_in_statement(Stmt, !CodeAddrsInConsts) :-
         Stmt = ml_stmt_atomic(AtomicStmt, _Context),
         ( if
             AtomicStmt = new_object(Lval, _MaybeTag, _Bool,
-                _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic,
+                _Type, _MemRval, _MaybeCtorName, TypedRvals, _MayUseAtomic,
                 _AllocId)
         then
             % We don't need to check "_MemRval" since this just stores
             % the amount of memory needed for the new object.
             method_ptrs_in_lval(Lval, !CodeAddrsInConsts),
-            method_ptrs_in_rvals(Rvals, !CodeAddrsInConsts)
+            method_ptrs_in_typed_rvals(TypedRvals, !CodeAddrsInConsts)
         else if
             AtomicStmt = assign(Lval, Rval)
         then
@@ -708,6 +708,15 @@ method_ptrs_in_initializers([Initializer | Initializers],
         !CodeAddrsInConsts) :-
     method_ptrs_in_initializer(Initializer, !CodeAddrsInConsts),
     method_ptrs_in_initializers(Initializers, !CodeAddrsInConsts).
+
+:- pred method_ptrs_in_typed_rvals(list(mlds_typed_rval)::in,
+    code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
+
+method_ptrs_in_typed_rvals([], !CodeAddrsInConsts).
+method_ptrs_in_typed_rvals([TypedRval | TypedRvals], !CodeAddrsInConsts) :-
+    TypedRval = ml_typed_rval(Rval, _Type),
+    method_ptrs_in_rval(Rval, !CodeAddrsInConsts),
+    method_ptrs_in_typed_rvals(TypedRvals, !CodeAddrsInConsts).
 
 :- pred method_ptrs_in_rvals(list(mlds_rval)::in,
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.

@@ -1433,7 +1433,7 @@
 
     ;       new_object(
                 % new_object(Target, Tag, Type, Size, CtorName,
-                %   Args, ArgTypes, MayUseAtomic, MaybeAllocId):
+                %   ArgAndTypes, MayUseAtomic, MaybeAllocId):
                 % Allocate a memory block of the given size,
                 % initialize it with a new object of the given
                 % type by calling the constructor with the specified
@@ -1464,17 +1464,14 @@
                 % The name of the constructor to invoke.
                 maybe(qual_ctor_id),
 
-                % The arguments to the constructor.
+                % The arguments to the constructor, and their types.
                 % Any arguments which are supposed to be packed together should
                 % be packed in this list by the HLDS->MLDS code generator.
-                list(mlds_rval),
-
-                % The types of the arguments to the constructor.
                 %
-                % For boxed fields, the type here should be mlds_generic_type;
+                % For boxed fields, the types here should be mlds_generic_type;
                 % it is the responsibility of the HLDS->MLDS code generator to
                 % insert code to box/unbox the arguments.
-                list(mlds_type),
+                list(mlds_typed_rval),
 
                 % Can we use a cell allocated with GC_malloc_atomic to hold
                 % this object in the C backend?
@@ -1542,7 +1539,7 @@
             ).
 
 :- inst atomic_stmt_is_new_object for mlds_atomic_statement/0
-    --->    new_object(ground, ground, ground, ground, ground, ground, ground,
+    --->    new_object(ground, ground, ground, ground, ground, ground,
                 ground, ground, ground).
 
     % Stores information about each argument to an outline_foreign_proc.
@@ -1743,6 +1740,9 @@
 %
 % Rvals.
 %
+
+:- type mlds_typed_rval
+    --->    ml_typed_rval(mlds_rval, mlds_type).
 
     % An rval is an expression that represents a value.
     %

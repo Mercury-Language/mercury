@@ -532,7 +532,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
     ( if
         AtomicStmt0 = new_object(Lval, MaybeTag, _ExplicitSecTag,
             PointerType, _MaybeSizeInWordsRval, _MaybeCtorName,
-            ArgRvals, _ArgTypes, _MayUseAtomic, _AllocId)
+            ArgRvalsTypes,  _MayUseAtomic, _AllocId)
     then
         % Generate the declaration of the new local variable.
         %
@@ -545,7 +545,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         counter.allocate(Id, !.Fixup ^ fnoi_next_id, NextId),
         VarName = lvn_comp_var(lvnc_new_obj(Id)),
         VarType = mlds_array_type(mlds_generic_type),
-        NullPointers = list.duplicate(list.length(ArgRvals),
+        NullPointers = list.duplicate(list.length(ArgRvalsTypes),
             init_obj(ml_const(mlconst_null(mlds_generic_type)))),
         Initializer = init_array(NullPointers),
         % This is used for the type_infos allocated during tracing,
@@ -572,7 +572,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         VarLval = ml_local_var(VarName, VarType),
         PtrRval = ml_unop(cast(PointerType), ml_mem_addr(VarLval)),
         list.map_foldl(init_field_n(PointerType, PtrRval, Context),
-            ArgRvals, ArgInitStmts, 0, _NumFields),
+            ArgRvalsTypes, ArgInitStmts, 0, _NumFields),
 
         % Generate code to assign the address of the new local variable
         % to the Lval.
@@ -584,12 +584,13 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
     ).
 
 :- pred init_field_n(mlds_type::in, mlds_rval::in, prog_context::in,
-    mlds_rval::in, mlds_stmt::out, int::in, int::out) is det.
+    mlds_typed_rval::in, mlds_stmt::out, int::in, int::out) is det.
 
-init_field_n(PointerType, PointerRval, Context, ArgRval, Stmt,
+init_field_n(PointerType, PointerRval, Context, ArgRvalType, Stmt,
         FieldNum, FieldNum + 1) :-
+    ArgRvalType = ml_typed_rval(ArgRval, _ArgType),
     FieldId = ml_field_offset(ml_const(mlconst_int(FieldNum))),
-    % XXX FieldType is wrong for --high-level-data
+    % XXX FieldType is wrong for --high-level-data: should this be _ArgType?
     FieldType = mlds_generic_type,
     MaybeTag = yes(0),
     Field = ml_field(MaybeTag, PointerRval, FieldId, FieldType, PointerType),

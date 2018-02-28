@@ -468,7 +468,7 @@ atomic_stmt_contains_var(AtomicStmt, SearchVarName) = ContainsVar :-
         ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         AtomicStmt = new_object(Target, _MaybeTag, _ExplicitSecTag, _Type,
-            _MaybeSize, _MaybeCtorName, Args, _ArgTypes, _MayUseAtomic,
+            _MaybeSize, _MaybeCtorName, ArgRvalsTypes, _MayUseAtomic,
             _AllocId),
         TargetContainsVar = lval_contains_var(Target, SearchVarName),
         (
@@ -476,7 +476,8 @@ atomic_stmt_contains_var(AtomicStmt, SearchVarName) = ContainsVar :-
             ContainsVar = yes
         ;
             TargetContainsVar = no,
-            ContainsVar = rvals_contains_var(Args, SearchVarName)
+            ContainsVar = typed_rvals_contains_var(ArgRvalsTypes,
+                SearchVarName)
         )
     ;
         AtomicStmt = gc_check,
@@ -668,6 +669,7 @@ function_defn_contains_var(FuncDefn, SearchVarName) = ContainsVar :-
 
 % initializer_contains_var:
 % initializers_contains_var:
+% typed_rvals_contains_var:
 % rvals_contains_var:
 % maybe_rval_contains_var:
 % rval_contains_var:
@@ -708,6 +710,22 @@ initializers_contains_var([Initializer | Initializers], SearchVarName) =
     ;
         InitializerContainsVar = no,
         ContainsVar = initializers_contains_var(Initializers, SearchVarName)
+    ).
+
+:- func typed_rvals_contains_var(list(mlds_typed_rval), mlds_local_var_name)
+    = bool.
+
+typed_rvals_contains_var([], _SearchVarName) = no.
+typed_rvals_contains_var([TypedRval | TypedRvals], SearchVarName)
+        = ContainsVar :-
+    TypedRval = ml_typed_rval(Rval, _Type),
+    RvalContainsVar = rval_contains_var(Rval, SearchVarName),
+    (
+        RvalContainsVar = yes,
+        ContainsVar = yes
+    ;
+        RvalContainsVar = no,
+        ContainsVar = typed_rvals_contains_var(TypedRvals, SearchVarName)
     ).
 
 rvals_contains_var([], _SearchVarName) = no.

@@ -2901,8 +2901,7 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
         unexpected($pred, "delete_object not supported in C#.")
     ;
         AtomicStmt = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
-            _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic,
-            _AllocId),
+            _MaybeSize, MaybeCtorName, ArgRvalsTypes, _MayUseAtomic, _AllocId),
         (
             ExplicitSecTag = yes,
             unexpected($pred, "explicit secondary tag")
@@ -2939,13 +2938,13 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
             % The new object will be an array, so we need to initialise it
             % using array literals syntax.
             io.write_string(" {", !IO),
-            output_init_args_for_csharp(Info, Args, ArgTypes, !IO),
+            output_init_args_for_csharp(Info, ArgRvalsTypes, !IO),
             io.write_string("};\n", !IO)
         ;
             IsArray = not_array,
             % Generate constructor arguments.
             io.write_string("(", !IO),
-            output_init_args_for_csharp(Info, Args, ArgTypes, !IO),
+            output_init_args_for_csharp(Info, ArgRvalsTypes, !IO),
             io.write_string(");\n", !IO)
         ),
         indent_line_after_context(Info ^ csoi_line_numbers, Context,
@@ -3027,23 +3026,20 @@ output_target_code_component_for_csharp(Info, TargetCode, !IO) :-
     % Output initial values of an object's fields as arguments for the
     % object's class constructor.
     %
-:- pred output_init_args_for_csharp(csharp_out_info::in, list(mlds_rval)::in,
-    list(mlds_type)::in, io::di, io::uo) is det.
+:- pred output_init_args_for_csharp(csharp_out_info::in,
+    list(mlds_typed_rval)::in, io::di, io::uo) is det.
 
-output_init_args_for_csharp(_, [], [], !IO).
-output_init_args_for_csharp(_, [_ | _], [], _, _) :-
-    unexpected($pred, "length mismatch.").
-output_init_args_for_csharp(_, [], [_ | _], _, _) :-
-    unexpected($pred, "length mismatch.").
-output_init_args_for_csharp(Info, [Arg | Args], [_ArgType | ArgTypes], !IO) :-
-    output_rval_for_csharp(Info, Arg, !IO),
+output_init_args_for_csharp(_, [], !IO).
+output_init_args_for_csharp(Info, [ArgRvalType | ArgRvalsTypes], !IO) :-
+    ArgRvalType = ml_typed_rval(ArgRval, _ArgType),
+    output_rval_for_csharp(Info, ArgRval, !IO),
     (
-        Args = []
+        ArgRvalsTypes = []
     ;
-        Args = [_ | _],
+        ArgRvalsTypes = [_ | _],
         io.write_string(", ", !IO)
     ),
-    output_init_args_for_csharp(Info, Args, ArgTypes, !IO).
+    output_init_args_for_csharp(Info, ArgRvalsTypes, !IO).
 
 %---------------------------------------------------------------------------%
 %

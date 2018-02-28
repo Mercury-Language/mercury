@@ -58,17 +58,16 @@
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
-    %   ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr, HowToConstruct,
+    %   ExtraTypedRvals, ArgVars, ArgModes, TakeAddr, HowToConstruct,
     %   Context, Stmts, !Info):
     %
     % Generate a `new_object' statement, or a static constant, depending on the
-    % value of the how_to_construct argument. The `ExtraRvals' and `ExtraTypes'
-    % arguments specify additional constants to insert at the start of the
+    % value of the how_to_construct argument. The `ExtraTypedRvals' argument
+    % specifies additional constants to insert at the start of the
     % argument list.
     %
 :- pred ml_gen_new_object(maybe(cons_id)::in, maybe(qual_ctor_id)::in,
-    mlds_tag::in, bool::in, prog_var::in,
-    list(mlds_rval)::in, list(mlds_type)::in,
+    mlds_tag::in, bool::in, prog_var::in, list(mlds_typed_rval)::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -516,27 +515,24 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
             % secondary tag -- are boxed, and so we need box it here.
             StagRval = ml_unop(box(StagType0), StagRval0),
             StagType = mlds_generic_type,
-            ExtraRvals = [StagRval],
-            ExtraArgTypes = [StagType]
+            ExtraTypedRvals = [ml_typed_rval(StagRval, StagType)]
         ;
             UsesConstructors = yes,
             % Secondary tag is implicitly initialised by the constructor.
             ExplicitSecTag = no,
-            ExtraRvals = [],
-            ExtraArgTypes = []
+            ExtraTypedRvals = []
         )
     ;
         MaybeStag = no,
         ExplicitSecTag = no,
-        ExtraRvals = [],
-        ExtraArgTypes = []
+        ExtraTypedRvals = []
     ),
     ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSecTag,
-        Var, ExtraRvals, ExtraArgTypes, ArgVars, ArgModes, TakeAddr,
+        Var, ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Stmts, !Info).
 
 ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
-        ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr,
+        ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Stmts, !Info) :-
     % Determine the variable's type and lval, the tag to use, and the types
     % of the argument vars.
@@ -554,20 +550,20 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
         HowToConstruct = construct_dynamically,
         ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName,
             MaybeTag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-            ExtraRvals, ExtraTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
+            ExtraTypedRvals, ArgVars, ArgTypes, ArgModes, TakeAddr,
             Context, Stmts, !Info)
     ;
         HowToConstruct = construct_statically,
         expect(unify(TakeAddr, []), $pred,
             "cannot take address of static object's field"),
         ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
-            Var, VarLval, VarType, MLDS_Type, ExtraRvals, ExtraTypes,
+            Var, VarLval, VarType, MLDS_Type, ExtraTypedRvals,
             ArgVars, ArgTypes, Context, Stmts, !Info)
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
             ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-            ExtraRvals, ExtraTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
+            ExtraTypedRvals, ArgVars, ArgTypes, ArgModes, TakeAddr,
             CellToReuse, Context, Stmts, !Info)
     ;
         HowToConstruct = construct_in_region(_RegVar),
@@ -577,14 +573,14 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
 :- pred ml_gen_new_object_dynamically(maybe(cons_id)::in,
     maybe(qual_ctor_id)::in, maybe(mlds_tag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
-    list(mlds_rval)::in, list(mlds_type)::in,
+    list(mlds_typed_rval)::in,
     list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
     list(int)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
         ExplicitSecTag, _Var, VarLval, VarType, MLDS_Type,
-        ExtraRvals, ExtraTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
+        ExtraRvalsMLDSTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
         Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments and generate rvals
     % for them (boxing/unboxing if needed).
@@ -592,7 +588,7 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId,
         ArgTypes, ConsArgTypes, ConsArgWidths),
-    NumExtraRvals = list.length(ExtraRvals),
+    NumExtraRvals = list.length(ExtraRvalsMLDSTypes),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
     (
@@ -605,22 +601,19 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     ml_gen_cons_args(ArgVars, ArgLvals, ArgTypes, ConsArgTypes, ConsArgWidths,
         ArgModes, NumExtraRvals, TakeAddr, ModuleInfo, HighLevelData,
-        ArgRvals0, MLDS_ArgTypes0, TakeAddrInfos, MayUseAtomic0, MayUseAtomic),
+        ArgRvalsMLDSTypes0, TakeAddrInfos, MayUseAtomic0, MayUseAtomic),
 
     % Replace double-word and packed arguments by uniform single word rvals.
-    assoc_list.from_corresponding_lists(ArgRvals0, MLDS_ArgTypes0, ArgsTypes0),
     ml_expand_double_word_rvals(ConsArgWidths, ArgWidths1,
-        ArgsTypes0, ArgsTypes1),
-    pack_args(ml_shift_combine_rval_type, ArgWidths1, ArgsTypes1, ArgsTypes2,
-        unit, _, unit, _),
-    assoc_list.keys_and_values(ArgsTypes2, ArgRvals2, MLDS_ArgTypes2),
+        ArgRvalsMLDSTypes0, ArgRvalsMLDSTypes1),
+    pack_args(ml_shift_combine_rval_type, ArgWidths1,
+        ArgRvalsMLDSTypes1, ArgRvalsMLDSTypes2, unit, _, unit, _),
 
     % Add the extra rvals to the start.
-    ArgRvals = ExtraRvals ++ ArgRvals2,
-    MLDS_ArgTypes = ExtraTypes ++ MLDS_ArgTypes2,
+    ArgRvalsMLDSTypes = ExtraRvalsMLDSTypes ++ ArgRvalsMLDSTypes2,
 
     % Compute the number of words to allocate.
-    list.length(ArgRvals, Size),
+    list.length(ArgRvalsMLDSTypes, Size),
     SizeInWordsRval = ml_const(mlconst_int(Size)),
 
     % Generate an allocation site id.
@@ -643,7 +636,7 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
     % for this term from the heap. The `new_object' statement will also
     % initialize the fields of this term with the specified arguments.
     MakeNewObject = new_object(VarLval, MaybeTag, ExplicitSecTag, MLDS_Type,
-        yes(SizeInWordsRval), MaybeCtorName, ArgRvals, MLDS_ArgTypes,
+        yes(SizeInWordsRval), MaybeCtorName, ArgRvalsMLDSTypes,
         MayUseAtomic, MaybeAllocId),
     MakeNewObjStmt = ml_stmt_atomic(MakeNewObject, Context),
 
@@ -656,13 +649,12 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
 :- pred ml_gen_new_object_statically(maybe(cons_id)::in,
     maybe(qual_ctor_id)::in, maybe(mlds_tag)::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
-    list(mlds_rval)::in, list(mlds_type)::in,
-    list(prog_var)::in, list(mer_type)::in,
+    list(mlds_typed_rval)::in, list(prog_var)::in, list(mer_type)::in,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
-        Var, VarLval, VarType, MLDS_Type, ExtraRvals, ExtraTypes,
+        Var, VarLval, VarType, MLDS_Type, ExtraTypedRvals,
         ArgVars, ArgTypes, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -684,7 +676,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
             list.map(ml_gen_info_lookup_const_var(!.Info), ArgVars,
                 ArgGroundTerms),
             ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
-                ExtraTypes, ExtraRvals, ExtraArgRvals, !GlobalData),
+                ExtraTypedRvals, ExtraArgTypedRvals, !GlobalData),
             assoc_list.from_corresponding_lists(ArgGroundTerms, ConsArgWidths,
                 ArgGroundTermsWidths),
             ml_gen_box_const_rval_list_lld(ModuleInfo, Context,
@@ -700,7 +692,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
             % For --high-level-data, the ExtraRvals should already have
             % the right type, so we do not need to worry about boxing
             % or unboxing them.
-            ExtraArgRvals = ExtraRvals
+            ExtraArgTypedRvals = ExtraTypedRvals
         ),
 
         % Generate a static constant for this term.
@@ -719,6 +711,8 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
         % some warnings from GNU C about missing braces in initializers.
         pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals1, ArgRvals,
             unit, _, unit, _),
+        ExtraArgRvals = list.map((func(ml_typed_rval(Rv, _)) = Rv),
+            ExtraArgTypedRvals),
         AllArgRvals = ExtraArgRvals ++ ArgRvals,
         ArgInits = list.map(func(X) = init_obj(X), AllArgRvals),
         ( if ConstType = mlds_array_type(_) then
@@ -759,14 +753,14 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
 :- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
     maybe(qual_ctor_id)::in, mlds_tag::in, maybe(mlds_tag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
-    list(mlds_rval)::in, list(mlds_type)::in,
+    list(mlds_typed_rval)::in,
     list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
     list(int)::in, cell_to_reuse::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
         ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-        ExtraRvals, ExtraTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
+        ExtraTypedRvals, ArgVars, ArgTypes, ArgModes, TakeAddr,
         CellToReuse, Context, Stmts, !Info) :-
     % NOTE: if it is ever used, NeedsUpdates needs to be modified to take into
     % account argument packing, as in unify_gen.m.
@@ -820,7 +814,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
 
     % For each field in the construction unification we need to generate
     % an rval. ExtraRvals need to be inserted at the start of the object.
-    ml_gen_extra_arg_assign(ExtraRvals, ExtraTypes, VarType, VarLval,
+    ml_gen_extra_arg_assign(ExtraTypedRvals, VarType, VarLval,
         0, ConsIdTag, Context, ExtraRvalStmts, !Info),
     % XXX we do more work than we need to here, as some of the cells
     % may already contain the correct values.
@@ -835,7 +829,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
     % If the reassignment isn't possible because the target is statically
     % allocated then fall back to dynamic allocation.
     ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
-        ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr,
+        ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
         construct_dynamically, Context, DynamicStmts, !Info),
     ElseStmt = ml_stmt_block([], [], DynamicStmts, Context),
     IfStmt = ml_stmt_if_then_else(ml_lval(Var1Lval), ThenStmt, yes(ElseStmt),
@@ -1094,23 +1088,21 @@ ml_gen_box_const_rval_list_lld(ModuleInfo, Context,
         BoxedRvals, !GlobalData).
 
 :- pred ml_gen_box_extra_const_rval_list_lld(module_info::in, prog_context::in,
-    list(mlds_type)::in, list(mlds_rval)::in, list(mlds_rval)::out,
+    list(mlds_typed_rval)::in, list(mlds_typed_rval)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_box_extra_const_rval_list_lld(_, _, [], [], [], !GlobalData).
+ml_gen_box_extra_const_rval_list_lld(_, _, [], [], !GlobalData).
 ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
-        [MLDS_Type | MLDS_Types], [Rval | Rvals], [BoxedRval | BoxedRvals],
+        [TypedRval | TypedRvals], [BoxedTypedRval | BoxedTypedRvals],
         !GlobalData) :-
     % Extras are always a single word.
     DoubleWidth = no,
+    TypedRval = ml_typed_rval(Rval, MLDS_Type),
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth,
         Rval, BoxedRval, !GlobalData),
-    ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context, MLDS_Types,
-        Rvals, BoxedRvals, !GlobalData).
-ml_gen_box_extra_const_rval_list_lld(_, _, [], [_ | _], _, !GlobalData) :-
-    unexpected($pred, "length mismatch").
-ml_gen_box_extra_const_rval_list_lld(_, _, [_ | _], [], _, !GlobalData) :-
-    unexpected($pred, "length mismatch").
+    BoxedTypedRval = ml_typed_rval(BoxedRval, MLDS_Type),
+    ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
+        TypedRvals, BoxedTypedRvals, !GlobalData).
 
 :- pred ml_cons_name(mlds_target_lang::in, cons_id::in, qual_ctor_id::out)
     is det.
@@ -1153,16 +1145,16 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
 :- pred ml_gen_cons_args(list(prog_var)::in, list(mlds_lval)::in,
     list(mer_type)::in, list(mer_type)::in, list(arg_width)::in,
     list(unify_mode)::in, int::in, list(int)::in, module_info::in, bool::in,
-    list(mlds_rval)::out, list(mlds_type)::out, list(take_addr_info)::out,
+    list(mlds_typed_rval)::out, list(take_addr_info)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
 ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
         UniModes, NumExtraArgs, TakeAddr, ModuleInfo, HighLevelData,
-        !:Rvals, !:MLDS_Types, !:TakeAddrInfos, !MayUseAtomic) :-
+        !:RvalsMLDSTypes, !:TakeAddrInfos, !MayUseAtomic) :-
     ( if
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
             UniModes, NumExtraArgs, 1, TakeAddr, ModuleInfo, HighLevelData,
-            !:Rvals, !:MLDS_Types, !:TakeAddrInfos, !MayUseAtomic)
+            !:RvalsMLDSTypes, !:TakeAddrInfos, !MayUseAtomic)
     then
         true
     else
@@ -1172,18 +1164,18 @@ ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
 :- pred ml_gen_cons_args_2(list(prog_var)::in, list(mlds_lval)::in,
     list(mer_type)::in, list(mer_type)::in, list(arg_width)::in,
     list(unify_mode)::in, int::in, int::in, list(int)::in,
-    module_info::in, bool::in, list(mlds_rval)::out, list(mlds_type)::out,
+    module_info::in, bool::in, list(mlds_typed_rval)::out,
     list(take_addr_info)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
 
 ml_gen_cons_args_2([], [], [], [], _, [],
         _NumExtraArgs, _CurArgNum, _TakeAddr,
-        _ModuleInfo, _HighLevelData, [], [], [], !MayUseAtomic).
+        _ModuleInfo, _HighLevelData, [], [], !MayUseAtomic).
 ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         [ConsArgType | ConsArgTypes], ConsArgWidths,
         [ArgMode | ArgModes], NumExtraArgs, CurArgNum, !.TakeAddr,
-        ModuleInfo, HighLevelData, [Rval | Rvals],
-        [MLDS_Type | MLDS_Types], TakeAddrInfos, !MayUseAtomic) :-
+        ModuleInfo, HighLevelData, [RvalMLDSType | RvalsMLDSTypes],
+        TakeAddrInfos, !MayUseAtomic) :-
     % It is important to use ArgType instead of ConsArgType here. ConsArgType
     % is the declared type of the argument of the cons_id, while ArgType is
     % the actual type of the variable being assigned to the given slot.
@@ -1205,9 +1197,10 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         expect(unify(ConsArgWidth, full_word), $pred,
             "taking address of non word-sized argument"),
         Rval = ml_const(mlconst_null(MLDS_Type)),
+        RvalMLDSType = ml_typed_rval(Rval, MLDS_Type),
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
             ArgModes, NumExtraArgs, CurArgNum + 1, !.TakeAddr,
-            ModuleInfo, HighLevelData, Rvals, MLDS_Types, TakeAddrInfosTail,
+            ModuleInfo, HighLevelData, RvalsMLDSTypes, TakeAddrInfosTail,
             !MayUseAtomic),
         Offset = ml_calc_field_offset(NumExtraArgs, ConsArgWidths, CurArgNum),
         OrigMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ConsArgType),
@@ -1226,9 +1219,10 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         else
             Rval = ml_const(mlconst_null(MLDS_Type))
         ),
+        RvalMLDSType = ml_typed_rval(Rval, MLDS_Type),
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
             ArgModes, NumExtraArgs, CurArgNum + 1, !.TakeAddr,
-            ModuleInfo, HighLevelData, Rvals, MLDS_Types, TakeAddrInfos,
+            ModuleInfo, HighLevelData, RvalsMLDSTypes, TakeAddrInfos,
             !MayUseAtomic)
     ).
 
@@ -1245,17 +1239,12 @@ ml_calc_field_offset(NumExtraArgs, ConsArgWidths, ArgNum) = Offset :-
     % Generate assignment statements for each of ExtraRvals into the object at
     % VarLval, beginning at Offset.
     %
-:- pred ml_gen_extra_arg_assign(list(mlds_rval)::in,
-    list(mlds_type)::in, mer_type::in, mlds_lval::in,
-    int::in, cons_tag::in, prog_context::in,
+:- pred ml_gen_extra_arg_assign(list(mlds_typed_rval)::in,
+    mer_type::in, mlds_lval::in, int::in, cons_tag::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_extra_arg_assign([_ | _], [], _, _, _, _, _, _, !Info) :-
-    unexpected($pred, "length mismatch").
-ml_gen_extra_arg_assign([], [_ | _], _, _, _, _, _, _, !Info) :-
-    unexpected($pred, "length mismatch").
-ml_gen_extra_arg_assign([], [], _, _, _, _, _, [], !Info).
-ml_gen_extra_arg_assign([ExtraRval | ExtraRvals], [ExtraType | ExtraTypes],
+ml_gen_extra_arg_assign([], _, _, _, _, _, [], !Info).
+ml_gen_extra_arg_assign([ExtraTypedRval | ExtraTypedRvals],
         VarType, VarLval, Offset, ConsIdTag, Context, [Stmt | Stmts], !Info) :-
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     expect(unify(HighLevelData, no), $pred, "high-level data"),
@@ -1263,11 +1252,12 @@ ml_gen_extra_arg_assign([ExtraRval | ExtraRvals], [ExtraType | ExtraTypes],
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     FieldId = ml_field_offset(ml_const(mlconst_int(Offset))),
     MaybePrimaryTag = get_primary_tag(ConsIdTag),
+    ExtraTypedRval = ml_typed_rval(ExtraRval, ExtraType),
     FieldLval = ml_field(MaybePrimaryTag, ml_lval(VarLval), FieldId,
         ExtraType, MLDS_VarType),
     Stmt = ml_gen_assign(FieldLval, ExtraRval, Context),
 
-    ml_gen_extra_arg_assign(ExtraRvals, ExtraTypes, VarType, VarLval,
+    ml_gen_extra_arg_assign(ExtraTypedRvals, VarType, VarLval,
         Offset + 1, ConsIdTag, Context, Stmts, !Info).
 
 %---------------------------------------------------------------------------%
@@ -2915,20 +2905,24 @@ arg_width_is_double(ArgWidth, DoubleWidth) :-
     ).
 
 :- pred ml_expand_double_word_rvals(list(arg_width)::in, list(arg_width)::out,
-    assoc_list(mlds_rval, mlds_type)::in,
-    assoc_list(mlds_rval, mlds_type)::out) is det.
+    list(mlds_typed_rval)::in, list(mlds_typed_rval)::out) is det.
 
 ml_expand_double_word_rvals([], [], [], []).
+ml_expand_double_word_rvals([], _, [_ | _], _) :-
+    unexpected($pred, "list length mismatch").
+ml_expand_double_word_rvals([_ | _], _, [], _) :-
+    unexpected($pred, "list length mismatch").
 ml_expand_double_word_rvals([Width0 | Widths0], Widths,
-        [Rval0 - Type0 | RvalsTypes0], RvalsTypes) :-
-    ml_expand_double_word_rvals(Widths0, Widths1, RvalsTypes0, RvalsTypes1),
+        [TypedRval0 | TypedRvals0], TypedRvals) :-
+    TypedRval0 = ml_typed_rval(Rval0, Type0),
+    ml_expand_double_word_rvals(Widths0, Widths1, TypedRvals0, TypedRvals1),
     (
         ( Width0 = full_word
         ; Width0 = partial_word_first(_)
         ; Width0 = partial_word_shifted(_, _)
         ),
         Widths = [Width0 | Widths1],
-        RvalsTypes = [Rval0 - Type0 | RvalsTypes1]
+        TypedRvals = [ml_typed_rval(Rval0, Type0) | TypedRvals0]
     ;
         Width0 = double_word,
         ( if Rval0 = ml_const(mlconst_null(_)) then
@@ -2940,13 +2934,12 @@ ml_expand_double_word_rvals([Width0 | Widths0], Widths,
             RvalA = ml_binop(float_word_bits, Rval0, ml_const(mlconst_int(0))),
             RvalB = ml_binop(float_word_bits, Rval0, ml_const(mlconst_int(1)))
         ),
+        % ZZZ
         Widths = [full_word, full_word | Widths1],
-        RvalsTypes = [RvalA - SubstType, RvalB - SubstType | RvalsTypes1]
+        TypedRvalA = ml_typed_rval(RvalA, SubstType),
+        TypedRvalB = ml_typed_rval(RvalB, SubstType),
+        TypedRvals = [TypedRvalA, TypedRvalB | TypedRvals1]
     ).
-ml_expand_double_word_rvals([], _, [_ | _], _) :-
-    unexpected($pred, "list length mismatch").
-ml_expand_double_word_rvals([_ | _], _, [], _) :-
-    unexpected($pred, "list length mismatch").
 
 :- pred ml_shift_combine_rval(mlds_rval::in, int::in, maybe(mlds_rval)::in,
     mlds_rval::out, unit::in, unit::out, unit::in, unit::out) is det.
@@ -2961,22 +2954,22 @@ ml_shift_combine_rval(RvalA, Shift, MaybeRvalB, RvalC, !Acc1, !Acc2) :-
         RvalC = ShiftRvalA
     ).
 
-:- pred ml_shift_combine_rval_type(pair(mlds_rval, mlds_type)::in, int::in,
-    maybe(pair(mlds_rval, mlds_type))::in, pair(mlds_rval, mlds_type)::out,
+:- pred ml_shift_combine_rval_type(mlds_typed_rval::in, int::in,
+    maybe(mlds_typed_rval)::in, mlds_typed_rval::out,
     unit::in, unit::out, unit::in, unit::out) is det.
 
 ml_shift_combine_rval_type(ArgA, Shift, MaybeArgB, ArgC, !Acc1, !Acc2) :-
-    ArgA = RvalA - TypeA,
+    ArgA = ml_typed_rval(RvalA, TypeA),
     ShiftRvalA = ml_lshift(RvalA, Shift),
     (
-        MaybeArgB = yes(RvalB - _TypeB),
+        MaybeArgB = yes(ml_typed_rval(RvalB, _TypeB)),
         RvalC = ml_bitwise_or(ShiftRvalA, RvalB)
     ;
         MaybeArgB = no,
         RvalC = ShiftRvalA
     ),
     % This type better be acceptable.
-    ArgC = RvalC - TypeA.
+    ArgC = ml_typed_rval(RvalC, TypeA).
 
 :- func ml_lshift(mlds_rval, int) = mlds_rval.
 

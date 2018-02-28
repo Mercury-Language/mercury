@@ -609,7 +609,7 @@ statement_affects_lvals(Lvals, Stmt, Affects) :-
         ;
             ( AtomicStmt = assign(Lval, _)
             ; AtomicStmt = assign_if_in_heap(Lval, _)
-            ; AtomicStmt = new_object(Lval, _, _, _, _, _, _, _, _, _)
+            ; AtomicStmt = new_object(Lval, _, _, _, _, _, _, _, _)
             ; AtomicStmt = mark_hp(Lval)
             ),
             ( if set.contains(Lvals, Lval) then
@@ -1222,6 +1222,18 @@ eliminate_var_in_initializer(Init0, Init, !VarElimInfo) :-
         Init = init_struct(Type, Members)
     ).
 
+:- pred eliminate_var_in_typed_rvals(
+    list(mlds_typed_rval)::in, list(mlds_typed_rval)::out,
+    var_elim_info::in, var_elim_info::out) is det.
+
+eliminate_var_in_typed_rvals([], [], !VarElimInfo).
+eliminate_var_in_typed_rvals([TypedRval0 | TypedRvals0],
+        [TypedRval | TypedRvals], !VarElimInfo) :-
+    TypedRval0 = ml_typed_rval(Rval0, Type),
+    eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+    TypedRval = ml_typed_rval(Rval, Type),
+    eliminate_var_in_typed_rvals(TypedRvals0, TypedRvals, !VarElimInfo).
+
 :- pred eliminate_var_in_rvals(list(mlds_rval)::in, list(mlds_rval)::out,
     var_elim_info::in, var_elim_info::out) is det.
 
@@ -1445,12 +1457,13 @@ eliminate_var_in_atomic_stmt(Stmt0, Stmt, !VarElimInfo) :-
         Stmt = delete_object(Rval)
     ;
         Stmt0 = new_object(Target0, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic,
+            MaybeSize, MaybeCtorName, ArgRvalsTypes0, MayUseAtomic,
             MaybeAllocId),
         eliminate_var_in_lval(Target0, Target, !VarElimInfo),
-        eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
+        eliminate_var_in_typed_rvals(ArgRvalsTypes0, ArgRvalsTypes,
+            !VarElimInfo),
         Stmt = new_object(Target, MaybeTag, ExplicitSecTag, Type,
-            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic,
+            MaybeSize, MaybeCtorName, ArgRvalsTypes, MayUseAtomic,
             MaybeAllocId)
     ;
         Stmt0 = mark_hp(Lval0),

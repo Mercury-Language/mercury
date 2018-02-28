@@ -3717,8 +3717,7 @@ output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO) :-
         unexpected($pred, "delete_object not supported in Java.")
     ;
         AtomicStmt = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
-            _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic,
-            _AllocId),
+            _MaybeSize, MaybeCtorName, ArgRvalsTypes, _MayUseAtomic, _AllocId),
         (
             ExplicitSecTag = yes,
             unexpected($pred, "explicit secondary tag")
@@ -3754,13 +3753,13 @@ output_atomic_stmt_for_java(Info, Indent, AtomicStmt, Context, !IO) :-
             % The new object will be an array, so we need to initialise it
             % using array literals syntax.
             io.write_string(" {", !IO),
-            output_init_args_for_java(Info, Args, ArgTypes, !IO),
+            output_init_args_for_java(Info, ArgRvalsTypes, !IO),
             io.write_string("};\n", !IO)
         ;
             IsArray = not_array,
             % Generate constructor arguments.
             io.write_string("(", !IO),
-            output_init_args_for_java(Info, Args, ArgTypes, !IO),
+            output_init_args_for_java(Info, ArgRvalsTypes, !IO),
             io.write_string(");\n", !IO)
         ),
         output_n_indents(Indent, !IO),
@@ -3838,22 +3837,19 @@ output_target_code_component_for_java(Info, TargetCode, !IO) :-
     % object's class constructor.
     %
 :- pred output_init_args_for_java(java_out_info::in,
-    list(mlds_rval)::in, list(mlds_type)::in, io::di, io::uo) is det.
+    list(mlds_typed_rval)::in, io::di, io::uo) is det.
 
-output_init_args_for_java(_, [], [], !IO).
-output_init_args_for_java(_, [_ | _], [], _, _) :-
-    unexpected($pred, "length mismatch.").
-output_init_args_for_java(_, [], [_ | _], _, _) :-
-    unexpected($pred, "length mismatch.").
-output_init_args_for_java(Info, [Arg | Args], [_ArgType | ArgTypes], !IO) :-
-    output_rval_for_java(Info, Arg, !IO),
+output_init_args_for_java(_, [], !IO).
+output_init_args_for_java(Info, [ArgRvalType | ArgRvalsTypes], !IO) :-
+    ArgRvalType = ml_typed_rval(ArgRval, _ArgType),
+    output_rval_for_java(Info, ArgRval, !IO),
     (
-        Args = []
+        ArgRvalsTypes = []
     ;
-        Args = [_ | _],
+        ArgRvalsTypes = [_ | _],
         io.write_string(", ", !IO)
     ),
-    output_init_args_for_java(Info, Args, ArgTypes, !IO).
+    output_init_args_for_java(Info, ArgRvalsTypes, !IO).
 
 %---------------------------------------------------------------------------%
 %
