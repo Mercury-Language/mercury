@@ -1054,7 +1054,7 @@ ml_must_box_field_type_category(CtorCat, UnboxedFloat, UnboxedInt64s,
                 UnboxedInt64s = no,
                 (
                     Width = full_word,
-                    MustBox=  yes
+                    MustBox = yes
                 ;
                     Width = double_word,
                     unexpected($pred, "double word for 64-bit integer")
