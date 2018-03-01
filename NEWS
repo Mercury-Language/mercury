@@ -577,6 +577,16 @@ Changes to the Mercury compiler:
   using GCC as the C compiler.
   See README.MacOS for further details.
 
+* We have improved support for FreeBSD:
+    - allow architectures other than i*86
+    - allow use of shared libraries
+    - enabled threads support
+    - enabled parallel job support with mmc --make
+
+* We have added support for OpenBSD.
+
+* We have added support for Linux systems using musl libc.
+
 * The compiler now reports an error for binary/octal/hexadecimal integer
   literals that cannot be represented in the compiler's native int type.
 
