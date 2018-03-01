@@ -42,6 +42,7 @@ Specific information is contained in individual README files:
         [m68k](README.Linux-m68k))
       * [MacOS X](README.MacOS)
       * [FreeBSD](README.FreeBSD)
+      * [OpenBSD](README.OpenBSD)
       * [AIX](README.AIX)
       * [HP-UX](README.HPUX)
       * [Solaris](README.Solaris)

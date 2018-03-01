@@ -3265,7 +3265,15 @@ case "$host" in
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
-    *freebsd*)
+    *-freebsd*)
+        CFLAGS_FOR_THREADS="-DGC_THREADS"
+        THREAD_LIBS="-lpthread"
+        ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+        avoid_sbrk=yes
+        ;;
+
+    *-openbsd*)
         CFLAGS_FOR_THREADS="-DGC_THREADS"
         THREAD_LIBS="-lpthread"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
@@ -3326,12 +3334,11 @@ AC_CACHE_VAL(mercury_cv_thread_local_storage,
 )
 AC_MSG_RESULT($mercury_cv_thread_local_storage)
 
-# Thread-local storage is disabled on Solaris as there is a linker problem
-# with shared objects and TLS.
-
 if test "$mercury_cv_thread_local_storage" = yes; then
     case "$host" in
         *-solaris2.*)
+            # Thread-local storage is disabled on Solaris as there is a linker
+            # problem with shared objects and TLS.
             ;;
         *apple*darwin*)
             # XXX only attempt to use __thread with GCC on Mac OS X.
@@ -3342,6 +3349,14 @@ if test "$mercury_cv_thread_local_storage" = yes; then
                     AC_DEFINE([MR_THREAD_LOCAL_STORAGE])
                     ;;
             esac
+            ;;
+        *-openbsd*)
+            # The above test "passes" but OpenBSD (6.2) does not support TLS
+            # natively, so is emulated by gcc/clang using something like the
+            # pthread thread-specific data API. Moreover, something goes wrong
+            # with the emulation when a Mercury program is dynamically linked
+            # to the Mercury runtime (MR_thread_engine_base is assigned in one
+            # place but remains NULL when read elsewhere).
             ;;
         *)
             AC_DEFINE([MR_THREAD_LOCAL_STORAGE])
@@ -4437,6 +4452,10 @@ case "$host" in
         ;;
     *-freebsd*)
         # Tested on FreeBSD 10.1 i386/amd64.
+        AC_MSG_RESULT(yes)
+        EXT_FOR_SHARED_LIB=so
+        ;;
+    *-openbsd*)
         AC_MSG_RESULT(yes)
         EXT_FOR_SHARED_LIB=so
         ;;

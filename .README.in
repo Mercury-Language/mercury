@@ -9,7 +9,7 @@ or particular architectures, so first read the README file for your particular
 platform, if there is one:
 
 	README.AIX		RS/6000 systems running AIX
-	README.FreeBSD		The FreeBSD version of BSD Unix on Intel x86
+	README.FreeBSD		FreeBSD on Intel x86 and x86_64
 	README.HPUX		HPPA systems running HPUX
 	README.Linux		Linux on Intel x86 and x86_64
 	README.Linux-Alpha	Linux on DEC Alpha
@@ -17,6 +17,7 @@ platform, if there is one:
 	README.Linux-m68k	Linux on Motorola 68000
 	README.MacOS		Apple Mac systems running Mac OS X
 	README.MS-Windows	Microsoft Windows
+	README.OpenBSD		OpenBSD on x86_64
 	README.Solaris		Solaris (SunOS) on SPARC or Intel x86.
 
 The documentation sources are in the `doc' subdirectory.  The installation
