@@ -1009,14 +1009,14 @@ ml_gen_hld_field_name(MaybeFieldName, ArgNum) = FieldVarName :-
 ml_must_box_field_type(ModuleInfo, Type, Width) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
-    globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64s),
     (
         ( Target = target_c
         ; Target = target_csharp
         ; Target = target_erlang
         ),
         classify_type(ModuleInfo, Type) = Category,
+        globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
+        globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64s),
         MustBox = ml_must_box_field_type_category(Category, UnboxedFloat,
             UnboxedInt64s, Width)
     ;
