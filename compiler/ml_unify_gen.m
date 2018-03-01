@@ -57,7 +57,7 @@
 :- pred ml_gen_unification(unification::in, code_model::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-    % ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
+    % ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     %   ExtraTypedRvals, ArgVars, ArgModes, TakeAddr, HowToConstruct,
     %   Context, Stmts, !Info):
     %
@@ -101,7 +101,7 @@
     % Return the rval for the secondary tag field of VarRval, assuming that
     % VarRval has the specified VarType and PrimaryTag.
     %
-:- func ml_gen_secondary_tag_rval(module_info, mlds_target_lang, tag_bits,
+:- func ml_gen_secondary_tag_rval(module_info, mlds_target_lang, ptag,
     mer_type, mlds_rval) = mlds_rval.
 
     % Generate MLDS code for a scope that constructs a ground term.
@@ -531,7 +531,7 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
         Var, ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Stmts, !Info).
 
-ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
+ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
         ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Stmts, !Info) :-
     % Determine the variable's type and lval, the tag to use, and the types
@@ -539,30 +539,30 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_type(!.Info, VarType, MLDS_Type),
     ml_gen_var(!.Info, Var, VarLval),
-    ( if Tag = 0 then
-        MaybeTag = no
+    ( if Ptag = 0 then
+        MaybePtag = no
     else
-        MaybeTag = yes(Tag)
+        MaybePtag = yes(Ptag)
     ),
     ml_variable_types(!.Info, ArgVars, ArgTypes),
 
     (
         HowToConstruct = construct_dynamically,
         ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName,
-            MaybeTag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
+            MaybePtag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
             ExtraTypedRvals, ArgVars, ArgTypes, ArgModes, TakeAddr,
             Context, Stmts, !Info)
     ;
         HowToConstruct = construct_statically,
         expect(unify(TakeAddr, []), $pred,
             "cannot take address of static object's field"),
-        ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
+        ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
             Var, VarLval, VarType, MLDS_Type, ExtraTypedRvals,
             ArgVars, ArgTypes, Context, Stmts, !Info)
     ;
         HowToConstruct = reuse_cell(CellToReuse),
-        ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
-            ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
+        ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
+            Ptag, MaybePtag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
             ExtraTypedRvals, ArgVars, ArgTypes, ArgModes, TakeAddr,
             CellToReuse, Context, Stmts, !Info)
     ;
@@ -578,7 +578,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
     list(int)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
+ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybePtag,
         ExplicitSecTag, _Var, VarLval, VarType, MLDS_Type,
         ExtraRvalsMLDSTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
         Context, Stmts, !Info) :-
@@ -635,13 +635,13 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
     % Generate a `new_object' statement to dynamically allocate the memory
     % for this term from the heap. The `new_object' statement will also
     % initialize the fields of this term with the specified arguments.
-    MakeNewObject = new_object(VarLval, MaybeTag, ExplicitSecTag, MLDS_Type,
+    MakeNewObject = new_object(VarLval, MaybePtag, ExplicitSecTag, MLDS_Type,
         yes(SizeInWordsRval), MaybeCtorName, ArgRvalsMLDSTypes,
         MayUseAtomic, MaybeAllocId),
     MakeNewObjStmt = ml_stmt_atomic(MakeNewObject, Context),
 
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
-        MaybeTag, Context, !.Info, TakeAddrStmts),
+        MaybePtag, Context, !.Info, TakeAddrStmts),
     Stmts = [MakeNewObjStmt | TakeAddrStmts].
 
 %---------------------------------------------------------------------------%
@@ -653,7 +653,7 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybeTag,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
+ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
         Var, VarLval, VarType, MLDS_Type, ExtraTypedRvals,
         ArgVars, ArgTypes, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments.
@@ -737,11 +737,11 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
     % at this point in the code generation process, we do not know if
     % there are any other kinds of references to Var later on.
     (
-        MaybeTag = no,
+        MaybePtag = no,
         TaggedRval = ConstAddrRval
     ;
-        MaybeTag = yes(Tag),
-        TaggedRval = ml_mkword(Tag, ConstAddrRval)
+        MaybePtag = yes(Ptag),
+        TaggedRval = ml_mkword(Ptag, ConstAddrRval)
     ),
     Rval = ml_unop(cast(MLDS_Type), TaggedRval),
     GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
@@ -1335,7 +1335,7 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
         )
     ;
         ( Tag = single_functor_tag
-        ; Tag = unshared_tag(_UnsharedTag)
+        ; Tag = unshared_tag(_UnsharedPtag)
         ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag)
         ),
         ml_gen_var(!.Info, Var, VarLval),
@@ -1351,30 +1351,30 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
     % the field using the highlevel data representation. Abort if the tag
     % indicates that the data doesn't have any fields.
     %
-:- pred ml_tag_offset_and_argnum(cons_tag::in, tag_bits::out,
+:- pred ml_tag_offset_and_argnum(cons_tag::in, ptag::out,
     field_offset::out, int::out) is det.
 
-ml_tag_offset_and_argnum(Tag, TagBits, Offset, ArgNum) :-
+ml_tag_offset_and_argnum(Tag, Ptag, Offset, ArgNum) :-
     (
         Tag = single_functor_tag,
-        TagBits = 0,
+        Ptag = 0,
         Offset = offset(0),
         ArgNum = 1
     ;
-        ( Tag = unshared_tag(UnsharedTag)
-        ; Tag = direct_arg_tag(UnsharedTag)
+        ( Tag = unshared_tag(UnsharedPtag)
+        ; Tag = direct_arg_tag(UnsharedPtag)
         ),
-        TagBits = UnsharedTag,
+        Ptag = UnsharedPtag,
         Offset = offset(0),
         ArgNum = 1
     ;
         Tag = shared_remote_tag(PrimaryTag, _SecondaryTag),
-        TagBits = PrimaryTag,
+        Ptag = PrimaryTag,
         Offset = offset(1),
         ArgNum = 1
     ;
         Tag = ground_term_const_tag(_, SubTag),
-        ml_tag_offset_and_argnum(SubTag, TagBits, Offset, ArgNum)
+        ml_tag_offset_and_argnum(SubTag, Ptag, Offset, ArgNum)
     ;
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_)
@@ -2033,7 +2033,7 @@ ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpression, !Info) :-
     TagTestExpression = ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type,
         ml_lval(VarLval)).
 
-    % ml_gen_tag_test_rval(Tag, Type, ModuleInfo, VarRval) = TestRval:
+    % ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, VarRval) = TestRval:
     %
     % TestRval is an Rval of type bool which evaluates to true if VarRval has
     % the specified Tag and false otherwise. Type is the type of VarRval.
@@ -2083,11 +2083,11 @@ ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, Rval) = TagTestRval :-
             ml_const(mlconst_int(UnsharedPtag))),
         TagTestRval = ml_binop(eq(int_type_int), RvalTag, UnsharedTag)
     ;
-        Tag = shared_remote_tag(PrimaryTagNum, SecondaryTagNum),
+        Tag = shared_remote_tag(PrimaryTag, SecondaryTag),
         SecondaryTagField = ml_gen_secondary_tag_rval(ModuleInfo, Target,
-            PrimaryTagNum, Type, Rval),
+            PrimaryTag, Type, Rval),
         SecondaryTagTestRval = ml_binop(eq(int_type_int),
-            SecondaryTagField, ml_const(mlconst_int(SecondaryTagNum))),
+            SecondaryTagField, ml_const(mlconst_int(SecondaryTag))),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
         ( if NumTagBits = 0 then
@@ -2096,18 +2096,18 @@ ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, Rval) = TagTestRval :-
         else
             RvalPTag = ml_unop(std_unop(tag), Rval),
             PrimaryTagRval = ml_unop(std_unop(mktag),
-                ml_const(mlconst_int(PrimaryTagNum))),
+                ml_const(mlconst_int(PrimaryTag))),
             PrimaryTagTestRval = ml_binop(eq(int_type_int), RvalPTag,
                 PrimaryTagRval),
             TagTestRval = ml_binop(logical_and,
                 PrimaryTagTestRval, SecondaryTagTestRval)
         )
     ;
-        Tag = shared_local_tag(Bits, Num),
+        Tag = shared_local_tag(Ptag, Num),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         TagTestRval = ml_binop(eq(int_type_int), Rval,
             ml_unop(cast(MLDS_Type),
-                ml_mkword(Bits,
+                ml_mkword(Ptag,
                     ml_unop(std_unop(mkbody), ml_const(mlconst_int(Num))))))
     ).
 

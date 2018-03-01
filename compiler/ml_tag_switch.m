@@ -254,7 +254,7 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
     OtherPtagMatches = list.map(make_ptag_match, OtherPtags),
     MLDS_Case = mlds_switch_case(MainPtagMatch, OtherPtagMatches, Stmt).
 
-:- func make_ptag_match(tag_bits) = mlds_case_match_cond.
+:- func make_ptag_match(ptag) = mlds_case_match_cond.
 
 make_ptag_match(Ptag) = match_value(ml_const(mlconst_int(Ptag))).
 

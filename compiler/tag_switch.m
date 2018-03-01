@@ -387,7 +387,7 @@ generate_primary_try_me_else_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
     ).
 
 :- pred generate_primary_try_me_else_chain_case(rval::in, lval::in,
-    tag_bits::in, list(tag_bits)::in, ptag_case(label)::in, int::in, rval::in,
+    ptag::in, list(ptag)::in, ptag_case(label)::in, int::in, rval::in,
     maybe(label)::in, llds_code::out, case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
@@ -412,7 +412,7 @@ generate_primary_try_me_else_chain_case(PtagRval, StagReg,
     ),
     Code = TestCode ++ TagCode ++ ElseCode.
 
-:- pred generate_primary_try_me_else_chain_other_ptags(list(tag_bits)::in,
+:- pred generate_primary_try_me_else_chain_other_ptags(list(ptag)::in,
     rval::in, rval::in, rval::out) is det.
 
 generate_primary_try_me_else_chain_other_ptags([], _, TestRval, TestRval).
@@ -484,7 +484,7 @@ generate_primary_try_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
     ).
 
 :- pred generate_primary_try_chain_case(rval::in, lval::in,
-    tag_bits::in, list(tag_bits)::in,
+    ptag::in, list(ptag)::in,
     ptag_case(label)::in, int::in, rval::in, maybe(label)::in,
     llds_code::in, llds_code::out, llds_code::in, llds_code::out,
     case_label_map::in, case_label_map::out,
@@ -514,7 +514,7 @@ generate_primary_try_chain_case(PtagRval, StagReg, MainPtag, OtherPtags,
     PrevTestsCode = PrevTestsCode0 ++ TestCode,
     PrevCasesCode = LabelCode ++ TagCode ++ PrevCasesCode0.
 
-:- pred generate_primary_try_chain_other_ptags(list(tag_bits)::in,
+:- pred generate_primary_try_chain_other_ptags(list(ptag)::in,
     rval::in, rval::in, rval::out) is det.
 
 generate_primary_try_chain_other_ptags([], _, TestRval, TestRval).
@@ -668,7 +668,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
     % use a jump table to implement the secondary switch.
     %
 :- pred generate_primary_tag_code(stag_goal_map(label)::in,
-    tag_bits::in, list(tag_bits)::in, int::in, lval::in, sectag_locn::in,
+    ptag::in, list(ptag)::in, int::in, lval::in, sectag_locn::in,
     rval::in, maybe(label)::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
@@ -1008,7 +1008,7 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_ptag_comment(string::in, tag_bits::in, list(tag_bits)::in,
+:- pred make_ptag_comment(string::in, ptag::in, list(ptag)::in,
     string::out) is det.
 
 make_ptag_comment(BaseStr, MainPtag, OtherPtags, Comment) :-

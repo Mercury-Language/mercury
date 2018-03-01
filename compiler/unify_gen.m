@@ -1581,7 +1581,7 @@ generate_sub_assign_to_field_from_var(LeftField, RightVar, Code, CI, !CLD) :-
     % - the left-hand-side (the whole term), and
     % - the right-hand-side (the one argument).
     %
-:- pred generate_direct_arg_construct(prog_var::in, prog_var::in, tag_bits::in,
+:- pred generate_direct_arg_construct(prog_var::in, prog_var::in, ptag::in,
     unify_mode::in, mer_type::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
@@ -1629,7 +1629,7 @@ generate_direct_arg_construct(Var, Arg, Ptag, ArgMode, Type, Code, CI, !CLD) :-
     % - the right-hand-side (the one argument).
     %
 :- pred generate_direct_arg_deconstruct(prog_var::in, prog_var::in,
-    tag_bits::in, unify_mode::in, mer_type::in, llds_code::out,
+    ptag::in, unify_mode::in, mer_type::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Type, Code,

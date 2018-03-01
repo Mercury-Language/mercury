@@ -260,10 +260,9 @@
     % Map primary tag values to the set of their switch arms.
     %
     % Given a key-value pair in this map, the key is duplicated
-    % in the tag_bits field of the value.
+    % in the ptag field of the value.
     %
-:- type ptag_case_map(CaseRep) ==
-    map(tag_bits, ptag_case(CaseRep)).
+:- type ptag_case_map(CaseRep) == map(ptag, ptag_case(CaseRep)).
 
 :- type ptag_case_entry(CaseRep)
     --->    ptag_case_entry(
@@ -273,7 +272,7 @@
                 % is for code shapes that cannot exploit such sharing.
 
                 % The ptag value that has this code.
-                tag_bits,
+                ptag,
 
                 % A representation of the code for this primary tag.
                 ptag_case(CaseRep)
@@ -287,8 +286,8 @@
                 % The primary tag values
 
                 % The first and any later ptag values that have this code.
-                tag_bits,
-                list(tag_bits),
+                ptag,
+                list(ptag),
 
                 % A representation of the code for this primary tag.
                 ptag_case(CaseRep)
@@ -307,15 +306,15 @@
     % that maps to the same code. Exploiting such sharing is up to
     % backend-specific code.
     %
-:- type stag_goal_map(CaseRep)   ==  map(int, CaseRep).
-:- type stag_goal_list(CaseRep)  ==  assoc_list(int, CaseRep).
+:- type stag_goal_map(CaseRep)  == map(int, CaseRep).
+:- type stag_goal_list(CaseRep) == assoc_list(int, CaseRep).
 
-:- type ptag_case_list(CaseRep) ==  list(ptag_case_entry(CaseRep)).
-:- type ptag_case_group_list(CaseRep) ==  list(ptag_case_group_entry(CaseRep)).
+:- type ptag_case_list(CaseRep) == list(ptag_case_entry(CaseRep)).
+:- type ptag_case_group_list(CaseRep) == list(ptag_case_group_entry(CaseRep)).
 
     % Map primary tag values to the number of constructors sharing them.
     %
-:- type ptag_count_map  ==  map(tag_bits, pair(sectag_locn, int)).
+:- type ptag_count_map == map(ptag, pair(sectag_locn, int)).
 
     % Map case ids to the set of primary tags used in the cons_ids
     % of that case.
@@ -1409,9 +1408,9 @@ interpret_rev_map_entry(RevEntry, GroupEntry) :-
                 % intended.
                 int,
 
-                % The primary tag bit values sharing this case.
-                tag_bits,
-                list(tag_bits),
+                % The primary tags sharing this case.
+                ptag,
+                list(ptag),
 
                 % The case itself.
                 ptag_case(CaseRep)
@@ -1420,7 +1419,7 @@ interpret_rev_map_entry(RevEntry, GroupEntry) :-
 :- type ptag_case_rev_map(CaseRep)  ==
     map(ptag_case(CaseRep), ptag_case_rev_map_entry(CaseRep)).
 
-:- pred build_ptag_case_rev_map(assoc_list(tag_bits, ptag_case(CaseRep))::in,
+:- pred build_ptag_case_rev_map(assoc_list(ptag, ptag_case(CaseRep))::in,
     ptag_count_map::in,
     ptag_case_rev_map(CaseRep)::in, ptag_case_rev_map(CaseRep)::out) is det.
 

@@ -109,9 +109,9 @@
 
 :- type byte_cons_tag
     --->    byte_no_tag
-    ;       byte_unshared_tag(tag_bits)
-    ;       byte_shared_remote_tag(tag_bits, int)
-    ;       byte_shared_local_tag(tag_bits, int)
+    ;       byte_unshared_tag(ptag)
+    ;       byte_shared_remote_tag(ptag, int)
+    ;       byte_shared_local_tag(ptag, int)
     ;       byte_enum_tag(int).
 
 :- type byte_arg

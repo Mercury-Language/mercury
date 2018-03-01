@@ -121,7 +121,7 @@
             % For these types, we don't need any tags. We just store a pointer
             % to the argument vector.
 
-    ;       unshared_tag(tag_bits)
+    ;       unshared_tag(ptag)
             % This is for constants or functors which can be distinguished
             % with just a primary tag. An "unshared" tag is one which fits
             % on the bottom of a pointer (i.e. two bits for 32-bit
@@ -129,7 +129,7 @@
             % used for just one functor. For constants we store a tagged zero,
             % for functors we store a tagged pointer to the argument vector.
 
-    ;       direct_arg_tag(tag_bits)
+    ;       direct_arg_tag(ptag)
             % This is for functors which can be distinguished with just a
             % primary tag. The primary tag says which of the type's functors
             % (which must have arity 1) this word represents. However, the
@@ -137,7 +137,7 @@
             % it IS the value of that argument, which must be an untagged
             % pointer to a cell.
 
-    ;       shared_remote_tag(tag_bits, int)
+    ;       shared_remote_tag(ptag, int)
             % This is for functors or constants which require more than just
             % a primary tag. In this case, we use both a primary and a
             % secondary tag. Several functors share the primary tag and are
@@ -146,7 +146,7 @@
             % then in this case there is an argument vector of size 1 which
             % just holds the secondary tag.)
 
-    ;       shared_local_tag(tag_bits, int)
+    ;       shared_local_tag(ptag, int)
             % This is for constants which require more than a two-bit tag.
             % In this case, we use both a primary and a secondary tag,
             % but this time the secondary tag is stored in the rest of the
@@ -177,10 +177,10 @@
     ;       int_tag_int64(int64)
     ;       int_tag_uint64(uint64).
 
-    % The type `tag_bits' holds a primary tag value.
+    % The type `ptag' holds a primary tag value.
     % It consists of 2 bits on 32 bit machines and 3 bits on 64 bit machines.
     %
-:- type tag_bits == int.
+:- type ptag == int.
 
     % Return the primary tag, if any, for a cons_tag.
     % A return value of `no' means the primary tag is unknown.
