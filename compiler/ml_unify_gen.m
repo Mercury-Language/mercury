@@ -544,13 +544,11 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     else
         MaybePtag = yes(Ptag)
     ),
-    ml_variable_types(!.Info, ArgVars, ArgTypes),
-
     (
         HowToConstruct = construct_dynamically,
         ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName,
             MaybePtag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-            ExtraTypedRvals, ArgVars, ArgTypes, ArgModes, TakeAddr,
+            ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
             Context, Stmts, !Info)
     ;
         HowToConstruct = construct_statically,
@@ -558,12 +556,12 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
             "cannot take address of static object's field"),
         ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
             Var, VarLval, VarType, MLDS_Type, ExtraTypedRvals,
-            ArgVars, ArgTypes, Context, Stmts, !Info)
+            ArgVars, Context, Stmts, !Info)
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
             Ptag, MaybePtag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-            ExtraTypedRvals, ArgVars, ArgTypes, ArgModes, TakeAddr,
+            ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
             CellToReuse, Context, Stmts, !Info)
     ;
         HowToConstruct = construct_in_region(_RegVar),
@@ -574,20 +572,19 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     maybe(qual_ctor_id)::in, maybe(mlds_ptag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in,
-    list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
+    list(prog_var)::in, list(unify_mode)::in,
     list(int)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybePtag,
-        ExplicitSecTag, _Var, VarLval, VarType, MLDS_Type,
-        ExtraRvalsMLDSTypes, ArgVars, ArgTypes, ArgModes, TakeAddr,
-        Context, Stmts, !Info) :-
+        ExplicitSecTag, _Var, VarLval, VarType, MLDS_Type, ExtraRvalsMLDSTypes,
+        ArgVars, ArgModes, TakeAddr, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments and generate rvals
     % for them (boxing/unboxing if needed).
-    ml_gen_var_list(!.Info, ArgVars, ArgLvals),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ml_variable_types(!.Info, ArgVars, ArgTypes),
     maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId,
-        ArgTypes, ConsArgTypes, ConsArgWidths),
+        ArgTypes, ConsArgTypesWidths),
     NumExtraRvals = list.length(ExtraRvalsMLDSTypes),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
@@ -599,11 +596,13 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybePtag,
         MayUseAtomic0 = may_not_use_atomic_alloc
     ),
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
-    ml_gen_cons_args(ArgVars, ArgLvals, ArgTypes, ConsArgTypes, ConsArgWidths,
-        ArgModes, NumExtraRvals, TakeAddr, ModuleInfo, HighLevelData,
-        ArgRvalsMLDSTypes0, TakeAddrInfos, MayUseAtomic0, MayUseAtomic),
+    ml_gen_cons_args(!.Info, ArgVars, ConsArgTypesWidths, ArgModes,
+        NumExtraRvals, TakeAddr, HighLevelData, ArgRvalsMLDSTypes0,
+        TakeAddrInfos, MayUseAtomic0, MayUseAtomic),
 
     % Replace double-word and packed arguments by uniform single word rvals.
+    ConsArgWidths = list.map(func(type_and_width(_, W)) = W,
+        ConsArgTypesWidths),
     ml_expand_double_word_rvals(ConsArgWidths, ArgWidths1,
         ArgRvalsMLDSTypes0, ArgRvalsMLDSTypes1),
     pack_args(ml_shift_combine_rval_type, ArgWidths1,
@@ -649,20 +648,23 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybePtag,
 :- pred ml_gen_new_object_statically(maybe(cons_id)::in,
     maybe(qual_ctor_id)::in, maybe(mlds_ptag)::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
-    list(mlds_typed_rval)::in, list(prog_var)::in, list(mer_type)::in,
+    list(mlds_typed_rval)::in, list(prog_var)::in,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
         Var, VarLval, VarType, MLDS_Type, ExtraTypedRvals,
-        ArgVars, ArgTypes, Context, Stmts, !Info) :-
+        ArgVars, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     ml_gen_info_get_target(!.Info, Target),
 
+    ml_variable_types(!.Info, ArgVars, ArgTypes),
     maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId,
-        ArgTypes, ConsArgTypes, ConsArgWidths),
+        ArgTypes, ConsArgTypesWidths),
+    ConsArgWidths = list.map(func(type_and_width(_, W)) = W,
+        ConsArgTypesWidths),
 
     some [!GlobalData] (
         % Generate rvals for the arguments.
@@ -685,8 +687,8 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
             HighLevelData = yes,
             list.map(ml_gen_info_lookup_const_var_rval(!.Info), ArgVars,
                 ArgRvals0),
-            list.map_corresponding(ml_type_as_field(ModuleInfo, HighLevelData),
-                ConsArgTypes, ConsArgWidths, FieldTypes),
+            list.map(ml_type_as_field(ModuleInfo, HighLevelData),
+                ConsArgTypesWidths, FieldTypes),
             ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo, ArgTypes,
                 FieldTypes, ArgRvals0, Context, ArgRvals1, !GlobalData),
             % For --high-level-data, the ExtraRvals should already have
@@ -753,14 +755,13 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
 :- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
     maybe(qual_ctor_id)::in, mlds_ptag::in, maybe(mlds_ptag)::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
-    list(mlds_typed_rval)::in,
-    list(prog_var)::in, list(mer_type)::in, list(unify_mode)::in,
+    list(mlds_typed_rval)::in, list(prog_var)::in, list(unify_mode)::in,
     list(int)::in, cell_to_reuse::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, MaybePtag,
         ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-        ExtraTypedRvals, ArgVars, ArgTypes, ArgModes, TakeAddr,
+        ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
         CellToReuse, Context, Stmts, !Info) :-
     % NOTE: if it is ever used, NeedsUpdates needs to be modified to take into
     % account argument packing, as in unify_gen.m.
@@ -781,6 +782,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, MaybePtag,
     list.remove_dups(ReusePrimaryTags0, ReusePrimaryTags),
 
     ml_cons_id_to_tag(!.Info, ConsId, ConsIdTag),
+    ml_variable_types(!.Info, ArgVars, ArgTypes),
     ml_field_names_and_types(!.Info, VarType, ConsId, ArgTypes, Fields),
     ml_tag_offset_and_argnum(ConsIdTag, PrimaryTag, OffSet, ArgNum),
 
@@ -963,6 +965,14 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
         )
     ).
 
+:- pred ml_type_as_field(module_info::in, bool::in, type_and_width::in,
+    mer_type::out) is det.
+
+ml_type_as_field(ModuleInfo, HighLevelData, FieldTypeWidth, BoxedFieldType) :-
+    FieldTypeWidth = type_and_width(FieldType, FieldWidth),
+    ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
+        BoxedFieldType).
+
 :- pred ml_type_as_field(module_info::in, bool::in, mer_type::in,
     arg_width::in, mer_type::out) is det.
 
@@ -1142,18 +1152,17 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
     % we produce the corresponding lval, boxed or unboxed if needed,
     % but if the argument is free, we produce a null value.
     %
-:- pred ml_gen_cons_args(list(prog_var)::in, list(mlds_lval)::in,
-    list(mer_type)::in, list(mer_type)::in, list(arg_width)::in,
-    list(unify_mode)::in, int::in, list(int)::in, module_info::in, bool::in,
-    list(mlds_typed_rval)::out, list(take_addr_info)::out,
+:- pred ml_gen_cons_args(ml_gen_info::in, list(prog_var)::in,
+    list(type_and_width)::in, list(unify_mode)::in, int::in, list(int)::in,
+    bool::in, list(mlds_typed_rval)::out, list(take_addr_info)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
-ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
-        UniModes, NumExtraArgs, TakeAddr, ModuleInfo, HighLevelData,
+ml_gen_cons_args(Info, Vars, ConsArgTypesWidths, UniModes, NumExtraArgs,
+        TakeAddr, HighLevelData,
         !:RvalsMLDSTypes, !:TakeAddrInfos, !MayUseAtomic) :-
     ( if
-        ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
-            UniModes, NumExtraArgs, 1, TakeAddr, ModuleInfo, HighLevelData,
+        ml_gen_cons_args_loop(Info, Vars, ConsArgTypesWidths, UniModes,
+            NumExtraArgs, 1, ConsArgTypesWidths, TakeAddr, HighLevelData,
             !:RvalsMLDSTypes, !:TakeAddrInfos, !MayUseAtomic)
     then
         true
@@ -1161,21 +1170,22 @@ ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
         unexpected($pred, "length mismatch")
     ).
 
-:- pred ml_gen_cons_args_2(list(prog_var)::in, list(mlds_lval)::in,
-    list(mer_type)::in, list(mer_type)::in, list(arg_width)::in,
-    list(unify_mode)::in, int::in, int::in, list(int)::in,
-    module_info::in, bool::in, list(mlds_typed_rval)::out,
-    list(take_addr_info)::out,
+:- pred ml_gen_cons_args_loop(ml_gen_info::in, list(prog_var)::in,
+    list(type_and_width)::in, list(unify_mode)::in, int::in, int::in,
+    list(type_and_width)::in, list(int)::in, bool::in,
+    list(mlds_typed_rval)::out, list(take_addr_info)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
 
-ml_gen_cons_args_2([], [], [], [], _, [],
-        _NumExtraArgs, _CurArgNum, _TakeAddr,
-        _ModuleInfo, _HighLevelData, [], [], !MayUseAtomic).
-ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
-        [ConsArgType | ConsArgTypes], ConsArgWidths,
-        [ArgMode | ArgModes], NumExtraArgs, CurArgNum, !.TakeAddr,
-        ModuleInfo, HighLevelData, [RvalMLDSType | RvalsMLDSTypes],
-        TakeAddrInfos, !MayUseAtomic) :-
+ml_gen_cons_args_loop(_Info, [], [], [],
+        _NumExtraArgs, _CurArgNum, _AllConsArgTypesWidths, _TakeAddr,
+        _HighLevelData, [], [], !MayUseAtomic).
+ml_gen_cons_args_loop(Info, [Var | Vars],
+        [ConsArgTypeWidth | ConsArgTypesWidths], [ArgMode | ArgModes],
+        NumExtraArgs, CurArgNum, AllConsArgTypesWidths, !.TakeAddr,
+        HighLevelData, [RvalMLDSType | RvalsMLDSTypes], TakeAddrInfos,
+        !MayUseAtomic) :-
+    ml_gen_var(Info, Var, Lval),
+    ml_variable_type(Info, Var, ArgType),
     % It is important to use ArgType instead of ConsArgType here. ConsArgType
     % is the declared type of the argument of the cons_id, while ArgType is
     % the actual type of the variable being assigned to the given slot.
@@ -1184,10 +1194,11 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
     % as int, which may appear in atomic cells. This is because the actual type
     % may see behind abstraction barriers, and may thus see that e.g. pred_id
     % is actually the same as integer.
+    ml_gen_info_get_module_info(Info, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, ArgType, !MayUseAtomic),
 
     % Figure out the type of the field.
-    list.det_index1(ConsArgWidths, CurArgNum, ConsArgWidth),
+    ConsArgTypeWidth = type_and_width(ConsArgType, ConsArgWidth),
     ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ConsArgWidth,
         BoxedArgType),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
@@ -1198,11 +1209,11 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
             "taking address of non word-sized argument"),
         Rval = ml_const(mlconst_null(MLDS_Type)),
         RvalMLDSType = ml_typed_rval(Rval, MLDS_Type),
-        ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
-            ArgModes, NumExtraArgs, CurArgNum + 1, !.TakeAddr,
-            ModuleInfo, HighLevelData, RvalsMLDSTypes, TakeAddrInfosTail,
-            !MayUseAtomic),
-        Offset = ml_calc_field_offset(NumExtraArgs, ConsArgWidths, CurArgNum),
+        ml_gen_cons_args_loop(Info, Vars, ConsArgTypesWidths, ArgModes,
+            NumExtraArgs, CurArgNum + 1, AllConsArgTypesWidths, !.TakeAddr,
+            HighLevelData, RvalsMLDSTypes, TakeAddrInfosTail, !MayUseAtomic),
+        Offset = ml_calc_field_offset(NumExtraArgs, AllConsArgTypesWidths,
+            CurArgNum),
         OrigMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ConsArgType),
         TakeAddrInfo = take_addr_info(Var, Offset, OrigMLDS_Type, MLDS_Type),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
@@ -1220,16 +1231,17 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
             Rval = ml_const(mlconst_null(MLDS_Type))
         ),
         RvalMLDSType = ml_typed_rval(Rval, MLDS_Type),
-        ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
-            ArgModes, NumExtraArgs, CurArgNum + 1, !.TakeAddr,
-            ModuleInfo, HighLevelData, RvalsMLDSTypes, TakeAddrInfos,
-            !MayUseAtomic)
+        ml_gen_cons_args_loop(Info, Vars, ConsArgTypesWidths, ArgModes,
+            NumExtraArgs, CurArgNum + 1, AllConsArgTypesWidths, !.TakeAddr,
+            HighLevelData, RvalsMLDSTypes, TakeAddrInfos, !MayUseAtomic)
     ).
 
-:- func ml_calc_field_offset(int, list(arg_width), int) = field_offset.
+:- func ml_calc_field_offset(int, list(type_and_width), int) = field_offset.
 
-ml_calc_field_offset(NumExtraArgs, ConsArgWidths, ArgNum) = Offset :-
-    ( if list.take(ArgNum - 1, ConsArgWidths, WidthsBeforeArg) then
+ml_calc_field_offset(NumExtraArgs, ConsArgTypesWidths, ArgNum) = Offset :-
+    ( if list.take(ArgNum - 1, ConsArgTypesWidths, TypesWidthsBeforeArg) then
+        WidthsBeforeArg = list.map(func(type_and_width(_, W)) = W,
+            TypesWidthsBeforeArg),
         WordsBeforeArg = count_distinct_words(WidthsBeforeArg),
         Offset = offset(NumExtraArgs + WordsBeforeArg)
     else
@@ -2480,8 +2492,7 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
 
 ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
         VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag,
-        Ptag, ExtraInitializers, Args, Context,
-        !GlobalData, !GroundTermMap) :-
+        Ptag, ExtraInitializers, Args, Context, !GlobalData, !GroundTermMap) :-
     % This code (loosely) follows the code of ml_gen_new_object.
 
     lookup_var_types(VarTypes, Args, ArgTypes),
@@ -2490,12 +2501,13 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     % from_ground_term_construct. Therefore the static struct we are
     % constructing should not need any extra type_info or typeclass_info args.
     cons_id_arg_types_and_widths(ModuleInfo, may_not_have_extra_args,
-        VarType, ConsId, Args, ArgTypes, ConsArgTypes, ConsArgWidths),
+        VarType, ConsId, Args, ArgTypes, ConsArgTypesWidths),
+    ConsArgWidths = list.map(func(type_and_width(_, W)) = W,
+        ConsArgTypesWidths),
     (
         HighLevelData = yes,
         construct_ground_term_initializers_hld(ModuleInfo, Context,
-            Args, ConsArgTypes, ConsArgWidths, ArgRvals1, !GlobalData,
-            !GroundTermMap)
+            Args, ConsArgTypesWidths, ArgRvals1, !GlobalData, !GroundTermMap)
     ;
         HighLevelData = no,
         assoc_list.from_corresponding_lists(Args, ConsArgWidths,
@@ -2512,42 +2524,33 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
 %---------------------------------------------------------------------------%
 
 :- pred construct_ground_term_initializers_hld(module_info::in,
-    prog_context::in, list(prog_var)::in, list(mer_type)::in,
-    list(arg_width)::in, list(mlds_rval)::out,
-    ml_global_data::in, ml_global_data::out,
+    prog_context::in, list(prog_var)::in, list(type_and_width)::in,
+    list(mlds_rval)::out, ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
-construct_ground_term_initializers_hld(ModuleInfo, Context, Args, ConsArgTypes,
-        ConsArgWidths, ArgRvals, !GlobalData, !GroundTermMap) :-
-    ( if
-        Args = [],
-        ConsArgTypes = [],
-        ConsArgWidths = []
-    then
-        ArgRvals = []
-    else if
-        Args = [Arg | Args1],
-        ConsArgTypes = [ConsArgType | ConsArgTypes1],
-        ConsArgWidths = [ConsArgWidth | ConsArgWidths1]
-    then
-        construct_ground_term_initializer_hld(ModuleInfo, Context,
-            Arg, ConsArgType, ConsArgWidth, ArgRval,
-            !GlobalData, !GroundTermMap),
-        construct_ground_term_initializers_hld(ModuleInfo, Context,
-            Args1, ConsArgTypes1, ConsArgWidths1, ArgRvals1,
-            !GlobalData, !GroundTermMap),
-        ArgRvals = [ArgRval | ArgRvals1]
-    else
-        unexpected($pred, "list length mismatch")
-    ).
+construct_ground_term_initializers_hld(_, _, [], [], [],
+        !GlobalData, !GroundTermMap).
+construct_ground_term_initializers_hld(_, _, [], [_ | _], _,
+        !GlobalData, !GroundTermMap) :-
+    unexpected($pred, "length mismatch").
+construct_ground_term_initializers_hld(_, _, [_ | _], [], _,
+        !GlobalData, !GroundTermMap) :-
+    unexpected($pred, "length mismatch").
+construct_ground_term_initializers_hld(ModuleInfo, Context,
+        [Arg | Args], [ConsArgTypeWidth | ConsArgTypesWidths],
+        [ArgRval | ArgRvals], !GlobalData, !GroundTermMap) :-
+    construct_ground_term_initializer_hld(ModuleInfo, Context,
+        Arg, ConsArgTypeWidth, ArgRval, !GlobalData, !GroundTermMap),
+    construct_ground_term_initializers_hld(ModuleInfo, Context,
+        Args, ConsArgTypesWidths, ArgRvals, !GlobalData, !GroundTermMap).
 
 :- pred construct_ground_term_initializer_hld(module_info::in,
-    prog_context::in, prog_var::in, mer_type::in, arg_width::in,
+    prog_context::in, prog_var::in, type_and_width::in,
     mlds_rval::out, ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 construct_ground_term_initializer_hld(ModuleInfo, Context,
-        Arg, ConsArgType, ConsArgWidth, ArgRval,
+        Arg, type_and_width(ConsArgType, ConsArgWidth), ArgRval,
         !GlobalData, !GroundTermMap) :-
     map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, ArgType, _MLDS_ArgType),
@@ -2723,13 +2726,17 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
 
     Target = Info ^ mcsi_target,
     ModuleInfo = Info ^ mcsi_module_info,
-    % DummyArgTypes won't be used, because we ignore _ConsArgTypes.
-    DummyArgTypes = [],
+    % DummyArgTypes won't be used, because we ignore the type part of
+    % ConsArgTypesWidths.
+    list.length(Args, NumArgs),
+    list.duplicate(NumArgs, void_type, DummyArgTypes),
     % XXX TYPE_REPN The may_not_have_extra_args preserves old behavior,
-    % but may be a bug. It depend on whether we ever put terms into the
-    % const struct db that need extra args.
+    % but may be a bug. It depends on whether we ever put into the
+    % const struct db terms that need extra args.
     cons_id_arg_types_and_widths(ModuleInfo, may_not_have_extra_args,
-        VarType, ConsId, Args, DummyArgTypes, _ConsArgTypes, ConsArgWidths),
+        VarType, ConsId, Args, DummyArgTypes, ConsArgTypesWidths),
+    ConsArgWidths = list.map(func(type_and_width(_, W)) = W,
+        ConsArgTypesWidths),
     HighLevelData = Info ^ mcsi_high_level_data,
     ( if
         (
@@ -2739,18 +2746,18 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
             Target = ml_target_java
         )
     then
-        assoc_list.from_corresponding_lists(Args, ConsArgWidths,
-            ArgConsArgWidths),
-        ml_gen_const_struct_args(Info, !.ConstStructMap,
-            ArgConsArgWidths, ArgRvals1, !GlobalData)
+        true
     else
-        unexpected($file, $pred,
+        unexpected($pred,
             "Constant structures are not supported for this grade")
     ),
+    assoc_list.from_corresponding_lists(Args, ConsArgWidths,
+        ArgConsArgWidths),
+    ml_gen_const_struct_args(Info, !.ConstStructMap,
+        ArgConsArgWidths, ArgRvals1, !GlobalData),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         term.context_init, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
-        ArgRvals1, ConsArgWidths, ExtraInitializers,
-        GroundTerm, !GlobalData),
+        ArgRvals1, ConsArgWidths, ExtraInitializers, GroundTerm, !GlobalData),
     map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
 
 :- pred ml_gen_const_struct_args(ml_const_struct_info::in,
@@ -2934,7 +2941,6 @@ ml_expand_double_word_rvals([Width0 | Widths0], Widths,
             RvalA = ml_binop(float_word_bits, Rval0, ml_const(mlconst_int(0))),
             RvalB = ml_binop(float_word_bits, Rval0, ml_const(mlconst_int(1)))
         ),
-        % ZZZ
         Widths = [full_word, full_word | Widths1],
         TypedRvalA = ml_typed_rval(RvalA, SubstType),
         TypedRvalB = ml_typed_rval(RvalB, SubstType),
@@ -3033,30 +3039,32 @@ ml_bitwise_and(Rval, Mask) =
 
 %---------------------------------------------------------------------------%
 
+:- type may_have_extra_args
+    --->    may_not_have_extra_args
+    ;       may_have_extra_args.
+
+:- type type_and_width
+    --->    type_and_width(mer_type, arg_width).
+
 :- pred maybe_cons_id_arg_types_and_widths(module_info::in, mer_type::in,
-    maybe(cons_id)::in, list(mer_type)::in,
-    list(mer_type)::out, list(arg_width)::out) is det.
+    maybe(cons_id)::in, list(mer_type)::in, list(type_and_width)::out) is det.
 
 maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId, ArgTypes,
-        ConsArgTypes, ConsArgWidths) :-
+        ConsArgTypesWidths) :-
     (
         MaybeConsId = yes(ConsId),
         cons_id_arg_types_and_widths(ModuleInfo, may_have_extra_args,
-            VarType, ConsId, ArgTypes, ArgTypes, ConsArgTypes, ConsArgWidths)
+            VarType, ConsId, ArgTypes, ArgTypes, ConsArgTypesWidths)
     ;
         MaybeConsId = no,
         % It is a closure. In this case, the arguments are all boxed.
         Length = list.length(ArgTypes),
         ConsArgTypes = ml_make_boxed_types(Length),
-        ConsArgWidths = list.duplicate(Length, full_word)
+        list.map(specify_width(full_word), ConsArgTypes, ConsArgTypesWidths)
     ).
 
-:- type may_have_extra_args
-    --->    may_not_have_extra_args
-    ;       may_have_extra_args.
-
     % cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
-    %     ConsId, Args, ArgTypes, ConsArgTypes, ConsArgWidths):
+    %     ConsId, Args, ArgTypes, ConsArgWidths):
     %
     % We are constructing a structure (either on the heap or in static memory).
     % VarType is the type of the whole structure, ConsId is the functor,
@@ -3068,38 +3076,37 @@ maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId, ArgTypes,
     %
     % The job of this predicate is to return the types of all the functor's
     % arguments (of which the types of the actual argument variables
-    % will be an instance), and the widths of all the arguments.
-    % ("All" the arguments means that this includes any extra arguments as
-    % well.)
+    % will be an instance), together with their widths. ("All" the arguments
+    % means that this includes any extra arguments as well.)
     %
     % In some circumstances, the types of the non-extra arguments are taken
-    % from ArgTypes. One of our callers does not need the value of
-    % ConsArgTypes; such callers can supply dummy values for ArgTypes,
+    % from ArgTypes. One of our callers does not need the types inside
+    % ConsArgTypesWidths; such callers can supply dummy values for ArgTypes,
     % if they also pass may_not_have_extra_args.
     %
 :- pred cons_id_arg_types_and_widths(module_info,
     may_have_extra_args, mer_type, cons_id, list(T), list(mer_type),
-    list(mer_type), list(arg_width)).
+    list(type_and_width)).
 :- mode cons_id_arg_types_and_widths(in, in(bound(may_have_extra_args)),
-    in, in, in, in, out, out) is det.
+    in, in, in, in, out) is det.
 :- mode cons_id_arg_types_and_widths(in, in(bound(may_not_have_extra_args)),
-    in, in, in, in, out, out) is det.
+    in, in, in, in, out) is det.
 
 cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
-        ConsId, Args, ArgTypes, ConsArgTypes, ConsArgWidths) :-
+        ConsId, Args, ArgTypes, ConsArgTypesWidths) :-
     ( if
         ConsId = cons(_, _, _),
         not is_introduced_type_info_type(VarType)
     then
         ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
             ConsArgDefns = ConsRepnDefn ^ cr_args,
-            ConsArgTypes0 = list.map(func(C) = C ^ car_type, ConsArgDefns),
-            ConsArgWidths0 = list.map(func(C) = C ^ car_width, ConsArgDefns),
+            NumExtraArgs = list.length(Args) - list.length(ConsArgDefns),
+            ConsArgTypesWidths0 = list.map(
+                (func(C) = type_and_width(C ^ car_type, C ^ car_width)),
+                ConsArgDefns),
             (
                 MayHaveExtraArgs = may_not_have_extra_args,
-                ConsArgTypes = ConsArgTypes0,
-                ConsArgWidths = ConsArgWidths0,
-                NumExtraArgs = list.length(Args) - list.length(ConsArgTypes),
+                ConsArgTypesWidths = ConsArgTypesWidths0,
                 expect(unify(NumExtraArgs, 0), $pred,
                     "extra args in static struct")
             ;
@@ -3107,13 +3114,10 @@ cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
                 % There may have been additional types inserted to hold the
                 % type_infos and type_class_infos for existentially quantified
                 % types. We can get these from the ArgTypes.
-
-                NumExtraArgs =
-                    list.length(ArgTypes) - list.length(ConsArgTypes0),
                 ExtraArgTypes = list.take_upto(NumExtraArgs, ArgTypes),
-                ExtraArgWidths = list.duplicate(NumExtraArgs, full_word),
-                ConsArgTypes = ExtraArgTypes ++ ConsArgTypes0,
-                ConsArgWidths = ExtraArgWidths ++ ConsArgWidths0
+                list.map(specify_width(full_word), ExtraArgTypes,
+                    ExtraArgTypesWidths),
+                ConsArgTypesWidths = ExtraArgTypesWidths ++ ConsArgTypesWidths0
             )
         else if
             % If we didn't find a constructor definition, maybe that is
@@ -3127,7 +3131,8 @@ cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
             % it is.
             Length = list.length(Args),
             ConsArgTypes = ml_make_boxed_types(Length),
-            ConsArgWidths = list.duplicate(Length, full_word)
+            list.map(specify_width(full_word), ConsArgTypes,
+                ConsArgTypesWidths)
         else
             % The only builtin types that can allocate structures
             % are tuples and the RTTI-related types. Both should have been
@@ -3141,8 +3146,17 @@ cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
         % XXX is this the right thing to do?
         Length = list.length(Args),
         ConsArgTypes = ArgTypes,
-        ConsArgWidths = list.duplicate(Length, full_word)
+        ( if list.length(ArgTypes, Length) then
+            true
+        else
+            unexpected($pred, "|Args| != |ArgTypes|")
+        ),
+        list.map(specify_width(full_word), ConsArgTypes, ConsArgTypesWidths)
     ).
+
+:- pred specify_width(arg_width::in, mer_type::in, type_and_width::out) is det.
+
+specify_width(Width, Type, type_and_width(Type, Width)).
 
 :- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
     bool::in, prog_context::in, mer_type::in, mlds_type::in,
