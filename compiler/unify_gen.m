@@ -2337,16 +2337,16 @@ right_shift_rval(Rval, Shift) =
 :- func bitwise_or_cell_arg(cell_arg, cell_arg) = cell_arg.
 
 bitwise_or_cell_arg(CellArgA, CellArgB) = CellArg :-
-    ( if bitwise_or_cell_arg(CellArgA, CellArgB, CellArgPrime) then
+    ( if maybe_bitwise_or_cell_arg(CellArgA, CellArgB, CellArgPrime) then
         CellArg = CellArgPrime
     else
         unexpected($pred, "invalid combination")
     ).
 
-:- pred bitwise_or_cell_arg(cell_arg::in, cell_arg::in, cell_arg::out)
+:- pred maybe_bitwise_or_cell_arg(cell_arg::in, cell_arg::in, cell_arg::out)
     is semidet.
 
-bitwise_or_cell_arg(CellArgA, CellArgB, CellArg) :-
+maybe_bitwise_or_cell_arg(CellArgA, CellArgB, CellArg) :-
     (
         CellArgA = cell_arg_full_word(RvalA, CompletenessA),
         CellArgB = cell_arg_full_word(RvalB, CompletenessB),
