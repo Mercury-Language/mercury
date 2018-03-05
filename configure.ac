@@ -2,6 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
+# Copyright (C) 2013-2018 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -1067,12 +1068,14 @@ AC_PROG_CPP
 AC_PROG_EGREP
 AC_MSG_CHECKING([for use of a Microsoft C compiler])
 AC_EGREP_CPP([yes],
-[
-#ifdef _MSC_VER
-    yes
-#endif
-],
-[ac_microsoft=yes], [ac_microsoft=no])
+    [
+        #ifdef _MSC_VER
+            yes
+        #endif
+    ],
+    [ac_microsoft=yes],
+    [ac_microsoft=no]
+)
 
 if test "$ac_microsoft" = "yes"
 then
@@ -1337,9 +1340,10 @@ mercury_check_for_stdio_functions () {
     do
         mercury_cv_stdio_func_define="MR_HAVE_`echo $mercury_cv_stdio_func | \
             tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`"
-        AC_CHECK_DECL($mercury_cv_stdio_func, [
-            AC_DEFINE_UNQUOTED($mercury_cv_stdio_func_define)
-        ], [], [#include <stdio.h>])
+        AC_CHECK_DECL($mercury_cv_stdio_func,
+            [AC_DEFINE_UNQUOTED($mercury_cv_stdio_func_define)],
+            [],
+            [#include <stdio.h>])
     done
 }
 
@@ -1419,42 +1423,43 @@ MERCURY_CHECK_FOR_FENV_FUNC([fesetround], [$MATH_LIB])
 if test "$ac_cv_func_sigaction" = yes; then
     AC_MSG_CHECKING(for \`sigaction' field name)
     AC_CACHE_VAL(mercury_cv_sigaction_field,
-    AC_TRY_RUN([
+    AC_TRY_RUN(
+        [
+            #include <signal.h>
+            #include <stdlib.h>
 
-    #include <signal.h>
-    #include <stdlib.h>
+            #define FAULT_ADDRESS ((int *)112)
 
-    #define FAULT_ADDRESS ((int *)112)
+            extern void handler(int signum, siginfo_t *info, void *context);
 
-    extern void handler(int signum, siginfo_t *info, void *context);
+            int main() {
+                struct sigaction act;
+                act.sa_flags = SA_SIGINFO;
+                act.sa_sigaction = handler;
+                if (sigemptyset(&act.sa_mask) != 0)
+                    exit(1);
+                if (sigaction(SIGSEGV, &act, NULL) != 0)
+                    exit(1);
+                /* provoke a SIGSEGV */
+                (*FAULT_ADDRESS)++;
+                exit(1);
+            }
 
-    int main() {
-        struct sigaction act;
-        act.sa_flags = SA_SIGINFO;
-        act.sa_sigaction = handler;
-        if (sigemptyset(&act.sa_mask) != 0)
-            exit(1);
-        if (sigaction(SIGSEGV, &act, NULL) != 0)
-            exit(1);
-        /* provoke a SIGSEGV */
-        (*FAULT_ADDRESS)++;
-        exit(1);
-    }
-
-    void handler(int signum, siginfo_t *info, void *context) {
-        if (signum == SIGSEGV &&
-            info->si_signo == SIGSEGV &&
-            info->si_code > 0 &&
-            (int *)info->si_addr == FAULT_ADDRESS)
-        {
-            exit(0);
-        } else {
-            exit(1);
-        }
-    }],
-    [mercury_cv_sigaction_field=sa_sigaction],
-    [mercury_cv_sigaction_field=sa_handler],
-    [mercury_cv_sigaction_field=sa_handler]))
+            void handler(int signum, siginfo_t *info, void *context) {
+                if (signum == SIGSEGV &&
+                    info->si_signo == SIGSEGV &&
+                    info->si_code > 0 &&
+                    (int *)info->si_addr == FAULT_ADDRESS)
+                {
+                    exit(0);
+                } else {
+                    exit(1);
+                }
+            }
+        ],
+        [mercury_cv_sigaction_field=sa_sigaction],
+        [mercury_cv_sigaction_field=sa_handler],
+        [mercury_cv_sigaction_field=sa_handler]))
     AC_MSG_RESULT($mercury_cv_sigaction_field)
     AC_DEFINE_UNQUOTED(MR_SIGACTION_FIELD,$mercury_cv_sigaction_field)
     if test "$mercury_cv_sigaction_field" = sa_sigaction; then
@@ -1469,46 +1474,52 @@ fi
 
 AC_MSG_CHECKING(for working \`sigcontext_struct' in second arg)
 AC_CACHE_VAL(mercury_cv_sigcontext_struct_2arg,
-mercury_cv_sigcontext_struct_2arg=no
-AC_TRY_RUN([
-/* see runtime/mercury_signal.h for documentation of this code */
+    mercury_cv_sigcontext_struct_2arg=no
 
-#define sigcontext_struct sigcontext
+    AC_TRY_RUN(
+        [
+            /* see runtime/mercury_signal.h for documentation of this code */
 
-#define __KERNEL__
-#include <signal.h>
-#undef __KERNEL__
+            #define sigcontext_struct sigcontext
 
-#ifdef MR_HAVE_ASM_SIGCONTEXT_H
-#include <asm/sigcontext.h>
-#endif
+            #define __KERNEL__
+            #include <signal.h>
+            #undef __KERNEL__
 
-#include "mercury_faultaddr.h"
+            #ifdef MR_HAVE_ASM_SIGCONTEXT_H
+            #include <asm/sigcontext.h>
+            #endif
 
-#include <stdio.h>
+            #include "mercury_faultaddr.h"
 
-extern void handler(int signum, struct sigcontext_struct info);
+            #include <stdio.h>
 
-#define FAULT_ADDRESS ((int *)112)
+            extern void handler(int signum, struct sigcontext_struct info);
 
-int main() {
-    signal(SIGSEGV, (void (*)(int))handler);
+            #define FAULT_ADDRESS ((int *)112)
 
-    /* provoke a SIGSEGV */
-    (*FAULT_ADDRESS)++;
+            int main() {
+                signal(SIGSEGV, (void (*)(int))handler);
 
-    exit(1);
-}
+                /* provoke a SIGSEGV */
+                (*FAULT_ADDRESS)++;
 
-void handler(int signum, struct sigcontext_struct context) {
-    int *addr;
-    addr = (int *) MR_GET_FAULT_ADDR(context);
-    if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
-        exit(0);
-    } else {
-        exit(1);
-    }
-}], [mercury_cv_sigcontext_struct_2arg=yes], [true], [true]))
+                exit(1);
+            }
+
+            void handler(int signum, struct sigcontext_struct context) {
+                int *addr;
+                addr = (int *) MR_GET_FAULT_ADDR(context);
+                if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
+                    exit(0);
+                } else {
+                    exit(1);
+                }
+            }
+        ],
+        [mercury_cv_sigcontext_struct_2arg=yes],
+        [true],
+        [true]))
 AC_MSG_RESULT($mercury_cv_sigcontext_struct_2arg)
 
 if test "$mercury_cv_sigcontext_struct_2arg" = no; then
@@ -1518,46 +1529,51 @@ if test "$mercury_cv_sigcontext_struct_2arg" = no; then
     AC_CACHE_VAL(mercury_cv_sigcontext_struct_3arg,
     mercury_cv_sigcontext_struct_3arg=no
 
-    AC_TRY_RUN([
-    /* see runtime/mercury_signal.h for documentation of this code */
+    AC_TRY_RUN(
+        [
+            /* see runtime/mercury_signal.h for documentation of this code */
 
-    #define sigcontext_struct sigcontext
+            #define sigcontext_struct sigcontext
 
-    #define __KERNEL__
-    #include <signal.h>
-    #undef __KERNEL__
+            #define __KERNEL__
+            #include <signal.h>
+            #undef __KERNEL__
 
-    #ifdef MR_HAVE_ASM_SIGCONTEXT_H
-    #include <asm/sigcontext.h>
-    #endif
+            #ifdef MR_HAVE_ASM_SIGCONTEXT_H
+            #include <asm/sigcontext.h>
+            #endif
 
-    #include "mercury_faultaddr.h"
+            #include "mercury_faultaddr.h"
 
-    #include <stdio.h>
+            #include <stdio.h>
 
-    extern void handler(int signum, int code, struct
-        sigcontext_struct info);
+            extern void handler(int signum, int code, struct
+                sigcontext_struct info);
 
-    #define FAULT_ADDRESS ((int *)112)
+            #define FAULT_ADDRESS ((int *)112)
 
-    int main() {
-        signal(SIGSEGV, (void (*)(int))handler);
+            int main() {
+                signal(SIGSEGV, (void (*)(int))handler);
 
-        /* provoke a SIGSEGV */
-        (*FAULT_ADDRESS)++;
+                /* provoke a SIGSEGV */
+                (*FAULT_ADDRESS)++;
 
-        exit(1);
-    }
+                exit(1);
+            }
 
-    void handler(int signum, int code, struct sigcontext_struct context) {
-        int *addr;
-        addr = (int *) MR_GET_FAULT_ADDR(context);
-        if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
-            exit(0);
-        } else {
-            exit(1);
-        }
-    }], [mercury_cv_sigcontext_struct_3arg=yes], [true], [true]))
+            void handler(int signum, int code, struct sigcontext_struct context) {
+                int *addr;
+                addr = (int *) MR_GET_FAULT_ADDR(context);
+                if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
+                    exit(0);
+                } else {
+                    exit(1);
+                }
+            }
+        ],
+        [mercury_cv_sigcontext_struct_3arg=yes],
+        [true],
+        [true]))
     AC_MSG_RESULT($mercury_cv_sigcontext_struct_3arg)
 else
     mercury_cv_sigcontext_struct_3arg=no
@@ -1583,56 +1599,61 @@ if test "$mercury_cv_sigcontext_struct" = yes; then
     AC_MSG_CHECKING(for \`sigcontext_struct' pc access at signals)
     AC_CACHE_VAL(mercury_cv_pc_access,
     mercury_cv_pc_access=no
-    AC_TRY_RUN([
-    /* see runtime/mercury_signal.h for documentation of this code */
+    AC_TRY_RUN(
+        [
+            /* see runtime/mercury_signal.h for documentation of this code */
 
-    #define sigcontext_struct sigcontext
+            #define sigcontext_struct sigcontext
 
-    #define __KERNEL__
-    #include <signal.h>
-    #undef __KERNEL__
+            #define __KERNEL__
+            #include <signal.h>
+            #undef __KERNEL__
 
-    #ifdef MR_HAVE_ASM_SIGCONTEXT_H
-    #include <asm/sigcontext.h>
-    #endif
+            #ifdef MR_HAVE_ASM_SIGCONTEXT_H
+            #include <asm/sigcontext.h>
+            #endif
 
-    #include "mercury_faultaddr.h"
+            #include "mercury_faultaddr.h"
 
-    #include <stdio.h>
+            #include <stdio.h>
 
-    #if MR_HAVE_SIGCONTEXT_STRUCT_3ARG
-    extern void handler(int signum, int code,
-            struct sigcontext_struct context);
-    #else
-    extern void handler(int signum, struct sigcontext_struct context);
-    #endif
+            #if MR_HAVE_SIGCONTEXT_STRUCT_3ARG
+            extern void handler(int signum, int code,
+                    struct sigcontext_struct context);
+            #else
+            extern void handler(int signum, struct sigcontext_struct context);
+            #endif
 
-    #define FAULT_ADDRESS ((int *)112)
+            #define FAULT_ADDRESS ((int *)112)
 
-    int main() {
-        signal(SIGSEGV, (void (*)(int))handler);
+            int main() {
+                signal(SIGSEGV, (void (*)(int))handler);
 
-        /* provoke a SIGSEGV */
-        (*FAULT_ADDRESS)++;
+                /* provoke a SIGSEGV */
+                (*FAULT_ADDRESS)++;
 
-        exit(1);
-    }
+                exit(1);
+            }
 
-    #if MR_HAVE_SIGCONTEXT_STRUCT_3ARG
-    void handler(int signum, int code, struct sigcontext_struct context) {
-    #else
-    void handler(int signum, struct sigcontext_struct context) {
-    #endif
-        int *addr;
-        long pc;
-        addr = (int *) MR_GET_FAULT_ADDR(context);
-        pc = (long) context.eip;
-        if (signum == SIGSEGV && addr == FAULT_ADDRESS && pc != 0) {
-            exit(0);
-        } else {
-            exit(1);
-        }
-    }], [mercury_cv_pc_access=eip], [true], [true]))
+            #if MR_HAVE_SIGCONTEXT_STRUCT_3ARG
+            void handler(int signum, int code, struct sigcontext_struct context) {
+            #else
+            void handler(int signum, struct sigcontext_struct context) {
+            #endif
+                int *addr;
+                long pc;
+                addr = (int *) MR_GET_FAULT_ADDR(context);
+                pc = (long) context.eip;
+                if (signum == SIGSEGV && addr == FAULT_ADDRESS && pc != 0) {
+                    exit(0);
+                } else {
+                    exit(1);
+                }
+            }
+        ],
+        [mercury_cv_pc_access=eip],
+        [true],
+        [true]))
     AC_MSG_RESULT($mercury_cv_pc_access)
     if test "$mercury_cv_pc_access" != no; then
         AC_DEFINE_UNQUOTED(MR_PC_ACCESS,$mercury_cv_pc_access)
@@ -1641,43 +1662,48 @@ else
     AC_MSG_CHECKING(for \`siginfo_t')
     AC_CACHE_VAL(mercury_cv_siginfo_t,
     mercury_cv_siginfo_t=no
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <signal.h>
-    #ifdef MR_HAVE_SYS_SIGINFO_H
-    #include <sys/siginfo.h>
-    #endif
-    #ifdef MR_HAVE_SYS_SIGNAL_H
-    #include <sys/signal.h>
-    #endif
-    #ifdef MR_HAVE_UCONTEXT_H
-    #include <ucontext.h>
-    #endif
-    #ifdef MR_HAVE_SYS_UCONTEXT_H
-    #include <sys/ucontext.h>
-    #endif
-    int save_signum = 0;
-    int save_cause;
-    int save_pc;
-    extern void handler(int signum, siginfo_t *info, void *context);
-    int main() {
-        struct sigaction act;
-        act.sa_flags = SA_SIGINFO;
-        act.$mercury_cv_sigaction_field = handler;
-        if (sigemptyset(&act.sa_mask) != 0)
-            exit(1);
-        if (sigaction(SIGSEGV, &act, NULL) != 0)
-            exit(1);
-        if (kill(getpid(), SIGSEGV) != 0)
-            exit(1);
-        if (save_signum == 0)
-            exit(1);
-        exit(0);
-    }
-    void handler(int signum, siginfo_t *info, void *context) {
-        save_signum = signum;
-        save_cause = info->si_code;
-    }], [mercury_cv_siginfo_t=yes], [true], [true]))
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            #include <signal.h>
+            #ifdef MR_HAVE_SYS_SIGINFO_H
+            #include <sys/siginfo.h>
+            #endif
+            #ifdef MR_HAVE_SYS_SIGNAL_H
+            #include <sys/signal.h>
+            #endif
+            #ifdef MR_HAVE_UCONTEXT_H
+            #include <ucontext.h>
+            #endif
+            #ifdef MR_HAVE_SYS_UCONTEXT_H
+            #include <sys/ucontext.h>
+            #endif
+            int save_signum = 0;
+            int save_cause;
+            int save_pc;
+            extern void handler(int signum, siginfo_t *info, void *context);
+            int main() {
+                struct sigaction act;
+                act.sa_flags = SA_SIGINFO;
+                act.$mercury_cv_sigaction_field = handler;
+                if (sigemptyset(&act.sa_mask) != 0)
+                    exit(1);
+                if (sigaction(SIGSEGV, &act, NULL) != 0)
+                    exit(1);
+                if (kill(getpid(), SIGSEGV) != 0)
+                    exit(1);
+                if (save_signum == 0)
+                    exit(1);
+                exit(0);
+            }
+            void handler(int signum, siginfo_t *info, void *context) {
+                save_signum = signum;
+                save_cause = info->si_code;
+            }
+        ],
+        [mercury_cv_siginfo_t=yes],
+        [true],
+        [true]))
     AC_MSG_RESULT($mercury_cv_siginfo_t)
     if test "$mercury_cv_siginfo_t" = yes; then
         AC_DEFINE(MR_HAVE_SIGINFO_T)
@@ -1686,109 +1712,121 @@ else
         AC_MSG_CHECKING(for \`siginfo' pc access at signals)
         AC_CACHE_VAL(mercury_cv_pc_access,
         mercury_cv_pc_access=no
-        AC_TRY_RUN([
-        #include <stdio.h>
-        #include <signal.h>
-        #include <sys/siginfo.h>
-        #ifdef MR_HAVE_UCONTEXT_H
-        #include <ucontext.h>
-        #else
-        #include <sys/ucontext.h>
-        #endif
-        int save_signum = 0;
-        int save_cause;
-        int save_pc;
-        extern void handler(int signum, siginfo_t *info, void *context);
-        int main() {
-            struct sigaction act;
-            act.sa_flags = SA_SIGINFO;
-            act.$mercury_cv_sigaction_field = handler;
-            if (sigemptyset(&act.sa_mask) != 0)
-                exit(1);
-            if (sigaction(SIGSEGV, &act, NULL) != 0)
-                exit(1);
-            if (kill(getpid(), SIGSEGV) != 0)
-                exit(1);
-            if (save_signum == 0)
-                exit(1);
-            exit(0);
-        }
-        void handler(int signum, siginfo_t *info, void *context) {
-            save_signum = signum;
-            save_cause = info->si_code;
-            /* Don't use array indexing - the square brackets
-               are autoconf quote characters */
-            save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
-                    + REG_PC);
-        }], [mercury_cv_pc_access=REG_PC;mercury_cv_pc_access_greg=yes],
-            [true], [true])
-        AC_TRY_RUN([
-        #include <stdio.h>
-        #include <signal.h>
-        #include <sys/siginfo.h>
-        #ifdef MR_HAVE_UCONTEXT_H
-        #include <ucontext.h>
-        #else
-        #include <sys/ucontext.h>
-        #endif
-        int save_signum = 0;
-        int save_cause;
-        int save_pc;
-        extern void handler(int signum, siginfo_t *info, void *context);
-        int main() {
-            struct sigaction act;
-            act.sa_flags = SA_SIGINFO;
-            act.$mercury_cv_sigaction_field = handler;
-            if (sigemptyset(&act.sa_mask) != 0)
-                exit(1);
-            if (sigaction(SIGSEGV, &act, NULL) != 0)
-                exit(1);
-            if (kill(getpid(), SIGSEGV) != 0)
-                exit(1);
-            if (save_signum == 0)
-                exit(1);
-            exit(0);
-        }
-        void handler(int signum, siginfo_t *info, void *context) {
-            save_signum = signum;
-            save_cause = info->si_code;
-            save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
-                    + CTX_EPC);
-        }], [mercury_cv_pc_access=CTX_EPC;mercury_cv_pc_access_greg=yes],
-            [true], [true])
-        AC_TRY_RUN([
-        #include <stdio.h>
-        #include <signal.h>
-        #include <sys/siginfo.h>
-        #ifdef MR_HAVE_UCONTEXT_H
-        #include <ucontext.h>
-        #else
-        #include <sys/ucontext.h>
-        #endif
-        int save_signum = 0;
-        int save_cause;
-        int save_pc;
-        extern void handler(int signum, siginfo_t *info, void *context);
-        int main() {
-            struct sigaction act;
-            act.sa_flags = SA_SIGINFO;
-            act.$mercury_cv_sigaction_field = handler;
-            if (sigemptyset(&act.sa_mask) != 0)
-                exit(1);
-            if (sigaction(SIGSEGV, &act, NULL) != 0)
-                exit(1);
-            if (kill(getpid(), SIGSEGV) != 0)
-                exit(1);
-            if (save_signum == 0)
-                exit(1);
-            exit(0);
-        }
-        void handler(int signum, siginfo_t *info, void *context) {
-            save_signum = signum;
-            save_cause = info->si_code;
-            save_pc = ((ucontext_t *) context)->uc_mcontext.sc_pc;
-        }], [mercury_cv_pc_access=sc_pc;mercury_cv_pc_access_greg=no],
-            [true], [true])
+        AC_TRY_RUN(
+            [
+                #include <stdio.h>
+                #include <signal.h>
+                #include <sys/siginfo.h>
+                #ifdef MR_HAVE_UCONTEXT_H
+                #include <ucontext.h>
+                #else
+                #include <sys/ucontext.h>
+                #endif
+                int save_signum = 0;
+                int save_cause;
+                int save_pc;
+                extern void handler(int signum, siginfo_t *info, void *context);
+                int main() {
+                    struct sigaction act;
+                    act.sa_flags = SA_SIGINFO;
+                    act.$mercury_cv_sigaction_field = handler;
+                    if (sigemptyset(&act.sa_mask) != 0)
+                        exit(1);
+                    if (sigaction(SIGSEGV, &act, NULL) != 0)
+                        exit(1);
+                    if (kill(getpid(), SIGSEGV) != 0)
+                        exit(1);
+                    if (save_signum == 0)
+                        exit(1);
+                    exit(0);
+                }
+                void handler(int signum, siginfo_t *info, void *context) {
+                    save_signum = signum;
+                    save_cause = info->si_code;
+                    /* Don't use array indexing - the square brackets
+                       are autoconf quote characters */
+                    save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
+                            + REG_PC);
+                }
+            ],
+            [mercury_cv_pc_access=REG_PC;mercury_cv_pc_access_greg=yes],
+            [true],
+            [true])
+        AC_TRY_RUN(
+            [
+                #include <stdio.h>
+                #include <signal.h>
+                #include <sys/siginfo.h>
+                #ifdef MR_HAVE_UCONTEXT_H
+                #include <ucontext.h>
+                #else
+                #include <sys/ucontext.h>
+                #endif
+                int save_signum = 0;
+                int save_cause;
+                int save_pc;
+                extern void handler(int signum, siginfo_t *info, void *context);
+                int main() {
+                    struct sigaction act;
+                    act.sa_flags = SA_SIGINFO;
+                    act.$mercury_cv_sigaction_field = handler;
+                    if (sigemptyset(&act.sa_mask) != 0)
+                        exit(1);
+                    if (sigaction(SIGSEGV, &act, NULL) != 0)
+                        exit(1);
+                    if (kill(getpid(), SIGSEGV) != 0)
+                        exit(1);
+                    if (save_signum == 0)
+                        exit(1);
+                    exit(0);
+                }
+                void handler(int signum, siginfo_t *info, void *context) {
+                    save_signum = signum;
+                    save_cause = info->si_code;
+                    save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
+                            + CTX_EPC);
+                }
+            ],
+            [mercury_cv_pc_access=CTX_EPC;mercury_cv_pc_access_greg=yes],
+            [true],
+            [true])
+        AC_TRY_RUN(
+            [
+                #include <stdio.h>
+                #include <signal.h>
+                #include <sys/siginfo.h>
+                #ifdef MR_HAVE_UCONTEXT_H
+                #include <ucontext.h>
+                #else
+                #include <sys/ucontext.h>
+                #endif
+                int save_signum = 0;
+                int save_cause;
+                int save_pc;
+                extern void handler(int signum, siginfo_t *info, void *context);
+                int main() {
+                    struct sigaction act;
+                    act.sa_flags = SA_SIGINFO;
+                    act.$mercury_cv_sigaction_field = handler;
+                    if (sigemptyset(&act.sa_mask) != 0)
+                        exit(1);
+                    if (sigaction(SIGSEGV, &act, NULL) != 0)
+                        exit(1);
+                    if (kill(getpid(), SIGSEGV) != 0)
+                        exit(1);
+                    if (save_signum == 0)
+                        exit(1);
+                    exit(0);
+                }
+                void handler(int signum, siginfo_t *info, void *context) {
+                    save_signum = signum;
+                    save_cause = info->si_code;
+                    save_pc = ((ucontext_t *) context)->uc_mcontext.sc_pc;
+                }
+            ],
+            [mercury_cv_pc_access=sc_pc;mercury_cv_pc_access_greg=no],
+            [true],
+            [true])
         )
         AC_MSG_RESULT($mercury_cv_pc_access)
         if test "$mercury_cv_pc_access" != no; then
@@ -1803,62 +1841,66 @@ fi
 
 AC_MSG_CHECKING(for an integer type with the same size as a pointer)
 AC_CACHE_VAL(mercury_cv_word_type,
-    AC_TRY_RUN([
-    #include <stdio.h>
-    int main() {
-        FILE *fp;
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            int main() {
+                FILE *fp;
 
-        fp = fopen("conftest.tags", "w");
-        if (fp == NULL)
-            exit(1);
+                fp = fopen("conftest.tags", "w");
+                if (fp == NULL)
+                    exit(1);
 
-        /*
-        ** Note that we do not output newline characters as these programs
-        ** might write out a CRLF pair and a shell that does not recognize
-        ** this will interpret the CR as part of the type name.
-        */
-        if (sizeof(int) == sizeof(void *))
-        {
-            fprintf(fp, "int");
-            exit(0);
-        }
+                /*
+                ** We do not output newline characters as these programs might
+                ** write out a CRLF pair and a shell that does not recognize
+                ** this will interpret the CR as part of the type name.
+                */
+                if (sizeof(int) == sizeof(void *))
+                {
+                    fprintf(fp, "int");
+                    exit(0);
+                }
 
-        if (sizeof(long) == sizeof(void *))
-        {
-            fprintf(fp, "long");
-            exit(0);
-        }
+                if (sizeof(long) == sizeof(void *))
+                {
+                    fprintf(fp, "long");
+                    exit(0);
+                }
 
-        fprintf(fp, "unknown");
-        exit(1);
-    }],
-    [mercury_cv_word_type=`cat conftest.tags`],
-    [mercury_cv_word_type=unknown],
-    [mercury_cv_word_type=unknown])
+                fprintf(fp, "unknown");
+                exit(1);
+            }
+        ],
+        [mercury_cv_word_type=`cat conftest.tags`],
+        [mercury_cv_word_type=unknown],
+        [mercury_cv_word_type=unknown])
 )
 if test "$mercury_cv_word_type" = unknown; then
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <stdlib.h>
-    int main() {
-        FILE *fp;
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            #include <stdlib.h>
+            int main() {
+                FILE *fp;
 
-        fp = fopen("conftest.tags", "w");
-        if (fp == NULL)
-            exit(1);
+                fp = fopen("conftest.tags", "w");
+                if (fp == NULL)
+                    exit(1);
 
-        if (sizeof(long long) == sizeof(void *))
-        {
-            fprintf(fp, "long long");
-            exit(0);
-        }
+                if (sizeof(long long) == sizeof(void *))
+                {
+                    fprintf(fp, "long long");
+                    exit(0);
+                }
 
-        fprintf(fp, "unknown");
-        exit(1);
-    }],
-    [mercury_cv_word_type=`cat conftest.tags`],
-    [mercury_cv_word_type=unknown],
-    [mercury_cv_word_type=unknown])
+                fprintf(fp, "unknown");
+                exit(1);
+            }
+        ],
+        [mercury_cv_word_type=`cat conftest.tags`],
+        [mercury_cv_word_type=unknown],
+        [mercury_cv_word_type=unknown])
 fi
 mercury_cv_word_type=`echo $mercury_cv_word_type | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_word_type)
@@ -1890,73 +1932,77 @@ AC_SUBST(MR_ROBDD_int_max)
 
 AC_MSG_CHECKING(for an integer type of at least 64 bits)
 AC_CACHE_VAL(mercury_cv_int_least64_type,
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <limits.h>
-    int main() {
-        FILE *fp;
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            #include <limits.h>
+            int main() {
+                FILE *fp;
 
-        fp = fopen("conftest.tags", "w");
-        if (fp == NULL)
-            exit(1);
+                fp = fopen("conftest.tags", "w");
+                if (fp == NULL)
+                    exit(1);
 
-        /*
-        ** Note that we do not output newline characters as these programs
-        ** might write out a CRLF pair and a shell that does not recognize
-        ** this will interpret the CR as part of the type name.
-        */
-        if (sizeof(int) * CHAR_BIT >= 64)
-        {
-            fprintf(fp, "int");
-            exit(0);
-        }
+                /*
+                ** We do not output newline characters as these programs might
+                ** write out a CRLF pair and a shell that does not recognize
+                ** this will interpret the CR as part of the type name.
+                */
+                if (sizeof(int) * CHAR_BIT >= 64)
+                {
+                    fprintf(fp, "int");
+                    exit(0);
+                }
 
-        if (sizeof(long) * CHAR_BIT >= 64)
-        {
-            fprintf(fp, "long");
-            exit(0);
-        }
+                if (sizeof(long) * CHAR_BIT >= 64)
+                {
+                    fprintf(fp, "long");
+                    exit(0);
+                }
 
-    /* Check for __int64 when using MSVC */
-    #ifdef _MSC_VER
-        if (sizeof(__int64) * CHAR_BIT >= 64)
-        {
-            fprintf(fp, "__int64");
-            exit(0);
-        }
-    #endif
+            /* Check for __int64 when using MSVC */
+            #ifdef _MSC_VER
+                if (sizeof(__int64) * CHAR_BIT >= 64)
+                {
+                    fprintf(fp, "__int64");
+                    exit(0);
+                }
+            #endif
 
-        fprintf(fp, "unknown");
-        exit(1);
-    }],
-    [mercury_cv_int_least64_type=`cat conftest.tags`],
-    [mercury_cv_int_least64_type=unknown],
-    [mercury_cv_int_least64_type=unknown])
+                fprintf(fp, "unknown");
+                exit(1);
+            }
+        ],
+        [mercury_cv_int_least64_type=`cat conftest.tags`],
+        [mercury_cv_int_least64_type=unknown],
+        [mercury_cv_int_least64_type=unknown])
 )
 if test "$mercury_cv_int_least64_type" = unknown; then
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <limits.h>
-    #include <stdlib.h>
-    int main() {
-        FILE *fp;
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            #include <limits.h>
+            #include <stdlib.h>
+            int main() {
+                FILE *fp;
 
-        fp = fopen("conftest.tags", "w");
-        if (fp == NULL)
-            exit(1);
+                fp = fopen("conftest.tags", "w");
+                if (fp == NULL)
+                    exit(1);
 
-        if (sizeof(long long) * CHAR_BIT >= 64)
-        {
-            fprintf(fp, "long long");
-            exit(0);
-        }
+                if (sizeof(long long) * CHAR_BIT >= 64)
+                {
+                    fprintf(fp, "long long");
+                    exit(0);
+                }
 
-        fprintf(fp, "unknown");
-        exit(1);
-    }],
-    [mercury_cv_int_least64_type=`cat conftest.tags`],
-    [mercury_cv_int_least64_type=unknown],
-    [mercury_cv_int_least64_type=unknown])
+                fprintf(fp, "unknown");
+                exit(1);
+            }
+        ],
+        [mercury_cv_int_least64_type=`cat conftest.tags`],
+        [mercury_cv_int_least64_type=unknown],
+        [mercury_cv_int_least64_type=unknown])
 fi
 # Uncomment the following line to test how the system behaves
 # in the absence of a 64-bit integer type.
@@ -1985,40 +2031,42 @@ fi
 
 AC_MSG_CHECKING(for an integer type of at least 32 bits)
 AC_CACHE_VAL(mercury_cv_int_least32_type,
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <limits.h>
-    #include <stdlib.h>
-    int main() {
-        FILE *fp;
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            #include <limits.h>
+            #include <stdlib.h>
+            int main() {
+                FILE *fp;
 
-        fp = fopen("conftest.tags", "w");
-        if (fp == NULL)
-            exit(1);
+                fp = fopen("conftest.tags", "w");
+                if (fp == NULL)
+                    exit(1);
 
-        /*
-        ** Note that we do not output newline characters as these programs
-        ** might write out a CRLF pair and a shell that does not recognize
-        ** this will interpret the CR as part of the type name.
-        */
-        if (sizeof(int) * CHAR_BIT >= 32)
-        {
-            fprintf(fp, "int");
-            exit(0);
-        }
+                /*
+                ** We do not output newline characters as these programs might
+                ** write out a CRLF pair and a shell that does not recognize
+                ** this will interpret the CR as part of the type name.
+                */
+                if (sizeof(int) * CHAR_BIT >= 32)
+                {
+                    fprintf(fp, "int");
+                    exit(0);
+                }
 
-        if (sizeof(long) * CHAR_BIT >= 32)
-        {
-            fprintf(fp, "long");
-            exit(0);
-        }
+                if (sizeof(long) * CHAR_BIT >= 32)
+                {
+                    fprintf(fp, "long");
+                    exit(0);
+                }
 
-        fprintf(fp, "unknown");
-        exit(1);
-    }],
-    [mercury_cv_int_least32_type=`cat conftest.tags`],
-    [mercury_cv_int_least32_type=unknown],
-    [mercury_cv_int_least32_type=unknown])
+                fprintf(fp, "unknown");
+                exit(1);
+            }
+        ],
+        [mercury_cv_int_least32_type=`cat conftest.tags`],
+        [mercury_cv_int_least32_type=unknown],
+        [mercury_cv_int_least32_type=unknown])
 )
 mercury_cv_int_least32_type=`echo $mercury_cv_int_least32_type | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_int_least32_type)
@@ -2058,40 +2106,42 @@ esac
 
 AC_MSG_CHECKING(for an integer type of at least 16 bits)
 AC_CACHE_VAL(mercury_cv_int_least16_type,
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <limits.h>
-    #include <stdlib.h>
-    int main() {
-        FILE *fp;
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            #include <limits.h>
+            #include <stdlib.h>
+            int main() {
+                FILE *fp;
 
-        fp = fopen("conftest.tags", "w");
-        if (fp == NULL)
-            exit(1);
+                fp = fopen("conftest.tags", "w");
+                if (fp == NULL)
+                    exit(1);
 
-        /*
-        ** Note that we do not output newline characters as these programs
-        ** might write out a CRLF pair and a shell that does not recognize
-        ** this will interpret the CR as part of the type name.
-        */
-        if (sizeof(short) * CHAR_BIT >= 16)
-        {
-            fprintf(fp, "short");
-            exit(0);
-        }
+                /*
+                ** We do not output newline characters as these programs might
+                ** write out a CRLF pair and a shell that does not recognize
+                ** this will interpret the CR as part of the type name.
+                */
+                if (sizeof(short) * CHAR_BIT >= 16)
+                {
+                    fprintf(fp, "short");
+                    exit(0);
+                }
 
-        if (sizeof(int) * CHAR_BIT >= 16)
-        {
-            fprintf(fp, "int");
-            exit(0);
-        }
+                if (sizeof(int) * CHAR_BIT >= 16)
+                {
+                    fprintf(fp, "int");
+                    exit(0);
+                }
 
-        fprintf(fp, "unknown");
-        exit(1);
-    }],
-    [mercury_cv_int_least16_type=`cat conftest.tags`],
-    [mercury_cv_int_least16_type=unknown],
-    [mercury_cv_int_least16_type=unknown])
+                fprintf(fp, "unknown");
+                exit(1);
+            }
+        ],
+        [mercury_cv_int_least16_type=`cat conftest.tags`],
+        [mercury_cv_int_least16_type=unknown],
+        [mercury_cv_int_least16_type=unknown])
 )
 mercury_cv_int_least16_type=`echo $mercury_cv_int_least16_type | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_int_least16_type)
@@ -2115,42 +2165,44 @@ AC_SUBST(MR_UINT_LEAST16_MAX)
 
 AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <stdlib.h>
-    int main() {
-        FILE *fp;
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            #include <stdlib.h>
+            int main() {
+                FILE *fp;
 
-        fp = fopen("conftest.tags", "w");
-        if (fp == NULL)
-            exit(1);
+                fp = fopen("conftest.tags", "w");
+                if (fp == NULL)
+                    exit(1);
 
-        /*
-        ** Note that we do not output newline characters as these programs
-        ** might write out a CRLF pair and a shell that does not recognize
-        ** this will interpret the CR as part of the type name.
-        */
-        if (sizeof(void *) == 4)
-        {
-            fprintf(fp, "2");
-            exit(0);
-        }
-        if (sizeof(void *) == 8)
-        {
-            fprintf(fp, "3");
-            exit(0);
-        }
-        if (sizeof(void *) == 16)
-        {
-            fprintf(fp, "4");
-            exit(0);
-        }
-        fprintf(fp, "0");
-        exit(1);
-    }],
-    [mercury_cv_low_tag_bits=`cat conftest.tags`],
-    [mercury_cv_low_tag_bits=0],
-    [mercury_cv_low_tag_bits=0])
+                /*
+                ** We do not output newline characters as these programs might
+                ** write out a CRLF pair and a shell that does not recognize
+                ** this will interpret the CR as part of the type name.
+                */
+                if (sizeof(void *) == 4)
+                {
+                    fprintf(fp, "2");
+                    exit(0);
+                }
+                if (sizeof(void *) == 8)
+                {
+                    fprintf(fp, "3");
+                    exit(0);
+                }
+                if (sizeof(void *) == 16)
+                {
+                    fprintf(fp, "4");
+                    exit(0);
+                }
+                fprintf(fp, "0");
+                exit(1);
+            }
+        ],
+        [mercury_cv_low_tag_bits=`cat conftest.tags`],
+        [mercury_cv_low_tag_bits=0],
+        [mercury_cv_low_tag_bits=0])
 )
 mercury_cv_low_tag_bits=`echo $mercury_cv_low_tag_bits | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_low_tag_bits)
@@ -2168,22 +2220,24 @@ AC_SUBST(LOW_TAG_BITS)
 
 AC_MSG_CHECKING(the number of bytes per word)
 AC_CACHE_VAL(mercury_cv_bytes_per_word,
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <stdlib.h>
-    int main() {
-        FILE *fp;
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            #include <stdlib.h>
+            int main() {
+                FILE *fp;
 
-        fp = fopen("conftest.wordbytes", "w");
-        if (fp == NULL)
-            exit(1);
-        fprintf(fp, "%d", sizeof(void *));
+                fp = fopen("conftest.wordbytes", "w");
+                if (fp == NULL)
+                    exit(1);
+                fprintf(fp, "%d", sizeof(void *));
 
-        exit(0);
-    }],
-    [mercury_cv_bytes_per_word=`cat conftest.wordbytes`],
-    [mercury_cv_bytes_per_word=0],
-    [mercury_cv_bytes_per_word=0])
+                exit(0);
+            }
+        ],
+        [mercury_cv_bytes_per_word=`cat conftest.wordbytes`],
+        [mercury_cv_bytes_per_word=0],
+        [mercury_cv_bytes_per_word=0])
 )
 mercury_cv_bytes_per_word=`echo $mercury_cv_bytes_per_word | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_bytes_per_word)
@@ -2195,23 +2249,25 @@ AC_SUBST(BYTES_PER_WORD)
 
 AC_MSG_CHECKING(the number of bits per word)
 AC_CACHE_VAL(mercury_cv_bits_per_word,
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <stdlib.h>
-    #include <limits.h>
-    int main() {
-        FILE *fp;
+    AC_TRY_RUN(
+        [
+            #include <stdio.h>
+            #include <stdlib.h>
+            #include <limits.h>
+            int main() {
+                FILE *fp;
 
-        fp = fopen("conftest.wordbits", "w");
-        if (fp == NULL)
-            exit(1);
-        fprintf(fp, "%d", CHAR_BIT * sizeof(void *));
+                fp = fopen("conftest.wordbits", "w");
+                if (fp == NULL)
+                    exit(1);
+                fprintf(fp, "%d", CHAR_BIT * sizeof(void *));
 
-        exit(0);
-    }],
-    [mercury_cv_bits_per_word=`cat conftest.wordbits`],
-    [mercury_cv_bits_per_word=0],
-    [mercury_cv_bits_per_word=0])
+                exit(0);
+            }
+        ],
+        [mercury_cv_bits_per_word=`cat conftest.wordbits`],
+        [mercury_cv_bits_per_word=0],
+        [mercury_cv_bits_per_word=0])
 )
 mercury_cv_bits_per_word=`echo $mercury_cv_bits_per_word | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_bits_per_word)
@@ -2242,16 +2298,18 @@ AC_SUBST(MR_ROBDD_LOG_BITS_PER_WORD)
 
 AC_MSG_CHECKING(whether we can use unboxed floats)
 AC_CACHE_VAL(mercury_cv_unboxed_floats,
-    AC_TRY_RUN([
-    int main() {
-        if (sizeof(double) == sizeof(void *))
-            exit(0);
-        else
-            exit(1);
-    }],
-    [mercury_cv_unboxed_floats=yes],
-    [mercury_cv_unboxed_floats=no],
-    [mercury_cv_unboxed_floats=no])
+    AC_TRY_RUN(
+        [
+            int main() {
+                if (sizeof(double) == sizeof(void *))
+                    exit(0);
+                else
+                    exit(1);
+            }
+        ],
+        [mercury_cv_unboxed_floats=yes],
+        [mercury_cv_unboxed_floats=no],
+        [mercury_cv_unboxed_floats=no])
 )
 AC_MSG_RESULT($mercury_cv_unboxed_floats)
 if test "$mercury_cv_unboxed_floats" = yes; then
@@ -2266,17 +2324,19 @@ AC_SUBST(HAVE_BOXED_FLOATS)
 
 AC_MSG_CHECKING(whether float is 64-bit)
 AC_CACHE_VAL(mercury_cv_float_is_64_bit,
-    AC_TRY_RUN([
-    #include <limits.h>
-    int main() {
-        if (sizeof(float) * CHAR_BIT == 64)
-            exit(0);
-        else
-            exit(1);
-    }],
-    [mercury_cv_float_is_64_bit=yes],
-    [mercury_cv_float_is_64_bit=no],
-    [mercury_cv_float_is_64_bit=no])
+    AC_TRY_RUN(
+        [
+            #include <limits.h>
+            int main() {
+                if (sizeof(float) * CHAR_BIT == 64)
+                    exit(0);
+                else
+                    exit(1);
+            }
+        ],
+        [mercury_cv_float_is_64_bit=yes],
+        [mercury_cv_float_is_64_bit=no],
+        [mercury_cv_float_is_64_bit=no])
 )
 AC_MSG_RESULT($mercury_cv_float_is_64_bit)
 if test "$mercury_cv_float_is_64_bit" = yes; then
@@ -2288,17 +2348,19 @@ AC_SUBST(MR_FLOAT_IS_64_BIT)
 
 AC_MSG_CHECKING(whether double is 64-bit)
 AC_CACHE_VAL(mercury_cv_double_is_64_bit,
-    AC_TRY_RUN([
-    #include <limits.h>
-    int main() {
-        if (sizeof(double) * CHAR_BIT == 64)
-            exit(0);
-        else
-            exit(1);
-    }],
-    [mercury_cv_double_is_64_bit=yes],
-    [mercury_cv_double_is_64_bit=no],
-    [mercury_cv_double_is_64_bit=no])
+    AC_TRY_RUN(
+        [
+            #include <limits.h>
+            int main() {
+                if (sizeof(double) * CHAR_BIT == 64)
+                    exit(0);
+                else
+                    exit(1);
+            }
+        ],
+        [mercury_cv_double_is_64_bit=yes],
+        [mercury_cv_double_is_64_bit=no],
+        [mercury_cv_double_is_64_bit=no])
 )
 AC_MSG_RESULT($mercury_cv_double_is_64_bit)
 if test "$mercury_cv_double_is_64_bit" = yes; then
@@ -2310,17 +2372,19 @@ AC_SUBST(MR_DOUBLE_IS_64_BIT)
 
 AC_MSG_CHECKING(whether long double is 64-bit)
 AC_CACHE_VAL(mercury_cv_long_double_is_64_bit,
-    AC_TRY_RUN([
-    #include <limits.h>
-    int main() {
-        if (sizeof(long double) * CHAR_BIT == 64)
-            exit(0);
-        else
-            exit(1);
-    }],
-    [mercury_cv_long_double_is_64_bit=yes],
-    [mercury_cv_long_double_is_64_bit=no],
-    [mercury_cv_long_double_is_64_bit=no])
+    AC_TRY_RUN(
+        [
+            #include <limits.h>
+            int main() {
+                if (sizeof(long double) * CHAR_BIT == 64)
+                    exit(0);
+                else
+                    exit(1);
+            }
+        ],
+        [mercury_cv_long_double_is_64_bit=yes],
+        [mercury_cv_long_double_is_64_bit=no],
+        [mercury_cv_long_double_is_64_bit=no])
 )
 AC_MSG_RESULT($mercury_cv_long_double_is_64_bit)
 if test "$mercury_cv_long_double_is_64_bit" = yes; then
@@ -2332,14 +2396,16 @@ AC_SUBST(MR_LONG_DOUBLE_IS_64_BIT)
 
 AC_MSG_CHECKING([whether we can use unboxed 64-bit integers])
 AC_CACHE_VAL([mercury_cv_unboxed_int64s],
-    AC_TRY_RUN([
-    #include <stdint.h>
-    int main() {
-        if (sizeof(uint64_t) == sizeof(void *))
-            exit(0);
-        else
-            exit(1);
-        }],
+    AC_TRY_RUN(
+        [
+            #include <stdint.h>
+            int main() {
+                if (sizeof(uint64_t) == sizeof(void *))
+                    exit(0);
+                else
+                    exit(1);
+            }
+        ],
         [mercury_cv_unboxed_int64s=yes],
         [mercury_cv_unboxed_int64s=no],
         [mercury_cv_unboxed_int64s=no])
@@ -2364,21 +2430,23 @@ AC_DEFINE_UNQUOTED(MR_SYNC_TERM_SIZE, $SYNC_TERM_SIZE)
 
 AC_MSG_CHECKING(whether architecture is big-endian)
 AC_CACHE_VAL(mercury_cv_is_bigender,
-    AC_TRY_RUN([
-    int main() {
-        int     x = 1;
-        unsigned char   *x_p;
+    AC_TRY_RUN(
+        [
+            int main() {
+                int     x = 1;
+                unsigned char   *x_p;
 
-        x_p = (unsigned char*) &x;
+                x_p = (unsigned char*) &x;
 
-        if (*x_p == 0)
-            exit(0);
-        else
-            exit(1);
-    }],
-    [mercury_cv_is_bigender=yes],
-    [mercury_cv_is_bigender=no],
-    [mercury_cv_is_bigender=no])
+                if (*x_p == 0)
+                    exit(0);
+                else
+                    exit(1);
+            }
+        ],
+        [mercury_cv_is_bigender=yes],
+        [mercury_cv_is_bigender=no],
+        [mercury_cv_is_bigender=no])
 )
 AC_MSG_RESULT($mercury_cv_is_bigender)
 if test "$mercury_cv_is_bigender" = yes; then
@@ -2390,21 +2458,23 @@ AC_SUBST(MR_BIG_ENDIAN)
 
 AC_MSG_CHECKING(whether architecture is little-endian)
 AC_CACHE_VAL(mercury_cv_is_littleender,
-    AC_TRY_RUN([
-    int main() {
-        int     x = 1;
-        unsigned char   *x_p;
+    AC_TRY_RUN(
+        [
+            int main() {
+                int     x = 1;
+                unsigned char   *x_p;
 
-        x_p = (unsigned char*) &x;
+                x_p = (unsigned char*) &x;
 
-        if (*x_p == 1)
-            exit(0);
-        else
-            exit(1);
-    }],
-    [mercury_cv_is_littleender=yes],
-    [mercury_cv_is_littleender=no],
-    [mercury_cv_is_littleender=no])
+                if (*x_p == 1)
+                    exit(0);
+                else
+                    exit(1);
+            }
+        ],
+        [mercury_cv_is_littleender=yes],
+        [mercury_cv_is_littleender=no],
+        [mercury_cv_is_littleender=no])
 )
 AC_MSG_RESULT($mercury_cv_is_littleender)
 if test "$mercury_cv_is_littleender" = yes; then
@@ -2416,30 +2486,28 @@ AC_SUBST(MR_LITTLE_ENDIAN)
 
 AC_MSG_CHECKING(whether we can use files as locks)
 AC_CACHE_VAL(mercury_cv_have_ocreat_oexcl,
-    AC_TRY_COMPILE([
-        #ifdef MR_HAVE_SYS_TYPES_H
-        #include <sys/types.h>
-        #endif
-        #ifdef MR_HAVE_SYS_STAT_H
-        #include <sys/stat.h>
-        #endif
-        #ifdef MR_HAVE_FCNTL_H
-        #include <fcntl.h>
-        #endif
-    ],
-    [
-    #if defined(O_CREAT) && defined(O_EXCL)
+    AC_TRY_COMPILE(
+        [
+            #ifdef MR_HAVE_SYS_TYPES_H
+            #include <sys/types.h>
+            #endif
+            #ifdef MR_HAVE_SYS_STAT_H
+            #include <sys/stat.h>
+            #endif
+            #ifdef MR_HAVE_FCNTL_H
+            #include <fcntl.h>
+            #endif
+        ],
+        [
+            #if defined(O_CREAT) && defined(O_EXCL)
 
-    #else
-    /*
-    ** As these macros are not defined the compilation must fail.
-    ** Unmatched brackets should do that for us.
-    */
-        }
-    #endif
-    ],
-    [mercury_cv_have_ocreat_oexcl=yes],
-    [mercury_cv_have_ocreat_oexcl=no])
+            #else
+                /* Deliberate syntax error. */
+                }
+            #endif
+        ],
+        [mercury_cv_have_ocreat_oexcl=yes],
+        [mercury_cv_have_ocreat_oexcl=no])
 )
 AC_MSG_RESULT($mercury_cv_have_ocreat_oexcl)
 if test "$mercury_cv_have_ocreat_oexcl" = yes; then
@@ -2450,53 +2518,57 @@ fi
 
 AC_MSG_CHECKING(return values of system)
 AC_CACHE_VAL(mercury_cv_normal_system_retval,
-    AC_TRY_RUN([
-    #include <stdlib.h>
-    #ifdef MR_HAVE_SYS_WAIT_H
-    #include <sys/wait.h>
-    #endif
-    int main() {
-        #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
-            defined (WIFSIGNALED) && defined (WTERMSIG)
-        /*
-        ** All the necessary macros for handling the return values of
-        ** system() are defined, so we do not need to test the return
-        ** value of system()
-        */
-        exit(0);
-
-        #else
-        /*
-        ** Normal return values from system() are considered to be
-        ** when high 8 bits of the return value give the exit
-        ** status, and the low 8 bits give the signal number which
-        ** killed the process.
-        */
-            if( system("exit 0") == 0 &&
-                    system("exit 42") == 42 << 8 ) {
-                    /* && system("kill -9 $$") == 9 */
+    AC_TRY_RUN(
+        [
+            #include <stdlib.h>
+            #ifdef MR_HAVE_SYS_WAIT_H
+            #include <sys/wait.h>
+            #endif
+            int main() {
+                #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+                    defined (WIFSIGNALED) && defined (WTERMSIG)
+                /*
+                ** All the necessary macros for handling the return values of
+                ** system() are defined, so we do not need to test the return
+                ** value of system()
+                */
                 exit(0);
-            } else {
-                exit(1);
-            }
-        #endif
-    }],
-    [mercury_cv_normal_system_retval=yes],
-    [mercury_cv_normal_system_retval=no],
-    AC_TRY_COMPILE([#include <sys/wait.h>], [
-    #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
-        defined (WIFSIGNALED) && defined (WTERMSIG)
 
-    #else
-    /*
-    ** As these macros are not defined the compilation must fail.
-    ** Unmatched brackets should do that for us.
-    */
-        }
-    #endif
-    ],
-    [mercury_cv_normal_system_retval=yes],
-    [mercury_cv_normal_system_retval=no]))
+                #else
+                /*
+                ** Normal return values from system() are considered to be
+                ** when high 8 bits of the return value give the exit
+                ** status, and the low 8 bits give the signal number which
+                ** killed the process.
+                */
+                    if (system("exit 0") == 0 &&
+                            system("exit 42") == 42 << 8 ) {
+                            /* && system("kill -9 $$") == 9 */
+                        exit(0);
+                    } else {
+                        exit(1);
+                    }
+                #endif
+            }
+        ],
+        [mercury_cv_normal_system_retval=yes],
+        [mercury_cv_normal_system_retval=no],
+        AC_TRY_COMPILE(
+            [
+                #include <sys/wait.h>
+            ],
+            [
+                #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+                    defined (WIFSIGNALED) && defined (WTERMSIG)
+
+                #else
+                    /* Deliberate syntax error. */
+                    }
+                #endif
+            ],
+            [mercury_cv_normal_system_retval=yes],
+            [mercury_cv_normal_system_retval=no])
+    )
 )
 AC_MSG_RESULT($mercury_cv_normal_system_retval)
 if test "$mercury_cv_normal_system_retval" = no; then
@@ -2508,23 +2580,25 @@ fi
 
 AC_MSG_CHECKING(to see if we can handle contexts blocking on IO)
 AC_CACHE_VAL(mercury_cv_can_do_pending_io,
-    AC_TRY_RUN([
-    #include <sys/types.h>
-    #include <sys/time.h>
-    int main() {
-        fd_set f;
-        struct timeval zero;
-        int err;
+    AC_TRY_RUN(
+        [
+            #include <sys/types.h>
+            #include <sys/time.h>
+            int main() {
+                fd_set f;
+                struct timeval zero;
+                int err;
 
-        FD_ZERO(&f);
-        zero.tv_sec = 0;
-        zero.tv_usec = 0;
-        err = select(1, &f, &f, &f, &zero);
-        exit(err != 0);
-    }],
-    [mercury_cv_can_do_pending_io=yes],
-    [mercury_cv_can_do_pending_io=no],
-    [mercury_cv_can_do_pending_io=no])
+                FD_ZERO(&f);
+                zero.tv_sec = 0;
+                zero.tv_usec = 0;
+                err = select(1, &f, &f, &f, &zero);
+                exit(err != 0);
+            }
+        ],
+        [mercury_cv_can_do_pending_io=yes],
+        [mercury_cv_can_do_pending_io=no],
+        [mercury_cv_can_do_pending_io=no])
 )
 AC_MSG_RESULT($mercury_cv_can_do_pending_io)
 if test "$mercury_cv_can_do_pending_io" = yes; then
@@ -2795,52 +2869,55 @@ if test "$LIBRARY_PATH_FOR_GOTOS" != ""; then
 fi
 
 AC_CACHE_VAL(mercury_cv_gcc_labels,
-    AC_TRY_RUN([
-    extern void     exit(int);
-    void            *entry_foo_1;
-    void            *entry_bar_1;
-    void            *succip;
-    int             global;
-    void            *dummy_identity_function(void *);
+    AC_TRY_RUN(
+        [
+            extern void     exit(int);
+            void            *entry_foo_1;
+            void            *entry_bar_1;
+            void            *succip;
+            int             global;
+            void            *dummy_identity_function(void *);
 
-    foo() {
-        entry_foo_1 = && foo_1;
-        goto *dummy_identity_function(&&return_label);
-    return_label:
-        return;
-    foo_1:
-        __asm__ __volatile__("":::"memory");
-        if (global != 42) exit(1);
-        goto *entry_bar_1;
-    }
-    bar() {
-        entry_bar_1 = && bar_1;
-        goto *dummy_identity_function(&&return_label);
-    return_label:
-        return;
-    bar_1:
-        __asm__ __volatile__("":::"memory");
-        if (global != 42) exit(1);
-        goto *succip;
-    }
-    main() {
-        global = 42;
-        foo();
-        bar();
-        succip = &&last;
-        goto *dummy_identity_function(&&return_label);
-    return_label:
-        goto *entry_foo_1;
-        exit(1);
-    last:
-        __asm__ __volatile__("":::"memory");
-        if (global != 42) exit(1);
-        exit(0);
-    }
-    void *dummy_identity_function(void *p) {
-        return p;
-    }
-    ], [mercury_cv_gcc_labels=yes], [mercury_cv_gcc_labels=no],
+            foo() {
+                entry_foo_1 = && foo_1;
+                goto *dummy_identity_function(&&return_label);
+            return_label:
+                return;
+            foo_1:
+                __asm__ __volatile__("":::"memory");
+                if (global != 42) exit(1);
+                goto *entry_bar_1;
+            }
+            bar() {
+                entry_bar_1 = && bar_1;
+                goto *dummy_identity_function(&&return_label);
+            return_label:
+                return;
+            bar_1:
+                __asm__ __volatile__("":::"memory");
+                if (global != 42) exit(1);
+                goto *succip;
+            }
+            main() {
+                global = 42;
+                foo();
+                bar();
+                succip = &&last;
+                goto *dummy_identity_function(&&return_label);
+            return_label:
+                goto *entry_foo_1;
+                exit(1);
+            last:
+                __asm__ __volatile__("":::"memory");
+                if (global != 42) exit(1);
+                exit(0);
+            }
+            void *dummy_identity_function(void *p) {
+                return p;
+            }
+        ],
+        [mercury_cv_gcc_labels=yes],
+        [mercury_cv_gcc_labels=no],
         [mercury_cv_gcc_labels=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_labels)
@@ -2852,23 +2929,28 @@ if test "$mercury_cv_gcc_labels" = yes; then
     AC_MSG_CHECKING(whether we can use asm labels)
 
     AC_CACHE_VAL(mercury_cv_asm_labels,
-    AC_TRY_RUN([
-    void *volatile volatile_global_pointer;
-    extern void mercury__label1 (void) __asm__("entry_" "mercury__label1" );
-    main() {
-        void *addr;
+    AC_TRY_RUN(
+        [
+            void *volatile volatile_global_pointer;
+            extern void mercury__label1 (void)
+                __asm__("entry_" "mercury__label1" );
+            main() {
+                void *addr;
 
-        volatile_global_pointer = &&mercury__label1;
-        addr = &mercury__label1;
-        goto *addr;
-        exit(1);
+                volatile_global_pointer = &&mercury__label1;
+                addr = &mercury__label1;
+                goto *addr;
+                exit(1);
 
-    mercury__label1:
-        __asm__(".globl entry_" "mercury__label1" "\n" "entry_"
-            "mercury__label1" ":\n"
-            "/* this is a comment */");
-        exit(0);
-    }], [mercury_cv_asm_labels=yes], [mercury_cv_asm_labels=no],
+            mercury__label1:
+                __asm__(".globl entry_" "mercury__label1" "\n" "entry_"
+                    "mercury__label1" ":\n"
+                    "/* this is a comment */");
+                exit(0);
+            }
+        ],
+        [mercury_cv_asm_labels=yes],
+        [mercury_cv_asm_labels=no],
         [mercury_cv_asm_labels=no])
     )
     AC_MSG_RESULT($mercury_cv_asm_labels)
@@ -2910,20 +2992,24 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
     fi
 
     AC_CACHE_VAL(mercury_cv_gcc_model_fast,
-    AC_TRY_RUN([
-    #define MR_USE_GCC_NONLOCAL_GOTOS
-    #define MR_USE_GCC_GLOBAL_REGISTERS
-    #include "mercury_engine.h"
-    changequote(<<,>>)
-    MercuryEngine MR_engine_base;
-    changequote([,])
-    main() {
-        MR_mr0 = 20;
-        MR_mr7 = 22;
-        if (MR_mr0 + MR_mr7 != 42)
-            exit(1);
-        exit(0);
-    }], [mercury_cv_gcc_model_fast=yes], [mercury_cv_gcc_model_fast=no],
+    AC_TRY_RUN(
+        [
+            #define MR_USE_GCC_NONLOCAL_GOTOS
+            #define MR_USE_GCC_GLOBAL_REGISTERS
+            #include "mercury_engine.h"
+            changequote(<<,>>)
+            MercuryEngine MR_engine_base;
+            changequote([,])
+            main() {
+                MR_mr0 = 20;
+                MR_mr7 = 22;
+                if (MR_mr0 + MR_mr7 != 42)
+                    exit(1);
+                exit(0);
+            }
+        ],
+        [mercury_cv_gcc_model_fast=yes],
+        [mercury_cv_gcc_model_fast=no],
         [mercury_cv_gcc_model_fast=no])
     )
     AC_MSG_RESULT($mercury_cv_gcc_model_fast)
@@ -2944,19 +3030,23 @@ save_CC="$CC"
 CC="$CC $CFLAGS_FOR_REGS"
 
 AC_CACHE_VAL(mercury_cv_gcc_model_reg,
-AC_TRY_RUN([
-#define MR_USE_GCC_GLOBAL_REGISTERS
-#include "mercury_engine.h"
-changequote(<<,>>)
-MercuryEngine MR_engine_base;
-changequote([,])
-main() {
-    MR_mr0 = 20;
-    MR_mr7 = 22;
-    if (MR_mr0 + MR_mr7 != 42)
-        exit(1);
-    exit(0);
-}], [mercury_cv_gcc_model_reg=yes], [mercury_cv_gcc_model_reg=no],
+AC_TRY_RUN(
+    [
+        #define MR_USE_GCC_GLOBAL_REGISTERS
+        #include "mercury_engine.h"
+        changequote(<<,>>)
+        MercuryEngine MR_engine_base;
+        changequote([,])
+        main() {
+            MR_mr0 = 20;
+            MR_mr7 = 22;
+            if (MR_mr0 + MR_mr7 != 42)
+                exit(1);
+            exit(0);
+        }
+    ],
+    [mercury_cv_gcc_model_reg=yes],
+    [mercury_cv_gcc_model_reg=no],
     [mercury_cv_gcc_model_reg=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_model_reg)
@@ -2968,41 +3058,46 @@ CC="$save_CC"
 
 AC_MSG_CHECKING(whether we can support time profiling on this system)
 AC_CACHE_VAL(mercury_cv_profiling,
-AC_TRY_CPP([
-/* The following code comes from runtime/mercury_timing.h */
-#include    <errno.h>
-#include    <limits.h>
-#include    <string.h>
-#include    <signal.h>
+AC_TRY_CPP(
+    [
+        /* The following code comes from runtime/mercury_timing.h */
+        #include    <errno.h>
+        #include    <limits.h>
+        #include    <string.h>
+        #include    <signal.h>
 
-#ifdef MR_HAVE_SYS_PARAM_H
-#include    <sys/param.h>
-#endif
+        #ifdef MR_HAVE_SYS_PARAM_H
+        #include    <sys/param.h>
+        #endif
 
-#ifdef MR_HAVE_UNISTD_H
-  #include  <unistd.h>
-#endif
+        #ifdef MR_HAVE_UNISTD_H
+        #include    <unistd.h>
+        #endif
 
-#ifdef MR_HAVE_SYS_TIME_H
-#include    <sys/time.h>
-#endif
+        #ifdef MR_HAVE_SYS_TIME_H
+        #include    <sys/time.h>
+        #endif
 
-#ifdef HZ
-  #define MR_CLOCK_TICKS_PER_SECOND	HZ
-#elif defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
-  #define MR_CLOCK_TICKS_PER_SECOND	((int) sysconf(_SC_CLK_TCK))
-#elif defined(CLOCKS_PER_SEC)
-  #define MR_CLOCK_TICKS_PER_SECOND	CLOCKS_PER_SEC
-#elif defined(CLK_TCK)
-  #define MR_CLOCK_TICKS_PER_SECOND	CLK_TCK
-#else
-  /* just leave it undefined */
-#endif
+        #ifdef HZ
+          #define MR_CLOCK_TICKS_PER_SECOND     HZ
+        #elif defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+          #define MR_CLOCK_TICKS_PER_SECOND     ((int) sysconf(_SC_CLK_TCK))
+        #elif defined(CLOCKS_PER_SEC)
+          #define MR_CLOCK_TICKS_PER_SECOND     CLOCKS_PER_SEC
+        #elif defined(CLK_TCK)
+          #define MR_CLOCK_TICKS_PER_SECOND     CLK_TCK
+        #else
+          /* just leave it undefined */
+        #endif
 
-#if !defined(MR_CLOCK_TICKS_PER_SECOND) || !defined(SIGPROF) || !defined(MR_HAVE_SETITIMER)
-#error "Time profiling not supported on this system"
-#endif
-], [mercury_cv_profiling=yes], [mercury_cv_profiling=no]))
+        #if !defined(MR_CLOCK_TICKS_PER_SECOND) || \
+            !defined(SIGPROF) || \
+            !defined(MR_HAVE_SETITIMER)
+        #error "Time profiling not supported on this system"
+        #endif
+    ],
+    [mercury_cv_profiling=yes],
+    [mercury_cv_profiling=no]))
 AC_MSG_RESULT($mercury_cv_profiling)
 
 #-----------------------------------------------------------------------------#
@@ -3326,11 +3421,11 @@ LIBS="$save_LIBS"
 
 AC_MSG_CHECKING(whether we can use thread-local storage class extension)
 AC_CACHE_VAL(mercury_cv_thread_local_storage,
-    AC_TRY_COMPILE([],[
-        static __thread int thread_local_variable;
-    ],
-    [mercury_cv_thread_local_storage=yes],
-    [mercury_cv_thread_local_storage=no])
+    AC_TRY_COMPILE(
+        [],
+        [static __thread int thread_local_variable;],
+        [mercury_cv_thread_local_storage=yes],
+        [mercury_cv_thread_local_storage=no])
 )
 AC_MSG_RESULT($mercury_cv_thread_local_storage)
 
@@ -4269,34 +4364,38 @@ AC_SUBST(AS)
 
 AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
 AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
-AC_TRY_RUN([
-changequote(<<,>>)
+AC_TRY_RUN(
+    [
+        changequote(<<,>>)
 
-/* MR_USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
-/* We define MR_USE_GCC_NONLOCAL_GOTOS because some platforms (e.g. SPARCs) */
-/* cannot have MR_USE_GCC_GLOBAL_REGISTERS without it. */
-#define MR_USE_GCC_GLOBAL_REGISTERS
-#define MR_USE_GCC_NONLOCAL_GOTOS
-#include "mercury_imp.h"
-#include "mercury_trace_spy.h"
+        /* MR_USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
+        /* We define MR_USE_GCC_NONLOCAL_GOTOS because some platforms */
+        /* (e.g. SPARCs) cannot have MR_USE_GCC_GLOBAL_REGISTERS without it. */
+        #define MR_USE_GCC_GLOBAL_REGISTERS
+        #define MR_USE_GCC_NONLOCAL_GOTOS
+        #include "mercury_imp.h"
+        #include "mercury_trace_spy.h"
 
-MR_Spy_Point    spied_procs[2];
+        MR_Spy_Point    spied_procs[2];
 
-int main() {
-    spied_procs[1] = spied_procs[0];
-#if __GNUC__ >= 3
-    /* gcc 3.1 seems to have problems with structure assignment
-       and global registers, but which this simple test case
-       does not trigger. So just force the test to fail for gcc 3.x. */
-    exit(1);
-#else
-    exit(0);
-#endif
-changequote([,])
-}],
-[mercury_cv_cannot_use_structure_assignment=no],
-[mercury_cv_cannot_use_structure_assignment=yes],
-[mercury_cv_cannot_use_structure_assignment=yes]))
+        int main() {
+            spied_procs[1] = spied_procs[0];
+        #if __GNUC__ >= 3
+            /* gcc 3.1 seems to have problems with structure assignment
+               and global registers, but which this simple test case
+               does not trigger. So just force the test to fail for gcc 3.x. */
+            exit(1);
+        #else
+            exit(0);
+        #endif
+        }
+
+        changequote([,])
+    ],
+    [mercury_cv_cannot_use_structure_assignment=no],
+    [mercury_cv_cannot_use_structure_assignment=yes],
+    [mercury_cv_cannot_use_structure_assignment=yes])
+)
 AC_MSG_RESULT($mercury_cv_cannot_use_structure_assignment)
 if test $mercury_cv_cannot_use_structure_assignment = "yes"; then
     AC_DEFINE(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT)
@@ -4892,21 +4991,25 @@ AC_SUBST_FILE(CONFIGURE_HELP)
 
 AC_MSG_CHECKING(for struct tms and times function)
 AC_CACHE_VAL(mercury_cv_have_posix_times,
-AC_TRY_LINK([
-    #include <sys/types.h>
-    #include <sys/times.h>
-],[
-    struct tms t;
-    long Ut, St, CUt, CSt;
-    long Ret;
+    AC_TRY_LINK(
+        [
+            #include <sys/types.h>
+            #include <sys/times.h>
+        ],
+        [
+            struct tms t;
+            long Ut, St, CUt, CSt;
+            long Ret;
 
-    Ret = (long) times(&t);
+            Ret = (long) times(&t);
 
-    Ut = (long) t.tms_utime;
-    St = (long) t.tms_stime;
-    CUt = (long) t.tms_cutime;
-    CSt = (long) t.tms_cstime;
-],[mercury_cv_have_posix_times=yes],[mercury_cv_have_posix_times=no]))
+            Ut = (long) t.tms_utime;
+            St = (long) t.tms_stime;
+            CUt = (long) t.tms_cutime;
+            CSt = (long) t.tms_cstime;
+        ],
+        [mercury_cv_have_posix_times=yes],
+        [mercury_cv_have_posix_times=no]))
 
 # Figure out whether the test succeeded.
 if test "$mercury_cv_have_posix_times" = yes; then
@@ -4923,13 +5026,17 @@ fi
 
 AC_MSG_CHECKING(for environ global variable)
 AC_CACHE_VAL(mercury_cv_have_environ,
-AC_TRY_LINK([
-    #include <unistd.h>
+AC_TRY_LINK(
+    [
+        #include <unistd.h>
 
-    extern char **environ;
-],[
-    environ
-],[mercury_cv_have_environ=yes],[mercury_cv_have_environ=no]))
+        extern char **environ;
+    ],
+    [
+        environ
+    ],
+    [mercury_cv_have_environ=yes],
+    [mercury_cv_have_environ=no]))
 
 # Figure out whether the test succeeded.
 if test "$mercury_cv_have_environ" = yes; then
@@ -4946,11 +5053,15 @@ fi
 
 AC_MSG_CHECKING(for Sleep function)
 AC_CACHE_VAL(mercury_cv_have_capital_s_sleep,
-AC_TRY_LINK([
-    #include <windows.h>
-],[
-    Sleep(1);
-],[mercury_cv_have_capital_s_sleep=yes],[mercury_cv_have_capital_s_sleep=no]))
+AC_TRY_LINK(
+    [
+        #include <windows.h>
+    ],
+    [
+        Sleep(1);
+    ],
+    [mercury_cv_have_capital_s_sleep=yes],
+    [mercury_cv_have_capital_s_sleep=no]))
 
 if test "$mercury_cv_have_capital_s_sleep" = yes; then
     AC_MSG_RESULT(yes)
@@ -4997,135 +5108,139 @@ LIBS="$LIBS $SOCKET_LIBRARY $NSL_LIBRARY"
 #
 AC_MSG_CHECKING(whether we can use sockets (for Morphine))
 AC_CACHE_VAL(mercury_cv_sockets_work,
-AC_TRY_LINK([
-    changequote(<<,>>)
-    /*
-    ** The following code was copied from
-    ** runtime/mercury_trace_external.c
-    */
-
-    #include <stdio.h>
-    #include <string.h>
-    #include <errno.h>
-    #include <stdarg.h>
-    #include <stdlib.h>
-    #include <sys/types.h>
-    #include <unistd.h>
-    #include <sys/socket.h>
-    #include <sys/un.h>
-    #include <arpa/inet.h>
-    #include <netinet/in.h>
-    #include <netdb.h>
-
-    static int MR_debug_socket = 1;
-
-    void
-    fatal_error(const char *s)
-    {
-        fprintf(stderr, "", s);
-        exit(1);
-    }
-],[
-    /* this is the body of the test function */
-    {
-        int fd;
-        int len;
-        FILE *file_in;
-        FILE *file_out;
-        int addr_family;
-        char *unix_socket;
-        char *inet_socket;
-        struct sockaddr_un unix_address;
-        struct sockaddr_in inet_address;
-        struct sockaddr* addr;
-
+AC_TRY_LINK(
+    [
+        changequote(<<,>>)
         /*
-        ** We presume that the user's program has been invoked from
-        ** within the debugger (e.g. Opium).
-        ** The debugger (or the user) should set the
-        ** MERCURY_DEBUGGER_UNIX_SOCKET or MERCURY_DEBUGGER_INET_SOCKET
-        ** environment variable to tell the user's program which socket
-        ** it needs to connect to.
+        ** The following code was copied from
+        ** runtime/mercury_trace_external.c
         */
-        unix_socket = getenv("MERCURY_DEBUGGER_UNIX_SOCKET");
-        inet_socket = getenv("MERCURY_DEBUGGER_INET_SOCKET");
-        if (unix_socket == NULL && inet_socket == NULL) {
-            fatal_error("you must set either the "
-                "MERCURY_DEBUGGER_UNIX_SOCKET\n"
-                "or MERCURY_DEBUGGER_INET_SOCKET "
-                "environment variable");
+
+        #include <stdio.h>
+        #include <string.h>
+        #include <errno.h>
+        #include <stdarg.h>
+        #include <stdlib.h>
+        #include <sys/types.h>
+        #include <unistd.h>
+        #include <sys/socket.h>
+        #include <sys/un.h>
+        #include <arpa/inet.h>
+        #include <netinet/in.h>
+        #include <netdb.h>
+
+        static int MR_debug_socket = 1;
+
+        void
+        fatal_error(const char *s)
+        {
+            fprintf(stderr, "", s);
+            exit(1);
         }
-        if (unix_socket != NULL && inet_socket != NULL) {
-            fatal_error("you must set only one of the "
-                "MERCURY_DEBUGGER_UNIX_SOCKET "
-                "and MERCURY_DEBUGGER_INET_SOCKET\n"
-                "environment variables");
-        }
-        if (unix_socket) {
-            addr_family = AF_UNIX;
-            (memset)(&unix_address, 0, sizeof(unix_address));
-            unix_address.sun_family = AF_UNIX;
-            strcpy(unix_address.sun_path, unix_socket);
-            addr = (struct sockaddr *) &unix_address;
-            len = strlen(unix_address.sun_path) +
-                sizeof(unix_address.sun_family);
-        } else {
-            char hostname[255];
-            char port_string[255];
-            unsigned short port;
-            int host_addr;
+    ],
+    [
+        /* this is the body of the test function */
+        {
+            int fd;
+            int len;
+            FILE *file_in;
+            FILE *file_out;
+            int addr_family;
+            char *unix_socket;
+            char *inet_socket;
+            struct sockaddr_un unix_address;
+            struct sockaddr_in inet_address;
+            struct sockaddr* addr;
 
             /*
-            ** Parse the MERCURY_DEBUGGER_INET_SOCKET environment variable.
-            ** It should be in the format "<hostname> <port>",
-            ** where <hostname> is numeric (e.g. "123.456.78.90").
+            ** We presume that the user's program has been invoked from
+            ** within the debugger (e.g. Opium).
+            ** The debugger (or the user) should set the
+            ** MERCURY_DEBUGGER_UNIX_SOCKET or MERCURY_DEBUGGER_INET_SOCKET
+            ** environment variable to tell the user's program which socket
+            ** it needs to connect to.
+            */
+            unix_socket = getenv("MERCURY_DEBUGGER_UNIX_SOCKET");
+            inet_socket = getenv("MERCURY_DEBUGGER_INET_SOCKET");
+            if (unix_socket == NULL && inet_socket == NULL) {
+                fatal_error("you must set either the "
+                    "MERCURY_DEBUGGER_UNIX_SOCKET\n"
+                    "or MERCURY_DEBUGGER_INET_SOCKET "
+                    "environment variable");
+            }
+            if (unix_socket != NULL && inet_socket != NULL) {
+                fatal_error("you must set only one of the "
+                    "MERCURY_DEBUGGER_UNIX_SOCKET "
+                    "and MERCURY_DEBUGGER_INET_SOCKET\n"
+                    "environment variables");
+            }
+            if (unix_socket) {
+                addr_family = AF_UNIX;
+                (memset)(&unix_address, 0, sizeof(unix_address));
+                unix_address.sun_family = AF_UNIX;
+                strcpy(unix_address.sun_path, unix_socket);
+                addr = (struct sockaddr *) &unix_address;
+                len = strlen(unix_address.sun_path) +
+                    sizeof(unix_address.sun_family);
+            } else {
+                char hostname[255];
+                char port_string[255];
+                unsigned short port;
+                int host_addr;
+
+                /*
+                ** Parse the MERCURY_DEBUGGER_INET_SOCKET environment variable.
+                ** It should be in the format "<hostname> <port>",
+                ** where <hostname> is numeric (e.g. "123.456.78.90").
+                */
+
+                if (sscanf(inet_socket, "%254s %254s", hostname, port_string)
+                    != 2)
+                {
+                    fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
+                }
+                host_addr = inet_addr(hostname);
+                if (host_addr == -1) {
+                    fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+                        "invalid address");
+                }
+                if (sscanf(port_string, "%hu", &port) != 1) {
+                    fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+                        "invalid port");
+                }
+
+                fprintf(stderr, "Mercury runtime: host = %s, port = %d\n",
+                        hostname, port);
+
+                inet_address.sin_family = AF_INET;
+                inet_address.sin_addr.s_addr = host_addr;
+                inet_address.sin_port = htons(port);
+                addr_family = AF_INET;
+                addr = (struct sockaddr *) &inet_address;
+                len = sizeof(inet_address);
+            }
+
+            /*
+            ** Open the socket.
             */
 
-            if (sscanf(inet_socket, "%254s %254s", hostname, port_string)
-                != 2)
-            {
-                fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
-            }
-            host_addr = inet_addr(hostname);
-            if (host_addr == -1) {
-                fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
-                    "invalid address");
-            }
-            if (sscanf(port_string, "%hu", &port) != 1) {
-                fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
-                    "invalid port");
-            }
+            fd = socket(addr_family, SOCK_STREAM, 0);
 
-            fprintf(stderr, "Mercury runtime: host = %s, port = %d\n",
-                    hostname, port);
+            /*
+            ** Connect to the socket
+            */
+            connect(fd, addr, len);
 
-            inet_address.sin_family = AF_INET;
-            inet_address.sin_addr.s_addr = host_addr;
-            inet_address.sin_port = htons(port);
-            addr_family = AF_INET;
-            addr = (struct sockaddr *) &inet_address;
-            len = sizeof(inet_address);
+            /*
+            ** Convert the socket fd to a Mercury stream
+            */
+            file_in = fdopen(fd, "r");
+            file_out = fdopen(fd, "w");
         }
-
-        /*
-        ** Open the socket.
-        */
-
-        fd = socket(addr_family, SOCK_STREAM, 0);
-
-        /*
-        ** Connect to the socket
-        */
-        connect(fd, addr, len);
-
-        /*
-        ** Convert the socket fd to a Mercury stream
-        */
-        file_in = fdopen(fd, "r");
-        file_out = fdopen(fd, "w");
-    }
-    changequote([,])
-],[mercury_cv_sockets_work=yes],[mercury_cv_sockets_work=no]))
+        changequote([,])
+    ],
+    [mercury_cv_sockets_work=yes],
+    [mercury_cv_sockets_work=no]))
 
 #
 # figure out whether the test succeeded
