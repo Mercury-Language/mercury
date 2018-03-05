@@ -538,28 +538,23 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_type(!.Info, VarType, MLDS_Type),
     ml_gen_var(!.Info, Var, VarLval),
-    ( if Ptag = 0 then
-        MaybePtag = no
-    else
-        MaybePtag = yes(Ptag)
-    ),
     (
         HowToConstruct = construct_dynamically,
         ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName,
-            MaybePtag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
+            Ptag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
             ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
             Context, Stmts, !Info)
     ;
         HowToConstruct = construct_statically,
         expect(unify(TakeAddr, []), $pred,
             "cannot take address of static object's field"),
-        ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
+        ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
             Var, VarLval, VarType, MLDS_Type, ExtraTypedRvals,
             ArgVars, Context, Stmts, !Info)
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
-            Ptag, MaybePtag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
+            Ptag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
             ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
             CellToReuse, Context, Stmts, !Info)
     ;
@@ -568,14 +563,14 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     ).
 
 :- pred ml_gen_new_object_dynamically(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, maybe(mlds_ptag)::in, bool::in,
+    maybe(qual_ctor_id)::in, mlds_ptag::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in,
     list(prog_var)::in, list(unify_mode)::in,
     list(int)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybePtag,
+ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
         ExplicitSecTag, _Var, VarLval, VarType, MLDS_Type, ExtraRvalsMLDSTypes,
         ArgVars, ArgModes, TakeAddr, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments and generate rvals
@@ -631,11 +626,12 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybePtag,
     % Generate a `new_object' statement to dynamically allocate the memory
     % for this term from the heap. The `new_object' statement will also
     % initialize the fields of this term with the specified arguments.
-    MakeNewObject = new_object(VarLval, MaybePtag, ExplicitSecTag, MLDS_Type,
+    MakeNewObject = new_object(VarLval, Ptag, ExplicitSecTag, MLDS_Type,
         yes(SizeInWordsRval), MaybeCtorName, ArgRvalsMLDSTypes,
         MayUseAtomic, MaybeAllocId),
     MakeNewObjStmt = ml_stmt_atomic(MakeNewObject, Context),
 
+    MaybePtag = yes(Ptag),
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
         MaybePtag, Context, !.Info, TakeAddrStmts),
     Stmts = [MakeNewObjStmt | TakeAddrStmts].
@@ -643,13 +639,13 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybePtag,
 %---------------------------------------------------------------------------%
 
 :- pred ml_gen_new_object_statically(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, maybe(mlds_ptag)::in,
+    maybe(qual_ctor_id)::in, mlds_ptag::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in, list(prog_var)::in,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
+ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
         Var, VarLval, VarType, MLDS_Type, ExtraTypedRvals,
         ArgVars, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments.
@@ -675,12 +671,12 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
             ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
                 ExtraTypedRvals, ExtraArgTypedRvals, !GlobalData),
             ml_gen_box_const_rval_list_lld(!.Info, Context,
-                ArgVars, ConsArgWidths, ArgRvals1, !GlobalData)
+                ArgVars, ConsArgWidths, ArgRvals0, !GlobalData)
         ;
             HighLevelData = yes,
             ml_gen_box_or_unbox_const_rval_list_hld(!.Info,
                 HighLevelData, Context, ArgVars, ConsArgTypesWidths,
-                ArgRvals1, !GlobalData),
+                ArgRvals0, !GlobalData),
             % For --high-level-data, the ExtraRvals should already have
             % the right type, so we do not need to worry about boxing
             % or unboxing them.
@@ -695,17 +691,17 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
             MaybeCtorName = no,
             UsesBaseClass = tag_uses_base_class
         ),
+        ExtraArgRvals = list.map((func(ml_typed_rval(Rv, _)) = Rv),
+            ExtraArgTypedRvals),
+
         ConstType = get_const_type_for_cons_id(Target, HighLevelData,
             MLDS_Type, UsesBaseClass, MaybeConsId),
         % XXX If the secondary tag is in a base class, then ideally its
         % initializer should be wrapped in `init_struct([init_obj(X)])'
         % rather than just `init_obj(X)' -- the fact that we don't leads to
         % some warnings from GNU C about missing braces in initializers.
-        pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals1, ArgRvals,
+        pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals0, ArgRvals,
             unit, _, unit, _),
-
-        ExtraArgRvals = list.map((func(ml_typed_rval(Rv, _)) = Rv),
-            ExtraArgTypedRvals),
         AllArgRvals = ExtraArgRvals ++ ArgRvals,
         ArgInits = list.map(func(X) = init_obj(X), AllArgRvals),
         ( if ConstType = mlds_array_type(_) then
@@ -716,7 +712,8 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
         module_info_get_name(ModuleInfo, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
         ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var,
-            ConstType, Initializer, Context, ConstAddrRval, !GlobalData),
+            ConstType, Initializer, Context, ConstDataAddrRval, !GlobalData),
+
         ml_gen_info_set_global_data(!.GlobalData, !Info)
     ),
 
@@ -729,12 +726,10 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
     % are both useless, and can be deleted without harm. Unfortunately,
     % at this point in the code generation process, we do not know if
     % there are any other kinds of references to Var later on.
-    (
-        MaybePtag = no,
-        TaggedRval = ConstAddrRval
-    ;
-        MaybePtag = yes(Ptag),
-        TaggedRval = ml_mkword(Ptag, ConstAddrRval)
+    ( if Ptag = 0 then
+        TaggedRval = ConstDataAddrRval
+    else
+        TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
     ),
     Rval = ml_unop(cast(MLDS_Type), TaggedRval),
     GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
@@ -744,16 +739,15 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
     Stmts = [AssignStmt].
 
 :- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, mlds_ptag::in, maybe(mlds_ptag)::in, bool::in,
+    maybe(qual_ctor_id)::in, mlds_ptag::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in, list(prog_var)::in, list(unify_mode)::in,
     list(int)::in, cell_to_reuse::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, MaybePtag,
-        ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-        ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
-        CellToReuse, Context, Stmts, !Info) :-
+ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag,
+        Var, VarLval, VarType, MLDS_Type, ExtraTypedRvals, ArgVars, ArgModes,
+        TakeAddr, CellToReuse, Context, Stmts, !Info) :-
     % NOTE: if it is ever used, NeedsUpdates needs to be modified to take into
     % account argument packing, as in unify_gen.m.
     CellToReuse = cell_to_reuse(ReuseVar, ReuseConsIds, _NeedsUpdates),
@@ -814,6 +808,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, MaybePtag,
     ml_gen_unify_args_for_reuse(ConsId, ArgVars, ArgModes, ArgTypes,
         Fields, TakeAddr, VarType, VarLval, OffSet, ArgNum, ConsIdTag,
         Context, FieldStmts, TakeAddrInfos, !Info),
+    MaybePtag = yes(Ptag),
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
         MaybePtag, Context, !.Info, TakeAddrStmts),
     ThenStmts = ExtraRvalStmts ++ FieldStmts ++ TakeAddrStmts,
@@ -2441,10 +2436,10 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         (
             ConsTag = single_functor_tag,
             Ptag = 0,
-            ExtraInitializers = []
+            ExtraRvals = []
         ;
             ConsTag = unshared_tag(Ptag),
-            ExtraInitializers = []
+            ExtraRvals = []
         ;
             ConsTag = shared_remote_tag(Ptag, Stag),
             UsesConstructors = ml_target_uses_constructors(Target),
@@ -2459,28 +2454,27 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
                     HighLevelData = yes,
                     StagRval = StagRval0
                 ),
-                ExtraInitializers = [init_obj(StagRval)]
+                ExtraRvals = [StagRval]
             ;
                 UsesConstructors = yes,
-                ExtraInitializers = []
+                ExtraRvals = []
             )
         ),
         ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
-            VarTypes, Var, VarType, MLDS_Type,
-            ConsId, ConsTag, Ptag, ExtraInitializers, Args, Context,
-            !GlobalData, !GroundTermMap)
+            VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
+            ExtraRvals, Args, Context, !GlobalData, !GroundTermMap)
     ).
 
 :- pred ml_gen_ground_term_conjunct_compound(module_info::in,
     mlds_target_lang::in, bool::in, vartypes::in,
     prog_var::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
-    int::in, list(mlds_initializer)::in, list(prog_var)::in,
+    int::in, list(mlds_rval)::in, list(prog_var)::in,
     prog_context::in, ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
         VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
-        ExtraInitializers, ArgVars, Context, !GlobalData, !GroundTermMap) :-
+        ExtraRvals, ArgVars, Context, !GlobalData, !GroundTermMap) :-
     % This code (loosely) follows the code of ml_gen_new_object.
 
     lookup_var_types(VarTypes, ArgVars, ArgTypes),
@@ -2506,8 +2500,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     ),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         Context, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
-        ArgRvals1, ConsArgWidths, ExtraInitializers,
-        GroundTerm, !GlobalData),
+        ArgRvals1, ConsArgWidths, ExtraRvals, GroundTerm, !GlobalData),
     map.det_insert(Var, GroundTerm, !GroundTermMap).
 
 %---------------------------------------------------------------------------%
@@ -2638,10 +2631,10 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         (
             ConsTag = single_functor_tag,
             Ptag = 0,
-            ExtraInitializers = []
+            ExtraRvals = []
         ;
             ConsTag = unshared_tag(Ptag),
-            ExtraInitializers = []
+            ExtraRvals = []
         ;
             ConsTag = shared_remote_tag(Ptag, Stag),
             Target = Info ^ mcsi_target,
@@ -2658,14 +2651,14 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
                     HighLevelData = yes,
                     StagRval = StagRval0
                 ),
-                ExtraInitializers = [init_obj(StagRval)]
+                ExtraRvals = [StagRval]
             ;
                 UsesConstructors = yes,
-                ExtraInitializers = []
+                ExtraRvals = []
             )
         ),
         ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type,
-            ConsId, ConsTag, Ptag, ExtraInitializers, Args,
+            ConsId, ConsTag, Ptag, ExtraRvals, Args,
             !ConstStructMap, !GlobalData)
     ;
         % These tags don't build heap cells.
@@ -2692,13 +2685,12 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
 
 :- pred ml_gen_const_static_compound(ml_const_struct_info::in,
     int::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
-    int::in, list(mlds_initializer)::in, list(const_struct_arg)::in,
+    int::in, list(mlds_rval)::in, list(const_struct_arg)::in,
     ml_const_struct_map::in, ml_const_struct_map::out,
     ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
-        ConsTag, Ptag, ExtraInitializers, Args,
-        !ConstStructMap, !GlobalData) :-
+        ConsTag, Ptag, ExtraRvals, Args, !ConstStructMap, !GlobalData) :-
     % This code (loosely) follows the code of
     % ml_gen_ground_term_conjunct_compound.
 
@@ -2735,7 +2727,7 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
         ArgConsArgWidths, ArgRvals1, !GlobalData),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         term.context_init, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
-        ArgRvals1, ConsArgWidths, ExtraInitializers, GroundTerm, !GlobalData),
+        ArgRvals1, ConsArgWidths, ExtraRvals, GroundTerm, !GlobalData),
     map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
 
 :- pred ml_gen_const_struct_args(ml_const_struct_info::in,
@@ -3232,31 +3224,32 @@ specify_width(Width, Type, type_and_width(Type, Width)).
 :- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
     bool::in, prog_context::in, mer_type::in, mlds_type::in,
     cons_id::in, cons_tag::in, int::in,
-    list(mlds_rval)::in, list(arg_width)::in, list(mlds_initializer)::in,
+    list(mlds_rval)::in, list(arg_width)::in, list(mlds_rval)::in,
     ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
 
 construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         Context, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
-        ArgRvals0, ConsArgWidths, ExtraInitializers,
-        GroundTerm, !GlobalData) :-
-    pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals0, ArgRvals,
-        unit, _, unit, _),
-    ArgInitializers = list.map(func(Init) = init_obj(Init), ArgRvals),
-
-    % By construction, boxing the rvals in ExtraInitializers would be a no-op.
-    SubInitializers = ExtraInitializers ++ ArgInitializers,
+        ArgRvals0, ConsArgWidths, ExtraArgRvals, GroundTerm, !GlobalData) :-
+    UsesBaseClass = ml_tag_uses_base_class(ConsTag),
+    MaybeConsId = yes(ConsId),
 
     % Generate a local static constant for this term.
     ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
-        ml_tag_uses_base_class(ConsTag), yes(ConsId)),
+        UsesBaseClass, MaybeConsId),
+    pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals0, ArgRvals,
+        unit, _, unit, _),
+    % By construction, boxing the ExtraArgRvals would be a no-op.
+    %
     % XXX If the secondary tag is in a base class, then ideally its
     % initializer should be wrapped in `init_struct([init_obj(X)])'
     % rather than just `init_obj(X)' -- the fact that we don't leads to
     % some warnings from GNU C about missing braces in initializers.
+    AllArgRvals = ExtraArgRvals ++ ArgRvals,
+    ArgInits = list.map(func(Init) = init_obj(Init), AllArgRvals),
     ( if ConstType = mlds_array_type(_) then
-        Initializer = init_array(SubInitializers)
+        Initializer = init_array(ArgInits)
     else
-        Initializer = init_struct(ConstType, SubInitializers)
+        Initializer = init_struct(ConstType, ArgInits)
     ),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),

@@ -2900,7 +2900,7 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
         AtomicStmt = delete_object(_Lval),
         unexpected($pred, "delete_object not supported in C#.")
     ;
-        AtomicStmt = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
+        AtomicStmt = new_object(Target, _Ptag, ExplicitSecTag, Type,
             _MaybeSize, MaybeCtorName, ArgRvalsTypes, _MayUseAtomic, _AllocId),
         (
             ExplicitSecTag = yes,

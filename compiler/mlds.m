@@ -1445,8 +1445,13 @@
                 mlds_lval,
 
                 % A primary tag to tag the address with before assigning
-                % the result to the target.
-                maybe(mlds_ptag),
+                % the result to the target. If the primary tag is zero,
+                % then the tagging operation is not required, since
+                % it would be a no-op.
+                %
+                % Needed only by ml_accurate_gc.m; not needed by any of
+                % the code generators.
+                mlds_ptag,
 
                 % Indicates whether or not the first argument in the list (see
                 % below) is a secondary tag. For target languages with
@@ -1651,23 +1656,27 @@
     % Values on the heap or fields of a structure.
 
     --->    ml_field(
-                % field(Tag, Address, FieldId, FieldType, PtrType):
-                % Selects a field of a compound term.
-
+                % field(MaybePtag, Address, FieldId, FieldType, PtrType):
+                % Selects one field of a compound term.
+                %
                 % Address is a tagged pointer to a cell on the heap.
                 % The position in the cell, FieldId, is represented either
-                % as a field name or a number of words offset. If Tag is yes,
-                % the arg gives the value of the tag; if it is no, the tag bits
-                % will have to be masked off. The value of the tag should be
-                % given if it is known, since this will lead to faster code.
+                % as a field name or a number of words offset.
+                %
+                % If MaybePtag is yes(Ptag), then the primary tag on Address
+                % is Ptag; if MaybePtag is no, then the primary tag bits will
+                % have to be masked off of Address.
+                %
+                % The value of the primary tag should be given if it is known,
+                % since this will lead to faster code.
+                %
                 % The FieldType is the type of the field. The PtrType is the
                 % type of the pointer from which we are fetching the field.
                 %
                 % For boxed fields, the type here should be mlds_generic_type,
                 % not the actual type of the field. If the actual type is
-                % different, then it is the HLDS->MLDS code generator's
-                % responsibility to insert the necessary code to handle
-                % boxing/unboxing.
+                % different, then it is the HLDS->MLDS code generator's job
+                % to insert the required boxing/unboxing code.
 
                 field_ptag      :: maybe(mlds_ptag),
                 field_addr      :: mlds_rval,

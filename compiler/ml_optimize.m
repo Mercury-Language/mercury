@@ -1456,13 +1456,13 @@ eliminate_var_in_atomic_stmt(Stmt0, Stmt, !VarElimInfo) :-
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         Stmt = delete_object(Rval)
     ;
-        Stmt0 = new_object(Target0, MaybeTag, ExplicitSecTag, Type,
+        Stmt0 = new_object(Target0, Ptag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, ArgRvalsTypes0, MayUseAtomic,
             MaybeAllocId),
         eliminate_var_in_lval(Target0, Target, !VarElimInfo),
         eliminate_var_in_typed_rvals(ArgRvalsTypes0, ArgRvalsTypes,
             !VarElimInfo),
-        Stmt = new_object(Target, MaybeTag, ExplicitSecTag, Type,
+        Stmt = new_object(Target, Ptag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, ArgRvalsTypes, MayUseAtomic,
             MaybeAllocId)
     ;

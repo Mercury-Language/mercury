@@ -4218,7 +4218,7 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
         mlds_output_rval(Opts, Rval, !IO),
         io.write_string(");\n", !IO)
     ;
-        AtomicStmt = new_object(_Target, _MaybePtag, _ExplicitSecTag, _Type,
+        AtomicStmt = new_object(_Target, _Ptag, _ExplicitSecTag, _Type,
             _MaybeSize, _MaybeCtorName, _ArgRvalsTypes, _MayUseAtomic,
             _MaybeAllocId),
         mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context,
@@ -4279,7 +4279,7 @@ write_comment_lines(Indent, [CommentLine | CommentLines], !IO) :-
 :- pragma inline(mlds_output_stmt_atomic_new_object/6).
 
 mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
-    AtomicStmt = new_object(Target, MaybePtag, _ExplicitSecTag, Type,
+    AtomicStmt = new_object(Target, Ptag, _ExplicitSecTag, Type,
         MaybeSize, _MaybeCtorName, ArgRvalsTypes, MayUseAtomic, MaybeAllocId),
     output_n_indents(Indent, !IO),
     io.write_string("{\n", !IO),
@@ -4348,20 +4348,17 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
     output_n_indents(Indent + 1, !IO),
     write_lval_or_string(Opts, Base, !IO),
     io.write_string(" = ", !IO),
-    (
-        MaybePtag = yes(Ptag),
+    ( if Ptag = 0 then
+        % XXX We shouldn't need the cast here, but currently the type that
+        % we include in the call to MR_new_object() is not always correct.
+        mlds_output_cast(Opts, Type, !IO),
+        EndMkword = ""
+    else
         mlds_output_cast(Opts, Type, !IO),
         io.write_string("MR_mkword(", !IO),
         mlds_output_ptag(Ptag, !IO),
         io.write_string(", ", !IO),
         EndMkword = ")"
-    ;
-        MaybePtag = no,
-        Ptag = 0,
-        % XXX We shouldn't need the cast here, but currently the type that
-        % we include in the call to MR_new_object() is not always correct.
-        mlds_output_cast(Opts, Type, !IO),
-        EndMkword = ""
     ),
     (
         MayUseAtomic = may_not_use_atomic_alloc,

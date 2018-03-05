@@ -811,7 +811,7 @@ ml_create_env_class_id(EnvClassName, ModuleName, Globals) = ClassId :-
     list(mlds_function_defn)::out) is det.
 
 ml_create_env(Action, EnvClassName, EnvClassId, LocalVars, Context,
-        ModuleName, FuncName, Globals, EnvClassDefn, EnvDefns, InitEnv,
+        ModuleName, FuncName, Globals, EnvClassDefn, EnvDefns, Stmts,
         GCTraceFuncDefns) :-
     % Generate the following type:
     %
@@ -853,7 +853,7 @@ ml_create_env(Action, EnvClassName, EnvClassId, LocalVars, Context,
         Action = chain_gc_stack_frames,
         ml_chain_stack_frames(ModuleName, FuncName, Context,
             GC_Stmts, EnvClassId, Fields1, Fields, EnvInitializer,
-            LinkStackChain, GCTraceFuncDefns),
+            LinkStackChainStmts, GCTraceFuncDefns),
         GCStmtEnv = gc_no_stmt
     ;
         Action = hoist_nested_funcs,
@@ -867,7 +867,7 @@ ml_create_env(Action, EnvClassName, EnvClassId, LocalVars, Context,
         ),
         Fields = Fields1,
         EnvInitializer = no_initializer,
-        LinkStackChain = [],
+        LinkStackChainStmts = [],
         GCTraceFuncDefns = []
     ),
 
@@ -903,21 +903,18 @@ ml_create_env(Action, EnvClassName, EnvClassId, LocalVars, Context,
         % says OnHeap may be "yes" on current backends as well.
         MayUseAtomic = may_not_use_atomic_alloc,
         MaybeAllocId = no,
-        NewObj = [
-            ml_stmt_atomic(
-                new_object(ml_local_var(EnvVarName, EnvTypeName), no, no,
-                    EnvTypeName, no, no, [], MayUseAtomic, MaybeAllocId),
-                Context)
-        ]
+        NewObj = new_object(ml_local_var(EnvVarName, EnvTypeName), 0, no,
+            EnvTypeName, no, no, [], MayUseAtomic, MaybeAllocId),
+        NewObjStmts = [ml_stmt_atomic(NewObj, Context)]
     ;
         OnHeap = no,
         EnvVarAddr = ml_mem_addr(ml_local_var(EnvVarName, EnvTypeName)),
-        NewObj = []
+        NewObjStmts = []
     ),
     ml_init_env(Action, EnvClassId, EnvVarAddr, Context,
-        EnvPtrVarDecl, InitEnv0),
+        EnvPtrVarDecl, InitEnvStmt),
     EnvDefns = [EnvVarDecl, EnvPtrVarDecl],
-    InitEnv = NewObj ++ [InitEnv0] ++ LinkStackChain.
+    Stmts = NewObjStmts ++ [InitEnvStmt] ++ LinkStackChainStmts.
 
 :- pred ml_chain_stack_frames(mlds_module_name::in,
     mlds_function_name::in, prog_context::in, list(mlds_stmt)::in,
@@ -2480,11 +2477,11 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
     %   stack_chain = MR_hl_field(stack_chain, 0);
 
     StackChain = ml_stack_chain_var,
-    Ptag = yes(0),
+    MaybePtag = yes(0),
     PrevFieldId = ml_field_offset(ml_const(mlconst_int(0))),
     PrevFieldType = mlds_generic_type,
-    PrevFieldRval = ml_lval(ml_field(Ptag, ml_lval(StackChain), PrevFieldId,
-        PrevFieldType, EnvPtrTypeName)),
+    PrevFieldRval = ml_lval(ml_field(MaybePtag, ml_lval(StackChain),
+        PrevFieldId, PrevFieldType, EnvPtrTypeName)),
     Assignment = assign(StackChain, PrevFieldRval),
     UnchainFrame = ml_stmt_atomic(Assignment, Context).
 

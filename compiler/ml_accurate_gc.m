@@ -530,7 +530,7 @@ fixup_newobj_in_default(Default0, Default, !Fixup) :-
 
 fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
     ( if
-        AtomicStmt0 = new_object(Lval, MaybePtag, _ExplicitSecTag,
+        AtomicStmt0 = new_object(Lval, Ptag, _ExplicitSecTag,
             PointerType, _MaybeSizeInWordsRval, _MaybeCtorName,
             ArgRvalsTypes,  _MayUseAtomic, _AllocId)
     then
@@ -576,7 +576,12 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
 
         % Generate code to assign the address of the new local variable
         % to the Lval.
-        TaggedPtrRval = maybe_tag_rval(MaybePtag, PointerType, PtrRval),
+        ( if Ptag = 0 then
+            TaggedPtrRval = PtrRval
+        else
+            TaggedPtrRval =
+                ml_unop(cast(PointerType), ml_mkword(Ptag, PtrRval))
+        ),
         AssignStmt = ml_stmt_atomic(assign(Lval, TaggedPtrRval), Context),
         Stmt = ml_stmt_block([], [], ArgInitStmts ++ [AssignStmt], Context)
     else
@@ -595,12 +600,6 @@ init_field_n(PointerType, PointerRval, Context, ArgRvalType, Stmt,
     MaybePtag = yes(0),
     Field = ml_field(MaybePtag, PointerRval, FieldId, FieldType, PointerType),
     Stmt = ml_stmt_atomic(assign(Field, ArgRval), Context).
-
-:- func maybe_tag_rval(maybe(mlds_ptag), mlds_type, mlds_rval) = mlds_rval.
-
-maybe_tag_rval(no, _Type, Rval) = Rval.
-maybe_tag_rval(yes(Ptag), Type, Rval) = TaggedRval :-
-    TaggedRval = ml_unop(cast(Type), ml_mkword(Ptag, Rval)).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_accurate_gc.
