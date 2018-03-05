@@ -1000,10 +1000,9 @@ ml_gen_enum_constant_data_decl_flags =
 
 %---------------------------------------------------------------------------%
 
-% A constructor is represented using the base class rather than a derived
-% class if there is only a single functor, or if there is a single
-% functor and some constants represented using reserved addresses.
 ml_tag_uses_base_class(Tag) = UsesBaseClass :-
+    % A constructor is represented using the base class (rather than
+    % a derived class) if there is only a single functor.
     (
         Tag = single_functor_tag,
         UsesBaseClass = tag_uses_base_class
