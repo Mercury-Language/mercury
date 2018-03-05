@@ -674,9 +674,8 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
                 ArgVars, ConsArgWidths, ArgRvals0, !GlobalData)
         ;
             HighLevelData = yes,
-            ml_gen_box_or_unbox_const_rval_list_hld(!.Info,
-                HighLevelData, Context, ArgVars, ConsArgTypesWidths,
-                ArgRvals0, !GlobalData),
+            ml_gen_box_or_unbox_const_rval_list_hld(!.Info, HighLevelData,
+                Context, ArgVars, ConsArgTypesWidths, ArgRvals0, !GlobalData),
             % For --high-level-data, the ExtraRvals should already have
             % the right type, so we do not need to worry about boxing
             % or unboxing them.
@@ -693,48 +692,16 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
         ),
         ExtraArgRvals = list.map((func(ml_typed_rval(Rv, _)) = Rv),
             ExtraArgTypedRvals),
-
-        ConstType = get_const_type_for_cons_id(Target, HighLevelData,
-            MLDS_Type, UsesBaseClass, MaybeConsId),
-        % XXX If the secondary tag is in a base class, then ideally its
-        % initializer should be wrapped in `init_struct([init_obj(X)])'
-        % rather than just `init_obj(X)' -- the fact that we don't leads to
-        % some warnings from GNU C about missing braces in initializers.
-        pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals0, ArgRvals,
-            unit, _, unit, _),
-        AllArgRvals = ExtraArgRvals ++ ArgRvals,
-        ArgInits = list.map(func(X) = init_obj(X), AllArgRvals),
-        ( if ConstType = mlds_array_type(_) then
-            Initializer = init_array(ArgInits)
-        else
-            Initializer = init_struct(ConstType, ArgInits)
-        ),
-        module_info_get_name(ModuleInfo, ModuleName),
-        MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var,
-            ConstType, Initializer, Context, ConstDataAddrRval, !GlobalData),
+        construct_static_ground_term(ModuleInfo, Target, HighLevelData,
+            Context, VarType, MLDS_Type, MaybeConsId, UsesBaseClass, Ptag,
+            ArgRvals0, ConsArgWidths, ExtraArgRvals, GroundTerm, !GlobalData),
 
         ml_gen_info_set_global_data(!.GlobalData, !Info)
     ),
 
-    % Assign the address of the local static constant to the variable.
-    %
-    % Any later references to Var in later code on the right hand side of
-    % another construct_statically construction unification will refer to
-    % ConstAddrRval, not to VarLval. If the only later references to Var
-    % are in such places, then the definition of VarLval and AssignStmt
-    % are both useless, and can be deleted without harm. Unfortunately,
-    % at this point in the code generation process, we do not know if
-    % there are any other kinds of references to Var later on.
-    ( if Ptag = 0 then
-        TaggedRval = ConstDataAddrRval
-    else
-        TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
-    ),
-    Rval = ml_unop(cast(MLDS_Type), TaggedRval),
-    GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
     ml_gen_info_set_const_var(Var, GroundTerm, !Info),
 
+    GroundTerm = ml_ground_term(Rval, _, _),
     AssignStmt = ml_gen_assign(VarLval, Rval, Context),
     Stmts = [AssignStmt].
 
@@ -784,7 +751,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag,
     ;
         DifferentTags = [ReusePrimaryTag],
         % The body operator is slightly more efficient than the strip_tag
-        % operator so we use it when the old tag is known.
+        % operator, so we use it when the old tag is known.
         Var2Rval = ml_mkword(PrimaryTag,
             ml_binop(body,
                 ml_lval(Var2Lval),
@@ -815,7 +782,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag,
     ThenStmt = ml_stmt_block([], [], ThenStmts, Context),
 
     % If the reassignment isn't possible because the target is statically
-    % allocated then fall back to dynamic allocation.
+    % allocated, then fall back to dynamic allocation.
     ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
         ExtraTypedRvals, ArgVars, ArgModes, TakeAddr,
         construct_dynamically, Context, DynamicStmts, !Info),
@@ -2498,8 +2465,9 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
         construct_ground_term_initializers_lld(ModuleInfo, Context,
             ArgConsArgWidths, ArgRvals1, !GlobalData, !GroundTermMap)
     ),
+    UsesBaseClass = ml_tag_uses_base_class(ConsTag),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        Context, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
+        Context, VarType, MLDS_Type, yes(ConsId), UsesBaseClass, Ptag,
         ArgRvals1, ConsArgWidths, ExtraRvals, GroundTerm, !GlobalData),
     map.det_insert(Var, GroundTerm, !GroundTermMap).
 
@@ -2725,9 +2693,10 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
         ArgConsArgWidths),
     ml_gen_const_struct_args(Info, !.ConstStructMap,
         ArgConsArgWidths, ArgRvals1, !GlobalData),
+    UsesBaseClass = ml_tag_uses_base_class(ConsTag),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        term.context_init, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
-        ArgRvals1, ConsArgWidths, ExtraRvals, GroundTerm, !GlobalData),
+        term.context_init, VarType, MLDS_Type, yes(ConsId), UsesBaseClass,
+        Ptag, ArgRvals1, ConsArgWidths, ExtraRvals, GroundTerm, !GlobalData),
     map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
 
 :- pred ml_gen_const_struct_args(ml_const_struct_info::in,
@@ -3223,16 +3192,13 @@ specify_width(Width, Type, type_and_width(Type, Width)).
 
 :- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
     bool::in, prog_context::in, mer_type::in, mlds_type::in,
-    cons_id::in, cons_tag::in, int::in,
+    maybe(cons_id)::in, tag_uses_base_class::in, int::in,
     list(mlds_rval)::in, list(arg_width)::in, list(mlds_rval)::in,
     ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
 
 construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        Context, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
+        Context, VarType, MLDS_Type, MaybeConsId, UsesBaseClass, Ptag,
         ArgRvals0, ConsArgWidths, ExtraArgRvals, GroundTerm, !GlobalData) :-
-    UsesBaseClass = ml_tag_uses_base_class(ConsTag),
-    MaybeConsId = yes(ConsId),
-
     % Generate a local static constant for this term.
     ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
         UsesBaseClass, MaybeConsId),
