@@ -1,0 +1,48 @@
+[struct(11, apple, yes, orange, no, pear, "abc")]
+not found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(22, apple, yes, orange, no, pear, "abc")]
+not found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(22, apple, no, orange, no, pear, "abc")]
+not found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(42, apple, yes, orange, no, pear, "abc")]
+found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(42, apple, yes, apple, no, pear, "abc")]
+not found struct(42, _, yes, orange, _, _, _)
+not found struct(_, _, _, orange, _, pear, _)
+
+[struct(42, apple, no, orange, no, pear, "abc")]
+not found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(11, apple, yes, orange, no, pear, "abc"), struct(22, apple, yes, orange, no, pear, "abc")]
+not found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(11, apple, yes, orange, no, pear, "abc"), struct(22, apple, yes, orange, no, pear, "abc"), struct(22, apple, no, orange, no, pear, "abc")]
+not found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(11, apple, yes, orange, no, pear, "abc"), struct(22, apple, yes, orange, no, pear, "abc"), struct(22, apple, no, orange, no, pear, "abc"), struct(42, apple, yes, orange, no, pear, "abc")]
+found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(11, apple, yes, orange, no, pear, "abc"), struct(22, apple, yes, orange, no, pear, "abc"), struct(22, apple, no, orange, no, pear, "abc"), struct(42, apple, yes, apple, no, pear, "abc")]
+not found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(11, apple, yes, orange, no, pear, "abc"), struct(22, apple, yes, orange, no, pear, "abc"), struct(22, apple, no, orange, no, pear, "abc"), struct(42, apple, no, orange, no, pear, "abc")]
+not found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+
+[struct(11, apple, yes, orange, no, pear, "abc"), struct(42, apple, yes, orange, no, pear, "abc"), struct(42, apple, yes, apple, no, pear, "abc"), struct(42, apple, no, orange, no, pear, "abc")]
+found struct(42, _, yes, orange, _, _, _)
+found struct(_, _, _, orange, _, pear, _)
+

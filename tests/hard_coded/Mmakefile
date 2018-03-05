@@ -172,11 +172,11 @@ ORDINARY_PROGS =	\
 	impure_prune \
 	initialise_decl \
 	inst_alias \
-	int_fold_up_down \
-	int_range_ops \
 	int16_from_bytes \
 	int32_from_bytes \
 	int64_from_bytes \
+	int_fold_up_down \
+	int_range_ops \
 	integer_int16_conv \
 	integer_int32_conv \
 	integer_int64_conv \
@@ -248,6 +248,7 @@ ORDINARY_PROGS =	\
 	pack_args_copy \
 	pack_args_float \
 	pack_args_intermod1 \
+	packed_arg_partial_inst \
 	parse_number_from_io \
 	parse_number_from_string \
 	ppc_bug \

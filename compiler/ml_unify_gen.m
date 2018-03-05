@@ -603,10 +603,8 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, MaybePtag,
     % Replace double-word and packed arguments by uniform single word rvals.
     ConsArgWidths = list.map(func(type_and_width(_, W)) = W,
         ConsArgTypesWidths),
-    ml_expand_double_word_rvals(ConsArgWidths, ArgWidths1,
-        ArgRvalsMLDSTypes0, ArgRvalsMLDSTypes1),
-    pack_args(ml_shift_combine_rval_type, ArgWidths1,
-        ArgRvalsMLDSTypes1, ArgRvalsMLDSTypes2, unit, _, unit, _),
+    ml_expand_or_pack_into_words(ConsArgWidths,
+        ArgRvalsMLDSTypes0, ArgRvalsMLDSTypes2),
 
     % Add the extra rvals to the start.
     ArgRvalsMLDSTypes = ExtraRvalsMLDSTypes ++ ArgRvalsMLDSTypes2,
@@ -713,6 +711,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
         % some warnings from GNU C about missing braces in initializers.
         pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals1, ArgRvals,
             unit, _, unit, _),
+
         ExtraArgRvals = list.map((func(ml_typed_rval(Rv, _)) = Rv),
             ExtraArgTypedRvals),
         AllArgRvals = ExtraArgRvals ++ ArgRvals,
@@ -2911,6 +2910,116 @@ arg_width_is_double(ArgWidth, DoubleWidth) :-
         DoubleWidth = no
     ).
 
+%---------------------------------------------------------------------------%
+
+:- pred ml_expand_or_pack_into_words(list(arg_width)::in,
+    list(mlds_typed_rval)::in, list(mlds_typed_rval)::out) is det.
+
+ml_expand_or_pack_into_words([], [], []).
+ml_expand_or_pack_into_words([], [_ | _], _) :-
+    unexpected($pred, "list length mismatch").
+ml_expand_or_pack_into_words([_ | _], [], _) :-
+    unexpected($pred, "list length mismatch").
+ml_expand_or_pack_into_words([Width | Widths], [TypedRval | TypedRvals],
+        PackedTypedRvals) :-
+    (
+        Width = full_word,
+        ml_expand_or_pack_into_words(Widths, TypedRvals, TailPackedTypedRvals),
+        PackedTypedRvals = [TypedRval | TailPackedTypedRvals]
+    ;
+        Width = double_word,
+        ml_expand_or_pack_into_words(Widths, TypedRvals, TailPackedTypedRvals),
+        TypedRval = ml_typed_rval(Rval, _Type),
+        ( if Rval = ml_const(mlconst_null(_)) then
+            SubstType = mlds_generic_type,
+            RvalA = ml_const(mlconst_null(SubstType)),
+            RvalB = ml_const(mlconst_null(SubstType))
+        else
+            SubstType = mlds_native_int_type,
+            RvalA = ml_binop(float_word_bits, Rval, ml_const(mlconst_int(0))),
+            RvalB = ml_binop(float_word_bits, Rval, ml_const(mlconst_int(1)))
+        ),
+        TypedRvalA = ml_typed_rval(RvalA, SubstType),
+        TypedRvalB = ml_typed_rval(RvalB, SubstType),
+        PackedTypedRvals = [TypedRvalA, TypedRvalB | TailPackedTypedRvals]
+    ;
+        Width = partial_word_first(_Mask),
+        TypedRval = ml_typed_rval(Rval, Type),
+        RevOrRvals0 = [ml_lshift(Rval, 0)],
+        ml_pack_into_one_word(Widths, TypedRvals, RevOrRvals0, RevOrRvals,
+            LeftOverWidths, LeftOverTypedRvals),
+        list.reverse(RevOrRvals, OrRvals),
+        (
+            OrRvals = [],
+            % RevOrRvals0 isn't empty, and RevOrRvals contains everything
+            % in RevOrRvals0, which means OrRvals cannot be empty.
+            unexpected($pred, "OrRvals = []")
+        ;
+            OrRvals = [HeadOrRval | TailOrRvals],
+            or_packed_rvals(HeadOrRval, TailOrRvals, OrAllRval)
+        ),
+        % XXX TYPE_REPN Using the type of the first rval for the type
+        % of the whole word preserves old behavior, but seems strange.
+        PackedTypedRval = ml_typed_rval(OrAllRval, Type),
+        ml_expand_or_pack_into_words(LeftOverWidths, LeftOverTypedRvals,
+            TailPackedTypedRvals),
+        PackedTypedRvals = [PackedTypedRval | TailPackedTypedRvals]
+    ;
+        Width = partial_word_shifted(_, _),
+        % There should be a partial_word_shifted argument first.
+        unexpected($pred, "partial_word_shifted")
+    ).
+
+:- pred ml_pack_into_one_word(list(arg_width)::in, list(mlds_typed_rval)::in,
+    list(mlds_rval)::in, list(mlds_rval)::out,
+    list(arg_width)::out, list(mlds_typed_rval)::out) is det.
+
+ml_pack_into_one_word([], [], !RevOrRvals, [], []).
+ml_pack_into_one_word([], [_ | _], !RevOrRvals, _, _) :-
+    unexpected($pred, "list length mismatch").
+ml_pack_into_one_word([_ | _], [], !RevOrRvals, _, _) :-
+    unexpected($pred, "list length mismatch").
+ml_pack_into_one_word([Width | Widths], [TypedRval | TypedRvals], !RevOrRvals,
+        LeftOverWidths, LeftOverTypedRvals) :-
+    (
+        ( Width = full_word
+        ; Width = double_word
+        ; Width = partial_word_first(_Mask)
+        ),
+        LeftOverWidths = [Width | Widths],
+        LeftOverTypedRvals = [TypedRval | TypedRvals]
+    ;
+        Width = partial_word_shifted(Shift, _Mask),
+        TypedRval = ml_typed_rval(Rval, _Type),
+        ShiftedRval = ml_lshift(Rval, Shift),
+        !:RevOrRvals = [ShiftedRval | !.RevOrRvals],
+        ml_pack_into_one_word(Widths, TypedRvals, !RevOrRvals,
+            LeftOverWidths, LeftOverTypedRvals)
+    ).
+
+    % OR together the given rvals.
+    %
+    % We currently do this a linear fashion, starting at the rightmost
+    % arguments, and moving towards the left.
+    %
+    % We should explore whether other strategies, such as balanced trees,
+    % (or rather, trees that are as balanced as possible) would work better.
+    %
+:- pred or_packed_rvals(mlds_rval::in, list(mlds_rval)::in,
+    mlds_rval::out) is det.
+
+or_packed_rvals(HeadRval, TailRvals, OrAllRval) :-
+    (
+        TailRvals = [],
+        OrAllRval = HeadRval
+    ;
+        TailRvals = [HeadTailRval | TailTailRvals],
+        or_packed_rvals(HeadTailRval, TailTailRvals, TailOrAllRval),
+        OrAllRval = ml_bitwise_or(HeadRval, TailOrAllRval)
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- pred ml_expand_double_word_rvals(list(arg_width)::in, list(arg_width)::out,
     list(mlds_typed_rval)::in, list(mlds_typed_rval)::out) is det.
 
@@ -2986,10 +3095,10 @@ ml_lshift(Rval0, Shift) = Rval :-
         Rval = ml_const(mlconst_int(0))
     else if Shift = 0 then
         Rval = Rval0
-    else if Rval0 = ml_unop(box(Type), Rval1) then
-        Rval2 = ml_binop(unchecked_left_shift(int_type_int), Rval1,
+    else if Rval0 = ml_unop(box(Type), SubRval0) then
+        SubRval = ml_binop(unchecked_left_shift(int_type_int), SubRval0,
             ml_const(mlconst_int(Shift))),
-        Rval = ml_unop(box(Type), Rval2)
+        Rval = ml_unop(box(Type), SubRval)
     else
         Rval = ml_binop(unchecked_left_shift(int_type_int), Rval0,
             ml_const(mlconst_int(Shift)))
@@ -3158,13 +3267,13 @@ cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
 
 specify_width(Width, Type, type_and_width(Type, Width)).
 
+%---------------------------------------------------------------------------%
+
 :- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
     bool::in, prog_context::in, mer_type::in, mlds_type::in,
     cons_id::in, cons_tag::in, int::in,
     list(mlds_rval)::in, list(arg_width)::in, list(mlds_initializer)::in,
     ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
-
-%---------------------------------------------------------------------------%
 
 construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         Context, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
