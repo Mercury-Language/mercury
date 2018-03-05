@@ -2490,26 +2490,27 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
-        VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag,
-        Ptag, ExtraInitializers, Args, Context, !GlobalData, !GroundTermMap) :-
+        VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
+        ExtraInitializers, ArgVars, Context, !GlobalData, !GroundTermMap) :-
     % This code (loosely) follows the code of ml_gen_new_object.
 
-    lookup_var_types(VarTypes, Args, ArgTypes),
+    lookup_var_types(VarTypes, ArgVars, ArgTypes),
     % If the scope contains existentially typed constructions,
     % then polymorphism should have changed its scope_reason away from
     % from_ground_term_construct. Therefore the static struct we are
     % constructing should not need any extra type_info or typeclass_info args.
+    list.length(ArgVars, NumArgs),
     cons_id_arg_types_and_widths(ModuleInfo, may_not_have_extra_args,
-        VarType, ConsId, Args, ArgTypes, ConsArgTypesWidths),
+        VarType, ConsId, NumArgs, ArgTypes, ConsArgTypesWidths),
     ConsArgWidths = list.map(func(type_and_width(_, W)) = W,
         ConsArgTypesWidths),
     (
         HighLevelData = yes,
-        construct_ground_term_initializers_hld(ModuleInfo, Context,
-            Args, ConsArgTypesWidths, ArgRvals1, !GlobalData, !GroundTermMap)
+        construct_ground_term_initializers_hld(ModuleInfo, Context, ArgVars,
+            ConsArgTypesWidths, ArgRvals1, !GlobalData, !GroundTermMap)
     ;
         HighLevelData = no,
-        assoc_list.from_corresponding_lists(Args, ConsArgWidths,
+        assoc_list.from_corresponding_lists(ArgVars, ConsArgWidths,
             ArgConsArgWidths),
         construct_ground_term_initializers_lld(ModuleInfo, Context,
             ArgConsArgWidths, ArgRvals1, !GlobalData, !GroundTermMap)
@@ -2733,7 +2734,7 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
     % but may be a bug. It depends on whether we ever put into the
     % const struct db terms that need extra args.
     cons_id_arg_types_and_widths(ModuleInfo, may_not_have_extra_args,
-        VarType, ConsId, Args, DummyArgTypes, ConsArgTypesWidths),
+        VarType, ConsId, NumArgs, DummyArgTypes, ConsArgTypesWidths),
     ConsArgWidths = list.map(func(type_and_width(_, W)) = W,
         ConsArgTypesWidths),
     HighLevelData = Info ^ mcsi_high_level_data,
@@ -3160,15 +3161,15 @@ ml_bitwise_and(Rval, Mask) =
 
 maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId, ArgTypes,
         ConsArgTypesWidths) :-
+    NumArgs = list.length(ArgTypes),
     (
         MaybeConsId = yes(ConsId),
         cons_id_arg_types_and_widths(ModuleInfo, may_have_extra_args,
-            VarType, ConsId, ArgTypes, ArgTypes, ConsArgTypesWidths)
+            VarType, ConsId, NumArgs, ArgTypes, ConsArgTypesWidths)
     ;
         MaybeConsId = no,
         % It is a closure. In this case, the arguments are all boxed.
-        Length = list.length(ArgTypes),
-        ConsArgTypes = ml_make_boxed_types(Length),
+        ConsArgTypes = ml_make_boxed_types(NumArgs),
         list.map(specify_width(full_word), ConsArgTypes, ConsArgTypesWidths)
     ).
 
@@ -3194,7 +3195,7 @@ maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId, ArgTypes,
     % if they also pass may_not_have_extra_args.
     %
 :- pred cons_id_arg_types_and_widths(module_info,
-    may_have_extra_args, mer_type, cons_id, list(T), list(mer_type),
+    may_have_extra_args, mer_type, cons_id, int, list(mer_type),
     list(type_and_width)).
 :- mode cons_id_arg_types_and_widths(in, in(bound(may_have_extra_args)),
     in, in, in, in, out) is det.
@@ -3202,14 +3203,14 @@ maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId, ArgTypes,
     in, in, in, in, out) is det.
 
 cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
-        ConsId, Args, ArgTypes, ConsArgTypesWidths) :-
+        ConsId, NumArgs, ArgTypes, ConsArgTypesWidths) :-
     ( if
         ConsId = cons(_, _, _),
         not is_introduced_type_info_type(VarType)
     then
         ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
             ConsArgDefns = ConsRepnDefn ^ cr_args,
-            NumExtraArgs = list.length(Args) - list.length(ConsArgDefns),
+            NumExtraArgs = NumArgs - list.length(ConsArgDefns),
             ConsArgTypesWidths0 = list.map(
                 (func(C) = type_and_width(C ^ car_type, C ^ car_width)),
                 ConsArgDefns),
@@ -3238,8 +3239,7 @@ cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
             % here, since all we really care about at this point is whether
             % something is a type variable or not, not which type variable
             % it is.
-            Length = list.length(Args),
-            ConsArgTypes = ml_make_boxed_types(Length),
+            ConsArgTypes = ml_make_boxed_types(NumArgs),
             list.map(specify_width(full_word), ConsArgTypes,
                 ConsArgTypesWidths)
         else
@@ -3253,9 +3253,8 @@ cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
         % as can happen e.g. for closures and type_infos, we assume that
         % the arguments all have the right type already.
         % XXX is this the right thing to do?
-        Length = list.length(Args),
         ConsArgTypes = ArgTypes,
-        ( if list.length(ArgTypes, Length) then
+        ( if list.length(ArgTypes, NumArgs) then
             true
         else
             unexpected($pred, "|Args| != |ArgTypes|")
