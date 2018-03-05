@@ -228,7 +228,7 @@
     --->    ht(
                 ht_num_occupants        :: int,
                 ht_max_occupants        :: int,
-                ht_hash_pred            :: (pred(K::in, int::out) is det),
+                ht_hash_pred            :: hash_pred(K),
                 ht_buckets              :: buckets(K, V)
             )
     where equality is version_hash_table.equal.
@@ -301,9 +301,10 @@ num_occupants(HT) = NumOccupants :-
 :- pragma inline(find_slot/2).
 
 find_slot(HT, K) = H :-
-    promise_equivalent_solutions [HashPred] (
-        HashPred = HT ^ ht_hash_pred
+    promise_equivalent_solutions [HashPred0] (
+        HashPred0 = HT ^ ht_hash_pred
     ),
+    unsafe_hash_pred_cast(HashPred0, HashPred),
     find_slot_2(HashPred, K, HT ^ num_buckets, H).
 
 :- pred find_slot_2(hash_pred(K)::in(hash_pred), K::in, int::in, int::out)
@@ -314,6 +315,30 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
     HashPred(K, Hash),
     % Since NumBuckets is a power of two we can avoid mod.
     H = Hash /\ (NumBuckets - 1).
+
+:- pred unsafe_hash_pred_cast(hash_pred(K)::in, hash_pred(K)::out(hash_pred))
+    is det.
+
+:- pragma foreign_proc("C",
+    unsafe_hash_pred_cast(HashPred0::in, HashPred::out(hash_pred)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    HashPred = HashPred0;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_hash_pred_cast(HashPred0::in, HashPred::out(hash_pred)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    HashPred = HashPred0;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_hash_pred_cast(HashPred0::in, HashPred::out(hash_pred)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    HashPred = HashPred0;
+").
 
 %---------------------------------------------------------------------------%
 
@@ -664,14 +689,15 @@ from_assoc_list_2([K - V | T], !HT) :-
     % argument is not eliminated, nor is the creation of the type_info
     % delayed until the (rare) call to expand.
     %
-:- func expand(int::in, int::in, hash_pred(K)::in(hash_pred),
-   buckets(K, V)::in) = (version_hash_table(K, V)::out) is det.
+:- func expand(int, int, hash_pred(K), buckets(K, V)) =
+    version_hash_table(K, V).
 :- pragma no_inline(expand/4).
 
-expand(NumOccupants, MaxOccupants0, HashPred, Buckets0) = HT :-
+expand(NumOccupants, MaxOccupants0, HashPred0, Buckets0) = HT :-
     NumBuckets0 = size(Buckets0),
     NumBuckets = NumBuckets0 + NumBuckets0,
     MaxOccupants = MaxOccupants0 + MaxOccupants0,
+    unsafe_hash_pred_cast(HashPred0, HashPred),
     Buckets1 = version_array.init(NumBuckets, ht_nil),
     reinsert_bindings(0, Buckets0, HashPred, NumBuckets, Buckets1, Buckets),
     HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets).
