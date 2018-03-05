@@ -1458,7 +1458,6 @@ if test "$ac_cv_func_sigaction" = yes; then
             }
         ],
         [mercury_cv_sigaction_field=sa_sigaction],
-        [mercury_cv_sigaction_field=sa_handler],
         [mercury_cv_sigaction_field=sa_handler]))
     AC_MSG_RESULT($mercury_cv_sigaction_field)
     AC_DEFINE_UNQUOTED(MR_SIGACTION_FIELD,$mercury_cv_sigaction_field)
@@ -1518,7 +1517,6 @@ AC_CACHE_VAL(mercury_cv_sigcontext_struct_2arg,
             }
         ],
         [mercury_cv_sigcontext_struct_2arg=yes],
-        [true],
         [true]))
 AC_MSG_RESULT($mercury_cv_sigcontext_struct_2arg)
 
@@ -1572,7 +1570,6 @@ if test "$mercury_cv_sigcontext_struct_2arg" = no; then
             }
         ],
         [mercury_cv_sigcontext_struct_3arg=yes],
-        [true],
         [true]))
     AC_MSG_RESULT($mercury_cv_sigcontext_struct_3arg)
 else
@@ -1652,7 +1649,6 @@ if test "$mercury_cv_sigcontext_struct" = yes; then
             }
         ],
         [mercury_cv_pc_access=eip],
-        [true],
         [true]))
     AC_MSG_RESULT($mercury_cv_pc_access)
     if test "$mercury_cv_pc_access" != no; then
@@ -1702,7 +1698,6 @@ else
             }
         ],
         [mercury_cv_siginfo_t=yes],
-        [true],
         [true]))
     AC_MSG_RESULT($mercury_cv_siginfo_t)
     if test "$mercury_cv_siginfo_t" = yes; then
@@ -1750,7 +1745,6 @@ else
                 }
             ],
             [mercury_cv_pc_access=REG_PC;mercury_cv_pc_access_greg=yes],
-            [true],
             [true])
         AC_TRY_RUN(
             [
@@ -1788,7 +1782,6 @@ else
                 }
             ],
             [mercury_cv_pc_access=CTX_EPC;mercury_cv_pc_access_greg=yes],
-            [true],
             [true])
         AC_TRY_RUN(
             [
@@ -1825,7 +1818,6 @@ else
                 }
             ],
             [mercury_cv_pc_access=sc_pc;mercury_cv_pc_access_greg=no],
-            [true],
             [true])
         )
         AC_MSG_RESULT($mercury_cv_pc_access)
@@ -1873,7 +1865,6 @@ AC_CACHE_VAL(mercury_cv_word_type,
             }
         ],
         [mercury_cv_word_type=`cat conftest.tags`],
-        [mercury_cv_word_type=unknown],
         [mercury_cv_word_type=unknown])
 )
 if test "$mercury_cv_word_type" = unknown; then
@@ -1899,7 +1890,6 @@ if test "$mercury_cv_word_type" = unknown; then
             }
         ],
         [mercury_cv_word_type=`cat conftest.tags`],
-        [mercury_cv_word_type=unknown],
         [mercury_cv_word_type=unknown])
 fi
 mercury_cv_word_type=`echo $mercury_cv_word_type | tr -d '\r'`
@@ -1974,7 +1964,6 @@ AC_CACHE_VAL(mercury_cv_int_least64_type,
             }
         ],
         [mercury_cv_int_least64_type=`cat conftest.tags`],
-        [mercury_cv_int_least64_type=unknown],
         [mercury_cv_int_least64_type=unknown])
 )
 if test "$mercury_cv_int_least64_type" = unknown; then
@@ -2001,7 +1990,6 @@ if test "$mercury_cv_int_least64_type" = unknown; then
             }
         ],
         [mercury_cv_int_least64_type=`cat conftest.tags`],
-        [mercury_cv_int_least64_type=unknown],
         [mercury_cv_int_least64_type=unknown])
 fi
 # Uncomment the following line to test how the system behaves
@@ -2065,7 +2053,6 @@ AC_CACHE_VAL(mercury_cv_int_least32_type,
             }
         ],
         [mercury_cv_int_least32_type=`cat conftest.tags`],
-        [mercury_cv_int_least32_type=unknown],
         [mercury_cv_int_least32_type=unknown])
 )
 mercury_cv_int_least32_type=`echo $mercury_cv_int_least32_type | tr -d '\r'`
@@ -2140,7 +2127,6 @@ AC_CACHE_VAL(mercury_cv_int_least16_type,
             }
         ],
         [mercury_cv_int_least16_type=`cat conftest.tags`],
-        [mercury_cv_int_least16_type=unknown],
         [mercury_cv_int_least16_type=unknown])
 )
 mercury_cv_int_least16_type=`echo $mercury_cv_int_least16_type | tr -d '\r'`
@@ -2201,7 +2187,6 @@ AC_CACHE_VAL(mercury_cv_low_tag_bits,
             }
         ],
         [mercury_cv_low_tag_bits=`cat conftest.tags`],
-        [mercury_cv_low_tag_bits=0],
         [mercury_cv_low_tag_bits=0])
 )
 mercury_cv_low_tag_bits=`echo $mercury_cv_low_tag_bits | tr -d '\r'`
@@ -2236,7 +2221,6 @@ AC_CACHE_VAL(mercury_cv_bytes_per_word,
             }
         ],
         [mercury_cv_bytes_per_word=`cat conftest.wordbytes`],
-        [mercury_cv_bytes_per_word=0],
         [mercury_cv_bytes_per_word=0])
 )
 mercury_cv_bytes_per_word=`echo $mercury_cv_bytes_per_word | tr -d '\r'`
@@ -2266,7 +2250,6 @@ AC_CACHE_VAL(mercury_cv_bits_per_word,
             }
         ],
         [mercury_cv_bits_per_word=`cat conftest.wordbits`],
-        [mercury_cv_bits_per_word=0],
         [mercury_cv_bits_per_word=0])
 )
 mercury_cv_bits_per_word=`echo $mercury_cv_bits_per_word | tr -d '\r'`
@@ -2308,7 +2291,6 @@ AC_CACHE_VAL(mercury_cv_unboxed_floats,
             }
         ],
         [mercury_cv_unboxed_floats=yes],
-        [mercury_cv_unboxed_floats=no],
         [mercury_cv_unboxed_floats=no])
 )
 AC_MSG_RESULT($mercury_cv_unboxed_floats)
@@ -2335,7 +2317,6 @@ AC_CACHE_VAL(mercury_cv_float_is_64_bit,
             }
         ],
         [mercury_cv_float_is_64_bit=yes],
-        [mercury_cv_float_is_64_bit=no],
         [mercury_cv_float_is_64_bit=no])
 )
 AC_MSG_RESULT($mercury_cv_float_is_64_bit)
@@ -2359,7 +2340,6 @@ AC_CACHE_VAL(mercury_cv_double_is_64_bit,
             }
         ],
         [mercury_cv_double_is_64_bit=yes],
-        [mercury_cv_double_is_64_bit=no],
         [mercury_cv_double_is_64_bit=no])
 )
 AC_MSG_RESULT($mercury_cv_double_is_64_bit)
@@ -2383,7 +2363,6 @@ AC_CACHE_VAL(mercury_cv_long_double_is_64_bit,
             }
         ],
         [mercury_cv_long_double_is_64_bit=yes],
-        [mercury_cv_long_double_is_64_bit=no],
         [mercury_cv_long_double_is_64_bit=no])
 )
 AC_MSG_RESULT($mercury_cv_long_double_is_64_bit)
@@ -2407,7 +2386,6 @@ AC_CACHE_VAL([mercury_cv_unboxed_int64s],
             }
         ],
         [mercury_cv_unboxed_int64s=yes],
-        [mercury_cv_unboxed_int64s=no],
         [mercury_cv_unboxed_int64s=no])
 )
 AC_MSG_RESULT($mercury_cv_unboxed_int64s)
@@ -2445,7 +2423,6 @@ AC_CACHE_VAL(mercury_cv_is_bigender,
             }
         ],
         [mercury_cv_is_bigender=yes],
-        [mercury_cv_is_bigender=no],
         [mercury_cv_is_bigender=no])
 )
 AC_MSG_RESULT($mercury_cv_is_bigender)
@@ -2473,7 +2450,6 @@ AC_CACHE_VAL(mercury_cv_is_littleender,
             }
         ],
         [mercury_cv_is_littleender=yes],
-        [mercury_cv_is_littleender=no],
         [mercury_cv_is_littleender=no])
 )
 AC_MSG_RESULT($mercury_cv_is_littleender)
@@ -2597,7 +2573,6 @@ AC_CACHE_VAL(mercury_cv_can_do_pending_io,
             }
         ],
         [mercury_cv_can_do_pending_io=yes],
-        [mercury_cv_can_do_pending_io=no],
         [mercury_cv_can_do_pending_io=no])
 )
 AC_MSG_RESULT($mercury_cv_can_do_pending_io)
@@ -2917,7 +2892,6 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
             }
         ],
         [mercury_cv_gcc_labels=yes],
-        [mercury_cv_gcc_labels=no],
         [mercury_cv_gcc_labels=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_labels)
@@ -2950,7 +2924,6 @@ if test "$mercury_cv_gcc_labels" = yes; then
             }
         ],
         [mercury_cv_asm_labels=yes],
-        [mercury_cv_asm_labels=no],
         [mercury_cv_asm_labels=no])
     )
     AC_MSG_RESULT($mercury_cv_asm_labels)
@@ -3009,7 +2982,6 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
             }
         ],
         [mercury_cv_gcc_model_fast=yes],
-        [mercury_cv_gcc_model_fast=no],
         [mercury_cv_gcc_model_fast=no])
     )
     AC_MSG_RESULT($mercury_cv_gcc_model_fast)
@@ -3046,7 +3018,6 @@ AC_TRY_RUN(
         }
     ],
     [mercury_cv_gcc_model_reg=yes],
-    [mercury_cv_gcc_model_reg=no],
     [mercury_cv_gcc_model_reg=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_model_reg)
@@ -4393,7 +4364,6 @@ AC_TRY_RUN(
         changequote([,])
     ],
     [mercury_cv_cannot_use_structure_assignment=no],
-    [mercury_cv_cannot_use_structure_assignment=yes],
     [mercury_cv_cannot_use_structure_assignment=yes])
 )
 AC_MSG_RESULT($mercury_cv_cannot_use_structure_assignment)
