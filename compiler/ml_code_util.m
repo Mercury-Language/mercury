@@ -279,7 +279,7 @@
     is semidet.
 
 :- pred ml_gen_box_const_rval(module_info::in, prog_context::in,
-    mlds_type::in, bool::in, mlds_rval::in, mlds_rval::out,
+    mlds_type::in, arg_width::in, mlds_rval::in, mlds_rval::out,
     ml_global_data::in, ml_global_data::out) is det.
 
     % Given a source type and a destination type, and given an source rval
@@ -1103,7 +1103,9 @@ ml_must_box_field_type_category(CtorCat, UnboxedFloat, UnboxedInt64s,
         )
     ).
 
-ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
+%---------------------------------------------------------------------------%
+
+ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval,
         BoxedRval, !GlobalData) :-
     ( if
         ( MLDS_Type = mercury_type(type_variable(_, _), _, _)
@@ -1126,7 +1128,7 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
         HaveUnboxedFloats = ml_global_data_have_unboxed_floats(!.GlobalData),
         ( if
             HaveUnboxedFloats = do_not_have_unboxed_floats,
-            DoubleWidth = no
+            arg_width_is_double(Width, no)
         then
             % Generate a local static constant for this float.
             module_info_get_name(ModuleInfo, ModuleName),
@@ -1155,7 +1157,7 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
         HaveUnboxedInt64s = ml_global_data_have_unboxed_int64s(!.GlobalData),
         ( if
             HaveUnboxedInt64s = do_not_have_unboxed_int64s,
-            DoubleWidth = no
+            arg_width_is_double(Width, no)
         then
             % Generate a local static constant for this int64 / uint64.
             module_info_get_name(ModuleInfo, ModuleName),
@@ -1175,6 +1177,22 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
     else
         BoxedRval = ml_unop(box(MLDS_Type), Rval)
     ).
+
+:- pred arg_width_is_double(arg_width::in, bool::out) is det.
+
+arg_width_is_double(ArgWidth, DoubleWidth) :-
+    (
+        ArgWidth = double_word,
+        DoubleWidth = yes
+    ;
+        ( ArgWidth = full_word
+        ; ArgWidth = partial_word_first(_)
+        ; ArgWidth = partial_word_shifted(_, _)
+        ),
+        DoubleWidth = no
+    ).
+
+%---------------------------------------------------------------------------%
 
 ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
         ArgRval) :-
@@ -1278,6 +1296,8 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
         )
     ).
 
+%---------------------------------------------------------------------------%
+
 ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
         Context, ForClosureWrapper, ArgNum, ArgLval, ConvDecls,
         ConvInputStmts, ConvOutputStmts, !Info) :-
@@ -1371,6 +1391,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             ConvOutputStmts = [AssignOutputStmt]
         )
     ).
+
+%---------------------------------------------------------------------------%
 
 ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
         !Info) :-

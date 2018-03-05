@@ -302,9 +302,8 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 ArgGroundTerm = ml_ground_term(ArgRval, _ArgType,
                     MLDS_ArgType),
                 ml_gen_info_get_global_data(!.Info, GlobalData0),
-                DoubleWidth = no,
                 ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
-                    DoubleWidth, ArgRval, Rval0, GlobalData0, GlobalData),
+                    full_word, ArgRval, Rval0, GlobalData0, GlobalData),
                 ml_gen_info_set_global_data(GlobalData, !Info),
                 Rval = ml_cast_cons_tag(MLDS_Type, Tag, Rval0),
                 GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
@@ -673,22 +672,15 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybePtag,
         (
             HighLevelData = no,
             % Box *all* the arguments, including the ExtraRvals.
-            list.map(ml_gen_info_lookup_const_var(!.Info), ArgVars,
-                ArgGroundTerms),
             ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
                 ExtraTypedRvals, ExtraArgTypedRvals, !GlobalData),
-            assoc_list.from_corresponding_lists(ArgGroundTerms, ConsArgWidths,
-                ArgGroundTermsWidths),
-            ml_gen_box_const_rval_list_lld(ModuleInfo, Context,
-                ArgGroundTermsWidths, ArgRvals1, !GlobalData)
+            ml_gen_box_const_rval_list_lld(!.Info, Context,
+                ArgVars, ConsArgWidths, ArgRvals1, !GlobalData)
         ;
             HighLevelData = yes,
-            list.map(ml_gen_info_lookup_const_var_rval(!.Info), ArgVars,
-                ArgRvals0),
-            list.map(ml_type_as_field(ModuleInfo, HighLevelData),
-                ConsArgTypesWidths, FieldTypes),
-            ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo, ArgTypes,
-                FieldTypes, ArgRvals0, Context, ArgRvals1, !GlobalData),
+            ml_gen_box_or_unbox_const_rval_list_hld(!.Info,
+                HighLevelData, Context, ArgVars, ConsArgTypesWidths,
+                ArgRvals1, !GlobalData),
             % For --high-level-data, the ExtraRvals should already have
             % the right type, so we do not need to worry about boxing
             % or unboxing them.
@@ -1024,47 +1016,41 @@ ml_cast_cons_tag(Type, Tag, Rval) = CastRval :-
     ),
     CastRval = ml_unop(cast(Type), TagRval).
 
-:- pred ml_gen_box_or_unbox_const_rval_list_hld(module_info::in,
-    list(mer_type)::in, list(mer_type)::in, list(mlds_rval)::in,
-    prog_context::in, list(mlds_rval)::out,
+:- pred ml_gen_box_or_unbox_const_rval_list_hld(ml_gen_info::in, bool::in,
+    prog_context::in, list(prog_var)::in, list(type_and_width)::in,
+    list(mlds_rval)::out, ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_box_or_unbox_const_rval_list_hld(_, _, _, [], [], [], !GlobalData).
+ml_gen_box_or_unbox_const_rval_list_hld(_, _, _, [], [_ | _], _,
+        !GlobalData) :-
+    unexpected($pred, "length mismatch").
+ml_gen_box_or_unbox_const_rval_list_hld(_, _, _, [_ | _], [], _,
+        !GlobalData) :-
+    unexpected($pred, "length mismatch").
+ml_gen_box_or_unbox_const_rval_list_hld(Info, HighLevelData, Context,
+        [ArgVar | ArgVars], [ConsArgTypeWidth | ConsArgTypesWidths],
+        [FieldRval | FieldRvals], !GlobalData) :-
+    ml_variable_type(Info, ArgVar, ArgType),
+    ml_gen_info_lookup_const_var_rval(Info, ArgVar, ArgRval),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ml_type_as_field(ModuleInfo, HighLevelData, ConsArgTypeWidth, FieldType),
+    ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context,
+        ArgType, FieldType, ArgRval, FieldRval, !GlobalData),
+    ml_gen_box_or_unbox_const_rval_list_hld(Info, HighLevelData, Context,
+        ArgVars, ConsArgTypesWidths, FieldRvals, !GlobalData).
+
+:- pred ml_gen_box_or_unbox_const_rval_hld(module_info::in, prog_context::in,
+    mer_type::in, mer_type::in, mlds_rval::in, mlds_rval::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo, ArgTypes, FieldTypes,
-        ArgRvals, Context, FieldRvals, !GlobalData) :-
-    ( if
-        ArgTypes = [],
-        FieldTypes = [],
-        ArgRvals = []
-    then
-        FieldRvals = []
-    else if
-        ArgTypes = [ArgType | ArgTypesTail],
-        FieldTypes = [FieldType | FieldTypesTail],
-        ArgRvals = [ArgRval | ArgRvalsTail]
-    then
-        ml_gen_box_or_unbox_const_rval_hld(ModuleInfo,
-            ArgType, FieldType, ArgRval, Context, FieldRval, !GlobalData),
-        ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo,
-            ArgTypesTail, FieldTypesTail, ArgRvalsTail, Context,
-            FieldRvalsTail, !GlobalData),
-        FieldRvals = [FieldRval | FieldRvalsTail]
-    else
-        unexpected($pred, "list length mismatch")
-    ).
-
-:- pred ml_gen_box_or_unbox_const_rval_hld(module_info::in,
-    mer_type::in, mer_type::in, mlds_rval::in, prog_context::in,
-    mlds_rval::out, ml_global_data::in, ml_global_data::out) is det.
-
-ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, ArgType, FieldType, ArgRval,
-        Context, FieldRval, !GlobalData) :-
+ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context, ArgType, FieldType,
+        ArgRval, FieldRval, !GlobalData) :-
     (
         % Handle the case where the field type is a boxed type
         % -- in that case, we can just box the argument type.
         FieldType = type_variable(_, _),
         MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-        DoubleWidth = no,
-        ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, DoubleWidth,
+        ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, full_word,
             ArgRval, FieldRval, !GlobalData)
     ;
         ( FieldType = defined_type(_, _, _)
@@ -1081,19 +1067,24 @@ ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, ArgType, FieldType, ArgRval,
             bp_native_if_possible, ArgRval, FieldRval)
     ).
 
-:- pred ml_gen_box_const_rval_list_lld(module_info::in, prog_context::in,
-    assoc_list(ml_ground_term, arg_width)::in, list(mlds_rval)::out,
+:- pred ml_gen_box_const_rval_list_lld(ml_gen_info::in, prog_context::in,
+    list(prog_var)::in, list(arg_width)::in, list(mlds_rval)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_box_const_rval_list_lld(_, _, [], [], !GlobalData).
-ml_gen_box_const_rval_list_lld(ModuleInfo, Context,
-        [GroundTerm - ArgWidth | GroundTerms], [BoxedRval | BoxedRvals],
+ml_gen_box_const_rval_list_lld(_, _, [], [], [], !GlobalData).
+ml_gen_box_const_rval_list_lld(_, _, [], [_ | _], _, !GlobalData) :-
+    unexpected($pred, "length mismatch").
+ml_gen_box_const_rval_list_lld(_, _, [_ | _], [], _, !GlobalData) :-
+    unexpected($pred, "length mismatch").
+ml_gen_box_const_rval_list_lld(Info, Context,
+        [ArgVar | ArgVars], [ArgWidth | ArgWidths], [BoxedRval | BoxedRvals],
         !GlobalData) :-
+    ml_gen_info_lookup_const_var(Info, ArgVar, GroundTerm),
     GroundTerm = ml_ground_term(Rval, _MercuryType, MLDS_Type),
-    arg_width_is_double(ArgWidth, DoubleWidth),
-    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, ArgWidth, Rval,
         BoxedRval, !GlobalData),
-    ml_gen_box_const_rval_list_lld(ModuleInfo, Context, GroundTerms,
+    ml_gen_box_const_rval_list_lld(Info, Context, ArgVars, ArgWidths,
         BoxedRvals, !GlobalData).
 
 :- pred ml_gen_box_extra_const_rval_list_lld(module_info::in, prog_context::in,
@@ -1104,10 +1095,9 @@ ml_gen_box_extra_const_rval_list_lld(_, _, [], [], !GlobalData).
 ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
         [TypedRval | TypedRvals], [BoxedTypedRval | BoxedTypedRvals],
         !GlobalData) :-
-    % Extras are always a single word.
-    DoubleWidth = no,
     TypedRval = ml_typed_rval(Rval, MLDS_Type),
-    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth,
+    % Extras are always a single word.
+    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, full_word,
         Rval, BoxedRval, !GlobalData),
     BoxedTypedRval = ml_typed_rval(BoxedRval, MLDS_Type),
     ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
@@ -2428,9 +2418,8 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             Args = [Arg],
             map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
             ArgGroundTerm = ml_ground_term(ArgRval, _ArgType, MLDS_ArgType),
-            DoubleWidth = no,
             ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
-                DoubleWidth, ArgRval, Rval0, !GlobalData),
+                full_word, ArgRval, Rval0, !GlobalData),
             Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, Rval0),
             GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
             map.det_insert(Var, GroundTerm, !GroundTermMap)
@@ -2555,8 +2544,8 @@ construct_ground_term_initializer_hld(ModuleInfo, Context,
     map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, ArgType, _MLDS_ArgType),
     ml_type_as_field(ModuleInfo, yes, ConsArgType, ConsArgWidth, BoxedArgType),
-    ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, ArgType, BoxedArgType,
-        ArgRval0, Context, ArgRval, !GlobalData).
+    ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context,
+        ArgType, BoxedArgType, ArgRval0, ArgRval, !GlobalData).
 
 :- pred construct_ground_term_initializers_lld(module_info::in,
     prog_context::in, assoc_list(prog_var, arg_width)::in,
@@ -2582,17 +2571,7 @@ construct_ground_term_initializer_lld(ModuleInfo, Context,
         Arg, ConsArgWidth, ArgRval, !GlobalData, !GroundTermMap) :-
     map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, _ArgType, MLDS_ArgType),
-    (
-        ConsArgWidth = double_word,
-        DoubleWidth = yes
-    ;
-        ( ConsArgWidth = full_word
-        ; ConsArgWidth = partial_word_first(_)
-        ; ConsArgWidth = partial_word_shifted(_, _)
-        ),
-        DoubleWidth = no
-    ),
-    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, DoubleWidth,
+    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, ConsArgWidth,
         ArgRval0, ArgRval, !GlobalData).
 
 %---------------------------------------------------------------------------%
@@ -2642,9 +2621,8 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         ),
         (
             Args = [Arg],
-            DoubleWidth = no,
             ml_gen_const_struct_arg(Info, !.ConstStructMap,
-                Arg, DoubleWidth, ArgRval, !GlobalData),
+                Arg, full_word, ArgRval, !GlobalData),
             Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, ArgRval),
             GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
             map.det_insert(ConstNum, GroundTerm, !ConstStructMap)
@@ -2768,18 +2746,17 @@ ml_gen_const_struct_args(_, _, [], [], !GlobalData).
 ml_gen_const_struct_args(Info, ConstStructMap,
         [Arg - ConsArgWidth | ArgConsArgWidths], [ArgRval | ArgRvals],
         !GlobalData) :-
-    arg_width_is_double(ConsArgWidth, DoubleWidth),
     ml_gen_const_struct_arg(Info, ConstStructMap,
-        Arg, DoubleWidth, ArgRval, !GlobalData),
+        Arg, ConsArgWidth, ArgRval, !GlobalData),
     ml_gen_const_struct_args(Info, ConstStructMap,
         ArgConsArgWidths, ArgRvals, !GlobalData).
 
 :- pred ml_gen_const_struct_arg(ml_const_struct_info::in,
-    ml_const_struct_map::in, const_struct_arg::in, bool::in,
+    ml_const_struct_map::in, const_struct_arg::in, arg_width::in,
     mlds_rval::out, ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, DoubleWidth,
-        Rval, !GlobalData) :-
+ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, Width, Rval,
+        !GlobalData) :-
     ModuleInfo = Info ^ mcsi_module_info,
     (
         ConstArg = csa_const_struct(StructNum),
@@ -2792,7 +2769,7 @@ ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, DoubleWidth,
         ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval0)
     ),
     ml_gen_box_const_rval(ModuleInfo, term.context_init, MLDS_Type,
-        DoubleWidth, Rval0, Rval, !GlobalData).
+        Width, Rval0, Rval, !GlobalData).
 
 :- pred ml_gen_const_struct_arg_tag(cons_tag::in, mer_type::in, mlds_type::in,
     mlds_rval::out) is det.
@@ -2893,22 +2870,6 @@ int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag) = Const :-
     ;
         IntTag = int_tag_uint64(UInt64),
         Const = mlconst_uint64(UInt64)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred arg_width_is_double(arg_width::in, bool::out) is det.
-
-arg_width_is_double(ArgWidth, DoubleWidth) :-
-    (
-        ArgWidth = double_word,
-        DoubleWidth = yes
-    ;
-        ( ArgWidth = full_word
-        ; ArgWidth = partial_word_first(_)
-        ; ArgWidth = partial_word_shifted(_, _)
-        ),
-        DoubleWidth = no
     ).
 
 %---------------------------------------------------------------------------%
