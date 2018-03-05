@@ -63,39 +63,11 @@ fi
 # Set values which would otherwise be determined with AC_TRY_RUN.
 # Taken from the config.cache file after running configure -C in msys.
 
-case $bits in
-    32)
-        mercury_cv_word_type=int
-        mercury_cv_low_tag_bits=2
-        mercury_cv_bytes_per_word=4
-        mercury_cv_bits_per_word=32
-        mercury_cv_unboxed_floats=no
-        ;;
-    64)
-        mercury_cv_word_type='long long'
-        mercury_cv_low_tag_bits=3
-        mercury_cv_bytes_per_word=8
-        mercury_cv_bits_per_word=64
-        mercury_cv_unboxed_floats=yes
-        ;;
-esac
-
 mercury_cv_cc_type=gcc \
 mercury_cv_sigaction_field=no \
 mercury_cv_sigcontext_struct_2arg=no \
 mercury_cv_sigcontext_struct_3arg=no \
 mercury_cv_siginfo_t=no \
-mercury_cv_word_type=$mercury_cv_word_type \
-mercury_cv_int_least64_type='long long' \
-mercury_cv_int_least32_type=int \
-mercury_cv_int_least16_type=short \
-mercury_cv_low_tag_bits=$mercury_cv_low_tag_bits \
-mercury_cv_bytes_per_word=$mercury_cv_bytes_per_word \
-mercury_cv_bits_per_word=$mercury_cv_bits_per_word \
-mercury_cv_unboxed_floats=$mercury_cv_unboxed_floats \
-mercury_cv_float_is_64_bit=no \
-mercury_cv_double_is_64_bit=yes \
-mercury_cv_long_double_is_64_bit=no \
 mercury_cv_is_bigender=no \
 mercury_cv_is_littleender=yes \
 mercury_cv_normal_system_retval=no \

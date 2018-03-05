@@ -1833,66 +1833,20 @@ fi
 
 AC_MSG_CHECKING(for an integer type with the same size as a pointer)
 AC_CACHE_VAL(mercury_cv_word_type,
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            int main() {
-                FILE *fp;
-
-                fp = fopen("conftest.tags", "w");
-                if (fp == NULL)
-                    exit(1);
-
-                /*
-                ** We do not output newline characters as these programs might
-                ** write out a CRLF pair and a shell that does not recognize
-                ** this will interpret the CR as part of the type name.
-                */
-                if (sizeof(int) == sizeof(void *))
-                {
-                    fprintf(fp, "int");
-                    exit(0);
-                }
-
-                if (sizeof(long) == sizeof(void *))
-                {
-                    fprintf(fp, "long");
-                    exit(0);
-                }
-
-                fprintf(fp, "unknown");
-                exit(1);
-            }
-        ],
-        [mercury_cv_word_type=`cat conftest.tags`],
-        [mercury_cv_word_type=unknown])
+    MERCURY_TRY_STATIC_ASSERT(
+        [],
+        [sizeof(int) == sizeof(void *)],
+        [mercury_cv_word_type=int],
+        MERCURY_TRY_STATIC_ASSERT(
+            [],
+            [sizeof(long) == sizeof(void *)],
+            [mercury_cv_word_type=long],
+            MERCURY_TRY_STATIC_ASSERT(
+                [],
+                [sizeof(long long) == sizeof(void *)],
+                [mercury_cv_word_type="long long"],
+                [mercury_cv_word_type=unknown])))
 )
-if test "$mercury_cv_word_type" = unknown; then
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <stdlib.h>
-            int main() {
-                FILE *fp;
-
-                fp = fopen("conftest.tags", "w");
-                if (fp == NULL)
-                    exit(1);
-
-                if (sizeof(long long) == sizeof(void *))
-                {
-                    fprintf(fp, "long long");
-                    exit(0);
-                }
-
-                fprintf(fp, "unknown");
-                exit(1);
-            }
-        ],
-        [mercury_cv_word_type=`cat conftest.tags`],
-        [mercury_cv_word_type=unknown])
-fi
-mercury_cv_word_type=`echo $mercury_cv_word_type | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_word_type)
 AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
 MR_WORD_TYPE=$mercury_cv_word_type
@@ -1922,76 +1876,24 @@ AC_SUBST(MR_ROBDD_int_max)
 
 AC_MSG_CHECKING(for an integer type of at least 64 bits)
 AC_CACHE_VAL(mercury_cv_int_least64_type,
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <limits.h>
-            int main() {
-                FILE *fp;
-
-                fp = fopen("conftest.tags", "w");
-                if (fp == NULL)
-                    exit(1);
-
-                /*
-                ** We do not output newline characters as these programs might
-                ** write out a CRLF pair and a shell that does not recognize
-                ** this will interpret the CR as part of the type name.
-                */
-                if (sizeof(int) * CHAR_BIT >= 64)
-                {
-                    fprintf(fp, "int");
-                    exit(0);
-                }
-
-                if (sizeof(long) * CHAR_BIT >= 64)
-                {
-                    fprintf(fp, "long");
-                    exit(0);
-                }
-
-            /* Check for __int64 when using MSVC */
-            #ifdef _MSC_VER
-                if (sizeof(__int64) * CHAR_BIT >= 64)
-                {
-                    fprintf(fp, "__int64");
-                    exit(0);
-                }
-            #endif
-
-                fprintf(fp, "unknown");
-                exit(1);
-            }
-        ],
-        [mercury_cv_int_least64_type=`cat conftest.tags`],
-        [mercury_cv_int_least64_type=unknown])
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <limits.h>],
+        [sizeof(int) * CHAR_BIT >= 64],
+        [mercury_cv_int_least64_type=int],
+        MERCURY_TRY_STATIC_ASSERT(
+            [#include <limits.h>],
+            [sizeof(long) * CHAR_BIT >= 64],
+            [mercury_cv_int_least64_type=long],
+            MERCURY_TRY_STATIC_ASSERT(
+                [#include <limits.h>],
+                [sizeof(long long) * CHAR_BIT >= 64],
+                [mercury_cv_int_least64_type="long long"],
+                MERCURY_TRY_STATIC_ASSERT(
+                    [#include <limits.h>],
+                    [sizeof(__int64) * CHAR_BIT >= 64],
+                    [mercury_cv_int_least64_type=__int64],
+                    [mercury_cv_int_least64_type=unknown]))))
 )
-if test "$mercury_cv_int_least64_type" = unknown; then
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <limits.h>
-            #include <stdlib.h>
-            int main() {
-                FILE *fp;
-
-                fp = fopen("conftest.tags", "w");
-                if (fp == NULL)
-                    exit(1);
-
-                if (sizeof(long long) * CHAR_BIT >= 64)
-                {
-                    fprintf(fp, "long long");
-                    exit(0);
-                }
-
-                fprintf(fp, "unknown");
-                exit(1);
-            }
-        ],
-        [mercury_cv_int_least64_type=`cat conftest.tags`],
-        [mercury_cv_int_least64_type=unknown])
-fi
 # Uncomment the following line to test how the system behaves
 # in the absence of a 64-bit integer type.
 # mercury_cv_int_least64_type=unknown
@@ -2019,43 +1921,16 @@ fi
 
 AC_MSG_CHECKING(for an integer type of at least 32 bits)
 AC_CACHE_VAL(mercury_cv_int_least32_type,
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <limits.h>
-            #include <stdlib.h>
-            int main() {
-                FILE *fp;
-
-                fp = fopen("conftest.tags", "w");
-                if (fp == NULL)
-                    exit(1);
-
-                /*
-                ** We do not output newline characters as these programs might
-                ** write out a CRLF pair and a shell that does not recognize
-                ** this will interpret the CR as part of the type name.
-                */
-                if (sizeof(int) * CHAR_BIT >= 32)
-                {
-                    fprintf(fp, "int");
-                    exit(0);
-                }
-
-                if (sizeof(long) * CHAR_BIT >= 32)
-                {
-                    fprintf(fp, "long");
-                    exit(0);
-                }
-
-                fprintf(fp, "unknown");
-                exit(1);
-            }
-        ],
-        [mercury_cv_int_least32_type=`cat conftest.tags`],
-        [mercury_cv_int_least32_type=unknown])
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <limits.h>],
+        [sizeof(int) * CHAR_BIT >= 32],
+        [mercury_cv_int_least32_type=int],
+        MERCURY_TRY_STATIC_ASSERT(
+            [#include <limits.h>],
+            [sizeof(long) * CHAR_BIT >= 32],
+            [mercury_cv_int_least32_type=long],
+            [mercury_cv_int_least32_type=unknown]))
 )
-mercury_cv_int_least32_type=`echo $mercury_cv_int_least32_type | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_int_least32_type)
 AC_DEFINE_UNQUOTED(MR_INT_LEAST32_TYPE, $mercury_cv_int_least32_type)
 MR_INT_LEAST32_TYPE=$mercury_cv_int_least32_type
@@ -2093,43 +1968,16 @@ esac
 
 AC_MSG_CHECKING(for an integer type of at least 16 bits)
 AC_CACHE_VAL(mercury_cv_int_least16_type,
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <limits.h>
-            #include <stdlib.h>
-            int main() {
-                FILE *fp;
-
-                fp = fopen("conftest.tags", "w");
-                if (fp == NULL)
-                    exit(1);
-
-                /*
-                ** We do not output newline characters as these programs might
-                ** write out a CRLF pair and a shell that does not recognize
-                ** this will interpret the CR as part of the type name.
-                */
-                if (sizeof(short) * CHAR_BIT >= 16)
-                {
-                    fprintf(fp, "short");
-                    exit(0);
-                }
-
-                if (sizeof(int) * CHAR_BIT >= 16)
-                {
-                    fprintf(fp, "int");
-                    exit(0);
-                }
-
-                fprintf(fp, "unknown");
-                exit(1);
-            }
-        ],
-        [mercury_cv_int_least16_type=`cat conftest.tags`],
-        [mercury_cv_int_least16_type=unknown])
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <limits.h>],
+        [sizeof(short) * CHAR_BIT >= 16],
+        [mercury_cv_int_least16_type=short],
+        MERCURY_TRY_STATIC_ASSERT(
+            [#include <limits.h>],
+            [sizeof(int) * CHAR_BIT >= 16],
+            [mercury_cv_int_least16_type=int],
+            [mercury_cv_int_least16_type=unknown]))
 )
-mercury_cv_int_least16_type=`echo $mercury_cv_int_least16_type | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_int_least16_type)
 AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
 MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
@@ -2151,45 +1999,20 @@ AC_SUBST(MR_UINT_LEAST16_MAX)
 
 AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <stdlib.h>
-            int main() {
-                FILE *fp;
-
-                fp = fopen("conftest.tags", "w");
-                if (fp == NULL)
-                    exit(1);
-
-                /*
-                ** We do not output newline characters as these programs might
-                ** write out a CRLF pair and a shell that does not recognize
-                ** this will interpret the CR as part of the type name.
-                */
-                if (sizeof(void *) == 4)
-                {
-                    fprintf(fp, "2");
-                    exit(0);
-                }
-                if (sizeof(void *) == 8)
-                {
-                    fprintf(fp, "3");
-                    exit(0);
-                }
-                if (sizeof(void *) == 16)
-                {
-                    fprintf(fp, "4");
-                    exit(0);
-                }
-                fprintf(fp, "0");
-                exit(1);
-            }
-        ],
-        [mercury_cv_low_tag_bits=`cat conftest.tags`],
-        [mercury_cv_low_tag_bits=0])
+    MERCURY_TRY_STATIC_ASSERT(
+        [],
+        [sizeof(void *) == 4],
+        [mercury_cv_low_tag_bits=2],
+        MERCURY_TRY_STATIC_ASSERT(
+            [],
+            [sizeof(void *) == 8],
+            [mercury_cv_low_tag_bits=3],
+            MERCURY_TRY_STATIC_ASSERT(
+                [],
+                [sizeof(void *) == 16],
+                [mercury_cv_low_tag_bits=4],
+                [mercury_cv_low_tag_bits=0])))
 )
-mercury_cv_low_tag_bits=`echo $mercury_cv_low_tag_bits | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_low_tag_bits)
 if test "$mercury_cv_low_tag_bits" -lt 2; then
     if test "$BOOTSTRAP_MC" = ""; then
@@ -2205,25 +2028,16 @@ AC_SUBST(LOW_TAG_BITS)
 
 AC_MSG_CHECKING(the number of bytes per word)
 AC_CACHE_VAL(mercury_cv_bytes_per_word,
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <stdlib.h>
-            int main() {
-                FILE *fp;
-
-                fp = fopen("conftest.wordbytes", "w");
-                if (fp == NULL)
-                    exit(1);
-                fprintf(fp, "%d", sizeof(void *));
-
-                exit(0);
-            }
-        ],
-        [mercury_cv_bytes_per_word=`cat conftest.wordbytes`],
-        [mercury_cv_bytes_per_word=0])
+    MERCURY_TRY_STATIC_ASSERT(
+        [],
+        [sizeof(void *) == 4],
+        [mercury_cv_bytes_per_word=4],
+        MERCURY_TRY_STATIC_ASSERT(
+            [],
+            [sizeof(void *) == 8],
+            [mercury_cv_bytes_per_word=8],
+            [mercury_cv_bytes_per_word=0]))
 )
-mercury_cv_bytes_per_word=`echo $mercury_cv_bytes_per_word | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_bytes_per_word)
 AC_DEFINE_UNQUOTED(MR_BYTES_PER_WORD, $mercury_cv_bytes_per_word)
 BYTES_PER_WORD=$mercury_cv_bytes_per_word
@@ -2233,26 +2047,16 @@ AC_SUBST(BYTES_PER_WORD)
 
 AC_MSG_CHECKING(the number of bits per word)
 AC_CACHE_VAL(mercury_cv_bits_per_word,
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <stdlib.h>
-            #include <limits.h>
-            int main() {
-                FILE *fp;
-
-                fp = fopen("conftest.wordbits", "w");
-                if (fp == NULL)
-                    exit(1);
-                fprintf(fp, "%d", CHAR_BIT * sizeof(void *));
-
-                exit(0);
-            }
-        ],
-        [mercury_cv_bits_per_word=`cat conftest.wordbits`],
-        [mercury_cv_bits_per_word=0])
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <limits.h>],
+        [sizeof(void *) * CHAR_BIT == 32],
+        [mercury_cv_bits_per_word=32],
+        MERCURY_TRY_STATIC_ASSERT(
+            [#include <limits.h>],
+            [sizeof(void *) * CHAR_BIT == 64],
+            [mercury_cv_bits_per_word=64],
+            [mercury_cv_bits_per_word=0]))
 )
-mercury_cv_bits_per_word=`echo $mercury_cv_bits_per_word | tr -d '\r'`
 AC_MSG_RESULT($mercury_cv_bits_per_word)
 AC_DEFINE_UNQUOTED(MR_BITS_PER_WORD, $mercury_cv_bits_per_word)
 BITS_PER_WORD=$mercury_cv_bits_per_word
@@ -2261,9 +2065,6 @@ AC_SUBST(BITS_PER_WORD)
 AC_DEFINE_UNQUOTED(MR_ROBDD_BITS_PER_WORD, $mercury_cv_bits_per_word)
 AC_SUBST(MR_ROBDD_BITS_PER_WORD)
 case "$mercury_cv_bits_per_word" in
-    16)
-        mercury_cv_log_bits_per_word=4
-        ;;
     32)
         mercury_cv_log_bits_per_word=5
         ;;
@@ -2271,7 +2072,7 @@ case "$mercury_cv_bits_per_word" in
         mercury_cv_log_bits_per_word=6
         ;;
     *)
-        AC_MSG_ERROR([unexpected number of bits per word: expected 16, 32 or 64])
+        AC_MSG_ERROR([unexpected number of bits per word: expected 32 or 64])
         ;;
 esac
 AC_DEFINE_UNQUOTED(MR_ROBDD_LOG_BITS_PER_WORD, $mercury_cv_log_bits_per_word)
@@ -2281,15 +2082,9 @@ AC_SUBST(MR_ROBDD_LOG_BITS_PER_WORD)
 
 AC_MSG_CHECKING(whether we can use unboxed floats)
 AC_CACHE_VAL(mercury_cv_unboxed_floats,
-    AC_TRY_RUN(
-        [
-            int main() {
-                if (sizeof(double) == sizeof(void *))
-                    exit(0);
-                else
-                    exit(1);
-            }
-        ],
+    MERCURY_TRY_STATIC_ASSERT(
+        [],
+        [sizeof(double) == sizeof(void *)],
         [mercury_cv_unboxed_floats=yes],
         [mercury_cv_unboxed_floats=no])
 )
@@ -2306,16 +2101,9 @@ AC_SUBST(HAVE_BOXED_FLOATS)
 
 AC_MSG_CHECKING(whether float is 64-bit)
 AC_CACHE_VAL(mercury_cv_float_is_64_bit,
-    AC_TRY_RUN(
-        [
-            #include <limits.h>
-            int main() {
-                if (sizeof(float) * CHAR_BIT == 64)
-                    exit(0);
-                else
-                    exit(1);
-            }
-        ],
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <limits.h>],
+        [sizeof(float) * CHAR_BIT == 64],
         [mercury_cv_float_is_64_bit=yes],
         [mercury_cv_float_is_64_bit=no])
 )
@@ -2329,16 +2117,9 @@ AC_SUBST(MR_FLOAT_IS_64_BIT)
 
 AC_MSG_CHECKING(whether double is 64-bit)
 AC_CACHE_VAL(mercury_cv_double_is_64_bit,
-    AC_TRY_RUN(
-        [
-            #include <limits.h>
-            int main() {
-                if (sizeof(double) * CHAR_BIT == 64)
-                    exit(0);
-                else
-                    exit(1);
-            }
-        ],
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <limits.h>],
+        [sizeof(double) * CHAR_BIT == 64],
         [mercury_cv_double_is_64_bit=yes],
         [mercury_cv_double_is_64_bit=no])
 )
@@ -2352,16 +2133,9 @@ AC_SUBST(MR_DOUBLE_IS_64_BIT)
 
 AC_MSG_CHECKING(whether long double is 64-bit)
 AC_CACHE_VAL(mercury_cv_long_double_is_64_bit,
-    AC_TRY_RUN(
-        [
-            #include <limits.h>
-            int main() {
-                if (sizeof(long double) * CHAR_BIT == 64)
-                    exit(0);
-                else
-                    exit(1);
-            }
-        ],
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <limits.h>],
+        [sizeof(long double) * CHAR_BIT == 64],
         [mercury_cv_long_double_is_64_bit=yes],
         [mercury_cv_long_double_is_64_bit=no])
 )
@@ -2375,16 +2149,9 @@ AC_SUBST(MR_LONG_DOUBLE_IS_64_BIT)
 
 AC_MSG_CHECKING([whether we can use unboxed 64-bit integers])
 AC_CACHE_VAL([mercury_cv_unboxed_int64s],
-    AC_TRY_RUN(
-        [
-            #include <stdint.h>
-            int main() {
-                if (sizeof(uint64_t) == sizeof(void *))
-                    exit(0);
-                else
-                    exit(1);
-            }
-        ],
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <stdint.h>],
+        [sizeof(uint64_t) == sizeof(void *)],
         [mercury_cv_unboxed_int64s=yes],
         [mercury_cv_unboxed_int64s=no])
 )

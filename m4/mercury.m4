@@ -179,6 +179,23 @@ AC_SUBST(ALL_LOCAL_C_LIB_DIR_MMC_OPTS)
 
 #-----------------------------------------------------------------------------#
 #
+# Check if a C expression is true at compile time.
+#
+
+AC_DEFUN([MERCURY_TRY_STATIC_ASSERT], [
+    AC_TRY_COMPILE(
+	[$1],
+	[
+	    struct static_assert {
+		int static_assert_expr : ( $2 ) ? 1 : -1;
+	    };
+	],
+	[$3],
+	[$4])
+])
+
+#-----------------------------------------------------------------------------#
+#
 # Check for readline and related header files and libraries
 #
 AC_DEFUN([MERCURY_CHECK_READLINE],
