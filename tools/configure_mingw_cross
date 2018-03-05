@@ -1,7 +1,7 @@
-#!/bin/sh -e
+#!/bin/sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 2012 The University of Melbourne.
-# Copyright (C) 2014 The Mercury team.
+# Copyright (C) 2014, 2018 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -10,6 +10,8 @@
 # cross-compiler.  Please see README.MinGW-cross for details.
 #
 #-----------------------------------------------------------------------------#
+
+set -e
 
 for arg
 do
@@ -33,7 +35,7 @@ esac
 
 echo "Configuring for host $host, assuming ${bits}-bit"
 
-if which $hostcc >/dev/null
+if command -v $hostcc >/dev/null
 then
     true
 else
@@ -41,7 +43,7 @@ else
     exit 1
 fi
 
-if which mmc >/dev/null && mmc -v 2>&1 | grep -q Mercury
+if command -v mmc >/dev/null && mmc -v 2>&1 | grep -q Mercury
 then
     true
 else
