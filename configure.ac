@@ -5263,6 +5263,14 @@ mercury_check_c_files () {
             ;;
     esac
 
+    # Keep everything on one line to avoid any line ending differences.
+    printf ";TAG_BITS=%s;UNBOXED_FLOAT=%s;UNBOXED_INT64S=%s;PREGENERATED_DIST=%s;HIGHLEVEL_CODE=%s;" \
+        $need_low_tag_bits \
+        $need_unboxed_floats \
+        $need_unboxed_int64s \
+        $need_pregen_dist \
+        $need_hl_c_files > confscratch.ref
+
     for c_file in $c_dir/*.c
     do
         case $c_file in
@@ -5271,17 +5279,9 @@ mercury_check_c_files () {
         */*_init.c)
             ;;
         *)
-            sed -e '/END_OF_C_GRADE_INFO/q' < $c_file > confscratch
-            if grep "TAG_BITS=$need_low_tag_bits" \
-                    confscratch > /dev/null 2>&1 \
-                && grep "UNBOXED_FLOAT=$need_unboxed_floats" \
-                    confscratch > /dev/null 2>&1 \
-                && grep "UNBOXED_INT64S=$need_unbox_int64s" \
-                    confscratch > /dev/null 2>&1 \
-                && grep "PREGENERATED_DIST=$need_pregen_dist" \
-                    confscratch > /dev/null 2>&1 \
-                && grep "HIGHLEVEL_CODE=$need_hl_c_files" \
-                    confscratch > /dev/null 2>&1
+            sed -n '/END_OF_C_GRADE_INFO/q ; /=/p' < $c_file | \
+                tr -s '* \r\n' ';' > confscratch
+            if cmp -s confscratch confscratch.ref
             then
                 some_kept=true
             else
@@ -5328,7 +5328,7 @@ if test "$BOOTSTRAP_MC" != "" ; then
         esac
         MERCURY_MSG("installation may take longer than usual")
     fi
-    rm -f confscratch $to_delete
+    rm -f confscratch confscratch.ref $to_delete
 fi
 
 #-----------------------------------------------------------------------------#
