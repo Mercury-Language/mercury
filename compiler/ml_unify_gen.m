@@ -66,31 +66,27 @@
     % specifies additional constants to insert at the start of the
     % argument list.
     %
+    % Exported for use by ml_closure_gen.m.
+    %
 :- pred ml_gen_new_object(maybe(cons_id)::in, maybe(qual_ctor_id)::in,
     mlds_ptag::in, bool::in, prog_var::in, list(mlds_typed_rval)::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Convert a cons_id for a given type to a cons_tag.
-    %
-:- pred ml_cons_id_to_tag(ml_gen_info::in, cons_id::in, cons_tag::out) is det.
-
-    % ml_gen_tag_test(Var, ConsId, Expression, !Info):
+    % ml_gen_known_tag_test(Var, TaggedConsId, Expression, !Info):
     %
     % Generate code to perform a tag test.
     %
-    % The test checks whether Var has the functor specified by ConsId.
+    % The test checks whether Var has the functor specified by TaggedConsId.
     % The generated code will not contain Defns or Stmts; it will be
     % only an Expression, which will be a boolean rval. Expression will
     % evaluate to true iff the Var has the functor specified by ConsId.
     %
-:- pred ml_gen_tag_test(prog_var::in, cons_id::in, mlds_rval::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-    % ml_gen_known_tag_test(Var, TaggedConsId, Expression, !Info):
+    % (The "known" part of the name refers to the fact that the tag of
+    % the cons_id is already known.)
     %
-    % Same as ml_gen_tag_test, but the tag of ConsId is already known.
+    % Exported for use ml_switch_gen.m.
     %
 :- pred ml_gen_known_tag_test(prog_var::in, tagged_cons_id::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -101,6 +97,8 @@
     % Return the rval for the secondary tag field of VarRval, assuming that
     % VarRval has the specified VarType and PrimaryTag.
     %
+    % Exported for use ml_tag_switch.m.
+    %
 :- func ml_gen_secondary_tag_rval(module_info, mlds_target_lang, ptag,
     mer_type, mlds_rval) = mlds_rval.
 
@@ -109,6 +107,8 @@
 :- pred ml_gen_ground_term(prog_var::in, hlds_goal::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
+    % Record the contents of the module's const_struct_db in !GlobalData.
+    %
 :- pred ml_gen_const_structs(module_info::in, mlds_target_lang::in,
     ml_const_struct_map::out, ml_global_data::in, ml_global_data::out) is det.
 
@@ -1430,68 +1430,6 @@ ml_gen_unify_args_loop(ConsId, [Arg | Args], [Mode | Modes],
     ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, CtorArgRepn,
         VarType, VarLval, Offset, ArgNum, Tag, Context, !Stmts, !Info).
 
-:- pred ml_next_field_offset(constructor_arg_repn::in,
-    list(constructor_arg_repn)::in,
-    field_offset::in, field_offset::out) is det.
-
-ml_next_field_offset(_, [], Offset, Offset).
-ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
-    CurArg = ctor_arg_repn(_, _, CurWidth, _),
-    NextArg = ctor_arg_repn(_, _, NextWidth, _),
-    (
-        CurWidth = full_word,
-        (
-            ( NextWidth = full_word
-            ; NextWidth = double_word
-            ; NextWidth = partial_word_first(_)
-            ),
-            PrevOffset = offset(Int),
-            NextOffset = offset(Int + 1)
-        ;
-            NextWidth = partial_word_shifted(_, _),
-            unexpected($pred, "partial_word_shifted follows full_word")
-        )
-    ;
-        CurWidth = double_word,
-        (
-            ( NextWidth = full_word
-            ; NextWidth = double_word
-            ; NextWidth = partial_word_first(_)
-            ),
-            PrevOffset = offset(Int),
-            NextOffset = offset(Int + 2)
-        ;
-            NextWidth = partial_word_shifted(_, _),
-            unexpected($pred, "partial_word_shifted follows double_word")
-        )
-    ;
-        CurWidth = partial_word_first(_),
-        (
-            NextWidth = partial_word_shifted(_, _),
-            NextOffset = PrevOffset
-        ;
-            ( NextWidth = full_word
-            ; NextWidth = double_word
-            ; NextWidth = partial_word_first(_)
-            ),
-            unexpected($pred,
-                "partial_word_first not followed by partial_word_shifted")
-        )
-    ;
-        CurWidth = partial_word_shifted(_, _),
-        (
-            ( NextWidth = full_word
-            ; NextWidth = double_word
-            ; NextWidth = partial_word_first(_)
-            ),
-            PrevOffset = offset(Int),
-            NextOffset = offset(Int + 1)
-        ;
-            NextWidth = partial_word_shifted(_, _),
-            NextOffset = PrevOffset
-        )
-    ).
-
 :- pred ml_gen_unify_args_for_reuse(cons_id::in, list(prog_var)::in,
     list(unify_mode)::in, list(mer_type)::in, list(constructor_arg_repn)::in,
     list(int)::in, mer_type::in, mlds_lval::in, field_offset::in,
@@ -1927,12 +1865,6 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
 
 %---------------------------------------------------------------------------%
 
-ml_cons_id_to_tag(Info, ConsId, Tag) :-
-    ml_gen_info_get_module_info(Info, ModuleInfo),
-    Tag = cons_id_to_tag(ModuleInfo, ConsId).
-
-%---------------------------------------------------------------------------%
-
     % Generate a semidet deconstruction. A semidet deconstruction unification
     % is a tag test, followed by a deterministic deconstruction which is
     % executed only if the tag test succeeds.
@@ -1967,6 +1899,18 @@ ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context, Stmts, !Info) :-
             Context),
         Stmts = [SetTagTestResult, IfStmt]
     ).
+
+    % ml_gen_tag_test(Var, ConsId, Expression, !Info):
+    %
+    % Generate code to perform a tag test.
+    %
+    % The test checks whether Var has the functor specified by ConsId.
+    % The generated code will not contain Defns or Stmts; it will be
+    % only an Expression, which will be a boolean rval. Expression will
+    % evaluate to true iff the Var has the functor specified by ConsId.
+    %
+:- pred ml_gen_tag_test(prog_var::in, cons_id::in, mlds_rval::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_tag_test(Var, ConsId, TagTestExpression, !Info) :-
     % NOTE: Keep in sync with ml_gen_known_tag_test below.
@@ -2835,6 +2779,172 @@ int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag) = Const :-
 
 %---------------------------------------------------------------------------%
 
+:- type may_have_extra_args
+    --->    may_not_have_extra_args
+    ;       may_have_extra_args.
+
+:- type type_and_width
+    --->    type_and_width(mer_type, arg_width).
+
+:- pred maybe_cons_id_arg_types_and_widths(module_info::in, mer_type::in,
+    maybe(cons_id)::in, list(mer_type)::in, list(type_and_width)::out) is det.
+
+maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId, ArgTypes,
+        ConsArgTypesWidths) :-
+    NumArgs = list.length(ArgTypes),
+    (
+        MaybeConsId = yes(ConsId),
+        cons_id_arg_types_and_widths(ModuleInfo, may_have_extra_args,
+            VarType, ConsId, NumArgs, ArgTypes, ConsArgTypesWidths)
+    ;
+        MaybeConsId = no,
+        % It is a closure. In this case, the arguments are all boxed.
+        ConsArgTypes = ml_make_boxed_types(NumArgs),
+        list.map(specify_width(full_word), ConsArgTypes, ConsArgTypesWidths)
+    ).
+
+    % cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
+    %     ConsId, Args, ArgTypes, ConsArgWidths):
+    %
+    % We are constructing a structure (either on the heap or in static memory).
+    % VarType is the type of the whole structure, ConsId is the functor,
+    % and the length of Args gives the number of the functor's visible
+    % arguments. (If MayHaveExtraArgs = may_have_extra_args, then the
+    % visible arguments may be prefaced by extra type_info and/or
+    % typeclass_info arguments added to describe some existentially typed
+    % visible arguments.)
+    %
+    % The job of this predicate is to return the types of all the functor's
+    % arguments (of which the types of the actual argument variables
+    % will be an instance), together with their widths. ("All" the arguments
+    % means that this includes any extra arguments as well.)
+    %
+    % In some circumstances, the types of the non-extra arguments are taken
+    % from ArgTypes. One of our callers does not need the types inside
+    % ConsArgTypesWidths; such callers can supply dummy values for ArgTypes,
+    % if they also pass may_not_have_extra_args.
+    %
+:- pred cons_id_arg_types_and_widths(module_info,
+    may_have_extra_args, mer_type, cons_id, int, list(mer_type),
+    list(type_and_width)).
+:- mode cons_id_arg_types_and_widths(in, in(bound(may_have_extra_args)),
+    in, in, in, in, out) is det.
+:- mode cons_id_arg_types_and_widths(in, in(bound(may_not_have_extra_args)),
+    in, in, in, in, out) is det.
+
+cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
+        ConsId, NumArgs, ArgTypes, ConsArgTypesWidths) :-
+    ( if
+        ConsId = cons(_, _, _),
+        not is_introduced_type_info_type(VarType)
+    then
+        ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
+            ConsArgDefns = ConsRepnDefn ^ cr_args,
+            NumExtraArgs = NumArgs - list.length(ConsArgDefns),
+            ConsArgTypesWidths0 = list.map(
+                (func(C) = type_and_width(C ^ car_type, C ^ car_width)),
+                ConsArgDefns),
+            (
+                MayHaveExtraArgs = may_not_have_extra_args,
+                ConsArgTypesWidths = ConsArgTypesWidths0,
+                expect(unify(NumExtraArgs, 0), $pred,
+                    "extra args in static struct")
+            ;
+                MayHaveExtraArgs = may_have_extra_args,
+                % There may have been additional types inserted to hold the
+                % type_infos and type_class_infos for existentially quantified
+                % types. We can get these from the ArgTypes.
+                ExtraArgTypes = list.take_upto(NumExtraArgs, ArgTypes),
+                list.map(specify_width(full_word), ExtraArgTypes,
+                    ExtraArgTypesWidths),
+                ConsArgTypesWidths = ExtraArgTypesWidths ++ ConsArgTypesWidths0
+            )
+        else if
+            % If we didn't find a constructor definition, maybe that is
+            % because this type was a built-in type.
+            type_is_tuple(VarType, _)
+        then
+            % In this case, the argument types are all fresh variables.
+            % Note that we do not need to worry about using the right varset
+            % here, since all we really care about at this point is whether
+            % something is a type variable or not, not which type variable
+            % it is.
+            ConsArgTypes = ml_make_boxed_types(NumArgs),
+            list.map(specify_width(full_word), ConsArgTypes,
+                ConsArgTypesWidths)
+        else
+            % The only builtin types that can allocate structures
+            % are tuples and the RTTI-related types. Both should have been
+            % handled by code above.
+            unexpected($pred, "get_cons_defn failed")
+        )
+    else
+        % For cases when ConsId \= hlds_cons(_, _) and it is not a tuple,
+        % as can happen e.g. for closures and type_infos, we assume that
+        % the arguments all have the right type already.
+        % XXX is this the right thing to do?
+        ConsArgTypes = ArgTypes,
+        ( if list.length(ArgTypes, NumArgs) then
+            true
+        else
+            unexpected($pred, "|Args| != |ArgTypes|")
+        ),
+        list.map(specify_width(full_word), ConsArgTypes, ConsArgTypesWidths)
+    ).
+
+:- pred specify_width(arg_width::in, mer_type::in, type_and_width::out) is det.
+
+specify_width(Width, Type, type_and_width(Type, Width)).
+
+%---------------------------------------------------------------------------%
+
+:- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
+    bool::in, prog_context::in, mer_type::in, mlds_type::in,
+    maybe(cons_id)::in, tag_uses_base_class::in, int::in,
+    list(mlds_rval)::in, list(arg_width)::in, list(mlds_rval)::in,
+    ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
+
+construct_static_ground_term(ModuleInfo, Target, HighLevelData,
+        Context, VarType, MLDS_Type, MaybeConsId, UsesBaseClass, Ptag,
+        ArgRvals0, ConsArgWidths, ExtraArgRvals, GroundTerm, !GlobalData) :-
+    % Generate a local static constant for this term.
+    ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
+        UsesBaseClass, MaybeConsId),
+    pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals0, ArgRvals,
+        unit, _, unit, _),
+    % By construction, boxing the ExtraArgRvals would be a no-op.
+    %
+    % XXX If the secondary tag is in a base class, then ideally its
+    % initializer should be wrapped in `init_struct([init_obj(X)])'
+    % rather than just `init_obj(X)' -- the fact that we don't leads to
+    % some warnings from GNU C about missing braces in initializers.
+    AllArgRvals = ExtraArgRvals ++ ArgRvals,
+    ArgInits = list.map(func(Init) = init_obj(Init), AllArgRvals),
+    ( if ConstType = mlds_array_type(_) then
+        Initializer = init_array(ArgInits)
+    else
+        Initializer = init_struct(ConstType, ArgInits)
+    ),
+    module_info_get_name(ModuleInfo, ModuleName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var, ConstType,
+        Initializer, Context, ConstDataAddrRval, !GlobalData),
+
+    % Assign the (possibly tagged) address of the local static constant
+    % to the variable.
+    ( if Ptag = 0 then
+        TaggedRval = ConstDataAddrRval
+    else
+        TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
+    ),
+    Rval = ml_unop(cast(MLDS_Type), TaggedRval),
+    GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type).
+
+%---------------------------------------------------------------------------%
+%
+% Packing arguments into words.
+%
+
 :- pred ml_expand_or_pack_into_words(list(arg_width)::in,
     list(mlds_typed_rval)::in, list(mlds_typed_rval)::out) is det.
 
@@ -3071,166 +3181,80 @@ ml_bitwise_and(Rval, Mask) =
 
 %---------------------------------------------------------------------------%
 
-:- type may_have_extra_args
-    --->    may_not_have_extra_args
-    ;       may_have_extra_args.
+:- pred ml_next_field_offset(constructor_arg_repn::in,
+    list(constructor_arg_repn)::in,
+    field_offset::in, field_offset::out) is det.
 
-:- type type_and_width
-    --->    type_and_width(mer_type, arg_width).
-
-:- pred maybe_cons_id_arg_types_and_widths(module_info::in, mer_type::in,
-    maybe(cons_id)::in, list(mer_type)::in, list(type_and_width)::out) is det.
-
-maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId, ArgTypes,
-        ConsArgTypesWidths) :-
-    NumArgs = list.length(ArgTypes),
+ml_next_field_offset(_, [], Offset, Offset).
+ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
+    CurArg = ctor_arg_repn(_, _, CurWidth, _),
+    NextArg = ctor_arg_repn(_, _, NextWidth, _),
     (
-        MaybeConsId = yes(ConsId),
-        cons_id_arg_types_and_widths(ModuleInfo, may_have_extra_args,
-            VarType, ConsId, NumArgs, ArgTypes, ConsArgTypesWidths)
-    ;
-        MaybeConsId = no,
-        % It is a closure. In this case, the arguments are all boxed.
-        ConsArgTypes = ml_make_boxed_types(NumArgs),
-        list.map(specify_width(full_word), ConsArgTypes, ConsArgTypesWidths)
-    ).
-
-    % cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
-    %     ConsId, Args, ArgTypes, ConsArgWidths):
-    %
-    % We are constructing a structure (either on the heap or in static memory).
-    % VarType is the type of the whole structure, ConsId is the functor,
-    % and the length of Args gives the number of the functor's visible
-    % arguments. (If MayHaveExtraArgs = may_have_extra_args, then the
-    % visible arguments may be prefaced by extra type_info and/or
-    % typeclass_info arguments added to describe some existentially typed
-    % visible arguments.)
-    %
-    % The job of this predicate is to return the types of all the functor's
-    % arguments (of which the types of the actual argument variables
-    % will be an instance), together with their widths. ("All" the arguments
-    % means that this includes any extra arguments as well.)
-    %
-    % In some circumstances, the types of the non-extra arguments are taken
-    % from ArgTypes. One of our callers does not need the types inside
-    % ConsArgTypesWidths; such callers can supply dummy values for ArgTypes,
-    % if they also pass may_not_have_extra_args.
-    %
-:- pred cons_id_arg_types_and_widths(module_info,
-    may_have_extra_args, mer_type, cons_id, int, list(mer_type),
-    list(type_and_width)).
-:- mode cons_id_arg_types_and_widths(in, in(bound(may_have_extra_args)),
-    in, in, in, in, out) is det.
-:- mode cons_id_arg_types_and_widths(in, in(bound(may_not_have_extra_args)),
-    in, in, in, in, out) is det.
-
-cons_id_arg_types_and_widths(ModuleInfo, MayHaveExtraArgs, VarType,
-        ConsId, NumArgs, ArgTypes, ConsArgTypesWidths) :-
-    ( if
-        ConsId = cons(_, _, _),
-        not is_introduced_type_info_type(VarType)
-    then
-        ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
-            ConsArgDefns = ConsRepnDefn ^ cr_args,
-            NumExtraArgs = NumArgs - list.length(ConsArgDefns),
-            ConsArgTypesWidths0 = list.map(
-                (func(C) = type_and_width(C ^ car_type, C ^ car_width)),
-                ConsArgDefns),
-            (
-                MayHaveExtraArgs = may_not_have_extra_args,
-                ConsArgTypesWidths = ConsArgTypesWidths0,
-                expect(unify(NumExtraArgs, 0), $pred,
-                    "extra args in static struct")
-            ;
-                MayHaveExtraArgs = may_have_extra_args,
-                % There may have been additional types inserted to hold the
-                % type_infos and type_class_infos for existentially quantified
-                % types. We can get these from the ArgTypes.
-                ExtraArgTypes = list.take_upto(NumExtraArgs, ArgTypes),
-                list.map(specify_width(full_word), ExtraArgTypes,
-                    ExtraArgTypesWidths),
-                ConsArgTypesWidths = ExtraArgTypesWidths ++ ConsArgTypesWidths0
-            )
-        else if
-            % If we didn't find a constructor definition, maybe that is
-            % because this type was a built-in type.
-            type_is_tuple(VarType, _)
-        then
-            % In this case, the argument types are all fresh variables.
-            % Note that we do not need to worry about using the right varset
-            % here, since all we really care about at this point is whether
-            % something is a type variable or not, not which type variable
-            % it is.
-            ConsArgTypes = ml_make_boxed_types(NumArgs),
-            list.map(specify_width(full_word), ConsArgTypes,
-                ConsArgTypesWidths)
-        else
-            % The only builtin types that can allocate structures
-            % are tuples and the RTTI-related types. Both should have been
-            % handled by code above.
-            unexpected($pred, "get_cons_defn failed")
+        CurWidth = full_word,
+        (
+            ( NextWidth = full_word
+            ; NextWidth = double_word
+            ; NextWidth = partial_word_first(_)
+            ),
+            PrevOffset = offset(Int),
+            NextOffset = offset(Int + 1)
+        ;
+            NextWidth = partial_word_shifted(_, _),
+            unexpected($pred, "partial_word_shifted follows full_word")
         )
-    else
-        % For cases when ConsId \= hlds_cons(_, _) and it is not a tuple,
-        % as can happen e.g. for closures and type_infos, we assume that
-        % the arguments all have the right type already.
-        % XXX is this the right thing to do?
-        ConsArgTypes = ArgTypes,
-        ( if list.length(ArgTypes, NumArgs) then
-            true
-        else
-            unexpected($pred, "|Args| != |ArgTypes|")
-        ),
-        list.map(specify_width(full_word), ConsArgTypes, ConsArgTypesWidths)
+    ;
+        CurWidth = double_word,
+        (
+            ( NextWidth = full_word
+            ; NextWidth = double_word
+            ; NextWidth = partial_word_first(_)
+            ),
+            PrevOffset = offset(Int),
+            NextOffset = offset(Int + 2)
+        ;
+            NextWidth = partial_word_shifted(_, _),
+            unexpected($pred, "partial_word_shifted follows double_word")
+        )
+    ;
+        CurWidth = partial_word_first(_),
+        (
+            NextWidth = partial_word_shifted(_, _),
+            NextOffset = PrevOffset
+        ;
+            ( NextWidth = full_word
+            ; NextWidth = double_word
+            ; NextWidth = partial_word_first(_)
+            ),
+            unexpected($pred,
+                "partial_word_first not followed by partial_word_shifted")
+        )
+    ;
+        CurWidth = partial_word_shifted(_, _),
+        (
+            ( NextWidth = full_word
+            ; NextWidth = double_word
+            ; NextWidth = partial_word_first(_)
+            ),
+            PrevOffset = offset(Int),
+            NextOffset = offset(Int + 1)
+        ;
+            NextWidth = partial_word_shifted(_, _),
+            NextOffset = PrevOffset
+        )
     ).
-
-:- pred specify_width(arg_width::in, mer_type::in, type_and_width::out) is det.
-
-specify_width(Width, Type, type_and_width(Type, Width)).
 
 %---------------------------------------------------------------------------%
+%
+% Utility predicates.
+%
 
-:- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
-    bool::in, prog_context::in, mer_type::in, mlds_type::in,
-    maybe(cons_id)::in, tag_uses_base_class::in, int::in,
-    list(mlds_rval)::in, list(arg_width)::in, list(mlds_rval)::in,
-    ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
-
-construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        Context, VarType, MLDS_Type, MaybeConsId, UsesBaseClass, Ptag,
-        ArgRvals0, ConsArgWidths, ExtraArgRvals, GroundTerm, !GlobalData) :-
-    % Generate a local static constant for this term.
-    ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
-        UsesBaseClass, MaybeConsId),
-    pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals0, ArgRvals,
-        unit, _, unit, _),
-    % By construction, boxing the ExtraArgRvals would be a no-op.
+    % Convert a cons_id for a given type to a cons_tag.
     %
-    % XXX If the secondary tag is in a base class, then ideally its
-    % initializer should be wrapped in `init_struct([init_obj(X)])'
-    % rather than just `init_obj(X)' -- the fact that we don't leads to
-    % some warnings from GNU C about missing braces in initializers.
-    AllArgRvals = ExtraArgRvals ++ ArgRvals,
-    ArgInits = list.map(func(Init) = init_obj(Init), AllArgRvals),
-    ( if ConstType = mlds_array_type(_) then
-        Initializer = init_array(ArgInits)
-    else
-        Initializer = init_struct(ConstType, ArgInits)
-    ),
-    module_info_get_name(ModuleInfo, ModuleName),
-    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_const_var, ConstType,
-        Initializer, Context, ConstDataAddrRval, !GlobalData),
+:- pred ml_cons_id_to_tag(ml_gen_info::in, cons_id::in, cons_tag::out) is det.
 
-    % Assign the (possibly tagged) address of the local static constant
-    % to the variable.
-    ( if Ptag = 0 then
-        TaggedRval = ConstDataAddrRval
-    else
-        TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
-    ),
-    Rval = ml_unop(cast(MLDS_Type), TaggedRval),
-    GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type).
+ml_cons_id_to_tag(Info, ConsId, Tag) :-
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    Tag = cons_id_to_tag(ModuleInfo, ConsId).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_unify_gen.
