@@ -191,7 +191,7 @@ decide_type_repns(!ModuleInfo, !Specs) :-
         UnboxedNoTagTypesBool = yes,
         UnboxedNoTagTypes = use_unboxed_no_tag_types
     ),
-    globals.lookup_int_option(Globals, num_tag_bits, NumPtagBits),
+    globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
     ( if NumPtagBits = 0 then
         MaybePrimaryTags = no_primary_tags
     else

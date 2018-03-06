@@ -316,7 +316,6 @@ build_stag_rev_map([Entry | Entries], !RevMap) :-
 gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
         CanFail, Context, Stmt, !Info) :-
     % Generate the rval for the secondary tag.
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
@@ -325,9 +324,8 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
         StagRval = ml_unop(std_unop(unmkbody), VarRval)
     ;
         StagLocn = sectag_remote,
-        ml_gen_info_get_target(!.Info, Target),
-        StagRval = ml_gen_secondary_tag_rval(ModuleInfo, Target,
-            PrimaryTag, VarType, VarRval)
+        ml_gen_secondary_tag_rval(!.Info, VarType, VarRval,
+            PrimaryTag, StagRval)
     ;
         ( StagLocn = sectag_none
         ; StagLocn = sectag_none_direct_arg

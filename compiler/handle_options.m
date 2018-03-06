@@ -727,7 +727,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     globals.lookup_bool_option(!.Globals, pregenerated_dist, PregeneratedDist),
     (
         PregeneratedDist = yes,
-        globals.set_option(num_tag_bits, int(2), !Globals),
+        globals.set_option(num_ptag_bits, int(2), !Globals),
         globals.set_option(arg_pack_bits, int(32), !Globals),
         globals.set_option(unboxed_float, bool(no), !Globals),
         globals.set_option(unboxed_int64s, bool(no), !Globals),
@@ -740,12 +740,12 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     % --tags none implies --num-tag-bits 0.
     (
         TagsMethod0 = tags_none,
-        NumTagBits0 = 0
+        NumPtagBits0 = 0
     ;
         ( TagsMethod0 = tags_low
         ; TagsMethod0 = tags_high
         ),
-        globals.lookup_int_option(!.Globals, num_tag_bits, NumTagBits0)
+        globals.lookup_int_option(!.Globals, num_ptag_bits, NumPtagBits0)
     ),
 
     % If --tags low but --num-tag-bits is not specified,
@@ -754,29 +754,29 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     % using the deliberately undocumented --conf-low-tag-bits option.)
     ( if
         TagsMethod0 = tags_low,
-        NumTagBits0 = -1
+        NumPtagBits0 = -1
     then
-        globals.lookup_int_option(!.Globals, conf_low_tag_bits, NumTagBits1)
+        globals.lookup_int_option(!.Globals, conf_low_ptag_bits, NumPtagBits1)
     else
-        NumTagBits1 = NumTagBits0
+        NumPtagBits1 = NumPtagBits0
     ),
 
     % If --num-tag-bits is negative (which may or may not be its default
     % value of -1), issue a warning and assume --num-tag-bits 0.
-    ( if NumTagBits1 < 0 then
-        NumTagBits = 0,
-        NumTagBitsSpec =
+    ( if NumPtagBits1 < 0 then
+        NumPtagBits = 0,
+        NumPtagBitsSpec =
             [words("Warning: the value of the"), quote("--num-tag-bits"),
             words("option is either unspecified or invalid."), nl,
             words("Using"), quote("--num-tag-bits 0"), suffix(","),
             words("which disables tags."), nl],
-        add_warning(phase_options, NumTagBitsSpec, !Specs)
+        add_warning(phase_options, NumPtagBitsSpec, !Specs)
     else
-        NumTagBits = NumTagBits1
+        NumPtagBits = NumPtagBits1
     ),
 
-    globals.set_option(num_tag_bits, int(NumTagBits), !Globals),
-    ( if NumTagBits = 0 then
+    globals.set_option(num_ptag_bits, int(NumPtagBits), !Globals),
+    ( if NumPtagBits = 0 then
         TagsMethod = tags_none,
         globals.set_tags_method(TagsMethod, !Globals)
     else
@@ -897,7 +897,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(unboxed_int64s, bool(yes), !Globals),
         globals.set_option(nondet_copy_out, bool(yes), !Globals),
         globals.set_option(det_copy_out, bool(yes), !Globals),
-        globals.set_option(num_tag_bits, int(0), !Globals),
+        globals.set_option(num_ptag_bits, int(0), !Globals),
         globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
         globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
         globals.set_option(pretest_equality_cast_pointers, bool(yes),
@@ -2278,7 +2278,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         ( TagsMethod = tags_low
         ; TagsMethod = tags_high
         ),
-        NumTagBits >= 2
+        NumPtagBits >= 2
     then
         globals.set_option(can_compare_constants_as_ints, bool(yes), !Globals)
     else

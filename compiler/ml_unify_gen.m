@@ -74,14 +74,14 @@
     how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % ml_gen_known_tag_test(Var, TaggedConsId, Expression, !Info):
+    % ml_gen_known_tag_test(Var, TaggedConsId, Expr, !Info):
     %
     % Generate code to perform a tag test.
     %
     % The test checks whether Var has the functor specified by TaggedConsId.
     % The generated code will not contain Defns or Stmts; it will be
-    % only an Expression, which will be a boolean rval. Expression will
-    % evaluate to true iff the Var has the functor specified by ConsId.
+    % only an Expr, which will be a boolean rval. Expr will evaluate to true
+    % iff the Var has the functor specified by ConsId.
     %
     % (The "known" part of the name refers to the fact that the tag of
     % the cons_id is already known.)
@@ -91,16 +91,15 @@
 :- pred ml_gen_known_tag_test(prog_var::in, tagged_cons_id::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % ml_gen_secondary_tag_rval(ModuleInfo, Target, PrimaryTag, VarType,
-    %   VarRval):
+    % ml_gen_secondary_tag_rval(Info, VarType, VarRval, Ptag, StagRval):
     %
     % Return the rval for the secondary tag field of VarRval, assuming that
     % VarRval has the specified VarType and PrimaryTag.
     %
     % Exported for use ml_tag_switch.m.
     %
-:- func ml_gen_secondary_tag_rval(module_info, mlds_target_lang, ptag,
-    mer_type, mlds_rval) = mlds_rval.
+:- pred ml_gen_secondary_tag_rval(ml_gen_info::in, mer_type::in, mlds_rval::in,
+    ptag::in, mlds_rval::out) is det.
 
     % Generate MLDS code for a scope that constructs a ground term.
     %
@@ -580,8 +579,7 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
     maybe_cons_id_arg_types_and_widths(ModuleInfo, VarType, MaybeConsId,
         ArgTypes, ConsArgTypesWidths),
     NumExtraRvals = list.length(ExtraRvalsMLDSTypes),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
+    ml_gen_info_get_use_atomic_cells(!.Info, UseAtomicCells),
     (
         UseAtomicCells = yes,
         MayUseAtomic0 = may_use_atomic_alloc
@@ -608,7 +606,7 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
     SizeInWordsRval = ml_const(mlconst_int(Size)),
 
     % Generate an allocation site id.
-    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
+    ml_gen_info_get_profile_memory(!.Info, ProfileMemory),
     (
         ProfileMemory = yes,
         ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
@@ -799,10 +797,7 @@ ml_gen_field_take_address_assigns([], _, _, _, _, _, []).
 ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         CellLval, CellType, MaybePtag, Context, Info, [Assign | Assigns]) :-
     TakeAddrInfo = take_addr_info(AddrVar, Offset, _ConsArgType, FieldType),
-
-    ml_gen_info_get_module_info(Info, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
     (
         HighLevelData = no,
         % XXX I am not sure that the types specified here are always the right
@@ -817,6 +812,7 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
             FieldType, CellType)),
         ml_gen_var(Info, AddrVar, AddrLval),
         ml_variable_type(Info, AddrVar, AddrVarType),
+        ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_AddrVarType = mercury_type_to_mlds_type(ModuleInfo, AddrVarType),
         CastSourceRval = ml_unop(cast(MLDS_AddrVarType), SourceRval),
         Assign = ml_gen_assign(AddrLval, CastSourceRval, Context)
@@ -1884,9 +1880,9 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context, Stmts, !Info) :-
-    ml_gen_tag_test(Var, ConsId, TagTestExpression, !Info),
-    ml_gen_set_success(TagTestExpression, Context, SetTagTestResult, !Info),
-    ml_gen_test_success(SucceededExpression, !Info),
+    ml_gen_tag_test(Var, ConsId, TagTestExpr, !Info),
+    ml_gen_set_success(TagTestExpr, Context, SetTagTestResult, !Info),
+    ml_gen_test_success(SucceededExpr, !Info),
     ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
         GetArgsStmts, !Info),
     (
@@ -1895,24 +1891,23 @@ ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context, Stmts, !Info) :-
     ;
         GetArgsStmts = [_ | _],
         GetArgs = ml_gen_block([], [], GetArgsStmts, Context),
-        IfStmt = ml_stmt_if_then_else(SucceededExpression, GetArgs, no,
-            Context),
+        IfStmt = ml_stmt_if_then_else(SucceededExpr, GetArgs, no, Context),
         Stmts = [SetTagTestResult, IfStmt]
     ).
 
-    % ml_gen_tag_test(Var, ConsId, Expression, !Info):
+    % ml_gen_tag_test(Var, ConsId, Expr, !Info):
     %
     % Generate code to perform a tag test.
     %
     % The test checks whether Var has the functor specified by ConsId.
     % The generated code will not contain Defns or Stmts; it will be
-    % only an Expression, which will be a boolean rval. Expression will
-    % evaluate to true iff the Var has the functor specified by ConsId.
+    % only an Expr, which will be a boolean rval. Expr will evaluate to true
+    % iff the Var has the functor specified by ConsId.
     %
 :- pred ml_gen_tag_test(prog_var::in, cons_id::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_tag_test(Var, ConsId, TagTestExpression, !Info) :-
+ml_gen_tag_test(Var, ConsId, TagTestExpr, !Info) :-
     % NOTE: Keep in sync with ml_gen_known_tag_test below.
 
     % TODO: apply the reverse tag test optimization for types with two
@@ -1921,12 +1916,9 @@ ml_gen_tag_test(Var, ConsId, TagTestExpression, !Info) :-
     ml_gen_var(!.Info, Var, VarLval),
     ml_variable_type(!.Info, Var, Type),
     ml_cons_id_to_tag(!.Info, ConsId, Tag),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_info_get_target(!.Info, Target),
-    TagTestExpression = ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type,
-        ml_lval(VarLval)).
+    TagTestExpr = ml_gen_tag_test_rval(!.Info, Tag, Type, ml_lval(VarLval)).
 
-ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpression, !Info) :-
+ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpr, !Info) :-
     % NOTE: Keep in sync with ml_gen_tag_test above.
 
     % TODO: apply the reverse tag test optimization for types with two
@@ -1935,20 +1927,17 @@ ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpression, !Info) :-
     ml_gen_var(!.Info, Var, VarLval),
     ml_variable_type(!.Info, Var, Type),
     TaggedConsId = tagged_cons_id(_ConsId, Tag),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_info_get_target(!.Info, Target),
-    TagTestExpression = ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type,
-        ml_lval(VarLval)).
+    TagTestExpr = ml_gen_tag_test_rval(!.Info, Tag, Type, ml_lval(VarLval)).
 
-    % ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, VarRval) = TestRval:
+    % ml_gen_tag_test_rval(Info, Tag, Type, VarRval) = TestRval:
     %
-    % TestRval is an Rval of type bool which evaluates to true if VarRval has
-    % the specified Tag and false otherwise. Type is the type of VarRval.
+    % TestRval is an rval of type bool which evaluates to true if VarRval has
+    % the specified Tag, and false otherwise. Type is the type of VarRval.
     %
-:- func ml_gen_tag_test_rval(module_info, mlds_target_lang,
-    cons_tag, mer_type, mlds_rval) = mlds_rval.
+:- func ml_gen_tag_test_rval(ml_gen_info, cons_tag, mer_type, mlds_rval)
+    = mlds_rval.
 
-ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, Rval) = TagTestRval :-
+ml_gen_tag_test_rval(Info, Tag, Type, Rval) = TagTestRval :-
     (
         Tag = string_tag(String),
         TagTestRval = ml_binop(str_eq, Rval, ml_const(mlconst_string(String)))
@@ -1957,9 +1946,11 @@ ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, Rval) = TagTestRval :-
         TagTestRval = ml_binop(float_eq, Rval, ml_const(mlconst_float(Float)))
     ;
         Tag = int_tag(IntTag),
+        ml_gen_info_get_module_info(Info, ModuleInfo),
         TagTestRval = ml_gen_int_tag_test_rval(IntTag, Type, ModuleInfo, Rval)
     ;
         Tag = foreign_tag(ForeignLang, ForeignVal),
+        ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal, MLDS_Type)),
         TagTestRval = ml_binop(eq(int_type_int), Rval, Const)
@@ -1991,13 +1982,12 @@ ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, Rval) = TagTestRval :-
         TagTestRval = ml_binop(eq(int_type_int), RvalTag, UnsharedTag)
     ;
         Tag = shared_remote_tag(PrimaryTag, SecondaryTag),
-        SecondaryTagField = ml_gen_secondary_tag_rval(ModuleInfo, Target,
-            PrimaryTag, Type, Rval),
+        ml_gen_secondary_tag_rval(Info, Type, Rval, PrimaryTag,
+            SecondaryTagFieldRval),
         SecondaryTagTestRval = ml_binop(eq(int_type_int),
-            SecondaryTagField, ml_const(mlconst_int(SecondaryTag))),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
-        ( if NumTagBits = 0 then
+            SecondaryTagFieldRval, ml_const(mlconst_int(SecondaryTag))),
+        ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
+        ( if NumPtagBits = 0 then
             % No need to test the primary tag.
             TagTestRval = SecondaryTagTestRval
         else
@@ -2011,6 +2001,7 @@ ml_gen_tag_test_rval(ModuleInfo, Target, Tag, Type, Rval) = TagTestRval :-
         )
     ;
         Tag = shared_local_tag(Ptag, Num),
+        ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         TagTestRval = ml_binop(eq(int_type_int), Rval,
             ml_unop(cast(MLDS_Type),
@@ -2071,25 +2062,25 @@ ml_gen_int_tag_test_rval(IntTag, Type, ModuleInfo, Rval) = TagTestRval :-
             ml_const(mlconst_uint64(UInt64)))
     ).
 
-ml_gen_secondary_tag_rval(ModuleInfo, Target, PrimaryTag, VarType, Rval) =
-        SecondaryTagField :-
+ml_gen_secondary_tag_rval(Info, VarType, Rval, PrimaryTag, StagFieldRval) :-
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
     MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
         HighLevelData = no,
-        % Note: with the low-level data representation, all fields -- even
-        % the secondary tag -- are boxed, and so we need to unbox (i.e. cast)
-        % it back to the right type here.
-        SecondaryTagField =
+        % Note: with the low-level data representation, all fields are boxed,
+        % even the secondary tag, and so we need to unbox (i.e. cast) it
+        % back to the right type here.
+        StagFieldRval =
             ml_unop(unbox(mlds_native_int_type),
                 ml_lval(ml_field(yes(PrimaryTag), Rval,
                     ml_field_offset(ml_const(mlconst_int(0))),
                     mlds_generic_type, MLDS_VarType)))
     ;
         HighLevelData = yes,
+        ml_gen_info_get_target(Info, Target),
         FieldId = ml_gen_hl_tag_field_id(ModuleInfo, Target, VarType),
-        SecondaryTagField = ml_lval(ml_field(yes(PrimaryTag), Rval,
+        StagFieldRval = ml_lval(ml_field(yes(PrimaryTag), Rval,
             FieldId, mlds_native_int_type, MLDS_VarType))
     ).
 

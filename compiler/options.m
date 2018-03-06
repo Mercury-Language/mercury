@@ -469,17 +469,17 @@
 
     % Data representation compilation model options
     ;       tags
-    ;       num_tag_bits
+    ;       num_ptag_bits
     ;       bits_per_word
     ;       bytes_per_word
-            % The undocumented conf_low_tag_bits option is used by the `mmc'
-            % script to pass the default value for num_tag_bits assuming
+            % The undocumented conf_low_ptag_bits option is used by the `mmc'
+            % script to pass the default value for num_ptag_bits assuming
             % --tags low. The reason that `mmc' doesn't just pass a default
             % value for --num-tag-bits is that we want to be able to give an
             % error message if the user specifies `--tags high' and doesn't
             % specify `--num-tag-bits'.
 
-    ;       conf_low_tag_bits
+    ;       conf_low_ptag_bits
     ;       unboxed_float
     ;       unboxed_int64s
     ;       unboxed_no_tag_types
@@ -1425,9 +1425,9 @@ option_defaults_2(compilation_model_option, [
 
     % Data representation compilation model options
     tags                                -   string("low"),
-    num_tag_bits                        -   int(-1),
+    num_ptag_bits                        -   int(-1),
                                         % -1 is a special value which means
-                                        % use the value of conf_low_tag_bits
+                                        % use the value of conf_low_ptag_bits
                                         % instead
     bits_per_word                       -   int(32),
                                         % A good default for the current
@@ -1435,7 +1435,7 @@ option_defaults_2(compilation_model_option, [
     bytes_per_word                      -   int(4),
                                         % A good default for the current
                                         % generation of architectures.
-    conf_low_tag_bits                   -   int(2),
+    conf_low_ptag_bits                  -   int(2),
                                         % The `mmc' script will override the
                                         % above default with a value determined
                                         % at configuration time.
@@ -2383,10 +2383,12 @@ long_option("pregenerated-dist",    pregenerated_dist).
 long_option("single-prec-float",    single_prec_float).
 long_option("single-precision-float",   single_prec_float).
 long_option("tags",                 tags).
-long_option("num-tag-bits",         num_tag_bits).
+long_option("num-tag-bits",         num_ptag_bits). % for historical reasons
+long_option("num-ptag-bits",        num_ptag_bits).
 long_option("bits-per-word",        bits_per_word).
 long_option("bytes-per-word",       bytes_per_word).
-long_option("conf-low-tag-bits",    conf_low_tag_bits).
+long_option("conf-low-tag-bits",    conf_low_ptag_bits). % for historical ...
+long_option("conf-low-ptag-bits",   conf_low_ptag_bits).
 long_option("unboxed-float",        unboxed_float).
 long_option("unboxed-int64s",       unboxed_int64s).
 long_option("unboxed-no-tag-types", unboxed_no_tag_types).
