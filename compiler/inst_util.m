@@ -43,6 +43,8 @@
     % inst_expand(ModuleInfo, Inst0, Inst) checks if the top-level part
     % of the inst is a defined inst, and if so replaces it with the definition.
     %
+    % This leaves insts with constrained_inst_vars at the top level unchanged.
+    %
 :- pred inst_expand(module_info::in, mer_inst::in, mer_inst::out) is det.
 
     % inst_expand_and_remove_constrained_inst_vars is the same as inst_expand

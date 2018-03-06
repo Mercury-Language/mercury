@@ -136,6 +136,9 @@
     % insts of the arguments of the top level functor, failing if the
     % inst could not be bound to the functor.
     %
+    % Note that inst_expand does not expand insts with constrained_inst_vars
+    % at the top level.
+    %
 :- pred get_arg_insts(mer_inst::in, cons_id::in, arity::in,
     list(mer_inst)::out) is semidet.
 

@@ -834,7 +834,8 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
         lambda_info_get_module_info(!.Info, ModuleInfo),
         list.length(Args, Arity),
         instmap_lookup_var(!.InstMap, CellVar, CellVarInst0),
-        inst_expand(ModuleInfo, CellVarInst0, CellVarInst),
+        inst_expand_and_remove_constrained_inst_vars(ModuleInfo,
+            CellVarInst0, CellVarInst),
         ( if
             get_arg_insts(CellVarInst, ConsId, Arity, ArgInsts),
             list.map_corresponding(unify_mode_set_rhs_final_inst(ModuleInfo),
@@ -1419,6 +1420,7 @@ search_pred_inst_info(ModuleInfo, Inst, PredOrFunc, Arity, PredInstInfo) :-
     pred_inst_info::out) is semidet.
 
 search_pred_inst_info_2(ModuleInfo, Inst, PredInstInfo) :-
+    require_complete_switch [Inst]
     (
         Inst = any(_, higher_order(PredInstInfo))
     ;
@@ -1427,6 +1429,21 @@ search_pred_inst_info_2(ModuleInfo, Inst, PredInstInfo) :-
         Inst = defined_inst(InstName),
         inst_lookup(ModuleInfo, InstName, InstB),
         search_pred_inst_info_2(ModuleInfo, InstB, PredInstInfo)
+    ;
+        Inst = constrained_inst_vars(_Vars, _SubInst),
+        % This might be necessary if modecheck_higher_order_call is changed
+        % to accept an inst with constrained_inst_vars at the top level:
+        %   search_pred_inst_info_2(ModuleInfo, SubInst, PredInstInfo)
+        fail
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = bound(_, _, _)
+        ; Inst = not_reached
+        ; Inst = inst_var(_)
+        ; Inst = abstract_inst(_, _)
+        ),
+        fail
     ).
 
 :- pred get_ho_arg_regs(pred_inst_info::in, list(mer_type)::in,
