@@ -73,7 +73,7 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
     % Generate the rval for the primary tag.
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
-    PTagRval = ml_unop(std_unop(tag), VarRval),
+    PtagRval = ml_unop(std_unop(tag), VarRval),
 
     % Group the cases based on primary tag value, find out how many
     % constructors share each primary tag value, and sort the cases so that
@@ -112,7 +112,7 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
 
     % Package up the results into a switch statement.
     Range = mlds_switch_range(0, MaxPrimary),
-    SwitchStmt0 = ml_stmt_switch(mlds_native_int_type, PTagRval, Range,
+    SwitchStmt0 = ml_stmt_switch(mlds_native_int_type, PtagRval, Range,
         PtagCases, Default, Context),
     ml_simplify_switch(SwitchStmt0, SwitchStmt, !Info),
     Stmts = [SwitchStmt].
@@ -322,11 +322,11 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
     VarRval = ml_lval(VarLval),
     (
         StagLocn = sectag_local,
-        STagRval = ml_unop(std_unop(unmkbody), VarRval)
+        StagRval = ml_unop(std_unop(unmkbody), VarRval)
     ;
         StagLocn = sectag_remote,
         ml_gen_info_get_target(!.Info, Target),
-        STagRval = ml_gen_secondary_tag_rval(ModuleInfo, Target,
+        StagRval = ml_gen_secondary_tag_rval(ModuleInfo, Target,
             PrimaryTag, VarType, VarRval)
     ;
         ( StagLocn = sectag_none
@@ -342,7 +342,7 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
 
     % Package up the results into a switch statement.
     Range = mlds_switch_range_unknown, % XXX could do better
-    SwitchStmt = ml_stmt_switch(mlds_native_int_type, STagRval, Range,
+    SwitchStmt = ml_stmt_switch(mlds_native_int_type, StagRval, Range,
         StagCases, Default, Context),
     ml_simplify_switch(SwitchStmt, Stmt, !Info).
 
