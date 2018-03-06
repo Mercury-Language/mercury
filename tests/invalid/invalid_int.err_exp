@@ -1,29 +1,49 @@
 invalid_int.m:017: Error: the integer literal
-invalid_int.m:017:   `0b100000000000000000000000000000000' is too big to be
-invalid_int.m:017:   represented on this machine.
+invalid_int.m:017:   `0b100000000000000000000000000000000' is outside the range
+invalid_int.m:017:   of that type.
 invalid_int.m:018: Error: the integer literal
 invalid_int.m:018:   `0b1111111111111111111111111111111111111111111111111111111111111111'
-invalid_int.m:018:   is too big to be represented on this machine.
+invalid_int.m:018:   is outside the range of that type.
 invalid_int.m:019: Error: the integer literal
 invalid_int.m:019:   `0b10000000000000000000000000000000000000000000000000000000000000000'
-invalid_int.m:019:   is too big to be represented on this machine.
-invalid_int.m:022: Error: the integer literal `0o40000000000' is too big to be
-invalid_int.m:022:   represented on this machine.
-invalid_int.m:023: Error: the integer literal `0o1777777777777777777777' is too
-invalid_int.m:023:   big to be represented on this machine.
-invalid_int.m:024: Error: the integer literal `0o2000000000000000000000' is too
-invalid_int.m:024:   big to be represented on this machine.
-invalid_int.m:027: Error: the integer literal `0x100000000' is too big to be
-invalid_int.m:027:   represented on this machine.
-invalid_int.m:028: Error: the integer literal `0x110000000' is too big to be
-invalid_int.m:028:   represented on this machine.
-invalid_int.m:029: Error: the integer literal `0xFFFFFFFFFFFFFFFF' is too big
-invalid_int.m:029:   to be represented on this machine.
-invalid_int.m:030: Error: the integer literal `0x10000000000000000' is too big
-invalid_int.m:030:   to be represented on this machine.
-invalid_int.m:033: Error: the integer literal `2147483648' is too big to be
-invalid_int.m:033:   represented on this machine.
-invalid_int.m:034: Error: the integer literal `9223372036854775807' is too big
-invalid_int.m:034:   to be represented on this machine.
-invalid_int.m:035: Error: the integer literal `9223372036854775808' is too big
-invalid_int.m:035:   to be represented on this machine.
+invalid_int.m:019:   is outside the range of that type.
+invalid_int.m:022: Error: the integer literal `0o40000000000' is outside the
+invalid_int.m:022:   range of that type.
+invalid_int.m:023: Error: the integer literal `0o1777777777777777777777' is
+invalid_int.m:023:   outside the range of that type.
+invalid_int.m:024: Error: the integer literal `0o2000000000000000000000' is
+invalid_int.m:024:   outside the range of that type.
+invalid_int.m:027: Error: the integer literal `0x100000000' is outside the
+invalid_int.m:027:   range of that type.
+invalid_int.m:028: Error: the integer literal `0x110000000' is outside the
+invalid_int.m:028:   range of that type.
+invalid_int.m:029: Error: the integer literal `0xFFFFFFFFFFFFFFFF' is outside
+invalid_int.m:029:   the range of that type.
+invalid_int.m:030: Error: the integer literal `0x10000000000000000' is outside
+invalid_int.m:030:   the range of that type.
+invalid_int.m:033: Error: the integer literal `2147483648' is outside the range
+invalid_int.m:033:   of that type.
+invalid_int.m:034: Error: the integer literal `9223372036854775807' is outside
+invalid_int.m:034:   the range of that type.
+invalid_int.m:035: Error: the integer literal `9223372036854775808' is outside
+invalid_int.m:035:   the range of that type.
+invalid_int.m:040: Error: the 8-bit integer literal `-129i8' is outside the
+invalid_int.m:040:   range of that type.
+invalid_int.m:043: Error: the 8-bit integer literal `128i8' is outside the
+invalid_int.m:043:   range of that type.
+invalid_int.m:048: Error: the unsigned 8-bit integer literal `256u8' is outside
+invalid_int.m:048:   the range of that type.
+invalid_int.m:049: Error: the unsigned 8-bit integer literal `257u8' is outside
+invalid_int.m:049:   the range of that type.
+invalid_int.m:054: Error: the 16-bit integer literal `-32769i16' is outside the
+invalid_int.m:054:   range of that type.
+invalid_int.m:057: Error: the 16-bit integer literal `32768i16' is outside the
+invalid_int.m:057:   range of that type.
+invalid_int.m:063: Error: the unsigned 16-bit integer literal `65536u16' is
+invalid_int.m:063:   outside the range of that type.
+invalid_int.m:068: Error: the 32-bit integer literal `-2147483649i32' is
+invalid_int.m:068:   outside the range of that type.
+invalid_int.m:071: Error: the 32-bit integer literal `2147483648i32' is outside
+invalid_int.m:071:   the range of that type.
+invalid_int.m:077: Error: the unsigned 32-bit integer literal `4294967296u32'
+invalid_int.m:077:   is outside the range of that type.
