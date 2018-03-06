@@ -145,6 +145,7 @@ ORDINARY_PROGS =	\
 	functor_ho_inst_2 \
 	functor_ho_inst_excp \
 	functor_ho_inst_excp_2 \
+	functor_ho_inst_float_reg \
 	getopt_test \
 	ground_dd \
 	ground_terms \

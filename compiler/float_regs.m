@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -38,7 +38,7 @@
 %       pred(in, out, out) is det /* arg regs: [reg_r, reg_r, reg_f] */
 %
 % indicates that the first and second arguments must be passed via regular
-% registers. The third argument must be passed via a float register.
+% registers, and the third argument must be passed via a float register.
 %
 %---------------------------------------------------------------------------%
 %
@@ -52,9 +52,10 @@
 %       get_q(Q),
 %       call(Q, 1.0, X).
 %
-% Q has type `pred(float, float)' and we would be misled to pass the float
-% arguments in the higher-order call via the float registers. The inst
-% contains the information to correct the higher-order call.
+% Q has type `pred(float, float)'. Without other information, we would
+% incorrectly assume that the call to Q should pass the float arguments in via
+% the float registers. Information about the required register class for each
+% call argument can be added to the higher-order inst.
 %
 %   :- pred get_q(pred(T, T)).
 %   :- mode get_q(out(pred(in, out) is det /* arg regs: [reg_r, reg_r] */))
@@ -66,6 +67,9 @@
 %       % Q -> pred(in, out) is det /* arg regs: [reg_r, reg_r] */
 %       call(Q, 1.0, X).
 %       % arg regs: [reg_r, reg_r]
+%
+% The higher-order inst will force the call to Q to pass float arguments via
+% regular registers instead of float registers.
 %
 % EXAMPLE 2
 % ---------
@@ -190,7 +194,7 @@ insert_reg_wrappers(!ModuleInfo, Specs) :-
     % In the second phase, go over every procedure goal, update instmap deltas
     % to include the information from pred_inst_infos. When a higher-order
     % variable has an inst that indicates it uses a different calling
-    % convention than is required in a given context, replace that variable
+    % convention from that required in a given context, replace that variable
     % with a wrapper closure which has the expected calling convention.
     list.foldl2(insert_reg_wrappers_pred, PredIds, !ModuleInfo, [], Specs),
     module_info_clobber_dependency_info(!ModuleInfo).
@@ -1037,9 +1041,21 @@ unify_mode_set_rhs_final_inst(ModuleInfo, ArgInst, UnifyMode0, UnifyMode) :-
         inst_is_free(ModuleInfo, RI),
         inst_is_bound(ModuleInfo, RF)
     then
-        UnifyMode = unify_modes_lhs_rhs(
-            from_to_insts(LI, LF),
-            from_to_insts(RI, ArgInst))
+        % Due to combined higher-order types and insts, RF may contain
+        % higher-order inst information that is not in ArgInst.
+        % In that case, do not lose the higher-order inst information.
+        % XXX We may need to generalise this once we have some other test
+        % cases.
+        ( if
+            ArgInst = ground(Uniq, none_or_default_func),
+            RF = ground(Uniq, higher_order(_))
+        then
+            UnifyMode = UnifyMode0
+        else
+            UnifyMode = unify_modes_lhs_rhs(
+                from_to_insts(LI, LF),
+                from_to_insts(RI, ArgInst))
+        )
     else
         UnifyMode = UnifyMode0
     ).
