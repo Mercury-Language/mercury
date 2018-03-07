@@ -25,7 +25,9 @@
 main(!IO) :-
     Inf = float.max + float.max,
     NegInf = -Inf,
-    NaN = Inf * 0.0,
+    % Avoid C compiler incorrectly optimising Inf * 0.0 to 0.0.
+    Zero = float(length([] : list(float))),
+    NaN = Inf * Zero,
     io.write_string("Inf: ", !IO),
     io.write_float(Inf, !IO),
     io.nl(!IO),
