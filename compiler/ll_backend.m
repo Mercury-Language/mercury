@@ -37,6 +37,7 @@
    :- include_module call_gen.
    :- include_module disj_gen.
    :- include_module unify_gen.
+   :- include_module closure_gen.
    :- include_module commit_gen.
    :- include_module switch_gen.
       :- include_module dense_switch.

@@ -859,6 +859,9 @@ set_used_env_vars(X, !CI) :-
 :- pred add_vector_static_cell(list(llds_type)::in, list(list(rval))::in,
     data_id::out, code_info::in, code_info::out) is det.
 
+:- pred maybe_add_alloc_site_info(prog_context::in, string::in, int::in,
+    maybe(alloc_site_id)::out, code_info::in, code_info::out) is det.
+
 :- pred add_alloc_site_info(prog_context::in, string::in, int::in,
     alloc_site_id::out, code_info::in, code_info::out) is det.
 
@@ -1079,9 +1082,20 @@ add_vector_static_cell(Types, Vector, DataAddr, !CI) :-
         StaticCellInfo0, StaticCellInfo),
     set_static_cell_info(StaticCellInfo, !CI).
 
-add_alloc_site_info(Context, Type, Size, AllocId, !CI) :-
+maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI) :-
+    get_profile_memory(!.CI, ProfileMemory),
+    (
+        ProfileMemory = yes,
+        add_alloc_site_info(Context, VarTypeMsg, Size, AllocId, !CI),
+        MaybeAllocId = yes(AllocId)
+    ;
+        ProfileMemory = no,
+        MaybeAllocId = no
+    ).
+
+add_alloc_site_info(Context, VarTypeMsg, Size, AllocId, !CI) :-
     get_proc_label(!.CI, ProcLabel),
-    AllocSite = alloc_site_info(ProcLabel, Context, Type, Size),
+    AllocSite = alloc_site_info(ProcLabel, Context, VarTypeMsg, Size),
     AllocId = alloc_site_id(AllocSite),
     get_alloc_sites(!.CI, AllocSites0),
     set_tree234.insert(AllocSite, AllocSites0, AllocSites),
