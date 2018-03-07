@@ -1085,34 +1085,85 @@ pack_cell_rvals(ArgWidths, CellArgs0, CellArgs, Code, CI, !CLD) :-
 
 pack_how_to_construct(ArgWidths, !HowToConstruct) :-
     (
-        !.HowToConstruct = construct_statically
-    ;
-        !.HowToConstruct = construct_dynamically
-    ;
-        !.HowToConstruct = construct_in_region(_)
+        ( !.HowToConstruct = construct_statically
+        ; !.HowToConstruct = construct_dynamically
+        ; !.HowToConstruct = construct_in_region(_)
+        )
     ;
         !.HowToConstruct = reuse_cell(CellToReuse0),
-        % If an argument within a packed field needs updating,
-        % the field needs updating.
+        % If any argument packed into a word needs updating,
+        % the whole word needs updating.
+        % XXX This code changes the meaning of the third argument of
+        % cell_to_reuse, from having one element for each *argument*,
+        % to one element for each *word* or *double word*.
+        % I (zs) see two problems with this. First, the change in
+        % meaning is not reflected in the data structure anywhere,
+        % and second, given the potential presence of double-word floats,
+        % you cannot say simply that the Nth element of NeedsUpdates
+        % corresponds to the Nth word of the memory cell.
+        % Given that the different ConsIds may have double-word floats
+        % in different word positions, I don't see how a correctness
+        % argument for this code could be made.
         CellToReuse0 = cell_to_reuse(Var, ConsIds, NeedsUpdates0),
-        % XXX Computing NeedsUpdates directly from ArgWidths and NeedsUpdates0,
-        % *without* going through NeedsUpdates1, would be simpler as well as
-        % faster. (While NeedsUpdates0 and NeedsUpdates are lists,
-        % NeedsUpdates1 is actually a list of lists, and thus more expensive
-        % to allocate.)
-        group_same_word_elements(ArgWidths, NeedsUpdates0, NeedsUpdates1),
-        list.map(condense_needs_updates, NeedsUpdates1) = NeedsUpdates,
+        needs_update_args_to_words(ArgWidths, NeedsUpdates0, NeedsUpdates),
         CellToReuse = cell_to_reuse(Var, ConsIds, NeedsUpdates),
         !:HowToConstruct = reuse_cell(CellToReuse)
     ).
 
-:- func condense_needs_updates(list(needs_update)) = needs_update.
+:- pred needs_update_args_to_words(list(arg_width)::in,
+    list(needs_update)::in, list(needs_update)::out) is det.
 
-condense_needs_updates(NeedsUpdatess) =
-    ( if list.member(needs_update, NeedsUpdatess) then
-        needs_update
-    else
-        does_not_need_update
+needs_update_args_to_words([], [], []).
+needs_update_args_to_words([], [_ | _], _) :-
+    unexpected($module, $pred, "mismatched lists").
+needs_update_args_to_words([_ | _], [], []) :-
+    unexpected($module, $pred, "mismatched lists").
+needs_update_args_to_words([Width | Widths], [ArgNU | ArgNUs],
+        [WordNU | WordNUs]) :-
+    (
+        ( Width = full_word
+        ; Width = double_word
+        ),
+        WordNU = ArgNU,
+        needs_update_args_to_words(Widths, ArgNUs, WordNUs)
+    ;
+        Width = partial_word_first(_),
+        does_any_arg_in_word_need_update(Widths, ArgNUs, ArgNU, WordNU,
+            LaterWordWidths, LaterWordArgNUs),
+        needs_update_args_to_words(LaterWordWidths, LaterWordArgNUs, WordNUs)
+    ;
+        Width = partial_word_shifted(_, _),
+        unexpected($pred, "partial_word_shifted")
+    ).
+
+:- pred does_any_arg_in_word_need_update(list(arg_width)::in,
+    list(needs_update)::in, needs_update::in, needs_update::out,
+    list(arg_width)::out, list(needs_update)::out) is det.
+
+does_any_arg_in_word_need_update([], [], !NU, [], []).
+does_any_arg_in_word_need_update([], [_ | _], !NU, _, _) :-
+    unexpected($module, $pred, "mismatched lists").
+does_any_arg_in_word_need_update([_ | _], [], !NU, _, _) :-
+    unexpected($module, $pred, "mismatched lists").
+does_any_arg_in_word_need_update([Width | Widths], [ArgNU | ArgNUs], !NU,
+        LaterWordWidths, LaterWordArgNUs) :-
+    (
+        ( Width = full_word
+        ; Width = double_word
+        ; Width = partial_word_first(_)
+        ),
+        LaterWordWidths = [Width | Widths],
+        LaterWordArgNUs = [ArgNU | ArgNUs]
+    ;
+        Width = partial_word_shifted(_, _),
+        (
+            ArgNU = needs_update,
+            !:NU = needs_update
+        ;
+            ArgNU = does_not_need_update
+        ),
+        does_any_arg_in_word_need_update(Widths, ArgNUs, !NU,
+            LaterWordWidths, LaterWordArgNUs)
     ).
 
 :- pred construct_cell(prog_var::in, ptag::in, list(cell_arg)::in,
