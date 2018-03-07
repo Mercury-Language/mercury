@@ -580,8 +580,11 @@ generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
         ),
         get_proc_info(!.CI, ProcInfo),
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        generate_cons_args(VarTypes, RHSVarsWidths, ArgModes, TakeAddr,
-            !.CI, CellArgs0, MayUseAtomic),
+        get_may_use_atomic_alloc(!.CI, MayUseAtomic0),
+        FirstArgNum = 1,
+        generate_cons_args(VarTypes, RHSVarsWidths, ArgModes, FirstArgNum,
+            TakeAddr, !.CI, CellArgs0, MayUseAtomic0, MayUseAtomic),
+
         assoc_list.values(RHSVarsWidths, ArgWidths),
         pack_cell_rvals(ArgWidths, CellArgs0, CellArgs1, PackCode, !.CI, !CLD),
         pack_how_to_construct(ArgWidths, HowToConstruct0, HowToConstruct),
@@ -696,44 +699,26 @@ generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
             Code, !CI, !CLD)
     ).
 
-:- pred generate_cons_args(vartypes::in,
-    assoc_list(prog_var, arg_width)::in, list(unify_mode)::in, list(int)::in,
-    code_info::in, list(cell_arg)::out, may_use_atomic_alloc::out) is det.
-
-generate_cons_args(VarTypes, VarsWidths, Modes, TakeAddr, CI, !:Args,
-        !:MayUseAtomic) :-
-    get_may_use_atomic_alloc(CI, !:MayUseAtomic),
-    ( if
-        FirstArgNum = 1,
-        generate_cons_args_loop(VarTypes, VarsWidths, Modes, FirstArgNum,
-            TakeAddr, CI, !:Args, !MayUseAtomic)
-    then
-        true
-    else
-        unexpected($pred, "length mismatch")
-    ).
-
     % Create a list of maybe(rval) for the arguments for a construction
     % unification. For each argument which is input to the construction
     % unification, we produce `yes(var(Var))', but if the argument is free,
     % we just produce `no', meaning don't generate an assignment to that field.
     %
-:- pred generate_cons_args_loop(vartypes::in,
+:- pred generate_cons_args(vartypes::in,
     assoc_list(prog_var, arg_width)::in, list(unify_mode)::in, int::in,
     list(int)::in, code_info::in, list(cell_arg)::out,
-    may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
+    may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
-generate_cons_args_loop(_, [], [], _, _, _, [], !MayUseAtomic).
-generate_cons_args_loop(_, [], [_ | _], _, _, _, _, !MayUseAtomic) :-
+generate_cons_args(_, [], [], _, _, _, [], !MayUseAtomic).
+generate_cons_args(_, [], [_ | _], _, _, _, _, !MayUseAtomic) :-
     unexpected($pred, "length mismatch").
-generate_cons_args_loop(_, [_ | _], [], _, _, _, _, !MayUseAtomic) :-
+generate_cons_args(_, [_ | _], [], _, _, _, _, !MayUseAtomic) :-
     unexpected($pred, "length mismatch").
-generate_cons_args_loop(VarTypes, [VarWidth | VarsWidths],
-        [ArgMode | ArgModes], CurArgNum, !.TakeAddr, CI, [CellArg | CellArgs],
-        !MayUseAtomic) :-
+generate_cons_args(VarTypes, [VarWidth | VarsWidths], [ArgMode | ArgModes],
+        CurArgNum, !.TakeAddr, CI, [CellArg | CellArgs], !MayUseAtomic) :-
     generate_cons_arg(VarTypes, VarWidth, ArgMode, CurArgNum,
         !.TakeAddr, CI, CellArg, !MayUseAtomic),
-    generate_cons_args_loop(VarTypes, VarsWidths, ArgModes, CurArgNum + 1,
+    generate_cons_args(VarTypes, VarsWidths, ArgModes, CurArgNum + 1,
         !.TakeAddr, CI, CellArgs, !MayUseAtomic).
 
 :- pred generate_cons_arg(vartypes::in, pair(prog_var, arg_width)::in,
