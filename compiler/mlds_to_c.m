@@ -4516,7 +4516,7 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
     ;       ls_string(string).
 
 :- pred mlds_output_init_args(list(mlds_typed_rval)::in,
-    prog_context::in, int::in, lval_or_string::in, mlds_ptag::in,
+    prog_context::in, int::in, lval_or_string::in, ptag::in,
     mlds_to_c_opts::in, indent::in, io::di, io::uo) is det.
 
 mlds_output_init_args([], _, _, _, _, _, _, !IO).
@@ -5365,7 +5365,7 @@ is_aligned_dword_field(X, Y, ml_mem_addr(Lval)) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_ptag(mlds_ptag::in, io::di, io::uo) is det.
+:- pred mlds_output_ptag(ptag::in, io::di, io::uo) is det.
 
 mlds_output_ptag(Ptag, !IO) :-
     io.write_string("MR_mktag(", !IO),

@@ -2870,7 +2870,7 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI, !CLD) :-
 :- pred assign_expr_to_var(prog_var::in, rval::in, llds_code::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
-:- pred reassign_mkword_hole_var(prog_var::in, tag::in, rval::in,
+:- pred reassign_mkword_hole_var(prog_var::in, ptag::in, rval::in,
     llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred assign_field_lval_expr_to_var(prog_var::in, list(lval)::in, rval::in,
@@ -2880,7 +2880,7 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI, !CLD) :-
     %   AllFilled, MaybeSize, FieldAddrs, TypeMsg, MayUseAtomic, Where,
     %   Code, !CLD).
     %
-:- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
+:- pred assign_cell_to_var(prog_var::in, bool::in, ptag::in,
     list(cell_arg)::in, how_to_construct::in, maybe(term_size_value)::in,
     maybe(alloc_site_id)::in, may_use_atomic_alloc::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
@@ -3066,7 +3066,7 @@ assign_field_lval_expr_to_var(Var, FieldLvals, Rval, Code, !CLD) :-
             "FieldLvals not all fields of the same base variable")
     ).
 
-:- pred is_var_field(maybe(tag)::in, prog_var::in, lval::in) is semidet.
+:- pred is_var_field(maybe(ptag)::in, prog_var::in, lval::in) is semidet.
 
 is_var_field(MaybeTag, Var, field(MaybeTag, var(Var), _)).
 

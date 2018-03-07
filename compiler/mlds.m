@@ -1451,7 +1451,7 @@
                 %
                 % Needed only by ml_accurate_gc.m; not needed by any of
                 % the code generators.
-                mlds_ptag,
+                ptag,
 
                 % Indicates whether or not the first argument in the list (see
                 % below) is a secondary tag. For target languages with
@@ -1639,10 +1639,6 @@
     ;       exception
     ;       gc.
 
-    % A primary tag should be a small non-negative integer.
-    %
-:- type mlds_ptag == int.
-
 %---------------------------------------------------------------------------%
 %
 % Lvals.
@@ -1678,7 +1674,7 @@
                 % different, then it is the HLDS->MLDS code generator's job
                 % to insert the required boxing/unboxing code.
 
-                field_ptag      :: maybe(mlds_ptag),
+                field_ptag      :: maybe(ptag),
                 field_addr      :: mlds_rval,
                 field_field_id  :: mlds_field_id,
                 field_type      :: mlds_type,
@@ -1760,7 +1756,7 @@
             % The value of an `lval' rval is just the value stored in
             % the specified lval.
 
-    ;       ml_mkword(mlds_ptag, mlds_rval)
+    ;       ml_mkword(ptag, mlds_rval)
             % Given a pointer and a primary tag, return a tagged pointer.
             %
             % In theory, we could make `mkword' a binary_op, but this

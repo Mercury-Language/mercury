@@ -194,7 +194,7 @@
     % updates the state of !VarLocnInfo accordingly.  Var must previously have
     % been assigned the constant expression mkword_hole(Ptag).
     %
-:- pred var_locn_reassign_mkword_hole_var(prog_var::in, tag::in, rval::in,
+:- pred var_locn_reassign_mkword_hole_var(prog_var::in, ptag::in, rval::in,
     llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var,
@@ -214,7 +214,7 @@
     % obvious conflict.) Label can be used in the generated code if necessary.
     %
 :- pred var_locn_assign_cell_to_var(module_info::in, exprn_opts::in,
-    prog_var::in, bool::in, tag::in, list(cell_arg)::in,
+    prog_var::in, bool::in, ptag::in, list(cell_arg)::in,
     how_to_construct::in, maybe(term_size_value)::in,
     maybe(alloc_site_id)::in, may_use_atomic_alloc::in, label::in,
     llds_code::out, static_cell_info::in, static_cell_info::out,
@@ -823,7 +823,7 @@ var_locn_assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code,
         var_locn_set_loc_var_map(LocVarMap, !VLI)
     ).
 
-:- func add_field_offset(maybe(tag), rval, lval) = lval.
+:- func add_field_offset(maybe(ptag), rval, lval) = lval.
 
 add_field_offset(Ptag, Offset, Base) =
     field(Ptag, lval(Base), Offset).
@@ -962,7 +962,7 @@ var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
     ).
 
 :- pred var_locn_assign_dynamic_cell_to_var(module_info::in, prog_var::in,
-    bool::in, tag::in, list(cell_arg)::in, how_to_construct::in,
+    bool::in, ptag::in, list(cell_arg)::in, how_to_construct::in,
     maybe(int)::in, maybe(alloc_site_id)::in, may_use_atomic_alloc::in,
     label::in, llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
@@ -1071,7 +1071,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     ),
     Code = SetupReuseCode ++ CellCode ++ RegionVarCode ++ ArgsCode.
 
-:- pred assign_reused_cell_to_var(module_info::in, lval::in, tag::in,
+:- pred assign_reused_cell_to_var(module_info::in, lval::in, ptag::in,
     list(cell_arg)::in, cell_to_reuse::in, lval::in, llds_code::in,
     int::in, label::in, llds_reuse::out, llds_code::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
@@ -1099,8 +1099,8 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
         TempRegs = TempRegs0
     ),
 
-    % XXX Optimise the stripping of the tag when the tags are the same
-    % or the old tag is known, as we do in the high level backend.
+    % XXX Optimise the stripping of the ptag when the ptags are the same
+    % or the old ptag is known, as we do in the high level backend.
     MaybeReuse = llds_reuse(unop(strip_tag, lval(ReuseLval)), MaybeFlag),
 
     % NeedsUpdates0 can be shorter than Vector due to extra fields.
@@ -1136,7 +1136,7 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
     list.foldl(var_locn_release_reg, TempRegs, !VLI).
 
 :- pred assign_all_cell_args(module_info::in, list(cell_arg)::in,
-    maybe(tag)::in, rval::in, int::in, llds_code::out,
+    maybe(ptag)::in, rval::in, int::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
 assign_all_cell_args(_, [], _, _, _, empty, !VLI).
@@ -1171,7 +1171,7 @@ assign_all_cell_args(ModuleInfo, [CellArg | CellArgs], Ptag, Base, Offset,
     Code = ThisCode ++ RestCode.
 
 :- pred assign_some_cell_args(module_info::in, list(cell_arg)::in,
-    list(needs_update)::in, maybe(tag)::in, rval::in, int::in, llds_code::out,
+    list(needs_update)::in, maybe(ptag)::in, rval::in, int::in, llds_code::out,
     llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 assign_some_cell_args(_, [], [], _, _, _, empty, empty, !VLI).
@@ -1219,7 +1219,7 @@ assign_some_cell_args(_, [], [_ | _], _, _, _, _, _, !VLI) :-
 assign_some_cell_args(_, [_ | _], [], _, _, _, _, _, !VLI) :-
     unexpected($module, $pred, "mismatch lists").
 
-:- pred assign_cell_arg(module_info::in, rval::in, maybe(tag)::in, rval::in,
+:- pred assign_cell_arg(module_info::in, rval::in, maybe(ptag)::in, rval::in,
     int::in, llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-

@@ -179,7 +179,7 @@ output_record_instr_decls(Info, Instr, !DeclSet, !IO) :-
         Instr = restore_maxfr(Lval),
         output_record_lval_decls(Info, Lval, !DeclSet, !IO)
     ;
-        Instr = incr_hp(Lval, _Tag, _, Rval, _, _, MaybeRegionRval,
+        Instr = incr_hp(Lval, _Ptag, _, Rval, _, _, MaybeRegionRval,
             MaybeReuse),
         output_record_lval_decls(Info, Lval, !DeclSet, !IO),
         output_record_rval_decls(Info, Rval, !DeclSet, !IO),
@@ -439,8 +439,8 @@ is_aligned_float_dword_assignment(InstrA, InstrB, LvalA, Rval) :-
     InstrB = assign(LvalB, RvalB),
     RvalA = binop(float_word_bits, Rval, const(llconst_int(0))),
     RvalB = binop(float_word_bits, Rval, const(llconst_int(1))),
-    LvalA = field(MaybeTag, Address, const(llconst_int(Offset))),
-    LvalB = field(MaybeTag, Address, const(llconst_int(Offset + 1))),
+    LvalA = field(MaybePtag, Address, const(llconst_int(Offset))),
+    LvalB = field(MaybePtag, Address, const(llconst_int(Offset + 1))),
     % Only output an aligned memory reference to a double-word,
     % i.e. fields at even word offsets from the start of the cell.
     int.even(Offset).
@@ -682,18 +682,18 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
         output_lval(Info, Lval, !IO),
         io.write_string(");\n", !IO)
     ;
-        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, SizeRval, MaybeAllocId,
+        Instr = incr_hp(Lval, MaybePtag, MaybeOffset, SizeRval, MaybeAllocId,
             MayUseAtomicAlloc, MaybeRegionRval, MaybeReuse),
         io.write_string("\t", !IO),
         (
             MaybeReuse = no_llds_reuse,
-            output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset,
+            output_incr_hp_no_reuse(Info, Lval, MaybePtag, MaybeOffset,
                 SizeRval, MaybeAllocId, MayUseAtomicAlloc, MaybeRegionRval,
                 LabelOutputInfo, !IO)
         ;
             MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
             (
-                MaybeTag = no,
+                MaybePtag = no,
                 (
                     MaybeFlagLval = yes(FlagLval),
                     io.write_string("MR_reuse_or_alloc_heap_flag(", !IO),
@@ -706,13 +706,13 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
                     output_lval_as_word(Info, Lval, !IO)
                 )
             ;
-                MaybeTag = yes(Tag),
+                MaybePtag = yes(Ptag),
                 (
                     MaybeFlagLval = yes(FlagLval),
                     io.write_string("MR_tag_reuse_or_alloc_heap_flag(", !IO),
                     output_lval_as_word(Info, Lval, !IO),
                     io.write_string(", ", !IO),
-                    output_tag(Tag, !IO),
+                    output_ptag(Ptag, !IO),
                     io.write_string(", ", !IO),
                     output_lval_as_word(Info, FlagLval, !IO)
                 ;
@@ -720,13 +720,13 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
                     io.write_string("MR_tag_reuse_or_alloc_heap(", !IO),
                     output_lval_as_word(Info, Lval, !IO),
                     io.write_string(", ", !IO),
-                    output_tag(Tag, !IO)
+                    output_ptag(Ptag, !IO)
                 )
             ),
             io.write_string(", ", !IO),
             output_rval(Info, ReuseRval, !IO),
             io.write_string(", ", !IO),
-            output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset,
+            output_incr_hp_no_reuse(Info, Lval, MaybePtag, MaybeOffset,
                 SizeRval, MaybeAllocId, MayUseAtomicAlloc, MaybeRegionRval,
                 LabelOutputInfo, !IO),
             io.write_string(")", !IO)
@@ -1607,25 +1607,25 @@ output_label_or_not_reached(MaybeLabel, !IO) :-
 % Code for the output of an incr_hp instruction.
 %
 
-:- pred output_incr_hp_no_reuse(llds_out_info::in, lval::in, maybe(tag)::in,
+:- pred output_incr_hp_no_reuse(llds_out_info::in, lval::in, maybe(ptag)::in,
     maybe(int)::in, rval::in, maybe(alloc_site_id)::in,
     may_use_atomic_alloc::in, maybe(rval)::in,
     label_output_info::in, io::di, io::uo) is det.
 
-output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
+output_incr_hp_no_reuse(Info, Lval, MaybePtag, MaybeOffset, Rval, MaybeAllocId,
         MayUseAtomicAlloc, MaybeRegionRval, _LabelOutputInfo, !IO) :-
     (
         MaybeRegionRval = yes(RegionRval),
         (
-            MaybeTag = no,
+            MaybePtag = no,
             io.write_string("MR_alloc_in_region(", !IO),
             output_lval_as_word(Info, Lval, !IO)
         ;
-            MaybeTag = yes(Tag),
+            MaybePtag = yes(Ptag),
             io.write_string("MR_tag_alloc_in_region(", !IO),
             output_lval_as_word(Info, Lval, !IO),
             io.write_string(", ", !IO),
-            output_tag(Tag, !IO)
+            output_ptag(Ptag, !IO)
         ),
         io.write_string(", ", !IO),
         output_rval(Info, RegionRval, !IO),
@@ -1638,7 +1638,7 @@ output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
         (
             ProfMem = yes,
             (
-                MaybeTag = no,
+                MaybePtag = no,
                 (
                     MayUseAtomicAlloc = may_not_use_atomic_alloc,
                     io.write_string("MR_offset_incr_hp_msg(", !IO)
@@ -1648,7 +1648,7 @@ output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
                 ),
                 output_lval_as_word(Info, Lval, !IO)
             ;
-                MaybeTag = yes(Tag),
+                MaybePtag = yes(Ptag),
                 (
                     MayUseAtomicAlloc = may_not_use_atomic_alloc,
                     io.write_string("MR_tag_offset_incr_hp_msg(", !IO)
@@ -1659,7 +1659,7 @@ output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
                 ),
                 output_lval_as_word(Info, Lval, !IO),
                 io.write_string(", ", !IO),
-                output_tag(Tag, !IO)
+                output_ptag(Ptag, !IO)
             ),
             io.write_string(", ", !IO),
             (
@@ -1677,7 +1677,7 @@ output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
         ;
             ProfMem = no,
             (
-                MaybeTag = no,
+                MaybePtag = no,
                 (
                     MaybeOffset = yes(_),
                     (
@@ -1699,7 +1699,7 @@ output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
                 ),
                 output_lval_as_word(Info, Lval, !IO)
             ;
-                MaybeTag = yes(Tag),
+                MaybePtag = yes(Ptag),
                 (
                     MaybeOffset = yes(_),
                     (
@@ -1712,7 +1712,7 @@ output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
                     ),
                     output_lval_as_word(Info, Lval, !IO),
                     io.write_string(", ", !IO),
-                    output_tag(Tag, !IO)
+                    output_ptag(Ptag, !IO)
                 ;
                     MaybeOffset = no,
                     (
@@ -1724,7 +1724,7 @@ output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
                     ),
                     output_lval_as_word(Info, Lval, !IO),
                     io.write_string(", ", !IO),
-                    io.write_int(Tag, !IO)
+                    io.write_int(Ptag, !IO)
                 )
             ),
             io.write_string(", ", !IO),

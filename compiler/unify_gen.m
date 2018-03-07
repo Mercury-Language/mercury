@@ -115,7 +115,7 @@
     ;       uv_field(uni_field).
 
 :- type uni_field
-    --->    uni_field(tag, rval, int, arg_width).
+    --->    uni_field(ptag, rval, int, arg_width).
             % The first three arguments (Ptag, BaseRval and Offset) represent
             % the lval of the field, which is
             % field(yes(Ptag), BaseRval, const(llconst_int(Offset))).
@@ -204,7 +204,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
                     !.CI, !CLD),
                 % This seems to be fine.
                 list.foldl(release_reg, Regs, !CLD),
-                % XXX avoid strip_tag when we know what tag it will have
+                % XXX avoid strip_tag when we know what ptag it will have
                 FreeVar = singleton(
                     llds_instr(free_heap(unop(strip_tag, VarRval)),
                         "Free " ++ LHSVarName)
@@ -1115,7 +1115,7 @@ condense_needs_updates(NeedsUpdatess) =
         does_not_need_update
     ).
 
-:- pred construct_cell(prog_var::in, tag::in, list(cell_arg)::in,
+:- pred construct_cell(prog_var::in, ptag::in, list(cell_arg)::in,
     how_to_construct::in, maybe(term_size_value)::in, prog_context::in,
     may_use_atomic_alloc::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
@@ -1251,7 +1251,7 @@ make_fields_and_arg_vars(VarTypes, [Var | Vars], [Width | Widths],
 %---------------------------------------------------------------------------%
 
     % Generate a deterministic deconstruction. In a deterministic
-    % deconstruction, we know the value of the tag, so we don't
+    % deconstruction, we know the value of the ptag, so we don't
     % need to generate a test.
 
     % Deconstructions are generated semi-eagerly. Any test sub-unifications

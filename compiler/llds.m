@@ -379,7 +379,7 @@
             % Restore maxfr from the saved copy in the given lval. Assumes the
             % lval was saved with save_maxfr.
 
-    ;       incr_hp(lval, maybe(tag), maybe(int), rval, maybe(alloc_site_id),
+    ;       incr_hp(lval, maybe(ptag), maybe(int), rval, maybe(alloc_site_id),
                 may_use_atomic_alloc, maybe(rval), llds_reuse)
             % incr_hp(Target, MaybeTag, MaybeOffset, SizeRval, MaybeAllocId,
             %   MayUseAtomicAlloc, MaybeRegionId, MaybeReuse)
@@ -1126,13 +1126,14 @@
 
     % Values on the heap.
 
-    ;       field(maybe(tag), rval, rval)
-            % field(Tag, Address, FieldNum) selects a field of a compound term.
-            % Address is a tagged pointer to a cell on the heap; the offset
-            % into the cell is FieldNum words. If Tag is yes, the arg gives
-            % the value of the tag; if it is no, the tag bits will have to be
-            % masked off. The value of the tag should be given if it is known,
-            % since this will lead to faster code.
+    ;       field(maybe(ptag), rval, rval)
+            % field(MaybePtag, Address, FieldNum) selects one field of a
+            % compound term. Address is a tagged pointer to a cell on the heap;
+            % the offset into the cell is FieldNum words. If MaybePtag is yes,
+            % its argument gives the value of the primary tag to be subtracted
+            % from Address; if it is no, the primary tag bits will have to be
+            % masked off. The value of the primary tag should be given
+            % if it is known, since this will lead to faster code.
 
     % Values somewhere in memory.
 
@@ -1169,10 +1170,10 @@
             % should not be present in the LLDS at any stage after code
             % generation.
 
-    ;       mkword(tag, rval)
-            % Given a pointer and a tag, mkword returns a tagged pointer.
+    ;       mkword(ptag, rval)
+            % Given a pointer and a ptag, mkword returns a tagged pointer.
 
-    ;       mkword_hole(tag)
+    ;       mkword_hole(ptag)
             % Make a tagged pointer to an address which is not yet known.
 
     ;       const(rval_const)
@@ -1192,9 +1193,9 @@
     ;       framevar_ref(rval)
             % Stack slot number.
 
-    ;       heap_ref(rval, maybe(int), rval).
-            % The cell pointer, the tag to subtract (if unknown, all the tag
-            % bits must be masked off), and the field number.
+    ;       heap_ref(rval, maybe(ptag), rval).
+            % The cell pointer, the ptag to subtract (if unknown, all the
+            % primary tag bits must be masked off), and the field number.
 
 :- type c_global_var_ref
     --->    env_var_ref(string).
@@ -1339,11 +1340,6 @@
             % or do_call_class_method_N. These are specialized to assume N
             % visible regular register input arguments, and zero visible float
             % register input arguments.
-
-    % A tag (used in mkword, create and field expressions and in incr_hp
-    % instructions) is a small integer.
-    %
-:- type tag ==  int.
 
     % Each function symbol of this type corresponds to one of the C types
     % {int,uint}_least{8,16,32}.

@@ -34,6 +34,8 @@
 
 :- implementation.
 
+:- import_module hlds.
+:- import_module hlds.hlds_data.
 :- import_module backend_libs.builtin_ops.
 :- import_module ll_backend.opt_util.
 :- import_module parse_tree.prog_data.
@@ -459,45 +461,46 @@ peephole_match(Instr0, Instrs0, InvalidPatterns, Instrs) :-
     list(pattern)::in, list(instruction)::out) is semidet.
 
     % If none of the instructions in brackets can affect Lval, then
-    % we can transform references to tag(Lval) to Tag and body(Lval, Tag)
+    % we can transform references to tag(Lval) to Ptag and body(Lval, Ptag)
     % to Base.
     %
-    %   Lval = mkword(Tag, Base)        Lval = mkword(Tag, Base)
+    %   Lval = mkword(Ptag, Base)       Lval = mkword(Ptag, Base)
     %   <...>                       =>  <...>
-    %   ... tag(Lval) ...               ... Tag ...
-    %   ... body(Lval, Tag) ...         ... Base ...
+    %   ... tag(Lval) ...               ... Ptag ...
+    %   ... body(Lval, Ptag) ...        ... Base ...
     %
 peephole_match_norepeat(Instr0, Instrs0, InvalidPatterns, Instrs) :-
     Instr0 = llds_instr(Uinstr0, _),
-    Uinstr0 = assign(Lval, mkword(Tag, Base)),
+    Uinstr0 = assign(Lval, mkword(Ptag, Base)),
     not list.member(pattern_mkword, InvalidPatterns),
-    replace_tagged_ptr_components_in_instrs(Lval, Tag, Base, Instrs0, Instrs1),
+    replace_tagged_ptr_components_in_instrs(Lval, Ptag, Base,
+        Instrs0, Instrs1),
     Instrs = [Instr0 | Instrs1].
 
 %-----------------------------------------------------------------------------%
 
-:- pred replace_tagged_ptr_components_in_instrs(lval::in, tag::in, rval::in,
+:- pred replace_tagged_ptr_components_in_instrs(lval::in, ptag::in, rval::in,
     list(instruction)::in, list(instruction)::out) is det.
 
 replace_tagged_ptr_components_in_instrs(_, _, _, [], []).
-replace_tagged_ptr_components_in_instrs(Lval, Tag, Base, Instrs0, Instrs) :-
+replace_tagged_ptr_components_in_instrs(Lval, Ptag, Base, Instrs0, Instrs) :-
     Instrs0 = [HeadInstr0 | TailInstrs0],
-    replace_tagged_ptr_components_in_instr(Lval, Tag, Base,
+    replace_tagged_ptr_components_in_instr(Lval, Ptag, Base,
         HeadInstr0, MaybeHeadInstr),
     (
         MaybeHeadInstr = no,
         Instrs = Instrs0
     ;
         MaybeHeadInstr = yes(HeadInstr),
-        replace_tagged_ptr_components_in_instrs(Lval, Tag, Base,
+        replace_tagged_ptr_components_in_instrs(Lval, Ptag, Base,
             TailInstrs0, TailInstrs),
         Instrs = [HeadInstr | TailInstrs]
     ).
 
-:- pred replace_tagged_ptr_components_in_instr(lval::in, tag::in, rval::in,
+:- pred replace_tagged_ptr_components_in_instr(lval::in, ptag::in, rval::in,
     instruction::in, maybe(instruction)::out) is det.
 
-replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
+replace_tagged_ptr_components_in_instr(OldLval, OldPtag, OldBase,
         Instr0, MaybeInstr) :-
     Instr0 = llds_instr(Uinstr0, Comment),
     (
@@ -507,7 +510,7 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         else if Lval = mem_ref(_) then
             MaybeInstr = no
         else
-            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
                 Rval0, Rval),
             Uinstr = assign(Lval, Rval),
             Instr = llds_instr(Uinstr, Comment),
@@ -520,7 +523,7 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         else if Lval = mem_ref(_) then
             MaybeInstr = no
         else
-            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
                 Rval0, Rval),
             Uinstr = keep_assign(Lval, Rval),
             Instr = llds_instr(Uinstr, Comment),
@@ -528,57 +531,57 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         )
     ;
         Uinstr0 = computed_goto(Rval0, Targets),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             Rval0, Rval),
         Uinstr = computed_goto(Rval, Targets),
         Instr = llds_instr(Uinstr, Comment),
         MaybeInstr = yes(Instr)
     ;
         Uinstr0 = if_val(Rval0, Target),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             Rval0, Rval),
         Uinstr = if_val(Rval, Target),
         Instr = llds_instr(Uinstr, Comment),
         MaybeInstr = yes(Instr)
     ;
-        Uinstr0 = incr_hp(Target, MaybeTag, MaybeOffset, SizeRval0,
+        Uinstr0 = incr_hp(Target, MaybePtag, MaybeOffset, SizeRval0,
             TypeMsg, MayUseAtomicAlloc, MaybeRegionId, MaybeReuse),
         ( if Target = OldLval then
             MaybeInstr = no
         else if Target = mem_ref(_) then
             MaybeInstr = no
         else
-            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
                 SizeRval0, SizeRval),
-            Uinstr = incr_hp(Target, MaybeTag, MaybeOffset, SizeRval,
+            Uinstr = incr_hp(Target, MaybePtag, MaybeOffset, SizeRval,
                 TypeMsg, MayUseAtomicAlloc, MaybeRegionId, MaybeReuse),
             Instr = llds_instr(Uinstr, Comment),
             MaybeInstr = yes(Instr)
         )
     ;
         Uinstr0 = restore_hp(Rval0),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             Rval0, Rval),
         Uinstr = restore_hp(Rval),
         Instr = llds_instr(Uinstr, Comment),
         MaybeInstr = yes(Instr)
     ;
         Uinstr0 = free_heap(Rval0),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             Rval0, Rval),
         Uinstr = free_heap(Rval),
         Instr = llds_instr(Uinstr, Comment),
         MaybeInstr = yes(Instr)
     ;
         Uinstr0 = reset_ticket(Rval0, Reason),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             Rval0, Rval),
         Uinstr = reset_ticket(Rval, Reason),
         Instr = llds_instr(Uinstr, Comment),
         MaybeInstr = yes(Instr)
     ;
         Uinstr0 = prune_tickets_to(Rval0),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             Rval0, Rval),
         Uinstr = prune_tickets_to(Rval),
         Instr = llds_instr(Uinstr, Comment),
@@ -590,7 +593,7 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         else if Lval0 = mem_ref(_) then
             MaybeInstr = no
         else
-            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
                 Rval0, Rval),
             Uinstr = lc_wait_free_slot(Rval, Lval0, Label),
             Instr = llds_instr(Uinstr, Comment),
@@ -598,18 +601,18 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         )
     ;
         Uinstr0 = lc_spawn_off(LCRval0, LCSRval0, Label),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             LCRval0, LCRval),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             LCSRval0, LCSRval),
         Uinstr = lc_spawn_off(LCRval, LCSRval, Label),
         Instr = llds_instr(Uinstr, Comment),
         MaybeInstr = yes(Instr)
     ;
         Uinstr0 = lc_join_and_terminate(LCRval0, LCSRval0),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             LCRval0, LCRval),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             LCSRval0, LCSRval),
         Uinstr = lc_join_and_terminate(LCRval, LCSRval),
         Instr = llds_instr(Uinstr, Comment),
@@ -658,19 +661,20 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         MaybeInstr = no
     ).
 
-:- pred replace_tagged_ptr_components_in_rval(lval::in, tag::in, rval::in,
+:- pred replace_tagged_ptr_components_in_rval(lval::in, ptag::in, rval::in,
     rval::in, rval::out) is det.
 
-replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase, Rval0, Rval) :-
+replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
+        Rval0, Rval) :-
     (
         Rval0 = unop(UnOp, RvalA0),
         ( if
             UnOp = tag,
             RvalA0 = lval(OldLval)
         then
-            Rval = unop(mktag, const(llconst_int(OldTag)))
+            Rval = unop(mktag, const(llconst_int(OldPtag)))
         else
-            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
                 RvalA0, RvalA),
             Rval = unop(UnOp, RvalA)
         )
@@ -679,22 +683,22 @@ replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase, Rval0, Rval) :-
         ( if
             BinOp = body,
             RvalA0 = lval(OldLval),
-            RvalB0 = unop(mktag, const(llconst_int(OldTag))),
+            RvalB0 = unop(mktag, const(llconst_int(OldPtag))),
             OldBase = const(_)
         then
             Rval = OldBase
         else
-            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
                 RvalA0, RvalA),
-            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
                 RvalB0, RvalB),
             Rval = binop(BinOp, RvalA, RvalB)
         )
     ;
-        Rval0 = mkword(Tag, BaseRval0),
-        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+        Rval0 = mkword(Ptag, BaseRval0),
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             BaseRval0, BaseRval),
-        Rval = mkword(Tag, BaseRval)
+        Rval = mkword(Ptag, BaseRval)
     ;
         ( Rval0 = lval(_)
         ; Rval0 = var(_)

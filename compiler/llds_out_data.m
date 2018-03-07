@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.llds_out_util.
@@ -96,7 +97,7 @@
 
 :- pred output_test_rval(llds_out_info::in, rval::in, io::di, io::uo) is det.
 
-:- pred output_tag(tag::in, io::di, io::uo) is det.
+:- pred output_ptag(ptag::in, io::di, io::uo) is det.
 
     % Return true iff an integer constant can be used directly as a value
     % in a structure field of the given type, instead of being cast to
@@ -324,14 +325,14 @@ output_lval(Info, Lval, !IO) :-
         output_rval(Info, Rval, !IO),
         io.write_string(")", !IO)
     ;
-        Lval = field(MaybeTag, Rval, FieldNumRval),
+        Lval = field(MaybePtag, Rval, FieldNumRval),
         (
-            MaybeTag = yes(Tag),
+            MaybePtag = yes(Ptag),
             io.write_string("MR_tfield(", !IO),
-            io.write_int(Tag, !IO),
+            io.write_int(Ptag, !IO),
             io.write_string(", ", !IO)
         ;
-            MaybeTag = no,
+            MaybePtag = no,
             io.write_string("MR_mask_field(", !IO)
         ),
         output_rval(Info, Rval, !IO),
@@ -471,15 +472,15 @@ output_lval_for_assign(Info, Lval, Type, !IO) :-
         output_rval(Info, Rval, !IO),
         io.write_string(")", !IO)
     ;
-        Lval = field(MaybeTag, Rval, FieldNumRval),
+        Lval = field(MaybePtag, Rval, FieldNumRval),
         Type = lt_word,
         (
-            MaybeTag = yes(Tag),
+            MaybePtag = yes(Ptag),
             io.write_string("MR_tfield(", !IO),
-            io.write_int(Tag, !IO),
+            io.write_int(Ptag, !IO),
             io.write_string(", ", !IO)
         ;
-            MaybeTag = no,
+            MaybePtag = no,
             io.write_string("MR_mask_field(", !IO)
         ),
         output_rval(Info, Rval, !IO),
@@ -1185,13 +1186,13 @@ output_rval(Info, Rval, !IO) :-
             )
         )
     ;
-        Rval = mkword(Tag, SubRval),
+        Rval = mkword(Ptag, SubRval),
         ( if
             SubRval = const(llconst_data_addr(DataId, no)),
             DataId = scalar_common_data_id(type_num(TypeNum), CellNum)
         then
             io.write_string("MR_TAG_COMMON(", !IO),
-            io.write_int(Tag, !IO),
+            io.write_int(Ptag, !IO),
             io.write_string(",", !IO),
             io.write_int(TypeNum, !IO),
             io.write_string(",", !IO),
@@ -1201,35 +1202,35 @@ output_rval(Info, Rval, !IO) :-
             SubRval = unop(mkbody, const(llconst_int(Body)))
         then
             io.write_string("MR_tbmkword(", !IO),
-            io.write_int(Tag, !IO),
+            io.write_int(Ptag, !IO),
             io.write_string(", ", !IO),
             io.write_int(Body, !IO),
             io.write_string(")", !IO)
         else
             io.write_string("MR_tmkword(", !IO),
-            io.write_int(Tag, !IO),
+            io.write_int(Ptag, !IO),
             io.write_string(", ", !IO),
             output_rval_as_type(Info, SubRval, lt_data_ptr, !IO),
             io.write_string(")", !IO)
         )
     ;
-        Rval = mkword_hole(Tag),
+        Rval = mkword_hole(Ptag),
         io.write_string("MR_tmkword(", !IO),
-        io.write_int(Tag, !IO),
+        io.write_int(Ptag, !IO),
         io.write_string(", 0)", !IO)
     ;
         Rval = lval(Lval),
         % If a field is used as an rval, then we need to use the
         % MR_const_field() macro or its variants, not the MR_field() macro
         % or its variants, to avoid warnings about discarding const.
-        ( if Lval = field(MaybeTag, Rval, FieldNumRval) then
+        ( if Lval = field(MaybePtag, Rval, FieldNumRval) then
             (
-                MaybeTag = yes(Tag),
+                MaybePtag = yes(Ptag),
                 io.write_string("MR_ctfield(", !IO),
-                io.write_int(Tag, !IO),
+                io.write_int(Ptag, !IO),
                 io.write_string(", ", !IO)
             ;
-                MaybeTag = no,
+                MaybePtag = no,
                 io.write_string("MR_const_mask_field(", !IO)
             ),
             output_rval(Info, Rval, !IO),
@@ -1271,14 +1272,14 @@ output_rval(Info, Rval, !IO) :-
             ),
             io.write_string(")", !IO)
         ;
-            MemRef = heap_ref(BaseRval, MaybeTag, FieldNumRval),
+            MemRef = heap_ref(BaseRval, MaybePtag, FieldNumRval),
             (
-                MaybeTag = yes(Tag),
+                MaybePtag = yes(Ptag),
                 io.write_string("&MR_tfield(", !IO),
-                io.write_int(Tag, !IO),
+                io.write_int(Ptag, !IO),
                 io.write_string(", ", !IO)
             ;
-                MaybeTag = no,
+                MaybePtag = no,
                 io.write_string("&MR_mask_field(", !IO)
             ),
             output_rval(Info, BaseRval, !IO),
@@ -1741,7 +1742,7 @@ is_aligned_dword_ptr(lval(LvalA), lval(LvalB), MemRef) :-
         % number has the lower address.
         MemRef = stackvar_ref(const(llconst_int(N + 1)))
     ;
-        LvalA = field(_MaybeTag, _Address, _Offset),
+        LvalA = field(_MaybePtag, _Address, _Offset),
         % We cannot guarantee that the Address is dword aligned.
         fail
     ).
@@ -1925,9 +1926,9 @@ is_local_stag_test(Test, Rval, Ptag, Stag, Negated) :-
         Negated = yes
     ).
 
-output_tag(Tag, !IO) :-
+output_ptag(Ptag, !IO) :-
     io.write_string("MR_mktag(", !IO),
-    io.write_int(Tag, !IO),
+    io.write_int(Ptag, !IO),
     io.write_string(")", !IO).
 
 direct_field_int_constant(LLDSType) = DirectFieldIntConstant :-

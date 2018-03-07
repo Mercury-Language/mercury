@@ -69,7 +69,7 @@
     % Exported for use by ml_closure_gen.m.
     %
 :- pred ml_gen_new_object(maybe(cons_id)::in, maybe(qual_ctor_id)::in,
-    mlds_ptag::in, bool::in, prog_var::in, list(mlds_typed_rval)::in,
+    ptag::in, bool::in, prog_var::in, list(mlds_typed_rval)::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -562,7 +562,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     ).
 
 :- pred ml_gen_new_object_dynamically(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, mlds_ptag::in, bool::in,
+    maybe(qual_ctor_id)::in, ptag::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in,
     list(prog_var)::in, list(unify_mode)::in,
@@ -637,7 +637,7 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
 %---------------------------------------------------------------------------%
 
 :- pred ml_gen_new_object_statically(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, mlds_ptag::in,
+    maybe(qual_ctor_id)::in, ptag::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in, list(prog_var)::in,
     prog_context::in, list(mlds_stmt)::out,
@@ -704,7 +704,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
     Stmts = [AssignStmt].
 
 :- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, mlds_ptag::in, bool::in,
+    maybe(qual_ctor_id)::in, ptag::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_typed_rval)::in, list(prog_var)::in, list(unify_mode)::in,
     list(int)::in, cell_to_reuse::in, prog_context::in,
@@ -790,7 +790,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag,
     Stmts = [HeapTestStmt, IfStmt].
 
 :- pred ml_gen_field_take_address_assigns(list(take_addr_info)::in,
-    mlds_lval::in, mlds_type::in, maybe(mlds_ptag)::in, prog_context::in,
+    mlds_lval::in, mlds_type::in, maybe(ptag)::in, prog_context::in,
     ml_gen_info::in, list(mlds_stmt)::out) is det.
 
 ml_gen_field_take_address_assigns([], _, _, _, _, _, []).
