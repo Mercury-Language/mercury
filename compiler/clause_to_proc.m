@@ -53,7 +53,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
-:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
