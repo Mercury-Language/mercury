@@ -1,0 +1,1 @@
+thing(enum1, enum1, 42.5, thing(enum2, enum2, 42.5, thing(enum3, enum3, 42.0, nil, enum3, enum3), enum2, enum2), enum1, enum1)

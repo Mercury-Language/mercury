@@ -717,16 +717,17 @@ generate_cons_args(_, [_ | _], [], _, _, _, _, !MayUseAtomic) :-
 generate_cons_args(VarTypes, [VarWidth | VarsWidths], [ArgMode | ArgModes],
         CurArgNum, !.TakeAddr, CI, [CellArg | CellArgs], !MayUseAtomic) :-
     generate_cons_arg(VarTypes, VarWidth, ArgMode, CurArgNum,
-        !.TakeAddr, CI, CellArg, !MayUseAtomic),
+        !TakeAddr, CI, CellArg, !MayUseAtomic),
     generate_cons_args(VarTypes, VarsWidths, ArgModes, CurArgNum + 1,
         !.TakeAddr, CI, CellArgs, !MayUseAtomic).
 
 :- pred generate_cons_arg(vartypes::in, pair(prog_var, arg_width)::in,
-    unify_mode::in, int::in, list(int)::in, code_info::in, cell_arg::out,
+    unify_mode::in, int::in, list(int)::in, list(int)::out,
+    code_info::in, cell_arg::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
 generate_cons_arg(VarTypes, Var - Width, ArgMode, CurArgNum,
-        !.TakeAddr, CI, CellArg, !MayUseAtomic) :-
+        !TakeAddr, CI, CellArg, !MayUseAtomic) :-
     lookup_var_type(VarTypes, Var, Type),
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
@@ -1402,25 +1403,24 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             Ptag = 0
         ;
             ConsTag = unshared_tag(Ptag)
+        ;
+            ConsTag = shared_remote_tag(Ptag, _Stag)
         ),
         generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ConstStructMap, ConstArgsWidths, ArgTypedRvals),
         assoc_list.values(ConstArgsWidths, ConsArgWidths),
         pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
-        add_scalar_static_cell(PackArgTypedRvals, DataAddr, !StaticCellInfo),
-        MaybeOffset = no,
-        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
-        Rval = mkword(Ptag, CellPtrConst),
-        TypedRval = typed_rval(Rval, lt_data_ptr)
-    ;
-        ConsTag = shared_remote_tag(Ptag, Stag),
-        generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, ConstArgsWidths, ArgTypedRvals),
-        assoc_list.values(ConstArgsWidths, ConsArgWidths),
-        pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
-        StagTypedRval = typed_rval(const(llconst_int(Stag)),
-            lt_int(int_type_int)),
-        AllTypedRvals = [StagTypedRval | PackArgTypedRvals],
+        (
+            ( ConsTag = single_functor_tag
+            ; ConsTag = unshared_tag(_Ptag)
+            ),
+            AllTypedRvals = PackArgTypedRvals
+        ;
+            ConsTag = shared_remote_tag(_Ptag, Stag),
+            StagTypedRval = typed_rval(const(llconst_int(Stag)),
+                lt_int(int_type_int)),
+            AllTypedRvals = [StagTypedRval | PackArgTypedRvals]
+        ),
         add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),

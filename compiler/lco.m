@@ -175,7 +175,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -429,7 +428,7 @@ lco_proc_if_permitted(LowerSCCVariants, SCC, CurProc,
         proc_info_get_inferred_determinism(ProcInfo0, Detism),
         ( if
             DefInThisModule = yes,
-            acceptable_detism_for_lco(Detism)
+            acceptable_detism_for_lco(Detism) = yes
         then
             lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
                 !ModuleInfo, !CurSCCVariants, !CurSCCUpdates, !:Permitted)
@@ -509,12 +508,16 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
     % and procedures that cannot succeed at all should not be optimized
     % for time.
     %
-:- pred acceptable_detism_for_lco(determinism::in) is semidet.
+:- func acceptable_detism_for_lco(determinism) = bool.
 
-acceptable_detism_for_lco(detism_det).
-acceptable_detism_for_lco(detism_semi).
-acceptable_detism_for_lco(detism_cc_multi).
-acceptable_detism_for_lco(detism_cc_non).
+acceptable_detism_for_lco(detism_det) = yes.
+acceptable_detism_for_lco(detism_semi) = yes.
+acceptable_detism_for_lco(detism_cc_multi) = yes.
+acceptable_detism_for_lco(detism_cc_non) = yes.
+acceptable_detism_for_lco(detism_multi) = no.
+acceptable_detism_for_lco(detism_non) = no.
+acceptable_detism_for_lco(detism_failure) = no.
+acceptable_detism_for_lco(detism_erroneous) = no.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -637,8 +640,8 @@ lco_in_conj(Goals0, MaybeGoals, !Info, ConstInfo) :-
         list.foldl3(partition_dependent_goal(!.Info, ConstInfo), AfterGoals,
             [], RevAfterDependentGoals,
             [], RevAfterNonDependentGoals,
-            DelayForVars0, _DelayForVars),
-        list.foldl2(acceptable_construct_unification,
+            DelayForVars0, DelayForVars),
+        list.foldl2(acceptable_construct_unification(DelayForVars),
             RevAfterDependentGoals, bag.init, UnifyInputVars, !Info)
     then
         list.reverse(RevAfterDependentGoals, UnifyGoals),
@@ -793,13 +796,14 @@ partition_dependent_goal(_Info, _ConstInfo, Goal,
 
 %-----------------------------------------------------------------------------%
 
-:- pred acceptable_construct_unification(hlds_goal::in, bag(prog_var)::in,
-    bag(prog_var)::out, lco_info::in, lco_info::out) is semidet.
+:- pred acceptable_construct_unification(set_of_progvar::in, hlds_goal::in,
+    bag(prog_var)::in, bag(prog_var)::out, lco_info::in, lco_info::out)
+    is semidet.
 
-acceptable_construct_unification(Goal, !UnifyInputVars, !Info) :-
+acceptable_construct_unification(DelayForVars, Goal, !UnifyInputVars, !Info) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     GoalExpr = unify(_, _, _, Unification, _),
-    Unification = construct(ConstructedVar, ConsId, ConstructArgs,
+    Unification = construct(ConstructedVar, ConsId, ConstructArgVars,
         ArgModes, _, _, SubInfo),
     (
         SubInfo = no_construct_sub_info
@@ -809,7 +813,8 @@ acceptable_construct_unification(Goal, !UnifyInputVars, !Info) :-
     ),
     ModuleInfo = !.Info ^ lco_module_info,
     all_true(acceptable_construct_mode(ModuleInfo), ArgModes),
-    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+    get_cons_repn_defn(ModuleInfo, ConsId, CtorRepn),
+    ConsTag = CtorRepn ^ cr_tag,
     % The code generator can't handle some kinds of tags. For example, it does
     % not make sense to take the address of the field of a function symbol of a
     % `notag' type. These are the kinds it CAN handle.
@@ -817,6 +822,17 @@ acceptable_construct_unification(Goal, !UnifyInputVars, !Info) :-
     ; ConsTag = unshared_tag(_)
     ; ConsTag = shared_remote_tag(_, _)
     ),
+    % If the construction unification has any existential constraints,
+    % then ConstructArgVars will have more elements than the number of
+    % arguments in ConsRepn ^ cr_args (the extra variables will be the
+    % type_infos and/or typeclass_infos providing information about
+    % those constraints). This will cause all_delayed_arg_vars_are_full_words
+    % to fail.
+    %
+    % We could work around that fact, but existentially constrained
+    % construction unifications are so rare that there is no point.
+    all_delayed_arg_vars_are_full_words(ConstructArgVars, CtorRepn ^ cr_args,
+        DelayForVars),
     require_det (
         trace [compiletime(flag("lco")), io(!IO)] (
             io.write_string("processing unification ", !IO),
@@ -824,7 +840,7 @@ acceptable_construct_unification(Goal, !UnifyInputVars, !Info) :-
             io.write_string(" <= ", !IO),
             io.write(ConsId, !IO),
             io.write_string("(", !IO),
-            io.write(ConstructArgs, !IO),
+            io.write(ConstructArgVars, !IO),
             io.write_string(")\n", !IO)
         ),
         trace [compiletime(flag("lco")), io(!IO)] (
@@ -833,13 +849,38 @@ acceptable_construct_unification(Goal, !UnifyInputVars, !Info) :-
             io.nl(!IO)
         ),
         bag.delete(ConstructedVar, !UnifyInputVars),
-        bag.insert_list(ConstructArgs, !UnifyInputVars),
+        bag.insert_list(ConstructArgVars, !UnifyInputVars),
         trace [compiletime(flag("lco")), io(!IO)] (
             io.write_string("updated UnifyInputVars: ", !IO),
             io.write(!.UnifyInputVars, !IO),
             io.nl(!IO)
         )
     ).
+
+:- pred all_delayed_arg_vars_are_full_words(list(prog_var)::in,
+    list(constructor_arg_repn)::in, set_of_progvar::in) is semidet.
+
+all_delayed_arg_vars_are_full_words([], [], _).
+all_delayed_arg_vars_are_full_words([ArgVar | ArgVars], [ArgRepn | ArgRepns],
+        DelayForVars) :-
+    ArgWidth = ArgRepn ^ car_width,
+    (
+        ArgWidth = full_word
+    ;
+        ArgWidth = double_word,
+        % XXX I (zs) am not sure whether this works. Until I am,
+        % failing here plays things safe.
+        fail
+    ;
+        ( ArgWidth = partial_word_first(_)
+        ; ArgWidth = partial_word_shifted(_, _)
+        ),
+        % It is ok for the cell to have subword arguments (packed two or more
+        % into a single word) IF AND ONLY IF we don't try to take
+        % their addresses.
+        not set_of_var.member(DelayForVars, ArgVar)
+    ),
+    all_delayed_arg_vars_are_full_words(ArgVars, ArgRepns, DelayForVars).
 
 :- pred transform_call_and_unifies(hlds_goal::in, list(prog_var)::in,
     list(hlds_goal)::in, bag(prog_var)::in, maybe(list(hlds_goal))::out,
