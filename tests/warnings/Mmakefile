@@ -39,6 +39,7 @@ ERRORCHECK_PROGS = \
 	save \
 	simple_code \
 	singleton_test \
+	singleton_test_state_var \
 	spurious_obsolete \
 	state_vars_test \
 	table_with_inline \

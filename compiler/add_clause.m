@@ -790,7 +790,7 @@ add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
 
         FinalSVarState = !.SVarState,
         svar_finish_clause_body(Context, FinalSVarMap,
-            [HeadGoal, BodyGoal], Goal0, InitialSVarState, FinalSVarState,
+            HeadGoal, BodyGoal, Goal0, InitialSVarState, FinalSVarState,
             !.SVarStore, StateVarWarnings, StateVarErrors),
 
         qual_info_get_found_trace_goal(!.QualInfo, FoundTraceGoal),

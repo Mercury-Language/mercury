@@ -249,6 +249,7 @@ ok_to_duplicate(feature_obvious_nontail_rec_call) = no.
 ok_to_duplicate(feature_keep_constant_binding) = no.
 ok_to_duplicate(feature_save_deep_excp_vars) = no.
 ok_to_duplicate(feature_dont_warn_singleton) = yes.
+ok_to_duplicate(feature_state_var_copy) = yes.
 ok_to_duplicate(feature_duplicated_for_switch) = yes.
 ok_to_duplicate(feature_mode_check_clauses_goal) = yes.
 ok_to_duplicate(feature_will_not_modify_trail) = yes.

@@ -701,7 +701,8 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
         globals.lookup_bool_option(Globals, middle_rec, MiddleRec),
         ( if
             MiddleRec = yes,
-            middle_rec.match_and_generate(Goal, MiddleRecCode, !CI, !CLD)
+            middle_rec.match_and_generate(Goal, MiddleRecCode,
+                !CI, !.CLD, _CLD)
         then
             Code = MiddleRecCode,
             MaybeTraceCallLabel = no,
