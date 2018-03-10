@@ -587,9 +587,8 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
         UseAtomicCells = no,
         MayUseAtomic0 = may_not_use_atomic_alloc
     ),
-    ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     ml_gen_cons_args(!.Info, ArgVars, ConsArgTypesWidths, ArgModes,
-        NumExtraRvals, TakeAddr, HighLevelData, ArgRvalsMLDSTypes0,
+        NumExtraRvals, TakeAddr, ArgRvalsMLDSTypes0,
         TakeAddrInfos, MayUseAtomic0, MayUseAtomic),
 
     % Replace double-word and packed arguments by uniform single word rvals.
@@ -1101,15 +1100,14 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
     %
 :- pred ml_gen_cons_args(ml_gen_info::in, list(prog_var)::in,
     list(type_and_width)::in, list(unify_mode)::in, int::in, list(int)::in,
-    bool::in, list(mlds_typed_rval)::out, list(take_addr_info)::out,
+    list(mlds_typed_rval)::out, list(take_addr_info)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
 ml_gen_cons_args(Info, Vars, ConsArgTypesWidths, UniModes, NumExtraArgs,
-        TakeAddr, HighLevelData,
-        !:RvalsMLDSTypes, !:TakeAddrInfos, !MayUseAtomic) :-
+        TakeAddr, !:RvalsMLDSTypes, !:TakeAddrInfos, !MayUseAtomic) :-
     ( if
         ml_gen_cons_args_loop(Info, Vars, ConsArgTypesWidths, UniModes,
-            NumExtraArgs, 1, ConsArgTypesWidths, TakeAddr, HighLevelData,
+            NumExtraArgs, 1, NumExtraArgs, ConsArgTypesWidths, TakeAddr,
             !:RvalsMLDSTypes, !:TakeAddrInfos, !MayUseAtomic)
     then
         true
@@ -1118,19 +1116,18 @@ ml_gen_cons_args(Info, Vars, ConsArgTypesWidths, UniModes, NumExtraArgs,
     ).
 
 :- pred ml_gen_cons_args_loop(ml_gen_info::in, list(prog_var)::in,
-    list(type_and_width)::in, list(unify_mode)::in, int::in, int::in,
-    list(type_and_width)::in, list(int)::in, bool::in,
+    list(type_and_width)::in, list(unify_mode)::in, int::in, int::in, int::in,
+    list(type_and_width)::in, list(int)::in,
     list(mlds_typed_rval)::out, list(take_addr_info)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
 
 ml_gen_cons_args_loop(_Info, [], [], [],
-        _NumExtraArgs, _CurArgNum, _AllConsArgTypesWidths, _TakeAddr,
-        _HighLevelData, [], [], !MayUseAtomic).
+        _NumExtraArgs, _CurArgNum, _CurOffset, _AllConsArgTypesWidths,
+        _TakeAddr, [], [], !MayUseAtomic).
 ml_gen_cons_args_loop(Info, [Var | Vars],
         [ConsArgTypeWidth | ConsArgTypesWidths], [ArgMode | ArgModes],
-        NumExtraArgs, CurArgNum, AllConsArgTypesWidths, !.TakeAddr,
-        HighLevelData, [RvalMLDSType | RvalsMLDSTypes], TakeAddrInfos,
-        !MayUseAtomic) :-
+        NumExtraArgs, CurArgNum, CurOffset, AllConsArgTypesWidths, !.TakeAddr,
+        [RvalMLDSType | RvalsMLDSTypes], TakeAddrInfos, !MayUseAtomic) :-
     ml_gen_var(Info, Var, Lval),
     ml_variable_type(Info, Var, ArgType),
     % It is important to use ArgType instead of ConsArgType here. ConsArgType
@@ -1146,6 +1143,19 @@ ml_gen_cons_args_loop(Info, [Var | Vars],
 
     % Figure out the type of the field.
     ConsArgTypeWidth = type_and_width(ConsArgType, ConsArgWidth),
+    (
+        ( ConsArgWidth = full_word
+        ; ConsArgWidth = partial_word_first(_)
+        ),
+        NextOffset = CurOffset + 1
+    ;
+        ConsArgWidth = double_word,
+        NextOffset = CurOffset + 2
+    ;
+        ConsArgWidth = partial_word_shifted(_, _),
+        NextOffset = CurOffset
+    ),
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
     ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ConsArgWidth,
         BoxedArgType),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
@@ -1156,13 +1166,15 @@ ml_gen_cons_args_loop(Info, [Var | Vars],
             "taking address of non word-sized argument"),
         Rval = ml_const(mlconst_null(MLDS_Type)),
         RvalMLDSType = ml_typed_rval(Rval, MLDS_Type),
-        ml_gen_cons_args_loop(Info, Vars, ConsArgTypesWidths, ArgModes,
-            NumExtraArgs, CurArgNum + 1, AllConsArgTypesWidths, !.TakeAddr,
-            HighLevelData, RvalsMLDSTypes, TakeAddrInfosTail, !MayUseAtomic),
         Offset = ml_calc_field_offset(NumExtraArgs, AllConsArgTypesWidths,
             CurArgNum),
+        expect(unify(Offset, offset(CurOffset)), $pred,
+            "Offset != CurOffset"),
         OrigMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ConsArgType),
         TakeAddrInfo = take_addr_info(Var, Offset, OrigMLDS_Type, MLDS_Type),
+        ml_gen_cons_args_loop(Info, Vars, ConsArgTypesWidths, ArgModes,
+            NumExtraArgs, CurArgNum + 1, NextOffset, AllConsArgTypesWidths,
+            !.TakeAddr, RvalsMLDSTypes, TakeAddrInfosTail, !MayUseAtomic),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
     else
         ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
@@ -1179,8 +1191,8 @@ ml_gen_cons_args_loop(Info, [Var | Vars],
         ),
         RvalMLDSType = ml_typed_rval(Rval, MLDS_Type),
         ml_gen_cons_args_loop(Info, Vars, ConsArgTypesWidths, ArgModes,
-            NumExtraArgs, CurArgNum + 1, AllConsArgTypesWidths, !.TakeAddr,
-            HighLevelData, RvalsMLDSTypes, TakeAddrInfos, !MayUseAtomic)
+            NumExtraArgs, CurArgNum + 1, NextOffset, AllConsArgTypesWidths,
+            !.TakeAddr, RvalsMLDSTypes, TakeAddrInfos, !MayUseAtomic)
     ).
 
 :- func ml_calc_field_offset(int, list(type_and_width), int) = field_offset.
