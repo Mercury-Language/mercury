@@ -48,6 +48,7 @@
 
 :- pred search_var_type(vartypes::in, prog_var::in, mer_type::out) is semidet.
 
+:- func lookup_var_type_func(vartypes, prog_var) = mer_type.
 :- pred lookup_var_type(vartypes::in, prog_var::in, mer_type::out) is det.
 :- pred lookup_var_types(vartypes::in, list(prog_var)::in,
     list(mer_type)::out) is det.
@@ -141,6 +142,9 @@ is_in_vartypes(VarTypes, Var) :-
 
 search_var_type(VarTypes, Var, Type) :-
     map.search(VarTypes, Var, Type).
+
+lookup_var_type_func(VarTypes, Var) = Type :-
+    lookup_var_type(VarTypes, Var, Type).
 
 lookup_var_type(VarTypes, Var, Type) :-
     map.lookup(VarTypes, Var, Type).

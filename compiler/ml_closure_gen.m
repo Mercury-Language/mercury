@@ -151,9 +151,9 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     ClosureLayoutRval = ml_unop(box(ClosureLayoutType0), ClosureLayoutRval0),
     ClosureLayoutType = mlds_generic_type,
     ExtraArgRvalsTypes =
-        [ml_typed_rval(ClosureLayoutRval, ClosureLayoutType),
-        ml_typed_rval(WrapperFuncRval, WrapperFuncType),
-        ml_typed_rval(NumArgsRval, NumArgsType)],
+        [rval_type_and_width(ClosureLayoutRval, ClosureLayoutType, full_word),
+        rval_type_and_width(WrapperFuncRval, WrapperFuncType, full_word),
+        rval_type_and_width(NumArgsRval, NumArgsType, full_word)],
 
     % The pointer will not be tagged (i.e. the tag will be zero).
     MaybeConsId = no,
