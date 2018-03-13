@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
+// Copyright (C) 2013-2018 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -141,6 +142,7 @@
 // MR_NATIVE_GC
 // MR_NO_TYPE_LAYOUT
 // MR_BOXED_FLOAT
+// MR_BOXED_INT64S
 // MR_USE_TRAIL
 // MR_USE_MINIMAL_MODEL_STACK_COPY
 // MR_USE_MINIMAL_MODEL_OWN_STACKS
@@ -624,11 +626,13 @@
 
 // MR_PREGENERATED_DIST overrides configured values to take values compatible
 // with pre-generated C files in the source distribution.
+// Any changes here may require changes in compiler/handle_options.m.
 
 #ifdef MR_PREGENERATED_DIST
   #undef  MR_LOW_TAG_BITS
   #define MR_LOW_TAG_BITS  2
   #define MR_BOXED_FLOAT   1
+  #define MR_BOXED_INT64S  1
 #endif
 
 // MR_PIC means that we are generating position independent code,

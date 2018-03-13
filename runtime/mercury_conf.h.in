@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab
 
 // Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
+// Copyright (C) 2013-2018 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -91,21 +92,17 @@
 
 #undef  MR_LOW_TAG_BITS
 
-// MR_BOXED_FLOAT: defined if MR_Float is wider than a MR_Word,
-// i.e. when using double-precision floats on 32-bit architectures.
+// MR_BOXED_FLOAT: defined if MR_Float is wider than MR_Word
+// (i.e. when using double-precision floats on 32-bit architectures),
+// or in a .pregen grade where MR_Float MAY be wider than MR_Word.
 // It does NOT mean that all floats are necessarily boxed.
 // A better name might be MR_OVERSIZED_FLOAT.
-//
-// Note that when bootstrapping from the source distribution,
-// we initially build things without MR_BOXED_FLOAT even on machines
-// for which sizeof(MR_Float) <= sizeof(MR_Word).
-// Conversely if MR_BOXED_FLOAT is undefined, it implies that
-// sizeof(MR_Float) <= sizeof(MR_Word).
 
 #undef  MR_BOXED_FLOAT
 
-// MR_BOXED_INT64S: defined if int64_t and uint64_t is wider than a MR_Word,
-// i.e. on 32-bit architectures.
+// MR_BOXED_INT64S: defined if int64_t/uint64_t is wider than MR_Word
+// (i.e. on 32-bit architectures), or in a .pregen grade where
+// int64_t/uint64_t MAY be wider than MR_Word.
 
 #undef  MR_BOXED_INT64S
 

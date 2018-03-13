@@ -291,8 +291,7 @@ typedef struct {
 //
 // float_reg
 //              The float reg vector for this engine. This exists only if
-//              MR_BOXED_FLOAT is defined, i.e. when sizeof(MR_Float) >
-//              sizeof(MR_Word).
+//              MR_BOXED_FLOAT is defined.
 //
 // trail_ptr
 // ticket_counter

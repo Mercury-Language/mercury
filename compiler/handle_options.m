@@ -724,6 +724,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
 
     % --pregenerated-dist sets options so that the pre-generated C source
     % distribution can be compiled equally on 32-bit and 64-bit platforms.
+    % Any changes here may require changes in runtime/mercury_conf_param.h.
     globals.lookup_bool_option(!.Globals, pregenerated_dist, PregeneratedDist),
     (
         PregeneratedDist = yes,
