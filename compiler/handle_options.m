@@ -1638,6 +1638,10 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(optimize_constructor_last_call, bool(no), !Globals),
         % Term size profiling breaks the assumption that even word offsets from
         % the start of the cell are double-word aligned memory addresses.
+        %
+        % XXX Actually, we do not (or should not) make that assumption as it
+        % would also be violated by memory attribution profiling which also
+        % allocates an extra word at the start of a cell.
         globals.set_option(allow_double_word_fields, bool(no), !Globals),
         (
             HighLevelCode = yes,
