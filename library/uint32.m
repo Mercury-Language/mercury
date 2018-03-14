@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017 The Mercury team.
+% Copyright (C) 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -191,11 +191,45 @@
     %
 :- func \ (uint32::in) = (uint32::uo) is det.
 
+%---------------------------------------------------------------------------%
+
+    % num_zeros(U) = N:
+    % N is the number of zeros in the binary representation of U.
+    %
+:- func num_zeros(uint32) = int.
+
+    % num_ones(U) = N:
+    % N is the number of ones in the binary representation of U.
+    %
+:- func num_ones(uint32) = int.
+
+    % num_leading_zeros(U) = N:
+    % N is the number of leading zeros in the binary representation of U,
+    % starting at the most significant bit position.
+    % Note that num_leading_zeros(0u32) = 32.
+    %
+:- func num_leading_zeros(uint32) = int.
+
+    % num_trailing_zeros(U) = N:
+    % N is the number of trailing zeros in the binary representation of U,
+    % starting at the least signficiatn bit position.
+    % Note that num_trailing_zeros(0u32) = 32.
+    %
+:- func num_trailing_zeros(uint32) = int.
+
     % reverse_bytes(A) = B:
-    % B is the value that results from reversing the bytes in the
+    % B is the value that results from reversing the bytes in the binary
     % representation of A.
     %
 :- func reverse_bytes(uint32) = uint32.
+
+    % reverse_bits(A) = B:
+    % B is the is value that results from reversing the bits in the binary
+    % representation of A.
+    %
+:- func reverse_bits(uint32) = uint32.
+
+%---------------------------------------------------------------------------%
 
 :- func max_uint32 = uint32.
 
@@ -209,6 +243,7 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module int.
 :- import_module math.
 :- import_module require.
 :- import_module string.
@@ -449,6 +484,143 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
+% The algorithms in this section are adapted from chapter 5 of
+% ``Hacker's Delight'' by Henry S. Warren, Jr.
+
+num_zeros(U) = 32 - num_ones(U).
+
+:- pragma foreign_proc("C",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+#if (defined(MR_GNUC) || defined(MR_CLANG))
+    N = __builtin_popcount(U);
+#else
+    U = U - ((U >> 1) & UINT32_C(0x55555555));
+    U = (U & UINT32_C(0x33333333)) + ((U >> 2) & UINT32_C(0x33333333));
+    U = (U + (U >> 4)) & UINT32_C(0x0f0f0f0f);
+    U = U + (U >> 8);
+    U = U + (U >> 16);
+    N = (MR_Integer) (U & UINT32_C(0x3f));
+#endif
+").
+
+:- pragma foreign_proc("C#",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U = U - ((U >> 1) & 0x55555555);
+    U = (U & 0x33333333) + ((U >> 2) & 0x33333333);
+    U = (U + (U >> 4)) & 0x0f0f0f0f;
+    U = U + (U >> 8);
+    U = U + (U >> 16);
+    N = (int) (U & 0x3f);
+").
+
+:- pragma foreign_proc("Java",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Integer.bitCount(U);
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    if (U == 0) {
+        N = 32;
+    } else {
+    #if defined(MR_GNUC) || defined(MR_CLANG)
+        // Note that __builtin_clz(0) is undefined.
+        N = __builtin_clz(U);
+    #else
+        int32_t n = 1;
+        if ((U >> 16) == 0) { n += 16; U <<= 16; }
+        if ((U >> 24) == 0) { n += 8;  U <<= 8;  }
+        if ((U >> 28) == 0) { n += 4;  U <<= 4;  }
+        if ((U >> 30) == 0) { n += 2;  U <<= 2;  }
+        N = n - (U >> 31);
+    #endif
+    }
+").
+
+:- pragma foreign_proc("C#",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (U == 0) {
+        N = 32;
+    } else {
+        int n = 1;
+        if ((U >> 16) == 0) { n = n + 16; U = U << 16; }
+        if ((U >> 24) == 0) { n = n + 8;  U = U << 8;  }
+        if ((U >> 28) == 0) { n = n + 4;  U = U << 4;  }
+        if ((U >> 30) == 0) { n = n + 2;  U = U << 2;  }
+        N = n - (int)(U >> 31);
+    }
+").
+
+:- pragma foreign_proc("Java",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Integer.numberOfLeadingZeros(U);
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    num_trailing_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    if (U == 0) {
+        N = 32;
+    } else {
+    #if defined(MR_GNUC) || defined(MR_CLANG)
+        N = __builtin_ctz(U);
+    #else
+        int32_t     n = 31;
+        uint32_t    y;
+        y = U << 16; if (y != 0) { n -= 16; U = y; }
+        y = U <<  8; if (y != 0) { n -= 8;  U = y; }
+        y = U <<  4; if (y != 0) { n -= 4;  U = y; }
+        y = U <<  2; if (y != 0) { n -= 2;  U = y; }
+        y = U <<  1; if (y != 0) { n -= 1; }
+        N = n;
+    #endif
+    }
+").
+
+:- pragma foreign_proc("C#",
+    num_trailing_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (U == 0) {
+        N = 32;
+    } else {
+        int     n = 31;
+        uint    y;
+        y = U << 16; if (y != 0) { n = n -16; U = y; }
+        y = U <<  8; if (y != 0) { n = n - 8; U = y; }
+        y = U <<  4; if (y != 0) { n = n - 4; U = y; }
+        y = U <<  2; if (y != 0) { n = n - 2; U = y; }
+        y = U <<  1; if (y != 0) { n = n - 1; }
+        N = n;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    num_trailing_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Integer.numberOfTrailingZeros(U);
+").
+
+%---------------------------------------------------------------------------%
+
 :- pragma foreign_proc("C",
     reverse_bytes(A::in) = (B::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -468,6 +640,38 @@ reverse_bytes(A) = B :-
         ((A /\ 0x_0000_ff00_u32) << 8)  \/
         ((A /\ 0x_00ff_0000_u32) >> 8)  \/
         ((A /\ 0x_ff00_0000_u32) >> 24).
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    A = (A & UINT32_C(0x55555555)) << 1 | (A >> 1) & UINT32_C(0x55555555);
+    A = (A & UINT32_C(0x33333333)) << 2 | (A >> 2) & UINT32_C(0x33333333);
+    A = (A & UINT32_C(0x0f0f0f0f)) << 4 | (A >> 4) & UINT32_C(0x0f0f0f0f);
+    A = (A << 24) | ((A & UINT32_C(0xff00)) << 8) |
+                    ((A >> 8) & UINT32_C(0xff00)) | (A >> 24);
+    B = A;
+").
+
+:- pragma foreign_proc("C#",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    A = (A & 0x55555555) << 1 | (A >> 1) & 0x55555555;
+    A = (A & 0x33333333) << 2 | (A >> 2) & 0x33333333;
+    A = (A & 0x0f0f0f0f) << 4 | (A >> 4) & 0x0f0f0f0f;
+    A = (A << 24) | ((A & 0xff00) << 8) | ((A >> 8) & 0xff00) | (A >> 24);
+    B = A;
+").
+
+:- pragma foreign_proc("Java",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Integer.reverse(A);
+").
 
 %---------------------------------------------------------------------------%
 
