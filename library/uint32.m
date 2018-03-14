@@ -647,9 +647,9 @@ reverse_bytes(A) = B :-
     reverse_bits(A::in) = (B::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    A = (A & UINT32_C(0x55555555)) << 1 | (A >> 1) & UINT32_C(0x55555555);
-    A = (A & UINT32_C(0x33333333)) << 2 | (A >> 2) & UINT32_C(0x33333333);
-    A = (A & UINT32_C(0x0f0f0f0f)) << 4 | (A >> 4) & UINT32_C(0x0f0f0f0f);
+    A = ((A & UINT32_C(0x55555555)) << 1) | ((A >> 1) & UINT32_C(0x55555555));
+    A = ((A & UINT32_C(0x33333333)) << 2) | ((A >> 2) & UINT32_C(0x33333333));
+    A = ((A & UINT32_C(0x0f0f0f0f)) << 4) | ((A >> 4) & UINT32_C(0x0f0f0f0f));
     A = (A << 24) | ((A & UINT32_C(0xff00)) << 8) |
                     ((A >> 8) & UINT32_C(0xff00)) | (A >> 24);
     B = A;
