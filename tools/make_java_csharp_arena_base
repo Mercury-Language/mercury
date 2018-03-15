@@ -51,12 +51,13 @@ do
 done
 cd ${root}/arena.base
 # These modules do not compile cleanly, so there is no point in trying.
-MODULES_TO_DELETE = \
-    mode_robdd.check.m \
-    mode_robdd.tfeir.m \
-    mode_robdd.tfer.m \
-    mode_robdd.tfern.m \
+MODULES_TO_DELETE='
+    mode_robdd.check.m
+    mode_robdd.tfeir.m
+    mode_robdd.tfer.m
+    mode_robdd.tfern.m
     atsort_callgraph.m
+'
 /bin/rm ${MODULES_TO_DELETE}
 
 ${BASE_MMC} -f *.m
