@@ -428,6 +428,10 @@
 
 #undef MR_HAVE_HWLOC
 
+// MR_INT_IS_32_BIT is defined if C's int type is exactly 32-bits.
+//
+#undef MR_INT_IS_32_BIT
+
 // The bytecode files represent floats in 64-bit IEEE format.
 //
 // MR_FLOAT_IS_64_BITS: defined iff the C type `float' is exactly 64 bits.

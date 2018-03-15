@@ -493,7 +493,7 @@ num_zeros(U) = 32 - num_ones(U).
     num_ones(U::in) = (N::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-#if (defined(MR_GNUC) || defined(MR_CLANG))
+#if (defined(MR_GNUC) || defined(MR_CLANG)) && defined(MR_INT_IS_32_BIT)
     N = __builtin_popcount(U);
 #else
     U = U - ((U >> 1) & UINT32_C(0x55555555));
@@ -533,7 +533,7 @@ num_zeros(U) = 32 - num_ones(U).
     if (U == 0) {
         N = 32;
     } else {
-    #if defined(MR_GNUC) || defined(MR_CLANG)
+    #if (defined(MR_GNUC) || defined(MR_CLANG)) && defined(MR_INT_IS_32_BIT)
         // Note that __builtin_clz(0) is undefined.
         N = __builtin_clz(U);
     #else
@@ -579,7 +579,7 @@ num_zeros(U) = 32 - num_ones(U).
     if (U == 0) {
         N = 32;
     } else {
-    #if defined(MR_GNUC) || defined(MR_CLANG)
+    #if (defined(MR_GNUC) || defined(MR_CLANG)) && defined(MR_INT_IS_32_BIT)
         N = __builtin_ctz(U);
     #else
         int32_t     n = 31;

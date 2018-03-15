@@ -2080,6 +2080,22 @@ AC_SUBST(MR_ROBDD_LOG_BITS_PER_WORD)
 
 #-----------------------------------------------------------------------------#
 
+AC_MSG_CHECKING(whether int is 32-bit)
+AC_CACHE_VAL(mercury_cv_int_is_32_bit,
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <limits.h>],
+        [sizeof(int) * CHAR_BIT == 32],
+        [mercury_cv_int_is_32_bit=yes],
+        [mercury_cv_int_is_32_bit=no])
+)
+AC_MSG_RESULT($mercury_cv_int_is_32_bit)
+if test "$mercury_cv_int_is_32_bit" = yes; then
+    AC_DEFINE(MR_INT_IS_32_BIT)
+fi
+AC_SUBST(MR_INT_IS_32_BIT)
+
+#-----------------------------------------------------------------------------#
+
 AC_MSG_CHECKING(whether we can use unboxed floats)
 AC_CACHE_VAL(mercury_cv_unboxed_floats,
     MERCURY_TRY_STATIC_ASSERT(
