@@ -1198,8 +1198,8 @@ generate_sub_assign_to_field_from_var(LeftField, RightVar, Code, CI, !CLD) :-
             const(llconst_int(LeftOffset))),
         LeftLvalB = field(yes(LeftPtag), LeftBaseRval,
             const(llconst_int(LeftOffset + 1))),
-        SrcA = binop(float_word_bits, RightRval, const(llconst_int(0))),
-        SrcB = binop(float_word_bits, RightRval, const(llconst_int(1))),
+        SrcA = unop(dword_float_get_word0, RightRval),
+        SrcB = unop(dword_float_get_word1, RightRval),
         Comment = "Update double word",
         AssignCode = from_list([
             llds_instr(assign(LeftLvalA, SrcA), Comment),

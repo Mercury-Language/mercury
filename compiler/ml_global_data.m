@@ -580,7 +580,6 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = float_gt
         ; Op = float_le
         ; Op = float_ge
-        ; Op = float_word_bits
         ; Op = body
         ; Op = array_index(_)   % should not be an initializer anyway
         ; Op = string_unsafe_index_code_unit

@@ -1675,10 +1675,8 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
     ;
         FieldWidth = double_word,
         ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
-            FloatWordA = ml_binop(float_word_bits, ArgRval,
-                ml_const(mlconst_int(0))),
-            FloatWordB = ml_binop(float_word_bits, ArgRval,
-                ml_const(mlconst_int(1))),
+            FloatWordA = ml_unop(std_unop(dword_float_get_word0), ArgRval),
+            FloatWordB = ml_unop(std_unop(dword_float_get_word1), ArgRval),
             ml_type_as_field(ModuleInfo, HighLevelData, int_type,
                 full_word, IntFieldType),
             ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
@@ -2979,8 +2977,8 @@ ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
             RvalB = ml_const(mlconst_null(SubstType))
         else
             SubstType = mlds_native_int_type,
-            RvalA = ml_binop(float_word_bits, Rval, ml_const(mlconst_int(0))),
-            RvalB = ml_binop(float_word_bits, Rval, ml_const(mlconst_int(1)))
+            RvalA = ml_unop(std_unop(dword_float_get_word0), Rval),
+            RvalB = ml_unop(std_unop(dword_float_get_word1), Rval)
         ),
         RvalTypeWidthA = rval_type_and_width(RvalA, SubstType, full_word),
         RvalTypeWidthB = rval_type_and_width(RvalB, SubstType, full_word),
@@ -3086,8 +3084,8 @@ ml_expand_double_word_rvals([Width0 | Widths0], Widths,
             RvalB = ml_const(mlconst_null(SubstType))
         else
             SubstType = mlds_native_int_type,
-            RvalA = ml_binop(float_word_bits, Rval0, ml_const(mlconst_int(0))),
-            RvalB = ml_binop(float_word_bits, Rval0, ml_const(mlconst_int(1)))
+            RvalA = ml_unop(std_unop(dword_float_get_word0), Rval0),
+            RvalB = ml_unop(std_unop(dword_float_get_word1), Rval0)
         ),
         Widths = [full_word, full_word | Widths1],
         TypedRvalA = ml_typed_rval(RvalA, SubstType),

@@ -4323,7 +4323,6 @@ output_std_unop_for_java(Info, UnaryOp, Expr, !IO) :-
     % For the Java back-end, there are no tags, so all the tagging operators
     % are no-ops, except for `tag', which always returns zero (a tag of zero
     % means there is no tag).
-    %
     (
         UnaryOp = tag,
         io.write_string("/* tag */  0", !IO)
@@ -4369,6 +4368,11 @@ output_std_unop_for_java(Info, UnaryOp, Expr, !IO) :-
         io.write_string("(", !IO),
         output_rval_for_java(Info, Expr, !IO),
         io.write_string("))", !IO)
+    ;
+        ( UnaryOp = dword_float_get_word0
+        ; UnaryOp = dword_float_get_word1
+        ),
+        unexpected($pred, "invalid unary operator")
     ).
 
 :- pred output_binop_for_java(java_out_info::in, binary_op::in, mlds_rval::in,
@@ -4501,7 +4505,6 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = float_gt
         ; Op = float_le
         ; Op = float_ge
-        ; Op = float_word_bits
         ; Op = float_from_dword
         ; Op = compound_eq
         ; Op = compound_lt
@@ -4561,7 +4564,6 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         io.write_string(") ", !IO),
         io.write_string(RelOpStr, !IO),
         io.write_string(" 0)", !IO)
-
     ;
         ( Op = int_div(int_type_uint)
         ; Op = int_mod(int_type_uint)
@@ -4794,7 +4796,6 @@ output_binary_op_for_java(Op, !IO) :-
         ( Op = array_index(_)
         ; Op = body
         ; Op = float_from_dword
-        ; Op = float_word_bits
         ; Op = offset_str_eq(_)
         ; Op = str_cmp
         ; Op = str_eq

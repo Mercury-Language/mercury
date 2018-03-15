@@ -973,6 +973,8 @@ unary_prefix_op(hash_string3,       "MR_hash_string3").
 unary_prefix_op(hash_string4,       "MR_hash_string4").
 unary_prefix_op(hash_string5,       "MR_hash_string5").
 unary_prefix_op(hash_string6,       "MR_hash_string6").
+unary_prefix_op(dword_float_get_word0,  "MR_dword_float_get_word0").
+unary_prefix_op(dword_float_get_word1,  "MR_dword_float_get_word1").
 
 % The operator strings for array_index, compound_lt and compound_eq are
 % dummies; they should never be used.
@@ -1033,8 +1035,6 @@ binop_category_string(offset_str_eq(N), offset_string_compare_binop(N),
     "MR_offset_streq").
 binop_category_string(body, int_macro_binop, "MR_body").
 
-binop_category_string(float_word_bits, float_macro_binop,
-    "MR_float_word_bits").
 binop_category_string(float_from_dword, float_macro_binop,
     "MR_float_from_dword").
 

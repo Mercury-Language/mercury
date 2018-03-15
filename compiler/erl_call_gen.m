@@ -516,6 +516,8 @@ std_unop_to_elds(StdUnOp, EldsUnOp) :-
         ; StdUnOp = hash_string4
         ; StdUnOp = hash_string5
         ; StdUnOp = hash_string6
+        ; StdUnOp = dword_float_get_word0
+        ; StdUnOp = dword_float_get_word1
         ),
         fail
     ;
@@ -533,7 +535,6 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = array_index(_)
         ; StdBinOp = unsigned_le
         ; StdBinOp = float_from_dword
-        ; StdBinOp = float_word_bits
         ; StdBinOp = str_cmp
         ; StdBinOp = pointer_equal_conservative     % handled in our caller
         ; StdBinOp = string_unsafe_index_code_unit  % we *could* implement this

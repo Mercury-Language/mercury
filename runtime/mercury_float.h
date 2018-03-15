@@ -97,9 +97,14 @@
   #if defined(MR_GNUC) || defined(MR_CLANG)
     #define MR_float_word_bits(F, I)                                        \
         (((union MR_Float_Dword) (MR_Float) (F)).w[(I)])
+    #define MR_dword_float_get_word0(F)                                     \
+        (((union MR_Float_Dword) (MR_Float) (F)).w[0])
+    #define MR_dword_float_get_word1(F)                                     \
+        (((union MR_Float_Dword) (MR_Float) (F)).w[1])
   #else
-    MR_EXTERN_INLINE MR_Word
-    MR_float_word_bits(MR_Float f, MR_Integer n);
+    MR_EXTERN_INLINE MR_Word    MR_float_word_bits(MR_Float f, MR_Integer n);
+    MR_EXTERN_INLINE MR_Word    MR_dword_float_get_word0(MR_Float f);
+    MR_EXTERN_INLINE MR_Word    MR_dword_float_get_word1(MR_Float f);
 
     MR_EXTERN_INLINE MR_Word
     MR_float_word_bits(MR_Float f, MR_Integer n)
@@ -107,6 +112,22 @@
         union MR_Float_Dword __ffdw;
         __ffdw.f = f;
         return __ffdw.w[n];
+    }
+
+    MR_EXTERN_INLINE MR_Word
+    MR_dword_float_get_word0(MR_Float f)
+    {
+        union MR_Float_Dword __ffdw;
+        __ffdw.f = f;
+        return __ffdw.w[0];
+    }
+
+    MR_EXTERN_INLINE MR_Word
+    MR_dword_float_get_word1(MR_Float f)
+    {
+        union MR_Float_Dword __ffdw;
+        __ffdw.f = f;
+        return __ffdw.w[1];
     }
   #endif
 

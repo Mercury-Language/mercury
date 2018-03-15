@@ -5186,13 +5186,6 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_rval_as_op_arg(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
-        Op = float_word_bits,
-        io.write_string("MR_float_word_bits(", !IO),
-        mlds_output_rval_as_op_arg(Opts, X, !IO),
-        io.write_string(", ", !IO),
-        mlds_output_rval_as_op_arg(Opts, Y, !IO),
-        io.write_string(")", !IO)
-    ;
         Op = float_from_dword,
         ( if is_aligned_dword_field(X, Y, PtrRval) then
             % gcc produces faster code in this case.

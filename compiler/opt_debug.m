@@ -849,6 +849,8 @@ dump_unop(hash_string3) = "hash_string3".
 dump_unop(hash_string4) = "hash_string4".
 dump_unop(hash_string5) = "hash_string5".
 dump_unop(hash_string6) = "hash_string6".
+dump_unop(dword_float_get_word0) = "dword_float_get_word0".
+dump_unop(dword_float_get_word1) = "dword_float_get_word1".
 
 dump_binop(array_index(_)) = "array_index".
 dump_binop(string_unsafe_index_code_unit) = "string_unsafe_index_code_unit".
@@ -872,7 +874,6 @@ dump_binop(float_le) = "fl<=".
 dump_binop(float_ge) = "fl>=".
 dump_binop(float_lt) = "fl<".
 dump_binop(float_gt) = "fl>".
-dump_binop(float_word_bits) = "float_word_bits".
 dump_binop(float_from_dword) = "float_from_dword".
 dump_binop(int_add(_)) = "+".
 dump_binop(int_sub(_)) = "-".

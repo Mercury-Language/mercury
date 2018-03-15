@@ -3445,6 +3445,11 @@ output_std_unop_for_csharp(Info, UnaryOp, Expr, !IO) :-
         io.write_string("(", !IO),
         output_rval_for_csharp(Info, Expr, !IO),
         io.write_string(")", !IO)
+    ;
+        ( UnaryOp = dword_float_get_word0
+        ; UnaryOp = dword_float_get_word1
+        ),
+        unexpected($pred, "invalid unary operator")
     ).
 
 :- pred output_binop_for_csharp(csharp_out_info::in, binary_op::in,
@@ -3575,7 +3580,6 @@ output_binop_for_csharp(Info, Op, X, Y, !IO) :-
         ; Op = float_gt
         ; Op = float_le
         ; Op = float_ge
-        ; Op = float_word_bits
         ; Op = float_from_dword
         ; Op = compound_eq
         ; Op = compound_lt
@@ -3715,7 +3719,6 @@ output_binary_op_for_csharp(Op, !IO) :-
         ( Op = array_index(_)
         ; Op = body
         ; Op = float_from_dword
-        ; Op = float_word_bits
         ; Op = offset_str_eq(_)
         ; Op = str_cmp
         ; Op = str_eq
