@@ -1382,10 +1382,16 @@ mercury_check_for_functions \
         access sleep opendir readdir closedir mkdir symlink readlink \
         gettimeofday setenv putenv _putenv posix_spawn sched_setaffinity \
         sched_getaffinity sched_getcpu sched_yield mkstemp mkdtemp \
-        setrlimit fma getcontext dl_iterate_phdr
+        setrlimit getcontext dl_iterate_phdr
 
 mercury_check_for_stdio_functions \
         snprintf _snprintf vsnprintf _vsnprintf
+
+save_LIBS="$LIBS"
+LIBS="$MATH_LIB"
+mercury_check_for_functions \
+        fma
+LIBS="$save_LIBS"
 
 #-----------------------------------------------------------------------------#
 
