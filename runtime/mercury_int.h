@@ -94,7 +94,7 @@
 extern MR_Integer MR_hash_int64(int64_t);
 extern MR_Integer MR_hash_uint64(uint64_t);
 
-#if defined(MR_GNUC) || defined(MR_CLANG)
+#if defined(MR_HAVE_BUILTIN_BSWAP16)
   #define MR_uint16_reverse_bytes(U) __builtin_bswap16((U))
 #elif defined(MR_MSVC)
   #define MR_uint16_reverse_bytes(U) _byteswap_ushort((U))
@@ -103,7 +103,7 @@ extern MR_Integer MR_hash_uint64(uint64_t);
                                       ((U & 0x00ff) << 8))
 #endif
 
-#if defined(MR_GNUC) || defined(MR_CLANG)
+#if defined(MR_HAVE_BUILTIN_BSWAP32)
   #define MR_uint32_reverse_bytes(U) __builtin_bswap32((U))
 #elif defined(MR_MSVC)
   #define MR_uint32_reverse_bytes(U) _byteswap_ulong((U))
@@ -114,7 +114,7 @@ extern MR_Integer MR_hash_uint64(uint64_t);
                                       (U & UINT32_C(0xff000000)) >> 24 )
 #endif
 
-#if defined(MR_GNUC) || defined(MR_CLANG)
+#if defined(MR_HAVE_BUILTIN_BSWAP64)
   #define MR_uint64_reverse_bytes(U) __builtin_bswap64((U))
 #elif defined(MR_MSVC)
   #define MR_uint64_reverse_bytes(U) _byteswap_uint64((UU))

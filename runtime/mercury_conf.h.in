@@ -287,6 +287,9 @@
 //  MR_HAVE_ISFINITE            we have the isfinite() function.
 //  MR_HAVE_FESETROUND          we have the fesetround() function.
 //  MR_HAVE_FMA                 we have the fma() function.
+//  MR_HAVE_BUILTIN_BSWAP16     we have the __builtin_bswap16() function.
+//  MR_HAVE_BUILTIN_BSWAP32     we have the __builtin_bswap32() function.
+//  MR_HAVE_BUILTIN_BSWAP64     we have the __builtin_bswap64() function.
 
 #undef  MR_HAVE_GETPID
 #undef  MR_HAVE_SETPGID
@@ -363,6 +366,9 @@
 #undef  MR_HAVE_FINITE
 #undef  MR_HAVE_FESETROUND
 #undef  MR_HAVE_FMA
+#undef  MR_HAVE_BUILTIN_BSWAP16
+#undef  MR_HAVE_BUILTIN_BSWAP32
+#undef  MR_HAVE_BUILTIN_BSWAP64
 
 // We use mprotect() and signals to catch stack and heap overflows.
 // In order to detect such overflows, we need to be able to figure out

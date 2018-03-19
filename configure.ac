@@ -1423,6 +1423,50 @@ MERCURY_CHECK_FOR_FENV_FUNC([fesetround], [$MATH_LIB])
 
 #-----------------------------------------------------------------------------#
 #
+# Check whether we have __builtin_bswap builtin functions
+#
+
+AC_MSG_CHECKING(whether we have __builtin_bswap16)
+AC_CACHE_VAL(mercury_cv_have_builtin_bswap16,
+    AC_TRY_LINK(
+        [],
+        [__builtin_bswap16(1);],
+        [mercury_cv_have_builtin_bswap16=yes],
+        [mercury_cv_have_builtin_bswap16=no])
+)
+AC_MSG_RESULT($mercury_cv_have_builtin_bswap16)
+if test "$mercury_cv_have_builtin_bswap16" = yes; then
+    AC_DEFINE(MR_HAVE_BUILTIN_BSWAP16)
+fi
+
+AC_MSG_CHECKING(whether we have __builtin_bswap32)
+AC_CACHE_VAL(mercury_cv_have_builtin_bswap32,
+    AC_TRY_LINK(
+        [],
+        [__builtin_bswap32(1);],
+        [mercury_cv_have_builtin_bswap32=yes],
+        [mercury_cv_have_builtin_bswap32=no])
+)
+AC_MSG_RESULT($mercury_cv_have_builtin_bswap32)
+if test "$mercury_cv_have_builtin_bswap32" = yes; then
+    AC_DEFINE(MR_HAVE_BUILTIN_BSWAP32)
+fi
+
+AC_MSG_CHECKING(whether we have __builtin_bswap64)
+AC_CACHE_VAL(mercury_cv_have_builtin_bswap64,
+    AC_TRY_LINK(
+        [],
+        [__builtin_bswap64(1);],
+        [mercury_cv_have_builtin_bswap64=yes],
+        [mercury_cv_have_builtin_bswap64=no])
+)
+AC_MSG_RESULT($mercury_cv_have_builtin_bswap64)
+if test "$mercury_cv_have_builtin_bswap64" = yes; then
+    AC_DEFINE(MR_HAVE_BUILTIN_BSWAP64)
+fi
+
+#-----------------------------------------------------------------------------#
+#
 # Check the basics of sigaction
 #
 
