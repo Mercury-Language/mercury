@@ -117,7 +117,7 @@ extern MR_Integer MR_hash_uint64(uint64_t);
 #if defined(MR_HAVE_BUILTIN_BSWAP64)
   #define MR_uint64_reverse_bytes(U) __builtin_bswap64((U))
 #elif defined(MR_MSVC)
-  #define MR_uint64_reverse_bytes(U) _byteswap_uint64((UU))
+  #define MR_uint64_reverse_bytes(U) _byteswap_uint64((U))
 #else
   #define MR_uint64_reverse_bytes(U) \
         ((U & UINT64_C(0x00000000000000ff)) << 56  | \
