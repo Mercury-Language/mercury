@@ -47,7 +47,11 @@
     ;       hash_string5
     ;       hash_string6
     ;       dword_float_get_word0
-    ;       dword_float_get_word1.
+    ;       dword_float_get_word1
+    ;       dword_int64_get_word0
+    ;       dword_int64_get_word1
+    ;       dword_uint64_get_word0
+    ;       dword_uint64_get_word1.
 
 :- type binary_op
     --->    int_add(int_type)
@@ -113,6 +117,8 @@
     ;       float_le
     ;       float_ge
     ;       float_from_dword
+    ;       int64_from_dword
+    ;       uint64_from_dword
 
     ;       pointer_equal_conservative
 

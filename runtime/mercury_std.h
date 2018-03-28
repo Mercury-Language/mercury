@@ -304,4 +304,20 @@ typedef char        MR_small_bool;
 
 ////////////////////////////////////////////////////////////////////////////
 
+// This macro is needed by both mercury_float.h and mercury_int.h.
+
+#if defined(MR_DEBUG_DWORD_ALIGNMENT) &&                                \
+      (defined(MR_GNUC) || defined(MR_CLANG))
+  #define MR_dword_ptr(ptr)                                             \
+    ({                                                                  \
+        MR_Word __addr = (MR_Word) (ptr);                               \
+        assert((__addr % 8) == 0);                                      \
+        /* return */ (void *) __addr;                                   \
+    })
+#else
+  #define MR_dword_ptr(ptr)   ((void *) (ptr))
+#endif
+
+////////////////////////////////////////////////////////////////////////////
+
 #endif // not MERCURY_STD_H

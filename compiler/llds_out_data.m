@@ -1165,13 +1165,17 @@ output_rval(Info, Rval, !IO) :-
             output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), !IO),
             io.write_string(")", !IO)
         ;
-            Op = float_from_dword,
+            ( Op = float_from_dword,  OpStr = "MR_float_from_dword"
+            ; Op = int64_from_dword,  OpStr = "MR_int64_from_dword"
+            ; Op = uint64_from_dword, OpStr = "MR_uint64_from_dword"
+            ),
+            io.write_string(OpStr, !IO),
             ( if is_aligned_dword_ptr(SubRvalA, SubRvalB, MemRef) then
-                io.write_string("MR_float_from_dword_ptr(MR_dword_ptr(", !IO),
+                io.write_string("_ptr(MR_dword_ptr(", !IO),
                 output_rval(Info, mem_addr(MemRef), !IO),
                 io.write_string("))", !IO)
             else
-                io.write_string("MR_float_from_dword(", !IO),
+                io.write_string("(", !IO),
                 output_rval(Info, SubRvalA, !IO),
                 io.write_string(", ", !IO),
                 output_rval(Info, SubRvalB, !IO),

@@ -851,6 +851,10 @@ dump_unop(hash_string5) = "hash_string5".
 dump_unop(hash_string6) = "hash_string6".
 dump_unop(dword_float_get_word0) = "dword_float_get_word0".
 dump_unop(dword_float_get_word1) = "dword_float_get_word1".
+dump_unop(dword_int64_get_word0) = "dword_int64_get_word0".
+dump_unop(dword_int64_get_word1) = "dword_int64_get_word1".
+dump_unop(dword_uint64_get_word0) = "dword_uint64_get_word0".
+dump_unop(dword_uint64_get_word1) = "dword_uint64_get_word1".
 
 dump_binop(array_index(_)) = "array_index".
 dump_binop(string_unsafe_index_code_unit) = "string_unsafe_index_code_unit".
@@ -875,6 +879,8 @@ dump_binop(float_ge) = "fl>=".
 dump_binop(float_lt) = "fl<".
 dump_binop(float_gt) = "fl>".
 dump_binop(float_from_dword) = "float_from_dword".
+dump_binop(int64_from_dword) = "int64_from_dword".
+dump_binop(uint64_from_dword) = "uint64_from_dword".
 dump_binop(int_add(_)) = "+".
 dump_binop(int_sub(_)) = "-".
 dump_binop(int_mul(_)) = "*".

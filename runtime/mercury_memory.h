@@ -142,13 +142,13 @@ extern  void    MR_ensure_big_enough_buffer(char **buffer_ptr,
 //
 // MR_GC_malloc_uncollectable(bytes):
 //  Allocates the given number of bytes.
-//  The memory will not be garbage collected, and so
-//  it should be explicitly deallocated using MR_GC_free().
+//  The memory will not be garbage collected, and so it should be
+//  explicitly deallocated using MR_GC_free().
 //
 // MR_GC_malloc_atomic(bytes):
 //  Allocates the given number of bytes.
 //  Pointers to GC objects may not be stored in this object. This allows
-//  the GC to optimize it's marking phase.
+//  the GC to optimize its marking phase.
 //
 // MR_GC_realloc(ptr, bytes):
 //  Reallocates the memory block pointed to by ptr.
@@ -293,7 +293,7 @@ MR_weak_ptr_read_unsafe(void* weak_ptr);
 // MR_GC_free_attrib(ptr):
 //  These variants take into account the extra word before ptr.
 //  You must NOT pass pointers which were returned by non-"attrib"
-//  functions/macros to these "attrib" variants, and vice versa.
+//  functions or macros to these "attrib" variants, and vice versa.
 
 #define MR_GC_NEW_ATTRIB(type, attrib)                                  \
     ((type *) MR_GC_malloc_attrib(sizeof(type), (attrib)))
@@ -309,12 +309,12 @@ MR_weak_ptr_read_unsafe(void* weak_ptr);
 
 extern  void    *MR_GC_malloc_attrib(size_t num_bytes, void *attrib);
 extern  void    *MR_GC_malloc_uncollectable_attrib(size_t num_bytes,
-            void *attrib);
+                    void *attrib);
 extern  void    *MR_GC_realloc_attrib(void *ptr, size_t num_bytes);
 extern  void    MR_GC_free_attrib(void *ptr);
 
 struct MR_AllocSiteInfo_Struct {
-    MR_Code *MR_asi_proc;
+    MR_Code     *MR_asi_proc;
     const char  *MR_asi_file_name;
     const int   MR_asi_line_number;
     const char  *MR_asi_type;

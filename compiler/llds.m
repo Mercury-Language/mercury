@@ -1708,8 +1708,12 @@ unop_return_type(hash_string3, lt_int(int_type_int)).
 unop_return_type(hash_string4, lt_int(int_type_int)).
 unop_return_type(hash_string5, lt_int(int_type_int)).
 unop_return_type(hash_string6, lt_int(int_type_int)).
-unop_return_type(dword_float_get_word0, lt_word).
-unop_return_type(dword_float_get_word1, lt_word).
+unop_return_type(dword_float_get_word0,  lt_word).
+unop_return_type(dword_float_get_word1,  lt_word).
+unop_return_type(dword_int64_get_word0,  lt_word).
+unop_return_type(dword_int64_get_word1,  lt_word).
+unop_return_type(dword_uint64_get_word0, lt_word).
+unop_return_type(dword_uint64_get_word1, lt_word).
 
 unop_arg_type(mktag, lt_word).
 unop_arg_type(tag, lt_word).
@@ -1725,8 +1729,12 @@ unop_arg_type(hash_string3, lt_string).
 unop_arg_type(hash_string4, lt_string).
 unop_arg_type(hash_string5, lt_string).
 unop_arg_type(hash_string6, lt_string).
-unop_arg_type(dword_float_get_word0, lt_float).
-unop_arg_type(dword_float_get_word1, lt_float).
+unop_arg_type(dword_float_get_word0,  lt_float).
+unop_arg_type(dword_float_get_word1,  lt_float).
+unop_arg_type(dword_int64_get_word0,  lt_int(int_type_int64)).
+unop_arg_type(dword_int64_get_word1,  lt_int(int_type_int64)).
+unop_arg_type(dword_uint64_get_word0, lt_int(int_type_uint64)).
+unop_arg_type(dword_uint64_get_word1, lt_int(int_type_uint64)).
 
 binop_return_type(int_add(IntType), lt_int(IntType)).
 binop_return_type(int_sub(IntType), lt_int(IntType)).
@@ -1767,7 +1775,9 @@ binop_return_type(float_lt, lt_bool).
 binop_return_type(float_gt, lt_bool).
 binop_return_type(float_le, lt_bool).
 binop_return_type(float_ge, lt_bool).
-binop_return_type(float_from_dword, lt_float).
+binop_return_type(float_from_dword,  lt_float).
+binop_return_type(int64_from_dword,  lt_int(int_type_int64)).
+binop_return_type(uint64_from_dword, lt_int(int_type_uint64)).
 binop_return_type(body, lt_word).
 binop_return_type(compound_eq, lt_bool).
 binop_return_type(compound_lt, lt_bool).

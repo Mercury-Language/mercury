@@ -586,6 +586,8 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = compound_eq
         ; Op = compound_lt
         ; Op = pointer_equal_conservative
+        ; Op = int64_from_dword
+        ; Op = uint64_from_dword
         ),
         IsFloat = no
     ;

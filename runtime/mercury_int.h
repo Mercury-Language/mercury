@@ -13,81 +13,207 @@
 #include "mercury_types.h"      // for `MR_Word'
 #include "mercury_std.h"        // for `MR_bool'
 
-#define MR_INT64_WORDS          ((sizeof(int64_t) + sizeof(MR_Word) - 1) \
+#define MR_INT64_WORDS          ((sizeof(int64_t) + sizeof(MR_Word) - 1)     \
                                         / sizeof(MR_Word))
-#define MR_UINT64_WORDS         ((sizeof(uint64_t) + sizeof(MR_Word) - 1) \
+#define MR_UINT64_WORDS         ((sizeof(uint64_t) + sizeof(MR_Word) - 1)    \
                                         / sizeof(MR_Word))
+
+// See the comment on the definitions of MR_Float_Aligned in mercury_float.h.
+//
+// Any changes here will probably also need to be made for floats
+// in mercury_float.h.
+
+#if defined(MR_GNUC) || defined(MR_CLANG)
+  typedef int64_t   MR_Int64Aligned  __attribute__((aligned(sizeof(MR_Word))));
+  typedef uint64_t  MR_Uint64Aligned __attribute__((aligned(sizeof(MR_Word))));
+#elif defined(MR_MSVC)
+  typedef __declspec(align(MR_BYTES_PER_WORD)) int64_t  MR_Int64Aligned;
+  typedef __declspec(align(MR_BYTES_PER_WORD)) uint64_t MR_Uint64Aligned;
+#else
+  typedef int64_t   MR_Int64Aligned;
+  typedef uint64_t  MR_Uint64Aligned;
+#endif
+
 #if defined(MR_BOXED_INT64S)
 
-   #define MR_word_to_int64(w)   (* (int64_t *) (w))
-   #define MR_word_to_uint64(w)  (* (uint64_t *) (w))
+  #define MR_word_to_int64(w)   (* (int64_t *) (w))
+  #define MR_word_to_uint64(w)  (* (uint64_t *) (w))
 
-   #if defined(MR_CONSERVATIVE_GC)
+  #if defined(MR_CONSERVATIVE_GC)
+    #define MR_make_hp_int64_aligned()  ((void) 0)
+    #define MR_make_hp_uint64_aligned() ((void) 0)
 
-    #define MR_int64_to_word(i)                                             \
-      (                                                                     \
-        MR_hp_alloc_atomic_msg(MR_INT64_WORDS, MR_ALLOC_SITE_INT64, NULL),  \
-        * (int64_t *) (void *) (MR_hp - MR_INT64_WORDS) = (i),              \
-        /* return */ (MR_Word) (MR_hp - MR_INT64_WORDS)                     \
+    #define MR_int64_to_word(i)                                              \
+      (                                                                      \
+        MR_hp_alloc_atomic_msg(MR_INT64_WORDS, MR_ALLOC_SITE_INT64, NULL),   \
+        * (int64_t *) (void *) (MR_hp - MR_INT64_WORDS) = (i),               \
+        /* return */ (MR_Word) (MR_hp - MR_INT64_WORDS)                      \
       )
-    #define MR_make_hp_int64_aligned() ((void)0)
-
     #define MR_uint64_to_word(u)                                             \
       (                                                                      \
         MR_hp_alloc_atomic_msg(MR_UINT64_WORDS, MR_ALLOC_SITE_UINT64, NULL), \
         * (uint64_t *) (void *) (MR_hp - MR_UINT64_WORDS) = (u),             \
         /* return */ (MR_Word) (MR_hp - MR_UINT64_WORDS)                     \
       )
-    #define MR_make_hp_uint64_aligned() ((void)0)
-
-   #else // ! defined(MR_CONSERVATIVE_GC)
+  #else // ! defined(MR_CONSERVATIVE_GC)
     // We need to ensure that what we allocated on the heap is properly
     // aligned for a 64-bit integer value, by rounding MR_hp up to the
     // nearest int64-aligned boundary.
-
-    #define MR_make_hp_int64_aligned()                                      \
-      ( (MR_Word) MR_hp & (sizeof(int64_t) - 1) ?                           \
-            MR_hp_alloc_atomic_msg(1, MR_ALLOC_SITE_INT64, NULL)            \
-      :                                                                     \
-            (void)0                                                         \
+    #define MR_make_hp_int64_aligned()                                       \
+      ( ((MR_Word) MR_hp & (sizeof(int64_t) - 1)) ?                          \
+            MR_hp_alloc_atomic_msg(1, MR_ALLOC_SITE_INT64, NULL)             \
+      :                                                                      \
+            (void) 0                                                         \
       )
-    #define MR_int64_to_word(i)                                             \
-      (                                                                     \
-        MR_make_hp_int64_aligned(),                                         \
-        MR_hp_alloc_atomic_msg(MR_INT64_WORDS, MR_ALLOC_SITE_INT64, NULL),  \
-        * (int64_t *) (void *)(MR_hp - MR_INT64_WORDS) = (i),               \
-        /* return */ (MR_Word) (MR_hp - MR_INT64_WORDS)                     \
-      )
-    
     #define MR_make_hp_uint64_aligned()                                      \
-      ( (MR_Word) MR_hp & (sizeof(uint64_t) - 1) ?                           \
+      ( ((MR_Word) MR_hp & (sizeof(uint64_t) - 1)) ?                         \
             MR_hp_alloc_atomic_msg(1, MR_ALLOC_SITE_UINT64, NULL)            \
       :                                                                      \
-            (void)0                                                          \
+            (void) 0                                                         \
+      )
+
+    #define MR_int64_to_word(i)                                              \
+      (                                                                      \
+        MR_make_hp_int64_aligned(),                                          \
+        MR_hp_alloc_atomic_msg(MR_INT64_WORDS, MR_ALLOC_SITE_INT64, NULL),   \
+        * (int64_t *) (void *) (MR_hp - MR_INT64_WORDS) = (i),               \
+        /* return */ (MR_Word) (MR_hp - MR_INT64_WORDS)                      \
       )
     #define MR_uint64_to_word(u)                                             \
       (                                                                      \
         MR_make_hp_uint64_aligned(),                                         \
         MR_hp_alloc_atomic_msg(MR_UINT64_WORDS, MR_ALLOC_SITE_UINT64, NULL), \
-        * (uint64_t *) (void *)(MR_hp - MR_UINT64_WORDS) = (u),              \
-        /* return */ (MR_Word) (MR_hp - MR_UINT64_WORDS)                     \
+        * (uint64_t *) (void *) (MR_hp - MR_UINT64_WORDS) = (u),             \
+        /* return  */ (MR_Word) (MR_hp - MR_UINT64_WORDS)                    \
       )
+  #endif // MR_CONSERVATIVE_GC
 
+  #ifdef MR_GNUC
+    #define MR_int64_const(i)  ({ static const int64_t  d = i; (MR_Word) &d; })
+    #define MR_uint64_const(u) ({ static const uint64_t d = u; (MR_Word) &d; })
+  #else
+    #define MR_int64_const(i)  MR_int64_to_word(i)    // inefficient
+    #define MR_uint64_const(u) MR_uint64_to_word(u)   // inefficient
   #endif
 
-#else // not MR_BOXED_INT64S
+  union MR_Int64Dword {
+        int64_t     i64;
+        MR_Word     i64w[2];
+  };
+  union MR_Uint64Dword {
+        uint64_t    ui64;
+        MR_Word     ui64w[2];
+  };
+
+  #if defined(MR_GNUC) || defined(MR_CLANG)
+    #define MR_dword_int64_get_word0(i64)                                    \
+        (((union MR_Int64Dword) (int64_t) (i64)).i64w[0])
+    #define MR_dword_int64_get_word1(i64)                                    \
+        (((union MR_Int64Dword) (int64_t) (i64)).i64w[1])
+    #define MR_dword_uint64_get_word0(ui64)                                  \
+        (((union MR_Uint64Dword) (uint64_t) (ui64)).ui64w[0])
+    #define MR_dword_uint64_get_word1(ui64)                                  \
+        (((union MR_Uint64Dword) (uint64_t) (ui64)).ui64w[1])
+  #else // ! (defined(MR_GNUC) || defined(MR_CLANG))
+    MR_EXTERN_INLINE MR_Word    MR_dword_int64_get_word0(int64_t i64);
+    MR_EXTERN_INLINE MR_Word    MR_dword_int64_get_word1(int64_t i64);
+    MR_EXTERN_INLINE MR_Word    MR_dword_uint64_get_word0(uint64_t ui64);
+    MR_EXTERN_INLINE MR_Word    MR_dword_uint64_get_word1(uint64_t ui64);
+
+    MR_EXTERN_INLINE MR_Word
+    MR_dword_int64_get_word0(int64_t i64)
+    {
+        union MR_Int64Dword __i64dw;
+        __i64dw.i64 = i64;
+        return __i64dw.i64w[0];
+    }
+    MR_EXTERN_INLINE MR_Word
+    MR_dword_int64_get_word1(int64_t i64)
+    {
+        union MR_Int64Dword __i64dw;
+        __i64dw.i64 = i64;
+        return __i64dw.i64w[1];
+    }
+
+    MR_EXTERN_INLINE MR_Word
+    MR_dword_uint64_get_word0(uint64_t ui64)
+    {
+        union MR_Uint64Dword __ui64dw;
+        __ui64dw.ui64 = ui64;
+        return __ui64dw.ui64w[0];
+    }
+    MR_EXTERN_INLINE MR_Word
+    MR_dword_uint64_get_word1(uint64_t ui64)
+    {
+        union MR_Uint64Dword __ui64dw;
+        __ui64dw.ui64 = ui64;
+        return __ui64dw.ui64w[1];
+    }
+  #endif // defined(MR_GNUC) || defined(MR_CLANG)
+
+  #define MR_int64_from_dword_ptr(ptr)                                       \
+        (((union MR_Int64Dword *) (ptr))->i64)
+  #define MR_uint64_from_dword_ptr(ptr)                                      \
+        (((union MR_Uint64Dword *) (ptr))->ui64)
+
+  #if defined(MR_GNUC) || defined(MR_CLANG)
+    #define MR_int64_from_dword(w0, w1)                                      \
+      ({                                                                     \
+        union MR_Int64Dword __i64dw;                                         \
+        __i64dw.i64w[0] = (MR_Word) (w0);                                    \
+        __i64dw.i64w[1] = (MR_Word) (w1);                                    \
+        __i64dw.i64;                                                         \
+      })
+    #define MR_uint64_from_dword(w0, w1)                                     \
+      ({                                                                     \
+        union MR_Uint64Dword __ui64dw;                                       \
+        __ui64dw.ui64w[0] = (MR_Word) (w0);                                  \
+        __ui64dw.ui64w[1] = (MR_Word) (w1);                                  \
+        __ui64dw.ui64;                                                       \
+      })
+  #else // ! (defined(MR_GNUC) || defined(MR_CLANG))
+    #define MR_int64_from_dword(w0, w1)                                      \
+        MR_int64_from_dword_func((MR_Word) (w0), (MR_Word) (w1))
+    #define MR_uint64_from_dword(w0, w1)                                     \
+        MR_uint64_from_dword_func((MR_Word) (w0), (MR_Word) (w1))
+
+    MR_EXTERN_INLINE int64
+    MR_int64_from_dword_func(MR_Word w0, MR_Word w1);
+    MR_EXTERN_INLINE uint64
+    MR_uint64_from_dword_func(MR_Word w0, MR_Word w1);
+
+    MR_EXTERN_INLINE int64
+    MR_int64_from_dword_func(MR_Word w0, MR_Word w1)
+    {
+        union MR_Int64Dword __i64dw;
+        __i64dw.i64w[0] = (MR_Word) (w0);
+        __i64dw.i64w[1] = (MR_Word) (w1);
+        return __i64dw.ui64;
+    }
+
+    MR_EXTERN_INLINE uint64
+    MR_uint64_from_dword_func(MR_Word w0, MR_Word w1)
+    {
+        union MR_Uint64Dword __ui64dw;
+        __ui64dw.ui64w[0] = (MR_Word) (w0);
+        __ui64dw.ui64w[1] = (MR_Word) (w1);
+        return __ui64dw.ui64;
+    }
+  #endif // defined(MR_GNUC) || defined(MR_CLANG)
+
+#else // ! MR_BOXED_INT64S
 
   // Unboxed int64s means we can assume sizeof(int64_t) <= sizeof(MR_Word)
   // and sizeof(uint64_t) <= sizeof(MR_Word).
 
-  #define MR_make_hp_int64_aligned() ((void)0)
-  #define MR_make_hp_uint64_aligned() ((void)0)
+  #define MR_make_hp_int64_aligned()  ((void) 0)
+  #define MR_make_hp_uint64_aligned() ((void) 0)
 
-  #define MR_int64_to_word(i) ((MR_Word)(i))
-  #define MR_uint64_to_word(u) ((MR_Word)(u))
+  #define MR_int64_to_word(i)  ((MR_Word) (i))
+  #define MR_uint64_to_word(u) ((MR_Word) (u))
 
-  #define MR_word_to_int64(w) ((int64_t)(w))
-  #define MR_word_to_uint64(w) ((uint64_t)(w))
+  #define MR_word_to_int64(w)  ((int64_t) (w))
+  #define MR_word_to_uint64(w) ((uint64_t) (w))
 
 #endif // not MR_BOXED_INT64S
 

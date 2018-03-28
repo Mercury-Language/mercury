@@ -4371,6 +4371,10 @@ output_std_unop_for_java(Info, UnaryOp, Expr, !IO) :-
     ;
         ( UnaryOp = dword_float_get_word0
         ; UnaryOp = dword_float_get_word1
+        ; UnaryOp = dword_int64_get_word0
+        ; UnaryOp = dword_int64_get_word1
+        ; UnaryOp = dword_uint64_get_word0
+        ; UnaryOp = dword_uint64_get_word1
         ),
         unexpected($pred, "invalid unary operator")
     ).
@@ -4506,6 +4510,8 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = float_le
         ; Op = float_ge
         ; Op = float_from_dword
+        ; Op = int64_from_dword
+        ; Op = uint64_from_dword
         ; Op = compound_eq
         ; Op = compound_lt
         ; Op = int_lt(int_type_int8)
@@ -4796,6 +4802,8 @@ output_binary_op_for_java(Op, !IO) :-
         ( Op = array_index(_)
         ; Op = body
         ; Op = float_from_dword
+        ; Op = int64_from_dword
+        ; Op = uint64_from_dword
         ; Op = offset_str_eq(_)
         ; Op = str_cmp
         ; Op = str_eq

@@ -1275,6 +1275,8 @@ binop_code(bitwise_or(int_type_uint64),  185).
 binop_code(bitwise_xor(int_type_uint64), 186).
 binop_code(unchecked_left_shift(int_type_uint64),  187).
 binop_code(unchecked_right_shift(int_type_uint64), 188).
+binop_code(int64_from_dword,          189).
+binop_code(uint64_from_dword,         190).
 
 :- pred binop_debug(binary_op::in, string::out) is det.
 
@@ -1319,6 +1321,8 @@ binop_debug(compound_eq,            "compound_eq").
 binop_debug(compound_lt,            "compound_lt").
 binop_debug(str_cmp,                "strcmp").
 binop_debug(float_from_dword,       "float_from_dword").
+binop_debug(int64_from_dword,       "int64_from_dword").
+binop_debug(uint64_from_dword,      "uint64_from_dword").
 binop_debug(pointer_equal_conservative, "pointer_equal_conservative").
 binop_debug(offset_str_eq(_),       "offset_str_eq").
 binop_debug(string_unsafe_index_code_unit, "string_unsafe_index_code_unit").
@@ -1494,6 +1498,10 @@ unop_code(bitwise_complement(int_type_int64),   21).
 unop_code(bitwise_complement(int_type_uint64),  22).
 unop_code(dword_float_get_word0,                23).
 unop_code(dword_float_get_word1,                24).
+unop_code(dword_int64_get_word0,                25).
+unop_code(dword_int64_get_word1,                26).
+unop_code(dword_uint64_get_word0,               27).
+unop_code(dword_uint64_get_word1,               28).
 
 :- pred unop_debug(unary_op::in, string::out) is det.
 
@@ -1513,14 +1521,18 @@ unop_debug(hash_string5,        "hash_string5").
 unop_debug(hash_string6,        "hash_string6").
 unop_debug(dword_float_get_word0,   "dword_float_get_word0").
 unop_debug(dword_float_get_word1,   "dword_float_get_word1").
-unop_debug(bitwise_complement(int_type_uint), "bitwise_complement(uint)").
-unop_debug(bitwise_complement(int_type_int8), "bitwise_complement(int8)").
-unop_debug(bitwise_complement(int_type_uint8), "bitwise_complement(uint8)").
-unop_debug(bitwise_complement(int_type_int16), "bitwise_complement(int16)").
+unop_debug(dword_int64_get_word0,   "dword_int64_get_word0").
+unop_debug(dword_int64_get_word1,   "dword_int64_get_word1").
+unop_debug(dword_uint64_get_word0,  "dword_uint64_get_word0").
+unop_debug(dword_uint64_get_word1,  "dword_uint64_get_word1").
+unop_debug(bitwise_complement(int_type_uint),   "bitwise_complement(uint)").
+unop_debug(bitwise_complement(int_type_int8),   "bitwise_complement(int8)").
+unop_debug(bitwise_complement(int_type_uint8),  "bitwise_complement(uint8)").
+unop_debug(bitwise_complement(int_type_int16),  "bitwise_complement(int16)").
 unop_debug(bitwise_complement(int_type_uint16), "bitwise_complement(uint16)").
-unop_debug(bitwise_complement(int_type_int32), "bitwise_complement(int32)").
+unop_debug(bitwise_complement(int_type_int32),  "bitwise_complement(int32)").
 unop_debug(bitwise_complement(int_type_uint32), "bitwise_complement(uint32)").
-unop_debug(bitwise_complement(int_type_int64), "bitwise_complement(int64)").
+unop_debug(bitwise_complement(int_type_int64),  "bitwise_complement(int64)").
 unop_debug(bitwise_complement(int_type_uint64), "bitwise_complement(uint64)").
 
 %---------------------------------------------------------------------------%

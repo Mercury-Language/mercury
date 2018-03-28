@@ -5186,14 +5186,18 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_rval_as_op_arg(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
-        Op = float_from_dword,
+        ( Op = float_from_dword,  OpStr = "MR_float_from_dword"
+        ; Op = int64_from_dword,  OpStr = "MR_int64_from_dword"
+        ; Op = uint64_from_dword, OpStr = "MR_uint64_from_dword"
+        ),
+        io.write_string(OpStr, !IO),
         ( if is_aligned_dword_field(X, Y, PtrRval) then
             % gcc produces faster code in this case.
-            io.write_string("MR_float_from_dword_ptr(MR_dword_ptr(", !IO),
+            io.write_string("_ptr(MR_dword_ptr(", !IO),
             mlds_output_rval(Opts, PtrRval, !IO),
             io.write_string("))", !IO)
         else
-            io.write_string("MR_float_from_dword(", !IO),
+            io.write_string("(", !IO),
             mlds_output_rval_as_op_arg(Opts, X, !IO),
             io.write_string(", ", !IO),
             mlds_output_rval_as_op_arg(Opts, Y, !IO),
