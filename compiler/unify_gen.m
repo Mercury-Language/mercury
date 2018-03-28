@@ -853,13 +853,13 @@ generate_field_take_address_assigns([FieldAddr | FieldAddrs],
     % Construct a pair of lists that associates the fields of a term
     % with variables.
     %
-:- pred make_fields_and_arg_vars(vartypes::in,
-    assoc_list(prog_var, arg_width)::in, rval::in, int::in, int::in,
+:- pred make_fields_and_arg_vars(vartypes::in, rval::in, int::in,
+    assoc_list(prog_var, arg_width)::in, int::in,
     list(field_and_arg_var)::out) is det.
 
-make_fields_and_arg_vars(_, [], _, _, _, []).
-make_fields_and_arg_vars(VarTypes, [VarWidth | VarsWidths],
-        Rval, PrevOffset0, Ptag, [FieldAndArgVar | FieldsAndArgVars]) :-
+make_fields_and_arg_vars(_, _, _, [], _, []).
+make_fields_and_arg_vars(VarTypes, Rval, Ptag, [VarWidth | VarsWidths],
+        PrevOffset0, [FieldAndArgVar | FieldsAndArgVars]) :-
     VarWidth = Var - Width,
     (
         ( Width = full_word
@@ -879,8 +879,8 @@ make_fields_and_arg_vars(VarTypes, [VarWidth | VarsWidths],
     Field = uv_field(uni_field(Ptag, Rval, Offset, Width)),
     lookup_var_type(VarTypes, Var, Type),
     FieldAndArgVar = field_and_arg_var(Field, Var, Type),
-    make_fields_and_arg_vars(VarTypes, VarsWidths,
-        Rval, PrevOffset, Ptag, FieldsAndArgVars).
+    make_fields_and_arg_vars(VarTypes, Rval, Ptag, VarsWidths,
+        PrevOffset, FieldsAndArgVars).
 
 %---------------------------------------------------------------------------%
 
@@ -962,6 +962,18 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
             unexpected($pred, "no_tag: arity != 1")
         )
     ;
+        ConsTag = direct_arg_tag(Ptag),
+        ( if
+            ArgVarsWidths = [ArgVar - _Width],
+            Modes = [Mode]
+        then
+            Type = variable_type(CI, ArgVar),
+            generate_direct_arg_deconstruct(Var, ArgVar, Ptag, Mode, Type,
+                Code, CI, !CLD)
+        else
+            unexpected($pred, "direct_arg_tag: arity != 1")
+        )
+    ;
         (
             ConsTag = single_functor_tag,
             % Treat single_functor the same as unshared_tag(0).
@@ -977,21 +989,9 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
         Rval = var(Var),
         get_proc_info(CI, ProcInfo),
         proc_info_get_vartypes(ProcInfo, VarTypes),
-        make_fields_and_arg_vars(VarTypes, ArgVarsWidths,
-            Rval, PrevOffset, Ptag, FieldsAndArgVars),
+        make_fields_and_arg_vars(VarTypes, Rval, Ptag, ArgVarsWidths,
+            PrevOffset, FieldsAndArgVars),
         generate_unify_args(FieldsAndArgVars, Modes, Code, CI, !CLD)
-    ;
-        ConsTag = direct_arg_tag(Ptag),
-        ( if
-            ArgVarsWidths = [ArgVar - _Width],
-            Modes = [Mode]
-        then
-            Type = variable_type(CI, ArgVar),
-            generate_direct_arg_deconstruct(Var, ArgVar, Ptag, Mode, Type,
-                Code, CI, !CLD)
-        else
-            unexpected($pred, "direct_arg_tag: arity != 1")
-        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -1133,6 +1133,16 @@ generate_sub_assign_to_var_from_field(LeftVar, RightField, Code, CI, !CLD) :-
             const(llconst_int(RightOffset))),
         assign_lval_to_var(LeftVar, RightLval, Code, CI, !CLD)
     ;
+        RightWidth = double_word,
+        RightLvalA = field(yes(RightPtag), RightBaseRval,
+            const(llconst_int(RightOffset))),
+        RightLvalB = field(yes(RightPtag), RightBaseRval,
+            const(llconst_int(RightOffset + 1))),
+        RightRval = binop(float_from_dword,
+            lval(RightLvalA), lval(RightLvalB)),
+        assign_field_lval_expr_to_var(LeftVar, [RightLvalA, RightLvalB],
+            RightRval, Code, !CLD)
+    ;
         (
             RightWidth = partial_word_first(Mask),
             RightLval = field(yes(RightPtag), RightBaseRval,
@@ -1148,16 +1158,6 @@ generate_sub_assign_to_var_from_field(LeftVar, RightField, Code, CI, !CLD) :-
             const(llconst_int(Mask))),
         assign_field_lval_expr_to_var(LeftVar, [RightLval], RightRval,
             Code, !CLD)
-    ;
-        RightWidth = double_word,
-        RightLvalA = field(yes(RightPtag), RightBaseRval,
-            const(llconst_int(RightOffset))),
-        RightLvalB = field(yes(RightPtag), RightBaseRval,
-            const(llconst_int(RightOffset + 1))),
-        RightRval = binop(float_from_dword,
-            lval(RightLvalA), lval(RightLvalB)),
-        assign_field_lval_expr_to_var(LeftVar, [RightLvalA, RightLvalB],
-            RightRval, Code, !CLD)
     ).
 
 :- pred generate_sub_assign_to_field_from_var(uni_field::in, prog_var::in,
@@ -1177,6 +1177,19 @@ generate_sub_assign_to_field_from_var(LeftField, RightVar, Code, CI, !CLD) :-
         AssignCode = singleton(llds_instr(assign(LeftLval, RightRval),
             "Copy value"))
     ;
+        LeftWidth = double_word,
+        LeftLvalA = field(yes(LeftPtag), LeftBaseRval,
+            const(llconst_int(LeftOffset))),
+        LeftLvalB = field(yes(LeftPtag), LeftBaseRval,
+            const(llconst_int(LeftOffset + 1))),
+        SrcA = unop(dword_float_get_word0, RightRval),
+        SrcB = unop(dword_float_get_word1, RightRval),
+        Comment = "Update double word",
+        AssignCode = from_list([
+            llds_instr(assign(LeftLvalA, SrcA), Comment),
+            llds_instr(assign(LeftLvalB, SrcB), Comment)
+        ])
+    ;
         (
             LeftWidth = partial_word_first(Mask),
             Shift = 0
@@ -1192,19 +1205,6 @@ generate_sub_assign_to_field_from_var(LeftField, RightVar, Code, CI, !CLD) :-
         Combined = binop(bitwise_or(int_type_int), MaskOld, ShiftNew),
         AssignCode = singleton(llds_instr(assign(LeftLval, Combined),
             "Update part of word"))
-    ;
-        LeftWidth = double_word,
-        LeftLvalA = field(yes(LeftPtag), LeftBaseRval,
-            const(llconst_int(LeftOffset))),
-        LeftLvalB = field(yes(LeftPtag), LeftBaseRval,
-            const(llconst_int(LeftOffset + 1))),
-        SrcA = unop(dword_float_get_word0, RightRval),
-        SrcB = unop(dword_float_get_word1, RightRval),
-        Comment = "Update double word",
-        AssignCode = from_list([
-            llds_instr(assign(LeftLvalA, SrcA), Comment),
-            llds_instr(assign(LeftLvalB, SrcB), Comment)
-        ])
     ),
     Code = ProduceRightVarCode ++ MaterializeLeftBaseCode ++ AssignCode.
 
@@ -1575,19 +1575,6 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
         unexpected($pred, "unexpected tag")
     ).
 
-%ZZZ
-:- pred det_single_arg_width(list(arg_width)::in, arg_width::out) is det.
-
-det_single_arg_width(ArgWidths, ArgWidth) :-
-    (
-        ArgWidths = [ArgWidth]
-    ;
-        ( ArgWidths = []
-        ; ArgWidths = [_, _ | _]
-        ),
-        unexpected($pred, "unexpected arg_width list")
-    ).
-
 %---------------------------------------------------------------------------%
 
 generate_ground_term(TermVar, Goal, !CI, !CLD) :-
@@ -1710,32 +1697,15 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
     ;
         ConsTag = no_tag,
         (
-            ArgVarsWidths = [],
-            unexpected($pred, "no_tag arity != 1")
-        ;
             ArgVarsWidths = [ArgVar - _ArgWidth],
             map.det_remove(ArgVar, RvalType, !ActiveMap),
             map.det_insert(Var, RvalType, !ActiveMap)
         ;
-            ArgVarsWidths = [_, _ | _],
+            ( ArgVarsWidths = []
+            ; ArgVarsWidths = [_, _ | _]
+            ),
             unexpected($pred, "no_tag arity != 1")
         )
-    ;
-        (
-            ConsTag = single_functor_tag,
-            Ptag = 0
-        ;
-            ConsTag = unshared_tag(Ptag)
-        ),
-        generate_ground_term_args(ArgVarsWidths, ArgTypedRvals, !ActiveMap),
-        assoc_list.values(ArgVarsWidths, ConsArgWidths),
-        pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
-        add_scalar_static_cell(PackArgTypedRvals, DataAddr, !StaticCellInfo),
-        MaybeOffset = no,
-        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
-        Rval = mkword(Ptag, CellPtrConst),
-        ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
-        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = direct_arg_tag(Ptag),
         (
@@ -1748,16 +1718,31 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
             ( ArgVarsWidths = []
             ; ArgVarsWidths = [_, _ | _]
             ),
-            unexpected($pred, "direct_arg_tag: arity != 1")
+            unexpected($pred, "direct_arg_tag arity != 1")
         )
     ;
-        ConsTag = shared_remote_tag(Ptag, Stag),
+        (
+            ConsTag = single_functor_tag,
+            Ptag = 0
+        ;
+            ConsTag = unshared_tag(Ptag)
+        ;
+            ConsTag = shared_remote_tag(Ptag, _Stag)
+        ),
         generate_ground_term_args(ArgVarsWidths, ArgTypedRvals, !ActiveMap),
         assoc_list.values(ArgVarsWidths, ConsArgWidths),
         pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
-        StagTypedRval = typed_rval(const(llconst_int(Stag)),
-            lt_int(int_type_int)),
-        AllTypedRvals = [StagTypedRval | PackArgTypedRvals],
+        (
+            ( ConsTag = single_functor_tag
+            ; ConsTag = unshared_tag(_Ptag)
+            ),
+            AllTypedRvals = PackArgTypedRvals
+        ;
+            ConsTag = shared_remote_tag(_Ptag, Stag),
+            StagTypedRval = typed_rval(const(llconst_int(Stag)),
+                lt_int(int_type_int)),
+            AllTypedRvals = [StagTypedRval | PackArgTypedRvals]
+        ),
         add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
