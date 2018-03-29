@@ -42,6 +42,13 @@ ENDINIT
 
 #ifdef MR_HAVE_SCHED_H
   #include <sched.h>
+
+  // These macros first appeared in glibc 2.7.
+  #if defined(CPU_ALLOC) && defined(CPU_ALLOC_SIZE) && defined(CPU_FREE) && \
+      defined(CPU_ZERO_S) && defined(CPU_SET_S) && defined(CPU_CLR_S) && \
+      defined(CPU_ISSET_S) && defined(CPU_COUNT_S)
+    #define MR_HAVE_CPU_SET_MACROS 1
+  #endif
 #endif
 
 #ifdef MR_MINGW
@@ -416,7 +423,7 @@ MR_reset_available_cpus(void)
         hwloc_topology_get_allowed_cpuset(MR_hw_topology));
 
     hwloc_bitmap_free(inherited_binding);
-  #elif defined(MR_HAVE_SCHED_GETAFFINITY)
+  #elif defined(MR_HAVE_SCHED_GETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
     unsigned cpuset_size;
     unsigned num_processors;
 
@@ -467,7 +474,7 @@ MR_detect_num_processors(void)
     MR_reset_available_cpus();
   #ifdef MR_HAVE_HWLOC
     MR_num_processors = hwloc_bitmap_weight(MR_hw_available_pus);
-  #elif defined(MR_HAVE_SCHED_GETAFFINITY)
+  #elif defined(MR_HAVE_SCHED_GETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
     MR_num_processors = CPU_COUNT_S(MR_cpuset_size, MR_available_cpus);
   #elif defined(MR_WIN32_GETSYSTEMINFO)
     {
@@ -636,7 +643,7 @@ MR_do_pin_thread(int cpu)
     if (!hwloc_bitmap_intersects(MR_hw_available_pus, pu->cpuset)) {
         return MR_FALSE;
     }
-#elif defined(MR_HAVE_SCHED_SETAFFINITY)
+#elif defined(MR_HAVE_SCHED_SETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
     if (CPU_COUNT_S(MR_cpuset_size, MR_available_cpus) == 0) {
         // As above, reset the available cpus.
 
@@ -655,7 +662,7 @@ MR_do_pin_thread(int cpu)
         MR_thread_pinning = MR_FALSE;
         return MR_FALSE;
     }
-#elif defined(MR_HAVE_SCHED_SETAFFINITY)
+#elif defined(MR_HAVE_SCHED_SETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
     cpu_set_t   *cpus;
 
     cpus = CPU_ALLOC(MR_num_processors);
@@ -684,7 +691,7 @@ static void MR_make_cpu_unavailable(int cpu)
     hwloc_obj_t pu;
     pu = hwloc_get_obj_by_type(MR_hw_topology, HWLOC_OBJ_PU, cpu);
     MR_make_pu_unavailable(pu);
-#elif defined(MR_HAVE_SCHED_SETAFFINITY)
+#elif defined(MR_HAVE_SCHED_SETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
     CPU_CLR_S(cpu, MR_cpuset_size, MR_available_cpus);
 #endif
 }
