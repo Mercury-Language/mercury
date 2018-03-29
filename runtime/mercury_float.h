@@ -177,7 +177,7 @@
   #define MR_float_const(f) MR_float_to_word(f)
 
   #if defined(MR_GNUC) || defined(MR_CLANG)
-    // GNU C and clag both allow you to cast to a union type.
+    // GNU C and clang both allow you to cast to a union type.
     #define MR_float_to_word(f)                                             \
         (__extension__ ((union MR_Float_Word) (MR_Float) (f)).w)
     #define MR_word_to_float(w)                                             \
