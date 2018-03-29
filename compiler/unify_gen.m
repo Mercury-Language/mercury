@@ -104,7 +104,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -269,8 +268,8 @@ generate_assignment(VarA, VarB, empty, !CLD) :-
     ( if variable_is_forward_live(!.CLD, VarA) then
         assign_var_to_var(VarA, VarB, !CLD)
     else
-        % For free-free unifications, the mode analysis reports them as
-        % assignment to the dead variable. For such unifications we of course
+        % Mode analysis reports free-free unifications as assignments
+        % to a dead variable. For such unifications, we of course
         % do not generate any code.
         true
     ).
@@ -1407,19 +1406,17 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ConsTag = shared_remote_tag(Ptag, _Stag)
         ),
         generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, ConstArgsWidths, ArgTypedRvals),
-        assoc_list.values(ConstArgsWidths, ConsArgWidths),
-        pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
+            ConstStructMap, ConstArgsWidths, PackedArgTypedRvals),
         (
             ( ConsTag = single_functor_tag
             ; ConsTag = unshared_tag(_Ptag)
             ),
-            AllTypedRvals = PackArgTypedRvals
+            AllTypedRvals = PackedArgTypedRvals
         ;
             ConsTag = shared_remote_tag(_Ptag, Stag),
             StagTypedRval = typed_rval(const(llconst_int(Stag)),
                 lt_int(int_type_int)),
-            AllTypedRvals = [StagTypedRval | PackArgTypedRvals]
+            AllTypedRvals = [StagTypedRval | PackedArgTypedRvals]
         ),
         add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
@@ -1453,10 +1450,65 @@ generate_const_struct_args(_, _, _, _, [], []) .
 generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ConstStructMap, [ConstArgWidth | ConstArgsWidths],
         [TypedRval | TypedRvals]) :-
-    generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-        ConstStructMap, ConstArgWidth, TypedRval),
-    generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-        ConstStructMap, ConstArgsWidths, TypedRvals).
+    ConstArgWidth = _ConstArg - ArgWidth,
+    (
+        ( ArgWidth = full_word
+        ; ArgWidth = double_word
+        ),
+        % For the reason why we handle double word arguments the same as
+        % full word arguments, see the comment in ml_unify_gen.m in the
+        % predicate ml_pack_ground_term_args_into_word_inits.
+        generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConstArgWidth, TypedRval),
+        generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConstArgsWidths, TypedRvals)
+    ;
+        ArgWidth = partial_word_first(_Mask),
+        generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConstArgWidth, FirstTypedRval),
+        generate_const_struct_args_for_one_word(ModuleInfo,
+            UnboxedFloats, UnboxedInt64s, ConstStructMap,
+            ConstArgsWidths, LeftOverConstArgsWidths,
+            FirstTypedRval, TypedRval),
+        generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, LeftOverConstArgsWidths, TypedRvals)
+    ;
+        ArgWidth = partial_word_shifted(_, _),
+        unexpected($pred, "partial_word_shifted")
+    ).
+
+:- pred generate_const_struct_args_for_one_word(module_info::in,
+    have_unboxed_floats::in, have_unboxed_int64s::in, const_struct_map::in,
+    assoc_list(const_struct_arg, arg_width)::in,
+    assoc_list(const_struct_arg, arg_width)::out,
+    typed_rval::in, typed_rval::out) is det.
+
+generate_const_struct_args_for_one_word(_, _, _, _, [], [],
+        TypedRval, TypedRval).
+generate_const_struct_args_for_one_word(ModuleInfo,
+        UnboxedFloats, UnboxedInt64s, ConstStructMap,
+        [ConstArgWidth | ConstArgsWidths], LeftOverConstArgsWidths,
+        CurTypedRval, WordTypedRval) :-
+    ConstArgWidth = _ConstArg - ArgWidth,
+    (
+        ( ArgWidth = full_word
+        ; ArgWidth = double_word
+        ; ArgWidth = partial_word_first(_)
+        ),
+        % These are not part of the current word.
+        LeftOverConstArgsWidths = [ConstArgWidth | ConstArgsWidths],
+        WordTypedRval = CurTypedRval
+    ;
+        ArgWidth = partial_word_shifted(ArgShift, _Mask),
+        generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConstArgWidth, ArgTypedRval),
+        add_shifted_typed_rval(CurTypedRval, ArgTypedRval, ArgShift,
+            NextTypedRval),
+        generate_const_struct_args_for_one_word(ModuleInfo,
+            UnboxedFloats, UnboxedInt64s, ConstStructMap,
+            ConstArgsWidths, LeftOverConstArgsWidths,
+            NextTypedRval, WordTypedRval)
+    ).
 
 :- pred generate_const_struct_arg(module_info::in, have_unboxed_floats::in,
     have_unboxed_int64s::in, const_struct_map::in,
@@ -1729,19 +1781,18 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
         ;
             ConsTag = shared_remote_tag(Ptag, _Stag)
         ),
-        generate_ground_term_args(ArgVarsWidths, ArgTypedRvals, !ActiveMap),
-        assoc_list.values(ArgVarsWidths, ConsArgWidths),
-        pack_ground_term_args(ConsArgWidths, ArgTypedRvals, PackArgTypedRvals),
+        generate_ground_term_args(ArgVarsWidths, PackedArgTypedRvals,
+            !ActiveMap),
         (
             ( ConsTag = single_functor_tag
             ; ConsTag = unshared_tag(_Ptag)
             ),
-            AllTypedRvals = PackArgTypedRvals
+            AllTypedRvals = PackedArgTypedRvals
         ;
             ConsTag = shared_remote_tag(_Ptag, Stag),
             StagTypedRval = typed_rval(const(llconst_int(Stag)),
                 lt_int(int_type_int)),
-            AllTypedRvals = [StagTypedRval | PackArgTypedRvals]
+            AllTypedRvals = [StagTypedRval | PackedArgTypedRvals]
         ),
         add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
@@ -1816,24 +1867,58 @@ int_tag_to_const_and_int_type(IntTag, Const, Type) :-
 generate_ground_term_args([], [], !ActiveMap).
 generate_ground_term_args([ArgVarWidth | ArgVarsWidths],
         [TypedRval | TypedRvals], !ActiveMap) :-
-    generate_ground_term_arg(ArgVarWidth, TypedRval, !ActiveMap),
-    generate_ground_term_args(ArgVarsWidths, TypedRvals, !ActiveMap).
+    ArgVarWidth = ArgVar - ArgWidth,
+    map.det_remove(ArgVar, ArgTypedRval, !ActiveMap),
+    (
+        ArgWidth = full_word,
+        TypedRval = ArgTypedRval,
+        generate_ground_term_args(ArgVarsWidths, TypedRvals, !ActiveMap)
+    ;
+        ArgWidth = double_word,
+        % Though a standalone float might have needed to boxed,
+        % it may be stored in unboxed form as a constructor argument.
+        ( if ArgTypedRval = typed_rval(ArgRval, lt_data_ptr) then
+            TypedRval = typed_rval(ArgRval, lt_float)
+        else
+            TypedRval = ArgTypedRval
+        ),
+        generate_ground_term_args(ArgVarsWidths, TypedRvals, !ActiveMap)
+    ;
+        ArgWidth = partial_word_first(_),
+        generate_ground_term_args_for_one_word(ArgVarsWidths,
+            LeftOverArgVarsWidths, ArgTypedRval, TypedRval, !ActiveMap),
+        generate_ground_term_args(LeftOverArgVarsWidths, TypedRvals,
+            !ActiveMap)
+    ;
+        ArgWidth = partial_word_shifted(_, _),
+        unexpected($pred, "partial_word_shifted")
+    ).
 
-:- pred generate_ground_term_arg(pair(prog_var, arg_width)::in,
-    typed_rval::out,
+:- pred generate_ground_term_args_for_one_word(
+    assoc_list(prog_var, arg_width)::in, assoc_list(prog_var, arg_width)::out,
+    typed_rval::in, typed_rval::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_arg(Var - ConsArgWidth, TypedRval, !ActiveMap) :-
-    map.det_remove(Var, TypedRval0, !ActiveMap),
-    % Though a standalone float might have needed to boxed, it may be stored
-    % in unboxed form as a constructor argument.
-    ( if
-        ConsArgWidth = double_word,
-        TypedRval0 = typed_rval(Rval, lt_data_ptr)
-    then
-        TypedRval = typed_rval(Rval, lt_float)
-    else
-        TypedRval = TypedRval0
+generate_ground_term_args_for_one_word([], [],
+        TypedRval, TypedRval, !ActiveMap).
+generate_ground_term_args_for_one_word([ArgVarWidth | ArgVarsWidths],
+        LeftOverArgVarsWidths, CurTypedRval, WordTypedRval, !ActiveMap) :-
+    ArgVarWidth = ArgVar - ArgWidth,
+    (
+        ( ArgWidth = full_word
+        ; ArgWidth = double_word
+        ; ArgWidth = partial_word_first(_)
+        ),
+        % These are not part of the current word.
+        LeftOverArgVarsWidths = [ArgVarWidth | ArgVarsWidths],
+        WordTypedRval = CurTypedRval
+    ;
+        ArgWidth = partial_word_shifted(ArgShift, _),
+        map.det_remove(ArgVar, ArgTypedRval, !ActiveMap),
+        add_shifted_typed_rval(CurTypedRval, ArgTypedRval, ArgShift,
+            NextTypedRval),
+        generate_ground_term_args_for_one_word(ArgVarsWidths,
+            LeftOverArgVarsWidths, NextTypedRval, WordTypedRval, !ActiveMap)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1845,12 +1930,6 @@ generate_ground_term_arg(Var - ConsArgWidth, TypedRval, !ActiveMap) :-
 pack_cell_rvals(ArgWidths, CellArgs0, CellArgs, Code, CI, !CLD) :-
     pack_args(shift_combine_arg(CI), ArgWidths, CellArgs0, CellArgs,
         empty, Code, !CLD).
-
-:- pred pack_ground_term_args(list(arg_width)::in,
-    list(typed_rval)::in, list(typed_rval)::out) is det.
-
-pack_ground_term_args(Widths, !TypedRvals) :-
-    pack_args(shift_combine_rval_type, Widths, !TypedRvals, unit, _, unit, _).
 
 %---------------------------------------------------------------------------%
 
@@ -1916,26 +1995,6 @@ shift_combine_arg(CI, CellArgA, Shift, MaybeCellArgB, FinalCellArg, !Code,
             FinalCellArg = ShiftCellArgA
         )
     ).
-
-:- pred shift_combine_rval_type(typed_rval::in, int::in,
-    maybe(typed_rval)::in, typed_rval::out,
-    unit::in, unit::out, unit::in, unit::out) is det.
-
-shift_combine_rval_type(ArgA, Shift, MaybeArgB, FinalArg, !Acc1, !Acc2) :-
-    ArgA = typed_rval(RvalA, TypeA),
-    ShiftRvalA = maybe_left_shift_rval(RvalA, Shift),
-    (
-        MaybeArgB = yes(typed_rval(RvalB, TypeB)),
-        ( if TypeA = TypeB then
-            FinalRval = binop(bitwise_or(int_type_int), ShiftRvalA, RvalB)
-        else
-            unexpected($pred, "mismatched llds_types")
-        )
-    ;
-        MaybeArgB = no,
-        FinalRval = ShiftRvalA
-    ),
-    FinalArg = typed_rval(FinalRval, TypeA).
 
 :- func maybe_left_shift_rval(rval, int) = rval.
 
@@ -2004,6 +2063,24 @@ combine_completeness(incomplete, incomplete) = incomplete.
 
 %---------------------------------------------------------------------------%
 
+:- pred add_shifted_typed_rval(typed_rval::in, typed_rval::in, int::in,
+    typed_rval::out) is det.
+
+add_shifted_typed_rval(CurTypedRval, ArgTypedRval, ArgShift, TypedRval) :-
+    CurTypedRval = typed_rval(CurRval, CurType),
+    ArgTypedRval = typed_rval(ArgRval, ArgType),
+    ShiftedArgRval = binop(unchecked_left_shift(int_type_int),
+        ArgRval, const(llconst_int(ArgShift))),
+    ( if CurType = ArgType then
+        Type = CurType,
+        Rval = binop(bitwise_or(int_type_int), CurRval, ShiftedArgRval),
+        TypedRval = typed_rval(Rval, Type)
+    else
+        unexpected($pred, "mismatched llds_types")
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- pred pack_how_to_construct(list(arg_width)::in,
     how_to_construct::in, how_to_construct::out) is det.
 
@@ -2027,7 +2104,11 @@ pack_how_to_construct(ArgWidths, !HowToConstruct) :-
         % corresponds to the Nth word of the memory cell.
         % Given that the different ConsIds may have double-word floats
         % in different word positions, I don't see how a correctness
-        % argument for this code could be made.
+        % argument for this code could be made if we allowed reuse of a cell
+        % that originally stored a term with one cons_id for a term with
+        % a different cons_id. This is why we currently don't allow such reuse
+        % even though such reuse would significantly expand the set of
+        % opportunities for reuse.
         CellToReuse0 = cell_to_reuse(Var, ConsIds, NeedsUpdates0),
         needs_update_args_to_words(ArgWidths, NeedsUpdates0, NeedsUpdates),
         CellToReuse = cell_to_reuse(Var, ConsIds, NeedsUpdates),
