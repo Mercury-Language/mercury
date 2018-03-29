@@ -146,13 +146,11 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module term.
-:- import_module unit.
 :- import_module varset.
 
 :- inst no_or_direct_arg_tag for cons_tag/0
@@ -654,8 +652,6 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
     % Find out the types of the constructor arguments.
     maybe_cons_id_arg_types_and_widths(!.Info, VarType, MaybeConsId, ArgVars,
         ArgVarsTypesWidths),
-    ConsArgWidths = list.map(func(arg_type_and_width(_, _, W)) = W,
-        ArgVarsTypesWidths),
 
     some [!GlobalData] (
         % Generate rvals for the arguments.
@@ -670,12 +666,12 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
             % Box *all* the arguments, including the extra rvals.
             ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
                 ExtraRvalsTypesWidths, ExtraArgRvalsTypesWidths, !GlobalData),
-            ml_gen_box_const_rval_list_lld(!.Info, Context, ArgVarsTypesWidths,
-                ArgRvals0, !GlobalData)
+            ml_gen_box_const_rval_list_lld(!.Info, Context,
+                ArgVarsTypesWidths, ArgRvalsTypesWidths, !GlobalData)
         ;
             HighLevelData = yes,
-            ml_gen_box_or_unbox_const_rval_list_hld(!.Info, HighLevelData,
-                Context, ArgVarsTypesWidths, ArgRvals0, !GlobalData),
+            ml_gen_box_or_unbox_const_rval_list_hld(!.Info, Context,
+                ArgVarsTypesWidths, ArgRvalsTypesWidths, !GlobalData),
             % For --high-level-data, the ExtraRvalsTypesWidths should
             % already have the right type, so we do not need to worry
             % about boxing or unboxing them.
@@ -695,7 +691,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
         ml_gen_info_get_target(!.Info, Target),
         construct_static_ground_term(ModuleInfo, Target, HighLevelData,
             Context, VarType, MLDS_Type, MaybeConsId, UsesBaseClass, Ptag,
-            ArgRvals0, ConsArgWidths, ExtraArgRvals, GroundTerm, !GlobalData),
+            ExtraArgRvals, ArgRvalsTypesWidths, GroundTerm, !GlobalData),
 
         ml_gen_info_set_global_data(!.GlobalData, !Info)
     ),
@@ -970,24 +966,28 @@ ml_cast_cons_tag(Type, Tag, Rval) = CastRval :-
     ),
     CastRval = ml_unop(cast(Type), TagRval).
 
-:- pred ml_gen_box_or_unbox_const_rval_list_hld(ml_gen_info::in, bool::in,
+:- pred ml_gen_box_or_unbox_const_rval_list_hld(ml_gen_info::in,
     prog_context::in, list(arg_var_type_and_width)::in,
-    list(mlds_rval)::out, ml_global_data::in, ml_global_data::out) is det.
+    list(mlds_rval_type_and_width)::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_box_or_unbox_const_rval_list_hld(_, _, _, [], [], !GlobalData).
-ml_gen_box_or_unbox_const_rval_list_hld(Info, HighLevelData, Context,
-        [ArgVarTypeWidth | ArgVarsTypesWidths], [FieldRval | FieldRvals],
-        !GlobalData) :-
+ml_gen_box_or_unbox_const_rval_list_hld(_, _, [], [], !GlobalData).
+ml_gen_box_or_unbox_const_rval_list_hld(Info, Context,
+        [ArgVarTypeWidth | ArgVarsTypesWidths],
+        [FieldRvalTypeWidth | FieldRvalsTypesWidths], !GlobalData) :-
     ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ConsArgWidth),
     ml_variable_type(Info, ArgVar, ArgType),
     ml_gen_info_lookup_const_var_rval(Info, ArgVar, ArgRval),
     ml_gen_info_get_module_info(Info, ModuleInfo),
+    HighLevelData = yes,
     ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ConsArgWidth,
         FieldType),
     ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context,
         ArgType, FieldType, ArgRval, FieldRval, !GlobalData),
-    ml_gen_box_or_unbox_const_rval_list_hld(Info, HighLevelData, Context,
-        ArgVarsTypesWidths, FieldRvals, !GlobalData).
+    FieldRvalTypeWidth =
+        rval_type_and_width(FieldRval, mlds_generic_type, ConsArgWidth),
+    ml_gen_box_or_unbox_const_rval_list_hld(Info, Context,
+        ArgVarsTypesWidths, FieldRvalsTypesWidths, !GlobalData).
 
 :- pred ml_gen_box_or_unbox_const_rval_hld(module_info::in, prog_context::in,
     mer_type::in, mer_type::in, mlds_rval::in, mlds_rval::out,
@@ -1018,21 +1018,23 @@ ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context, ArgType, FieldType,
     ).
 
 :- pred ml_gen_box_const_rval_list_lld(ml_gen_info::in, prog_context::in,
-    list(arg_var_type_and_width)::in, list(mlds_rval)::out,
+    list(arg_var_type_and_width)::in, list(mlds_rval_type_and_width)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_box_const_rval_list_lld(_, _, [], [], !GlobalData).
 ml_gen_box_const_rval_list_lld(Info, Context,
-        [ArgVarTypeWidth | ArgVarsTypesWidths], [BoxedRval | BoxedRvals],
-        !GlobalData) :-
+        [ArgVarTypeWidth | ArgVarsTypesWidths],
+        [BoxedRvalTypeWidth | BoxedRvalsTypesWidths], !GlobalData) :-
     ArgVarTypeWidth = arg_type_and_width(ArgVar, _ArgVarType, ArgWidth),
     ml_gen_info_lookup_const_var(Info, ArgVar, GroundTerm),
     GroundTerm = ml_ground_term(Rval, _MercuryType, MLDS_Type),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, ArgWidth, Rval,
         BoxedRval, !GlobalData),
+    BoxedRvalTypeWidth =
+        rval_type_and_width(BoxedRval, mlds_generic_type, ArgWidth),
     ml_gen_box_const_rval_list_lld(Info, Context, ArgVarsTypesWidths,
-        BoxedRvals, !GlobalData).
+        BoxedRvalsTypesWidths, !GlobalData).
 
 :- pred ml_gen_box_extra_const_rval_list_lld(module_info::in, prog_context::in,
     list(mlds_rval_type_and_width)::in, list(mlds_rval_type_and_width)::out,
@@ -1660,19 +1662,6 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
         Stmt = ml_gen_assign(FieldLval, ArgRval, Context),
         !:Stmts = [Stmt | !.Stmts]
     ;
-        (
-            FieldWidth = partial_word_first(Mask),
-            Shift = 0
-        ;
-            FieldWidth = partial_word_shifted(Shift, Mask)
-        ),
-        CastVal = ml_unop(unbox(mlds_native_int_type), ml_lval(FieldLval)),
-        MaskOld = ml_bitwise_and(CastVal, \ (Mask << Shift)),
-        ShiftNew = ml_lshift(ArgRval, Shift),
-        Combined = ml_bitwise_or(MaskOld, ShiftNew),
-        Stmt = ml_gen_assign(FieldLval, Combined, Context),
-        !:Stmts = [Stmt | !.Stmts]
-    ;
         FieldWidth = double_word,
         ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
             FloatWordA = ml_unop(std_unop(dword_float_get_word0), ArgRval),
@@ -1690,6 +1679,19 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
             Stmt = ml_gen_assign(FieldLval, ArgRval, Context),
             !:Stmts = [Stmt | !.Stmts]
         )
+    ;
+        (
+            FieldWidth = partial_word_first(Mask),
+            Shift = 0
+        ;
+            FieldWidth = partial_word_shifted(Shift, Mask)
+        ),
+        CastVal = ml_unop(unbox(mlds_native_int_type), ml_lval(FieldLval)),
+        MaskOld = ml_bitwise_and(CastVal, \ (Mask << Shift)),
+        ShiftNew = ml_lshift(ArgRval, Shift),
+        Combined = ml_bitwise_or(MaskOld, ShiftNew),
+        Stmt = ml_gen_assign(FieldLval, Combined, Context),
+        !:Stmts = [Stmt | !.Stmts]
     ).
 
 :- pred ml_field_offset_pair(mlds_lval::in, mlds_lval::out, mlds_lval::out)
@@ -2386,78 +2388,83 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     (
         HighLevelData = yes,
         construct_ground_term_initializers_hld(ModuleInfo, Context,
-            ArgVarsTypesWidths, ArgRvals1, !GlobalData, !GroundTermMap)
+            ArgVarsTypesWidths, ArgRvalsTypesWidths,
+            !GlobalData, !GroundTermMap)
     ;
         HighLevelData = no,
         construct_ground_term_initializers_lld(ModuleInfo, Context,
-            ArgVarsTypesWidths, ArgRvals1, !GlobalData, !GroundTermMap)
+            ArgVarsTypesWidths, ArgRvalsTypesWidths,
+            !GlobalData, !GroundTermMap)
     ),
     UsesBaseClass = ml_tag_uses_base_class(ConsTag),
-    ConsArgWidths = list.map(func(arg_type_and_width(_, _, W)) = W,
-        ArgVarsTypesWidths),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         Context, VarType, MLDS_Type, yes(ConsId), UsesBaseClass, Ptag,
-        ArgRvals1, ConsArgWidths, ExtraRvals, GroundTerm, !GlobalData),
+        ExtraRvals, ArgRvalsTypesWidths, GroundTerm, !GlobalData),
     map.det_insert(Var, GroundTerm, !GroundTermMap).
 
 %---------------------------------------------------------------------------%
 
 :- pred construct_ground_term_initializers_hld(module_info::in,
     prog_context::in, list(arg_var_type_and_width)::in,
-    list(mlds_rval)::out, ml_global_data::in, ml_global_data::out,
+    list(mlds_rval_type_and_width)::out,
+    ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 construct_ground_term_initializers_hld(_, _, [], [],
         !GlobalData, !GroundTermMap).
 construct_ground_term_initializers_hld(ModuleInfo, Context,
-        [ArgVarTypeWidth | ArgVarsTypesWidths], [ArgRval | ArgRvals],
-        !GlobalData, !GroundTermMap) :-
+        [ArgVarTypeWidth | ArgVarsTypesWidths],
+        [RvalTypeWidth | RvalsTypesWidths], !GlobalData, !GroundTermMap) :-
     construct_ground_term_initializer_hld(ModuleInfo, Context,
-        ArgVarTypeWidth, ArgRval, !GlobalData, !GroundTermMap),
+        ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap),
     construct_ground_term_initializers_hld(ModuleInfo, Context,
-        ArgVarsTypesWidths, ArgRvals, !GlobalData, !GroundTermMap).
+        ArgVarsTypesWidths, RvalsTypesWidths, !GlobalData, !GroundTermMap).
 
 :- pred construct_ground_term_initializer_hld(module_info::in,
-    prog_context::in, arg_var_type_and_width::in, mlds_rval::out,
+    prog_context::in, arg_var_type_and_width::in,
+    mlds_rval_type_and_width::out,
     ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 construct_ground_term_initializer_hld(ModuleInfo, Context,
-        arg_type_and_width(ArgVar, ConsArgType, ConsArgWidth), ArgRval,
-        !GlobalData, !GroundTermMap) :-
+        ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap) :-
+    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgWidth),
     map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, ArgType, _MLDS_ArgType),
-    ml_type_as_field(ModuleInfo, yes, ConsArgType, ConsArgWidth, BoxedArgType),
+    ml_type_as_field(ModuleInfo, yes, ConsArgType, ArgWidth, BoxedArgType),
     ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context,
-        ArgType, BoxedArgType, ArgRval0, ArgRval, !GlobalData).
+        ArgType, BoxedArgType, ArgRval0, ArgRval, !GlobalData),
+    RvalTypeWidth = rval_type_and_width(ArgRval, mlds_generic_type, ArgWidth).
 
 :- pred construct_ground_term_initializers_lld(module_info::in,
     prog_context::in, list(arg_var_type_and_width)::in,
-    list(mlds_rval)::out, ml_global_data::in, ml_global_data::out,
+    list(mlds_rval_type_and_width)::out,
+    ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 construct_ground_term_initializers_lld(_, _, [], [],
         !GlobalData, !GroundTermMap).
 construct_ground_term_initializers_lld(ModuleInfo, Context,
-        [ArgVarTypeWidth | ArgVarsTypesWidths], [ArgRval | ArgRvals],
-        !GlobalData, !GroundTermMap) :-
+        [ArgVarTypeWidth | ArgVarsTypesWidths],
+        [RvalTypeWidth | RvalsTypesWidths], !GlobalData, !GroundTermMap) :-
     construct_ground_term_initializer_lld(ModuleInfo, Context,
-        ArgVarTypeWidth, ArgRval, !GlobalData, !GroundTermMap),
+        ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap),
     construct_ground_term_initializers_lld(ModuleInfo, Context,
-        ArgVarsTypesWidths, ArgRvals, !GlobalData, !GroundTermMap).
+        ArgVarsTypesWidths, RvalsTypesWidths, !GlobalData, !GroundTermMap).
 
 :- pred construct_ground_term_initializer_lld(module_info::in,
-    prog_context::in, arg_var_type_and_width::in, mlds_rval::out,
-    ml_global_data::in, ml_global_data::out,
+    prog_context::in, arg_var_type_and_width::in,
+    mlds_rval_type_and_width::out, ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 construct_ground_term_initializer_lld(ModuleInfo, Context,
-        ArgVarTypeWidth, ArgRval, !GlobalData, !GroundTermMap) :-
+        ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap) :-
     ArgVarTypeWidth = arg_type_and_width(ArgVar, _ConsArgType, ArgWidth),
     map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, _ArgType, MLDS_ArgType),
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, ArgWidth,
-        ArgRval0, ArgRval, !GlobalData).
+        ArgRval0, ArgRval, !GlobalData),
+    RvalTypeWidth = rval_type_and_width(ArgRval, mlds_generic_type, ArgWidth).
 
 %---------------------------------------------------------------------------%
 
@@ -2507,7 +2514,9 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         (
             Args = [Arg],
             ml_gen_const_struct_arg(Info, !.ConstStructMap,
-                Arg, full_word, ArgRval, !GlobalData),
+                Arg, full_word, ArgRvalTypeWidth, !GlobalData),
+            ArgRvalTypeWidth =
+                rval_type_and_width(ArgRval, _RvalMLDSType, _Width),
             Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, ArgRval),
             GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
             map.det_insert(ConstNum, GroundTerm, !ConstStructMap)
@@ -2588,16 +2597,14 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
 
     Target = Info ^ mcsi_target,
     ModuleInfo = Info ^ mcsi_module_info,
-    % DummyArgTypes won't be used, because we ignore the type part of
-    % ConsArgTypesWidths.
+    % It is ok to specify the wrong type for Args by passing AllTypesVoid,
+    % because all uses of ArgsTypesWidths later on ignore the types inside it.
+    AllTypesVoid = (func(_Arg) = void_type),
     % XXX TYPE_REPN The may_not_have_extra_args preserves old behavior,
     % but may be a bug. It depends on whether we ever put into the
     % const struct db terms that need extra args.
-    AllTypesVoid = (func(_Arg) = void_type),
     cons_id_arg_types_and_widths(ModuleInfo, AllTypesVoid,
         may_not_have_extra_args, VarType, ConsId, Args, ArgsTypesWidths),
-    ConsArgWidths = list.map(func(arg_type_and_width(_, _, W)) = W,
-        ArgsTypesWidths),
     HighLevelData = Info ^ mcsi_high_level_data,
     ( if
         (
@@ -2612,40 +2619,41 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
         unexpected($pred,
             "Constant structures are not supported for this grade")
     ),
-    assoc_list.from_corresponding_lists(Args, ConsArgWidths,
-        ArgConsArgWidths),
     ml_gen_const_struct_args(Info, !.ConstStructMap,
-        ArgConsArgWidths, ArgRvals1, !GlobalData),
+        ArgsTypesWidths, RvalsTypesWidths, !GlobalData),
     UsesBaseClass = ml_tag_uses_base_class(ConsTag),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         term.context_init, VarType, MLDS_Type, yes(ConsId), UsesBaseClass,
-        Ptag, ArgRvals1, ConsArgWidths, ExtraRvals, GroundTerm, !GlobalData),
+        Ptag, ExtraRvals, RvalsTypesWidths, GroundTerm, !GlobalData),
     map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
 
 :- pred ml_gen_const_struct_args(ml_const_struct_info::in,
-    ml_const_struct_map::in, assoc_list(const_struct_arg, arg_width)::in,
-    list(mlds_rval)::out, ml_global_data::in, ml_global_data::out) is det.
+    ml_const_struct_map::in, list(arg_const_type_and_width)::in,
+    list(mlds_rval_type_and_width)::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_const_struct_args(_, _, [], [], !GlobalData).
 ml_gen_const_struct_args(Info, ConstStructMap,
-        [Arg - ConsArgWidth | ArgConsArgWidths], [ArgRval | ArgRvals],
+        [ArgTypeWidth | ArgsTypesWidths], [RvalTypeWidth | RvalsTypesWidths],
         !GlobalData) :-
+    ArgTypeWidth = arg_type_and_width(ConstArg, _Type, Width),
     ml_gen_const_struct_arg(Info, ConstStructMap,
-        Arg, ConsArgWidth, ArgRval, !GlobalData),
+        ConstArg, Width, RvalTypeWidth, !GlobalData),
     ml_gen_const_struct_args(Info, ConstStructMap,
-        ArgConsArgWidths, ArgRvals, !GlobalData).
+        ArgsTypesWidths, RvalsTypesWidths, !GlobalData).
 
 :- pred ml_gen_const_struct_arg(ml_const_struct_info::in,
     ml_const_struct_map::in, const_struct_arg::in, arg_width::in,
-    mlds_rval::out, ml_global_data::in, ml_global_data::out) is det.
+    mlds_rval_type_and_width::out,
+    ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, Width, Rval,
+ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, Width, RvalTypeWidth,
         !GlobalData) :-
     ModuleInfo = Info ^ mcsi_module_info,
     (
         ConstArg = csa_const_struct(StructNum),
         map.lookup(ConstStructMap, StructNum, GroundTerm),
-        GroundTerm = ml_ground_term(Rval0, _Type, MLDS_Type)
+        GroundTerm = ml_ground_term(Rval0, _MerType, MLDS_Type)
     ;
         ConstArg = csa_constant(ConsId, Type),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
@@ -2653,7 +2661,8 @@ ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, Width, Rval,
         ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval0)
     ),
     ml_gen_box_const_rval(ModuleInfo, term.context_init, MLDS_Type,
-        Width, Rval0, Rval, !GlobalData).
+        Width, Rval0, Rval, !GlobalData),
+    RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, Width).
 
 :- pred ml_gen_const_struct_arg_tag(cons_tag::in, mer_type::in, mlds_type::in,
     mlds_rval::out) is det.
@@ -2766,6 +2775,7 @@ int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag) = Const :-
     --->    arg_type_and_width(Arg, mer_type, arg_width).
 
 :- type arg_var_type_and_width == arg_type_and_width(prog_var).
+:- type arg_const_type_and_width == arg_type_and_width(const_struct_arg).
 
 :- pred maybe_cons_id_arg_types_and_widths(ml_gen_info::in,
     mer_type::in, maybe(cons_id)::in, list(prog_var)::in,
@@ -2908,32 +2918,39 @@ lookup_type_and_specify_width(ArgToType, Width, Arg, ArgTypeWidth) :-
 
 %---------------------------------------------------------------------------%
 
+    % Construct a static ground term with the specified contents,
+    % and add it to !GlobalData.
+    %
+    % This predicate ignores the types inside ArgRvalsTypesWidths.
+    %
+    % XXX Give a more detailed description.
+    %
 :- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
     bool::in, prog_context::in, mer_type::in, mlds_type::in,
     maybe(cons_id)::in, tag_uses_base_class::in, int::in,
-    list(mlds_rval)::in, list(arg_width)::in, list(mlds_rval)::in,
+    list(mlds_rval)::in, list(mlds_rval_type_and_width)::in,
     ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
 
 construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         Context, VarType, MLDS_Type, MaybeConsId, UsesBaseClass, Ptag,
-        ArgRvals0, ConsArgWidths, ExtraArgRvals, GroundTerm, !GlobalData) :-
+        ExtraRvals, RvalsTypesWidths, GroundTerm, !GlobalData) :-
     % Generate a local static constant for this term.
-    ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
-        UsesBaseClass, MaybeConsId),
-    pack_args(ml_shift_combine_rval, ConsArgWidths, ArgRvals0, ArgRvals,
-        unit, _, unit, _),
-    % By construction, boxing the ExtraArgRvals would be a no-op.
+    ml_pack_ground_term_args_into_word_inits(RvalsTypesWidths, NonExtraInits),
+
+    % By construction, boxing the ExtraRvals would be a no-op.
     %
     % XXX If the secondary tag is in a base class, then ideally its
     % initializer should be wrapped in `init_struct([init_obj(X)])'
     % rather than just `init_obj(X)' -- the fact that we don't leads to
     % some warnings from GNU C about missing braces in initializers.
-    AllArgRvals = ExtraArgRvals ++ ArgRvals,
-    ArgInits = list.map(func(Init) = init_obj(Init), AllArgRvals),
+    ExtraInits = list.map(func(Rv) = init_obj(Rv), ExtraRvals),
+    AllInits = ExtraInits ++ NonExtraInits,
+    ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
+        UsesBaseClass, MaybeConsId),
     ( if ConstType = mlds_array_type(_) then
-        Initializer = init_array(ArgInits)
+        Initializer = init_array(AllInits)
     else
-        Initializer = init_struct(ConstType, ArgInits)
+        Initializer = init_struct(ConstType, AllInits)
     ),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
@@ -2954,6 +2971,62 @@ construct_static_ground_term(ModuleInfo, Target, HighLevelData,
 %
 % Packing arguments into words.
 %
+
+:- pred ml_pack_ground_term_args_into_word_inits(
+    list(mlds_rval_type_and_width)::in, list(mlds_initializer)::out) is det.
+
+ml_pack_ground_term_args_into_word_inits([], []).
+ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
+        [Init | Inits]) :-
+    RvalTypeWidth = rval_type_and_width(Rval, _Type, Width),
+    (
+        ( Width = full_word
+        ; Width = double_word
+        ),
+        % XXX We treat double word fields the same as single word fields,
+        % and generate a single initializer for them. This works on x86s
+        % because of two things:
+        %
+        % - a field in a cell can use two words *only* if its type is
+        %   statically known (float, or later int64/uint64), and thus
+        %   *every* constant structure for this cons_id will have
+        %   the exact same Mercury and MLDS type for this field; and
+        % - on x86s, double word primitive types can be stored at any
+        %   address that is *word* aligned; it does not need to be
+        %   *double word* aligned.
+        %
+        % On 32 bit platforms other than x86s, we cannot access double word
+        % floats (and later int64s and uint64s) in heap terms directly
+        % due to the possibility of misalignment. Instead, we access them
+        % via macros such as MR_float_from_dword, which explicitly construct
+        % the double-word primitive value from its two halves. We ensure that
+        % the target language (C) compiler does not put padding before
+        % the double word field by having mlds_to_c.m replace MR_Float
+        % with MR_Float_Aligned in the structure type's definition.
+        %
+        % Storing such double word fields in two halves (as well as
+        % accessing them as two halves) would be conceptually cleaner.
+        % It would also avoid an inconsistency: the code for filling in
+        % the contents of *heap* cells *does* fill in the two halves
+        % separately. The problem is that for constant structures,
+        % we would have to do this at compile time, and it not clear
+        % (at least to me -zs) how we could ensure that a cross-compiler
+        % would do this the same way, in terms of endian-ness, as the
+        % target machine.
+        Init = init_obj(Rval),
+        ml_pack_ground_term_args_into_word_inits(RvalsTypesWidths, Inits)
+    ;
+        Width = partial_word_first(_Mask),
+        ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
+            Rval, OrAllRval),
+        Init = init_obj(OrAllRval),
+        ml_pack_ground_term_args_into_word_inits(LeftOverRvalsTypesWidths, 
+            Inits)
+    ;
+        Width = partial_word_shifted(_, _),
+        % There should be a partial_word_shifted argument first.
+        unexpected($pred, "partial_word_shifted")
+    ).
 
 :- pred ml_expand_or_pack_into_words(list(mlds_rval_type_and_width)::in,
     list(mlds_rval_type_and_width)::out) is det.
@@ -2986,19 +3059,8 @@ ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
             [RvalTypeWidthA, RvalTypeWidthB | TailPackedRvalsTypesWidths]
     ;
         Width = partial_word_first(_Mask),
-        RevOrRvals0 = [ml_lshift(Rval, 0)],
         ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-            RevOrRvals0, RevOrRvals),
-        list.reverse(RevOrRvals, OrRvals),
-        (
-            OrRvals = [],
-            % RevOrRvals0 isn't empty, and RevOrRvals contains everything
-            % in RevOrRvals0, which means OrRvals cannot be empty.
-            unexpected($pred, "OrRvals = []")
-        ;
-            OrRvals = [HeadOrRval | TailOrRvals],
-            or_packed_rvals(HeadOrRval, TailOrRvals, OrAllRval)
-        ),
+            Rval, OrAllRval),
         % XXX TYPE_REPN Using the type of the first rval for the type
         % of the whole word preserves old behavior, but seems strange.
         PackedRvalTypeWidth = rval_type_and_width(OrAllRval, Type, full_word),
@@ -3014,10 +3076,30 @@ ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
 
 :- pred ml_pack_into_one_word(
     list(mlds_rval_type_and_width)::in, list(mlds_rval_type_and_width)::out,
+    mlds_rval::in, mlds_rval::out) is det.
+
+ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
+        FirstRval, OrAllRval) :-
+    RevOrRvals0 = [ml_lshift(FirstRval, 0)],
+    ml_pack_into_one_word_loop(RvalsTypesWidths, LeftOverRvalsTypesWidths,
+        RevOrRvals0, RevOrRvals),
+    list.reverse(RevOrRvals, OrRvals),
+    (
+        OrRvals = [],
+        % RevOrRvals0 isn't empty, and RevOrRvals contains everything
+        % in RevOrRvals0, which means OrRvals cannot be empty.
+        unexpected($pred, "OrRvals = []")
+    ;
+        OrRvals = [HeadOrRval | TailOrRvals],
+        or_packed_rvals(HeadOrRval, TailOrRvals, OrAllRval)
+    ).
+
+:- pred ml_pack_into_one_word_loop(
+    list(mlds_rval_type_and_width)::in, list(mlds_rval_type_and_width)::out,
     list(mlds_rval)::in, list(mlds_rval)::out) is det.
 
-ml_pack_into_one_word([], [], !RevOrRvals).
-ml_pack_into_one_word([RvalTypeWidth | RvalsTypesWidths],
+ml_pack_into_one_word_loop([], [], !RevOrRvals).
+ml_pack_into_one_word_loop([RvalTypeWidth | RvalsTypesWidths],
         LeftOverRvalsTypesWidths, !RevOrRvals) :-
     RvalTypeWidth = rval_type_and_width(Rval, _Type, Width),
     (
@@ -3030,7 +3112,7 @@ ml_pack_into_one_word([RvalTypeWidth | RvalsTypesWidths],
         Width = partial_word_shifted(Shift, _Mask),
         ShiftedRval = ml_lshift(Rval, Shift),
         !:RevOrRvals = [ShiftedRval | !.RevOrRvals],
-        ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
+        ml_pack_into_one_word_loop(RvalsTypesWidths, LeftOverRvalsTypesWidths,
             !RevOrRvals)
     ).
 
@@ -3056,72 +3138,6 @@ or_packed_rvals(HeadRval, TailRvals, OrAllRval) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pred ml_expand_double_word_rvals(list(arg_width)::in, list(arg_width)::out,
-    list(mlds_typed_rval)::in, list(mlds_typed_rval)::out) is det.
-
-ml_expand_double_word_rvals([], [], [], []).
-ml_expand_double_word_rvals([], _, [_ | _], _) :-
-    unexpected($pred, "list length mismatch").
-ml_expand_double_word_rvals([_ | _], _, [], _) :-
-    unexpected($pred, "list length mismatch").
-ml_expand_double_word_rvals([Width0 | Widths0], Widths,
-        [TypedRval0 | TypedRvals0], TypedRvals) :-
-    TypedRval0 = ml_typed_rval(Rval0, Type0),
-    ml_expand_double_word_rvals(Widths0, Widths1, TypedRvals0, TypedRvals1),
-    (
-        ( Width0 = full_word
-        ; Width0 = partial_word_first(_)
-        ; Width0 = partial_word_shifted(_, _)
-        ),
-        Widths = [Width0 | Widths1],
-        TypedRvals = [ml_typed_rval(Rval0, Type0) | TypedRvals0]
-    ;
-        Width0 = double_word,
-        ( if Rval0 = ml_const(mlconst_null(_)) then
-            SubstType = mlds_generic_type,
-            RvalA = ml_const(mlconst_null(SubstType)),
-            RvalB = ml_const(mlconst_null(SubstType))
-        else
-            SubstType = mlds_native_int_type,
-            RvalA = ml_unop(std_unop(dword_float_get_word0), Rval0),
-            RvalB = ml_unop(std_unop(dword_float_get_word1), Rval0)
-        ),
-        Widths = [full_word, full_word | Widths1],
-        TypedRvalA = ml_typed_rval(RvalA, SubstType),
-        TypedRvalB = ml_typed_rval(RvalB, SubstType),
-        TypedRvals = [TypedRvalA, TypedRvalB | TypedRvals1]
-    ).
-
-:- pred ml_shift_combine_rval(mlds_rval::in, int::in, maybe(mlds_rval)::in,
-    mlds_rval::out, unit::in, unit::out, unit::in, unit::out) is det.
-
-ml_shift_combine_rval(RvalA, Shift, MaybeRvalB, RvalC, !Acc1, !Acc2) :-
-    ShiftRvalA = ml_lshift(RvalA, Shift),
-    (
-        MaybeRvalB = yes(RvalB),
-        RvalC = ml_bitwise_or(ShiftRvalA, RvalB)
-    ;
-        MaybeRvalB = no,
-        RvalC = ShiftRvalA
-    ).
-
-:- pred ml_shift_combine_rval_type(mlds_typed_rval::in, int::in,
-    maybe(mlds_typed_rval)::in, mlds_typed_rval::out,
-    unit::in, unit::out, unit::in, unit::out) is det.
-
-ml_shift_combine_rval_type(ArgA, Shift, MaybeArgB, ArgC, !Acc1, !Acc2) :-
-    ArgA = ml_typed_rval(RvalA, TypeA),
-    ShiftRvalA = ml_lshift(RvalA, Shift),
-    (
-        MaybeArgB = yes(ml_typed_rval(RvalB, _TypeB)),
-        RvalC = ml_bitwise_or(ShiftRvalA, RvalB)
-    ;
-        MaybeArgB = no,
-        RvalC = ShiftRvalA
-    ),
-    % This type better be acceptable.
-    ArgC = ml_typed_rval(RvalC, TypeA).
 
 :- func ml_lshift(mlds_rval, int) = mlds_rval.
 
