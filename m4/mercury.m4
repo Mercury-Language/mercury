@@ -186,7 +186,7 @@ AC_DEFUN([MERCURY_TRY_STATIC_ASSERT], [
     AC_TRY_COMPILE(
 	[$1],
 	[
-	    struct static_assert {
+	    struct mercury_static_assert {
 		int static_assert_expr : ( $2 ) ? 1 : -1;
 	    };
 	],
