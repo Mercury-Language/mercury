@@ -212,7 +212,7 @@
 
     % num_trailing_zeros(U) = N:
     % N is the number of trailing zeros in the binary representation of U,
-    % starting at the least signficiatn bit position.
+    % starting at the least significant bit position.
     % Note that num_trailing_zeros(0u32) = 32.
     %
 :- func num_trailing_zeros(uint32) = int.

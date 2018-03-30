@@ -226,11 +226,45 @@
     %
 :- func \ (int32::in) = (int32::uo) is det.
 
+%---------------------------------------------------------------------------%
+
+    % num_zeros(I) = N:
+    % N is the number of zeros in the binary representation of I.
+    %
+:- func num_zeros(int32) = int.
+
+    % num_ones(I) = N:
+    % N is the number of ones in the binary representation of I.
+    %
+:- func num_ones(int32) = int.
+
+    % num_leading_zeros(I) = N:
+    % N is the number of leading zeros in the binary representation of I,
+    % starting at the most significant bit position.
+    % Note that num_leading_zeros(0i32) = 32.
+    %
+:- func num_leading_zeros(int32) = int.
+
+    % num_trailing_zeros(I) = N:
+    % N is the number of trailing zeros in the binary representation of I,
+    % starting at the least significant bit position.
+    % Note that num_trailing_zeros(0i32) = 32.
+    %
+:- func num_trailing_zeros(int32) = int.
+
     % reverse_bytes(A) = B:
-    % B is the value that results from reversing the bytes in the
+    % B is the value that results from reversing the bytes in the binary
     % representation of A.
     %
 :- func reverse_bytes(int32) = int32.
+
+    % reverse_bits(A) = B:
+    % B is the is value that results from reversing the bits in the binary
+    % representation of A.
+    %
+:- func reverse_bits(int32) = int32.
+
+%---------------------------------------------------------------------------%
 
 :- func min_int32 = int32.
 
@@ -246,6 +280,7 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module int.
 :- import_module math.
 :- import_module require.
 :- import_module string.
@@ -515,6 +550,148 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
+% The algorithms in this section are adapted from chapter 5 of
+% ``Hacker's Delight'' by Henry S. Warren, Jr.
+
+num_zeros(I) = 32 - num_ones(I).
+
+:- pragma foreign_proc("C",
+    num_ones(I::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    uint32_t U = I;
+
+#if (defined(MR_GNUC) || defined(MR_CLANG)) && defined(MR_INT_IS_32_BIT)
+    N = __builtin_popcount(U);
+#else
+    U = U - ((U >> 1) & UINT32_C(0x55555555));
+    U = (U & UINT32_C(0x33333333)) + ((U >> 2) & UINT32_C(0x33333333));
+    U = (U + (U >> 4)) & UINT32_C(0x0f0f0f0f);
+    U = U + (U >> 8);
+    U = U + (U >> 16);
+    N = (MR_INteger) (U & UINT32_C(0x3f));
+#endif
+").
+
+:- pragma foreign_proc("C#",
+    num_ones(I::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    uint U = (uint) I;
+    U = U - ((U >> 1) & 0x55555555U);
+    U = (U & 0x33333333U) + ((U >> 2) & 0x33333333U);
+    U = (U + (U >> 4)) & 0x0f0f0f0fU;
+    U = U + (U >> 8);
+    U = U + (U >> 16);
+    N = (int) (U & 0x3fU);
+").
+
+:- pragma foreign_proc("Java",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Integer.bitCount(U);
+").
+
+:- pragma foreign_proc("C",
+    num_leading_zeros(I::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    uint32_t U = I;
+    if (U == 0) {
+        N = 32;
+    } else {
+    #if (defined(MR_GNUC) || defined(MR_CLANG)) && defined(MR_INT_IS_32_BIT)
+        // Note that __builtin_clz(0) is undefined.
+        N = __builtin_clz(U);
+    #else
+        int32_t n = 1;
+        if ((U >> 16) == 0) { n += 16; U <<= 16; }
+        if ((U >> 24) == 0) { n += 8;  U <<= 8;  }
+        if ((U >> 28) == 0) { n += 4;  U <<= 4;  }
+        if ((U >> 30) == 0) { n += 2;  U <<= 2;  }
+        N = n - (U >> 31);
+    #endif
+    }
+").
+
+:- pragma foreign_proc("C#",
+    num_leading_zeros(I::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    uint U = (uint) I;
+    if (U == 0) {
+        N = 32;
+    } else {
+        int n = 1;
+        if ((U >> 16) == 0) { n += 16; U <<= 16; }
+        if ((U >> 24) == 0) { n += 8;  U <<= 8;  }
+        if ((U >> 28) == 0) { n += 4;  U <<= 4;  }
+        if ((U >> 30) == 0) { n += 2;  U <<= 2;  }
+        N = n - (int)(U >> 31);
+    }
+").
+
+:- pragma foreign_proc("Java",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Integer.numberOfLeadingZeros(U);
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    num_trailing_zeros(I::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    uint32_t U = I;
+    if (U == 0) {
+        N = 32;
+    } else {
+    #if (defined(MR_GNUC) || defined(MR_CLANG)) && defined(MR_INT_IS_32_BIT)
+        N = __builtin_ctz(U);
+    #else
+        int32_t     n = 31;
+        uint32_t    y;
+        y = U << 16; if (y != 0) { n = n -16; U = y; }
+        y = U <<  8; if (y != 0) { n = n - 8; U = y; }
+        y = U <<  4; if (y != 0) { n = n - 4; U = y; }
+        y = U <<  2; if (y != 0) { n = n - 2; U = y; }
+        y = U <<  1; if (y != 0) { n = n - 1; }
+        N = (MR_Integer) n;
+    #endif
+    }
+").
+
+:- pragma foreign_proc("C#",
+    num_trailing_zeros(I::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    uint U = (uint) I;
+    if (U == 0) {
+        N = 32;
+    } else {
+        int     n = 31;
+        uint    y;
+        y = U << 16; if (y != 0) { n -= 16; U = y; }
+        y = U <<  8; if (y != 0) { n -= 8;  U = y; }
+        y = U <<  4; if (y != 0) { n -= 4;  U = y; }
+        y = U <<  2; if (y != 0) { n -= 2;  U = y; }
+        y = U <<  1; if (y != 0) { n -= 1; }
+        N = n;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    num_trailing_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Integer.numberOfTrailingZeros(U);
+").
+
+%---------------------------------------------------------------------------%
+
 :- pragma foreign_proc("C",
     reverse_bytes(A::in) = (B::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -544,6 +721,52 @@ odd(X) :-
 :- pragma no_determinism_warning(reverse_bytes/1).
 reverse_bytes(_) = _ :-
     sorry($module, "int32.reverse_bytes/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    uint32_t u_A = A;
+
+    u_A = (u_A & UINT32_C(0x55555555)) << 1 | (u_A >> 1) &
+        UINT32_C(0x55555555);
+    u_A = (u_A & UINT32_C(0x33333333)) << 2 | (u_A >> 2) &
+        UINT32_C(0x33333333);
+    u_A = (u_A & UINT32_C(0x0f0f0f0f)) << 4 | (u_A >> 4) &
+        UINT32_C(0x0f0f0f0f);
+    u_A = (u_A << 24) | ((u_A & UINT32_C(0xff00)) << 8) |
+                    ((u_A >> 8) & UINT32_C(0xff00)) | (u_A >> 24);
+    B = (int32_t) u_A;
+").
+
+
+:- pragma foreign_proc("C#",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    uint u_A = (uint) A;
+
+    u_A = (u_A & 0x55555555) << 1 | (u_A >> 1) & 0x55555555;
+    u_A = (u_A & 0x33333333) << 2 | (u_A >> 2) & 0x33333333;
+    u_A = (u_A & 0x0f0f0f0f) << 4 | (u_A >> 4) & 0x0f0f0f0f;
+    u_A = (u_A << 24) |
+        ((u_A & 0xff00) << 8) | ((u_A >> 8) & 0xff00) | (u_A >> 24);
+
+    B = (int) u_A;
+").
+
+:- pragma foreign_proc("Java",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Integer.reverse(A);
+").
+
+:- pragma no_determinism_warning(reverse_bits/1).
+reverse_bits(_) = _ :-
+    sorry($module, "int32.reverse_bits/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
