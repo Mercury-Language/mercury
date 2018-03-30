@@ -12,6 +12,7 @@
 #include "mercury_conf.h"       // for MR_BOXED_INT64S, MR_CONSERVATIVE_GC
 #include "mercury_types.h"      // for `MR_Word'
 #include "mercury_std.h"        // for `MR_bool'
+#include <stdint.h>
 
 #define MR_INT64_WORDS          ((sizeof(int64_t) + sizeof(MR_Word) - 1)     \
                                         / sizeof(MR_Word))
@@ -177,21 +178,21 @@
     #define MR_uint64_from_dword(w0, w1)                                     \
         MR_uint64_from_dword_func((MR_Word) (w0), (MR_Word) (w1))
 
-    MR_EXTERN_INLINE int64
+    MR_EXTERN_INLINE int64_t
     MR_int64_from_dword_func(MR_Word w0, MR_Word w1);
-    MR_EXTERN_INLINE uint64
+    MR_EXTERN_INLINE uint64_t
     MR_uint64_from_dword_func(MR_Word w0, MR_Word w1);
 
-    MR_EXTERN_INLINE int64
+    MR_EXTERN_INLINE int64_t
     MR_int64_from_dword_func(MR_Word w0, MR_Word w1)
     {
         union MR_Int64Dword __i64dw;
         __i64dw.i64w[0] = (MR_Word) (w0);
         __i64dw.i64w[1] = (MR_Word) (w1);
-        return __i64dw.ui64;
+        return __i64dw.i64;
     }
 
-    MR_EXTERN_INLINE uint64
+    MR_EXTERN_INLINE uint64_t
     MR_uint64_from_dword_func(MR_Word w0, MR_Word w1)
     {
         union MR_Uint64Dword __ui64dw;
