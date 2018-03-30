@@ -1003,41 +1003,26 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     % reused_cell case, otherwise `var_locn_save_cell_fields' won't know not to
     % use Lval as a temporary register (if Lval is a register).
     var_locn_set_magic_var_location(Var, Lval, !VLI),
-    % XXX The code at the end of the first three cases is the same.
-    % Switch detection could recognize this code as a switch on HowToConstruct
-    % before the change from tree.m to cord.m to represent code, but it cannot
-    % recognize it afterwards.
     (
-        HowToConstruct = construct_in_region(RegionVar),
-        var_locn_produce_var(ModuleInfo, RegionVar, RegionRval,
-            RegionVarCode, !VLI),
-        MaybeRegionRval = yes(RegionRval),
-        MaybeReuse = no_llds_reuse,
-        LldsComment = "Allocating region for ",
+        (
+            HowToConstruct = construct_in_region(RegionVar),
+            LldsComment = "Allocating region for ",
+            var_locn_produce_var(ModuleInfo, RegionVar, RegionRval,
+                RegionVarCode, !VLI),
+            MaybeRegionRval = yes(RegionRval)
+        ;
+            HowToConstruct = construct_dynamically,
+            LldsComment = "Allocating heap for ",
+            RegionVarCode = empty,
+            MaybeRegionRval = no
+        ),
         assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
             StartOffset, ArgsCode, !VLI),
         SetupReuseCode = empty,
         MaybeReuse = no_llds_reuse
     ;
-        HowToConstruct = construct_dynamically,
-        RegionVarCode = empty,
-        MaybeRegionRval = no,
-        LldsComment = "Allocating heap for ",
-        assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
-            StartOffset, ArgsCode, !VLI),
-        SetupReuseCode = empty,
-        MaybeReuse = no_llds_reuse
-    ;
-        % XXX  We should probably throw an exception if we find
-        % construct_statically here.
         HowToConstruct = construct_statically,
-        RegionVarCode = empty,
-        MaybeRegionRval = no,
-        LldsComment = "Allocating heap for ",
-        assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
-            StartOffset, ArgsCode, !VLI),
-        SetupReuseCode = empty,
-        MaybeReuse = no_llds_reuse
+        unexpected($pred, "construct_statically")
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsId, _NeedsUpdates0),
@@ -1268,34 +1253,6 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
     ),
     Code = EvalCode ++ AssignCode.
 
-:- pred materialize_if_var(module_info::in, rval::in, llds_code::out,
-    rval::out, var_locn_info::in, var_locn_info::out) is det.
-
-materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI) :-
-    (
-        Rval0 = var(Var),
-        find_var_availability(!.VLI, Var, no, Avail),
-        (
-            Avail = available(Rval),
-            EvalCode = empty
-        ;
-            Avail = needs_materialization,
-            materialize_var(ModuleInfo, Var, no, no, [], Rval, EvalCode,
-                !VLI)
-        )
-    ;
-        ( Rval0 = const(_)
-        ; Rval0 = mkword(_, _)
-        ; Rval0 = mkword_hole(_)
-        ; Rval0 = unop(_, _)
-        ; Rval0 = binop(_, _, _)
-        ; Rval0 = lval(_)
-        ; Rval0 = mem_addr(_)
-        ),
-        EvalCode = empty,
-        Rval = Rval0
-    ).
-
 var_locn_save_cell_fields(ModuleInfo, ReuseVar, ReuseLval, Code, Regs, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap),
     map.lookup(VarStateMap, ReuseVar, ReuseVarState0),
@@ -1317,8 +1274,8 @@ var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
         EvalCode = empty
     ;
         Avail = needs_materialization,
-        materialize_var(ModuleInfo, DepVar, no, no, [], DepVarRval, EvalCode,
-            !VLI)
+        materialize_var_general(ModuleInfo, DepVar, no, do_not_store_var, [],
+            DepVarRval, EvalCode, !VLI)
     ),
     var_locn_get_vartypes(!.VLI, VarTypes),
     lookup_var_type(VarTypes, DepVar, DepVarType),
@@ -1607,8 +1564,8 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
             )
         ;
             Avail = needs_materialization,
-            materialize_var(ModuleInfo, Var, yes(Target), no, [Target], Rval,
-                EvalCode, !VLI),
+            materialize_var_general(ModuleInfo, Var, yes(Target),
+                do_not_store_var, [Target], Rval, EvalCode, !VLI),
             record_clobbering(Target, [Var], !VLI)
         ),
 
@@ -2368,18 +2325,18 @@ expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval) :-
 %----------------------------------------------------------------------------%
 
 var_locn_materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code, !VLI) :-
-    var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, [], Lval,
+    materialize_vars_in_lval_avoid(ModuleInfo, Lval0, [], Lval,
         Code, !VLI).
 
 var_locn_materialize_vars_in_rval(ModuleInfo, Rval0, Rval, Code, !VLI) :-
-    var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, [], Rval,
+    materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, [], Rval,
         Code, !VLI).
 
-:- pred var_locn_materialize_vars_in_lval_avoid(module_info::in, lval::in,
+:- pred materialize_vars_in_lval_avoid(module_info::in, lval::in,
     list(lval)::in, lval::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, Avoid, Lval, Code,
+materialize_vars_in_lval_avoid(ModuleInfo, Lval0, Avoid, Lval, Code,
         !VLI) :-
     (
         ( Lval0 = reg(_, _)
@@ -2399,39 +2356,39 @@ var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, Avoid, Lval, Code,
         Code = empty
     ;
         Lval0 = succip_slot(Rval0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
+        materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
             Rval, Code, !VLI),
         Lval = succip_slot(Rval)
     ;
         Lval0 = redoip_slot(Rval0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
+        materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
             Rval, Code, !VLI),
         Lval = redoip_slot(Rval)
     ;
         Lval0 = succfr_slot(Rval0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
+        materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
             Rval, Code, !VLI),
         Lval = succfr_slot(Rval)
     ;
         Lval0 = redofr_slot(Rval0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
+        materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
             Rval, Code, !VLI),
         Lval = redofr_slot(Rval)
     ;
         Lval0 = prevfr_slot(Rval0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
+        materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
             Rval, Code, !VLI),
         Lval = prevfr_slot(Rval)
     ;
         Lval0 = mem_ref(Rval0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
+        materialize_vars_in_rval_avoid(ModuleInfo, Rval0, no, Avoid,
             Rval, Code, !VLI),
         Lval = mem_ref(Rval)
     ;
         Lval0 = field(Tag, RvalA0, RvalB0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, RvalA0, no, Avoid,
+        materialize_vars_in_rval_avoid(ModuleInfo, RvalA0, no, Avoid,
             RvalA, CodeA, !VLI),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, RvalB0, no, Avoid,
+        materialize_vars_in_rval_avoid(ModuleInfo, RvalB0, no, Avoid,
             RvalB, CodeB, !VLI),
         Lval = field(Tag, RvalA, RvalB),
         Code = CodeA ++ CodeB
@@ -2445,20 +2402,20 @@ var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0, Avoid, Lval, Code,
 
     % Rval is Rval0 with all variables in Rval0 replaced by their values.
     %
-:- pred var_locn_materialize_vars_in_rval_avoid(module_info::in,
+:- pred materialize_vars_in_rval_avoid(module_info::in,
     rval::in, maybe(lval)::in, list(lval)::in, rval::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
+materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
         Rval, Code, !VLI) :-
     (
         Rval0 = lval(Lval0),
-        var_locn_materialize_vars_in_lval_avoid(ModuleInfo, Lval0,
+        materialize_vars_in_lval_avoid(ModuleInfo, Lval0,
             Avoid, Lval, Code, !VLI),
         Rval = lval(Lval)
     ;
         Rval0 = mkword(Tag, SubRval0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, SubRval0, no,
+        materialize_vars_in_rval_avoid(ModuleInfo, SubRval0, no,
             Avoid, SubRval, Code, !VLI),
         Rval = mkword(Tag, SubRval)
     ;
@@ -2467,14 +2424,14 @@ var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
         Code = empty
     ;
         Rval0 = unop(Unop, SubRval0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, SubRval0, no,
+        materialize_vars_in_rval_avoid(ModuleInfo, SubRval0, no,
             Avoid, SubRval, Code, !VLI),
         Rval = unop(Unop, SubRval)
     ;
         Rval0 = binop(Binop, SubRvalA0, SubRvalB0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, SubRvalA0, no,
+        materialize_vars_in_rval_avoid(ModuleInfo, SubRvalA0, no,
             Avoid, SubRvalA, CodeA, !VLI),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, SubRvalB0, no,
+        materialize_vars_in_rval_avoid(ModuleInfo, SubRvalB0, no,
             Avoid, SubRvalB, CodeB, !VLI),
         Rval = binop(Binop, SubRvalA, SubRvalB),
         Code = CodeA ++ CodeB
@@ -2484,7 +2441,7 @@ var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
         Code = empty
     ;
         Rval0 = mem_addr(MemRef0),
-        var_locn_materialize_vars_in_mem_ref_avoid(ModuleInfo, MemRef0, MemRef,
+        materialize_vars_in_mem_ref_avoid(ModuleInfo, MemRef0, MemRef,
             Avoid, Code, !VLI),
         Rval = mem_addr(MemRef)
     ;
@@ -2495,18 +2452,18 @@ var_locn_materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
             Code = empty
         ;
             Avail = needs_materialization,
-            materialize_var(ModuleInfo, Var, MaybePrefer, yes,
+            materialize_var_general(ModuleInfo, Var, MaybePrefer, store_var,
                 Avoid, Rval, Code, !VLI)
         )
     ).
 
     % MemRef is MemRef0 with all variables in MemRef replaced by their values.
     %
-:- pred var_locn_materialize_vars_in_mem_ref_avoid(module_info::in,
+:- pred materialize_vars_in_mem_ref_avoid(module_info::in,
     mem_ref::in, mem_ref::out, list(lval)::in, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-var_locn_materialize_vars_in_mem_ref_avoid(ModuleInfo, MemRef0, MemRef, Avoid,
+materialize_vars_in_mem_ref_avoid(ModuleInfo, MemRef0, MemRef, Avoid,
         Code, !VLI) :-
     (
         ( MemRef0 = stackvar_ref(_)
@@ -2516,9 +2473,9 @@ var_locn_materialize_vars_in_mem_ref_avoid(ModuleInfo, MemRef0, MemRef, Avoid,
         Code = empty
     ;
         MemRef0 = heap_ref(PtrRval0, MaybeTag, FieldNumRval0),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, PtrRval0, no,
+        materialize_vars_in_rval_avoid(ModuleInfo, PtrRval0, no,
             Avoid, PtrRval, PtrCode, !VLI),
-        var_locn_materialize_vars_in_rval_avoid(ModuleInfo, FieldNumRval0, no,
+        materialize_vars_in_rval_avoid(ModuleInfo, FieldNumRval0, no,
             Avoid, FieldNumRval, FieldNumCode, !VLI),
         Code = PtrCode ++ FieldNumCode,
         MemRef = heap_ref(PtrRval, MaybeTag, FieldNumRval)
@@ -2550,12 +2507,50 @@ find_var_availability(VLI, Var, MaybePrefer, Avail) :-
         Avail = needs_materialization
     ).
 
-:- pred materialize_var(module_info::in, prog_var::in, maybe(lval)::in,
-    bool::in, list(lval)::in, rval::out, llds_code::out,
+:- pred materialize_if_var(module_info::in, rval::in, llds_code::out,
+    rval::out, var_locn_info::in, var_locn_info::out) is det.
+
+materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI) :-
+    (
+        Rval0 = var(Var),
+        materialize_var(ModuleInfo, Var, EvalCode, Rval, !VLI)
+    ;
+        ( Rval0 = const(_)
+        ; Rval0 = mkword(_, _)
+        ; Rval0 = mkword_hole(_)
+        ; Rval0 = unop(_, _)
+        ; Rval0 = binop(_, _, _)
+        ; Rval0 = lval(_)
+        ; Rval0 = mem_addr(_)
+        ),
+        EvalCode = empty,
+        Rval = Rval0
+    ).
+
+:- pred materialize_var(module_info::in, prog_var::in, llds_code::out,
+    rval::out, var_locn_info::in, var_locn_info::out) is det.
+
+materialize_var(ModuleInfo, Var, EvalCode, Rval, !VLI) :-
+    find_var_availability(!.VLI, Var, no, Avail),
+    (
+        Avail = available(Rval),
+        EvalCode = empty
+    ;
+        Avail = needs_materialization,
+        materialize_var_general(ModuleInfo, Var, no, do_not_store_var, [],
+            Rval, EvalCode, !VLI)
+    ).
+
+:- type store_var_if_required
+    --->    do_not_store_var
+    ;       store_var.
+
+:- pred materialize_var_general(module_info::in, prog_var::in, maybe(lval)::in,
+    store_var_if_required::in, list(lval)::in, rval::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
-        !VLI) :-
+materialize_var_general(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid,
+        Rval, Code, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap),
     map.lookup(VarStateMap, Var, State),
     State = var_state(_Lvals, _MaybeConstRval, MaybeExprRval,
@@ -2566,10 +2561,10 @@ materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
         MaybeExprRval = no,
         unexpected($module, $pred, "no expr")
     ),
-    var_locn_materialize_vars_in_rval_avoid(ModuleInfo, ExprRval, MaybePrefer,
+    materialize_vars_in_rval_avoid(ModuleInfo, ExprRval, MaybePrefer,
         Avoid, Rval0, ExprCode, !VLI),
     ( if
-        StoreIfReq = yes,
+        StoreIfReq = store_var,
         NumUsingVars = set_of_var.count(UsingVars),
         NumUsingVars > 1
     then
