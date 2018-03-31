@@ -569,7 +569,7 @@ num_zeros(I) = 32 - num_ones(I).
     U = (U + (U >> 4)) & UINT32_C(0x0f0f0f0f);
     U = U + (U >> 8);
     U = U + (U >> 16);
-    N = (MR_INteger) (U & UINT32_C(0x3f));
+    N = (MR_Integer) (U & UINT32_C(0x3f));
 #endif
 ").
 
@@ -730,12 +730,12 @@ reverse_bytes(_) = _ :-
 "
     uint32_t u_A = A;
 
-    u_A = (u_A & UINT32_C(0x55555555)) << 1 | (u_A >> 1) &
-        UINT32_C(0x55555555);
-    u_A = (u_A & UINT32_C(0x33333333)) << 2 | (u_A >> 2) &
-        UINT32_C(0x33333333);
-    u_A = (u_A & UINT32_C(0x0f0f0f0f)) << 4 | (u_A >> 4) &
-        UINT32_C(0x0f0f0f0f);
+    u_A = ((u_A & UINT32_C(0x55555555)) << 1) | ((u_A >> 1) &
+        UINT32_C(0x55555555));
+    u_A = ((u_A & UINT32_C(0x33333333)) << 2) | ((u_A >> 2) &
+        UINT32_C(0x33333333));
+    u_A = ((u_A & UINT32_C(0x0f0f0f0f)) << 4) | ((u_A >> 4) &
+        UINT32_C(0x0f0f0f0f));
     u_A = (u_A << 24) | ((u_A & UINT32_C(0xff00)) << 8) |
                     ((u_A >> 8) & UINT32_C(0xff00)) | (u_A >> 24);
     B = (int32_t) u_A;
