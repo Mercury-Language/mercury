@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017 The Mercury team.
+% Copyright (C) 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -191,11 +191,45 @@
     %
 :- func \ (uint16::in) = (uint16::uo) is det.
 
+%---------------------------------------------------------------------------%
+
+    % num_zeros(U) = N:
+    % N is the number of zeros in the binary representation of U.
+    %
+:- func num_zeros(uint16) = int.
+
+    % num_ones(U) = N:
+    % N is the number of ones in the binary representation of U.
+    %
+:- func num_ones(uint16) = int.
+
+    % num_leading_zeros(U) = N:
+    % N is the number of leading zeros in the binary representation of U,
+    % starting at the most significant bit position.
+    % Note that num_leading_zeros(0u16) = 16.
+    %
+:- func num_leading_zeros(uint16) = int.
+
+    % num_trailing_zeros(U) = N:
+    % N is the number of trailing zeros in the binary representation of U,
+    % starting at the least significant bit position.
+    % Note that num_trailing_zeros(0u16) = 16.
+    %
+:- func num_trailing_zeros(uint16) = int.
+
     % reverse_bytes(A) = B:
-    % B is the value that results from reversing the bytes in the
+    % B is the value that results from reversing the bytes in the binary
     % representation of A.
     %
 :- func reverse_bytes(uint16) = uint16.
+
+    % reverse_bits(A) = B:
+    % B is the is value that results from reversing the bits in the binary
+    % representation of A.
+    %
+:- func reverse_bits(uint16) = uint16.
+
+%---------------------------------------------------------------------------%
 
 :- func max_uint16 = uint16.
 
@@ -415,6 +449,90 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
+% The algorithms in this section are adapted from chapter 5 of
+% ``Hacker's Delight'' by Henry S. Warren, Jr.
+
+num_zeros(U) = 16 - num_ones(U).
+
+:- pragma foreign_proc("C",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    U = (U & 0x5555) + ((U >> 1) & 0x5555);
+    U = (U & 0x3333) + ((U >> 2) & 0x3333);
+    U = (U & 0x0f0f) + ((U >> 4) & 0x0f0f);
+    U = (U & 0x00ff) + ((U >> 8) & 0x00ff);
+    N = U;
+").
+
+:- pragma foreign_proc("C#",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U = (ushort) ((U & 0x5555) + ((U >> 1) & 0x5555));
+    U = (ushort) ((U & 0x3333) + ((U >> 2) & 0x3333));
+    U = (ushort) ((U & 0x0f0f) + ((U >> 4) & 0x0f0f));
+    U = (ushort) ((U & 0x00ff) + ((U >> 8) & 0x00ff));
+    N = (int) U;
+").
+
+:- pragma foreign_proc("Java",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Integer.bitCount(U << 16);
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    if (U == 0) {
+        N = 16;
+    } else {
+        int n = 1;
+        if ((U >> 8) == 0) { n = n + 8;   U = U << 8; }
+        if ((U >> 12) == 0) { n = n + 4;  U = U << 4; }
+        if ((U >> 14) == 0) { n = n + 2;  U = U << 2; }
+        if ((U >> 15) == 0) { n = n + 1;  U = U << 1; }
+        N = n - (int)(U >> 15);
+    }
+").
+
+:- pragma foreign_proc("C#",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (U == 0) {
+        N = 16;
+    } else {
+        int n = 1;
+        if ((U >> 8) == 0)  { n = n + 8; U = (ushort)(U << 8); }
+        if ((U >> 12) == 0) { n = n + 4; U = (ushort)(U << 4); }
+        if ((U >> 14) == 0) { n = n + 2; U = (ushort)(U << 2); }
+        if ((U >> 15) == 0) { n = n + 1; U = (ushort)(U << 1); }
+        N = n - (int)(U >> 15);
+    }
+").
+
+:- pragma foreign_proc("Java",
+    num_leading_zeros(I::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (I == 0) {
+        N = 16;
+    } else {
+        N = java.lang.Integer.numberOfLeadingZeros(I << 16);
+    }
+").
+
+num_trailing_zeros(U) =
+    16 - num_leading_zeros(\ U /\ (U - 1u16)).
+
+%---------------------------------------------------------------------------%
+
 :- pragma foreign_proc("C",
     reverse_bytes(A::in) = (B::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -431,6 +549,37 @@ odd(X) :-
 
 reverse_bytes(A) = B :-
     B = (A >> 8) \/ (A << 8).
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    A = (((~0x5555) & A) >> 1) | ((0x5555 & A) << 1);
+    A = (((~0x3333) & A) >> 2) | ((0x3333 & A) << 2);
+    A = (((~0x0f0f) & A) >> 4) | ((0x0f0f & A) << 4);
+    A = (((~0x00ff) & A) >> 8) | ((0x00ff & A) << 8);
+    B = A;
+").
+
+:- pragma foreign_proc("C#",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    A = (ushort)((((~0x5555) & A) >> 1) | ((0x5555 & A) << 1));
+    A = (ushort)((((~0x3333) & A) >> 2) | ((0x3333 & A) << 2));
+    A = (ushort)((((~0x0f0f) & A) >> 4) | ((0x0f0f & A) << 4));
+    A = (ushort)((((~0x00ff) & A) >> 8) | ((0x00ff & A) << 8));
+    B = A;
+").
+
+:- pragma foreign_proc("Java",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = (short) (java.lang.Integer.reverse(A << 16) & 0xffff);
+").
 
 %---------------------------------------------------------------------------%
 

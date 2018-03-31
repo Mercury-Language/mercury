@@ -23,7 +23,9 @@ ORDINARY_PROGS =	\
 	bigtest \
 	binary_stdin \
 	binary_stdout \
+	bit_twiddle_int16 \
 	bit_twiddle_int32 \
+	bit_twiddle_uint16 \
 	bit_twiddle_uint32 \
 	boyer \
 	brace \
