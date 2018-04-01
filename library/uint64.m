@@ -497,9 +497,8 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
-% The algorithms in this section are from chapter 5 of ``Hacker's Delight''
-% by Henry S. Warren, Jr.
-% (Java uses the same.)
+% The algorithms in this section are adapted from chapter 5 of
+% ``Hacker's Delight'' by Henry S. Warren, Jr.
 
 num_zeros(U) = 64 - num_ones(U).
 
