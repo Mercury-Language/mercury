@@ -283,6 +283,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module uint.
+:- import_module uint16.
 
 %---------------------------------------------------------------------------%
 
@@ -512,88 +513,17 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
-% The algorithms in this section are adapted from chapter 5 of
-% ``Hacker's Delight'' by Henry S. Warren, Jr.
-
 num_zeros(U) = 16 - num_ones(U).
 
-:- pragma foreign_proc("C",
-    num_ones(I::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    uint16_t U = I;
-    U = (U & 0x5555) + ((U >> 1) & 0x5555);
-    U = (U & 0x3333) + ((U >> 2) & 0x3333);
-    U = (U & 0x0f0f) + ((U >> 4) & 0x0f0f);
-    U = (U & 0x00ff) + ((U >> 8) & 0x00ff);
-    N = U;
-").
-
-:- pragma foreign_proc("C#",
-    num_ones(I::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    ushort U = (ushort) I;
-    U = (ushort)((U & 0x5555) + ((U >> 1) & 0x5555));
-    U = (ushort)((U & 0x3333) + ((U >> 2) & 0x3333));
-    U = (ushort)((U & 0x0f0f) + ((U >> 4) & 0x0f0f));
-    U = (ushort)((U & 0x00ff) + ((U >> 8) & 0x00ff));
-    N = U;
-").
-
-:- pragma foreign_proc("Java",
-    num_ones(U::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    N = java.lang.Integer.bitCount(U << 16);
-").
+num_ones(I16) = N :-
+    U16 = uint16.cast_from_int16(I16),
+    N = uint16.num_ones(U16).
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C",
-    num_leading_zeros(I::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    uint16_t U = I;
-    if (U == 0) {
-        N = 16;
-    } else {
-        int n = 1;
-        if ((U >> 8) == 0) { n = n + 8;   U = U << 8; }
-        if ((U >> 12) == 0) { n = n + 4;  U = U << 4; }
-        if ((U >> 14) == 0) { n = n + 2;  U = U << 2; }
-        if ((U >> 15) == 0) { n = n + 1;  U = U << 1; }
-        N = n - (int)(U >> 15);
-    }
-").
-
-:- pragma foreign_proc("C#",
-    num_leading_zeros(I::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    ushort U = (ushort) I;
-    if (U == 0) {
-        N = 16;
-    } else {
-        int n = 1;
-        if ((U >> 8) == 0)  { n = n + 8; U = (ushort)(U << 8); }
-        if ((U >> 12) == 0) { n = n + 4; U = (ushort)(U << 4); }
-        if ((U >> 14) == 0) { n = n + 2; U = (ushort)(U << 2); }
-        if ((U >> 15) == 0) { n = n + 1; U = (ushort)(U << 1); }
-        N = n - (int)(U >> 15);
-    }
-").
-
-:- pragma foreign_proc("Java",
-    num_leading_zeros(I::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if (I == 0) {
-        N = 16;
-    } else {
-        N = java.lang.Integer.numberOfLeadingZeros(I << 16);
-    }
-").
+num_leading_zeros(I16) = N :-
+    U16 = uint16.cast_from_int16(I16),
+    N = uint16.num_leading_zeros(U16).
 
 num_trailing_zeros(U) =
     16 - num_leading_zeros(\ U /\ (U - 1i16)).
@@ -627,29 +557,10 @@ reverse_bytes(_) = _ :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C",
-    reverse_bits(A::in) = (B::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    uint16_t u_A = A;
-    u_A = (((~0x5555) & u_A) >> 1) | ((0x5555 & u_A) << 1);
-    u_A = (((~0x3333) & u_A) >> 2) | ((0x3333 & u_A) << 2);
-    u_A = (((~0x0f0f) & u_A) >> 4) | ((0x0f0f & u_A) << 4);
-    u_A = (((~0x00ff) & u_A) >> 8) | ((0x00ff & u_A) << 8);
-    B = u_A;
-").
-
-:- pragma foreign_proc("C#",
-    reverse_bits(A::in) = (B::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    ushort u_A = (ushort) A;
-    u_A = (ushort)((((~0x5555) & u_A) >> 1) | ((0x5555 & u_A) << 1));
-    u_A = (ushort)((((~0x3333) & u_A) >> 2) | ((0x3333 & u_A) << 2));
-    u_A = (ushort)((((~0x0f0f) & u_A) >> 4) | ((0x0f0f & u_A) << 4));
-    u_A = (ushort)((((~0x00ff) & u_A) >> 8) | ((0x00ff & u_A) << 8));
-    B = (short) u_A;
-").
+reverse_bits(I16) = RevI16 :-
+    U16 = uint16.cast_from_int16(I16),
+    RevU16 = uint16.reverse_bits(U16),
+    RevI16 = int16.cast_from_uint16(RevU16).
 
 :- pragma foreign_proc("Java",
     reverse_bits(A::in) = (B::out),

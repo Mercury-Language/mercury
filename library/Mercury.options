@@ -74,6 +74,7 @@ MCFLAGS-int64 += --no-warn-unused-imports
 MCFLAGS-library += --no-warn-unused-imports
 MCFLAGS-mer_std += --no-warn-unused-imports
 MCFLAGS-term_size_prof_builtin += --no-warn-unused-imports
+MCFLAGS-int32 += --no-warn-unused-imports
 MCFLAGS-uint64 += --no-warn-unused-imports
 
 # In parallel, low level C grades that don't reserve a machine register for

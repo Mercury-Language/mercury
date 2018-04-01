@@ -552,27 +552,12 @@ reverse_bytes(A) = B :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C",
-    reverse_bits(A::in) = (B::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    A = (((~0x5555) & A) >> 1) | ((0x5555 & A) << 1);
-    A = (((~0x3333) & A) >> 2) | ((0x3333 & A) << 2);
-    A = (((~0x0f0f) & A) >> 4) | ((0x0f0f & A) << 4);
-    A = (((~0x00ff) & A) >> 8) | ((0x00ff & A) << 8);
-    B = A;
-").
-
-:- pragma foreign_proc("C#",
-    reverse_bits(A::in) = (B::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    A = (ushort)((((~0x5555) & A) >> 1) | ((0x5555 & A) << 1));
-    A = (ushort)((((~0x3333) & A) >> 2) | ((0x3333 & A) << 2));
-    A = (ushort)((((~0x0f0f) & A) >> 4) | ((0x0f0f & A) << 4));
-    A = (ushort)((((~0x00ff) & A) >> 8) | ((0x00ff & A) << 8));
-    B = A;
-").
+reverse_bits(!.A) = B :-
+    !:A = (((\ 0x5555u16) /\ !.A) >> 1) \/ ((0x5555u16 /\ !.A) << 1),
+    !:A = (((\ 0x3333u16) /\ !.A) >> 2) \/ ((0x3333u16 /\ !.A) << 2),
+    !:A = (((\ 0x0f0fu16) /\ !.A) >> 4) \/ ((0x0f0fu16 /\ !.A) << 4),
+    !:A = (((\ 0x00ffu16) /\ !.A) >> 8) \/ ((0x00ffu16 /\ !.A) << 8),
+    B = !.A.
 
 :- pragma foreign_proc("Java",
     reverse_bits(A::in) = (B::out),

@@ -590,10 +590,10 @@ reverse_bytes(I64) = Result :-
 
 %---------------------------------------------------------------------------%
 
-reverse_bits(I64) = Result :-
+reverse_bits(I64) = RevI64 :-
     U64 = uint64.cast_from_int64(I64),
-    Result0 = uint64.reverse_bits(U64),
-    Result = int64.cast_from_uint64(Result0).
+    RevU64 = uint64.reverse_bits(U64),
+    RevI64 = int64.cast_from_uint64(RevU64).
 
 :- pragma foreign_proc("Java",
     reverse_bits(A::in) = (B::out),
