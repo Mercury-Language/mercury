@@ -258,6 +258,7 @@ ORDINARY_PROGS =	\
 	packed_arg_partial_inst \
 	parse_number_from_io \
 	parse_number_from_string \
+	partial_inst_float \
 	ppc_bug \
 	pprint_test \
 	pprint_test2 \

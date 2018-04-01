@@ -1405,12 +1405,15 @@
             % Fill two words of a cell with the given rval, which must be a
             % double precision float.
 
-    ;       cell_arg_skip
-            % Leave a single word of a cell unfilled.
+    ;       cell_arg_skip_one_word
+    ;       cell_arg_skip_two_words
+            % Leave one or two words of a cell unfilled.
 
-    ;       cell_arg_take_addr(prog_var, maybe(rval)).
-            % Take the address of a field. If the second argument is
-            % `yes(Rval)' then the field is set to Rval beforehand.
+    ;       cell_arg_take_addr_one_word(prog_var, maybe(rval))
+    ;       cell_arg_take_addr_two_words(prog_var, maybe({rval, rval})).
+            % Take the address of a one- or two-word field.
+            % If the second argument is `yes(Rval/Rvals)',
+            % then set the field to Rval/Rvals beforehand.
 
 :- type completeness
     --->    complete

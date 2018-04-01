@@ -1129,15 +1129,20 @@ assign_all_cell_args(ModuleInfo, [CellArg | CellArgs], Ptag, Base, Offset,
         Code, !VLI) :-
     (
         ( CellArg = cell_arg_full_word(Rval, _Completeness)
-        ; CellArg = cell_arg_take_addr(_, yes(Rval))
+        ; CellArg = cell_arg_take_addr_one_word(_, yes(Rval))
         ),
         assign_cell_arg(ModuleInfo, Rval, Ptag, Base, Offset, ThisCode, !VLI),
         NextOffset = Offset + 1
     ;
-        CellArg = cell_arg_double_word(Rval0),
-        materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
-        RvalA = unop(dword_float_get_word0, Rval),
-        RvalB = unop(dword_float_get_word1, Rval),
+        (
+            CellArg = cell_arg_double_word(Rval0),
+            materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
+            RvalA = unop(dword_float_get_word0, Rval),
+            RvalB = unop(dword_float_get_word1, Rval)
+        ;
+            CellArg = cell_arg_take_addr_two_words(_, yes({RvalA, RvalB})),
+            EvalCode = cord.init
+        ),
         assign_cell_arg(ModuleInfo, RvalA, Ptag, Base, Offset,
             ThisCodeA, !VLI),
         assign_cell_arg(ModuleInfo, RvalB, Ptag, Base, Offset + 1,
@@ -1145,11 +1150,17 @@ assign_all_cell_args(ModuleInfo, [CellArg | CellArgs], Ptag, Base, Offset,
         ThisCode = EvalCode ++ ThisCodeA ++ ThisCodeB,
         NextOffset = Offset + 2
     ;
-        ( CellArg = cell_arg_skip
-        ; CellArg = cell_arg_take_addr(_, no)
+        ( CellArg = cell_arg_skip_one_word
+        ; CellArg = cell_arg_take_addr_one_word(_, no)
         ),
         ThisCode = empty,
         NextOffset = Offset + 1
+    ;
+        ( CellArg = cell_arg_skip_two_words
+        ; CellArg = cell_arg_take_addr_two_words(_, no)
+        ),
+        ThisCode = empty,
+        NextOffset = Offset + 2
     ),
     assign_all_cell_args(ModuleInfo, CellArgs, Ptag, Base, NextOffset,
         RestCode, !VLI),
@@ -1165,15 +1176,20 @@ assign_some_cell_args(ModuleInfo,
         Ptag, Base, Offset, CannotSkipArgsCode, CanSkipArgsCode, !VLI) :-
     (
         ( CellArg = cell_arg_full_word(Rval, _Completeness)
-        ; CellArg = cell_arg_take_addr(_, yes(Rval))
+        ; CellArg = cell_arg_take_addr_one_word(_, yes(Rval))
         ),
         assign_cell_arg(ModuleInfo, Rval, Ptag, Base, Offset, ThisCode, !VLI),
         NextOffset = Offset + 1
     ;
-        CellArg = cell_arg_double_word(Rval0),
-        materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
-        RvalA = unop(dword_float_get_word0, Rval),
-        RvalB = unop(dword_float_get_word1, Rval),
+        (
+            CellArg = cell_arg_double_word(Rval0),
+            materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
+            RvalA = unop(dword_float_get_word0, Rval),
+            RvalB = unop(dword_float_get_word1, Rval)
+        ;
+            CellArg = cell_arg_take_addr_two_words(_, yes({RvalA, RvalB})),
+            EvalCode = cord.init
+        ),
         assign_cell_arg(ModuleInfo, RvalA, Ptag, Base, Offset,
             ThisCodeA, !VLI),
         assign_cell_arg(ModuleInfo, RvalB, Ptag, Base, Offset + 1,
@@ -1181,11 +1197,17 @@ assign_some_cell_args(ModuleInfo,
         ThisCode = EvalCode ++ ThisCodeA ++ ThisCodeB,
         NextOffset = Offset + 2
     ;
-        ( CellArg = cell_arg_skip
-        ; CellArg = cell_arg_take_addr(_, no)
+        ( CellArg = cell_arg_skip_one_word
+        ; CellArg = cell_arg_take_addr_one_word(_, no)
         ),
         ThisCode = empty,
         NextOffset = Offset + 1
+    ;
+        ( CellArg = cell_arg_skip_two_words
+        ; CellArg = cell_arg_take_addr_two_words(_, no)
+        ),
+        ThisCode = empty,
+        NextOffset = Offset + 2
     ),
     assign_some_cell_args(ModuleInfo, CellArgs, NeedsUpdates, Ptag, Base,
         NextOffset, RestCannotSkipArgsCode, RestCanSkipArgsCode, !VLI),
@@ -2266,10 +2288,11 @@ cell_is_constant(VarStateMap, ExprnOpts, [CellArg | CellArgs],
         CellArg = cell_arg_double_word(Rval0),
         NumWords = two_words
     ;
-        CellArg = cell_arg_take_addr(_, _),
-        fail
-    ;
-        CellArg = cell_arg_skip,
+        ( CellArg = cell_arg_take_addr_one_word(_, _)
+        ; CellArg = cell_arg_take_addr_two_words(_, _)
+        ; CellArg = cell_arg_skip_two_words
+        ; CellArg = cell_arg_skip_one_word
+        ),
         fail
     ),
     expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval),

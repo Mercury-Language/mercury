@@ -739,31 +739,37 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
     ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
+        LeftOverVarsWidths = VarsWidths,
+        LeftOverArgModes = ArgModes,
+        LeftOverArgNum = CurArgNum + 1,
+        get_lcmc_null(CI, LCMCNull),
         (
-            Width = full_word
+            Width = full_word,
+            (
+                LCMCNull = no,
+                MaybeNull = no
+            ;
+                LCMCNull = yes,
+                MaybeNull = yes(const(llconst_int(0)))
+            ),
+            CellArg = cell_arg_take_addr_one_word(Var, MaybeNull)
         ;
             Width = double_word,
-            % We currently implement this, but not correctly,
-            % so lco.m disables it.
-            unexpected($pred, "taking address of double word")
+            (
+                LCMCNull = no,
+                MaybeNulls = no
+            ;
+                LCMCNull = yes,
+                Null = const(llconst_int(0)),
+                MaybeNulls = yes({Null, Null})
+            ),
+            CellArg = cell_arg_take_addr_two_words(Var, MaybeNulls)
         ;
             ( Width = partial_word_first(_)
             ; Width = partial_word_shifted(_, _)
             ),
             unexpected($pred, "taking address of partial word")
         ),
-        get_lcmc_null(CI, LCMCNull),
-        (
-            LCMCNull = no,
-            MaybeNull = no
-        ;
-            LCMCNull = yes,
-            MaybeNull = yes(const(llconst_int(0)))
-        ),
-        LeftOverVarsWidths = VarsWidths,
-        LeftOverArgModes = ArgModes,
-        LeftOverArgNum = CurArgNum + 1,
-        CellArg = cell_arg_take_addr(Var, MaybeNull),
         !:MayUseAtomic = may_not_use_atomic_alloc
     else
         generate_cons_arg_rval(ModuleInfo, Var, Type, ArgMode, IsReal, Rval,
@@ -773,7 +779,7 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
                 Width = full_word,
                 (
                     IsReal = not_real_input_arg,
-                    CellArg = cell_arg_skip
+                    CellArg = cell_arg_skip_one_word
                 ;
                     IsReal = real_input_arg,
                     CellArg = cell_arg_full_word(Rval, complete)
@@ -782,8 +788,7 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
                 Width = double_word,
                 (
                     IsReal = not_real_input_arg,
-                    % XXX This is a bug; it skips *one* word, not two.
-                    CellArg = cell_arg_skip
+                    CellArg = cell_arg_skip_two_words
                 ;
                     IsReal = real_input_arg,
                     CellArg = cell_arg_double_word(Rval)
@@ -982,15 +987,22 @@ generate_field_addrs(CellArgs, FieldAddrs) :-
 generate_field_addr(CellArg, ArgOffset, NextOffset, !RevFieldAddrs) :-
     (
         ( CellArg = cell_arg_full_word(_, _)
-        ; CellArg = cell_arg_skip
+        ; CellArg = cell_arg_skip_one_word
         ),
         NextOffset = ArgOffset + 1
     ;
-        CellArg = cell_arg_double_word(_),
+        ( CellArg = cell_arg_double_word(_)
+        ; CellArg = cell_arg_skip_two_words
+        ),
         NextOffset = ArgOffset + 2
     ;
-        CellArg = cell_arg_take_addr(Var, _),
-        NextOffset = ArgOffset + 1,
+        (
+            CellArg = cell_arg_take_addr_one_word(Var, _),
+            NextOffset = ArgOffset + 1
+        ;
+            CellArg = cell_arg_take_addr_two_words(Var, _),
+            NextOffset = ArgOffset + 2
+        ),
         FieldAddr = field_addr(ArgOffset, Var),
         !:RevFieldAddrs = [FieldAddr | !.RevFieldAddrs]
     ).

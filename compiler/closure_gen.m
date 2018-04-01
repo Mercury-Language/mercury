@@ -345,7 +345,10 @@ generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
         ( ArgMode = top_out
         ; ArgMode = top_unused
         ),
-        CellArg = cell_arg_skip
+        % XXX PACK_64
+        % This will become incorrect when we start allowing
+        % unpacked int64s and uint64s on 32 bit machines.
+        CellArg = cell_arg_skip_one_word
     ),
     lookup_var_type(VarTypes, Var, Type),
     get_module_info(CI, ModuleInfo),
