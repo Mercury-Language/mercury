@@ -438,6 +438,10 @@
 //
 #undef MR_INT_IS_32_BIT
 
+// MR_LONG_IS_64_BIT is defined if C's long type is exactly 64-bits.
+//
+#undef MR_LONG_IS_64_BIT
+
 // The bytecode files represent floats in 64-bit IEEE format.
 //
 // MR_FLOAT_IS_64_BITS: defined iff the C type `float' is exactly 64 bits.

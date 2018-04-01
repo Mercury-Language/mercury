@@ -221,11 +221,45 @@
     %
 :- func \ (int64::in) = (int64::uo) is det.
 
+%---------------------------------------------------------------------------%
+
+    % num_zeros(I) = N:
+    % N is the number of zeros in the binary representation of I.
+    %
+:- func num_zeros(int64) = int.
+
+    % num_ones(I) = N:
+    % N is the number of ones in the binary representation of I.
+    %
+:- func num_ones(int64) = int.
+
+    % num_leading_zeros(I) = N:
+    % N is the number of leading zeros in the binary representation of I,
+    % starting at the most significant bit position.
+    % Note that num_leading_zeros(0i64) = 64.
+    %
+:- func num_leading_zeros(int64) = int.
+
+    % num_trailing_zeros(I) = N:
+    % N is the number of trailing zeros in the binary representation of I,
+    % starting at the least significant bit position.
+    % Note that num_trailing_zeros(0i64) = 64.
+    %
+:- func num_trailing_zeros(int64) = int.
+
     % reverse_bytes(A) = B:
-    % B is the value that results from reversing the bytes in the
+    % B is the value that results from reversing the bytes in the binary
     % representation of A.
     %
 :- func reverse_bytes(int64) = int64.
+
+    % reverse_bits(A) = B:
+    % B is the is value that results from reversing the bits in the binary
+    % representation of A.
+    %
+:- func reverse_bits(int64) = int64.
+
+%---------------------------------------------------------------------------%
 
 :- func min_int64 = int64.
 
@@ -241,10 +275,12 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module int.
 :- import_module math.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
+:- import_module uint64.
 
 %---------------------------------------------------------------------------%
 
@@ -492,27 +528,57 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
+num_zeros(U) = 64 - num_ones(U).
+
+num_ones(I64) = N :-
+    U64 = uint64.cast_from_int64(I64),
+    N = uint64.num_ones(U64).
+
+:- pragma foreign_proc("Java",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Long.bitCount(U);
+").
+
+%---------------------------------------------------------------------------%
+
+num_leading_zeros(I64) = N :-
+    U64 = uint64.cast_from_int64(I64),
+    N = uint64.num_leading_zeros(U64).
+
+:- pragma foreign_proc("Java",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Long.numberOfLeadingZeros(U);
+").
+
+%---------------------------------------------------------------------------%
+
+num_trailing_zeros(I64) = N :-
+    U64 = uint64.cast_from_int64(I64),
+    N = uint64.num_trailing_zeros(U64).
+
+:- pragma foreign_proc("Java",
+    num_trailing_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Long.numberOfTrailingZeros(U);
+").
+
+%---------------------------------------------------------------------------%
+
+reverse_bytes(I64) = Result :-
+    U64 = uint64.cast_from_int64(I64),
+    Result0 = uint64.reverse_bytes(U64),
+    Result = int64.cast_from_uint64(Result0).
+
 :- pragma foreign_proc("C",
     reverse_bytes(A::in) = (B::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     B = (int64_t) MR_uint64_reverse_bytes((uint64_t)A);
-").
-
-:- pragma foreign_proc("C#",
-    reverse_bytes(A::in) = (B::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    ulong u_A = (ulong) A;
-
-    B = (long) ((u_A & 0x00000000000000ffUL) << 56  |
-         (u_A & 0x000000000000ff00UL) << 40  |
-         (u_A & 0x0000000000ff0000UL) << 24  |
-         (u_A & 0x00000000ff000000UL) << 8   |
-         (u_A & 0x000000ff00000000UL) >> 8   |
-         (u_A & 0x0000ff0000000000UL) >> 24  |
-         (u_A & 0x00ff000000000000UL) >> 40  |
-         (u_A & 0xff00000000000000UL) >> 56);
 ").
 
 :- pragma foreign_proc("Java",
@@ -522,9 +588,19 @@ odd(X) :-
     B = java.lang.Long.reverseBytes(A);
 ").
 
-:- pragma no_determinism_warning(reverse_bytes/1).
-reverse_bytes(_) = _ :-
-    sorry($module, "int64.reverse_bytes/1 NYI for Erlang").
+%---------------------------------------------------------------------------%
+
+reverse_bits(I64) = Result :-
+    U64 = uint64.cast_from_int64(I64),
+    Result0 = uint64.reverse_bits(U64),
+    Result = int64.cast_from_uint64(Result0).
+
+:- pragma foreign_proc("Java",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Long.reverse(A);
+").
 
 %---------------------------------------------------------------------------%
 

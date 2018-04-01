@@ -2146,6 +2146,22 @@ AC_SUBST(MR_INT_IS_32_BIT)
 
 #-----------------------------------------------------------------------------#
 
+AC_MSG_CHECKING(whether long is 64-bit)
+AC_CACHE_VAL(mercury_cv_long_is_64_bit,
+    MERCURY_TRY_STATIC_ASSERT(
+        [#include <limits.h>],
+        [sizeof(long) * CHAR_BIT == 64],
+        [mercury_cv_long_is_64_bit=yes],
+        [mercury_cv_long_is_64_bit=no])
+)
+AC_MSG_RESULT($mercury_cv_long_is_64_bit)
+if test "$mercury_cv_long_is_64_bit" = yes; then
+    AC_DEFINE(MR_LONG_IS_64_BIT)
+fi
+AC_SUBST(MR_LONG_IS_64_BIT)
+
+#-----------------------------------------------------------------------------#
+
 AC_MSG_CHECKING(whether we can use unboxed floats)
 AC_CACHE_VAL(mercury_cv_unboxed_floats,
     MERCURY_TRY_STATIC_ASSERT(
