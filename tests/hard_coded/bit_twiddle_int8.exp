@@ -1,0 +1,79 @@
+*** Test function 'num_zeros' ***
+
+num_zeros(10000000) = 7
+num_zeros(11110000) = 4
+num_zeros(11110110) = 2
+num_zeros(11111000) = 3
+num_zeros(11111110) = 1
+num_zeros(11111111) = 0
+num_zeros(00000000) = 8
+num_zeros(00000001) = 7
+num_zeros(00000010) = 7
+num_zeros(00001000) = 7
+num_zeros(00001010) = 6
+num_zeros(00010000) = 7
+num_zeros(01111111) = 1
+
+*** Test function 'num_ones' ***
+
+num_ones(10000000) = 1
+num_ones(11110000) = 4
+num_ones(11110110) = 6
+num_ones(11111000) = 5
+num_ones(11111110) = 7
+num_ones(11111111) = 8
+num_ones(00000000) = 0
+num_ones(00000001) = 1
+num_ones(00000010) = 1
+num_ones(00001000) = 1
+num_ones(00001010) = 2
+num_ones(00010000) = 1
+num_ones(01111111) = 7
+
+*** Test function 'num_leading_zeros' ***
+
+num_leading_zeros(10000000) = 0
+num_leading_zeros(11110000) = 0
+num_leading_zeros(11110110) = 0
+num_leading_zeros(11111000) = 0
+num_leading_zeros(11111110) = 0
+num_leading_zeros(11111111) = 0
+num_leading_zeros(00000000) = 8
+num_leading_zeros(00000001) = 7
+num_leading_zeros(00000010) = 6
+num_leading_zeros(00001000) = 4
+num_leading_zeros(00001010) = 4
+num_leading_zeros(00010000) = 3
+num_leading_zeros(01111111) = 1
+
+*** Test function 'num_trailing_zeros' ***
+
+num_trailing_zeros(10000000) = 7
+num_trailing_zeros(11110000) = 4
+num_trailing_zeros(11110110) = 1
+num_trailing_zeros(11111000) = 3
+num_trailing_zeros(11111110) = 1
+num_trailing_zeros(11111111) = 0
+num_trailing_zeros(00000000) = 8
+num_trailing_zeros(00000001) = 0
+num_trailing_zeros(00000010) = 1
+num_trailing_zeros(00001000) = 3
+num_trailing_zeros(00001010) = 1
+num_trailing_zeros(00010000) = 4
+num_trailing_zeros(01111111) = 0
+
+*** Test function 'reverse_bits' ***
+
+reverse_bits(10000000) = 00000001
+reverse_bits(11110000) = 00001111
+reverse_bits(11110110) = 01101111
+reverse_bits(11111000) = 00011111
+reverse_bits(11111110) = 01111111
+reverse_bits(11111111) = 11111111
+reverse_bits(00000000) = 00000000
+reverse_bits(00000001) = 10000000
+reverse_bits(00000010) = 01000000
+reverse_bits(00001000) = 00010000
+reverse_bits(00001010) = 01010000
+reverse_bits(00010000) = 00001000
+reverse_bits(01111111) = 11111110

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017 The Mercury team.
+% Copyright (C) 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -179,6 +179,40 @@
     %
 :- func \ (uint8::in) = (uint8::uo) is det.
 
+%---------------------------------------------------------------------------%
+
+    % num_zeros(U) = N:
+    % N is the number of zeros in the binary representation of U.
+    %
+:- func num_zeros(uint8) = int.
+
+    % num_ones(U) = N:
+    % N is the number of ones in the binary representation of U.
+    %
+:- func num_ones(uint8) = int.
+
+    % num_leading_zeros(U) = N:
+    % N is the number of leading zeros in the binary representation of U,
+    % starting at teh most significant bit position.
+    % Note that num_leading_zeros(0u8) = 8.
+    %
+:- func num_leading_zeros(uint8) = int.
+
+    % num_trailing_zeros(U) = N:
+    % N is the number of trailing zeros in the binary representation of U,
+    % starting at the least significant bit position.
+    % Note that num_trailing_zeros(0u8) = 8.
+    %
+:- func num_trailing_zeros(uint8) = int.
+
+    % reverse_bits(A) = B:
+    % B is the is value that results from reversing the bits in the binary
+    % representation of A.
+    %
+:- func reverse_bits(uint8) = uint8.
+
+%---------------------------------------------------------------------------%
+
 :- func max_uint8 = uint8.
 
     % Convert an uint8 to a pretty_printer.doc for formatting.
@@ -355,6 +389,270 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1u8) \= 0u8.
+
+%---------------------------------------------------------------------------%
+
+num_zeros(U) = 8 - num_ones(U).
+
+:- pragma foreign_decl("C",
+    "extern const uint8_t ML_uint8_num_ones_table[];").
+
+:- pragma foreign_code("C", "
+
+const uint8_t ML_uint8_num_ones_table[256] = {
+    0,1,1,2,1,2,2,3,
+    1,2,2,3,2,3,3,4,
+    1,2,2,3,2,3,3,4,
+    2,3,3,4,3,4,4,5,
+    1,2,2,3,2,3,3,4,
+    2,3,3,4,3,4,4,5,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    1,2,2,3,2,3,3,4,
+    2,3,3,4,3,4,4,5,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    3,4,4,5,4,5,5,6,
+    4,5,5,6,5,6,6,7,
+    1,2,2,3,2,3,3,4,
+    2,3,3,4,3,4,4,5,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    3,4,4,5,4,5,5,6,
+    4,5,5,6,5,6,6,7,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    3,4,4,5,4,5,5,6,
+    4,5,5,6,5,6,6,7,
+    3,4,4,5,4,5,5,6,
+    4,5,5,6,5,6,6,7,
+    4,5,5,6,5,6,6,7,
+    5,6,6,7,6,7,7,8
+};
+").
+
+:- pragma foreign_proc("C",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    N = ML_uint8_num_ones_table[U];
+").
+
+:- pragma foreign_code("C#", "
+
+public static byte[] num_ones_table = {
+    0,1,1,2,1,2,2,3,
+    1,2,2,3,2,3,3,4,
+    1,2,2,3,2,3,3,4,
+    2,3,3,4,3,4,4,5,
+    1,2,2,3,2,3,3,4,
+    2,3,3,4,3,4,4,5,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    1,2,2,3,2,3,3,4,
+    2,3,3,4,3,4,4,5,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    3,4,4,5,4,5,5,6,
+    4,5,5,6,5,6,6,7,
+    1,2,2,3,2,3,3,4,
+    2,3,3,4,3,4,4,5,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    3,4,4,5,4,5,5,6,
+    4,5,5,6,5,6,6,7,
+    2,3,3,4,3,4,4,5,
+    3,4,4,5,4,5,5,6,
+    3,4,4,5,4,5,5,6,
+    4,5,5,6,5,6,6,7,
+    3,4,4,5,4,5,5,6,
+    4,5,5,6,5,6,6,7,
+    4,5,5,6,5,6,6,7,
+    5,6,6,7,6,7,7,8
+};
+
+").
+
+:- pragma foreign_proc("C#",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = mercury.uint8.num_ones_table[U];
+").
+
+:- pragma foreign_proc("Java",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = java.lang.Integer.bitCount(U << 24);
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C", "extern const uint8_t ML_uint8_nlz_table[];").
+
+:- pragma foreign_code("C", "
+
+const uint8_t ML_uint8_nlz_table[256] = {
+  8,7,6,6,5,5,5,5,
+  4,4,4,4,4,4,4,4,
+  3,3,3,3,3,3,3,3,
+  3,3,3,3,3,3,3,3,
+  2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,2,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0
+};
+
+").
+
+:- pragma foreign_proc("C",
+    num_leading_zeros(I::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    N = ML_uint8_nlz_table[I];
+").
+:- pragma foreign_code("C#", "
+
+public static byte[] nlz_table = {
+  8,7,6,6,5,5,5,5,
+  4,4,4,4,4,4,4,4,
+  3,3,3,3,3,3,3,3,
+  3,3,3,3,3,3,3,3,
+  2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,2,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0
+};
+
+").
+
+:- pragma foreign_proc("C#",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = mercury.uint8.nlz_table[U];
+").
+
+:- pragma foreign_code("Java", "
+
+public static byte[] nlz_table = {
+  8,7,6,6,5,5,5,5,
+  4,4,4,4,4,4,4,4,
+  3,3,3,3,3,3,3,3,
+  3,3,3,3,3,3,3,3,
+  2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,2,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0
+};
+
+").
+
+:- pragma foreign_proc("Java",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = jmercury.uint8.nlz_table[U & 0xff];
+").
+
+num_trailing_zeros(U) =
+    8 - num_leading_zeros(\ U /\ (U - 1u8)).
+
+%---------------------------------------------------------------------------%
+
+reverse_bits(!.A) = B :-
+    !:A = ((!.A /\ 0xf0_u8) >> 4) \/ ((!.A /\ 0x0f_u8) << 4),
+    !:A = ((!.A /\ 0xcc_u8) >> 2) \/ ((!.A /\ 0x33_u8) << 2),
+    !:A = ((!.A /\ 0xaa_u8) >> 1) \/ ((!.A /\ 0x55_u8) << 1),
+    B = !.A.
+
+:- pragma foreign_proc("Java",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = (byte) (java.lang.Integer.reverse(A << 24) & 0xff);
+").
 
 %---------------------------------------------------------------------------%
 

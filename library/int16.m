@@ -525,8 +525,9 @@ num_leading_zeros(I16) = N :-
     U16 = uint16.cast_from_int16(I16),
     N = uint16.num_leading_zeros(U16).
 
-num_trailing_zeros(U) =
-    16 - num_leading_zeros(\ U /\ (U - 1i16)).
+num_trailing_zeros(I16) = N :-
+    U16 = uint16.cast_from_int16(I16),
+    N = uint16.num_trailing_zeros(U16).
 
 %---------------------------------------------------------------------------%
 

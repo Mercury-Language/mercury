@@ -26,9 +26,11 @@ ORDINARY_PROGS =	\
 	bit_twiddle_int16 \
 	bit_twiddle_int32 \
 	bit_twiddle_int64 \
+	bit_twiddle_int8 \
 	bit_twiddle_uint16 \
 	bit_twiddle_uint32 \
 	bit_twiddle_uint64 \
+	bit_twiddle_uint8 \
 	boyer \
 	brace \
 	bug103 \

@@ -194,10 +194,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Bitwise complement.
-    %
-:- func \ (int8::in) = (int8::uo) is det.
-
     % Bitwise and.
     %
 :- func (int8::in) /\ (int8::in) = (int8::uo) is det.
@@ -212,6 +208,42 @@
 :- mode xor(in, in) = uo is det.
 :- mode xor(in, uo) = in is det.
 :- mode xor(uo, in) = in is det.
+
+    % Bitwise complement.
+    %
+:- func \ (int8::in) = (int8::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+    % num_zeros(I) = N:
+    % N is the number of zeros in the binary representation of I.
+    %
+:- func num_zeros(int8) = int.
+
+    % num_ones(I) = N:
+    % N is the number of ones in the binary representation of I.
+    %
+:- func num_ones(int8) = int.
+
+    % num_leading_zeros(I) = N:
+    % N is the number of leading zeros in the binary representation of I,
+    % starting at the most significant bit position.
+    % Note that num_leading_zeros(0i8) = 8.
+    %
+:- func num_leading_zeros(int8) = int.
+
+    % num_trailing_zeros(I) = N:
+    % N is the number of trailing zeros in the binary representation of I,
+    % starting at the least significant bit position.
+    % Note that num_trailing_zeros(0i8) = 8.
+    %
+:- func num_trailing_zeros(int8) = int.
+
+    % reverse_bits(A) = B:
+    % B is the is value that results from reversing the bits in the binary
+    % representation of A.
+    %
+:- func reverse_bits(int8) = int8.
 
 %---------------------------------------------------------------------------%
 
@@ -236,6 +268,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module uint.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 
@@ -424,6 +457,27 @@ even(X) :-
 :- pragma inline(odd/1).
 odd(X) :-
     (X /\ 1i8) \= 0i8.
+
+%---------------------------------------------------------------------------%
+
+num_zeros(I) = 8 - num_ones(I).
+
+num_ones(I8) = N :-
+    U8 = uint8.cast_from_int8(I8),
+    N = uint8.num_ones(U8).
+
+num_leading_zeros(I8) = N :-
+    U8 = uint8.cast_from_int8(I8),
+    N = uint8.num_leading_zeros(U8).
+
+num_trailing_zeros(I8) = N :-
+    U8 = uint8.cast_from_int8(I8),
+    N = uint8.num_trailing_zeros(U8).
+
+reverse_bits(I8) = RevI8 :-
+    U8 = uint8.cast_from_int8(I8),
+    RevU8 = uint8.reverse_bits(U8),
+    RevI8 = int8.cast_from_uint8(RevU8).
 
 %---------------------------------------------------------------------------%
 
