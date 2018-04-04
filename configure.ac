@@ -5322,8 +5322,12 @@ AC_SUBST(DEFAULT_WEB_BROWSER_CMD)
 # grade with respect to whether --highlevel-code was used to generate them.
 #
 case "$GRADE" in
-    hl*) need_hl_c_files="yes" ;;
-    *)   need_hl_c_files="no"  ;;
+    hl*)
+        need_hl_c_files="yes"
+        ;;
+    *)
+        need_hl_c_files="no"
+        ;;
 esac
 
 mercury_check_c_files () {
@@ -5345,13 +5349,34 @@ mercury_check_c_files () {
             ;;
     esac
 
-    # Keep everything on one line to avoid any line ending differences.
-    printf ";TAG_BITS=%s;UNBOXED_FLOAT=%s;UNBOXED_INT64S=%s;PREGENERATED_DIST=%s;HIGHLEVEL_CODE=%s;" \
-        $need_low_tag_bits \
-        $need_unboxed_floats \
-        $need_unboxed_int64s \
-        $need_pregen_dist \
-        $need_hl_c_files > confscratch.ref
+    # If the ALLOW_BOTH_HI_LO_LEVEL_CODE environment variable is set to
+    # "allow", then don't pay attention to the setting of HIGHLEVEL_CODE;
+    # allow both high and low level code. This is intended for situations
+    # where a workspace already exists and is compiled. When configure.ac
+    # changes, it has to rerun, but it should *not* cause the deletion
+    # of the workspace's .c files just because the workspace's Mmake.params
+    # file chose a different code level.
+    #
+    # In both cases, keep everything on one line to avoid any
+    # line ending differences.
+    if test "$ALLOW_BOTH_HI_LO_LEVEL_CODE" = "allow"
+    then
+        maybe_delete_level="-e /HIGHLEVEL_CODE/d"
+        printf ";TAG_BITS=%s;UNBOXED_FLOAT=%s;UNBOXED_INT64S=%s;PREGENERATED_DIST=%s;" \
+            $need_low_tag_bits \
+            $need_unboxed_floats \
+            $need_unboxed_int64s \
+            $need_pregen_dist \
+            > confscratch.ref
+    else
+        maybe_delete_level=""
+        printf ";TAG_BITS=%s;UNBOXED_FLOAT=%s;UNBOXED_INT64S=%s;PREGENERATED_DIST=%s;HIGHLEVEL_CODE=%s;" \
+            $need_low_tag_bits \
+            $need_unboxed_floats \
+            $need_unboxed_int64s \
+            $need_pregen_dist \
+            $need_hl_c_files > confscratch.ref
+    fi
 
     for c_file in $c_dir/*.c
     do
@@ -5361,8 +5386,8 @@ mercury_check_c_files () {
         */*_init.c)
             ;;
         *)
-            sed -n '/END_OF_C_GRADE_INFO/q ; /=/p' < $c_file | \
-                tr -s '* \r\n' ';' > confscratch
+            sed -n -e "/END_OF_C_GRADE_INFO/q" $maybe_delete_level -e "/=/p" \
+                < $c_file | tr -s '* \r\n' ';' > confscratch
             if cmp -s confscratch confscratch.ref
             then
                 some_kept=true
