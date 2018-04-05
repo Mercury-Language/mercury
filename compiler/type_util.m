@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -226,13 +227,13 @@
 :- pred type_constructors(module_info::in, mer_type::in,
     list(constructor)::out) is semidet.
 
-    % Given a type on which it is possible to have a complete switch,
-    % return the number of alternatives. (It is possible to have a complete
-    % switch on any du type and on the builtin type character. It is not
-    % feasible to have a complete switch on the builtin types integer,
-    % float, and string. One cannot have a switch on an abstract type,
-    % and equivalence types will have been expanded out by the time
-    % we consider switches.)
+    % Given a type on which it is possible to have a complete switch, return
+    % the number of alternatives. (It is possible to have a complete switch on
+    % any du type, on the builtin type character and on the builtin fixed size
+    % integer types. It is not feasible to have a complete switch on the
+    % builtin types int, uint, float, and string. One cannot have a switch on
+    % an abstract type, and equivalence types will have been expanded out by
+    % the time we consider switches.)
     %
 :- pred switch_type_num_functors(module_info::in, mer_type::in, int::out)
     is semidet.
@@ -1268,12 +1269,28 @@ substitute_type_args_ctor_args(Subst, [Arg0 | Args0], [Arg | Args]) :-
 
 switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
     type_to_ctor(Type, TypeCtor),
-    ( if TypeCtor = type_ctor(unqualified("character"), 0) then
+    ( if
+        TypeCtor = type_ctor(unqualified("character"), 0)
+    then
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
         target_char_range(Target, MinChar, MaxChar),
         NumFunctors = MaxChar - MinChar + 1
-    else if type_ctor_is_tuple(TypeCtor) then
+    else if
+        % It's not worth bothering with the 32- and 64-bit integer types here
+        % -- a complete switch on any of those types would be so large that it
+        % would overwhelm the compiler anyway.
+        TypeCtor = type_ctor(unqualified(IntType), 0),
+        ( IntType = "int8", NumFunctors0 = 256
+        ; IntType = "uint8", NumFunctors0 = 256
+        ; IntType = "int16", NumFunctors0 = 65536
+        ; IntType = "uint16", NumFunctors0 = 65536
+        )
+    then
+        NumFunctors = NumFunctors0
+    else if
+        type_ctor_is_tuple(TypeCtor)
+    then
         NumFunctors = 1
     else
         module_info_get_type_table(ModuleInfo, TypeTable),
