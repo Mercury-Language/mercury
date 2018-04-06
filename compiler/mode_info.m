@@ -353,7 +353,9 @@
     %
     % The most frequently used fields are in the mode_info type,
     % while all the other fields are in the mode_sub_info type.
-
+    %
+    % The sub-word-sized arguments of the mode_sub_info type
+    % are all at the end of the structure, to allow them to be packed together.
 :- type mode_info
     --->    mode_info(
                 % The Boehm collector allocates blocks whose sizes are
@@ -431,11 +433,6 @@
                 % is for the correct handling of nested parallel conjunctions.
                 msi_par_conj                :: par_conj_mode_check_stack,
 
-                msi_how_to_check            :: how_to_check_goal,
-
-                % Is mode analysis allowed to change which procedure is called?
-                msi_may_change_called_proc  :: may_change_called_proc,
-
                 % This field is used by the checkpoint code when debug_modes
                 % is on. It has the instmap that was current at the last mode
                 % checkpoint, so that checkpoints do not print out the insts
@@ -444,16 +441,6 @@
                 % instmap if debug_modes is off, since its information is not
                 % needed then.
                 msi_last_checkpoint_insts   :: instmap,
-
-                % Changed flag: if `yes', then we may need to repeat
-                % mode inference.
-                msi_changed_flag            :: bool,
-
-                % Are we rechecking a goal after introducing unifications
-                % for complicated sub-unifications or an implied mode? If so,
-                % redoing the mode check should not introduce more extra
-                % unifications.
-                msi_checking_extra_goals    :: bool,
 
                 % The initial instmap of the procedure body. Used to decide
                 % whether a unification that cannot fail could be influenced
@@ -466,6 +453,43 @@
 
                 % The mode warnings found.
                 msi_warnings                :: list(mode_warning_info),
+
+                % This field maps variables for which we have generated
+                % a mode_error_unify_var_multimode_pred to the rest of the
+                % fields in that mode error. If this variable is later found
+                % to be insufficiently instantiated, we will want to print
+                % the mode_error_unify_var_multimode_pred as a possible
+                % explanation of that error.
+                %
+                % Any code that creates a mode_error_unify_var_multimode_pred
+                % should include the information in that error in this map.
+                %
+                % Since this information is valid only in straight-line
+                % conjunctions, entries added to this map must be thrown away
+                % when the code that added them is backtracked over.
+                % The simplest way to make this happen is to take a snapshot
+                % of the value of this map at the start of each branched
+                % control structure, and to reset it to that snapshot
+                % at the start of each branch.
+                msi_pred_var_multimode_map  :: pred_var_multimode_map,
+
+                % All the arguments from here on are sub-word-sized,
+                % which should allow the compiler to pack them together.
+
+                msi_how_to_check            :: how_to_check_goal,
+
+                % Is mode analysis allowed to change which procedure is called?
+                msi_may_change_called_proc  :: may_change_called_proc,
+
+                % Changed flag: if `yes', then we may need to repeat
+                % mode inference.
+                msi_changed_flag            :: bool,
+
+                % Are we rechecking a goal after introducing unifications
+                % for complicated sub-unifications or an implied mode? If so,
+                % redoing the mode check should not introduce more extra
+                % unifications.
+                msi_checking_extra_goals    :: bool,
 
                 % Says whether we need to requantify the procedure body
                 % after mode analysis finishes.
@@ -492,26 +516,7 @@
 
                 % Set to `yes' if we are inside a goal with a
                 % duplicate_for_switch feature.
-                msi_in_dupl_for_switch      :: in_dupl_for_switch,
-
-                % This field maps variables for which we have generated
-                % a mode_error_unify_var_multimode_pred to the rest of the
-                % fields in that mode error. If this variable is later found
-                % to be insufficiently instantiated, we will want to print
-                % the mode_error_unify_var_multimode_pred as a possible
-                % explanation of that error.
-                %
-                % Any code that creates a mode_error_unify_var_multimode_pred
-                % should include the information in that error in this map.
-                %
-                % Since this information is valid only in straight-line
-                % conjunctions, entries added to this map must be thrown away
-                % when the code that added them is backtracked over.
-                % The simplest way to make this happen is to take a snapshot
-                % of the value of this map at the start of each branched
-                % control structure, and to reset it to that snapshot
-                % at the start of each branch.
-                msi_pred_var_multimode_map  :: pred_var_multimode_map
+                msi_in_dupl_for_switch      :: in_dupl_for_switch
             ).
 
 %-----------------------------------------------------------------------------%
@@ -532,9 +537,9 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
         globals.lookup_bool_option(Globals, debug_modes_statistics,
             Statistics),
         Flags = debug_flags(DebugVerbose, DebugMinimal, Statistics),
-        Debug = yes(Flags)
+        MaybeDebug = yes(Flags)
     else
-        Debug = no
+        MaybeDebug = no
     ),
 
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
@@ -546,7 +551,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     instmap.init_unreachable(LastCheckpointInstMap),
     LockedVars = [],
     ParallelVars = [],
-    WarningList = [],
+    Warnings = [],
 
     Changed = no,
     CheckingExtraGoals = no,
@@ -558,13 +563,13 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     InDuplForSwitch = not_in_dupl_for_switch,
     map.init(PredVarMultiModeMap),
 
-    ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes, Debug,
-        LockedVars, LiveVarsBag, InstVarSet, ParallelVars, HowToCheck,
-        MayChangeProc, LastCheckpointInstMap, Changed,
-        CheckingExtraGoals, InstMap0, HeadInstVars, WarningList,
+    ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes,
+        MaybeDebug, LockedVars, LiveVarsBag, InstVarSet, ParallelVars,
+        LastCheckpointInstMap, InstMap0, HeadInstVars, Warnings,
+        PredVarMultiModeMap,
+        HowToCheck, MayChangeProc, Changed, CheckingExtraGoals,
         NeedToRequantify, InPromisePurityScope, InFromGroundTerm,
-        HadFromGroundTerm, MakeGroundTermsUnique, InDuplForSwitch,
-        PredVarMultiModeMap),
+        HadFromGroundTerm, MakeGroundTermsUnique, InDuplForSwitch),
 
     mode_context_init(ModeContext),
     delay_info_init(DelayInfo),

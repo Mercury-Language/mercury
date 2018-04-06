@@ -678,24 +678,27 @@ gc_is_conservative(gc_automatic) = no.
     --->    globals(
                 g_options                   :: option_table,
                 g_op_mode                   :: op_mode,
+                g_trace_suppress_items      :: trace_suppress_items,
+                g_c_compiler_type           :: c_compiler_type,
+                g_csharp_compiler_type      :: csharp_compiler_type,
+                g_reuse_strategy            :: reuse_strategy,
+                g_maybe_feedback            :: maybe(feedback_info),
+                g_file_install_cmd          :: file_install_cmd,
+                g_limit_error_contexts_map  :: limit_error_contexts_map,
+
+                % The sub-word-sized arguments, clustered together
+                % to allow them to be packed together.
                 g_target                    :: compilation_target,
                 g_gc_method                 :: gc_method,
                 g_tags_method               :: tags_method,
                 g_termination_norm          :: termination_norm,
                 g_termination2_norm         :: termination_norm,
                 g_trace_level               :: trace_level,
-                g_trace_suppress_items      :: trace_suppress_items,
                 g_ssdb_trace_level          :: ssdb_trace_level,
                 g_may_be_thread_safe        :: bool,
-                g_c_compiler_type           :: c_compiler_type,
-                g_csharp_compiler_type      :: csharp_compiler_type,
-                g_reuse_strategy            :: reuse_strategy,
-                g_maybe_feedback            :: maybe(feedback_info),
                 g_host_env_type             :: env_type,
                 g_system_env_type           :: env_type,
-                g_target_env_type           :: env_type,
-                g_file_install_cmd          :: file_install_cmd,
-                g_limit_error_contexts_map  :: limit_error_contexts_map
+                g_target_env_type           :: env_type
             ).
 
 globals_init(Options, OpMode, Target, GC_Method, TagsMethod,
@@ -703,11 +706,12 @@ globals_init(Options, OpMode, Target, GC_Method, TagsMethod,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
         TargetEnvType, FileInstallCmd, LimitErrorContextsMap, Globals) :-
-    Globals = globals(Options, OpMode, Target, GC_Method, TagsMethod,
-        TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-        ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
-        TargetEnvType, FileInstallCmd, LimitErrorContextsMap).
+    Globals = globals(Options, OpMode, TraceSuppress,
+        C_CompilerType, CSharp_CompilerType, ReuseStrategy, MaybeFeedback,
+        FileInstallCmd, LimitErrorContextsMap,
+        Target, GC_Method, TagsMethod, TerminationNorm, Termination2Norm,
+        TraceLevel, SSTraceLevel, MaybeThreadSafe,
+        HostEnvType, SystemEnvType, TargetEnvType).
 
 get_options(Globals, Globals ^ g_options).
 get_op_mode(Globals, Globals ^ g_op_mode).
