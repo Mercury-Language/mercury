@@ -573,7 +573,7 @@ reinit_var_locn_state(VarLocs, !VarLocnInfo) :-
 init_var_locn_state_2([], _, !VarStateMap, !LocVarMap).
 init_var_locn_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap,
         !LocVarMap) :-
-    expect(is_root_lval(Lval), $module, $pred, "unexpected lval"),
+    expect(is_root_lval(Lval), $pred, "unexpected lval"),
     ( if
         MaybeLiveness = yes(Liveness),
         not set_of_var.member(Liveness, Var)
@@ -586,7 +586,7 @@ init_var_locn_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap,
         true
     else
         ( if map.search(!.VarStateMap, Var, _) then
-            unexpected($module, $pred, "repeated variable")
+            unexpected($pred, "repeated variable")
         else
             NewLocs = set.make_singleton_set(Lval),
             set_of_var.init(Using),
@@ -685,7 +685,7 @@ clobber_lval_in_var_state_map(Lval, OkToDeleteVars, OkToDeleteAny, Var,
     then
         true
     else
-        unexpected($module, $pred, "empty state")
+        unexpected($pred, "empty state")
     ).
 
     % Try to record in VarStateMap that Var is no longer reachable through
@@ -849,7 +849,7 @@ var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval0, !VLI) :-
         map.det_insert(Var, State, VarStateMap0, VarStateMap),
         var_locn_set_var_state_map(VarStateMap, !VLI)
     else
-        unexpected($module, $pred, "supposed constant isn't")
+        unexpected($pred, "supposed constant isn't")
     ).
 
 %----------------------------------------------------------------------------%
@@ -912,7 +912,7 @@ var_locn_reassign_mkword_hole_var(Var, Ptag, Rval, Code, !VLI) :-
 
         var_locn_assign_expr_to_var(Var, Rval, Code, !VLI)
     else
-        unexpected($module, $pred, "unexpected var_state")
+        unexpected($pred, "unexpected var_state")
     ).
 
 :- pred clobber_old_lval(prog_var::in, lval::in,
@@ -980,8 +980,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
             MaybeOffset = yes(_),
             % Accurate GC and term profiling both want to own the word
             % before this object.
-            sorry($module, $pred,
-                "accurate GC combined with term size profiling")
+            sorry($pred, "accurate GC combined with term size profiling")
         ;
             MaybeOffset = no,
             TotalOffset = yes(1)
@@ -1093,7 +1092,7 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
     ( if Padding >= 0 then
         NeedsUpdates = list.duplicate(Padding, needs_update) ++ NeedsUpdates0
     else
-        unexpected($module, $pred, "Padding < 0")
+        unexpected($pred, "Padding < 0")
     ),
 
     (
@@ -1171,6 +1170,10 @@ assign_all_cell_args(ModuleInfo, [CellArg | CellArgs], Ptag, Base, Offset,
     llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 assign_some_cell_args(_, [], [], _, _, _, empty, empty, !VLI).
+assign_some_cell_args(_, [], [_ | _], _, _, _, _, _, !VLI) :-
+    unexpected($pred, "mismatch lists").
+assign_some_cell_args(_, [_ | _], [], _, _, _, _, _, !VLI) :-
+    unexpected($pred, "mismatch lists").
 assign_some_cell_args(ModuleInfo,
         [CellArg | CellArgs], [NeedsUpdate | NeedsUpdates],
         Ptag, Base, Offset, CannotSkipArgsCode, CanSkipArgsCode, !VLI) :-
@@ -1221,11 +1224,6 @@ assign_some_cell_args(ModuleInfo,
         CanSkipArgsCode = ThisCode ++ RestCanSkipArgsCode
     ).
 
-assign_some_cell_args(_, [], [_ | _], _, _, _, _, _, !VLI) :-
-    unexpected($module, $pred, "mismatch lists").
-assign_some_cell_args(_, [_ | _], [], _, _, _, _, _, !VLI) :-
-    unexpected($module, $pred, "mismatch lists").
-
 :- pred assign_cell_arg(module_info::in, rval::in, maybe(ptag)::in, rval::in,
     int::in, llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
@@ -1268,10 +1266,10 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
         AssignCode = singleton(llds_instr(assign(Target, Rval0), Comment))
     ;
         Rval0 = mkword_hole(_),
-        unexpected($module, $pred, "mkword_hole")
+        unexpected($pred, "mkword_hole")
     ;
         Rval0 = mem_addr(_),
-        unexpected($module, $pred, "unknown rval")
+        unexpected($pred, "unknown rval")
     ),
     Code = EvalCode ++ AssignCode.
 
@@ -1385,7 +1383,7 @@ remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
     ( if set_of_var.remove(UsingVar, Using0, Using1) then
         Using = Using1
     else
-        unexpected($module, $pred, "using ref not present")
+        unexpected($pred, "using ref not present")
     ),
     State = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
         DeadOrAlive),
@@ -1405,7 +1403,7 @@ remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
 
 var_locn_check_and_set_magic_var_location(Var, Lval, !VLI) :-
     ( if var_locn_lval_in_use(!.VLI, Lval) then
-        unexpected($module, $pred, "in use")
+        unexpected($pred, "in use")
     else
         var_locn_set_magic_var_location(Var, Lval, !VLI)
     ).
@@ -1429,7 +1427,7 @@ check_var_is_unknown(VLI, Var) :-
     var_locn_get_var_state_map(VLI, VarStateMap0),
     ( if map.search(VarStateMap0, Var, _) then
         get_var_name(VLI, Var, Name),
-        unexpected($module, $pred, "existing definition of variable " ++ Name)
+        unexpected($pred, "existing definition of variable " ++ Name)
     else
         true
     ).
@@ -1558,7 +1556,7 @@ var_locn_place_var(ModuleInfo, Var, Target, Code, !VLI) :-
 actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
     var_locn_get_acquired(!.VLI, Acquired),
     ( if set.member(Target, Acquired) then
-        unexpected($module, $pred, "target is acquired reg")
+        unexpected($pred, "target is acquired reg")
     else
         true
     ),
@@ -1835,7 +1833,7 @@ lval_spare_reg_type(Lval) = RegType :-
     var_locn_info::in, var_locn_info::out) is det.
 
 record_copy(Old, New, !VLI) :-
-    expect(is_root_lval(New), $module, $pred, "non-root New lval"),
+    expect(is_root_lval(New), $pred, "non-root New lval"),
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     var_locn_get_loc_var_map(!.VLI, LocVarMap0),
     set.list_to_set([Old, New], AssignSet),
@@ -1906,7 +1904,7 @@ record_copy_for_var(Old, New, Var, !VarStateMap, !LocVarMap) :-
     LvalSet = set.map(substitute_lval_in_lval(Token, New), LvalSet3),
     State = var_state(LvalSet, MaybeConstRval, MaybeExprRval,
         Using, DeadOrAlive),
-    expect(nonempty_state(State), $module, $pred, "empty state"),
+    expect(nonempty_state(State), $pred, "empty state"),
     map.det_update(Var, State, !VarStateMap),
     record_change_in_root_dependencies(LvalSet0, LvalSet, Var, !LocVarMap).
 
@@ -1952,7 +1950,7 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
             DeadOrAlive0),
         (
             DeadOrAlive0 = doa_dead,
-            expect(unify(FirstTime, no), $module, $pred, "already dead")
+            expect(unify(FirstTime, no), $pred, "already dead")
         ;
             DeadOrAlive0 = doa_alive
         ),
@@ -1974,7 +1972,7 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
             var_locn_set_var_state_map(VarStateMap, !VLI)
         )
     else
-        expect(unify(FirstTime, no), $module, $pred, "premature deletion")
+        expect(unify(FirstTime, no), $pred, "premature deletion")
     ).
 
     % Given a set of lvals, return the set of root lvals among them and inside
@@ -2211,7 +2209,7 @@ var_locn_acquire_reg(Type, Lval, !VLI) :-
 
 var_locn_acquire_reg_require_given(Lval, !VLI) :-
     ( if var_locn_lval_in_use(!.VLI, Lval) then
-        unexpected($module, $pred, "lval in use")
+        unexpected($pred, "lval in use")
     else
         true
     ),
@@ -2247,7 +2245,7 @@ var_locn_release_reg(Lval, !VLI) :-
         set.delete(Lval, Acquired0, Acquired),
         var_locn_set_acquired(Acquired, !VLI)
     else
-        unexpected($module, $pred, "unacquired reg")
+        unexpected($pred, "unacquired reg")
     ).
 
 %----------------------------------------------------------------------------%
@@ -2337,7 +2335,7 @@ expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval) :-
         map.search(VarStateMap, Var, State),
         State = var_state(_, yes(Rval), _, _, _),
         expect(expr_is_constant(VarStateMap, ExprnOpts, Rval, _),
-            $module, $pred, "non-constant rval in variable state")
+            $pred, "non-constant rval in variable state")
     ;
         ( Rval0 = lval(_)
         ; Rval0 = mem_addr(_)
@@ -2417,10 +2415,10 @@ materialize_vars_in_lval_avoid(ModuleInfo, Lval0, Avoid, Lval, Code,
         Code = CodeA ++ CodeB
     ;
         Lval0 = temp(_, _),
-        unexpected($module, $pred, "temp")
+        unexpected($pred, "temp")
     ;
         Lval0 = lvar(_),
-        unexpected($module, $pred, "lvar")
+        unexpected($pred, "lvar")
     ).
 
     % Rval is Rval0 with all variables in Rval0 replaced by their values.
@@ -2582,7 +2580,7 @@ materialize_var_general(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid,
         MaybeExprRval = yes(ExprRval)
     ;
         MaybeExprRval = no,
-        unexpected($module, $pred, "no expr")
+        unexpected($pred, "no expr")
     ),
     materialize_vars_in_rval_avoid(ModuleInfo, ExprRval, MaybePrefer,
         Avoid, Rval0, ExprCode, !VLI),
@@ -2625,7 +2623,7 @@ make_var_depend_on_lval_roots(Var, Lval, !LocVarMap) :-
     loc_var_map::in, loc_var_map::out) is det.
 
 make_var_depend_on_root_lval(Var, Lval, !LocVarMap) :-
-    expect(is_root_lval(Lval), $module, $pred, "non-root lval"),
+    expect(is_root_lval(Lval), $pred, "non-root lval"),
     ( if map.search(!.LocVarMap, Lval, Vars0) then
         set_of_var.insert(Var, Vars0, Vars),
         map.det_update(Lval, Vars, !LocVarMap)
@@ -2641,7 +2639,7 @@ make_var_depend_on_root_lval(Var, Lval, !LocVarMap) :-
     loc_var_map::in, loc_var_map::out) is det.
 
 make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
-    expect(is_root_lval(Lval), $module, $pred, "non-root lval"),
+    expect(is_root_lval(Lval), $pred, "non-root lval"),
     ( if map.search(!.LocVarMap, Lval, Vars0) then
         set_of_var.delete(Var, Vars0, Vars),
         ( if set_of_var.is_empty(Vars) then
@@ -2650,7 +2648,7 @@ make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
             map.det_update(Lval, Vars, !LocVarMap)
         )
     else
-        unexpected($module, $pred, "no record")
+        unexpected($pred, "no record")
     ).
 
 :- pred is_root_lval(lval::in) is semidet.
@@ -2712,7 +2710,7 @@ rval_depends_on_search_lval(Rval, SearchLval) :-
         fail
     ;
         Rval = var(_Var),
-        unexpected($module, $pred, "var")
+        unexpected($pred, "var")
     ).
 
 :- pred lval_depends_on_search_lval(lval::in, dep_search_lval::in) is semidet.
@@ -2763,7 +2761,7 @@ lval_depends_on_search_lval(Lval, SearchLval) :-
         fail
     ;
         Lval = lvar(_Var),
-        unexpected($module, $pred, "lvar")
+        unexpected($pred, "lvar")
     ).
 
 %----------------------------------------------------------------------------%

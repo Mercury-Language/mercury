@@ -250,8 +250,7 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
     map.lookup(!.BlockMap, Exemplar, ExemplarInfo0),
     ExemplarInfo0 = block_info(ExLabel, ExLabelInstr, ExInstrs0,
         ExNumInstrs, ExFallInto, ExSideLabels, ExMaybeFallThrough),
-    expect(unify(Exemplar, ExLabel), $module, $pred,
-        "exemplar label mismatch"),
+    expect(unify(Exemplar, ExLabel), $pred, "exemplar label mismatch"),
     process_elim_labels(ElimLabels, ExInstrs0, !LabelSeq, !.BlockMap,
         Exemplar, !ReplMap, UnifiedInstrs,
         ExMaybeFallThrough, UnifiedMaybeFallThrough),
@@ -282,8 +281,7 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
     map.lookup(BlockMap, ElimLabel, ElimLabelInfo),
     ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs, _NumElimInstrs,
         _, _, ElimMaybeFallThrough),
-    expect(unify(ElimLabel, ElimLabel2), $module, $pred,
-        "elim label mismatch"),
+    expect(unify(ElimLabel, ElimLabel2), $pred, "elim label mismatch"),
     ( if
         most_specific_block(Instrs0, !.MaybeFallThrough, ElimInstrs,
             ElimMaybeFallThrough, Instrs1, !:MaybeFallThrough)
@@ -293,8 +291,7 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
         process_elim_labels(ElimLabels, Instrs1, !LabelSeq, BlockMap,
             Exemplar, !ReplMap, Instrs, !MaybeFallThrough)
     else
-        unexpected($module, $pred,
-            "blocks with same standard form don't antiunify")
+        unexpected($pred, "blocks with same standard form don't antiunify")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -516,7 +513,7 @@ standardize_lval(Lval0, Lval) :-
         Lval = field(no, Addr, FieldNum)
     ;
         Lval0 = lvar(_),
-        unexpected($module, $pred, "lvar")
+        unexpected($pred, "lvar")
     ).
 
     % Compute the standard form of an rval.
@@ -546,7 +543,7 @@ standardize_rval(Rval0, Rval) :-
         Rval = binop(Binop, RvalL, RvalR)
     ;
         Rval0 = var(_),
-        unexpected($module, $pred, "var")
+        unexpected($pred, "var")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -966,7 +963,7 @@ most_specific_lval(LvalA, LvalB, Lval) :-
         Lval = field(MaybeTag, Addr, FieldNum)
     ;
         LvalA = lvar(_),
-        unexpected($module, $pred, "lvar")
+        unexpected($pred, "lvar")
     ).
 
     % This predicate computes the most specific rval that
@@ -983,7 +980,7 @@ most_specific_rval(RvalA, RvalB, Rval) :-
         Rval = lval(Lval)
     ;
         RvalA = var(_),
-        unexpected($module, $pred, "var")
+        unexpected($pred, "var")
     ;
         ( RvalA = mkword(_, _)
         ; RvalA = mkword_hole(_)

@@ -330,7 +330,7 @@ pre_goal_update(GoalInfo, HasSubGoals, !CLD) :-
         ResumePoint = no_resume_point
     ;
         ResumePoint = resume_point(_, _),
-        unexpected($module, $pred, "pre_goal_update with resume point")
+        unexpected($pred, "pre_goal_update with resume point")
     ),
     goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
     (
@@ -493,7 +493,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, CI, !.CLD) :-
             ResumeKnown1 = resume_point_known(Redoip1)
         then
             ResumeKnown = resume_point_known(Redoip0),
-            expect(unify(Redoip0, Redoip1), $module, $pred, "redoip mismatch")
+            expect(unify(Redoip0, Redoip1), $pred, "redoip mismatch")
         else
             ResumeKnown = resume_point_unknown
         ),
@@ -513,7 +513,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, CI, !.CLD) :-
         else
             Hijack = not_allowed
         ),
-        expect(unify(CondEnv0, CondEnv1), $module, $pred,
+        expect(unify(CondEnv0, CondEnv1), $pred,
             "some but not all branches inside a non condition"),
         FailInfo = fail_info(R, ResumeKnown, CurfrMaxfr, CondEnv0, Hijack),
         set_fail_info(FailInfo, EndCLD1, EndCLDA),
@@ -536,7 +536,7 @@ after_all_branches(StoreMap, MaybeEnd, CI, !:CLD) :-
         remake_with_store_map(StoreMap, !CLD)
     ;
         MaybeEnd = no,
-        unexpected($module, $pred, "no branches in branched control structure")
+        unexpected($pred, "no branches in branched control structure")
     ).
 
     % remake_with_store_map throws away the var_info data structure, forgetting
@@ -944,7 +944,7 @@ undo_disj_hijack(HijackInfo, Code, !CLD) :-
         )
     ;
         HijackInfo = disj_quarter_hijack,
-        expect(unify(CurfrMaxfr, must_be_equal), $module, $pred,
+        expect(unify(CurfrMaxfr, must_be_equal), $pred,
             "maxfr may differ from curfr in disj_quarter_hijack"),
         stack.det_top(ResumePoints, ResumePoint),
         pick_stack_resume_point(ResumePoint, _, StackLabel),
@@ -956,9 +956,9 @@ undo_disj_hijack(HijackInfo, Code, !CLD) :-
         )
     ;
         HijackInfo = disj_half_hijack(RedoipSlot),
-        expect(unify(ResumeKnown, resume_point_unknown), $module, $pred,
+        expect(unify(ResumeKnown, resume_point_unknown), $pred,
             "resume point known in disj_half_hijack"),
-        expect(unify(CurfrMaxfr, must_be_equal), $module, $pred,
+        expect(unify(CurfrMaxfr, must_be_equal), $pred,
             "maxfr may differ from curfr in disj_half_hijack"),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = singleton(
@@ -967,7 +967,7 @@ undo_disj_hijack(HijackInfo, Code, !CLD) :-
         )
     ;
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
-        expect(unify(CurfrMaxfr, may_be_different), $module, $pred,
+        expect(unify(CurfrMaxfr, may_be_different), $pred,
             "maxfr same as curfr in disj_full_hijack"),
         Code = from_list([
             llds_instr(assign(redoip_slot(lval(maxfr)), lval(RedoipSlot)),
@@ -1045,7 +1045,7 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
         ( CondCodeModel = model_det
         ; CondCodeModel = model_semi
         ),
-        expect(unify(MaybeEmbeddedFrameId, no), $module, $pred,
+        expect(unify(MaybeEmbeddedFrameId, no), $pred,
             "MaybeEmbeddedFrameId in model_semi"),
         HijackType = ite_no_hijack,
         Code = singleton(
@@ -1145,7 +1145,7 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI, !CLD) :-
         MaybeRegionInfo),
     (
         HijackType = ite_no_hijack,
-        expect(unify(MaybeRegionInfo, no), $module, $pred,
+        expect(unify(MaybeRegionInfo, no), $pred,
             "MaybeRegionInfo ite_no_hijack"),
         ThenCode = empty,
         ElseCode = empty
@@ -1195,7 +1195,7 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI, !CLD) :-
         )
     ;
         HijackType = ite_quarter_hijack,
-        expect(unify(MaybeRegionInfo, no), $module, $pred,
+        expect(unify(MaybeRegionInfo, no), $pred,
             "MaybeRegionInfo ite_quarter_hijack"),
         stack.det_top(ResumePoints, ResumePoint),
         ( if maybe_pick_stack_resume_point(ResumePoint, _, StackLabel) then
@@ -1211,7 +1211,7 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI, !CLD) :-
         ElseCode = ThenCode
     ;
         HijackType = ite_half_hijack(RedoipSlot),
-        expect(unify(MaybeRegionInfo, no), $module, $pred,
+        expect(unify(MaybeRegionInfo, no), $pred,
             "MaybeRegionInfo ite_half_hijack"),
         ThenCode = singleton(
             llds_instr(assign(redoip_slot(lval(curfr)), lval(RedoipSlot)),
@@ -1220,7 +1220,7 @@ ite_enter_then(HijackInfo, ITEResumePoint, ThenCode, ElseCode, !CI, !CLD) :-
         ElseCode = ThenCode
     ;
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
-        expect(unify(MaybeRegionInfo, no), $module, $pred,
+        expect(unify(MaybeRegionInfo, no), $pred,
             "MaybeRegionInfo ite_full_hijack"),
         ThenCode = from_list([
             llds_instr(assign(redoip_slot(lval(MaxfrSlot)), lval(RedoipSlot)),
@@ -1263,7 +1263,7 @@ enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CLD) :-
     make_fake_resume_map(ResumeVars, ResumeMap0, ResumeMap),
     ResumePoint = orig_only(ResumeMap, do_redo),
     effect_resume_point(ResumePoint, model_semi, Code, !CLD),
-    expect(is_empty(Code), $module, $pred, "nonempty code for simple neg"),
+    expect(is_empty(Code), $pred, "nonempty code for simple neg"),
     pre_goal_update(GoalInfo, does_not_have_subgoals, !CLD).
 
 leave_simple_neg(GoalInfo, FailInfo, CI, !CLD) :-
@@ -1791,7 +1791,7 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CLD) :-
         map.keys(NewMap, NewKeys),
         set.list_to_set(OldKeys, OldKeySet),
         set.list_to_set(NewKeys, NewKeySet),
-        expect(set.subset(OldKeySet, NewKeySet), $module, $pred,
+        expect(set.subset(OldKeySet, NewKeySet), $pred,
             "non-nested resume point variable sets")
     else
         true
@@ -2024,7 +2024,7 @@ pick_stack_resume_point(ResumePoint, Map, Addr) :-
         Map = MapPrime,
         Addr = AddrPrime
     else
-        unexpected($module, $pred, "no stack resume point")
+        unexpected($pred, "no stack resume point")
     ).
 
 :- pred maybe_pick_stack_resume_point(resume_point_info::in,
@@ -2222,7 +2222,7 @@ make_singleton_sets([Var - Lval | Tail], [Var - Lvals | SetTail]) :-
 clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
     (
         ResumePoint0 = orig_only(_, _),
-        unexpected($module, $pred, "cloning orig_only resume point")
+        unexpected($pred, "cloning orig_only resume point")
     ;
         ResumePoint0 = stack_only(Map1, _),
         get_next_label(Label1, !CI),
@@ -2330,7 +2330,7 @@ extract_label_from_code_addr(CodeAddr, Label) :-
     ( if CodeAddr = code_label(Label0) then
         Label = Label0
     else
-        unexpected($module, $pred, "non-label")
+        unexpected($pred, "non-label")
     ).
 
 :- pred place_resume_vars(assoc_list(prog_var, set(lval))::in,
@@ -3024,7 +3024,7 @@ assign_expr_to_var(Var, Rval, Code, !CLD) :-
             VarLocnInfo0, VarLocnInfo)
     ;
         Lvals = [_ | _],
-        unexpected($module, $pred, "non-var lvals")
+        unexpected($pred, "non-var lvals")
     ),
     set_var_locn_info(VarLocnInfo, !CLD).
 
@@ -3037,7 +3037,7 @@ reassign_mkword_hole_var(Var, Ptag, Rval, Code, !CLD) :-
             VarLocnInfo0, VarLocnInfo)
     ;
         Lvals = [_ | _],
-        unexpected($module, $pred, "non-var lvals")
+        unexpected($pred, "non-var lvals")
     ),
     set_var_locn_info(VarLocnInfo, !CLD).
 
@@ -3059,10 +3059,10 @@ assign_field_lval_expr_to_var(Var, FieldLvals, Rval, Code, !CLD) :-
                 VarLocnInfo0, VarLocnInfo),
             set_var_locn_info(VarLocnInfo, !CLD)
         else
-            unexpected($module, $pred, "rval contains unexpected lval")
+            unexpected($pred, "rval contains unexpected lval")
         )
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "FieldLvals not all fields of the same base variable")
     ).
 
@@ -3316,7 +3316,7 @@ valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
         ),
         N < 0
     then
-        unexpected($module, $pred, "nondummy var in dummy stack slot")
+        unexpected($pred, "nondummy var in dummy stack slot")
     else
         true
     ).
@@ -3651,7 +3651,7 @@ acquire_temp_slot(Item, Persistence, StackVar, !CI, !CLD) :-
 acquire_several_temp_slots([], _, _, _, _, _, !CI, !CLD) :-
     % We could return an empty list of stack vars for StackVars, but there is
     % nothing meaningful we can return for the other outputs.
-    unexpected($module, $pred, "[]").
+    unexpected($pred, "[]").
 acquire_several_temp_slots([HeadItem | TailItems], Persistence, StackVars,
         StackId, FirstSlotNum, LastSlotNum, !CI, !CLD) :-
     get_temp_content_map(!.CI, TempContentMap0),
@@ -3781,7 +3781,7 @@ find_unused_slots_for_items([Head | Tail], HeadItem, TailItems, TempsInUse,
             StackId0 = nondet_stack,
             FirstSlotNum0 = N
         else
-            unexpected($module, $pred, "not stackvar or framevar")
+            unexpected($pred, "not stackvar or framevar")
         ),
         StackId1 = StackId0,
         FirstSlotNum1 = FirstSlotNum0,
@@ -3821,14 +3821,14 @@ release_temp_slot(StackVar, Persistence, !CI, !CLD) :-
     set.is_member(StackVar, PersistentTemps0, IsInPersistentTemps0),
     (
         Persistence = persistent_temp_slot,
-        expect(unify(IsInPersistentTemps0, yes),
-            $module, $pred, "released stack slot should be persistent"),
+        expect(unify(IsInPersistentTemps0, yes), $pred,
+            "released stack slot should be persistent"),
         set.delete(StackVar, PersistentTemps0, PersistentTemps),
         set_persistent_temps(PersistentTemps, !CI)
     ;
         Persistence = non_persistent_temp_slot,
-        expect(unify(IsInPersistentTemps0, no),
-            $module, $pred, "released stack slot should not be persistent")
+        expect(unify(IsInPersistentTemps0, no), $pred,
+            "released stack slot should not be persistent")
     ).
 
 release_several_temp_slots([], _Persistence, !CI, !CLD).

@@ -304,7 +304,7 @@ apply_type_args(Type0, Args, Type) :-
             Args = []
         ;
             Args = [_ | _],
-            unexpected($module, $pred, "applied type args to builtin")
+            unexpected($pred, "applied type args to builtin")
         ),
         Type = Type0
     ;
@@ -334,17 +334,17 @@ apply_type_args_to_kind(Kind0, ArgTypes, Kind) :-
         ArgTypes = [HeadArgType | TailArgTypes],
         (
             Kind0 = kind_star,
-            unexpected($module, $pred, "too many args in apply_n")
+            unexpected($pred, "too many args in apply_n")
         ;
             Kind0 = kind_arrow(KindA, KindB),
             ( if get_type_kind(HeadArgType) = KindA then
                 apply_type_args_to_kind(KindB, TailArgTypes, Kind)
             else
-                unexpected($module, $pred, "kind error in apply_n")
+                unexpected($pred, "kind error in apply_n")
             )
         ;
             Kind0 = kind_variable(_),
-            unexpected($module, $pred, "unbound kind variable")
+            unexpected($pred, "unbound kind variable")
         )
     ).
 
@@ -354,7 +354,7 @@ ensure_type_has_kind(Kind, Type0, Type) :-
     ( if get_type_kind(Type0) = Kind then
         Type = Type0
     else
-        unexpected($module, $pred, "substitution not kind preserving")
+        unexpected($pred, "substitution not kind preserving")
     ).
 
 %-----------------------------------------------------------------------------%

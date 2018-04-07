@@ -119,7 +119,7 @@ parallel_to_plain_conjs_goal(Goal0, Goal) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo0).
 

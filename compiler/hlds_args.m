@@ -421,7 +421,7 @@ proc_arg_vector_to_func_args(Vector, FuncArgs, FuncRetVal) :-
         MaybeRetValue = yes(FuncRetVal)
     ;
         MaybeRetValue = no,
-        unexpected($module, $pred, "predicate")
+        unexpected($pred, "predicate")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -488,11 +488,11 @@ proc_arg_vector_map_corresponding(P, A, B, C) :-
     ;
         MaybeRetValA = yes(_),
         MaybeRetValB = no,
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
+        unexpected($pred, "mismatched proc_arg_vectors")
     ;
         MaybeRetValA = no,
         MaybeRetValB = yes(_),
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
+        unexpected($pred, "mismatched proc_arg_vectors")
     ;
         MaybeRetValA = no,
         MaybeRetValB = no,
@@ -537,11 +537,11 @@ proc_arg_vector_map_corresponding_foldl2(P, A, B, C, !Acc1, !Acc2) :-
     ;
         MaybeRetValA = yes(_),
         MaybeRetValB = no,
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
+        unexpected($pred, "mismatched proc_arg_vectors")
     ;
         MaybeRetValA = no,
         MaybeRetValB = yes(_),
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
+        unexpected($pred, "mismatched proc_arg_vectors")
     ;
         MaybeRetValA = no,
         MaybeRetValB = no,
@@ -569,11 +569,11 @@ proc_arg_vector_foldl3_corresponding(P, A, B, !Acc1, !Acc2, !Acc3) :-
     ;
         MaybeRetValA = yes(_),
         MaybeRetValB = no,
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
+        unexpected($pred, "mismatched proc_arg_vectors")
     ;
         MaybeRetValA = no,
         MaybeRetValB = yes(_),
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
+        unexpected($pred, "mismatched proc_arg_vectors")
     ;
         MaybeRetValA = no,
         MaybeRetValB = no
@@ -606,7 +606,7 @@ proc_arg_vector_foldl2_corresponding3(P, A, B, C, !Acc1, !Acc2) :-
     then
         true
     else
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
+        unexpected($pred, "mismatched proc_arg_vectors")
     ).
 
 proc_arg_vector_foldl3_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3) :-
@@ -636,7 +636,7 @@ proc_arg_vector_foldl3_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3) :-
     then
         true
     else
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
+        unexpected($pred, "mismatched proc_arg_vectors")
     ).
 
 proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
@@ -674,7 +674,7 @@ proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
     then
         true
     else
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
+        unexpected($pred, "mismatched proc_arg_vectors")
     ).
 
 %-----------------------------------------------------------------------------%

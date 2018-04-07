@@ -208,7 +208,7 @@ global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         ),
         SingleGoalCover = SingleGoalCover0
     else
-        unexpected($module, $pred, "global_check")
+        unexpected($pred, "global_check")
     ),
     !:Info = global_term_info(SingleGoalCover, MultipleGoalCover).
 
@@ -305,9 +305,9 @@ get_matching_sizes(ModuleInfo, InstMap, Args,
 
 split_out_non_increasing([], [], no, []).
 split_out_non_increasing([_|_], [], _, _) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 split_out_non_increasing([], [_|_], _, _) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 split_out_non_increasing([Arg - OldSize | Args0],
         [_ - NewSize | Args], FoundDecreasing, NonIncreasing) :-
     split_out_non_increasing(Args0, Args, FoundDecreasing1, NonIncreasing1),

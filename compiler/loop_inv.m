@@ -353,7 +353,7 @@ invariant_goal_candidates_in_goal(PPId, Goal, !IGCs) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -525,7 +525,7 @@ refine_candidate_inv_args(hlds_goal(RecCall, _RecCallInfo), MaybeInvArgs) =
         list.map_corresponding(refine_candidate_inv_args_2,
             MaybeInvArgs, CallArgs)
     else
-        unexpected($module, $pred, "non call/6 found in argument 1")
+        unexpected($pred, "non call/6 found in argument 1")
     ).
 
 :- func refine_candidate_inv_args_2(maybe(prog_var), prog_var) =
@@ -906,7 +906,7 @@ gen_aux_proc_goal(Info, Goal, AuxGoal) :-
         AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred gen_aux_proc_case(gen_aux_proc_info::in, case::in, case::out) is det.
@@ -1023,7 +1023,7 @@ gen_out_proc_goal(PPId, Replacement, Goal, AuxGoal) :-
         AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred gen_out_proc_case(pred_proc_id::in, hlds_goal::in, case::in, case::out)
@@ -1055,7 +1055,7 @@ gen_aux_call(Replacement, CallGoal, AuxCallGoal) :-
     then
         AuxCallGoal = hlds_goal(AuxCallGoalExpr, CallInfo)
     else
-        unexpected($module, $pred, "args not both ordinary calls")
+        unexpected($pred, "args not both ordinary calls")
     ).
 
     % replace_initial_args(Rs, Xs0, Xs):
@@ -1068,7 +1068,7 @@ replace_initial_args([], Xs, Xs).
 replace_initial_args([R | Rs], [_ | Xs0], [R | Xs]) :-
     replace_initial_args(Rs, Xs0, Xs).
 replace_initial_args([_ | _], [], _) :-
-    unexpected($module, $pred, "first arg longer than second").
+    unexpected($pred, "first arg longer than second").
 
 %-----------------------------------------------------------------------------%
 
@@ -1142,7 +1142,7 @@ used_vars(ModuleInfo, Goal) = UsedVars :-
         UsedVars = used_vars(ModuleInfo, SubGoal)
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- func case_goals(list(case)) = list(hlds_goal).
@@ -1226,7 +1226,7 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
             ;
                 UnifyRHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
                 % These should have been expanded out by now.
-                unexpected($module, $pred, "lambda goal")
+                unexpected($pred, "lambda goal")
             )
         )
     ;
@@ -1238,7 +1238,7 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
         ; GoalExpr = scope(_, _)
         ; GoalExpr = shorthand(_)
         ),
-        unexpected($module, $pred, "compound goal")
+        unexpected($pred, "compound goal")
     ).
 
     % Find the list of vars for a goal that are free before the call and bound
@@ -1295,7 +1295,7 @@ goal_outputs(ModuleInfo, Goal) = Outputs :-
         ; GoalExpr = scope(_, _)
         ; GoalExpr = shorthand(_)
         ),
-        unexpected($module, $pred, "compound goal")
+        unexpected($pred, "compound goal")
     ).
 
     % An input arg is one whose initial inst is not free.

@@ -221,7 +221,7 @@ set_mm_tabling_info(ProcTablingInfo, PPId, !ModuleInfo) :-
    mm_tabling_status::out, maybe(analysis_status)::out) is det.
 
 mm_tabling_combine_individual_proc_results([], _, _) :-
-    unexpected($module, $pred, "empty SCC").
+    unexpected($pred, "empty SCC").
 mm_tabling_combine_individual_proc_results(ProcResults @ [_ | _], SCC_Result,
         MaybeAnalysisStatus) :-
     ( if
@@ -321,7 +321,7 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             )
         ;
             Kind = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated unify")
+            unexpected($pred, "complicated unify")
         )
     ;
         GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
@@ -383,7 +383,7 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred check_goals_for_mm_tabling(scc::in, vartypes::in,
@@ -603,7 +603,7 @@ mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         !.GoalExpr = unify(_, _, _, Kind, _),
         (
             Kind = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated unify")
+            unexpected($pred, "complicated unify")
         ;
             ( Kind = construct(_, _, _, _, _, _, _)
             ; Kind = deconstruct(_, _, _, _, _, _)
@@ -690,7 +690,7 @@ mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         )
     ;
         !.GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand goal")
+        unexpected($pred, "shorthand goal")
     ).
 
 :- pred mm_tabling_annotate_goal_list(vartypes::in,
@@ -760,7 +760,7 @@ mm_tabling_annotate_call(CalleePPId, CallArgs, VarTypes, Status,
                 AnalysisStatus, !ModuleInfo),
             (
                 AnalysisStatus = invalid,
-                unexpected($module, $pred,
+                unexpected($pred,
                     "invalid analysis result while annotating goals")
             ;
                 ( AnalysisStatus = optimal
@@ -943,7 +943,7 @@ lookup_proc_mm_tabling_info(ModuleInfo, PPId, Status, ResultStatus) :-
             MaybeResultStatus = yes(ResultStatus)
         ;
             MaybeResultStatus = no,
-            unexpected($module, $pred, "no result status")
+            unexpected($pred, "no result status")
         )
     ;
         MaybeProcTablingInfo = no,

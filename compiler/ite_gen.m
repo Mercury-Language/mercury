@@ -294,7 +294,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
 generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI, !CLD) :-
     (
         CodeModel = model_non,
-        unexpected($module, $pred, "nondet negation")
+        unexpected($pred, "nondet negation")
     ;
         ( CodeModel = model_det
         ; CodeModel = model_semi
@@ -389,7 +389,7 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
         MaybeRegionSuccRecordSlot, !CI, !CLD),
     % MaybeRegionSuccRecordSlot should be yes only for nondet conditions,
     % and a negated goal can't be nondet.
-    expect(unify(MaybeRegionSuccRecordSlot, no), $module, $pred,
+    expect(unify(MaybeRegionSuccRecordSlot, no), $pred,
         "MaybeRegionSuccRecordSlot = yes(_)"),
 
     prepare_for_ite_hijack(CodeModel, MaybeRegionSuccRecordSlot, HijackInfo,
@@ -497,7 +497,7 @@ read_and_erase_resume_point(CondStr, ResumeVars, ResumeLocs,
     ;
         Resume = no_resume_point,
         Msg = CondStr ++ " has no resume point",
-        unexpected($module, $pred, Msg)
+        unexpected($pred, Msg)
     ).
 
 %---------------------------------------------------------------------------%
@@ -733,7 +733,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                     MaybeEmbeddedStackFrameId = no
                 ;
                     CondCodeModel = model_det,
-                    unexpected($module, $pred, "det cond")
+                    unexpected($pred, "det cond")
                 ),
 
                 CondCode = PushInitCode ++ ProtectRegionCode ++

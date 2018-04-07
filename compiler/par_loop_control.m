@@ -346,7 +346,7 @@ goal_get_loop_control_par_conjs(Goal, SelfPredProcId, SeenUsableRecursion) :-
             )
         ;
             GoalExpr = shorthand(_),
-            unexpected($module, $pred, "shorthand")
+            unexpected($pred, "shorthand")
         ),
 
         % If the goal might fail or might succeed more than once, then any
@@ -394,7 +394,7 @@ par_conj_get_loop_control_par_conjs(Conjs, SelfPredProcId,
         GoalId, SeenUsableRecursion) :-
     (
         Conjs = [],
-        unexpected($module, $pred, "Empty parallel conjunction")
+        unexpected($pred, "Empty parallel conjunction")
     ;
         Conjs = [Head | Tail],
         par_conj_get_loop_control_par_conjs_lag(Head, Tail, SelfPredProcId,
@@ -752,7 +752,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
                 det_replace_nth(Conjs0, N, Conj, Conjs),
                 GoalExpr = conj(plain_conj, Conjs)
             else
-                unexpected($module, $pred, ErrorString)
+                unexpected($pred, ErrorString)
             )
         ;
             Step = step_switch(N, _),
@@ -767,7 +767,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
                 det_replace_nth(Cases0, N, Case, Cases),
                 GoalExpr = switch(Var, CanFail, Cases)
             else
-                unexpected($module, $pred, ErrorString)
+                unexpected($pred, ErrorString)
             )
         ;
             Step = step_ite_then,
@@ -776,7 +776,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
                     GoalPath, Then0, Then, !VarSet, !VarTypes),
                 GoalExpr = if_then_else(Vars, Cond, Then, Else)
             else
-                unexpected($module, $pred, ErrorString)
+                unexpected($pred, ErrorString)
             )
         ;
             Step = step_ite_else,
@@ -785,7 +785,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
                     GoalPath, Else0, Else, !VarSet, !VarTypes),
                 GoalExpr = if_then_else(Vars, Cond, Then, Else)
             else
-                unexpected($module, $pred, ErrorString)
+                unexpected($pred, ErrorString)
             )
         ;
             Step = step_scope(_),
@@ -794,7 +794,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
                     GoalPath, SubGoal0, SubGoal, !VarSet, !VarTypes),
                 GoalExpr = scope(Reason, SubGoal)
             else
-                unexpected($module, $pred, ErrorString)
+                unexpected($pred, ErrorString)
             )
         ;
             ( Step = step_ite_cond
@@ -805,8 +805,8 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
             ; Step = step_atomic_main
             ; Step = step_atomic_orelse(_)
             ),
-            unexpected($module, $pred,
-                format("Unexpected step in goal path \"%s\"",
+            unexpected($pred,
+                string.format("Unexpected step in goal path \"%s\"",
                 [s(string(Step))]))
         ),
         !:Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -816,7 +816,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
             par_conj_loop_control(Info, Conjs, IsLastGoal, GoalInfo, !:Goal,
                 !VarSet, !VarTypes)
         else
-            unexpected($module, $pred, "expected parallel conjunction")
+            unexpected($pred, "expected parallel conjunction")
         )
     ).
 
@@ -1020,7 +1020,7 @@ goal_rewrite_recursive_call(Info, IsLastGoal, !Goal, UseParentStack,
         )
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred case_rewrite_recursive_call(loop_control_info::in,
@@ -1123,13 +1123,13 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
             ),
             % These cannot be a recursive call and they cannot be a base case
             % since base cases are detected above.
-            unexpected($module, $pred, "Non-recursive atomic goal")
+            unexpected($pred, "Non-recursive atomic goal")
         ;
             GoalExpr0 = plain_call(PredId, ProcId, Args0, Builtin,
                 MaybeContext, _SymName0),
             % This can only be a recursive call, it must be rewritten
             RecPredProcId = Info ^ lci_rec_pred_proc_id,
-            expect(unify(RecPredProcId, proc(PredId, ProcId)), $module, $pred,
+            expect(unify(RecPredProcId, proc(PredId, ProcId)), $pred,
                 "Expected recursive call"),
             proc(InnerPredId, InnerProcId) = Info ^ lci_inner_pred_proc_id,
             LCVar = Info ^ lci_lc_var,
@@ -1140,14 +1140,13 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
             FixupGoalInfo = fixup_goal_info
         ;
             GoalExpr0 = conj(ConjType, Conjs0),
-            expect(unify(ConjType, plain_conj), $module, $pred,
-                "parallel conjunction"),
+            expect(unify(ConjType, plain_conj), $pred, "parallel conjunction"),
             conj_update_non_loop_control_paths(Info, RecParConjIds,
                 FixupGoalInfo, Conjs0, Conjs),
             GoalExpr = conj(ConjType, Conjs)
         ;
             GoalExpr0 = disj(_),
-            sorry($module, $pred, "disjunction")
+            sorry($pred, "disjunction")
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
             list.map2(case_update_non_loop_control_paths(Info, RecParConjIds),
@@ -1156,7 +1155,7 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
             GoalExpr = switch(Var, CanFail, Cases)
         ;
             GoalExpr0 = negation(_),
-            sorry($module, $pred, "negation")
+            sorry($pred, "negation")
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
             goal_update_non_loop_control_paths(Info, RecParConjIds,
@@ -1175,7 +1174,7 @@ goal_update_non_loop_control_paths(Info, RecParConjIds, FixupGoalInfo,
             GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
         ;
             GoalExpr0 = shorthand(_),
-            unexpected($module, $pred, "shorthand")
+            unexpected($pred, "shorthand")
         ),
         !Goal ^ hg_expr := GoalExpr,
         (

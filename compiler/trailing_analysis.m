@@ -237,7 +237,7 @@ check_procs_for_trail_mods(SCC, Result, !ModuleInfo) :-
     trailing_status::out, maybe(analysis_status)::out) is det.
 
 trail_combine_individual_proc_results([], _, _) :-
-    unexpected($module, $pred, "empty SCC").
+    unexpected($pred, "empty SCC").
 trail_combine_individual_proc_results(ProcResults @ [_ | _], SCC_Result,
         MaybeAnalysisStatus) :-
     ( if
@@ -325,7 +325,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             )
         ;
             Kind = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated unify")
+            unexpected($pred, "complicated unify")
         )
     ;
         GoalExpr = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
@@ -511,7 +511,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred check_goals_for_trail_mods(scc::in, vartypes::in,
@@ -870,7 +870,7 @@ trail_annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
             )
         ;
             Kind = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated unify")
+            unexpected($pred, "complicated unify")
         ),
         Status = trail_will_not_modify
     ;
@@ -1005,7 +1005,7 @@ trail_annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
         )
     ;
         !.GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred trail_annotate_goal_list(vartypes::in,
@@ -1174,7 +1174,7 @@ lookup_proc_trailing_info(ModuleInfo, PPId, Status, ResultStatus) :-
             MaybeResultStatus = yes(ResultStatus)
         ;
             MaybeResultStatus = no,
-            unexpected($module, $pred, "no result status")
+            unexpected($pred, "no result status")
         )
     ;
         MaybeProcTrailingInfo = no,

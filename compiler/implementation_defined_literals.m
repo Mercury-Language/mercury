@@ -236,7 +236,7 @@ make_impl_defined_literal(Var, Name, Context, Info, Goal) :-
         make_string_const_construction(Context, Var, Grade, Goal)
     else
         % These should have been caught during type checking.
-        unexpected($module, $pred, "unknown literal")
+        unexpected($pred, "unknown literal")
     ).
 
 %-----------------------------------------------------------------------------%

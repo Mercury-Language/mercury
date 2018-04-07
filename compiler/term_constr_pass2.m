@@ -271,8 +271,7 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
             MaybeArgSizeInfo = term2_info_get_success_constrs(CallTerm2Info),
             (
                 MaybeArgSizeInfo = no,
-                unexpected($module, $pred,
-                    "proc with no arg size info in pass 2")
+                unexpected($pred, "proc with no arg size info in pass 2")
             ;
                 MaybeArgSizeInfo = yes(ArgSizePolyhedron0),
                 ( if polyhedron.is_universe(ArgSizePolyhedron0) then
@@ -286,7 +285,7 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
                         CallProc = CallProc0
                     ;
                         MaybeCallProc = no,
-                        unexpected($module, $pred,
+                        unexpected($pred,
                             "no abstract representation for proc")
                     ),
                     HeadVars = CallProc ^ ap_head_vars,
@@ -454,7 +453,7 @@ partition_cycles([Proc | Procs], Cycles0) = CycleSets :-
     = abstract_proc.
 
 get_proc_from_abstract_scc([], _) = _ :-
-    unexpected($module, $pred, "cannot find proc").
+    unexpected($pred, "cannot find proc").
 get_proc_from_abstract_scc([Proc | Procs], PPId) =
     ( if Proc ^ ap_ppid = PPId then
         Proc
@@ -515,13 +514,14 @@ strict_decrease_around_loop(AbstractSCC, SizeVarSet, PPId, Loop) :-
         ; PPId \= Loop ^ tcge_callee
         )
     then
-        unexpected($module, $pred, "badly formed loop")
+        unexpected($pred, "badly formed loop")
     else
         true
     ),
-    IsActive = (func(Var::in, Input::in) = (Var::out) is semidet :-
-        Input = yes
-    ),
+    IsActive =
+        ( func(Var::in, Input::in) = (Var::out) is semidet :-
+            Input = yes
+        ),
     Proc = get_proc_from_abstract_scc(set.to_sorted_list(AbstractSCC), PPId),
     Inputs = Proc ^ ap_inputs,
     HeadArgs = list.filter_map_corresponding(IsActive, Loop ^ tcge_head_args,
@@ -562,7 +562,7 @@ collapse_cycle(StartPPId, Cycle) = CollapsedCycle :-
     Cycle = term_cg_cycle(_, Edges0),
     (
         Edges0 = [],
-        unexpected($module, $pred, "trying to collapse a cycle with no edges")
+        unexpected($pred, "trying to collapse a cycle with no edges")
     ;
         Edges0 = [Edge],
         CollapsedCycle = Edge
@@ -579,7 +579,7 @@ collapse_cycle(StartPPId, Cycle) = CollapsedCycle :-
                 HeadVars, CallVars, Zeros, Polyhedron)
         ;
             Edges = [],
-            unexpected($module, $pred, "error while collapsing cycles")
+            unexpected($pred, "error while collapsing cycles")
         )
     ).
 

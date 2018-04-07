@@ -433,7 +433,7 @@ inst_matches_initial_sub(InstA, InstB, Type, !ModuleInfo, !Sub) :-
         MaybeSub = yes(!:Sub)
     ;
         MaybeSub = no,
-        unexpected($module, $pred, "missing inst_var_sub")
+        unexpected($pred, "missing inst_var_sub")
     ).
 
 inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo) :-
@@ -587,8 +587,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
         InstB = abstract_inst(_,_),
         % I don't know what this should do.
         % Abstract insts aren't really supported.
-        unexpected($module, $pred,
-            "inst_matches_initial(ground, abstract_inst) == ??")
+        unexpected($pred, "inst_matches_initial(ground, abstract_inst) == ??")
     ;
         InstA = abstract_inst(_,_),
         InstB = any(shared, none_or_default_func)
@@ -1280,7 +1279,7 @@ inst_contains_nondefault_func_mode_2(Inst, !.Expansions, ContainsNonstd,
         )
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = defined_inst(InstName),
         ( if set.member(InstName, !.Expansions) then

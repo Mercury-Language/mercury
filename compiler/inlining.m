@@ -829,7 +829,7 @@ inlining_in_goal(Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred inlining_in_call(hlds_goal_expr::in(goal_expr_plain_call),
@@ -1066,7 +1066,7 @@ get_type_substitution(HeadTypes, ArgTypes,
         then
             TypeSubn = TypeSubn1
         else
-            unexpected($module, $pred, "type unification failed")
+            unexpected($pred, "type unification failed")
         )
     ).
 

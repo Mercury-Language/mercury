@@ -286,7 +286,7 @@ generate_non_term_user_special_warning(Context, SpecialPred, TypeCtor,
         SpecialPredStr = "equality"
     ;
         SpecialPred = spec_pred_index,
-        unexpected($module, $pred, "index predicate.")
+        unexpected($pred, "index predicate.")
     ;
         SpecialPred = spec_pred_compare,
         SpecialPredStr = "comparison"

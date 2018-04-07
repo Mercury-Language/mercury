@@ -130,7 +130,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 HeadConjunct = HeadConjunctPrime,
                 TailConjuncts = TailConjunctsPrime
             else
-                unexpected($module, $pred,
+                unexpected($pred,
                     "from_ground_term_construct scope is not conjunction")
             ),
             simplify_info_get_var_types(!.Info, VarTypes),
@@ -149,7 +149,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             then
                 TermConstNum = TermConstNumPrime
             else
-                unexpected($module, $pred, "unexpected VarArgMap")
+                unexpected($pred, "unexpected VarArgMap")
             ),
 
             lookup_const_struct_num(ConstStructDb, TermConstNum,
@@ -258,7 +258,7 @@ simplify_construct_ground_terms(TermVar, VarTypes, Conjunct, Conjuncts,
         ConsId = ConsIdPrime,
         RHSVars = RHSVarsPrime
     else
-        unexpected($module, $pred, "not construction unification")
+        unexpected($pred, "not construction unification")
     ),
     lookup_var_type(VarTypes, LHSVar, TermType),
     (
@@ -276,8 +276,7 @@ simplify_construct_ground_terms(TermVar, VarTypes, Conjunct, Conjuncts,
     map.det_insert(LHSVar, Arg, !VarArgMap),
     (
         Conjuncts = [],
-        expect(unify(TermVar, LHSVar), $module, $pred,
-            "last var is not TermVar")
+        expect(unify(TermVar, LHSVar), $pred, "last var is not TermVar")
     ;
         Conjuncts = [HeadConjunct | TailConjuncts],
         !:ElimVars = [LHSVar | !.ElimVars],

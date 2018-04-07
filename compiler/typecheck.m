@@ -523,7 +523,7 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
         clause_list_is_empty(ClausesRep1) = ClausesRep1IsEmpty,
         (
             ClausesRep1IsEmpty = yes,
-            expect(unify(StartingSpecs, []), $module, $pred,
+            expect(unify(StartingSpecs, []), $pred,
                 "StartingSpecs not empty"),
 
             % There are no clauses for class methods. The clauses are generated
@@ -1205,7 +1205,7 @@ typecheck_check_for_ambiguity(Context, StuffToCheck, HeadVars,
         % previous type assignment set (so that it can detect other errors
         % in the same clause).
         TypeAssignSet = [],
-        unexpected($module, $pred, "no type-assignment")
+        unexpected($pred, "no type-assignment")
     ;
         TypeAssignSet = [_SingleTypeAssign]
     ;
@@ -1429,7 +1429,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
                 PredVar, Purity, Args, !TypeAssignSet, !Info)
         ;
             GenericCall = class_method(_, _, _, _),
-            unexpected($module, $pred, "unexpected class method call")
+            unexpected($pred, "unexpected class method call")
         ;
             GenericCall = event_call(EventName),
             trace [compiletime(flag("type_checkpoint")), io(!IO)] (
@@ -1456,7 +1456,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
     ;
         GoalExpr0 = switch(_, _, _),
         % We haven't run switch detection yet.
-        unexpected($module, $pred, "switch")
+        unexpected($pred, "switch")
     ;
         GoalExpr0 = call_foreign_proc(_, PredId, _, Args, _, _, _),
         % Foreign_procs are automatically generated, so they will always be
@@ -1518,7 +1518,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
                 atomic_interface_list_to_var_list([Inner | OrElseInners]),
             list.foldl2(typecheck_var_has_stm_atomic_type(Context),
                 InnerVars, !TypeAssignSet, !Info),
-            expect(unify(GoalType, unknown_atomic_goal_type), $module, $pred,
+            expect(unify(GoalType, unknown_atomic_goal_type), $pred,
                 "GoalType != unknown_atomic_goal_type"),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
@@ -1966,7 +1966,7 @@ delete_first_arg_in_each_arg_type_assign([ArgTypeAssign0 | ArgTypeAssigns0],
     ;
         Args0 = [],
         % this should never happen
-        unexpected($module, $pred, "skip_arg")
+        unexpected($pred, "skip_arg")
     ),
     ArgTypeAssign = args_type_assign(TypeAssign, Args, Constraints),
     delete_first_arg_in_each_arg_type_assign(ArgTypeAssigns0, ArgTypeAssigns).
@@ -2015,7 +2015,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
         )
     ;
         ArgTypes0 = [],
-        unexpected($module, $pred, "ArgTypes0 = []")
+        unexpected($pred, "ArgTypes0 = []")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2057,10 +2057,10 @@ typecheck_vars_have_types_in_arg_vector(_, _, _, _, [], [],
         !TypeAssignSet, !Specs, !MaybeArgVectorTypeErrors).
 typecheck_vars_have_types_in_arg_vector(_, _, _, _, [], [_ | _],
         !TypeAssignSet, !Specs, !MaybeArgVectorTypeErrors) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 typecheck_vars_have_types_in_arg_vector(_, _, _, _, [_ | _], [],
         !TypeAssignSet, !Specs, !MaybeArgVectorTypeErrors) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 typecheck_vars_have_types_in_arg_vector(Info, Context, ArgVectorKind, ArgNum,
         [Var | Vars], [Type | Types], !TypeAssignSet, !Specs,
         !MaybeArgVectorTypeErrors) :-
@@ -2353,7 +2353,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
             then
                 % This should never happen, since undefined ctors
                 % should be caught by the check just above.
-                unexpected($module, $pred, "undefined cons?")
+                unexpected($pred, "undefined cons?")
             else
                 true
             ),
@@ -2488,7 +2488,7 @@ get_cons_type_assign(ConsDefn, TypeAssign0, ConsTypeAssign) :-
         ConsType = ConsType1,
         ArgTypes = ArgTypes1
     else
-        unexpected($module, $pred, "type_assign_rename_apart failed")
+        unexpected($pred, "type_assign_rename_apart failed")
     ),
 
     % Add the constraints for this functor to the current constraint set.
@@ -2536,12 +2536,12 @@ typecheck_functor_arg_types(Info, ArgVars, [ConsTypeAssign | ConsTypeAssigns],
     list(prog_var)::in, list(mer_type)::in,
     type_assign_set::in, type_assign_set::out) is det.
 
-type_assign_vars_have_types(_, _, [], [_ | _], _, _) :-
-    unexpected($module, $pred, "length mismatch").
-type_assign_vars_have_types(_, _, [_ | _], [], _, _) :-
-    unexpected($module, $pred, "length mismatch").
 type_assign_vars_have_types(_, TypeAssign, [], [],
         TypeAssignSet, [TypeAssign | TypeAssignSet]).
+type_assign_vars_have_types(_, _, [], [_ | _], _, _) :-
+    unexpected($pred, "length mismatch").
+type_assign_vars_have_types(_, _, [_ | _], [], _, _) :-
+    unexpected($pred, "length mismatch").
 type_assign_vars_have_types(Info, TypeAssign0,
         [ArgVar | ArgVars], [Type | Types], TypeAssignSet0, TypeAssignSet) :-
     type_assign_var_has_type(TypeAssign0, ArgVar, Type, [], TypeAssignSet1),
@@ -3105,7 +3105,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         ; Source0 = source_apply(_)
         ; Source0 = source_pred(_)
         ),
-        unexpected($module, $pred, "not type")
+        unexpected($pred, "not type")
     ),
     FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
     list.det_index1(ConsArgTypes, FieldNumber, FieldType),

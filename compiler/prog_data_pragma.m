@@ -156,10 +156,10 @@ default_memo_table_attributes =
 eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     (
         EvalMethod = eval_normal,
-        unexpected($module, $pred, "eval_normal")
+        unexpected($pred, "eval_normal")
     ;
         EvalMethod = eval_table_io(_, _),
-        unexpected($module, $pred, "eval_table_io")
+        unexpected($pred, "eval_table_io")
     ;
         EvalMethod = eval_loop_check,
         TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
@@ -171,7 +171,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
         TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY"
     ;
         EvalMethod = eval_minimal(own_stacks_consumer),
-        unexpected($module, $pred, "own_stacks_consumer")
+        unexpected($pred, "own_stacks_consumer")
     ;
         EvalMethod = eval_minimal(own_stacks_generator),
         TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"

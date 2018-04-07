@@ -496,7 +496,7 @@ rptg_get_node_by_region_name(Graph, RegionName, Node) :-
     then
         Node = NodePrime
     else
-        unexpected($module, $pred, "node not found")
+        unexpected($pred, "node not found")
     ).
 
 :- pred get_node_by_region_name_from_list(rpt_graph::in, list(rptg_node)::in,
@@ -516,7 +516,7 @@ rptg_get_node_by_vars(Graph, Vars, Node) :-
     ( if get_node_by_vars_from_list(Graph, Nodes, Vars, NodePrime) then
         Node = NodePrime
     else
-        unexpected($module, $pred, "node not found")
+        unexpected($pred, "node not found")
     ).
 
 :- pred get_node_by_vars_from_list(rpt_graph::in, list(rptg_node)::in,
@@ -547,7 +547,7 @@ rptg_get_node_by_node(Graph, Node, MergedNode) :-
         ( get_node_by_node_from_list(Graph, AllNodes, Node, MergedNode0) ->
             MergedNode = MergedNode0
         ;
-            unexpected($module, $pred, "node not found")
+            unexpected($pred, "node not found")
         )
     ).
 

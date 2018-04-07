@@ -123,7 +123,7 @@ goal_expr_cost(GoalExpr, GoalInfo, Cost) :-
     ;
         GoalExpr = shorthand(_),
         % these should have been expanded out by now
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred unify_cost(set_of_progvar::in, unification::in, int::out) is det.

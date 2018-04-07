@@ -398,7 +398,7 @@
     ;       is_not_int_switch.
 
 tag_cases(_ModuleInfo, _SwitchType, [], [], _) :-
-    unexpected($module, $pred, "no cases").
+    unexpected($pred, "no cases").
 tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
         [TaggedCase | TaggedCases], MaybeIntSwitchLimits) :-
     Case = case(MainConsId, OtherConsIds, Goal),
@@ -559,7 +559,7 @@ type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
         ),
         % You can't have a switch without at least two arms, or without values
         % that can be deconstructed.
-        unexpected($module, $pred, "bad type ctor cat")
+        unexpected($pred, "bad type ctor cat")
     ).
 
 estimate_switch_tag_test_cost(Tag) = Cost :-
@@ -614,7 +614,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_entry_tag(_, _)
         ),
-        unexpected($module, $pred, "non-switch tag")
+        unexpected($pred, "non-switch tag")
     ).
 
 find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
@@ -696,7 +696,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
             ; TypeBody = hlds_solver_type(_)
             ; TypeBody = hlds_abstract_type(_)
             ),
-            unexpected($module, $pred, "enum type is not d.u. type?")
+            unexpected($pred, "enum type is not d.u. type?")
         )
     ),
     NumValues = Max - Min + 1.
@@ -1104,7 +1104,7 @@ follow_hash_chain(Map, Slot, LastSlot) :-
 
 next_free_hash_slot(Map, HomeMap, TableSize, LastUsed, FreeSlot) :-
     NextSlot = LastUsed + 1,
-    expect(NextSlot < TableSize, $module, $pred, "overflow"),
+    expect(NextSlot < TableSize, $pred, "overflow"),
     ( if
         ( map.contains(Map, NextSlot)
         ; map.contains(HomeMap, NextSlot)
@@ -1152,7 +1152,7 @@ add_string_binary_entry(CaseRep, TaggedConsId, !UnsortedTable) :-
     ( if Tag = string_tag(StringPrime) then
         String = StringPrime
     else
-        unexpected($module, $pred, "non-string case?")
+        unexpected($pred, "non-string case?")
     ),
     !:UnsortedTable = [String - CaseRep | !.UnsortedTable].
 
@@ -1182,7 +1182,7 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
         ; TypeBody = hlds_solver_type(_)
         ; TypeBody = hlds_abstract_type(_)
         ),
-        unexpected($module, $pred, "non-du type")
+        unexpected($pred, "non-du type")
     ),
     MaXPrimary0 = -1,
     map.init(PtagCountMap0),
@@ -1209,7 +1209,7 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
         ),
         int.max(Primary, !MaxPrimary),
         ( if map.search(!.PtagCountMap, Primary, _) then
-            unexpected($module, $pred, "unshared tag is shared")
+            unexpected($pred, "unshared tag is shared")
         else
             map.det_insert(Primary, SecTag - (-1), !PtagCountMap)
         )
@@ -1225,8 +1225,7 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
                 ; TagType = sectag_none
                 ; TagType = sectag_none_direct_arg
                 ),
-                unexpected($module, $pred,
-                    "remote tag is shared with non-remote")
+                unexpected($pred, "remote tag is shared with non-remote")
             ),
             int.max(Secondary, MaxSoFar, Max),
             map.det_update(Primary, sectag_remote - Max, !PtagCountMap)
@@ -1245,8 +1244,7 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
                 ; TagType = sectag_none
                 ; TagType = sectag_none_direct_arg
                 ),
-                unexpected($module, $pred,
-                    "local tag is shared with non-local")
+                unexpected($pred, "local tag is shared with non-local")
             ),
             int.max(Secondary, MaxSoFar, Max),
             map.det_update(Primary, sectag_local - Max, !PtagCountMap)
@@ -1269,7 +1267,7 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_entry_tag(_, _)
         ),
-        unexpected($module, $pred, "non-du tag")
+        unexpected($pred, "non-du tag")
     ),
     get_ptag_counts_loop(CtorRepns, !MaxPrimary, !PtagCountMap).
 
@@ -1321,7 +1319,7 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
             SecTag = sectag_none_direct_arg
         ),
         ( if map.search(!.PtagCaseMap, Primary, _Group) then
-            unexpected($module, $pred, "unshared tag is shared")
+            unexpected($pred, "unshared tag is shared")
         else
             StagGoalMap = map.singleton(-1, CaseRep),
             map.det_insert(Primary, ptag_case(SecTag, StagGoalMap),
@@ -1331,7 +1329,7 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         Tag = shared_remote_tag(Primary, Secondary),
         ( if map.search(!.PtagCaseMap, Primary, Group) then
             Group = ptag_case(StagLoc, StagGoalMap0),
-            expect(unify(StagLoc, sectag_remote), $module, $pred,
+            expect(unify(StagLoc, sectag_remote), $pred,
                 "remote tag is shared with non-remote"),
             map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
             map.det_update(Primary, ptag_case(sectag_remote, StagGoalMap),
@@ -1345,7 +1343,7 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         Tag = shared_local_tag(Primary, Secondary),
         ( if map.search(!.PtagCaseMap, Primary, Group) then
             Group = ptag_case(StagLoc, StagGoalMap0),
-            expect(unify(StagLoc, sectag_local), $module, $pred,
+            expect(unify(StagLoc, sectag_local), $pred,
                 "local tag is shared with non-local"),
             map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
             map.det_update(Primary, ptag_case(sectag_local, StagGoalMap),
@@ -1371,7 +1369,7 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_entry_tag(_, _)
         ),
-        unexpected($module, $pred, "non-du tag")
+        unexpected($pred, "non-du tag")
     ),
     ( if map.search(!.CaseIdPtagsMap, CaseId, Ptags0) then
         set.insert(Primary, Ptags0, Ptags),
@@ -1434,7 +1432,7 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
         ( if map.search(!.RevMap, Case, OldEntry) then
             OldEntry = ptag_case_rev_map_entry(OldCount,
                 OldFirstPtag, OldLaterPtags0, OldCase),
-            expect(unify(Case, OldCase), $module, $pred, "Case != OldCase"),
+            expect(unify(Case, OldCase), $pred, "Case != OldCase"),
             NewEntry = ptag_case_rev_map_entry(OldCount + Count,
                 OldFirstPtag, OldLaterPtags0 ++ [Ptag], OldCase),
             map.det_update(Case, NewEntry, !RevMap)
@@ -1481,7 +1479,7 @@ order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
         ( if map.is_empty(PtagCaseMap0) then
             PtagCaseList = []
         else
-            unexpected($module, $pred, "PtagCaseMap0 is not empty")
+            unexpected($pred, "PtagCaseMap0 is not empty")
         )
     ).
 
@@ -1492,14 +1490,14 @@ get_int_tag(ConsTag, Int) :-
     ( if ConsTag = int_tag(int_tag_int(IntPrime)) then
         Int = IntPrime
     else
-        unexpected($module, $pred, "not int_tag")
+        unexpected($pred, "not int_tag")
     ).
 
 get_string_tag(ConsTag, Str) :-
     ( if ConsTag = string_tag(StrPrime) then
         Str = StrPrime
     else
-        unexpected($module, $pred, "not string_tag")
+        unexpected($pred, "not string_tag")
     ).
 
 %-----------------------------------------------------------------------------%

@@ -531,10 +531,10 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                     StatusMap = StatusMap0
                 ;
                     OldStatus = status_unknown_updated(_),
-                    unexpected($module, $pred, "status_unknown_updated for !.")
+                    unexpected($pred, "status_unknown_updated for !.")
                 ;
                     OldStatus = status_known_updated(_, _),
-                    unexpected($module, $pred, "status_known_updated for !.")
+                    unexpected($pred, "status_known_updated for !.")
                 ;
                     OldStatus = status_known_ro(_, _, _),
                     % This can happen if the context outside a lambda
@@ -577,10 +577,10 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                     StatusMap = StatusMap0
                 ;
                     OldStatus = status_unknown_updated(_),
-                    unexpected($module, $pred, "status_unknown_updated for !:")
+                    unexpected($pred, "status_unknown_updated for !:")
                 ;
                     OldStatus = status_known_updated(_, _),
-                    unexpected($module, $pred, "status_known_updated for !:")
+                    unexpected($pred, "status_known_updated for !:")
                 ;
                     OldStatus = status_known_ro(_, _, _),
                     % This can happen if the context outside a lambda
@@ -863,12 +863,12 @@ svar_find_final_renames_and_copy_goals([Head | Tail],
         % The clause head already refers to the final version.
     ;
         FinalStatus = status_known_ro(_, _, _),
-        unexpected($module, $pred, "readonly status")
+        unexpected($pred, "readonly status")
     ;
         ( FinalStatus = status_known_updated(_, _)
         ; FinalStatus = status_unknown_updated(_)
         ),
-        unexpected($module, $pred, "updated status")
+        unexpected($pred, "updated status")
     ),
     svar_find_final_renames_and_copy_goals(Tail,
         InitialStatusMap, FinalStatusMap, !FinalSVarSubn, !CopyGoals).
@@ -1028,7 +1028,7 @@ get_disjuncts_with_empty_states([], !RevDisjuncts).
 get_disjuncts_with_empty_states([GoalState | GoalStates], !RevDisjuncts) :-
     GoalState = hlds_goal_svar_state(Goal, State),
     StatusMapAfterGoal = State ^ state_status_map,
-    expect(map.is_empty(StatusMapAfterGoal), $module,
+    expect(map.is_empty(StatusMapAfterGoal), $pred,
         "map after goal not empty"),
     !:RevDisjuncts = [Goal | !.RevDisjuncts],
     get_disjuncts_with_empty_states(GoalStates, !RevDisjuncts).
@@ -1160,7 +1160,7 @@ handle_arm_updated_state_vars([Change | Changes], StatusMapBefore,
                 ; AfterAllArmsStatus = status_unknown
                 ; AfterAllArmsStatus = status_unknown_updated(_)
                 ),
-                unexpected($module, $pred,
+                unexpected($pred,
                     "AfterAllArmsStatus != status_known (Before == After)")
             )
         ;
@@ -1178,7 +1178,7 @@ handle_arm_updated_state_vars([Change | Changes], StatusMapBefore,
             % then any reference to !:StateVar should refer to the already
             % known updated prog_var, and thus AfterAllArmsStatus should be
             % the same as StatusBefore, which means we shouldn't get here.
-            unexpected($module, $pred, "BeforeStatus is updated")
+            unexpected($pred, "BeforeStatus is updated")
         )
     else
         (
@@ -1198,21 +1198,21 @@ handle_arm_updated_state_vars([Change | Changes], StatusMapBefore,
                 ; AfterAllArmsStatus = status_unknown
                 ; AfterAllArmsStatus = status_unknown_updated(_)
                 ),
-                unexpected($module, $pred,
+                unexpected($pred,
                     "AfterAllArmsStatus != status_known (Before != After)")
             )
         ;
             AfterArmStatus = status_known_ro(_, _, _),
-            unexpected($module, $pred, "AfterArmStatus = status_known_ro")
+            unexpected($pred, "AfterArmStatus = status_known_ro")
         ;
             AfterArmStatus = status_known_updated(_, _),
-            unexpected($module, $pred, "AfterArmStatus = status_known_updated")
+            unexpected($pred, "AfterArmStatus = status_known_updated")
         ;
             AfterArmStatus = status_unknown,
-            unexpected($module, $pred, "AfterArmStatus = status_unknown")
+            unexpected($pred, "AfterArmStatus = status_unknown")
         ;
             AfterArmStatus = status_unknown_updated(_),
-            unexpected($module, $pred, "AfterArmStatus = status_unknown")
+            unexpected($pred, "AfterArmStatus = status_unknown")
         )
     ).
 
@@ -1356,7 +1356,7 @@ handle_state_vars_in_ite(LocKind, QuantStateVars, [SVar | SVars],
     map.lookup(StatusMapAfterElse, SVar, StatusAfterElse),
 
     ( if list.member(SVar, QuantStateVars) then
-        expect(unify(StatusBefore, StatusAfterThen), $module,
+        expect(unify(StatusBefore, StatusAfterThen), $pred,
             "state var shadowed in if-then-else is nevertheless updated"),
         % SVar is quantified in the if-then-else. That means that Cond and Then
         % may update a state variable with the same name as SVar, but this
@@ -1476,7 +1476,7 @@ handle_state_var_in_ite(LocKind, SVar, StatusBefore,
                     % This can happen if LocKind = loc_inside_atomic_goal,
                     % but any reference to !:SVar in the else case should
                     % have just returned the new progvar for SVar.
-                    unexpected($module, $pred, "updated before (case 2)")
+                    unexpected($pred, "updated before (case 2)")
                 )
             )
         else
@@ -1515,7 +1515,7 @@ handle_state_var_in_ite(LocKind, SVar, StatusBefore,
                     % This can happen if LocKind = loc_inside_atomic_goal,
                     % but any reference to !:SVar in the then case should
                     % have just returned the new progvar for SVar.
-                    unexpected($module, $pred, "updated before (case 3)")
+                    unexpected($pred, "updated before (case 3)")
                 )
             else
                 % Case 4.
@@ -1576,7 +1576,7 @@ handle_state_var_in_ite(LocKind, SVar, StatusBefore,
                     % This can happen if LocKind = loc_inside_atomic_goal,
                     % but any reference to !:SVar in the condition should
                     % have just returned the new progvar for SVar.
-                    unexpected($module, $pred, "updated before (case 5)")
+                    unexpected($pred, "updated before (case 5)")
                 )
             else
                 % Case 6.
@@ -1625,7 +1625,7 @@ handle_state_var_in_ite(LocKind, SVar, StatusBefore,
                     % but any reference to !:SVar in the condition and
                     % then case should have just returned the new progvar
                     % for SVar.
-                    unexpected($module, $pred, "updated before (case 7)")
+                    unexpected($pred, "updated before (case 7)")
                 )
             else
                 % Case 8.
@@ -1691,7 +1691,7 @@ svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDIVar, OuterUOVar,
             ),
             % This status should exist in a status map only when we are in the
             % middle of processing an atomic goal.
-            unexpected($module, $pred, "status updated")
+            unexpected($pred, "status updated")
         )
     else
         report_non_visible_state_var("", Context, !.VarSet, OuterStateVar,
@@ -1747,7 +1747,7 @@ svar_finish_inner_atomic_scope(_Context, InnerScopeInfo,
         ; Status = status_known_ro(_, _, _)
         ; Status = status_known_updated(_, _)
         ),
-        unexpected($module, $pred, "status != known")
+        unexpected($pred, "status != known")
     ),
     !:State = StateBefore.
 
@@ -1865,7 +1865,7 @@ svar_get_current_progvar(LocKind, Status) = ProgVar :-
             ; Status = status_unknown
             ; Status = status_unknown_updated(_)
             ),
-            unexpected($module, $pred, "Status not known")
+            unexpected($pred, "Status not known")
         )
     ;
         LocKind = loc_inside_atomic_goal,
@@ -1879,7 +1879,7 @@ svar_get_current_progvar(LocKind, Status) = ProgVar :-
             ( Status = status_known_ro(_, _, _)
             ; Status = status_unknown
             ),
-            unexpected($module, $pred, "Status not known or updated")
+            unexpected($pred, "Status not known or updated")
         )
     ).
 

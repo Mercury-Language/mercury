@@ -181,7 +181,7 @@ saved_vars_in_goal(Goal0, Goal, !SlotInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % these should have been expanded out by now
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -348,7 +348,7 @@ can_push(Var, Goal) = CanPush :-
                 ; Reason = from_ground_term(_, from_ground_term_initial)
                 ),
                 % These scopes should have been deleted by now.
-                unexpected($module, $pred, "unexpected scope")
+                unexpected($pred, "unexpected scope")
             )
         ;
             GoalExpr = switch(SwitchVar, _, _),
@@ -360,7 +360,7 @@ can_push(Var, Goal) = CanPush :-
         ;
             GoalExpr = shorthand(_),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "shorthand")
+            unexpected($pred, "shorthand")
         )
     else
         CanPush = yes
@@ -501,7 +501,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         ;
             Goal0Expr = shorthand(_),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "shorthand")
+            unexpected($pred, "shorthand")
         )
     else
         saved_vars_delay_goal(Goals0, Goals1, Construct, Var, IsNonLocal,

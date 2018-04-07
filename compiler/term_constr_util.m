@@ -256,7 +256,7 @@ prog_var_to_size_var(SizeVarMap, Var) = SizeVar :-
     ( if map.search(SizeVarMap, Var, SizeVar0) then
         SizeVar = SizeVar0
     else
-        unexpected($module, $pred, "prog_var not in size_var_map")
+        unexpected($pred, "prog_var not in size_var_map")
     ).
 
 find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes) = Zeros :-
@@ -326,9 +326,9 @@ create_var_substitution(Args, HeadVars) = SubstMap :-
 
 create_var_substitution_2([], [], !Subst).
 create_var_substitution_2([_|_], [], _, _) :-
-    unexpected($module, $pred, "unmatched lists").
+    unexpected($pred, "unmatched lists").
 create_var_substitution_2([], [_|_], _, _) :-
-    unexpected($module, $pred, "unmatched lists").
+    unexpected($pred, "unmatched lists").
 create_var_substitution_2([Arg | Args], [HeadVar | HeadVars],  !Subst) :-
     map.det_insert(HeadVar, Arg, !Subst),
     create_var_substitution_2(Args, HeadVars, !Subst).
@@ -474,7 +474,7 @@ get_abstract_proc(ModuleInfo, PPId) = AbstractProc :-
         MaybeAbstractProc = yes(AbstractProc)
     ;
         MaybeAbstractProc = no,
-        unexpected($module, $pred, "no abstract rep. for proc")
+        unexpected($pred, "no abstract rep. for proc")
     ).
 
 %-----------------------------------------------------------------------------%

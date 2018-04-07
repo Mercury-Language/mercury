@@ -300,7 +300,7 @@ functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
             ( if functor_norm_filter_args(UseArgList, !Args, !Modes) then
                 true
             else
-                unexpected($module, $pred, "unmatched lists")
+                unexpected($pred, "unmatched lists")
             )
         else if ConsId = ground_term_const(ConstNum, _) then
             % XXX Since ground_term_consts have no argument variables,
@@ -440,10 +440,10 @@ const_struct_count_cell_filtered_weights_args(_ConstStructDb, _WeightMap,
         [], [], !Gamma).
 const_struct_count_cell_filtered_weights_args(_ConstStructDb, _WeightMap,
         [], [_ | _], !Gamma) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 const_struct_count_cell_filtered_weights_args(_ConstStructDb, _WeightMap,
         [_ | _], [], !Gamma) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 const_struct_count_cell_filtered_weights_args(ConstStructDb, WeightMap,
         [Arg | Args], [UseArg | UseArgs], !Gamma) :-
     (

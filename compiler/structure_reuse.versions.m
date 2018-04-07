@@ -160,7 +160,7 @@ divide_reuse_procs(ExistingReusePPIdsSet, PPId, ReuseAs_Status,
     else if reuse_as_no_reuses(ReuseAs) then
         true
     else
-        unexpected($module, $pred, "conditions failed")
+        unexpected($pred, "conditions failed")
     ).
 
 :- pred maybe_create_full_reuse_proc_copy(pred_proc_id::in, pred_proc_id::out,
@@ -173,7 +173,7 @@ maybe_create_full_reuse_proc_copy(PPId, NewPPId, !ModuleInfo, !ReuseTable) :-
         reuse_as_table_search_reuse_version_proc(!.ReuseTable,
             PPId, NoClobbers, _)
     then
-        unexpected($module, $pred, "procedure already exists")
+        unexpected($pred, "procedure already exists")
     else
         true
     ),
@@ -183,7 +183,7 @@ maybe_create_full_reuse_proc_copy(PPId, NewPPId, !ModuleInfo, !ReuseTable) :-
         reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId,
             !ReuseTable)
     else
-        unexpected($module, $pred, "no reuse information")
+        unexpected($pred, "no reuse information")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -441,7 +441,7 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred unification_set_reuse(short_reuse_description::in,

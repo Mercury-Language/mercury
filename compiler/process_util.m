@@ -403,7 +403,7 @@ start_in_forked_process(P, MaybePid, !IO) :-
 
 :- pragma no_determinism_warning(start_in_forked_process_2/4).
 start_in_forked_process_2(_, _, !IO) :-
-    sorry($module, $pred, "NYI in languages other than C").
+    sorry($pred, "NYI in languages other than C").
 
     % call_child_process_io_pred(P, ExitStatus).
     %

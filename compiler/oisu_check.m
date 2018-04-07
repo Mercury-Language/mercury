@@ -135,7 +135,7 @@ check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors, Pair0, Pair,
             map.to_assoc_list(ProcTable0, Procs0),
             (
                 Procs0 = [],
-                unexpected($module, $pred, "no procedure for local predicate")
+                unexpected($pred, "no procedure for local predicate")
             ;
                 Procs0 = [ProcId - ProcInfo0],
                 pred_info_get_arg_types(PredInfo0, ArgTypes),
@@ -195,7 +195,7 @@ check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors, ArgNum,
             ArgTypes = []
         ;
             ArgTypes = [_ | _],
-            unexpected($module, $pred, "ArgTypes != []")
+            unexpected($pred, "ArgTypes != []")
         ),
         ( if find_kind_for_oisu_type(KindFors, TypeCtor, ThisKind) then
             ( if list.member(TypeCtor, !.HandledOISUTypeCtors) then

@@ -915,7 +915,7 @@ lookup_type_defn(CI, Type) = TypeDefn :-
     ( if search_type_defn(CI, Type, TypeDefnPrime) then
         TypeDefn = TypeDefnPrime
     else
-        unexpected($module, $pred, "type ctor has no definition")
+        unexpected($pred, "type ctor has no definition")
     ).
 
 lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
@@ -997,7 +997,7 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, GoalPath,
         Label = internal_label(LabelNum, _)
     ;
         Label = entry_label(_, _),
-        unexpected($module, $pred, "entry")
+        unexpected($pred, "entry")
     ),
     ( if map.search(Internals0, LabelNum, Internal0) then
         Internal0 = internal_layout_info(Exec0, Resume, Return),
@@ -1005,7 +1005,7 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, GoalPath,
             Exec0 = no
         ;
             Exec0 = yes(_),
-            unexpected($module, $pred, "already known label")
+            unexpected($pred, "already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
         map.det_update(LabelNum, Internal, Internals0, Internals)
@@ -1022,7 +1022,7 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
         Label = internal_label(LabelNum, _)
     ;
         Label = entry_label(_, _),
-        unexpected($module, $pred, "entry")
+        unexpected($pred, "entry")
     ),
     ( if map.search(Internals0, LabelNum, Internal0) then
         Internal0 = internal_layout_info(Exec, Resume0, Return),
@@ -1030,7 +1030,7 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
             Resume0 = no
         ;
             Resume0 = yes(_),
-            unexpected($module, $pred, "already known label")
+            unexpected($pred, "already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
         map.det_update(LabelNum, Internal, Internals0, Internals)
@@ -1119,7 +1119,7 @@ get_containing_goal_map(CI, ContainingGoalMap) :-
         MaybeContainingGoalMap = yes(ContainingGoalMap)
     ;
         MaybeContainingGoalMap = no,
-        unexpected($module, $pred, "no map")
+        unexpected($pred, "no map")
     ).
 
 add_out_of_line_code(NewCode, !CI) :-
@@ -1163,7 +1163,7 @@ get_variable_slot(CI, Var, Slot) :-
         term.var_to_int(Var, Num),
         string.int_to_string(Num, NumStr),
         Str = "variable `" ++ Name ++ "' " ++ "(" ++ NumStr ++ ") not found",
-        unexpected($module, $pred, Str)
+        unexpected($pred, Str)
     ).
 
 get_total_stackslot_count(CI, NumSlots) :-

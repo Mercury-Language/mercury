@@ -622,7 +622,7 @@ compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
     else if set.equal(MarkedFieldBenefits, FieldBenefits) then
         ViaCellVars = ViaCellVars1
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "theorem violation: intersection neither empty nor full")
     ).
 

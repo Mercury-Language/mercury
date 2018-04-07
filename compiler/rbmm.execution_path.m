@@ -165,7 +165,7 @@ execution_paths_covered_compound_goal(ProcInfo, CompoundGoal, !ExecPaths) :-
         ; Expr = generic_call(_, _, _, _, _)
         ; Expr = shorthand(_)
         ),
-        unexpected($module, $pred, "encountered atomic or unsupported goal")
+        unexpected($pred, "encountered atomic or unsupported goal")
     ).
 
     % Extend execution paths to cover the goals in this conjunction.
@@ -212,8 +212,7 @@ execution_paths_covered_disj(ProcInfo, [Disj | Disjs], !ExecPaths) :-
 execution_paths_covered_cases(_, _, [], _, []).
 execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
     Case = case(MainConsId, OtherConsIds, CaseGoal),
-    expect(unify(OtherConsIds, []), $module, $pred,
-        "NYI: multi-cons-id cases"),
+    expect(unify(OtherConsIds, []), $pred, "NYI: multi-cons-id cases"),
     Switch = hlds_goal(_SwitchExpr, Info),
     ProgPoint = program_point_init(Info),
 
@@ -260,7 +259,7 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
         ; MainConsId = table_io_entry_desc(_)
         ; MainConsId = deep_profiling_proc_layout(_)
         ),
-        unexpected($module, $pred, "unexpected cons_id")
+        unexpected($pred, "unexpected cons_id")
     ),
     execution_paths_covered_goal(ProcInfo, CaseGoal,
         ExecPathsBeforeCase, ExecPathsCase),

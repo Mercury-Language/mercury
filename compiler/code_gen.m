@@ -109,7 +109,7 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
             CodeModel = model_semi,
             (
                 ContextModel = model_det,
-                unexpected($module, $pred, "semidet model in det context")
+                unexpected($pred, "semidet model in det context")
             ;
                 ( ContextModel = model_semi
                 ; ContextModel = model_non
@@ -121,8 +121,7 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
                 ( ContextModel = model_det
                 ; ContextModel = model_semi
                 ),
-                unexpected($module, $pred,
-                    "nondet model in det/semidet context")
+                unexpected($pred, "nondet model in det/semidet context")
             ;
                 ContextModel = model_non
             )
@@ -227,7 +226,7 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
             DeepSaveVars = []
         )
     else
-        unexpected($module, $pred, "inconsistent proc_info")
+        unexpected($pred, "inconsistent proc_info")
     ).
 
 %---------------------------------------------------------------------------%
@@ -311,12 +310,12 @@ generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
             ; Lang = lang_csharp
             ; Lang = lang_erlang
             ),
-            unexpected($module, $pred, "foreign code other than C")
+            unexpected($pred, "foreign code other than C")
         )
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %---------------------------------------------------------------------------%

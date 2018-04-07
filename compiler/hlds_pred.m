@@ -1718,7 +1718,7 @@ pred_info_update_goal_type(GoalType1, !PredInfo) :-
         GoalType = GoalType0
     ;
         GoalType0 = goal_type_promise(_),
-        unexpected($module, $pred, "promise")
+        unexpected($pred, "promise")
     ),
     % ( if GoalType = GoalType0 then
     %     % Avoid unnecessary memory allocation.
@@ -3304,7 +3304,7 @@ proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
         MaybeHeadModesConstraint = yes(HeadModesConstraint)
     ;
         MaybeHeadModesConstraint = no,
-        unexpected($module, $pred, "no constraint")
+        unexpected($pred, "no constraint")
     ).
 
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
@@ -3376,7 +3376,7 @@ proc_info_arg_info(ProcInfo, ArgInfo) :-
         MaybeArgInfo0 = yes(ArgInfo)
     ;
         MaybeArgInfo0 = no,
-        unexpected($module, $pred, "arg_info not set")
+        unexpected($pred, "arg_info not set")
     ).
 
 proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
@@ -3721,7 +3721,7 @@ field_extraction_function_args(Args, TermInputArg) :-
     ( if Args = [TermInputArg0] then
         TermInputArg = TermInputArg0
     else
-        unexpected($module, $pred, "num_args != 1")
+        unexpected($pred, "num_args != 1")
     ).
 
 field_update_function_args(Args, TermInputArg, FieldArg) :-
@@ -3729,7 +3729,7 @@ field_update_function_args(Args, TermInputArg, FieldArg) :-
         FieldArg = FieldArg0,
         TermInputArg = TermInputArg0
     else
-        unexpected($module, $pred, "num_args != 2")
+        unexpected($pred, "num_args != 2")
     ).
 
 field_access_function_name(get, FieldName, FieldName).
@@ -3917,7 +3917,7 @@ valid_determinism_for_eval_method(eval_memo, Detism) = Valid :-
         Valid = yes
     ).
 valid_determinism_for_eval_method(eval_table_io(_, _), _) = _ :-
-    unexpected($module, $pred, "called after tabling phase").
+    unexpected($pred, "called after tabling phase").
 valid_determinism_for_eval_method(eval_minimal(_), Detism) = Valid :-
     % The following reasons specify why a particular determinism is
     % incompatible with minimal model tabling.

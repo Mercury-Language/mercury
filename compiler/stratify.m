@@ -231,7 +231,7 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -415,7 +415,7 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -583,7 +583,7 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
             ;
                 CHOInOut = ho_none,
                 % XXX What is a good message for this?
-                unexpected($module, $pred, "ho_none")
+                unexpected($pred, "ho_none")
             ),
             NewCInfo = strat_ho_info(CHaveAT, CHOInOut),
             NewPInfo = strat_ho_info(PHaveAT, PHOInOut),
@@ -715,9 +715,9 @@ bool_2_ho_in_out(no, no, ho_none).
 
 higherorder_in_out1([], [], _ModuleInfo, !HOIn, !HOOut).
 higherorder_in_out1([], [_ | _], _, !HOIn, !HOOut) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 higherorder_in_out1([_ | _], [], _, !HOIn, !HOOut) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 higherorder_in_out1([Type | Types], [Mode | Modes], ModuleInfo,
         !HOIn, !HOOut) :-
     ( if
@@ -799,7 +799,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             % Do nothing.
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated_unify")
+            unexpected($pred, "complicated_unify")
         )
     ;
         GoalExpr = plain_call(CPred, CProc, _Args, _Builtin, _UC, _Sym),
@@ -856,7 +856,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -926,7 +926,7 @@ get_called_procs(Goal, !Calls) :-
             % Do nothing.
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated_unify")
+            unexpected($pred, "complicated_unify")
         )
     ;
         GoalExpr = plain_call(CPred, CProc, _Args, _Builtin, _UC, _Sym),
@@ -979,7 +979,7 @@ get_called_procs(Goal, !Calls) :-
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 

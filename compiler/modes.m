@@ -1083,8 +1083,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
 
             detect_cse_in_proc(PredId, ProcId, !ModuleInfo),
             determinism_check_proc(ProcId, PredId, !ModuleInfo, DetismSpecs),
-            expect(unify(DetismSpecs, []), $module, $pred,
-                "found detism error"),
+            expect(unify(DetismSpecs, []), $pred, "found detism error"),
             save_proc_info(ProcId, PredId, !.ModuleInfo, !OldPredTable),
             unique_modes_check_proc(ProcId, PredId, !ModuleInfo,
                 NewChanged, UniqueSpecs),
@@ -1297,11 +1296,11 @@ modecheck_final_insts_gmb(HeadVars, InferModes, GroundMatchesBound,
 :- pred maybe_clobber_insts(list(mer_inst)::in, list(is_live)::in,
     list(mer_inst)::out) is det.
 
-maybe_clobber_insts([], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
-maybe_clobber_insts([_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
 maybe_clobber_insts([], [], []).
+maybe_clobber_insts([], [_ | _], _) :-
+    unexpected($pred, "length mismatch").
+maybe_clobber_insts([_ | _], [], _) :-
+    unexpected($pred, "length mismatch").
 maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
     (
         IsLive = is_dead,
@@ -1385,7 +1384,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
             InferModes, GroundMatchesBound, ArgNum + 1, ModuleInfo,
             !Goal, !Changed, !ModeInfo)
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%

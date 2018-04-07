@@ -231,7 +231,7 @@ record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
     ( if ConsTag = int_tag(int_tag_int(Index)) then
         map.det_insert(Index, Label, !IndexMap)
     else
-        unexpected($module, $pred, "not int_tag")
+        unexpected($pred, "not int_tag")
     ).
 
 %----------------------------------------------------------------------------%
@@ -244,7 +244,7 @@ record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
 generate_dense_jump_table(CurVal, LastVal, IndexPairs, Targets,
         !MaybeFailLabel, !CI) :-
     ( if CurVal > LastVal then
-        expect(unify(IndexPairs, []), $module, $pred,
+        expect(unify(IndexPairs, []), $pred,
             "NextVal > LastVal, IndexList not []"),
         Targets = []
     else

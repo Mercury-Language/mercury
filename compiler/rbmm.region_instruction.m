@@ -403,7 +403,7 @@ annotate_expr(Expr, ProgPoint, BecomeLive, BecomeDead,
         CreatedBeforeProgPoint = set.init,
         RemovedAfterProgPoint = set.init
     ;
-        unexpected($module, $pred, "non-atomic goal")
+        unexpected($pred, "non-atomic goal")
     ).
 
     % This predicate ensures that, out of the regions that become live at
@@ -522,7 +522,7 @@ make_create_or_remove_instruction(RegionInstrType, RegionName,
         RegionInstruction = remove_region(RegionName)
     ;
         RegionInstrType = renaming_region_instr,
-        unexpected($module, $pred, "unexpected region instruction type")
+        unexpected($pred, "unexpected region instruction type")
     ).
 
 %-----------------------------------------------------------------------------%

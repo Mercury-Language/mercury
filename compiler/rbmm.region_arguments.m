@@ -245,10 +245,10 @@ record_actual_region_arguments_expr(ModuleInfo, GoalExpr, GoalInfo, CallerPPId,
             Cases, !FormalRegionArgTable, !ActualRegionArgProc)
     ;
         GoalExpr = generic_call(_, _, _, _, _),
-        sorry($module, $pred, "generic_call NYI")
+        sorry($pred, "generic_call NYI")
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        sorry($module, $pred, "call_foreign_proc NYI")
+        sorry($pred, "call_foreign_proc NYI")
     ;
         GoalExpr = negation(SubGoal),
         record_actual_region_arguments_goal(ModuleInfo, CallerPPId,
@@ -265,7 +265,7 @@ record_actual_region_arguments_expr(ModuleInfo, GoalExpr, GoalInfo, CallerPPId,
             !FormalRegionArgTable, !ActualRegionArgProc)
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred record_actual_region_arguments_case(module_info::in,

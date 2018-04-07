@@ -226,7 +226,7 @@ constraints(empty_poly) = [lp_rational.false_constraint].
 
 non_false_constraints(eqns(Constraints)) = Constraints.
 non_false_constraints(empty_poly) =
-    unexpected($module, $pred, "empty polyhedron").
+    unexpected($pred, "empty polyhedron").
 
 is_empty(empty_poly).
 
@@ -236,9 +236,10 @@ is_universe(eqns(Constraints)) :-
 optimize(_, empty_poly, empty_poly).
 optimize(Varset, eqns(Constraints0), Result) :-
     Constraints = simplify_constraints(Constraints0),
-    ( if inconsistent(Varset, Constraints)
-    then Result = empty_poly
-    else Result = eqns(Constraints)
+    ( if inconsistent(Varset, Constraints) then
+        Result = empty_poly
+    else
+        Result = eqns(Constraints)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -347,7 +348,7 @@ convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
     lp_varset::in) is det.
 
 convex_hull([], _, _, _) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 convex_hull([Poly], eqns(Poly), _, _).
 convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, Varset0) :-
     % Perform the matrix transformation from the paper by Benoy and King.
@@ -510,9 +511,9 @@ bounding_box(eqns(Constraints), Varset) =
 
 widen(empty_poly, empty_poly, _) = empty_poly.
 widen(eqns(_), empty_poly, _) =
-    unexpected($module, $pred, "empty polyhedron").
+    unexpected($pred, "empty polyhedron").
 widen(empty_poly, eqns(_), _) =
-    unexpected($module, $pred, "empty polyhedron").
+    unexpected($pred, "empty polyhedron").
 widen(eqns(Poly1), eqns(Poly2), Varset) = eqns(WidenedEqns) :-
     WidenedEqns = list.filter(entailed(Varset, Poly2), Poly1).
 
@@ -529,7 +530,7 @@ project_all(Varset, Locals, Polyhedra) =
                 ProjectionResult),
             (
                 ProjectionResult = pr_res_aborted,
-                unexpected($module, $pred, "abort from project")
+                unexpected($pred, "abort from project")
             ;
                 ProjectionResult = pr_res_inconsistent,
                 Poly = empty_poly
@@ -552,7 +553,7 @@ project(Vars, Varset, eqns(Constraints0), Result) :-
     lp_rational.project(Vars, Varset, Constraints0, ProjectionResult),
     (
         ProjectionResult = pr_res_aborted,
-        unexpected($module, $pred, "abort from project")
+        unexpected($pred, "abort from project")
     ;
         ProjectionResult = pr_res_inconsistent,
         Result = empty_poly

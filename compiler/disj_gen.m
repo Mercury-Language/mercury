@@ -80,7 +80,7 @@ generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI, !CLD) :-
             ( CodeModel = model_det
             ; CodeModel = model_non
             ),
-            unexpected($module, $pred, "empty disjunction")
+            unexpected($pred, "empty disjunction")
         )
     ;
         Goals = [Goal | _],
@@ -484,7 +484,7 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
     llds_code::out, code_info::in, code_info::out) is det.
 
 generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
-    unexpected($module, $pred, "empty disjunction").
+    unexpected($pred, "empty disjunction").
 generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         MaybeEntryResumePoint, HijackInfo, DisjGoalInfo,
         RegionCommitDisjCleanup, EndLabel, ReclaimHeap,
@@ -554,9 +554,9 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                     BranchStart0, BranchStart, !CI),
                 HpCodeInstrs = cord.list(SaveHpCode),
                 BranchHpCodeInstrs = cord.list(BranchSaveHpCode),
-                expect(unify(HpCodeInstrs, BranchHpCodeInstrs), $module, $pred,
+                expect(unify(HpCodeInstrs, BranchHpCodeInstrs), $pred,
                     "cannot use same code for saving hp"),
-                expect(unify(HpSlot, BranchHpSlot), $module, $pred,
+                expect(unify(HpSlot, BranchHpSlot), $pred,
                     "cannot allocate same slot for saved hp")
             else
                 SaveHpCode = empty,

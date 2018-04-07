@@ -301,11 +301,11 @@ match_get_dead_var(Match) = Var :-
             Rest = []
         ;
             Rest = [_ | _],
-            unexpected($module, $pred, "too many dead vars")
+            unexpected($pred, "too many dead vars")
         )
     ;
         DeadVars = [],
-        unexpected($module, $pred, "empty list of vars")
+        unexpected($pred, "empty list of vars")
     ).
 
     % Get the list of cons_ids that the dead variable may have when it
@@ -332,7 +332,7 @@ match_get_condition(Background, Match) = Condition :-
             Rest, First, Condition)
     ;
         Conditions = [],
-        unexpected($module, $pred, "no reuse conditions")
+        unexpected($pred, "no reuse conditions")
     ).
 
     % Add a construction as a potential place for reusing the garbage
@@ -365,7 +365,7 @@ highest_match_degree_ratio(MatchTable) = Match :-
         Sorted = [Match | _]
     ;
         Sorted = [],
-        unexpected($module, $pred, "empty multi_map")
+        unexpected($pred, "empty multi_map")
     ).
 
 :- pred compare_matches_value_degree(match::in, match::in,
@@ -421,7 +421,7 @@ highest_match_in_list(Matches, Match0, Match) :-
         Sorted = [Match | _]
     ;
         Sorted = [],
-        unexpected($module, $pred, "empty list of matches")
+        unexpected($pred, "empty list of matches")
     ).
 
     % Given a list of matches concerning the same (list of) deconstruction,
@@ -448,7 +448,7 @@ average_match(List, AverageMatch) :-
             (Match0 ^ match_value / float(Length)))
     ;
         List = [],
-        unexpected($module, $pred, "empty list")
+        unexpected($pred, "empty list")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -657,7 +657,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred compute_match_table_in_disjs(background_info::in, dead_cell_table::in,
@@ -841,7 +841,7 @@ find_match_in_goal_2(Background, Goal, !Match) :-
             )
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated unify")
+            unexpected($pred, "complicated unify")
         )
     ;
         GoalExpr = plain_call(_, _, _, _, _, _)
@@ -876,7 +876,7 @@ find_match_in_goal_2(Background, Goal, !Match) :-
         find_match_in_goal_2(Background, ScopeGoal, !Match)
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- func count_candidates(list(match)) = int.
@@ -1045,7 +1045,7 @@ cons_has_normal_fields(ModuleInfo, Cons) :-
         ; Cons = table_io_entry_desc(_)
         ; Cons = deep_profiling_proc_layout(_)
         ),
-        unexpected($module, $pred, "unusual cons_id")
+        unexpected($pred, "unusual cons_id")
     ).
 
 :- func glb_reuse_types(list(reuse_type)) = reuse_type is semidet.
@@ -1220,7 +1220,7 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand.")
+        unexpected($pred, "shorthand.")
     ),
     !:Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -1263,7 +1263,7 @@ annotate_reuse_for_unification(Background, Match, Unification, !GoalInfo) :-
                 Kind = unconditional_reuse
             else
                 % reuse_as_no_reuses(ReuseAs)
-                unexpected($module, $pred, "no reuse conditions")
+                unexpected($pred, "no reuse conditions")
             ),
             CellReused = cell_reused(DeadVar, Kind, DeadConsIds,
                 ReuseFields),
@@ -1286,7 +1286,7 @@ annotate_reuse_for_unification(Background, Match, Unification, !GoalInfo) :-
         Unification = simple_test(_, _)
     ;
         Unification = complicated_unify(_, _, _),
-        unexpected($module, $pred, "complicated_unify")
+        unexpected($pred, "complicated_unify")
     ).
 
 :- pred match_find_deconstruction_spec(match::in, program_point::in,
@@ -1495,7 +1495,7 @@ check_for_cell_caching_2(DeadCellTable, !Goal) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
     !:Goal = hlds_goal(GoalExpr, GoalInfo).
 

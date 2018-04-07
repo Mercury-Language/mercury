@@ -440,9 +440,9 @@ instmap_delta_from_mode_list(ModuleInfo, Var, Modes, InstMapDelta) :-
 
 instmap_delta_from_mode_list_2(_, [], [], !InstMapDelta).
 instmap_delta_from_mode_list_2(_, [], [_ | _], !InstMapDelta) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 instmap_delta_from_mode_list_2(_, [_ | _], [], !InstMapDelta) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 instmap_delta_from_mode_list_2(ModuleInfo, [Var | Vars], [Mode | Modes],
         !InstMapDelta) :-
     mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
@@ -465,9 +465,9 @@ instmap_delta_from_from_to_insts_list(ModuleInfo, Var, FromToInsts,
 
 instmap_delta_from_from_to_insts_list_2(_, [], [], !InstMapDelta).
 instmap_delta_from_from_to_insts_list_2(_, [], [_ | _], !InstMapDelta) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 instmap_delta_from_from_to_insts_list_2(_, [_ | _], [], !InstMapDelta) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 instmap_delta_from_from_to_insts_list_2(ModuleInfo, [Var | Vars],
         [FromToInst | FromToInsts], !InstMapDelta) :-
     FromToInst = from_to_insts(InitInst, FinalInst),
@@ -585,7 +585,7 @@ instmap_delta_lookup_var(InstMapDelta, Var, Inst) :-
     ( if instmap_delta_search_var(InstMapDelta, Var, InstPrime) then
         Inst = InstPrime
     else
-        unexpected($module, $pred, "var not in instmap")
+        unexpected($pred, "var not in instmap")
     ).
 
 instmap_lookup_vars(_InstMap, [], []).
@@ -612,7 +612,7 @@ instmap_set_vars(VarsInsts, !InstMap) :-
 
 instmapping_set_vars([], !InstMapping).
 instmapping_set_vars([Var - Inst | VarsInsts], !InstMapping) :-
-    expect(negate(unify(Inst, not_reached)), $module, $pred, "not_reached"),
+    expect(negate(unify(Inst, not_reached)), $pred, "not_reached"),
     map.set(Var, Inst, !InstMapping),
     instmapping_set_vars(VarsInsts, !InstMapping).
 
@@ -634,13 +634,13 @@ instmap_set_vars_corresponding(Vars, Insts, !InstMap) :-
 instmapping_set_vars_corresponding([], [], !InstMapping).
 instmapping_set_vars_corresponding([Var | Vars], [Inst | Insts],
         !InstMapping) :-
-    expect(negate(unify(Inst, not_reached)), $module, $pred, "not_reached"),
+    expect(negate(unify(Inst, not_reached)), $pred, "not_reached"),
     map.set(Var, Inst, !InstMapping),
     instmapping_set_vars_corresponding(Vars, Insts, !InstMapping).
 instmapping_set_vars_corresponding([_ | _], [], !InstMapping) :-
-    unexpected($module, $pred, "length mismatch (1)").
+    unexpected($pred, "length mismatch (1)").
 instmapping_set_vars_corresponding([], [_ | _], !InstMapingp) :-
-    unexpected($module, $pred, "length mismatch (2)").
+    unexpected($pred, "length mismatch (2)").
 
 instmap_set_vars_same(Inst, Vars, !InstMap) :-
     (
@@ -648,7 +648,7 @@ instmap_set_vars_same(Inst, Vars, !InstMap) :-
         % Leave the instmap as it is.
     ;
         !.InstMap = reachable(InstMapping0),
-        expect(negate(unify(Inst, not_reached)), $module, $pred,
+        expect(negate(unify(Inst, not_reached)), $pred,
             "not_reached"),
         instmapping_set_vars_same(Inst, Vars, InstMapping0, InstMapping),
         !:InstMap = reachable(InstMapping)
@@ -677,8 +677,7 @@ instmap_delta_set_vars_same(Inst, Vars, !InstMapDelta) :-
         % Leave the instmap as it is.
     ;
         !.InstMapDelta = reachable(InstMapping0),
-        expect(negate(unify(Inst, not_reached)), $module, $pred,
-            "not_reached"),
+        expect(negate(unify(Inst, not_reached)), $pred, "not_reached"),
         instmapping_set_vars_same(Inst, Vars, InstMapping0, InstMapping),
         !:InstMapDelta = reachable(InstMapping)
     ).
@@ -774,7 +773,7 @@ bind_inst_to_functor(Type, ConsId, !Inst, !ModuleInfo) :-
     then
         true
     else
-        unexpected($module, $pred, "mode error")
+        unexpected($pred, "mode error")
     ).
 
 :- pred bind_inst_to_functors(mer_type::in, cons_id::in, list(cons_id)::in,
@@ -797,7 +796,7 @@ bind_inst_to_functors(Type, MainConsId, OtherConsIds, InitInst, FinalInst,
         % should come only after mode checking has been done without finding
         % any errors. Finding an error now would mean that some compiler pass
         % executed between mode checking and how has screwed up.
-        unexpected($module, $pred, "no MaybeMergedInst")
+        unexpected($pred, "no MaybeMergedInst")
     ).
 
 :- pred bind_inst_to_functors_others(mer_type::in, list(cons_id)::in,
@@ -889,9 +888,9 @@ instmap_delta_delete_vars(Vars,
 
 make_arm_instmaps_for_goals([], [], []).
 make_arm_instmaps_for_goals([], [_ | _], _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 make_arm_instmaps_for_goals([_ | _], [], _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 make_arm_instmaps_for_goals([Goal | Goals], [InstMap | InstMaps],
         [ArmInfo | ArmInfos]) :-
     Goal = hlds_goal(_, GoalInfo),
@@ -901,9 +900,9 @@ make_arm_instmaps_for_goals([Goal | Goals], [InstMap | InstMaps],
 
 make_arm_instmaps_for_cases([], [], []).
 make_arm_instmaps_for_cases([], [_ | _], _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 make_arm_instmaps_for_cases([_ | _], [], _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 make_arm_instmaps_for_cases([Case | Cases], [InstMap | InstMaps],
         [ArmInfo | ArmInfos]) :-
     Case = case(_, _, Goal),
@@ -1118,7 +1117,7 @@ merge_instmap_deltas(InstMap, NonLocals, VarTypes, Deltas,
         [], MergedDeltas, !ModuleInfo),
     (
         MergedDeltas = [],
-        unexpected($module, $pred, "empty instmap_delta list.")
+        unexpected($pred, "empty instmap_delta list.")
     ;
         MergedDeltas = [MergedDelta]
     ;
@@ -1313,7 +1312,7 @@ merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes,
         term.var_to_int(Var, VarInt),
         string.format("merge_instmapping_delta_2: error merging var %i",
             [i(VarInt)], Msg),
-        unexpected($module, $pred, Msg)
+        unexpected($pred, Msg)
     ),
     merge_instmapping_delta_2(Vars, InstMap, VarTypes,
         InstMappingA, InstMappingB, !InstMapping, !ModuleInfo).
@@ -1366,7 +1365,7 @@ unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
             then
                 map.det_insert(Var, Inst, !InstMapping)
             else
-                unexpected($module, $pred, "unexpected error")
+                unexpected($pred, "unexpected error")
             )
         else
             map.det_insert(Var, InstA, !InstMapping)

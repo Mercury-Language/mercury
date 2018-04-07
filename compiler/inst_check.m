@@ -375,19 +375,16 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstId,
             ;
                 IFTC0 = iftc_applicable_known(_),
                 % We haven't yet had a chance to set IFTC0 to this value.
-                unexpected($module, $pred,
-                    "bound, IFTC0 = iftc_applicable_known")
+                unexpected($pred, "bound, IFTC0 = iftc_applicable_known")
             ;
                 IFTC0 = iftc_applicable_error,
                 % We haven't yet had a chance to set IFTC0 to this value.
-                unexpected($module, $pred,
-                    "bound, IFTC0 = iftc_applicable_error")
+                unexpected($pred, "bound, IFTC0 = iftc_applicable_error")
             ;
                 IFTC0 = iftc_not_applicable,
                 % A "for type" annotation definitely is applicable to this
                 % inst definition.
-                unexpected($module, $pred,
-                    "bound, IFTC0 = iftc_not_applicable")
+                unexpected($pred, "bound, IFTC0 = iftc_not_applicable")
             )
         ;
             ( Inst = any(_, _)
@@ -400,7 +397,7 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstId,
             ; Inst = defined_inst(_)
             ; Inst = abstract_inst(_, _)
             ),
-            expect(unify(IFTC0, iftc_not_applicable), $module, $pred,
+            expect(unify(IFTC0, iftc_not_applicable), $pred,
                 "not bound, IFTC0 != iftc_not_applicable"),
             InstDefn = InstDefn0
         )
@@ -871,7 +868,7 @@ find_matching_user_types(FunctorSymName,
     TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
     (
         TypeCtorSymName = unqualified(_),
-        unexpected($module, $pred, "TypeCtorSymName is unqualified")
+        unexpected($pred, "TypeCtorSymName is unqualified")
     ;
         TypeCtorSymName = qualified(TypeCtorModuleName, _)
     ),
@@ -1207,7 +1204,7 @@ diagnose_mismatches_from_type(BoundInsts, TypeDefnOrBuiltin,
             ; TypeDefnBody = hlds_solver_type(_)
             ; TypeDefnBody = hlds_abstract_type(_)
             ),
-            unexpected($module, $pred, "non-du TypeDefnBody")
+            unexpected($pred, "non-du TypeDefnBody")
         ),
         find_mismatches_from_user(Constructors, 1, BoundInsts,
             0, NumMismatches, cord.init, MismatchPiecesCord)

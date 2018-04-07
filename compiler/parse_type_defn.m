@@ -80,7 +80,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module unit.
 
 parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
@@ -186,7 +185,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         % We asked parse_type_decl_where_term to return an error if
         % WhereTerm contains solver attributes, so we shouldn't get here
         % if SolverTypeDetails is yes(...).
-        expect(unify(SolverTypeDetails, no), $module, $pred,
+        expect(unify(SolverTypeDetails, no), $pred,
             "discriminated union type has solver type details"),
         OneOrMoreCtors = one_or_more(HeadCtor, TailCtors),
         Ctors = [HeadCtor | TailCtors],
@@ -1350,8 +1349,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                         [always(Pieces)])]),
                 MaybeWhereDetails = error3([Spec])
             else
-               unexpected($module, $pred, "make_maybe_where_details_2: " ++
-                    "shouldn't have reached this point! (1)")
+               unexpected($pred, "shouldn't have reached this point! (1)")
             )
         ;
             IsSolverType = non_solver_type,

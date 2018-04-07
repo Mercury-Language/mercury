@@ -408,7 +408,7 @@ convert_foreign_language_det(String, ForeignLang) :-
     ( if convert_foreign_language(String, ForeignLangPrime) then
         ForeignLang = ForeignLangPrime
     else
-        unexpected($module, $pred, "invalid foreign_language string")
+        unexpected($pred, "invalid foreign_language string")
     ).
 
 convert_foreign_language(String, ForeignLanguage) :-
@@ -780,8 +780,8 @@ lookup_bool_option(Globals, Option, Value) :-
     ( if OptionData = bool(Bool) then
         Value = Bool
     else
-        unexpected($module, $pred,
-            format("invalid bool option (%s is %s)",
+        unexpected($pred,
+            string.format("invalid bool option (%s is %s)",
                 [s(string(Option)), s(string(OptionData))]))
     ).
 
@@ -790,8 +790,8 @@ lookup_string_option(Globals, Option, Value) :-
     ( if OptionData = string(String) then
         Value = String
     else
-        unexpected($module, $pred,
-            format("invalid string option (%s is %s)",
+        unexpected($pred,
+            string.format("invalid string option (%s is %s)",
                 [s(string(Option)), s(string(OptionData))]))
     ).
 
@@ -800,8 +800,8 @@ lookup_int_option(Globals, Option, Value) :-
     ( if OptionData = int(Int) then
         Value = Int
     else
-        unexpected($module, $pred,
-            format("invalid int option (%s is %s)",
+        unexpected($pred,
+            string.format("invalid int option (%s is %s)",
                 [s(string(Option)), s(string(OptionData))]))
     ).
 
@@ -810,8 +810,8 @@ lookup_maybe_int_option(Globals, Option, Value) :-
     ( if OptionData = maybe_int(MaybeInt) then
         Value = MaybeInt
     else
-        unexpected($module, $pred,
-            format("invalid maybe_int option (%s is %s)",
+        unexpected($pred,
+            string.format("invalid maybe_int option (%s is %s)",
                 [s(string(Option)), s(string(OptionData))]))
     ).
 
@@ -820,8 +820,8 @@ lookup_maybe_string_option(Globals, Option, Value) :-
     ( if OptionData = maybe_string(MaybeString) then
         Value = MaybeString
     else
-        unexpected($module, $pred,
-            format("invalid maybe_string option (%s is %s)",
+        unexpected($pred,
+            string.format("invalid maybe_string option (%s is %s)",
                 [s(string(Option)), s(string(OptionData))]))
     ).
 
@@ -830,8 +830,8 @@ lookup_accumulating_option(Globals, Option, Value) :-
     ( if OptionData = accumulating(Accumulating) then
         Value = Accumulating
     else
-        unexpected($module, $pred,
-            format("invalid accumulating option (%s is %s)",
+        unexpected($pred,
+            string.format("invalid accumulating option (%s is %s)",
                 [s(string(Option)), s(string(OptionData))]))
     ).
 
@@ -939,7 +939,7 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
             FloatDwords = yes
         )
     else
-        unexpected($module, $pred, "bits_per_word not 32 or 64")
+        unexpected($pred, "bits_per_word not 32 or 64")
     ).
 
 %-----------------------------------------------------------------------------%

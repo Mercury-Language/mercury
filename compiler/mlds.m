@@ -2503,7 +2503,7 @@ mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
             Arity, model_det, no)
     ;
         PredLabel0 = mlds_special_pred_label(_, _, _, _),
-        unexpected($module, $pred, "mlds_special_pred_label")
+        unexpected($pred, "mlds_special_pred_label")
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId).
 
@@ -2538,7 +2538,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         ;
             MaybeC = no,
             % This is checked by check_foreign_type in make_hlds.
-            unexpected($module, $pred, "no C foreign type")
+            unexpected($pred, "no C foreign type")
         )
     ;
         Target = target_csharp,
@@ -2549,7 +2549,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         ;
             MaybeCSharp = no,
             % This is checked by check_foreign_type in make_hlds.
-            unexpected($module, $pred, "no C# foreign type")
+            unexpected($pred, "no C# foreign type")
         )
     ;
         Target = target_java,
@@ -2560,11 +2560,11 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         ;
             MaybeJava = no,
             % This is checked by check_foreign_type in make_hlds.
-            unexpected($module, $pred, "no Java foreign type")
+            unexpected($pred, "no Java foreign type")
         )
     ;
         Target = target_erlang,
-        unexpected($module, $pred, "target erlang")
+        unexpected($pred, "target erlang")
     ),
     MLDSType = mlds_foreign_type(ForeignType).
 

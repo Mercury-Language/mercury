@@ -100,8 +100,8 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             TypeCtor = type_ctor(_QualTypeName, RealArity),
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
-            expect(check_var_arity(VarArityId, PseudoArgs, RealArity),
-                $module, $pred, "var arity mismatch"),
+            expect(check_var_arity(VarArityId, PseudoArgs, RealArity), $pred,
+                "var arity mismatch"),
             PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, PseudoArgs)
         else
             TypeCtor = type_ctor(QualTypeName, Arity),
@@ -111,8 +111,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
-            expect(check_arity(PseudoArgs, Arity), $module, $pred,
-                "arity mismatch"),
+            expect(check_arity(PseudoArgs, Arity), $pred, "arity mismatch"),
             (
                 PseudoArgs = [],
                 PseudoTypeInfo =
@@ -152,10 +151,10 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             then
                 VarInt = ExistNum0 + pseudo_typeinfo_exist_var_base
             else
-                unexpected($module, $pred, "not in list")
+                unexpected($pred, "not in list")
             )
         ),
-        expect(VarInt =< pseudo_typeinfo_max_var, $module, $pred,
+        expect(VarInt =< pseudo_typeinfo_max_var, $pred,
             "type var exceeds limit"),
         PseudoTypeInfo = type_var(VarInt)
     ).
@@ -165,8 +164,8 @@ construct_type_info(Type, TypeInfo) :-
     ( if type_is_var_arity(Type, VarArityId) then
         TypeCtor = type_ctor(_QualTypeName, RealArity),
         generate_plain_args(TypeArgs, TypeInfoArgs),
-        expect(check_var_arity(VarArityId, TypeInfoArgs, RealArity),
-            $module, $pred, "arity mismatch"),
+        expect(check_var_arity(VarArityId, TypeInfoArgs, RealArity), $pred,
+            "arity mismatch"),
         TypeInfo = var_arity_type_info(VarArityId, TypeInfoArgs)
     else
         TypeCtor = type_ctor(QualTypeName, Arity),
@@ -175,8 +174,7 @@ construct_type_info(Type, TypeInfo) :-
             unqualified("builtin"), TypeModule),
         RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
         generate_plain_args(TypeArgs, TypeInfoArgs),
-        expect(check_arity(TypeInfoArgs, Arity),
-            $module, $pred, "arity mismatch"),
+        expect(check_arity(TypeInfoArgs, Arity), $pred, "arity mismatch"),
         (
             TypeInfoArgs = [],
             TypeInfo = plain_arity_zero_type_info(RttiTypeCtor)

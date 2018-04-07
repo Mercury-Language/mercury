@@ -400,7 +400,7 @@ apply_dg_to_goal(!Goal, CallerPredId, CallerProcId, PredIdSpecialized,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
     % Apply the distance granularity transformation to a plain call.
@@ -531,7 +531,7 @@ create_if_then_else_goal(GoalsInConj, ConjInfo, MaybeGranularityVar,
         MaybeGranularityVar = no,
         % The conjunction contains recursive calls so the
         % granularity variable must have been created.
-        unexpected($module, $pred, "MaybeGranularityVar = no")
+        unexpected($pred, "MaybeGranularityVar = no")
     ).
 
     % Update the then part of the new if_then_else goal introduced by the
@@ -620,7 +620,7 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
         )
     else
         % Not a parallel conjunction.
-        unexpected($module, $pred, "unexpected goal type")
+        unexpected($pred, "unexpected goal type")
     ).
 
     % Recompute the hlds_goal_info of a conjunction.
@@ -640,7 +640,7 @@ recompute_conj_info(!Conj) :-
         !:Conj = hlds_goal(conj(Type, Goals), ConjInfo)
     else
         % Not a conjunction.
-        unexpected($module, $pred, "unexpected goal type")
+        unexpected($pred, "unexpected goal type")
     ).
 
     % Update the else part of the new if_then_else goal introduced by the
@@ -770,7 +770,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                 CallerPredId, CallerProcId, ModuleInfo, !ProcInfo)
         )
     else
-        unexpected($module, $pred, "unexpected goal type")
+        unexpected($pred, "unexpected goal type")
     ).
 
     % Apply the distance granularity transformation to a disjunction.
@@ -953,7 +953,7 @@ update_original_predicate_goal(!Goal, CallerPredId, CallerProcId,
     ;
         GoalExpr0 = shorthand(_),
         % Shorthand are not supposed to occur here.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
     % Update the plain call so that the pred_id called is the one of the

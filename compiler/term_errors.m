@@ -237,7 +237,7 @@ report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
     Piece2 = words("set to infinity for the following"),
     (
         Errors = [],
-        unexpected($module, $pred, "empty list of errors")
+        unexpected($pred, "empty list of errors")
     ;
         Errors = [Error],
         Piece3 = words("reason:"),
@@ -299,7 +299,7 @@ describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
             report_arg_size_errors(ModuleInfo, ArgSizePPIdSCC, ArgSizeErrors,
                 !Specs)
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 "inf arg size procedure does not have inf arg size")
         )
     ;
@@ -329,7 +329,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         ErrorKind = inf_call(CallerPPId, CalleePPId),
         (
             Single = yes(PPId),
-            expect(unify(PPId, CallerPPId), $module, $pred,
+            expect(unify(PPId, CallerPPId), $pred,
                 "inf_call: caller outside this SCC"),
             Pieces1 = [words("It")]
         ;
@@ -348,7 +348,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         ErrorKind = can_loop_proc_called(CallerPPId, CalleePPId),
         (
             Single = yes(PPId),
-            expect(unify(PPId, CallerPPId), $module, $pred,
+            expect(unify(PPId, CallerPPId), $pred,
                 "can_loop_proc_called: caller outside this SCC"),
             Pieces1 = [words("It")]
         ;
@@ -372,7 +372,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         ErrorKind = horder_args(CallerPPId, CalleePPId),
         (
             Single = yes(PPId),
-            expect(unify(PPId, CallerPPId), $module, $pred,
+            expect(unify(PPId, CallerPPId), $pred,
                 "horder_args: caller outside this SCC"),
             Pieces1 = [words("It")]
         ;
@@ -390,7 +390,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         ErrorKind = inf_termination_const(CallerPPId, CalleePPId),
         (
             Single = yes(PPId),
-            expect(unify(PPId, CallerPPId), $module, $pred,
+            expect(unify(PPId, CallerPPId), $pred,
                 "inf_termination_const: caller outside this SCC"),
             Pieces1 = [words("It")]
         ;
@@ -409,7 +409,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         % XXX We should print out the names of the non-terminating closures.
         (
             Single = yes(PPId),
-            expect(unify(PPId, CallerPPId), $module, $pred,
+            expect(unify(PPId, CallerPPId), $pred,
                 "ho_info_termination_const: caller outside this SCC"),
             Pieces1 = [words("It")]
         ;
@@ -490,7 +490,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         Reason = no
     ;
         ErrorKind = is_builtin(_PredId),
-        % XXX expect(unify(Single, yes(_)), $module, $pred,
+        % XXX expect(unify(Single, yes(_)), $pred,
         %       "builtin not alone in SCC"),
         Pieces = [words("It is a builtin predicate."), nl],
         Reason = no
@@ -501,7 +501,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         (
             Single = yes(PPId),
             PPId = proc(SCCPredId, _),
-            expect(unify(PredId, SCCPredId), $module, $pred,
+            expect(unify(PredId, SCCPredId), $pred,
                 "does not terminate pragma outside this SCC"),
             Pieces2 = [words("it."), nl]
         ;

@@ -174,9 +174,9 @@ vartypes_add_corresponding_lists(Vars, Types, !VarTypes) :-
 
 vartypes_overlay_corresponding_lists([], [], !VarTypes).
 vartypes_overlay_corresponding_lists([], [_ | _], !VarTypes) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 vartypes_overlay_corresponding_lists([_ | _], [], !VarTypes) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 vartypes_overlay_corresponding_lists([Var | Vars], [Type | Types],
         !VarTypes) :-
     map.set(Var, Type, !VarTypes),

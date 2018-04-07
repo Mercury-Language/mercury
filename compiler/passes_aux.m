@@ -226,7 +226,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
-:- import_module require.
 :- import_module set_tree234.
 :- import_module string.
 :- import_module varset.
@@ -480,11 +479,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
     % front by polymorphism.m - we only want the last `PredArity' of them.
     list.length(ArgModes0, NumArgModes),
     NumToDrop = NumArgModes - Arity,
-    ( if list.drop(NumToDrop, ArgModes0, ArgModes1) then
-        ArgModes = ArgModes1
-    else
-        unexpected($module, $pred, "list.drop failed")
-    ),
+    list.det_drop(NumToDrop, ArgModes0, ArgModes),
     (
         MaybeContext = yes(OutContext)
     ;

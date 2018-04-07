@@ -188,7 +188,7 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
                 ProcVoidVar, map.init, ProcVoidVarRegion),
             map.set(PPId, ProcVoidVarRegion, !VoidVarRegionTable)
         ;
-            unexpected($module, $pred, "no rpta_info")
+            unexpected($pred, "no rpta_info")
         )
     ).
 

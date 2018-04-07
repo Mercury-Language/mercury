@@ -149,11 +149,10 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = comment(_)
     ;
         Uinstr0 = livevals(_),
-        unexpected($module, $pred,
-            "livevals found in backward scan in build_livemap")
+        unexpected($pred, "livevals found in backward scan in build_livemap")
     ;
         Uinstr0 = block(_, _, _),
-        unexpected($module, $pred, "block found in backward scan")
+        unexpected($pred, "block found in backward scan")
     ;
         ( Uinstr0 = assign(Lval, Rval)
         ; Uinstr0 = keep_assign(Lval, Rval)
@@ -222,7 +221,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
                 ; CodeAddr = do_call_closure(_)
                 ; CodeAddr = do_call_class_method(_)
                 ),
-                unexpected($module, $pred, "unknown code_addr type")
+                unexpected($pred, "unknown code_addr type")
             )
         ),
         livemap_special_code_addr(CodeAddr, MaybeSpecial),
@@ -371,7 +370,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = decr_sp_and_return(_),
         % These instructions should be generated only *after* any optimizations
         % that need livemaps have been run for the last time.
-        unexpected($module, $pred, "decr_sp_and_return")
+        unexpected($pred, "decr_sp_and_return")
     ;
         Uinstr0 = init_sync_term(_, _, _)
     ;
@@ -486,7 +485,7 @@ look_for_livevals(Instrs0, Instrs, !Livevals, Site, Compulsory, Found) :-
     else
         (
             Compulsory = yes,
-            unexpected($module, $pred, Site ++ " not preceded by livevals")
+            unexpected($pred, Site ++ " not preceded by livevals")
         ;
             Compulsory = no,
             Instrs = Instrs1,
@@ -564,8 +563,7 @@ make_live_in_rval(Rval, !Live) :-
         make_live_in_rval(SubRvalB, !Live)
     ;
         Rval = var(_),
-        unexpected($module, $pred,
-            "var rval should not propagate to the optimizer")
+        unexpected($pred, "var rval should not propagate to the optimizer")
     ;
         Rval = mem_addr(MemRef),
         make_live_in_mem_ref(MemRef, !Live)

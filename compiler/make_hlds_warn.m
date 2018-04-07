@@ -273,7 +273,7 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
             Reason = loop_control(_, _, _),
             % These scopes are introduced only by compiler passes
             % that execute after us.
-            sorry($module, $pred, "loop_control")
+            sorry($pred, "loop_control")
         )
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),

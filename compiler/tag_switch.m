@@ -253,7 +253,7 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
             ( if PtagReg = reg(reg_r, PtagRegNo) then
                 PtagRegNo =< NumRealRegs
             else
-                unexpected($module, $pred, "improper reg in tag switch")
+                unexpected($pred, "improper reg in tag switch")
             )
         )
     then
@@ -345,14 +345,14 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
 
 generate_primary_try_me_else_chain([], _, _, _, _, _, _,
         !CaseLabelMap, !CI) :-
-    unexpected($module, $pred, "empty switch").
+    unexpected($pred, "empty switch").
 generate_primary_try_me_else_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
         VarRval, MaybeFailLabel, PtagCountMap, Code, !CaseLabelMap, !CI) :-
     PtagGroup = ptag_case_group_entry(MainPtag, OtherPtags, PtagCase),
     PtagCase = ptag_case(StagLoc, StagGoalMap),
     map.lookup(PtagCountMap, MainPtag, CountInfo),
     CountInfo = StagLocPrime - MaxSecondary,
-    expect(unify(StagLoc, StagLocPrime), $module, $pred,
+    expect(unify(StagLoc, StagLocPrime), $pred,
         "secondary tag locations differ"),
     (
         PtagGroups = [_ | _],
@@ -435,7 +435,7 @@ generate_primary_try_me_else_chain_other_ptags([OtherPtag | OtherPtags],
     code_info::in, code_info::out) is det.
 
 generate_primary_try_chain([], _, _, _, _, _, _, _, _, !CaseLabelMap, !CI) :-
-     unexpected($module, $pred, "empty list").
+     unexpected($pred, "empty list").
 generate_primary_try_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
         VarRval, MaybeFailLabel, PtagCountMap, PrevTestsCode0, PrevCasesCode0,
         Code, !CaseLabelMap, !CI) :-
@@ -443,7 +443,7 @@ generate_primary_try_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
     PtagCase = ptag_case(StagLoc, StagGoalMap),
     map.lookup(PtagCountMap, MainPtag, CountInfo),
     CountInfo = StagLocPrime - MaxSecondary,
-    expect(unify(StagLoc, StagLocPrime), $module, $pred,
+    expect(unify(StagLoc, StagLocPrime), $pred,
         "secondary tag locations differ"),
     (
         PtagGroups = [_ | _],
@@ -541,7 +541,7 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
         VarRval, MaybeFailLabel, PtagCountMap, Targets, Code,
         !CaseLabelMap, !CI) :-
     ( if CurPrimary > MaxPrimary then
-        expect(unify(PtagGroups, []), $module, $pred,
+        expect(unify(PtagGroups, []), $pred,
             "PtagGroups != [] when Cur > Max"),
         Targets = [],
         Code = empty
@@ -554,7 +554,7 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
             map.lookup(PtagCountMap, CurPrimary, CountInfo),
             CountInfo = StagLocPrime - MaxSecondary,
-            expect(unify(StagLoc, StagLocPrime), $module, $pred,
+            expect(unify(StagLoc, StagLocPrime), $pred,
                 "secondary tag locations differ"),
             get_next_label(NewLabel, !CI),
             Comment = "start of a case in primary tag switch: ptag " ++
@@ -611,19 +611,19 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
             )
         ;
             PtagGroups = [ptag_case_entry(CurPrimaryPrime, PrimaryInfo)],
-            expect(unify(CurPrimary, CurPrimaryPrime), $module, $pred,
+            expect(unify(CurPrimary, CurPrimaryPrime), $pred,
                 "cur_primary mismatch"),
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
             map.lookup(PtagCountMap, CurPrimary, CountInfo),
             CountInfo = StagLocPrime - MaxSecondary,
-            expect(unify(StagLoc, StagLocPrime), $module, $pred,
+            expect(unify(StagLoc, StagLocPrime), $pred,
                 "secondary tag locations differ"),
             generate_primary_tag_code(StagGoalMap, CurPrimary, [],
                 MaxSecondary, StagReg, StagLoc, VarRval, MaybeFailLabel, Code,
                 !CaseLabelMap, !CI)
         ;
             PtagGroups = [_, _ | _],
-            unexpected($module, $pred,
+            unexpected($pred,
                 "caselist not singleton or empty when binary search ends")
         )
     else
@@ -683,25 +683,23 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
         % There is no secondary tag, so there is no switch on it.
         (
             StagGoalList = [],
-            unexpected($module, $pred, "no goal for non-shared tag")
+            unexpected($pred, "no goal for non-shared tag")
         ;
             StagGoalList = [StagGoal],
             ( if StagGoal = -1 - CaseLabel then
                 generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
             else
-                unexpected($module, $pred,
-                    "badly formed goal for non-shared tag")
+                unexpected($pred, "badly formed goal for non-shared tag")
             )
         ;
             StagGoalList = [_, _ | _],
-            unexpected($module, $pred, "more than one goal for non-shared tag")
+            unexpected($pred, "more than one goal for non-shared tag")
         )
     ;
         ( StagLoc = sectag_local
         ; StagLoc = sectag_remote
         ),
-        expect(unify(OtherPtags, []), $module, $pred,
-            ">1 ptag with secondary tag"),
+        expect(unify(OtherPtags, []), $pred, ">1 ptag with secondary tag"),
 
         % There is a secondary tag, so figure out how to switch on it.
         get_globals(!.CI, Globals),
@@ -741,7 +739,7 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
                 ( if StagReg = reg(reg_r, StagRegNo) then
                     StagRegNo =< NumRealRegs
                 else
-                    unexpected($module, $pred, "improper reg in tag switch")
+                    unexpected($pred, "improper reg in tag switch")
                 )
             )
         then
@@ -804,7 +802,7 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
     code_info::in, code_info::out) is det.
 
 generate_secondary_try_me_else_chain([], _, _, _, !CaseLabelMap, !CI) :-
-    unexpected($module, $pred, "empty switch").
+    unexpected($pred, "empty switch").
 generate_secondary_try_me_else_chain([Case | Cases], StagRval,
         MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
     Case = Secondary - CaseLabel,
@@ -862,7 +860,7 @@ generate_secondary_try_me_else_chain_case(CaseLabel, StagRval, Secondary,
     case_label_map::in, case_label_map::out) is det.
 
 generate_secondary_try_chain([], _, _, _, _, !CaseLabelMap) :-
-    unexpected($module, $pred, "empty switch").
+    unexpected($pred, "empty switch").
 generate_secondary_try_chain([Case | Cases], StagRval, MaybeFailLabel,
         PrevTestsCode0, Code, !CaseLabelMap) :-
     Case = Secondary - CaseLabel,
@@ -917,7 +915,7 @@ generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
 generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
         MaybeFailLabel, Targets) :-
     ( if CurSecondary > MaxSecondary then
-        expect(unify(CaseList, []), $module, $pred,
+        expect(unify(CaseList, []), $pred,
             "caselist not empty when reaching limiting secondary tag"),
         Targets = []
     else
@@ -964,12 +962,12 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             )
         ;
             StagGoals = [CurSecPrime - CaseLabel],
-            expect(unify(CurSec, CurSecPrime), $module, $pred,
+            expect(unify(CurSec, CurSecPrime), $pred,
                 "cur_secondary mismatch"),
             generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
         ;
             StagGoals = [_, _ | _],
-            unexpected($module, $pred,
+            unexpected($pred,
                 "goallist not singleton or empty when binary search ends")
         )
     else

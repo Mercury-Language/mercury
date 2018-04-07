@@ -736,8 +736,8 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_simplify(no, simplify_pass_post_untuple, Verbose, Stats, !HLDS,
             [], SimplifySpecs, !IO),
-        expect(unify(contains_errors(Globals, SimplifySpecs), no),
-            $module, $pred, "simplify has errors"),
+        expect(unify(contains_errors(Globals, SimplifySpecs), no), $pred,
+            "simplify has errors"),
         maybe_report_stats(Stats, !IO)
     ;
         Untuple = no
@@ -870,7 +870,7 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
         then
             Specs = SpecsPrime
         else
-            unexpected($module, $pred, "bad task")
+            unexpected($pred, "bad task")
         ),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
@@ -956,7 +956,7 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
         (
             Deforest = no,
             Constraints = no,
-            unexpected($module, $pred, "no no")
+            unexpected($pred, "no no")
         ;
             Deforest = yes,
             Constraints = yes,
@@ -1313,7 +1313,7 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
     (
         AsWords = yes,
         AsCells = yes,
-        unexpected($module, $pred, "as_words and as_cells")
+        unexpected($pred, "as_words and as_cells")
     ;
         AsWords = yes,
         AsCells = no,

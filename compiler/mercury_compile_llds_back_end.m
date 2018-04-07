@@ -179,7 +179,7 @@ llds_backend_pass_by_phases(!HLDS, !:LLDS, !GlobalData, !Specs,
 
     maybe_simplify(no, simplify_pass_ll_backend, Verbose, Stats, !HLDS,
         [], SimplifySpecs, !IO),
-    expect(unify(contains_errors(Globals, SimplifySpecs), no), $module, $pred,
+    expect(unify(contains_errors(Globals, SimplifySpecs), no), $pred,
         "simplify has errors"),
     maybe_dump_hlds(!.HLDS, 325, "ll_backend_simplify", !DumpInfo, !IO),
 
@@ -845,15 +845,15 @@ make_foreign_import_header_code(Globals, ForeignImportModule, Include, !IO) :-
             floi_literal(IncludeString), term.context_init)
     ;
         Lang = lang_csharp,
-        sorry($module, $pred, ":- import_module not yet implemented: " ++
+        sorry($pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for C#")
     ;
         Lang = lang_java,
-        sorry($module, $pred, ":- import_module not yet implemented: " ++
+        sorry($pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Java")
     ;
         Lang = lang_erlang,
-        sorry($module, $pred, ":- import_module not yet implemented: " ++
+        sorry($pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Erlang")
     ).
 

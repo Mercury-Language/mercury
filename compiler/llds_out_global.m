@@ -707,7 +707,7 @@ output_int_const(N, Type, !IO) :-
         ( if ok_int_const(N, Type) then
             io.write_int(N, !IO)
         else
-            unexpected($module, $pred, "constant does not fit in type")
+            unexpected($pred, "constant does not fit in type")
         )
     ;
         Check = no,

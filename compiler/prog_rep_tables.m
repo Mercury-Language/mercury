@@ -396,10 +396,10 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
         TypeBytesCord = cord.singleton(Selector) ++ ArgTypeBytesCord
     ;
         Type = apply_n_type(_TVar, _ArgTypes, _Kind),
-        unexpected($module, $pred, "apply_n_type")
+        unexpected($pred, "apply_n_type")
     ;
         Type = kinded_type(_Kind, _SubType),
-        unexpected($module, $pred, "kinded_type")
+        unexpected($pred, "kinded_type")
     ;
         Type = type_variable(TVar, _Kind),
         Selector = 13,

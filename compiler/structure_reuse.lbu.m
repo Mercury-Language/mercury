@@ -172,7 +172,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
     ;
         !.Expr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- func get_backtrack_vars(vartypes, hlds_goal_info) = set_of_progvar.

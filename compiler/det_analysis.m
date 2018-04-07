@@ -422,7 +422,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
                 [simple_msg(PragmaContext, [always(ExportPieces)])]),
             !:Specs = [ExportSpec | !.Specs]
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 "Cannot find proc in table of pragma foreign_exported procs")
         )
     else
@@ -776,7 +776,7 @@ det_infer_goal_expr(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ).
@@ -866,7 +866,7 @@ det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
                 ; MaxSoln = at_most_one
                 ; MaxSoln = at_most_many_cc
                 ),
-                unexpected($module, $pred,
+                unexpected($pred,
                     "strange determinism error for parallel conjunction")
             )
         ),
@@ -1343,10 +1343,10 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
         Context = goal_info_get_context(GoalInfo),
         (
             Unify = construct(_, _, _, _, _, _, _),
-            unexpected($module, $pred, "can_fail construct")
+            unexpected($pred, "can_fail construct")
         ;
             Unify = assign(_, _),
-            unexpected($module, $pred, "can_fail assign")
+            unexpected($pred, "can_fail assign")
         ;
             Unify = complicated_unify(_, _, _),
             (
@@ -1357,8 +1357,7 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
                 FailingGoal = deconstruct_goal(LHS, ConsId)
             ;
                 RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
-                unexpected($module, $pred,
-                    "complicated_unify but no fail context")
+                unexpected($pred, "complicated_unify but no fail context")
             ),
             FailingContext = failing_context(Context, FailingGoal),
             GoalFailingContexts = [FailingContext]
@@ -1447,7 +1446,7 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
             det_negation_det(CondDetism, MaybeNegDetism),
             (
                 MaybeNegDetism = no,
-                unexpected($module, $pred,
+                unexpected($pred,
                     "cannot find determinism of negated condition")
             ;
                 MaybeNegDetism = yes(NegDetism)
@@ -1489,8 +1488,7 @@ det_infer_not(Goal0, Goal, GoalInfo, InstMap0, MaybePromiseEqvSolutionSets,
     det_negation_det(NegDetism, MaybeDetism),
     (
         MaybeDetism = no,
-        unexpected($module, $pred,
-            "inappropriate determinism inside a negation")
+        unexpected($pred, "inappropriate determinism inside a negation")
     ;
         MaybeDetism = yes(Detism)
     ),
@@ -1563,7 +1561,7 @@ det_infer_atomic_goal(Goal0, Goal, InstMap0,
         ; Detism = detism_erroneous
         ),
         % XXX STM Detism = detism_cc_multi            % <== TMP
-        expect(unify(GoalFailingContexts, []), $module, $pred,
+        expect(unify(GoalFailingContexts, []), $pred,
             "GoalFailingContexts != []")
     ;
         ( Detism = detism_semi
@@ -1686,8 +1684,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                         set_of_var.to_sorted_list(OverlapVars)),
                     (
                         OverlapVarNames = [],
-                        unexpected($module, $pred,
-                            "arbitrary_promise_overlap empty")
+                        unexpected($pred, "arbitrary_promise_overlap empty")
                     ;
                         OverlapVarNames = [_],
                         OverlapVarStr = "the variable"
@@ -1742,8 +1739,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
                 MissingVarNames = [],
-                unexpected($module, $pred,
-                    "promise_solutions_missing_vars empty")
+                unexpected($pred, "promise_solutions_missing_vars empty")
             ;
                 MissingVarNames = [_],
                 MissingListStr = "a variable that is not listed:"
@@ -1783,8 +1779,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ExtraKindStr = promise_solutions_kind_str(Kind),
             (
                 ExtraVarNames = [],
-                unexpected($module, $pred,
-                    "promise_solutions_extra_vars empty")
+                unexpected($pred, "promise_solutions_extra_vars empty")
             ;
                 ExtraVarNames = [_],
                 ExtraListStr = "an extra variable:"
@@ -1875,8 +1870,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ),
             % Since loop control structures are generated only by the
             % compiler it is reasonable to abort here.
-            unexpected($module, $pred,
-                "Loop control scope with strange determinism")
+            unexpected($pred, "Loop control scope with strange determinism")
         )
     ;
         Reason = from_ground_term(_, FromGroundTermKind),
@@ -1894,7 +1888,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 Detism, GoalFailingContexts, !DetInfo)
         ;
             FromGroundTermKind = from_ground_term_initial,
-            unexpected($module, $pred, "from_ground_term_initial")
+            unexpected($pred, "from_ground_term_initial")
         )
     ).
 

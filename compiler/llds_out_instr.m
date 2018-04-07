@@ -401,10 +401,10 @@ output_instruction_list_while_block(Info, [Instr | Instrs], Label,
         LabelOutputInfo, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( if Uinstr = label(_) then
-        unexpected($module, $pred, "label in block")
+        unexpected($pred, "label in block")
     else if Uinstr = goto(code_label(Label)) then
         io.write_string("\tcontinue;\n", !IO),
-        expect(unify(Instrs, []), $module, $pred, "code after goto")
+        expect(unify(Instrs, []), $pred, "code after goto")
     else if Uinstr = if_val(Rval, code_label(Label)) then
         io.write_string("\tif (", !IO),
         output_test_rval(Info, Rval, !IO),
@@ -423,7 +423,7 @@ output_instruction_list_while_block(Info, [Instr | Instrs], Label,
         output_instruction_list_while_block(Info, Instrs, Label,
             LabelOutputInfo, !IO)
     else if Uinstr = block(_, _, _) then
-        unexpected($module, $pred, "block in block")
+        unexpected($pred, "block in block")
     else
         output_instruction_and_comment(Info, Uinstr, Comment,
             LabelOutputInfo, !IO),
@@ -454,7 +454,7 @@ output_float_dword_assignment(Info, Lval, Rval, !IO) :-
 
     io.write_string("\t* (MR_Float *) &(", !IO),
     output_lval_for_assign(Info, Lval, Type, !IO),
-    expect(unify(Type, lt_word), $module, $pred, "expected word"),
+    expect(unify(Type, lt_word), $pred, "expected word"),
     io.write_string(") = ", !IO),
     output_rval_as_type(Info, Rval, lt_float, !IO),
     io.write_string(";\n", !IO),
@@ -624,7 +624,7 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
                     output_code_addr(FailCont, !IO)
                 ;
                     MaybeFailCont = no,
-                    unexpected($module, $pred, "no failcont")
+                    unexpected($pred, "no failcont")
                 ),
                 io.write_string(");\n", !IO)
             ;
@@ -635,7 +635,7 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
                     output_code_addr(FailCont, !IO)
                 ;
                     MaybeFailCont = no,
-                    unexpected($module, $pred, "no failcont")
+                    unexpected($pred, "no failcont")
                 ),
                 io.write_string(");\n", !IO)
             )
@@ -895,7 +895,7 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
         DwordAlignment = Info ^ lout_det_stack_dword_alignment,
         (
             DwordAlignment = yes,
-            expect(int.even(N), $module, $pred, "odd sp increment")
+            expect(int.even(N), $pred, "odd sp increment")
         ;
             DwordAlignment = no
         ),
@@ -1219,7 +1219,7 @@ output_call(Info, Target, Continuation, CallerLabel, !IO) :-
                 % We should never get here; the conditions that lead here
                 % in this switch should have been caught by the first
                 % if-then-else condition that tests Target.
-                unexpected($module, $pred, "calling label")
+                unexpected($pred, "calling label")
             ;
                 NeedsPrefix = yes,
                 Wrapper = wrapper_none,

@@ -790,7 +790,7 @@ cons_id_to_alloc_site_string(ConsId) = TypeStr :-
         ; ConsId = table_io_entry_desc(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ),
-        unexpected($module, $pred, "unexpected cons_id")
+        unexpected($pred, "unexpected cons_id")
     ).
 
 %---------------------------------------------------------------------------%

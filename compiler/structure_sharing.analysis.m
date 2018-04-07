@@ -329,7 +329,7 @@ structure_sharing_answer_to_domain(MaybePPId, HeadVarTypes, ProcInfo, Answer,
                 SharingPairs),
             Sharing = structure_sharing_real(SharingPairs)
         else
-            unexpected($module, $pred, "type_unify_list failed")
+            unexpected($pred, "type_unify_list failed")
         )
     ).
 
@@ -442,7 +442,7 @@ analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
     % Abort if the analysis is taking too long. It is probably a bug.
     Run = ss_fixpoint_table_which_run(!.FixpointTable),
     ( if Run > max_runs then
-        unexpected($module, $pred, "fixpoint not reached after "
+        unexpected($pred, "fixpoint not reached after "
             ++ string.from_int(max_runs) ++ " runs")
     else
         true
@@ -660,7 +660,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred analyse_goal_with_progress(module_info::in, pred_info::in,

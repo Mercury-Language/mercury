@@ -698,7 +698,7 @@ close_path(Path0) = Path :-
         FlushAnchors, IntervalIds),
     (
         FlushState = current_is_before_first_flush,
-        expect(set_of_var.is_empty(FirstSegment0), $module, $pred,
+        expect(set_of_var.is_empty(FirstSegment0), $pred,
             "FirstSegment0 not empty"),
         FirstSegment = CurSegment,
         OtherSegments = OtherSegments0
@@ -836,20 +836,20 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
     map.lookup(IntervalInfo ^ ii_interval_succ, IntervalId, SuccessorIds),
     (
         SuccessorIds = [],
-        expect(unify(may_have_no_successor(End), yes), $module, $pred,
+        expect(unify(may_have_no_successor(End), yes), $pred,
             "unexpected no successor")
-        % expect(unify(MaybeSearchAnchor0, no), $module, $pred,
+        % expect(unify(MaybeSearchAnchor0, no), $pred,
         %   "find_all_branches: no successor while in search"),
         % that test may fail if we come to a call that cannot succeed
     ;
         SuccessorIds = [SuccessorId | MoreSuccessorIds],
         (
             MoreSuccessorIds = [],
-            expect(unify(may_have_one_successor(End), yes), $module, $pred,
+            expect(unify(may_have_one_successor(End), yes), $pred,
                 "unexpected one successor")
         ;
             MoreSuccessorIds = [_ | _],
-            expect(unify(may_have_more_successors(End), yes), $module, $pred,
+            expect(unify(may_have_more_successors(End), yes), $pred,
                 "unexpected more successors")
         ),
         ( if
@@ -914,7 +914,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
             ElseStartId = ElseStartIdPrime,
             CondStartId = CondStartIdPrime
         else
-            unexpected($module, $pred, "ite not else, cond")
+            unexpected($pred, "ite not else, cond")
         ),
         MaybeSearchAnchorCond = yes(anchor_cond_then(EndGoalId)),
         apply_interval_find_all_branches(RelevantVars,
@@ -949,7 +949,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
                 MaybeSearchAnchor0, IntervalInfo,
                 StackOptInfo, SuccessorId, !AllPaths)
         else
-            unexpected($module, $pred, "more successor ids")
+            unexpected($pred, "more successor ids")
         )
     ).
 
@@ -1016,7 +1016,7 @@ apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
 :- pred consolidate_after_join(list(all_paths)::in, all_paths::out) is det.
 
 consolidate_after_join([], _) :-
-    unexpected($module, $pred, "no paths to join").
+    unexpected($pred, "no paths to join").
 consolidate_after_join([First | Rest], AllPaths) :-
     PathsList = list.map(project_paths_from_all_paths, [First | Rest]),
     Paths0 = set.union_list(PathsList),

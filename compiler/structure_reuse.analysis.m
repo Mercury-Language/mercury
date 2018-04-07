@@ -409,7 +409,7 @@ make_intermediate_reuse_proc(sr_request(PPId, NoClobbers), NewPPId,
 
 get_numbered_args(_, [], _, []).
 get_numbered_args(_, [_ | _], [], _) :-
-    unexpected($module, $pred, "argument list too short").
+    unexpected($pred, "argument list too short").
 get_numbered_args(I, [N | Ns], [Var | Vars], Selected) :-
     ( if I = N then
         get_numbered_args(I + 1, Ns, Vars, Selected0),
@@ -659,7 +659,7 @@ structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer, Reuse) :-
             rename_structure_reuse_domain(VarRenaming, TypeSubst,
                 has_conditional_reuse(ImpReuseConditions), Reuse)
         else
-            unexpected($module, $pred, "type_unify_list failed")
+            unexpected($pred, "type_unify_list failed")
         )
     ).
 
@@ -787,7 +787,7 @@ analysis_name = "structure_reuse".
     bottom(_, _) = structure_reuse_answer_no_reuse,
     ( top(_, _) = _ :-
         % We have no representation for "all possible conditions".
-        unexpected($module, $pred, "top/2 called")
+        unexpected($pred, "top/2 called")
     ),
     ( get_func_info(ModuleInfo, ModuleName, FuncId, _, _, FuncInfo) :-
         func_id_to_ppid(ModuleInfo, ModuleName, FuncId, PPId),
@@ -1075,7 +1075,7 @@ lookup_new_structure_reuse_answer(ModuleInfo, ReuseTable, ReusePPId,
     ( if reuse_as_table_search(ReuseTable, ReusePPId, ReuseAs_Status) then
         ReuseAs_Status = reuse_as_and_status(NewReuseAs, _)
     else
-        unexpected($module, $pred, "search failed")
+        unexpected($pred, "search failed")
     ),
     reuse_as_to_structure_reuse_answer(ModuleInfo, ReusePPId, NewReuseAs,
         NewAnswer).

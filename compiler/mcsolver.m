@@ -263,7 +263,7 @@ prepare_abstract_constraint(Constraint, !PCs) :-
         then
             disjunction_of_assignments(DisjOfAssgts, !PCs)
         else
-            sorry($module, $pred, "Disjuction of constraints - general case.")
+            sorry($pred, "Disjuction of constraints - general case.")
         )
     ).
 
@@ -361,7 +361,7 @@ at_most_one(Xs, !PCs) :-
 exactly_one(Xs, !PCs) :-
     (
         Xs = [],
-        unexpected($module, $pred, "exactly_one of zero variables")
+        unexpected($pred, "exactly_one of zero variables")
     ;
         Xs = [X],
         assign(X, yes, !PCs)

@@ -126,7 +126,7 @@ encode_oisu_type_procs(ModuleInfo, [Pair | Pairs], NumOISUTypes, Bytes) :-
         TypeCtorSymName = qualified(TypeCtorModuleName, TypeCtorName)
     ;
         TypeCtorSymName = unqualified(_),
-        unexpected($module, $pred, "unqualified type_ctor name")
+        unexpected($pred, "unqualified type_ctor name")
     ),
     ( if TypeCtorModuleName = ModuleName then
         encode_len_string(TypeCtorName, TypeCtorNameBytes),
@@ -170,7 +170,7 @@ encode_oisu_proc(ModuleInfo, PredId, BytesCord) :-
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
         encode_string_proc_label(ProcLabel, BytesCord)
     else
-        unexpected($module, $pred, "OISU pred should have exactly one proc")
+        unexpected($pred, "OISU pred should have exactly one proc")
     ).
 
 :- pred encode_string_proc_label(proc_label::in, cord(int)::out) is det.
@@ -314,8 +314,8 @@ represent_var_table_as_bytecode(IncludeVarNameTable, IncludeVarTypes,
         Bytes = [FlagByte] ++ NumVarsBytes ++ VarNameTableEntriesBytes
     ;
         IncludeVarNameTable = do_not_include_var_name_table,
-        expect(unify(IncludeVarTypes, do_not_include_var_types),
-            $module, $pred, "IncludeVarTypes but not IncludeVarNameTable"),
+        expect(unify(IncludeVarTypes, do_not_include_var_types), $pred,
+            "IncludeVarTypes but not IncludeVarNameTable"),
         Bytes = [FlagByte]
     ).
 
@@ -450,7 +450,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
         ;
             FlattenParConjs = expect_no_par_conjs,
             Goals = Goals0,
-            expect(unify(ConjType, plain_conj), $module, $pred,
+            expect(unify(ConjType, plain_conj), $pred,
                 "non-plain conjunction and declarative debugging")
         ),
         conj_to_conj_rep(Info, Instmap0, Goals, GoalReps),
@@ -550,7 +550,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                     var_to_var_rep(Info, Var2))
             ;
                 Unification = complicated_unify(_, _, _),
-                unexpected($module, $pred, "complicated_unify")
+                unexpected($pred, "complicated_unify")
             )
         ;
             GoalExpr = generic_call(GenericCall, Args, _, _, _),
@@ -571,7 +571,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 ( if ArgsRep = [InputArgRep, OutputArgRep] then
                     AtomicGoalRep = cast_rep(OutputArgRep, InputArgRep)
                 else
-                    unexpected($module, $pred, "cast arity != 2")
+                    unexpected($pred, "cast arity != 2")
                 )
             )
         ;
@@ -599,7 +599,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "unexpected shorthand")
+        unexpected($pred, "unexpected shorthand")
     ).
 
 :- pred conj_to_conj_rep(prog_rep_info::in, instmap::in, list(hlds_goal)::in,
@@ -818,9 +818,9 @@ rhs_is_input(Info, UnifyMode) :-
 
 filter_input_args(_, [], [], []).
 filter_input_args(_, [], [_ | _], _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 filter_input_args(_, [_ | _], [], _) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 filter_input_args(Info, [Mode | Modes], [Var | Vars],
         [MaybeVar | MaybeVars]) :-
     ( if rhs_is_input(Info, Mode) then

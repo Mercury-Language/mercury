@@ -1465,7 +1465,7 @@ goal_calls_proc_in_set_acc(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
             goal_calls_proc_in_set_acc(SubGoal, PredProcIds, !CalledSet)
         ;
             ShortHand = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -1652,7 +1652,7 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     then
         ArgInsts = ArgInsts1
     else
-        unexpected($module, $pred, "get_arg_insts failed")
+        unexpected($pred, "get_arg_insts failed")
     ),
     InstToArgUnifyMode =
         ( pred(ArgInst::in, ArgUnfyiMode::out) is det :-
@@ -1745,7 +1745,7 @@ create_conj_from_list(Conjuncts, ConjType, ConjGoal) :-
         )
     ;
         Conjuncts = [],
-        unexpected($module, $pred, "empty conjunction")
+        unexpected($pred, "empty conjunction")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1953,8 +1953,7 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_purity(PredInfo, PredPurity),
-    expect(unify(Purity, PredPurity), $module,
-        "generate_simple_call: purity disagreement"),
+    expect(unify(Purity, PredPurity), $pred, "purity disagreement"),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
     list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
@@ -1986,8 +1985,7 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_purity(PredInfo, PredPurity),
-    expect(unify(Purity, PredPurity), $module,
-        "generate_simple_call: purity disagreement"),
+    expect(unify(Purity, PredPurity), $pred, "purity disagreement"),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
     list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
@@ -2062,7 +2060,7 @@ goal_is_atomic(Goal, GoalIsAtomic) :-
         GoalIsAtomic = goal_is_nonatomic
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2148,7 +2146,7 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -2328,7 +2326,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
             )
         ;
             GoalExpr0 = shorthand(_),
-            unexpected($module, $pred, "shorthand")
+            unexpected($pred, "shorthand")
         )
     ).
 
@@ -2508,7 +2506,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
             )
         ;
             GoalExpr0 = shorthand(_),
-            unexpected($module, $pred, "shorthand")
+            unexpected($pred, "shorthand")
         )
     ).
 
@@ -2560,7 +2558,7 @@ transform_all_goals(TransformP, Goal0, Goal) :-
         GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
     Goal1 = hlds_goal(GoalExpr, GoalInfo0),
     TransformP(Goal1, Goal).

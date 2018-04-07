@@ -322,7 +322,7 @@ collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
 collect_non_local_and_in_cond_regions_expr(_, _, _, _, _, shorthand(_),
         !NonLocalRegionProc, !InCondRegionsProc) :-
     % These should have been expanded out by now.
-    unexpected($module, $pred, "shorthand").
+    unexpected($pred, "shorthand").
 
 :- pred collect_non_local_and_in_cond_regions_case(rpt_graph::in,
     pp_region_set_table::in, pp_region_set_table::in,
@@ -415,7 +415,7 @@ renaming_annotation_to_regions(RenameAnnotation, !LeftRegions,
         ( RenameAnnotation = create_region(_)
         ; RenameAnnotation = remove_region(_)
         ),
-        unexpected($module, $pred, "annotation is not assignment")
+        unexpected($pred, "annotation is not assignment")
     ;
         RenameAnnotation = rename_region(RightRegion, LeftRegion),
         set.insert(LeftRegion, !LeftRegions),
@@ -547,7 +547,7 @@ collect_non_local_regions_in_ite_compound_goal(Graph, LRBeforeProc,
         ; Expr = generic_call(_, _, _, _, _)
         ; Expr = shorthand(_)
         ),
-        unexpected($module, $pred, "atomic or unsupported goal")
+        unexpected($pred, "atomic or unsupported goal")
     ).
 
 :- pred collect_non_local_regions_in_ite_case(rpt_graph::in,
@@ -724,7 +724,7 @@ collect_regions_created_in_condition_compound_goal(Graph,
         ; Expr = generic_call(_, _, _, _, _)
         ; Expr = shorthand(_)
         ),
-        unexpected($module, $pred, "atomic or unsupported goal")
+        unexpected($pred, "atomic or unsupported goal")
     ).
 
 :- pred collect_regions_created_in_condition_case(rpt_graph::in,
@@ -860,7 +860,7 @@ collect_ite_renaming_goal(IteRenamedRegionProc, Graph, Goal,
             Else, !IteRenamingProc)
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred collect_ite_renaming_case(goal_path_regions_table::in, rpt_graph::in,
@@ -973,7 +973,7 @@ collect_ite_renaming_in_condition_compound_goal(IteRenamedRegionProc,
         ; Expr = generic_call(_, _, _, _, _)
         ; Expr = shorthand(_)
         ),
-        unexpected($module, $pred, "atomic or unsupported goal")
+        unexpected($pred, "atomic or unsupported goal")
     ).
 
 :- pred collect_ite_renaming_in_condition_case(goal_path_regions_table::in,
@@ -1056,8 +1056,7 @@ collect_ite_annotation_region_names(ExecPaths, Graph, RevPathToCond,
         RenamedRegions, !IteRenamingProc, !IteAnnotationProc) :-
     (
         RevPathToCond = rgp_cons(RevInitialPath, LastStep),
-        expect(unify(LastStep, step_ite_cond), $module, $pred,
-            "not step_ite_cond"),
+        expect(unify(LastStep, step_ite_cond), $pred, "not step_ite_cond"),
         RevPathToThen = rgp_cons(RevInitialPath, step_ite_then),
         get_closest_condition_in_goal_path(RevPathToCond, _, 0, HowMany),
         list.foldl2(
@@ -1066,7 +1065,7 @@ collect_ite_annotation_region_names(ExecPaths, Graph, RevPathToCond,
             ExecPaths, !IteRenamingProc, !IteAnnotationProc)
     ;
         RevPathToCond = rgp_nil,
-        unexpected($module, $pred, "empty path to condition")
+        unexpected($pred, "empty path to condition")
     ).
 
 :- pred collect_ite_annotation_exec_path(rpt_graph::in, reverse_goal_path::in,
@@ -1160,7 +1159,7 @@ introduce_reverse_renaming(ProgPoint, IteRenamingProc, HowMany, RegName,
                 RenameTo = list.det_last(RenameToList),
                 make_renaming_instruction(CurrentName, RenameTo, Annotation)
             ;
-                unexpected($module, $pred, "more than one renaming")
+                unexpected($pred, "more than one renaming")
             )
         ;
             make_renaming_instruction(CurrentName, RegName, Annotation)

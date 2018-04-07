@@ -140,7 +140,7 @@ gather_local_type_names(ModuleName, [TypeCtor - _Defn | TypeCtorDefns],
     TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
     (
         TypeCtorSymName = unqualified(_),
-        unexpected($module, $pred, "unqualified type_ctor name")
+        unexpected($pred, "unqualified type_ctor name")
     ;
         TypeCtorSymName = qualified(TypeCtorModuleName, TypeCtorName),
         ( if TypeCtorModuleName = ModuleName then
@@ -162,7 +162,7 @@ gather_local_inst_names(ModuleName, [InstId | InstIds], !InstNameArities) :-
     InstId = inst_id(InstSymName, InstArity),
     (
         InstSymName = unqualified(_),
-        unexpected($module, $pred, "unqualified inst_id name")
+        unexpected($pred, "unqualified inst_id name")
     ;
         InstSymName = qualified(InstModuleName, InstName),
         ( if InstModuleName = ModuleName then
@@ -184,7 +184,7 @@ gather_local_mode_names(ModuleName, [ModeId | ModeIds],
     ModeId = mode_id(ModeSymName, ModeArity),
     (
         ModeSymName = unqualified(_),
-        unexpected($module, $pred, "unqualified mode_id name")
+        unexpected($pred, "unqualified mode_id name")
     ;
         ModeSymName = qualified(ModeModuleName, ModeName),
         ( if ModeModuleName = ModuleName then
@@ -240,7 +240,7 @@ gather_local_typeclass_names(ModuleName, [ClassId | ClassIds],
     ClassId = class_id(ClassSymName, ClassArity),
     (
         ClassSymName = unqualified(_),
-        unexpected($module, $pred, "unqualified class_id name")
+        unexpected($pred, "unqualified class_id name")
     ;
         ClassSymName = qualified(ClassModuleName, ClassName),
         ( if ClassModuleName = ModuleName then

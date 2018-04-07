@@ -454,7 +454,7 @@ special_pred_id_to_termination(spec_pred_unify, HeadProgVars, ModuleInfo,
         ( NonZeroHeadSizeVars = [_]
         ; NonZeroHeadSizeVars = [_, _, _ | _]
         ),
-        unexpected($module, $pred, "wrong number of args for unify")
+        unexpected($pred, "wrong number of args for unify")
     ),
     Polyhedron  = polyhedron.from_constraints(Constrs),
     ArgSizeInfo = Polyhedron,
@@ -466,8 +466,7 @@ special_pred_id_to_termination(spec_pred_index, HeadProgVars, ModuleInfo,
         make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSize,
             Termination, SizeVarMap, HeadSizeVars)
     else
-        unexpected($module, $pred,
-            "less than two arguments to builtin index")
+        unexpected($pred, "less than two arguments to builtin index")
     ).
 
     % Sets the termination status and argument size information for
@@ -509,7 +508,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     else if all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo0) then
         Constrs = []
     else
-        unexpected($module, $pred, "builtin with non-zero size args")
+        unexpected($pred, "builtin with non-zero size args")
     ),
     Polyhedron = polyhedron.from_constraints(Constrs),
     ArgSizeInfo = yes(Polyhedron),
@@ -556,7 +555,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
     then
         Constraints = ConstraintsPrime
     else
-        unexpected($module, $pred, "unrecognised predicate")
+        unexpected($pred, "unrecognised predicate")
     ).
 
 %----------------------------------------------------------------------------%

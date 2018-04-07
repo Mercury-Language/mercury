@@ -721,8 +721,7 @@ follow_list_skeleton(ConjMaps, PredMap, CurId, ListVar, Result) :-
                 ( if list.member(TailVar, TailSkeletonVars) then
                     true
                 else
-                    unexpected($module, $pred,
-                        "TailVar not in TailSkeletonVars")
+                    unexpected($pred, "TailVar not in TailSkeletonVars")
                 ),
                 SkeletonVars = [ListVar | TailSkeletonVars],
                 Result = follow_skeleton_result(ElementVars, SkeletonVars)
@@ -918,7 +917,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -943,8 +942,7 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
             ( if
                 ConsId = string_const(StringConst)
             then
-                expect(unify(ArgVars, []), $module, $pred,
-                    "string constant with args"),
+                expect(unify(ArgVars, []), $pred, "string constant with args"),
                 set_of_var.delete(CellVar, !RelevantVars),
                 add_to_string_map(CurId, CellVar, string_const(StringConst),
                     !ConjMaps)
@@ -968,7 +966,7 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
                 then
                     List = ListPrime
                 else
-                    unexpected($module, $pred, "unexpected list functor")
+                    unexpected($pred, "unexpected list functor")
                 ),
                 set_of_var.delete(CellVar, !RelevantVars),
                 set_of_var.insert_list(ArgVars, !RelevantVars),
@@ -1000,11 +998,10 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
                     then
                         VarPolyType = VarPolyTypePrime
                     else
-                        unexpected($module, $pred,
-                            "unexpected poly_type functor")
+                        unexpected($pred, "unexpected poly_type functor")
                     )
                 else
-                    unexpected($module, $pred, "poly_type arity mismatch")
+                    unexpected($pred, "poly_type arity mismatch")
                 ),
                 set_of_var.delete(CellVar, !RelevantVars),
                 add_to_element_map(CurId, CellVar, VarPolyType, !ConjMaps)
@@ -1354,7 +1351,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).

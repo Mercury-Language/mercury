@@ -211,7 +211,7 @@ set_parent(Parent, Child, !InstGraph) :-
         map.det_update(Child, node(Functors, parent(Parent)), !InstGraph)
     ;
         MaybeParent0 = parent(_),
-        unexpected($module, $pred, "node already has parent")
+        unexpected($pred, "node already has parent")
     ).
 
 top_level_node(InstGraph, Var, TopLevel) :-

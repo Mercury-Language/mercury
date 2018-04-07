@@ -177,7 +177,7 @@ prove_termination_in_scc_single_arg(ModuleInfo, SCC, PassInfo, Terminates) :-
             TrialPPId, RestSCC, 1, Terminates)
     ;
         SCC = [],
-        unexpected($module, $pred, "empty SCC")
+        unexpected($pred, "empty SCC")
     ).
 
     % Find a procedure of minimum arity among the given list and the tentative
@@ -388,7 +388,7 @@ prove_termination_in_scc_pass(ModuleInfo, PassInfo, FixDir, [PPId | PPIds],
     term_traverse_goal(ModuleInfo, Params, Goal, Info0, Info),
     (
         Info = term_traversal_ok(Paths, CanLoop),
-        expect(unify(CanLoop, []), $module, $pred,
+        expect(unify(CanLoop, []), $pred,
             "can_loop detected in pass2 but not pass1"),
         set.to_sorted_list(Paths, PathList),
         upper_bound_active_vars(PathList, ActiveVars),
@@ -405,7 +405,7 @@ prove_termination_in_scc_pass(ModuleInfo, PassInfo, FixDir, [PPId | PPIds],
             PPIds, RecSupplierMap, NewRecSupplierMap1, CallInfo1, Result)
     ;
         Info = term_traversal_error(Errors, CanLoop),
-        expect(unify(CanLoop, []), $module, $pred,
+        expect(unify(CanLoop, []), $pred,
             "can_loop detected in pass2 but not pass1"),
         Result = term_pass2_error(Errors)
     ).
@@ -418,9 +418,9 @@ prove_termination_in_scc_pass(ModuleInfo, PassInfo, FixDir, [PPId | PPIds],
 
 update_rec_input_suppliers([], _, _, [], [], !RecBag).
 update_rec_input_suppliers([_ | _], _, _, [], [], _, _) :-
-    unexpected($module, $pred, "unmatched variables").
+    unexpected($pred, "unmatched variables").
 update_rec_input_suppliers([], _, _, [_ | _], [], _, _) :-
-    unexpected($module, $pred, "unmatched variables").
+    unexpected($pred, "unmatched variables").
 update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
         [RecInputSupplier0 | RecInputSuppliers0],
         [RecInputSupplier | RecInputSuppliers], !RecBag) :-
@@ -475,13 +475,13 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
         Context = ContextPrime
     ;
         CallSite = no,
-        unexpected($module, $pred, "no call site in path in stage 2")
+        unexpected($pred, "no call site in path in stage 2")
     ),
     (
         GammaVars = []
     ;
         GammaVars = [_ | _],
-        unexpected($module, $pred, "gamma variables in path in stage 2")
+        unexpected($pred, "gamma variables in path in stage 2")
     ),
     !.CallInfo = call_weight_info(InfCalls0, CallWeights0),
     ( if bag.is_subbag(ActiveVars, RecInputSuppliers) then

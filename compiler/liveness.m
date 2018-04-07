@@ -522,7 +522,7 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
         set_of_var.difference(FinalLiveness, GoalFinalLiveness, PostBirths)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
     % We always initialize all the liveness-related fields in order to
     % obliterate any annotations left by a previous invocation of this module.
@@ -615,10 +615,10 @@ detect_liveness_in_fgt_construct(Goal0, Goal, !Liveness, LiveInfo, TermVar) :-
                 PreDeaths, PostDeaths, no_resume_point, GoalInfo0, GoalInfo),
             Goal = hlds_goal(GoalExpr, GoalInfo)
         else
-            unexpected($module, $pred, "unexpected liveness")
+            unexpected($pred, "unexpected liveness")
         )
     else
-        unexpected($module, $pred, "not conj")
+        unexpected($pred, "not conj")
     ).
 
 :- pred detect_liveness_in_fgt_construct_goal_loop(
@@ -644,10 +644,10 @@ detect_liveness_in_fgt_construct_goal_loop([Goal0 | Goals0], [Goal | Goals],
                 PreDeaths, PostDeaths, no_resume_point, GoalInfo0, GoalInfo),
             Goal = hlds_goal(GoalExpr, GoalInfo)
         else
-            unexpected($module, $pred, "rhs var not live")
+            unexpected($pred, "rhs var not live")
         )
     else
-        unexpected($module, $pred, "unexpected conjunct")
+        unexpected($pred, "unexpected conjunct")
     ),
     detect_liveness_in_fgt_construct_goal_loop(Goals0, Goals, !LocalLiveVars).
 
@@ -847,7 +847,7 @@ detect_deadness_in_goal(Goal0, Goal, !Deadness, !.Liveness, LiveInfo) :-
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
 
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -960,7 +960,7 @@ detect_deadness_in_par_conj([Goal0 | Goals0], [Goal | Goals], Deadness0,
     ( if instmap_delta_is_reachable(InstmapDelta1) then
         InstmapReachable = yes
     else
-        unexpected($module, $pred, "unreachable instmap")
+        unexpected($pred, "unreachable instmap")
     ),
     add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
         InstmapReachable, Goal1, Goal).
@@ -1116,7 +1116,7 @@ update_liveness_expr(GoalExpr, LiveInfo, !Liveness) :-
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred update_liveness_conj(list(hlds_goal)::in, live_info::in,
@@ -1280,7 +1280,7 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
             !:GoalExpr = switch(Var, CanFail, Cases)
         ;
             MaybeBornVarsDelayedDead = no,
-            unexpected($module, $pred, "empty switch")
+            unexpected($pred, "empty switch")
         )
     ;
         !.GoalExpr = negation(Goal0),
@@ -1319,7 +1319,7 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
         !:GoalExpr = scope(Reason, Goal)
     ;
         !.GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred delay_death_conj(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1582,7 +1582,7 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
 
     Goal = hlds_goal(GoalExpr, GoalInfo0),
@@ -1620,7 +1620,7 @@ detect_resume_points_in_conj([Goal0 | Goals0], [Goal | Goals],
     live_info::in, set_of_progvar::in, set_of_progvar::out) is det.
 
 detect_resume_points_in_non_disj([], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "empty nondet disjunction").
+    unexpected($pred, "empty nondet disjunction").
 detect_resume_points_in_non_disj([Goal0 | Goals0], [Goal | Goals],
         Liveness0, Liveness, LiveInfo, ResumeVars0, Needed) :-
     (
@@ -1777,7 +1777,7 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
             mercury_vars_to_string(VarSet, print_name_and_num, RestVars),
         Msg = "branches of " ++ GoalType ++ " disagree on liveness\n" ++
             "First: " ++ FirstNames ++ "\n" ++ "Rest:  " ++ RestNames ++ "\n",
-        unexpected($module, $pred, Msg)
+        unexpected($pred, Msg)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1792,7 +1792,7 @@ initial_liveness(ModuleInfo, PredInfo, ProcInfo, !:Liveness) :-
     ( if initial_liveness_2(ModuleInfo, Vars, Types, Modes, !Liveness) then
         true
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ),
 
     % If a variable is unused in the goal, it shouldn't be in the initial

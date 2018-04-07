@@ -58,11 +58,11 @@ wrap_blocks(Instrs0, Instrs) :-
 wrap_instrs([], R, F, RevSofar, []) :-
     (
         RevSofar = [_ | _],
-        unexpected($module, $pred, "procedure ends with fallthrough")
+        unexpected($pred, "procedure ends with fallthrough")
     ;
         RevSofar = [],
         ( if ( R > 0 ; F > 0 ) then
-            unexpected($module, $pred, "procedure ends without closing block")
+            unexpected($pred, "procedure ends without closing block")
         else
             true
         )

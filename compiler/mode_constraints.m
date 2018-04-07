@@ -212,8 +212,7 @@ dump_abstract_constraints(ModuleInfo, ConstraintVarset, ModeConstraints,
         io.close_output(OutputStream, !IO)
     ;
         IOResult = error(_),
-        unexpected($module, $pred,
-            "failed to open " ++ FileName ++ " for output.")
+        unexpected($pred, "failed to open " ++ FileName ++ " for output.")
     ).
 
     % correct_nonlocals_in_pred(PredId, !ModuleInfo) requantifies
@@ -267,7 +266,7 @@ correct_nonlocals_in_clause_body(Headvars, !Goals, !Varset, !Vartypes,
         Warnings = []
     ;
         Warnings = [_ | _],
-        unexpected($module, $pred,
+        unexpected($pred,
             "Quantification error during constraints based mode analysis")
     ).
 
@@ -467,7 +466,7 @@ number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
         Else0, Else, !RInfo),
     Occurring = OccCond `set_of_var.union` OccThen `set_of_var.union` OccElse.
 number_robdd_variables_in_goal_2(_, _, _, _, _, shorthand(_), _, !RInfo) :-
-    unexpected($module, $pred, "shorthand").
+    unexpected($pred, "shorthand").
 % number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
 %         atomic_goal(GoalType, Inner, Outer, Vars, MainGoal0, OrElseGoals0),
 %         atomic_goal(GoalType, Inner, Outer, Vars, MainGoal, OrElseGoals),
@@ -1242,7 +1241,7 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
                 !Constraint, !GCInfo)
         ;
             ConjType = parallel_conj,
-            sorry($module, $pred, "par_conj NYI")
+            sorry($pred, "par_conj NYI")
         ),
         GoalExpr = conj(ConjType, Goals)
     ;
@@ -1349,18 +1348,18 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
         ;
             GenericCall = class_method(Var, _, _, _),
             generic_call_constrain_var(Var, GoalId, !Constraint, !GCInfo),
-            unexpected($module, $pred, "class_method call in clause")
+            unexpected($pred, "class_method call in clause")
         ;
             GenericCall = event_call(_),
-            sorry($module, $pred, "event_call NYI")
+            sorry($pred, "event_call NYI")
         ;
             GenericCall = cast(_),
-            sorry($module, $pred, "type/inst cast call NYI")
+            sorry($pred, "type/inst cast call NYI")
         ),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = switch(_, _, _),
-        unexpected($module, $pred, "switch (should be disj)")
+        unexpected($pred, "switch (should be disj)")
     ;
         GoalExpr0 = negation(SubGoal0),
         goal_constraints(NonLocals, _, SubGoal0, SubGoal,
@@ -1449,10 +1448,10 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
         GoalExpr = if_then_else(IteNonLocals, Cond, Then, Else)
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        sorry($module, $pred, "foreign_proc NYI")
+        sorry($pred, "foreign_proc NYI")
     ;
         GoalExpr0 = shorthand(_),
-        sorry($module, $pred, "shorthand")
+        sorry($pred, "shorthand")
     ).
 
 % goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed,

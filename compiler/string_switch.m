@@ -217,7 +217,7 @@ add_to_strs_labels(Label, TaggedConsId, !StrsLabels) :-
     ( if Tag = string_tag(String) then
         !:StrsLabels = [String - Label | !.StrsLabels]
     else
-        unexpected($module, $pred, "non-string tag")
+        unexpected($pred, "non-string tag")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -417,7 +417,7 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
 
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
-    expect(negate(unify(OutVars, [])), $module, $pred, "no OutVars"),
+    expect(negate(unify(OutVars, [])), $pred, "no OutVars"),
     (
         GoalsMayModifyTrail = yes,
         get_emit_trail_ops(!.CI, EmitTrailOps),
@@ -911,7 +911,7 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
 
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
-    expect(negate(unify(OutVars, [])), $module, $pred, "no OutVars"),
+    expect(negate(unify(OutVars, [])), $pred, "no OutVars"),
     (
         GoalsMayModifyTrail = yes,
         get_emit_trail_ops(!.CI, EmitTrailOps),

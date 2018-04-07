@@ -166,10 +166,10 @@ generate_par_conj(Conjuncts, GoalInfo, CodeModel, Code, !CI, !CLD) :-
         CodeModel = model_det
     ;
         CodeModel = model_semi,
-        sorry($module, $pred, "semidet parallel conjunction not implemented")
+        sorry($pred, "semidet parallel conjunction not implemented")
     ;
         CodeModel = model_non,
-        sorry($module, $pred, "nondet parallel conjunction not implemented")
+        sorry($pred, "nondet parallel conjunction not implemented")
     ),
 
     get_globals(!.CI, Globals),
@@ -225,7 +225,7 @@ generate_par_conj(Conjuncts, GoalInfo, CodeModel, Code, !CI, !CLD) :-
         SyncTermBaseSlot = SyncTermBaseSlotPrime,
         ParentSyncTermBaseSlot = parent_stackvar(SlotNum)
     else
-        unexpected($module, $pred, "cannot find stack slot")
+        unexpected($pred, "cannot find stack slot")
     ),
 
     NumConjuncts = list.length(Conjuncts),
@@ -470,7 +470,7 @@ copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn, StackSlots,
         LCVarName = LCVarNamePrime,
         LCSVarName = LCSVarNamePrime
     else
-        unexpected($module, $pred, "cannot convert to string")
+        unexpected($pred, "cannot convert to string")
     ),
 
     FirstLine = "{\n",
@@ -491,10 +491,10 @@ copy_one_slot_to_child_stack(LCVarName, LCSVarName, StackSlot, CopyStr) :-
             CopyStr = string.format("\tMR_lc_worker_sv(%s, %s, %d) = %s;\n",
                 [s(LCVarName), s(LCSVarName), i(N), s(StackSlotName)])
         else
-            unexpected($module, $pred, "not stack slot")
+            unexpected($pred, "not stack slot")
         )
     else
-        unexpected($module, $pred, "cannot convert to string")
+        unexpected($pred, "cannot convert to string")
     ).
 
 %----------------------------------------------------------------------------%
@@ -515,7 +515,7 @@ best_variable_location_det(CLD, Var, Locn) :-
             AllLocns = [Locn | _]
         ;
             AllLocns = [],
-            unexpected($module, $pred, "Could not find location for variable")
+            unexpected($pred, "Could not find location for variable")
         )
     ).
 

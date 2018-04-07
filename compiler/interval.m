@@ -376,11 +376,11 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
                 HowToConstruct, _, _),
             (
                 HowToConstruct = reuse_cell(_),
-                unexpected($module, $pred, "reuse")
+                unexpected($pred, "reuse")
             ;
                 % XXX Temporary for the time being.
                 HowToConstruct = construct_in_region(_),
-                unexpected($module, $pred, "construct in region")
+                unexpected($pred, "construct in region")
             ;
                 ( HowToConstruct = construct_statically
                 ; HowToConstruct = construct_dynamically
@@ -415,12 +415,12 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             require_access([Var1, Var2], !IntervalInfo)
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated_unify")
+            unexpected($pred, "complicated_unify")
         )
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred shared_left_to_right_deconstruct(module_info::in,
@@ -490,7 +490,7 @@ build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
         require_access(Inputs, !IntervalInfo)
     ;
         MaybeNeedAcrossCall = no,
-        unexpected($module, $pred, "no need across call")
+        unexpected($pred, "no need across call")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -573,7 +573,7 @@ reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
         StoreMapVars = set_of_var.sorted_list_to_set(StoreMapVarList),
         require_flushed(StoreMapVars, !IntervalInfo)
     else
-        unexpected($module, $pred, "no store map")
+        unexpected($pred, "no store map")
     ),
     EndAnchor = anchor_branch_end(Construct, GoalId),
     StartAnchor = anchor_branch_start(Construct, GoalId),
@@ -788,7 +788,7 @@ record_interval_succ(Id, Succ, !IntervalInfo) :-
 record_interval_no_succ(Id, !IntervalInfo) :-
     SuccMap0 = !.IntervalInfo ^ ii_interval_succ,
     ( if map.search(SuccMap0, Id, _Succ0) then
-        unexpected($module, $pred, "already in succ map")
+        unexpected($pred, "already in succ map")
     else
         map.det_insert(Id, [], SuccMap0, SuccMap)
     ),
@@ -1025,7 +1025,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         rename_some_vars_in_goal(!.VarRename, Goal0, Goal)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1092,7 +1092,7 @@ make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal) :-
         rename_some_vars_in_goal(!.VarRename, Goal2, Goal3),
         rename_some_vars_in_goal(VoidRename, Goal3, Goal)
     else
-        unexpected($module, $pred, "not a deconstruct")
+        unexpected($pred, "not a deconstruct")
     ).
 
 make_inserted_goal(VarSet0, VarSet, VarTypes0, VarTypes, !RenameMap,
@@ -1158,7 +1158,7 @@ record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
             Goal = Goal1
         ;
             MustHaveMap = yes,
-            unexpected($module, $pred, "no save map")
+            unexpected($pred, "no save map")
         )
     ).
 

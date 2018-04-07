@@ -763,7 +763,7 @@ unit_selector_to_string(TypeVarSet, UnitSelector) = String :-
         String = mercury_type_to_string(TypeVarSet, print_name_only, Type)
     ;
         UnitSelector = termsel(_, _),
-        unexpected($module, $pred, "termsel in user-annotated sharing")
+        unexpected($pred, "termsel in user-annotated sharing")
     ).
 
 :- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute)
@@ -952,7 +952,7 @@ mercury_output_pragma_type_spec(VarNamePrint, Lang, TypeSpecInfo, !IO) :-
             PredOrFunc = PredOrFunc0
         ;
             MaybePredOrFunc = no,
-            unexpected($module, $pred, "no pred_or_func")
+            unexpected($pred, "no pred_or_func")
         ),
         (
             PredOrFunc = pf_function,

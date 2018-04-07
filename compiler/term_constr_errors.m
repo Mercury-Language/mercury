@@ -257,8 +257,7 @@ term2_error_kind_description(ModuleInfo, Single, Error, Pieces) :-
         Error = can_loop_proc_called(CallerPPId, CalleePPId),
         (
             Single = yes(PPId),
-            expect(unify(PPId, CallerPPId), $module, $pred,
-                "caller outside this SCC"),
+            expect(unify(PPId, CallerPPId), $pred, "caller outside this SCC"),
             Piece1 = [words("It")]
         ;
             Single = no,
@@ -281,7 +280,7 @@ term2_error_kind_description(ModuleInfo, Single, Error, Pieces) :-
         (
             Single = yes(PPId),
             PPId = proc(SCCPredId, _),
-            expect(unify(PredId, SCCPredId), $module, $pred,
+            expect(unify(PredId, SCCPredId), $pred,
                 "does not terminate pragma outside this SCC"),
             Pieces2 = [words("it."), nl]
         ;

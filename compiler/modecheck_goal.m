@@ -783,9 +783,9 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
             mode_info_get_instmap(!.ModeInfo, InstMap),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             expect(var_is_ground_in_instmap(ModuleInfo, InstMap, LCVar),
-                $module, $pred, "Loop control variable is not ground"),
+                $pred, "Loop control variable is not ground"),
             expect(var_is_ground_in_instmap(ModuleInfo, InstMap, LCSVar),
-                $module, $pred, "Loop control slot variable is not ground")
+                $pred, "Loop control slot variable is not ground")
         ),
         mode_checkpoint(enter, "scope", !ModeInfo),
         modecheck_goal(SubGoal0, SubGoal, !ModeInfo),
@@ -826,8 +826,8 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
             mode_checkpoint(exit, "from_ground_term scope", !ModeInfo),
             (
                 MaybeKind1AndSubGoal1 = yes(Kind1 - SubGoal1),
-                expect(negate(unify(Kind1, from_ground_term_initial)),
-                    $module, $pred, "from_ground_term_initial"),
+                expect(negate(unify(Kind1, from_ground_term_initial)), $pred,
+                    "from_ground_term_initial"),
                 mode_info_set_had_from_ground_term(had_from_ground_term_scope,
                     !ModeInfo),
 
@@ -841,7 +841,7 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
                     MakeGroundTermsUnique = make_ground_terms_unique,
                     (
                         Kind1 = from_ground_term_initial,
-                        unexpected($module, $pred, "from_ground_term_initial")
+                        unexpected($pred, "from_ground_term_initial")
                     ;
                         Kind1 = from_ground_term_construct,
                         modecheck_goal_make_ground_term_unique(TermVar,
@@ -995,7 +995,7 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
     % Update the information in the predicate table.
     polymorphism.poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
         ProcInfo2, ProcInfo, ModuleInfo1),
-    expect(unify(PolySpecs, []), $module, $pred,
+    expect(unify(PolySpecs, []), $pred,
         "got errors while making type_info_var"),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
@@ -1198,7 +1198,7 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         LHSVarInfo = construct_var_info(TermInst),
         map.det_insert(LHSVar, LHSVarInfo, !LocalVarMap)
     else
-        unexpected($module, $pred, "not rhs_functor unify")
+        unexpected($pred, "not rhs_functor unify")
     ),
     modecheck_ground_term_construct_goal_loop(VarSet, Goals0, Goals,
         !LocalVarMap).
@@ -1293,7 +1293,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
         % XXX We should probably fill this in so that
         % rerunning mode analysis works on code with typeclasses.
         GenericCall = class_method(_, _, _, _),
-        unexpected($module, $pred, "class_method_call")
+        unexpected($pred, "class_method_call")
     ;
         GenericCall = event_call(EventName),
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
@@ -1304,7 +1304,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
         else
             % The typechecker should have caught the unknown event,
             % and not let compilation of this predicate proceed any further.
-            unexpected($module, $pred, "unknown event")
+            unexpected($pred, "unknown event")
         ),
         modecheck_event_call(Modes, Args0, Args, !ModeInfo),
         GoalExpr = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
@@ -1322,7 +1322,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
                 Mode1 = Mode1Prime,
                 Mode2 = Mode2Prime
             else
-                unexpected($module, $pred, "bad cast")
+                unexpected($pred, "bad cast")
             ),
             Mode1 = in_mode,
             Mode2 = out_mode,
@@ -1468,18 +1468,18 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         then
             GoalType = nested_atomic_goal
         else
-            unexpected($module, $pred, "atomic_goal: invalid outer var type")
+            unexpected($pred, "atomic_goal: invalid outer var type")
         ),
 
         % The following are sanity checks.
-        expect(unify(OuterDIType, OuterUOType), $module, $pred,
+        expect(unify(OuterDIType, OuterUOType), $pred,
             "atomic_goal: mismatched outer var type"),
         Inner = atomic_interface_vars(InnerDI, InnerUO),
         lookup_var_type(VarTypes, InnerDI, InnerDIType),
         lookup_var_type(VarTypes, InnerUO, InnerUOType),
-        expect(unify(InnerDIType, stm_atomic_type), $module, $pred,
+        expect(unify(InnerDIType, stm_atomic_type), $pred,
             "atomic_goal: invalid inner var type"),
-        expect(unify(InnerUOType, stm_atomic_type), $module, $pred,
+        expect(unify(InnerUOType, stm_atomic_type), $pred,
             "atomic_goal: invalid inner var type"),
 
         ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
@@ -1498,7 +1498,7 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
     ;
         ShortHand0 = bi_implication(_, _),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "bi_implication")
+        unexpected($pred, "bi_implication")
     ).
 
 :- pred modecheck_orelse_list(pred_var_multimode_map::in,

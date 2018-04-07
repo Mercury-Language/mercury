@@ -136,7 +136,7 @@ build_comments(S, comments(!.C), comments(!:C), !IO) :-
     ;
         LineResult = error(E),
         % XXX we should recover more gracefully from this error.
-        unexpected($module, $pred, io.error_message(E))
+        unexpected($pred, io.error_message(E))
     ).
 
     % Given a list of characters representing one line,
@@ -194,7 +194,7 @@ maybe_add_comment(Comments, Context, Xml) =
             Xml
         )
     else
-        unexpected($module, $pred, "not an element")
+        unexpected($pred, "not an element")
     ).
 
     % Get the comment string associated with the given prog_context.

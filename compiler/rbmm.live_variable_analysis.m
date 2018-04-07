@@ -237,7 +237,7 @@ live_variable_analysis_singleton_exec_path([ProgPoint - Goal | _], Inputs,
     collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar).
 live_variable_analysis_singleton_exec_path([], _, _, _, _,
         !ProcLVBefore, !ProcLVAfter, !ProcVoidVar) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 
     % A variable is live at a program point if it is live in one of
     % the execution paths that covers the program point.
@@ -291,7 +291,7 @@ compute_useds_produceds(ModuleInfo, Goal, UsedSet, ProducedSet) :-
             Useds = [],
             Produceds = []
         ;
-            unexpected($module, $pred,
+            unexpected($pred,
                 "the expression must be either call, unify, true, or fail")
         )
     ),
@@ -335,10 +335,10 @@ get_inputs_outputs_proc_call(ActualArgs, CalleeId, ModuleInfo,
 get_inputs_outputs_proc_call_2([], [], _, _, !ActualInputs, !ActualOutputs).
 get_inputs_outputs_proc_call_2([], [_ | _], _, _, !ActualInputs,
         !ActualOutputs) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 get_inputs_outputs_proc_call_2([_ | _], [], _, _, !ActualInputs,
         !ActualOutputs) :-
-    unexpected($module, $pred, "mismatched lists").
+    unexpected($pred, "mismatched lists").
 get_inputs_outputs_proc_call_2([FormalArg | FormalArgs],
         [ActualArg | ActualArgs], Inputs, Outputs, !ActualInputs,
         !ActualOutputs) :-

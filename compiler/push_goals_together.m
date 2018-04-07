@@ -489,7 +489,7 @@ is_pushable_goal(PushInfo, Goal, Pushable) :-
                 )
             ;
                 Unification = complicated_unify(_, _, _),
-                unexpected($module, $pred, "complicated_unify")
+                unexpected($pred, "complicated_unify")
             )
         ;
             ( GoalExpr = plain_call(_, _, _, _, _, _)
@@ -523,7 +523,7 @@ is_pushable_goal(PushInfo, Goal, Pushable) :-
                 Pushable = not_pushable
             ;
                 Shorthand = bi_implication(_, _),
-                unexpected($module, $pred, "bi_implication")
+                unexpected($pred, "bi_implication")
             )
         )
     else
@@ -622,7 +622,7 @@ push_into_goal(LoHi, HeadPath, TailPaths, Goal0, Goal, Pushable) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         HeadPath = fgp_nil,
-        expect(unify(TailPaths, []), $module, "TailSteps != []"),
+        expect(unify(TailPaths, []), $pred, "TailSteps != []"),
         add_goals_at_end(LoHi, Goal0, Goal),
         Pushable = pushable
     ;
@@ -643,7 +643,7 @@ push_into_goal(LoHi, HeadPath, TailPaths, Goal0, Goal, Pushable) :-
                 FirstHeadStep = step_conj(_),
                 LaterHeadPath = fgp_nil
             then
-                expect(unify(TailPaths, []), $module, "TailSteps != []"),
+                expect(unify(TailPaths, []), $pred, "TailSteps != []"),
                 add_goals_at_end(LoHi, Goal0, Goal),
                 Pushable = pushable
             else if
@@ -782,7 +782,7 @@ push_into_goal(LoHi, HeadPath, TailPaths, Goal0, Goal, Pushable) :-
                 Pushable = not_pushable
             ;
                 Shorthand = bi_implication(_, _),
-                unexpected($module, $pred, "bi_implication")
+                unexpected($pred, "bi_implication")
             )
         )
     ).

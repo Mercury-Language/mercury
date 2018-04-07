@@ -686,7 +686,7 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
             )
         ;
             Unify = deconstruct(CellVar, _, ArgVars, ArgModes, CanFail, _),
-            expect(unify(CellVar, LHS), $module, $pred, "LHS != CellVar"),
+            expect(unify(CellVar, LHS), $pred, "LHS != CellVar"),
             partition_deconstruct_args(Info, ArgVars, ArgModes,
                 InputVars, OutputVars),
             % The deconstructed variable is used if any of the variables that
@@ -704,7 +704,7 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
             )
         ;
             Unify = construct(CellVar, _, ArgVars, _, _, _, _),
-            expect(unify(CellVar, LHS), $module, $pred, "LHS != CellVar"),
+            expect(unify(CellVar, LHS), $pred, "LHS != CellVar"),
             ( if local_var_is_used(!.VarDep, CellVar) then
                 set_list_vars_used(ArgVars, !VarDep)
             else
@@ -723,14 +723,14 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
                 ( RHS = rhs_functor(_, _, _)
                 ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
                 ),
-                unexpected($module, $pred,
+                unexpected($pred,
                     "complicated unifications should only be var-var")
             )
         )
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
     % Add PredProcId - HeadVar as an alias for the same element of Args.
@@ -745,11 +745,11 @@ add_pred_call_arg_dep(PredProcId, LocalArguments, HeadVarIds, !VarDep) :-
     ;
         LocalArguments = [],
         HeadVarIds = [_ | _],
-        unexpected($module, $pred, "invalid call")
+        unexpected($pred, "invalid call")
     ;
         LocalArguments = [_ | _],
         HeadVarIds = [],
-        unexpected($module, $pred, "invalid call")
+        unexpected($pred, "invalid call")
     ;
         LocalArguments = [Arg | Args],
         HeadVarIds = [HeadVar | HeadVars],
@@ -791,11 +791,11 @@ partition_deconstruct_args(Info, Vars, ArgModes, InputVars, OutputVars) :-
     ;
         Vars = [],
         ArgModes = [_ | _],
-        unexpected($module, $pred, "mismatched lists")
+        unexpected($pred, "mismatched lists")
     ;
         Vars = [_ | _],
         ArgModes = [],
-        unexpected($module, $pred, "mismatched lists")
+        unexpected($pred, "mismatched lists")
     ;
         Vars = [HeadVar | TailVars],
         ArgModes = [HeadArgMode | TailArgModes],
@@ -1521,7 +1521,7 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred rename_apart_unused_foreign_arg(foreign_arg::in, foreign_arg::out,
@@ -1647,7 +1647,7 @@ need_unify(ModuleInfo, UnusedVars, Unify, Changed) :-
     ;
         % These should have been transformed into calls by polymorphism.m.
         Unify = complicated_unify(_, _, _),
-        unexpected($module, $pred, "complicated unify")
+        unexpected($pred, "complicated unify")
     ).
 
     % Check if any of the arguments of a deconstruction are unused,
@@ -1668,11 +1668,11 @@ check_deconstruct_args(ModuleInfo, UnusedVars, Vars, ArgModes, !.SomeUsed,
     ;
         Vars = [],
         ArgModes = [_ | _],
-        unexpected($module, $pred, "mismatched lists")
+        unexpected($pred, "mismatched lists")
     ;
         Vars = [_ | _],
         ArgModes = [],
-        unexpected($module, $pred, "mismatched lists")
+        unexpected($pred, "mismatched lists")
     ;
         Vars = [HeadVar | TailVars],
         ArgModes = [HeadArgMode | TailArgModes],
@@ -1869,7 +1869,7 @@ report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
 
 :- func format_arg_list(list(int)) = list(format_component).
 
-format_arg_list([]) = unexpected($module, $pred, "empty list").
+format_arg_list([]) = unexpected($pred, "empty list").
 format_arg_list([Arg | Rest]) = Pieces :-
     ArgStr = int_to_string(Arg),
     (

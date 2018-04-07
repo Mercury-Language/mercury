@@ -5,4 +5,4 @@ unresolved_overloading.m:025:   and predicate
 unresolved_overloading.m:025:   `unresolved_overloading.loud_and_annoying'/3.
 unresolved_overloading.m:025:   You need to use an explicit module qualifier.
 Uncaught Mercury exception:
-Software Error: hlds.pred_table: predicate `hlds.pred_table.find_matching_pred_id'/10: Unexpected: unresolvable predicate overloading
+Software Error: predicate `hlds.pred_table.find_matching_pred_id'/10: Unexpected: unresolvable predicate overloading

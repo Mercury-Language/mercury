@@ -232,10 +232,10 @@ output_first_opt_debug(Info, FileName, ProcLabel, Instrs0, Counter, !IO) :-
             io.close_output(FileStream, !IO)
         ;
             Res = error(_),
-            unexpected($module, $pred, "cannot open " ++ FileName)
+            unexpected($pred, "cannot open " ++ FileName)
         )
     else
-        unexpected($module, $pred, "cannot make " ++ opt_subdir_name)
+        unexpected($pred, "cannot make " ++ opt_subdir_name)
     ).
 
 :- func opt_subdir_name = string.
@@ -294,7 +294,7 @@ maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
                 io.close_output(FileStream, !IO)
             ;
                 Res = error(_),
-                unexpected($module, $pred, "cannot open " ++ OptFileName)
+                unexpected($pred, "cannot open " ++ OptFileName)
             ),
             (
                 Same = yes

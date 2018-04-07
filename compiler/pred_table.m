@@ -1011,7 +1011,7 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
     else
         % If there is no matching predicate for this call, then this predicate
         % must have a type error which should have been caught by typechecking.
-        unexpected($module, $pred, "type error in pred call: no matching pred")
+        unexpected($pred, "type error in pred call: no matching pred")
     ).
 
 find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
@@ -1064,7 +1064,7 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
                     nl],
                 write_error_pieces(Globals, Context, 0, Pieces, !IO)
             ),
-            unexpected($module, $pred, "unresolvable predicate overloading")
+            unexpected($pred, "unresolvable predicate overloading")
         else
             ThePredId = PredId
         )
@@ -1131,7 +1131,7 @@ get_pred_id_and_proc_id_by_types(IsFullyQualified, SymName, PredOrFunc,
         string.int_to_string(Arity, ArityString),
         string.append_list(["undefined/invalid ", PredOrFuncStr,
             "\n`", NameStr, "/", ArityString, "'"], Msg),
-        unexpected($module, $pred, Msg)
+        unexpected($pred, Msg)
     ),
     get_proc_id(ModuleInfo, PredId, ProcId).
 
@@ -1162,7 +1162,7 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
                 "(use an explicit lambda expression instead)"],
                 Message)
         ),
-        unexpected($module, $pred, Message)
+        unexpected($pred, Message)
     ).
 
 lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
@@ -1201,7 +1201,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
     then
         PredId = PredIdPrime
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             string.format("can't locate %s.%s/%d",
                 [s(sym_name_to_string(ModuleName)), s(ProcName), i(Arity)]))
     ),
@@ -1212,7 +1212,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         ( if ProcIds = [ProcId0] then
             ProcId = ProcId0
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 string.format("expected single mode for %s.%s/%d",
                     [s(sym_name_to_string(ModuleName)),
                     s(ProcName), i(Arity)]))
@@ -1222,7 +1222,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         ( if list.index0(ProcIds, N, ProcId0) then
             ProcId = ProcId0
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 string.format("there is no mode %d for %s.%s/%d",
                     [i(N), s(sym_name_to_string(ModuleName)),
                     s(ProcName), i(Arity)]))

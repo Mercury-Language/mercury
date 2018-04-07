@@ -215,7 +215,7 @@ table_gen_process_io_proc(PredId, ProcId, ProcInfo0, PredInfo0,
         pred_id_to_int(PredId, PredIdInt),
         Msg = string.format("I/O procedure pred id %d not model_det",
             [i(PredIdInt)]),
-        unexpected($module, $pred, Msg)
+        unexpected($pred, Msg)
     ),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, trace_table_io_all, TransformAll),
@@ -315,7 +315,7 @@ should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
         TabledForIoAttrs = [_, _ | _],
         % Since table_gen is run before inlining, each procedure
         % should contain at most one foreign_proc goal.
-        unexpected($module, $pred,
+        unexpected($pred,
             "different tabled_for_io attributes in one procedure")
     ).
 
@@ -438,7 +438,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     (
         EvalMethod = eval_normal,
         % This should have been caught by our caller.
-        unexpected($module, $pred, "eval_normal")
+        unexpected($pred, "eval_normal")
     ;
         EvalMethod = eval_table_io(_, _),
         expect(unify(MaybeAttributes, no), $pred,
@@ -565,7 +565,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
             % The own_stacks_generator minimal_method is only ever introduced
             % by the transformation in this module; a procedure that hasn't
             % been transformed yet should not have this eval_method.
-            unexpected($module, $pred, "own stacks generator")
+            unexpected($pred, "own stacks generator")
         ),
         MaybeProcTableIOInfo = no
     ),
@@ -998,7 +998,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         SetupMacroName = "MR_tbl_memo_semi_setup"
     ;
         CodeModel = model_non,
-        unexpected($module, $pred, "model_non")
+        unexpected($pred, "model_non")
     ),
     generate_simple_call_table_lookup_goal(StatusType,
         SetupPredName, SetupMacroName, NumberedInputVars,
@@ -1406,7 +1406,7 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
         else
             % The call to proc_info_has_io_state_pair in
             % table_gen_process_procs should ensure that we never get here.
-            unexpected($module, $pred, "one in / one out violation")
+            unexpected($pred, "one in / one out violation")
         ),
         table_generate_call("table_io_copy_io_state", detism_det,
             [IoStateAssignFromVar, IoStateAssignToVar], purity_pure,
@@ -1778,7 +1778,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     else if Detism = detism_non then
         ConsumePredName = "table_mmos_consume_next_answer_nondet"
     else
-        unexpected($module, $pred, "invalid determinism")
+        unexpected($pred, "invalid determinism")
     ),
     % XXX consider inlining the predicate being called
     table_generate_call(ConsumePredName, Detism, [ConsumerVar, AnswerBlockVar],
@@ -1828,7 +1828,7 @@ generate_save_input_vars_code([InputArg - Mode | InputArgModes], ModuleInfo,
         MaybeArgNameMode = yes(foreign_arg_name_mode(InputVarName, _InMode))
     ;
         MaybeArgNameMode = no,
-        unexpected($module, $pred, "no InputVarName")
+        unexpected($pred, "no InputVarName")
     ),
     mode_get_insts(ModuleInfo, Mode, InitInst, _FinalInst),
     PickupMode = from_to_mode(free, InitInst),
@@ -2511,7 +2511,7 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
             then
                 list.length(Ctors, EnumRange)
             else
-                unexpected($module, $pred, "enum type is not du_type?")
+                unexpected($pred, "enum type is not du_type?")
             ),
             LookupMacroName = "MR_tbl_lookup_insert_enum",
             Step = table_trie_step_enum(EnumRange),
@@ -2605,25 +2605,25 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
                 cur_table_node_name ++ ";\n"
         ;
             CtorCat = ctor_cat_void,
-            unexpected($module, $pred, "void")
+            unexpected($pred, "void")
         ;
             CtorCat = ctor_cat_system(cat_system_typeclass_info),
-            unexpected($module, $pred, "typeclass_info_type")
+            unexpected($pred, "typeclass_info_type")
         ;
             CtorCat = ctor_cat_system(cat_system_base_typeclass_info),
-            unexpected($module, $pred, "base_typeclass_info_type")
+            unexpected($pred, "base_typeclass_info_type")
         )
     ;
         ArgTablingMethod = arg_addr,
         (
             CtorCat = ctor_cat_enum(_),
-            unexpected($module, $pred, "tabling enums by addr")
+            unexpected($pred, "tabling enums by addr")
         ;
             CtorCat = ctor_cat_builtin(cat_builtin_int(_)),
-            unexpected($module, $pred, "tabling integer type by addr")
+            unexpected($pred, "tabling integer type by addr")
         ;
             CtorCat = ctor_cat_builtin(cat_builtin_char),
-            unexpected($module, $pred, "tabling chars by addr")
+            unexpected($pred, "tabling chars by addr")
         ;
             ( CtorCat = ctor_cat_builtin(cat_builtin_string)
             ; CtorCat = ctor_cat_builtin(cat_builtin_float)
@@ -2641,14 +2641,14 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
                 PrefixGoals, LookupCodeStr)
         ;
             CtorCat = ctor_cat_builtin_dummy,
-            unexpected($module, $pred, "tabling dummies by addr")
+            unexpected($pred, "tabling dummies by addr")
         ;
             CtorCat = ctor_cat_void,
-            unexpected($module, $pred, "void")
+            unexpected($pred, "void")
         )
     ;
         ArgTablingMethod = arg_promise_implied,
-        unexpected($module, $pred, "arg_promise_implied")
+        unexpected($pred, "arg_promise_implied")
     ),
     UpdateCurNodeCodeStr = "\t" ++ cur_table_node_name ++ " = " ++
         next_table_node_name ++ ";\n",
@@ -3071,7 +3071,7 @@ generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
     else if Detism = detism_non then
         ReturnAllAns = "table_memo_return_all_answers_nondet"
     else
-        unexpected($module, $pred, "invalid determinism")
+        unexpected($pred, "invalid determinism")
     ),
     generate_new_table_var("AnswerBlock", answer_block_type,
         !VarSet, !VarTypes, AnswerBlockVar),
@@ -3115,7 +3115,7 @@ generate_mm_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
     else if Detism = detism_non then
         ReturnAllAns = "table_mm_return_all_nondet"
     else
-        unexpected($module, $pred, "invalid determinism")
+        unexpected($pred, "invalid determinism")
     ),
     generate_mm_restore_or_suspend_goal(ReturnAllAns, Detism, purity_semipure,
         NumberedOutputVars, OrigInstMapDelta, SubgoalVar, Context,
@@ -3218,7 +3218,7 @@ gen_restore_call_for_type(DebugArgStr, CtorCat, Type, OrigInstmapDelta, Var,
     ( if instmap_delta_search_var(OrigInstmapDelta, Var, InstPrime) then
         Inst = InstPrime
     else
-        unexpected($module, $pred, "no inst")
+        unexpected($pred, "no inst")
     ),
     Arg = foreign_arg(Var,
         yes(foreign_arg_name_mode(Name, from_to_mode(free, Inst))),
@@ -3369,9 +3369,9 @@ generator_type = Type :-
 
 get_input_output_vars([], [], _, !MaybeSpecMethod, [], []).
 get_input_output_vars([_ | _], [], _, !MaybeSpecMethod, _, _) :-
-    unexpected($module, $pred, "lists not same length").
+    unexpected($pred, "lists not same length").
 get_input_output_vars([], [_ | _], _, !MaybeSpecMethod, _, _) :-
-    unexpected($module, $pred, "lists not same length").
+    unexpected($pred, "lists not same length").
 get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
         !MaybeSpecMethod, InVarModes, OutVarModes) :-
     ( if mode_is_fully_input(ModuleInfo, Mode) then
@@ -3390,7 +3390,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                     LastMaybeArgMethod = yes(ArgMethod)
                 ;
                     LastMaybeArgMethod = no,
-                    unexpected($module, $pred, "bad method for input var")
+                    unexpected($pred, "bad method for input var")
                 ),
                 !:MaybeSpecMethod = msm_specified(MaybeArgMethods,
                     HiddenArgMethod)
@@ -3446,7 +3446,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
     else
         % We should have caught this when we added the tabling pragma
         % to the proc_info.
-        unexpected($module, $pred, "bad var")
+        unexpected($pred, "bad var")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3646,7 +3646,7 @@ type_save_category(CtorCat, Name) :-
         Name = "enum"
     ;
         CtorCat = ctor_cat_enum(cat_enum_foreign),
-        sorry($module, $pred, "tabling and foreign enumerations NYI.")
+        sorry($pred, "tabling and foreign enumerations NYI.")
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int)),
         Name = "int"
@@ -3706,7 +3706,7 @@ type_save_category(CtorCat, Name) :-
         ; CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_void
         ),
-        unexpected($module, $pred, "unexpected category")
+        unexpected($pred, "unexpected category")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3799,7 +3799,7 @@ table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes, !TableInfo,
     ( if TypeInfoVars = [TypeInfoVar0] then
         TypeInfoVar = TypeInfoVar0
     else
-        unexpected($module, $pred, "list length != 1")
+        unexpected($pred, "list length != 1")
     ).
 
 :- pred table_gen_make_type_info_vars(list(mer_type)::in, term.context::in,
@@ -3823,7 +3823,7 @@ table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes,
         TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
         ProcInfo0, ProcInfo, ModuleInfo),
-    expect(unify(PolySpecs, []), $module, $pred,
+    expect(unify(PolySpecs, []), $pred,
         "got errors while making type_info_vars"),
 
     % Get the new varset and vartypes from the proc_info.

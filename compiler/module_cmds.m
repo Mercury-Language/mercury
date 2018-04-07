@@ -980,7 +980,7 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
         list.sort(AllClassFiles, ListClassFiles)
     ;
         Result = error(_, Error),
-        unexpected($module, $pred, io.error_message(Error))
+        unexpected($pred, io.error_message(Error))
     ).
 
 list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
@@ -1254,17 +1254,17 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
                 Succeeded = yes,
                 maybe_write_string(Verbose, "% done.\n", !IO)
             else
-                unexpected($module, $pred, "chmod exit status != 0"),
+                unexpected($pred, "chmod exit status != 0"),
                 Succeeded = no
             )
         ;
             ChmodResult = error(Message),
-            unexpected($module, $pred, io.error_message(Message)),
+            unexpected($pred, io.error_message(Message)),
             Succeeded = no
         )
     ;
         OpenResult = error(Message),
-        unexpected($module, $pred, io.error_message(Message)),
+        unexpected($pred, io.error_message(Message)),
         Succeeded = no
     ).
 
@@ -1289,7 +1289,7 @@ create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
         Succeeded = yes
     ;
         OpenResult = error(Message),
-        unexpected($module, $pred, io.error_message(Message)),
+        unexpected($pred, io.error_message(Message)),
         Succeeded = no
     ).
 

@@ -503,10 +503,10 @@ read_parse_tree_opt(OptFileKind, Stream, SourceFileName0, Globals,
         check_for_unexpected_item(Stream, ModuleName, fk_opt(OptFileKind),
             FinalLookAhead, SourceFileName, SeqNumCounter,
             !Specs, !Errors, !IO),
-        expect(cord.is_empty(InclsCord), $module, $pred, "Incls != []"),
+        expect(cord.is_empty(InclsCord), $pred, "Incls != []"),
         Avails = cord.list(AvailsCord),
         avail_imports_uses(Avails, Imports, Uses),
-        expect(unify(Imports, []), $module, $pred, "Imports != []"),
+        expect(unify(Imports, []), $pred, "Imports != []"),
         Items = cord.list(ItemsCord)
     ),
     ParseTree = parse_tree_opt(ModuleName, OptFileKind, ModuleNameContext,
@@ -597,7 +597,7 @@ read_parse_tree_int(IntFileKind, Stream, SourceFileName0, Globals,
             VNInfo = dont_allow_version_numbers,
             % If you start with allow_version_numbers_not_seen, you shouldn't
             % end up with dont_allow_version_numbers.
-            unexpected($module, $pred, "dont_allow_version_numbers")
+            unexpected($pred, "dont_allow_version_numbers")
         ),
         check_for_unexpected_item(Stream, ModuleName, fk_int(IntFileKind),
             FinalLookAhead, SourceFileName, SeqNumCounter,

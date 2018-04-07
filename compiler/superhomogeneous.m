@@ -281,7 +281,7 @@ mark_nonlocals_in_ground_term_initial([Goal0 | Goals0], [Goal | Goals]) :-
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     else
-        unexpected($module, $pred, "wrong shape goal")
+        unexpected($pred, "wrong shape goal")
     ),
     mark_nonlocals_in_ground_term_initial(Goals0, Goals).
 
@@ -371,11 +371,11 @@ do_arg_unifications([], [], _Context, _ArgContext,
 do_arg_unifications([], [_ | _], _Context, _ArgContext,
         _Order, _ArgNum, [], !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 do_arg_unifications([_ | _], [], _Context, _ArgContext,
         _Order, _ArgNum, [], !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 do_arg_unifications([XVar | XVars], [YTerm | YTerms], Context, ArgContext,
         Order, ArgNum, [Expansion | Expansions], !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -439,7 +439,7 @@ do_arg_unifications_with_contexts(XVars, YTerms, ArgContexts,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         Expansions = [HeadExpansion | TailExpansions]
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 :- pred do_arg_unification(prog_var::in, prog_term::in,

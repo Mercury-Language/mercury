@@ -111,7 +111,7 @@ unparse_type(Type, Term) :-
             [term.variable(Var, Context) | ArgTerms], Context)
     ;
         Type = kinded_type(_, _),
-        unexpected($module, $pred, "kind annotation")
+        unexpected($pred, "kind annotation")
     ).
 
 :- pred unparse_type_list(list(mer_type)::in, list(term)::out) is det.
@@ -135,9 +135,9 @@ unparse_qualified_term(qualified(Qualifier, Name), Args, Term) :-
 
 combine_type_and_mode_terms([], [], []).
 combine_type_and_mode_terms([], [_ | _], _) :-
-    unexpected($module, $pred, "argument length mismatch").
+    unexpected($pred, "argument length mismatch").
 combine_type_and_mode_terms([_ | _], [], _) :-
-    unexpected($module, $pred, "argument length mismatch").
+    unexpected($pred, "argument length mismatch").
 combine_type_and_mode_terms([Type | Types], [Mode | Modes], [Term | Terms]) :-
     Term = term.functor(term.atom("::"), [Type, Mode], term.context_init),
     combine_type_and_mode_terms(Types, Modes, Terms).
@@ -468,7 +468,7 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
         InstName = unify_inst(Liveness, Real, InstA, InstB),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "unify_inst")
+            unexpected($pred, "unify_inst")
         ;
             Lang = output_debug,
             construct_qualified_term_with_context(unqualified("$unify"),
@@ -482,7 +482,7 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
         InstName = merge_inst(InstA, InstB),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "merge_inst")
+            unexpected($pred, "merge_inst")
         ;
             Lang = output_debug,
             construct_qualified_term_with_context(unqualified("$merge_inst"),
@@ -494,7 +494,7 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
         InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "ground_inst")
+            unexpected($pred, "ground_inst")
         ;
             Lang = output_debug,
             construct_qualified_term_with_context(unqualified("$ground"),
@@ -508,7 +508,7 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
         InstName = any_inst(SubInstName, Uniq, IsLive, Real),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "any_inst")
+            unexpected($pred, "any_inst")
         ;
             Lang = output_debug,
             construct_qualified_term_with_context(unqualified("$any"),
@@ -522,7 +522,7 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
         InstName = shared_inst(SubInstName),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "shared_inst")
+            unexpected($pred, "shared_inst")
         ;
             Lang = output_debug,
             construct_qualified_term_with_context(unqualified("$shared_inst"),
@@ -533,7 +533,7 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
         InstName = mostly_uniq_inst(SubInstName),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "mostly_uniq_inst")
+            unexpected($pred, "mostly_uniq_inst")
         ;
             Lang = output_debug,
             construct_qualified_term_with_context(
@@ -545,7 +545,7 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
         InstName = typed_ground(Uniq, Type),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "typed_ground")
+            unexpected($pred, "typed_ground")
         ;
             Lang = output_debug,
             unparse_type(Type, Term0),
@@ -726,24 +726,21 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = type_info_const(TIConstNum),
-        expect(unify(ArgTerms, []), $module, $pred,
-            "type_info_const arity != 0"),
+        expect(unify(ArgTerms, []), $pred, "type_info_const arity != 0"),
         term.context_init(Context),
         FunctorName = "type_info_const",
         Arg = int_to_decimal_term(TIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
     ;
         ConsId = typeclass_info_const(TCIConstNum),
-        expect(unify(ArgTerms, []), $module, $pred,
-            "typeclass_info_const arity != 0"),
+        expect(unify(ArgTerms, []), $pred, "typeclass_info_const arity != 0"),
         term.context_init(Context),
         FunctorName = "typeclass_info_const",
         Arg = int_to_decimal_term(TCIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
     ;
         ConsId = ground_term_const(TCIConstNum, SubConsId),
-        expect(unify(ArgTerms, []), $module, $pred,
-            "ground_term_const arity != 0"),
+        expect(unify(ArgTerms, []), $pred, "ground_term_const arity != 0"),
         cons_id_and_args_to_term_full(SubConsId, [], SubArg),
         term.context_init(Context),
         FunctorName = "ground_term_const",

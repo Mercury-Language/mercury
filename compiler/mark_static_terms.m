@@ -122,7 +122,7 @@ goal_mark_static_terms(Goal0, Goal, !SI) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred conj_mark_static_terms(hlds_goals::in, hlds_goals::out,

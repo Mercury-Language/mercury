@@ -196,7 +196,7 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
         ptag_case(SecTagLocn, GoalMap)),
     map.lookup(PtagCountMap, MainPtag, CountInfo),
     CountInfo = SecTagLocn1 - MaxSecondary,
-    expect(unify(SecTagLocn, SecTagLocn1), $module, $pred,
+    expect(unify(SecTagLocn, SecTagLocn1), $pred,
         "secondary tag locations differ"),
     map.to_assoc_list(GoalMap, GoalList),
     (
@@ -206,20 +206,19 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
         % There is no secondary tag, so there is no switch on it.
         (
             GoalList = [],
-            unexpected($module, $pred, "no goal for non-shared tag")
+            unexpected($pred, "no goal for non-shared tag")
         ;
             GoalList = [_Stag - CaseId],
             lookup_code_map(CodeMap, CaseId, CodeModel, Stmt, !Info)
         ;
             GoalList = [_, _ | _],
-            unexpected($module, $pred, "more than one goal for non-shared tag")
+            unexpected($pred, "more than one goal for non-shared tag")
         )
     ;
         ( SecTagLocn = sectag_local
         ; SecTagLocn = sectag_remote
         ),
-        expect(unify(OtherPtags, []), $module, $pred,
-            ">1 ptag with secondary tag"),
+        expect(unify(OtherPtags, []), $pred, ">1 ptag with secondary tag"),
         (
             CanFail = cannot_fail,
             CaseCanFail = cannot_fail
@@ -330,7 +329,7 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
         ( StagLocn = sectag_none
         ; StagLocn = sectag_none_direct_arg
         ),
-        unexpected($module, $pred, "no stag")
+        unexpected($pred, "no stag")
     ),
 
     % Generate the switch on the secondary tag.

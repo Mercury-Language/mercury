@@ -1847,7 +1847,7 @@ make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
     then
         Args = []
     else
-        unexpected($module, $pred, "unmatched lists")
+        unexpected($pred, "unmatched lists")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2157,7 +2157,7 @@ goal_info_get_rbmm(GoalInfo) = RBMM :-
         MaybeRBMM = yes(RBMM)
     ;
         MaybeRBMM = no,
-        unexpected($module, $pred, "Requesting unavailable RBMM information.")
+        unexpected($pred, "Requesting unavailable RBMM information.")
     ).
 
 goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
@@ -2386,7 +2386,7 @@ goal_info_get_lfu(GoalInfo) = LFU :-
         MaybeLFU = yes(LFU)
     ;
         MaybeLFU = no,
-        unexpected($module, $pred,
+        unexpected($pred,
             "Requesting LFU information while CTGC field not set.")
     ).
 
@@ -2396,7 +2396,7 @@ goal_info_get_lbu(GoalInfo) = LBU :-
         MaybeLBU = yes(LBU)
     ;
         MaybeLBU = no,
-        unexpected($module, $pred,
+        unexpected($pred,
             "Requesting LBU information while CTGC field not set.")
     ).
 
@@ -2406,7 +2406,7 @@ goal_info_get_reuse(GoalInfo) = Reuse :-
         MaybeReuse = yes(Reuse)
     ;
         MaybeReuse = no,
-        unexpected($module, $pred,
+        unexpected($pred,
             "Requesting reuse information while CTGC field not set.")
     ).
 

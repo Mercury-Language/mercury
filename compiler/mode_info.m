@@ -870,7 +870,7 @@ mode_info_set_call_arg_context(ArgNum, !ModeInfo) :-
         true
     ;
         ModeContext0 = mode_context_uninitialized,
-        unexpected($module, $pred, "uninitialized")
+        unexpected($pred, "uninitialized")
     ).
 
 mode_info_unset_call_context(!MI) :-
@@ -977,7 +977,7 @@ mode_info_unlock_vars(Reason, Vars, !ModeInfo) :-
     then
         LockedVars = LockedVars1
     else
-        unexpected($module, $pred, "some kind of nesting error")
+        unexpected($pred, "some kind of nesting error")
     ),
     mode_info_set_locked_vars(LockedVars, !ModeInfo).
 
@@ -1003,8 +1003,7 @@ mode_info_set_checking_extra_goals(Checking, !MI) :-
     then
         % This should never happen - once the extra goals are introduced,
         % rechecking the goal should not introduce more extra goals.
-        unexpected($module, $pred,
-            "rechecking extra goals adds more extra goals")
+        unexpected($pred, "rechecking extra goals adds more extra goals")
     else
         !MI ^ mi_sub_info ^ msi_checking_extra_goals := Checking
     ).

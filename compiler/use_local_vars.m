@@ -341,8 +341,7 @@ find_compulsory_lvals([Instr | Instrs], MaybeLiveMap, MaybeFallThrough,
     else if
         Uinstr = llcall(_, _, _, _, _, _)
     then
-        expect(unify(PrevLivevals, yes), $module, $pred,
-            "call without livevals"),
+        expect(unify(PrevLivevals, yes), $pred, "call without livevals"),
         % The livevals instruction will include all the live lvals
         % in MaybeCompulsoryLvals after we return.
         !:MaybeCompulsoryLvals = known(set.init)
@@ -416,7 +415,7 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
         counter.allocate(TempNum, !TempCounter),
         TempLval = temp(reg_type_for_lval(ChosenLval), TempNum),
         SubChosenLvals = lvals_in_lval(ChosenLval),
-        expect(unify(SubChosenLvals, []), $module, $pred,
+        expect(unify(SubChosenLvals, []), $pred,
             "nonempty SubChosenLvals"),
         substitute_lval_in_instr_until_defn(ChosenLval, TempLval,
             [Instr0 | TailInstrs0], Instrs1, 0, NumReplacements),
@@ -532,13 +531,13 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
     ( if
         Uinstr0 = assign(ToLval, FromRval)
     then
-        expect(unify(ToLval, OldLval), $module, $pred, "mismatch in assign"),
+        expect(unify(ToLval, OldLval), $pred, "mismatch in assign"),
         Uinstr = assign(NewLval, FromRval)
     else if
         Uinstr0 = incr_hp(ToLval, MaybeTag, SizeRval, MO, Type,
             MayUseAtomic, MaybeRegionRval, MaybeReuse)
     then
-        expect(unify(ToLval, OldLval), $module, $pred, "mismatch in incr_hp"),
+        expect(unify(ToLval, OldLval), $pred, "mismatch in incr_hp"),
         Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, MO, Type,
             MayUseAtomic, MaybeRegionRval, MaybeReuse)
     else if
@@ -547,11 +546,10 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
     then
         substitute_lval_in_defn_components(OldLval, NewLval, Comps0, Comps,
             0, NumSubsts),
-        expect(unify(NumSubsts, 1), $module, $pred,
-            "mismatch in foreign_proc_code"),
+        expect(unify(NumSubsts, 1), $pred, "mismatch in foreign_proc_code"),
         Uinstr = foreign_proc_code(D, Comps, MCM, FNL, FL, FOL, NF, MDL, S, MD)
     else
-        unexpected($module, $pred, "unexpected instruction")
+        unexpected($pred, "unexpected instruction")
     ),
     Instr = llds_instr(Uinstr, Comment).
 
@@ -643,7 +641,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     !.Instr = llds_instr(Uinstr0, Comment),
     (
         Uinstr0 = block(_, _, _),
-        unexpected($module, $pred, "block")
+        unexpected($pred, "block")
     ;
         Uinstr0 = assign(Lval, Rval0),
         Updates = assignment_updates_oldlval(Lval, OldLval),

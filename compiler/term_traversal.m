@@ -154,7 +154,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
                 Gamma = 0 - Gamma0,
                 record_change(InVars, OutVars, Gamma, [], !Info)
             else
-                unexpected($module, $pred, "higher order deconstruction")
+                unexpected($pred, "higher order deconstruction")
             )
         ;
             Unification = assign(OutVar, InVar),
@@ -165,7 +165,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             Unification = simple_test(_InVar1, _InVar2)
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated unify")
+            unexpected($pred, "complicated unify")
         )
     ;
         GoalExpr = plain_call(CallPredId, CallProcId, Args, _, _, _),
@@ -336,7 +336,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -488,9 +488,9 @@ combine_paths(InfoA, InfoB, Params, Info) :-
 compute_rec_start_vars([], [], Out) :-
     bag.init(Out).
 compute_rec_start_vars([_ | _], [], _Out) :-
-    unexpected($module, $pred, "unmatched variables").
+    unexpected($pred, "unmatched variables").
 compute_rec_start_vars([], [_ | _], _Out) :-
-    unexpected($module, $pred, "unmatched variables").
+    unexpected($pred, "unmatched variables").
 compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
         Out) :-
     compute_rec_start_vars(Vars, RecInputSuppliers, Out1),
@@ -543,9 +543,9 @@ unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
 
 filter_typeinfos_from_args_and_modes(_, [], [], [], []).
 filter_typeinfos_from_args_and_modes(_, [], _, [_ | _], _) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 filter_typeinfos_from_args_and_modes(_, [_ | _], _, [], _) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 filter_typeinfos_from_args_and_modes(VarTypes, [Arg0 | Args0], Args,
         [Mode0 | Modes0], Modes) :-
     filter_typeinfos_from_args_and_modes(VarTypes, Args0, TailArgs,

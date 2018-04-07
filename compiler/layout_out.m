@@ -939,7 +939,7 @@ output_long_var_label_layout_slot(Info, LabelLayout, !Slot, !IO) :-
     ( if LongLocnsSlot >= 0 then
         true
     else
-        unexpected($module, $pred, "no long locn")
+        unexpected($pred, "no long locn")
     ),
 
     io.write_int(EncodedVarCount, !IO),
@@ -3063,7 +3063,7 @@ output_proc_layout_name_in_vector(LayoutName, !IO) :-
         output_proc_label_no_prefix(ProcLabel, !IO),
         io.write_string(")\n", !IO)
     else
-        unexpected($module, $pred, "not proc layout")
+        unexpected($pred, "not proc layout")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3129,7 +3129,7 @@ output_module_string_table_chars(CurIndex, Count, String, !IO) :-
         then
             output_multi_byte_char_codes(Codes, !IO)
         else
-            unexpected($module, $pred, "invalid code point")
+            unexpected($pred, "invalid code point")
         ),
         ( if Count = 10 then
             io.nl(!IO),

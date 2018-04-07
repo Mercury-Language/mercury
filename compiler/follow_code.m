@@ -161,7 +161,7 @@ move_follow_code_in_goal(Goal0, Goal, RttiVarMaps, !Changed) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -176,8 +176,8 @@ move_follow_code_in_independent_goals([], [], _, !Changed).
 move_follow_code_in_independent_goals([Goal0 | Goals0], [Goal | Goals],
         RttiVarMaps, !Changed) :-
     move_follow_code_in_goal(Goal0, Goal, RttiVarMaps, !Changed),
-    move_follow_code_in_independent_goals(Goals0, Goals, RttiVarMaps,
-        !Changed).
+    move_follow_code_in_independent_goals(Goals0, Goals,
+        RttiVarMaps, !Changed).
 
 %-----------------------------------------------------------------------------%
 

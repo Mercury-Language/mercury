@@ -395,7 +395,7 @@ inst_is_ground_mt_2(ModuleInfo, MaybeType, Inst, !Expansions) :-
         inst_is_ground_mt_1(ModuleInfo, MaybeType, NextInst, !Expansions)
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = abstract_inst(_, _),
         % XXX I (zs) am not sure this is the right thing to do here.
@@ -435,7 +435,7 @@ inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
         fail
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_ground_or_any_2(ModuleInfo, SubInst, !Expansions)
@@ -487,7 +487,7 @@ inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
         )
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_unique_2(ModuleInfo, SubInst, !Expansions)
@@ -538,7 +538,7 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
         )
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_mostly_unique_2(ModuleInfo, SubInst, !Expansions)
@@ -595,7 +595,7 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
         )
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_not_partly_unique_2(ModuleInfo, SubInst, !Expansions)
@@ -658,7 +658,7 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
         )
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_not_fully_unique_2(ModuleInfo, SubInst, !Expansions)
@@ -699,7 +699,7 @@ inst_is_clobbered(ModuleInfo, Inst) :-
         )
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_clobbered(ModuleInfo, SubInst)
@@ -725,7 +725,7 @@ inst_is_free(ModuleInfo, Inst) :-
         fail
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_free(ModuleInfo, SubInst)
@@ -750,7 +750,7 @@ inst_is_any(ModuleInfo, Inst) :-
         fail
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_any(ModuleInfo, SubInst)
@@ -776,7 +776,7 @@ inst_is_bound(ModuleInfo, Inst) :-
         fail
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_bound(ModuleInfo, SubInst)
@@ -796,7 +796,7 @@ inst_is_bound_to_functors(ModuleInfo, Inst, Functors) :-
         Inst = bound(_Uniq, _InstResult, Functors)
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_bound_to_functors(ModuleInfo, SubInst, Functors)
@@ -1078,9 +1078,9 @@ inst_list_is_ground_mt([Inst | Insts], [MaybeType | MaybeTypes], ModuleInfo) :-
 
 inst_list_is_ground_mt_2([], [], _, !Expansions).
 inst_list_is_ground_mt_2([], [_ | _], _, !Expansions) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 inst_list_is_ground_mt_2([_ | _], [], _, !Expansions) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 inst_list_is_ground_mt_2([Inst | Insts], [MaybeType | MaybeTypes], ModuleInfo,
         !Expansions) :-
     inst_is_ground_mt_1(ModuleInfo, MaybeType, Inst, !Expansions),

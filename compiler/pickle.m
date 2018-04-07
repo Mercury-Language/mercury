@@ -177,7 +177,7 @@ pickle_args(Pickles, N, Arity, T, !IO) :-
             pickle(Pickles, Arg, !IO),
             pickle_args(Pickles, N + 1, Arity, T, !IO)
         else
-            unexpected($module, $pred, "unable to deconstruct arg")
+            unexpected($pred, "unable to deconstruct arg")
         )
     ).
 
@@ -323,11 +323,11 @@ unpickle_2(Unpicklers, Handle, TypeDesc, Univ, !State) :-
                 ( if Univ0 = construct(TypeDesc, N, ArgUnivs) then
                     Univ = Univ0
                 else
-                    unexpected($module, $pred, "unable to construct")
+                    unexpected($pred, "unable to construct")
                 )
             )
         else
-            unexpected($module, $pred, "unable to unpickle")
+            unexpected($pred, "unable to unpickle")
         )
     ).
 

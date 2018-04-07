@@ -485,7 +485,7 @@ choose_var(Vars0, Var, Vars) :-
         Var = VarPrime,
         Vars = VarsPrime
     else
-        unexpected($module, $pred, "no vars!")
+        unexpected($pred, "no vars!")
     ).
 
 %---------------------------------------------------------------------------%

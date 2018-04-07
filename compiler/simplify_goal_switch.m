@@ -283,7 +283,7 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
     then
         ArgInsts = ArgInsts1
     else
-        unexpected($module, $pred, "get_arg_insts failed")
+        unexpected($pred, "get_arg_insts failed")
     ),
     InstToArgUnifyMode =
         ( pred(ArgInst::in, ArgUnifyMode::out) is det :-

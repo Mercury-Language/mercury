@@ -309,7 +309,7 @@ trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
     then
         set_of_var.list_to_set(FailVarsList, FailVars)
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
@@ -811,7 +811,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI, !CLD) :-
         then
             Port = PortPrime
         else
-            unexpected($module, $pred, "bad path")
+            unexpected($pred, "bad path")
         ),
         ( if
             get_module_info(!.CI, ModuleInfo),
@@ -924,7 +924,7 @@ generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalId, Context, Code,
         MaybeTailRecInfo = yes(_ - TailRecLabel)
     ;
         MaybeTailRecInfo = no,
-        unexpected($module, $pred, "no tail rec label")
+        unexpected($pred, "no tail rec label")
     ).
 
 :- pred generate_tailrec_reset_slots_code(trace_info::in,
@@ -947,13 +947,13 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     % Tail recursion events cannot happen in model_non procedures, so stage 2
     % will not allocate any slots.
     MaybeRedoLabelLval = TraceInfo ^ ti_redo_label,
-    expect(unify(MaybeRedoLabelLval, no), $module, $pred,
+    expect(unify(MaybeRedoLabelLval, no), $pred,
         "redo label in procedure with TAIL event"),
     % Stage 3.
     % Tail recursion events are disabled if the trace level is shallow tracing,
     % so stage 3 will not allocate any slots.
     MaybeFromFullLval = TraceInfo ^ ti_from_full_lval,
-    expect(unify(MaybeFromFullLval, no), $module, $pred,
+    expect(unify(MaybeFromFullLval, no), $pred,
         "from_full slot in procedure with TAIL event"),
     % Stage 4.
     MaybeIoSeqSlot = TraceInfo ^ ti_io_seq_lval,
@@ -1001,7 +1001,7 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
         )
     ;
         TailRecInfo = no,
-        unexpected($module, $pred, "no tail rec lval")
+        unexpected($pred, "no tail rec lval")
     ),
     % Stage 8.
     MaybeCallTableLval = TraceInfo ^ ti_call_table_tip_lval,
@@ -1052,7 +1052,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
                 TailRecResetCode, !CI)
         ;
             MaybeTraceInfo = no,
-            unexpected($module, $pred, "tailrec call without TraceInfo")
+            unexpected($pred, "tailrec call without TraceInfo")
         )
     ;
         PortInfo = port_info_internal(Path, PreDeaths),
@@ -1190,7 +1190,7 @@ maybe_setup_redo_event(TraceInfo, Code) :-
             MaybeFromFullSlot = yes(Lval),
             % The code in the runtime looks for the from-full flag in
             % framevar 5; see the comment before reserved_slots.
-            expect(unify(Lval, framevar(5)), $module, $pred,
+            expect(unify(Lval, framevar(5)), $pred,
                 "from-full flag not stored in expected slot"),
             Code = singleton(
                 llds_instr(mkframe(temp_frame(nondet_stack_proc),
@@ -1293,9 +1293,9 @@ stackref_to_string(Lval, LvalStr) :-
         LvalStr = "MR_fv(" ++ SlotString ++ ")"
     else if Lval = double_stackvar(_, _) then
         % XXX how do we get here?
-        sorry($module, $pred, "double-width stack slot")
+        sorry($pred, "double-width stack slot")
     else
-        unexpected($module, $pred, "non-stack lval")
+        unexpected($pred, "non-stack lval")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1355,7 +1355,7 @@ redo_layout_slot(CodeModel, RedoLayoutSlot) :-
         ( CodeModel = model_det
         ; CodeModel = model_semi
         ),
-        unexpected($module, $pred,
+        unexpected($pred,
             "attempt to access redo layout slot for det or semi procedure")
     ).
 

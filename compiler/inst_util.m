@@ -674,9 +674,9 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
 % check_not_clobbered(Uniq, Real) :-
 %     % Sanity check.
 %     ( if Real = real_unify, Uniq = clobbered then
-%         unexpected($module, $pred, "clobbered inst")
+%         unexpected($pred, "clobbered inst")
 %     else if Real = real_unify, Uniq = mostly_clobbered then
-%         unexpected($module, $pred, "mostly_clobbered inst")
+%         unexpected($pred, "mostly_clobbered inst")
 %     else
 %         true
 %     ).
@@ -994,6 +994,10 @@ arg_insts_match_ctor_subtypes(ArgInsts, ConsId, Type, ModuleInfo) :-
     list(constructor_arg)::in, module_info::in) is semidet.
 
 arg_insts_match_ctor_subtypes_2([], [], _).
+arg_insts_match_ctor_subtypes_2([], [_ | _], _) :-
+    unexpected($pred, "length mismatch").
+arg_insts_match_ctor_subtypes_2([_ | _], [], _) :-
+    unexpected($pred, "length mismatch").
 arg_insts_match_ctor_subtypes_2([Inst | Insts], [ConsArg | ConsArgs],
         ModuleInfo) :-
     ( if
@@ -1009,10 +1013,6 @@ arg_insts_match_ctor_subtypes_2([Inst | Insts], [ConsArg | ConsArgs],
         true
     ),
     arg_insts_match_ctor_subtypes_2(Insts, ConsArgs, ModuleInfo).
-arg_insts_match_ctor_subtypes_2([], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
-arg_insts_match_ctor_subtypes_2([_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
 
 %---------------------------------------------------------------------------%
 
@@ -1041,6 +1041,10 @@ propagate_ctor_subtypes_into_arg_insts(ConsId, Type, !ArgInsts, ModuleInfo) :-
     list(mer_inst)::in, list(mer_inst)::out) is det.
 
 propagate_ctor_subtypes_into_arg_insts_2([], [], []).
+propagate_ctor_subtypes_into_arg_insts_2([], [_ | _], _) :-
+    unexpected($pred, "length mismatch").
+propagate_ctor_subtypes_into_arg_insts_2([_ | _], [], _) :-
+    unexpected($pred, "length mismatch").
 propagate_ctor_subtypes_into_arg_insts_2([ConsArg | ConsArgs],
         [Inst0 | Insts0], [Inst | Insts]) :-
     ( if
@@ -1059,10 +1063,6 @@ propagate_ctor_subtypes_into_arg_insts_2([ConsArg | ConsArgs],
         Inst = Inst0
     ),
     propagate_ctor_subtypes_into_arg_insts_2(ConsArgs, Insts0, Insts).
-propagate_ctor_subtypes_into_arg_insts_2([], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
-propagate_ctor_subtypes_into_arg_insts_2([_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1202,7 +1202,7 @@ unify_uniq(Live, Real, Detism, UniqA, UniqB, Uniq) :-
     determinism::in) is semidet.
 
 allow_unify_with_clobbered(is_live, _, _) :-
-    unexpected($module, $pred, "clobbered value is is_live?").
+    unexpected($pred, "clobbered value is is_live?").
 allow_unify_with_clobbered(is_dead, fake_unify, _).
 allow_unify_with_clobbered(is_dead, _, detism_det).
 
@@ -1280,7 +1280,7 @@ make_ground_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
         Detism = detism_semi
     ;
         Inst0 = inst_var(_),
-        unexpected($module, $pred, "free inst var")
+        unexpected($pred, "free inst var")
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         abstractly_unify_constrained_inst_vars(Live, InstVars,
@@ -1416,7 +1416,7 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
         Detism = detism_semi
     ;
         Inst0 = inst_var(_),
-        unexpected($module, $pred, "free inst var")
+        unexpected($pred, "free inst var")
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         abstractly_unify_constrained_inst_vars(Live, InstVars,
@@ -1549,7 +1549,7 @@ make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
         Inst = ground(Uniq, PredInst)
     ;
         Inst0 = inst_var(_),
-        unexpected($module, $pred, "free inst var")
+        unexpected($pred, "free inst var")
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         make_mostly_uniq_inst(SubInst0, SubInst, !ModuleInfo),
@@ -1560,7 +1560,7 @@ make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
         )
     ;
         Inst0 = abstract_inst(_, _),
-        unexpected($module, $pred, "abstract_inst")
+        unexpected($pred, "abstract_inst")
     ;
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the mostly_uniq_inst table.
@@ -1644,6 +1644,10 @@ make_mostly_uniq_inst_list([Inst0 | Insts0], [Inst | Insts], !ModuleInfo) :-
     list(mer_inst)::out, module_info::in, module_info::out) is det.
 
 maybe_make_shared_inst_list([], [], [], !ModuleInfo).
+maybe_make_shared_inst_list([], [_ | _], _, _, _) :-
+    unexpected($pred, "length mismatch").
+maybe_make_shared_inst_list([_ | _], [], _, _, _) :-
+    unexpected($pred, "length mismatch").
 maybe_make_shared_inst_list([Inst0 | Insts0], [Live | Lives],
         [Inst | Insts], !ModuleInfo) :-
     (
@@ -1654,10 +1658,6 @@ maybe_make_shared_inst_list([Inst0 | Insts0], [Live | Lives],
         Inst = Inst0
     ),
     maybe_make_shared_inst_list(Insts0, Lives, Insts, !ModuleInfo).
-maybe_make_shared_inst_list([], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "length mismatch").
-maybe_make_shared_inst_list([_ | _], [], _, _, _) :-
-    unexpected($module, $pred, "length mismatch").
 
 make_shared_inst_list([], [], !ModuleInfo).
 make_shared_inst_list([Inst0 | Insts0], [Inst | Insts], !ModuleInfo) :-
@@ -1677,11 +1677,11 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
     ;
         Inst0 = free,
         % The caller should ensure that this never happens.
-        unexpected($module, $pred, "cannot make shared version of `free'")
+        unexpected($pred, "cannot make shared version of `free'")
     ;
         Inst0 = free(_),
         % The caller should ensure that this never happens.
-        unexpected($module, $pred, "cannot make shared version of `free(T)'")
+        unexpected($pred, "cannot make shared version of `free(T)'")
     ;
         Inst0 = any(Uniq0, HOInstInfo),
         make_shared(Uniq0, Uniq),
@@ -1721,7 +1721,7 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
         Inst = ground(Uniq, PredInst)
     ;
         Inst0 = inst_var(_),
-        unexpected($module, $pred, "free inst var")
+        unexpected($pred, "free inst var")
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         make_shared_inst(SubInst0, SubInst1, !ModuleInfo),
@@ -1732,7 +1732,7 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
         )
     ;
         Inst0 = abstract_inst(_, _),
-        unexpected($module, $pred, "abstract_inst")
+        unexpected($pred, "abstract_inst")
     ;
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the shared_inst table.
@@ -2163,7 +2163,7 @@ merge_inst_uniq(InstA, UniqB, ModuleInfo, !Expansions, Uniq) :-
         )
     ;
         InstA = inst_var(_),
-        unexpected($module, $pred, "inst_var")
+        unexpected($pred, "inst_var")
     ;
         InstA = constrained_inst_vars(_InstVars, SubInstA),
         merge_inst_uniq(SubInstA, UniqB, ModuleInfo, !Expansions, Uniq)
@@ -2307,7 +2307,7 @@ inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
         )
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
+        unexpected($pred, "uninstantiated inst parameter")
     ;
         Inst = defined_inst(InstName),
         ( if set.member(InstName, !.Expansions) then

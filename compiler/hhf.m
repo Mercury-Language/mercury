@@ -265,7 +265,7 @@ convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(_, _, _),
-        unexpected($module, $pred, "switch")
+        unexpected($pred, "switch")
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         convert_goal_to_hhf(NonLocals, SubGoal0, SubGoal, !HI),
@@ -290,7 +290,7 @@ convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         GoalExpr = if_then_else(Vs, Cond, Then, Else)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred convert_unify_to_hhf(unify_rhs::in, set_of_progvar::in,
@@ -342,9 +342,9 @@ convert_unify_to_hhf(RHS0, NonLocals, GoalInfo0, X, Mode, Unif, Context,
 
 make_unifications([], [], _, _, _, _, []).
 make_unifications([_ | _], [], _, _, _, _, _) :-
-    unexpected($module, $pred, "length mismatch (1)").
+    unexpected($pred, "length mismatch (1)").
 make_unifications([], [_ | _], _, _, _, _, _) :-
-    unexpected($module, $pred, "length mismatch (2)").
+    unexpected($pred, "length mismatch (2)").
 make_unifications([A | As], [B | Bs], GI0, M, U, C,
         [hlds_goal(unify(A, rhs_var(B), M, U, C), GI) | Us]) :-
     GINonlocals0 = goal_info_get_nonlocals(GI0),
@@ -408,7 +408,7 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
         TypeCtor = type_ctor(TypeCtorSymName, _),
         (
             TypeCtorSymName = unqualified(_),
-            unexpected($module, $pred, "unqualified TypeCtorSymName")
+            unexpected($pred, "unqualified TypeCtorSymName")
         ;
             TypeCtorSymName = qualified(TypeCtorModuleName, _)
         ),

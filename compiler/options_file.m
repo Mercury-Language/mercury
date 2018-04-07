@@ -362,7 +362,7 @@ read_options_lines(Globals, Dir, !Variables, !IO) :-
         )
     ;
         LineResult = failed,
-        unexpected($module, $pred, "cannot read line")
+        unexpected($pred, "cannot read line")
     ).
 
 :- pred read_options_lines_2(globals::in, dir_name::in, options_variables::in,

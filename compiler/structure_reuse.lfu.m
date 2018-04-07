@@ -166,10 +166,10 @@ forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
         ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        unexpected($module, $pred, "atomic goal")
+        unexpected($pred, "atomic goal")
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
     set_of_var.difference(InstantiadedBefore, !.DeadVars, LFU),
     goal_info_set_lfu(LFU, GoalInfo0, GoalInfo),
@@ -308,7 +308,7 @@ add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
             Shorthand = bi_implication(LeftGoal, RightGoal)
         ;
             Shorthand0 = try_goal(_, _, _),
-            unexpected($module, $pred, "try_goal")
+            unexpected($pred, "try_goal")
         ),
         Expr = shorthand(Shorthand)
     ).

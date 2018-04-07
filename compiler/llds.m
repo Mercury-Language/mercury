@@ -1537,9 +1537,9 @@ typed_rvals_project_types([typed_rval(_Rval, Type) | TypedRvals]) =
 
 build_typed_rvals([], [], []).
 build_typed_rvals([_|_], [], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 build_typed_rvals([], [_|_], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 build_typed_rvals([Rval | Rvals], [Type | Types], [TypedRval | TypedRvals]) :-
     TypedRval = typed_rval(Rval, Type),
     build_typed_rvals(Rvals, Types, TypedRvals).
@@ -1592,7 +1592,7 @@ abs_locn_to_lval_or_any_reg(abs_framevar(N)) =
     loa_lval(stack_slot_to_lval(nondet_slot(N))).
 
 abs_locn_to_lval(any_reg) = _ :-
-    unexpected($module, $pred, "any_reg").
+    unexpected($pred, "any_reg").
 abs_locn_to_lval(abs_reg(Type, N)) = reg(Type, N).
 abs_locn_to_lval(abs_stackvar(N, Width)) =
     stack_slot_to_lval(det_slot(N, Width)).
@@ -1625,7 +1625,7 @@ break_up_local_label(Label, ProcLabel, LabelNum) :-
         Label = internal_label(LabelNum, ProcLabel)
     ;
         Label = entry_label(_, _),
-        unexpected($module, $pred, "entry label")
+        unexpected($pred, "entry label")
     ).
 
 lval_type(reg(RegType, _), Type) :-
@@ -1649,14 +1649,14 @@ lval_type(succfr_slot(_), lt_data_ptr).
 lval_type(prevfr_slot(_), lt_data_ptr).
 lval_type(field(_, _, _), lt_word).
 lval_type(lvar(_), _) :-
-    unexpected($module, $pred, "lvar").
+    unexpected($pred, "lvar").
 lval_type(mem_ref(_), lt_word).
 lval_type(global_var_ref(_), lt_word).
 
 rval_type(lval(Lval), Type) :-
     lval_type(Lval, Type).
 rval_type(var(_), _) :-
-    unexpected($module, $pred, "var").
+    unexpected($pred, "var").
     %
     % Note that mkword and data_addr consts must be of type data_ptr,
     % not of type word, to ensure that static consts containing them

@@ -1342,7 +1342,7 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
                 % XXX handle _ExistConstraints
                 (
                     EQVarAction = abort_on_exist_qvar,
-                    unexpected($module, $pred, "existentially typed cons_id")
+                    unexpected($pred, "existentially typed cons_id")
                 ;
                     EQVarAction = fail_on_exist_qvar,
                     fail
@@ -1391,7 +1391,7 @@ get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     ( if get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefnPrime) then
         ConsDefn = ConsDefnPrime
     else
-        unexpected($module, $pred, "get_cons_defn failed")
+        unexpected($pred, "get_cons_defn failed")
     ).
 
 get_cons_repn_defn(ModuleInfo, ConsId, ConsIdConsRepn) :-
@@ -1426,7 +1426,7 @@ get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn) :-
     ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefnPrime) then
         ConsRepnDefn = ConsRepnDefnPrime
     else
-        unexpected($module, $pred, "get_cons_repn_defn failed")
+        unexpected($pred, "get_cons_repn_defn failed")
     ).
 
 get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-

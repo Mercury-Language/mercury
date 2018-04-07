@@ -90,7 +90,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
     (
         MayChangeCalledProc = may_not_change_called_proc,
         ( if ProcId0 = invalid_proc_id then
-            unexpected($module, $pred, "invalid proc_id")
+            unexpected($pred, "invalid proc_id")
         else
             ProcIds = [ProcId0]
         )
@@ -466,8 +466,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
 modecheck_event_call(Modes, Args0, Args, !ModeInfo) :-
     ArgOffset = 0,
     modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args, !ModeInfo),
-    expect(unify(ExtraGoals, no_extra_goals), $module, $pred,
-        "ExtraGoals").
+    expect(unify(ExtraGoals, no_extra_goals), $pred, "ExtraGoals").
 
 %---------------------------------------------------------------------------%
 

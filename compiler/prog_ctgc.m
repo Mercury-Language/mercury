@@ -223,7 +223,7 @@ parse_unit_selector(Term) = UnitSelector :-
                 ConsId = string_const(Str),
                 UnitSelector = termsel(ConsId, 0)
             else
-                unexpected($module, $pred, "unknown cons_id in unit selector")
+                unexpected($pred, "unknown cons_id in unit selector")
             )
         else if
             Cons = "typesel",
@@ -236,14 +236,13 @@ parse_unit_selector(Term) = UnitSelector :-
             then
                 UnitSelector = typesel(TypeSelector)
             else
-                unexpected($module, $pred, "error in parsing type selector")
+                unexpected($pred, "error in parsing type selector")
             )
         else
-            unexpected($module, $pred,
-                "selector is neither sel/3 nor typesel/1.")
+            unexpected($pred, "selector is neither sel/3 nor typesel/1.")
         )
     else
-        unexpected($module, $pred, "term not a functor")
+        unexpected($pred, "term not a functor")
     ).
 
 parse_selector(Term) = Selector :-
@@ -257,7 +256,7 @@ parse_selector(Term) = Selector :-
             Selector = []
         )
     else
-        unexpected($module, $pred, "term not a functor")
+        unexpected($pred, "term not a functor")
     ).
 
 parse_datastruct(Term) = Datastruct :-
@@ -270,7 +269,7 @@ parse_datastruct(Term) = Datastruct :-
         Datastruct = selected_cel(term.coerce_var(Var),
             parse_selector(SelectorTerm))
     else
-        unexpected($module, $pred, "error while parsing datastruct.")
+        unexpected($pred, "error while parsing datastruct.")
     ).
 
 :- func parse_datastruct_list(term(T)) = list(datastruct).
@@ -288,11 +287,10 @@ parse_datastruct_list(Term) = Datastructs :-
         then
             Datastructs = []
         else
-            unexpected($module, $pred,
-                "error while parsing list of datastructs")
+            unexpected($pred, "error while parsing list of datastructs")
         )
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "error while parsing list of datastructs (term not a functor)")
     ).
 
@@ -304,8 +302,7 @@ parse_structure_sharing_pair(Term) = SharingPair :-
     then
         SharingPair = parse_datastruct(First) - parse_datastruct(Second)
     else
-        unexpected($module, $pred,
-            "error while parsing structure sharing pair")
+        unexpected($pred, "error while parsing structure sharing pair")
     ).
 
 parse_structure_sharing(Term) = SharingPairs :-
@@ -323,7 +320,7 @@ parse_structure_sharing(Term) = SharingPairs :-
     then
         SharingPairs = SharingPairs0
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "error while parsing list of structure sharing pairs")
     ).
 
@@ -345,8 +342,7 @@ parse_structure_sharing_domain(Term) = SharingAs :-
     then
         SharingAs = SharingAs0
     else
-        unexpected($module, $pred,
-            "error while parsing structure sharing domain")
+        unexpected($pred, "error while parsing structure sharing domain")
     ).
 
 parse_structure_reuse_condition(Term) = ReuseCondition :-
@@ -362,10 +358,10 @@ parse_structure_reuse_condition(Term) = ReuseCondition :-
             ReuseCondition = structure_reuse_condition(DeadNodes,
                 InUseNodes, Sharing)
         else
-            unexpected($module, $pred, "error while parsing reuse condition")
+            unexpected($pred, "error while parsing reuse condition")
         )
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "error while parsing reuse condition (term not a functor)")
     ).
 
@@ -383,10 +379,10 @@ parse_structure_reuse_conditions(Term) = ReuseConditions :-
         then
             ReuseConditions = []
         else
-            unexpected($module, $pred, "error while parsing reuse conditions")
+            unexpected($pred, "error while parsing reuse conditions")
         )
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "error while parsing reuse conditions (term not a functor)")
     ).
 
@@ -409,10 +405,10 @@ parse_structure_reuse_domain(Term) = ReuseDomain :-
             ReuseDomain = has_conditional_reuse(
                 parse_structure_reuse_conditions(ReuseConditionsTerm))
         else
-            unexpected($module, $pred, "error while parsing reuse domain")
+            unexpected($pred, "error while parsing reuse domain")
         )
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "error while parsing reuse domain (term not a functor)")
     ).
 

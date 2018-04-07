@@ -79,8 +79,7 @@ apply_implicit_parallelism_transformation(!ModuleInfo, !IO) :-
         MaybeSourceFileMap = yes(SourceFileMap)
     ;
         MaybeSourceFileMap = no,
-        unexpected($module, $pred,
-            "could not retrieve the source file map")
+        unexpected($pred, "could not retrieve the source file map")
     ),
     do_apply_implicit_parallelism_transformation(SourceFileMap, Specs,
         !ModuleInfo),
@@ -417,8 +416,7 @@ cpc_get_first_goal(CPC, FirstGoal) :-
         then
             FirstGoal = FirstGoalPrime
         else
-            unexpected($module, $pred,
-                "candidate parallel conjunction is empty")
+            unexpected($pred, "candidate parallel conjunction is empty")
         )
     ).
 

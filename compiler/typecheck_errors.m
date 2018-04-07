@@ -548,7 +548,7 @@ too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
             OverloadedSymbolsSortedContexts = [_ - Contexts],
             (
                 Contexts = [],
-                unexpected($module, $pred, "no contexts")
+                unexpected($pred, "no contexts")
             ;
                 Contexts = [_],
                 SecondPieces =
@@ -580,7 +580,7 @@ too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
 describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
     (
         SortedContexts = [],
-        unexpected($module, $pred, "no context")
+        unexpected($pred, "no context")
     ;
         SortedContexts = [FirstContext | LaterContexts],
         % We print a detailed message for the first context, but omit
@@ -918,8 +918,7 @@ find_mismatched_args(CurArgNum, [Arg - ExpType | ArgExpTypes], TypeAssignSet,
         list.sort_and_remove_dups(TypeMismatches0, TypeMismatches),
         (
             TypeMismatches = [],
-            unexpected($module, $pred,
-                "no_type_stuff_matches but TypeMismatches = []")
+            unexpected($pred, "no_type_stuff_matches but TypeMismatches = []")
         ;
             TypeMismatches = [HeadTypeMismatch | TailTypeMismatches],
             Mismatch = mismatch_info(CurArgNum, Arg, HeadTypeMismatch,
@@ -1166,7 +1165,7 @@ report_arg_vector_type_errors(ClauseContext, Context, ArgVectorKind,
             [HeadArgVectorTypeErrors | TailArgVectorTypeErrors]
     ;
         ArgVectorTypeErrors = [],
-        unexpected($module, $pred, "ArgVectorTypeErrors = []")
+        unexpected($pred, "ArgVectorTypeErrors = []")
     ),
     arg_vector_type_errors_to_pieces(VarSet, ArgVectorTypeErrors,
         HeadArgVectorTypeErrors, TailArgVectorTypeErrors,
@@ -1351,7 +1350,7 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
     % Check for some special cases, so that we can give clearer error messages.
     ( if
         Functor = cons(unqualified(FunctorName), FunctorArity, _),
-        expect(unify(Arity, FunctorArity), $module, $pred, "arity mismatch"),
+        expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
         ( if
             language_builtin_functor_components(FunctorName, Arity,
                 FunctorComps0)
@@ -1369,7 +1368,7 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
         ReportConsErrors = no
     else if
         Functor = cons(Constructor, FunctorArity, _),
-        expect(unify(Arity, FunctorArity), $module, $pred, "arity mismatch"),
+        expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
         ModuleInfo = ClauseContext ^ tecc_module_info,
 
         module_info_get_cons_table(ModuleInfo, ConsTable),
@@ -1589,7 +1588,7 @@ report_cons_error(Context, ConsError) = Msgs :-
             words("the existentially quantified type")],
         (
             TVars = [],
-            unexpected($module, $pred, "no type variables")
+            unexpected($pred, "no type variables")
         ;
             TVars = [TVar],
             TVarsStr = mercury_var_to_name_only(TVarSet, TVar),
@@ -1861,7 +1860,7 @@ cons_type_to_pieces(ConsInfo, Functor) = Pieces :-
                 type_to_pieces(do_not_add_quotes, Type, TVarSet, ExistQVars) ++
                 [suffix(":")]
         else
-            unexpected($module, $pred, "invalid cons_id")
+            unexpected($pred, "invalid cons_id")
         )
     ;
         ArgTypes = [],
@@ -2101,7 +2100,7 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                     suffix(":"), nl]
             ;
                 ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
-                unexpected($module, $pred, "arg_vector_foreign_proc_call")
+                unexpected($pred, "arg_vector_foreign_proc_call")
             ;
                 ArgVectorKind = arg_vector_event(EventName),
                 Pieces = [words("in argument"),
@@ -2137,7 +2136,7 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                 Pieces = [invis_order_default_end(2),
                     words("in final I/O state variable of try goal:"), nl]
             else
-                unexpected($module, $pred, "try io variable not arg 1 or 2")
+                unexpected($pred, "try io variable not arg 1 or 2")
             )
         ;
             VarVectorKind = var_vector_atomic_output,
@@ -2155,7 +2154,7 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                     words("in the second outer variable"),
                     words("of atomic goal:"), nl]
             else
-                unexpected($module, $pred, "outer variable not arg 1 or 2")
+                unexpected($pred, "outer variable not arg 1 or 2")
             )
         )
     ;
@@ -2198,7 +2197,7 @@ arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
             suffix(":"), nl]
     ;
         ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
-        unexpected($module, $pred, "arg_vector_foreign_proc_call")
+        unexpected($pred, "arg_vector_foreign_proc_call")
     ;
         ArgVectorKind = arg_vector_event(EventName),
         Pieces = [words("in arguments of event"), fixed(EventName),

@@ -353,7 +353,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
             HasParConj = has_parallel_conj,
             % In sequential grades, any parallel conjunctions should have been
             % converted to sequential conjunctions by parallel_to_plain_conj.m.
-            expect(unify(Parallel, yes), $module, $pred,
+            expect(unify(Parallel, yes), $pred,
                 "found parallel conjunction in non-parallel grade")
         ;
             HasParConj = has_no_parallel_conj
@@ -436,7 +436,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         % a retry command in the debugger from a point in the middle of this
         % procedure will do the wrong thing.
         proc_info_get_needs_maxfr_slot(ProcInfo, NeedsMaxfrSlot),
-        expect(unify(NeedsMaxfrSlot, needs_maxfr_slot), $module, $pred,
+        expect(unify(NeedsMaxfrSlot, needs_maxfr_slot), $pred,
             "should have reserved a slot for maxfr, but didn't")
     else
         true
@@ -508,7 +508,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         ;
             MaybeTableIOInfo = yes(TableIOInfo),
             ( if map.search(TableStructMap, PredProcId, _TableStructInfo) then
-                unexpected($module, $pred, "conflicting kinds of tabling")
+                unexpected($pred, "conflicting kinds of tabling")
             else
                 MaybeTableInfo = yes(proc_table_io_entry(TableIOInfo))
             )
@@ -811,7 +811,7 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
             generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
                 TraceCallCode, !CI, !CLD),
             get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
-            expect(unify(MaybeTailRecInfo, no), $module, $pred,
+            expect(unify(MaybeTailRecInfo, no), $pred,
                 "tail recursive call in model_non code"),
             remember_position(!.CLD, BeforeBody),
             generate_goal(model_non, Goal, BodyCode, !CI, !CLD),
@@ -1178,8 +1178,7 @@ generate_exit(CodeModel, ProcFrameSlots, TraceSlotInfo, ProcContext,
     proc_info_get_maybe_special_return(ProcInfo, MaybeSpecialReturn),
     (
         CodeModel = model_det,
-        expect(unify(MaybeSpecialReturn, no), $module, $pred,
-            "det special_return"),
+        expect(unify(MaybeSpecialReturn, no), $pred, "det special_return"),
         SuccessCode = from_list([
             llds_instr(livevals(LiveLvals), ""),
             llds_instr(goto(code_succip), "Return from procedure call")
@@ -1187,8 +1186,7 @@ generate_exit(CodeModel, ProcFrameSlots, TraceSlotInfo, ProcContext,
         AllSuccessCode = TraceExitCode ++ RestoreDeallocCodeCopy ++ SuccessCode
     ;
         CodeModel = model_semi,
-        expect(unify(MaybeSpecialReturn, no), $module, $pred,
-            "semi special_return"),
+        expect(unify(MaybeSpecialReturn, no), $pred, "semi special_return"),
         set.insert(reg(reg_r, 1), LiveLvals, SuccessLiveRegs),
         SuccessCode = from_list([
             llds_instr(assign(reg(reg_r, 1), const(llconst_true)),
@@ -1373,7 +1371,7 @@ add_tabling_info_struct(PredProcId - TableStructInfo, !GlobalData) :-
         TVarVectorRval, StaticCellInfo0, StaticCellInfo),
     global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
     NumArgs = NumInputs + NumOutputs,
-    expect(unify(NumArgs, NumPTIs), $module, $pred, "args mismatch"),
+    expect(unify(NumArgs, NumPTIs), $pred, "args mismatch"),
 
     MaybeSizeLimit = TableAttributes ^ table_attr_size_limit,
     Statistics = TableAttributes ^ table_attr_statistics,

@@ -354,11 +354,11 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, NestedContext0,
         ;
             ShortHand0 = try_goal(_, _, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "try_goal")
+            unexpected($pred, "try_goal")
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -498,7 +498,7 @@ will_flush(GoalExpr, BeforeAfter) = WillFlush :-
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 

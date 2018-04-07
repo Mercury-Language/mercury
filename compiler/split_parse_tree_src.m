@@ -211,9 +211,9 @@ split_into_compilation_units_perform_checks(ParseTreeSrc, RawCompUnits,
         SplitModuleMap, LeftOverSplitModuleMap,
         SubModulesMap, LeftOverSubModulesMap,
         cord.init, RawCompUnitCord, !Specs),
-    expect(unify(LeftOverSplitModuleMap, map.init), $module, $pred,
+    expect(unify(LeftOverSplitModuleMap, map.init), $pred,
         "LeftOverSplitModuleMap != map.init"),
-    expect(unify(LeftOverSubModulesMap, map.init), $module, $pred,
+    expect(unify(LeftOverSubModulesMap, map.init), $pred,
         "LeftOverSubModulesMap != map.init"),
     RawCompUnits = cord.list(RawCompUnitCord).
 
@@ -577,7 +577,7 @@ report_duplicate_submodule_one_section(ModuleName, Context, Section,
                 OldContext = IntContext
             ;
                 Section = ms_implementation,
-                unexpected($module, $pred, "duplicate int without duplication")
+                unexpected($pred, "duplicate int without duplication")
             ),
             report_duplicate_submodule_one_section_2(ModuleName, Context,
                 SectionWord, ParentModuleName, OldContext, Spec)
@@ -585,7 +585,7 @@ report_duplicate_submodule_one_section(ModuleName, Context, Section,
             SplitNested = split_nested_only_imp(ImpContext),
             (
                 Section = ms_interface,
-                unexpected($module, $pred, "duplicate imp without duplication")
+                unexpected($pred, "duplicate imp without duplication")
             ;
                 Section = ms_implementation,
                 SectionWord = "implementation",
@@ -738,7 +738,7 @@ split_component_discover_submodules(Component, SectionAncestors,
                 SectionAncestors = sa_parent(CurModuleName, ModuleAncestors),
                 (
                     ModuleAncestors = ma_no_parent,
-                    unexpected($module, $pred,
+                    unexpected($pred,
                         "in interface section of nonexistent ancestor")
                 ;
                     ModuleAncestors = ma_parent(_, _, ModuleSectionAncestor),
@@ -840,7 +840,7 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
         ChildModule = ChildModule0
     ;
         ModuleName = unqualified(_),
-        unexpected($module, $pred, "unqualified module name")
+        unexpected($pred, "unqualified module name")
     ),
     Pieces = [words("In interface for module"), qual_sym_name(ParentModule),
         suffix(":"), nl, words("in definition of submodule"),

@@ -335,11 +335,11 @@ compute_arg_offset(PredInfo, ArgOffset) :-
 
 %-----------------------------------------------------------------------------%
 
-modecheck_var_list_is_live_exact_match([_ | _], [], _, !ModeInfo) :-
-    unexpected($module, $pred, "length mismatch").
-modecheck_var_list_is_live_exact_match([], [_ | _], _, !ModeInfo) :-
-    unexpected($module, $pred, "length mismatch").
 modecheck_var_list_is_live_exact_match([], [], _ArgNum, !ModeInfo).
+modecheck_var_list_is_live_exact_match([_ | _], [], _, !ModeInfo) :-
+    unexpected($pred, "length mismatch").
+modecheck_var_list_is_live_exact_match([], [_ | _], _, !ModeInfo) :-
+    unexpected($pred, "length mismatch").
 modecheck_var_list_is_live_exact_match([Var | Vars], [IsLive | IsLives],
         ArgNum0, !ModeInfo) :-
     ArgNum = ArgNum0 + 1,
@@ -347,11 +347,11 @@ modecheck_var_list_is_live_exact_match([Var | Vars], [IsLive | IsLives],
     modecheck_var_is_live_exact_match(Var, IsLive, !ModeInfo),
     modecheck_var_list_is_live_exact_match(Vars, IsLives, ArgNum, !ModeInfo).
 
-modecheck_var_list_is_live_no_exact_match([_ | _], [], _, !ModeInfo) :-
-    unexpected($module, $pred, "length mismatch").
-modecheck_var_list_is_live_no_exact_match([], [_ | _], _, !ModeInfo) :-
-    unexpected($module, $pred, "length mismatch").
 modecheck_var_list_is_live_no_exact_match([], [], _ArgNum, !ModeInfo).
+modecheck_var_list_is_live_no_exact_match([_ | _], [], _, !ModeInfo) :-
+    unexpected($pred, "length mismatch").
+modecheck_var_list_is_live_no_exact_match([], [_ | _], _, !ModeInfo) :-
+    unexpected($pred, "length mismatch").
 modecheck_var_list_is_live_no_exact_match([Var | Vars], [IsLive | IsLives],
         ArgNum0, !ModeInfo) :-
     ArgNum = ArgNum0 + 1,
@@ -419,11 +419,11 @@ modecheck_var_has_inst_list_no_exact_match(Vars, Insts, ArgNum, Subst,
     list(mer_inst)::in, int::in, inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst_list_exact_match_2([_ | _], [], _, !Subst, !ModeInfo) :-
-    unexpected($module, $pred, "length mismatch").
-modecheck_var_has_inst_list_exact_match_2([], [_ | _], _, !Subst, !ModeInfo) :-
-    unexpected($module, $pred, "length mismatch").
 modecheck_var_has_inst_list_exact_match_2([], [], _ArgNum, !Subst, !ModeInfo).
+modecheck_var_has_inst_list_exact_match_2([_ | _], [], _, !Subst, !ModeInfo) :-
+    unexpected($pred, "length mismatch").
+modecheck_var_has_inst_list_exact_match_2([], [_ | _], _, !Subst, !ModeInfo) :-
+    unexpected($pred, "length mismatch").
 modecheck_var_has_inst_list_exact_match_2([Var | Vars], [Inst | Insts],
         ArgNum0, !Subst, !ModeInfo) :-
     ArgNum = ArgNum0 + 1,
@@ -436,14 +436,14 @@ modecheck_var_has_inst_list_exact_match_2([Var | Vars], [Inst | Insts],
     list(mer_inst)::in, int::in, inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst_list_no_exact_match_2([_ | _], [], _,
-        !Subst, !ModeInfo) :-
-    unexpected($module, $pred, "length mismatch").
-modecheck_var_has_inst_list_no_exact_match_2([], [_ | _], _,
-        !Subst, !ModeInfo) :-
-    unexpected($module, $pred, "length mismatch").
 modecheck_var_has_inst_list_no_exact_match_2([], [], _ArgNum,
         !Subst, !ModeInfo).
+modecheck_var_has_inst_list_no_exact_match_2([_ | _], [], _,
+        !Subst, !ModeInfo) :-
+    unexpected($pred, "length mismatch").
+modecheck_var_has_inst_list_no_exact_match_2([], [_ | _], _,
+        !Subst, !ModeInfo) :-
+    unexpected($pred, "length mismatch").
 modecheck_var_has_inst_list_no_exact_match_2([Var | Vars], [Inst | Insts],
         ArgNum0, !Subst, !ModeInfo) :-
     ArgNum = ArgNum0 + 1,
@@ -610,7 +610,7 @@ modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
             ModuleInfo = ModuleInfo1,
             Inst = UnifyInst
         else
-            unexpected($module, $pred, "unify_inst failed")
+            unexpected($pred, "unify_inst failed")
         ),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
@@ -689,7 +689,7 @@ modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, ArgOffset,
         Vars = Vars1,
         Goals = Goals1
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 :- pred modecheck_set_var_inst_list_2(list(prog_var)::in, list(mer_inst)::in,
@@ -902,16 +902,16 @@ mode_context_to_unify_context(_ModeInfo, ModeContext, UnifyContext) :-
         UnifyContext = unify_context(umc_call(CallId, Arg), [])
     ;
         ModeContext = mode_context_uninitialized,
-        unexpected($module, $pred, "uninitialized context")
+        unexpected($pred, "uninitialized context")
     ).
 
 %-----------------------------------------------------------------------------%
 
 get_live_vars([], [], []).
 get_live_vars([_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 get_live_vars([], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 get_live_vars([Var | Vars], [IsLive | IsLives], LiveVars) :-
     (
         IsLive = is_live,
@@ -997,10 +997,10 @@ get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
         )
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "inst_var")
+        unexpected($pred, "inst_var")
     ;
         Inst = abstract_inst(_, _),
-        sorry($module, $pred, "abstract_inst")
+        sorry($pred, "abstract_inst")
     ).
 
 :- pred get_constrained_insts_in_bound_inst(module_info::in, bound_inst::in,
@@ -1031,7 +1031,7 @@ add_constrained_inst(SubInst, InstVar, !Map) :-
         ( if SubInst0 = SubInst then
             true
         else
-            unexpected($module, $pred, "SubInst differs")
+            unexpected($pred, "SubInst differs")
         )
     else
         map.det_insert(InstVar, SubInst, !Map)

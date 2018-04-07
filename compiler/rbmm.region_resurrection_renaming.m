@@ -575,7 +575,7 @@ collect_renaming_and_annotation_proc(ExecPathTable, JoinPointTable,
 
 collect_renaming_and_annotation_exec_path(_, _, _, _, _, _, _, [],
         !AnnotationProc, !RenamingProc) :-
-    unexpected($module, $pred, "empty execution path").
+    unexpected($pred, "empty execution path").
 collect_renaming_and_annotation_exec_path(ResurrectionRenameProc,
         JoinPointProc, LRBeforeProc, LRAfterProc, BornR, Graph,
         ResurrectedRegions, [ProgPoint - _ | ProgPoint_Goals],

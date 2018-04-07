@@ -204,7 +204,7 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
     const_struct_db_get_poly_enabled(!.Db, Enabled),
     (
         Enabled = no,
-        unexpected($module, $pred, "not enabled")
+        unexpected($pred, "not enabled")
     ;
         Enabled = yes,
         ConstStruct = const_struct(ConsId, Args, Type, Inst),

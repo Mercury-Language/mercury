@@ -367,8 +367,8 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
         InitInstMap, FinalInstMap, WhereNeededMap1, _,
         map.init, RefinedGoals1, no, Changed),
     unneeded_refine_goal(Goal1, Goal2, RefinedGoals1, RefinedGoals),
-    expect(map.is_empty(RefinedGoals),
-        $module, $pred, "goal reattachment unsuccessful"),
+    expect(map.is_empty(RefinedGoals), $pred,
+        "goal reattachment unsuccessful"),
     (
         Changed = yes,
         % We need to fix up the goal_info by recalculating the nonlocal vars
@@ -701,7 +701,7 @@ unneeded_process_goal_internal(UnneededInfo, Goal0, Goal,
         then
             MaybeNumAlt = MaybeNumAltPrime
         else
-            unexpected($module, $pred, "switch count")
+            unexpected($pred, "switch count")
         ),
         GoalId = goal_info_get_goal_id(GoalInfo0),
         BranchPoint = branch_point(GoalId, alt_switch(MaybeNumAlt)),
@@ -758,7 +758,7 @@ unneeded_process_goal_internal(UnneededInfo, Goal0, Goal,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1025,7 +1025,7 @@ unneeded_refine_goal(Goal0, Goal, !RefinedGoals) :-
         )
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred unneeded_refine_conj(list(hlds_goal)::in, list(hlds_goal)::out,

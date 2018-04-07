@@ -198,12 +198,12 @@ pretest_inst(Inst0, Inst, UserInstTable0, Groundness, ContainsAny,
     ;
         Inst0 = not_reached,
         % These should be generated only by the compiler.
-        unexpected($module, $pred, "Inst0 = not_reached")
+        unexpected($pred, "Inst0 = not_reached")
     ;
         Inst0 = inst_var(_InstVar),
         % We should invoke pretest_inst only for inst definitions that
         % do NOT have parameters.
-        unexpected($module, $pred, "Inst0 = inst_var")
+        unexpected($pred, "Inst0 = inst_var")
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         pretest_inst(SubInst0, SubInst, UserInstTable0,
@@ -227,7 +227,7 @@ pretest_inst(Inst0, Inst, UserInstTable0, Groundness, ContainsAny,
     ;
         Inst0 = abstract_inst(_SymName, _SubInsts),
         % These aren't supported.
-        unexpected($module, $pred, "Inst0 = abstract_inst")
+        unexpected($pred, "Inst0 = abstract_inst")
     ;
         Inst0 = bound(Uniq, _TestResults0, BoundInsts0),
         pretest_bound_insts(BoundInsts0, BoundInsts, UserInstTable0,
@@ -423,7 +423,7 @@ record_user_inst_results([MaybeInstPair | MaybeInstPairs],
     MaybeInstPair = InstId - MaybeUserInst,
     (
         MaybeUserInst = user_inst_being_processed,
-        unexpected($module, $pred, "MaybeUserInst = user_inst_being_processed")
+        unexpected($pred, "MaybeUserInst = user_inst_being_processed")
     ;
         MaybeUserInst = processed_user_inst(UserInstDefn)
     ),

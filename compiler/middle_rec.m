@@ -214,7 +214,7 @@ contains_only_builtins_expr(GoalExpr) = OnlyBuiltins :-
         OnlyBuiltins = no
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- func contains_only_builtins_cases(list(case)) = bool.
@@ -438,14 +438,14 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     list(instruction)::out) is det.
 
 generate_downloop_test([], _, _) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
     ( if Instr0 = llds_instr(if_val(Test, _OldTarget), _Comment) then
         (
             Instrs0 = []
         ;
             Instrs0 = [_ | _],
-            unexpected($module, $pred, "if_val followed by other instructions")
+            unexpected($pred, "if_val followed by other instructions")
         ),
         code_util.neg_rval(Test, NewTest),
         Instrs = [
@@ -463,7 +463,7 @@ generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
     list(instruction)::out, list(instruction)::out) is det.
 
 split_rec_code([], _, _) :-
-    unexpected($module, $pred, "did not find call").
+    unexpected($pred, "did not find call").
 split_rec_code([Instr0 | Instrs1], Before, After) :-
     ( if Instr0 = llds_instr(llcall(_, _, _, _, _, _), _) then
         ( if
@@ -474,7 +474,7 @@ split_rec_code([Instr0 | Instrs1], Before, After) :-
             Before = [],
             After = Instrs3
         else
-            unexpected($module, $pred, "call not followed by label")
+            unexpected($pred, "call not followed by label")
         )
     else
         split_rec_code(Instrs1, Before1, After),
@@ -670,7 +670,7 @@ find_used_registers_lval(Lval, !Used) :-
         find_used_registers_rval(Rval, !Used),
         find_used_registers_rval(FieldNum, !Used)
     else if Lval = lvar(_) then
-        unexpected($module, $pred, "lvar")
+        unexpected($pred, "lvar")
     else
         true
     ).
@@ -683,7 +683,7 @@ find_used_registers_rval(Rval, !Used) :-
         find_used_registers_lval(Lval, !Used)
     ;
         Rval = var(_),
-        unexpected($module, $pred, "var")
+        unexpected($pred, "var")
     ;
         Rval = mkword(_, Rval1),
         find_used_registers_rval(Rval1, !Used)

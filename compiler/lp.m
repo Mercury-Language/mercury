@@ -559,7 +559,7 @@ ensure_zero_obj_coeffs([V | Vs], !Tableau) :-
             ensure_zero_obj_coeffs(Vs, !Tableau)
         ;
             Ones = [],
-            unexpected($module, $pred, "problem with artificial variable")
+            unexpected($pred, "problem with artificial variable")
         )
     ).
 
@@ -686,7 +686,7 @@ index(Tableau, J, K, R) :-
         ; list.member(K, SC)
         )
     then
-        unexpected($module, $pred, "attempt to address shunned row/col")
+        unexpected($pred, "attempt to address shunned row/col")
     else
         true
     ),
@@ -706,7 +706,7 @@ set_index(J, K, R, !Tableau) :-
         ; list.member(K, SC)
         )
     then
-        unexpected($module, $pred, "attempt to write shunned row/col")
+        unexpected($pred, "attempt to write shunned row/col")
     else
         true
     ),

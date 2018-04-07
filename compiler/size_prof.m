@@ -314,7 +314,7 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
         ;
             Unify0 = complicated_unify(_, _, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "complicated_unify")
+            unexpected($pred, "complicated_unify")
         )
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),
@@ -385,7 +385,7 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
             Cases = [First | Later]
         ;
             Cases0 = [],
-            unexpected($module, $pred, "empty switch")
+            unexpected($pred, "empty switch")
         ),
         update_rev_maps(!Info),
         update_target_map(!Info),
@@ -496,7 +496,7 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo0).
 
@@ -649,13 +649,13 @@ size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
                 % TypeInfo_for_K as type_info, not type_ctor_info.
                 record_known_type_ctor_info(Var, M, N, A, !Info)
             else
-                unexpected($module, $pred, "bad type_info")
+                unexpected($pred, "bad type_info")
             )
         else if VarTypeCtorName = "type_ctor_info" then
             ( if ConsId = type_ctor_info_const(M, N, A) then
                 record_known_type_ctor_info(Var, M, N, A, !Info)
             else
-                unexpected($module, $pred, "bad type_ctor_info")
+                unexpected($pred, "bad type_ctor_info")
             )
         else
             !:Info = !.Info
@@ -727,7 +727,7 @@ size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type,
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),
     (
         MaybeDynamicSizeVar = no,
-        expect(unify(ArgGoals, []), $module, $pred, "nonempty ArgGoals"),
+        expect(unify(ArgGoals, []), $pred, "nonempty ArgGoals"),
         (
             NonDefinedArgs = [],
             record_known_size(Var, KnownSize, !Info)
@@ -770,7 +770,7 @@ size_prof_process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr,
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),
     (
         MaybeDynamicSizeVar = no,
-        expect(unify(ArgGoals, []), $module, $pred, "nonempty ArgGoals"),
+        expect(unify(ArgGoals, []), $pred, "nonempty ArgGoals"),
         GoalExpr = GoalExpr0
     ;
         MaybeDynamicSizeVar = yes(SizeVar0),
@@ -923,7 +923,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
         % Type_to_ctor_and_args can fail only if Type is a type variable,
         % or acts like one. The tests in our callers should have filtered
         % out both cases.
-        unexpected($module, $pred, "cannot happen")
+        unexpected($pred, "cannot happen")
     ).
 
     % Construct a type_info for Type = TypeCtor(ArgTypes), given that we know
@@ -1287,11 +1287,11 @@ find_defined_args(Args, Modes, DefinedArgs, NonDefinedArgs, Info) :-
     ;
         Args = [],
         Modes = [_ | _],
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ;
         Args = [_ | _],
         Modes = [],
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ;
         Args = [FirstArg | LaterArgs],
         Modes = [FirstMode | LaterModes],

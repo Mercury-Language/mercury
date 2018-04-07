@@ -170,7 +170,7 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred determine_dead_deconstructions_2_with_progress(detect_bg_info::in,
@@ -301,7 +301,7 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
         Unification = simple_test(_, _)
     ;
         Unification = complicated_unify(_, _, _),
-        unexpected($module, $pred, "complicated_unify")
+        unexpected($pred, "complicated_unify")
     ).
 
 :- pred var_not_live(module_info::in, proc_info::in, hlds_goal_info::in,

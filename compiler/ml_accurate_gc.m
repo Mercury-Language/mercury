@@ -411,7 +411,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
         TypeInfoVar, TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
         ProcInfo0, ProcInfo, ModuleInfo1),
-    expect(unify(PolySpecs, []), $module, $pred,
+    expect(unify(PolySpecs, []), $pred,
         "got errors while making type_info_var"),
 
     % Save the new information back in the ml_gen_info.

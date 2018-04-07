@@ -263,7 +263,7 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
                 GoalInfo0, GoalExpr, !ModeInfo)
         ;
             MaybeRHS0 = error1(_),
-            unexpected($module, $pred,
+            unexpected($pred,
                 "could not convert pred to lambda goal; " ++
                 "polymorphism.m should have stopped us getting here")
         )
@@ -272,9 +272,9 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
         % handled specially, because the term is inherently shared.
         cons_id_is_const_struct(ConsId, ConstNum)
     then
-        expect(unify(IsExistConstruction, is_not_exist_constr), $module, $pred,
+        expect(unify(IsExistConstruction, is_not_exist_constr), $pred,
             "const struct construction is existential"),
-        expect(unify(ArgVars0, []), $module, $pred,
+        expect(unify(ArgVars0, []), $pred,
             "const struct construction has args"),
         modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
             GoalExpr, !ModeInfo)
@@ -469,7 +469,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
             mode_info_error(WaitingVars, ModeError, !ModeInfo)
         ;
             NonGroundNonLocals = [],
-            unexpected($module, $pred, "very strange var")
+            unexpected($pred, "very strange var")
         ),
         % Return any old garbage.
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
@@ -583,7 +583,7 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
             )
         )
     else
-        unexpected($module, $pred, "expecting single call")
+        unexpected($pred, "expecting single call")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -763,7 +763,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
                 ExtraGoals = extra_goals(_, _),
                 instmap_is_reachable(InstMap1)
             then
-                unexpected($module, $pred,
+                unexpected($pred,
                     "re-modecheck of unification " ++
                     "encountered complicated sub-unifies")
             else
@@ -894,7 +894,7 @@ split_complicated_subunifies(Unification0, Unification, ArgVars0, ArgVars,
             Unification = deconstruct(X, ConsId, ArgVars, ArgModes0, Det,
                 CanCGC)
         else
-            unexpected($module, $pred, "split_complicated_subunifies_2 failed")
+            unexpected($pred, "split_complicated_subunifies_2 failed")
         )
     else
         Unification = Unification0,
@@ -988,7 +988,7 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
             Unification0, Unification, GoalInfo2, GoalInfo),
         GoalExpr = unify(X, Y, Mode, Unification, FinalUnifyContext)
     else
-        unexpected($module, $pred, "unexpected GoalExpr0")
+        unexpected($pred, "unexpected GoalExpr0")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1032,7 +1032,7 @@ categorize_unify_var_var(FromToInstsOfX, FromToInstsOfY, LiveX, LiveY, X, Y,
                 Unification = assign(Y, X)
             ;
                 LiveY = is_live,
-                unexpected($module, $pred, "free-free unify!")
+                unexpected($pred, "free-free unify!")
             )
         )
     else if
@@ -1165,7 +1165,7 @@ modecheck_complicated_unify(X, Y, Type, FromToInstsOfX, FromToInstsOfY,
     ( if Unification0 = complicated_unify(_, _, UnifyTypeInfoVars0) then
         UnifyTypeInfoVars = UnifyTypeInfoVars0
     else
-        unexpected($module, $pred, "non-complicated unify")
+        unexpected($pred, "non-complicated unify")
     ),
     Unification = complicated_unify(UnifyMode, CanFail, UnifyTypeInfoVars),
 
@@ -1270,7 +1270,7 @@ categorize_unify_var_lambda(FromToInstsOfX, ArgFromToInsts, X, ArgVars,
         Unification0 = construct(_, ConsId, _, _, _, _, SubInfo),
         (
             SubInfo = construct_sub_info(MaybeTakeAddr, _MaybeSize),
-            expect(unify(MaybeTakeAddr, no), $module, $pred, "take_addr")
+            expect(unify(MaybeTakeAddr, no), $pred, "take_addr")
         ;
             SubInfo = no_construct_sub_info
         )
@@ -1324,13 +1324,13 @@ categorize_unify_var_lambda(FromToInstsOfX, ArgFromToInsts, X, ArgVars,
                         RHSTypeCtor = type_ctor(unqualified("func"), 0)
                     )
                 else
-                    unexpected($module, $pred, "bad HO type")
+                    unexpected($pred, "bad HO type")
                 ),
                 RHSConsId = cons(qualified(PredModule, PredName), Arity,
                     RHSTypeCtor),
                 RHS = rhs_functor(RHSConsId, is_not_exist_constr, ArgVars)
             else
-                unexpected($module, $pred, "reintroduced lambda goal")
+                unexpected($pred, "reintroduced lambda goal")
             )
         else
             RHS = RHS0
@@ -1375,7 +1375,7 @@ categorize_unify_var_functor(FromToInstsOfX, FromToInstsOfXArgs,
         Unification0 = construct(_, ConsIdPrime, _, _, _, _, SubInfo0),
         (
             SubInfo0 = construct_sub_info(MaybeTakeAddr, _MaybeSize0),
-            expect(unify(MaybeTakeAddr, no), $module, $pred, "take_addr")
+            expect(unify(MaybeTakeAddr, no), $pred, "take_addr")
         ;
             SubInfo0 = no_construct_sub_info
         ),
@@ -1538,7 +1538,7 @@ match_mode_by_higher_order_insts(ModuleInfo, VarTypes, InstMap,
         ArgModesList = [ArgMode | ArgModes]
     ;
         ArgModesList = [],
-        unexpected($module, $pred, "too many arguments")
+        unexpected($pred, "too many arguments")
     ),
     match_mode_by_higher_order_insts(ModuleInfo, VarTypes, InstMap,
         ArgVars, ArgModes, TailNonGroundArgVars, TailResult),
@@ -1627,7 +1627,7 @@ bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) :-
     ( if try_bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) then
         true
     else
-        unexpected($module, $pred, "try_bind_args failed")
+        unexpected($pred, "try_bind_args failed")
     ).
 
 :- pred try_bind_args(mer_inst::in, list(prog_var)::in,
@@ -1692,7 +1692,7 @@ get_mode_of_args(ArgInitInsts, FinalInst, ArgFromToInsts) :-
     then
         ArgFromToInsts = ArgFromToInstsPrime
     else
-        unexpected($module, $pred, "try_get_mode_of_args failed")
+        unexpected($pred, "try_get_mode_of_args failed")
     ).
 
 :- pred try_get_mode_of_args(list(mer_inst)::in, mer_inst::in,
@@ -1728,9 +1728,9 @@ try_get_mode_of_args(ArgInitInsts, FinalInst, ArgFromToInsts) :-
 
 pair_up_insts([], [], []).
 pair_up_insts([], [_ | _], _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 pair_up_insts([_ | _], [], _) :-
-    unexpected($module, $pred, "mismatched list lengths").
+    unexpected($pred, "mismatched list lengths").
 pair_up_insts([InstA | InstsA], [InstB | InstsB],
         [FromToInst | FromToInsts]) :-
     FromToInst = from_to_insts(InstA, InstB),

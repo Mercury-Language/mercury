@@ -125,7 +125,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
             ;
                 RHS0 = rhs_functor(_, _, _),
-                unexpected($module, $pred, "invalid RHS for complicated unify")
+                unexpected($pred, "invalid RHS for complicated unify")
             )
         else if
             simplify_do_common_struct(!.Info)
@@ -219,8 +219,7 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
             ( if TypeInfoVars = [TypeInfoVarPrime] then
                 TypeInfoVar = TypeInfoVarPrime
             else
-                unexpected($module, $pred,
-                    "more than one typeinfo for one type var")
+                unexpected($pred, "more than one typeinfo for one type var")
             ),
             call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
                 UnifyContext, GoalInfo0, Call)
@@ -324,7 +323,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
             TypeInfoVars, TypeInfoGoals, !PolyInfo),
         poly_info_extract(!.PolyInfo, PolySpecs, !PredInfo, !ProcInfo,
             ModuleInfo1),
-        expect(unify(PolySpecs, []), $module, $pred,
+        expect(unify(PolySpecs, []), $pred,
             "got errors while making type_info_var"),
 
         proc_info_get_vartypes(!.ProcInfo, VarTypes),

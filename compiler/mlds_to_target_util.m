@@ -458,7 +458,7 @@ add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
         ( Rval = ml_lval(_Lval)
         ; Rval = ml_mem_addr(_Lval)
         ),
-        unexpected($module, $pred, "lval or mem_addr")
+        unexpected($pred, "lval or mem_addr")
     ).
 
 %---------------------------------------------------------------------------%

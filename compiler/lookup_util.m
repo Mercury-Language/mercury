@@ -225,7 +225,7 @@ generate_offset_assigns([], _, _, _CI, !CLD).
 generate_offset_assigns([Var | Vars], Offset, BaseReg, CI, !CLD) :-
     LookupLval = field(yes(0), lval(BaseReg), const(llconst_int(Offset))),
     assign_lval_to_var(Var, LookupLval, Code, CI, !CLD),
-    expect(cord.is_empty(Code), $module, $pred, "nonempty code"),
+    expect(cord.is_empty(Code), $pred, "nonempty code"),
     generate_offset_assigns(Vars, Offset + 1, BaseReg, CI, !CLD).
 
 %---------------------------------------------------------------------------%

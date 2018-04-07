@@ -269,7 +269,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
             HLDSGoals = [HLDSMainGoal | HLDSOrElseGoals]
         ;
             HLDSGoals = [],
-            unexpected($module, $pred, "atomic HLDSGoals = []")
+            unexpected($pred, "atomic HLDSGoals = []")
         ),
         (
             Inner0 = atomic_state_var(_),
@@ -280,7 +280,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
                 Inner = atomic_interface_vars(InnerDI, InnerUO)
             ;
                 MaybeInnerScopeInfo = no,
-                unexpected($module, $pred, "MaybeInnerScopeInfo = no")
+                unexpected($pred, "MaybeInnerScopeInfo = no")
             )
         ;
             Inner0 = atomic_var_pair(InnerDI0, InnerUO0),
@@ -783,7 +783,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
         TermInputVar = TermInputVarPrime,
         TermOutputVar = TermOutputVarPrime
     else
-        unexpected($module, $pred, "arity != 3")
+        unexpected($pred, "arity != 3")
     ),
     (
         AccessType = set,
@@ -801,7 +801,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
             FuncName = FuncNamePrime,
             FuncArity = FuncArityPrime
         else
-            unexpected($module, $pred, "not cons")
+            unexpected($pred, "not cons")
         ),
         % DCG arguments should always be distinct variables,
         % so this context should never be used.
@@ -830,7 +830,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
             FuncName = FuncNamePrime,
             FuncArity = FuncArityPrime
         else
-            unexpected($module, $pred, "not cons")
+            unexpected($pred, "not cons")
         ),
         FieldArgNumber = 2,
         SimpleCallId = simple_call_id(pf_function, FuncName, FuncArity),

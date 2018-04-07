@@ -265,9 +265,9 @@ find_arg_sizes_pred(ModuleInfo, PassInfo, PPId, OutputSupplierMap0, Result,
 
 update_output_suppliers([], _ActiveVars, [], []).
 update_output_suppliers([_ | _], _ActiveVars, [], []) :-
-    unexpected($module, $pred, "umatched variables").
+    unexpected($pred, "umatched variables").
 update_output_suppliers([], _ActiveVars, [_ | _], []) :-
-    unexpected($module, $pred, "umatched variables").
+    unexpected($pred, "umatched variables").
 update_output_suppliers([Arg | Args], ActiveVars,
         [OutputSupplier0 | OutputSuppliers0],
         [OutputSupplier | OutputSuppliers]) :-
@@ -377,7 +377,7 @@ check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors) :-
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred check_cases_non_term_calls(module_info::in,

@@ -208,7 +208,7 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes,
             ),
             generate_assign_builtin(OutputArg, Rval, Code, !CLD)
         else
-            unexpected($module, $pred, "invalid type/inst cast call")
+            unexpected($pred, "invalid type/inst cast call")
         )
     ).
 
@@ -330,7 +330,7 @@ generate_event_call(EventName, Args, GoalInfo, Code, !CI, !CLD) :-
             !CI, !CLD),
         Code = cord_list_to_cord(AttrCodes) ++ EventCode
     else
-        unexpected($module, $pred, "bad event name")
+        unexpected($pred, "bad event name")
     ).
 
 :- pred generate_event_attributes(list(event_attribute)::in,
@@ -340,7 +340,7 @@ generate_event_call(EventName, Args, GoalInfo, Code, !CI, !CLD) :-
 generate_event_attributes([], !.Vars, [], [], _CI, !CLD) :-
     (
         !.Vars = [_ | _],
-        unexpected($module, $pred, "var")
+        unexpected($pred, "var")
     ;
         !.Vars = []
     ).
@@ -356,7 +356,7 @@ generate_event_attributes([Attribute | Attributes], !.Vars,
             MaybeUserAttr = yes(UserAttr)
         ;
             !.Vars = [],
-            unexpected($module, $pred, "no var")
+            unexpected($pred, "no var")
         )
     ;
         SynthCall = yes(_),
@@ -429,7 +429,7 @@ generic_call_info(Globals, GenericCall, NumInputArgsR, NumInputArgsF,
                 FirstImmediateInputReg = 4
             )
         else
-            sorry($module, $pred, "float reg inputs")
+            sorry($pred, "float reg inputs")
         )
     ;
         % Events and casts are generated inline.
@@ -480,7 +480,7 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
         InVarsF = []
     ;
         InVarsF = [_ | _],
-        sorry($module, $pred, "float input reg")
+        sorry($pred, "float input reg")
     ),
     (
         HoCallVariant = ho_call_known_num,
@@ -504,9 +504,9 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
         ])
     ).
 generic_call_nonvar_setup(event_call(_), _, _, _, _, !CLD) :-
-    unexpected($module, $pred, "event_call").
+    unexpected($pred, "event_call").
 generic_call_nonvar_setup(cast(_), _, _, _, _, !CLD) :-
-    unexpected($module, $pred, "cast").
+    unexpected($pred, "cast").
 
 %---------------------------------------------------------------------------%
 
@@ -700,7 +700,7 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI, !CLD) :-
             Code = AddrVarCode ++ ValueVarCode ++ StoreCode
         ;
             SimpleCode = test(_),
-            unexpected($module, $pred, "malformed model_det builtin predicate")
+            unexpected($pred, "malformed model_det builtin predicate")
         ;
             SimpleCode = noop(DefinedVars),
             list.foldl(magically_put_var_in_unused_reg, DefinedVars, !CLD),
@@ -715,20 +715,17 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI, !CLD) :-
             Code = ArgCode ++ TestCode
         ;
             SimpleCode = assign(_, _),
-            unexpected($module, $pred,
-                "malformed model_semi builtin predicate")
+            unexpected($pred, "malformed model_semi builtin predicate")
         ;
             SimpleCode = ref_assign(_, _),
-            unexpected($module, $pred,
-                "malformed model_semi builtin predicate")
+            unexpected($pred, "malformed model_semi builtin predicate")
         ;
             SimpleCode = noop(_),
-            unexpected($module, $pred,
-                "malformed model_semi builtin predicate")
+            unexpected($pred, "malformed model_semi builtin predicate")
         )
     ;
         CodeModel = model_non,
-        unexpected($module, $pred, "model_non builtin predicate")
+        unexpected($pred, "model_non builtin predicate")
     ).
 
 :- pred generate_assign_builtin(prog_var::in, simple_expr(prog_var)::in,

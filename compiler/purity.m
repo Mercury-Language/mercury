@@ -1062,7 +1062,7 @@ compute_scope_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
             ( if SubGoalExpr0 = conj(plain_conj, SubGoals0Prime) then
                 SubGoals0 = SubGoals0Prime
             else
-                unexpected($module, $pred,
+                unexpected($pred,
                     "from_ground_term_initial goal is not plain conj")
             ),
             PostTypeCheck = !.Info ^ pi_run_post_typecheck,
@@ -1151,7 +1151,7 @@ compute_scope_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
         % Purity checking happens before the introduction of loop control
         % scopes.
         Reason0 = loop_control(_, _, _),
-        unexpected($module, $pred, "loop_control")
+        unexpected($pred, "loop_control")
     ).
 
 :- pred compute_goal_purity_in_fgt_ptc(list(hlds_goal)::in,
@@ -1177,7 +1177,7 @@ compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
         ConsId = ConsIdPrime,
         YVars = YVarsPrime
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "from_ground_term_initial conjunct is not functor unify")
     ),
     ModuleInfo = !.Info ^ pi_module_info,
@@ -1194,14 +1194,11 @@ compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
             ( if GoalExpr1 = unify(_, _, _, _, _) then
                 true
             else
-                unexpected($module, $pred, "is_plain_unify goal is not unify")
+                unexpected($pred, "is_plain_unify goal is not unify")
             ),
-            expect(unify(PredInfo0, PredInfo),
-                $module, $pred, "PredInfo != PredInfo"),
-            expect(unify(VarSet0, VarSet),
-                $module, $pred, "VarSet != VarSet"),
-            expect(unify(VarTypes0, VarTypes),
-                $module, $pred, "VarTypes != VarTypes")
+            expect(unify(PredInfo0, PredInfo), $pred, "PredInfo != PredInfo"),
+            expect(unify(VarSet0, VarSet), $pred, "VarSet != VarSet"),
+            expect(unify(VarTypes0, VarTypes), $pred, "VarTypes != VarTypes")
         ),
         check_var_functor_unify_purity(!.Info, GoalInfo0, XVar, ConsId, YVars,
             UnifySpecs),
@@ -1262,7 +1259,7 @@ compute_goal_purity_in_fgt_no_ptc([Goal0 | Goals0], Info, !Specs) :-
         ConsId = ConsIdPrime,
         YVars = YVarsPrime
     else
-        unexpected($module, $pred,
+        unexpected($pred,
             "from_ground_term_initial conjunct is not functor unify")
     ),
     check_var_functor_unify_purity(Info, GoalInfo0, XVar, ConsId, YVars,
@@ -1318,7 +1315,7 @@ compute_shorthand_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
                     AllAtomicGoals1 = [MainGoal1 | OrElseGoals1]
                 ;
                     AllAtomicGoals1 = [],
-                    unexpected($module, $pred, "AllAtomicGoals1 = []")
+                    unexpected($pred, "AllAtomicGoals1 = []")
                 ),
                 !Info ^ pi_requant := need_to_requantify
             )
@@ -1354,7 +1351,7 @@ compute_shorthand_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
     ;
         ShortHand0 = bi_implication(_, _),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "bi_implication")
+        unexpected($pred, "bi_implication")
     ).
 
 :- pred check_outer_var_type(prog_context::in, vartypes::in, prog_varset::in,
@@ -1477,7 +1474,7 @@ warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         CodeStr = "impure"
     ;
         PromisedPurity = purity_impure,
-        unexpected($module, $pred, "promise_impure")
+        unexpected($pred, "promise_impure")
     ),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     MainPieces = [words("warning: unnecessary"), quote(Pragma),

@@ -235,7 +235,7 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
                 (
                     ConstraintNotInParams = [],
                     FunDepNotInParams = [],
-                    unexpected($module, $pred, "no NotInParams")
+                    unexpected($pred, "no NotInParams")
                 ;
                     ConstraintNotInParams = [],
                     FunDepNotInParams = [_ | _],

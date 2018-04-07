@@ -947,7 +947,7 @@ simplify_make_binary_op_goal_expr(Info, ModuleName, Op, IsBuiltin, X, Y, Z,
     ( if OpPredIds = [OpPredIdPrime] then
         OpPredId = OpPredIdPrime
     else
-        unexpected($module, $pred, "cannot find " ++ Op)
+        unexpected($pred, "cannot find " ++ Op)
     ),
     OpProcIdInt = 0,
     proc_id_to_int(OpProcId, OpProcIdInt),

@@ -1576,7 +1576,7 @@ module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
                     Search, MkDir, module_target_object_code(PIC),
                     ForeignModuleName, FileName, !IO)
             else
-                unexpected($module, $pred, "object test failed")
+                unexpected($pred, "object test failed")
             )
         ;
             TargetType = module_target_fact_table_object(PIC, FactFile),
@@ -1604,7 +1604,7 @@ module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
             ; TargetType = module_target_xml_doc
             ; TargetType = module_target_track_flags
             ),
-            unexpected($module, $pred, "unexpected TargetType")
+            unexpected($pred, "unexpected TargetType")
         )
     ).
 
@@ -1871,7 +1871,7 @@ make_write_module_or_linked_target(Globals, ModuleName - FileType, !IO) :-
         io.write_string(FileName, !IO)
     ;
         FileType = misc_target(_),
-        unexpected($module, $pred, "misc_target")
+        unexpected($pred, "misc_target")
     ).
 
 %-----------------------------------------------------------------------------%

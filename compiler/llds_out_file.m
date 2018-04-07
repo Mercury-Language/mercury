@@ -899,8 +899,7 @@ output_foreign_body_code(Info, ForeignBodyCode, !IO) :-
         ; Lang = lang_csharp
         ; Lang = lang_erlang
         ),
-        unexpected($module, $pred,
-            "unimplemented: foreign code other than C")
+        unexpected($pred, "unimplemented: foreign code other than C")
     ).
 
 :- pred output_foreign_header_include_lines(llds_out_info::in,
@@ -931,8 +930,7 @@ output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
         ; Lang = lang_csharp
         ; Lang = lang_erlang
         ),
-        unexpected($module, $pred,
-            "unexpected: foreign decl code other than C")
+        unexpected($pred, "foreign decl code other than C")
     ).
 
 :- pred output_foreign_decl_or_code(llds_out_info::in, string::in,
@@ -994,7 +992,7 @@ group_decl_c_labels([Label | Labels], !InternalLabelMap) :-
         multi_map.set(ProcLabel, LabelNum, !InternalLabelMap)
     ;
         Label = entry_label(_, _),
-        unexpected($module, $pred, "entry label")
+        unexpected($pred, "entry label")
     ),
     group_decl_c_labels(Labels, !InternalLabelMap).
 
@@ -1049,7 +1047,7 @@ output_record_entry_label_decl(_Info, Label, !DeclSet, !IO) :-
         DeclMacro = "MR_decl_local"
     ;
         Label = internal_label(_, _),
-        unexpected($module, $pred, "internal label")
+        unexpected($pred, "internal label")
     ),
     io.write_string(DeclMacro, !IO),
     io.write_string("(", !IO),
@@ -1120,14 +1118,14 @@ group_init_c_labels(InternalLabelToLayoutMap, [Label | Labels],
                     multi_map.set(ProcLabel, Pair, !LVarLayoutMap)
                 )
             else
-                unexpected($module, $pred, "bad slot type")
+                unexpected($pred, "bad slot type")
             )
         else
             multi_map.set(ProcLabel, LabelNum, !NoLayoutMap)
         )
     ;
         Label = entry_label(_, _),
-        unexpected($module, $pred, "entry label")
+        unexpected($pred, "entry label")
     ),
     group_init_c_labels(InternalLabelToLayoutMap, Labels,
         !NoLayoutMap, !NoVarLayoutMap, !SVarLayoutMap, !LVarLayoutMap).
@@ -1217,7 +1215,7 @@ output_c_entry_label_init(EntryLabelToLayoutMap, Label, !IO) :-
     ;
         Label = internal_label(_, _),
         % These should have been separated out by group_c_labels.
-        unexpected($module, $pred, "internal label")
+        unexpected($pred, "internal label")
     ),
     io.write_string(TabInitMacro, !IO),
     io.write_string(SuffixOpen, !IO),
@@ -1312,12 +1310,12 @@ output_annotated_c_procedure(Info, AnnotatedProc, !IO) :-
 :- pred find_caller_label(list(instruction)::in, label::out) is det.
 
 find_caller_label([], _) :-
-    unexpected($module, $pred, "cannot find caller label").
+    unexpected($pred, "cannot find caller label").
 find_caller_label([llds_instr(Uinstr, _) | Instrs], CallerLabel) :-
     ( if Uinstr = label(Label) then
         (
             Label = internal_label(_, _),
-            unexpected($module, $pred, "caller label is internal label")
+            unexpected($pred, "caller label is internal label")
         ;
             Label = entry_label(_, _),
             CallerLabel = Label
@@ -1423,14 +1421,14 @@ count_while_label_in_block(_, [], !Count).
 count_while_label_in_block(Label, [Instr0 | Instrs0], !Count) :-
     Instr0 = llds_instr(Uinstr0, _),
     ( if Uinstr0 = label(_) then
-        unexpected($module, $pred, "label in block")
+        unexpected($pred, "label in block")
     else
         ( if Uinstr0 = goto(code_label(Label)) then
             !:Count = !.Count + 1
         else if Uinstr0 = if_val(_, code_label(Label)) then
             !:Count = !.Count + 1
         else if Uinstr0 = block(_, _, _) then
-            unexpected($module, $pred, "block in block")
+            unexpected($pred, "block in block")
         else
             true
         ),

@@ -296,6 +296,10 @@ expand_args_in_proc_2(HeadVars0, ArgModes0, HeadVars, ArgModes,
     vartypes::in, vartypes::out, list(mer_type)::in, type_table::in) is det.
 
 expand_args_in_proc_3([], [], [], [], !_, !_, !_, _, _).
+expand_args_in_proc_3([], [_|_], _, _, !_, !_, !_, _, _) :-
+    unexpected($pred, "length mismatch").
+expand_args_in_proc_3([_|_], [], _, _, !_, !_, !_, _, _) :-
+    unexpected($pred, "length mismatch").
 expand_args_in_proc_3([HeadVar0 | HeadVars0], [ArgMode0 | ArgModes0],
         [HeadVar | HeadVars], [ArgMode | ArgModes],
         !Goal, !VarSet, !VarTypes, ContainerTypes, TypeTable) :-
@@ -303,10 +307,6 @@ expand_args_in_proc_3([HeadVar0 | HeadVars0], [ArgMode0 | ArgModes0],
         !Goal, !VarSet, !VarTypes, ContainerTypes, TypeTable),
     expand_args_in_proc_3(HeadVars0, ArgModes0, HeadVars, ArgModes,
         !Goal, !VarSet, !VarTypes, ContainerTypes, TypeTable).
-expand_args_in_proc_3([], [_|_], _, _, !_, !_, !_, _, _) :-
-    unexpected($module, $pred, "length mismatch").
-expand_args_in_proc_3([_|_], [], _, _, !_, !_, !_, _, _) :-
-    unexpected($module, $pred, "length mismatch").
 
 :- pred expand_one_arg_in_proc(prog_var::in, mer_mode::in, prog_vars::out,
     list(mer_mode)::out, hlds_goal::in, hlds_goal::out, prog_varset::in,
@@ -355,7 +355,7 @@ expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
             deconstruct_functor(HeadVar0, ConsId, NewHeadVars, UnifGoal),
             conjoin_goals_keep_detism(!.Goal, UnifGoal, !:Goal)
         else
-            unexpected($module, $pred, "unsupported mode")
+            unexpected($pred, "unsupported mode")
         ),
         ContainerTypes = [Type | ContainerTypes0]
     ;
@@ -392,6 +392,10 @@ conjoin_goals_keep_detism(GoalA, GoalB, Goal) :-
     untuple_map::in, untuple_map::out) is det.
 
 build_untuple_map([], [], !UntupleMap).
+build_untuple_map([], [_| _], !_) :-
+    unexpected($pred, "length mismatch").
+build_untuple_map([_| _], [], !_) :-
+    unexpected($pred, "length mismatch").
 build_untuple_map([OldVar | OldVars], [NewVars | NewVarss], !UntupleMap) :-
     ( if NewVars = [OldVar] then
         build_untuple_map(OldVars, NewVarss, !UntupleMap)
@@ -399,10 +403,6 @@ build_untuple_map([OldVar | OldVars], [NewVars | NewVarss], !UntupleMap) :-
         map.det_insert(OldVar, NewVars, !UntupleMap),
         build_untuple_map(OldVars, NewVarss, !UntupleMap)
     ).
-build_untuple_map([], [_| _], !_) :-
-    unexpected($module, $pred, "length mismatch").
-build_untuple_map([_| _], [], !_) :-
-    unexpected($module, $pred, "length mismatch").
 
 %-----------------------------------------------------------------------------%
 
@@ -418,8 +418,7 @@ build_untuple_map([_| _], [], !_) :-
     %
 :- pred create_aux_pred(pred_id::in, proc_id::in, pred_info::in,
     proc_info::in, int::in, pred_id::out, proc_id::out, hlds_goal::out,
-    pred_info::out, proc_info::out, module_info::in, module_info::out)
-    is det.
+    pred_info::out, proc_info::out, module_info::in, module_info::out) is det.
 
 create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxPredId, AuxProcId, CallAux, AuxPredInfo, AuxProcInfo,
@@ -541,7 +540,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
                 ConjList = EnterUnifs ++ [Call] ++ ExitUnifs,
                 conj_list_to_goal(ConjList, GoalInfo0, Goal)
             else
-                unexpected($module, $pred, "not a call template")
+                unexpected($pred, "not a call template")
             )
         else
             Goal = hlds_goal(GoalExpr0, GoalInfo0)
@@ -609,7 +608,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -674,9 +673,9 @@ expand_call_args(Args0, ArgModes0, Args, EnterUnifs, ExitUnifs,
 
 expand_call_args_2([], [], [], [], [], !VarSet, !VarTypes, _, _).
 expand_call_args_2([], [_|_], _, _, _, !_, !_, _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 expand_call_args_2([_|_], [], _, _, _, !_, !_, _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
         EnterUnifs, ExitUnifs, !VarSet, !VarTypes,
         ContainerTypes0, TypeTable) :-
@@ -704,7 +703,7 @@ expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
                 Args, EnterUnifs, ExitUnifs1, !VarSet,
                 !VarTypes, ContainerTypes, TypeTable)
         else
-            unexpected($module, $pred, "unsupported mode")
+            unexpected($pred, "unsupported mode")
         )
     ;
         Expansion = no_expansion,

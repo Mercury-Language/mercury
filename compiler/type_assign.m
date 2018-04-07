@@ -260,7 +260,7 @@ type_assign_set_get_final_info(TypeAssignSet,
         % XXX Why are we using only the first TypeAssign?
     ;
         TypeAssignSet = [],
-        unexpected($module, $pred, "TypeAssignSet = []")
+        unexpected($pred, "TypeAssignSet = []")
     ),
 
     TypeAssign = type_assign(VarTypes0, OldTypeVarSet, ExternalTypeParams,
@@ -433,7 +433,7 @@ convert_args_type_assign_set_check_empty_args([ArgTypeAssign | ArgTypeAssigns])
         Args = [_ | _],
         % This should never happen, since the arguments should all have been
         % processed at this point.
-        unexpected($module, $pred, "Args != []")
+        unexpected($pred, "Args != []")
     ).
 
 :- func convert_args_type_assign(args_type_assign) = type_assign.

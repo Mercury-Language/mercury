@@ -618,7 +618,7 @@ maybe_check_type_info_var(type_info(Var), TVar, !RttiVarMaps) :-
     ( if Type = type_variable(TVar, _) then
         true
     else
-        unexpected($module, $pred, "inconsistent info in rtti_varmaps")
+        unexpected($pred, "inconsistent info in rtti_varmaps")
     ).
 maybe_check_type_info_var(typeclass_info(_, _), _, !RttiVarMaps).
 
@@ -790,7 +790,7 @@ apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
         ( if Type = ExistingType then
             true
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 string.format("inconsistent type_infos: "
                     ++ " Type: %s ExistingType: %s",
                     [s(string(Type)), s(string(ExistingType))]))
@@ -814,7 +814,7 @@ apply_substs_to_constraint_map(TRenaming, TSubst, Subst, Var0, Constraint0,
         ( if Constraint = ExistingConstraint then
             true
         else
-            unexpected($module, $pred, "inconsistent typeclass_infos")
+            unexpected($pred, "inconsistent typeclass_infos")
         )
     else
         map.det_insert(Var, Constraint, !Map)

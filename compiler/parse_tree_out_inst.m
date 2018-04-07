@@ -225,7 +225,7 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, !U) :-
         InstName = unify_inst(IsLive, Real, InstA, InstB),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "unify_inst")
+            unexpected($pred, "unify_inst")
         ;
             Lang = output_debug,
             add_string("$unify(", !U),
@@ -238,7 +238,7 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, !U) :-
         InstName = merge_inst(InstA, InstB),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "merge_inst")
+            unexpected($pred, "merge_inst")
         ;
             Lang = output_debug,
             add_string("$merge_inst(", !U),
@@ -249,7 +249,7 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, !U) :-
         InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "ground_inst")
+            unexpected($pred, "ground_inst")
         ;
             Lang = output_debug,
             add_string("$ground(", !U),
@@ -264,7 +264,7 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, !U) :-
         InstName = any_inst(SubInstName, Uniq, IsLive, Real),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "any_inst")
+            unexpected($pred, "any_inst")
         ;
             Lang = output_debug,
             add_string("$any(", !U),
@@ -279,7 +279,7 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, !U) :-
         InstName = shared_inst(SubInstName),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "shared_inst")
+            unexpected($pred, "shared_inst")
         ;
             Lang = output_debug,
             add_string("$shared_inst(", !U),
@@ -290,7 +290,7 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, !U) :-
         InstName = mostly_uniq_inst(SubInstName),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "mostly_uniq_inst")
+            unexpected($pred, "mostly_uniq_inst")
         ;
             Lang = output_debug,
             add_string("$mostly_uniq_inst(", !U),
@@ -301,7 +301,7 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, !U) :-
         InstName = typed_ground(Uniqueness, Type),
         (
             Lang = output_mercury,
-            unexpected($module, $pred, "typed_ground")
+            unexpected($pred, "typed_ground")
         ;
             Lang = output_debug,
             add_string("$typed_ground(", !U),

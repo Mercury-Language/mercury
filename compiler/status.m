@@ -594,7 +594,7 @@ old_combine_status(StatusA, StatusB, Status) :-
     ( if combine_status_2(StatusA, StatusB, CombinedStatus) then
         Status = CombinedStatus
     else
-        unexpected($module, $pred, "unexpected status for type definition")
+        unexpected($pred, "unexpected status for type definition")
     ).
 
 :- pred combine_status_2(old_import_status::in, old_import_status::in,
@@ -744,7 +744,7 @@ item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus) :-
                 InstImportLocn = instmode_import_plain_int
             ;
                 ImportLocn = import_locn_import_by_ancestor,
-                unexpected($module, $pred, "import_locn_import_by_ancestor")
+                unexpected($pred, "import_locn_import_by_ancestor")
             ;
                 ImportLocn = import_locn_ancestor_private_interface_proper,
                 InstImportLocn = instmode_import_plain_ancestors_priv_int_file

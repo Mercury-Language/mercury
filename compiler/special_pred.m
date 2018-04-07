@@ -253,7 +253,7 @@ special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
     ( if special_pred_get_type(SpecialId, ArgTypes, TypePrime) then
         Type = TypePrime
     else
-        unexpected($module, $pred, "special_pred_get_type failed")
+        unexpected($pred, "special_pred_get_type failed")
     ).
 
 %-----------------------------------------------------------------------------%

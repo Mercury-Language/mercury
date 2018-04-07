@@ -226,10 +226,10 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         GoalExpr = GoalExpr0 ^ call_proc_id := ProcId
     ;
         GoalExpr0 = generic_call(_GenericCall0, _Args, _Modes0, _, _Det),
-        unexpected($module, $pred, "generic_call NYI")
+        unexpected($pred, "generic_call NYI")
     ;
         GoalExpr0 = switch(_Var, _CanFail0, _Cases0),
-        unexpected($module, $pred, "switch")
+        unexpected($pred, "switch")
     ;
         GoalExpr0 = unify(VarA, RHS0, UnifyMode, Unification0, Context),
         set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI),
@@ -345,10 +345,10 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         GoalExpr = if_then_else(Locals, Cond, Then, Else)
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        unexpected($module, $pred, "pragma_foreign_code NYI")
+        unexpected($pred, "pragma_foreign_code NYI")
     ;
         GoalExpr0 = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 % mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
 %     Goal0 = atomic_goal(GoalType, Outer, Inner, Vars, MainGoal0,
@@ -438,7 +438,7 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
         ->
             Index = Index0
         ;
-            unexpected($module, $pred, "goal_path error")
+            unexpected($pred, "goal_path error")
         )), Goals0, map.init),
 
     ProdMap =
@@ -481,7 +481,7 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
         Goals = map.apply_to_list(TSort, GoalMap)
     ;
         % XXX Report a mode error for this.
-        unexpected($module, $pred, "tsort failed")
+        unexpected($pred, "tsort failed")
     ).
 
 :- pred set_atomic_prod_vars(set_of_progvar::out,
@@ -509,7 +509,7 @@ pred_info_create_proc_info_for_mode_decl_constraint(_ModeDeclConstraint,
         ProcId, !PredInfo) :-
     ( semidet_succeed ->
         % XXX
-        sorry($module, $pred, "NYI")
+        sorry($pred, "NYI")
     ;
         % XXX keep det checker happy.
         ProcId = initial_proc_id
@@ -541,11 +541,11 @@ find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
     ->
         % XXX We are inferring modes for the called predicate. Need to add
         % a new mode to the requested procs map.
-        unexpected($module, $pred, "infer_modes NYI")
+        unexpected($pred, "infer_modes NYI")
     ;
         % If we get here, it means there is a mode error which should have been
         % picked up by the constraints pass but was missed some how.
-        unexpected($module, $pred, "unexpected mode error")
+        unexpected($pred, "unexpected mode error")
     ).
 
 :- pred find_matching_proc_2(assoc_list(proc_id, proc_info)::in,

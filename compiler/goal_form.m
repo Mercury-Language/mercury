@@ -543,7 +543,7 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
             CanLoop = goal_can_loop_func(MaybeModuleInfo, SubGoal)
         ;
             ShortHand = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -676,7 +676,7 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
             CanThrow = yes
         ;
             ShortHand = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -1029,7 +1029,7 @@ count_recursive_calls(Goal, PredId, ProcId, Min, Max) :-
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -1065,7 +1065,7 @@ count_recursive_calls_disj([Goal | Goals], PredId, ProcId, Min, Max) :-
     int::out, int::out) is det.
 
 count_recursive_calls_cases([], _, _, _, _) :-
-    unexpected($module, $pred, "[]").
+    unexpected($pred, "[]").
 count_recursive_calls_cases([case(_, _, Goal) | Cases], PredId, ProcId,
         Min, Max) :-
     (

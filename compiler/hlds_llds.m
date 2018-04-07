@@ -434,7 +434,7 @@ goal_info_get_pre_births(GoalInfo, PreBirths) :-
     ( if PreBirthsPrime = CodeGenInfo ^ llds_code_gen ^ pre_births then
         PreBirths = PreBirthsPrime
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 goal_info_get_post_births(GoalInfo, PostBirths) :-
@@ -442,7 +442,7 @@ goal_info_get_post_births(GoalInfo, PostBirths) :-
     ( if PostBirthsPrime = CodeGenInfo ^ llds_code_gen ^ post_births then
         PostBirths = PostBirthsPrime
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
@@ -450,7 +450,7 @@ goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
     ( if PreDeathsPrime = CodeGenInfo ^ llds_code_gen ^ pre_deaths then
         PreDeaths = PreDeathsPrime
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
@@ -458,7 +458,7 @@ goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
     ( if PostDeathsPrime = CodeGenInfo ^ llds_code_gen ^ post_deaths then
         PostDeaths = PostDeathsPrime
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 goal_info_get_follow_vars(GoalInfo, FollowVars) :-
@@ -466,7 +466,7 @@ goal_info_get_follow_vars(GoalInfo, FollowVars) :-
     ( if FollowVarsPrime = CodeGenInfo ^ llds_code_gen ^ follow_vars then
         FollowVars = FollowVarsPrime
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 goal_info_get_store_map(GoalInfo, StoreMap) :-
@@ -474,7 +474,7 @@ goal_info_get_store_map(GoalInfo, StoreMap) :-
     ( if StoreMapPrime = CodeGenInfo ^ llds_code_gen ^ store_map then
         StoreMap = StoreMapPrime
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 goal_info_get_resume_point(GoalInfo, ResumePoint) :-
@@ -482,7 +482,7 @@ goal_info_get_resume_point(GoalInfo, ResumePoint) :-
     ( if ResumePointPrime = CodeGenInfo ^ llds_code_gen ^ resume_point then
         ResumePoint = ResumePointPrime
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
@@ -499,7 +499,7 @@ goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
             MaybeNeedAtCall = no
         )
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
@@ -516,7 +516,7 @@ goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
             MaybeNeedInResume = no
         )
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
@@ -533,7 +533,7 @@ goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
             MaybeNeedInParConj = no
         )
     else
-        unexpected($module, $pred, "no code_gen_info")
+        unexpected($pred, "no code_gen_info")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -685,7 +685,7 @@ goal_info_resume_vars_and_loc(Resume, Vars, Locs) :-
         Resume = resume_point(Vars, Locs)
     ;
         Resume = no_resume_point,
-        unexpected($module, $pred, "no resume point")
+        unexpected($pred, "no resume point")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -802,7 +802,7 @@ stack_slot_num(StackSlot) = N :-
         Width = single_width
     ;
         Width = double_width,
-        unexpected($module, $pred, "double_width")
+        unexpected($pred, "double_width")
     ).
 
 stack_slot_to_abs_locn(StackSlot) = AbsLocn :-

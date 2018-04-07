@@ -254,7 +254,7 @@ translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-
     else
         list.length(Args, Arity),
         string.format("unknown builtin %s/%d", [s(PredName), i(Arity)], Msg),
-        unexpected($module, $pred, Msg)
+        unexpected($pred, Msg)
     ).
 
 :- pred builtin_translation(string::in, string::in, int::in, list(T)::in,

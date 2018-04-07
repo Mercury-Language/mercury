@@ -246,7 +246,7 @@ term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
             ( if polyhedron.is_empty(OldPolyhedron) then
                 ChangeFlag = no
             else
-                unexpected($module, $pred, "old polyhedron is empty")
+                unexpected($pred, "old polyhedron is empty")
             )
         else
             % If the procedure is not recursive then we need only perform one
@@ -430,7 +430,7 @@ term_traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-
  :- func pairwise_map(func(T, T) = T, list(T)) = T.
 
 pairwise_map(_, []) = _ :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 pairwise_map(_, [X]) = X.
 pairwise_map(Op, List @ [_, _ | _]) = X :-
     pairwise_map_2(Op, List, [], X0),

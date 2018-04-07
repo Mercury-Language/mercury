@@ -1064,7 +1064,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
             cls_require_in_regs(CountInfo, [Var1, Var2], !CountState)
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated_unify")
+            unexpected($pred, "complicated_unify")
         )
     ;
         GoalExpr = plain_call(PredId, ProcId, _, Builtin, _, _),
@@ -1157,7 +1157,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
             count_load_stores_in_conj(Goals, CountInfo, !CountState)
         ;
             ConjType = parallel_conj,
-            sorry($module, $pred, "tupling with parallel conjunctions")
+            sorry($pred, "tupling with parallel conjunctions")
         )
     ;
         GoalExpr = disj(Goals),
@@ -1173,7 +1173,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
             cls_require_flushed(CountInfo, LiveVars, !CountState)
         ;
             ResumePoint = no_resume_point,
-            unexpected($module, $pred, "no_resume_point for not")
+            unexpected($pred, "no_resume_point for not")
         ),
         count_load_stores_in_goal(SubGoal, CountInfo, !CountState)
     ;
@@ -1201,12 +1201,12 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
             add_branch_costs(ElseCountInfo, ElseRelFreq, !CountState)
         ;
             ResumePoint = no_resume_point,
-            unexpected($module, $pred, "no_resume_point for if_then_else")
+            unexpected($pred, "no_resume_point for if_then_else")
         )
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1311,7 +1311,7 @@ count_load_stores_for_call(CountInfo, Inputs, Outputs, MaybeNeedAcrossCall,
         cls_clobber_regs(Outputs, !CountState)
     ;
         MaybeNeedAcrossCall = no,
-        unexpected($module, $pred, "no need across call")
+        unexpected($pred, "no need across call")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1777,7 +1777,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
             then
                 CallGoal = hlds_goal(CallAux, CallAuxInfo)
             else
-                unexpected($module, $pred, "not a call template")
+                unexpected($pred, "not a call template")
             ),
             conj_list_to_goal([ConstructGoal, CallGoal], GoalInfo0, Goal1),
             RequantifyVars = set_of_var.list_to_set([CellVar | Args0]),
@@ -1849,7 +1849,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2002,7 +2002,7 @@ get_disjunct_relative_frequency(ProcCounts, ReverseGoalPathMap,
             RelFreq = float(DisjCount) / float(FirstDisjCount)
         )
     else
-        unexpected($module, $pred, "did not see disj(N) at head of goal path")
+        unexpected($pred, "did not see disj(N) at head of goal path")
     ).
 
 :- pred get_case_relative_frequency(proc_trace_counts::in,

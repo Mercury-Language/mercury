@@ -408,9 +408,9 @@ unify_modes_to_rhs_from_to_insts(UnifyMode) = RHSFromToInsts :-
 
 modes_to_top_functor_modes(_ModuleInfo, [], [], []).
 modes_to_top_functor_modes(_ModuleInfo, [], [_ | _], _) :-
-        unexpected($module, $pred, "length mismatch").
+        unexpected($pred, "length mismatch").
 modes_to_top_functor_modes(_ModuleInfo, [_ | _], [], _) :-
-        unexpected($module, $pred, "length mismatch").
+        unexpected($pred, "length mismatch").
 modes_to_top_functor_modes(ModuleInfo, [Mode | Modes], [Type | Types],
         [TopFunctorMode | TopFunctorModes]) :-
     mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
@@ -488,11 +488,11 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
     ;
         HeadVars = [],
         HeadModes = [_ | _],
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ;
         HeadVars = [_ | _],
         HeadModes = [],
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 select_output_things(ModuleInfo, HeadThings, HeadModes, ThingTypes) =
@@ -521,11 +521,11 @@ select_output_things(ModuleInfo, HeadThings, HeadModes, ThingTypes) =
     ;
         HeadThings = [],
         HeadModes = [_ | _],
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ;
         HeadThings = [_ | _],
         HeadModes = [],
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 %---------------------------------------------------------------------------%
@@ -569,10 +569,10 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         ArgInst = any(Uniq, none_or_default_func)
     ;
         Inst = abstract_inst(_, _),
-        unexpected($module, $pred, "abstract insts not supported")
+        unexpected($pred, "abstract insts not supported")
     ;
         Inst = inst_var(_),
-        unexpected($module, $pred, "inst_var")
+        unexpected($pred, "inst_var")
     ;
         Inst = constrained_inst_vars(_, InsideInst),
         get_single_arg_inst(ModuleInfo, InsideInst, ConsId, ArgInst)
@@ -608,9 +608,9 @@ from_to_insts_to_unify_mode(FromToInstsX, FromToInstsY, UnifyMode) :-
 
 modes_to_unify_modes(_ModuleInfo, [], [], []).
 modes_to_unify_modes(_ModuleInfo, [], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 modes_to_unify_modes(_ModuleInfo, [_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 modes_to_unify_modes(ModuleInfo,
         [ModeX | ModeXs], [ModeY | ModeYs],
         [UnifyMode | UnifyModes]) :-
@@ -619,9 +619,9 @@ modes_to_unify_modes(ModuleInfo,
 
 from_to_insts_to_unify_modes([], [], []).
 from_to_insts_to_unify_modes([], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 from_to_insts_to_unify_modes([_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 from_to_insts_to_unify_modes(
         [FromToInstsX | FromToInstsXs], [FromToInstsY | FromToInstsYs],
         [UnifyMode | UnifyModes]) :-
@@ -729,24 +729,24 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
 %---------------------------------------------------------------------------%
 
 propagate_types_into_mode_list(_, [], [], []).
+propagate_types_into_mode_list(_, [], [_ | _], []) :-
+    unexpected($pred, "length mismatch").
+propagate_types_into_mode_list(_, [_ | _], [], []) :-
+    unexpected($pred, "length mismatch").
 propagate_types_into_mode_list(ModuleInfo, [Type | Types],
         [Mode0 | Modes0], [Mode | Modes]) :-
     propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode),
     propagate_types_into_mode_list(ModuleInfo, Types, Modes0, Modes).
-propagate_types_into_mode_list(_, [], [_ | _], []) :-
-    unexpected($module, $pred, "length mismatch").
-propagate_types_into_mode_list(_, [_ | _], [], []) :-
-    unexpected($module, $pred, "length mismatch").
 
 propagate_types_into_inst_list(_, _, [], [], []).
+propagate_types_into_inst_list(_, _, [], [_ | _], []) :-
+    unexpected($pred, "length mismatch").
+propagate_types_into_inst_list(_, _, [_ | _], [], []) :-
+    unexpected($pred, "length mismatch").
 propagate_types_into_inst_list(ModuleInfo, Subst, [Type | Types],
         [Inst0 | Insts0], [Inst | Insts]) :-
     propagate_type_into_inst(ModuleInfo, Subst, Type, Inst0, Inst),
     propagate_types_into_inst_list(ModuleInfo, Subst, Types, Insts0, Insts).
-propagate_types_into_inst_list(_, _, [], [_ | _], []) :-
-    unexpected($module, $pred, "length mismatch").
-propagate_types_into_inst_list(_, _, [_ | _], [], []) :-
-    unexpected($module, $pred, "length mismatch").
 
     % Given a type and a mode, produce a new mode that includes the
     % information provided by the type.
@@ -821,7 +821,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         Inst = free             % XXX temporary hack
     ;
         Inst0 = free(_),
-        unexpected($module, $pred, "type info already present")
+        unexpected($pred, "type info already present")
     ;
         Inst0 = ground(Uniq, none_or_default_func),
         ( if
@@ -936,7 +936,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         Inst = free             % XXX temporary hack
     ;
         Inst0 = free(_),
-        unexpected($module, $pred, "typeinfo already present")
+        unexpected($pred, "typeinfo already present")
     ;
         Inst0 = ground(Uniq, none_or_default_func),
         apply_type_subst(Type0, Subst, Type),
@@ -1320,7 +1320,7 @@ mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst) :-
         InitInst = InitInstPrime,
         FinalInst = FinalInstPrime
     else
-        unexpected($module, $pred, "mode_get_insts_semidet failed")
+        unexpected($pred, "mode_get_insts_semidet failed")
     ).
 
 mode_get_from_to_insts(ModuleInfo, Mode, FromToInsts) :-
@@ -1489,7 +1489,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
                 InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo)
             ;
                 FGT = from_ground_term_initial,
-                unexpected($module, $pred, "from_ground_term_initial")
+                unexpected($pred, "from_ground_term_initial")
             ;
                 FGT = from_ground_term_other,
                 recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal,
@@ -1572,7 +1572,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
                 VarTypes, InstMap0, NonLocals, InstMapDelta, !RI),
             (
                 Goals = [],
-                unexpected($module, $pred, "Goals = []")
+                unexpected($pred, "Goals = []")
             ;
                 Goals = [MainGoal | OrElseGoals]
             ),
@@ -1586,7 +1586,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ).
@@ -1741,9 +1741,9 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
 
 compute_inst_var_sub([], _, _, [], !Sub, !ModuleInfo).
 compute_inst_var_sub([_ | _], _, _, [], !Sub, !ModuleInfo) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 compute_inst_var_sub([], _, _, [_ | _], !Sub, !ModuleInfo) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
         !Sub, !ModuleInfo) :-
     % This is similar to modecheck_var_has_inst.
@@ -1771,9 +1771,9 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
 
 recompute_instmap_delta_call_2([], _, [], [], !ModuleInfo).
 recompute_instmap_delta_call_2([_ | _], _, [], _, !ModuleInfo) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 recompute_instmap_delta_call_2([], _, [_ | _], _, !ModuleInfo) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
         [Mode | Modes], !ModuleInfo) :-
     % This is similar to modecheck_set_var_inst.
@@ -1789,7 +1789,7 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
     then
         Mode = from_to_mode(ArgInst0, UnifyInst)
     else
-        unexpected($module, $pred, "unify_inst failed")
+        unexpected($pred, "unify_inst failed")
     ),
     recompute_instmap_delta_call_2(Args, InstMap, Modes0, Modes,
         !ModuleInfo).
@@ -1835,7 +1835,7 @@ recompute_instmap_delta_unify(Unification, UniMode0, UniMode, GoalInfo,
                 ModuleInfo = ModuleInfo1,
                 !RI ^ ri_module_info := ModuleInfo
             else
-                unexpected($module, $pred, "abstractly_unify_inst failed")
+                unexpected($pred, "abstractly_unify_inst failed")
             )
         else
             % It wasn't in the instmap_delta, so the inst didn't change.
@@ -1911,7 +1911,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
             [bound_functor(ConsId, [])]))
     ;
         ConsId = impl_defined_const(_),
-        unexpected($module, $pred, "impl_defined_const")
+        unexpected($pred, "impl_defined_const")
     ;
         ConsId = closure_cons(PredProcId, _),
         module_info_pred_proc_info(ModuleInfo,
@@ -1972,9 +1972,9 @@ fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
 
 normalise_insts(_, [], [], []).
 normalise_insts(_, [], [_ | _], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 normalise_insts(_, [_ | _], [], _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 normalise_insts(ModuleInfo, [Type | Types],
         [Inst0 | Insts0], [Inst | Insts]) :-
     normalise_inst(ModuleInfo, Type, Inst0, Inst),
@@ -2022,11 +2022,11 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
 
 %---------------------------------------------------------------------------%
 
-partition_args(_, [], [_ | _], _, _) :-
-    unexpected($module, $pred, "length mismatch").
-partition_args(_, [_ | _], [], _, _) :-
-    unexpected($module, $pred, "length mismatch").
 partition_args(_, [], [], [], []).
+partition_args(_, [], [_ | _], _, _) :-
+    unexpected($pred, "length mismatch").
+partition_args(_, [_ | _], [], _, _) :-
+    unexpected($pred, "length mismatch").
 partition_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
         !:InputArgs, !:OutputArgs) :-
     partition_args(ModuleInfo, ArgModes, Args, !:InputArgs, !:OutputArgs),

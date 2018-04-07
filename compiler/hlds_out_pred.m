@@ -703,7 +703,7 @@ write_rtti_var_info(VarSet, TVarSet, VarNamePrint, RttiVarMaps, Indent, Var,
         mercury_output_constraint(TVarSet, VarNamePrint, Constraint, !IO)
     ;
         VarInfo = non_rtti_var,
-        unexpected($module, $pred, "non rtti var")
+        unexpected($pred, "non rtti var")
     ),
     io.nl(!IO).
 

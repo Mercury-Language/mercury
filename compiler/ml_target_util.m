@@ -107,26 +107,26 @@ target_supports_int_switch(target_c) = yes.
 target_supports_int_switch(target_csharp) = yes.
 target_supports_int_switch(target_java) = yes.
 target_supports_int_switch(target_erlang) =
-    unexpected($module, $pred, "target erlang").
+    unexpected($pred, "target erlang").
 
 target_supports_int64_switch(target_c) = yes.
 target_supports_int64_switch(target_csharp) = yes.
 target_supports_int64_switch(target_java) = no.
 target_supports_int64_switch(target_erlang) =
-    unexpected($module, $pred, "target erlang").
+    unexpected($pred, "target erlang").
 
 target_supports_string_switch(target_c) = no.
 target_supports_string_switch(target_csharp) = yes.
 target_supports_string_switch(target_java) = yes.
     % String switches were added in Java 7, and we now require 8.
 target_supports_string_switch(target_erlang) =
-    unexpected($module, $pred, "target erlang").
+    unexpected($pred, "target erlang").
 
 target_supports_computed_goto(target_c) = yes.
 target_supports_computed_goto(target_csharp) = no.
 target_supports_computed_goto(target_java) = no.
 target_supports_computed_goto(target_erlang) =
-    unexpected($module, $pred, "target erlang").
+    unexpected($pred, "target erlang").
 
 target_supports_goto(target_c) = yes.
 % XXX C# *does* support gotos but mlds_to_cs.m currently aborts if it
@@ -134,19 +134,19 @@ target_supports_goto(target_c) = yes.
 target_supports_goto(target_csharp) = no.
 target_supports_goto(target_java) = no.
 target_supports_goto(target_erlang) =
-    unexpected($module, $pred, "target erlang").
+    unexpected($pred, "target erlang").
 
 target_supports_break_and_continue(target_c) = yes.
 target_supports_break_and_continue(target_csharp) = yes.
 target_supports_break_and_continue(target_java) = yes.
 target_supports_break_and_continue(target_erlang) = _ :-
-    unexpected($module, $pred, "target erlang").
+    unexpected($pred, "target erlang").
 
 target_supports_inheritence(target_c) = no.
 target_supports_inheritence(target_csharp) = yes.
 target_supports_inheritence(target_java) = yes.
 target_supports_inheritence(target_erlang) =
-    unexpected($module, $pred, "target erlang").
+    unexpected($pred, "target erlang").
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_target_util.

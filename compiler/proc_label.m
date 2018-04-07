@@ -108,7 +108,7 @@ do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
             ProcLabel = special_proc_label(DefiningModule, SpecialPred,
                 TypeModule, TypeName, TypeArity, ProcIdInt)
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 "cannot make label for special pred `" ++ PredName ++ "'")
         )
     else
@@ -155,7 +155,7 @@ make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
         ProcLabel = special_proc_label(Module, spec_pred_unify, TypeModule,
             TypeName, Arity, UniModeNumInt)
     else
-        unexpected($module, $pred, "unqualified type_ctor")
+        unexpected($pred, "unqualified type_ctor")
     ).
 
 %-----------------------------------------------------------------------------%

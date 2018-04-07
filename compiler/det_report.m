@@ -359,7 +359,7 @@ detism_decl_name(DetismDecl) = Name :-
         % This shouldn't happen, but if it does, it is better to get an
         % error message that puts you on the right track than to get
         % a compiler abort.
-        % unexpected($module, $pred, "detism_decl_name: detism_decl_none")
+        % unexpected($pred, "detism_decl_name: detism_decl_none")
     ).
 
 :- pred get_valid_dets(eval_method::in, determinism::out) is nondet.
@@ -718,7 +718,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -1106,7 +1106,7 @@ reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ;
         GoalExpr = unify(_, RHS, _, _, _),
@@ -1233,8 +1233,7 @@ reqscope_check_scope(SwitchContexts, Reason, SubGoal, ScopeGoalInfo, InstMap0,
             % Since loop control structures are generated only by the compiler,
             % it is reasonable to abort here, and it we don't want to present
             % the user with what would be a very confusing error message.
-            unexpected($module, $pred,
-                "Loop control scope with strange determinism")
+            unexpected($pred, "Loop control scope with strange determinism")
         ),
         MaybeReportedSwitch = no
     ;

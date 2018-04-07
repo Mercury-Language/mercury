@@ -130,7 +130,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         Tag = string_tag(String)
     ;
         ConsId = impl_defined_const(_),
-        unexpected($module, $pred, "implementation_defined_const")
+        unexpected($pred, "implementation_defined_const")
     ;
         ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
@@ -407,7 +407,7 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
             VarA = VarA0,
             VarB = VarB0
         else
-            unexpected($module, $pred, "non-singleton sets")
+            unexpected($pred, "non-singleton sets")
         ),
         ( if map.search(Renaming0, VarA, SpecVarB) then
             % If VarA was already in the renaming then check that it is

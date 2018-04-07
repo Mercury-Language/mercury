@@ -327,7 +327,7 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !VarSet, !VarTypes) :-
             )
         ;
             !.GoalExpr = switch(_SwitchVar, _CanFail, _Cases0),
-            unexpected($module, $pred, "switch")
+            unexpected($pred, "switch")
         ;
             !.GoalExpr = unify(_, _, _, _, _)
         ;
@@ -378,7 +378,7 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !VarSet, !VarTypes) :-
                 !:GoalExpr = shorthand(ShortHand)
             ;
                 ShortHand0 = bi_implication(_, _),
-                unexpected($module, $pred, "bi_implication")
+                unexpected($pred, "bi_implication")
             )
         ),
         !:Goal = hlds_goal(!.GoalExpr, !.GoalInfo)

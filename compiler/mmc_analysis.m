@@ -150,13 +150,13 @@ func_id_to_ppid(ModuleInfo, ModuleName, FuncId, PPId) :-
         PredOrFunc, ModuleName, FuncName, Arity, PredIds),
     (
         PredIds = [],
-        unexpected($module, $pred, "no predicate")
+        unexpected($pred, "no predicate")
     ;
         PredIds = [PredId],
         PPId = proc(PredId, ProcId)
     ;
         PredIds = [_, _ | _],
-        unexpected($module, $pred, "more than one predicate")
+        unexpected($pred, "more than one predicate")
     ).
 
 %-----------------------------------------------------------------------------%

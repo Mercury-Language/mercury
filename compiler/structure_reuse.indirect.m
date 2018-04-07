@@ -498,7 +498,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
             )
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated unification")
+            unexpected($pred, "complicated unification")
         ),
         OldSharing = !.IrInfo ^ sharing_as,
         NewSharing = add_unify_sharing(ModuleInfo, ProcInfo, Unification,
@@ -567,7 +567,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 :- pred indirect_reuse_analyse_plain_call(ir_background_info::in,
@@ -887,7 +887,7 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
                 NoClobbers, !.GoalInfo, reuse_is_conditional, !IO)
         )
     else
-        unexpected($module, $pred, "unknown NewReuseAs")
+        unexpected($pred, "unknown NewReuseAs")
     ).
 
     % Verify whether the caller's environment satisfies the reuse conditions
@@ -965,7 +965,7 @@ lookup_reuse_as(BaseInfo, OrigPPId, NoClobbers, !IrInfo, ReuseAs) :-
         lookup_reuse_as_2(BaseInfo, OrigPPId, OrigPPId, NoClobbers, !IrInfo,
             ReuseAs)
     else
-        unexpected($module, $pred, "conditions failed")
+        unexpected($pred, "conditions failed")
     ).
 
 :- pred lookup_reuse_as_2(ir_background_info::in, pred_proc_id::in,

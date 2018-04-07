@@ -737,7 +737,7 @@ goal_contains_trace(Goal0, Goal, ContainsTrace) :-
             GoalExpr = shorthand(ShortHand)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ),
     (

@@ -553,8 +553,8 @@ find_general_llds_types_in_cell(UnboxFloat, UnboxInt64s, [_Type | Types],
 %-----------------------------------------------------------------------------%
 
 add_vector_static_cell(LLDSTypes, VectorData, DataId, !Info) :-
-    expect(list.is_not_empty(LLDSTypes), $module, $pred, "no types"),
-    expect(list.is_not_empty(VectorData), $module, $pred, "no data"),
+    expect(list.is_not_empty(LLDSTypes), $pred, "no types"),
+    expect(list.is_not_empty(VectorData), $pred, "no data"),
 
     % We don't to use grouped_args_type, since that would (a) make the code
     % below significantly more complex, and (b) the type declaration can be
@@ -859,7 +859,7 @@ merge_static_cell_infos(SCIa, SCIb, SCI, Remap) :-
         CellTypeNumMapA, ScalarCellGroupMapA, VectorCellGroupMapA),
     SCIb = static_cell_info(SubInfoB, _TypeCounterB,
         CellTypeNumMapB, ScalarCellGroupMapB, VectorCellGroupMapB),
-    expect(unify(SubInfoA, SubInfoB), $module, $pred, "mismatch"),
+    expect(unify(SubInfoA, SubInfoB), $pred, "mismatch"),
 
     % Merge cell type number maps.
     bimap.foldl3(merge_cell_type_num_maps, CellTypeNumMapB,
@@ -983,7 +983,7 @@ merge_scalar_cell_groups_2(TypeNum, ArrayB, ArrayAB,
             ; BDataId = layout_id(_)
             ; BDataId = layout_slot_id(_, _)
             ),
-            unexpected($module, $pred, "unexpected BDataId")
+            unexpected($pred, "unexpected BDataId")
         )
     ).
 

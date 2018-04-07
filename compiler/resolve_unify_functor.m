@@ -257,11 +257,11 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
                     ( if encode_escaped_char(Char, Name0) then
                         ConsId = char_const(Char)
                     else
-                        unexpected($module, $pred, "encode_escaped_char")
+                        unexpected($pred, "encode_escaped_char")
                     )
                 ;
                     SymName0 = qualified(_, _),
-                    unexpected($module, $pred, "qualified char const")
+                    unexpected($pred, "qualified char const")
                 )
             else
                 Name = unqualify_name(SymName0),
@@ -272,7 +272,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
                     ConsId = cons(SymName, Arity, TypeCtorOfX)
                 ;
                     TypeCtorSymName = unqualified(_),
-                    unexpected($module, $pred, "unqualified type_ctor")
+                    unexpected($pred, "unqualified type_ctor")
                 )
             )
         else
@@ -448,7 +448,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
             add_new_prefix(ConsName0, ConsName),
             ConsId = cons(ConsName, ConsArity, TypeCtor)
         else
-            unexpected($module, $pred, "invalid cons_id")
+            unexpected($pred, "invalid cons_id")
         )
     ),
 
@@ -520,7 +520,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
         then
             ActualExistQVars = ActualExistQVars0
         else
-            unexpected($module, $pred, "existq_tvar bound to non-var")
+            unexpected($pred, "existq_tvar bound to non-var")
         )
     ),
     type_to_ctor_and_args_det(TermType, _, TypeArgs),
@@ -539,7 +539,7 @@ constraint_list_subsumes_det(ConstraintsA, ConstraintsB, Subst) :-
     then
         Subst = Subst1
     else
-        unexpected($module, $pred, "failed")
+        unexpected($pred, "failed")
     ).
 
 :- pred unify_constraint_list(list(prog_constraint)::in,
@@ -565,7 +565,7 @@ split_list_at_index(Index, List, Before, At, After) :-
         At = AtPrime,
         After = AfterPrime
     else
-        unexpected($module, $pred, "split_list_at_index")
+        unexpected($pred, "split_list_at_index")
     ).
 
 %---------------------------------------------------------------------------%
@@ -593,14 +593,14 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
         ; TermTypeBody = hlds_solver_type(_)
         ; TermTypeBody = hlds_abstract_type(_)
         ),
-        unexpected($module, $pred, "not du type")
+        unexpected($pred, "not du type")
     ).
 
 :- pred get_constructor_containing_field_loop(type_ctor::in,
     list(constructor)::in, string::in, cons_id::out, int::out) is det.
 
 get_constructor_containing_field_loop(_, [], _, _, _) :-
-    unexpected($module, $pred, "can't find field").
+    unexpected($pred, "can't find field").
 get_constructor_containing_field_loop(TypeCtor, [Ctor | Ctors],
         UnqualFieldName, ConsId, FieldNumber) :-
     Ctor = ctor(_, SymName, CtorArgs, Arity, _Ctxt),

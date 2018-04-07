@@ -374,7 +374,7 @@ expand_lambdas_in_goal(Goal0, Goal, !Info) :-
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ),
@@ -462,8 +462,8 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         trace [compiletime(flag("lambda_var_order"))] (
             list.sort(OrigNonLocals0, SortedOrigNonLocals0),
             list.sort(OrigNonLocals1, SortedOrigNonLocals1),
-            expect(unify(SortedOrigNonLocals0, SortedOrigNonLocals1),
-                $module, $pred, "OrigNonLocals0 != OrigNonLocals1")
+            expect(unify(SortedOrigNonLocals0, SortedOrigNonLocals1), $pred,
+                "OrigNonLocals0 != OrigNonLocals1")
         )
     ;
         ( Unification0 = deconstruct(_, _, _, _, _, _)
@@ -471,7 +471,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         ; Unification0 = simple_test(_, _)
         ; Unification0 = complicated_unify(_, _, _)
         ),
-        unexpected($module, $pred, "unexpected unification")
+        unexpected($pred, "unexpected unification")
     ),
 
     set_of_var.delete_list(Vars, LambdaGoalNonLocals, NonLocals1),
@@ -725,7 +725,7 @@ check_lambda_arg_type_and_mode(ModuleInfo, Type, Mode, X, X) :-
         ( if type_is_higher_order(Type) then
             true
         else
-            unexpected($module, $pred,
+            unexpected($pred,
                 "non-higher order argument with higher order inst")
         )
     else
@@ -878,7 +878,7 @@ find_used_vars_in_goal(Goal, !VarUses) :-
             ; Reason = require_switch_arms_detism(_, _)
             ),
             % These scopes should have been deleted by now.
-            unexpected($module, $pred, "unexpected scope")
+            unexpected($pred, "unexpected scope")
         ),
         find_used_vars_in_goal(SubGoal, !VarUses)
     ;

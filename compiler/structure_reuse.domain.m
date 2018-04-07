@@ -609,10 +609,10 @@ reuse_as_from_called_procedure_to_local_reuse_as(ModuleInfo, ProcInfo,
         HeadVars, LuData, SharingAs, CalledReuseAs) = LocalReuseAs :-
     (
         CalledReuseAs = no_reuse,
-        unexpected($module, $pred, "reuse_as does not specify any reuses")
+        unexpected($pred, "reuse_as does not specify any reuses")
     ;
         CalledReuseAs = unconditional,
-        unexpected($module, $pred, "reuse_as is unconditional")
+        unexpected($pred, "reuse_as is unconditional")
     ;
         CalledReuseAs = conditional(ConditionsCaller),
         ConditionsCallee =
@@ -631,7 +631,7 @@ reuse_condition_from_called_proc_to_local_condition(ModuleInfo, ProcInfo,
         HeadVars, LuData, SharingAs, CalledCondition) = LocalCondition :-
     (
         CalledCondition = always,
-        unexpected($module, $pred, "explicit condition expected")
+        unexpected($pred, "explicit condition expected")
     ;
         CalledCondition = condition(CalledDeadNodes,
             CalledInUseNodes, CalledSharingAs),
@@ -732,7 +732,7 @@ reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
             ( Result1 = reuse_not_possible(unknown_livedata)
             ; Result1 = reuse_not_possible(reuse_nodes_have_sharing(_))
             ),
-            unexpected($module, $pred, "unexpected result")
+            unexpected($pred, "unexpected result")
         )
     ;
         Result0 = reuse_not_possible(no_reuse),
@@ -742,7 +742,7 @@ reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
         Result = Result0
     ;
         Result0 = reuse_not_possible(reuse_nodes_have_sharing(_)),
-        unexpected($module, $pred, "reuse_nodes_have_sharing")
+        unexpected($pred, "reuse_nodes_have_sharing")
     ).
 
 :- pred aliases_between_reuse_nodes(module_info::in, proc_info::in,
@@ -761,7 +761,7 @@ aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs, Conditions,
         AliasedVars = set.to_sorted_list(AliasedVarsSet)
     ;
         AllNodes = [],
-        unexpected($module, $pred, "no nodes")
+        unexpected($pred, "no nodes")
     ).
 
 :- pred aliases_between_reuse_nodes_2(module_info::in, proc_info::in,

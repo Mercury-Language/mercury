@@ -410,7 +410,7 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
                 Context, UpperContext0),
             !:Regions = [FirstRegion | LaterRegions0]
         else if ItemNum =< UpperNum0 then
-            unexpected($module, $pred, "duplicate item number")
+            unexpected($pred, "duplicate item number")
         else if ItemNum = UpperNum0 + 1 then
             FirstRegion = clause_item_number_region(LowerNum0, ItemNum,
                 LowerContext0, Context),
@@ -422,7 +422,7 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
             % of LaterRegions1.
             (
                 LaterRegions1 = [],
-                unexpected($module, $pred, "insertion yields empty list")
+                unexpected($pred, "insertion yields empty list")
             ;
                 LaterRegions1 = [FirstLaterRegion1 | LaterLaterRegions1],
                 FirstLaterRegion1 = clause_item_number_region(

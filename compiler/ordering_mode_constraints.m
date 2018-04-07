@@ -192,7 +192,7 @@ scc_reordering(PredConstraintsMap, VarMap, SCC0, !ModuleInfo) :-
 
     (
         PredsToInfer = [_ | _],
-        sorry($module, $pred, "NYI: mode inference")
+        sorry($pred, "NYI: mode inference")
     ;
         PredsToInfer = []
     ),
@@ -212,7 +212,7 @@ pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
     ( pred_info_infer_modes(PredInfo0) ->
         % XXX GIVE UP FOR NOW!!!! In reality, execution shouldn't reach here
         % if the pred is to be mode inferred, should it?
-        sorry($module, $pred, "mode inference constraints")
+        sorry($pred, "mode inference constraints")
     ;
         % XXX Maybe move this outside of this predicate - then
         % the predicate can assume that the correct procedures
@@ -239,7 +239,7 @@ pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
             % XXX Deal with mode errors here!
             % This is a placeholder error message.
             ErrorsString = string.string(Errors),
-            sorry($module, $pred, "mode checking failure: " ++ ErrorsString)
+            sorry($pred, "mode checking failure: " ++ ErrorsString)
         )
     ).
 
@@ -374,7 +374,7 @@ goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, Goal0, Goal) :-
     ;
         GoalExpr0 = switch(_, _, _),
         % We haven't yet even tried to turn disjunctions into switches.
-        unexpected($module, $pred, "switch")
+        unexpected($pred, "switch")
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings,
@@ -400,7 +400,7 @@ goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, Goal0, Goal) :-
         GoalExpr0 = shorthand(_),
         % XXX We need to handle atomic goals.
         % XXX We need to handle try goals.
-        unexpected($module, $pred, "NYI: shorthand")
+        unexpected($pred, "NYI: shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -788,7 +788,7 @@ dump_goal_goal_paths(Globals, Indent, Goal, !IO) :-
         list.foldl(dump_goal_goal_paths(Globals, SubGoalIndent), Goals, !IO)
     ;
         GoalExpr = switch(_, _, _),
-        unexpected($module, $pred, "switch")
+        unexpected($pred, "switch")
     ;
         GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
         Goals = [CondGoal, ThenGoal, ElseGoal],
@@ -808,10 +808,10 @@ dump_goal_goal_paths(Globals, Indent, Goal, !IO) :-
                 !IO)
         ;
             ShortHand = try_goal(_, _, _),
-            unexpected($module, $pred, "try_goal")
+            unexpected($pred, "try_goal")
         ;
             ShortHand = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 

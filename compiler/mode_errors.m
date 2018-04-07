@@ -432,7 +432,7 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
         ( if list.drop(NumToDrop, !ArgModes) then
             true
         else
-            unexpected($module, $pred, "list.drop failed")
+            unexpected($pred, "list.drop failed")
         ),
 
         varset.init(VarSet),
@@ -618,7 +618,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     (
         Errors = [],
-        unexpected($module, $pred, "no errors")
+        unexpected($pred, "no errors")
     ;
         Errors = [Error],
         Msgs1 = mode_error_conjunct_to_msgs(Context, ModeInfo, Error)
@@ -650,7 +650,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
                         FirstOtherError)
                 ;
                     OtherErrors = [],
-                    unexpected($module, $pred, "no errors of any kind")
+                    unexpected($pred, "no errors of any kind")
                 )
             ),
             % MoreMsg is there to indicate that --verbose-errors would yield
@@ -962,7 +962,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
     mode_info_get_varset(!.ModeInfo, VarSet),
     (
         Vars = [],
-        unexpected($module, $pred, "Vars = []")
+        unexpected($pred, "Vars = []")
     ;
         Vars = [Var],
         MainPieces = [words("mode error: argument"),
@@ -1022,7 +1022,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
             [InitMsg | LaterMsgs])
     ;
         CalleeModeErrors = [],
-        unexpected($module, $pred, "no error")
+        unexpected($pred, "no error")
     ).
 
 :- func mode_error_no_matching_mode_to_spec(mode_info, list(prog_var),
@@ -1040,11 +1040,11 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
         ( ModeContext = mode_context_unify(_, _)
         ; ModeContext = mode_context_uninitialized
         ),
-        unexpected($module, $pred, "invalid context")
+        unexpected($pred, "invalid context")
     ),
     (
         Vars = [],
-        unexpected($module, $pred, "Vars = []")
+        unexpected($pred, "Vars = []")
     ;
         Vars = [Var],
         MainPieces = [words("mode error: argument"),

@@ -145,7 +145,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
         ExtraArgModes = ExtraArgModes0,
         OrigArgModes = OrigArgModes0
     else
-        unexpected($module, $pred, "split_list failed")
+        unexpected($pred, "split_list failed")
     ),
 
     % Add exists_casts for any head vars which are existentially typed,
@@ -201,7 +201,7 @@ introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypes, ArgModes,
             HeadVar0, HeadVar, !VarSet, !VarTypes, !ExtraGoals),
         !:HeadVars = [HeadVar | HeadVarsRest]
     else
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 :- pred introduce_exists_casts_for_arg(module_info::in, tsubst::in,
@@ -239,7 +239,7 @@ introduce_exists_casts_extra(_, _, ExistConstraints, [], [], !VarSet,
         ExistConstraints = []
     ;
         ExistConstraints = [_ | _],
-        unexpected($module, $pred, "length mismatch")
+        unexpected($pred, "length mismatch")
     ).
 
 introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
@@ -281,7 +281,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
                 ExistConstraints0 = [ExistConstraint | ExistConstraints]
             ;
                 ExistConstraints0 = [],
-                unexpected($module, $pred, "missing constraint")
+                unexpected($pred, "missing constraint")
             ),
             rtti_det_insert_typeclass_info_var(ExistConstraint, Var,
                 !RttiVarMaps),
@@ -292,7 +292,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
             maybe_add_type_info_locns(ConstraintArgs, Var, 1, !RttiVarMaps)
         ;
             VarInfo = non_rtti_var,
-            unexpected($module, $pred, "rtti_varmaps info not found")
+            unexpected($pred, "rtti_varmaps info not found")
         )
     else
         Var = Var0,

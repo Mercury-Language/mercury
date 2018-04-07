@@ -254,7 +254,7 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ),
@@ -435,7 +435,7 @@ fill_goal_path_slots(RevGoalPath, SlotInfo, Goal0, Goal) :-
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ),

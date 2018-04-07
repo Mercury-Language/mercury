@@ -425,7 +425,7 @@ scc_contains_recursion(SCC) :-
     ( if set.remove_least(Proc, SCC, _) then
         Proc ^ ap_recursion \= none
     else
-        unexpected($module, $pred, "empty SCC")
+        unexpected($pred, "empty SCC")
     ).
 
 proc_is_recursive(Proc) :-
@@ -435,7 +435,7 @@ size_varset_from_abstract_scc(SCC) = SizeVarSet :-
     ( if set.remove_least(Proc, SCC, _) then
         SizeVarSet = Proc ^ ap_size_varset
     else
-        unexpected($module, $pred, "empty SCC")
+        unexpected($pred, "empty SCC")
     ).
 
 analysis_depends_on_ho(Proc) :-
@@ -564,7 +564,7 @@ combine_primitives(GoalA, GoalB) = Goal :-
         NonLocals = NonLocalsA ++ NonLocalsB,
         Goal = term_primitive(Poly, Locals, NonLocals)
     else
-        unexpected($module, $pred, "non-primitive goals")
+        unexpected($pred, "non-primitive goals")
     ).
 
     % We end up with `empty' primitives by abstracting unifications
@@ -614,7 +614,7 @@ combine_primitive_goals(GoalA, GoalB) = Goal :-
         NonLocals = NonLocalsA ++ NonLocalsB,
         Goal      = term_primitive(Poly, Locals, NonLocals)
     else
-        unexpected($module, $pred, "non-primitive goals")
+        unexpected($pred, "non-primitive goals")
     ).
 
 %-----------------------------------------------------------------------------%

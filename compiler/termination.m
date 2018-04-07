@@ -151,7 +151,7 @@ check_foreign_code_attributes_in_scc(SCC, !ModuleInfo, !Specs) :-
     set.to_sorted_list(SCC, PPIds),
     (
         PPIds = [],
-        unexpected($module, $pred, "empty SCC")
+        unexpected($pred, "empty SCC")
     ;
         PPIds = [PPId],
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
@@ -289,7 +289,7 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
         proc_info_get_maybe_termination_info(KnownProcInfo, MaybeKnownTerm),
         (
             MaybeKnownTerm = no,
-            unexpected($module, $pred, "no termination info found")
+            unexpected($pred, "no termination info found")
         ;
             MaybeKnownTerm  = yes(KnownTermStatus)
         ),
@@ -338,7 +338,7 @@ check_procs_known_term(Status, [PPId | PPIds], ModuleInfo) :-
     proc_info_get_maybe_termination_info(ProcInfo, MaybeTerm),
     (
         MaybeTerm = no,
-        unexpected($module, $pred, "no termination info for procedure")
+        unexpected($pred, "no termination info for procedure")
     ;
         MaybeTerm = yes(PPIdStatus)
     ),

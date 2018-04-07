@@ -145,7 +145,7 @@ project_kept_goal(MarkedGoal, Goal) :-
         MarkedGoal = fgt_kept_goal(Goal, _, _)
     ;
         MarkedGoal = fgt_broken_goal(_, _, _),
-        unexpected($module, $pred, "broken goal")
+        unexpected($pred, "broken goal")
     ).
 
 %---------------------------------------------------------------------------%
@@ -193,7 +193,7 @@ introduce_partial_fgt_scopes(GoalInfo0, SubGoalInfo0, RevMarkedSubGoals,
     BuildGoals = cord.list(BuildGoalCord),
     (
         BuildGoals = [],
-        unexpected($module, $pred, "BuildGoals = []")
+        unexpected($pred, "BuildGoals = []")
     ;
         BuildGoals = [SubGoal1]
     ;
@@ -317,7 +317,7 @@ lookup_and_remove_arg_vars_insert_fgt([Var | Vars], Order, !GoalCord,
     (
         VarKept = kept_old_gi(Size0, GoalInfo0),
         ( if cord.is_empty(VarGoalCord0) then
-            unexpected($module, $pred, "VarGoalCord0 is empty")
+            unexpected($pred, "VarGoalCord0 is empty")
         else
             MaybeThreshold = get_maybe_from_ground_term_threshold,
             ( if

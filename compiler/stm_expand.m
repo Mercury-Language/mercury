@@ -349,7 +349,7 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
             ;
                 FGT = from_ground_term_initial,
                 % These scopes should have been deleted by now.
-                unexpected($module, $pred, "unexpected scope")
+                unexpected($pred, "unexpected scope")
             )
         ;
             ( Reason = disable_warnings(_, _)
@@ -370,7 +370,7 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
             ; Reason = require_switch_arms_detism(_, _)
             ),
             % These scopes should have been deleted by now.
-            unexpected($module, $pred, "unexpected scope")
+            unexpected($pred, "unexpected scope")
         )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
@@ -409,10 +409,10 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
                 Outer, Inner, MainGoal, OrElseGoals, Goal, !Info)
         ;
             ShortHand0 = try_goal(_, _, _),
-            unexpected($module, $pred, "try_goal")
+            unexpected($pred, "try_goal")
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 
@@ -513,7 +513,7 @@ stm_create_actual_goal(Context, GoalType, InitInstmap, FinalInstmap,
             FinalGoal, !StmInfo)
     ;
         GoalType = unknown_atomic_goal_type,
-        unexpected($module, $pred, "unknown atomic goal type")
+        unexpected($pred, "unknown atomic goal type")
     ),
     !StmInfo ^ stm_info_requalify := yes.
 
@@ -566,7 +566,7 @@ order_vars_into_groups_2(ModuleInfo, [Var|Vars], InitInstmap, FinalInstmap,
     then
         !:InputVars = [Var | !.InputVars]
     else
-        unexpected($module, $pred, "unhandled inst case")
+        unexpected($pred, "unhandled inst case")
     ),
     order_vars_into_groups_2(ModuleInfo, Vars, InitInstmap, FinalInstmap,
         !LocalVars, !InputVars, !OutputVars).
@@ -629,7 +629,7 @@ calc_pred_variables_list(InitInstmap, FinalInstmap, Goals, InnerDIs, InnerUOs,
             !StmInfo),
         StmGoalVarList = [StmGoalVar | StmGoalVarList0]
     else
-        unexpected($module, $pred, "lengths mismatch")
+        unexpected($pred, "lengths mismatch")
     ).
 
     % Arranges all variables from the goal and non-locals into local variables,
@@ -717,7 +717,7 @@ strip_goal_calls(Goal0, Goal, StmOutDI, StmOutUO, StmInDI, StmInUO) :-
     ( if Goal0 = hlds_goal(conj(plain_conj, GoalList0), GoalInfo) then
         (
             GoalList0 = [],
-            unexpected($module, $pred, "empty conjunction")
+            unexpected($pred, "empty conjunction")
         ;
             GoalList0 = [_ | _],
             remove_tail(GoalList0, GoalList, MaybeOutVarPair, MaybeInVarPair),
@@ -737,11 +737,11 @@ strip_goal_calls(Goal0, Goal, StmOutDI, StmOutUO, StmInDI, StmInUO) :-
                 StmOutUO = StmOutUO0,
                 Goal = hlds_goal(conj(plain_conj, GoalList), GoalInfo)
             else
-                unexpected($module, $pred, "Vars not extracted")
+                unexpected($pred, "Vars not extracted")
             )
         )
     else
-        unexpected($module, $pred, "atomic_goal not a conj")
+        unexpected($pred, "atomic_goal not a conj")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1368,7 +1368,7 @@ create_wrapper_for_goal_list(Context, AtomicGoalVarList, ResultType, ResultVar,
         GoalList, PredProcId, CallGoal, !StmInfo) :-
     (
         GoalList = [],
-        unexpected($module, $pred, "empty list")
+        unexpected($pred, "empty list")
     ;
         GoalList = [SingleGoal],
         AtomicGoalVars = list.det_head(AtomicGoalVarList),
@@ -1756,7 +1756,7 @@ create_or_else_branches(Context, AtomicGoalVars, ReturnType, OuterStmDIVar,
             OuterStmUOVar, InnerVar, RttiVar, RollbackExceptionRttiVar,
             WrapID, Goal0, Goal, StmInfo, !NewPredInfo)
     else
-        unexpected($module, $pred, "mismatched lists")
+        unexpected($pred, "mismatched lists")
     ).
 
 :- pred create_or_else_inner_stm_vars(int::in, list(prog_var)::out,
@@ -1771,7 +1771,7 @@ create_or_else_inner_stm_vars(Count, Vars, !NewPredInfo) :-
         create_or_else_inner_stm_vars(Count1, Vars0, !NewPredInfo),
         Vars = [Var | Vars0]
     else
-        unexpected($module, $pred, "negative count")
+        unexpected($pred, "negative count")
     ).
 
     % Creates an or_else branch.
@@ -1809,7 +1809,7 @@ map2_in_foldl(Pred, Src1, Src2, Dest, !Accum) :-
         map2_in_foldl(Pred, Ss, Ts,  Rs, !Accum),
         Dest = [R | Rs]
     else
-        unexpected($module, $pred, "source list lengths mismatch")
+        unexpected($pred, "source list lengths mismatch")
     ).
 
 :- pred map3_in_foldl(
@@ -1832,7 +1832,7 @@ map3_in_foldl(Pred, Src1, Src2, Src3, Dest, !Accum) :-
         map3_in_foldl(Pred, Ss, Ts, Us, Rs, !Accum),
         Dest = [R | Rs]
     else
-        unexpected($module, $pred, "source list lengths mismatch")
+        unexpected($pred, "source list lengths mismatch")
     ).
 
 :- pred create_or_else_end_branch(prog_context::in,
@@ -2417,7 +2417,7 @@ make_type_info(Type, Var, Goals, NewPredInfo0, NewPredInfo) :-
         PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
         ProcInfo0, ProcInfo, ModuleInfo),
-    expect(unify(PolySpecs, []), $module, $pred,
+    expect(unify(PolySpecs, []), $pred,
         "got errors while making type_info_var"),
     NewPredInfo = stm_new_pred_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo, Context, VarCnt).

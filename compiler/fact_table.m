@@ -549,7 +549,7 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
             RequiredType = no
         ;
             Functor = term.implementation_defined(_),
-            unexpected($module, $pred, "implementation-defined literal")
+            unexpected($pred, "implementation-defined literal")
         ),
         (
             RequiredType = no,
@@ -779,9 +779,9 @@ init_fact_arg_infos([Type | Types], [Info | Infos]) :-
 
 fill_in_fact_arg_infos([], _, [], []).
 fill_in_fact_arg_infos([_ | _], _, [], _) :-
-    unexpected($module, $pred, "too many argmodes").
+    unexpected($pred, "too many argmodes").
 fill_in_fact_arg_infos([], _, [_ | _], _) :-
-    unexpected($module, $pred, "too many fact_arg_infos").
+    unexpected($pred, "too many fact_arg_infos").
 fill_in_fact_arg_infos([Mode | Modes], ModuleInfo, [Info0 | Infos0],
         [Info | Infos]) :-
     Info0 = fact_arg_info(Type, IsInput, _IsOutput),
@@ -1097,7 +1097,7 @@ make_fact_data_string([fact_arg_info(_, _, IsOutput) - Term | InfoTerms]) =
 make_key_part(Const) = Key :-
     (
         Const = term.atom(_),
-        unexpected($module, $pred, "enumerated types are not supported yet.")
+        unexpected($pred, "enumerated types are not supported yet.")
     ;
         Const = term.integer(Base, Integer, Signedness, _Size),
         (
@@ -1107,11 +1107,11 @@ make_key_part(Const) = Key :-
                 % do.
                 Key = string.int_to_base_string(I, 36)
             else
-                unexpected($module, $pred, "integer too big")
+                unexpected($pred, "integer too big")
             )
         ;
             Signedness = unsigned,
-            unexpected($module, $pred, "NYI uints and fact tables")
+            unexpected($pred, "NYI uints and fact tables")
         )
     ;
         Const = term.float(F),
@@ -1123,7 +1123,7 @@ make_key_part(Const) = Key :-
         string.from_char_list(EscapedChars, Key)
     ;
         Const = term.implementation_defined(_),
-        unexpected($module, $pred, "implementation-defined literal")
+        unexpected($pred, "implementation-defined literal")
     ).
 
     % Escape all backslashes with a backslash, and replace all newlines
@@ -1359,11 +1359,11 @@ write_fact_args(OutputStream, [Arg | Args], !IO) :-
                 io.write_int(OutputStream, Int, !IO),
                 io.write_string(OutputStream, ", ", !IO)
             else
-                unexpected($module, $pred, "integer too big")
+                unexpected($pred, "integer too big")
             )
         ;
             Signedness = unsigned,
-            unexpected($module, $pred, "NYI uints in fact tables")
+            unexpected($pred, "NYI uints in fact tables")
         )
     ;
         Arg = term.float(Float),
@@ -1371,10 +1371,10 @@ write_fact_args(OutputStream, [Arg | Args], !IO) :-
         io.write_string(OutputStream, ", ", !IO)
     ;
         Arg = term.atom(_),
-        unexpected($module, $pred, "unsupported type")
+        unexpected($pred, "unsupported type")
     ;
         Arg = term.implementation_defined(_),
-        unexpected($module, $pred, "implementation-defined literal")
+        unexpected($pred, "implementation-defined literal")
     ),
     write_fact_args(OutputStream, Args, !IO).
 
@@ -1693,7 +1693,7 @@ do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName, !TableNum,
         IsPrimaryTable, OutputStream, Facts, FactMap, !HashList, !IO) :-
     (
         Facts = [],
-        unexpected($module, $pred, "no facts")
+        unexpected($pred, "no facts")
     ;
         Facts = [Fact | Facts1],
         fact_get_arg_and_index(Fact, InputArgNum, Arg, Index),
@@ -1775,7 +1775,7 @@ top_level_collect_matching_facts_2(Fact, !MatchingFacts, MaybeNextFact,
                 MaybeNextFact = yes(Fact1)
             )
         else
-            unexpected($module, $pred, "no input args")
+            unexpected($pred, "no input args")
         )
     ;
         MaybeSortFileLine = no,
@@ -1816,7 +1816,7 @@ lower_level_collect_matching_facts_2(Fact, [Fact0 | Facts0], Matching0,
             Remaining = [Fact0 | Facts0]
         )
     else
-        unexpected($module, $pred, "not enough input args")
+        unexpected($pred, "not enough input args")
     ).
 
 :- pred update_fact_map(int::in, list(sort_file_line)::in,
@@ -1862,7 +1862,7 @@ split_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, Line0,
         ),
         SortFileLine = sort_file_line(InputArgs, Index0, OutputArgs)
     else
-        unexpected($module, $pred, "sort file format incorrect")
+        unexpected($pred, "sort file format incorrect")
     ).
 
     % Split up a string containing a sort file key into a list of strings
@@ -1882,7 +1882,7 @@ split_key_to_arg_strings(Key0, ArgStrings) :-
             split_key_to_arg_strings(Key2, ArgStrings0),
             ArgStrings = [ArgString | ArgStrings0]
         else
-            unexpected($module, $pred, "sort file key format is incorrect")
+            unexpected($pred, "sort file key format is incorrect")
         )
     ).
 
@@ -1891,9 +1891,9 @@ split_key_to_arg_strings(Key0, ArgStrings) :-
 
 get_input_args_list([], [], _, _, []).
 get_input_args_list([_ | _], [], _, _, _) :-
-    unexpected($module, $pred, "too many fact_arg_infos").
+    unexpected($pred, "too many fact_arg_infos").
 get_input_args_list([], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "too many argmodes").
+    unexpected($pred, "too many argmodes").
 get_input_args_list([Info | Infos], [Mode | Modes], ModuleInfo, ArgStrings0,
         Args) :-
     ( if mode_is_fully_input(ModuleInfo, Mode) then
@@ -1905,7 +1905,7 @@ get_input_args_list([Info | Infos], [Mode | Modes], ModuleInfo, ArgStrings0,
             Args = [Arg | Args0]
         ;
             ArgStrings0 = [],
-            unexpected($module, $pred, "not enough ArgStrings")
+            unexpected($pred, "not enough ArgStrings")
         )
     else
         % This argument is not input so skip it and try the next one.
@@ -1928,7 +1928,7 @@ get_output_args_list([Info | Infos], ArgStrings0, Args) :-
             Args = [Arg | Args0]
         ;
             ArgStrings0 = [],
-            unexpected($module, $pred, "not enough ArgStrings")
+            unexpected($pred, "not enough ArgStrings")
         )
     ;
         IsOutput = no,
@@ -1945,7 +1945,7 @@ convert_key_string_to_arg(ArgString, Type, Arg) :-
         ( if string.base_string_to_int(36, ArgString, I) then
             Arg = term.integer(base_10, integer(I), signed, size_word)
         else
-            unexpected($module, $pred, "could not convert string to int")
+            unexpected($pred, "could not convert string to int")
         )
     else if Type = builtin_type(builtin_type_string) then
         string.to_char_list(ArgString, Cs0),
@@ -1957,10 +1957,10 @@ convert_key_string_to_arg(ArgString, Type, Arg) :-
         ( if string.to_float(ArgString, F) then
             Arg = term.float(F)
         else
-            unexpected($module, $pred, "could not convert string to float")
+            unexpected($pred, "could not convert string to float")
         )
     else
-        unexpected($module, $pred, "unsupported type")
+        unexpected($pred, "unsupported type")
     ).
 
     % Remove the escape characters put in the string by make_sort_file_key.
@@ -1982,12 +1982,12 @@ remove_sort_file_escapes([C0 | Cs0], In, Out) :-
             else if C1 = ('n') then
                 C = ('\n')
             else
-                unexpected($module, $pred, "something went wrong")
+                unexpected($pred, "something went wrong")
             ),
             remove_sort_file_escapes(Cs1, [C | In], Out)
         ;
             Cs0 = [],
-            unexpected($module, $pred, "something went wrong")
+            unexpected($pred, "something went wrong")
         )
     else
         remove_sort_file_escapes(Cs0, [C0 | In], Out)
@@ -2001,7 +2001,7 @@ fact_get_arg_and_index(Fact, InputArgNum, Arg, Index) :-
     ( if list.drop(InputArgNum, InputArgs, [ArgPrime | _]) then
         Arg = ArgPrime
     else
-        unexpected($module, $pred, "not enough input args")
+        unexpected($pred, "not enough input args")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2025,7 +2025,7 @@ calculate_hash_table_size(Globals, NumEntries, HashTableSize) :-
 :- pred calculate_hash_table_size_2(int::in, list(int)::in, int::out) is det.
 
 calculate_hash_table_size_2(_, [], _) :-
-    unexpected($module, $pred, "hash table too large (max size 2147483647)").
+    unexpected($pred, "hash table too large (max size 2147483647)").
 calculate_hash_table_size_2(N, [P | Ps], H) :-
     ( if P > N then
         H = P
@@ -2066,7 +2066,7 @@ hash_table_insert_2(HashVal, FreeVal, Index0, Key0, !HashTable) :-
             hash_table_insert_2(Next, FreeVal, Index0, Key0, !HashTable)
         )
     else
-        unexpected($module, $pred, "hash table entry empty")
+        unexpected($pred, "hash table entry empty")
     ).
 
     % Probe through the hash table to find a free slot. This will eventually
@@ -2121,7 +2121,7 @@ fact_table_hash(HashSize, Key, HashVal) :-
         int.abs(float.hash(Float), N),
         Ns = [N]
     else
-        unexpected($module, $pred, "unsupported type in key")
+        unexpected($pred, "unsupported type in key")
     ),
     fact_table_hash_2(HashSize, Ns, 0, HashVal).
 
@@ -2267,7 +2267,7 @@ write_hash_table_loop(Stream, HashTable, CurrIndex, MaxIndex, !IO) :-
 get_hash_table_type(HashTable, TableType) :-
     HashTable = hash_table(_Size, Map),
     ( if map.is_empty(Map) then
-        unexpected($module, $pred, "empty hash table")
+        unexpected($pred, "empty hash table")
     else
         get_hash_table_type_2(Map, 0, TableType)
     ).
@@ -2287,7 +2287,7 @@ get_hash_table_type_2(Map, Index, TableType) :-
         else if Key = term.atom(_) then
             TableType = 'a'
         else
-            unexpected($module, $pred, "invalid term")
+            unexpected($pred, "invalid term")
         )
     else
         get_hash_table_type_2(Map, Index + 1, TableType)
@@ -2663,9 +2663,9 @@ generate_decl_code(Name, ProcID, DeclCode) :-
 
 generate_hash_code([], [], _, _, _, _, _, _, "").
 generate_hash_code([], [_ | _], _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 generate_hash_code([_ | _], [], _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 generate_hash_code([pragma_var(_, Name, Mode, _) | PragmaVars], [Type | Types],
         ModuleInfo, LabelName, LabelNum, PredName, ArgNum,
         FactTableSize, C_Code) :-
@@ -2684,7 +2684,7 @@ generate_hash_code([pragma_var(_, Name, Mode, _) | PragmaVars], [Type | Types],
                 PredName, PragmaVars, Types, ModuleInfo,
                 NextArgNum, FactTableSize, C_Code0)
         else
-            unexpected($module, $pred, "unsupported type")
+            unexpected($pred, "unsupported type")
         ),
         generate_hash_code(PragmaVars, Types, ModuleInfo, LabelName,
             LabelNum + 1, PredName, NextArgNum, FactTableSize,
@@ -2871,9 +2871,9 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, ComparisonKind,
 
 generate_fact_lookup_code(_, [], [], _, _, _, "").
 generate_fact_lookup_code(_, [_ | _], [], _, _, _, _) :-
-    unexpected($module, $pred, "too many pragma vars").
+    unexpected($pred, "too many pragma vars").
 generate_fact_lookup_code(_, [], [_ | _], _, _, _, _) :-
-    unexpected($module, $pred, "too many types").
+    unexpected($pred, "too many types").
 generate_fact_lookup_code(PredName,
         [pragma_var(_, VarName, Mode, _) | PragmaVars],
         [Type | Types], ModuleInfo, ArgNum, FactTableSize, C_Code) :-
@@ -3100,7 +3100,7 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
             SaveRegsCode0 = "",
             GetRegsCode0 = ""
         else
-            unexpected($module, $pred, "invalid mode")
+            unexpected($pred, "invalid mode")
         ),
         generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, Module,
             DeclCode1, InputCode1, OutputCode1, SaveRegsCode1, GetRegsCode1,
@@ -3111,7 +3111,7 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
         SaveRegsCode = SaveRegsCode0 ++ SaveRegsCode1,
         GetRegsCode = GetRegsCode0 ++ GetRegsCode1
     else
-        unexpected($module, $pred, "list length mismatch")
+        unexpected($pred, "list length mismatch")
     ).
 
 :- pred generate_arg_decl_code(string::in, mer_type::in, module_info::in,
@@ -3175,9 +3175,9 @@ generate_fact_test_code(PredName, PragmaVars, ArgTypes, ModuleInfo,
 
 generate_test_condition_code(_, [], [], _, _, _, _, "").
 generate_test_condition_code(_, [_ | _], [], _, _, _, _, "") :-
-    unexpected($module, $pred, "too many PragmaVars").
+    unexpected($pred, "too many PragmaVars").
 generate_test_condition_code(_, [], [_ | _], _, _, _, _, "") :-
-    unexpected($module, $pred, "too many ArgTypes").
+    unexpected($pred, "too many ArgTypes").
 generate_test_condition_code(FactTableName, [PragmaVar | PragmaVars],
         [Type | Types], ModuleInfo, ArgNum, !.IsFirstInputArg,
         FactTableSize, CondCode) :-

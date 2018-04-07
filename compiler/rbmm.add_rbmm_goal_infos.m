@@ -283,7 +283,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
         !:Expr = switch(A, B, Cases),
         (
             Cases = [],
-            unexpected($module, $pred, "empty switch")
+            unexpected($pred, "empty switch")
         ;
             % The process here is similar to the above code for disjunctions.
             Cases = [Case | _],
@@ -352,15 +352,15 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
         % in the future.
         (
             !.Expr = generic_call(_, _, _, _, _),
-            sorry($module, $pred, "generic call not handled")
+            sorry($pred, "generic call not handled")
         ;
             !.Expr = call_foreign_proc(_, _, _, _, _, _, _),
-            sorry($module, $pred, "call to foreign proc not handled")
+            sorry($pred, "call to foreign proc not handled")
         )
     ;
         !.Expr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
     % The elements in the first and second lists are corresponding.
@@ -373,9 +373,9 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
 
 keep_allocated_regions([], [], _, []).
 keep_allocated_regions([], [_ | _], _, []) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 keep_allocated_regions([_ | _], [], _, []) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 keep_allocated_regions([Input | Inputs], [RemovedRegion | RemovedRegions],
         Graph, RemovedAndAllocRegions) :-
     keep_allocated_regions(Inputs, RemovedRegions, Graph,
@@ -503,7 +503,7 @@ collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
         goal_info_set_maybe_rbmm(yes(rbmm_info_init), !Info)
     ;
         Unification = complicated_unify(_, _, _),
-        unexpected($module, $pred, "complicated unification")
+        unexpected($pred, "complicated unification")
     ).
 
 :- pred is_remove_region_call(hlds_goal_expr::in, module_info::in,

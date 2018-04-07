@@ -387,7 +387,7 @@ fixup_disj(Disjuncts, GoalInfo, Goal, NestedContext0, InstMap0, Common0,
 :- pragma consider_used(det_disj_to_ite/3).
 
 det_disj_to_ite([], _GoalInfo, _) :-
-    unexpected($module, $pred, "reached base case").
+    unexpected($pred, "reached base case").
 det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
     (
         Disjuncts = [],

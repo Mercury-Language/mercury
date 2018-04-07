@@ -399,7 +399,7 @@ ssdebug_first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "unexpected shorthand")
+        unexpected($pred, "unexpected shorthand")
     ).
 
 :- pred ssdebug_first_pass_in_case(case::in, case::out,
@@ -774,7 +774,7 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
                 RenamedBodyGoal, CondGoal)
         ;
             Solns = at_most_zero,
-            unexpected($module, $pred, "zero solutions")
+            unexpected($pred, "zero solutions")
         ),
 
         % Create the `then' branch.
@@ -1434,7 +1434,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
             TypeInfoGoals0, PolyInfo0, PolyInfo),
         poly_info_extract(PolyInfo, PolySpecs, !PredInfo, !ProcInfo,
             !:ModuleInfo),
-        expect(unify(PolySpecs, []), $module, $pred,
+        expect(unify(PolySpecs, []), $pred,
             "got errors while making type_info_var"),
 
         proc_info_get_varset(!.ProcInfo, !:VarSet),

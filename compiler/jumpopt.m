@@ -141,7 +141,7 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
                     check_nondet_tailcalls(_, !:LabelNumCounter)
             ;
                 CheckedNondetTailCallInfo = dont_check_nondet_tailcalls,
-                unexpected($module, $pred, "lost the next label number")
+                unexpected($pred, "lost the next label number")
             )
         ;
             CheckedNondetTailCall = no,
@@ -387,7 +387,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         Uinstr0 = block(_, _, _),
         % These are supposed to be introduced only after jumpopt is run
         % for the last time.
-        unexpected($module, $pred, "block")
+        unexpected($pred, "block")
     ;
         Uinstr0 = fork_new_child(SyncTerm, Child0),
         InstrMap = JumpOptInfo ^ joi_instr_map,
@@ -1044,8 +1044,7 @@ adjust_livevals(PrevInstr, Instrs0, Instrs) :-
         ( if BetweenLivevals = PrevLivevals then
             Instrs = Instrs2
         else
-            unexpected($module, $pred,
-                "BetweenLivevals and PrevLivevals differ")
+            unexpected($pred, "BetweenLivevals and PrevLivevals differ")
         )
     else
         Instrs = Instrs0
@@ -1125,7 +1124,7 @@ short_circuit_labels_rval(InstrMap, Rval0, Rval) :-
         Rval = lval(Lval)
     ;
         Rval0 = var(_),
-        unexpected($module, $pred, "var")
+        unexpected($pred, "var")
     ;
         Rval0 = mkword(Tag, SubRval0),
         short_circuit_labels_rval(InstrMap, SubRval0, SubRval),
@@ -1259,7 +1258,7 @@ short_circuit_labels_lval(InstrMap, Lval0, Lval) :-
         Lval = mem_ref(Rval)
     ;
         Lval0 = lvar(_),
-        unexpected($module, $pred, "lvar")
+        unexpected($pred, "lvar")
     ).
 
 :- pred short_circuit_foreign_proc_component(instrmap::in,

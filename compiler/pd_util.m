@@ -387,7 +387,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     disable_det_warnings(_OptionsToRestore, Globals, GlobalsToUse),
     ContainsErrors = contains_errors(GlobalsToUse, Specs),
-    expect(unify(ContainsErrors, no), $module, $pred, "determinism errors").
+    expect(unify(ContainsErrors, no), $pred, "determinism errors").
 
 %-----------------------------------------------------------------------------%
 
@@ -696,7 +696,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         )
     ;
         GoalExpr = shorthand(_),
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -1045,9 +1045,9 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
 collect_matching_arg_types([], [], _, !MatchingTypes) :-
     list.reverse(!MatchingTypes).
 collect_matching_arg_types([_ | _], [], _, !MatchingTypes) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 collect_matching_arg_types([], [_ | _], _, !MatchingTypes) :-
-    unexpected($module, $pred, "list length mismatch").
+    unexpected($pred, "list length mismatch").
 collect_matching_arg_types([Arg | Args], [Type | Types],
         Renaming, !MatchingTypes) :-
     ( if map.contains(Renaming, Arg) then

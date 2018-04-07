@@ -642,7 +642,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
     % To process a parallel conjunction, we process each conjunct with the
@@ -655,7 +655,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
 ho_traverse_parallel_conj(Goals0, Goals, !Info) :-
     (
         Goals0 = [],
-        unexpected($module, $pred, "empty list")
+        unexpected($pred, "empty list")
     ;
         Goals0 = [_ | _],
         get_pre_branch_info(!.Info, PreInfo),
@@ -724,7 +724,7 @@ ho_traverse_cases(Cases0, Cases, !Info) :-
     % works only on nonempty lists.
     (
         Cases0 = [],
-        unexpected($module, $pred, "empty list of cases")
+        unexpected($pred, "empty list of cases")
     ;
         Cases0 = [_ | _],
         get_pre_branch_info(!.Info, PreInfo),
@@ -795,7 +795,7 @@ set_post_branch_info(post_branch_info(KnownVarMap, _), !Info) :-
     post_branch_info::out) is det.
 
 merge_post_branch_infos_into_one([], _) :-
-    unexpected($module, $pred, "empty list").
+    unexpected($pred, "empty list").
 merge_post_branch_infos_into_one([PostInfo], PostInfo).
 merge_post_branch_infos_into_one(PostInfos @ [_, _ | _], PostInfo) :-
     merge_post_branch_info_pass(PostInfos, [], MergedPostInfos),
@@ -863,12 +863,12 @@ merge_post_branch_infos(PostA, PostB, Post) :-
 
 merge_common_var_const_list([], [], !List).
 merge_common_var_const_list([], [_ | _], !MergedList) :-
-    unexpected($module, $pred, "mismatched list").
+    unexpected($pred, "mismatched list").
 merge_common_var_const_list([_ | _], [], !MergedList) :-
-    unexpected($module, $pred, "mismatched list").
+    unexpected($pred, "mismatched list").
 merge_common_var_const_list([VarA - ValueA | ListA], [VarB - ValueB | ListB],
         !MergedList) :-
-    expect(unify(VarA, VarB), $module, $pred, "var mismatch"),
+    expect(unify(VarA, VarB), $pred, "var mismatch"),
     ( if ValueA = ValueB then
         !:MergedList = [VarA - ValueA | !.MergedList]
     else
@@ -905,7 +905,7 @@ check_unify(Unification, !Info) :-
         )
     ;
         Unification = complicated_unify(_, _, _),
-        unexpected($module, $pred, "complicated unification")
+        unexpected($pred, "complicated unification")
     ).
 
 :- func is_interesting_cons_id(ho_params, cons_id) = bool.
@@ -1344,7 +1344,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
                 NewProcId = NewProcId0,
                 NewArgs = NewArgs1
             else
-                unexpected($module, $pred, "cannot get NewArgs")
+                unexpected($pred, "cannot get NewArgs")
             ),
 
             module_info_proc_info(ModuleInfo, NewPredId, NewProcId,
@@ -1356,7 +1356,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
             then
                 CurriedArgModes = CurriedArgModesPrime
             else
-                unexpected($module, $pred, "cannot get CurriedArgModes")
+                unexpected($pred, "cannot get CurriedArgModes")
             ),
             ArgModes = list.map(
                 ( func(M) = unify_modes_lhs_rhs(I, I) :-
@@ -1519,7 +1519,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
 
 find_higher_order_args(_, _, [], _, _, _, _, _, !HOArgs).
 find_higher_order_args(_, _, [_ | _], [], _, _, _, _, _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
         [CalleeArgType | CalleeArgTypes], VarTypes, RttiVarMaps,
         KnownVarMap, ArgNo, !HOArgs) :-
@@ -1803,7 +1803,7 @@ construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
         TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
         ProcInfo0, ProcInfo, ModuleInfo),
-    expect(unify(PolySpecs, []), $module, $pred,
+    expect(unify(PolySpecs, []), $pred,
         "got errors while making type_info_vars"),
     !Info ^ hoi_pred_info := PredInfo,
     !Info ^ hoi_proc_info := ProcInfo,
@@ -1839,7 +1839,7 @@ search_for_version(Info, Params, ModuleInfo, Request, [Version | Versions],
                         MaybeMatch2 = yes(Match1)
                     )
                 else
-                    unexpected($module, $pred, "comparison failed")
+                    unexpected($pred, "comparison failed")
                 )
             ),
             search_for_version(Info, Params, ModuleInfo, Request,
@@ -2108,7 +2108,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
             ( if OutputVarType = SelectedArgType then
                 true
             else
-                unexpected($module, $pred, "type mismatch")
+                unexpected($pred, "type mismatch")
             )
         ;
             OtherArgs = tci_arg_consts(OtherConstArgs),
@@ -2137,7 +2137,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
                 then
                     SelectedConsId = typeclass_info_const(SelectedConstNum)
                 else
-                    unexpected($module, $pred, "bad SelectedConstStructConsId")
+                    unexpected($pred, "bad SelectedConstStructConsId")
                 )
             ),
             map.det_insert(OutputVar, known_const(SelectedConsId, []),
@@ -2193,8 +2193,7 @@ find_typeclass_info_components(ModuleInfo, KnownVarMap,
         module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
         lookup_const_struct_num(ConstStructDb, TCIConstNum, TCIConstStruct),
         TCIConstStruct = const_struct(TCIConstConsId, TCIConstArgs, _, _),
-        expect(unify(TCIConstConsId, typeclass_info_cell_constructor),
-            $module, $pred,
+        expect(unify(TCIConstConsId, typeclass_info_cell_constructor), $pred,
             "TCIConstConsId != typeclass_info_cell_constructor"),
         TCIConstArgs = [BaseTypeClassInfoConstArg | OtherConstArgs],
         BaseTypeClassInfoConstArg = csa_constant(BaseTypeClassInfoConsId, _),
@@ -2543,7 +2542,7 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
         ; CtorCat = ctor_cat_user(_)
         ; CtorCat = ctor_cat_system(_)
         ),
-        unexpected($module, $pred, "bad type")
+        unexpected($pred, "bad type")
     ).
 
 :- pred generate_unsafe_type_cast(prog_context::in,
@@ -3059,7 +3058,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
         then
             ExtraTypeInfoTVars = ExtraTypeInfoTVarsPrim
         else
-            unexpected($module, $pred, "type var got bound")
+            unexpected($pred, "type var got bound")
         )
     ),
 
@@ -3259,7 +3258,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
             NonCurriedArgModes = NonCurriedArgModes0,
             CurriedArgModes1 = CurriedArgModes0
         else
-            unexpected($module, $pred, "list.split_list failed.")
+            unexpected($pred, "list.split_list failed.")
         ),
 
         proc_info_interface_determinism(CalledProcInfo, ProcDetism),
@@ -3424,7 +3423,7 @@ remove_const_higher_order_args(Index, [Arg | Args0], HOArgs0, Args) :-
             remove_const_higher_order_args(Index + 1, Args0, HOArgs0, Args1),
             Args = [Arg | Args1]
         else
-            unexpected($module, $pred, "unordered indexes")
+            unexpected($pred, "unordered indexes")
         )
     ;
         HOArgs0 = [],
@@ -3501,9 +3500,9 @@ find_class_context(_, [], [], !.RevUniv, !.RevExist, Constraints) :-
     list.reverse(!.RevExist, Exist),
     Constraints = constraints(Univ, Exist).
 find_class_context(_, [], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "mismatched list length").
+    unexpected($pred, "mismatched list length").
 find_class_context(_, [_ | _], [], _, _, _) :-
-    unexpected($module, $pred, "mismatched list length").
+    unexpected($pred, "mismatched list length").
 find_class_context(ModuleInfo, [VarInfo | VarInfos], [Mode | Modes],
         !.RevUniv, !.RevExist, Constraints) :-
     (

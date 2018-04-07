@@ -385,7 +385,7 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ).
@@ -479,7 +479,7 @@ convert_case(GoalInfo0, ConflictConsIds, ConsId - Entry, !Cases,
         !AlreadyHandledConsIds) :-
     ( if set_tree234.contains(!.AlreadyHandledConsIds, ConsId) then
         Entry = cons_id_entry(State, _ArmCord),
-        expect(unify(State, cons_id_has_one_multi), $module, $pred,
+        expect(unify(State, cons_id_has_one_multi), $pred,
             "already handled but not cons_id_has_one_multi")
     else
         Entry = cons_id_entry(State, ArmsCord),
@@ -487,7 +487,7 @@ convert_case(GoalInfo0, ConflictConsIds, ConsId - Entry, !Cases,
         (
             State = cons_id_has_conflict,
             set_tree234.is_member(ConflictConsIds, ConsId, IsMember),
-            expect(unify(IsMember, yes), $module, $pred,
+            expect(unify(IsMember, yes), $pred,
                 "conflict status but not in ConflictConsIds"),
             Disjuncts = list.map(project_arm_goal, Arms),
             use_context_of_first_disjunct(Disjuncts, GoalInfo0, GoalInfo),
@@ -497,7 +497,7 @@ convert_case(GoalInfo0, ConflictConsIds, ConsId - Entry, !Cases,
         ;
             State = cons_id_has_all_singles,
             set_tree234.is_member(ConflictConsIds, ConsId, IsMember),
-            expect(unify(IsMember, no), $module, $pred,
+            expect(unify(IsMember, no), $pred,
                 "singles status but in ConflictConsIds"),
             Disjuncts = list.map(project_single_arm_goal, Arms),
             use_context_of_first_disjunct(Disjuncts, GoalInfo0, GoalInfo),
@@ -535,11 +535,10 @@ convert_case(GoalInfo0, ConflictConsIds, ConsId - Entry, !Cases,
                 ;
                     AllConsIds = [],
                     % At least, AllConsIds should contain ConsId.
-                    unexpected($module, $pred,
-                        "cons_id_has_one_multi: AllConsIds = []")
+                    unexpected($pred, "cons_id_has_one_multi: AllConsIds = []")
                 )
             else
-                unexpected($module, $pred, "misleading cons_id_has_one_multi")
+                unexpected($pred, "misleading cons_id_has_one_multi")
             )
         )
     ).
@@ -553,7 +552,7 @@ project_arm_goal(multi_cons_id_arm(_, _, Goal)) = Goal.
 
 project_single_arm_goal(single_cons_id_arm(_, Goal)) = Goal.
 project_single_arm_goal(multi_cons_id_arm(_, _, _)) = _ :-
-    unexpected($module, $pred, "multi arm").
+    unexpected($pred, "multi arm").
 
 :- pred use_context_of_first_disjunct(list(hlds_goal)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -1280,7 +1279,7 @@ find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
             Goals = [Goal]
         )
     else
-        unexpected($module, $pred, "goal is not a deconstruct unification")
+        unexpected($pred, "goal is not a deconstruct unification")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1412,7 +1411,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
             FoundDeconstruct = given_up_search
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected($module, $pred, "bi_implication")
+            unexpected($pred, "bi_implication")
         )
     ).
 

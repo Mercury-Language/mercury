@@ -533,7 +533,7 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             )
         ;
             Unification = complicated_unify(_, _, _),
-            unexpected($module, $pred, "complicated_unify")
+            unexpected($pred, "complicated_unify")
         )
     ;
         GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId, Args,
@@ -570,7 +570,7 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -928,8 +928,7 @@ par_stack_vars_start_loop_control(NonLocals, ParStackVars0,
         ( ParStackVars0 = parallel_conjunction(_, _, _)
         ; ParStackVars0 = loop_control_scope(_, _)
         ),
-        unexpected($module, $pred,
-            "Loop control scope found in other parallel context")
+        unexpected($pred, "Loop control scope found in other parallel context")
     ).
 
 :- pred par_stack_vars_end_loop_control(set_of_progvar::in,
@@ -954,8 +953,7 @@ par_stack_vars_end_loop_control(NewWouldDieSet, OldParStackVars, ParStackVars0,
         ( OldParStackVars = parallel_conjunction(_, _, _)
         ; OldParStackVars = loop_control_scope(_, _)
         ),
-        unexpected($module, $pred,
-            "Loop control scope found in other parallel context")
+        unexpected($pred, "Loop control scope found in other parallel context")
     ).
 
 
@@ -1009,7 +1007,7 @@ par_stack_vars_next_par_conjunct(!ParStackVars) :-
             parallel_conjunction(Nonlocals, [CurSet | PrevSets],
                 set_of_var.init)
     else
-        unexpected($module, $pred, "expected parallel_conjunction/3")
+        unexpected($pred, "expected parallel_conjunction/3")
     ).
 
 :- pred par_stack_vars_recursive_call(maybe(need_for_loop_control)::out,
@@ -1025,7 +1023,7 @@ par_stack_vars_recursive_call(MaybeNeedLC, DelayDeathSet, !ParStackVars) :-
         DelayDeathSet = set_of_var.init
     ;
         !.ParStackVars = loop_control_scope(_, _),
-        unexpected($module, $pred, "recursive call in loop control scope")
+        unexpected($pred, "recursive call in loop control scope")
     ;
         !.ParStackVars = after_loop_control_scope(StackVarsList0,
             DelayDeathSet, StackVars),

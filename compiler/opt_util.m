@@ -333,7 +333,7 @@ get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
         gather_comments(Instrs2, Comments2, Instrs),
         list.append(Comments1, Comments2, Comments)
     else
-        unexpected($module, $pred, "procedure does not begin with label")
+        unexpected($pred, "procedure does not begin with label")
     ).
 
 gather_comments(Instrs0, Comments, Instrs) :-
@@ -444,7 +444,7 @@ find_no_fallthrough([Instr0 | Instrs0], Instrs) :-
     ).
 
 find_first_label([], _) :-
-    unexpected($module, $pred, "cannot find first label").
+    unexpected($pred, "cannot find first label").
 find_first_label([Instr0 | Instrs0], Label) :-
     ( if Instr0 = llds_instr(label(LabelPrime), _) then
         Label = LabelPrime
@@ -717,7 +717,7 @@ lval_refers_stackvars(field(_, Rval, FieldNum)) =
         rval_refers_stackvars(Rval),
         rval_refers_stackvars(FieldNum)).
 lval_refers_stackvars(lvar(_)) = _ :-
-    unexpected($module, $pred, "lvar").
+    unexpected($pred, "lvar").
 lval_refers_stackvars(temp(_, _)) = no.
 lval_refers_stackvars(mem_ref(Rval)) =
     rval_refers_stackvars(Rval).
@@ -733,7 +733,7 @@ mem_ref_refers_stackvars(heap_ref(Rval1, _, Rval2)) =
 rval_refers_stackvars(lval(Lval)) =
     lval_refers_stackvars(Lval).
 rval_refers_stackvars(var(_)) = _ :-
-    unexpected($module, $pred, "var").
+    unexpected($pred, "var").
 rval_refers_stackvars(mkword(_, Rval)) =
     rval_refers_stackvars(Rval).
 rval_refers_stackvars(mkword_hole(_)) = no.
@@ -1053,8 +1053,7 @@ is_const_condition(const(Const), Taken) :-
     else if Const = llconst_false then
         Taken = no
     else
-        unexpected($module, $pred,
-            "non-boolean constant as if-then-else condition")
+        unexpected($pred, "non-boolean constant as if-then-else condition")
     ).
 is_const_condition(unop(Op, Rval1), Taken) :-
     Op = logical_not,
@@ -1323,7 +1322,7 @@ instr_labels_2(Uinstr, Labels, CodeAddrs) :-
         % not necessarily the current succip. However, we introduce
         % decr_sp_and_return so late that this predicate should never be
         % invoked on such instructions.
-        unexpected($module, $pred, "decr_sp_and_return")
+        unexpected($pred, "decr_sp_and_return")
     ;
         Uinstr = fork_new_child(_, Child),
         Labels = [Child],
@@ -1425,7 +1424,7 @@ possible_targets(Uinstr, Labels, CodeAddrs) :-
     ;
         Uinstr = decr_sp_and_return(_),
         % XXX see the comment in instr_labels_2.
-        unexpected($module, $pred, "decr_sp_and_return")
+        unexpected($pred, "decr_sp_and_return")
     ;
         ( Uinstr = join_and_continue(_, Label)
         ; Uinstr = lc_spawn_off(_, _, Label)
@@ -1434,7 +1433,7 @@ possible_targets(Uinstr, Labels, CodeAddrs) :-
         CodeAddrs = []
     ;
         Uinstr = block(_, _, _),
-        unexpected($module, $pred, "block")
+        unexpected($pred, "block")
     ;
         Uinstr = computed_goto(_, MaybeLabels),
         possible_targets_maybe_labels(MaybeLabels, [], RevLabels),
@@ -1720,7 +1719,7 @@ count_temps_lval(Lval, !R, !F) :-
         count_temps_rval(Rval, !R, !F)
     ;
         Lval = lvar(_),
-        unexpected($module, $pred, "lvar")
+        unexpected($pred, "lvar")
     ).
 
 :- pred count_temps_rval(rval::in, int::in, int::out, int::in, int::out)
@@ -1732,7 +1731,7 @@ count_temps_rval(Rval, !R, !F) :-
         count_temps_lval(Lval, !R, !F)
     ;
         Rval = var(_),
-        unexpected($module, $pred, "var")
+        unexpected($pred, "var")
     ;
         Rval = mkword(_Tag, SubRval),
         count_temps_rval(SubRval, !R, !F)
@@ -1874,7 +1873,7 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
     ;
         Uinstr = block(_, _, _),
         % Blocks aren't introduced until after the last user of this predicate.
-        unexpected($module, $pred, "block")
+        unexpected($pred, "block")
     ;
         Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
             MaybeReuse),
@@ -2013,7 +2012,7 @@ lval_access_rvals(parent_sp, []).
 lval_access_rvals(field(_, Rval1, Rval2), [Rval1, Rval2]).
 lval_access_rvals(temp(_, _), []).
 lval_access_rvals(lvar(_), _) :-
-    unexpected($module, $pred, "lvar").
+    unexpected($pred, "lvar").
 lval_access_rvals(mem_ref(Rval), [Rval]).
 lval_access_rvals(global_var_ref(_), []).
 
@@ -2156,7 +2155,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
             % The reason why we are replacing references to this label is that
             % it is being eliminated, and in fact should have been already
             % eliminated by the time replace_labels_instr is called.
-            unexpected($module, $pred, "eliminated label")
+            unexpected($pred, "eliminated label")
         else
             true
         ),
@@ -2371,7 +2370,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
             MaybeFix = yes(FixLabel0),
             replace_labels_label(FixLabel0, FixLabel, ReplMap),
             % We cannot replace the label in the C code string itself.
-            expect(unify(FixLabel0, FixLabel), $module, $pred,
+            expect(unify(FixLabel0, FixLabel), $pred,
                 "trying to replace Mercury label in C code")
         ),
         (
@@ -2380,7 +2379,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
             MaybeLayout = yes(LayoutLabel0),
             replace_labels_label(LayoutLabel0, LayoutLabel, ReplMap),
             % We cannot replace a label that has a layout structure.
-            expect(unify(LayoutLabel0, LayoutLabel), $module, $pred,
+            expect(unify(LayoutLabel0, LayoutLabel), $pred,
                 "trying to replace Mercury label with layout")
         ),
         (
@@ -2389,7 +2388,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
             MaybeOnlyLayout = yes(OnlyLayoutLabel0),
             replace_labels_label(OnlyLayoutLabel0, OnlyLayoutLabel, ReplMap),
             % We cannot replace a label that has a layout structure.
-            expect(unify(OnlyLayoutLabel0, OnlyLayoutLabel), $module, $pred,
+            expect(unify(OnlyLayoutLabel0, OnlyLayoutLabel), $pred,
                 "trying to replace Mercury label with layout")
         ),
         (
@@ -2408,7 +2407,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
             MaybeDef = yes(DefLabel0),
             replace_labels_label(DefLabel0, DefLabel, ReplMap),
             % We cannot replace a label that has a layout structure.
-            expect(unify(DefLabel0, DefLabel), $module, $pred,
+            expect(unify(DefLabel0, DefLabel), $pred,
                 "trying to replace Mercury label with layout")
         ),
         Uinstr = foreign_proc_code(Decls, Comps, MayCallMercury,
@@ -2495,7 +2494,7 @@ replace_labels_c_code_live_lvals(LiveLvals0, LiveLvals, ReplMap) :-
         set.to_sorted_list(LvalSet0, Lvals0),
         list.map(replace_labels_lval_map(ReplMap), Lvals0, Lvals),
         % We cannot replace the lvals inside the C code.
-        expect(unify(Lvals0, Lvals), $module, $pred, "some replacements"),
+        expect(unify(Lvals0, Lvals), $pred, "some replacements"),
         LiveLvals = LiveLvals0
     ).
 

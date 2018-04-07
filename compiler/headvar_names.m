@@ -380,7 +380,7 @@ group_var_infos([VarNameInfoMap | VarNameInfoMaps], HeadVar,
             ( if VarNameList = [VarName] then
                 !:Consistents = [VarName | !.Consistents]
             else
-                unexpected($module, $pred, "bad singleton set")
+                unexpected($pred, "bad singleton set")
             )
         else
             % NameCount > 1, so this *single clause* calls HeadVar
