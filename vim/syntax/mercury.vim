@@ -2,7 +2,7 @@
 " Language:     Mercury
 " Maintainer:   Sebastian Godelet <sebastian.godelet@outlook.com>
 " Extensions:   *.m *.moo
-" Last Change:  2015-04-16
+" Last Change:  2018-04-07
 
 " for documentation, please use :help mercury-syntax
 
@@ -188,9 +188,12 @@ syn match   mercuryOperator     "*"          " multiply
 syn match   mercuryDelimiter    "\^"         " field access
 syn match   mercuryOperator     /\v`[^`']+`/ " inlined operator
 syn match   mercuryImplication  "<=>\|<=\|=>"
-syn match   mercuryNumCode /\v<(0'.|0b[01_]*[01]|0o[0-7_]*[0-7]|0x[0-9A-Fa-f_]*\x|[0-9]([0-9_]*[0-9])?)/
-syn match   mercuryFloat   /\v<([0-9]([0-9_]*[0-9])?\.[0-9]([0-9_]*[0-9])?([eE][-+]?[0-9]([0-9_]*[0-9])?)?)/
-syn match   mercuryFloat   /\v<([0-9]([0-9_]*[0-9])?[eE][-+]?[0-9]([0-9_]*[0-9])?)/
+syn match   mercuryNumCode /\v<0b[01_]*[01](_*[iu](8|16|32|64)?)?>/
+syn match   mercuryNumCode /\v<0o[0-7_]*[0-7](_*[iu](8|16|32|64)?)?>/
+syn match   mercuryNumCode /\v<0x[0-9A-Fa-f_]*\x(_*[iu](8|16|32|64)?)?>/
+syn match   mercuryNumCode /\v<0'.|<[0-9]([0-9_]*[0-9])?(_*[iu](8|16|32|64)?)?>/
+syn match   mercuryFloat   /\v<[0-9]([0-9_]*[0-9])?\.[0-9]([0-9_]*[0-9])?([eE][-+]?[0-9]([0-9_]*[0-9])?)?>/
+syn match   mercuryFloat   /\v<[0-9]([0-9_]*[0-9])?[eE][-+]?[0-9]([0-9_]*[0-9])?>/
 syn region  mercuryAtom    start=+'+ skip=+\\'+   end=+'+ contains=
       \ mercuryStringEsc,@mercuryFormatting,mercuryEscErr,@Spell
 syn region  mercuryString matchgroup=mercuryString
