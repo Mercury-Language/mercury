@@ -429,176 +429,6 @@
 
 %----------------------------------------------------------------------------%
 
-:- type dead_or_alive
-    --->    doa_dead
-    ;       doa_alive.
-
-    % The state of a variable can be one of three kinds: const, cached
-    % and general.
-    %
-    % 1 The value of the variable is a known constant. In this case,
-    %   the const_rval field will be yes, and the expr_rval field
-    %   will be no. Both the empty set and nonempty sets are valid
-    %   for the locs field. It will start out empty, will become
-    %   nonempty if the variable is placed in some lval, and may
-    %   become empty again if that lval is later overwritten.
-    %
-    % 2 The value of the variable is not stored anywhere, but its
-    %   definition (an expression involving other variables) is cached.
-    %   In this case, the const_rval field will be no, and the locs
-    %   field will contain the empty set, but the expr_rval field
-    %   will be yes. The variables referred to in the expr_rval field
-    %   will include this variable in their using_vars sets, which
-    %   protects them from deletion from the code generator state until
-    %   the using variable is produced or placed in an lval. When that
-    %   happens, the using variable's state will be transformed to the
-    %   general, third kind, releasing this variable's hold on the
-    %   variables contained in its expr_rval field.
-    %
-    % 3 The value of the variable is not a constant, nor is the
-    %   variable cached. The locs field will be nonempty, and both
-    %   const_rval and expr_rval will be no.
-
-:- type var_state
-    --->    var_state(
-                % Must not contain any rval of the form var(_).
-                locs            :: set(lval),
-
-                % Must not contain any rval of the form var(_);
-                % must be constant.
-                const_rval      :: maybe(rval),
-
-                % Will contain var(_), must not contain lvals.
-                expr_rval       :: maybe(rval),
-
-                % The set of vars whose expr_rval field refers to this var.
-                using_vars      :: set_of_progvar,
-
-                % A dead variable should be removed from var_state_map
-                % when its using_vars field becomes empty.
-                dead_or_alive   :: dead_or_alive
-            ).
-
-:- type var_state_map   ==  map(prog_var, var_state).
-
-    % The loc_var_map maps each root lval (register or stack slot)
-    % to the set of variables that depend on that location,
-    % either because they are stored there or because the location
-    % contains a part of the pointer chain that leads to their address.
-    % In concrete terms, this means the set of variables whose var_state's
-    % locs field includes an lval that contains that root lval.
-    %
-    % If a root lval stack slot is unused, then it will either not appear
-    % in the var_loc_map or it will be mapped to an empty set. Allowing
-    % unused root lvals to be mapped to the empty set, and not requiring
-    % their deletion from the map, makes it simpler to manipulate
-    % loc_var_maps using higher-order code.
-
-:- type loc_var_map ==  map(lval, set_of_progvar).
-
-:- type var_locn_info
-    --->    var_locn_info(
-                % The varset and vartypes from the proc_info.
-                % XXX These fields are redundant; they are also stored
-                % in the code_info.
-                vli_varset          :: prog_varset,
-                vli_vartypes        :: vartypes,
-
-                % The register type to use for float vars.
-                vli_float_reg_type  :: reg_type,
-
-                % Maps each var to its stack slot, if it has one.
-                vli_stack_slots     :: stack_slots,
-
-                % Where vars are needed next.
-                vli_follow_vars_map :: abs_follow_vars_map,
-
-                % Next rN, fN register that isn't reserved in follow_vars_map.
-                vli_next_non_res_r  :: int,
-                vli_next_non_res_f  :: int,
-
-                % Documented above.
-                vli_var_state_map   :: var_state_map,
-                vli_loc_var_map     :: loc_var_map,
-
-                % Locations that are temporarily reserved for purposes such as
-                % holding the tags of variables during switches.
-                vli_acquired        :: set(lval),
-
-                % If these slots contain R and F then registers r1 through rR
-                % and f1 through fF can only be modified by a place_var
-                % operation, or by a free_up_lval operation that moves a
-                % variable to the (free or freeable) lval associated with it in
-                % the exceptions field. Used to implement calls, foreign_procs
-                % and the store_maps at the ends of branched control
-                % structures.
-                vli_locked_r        :: int,
-                vli_locked_f        :: int,
-
-                % See the documentation of the locked field above.
-                vli_exceptions      :: assoc_list(prog_var, lval)
-            ).
-
-%----------------------------------------------------------------------------%
-
-init_var_locn_state(VarLocs, Liveness, VarSet, VarTypes, FloatRegType,
-        StackSlots, FollowVars, VarLocnInfo) :-
-    map.init(VarStateMap0),
-    map.init(LocVarMap0),
-    init_var_locn_state_2(VarLocs, yes(Liveness), VarStateMap0, VarStateMap,
-        LocVarMap0, LocVarMap),
-    FollowVars = abs_follow_vars(FollowVarMap, NextNonReservedR,
-        NextNonReservedF),
-    set.init(AcquiredRegs),
-    VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
-        FollowVarMap, NextNonReservedR, NextNonReservedF, VarStateMap,
-        LocVarMap, AcquiredRegs, 0, 0, []).
-
-reinit_var_locn_state(VarLocs, !VarLocnInfo) :-
-    map.init(VarStateMap0),
-    map.init(LocVarMap0),
-    init_var_locn_state_2(VarLocs, no, VarStateMap0, VarStateMap,
-        LocVarMap0, LocVarMap),
-    set.init(AcquiredRegs),
-    !.VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
-        FollowVarMap, NextNonReservedR, NextNonReservedF, _, _, _, _, _, _),
-    !:VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
-        FollowVarMap, NextNonReservedR, NextNonReservedF, VarStateMap,
-        LocVarMap, AcquiredRegs, 0, 0, []).
-
-:- pred init_var_locn_state_2(assoc_list(prog_var, lval)::in,
-    maybe(set_of_progvar)::in, var_state_map::in, var_state_map::out,
-    loc_var_map::in, loc_var_map::out) is det.
-
-init_var_locn_state_2([], _, !VarStateMap, !LocVarMap).
-init_var_locn_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap,
-        !LocVarMap) :-
-    expect(is_root_lval(Lval), $pred, "unexpected lval"),
-    ( if
-        MaybeLiveness = yes(Liveness),
-        not set_of_var.member(Liveness, Var)
-    then
-        % If a variable is not live, then we do not record its state.
-        % If we did, then the variable will never die (since it is already
-        % dead), and the next call to clobber_regs would throw an exception,
-        % since it would believe that it is throwing away the last location
-        % storing the value of a "live" variable.
-        true
-    else
-        ( if map.search(!.VarStateMap, Var, _) then
-            unexpected($pred, "repeated variable")
-        else
-            NewLocs = set.make_singleton_set(Lval),
-            set_of_var.init(Using),
-            State = var_state(NewLocs, no, no, Using, doa_alive),
-            map.det_insert(Var, State, !VarStateMap)
-        ),
-        make_var_depend_on_lval_roots(Var, Lval, !LocVarMap)
-    ),
-    init_var_locn_state_2(Rest, MaybeLiveness, !VarStateMap, !LocVarMap).
-
-%----------------------------------------------------------------------------%
-
 var_locn_get_var_locations(VLI, VarLocations) :-
     var_locn_get_var_state_map(VLI, VarStateMap),
     map.to_assoc_list(VarStateMap, VarLocList),
@@ -2789,6 +2619,176 @@ nonempty_state(State) :-
     ; MaybeConstRval = yes(_)
     ; MaybeExprRval = yes(_)
     ).
+
+%----------------------------------------------------------------------------%
+
+:- type dead_or_alive
+    --->    doa_dead
+    ;       doa_alive.
+
+    % The state of a variable can be one of three kinds: const, cached
+    % and general.
+    %
+    % 1 The value of the variable is a known constant. In this case,
+    %   the const_rval field will be yes, and the expr_rval field
+    %   will be no. Both the empty set and nonempty sets are valid
+    %   for the locs field. It will start out empty, will become
+    %   nonempty if the variable is placed in some lval, and may
+    %   become empty again if that lval is later overwritten.
+    %
+    % 2 The value of the variable is not stored anywhere, but its
+    %   definition (an expression involving other variables) is cached.
+    %   In this case, the const_rval field will be no, and the locs
+    %   field will contain the empty set, but the expr_rval field
+    %   will be yes. The variables referred to in the expr_rval field
+    %   will include this variable in their using_vars sets, which
+    %   protects them from deletion from the code generator state until
+    %   the using variable is produced or placed in an lval. When that
+    %   happens, the using variable's state will be transformed to the
+    %   general, third kind, releasing this variable's hold on the
+    %   variables contained in its expr_rval field.
+    %
+    % 3 The value of the variable is not a constant, nor is the
+    %   variable cached. The locs field will be nonempty, and both
+    %   const_rval and expr_rval will be no.
+
+:- type var_state
+    --->    var_state(
+                % Must not contain any rval of the form var(_).
+                locs            :: set(lval),
+
+                % Must not contain any rval of the form var(_);
+                % must be constant.
+                const_rval      :: maybe(rval),
+
+                % Will contain var(_), must not contain lvals.
+                expr_rval       :: maybe(rval),
+
+                % The set of vars whose expr_rval field refers to this var.
+                using_vars      :: set_of_progvar,
+
+                % A dead variable should be removed from var_state_map
+                % when its using_vars field becomes empty.
+                dead_or_alive   :: dead_or_alive
+            ).
+
+:- type var_state_map   ==  map(prog_var, var_state).
+
+    % The loc_var_map maps each root lval (register or stack slot)
+    % to the set of variables that depend on that location,
+    % either because they are stored there or because the location
+    % contains a part of the pointer chain that leads to their address.
+    % In concrete terms, this means the set of variables whose var_state's
+    % locs field includes an lval that contains that root lval.
+    %
+    % If a root lval stack slot is unused, then it will either not appear
+    % in the var_loc_map or it will be mapped to an empty set. Allowing
+    % unused root lvals to be mapped to the empty set, and not requiring
+    % their deletion from the map, makes it simpler to manipulate
+    % loc_var_maps using higher-order code.
+
+:- type loc_var_map ==  map(lval, set_of_progvar).
+
+:- type var_locn_info
+    --->    var_locn_info(
+                % The varset and vartypes from the proc_info.
+                % XXX These fields are redundant; they are also stored
+                % in the code_info.
+                vli_varset          :: prog_varset,
+                vli_vartypes        :: vartypes,
+
+                % The register type to use for float vars.
+                vli_float_reg_type  :: reg_type,
+
+                % Maps each var to its stack slot, if it has one.
+                vli_stack_slots     :: stack_slots,
+
+                % Where vars are needed next.
+                vli_follow_vars_map :: abs_follow_vars_map,
+
+                % Next rN, fN register that isn't reserved in follow_vars_map.
+                vli_next_non_res_r  :: int,
+                vli_next_non_res_f  :: int,
+
+                % Documented above.
+                vli_var_state_map   :: var_state_map,
+                vli_loc_var_map     :: loc_var_map,
+
+                % Locations that are temporarily reserved for purposes such as
+                % holding the tags of variables during switches.
+                vli_acquired        :: set(lval),
+
+                % If these slots contain R and F then registers r1 through rR
+                % and f1 through fF can only be modified by a place_var
+                % operation, or by a free_up_lval operation that moves a
+                % variable to the (free or freeable) lval associated with it in
+                % the exceptions field. Used to implement calls, foreign_procs
+                % and the store_maps at the ends of branched control
+                % structures.
+                vli_locked_r        :: int,
+                vli_locked_f        :: int,
+
+                % See the documentation of the locked field above.
+                vli_exceptions      :: assoc_list(prog_var, lval)
+            ).
+
+%----------------------------------------------------------------------------%
+
+init_var_locn_state(VarLocs, Liveness, VarSet, VarTypes, FloatRegType,
+        StackSlots, FollowVars, VarLocnInfo) :-
+    map.init(VarStateMap0),
+    map.init(LocVarMap0),
+    init_var_locn_state_2(VarLocs, yes(Liveness), VarStateMap0, VarStateMap,
+        LocVarMap0, LocVarMap),
+    FollowVars = abs_follow_vars(FollowVarMap, NextNonReservedR,
+        NextNonReservedF),
+    set.init(AcquiredRegs),
+    VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
+        FollowVarMap, NextNonReservedR, NextNonReservedF, VarStateMap,
+        LocVarMap, AcquiredRegs, 0, 0, []).
+
+reinit_var_locn_state(VarLocs, !VarLocnInfo) :-
+    map.init(VarStateMap0),
+    map.init(LocVarMap0),
+    init_var_locn_state_2(VarLocs, no, VarStateMap0, VarStateMap,
+        LocVarMap0, LocVarMap),
+    set.init(AcquiredRegs),
+    !.VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
+        FollowVarMap, NextNonReservedR, NextNonReservedF, _, _, _, _, _, _),
+    !:VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
+        FollowVarMap, NextNonReservedR, NextNonReservedF, VarStateMap,
+        LocVarMap, AcquiredRegs, 0, 0, []).
+
+:- pred init_var_locn_state_2(assoc_list(prog_var, lval)::in,
+    maybe(set_of_progvar)::in, var_state_map::in, var_state_map::out,
+    loc_var_map::in, loc_var_map::out) is det.
+
+init_var_locn_state_2([], _, !VarStateMap, !LocVarMap).
+init_var_locn_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap,
+        !LocVarMap) :-
+    expect(is_root_lval(Lval), $pred, "unexpected lval"),
+    ( if
+        MaybeLiveness = yes(Liveness),
+        not set_of_var.member(Liveness, Var)
+    then
+        % If a variable is not live, then we do not record its state.
+        % If we did, then the variable will never die (since it is already
+        % dead), and the next call to clobber_regs would throw an exception,
+        % since it would believe that it is throwing away the last location
+        % storing the value of a "live" variable.
+        true
+    else
+        ( if map.search(!.VarStateMap, Var, _) then
+            unexpected($pred, "repeated variable")
+        else
+            NewLocs = set.make_singleton_set(Lval),
+            set_of_var.init(Using),
+            State = var_state(NewLocs, no, no, Using, doa_alive),
+            map.det_insert(Var, State, !VarStateMap)
+        ),
+        make_var_depend_on_lval_roots(Var, Lval, !LocVarMap)
+    ),
+    init_var_locn_state_2(Rest, MaybeLiveness, !VarStateMap, !LocVarMap).
 
 %----------------------------------------------------------------------------%
 
