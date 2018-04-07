@@ -56,7 +56,7 @@
 :- pred vartypes_vars(vartypes::in, list(prog_var)::out) is det.
 :- pred vartypes_types(vartypes::in, list(mer_type)::out) is det.
 
-:- pred vartypes_to_assoc_list(vartypes::in,
+:- pred vartypes_to_sorted_assoc_list(vartypes::in,
     assoc_list(prog_var, mer_type)::out) is det.
 
 :- pred vartypes_from_corresponding_lists(list(prog_var)::in,
@@ -160,8 +160,8 @@ vartypes_vars(VarTypes, Vars) :-
 vartypes_types(VarTypes, Types) :-
     map.values(VarTypes, Types).
 
-vartypes_to_assoc_list(VarTypes, AssocList) :-
-    map.to_assoc_list(VarTypes, AssocList).
+vartypes_to_sorted_assoc_list(VarTypes, AssocList) :-
+    map.to_sorted_assoc_list(VarTypes, AssocList).
 
 vartypes_from_corresponding_lists(Vars, Types, VarTypes) :-
     map.from_corresponding_lists(Vars, Types, VarTypes).

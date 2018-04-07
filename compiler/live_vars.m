@@ -101,7 +101,7 @@
 %-----------------------------------------------------------------------------%
 
 build_dummy_type_array(ModuleInfo, VarTypes, DummyTypeArray, DummyVars) :-
-    vartypes_to_assoc_list(VarTypes, VarsTypes),
+    vartypes_to_sorted_assoc_list(VarTypes, VarsTypes),
     list.foldl(max_var_num, VarsTypes, 0, MaxVarNum),
     % We want to index the array with variable numbers, which will be from
     % 1 to MaxVarNum.

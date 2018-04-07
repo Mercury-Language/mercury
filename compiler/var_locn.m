@@ -43,8 +43,8 @@
 
 :- type var_locn_info.
 
-    % init_var_locn_state(Arguments, Liveness, VarSet, VarTypes, FloatRegType,
-    %   StackSlots, FollowVars, VarLocnInfo):
+    % init_var_locn_state(ModuleInfo, Arguments, Liveness, VarSet, VarTypes,
+    %   FloatRegType, StackSlots, FollowVars, VarLocnInfo):
     %
     % Produces an initial state of the VarLocnInfo given
     % an association list of variables and lvalues. The initial
@@ -60,9 +60,9 @@
     % follow_vars set; such sets give guidance as to what lvals
     % (if any) each variable will be needed in next.
     %
-:- pred init_var_locn_state(assoc_list(prog_var, lval)::in, set_of_progvar::in,
-    prog_varset::in, vartypes::in, reg_type::in, stack_slots::in,
-    abs_follow_vars::in, var_locn_info::out) is det.
+:- pred init_var_locn_state(module_info::in, assoc_list(prog_var, lval)::in,
+    set_of_progvar::in, prog_varset::in, vartypes::in, reg_type::in,
+    stack_slots::in, abs_follow_vars::in, var_locn_info::out) is det.
 
     % reinit_var_locn_state(VarLocs, !VarLocnInfo):
     %
@@ -1062,9 +1062,8 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
     (
         Rval0 = var(Var),
         materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI),
-        var_locn_get_vartypes(!.VLI, VarTypes),
-        lookup_var_type(VarTypes, Var, Type),
-        IsDummy = is_type_a_dummy(ModuleInfo, Type),
+        var_locn_get_dummy_map(!.VLI, DummyMap),
+        map.lookup(DummyMap, Var, IsDummy),
         (
             IsDummy = is_dummy_type,
             AssignCode = empty
@@ -1127,9 +1126,8 @@ var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
         materialize_var_general(ModuleInfo, DepVar, no, do_not_store_var, [],
             DepVarRval, EvalCode, !VLI)
     ),
-    var_locn_get_vartypes(!.VLI, VarTypes),
-    lookup_var_type(VarTypes, DepVar, DepVarType),
-    IsDummy = is_type_a_dummy(ModuleInfo, DepVarType),
+    var_locn_get_dummy_map(!.VLI, DummyMap),
+    map.lookup(DummyMap, DepVar, IsDummy),
     (
         IsDummy = is_dummy_type,
         AssignCode = empty
@@ -1139,6 +1137,8 @@ var_locn_save_cell_fields_2(ModuleInfo, ReuseLval, DepVar, SaveDepVarCode,
             rval_depends_on_search_lval(DepVarRval,
                 specific_reg_or_stack(ReuseLval))
         then
+            var_locn_get_vartypes(!.VLI, VarTypes),
+            lookup_var_type(VarTypes, DepVar, DepVarType),
             reg_type_for_type(!.VLI, DepVarType, RegType),
             var_locn_acquire_reg(RegType, Target, !VLI),
             add_additional_lval_for_var(DepVar, Target, !VLI),
@@ -1435,9 +1435,8 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
                 string.append_list(["Placing ", VarName,
                     " (depth ", LengthStr, ")"], Msg)
             ),
-            var_locn_get_vartypes(!.VLI, VarTypes),
-            lookup_var_type(VarTypes, Var, Type),
-            IsDummy = is_type_a_dummy(ModuleInfo, Type),
+            var_locn_get_dummy_map(!.VLI, DummyMap),
+            map.lookup(DummyMap, Var, IsDummy),
             (
                 IsDummy = is_dummy_type,
                 AssignCode = empty
@@ -2689,6 +2688,8 @@ nonempty_state(State) :-
 
 :- type loc_var_map ==  map(lval, set_of_progvar).
 
+:- type dummy_map == map(prog_var, is_dummy_type).
+
 :- type var_locn_info
     --->    var_locn_info(
                 % The varset and vartypes from the proc_info.
@@ -2696,6 +2697,8 @@ nonempty_state(State) :-
                 % in the code_info.
                 vli_varset          :: prog_varset,
                 vli_vartypes        :: vartypes,
+
+                vli_dummy_map       :: dummy_map,
 
                 % The register type to use for float vars.
                 vli_float_reg_type  :: reg_type,
@@ -2734,8 +2737,8 @@ nonempty_state(State) :-
 
 %----------------------------------------------------------------------------%
 
-init_var_locn_state(VarLocs, Liveness, VarSet, VarTypes, FloatRegType,
-        StackSlots, FollowVars, VarLocnInfo) :-
+init_var_locn_state(ModuleInfo, VarLocs, Liveness, VarSet, VarTypes,
+        FloatRegType, StackSlots, FollowVars, VarLocnInfo) :-
     map.init(VarStateMap0),
     map.init(LocVarMap0),
     init_var_locn_state_2(VarLocs, yes(Liveness), VarStateMap0, VarStateMap,
@@ -2743,9 +2746,12 @@ init_var_locn_state(VarLocs, Liveness, VarSet, VarTypes, FloatRegType,
     FollowVars = abs_follow_vars(FollowVarMap, NextNonReservedR,
         NextNonReservedF),
     set.init(AcquiredRegs),
-    VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
-        FollowVarMap, NextNonReservedR, NextNonReservedF, VarStateMap,
-        LocVarMap, AcquiredRegs, 0, 0, []).
+    vartypes_to_sorted_assoc_list(VarTypes, VarsTypes),
+    build_dummy_list(ModuleInfo, VarsTypes, [], RevDummyAssocList),
+    map.from_rev_sorted_assoc_list(RevDummyAssocList, DummyMap),
+    VarLocnInfo = var_locn_info(VarSet, VarTypes, DummyMap, FloatRegType,
+        StackSlots, FollowVarMap, NextNonReservedR, NextNonReservedF,
+        VarStateMap, LocVarMap, AcquiredRegs, 0, 0, []).
 
 reinit_var_locn_state(VarLocs, !VarLocnInfo) :-
     map.init(VarStateMap0),
@@ -2753,11 +2759,12 @@ reinit_var_locn_state(VarLocs, !VarLocnInfo) :-
     init_var_locn_state_2(VarLocs, no, VarStateMap0, VarStateMap,
         LocVarMap0, LocVarMap),
     set.init(AcquiredRegs),
-    !.VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
-        FollowVarMap, NextNonReservedR, NextNonReservedF, _, _, _, _, _, _),
-    !:VarLocnInfo = var_locn_info(VarSet, VarTypes, FloatRegType, StackSlots,
-        FollowVarMap, NextNonReservedR, NextNonReservedF, VarStateMap,
-        LocVarMap, AcquiredRegs, 0, 0, []).
+    !.VarLocnInfo = var_locn_info(VarSet, VarTypes, DummyMap, FloatRegType,
+        StackSlots, FollowVarMap, NextNonReservedR, NextNonReservedF,
+        _, _, _, _, _, _),
+    !:VarLocnInfo = var_locn_info(VarSet, VarTypes, DummyMap, FloatRegType,
+        StackSlots, FollowVarMap, NextNonReservedR, NextNonReservedF,
+        VarStateMap, LocVarMap, AcquiredRegs, 0, 0, []).
 
 :- pred init_var_locn_state_2(assoc_list(prog_var, lval)::in,
     maybe(set_of_progvar)::in, var_state_map::in, var_state_map::out,
@@ -2790,10 +2797,21 @@ init_var_locn_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap,
     ),
     init_var_locn_state_2(Rest, MaybeLiveness, !VarStateMap, !LocVarMap).
 
+:- pred build_dummy_list(module_info::in, assoc_list(prog_var, mer_type)::in,
+    assoc_list(prog_var, is_dummy_type)::in,
+    assoc_list(prog_var, is_dummy_type)::out) is det.
+
+build_dummy_list(_, [], !RevDummyAssocList).
+build_dummy_list(ModuleInfo, [Var - Type | VarTypes], !RevDummyAssocList) :-
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    !:RevDummyAssocList = [Var - IsDummy | !.RevDummyAssocList],
+    build_dummy_list(ModuleInfo, VarTypes, !RevDummyAssocList).
+
 %----------------------------------------------------------------------------%
 
 :- pred var_locn_get_varset(var_locn_info::in, prog_varset::out) is det.
 :- pred var_locn_get_vartypes(var_locn_info::in, vartypes::out) is det.
+:- pred var_locn_get_dummy_map(var_locn_info::in, dummy_map::out) is det.
 :- pred var_locn_get_float_reg_type(var_locn_info::in, reg_type::out) is det.
 :- pred var_locn_get_var_state_map(var_locn_info::in, var_state_map::out)
     is det.
@@ -2820,6 +2838,7 @@ init_var_locn_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap,
 
 var_locn_get_varset(VI, VI ^ vli_varset).
 var_locn_get_vartypes(VI, VI ^ vli_vartypes).
+var_locn_get_dummy_map(VI, VI ^ vli_dummy_map).
 var_locn_get_float_reg_type(VI, VI ^ vli_float_reg_type).
 var_locn_get_stack_slots(VI, VI ^ vli_stack_slots).
 var_locn_get_follow_var_map(VI, VI ^ vli_follow_vars_map).

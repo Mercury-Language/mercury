@@ -217,8 +217,8 @@ code_loc_dep_init(FollowVars, ResumePoint, !CI, !:CLD) :-
         MaybeFailVars = no,
         EffLiveness = Liveness
     ),
-    init_var_locn_state(ArgList, EffLiveness, VarSet, VarTypes, FloatRegType,
-        StackSlots, FollowVars, VarLocnInfo),
+    init_var_locn_state(ModuleInfo, ArgList, EffLiveness, VarSet, VarTypes,
+        FloatRegType, StackSlots, FollowVars, VarLocnInfo),
     stack.init(ResumePoints),
     globals.lookup_bool_option(Globals, allow_hijacks, AllowHijack),
     (

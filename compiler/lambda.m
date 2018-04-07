@@ -764,7 +764,7 @@ restrict_var_maps(HeadVars, Goal, !VarSet, !VarTypes, !RttiVarMaps) :-
     mark_vars_as_used(HeadVars, VarUses0, VarUses1),
     find_used_vars_in_goal(Goal, VarUses1, VarUses),
 
-    vartypes_to_assoc_list(!.VarTypes, VarTypesList0),
+    vartypes_to_sorted_assoc_list(!.VarTypes, VarTypesList0),
     filter_vartypes(VarTypesList0, [], RevVarTypesList, VarUses),
     list.reverse(RevVarTypesList, VarTypesList),
     vartypes_from_sorted_assoc_list(VarTypesList, !:VarTypes),
