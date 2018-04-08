@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-1995, 1997-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -147,9 +148,28 @@
 %:- mode min(array_ui) = out is det.
 :- mode min(in) = out is det.
 
+    % least_index returns the lower bound of the array.
+    % In future, it will be changed to behave like semidet_least_index,
+    % failing on an empty array instead of returning an out-of-bounds index.
+    %
+:- pragma obsolete(least_index/1).
 :- func least_index(array(T)) = int.
 %:- mode least_index(array_ui) = out is det.
 :- mode least_index(in) = out is det.
+
+    % det_least_index returns the lower bound of the array.
+    % Throws an exception if the array is empty.
+    %
+:- func det_least_index(array(T)) = int.
+%:- mode det_least_index(array_ui) = out is det.
+:- mode det_least_index(in) = out is det.
+
+    % semidet_least_index returns the lower bound of the array,
+    % or fails if the array is empty.
+    %
+:- func semidet_least_index(array(T)) = int.
+%:- mode semidet_least_index(array_ui) = out is semidet.
+:- mode semidet_least_index(in) = out is semidet.
 
     % max returns the upper bound of the array.
     % Returns lower bound - 1 for an empty array
@@ -163,9 +183,28 @@
 %:- mode max(array_ui) = out is det.
 :- mode max(in) = out is det.
 
+    % greatest_index returns the upper bound of the array.
+    % In future, it will be changed to behave like semidet_greatest_index,
+    % failing on an empty array instead of returning an out-of-bounds index.
+    %
+:- pragma obsolete(greatest_index/1).
 :- func greatest_index(array(T)) = int.
 %:- mode greatest_index(array_ui) = out is det.
 :- mode greatest_index(in) = out is det.
+
+    % det_greatest_index returns the upper bound of the array.
+    % Throws an exception if the array is empty.
+    %
+:- func det_greatest_index(array(T)) = int.
+%:- mode det_greatest_index(array_ui) = out is det.
+:- mode det_greatest_index(in) = out is det.
+
+    % semidet_greatest_index returns the upper bound of the array,
+    % or fails if the array is empty.
+    %
+:- func semidet_greatest_index(array(T)) = int.
+%:- mode semidet_greatest_index(array_ui) = out is semidet.
+:- mode semidet_greatest_index(in) = out is semidet.
 
     % size returns the length of the array,
     % i.e. upper bound - lower bound + 1.
@@ -3138,7 +3177,37 @@ out_of_bounds_error(Array, Index, PredName) :-
 
 least_index(A) = array.min(A).
 
+det_least_index(A) = Index :-
+    ( if array.is_empty(A) then
+        error("array.det_least_index: empty array")
+    else
+        Index = array.min(A)
+    ).
+
+semidet_least_index(A) = Index :-
+    ( if array.is_empty(A) then
+        fail
+    else
+        Index = array.min(A)
+    ).
+
+%---------------------------------------------------------------------------%
+
 greatest_index(A) = array.max(A).
+
+det_greatest_index(A) = Index :-
+    ( if array.is_empty(A) then
+        error("array.det_greatest_index: empty array")
+    else
+        Index = array.max(A)
+    ).
+
+semidet_greatest_index(A) = Index :-
+    ( if array.is_empty(A) then
+        fail
+    else
+        Index = array.max(A)
+    ).
 
 %---------------------------------------------------------------------------%
 

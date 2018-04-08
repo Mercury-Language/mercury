@@ -443,7 +443,19 @@ Changes to the Mercury standard library:
    - snoc/3
    - find_first_match/3
 
-* The following function has been added to the array2d module
+* The following function has been added to the array module:
+
+   - det_least_index/1
+   - semidet_least_index/1
+   - det_greatest_index/1
+   - semidet_greatest_index/1
+
+   The following functions in the array module have been deprecated:
+
+   - least_index/1
+   - greatest_index/1
+
+* The following function has been added to the array2d module:
 
    - is_empty/1
 
