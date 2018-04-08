@@ -152,11 +152,11 @@
     %
 :- func unchecked_right_shift(uint8::in, int::in) = (uint8::uo) is det.
 
-    % even(X) is equivalent to (X mod 2i8 = 0i8).
+    % even(X) is equivalent to (X mod 2u8 = 0u8).
     %
 :- pred even(uint8::in) is semidet.
 
-    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2i8 = 1i8).
+    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2u8 = 1u8).
     %
 :- pred odd(uint8::in) is semidet.
 
@@ -193,7 +193,7 @@
 
     % num_leading_zeros(U) = N:
     % N is the number of leading zeros in the binary representation of U,
-    % starting at teh most significant bit position.
+    % starting at the most significant bit position.
     % Note that num_leading_zeros(0u8) = 8.
     %
 :- func num_leading_zeros(uint8) = int.
