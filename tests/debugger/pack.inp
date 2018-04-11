@@ -1,0 +1,184 @@
+echo on
+context none
+register --quiet
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+step
+print -f Term
+print -f Term^1
+print -f Term^2
+print -f Term^3
+print -f Term^4
+print -f Term^5
+print -f Term^6
+print -f Term^7
+finish
+continue -n -S

@@ -1,0 +1,385 @@
+      E1:     C1 CALL pred pack.main/2-0 (det) pack.m:90
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> step
+      E2:     C2 CALL pred pack.run_test_dummy/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_dummy(42, 99.9, pear, dummy, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	dummy
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_dummy(42, 99.9, pear, dummy, orange, 666, 1111.1)
+      E3:     C2 EXIT pred pack.run_test_dummy/3-0 (det)
+mdb> step
+      E4:     C3 CALL pred pack.run_test_i8/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_i8(42, 99.9, pear, -128i8, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	-128i8
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_i8(42, 99.9, pear, -128i8, orange, 666, 1111.1)
+      E5:     C3 EXIT pred pack.run_test_i8/3-0 (det)
+mdb> step
+      E6:     C4 CALL pred pack.run_test_i8/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_i8(42, 99.9, pear, 127i8, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	127i8
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_i8(42, 99.9, pear, 127i8, orange, 666, 1111.1)
+      E7:     C4 EXIT pred pack.run_test_i8/3-0 (det)
+mdb> step
+      E8:     C5 CALL pred pack.run_test_u8/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_u8(42, 99.9, pear, 0u8, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	0u8
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_u8(42, 99.9, pear, 0u8, orange, 666, 1111.1)
+      E9:     C5 EXIT pred pack.run_test_u8/3-0 (det)
+mdb> step
+     E10:     C6 CALL pred pack.run_test_u8/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_u8(42, 99.9, pear, 255u8, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	255u8
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_u8(42, 99.9, pear, 255u8, orange, 666, 1111.1)
+     E11:     C6 EXIT pred pack.run_test_u8/3-0 (det)
+mdb> step
+     E12:     C7 CALL pred pack.run_test_i64/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_i64(42, 99.9, pear, -2525252525i64, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	-2525252525i64
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_i64(42, 99.9, pear, -2525252525i64, orange, 666, 1111.1)
+     E13:     C7 EXIT pred pack.run_test_i64/3-0 (det)
+mdb> step
+     E14:     C8 CALL pred pack.run_test_i64/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_i64(42, 99.9, pear, 2525252525i64, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	2525252525i64
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_i64(42, 99.9, pear, 2525252525i64, orange, 666, 1111.1)
+     E15:     C8 EXIT pred pack.run_test_i64/3-0 (det)
+mdb> step
+     E16:     C9 CALL pred pack.run_test_u64/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_u64(42, 99.9, pear, 25u64, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	25u64
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_u64(42, 99.9, pear, 25u64, orange, 666, 1111.1)
+     E17:     C9 EXIT pred pack.run_test_u64/3-0 (det)
+mdb> step
+     E18:    C10 CALL pred pack.run_test_u64/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_u64(42, 99.9, pear, 2525252525u64, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	2525252525u64
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_u64(42, 99.9, pear, 2525252525u64, orange, 666, 1111.1)
+     E19:    C10 EXIT pred pack.run_test_u64/3-0 (det)
+mdb> step
+     E20:    C11 CALL pred pack.run_test_abs/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_abs(42, 99.9, pear, dummy, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	dummy
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_abs(42, 99.9, pear, dummy, orange, 666, 1111.1)
+     E21:    C11 EXIT pred pack.run_test_abs/3-0 (det)
+mdb> step
+     E22:    C12 CALL pred pack.run_test_abs/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_abs(42, 99.9, pear, -128i8, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	-128i8
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_abs(42, 99.9, pear, -128i8, orange, 666, 1111.1)
+     E23:    C12 EXIT pred pack.run_test_abs/3-0 (det)
+mdb> step
+     E24:    C13 CALL pred pack.run_test_abs/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_abs(42, 99.9, pear, 127i8, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	127i8
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_abs(42, 99.9, pear, 127i8, orange, 666, 1111.1)
+     E25:    C13 EXIT pred pack.run_test_abs/3-0 (det)
+mdb> step
+     E26:    C14 CALL pred pack.run_test_abs/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_abs(42, 99.9, pear, 0u8, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	0u8
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_abs(42, 99.9, pear, 0u8, orange, 666, 1111.1)
+     E27:    C14 EXIT pred pack.run_test_abs/3-0 (det)
+mdb> step
+     E28:    C15 CALL pred pack.run_test_abs/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_abs(42, 99.9, pear, 255u8, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	255u8
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_abs(42, 99.9, pear, 255u8, orange, 666, 1111.1)
+     E29:    C15 EXIT pred pack.run_test_abs/3-0 (det)
+mdb> step
+     E30:    C16 CALL pred pack.run_test_abs/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_abs(42, 99.9, pear, -2525252525i64, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	-2525252525i64
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_abs(42, 99.9, pear, -2525252525i64, orange, 666, 1111.1)
+     E31:    C16 EXIT pred pack.run_test_abs/3-0 (det)
+mdb> step
+     E32:    C17 CALL pred pack.run_test_abs/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_abs(42, 99.9, pear, 2525252525i64, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	2525252525i64
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_abs(42, 99.9, pear, 2525252525i64, orange, 666, 1111.1)
+     E33:    C17 EXIT pred pack.run_test_abs/3-0 (det)
+mdb> step
+     E34:    C18 CALL pred pack.run_test_abs/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_abs(42, 99.9, pear, 25u64, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	25u64
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_abs(42, 99.9, pear, 25u64, orange, 666, 1111.1)
+     E35:    C18 EXIT pred pack.run_test_abs/3-0 (det)
+mdb> step
+     E36:    C19 CALL pred pack.run_test_abs/3-0 (det)
+mdb> print -f Term
+       Term (arg 1)           	test_abs(42, 99.9, pear, 2525252525u64, orange, 666, 1111.1)
+mdb> print -f Term^1
+       Term (arg 1)^1         	42
+mdb> print -f Term^2
+       Term (arg 1)^2         	99.9
+mdb> print -f Term^3
+       Term (arg 1)^3         	pear
+mdb> print -f Term^4
+       Term (arg 1)^4         	2525252525u64
+mdb> print -f Term^5
+       Term (arg 1)^5         	orange
+mdb> print -f Term^6
+       Term (arg 1)^6         	666
+mdb> print -f Term^7
+       Term (arg 1)^7         	1111.1
+mdb> finish
+test_abs(42, 99.9, pear, 2525252525u64, orange, 666, 1111.1)
+     E37:    C19 EXIT pred pack.run_test_abs/3-0 (det)
+mdb> continue -n -S

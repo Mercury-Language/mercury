@@ -54,6 +54,7 @@ NONRETRY_PROGS = \
 	multi_parameter			\
 	mutrec				\
 	mutrec_higher_order		\
+	pack				\
 	poly_io_retry			\
 	poly_io_retry2			\
 	polymorphic_ground_term		\
@@ -501,6 +502,9 @@ mutrec_higher_order.out: mutrec_higher_order mutrec_higher_order.inp
 output_term_dep.out: output_term_dep output_term_dep.inp
 	$(MDB) ./output_term_dep < output_term_dep.inp 2>&1 | \
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > output_term_dep.out 2>&1
+
+pack.out: pack pack.inp
+	$(MDB_STD) ./pack < pack.inp > pack.out 2>&1
 
 polymorphic_ground_term.out: polymorphic_ground_term polymorphic_ground_term.inp
 	$(MDB_STD) ./polymorphic_ground_term < polymorphic_ground_term.inp \
