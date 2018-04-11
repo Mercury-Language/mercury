@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred higher_order.main/2-0 (det) higher_order.m:12
+      E1:     C1 CALL pred higher_order.main/2-0 (det) higher_order.m:18
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -9,23 +9,23 @@ mdb> format flat
 mdb> step
       E2:     C2 CALL pred higher_order.domap/3-0 (det)
 mdb> print *
-       P (arg 1)              	lambda_higher_order_m_18(float_add2(3.0))
+       P (arg 1)              	lambda_higher_order_m_24(float_add2(3.0))
        HeadVar__2             	[1.0, 2.0, 3.0, 4.0, 5.0]
 mdb> finish
       E3:     C2 EXIT pred higher_order.domap/3-0 (det)
 mdb> print *
-       P (arg 1)              	lambda_higher_order_m_18(float_add2(3.0))
+       P (arg 1)              	lambda_higher_order_m_24(float_add2(3.0))
        HeadVar__2             	[1.0, 2.0, 3.0, 4.0, 5.0]
        HeadVar__3             	[4.0, 5.0, 6.0, 7.0, 8.0]
 mdb> step
       E4:     C3 CALL pred higher_order.domap/3-0 (det)
 mdb> print *
-       P (arg 1)              	lambda_higher_order_m_19(float_op3(4.0, 5.0))
+       P (arg 1)              	lambda_higher_order_m_25(float_op3(4.0, 5.0))
        HeadVar__2             	[1.0, 2.0, 3.0, 4.0, 5.0]
 mdb> finish
       E5:     C3 EXIT pred higher_order.domap/3-0 (det)
 mdb> print *
-       P (arg 1)              	lambda_higher_order_m_19(float_op3(4.0, 5.0))
+       P (arg 1)              	lambda_higher_order_m_25(float_op3(4.0, 5.0))
        HeadVar__2             	[1.0, 2.0, 3.0, 4.0, 5.0]
        HeadVar__3             	[9.0, 14.0, 19.0, 24.0, 29.0]
 mdb> step
@@ -42,23 +42,23 @@ mdb> print *
 mdb> step
       E8:     C5 CALL pred higher_order.domap/3-0 (det)
 mdb> print *
-       P (arg 1)              	lambda_higher_order_m_21([6])
+       P (arg 1)              	lambda_higher_order_m_27([6])
        HeadVar__2             	[[1, 2], [3, 4, 5]]
 mdb> finish
       E9:     C5 EXIT pred higher_order.domap/3-0 (det)
 mdb> print *
-       P (arg 1)              	lambda_higher_order_m_21([6])
+       P (arg 1)              	lambda_higher_order_m_27([6])
        HeadVar__2             	[[1, 2], [3, 4, 5]]
        HeadVar__3             	[[6, 1, 2], [6, 3, 4, 5]]
 mdb> step
      E10:     C6 CALL pred higher_order.domap/3-0 (det)
 mdb> print *
-       P (arg 1)              	lambda_higher_order_m_22(["a"])
+       P (arg 1)              	lambda_higher_order_m_28(["a"])
        HeadVar__2             	[["one", "two"], ["three", "four", "five"]]
 mdb> finish
      E11:     C6 EXIT pred higher_order.domap/3-0 (det)
 mdb> print *
-       P (arg 1)              	lambda_higher_order_m_22(["a"])
+       P (arg 1)              	lambda_higher_order_m_28(["a"])
        HeadVar__2             	[["one", "two"], ["three", "four", "five"]]
        HeadVar__3             	[["a", "one", "two"], ["a", "three", "four", "five"]]
 mdb> continue -S
