@@ -2,6 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2011-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -471,6 +472,7 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -492,7 +494,7 @@
                 % bits offset .. offset + bits_per_int - 1
                 % All sparse_bitset operations should remove all
                 % elements of the list with a `bits' field of zero.
-                bits    :: int
+                bits    :: uint
             ).
 
 %---------------------------------------------------------------------------%
@@ -531,11 +533,11 @@ is_singleton(sparse_bitset([Node]), Elem) :-
 
     % Do a binary search for the 1 bits in an int.
     %
-:- pred count_bits(int::in, int::in, int::in,
+:- pred count_bits(int::in, int::in, uint::in,
     list(int)::in, list(int)::out) is det.
 
 count_bits(BitOffset, Size, Bits, !SetOffsets) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         true
     else if Size = 1 then
         % If Bits were 0, we wouldn't have got here.
@@ -565,7 +567,7 @@ contains_search_nodes([Data | Rest], Index) :-
     Offset = Data ^ offset,
     Index >= Offset,
     ( if Index < Offset + bits_per_int then
-        get_bit(Data ^ bits, Index - Offset) \= 0
+        get_bit(Data ^ bits, Index - Offset) \= 0u
     else
         contains_search_nodes(Rest, Index)
     ).
@@ -593,10 +595,10 @@ member_search_nodes(Index, [Elem | Elems]) :-
     ; member_search_nodes(Index, Elems)
     ).
 
-:- pred member_search_one_node(int::out, int::in, int::in, int::in) is nondet.
+:- pred member_search_one_node(int::out, int::in, int::in, uint::in) is nondet.
 
 member_search_one_node(Index, Offset, Size, Bits) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         fail
     else if Size = 1 then
         Index = Offset
@@ -640,7 +642,7 @@ insert_loop(Index, Set0, Set) :-
             Set = [make_bitset_elem(Offset, Bits) | Set0]
         else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
             Bits0 = Data0 ^ bits,
-            ( if get_bit(Bits0, BitToSet) \= 0 then
+            ( if get_bit(Bits0, BitToSet) \= 0u then
                 Set = Set0
             else
                 Bits = set_bit(Bits0, BitToSet),
@@ -675,7 +677,7 @@ insert_new_loop(Index, Set0, Set) :-
             Set = [make_bitset_elem(Offset, Bits) | Set0]
         else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
             Bits0 = Data0 ^ bits,
-            ( if get_bit(Bits0, BitToSet) \= 0 then
+            ( if get_bit(Bits0, BitToSet) \= 0u then
                 fail
             else
                 Bits = set_bit(Bits0, BitToSet),
@@ -736,8 +738,8 @@ remove_leq_2([Data | Rest], Index) = Result :-
     else if Offset =< Index then
         ( if
             Bits = Data ^ bits /\
-                unchecked_left_shift(\ 0, Index - Offset + 1),
-            Bits \= 0
+                unchecked_left_shift(\ 0u, Index - Offset + 1),
+            Bits \= 0u
         then
             Result = [make_bitset_elem(Offset, Bits) | Rest]
         else
@@ -765,8 +767,8 @@ remove_gt_2([Data | Rest], Index) = Result :-
     else if Offset =< Index then
         ( if
             Bits = Data ^ bits /\
-                \ unchecked_left_shift(\ 0, Index - Offset + 1),
-            Bits \= 0
+                \ unchecked_left_shift(\ 0u, Index - Offset + 1),
+            Bits \= 0u
         then
             Result = [make_bitset_elem(Offset, Bits)]
         else
@@ -791,20 +793,20 @@ remove_least(Elem, sparse_bitset(Set0), sparse_bitset(Set)) :-
         unexpected($module, $pred, "`enum.from_int/1' failed")
     ),
     Bits = clear_bit(Bits0, Bit),
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         Set = Rest
     else
         Set = [make_bitset_elem(Offset, Bits) | Rest]
     ).
 
-:- func find_least_bit(int) = int.
+:- func find_least_bit(uint) = int.
 
 find_least_bit(Bits0) = BitNum :-
     Size = bits_per_int,
     BitNum0 = 0,
     BitNum = find_least_bit_2(Bits0, Size, BitNum0).
 
-:- func find_least_bit_2(int, int, int) = int.
+:- func find_least_bit_2(uint, int, int) = int.
 
 find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
     ( if Size = 1 then
@@ -815,7 +817,7 @@ find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
         Mask = mask(HalfSize),
 
         LowBits = Bits0 /\ Mask,
-        ( if LowBits \= 0 then
+        ( if LowBits \= 0u then
             BitNum = find_least_bit_2(LowBits, HalfSize, BitNum0)
         else
             HighBits = Mask /\ unchecked_right_shift(Bits0, HalfSize),
@@ -849,7 +851,7 @@ list_to_set_2([H | T], List0) = List :-
     % Go through the list picking out the elements which belong in the same
     % bitset_elem as the first element, returning the uncollected elements.
     %
-:- pred list_to_set_3(list(T)::in, int::in, int::in, int::out,
+:- pred list_to_set_3(list(T)::in, int::in, uint::in, uint::out,
     list(T)::in, list(T)::out) is det <= enum(T).
 :- pragma type_spec(list_to_set_3/6, T = var(_)).
 :- pragma type_spec(list_to_set_3/6, T = int).
@@ -890,13 +892,13 @@ sorted_list_to_set(A, sorted_list_to_set(A)).
 sorted_list_to_set_2([]) = [].
 sorted_list_to_set_2([H | T]) = Set :-
     sorted_list_to_set_3(H, T, Offset, Bits, Set0),
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         Set = Set0
     else
         Set = [make_bitset_elem(Offset, Bits) | Set0]
     ).
 
-:- pred sorted_list_to_set_3(T::in, list(T)::in, int::out, int::out,
+:- pred sorted_list_to_set_3(T::in, list(T)::in, int::out, uint::out,
     bitset_impl::out) is det <= enum(T).
 :- pragma type_spec(sorted_list_to_set_3/5, T = var(_)).
 :- pragma type_spec(sorted_list_to_set_3/5, T = int).
@@ -1077,7 +1079,7 @@ do_foldr2_pred(P, [H | T], !Acc1, !Acc2) :-
     % Do a binary search for the 1 bits in an int.
     %
 :- pred fold_bits(fold_direction, pred(T, U, U),
-    int, int, int, U, U) <= enum(T).
+    int, uint, int, U, U) <= enum(T).
 :- mode fold_bits(in, pred(in, in, out) is det,
     in, in, in, in, out) is det.
 :- mode fold_bits(in, pred(in, mdi, muo) is det,
@@ -1100,7 +1102,7 @@ do_foldr2_pred(P, [H | T], !Acc1, !Acc2) :-
 :- pragma type_spec(fold_bits/7, T = var(_)).
 
 fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         true
     else if Size = 1 then
         ( if Elem = from_int(Offset) then
@@ -1132,7 +1134,7 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
     ).
 
 :- pred fold2_bits(fold_direction, pred(T, U, U, V, V),
-    int, int, int, U, U, V, V) <= enum(T).
+    int, uint, int, U, U, V, V) <= enum(T).
 :- mode fold2_bits(in, pred(in, in, out, in, out) is det,
     in, in, in, in, out, in, out) is det.
 :- mode fold2_bits(in, pred(in, in, out, mdi, muo) is det,
@@ -1159,7 +1161,7 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
 :- pragma type_spec(fold2_bits/9, T = var(_)).
 
 fold2_bits(Dir, P, Offset, Bits, Size, !Acc1, !Acc2) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         true
     else if Size = 1 then
         ( if Elem = from_int(Offset) then
@@ -1208,12 +1210,12 @@ all_true_node(P, [bitset_elem(Offset, Bits) | Rest]) :-
     all_true_node(P, Rest).
 
 :- pred all_true_bits(pred(T)::in(pred(in) is semidet),
-    int::in, int::in, int::in) is semidet <= enum(T).
+    int::in, uint::in, int::in) is semidet <= enum(T).
 :- pragma type_spec(all_true_bits/4, T = int).
 :- pragma type_spec(all_true_bits/4, T = var(_)).
 
 all_true_bits(P, Offset, Bits, Size) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         true
     else if Size = 1 then
         ( if Elem = from_int(Offset) then
@@ -1344,7 +1346,7 @@ intersect_2(Set1, Set2) = Set :-
     Offset2 = Data2 ^ offset,
     ( if Offset1 = Offset2 then
         Bits = Data1 ^ bits /\ Data2 ^ bits,
-        ( if Bits = 0 then
+        ( if Bits = 0u then
             Set = intersect_2(SetTail1, SetTail2)
         else
             Set = [make_bitset_elem(Offset1, Bits) |
@@ -1412,7 +1414,7 @@ difference_2(Set1, Set2) = Set :-
     Offset2 = Data2 ^ offset,
     ( if Offset1 = Offset2 then
         Bits = (Data1 ^ bits) /\ \ (Data2 ^ bits),
-        ( if Bits = 0 then
+        ( if Bits = 0u then
             Set = difference_2(SetTail1, SetTail2)
         else
             Set = [make_bitset_elem(Offset1, Bits) |
@@ -1440,13 +1442,13 @@ divide_nodes(_Pred, [], [], []).
 divide_nodes(Pred, [Node | Nodes], InNodes, OutNodes) :-
     divide_nodes(Pred, Nodes, InNodesTail, OutNodesTail),
     Node = bitset_elem(Offset, Bits),
-    divide_bits(Pred, Offset, 0, Bits, bits_per_int, 0, In, 0, Out),
-    ( if In = 0 then
+    divide_bits(Pred, Offset, 0, Bits, bits_per_int, 0u, In, 0u, Out),
+    ( if In = 0u then
         InNodes = InNodesTail
     else
         InNodes = [make_bitset_elem(Offset, In) | InNodesTail]
     ),
-    ( if Out = 0 then
+    ( if Out = 0u then
         OutNodes = OutNodesTail
     else
         OutNodes = [make_bitset_elem(Offset, Out) | OutNodesTail]
@@ -1455,15 +1457,15 @@ divide_nodes(Pred, [Node | Nodes], InNodes, OutNodes) :-
     % Do a binary search for the 1 bits in an int.
     %
 :- pred divide_bits(pred(T)::in(pred(in) is semidet),
-    int::in, int::in, int::in, int::in, int::in, int::out, int::in, int::out)
-    is det <= enum(T).
+    int::in, int::in, uint::in, int::in,
+    uint::in, uint::out, uint::in, uint::out) is det <= enum(T).
 
 divide_bits(P, BaseOffset, OffsetInWord, Bits, Size, !In, !Out) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         true
     else if Size = 1 then
         ( if Elem = from_int(BaseOffset + OffsetInWord) then
-            OffsetBit = unchecked_left_shift(1, OffsetInWord),
+            OffsetBit = unchecked_left_shift(1u, OffsetInWord),
             ( if P(Elem) then
                 !:In = !.In \/ OffsetBit
             else
@@ -1515,13 +1517,13 @@ divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
     else
         divide_nodes_by_set(DivideByNodes, Nodes, InNodesTail, OutNodesTail),
         divide_bits_by_set(DivideByBits, bits_per_int, 0, Bits,
-            0, In, 0, Out),
-        ( if In = 0 then
+            0u, In, 0u, Out),
+        ( if In = 0u then
             InNodes = InNodesTail
         else
             InNodes = [make_bitset_elem(Offset, In) | InNodesTail]
         ),
-        ( if Out = 0 then
+        ( if Out = 0u then
             OutNodes = OutNodesTail
         else
             OutNodes = [make_bitset_elem(Offset, Out) | OutNodesTail]
@@ -1545,15 +1547,16 @@ divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
     % approach may well be slower than a simple iteration through all the bits
     % in that word would be.
     %
-:- pred divide_bits_by_set(int::in,
-    int::in, int::in, int::in, int::in, int::out, int::in, int::out) is det.
+:- pred divide_bits_by_set(uint::in,
+    int::in, int::in, uint::in, uint::in, uint::out, uint::in, uint::out)
+    is det.
 
 divide_bits_by_set(DivideByBits, Size, Offset, Bits, !In, !Out) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         true
     else if Size = 1 then
-        OffsetBit = unchecked_left_shift(1, Offset),
-        ( if DivideByBits /\ OffsetBit = 0 then
+        OffsetBit = unchecked_left_shift(1u, Offset),
+        ( if DivideByBits /\ OffsetBit = 0u then
             !:Out = !.Out \/ OffsetBit
         else
             !:In = !.In \/ OffsetBit
@@ -1581,38 +1584,38 @@ divide_bits_by_set(DivideByBits, Size, Offset, Bits, !In, !Out) :-
     % Return the offset of the element of a set which should contain the given
     % element, and an int with the bit corresponding to that element set.
     %
-:- pred bits_for_index(int::in, int::out, int::out) is det.
+:- pred bits_for_index(int::in, int::out, uint::out) is det.
 :- pragma inline(bits_for_index/3).
 
 bits_for_index(Index, Offset, Bits) :-
     Offset = int.floor_to_multiple_of_bits_per_int(Index),
     BitToSet = Index - Offset,
-    Bits = set_bit(0, BitToSet).
+    Bits = set_bit(0u, BitToSet).
 
-:- func get_bit(int, int) = int.
+:- func get_bit(uint, int) = uint.
 :- pragma inline(get_bit/2).
 
-get_bit(Int, Bit) = Int /\ unchecked_left_shift(1, Bit).
+get_bit(Int, Bit) = Int /\ unchecked_left_shift(1u, Bit).
 
-:- func set_bit(int, int) = int.
+:- func set_bit(uint, int) = uint.
 :- pragma inline(set_bit/2).
 
-set_bit(Int0, Bit) = Int0 \/ unchecked_left_shift(1, Bit).
+set_bit(Int0, Bit) = Int0 \/ unchecked_left_shift(1u, Bit).
 
-:- func clear_bit(int, int) = int.
+:- func clear_bit(uint, int) = uint.
 :- pragma inline(clear_bit/2).
 
-clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1, Bit).
+clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, Bit).
 
     % `mask(N)' returns a mask which can be `and'ed with an integer to return
     % the lower `N' bits of the integer. `N' must be less than bits_per_int.
     %
-:- func mask(int) = int.
+:- func mask(int) = uint.
 :- pragma inline(mask/1).
 
-mask(N) = \ unchecked_left_shift(\ 0, N).
+mask(N) = \ unchecked_left_shift(\ 0u, N).
 
-:- func make_bitset_elem(int, int) = bitset_elem.
+:- func make_bitset_elem(int, uint) = bitset_elem.
 :- pragma inline(make_bitset_elem/2).
 
 make_bitset_elem(Offset, Bits) = bitset_elem(Offset, Bits).

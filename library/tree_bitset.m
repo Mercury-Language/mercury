@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2009-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -456,6 +457,7 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module uint.
 
 % These are needed only for integrity checking.
 :- import_module bool.
@@ -539,7 +541,7 @@
                 % bits offset .. offset + bits_per_int - 1
                 % The tree_bitset operations all remove elements of the list
                 % with a `bits' field of zero.
-                leaf_bits       :: int
+                leaf_bits       :: uint
             ).
 
 :- type interior_node
@@ -561,7 +563,7 @@ bits_per_level = 5.
 
 %---------------------------------------------------------------------------%
 
-:- func make_leaf_node(int, int) = leaf_node.
+:- func make_leaf_node(int, uint) = leaf_node.
 :- pragma inline(make_leaf_node/2).
 
 make_leaf_node(Offset, Bits) = leaf_node(Offset, Bits).
@@ -987,7 +989,7 @@ leaflist_contains([Head | Tail], Index) :-
     Offset = Head ^ leaf_offset,
     Index >= Offset,
     ( if Index < Offset + bits_per_int then
-        get_bit(Head ^ leaf_bits, Index - Offset) \= 0
+        get_bit(Head ^ leaf_bits, Index - Offset) \= 0u
     else
         leaflist_contains(Tail, Index)
     ).
@@ -1052,10 +1054,10 @@ leaflist_member(Index, [Elem | Elems]) :-
         leaflist_member(Index, Elems)
     ).
 
-:- pred leafnode_member(int::out, int::in, int::in, int::in) is nondet.
+:- pred leafnode_member(int::out, int::in, int::in, uint::in) is nondet.
 
 leafnode_member(Index, Offset, Size, Bits) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         fail
     else if Size = 1 then
         Index = Offset
@@ -1152,7 +1154,7 @@ leaflist_insert(Index, Leaves0 @ [Head0 | Tail0], Leaves) :-
         Leaves = [make_leaf_node(Offset, Bits) | Leaves0]
     else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
         Bits0 = Head0 ^ leaf_bits,
-        ( if get_bit(Bits0, BitToSet) = 0 then
+        ( if get_bit(Bits0, BitToSet) = 0u then
             Bits = set_bit(Bits0, BitToSet),
             Leaves = [make_leaf_node(Offset0, Bits) | Tail0]
         else
@@ -1278,7 +1280,7 @@ leaflist_insert_new(Index, Leaves0 @ [Head0 | Tail0], Leaves) :-
         Leaves = [make_leaf_node(Offset, Bits) | Leaves0]
     else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
         Bits0 = Head0 ^ leaf_bits,
-        ( if get_bit(Bits0, BitToSet) = 0 then
+        ( if get_bit(Bits0, BitToSet) = 0u then
             Bits = set_bit(Bits0, BitToSet),
             Leaves = [make_leaf_node(Offset0, Bits) | Tail0]
         else
@@ -1408,7 +1410,7 @@ leaflist_delete([Head0 | Tail0], Index, Result) :-
         Result = [Head0 | Tail]
     else if Offset =< Index then
         Bits = clear_bit(Head0 ^ leaf_bits, Index - Offset),
-        ( if Bits = 0 then
+        ( if Bits = 0u then
             Result = Tail0
         else
             Result = [make_leaf_node(Offset, Bits) | Tail0]
@@ -1500,8 +1502,8 @@ remove_leq_leaf([Head0 | Tail0], Index, Result) :-
         remove_leq_leaf(Tail0, Index, Result)
     else if Offset =< Index then
         Bits = Head0 ^ leaf_bits /\
-            unchecked_left_shift(\ 0, Index - Offset + 1),
-        ( if Bits = 0 then
+            unchecked_left_shift(\ 0u, Index - Offset + 1),
+        ( if Bits = 0u then
             Result = Tail0
         else
             Result = [make_leaf_node(Offset, Bits) | Tail0]
@@ -1580,8 +1582,8 @@ remove_gt_leaf([Head0 | Tail0], Index, Result) :-
     else if Offset =< Index then
         ( if
             Bits = Head0 ^ leaf_bits /\
-                \ unchecked_left_shift(\ 0, Index - Offset + 1),
-            Bits \= 0
+                \ unchecked_left_shift(\ 0u, Index - Offset + 1),
+            Bits \= 0u
         then
             Result = [make_leaf_node(Offset, Bits)]
         else
@@ -1675,20 +1677,20 @@ remove_least_leaf(Head0, Tail0, Index, Nodes) :-
     Bit = find_least_bit(Bits0),
     Bits = clear_bit(Bits0, Bit),
     Index = Offset + Bit,
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         Nodes = Tail0
     else
         Nodes = [make_leaf_node(Offset, Bits) | Tail0]
     ).
 
-:- func find_least_bit(int) = int.
+:- func find_least_bit(uint) = int.
 
 find_least_bit(Bits0) = BitNum :-
     Size = bits_per_int,
     BitNum0 = 0,
     BitNum = find_least_bit_2(Bits0, Size, BitNum0).
 
-:- func find_least_bit_2(int, int, int) = int.
+:- func find_least_bit_2(uint, int, int) = int.
 
 find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
     ( if Size = 1 then
@@ -1699,7 +1701,7 @@ find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
         Mask = mask(HalfSize),
 
         LowBits = Bits0 /\ Mask,
-        ( if LowBits = 0 then
+        ( if LowBits = 0u then
             HighBits = Mask /\ unchecked_right_shift(Bits0, HalfSize),
             BitNum = find_least_bit_2(HighBits, HalfSize, BitNum0 + HalfSize)
         else
@@ -1762,7 +1764,7 @@ sorted_list_to_leaf_nodes([Head | Tail]) = LeafNodes :-
     sorted_list_to_leaf_nodes(Remaining) = LeafNodesTail,
     LeafNodes = [make_leaf_node(Offset, Bits) | LeafNodesTail].
 
-:- pred gather_bits_for_leaf(list(int)::in, int::in, int::in, int::out,
+:- pred gather_bits_for_leaf(list(int)::in, int::in, uint::in, uint::out,
     list(int)::out) is det.
 
 gather_bits_for_leaf([], _Offset, !Bits, []).
@@ -2189,7 +2191,7 @@ leaf_foldr2_pred(P, [H | T], !AccA, !AccB) :-
     % Do a binary search for the 1 bits in an int.
     %
 :- pred fold_bits(fold_direction, pred(T, U, U),
-    int, int, int, U, U) <= enum(T).
+    int, uint, int, U, U) <= enum(T).
 :- mode fold_bits(in, pred(in, in, out) is det,
     in, in, in, in, out) is det.
 :- mode fold_bits(in, pred(in, mdi, muo) is det,
@@ -2214,7 +2216,7 @@ leaf_foldr2_pred(P, [H | T], !AccA, !AccB) :-
 :- pragma type_spec(fold_bits/7, T = var(_)).
 
 fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         true
     else if Size = 1 then
         Elem = index_to_enum(Offset),
@@ -2241,7 +2243,7 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
     ).
 
 :- pred fold2_bits(fold_direction, pred(T, U, U, V, V),
-    int, int, int, U, U, V, V) <= enum(T).
+    int, uint, int, U, U, V, V) <= enum(T).
 :- mode fold2_bits(in, pred(in, di, uo, di, uo) is det,
     in, in, in, di, uo, di, uo) is det.
 :- mode fold2_bits(in, pred(in, in, out, di, uo) is det,
@@ -2262,7 +2264,7 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
 :- pragma type_spec(fold2_bits/9, T = var(_)).
 
 fold2_bits(Dir, P, Offset, Bits, Size, !AccA, !AccB) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         true
     else if Size = 1 then
         Elem = index_to_enum(Offset),
@@ -2332,12 +2334,12 @@ leaf_all_true(P, [H | T]) :-
     % Do a binary search for the 1 bits in an int.
     %
 :- pred all_true_bits(pred(T)::in(pred(in) is semidet),
-    int::in, int::in, int::in) is semidet <= enum(T).
+    int::in, uint::in, int::in) is semidet <= enum(T).
 :- pragma type_spec(all_true_bits/4, T = int).
 :- pragma type_spec(all_true_bits/4, T = var(_)).
 
 all_true_bits(P, Offset, Bits, Size) :-
-    ( if Bits = 0 then
+    ( if Bits = 0u then
         true
     else if Size = 1 then
         Elem = index_to_enum(Offset),
@@ -2689,7 +2691,7 @@ leaflist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
     OffsetB = HeadB ^ leaf_offset,
     ( if OffsetA = OffsetB then
         Bits = HeadA ^ leaf_bits /\ HeadB ^ leaf_bits,
-        ( if Bits = 0 then
+        ( if Bits = 0u then
             leaflist_intersect(TailA, TailB, List)
         else
             Head = make_leaf_node(OffsetA, Bits),
@@ -3347,7 +3349,7 @@ leaflist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
     OffsetB = HeadB ^ leaf_offset,
     ( if OffsetA = OffsetB then
         Bits = (HeadA ^ leaf_bits) /\ \ (HeadB ^ leaf_bits),
-        ( if Bits = 0 then
+        ( if Bits = 0u then
             leaflist_difference(TailA, TailB, List)
         else
             Head = make_leaf_node(OffsetA, Bits),
@@ -3456,14 +3458,14 @@ leaflist_divide(_Pred, [], [], []).
 leaflist_divide(Pred, [Head | Tail], InList, OutList) :-
     leaflist_divide(Pred, Tail, InTail, OutTail),
     Head = leaf_node(Offset, Bits),
-    leafnode_divide(Pred, Offset, 0, Bits, 0, InBits, 0, OutBits),
-    ( if InBits = 0 then
+    leafnode_divide(Pred, Offset, 0, Bits, 0u, InBits, 0u, OutBits),
+    ( if InBits = 0u then
         InList = InTail
     else
         InHead = make_leaf_node(Offset, InBits),
         InList = [InHead | InTail]
     ),
-    ( if OutBits = 0 then
+    ( if OutBits = 0u then
         OutList = OutTail
     else
         OutHead = make_leaf_node(Offset, OutBits),
@@ -3471,12 +3473,12 @@ leaflist_divide(Pred, [Head | Tail], InList, OutList) :-
     ).
 
 :- pred leafnode_divide(pred(T)::in(pred(in) is semidet), int::in, int::in,
-    int::in, int::in, int::out, int::in, int::out) is det <= enum(T).
+    uint::in, uint::in, uint::out, uint::in, uint::out) is det <= enum(T).
 
 leafnode_divide(Pred, Offset, WhichBit, Bits, !InBits, !OutBits) :-
     ( if WhichBit < bits_per_int then
         SelectedBit = get_bit(Bits, WhichBit),
-        ( if SelectedBit = 0 then
+        ( if SelectedBit = 0u then
             true
         else
             Elem = index_to_enum(Offset + WhichBit),
@@ -3844,8 +3846,8 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
         DivideByHeadBits = DivideByHead ^ leaf_bits,
         InBits = ListHeadBits /\ DivideByHeadBits,
         OutBits = ListHeadBits /\ \ DivideByHeadBits,
-        ( if InBits = 0 then
-            ( if OutBits = 0 then
+        ( if InBits = 0u then
+            ( if OutBits = 0u then
                 leaflist_divide_by_set(DivideByTail, ListTail, InList, OutList)
             else
                 NewOutNode = make_leaf_node(ListOffset, OutBits),
@@ -3855,7 +3857,7 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
             )
         else
             NewInNode = make_leaf_node(ListOffset, InBits),
-            ( if OutBits = 0 then
+            ( if OutBits = 0u then
                 leaflist_divide_by_set(DivideByTail, ListTail,
                     InTail, OutList),
                 InList = [NewInNode | InTail]
@@ -4113,35 +4115,35 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
     % Return the offset of the element of a set which should contain the given
     % element, and an int with the bit corresponding to that element set.
     %
-:- pred bits_for_index(int::in, int::out, int::out) is det.
+:- pred bits_for_index(int::in, int::out, uint::out) is det.
 :- pragma inline(bits_for_index/3).
 
 bits_for_index(Index, Offset, Bits) :-
     Offset = int.floor_to_multiple_of_bits_per_int(Index),
     BitToSet = Index - Offset,
-    Bits = set_bit(0, BitToSet).
+    Bits = set_bit(0u, BitToSet).
 
-:- func get_bit(int, int) = int.
+:- func get_bit(uint, int) = uint.
 :- pragma inline(get_bit/2).
 
-get_bit(Int, Bit) = Int /\ unchecked_left_shift(1, Bit).
+get_bit(Int, Bit) = Int /\ unchecked_left_shift(1u, Bit).
 
-:- func set_bit(int, int) = int.
+:- func set_bit(uint, int) = uint.
 :- pragma inline(set_bit/2).
 
-set_bit(Int0, Bit) = Int0 \/ unchecked_left_shift(1, Bit).
+set_bit(Int0, Bit) = Int0 \/ unchecked_left_shift(1u, Bit).
 
-:- func clear_bit(int, int) = int.
+:- func clear_bit(uint, int) = uint.
 :- pragma inline(clear_bit/2).
 
-clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1, Bit).
+clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, Bit).
 
     % `mask(N)' returns a mask which can be `and'ed with an integer to return
     % the lower `N' bits of the integer. `N' must be less than bits_per_int.
     %
-:- func mask(int) = int.
+:- func mask(int) = uint.
 :- pragma inline(mask/1).
 
-mask(N) = \ unchecked_left_shift(\ 0, N).
+mask(N) = \ unchecked_left_shift(\ 0u, N).
 
 %---------------------------------------------------------------------------%
