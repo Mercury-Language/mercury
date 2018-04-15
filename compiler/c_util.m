@@ -831,6 +831,9 @@ output_int_expr_cur_stream(N, !IO) :-
 %
 
 output_uint_expr(Stream, N, !IO) :-
+    % We need to cast to (MR_Unsigned) to ensure things like 1 << 32 work
+    % when `MR_Unsigned' is 64 bits but `unsigned int' is 32 bits.
+    io.write_string("(MR_Unsigned) ", !IO),
     io.write_uint(Stream, N, !IO),
     io.write_string(Stream, "U", !IO).
 
