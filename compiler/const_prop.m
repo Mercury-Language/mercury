@@ -251,6 +251,9 @@ evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
         ProcName = "\\",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        target_bits_per_int(Globals, TargetBitsPerInt),
+        TargetBitsPerInt = bits_per_int(int.bits_per_int),
         OutputArg = Y,
         OutputArgVal = \ XVal
     ;
@@ -292,12 +295,15 @@ evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out, cons_id::out)
     is semidet.
 
-evaluate_det_call_uint_2(_Globals, ProcName, ModeNum, X, Y,
+evaluate_det_call_uint_2(Globals, ProcName, ModeNum, X, Y,
         OutputArg, uint_const(OutputArgVal)) :-
     (
         ProcName = "\\",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        target_bits_per_uint(Globals, TargetBitsPerUInt),
+        TargetBitsPerUInt = bits_per_uint(uint.bits_per_uint),
         OutputArg = Y,
         OutputArgVal = \ XVal
     ).
