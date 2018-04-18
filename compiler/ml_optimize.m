@@ -30,60 +30,8 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ml_backend.mlds.
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
-
-:- import_module list.
 
 :- pred mlds_optimize(globals::in, mlds::in, mlds::out) is det.
-
-    % XXX Temporarily exported to ml_call_gen.m. When tail recursion
-    % optimization is moved completely into the code generator,
-    % this whole predicate will be moved to ml_call_gen.m.
-    %
-    % Assign the given list of rvals (the actual parameter) to the given list
-    % of mlds_arguments (the formal parameter). This is used as part of tail
-    % recursion optimization (see above).
-    %
-    % For each actual parameter that differs from its corresponding formal
-    % parameter, we declare a temporary variable to hold the next value
-    % of the formal parameter, and assign it the value of the actual parameter.
-    % Once this has been done for all parameters, we then assign each formal
-    % parameter its next value. The code we generate looks like this:
-    %
-    %   % These are returned in TempDefns.
-    %   SomeType new_value_of_arg1;
-    %   SomeType new_value_of_arg3;
-    %   SomeType new_value_of_arg3;
-    %
-    %   % These are returned in InitStmts.
-    %   new_value_of_arg1 = <the new value of parameter 1>
-    %   new_value_of_arg2 = <the new value of parameter 2>
-    %   new_value_of_arg3 = <the new value of parameter 3>
-    %
-    %   % These are returned in AssignStmts.
-    %   arg1 = new_value_of_arg1;
-    %   arg2 = new_value_of_arg2;
-    %   arg3 = new_value_of_arg3;
-    %
-    % The temporaries are needed for tail calls such as
-    %
-    % p(In1, In2, ...) :-
-    %   ...
-    %   p(In2, In1, ...).
-    %
-    % We don't want to assign In1 to In2 (in the second parameter position)
-    % after we have already clobbered the value of In1 by assigning it In2
-    % (when processing the first parameter position).
-    %
-    % This predicate doesn't pay attention to the gc statement field
-    % inside the mlds_arguments it is given; it needs only the variable name
-    % and type fields.
-    %
-:- pred tail_rec_call_assign_input_args(mlds_module_name::in, prog_context::in,
-    list(mlds_argument)::in, list(mlds_rval)::in,
-    list(mlds_stmt)::out, list(mlds_stmt)::out,
-    list(mlds_local_var_defn)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -96,13 +44,14 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
-:- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module int.
+:- import_module list.
 :- import_module maybe.
-:- import_module require.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -327,57 +276,6 @@ optimize_in_call_stmt(_OptInfo, Stmt0, Stmt) :-
         Stmt = ml_stmt_atomic(AtomicStmt, Context)
     else
         Stmt = Stmt0
-    ).
-
-%----------------------------------------------------------------------------
-
-tail_rec_call_assign_input_args(_, _, [], [], [], [], []).
-tail_rec_call_assign_input_args(_, _, [_|_], [], [], [], []) :-
-    unexpected($pred, "length mismatch").
-tail_rec_call_assign_input_args(_, _, [], [_|_], [], [], []) :-
-    unexpected($pred, "length mismatch").
-tail_rec_call_assign_input_args(ModuleName, Context,
-        [Arg | Args], [ArgRval | ArgRvals],
-        !:InitStmts, !:AssignStmts, !:TempDefns) :-
-    tail_rec_call_assign_input_args(ModuleName, Context, Args, ArgRvals,
-        !:InitStmts, !:AssignStmts, !:TempDefns),
-
-    Arg = mlds_argument(VarName, Type, _ArgGCStmt),
-    % Don't bother assigning a variable to itself.
-    ( if ArgRval = ml_lval(ml_local_var(VarName, _VarType)) then
-        true
-    else
-        ( if VarName = lvn_prog_var(VarNameStr, VarNum) then
-            NextValueName = lvn_prog_var_next_value(VarNameStr, VarNum)
-        else
-            % This should not happen; the head variables of a procedure
-            % should all be lvn_prog_vars, even the ones representing
-            % the typeinfos and typeclassinfos added by the compiler.
-            % However, better safe than sorry.
-            VarNameStr = ml_local_var_name_to_string(VarName),
-            NextValueName =
-                lvn_comp_var(lvnc_non_prog_var_next_value(VarNameStr))
-        ),
-        % Note that we have to use an assignment rather than an initializer
-        % to initialize the temp, because this pass comes before
-        % ml_elem_nested.m, and ml_elim_nested.m doesn't handle code
-        % containing initializers.
-        % XXX We should teach it to handle them.
-        NextValueInitStmt = ml_stmt_atomic(
-            assign(ml_local_var(NextValueName, Type), ArgRval),
-            Context),
-        !:InitStmts = [NextValueInitStmt | !.InitStmts],
-        AssignStmt = ml_stmt_atomic(
-            assign(
-                ml_local_var(VarName, Type),
-                ml_lval(ml_local_var(NextValueName, Type))),
-            Context),
-        !:AssignStmts = [AssignStmt | !.AssignStmts],
-        % We don't need to trace the temporary variables for GC, since they
-        % are not live across a call or a heap allocation.
-        TempDefn = ml_gen_mlds_var_decl_init(NextValueName, Type,
-            no_initializer, gc_no_stmt, Context),
-        !:TempDefns = [TempDefn | !.TempDefns]
     ).
 
 %----------------------------------------------------------------------------
