@@ -1204,22 +1204,24 @@
 
     ;       ml_stmt_try_commit(mlds_lval, mlds_stmt, mlds_stmt, prog_context)
     ;       ml_stmt_do_commit(mlds_rval, prog_context)
-            % try_commit(Ref, GoalToTry, CommitHandlerGoal, _Context):
-            %   Execute GoalToTry. If GoalToTry exits via a `commit(Ref)'
-            %   instruction, then execute CommitHandlerGoal.
+            % try_commit(Ref, StmtToTry, CommitHandlerStmt, _Context):
+            %   Execute StmtToTry. If StmtToTry exits via a `do_commit(Ref)'
+            %   instruction, then execute CommitHandlerStmt.
             %
             % do_commit(Ref, _Context):
             %   Unwind the stack to the corresponding `try_commit'
-            %   statement for Ref, and branch to the CommitHandlerGoal
+            %   statement for Ref, and branch to the CommitHandlerStmt
             %   that was specified in that try_commit instruction.
             %
-            % For both try_commit and do_commit instructions, Ref should be
-            % the name of a local variable of type mlds_commit_type.
+            % For both try_commit and do_commit instructions, Ref should
+            % *initially* be the name of a local variable of type
+            % mlds_commit_type, though ml_elim_nested may later replace that
+            % with a reference to that variable in an environment.
             % (This variable can be used by the back-end's implementation
             % of do_commit and try_commit to store information needed to unwind
             % the stack.) There should be exactly one try_commit instruction
             % for each Ref. do_commit(Ref) instructions should only be used
-            % in goals called from the GoalToTry goal in the try_commit
+            % in goals called from the StmtToTry goal in the try_commit
             % instruction with the same Ref.
             %
             % The C back-end requires each try_commit to be put in its own
