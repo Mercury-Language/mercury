@@ -278,15 +278,15 @@ test_construction(!IO) :-
     % Enumerations:
 
     test_construct(type_desc.type_of(one),
-        "three", 0, [], !IO),
+        "three", [], !IO),
 
     type_to_univ([1, 2, 3], NumList),
     test_construct(type_desc.type_of(apple([])),
-        "apple", 1, [NumList], !IO),
+        "apple", [NumList], !IO),
 
     type_to_univ([one, two, three], EnumList),
     test_construct(type_desc.type_of(apple([])),
-        "banana", 1, [EnumList], !IO),
+        "banana", [EnumList], !IO),
 
     % Discriminated union:
     % (Simple, complicated and complicated constant tags).
@@ -295,47 +295,47 @@ test_construction(!IO) :-
     type_to_univ(2.1, TwoPointOne),
 
     test_construct(type_desc.type_of(wombat),
-        "foo", 0, [], !IO),
+        "foo", [], !IO),
     test_construct(type_desc.type_of(wombat),
-        "bar", 1, [One], !IO),
+        "bar", [One], !IO),
     test_construct(type_desc.type_of(wombat),
-        "bar", 2, [One, One], !IO),
+        "bar", [One, One], !IO),
     test_construct(type_desc.type_of(wombat),
-        "qux", 1, [One], !IO),
+        "qux", [One], !IO),
     test_construct(type_desc.type_of(wombat),
-        "quux", 1, [One], !IO),
+        "quux", [One], !IO),
     test_construct(type_desc.type_of(wombat),
-        "quuux", 2, [One, One], !IO),
+        "quuux", [One, One], !IO),
     test_construct(type_desc.type_of(wombat),
-        "wombat", 0, [], !IO),
+        "wombat", [], !IO),
     test_construct(type_desc.type_of(wombat),
-        "zoom", 1, [One], !IO),
+        "zoom", [One], !IO),
     test_construct(type_desc.type_of(wombat),
-        "zap", 2, [One, TwoPointOne], !IO),
+        "zap", [One, TwoPointOne], !IO),
     test_construct(type_desc.type_of(wombat),
-        "zip", 2, [One, One], !IO),
+        "zip", [One, One], !IO),
     test_construct(type_desc.type_of(wombat),
-        "zop", 2, [TwoPointOne, TwoPointOne], !IO),
+        "zop", [TwoPointOne, TwoPointOne], !IO),
 
     % No-tag type.
     test_construct(type_desc.type_of(qwerty(7)),
-        "qwerty", 1, [One], !IO),
+        "qwerty", [One], !IO),
 
     % Functor with single unboxed argument.
     type_to_univ(unboxed_struct(12, 34), UnboxedStruct),
     test_construct(type_desc.type_of(_ : unboxed_arg),
-        "unboxed_arg", 1, [UnboxedStruct], !IO),
+        "unboxed_arg", [UnboxedStruct], !IO),
 
     type_to_univ("goodbye", Bye),
 
     test_construct(type_desc.type_of(poly_four(3, "hello")),
-        "poly_one", 1, [One], !IO),
+        "poly_one", [One], !IO),
     test_construct(type_desc.type_of(poly_four(3, "hello")),
-        "poly_two", 1, [Bye], !IO),
+        "poly_two", [Bye], !IO),
     test_construct(type_desc.type_of(poly_four(3, "hello")),
-        "poly_four", 2, [One, Bye], !IO),
+        "poly_four", [One, Bye], !IO),
     test_construct(type_desc.type_of({1, "two", '3'}),
-        "{}", 3, [univ(4), univ("five"), univ('6')], !IO),
+        "{}", [univ(4), univ("five"), univ('6')], !IO),
 
     io.nl(!IO),
     io.write_string("About to construct a tuple\n", !IO),
@@ -343,11 +343,12 @@ test_construction(!IO) :-
     io.write(Tuple, !IO),
     io.nl(!IO).
 
-:- pred test_construct(type_desc.type_desc::in, string::in, int::in,
+:- pred test_construct(type_desc.type_desc::in, string::in,
     list(univ)::in, io::di, io::uo) is det.
 
-test_construct(TypeInfo, FunctorName, Arity, Args, !IO) :-
+test_construct(TypeInfo, FunctorName, Args, !IO) :-
     io.nl(!IO),
+    list.length(Args, Arity),
     find_functor(TypeInfo, FunctorName, Arity, FunctorNumber),
     io.format("About to construct %s/%d\n", [s(FunctorName), i(Arity)], !IO),
     ( if Constructed = construct.construct(TypeInfo, FunctorNumber, Args) then
