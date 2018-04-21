@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2268,12 +2269,37 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
             RHSTerm = term.variable(RHSVar, Context)
         ;
             RHS = rhs_functor(ConsId, _, Args),
+            require_complete_switch [ConsId]
             (
                 ConsId = int_const(Int),
                 RHSTerm = int_to_decimal_term(Int, Context)
             ;
-                ConsId  = uint_const(UInt),
+                ConsId = int8_const(Int8),
+                RHSTerm = int8_to_decimal_term(Int8, Context)
+            ;
+                ConsId = int16_const(Int16),
+                RHSTerm = int16_to_decimal_term(Int16, Context)
+            ;
+                ConsId = int32_const(Int32),
+                RHSTerm = int32_to_decimal_term(Int32, Context)
+            ;
+                ConsId = int64_const(Int64),
+                RHSTerm = int64_to_decimal_term(Int64, Context)
+            ;
+                ConsId = uint_const(UInt),
                 RHSTerm = uint_to_decimal_term(UInt, Context)
+            ;
+                ConsId = uint8_const(UInt8),
+                RHSTerm = uint8_to_decimal_term(UInt8, Context)
+            ;
+                ConsId = uint16_const(UInt16),
+                RHSTerm = uint16_to_decimal_term(UInt16, Context)
+            ;
+                ConsId = uint32_const(UInt32),
+                RHSTerm = uint32_to_decimal_term(UInt32, Context)
+            ;
+                ConsId = uint64_const(UInt64),
+                RHSTerm = uint64_to_decimal_term(UInt64, Context)
             ;
                 ConsId = float_const(Float),
                 RHSTerm = term.functor(term.float(Float), [], Context)
@@ -2288,6 +2314,22 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
                 ConsId = cons(SymName, _, _),
                 term.var_list_to_term_list(Args, ArgTerms),
                 construct_qualified_term(SymName, ArgTerms, RHSTerm)
+            ;
+                ( ConsId = base_typeclass_info_const(_, _, _, _)
+                ; ConsId = closure_cons(_, _)
+                ; ConsId = deep_profiling_proc_layout(_)
+                ; ConsId = ground_term_const(_, _)
+                ; ConsId = tabling_info_const(_)
+                ; ConsId = impl_defined_const(_)
+                ; ConsId = table_io_entry_desc(_)
+                ; ConsId = tuple_cons(_)
+                ; ConsId = type_ctor_info_const(_, _, _)
+                ; ConsId = type_info_cell_constructor(_)
+                ; ConsId = typeclass_info_cell_constructor
+                ; ConsId = type_info_const(_)
+                ; ConsId = typeclass_info_const(_)
+                ),
+                fail
             )
         ;
             RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
