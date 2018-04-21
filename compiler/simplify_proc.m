@@ -784,7 +784,17 @@ simplify_may_introduce_calls(ModuleName, PredName, _Arity) :-
         ; PredName = "state_var_copy"
         )
     ;
-        ModuleName = "int",
+        ( ModuleName = "int"
+        ; ModuleName = "uint"
+        ; ModuleName = "int8"
+        ; ModuleName = "uint8"
+        ; ModuleName = "int16"
+        ; ModuleName = "uint16"
+        ; ModuleName = "int32"
+        ; ModuleName = "uint32"
+        ; ModuleName = "int64"
+        ; ModuleName = "uint64"
+        ),
         ( PredName = "*"
         ; PredName = "unchecked_quotient"
         ; PredName = "unchecked_rem"
