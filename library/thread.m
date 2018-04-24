@@ -78,7 +78,7 @@
     % Rationale: on the low-level C backend Mercury threads are multiplexed
     % onto a limited number of OS threads. A call to a blocking procedure
     % prevents that OS thread from making progress on another Mercury thread.
-    % Some foreign code depends on OS thread-local state so needs to be
+    % Also, some foreign code depends on OS thread-local state so needs to be
     % consistently executed on a dedicated OS thread to be usable.
     %
 :- pred spawn_native(pred(thread, io, io), maybe_error(thread), io, io).
@@ -311,36 +311,39 @@ spawn_context_2(_, Res, "", !IO) :-
 %---------------------------------------------------------------------------%
 
 spawn_native(Goal, Res, !IO) :-
-    spawn_native_2(Goal, Success, ThreadId, !IO),
+    spawn_native_2(Goal, Success, ThreadId, ErrorMsg, !IO),
     (
         Success = yes,
         Res = ok(thread(ThreadId))
     ;
         Success = no,
-        Res = error("Unable to create native thread.")
+        Res = error(ErrorMsg)
     ).
 
-:- pred spawn_native_2(pred(thread, io, io), bool, thread_id, io, io).
-:- mode spawn_native_2(pred(in, di, uo) is cc_multi, out, out, di, uo)
+:- pred spawn_native_2(pred(thread, io, io), bool, thread_id, string, io, io).
+:- mode spawn_native_2(pred(in, di, uo) is cc_multi, out, out, out, di, uo)
     is cc_multi.
 
 :- pragma foreign_proc("C",
     spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
-        ThreadId::out, _IO0::di, _IO::uo),
+        ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    ThreadId = MR_make_string_const("""");
 #ifdef MR_THREAD_SAFE
-    Success = ML_create_exclusive_thread(Goal, &ThreadId);
+    Success = ML_create_exclusive_thread(Goal, &ThreadId, &ErrorMsg,
+        MR_ALLOC_ID);
 #else
     Success = MR_FALSE;
+    ThreadId = MR_make_string_const("""");
+    ErrorMsg = MR_make_string_const(
+        ""Cannot create native thread in this grade."");
 #endif
 ").
 
 :- pragma foreign_proc("C#",
     spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
-        ThreadId::out, _IO0::di, _IO::uo),
+        ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -353,15 +356,22 @@ spawn_native(Goal, Res, !IO) :-
         mt.setThreadId(ThreadId);
         thread.Start();
         Success = mr_bool.YES;
+        ErrorMsg = """";
     } catch (System.Threading.ThreadStartException e) {
         Success = mr_bool.NO;
         ThreadId = """";
+        ErrorMsg = e.Message;
+    } catch (System.SystemException e) {
+        // Seen with mono.
+        Success = mr_bool.NO;
+        ThreadId = """";
+        ErrorMsg = e.Message;
     }
 ").
 
 :- pragma foreign_proc("Java",
     spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
-        ThreadId::out, _IO0::di, _IO::uo),
+        ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -369,8 +379,20 @@ spawn_native(Goal, Res, !IO) :-
     Task task = new Task(rg);
     ThreadId = String.valueOf(task.getId());
     rg.setId(ThreadId);
-    JavaInternal.getThreadPool().submitExclusiveThread(task);
-    Success = bool.YES;
+    try {
+        JavaInternal.getThreadPool().submitExclusiveThread(task);
+        Success = bool.YES;
+        ErrorMsg = """";
+    } catch (java.lang.SecurityException e) {
+        Success = bool.NO;
+        ErrorMsg = e.getMessage();
+    } catch (java.lang.OutOfMemoryError e) {
+        Success = bool.NO;
+        ErrorMsg = e.getMessage();
+    }
+    if (Success == bool.NO && ErrorMsg == null) {
+        ErrorMsg = ""unable to create new native thread"";
+    }
 ").
 
 %---------------------------------------------------------------------------%
@@ -514,7 +536,8 @@ INIT mercury_sys_init_thread_modules
   #include  <pthread.h>
 
   static MR_bool ML_create_exclusive_thread(MR_Word goal,
-                    MR_String *thread_id);
+                    MR_String *thread_id, MR_String *error_msg,
+                    MR_AllocSiteInfoPtr alloc_id);
   static void   *ML_exclusive_thread_wrapper(void *arg);
 
   typedef struct ML_ThreadWrapperArgs ML_ThreadWrapperArgs;
@@ -538,12 +561,19 @@ INIT mercury_sys_init_thread_modules
 
 :- pragma foreign_code("C", "
 #if defined(MR_THREAD_SAFE)
-  static MR_bool ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id)
+  static MR_bool
+  ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id,
+        MR_String *error_msg, MR_AllocSiteInfoPtr alloc_id)
   {
     ML_ThreadWrapperArgs    args;
     pthread_t               thread;
     pthread_attr_t          attrs;
     int                     thread_err;
+    int                     thread_errno;
+    char                    errbuf[MR_STRERROR_BUF_SIZE];
+
+    *thread_id = MR_make_string_const("""");
+    *error_msg = MR_make_string_const("""");
 
     ML_incr_thread_barrier_count();
 
@@ -563,16 +593,18 @@ INIT mercury_sys_init_thread_modules
 
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    thread_err =
-        pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper, &args);
+    thread_err = pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper,
+        &args);
+    thread_errno = errno;
     pthread_attr_destroy(&attrs);
 
-    if (thread_err == 0) {
+    if (thread_err != 0) {
+        *error_msg = MR_make_string(alloc_id, ""pthread_create failed: %s"",
+          MR_strerror(thread_errno, errbuf, sizeof(errbuf)));
+    } else {
         MR_LOCK(&args.mutex, ""ML_create_exclusive_thread"");
         while (args.thread_state == ML_THREAD_NOT_READY) {
-            int cond_err;
-
-            cond_err = MR_COND_WAIT(&args.cond, &args.mutex,
+            int cond_err = MR_COND_WAIT(&args.cond, &args.mutex,
                 ""ML_create_exclusive_thread"");
             /* EINTR should not be possible but it has happened before. */
             if (cond_err != 0 && errno != EINTR) {
@@ -582,6 +614,11 @@ INIT mercury_sys_init_thread_modules
             }
         }
         MR_UNLOCK(&args.mutex, ""ML_create_exclusive_thread"");
+
+        if (args.thread_state == ML_THREAD_START_ERROR) {
+            *error_msg =
+                MR_make_string_const(""Error setting up engine for thread."");
+        }
     }
 
     pthread_cond_destroy(&args.cond);
