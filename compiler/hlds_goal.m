@@ -1014,8 +1014,9 @@
 
     % Information on how to construct the cell for a construction unification.
     % The `construct_statically' alternative is set by the mark_static_terms.m
-    % pass, and is currently only used for the MLDS back-end (for the LLDS
-    % back-end, the same optimization is handled by var_locn.m).
+    % pass, and is used for the MLDS back-end. For the LLDS back-end, the same
+    % optimization is handled by var_locn.m but mark_static_terms.m may be run
+    % to support the loop invariant hoisting pass.
     %
 :- type how_to_construct
     --->    construct_statically

@@ -647,7 +647,8 @@ generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
         ),
         get_const_struct_map(!.CI, ConstStructMap),
         map.lookup(ConstStructMap, ConstNum, typed_rval(Rval, _Type)),
-        assign_expr_to_var(LHSVar, Rval, Code, !CLD)
+        assign_const_to_var(LHSVar, Rval, !.CI, !CLD),
+        Code = empty
     ;
         ConsTag = tabling_info_tag(PredId, ProcId),
         expect(unify(RHSVarsWidths, []), $pred,

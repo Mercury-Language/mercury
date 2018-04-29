@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -844,14 +845,22 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
             LldsComment = "Allocating heap for ",
             RegionVarCode = empty,
             MaybeRegionRval = no
+        ;
+            HowToConstruct = construct_statically,
+            % construct_statically is not normally used in LLDS grades, but
+            % it may be set by mark_static_terms.m to support loop invariant
+            % hoisting. If we get here then have we missed an opportunity to
+            % construct a cell statically?
+            % Currently this is reachable when cell_is_constant fails on a
+            % dummy type argument (cell_arg_skip_one_word).
+            LldsComment = "Allocating heap (unnecessarily?) for ",
+            RegionVarCode = empty,
+            MaybeRegionRval = no
         ),
         assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
             StartOffset, ArgsCode, !VLI),
         SetupReuseCode = empty,
         MaybeReuse = no_llds_reuse
-    ;
-        HowToConstruct = construct_statically,
-        unexpected($pred, "construct_statically")
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsId, _NeedsUpdates0),
