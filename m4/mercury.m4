@@ -663,8 +663,19 @@ AC_SUBST([ERL])
 AC_DEFUN([MERCURY_GCC_VERSION], [
 AC_REQUIRE([AC_PROG_CC])
 
-mercury_cv_gcc_version=`$CC -dumpversion | tr . ' ' | {
-    read major minor patchlevel ignore
+# We expect that the major and minor version numbers will always be present.
+# MinGW-w64 may add a suffix "-win32" or "-posix" after the second or third
+# number that should be ignored.
+mercury_cv_gcc_version=`$CC -dumpversion | tr .- '  ' | {
+    read major minor third ignore
+    case $third in
+        [0-9]*)
+            patchlevel=$third
+            ;;
+        *)
+            patchlevel=
+            ;;
+    esac
     echo ${major:-u}_${minor:-u}_${patchlevel:-u}
     }`
 ])
