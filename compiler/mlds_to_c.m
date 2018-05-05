@@ -5158,10 +5158,55 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_rval(Opts, Y, !IO),
         io.write_string("))", !IO)
     ;
-        ( Op = int_add(_), OpStr = "+"
-        ; Op = int_sub(_), OpStr = "-"
-        ; Op = int_mul(_), OpStr = "*"
-        ; Op = int_div(_), OpStr = "/"
+        ( Op = int_add(IntType), OpStr = "+"
+        ; Op = int_sub(IntType), OpStr = "-"
+        ; Op = int_mul(IntType), OpStr = "*"
+        ),
+        (
+            (
+                IntType = int_type_int,
+                SignedType = "MR_Integer",
+                UnsignedType = "MR_Unsigned"
+            ;
+                IntType = int_type_int8,
+                SignedType = "int8_t",
+                UnsignedType = "uint8_t"
+            ;
+                IntType = int_type_int16,
+                SignedType = "int16_t",
+                UnsignedType = "uint16_t"
+            ;
+                IntType = int_type_int32,
+                SignedType = "int32_t",
+                UnsignedType = "uint32_t"
+            ;
+                IntType = int_type_int64,
+                SignedType = "int64_t",
+                UnsignedType = "uint64_t"
+            ),
+            io.format("(%s) ((%s) ", [s(SignedType), s(UnsignedType)], !IO),
+            mlds_output_rval_as_op_arg(Opts, X, !IO),
+            io.format(" %s (%s) ", [s(OpStr), s(UnsignedType)], !IO),
+            mlds_output_rval_as_op_arg(Opts, Y, !IO),
+            io.write_string(")", !IO)
+        ;
+            ( IntType = int_type_uint
+            ; IntType = int_type_uint8
+            ; IntType = int_type_uint16
+            ; IntType = int_type_uint32
+            ; IntType = int_type_uint64
+            ),
+            % We could treat X + (-const) specially, but we don't.
+            % The reason is documented in the equivalent code in
+            % llds_out_data.m.
+            io.write_string("(", !IO),
+            mlds_output_rval_as_op_arg(Opts, X, !IO),
+            io.format(" %s ", [s(OpStr)], !IO),
+            mlds_output_rval_as_op_arg(Opts, Y, !IO),
+            io.write_string(")", !IO)
+        )
+    ;
+        ( Op = int_div(_), OpStr = "/"
         ; Op = int_mod(_), OpStr = "%"
         ; Op = eq(_), OpStr = "=="
         ; Op = ne(_), OpStr = "!="

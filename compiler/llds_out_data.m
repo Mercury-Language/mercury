@@ -1044,7 +1044,53 @@ output_rval(Info, Rval, !IO) :-
             ( Op = int_add(IntType), OpStr = "+"
             ; Op = int_sub(IntType), OpStr = "-"
             ; Op = int_mul(IntType), OpStr = "*"
-            ; Op = int_div(IntType), OpStr = "/"
+            ),
+            (
+                (
+                    IntType = int_type_int,
+                    SignedType = "MR_Integer",
+                    UnsignedType = "MR_Unsigned"
+                ;
+                    IntType = int_type_int8,
+                    SignedType = "int8_t",
+                    UnsignedType = "uint8_t"
+                ;
+                    IntType = int_type_int16,
+                    SignedType = "int16_t",
+                    UnsignedType = "uint16_t"
+                ;
+                    IntType = int_type_int32,
+                    SignedType = "int32_t",
+                    UnsignedType = "uint32_t"
+                ;
+                    IntType = int_type_int64,
+                    SignedType = "int64_t",
+                    UnsignedType = "uint64_t"
+                ),
+                % We used to handle X + (-C) (for constant C) specially, by
+                % converting it to X - C, but we no longer do that since it
+                % would overflow in the case where C == min_int.
+                io.format("(%s) ((%s) ", [s(SignedType), s(UnsignedType)],
+                    !IO),
+                output_rval_as_type(Info, SubRvalA, lt_int(IntType), !IO),
+                io.format(" %s (%s) ", [s(OpStr), s(UnsignedType)], !IO),
+                output_rval_as_type(Info, SubRvalB, lt_int(IntType), !IO),
+                io.write_string(")", !IO)
+            ;
+                ( IntType = int_type_uint
+                ; IntType = int_type_uint8
+                ; IntType = int_type_uint16
+                ; IntType = int_type_uint32
+                ; IntType = int_type_uint64
+                ),
+                io.write_string("(", !IO),
+                output_rval_as_type(Info, SubRvalA, lt_int(IntType), !IO),
+                io.format(" %s ", [s(OpStr)], !IO),
+                output_rval_as_type(Info, SubRvalB, lt_int(IntType), !IO),
+                io.write_string(")", !IO)
+            )
+        ;
+            ( Op = int_div(IntType), OpStr = "/"
             ; Op = int_mod(IntType), OpStr = "%"
             ; Op = eq(IntType), OpStr = "=="
             ; Op = ne(IntType), OpStr = "!="
@@ -1097,23 +1143,6 @@ output_rval(Info, Rval, !IO) :-
                 io.write_string(" ", !IO),
                 output_rval(Info, SubRvalB, !IO),
                 io.write_string(")", !IO)
-        %   else if
-        %       XXX broken for C == minint
-        %       (since `NewC = 0 - C' overflows)
-        %       Op = (+),
-        %       SubRvalB = const(llconst_int(C)),
-        %       C < 0
-        %   then
-        %       NewOp = (-),
-        %       NewC = 0 - C,
-        %       NewSubRvalB = const(llconst_int(NewC)),
-        %       io.write_string("("),
-        %       output_rval(SubRvalA),
-        %       io.write_string(" "),
-        %       io.write_string(NewOpStr),
-        %       io.write_string(" "),
-        %       output_rval(NewSubRvalB),
-        %       io.write_string(")")
             else
                 io.write_string("(", !IO),
                 output_rval_as_type(Info, SubRvalA, lt_int(IntType), !IO),
