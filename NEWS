@@ -439,6 +439,8 @@ Changes to the Mercury standard library:
 
    - to_list/1     (synonym for the existing list/1 function)
    - to_rev_list/1 (synonym for the existing rev_list/1 function)
+   - rev_cord_list_to_cord/1 (similar to cord_list_to_cord/1)
+   - rev_cord_list_to_list/1 (similar to cord_list_to_list/1)
    - cons/3
    - snoc/3
    - find_first_match/3

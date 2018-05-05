@@ -111,9 +111,19 @@
     %
 :- func cord_list_to_cord(list(cord(T))) = cord(T).
 
+    % Reverse the given list (of cords), and then append together
+    % the resulting list of cords.
+    %
+:- func rev_cord_list_to_cord(list(cord(T))) = cord(T).
+
     % Append together a list of cords, and return the result as a list.
     %
 :- func cord_list_to_list(list(cord(T))) = list(T).
+
+    % Reverse the given list (of cords), and then append together
+    % the resulting list of cords, and return it as a list.
+    %
+:- func rev_cord_list_to_list(list(cord(T))) = list(T).
 
     %     head_tail(C0, X, C)  =>  list(C0) = [X | list(C)]
     % not head_tail(C0, _, _)  =>  C0 = empty
@@ -406,11 +416,17 @@ A ++ B = C :-
 cord_list_to_cord(Cords) = Cord :-
     % For tail recursion.
     list.reverse(Cords, RevCords),
-    Cord = list.foldl((++), RevCords, empty_cord).
+    Cord = rev_cord_list_to_cord(RevCords).
+
+rev_cord_list_to_cord(RevCords) = Cord :-
+    Cord = list.foldl(cord.(++), RevCords, empty_cord).
 
 cord_list_to_list(Cords) = List :-
     % For tail recursion.
     list.reverse(Cords, RevCords),
+    List = rev_cord_list_to_list(RevCords).
+
+rev_cord_list_to_list(RevCords) = List :-
     List = list.foldl(cord_list_to_list_2, RevCords, []).
 
 :- func cord_list_to_list_2(cord(T), list(T)) = list(T).
