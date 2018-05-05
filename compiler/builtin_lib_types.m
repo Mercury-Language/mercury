@@ -32,6 +32,8 @@
 :- func uint16_type = mer_type.
 :- func int32_type = mer_type.
 :- func uint32_type = mer_type.
+:- func int64_type = mer_type.
+:- func uint64_type = mer_type.
 :- func float_type = mer_type.
 :- func string_type = mer_type.
 :- func char_type = mer_type.
@@ -141,6 +143,10 @@ uint16_type = builtin_type(builtin_type_int(int_type_uint16)).
 int32_type = builtin_type(builtin_type_int(int_type_int32)).
 
 uint32_type = builtin_type(builtin_type_int(int_type_uint32)).
+
+int64_type = builtin_type(builtin_type_int(int_type_int64)).
+
+uint64_type = builtin_type(builtin_type_int(int_type_uint64)).
 
 float_type = builtin_type(builtin_type_float).
 

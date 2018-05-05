@@ -1028,8 +1028,8 @@ ml_must_box_field_type(ModuleInfo, Type, Width) :-
 :- func ml_must_box_field_type_category(type_ctor_category, bool, bool,
     arg_width) = bool.
 
-ml_must_box_field_type_category(CtorCat, UnboxedFloat, UnboxedInt64s,
-        Width) = MustBox :-
+ml_must_box_field_type_category(CtorCat, UnboxedFloat, UnboxedInt64s, Width)
+        = MustBox :-
     (
         CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
         (
@@ -1053,16 +1053,17 @@ ml_must_box_field_type_category(CtorCat, UnboxedFloat, UnboxedInt64s,
             ;
                 UnboxedInt64s = no,
                 (
-                    Width = full_word,
+                    Width = aw_full_word,
                     MustBox = yes
                 ;
-                    Width = double_word,
+                    Width = aw_double_word,
                     unexpected($pred, "double word for 64-bit integer")
                 ;
-                    ( Width = partial_word_first(_)
-                    ; Width = partial_word_shifted(_, _)
-                    ),
+                    Width = aw_partial_word,
                     unexpected($pred, "partial word for 64-bit integer")
+                ;
+                    Width = aw_none,
+                    unexpected($pred, "none for 64-bit integer")
                 )
             )
         )
@@ -1089,24 +1090,25 @@ ml_must_box_field_type_category(CtorCat, UnboxedFloat, UnboxedInt64s,
         ;
             UnboxedFloat = no,
             (
-                Width = full_word,
+                Width = aw_full_word,
                 MustBox = yes
             ;
-                Width = double_word,
+                Width = aw_double_word,
                 MustBox = no
             ;
-                ( Width = partial_word_first(_)
-                ; Width = partial_word_shifted(_, _)
-                ),
+                Width = aw_partial_word,
                 unexpected($pred, "partial word for float")
+            ;
+                Width = aw_none,
+                unexpected($pred, "none for float")
             )
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval,
-        BoxedRval, !GlobalData) :-
+ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval, BoxedRval,
+        !GlobalData) :-
     ( if
         ( MLDS_Type = mercury_type(type_variable(_, _), _, _)
         ; MLDS_Type = mlds_generic_type
@@ -1114,52 +1116,43 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval,
     then
         BoxedRval = Rval
     else if
-        % For the MLDS->C back-end, we need to handle constant floats
-        % specially. Boxed floats normally get heap allocated, whereas for
-        % other types boxing is just a cast (casts are OK in static
-        % initializers, but calls to malloc() are not).
-        ( MLDS_Type = mercury_type(builtin_type(builtin_type_float), _, _)
-        ; MLDS_Type = mlds_native_float_type
+        % For the MLDS->C back-end, we need to handle constant floats,
+        % int64s and uint64s specially. Boxed floats, int64s and uint64s
+        % normally get heap allocated, whereas for other types boxing
+        % is just a cast (casts are OK in static initializers, but calls
+        % to malloc() are not).
+        (
+            MLDS_Type = mlds_native_float_type,
+            ConstVarKind = mgcv_float
+        ;
+            MLDS_Type = mercury_type(builtin_type(BuiltinType), _, _),
+            (
+                BuiltinType = builtin_type_float,
+                ConstVarKind = mgcv_float
+            ;
+                BuiltinType = builtin_type_int(IntType),
+                ( IntType = int_type_int64, ConstVarKind = mgcv_int64
+                ; IntType = int_type_uint64, ConstVarKind = mgcv_uint64
+                )
+            )
         ),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.get_target(Globals, Target),
-        Target = target_c
+        ml_global_data_get_target(!.GlobalData, ml_target_c)
     then
-        HaveUnboxedFloats = ml_global_data_have_unboxed_floats(!.GlobalData),
         ( if
-            HaveUnboxedFloats = do_not_have_unboxed_floats,
+            (
+                ConstVarKind = mgcv_float,
+                ml_global_data_have_unboxed_floats(!.GlobalData,
+                    do_not_have_unboxed_floats)
+            ;
+                ( ConstVarKind = mgcv_int64
+                ; ConstVarKind = mgcv_uint64
+                ),
+                ml_global_data_have_unboxed_int64s(!.GlobalData,
+                    do_not_have_unboxed_int64s)
+            ),
             arg_width_is_double(Width, no)
         then
-            % Generate a local static constant for this float.
-            module_info_get_name(ModuleInfo, ModuleName),
-            MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-            Initializer = init_obj(Rval),
-            ml_gen_static_scalar_const_addr(MLDS_ModuleName, mgcv_float,
-                MLDS_Type, Initializer, Context, ConstAddrRval, !GlobalData),
-
-            % Return as the boxed rval the address of that constant,
-            % cast to mlds_generic_type.
-            BoxedRval = ml_unop(cast(mlds_generic_type), ConstAddrRval)
-        else
-            % This is not a real box, but a cast. The "box" is required as it
-            % may be further cast to pointer types.
-            BoxedRval = ml_unop(box(MLDS_Type), Rval)
-        )
-    else if
-        MLDS_Type = mercury_type(builtin_type(builtin_type_int(IntType)), _, _),
-        ( IntType = int_type_int64, ConstVarKind = mgcv_int64
-        ; IntType = int_type_uint64, ConstVarKind = mgcv_uint64
-        ),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.get_target(Globals, Target),
-        Target = target_c
-    then
-        HaveUnboxedInt64s = ml_global_data_have_unboxed_int64s(!.GlobalData),
-        ( if
-            HaveUnboxedInt64s = do_not_have_unboxed_int64s,
-            arg_width_is_double(Width, no)
-        then
-            % Generate a local static constant for this int64 / uint64.
+            % Generate a local static constant for this float, int64 or uint64.
             module_info_get_name(ModuleInfo, ModuleName),
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
             Initializer = init_obj(Rval),
@@ -1182,12 +1175,12 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval,
 
 arg_width_is_double(ArgWidth, DoubleWidth) :-
     (
-        ArgWidth = double_word,
+        ArgWidth = aw_double_word,
         DoubleWidth = yes
     ;
-        ( ArgWidth = full_word
-        ; ArgWidth = partial_word_first(_)
-        ; ArgWidth = partial_word_shifted(_, _)
+        ( ArgWidth = aw_full_word
+        ; ArgWidth = aw_partial_word
+        ; ArgWidth = aw_none
         ),
         DoubleWidth = no
     ).

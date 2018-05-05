@@ -3068,8 +3068,8 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
         MaybeExistConstraints = no_exist_constraints,
         OrigExistTVars = []
     ;
-        MaybeExistConstraints = exist_constraints(
-            cons_exist_constraints(OrigExistTVars, _))
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(OrigExistTVars, _, _, _)
     ),
     (
         AccessType = get,
@@ -3544,8 +3544,9 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
             ExistQVars0 = [],
             ExistProgConstraints = []
         ;
-            MaybeExistConstraints = exist_constraints(
-                cons_exist_constraints(ExistQVars0, ExistProgConstraints))
+            MaybeExistConstraints = exist_constraints(ExistConstraints),
+            ExistConstraints = cons_exist_constraints(ExistQVars0,
+                ExistProgConstraints, _, _)
         ),
         (
             Action = do_not_flip_constraints,

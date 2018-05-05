@@ -685,19 +685,19 @@ find_used_registers_rval(Rval, !Used) :-
         Rval = var(_),
         unexpected($pred, "var")
     ;
-        Rval = mkword(_, Rval1),
-        find_used_registers_rval(Rval1, !Used)
-    ;
         Rval = mkword_hole(_)
     ;
         Rval = const(_)
     ;
-        Rval = unop(_, Rval1),
-        find_used_registers_rval(Rval1, !Used)
+        ( Rval = mkword(_, SubRval)
+        ; Rval = cast(_, SubRval)
+        ; Rval = unop(_, SubRval)
+        ),
+        find_used_registers_rval(SubRval, !Used)
     ;
-        Rval = binop(_, Rval1, Rval2),
-        find_used_registers_rval(Rval1, !Used),
-        find_used_registers_rval(Rval2, !Used)
+        Rval = binop(_, SubRvalA, SubRvalB),
+        find_used_registers_rval(SubRvalA, !Used),
+        find_used_registers_rval(SubRvalB, !Used)
     ;
         Rval = mem_addr(MemRef),
         find_used_registers_mem_ref(MemRef, !Used)

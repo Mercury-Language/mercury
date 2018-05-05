@@ -151,11 +151,17 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     ClosureLayoutRval = ml_unop(box(ClosureLayoutType0), ClosureLayoutRval0),
     ClosureLayoutType = mlds_generic_type,
     ExtraArgRvalsTypes =
-        [rval_type_and_width(ClosureLayoutRval, ClosureLayoutType, full_word),
-        rval_type_and_width(WrapperFuncRval, WrapperFuncType, full_word),
-        rval_type_and_width(NumArgsRval, NumArgsType, full_word)],
+        [rval_type_and_width(ClosureLayoutRval, ClosureLayoutType,
+            apw_full(arg_only_offset(0), cell_offset(0))),
+        rval_type_and_width(WrapperFuncRval, WrapperFuncType,
+            apw_full(arg_only_offset(1), cell_offset(1))),
+        rval_type_and_width(NumArgsRval, NumArgsType,
+            apw_full(arg_only_offset(2), cell_offset(2)))],
 
-    % The pointer will not be tagged (i.e. the tag will be zero).
+    % MaybeConsId = no means that the pointer will not be tagged
+    % (i.e. its primary tag bits will be zero).
+    % XXX Passing a real cons_id would simplify the code of ml_gen_new_object,
+    % even if we created a cons_id specifically for this purpose.
     MaybeConsId = no,
     MaybeConsName = no,
     PTag = 0,

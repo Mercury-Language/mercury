@@ -436,7 +436,8 @@ constructor_to_xml(C, TVarset, Ctor) = Xml :-
         Constraints = []
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints)
+        ExistConstraints =
+            cons_exist_constraints(ExistQVars, Constraints, _, _)
     ),
     Id = attr("id", sym_name_and_arity_to_id("ctor", Name, Arity)),
     XmlName = name_to_xml(Name),

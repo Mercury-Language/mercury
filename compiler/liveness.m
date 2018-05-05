@@ -187,6 +187,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
@@ -1517,8 +1518,8 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
 
         % Attach the set of variables needed after the condition
         % as the resume point set of the condition.
-        CondResume = resume_point(CondResumeVars, CondResumeLocs),
-        goal_set_resume_point(CondResume, Cond1, Cond),
+        make_and_set_resume_point(LiveInfo, CondResumeVars, CondResumeLocs,
+            Cond1, Cond),
 
         require_equal(LivenessThen, LivenessElse, "if-then-else", LiveInfo),
 
@@ -1549,8 +1550,8 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
 
         % Attach the set of variables alive after the negation
         % as the resume point set of the negated goal.
-        Resume = resume_point(ResumeVars1, ResumeLocs),
-        goal_set_resume_point(Resume, SubGoal1, SubGoal),
+        make_and_set_resume_point(LiveInfo, ResumeVars1, ResumeLocs,
+            SubGoal1, SubGoal),
 
         !:Liveness = Liveness,
         GoalExpr = negation(SubGoal)
@@ -1703,8 +1704,7 @@ detect_resume_points_in_non_last_disjunct(Goal0, Goal, MayUseOrigOnly,
 
     % Attach the set of variables needed in the following disjuncts
     % as the resume point set of this disjunct.
-    Resume = resume_point(ResumeVars1, ResumeLocs),
-    goal_set_resume_point(Resume, Goal1, Goal),
+    make_and_set_resume_point(LiveInfo, ResumeVars1, ResumeLocs, Goal1, Goal),
 
     Goal = hlds_goal(_, GoalInfo),
     goal_info_get_pre_deaths(GoalInfo, PreDeaths),
@@ -1918,15 +1918,58 @@ maybe_complete_with_typeinfos(LiveInfo, Vars0, Vars) :-
         LiveInfo ^ li_vartypes, LiveInfo ^ li_rtti_varmaps, Vars).
 
 %-----------------------------------------------------------------------------%
+
+:- pred make_and_set_resume_point(live_info::in,
+    set_of_progvar::in, resume_locs::in, hlds_goal::in, hlds_goal::out) is det.
+
+make_and_set_resume_point(LiveInfo, ResumeVars0, ResumeLocs, Goal0, Goal) :-
+    AllowPackingDummies = LiveInfo ^ li_allow_packing_dummies,
+    (
+        AllowPackingDummies = no,
+        % Each dummy argument of a term is stored in a full word in the term's
+        % memory cell, and we can copy this word to and from a register
+        % or stack slot when creating and when restoring from resume points.
+        ResumeVars = ResumeVars0
+    ;
+        AllowPackingDummies = yes,
+        % Each dummy argument of a term is NOT stored ANYWHERE in the term's
+        % memory cell, which means that when the code that establishes
+        % the resume point tries to create the resume map (which maps
+        % each variable in ResumeVars0 to a register or stack slot),
+        % we have no source lval for the copying assignment.
+        %
+        % We could generalize the copying code to make it accept a source
+        % rval (such as the integer constant zero) as the source, but that
+        % would be suboptimal. Instead, we simply don't save the value
+        % of dummy variables, and create the value in var_locn.m out of
+        % thin air when (and if) it is ever needed.
+        ModuleInfo = LiveInfo ^ li_module_info,
+        VarTypes = LiveInfo ^ li_vartypes,
+        set_of_var.filter(var_is_not_dummy_type(ModuleInfo, VarTypes),
+            ResumeVars0, ResumeVars)
+    ),
+    Resume = resume_point(ResumeVars, ResumeLocs),
+    goal_set_resume_point(Resume, Goal0, Goal).
+
+:- pred var_is_not_dummy_type(module_info::in, vartypes::in, prog_var::in)
+    is semidet.
+
+var_is_not_dummy_type(ModuleInfo, VarTypes, Var) :-
+    lookup_var_type(VarTypes, Var, Type),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    IsDummy = is_not_dummy_type.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- type live_info
     --->    live_info(
-                li_module_info          :: module_info,
-                li_typeinfo_liveness    :: bool,
-                li_varset               :: prog_varset,
-                li_vartypes             :: vartypes,
-                li_rtti_varmaps         :: rtti_varmaps
+                li_module_info              :: module_info,
+                li_typeinfo_liveness        :: bool,
+                li_allow_packing_dummies    :: bool,
+                li_varset                   :: prog_varset,
+                li_vartypes                 :: vartypes,
+                li_rtti_varmaps             :: rtti_varmaps
             ).
 
 :- pred live_info_init(module_info::in, bool::in,
@@ -1934,7 +1977,10 @@ maybe_complete_with_typeinfos(LiveInfo, Vars0, Vars) :-
 
 live_info_init(ModuleInfo, TypeInfoLiveness, VarSet, VarTypes, RttiVarMaps,
         LiveInfo) :-
-    LiveInfo = live_info(ModuleInfo, TypeInfoLiveness,
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, allow_packing_dummies,
+        AllowPackingDummies),
+    LiveInfo = live_info(ModuleInfo, TypeInfoLiveness, AllowPackingDummies,
         VarSet, VarTypes, RttiVarMaps).
 
 %-----------------------------------------------------------------------------%

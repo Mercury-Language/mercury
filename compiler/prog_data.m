@@ -405,8 +405,20 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- type cons_exist_constraints
     --->    cons_exist_constraints(
                 % Neither list may be empty.
-                cons_exist          :: existq_tvars,
-                cons_constraints    :: list(prog_constraint)
+                cons_existq_tvars   :: existq_tvars,
+                cons_constraints    :: list(prog_constraint),
+
+                % The unconstrained type variables in cons_existq_tvars
+                % i.e. those tvars that do not appear in any constraint
+                % in cons_constraints. These are in the same order
+                % as they are in cons_existq_tvars.
+                cons_unconstrained  :: existq_tvars,
+
+                % The constrained type variables in cons_existq_tvars
+                % i.e. those tvars that appear in at least one constraint
+                % in cons_constraints. These are in the same order
+                % as they are in cons_existq_tvars.
+                cons_constrained    :: existq_tvars
             ).
 
 :- type constructor_arg
@@ -422,32 +434,165 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 prog_context        % The context of the name in the source.
             ).
 
-    % How much space does a constructor argument occupy in the underlying
-    % representation.
+    % The arg_pos_width type and its components specify how much space
+    % does a constructor argument occupy in the memory cell that
+    % represents a term with that constructor, and where.
     %
-    % `full_word' indicates that the argument occupies a single word.
-    % This is the usual case.
+    % `apw_full(ArgOnlyOffset)' indicates that the argument fully occupies
+    % a single word, and this word is ArgOnlyOffset words after the first word
+    % of the memory cell cell that starts storing visible arguments.
+    % This means that e.g. if the first argument takes up a full word,
+    % it will be at ArgOnlyOffset=0, even though the memory cell of the term
+    % may contain a remote secondary tag, and type_infos and/or typeclass_infos
+    % added by polymophism.m, before it. (This is the meaning of "arg only"
+    % offsets.)
     %
-    % `double_word' indicates that the argument occupies two words.
-    % Currently only double-precision floats may do so.
+    % `apw_double(ArgOnlyOffset)' indicates that the argument occupies
+    % two words, at arg only offsets ArgOnlyOffset and ArgOnlyOffset+1.
+    % Currently, by default only double-precision floats may take two words,
+    % but int64 and uint64 values may do so as well if the option
+    % allow_double_word_ints is set.
     %
-    % `partial_word_begin(Mask)' indicates that the argument is the first of
-    % two or more enumeration arguments which share the same word. The argument
-    % occupies the lowest bits in the word so no shifting is required. The
-    % other arguments can be masked out with the bit-mask `Mask'. The actual
-    % number of bits occupied by the argument is `int.log2(Mask + 1)'.
+    % `apw_partial_first(ArgOnlyOffset, NumBits, Mask, Fill)' indicates
+    % that the argument is the first of two or more sub-word-sized arguments
+    % which share the same word at the offset ArgOnlyOffset. This argument
+    % occupies the lowest NumBits bits in the word so no shifting is required
+    % to access it. The other arguments can be masked out with the bit-mask
+    % `Mask'. Mask will always have the least significant NumBits bits set
+    % and all other bits clear. Fill indicates whether the argument should be
+    % treated as an unsigned value (filled with zeroes) or as a signed value
+    % (having the rest of the word filled with the sign bit when extracted).
     %
-    % `partial_word_shifted(Shift, Mask)' indicates that the argument is one of
-    % the subsequent enumeration arguments which share the same word.
-    % `Shift' is the non-zero number of bits that the argument value is
-    % left-shifted by. `Mask' is the unshifted bit-mask to mask out other
-    % arguments.
+    % `apw_partial_shifted(ArgOnlyOffset, Shift, NumBits, Mask, Fill)'
+    % indicates that the argument is one of two or more sub-word-size arguments
+    % which share the same word at the offset ArgOnlyOffset, but it is
+    % *not* the first, so Shift will be the non-zero number of bits
+    % that the argument value is left-shifted by. The other fields have
+    % the same meaning as for apw_partial_first.
     %
+    % `apw_none_nowhere' and `apw_none_shifted(ArgOnlyOffset)' each represent
+    % an argument whose type is a dummy type.
+    %
+    % Given a run of one or more consecutive dummy arguments, all arguments
+    % in the run will have the same representation. If the run's immediate
+    % neighbours on both sides are sub-word-sized, then the arguments
+    % in the run will be all be apw_none_shifted; if either neighbouring
+    % argument is missing, or if either is full word sized or larger,
+    % then the arguments in the run will all be apw_none_nowhere.
+    %
+    % The EBNF grammar of possible sequences of argument representations is:
+    %
+    % constructor
+    %   :  integral_word_unit*
+    %
+    % integral_word_unit
+    %   :  apw_none_nowhere
+    %   |  apw_full
+    %   |  apw_double
+    %   |  apw_partial_first (apw_none_shifted* apw_partial_shifted)+
+    %
+    % We wrap function symbols around the integer arguments mentioned above
+    % to make the different integers harder to confuse with each other.
+
+:- type fill_kind
+    --->    fill_enum
+    ;       fill_int8
+    ;       fill_int16
+    ;       fill_int32
+    ;       fill_uint8
+    ;       fill_uint16
+    ;       fill_uint32.
+
+:- type double_word_kind
+    --->    dw_float
+    ;       dw_int64
+    ;       dw_uint64.
+
+:- type arg_only_offset
+    --->    arg_only_offset(int).
+            % The offset of the word from the first part of the memory cell
+            % that contains arguments. In other words, the first argument word
+            % is at offset 0, even if it is preceded in the memory cell
+            % by a remote secondary tag, or by type_infos and/or
+            % typeclass_infos added by polymorphism.
+            %
+            % The arg_only_offsets of any remote secondary tags and of any
+            % type_infos and/or typeclass_infos added by polymorphism are
+            % not meaningful. They can be anything, because the
+            % arg_only_offset is used only for the creation of RTTI data,
+            % and that task takes as its input the arg_only_offsets of
+            % only the actual arguments.
+            % XXX The RTTI data would probably be more useful to the runtime
+            % if it included cell_offsets instead of arg_only_offsets, since
+            % for most purposes, the runtime actually needs the cell_offset,
+            % and having it directly available would avoid the need to compute
+            % *at runtime* the cell_offset from the arg_only_offset, the
+            % absence/presence of a remote secondary tag and the number of
+            % type_infos and/or typeclass_infos. However, changing this
+            % would require nontrivial bootstrapping.
+
+:- type cell_offset
+    --->    cell_offset(int).
+            % The offset of the word from the start of the memory cell.
+            % If the cell starts with N words containing remote secondary
+            % tags, type_infos and/or typeclass_infos, then the first
+            % actual argument will be at cell_offset N.
+
+:- type arg_shift
+    --->    arg_shift(int).
+
+:- type arg_num_bits
+    --->    arg_num_bits(int).
+
+:- type arg_mask
+    --->    arg_mask(int).
+            % The mask is always set to be (2 ^ num_bits) - 1.
+
+:- type arg_pos_width
+    --->    apw_full(
+                awf_ao_offset       :: arg_only_offset,
+                awf_cell_offset     :: cell_offset
+            )
+    ;       apw_double(
+                awd_ao_offset_start :: arg_only_offset,
+                awd_cell_offset     :: cell_offset,
+                awd_kind            :: double_word_kind
+            )
+    ;       apw_partial_first(
+                % The word this starts may contain apw_partial_shifted
+                % *and* apw_none_shifted.
+
+                awpf_ao_offset      :: arg_only_offset,
+                awpf_cell_offset    :: cell_offset,
+                % The shift is implicitly zero.
+                awpf_num_bits       :: arg_num_bits,
+                awpf_mask           :: arg_mask,
+                awpf_fill           :: fill_kind
+            )
+    ;       apw_partial_shifted(
+                awps_ao_offset      :: arg_only_offset,
+                awps_cell_offset    :: cell_offset,
+                awps_shift          :: arg_shift,
+                awps_num_bits       :: arg_num_bits,
+                awps_mask           :: arg_mask,
+                awps_fill           :: fill_kind
+            )
+    ;       apw_none_shifted(
+                % Like apw_partial_shifted, but this arg is of a dummy type.
+                awns_ao_offset      :: arg_only_offset,
+                awns_cell_offset    :: cell_offset
+            )
+    ;       apw_none_nowhere.
+            % This arg is of a dummy type. It is not packed together
+            % with any other argument, and occupies no space at all.
+
 :- type arg_width
-    --->    full_word
-    ;       double_word
-    ;       partial_word_first(int)         % mask
-    ;       partial_word_shifted(int, int). % shift, mask
+    --->    aw_none
+    ;       aw_partial_word
+    ;       aw_full_word
+    ;       aw_double_word.
+
+:- func arg_pos_width_to_width_only(arg_pos_width) = arg_width.
 
     % The noncanon functor gives the user-defined unification and/or comparison
     % predicates for a noncanonical type, if they are known. The value
@@ -620,6 +765,25 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     tvarset::out, tvar_renaming::out) is det.
 
 :- implementation.
+
+arg_pos_width_to_width_only(ArgPosWidth) = ArgWidth :-
+    (
+        ArgPosWidth = apw_full(_, _),
+        ArgWidth = aw_full_word
+    ;
+        ArgPosWidth = apw_double(_, _, _),
+        ArgWidth = aw_double_word
+    ;
+        ( ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
+        ),
+        ArgWidth = aw_partial_word
+    ;
+        ( ArgPosWidth = apw_none_nowhere
+        ; ArgPosWidth = apw_none_shifted(_, _)
+        ),
+        ArgWidth = aw_none
+    ).
 
 is_builtin_type_sym_name(SymName) :-
     SymName = unqualified(Name),

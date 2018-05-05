@@ -978,54 +978,97 @@ gen_field_locns(_ModuleInfo, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
     ( if
         some [ArgInfo] (
             list.member(ArgInfo, ArgInfos),
-            ArgInfo ^ du_arg_width \= full_word
+            ArgInfo ^ du_arg_pos_width \= apw_full(_, _)
         )
     then
         HaveArgLocns = yes,
         RttiName = type_ctor_field_locns(Ordinal),
         RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-        list.map_foldl(gen_field_locn(RttiId), ArgInfos, ArgLocnInitializers,
-            -1, _Offset),
+        list.map(gen_field_locn(RttiId), ArgInfos, ArgLocnInitializers),
         Initializer = init_array(ArgLocnInitializers),
         rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData)
     else
         HaveArgLocns = no
     ).
 
-:- pred gen_field_locn(rtti_id::in, du_arg_info::in, mlds_initializer::out,
-    int::in, int::out) is det.
+:- pred gen_field_locn(rtti_id::in, du_arg_info::in, mlds_initializer::out)
+    is det.
 
-gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer, PrevOffset,
-        NextPrevOffset) :-
-    ArgWidth = ArgInfo ^ du_arg_width,
+gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer) :-
+    ArgPosWidth = ArgInfo ^ du_arg_pos_width,
+    % The meanings of the various special values of MR_arg_bits
+    % are documented next to the definition of the MR_DuArgLocn type
+    % in mercury_type_info.h.
     (
-        ArgWidth = full_word,
-        FieldOffset = PrevOffset + 1,
+        ArgPosWidth = apw_full(arg_only_offset(ArgOnlyOffset), _),
         Shift = 0,
-        Bits = 0,
-        NextPrevOffset = FieldOffset
+        % NumBits = 0 means the argument takes a full word.
+        NumBits = 0
     ;
-        ArgWidth = double_word,
-        FieldOffset = PrevOffset + 1,
+        ArgPosWidth = apw_double(arg_only_offset(ArgOnlyOffset), _,
+            DoubleWordKind),
         Shift = 0,
-        Bits = -1,
-        NextPrevOffset = FieldOffset + 1
+        % NumBits = -1, -2 and -3 mean the argument takes two words,
+        % containing a float, int64 and uint64 respectively.
+        (
+            DoubleWordKind = dw_float,
+            NumBits = -1
+        ;
+            DoubleWordKind = dw_int64,
+            NumBits = -2
+        ;
+            DoubleWordKind = dw_uint64,
+            NumBits = -3
+        )
     ;
-        ArgWidth = partial_word_first(Mask),
-        FieldOffset = PrevOffset + 1,
+        (
+            ArgPosWidth = apw_partial_first(arg_only_offset(ArgOnlyOffset),
+                _, arg_num_bits(NumBits0), _, Fill),
+            Shift = 0
+        ;
+            ArgPosWidth = apw_partial_shifted(arg_only_offset(ArgOnlyOffset),
+                _, arg_shift(Shift), arg_num_bits(NumBits0), _, Fill)
+        ),
+        % NumBits = -4 to -9 mean the argument takes part a word
+        % and contains an 8, 16 or 32 bit sized int or uint.
+        (
+            Fill = fill_enum,
+            NumBits = NumBits0
+        ;
+            Fill = fill_int8,
+            NumBits = -4
+        ;
+            Fill = fill_uint8,
+            NumBits = -5
+        ;
+            Fill = fill_int16,
+            NumBits = -6
+        ;
+            Fill = fill_uint16,
+            NumBits = -7
+        ;
+            Fill = fill_int32,
+            NumBits = -8
+        ;
+            Fill = fill_uint32,
+            NumBits = -9
+        )
+    ;
+        (
+            ArgPosWidth = apw_none_shifted(arg_only_offset(ArgOnlyOffset), _)
+        ;
+            ArgPosWidth = apw_none_nowhere,
+            ArgOnlyOffset = -1
+        ),
+        % NumBits = -10 means the argument is of a dummy type,
+        % and takes no space at all.
         Shift = 0,
-        int.log2(Mask + 1, Bits),
-        NextPrevOffset = FieldOffset
-    ;
-        ArgWidth = partial_word_shifted(Shift, Mask),
-        FieldOffset = PrevOffset,
-        int.log2(Mask + 1, Bits),
-        NextPrevOffset = FieldOffset
+        NumBits = -10
     ),
     ArgLocnInitializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        gen_init_int(FieldOffset),
+        gen_init_int(ArgOnlyOffset),
         gen_init_int(Shift),
-        gen_init_int(Bits)
+        gen_init_int(NumBits)
     ]).
 
 %-----------------------------------------------------------------------------%

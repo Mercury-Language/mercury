@@ -128,11 +128,10 @@ extern  MR_bool MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
                     const MR_DuArgLocn **arg_locn_ptr,
                     MR_noncanon_handling noncanon);
 
-// MR_named_arg_num() takes the address of a term, its type,
-// and an argument name. If the given term has an argument
-// with the given name, it succeeds and returns the argument
-// number (counted starting from 0) of the argument. If it
-// doesn't, it fails (i.e. returns MR_FALSE).
+// MR_named_arg_num() takes the address of a term, its type, and an argument
+// name. If the given term has an argument with the given name, it succeeds
+// and returns the argument number (counted starting from 0) of the argument.
+// If it doesn't, it fails (i.e. returns MR_FALSE).
 //
 // You need to wrap MR_{save/restore}_transient_hp() around
 // calls to this function.

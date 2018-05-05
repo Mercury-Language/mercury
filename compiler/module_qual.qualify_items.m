@@ -431,14 +431,16 @@ qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor, !Info, !Specs) :-
         MaybeExistConstraints0 = no_exist_constraints,
         MaybeExistConstraints = no_exist_constraints
     ;
-        MaybeExistConstraints0 = exist_constraints(
-            cons_exist_constraints(ExistQVars, Constraints0)),
+        MaybeExistConstraints0 = exist_constraints(ExistConstraints0),
+        ExistConstraints0 = cons_exist_constraints(ExistQVars, Constraints0,
+            UnconstrainedExistQVars, ConstrainedExistQVars),
         ConstraintErrorContext = mqcec_type_defn_constructor(Context,
             ContainingTypeCtor, FunctionSymbolName),
         qualify_prog_constraint_list(InInt, ConstraintErrorContext,
             Constraints0, Constraints, !Info, !Specs),
-        MaybeExistConstraints = exist_constraints(
-            cons_exist_constraints(ExistQVars, Constraints))
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
+            UnconstrainedExistQVars, ConstrainedExistQVars),
+        MaybeExistConstraints = exist_constraints(ExistConstraints)
     ),
     qualify_constructor_args(InInt, ContainingTypeCtor, FunctionSymbolName,
         0, Args0, Args, !Info, !Specs),

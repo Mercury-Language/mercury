@@ -565,17 +565,15 @@ write_ctor_repn(TVarSet, Indent, MaybePeriodNL, CtorRepn, !IO) :-
     io.write_string("        ", !IO),   % The same width as ArrowOrSemi.
     io.write_string("% tag: ", !IO),
     io.print(Tag, !IO),
-    AllFull = all_args_are_full_word(ArgRepns),
+    io.nl(!IO),
     (
-        AllFull = yes,
-        io.write_string(", unpacked args\n", !IO)
+        ArgRepns = []
     ;
-        AllFull = no,
-        io.nl(!IO),
+        ArgRepns = [_ | _],
         write_indent(Indent, !IO),
         io.write_string("        ", !IO),
         io.write_string("% packed arg widths:\n", !IO),
-        write_arg_widths(Indent, 1, 0, ArgRepns, !IO)
+        write_arg_widths(Indent, 1, ArgRepns, !IO)
     ).
 
 :- func discard_repn_from_ctor_arg(constructor_arg_repn) = constructor_arg.
@@ -583,17 +581,6 @@ write_ctor_repn(TVarSet, Indent, MaybePeriodNL, CtorRepn, !IO) :-
 discard_repn_from_ctor_arg(CtorArgRepn) = CtorArg :-
     CtorArgRepn = ctor_arg_repn(Name, Type, _Width, Context),
     CtorArg = ctor_arg(Name, Type, Context).
-
-:- func all_args_are_full_word(list(constructor_arg_repn)) = bool.
-
-all_args_are_full_word([]) = yes.
-all_args_are_full_word([Arg | Args]) = AllFull :-
-    Arg = ctor_arg_repn(_MaybeFieldName, _Type, Width, _Context),
-    ( if Width = full_word then
-        AllFull = all_args_are_full_word(Args)
-    else
-        AllFull = no
-    ).
 
     % write_arg_widths(Indent, CurArgNum, !.Offset, Args, !IO):
     %
@@ -606,36 +593,83 @@ all_args_are_full_word([Arg | Args]) = AllFull :-
     % partial_word_shifted), then its storage will be within the word
     % at offset !.Offset - 1.
     % 
-:- pred write_arg_widths(int::in, int::in, int::in,
+:- pred write_arg_widths(int::in, int::in,
     list(constructor_arg_repn)::in, io::di, io::uo) is det.
 
-write_arg_widths(_, _, _, [], !IO).
-write_arg_widths(Indent, CurArgNum, !.Offset, [Arg | Args], !IO) :-
-    Arg = ctor_arg_repn(_MaybeFieldName, _Type, Width, _Context),
+write_arg_widths(_, _, [], !IO).
+write_arg_widths(Indent, CurArgNum, [Arg | Args], !IO) :-
+    Arg = ctor_arg_repn(_MaybeFieldName, _Type, PosWidth, _Context),
     write_indent(Indent, !IO),
     io.write_string("        ", !IO),
     (
-        Width = full_word,
-        io.format("%% arg %d: full_word at offset %d\n",
-            [i(CurArgNum), i(!.Offset)], !IO),
-        !:Offset = !.Offset + 1
+        PosWidth = apw_full(ArgOnlyOffset, CellOffset),
+        ArgOnlyOffset = arg_only_offset(AOWordNum),
+        CellOffset = cell_offset(CellWordNum),
+        io.format("%% arg %d: full word at offset %d/%d\n",
+            [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !IO)
     ;
-        Width = double_word,
-        io.format("%% arg %d: double_word at offsets %d-%d\n",
-            [i(CurArgNum), i(!.Offset), i(!.Offset + 1)], !IO),
-        !:Offset = !.Offset + 2
+        PosWidth = apw_double(ArgOnlyOffset, CellOffset, DoubleWordKind),
+        ArgOnlyOffset = arg_only_offset(AOWordNum),
+        CellOffset = cell_offset(CellWordNum),
+        (
+            DoubleWordKind = dw_float,
+            KindStr = "float"
+        ;
+            DoubleWordKind = dw_int64,
+            KindStr = "int64"
+        ;
+            DoubleWordKind = dw_uint64,
+            KindStr = "uint64"
+        ),
+        io.format("%% arg %d: double word %s at offsets %d/%d to %d/%d\n",
+            [i(CurArgNum), s(KindStr), i(AOWordNum), i(CellWordNum),
+            i(AOWordNum+1), i(CellWordNum + 1)], !IO)
     ;
-        Width = partial_word_first(Mask),
-        io.format("%% arg %d: partial_word_first at offset %d, mask %x\n",
-            [i(CurArgNum), i(!.Offset), i(Mask)], !IO),
-        !:Offset = !.Offset + 1
+        PosWidth = apw_partial_first(ArgOnlyOffset, CellOffset,
+            NumBits, Mask, FillKind),
+        ArgOnlyOffset = arg_only_offset(AOWordNum),
+        CellOffset = cell_offset(CellWordNum),
+        NumBits = arg_num_bits(NumBitsInt),
+        Mask = arg_mask(MaskInt),
+        FillStr = fill_kind_to_string(FillKind),
+        io.format("%% arg %d: partial word first " ++
+            "at offset %d/%d, #bits %d, mask %x, %s\n",
+            [i(CurArgNum), i(AOWordNum), i(CellWordNum),
+            i(NumBitsInt), i(MaskInt), s(FillStr)], !IO)
     ;
-        Width = partial_word_shifted(Shift, Mask),
-        io.format("%% arg %d: partial_word_shifted " ++
-            "at offset %d, shift %d, mask %x\n",
-            [i(CurArgNum), i(!.Offset - 1), i(Shift), i(Mask)], !IO)
+        PosWidth = apw_partial_shifted(ArgOnlyOffset, CellOffset, Shift,
+            NumBits, Mask, FillKind),
+        ArgOnlyOffset = arg_only_offset(AOWordNum),
+        CellOffset = cell_offset(CellWordNum),
+        Shift = arg_shift(ShiftInt),
+        NumBits = arg_num_bits(NumBitsInt),
+        Mask = arg_mask(MaskInt),
+        FillStr = fill_kind_to_string(FillKind),
+        io.format("%% arg %d: partial word shifted " ++
+            "at offset %d/%d, shift %d, #bits %d, mask %x, %s\n",
+            [i(CurArgNum), i(AOWordNum), i(CellWordNum), i(ShiftInt),
+            i(NumBitsInt), i(MaskInt), s(FillStr)], !IO)
+    ;
+        PosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset),
+        ArgOnlyOffset = arg_only_offset(AOWordNum),
+        CellOffset = cell_offset(CellWordNum),
+        io.format("%% arg %d: none shifted at offset %d/%d\n",
+            [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !IO)
+    ;
+        PosWidth = apw_none_nowhere,
+        io.format("%% arg %d: none_nowhere\n", [i(CurArgNum)], !IO)
     ),
-    write_arg_widths(Indent, CurArgNum + 1, !.Offset, Args, !IO).
+    write_arg_widths(Indent, CurArgNum + 1, Args, !IO).
+
+:- func fill_kind_to_string(fill_kind) = string.
+
+fill_kind_to_string(fill_enum) = "fill enum".
+fill_kind_to_string(fill_int8) = "fill int8".
+fill_kind_to_string(fill_int16) = "fill int16".
+fill_kind_to_string(fill_int32) = "fill int32".
+fill_kind_to_string(fill_uint8) = "fill uint8".
+fill_kind_to_string(fill_uint16) = "fill uint16".
+fill_kind_to_string(fill_uint32) = "fill uint32".
 
 %-----------------------------------------------------------------------------%
 %

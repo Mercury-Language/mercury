@@ -216,6 +216,8 @@ vars_in_rval(mkword(_, Rval), Vars) :-
     vars_in_rval(Rval, Vars).
 vars_in_rval(mkword_hole(_Tag), []).
 vars_in_rval(const(_Conts), []).
+vars_in_rval(cast(_Type, Rval), Vars) :-
+    vars_in_rval(Rval, Vars).
 vars_in_rval(unop(_Unop, Rval), Vars) :-
     vars_in_rval(Rval, Vars).
 vars_in_rval(binop(_Binop, RvalA, RvalB), Vars) :-
@@ -542,6 +544,10 @@ transform_lval_in_rval(Transform, Rval0, Rval, !Acc) :-
         Rval0 = const(_Const),
         Rval = Rval0
     ;
+        Rval0 = cast(Type, Rval1),
+        transform_lval_in_rval(Transform, Rval1, Rval2, !Acc),
+        Rval = cast(Type, Rval2)
+    ;
         Rval0 = unop(Unop, Rval1),
         transform_lval_in_rval(Transform, Rval1, Rval2, !Acc),
         Rval = unop(Unop, Rval2)
@@ -674,6 +680,10 @@ substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
         ;
             Rval0 = const(_Const),
             Rval = Rval0
+        ;
+            Rval0 = cast(Type, Rval1),
+            substitute_rval_in_rval(OldRval, NewRval, Rval1, Rval2),
+            Rval = cast(Type, Rval2)
         ;
             Rval0 = unop(Unop, Rval1),
             substitute_rval_in_rval(OldRval, NewRval, Rval1, Rval2),
@@ -843,9 +853,6 @@ rval_addrs(Rval, CodeAddrs, DataIds) :-
         CodeAddrs = [],
         DataIds = []
     ;
-        Rval = mkword(_Tag, SubRval),
-        rval_addrs(SubRval, CodeAddrs, DataIds)
-    ;
         Rval = const(Const),
         ( if Const = llconst_code_addr(CodeAddress) then
             CodeAddrs = [CodeAddress],
@@ -858,8 +865,11 @@ rval_addrs(Rval, CodeAddrs, DataIds) :-
             DataIds = []
         )
     ;
-        Rval = unop(_Unop, SubRvalA),
-        rval_addrs(SubRvalA, CodeAddrs, DataIds)
+        ( Rval = mkword(_Tag, SubRval)
+        ; Rval = cast(_Type, SubRval)
+        ; Rval = unop(_Unop, SubRval)
+        ),
+        rval_addrs(SubRval, CodeAddrs, DataIds)
     ;
         Rval = binop(_Binop, SubRvalA, SubRvalB),
         rval_addrs(SubRvalA, CodeAddrsA, DataIdsA),

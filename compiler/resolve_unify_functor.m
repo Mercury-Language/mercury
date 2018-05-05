@@ -310,7 +310,7 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
         ConsExistQVars = []
     ;
         MaybeExistConstraints = exist_constraints(
-            cons_exist_constraints(ConsExistQVars, _))
+            cons_exist_constraints(ConsExistQVars, _, _, _))
     ),
     ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgs),
     % XXX is this correct?
@@ -483,8 +483,8 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
         ActualExistQVars = []
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints =
-            cons_exist_constraints(ConsExistQVars, ConsConstraints),
+        ExistConstraints = cons_exist_constraints(ConsExistQVars,
+            ConsConstraints, _UnconstrainedExistQVars, _ConstrainedExistQVars),
         % Rename apart the existentially quantified type variables.
         list.length(ConsExistQVars, NumExistQVars),
         pred_info_get_typevarset(!.PredInfo, TVarSet0),

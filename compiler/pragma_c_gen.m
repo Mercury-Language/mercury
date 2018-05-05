@@ -1008,11 +1008,19 @@ get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
     MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
     (
         MaybeName = yes(Name),
-        VarType = variable_type(CI, Var),
-        produce_variable(Var, FirstCode, Rval, CI, !CLD),
         get_module_info(CI, ModuleInfo),
-        MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),
+        VarType = variable_type(CI, Var),
         IsDummy = is_type_a_dummy(ModuleInfo, VarType),
+        (
+            IsDummy = is_not_dummy_type,
+            produce_variable(Var, FirstCode, Rval, CI, !CLD)
+        ;
+            IsDummy = is_dummy_type,
+            % The variable may not have a state.
+            FirstCode = empty,
+            Rval = const(llconst_int(0))
+        ),
+        MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),
         Input = foreign_proc_input(Name, VarType, IsDummy, OrigType, Rval,
             MaybeForeign, BoxPolicy),
         get_foreign_proc_input_vars(Args, Inputs1, CanOptAwayUnnamedArgs,

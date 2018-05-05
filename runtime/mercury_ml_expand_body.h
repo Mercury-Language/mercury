@@ -103,17 +103,18 @@
 // type_info argument passed to it) and must not be freed.
 //
 // Please note:
-//  These functions increment the heap pointer; however, on some platforms
-//  the register windows mean that transient Mercury registers may be lost.
-//  Before calling these functions, call MR_save_transient_registers(), and
-//  afterwards, call MR_restore_transient_registers().
 //
-//  If you change this code, you may also have to reflect your changes
-//  in runtime/mercury_deep_copy_body.h and runtime/mercury_tabling.c.
+// These functions increment the heap pointer; however, on some platforms
+// the register windows mean that transient Mercury registers may be lost.
+// Before calling these functions, call MR_save_transient_registers(), and
+// afterwards, call MR_restore_transient_registers().
 //
-//  In several places, we call MR_fatal_error to signal inappropriate
-//  deconstruction of noncanonical terms. These should all throw exceptions
-//  instead, but it is not yet safe to throw exceptions across the C interface.
+// If you change this code, you may also have to reflect your changes
+// in runtime/mercury_deep_copy_body.h and runtime/mercury_tabling.c.
+//
+// In several places, we call MR_fatal_error to signal inappropriate
+// deconstruction of noncanonical terms. These should all throw exceptions
+// instead, but it is not yet safe to throw exceptions across the C interface.
 
 #include <stdio.h>
 #include <inttypes.h>
@@ -527,7 +528,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         arg_locn = NULL;
                         slot = extra_args + chosen;
                     } else {
-                        arg_locn = &functor_desc->MR_du_functor_arg_locns[chosen];
+                        arg_locn =
+                            &functor_desc->MR_du_functor_arg_locns[chosen];
                         slot = extra_args + arg_locn->MR_arg_offset;
                     }
 

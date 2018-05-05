@@ -688,7 +688,7 @@ output_record_rval_decls_tab(Info, Rval, !DeclSet, !IO) :-
     % before and after this call.
     %
     % Every time we emit a declaration for a symbol, we insert it into the
-    % set of symbols we've already declared. That way, we avoid generating
+    % set of symbols we have already declared. That way, we avoid generating
     % the same symbol twice, which would cause an error in the C code.
     %
 :- pred output_record_rval_decls_format(llds_out_info::in, rval::in,
@@ -704,10 +704,6 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
     ;
         Rval = var(_),
         unexpected($file, $pred, "var")
-    ;
-        Rval = mkword(_, SubRval),
-        output_record_rval_decls_format(Info, SubRval,
-            FirstIndent, LaterIndent, !N, !DeclSet, !IO)
     ;
         Rval = mkword_hole(_)
     ;
@@ -816,8 +812,11 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             )
         )
     ;
-        Rval = unop(_, SubRvalA),
-        output_record_rval_decls_format(Info, SubRvalA,
+        ( Rval = mkword(_, SubRval)
+        ; Rval = cast(_, SubRval)
+        ; Rval = unop(_, SubRval)
+        ),
+        output_record_rval_decls_format(Info, SubRval,
             FirstIndent, LaterIndent, !N, !DeclSet, !IO)
     ;
         Rval = binop(Op, SubRvalA, SubRvalB),
@@ -944,12 +943,19 @@ output_rval(Info, Rval, !IO) :-
         Rval = const(Const),
         output_rval_const(Info, Const, !IO)
     ;
-        Rval = unop(UnaryOp, SubRvalA),
+        Rval = cast(Type, SubRval),
+        io.write_string("((", !IO),
+        output_llds_type(Type, !IO),
+        io.write_string(") ", !IO),
+        output_rval(Info, SubRval, !IO),
+        io.write_string(")", !IO)
+    ;
+        Rval = unop(UnaryOp, SubRval),
         c_util.unary_prefix_op(UnaryOp, OpString),
         io.write_string(OpString, !IO),
         io.write_string("(", !IO),
         llds.unop_arg_type(UnaryOp, ArgType),
-        output_rval_as_type(Info, SubRvalA, ArgType, !IO),
+        output_rval_as_type(Info, SubRval, ArgType, !IO),
         io.write_string(")", !IO)
     ;
         Rval = binop(Op, SubRvalA, SubRvalB),
@@ -1560,13 +1566,15 @@ output_rval_as_type(Info, Rval, DesiredType, !IO) :-
                 io.write_int(N, !IO)
             else
                 % Cast value to desired type.
+                io.write_string("(", !IO),
                 output_llds_type_cast(DesiredType, !IO),
-                output_rval(Info, Rval, !IO)
+                output_rval(Info, Rval, !IO),
+                io.write_string(")", !IO)
             )
         )
     ).
 
-    % Output a float rval, converted to type `MR_Word *'
+    % Output a float rval, converted to type `MR_Word *'.
     %
 :- pred output_float_rval_as_data_ptr(llds_out_info::in, rval::in,
     io::di, io::uo) is det.
@@ -1574,7 +1582,7 @@ output_rval_as_type(Info, Rval, DesiredType, !IO) :-
 output_float_rval_as_data_ptr(Info, Rval, !IO) :-
     output_float_rval(Info, Rval, yes, !IO).
 
-    % Output a float rval, converted to type `MR_Word'
+    % Output a float rval, converted to type `MR_Word'.
     %
 :- pred output_float_rval_as_word(llds_out_info::in, rval::in,
     io::di, io::uo) is det.
@@ -1582,13 +1590,13 @@ output_float_rval_as_data_ptr(Info, Rval, !IO) :-
 output_float_rval_as_word(Info, Rval, !IO) :-
     output_float_rval(Info, Rval, no, !IO).
 
-    % Output a float rval, converted to type `MR_Word' or `MR_Word *'
+    % Output a float rval, converted to type `MR_Word' or `MR_Word *'.
     %
 :- pred output_float_rval(llds_out_info::in, rval::in, bool::in,
     io::di, io::uo) is det.
 
 output_float_rval(Info, Rval, IsPtr, !IO) :-
-    % For float constant expressions, if we're using boxed floats
+    % For float constant expressions, if we are using boxed floats
     % and --static-ground-floats is enabled, we just refer to the static const
     % which we declared earlier.
     UnboxFloat = Info ^ lout_unboxed_float,
@@ -1642,7 +1650,7 @@ output_int64_rval_as_word(Info, Rval, !IO) :-
     io::di, io::uo) is det.
 
 output_int64_rval(Info, Rval, IsPtr, !IO) :-
-    % For int64 constants, if we're using boxed 64-bit integers and
+    % For int64 constants, if we are using boxed 64-bit integers and
     % --static-ground-int64s is enabled, we just refer to the static const
     % which we declared earlier.
     UnboxInt64s = Info ^ lout_unboxed_int64s,
@@ -1674,7 +1682,7 @@ output_int64_rval(Info, Rval, IsPtr, !IO) :-
         io.write_string(")", !IO)
     ).
 
-    % Output a uint64 rval, converted to type `MR_Word *'
+    % Output a uint64 rval, converted to type `MR_Word *'.
     %
 :- pred output_uint64_rval_as_data_ptr(llds_out_info::in, rval::in,
     io::di, io::uo) is det.
@@ -1682,7 +1690,7 @@ output_int64_rval(Info, Rval, IsPtr, !IO) :-
 output_uint64_rval_as_data_ptr(Info, Rval, !IO) :-
     output_uint64_rval(Info, Rval, yes, !IO).
 
-    % Output a uint64 rval, converted to type `MR_Word'
+    % Output a uint64 rval, converted to type `MR_Word'.
     %
 :- pred output_uint64_rval_as_word(llds_out_info::in, rval::in,
     io::di, io::uo) is det.
@@ -1690,13 +1698,13 @@ output_uint64_rval_as_data_ptr(Info, Rval, !IO) :-
 output_uint64_rval_as_word(Info, Rval, !IO) :-
     output_uint64_rval(Info, Rval, no, !IO).
 
-    % Output a uint64 rval, converted to type `MR_Word' or `MR_Word *'
+    % Output a uint64 rval, converted to type `MR_Word' or `MR_Word *'.
     %
 :- pred output_uint64_rval(llds_out_info::in, rval::in, bool::in,
     io::di, io::uo) is det.
 
 output_uint64_rval(Info, Rval, IsPtr, !IO) :-
-    % For uint64 constants, if we're using boxed 64-bit integers and
+    % For uint64 constants, if we are using boxed 64-bit integers and
     % --static-ground-int64s is enabled, we just refer to the static const
     % which we declared earlier.
     UnboxInt64s = Info ^ lout_unboxed_int64s,

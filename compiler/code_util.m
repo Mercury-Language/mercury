@@ -396,6 +396,7 @@ lvals_in_rval(var(_)) = [].
 lvals_in_rval(mkword(_, Rval)) = lvals_in_rval(Rval).
 lvals_in_rval(mkword_hole(_)) = [].
 lvals_in_rval(const(_)) = [].
+lvals_in_rval(cast(_, Rval)) = lvals_in_rval(Rval).
 lvals_in_rval(unop(_, Rval)) = lvals_in_rval(Rval).
 lvals_in_rval(binop(_, Rval1, Rval2)) =
     lvals_in_rval(Rval1) ++ lvals_in_rval(Rval2).

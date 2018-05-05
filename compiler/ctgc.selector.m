@@ -401,7 +401,7 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
             ExistQVars = []
         ;
             MaybeExistConstraints = exist_constraints(
-                cons_exist_constraints(ExistQVars, _))
+                cons_exist_constraints(ExistQVars, _, _, _))
         ),
         SubType = list.det_index1(ArgTypes, Position),
         not (

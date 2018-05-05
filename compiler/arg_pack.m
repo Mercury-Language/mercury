@@ -26,7 +26,7 @@
     % Return the number of distinct words that would be required to hold the
     % list of arguments.
     %
-:- func count_distinct_words(list(arg_width)) = int.
+:- func count_distinct_words(list(arg_pos_width)) = int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -40,17 +40,22 @@
 count_distinct_words([]) = 0.
 count_distinct_words([H | T]) = Words :-
     (
-        H = full_word,
-        Words = 1 + count_distinct_words(T)
-    ;
-        H = double_word,
-        Words = 2 + count_distinct_words(T)
-    ;
-        H = partial_word_first(_),
-        Words = 1 + count_distinct_words(T)
-    ;
-        H = partial_word_shifted(_, _),
+        H = apw_none_nowhere,
         Words = count_distinct_words(T)
+    ;
+        ( H = apw_partial_shifted(_, _, _, _, _, _)
+        ; H = apw_none_shifted(_, _)
+        ),
+        % This word was counted when we saw apw_partial_first.
+        Words = count_distinct_words(T)
+    ;
+        ( H = apw_full(_, _)
+        ; H = apw_partial_first(_, _, _, _, _)
+        ),
+        Words = 1 + count_distinct_words(T)
+    ;
+        H = apw_double(_, _, _),
+        Words = 2 + count_distinct_words(T)
     ).
 
 %-----------------------------------------------------------------------------%

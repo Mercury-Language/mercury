@@ -88,14 +88,15 @@
     % Initialize the ml_global_data structure to a value that represents
     % no global data structures known yet.
     %
-:- func ml_global_data_init(use_common_cells, have_unboxed_floats,
-    have_unboxed_int64s) = ml_global_data.
+:- func ml_global_data_init(mlds_target_lang, use_common_cells,
+    have_unboxed_floats, have_unboxed_int64s) = ml_global_data.
 
-:- func ml_global_data_have_unboxed_floats(ml_global_data) =
-    have_unboxed_floats.
-
-:- func ml_global_data_have_unboxed_int64s(ml_global_data) =
-    have_unboxed_int64s.
+:- pred ml_global_data_get_target(ml_global_data::in,
+    mlds_target_lang::out) is det.
+:- pred ml_global_data_have_unboxed_floats(ml_global_data::in,
+    have_unboxed_floats::out) is det.
+:- pred ml_global_data_have_unboxed_int64s(ml_global_data::in,
+    have_unboxed_int64s::out) is det.
 
     % ml_global_data_get_all_global_defns(GlobalData,
     %     ScalarCellGroupMap, VectorCellGroupMap, AllocIds,
@@ -242,6 +243,7 @@
 :- type ml_global_data
     --->    ml_global_data(
                 mgd_pdup_rval_type_map          :: ml_rtti_rval_type_map,
+                mgd_target                      :: mlds_target_lang,
                 mgd_use_common_cells            :: use_common_cells,
                 mgd_have_unboxed_floats         :: have_unboxed_floats,
                 mgd_have_unboxed_int64s         :: have_unboxed_int64s,
@@ -265,23 +267,18 @@
 
 %---------------------------------------------------------------------------%
 
-ml_global_data_init(UseCommonCells, HaveUnboxedFloats, HaveUnboxedInt64s) =
-        GlobalData :-
-    GlobalData = ml_global_data(map.init, UseCommonCells, HaveUnboxedFloats,
-        HaveUnboxedInt64s, counter.init(1), cord.init, cord.init, cord.init,
+ml_global_data_init(Target, UseCommonCells,
+        HaveUnboxedFloats, HaveUnboxedInt64s) = GlobalData :-
+    GlobalData = ml_global_data(map.init, Target, UseCommonCells,
+        HaveUnboxedFloats, HaveUnboxedInt64s, counter.init(1),
+        cord.init, cord.init, cord.init,
         counter.init(1), map.init, map.init, map.init, map.init,
         counter.init(0), bimap.init).
-
-ml_global_data_have_unboxed_floats(GlobalData) =
-    GlobalData ^ mgd_have_unboxed_floats.
-
-ml_global_data_have_unboxed_int64s(GlobalData) =
-    GlobalData ^ mgd_have_unboxed_int64s.
 
 ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, AllocIds,
         RttiDefns, CellDefns, ClosureWrapperFuncDefns) :-
-    GlobalData = ml_global_data(_PDupRvalTypeMap, _UseCommonCells,
+    GlobalData = ml_global_data(_PDupRvalTypeMap, _Target, _UseCommonCells,
         _HaveUnboxedFloats, _HaveUnboxedInt64s, _ConstCounter,
         CellDefnsCord, RttiDefnsCord, ClosureWrapperFuncDefnsCord,
         _TypeNumCounter,
@@ -305,15 +302,12 @@ ml_global_data_get_all_global_defns(GlobalData,
 :- pred ml_global_data_get_rtti_defns(ml_global_data::in,
     cord(mlds_global_var_defn)::out) is det.
 
-:- pred ml_global_data_set_pdup_rval_type_map(ml_rtti_rval_type_map::in,
-    ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_set_const_counter(counter::in,
-    ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_set_cell_defns(cord(mlds_global_var_defn)::in,
-    ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_set_rtti_defns(cord(mlds_global_var_defn)::in,
-    ml_global_data::in, ml_global_data::out) is det.
-
+ml_global_data_get_target(GlobalData, X) :-
+    X = GlobalData ^ mgd_target.
+ml_global_data_have_unboxed_floats(GlobalData, X) :-
+    X = GlobalData ^ mgd_have_unboxed_floats.
+ml_global_data_have_unboxed_int64s(GlobalData, X) :-
+    X = GlobalData ^ mgd_have_unboxed_int64s.
 ml_global_data_get_pdup_rval_type_map(GlobalData, X) :-
     X = GlobalData ^ mgd_pdup_rval_type_map.
 ml_global_data_get_const_counter(GlobalData, X) :-
@@ -324,6 +318,15 @@ ml_global_data_get_rtti_defns(GlobalData, X) :-
     X = GlobalData ^ mgd_rtti_defns.
 ml_global_data_get_closure_wrapper_func_defns(GlobalData, X) :-
     X = GlobalData ^ mgd_closure_wrapper_funcs.
+
+:- pred ml_global_data_set_pdup_rval_type_map(ml_rtti_rval_type_map::in,
+    ml_global_data::in, ml_global_data::out) is det.
+:- pred ml_global_data_set_const_counter(counter::in,
+    ml_global_data::in, ml_global_data::out) is det.
+:- pred ml_global_data_set_cell_defns(cord(mlds_global_var_defn)::in,
+    ml_global_data::in, ml_global_data::out) is det.
+:- pred ml_global_data_set_rtti_defns(cord(mlds_global_var_defn)::in,
+    ml_global_data::in, ml_global_data::out) is det.
 
 ml_global_data_set_pdup_rval_type_map(X, !GlobalData) :-
     !GlobalData ^ mgd_pdup_rval_type_map := X.
@@ -483,6 +486,7 @@ ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
         ConstType0 = mlds_array_type(mlds_generic_type),
         Initializer0 = init_array(Inits0),
         list.map2(ml_specialize_generic_array_init, Inits0, Inits, Types),
+        % XXX ARG_PACK Specialize int64 and uint64 elements as well.
         list.member(mlds_native_float_type, Types)
     then
         ConstType = mlds_mostly_generic_array_type(Types),
@@ -498,6 +502,7 @@ ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
 ml_specialize_generic_array_init(Init0, Init, Type) :-
     ( if
         Init0 = init_obj(Rval0),
+        % XXX ARG_PACK Specialize int64 and uint64 elements as well.
         ml_specialize_generic_array_rval(Rval0, Rval)
     then
         Init = init_obj(Rval),
@@ -515,16 +520,17 @@ ml_specialize_generic_array_rval(!Rval) :-
         !.Rval = ml_const(mlconst_float(_))
     ;
         !.Rval = ml_unop(Op, SubRval),
+        require_complete_switch [Op]
         (
-            Op = box(Type)
-        ;
-            Op = unbox(Type)
-        ;
-            Op = cast(Type)
+            ( Op = box(Type)
+            ; Op = unbox(Type)
+            ; Op = cast(Type)
+            )
         ;
             Op = std_unop(_),
             fail
         ),
+        % XXX ARG_PACK Specialize for int64s and uint64s as well.
         (
             Type = mlds_native_float_type,
             !:Rval = SubRval

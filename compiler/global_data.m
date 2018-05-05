@@ -1365,6 +1365,10 @@ remap_rval(Remap, Rval0, Rval) :-
         remap_rval_const(Remap, Const0, Const),
         Rval = const(Const)
     ;
+        Rval0 = cast(Type, A0),
+        remap_rval(Remap, A0, A),
+        Rval = cast(Type, A)
+    ;
         Rval0 = unop(Unop, A0),
         remap_rval(Remap, A0, A),
         Rval = unop(Unop, A)

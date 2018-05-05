@@ -1872,6 +1872,9 @@
                 mlds_func_signature
             ).
 
+    % XXX Now that the LLDS also has a cast operation, it may be simpler
+    % to delete this type, and make box, unbox, cast and (std) unop be
+    % distinct function symbols in the *mlds_rval* type.
 :- type mlds_unary_op
     --->    box(mlds_type)
             % box(MLDSType); convert from MLDSType to mlds_generic_type,

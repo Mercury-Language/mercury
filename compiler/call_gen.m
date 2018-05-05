@@ -787,6 +787,7 @@ generate_builtin_arg(Rval0, Rval, Code, CI, !CLD) :-
         produce_variable(Var, Code, Rval, CI, !CLD)
     ;
         ( Rval0 = const(_)
+        ; Rval0 = cast(_, _)
         ; Rval0 = unop(_, _)
         ; Rval0 = binop(_, _, _)
         ; Rval0 = mkword(_, _)

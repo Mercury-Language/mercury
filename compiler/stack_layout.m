@@ -2221,8 +2221,9 @@ represent_locn_or_const_as_int_rval(Params, LvalOrConst, Rval, Type,
             Type, !StaticCellInfo),
         Rval = mkword(Tag, BaseRval)
     ;
-        ( LvalOrConst = binop(_, _, _)
+        ( LvalOrConst = cast(_, _)
         ; LvalOrConst = unop(_, _)
+        ; LvalOrConst = binop(_, _, _)
         ; LvalOrConst = mem_addr(_)
         ; LvalOrConst = var(_)
         ; LvalOrConst = mkword_hole(_)

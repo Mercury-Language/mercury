@@ -665,11 +665,12 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
         ArgNum2 = ArgNum0
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints =
-            cons_exist_constraints(ExistQTVars, Constraints),
+        ExistConstraints = cons_exist_constraints(ExistQTVars, Constraints,
+            UnconstrainedTVarsEC, _ConstrainedTVars),
         constraint_list_get_tvars(Constraints, ConstrainedTVars),
-        list.delete_elems(ExistQTVars, ConstrainedTVars,
-            UnconstrainedTVars),
+        list.delete_elems(ExistQTVars, ConstrainedTVars, UnconstrainedTVars),
+        expect(unify(UnconstrainedTVars, UnconstrainedTVarsEC), $pred,
+            "UnconstrainedTVars != UnconstrainedTVarsEC"),
         list.map2_foldl(
             ml_gen_hld_du_ctor_type_info_field(ModuleInfo, Context),
             UnconstrainedTVars, TypeInfoFields, TypeInfoFieldInfos,
@@ -875,7 +876,7 @@ gen_init_tag(Target, CtorClassId, SecondaryTagClassId, TagVal, Context)
 ml_gen_hld_du_ctor_typeclass_info_field(ModuleInfo, Context, Constraint,
         Defn, FieldInfo, !ArgNum) :-
     polymorphism.build_typeclass_info_type(Constraint, Type),
-    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, no, Type, full_word,
+    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, no, Type, aw_full_word,
         Defn, FieldInfo, !ArgNum).
 
 :- pred ml_gen_hld_du_ctor_type_info_field(module_info::in,
@@ -889,7 +890,7 @@ ml_gen_hld_du_ctor_type_info_field(ModuleInfo, Context, TypeVar,
     % and won't be used in any other way.
     Kind = kind_star,
     polymorphism.build_type_info_type(type_variable(TypeVar, Kind), Type),
-    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, no, Type, full_word,
+    ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, no, Type, aw_full_word,
         Defn, FieldInfo, !ArgNum).
 
 :- pred ml_gen_hld_du_ctor_field(module_info::in, prog_context::in,
@@ -898,7 +899,8 @@ ml_gen_hld_du_ctor_type_info_field(ModuleInfo, Context, TypeVar,
 
 ml_gen_hld_du_ctor_field(ModuleInfo, Context, ArgRepn, Defn, FieldInfo,
         !ArgNum) :-
-    ArgRepn = ctor_arg_repn(MaybeFieldName, Type, Width, _Context),
+    ArgRepn = ctor_arg_repn(MaybeFieldName, Type, PosWidth, _Context),
+    Width = arg_pos_width_to_width_only(PosWidth),
     ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, MaybeFieldName,
         Type, Width, Defn, FieldInfo, !ArgNum).
 
@@ -1027,6 +1029,7 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         ; Tag = shared_remote_tag(_, _)
         ; Tag = shared_local_tag(_, _)
         ; Tag = no_tag
+        ; Tag = dummy_tag
         ),
         UsesBaseClass = tag_does_not_use_base_class
     ).
@@ -1096,6 +1099,9 @@ enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval) :-
     ;
         ConsTag = foreign_tag(Lang, String),
         ConstRval = ml_const(mlconst_foreign(Lang, String, MLDS_Type))
+    ;
+        ConsTag = dummy_tag,
+        ConstRval = ml_const(mlconst_enum(0, MLDS_Type))
     ;
         ( ConsTag = string_tag(_)
         ; ConsTag = float_tag(_)

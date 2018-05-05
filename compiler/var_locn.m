@@ -573,29 +573,35 @@ recursive_using_vars_dead_and_ok_to_delete([Var | Vars], VarStateMap,
 var_locn_assign_var_to_var(Var, OldVar, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
-    map.lookup(VarStateMap0, OldVar, OldState0),
-    OldState0 = var_state(Lvals, MaybeConstRval, MaybeExprRval,
-        Using0, DeadOrAlive),
-    (
-        MaybeExprRval = yes(_),
-        State = var_state(Lvals, MaybeConstRval, yes(var(OldVar)),
-            set_of_var.init, doa_alive),
-        set_of_var.insert(Var, Using0, Using),
-        OldState = var_state(Lvals, MaybeConstRval, MaybeExprRval,
-            Using, DeadOrAlive),
-        map.det_update(OldVar, OldState, VarStateMap0, VarStateMap1)
-    ;
-        MaybeExprRval = no,
-        State = var_state(Lvals, MaybeConstRval, no, set_of_var.init,
-            doa_alive),
-        VarStateMap1 = VarStateMap0
-    ),
-    map.det_insert(Var, State, VarStateMap1, VarStateMap),
-    var_locn_set_var_state_map(VarStateMap, !VLI),
+    ( if map.search(VarStateMap0, OldVar, OldState0) then
+        OldState0 = var_state(Lvals, MaybeConstRval, MaybeExprRval,
+            Using0, DeadOrAlive),
+        (
+            MaybeExprRval = yes(_),
+            State = var_state(Lvals, MaybeConstRval, yes(var(OldVar)),
+                set_of_var.init, doa_alive),
+            set_of_var.insert(Var, Using0, Using),
+            OldState = var_state(Lvals, MaybeConstRval, MaybeExprRval,
+                Using, DeadOrAlive),
+            map.det_update(OldVar, OldState, VarStateMap0, VarStateMap1)
+        ;
+            MaybeExprRval = no,
+            State = var_state(Lvals, MaybeConstRval, no, set_of_var.init,
+                doa_alive),
+            VarStateMap1 = VarStateMap0
+        ),
+        map.det_insert(Var, State, VarStateMap1, VarStateMap),
+        var_locn_set_var_state_map(VarStateMap, !VLI),
 
-    var_locn_get_loc_var_map(!.VLI, LocVarMap0),
-    make_var_depend_on_lvals_roots(Var, Lvals, LocVarMap0, LocVarMap),
-    var_locn_set_loc_var_map(LocVarMap, !VLI).
+        var_locn_get_loc_var_map(!.VLI, LocVarMap0),
+        make_var_depend_on_lvals_roots(Var, Lvals, LocVarMap0, LocVarMap),
+        var_locn_set_loc_var_map(LocVarMap, !VLI)
+    else
+        var_locn_get_dummy_map(!.VLI, DummyMap),
+        map.lookup(DummyMap, OldVar, OldVarIsDummy),
+        expect(unify(OldVarIsDummy, is_dummy_type), $pred,
+            "assigning value of nondummy variable without a state")
+    ).
 
 %----------------------------------------------------------------------------%
 
@@ -1091,6 +1097,9 @@ assign_cell_arg(ModuleInfo, Rval0, Ptag, Base, Offset, Code, !VLI) :-
             Rval0 = mkword(_, _),
             Comment = "assigning field from tagged pointer"
         ;
+            Rval0 = cast(_, _),
+            Comment = "assigning field from cast"
+        ;
             Rval0 = unop(_, _),
             Comment = "assigning field from unary op"
         ;
@@ -1400,61 +1409,70 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
         true
     ),
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
-    map.lookup(VarStateMap0, Var, State0),
-    State0 = var_state(Lvals0, _, _, _, _),
-    ( if set.member(Target, Lvals0) then
-        Code = empty
-    else
-        free_up_lval(ModuleInfo, Target, [Var], ForbiddenLvals, FreeCode,
-            !VLI),
-
-        % If Var's value is cached, Lvals0 must be empty. However, the cached
-        % value may simply be var(Other), and Other may already be in Target.
-        % However, it may also be in another lval, so we say we prefer the
-        % copy in Target.
-        find_var_availability(!.VLI, Var, yes(Target), Avail),
-        (
-            Avail = available(Rval),
-            EvalCode = empty,
-            ( if Rval = lval(SourceLval) then
-                record_copy(SourceLval, Target, !VLI)
-            else
-                record_clobbering(Target, [Var], !VLI)
-            )
-        ;
-            Avail = needs_materialization,
-            materialize_var_general(ModuleInfo, Var, yes(Target),
-                do_not_store_var, [Target], Rval, EvalCode, !VLI),
-            record_clobbering(Target, [Var], !VLI)
-        ),
-
-        % Record that Var is now in Target.
-        add_additional_lval_for_var(Var, Target, !VLI),
-
-        ( if Rval = lval(Target) then
-            AssignCode = empty
+    ( if map.search(VarStateMap0, Var, State0) then
+        State0 = var_state(Lvals0, _, _, _, _),
+        ( if set.member(Target, Lvals0) then
+            Code = empty
         else
-            get_var_name(!.VLI, Var, VarName),
+            free_up_lval(ModuleInfo, Target, [Var], ForbiddenLvals, FreeCode,
+                !VLI),
+
+            % If Var's value is cached, Lvals0 must be empty. However,
+            % the cached value may simply be var(Other), and Other may
+            % already be in Target. However, it may also be in another lval,
+            % so we say we prefer the copy in Target.
+            find_var_availability(!.VLI, Var, yes(Target), Avail),
             (
-                ForbiddenLvals = [],
-                string.append("Placing ", VarName, Msg)
+                Avail = available(Rval),
+                EvalCode = empty,
+                ( if Rval = lval(SourceLval) then
+                    record_copy(SourceLval, Target, !VLI)
+                else
+                    record_clobbering(Target, [Var], !VLI)
+                )
             ;
-                ForbiddenLvals = [_ | _],
-                string.int_to_string(list.length(ForbiddenLvals), LengthStr),
-                string.append_list(["Placing ", VarName,
-                    " (depth ", LengthStr, ")"], Msg)
+                Avail = needs_materialization,
+                materialize_var_general(ModuleInfo, Var, yes(Target),
+                    do_not_store_var, [Target], Rval, EvalCode, !VLI),
+                record_clobbering(Target, [Var], !VLI)
             ),
-            var_locn_get_dummy_map(!.VLI, DummyMap),
-            map.lookup(DummyMap, Var, IsDummy),
-            (
-                IsDummy = is_dummy_type,
+
+            % Record that Var is now in Target.
+            add_additional_lval_for_var(Var, Target, !VLI),
+
+            ( if Rval = lval(Target) then
                 AssignCode = empty
-            ;
-                IsDummy = is_not_dummy_type,
-                AssignCode = singleton(llds_instr(assign(Target, Rval), Msg))
-            )
-        ),
-        Code = FreeCode ++ EvalCode ++ AssignCode
+            else
+                get_var_name(!.VLI, Var, VarName),
+                (
+                    ForbiddenLvals = [],
+                    string.append("Placing ", VarName, Msg)
+                ;
+                    ForbiddenLvals = [_ | _],
+                    string.int_to_string(list.length(ForbiddenLvals),
+                        LengthStr),
+                    string.append_list(["Placing ", VarName,
+                        " (depth ", LengthStr, ")"], Msg)
+                ),
+                var_locn_get_dummy_map(!.VLI, DummyMap),
+                map.lookup(DummyMap, Var, IsDummy),
+                (
+                    IsDummy = is_dummy_type,
+                    AssignCode = empty
+                ;
+                    IsDummy = is_not_dummy_type,
+                    AssignCode = singleton(
+                        llds_instr(assign(Target, Rval), Msg))
+                )
+            ),
+            Code = FreeCode ++ EvalCode ++ AssignCode
+        )
+    else
+        var_locn_get_dummy_map(!.VLI, DummyMap),
+        map.lookup(DummyMap, Var, IsDummy),
+        expect(unify(IsDummy, is_dummy_type), $pred,
+            "placing nondummy var which has no state"),
+        Code = empty
     ).
 
 :- pred record_clobbering(lval::in, list(prog_var)::in,
@@ -1810,7 +1828,17 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
             var_locn_set_var_state_map(VarStateMap, !VLI)
         )
     else
-        expect(unify(FirstTime, no), $pred, "premature deletion")
+        var_locn_get_dummy_map(!.VLI, DummyMap),
+        map.lookup(DummyMap, Var, IsDummy),
+        ( if
+            ( IsDummy = is_dummy_type
+            ; FirstTime = no
+            )
+        then
+            true
+        else
+            unexpected($pred, "premature deletion")
+        )
     ).
 
     % Given a set of lvals, return the set of root lvals among them and inside
@@ -2153,6 +2181,10 @@ expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval) :-
         exprn_aux.const_is_constant(Const, ExprnOpts, yes),
         Rval = Rval0
     ;
+        Rval0 = cast(Type, SubRval0),
+        expr_is_constant(VarStateMap, ExprnOpts, SubRval0, SubRval),
+        Rval = cast(Type, SubRval)
+    ;
         Rval0 = unop(UnOp, SubRval0),
         expr_is_constant(VarStateMap, ExprnOpts, SubRval0, SubRval),
         Rval = unop(UnOp, SubRval)
@@ -2282,6 +2314,11 @@ materialize_vars_in_rval_avoid(ModuleInfo, Rval0, MaybePrefer, Avoid,
         Rval = Rval0,
         Code = empty
     ;
+        Rval0 = cast(Type, SubRval0),
+        materialize_vars_in_rval_avoid(ModuleInfo, SubRval0, no,
+            Avoid, SubRval, Code, !VLI),
+        Rval = cast(Type, SubRval)
+    ;
         Rval0 = unop(Unop, SubRval0),
         materialize_vars_in_rval_avoid(ModuleInfo, SubRval0, no,
             Avoid, SubRval, Code, !VLI),
@@ -2377,6 +2414,7 @@ materialize_if_var(ModuleInfo, Rval0, EvalCode, Rval, !VLI) :-
         ( Rval0 = const(_)
         ; Rval0 = mkword(_, _)
         ; Rval0 = mkword_hole(_)
+        ; Rval0 = cast(_, _)
         ; Rval0 = unop(_, _)
         ; Rval0 = binop(_, _, _)
         ; Rval0 = lval(_)
@@ -2516,13 +2554,13 @@ rval_depends_on_search_lval(Rval, SearchLval) :-
         Rval = lval(Lval),
         lval_depends_on_search_lval(Lval, SearchLval)
     ;
-        Rval = mkword(_Tag, SubRval),
+        ( Rval = mkword(_Tag, SubRval)
+        ; Rval = cast(_Type, SubRval)
+        ; Rval = unop(_UnOp, SubRval)
+        ),
         rval_depends_on_search_lval(SubRval, SearchLval)
     ;
-        Rval = unop(_Op, SubRval),
-        rval_depends_on_search_lval(SubRval, SearchLval)
-    ;
-        Rval = binop(_Op, SubRvalA, SubRvalB),
+        Rval = binop(_BinOp, SubRvalA, SubRvalB),
         (
             rval_depends_on_search_lval(SubRvalA, SearchLval)
         ;

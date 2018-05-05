@@ -642,6 +642,7 @@ ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type, TaggedConsId, MatchCond) :-
         ; Tag = shared_remote_tag(_, _)
         ; Tag = shared_local_tag(_, _)
         ; Tag = no_tag
+        ; Tag = dummy_tag
         ),
         unexpected($pred, "invalid tag type")
     ),

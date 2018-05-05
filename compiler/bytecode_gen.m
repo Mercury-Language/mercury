@@ -226,7 +226,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             % XXX
             % string.append_list([
             % "bytecode for ", GenericCallFunctor, " calls"], Msg),
-            % sorry($module, $pred, Msg)
+            % sorry($pred, Msg)
             functor(GenericCallType, canonicalize, _GenericCallFunctor, _),
             Code = cord.singleton(byte_not_supported)
         )
@@ -273,7 +273,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         gen_conj(GoalList, !ByteInfo, Code)
     ;
         GoalExpr = conj(parallel_conj, _GoalList),
-        sorry($module, $pred, "bytecode_gen of parallel conjunction")
+        sorry($pred, "bytecode_gen of parallel conjunction")
     ;
         GoalExpr = disj(GoalList),
         (
@@ -318,7 +318,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected($module, $pred, "shorthand")
+        unexpected($pred, "shorthand")
     ).
 
 %---------------------------------------------------------------------------%
@@ -334,7 +334,7 @@ gen_places([Var - Loc | OutputArgs], ByteInfo, Code) :-
         Loc = reg(reg_r, RegNum)
     ;
         Loc = reg(reg_f, _),
-        sorry($module, $pred, "floating point register")
+        sorry($pred, "floating point register")
     ),
     Code = cord.singleton(byte_place_arg(byte_reg_r, RegNum, ByteVar)) ++
         OtherCode.
@@ -350,7 +350,7 @@ gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
         Loc = reg(reg_r, RegNum)
     ;
         Loc = reg(reg_f, _),
-        sorry($module, $pred, "floating point register")
+        sorry($pred, "floating point register")
     ),
     Code = cord.singleton(byte_pickup_arg(byte_reg_r, RegNum, ByteVar)) ++
         OtherCode.
@@ -450,7 +450,7 @@ gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
         map_assign(ByteInfo, Var, Expr, Code)
     ;
         SimpleCode = ref_assign(_Var, _Expr),
-        unexpected($module, $pred, "ref_assign")
+        unexpected($pred, "ref_assign")
     ;
         SimpleCode = noop(_DefinedVars),
         Code = empty
@@ -596,8 +596,7 @@ gen_unify(Unification, ByteInfo, Code) :-
         ( if TypeCtor2 = TypeCtor1 then
             TypeCtor = TypeCtor1
         else
-            unexpected($module, $pred,
-                "simple_test between different types")
+            unexpected($pred, "simple_test between different types")
         ),
 
         ByteInfo = byte_info(_, _, ModuleInfo, _, _),
@@ -607,31 +606,31 @@ gen_unify(Unification, ByteInfo, Code) :-
             TestId = int_test
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint)),
-            sorry($module, $pred, "uint")
+            sorry($pred, "uint")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int8)),
-            sorry($module, $pred, "int8")
+            sorry($pred, "int8")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint8)),
-            sorry($module, $pred, "uint8")
+            sorry($pred, "uint8")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int16)),
-            sorry($module, $pred, "int16")
+            sorry($pred, "int16")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint16)),
-            sorry($module, $pred, "uint16")
+            sorry($pred, "uint16")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int32)),
-            sorry($module, $pred, "int32")
+            sorry($pred, "int32")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
-            sorry($module, $pred, "uint32")
+            sorry($pred, "uint32")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
-            sorry($module, $pred, "int64")
+            sorry($pred, "int64")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
-            sorry($module, $pred, "uint64")
+            sorry($pred, "uint64")
         ;
             TypeCategory = ctor_cat_builtin(cat_builtin_char),
             TestId = char_test
@@ -649,30 +648,30 @@ gen_unify(Unification, ByteInfo, Code) :-
             TestId = enum_test
         ;
             TypeCategory = ctor_cat_enum(cat_enum_foreign),
-            sorry($module, $pred, "foreign enums with bytecode backend")
+            sorry($pred, "foreign enums with bytecode backend")
         ;
             TypeCategory = ctor_cat_higher_order,
-            unexpected($module, $pred, "higher_order_type")
+            unexpected($pred, "higher_order_type")
         ;
             TypeCategory = ctor_cat_tuple,
-            unexpected($module, $pred, "tuple_type")
+            unexpected($pred, "tuple_type")
         ;
             TypeCategory = ctor_cat_user(_),
-            unexpected($module, $pred, "user_ctor_type")
+            unexpected($pred, "user_ctor_type")
         ;
             TypeCategory = ctor_cat_variable,
-            unexpected($module, $pred, "variable_type")
+            unexpected($pred, "variable_type")
         ;
             TypeCategory = ctor_cat_void,
-            unexpected($module, $pred, "void_type")
+            unexpected($pred, "void_type")
         ;
             TypeCategory = ctor_cat_system(_),
-            unexpected($module, $pred, "system type")
+            unexpected($pred, "system type")
         ),
         Code = cord.singleton(byte_test(ByteVar1, ByteVar2, TestId))
     ;
         Unification = complicated_unify(_,_,_),
-        unexpected($module, $pred, "complicated unify")
+        unexpected($pred, "complicated unify")
     ).
 
 :- pred map_arg_dirs(list(unify_mode)::in, list(prog_var)::in,
@@ -680,9 +679,9 @@ gen_unify(Unification, ByteInfo, Code) :-
 
 map_arg_dirs([], [], _, []).
 map_arg_dirs([], [_|_], _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 map_arg_dirs([_|_], [], _, _) :-
-    unexpected($module, $pred, "length mismatch").
+    unexpected($pred, "length mismatch").
 map_arg_dirs([UnifyMode | UnifyModes], [Arg | Args], ByteInfo, [Dir | Dirs]) :-
     get_module_info(ByteInfo, ModuleInfo),
     get_var_type(ByteInfo, Arg, Type),
@@ -707,8 +706,7 @@ map_arg_dirs([UnifyMode | UnifyModes], [Arg | Args], ByteInfo, [Dir | Dirs]) :-
     then
         Dir = to_none
     else
-        unexpected($module, $pred,
-            "invalid mode for (de)construct unification")
+        unexpected($pred, "invalid mode for (de)construct unification")
     ),
     map_arg_dirs(UnifyModes, Args, ByteInfo, Dirs).
 
@@ -739,7 +737,7 @@ gen_conj([Goal | Goals], !ByteInfo, Code) :-
     byte_info::in, byte_info::out,  cord(byte_code)::out) is det.
 
 gen_disj([], _, _, _, _) :-
-    unexpected($module, $pred, "empty disjunction").
+    unexpected($pred, "empty disjunction").
 gen_disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
     gen_goal(Disjunct, !ByteInfo, ThisCode),
     (
@@ -790,7 +788,7 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
             Functor = qualified(ModuleName, FunctorName)
         ;
             Functor = unqualified(_),
-            unexpected($module, $pred, "unqualified cons")
+            unexpected($pred, "unqualified cons")
         ),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         map_cons_tag(ConsTag, ByteConsTag),
@@ -855,7 +853,7 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ByteConsId = byte_string_const(StringVal)
     ;
         ConsId = impl_defined_const(_),
-        unexpected($module, $pred, "impl_defined_const")
+        unexpected($pred, "impl_defined_const")
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity),
         ByteConsId = byte_type_ctor_info_const(ModuleName, TypeName, TypeArity)
@@ -871,23 +869,22 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ByteConsId = byte_typeclass_info_cell_constructor
     ;
         ConsId = type_info_const(_),
-        sorry($module, $pred, "bytecode doesn't implement type_info_const")
+        sorry($pred, "bytecode doesn't implement type_info_const")
     ;
         ConsId = typeclass_info_const(_),
-        sorry($module, $pred,
-            "bytecode doesn't implement typeclass_info_const")
+        sorry($pred, "bytecode doesn't implement typeclass_info_const")
     ;
         ConsId = ground_term_const(_, _),
-        sorry($module, $pred, "bytecode doesn't implement ground_term_const")
+        sorry($pred, "bytecode doesn't implement ground_term_const")
     ;
         ConsId = tabling_info_const(_),
-        sorry($module, $pred, "bytecode cannot implement tabling")
+        sorry($pred, "bytecode cannot implement tabling")
     ;
         ConsId = table_io_entry_desc(_),
-        sorry($module, $pred, "bytecode cannot implement table io entry desc")
+        sorry($pred, "bytecode cannot implement table io entry desc")
     ;
         ConsId = deep_profiling_proc_layout(_),
-        sorry($module, $pred, "bytecode cannot implement deep profiling")
+        sorry($pred, "bytecode cannot implement deep profiling")
     ).
 
 :- pred map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
@@ -898,13 +895,13 @@ map_cons_tag(no_tag, byte_no_tag).
 map_cons_tag(single_functor_tag, byte_unshared_tag(0)).
 map_cons_tag(unshared_tag(Primary), byte_unshared_tag(Primary)).
 map_cons_tag(direct_arg_tag(_), _) :-
-    sorry($module, $pred, "bytecode with direct_arg_tag").
+    sorry($pred, "bytecode with direct_arg_tag").
 map_cons_tag(shared_remote_tag(Primary, Secondary),
     byte_shared_remote_tag(Primary, Secondary)).
 map_cons_tag(shared_local_tag(Primary, Secondary),
     byte_shared_local_tag(Primary, Secondary)).
 map_cons_tag(string_tag(_), _) :-
-    unexpected($module, $pred, "string_tag cons tag " ++
+    unexpected($pred, "string_tag cons tag " ++
         "for non-string_constant cons id").
 map_cons_tag(int_tag(IntTagType), ByteConsTag) :-
     (
@@ -921,39 +918,41 @@ map_cons_tag(int_tag(IntTagType), ByteConsTag) :-
         ; IntTagType = int_tag_int64(_)
         ; IntTagType = int_tag_uint64(_)
         ),
-        sorry($module, $pred, "bytecode with uint or fixed size int")
+        sorry($pred, "bytecode with uint or fixed size int")
     ).
+map_cons_tag(dummy_tag, _) :-
+    sorry($pred, "bytecode with dummy tags").
 map_cons_tag(foreign_tag(_, _), _) :-
-    sorry($module, $pred, "bytecode with foreign tags").
+    sorry($pred, "bytecode with foreign tags").
 map_cons_tag(float_tag(_), _) :-
-    unexpected($module, $pred, "float_tag cons tag " ++
+    unexpected($pred, "float_tag cons tag " ++
         "for non-float_constant cons id").
 map_cons_tag(closure_tag(_, _, _), _) :-
-    unexpected($module, $pred, "closure_tag cons tag " ++
+    unexpected($pred, "closure_tag cons tag " ++
         "for non-closure_cons cons id").
 map_cons_tag(type_ctor_info_tag(_, _, _), _) :-
-    unexpected($module, $pred, "type_ctor_info_tag cons tag " ++
+    unexpected($pred, "type_ctor_info_tag cons tag " ++
         "for non-type_ctor_info_constant cons id").
 map_cons_tag(base_typeclass_info_tag(_, _, _), _) :-
-    unexpected($module, $pred, "base_typeclass_info_tag cons tag " ++
+    unexpected($pred, "base_typeclass_info_tag cons tag " ++
         "for non-base_typeclass_info_constant cons id").
 map_cons_tag(type_info_const_tag(_), _) :-
-    unexpected($module, $pred, "type_info_const cons tag " ++
+    unexpected($pred, "type_info_const cons tag " ++
         "for non-type_info_const cons id").
 map_cons_tag(typeclass_info_const_tag(_), _) :-
-    unexpected($module, $pred, "typeclass_info_const cons tag " ++
+    unexpected($pred, "typeclass_info_const cons tag " ++
         "for non-typeclass_info_const cons id").
 map_cons_tag(ground_term_const_tag(_, _), _) :-
-    unexpected($module, $pred, "ground_term_const cons tag " ++
+    unexpected($pred, "ground_term_const cons tag " ++
         "for non-ground_term_const cons id").
 map_cons_tag(tabling_info_tag(_, _), _) :-
-    unexpected($module, $pred, "tabling_info_tag cons tag " ++
+    unexpected($pred, "tabling_info_tag cons tag " ++
         "for non-tabling_info_constant cons id").
 map_cons_tag(deep_profiling_proc_layout_tag(_, _), _) :-
-    unexpected($module, $pred, "deep_profiling_proc_layout_tag cons tag " ++
+    unexpected($pred, "deep_profiling_proc_layout_tag cons tag " ++
         "for non-deep_profiling_proc_static cons id").
 map_cons_tag(table_io_entry_tag(_, _), _) :-
-    unexpected($module, $pred, "table_io_entry_tag cons tag " ++
+    unexpected($pred, "table_io_entry_tag cons tag " ++
         "for non-table_io_entry_desc cons id").
 
 %---------------------------------------------------------------------------%

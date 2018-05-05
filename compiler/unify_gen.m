@@ -111,7 +111,7 @@
     ;       uv_field(uni_field).
 
 :- type uni_field
-    --->    uni_field(ptag, rval, int, arg_width).
+    --->    uni_field(ptag, rval, int, arg_pos_width).
             % The first three arguments (Ptag, BaseRval and Offset) represent
             % the lval of the field, which is
             % field(yes(Ptag), BaseRval, const(llconst_int(Offset))).
@@ -135,15 +135,15 @@
 
 generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
     (
-        CodeModel = model_det
-    ;
-        CodeModel = model_semi
-    ;
-        CodeModel = model_non,
-        unexpected($pred, "nondet unification")
-    ),
-    (
         Uni = assign(LHSVar, RHSVar),
+        (
+            CodeModel = model_det
+        ;
+            ( CodeModel = model_semi
+            ; CodeModel = model_non
+            ),
+            unexpected($pred, "assign is not model_det")
+        ),
         ( if variable_is_forward_live(!.CLD, LHSVar) then
             generate_assignment(LHSVar, RHSVar, Code, !CLD)
         else
@@ -152,6 +152,14 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
     ;
         Uni = construct(LHSVar, ConsId, RHSVars, ArgModes, HowToConstruct, _,
             SubInfo),
+        (
+            CodeModel = model_det
+        ;
+            ( CodeModel = model_semi
+            ; CodeModel = model_non
+            ),
+            unexpected($pred, "construct is not model_det")
+        ),
         (
             SubInfo = no_construct_sub_info,
             MaybeTakeAddr = no,
@@ -189,6 +197,9 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
             CodeModel = model_semi,
             generate_semi_deconstruction(LHSVar, ConsId,
                 RHSVarsWidths, ArgModes, Code0, !CI, !CLD)
+        ;
+            CodeModel = model_non,
+            unexpected($pred, "deconstruct is model_non")
         ),
         (
             CanCGC = can_cgc,
@@ -215,11 +226,13 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
     ;
         Uni = simple_test(VarA, VarB),
         (
-            CodeModel = model_det,
-            unexpected($pred, "det simple_test")
-        ;
             CodeModel = model_semi,
             generate_test(VarA, VarB, Code, !CI, !CLD)
+        ;
+            ( CodeModel = model_det
+            ; CodeModel = model_non
+            ),
+            unexpected($pred, "simple_test is not model_semi")
         )
     ;
         % These should have been transformed into calls to unification
@@ -229,30 +242,50 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
     ).
 
 :- pred get_cons_arg_widths(module_info::in, cons_id::in,
-    list(T)::in, assoc_list(T, arg_width)::out) is det.
+    list(T)::in, assoc_list(T, arg_pos_width)::out) is det.
 
-get_cons_arg_widths(ModuleInfo, ConsId, AllArgs, AllArgsWidths) :-
+get_cons_arg_widths(ModuleInfo, ConsId, AllArgs, AllArgsPosWidths) :-
     ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
         ConsArgRepns = ConsRepnDefn ^ cr_args,
-        ArgWidths = list.map((func(C) = C ^ car_width), ConsArgRepns),
+        ConsTag = ConsRepnDefn ^ cr_tag,
+        ArgPosWidths = list.map((func(C) = C ^ car_pos_width), ConsArgRepns),
         list.length(AllArgs, NumAllArgs),
         list.length(ConsArgRepns, NumConsArgs),
         NumExtraArgs = NumAllArgs - NumConsArgs,
         ( if NumExtraArgs = 0 then
-            assoc_list.from_corresponding_lists(AllArgs, ArgWidths,
-                AllArgsWidths)
+            assoc_list.from_corresponding_lists(AllArgs, ArgPosWidths,
+                AllArgsPosWidths)
         else if NumExtraArgs > 0 then
             list.det_split_list(NumExtraArgs, AllArgs, ExtraArgs, ConsArgs),
-            assoc_list.from_corresponding_lists(ConsArgs, ArgWidths,
-                ConsArgsWidths),
-            list.map(pair_with_width(full_word), ExtraArgs, ExtraArgsWidths),
-            AllArgsWidths = ExtraArgsWidths ++ ConsArgsWidths
+            ( if ConsTag = shared_remote_tag(_, _) then
+                InitOffset = 1
+            else
+                InitOffset = 0
+            ),
+            allocate_consecutive_full_words(InitOffset,
+                ExtraArgs, ExtraArgsPosWidths),
+            assoc_list.from_corresponding_lists(ConsArgs, ArgPosWidths,
+                ConsArgsPosWidths),
+            AllArgsPosWidths = ExtraArgsPosWidths ++ ConsArgsPosWidths
         else
             unexpected($pred, "too few arguments")
         )
     else
-        list.map(pair_with_width(full_word), AllArgs, AllArgsWidths)
+        allocate_consecutive_full_words(0, AllArgs, AllArgsPosWidths)
     ).
+
+    % The initial offset that our callers should specify
+    % depends on the absence/presence of a secondary tag.
+    %
+:- pred allocate_consecutive_full_words(int::in,
+    list(T)::in, assoc_list(T, arg_pos_width)::out) is det.
+
+allocate_consecutive_full_words(_, [], []).
+allocate_consecutive_full_words(CurOffset,
+        [Arg | Args], [ArgPosWidth | ArgsPosWidths]) :-
+    PosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
+    ArgPosWidth = Arg - PosWidth,
+    allocate_consecutive_full_words(CurOffset + 1, Args, ArgsPosWidths).
 
 %---------------------------------------------------------------------------%
 
@@ -448,6 +481,10 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         TestRval = binop(eq(int_type_int), Rval,
             const(llconst_foreign(ForeignVal, lt_int(int_type_int))))
     ;
+        ConsTag = dummy_tag,
+        % In a type with only one value, all equality tests succeed.
+        TestRval = const(llconst_true)
+    ;
         ConsTag = closure_tag(_, _, _),
         % This should never happen, since the error will be detected
         % during mode checking.
@@ -517,7 +554,7 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
     % instantiate the arguments of that term.
     %
 :- pred generate_construction(prog_var::in, cons_id::in,
-    assoc_list(prog_var, arg_width)::in, list(unify_mode)::in,
+    assoc_list(prog_var, arg_pos_width)::in, list(unify_mode)::in,
     how_to_construct::in,
     list(int)::in, maybe(term_size_value)::in, hlds_goal_info::in,
     llds_code::out,
@@ -546,6 +583,12 @@ generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
     ;
         ConsTag = float_tag(Float),
         assign_const_to_var(LHSVar, const(llconst_float(Float)), !.CI, !CLD),
+        Code = empty
+    ;
+        ConsTag = dummy_tag,
+        % XXX The assignment is likely to be dead code, but *proving*
+        % that the assigned-to variable is never used is difficult.
+        assign_const_to_var(LHSVar, const(llconst_int(0)), !.CI, !CLD),
         Code = empty
     ;
         ConsTag = no_tag,
@@ -580,7 +623,7 @@ generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
         FirstArgNum = 1,
         generate_and_pack_cons_args(RHSVarsWidths, ArgModes,
             FirstArgNum, TakeAddr, CellArgs0, MayUseAtomic0, MayUseAtomic,
-            cord.init, PackCode, !.CI, !CLD),
+            empty, PackCode, !.CI, !CLD),
         pack_how_to_construct(RHSVarsWidths, HowToConstruct0, HowToConstruct),
         (
             ( ConsTag = single_functor_tag
@@ -698,7 +741,7 @@ generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
     % for a construction unification, while packing sub-word arguments
     % into words.
     %
-:- pred generate_and_pack_cons_args(assoc_list(prog_var, arg_width)::in,
+:- pred generate_and_pack_cons_args(assoc_list(prog_var, arg_pos_width)::in,
     list(unify_mode)::in, int::in, list(int)::in,
     list(cell_arg)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out,
@@ -715,29 +758,59 @@ generate_and_pack_cons_args([_ | _], [], _, _, _,
         !MayUseAtomic, !Code, _, !CLD) :-
     unexpected($pred, "length mismatch").
 generate_and_pack_cons_args([VarWidth | VarsWidths], [ArgMode | ArgModes],
-        !.CurArgNum, !.TakeAddr, [CellArg | CellArgs],
+        !.CurArgNum, !.TakeAddr, CellArgs,
         !MayUseAtomic, !Code, CI, !CLD) :-
-    generate_and_pack_cons_word(VarWidth, VarsWidths, ArgMode, ArgModes,
-        LeftOverVarsWidths, LeftOverArgModes, !CurArgNum, !TakeAddr,
-        CellArg, !MayUseAtomic, !Code, CI, !CLD),
-    generate_and_pack_cons_args(LeftOverVarsWidths, LeftOverArgModes,
-        !.CurArgNum, !.TakeAddr, CellArgs, !MayUseAtomic, !Code, CI, !CLD).
+    VarWidth = Var - Width,
+    (
+        ( Width = apw_full(_, _)
+        ; Width = apw_double(_, _, _)
+        ; Width = apw_partial_first(_, _, _, _, _)
+        ; Width = apw_partial_shifted(_, _, _, _, _, _)
+        ; Width = apw_none_shifted(_, _)
+        ),
+        generate_and_pack_cons_word(Var, Width, VarsWidths, ArgMode, ArgModes,
+            LeftOverVarsWidths, LeftOverArgModes, !CurArgNum, !TakeAddr,
+            HeadCellArg, !MayUseAtomic, !Code, CI, !CLD),
+        generate_and_pack_cons_args(LeftOverVarsWidths, LeftOverArgModes,
+            !.CurArgNum, !.TakeAddr,
+            TailCellArgs, !MayUseAtomic, !Code, CI, !CLD),
+        CellArgs = [HeadCellArg | TailCellArgs]
+    ;
+        Width = apw_none_nowhere,
+        ( if !.TakeAddr = [!.CurArgNum | _] then
+            unexpected($pred, "taking address of dummy")
+        else
+            !:CurArgNum = !.CurArgNum + 1,
+            generate_and_pack_cons_args(VarsWidths, ArgModes,
+                !.CurArgNum, !.TakeAddr, CellArgs,
+                !MayUseAtomic, !Code, CI, !CLD)
+        )
+    ).
+
+:- inst not_nowhere for arg_pos_width/0
+    --->    apw_full(ground, ground)
+    ;       apw_double(ground, ground, ground)
+    ;       apw_partial_first(ground, ground, ground, ground, ground)
+    ;       apw_partial_shifted(ground, ground, ground, ground, ground, ground)
+    ;       apw_none_shifted(ground, ground).
 
 :- pred generate_and_pack_cons_word(
-    pair(prog_var, arg_width)::in, assoc_list(prog_var, arg_width)::in,
+    prog_var::in, arg_pos_width::in(not_nowhere),
+    assoc_list(prog_var, arg_pos_width)::in,
     unify_mode::in, list(unify_mode)::in,
-    assoc_list(prog_var, arg_width)::out, list(unify_mode)::out,
+    assoc_list(prog_var, arg_pos_width)::out, list(unify_mode)::out,
     int::in, int::out, list(int)::in, list(int)::out, cell_arg::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out,
     llds_code::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
+generate_and_pack_cons_word(Var, Width, VarsWidths, ArgMode, ArgModes,
         LeftOverVarsWidths, LeftOverArgModes, CurArgNum, LeftOverArgNum,
         !TakeAddr, CellArg, !MayUseAtomic, !Code, CI, !CLD) :-
     get_vartypes(CI, VarTypes),
     lookup_var_type(VarTypes, Var, Type),
     get_module_info(CI, ModuleInfo),
+    % XXX Should we update !MayUseAtomic for dummy types?
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
     ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
         LeftOverVarsWidths = VarsWidths,
@@ -745,7 +818,7 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
         LeftOverArgNum = CurArgNum + 1,
         get_lcmc_null(CI, LCMCNull),
         (
-            Width = full_word,
+            Width = apw_full(_, _),
             (
                 LCMCNull = no,
                 MaybeNull = no
@@ -755,7 +828,7 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
             ),
             CellArg = cell_arg_take_addr_one_word(Var, MaybeNull)
         ;
-            Width = double_word,
+            Width = apw_double(_, _, _),
             (
                 LCMCNull = no,
                 MaybeNulls = no
@@ -766,10 +839,17 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
             ),
             CellArg = cell_arg_take_addr_two_words(Var, MaybeNulls)
         ;
-            ( Width = partial_word_first(_)
-            ; Width = partial_word_shifted(_, _)
+            ( Width = apw_partial_first(_, _, _, _, _)
+            ; Width = apw_partial_shifted(_, _, _, _, _, _)
             ),
             unexpected($pred, "taking address of partial word")
+        ;
+            Width = apw_none_shifted(_, _),
+            % Even if the variable in this field is produced *after*
+            % the recursive call, we know in advance what its value
+            % will be, so we should be able to fill in this field
+            % *before* the recursive call.
+            unexpected($pred, "taking address of dummy")
         ),
         !:MayUseAtomic = may_not_use_atomic_alloc
     else
@@ -777,7 +857,7 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
             !Code, CI, !CLD),
         (
             (
-                Width = full_word,
+                Width = apw_full(_, _),
                 (
                     IsReal = not_real_input_arg,
                     CellArg = cell_arg_skip_one_word
@@ -786,7 +866,7 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
                     CellArg = cell_arg_full_word(Rval, complete)
                 )
             ;
-                Width = double_word,
+                Width = apw_double(_, _, _),
                 (
                     IsReal = not_real_input_arg,
                     CellArg = cell_arg_skip_two_words
@@ -799,7 +879,7 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
             LeftOverArgModes = ArgModes,
             LeftOverArgNum = CurArgNum + 1
         ;
-            Width = partial_word_first(_Mask),
+            Width = apw_partial_first(_, _, _, _, _),
             (
                 IsReal = not_real_input_arg,
                 Completeness0 = incomplete,
@@ -819,14 +899,17 @@ generate_and_pack_cons_word(Var - Width, VarsWidths, ArgMode, ArgModes,
             or_packed_rvals(ToOrRvals, PackedRval),
             CellArg = cell_arg_full_word(PackedRval, Completeness)
         ;
-            Width = partial_word_shifted(_, _),
-            unexpected($pred, "partial_word_shifted")
+            Width = apw_partial_shifted(_, _, _, _, _, _),
+            unexpected($pred, "apw_partial_shifted")
+        ;
+            Width = apw_none_shifted(_, _),
+            unexpected($pred, "apw_none_shifted")
         )
     ).
 
 :- pred generate_and_pack_one_cons_word(
-    assoc_list(prog_var, arg_width)::in, list(unify_mode)::in,
-    assoc_list(prog_var, arg_width)::out, list(unify_mode)::out,
+    assoc_list(prog_var, arg_pos_width)::in, list(unify_mode)::in,
+    assoc_list(prog_var, arg_pos_width)::out, list(unify_mode)::out,
     int::in, int::out, list(int)::in, list(int)::out,
     list(rval)::in, list(rval)::out, completeness::in, completeness::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out,
@@ -851,16 +934,19 @@ generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
         !Code, CI, !CLD) :-
     VarWidth = Var - Width,
     (
-        ( Width = full_word
-        ; Width = double_word
-        ; Width = partial_word_first(_Mask)
+        ( Width = apw_full(_, _)
+        ; Width = apw_double(_, _, _)
+        ; Width = apw_none_nowhere
+        ; Width = apw_partial_first(_, _, _, _, _)
         ),
         % This argument is not part of this word.
         LeftOverVarsWidths = [VarWidth | VarsWidths],
         LeftOverArgModes = [ArgMode | ArgModes],
         LeftOverArgNum = CurArgNum
     ;
-        Width = partial_word_shifted(Shift, _Mask),
+        ( Width = apw_partial_shifted(_, _, _, _, _, _)
+        ; Width = apw_none_shifted(_, _)
+        ),
         % This argument *is* part of this word.
         get_vartypes(CI, VarTypes),
         lookup_var_type(VarTypes, Var, Type),
@@ -871,15 +957,21 @@ generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
         else
             true
         ),
-        generate_cons_arg_rval(ModuleInfo, Var, Type, ArgMode, IsReal, Rval,
+        generate_cons_arg_rval(ModuleInfo, Var, Type, ArgMode, IsReal, ArgRval,
             !Code, CI, !CLD),
         (
-            IsReal = not_real_input_arg,
-            !:Completeness = incomplete
+            Width = apw_partial_shifted(_, _, Shift, _, _, Fill),
+            (
+                IsReal = not_real_input_arg,
+                !:Completeness = incomplete
+            ;
+                IsReal = real_input_arg,
+                ShiftedArgRval = left_shift_rval(ArgRval, Shift, Fill),
+                !:RevToOrRvals = [ShiftedArgRval | !.RevToOrRvals]
+            )
         ;
-            IsReal = real_input_arg,
-            ShiftedRval = maybe_left_shift_rval(Rval, Shift),
-            !:RevToOrRvals = [ShiftedRval | !.RevToOrRvals]
+            Width = apw_none_shifted(_, _)
+            % We change neither !Completeness nor !RevToOrRvals.
         ),
         NextArgNum = CurArgNum + 1,
         generate_and_pack_one_cons_word(VarsWidths, ArgModes,
@@ -896,9 +988,9 @@ generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
     ;       real_input_arg.
             % The argument is an input to the construction unification
             % and its type is not a dummy type. The rval next to this is real.
-            % (The reason why we don's store the rval as an argument of
+            % (The reason why we don't store the rval as an argument of
             % real_input_arg, making this type a synonym for the maybe type,
-            % is to avoid the memory allocation that would require;
+            % is to avoid the memory allocation that this would require;
             % construction unifications are one of the most frequent types
             % of goals.)
 
@@ -1028,32 +1120,45 @@ generate_field_take_address_assigns([FieldAddr | FieldAddrs],
     % with variables.
     %
 :- pred make_fields_and_arg_vars(vartypes::in, rval::in, int::in,
-    assoc_list(prog_var, arg_width)::in, int::in,
+    assoc_list(prog_var, arg_pos_width)::in, int::in,
     list(field_and_arg_var)::out) is det.
 
 make_fields_and_arg_vars(_, _, _, [], _, []).
-make_fields_and_arg_vars(VarTypes, Rval, Ptag, [VarWidth | VarsWidths],
+make_fields_and_arg_vars(VarTypes, Rval, Ptag, [VarPosWidth | VarsPosWidths],
         PrevOffset0, [FieldAndArgVar | FieldsAndArgVars]) :-
-    VarWidth = Var - Width,
+    VarPosWidth = Var - PosWidth,
+    % XXX ARG_PACK OFFSET
     (
-        ( Width = full_word
-        ; Width = partial_word_first(_Mask)
+        ( PosWidth = apw_full(_, CellOffset)
+        ; PosWidth = apw_partial_first(_, CellOffset, _, _, _)
         ),
         Offset = PrevOffset0 + 1,
-        PrevOffset = Offset
+        PrevOffset = Offset,
+        CellOffset = cell_offset(CellOffsetInt),
+        expect(unify(Offset, CellOffsetInt), $pred, "full or first")
     ;
-        Width = partial_word_shifted(_Shift, _Mask),
-        Offset = PrevOffset0,
-        PrevOffset = Offset
-    ;
-        Width = double_word,
+        PosWidth = apw_double(_, CellOffset, _),
         Offset = PrevOffset0 + 1,
-        PrevOffset = Offset + 1
+        PrevOffset = Offset + 1,
+        CellOffset = cell_offset(CellOffsetInt),
+        expect(unify(Offset, CellOffsetInt), $pred, "double")
+    ;
+        ( PosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
+        ; PosWidth = apw_none_shifted(_, CellOffset)
+        ),
+        Offset = PrevOffset0,
+        PrevOffset = Offset,
+        CellOffset = cell_offset(CellOffsetInt),
+        expect(unify(Offset, CellOffsetInt), $pred, "shifted")
+    ;
+        PosWidth = apw_none_nowhere,
+        Offset = -1,
+        PrevOffset = PrevOffset0
     ),
-    Field = uv_field(uni_field(Ptag, Rval, Offset, Width)),
+    Field = uv_field(uni_field(Ptag, Rval, Offset, PosWidth)),
     lookup_var_type(VarTypes, Var, Type),
     FieldAndArgVar = field_and_arg_var(Field, Var, Type),
-    make_fields_and_arg_vars(VarTypes, Rval, Ptag, VarsWidths,
+    make_fields_and_arg_vars(VarTypes, Rval, Ptag, VarsPosWidths,
         PrevOffset, FieldsAndArgVars).
 
 %---------------------------------------------------------------------------%
@@ -1067,7 +1172,7 @@ make_fields_and_arg_vars(VarTypes, Rval, Ptag, [VarWidth | VarsWidths],
     % are cached.
     %
 :- pred generate_det_deconstruction(prog_var::in, cons_id::in,
-    assoc_list(prog_var, arg_width)::in, list(unify_mode)::in,
+    assoc_list(prog_var, arg_pos_width)::in, list(unify_mode)::in,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
@@ -1079,6 +1184,7 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
         ; ConsTag = int_tag(_)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_Float)
+        ; ConsTag = dummy_tag
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
@@ -1161,8 +1267,7 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
             PrevOffset = 0      % There is a secondary tag.
         ),
         Rval = var(Var),
-        get_proc_info(CI, ProcInfo),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
+        get_vartypes(CI, VarTypes),
         make_fields_and_arg_vars(VarTypes, Rval, Ptag, ArgVarsWidths,
             PrevOffset, FieldsAndArgVars),
         generate_unify_args(FieldsAndArgVars, Modes, Code, CI, !CLD)
@@ -1175,8 +1280,9 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
     % followed by a deterministic deconstruction.
     %
 :- pred generate_semi_deconstruction(prog_var::in, cons_id::in,
-    assoc_list(prog_var, arg_width)::in, list(unify_mode)::in, llds_code::out,
-    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
+    assoc_list(prog_var, arg_pos_width)::in, list(unify_mode)::in,
+    llds_code::out, code_info::in, code_info::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_semi_deconstruction(Var, Tag, ArgVarsWidths, Modes, Code,
         !CI, !CLD) :-
@@ -1302,12 +1408,12 @@ generate_sub_assign_to_var_from_var(LeftVar, RightVar, Code, _CI, !CLD) :-
 generate_sub_assign_to_var_from_field(LeftVar, RightField, Code, CI, !CLD) :-
     RightField = uni_field(RightPtag, RightBaseRval, RightOffset, RightWidth),
     (
-        RightWidth = full_word,
+        RightWidth = apw_full(_, _),
         RightLval = field(yes(RightPtag), RightBaseRval,
             const(llconst_int(RightOffset))),
         assign_lval_to_var(LeftVar, RightLval, Code, CI, !CLD)
     ;
-        RightWidth = double_word,
+        RightWidth = apw_double(_, _, _),
         RightLvalA = field(yes(RightPtag), RightBaseRval,
             const(llconst_int(RightOffset))),
         RightLvalB = field(yes(RightPtag), RightBaseRval,
@@ -1318,20 +1424,50 @@ generate_sub_assign_to_var_from_field(LeftVar, RightField, Code, CI, !CLD) :-
             RightRval, Code, !CLD)
     ;
         (
-            RightWidth = partial_word_first(Mask),
+            RightWidth = apw_partial_first(_, _, _, Mask, Fill),
             RightLval = field(yes(RightPtag), RightBaseRval,
                 const(llconst_int(RightOffset))),
             RightRval0 = lval(RightLval)
         ;
-            RightWidth = partial_word_shifted(Shift, Mask),
+            RightWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill),
             RightLval = field(yes(RightPtag), RightBaseRval,
                 const(llconst_int(RightOffset))),
             RightRval0 = right_shift_rval(lval(RightLval), Shift)
         ),
-        RightRval = binop(bitwise_and(int_type_int), RightRval0,
-            const(llconst_int(Mask))),
-        assign_field_lval_expr_to_var(LeftVar, [RightLval], RightRval,
+        Mask = arg_mask(MaskInt),
+        MaskedRightRval0 = binop(bitwise_and(int_type_uint), RightRval0,
+            const(llconst_int(MaskInt))),
+        (
+            Fill = fill_enum,
+            MaskedRightRval = MaskedRightRval0
+        ;
+            Fill = fill_int8,
+            MaskedRightRval = cast(lt_int(int_type_int8), MaskedRightRval0)
+        ;
+            Fill = fill_uint8,
+            MaskedRightRval = cast(lt_int(int_type_uint8), MaskedRightRval0)
+        ;
+            Fill = fill_int16,
+            MaskedRightRval = cast(lt_int(int_type_int16), MaskedRightRval0)
+        ;
+            Fill = fill_uint16,
+            MaskedRightRval = cast(lt_int(int_type_uint16), MaskedRightRval0)
+        ;
+            Fill = fill_int32,
+            MaskedRightRval = cast(lt_int(int_type_int32), MaskedRightRval0)
+        ;
+            Fill = fill_uint32,
+            MaskedRightRval = cast(lt_int(int_type_uint32), MaskedRightRval0)
+        ),
+        assign_field_lval_expr_to_var(LeftVar, [RightLval], MaskedRightRval,
             Code, !CLD)
+    ;
+        ( RightWidth = apw_none_nowhere
+        ; RightWidth = apw_none_shifted(_, _)
+        ),
+        % The value being assigned is of a dummy type, so no assignment
+        % is actually necessary.
+        Code = empty
     ).
 
 :- pred generate_sub_assign_to_field_from_var(uni_field::in, prog_var::in,
@@ -1345,13 +1481,13 @@ generate_sub_assign_to_field_from_var(LeftField, RightVar, Code, CI, !CLD) :-
     materialize_vars_in_rval(LeftBaseRval0, LeftBaseRval,
         MaterializeLeftBaseCode, CI, !CLD),
     (
-        LeftWidth = full_word,
+        LeftWidth = apw_full(_, _),
         LeftLval = field(yes(LeftPtag), LeftBaseRval,
             const(llconst_int(LeftOffset))),
         AssignCode = singleton(llds_instr(assign(LeftLval, RightRval),
             "Copy value"))
     ;
-        LeftWidth = double_word,
+        LeftWidth = apw_double(_, _, _),
         LeftLvalA = field(yes(LeftPtag), LeftBaseRval,
             const(llconst_int(LeftOffset))),
         LeftLvalB = field(yes(LeftPtag), LeftBaseRval,
@@ -1365,20 +1501,41 @@ generate_sub_assign_to_field_from_var(LeftField, RightVar, Code, CI, !CLD) :-
         ])
     ;
         (
-            LeftWidth = partial_word_first(Mask),
-            Shift = 0
+            LeftWidth = apw_partial_first(_, _, _, Mask, Fill),
+            Shift = arg_shift(0)
         ;
-            LeftWidth = partial_word_shifted(Shift, Mask)
+            LeftWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
         ),
+        Shift = arg_shift(ShiftInt),
+        Mask = arg_mask(MaskInt),
+        % XXX ARG_PACK
+        % In the usual case where the heap cell we are assigning to
+        % is freshly created, this code is *seriously* suboptimal.
+        % Instead of filling in the bits belonging to each variable
+        % as if the other bits were already there, first looking them up
+        % and then putting them back, we should just compute the bits
+        % for each variable (shifted by the appropriate amount),
+        % and OR them together.
         LeftLval = field(yes(LeftPtag), LeftBaseRval,
             const(llconst_int(LeftOffset))),
-        ComplementMask = const(llconst_int(\(Mask << Shift))),
-        MaskOld = binop(bitwise_and(int_type_int),
+        ComplementMask = const(llconst_int(\ (MaskInt << ShiftInt))),
+        MaskOld = binop(bitwise_and(int_type_uint),
             lval(LeftLval), ComplementMask),
-        ShiftNew = maybe_left_shift_rval(RightRval, Shift),
-        Combined = binop(bitwise_or(int_type_int), MaskOld, ShiftNew),
-        AssignCode = singleton(llds_instr(assign(LeftLval, Combined),
+        ShiftedRightRval = left_shift_rval(RightRval, Shift, Fill),
+        CombinedRval = or_two_rvals(MaskOld, ShiftedRightRval),
+        AssignCode = singleton(llds_instr(assign(LeftLval, CombinedRval),
             "Update part of word"))
+    ;
+        ( LeftWidth = apw_none_nowhere
+        ; LeftWidth = apw_none_shifted(_, _)
+        ),
+        % The value being assigned is of a dummy type, so no assignment
+        % is actually necessary.
+        % XXX Should we try to avoid generating ProduceRightVarCode
+        % and MaterializeLeftBaseCode as well? MaterializeLeftBaseCode
+        % is probably needed by other, non-dummy fields, and
+        % ProduceRightVarCode is probably very cheap, so probably not.
+        AssignCode = empty
     ),
     Code = ProduceRightVarCode ++ MaterializeLeftBaseCode ++ AssignCode.
 
@@ -1530,44 +1687,44 @@ generate_const_struct(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ConstNum - ConstStruct, !ConstStructMap, !StaticCellInfo) :-
     ConstStruct = const_struct(ConsId, ConstArgs, _, _),
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-    get_cons_arg_widths(ModuleInfo, ConsId, ConstArgs, ConsArgsWidths),
+    get_cons_arg_widths(ModuleInfo, ConsId, ConstArgs, ConsArgsPosWidths),
     generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-        !.ConstStructMap, ConsTag, ConsArgsWidths, Rval, !StaticCellInfo),
+        !.ConstStructMap, ConsTag, ConsArgsPosWidths, Rval, !StaticCellInfo),
     map.det_insert(ConstNum, Rval, !ConstStructMap).
 
 :- pred generate_const_struct_rval(module_info::in, have_unboxed_floats::in,
     have_unboxed_int64s::in, const_struct_map::in, cons_tag::in,
-    assoc_list(const_struct_arg, arg_width)::in, typed_rval::out,
+    assoc_list(const_struct_arg, arg_pos_width)::in, typed_rval::out,
     static_cell_info::in, static_cell_info::out) is det.
 
 generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-        ConstStructMap, ConsTag, ConstArgsWidths, TypedRval,
+        ConstStructMap, ConsTag, ConstArgsPosWidths, TypedRval,
         !StaticCellInfo) :-
     (
         ConsTag = no_tag,
         (
-            ConstArgsWidths = [ConstArgWidth],
+            ConstArgsPosWidths = [ConstArgPosWidth],
             generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-                ConstStructMap, ConstArgWidth, ArgTypedRval),
+                ConstStructMap, ConstArgPosWidth, ArgTypedRval),
             TypedRval = ArgTypedRval
         ;
-            ( ConstArgsWidths = []
-            ; ConstArgsWidths = [_, _ | _]
+            ( ConstArgsPosWidths = []
+            ; ConstArgsPosWidths = [_, _ | _]
             ),
             unexpected($pred, "no_tag arity != 1")
         )
     ;
         ConsTag = direct_arg_tag(Ptag),
         (
-            ConstArgsWidths = [ConstArgWidth],
+            ConstArgsPosWidths = [ConstArgPosWidth],
             generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-                ConstStructMap, ConstArgWidth, ArgTypedRval),
+                ConstStructMap, ConstArgPosWidth, ArgTypedRval),
             ArgTypedRval = typed_rval(ArgRval, _RvalType),
             Rval = mkword(Ptag, ArgRval),
             TypedRval = typed_rval(Rval, lt_data_ptr)
         ;
-            ( ConstArgsWidths = []
-            ; ConstArgsWidths = [_, _ | _]
+            ( ConstArgsPosWidths = []
+            ; ConstArgsPosWidths = [_, _ | _]
             ),
             unexpected($pred, "direct_arg_tag: arity != 1")
         )
@@ -1581,7 +1738,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ConsTag = shared_remote_tag(Ptag, _Stag)
         ),
         generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, ConstArgsWidths, PackedArgTypedRvals),
+            ConstStructMap, ConstArgsPosWidths, PackedArgTypedRvals),
         (
             ( ConsTag = single_functor_tag
             ; ConsTag = unshared_tag(_Ptag)
@@ -1604,6 +1761,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = shared_local_tag(_, _)
+        ; ConsTag = dummy_tag
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
@@ -1619,78 +1777,95 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
 
 :- pred generate_const_struct_args(module_info::in, have_unboxed_floats::in,
     have_unboxed_int64s::in, const_struct_map::in,
-    assoc_list(const_struct_arg, arg_width)::in, list(typed_rval)::out) is det.
+    assoc_list(const_struct_arg, arg_pos_width)::in, list(typed_rval)::out)
+    is det.
 
 generate_const_struct_args(_, _, _, _, [], []) .
 generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-        ConstStructMap, [ConstArgWidth | ConstArgsWidths],
-        [TypedRval | TypedRvals]) :-
-    ConstArgWidth = _ConstArg - ArgWidth,
+        ConstStructMap, [ConstArgPosWidth | ConstArgsPosWidths], TypedRvals) :-
+    ConstArgPosWidth = _ConstArg - ArgPosWidth,
     (
-        ( ArgWidth = full_word
-        ; ArgWidth = double_word
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
         ),
         % For the reason why we handle double word arguments the same as
         % full word arguments, see the comment in ml_unify_gen.m in the
         % predicate ml_pack_ground_term_args_into_word_inits.
         generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, ConstArgWidth, TypedRval),
+            ConstStructMap, ConstArgPosWidth, HeadTypedRval),
         generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, ConstArgsWidths, TypedRvals)
+            ConstStructMap, ConstArgsPosWidths, TailTypedRvals),
+        TypedRvals = [HeadTypedRval | TailTypedRvals]
     ;
-        ArgWidth = partial_word_first(_Mask),
+        ArgPosWidth = apw_partial_first(_, _, _, _, _),
         generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, ConstArgWidth, FirstTypedRval),
+            ConstStructMap, ConstArgPosWidth, FirstTypedRval),
+        FirstTypedRval = typed_rval(FirstRval, _FirstRvalType),
         generate_const_struct_args_for_one_word(ModuleInfo,
             UnboxedFloats, UnboxedInt64s, ConstStructMap,
-            ConstArgsWidths, LeftOverConstArgsWidths,
-            FirstTypedRval, TypedRval),
+            ConstArgsPosWidths, LeftOverConstArgsPosWidths,
+            FirstRval, HeadRval),
+        HeadTypedRval = typed_rval(HeadRval, lt_int(int_type_uint)),
         generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, LeftOverConstArgsWidths, TypedRvals)
+            ConstStructMap, LeftOverConstArgsPosWidths, TailTypedRvals),
+        TypedRvals = [HeadTypedRval | TailTypedRvals]
     ;
-        ArgWidth = partial_word_shifted(_, _),
-        unexpected($pred, "partial_word_shifted")
+        ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _),
+        unexpected($pred, "apw_partial_shifted")
+    ;
+        ArgPosWidth = apw_none_shifted(_, _),
+        unexpected($pred, "apw_none_shifted")
+    ;
+        ArgPosWidth = apw_none_nowhere,
+        % Generate nothing for this argument.
+        generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConstArgsPosWidths, TypedRvals)
     ).
 
 :- pred generate_const_struct_args_for_one_word(module_info::in,
     have_unboxed_floats::in, have_unboxed_int64s::in, const_struct_map::in,
-    assoc_list(const_struct_arg, arg_width)::in,
-    assoc_list(const_struct_arg, arg_width)::out,
-    typed_rval::in, typed_rval::out) is det.
+    assoc_list(const_struct_arg, arg_pos_width)::in,
+    assoc_list(const_struct_arg, arg_pos_width)::out,
+    rval::in, rval::out) is det.
 
 generate_const_struct_args_for_one_word(_, _, _, _, [], [],
-        TypedRval, TypedRval).
+        Rval, Rval).
 generate_const_struct_args_for_one_word(ModuleInfo,
         UnboxedFloats, UnboxedInt64s, ConstStructMap,
-        [ConstArgWidth | ConstArgsWidths], LeftOverConstArgsWidths,
-        CurTypedRval, WordTypedRval) :-
-    ConstArgWidth = _ConstArg - ArgWidth,
+        [ConstArgPosWidth | ConstArgsPosWidths], LeftOverConstArgsPosWidths,
+        CurRval, WordRval) :-
+    ConstArgPosWidth = _ConstArg - ArgPosWidth,
     (
-        ( ArgWidth = full_word
-        ; ArgWidth = double_word
-        ; ArgWidth = partial_word_first(_)
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
         ),
         % These are not part of the current word.
-        LeftOverConstArgsWidths = [ConstArgWidth | ConstArgsWidths],
-        WordTypedRval = CurTypedRval
+        LeftOverConstArgsPosWidths = [ConstArgPosWidth | ConstArgsPosWidths],
+        WordRval = CurRval
     ;
-        ArgWidth = partial_word_shifted(ArgShift, _Mask),
-        generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, ConstArgWidth, ArgTypedRval),
-        add_shifted_typed_rval(CurTypedRval, ArgTypedRval, ArgShift,
-            NextTypedRval),
+        (
+            ArgPosWidth = apw_partial_shifted(_, _, ArgShift, _, _, Fill),
+            generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+                ConstStructMap, ConstArgPosWidth, ArgTypedRval),
+            ArgTypedRval = typed_rval(ArgRval, _ArgRvalType),
+            add_shifted_rval(CurRval, ArgRval, ArgShift, Fill, NextRval)
+        ;
+            ArgPosWidth = apw_none_shifted(_, _),
+            NextRval = CurRval
+        ),
         generate_const_struct_args_for_one_word(ModuleInfo,
             UnboxedFloats, UnboxedInt64s, ConstStructMap,
-            ConstArgsWidths, LeftOverConstArgsWidths,
-            NextTypedRval, WordTypedRval)
+            ConstArgsPosWidths, LeftOverConstArgsPosWidths, NextRval, WordRval)
     ).
 
 :- pred generate_const_struct_arg(module_info::in, have_unboxed_floats::in,
     have_unboxed_int64s::in, const_struct_map::in,
-    pair(const_struct_arg, arg_width)::in, typed_rval::out) is det.
+    pair(const_struct_arg, arg_pos_width)::in, typed_rval::out) is det.
 
 generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-        ConstStructMap, ConstArg - ArgWidth, TypedRval) :-
+        ConstStructMap, ConstArg - ArgPosWidth, TypedRval) :-
     (
         ConstArg = csa_const_struct(ConstNum),
         map.lookup(ConstStructMap, ConstNum, TypedRval)
@@ -1698,15 +1873,18 @@ generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ConstArg = csa_constant(ConsId, _),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
-            ConsTag, ArgWidth, TypedRval)
+            ConsTag, ArgPosWidth, TypedRval)
     ).
 
 :- pred generate_const_struct_arg_tag(have_unboxed_floats::in,
-    have_unboxed_int64s::in, cons_tag::in, arg_width::in,
+    have_unboxed_int64s::in, cons_tag::in, arg_pos_width::in,
     typed_rval::out) is det.
 
 generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
-        ConsTag, ArgWidth, TypedRval) :-
+        ConsTag, ArgPosWidth, TypedRval) :-
+    % The code of this predicate is very similar to the code of
+    % generate_ground_term_conjunct_tag. Any changes here may also
+    % require similar changes there.
     (
         (
             ConsTag = string_tag(String),
@@ -1724,7 +1902,14 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
                     Type = lt_int(IntType)
                 ;
                     UnboxedInt64s = do_not_have_unboxed_int64s,
-                    Type = lt_data_ptr
+                    % Though a standalone int64 or uint64 value might have
+                    % needed to boxed, it may be stored in unboxed form
+                    % as a constructor argument.
+                    ( if ArgPosWidth = apw_double(_, _, _) then
+                        Type = lt_int(IntType)
+                    else
+                        Type = lt_data_ptr
+                    )
                 )
             ;
                 ( IntType = int_type_int
@@ -1742,6 +1927,10 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
                 Type = lt_int(int_type_uint)
             )
         ;
+            ConsTag = dummy_tag,
+            Const = llconst_int(0),
+            Type = lt_int(int_type_int)
+        ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $pred,
                 "foreign_tag for language other than C"),
@@ -1755,9 +1944,9 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
                 Type = lt_float
             ;
                 UnboxedFloats = do_not_have_unboxed_floats,
-                % Though a standalone float might have needed to boxed, it may
-                % be stored in unboxed form as a constructor argument.
-                ( if ArgWidth = double_word then
+                % Though a standalone float might have needed to boxed,
+                % it may be stored in unboxed form as a constructor argument.
+                ( if ArgPosWidth = apw_double(_, _, _) then
                     Type = lt_float
                 else
                     Type = lt_data_ptr
@@ -1882,12 +2071,15 @@ generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
     ).
 
 :- pred generate_ground_term_conjunct_tag(prog_var::in, cons_tag::in,
-    assoc_list(prog_var, arg_width)::in, have_unboxed_floats::in,
+    assoc_list(prog_var, arg_pos_width)::in, have_unboxed_floats::in,
     static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
 generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
         UnboxedFloats, !StaticCellInfo, !ActiveMap) :-
+    % The code of this predicate is very similar to the code of
+    % generate_const_struct_arg_tag. Any changes here may also
+    % require similar changes there.
     (
         (
             ConsTag = string_tag(String),
@@ -1897,6 +2089,10 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
             ConsTag = int_tag(IntTag),
             int_tag_to_const_and_int_type(IntTag, Const, IntType),
             Type = lt_int(IntType)
+        ;
+            ConsTag = dummy_tag,
+            Const = llconst_int(0),
+            Type = lt_int(int_type_int)
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $pred,
@@ -1924,7 +2120,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
     ;
         ConsTag = no_tag,
         (
-            ArgVarsWidths = [ArgVar - _ArgWidth],
+            ArgVarsWidths = [ArgVar - _ArgPosWidth],
             map.det_remove(ArgVar, RvalType, !ActiveMap),
             map.det_insert(Var, RvalType, !ActiveMap)
         ;
@@ -1936,7 +2132,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
     ;
         ConsTag = direct_arg_tag(Ptag),
         (
-            ArgVarsWidths = [ArgVar - _ArgWidth],
+            ArgVarsWidths = [ArgVar - _ArgPosWidth],
             map.det_remove(ArgVar, typed_rval(ArgRval, _RvalType), !ActiveMap),
             Rval = mkword(Ptag, ArgRval),
             ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
@@ -2035,84 +2231,91 @@ int_tag_to_const_and_int_type(IntTag, Const, Type) :-
         Type = int_type_uint64
     ).
 
-:- pred generate_ground_term_args(assoc_list(prog_var, arg_width)::in,
+:- pred generate_ground_term_args(assoc_list(prog_var, arg_pos_width)::in,
     list(typed_rval)::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
 generate_ground_term_args([], [], !ActiveMap).
 generate_ground_term_args([ArgVarWidth | ArgVarsWidths],
         [TypedRval | TypedRvals], !ActiveMap) :-
-    ArgVarWidth = ArgVar - ArgWidth,
+    ArgVarWidth = ArgVar - ArgPosWidth,
     map.det_remove(ArgVar, ArgTypedRval, !ActiveMap),
     (
-        ArgWidth = full_word,
+        ArgPosWidth = apw_full(_, _),
         TypedRval = ArgTypedRval,
         generate_ground_term_args(ArgVarsWidths, TypedRvals, !ActiveMap)
     ;
-        ArgWidth = double_word,
-        % Though a standalone float might have needed to boxed,
-        % it may be stored in unboxed form as a constructor argument.
+        ArgPosWidth = apw_double(_, _, DoubleWordKind),
+        % Though a standalone value of type float, int64 or int64
+        % might have needed to boxed, it may be stored in unboxed form
+        % as a constructor argument.
         ( if ArgTypedRval = typed_rval(ArgRval, lt_data_ptr) then
-            TypedRval = typed_rval(ArgRval, lt_float)
+            (
+                DoubleWordKind = dw_float,
+                TypedRval = typed_rval(ArgRval, lt_float)
+            ;
+                DoubleWordKind = dw_int64,
+                TypedRval = typed_rval(ArgRval, lt_int(int_type_int64))
+            ;
+                DoubleWordKind = dw_uint64,
+                TypedRval = typed_rval(ArgRval, lt_int(int_type_uint64))
+            )
         else
             TypedRval = ArgTypedRval
         ),
         generate_ground_term_args(ArgVarsWidths, TypedRvals, !ActiveMap)
     ;
-        ArgWidth = partial_word_first(_),
+        ArgPosWidth = apw_partial_first(_, _, _, _, _),
+        ArgTypedRval = typed_rval(ArgRval, _),
         generate_ground_term_args_for_one_word(ArgVarsWidths,
-            LeftOverArgVarsWidths, ArgTypedRval, TypedRval, !ActiveMap),
+            LeftOverArgVarsWidths, ArgRval, WordRval, !ActiveMap),
+        TypedRval = typed_rval(WordRval, lt_int(int_type_uint)),
         generate_ground_term_args(LeftOverArgVarsWidths, TypedRvals,
             !ActiveMap)
     ;
-        ArgWidth = partial_word_shifted(_, _),
-        unexpected($pred, "partial_word_shifted")
+        ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _),
+        unexpected($pred, "apw_partial_shifted")
+    ;
+        ArgPosWidth = apw_none_shifted(_, _),
+        unexpected($pred, "apw_none_shifted")
+    ;
+        ArgPosWidth = apw_none_nowhere,
+        unexpected($pred, "apw_none_nowhere")
     ).
 
 :- pred generate_ground_term_args_for_one_word(
-    assoc_list(prog_var, arg_width)::in, assoc_list(prog_var, arg_width)::out,
-    typed_rval::in, typed_rval::out,
+    assoc_list(prog_var, arg_pos_width)::in,
+    assoc_list(prog_var, arg_pos_width)::out,
+    rval::in, rval::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_args_for_one_word([], [],
-        TypedRval, TypedRval, !ActiveMap).
+generate_ground_term_args_for_one_word([], [], CurRval, CurRval, !ActiveMap).
 generate_ground_term_args_for_one_word([ArgVarWidth | ArgVarsWidths],
-        LeftOverArgVarsWidths, CurTypedRval, WordTypedRval, !ActiveMap) :-
-    ArgVarWidth = ArgVar - ArgWidth,
+        LeftOverArgVarsWidths, CurRval, WordRval, !ActiveMap) :-
+    ArgVarWidth = ArgVar - ArgPosWidth,
     (
-        ( ArgWidth = full_word
-        ; ArgWidth = double_word
-        ; ArgWidth = partial_word_first(_)
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
         ),
         % These are not part of the current word.
         LeftOverArgVarsWidths = [ArgVarWidth | ArgVarsWidths],
-        WordTypedRval = CurTypedRval
+        WordRval = CurRval
     ;
-        ArgWidth = partial_word_shifted(ArgShift, _),
-        map.det_remove(ArgVar, ArgTypedRval, !ActiveMap),
-        add_shifted_typed_rval(CurTypedRval, ArgTypedRval, ArgShift,
-            NextTypedRval),
+        (
+            ArgPosWidth = apw_partial_shifted(_, _, ArgShift, _, _, Fill),
+            map.det_remove(ArgVar, ArgTypedRval, !ActiveMap),
+            ArgTypedRval = typed_rval(ArgRval, _ArgRvalType),
+            add_shifted_rval(CurRval, ArgRval, ArgShift, Fill, NextRval)
+        ;
+            ArgPosWidth = apw_none_shifted(_, _),
+            map.det_remove(ArgVar, _ArgTypedRval, !ActiveMap),
+            NextRval = CurRval
+        ),
         generate_ground_term_args_for_one_word(ArgVarsWidths,
-            LeftOverArgVarsWidths, NextTypedRval, WordTypedRval, !ActiveMap)
+            LeftOverArgVarsWidths, NextRval, WordRval, !ActiveMap)
     ).
-
-%---------------------------------------------------------------------------%
-
-:- func maybe_left_shift_rval(rval, int) = rval.
-
-maybe_left_shift_rval(Rval, Shift) =
-    ( if Shift = 0 then
-        Rval
-    else
-        binop(unchecked_left_shift(int_type_int), Rval,
-            const(llconst_int(Shift)))
-    ).
-
-:- func right_shift_rval(rval, int) = rval.
-
-right_shift_rval(Rval, Shift) =
-    binop(unchecked_right_shift(int_type_int), Rval,
-        const(llconst_int(Shift))).
 
 %---------------------------------------------------------------------------%
 
@@ -2144,30 +2347,30 @@ or_packed_rvals_lag(HeadRval, TailRvals, OrAllRval) :-
     ;
         TailRvals = [HeadTailRval | TailTailRvals],
         or_packed_rvals_lag(HeadTailRval, TailTailRvals, TailOrAllRval),
-        OrAllRval = binop(bitwise_or(int_type_int), HeadRval, TailOrAllRval)
+        OrAllRval = or_two_rvals(HeadRval, TailOrAllRval)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred add_shifted_typed_rval(typed_rval::in, typed_rval::in, int::in,
-    typed_rval::out) is det.
+:- pred add_shifted_rval(rval::in, rval::in, arg_shift::in, fill_kind::in,
+    rval::out) is det.
 
-add_shifted_typed_rval(CurTypedRval, ArgTypedRval, ArgShift, TypedRval) :-
-    CurTypedRval = typed_rval(CurRval, CurType),
-    ArgTypedRval = typed_rval(ArgRval, ArgType),
-    ShiftedArgRval = binop(unchecked_left_shift(int_type_int),
-        ArgRval, const(llconst_int(ArgShift))),
-    ( if CurType = ArgType then
-        Type = CurType,
-        Rval = binop(bitwise_or(int_type_int), CurRval, ShiftedArgRval),
-        TypedRval = typed_rval(Rval, Type)
+add_shifted_rval(CurRval, ArgRval, ArgShift, ArgFill, ResultRval) :-
+    ArgShift = arg_shift(ArgShiftInt),
+    cast_away_any_sign_extend_bits(ArgFill, ArgRval, CastArgRval),
+    ( if ArgShiftInt = 0 then
+        ShiftedArgRval = CastArgRval
+    else if ArgRval = const(llconst_int(0)) then
+        ShiftedArgRval = CastArgRval
     else
-        unexpected($pred, "mismatched llds_types")
-    ).
+        ShiftedArgRval = binop(unchecked_left_shift(int_type_uint),
+            CastArgRval, const(llconst_int(ArgShiftInt)))
+    ),
+    ResultRval = or_two_rvals(CurRval, ShiftedArgRval).
 
 %---------------------------------------------------------------------------%
 
-:- pred pack_how_to_construct(assoc_list(prog_var, arg_width)::in,
+:- pred pack_how_to_construct(assoc_list(prog_var, arg_pos_width)::in,
     how_to_construct::in, how_to_construct::out) is det.
 
 pack_how_to_construct(ArgVarsWidths, !HowToConstruct) :-
@@ -2201,7 +2404,7 @@ pack_how_to_construct(ArgVarsWidths, !HowToConstruct) :-
         !:HowToConstruct = reuse_cell(CellToReuse)
     ).
 
-:- pred needs_update_args_to_words(assoc_list(prog_var, arg_width)::in,
+:- pred needs_update_args_to_words(assoc_list(prog_var, arg_pos_width)::in,
     list(needs_update)::in, list(needs_update)::out) is det.
 
 needs_update_args_to_words([], [], []).
@@ -2210,28 +2413,36 @@ needs_update_args_to_words([], [_ | _], _) :-
 needs_update_args_to_words([_ | _], [], []) :-
     unexpected($module, $pred, "mismatched lists").
 needs_update_args_to_words([VarWidth | VarsWidths], [ArgNU | ArgNUs],
-        [WordNU | WordNUs]) :-
+        WordNUs) :-
     VarWidth = _Var - Width,
     (
-        ( Width = full_word
-        ; Width = double_word
+        ( Width = apw_full(_, _)
+        ; Width = apw_double(_, _, _)
         ),
-        WordNU = ArgNU,
-        needs_update_args_to_words(VarsWidths, ArgNUs, WordNUs)
+        needs_update_args_to_words(VarsWidths, ArgNUs, TailWordNUs),
+        WordNUs = [ArgNU | TailWordNUs]
     ;
-        Width = partial_word_first(_),
+        Width = apw_partial_first(_, _, _, _, _),
         does_any_arg_in_word_need_update(VarsWidths, ArgNUs, ArgNU, WordNU,
             LaterWordVarsWidths, LaterWordArgNUs),
         needs_update_args_to_words(LaterWordVarsWidths, LaterWordArgNUs,
-            WordNUs)
+            TailWordNUs),
+        WordNUs = [WordNU | TailWordNUs]
     ;
-        Width = partial_word_shifted(_, _),
-        unexpected($pred, "partial_word_shifted")
+        Width = apw_none_nowhere,
+        needs_update_args_to_words(VarsWidths, ArgNUs, WordNUs)
+    ;
+        Width = apw_partial_shifted(_, _, _, _, _, _),
+        unexpected($pred, "apw_partial_shifted")
+    ;
+        Width = apw_none_shifted(_, _),
+        unexpected($pred, "none_shifted")
     ).
 
-:- pred does_any_arg_in_word_need_update(assoc_list(prog_var, arg_width)::in,
-    list(needs_update)::in, needs_update::in, needs_update::out,
-    assoc_list(prog_var, arg_width)::out, list(needs_update)::out) is det.
+:- pred does_any_arg_in_word_need_update(
+    assoc_list(prog_var, arg_pos_width)::in, list(needs_update)::in,
+    needs_update::in, needs_update::out,
+    assoc_list(prog_var, arg_pos_width)::out, list(needs_update)::out) is det.
 
 does_any_arg_in_word_need_update([], [], !NU, [], []).
 does_any_arg_in_word_need_update([], [_ | _], !NU, _, _) :-
@@ -2242,14 +2453,17 @@ does_any_arg_in_word_need_update([VarWidth | VarsWidths], [ArgNU | ArgNUs],
         !NU, LaterWordVarsWidths, LaterWordArgNUs) :-
     VarWidth = _Var - Width,
     (
-        ( Width = full_word
-        ; Width = double_word
-        ; Width = partial_word_first(_)
+        ( Width = apw_full(_, _)
+        ; Width = apw_double(_, _, _)
+        ; Width = apw_partial_first(_, _, _, _, _)
+        ; Width = apw_none_nowhere
         ),
         LaterWordVarsWidths = [VarWidth | VarsWidths],
         LaterWordArgNUs = [ArgNU | ArgNUs]
     ;
-        Width = partial_word_shifted(_, _),
+        ( Width = apw_partial_shifted(_, _, _, _, _, _)
+        ; Width = apw_none_shifted(_, _)
+        ),
         (
             ArgNU = needs_update,
             !:NU = needs_update
@@ -2262,12 +2476,6 @@ does_any_arg_in_word_need_update([VarWidth | VarsWidths], [ArgNU | ArgNUs],
 
 %---------------------------------------------------------------------------%
 
-:- pred pair_with_width(arg_width::in, T::in, pair(T, arg_width)::out) is det.
-
-pair_with_width(Width, Arg, Arg - Width).
-
-%---------------------------------------------------------------------------%
-
 :- pred var_type_msg(mer_type::in, string::out) is det.
 
 var_type_msg(Type, Msg) :-
@@ -2275,7 +2483,79 @@ var_type_msg(Type, Msg) :-
     TypeCtor = type_ctor(TypeSym, TypeArity),
     TypeSymStr = sym_name_to_string(TypeSym),
     string.int_to_string(TypeArity, TypeArityStr),
-    string.append_list([TypeSymStr, "/", TypeArityStr], Msg).
+    Msg = TypeSymStr ++ "/" ++ TypeArityStr.
+
+%---------------------------------------------------------------------------%
+
+:- func or_two_rvals(rval, rval) = rval.
+
+or_two_rvals(RvalA, RvalB) = OrRval :-
+    % OR-ing anything with zero has no effect.
+    ( if RvalA = const(llconst_int(0)) then
+        OrRval = RvalB
+    else if RvalB = const(llconst_int(0)) then
+        OrRval = RvalA
+    else
+        OrRval = binop(bitwise_or(int_type_uint), RvalA, RvalB)
+    ).
+
+:- func left_shift_rval(rval, arg_shift, fill_kind) = rval.
+
+left_shift_rval(Rval, Shift, Fill) = ShiftedRval :-
+    Shift = arg_shift(ShiftInt),
+    cast_away_any_sign_extend_bits(Fill, Rval, CastRval),
+    ( if ShiftInt = 0 then
+        % Shifting anything by zero bits has no effect.
+        ShiftedRval = CastRval
+    else if Rval = const(llconst_int(0)) then
+        % Shifting zero any number of bits has no effect.
+        ShiftedRval = CastRval
+    else
+        ShiftedRval = binop(unchecked_left_shift(int_type_uint),
+            CastRval, const(llconst_int(ShiftInt)))
+    ).
+
+:- func right_shift_rval(rval, arg_shift) = rval.
+
+right_shift_rval(Rval, Shift) = ShiftedRval :-
+    Shift = arg_shift(ShiftInt),
+    % Shifting anything by zero bits has no effect.
+    % Shifting zero any number of bits has no effect.
+    % However, our caller won't give us either a zero shift amount
+    % or a constant zero rval to shift.
+    ShiftedRval = binop(unchecked_right_shift(int_type_uint),
+        Rval, const(llconst_int(ShiftInt))).
+
+    % If a sub-word-sized signed integer has a negative value, then it will
+    % have sign-extend bits *beyond* its usual size. OR-ing the raw form
+    % of that sub-word-sized integer with the values of the other fields
+    % may thus stomp all over the bits assigned to store the other fields
+    % that are to the left of the sub-word-sized signed integer.
+    %
+    % Prevent this by casting sub-word-sized signed integers to their
+    % unsigned counterparts before the shift and the OR operations.
+    %
+:- pred cast_away_any_sign_extend_bits(fill_kind::in, rval::in, rval::out)
+    is det.
+
+cast_away_any_sign_extend_bits(Fill, Rval0, Rval) :-
+    (
+        ( Fill = fill_enum
+        ; Fill = fill_uint8
+        ; Fill = fill_uint16
+        ; Fill = fill_uint32
+        ),
+        Rval = Rval0
+    ;
+        Fill = fill_int8,
+        Rval = cast(lt_int(int_type_uint8), Rval0)
+    ;
+        Fill = fill_int16,
+        Rval = cast(lt_int(int_type_uint16), Rval0)
+    ;
+        Fill = fill_int32,
+        Rval = cast(lt_int(int_type_uint32), Rval0)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.unify_gen.

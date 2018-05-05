@@ -58,7 +58,7 @@
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 :- type mlds_rval_type_and_width
-    --->    rval_type_and_width(mlds_rval, mlds_type, arg_width).
+    --->    rval_type_and_width(mlds_rval, mlds_type, arg_pos_width).
 
     % ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     %   ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr, HowToConstruct,
@@ -122,6 +122,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.arg_pack.
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module backend_libs.type_class_info.
 :- import_module check_hlds.
@@ -303,7 +304,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                     MLDS_ArgType),
                 ml_gen_info_get_global_data(!.Info, GlobalData0),
                 ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
-                    full_word, ArgRval, Rval0, GlobalData0, GlobalData),
+                    aw_full_word, ArgRval, Rval0, GlobalData0, GlobalData),
                 ml_gen_info_set_global_data(GlobalData, !Info),
                 Rval = ml_cast_cons_tag(MLDS_Type, Tag, Rval0),
                 GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
@@ -378,6 +379,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
+        ; Tag = dummy_tag
         ; Tag = shared_local_tag(_, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
@@ -409,6 +411,7 @@ ml_gen_info_lookup_const_var_rval(Info, Var, Rval) :-
     GroundTerm = ml_ground_term(Rval, _, _).
 
     % Generate the rval for a given constant.
+    % XXX ARG_PACK This predicate should be inlined in its only caller.
     %
 :- pred ml_gen_constant(cons_tag::in, mer_type::in, mlds_type::in,
     mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
@@ -426,6 +429,9 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
     ;
         Tag = foreign_tag(ForeignLang, ForeignTag),
         Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_VarType))
+    ;
+        Tag = dummy_tag,
+        Rval = ml_const(mlconst_int(0))
     ;
         Tag = shared_local_tag(Bits1, Num1),
         Rval = ml_unop(cast(MLDS_VarType), ml_mkword(Bits1,
@@ -514,8 +520,8 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
             % secondary tag -- are boxed, and so we need box it here.
             StagRval = ml_unop(box(StagType0), StagRval0),
             StagType = mlds_generic_type,
-            ExtraRvalsTypesWidths =
-                [rval_type_and_width(StagRval, StagType, full_word)]
+            ExtraRvalsTypesWidths = [rval_type_and_width(StagRval, StagType,
+                apw_full(arg_only_offset(0), cell_offset(0)))]
         ;
             UsesConstructors = yes,
             % Secondary tag is implicitly initialised by the constructor.
@@ -540,8 +546,17 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     ml_gen_type(!.Info, VarType, MLDS_Type),
     ml_gen_var(!.Info, Var, VarLval),
     (
+        MaybeConsId = yes(ConsId),
+        ConsIdOrClosure = ordinary_cons_id(ConsId)
+    ;
+        MaybeConsId = no,
+        expect(unify(ExplicitSecTag, no), $pred, "sectag on closure"),
+        list.length(ExtraRvalsTypesWidths, NumExtras),
+        ConsIdOrClosure = closure_object(NumExtras)
+    ),
+    (
         HowToConstruct = construct_dynamically,
-        ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName,
+        ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName,
             Ptag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
             ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
             Context, Stmts, !Info)
@@ -549,12 +564,12 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
         HowToConstruct = construct_statically,
         expect(unify(TakeAddr, []), $pred,
             "cannot take address of static object's field"),
-        ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
+        ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
             Var, VarLval, VarType, MLDS_Type, ExtraRvalsTypesWidths,
             ArgVars, Context, Stmts, !Info)
     ;
         HowToConstruct = reuse_cell(CellToReuse),
-        ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
+        ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
             Ptag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
             ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
             CellToReuse, Context, Stmts, !Info)
@@ -563,7 +578,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
         sorry($pred, "construct_in_region NYI")
     ).
 
-:- pred ml_gen_new_object_dynamically(maybe(cons_id)::in,
+:- pred ml_gen_new_object_dynamically(cons_id_or_closure::in,
     maybe(qual_ctor_id)::in, ptag::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_rval_type_and_width)::in,
@@ -571,15 +586,14 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     list(int)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
+ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
         ExplicitSecTag, _Var, VarLval, VarType, MLDS_Type,
         ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr, Context, Stmts,
         !Info) :-
     % Find out the types of the constructor arguments and generate rvals
     % for them (boxing/unboxing if needed).
-    maybe_cons_id_arg_types_and_widths(!.Info, VarType, MaybeConsId, ArgVars,
-        ArgVarsTypesWidths),
-    NumExtraRvals = list.length(ExtraRvalsTypesWidths),
+    maybe_cons_id_arg_types_and_widths(!.Info, VarType, ConsIdOrClosure,
+        ArgVars, ArgVarsTypesWidths),
     ml_gen_info_get_use_atomic_cells(!.Info, UseAtomicCells),
     (
         UseAtomicCells = yes,
@@ -589,9 +603,10 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
         MayUseAtomic0 = may_not_use_atomic_alloc
     ),
     FirstArgNum = 1,
-    OffsetOfFirstField = NumExtraRvals,
+    NumExtraRvals = list.length(ExtraRvalsTypesWidths),
+    PrevOffset = NumExtraRvals - 1,
     ml_gen_cons_args(!.Info, ArgVarsTypesWidths, ArgModes, NumExtraRvals,
-        FirstArgNum, OffsetOfFirstField, ArgVarsTypesWidths, TakeAddr,
+        FirstArgNum, PrevOffset, ArgVarsTypesWidths, TakeAddr,
         TakeAddrInfos, ArgRvalsTypesWidths0, MayUseAtomic0, MayUseAtomic),
 
     % Replace double-word and packed arguments by uniform single word rvals.
@@ -613,6 +628,13 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
         ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
         ml_gen_proc_label(ModuleInfo, PredProcId, _Module, ProcLabel),
         ml_gen_info_get_global_data(!.Info, GlobalData0),
+        (
+            ConsIdOrClosure = ordinary_cons_id(ConsId),
+            MaybeConsId = yes(ConsId)
+        ;
+            ConsIdOrClosure = closure_object(_),
+            MaybeConsId = no
+        ),
         ml_gen_alloc_site(mlds_function_name(ProcLabel), MaybeConsId, Size,
             Context, AllocId, GlobalData0, GlobalData),
         ml_gen_info_set_global_data(GlobalData, !Info),
@@ -639,19 +661,19 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
 
 %---------------------------------------------------------------------------%
 
-:- pred ml_gen_new_object_statically(maybe(cons_id)::in,
+:- pred ml_gen_new_object_statically(cons_id_or_closure::in,
     maybe(qual_ctor_id)::in, ptag::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_rval_type_and_width)::in, list(prog_var)::in,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
+ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
         Var, VarLval, VarType, MLDS_Type, ExtraRvalsTypesWidths,
         ArgVars, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments.
-    maybe_cons_id_arg_types_and_widths(!.Info, VarType, MaybeConsId, ArgVars,
-        ArgVarsTypesWidths),
+    maybe_cons_id_arg_types_and_widths(!.Info, VarType, ConsIdOrClosure,
+        ArgVars, ArgVarsTypesWidths),
 
     some [!GlobalData] (
         % Generate rvals for the arguments.
@@ -690,7 +712,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
             ExtraArgRvalsTypesWidths),
         ml_gen_info_get_target(!.Info, Target),
         construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-            Context, VarType, MLDS_Type, MaybeConsId, UsesBaseClass, Ptag,
+            Context, VarType, MLDS_Type, ConsIdOrClosure, UsesBaseClass, Ptag,
             ExtraArgRvals, ArgRvalsTypesWidths, GroundTerm, !GlobalData),
 
         ml_gen_info_set_global_data(!.GlobalData, !Info)
@@ -702,25 +724,25 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
     AssignStmt = ml_gen_assign(VarLval, Rval, Context),
     Stmts = [AssignStmt].
 
-:- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
+:- pred ml_gen_new_object_reuse_cell(cons_id_or_closure::in,
     maybe(qual_ctor_id)::in, ptag::in, bool::in,
     prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
     list(mlds_rval_type_and_width)::in, list(prog_var)::in,
     list(unify_mode)::in, list(int)::in, cell_to_reuse::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag,
-        Var, VarLval, VarType, MLDS_Type, ExtraRvalsTypesWidths,
-        ArgVars, ArgModes, TakeAddr, CellToReuse, Context, Stmts, !Info) :-
+ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
+        Ptag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
+        ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr, CellToReuse,
+        Context, Stmts, !Info) :-
     % NOTE: if it is ever used, NeedsUpdates needs to be modified to take into
     % account argument packing, as in unify_gen.m.
     CellToReuse = cell_to_reuse(ReuseVar, ReuseConsIds, _NeedsUpdates),
     (
-        MaybeConsId = yes(ConsId0),
-        ConsId = ConsId0
+        ConsIdOrClosure = ordinary_cons_id(ConsId)
     ;
-        MaybeConsId = no,
-        unexpected($pred, "unknown cons id")
+        ConsIdOrClosure = closure_object(_),
+        unexpected($pred, "attempt to reuse closure")
     ),
     list.map(
         ( pred(ReuseConsId::in, ReusePrimTag::out) is det :-
@@ -731,9 +753,9 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag,
     list.remove_dups(ReusePrimaryTags0, ReusePrimaryTags),
 
     ml_cons_id_to_tag(!.Info, ConsId, ConsIdTag),
-    ml_variable_types(!.Info, ArgVars, ArgTypes),
-    ml_field_names_and_types(!.Info, VarType, ConsId, ArgTypes, Fields),
-    ml_tag_offset_and_argnum(ConsIdTag, PrimaryTag, OffSet, ArgNum),
+    ml_tag_offset_and_argnum(ConsIdTag, PrimaryTag, InitOffSet, ArgNum),
+    ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
+        Fields),
 
     ml_gen_var(!.Info, Var, Var1Lval),
     ml_gen_var(!.Info, ReuseVar, Var2Lval),
@@ -770,9 +792,9 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag,
         0, ConsIdTag, Context, ExtraRvalStmts, !Info),
     % XXX we do more work than we need to here, as some of the cells
     % may already contain the correct values.
-    ml_gen_unify_args_for_reuse(ConsId, ArgVars, ArgModes, ArgTypes,
-        Fields, TakeAddr, VarType, VarLval, OffSet, ArgNum, ConsIdTag,
-        Context, FieldStmts, TakeAddrInfos, !Info),
+    ml_gen_unify_args_for_reuse(ConsId, ArgVars, ArgModes, Fields,
+        TakeAddr, VarType, VarLval, InitOffSet, ArgNum, ConsIdTag, Context,
+        FieldStmts, TakeAddrInfos, !Info),
     MaybePtag = yes(Ptag),
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
         MaybePtag, Context, !.Info, TakeAddrStmts),
@@ -781,7 +803,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag,
 
     % If the reassignment isn't possible because the target is statically
     % allocated, then fall back to dynamic allocation.
-    ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
+    ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSecTag, Var,
         ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
         construct_dynamically, Context, DynamicStmts, !Info),
     ElseStmt = ml_stmt_block([], [], DynamicStmts, Context),
@@ -835,10 +857,10 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
     % mlds_mostly_generic_array_type(_), if required by the elements.
     %
 :- func get_const_type_for_cons_id(mlds_target_lang, bool, mlds_type,
-    tag_uses_base_class, maybe(cons_id)) = mlds_type.
+    tag_uses_base_class, cons_id_or_closure) = mlds_type.
 
 get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
-        MaybeConsId) = ConstType :-
+        ConsIdOrClosure) = ConstType :-
     (
         HighLevelData = no,
         ConstType = mlds_array_type(mlds_generic_type)
@@ -859,7 +881,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % class that is derived from the base class for this discriminated
             % union type.
             UsesBaseClass = tag_does_not_use_base_class,
-            MaybeConsId = yes(ConsId),
+            ConsIdOrClosure = ordinary_cons_id(ConsId),
             ConsId = cons(CtorSymName, CtorArity, _TypeCtor),
             (
                 MLDS_Type =
@@ -929,7 +951,7 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
             % is used in the calls to ml_gen_box_or_unbox_rval to ensure that
             % we box values when storing them into fields and unbox them when
             % extracting them from fields.
-            FieldWidth \= double_word
+            FieldWidth \= aw_double_word
         ;
             HighLevelData = yes,
             % With the high-level data representation, we don't box everything,
@@ -975,17 +997,18 @@ ml_gen_box_or_unbox_const_rval_list_hld(_, _, [], [], !GlobalData).
 ml_gen_box_or_unbox_const_rval_list_hld(Info, Context,
         [ArgVarTypeWidth | ArgVarsTypesWidths],
         [FieldRvalTypeWidth | FieldRvalsTypesWidths], !GlobalData) :-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ConsArgWidth),
+    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ConsArgPosWidth),
     ml_variable_type(Info, ArgVar, ArgType),
     ml_gen_info_lookup_const_var_rval(Info, ArgVar, ArgRval),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     HighLevelData = yes,
-    ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ConsArgWidth,
+    ConsWidth = arg_pos_width_to_width_only(ConsArgPosWidth),
+    ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ConsWidth,
         FieldType),
     ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context,
         ArgType, FieldType, ArgRval, FieldRval, !GlobalData),
     FieldRvalTypeWidth =
-        rval_type_and_width(FieldRval, mlds_generic_type, ConsArgWidth),
+        rval_type_and_width(FieldRval, mlds_generic_type, ConsArgPosWidth),
     ml_gen_box_or_unbox_const_rval_list_hld(Info, Context,
         ArgVarsTypesWidths, FieldRvalsTypesWidths, !GlobalData).
 
@@ -1000,7 +1023,7 @@ ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context, ArgType, FieldType,
         % -- in that case, we can just box the argument type.
         FieldType = type_variable(_, _),
         MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-        ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, full_word,
+        ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, aw_full_word,
             ArgRval, FieldRval, !GlobalData)
     ;
         ( FieldType = defined_type(_, _, _)
@@ -1025,14 +1048,15 @@ ml_gen_box_const_rval_list_lld(_, _, [], [], !GlobalData).
 ml_gen_box_const_rval_list_lld(Info, Context,
         [ArgVarTypeWidth | ArgVarsTypesWidths],
         [BoxedRvalTypeWidth | BoxedRvalsTypesWidths], !GlobalData) :-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, _ArgVarType, ArgWidth),
+    ArgVarTypeWidth = arg_type_and_width(ArgVar, _ArgVarType, ArgPosWidth),
     ml_gen_info_lookup_const_var(Info, ArgVar, GroundTerm),
     GroundTerm = ml_ground_term(Rval, _MercuryType, MLDS_Type),
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, ArgWidth, Rval,
+    Width = arg_pos_width_to_width_only(ArgPosWidth),
+    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval,
         BoxedRval, !GlobalData),
     BoxedRvalTypeWidth =
-        rval_type_and_width(BoxedRval, mlds_generic_type, ArgWidth),
+        rval_type_and_width(BoxedRval, mlds_generic_type, ArgPosWidth),
     ml_gen_box_const_rval_list_lld(Info, Context, ArgVarsTypesWidths,
         BoxedRvalsTypesWidths, !GlobalData).
 
@@ -1044,12 +1068,13 @@ ml_gen_box_extra_const_rval_list_lld(_, _, [], [], !GlobalData).
 ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
         [RvalTypeWidth | RvalsTypesWidths],
         [BoxedRvalTypeWidth | BoxedRvalsTypesWidths], !GlobalData) :-
-    RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, Width),
+    RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, PosWidth),
+    Width = arg_pos_width_to_width_only(PosWidth),
     % Extras are always a single word.
-    expect(unify(Width, full_word), $pred, "Width != full_word"),
+    expect(unify(Width, aw_full_word), $pred, "Width != aw_full_word"),
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width,
         Rval, BoxedRval, !GlobalData),
-    BoxedRvalTypeWidth = rval_type_and_width(BoxedRval, MLDS_Type, Width),
+    BoxedRvalTypeWidth = rval_type_and_width(BoxedRval, MLDS_Type, PosWidth),
     ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
         RvalsTypesWidths, BoxedRvalsTypesWidths, !GlobalData).
 
@@ -1074,13 +1099,18 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
 
 :- type take_addr_info
     --->    take_addr_info(
-                prog_var,           % The variable we record the address in.
-                field_offset,       % The offset of the field. This must take
-                                    % into account extra arguments and
-                                    % argument packing.
-                mlds_type,          % The type of the field variable.
-                mlds_type           % The type of the field, possibly
-                                    % after boxing.
+                % The variable we record the address in.
+                tai_address_var             :: prog_var,
+
+                % The offset of the field. This must take into account
+                % extra arguments and argument packing.
+                tai_offset                  :: field_offset,
+
+                % The type of the field variable.
+                tai_field_var_type          :: mlds_type,
+
+                % The type of the field, possibly after boxing.
+                tai_maybe_boxed_field_type  :: mlds_type
             ).
 
 :- type field_offset
@@ -1106,11 +1136,10 @@ ml_gen_cons_args(_, [], [_ | _], _, _, _, _, _, _, _, !MayUseAtomic) :-
 ml_gen_cons_args(_, [_ | _], [], _, _, _, _, _, _, _, !MayUseAtomic) :-
     unexpected($pred, "length mismatch").
 ml_gen_cons_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
-        [ArgMode | ArgModes], NumExtraArgs, CurArgNum, CurOffset,
-        AllArgVarsTypesWidths, !.TakeAddr, TakeAddrInfos,
-        [RvalMLDSTypeWidth | RvalsMLDSTypesWidths],
+        [ArgMode | ArgModes], NumExtraArgs, CurArgNum, PrevOffset0,
+        AllArgVarsTypesWidths, !.TakeAddr, TakeAddrInfos, RvalsMLDSTypesWidths,
         !MayUseAtomic) :-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgWidth),
+    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgPosWidth),
     ml_gen_var(Info, ArgVar, Lval),
     ml_variable_type(Info, ArgVar, ArgType),
     % It is important to use ArgType instead of ConsArgType here. ConsArgType
@@ -1125,41 +1154,69 @@ ml_gen_cons_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
     update_type_may_use_atomic_alloc(ModuleInfo, ArgType, !MayUseAtomic),
 
     % Figure out the type of the field.
-    (
-        ( ArgWidth = full_word
-        ; ArgWidth = partial_word_first(_)
-        ),
-        NextOffset = CurOffset + 1
-    ;
-        ArgWidth = double_word,
-        NextOffset = CurOffset + 2
-    ;
-        ArgWidth = partial_word_shifted(_, _),
-        NextOffset = CurOffset
-    ),
     ml_gen_info_get_high_level_data(Info, HighLevelData),
+    ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
     ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ArgWidth,
         BoxedArgType),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
+    (
+        ArgPosWidth = apw_full(_, CellOffset),
+        CurOffset = PrevOffset0 + 1,
+        CellOffset = cell_offset(CellOffsetInt),
+        expect(unify(CurOffset, CellOffsetInt), $pred, "full"),
+        PrevOffset = PrevOffset0 + 1
+    ;
+        ArgPosWidth = apw_double(_, CellOffset, _),
+        CurOffset = PrevOffset0 + 1,
+        CellOffset = cell_offset(CellOffsetInt),
+        expect(unify(CurOffset, CellOffsetInt), $pred, "double"),
+        PrevOffset = PrevOffset0 + 2
+    ;
+        ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _),
+        CurOffset = PrevOffset0 + 1,
+        CellOffset = cell_offset(CellOffsetInt),
+        expect(unify(CurOffset, CellOffsetInt), $pred, "first"),
+        PrevOffset = PrevOffset0 + 1
+    ;
+        ( ArgPosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
+        ; ArgPosWidth = apw_none_shifted(_, CellOffset)
+        ),
+        CurOffset = PrevOffset0,
+        CellOffset = cell_offset(CellOffsetInt),
+        expect(unify(CurOffset, CellOffsetInt), $pred, "shifted"),
+        PrevOffset = PrevOffset0
+    ;
+        ArgPosWidth = apw_none_nowhere,
+        % There *is* no offset at which the current argument is stored.
+        CurOffset = -1,
+        PrevOffset = PrevOffset0
+    ),
 
     % Compute the value of the field.
     ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
-        expect(unify(ArgWidth, full_word), $pred,
+        expect(unify(ArgWidth, aw_full_word), $pred,
             "taking address of non word-sized argument"),
         Rval = ml_const(mlconst_null(MLDS_Type)),
-        RvalMLDSTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgWidth),
+        RvalMLDSTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgPosWidth),
+        % XXX ARG_PACK This call, the AllArgVarsTypesWidths and NumExtraArgs
+        % arguments, and the ml_calc_field_offset function should not be needed
+        % when we switch to taking offsets *only* from arg_pos_widths.
         Offset = ml_calc_field_offset(NumExtraArgs, AllArgVarsTypesWidths,
             CurArgNum),
-        expect(unify(Offset, offset(CurOffset)), $pred,
-            "Offset != CurOffset"),
+        expect(unify(Offset, offset(CurOffset)), $pred, "Offset != CurOffset"),
         OrigMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ConsArgType),
         TakeAddrInfo =
             take_addr_info(ArgVar, Offset, OrigMLDS_Type, MLDS_Type),
         ml_gen_cons_args(Info, ArgVarsTypesWidths, ArgModes,
-            NumExtraArgs, CurArgNum + 1, NextOffset, AllArgVarsTypesWidths,
-            !.TakeAddr, TakeAddrInfosTail, RvalsMLDSTypesWidths,
+            NumExtraArgs, CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths,
+            !.TakeAddr, TakeAddrInfosTail, TailRvalsMLDSTypesWidths,
             !MayUseAtomic),
-        TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
+        TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail],
+        RvalsMLDSTypesWidths = [RvalMLDSTypeWidth | TailRvalsMLDSTypesWidths]
+    else if ArgPosWidth = apw_none_nowhere then
+        ml_gen_cons_args(Info, ArgVarsTypesWidths, ArgModes,
+            NumExtraArgs, CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths,
+            !.TakeAddr, TakeAddrInfos, RvalsMLDSTypesWidths, !MayUseAtomic)
     else
         ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
         ( if
@@ -1173,10 +1230,11 @@ ml_gen_cons_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
         else
             Rval = ml_const(mlconst_null(MLDS_Type))
         ),
-        RvalMLDSTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgWidth),
-        ml_gen_cons_args(Info, ArgVarsTypesWidths, ArgModes,
-            NumExtraArgs, CurArgNum + 1, NextOffset, AllArgVarsTypesWidths,
-            !.TakeAddr, TakeAddrInfos, RvalsMLDSTypesWidths, !MayUseAtomic)
+        RvalMLDSTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgPosWidth),
+        ml_gen_cons_args(Info, ArgVarsTypesWidths, ArgModes, NumExtraArgs,
+            CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths, !.TakeAddr,
+            TakeAddrInfos, TailRvalsMLDSTypesWidths, !MayUseAtomic),
+        RvalsMLDSTypesWidths = [RvalMLDSTypeWidth | TailRvalsMLDSTypesWidths]
     ).
 
 :- func ml_calc_field_offset(int, list(arg_var_type_and_width), int)
@@ -1186,9 +1244,9 @@ ml_calc_field_offset(NumExtraArgs, ArgVarsTypesWidths, ArgNum) = Offset :-
     ( if
         list.take(ArgNum - 1, ArgVarsTypesWidths, ArgVarsTypesWidthsBeforeArg)
     then
-        WidthsBeforeArg = list.map(func(arg_type_and_width(_, _, W)) = W,
+        PosWidthsBeforeArg = list.map(func(arg_type_and_width(_, _, W)) = W,
             ArgVarsTypesWidthsBeforeArg),
-        WordsBeforeArg = count_distinct_words(WidthsBeforeArg),
+        WordsBeforeArg = count_distinct_words(PosWidthsBeforeArg),
         Offset = offset(NumExtraArgs + WordsBeforeArg)
     else
         unexpected($pred, "more fields than arg_widths")
@@ -1211,8 +1269,10 @@ ml_gen_extra_arg_assign([ExtraRvalTypeWidth | ExtraRvalsTypesWidths],
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     FieldId = ml_field_offset(ml_const(mlconst_int(CurOffset))),
     MaybePrimaryTag = get_primary_tag(ConsIdTag),
-    ExtraRvalTypeWidth = rval_type_and_width(ExtraRval, ExtraType, ArgWidth),
-    expect(unify(ArgWidth, full_word), $pred, "ArgWidth != full_word"),
+    ExtraRvalTypeWidth =
+        rval_type_and_width(ExtraRval, ExtraType, ArgPosWidth),
+    expect(is_apw_full(ArgPosWidth), $pred,
+        "ArgPosWidth != apw_full(_)"),
     NextOffset = CurOffset + 1,
     FieldLval = ml_field(MaybePrimaryTag, ml_lval(VarLval), FieldId,
         ExtraType, MLDS_VarType),
@@ -1246,6 +1306,7 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
         ; Tag = int_tag(_IntTag)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
+        ; Tag = dummy_tag
         ; Tag = shared_local_tag(_Bits1, _Num1)
         ),
         % For constants, if the deconstruction is det, then we already know
@@ -1275,7 +1336,8 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_info_get_high_level_data(!.Info, HighLevelData),
             ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType,
-                VarLval, Type, full_word, Context, [], Stmts)
+                VarLval, Type, apw_full(arg_only_offset(0), cell_offset(0)),
+                Context, [], Stmts)
         else
             unexpected($pred, "no_tag: arity != 1")
         )
@@ -1300,11 +1362,11 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
         ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag)
         ),
         ml_gen_var(!.Info, Var, VarLval),
-        ml_variable_types(!.Info, Args, ArgTypes),
-        ml_field_names_and_types(!.Info, Type, ConsId, ArgTypes, Fields),
-        ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum),
-        ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
-            VarLval, OffSet, ArgNum, Tag, Context, Stmts, !Info)
+        ml_tag_offset_and_argnum(Tag, _, InitOffSet, ArgNum),
+        ml_field_names_and_types(!.Info, Type, ConsId, InitOffSet, Args,
+            Fields),
+        ml_gen_unify_args(ConsId, Args, Modes, Fields, Type,
+            VarLval, InitOffSet, ArgNum, Tag, Context, Stmts, !Info)
     ).
 
     % Calculate the integer offset used to reference the first field of a
@@ -1341,6 +1403,7 @@ ml_tag_offset_and_argnum(Tag, Ptag, Offset, ArgNum) :-
         ; Tag = int_tag(_)
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_Float)
+        ; Tag = dummy_tag
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
@@ -1363,20 +1426,20 @@ ml_tag_offset_and_argnum(Tag, Ptag, Offset, ArgNum) :-
     % of the field types.
     %
 :- pred ml_field_names_and_types(ml_gen_info::in, mer_type::in,
-    cons_id::in, list(mer_type)::in, list(constructor_arg_repn)::out) is det.
+    cons_id::in, field_offset::in, list(prog_var)::in,
+    list(constructor_arg_repn)::out) is det.
 
-ml_field_names_and_types(Info, Type, ConsId, ArgTypes, CtorArgRepns) :-
+ml_field_names_and_types(Info, Type, ConsId, InitOffset, Args, CtorArgRepns) :-
     % Lookup the field types for the arguments of this cons_id.
-    MakeUnnamedField =
-        ( func(FieldType) =
-            % Tuples and extra fields are word-sized.
-            ctor_arg_repn(no, FieldType, full_word, term.context_init)
-        ),
+    InitOffset = offset(InitOffsetInt),
     ( if type_is_tuple(Type, _) then
-        list.length(ArgTypes, TupleArity),
+        list.length(Args, TupleArity),
         % The argument types for tuples are unbound type variables.
         FieldTypes = ml_make_boxed_types(TupleArity),
-        CtorArgRepns = list.map(MakeUnnamedField, FieldTypes)
+        % Fields in tuples are all word-sized, and have no extra type_infos
+        % and/or typeclass_infos in front of them.
+        allocate_consecutive_full_word_ctor_arg_repns(InitOffsetInt,
+            FieldTypes, CtorArgRepns)
     else
         ml_gen_info_get_module_info(Info, ModuleInfo),
         get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
@@ -1384,25 +1447,33 @@ ml_field_names_and_types(Info, Type, ConsId, ArgTypes, CtorArgRepns) :-
 
         % Add the fields for any type_infos and/or typeclass_infos inserted
         % for existentially quantified data types. For these, we just copy
-        % the types from the ArgTypes.
-        NumArgs = list.length(ArgTypes),
-        NumFieldTypes0 = list.length(CtorArgRepns0),
-        NumExtraTypes = NumArgs - NumFieldTypes0,
-        ExtraFieldTypes = list.take_upto(NumExtraTypes, ArgTypes),
-        ExtraCtorArgRepns = list.map(MakeUnnamedField, ExtraFieldTypes),
-        CtorArgRepns = ExtraCtorArgRepns ++ CtorArgRepns0
+        % the types of the initial Args.
+        NumArgs = list.length(Args),
+        NumCtorArgs = list.length(CtorArgRepns0),
+        NumExtraArgs = NumArgs - NumCtorArgs,
+        ( if NumExtraArgs > 0 then
+            ExtraArgs = list.take_upto(NumExtraArgs, Args),
+            ml_variable_types(Info, ExtraArgs, ExtraArgTypes),
+            % The extra type_infos and/or typeclass_infos are all stored
+            % in one full word each.
+            allocate_consecutive_full_word_ctor_arg_repns(InitOffsetInt,
+                ExtraArgTypes, ExtraCtorArgRepns),
+            CtorArgRepns = ExtraCtorArgRepns ++ CtorArgRepns0
+        else
+            CtorArgRepns = CtorArgRepns0
+        )
     ).
 
 :- pred ml_gen_unify_args(cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg_repn)::in,
+    list(unify_mode)::in, list(constructor_arg_repn)::in,
     mer_type::in, mlds_lval::in, field_offset::in, int::in, cons_tag::in,
     prog_context::in, list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out)
     is det.
 
-ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, CtorArgRepns, VarType,
-        VarLval, Offset, ArgNum, Tag, Context, Stmts, !Info) :-
+ml_gen_unify_args(ConsId, Args, Modes, CtorArgRepns, VarType, VarLval,
+        Offset, ArgNum, Tag, Context, Stmts, !Info) :-
     ( if
-        ml_gen_unify_args_loop(ConsId, Args, Modes, ArgTypes, CtorArgRepns,
+        ml_gen_unify_args_loop(ConsId, Args, Modes, CtorArgRepns,
             VarType, VarLval, Offset, ArgNum, Tag, Context,
             [], Stmts0, !Info)
     then
@@ -1412,70 +1483,72 @@ ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, CtorArgRepns, VarType,
     ).
 
 :- pred ml_gen_unify_args_loop(cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg_repn)::in,
+    list(unify_mode)::in, list(constructor_arg_repn)::in,
     mer_type::in, mlds_lval::in, field_offset::in, int::in,
     cons_tag::in, prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is semidet.
 
-ml_gen_unify_args_loop(_, [], [], [], _, _, _, _, _, _, _, !Stmts, !Info).
-ml_gen_unify_args_loop(ConsId, [Arg | Args], [Mode | Modes],
-        [ArgType | ArgTypes], [CtorArgRepn | CtorArgRepns],
-        VarType, VarLval, Offset, ArgNum, Tag, Context, !Stmts, !Info) :-
-    ml_next_field_offset(CtorArgRepn, CtorArgRepns, Offset, Offset1),
-    ArgNum1 = ArgNum + 1,
-    ml_gen_unify_args_loop(ConsId, Args, Modes, ArgTypes, CtorArgRepns,
-        VarType, VarLval, Offset1, ArgNum1, Tag, Context, !Stmts, !Info),
-    ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, CtorArgRepn,
-        VarType, VarLval, Offset, ArgNum, Tag, Context, !Stmts, !Info).
+ml_gen_unify_args_loop(_, [], [], _, _, _, _, _, _, _, !Stmts, !Info).
+ml_gen_unify_args_loop(ConsId, [ArgVar | ArgVars], [Mode | Modes],
+        [CtorArgRepn | CtorArgRepns],
+        VarType, VarLval, CurOffset, CurArgNum, Tag, Context, !Stmts, !Info) :-
+    ml_next_field_offset(CtorArgRepn, CtorArgRepns, CurOffset, NextOffset),
+    NextArgNum = CurArgNum + 1,
+    ml_gen_unify_args_loop(ConsId, ArgVars, Modes, CtorArgRepns,
+        VarType, VarLval, NextOffset, NextArgNum, Tag, Context, !Stmts, !Info),
+    ml_gen_unify_arg(ConsId, ArgVar, Mode, CtorArgRepn,
+        VarType, VarLval, CurOffset, CurArgNum, Tag, Context, !Stmts, !Info).
 
 :- pred ml_gen_unify_args_for_reuse(cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, list(mer_type)::in, list(constructor_arg_repn)::in,
+    list(unify_mode)::in, list(constructor_arg_repn)::in,
     list(int)::in, mer_type::in, mlds_lval::in, field_offset::in,
     int::in, cons_tag::in, prog_context::in,
     list(mlds_stmt)::out, list(take_addr_info)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, CtorArgRepns,
-        TakeAddr, VarType, VarLval, Offset, ArgNum, Tag, Context,
+ml_gen_unify_args_for_reuse(ConsId, ArgVars, Modes, CtorArgRepns,
+        TakeAddr, VarType, VarLval, CurOffset, CurArgNum, Tag, Context,
         Stmts, TakeAddrInfos, !Info) :-
     ( if
-        Args = [],
+        ArgVars = [],
         Modes = [],
-        ArgTypes = [],
         CtorArgRepns = []
     then
         Stmts = [],
         TakeAddrInfos = []
     else if
-        Args = [Arg | Args1],
-        Modes = [Mode | Modes1],
-        ArgTypes = [ArgType | ArgTypes1],
-        CtorArgRepns = [CtorArgRepn | CtorArgRepns1]
+        ArgVars = [ArgVar | TailArgVars],
+        Modes = [Mode | TailModes],
+        CtorArgRepns = [CtorArgRepn | TailCtorArgRepns]
     then
-        ml_next_field_offset(CtorArgRepn, CtorArgRepns1, Offset, Offset1),
-        ArgNum1 = ArgNum + 1,
-        ( if TakeAddr = [ArgNum | TakeAddr1] then
-            ml_gen_unify_args_for_reuse(ConsId, Args1, Modes1, ArgTypes1,
-                CtorArgRepns1, TakeAddr1, VarType, VarLval, Offset1, ArgNum1,
-                Tag, Context, Stmts, TakeAddrInfos0, !Info),
+        ml_next_field_offset(CtorArgRepn, TailCtorArgRepns,
+            CurOffset, NextOffset),
+        NextArgNum = CurArgNum + 1,
+        ( if TakeAddr = [CurArgNum | TailTakeAddr] then
+            ml_gen_unify_args_for_reuse(ConsId, TailArgVars, TailModes,
+                TailCtorArgRepns, TailTakeAddr, VarType, VarLval,
+                NextOffset, NextArgNum, Tag, Context, Stmts,
+                TakeAddrInfosTail, !Info),
 
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_info_get_high_level_data(!.Info, HighLevelData),
             FieldType = CtorArgRepn ^ car_type,
-            FieldWidth = CtorArgRepn ^ car_width,
+            FieldPosWidth = CtorArgRepn ^ car_pos_width,
+            FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
             ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
                 BoxedFieldType),
             ml_gen_type(!.Info, FieldType, MLDS_FieldType),
             ml_gen_type(!.Info, BoxedFieldType, MLDS_BoxedFieldType),
-            TakeAddrInfo = take_addr_info(Arg, Offset, MLDS_FieldType,
+            TakeAddrInfo = take_addr_info(ArgVar, CurOffset, MLDS_FieldType,
                 MLDS_BoxedFieldType),
-            TakeAddrInfos = [TakeAddrInfo | TakeAddrInfos0]
+            TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
         else
-            ml_gen_unify_args_for_reuse(ConsId, Args1, Modes1, ArgTypes1,
-                CtorArgRepns1, TakeAddr, VarType, VarLval, Offset1, ArgNum1,
-                Tag, Context, Stmts0, TakeAddrInfos, !Info),
-            ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, CtorArgRepn,
-                VarType, VarLval, Offset, ArgNum, Tag, Context,
+            ml_gen_unify_args_for_reuse(ConsId, TailArgVars, TailModes,
+                TailCtorArgRepns, TakeAddr, VarType, VarLval,
+                NextOffset, NextArgNum, Tag, Context, Stmts0,
+                TakeAddrInfos, !Info),
+            ml_gen_unify_arg(ConsId, ArgVar, Mode, CtorArgRepn,
+                VarType, VarLval, CurOffset, CurArgNum, Tag, Context,
                 Stmts0, Stmts, !Info)
         )
     else
@@ -1483,20 +1556,22 @@ ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, CtorArgRepns,
     ).
 
 :- pred ml_gen_unify_arg(cons_id::in, prog_var::in, unify_mode::in,
-    mer_type::in, constructor_arg_repn::in, mer_type::in, mlds_lval::in,
+    constructor_arg_repn::in, mer_type::in, mlds_lval::in,
     field_offset::in, int::in, cons_tag::in, prog_context::in,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_arg(ConsId, ArgVar, Mode, ArgType, CtorArgRepn, VarType, VarLval,
+ml_gen_unify_arg(ConsId, ArgVar, Mode, CtorArgRepn, VarType, VarLval,
         Offset, ArgNum, Tag, Context, !Stmts, !Info) :-
     MaybeFieldName = CtorArgRepn ^ car_field_name,
     FieldType = CtorArgRepn ^ car_type,
-    FieldWidth = CtorArgRepn ^ car_width,
+    FieldPosWidth = CtorArgRepn ^ car_pos_width,
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     (
         % With the low-level data representation, we access all fields
         % using offsets.
+        % XXX We should check whether the cell offset in FieldPosWidth,
+        % if any, matches Offset.
         HighLevelData = no,
         Offset = offset(OffsetInt),
         FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt)))
@@ -1520,6 +1595,7 @@ ml_gen_unify_arg(ConsId, ArgVar, Mode, ArgType, CtorArgRepn, VarType, VarLval,
     ),
     % Box the field type, if needed.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
     ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
         BoxedFieldType),
 
@@ -1530,13 +1606,14 @@ ml_gen_unify_arg(ConsId, ArgVar, Mode, ArgType, CtorArgRepn, VarType, VarLval,
     FieldLval = ml_field(MaybePrimaryTag, ml_lval(VarLval), FieldId,
         MLDS_BoxedFieldType, MLDS_VarType),
     ml_gen_var(!.Info, ArgVar, ArgLval),
+    ml_variable_type(!.Info, ArgVar, ArgType),
 
     % Now generate code to unify them.
     ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType,
-        FieldLval, BoxedFieldType, FieldWidth, Context, !Stmts).
+        FieldLval, BoxedFieldType, FieldPosWidth, Context, !Stmts).
 
 :- pred ml_gen_sub_unify(module_info::in, bool::in, unify_mode::in,
-    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_width::in,
+    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_pos_width::in,
     prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
 ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
@@ -1612,32 +1689,64 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
     ).
 
 :- pred ml_gen_sub_unify_assign_right(module_info::in,
-    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_width::in,
+    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_pos_width::in,
     prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
 ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
         FieldLval, FieldType, FieldWidth, Context, !Stmts) :-
     (
-        ( FieldWidth = full_word
-        ; FieldWidth = partial_word_first(_)
-        ; FieldWidth = partial_word_shifted(_, _)
+        ( FieldWidth = apw_full(_, _)
+        ; FieldWidth = apw_partial_first(_, _, _, _, _)
+        ; FieldWidth = apw_partial_shifted(_, _, _, _, _, _)
         ),
         ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
             bp_native_if_possible, ml_lval(FieldLval), FieldRval),
         (
-            FieldWidth = full_word,
-            Stmt = ml_gen_assign(ArgLval, FieldRval, Context)
+            FieldWidth = apw_full(_, _),
+            ToAssignRval = FieldRval
         ;
-            FieldWidth = partial_word_first(Mask),
-            UnpackRval = ml_bitwise_and(FieldRval, Mask),
-            Stmt = ml_gen_assign(ArgLval, UnpackRval, Context)
-        ;
-            FieldWidth = partial_word_shifted(Shift, Mask),
-            UnpackRval = ml_bitwise_and(ml_rshift(FieldRval, Shift), Mask),
-            Stmt = ml_gen_assign(ArgLval, UnpackRval, Context)
-        )
+            (
+                FieldWidth = apw_partial_first(_, _, _, Mask, Fill),
+                Shift = arg_shift(0)
+            ;
+                FieldWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
+            ),
+            Mask = arg_mask(MaskInt),
+            MaskedRval = ml_bitwise_and(ml_rshift(FieldRval, Shift), MaskInt),
+            (
+                Fill = fill_enum,
+                ToAssignRval = MaskedRval
+            ;
+                (
+                    Fill = fill_int8,
+                    IntType = int_type_int8
+                ;
+                    Fill = fill_uint8,
+                    IntType = int_type_uint8
+                ;
+                    Fill = fill_int16,
+                    IntType = int_type_int16
+                ;
+                    Fill = fill_uint16,
+                    IntType = int_type_uint16
+                ;
+                    Fill = fill_int32,
+                    IntType = int_type_int32
+                ;
+                    Fill = fill_uint32,
+                    IntType = int_type_uint32
+                ),
+                MerType = builtin_type(builtin_type_int(IntType)),
+                CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
+                ExportedType = builtin_type_to_exported_type(MerType),
+                MLDSType = mercury_type(MerType, CtorCat, ExportedType),
+                ToAssignRval = ml_unop(cast(MLDSType), MaskedRval)
+            )
+        ),
+        Stmt = ml_gen_assign(ArgLval, ToAssignRval, Context),
+        !:Stmts = [Stmt | !.Stmts]
     ;
-        FieldWidth = double_word,
+        FieldWidth = apw_double(_, _, _),
         ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
             FieldRval = ml_binop(float_from_dword,
                 ml_lval(FieldLvalA), ml_lval(FieldLvalB))
@@ -1645,12 +1754,17 @@ ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
             ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
                 bp_native_if_possible, ml_lval(FieldLval), FieldRval)
         ),
-        Stmt = ml_gen_assign(ArgLval, FieldRval, Context)
-    ),
-    !:Stmts = [Stmt | !.Stmts].
+        Stmt = ml_gen_assign(ArgLval, FieldRval, Context),
+        !:Stmts = [Stmt | !.Stmts]
+    ;
+        ( FieldWidth = apw_none_nowhere
+        ; FieldWidth = apw_none_shifted(_, _)
+        )
+        % Generate no code.
+    ).
 
-:- pred ml_gen_sub_unify_assign_left(module_info::in, bool::in,
-    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_width::in,
+:- pred ml_gen_sub_unify_assign_left(module_info::in, bool::in, mlds_lval::in,
+    mer_type::in, mlds_lval::in, mer_type::in, arg_pos_width::in,
     prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
 ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
@@ -1658,16 +1772,16 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
     ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
         bp_native_if_possible, ml_lval(ArgLval), ArgRval),
     (
-        FieldWidth = full_word,
+        FieldWidth = apw_full(_, _),
         Stmt = ml_gen_assign(FieldLval, ArgRval, Context),
         !:Stmts = [Stmt | !.Stmts]
     ;
-        FieldWidth = double_word,
+        FieldWidth = apw_double(_, _, _),
         ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
             FloatWordA = ml_unop(std_unop(dword_float_get_word0), ArgRval),
             FloatWordB = ml_unop(std_unop(dword_float_get_word1), ArgRval),
             ml_type_as_field(ModuleInfo, HighLevelData, int_type,
-                full_word, IntFieldType),
+                aw_full_word, IntFieldType),
             ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
                 bp_native_if_possible, FloatWordA, ArgRvalA),
             ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
@@ -1681,17 +1795,24 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
         )
     ;
         (
-            FieldWidth = partial_word_first(Mask),
-            Shift = 0
+            FieldWidth = apw_partial_first(_, _, _, Mask, Fill),
+            Shift = arg_shift(0)
         ;
-            FieldWidth = partial_word_shifted(Shift, Mask)
+            FieldWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
         ),
+        Shift = arg_shift(ShiftInt),
+        Mask = arg_mask(MaskInt),
         CastVal = ml_unop(unbox(mlds_native_int_type), ml_lval(FieldLval)),
-        MaskOld = ml_bitwise_and(CastVal, \ (Mask << Shift)),
-        ShiftNew = ml_lshift(ArgRval, Shift),
+        MaskOld = ml_bitwise_and(CastVal, \ (MaskInt << ShiftInt)),
+        ShiftNew = ml_lshift(ArgRval, Shift, Fill),
         Combined = ml_bitwise_or(MaskOld, ShiftNew),
         Stmt = ml_gen_assign(FieldLval, Combined, Context),
         !:Stmts = [Stmt | !.Stmts]
+    ;
+        ( FieldWidth = apw_none_shifted(_, _)
+        ; FieldWidth = apw_none_nowhere
+        )
+        % Nothing to do.
     ).
 
 :- pred ml_field_offset_pair(mlds_lval::in, mlds_lval::out, mlds_lval::out)
@@ -1954,6 +2075,9 @@ ml_gen_tag_test_rval(Info, Tag, Type, Rval) = TagTestRval :-
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal, MLDS_Type)),
         TagTestRval = ml_binop(eq(int_type_int), Rval, Const)
+    ;
+        Tag = dummy_tag,
+        TagTestRval = ml_const(mlconst_true)
     ;
         ( Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -2270,7 +2394,7 @@ ml_gen_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
-        Var, VarType, MLDS_Type, ConsId, ConsTag, Args, Context,
+        Var, VarType, MLDS_Type, ConsId, ConsTag, ArgVars, Context,
         !GlobalData, !GroundTermMap) :-
     (
         % Constants.
@@ -2292,8 +2416,11 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ConsTag = foreign_tag(ForeignLang, ForeignTag),
             ConstRval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
                 MLDS_Type))
+        ;
+            ConsTag = dummy_tag,
+            ConstRval = ml_const(mlconst_int(0))
         ),
-        expect(unify(Args, []), $pred, "constant tag with args"),
+        expect(unify(ArgVars, []), $pred, "constant tag with args"),
         ConstGroundTerm = ml_ground_term(ConstRval, VarType, MLDS_Type),
         map.det_insert(Var, ConstGroundTerm, !GroundTermMap)
     ;
@@ -2312,17 +2439,17 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ; ConsTag = direct_arg_tag(_)
         ),
         (
-            Args = [Arg],
-            map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
+            ArgVars = [ArgVar],
+            map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
             ArgGroundTerm = ml_ground_term(ArgRval, _ArgType, MLDS_ArgType),
             ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
-                full_word, ArgRval, Rval0, !GlobalData),
+                aw_full_word, ArgRval, Rval0, !GlobalData),
             Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, Rval0),
             GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
             map.det_insert(Var, GroundTerm, !GroundTermMap)
         ;
-            ( Args = []
-            ; Args = [_, _ | _]
+            ( ArgVars = []
+            ; ArgVars = [_, _ | _]
             ),
             unexpected($pred, "no_tag arity != 1")
         )
@@ -2364,7 +2491,7 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ),
         ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
             VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
-            ExtraRvals, Args, Context, !GlobalData, !GroundTermMap)
+            ExtraRvals, ArgVars, Context, !GlobalData, !GroundTermMap)
     ).
 
 :- pred ml_gen_ground_term_conjunct_compound(module_info::in,
@@ -2398,8 +2525,9 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     ),
     UsesBaseClass = ml_tag_uses_base_class(ConsTag),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        Context, VarType, MLDS_Type, yes(ConsId), UsesBaseClass, Ptag,
-        ExtraRvals, ArgRvalsTypesWidths, GroundTerm, !GlobalData),
+        Context, VarType, MLDS_Type, ordinary_cons_id(ConsId),
+        UsesBaseClass, Ptag, ExtraRvals, ArgRvalsTypesWidths, GroundTerm,
+        !GlobalData),
     map.det_insert(Var, GroundTerm, !GroundTermMap).
 
 %---------------------------------------------------------------------------%
@@ -2428,13 +2556,15 @@ construct_ground_term_initializers_hld(ModuleInfo, Context,
 
 construct_ground_term_initializer_hld(ModuleInfo, Context,
         ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap) :-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgWidth),
+    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgPosWidth),
     map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, ArgType, _MLDS_ArgType),
+    ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
     ml_type_as_field(ModuleInfo, yes, ConsArgType, ArgWidth, BoxedArgType),
     ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context,
         ArgType, BoxedArgType, ArgRval0, ArgRval, !GlobalData),
-    RvalTypeWidth = rval_type_and_width(ArgRval, mlds_generic_type, ArgWidth).
+    RvalTypeWidth =
+        rval_type_and_width(ArgRval, mlds_generic_type, ArgPosWidth).
 
 :- pred construct_ground_term_initializers_lld(module_info::in,
     prog_context::in, list(arg_var_type_and_width)::in,
@@ -2459,12 +2589,14 @@ construct_ground_term_initializers_lld(ModuleInfo, Context,
 
 construct_ground_term_initializer_lld(ModuleInfo, Context,
         ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap) :-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, _ConsArgType, ArgWidth),
+    ArgVarTypeWidth = arg_type_and_width(ArgVar, _ConsArgType, ArgPosWidth),
     map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, _ArgType, MLDS_ArgType),
+    ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, ArgWidth,
         ArgRval0, ArgRval, !GlobalData),
-    RvalTypeWidth = rval_type_and_width(ArgRval, mlds_generic_type, ArgWidth).
+    RvalTypeWidth =
+        rval_type_and_width(ArgRval, mlds_generic_type, ArgPosWidth).
 
 %---------------------------------------------------------------------------%
 
@@ -2513,8 +2645,9 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         ),
         (
             Args = [Arg],
-            ml_gen_const_struct_arg(Info, !.ConstStructMap,
-                Arg, full_word, ArgRvalTypeWidth, !GlobalData),
+            ml_gen_const_struct_arg(Info, !.ConstStructMap, Arg,
+                apw_full(arg_only_offset(0), cell_offset(0)),
+                ArgRvalTypeWidth, !GlobalData),
             ArgRvalTypeWidth =
                 rval_type_and_width(ArgRval, _RvalMLDSType, _Width),
             Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, ArgRval),
@@ -2566,6 +2699,7 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         ( ConsTag = int_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = string_tag(_)
+        ; ConsTag = dummy_tag
         ; ConsTag = shared_local_tag(_, _)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
@@ -2623,8 +2757,9 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
         ArgsTypesWidths, RvalsTypesWidths, !GlobalData),
     UsesBaseClass = ml_tag_uses_base_class(ConsTag),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        term.context_init, VarType, MLDS_Type, yes(ConsId), UsesBaseClass,
-        Ptag, ExtraRvals, RvalsTypesWidths, GroundTerm, !GlobalData),
+        term.context_init, VarType, MLDS_Type, ordinary_cons_id(ConsId),
+        UsesBaseClass, Ptag, ExtraRvals, RvalsTypesWidths, GroundTerm,
+        !GlobalData),
     map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
 
 :- pred ml_gen_const_struct_args(ml_const_struct_info::in,
@@ -2636,19 +2771,19 @@ ml_gen_const_struct_args(_, _, [], [], !GlobalData).
 ml_gen_const_struct_args(Info, ConstStructMap,
         [ArgTypeWidth | ArgsTypesWidths], [RvalTypeWidth | RvalsTypesWidths],
         !GlobalData) :-
-    ArgTypeWidth = arg_type_and_width(ConstArg, _Type, Width),
+    ArgTypeWidth = arg_type_and_width(ConstArg, _Type, PosWidth),
     ml_gen_const_struct_arg(Info, ConstStructMap,
-        ConstArg, Width, RvalTypeWidth, !GlobalData),
+        ConstArg, PosWidth, RvalTypeWidth, !GlobalData),
     ml_gen_const_struct_args(Info, ConstStructMap,
         ArgsTypesWidths, RvalsTypesWidths, !GlobalData).
 
 :- pred ml_gen_const_struct_arg(ml_const_struct_info::in,
-    ml_const_struct_map::in, const_struct_arg::in, arg_width::in,
+    ml_const_struct_map::in, const_struct_arg::in, arg_pos_width::in,
     mlds_rval_type_and_width::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, Width, RvalTypeWidth,
-        !GlobalData) :-
+ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, PosWidth,
+        RvalTypeWidth, !GlobalData) :-
     ModuleInfo = Info ^ mcsi_module_info,
     (
         ConstArg = csa_const_struct(StructNum),
@@ -2660,9 +2795,10 @@ ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, Width, RvalTypeWidth,
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval0)
     ),
+    Width = arg_pos_width_to_width_only(PosWidth),
     ml_gen_box_const_rval(ModuleInfo, term.context_init, MLDS_Type,
         Width, Rval0, Rval, !GlobalData),
-    RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, Width).
+    RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, PosWidth).
 
 :- pred ml_gen_const_struct_arg_tag(cons_tag::in, mer_type::in, mlds_type::in,
     mlds_rval::out) is det.
@@ -2685,6 +2821,9 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignTag),
         Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_Type))
+    ;
+        ConsTag = dummy_tag,
+        Rval = ml_const(mlconst_int(0))
     ;
         ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
         ModuleName = fixup_builtin_module(ModuleName0),
@@ -2767,34 +2906,38 @@ int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag) = Const :-
 
 %---------------------------------------------------------------------------%
 
+:- type cons_id_or_closure
+    --->    ordinary_cons_id(cons_id)
+    ;       closure_object(int).            % The initial offset of the args.
+
 :- type may_have_extra_args
     --->    may_not_have_extra_args
     ;       may_have_extra_args.
 
 :- type arg_type_and_width(Arg)
-    --->    arg_type_and_width(Arg, mer_type, arg_width).
+    --->    arg_type_and_width(Arg, mer_type, arg_pos_width).
 
 :- type arg_var_type_and_width == arg_type_and_width(prog_var).
 :- type arg_const_type_and_width == arg_type_and_width(const_struct_arg).
 
 :- pred maybe_cons_id_arg_types_and_widths(ml_gen_info::in,
-    mer_type::in, maybe(cons_id)::in, list(prog_var)::in,
+    mer_type::in, cons_id_or_closure::in, list(prog_var)::in,
     list(arg_var_type_and_width)::out) is det.
 
-maybe_cons_id_arg_types_and_widths(Info, VarType, MaybeConsId, ArgVars,
+maybe_cons_id_arg_types_and_widths(Info, VarType, ConsIdOrClosure, ArgVars,
         ArgVarsTypesWidths) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_info_get_var_types(Info, VarTypes),
     (
-        MaybeConsId = yes(ConsId),
+        ConsIdOrClosure = ordinary_cons_id(ConsId),
         cons_id_arg_types_and_widths(ModuleInfo,
             lookup_var_type_func(VarTypes), may_have_extra_args,
             VarType, ConsId, ArgVars, ArgVarsTypesWidths)
     ;
-        MaybeConsId = no,
+        ConsIdOrClosure = closure_object(InitOffset),
         % It is a closure. In this case, the arguments are all boxed.
-        specified_arg_types_and_widths(ml_make_boxed_type,
-            ArgVars, ArgVarsTypesWidths)
+        specified_arg_types_and_consecutive_full_words(ml_make_boxed_type,
+            InitOffset, ArgVars, ArgVarsTypesWidths)
     ).
 
 :- type arg_to_type(Arg) == (func(Arg) = mer_type).
@@ -2841,8 +2984,7 @@ cons_id_arg_types_and_widths(ModuleInfo, ArgToType, MayHaveExtraArgs,
             ConsArgRepns = ConsRepnDefn ^ cr_args,
             NumExtraArgs = list.length(Args) - list.length(ConsArgRepns),
             ( if NumExtraArgs = 0 then
-                zip_args_types_widths(Args, ConsArgRepns,
-                    ArgsTypesWidths)
+                zip_args_types_widths(Args, ConsArgRepns, ArgsTypesWidths)
             else
                 expect(unify(MayHaveExtraArgs, may_have_extra_args), $pred,
                     "extra args in static struct"),
@@ -2850,8 +2992,13 @@ cons_id_arg_types_and_widths(ModuleInfo, ArgToType, MayHaveExtraArgs,
                 % type_infos and type_class_infos for existentially quantified
                 % types. We can get the type of these from VarTypes.
                 det_split_list(NumExtraArgs, Args, ExtraArgs, NonExtraArgs),
-                list.map(lookup_type_and_specify_width(ArgToType, full_word),
-                    ExtraArgs, ExtraArgsTypesWidths),
+                ( if ConsRepnDefn ^ cr_tag = shared_remote_tag(_, _) then
+                    InitOffset = 1
+                else
+                    InitOffset = 0
+                ),
+                lookup_type_and_allocate_consecutive_full_words(ArgToType,
+                    InitOffset, ExtraArgs, ExtraArgsTypesWidths),
                 zip_args_types_widths(NonExtraArgs, ConsArgRepns,
                     NonExtraArgsTypesWidths),
                 ArgsTypesWidths =
@@ -2867,8 +3014,9 @@ cons_id_arg_types_and_widths(ModuleInfo, ArgToType, MayHaveExtraArgs,
             % here, since all we really care about at this point is whether
             % something is a type variable or not, not which type variable
             % it is.
-            specified_arg_types_and_widths(ml_make_boxed_type,
-                Args, ArgsTypesWidths)
+            InitOffset = 0,
+            specified_arg_types_and_consecutive_full_words(ml_make_boxed_type,
+                InitOffset, Args, ArgsTypesWidths)
         else
             % The only builtin types that can allocate structures
             % are tuples and the RTTI-related types. Both should have been
@@ -2878,9 +3026,11 @@ cons_id_arg_types_and_widths(ModuleInfo, ArgToType, MayHaveExtraArgs,
     else
         % For cases when ConsId \= hlds_cons(_, _) and it is not a tuple,
         % as can happen e.g. for closures and type_infos, we assume that
-        % the arguments all have the right type already.
-        list.map(lookup_type_and_specify_width(ArgToType, full_word),
-            Args, ArgsTypesWidths)
+        % the arguments all have the right type already, and that there
+        % is no secondary tag.
+        InitOffset = 0,
+        lookup_type_and_allocate_consecutive_full_words(ArgToType,
+            InitOffset, Args, ArgsTypesWidths)
     ).
 
 :- pred zip_args_types_widths(list(Arg)::in,
@@ -2894,27 +3044,8 @@ zip_args_types_widths([_ | _], [], _) :-
 zip_args_types_widths([Arg | Args], [ConsArgRepn | ConsArgRepns],
         [ArgTypeWidth | ArgsTypesWidth]) :-
     ArgTypeWidth = arg_type_and_width(Arg,
-        ConsArgRepn ^ car_type, ConsArgRepn ^ car_width),
+        ConsArgRepn ^ car_type, ConsArgRepn ^ car_pos_width),
     zip_args_types_widths(Args, ConsArgRepns, ArgsTypesWidth).
-
-:- pred specified_arg_types_and_widths(mer_type::in, list(Arg)::in,
-    list(arg_type_and_width(Arg))::out) is det.
-
-specified_arg_types_and_widths(Type, ArgVars, ArgVarsTypesWidths) :-
-    list.map(specify_type_and_width(Type, full_word),
-        ArgVars, ArgVarsTypesWidths).
-
-:- pred specify_type_and_width(mer_type::in, arg_width::in, Arg::in,
-    arg_type_and_width(Arg)::out) is det.
-
-specify_type_and_width(Type, Width, Arg, ArgTypeWidth) :-
-    ArgTypeWidth = arg_type_and_width(Arg, Type, Width).
-
-:- pred lookup_type_and_specify_width(arg_to_type(Arg)::in, arg_width::in,
-    Arg::in, arg_type_and_width(Arg)::out) is det.
-
-lookup_type_and_specify_width(ArgToType, Width, Arg, ArgTypeWidth) :-
-    ArgTypeWidth = arg_type_and_width(Arg, ArgToType(Arg), Width).
 
 %---------------------------------------------------------------------------%
 
@@ -2927,12 +3058,12 @@ lookup_type_and_specify_width(ArgToType, Width, Arg, ArgTypeWidth) :-
     %
 :- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
     bool::in, prog_context::in, mer_type::in, mlds_type::in,
-    maybe(cons_id)::in, tag_uses_base_class::in, int::in,
+    cons_id_or_closure::in, tag_uses_base_class::in, int::in,
     list(mlds_rval)::in, list(mlds_rval_type_and_width)::in,
     ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
 
 construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        Context, VarType, MLDS_Type, MaybeConsId, UsesBaseClass, Ptag,
+        Context, VarType, MLDS_Type, ConsIdOrClosure, UsesBaseClass, Ptag,
         ExtraRvals, RvalsTypesWidths, GroundTerm, !GlobalData) :-
     % Generate a local static constant for this term.
     ml_pack_ground_term_args_into_word_inits(RvalsTypesWidths, NonExtraInits),
@@ -2946,7 +3077,7 @@ construct_static_ground_term(ModuleInfo, Target, HighLevelData,
     ExtraInits = list.map(func(Rv) = init_obj(Rv), ExtraRvals),
     AllInits = ExtraInits ++ NonExtraInits,
     ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
-        UsesBaseClass, MaybeConsId),
+        UsesBaseClass, ConsIdOrClosure),
     ( if ConstType = mlds_array_type(_) then
         Initializer = init_array(AllInits)
     else
@@ -2977,11 +3108,11 @@ construct_static_ground_term(ModuleInfo, Target, HighLevelData,
 
 ml_pack_ground_term_args_into_word_inits([], []).
 ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
-        [Init | Inits]) :-
-    RvalTypeWidth = rval_type_and_width(Rval, _Type, Width),
+        Inits) :-
+    RvalTypeWidth = rval_type_and_width(Rval, _Type, PosWidth),
     (
-        ( Width = full_word
-        ; Width = double_word
+        ( PosWidth = apw_full(_, _)
+        ; PosWidth = apw_double(_, _, _)
         ),
         % XXX We treat double word fields the same as single word fields,
         % and generate a single initializer for them. This works on x86s
@@ -3013,19 +3144,31 @@ ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
         % (at least to me -zs) how we could ensure that a cross-compiler
         % would do this the same way, in terms of endian-ness, as the
         % target machine.
-        Init = init_obj(Rval),
-        ml_pack_ground_term_args_into_word_inits(RvalsTypesWidths, Inits)
+        HeadInit = init_obj(Rval),
+        ml_pack_ground_term_args_into_word_inits(RvalsTypesWidths, TailInits),
+        Inits = [HeadInit | TailInits]
     ;
-        Width = partial_word_first(_Mask),
+        PosWidth = apw_partial_first(_, _, _, _, Fill),
+        maybe_shift_and_accumulate_or_rval(Rval, arg_shift(0), Fill,
+            [], RevOrRvals0),
         ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-            Rval, OrAllRval),
-        Init = init_obj(OrAllRval),
+            RevOrRvals0, OrAllRval),
+        HeadInit = init_obj(OrAllRval),
         ml_pack_ground_term_args_into_word_inits(LeftOverRvalsTypesWidths, 
-            Inits)
+            TailInits),
+        Inits = [HeadInit | TailInits]
     ;
-        Width = partial_word_shifted(_, _),
-        % There should be a partial_word_shifted argument first.
-        unexpected($pred, "partial_word_shifted")
+        PosWidth = apw_partial_shifted(_, _, _, _, _, _),
+        % There should be an apw_*_first argument first.
+        unexpected($pred, "apw_partial_shifted")
+    ;
+        PosWidth = apw_none_shifted(_, _),
+        % There should be an apw_*_first argument first.
+        unexpected($pred, "apw_none_shifted")
+    ;
+        PosWidth = apw_none_nowhere,
+        % Ignore RvalTypeWidth; don't convert it into an initializer.
+        ml_pack_ground_term_args_into_word_inits(RvalsTypesWidths, Inits)
     ).
 
 :- pred ml_expand_or_pack_into_words(list(mlds_rval_type_and_width)::in,
@@ -3034,14 +3177,15 @@ ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
 ml_expand_or_pack_into_words([], []).
 ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
         PackedRvalsTypesWidths) :-
-    RvalTypeWidth = rval_type_and_width(Rval, Type, Width),
+    RvalTypeWidth = rval_type_and_width(Rval, Type, PosWidth),
     (
-        Width = full_word,
+        PosWidth = apw_full(_, _),
         ml_expand_or_pack_into_words(RvalsTypesWidths,
             TailPackedRvalsTypesWidths),
         PackedRvalsTypesWidths = [RvalTypeWidth | TailPackedRvalsTypesWidths]
     ;
-        Width = double_word,
+        PosWidth = apw_double(arg_only_offset(AOOffset),
+            cell_offset(CellOffset), DoubleWordKind),
         ml_expand_or_pack_into_words(RvalsTypesWidths,
             TailPackedRvalsTypesWidths),
         ( if Rval = ml_const(mlconst_null(_)) then
@@ -3050,45 +3194,66 @@ ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
             RvalB = ml_const(mlconst_null(SubstType))
         else
             SubstType = mlds_native_int_type,
-            RvalA = ml_unop(std_unop(dword_float_get_word0), Rval),
-            RvalB = ml_unop(std_unop(dword_float_get_word1), Rval)
+            (
+                DoubleWordKind = dw_float,
+                RvalA = ml_unop(std_unop(dword_float_get_word0), Rval),
+                RvalB = ml_unop(std_unop(dword_float_get_word1), Rval)
+            ;
+                DoubleWordKind = dw_int64,
+                RvalA = ml_unop(std_unop(dword_int64_get_word0), Rval),
+                RvalB = ml_unop(std_unop(dword_int64_get_word1), Rval)
+            ;
+                DoubleWordKind = dw_uint64,
+                RvalA = ml_unop(std_unop(dword_uint64_get_word0), Rval),
+                RvalB = ml_unop(std_unop(dword_uint64_get_word1), Rval)
+            )
         ),
-        RvalTypeWidthA = rval_type_and_width(RvalA, SubstType, full_word),
-        RvalTypeWidthB = rval_type_and_width(RvalB, SubstType, full_word),
+        RvalTypeWidthA = rval_type_and_width(RvalA, SubstType,
+            apw_full(arg_only_offset(AOOffset), cell_offset(CellOffset))),
+        RvalTypeWidthB = rval_type_and_width(RvalB, SubstType,
+            apw_full(
+                arg_only_offset(AOOffset + 1), cell_offset(CellOffset + 1))),
         PackedRvalsTypesWidths =
             [RvalTypeWidthA, RvalTypeWidthB | TailPackedRvalsTypesWidths]
     ;
-        Width = partial_word_first(_Mask),
+        PosWidth = apw_partial_first(AOOffset, CellOffset, _, _, Fill),
+        maybe_shift_and_accumulate_or_rval(Rval, arg_shift(0), Fill,
+            [], RevOrRvals0),
         ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-            Rval, OrAllRval),
+            RevOrRvals0, OrAllRval),
         % XXX TYPE_REPN Using the type of the first rval for the type
         % of the whole word preserves old behavior, but seems strange.
-        PackedRvalTypeWidth = rval_type_and_width(OrAllRval, Type, full_word),
+        PackedRvalTypeWidth = rval_type_and_width(OrAllRval, Type,
+            apw_full(AOOffset, CellOffset)),
         ml_expand_or_pack_into_words(LeftOverRvalsTypesWidths, 
             TailPackedRvalsTypesWidths),
         PackedRvalsTypesWidths =
             [PackedRvalTypeWidth | TailPackedRvalsTypesWidths]
     ;
-        Width = partial_word_shifted(_, _),
-        % There should be a partial_word_shifted argument first.
-        unexpected($pred, "partial_word_shifted")
+        PosWidth = apw_partial_shifted(_, _, _, _, _, _),
+        % There should be an apw_*_first argument first.
+        unexpected($pred, "apw_partial_shifted")
+    ;
+        PosWidth = apw_none_shifted(_, _),
+        % There should be an apw_*_first argument first.
+        unexpected($pred, "apw_none_shifted")
+    ;
+        PosWidth = apw_none_nowhere,
+        ml_expand_or_pack_into_words(RvalsTypesWidths, PackedRvalsTypesWidths)
     ).
 
 :- pred ml_pack_into_one_word(
     list(mlds_rval_type_and_width)::in, list(mlds_rval_type_and_width)::out,
-    mlds_rval::in, mlds_rval::out) is det.
+    list(mlds_rval)::in, mlds_rval::out) is det.
 
 ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-        FirstRval, OrAllRval) :-
-    RevOrRvals0 = [ml_lshift(FirstRval, 0)],
+        RevOrRvals0, OrAllRval) :-
     ml_pack_into_one_word_loop(RvalsTypesWidths, LeftOverRvalsTypesWidths,
         RevOrRvals0, RevOrRvals),
     list.reverse(RevOrRvals, OrRvals),
     (
         OrRvals = [],
-        % RevOrRvals0 isn't empty, and RevOrRvals contains everything
-        % in RevOrRvals0, which means OrRvals cannot be empty.
-        unexpected($pred, "OrRvals = []")
+        OrAllRval = ml_const(mlconst_int(0))
     ;
         OrRvals = [HeadOrRval | TailOrRvals],
         or_packed_rvals(HeadOrRval, TailOrRvals, OrAllRval)
@@ -3101,17 +3266,21 @@ ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
 ml_pack_into_one_word_loop([], [], !RevOrRvals).
 ml_pack_into_one_word_loop([RvalTypeWidth | RvalsTypesWidths],
         LeftOverRvalsTypesWidths, !RevOrRvals) :-
-    RvalTypeWidth = rval_type_and_width(Rval, _Type, Width),
+    RvalTypeWidth = rval_type_and_width(Rval, _Type, PosWidth),
     (
-        ( Width = full_word
-        ; Width = double_word
-        ; Width = partial_word_first(_Mask)
+        ( PosWidth = apw_full(_, _)
+        ; PosWidth = apw_double(_, _, _)
+        ; PosWidth = apw_partial_first(_, _, _, _, _)
+        ; PosWidth = apw_none_nowhere
         ),
         LeftOverRvalsTypesWidths = [RvalTypeWidth | RvalsTypesWidths]
     ;
-        Width = partial_word_shifted(Shift, _Mask),
-        ShiftedRval = ml_lshift(Rval, Shift),
-        !:RevOrRvals = [ShiftedRval | !.RevOrRvals],
+        (
+            PosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
+            maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals)
+        ;
+            PosWidth = apw_none_shifted(_, _)
+        ),
         ml_pack_into_one_word_loop(RvalsTypesWidths, LeftOverRvalsTypesWidths,
             !RevOrRvals)
     ).
@@ -3139,32 +3308,77 @@ or_packed_rvals(HeadRval, TailRvals, OrAllRval) :-
 
 %---------------------------------------------------------------------------%
 
-:- func ml_lshift(mlds_rval, int) = mlds_rval.
+:- pred maybe_shift_and_accumulate_or_rval(mlds_rval::in, arg_shift::in,
+    fill_kind::in, list(mlds_rval)::in, list(mlds_rval)::out) is det.
 
-ml_lshift(Rval0, Shift) = Rval :-
-    % We may get nulls from unfilled fields. Replace them with zeroes
-    % so we don't get type errors from the C compiler.
-    ( if Rval0 = ml_const(mlconst_null(_)) then
-        Rval = ml_const(mlconst_int(0))
-    else if Shift = 0 then
-        Rval = Rval0
-    else if Rval0 = ml_unop(box(Type), SubRval0) then
-        SubRval = ml_binop(unchecked_left_shift(int_type_int), SubRval0,
-            ml_const(mlconst_int(Shift))),
-        Rval = ml_unop(box(Type), SubRval)
+maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
+    Shift = arg_shift(ShiftInt),
+    ml_cast_away_any_sign_extend_bits(Fill, Rval, CastRval),
+    ( if
+        Rval = ml_const(RvalConst),
+        ( RvalConst = mlconst_null(_)
+        ; RvalConst = mlconst_int(0)
+        )
+    then
+        % We may get nulls from unfilled fields, and zeros from constant
+        % fields. Since OR with zero is a noop, do not include them
+        % in the list of rvals to be OR-ed later.
+        true
     else
-        Rval = ml_binop(unchecked_left_shift(int_type_int), Rval0,
-            ml_const(mlconst_int(Shift)))
+        ( if ShiftInt = 0 then
+            ShiftedRval = CastRval
+        else if CastRval = ml_unop(box(Type), SubRval) then
+            ShiftedSubRval = ml_binop(unchecked_left_shift(int_type_uint),
+                SubRval, ml_const(mlconst_int(ShiftInt))),
+            ShiftedRval = ml_unop(box(Type), ShiftedSubRval)
+        else
+            ShiftedRval = ml_binop(unchecked_left_shift(int_type_uint),
+                CastRval, ml_const(mlconst_int(ShiftInt)))
+        ),
+        !:RevOrRvals = [ShiftedRval | !.RevOrRvals]
     ).
 
-:- func ml_rshift(mlds_rval, int) = mlds_rval.
+:- func ml_lshift(mlds_rval, arg_shift, fill_kind) = mlds_rval.
 
-ml_rshift(Rval, Shift) =
-    ( if Shift = 0 then
-        Rval
+ml_lshift(Rval, Shift, Fill) = ShiftedRval :-
+    Shift = arg_shift(ShiftInt),
+    ml_cast_away_any_sign_extend_bits(Fill, Rval, CastRval),
+    ( if Rval = ml_const(mlconst_null(_)) then
+        % We may get nulls from unfilled fields. Replace them with zeroes
+        % so we don't get type errors from the C compiler.
+        ShiftedRval = ml_const(mlconst_int(0))
+    else if Rval = ml_const(mlconst_int(0)) then
+        % Shifting a zero by any amount is a noop.
+        ShiftedRval = CastRval
+    else if ShiftInt = 0 then
+        % Shifting anything by zero bits is a noop.
+        ShiftedRval = CastRval
     else
-        ml_binop(unchecked_right_shift(int_type_int), Rval,
-            ml_const(mlconst_int(Shift)))
+        ( if CastRval = ml_unop(box(Type), SubRval) then
+            ShiftedSubRval = ml_binop(unchecked_left_shift(int_type_uint),
+                SubRval, ml_const(mlconst_int(ShiftInt))),
+            ShiftedRval = ml_unop(box(Type), ShiftedSubRval)
+        else
+            ShiftedRval = ml_binop(unchecked_left_shift(int_type_uint),
+                CastRval, ml_const(mlconst_int(ShiftInt)))
+        )
+    ).
+
+:- func ml_rshift(mlds_rval, arg_shift) = mlds_rval.
+
+ml_rshift(Rval, Shift) = ShiftedRval :-
+    % While ml_lshift may be called on a boxed Rval, ml_rshift will never
+    % be called that way, which is why we don't handle that as a special case.
+    Shift = arg_shift(ShiftInt),
+    ( if Rval = ml_const(mlconst_int(0)) then
+        % Shifting a zero by any amount is a noop.
+        ShiftedRval = Rval
+    else if ShiftInt = 0 then
+        % Shifting anything by zero bits is a noop.
+        ShiftedRval = Rval
+    else
+        ShiftedRval = ml_binop(unchecked_right_shift(int_type_uint),
+            Rval, ml_const(mlconst_int(ShiftInt)))
     ).
 
 :- func ml_bitwise_or(mlds_rval, mlds_rval) = mlds_rval.
@@ -3184,7 +3398,8 @@ ml_bitwise_or(RvalA, RvalB) = Rval :-
         else
             UnboxRvalB = RvalB
         ),
-        UnboxRval = ml_binop(bitwise_or(int_type_int), UnboxRvalA, UnboxRvalB),
+        UnboxRval = ml_binop(bitwise_or(int_type_uint),
+            UnboxRvalA, UnboxRvalB),
         (
             !.MaybeType = yes(BoxType),
             Rval = ml_unop(box(BoxType), UnboxRval)
@@ -3197,7 +3412,55 @@ ml_bitwise_or(RvalA, RvalB) = Rval :-
 :- func ml_bitwise_and(mlds_rval, int) = mlds_rval.
 
 ml_bitwise_and(Rval, Mask) =
-    ml_binop(bitwise_and(int_type_int), Rval, ml_const(mlconst_int(Mask))).
+    ml_binop(bitwise_and(int_type_uint), Rval, ml_const(mlconst_int(Mask))).
+
+:- pred ml_cast_away_any_sign_extend_bits(fill_kind::in,
+    mlds_rval::in, mlds_rval::out) is det.
+
+ml_cast_away_any_sign_extend_bits(Fill, Rval0, Rval) :-
+    (
+        ( Fill = fill_enum
+        ; Fill = fill_uint8
+        ; Fill = fill_uint16
+        ; Fill = fill_uint32
+        ),
+        Rval = Rval0
+    ;
+        (
+            Fill = fill_int8,
+            FromIntType = int_type_int8,
+            ToIntType = int_type_uint8
+        ;
+            Fill = fill_int16,
+            FromIntType = int_type_int16,
+            ToIntType = int_type_uint16
+        ;
+            Fill = fill_int32,
+            FromIntType = int_type_int32,
+            ToIntType = int_type_uint32
+        ),
+        % XXX ARG_PACK It would be better if instead of undoing the boxing
+        % here, we could *avoid* boxing sub-word-sized arguments. However,
+        % that would require treating sub-word-sized arguments differently
+        % from full- or double-word-sized arguments, which is a more involved
+        % change.
+        FromMerType = builtin_type(builtin_type_int(FromIntType)),
+        FromCtorCat = ctor_cat_builtin(cat_builtin_int(FromIntType)),
+        FromExportType = builtin_type_to_exported_type(FromMerType),
+        FromMLDSType = mercury_type(FromMerType, FromCtorCat, FromExportType),
+        ToMerType = builtin_type(builtin_type_int(ToIntType)),
+        ToCtorCat = ctor_cat_builtin(cat_builtin_int(ToIntType)),
+        ToExportType = builtin_type_to_exported_type(ToMerType),
+        ToMLDSType = mercury_type(ToMerType, ToCtorCat, ToExportType),
+        ( if Rval0 = ml_unop(box(FromMLDSType), SubRval) then
+            % We can't apply this cast to Rval0 without getting a gcc warning:
+            % "warning: cast from pointer to integer of different size
+            % [-Wpointer-to-int-cast]".
+            Rval = ml_unop(cast(ToMLDSType), SubRval)
+        else
+            Rval = ml_unop(cast(ToMLDSType), Rval0)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -3209,58 +3472,79 @@ ml_next_field_offset(_, [], Offset, Offset).
 ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
     CurArg = ctor_arg_repn(_, _, CurWidth, _),
     NextArg = ctor_arg_repn(_, _, NextWidth, _),
+    % XXX ARG_PACK We *could* use the same algorithm for incrementing Offset
+    % here as we use elsewhere, but better still, we should not need this
+    % predicate once we switch over to using the offsets of constructor
+    % arguments' representations exclusively.
     (
-        CurWidth = full_word,
+        CurWidth = apw_full(_, _),
         (
-            ( NextWidth = full_word
-            ; NextWidth = double_word
-            ; NextWidth = partial_word_first(_)
+            ( NextWidth = apw_full(_, _)
+            ; NextWidth = apw_double(_, _, _)
+            ; NextWidth = apw_partial_first(_, _, _, _, _)
+            ; NextWidth = apw_none_nowhere
             ),
             PrevOffset = offset(Int),
             NextOffset = offset(Int + 1)
         ;
-            NextWidth = partial_word_shifted(_, _),
-            unexpected($pred, "partial_word_shifted follows full_word")
+            ( NextWidth = apw_partial_shifted(_, _, _, _, _, _)
+            ; NextWidth = apw_none_shifted(_, _)
+            ),
+            unexpected($pred, "shifted follows full")
         )
     ;
-        CurWidth = double_word,
+        CurWidth = apw_double(_, _, _),
         (
-            ( NextWidth = full_word
-            ; NextWidth = double_word
-            ; NextWidth = partial_word_first(_)
+            ( NextWidth = apw_full(_, _)
+            ; NextWidth = apw_double(_, _, _)
+            ; NextWidth = apw_partial_first(_, _, _, _, _)
+            ; NextWidth = apw_none_nowhere
             ),
             PrevOffset = offset(Int),
             NextOffset = offset(Int + 2)
         ;
-            NextWidth = partial_word_shifted(_, _),
-            unexpected($pred, "partial_word_shifted follows double_word")
+            ( NextWidth = apw_partial_shifted(_, _, _, _, _, _)
+            ; NextWidth = apw_none_shifted(_, _)
+            ),
+            unexpected($pred, "shifted follows double")
         )
     ;
-        CurWidth = partial_word_first(_),
+        CurWidth = apw_partial_first(_, _, _, _, _),
         (
-            NextWidth = partial_word_shifted(_, _),
+            ( NextWidth = apw_partial_shifted(_, _, _, _, _, _)
+            ; NextWidth = apw_none_shifted(_, _)
+            ),
             NextOffset = PrevOffset
         ;
-            ( NextWidth = full_word
-            ; NextWidth = double_word
-            ; NextWidth = partial_word_first(_)
+            ( NextWidth = apw_full(_, _)
+            ; NextWidth = apw_double(_, _, _)
+            ; NextWidth = apw_partial_first(_, _, _, _, _)
+            ; NextWidth = apw_none_nowhere
             ),
             unexpected($pred,
-                "partial_word_first not followed by partial_word_shifted")
+                "partial_first not followed by partial_shifted")
         )
     ;
-        CurWidth = partial_word_shifted(_, _),
+        ( CurWidth = apw_partial_shifted(_, _, _, _, _, _)
+        ; CurWidth = apw_none_shifted(_, _)
+        ),
         (
-            ( NextWidth = full_word
-            ; NextWidth = double_word
-            ; NextWidth = partial_word_first(_)
+            ( NextWidth = apw_full(_, _)
+            ; NextWidth = apw_double(_, _, _)
+            ; NextWidth = apw_partial_first(_, _, _, _, _)
+            ; NextWidth = apw_none_nowhere
             ),
             PrevOffset = offset(Int),
             NextOffset = offset(Int + 1)
         ;
-            NextWidth = partial_word_shifted(_, _),
+            ( NextWidth = apw_partial_shifted(_, _, _, _, _, _)
+            ; NextWidth = apw_none_shifted(_, _)
+            ),
             NextOffset = PrevOffset
         )
+    ;
+        CurWidth = apw_none_nowhere,
+        NextOffset = PrevOffset
     ).
 
 %---------------------------------------------------------------------------%
@@ -3275,6 +3559,44 @@ ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
 ml_cons_id_to_tag(Info, ConsId, Tag) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     Tag = cons_id_to_tag(ModuleInfo, ConsId).
+
+:- pred is_apw_full(arg_pos_width::in) is semidet.
+
+is_apw_full(apw_full(_, _)).
+
+:- pred allocate_consecutive_full_word_ctor_arg_repns(int::in,
+    list(mer_type)::in, list(constructor_arg_repn)::out) is det.
+
+allocate_consecutive_full_word_ctor_arg_repns(_, [], []).
+allocate_consecutive_full_word_ctor_arg_repns(CurOffset,
+        [Type | Types], [ArgRepn | ArgRepns]) :-
+    ArgRepn = ctor_arg_repn(no, Type,
+        apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
+        term.context_init),
+    allocate_consecutive_full_word_ctor_arg_repns(CurOffset + 1,
+        Types, ArgRepns).
+
+:- pred lookup_type_and_allocate_consecutive_full_words(arg_to_type(Arg)::in,
+    int::in, list(Arg)::in, list(arg_type_and_width(Arg))::out) is det.
+
+lookup_type_and_allocate_consecutive_full_words(_, _, [], []).
+lookup_type_and_allocate_consecutive_full_words(ArgToType, CurOffset,
+        [Arg | Args], [ArgTypeWidth | ArgsTypesWidths]) :-
+    PosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
+    ArgTypeWidth = arg_type_and_width(Arg, ArgToType(Arg), PosWidth),
+    lookup_type_and_allocate_consecutive_full_words(ArgToType, CurOffset + 1,
+        Args, ArgsTypesWidths).
+
+:- pred specified_arg_types_and_consecutive_full_words(mer_type::in, int::in,
+    list(Arg)::in, list(arg_type_and_width(Arg))::out) is det.
+
+specified_arg_types_and_consecutive_full_words(_, _, [], []).
+specified_arg_types_and_consecutive_full_words(Type, CurOffset,
+        [Arg | Args], [ArgTypeWidth | ArgsTypesWidths]) :-
+    PosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
+    ArgTypeWidth = arg_type_and_width(Arg, Type, PosWidth),
+    specified_arg_types_and_consecutive_full_words(Type, CurOffset + 1,
+        Args, ArgsTypesWidths).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_unify_gen.

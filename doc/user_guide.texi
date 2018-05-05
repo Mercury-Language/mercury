@@ -6798,6 +6798,12 @@ Do not generate messages about inferred types.
 @item --no-inform-inferred-modes
 @findex --no-inform-inferred-modes
 Do not generate messages about inferred modes.
+
+@sp 1
+@item --inform-suboptimal-packing
+@findex --inform-suboptimal-packing
+Generate messages if the arguments of a data constructor
+could be packed more tightly if they were reordered.
 @end table
 
 @node Verbosity options

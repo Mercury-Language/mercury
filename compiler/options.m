@@ -197,6 +197,7 @@
     ;       inform_inferred
     ;       inform_inferred_types
     ;       inform_inferred_modes
+    ;       inform_suboptimal_packing
 
     % Verbosity options
     ;       verbose
@@ -485,6 +486,9 @@
     ;       unboxed_no_tag_types
     ;       arg_pack_bits
     ;       allow_double_word_fields
+    ;       allow_double_word_ints      % XXX bootstrapping option
+    ;       allow_packing_dummies       % XXX bootstrapping option
+    ;       allow_packing_ints          % XXX bootstrapping option
     ;       sync_term_size % in words
 
     % LLDS back-end compilation model options
@@ -1205,7 +1209,8 @@ option_defaults_2(warning_option, [
     warn_state_var_shadowing            -   bool(yes),
     inform_inferred                     -   bool_special,
     inform_inferred_types               -   bool(yes),
-    inform_inferred_modes               -   bool(yes)
+    inform_inferred_modes               -   bool(yes),
+    inform_suboptimal_packing           -   bool(no)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1446,6 +1451,9 @@ option_defaults_2(compilation_model_option, [
                                         % -1 is a special value which means use
                                         % all word bits for argument packing.
     allow_double_word_fields            -   bool(yes),
+    allow_double_word_ints              -   bool(no),
+    allow_packing_dummies               -   bool(no),
+    allow_packing_ints                  -   bool(no),
     sync_term_size                      -   int(8),
                                         % 8 is the size on linux (at the time
                                         % of writing) - will usually be
@@ -2108,6 +2116,7 @@ long_option("warn-state-var-shadowing", warn_state_var_shadowing).
 long_option("inform-inferred",          inform_inferred).
 long_option("inform-inferred-types",    inform_inferred_types).
 long_option("inform-inferred-modes",    inform_inferred_modes).
+long_option("inform-suboptimal-packing",    inform_suboptimal_packing).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -2394,6 +2403,9 @@ long_option("unboxed-int64s",       unboxed_int64s).
 long_option("unboxed-no-tag-types", unboxed_no_tag_types).
 long_option("arg-pack-bits",        arg_pack_bits).
 long_option("allow-double-word-fields", allow_double_word_fields).
+long_option("allow-double-word-ints", allow_double_word_ints).
+long_option("allow-packing-dummies", allow_packing_dummies).
+long_option("allow-packing-ints",   allow_packing_ints).
 long_option("sync-term-size",       sync_term_size).
 long_option("highlevel-data",       highlevel_data).
 long_option("high-level-data",      highlevel_data).
@@ -3340,7 +3352,8 @@ style_warning_options = [
     inform_ite_instead_of_switch,
     inform_incomplete_switch,
     warn_suspicious_foreign_procs,
-    warn_state_var_shadowing
+    warn_state_var_shadowing,
+    inform_suboptimal_packing
 ].
 
 :- func non_style_warning_options = list(option).
@@ -3921,7 +3934,10 @@ options_help_warning -->
         "--no-inform-inferred-types",
         "\tDo not generate messages about inferred types.",
         "--no-inform-inferred-modes",
-        "\tDo not generate messages about inferred modes."
+        "\tDo not generate messages about inferred modes.",
+        "--inform-suboptimal-packing",
+        "\tGenerate messages if the arguments of a data constructor",
+        "\tcould be packed more tightly if they were reordered."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.

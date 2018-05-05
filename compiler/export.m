@@ -1002,6 +1002,9 @@ foreign_const_name_and_tag(Mapping, CtorRepn, !NamesAndTagsCord) :-
             unexpected($pred, "enum constant requires an int tag")
         )
     ;
+        ConsTag = dummy_tag,
+        NameAndTag = ee_name_and_tag_rep_int(ForeignName, 0)
+    ;
         ConsTag = foreign_tag(_ForeignLang, ForeignTag),
         NameAndTag = ee_name_and_tag_rep_string(ForeignName, ForeignTag)
     ;

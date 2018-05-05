@@ -173,7 +173,7 @@
                 enum_functors       :: list(enum_functor),
                 enum_value_table    :: map(int, enum_functor),
                 enum_name_table     :: map(string, enum_functor),
-                enum_is_dummy       :: bool,
+                enum_is_dummy       :: enum_maybe_dummy,
                 enum_functor_number_mapping
                                     :: list(int)
             )
@@ -211,6 +211,10 @@
     ;       tcd_foreign(
                 is_stable           :: is_stable
             ).
+
+:- type enum_maybe_dummy
+    --->    enum_is_not_dummy
+    ;       enum_is_dummy.
 
     % For a given du family type, this says whether the user has defined
     % their own unification predicate for the type.
@@ -360,7 +364,7 @@
     --->    du_arg_info(
                 du_arg_name         :: maybe(string),
                 du_arg_type         :: rtti_maybe_pseudo_type_info_or_self,
-                du_arg_width        :: arg_width
+                du_arg_pos_width    :: arg_pos_width
             ).
 
     % Information about subtypes in the arguments of a functor.
@@ -790,9 +794,9 @@
     %
 :- func du_arg_info_type(du_arg_info) = rtti_maybe_pseudo_type_info_or_self.
 
-    % Extract the argument width from du_arg_info.
+    % Extract the argument position and width from the du_arg_info.
     %
-:- func du_arg_info_width(du_arg_info) = arg_width.
+:- func du_arg_info_pos_width(du_arg_info) = arg_pos_width.
 
     % Return the symbolic representation of the address of the given
     % functor descriptor.
@@ -1558,12 +1562,12 @@ type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
     (
         TypeCtorDetails = tcd_enum(TypeCtorUserEq, _, _, _, IsDummy, _),
         (
-            IsDummy = yes,
+            IsDummy = enum_is_dummy,
             expect(unify(TypeCtorUserEq, standard), $pred,
                 "dummy type with user equality"),
             RepStr = "MR_TYPECTOR_REP_DUMMY"
         ;
-            IsDummy = no,
+            IsDummy = enum_is_not_dummy,
             (
                 TypeCtorUserEq = standard,
                 RepStr = "MR_TYPECTOR_REP_ENUM"
@@ -1759,7 +1763,7 @@ du_arg_info_name(ArgInfo) = ArgInfo ^ du_arg_name.
 
 du_arg_info_type(ArgInfo) = ArgInfo ^ du_arg_type.
 
-du_arg_info_width(ArgInfo) = ArgInfo ^ du_arg_width.
+du_arg_info_pos_width(ArgInfo) = ArgInfo ^ du_arg_pos_width.
 
 enum_functor_rtti_name(EnumFunctor) =
     type_ctor_enum_functor_desc(EnumFunctor ^ enum_ordinal).

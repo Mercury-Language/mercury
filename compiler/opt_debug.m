@@ -381,6 +381,10 @@ dump_rval(MaybeProcLabel, Rval) = Str :-
         Rval = const(C),
         Str = dump_const(MaybeProcLabel, C)
     ;
+        Rval = cast(T, N),
+        Str = "cast_to " ++ dump_llds_type(T) ++
+            "(" ++ dump_rval(MaybeProcLabel, N) ++ ")"
+    ;
         Rval = unop(O, N),
         Str = dump_unop(O) ++ "(" ++ dump_rval(MaybeProcLabel, N) ++ ")"
     ;
@@ -902,6 +906,31 @@ dump_binop(int_ge(_)) = ">=".
 dump_binop(str_cmp) = "strcmp".
 dump_binop(body) = "body".
 dump_binop(pointer_equal_conservative) = "pointer_equal_conservative".
+
+:- func dump_llds_type(llds_type) = string.
+
+dump_llds_type(lt_bool) = "bool".
+dump_llds_type(lt_int(int_type_int)) = "int".
+dump_llds_type(lt_int(int_type_uint)) = "uint".
+dump_llds_type(lt_int(int_type_int8)) = "int8".
+dump_llds_type(lt_int(int_type_uint8)) = "uint8".
+dump_llds_type(lt_int(int_type_int16)) = "int16".
+dump_llds_type(lt_int(int_type_uint16)) = "uint16".
+dump_llds_type(lt_int(int_type_int32)) = "int32".
+dump_llds_type(lt_int(int_type_uint32)) = "uint32".
+dump_llds_type(lt_int(int_type_int64)) = "int64".
+dump_llds_type(lt_int(int_type_uint64)) = "uint64".
+dump_llds_type(lt_int_least(int_least8)) = "int_least8".
+dump_llds_type(lt_int_least(uint_least8)) = "uint_least8".
+dump_llds_type(lt_int_least(int_least16)) = "int_least16".
+dump_llds_type(lt_int_least(uint_least16)) = "uint_least16".
+dump_llds_type(lt_int_least(int_least32)) = "int_least32".
+dump_llds_type(lt_int_least(uint_least32)) = "uint_least32".
+dump_llds_type(lt_float) = "float".
+dump_llds_type(lt_string) = "string".
+dump_llds_type(lt_data_ptr) = "data_ptr".
+dump_llds_type(lt_code_ptr) = "code_ptr".
+dump_llds_type(lt_word) = "word".
 
 dump_maybe_rvals(_, [], _) = "".
 dump_maybe_rvals(MaybeProcLabel, [MR | MRs], N) = Str :-

@@ -562,6 +562,166 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
         find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes)
     ).
 
+:- pragma foreign_decl("C",
+"
+// This function exists to allow us to handle both the MR_SECTAG_REMOTE
+// and the MR_SECTAG_NONE cases of constructing values of discriminated
+// union types without code duplication.
+//
+// Using a macro would be faster, but a function is easier to get right
+// in terms of issues such as scopes, and it is easier to debug.
+//
+// XXX ARG_PACK
+// Once this code has been operation for a while without problems,
+// we should consider turning it into a macro.
+
+static void MR_copy_memory_cell_args(MR_Word *arg_list_ptr,
+                MR_Word *new_data_ptr,
+                const MR_Word ptag, const MR_DuFunctorDesc *functor_desc,
+                const MR_bool has_sectag);
+").
+
+
+:- pragma foreign_code("C",
+"
+static void
+MR_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
+    const MR_Word ptag, const MR_DuFunctorDesc *functor_desc,
+    MR_bool has_sectag)
+{
+    MR_Word             arg_list = *arg_list_ptr;
+    MR_Word             new_data;
+    const MR_Word       arity = functor_desc->MR_du_functor_orig_arity;
+    const MR_DuArgLocn  *arg_locns = functor_desc->MR_du_functor_arg_locns;
+    const int           sectag01 = (has_sectag ? 1 : 0);
+    int                 args_size = MR_cell_size_for_args(arity, arg_locns);
+    int                 alloc_size = MR_SIZE_SLOT_SIZE + sectag01 + args_size;
+    int                 size;
+    MR_Unsigned         i;
+
+    MR_tag_offset_incr_hp_msg(new_data, ptag, MR_SIZE_SLOT_SIZE, alloc_size,
+        MR_ALLOC_ID, ""<created by construct.construct/3>"");
+    *new_data_ptr = new_data;
+
+    // Ensure words holding packed arguments are zeroed before filling them in.
+  #ifndef MR_BOEHM_GC
+    if (arg_locns != NULL) {
+        MR_memset(new_data, 0, alloc_size * sizeof(MR_Word));
+    }
+  #endif
+
+    size = MR_cell_size(args_size);
+    if (has_sectag) {
+        MR_field(ptag, new_data, 0) = functor_desc->MR_du_functor_secondary;
+    }
+
+    for (i = 0; i < arity; i++) {
+        MR_Word         arg_data;
+        MR_TypeInfo     arg_type_info;
+        MR_Unsigned     bits_to_or;
+
+        arg_data = MR_field(MR_UNIV_TAG, MR_list_head(arg_list),
+            MR_UNIV_OFFSET_FOR_DATA);
+        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
+            MR_list_head(arg_list), MR_UNIV_OFFSET_FOR_TYPEINFO);
+        if (arg_locns == NULL) {
+            MR_field(ptag, new_data, sectag01 + i) = arg_data;
+        } else {
+            const MR_DuArgLocn *locn = &arg_locns[i];
+
+            // The meanings of the various special values of MR_arg_bits
+            // are documented next to the definition of the MR_DuArgLocn type
+            // in mercury_type_info.h.
+
+            switch (locn->MR_arg_bits) {
+
+            case 0:
+                MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                    = arg_data;
+                break;
+
+            case -1:
+                // This is a double-precision floating point argument
+                // that takes two words.
+  #ifdef MR_BOXED_FLOAT
+                MR_memcpy(
+                    &MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset),
+                    (MR_Word *) arg_data, sizeof(MR_Float));
+  #else
+                MR_fatal_error(""construct(): double word float"");
+  #endif
+                break;
+
+            case -2:
+                // This is an int64 argument that takes two words.
+  #ifdef MR_BOXED_INT64S
+                MR_memcpy(
+                    &MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset),
+                    (MR_Word *) arg_data, sizeof(int64_t));
+  #else
+                MR_fatal_error(""construct(): double word int64"");
+  #endif
+                break;
+
+            case -3:
+                // This is a uint64 argument that takes two words.
+  #ifdef MR_BOXED_INT64S
+                MR_memcpy(
+                    &MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset),
+                    (MR_Word *) arg_data, sizeof(uint64_t));
+  #else
+                MR_fatal_error(""construct(): double word uint64"");
+  #endif
+                break;
+
+            case -4:
+            case -5:
+                // This is an int8 (-4) or uint8 (-5) argument.
+                bits_to_or = (((MR_Unsigned) arg_data) & 0xff);
+                MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                    |= (bits_to_or << locn->MR_arg_shift);
+                break;
+
+            case -6:
+            case -7:
+                // This is an int16 (-6) or uint16 (-7) argument.
+                bits_to_or = (((MR_Unsigned) arg_data) & 0xffff);
+                MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                    |= (bits_to_or << locn->MR_arg_shift);
+                break;
+
+            case -8:
+            case -9:
+                // This is an int32 (-8) or uint32 (-9) argument.
+                bits_to_or = (((MR_Unsigned) arg_data) & 0xffffffff);
+                MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                    |= (bits_to_or << locn->MR_arg_shift);
+                break;
+
+            case -10:
+                // This is a dummy argument, which does not need setting.
+                break;
+
+            default:
+                if (locn->MR_arg_bits > 0) {
+                    MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                        |= (arg_data << locn->MR_arg_shift);
+                } else {
+                    MR_fatal_error(""unknown MR_arg_bits value"");
+                }
+                break;
+            }
+        }
+
+        size += MR_term_size(arg_type_info, arg_data);
+        arg_list = MR_list_tail(arg_list);
+    }
+
+    *arg_list_ptr = arg_list;
+    MR_define_size_slot(ptag, new_data, size);
+}
+").
+
 :- pragma no_inline(construct/3).
 :- pragma foreign_proc("C",
     construct(TypeDesc::in, FunctorNumber::in, ArgList::in) = (Term::out),
@@ -671,113 +831,17 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                     break;
 
                 case MR_SECTAG_REMOTE:
-                    arity = functor_desc->MR_du_functor_orig_arity;
-                    args_size = MR_cell_size_for_args(arity, arg_locns);
-                    alloc_size = MR_SIZE_SLOT_SIZE + 1 + args_size;
-
-                    MR_tag_offset_incr_hp_msg(new_data, ptag,
-                        MR_SIZE_SLOT_SIZE, alloc_size,
-                        MR_ALLOC_ID, ""<created by construct.construct/3>"");
-
-                    /*
-                    ** Ensure words holding packed arguments are zeroed before
-                    ** filling them in.
-                    */
-                  #ifndef MR_BOEHM_GC
-                    if (arg_locns != NULL) {
-                        MR_memset(new_data, 0, alloc_size * sizeof(MR_Word));
-                    }
-                  #endif
-
-                    size = MR_cell_size(args_size);
-                    MR_field(ptag, new_data, 0) =
-                        functor_desc->MR_du_functor_secondary;
-                    for (i = 0; i < arity; i++) {
-                        arg_data = MR_field(MR_UNIV_TAG,
-                            MR_list_head(arg_list),
-                            MR_UNIV_OFFSET_FOR_DATA);
-                        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
-                            MR_list_head(arg_list),
-                            MR_UNIV_OFFSET_FOR_TYPEINFO);
-                        if (arg_locns == NULL) {
-                            MR_field(ptag, new_data, 1 + i) = arg_data;
-                        } else {
-                            const MR_DuArgLocn *locn = &arg_locns[i];
-
-                            if (locn->MR_arg_bits == -1) {
-                              #ifdef MR_BOXED_FLOAT
-                                MR_memcpy(
-                                    &MR_field(ptag, new_data,
-                                        1 + locn->MR_arg_offset),
-                                    (MR_Word *) arg_data, sizeof(MR_Float));
-                              #else
-                                MR_fatal_error(
-                                    ""construct(): double precision float"");
-                              #endif
-                            } else {
-                                MR_field(ptag, new_data,
-                                    1 + locn->MR_arg_offset)
-                                    |= (arg_data << locn->MR_arg_shift);
-                            }
-                        }
-                        size += MR_term_size(arg_type_info, arg_data);
-                        arg_list = MR_list_tail(arg_list);
-                    }
-
-                    MR_define_size_slot(ptag, new_data, size);
+                    MR_save_transient_registers();
+                    MR_copy_memory_cell_args(&arg_list, &new_data, ptag,
+                        functor_desc, MR_TRUE);
+                    MR_restore_transient_registers();
                     break;
 
                 case MR_SECTAG_NONE:
-                    arity = functor_desc->MR_du_functor_orig_arity;
-                    args_size = MR_cell_size_for_args(arity, arg_locns);
-                    alloc_size = MR_SIZE_SLOT_SIZE + args_size;
-
-                    MR_tag_offset_incr_hp_msg(new_data, ptag,
-                        MR_SIZE_SLOT_SIZE, alloc_size,
-                        MR_ALLOC_ID, ""<created by construct.construct/3>"");
-
-                    /*
-                    ** Ensure words holding packed arguments are zeroed before
-                    ** filling them in.
-                    */
-                  #ifndef MR_BOEHM_GC
-                    if (arg_locns != NULL) {
-                        MR_memset(new_data, 0, alloc_size * sizeof(MR_Word));
-                    }
-                  #endif
-
-                    size = MR_cell_size(args_size);
-                    for (i = 0; i < arity; i++) {
-                        arg_data = MR_field(MR_UNIV_TAG,
-                            MR_list_head(arg_list),
-                            MR_UNIV_OFFSET_FOR_DATA);
-                        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
-                            MR_list_head(arg_list),
-                            MR_UNIV_OFFSET_FOR_TYPEINFO);
-                        if (arg_locns == NULL) {
-                            MR_field(ptag, new_data, i) = arg_data;
-                        } else {
-                            const MR_DuArgLocn *locn = &arg_locns[i];
-
-                            if (locn->MR_arg_bits == -1) {
-                              #ifdef MR_BOXED_FLOAT
-                                MR_memcpy(&MR_field(ptag, new_data,
-                                    locn->MR_arg_offset),
-                                    (MR_Word *) arg_data, sizeof(MR_Float));
-                              #else
-                                MR_fatal_error(
-                                    ""construct(): double-precision float"");
-                              #endif
-                            } else {
-                                MR_field(ptag, new_data, locn->MR_arg_offset)
-                                    |= (arg_data << locn->MR_arg_shift);
-                            }
-                        }
-                        size += MR_term_size(arg_type_info, arg_data);
-                        arg_list = MR_list_tail(arg_list);
-                    }
-
-                    MR_define_size_slot(ptag, new_data, size);
+                    MR_save_transient_registers();
+                    MR_copy_memory_cell_args(&arg_list, &new_data, ptag,
+                        functor_desc, MR_FALSE);
+                    MR_restore_transient_registers();
                     break;
 
                 case MR_SECTAG_NONE_DIRECT_ARG:

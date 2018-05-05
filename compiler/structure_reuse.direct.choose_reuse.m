@@ -1025,7 +1025,7 @@ cons_has_normal_fields(ModuleInfo, Cons) :-
         all [ArgRepn] (
             list.member(ArgRepn, ConsArgRepns)
         =>
-            ArgRepn = ctor_arg_repn(_, _, full_word, _)
+            ArgRepn = ctor_arg_repn(_, _, apw_full(_, _), _)
         )
     ;
         Cons = tuple_cons(_)

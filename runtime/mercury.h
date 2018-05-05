@@ -304,39 +304,19 @@ extern  MR_Word mercury__private_builtin__dummy_var;
 // 64-bit integers then.
 
 #ifdef MR_HIGHLEVEL_CODE
-  #ifdef MR_BOXED_INT64S
+  #if defined(MR_BOXED_INT64S)
 
     #if defined(MR_GNUC)
-      #define MR_box_int64(i)                                           \
-      ({                                                                \
-          int64_t  *MR_box_int64_ptr;                                   \
-                                                                        \
-          MR_make_hp_int64_aligned();                                   \
-          MR_box_int64_ptr = (int64_t *) MR_new_object_atomic(int64_t,  \
-              sizeof(int64_t), MR_ALLOC_SITE_INT64, NULL);              \
-          *MR_box_int64_ptr = (i);                                      \
-          /* return */ (MR_Box) MR_box_int64_ptr;                       \
+      #define MR_box_int64(i)                                             \
+      ({                                                                  \
+          int64_t  *MR_box_int64_ptr;                                     \
+                                                                          \
+          MR_make_hp_int64_aligned();                                     \
+          MR_box_int64_ptr = (int64_t *) MR_new_object_atomic(int64_t,    \
+              sizeof(int64_t), MR_ALLOC_SITE_INT64, NULL);                \
+          *MR_box_int64_ptr = (i);                                        \
+          /* return */ (MR_Box) MR_box_int64_ptr;                         \
       })
-    #else
-      // Note that this code is also duplicated in mercury.c.
-      MR_EXTERN_INLINE MR_Box MR_box_int64(int64_t i);
-
-      MR_EXTERN_INLINE MR_Box
-      MR_box_int64(int64_t i)
-      {
-          int64_t *ptr;
-
-          MR_make_hp_int64_aligned();
-          ptr = MR_new_object_atomic(int64_t, sizeof(int64_t),
-              MR_ALLOC_SITE_INT64, NULL);
-          *ptr = i;
-          return (MR_Box) ptr;
-      }
-    #endif
-
-    #define MR_unbox_int64(ptr) (*(int64_t *)ptr)
-
-    #if defined(MR_GNUC)
       #define MR_box_uint64(i)                                            \
       ({                                                                  \
           uint64_t  *MR_box_uint64_ptr;                                   \
@@ -349,7 +329,20 @@ extern  MR_Word mercury__private_builtin__dummy_var;
       })
     #else
       // Note that this code is also duplicated in mercury.c.
+      MR_EXTERN_INLINE MR_Box MR_box_int64(int64_t i);
       MR_EXTERN_INLINE MR_Box MR_box_uint64(uint64_t i);
+
+      MR_EXTERN_INLINE MR_Box
+      MR_box_int64(int64_t i)
+      {
+          int64_t *ptr;
+
+          MR_make_hp_int64_aligned();
+          ptr = MR_new_object_atomic(int64_t, sizeof(int64_t),
+              MR_ALLOC_SITE_INT64, NULL);
+          *ptr = i;
+          return (MR_Box) ptr;
+      }
 
       MR_EXTERN_INLINE MR_Box
       MR_box_uint64(uint64_t i)
@@ -364,14 +357,15 @@ extern  MR_Word mercury__private_builtin__dummy_var;
       }
     #endif
 
-    #define MR_unbox_uint64(ptr) (*(uint64_t *)ptr)
+    #define MR_unbox_int64(ptr)  (*(int64_t *) ptr)
+    #define MR_unbox_uint64(ptr) (*(uint64_t *) ptr)
 
   #else  // not MR_BOXED_INT64S
 
-    #define MR_box_int64(I)     ((MR_Box) MR_int64_to_word(I))
-    #define MR_unbox_int64(B)   MR_word_to_int64((MR_Word)(B))
+    #define MR_box_int64(I)      ((MR_Box) MR_int64_to_word(I))
+    #define MR_unbox_int64(B)    MR_word_to_int64((MR_Word) (B))
     #define MR_box_uint64(I)     ((MR_Box) MR_uint64_to_word(I))
-    #define MR_unbox_uint64(B)   MR_word_to_uint64((MR_Word)(B))
+    #define MR_unbox_uint64(B)   MR_word_to_uint64((MR_Word) (B))
 
   #endif // not MR_BOXED_INT64S
 #endif // MR_HIGHLEVEL_CODE

@@ -107,6 +107,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -339,36 +340,6 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
     ),
     module_info_set_special_pred_maps(SpecialPredMaps, !ModuleInfo).
 
-:- pred add_special_pred_unify_status(hlds_type_body::in,
-    type_status::in, type_status::out) is det.
-
-add_special_pred_unify_status(TypeBody, TypeStatus0, TypeStatus) :-
-    % XXX STATUS should return pred_status, not type_status
-    (
-        TypeBody = hlds_du_type(_, MaybeCanonical, _, _),
-        (
-            MaybeCanonical = noncanon(_),
-            % If the type has user-defined equality, then we create a real
-            % unify predicate for it, whose body calls the user-specified
-            % predicate. The compiler's usual type checking algorithm
-            % will handle any necessary disambiguation from predicates
-            % with the same name but different argument types, and the
-            % usual mode checking algorithm will select the right mode
-            % of the chosen predicate.
-            TypeStatus = TypeStatus0
-        ;
-            MaybeCanonical = canon,
-            TypeStatus = type_status(status_pseudo_imported)
-        )
-    ;
-        ( TypeBody = hlds_eqv_type(_)
-        ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_solver_type(_)
-        ; TypeBody = hlds_abstract_type(_)
-        ),
-        TypeStatus = type_status(status_pseudo_imported)
-    ).
-
 :- pred adjust_special_pred_status(special_pred_id::in,
     type_status::in, pred_status::out) is det.
 
@@ -529,12 +500,7 @@ collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
     % Tuple constructors can't be existentially quantified.
     MaybeExistConstraints = no_exist_constraints,
 
-    MakeUnnamedField =
-        (func(ArgType) = ctor_arg(no, ArgType, Context)),
-    CtorArgs = list.map(MakeUnnamedField, TupleArgTypes),
-    MakeUnnamedFieldRepn =
-        (func(ArgType) = ctor_arg_repn(no, ArgType, full_word, Context)),
-    CtorArgRepns = list.map(MakeUnnamedFieldRepn, TupleArgTypes),
+    make_tuple_args_and_repns(Context, TupleArgTypes, CtorArgs, CtorArgRepns),
 
     CtorSymName = unqualified("{}"),
     Ctor = ctor(MaybeExistConstraints, CtorSymName,
@@ -552,6 +518,26 @@ collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
     construct_type(TypeCtor, TupleArgTypes, Type),
 
     term.context_init(Context).
+
+:- pred make_tuple_args_and_repns(prog_context::in, list(mer_type)::in,
+    list(constructor_arg)::out, list(constructor_arg_repn)::out) is det.
+
+make_tuple_args_and_repns(Context, ArgTypes, CtorArgs, CtorArgRepns) :-
+    make_tuple_args_and_repns_loop(Context, ArgTypes, 0,
+        CtorArgs, CtorArgRepns).
+
+:- pred make_tuple_args_and_repns_loop(prog_context::in, list(mer_type)::in,
+    int::in, list(constructor_arg)::out, list(constructor_arg_repn)::out)
+    is det.
+
+make_tuple_args_and_repns_loop(_Context, [], _ArgNum, [], []).
+make_tuple_args_and_repns_loop(Context, [ArgType | ArgTypes], ArgNum,
+        [CtorArg | CtorArgs], [CtorArgRepn | CtorArgRepns]) :-
+    CtorArg = ctor_arg(no, ArgType, Context),
+    ArgPosWidth = apw_full(arg_only_offset(ArgNum), cell_offset(ArgNum)),
+    CtorArgRepn = ctor_arg_repn(no, ArgType, ArgPosWidth, Context),
+    make_tuple_args_and_repns_loop(Context, ArgTypes, ArgNum + 1,
+        CtorArgs, CtorArgRepns).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.add_special_pred.

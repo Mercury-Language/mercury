@@ -845,18 +845,65 @@ MR_typeclass_ref_error(MR_Word tci, int n, const char *msg)
 int
 MR_cell_size_for_args(int arity, const MR_DuArgLocn *arg_locns)
 {
-    const MR_DuArgLocn *last_arg;
+    int                 last_arg_num;
+    const MR_DuArgLocn  *last_arg;
 
     if (arg_locns == NULL) {
         return arity;
     }
 
-    last_arg = &arg_locns[arity - 1];
-    if (last_arg->MR_arg_bits == -1) {
-        return last_arg->MR_arg_offset + 2;
-    } else {
-        return last_arg->MR_arg_offset + 1;
+    // The meanings of the various special values of MR_arg_bits
+    // are documented next to the definition of the MR_DuArgLocn type
+    // in mercury_type_info.h.
+
+    last_arg_num = arity - 1;
+    while (last_arg_num >= 0) {
+        last_arg = &arg_locns[last_arg_num];
+        if (last_arg->MR_arg_bits >= 0) {
+            // This means that argument #last_arg_num is takes either
+            // one full word, or part of a word. In the latter case,
+            // the rest of the bits in the word (if any are left)
+            // are padding.
+            return last_arg->MR_arg_offset + 1;
+        } else {
+            switch (last_arg->MR_arg_bits) {
+                case -1:
+                case -2:
+                case -3:
+                    // This means that argument #last_arg_num is a
+                    // double precision float, int64 or uint64
+                    // that takes two words.
+                    return last_arg->MR_arg_offset + 2;
+
+                case -4:
+                case -5:
+                case -6:
+                case -7:
+                case -8:
+                case -9:
+                    // This means that argument #last_arg_num is a
+                    // sub-word-sized integer. Treat this case as we treat
+                    // enums.
+                    return last_arg->MR_arg_offset + 1;
+
+                case -10:
+                    // This indicates that argument #last_arg_num is a dummy,
+                    // which means that its offset field is not meaningful.
+                    // Try again with the previous argument (if there is one).
+                    last_arg_num = last_arg_num - 1;
+                    break;
+
+                default:
+                    MR_fatal_error("unknown code value in MR_arg_bits");
+            }
+        }
     }
+
+    // We get here for cells that contain nothing but dummy values.
+    // We can generate them now, but we should be able to optimize them away.
+    // We return 1 because memory allocators should not be asked to allocate
+    // zero words.
+    return 1;
 }
 
 void

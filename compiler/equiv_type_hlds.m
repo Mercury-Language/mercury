@@ -236,12 +236,14 @@ replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
         MaybeExistConstraints0 = no_exist_constraints,
         MaybeExistConstraints = no_exist_constraints
     ;
-        MaybeExistConstraints0 = exist_constraints(
-            cons_exist_constraints(ExistQVars, Constraints0)),
+        MaybeExistConstraints0 = exist_constraints(ExistConstraints0),
+        ExistConstraints0 = cons_exist_constraints(ExistQVars, Constraints0,
+            UnconstrainedExistQVars, ConstrainedExistQVars),
         replace_in_prog_constraint_list(TypeEqvMap, Constraints0, Constraints,
             !TVarSet, !EquivTypeInfo),
-        MaybeExistConstraints = exist_constraints(
-            cons_exist_constraints(ExistQVars, Constraints))
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
+            UnconstrainedExistQVars, ConstrainedExistQVars),
+        MaybeExistConstraints = exist_constraints(ExistConstraints)
     ),
     CtorRepn = ctor_repn(MaybeExistConstraints, CtorName, Tag,
         CtorArgRepns, Arity, Context),

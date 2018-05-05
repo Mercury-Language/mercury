@@ -1080,7 +1080,7 @@ find_items_used_by_ctor(Ctor, !Info) :-
         MaybeExistConstraints = no_exist_constraints
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(_, Constraints),
+        ExistConstraints = cons_exist_constraints(_, Constraints, _, _),
         find_items_used_by_class_constraints(Constraints, !Info)
     ),
     list.foldl(find_items_used_by_ctor_arg, CtorArgs, !Info).

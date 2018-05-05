@@ -149,7 +149,7 @@ gen_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtorDefn | TypeCtorDefns],
         )
     ;
         SymName = unqualified(TypeName),
-        unexpected($module, $pred, "unqualified type " ++ TypeName)
+        unexpected($pred, "unqualified type " ++ TypeName)
     ).
 
     % Check if we should generate a type_ctor_info for this type.
@@ -205,13 +205,12 @@ gen_builtin_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtor | TypeCtors],
     TypeCtor = type_ctor(SymName, TypeArity),
     (
         SymName = qualified(TypeModuleName, TypeName),
-        expect(unify(TypeModuleName, ModuleName), $module, $pred,
-            "module mismatch"),
+        expect(unify(TypeModuleName, ModuleName), $pred, "module mismatch"),
         gen_type_ctor_gen_info(ModuleInfo, TypeCtor, TypeModuleName,
             TypeName, TypeArity, builtin_type_defn, TypeCtorGenInfo)
     ;
         SymName = unqualified(TypeName),
-        unexpected($module, $pred, "unqualified type " ++ TypeName)
+        unexpected($pred, "unqualified type " ++ TypeName)
     ).
 
     % Generate a type_defn for the builtin types which don't have one.
@@ -302,7 +301,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         TypeBody = hlds_abstract_type(_),
         not compiler_generated_rtti_for_builtins(ModuleInfo)
     then
-        unexpected($module, $pred, "abstract_type")
+        unexpected($pred, "abstract_type")
     else
         true
     ),
@@ -323,7 +322,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     else
         (
             TypeBody = hlds_abstract_type(_),
-            unexpected($module, $pred, "abstract_type")
+            unexpected($pred, "abstract_type")
         ;
             % We treat solver_types as being equivalent to their representation
             % types for RTTI purposes. Which may cause problems with construct,
@@ -376,14 +375,16 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
-                make_mercury_enum_details(CtorRepns, EqualityAxioms, Details)
+                make_mercury_enum_details(CtorRepns, enum_is_not_dummy,
+                    EqualityAxioms, Details)
             ;
                 DuTypeKind = du_type_kind_foreign_enum(Lang),
                 make_foreign_enum_details(Lang, CtorRepns, EqualityAxioms,
                     Details)
             ;
                 DuTypeKind = du_type_kind_direct_dummy,
-                make_mercury_enum_details(CtorRepns, EqualityAxioms, Details)
+                make_mercury_enum_details(CtorRepns, enum_is_dummy,
+                    EqualityAxioms, Details)
             ;
                 DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
                     MaybeArgName),
@@ -516,24 +517,25 @@ make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
     % Make the functor and layout tables for an enum type.
     %
 :- pred make_mercury_enum_details(list(constructor_repn)::in,
-    equality_axioms::in, type_ctor_details::out) is det.
+    enum_maybe_dummy::in, equality_axioms::in, type_ctor_details::out) is det.
 
-make_mercury_enum_details(CtorRepns, EqualityAxioms, Details) :-
-    make_enum_functors(CtorRepns, 0, EnumFunctors),
+make_mercury_enum_details(CtorRepns, IsDummy, EqualityAxioms, Details) :-
+    (
+        CtorRepns = [],
+        unexpected($pred, "enum with no ctors")
+    ;
+        CtorRepns = [_],
+        expect(unify(IsDummy, enum_is_dummy), $pred, "one ctor but not dummy")
+    ;
+        CtorRepns = [_, _ | _],
+        expect(unify(IsDummy, enum_is_not_dummy), $pred,
+            "more than one ctor but dummy")
+    ),
+    make_enum_functors(CtorRepns, IsDummy, 0, EnumFunctors),
     ValueMap0 = map.init,
     NameMap0 = map.init,
     list.foldl2(make_enum_maps, EnumFunctors,
         ValueMap0, ValueMap, NameMap0, NameMap),
-    (
-        CtorRepns = [],
-        unexpected($module, $pred, "enum with no ctors")
-    ;
-        CtorRepns = [_],
-        IsDummy = yes
-    ;
-        CtorRepns = [_, _ | _],
-        IsDummy = no
-    ),
     FunctorNumberMap = make_functor_number_map(CtorRepns),
     Details = tcd_enum(EqualityAxioms, EnumFunctors, ValueMap, NameMap,
         IsDummy, FunctorNumberMap).
@@ -546,23 +548,29 @@ make_mercury_enum_details(CtorRepns, EqualityAxioms, Details) :-
     % sort this list on functor name, which is how the type functors structure
     % is constructed.
     %
-:- pred make_enum_functors(list(constructor_repn)::in, int::in,
-    list(enum_functor)::out) is det.
+:- pred make_enum_functors(list(constructor_repn)::in, enum_maybe_dummy::in,
+    int::in, list(enum_functor)::out) is det.
 
-make_enum_functors([], _, []).
-make_enum_functors([FunctorRepn | FunctorRepns], NextOrdinal,
+make_enum_functors([], _, _, []).
+make_enum_functors([FunctorRepn | FunctorRepns], IsDummy, NextOrdinal,
         [EnumFunctor | EnumFunctors]) :-
     FunctorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag,
         _FunctorArgRepns, Arity, _Context),
-    expect(unify(MaybeExistConstraints, no_exist_constraints), $module, $pred,
+    expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
         "existential constraints in functor in enum"),
-    expect(unify(Arity, 0), $module, $pred,
-        "functor in enum has nonzero arity"),
-    expect(unify(ConsTag, int_tag(int_tag_int(NextOrdinal))), $module, $pred,
-        "mismatch on constant assigned to functor in enum"),
+    expect(unify(Arity, 0), $pred, "functor in enum has nonzero arity"),
+    (
+        IsDummy = enum_is_not_dummy,
+        expect(unify(ConsTag, int_tag(int_tag_int(NextOrdinal))), $pred,
+            "enum functor's tag is not the expected int_tag")
+    ;
+        IsDummy = enum_is_dummy,
+        expect(unify(ConsTag, dummy_tag), $pred,
+            "dummy functor's tag is not dummy_tag")
+    ),
     FunctorName = unqualify_name(SymName),
     EnumFunctor = enum_functor(FunctorName, NextOrdinal),
-    make_enum_functors(FunctorRepns, NextOrdinal + 1, EnumFunctors).
+    make_enum_functors(FunctorRepns, IsDummy, NextOrdinal + 1, EnumFunctors).
 
 :- pred make_enum_maps(enum_functor::in,
     map(int, enum_functor)::in, map(int, enum_functor)::out,
@@ -608,13 +616,13 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], NextOrdinal,
         [ForeignEnumFunctor | ForeignEnumFunctors]) :-
     FunctorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag,
         _FunctorArgRepns, Arity, _Context),
-    expect(unify(MaybeExistConstraints, no_exist_constraints), $module, $pred,
+    expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
         "existential constraints in functor in enum"),
-    expect(unify(Arity, 0), $module, $pred,
+    expect(unify(Arity, 0), $pred,
         "functor in foreign enum has nonzero arity"),
     (
         ConsTag = foreign_tag(ForeignTagLang, ForeignTagValue0),
-        expect(unify(Lang, ForeignTagLang), $module, $pred,
+        expect(unify(Lang, ForeignTagLang), $pred,
             "language mismatch between foreign tag and foreign enum"),
         ForeignTagValue = ForeignTagValue0
     ;
@@ -636,8 +644,9 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], NextOrdinal,
         ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = shared_local_tag(_, _)
         ; ConsTag = no_tag
+        ; ConsTag = dummy_tag
         ),
-        unexpected($module, $pred, "non foreign tag for foreign enum functor")
+        unexpected($pred, "non foreign tag for foreign enum functor")
     ),
     FunctorName = unqualify_name(SymName),
     ForeignEnumFunctor = foreign_enum_functor(FunctorName, NextOrdinal,
@@ -702,9 +711,9 @@ make_du_functors(ModuleInfo, [CtorRepn | CtorRepns],
         MaybeExistInfo = no
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(ExistTVars, Constraints),
+        ExistConstraints = cons_exist_constraints(ExistTVars, _, _, _),
         module_info_get_class_table(ModuleInfo, ClassTable),
-        generate_exist_into(ExistTVars, Constraints, ClassTable, ExistInfo),
+        generate_exist_info(ExistConstraints, ClassTable, ExistInfo),
         MaybeExistInfo = yes(ExistInfo)
     ),
     list.map_foldl(generate_du_arg_info(TypeArity, ExistTVars),
@@ -719,7 +728,9 @@ make_du_functors(ModuleInfo, [CtorRepn | CtorRepns],
 
 get_du_rep(ConsTag, DuRep) :-
     (
-        ConsTag = single_functor_tag,
+        ( ConsTag = single_functor_tag
+        ; ConsTag = dummy_tag
+        ),
         ConsPtag = 0,
         SecTagLocn = sectag_locn_none,
         DuRep = du_ll_rep(ConsPtag, SecTagLocn)
@@ -753,7 +764,7 @@ get_du_rep(ConsTag, DuRep) :-
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
         ),
-        unexpected($module, $pred, "bad cons_tag for du function symbol")
+        unexpected($pred, "bad cons_tag for du function symbol")
     ).
 
 :- pred generate_du_arg_info(int::in, existq_tvars::in,
@@ -800,20 +811,15 @@ contains_var_bit_vector_size = 16.
     % of the typeinfos describing the types of the existentially typed
     % arguments of a functor.
     %
-:- pred generate_exist_into(list(tvar)::in, list(prog_constraint)::in,
-    class_table::in, exist_info::out) is det.
+:- pred generate_exist_info(cons_exist_constraints::in, class_table::in,
+    exist_info::out) is det.
 
-generate_exist_into(ExistTVars, Constraints, ClassTable, ExistInfo) :-
-    % XXX The Ts being gathered are not type variables, they are types.
-    list.map((pred(C::in, Ts::out) is det :- C = constraint(_, Ts)),
-        Constraints, ConstrainedTVars0),
-    list.condense(ConstrainedTVars0, ConstrainedTVars1),
-    type_vars_list(ConstrainedTVars1, ConstrainedTVars2),
-    list.delete_elems(ExistTVars, ConstrainedTVars2, UnconstrainedTVars),
-    % We do this to maintain the ordering of the type variables.
-    list.delete_elems(ExistTVars, UnconstrainedTVars, ConstrainedTVars),
+generate_exist_info(ExistConstraints, ClassTable, ExistInfo) :-
+    ExistConstraints = cons_exist_constraints(ExistTVars, Constraints,
+        UnconstrainedTVars, ConstrainedTVars),
     map.init(LocnMap0),
-    list.foldl2((pred(T::in, N0::in, N::out, Lm0::in, Lm::out) is det :-
+    list.foldl2(
+        ( pred(T::in, N0::in, N::out, Lm0::in, Lm::out) is det :-
             Locn = plain_typeinfo(N0),
             map.det_insert(T, Locn, Lm0, Lm),
             N = N0 + 1
@@ -823,9 +829,10 @@ generate_exist_into(ExistTVars, Constraints, ClassTable, ExistInfo) :-
     list.foldl(find_type_info_index(Constraints, ClassTable, TIsPlain),
         ConstrainedTVars, LocnMap1, LocnMap),
     TCConstraints = list.map(generate_class_constraint, Constraints),
-    list.map((pred(TVar::in, Locn::out) is det :-
-        map.lookup(LocnMap, TVar, Locn)),
-        ExistTVars, ExistLocns),
+    list.map(
+        ( pred(TVar::in, Locn::out) is det :-
+            map.lookup(LocnMap, TVar, Locn)
+        ), ExistTVars, ExistLocns),
     ExistInfo = exist_info(TIsPlain, TIsInTCIs, TCConstraints, ExistLocns).
 
 :- pred find_type_info_index(list(prog_constraint)::in, class_table::in,
@@ -847,7 +854,7 @@ find_type_info_index(Constraints, ClassTable, StartSlot, TVar, !LocnMap) :-
     int::in, int::out, prog_constraint::out, int::out) is det.
 
 first_matching_type_class_info([], _, !N, _, _) :-
-    unexpected($module, $pred, "not found").
+    unexpected($pred, "not found").
 first_matching_type_class_info([Constraint | Constraints], TVar,
         !N, MatchingConstraint, TypeInfoIndex) :-
     Constraint = constraint(_, ArgTypes),
@@ -887,7 +894,7 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         ),
         ( if map.search(!.PtagTable, Ptag, SectagTable0) then
             SectagTable0 = sectag_table(Locn0, NumSharers0, SectagMap0),
-            expect(unify(SectagLocn, Locn0), $module, $pred,
+            expect(unify(SectagLocn, Locn0), $pred,
                 "sectag locn disagreement"),
             map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
             SectagTable = sectag_table(Locn0, NumSharers0 + 1, SectagMap),
@@ -899,7 +906,7 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         )
     ;
         DuRep = du_hl_rep(_),
-        unexpected($module, $pred, "du_hl_rep")
+        unexpected($pred, "du_hl_rep")
     ).
 
 :- pred make_du_name_ordered_table(du_functor::in,

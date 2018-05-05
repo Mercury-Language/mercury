@@ -931,8 +931,10 @@ setup_headvars_2(PredInfo, ClassContext,
     some [!RttiVarMaps] (
         poly_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
 
-        ToLocn = (pred(TheVar::in, TheLocn::out) is det :-
-            TheLocn = type_info(TheVar)),
+        ToLocn =
+            ( pred(TheVar::in, TheLocn::out) is det :-
+                TheLocn = type_info(TheVar)
+            ),
 
         list.map(ToLocn, UnivHeadTypeInfoVars, UnivTypeLocns),
         list.foldl_corresponding(rtti_det_insert_type_info_locn,
@@ -1795,8 +1797,11 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
         CtorToParentRenaming),
     (
         CtorMaybeExistConstraints = exist_constraints(CtorExistConstraints),
-        CtorExistConstraints =
-            cons_exist_constraints(CtorExistQVars, CtorExistentialConstraints),
+        % XXX Could we use _Ctor{Unc,C}onstrainedExistQVars to avoid
+        % some of the work below?
+        CtorExistConstraints = cons_exist_constraints(CtorExistQVars,
+            CtorExistentialConstraints,
+            _CtorUnconstrainedExistQVars, _CtorConstrainedExistQVars),
         apply_variable_renaming_to_tvar_list(CtorToParentRenaming,
             CtorExistQVars, ParentExistQVars),
         apply_variable_renaming_to_prog_constraint_list(CtorToParentRenaming,
@@ -1925,8 +1930,10 @@ polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars,
         PredTypeVarSet), UnivCs, UnivTypeClassArgInfos),
     TypeClassArgInfos = UnivTypeClassArgInfos ++ ExistTypeClassArgInfos,
 
-    list.filter((pred(X::in) is semidet :- list.member(X, ExistQVars)),
-        PredTypeVars, ExistUnconstrainedVars, UnivUnconstrainedVars),
+    list.filter(
+        ( pred(X::in) is semidet :-
+            list.member(X, ExistQVars)
+        ), PredTypeVars, ExistUnconstrainedVars, UnivUnconstrainedVars),
 
     list.map(foreign_proc_add_typeinfo(CanOptAwayUnnamed, Out, Impl,
         PredTypeVarSet), ExistUnconstrainedVars, ExistTypeArgInfos),
@@ -2280,19 +2287,21 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
     % Look up the type variables that the type_infos in the caller are for,
     % and apply the type bindings to calculate the types that the caller
     % should pass type_infos for.
-    GetTypeInfoTypes = (pred(ProgVar::in, TypeInfoType::out) is det :-
-        rtti_varmaps_var_info(CalleeRttiVarMaps, ProgVar, VarInfo),
-        (
-            VarInfo = type_info_var(TypeInfoType)
-        ;
-            VarInfo = typeclass_info_var(_),
-            unexpected($pred,
-                "unsupported: constraints on initialisation preds")
-        ;
-            VarInfo = non_rtti_var,
-            unexpected($pred, "missing rtti_var_info for initialisation pred")
-        )
-    ),
+    GetTypeInfoTypes =
+        ( pred(ProgVar::in, TypeInfoType::out) is det :-
+            rtti_varmaps_var_info(CalleeRttiVarMaps, ProgVar, VarInfo),
+            (
+                VarInfo = type_info_var(TypeInfoType)
+            ;
+                VarInfo = typeclass_info_var(_),
+                unexpected($pred,
+                    "unsupported: constraints on initialisation preds")
+            ;
+                VarInfo = non_rtti_var,
+                unexpected($pred,
+                    "missing rtti_var_info for initialisation pred")
+            )
+        ),
     list.map(GetTypeInfoTypes, CalleeExtraHeadVars, PredTypeInfoTypes),
     apply_variable_renaming_to_type_list(PredToParentRenaming,
         PredTypeInfoTypes, ParentTypeInfoTypes),
@@ -4022,7 +4031,7 @@ expand_class_method_bodies_in_defn(ClassDefn, !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 expand_class_method_body(ClassProc, !ProcNum, !ModuleInfo) :-
-    ClassProc = proc(PredId, ProcId), 
+    ClassProc = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
@@ -4144,8 +4153,7 @@ all_are_const_struct_args([VarMCA | VarsMCAs], [ConstArg | ConstArgs]) :-
     all_are_const_struct_args(VarsMCAs, ConstArgs).
 
 :- pred get_inst_of_const_struct_arg(const_struct_db::in, const_struct_arg::in,
-    mer_inst::out)
-    is det.
+    mer_inst::out) is det.
 
 get_inst_of_const_struct_arg(ConstStructDb, ConstArg, Inst) :-
     (

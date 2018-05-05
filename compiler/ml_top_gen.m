@@ -196,8 +196,8 @@ ml_gen_init_global_data(ModuleInfo, Target, GlobalData) :-
         UnboxedInt64s = no,
         HaveUnboxedInt64s = do_not_have_unboxed_int64s
     ),
-    GlobalData = ml_global_data_init(UseCommonCells, HaveUnboxedFloats,
-        HaveUnboxedInt64s).
+    GlobalData = ml_global_data_init(Target, UseCommonCells,
+        HaveUnboxedFloats, HaveUnboxedInt64s).
 
 %---------------------------------------------------------------------------%
 %

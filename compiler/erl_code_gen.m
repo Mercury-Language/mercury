@@ -918,13 +918,18 @@ cons_id_size(ModuleInfo, Type, ConsId) = Size :-
             MaybeExistConstraints = no_exist_constraints,
             Size = NumArgs
         ;
-            MaybeExistConstraints = exist_constraints(
-                cons_exist_constraints(ExistTVars, Constraints)),
+            MaybeExistConstraints = exist_constraints(ExistConstraints),
+            ExistConstraints = cons_exist_constraints(ExistTVars,
+                Constraints, UnconstrainedTVarsEC, _ConstrainedTVars),
             constraint_list_get_tvars(Constraints, ConstrainedTVars),
             UnconstrainedTVars =
                 list.delete_elems(ExistTVars, ConstrainedTVars),
-            Size = NumArgs +
-                list.length(UnconstrainedTVars) + list.length(Constraints)
+            list.length(UnconstrainedTVars, NumUnconstrainedTVars),
+            list.length(UnconstrainedTVarsEC, NumUnconstrainedTVarsEC),
+            list.length(Constraints, NumConstraints),
+            expect(unify(NumUnconstrainedTVars, NumUnconstrainedTVarsEC),
+                $pred, "NumUnconstrainedTVars != NumUnconstrainedTVarsEC"),
+            Size = NumUnconstrainedTVars + NumConstraints + NumArgs
         )
     else
         Size = 0

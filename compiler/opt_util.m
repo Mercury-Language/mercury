@@ -229,7 +229,6 @@
     %
 :- func lval_refers_stackvars(lval) = bool.
 :- func rval_refers_stackvars(rval) = bool.
-:- func rvals_refer_stackvars(list(maybe(rval))) = bool.
 :- func instr_refers_to_stack(instruction) = bool.
 :- func block_refers_to_stack(list(instruction)) = bool.
 
@@ -738,28 +737,14 @@ rval_refers_stackvars(mkword(_, Rval)) =
     rval_refers_stackvars(Rval).
 rval_refers_stackvars(mkword_hole(_)) = no.
 rval_refers_stackvars(const(_)) = no.
+rval_refers_stackvars(cast(_, Rval)) =
+    rval_refers_stackvars(Rval).
 rval_refers_stackvars(unop(_, Rval)) =
     rval_refers_stackvars(Rval).
 rval_refers_stackvars(binop(_, Rval1, Rval2)) =
     bool.or(rval_refers_stackvars(Rval1), rval_refers_stackvars(Rval2)).
 rval_refers_stackvars(mem_addr(MemRef)) =
     mem_ref_refers_stackvars(MemRef).
-
-% XXX probably unused
-rvals_refer_stackvars([]) = no.
-rvals_refer_stackvars([MaybeRval | Tail]) =
-    ( if
-        (
-            MaybeRval = no
-        ;
-            MaybeRval = yes(Rval),
-            rval_refers_stackvars(Rval) = no
-        )
-    then
-        rvals_refer_stackvars(Tail)
-    else
-        yes
-    ).
 
 :- func code_addr_refers_to_stack(code_addr) = bool.
 
@@ -1733,15 +1718,15 @@ count_temps_rval(Rval, !R, !F) :-
         Rval = var(_),
         unexpected($pred, "var")
     ;
-        Rval = mkword(_Tag, SubRval),
-        count_temps_rval(SubRval, !R, !F)
-    ;
         Rval = mkword_hole(_Tag)
     ;
         Rval = const(_Const)
     ;
-        Rval = unop(_Unop, SubRvalA),
-        count_temps_rval(SubRvalA, !R, !F)
+        ( Rval = mkword(_Tag, SubRval)
+        ; Rval = cast(_Type, SubRval)
+        ; Rval = unop(_Unop, SubRval)
+        ),
+        count_temps_rval(SubRval, !R, !F)
     ;
         Rval = binop(_Binop, SubRvalA, SubRvalB),
         count_temps_rval(SubRvalA, !R, !F),
@@ -1951,6 +1936,8 @@ touches_nondet_ctrl_rval(mkword(_, Rval)) =
     touches_nondet_ctrl_rval(Rval).
 touches_nondet_ctrl_rval(mkword_hole(_)) = no.
 touches_nondet_ctrl_rval(const(_)) = no.
+touches_nondet_ctrl_rval(cast(_, Rval)) =
+    touches_nondet_ctrl_rval(Rval).
 touches_nondet_ctrl_rval(unop(_, Rval)) =
     touches_nondet_ctrl_rval(Rval).
 touches_nondet_ctrl_rval(binop(_, Rval1, Rval2)) = Touch :-
@@ -2576,6 +2563,10 @@ replace_labels_rval(Rval0, Rval, ReplMap) :-
         Rval0 = const(Const0),
         replace_labels_rval_const(Const0, Const, ReplMap),
         Rval = const(Const)
+    ;
+        Rval0 = cast(Type, SubRvalA0),
+        replace_labels_rval(SubRvalA0, SubRvalA, ReplMap),
+        Rval = cast(Type, SubRvalA)
     ;
         Rval0 = unop(UnOp, SubRvalA0),
         replace_labels_rval(SubRvalA0, SubRvalA, ReplMap),

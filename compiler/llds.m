@@ -1178,6 +1178,8 @@
 
     ;       const(rval_const)
 
+    ;       cast(llds_type, rval)
+
     ;       unop(unary_op, rval)
 
     ;       binop(binary_op, rval, rval)
@@ -1672,6 +1674,7 @@ rval_type(mkword(_, _), lt_data_ptr).
 rval_type(mkword_hole(_), lt_data_ptr).
 rval_type(const(Const), Type) :-
     const_type(Const, Type).
+rval_type(cast(Type, _), Type).
 rval_type(unop(UnOp, _), Type) :-
     unop_return_type(UnOp, Type).
 rval_type(binop(BinOp, _, _), Type) :-

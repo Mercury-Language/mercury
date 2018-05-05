@@ -306,30 +306,132 @@ MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
 MR_Word
 MR_arg_value_uncommon(MR_Word *arg_ptr, const MR_DuArgLocn *arg_locn)
 {
-#ifdef MR_BOXED_FLOAT
-    MR_Float    flt;
-#endif
     MR_Word     val;
 
-    // MR_arg_bits == -1 means the argument is a double-precision floating
-    // point value occupying two words.
+    // The meanings of the various special values of MR_arg_bits
+    // are documented next to the definition of the MR_DuArgLocn type
+    // in mercury_type_info.h.
 
-    if (arg_locn->MR_arg_bits == -1) {
+    switch (arg_locn->MR_arg_bits) {
+
+    case -1:
+        // MR_arg_bits == -1 means the argument is a double-precision
+        // floating point value occupying two words.
 #ifdef MR_BOXED_FLOAT
-        flt = MR_float_from_dword(arg_ptr[0], arg_ptr[1]);
+        {
+            MR_Float    flt;
+            flt = MR_float_from_dword(arg_ptr[0], arg_ptr[1]);
+
     #ifdef MR_HIGHLEVEL_CODE
-        return (MR_Word) MR_box_float(flt);
+            return (MR_Word) MR_box_float(flt);
     #else
-        return MR_float_to_word(flt);
+            return MR_float_to_word(flt);
     #endif
+        }
 #else
         MR_fatal_error("double-word floats should not exist in this grade");
 #endif
-    }
 
-    // The argument is a packed enumeration value.
-    val = *arg_ptr;
-    val = (val >> arg_locn->MR_arg_shift)
-        & ((MR_Word) (1 << arg_locn->MR_arg_bits) - 1);
-    return val;
+    case -2:
+        // MR_arg_bits == -2 means the argument is an int64 value
+        // occupying two words.
+#if defined(MR_BOXED_INT64S)
+        {
+            int64_t     i64;
+            i64 = MR_int64_from_dword(arg_ptr[0], arg_ptr[1]);
+
+    #ifdef MR_HIGHLEVEL_CODE
+            return (MR_Word) MR_box_int64(i64);
+    #else
+            return MR_int64_to_word(i64);
+    #endif
+        }
+#else
+        MR_fatal_error("double-word int64s should not exist in this grade");
+#endif
+
+    case -3:
+        // MR_arg_bits == -3 means the argument is a uint64 value
+        // occupying two words.
+#if defined(MR_BOXED_INT64S)
+        {
+            uint64_t     ui64;
+            ui64 = MR_uint64_from_dword(arg_ptr[0], arg_ptr[1]);
+
+    #ifdef MR_HIGHLEVEL_CODE
+            return (MR_Word) MR_box_uint64(ui64);
+    #else
+            return MR_uint64_to_word(ui64);
+    #endif
+        }
+#else
+        MR_fatal_error("double-word uint64s should not exist in this grade");
+#endif
+
+    case -4:
+        // MR_arg_bits == -4 means the argument is an int8 value
+        // occupying part of one word.
+        val = *arg_ptr;
+        val = (val >> arg_locn->MR_arg_shift) & ((MR_Word) 0xff);
+        val = (MR_Word) (int8_t) val;
+        return val;
+
+    case -5:
+        // MR_arg_bits == -5 means the argument is a uint8 value
+        // occupying part of one word.
+        val = *arg_ptr;
+        val = (val >> arg_locn->MR_arg_shift) & ((MR_Word) 0xff);
+        val = (MR_Word) (uint8_t) val;
+        return val;
+
+    case -6:
+        // MR_arg_bits == -6 means the argument is an int16 value
+        // occupying part of one word.
+        val = *arg_ptr;
+        val = (val >> arg_locn->MR_arg_shift) & ((MR_Word) 0xffff);
+        val = (MR_Word) (int16_t) val;
+        return val;
+
+    case -7:
+        // MR_arg_bits == -7 means the argument is a uint16 value
+        // occupying part of one word.
+        val = *arg_ptr;
+        val = (val >> arg_locn->MR_arg_shift) & ((MR_Word) 0xffff);
+        val = (MR_Word) (uint16_t) val;
+        return val;
+
+    case -8:
+        // MR_arg_bits == -8 means the argument is an int32 value
+        // occupying part of one word.
+        val = *arg_ptr;
+        val = (val >> arg_locn->MR_arg_shift) & ((MR_Word) 0xffffffff);
+        val = (MR_Word) (int32_t) val;
+        return val;
+
+    case -9:
+        // MR_arg_bits == -9 means the argument is a uint32 value
+        // occupying part of one word.
+        val = *arg_ptr;
+        val = (val >> arg_locn->MR_arg_shift) & ((MR_Word) 0xffffffff);
+        val = (MR_Word) (uint32_t) val;
+        return val;
+
+    case -10:
+        // MR_arg_bits == -10 means the argument is of a dummy type.
+        return 0;
+
+    default:
+        if (arg_locn->MR_arg_bits > 0) {
+            // The argument is a packed enumeration value.
+            val = *arg_ptr;
+            val = (val >> arg_locn->MR_arg_shift)
+                & ((MR_Word) (1 << arg_locn->MR_arg_bits) - 1);
+            return val;
+        } else {
+            // If MR_arg_bits is exactly zero, this function
+            // should not have been called at all (since that is
+            // the *common* case).
+            MR_fatal_error("unexpected value of MR_arg_bits");
+        }
+    }
 }

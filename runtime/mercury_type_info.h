@@ -852,15 +852,78 @@ typedef enum {
 } MR_Sectag_Locn;
 
 typedef struct {
-    MR_int_least16_t        MR_arg_offset; // not including extra args
+    MR_int_least16_t        MR_arg_offset;
+    // The MR_arg_offset is the offset of this argument *from the
+    // part of the cell containing the arguments*; it is *not* measured
+    // from the start of the cell itself. The difference is that the
+    // arguments may be preceded by a remote secondary tag, and by
+    // type_infos and/or typeclass_infos added by polymorphism.m.
+    // XXX The runtime mostly wants the offset from the start of the cell,
+    // so we should consider changing this. However, any such change
+    // would require a nontrivial bootstrapping sequence.
     MR_int_least8_t         MR_arg_shift;
     MR_int_least8_t         MR_arg_bits;
-    // If MR_arg_bits is zero then the argument occupies the entire word.
-    // If MR_arg_bits is -1 then the argument is a double-precision floating
-    // point value occupying two words. Otherwise MR_arg_bits is non-zero and
-    // gives the number of bits used by the argument. Storing the bit-mask
-    // would be more useful, but would not be as compact.
-
+    // If MR_arg_bits is 0, then the argument occupies the entire word
+    // at the offset given by MR_arg_offset within the term's memory cell.
+    // In this case, which is the usual case, MR_arg_shift is not relevant.
+    //
+    // Nonzero values of MR_arg_bits mean that the size of the argument
+    // is not the same as the size of one word. These nonzero values
+    // fall into two categories: positive and negative.
+    //
+    // A strictly positive value of MR_arg_bits means that the argument
+    // is a value of an enum type packed into a word with other sub-word-sized
+    // arguments. To get the value of this argument, shift the word at
+    // the offset given by MR_arg_offset by MR_arg_shift bits to the right
+    // and mask off the bottom MR_arg_bits bits.
+    //
+    // The strictly negative values of MR_arg_bits fall into three
+    // subcategories.
+    //
+    // The first subcategory is for arguments that take two full words,
+    // which will be the ones at the offsets indicated by MR_arg_offset
+    // and MR_arg_offset+1.
+    //
+    // MR_arg_bits = -1 says the argument is a double-precision float.
+    // MR_arg_bits = -2 says the argument is a value of type int64.
+    // MR_arg_bits = -3 says the argument is a value of type uint64.
+    //
+    // The second subcategory is for sub-word-sized integers. For these,
+    // the value MR_arg_shift specifies where they are in the word
+    // indicated by MR_arg_offset (the same way it does for enum values),
+    // and the number of bits the argument occupies is given by the type.
+    //
+    // MR_arg_bits = -4 says the argument is a value of type int8.
+    // MR_arg_bits = -5 says the argument is a value of type uint8.
+    // MR_arg_bits = -6 says the argument is a value of type int16.
+    // MR_arg_bits = -7 says the argument is a value of type uint16.
+    // MR_arg_bits = -8 says the argument is a value of type int32.
+    // MR_arg_bits = -9 says the argument is a value of type uint32.
+    //
+    // The third subcategories contains just one code value. If MR_arg_bits
+    // is -10, then the argument is a dummy and occupies no bits at all.
+    //
+    // MR_arg_bits may not take any negative value except the ones listed
+    // above.
+    //
+    // This code is known to the following files in the Mercury implementation.
+    // If it is changed, they must all be modified accordingly.
+    //
+    //      compiler/rtti_out.m
+    //      compiler/rtti_to_mlds.m
+    //      library/construct.m
+    //      runtime/mercury_deconstruct.c
+    //      runtime/mercury_deep_copy_body.h
+    //      runtime/mercury_type_info.c
+    //
+    // Note that code that wants to mask off the selected bits of a word
+    // in a term's memory cell typically wants the mask to use. We store
+    // only the number of bits, which requires the mask to be constructed
+    // on the fly. We could store the mask here as well, but that would
+    // push the size of this structure above 32 bits. We could store
+    // the mask *instead* of the number of bits, but then we would need
+    // some other mechanism for encoding the above special values, which
+    // would probably also require extra space.
 } MR_DuArgLocn;
 
 // This type describes the subtype constraints on the arguments of a functor.

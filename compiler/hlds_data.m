@@ -152,6 +152,11 @@
             % but this time the secondary tag is stored in the rest of the
             % main word rather than in the first word of the argument vector.
 
+    ;       dummy_tag
+            % This is for constants that are the only function symbol in their
+            % type. Such function symbols contain no information, and thus
+            % do not need to be represented at all.
+
     ;       no_tag.
             % This is for types with a single functor of arity one. In this
             % case, we don't need to store the functor, and instead we store
@@ -220,6 +225,7 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         ; Tag = foreign_tag(_, _)
         ; Tag = closure_tag(_, _, _)
         ; Tag = no_tag
+        ; Tag = dummy_tag
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = type_info_const_tag(_)
@@ -259,6 +265,7 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_entry_tag(_, _)
         ; Tag = no_tag
+        ; Tag = dummy_tag
         ; Tag = unshared_tag(_PrimaryTag)
         ; Tag = direct_arg_tag(_PrimaryTag)
         ; Tag = single_functor_tag
@@ -1080,16 +1087,11 @@ set_type_defn_prev_errors(X, !Defn) :-
                 car_type            :: mer_type,
 
                 % XXX TYPE_REPN
-                % Consider either adding a new field that specifies
-                % the offset of this argument in the heap cell,
-                % or including that information in the arg_width type.
-                %
-                % XXX TYPE_REPN
                 % Later, we should be able to store arguments next to
                 % the primary tag, if all the arguments fit there
                 % (which means we don't need to use those bits
                 % as a heap pointer).
-                car_width           :: arg_width,
+                car_pos_width       :: arg_pos_width,
                 car_context         :: prog_context
             ).
 

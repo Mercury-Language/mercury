@@ -325,10 +325,6 @@
 :- pred type_is_no_tag_type(module_info::in, mer_type::in, sym_name::out,
     mer_type::out) is semidet.
 
-    % Check whether a type is float or a type equivalent to float.
-    %
-:- pred type_is_float_eqv(module_info::in, mer_type::in) is semidet.
-
     % cons_id_adjusted_arity(ModuleInfo, Type, ConsId):
     %
     % Returns the number of arguments of specified constructor id, adjusted
@@ -1472,17 +1468,6 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
 
 %-----------------------------------------------------------------------------%
 
-type_is_float_eqv(ModuleInfo, Type) :-
-    (
-        Type = float_type
-    ;
-        type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-        TypeBody = hlds_eqv_type(EqvType),
-        type_is_float_eqv(ModuleInfo, EqvType)
-    ).
-
-%-----------------------------------------------------------------------------%
-
 cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
     % Figure out the arity of this constructor, _including_ any type-infos
     % or typeclass-infos inserted for existential data types.
@@ -1492,14 +1477,19 @@ cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
             _ArgTypes, _ResultType),
         (
             MaybeExistConstraints = exist_constraints(ExistConstraints),
-            ExistConstraints =
-                cons_exist_constraints(ExistQTVars, Constraints),
+            ExistConstraints = cons_exist_constraints(ExistQTVars, Constraints,
+                UnconstrainedExistQTVarsEC, _ConstrainedExistQTVars),
             list.length(Constraints, NumTypeClassInfos),
+            list.length(UnconstrainedExistQTVarsEC,
+                NumUnconstrainedExistQTVarsEC),
             constraint_list_get_tvars(Constraints, ConstrainedTVars),
             list.delete_elems(ExistQTVars, ConstrainedTVars,
                 UnconstrainedExistQTVars),
             list.length(UnconstrainedExistQTVars, NumTypeInfos),
-            AdjustedArity = ConsArity + NumTypeClassInfos + NumTypeInfos
+            AdjustedArity = NumTypeInfos + NumTypeClassInfos + ConsArity,
+            % XXX ARG_PACK Sanity check.
+            expect(unify(NumTypeInfos, NumUnconstrainedExistQTVarsEC), $pred,
+                "NumTypeInfos != NumUnconstrainedExistQTVars")
         ;
             MaybeExistConstraints = no_exist_constraints,
             AdjustedArity = ConsArity

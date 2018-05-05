@@ -339,8 +339,22 @@ parse_constructor(ModuleName, VarSet, ExistQVars, Term, MaybeConstructor) :-
             )
         ;
             ExistQVars = [_ | _],
-            MaybeExistConstraints = exist_constraints(
-                cons_exist_constraints(ExistQVars, Constraints)),
+            list.map(
+                ( pred(C::in, Ts::out) is det :-
+                    C = constraint(_, Ts)
+                ), Constraints, ConstrainedTypeLists),
+            list.condense(ConstrainedTypeLists, ConstrainedTypes),
+            % We compute ConstrainedQVars in this roundabout way to give it
+            % the same ordering as ExistQVars. Also, the list returned
+            % by type_vars_list may contain duplicates.
+            type_vars_list(ConstrainedTypes, ConstrainedQVars0),
+            list.delete_elems(ExistQVars, ConstrainedQVars0,
+                UnconstrainedQVars),
+            list.delete_elems(ExistQVars, UnconstrainedQVars,
+                ConstrainedQVars),
+            ExistConstraints = cons_exist_constraints(ExistQVars,
+                Constraints, UnconstrainedQVars, ConstrainedQVars),
+            MaybeExistConstraints = exist_constraints(ExistConstraints),
             MCSpecs = []
         ),
         ( if
@@ -476,8 +490,9 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         ExistQVars = [],
         Constraints = []
     ;
-        MaybeExistConstraints = exist_constraints(
-            cons_exist_constraints(ExistQVars, Constraints))
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
+            _UnconstrainedExistQVars, _ConstrainedExistQVars)
     ),
     ( if
         % Check that all type variables in the ctor are either explicitly

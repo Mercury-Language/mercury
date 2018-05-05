@@ -548,15 +548,15 @@ make_live_in_rval(Rval, !Live) :-
         opt_util.lval_access_rvals(Lval, AccessRvals),
         make_live_in_rvals(AccessRvals, !Live)
     ;
-        Rval = mkword(_, SubRval),
-        make_live_in_rval(SubRval, !Live)
-    ;
         ( Rval = mkword_hole(_)
         ; Rval = const(_)
         )
     ;
-        Rval = unop(_, SubRvalA),
-        make_live_in_rval(SubRvalA, !Live)
+        ( Rval = mkword(_, SubRval)
+        ; Rval = cast(_, SubRval)
+        ; Rval = unop(_, SubRval)
+        ),
+        make_live_in_rval(SubRval, !Live)
     ;
         Rval = binop(_, SubRvalA, SubRvalB),
         make_live_in_rval(SubRvalA, !Live),

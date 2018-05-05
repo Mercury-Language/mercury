@@ -714,6 +714,8 @@ copy_ref_value(Ref, Val) -->
         MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
             MR_SIZE_SLOT_SIZE + 1, MR_ALLOC_ID, ""store.ref/2"");
         MR_define_size_slot(0, ArgRef, 1);
+        // XXX I (zs) don't think this will work for arguments
+        // that are stored unboxed in two words.
         * (MR_Word *) ArgRef = MR_arg_value(arg_ref, arg_locn);
     } else {
         ArgRef = (MR_Word) arg_ref;
@@ -780,6 +782,8 @@ copy_ref_value(Ref, Val) -->
         MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
             MR_SIZE_SLOT_SIZE + 1, MR_ALLOC_ID, ""store.ref/2"");
         MR_define_size_slot(0, ArgRef, 1);
+        // XXX I (zs) don't think this will work for arguments
+        // that are stored unboxed in two words.
         * (MR_Word *) ArgRef = MR_arg_value(arg_ref, arg_locn);
     } else if (arg_ref == &Val) {
         /*

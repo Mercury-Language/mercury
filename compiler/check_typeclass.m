@@ -1718,11 +1718,16 @@ check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn, Ctor, !Specs) :-
         MaybeExistConstraints = no_exist_constraints
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints),
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
+            _UnconstrainedQVars, _ConstrainedQVars),
         ArgTypes = list.map(func(ctor_arg(_, T, _)) = T, CtorArgs),
         type_vars_list(ArgTypes, ArgTVars),
         list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
             ArgTVars, ExistQArgTVars),
+        % Sanity check.
+        list.filter(list.contains(ExistQVars), ArgTVars, ExistQArgTVarsB),
+        expect(unify(ExistQArgTVars, ExistQArgTVarsB), $pred,
+            "ExistQArgTVars != ExistQArgTVarsB"),
         constraint_list_get_tvars(Constraints, ConstrainedTVars),
         get_type_defn_tvarset(TypeDefn, TVarSet),
         get_unbound_tvars(ModuleInfo, TVarSet,

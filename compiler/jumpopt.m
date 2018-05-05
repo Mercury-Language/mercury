@@ -1134,14 +1134,18 @@ short_circuit_labels_rval(InstrMap, Rval0, Rval) :-
         short_circuit_labels_const(InstrMap, Const0, Const),
         Rval = const(Const)
     ;
-        Rval0 = unop(Op, SubRval0),
+        Rval0 = cast(Type, SubRval0),
         short_circuit_labels_rval(InstrMap, SubRval0, SubRval),
-        Rval = unop(Op, SubRval)
+        Rval = cast(Type, SubRval)
     ;
-        Rval0 = binop(Op, LRval0, RRval0),
+        Rval0 = unop(UnOp, SubRval0),
+        short_circuit_labels_rval(InstrMap, SubRval0, SubRval),
+        Rval = unop(UnOp, SubRval)
+    ;
+        Rval0 = binop(BinOp, LRval0, RRval0),
         short_circuit_labels_rval(InstrMap, LRval0, LRval),
         short_circuit_labels_rval(InstrMap, RRval0, RRval),
-        Rval = binop(Op, LRval, RRval)
+        Rval = binop(BinOp, LRval, RRval)
     ;
         ( Rval0 = mkword_hole(_)
         ; Rval0 = mem_addr(_)

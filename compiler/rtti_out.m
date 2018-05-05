@@ -653,7 +653,7 @@ output_type_ctor_data_defn(Info, TypeCtorData, !DeclSet, !IO) :-
         MaybeFunctorsName = yes(FunctorsName),
         FunctorsRttiId = ctor_rtti_id(RttiTypeCtor, FunctorsName),
         io.write_string("{ ", !IO),
-        output_cast_addr_of_rtti_id("(void *)", FunctorsRttiId, !IO),
+        output_cast_addr_of_rtti_id("(void *) ", FunctorsRttiId, !IO),
         io.write_string(" }", !IO)
     ;
         MaybeFunctorsName = no,
@@ -664,7 +664,7 @@ output_type_ctor_data_defn(Info, TypeCtorData, !DeclSet, !IO) :-
         MaybeLayoutName = yes(LayoutName),
         LayoutRttiId = ctor_rtti_id(RttiTypeCtor, LayoutName),
         io.write_string("{ ", !IO),
-        output_cast_addr_of_rtti_id("(void *)", LayoutRttiId, !IO),
+        output_cast_addr_of_rtti_id("(void *) ", LayoutRttiId, !IO),
         io.write_string(" }", !IO)
     ;
         MaybeLayoutName = no,
@@ -1106,55 +1106,103 @@ output_du_arg_names(Info, RttiTypeCtor, Ordinal, MaybeNames, !DeclSet, !IO) :-
 output_du_arg_locns(Info, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
         !DeclSet, !IO) :-
     ( if
-        list.member(ArgInfo, ArgInfos),
-        ArgInfo = du_arg_info(_, _, Width),
-        Width \= full_word
+        some [ArgInfo] (
+            list.member(ArgInfo, ArgInfos),
+            ArgInfo = du_arg_info(_, _, Width),
+            Width \= apw_full(_, _)
+        )
     then
         output_generic_rtti_data_defn_start(Info,
             ctor_rtti_id(RttiTypeCtor, type_ctor_field_locns(Ordinal)),
             !DeclSet, !IO),
         io.write_string(" = {\n", !IO),
-        output_du_arg_locns_2(ArgInfos, -1, !IO),
+        output_du_arg_locns_loop(ArgInfos, !IO),
         io.write_string("};\n", !IO),
         HaveArgLocns = yes
     else
         HaveArgLocns = no
     ).
 
-:- pred output_du_arg_locns_2(list(du_arg_info)::in, int::in, io::di, io::uo)
-    is det.
+:- pred output_du_arg_locns_loop(list(du_arg_info)::in, io::di, io::uo) is det.
 
-output_du_arg_locns_2([], _, !IO).
-output_du_arg_locns_2([ArgInfo | ArgInfos], PrevSlotNum, !IO) :-
-    ArgWidth = ArgInfo ^ du_arg_width,
+output_du_arg_locns_loop([], !IO).
+output_du_arg_locns_loop([ArgInfo | ArgInfos], !IO) :-
+    ArgWidth = ArgInfo ^ du_arg_pos_width,
+    % The meanings of the various special values of MR_arg_bits
+    % are documented next to the definition of the MR_DuArgLocn type
+    % in mercury_type_info.h.
     (
-        ArgWidth = full_word,
-        % Bits = 0 is a special case.
+        ArgWidth = apw_full(arg_only_offset(ArgOnlyOffset), _CellOffset),
+        % NumBits = 0 means the argument takes a full word.
         Shift = 0,
-        Bits = 0,
-        SlotNum = PrevSlotNum + 1,
-        Skip = 0
+        NumBits = 0
     ;
-        ArgWidth = double_word,
-        % Bits = -1 is a special case.
+        ArgWidth = apw_double(arg_only_offset(ArgOnlyOffset), _CellOffset,
+            DoubleWordKind),
+        % NumBits = -1, -2 and -3 are all special cases, meaning
+        % double words containing floats, int64s and uint64s respectively.
         Shift = 0,
-        Bits = -1,
-        SlotNum = PrevSlotNum + 1,
-        Skip = 1
+        (
+            DoubleWordKind = dw_float,
+            NumBits = -1
+        ;
+            DoubleWordKind = dw_int64,
+            NumBits = -2
+        ;
+            DoubleWordKind = dw_uint64,
+            NumBits = -3
+        )
     ;
-        ArgWidth = partial_word_first(Mask),
+        (
+            ArgWidth = apw_partial_first(arg_only_offset(ArgOnlyOffset), _,
+                arg_num_bits(NumBits0), _Mask, Fill),
+            Shift = 0
+        ;
+            ArgWidth = apw_partial_shifted(arg_only_offset(ArgOnlyOffset), _,
+                arg_shift(Shift), arg_num_bits(NumBits0), _Mask, Fill)
+        ),
+        (
+            Fill = fill_enum,
+            NumBits = NumBits0
+        ;
+            Fill = fill_int8,
+            % NumBits = -4 is a special case meaning "int8".
+            NumBits = -4
+        ;
+            Fill = fill_uint8,
+            % NumBits = -5 is a special case meaning "uint8".
+            NumBits = -5
+        ;
+            Fill = fill_int16,
+            % NumBits = -6 is a special case meaning "int16".
+            NumBits = -6
+        ;
+            Fill = fill_uint16,
+            % NumBits = -7 is a special case meaning "uint16".
+            NumBits = -7
+        ;
+            Fill = fill_int32,
+            % NumBits = -8 is a special case meaning "int32".
+            NumBits = -8
+        ;
+            Fill = fill_uint32,
+            % NumBits = -9 is a special case meaning "uint32".
+            NumBits = -9
+        )
+    ;
+        (
+            ArgWidth = apw_none_shifted(arg_only_offset(ArgOnlyOffset), _)
+        ;
+            ArgWidth = apw_none_nowhere,
+            ArgOnlyOffset = -1
+        ),
+        % NumBits = -10 is a special case meaning "dummy argument".
         Shift = 0,
-        int.log2(Mask + 1, Bits),
-        SlotNum = PrevSlotNum + 1,
-        Skip = 0
-    ;
-        ArgWidth = partial_word_shifted(Shift, Mask),
-        int.log2(Mask + 1, Bits),
-        SlotNum = PrevSlotNum,
-        Skip = 0
+        NumBits = -10
     ),
-    io.format("\t{ %d, %d, %d },\n", [i(SlotNum), i(Shift), i(Bits)], !IO),
-    output_du_arg_locns_2(ArgInfos, SlotNum + Skip, !IO).
+    io.format("\t{ %d, %d, %d },\n",
+        [i(ArgOnlyOffset), i(Shift), i(NumBits)], !IO),
+    output_du_arg_locns_loop(ArgInfos, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1332,7 +1380,7 @@ output_functor_number_map(Info, RttiTypeCtor, FunctorNumberMap,
         !DeclSet, !IO),
     io.write_string(" = {\n\t", !IO),
     io.write_list(FunctorNumberMap, ",\n\t", io.write_int, !IO),
-    io.write_string(" };\n\t", !IO).
+    io.write_string("\n};\n\t", !IO).
 
 %-----------------------------------------------------------------------------%
 

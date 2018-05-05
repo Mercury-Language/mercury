@@ -533,6 +533,10 @@ standardize_rval(Rval0, Rval) :-
         ),
         Rval = Rval0
     ;
+        Rval0 = cast(Type, Rval0L),
+        standardize_rval(Rval0L, RvalL),
+        Rval = cast(Type, RvalL)
+    ;
         Rval0 = unop(Unop, Rval0L),
         standardize_rval(Rval0L, RvalL),
         Rval = unop(Unop, RvalL)
@@ -989,6 +993,11 @@ most_specific_rval(RvalA, RvalB, Rval) :-
         ),
         RvalB = RvalA,
         Rval = RvalA
+    ;
+        RvalA = cast(Type, RvalAL),
+        RvalB = cast(Type, RvalBL),
+        most_specific_rval(RvalAL, RvalBL, RvalL),
+        Rval = cast(Type, RvalL)
     ;
         RvalA = unop(Unop, RvalAL),
         RvalB = unop(Unop, RvalBL),

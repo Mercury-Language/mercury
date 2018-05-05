@@ -457,7 +457,7 @@ ctor_used_modules(Visibility, Ctor, !UsedModules) :-
         MaybeExistConstraints = no_exist_constraints
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(_, Constraints),
+        ExistConstraints = cons_exist_constraints(_, Constraints, _, _),
         list.foldl(prog_constraint_used_modules(Visibility), Constraints,
             !UsedModules)
     ),

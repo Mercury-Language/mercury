@@ -1035,12 +1035,14 @@ replace_in_ctor(MaybeRecord, TypeEqvMap, Ctor0, Ctor,
         MaybeExistConstraints0 = no_exist_constraints,
         MaybeExistConstraints = no_exist_constraints
     ;
-        MaybeExistConstraints0 = exist_constraints(
-            cons_exist_constraints(ExistQVars, Constraints0)),
+        MaybeExistConstraints0 = exist_constraints(ExistConstraints0),
+        ExistConstraints0 = cons_exist_constraints(ExistQVars, Constraints0,
+            UnconstrainedExistQTVars, ConstrainedExistQTVars),
         replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
             Constraints0, Constraints, !VarSet, !EquivTypeInfo, !UsedModules),
-        MaybeExistConstraints = exist_constraints(
-            cons_exist_constraints(ExistQVars, Constraints))
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
+            UnconstrainedExistQTVars, ConstrainedExistQTVars),
+        MaybeExistConstraints = exist_constraints(ExistConstraints)
     ),
     Ctor = ctor(MaybeExistConstraints, CtorName, CtorArgs, Arity, Ctxt).
 

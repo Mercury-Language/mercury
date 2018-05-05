@@ -70,6 +70,22 @@
 :- type exist_type
     --->    some [T] xyzzy(f21name :: T).
 
+    % By using nine non-constant functors, we are forcing packed8
+    % and packed 9 to share a primary tag even on 64 bit systems.
+    % packed_1 tests the secondary tag absent case, while packed_8
+    % tests the secondary tag present case in the construct predicate.
+:- type packed(T)
+    --->    packed_1(int8, uint8, dummy, dummy, int8, uint8, T)
+    ;       some [U] packed_2(dummy, U, int8, uint8, dummy, int8, uint8)
+    ;       packed_3(int)
+    ;       packed_4(int)
+    ;       packed_5(int)
+    ;       packed_6(int)
+    ;       packed_7(int)
+    ;       packed_8(T, dummy, int8, uint8, dummy, dummy, int8, uint8,
+                float, int)
+    ;       some [U] packed_9(T, dummy, U, int8, uint8, dummy, int8, uint8).
+
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
@@ -341,7 +357,26 @@ test_construction(!IO) :-
     io.write_string("About to construct a tuple\n", !IO),
     Tuple = construct.construct_tuple([NumList, EnumList, One, TwoPointOne]),
     io.write(Tuple, !IO),
-    io.nl(!IO).
+    io.nl(!IO),
+
+    Packed =
+        type_desc.type_of(packed_1(0i8, 0u8, dummy, dummy, 0i8, 0u8, "")),
+
+    test_construct(Packed, "packed_1",
+        [univ(-11i8), univ(11u8), univ(dummy), univ(dummy),
+        univ(-127i8), univ(255u8), univ("abc")], !IO),
+    % We cannot yet construct terms with existentially typed arguments.
+%   test_construct(Packed, "packed_2",
+%       [univ(dummy), univ(-11i8), univ(-11i8), univ(11u8), univ(dummy),
+%       univ(-127i8), univ(255u8)], !IO),
+    test_construct(Packed, "packed_8",
+        [univ("def"), univ(dummy), univ(-11i8), univ(11u8),
+        univ(dummy), univ(dummy), univ(-127i8), univ(255u8),
+        univ(1234.567), univ(42)], !IO).
+    % We cannot yet construct terms with existentially typed arguments.
+%   test_construct(Packed, "packed_9",
+%       [univ("def"), univ(dummy), univ(1234.56), univ(-25i8), univ(140u8),
+%       univ(dummy), univ(-127i8), univ(255u8)], !IO).
 
 :- pred test_construct(type_desc.type_desc::in, string::in,
     list(univ)::in, io::di, io::uo) is det.

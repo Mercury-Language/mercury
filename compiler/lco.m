@@ -863,17 +863,29 @@ acceptable_construct_unification(DelayForVars, Goal, !UnifyInputVars, !Info) :-
 all_delayed_arg_vars_are_full_words([], [], _).
 all_delayed_arg_vars_are_full_words([ArgVar | ArgVars], [ArgRepn | ArgRepns],
         DelayForVars) :-
-    ArgWidth = ArgRepn ^ car_width,
+    ArgWidth = ArgRepn ^ car_pos_width,
     (
-        ArgWidth = full_word
+        ArgWidth = apw_full(_, _)
     ;
-        ArgWidth = double_word,
+        ArgWidth = apw_double(_, _, _),
         % XXX I (zs) am not sure whether this works. Until I am,
         % failing here plays things safe.
         fail
     ;
-        ( ArgWidth = partial_word_first(_)
-        ; ArgWidth = partial_word_shifted(_, _)
+        ( ArgWidth = apw_none_nowhere
+        ; ArgWidth = apw_none_shifted(_, _)
+        ),
+        % XXX We *could* allow lco to apply to fill in the values of
+        % dummy variables by passing a dummy pointer to some static
+        % variable we never read. However, it would be *far* simpler
+        % to just fill in the one possible value before the recursive call.
+        % XXX We don't do that yet either. Since code that fills in
+        % the value of a variable of a dummy type after recursive call
+        % is as rare as hen's teeth, this is not a great loss.
+        fail
+    ;
+        ( ArgWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgWidth = apw_partial_shifted(_, _, _, _, _, _)
         ),
         % It is ok for the cell to have subword arguments (packed two or more
         % into a single word) IF AND ONLY IF we don't try to take

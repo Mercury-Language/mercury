@@ -129,7 +129,7 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
     (
         CtorDetails = tcd_enum(_, Functors, _, _, IsDummy, FunctorNums),
         (
-            IsDummy = yes,
+            IsDummy = enum_is_dummy,
             ( if Functors = [F] then
                 Details = erlang_dummy(F ^ enum_name)
             else
@@ -137,7 +137,7 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
                     "dummy type with more than one functor")
             )
         ;
-            IsDummy = no,
+            IsDummy = enum_is_not_dummy,
             list.map_corresponding(convert_enum_functor, Functors, FunctorNums,
                 ErlFunctors),
             Details = erlang_du(ErlFunctors)
@@ -157,7 +157,8 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
         Ordinal = 0,
         FunctorNum = 0,
         ArgTypeInfo = convert_to_rtti_maybe_pseudo_type_info_or_self(TypeInfo),
-        ArgInfos = [du_arg_info(ArgName, ArgTypeInfo, full_word)],
+        ArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
+        ArgInfos = [du_arg_info(ArgName, ArgTypeInfo, ArgPosWidth)],
         DUFunctor = erlang_du_functor(Name, OrigArity, Ordinal, FunctorNum,
             erlang_atom_raw(Name), ArgInfos, no, SubtypeInfo),
         Details = erlang_du([DUFunctor])

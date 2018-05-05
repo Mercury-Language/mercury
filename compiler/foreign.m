@@ -54,6 +54,11 @@
     %
 :- func to_exported_type(module_info, mer_type) = exported_type.
 
+    % A version of to_exported_type where the given Mercury type
+    % must be a builtin.
+    %
+:- func builtin_type_to_exported_type(mer_type) = exported_type.
+
     % Given the exported_type representation for a type, determine
     % whether or not it is a foreign type, and if yes, return the foreign
     % type's assertions.
@@ -193,6 +198,9 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
     else
         ExportType = exported_type_mercury(Type)
     ).
+
+builtin_type_to_exported_type(Type) = ExportType :-
+    ExportType = exported_type_mercury(Type).
 
 is_foreign_type(exported_type_foreign(_, Assertions)) = yes(Assertions).
 is_foreign_type(exported_type_mercury(_)) = no.

@@ -891,7 +891,8 @@ mercury_output_ctor(TypeVarSet, Ctor, !IO) :-
         ParenWrap = no
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints), 
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
+            _UnconstrainedQVars, _ConstrainedQVars), 
         mercury_output_quantifier(TypeVarSet, print_name_only, ExistQVars,
             !IO),
         io.write_string("(", !IO),

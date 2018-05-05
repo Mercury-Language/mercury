@@ -255,3 +255,9 @@ About to construct {}/3
 
 About to construct a tuple
 univ_cons({[1, 2, 3], [one, two, three], 1, 2.1})
+
+About to construct packed_1/7
+packed_1(-11i8, 11u8, dummy, dummy, -127i8, 255u8, "abc")
+
+About to construct packed_8/10
+packed_8("def", dummy, -11i8, 11u8, dummy, dummy, -127i8, 255u8, 1234.567, 42)

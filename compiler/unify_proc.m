@@ -561,8 +561,8 @@ generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt, Ctor, Goal,
             ExistQTVars = []
         ;
             MaybeExistConstraints = exist_constraints(ExistConstraints),
-            ExistConstraints =
-                cons_exist_constraints(ExistQTVars, _Constraints)
+            ExistConstraints = cons_exist_constraints(ExistQTVars,
+                _Constraints, _UnconstrainedQTVars, _ConstrainedQTVars)
         ),
         make_fresh_arg_var_pairs(ExistQTVars, ArgTypes, TypedVarPairs, !Info),
         VarsX = list.map(project_var_x, TypedVarPairs),
@@ -1296,8 +1296,8 @@ generate_compare_case(SpecDefnInfo, Ctor, R, X, Y, LinearOrQuad, Case, !Info) :-
             ExistQTVars = []
         ;
             MaybeExistConstraints = exist_constraints(ExistConstraints),
-            ExistConstraints =
-                cons_exist_constraints(ExistQTVars, _Constraints)
+            ExistConstraints = cons_exist_constraints(ExistQTVars,
+                _Constraints, _UnconstrainedQTVars, _ConstrainedQTVars)
         ),
         make_fresh_arg_var_pairs(ExistQTVars, ArgTypes, TypedVarPairs, !Info),
         VarsX = list.map(project_var_x, TypedVarPairs),

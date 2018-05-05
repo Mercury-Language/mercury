@@ -1740,9 +1740,29 @@ mlds_output_scalar_cell_group_struct_defn(Opts, Indent, MangledModuleName,
 mlds_output_scalar_cell_group_struct_field(Opts, Indent, FieldType,
         Num, Num + 1, !IO) :-
     output_n_indents(Indent, !IO),
-    ( if FieldType = mlds_native_float_type then
-        % Ensure float structure members are word-aligned (not double-aligned).
-        io.write_string("MR_Float_Aligned", !IO)
+    ( if
+        % Ensure double-word float, int64 and uint64 structure members
+        % are word-aligned, not double-aligned.
+        (
+            FieldType = mlds_native_float_type,
+            TypeName = "MR_Float_Aligned"
+        ;
+            FieldType = mercury_type(builtin_type(BuiltinType), _, _),
+            (
+                BuiltinType = builtin_type_float,
+                TypeName = "MR_Float_Aligned"
+            ;
+                (
+                    BuiltinType = builtin_type_int(int_type_int64),
+                    TypeName = "MR_Int64Aligned"
+                ;
+                    BuiltinType = builtin_type_int(int_type_uint64),
+                    TypeName = "MR_Uint64Aligned"
+                )
+            )
+        )
+    then
+        io.write_string(TypeName, !IO)
     else
         mlds_output_type_prefix(Opts, FieldType, !IO)
     ),
@@ -4838,6 +4858,8 @@ mlds_output_cast(Opts, Type, !IO) :-
     mlds_type::in, mlds_rval::in, io::di, io::uo) is det.
 
 mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
+    % XXX ARG_PACK We should be able to optimize this code
+    % by turning all the tests of Type into a switch.
     ( if
         ( Type = mlds_generic_type
         ; Type = mercury_type(_, ctor_cat_variable, _)
@@ -4888,8 +4910,8 @@ mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
         type_is_smaller_than_word(Type)
     then
         % We cast first to MR_Word, and then to MR_Box.
-        % This is done to avoid spurious warnings about "cast from
-        % integer to pointer of different size" from gcc.
+        % We do this to avoid spurious warnings from gcc about
+        % "cast from integer to pointer of different size".
         io.write_string("((MR_Box) (MR_Word) (", !IO),
         mlds_output_rval(Opts, Expr, !IO),
         io.write_string("))", !IO)
@@ -4998,6 +5020,8 @@ is_an_address(Rval) = IsAddr :-
     mlds_type::in, mlds_rval::in, io::di, io::uo) is det.
 
 mlds_output_unboxed_rval(Opts, Type, Expr, !IO) :-
+    % XXX ARG_PACK We should be able to optimize this code
+    % by turning all the tests of Type into a switch.
     ( if
         ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
         ; Type = mlds_native_float_type

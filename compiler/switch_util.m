@@ -604,6 +604,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         Cost = 1 + 2 * string.length(String)
     ;
         ( Tag = no_tag
+        ; Tag = dummy_tag
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
@@ -1253,6 +1254,7 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
         )
     ;
         ( Tag = no_tag
+        ; Tag = dummy_tag
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)
@@ -1355,6 +1357,7 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         )
     ;
         ( Tag = no_tag
+        ; Tag = dummy_tag
         ; Tag = string_tag(_)
         ; Tag = float_tag(_)
         ; Tag = int_tag(_)

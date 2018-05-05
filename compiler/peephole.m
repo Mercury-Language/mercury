@@ -700,6 +700,11 @@ replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             BaseRval0, BaseRval),
         Rval = mkword(Ptag, BaseRval)
     ;
+        Rval0 = cast(Type, BaseRval0),
+        replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
+            BaseRval0, BaseRval),
+        Rval = cast(Type, BaseRval)
+    ;
         ( Rval0 = lval(_)
         ; Rval0 = var(_)
         ; Rval0 = mkword_hole(_)

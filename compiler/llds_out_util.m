@@ -146,6 +146,7 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
     globals.lookup_bool_option(Globals, static_ground_floats,
         StaticGroundFloats),
     globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64s),
+    % XXX ARG_PACK We probably need double_width_int64s_on_det_stack.
     globals.lookup_bool_option(Globals, static_ground_int64s,
         StaticGroundInt64s),
     globals.lookup_bool_option(Globals, use_macro_for_redo_fail,

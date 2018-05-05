@@ -390,6 +390,10 @@ standardize_rval(Rval, StdRval, DupProcMap) :-
         standardize_rval_const(Const, StdConst, DupProcMap),
         StdRval = const(StdConst)
     ;
+        Rval = cast(Type, RvalL),
+        standardize_rval(RvalL, StdRvalL, DupProcMap),
+        StdRval = cast(Type, StdRvalL)
+    ;
         Rval = unop(Unop, RvalL),
         standardize_rval(RvalL, StdRvalL, DupProcMap),
         StdRval = unop(Unop, StdRvalL)
