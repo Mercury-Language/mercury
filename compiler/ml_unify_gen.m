@@ -347,8 +347,8 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
             Tag = unshared_tag(Ptag),
             MaybeStag = no
         ;
-            Tag = shared_remote_tag(Ptag, Stag),
-            MaybeStag = yes(Stag)
+            Tag = shared_remote_tag(Ptag, Stag, AddedBy),
+            MaybeStag = yes({Stag, AddedBy})
         ),
         UsesBaseClass = ml_tag_uses_base_class(Tag),
         ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
@@ -474,7 +474,7 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         ; Tag = single_functor_tag
         ; Tag = unshared_tag(_)
         ; Tag = direct_arg_tag(_)
-        ; Tag = shared_remote_tag(_, _)
+        ; Tag = shared_remote_tag(_, _, _)
         ; Tag = closure_tag(_, _, _)
         ; Tag = type_info_const_tag(_)
         ; Tag = typeclass_info_const_tag(_)
@@ -487,10 +487,10 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
 
     % Generate code to construct a new object.
     %
-:- pred ml_gen_compound(cons_id::in, int::in, maybe(int)::in,
-    tag_uses_base_class::in, prog_var::in, list(prog_var)::in,
-    list(unify_mode)::in, list(int)::in, how_to_construct::in,
-    prog_context::in, list(mlds_stmt)::out,
+:- pred ml_gen_compound(cons_id::in,
+    ptag::in, maybe({sectag, sectag_added_by})::in, tag_uses_base_class::in,
+    prog_var::in, list(prog_var)::in, list(unify_mode)::in, list(int)::in,
+    how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
@@ -509,10 +509,13 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
 
     % If there is a secondary tag, it goes in the first field.
     (
-        MaybeStag = yes(Stag),
+        MaybeStag = yes({Stag, AddedBy}),
         UsesConstructors = ml_target_uses_constructors(CompilationTarget),
         (
             UsesConstructors = no,
+            % XXX ARG_PACK
+            expect(unify(AddedBy, sectag_added_by_unify), $pred,
+                "AddedBy != sectag_added_by_unify"),
             ExplicitSecTag = yes,
             StagRval0 = ml_const(mlconst_int(Stag)),
             StagType0 = mlds_native_int_type,
@@ -525,6 +528,9 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
         ;
             UsesConstructors = yes,
             % Secondary tag is implicitly initialised by the constructor.
+            % XXX ARG_PACK
+            expect(unify(AddedBy, sectag_added_by_constructor), $pred,
+                "AddedBy != sectag_added_by_constructor"),
             ExplicitSecTag = no,
             ExtraRvalsTypesWidths = []
         )
@@ -1359,7 +1365,7 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
     ;
         ( Tag = single_functor_tag
         ; Tag = unshared_tag(_UnsharedPtag)
-        ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag)
+        ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag, _AddedBy)
         ),
         ml_gen_var(!.Info, Var, VarLval),
         ml_tag_offset_and_argnum(Tag, _, InitOffSet, ArgNum),
@@ -1377,27 +1383,33 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
 :- pred ml_tag_offset_and_argnum(cons_tag::in, ptag::out,
     field_offset::out, int::out) is det.
 
-ml_tag_offset_and_argnum(Tag, Ptag, Offset, ArgNum) :-
+ml_tag_offset_and_argnum(Tag, Ptag, InitOffset, ArgNum) :-
     (
         Tag = single_functor_tag,
         Ptag = 0,
-        Offset = offset(0),
+        InitOffset = offset(0),
         ArgNum = 1
     ;
         ( Tag = unshared_tag(UnsharedPtag)
         ; Tag = direct_arg_tag(UnsharedPtag)
         ),
         Ptag = UnsharedPtag,
-        Offset = offset(0),
+        InitOffset = offset(0),
         ArgNum = 1
     ;
-        Tag = shared_remote_tag(PrimaryTag, _SecondaryTag),
+        Tag = shared_remote_tag(PrimaryTag, _SecondaryTag, AddedBy),
         Ptag = PrimaryTag,
-        Offset = offset(1),
+        (
+            AddedBy = sectag_added_by_unify,
+            InitOffset = offset(1)
+        ;
+            AddedBy = sectag_added_by_constructor,
+            InitOffset = offset(0)
+        ),
         ArgNum = 1
     ;
         Tag = ground_term_const_tag(_, SubTag),
-        ml_tag_offset_and_argnum(SubTag, Ptag, Offset, ArgNum)
+        ml_tag_offset_and_argnum(SubTag, Ptag, InitOffset, ArgNum)
     ;
         ( Tag = string_tag(_String)
         ; Tag = int_tag(_)
@@ -2105,7 +2117,7 @@ ml_gen_tag_test_rval(Info, Tag, Type, Rval) = TagTestRval :-
             ml_const(mlconst_int(UnsharedPtag))),
         TagTestRval = ml_binop(eq(int_type_int), RvalTag, UnsharedTag)
     ;
-        Tag = shared_remote_tag(PrimaryTag, SecondaryTag),
+        Tag = shared_remote_tag(PrimaryTag, SecondaryTag, _AddedBy),
         ml_gen_secondary_tag_rval(Info, Type, Rval, PrimaryTag,
             SecondaryTagFieldRval),
         SecondaryTagTestRval = ml_binop(eq(int_type_int),
@@ -2470,10 +2482,13 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ConsTag = unshared_tag(Ptag),
             ExtraRvals = []
         ;
-            ConsTag = shared_remote_tag(Ptag, Stag),
+            ConsTag = shared_remote_tag(Ptag, Stag, AddedBy),
             UsesConstructors = ml_target_uses_constructors(Target),
             (
                 UsesConstructors = no,
+                % XXX ARG_PACK
+                expect(unify(AddedBy, sectag_added_by_unify), $pred,
+                    "AddedBy != sectag_added_by_unify"),
                 StagRval0 = ml_const(mlconst_int(Stag)),
                 (
                     HighLevelData = no,
@@ -2486,6 +2501,9 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
                 ExtraRvals = [StagRval]
             ;
                 UsesConstructors = yes,
+                % XXX ARG_PACK
+                expect(unify(AddedBy, sectag_added_by_constructor), $pred,
+                    "AddedBy != sectag_added_by_constructor"),
                 ExtraRvals = []
             )
         ),
@@ -2670,11 +2688,14 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
             ConsTag = unshared_tag(Ptag),
             ExtraRvals = []
         ;
-            ConsTag = shared_remote_tag(Ptag, Stag),
+            ConsTag = shared_remote_tag(Ptag, Stag, AddedBy),
             Target = Info ^ mcsi_target,
             UsesConstructors = ml_target_uses_constructors(Target),
             (
                 UsesConstructors = no,
+                % XXX ARG_PACK
+                expect(unify(AddedBy, sectag_added_by_unify), $pred,
+                    "AddedBy != sectag_added_by_unify"),
                 StagRval0 = ml_const(mlconst_int(Stag)),
                 HighLevelData = Info ^ mcsi_high_level_data,
                 (
@@ -2688,6 +2709,9 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
                 ExtraRvals = [StagRval]
             ;
                 UsesConstructors = yes,
+                % XXX ARG_PACK
+                expect(unify(AddedBy, sectag_added_by_constructor), $pred,
+                    "AddedBy != sectag_added_by_constructor"),
                 ExtraRvals = []
             )
         ),
@@ -2851,7 +2875,7 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = shared_remote_tag(_, _, _)
         % These tag should never occur in constant data.
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = tabling_info_tag(_, _)
@@ -2926,10 +2950,10 @@ int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag) = Const :-
 
 maybe_cons_id_arg_types_and_widths(Info, VarType, ConsIdOrClosure, ArgVars,
         ArgVarsTypesWidths) :-
-    ml_gen_info_get_module_info(Info, ModuleInfo),
-    ml_gen_info_get_var_types(Info, VarTypes),
     (
         ConsIdOrClosure = ordinary_cons_id(ConsId),
+        ml_gen_info_get_module_info(Info, ModuleInfo),
+        ml_gen_info_get_var_types(Info, VarTypes),
         cons_id_arg_types_and_widths(ModuleInfo,
             lookup_var_type_func(VarTypes), may_have_extra_args,
             VarType, ConsId, ArgVars, ArgVarsTypesWidths)
@@ -2992,7 +3016,10 @@ cons_id_arg_types_and_widths(ModuleInfo, ArgToType, MayHaveExtraArgs,
                 % type_infos and type_class_infos for existentially quantified
                 % types. We can get the type of these from VarTypes.
                 det_split_list(NumExtraArgs, Args, ExtraArgs, NonExtraArgs),
-                ( if ConsRepnDefn ^ cr_tag = shared_remote_tag(_, _) then
+                ( if
+                    ConsRepnDefn ^ cr_tag = shared_remote_tag(_, _, AddedBy),
+                    AddedBy = sectag_added_by_unify
+                then
                     InitOffset = 1
                 else
                     InitOffset = 0
@@ -3154,7 +3181,7 @@ ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
         ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
             RevOrRvals0, OrAllRval),
         HeadInit = init_obj(OrAllRval),
-        ml_pack_ground_term_args_into_word_inits(LeftOverRvalsTypesWidths, 
+        ml_pack_ground_term_args_into_word_inits(LeftOverRvalsTypesWidths,
             TailInits),
         Inits = [HeadInit | TailInits]
     ;
@@ -3225,7 +3252,7 @@ ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
         % of the whole word preserves old behavior, but seems strange.
         PackedRvalTypeWidth = rval_type_and_width(OrAllRval, Type,
             apw_full(AOOffset, CellOffset)),
-        ml_expand_or_pack_into_words(LeftOverRvalsTypesWidths, 
+        ml_expand_or_pack_into_words(LeftOverRvalsTypesWidths,
             TailPackedRvalsTypesWidths),
         PackedRvalsTypesWidths =
             [PackedRvalTypeWidth | TailPackedRvalsTypesWidths]

@@ -590,7 +590,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         % XXX they're not that common anymore.
         Cost = 3
     ;
-        Tag = shared_remote_tag(_, _),
+        Tag = shared_remote_tag(_, _, _),
         % You need to compute the primary tag, compare it, follow a pointer
         % and then compare the remote secondary tag.
         Cost = 4
@@ -1215,7 +1215,7 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
             map.det_insert(Primary, SecTag - (-1), !PtagCountMap)
         )
     ;
-        Tag = shared_remote_tag(Primary, Secondary),
+        Tag = shared_remote_tag(Primary, Secondary, _),
         int.max(Primary, !MaxPrimary),
         ( if map.search(!.PtagCountMap, Primary, Target) then
             Target = TagType - MaxSoFar,
@@ -1328,7 +1328,7 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
                 !PtagCaseMap)
         )
     ;
-        Tag = shared_remote_tag(Primary, Secondary),
+        Tag = shared_remote_tag(Primary, Secondary, _),
         ( if map.search(!.PtagCaseMap, Primary, Group) then
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, sectag_remote), $pred,

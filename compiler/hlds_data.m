@@ -137,7 +137,7 @@
             % it IS the value of that argument, which must be an untagged
             % pointer to a cell.
 
-    ;       shared_remote_tag(ptag, int)
+    ;       shared_remote_tag(ptag, sectag, sectag_added_by)
             % This is for functors or constants which require more than just
             % a primary tag. In this case, we use both a primary and a
             % secondary tag. Several functors share the primary tag and are
@@ -186,6 +186,12 @@
     % It consists of 2 bits on 32 bit machines and 3 bits on 64 bit machines.
     %
 :- type ptag == int.
+
+:- type sectag == int.
+
+:- type sectag_added_by
+    --->    sectag_added_by_unify
+    ;       sectag_added_by_constructor.
 
     % Return the primary tag, if any, for a cons_tag.
     % A return value of `no' means the primary tag is unknown.
@@ -244,7 +250,7 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
     ;
         ( Tag = unshared_tag(PrimaryTag)
         ; Tag = direct_arg_tag(PrimaryTag)
-        ; Tag = shared_remote_tag(PrimaryTag, _SecondaryTag)
+        ; Tag = shared_remote_tag(PrimaryTag, _SecondaryTag, _)
         ; Tag = shared_local_tag(PrimaryTag, _SecondaryTag)
         ),
         MaybePrimaryTag = yes(PrimaryTag)
@@ -275,7 +281,7 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
         Tag = ground_term_const_tag(_, SubTag),
         MaybeSecondaryTag = get_secondary_tag(SubTag)
     ;
-        ( Tag = shared_remote_tag(_PrimaryTag, SecondaryTag)
+        ( Tag = shared_remote_tag(_PrimaryTag, SecondaryTag, _)
         ; Tag = shared_local_tag(_PrimaryTag, SecondaryTag)
         ),
         MaybeSecondaryTag = yes(SecondaryTag)

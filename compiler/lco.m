@@ -820,7 +820,7 @@ acceptable_construct_unification(DelayForVars, Goal, !UnifyInputVars, !Info) :-
     % `notag' type. These are the kinds it CAN handle.
     ( ConsTag = single_functor_tag
     ; ConsTag = unshared_tag(_)
-    ; ConsTag = shared_remote_tag(_, _)
+    ; ConsTag = shared_remote_tag(_, _, _)
     ),
     % If the construction unification has any existential constraints,
     % then ConstructArgVars will have more elements than the number of

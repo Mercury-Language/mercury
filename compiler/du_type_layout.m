@@ -892,10 +892,19 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
 decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
         TypeCtor, TypeDefn0, Ctors, _MaybeCanonical, Repn, !Specs) :-
     get_type_defn_status(TypeDefn0, TypeStatus),
+    Target = Params ^ ddp_target,
+    UsesConstructors = target_uses_constructors(Target),
+    (
+        UsesConstructors = no,
+        AddedBy = sectag_added_by_unify
+    ;
+        UsesConstructors = yes,
+        AddedBy = sectag_added_by_constructor
+    ),
     MaybePrimaryTags = Params ^ ddp_maybe_primary_tags,
     (
         MaybePrimaryTags = no_primary_tags,
-        assign_tags_to_non_direct_arg_functors(TypeCtor, 0, 0, Ctors,
+        assign_tags_to_non_direct_arg_functors(TypeCtor, 0, 0, AddedBy, Ctors,
             NumRemoteSecTags, map.init, CtorTagMap),
         DirectArgFunctorNames = []
     ;
@@ -946,7 +955,8 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
                 !CurPtag, DirectArgFunctors, NonDirectArgFunctors,
                 LeftOverDirectArgFunctors, !CtorTagMap),
             assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag,
-                !.CurPtag, LeftOverDirectArgFunctors ++ NonDirectArgFunctors,
+                !.CurPtag, AddedBy,
+                LeftOverDirectArgFunctors ++ NonDirectArgFunctors,
                 NumRemoteSecTags, !CtorTagMap),
             CtorTagMap = !.CtorTagMap
         )
@@ -1006,7 +1016,14 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
 decide_complex_du_ctor_args(ModuleInfo, Params, ComponentTypeMap,
         TypeStatus, _NumRemoteSecTagBits, CtorTag, MaybeExistConstraints,
         CtorSymName, CtorContext, CtorArgs, CtorArgRepns, !Specs) :-
-    ( if CtorTag = shared_remote_tag(_, _) then
+    ( if
+        CtorTag = shared_remote_tag(_, _, AddedBy),
+        % If the target uses constructors, then the *Mercury* compiler
+        % is not responsible for adding the secondary tag to the start
+        % of the memory cell, and for the purposes of unifications,
+        % the cell starts *after* the tag.
+        AddedBy = sectag_added_by_unify
+    then
         NumSecTagWords = 1
     else
         NumSecTagWords = 0
@@ -1096,6 +1113,15 @@ decide_complex_du_ctor_args(ModuleInfo, Params, ComponentTypeMap,
     else
         true
     ).
+
+:- func target_uses_constructors(compilation_target) = bool.
+
+target_uses_constructors(target_c) = no.
+target_uses_constructors(target_csharp) = yes.
+target_uses_constructors(target_java) = yes.
+target_uses_constructors(target_erlang) = no.
+% NOTE The information here is repeated in ml_target_uses_constructors in
+% ml_type_gen.m; any changes here will require corresponding changes there.
 
 :- pred decide_complex_du_ctor_args_loop(module_info::in, decide_du_params::in,
     component_type_map::in, int::in, int::in, int::in,
@@ -1352,12 +1378,12 @@ assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtag,
             DirectArgCtors, NonDirectArgCtors, LeftOverCtors, !CtorTagMap)
     ).
 
-:- pred assign_tags_to_non_direct_arg_functors(type_ctor::in, int::in, int::in,
-    list(constructor)::in, int::out,
+:- pred assign_tags_to_non_direct_arg_functors(type_ctor::in,
+    ptag::in, ptag::in, sectag_added_by::in, list(constructor)::in, int::out,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_tags_to_non_direct_arg_functors(_, _, _, [], 0, !CtorTagMap).
-assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtag,
+assign_tags_to_non_direct_arg_functors(_, _, _, _, [], 0, !CtorTagMap).
+assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtag, AddedBy,
         [Ctor | Ctors], NumRemoteSecTags, !CtorTagMap) :-
     Ctor = ctor(_MaybeExistConstraints, Name, _Args, Arity, _Context),
     ConsId = cons(Name, Arity, TypeCtor),
@@ -1369,7 +1395,7 @@ assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtag,
     then
         CurRemoteSecTag0 = 0,
         assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
-            !.CurPtag, [Ctor | Ctors],
+            !.CurPtag, AddedBy, [Ctor | Ctors],
             CurRemoteSecTag0, CurRemoteSecTag, !CtorTagMap),
         % We assigned remote sec tags 0 .. CurRemoteSecTag-1,
         % which is CurRemoteSecTag sec tags.
@@ -1379,24 +1405,24 @@ assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtag,
         map.det_insert(ConsId, Tag, !CtorTagMap),
         !:CurPtag = !.CurPtag + 1,
         assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtag,
-            Ctors, NumRemoteSecTags, !CtorTagMap)
+            AddedBy, Ctors, NumRemoteSecTags, !CtorTagMap)
     ).
 
 :- pred assign_shared_remote_tags_to_non_direct_arg_functors(type_ctor::in,
-    int::in, list(constructor)::in, int::in, int::out,
+    ptag::in, sectag_added_by::in, list(constructor)::in, int::in, int::out,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_shared_remote_tags_to_non_direct_arg_functors(_, _,
+assign_shared_remote_tags_to_non_direct_arg_functors(_, _, _,
         [], !CurRemoteSecTag,!CtorTagMap).
-assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor, Ptag,
-        [Ctor | Ctors], !CurRemoteSecTag, !CtorTagMap) :-
+assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
+        Ptag, AddedBy, [Ctor | Ctors], !CurRemoteSecTag, !CtorTagMap) :-
     Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Context),
     ConsId = cons(SymName, Arity, TypeCtor),
-    Tag = shared_remote_tag(Ptag, !.CurRemoteSecTag),
+    Tag = shared_remote_tag(Ptag, !.CurRemoteSecTag, AddedBy),
     map.det_insert(ConsId, Tag, !CtorTagMap),
     !:CurRemoteSecTag = !.CurRemoteSecTag + 1,
-    assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor, Ptag,
-        Ctors, !CurRemoteSecTag, !CtorTagMap).
+    assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
+        Ptag, AddedBy, Ctors, !CurRemoteSecTag, !CtorTagMap).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

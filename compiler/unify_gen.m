@@ -257,7 +257,9 @@ get_cons_arg_widths(ModuleInfo, ConsId, AllArgs, AllArgsPosWidths) :-
                 AllArgsPosWidths)
         else if NumExtraArgs > 0 then
             list.det_split_list(NumExtraArgs, AllArgs, ExtraArgs, ConsArgs),
-            ( if ConsTag = shared_remote_tag(_, _) then
+            ( if ConsTag = shared_remote_tag(_, _, AddedBy) then
+                expect(unify(AddedBy, sectag_added_by_unify), $pred,
+                    "AddedBy != sectag_added_by_unify"),
                 InitOffset = 1
             else
                 InitOffset = 0
@@ -528,17 +530,17 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ConstPtag = unop(mktag, const(llconst_int(UnsharedTag))),
         TestRval = binop(eq(int_type_int), VarPtag, ConstPtag)
     ;
-        ConsTag = shared_remote_tag(Bits, Num),
+        ConsTag = shared_remote_tag(Ptag, Stag, _AddedBy),
         VarPtag = unop(tag, Rval),
-        ConstPtag = unop(mktag, const(llconst_int(Bits))),
+        ConstPtag = unop(mktag, const(llconst_int(Ptag))),
         PtagTestRval = binop(eq(int_type_int), VarPtag, ConstPtag),
-        VarStag = lval(field(yes(Bits), Rval, const(llconst_int(0)))),
-        ConstStag = const(llconst_int(Num)),
+        VarStag = lval(field(yes(Ptag), Rval, const(llconst_int(0)))),
+        ConstStag = const(llconst_int(Stag)),
         StagTestRval = binop(eq(int_type_int), VarStag, ConstStag),
         TestRval = binop(logical_and, PtagTestRval, StagTestRval)
     ;
-        ConsTag = shared_local_tag(Bits, Num),
-        ConstStag = mkword(Bits, unop(mkbody, const(llconst_int(Num)))),
+        ConsTag = shared_local_tag(Ptag, Stag),
+        ConstStag = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
         TestRval = binop(eq(int_type_int), Rval, ConstStag)
     ).
 
@@ -617,7 +619,7 @@ generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
         ;
             ConsTag = unshared_tag(Ptag)
         ;
-            ConsTag = shared_remote_tag(Ptag, _Sectag)
+            ConsTag = shared_remote_tag(Ptag, _, _)
         ),
         get_may_use_atomic_alloc(!.CI, MayUseAtomic0),
         FirstArgNum = 1,
@@ -631,7 +633,7 @@ generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
             ),
             CellArgs = CellArgs0
         ;
-            ConsTag = shared_remote_tag(_Ptag, Sectag),
+            ConsTag = shared_remote_tag(_Ptag, Sectag, _AddedBy),
             TagArg = cell_arg_full_word(const(llconst_int(Sectag)), complete),
             CellArgs = [TagArg | CellArgs0]
         ),
@@ -1263,7 +1265,9 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
             ConsTag = unshared_tag(Ptag),
             PrevOffset = -1     % There is no secondary tag.
         ;
-            ConsTag = shared_remote_tag(Ptag, _Sectag1),
+            ConsTag = shared_remote_tag(Ptag, _Sectag1, AddedBy),
+            expect(unify(AddedBy, sectag_added_by_unify), $pred,
+                "AddedBy != sectag_added_by_unify"),
             PrevOffset = 0      % There is a secondary tag.
         ),
         Rval = var(Var),
@@ -1735,7 +1739,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ;
             ConsTag = unshared_tag(Ptag)
         ;
-            ConsTag = shared_remote_tag(Ptag, _Stag)
+            ConsTag = shared_remote_tag(Ptag, _, _)
         ),
         generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ConstStructMap, ConstArgsPosWidths, PackedArgTypedRvals),
@@ -1745,7 +1749,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ),
             AllTypedRvals = PackedArgTypedRvals
         ;
-            ConsTag = shared_remote_tag(_Ptag, Stag),
+            ConsTag = shared_remote_tag(_Ptag, Stag, _AddedBy),
             StagTypedRval = typed_rval(const(llconst_int(Stag)),
                 lt_int(int_type_int)),
             AllTypedRvals = [StagTypedRval | PackedArgTypedRvals]
@@ -1979,7 +1983,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = shared_remote_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
         ; ConsTag = ground_term_const_tag(_, _)
@@ -2150,7 +2154,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
         ;
             ConsTag = unshared_tag(Ptag)
         ;
-            ConsTag = shared_remote_tag(Ptag, _Stag)
+            ConsTag = shared_remote_tag(Ptag, _, _)
         ),
         generate_ground_term_args(ArgVarsWidths, PackedArgTypedRvals,
             !ActiveMap),
@@ -2160,7 +2164,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
             ),
             AllTypedRvals = PackedArgTypedRvals
         ;
-            ConsTag = shared_remote_tag(_Ptag, Stag),
+            ConsTag = shared_remote_tag(_Ptag, Stag, _AddedBy),
             StagTypedRval = typed_rval(const(llconst_int(Stag)),
                 lt_int(int_type_int)),
             AllTypedRvals = [StagTypedRval | PackedArgTypedRvals]

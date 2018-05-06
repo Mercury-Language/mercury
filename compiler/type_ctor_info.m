@@ -641,7 +641,7 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], NextOrdinal,
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = shared_remote_tag(_, _, _)
         ; ConsTag = shared_local_tag(_, _)
         ; ConsTag = no_tag
         ; ConsTag = dummy_tag
@@ -746,7 +746,7 @@ get_du_rep(ConsTag, DuRep) :-
         ConsTag = shared_local_tag(ConsPtag, ConsStag),
         DuRep = du_ll_rep(ConsPtag, sectag_locn_local(ConsStag))
     ;
-        ConsTag = shared_remote_tag(ConsPtag, ConsStag),
+        ConsTag = shared_remote_tag(ConsPtag, ConsStag, _),
         DuRep = du_ll_rep(ConsPtag, sectag_locn_remote(ConsStag))
     ;
         ( ConsTag = no_tag

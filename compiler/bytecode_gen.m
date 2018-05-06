@@ -896,7 +896,7 @@ map_cons_tag(single_functor_tag, byte_unshared_tag(0)).
 map_cons_tag(unshared_tag(Primary), byte_unshared_tag(Primary)).
 map_cons_tag(direct_arg_tag(_), _) :-
     sorry($pred, "bytecode with direct_arg_tag").
-map_cons_tag(shared_remote_tag(Primary, Secondary),
+map_cons_tag(shared_remote_tag(Primary, Secondary, _),
     byte_shared_remote_tag(Primary, Secondary)).
 map_cons_tag(shared_local_tag(Primary, Secondary),
     byte_shared_local_tag(Primary, Secondary)).
