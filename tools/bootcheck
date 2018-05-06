@@ -578,11 +578,13 @@ fi
 if $deep_write_sample
 then
     MERCURY_OPTIONS="$MERCURY_OPTIONS --deep-random-write=25"
+    export MERCURY_OPTIONS
 fi
 
 if $deep_debug
 then
     MERCURY_OPTIONS="$MERCURY_OPTIONS --deep-debug-file"
+    export MERCURY_OPTIONS
 fi
 
 if $trace_count
@@ -604,12 +606,6 @@ fi
 
 NEW_MERCURY_OPTIONS="$MERCURY_OPTIONS --mdb-disable-progress"
 
-MMAKE_USE_SUBDIRS=$use_subdirs
-export MMAKE_USE_SUBDIRS
-
-MMAKE_USE_MMC_MAKE=$use_mmc_make
-export MMAKE_USE_MMC_MAKE
-
 if $do_bootcheck
 then
     MERCURY_OPTIONS="$ORIG_MERCURY_OPTIONS"
@@ -629,6 +625,12 @@ then
             exit 1
         fi
     fi
+
+    MMAKE_USE_SUBDIRS=$use_subdirs
+    export MMAKE_USE_SUBDIRS
+
+    MMAKE_USE_MMC_MAKE=$use_mmc_make
+    export MMAKE_USE_MMC_MAKE
 
     MERCURY_OPTIONS="$NEW_MERCURY_OPTIONS"
     export MERCURY_OPTIONS
@@ -917,7 +919,7 @@ then
         MMAKE_DIR=$root/scripts
         export MMAKE_DIR
 
-        # Use the new mmake to build stage 2
+        # Use the new mmake to build stage 2.
         MMAKE=$MMAKE_DIR/mmake
         mmake_opts="$mmake_opts $target_opt"
 
@@ -1554,6 +1556,12 @@ EOF
 
     echo "finishing stage 3 at `date`"
 else
+    MMAKE_USE_SUBDIRS=$use_subdirs
+    export MMAKE_USE_SUBDIRS
+
+    MMAKE_USE_MMC_MAKE=$use_mmc_make
+    export MMAKE_USE_MMC_MAKE
+
     diff_status=0
     check_namespace_status=0
     echo "building of stages 1 and 2 skipped"
