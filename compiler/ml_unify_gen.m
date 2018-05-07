@@ -431,7 +431,8 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_VarType))
     ;
         Tag = dummy_tag,
-        Rval = ml_const(mlconst_int(0))
+        % The type information is needed by the Java backend.
+        Rval = ml_int_tag_to_rval_const(int_tag_int(0), VarType, MLDS_VarType)
     ;
         Tag = shared_local_tag(Bits1, Num1),
         Rval = ml_unop(cast(MLDS_VarType), ml_mkword(Bits1,
@@ -2415,6 +2416,12 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             IntConst = int_tag_to_mlds_rval_const(VarType, MLDS_Type, IntTag),
             ConstRval = ml_const(IntConst)
         ;
+            ConsTag = dummy_tag,
+            % The type information is needed by the Java backend.
+            IntTag = int_tag_int(0),
+            IntConst = int_tag_to_mlds_rval_const(VarType, MLDS_Type, IntTag),
+            ConstRval = ml_const(IntConst)
+        ;
             ConsTag = float_tag(Float),
             ConstRval = ml_const(mlconst_float(Float))
         ;
@@ -2428,9 +2435,6 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ConsTag = foreign_tag(ForeignLang, ForeignTag),
             ConstRval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
                 MLDS_Type))
-        ;
-            ConsTag = dummy_tag,
-            ConstRval = ml_const(mlconst_int(0))
         ),
         expect(unify(ArgVars, []), $pred, "constant tag with args"),
         ConstGroundTerm = ml_ground_term(ConstRval, VarType, MLDS_Type),
@@ -2847,7 +2851,10 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_Type))
     ;
         ConsTag = dummy_tag,
-        Rval = ml_const(mlconst_int(0))
+        % The type information is needed by the Java backend.
+        IntTag = int_tag_int(0),
+        RvalConst = int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag),
+        Rval = ml_const(RvalConst)
     ;
         ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
         ModuleName = fixup_builtin_module(ModuleName0),
