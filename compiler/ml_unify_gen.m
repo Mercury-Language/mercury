@@ -284,7 +284,7 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
 ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         Context, Stmts, !Info) :-
     % Figure out how this cons_id is represented.
-    ml_variable_type(!.Info, Var, Type),
+    ml_variable_type(!.Info, Var, VarType),
     ml_cons_id_to_tag(!.Info, ConsId, Tag),
     (
         ( Tag = no_tag
@@ -296,7 +296,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         then
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
-            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
             ( if
                 ml_gen_info_search_const_var(!.Info, ArgVar, ArgGroundTerm)
             then
@@ -307,7 +307,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                     aw_full_word, ArgRval, Rval0, GlobalData0, GlobalData),
                 ml_gen_info_set_global_data(GlobalData, !Info),
                 Rval = ml_cast_cons_tag(MLDS_Type, Tag, Rval0),
-                GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
+                GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
                 ml_gen_info_set_const_var(Var, GroundTerm, !Info),
                 Stmt = ml_gen_assign(VarLval, Rval, Context),
                 Stmts = [Stmt]
@@ -317,13 +317,12 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 (
                     Tag = no_tag,
                     ArgRval = ml_lval(ArgLval),
-                    ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, Type,
+                    ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
                         bp_native_if_possible, ArgRval, Rval),
                     Stmt = ml_gen_assign(VarLval, Rval, Context),
                     Stmts = [Stmt]
                 ;
                     Tag = direct_arg_tag(Ptag),
-                    ml_variable_type(!.Info, Var, VarType),
                     ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
                         ArgLval, ArgType, VarLval, VarType, Context, Stmts)
                 )
@@ -368,18 +367,18 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         GroundTerm0 = ml_ground_term(Rval, _Type, _MLDS_Type),
         ml_gen_var(!.Info, Var, VarLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-        GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+        GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
         ml_gen_info_set_const_var(Var, GroundTerm, !Info),
         Stmt = ml_gen_assign(VarLval, Rval, Context),
         Stmts = [Stmt]
     ;
         % Constants.
         ( Tag = int_tag(_)
+        ; Tag = dummy_tag
         ; Tag = foreign_tag(_, _)
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
-        ; Tag = dummy_tag
         ; Tag = shared_local_tag(_, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
@@ -391,9 +390,61 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
             Args = [],
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
-            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-            ml_gen_constant(Tag, Type, MLDS_Type, Rval, !Info),
-            GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+            (
+                Tag = int_tag(IntTag),
+                Rval = ml_int_tag_to_rval_const(IntTag, VarType, MLDS_Type)
+            ;
+                Tag = dummy_tag,
+                % The type information is needed by the Java backend.
+                Rval = ml_int_tag_to_rval_const(int_tag_int(0), VarType,
+                    MLDS_Type)
+            ;
+                Tag = float_tag(Float),
+                Rval = ml_const(mlconst_float(Float))
+            ;
+                Tag = string_tag(String),
+                Rval = ml_const(mlconst_string(String))
+            ;
+                Tag = foreign_tag(ForeignLang, ForeignTag),
+                Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
+                    MLDS_Type))
+            ;
+                Tag = shared_local_tag(Bits1, Num1),
+                Rval = ml_unop(cast(MLDS_Type), ml_mkword(Bits1,
+                    ml_unop(std_unop(mkbody), ml_const(mlconst_int(Num1)))))
+            ;
+                Tag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
+                ModuleName = fixup_builtin_module(ModuleName0),
+                MLDS_Module = mercury_module_name_to_mlds(ModuleName),
+                RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
+                RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+                Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
+                Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
+            ;
+                Tag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
+                MLDS_Module = mercury_module_name_to_mlds(ModuleName),
+                TCName = generate_class_name(ClassId),
+                RttiId = tc_rtti_id(TCName,
+                    type_class_base_typeclass_info(ModuleName, Instance)),
+                Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
+                Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
+            ;
+                Tag = tabling_info_tag(PredId, ProcId),
+                ml_gen_pred_label(ModuleInfo, proc(PredId, ProcId),
+                    PredLabel, PredModule),
+                ProcLabel = mlds_proc_label(PredLabel, ProcId),
+                QualProcLabel = qual_proc_label(PredModule, ProcLabel),
+                Const = mlconst_data_addr_tabling(QualProcLabel, tabling_info),
+                Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
+            ;
+                Tag = deep_profiling_proc_layout_tag(_, _),
+                unexpected($pred, "deep_profiling_proc_layout_tag NYI")
+            ;
+                Tag = table_io_entry_tag(_, _),
+                unexpected($pred, "table_io_entry_tag NYI")
+            ),
+            GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
             ml_gen_info_set_const_var(Var, GroundTerm, !Info),
             Stmt = ml_gen_assign(VarLval, Rval, Context),
             Stmts = [Stmt]
@@ -409,80 +460,6 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
 ml_gen_info_lookup_const_var_rval(Info, Var, Rval) :-
     ml_gen_info_lookup_const_var(Info, Var, GroundTerm),
     GroundTerm = ml_ground_term(Rval, _, _).
-
-    % Generate the rval for a given constant.
-    % XXX ARG_PACK This predicate should be inlined in its only caller.
-    %
-:- pred ml_gen_constant(cons_tag::in, mer_type::in, mlds_type::in,
-    mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
-    (
-        Tag = int_tag(IntTag),
-        Rval = ml_int_tag_to_rval_const(IntTag, VarType, MLDS_VarType)
-    ;
-        Tag = float_tag(Float),
-        Rval = ml_const(mlconst_float(Float))
-    ;
-        Tag = string_tag(String),
-        Rval = ml_const(mlconst_string(String))
-    ;
-        Tag = foreign_tag(ForeignLang, ForeignTag),
-        Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_VarType))
-    ;
-        Tag = dummy_tag,
-        % The type information is needed by the Java backend.
-        Rval = ml_int_tag_to_rval_const(int_tag_int(0), VarType, MLDS_VarType)
-    ;
-        Tag = shared_local_tag(Bits1, Num1),
-        Rval = ml_unop(cast(MLDS_VarType), ml_mkword(Bits1,
-            ml_unop(std_unop(mkbody), ml_const(mlconst_int(Num1)))))
-    ;
-        Tag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
-        ModuleName = fixup_builtin_module(ModuleName0),
-        MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-        RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
-        RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
-        Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
-        Rval = ml_unop(cast(MLDS_VarType), ml_const(Const))
-    ;
-        Tag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
-        MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-        TCName = generate_class_name(ClassId),
-        RttiId = tc_rtti_id(TCName,
-            type_class_base_typeclass_info(ModuleName, Instance)),
-        Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
-        Rval = ml_unop(cast(MLDS_VarType), ml_const(Const))
-    ;
-        Tag = tabling_info_tag(PredId, ProcId),
-        ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        ml_gen_pred_label(ModuleInfo, proc(PredId, ProcId),
-            PredLabel, PredModule),
-        ProcLabel = mlds_proc_label(PredLabel, ProcId),
-        QualProcLabel = qual_proc_label(PredModule, ProcLabel),
-        Const = mlconst_data_addr_tabling(QualProcLabel, tabling_info),
-        Rval = ml_unop(cast(MLDS_VarType), ml_const(Const))
-    ;
-        Tag = deep_profiling_proc_layout_tag(_, _),
-        unexpected($pred, "deep_profiling_proc_layout_tag NYI")
-    ;
-        Tag = table_io_entry_tag(_, _),
-        unexpected($pred, "table_io_entry_tag NYI")
-    ;
-        % These tags, which are not (necessarily) constants, are handled
-        % in ml_gen_construct, so we don't need to handle them here.
-        ( Tag = no_tag
-        ; Tag = single_functor_tag
-        ; Tag = unshared_tag(_)
-        ; Tag = direct_arg_tag(_)
-        ; Tag = shared_remote_tag(_, _, _)
-        ; Tag = closure_tag(_, _, _)
-        ; Tag = type_info_const_tag(_)
-        ; Tag = typeclass_info_const_tag(_)
-        ; Tag = ground_term_const_tag(_, _)
-        ),
-        unexpected($pred, "unexpected tag")
-    ).
 
 %---------------------------------------------------------------------------%
 
