@@ -1620,9 +1620,14 @@ get_matching_foreign_names([ForeignName | ForeignNames], TargetForeignLanguage,
 :- func global_foreign_type_name(box_policy, foreign_language, module_info,
     mer_type) = string.
 
-global_foreign_type_name(bp_always_boxed, _, _, _) = "MR_Word".
-global_foreign_type_name(bp_native_if_possible, Lang, ModuleInfo, Type) =
-    mercury_exported_type_to_string(ModuleInfo, Lang, Type).
+global_foreign_type_name(BoxPolicy, Lang, ModuleInfo, Type) = String :-
+    (
+        BoxPolicy = bp_always_boxed,
+        String = "MR_Word"
+    ;
+        BoxPolicy = bp_native_if_possible,
+        String = exported_type_to_string(ModuleInfo, Lang, Type)
+    ).
 
 %---------------------------------------------------------------------------%
 

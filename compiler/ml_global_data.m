@@ -535,7 +535,7 @@ ml_specialize_generic_array_rval(!Rval) :-
             Type = mlds_native_float_type,
             !:Rval = SubRval
         ;
-            Type = mercury_type(_, CtorCat, _),
+            Type = mercury_type(_, _, CtorCat),
             (
                 CtorCat = ctor_cat_builtin(cat_builtin_float),
                 !:Rval = SubRval

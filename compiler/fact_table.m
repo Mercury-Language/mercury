@@ -3118,7 +3118,7 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
     string::out) is det.
 
 generate_arg_decl_code(Name, Type, Module, DeclCode) :-
-    C_Type = mercury_exported_type_to_string(Module, lang_c, Type),
+    C_Type = exported_type_to_c_string(Module, Type),
     string.format("\t\t%s %s;\n", [s(C_Type), s(Name)], DeclCode).
 
 :- pred generate_arg_input_code(string::in, mer_type::in, arg_loc::in, int::in,

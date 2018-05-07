@@ -740,16 +740,14 @@ ml_gen_scalar_array_elem_type(scalar_elem_int) = mlds_native_int_type.
 ml_gen_scalar_array_elem_type(scalar_elem_generic) = mlds_generic_type.
 
 ml_string_type =
-    mercury_type(string_type, ctor_cat_builtin(cat_builtin_string),
-        non_foreign_type(string_type)).
+    mercury_type(string_type, no, ctor_cat_builtin(cat_builtin_string)).
 
 ml_int_type =
-    mercury_type(int_type, ctor_cat_builtin(cat_builtin_int(int_type_int)),
-        non_foreign_type(int_type)).
+    mercury_type(int_type, no,
+        ctor_cat_builtin(cat_builtin_int(int_type_int))).
 
 ml_char_type =
-    mercury_type(char_type, ctor_cat_builtin(cat_builtin_char),
-        non_foreign_type(char_type)).
+    mercury_type(char_type, no, ctor_cat_builtin(cat_builtin_char)).
 
 ml_make_boxed_type = BoxedType :-
     varset.init(TypeVarSet0),

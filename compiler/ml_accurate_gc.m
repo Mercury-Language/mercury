@@ -198,7 +198,7 @@ ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context, GCStmt,
 
 ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
     (
-        Type = mercury_type(_Type, TypeCategory, _),
+        Type = mercury_type(_, _, TypeCategory),
         MightContainPointers =
             ml_type_category_might_contain_pointers(TypeCategory)
     ;
@@ -380,8 +380,8 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     FuncLabel = mlds_func_label(ProcLabel, proc_func),
     QualFuncLabel = qual_func_label(MLDS_Module, FuncLabel),
-    CPointerType = mercury_type(c_pointer_type,
-        ctor_cat_user(cat_user_general), non_foreign_type(c_pointer_type)),
+    CPointerType = mercury_type(c_pointer_type, no,
+        ctor_cat_user(cat_user_general)),
     ArgTypes = [mlds_pseudo_type_info_type, CPointerType],
     Signature = mlds_func_signature(ArgTypes, []),
     FuncAddr = ml_const(mlconst_code_addr(

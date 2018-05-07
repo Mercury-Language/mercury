@@ -575,8 +575,7 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail, Context, Stmts,
 ml_switch_gen_range(Info, MLDS_Type, Range) :-
     ( if
         ml_gen_info_get_module_info(Info, ModuleInfo),
-        ExportedType = to_exported_type(ModuleInfo, Type),
-        MLDS_Type = mercury_type(Type, TypeCategory, ExportedType),
+        MLDS_Type = mercury_type(Type, _, TypeCategory),
         switch_util.type_range(ModuleInfo, TypeCategory, Type,
             MinRange, MaxRange, _NumValuesInRange)
     then

@@ -1203,8 +1203,10 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
             MLDS_Type = mlds_mercury_array_type(_ElemType),
             io.write_string("MR_ArrayPtr", !IO)
         ;
-            MLDS_Type = mercury_type(_, _, ExportedType),
-            io.write_string(exported_type_to_string(lang_c, ExportedType), !IO)
+            MLDS_Type = mercury_type(MerType, MaybeForeignType, _),
+            TypeStr =
+                maybe_foreign_type_to_c_string(MerType, MaybeForeignType),
+            io.write_string(TypeStr, !IO)
         ;
             ( MLDS_Type = mlds_cont_type(_)
             ; MLDS_Type = mlds_commit_type
@@ -2014,7 +2016,7 @@ mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
             Kind \= mlds_enum,
             ClassType = Type
         ;
-            Type = mercury_type(MercuryType, ctor_cat_user(_), _),
+            Type = mercury_type(MercuryType, _, ctor_cat_user(_)),
             type_to_ctor(MercuryType, TypeCtor),
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
             ClassId = mlds_class_id(ClassName, ClassArity, mlds_class),
@@ -2981,7 +2983,7 @@ mlds_output_type(Opts, Type, !IO) :-
 
 mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
     (
-        MLDS_Type = mercury_type(Type, TypeCategory, _),
+        MLDS_Type = mercury_type(Type, _, TypeCategory),
         mlds_output_mercury_type_prefix(Opts, Type, TypeCategory, !IO)
     ;
         MLDS_Type = mlds_mercury_array_type(_ElemType),
@@ -4513,7 +4515,7 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
         ),
         NeedsForwardingPtrSpace = no
     ;
-        Type = mercury_type(_, TypeCategory, _),
+        Type = mercury_type(_, _, TypeCategory),
         NeedsForwardingPtrSpace =
             is_introduced_type_info_type_category(TypeCategory)
     ;
@@ -4862,7 +4864,7 @@ mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
     % by turning all the tests of Type into a switch.
     ( if
         ( Type = mlds_generic_type
-        ; Type = mercury_type(_, ctor_cat_variable, _)
+        ; Type = mercury_type(_, _, ctor_cat_variable)
         )
     then
         % It already has type MR_Box, so no cast is needed.

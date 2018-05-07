@@ -1074,7 +1074,7 @@ output_vector_cell_init_for_csharp(Info, Indent, TypeNum, CellGroup, !IO) :-
 
 get_type_initializer(Info, Type) = Initializer :-
     (
-        Type = mercury_type(_, CtorCat, _),
+        Type = mercury_type(_, _, CtorCat),
         (
             ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int))
             ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8))
@@ -1222,7 +1222,7 @@ output_initializer_alloc_only_for_csharp(Info, Initializer, MaybeType, !IO) :-
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
         ( if
-            StructType = mercury_type(_Type, CtorCat, _),
+            StructType = mercury_type(_, _, CtorCat),
             type_category_is_array(CtorCat) = is_array
         then
             Size = list.length(FieldInits),
@@ -1775,7 +1775,7 @@ output_type_for_csharp_dims(Info, MLDS_Type, ArrayDims0, !IO) :-
 
 type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
     (
-        MLDS_Type = mercury_type(Type, CtorCat, _),
+        MLDS_Type = mercury_type(Type, _, CtorCat),
         ( if
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
@@ -1805,7 +1805,7 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         )
     ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
-        ( if ElementType = mercury_type(_, ctor_cat_variable, _) then
+        ( if ElementType = mercury_type(_, _, ctor_cat_variable) then
             String = "System.Array",
             ArrayDims = []
         else
@@ -2057,7 +2057,7 @@ type_is_array_for_csharp(Type) = IsArray :-
         IsArray = is_array
     else if Type = mlds_mercury_array_type(_) then
         IsArray = is_array
-    else if Type = mercury_type(_, CtorCat, _) then
+    else if Type = mercury_type(_, _, CtorCat) then
         IsArray = type_category_is_array(CtorCat)
     else if Type = mlds_rtti_type(RttiIdMaybeElement) then
         rtti_id_maybe_element_csharp_type(RttiIdMaybeElement,
@@ -2920,7 +2920,7 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
         ( if
             MaybeCtorName = yes(QualifiedCtorId),
             not (
-                Type = mercury_type(MerType, CtorCat, _),
+                Type = mercury_type(MerType, _, CtorCat),
                 hand_defined_type_for_csharp(MerType, CtorCat, _, _)
             )
         then
@@ -3243,7 +3243,7 @@ output_cast_rval_for_csharp(Info, Type, Expr, !IO) :-
             io.write_string(")", !IO)
         )
     else if
-        ( Type = mercury_type(_, ctor_cat_system(cat_system_type_info), _)
+        ( Type = mercury_type(_, _, ctor_cat_system(cat_system_type_info))
         ; Type = mlds_type_info_type
         )
     then
@@ -3323,7 +3323,7 @@ csharp_builtin_type(Type, TargetType) :-
         Type = mlds_native_float_type,
         TargetType = "double"
     ;
-        Type = mercury_type(MerType, TypeCtorCat, _),
+        Type = mercury_type(MerType, _, TypeCtorCat),
         require_complete_switch [MerType] (
             MerType = builtin_type(BuiltinType),
             require_complete_switch [BuiltinType] (

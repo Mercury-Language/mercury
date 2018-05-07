@@ -415,22 +415,22 @@ get_export_info_for_lang_c(ModuleInfo, Preds, PredId, ProcId,
             RetArgMode = top_out,
             is_type_a_dummy(ModuleInfo, RetType) = is_not_dummy_type
         then
-            ExportRetType = foreign.to_exported_type(ModuleInfo, RetType),
-            CRetType = exported_type_to_string(lang_c, ExportRetType),
+            MaybeForeignRetType = is_this_a_foreign_type(ModuleInfo, RetType),
+            CRetType = maybe_foreign_type_to_c_string(RetType,
+                MaybeForeignRetType),
             arg_loc_to_string(RetArgLoc, RetArgString0),
             convert_type_from_mercury(RetArgLoc, RetArgString0, RetType,
                 RetArgString),
             MaybeDeclareRetval = "\t" ++ CRetType ++ " return_value;\n",
             % We need to unbox non-word-sized foreign types
-            % before returning them to C code
-            ExportRetTypeIsForeign = foreign.is_foreign_type(ExportRetType),
+            % before returning them to C code.
             (
-                ExportRetTypeIsForeign = yes(_),
+                MaybeForeignRetType = yes(_),
                 SetReturnValue = "\tMR_MAYBE_UNBOX_FOREIGN_TYPE("
                     ++ CRetType ++ ", " ++ RetArgString
                     ++ ", return_value);\n"
             ;
-                ExportRetTypeIsForeign = no,
+                MaybeForeignRetType = no,
                 SetReturnValue = "\treturn_value = " ++ RetArgString ++ ";\n"
             ),
             MaybeFail = SetReturnValue,
@@ -524,7 +524,8 @@ get_argument_declaration(ModuleInfo, NameThem, ArgNum, ArgInfo, Type,
         NameThem = no,
         ArgName = ""
     ),
-    TypeString0 = mercury_exported_type_to_string(ModuleInfo, lang_c, Type),
+    MaybeForeignType = is_this_a_foreign_type(ModuleInfo, Type),
+    TypeString0 = maybe_foreign_type_to_c_string(Type, MaybeForeignType),
     (
         Mode = top_out,
         % output variables are passed as pointers
@@ -549,17 +550,16 @@ pass_input_args(ModuleInfo, LastArgNum, [AT | ATs], PassInputArgs) :-
         ArgName0 = "Mercury__argument" ++ string.int_to_string(CurArgNum),
         arg_loc_to_string(ArgLoc, ArgLocString),
         convert_type_to_mercury(ArgName0, Type, ArgLoc, ArgName),
-        ExportType = foreign.to_exported_type(ModuleInfo, Type),
+        MaybeForeignType = is_this_a_foreign_type(ModuleInfo, Type),
         % We need to box non-word-sized foreign types
         % before passing them to Mercury code.
-        ExportTypeIsForeign = foreign.is_foreign_type(ExportType),
         (
-            ExportTypeIsForeign = yes(_),
-            CType = exported_type_to_string(lang_c, ExportType),
+            MaybeForeignType = yes(ForeignType),
+            CType = foreign_type_to_c_string(ForeignType),
             PassHeadInputArg = "\tMR_MAYBE_BOX_FOREIGN_TYPE(" ++
                 CType ++ ", " ++ ArgName ++ ", " ++ ArgLocString ++ ");\n"
         ;
-            ExportTypeIsForeign = no,
+            MaybeForeignType = no,
             PassHeadInputArg =
                 "\t" ++ ArgLocString ++ " = " ++ ArgName ++ ";\n"
         )
@@ -589,17 +589,16 @@ retrieve_output_args(ModuleInfo, LastArgNum, [AT | ATs], RetrieveOutputArgs) :-
         ArgName = "Mercury__argument" ++ string.int_to_string(CurArgNum),
         arg_loc_to_string(ArgLoc, ArgLocString0),
         convert_type_from_mercury(ArgLoc, ArgLocString0, Type, ArgLocString),
-        ExportType = foreign.to_exported_type(ModuleInfo, Type),
+        MaybeForeignType = is_this_a_foreign_type(ModuleInfo, Type),
         % We need to unbox non-word-sized foreign types
         % before returning them to C code
-        ExportTypeIsForeign = foreign.is_foreign_type(ExportType),
         (
-            ExportTypeIsForeign = yes(_),
-            CType = exported_type_to_string(lang_c, ExportType),
+            MaybeForeignType = yes(ForeignType),
+            CType = foreign_type_to_c_string(ForeignType),
             RetrieveHeadOutputArg = "\tMR_MAYBE_UNBOX_FOREIGN_TYPE(" ++
                 CType ++ ", " ++ ArgLocString ++ ", * " ++ ArgName ++ ");\n"
         ;
-            ExportTypeIsForeign = no,
+            MaybeForeignType = no,
             RetrieveHeadOutputArg =
                 "\t*" ++ ArgName ++ " = " ++ ArgLocString ++ ";\n"
         )

@@ -961,8 +961,7 @@ gen_field_names(_ModuleInfo, RttiTypeCtor, Ordinal, MaybeNames, !GlobalData) :-
     StrType = builtin_type(builtin_type_string),
     Initializer = gen_init_array(
         gen_init_maybe(
-            mercury_type(StrType, ctor_cat_builtin(cat_builtin_string),
-                non_foreign_type(StrType)),
+            mercury_type(StrType, no, ctor_cat_builtin(cat_builtin_string)),
             gen_init_string),
         MaybeNames),
     RttiName = type_ctor_field_names(Ordinal),

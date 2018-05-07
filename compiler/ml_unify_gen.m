@@ -877,7 +877,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % Check for type_infos and typeclass_infos, since these
             % need to be handled specially; their Mercury type definitions
             % are lies on C backends.
-            MLDS_Type = mercury_type(_, TypeCtorCategory, _),
+            MLDS_Type = mercury_type(_, _, TypeCtorCategory),
             TypeCtorCategory = ctor_cat_system(_),
             Target = ml_target_c
         then
@@ -894,7 +894,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
                 MLDS_Type =
                     mlds_class_type(mlds_class_id(QualTypeName, TypeArity, _))
             ;
-                MLDS_Type = mercury_type(MercuryType, ctor_cat_user(_), _),
+                MLDS_Type = mercury_type(MercuryType, _, ctor_cat_user(_)),
                 type_to_ctor(MercuryType, TypeCtor),
                 ml_gen_type_name(TypeCtor, QualTypeName, TypeArity)
             )
@@ -918,7 +918,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % mapped to `mlds_ptr_type(mlds_class_type(...))', but when
             % declaring static constants we want just the class type,
             % not the pointer type.
-            MLDS_Type = mercury_type(MercuryType, ctor_cat_user(_), _),
+            MLDS_Type = mercury_type(MercuryType, _, ctor_cat_user(_)),
             type_to_ctor(MercuryType, TypeCtor)
         then
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
@@ -927,7 +927,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
         else if
             % For tuples, a similar issue arises; we want tuple constants
             % to have array type, not the pointer type MR_Tuple.
-            MLDS_Type = mercury_type(_, ctor_cat_tuple, _)
+            MLDS_Type = mercury_type(_, _, ctor_cat_tuple)
         then
             ConstType = mlds_array_type(mlds_generic_type)
         else if
@@ -935,7 +935,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % the pointer type MR_ClosurePtr. Note that we use a low-level
             % data representation for closures, even when --high-level-data
             % is enabled.
-            MLDS_Type = mercury_type(_, ctor_cat_higher_order, _)
+            MLDS_Type = mercury_type(_, _, ctor_cat_higher_order)
         then
             ConstType = mlds_array_type(mlds_generic_type)
         else
@@ -1751,8 +1751,7 @@ ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
                 ),
                 MerType = builtin_type(builtin_type_int(IntType)),
                 CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
-                ExportedType = builtin_type_to_exported_type(MerType),
-                MLDSType = mercury_type(MerType, CtorCat, ExportedType),
+                MLDSType = mercury_type(MerType, no, CtorCat),
                 ToAssignRval = ml_unop(cast(MLDSType), MaskedRval)
             )
         ),
@@ -3480,12 +3479,10 @@ ml_cast_away_any_sign_extend_bits(Fill, Rval0, Rval) :-
         % change.
         FromMerType = builtin_type(builtin_type_int(FromIntType)),
         FromCtorCat = ctor_cat_builtin(cat_builtin_int(FromIntType)),
-        FromExportType = builtin_type_to_exported_type(FromMerType),
-        FromMLDSType = mercury_type(FromMerType, FromCtorCat, FromExportType),
+        FromMLDSType = mercury_type(FromMerType, no, FromCtorCat),
         ToMerType = builtin_type(builtin_type_int(ToIntType)),
         ToCtorCat = ctor_cat_builtin(cat_builtin_int(ToIntType)),
-        ToExportType = builtin_type_to_exported_type(ToMerType),
-        ToMLDSType = mercury_type(ToMerType, ToCtorCat, ToExportType),
+        ToMLDSType = mercury_type(ToMerType, no, ToCtorCat),
         ( if Rval0 = ml_unop(box(FromMLDSType), SubRval) then
             % We can't apply this cast to Rval0 without getting a gcc warning:
             % "warning: cast from pointer to integer of different size

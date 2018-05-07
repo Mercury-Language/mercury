@@ -930,12 +930,13 @@
                 % The exact Mercury type.
                 mer_type,
 
-                % What kind of type it is: enum, float, ...
-                type_ctor_category,
+                % If the Mercury type actually defined a foreign language,
+                % then this field should contain the foreign language
+                % type's name, and any assertions on that foreign type.
+                maybe(foreign_type_and_assertions),
 
-                % A representation of the type which can be used to determine
-                % the foreign language representation of the type.
-                exported_type
+                % What kind of type it is: enum, float, ...
+                type_ctor_category
             )
 
     ;       mlds_mercury_array_type(mlds_type)
@@ -2621,23 +2622,19 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                         ForeignTypeBody)
                 else if TypeBody = hlds_abstract_type(_) then
                     Category = classify_type_ctor(ModuleInfo, TypeCtor),
-                    ExportedType = non_foreign_type(Type),
-                    MLDSType = mercury_type(Type, Category, ExportedType)
+                    MLDSType = mercury_type(Type, no, Category)
                 else
                     Category = classify_type_defn_body(TypeBody),
-                    ExportedType = non_foreign_type(Type),
-                    MLDSType = mercury_type(Type, Category, ExportedType)
+                    MLDSType = mercury_type(Type, no, Category)
                 )
             else
                 Category = classify_type_ctor(ModuleInfo, TypeCtor),
-                ExportedType = non_foreign_type(Type),
-                MLDSType = mercury_type(Type, Category, ExportedType)
+                MLDSType = mercury_type(Type, no, Category)
             )
         )
     else
         Category = ctor_cat_variable,
-        ExportedType = non_foreign_type(Type),
-        MLDSType = mercury_type(Type, Category, ExportedType)
+        MLDSType = mercury_type(Type, no, Category)
     ).
 %---------------------------------------------------------------------------%
 

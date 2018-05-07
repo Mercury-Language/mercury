@@ -39,39 +39,35 @@
 
 %-----------------------------------------------------------------------------%
 
-    % A type which is used to determine the string representation of a
-    % mercury type for various foreign languages.
-    %
-:- type exported_type.
-
-    % Given a type which is not defined as a foreign type, get the
-    % exported_type representation of that type.
-    %
-:- func non_foreign_type(mer_type) = exported_type.
+:- type foreign_type_and_assertions
+    --->    foreign_type_and_assertions(sym_name, foreign_type_assertions).
+            % A type defined by a pragma foreign_type, and the assertions
+            % on that foreign_type.
 
     % Given an arbitrary mercury type, get the exported_type representation
     % of that type on the current backend.
     %
-:- func to_exported_type(module_info, mer_type) = exported_type.
+:- func is_this_a_foreign_type(module_info, mer_type)
+    = maybe(foreign_type_and_assertions).
 
-    % A version of to_exported_type where the given Mercury type
-    % must be a builtin.
+    % Given a type, determine the string which corresponds to that type
+    % in the specified foreign language, for use with foreign language
+    % interfacing (`pragma export' or `pragma foreign_proc').
     %
-:- func builtin_type_to_exported_type(mer_type) = exported_type.
+:- func exported_type_to_string(module_info, foreign_language, mer_type)
+    = string.
+:- func exported_type_to_c_string(module_info, mer_type) = string.
 
-    % Given the exported_type representation for a type, determine
-    % whether or not it is a foreign type, and if yes, return the foreign
-    % type's assertions.
-    %
-:- func is_foreign_type(exported_type) = maybe(foreign_type_assertions).
+:- func maybe_foreign_type_to_string(foreign_language, mer_type,
+    maybe(foreign_type_and_assertions)) = string.
+:- func maybe_foreign_type_to_c_string(mer_type,
+    maybe(foreign_type_and_assertions)) = string.
+:- func foreign_type_to_c_string(foreign_type_and_assertions) = string.
+:- func maybe_foreign_type_to_csharp_string(mer_type,
+    maybe(foreign_type_and_assertions)) = string.
+:- func maybe_foreign_type_to_java_string(mer_type,
+    maybe(foreign_type_and_assertions)) = string.
 
-    % Given a representation of a type, determine the string which corresponds
-    % to that type in the specified foreign language, for use with
-    % foreign language interfacing (`pragma export' or `pragma foreign_proc').
-    %
-:- func mercury_exported_type_to_string(module_info, foreign_language,
-    mer_type) = string.
-:- func exported_type_to_string(foreign_language, exported_type) = string.
 :- func exported_builtin_type_to_c_string(builtin_type) = string.
 :- func exported_builtin_type_to_csharp_string(builtin_type) = string.
 :- func exported_builtin_type_to_java_string(builtin_type) = string.
@@ -165,17 +161,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type exported_type
-    --->    exported_type_foreign(sym_name, foreign_type_assertions)
-            % A type defined by a pragma foreign_type, and the assertions
-            % on that foreign_type.
-
-    ;       exported_type_mercury(mer_type).
-            % Any other mercury type.
-
-non_foreign_type(Type) = exported_type_mercury(Type).
-
-to_exported_type(ModuleInfo, Type) = ExportType :-
+is_this_a_foreign_type(ModuleInfo, Type) = MaybeForeignTypeAssertions :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     ( if
         type_to_ctor(Type, TypeCtor),
@@ -186,117 +172,132 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
             TypeBody = hlds_foreign_type(ForeignTypeBody),
             foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody,
                 ForeignTypeName, _, Assertions),
-            ExportType = exported_type_foreign(ForeignTypeName, Assertions)
+            MaybeForeignTypeAssertions =
+                yes(foreign_type_and_assertions(ForeignTypeName, Assertions))
         ;
             ( TypeBody = hlds_du_type(_, _, _, _)
             ; TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_solver_type(_)
             ; TypeBody = hlds_abstract_type(_)
             ),
-            ExportType = exported_type_mercury(Type)
+            MaybeForeignTypeAssertions = no
         )
     else
-        ExportType = exported_type_mercury(Type)
+        MaybeForeignTypeAssertions = no
     ).
 
-builtin_type_to_exported_type(Type) = ExportType :-
-    ExportType = exported_type_mercury(Type).
+exported_type_to_string(ModuleInfo, Lang, Type) = String :-
+    MaybeForeignType = is_this_a_foreign_type(ModuleInfo, Type),
+    String = maybe_foreign_type_to_string(Lang, Type, MaybeForeignType).
 
-is_foreign_type(exported_type_foreign(_, Assertions)) = yes(Assertions).
-is_foreign_type(exported_type_mercury(_)) = no.
+exported_type_to_c_string(ModuleInfo, Type) = String :-
+    MaybeForeignType = is_this_a_foreign_type(ModuleInfo, Type),
+    String = maybe_foreign_type_to_c_string(Type, MaybeForeignType).
 
-mercury_exported_type_to_string(ModuleInfo, Lang, Type) =
-    exported_type_to_string(Lang, to_exported_type(ModuleInfo, Type)).
-
-exported_type_to_string(Lang, ExportedType) = Result :-
+maybe_foreign_type_to_string(Lang, Type, MaybeForeignType) = String :-
     (
-        ExportedType = exported_type_foreign(ForeignType, _),
-        (
-            Lang = lang_c,
-            (
-                ForeignType = unqualified(Result0),
-                Result = Result0
-            ;
-                ForeignType = qualified(_, _),
-                unexpected($module, $pred, "qualified C type")
-            )
-        ;
-            ( Lang = lang_csharp
-            ; Lang = lang_java
-            ; Lang = lang_erlang
-            ),
-            Result = sym_name_to_string(ForeignType)
-        )
+        Lang = lang_c,
+        String = maybe_foreign_type_to_c_string(Type, MaybeForeignType)
     ;
-        ExportedType = exported_type_mercury(Type),
+        Lang = lang_csharp,
+        String = maybe_foreign_type_to_csharp_string(Type, MaybeForeignType)
+    ;
+        Lang = lang_java,
+        String = maybe_foreign_type_to_java_string(Type, MaybeForeignType)
+    ;
+        Lang = lang_erlang,
+        unexpected($pred, "erlang")
+    ).
+
+maybe_foreign_type_to_c_string(Type, MaybeForeignType) = String :-
+    (
+        MaybeForeignType = yes(ForeignTypeAndAssertions),
+        String = foreign_type_to_c_string(ForeignTypeAndAssertions)
+    ;
+        MaybeForeignType = no,
+        % With --high-level-code, the value we return here should agree
+        % with what happens is generated (indirectly) through
+        % mercury_type_to_mlds_type.
+        %
+        % XXX I don't think this is yet true in all cases. -zs
+        %
+        % It is possible that in some cases, the right type name may depend
+        % on whether --high-level-code is set.
         (
-            Lang = lang_c,
-            % With --high-level-code, the value we return here should agree
-            % with what happens is generated (indirectly) through
-            % mercury_type_to_mlds_type.
-            %
-            % XXX I don't think this is yet true in all cases. -zs
-            %
-            % It is possible that in some cases, the right type name may depend
-            % on whether --high-level-code is set.
-            (
-                Type = builtin_type(BuiltinType),
-                Result = exported_builtin_type_to_c_string(BuiltinType)
-            ;
-                Type = tuple_type(_, _),
-                Result = "MR_Tuple"
-            ;
-                % XXX Is MR_Word the right thing for any of these kinds of
-                % types for high level code, with or without high level data?
-                ( Type = defined_type(_, _, _)
-                ; Type = higher_order_type(_, _, _, _, _)
-                ; Type = apply_n_type(_, _, _)
-                ),
-                Result = "MR_Word"
-            ;
-                Type = type_variable(_, _),
-                Result = "MR_Word"
-            ;
-                Type = kinded_type(_, _),
-                unexpected($module, $pred, "kinded type")
-            )
+            Type = builtin_type(BuiltinType),
+            String = exported_builtin_type_to_c_string(BuiltinType)
         ;
-            Lang = lang_csharp,
-            (
-                Type = builtin_type(BuiltinType),
-                Result = exported_builtin_type_to_csharp_string(BuiltinType)
-            ;
-                ( Type = tuple_type(_, _)
-                ; Type = defined_type(_, _, _)
-                ; Type = higher_order_type(_, _, _, _, _)
-                ; Type = apply_n_type(_, _, _)
-                ; Type = type_variable(_, _)
-                ; Type = kinded_type(_, _)
-                ),
-                % This is here so we can share some code between C/C#/Java
-                % backends.  This is not the correct type to use in general.
-                Result = "object"
-            )
+            Type = tuple_type(_, _),
+            String = "MR_Tuple"
         ;
-            Lang = lang_java,
-            (
-                Type = builtin_type(BuiltinType),
-                Result = exported_builtin_type_to_java_string(BuiltinType)
-            ;
-                ( Type = tuple_type(_, _)
-                ; Type = defined_type(_, _, _)
-                ; Type = higher_order_type(_, _, _, _, _)
-                ; Type = apply_n_type(_, _, _)
-                ; Type = type_variable(_, _)
-                ; Type = kinded_type(_, _)
-                ),
-                % This is here so we can share some code between C/C#/Java
-                % backends.  This is not the correct type to use in general.
-                Result = "java.lang.Object"
-            )
+            % XXX Is MR_Word the right thing for any of these kinds of
+            % types for high level code, with or without high level data?
+            ( Type = defined_type(_, _, _)
+            ; Type = higher_order_type(_, _, _, _, _)
+            ; Type = apply_n_type(_, _, _)
+            ),
+            String = "MR_Word"
         ;
-            Lang = lang_erlang,
-            sorry($module, $pred, "erlang")
+            Type = type_variable(_, _),
+            String = "MR_Word"
+        ;
+            Type = kinded_type(_, _),
+            unexpected($pred, "kinded type")
+        )
+    ).
+
+foreign_type_to_c_string(ForeignTypeAndAssertions) = String :-
+    ForeignTypeAndAssertions = foreign_type_and_assertions(ForeignType, _),
+    (
+        ForeignType = unqualified(String)
+    ;
+        ForeignType = qualified(_, _),
+        unexpected($pred, "qualified C type")
+    ).
+
+maybe_foreign_type_to_csharp_string(Type, MaybeForeignType) = String :-
+    (
+        MaybeForeignType = yes(foreign_type_and_assertions(ForeignType, _)),
+        String = sym_name_to_string(ForeignType)
+    ;
+        MaybeForeignType = no,
+        (
+            Type = builtin_type(BuiltinType),
+            String = exported_builtin_type_to_csharp_string(BuiltinType)
+        ;
+            ( Type = tuple_type(_, _)
+            ; Type = defined_type(_, _, _)
+            ; Type = higher_order_type(_, _, _, _, _)
+            ; Type = apply_n_type(_, _, _)
+            ; Type = type_variable(_, _)
+            ; Type = kinded_type(_, _)
+            ),
+            % This is here so we can share some code between C/C#/Java
+            % backends. This is not the correct type to use in general.
+            String = "object"
+        )
+    ).
+
+maybe_foreign_type_to_java_string(Type, MaybeForeignType) = String :-
+    (
+        MaybeForeignType = yes(foreign_type_and_assertions(ForeignType, _)),
+        String = sym_name_to_string(ForeignType)
+    ;
+        MaybeForeignType = no,
+        (
+            Type = builtin_type(BuiltinType),
+            String = exported_builtin_type_to_java_string(BuiltinType)
+        ;
+            ( Type = tuple_type(_, _)
+            ; Type = defined_type(_, _, _)
+            ; Type = higher_order_type(_, _, _, _, _)
+            ; Type = apply_n_type(_, _, _)
+            ; Type = type_variable(_, _)
+            ; Type = kinded_type(_, _)
+            ),
+            % This is here so we can share some code between C/C#/Java
+            % backends. This is not the correct type to use in general.
+            String = "java.lang.Object"
         )
     ).
 
@@ -456,7 +457,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified(NameStr)
         ;
             MaybeC = no,
-            unexpected($module, $pred, "no C type")
+            unexpected($pred, "no C type")
         )
     ;
         Target = target_csharp,
@@ -467,7 +468,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified(NameStr)
         ;
             MaybeCSharp = no,
-            unexpected($module, $pred, "no C# type")
+            unexpected($pred, "no C# type")
         )
     ;
         Target = target_java,
@@ -478,7 +479,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified(NameStr)
         ;
             MaybeJava = no,
-            unexpected($module, $pred, "no Java type")
+            unexpected($pred, "no Java type")
         )
     ;
         Target = target_erlang,
@@ -489,7 +490,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             Name = unqualified("")
         ;
             MaybeErlang = no,
-            unexpected($module, $pred, "no Erlang type")
+            unexpected($pred, "no Erlang type")
         )
     ).
 
@@ -535,7 +536,7 @@ filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
 
 extrude_pragma_implementation([], _PragmaVars, _PredName, _PredOrFunc,
         _Context, !ModuleInfo, !NewAttributes, !Impl) :-
-    unexpected($module, $pred, "no suitable target languages available").
+    unexpected($pred, "no suitable target languages available").
 extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
         _PredName, _PredOrFunc, _Context, !ModuleInfo, !Attributes, !Impl) :-
     % We just use the first target language for now, it might be nice
@@ -614,7 +615,7 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
     is erroneous.
 
 unimplemented_combination(Lang1, Lang2) :-
-    sorry($module, $pred, "unimplemented: calling "
+    sorry($pred, "unimplemented: calling "
         ++ foreign_language_string(Lang2) ++ " foreign code from "
         ++ foreign_language_string(Lang1)).
 

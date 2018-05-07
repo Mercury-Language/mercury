@@ -152,7 +152,7 @@ is_integral_type(MLDSType, IntType) :-
         ),
         fail
     ;
-        MLDSType = mercury_type(_, CtorCat, _),
+        MLDSType = mercury_type(_, _, CtorCat),
         require_complete_switch [CtorCat] (
             ( CtorCat = ctor_cat_builtin(cat_builtin_char)
             ; CtorCat = ctor_cat_enum(cat_enum_mercury)
