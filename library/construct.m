@@ -575,19 +575,19 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
 // Once this code has been operation for a while without problems,
 // we should consider turning it into a macro.
 
-static void MR_copy_memory_cell_args(MR_Word *arg_list_ptr,
+extern void ML_copy_memory_cell_args(MR_Word *arg_list_ptr,
                 MR_Word *new_data_ptr,
                 const MR_Word ptag, const MR_DuFunctorDesc *functor_desc,
-                const MR_bool has_sectag);
+                const MR_bool has_sectag, MR_AllocSiteInfoPtr);
 ").
 
 
 :- pragma foreign_code("C",
 "
-static void
-MR_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
+void
+ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
     const MR_Word ptag, const MR_DuFunctorDesc *functor_desc,
-    MR_bool has_sectag)
+    MR_bool has_sectag, MR_AllocSiteInfoPtr alloc_id)
 {
     MR_Word             arg_list = *arg_list_ptr;
     MR_Word             new_data;
@@ -600,7 +600,7 @@ MR_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
     MR_Unsigned         i;
 
     MR_tag_offset_incr_hp_msg(new_data, ptag, MR_SIZE_SLOT_SIZE, alloc_size,
-        MR_ALLOC_ID, ""<created by construct.construct/3>"");
+        alloc_id, ""<created by construct.construct/3>"");
     *new_data_ptr = new_data;
 
     // Ensure words holding packed arguments are zeroed before filling them in.
@@ -832,15 +832,15 @@ MR_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
 
                 case MR_SECTAG_REMOTE:
                     MR_save_transient_registers();
-                    MR_copy_memory_cell_args(&arg_list, &new_data, ptag,
-                        functor_desc, MR_TRUE);
+                    ML_copy_memory_cell_args(&arg_list, &new_data, ptag,
+                        functor_desc, MR_TRUE, MR_ALLOC_ID);
                     MR_restore_transient_registers();
                     break;
 
                 case MR_SECTAG_NONE:
                     MR_save_transient_registers();
-                    MR_copy_memory_cell_args(&arg_list, &new_data, ptag,
-                        functor_desc, MR_FALSE);
+                    ML_copy_memory_cell_args(&arg_list, &new_data, ptag,
+                        functor_desc, MR_FALSE, MR_ALLOC_ID);
                     MR_restore_transient_registers();
                     break;
 
