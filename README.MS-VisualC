@@ -12,8 +12,8 @@ recently.
 SETTING UP THE BUILD ENVIRONMENT
 
 A Unix-like environment is required for building and installing Mercury.
-Either Cygwin <http://www.cygwin.com/> or MSYS <http://www.mingw.org/> will
-suffice for this purpose.
+Any one of Cygwin <http://www.cygwin.com/>, MSYS <http://www.mingw.org/>
+or MSYS2 <https://www.msys2.org> will suffice.
 
 A Unix-like environment is *not* required in order to use Mercury once it
 has been installed.
@@ -23,7 +23,7 @@ do the following:
 
 (1) Open the Visual Studio Command Prompt.
     This can typically be found in
-       
+
          Start -> Visual Studio YYYY -> Visual Studio Tools
 
     although the name and location vary between different versions and editions
@@ -31,10 +31,14 @@ do the following:
 
 (2) Enter the following command to start the MSYS shell:
 
-        C:\> C:\MinGW\MSYS\1.0\msys.bat 
+        C:\> C:\MinGW\MSYS\1.0\msys.bat
+
+    or this one to start the MSYS2 shell:
+
+        C:\> C:\msys32\msys2_shell.cmd -use-full-path
 
     or this one to start the Cygwin shell:
-    
+
         C:\> C:\CYGWIN\cygwin.bat
 
 (We assume the default installation locations for MinGW/MSYS and Cygwin above.)
@@ -44,20 +48,20 @@ Erlang or Java compiler to be included in the Windows PATH.
 (See the relevant README files for further details, e.g. README.Java etc)
 
 
-*** IMPORTANT NOTE FOR USERS OF VISUAL STUDIO 2013 ***
+*** IMPORTANT NOTE FOR USERS OF VISUAL STUDIO 2013 (OR LATER) ***
 
 The Makefile for the Boehm garbage collector requires the files NtWin32.Mak and
 Win32.Mak to be present in the build environment.  These files are *not*
-included with Visual Studio 2013 and must be copied or included from the
-Windows 7 (or 7.1) SDK.
+included with Visual Studio 2013+ and must be copied or included from the
+Windows SDK.
 
 To include the above files, append the SDK directory to the end of the INCLUDE
 environment variable, for example (with the Windows 7.1 SDK):
 
    C:\> set INCLUDE=%INCLUDE%;C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1a\Include
 
-Alternatively, you can just copy the NtWin32.Mak and Win32.Mak files into the
-"boehm_gc" directory of the Mercury source tree.
+Alternatively, copy the NtWin32.Mak and Win32.Mak files into the "boehm_gc"
+directory of the Mercury source tree.
 
 -----------------------------------------------------------------------------
 
@@ -66,13 +70,12 @@ CONFIGURATION AND INSTALLATION
 The MSVC port of Mercury is compatible with the prebuilt C files contained in
 the Mercury source distribution.  The 'asm_fast' and 'reg' grades will not work
 with MSVC (see below).  When using the prebuilt C files the compiler will be
-built in the 'none.gc' grade.
+built in the 'hlc.gc.pregen' grade.
 
 Alternatively, if you have an existing Mercury installation that uses the MinGW
-or Cygwin GCC ports, or clang then you can checkout the Mercury source from the
-CVS repository and use your existing installation to cross-compile the MSVC
-port.  In this case the compiler will be built using the more efficient
-'hlc.gc' grade.
+or Cygwin GCC ports, or clang, then you can checkout the Mercury source from the
+git repository and use your existing installation to cross-compile the MSVC
+port.
 
 In either case, to use MSVC as the C compiler with Mercury, invoke configure
 as follows:
@@ -141,9 +144,7 @@ The MSVC port currently has a number of limitations:
 * When used directly from the Windows command prompt, mmake will not work.
   You should use `mmc --make' instead.  (mmake requires a POSIX-like shell
   and GNU make; it will however work with the Cygwin or MSYS shells.)
-
-  Note that we have no intention of ever supporting mmake directly on
-  Windows.
+  We do not intend to support mmake directly on Windows.
 
 * Creation of shared libraries (DLLs) is not currently supported.
 
