@@ -55,6 +55,8 @@
 :- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_unused_assign.
+:- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
@@ -573,8 +575,35 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             ),
 
             proc_info_get_goal(ProcInfo, Goal),
-            ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars,
-                Goal, LocalVarDefns0, FuncDefns, GoalStmts0, !Info),
+            ml_gen_info_get_tail_rec_info(!.Info, TailRecInfo1),
+            TailRecInfo1 = tail_rec_info(InSccMap1, LoopKind1, TsccKind1),
+            map.lookup(InSccMap1, PredProcId, InSccInfo1),
+            MaybeInScc1 = InSccInfo1 ^ isi_maybe_in_tscc,
+            (
+                MaybeInScc1 = not_in_tscc,
+                map.init(SeenAtLabelMap)
+            ;
+                MaybeInScc1 = in_tscc(IdInTscc, Args),
+                (
+                    LoopKind1 = tail_rec_loop_while_continue,
+                    (
+                        TsccKind1 = tscc_self_rec_only,
+                        map.init(SeenAtLabelMap)
+                    ;
+                        TsccKind1 = tscc_self_and_mutual_rec,
+                        unexpected($pred, "tscc_self_and_mutual_rec")
+                    )
+                ;
+                    LoopKind1 = tail_rec_loop_label_goto,
+                    StartLabel = generate_tail_rec_start_label(TsccKind1,
+                        IdInTscc),
+                    LocalVars = list.map(project_mlds_argument_name, Args),
+                    SeenAtLabelMap =
+                        map.singleton(StartLabel, set.list_to_set(LocalVars))
+                )
+            ),
+            ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal,
+                SeenAtLabelMap, LocalVarDefns0, FuncDefns, GoalStmts0, !Info),
             list.map(get_var_rval(!.Info),
                 CopiedOutputVars, CopiedOutputVarRvals),
             ml_append_return_statement(CodeModel, ProcContext,
@@ -650,7 +679,7 @@ construct_func_body_maybe_wrap_in_loop(PredProcId, CodeModel, Context,
         IsTargetOfSelfTRCall = is_target_of_self_trcall,
         % We cannot have done self-tail-recursion if MaybeInTscc = not_in_tscc,
         % though the compiler doesn't know that.
-        MaybeInTscc = in_tscc(IdInTscc, _TsccInArgs)
+        MaybeInTscc = in_tscc(IdInTscc, TsccInArgs)
     then
         ( CodeModel = model_det,  CodeModelStr = "model_det"
         ; CodeModel = model_semi, CodeModelStr = "model_semi"
@@ -665,8 +694,13 @@ construct_func_body_maybe_wrap_in_loop(PredProcId, CodeModel, Context,
             BreakStmt = ml_stmt_goto(goto_break_loop, Context),
             LoopBodyStmt = ml_stmt_block(LocalVarDefns, FuncDefns,
                 [CommentStmt] ++ GoalStmts ++ [BreakStmt], Context),
+            % Since TsccKind = tscc_self_rec_only, we don't need to include
+            % the procedure selector variable in the loop local vars.
+            InputArgLocalVars =
+                list.map(project_mlds_argument_name, TsccInArgs),
             FuncBodyStmt = ml_stmt_while(may_loop_zero_times,
-                ml_const(mlconst_true), LoopBodyStmt, Context)
+                ml_const(mlconst_true), LoopBodyStmt,
+                InputArgLocalVars, Context)
         ;
             LoopKind = tail_rec_loop_label_goto,
             StartLabel = generate_tail_rec_start_label(TsccKind, IdInTscc),
@@ -894,10 +928,10 @@ ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
     % Compute the information we need for generating tail calls
     % to any of the procedures in the TSCC.
     reset_in_scc_map(!InSccMap),
-    list.map_foldl5(compute_initial_tail_rec_map_for_mutual(ModuleInfo),
+    list.map_foldl6(compute_initial_tail_rec_map_for_mutual(ModuleInfo),
         set.to_sorted_list(PredProcIds), PredProcIdArgsInfos,
         1, _, maybe.no, _, can_generate_code_for_tscc, CanGenerateTscc0,
-        map.init, _OutArgNames, !InSccMap),
+        map.init, _OutArgNames, !InSccMap, map.init, SeenAtLabelMap),
 
     % Translate each procedure in the TSCC into a representation of the
     % code that will go under "top_of_proc_i".
@@ -905,7 +939,7 @@ ml_gen_tscc_trial(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         TsccInfo0),
     list.map_foldl2(
         ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap,
-            TsccCodeModel),
+            TsccCodeModel, SeenAtLabelMap),
         PredProcIdArgsInfos, PredProcCodes,
         !GlobalData, TsccInfo0, TsccInfo),
 
@@ -1072,9 +1106,13 @@ separate_mutually_recursive_procs(NoMutualTailRecProcs,
                 % These go at the top of the container function
                 % for every procedure *other* than this one.
                 % (In the container function for this procedure,
-                % these variables that these would define are defined
+                % the variables that these would define are defined
                 % in the function's signature instead.)
                 ppiai_tscc_in_local_var_defns   :: list(mlds_local_var_defn),
+
+                % The names of the variables defined in the previous field.
+                % Needed in some cases for transmission to ml_unused_assign.m.
+                ppiai_tscc_in_local_vars        :: list(mlds_local_var_name),
 
                 % Local variable definitions of the tscc out variables
                 % for the output arguments of the procedure only.
@@ -1117,11 +1155,12 @@ separate_mutually_recursive_procs(NoMutualTailRecProcs,
     maybe(assoc_list(mlds_local_var_name, mlds_type))::out,
     can_we_generate_code_for_tscc::in, can_we_generate_code_for_tscc::out,
     map(int, string)::in, map(int, string)::out,
-    in_scc_map::in, in_scc_map::out) is det.
+    in_scc_map::in, in_scc_map::out,
+    seen_at_label_map::in, seen_at_label_map::out) is det.
 
 compute_initial_tail_rec_map_for_mutual(ModuleInfo,
-        PredProcId, PredProcIdArgsInfo, !ProcNum,
-        !MaybeOutVarsTypes, !CanGenerateTscc, !OutArgNames, !InSccMap) :-
+        PredProcId, PredProcIdArgsInfo, !ProcNum, !MaybeOutVarsTypes,
+        !CanGenerateTscc, !OutArgNames, !InSccMap, !SeenAtLabelMap) :-
     ThisProcNum = !.ProcNum,
     IdInTscc = proc_id_in_tscc(ThisProcNum),
     !:ProcNum = !.ProcNum + 1,
@@ -1144,6 +1183,8 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
         TsccInArgs, FuncParams, ReturnRvalsTypes, OutVarsTypes,
         OwnLocalVarDefns, TsccInLocalVarDefns, TsccValueLocalVarDefns,
         CopyTsccToOwnStmts, CopyOwnToTsccStmts, CopyOutValThroughPtrStmts),
+    TsccInLocalVars = list.map(
+        (func(LocalVarDefn) = LocalVarDefn ^ mlvd_name), TsccInLocalVarDefns),
     (
         !.MaybeOutVarsTypes = no,
         !:MaybeOutVarsTypes = yes(OutVarsTypes)
@@ -1159,12 +1200,17 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
     ),
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId, PredInfo, ProcInfo,
         ProcContext, IdInTscc, ArgTuples, FuncParams, ReturnRvalsTypes,
-        OwnLocalVarDefns, TsccInLocalVarDefns, TsccValueLocalVarDefns,
-        CopyTsccToOwnStmts, CopyOwnToTsccStmts, CopyOutValThroughPtrStmts),
+        OwnLocalVarDefns, TsccInLocalVarDefns, TsccInLocalVars,
+        TsccValueLocalVarDefns, CopyTsccToOwnStmts, CopyOwnToTsccStmts,
+        CopyOutValThroughPtrStmts),
     map.lookup(!.InSccMap, PredProcId, InSccInfo0),
     InSccInfo = InSccInfo0 ^ isi_maybe_in_tscc :=
         in_tscc(IdInTscc, TsccInArgs),
-    map.det_update(PredProcId, InSccInfo, !InSccMap).
+    map.det_update(PredProcId, InSccInfo, !InSccMap),
+    TsccKind = tscc_self_and_mutual_rec,
+    StartLabel = generate_tail_rec_start_label(TsccKind, IdInTscc),
+    map.det_insert(StartLabel, set.list_to_set(TsccInLocalVars),
+        !SeenAtLabelMap).
 
     % Each value of this type records the results of invoking the code
     % generator on the body of procedure in a TSCC.
@@ -1187,17 +1233,17 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
     %
 :- pred ml_gen_tscc_proc_code(module_info::in,
     mlds_target_lang::in, ml_const_struct_map::in, tscc_code_model::in,
-    pred_proc_id_args_info::in, pred_proc_code::out,
+    seen_at_label_map::in, pred_proc_id_args_info::in, pred_proc_code::out,
     ml_global_data::in, ml_global_data::out,
     ml_gen_tscc_info::in, ml_gen_tscc_info::out) is det.
 
 ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
-        PredProcIdArgsInfo, PredProcCode, !GlobalData, !TsccInfo) :-
+        SeenAtLabelMap, PredProcIdArgsInfo, PredProcCode,
+        !GlobalData, !TsccInfo) :-
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId, PredInfo, ProcInfo,
-        ProcContext, ProcIdInTscc, ArgTuples,
-        _FuncParams, _ReturnRvalsTypes,
-        _OwnLocalVarDefns, _TsscInLocalVarDefns, _TsccOutLocalVarDefns,
-        _CopyTsccInToOwnStmts, _CopyOwnToTsccOutStmts,
+        ProcContext, ProcIdInTscc, ArgTuples, _FuncParams, _ReturnRvalsTypes,
+        _OwnLocalVarDefns, _TsscInLocalVarDefns, _TsscInLocalVars,
+        _TsccOutLocalVarDefns, _CopyTsccInToOwnStmts, _CopyOwnToTsccOutStmts,
         _CopyOutValThroughPtrStmts),
 
     trace [io(!IO)] (
@@ -1254,8 +1300,8 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
             InitSucceededStmts = [InitSucceededStmt]
         ),
         proc_info_get_goal(ProcInfo, Goal),
-        ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars,
-            Goal, LocalVarDefns0, FuncDefns, GoalStmts0, !Info),
+        ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal,
+            SeenAtLabelMap, LocalVarDefns0, FuncDefns, GoalStmts0, !Info),
         GoalStmts = InitSucceededStmts ++ GoalStmts0,
         ml_gen_maybe_local_var_defn_for_succeeded(!.Info, ProcContext,
             SucceededVarDefns),
@@ -1342,6 +1388,7 @@ construct_tscc_entry_proc(ModuleInfo, LoopKind, PredProcCodes,
 :- type proc_stmt_info
     --->    proc_stmt_info(
                 proc_id_in_tscc,
+                list(mlds_local_var_name),  % The TSCC input arguments.
                 mlds_stmt,
                 prog_context
             ).
@@ -1367,8 +1414,8 @@ construct_func_body_for_tscc(EntryProc, PredProcCode,
         _ClosureWrapperFuncDefns, _EnvVarNames),
     PredProcIdArgsInfo = pred_proc_id_args_info(PredProcId,
         PredInfo, ProcInfo, ProcContext, IdInTscc, _ArgTuples,
-        FuncParams, ReturnRvalsTypes,
-        OwnLocalVarDefns, TsccInLocalVarDefns, TsccOutLocalVarDefns,
+        FuncParams, ReturnRvalsTypes, OwnLocalVarDefns,
+        TsccInLocalVarDefns, TsccInLocalVars, TsccOutLocalVarDefns,
         CopyTsccInToOwnStmts, CopyOwnToTsccOutStmts,
         CopyOutValThroughPtrStmts),
     ( if PredProcId = EntryProc then
@@ -1388,7 +1435,8 @@ construct_func_body_for_tscc(EntryProc, PredProcCode,
     AllStmts = CopyTsccInToOwnStmts ++ GoalStmts ++ CopyOwnToTsccOutStmts,
     ProcStmt = ml_stmt_block(AllLocalVarDefns, GoalFuncDefns, AllStmts,
         ProcContext),
-    ProcStmtInfo = proc_stmt_info(IdInTscc, ProcStmt, ProcContext).
+    ProcStmtInfo = proc_stmt_info(IdInTscc, TsccInLocalVars, ProcStmt,
+        ProcContext).
 
 %---------------------%
 
@@ -1466,7 +1514,8 @@ make_container_proc_with_label_goto(CopyOutValThroughPtrStmts, ReturnStmt,
     list(mlds_stmt)::out) is det.
 
 make_wrapped_proc_with_label_goto(GotoEndStmt, ProcStmtInfo, LabelProcStmts) :-
-    ProcStmtInfo = proc_stmt_info(IdInTscc, ProcStmt, ProcContext),
+    ProcStmtInfo = proc_stmt_info(IdInTscc, _LoopLocalVars, ProcStmt,
+        ProcContext),
     StartLabel =
         generate_tail_rec_start_label(tscc_self_and_mutual_rec, IdInTscc),
     StartLabelStmt = ml_stmt_label(StartLabel, ProcContext),
@@ -1478,7 +1527,7 @@ make_wrapped_proc_with_label_goto(GotoEndStmt, ProcStmtInfo, LabelProcStmts) :-
     % We wrap the statements we generate for each TSCC procedure like this:
     %
     % proc_selector = <entry_proc>;
-    % while (keep_doing_tail_calls) {
+    % while (TRUE) {
     %   switch (proc_selector) {
     %       case 1:
     %           <copy tscc input args 1 to own input args 1>
@@ -1512,8 +1561,9 @@ make_container_proc_with_while_continue(CopyOutValThroughPtrStmts, ReturnStmt,
         EntryProc, EntryProcContext, ProcStmtInfos,
         ContainerVarDefns, WrappedStmts) :-
     GotoEndStmts = [ml_stmt_goto(goto_break_switch, EntryProcContext)],
-    list.map_foldl(make_wrapped_proc_with_while_continue(GotoEndStmts),
-        ProcStmtInfos, SwitchCases, set.init, PossibleSwitchValues),
+    list.map_foldl2(make_wrapped_proc_with_while_continue(GotoEndStmts),
+        ProcStmtInfos, SwitchCases,
+        set.init, PossibleSwitchValues, [], AllTsccInLocalVars),
 
     SelectorVar = lvn_comp_var(lvnc_tscc_proc_selector),
     SelectorType = mlds_native_int_type,
@@ -1537,24 +1587,27 @@ make_container_proc_with_while_continue(CopyOutValThroughPtrStmts, ReturnStmt,
     BreakStmt = ml_stmt_goto(goto_break_loop, EntryProcContext),
     SwitchBreakStmt = ml_stmt_block([], [], [SwitchStmt, BreakStmt],
         EntryProcContext),
-    LoopStmt = ml_stmt_while(may_loop_zero_times,
-        ml_const(mlconst_true), SwitchBreakStmt, EntryProcContext),
+    LoopLocalVars = [SelectorVar | AllTsccInLocalVars],
+    LoopStmt = ml_stmt_while(may_loop_zero_times, ml_const(mlconst_true),
+        SwitchBreakStmt, LoopLocalVars, EntryProcContext),
     WrappedStmts = [SetSelectorStmt, LoopStmt] ++
         CopyOutValThroughPtrStmts ++ [ReturnStmt].
 
 :- pred make_wrapped_proc_with_while_continue(list(mlds_stmt)::in,
-    proc_stmt_info::in, mlds_switch_case::out, set(int)::in, set(int)::out)
-    is det.
+    proc_stmt_info::in, mlds_switch_case::out, set(int)::in, set(int)::out,
+    list(mlds_local_var_name)::in, list(mlds_local_var_name)::out) is det.
 
 make_wrapped_proc_with_while_continue(GotoEndStmts, ProcStmtInfo, SwitchCase,
-        !PossibleSwitchValues) :-
-    ProcStmtInfo = proc_stmt_info(IdInTscc, ProcStmt, ProcContext),
+        !PossibleSwitchValues, !AllLoopLocalVars) :-
+    ProcStmtInfo = proc_stmt_info(IdInTscc, LoopLocalVars, ProcStmt,
+        ProcContext),
     IdInTscc = proc_id_in_tscc(IdInTsccNum),
     MatchCond = match_value(ml_const(mlconst_int(IdInTsccNum))),
     SwitchStmt = ml_gen_block([], [], append_to_stmt(ProcStmt, GotoEndStmts),
         ProcContext),
     SwitchCase = mlds_switch_case(MatchCond, [], SwitchStmt),
-    set.insert(IdInTsccNum, !PossibleSwitchValues).
+    set.insert(IdInTsccNum, !PossibleSwitchValues),
+    !:AllLoopLocalVars = LoopLocalVars ++ !.AllLoopLocalVars.
 
 %---------------------%
 
@@ -1588,12 +1641,12 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
 
     % Generate the code for a procedure body.
     %
-:- pred ml_gen_proc_body(code_model::in,
-    list(var_mvar_type_mode)::in, list(prog_var)::in, hlds_goal::in,
+:- pred ml_gen_proc_body(code_model::in, list(var_mvar_type_mode)::in,
+    list(prog_var)::in, hlds_goal::in, seen_at_label_map::in,
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal,
+ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal, SeenAtLabelMap,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
@@ -1633,9 +1686,24 @@ ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal,
             ),
         ml_combine_conj(CodeModel, Context, DoGenGoal, DoConvOutputs,
             LocalVarDefns0, FuncDefns0, Stmts0, !Info),
-        Stmts = ConvInputStmts ++ Stmts0,
-        LocalVarDefns = ConvLocalVarDefns ++ LocalVarDefns0,
-        FuncDefns = FuncDefns0
+        Stmts1 = ConvInputStmts ++ Stmts0,
+        LocalVarDefns1 = ConvLocalVarDefns ++ LocalVarDefns0,
+        ml_gen_info_get_globals(!.Info, Globals),
+        globals.lookup_bool_option(Globals, eliminate_unused_mlds_assigns,
+            EliminateUnusedAssigns),
+        (
+            EliminateUnusedAssigns = no,
+            LocalVarDefns = LocalVarDefns1,
+            FuncDefns = FuncDefns0,
+            Stmts = Stmts1
+        ;
+            EliminateUnusedAssigns = yes,
+            list.map((func(var_mvar_type_mode(_, LocalVar, _, _)) = LocalVar),
+                ArgTuples) = ArgLocalVars,
+            optimize_away_unused_assigns_in_proc_body(ArgLocalVars,
+                SeenAtLabelMap, LocalVarDefns1, LocalVarDefns,
+                FuncDefns0, FuncDefns, Stmts1, Stmts)
+        )
     ).
 
     % In certain cases -- for example existentially typed procedures,
@@ -1772,7 +1840,8 @@ does_stmt_contain_nested_func_defn(Stmt, !ContainsNestedFuncs) :-
             !:ContainsNestedFuncs = contains_nested_funcs
         )
     ;
-        Stmt = ml_stmt_while(_LoopKind, _CondRval, SubStmt, _Context),
+        Stmt = ml_stmt_while(_LoopKind, _CondRval, SubStmt, _LoopLocalVars,
+            _Context),
         does_stmt_contain_nested_func_defn(SubStmt, !ContainsNestedFuncs)
     ;
         Stmt = ml_stmt_if_then_else(_CondRval, ThenStmt, MaybeElseStmt,

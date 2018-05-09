@@ -830,6 +830,7 @@
     %   - MLDS
     ;       optimize_tailcalls
     ;       optimize_initializations
+    ;       eliminate_unused_mlds_assigns
     ;       eliminate_local_vars
     ;       generate_trail_ops_inline
 
@@ -1728,6 +1729,7 @@ option_defaults_2(optimization_option, [
     % MLDS
     optimize_tailcalls                  -   bool(no),
     optimize_initializations            -   bool(no),
+    eliminate_unused_mlds_assigns       -   bool(yes),
     eliminate_local_vars                -   bool(no),
     generate_trail_ops_inline           -   bool(yes),
 
@@ -2724,6 +2726,7 @@ long_option("optimize-tailcalls",   optimize_tailcalls).
 long_option("optimise-tailcalls",   optimize_tailcalls).
 long_option("optimize-initializations", optimize_initializations).
 long_option("optimise-initializations", optimize_initializations).
+long_option("eliminate-unused-mlds-assigns", eliminate_unused_mlds_assigns).
 long_option("eliminate-local-vars", eliminate_local_vars).
 long_option("generate-trail-ops-inline", generate_trail_ops_inline).
 
@@ -5676,6 +5679,9 @@ options_help_mlds_mlds_optimization -->
         "\tLeave initializations of local variables as",
         "\tassignment statements, rather than converting such",
         "\tassignment statements into initializers.",
+% This is useful for developers only.
+%       "--eliminate-unused-mlds-assigns",
+%       "\tEliminate assignments to dead variables in the MLDS.",
         "--eliminate-local-vars",
         "\tEliminate local variables with known values, where possible,",
         "\tby replacing occurrences of such variables with their values.",

@@ -56,6 +56,7 @@
 % Phase 6-ml: MLDS -> MLDS transformations
 :- include_module ml_elim_nested.
 :- include_module ml_rename_classes.
+:- include_module ml_unused_assign.
 :- include_module ml_optimize.
 
 % Phase 7-ml: compile MLDS to target code

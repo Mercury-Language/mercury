@@ -214,10 +214,10 @@ rename_class_names_in_stmt(Renaming, !Stmt) :-
         list.map(rename_class_names_in_stmt(Renaming), SubStmts0, SubStmts),
         !:Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
-        !.Stmt = ml_stmt_while(Kind, Rval0, SubStmt0, Context),
+        !.Stmt = ml_stmt_while(Kind, Rval0, SubStmt0, LoopLocalVars, Context),
         rename_class_names_in_rval(Renaming, Rval0, Rval),
         rename_class_names_in_stmt(Renaming, SubStmt0, SubStmt),
-        !:Stmt = ml_stmt_while(Kind, Rval, SubStmt, Context)
+        !:Stmt = ml_stmt_while(Kind, Rval, SubStmt, LoopLocalVars, Context)
     ;
         !.Stmt = ml_stmt_if_then_else(Rval0, Then0, MaybeElse0, Context),
         rename_class_names_in_rval(Renaming, Rval0, Rval),

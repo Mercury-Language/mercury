@@ -139,9 +139,9 @@ optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
         % XXX We should also optimize in FuncDefns.
         Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
-        Stmt0 = ml_stmt_while(Kind, Rval, SubStmts0, Context),
+        Stmt0 = ml_stmt_while(Kind, Rval, SubStmts0, LocalLoopVars, Context),
         optimize_in_stmt(OptInfo, SubStmts0, SubStmts),
-        Stmt = ml_stmt_while(Kind, Rval, SubStmts, Context)
+        Stmt = ml_stmt_while(Kind, Rval, SubStmts, LocalLoopVars, Context)
     ;
         Stmt0 = ml_stmt_if_then_else(Rval, Then0, MaybeElse0, Context),
         optimize_in_stmt(OptInfo, Then0, Then),
@@ -448,7 +448,7 @@ statement_affects_lvals(Lvals, Stmt, Affects) :-
         Stmt = ml_stmt_block(_, _, SubStmts, _),
         statements_affect_lvals(Lvals, SubStmts, Affects)
     ;
-        Stmt = ml_stmt_while(_, _, SubStmt, _),
+        Stmt = ml_stmt_while(_, _, SubStmt, _, _),
         statement_affects_lvals(Lvals, SubStmt, Affects)
     ;
         Stmt = ml_stmt_if_then_else(_, Then, MaybeElse, _),
@@ -1211,15 +1211,7 @@ eliminate_var_in_lval(Lval0, Lval, !VarElimInfo) :-
         Lval = Lval0
     ;
         Lval0 = ml_local_var(VarName, _Type),
-        ( if VarName = !.VarElimInfo ^ var_name then
-            % We found an lvalue occurrence of the variable.
-            % If the variable that we are trying to eliminate has its
-            % address is taken, or is assigned to, or in general if it is
-            % used as an lvalue, then it is NOT safe to eliminate it.
-            !VarElimInfo ^ invalidated := yes
-        else
-            true
-        ),
+        invalidate_if_eliminating_local_loop_var(VarName, !VarElimInfo),
         Lval = Lval0
     ).
 
@@ -1248,10 +1240,12 @@ eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo) :-
             FuncDefns0, FuncDefns, SubStmts0, SubStmts, !VarElimInfo),
         Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
-        Stmt0 = ml_stmt_while(Kind, Rval0, SubStmts0, Context),
+        Stmt0 = ml_stmt_while(Kind, Rval0, SubStmts0, LocalLoopVars, Context),
+        list.foldl(invalidate_if_eliminating_local_loop_var, LocalLoopVars,
+            !VarElimInfo),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         eliminate_var_in_stmt(SubStmts0, SubStmts, !VarElimInfo),
-        Stmt = ml_stmt_while(Kind, Rval, SubStmts, Context)
+        Stmt = ml_stmt_while(Kind, Rval, SubStmts, LocalLoopVars, Context)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0, Context),
         eliminate_var_in_rval(Cond0, Cond, !VarElimInfo),
@@ -1450,6 +1444,22 @@ eliminate_var_in_trail_op(Op0, Op, !VarElimInfo) :-
         Op0 = prune_tickets_to(Rval0),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         Op = prune_tickets_to(Rval)
+    ).
+
+:- pred invalidate_if_eliminating_local_loop_var(mlds_local_var_name::in,
+    var_elim_info::in, var_elim_info::out) is det.
+
+invalidate_if_eliminating_local_loop_var(VarName, !VarElimInfo) :-
+    ( if VarName = !.VarElimInfo ^ var_name then
+        % We found an lvalue occurrence of the variable.
+        % If the variable that we are trying to eliminate
+        % - has its address taken, or
+        % - is assigned to, or
+        % - in general if it is used as an lvalue,
+        % then it is NOT safe to eliminate it.
+        !VarElimInfo ^ invalidated := yes
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%

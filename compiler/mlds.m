@@ -1104,6 +1104,26 @@
                 % The body.
                 mlds_stmt,
 
+                % A list of the local variables that are used in the loop body
+                % *before* being defined there (with their *initial* values
+                % being set before the loop itself), and whose definitions
+                % in the loop body must therefore be kept even if their values
+                % are not used after the loop. This field is used by
+                % ml_unused_assign.m.
+                %
+                % For example, given a loop such as
+                %
+                % i = 0;
+                % while (i < num_rows) {
+                %    ... do something with row[i] ...
+                %    i = i + 1;
+                % }
+                %
+                % where i is not used after the loop, i must be included
+                % in this field to prevent ml_unused_assign.m from optimizing
+                % away the increment of i.
+                list(mlds_local_var_name),
+
                 prog_context
             )
 
@@ -1266,7 +1286,7 @@
 :- inst ml_stmt_is_block for mlds_stmt/0
     --->    ml_stmt_block(ground, ground, ground, ground).
 :- inst ml_stmt_is_while for mlds_stmt/0
-    --->    ml_stmt_while(ground, ground, ground, ground).
+    --->    ml_stmt_while(ground, ground, ground, ground, ground).
 :- inst ml_stmt_is_if_then_else for mlds_stmt/0
     --->    ml_stmt_if_then_else(ground, ground, ground, ground).
 :- inst ml_stmt_is_switch for mlds_stmt/0
@@ -1719,6 +1739,16 @@
                 mlds_type
             ).
 
+    % The information contained in an ml_local_var mlds_lval.
+    % Use this type when you need a way to store information about
+    % an mlds_lval that is definitely a local variable.
+    %
+:- type mlds_local_var_name_type
+    --->    mlds_local_var_name_type(
+                mlds_local_var_name,
+                mlds_type
+            ).
+
     % An mlds_field_id represents some data within an object.
     %
 :- type mlds_field_id
@@ -1782,6 +1812,8 @@
             % This rval is intended to be used as the name of an array
             % to be indexed into. This is possible because the elements
             % of a scalar common cell are all boxed and thus of the same size.
+            % XXX This need NOT be true in the presence of double-word
+            % float, int64 or uint64 arguments on 32 bit platforms.
 
     ;       ml_scalar_common_addr(mlds_scalar_common)
             % The address of the ml_scalar_common(...) for the same common.

@@ -581,7 +581,7 @@ method_ptrs_in_statement(Stmt, !CodeAddrsInConsts) :-
         method_ptrs_in_function_defns(FuncDefns, !CodeAddrsInConsts),
         method_ptrs_in_statements(SubStmts, !CodeAddrsInConsts)
     ;
-        Stmt = ml_stmt_while(_Kind, Rval, SubStmt, _Context),
+        Stmt = ml_stmt_while(_Kind, Rval, SubStmt, _LocalLoopVars, _Context),
         method_ptrs_in_rval(Rval, !CodeAddrsInConsts),
         method_ptrs_in_statement(SubStmt, !CodeAddrsInConsts)
     ;

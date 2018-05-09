@@ -96,9 +96,9 @@
 
 :- type ml_several_soln_lookup_vars
     --->    ml_several_soln_lookup_vars(
-                msslv_num_later_solns_var       :: mlds_lval,
-                msslv_later_slot_var            :: mlds_lval,
-                msslv_limit_var                 :: mlds_lval,
+                msslv_num_later_solns_var       :: mlds_local_var_name_type,
+                msslv_later_slot_var            :: mlds_local_var_name_type,
+                msslv_limit_var                 :: mlds_local_var_name_type,
                 msslv_limit_assign_statement    :: mlds_stmt,
                 msslv_incr_later_slot_statement :: mlds_stmt,
                 msslv_denfs                     :: list(mlds_local_var_defn)
@@ -479,9 +479,22 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
         FirstSolnVectorCommon, LaterSolnVectorCommon, NeedBitVecCheck,
         MatchDefns, Stmts, !Info) :-
     make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info),
-    SeveralSolnLookupVars = ml_several_soln_lookup_vars(NumLaterSolnsVarLval,
-        LaterSlotVarLval, LimitVarLval,
+    SeveralSolnLookupVars = ml_several_soln_lookup_vars(
+        NumLaterSolnsVarNameType, LaterSlotVarNameType, LimitVarNameType,
         LimitAssignStmt, IncrLaterSlotVarStmt, MatchDefns),
+
+    NumLaterSolnsVarNameType =
+        mlds_local_var_name_type(NumLaterSolnsVarName, NumLaterSolnsType),
+    NumLaterSolnsVarLval =
+        ml_local_var(NumLaterSolnsVarName, NumLaterSolnsType),
+    LaterSlotVarNameType =
+        mlds_local_var_name_type(LaterSlotVarName, LaterSlotType),
+    LaterSlotVarLval =
+        ml_local_var(LaterSlotVarName, LaterSlotType),
+    LimitVarNameType =
+        mlds_local_var_name_type(LimitVarName, LimitType),
+    LimitVarLval =
+        ml_local_var(LimitVarName, LimitType),
 
     NumLaterSolnsVarRval = ml_lval(NumLaterSolnsVarLval),
     LaterSlotVarRval = ml_lval(LaterSlotVarLval),
@@ -511,7 +524,7 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
     MoreSolnsLoopCond = ml_binop(int_lt(int_type_int),
         LaterSlotVarRval, LimitVarRval),
     MoreSolnsLoopStmt = ml_stmt_while(may_loop_zero_times, MoreSolnsLoopCond,
-        LaterLookupSucceedStmt, Context),
+        LaterLookupSucceedStmt, [LaterSlotVarName], Context),
 
     OneOrMoreSolnsStmts = [FirstLookupSucceedStmt, LaterSlotVarAssignStmt,
         LimitAssignStmt, MoreSolnsLoopStmt],
@@ -537,6 +550,8 @@ make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
     % We never need to trace ints.
     NumLaterSolnsVarDefn = ml_gen_mlds_var_decl(NumLaterSolnsVarName,
         mlds_native_int_type, gc_no_stmt, Context),
+    NumLaterSolnsVarNameType =
+        mlds_local_var_name_type(NumLaterSolnsVarName, mlds_native_int_type),
     NumLaterSolnsVarLval =
         ml_local_var(NumLaterSolnsVarName, mlds_native_int_type),
 
@@ -544,12 +559,16 @@ make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
     % We never need to trace ints.
     LaterSlotVarDefn = ml_gen_mlds_var_decl(LaterSlotVarName,
         mlds_native_int_type, gc_no_stmt, Context),
+    LaterSlotVarNameType =
+        mlds_local_var_name_type(LaterSlotVarName, mlds_native_int_type),
     LaterSlotVarLval = ml_local_var(LaterSlotVarName, mlds_native_int_type),
 
     ml_gen_info_new_aux_var_name(mcav_limit, LimitVarName, !Info),
     % We never need to trace ints.
     LimitVarDefn = ml_gen_mlds_var_decl(LimitVarName,
         mlds_native_int_type, gc_no_stmt, Context),
+    LimitVarNameType =
+        mlds_local_var_name_type(LimitVarName, mlds_native_int_type),
     LimitVarLval = ml_local_var(LimitVarName, mlds_native_int_type),
 
     Defns = [NumLaterSolnsVarDefn, LaterSlotVarDefn, LimitVarDefn],
@@ -565,8 +584,8 @@ make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
             ml_const(mlconst_int(1)))),
     IncrLaterSlotVarStmt = ml_stmt_atomic(IncrLaterSlotVar, Context),
 
-    SeveralSolnLookupVars = ml_several_soln_lookup_vars(NumLaterSolnsVarLval,
-        LaterSlotVarLval, LimitVarLval,
+    SeveralSolnLookupVars = ml_several_soln_lookup_vars(
+        NumLaterSolnsVarNameType, LaterSlotVarNameType, LimitVarNameType,
         LimitAssignStmt, IncrLaterSlotVarStmt, Defns).
 
 %---------------------------------------------------------------------------%

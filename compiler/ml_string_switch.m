@@ -28,10 +28,10 @@
 % and for switches in which each arm looks up the data to return in tables
 % (we call these the "lookup" versions). The lookup versions themselves
 % come in two distinct flavours: those in which each arm has at most
-% one solution, and those in which some arms gave more than one soluion.
+% one solution, and those in which some arms have more than one soluion.
 %
 % WARNING: the code here is quite similar to the code in string_switch.m.
-% Any changes here may require similar changes there and vice versa.
+% Any changes here may require similar changes there, and vice versa.
 %
 %---------------------------------------------------------------------------%
 
@@ -765,8 +765,11 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
     ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
         Context, VarRval, HashSearchInfo, !Info),
     HashSearchInfo = ml_hash_search_info(_CodeModel, _LoopPresent,
-        _Context, _VarRval, SlotVarLval, _StringVarLval,
-        _MaybeStopLoopLval, _FailStmts, Defns),
+        _Context, _VarRval, SlotVarNameType, _StringVarNameType,
+        _MaybeStopLoopNameType, _FailStmts, Defns),
+
+    SlotVarNameType = mlds_local_var_name_type(SlotVarName, SlotVarType),
+    SlotVarLval = ml_local_var(SlotVarName, SlotVarType),
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
     ml_gen_static_vector_type(MLDS_ModuleName, Context, Target,
@@ -807,7 +810,6 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
     map.to_assoc_list(RevMap, RevList),
     generate_string_jump_switch_arms(CodeMap, RevList, [], SlotsCases0),
     list.sort(SlotsCases0, SlotsCases),
-    SlotVarType = mlds_native_int_type,
 
     SwitchStmt0 = ml_stmt_switch(SlotVarType, ml_lval(SlotVarLval),
         mlds_switch_range(0, TableSize - 1), SlotsCases,
@@ -1063,8 +1065,11 @@ ml_generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
         Context, VarRval, HashSearchInfo, !Info),
     HashSearchInfo = ml_hash_search_info(_CodeModel, _LoopPresent,
-        _Context, _VarRval, SlotVarLval, _StringVarLval, _MaybeStopLoopLval,
-        _FailStmts, Defns),
+        _Context, _VarRval, SlotVarNameType, _StringVarNameType,
+        _MaybeStopLoopVarNameType, _FailStmts, Defns),
+
+    SlotVarNameType = mlds_local_var_name_type(SlotVarName, SlotVarType),
+    SlotVarLval = ml_local_var(SlotVarName, SlotVarType),
     SlotVarRval = ml_lval(SlotVarLval),
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
@@ -1212,8 +1217,11 @@ ml_generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
         Context, VarRval, HashSearchInfo, !Info),
     HashSearchInfo = ml_hash_search_info(_CodeModel, _LoopPresent,
-        _Context, _VarRval, SlotVarLval, _StringVarLval, _MaybeStopLoopLval,
-        _FailStmts, Defns),
+        _Context, _VarRval, SlotVarNameType, _StringVarNameType,
+        _MaybeStopLoopVarNameType, _FailStmts, Defns),
+
+    SlotVarNameType = mlds_local_var_name_type(SlotVarName, SlotVarType),
+    SlotVarLval = ml_local_var(SlotVarName, SlotVarType),
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
     ml_gen_static_vector_type(MLDS_ModuleName, Context, Target,
@@ -1376,15 +1384,15 @@ ml_gen_string_hash_several_soln_lookup_slot(Slot, HashSlotMap,
 
 :- type ml_hash_search_info
     --->    ml_hash_search_info(
-                mhsi_code_model                 :: code_model,
-                mhsi_loop_present               :: bool,
-                mhsi_context                    :: prog_context,
-                mhsi_switch_var                 :: mlds_rval,
-                mhsi_slot_var                   :: mlds_lval,
-                mhsi_string_var                 :: mlds_lval,
-                mhsi_stop_loop_var              :: maybe(mlds_lval),
-                mhsi_fail_statements            :: list(mlds_stmt),
-                mhsi_defns                      :: list(mlds_local_var_defn)
+                mhsi_code_model         :: code_model,
+                mhsi_loop_present       :: bool,
+                mhsi_context            :: prog_context,
+                mhsi_switch_var         :: mlds_rval,
+                mhsi_slot_var           :: mlds_local_var_name_type,
+                mhsi_string_var         :: mlds_local_var_name_type,
+                mhsi_stop_loop_var      :: maybe(mlds_local_var_name_type),
+                mhsi_fail_statements    :: list(mlds_stmt),
+                mhsi_defns              :: list(mlds_local_var_defn)
             ).
 
 :- pred ml_gen_string_hash_switch_search_vars(code_model::in, can_fail::in,
@@ -1403,7 +1411,7 @@ ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
     % We never need to trace ints.
     SlotVarDefn = ml_gen_mlds_var_decl(SlotVarName, SlotVarType,
         gc_no_stmt, Context),
-    SlotVarLval = ml_local_var(SlotVarName, SlotVarType),
+    SlotVarNameType = mlds_local_var_name_type(SlotVarName, SlotVarType),
 
     ml_gen_info_new_aux_var_name(mcav_str, StringVarName, !Info),
     StringVarType = ml_string_type,
@@ -1412,18 +1420,18 @@ ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
     % the heap. So GC never needs to trace StringVar.
     StringVarDefn = ml_gen_mlds_var_decl(StringVarName, StringVarType,
         gc_no_stmt, Context),
-    StringVarLval = ml_local_var(StringVarName, StringVarType),
+    StringVarNameType = mlds_local_var_name_type(StringVarName, StringVarType),
 
     AlwaysDefns = [SlotVarDefn, StringVarDefn],
     ml_should_use_stop_loop(Context, LoopPresent,
-        MaybeStopLoopLval, StopLoopVarDefns, !Info),
+        MaybeStopLoopVarNameType, StopLoopVarDefns, !Info),
     Defns = AlwaysDefns ++ StopLoopVarDefns,
 
     % Generate the code for when the lookup fails.
     ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, FailStmts, !Info),
 
     HashSearchInfo = ml_hash_search_info(CodeModel, LoopPresent, Context,
-        VarRval, SlotVarLval, StringVarLval, MaybeStopLoopLval,
+        VarRval, SlotVarNameType, StringVarNameType, MaybeStopLoopVarNameType,
         FailStmts, Defns).
 
 :- pred ml_gen_string_hash_switch_search(string::in, ml_hash_search_info::in,
@@ -1437,15 +1445,31 @@ ml_gen_string_hash_switch_search(InitialComment,
         StringFieldId, MaybeNextSlotFieldId, HashMask,
         MatchDefns, MatchStmts, Stmts, !Info) :-
     HashSearchInfo = ml_hash_search_info(CodeModel, LoopPresent,
-        Context, VarRval, SlotVarLval, StringVarLval,
-        MaybeStopLoopVarLval, FailStmts, _Defns),
-    SlotVarRval = ml_lval(SlotVarLval),
-    StringVarRval = ml_lval(StringVarLval),
-    SlotVarType = mlds_native_int_type,
-    StringVarType = ml_string_type,
+        Context, VarRval, SlotVarNameType, StringVarNameType,
+        MaybeStopLoopVarNameType, FailStmts, _Defns),
 
-    ml_wrap_loop_break(CodeModel, LoopPresent,
-        Context, MaybeStopLoopVarLval,
+    SlotVarNameType = mlds_local_var_name_type(SlotVarName, SlotVarType),
+    SlotVarLval = ml_local_var(SlotVarName, SlotVarType),
+    SlotVarRval = ml_lval(SlotVarLval),
+
+    StringVarNameType = mlds_local_var_name_type(StringVarName, StringVarType),
+    StringVarLval = ml_local_var(StringVarName, StringVarType),
+    StringVarRval = ml_lval(StringVarLval),
+
+    (
+        MaybeStopLoopVarNameType = no,
+        MaybeStopLoopVarLval = no,
+        StopLoopVarNameList = []
+    ;
+        MaybeStopLoopVarNameType = yes(StopLoopVarNameType),
+        StopLoopVarNameType =
+            mlds_local_var_name_type(StopLoopVarName, StopLoopVarType),
+        StopLoopVarLval0 = ml_local_var(StopLoopVarName, StopLoopVarType),
+        MaybeStopLoopVarLval = yes(StopLoopVarLval0),
+        StopLoopVarNameList = [StopLoopVarName]
+    ),
+
+    ml_wrap_loop_break(CodeModel, LoopPresent, Context, MaybeStopLoopVarLval,
         MatchDefns, MatchStmts, FailStmts,
         SetupForFailStmts, SuccessStmt, AfterStmts, !Info),
 
@@ -1529,7 +1553,8 @@ ml_gen_string_hash_switch_search(InitialComment,
             LookForMatchPrepareStmts ++ [LookForMatchStmt], Context),
         LoopStmts = [
             ml_stmt_atomic(comment("hash chain loop"), Context),
-            ml_stmt_while(loop_at_least_once, LoopTest, LoopBody, Context)
+            ml_stmt_while(loop_at_least_once, LoopTest, LoopBody,
+                [SlotVarName, StringVarName | StopLoopVarNameList], Context)
         ],
         SearchStmts = PrepareForMatchStmts ++
             InitStopLoopVarStmts ++ InitSuccessStmts ++ LoopStmts,
@@ -1558,8 +1583,11 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
     ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
         Context, VarRval, BinarySearchInfo, !Info),
     BinarySearchInfo = ml_binary_search_info(_CodeModel,
-        _VarRval, _LoVarLval, _HiVarLval, MidVarLval, _ResultVarLval,
-        _MaybeStopLoopVarLval, _FailStmts, Defns),
+        _VarRval, _LoVarNameType, _HiVarNameType, MidVarNameType,
+        _ResultVarNameType, _MaybeStopLoopVarNameType, _FailStmts, Defns),
+
+    MidVarNameType = mlds_local_var_name_type(MidVarName, MidVarType),
+    MidVarLval = ml_local_var(MidVarName, MidVarType),
 
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
@@ -1721,8 +1749,11 @@ ml_generate_string_binary_simple_lookup_switch(VarRval, CaseValues0,
     ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
         Context, VarRval, BinarySearchInfo, !Info),
     BinarySearchInfo = ml_binary_search_info(_CodeModel, _VarRval,
-        _LoVarLval, _HiVarLval, MidVarLval, _ResultVarLval, _MaybeStopLoopLval,
-        _FailStmts, Defns),
+        _LoVarNameType, _HiVarNameType, MidVarNameType,
+        _ResultVarNameType, _MaybeStopLoopNameType, _FailStmts, Defns),
+
+    MidVarNameType = mlds_local_var_name_type(MidVarName, MidVarType),
+    MidVarLval = ml_local_var(MidVarName, MidVarType),
     MidVarRval = ml_lval(MidVarLval),
 
     ml_generate_field_assigns(OutVars, OutTypes, OutFieldIds,
@@ -1822,8 +1853,10 @@ ml_generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns0,
     ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
         Context, VarRval, BinarySearchInfo, !Info),
     BinarySearchInfo = ml_binary_search_info(_CodeModel, _VarRval,
-        _LoVarLval, _HiVarLval, MidVarLval, _ResultVarLval, _MaybeStopLoopLval,
-        _FailStmts, Defns),
+        _LoVarNameType, _HiVarNameType, MidVarNameType,
+        _ResultVarNameType, _MaybeStopLoopNameType, _FailStmts, Defns),
+    MidVarNameType = mlds_local_var_name_type(MidVarName, MidVarType),
+    MidVarLval = ml_local_var(MidVarName, MidVarType),
 
     ml_gen_several_soln_lookup_code(Context,
         ml_lval(MidVarLval), OutVars, OutTypes,
@@ -1898,11 +1931,11 @@ ml_gen_string_binary_several_lookup_initializers([Str - Solns | StrSolns],
     --->    ml_binary_search_info(
                 mbsi_code_model             :: code_model,
                 mbsi_switch_var             :: mlds_rval,
-                mbsi_lo_var                 :: mlds_lval,
-                mbsi_hi_var                 :: mlds_lval,
-                mbsi_mid_var                :: mlds_lval,
-                mbsi_result_var             :: mlds_lval,
-                mbsi_stop_loop_var          :: maybe(mlds_lval),
+                mbsi_lo_var                 :: mlds_local_var_name_type,
+                mbsi_hi_var                 :: mlds_local_var_name_type,
+                mbsi_mid_var                :: mlds_local_var_name_type,
+                mbsi_result_var             :: mlds_local_var_name_type,
+                mbsi_stop_loop_var          :: maybe(mlds_local_var_name_type),
                 mbsi_fail_statements        :: list(mlds_stmt),
                 mbsi_defns                  :: list(mlds_local_var_defn)
             ).
@@ -1928,34 +1961,34 @@ ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
     ml_gen_info_new_aux_var_name(mcav_lo, LoVarName, !Info),
     LoVarDefn = ml_gen_mlds_var_decl(LoVarName, IndexType,
         IndexGCStmt, Context),
-    LoVarLval = ml_local_var(LoVarName, IndexType),
+    LoVarNameType = mlds_local_var_name_type(LoVarName, IndexType),
 
     ml_gen_info_new_aux_var_name(mcav_hi, HiVarName, !Info),
     HiVarDefn = ml_gen_mlds_var_decl(HiVarName, IndexType,
         IndexGCStmt, Context),
-    HiVarLval = ml_local_var(HiVarName, IndexType),
+    HiVarNameType = mlds_local_var_name_type(HiVarName, IndexType),
 
     ml_gen_info_new_aux_var_name(mcav_mid, MidVarName, !Info),
     MidVarDefn = ml_gen_mlds_var_decl(MidVarName, IndexType,
         IndexGCStmt, Context),
-    MidVarLval = ml_local_var(MidVarName, IndexType),
+    MidVarNameType = mlds_local_var_name_type(MidVarName, IndexType),
 
     ml_gen_info_new_aux_var_name(mcav_result, ResultVarName, !Info),
     ResultVarDefn = ml_gen_mlds_var_decl(ResultVarName, ResultType,
         ResultGCStmt, Context),
-    ResultVarLval = ml_local_var(ResultVarName, ResultType),
+    ResultVarNameType = mlds_local_var_name_type(ResultVarName, ResultType),
 
     AlwaysDefns = [LoVarDefn, HiVarDefn, MidVarDefn, ResultVarDefn],
     ml_should_use_stop_loop(Context, yes,
-        MaybeStopLoopLval, StopLoopVarDefns, !Info),
+        MaybeStopLoopNameType, StopLoopVarDefns, !Info),
     Defns = AlwaysDefns ++ StopLoopVarDefns,
 
     % Generate the code for when the lookup fails.
     ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, FailStmts, !Info),
 
     BinarySearchInfo = ml_binary_search_info(CodeModel, VarRval,
-        LoVarLval, HiVarLval, MidVarLval, ResultVarLval, MaybeStopLoopLval,
-        FailStmts, Defns).
+        LoVarNameType, HiVarNameType, MidVarNameType,
+        ResultVarNameType, MaybeStopLoopNameType, FailStmts, Defns).
 
 :- pred ml_gen_string_binary_switch_search(prog_context::in, string::in,
     ml_binary_search_info::in, mlds_vector_common::in, int::in, mlds_type::in,
@@ -1966,12 +1999,37 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
         BinarySearchInfo, VectorCommon, TableSize, StructType, StringFieldId,
         MatchDefns, MatchStmt, Stmts, !Info) :-
     BinarySearchInfo = ml_binary_search_info(CodeModel, VarRval,
-        LoVarLval, HiVarLval, MidVarLval, ResultVarLval, MaybeStopLoopVarLval,
-        FailStmts, _Defns),
+        LoVarNameType, HiVarNameType, MidVarNameType,
+        ResultVarNameType, MaybeStopLoopVarNameType, FailStmts, _Defns),
+
+    LoVarNameType = mlds_local_var_name_type(LoVarName, LoVarType),
+    LoVarLval = ml_local_var(LoVarName, LoVarType),
     LoVarRval = ml_lval(LoVarLval),
+
+    HiVarNameType = mlds_local_var_name_type(HiVarName, HiVarType),
+    HiVarLval = ml_local_var(HiVarName, HiVarType),
     HiVarRval = ml_lval(HiVarLval),
+
+    MidVarNameType = mlds_local_var_name_type(MidVarName, MidVarType),
+    MidVarLval = ml_local_var(MidVarName, MidVarType),
     MidVarRval = ml_lval(MidVarLval),
+
+    ResultVarNameType = mlds_local_var_name_type(ResultVarName, ResultVarType),
+    ResultVarLval = ml_local_var(ResultVarName, ResultVarType),
     ResultVarRval = ml_lval(ResultVarLval),
+
+    (
+        MaybeStopLoopVarNameType = no,
+        MaybeStopLoopVarLval = no,
+        StopLoopVarNameList = []
+    ;
+        MaybeStopLoopVarNameType = yes(StopLoopVarNameType),
+        StopLoopVarNameType =
+            mlds_local_var_name_type(StopLoopVarName, StopLoopVarType),
+        StopLoopVarLval0 = ml_local_var(StopLoopVarName, StopLoopVarType),
+        MaybeStopLoopVarLval = yes(StopLoopVarLval0),
+        StopLoopVarNameList = [StopLoopVarName]
+    ),
 
     ml_wrap_loop_break(CodeModel, yes, Context, MaybeStopLoopVarLval,
         MatchDefns, MatchStmt, FailStmts,
@@ -1989,6 +2047,10 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
     CrossingTest = ml_binop(int_le(int_type_int), LoVarRval, HiVarRval),
 
     AssignMidVarStmt = ml_stmt_atomic(
+        % NOTE This assumes that LoVarRval + HiVarRval cannot overflow.
+        % This is a safe assumption; I (zs) am pretty sure that if we ever
+        % get a string switch with around 2^30 cases, then the compiler
+        % will run out of memory before we get here :-(
         assign(MidVarLval,
             ml_binop(int_div(int_type_int),
                 ml_binop(int_add(int_type_int), LoVarRval, HiVarRval),
@@ -2020,6 +2082,8 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
                 Context)),
             Context),
 
+    LoHiMidResultMaybeStopVarNames = [LoVarName, MidVarName, HiVarName,
+        ResultVarName | StopLoopVarNameList],
     (
         MaybeStopLoopVarLval = no,
         LoopBodyStmts = [
@@ -2034,7 +2098,7 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
             ml_stmt_while(loop_at_least_once,
                 CrossingTest,
                 ml_stmt_block([], [], LoopBodyStmts, Context),
-                Context)
+                LoHiMidResultMaybeStopVarNames, Context)
         ]
     ;
         MaybeStopLoopVarLval = yes(StopLoopVarLval),
@@ -2057,7 +2121,7 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
             ml_stmt_while(loop_at_least_once,
                 ml_binop(logical_and, StopLoopTest, CrossingTest),
                 ml_stmt_block([], [], LoopBodyStmts, Context),
-                Context)
+                LoHiMidResultMaybeStopVarNames, Context)
         ]
     ),
 
@@ -2072,11 +2136,11 @@ ml_gen_string_binary_switch_search(Context, InitialComment,
 %
 
 :- pred ml_should_use_stop_loop(prog_context::in, bool::in,
-    maybe(mlds_lval)::out, list(mlds_local_var_defn)::out,
+    maybe(mlds_local_var_name_type)::out, list(mlds_local_var_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_should_use_stop_loop(Context, LoopPresent,
-        MaybeStopLoopLval, StopLoopLvalDefns, !Info) :-
+        MaybeStopLoopVarNameType, StopLoopLvalDefns, !Info) :-
     (
         LoopPresent = no,
         UseStopLoop = no
@@ -2100,7 +2164,7 @@ ml_should_use_stop_loop(Context, LoopPresent,
     ),
     (
         UseStopLoop = no,
-        MaybeStopLoopLval = no,
+        MaybeStopLoopVarNameType = no,
         StopLoopLvalDefns = []
     ;
         UseStopLoop = yes,
@@ -2115,8 +2179,9 @@ ml_should_use_stop_loop(Context, LoopPresent,
         ml_gen_info_new_aux_var_name(mcav_stop_loop, StopLoopVarName, !Info),
         StopLoopVarDefn = ml_gen_mlds_var_decl(StopLoopVarName,
             StopLoopType, StopLoopGCStmt, Context),
-        StopLoopVarLval = ml_local_var(StopLoopVarName, StopLoopType),
-        MaybeStopLoopLval = yes(StopLoopVarLval),
+        StopLoopVarNameType =
+            mlds_local_var_name_type(StopLoopVarName, StopLoopType),
+        MaybeStopLoopVarNameType = yes(StopLoopVarNameType),
         StopLoopLvalDefns = [StopLoopVarDefn]
     ).
 

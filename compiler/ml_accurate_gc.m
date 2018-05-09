@@ -459,9 +459,9 @@ fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
         list.map_foldl(fixup_newobj_in_stmt, SubStmts0, SubStmts, !Fixup),
         Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
-        Stmt0 = ml_stmt_while(Kind, Rval, BodyStmt0, Context),
+        Stmt0 = ml_stmt_while(Kind, Rval, BodyStmt0, LoopLocalVars, Context),
         fixup_newobj_in_stmt(BodyStmt0, BodyStmt, !Fixup),
-        Stmt = ml_stmt_while(Kind, Rval, BodyStmt, Context)
+        Stmt = ml_stmt_while(Kind, Rval, BodyStmt, LoopLocalVars, Context)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0, Context),
         fixup_newobj_in_stmt(Then0, Then, !Fixup),

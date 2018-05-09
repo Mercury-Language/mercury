@@ -351,7 +351,7 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
     LoopCond = ml_binop(int_lt(int_type_int), SlotVarRval,
         ml_const(mlconst_int(NumRows))),
     LoopStmt = ml_stmt_while(loop_at_least_once, LoopCond, LoopBodyStmt,
-        Context),
+        [SlotVar], Context),
 
     Stmt = ml_stmt_block([SlotVarDefn], [],
         [InitSlotVarStmt, LoopStmt], Context),

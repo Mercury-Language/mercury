@@ -143,6 +143,10 @@
 
 %---------------------------------------------------------------------------%
 
+:- func project_mlds_argument_name(mlds_argument) = mlds_local_var_name.
+
+%---------------------------------------------------------------------------%
+
 :- func mlds_maybe_aux_func_id_to_suffix(mlds_maybe_aux_func_id) = string.
 
 %---------------------------------------------------------------------------%
@@ -221,7 +225,7 @@ stmt_contains_statement(Stmt, SubStmt) :-
         Stmt = ml_stmt_block(_LocalVarDefns, _FuncDefns, Stmts, _Context),
         statements_contains_statement(Stmts, SubStmt)
     ;
-        Stmt = ml_stmt_while(_Kind, _Rval, BodyStmt, _Context),
+        Stmt = ml_stmt_while(_Kind, _Rval, BodyStmt, _LoopLocalVars, _Context),
         statement_is_or_contains_statement(BodyStmt, SubStmt)
     ;
         Stmt = ml_stmt_if_then_else(_Cond, ThenStmt, MaybeElseStmt, _Context),
@@ -319,7 +323,8 @@ statement_contains_var(Stmt, SearchVarName) = ContainsVar :-
             )
         )
     ;
-        Stmt = ml_stmt_while(_Kind, Rval, BodyStmt, _Context),
+        Stmt = ml_stmt_while(_Kind, Rval, BodyStmt, _LoopLocalVars, _Context),
+        % _LoopLocalVars should contain a variable only if BodyStmt does too.
         RvalContainsVar = rval_contains_var(Rval, SearchVarName),
         (
             RvalContainsVar = yes,
@@ -879,7 +884,7 @@ wrap_init_obj(Rval) = init_obj(Rval).
 
 get_mlds_stmt_context(Stmt) = Context :-
     ( Stmt = ml_stmt_block(_, _, _, Context)
-    ; Stmt = ml_stmt_while(_, _, _, Context)
+    ; Stmt = ml_stmt_while(_, _, _, _, Context)
     ; Stmt = ml_stmt_if_then_else(_, _, _, Context)
     ; Stmt = ml_stmt_switch(_, _, _, _, _, Context)
     ; Stmt = ml_stmt_label(_, Context)
@@ -891,6 +896,10 @@ get_mlds_stmt_context(Stmt) = Context :-
     ; Stmt = ml_stmt_call(_, _, _, _, _, Context)
     ; Stmt = ml_stmt_atomic(_, Context)
     ).
+
+%---------------------------------------------------------------------------%
+
+project_mlds_argument_name(mlds_argument(LocalVarName, _, _)) = LocalVarName.
 
 %---------------------------------------------------------------------------%
 

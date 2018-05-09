@@ -2347,7 +2347,7 @@ output_stmt_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
         output_stmt_block_for_csharp(Info, Indent, FuncInfo, Stmt,
             ExitMethods, !IO)
     ;
-        Stmt = ml_stmt_while(_, _, _, _),
+        Stmt = ml_stmt_while(_, _, _, _, _),
         output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt,
             ExitMethods, !IO)
     ;
@@ -2434,7 +2434,7 @@ output_stmt_block_for_csharp(Info, Indent, FuncInfo, Stmt,
 :- pragma inline(output_stmt_while_for_csharp/7).
 
 output_stmt_while_for_csharp(Info, Indent, FuncInfo, Stmt, ExitMethods, !IO) :-
-    Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
+    Stmt = ml_stmt_while(Kind, Cond, BodyStmt, _LoopLocalVars, Context),
     scope_indent(BodyStmt, Indent, ScopeIndent),
     (
         Kind = may_loop_zero_times,

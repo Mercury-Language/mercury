@@ -3525,7 +3525,7 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
         Stmt = ml_stmt_block(_LocalVarDefns, _FuncDefns, _SubStmts, _Context),
         mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
-        Stmt = ml_stmt_while(_Kind, _Cond, _BodyStmt, _Context),
+        Stmt = ml_stmt_while(_Kind, _Cond, _BodyStmt, _LoopLocalVars, _Context),
         mlds_output_stmt_while(Opts, Indent, FuncInfo, Stmt, !IO)
     ;
         Stmt = ml_stmt_if_then_else(_Cond, _Then, _MaybeElse, _Context),
@@ -3620,7 +3620,7 @@ mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO) :-
 :- pragma inline(mlds_output_stmt_while/6).
 
 mlds_output_stmt_while(Opts, Indent, FuncInfo, Stmt, !IO) :-
-    Stmt = ml_stmt_while(Kind, Cond, BodyStmt, Context),
+    Stmt = ml_stmt_while(Kind, Cond, BodyStmt, _LoopLocalVars, Context),
     scope_indent(BodyStmt, Indent, ScopeIndent),
     BodyOpts = Opts ^ m2co_break_context := bc_loop,
     (

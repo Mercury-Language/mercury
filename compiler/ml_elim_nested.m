@@ -1408,10 +1408,11 @@ flatten_statement(Action, Stmt0, Stmt, !Info) :-
             InitStmts ++ SubStmts0, SubStmts, !Info),
         Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
-        Stmt0 = ml_stmt_while(Kind, Rval0, SubStmt0, Context),
+        Stmt0 = ml_stmt_while(Kind, Rval0, SubStmt0, LoopLocalVars0, Context),
         fixup_rval(Action, !.Info, Rval0, Rval),
+        fixup_local_vars(Action, !.Info, LoopLocalVars0, LoopLocalVars),
         flatten_statement(Action, SubStmt0, SubStmt, !Info),
-        Stmt = ml_stmt_while(Kind, Rval, SubStmt, Context)
+        Stmt = ml_stmt_while(Kind, Rval, SubStmt, LoopLocalVars, Context)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0, Context),
         fixup_rval(Action, !.Info, Cond0, Cond),
@@ -2040,6 +2041,31 @@ fixup_lval(Action, Info, Lval0, Lval) :-
         fixup_var(Action, Info, Var0, VarType, Lval)
     ).
 
+:- pred fixup_local_vars(action, elim_info,
+    list(mlds_local_var_name), list(mlds_local_var_name)).
+:- mode fixup_local_vars(in(hoist), in, in, out) is det.
+:- mode fixup_local_vars(in(chain), in, in, out) is det.
+
+fixup_local_vars(_, _, [], []).
+fixup_local_vars(Action, Info, [HeadLocalVar0 | TailLocalVars0], LocalVars) :-
+    fixup_local_vars(Action, Info, TailLocalVars0, TailLocalVars),
+    fixup_var(Action, Info, HeadLocalVar0, mlds_unknown_type, HeadLval),
+    (
+        HeadLval = ml_local_var(HeadLvalLocalVar, _),
+        expect(unify(HeadLocalVar0, HeadLvalLocalVar), $pred,
+            "HeadLocalVar0 != HeadLvalLocalVar"),
+        LocalVars = [HeadLocalVar0 | TailLocalVars]
+    ;
+        ( HeadLval = ml_field(_, _, _, _, _)
+        ; HeadLval = ml_mem_ref(_, _)
+        ; HeadLval = ml_global_var(_, _)
+        ; HeadLval = ml_target_global_var_ref(_)
+        ),
+        % HeadLocalVar0 will be transformed into an lval other than a local var
+        % by Action, so delete it from the list of local vars.
+        LocalVars = TailLocalVars
+    ).
+
 % fixup_gc_statements:
 %
 % Process the trace code in the locals that have been hoisted to the stack
@@ -2226,7 +2252,7 @@ statement_contains_matching_defn(Filter, Stmt) :-
         ; statements_contains_matching_defn(Filter, SubStmts)
         )
     ;
-        Stmt = ml_stmt_while(_Kind, _Rval, SubStmt, _Context),
+        Stmt = ml_stmt_while(_Kind, _Rval, SubStmt, _LoopLocalVars, _Context),
         statement_contains_matching_defn(Filter, SubStmt)
     ;
         Stmt = ml_stmt_if_then_else(_Cond, SubThen, MaybeSubElse, _Context),
@@ -2348,9 +2374,9 @@ add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info) :-
         add_unchain_stack_to_stmts(Action, SubStmts0, SubStmts, !Info),
         Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
-        Stmt0 = ml_stmt_while(Kind, Rval, SubStmt0, Context),
+        Stmt0 = ml_stmt_while(Kind, Rval, SubStmt0, LoopLocalVars, Context),
         add_unchain_stack_to_stmt(Action, SubStmt0, SubStmt, !Info),
-        Stmt = ml_stmt_while(Kind, Rval, SubStmt, Context)
+        Stmt = ml_stmt_while(Kind, Rval, SubStmt, LoopLocalVars, Context)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0, Context),
         add_unchain_stack_to_stmt(Action, Then0, Then, !Info),
