@@ -1282,7 +1282,7 @@ ml_gen_extra_arg_assign([ExtraRvalTypeWidth | ExtraRvalsTypesWidths],
     list(unify_mode)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
+ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
     ml_variable_type(!.Info, Var, Type),
     ml_cons_id_to_tag(!.Info, ConsId, Tag),
     (
@@ -1311,11 +1311,11 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
     ;
         Tag = no_tag,
         ( if
-            Args = [Arg],
+            ArgVars = [ArgVar],
             Modes = [Mode]
         then
-            ml_variable_type(!.Info, Arg, ArgType),
-            ml_gen_var(!.Info, Arg, ArgLval),
+            ml_variable_type(!.Info, ArgVar, ArgType),
+            ml_gen_var(!.Info, ArgVar, ArgLval),
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_info_get_high_level_data(!.Info, HighLevelData),
@@ -1328,11 +1328,11 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
     ;
         Tag = direct_arg_tag(Ptag),
         ( if
-            Args = [Arg],
+            ArgVars = [ArgVar],
             Modes = [Mode]
         then
-            ml_variable_type(!.Info, Arg, ArgType),
-            ml_gen_var(!.Info, Arg, ArgLval),
+            ml_variable_type(!.Info, ArgVar, ArgType),
+            ml_gen_var(!.Info, ArgVar, ArgLval),
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
@@ -1347,9 +1347,9 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Stmts, !Info) :-
         ),
         ml_gen_var(!.Info, Var, VarLval),
         ml_tag_offset_and_argnum(Tag, _, InitOffSet, ArgNum),
-        ml_field_names_and_types(!.Info, Type, ConsId, InitOffSet, Args,
+        ml_field_names_and_types(!.Info, Type, ConsId, InitOffSet, ArgVars,
             Fields),
-        ml_gen_unify_args(ConsId, Args, Modes, Fields, Type,
+        ml_gen_unify_args(ConsId, ArgVars, Modes, Fields, Type,
             VarLval, InitOffSet, ArgNum, Tag, Context, Stmts, !Info)
     ).
 
@@ -1419,11 +1419,12 @@ ml_tag_offset_and_argnum(Tag, Ptag, InitOffset, ArgNum) :-
     cons_id::in, field_offset::in, list(prog_var)::in,
     list(constructor_arg_repn)::out) is det.
 
-ml_field_names_and_types(Info, Type, ConsId, InitOffset, Args, CtorArgRepns) :-
+ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
+        CtorArgRepns) :-
     % Lookup the field types for the arguments of this cons_id.
     InitOffset = offset(InitOffsetInt),
     ( if type_is_tuple(Type, _) then
-        list.length(Args, TupleArity),
+        list.length(ArgVars, TupleArity),
         % The argument types for tuples are unbound type variables.
         FieldTypes = ml_make_boxed_types(TupleArity),
         % Fields in tuples are all word-sized, and have no extra type_infos
@@ -1437,13 +1438,13 @@ ml_field_names_and_types(Info, Type, ConsId, InitOffset, Args, CtorArgRepns) :-
 
         % Add the fields for any type_infos and/or typeclass_infos inserted
         % for existentially quantified data types. For these, we just copy
-        % the types of the initial Args.
-        NumArgs = list.length(Args),
+        % the types of the initial ArgVars.
+        NumArgVars = list.length(ArgVars),
         NumCtorArgs = list.length(CtorArgRepns0),
-        NumExtraArgs = NumArgs - NumCtorArgs,
-        ( if NumExtraArgs > 0 then
-            ExtraArgs = list.take_upto(NumExtraArgs, Args),
-            ml_variable_types(Info, ExtraArgs, ExtraArgTypes),
+        NumExtraArgVars = NumArgVars - NumCtorArgs,
+        ( if NumExtraArgVars > 0 then
+            ExtraArgVars = list.take_upto(NumExtraArgVars, ArgVars),
+            ml_variable_types(Info, ExtraArgVars, ExtraArgTypes),
             % The extra type_infos and/or typeclass_infos are all stored
             % in one full word each.
             allocate_consecutive_full_word_ctor_arg_repns(InitOffsetInt,
@@ -1460,10 +1461,10 @@ ml_field_names_and_types(Info, Type, ConsId, InitOffset, Args, CtorArgRepns) :-
     prog_context::in, list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out)
     is det.
 
-ml_gen_unify_args(ConsId, Args, Modes, CtorArgRepns, VarType, VarLval,
+ml_gen_unify_args(ConsId, ArgVars, Modes, CtorArgRepns, VarType, VarLval,
         Offset, ArgNum, Tag, Context, Stmts, !Info) :-
     ( if
-        ml_gen_unify_args_loop(ConsId, Args, Modes, CtorArgRepns,
+        ml_gen_unify_args_loop(ConsId, ArgVars, Modes, CtorArgRepns,
             VarType, VarLval, Offset, ArgNum, Tag, Context,
             [], Stmts0, !Info)
     then
@@ -1553,6 +1554,9 @@ ml_gen_unify_args_for_reuse(ConsId, ArgVars, Modes, CtorArgRepns,
 
 ml_gen_unify_arg(ConsId, ArgVar, Mode, CtorArgRepn, VarType, VarLval,
         Offset, ArgNum, Tag, Context, !Stmts, !Info) :-
+    % XXX ARG_PACK Many of the decisions that this predicate makes
+    % are repeated the same way for every argumeny. This redundant work
+    % should be eliminated.
     MaybeFieldName = CtorArgRepn ^ car_field_name,
     FieldType = CtorArgRepn ^ car_type,
     FieldPosWidth = CtorArgRepn ^ car_pos_width,
@@ -1584,6 +1588,8 @@ ml_gen_unify_arg(ConsId, ArgVar, Mode, CtorArgRepn, VarType, VarLval,
         )
     ),
     % Box the field type, if needed.
+    % XXX ARG_PACK For sub-word-sized fields, this should *never* be needed,
+    % so we should do this only for full- and double-word arguments.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
     ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
@@ -1603,8 +1609,9 @@ ml_gen_unify_arg(ConsId, ArgVar, Mode, CtorArgRepn, VarType, VarLval,
         FieldLval, BoxedFieldType, FieldPosWidth, Context, !Stmts).
 
 :- pred ml_gen_sub_unify(module_info::in, bool::in, unify_mode::in,
-    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_pos_width::in,
-    prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
+    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
+    arg_pos_width::in, prog_context::in,
+    list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
 ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
         FieldLval, FieldType, FieldWidth, Context, !Stmts) :-
@@ -1679,8 +1686,9 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
     ).
 
 :- pred ml_gen_sub_unify_assign_right(module_info::in,
-    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, arg_pos_width::in,
-    prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
+    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
+    arg_pos_width::in, prog_context::in,
+    list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
 ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
         FieldLval, FieldType, FieldWidth, Context, !Stmts) :-
@@ -1789,6 +1797,7 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
         ;
             FieldWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
         ),
+        % XXX ARG_PACK Optimize this when replacing the whole word.
         Shift = arg_shift(ShiftInt),
         Mask = arg_mask(MaskInt),
         CastVal = ml_unop(unbox(mlds_native_int_type), ml_lval(FieldLval)),
@@ -1989,11 +1998,12 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
     list(unify_mode)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context, Stmts, !Info) :-
+ml_gen_semi_deconstruct(Var, ConsId, ArgVars, ArgModes, Context,
+        Stmts, !Info) :-
     ml_gen_tag_test(Var, ConsId, TagTestExpr, !Info),
     ml_gen_set_success(TagTestExpr, Context, SetTagTestResult, !Info),
     ml_gen_test_success(SucceededExpr, !Info),
-    ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
+    ml_gen_det_deconstruct(Var, ConsId, ArgVars, ArgModes, Context,
         GetArgsStmts, !Info),
     (
         GetArgsStmts = [],
@@ -2361,7 +2371,8 @@ ml_gen_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
     Goal = hlds_goal(GoalExpr, GoalInfo),
     ( if
         GoalExpr = unify(_, _, _, Unify, _),
-        Unify = construct(Var, ConsId, Args, _, _HowToConstruct, _, SubInfo),
+        Unify = construct(Var, ConsId, ArgVars, _, _HowToConstruct,
+            _, SubInfo),
         SubInfo = no_construct_sub_info
     then
         lookup_var_type(VarTypes, Var, VarType),
@@ -2369,8 +2380,8 @@ ml_gen_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         Context = goal_info_get_context(GoalInfo),
         ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData,
-            VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, Args, Context,
-            !GlobalData, !GroundTermMap)
+            VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, ArgVars,
+            Context, !GlobalData, !GroundTermMap)
     else
         unexpected($pred, "malformed goal")
     ).
