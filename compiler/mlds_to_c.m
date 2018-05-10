@@ -4053,7 +4053,7 @@ find_out_if_call_has_return(IsTailCall, Results,
     then
         CalleeSignature = mlds_func_signature(_, CalleeRetTypes),
         CallerSignature = mlds_func_signature(_, CallerRetTypes),
-        ( if 
+        ( if
             Results = [_ | _],
             CalleeRetTypes = CallerRetTypes
         then
@@ -4856,103 +4856,6 @@ mlds_output_cast(Opts, Type, !IO) :-
     mlds_output_type(Opts, Type, !IO),
     io.write_string(") ", !IO).
 
-:- pred mlds_output_boxed_rval(mlds_to_c_opts::in,
-    mlds_type::in, mlds_rval::in, io::di, io::uo) is det.
-
-mlds_output_boxed_rval(Opts, Type, Expr, !IO) :-
-    % XXX ARG_PACK We should be able to optimize this code
-    % by turning all the tests of Type into a switch.
-    ( if
-        ( Type = mlds_generic_type
-        ; Type = mercury_type(_, _, ctor_cat_variable)
-        )
-    then
-        % It already has type MR_Box, so no cast is needed.
-        mlds_output_rval(Opts, Expr, !IO)
-    else if
-        Expr = ml_unop(cast(OtherType), InnerExpr),
-        ( Type = OtherType
-        ; is_an_address(InnerExpr) = yes
-        )
-    then
-        % Avoid unnecessary double-casting -- strip away the inner cast.
-        % This is necessary for ANSI/ISO C conformance, to avoid casts
-        % from pointers to integers in static initializers.
-        mlds_output_boxed_rval(Opts, Type, InnerExpr, !IO)
-    else if
-        ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
-        ; Type = mlds_native_float_type
-        )
-    then
-        ( if
-            Opts ^ m2co_highlevel_data = yes,
-            Expr = ml_const(mlconst_float(Float))
-        then
-            mlds_output_float_bits(Opts, Float, !IO)
-        else
-            io.write_string("MR_box_float(", !IO),
-            mlds_output_rval(Opts, Expr, !IO),
-            io.write_string(")", !IO)
-        )
-    else if
-        Type = mercury_type(builtin_type(BuiltinType), _,  _),
-        BuiltinType = builtin_type_int(int_type_int64)
-    then
-        io.write_string("MR_box_int64(", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string(")", !IO)
-    else if
-        Type = mercury_type(builtin_type(BuiltinType), _, _),
-        BuiltinType = builtin_type_int(int_type_uint64)
-    then
-        io.write_string("MR_box_uint64(", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string(")", !IO)
-    else if
-        type_is_smaller_than_word(Type)
-    then
-        % We cast first to MR_Word, and then to MR_Box.
-        % We do this to avoid spurious warnings from gcc about
-        % "cast from integer to pointer of different size".
-        io.write_string("((MR_Box) (MR_Word) (", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string("))", !IO)
-    else
-        io.write_string("((MR_Box) (", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string("))", !IO)
-    ).
-
-    % Succeeds if the given type is smaller than a word.
-    % On some platforms the type may be equal in size to a word.
-    %
-:- pred type_is_smaller_than_word(mlds_type::in) is semidet.
-
-type_is_smaller_than_word(Type) :-
-    (
-        Type = mercury_type(builtin_type(BuiltinType), _, _),
-        (
-            BuiltinType = builtin_type_char
-        ;
-            BuiltinType = builtin_type_int(IntType),
-            % The following integer types are all (potentially) smaller
-            % than MR_Word.
-            ( IntType = int_type_int8
-            ; IntType = int_type_uint8
-            ; IntType = int_type_int16
-            ; IntType = int_type_uint16
-            ; IntType = int_type_int32
-            ; IntType = int_type_uint32
-            )
-        )
-    ;
-        Type = mlds_native_char_type
-    ;
-        Type = mlds_native_bool_type
-    ;
-        Type = mlds_native_int_type
-    ).
-
     % Return `yes' if the specified rval is an address (possibly tagged and/or
     % cast to a different type).
     %
@@ -5018,51 +4921,316 @@ is_an_address(Rval) = IsAddr :-
         )
     ).
 
+%---------------------%
+
+:- pred mlds_output_boxed_rval(mlds_to_c_opts::in,
+    mlds_type::in, mlds_rval::in, io::di, io::uo) is det.
+
+mlds_output_boxed_rval(Opts, Type, Rval, !IO) :-
+    ( if
+        Rval = ml_unop(cast(OtherType), InnerRval),
+        ( Type = OtherType
+        ; is_an_address(InnerRval) = yes
+        )
+    then
+        % Avoid unnecessary double-casting -- strip away the inner cast.
+        % This is necessary for ANSI/ISO C conformance, to avoid casts
+        % from pointers to integers in static initializers.
+        mlds_output_boxed_rval(Opts, Type, InnerRval, !IO)
+    else
+        (
+            Type = mlds_generic_type,
+            mlds_output_boxed_rval_generic(Opts, Rval, !IO)
+        ;
+            Type = mlds_native_float_type,
+            mlds_output_boxed_rval_float(Opts, Rval, !IO)
+        ;
+            ( Type = mlds_native_char_type
+            ; Type = mlds_native_bool_type
+            ; Type = mlds_native_int_type       % XXX ARG_PACK
+            ),
+            mlds_output_boxed_rval_smaller_than_word(Opts, Rval, !IO)
+        ;
+            ( Type = mlds_native_uint_type
+            ; Type = mlds_array_type(_)
+            ; Type = mlds_mercury_array_type(_)
+            ; Type = mlds_mostly_generic_array_type(_)
+            ; Type = mlds_class_type(_)
+            ; Type = mlds_commit_type
+            ; Type = mlds_cont_type(_)
+            ; Type = mlds_foreign_type(_)
+            ; Type = mlds_func_type(_)
+            ; Type = mlds_generic_env_ptr_type
+            ; Type = mlds_pseudo_type_info_type
+            ; Type = mlds_ptr_type(_)
+            ; Type = mlds_rtti_type(_)
+            ; Type = mlds_tabling_type(_)
+            ; Type = mlds_type_info_type
+            ; Type = mlds_unknown_type
+            ),
+            mlds_output_boxed_rval_default(Opts, Rval, !IO)
+        ;
+            Type = mercury_type(MercuryType, _, _),
+            (
+                MercuryType = builtin_type(BuiltinType),
+                (
+                    BuiltinType = builtin_type_float,
+                    mlds_output_boxed_rval_float(Opts, Rval, !IO)
+                ;
+                    BuiltinType = builtin_type_int(IntType),
+                    (
+                        IntType = int_type_int64,
+                        mlds_output_boxed_rval_int64(Opts, Rval, !IO)
+                    ;
+                        IntType = int_type_uint64,
+                        mlds_output_boxed_rval_uint64(Opts, Rval, !IO)
+                    ;
+                        ( IntType = int_type_int
+                        ; IntType = int_type_uint
+                        ),
+                        mlds_output_boxed_rval_default(Opts, Rval, !IO)
+                    ;
+                        ( IntType = int_type_int8
+                        ; IntType = int_type_uint8
+                        ; IntType = int_type_int16
+                        ; IntType = int_type_uint16
+                        ; IntType = int_type_int32
+                        ; IntType = int_type_uint32
+                        ),
+                        mlds_output_boxed_rval_smaller_than_word(Opts, Rval,
+                            !IO)
+                    )
+                ;
+                    BuiltinType = builtin_type_char,
+                    mlds_output_boxed_rval_smaller_than_word(Opts, Rval, !IO)
+                ;
+                    BuiltinType = builtin_type_string,
+                    mlds_output_boxed_rval_default(Opts, Rval, !IO)
+                )
+            ;
+                MercuryType = type_variable(_, _),
+                mlds_output_boxed_rval_generic(Opts, Rval, !IO)
+            ;
+                ( MercuryType = defined_type(_, _, _)
+                ; MercuryType = tuple_type(_, _)
+                ; MercuryType = higher_order_type(_, _, _, _, _)
+                ; MercuryType = apply_n_type(_, _, _)
+                ; MercuryType = kinded_type(_, _)
+                ),
+                mlds_output_boxed_rval_default(Opts, Rval, !IO)
+            )
+        )
+    ).
+
+:- pred mlds_output_boxed_rval_generic(mlds_to_c_opts::in,
+    mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_boxed_rval_generic/4).
+
+mlds_output_boxed_rval_generic(Opts, Rval, !IO) :-
+    % Rval already has type MR_Box, so no cast is needed.
+    mlds_output_rval(Opts, Rval, !IO).
+
+:- pred mlds_output_boxed_rval_float(mlds_to_c_opts::in,
+    mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_boxed_rval_float/4).
+
+mlds_output_boxed_rval_float(Opts, Rval, !IO) :-
+    ( if
+        Rval = ml_const(mlconst_float(Float)),
+        Opts ^ m2co_highlevel_data = yes
+    then
+        mlds_output_float_bits(Opts, Float, !IO)
+    else
+        io.write_string("MR_box_float(", !IO),
+        mlds_output_rval(Opts, Rval, !IO),
+        io.write_string(")", !IO)
+    ).
+
+:- pred mlds_output_boxed_rval_int64(mlds_to_c_opts::in,
+    mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_boxed_rval_int64/4).
+
+mlds_output_boxed_rval_int64(Opts, Rval, !IO) :-
+    io.write_string("MR_box_int64(", !IO),
+    mlds_output_rval(Opts, Rval, !IO),
+    io.write_string(")", !IO).
+
+:- pred mlds_output_boxed_rval_uint64(mlds_to_c_opts::in,
+    mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_boxed_rval_uint64/4).
+
+mlds_output_boxed_rval_uint64(Opts, Rval, !IO) :-
+    io.write_string("MR_box_uint64(", !IO),
+    mlds_output_rval(Opts, Rval, !IO),
+    io.write_string(")", !IO).
+
+:- pred mlds_output_boxed_rval_smaller_than_word(mlds_to_c_opts::in,
+    mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_boxed_rval_smaller_than_word/4).
+
+mlds_output_boxed_rval_smaller_than_word(Opts, Rval, !IO) :-
+    % We cast first to MR_Word, and then to MR_Box.
+    % We do this to avoid spurious warnings from gcc about
+    % "cast from integer to pointer of different size".
+    io.write_string("((MR_Box) (MR_Word) (", !IO),
+    mlds_output_rval(Opts, Rval, !IO),
+    io.write_string("))", !IO).
+
+:- pred mlds_output_boxed_rval_default(mlds_to_c_opts::in,
+    mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_boxed_rval_default/4).
+
+mlds_output_boxed_rval_default(Opts, Rval, !IO) :-
+    io.write_string("((MR_Box) (", !IO),
+    mlds_output_rval(Opts, Rval, !IO),
+    io.write_string("))", !IO).
+
+%---------------------%
+
 :- pred mlds_output_unboxed_rval(mlds_to_c_opts::in,
     mlds_type::in, mlds_rval::in, io::di, io::uo) is det.
 
-mlds_output_unboxed_rval(Opts, Type, Expr, !IO) :-
-    % XXX ARG_PACK We should be able to optimize this code
-    % by turning all the tests of Type into a switch.
-    ( if
-        ( Type = mercury_type(builtin_type(builtin_type_float), _, _)
-        ; Type = mlds_native_float_type
+mlds_output_unboxed_rval(Opts, Type, Rval, !IO) :-
+    (
+        Type = mlds_native_float_type,
+        mlds_output_unboxed_rval_float(Opts, Rval, !IO)
+    ;
+        ( Type = mlds_native_char_type
+        ; Type = mlds_native_bool_type
+        ; Type = mlds_native_int_type   % XXX ARG_PACK
+        ),
+        mlds_output_unboxed_rval_smaller_than_word(Opts, Type, Rval, !IO)
+    ;
+        ( Type = mlds_native_uint_type
+        ; Type = mlds_array_type(_)
+        ; Type = mlds_mercury_array_type(_)
+        ; Type = mlds_mostly_generic_array_type(_)
+        ; Type = mlds_class_type(_)
+        ; Type = mlds_commit_type
+        ; Type = mlds_cont_type(_)
+        ; Type = mlds_foreign_type(_)
+        ; Type = mlds_func_type(_)
+        ; Type = mlds_generic_type
+        ; Type = mlds_generic_env_ptr_type
+        ; Type = mlds_pseudo_type_info_type
+        ; Type = mlds_ptr_type(_)
+        ; Type = mlds_rtti_type(_)
+        ; Type = mlds_tabling_type(_)
+        ; Type = mlds_type_info_type
+        ; Type = mlds_unknown_type
+        ),
+        mlds_output_unboxed_rval_default(Opts, Type, Rval, !IO)
+    ;
+        Type = mercury_type(MercuryType, _, _),
+        (
+            MercuryType = builtin_type(BuiltinType),
+            (
+                BuiltinType = builtin_type_float,
+                mlds_output_unboxed_rval_float(Opts, Rval, !IO)
+            ;
+                BuiltinType = builtin_type_int(IntType),
+                (
+                    IntType = int_type_int64,
+                    mlds_output_unboxed_rval_int64(Opts, Rval, !IO)
+                ;
+                    IntType = int_type_uint64,
+                    mlds_output_unboxed_rval_uint64(Opts, Rval, !IO)
+                ;
+                    ( IntType = int_type_int
+                    ; IntType = int_type_uint
+                    ),
+                    mlds_output_unboxed_rval_default(Opts, Type, Rval, !IO)
+                ;
+                    % The following integer types are all (potentially) smaller
+                    % than MR_Word.
+                    ( IntType = int_type_int8
+                    ; IntType = int_type_uint8
+                    ; IntType = int_type_int16
+                    ; IntType = int_type_uint16
+                    ; IntType = int_type_int32
+                    ; IntType = int_type_uint32
+                    ),
+                    mlds_output_unboxed_rval_smaller_than_word(Opts,
+                        Type, Rval, !IO)
+                )
+            ;
+                BuiltinType = builtin_type_char,
+                mlds_output_unboxed_rval_smaller_than_word(Opts,
+                    Type, Rval, !IO)
+            ;
+                BuiltinType = builtin_type_string,
+                mlds_output_unboxed_rval_default(Opts, Type, Rval, !IO)
+            )
+        ;
+            ( MercuryType = type_variable(_, _)
+            ; MercuryType = defined_type(_, _, _)
+            ; MercuryType = tuple_type(_, _)
+            ; MercuryType = higher_order_type(_, _, _, _, _)
+            ; MercuryType = apply_n_type(_, _, _)
+            ; MercuryType = kinded_type(_, _)
+            ),
+            mlds_output_unboxed_rval_default(Opts, Type, Rval, !IO)
         )
-    then
-        io.write_string("MR_unbox_float(", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string(")", !IO)
-    else if
-        Type = mercury_type(builtin_type(BuiltinType), _, _),
-        BuiltinType = builtin_type_int(int_type_int64)
-    then
-        io.write_string("MR_unbox_int64(", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string(")", !IO)
-    else if
-        Type = mercury_type(builtin_type(BuiltinType), _, _),
-        BuiltinType = builtin_type_int(int_type_uint64)
-    then
-        io.write_string("MR_unbox_uint64(", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string(")", !IO)
-    else if
-        type_is_smaller_than_word(Type)
-    then
-        % We cast first to MR_Word, and then to the desired type.
-        % This is done to avoid spurious warnings about "cast from
-        % pointer to integer of different size" from gcc.
-        io.write_string("(", !IO),
-        mlds_output_cast(Opts, Type, !IO),
-        io.write_string("(MR_Word) ", !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string(")", !IO)
-    else
-        io.write_string("(", !IO),
-        mlds_output_cast(Opts, Type, !IO),
-        mlds_output_rval(Opts, Expr, !IO),
-        io.write_string(")", !IO)
     ).
+
+:- pred mlds_output_unboxed_rval_float(mlds_to_c_opts::in,
+    mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_unboxed_rval_float/4).
+
+mlds_output_unboxed_rval_float(Opts, Rval, !IO) :-
+    io.write_string("MR_unbox_float(", !IO),
+    mlds_output_rval(Opts, Rval, !IO),
+    io.write_string(")", !IO).
+
+:- pred mlds_output_unboxed_rval_int64(mlds_to_c_opts::in,
+    mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_unboxed_rval_int64/4).
+
+mlds_output_unboxed_rval_int64(Opts, Rval, !IO) :-
+    io.write_string("MR_unbox_int64(", !IO),
+    mlds_output_rval(Opts, Rval, !IO),
+    io.write_string(")", !IO).
+
+:- pred mlds_output_unboxed_rval_uint64(mlds_to_c_opts::in,
+    mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_unboxed_rval_uint64/4).
+
+mlds_output_unboxed_rval_uint64(Opts, Rval, !IO) :-
+    io.write_string("MR_unbox_uint64(", !IO),
+    mlds_output_rval(Opts, Rval, !IO),
+    io.write_string(")", !IO).
+
+:- pred mlds_output_unboxed_rval_smaller_than_word(mlds_to_c_opts::in,
+    mlds_type::in, mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_unboxed_rval_smaller_than_word/5).
+
+mlds_output_unboxed_rval_smaller_than_word(Opts, Type, Rval, !IO) :-
+    % We cast first to MR_Word, and then to the desired type.
+    % This is done to avoid spurious warnings from gcc about
+    % "cast from pointer to integer of different size".
+    % XXX ARG_PACK We call this predicate both too much and not enough.
+    % - We call it for builtin types that *may* be smaller than a word
+    %   on some platforms, whether or not it is smaller than a word
+    %   on *this* platform.
+    % - We do *not* call it values of dummy and enum types, which *are*
+    %   smaller than a word.
+    io.write_string("(", !IO),
+    mlds_output_cast(Opts, Type, !IO),
+    io.write_string("(MR_Word) ", !IO),
+    mlds_output_rval(Opts, Rval, !IO),
+    io.write_string(")", !IO).
+
+:- pred mlds_output_unboxed_rval_default(mlds_to_c_opts::in,
+    mlds_type::in, mlds_rval::in, io::di, io::uo) is det.
+:- pragma inline(mlds_output_unboxed_rval_default/5).
+
+mlds_output_unboxed_rval_default(Opts, Type, Rval, !IO) :-
+    io.write_string("(", !IO),
+    mlds_output_cast(Opts, Type, !IO),
+    mlds_output_rval(Opts, Rval, !IO),
+    io.write_string(")", !IO).
+
+%---------------------%
 
 :- pred mlds_output_std_unop(mlds_to_c_opts::in, builtin_ops.unary_op::in,
     mlds_rval::in, io::di, io::uo) is det.
