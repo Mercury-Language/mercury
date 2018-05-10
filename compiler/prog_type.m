@@ -512,7 +512,11 @@ type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) :-
     ).
 
 type_to_ctor_and_args(Type, TypeCtor, Args) :-
+    require_complete_switch [Type]
     (
+        Type = type_variable(_, _),
+        fail
+    ;
         Type = defined_type(SymName, Args, _),
         Arity = list.length(Args),
         TypeCtor = type_ctor(SymName, Arity)
