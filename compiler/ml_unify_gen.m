@@ -147,6 +147,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
@@ -735,7 +736,7 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     ml_tag_initial_offset_and_argnum(ConsTag, PrimaryTag,
         InitOffSet, ArgNum),
     ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
-        Fields),
+        ArgVarRepns),
 
     ml_gen_var(!.Info, ReuseVar, ReuseVarLval),
 
@@ -761,7 +762,6 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     ),
 
     ml_gen_var(!.Info, Var, VarLval),
-    ml_gen_type(!.Info, VarType, MLDS_VarType),
     CastReuseVarRval = ml_unop(cast(MLDS_VarType), ReuseVarRval),
     HeapTestStmt = ml_stmt_atomic(assign_if_in_heap(VarLval, CastReuseVarRval),
         Context),
@@ -769,15 +769,15 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     % For each field in the construction unification we need to generate
     % an rval. ExtraRvalsTypesWidths need to be inserted at the start
     % of the object.
-    ml_gen_extra_arg_assign(ExtraRvalsTypesWidths, VarType, VarLval,
-        0, ConsTag, Context, ExtraRvalStmts, !Info),
+    ml_gen_type(!.Info, VarType, MLDS_VarType),
+    MaybePtag = yes(Ptag),
+    ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePtag,
+        0, ExtraRvalsTypesWidths, Context, ExtraRvalStmts, !Info),
+    decide_field_gen(!.Info, VarLval, VarType, ConsId, ConsTag, FieldGen),
     % XXX we do more work than we need to here, as some of the cells
     % may already contain the correct values.
-    decide_field_gen(!.Info, VarLval, VarType, ConsId, ConsTag, FieldGen),
-    ml_gen_unify_args_for_reuse(FieldGen, ArgVars, ArgModes, Fields,
-        TakeAddr, InitOffSet, ArgNum, Context,
-        FieldStmts, TakeAddrInfos, !Info),
-    MaybePtag = yes(Ptag),
+    ml_gen_unify_args_for_reuse(FieldGen, ArgVarRepns, ArgModes, TakeAddr,
+        InitOffSet, ArgNum, Context, FieldStmts, TakeAddrInfos, !Info),
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_VarType,
         MaybePtag, Context, !.Info, TakeAddrStmts),
     ThenStmts = ExtraRvalStmts ++ FieldStmts ++ TakeAddrStmts,
@@ -1237,20 +1237,18 @@ ml_calc_field_offset(NumExtraArgs, ArgVarsTypesWidths, ArgNum) = Offset :-
     % Generate assignment statements for each of ExtraRvals into the object at
     % VarLval, beginning at Offset.
     %
-:- pred ml_gen_extra_arg_assign(list(mlds_rval_type_and_width)::in,
-    mer_type::in, mlds_lval::in, int::in, cons_tag::in, prog_context::in,
+:- pred ml_gen_extra_arg_assigns(mlds_lval::in, mlds_type::in, maybe(ptag)::in,
+    int::in, list(mlds_rval_type_and_width)::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_extra_arg_assign([], _, _, _, _, _, [], !Info).
-ml_gen_extra_arg_assign([ExtraRvalTypeWidth | ExtraRvalsTypesWidths],
-        VarType, VarLval, CurOffset, ConsTag, Context, [Stmt | Stmts],
-        !Info) :-
+ml_gen_extra_arg_assigns(_, _, _, _, [], _, [], !Info).
+ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
+        CurOffset, [ExtraRvalTypeWidth | ExtraRvalsTypesWidths], Context,
+        [Stmt | Stmts], !Info) :-
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     expect(unify(HighLevelData, no), $pred, "high-level data"),
 
-    ml_gen_type(!.Info, VarType, MLDS_VarType),
     FieldId = ml_field_offset(ml_const(mlconst_int(CurOffset))),
-    MaybePrimaryTag = get_maybe_primary_tag(ConsTag),
     ExtraRvalTypeWidth =
         rval_type_and_width(ExtraRval, ExtraType, ArgPosWidth),
     expect(is_apw_full(ArgPosWidth), $pred,
@@ -1260,8 +1258,8 @@ ml_gen_extra_arg_assign([ExtraRvalTypeWidth | ExtraRvalsTypesWidths],
         ExtraType, MLDS_VarType),
     Stmt = ml_gen_assign(FieldLval, ExtraRval, Context),
 
-    ml_gen_extra_arg_assign(ExtraRvalsTypesWidths, VarType, VarLval,
-        NextOffset, ConsTag, Context, Stmts, !Info).
+    ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
+        NextOffset, ExtraRvalsTypesWidths, Context, Stmts, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -1347,9 +1345,9 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
         decide_field_gen(!.Info, VarLval, VarType, ConsId, ConsTag, FieldGen),
         ml_tag_initial_offset_and_argnum(ConsTag, _, InitOffSet, ArgNum),
         ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
-            Fields),
-        ml_gen_unify_args(FieldGen, ArgVars, Modes, Fields,
-            InitOffSet, ArgNum, Context, Stmts, !Info)
+            ArgVarRepns),
+        ml_gen_unify_args(FieldGen, ArgVarRepns, Modes,
+            InitOffSet, ArgNum, Context, [], Stmts, !Info)
     ).
 
     % Calculate the integer offset used to reference the first field of a
@@ -1416,128 +1414,117 @@ ml_tag_initial_offset_and_argnum(ConsTag, Ptag, InitOffset, ArgNum) :-
     %
 :- pred ml_field_names_and_types(ml_gen_info::in, mer_type::in,
     cons_id::in, field_offset::in, list(prog_var)::in,
-    list(constructor_arg_repn)::out) is det.
+    assoc_list(prog_var, constructor_arg_repn)::out) is det.
 
 ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
-        CtorArgRepns) :-
+        ArgVarRepns) :-
     % Lookup the field types for the arguments of this cons_id.
     InitOffset = offset(InitOffsetInt),
     ( if type_is_tuple(Type, _) then
-        list.length(ArgVars, TupleArity),
-        % The argument types for tuples are unbound type variables.
-        FieldTypes = ml_make_boxed_types(TupleArity),
         % Fields in tuples are all word-sized, and have no extra type_infos
-        % and/or typeclass_infos in front of them.
-        allocate_consecutive_full_word_ctor_arg_repns(InitOffsetInt,
-            FieldTypes, CtorArgRepns)
+        % and/or typeclass_infos in front of them. Their types are all
+        % unbound type variables.
+        allocate_consecutive_full_word_ctor_arg_repns_boxed(InitOffsetInt,
+            ArgVars, ArgVarRepns)
     else
         ml_gen_info_get_module_info(Info, ModuleInfo),
         get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
-        CtorArgRepns0 = ConsRepnDefn ^ cr_args,
+        CtorArgRepns = ConsRepnDefn ^ cr_args,
 
         % Add the fields for any type_infos and/or typeclass_infos inserted
         % for existentially quantified data types. For these, we just copy
         % the types of the initial ArgVars.
-        NumArgVars = list.length(ArgVars),
-        NumCtorArgs = list.length(CtorArgRepns0),
+        list.length(ArgVars, NumArgVars),
+        list.length(CtorArgRepns, NumCtorArgs),
         NumExtraArgVars = NumArgVars - NumCtorArgs,
         ( if NumExtraArgVars > 0 then
-            ExtraArgVars = list.take_upto(NumExtraArgVars, ArgVars),
-            ml_variable_types(Info, ExtraArgVars, ExtraArgTypes),
+            list.split_upto(NumExtraArgVars, ArgVars,
+                ExtraArgVars, NonExtraArgVars),
             % The extra type_infos and/or typeclass_infos are all stored
             % in one full word each.
-            allocate_consecutive_full_word_ctor_arg_repns(InitOffsetInt,
-                ExtraArgTypes, ExtraCtorArgRepns),
-            CtorArgRepns = ExtraCtorArgRepns ++ CtorArgRepns0
+            allocate_consecutive_full_word_ctor_arg_repns_lookup(Info,
+                InitOffsetInt, ExtraArgVars, ExtraArgVarRepns),
+            assoc_list.from_corresponding_lists(NonExtraArgVars, CtorArgRepns,
+                NonExtraArgVarRepns),
+            ArgVarRepns =
+                ExtraArgVarRepns ++ NonExtraArgVarRepns
         else
-            CtorArgRepns = CtorArgRepns0
+            assoc_list.from_corresponding_lists(ArgVars, CtorArgRepns,
+                ArgVarRepns)
         )
     ).
 
-:- pred ml_gen_unify_args(field_gen::in, list(prog_var)::in,
-    list(unify_mode)::in, list(constructor_arg_repn)::in,
-    field_offset::in, int::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_gen_unify_args(FieldGen, ArgVars, Modes, CtorArgRepns,
-        Offset, ArgNum, Context, Stmts, !Info) :-
-    ( if
-        ml_gen_unify_args_loop(FieldGen, ArgVars, Modes, CtorArgRepns,
-            Offset, ArgNum, Context, [], StmtsPrime, !Info)
-    then
-        Stmts = StmtsPrime
-    else
-        unexpected($pred, "length mismatch")
-    ).
-
-:- pred ml_gen_unify_args_loop(field_gen::in, list(prog_var)::in,
-    list(unify_mode)::in, list(constructor_arg_repn)::in,
+:- pred ml_gen_unify_args(field_gen::in,
+    assoc_list(prog_var, constructor_arg_repn)::in, list(unify_mode)::in,
     field_offset::in, int::in, prog_context::in,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is semidet.
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_args_loop(_, [], [], _, _, _, _, !Stmts, !Info).
-ml_gen_unify_args_loop(FieldGen, [ArgVar | ArgVars], [Mode | Modes],
-        [CtorArgRepn | CtorArgRepns],
+ml_gen_unify_args(_, [], [], _, _, _, !Stmts, !Info).
+ml_gen_unify_args(_, [], [_ | _], _, _, _, !Stmts, !Info) :-
+    unexpected($pred, "length mismatch").
+ml_gen_unify_args(_, [_ | _], [], _, _, _, !Stmts, !Info) :-
+    unexpected($pred, "length mismatch").
+ml_gen_unify_args(FieldGen, [ArgVarRepn | ArgVarRepns], [Mode | Modes],
         CurOffset, CurArgNum, Context, !Stmts, !Info) :-
-    ml_next_field_offset(CtorArgRepn, CtorArgRepns, CurOffset, NextOffset),
+    % XXX ARG_PACK Why are we generating code backwards?
+    ml_next_field_offset(ArgVarRepn, ArgVarRepns, CurOffset, NextOffset),
     NextArgNum = CurArgNum + 1,
-    ml_gen_unify_args_loop(FieldGen, ArgVars, Modes, CtorArgRepns,
+    ml_gen_unify_args(FieldGen, ArgVarRepns, Modes,
         NextOffset, NextArgNum, Context, !Stmts, !Info),
-    ml_gen_unify_arg(FieldGen, ArgVar, Mode, CtorArgRepn,
-        CurOffset, CurArgNum, Context, !Stmts, !Info).
+    ml_gen_unify_arg(FieldGen, ArgVarRepn, Mode, CurOffset, CurArgNum,
+        Context, !Stmts, !Info).
 
-:- pred ml_gen_unify_args_for_reuse(field_gen::in, list(prog_var)::in,
-    list(unify_mode)::in, list(constructor_arg_repn)::in,
+:- pred ml_gen_unify_args_for_reuse(field_gen::in,
+    assoc_list(prog_var, constructor_arg_repn)::in, list(unify_mode)::in,
     list(int)::in, field_offset::in, int::in, prog_context::in,
     list(mlds_stmt)::out, list(take_addr_info)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_args_for_reuse(FieldGen, ArgVars, Modes, CtorArgRepns,
-        TakeAddr, CurOffset, CurArgNum, Context,
-        Stmts, TakeAddrInfos, !Info) :-
-    ( if
-        ArgVars = [],
-        Modes = [],
-        CtorArgRepns = []
-    then
-        Stmts = [],
-        TakeAddrInfos = []
-    else if
-        ArgVars = [ArgVar | TailArgVars],
-        Modes = [Mode | TailModes],
-        CtorArgRepns = [CtorArgRepn | TailCtorArgRepns]
-    then
-        ml_next_field_offset(CtorArgRepn, TailCtorArgRepns,
-            CurOffset, NextOffset),
-        NextArgNum = CurArgNum + 1,
-        ( if TakeAddr = [CurArgNum | TailTakeAddr] then
-            ml_gen_unify_args_for_reuse(FieldGen, TailArgVars, TailModes,
-                TailCtorArgRepns, TailTakeAddr, NextOffset, NextArgNum,
-                Context, Stmts, TakeAddrInfosTail, !Info),
-
-            ml_gen_info_get_module_info(!.Info, ModuleInfo),
-            ml_gen_info_get_high_level_data(!.Info, HighLevelData),
-            FieldType = CtorArgRepn ^ car_type,
-            FieldPosWidth = CtorArgRepn ^ car_pos_width,
-            FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
-            ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
-                BoxedFieldType),
-            ml_gen_type(!.Info, FieldType, MLDS_FieldType),
-            ml_gen_type(!.Info, BoxedFieldType, MLDS_BoxedFieldType),
-            TakeAddrInfo = take_addr_info(ArgVar, CurOffset, MLDS_FieldType,
-                MLDS_BoxedFieldType),
-            TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
-        else
-            ml_gen_unify_args_for_reuse(FieldGen, TailArgVars, TailModes,
-                TailCtorArgRepns, TakeAddr, NextOffset, NextArgNum,
-                Context, Stmts0, TakeAddrInfos, !Info),
-            ml_gen_unify_arg(FieldGen, ArgVar, Mode, CtorArgRepn,
-                CurOffset, CurArgNum, Context, Stmts0, Stmts, !Info)
-        )
+ml_gen_unify_args_for_reuse(_, [], [], TakeAddr, _, _, _, [], [], !Info) :-
+    expect(unify(TakeAddr, []), $pred, "TakeAddr != []").
+ml_gen_unify_args_for_reuse(_, [], [_ | _], _, _, _, _, _, _, !Info) :-
+    unexpected($pred, "length mismatch").
+ml_gen_unify_args_for_reuse(_, [_ | _], [], _, _, _, _, _, _, !Info) :-
+    unexpected($pred, "length mismatch").
+ml_gen_unify_args_for_reuse(FieldGen,
+        [ArgVarRepn | ArgVarRepns], [Mode | Modes], TakeAddr,
+        CurOffset, CurArgNum, Context, Stmts, TakeAddrInfos, !Info) :-
+    % XXX ARG_PACK Why are we generating code backwards?
+    % XXX ARG_PACK Why does this predicate return the generated code
+    % differently from ml_gen_unify_args?
+    ml_next_field_offset(ArgVarRepn, ArgVarRepns, CurOffset, NextOffset),
+    NextArgNum = CurArgNum + 1,
+    ( if TakeAddr = [CurArgNum | TailTakeAddr] then
+        ml_gen_unify_args_for_reuse(FieldGen, ArgVarRepns, Modes,
+            TailTakeAddr, NextOffset, NextArgNum, Context,
+            Stmts, TakeAddrInfosTail, !Info),
+        ml_gen_take_addr_of_arg(!.Info, ArgVarRepn, CurOffset, TakeAddrInfo),
+        TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
     else
-        unexpected($pred, "length mismatch")
+        ml_gen_unify_args_for_reuse(FieldGen, ArgVarRepns, Modes, TakeAddr,
+            NextOffset, NextArgNum, Context, Stmts0, TakeAddrInfos, !Info),
+        ml_gen_unify_arg(FieldGen, ArgVarRepn, Mode, CurOffset, CurArgNum,
+            Context, Stmts0, Stmts, !Info)
     ).
+
+:- pred ml_gen_take_addr_of_arg(ml_gen_info::in,
+    pair(prog_var, constructor_arg_repn)::in, field_offset::in,
+    take_addr_info::out) is det.
+
+ml_gen_take_addr_of_arg(Info, ArgVarRepn, CurOffset, TakeAddrInfo) :-
+    ArgVarRepn = ArgVar - CtorArgRepn,
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
+    FieldType = CtorArgRepn ^ car_type,
+    FieldPosWidth = CtorArgRepn ^ car_pos_width,
+    FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
+    ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
+        BoxedFieldType),
+    ml_gen_type(Info, FieldType, MLDS_FieldType),
+    ml_gen_type(Info, BoxedFieldType, MLDS_BoxedFieldType),
+    TakeAddrInfo = take_addr_info(ArgVar, CurOffset, MLDS_FieldType,
+        MLDS_BoxedFieldType).
 
 :- type field_gen
     --->    field_gen(
@@ -1606,13 +1593,13 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, FieldGen) :-
             UsesBaseClass = ml_tag_uses_base_class(ConsTag),
             (
                 UsesBaseClass = tag_uses_base_class,
-                % In this case, there is only one functor for the type,
-                % and so the class name is determined by the type name.
+                % There is only one functor for the type, and so
+                % the class name is determined by the type name.
                 ClassId = mlds_class_id(QualTypeName, TypeArity, mlds_class),
                 FieldQualifier = TypeQualifier
             ;
                 UsesBaseClass = tag_does_not_use_base_class,
-                % In this case, the class name is determined by the constructor.
+                % The class name is determined by the constructor.
                 QualConsName =
                     qual_class_name(TypeQualifier, type_qual, ConsName),
                 ClassId = mlds_class_id(QualConsName, ConsArity, mlds_class),
@@ -1627,12 +1614,13 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, FieldGen) :-
     ),
     FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia).
 
-:- pred ml_gen_unify_arg(field_gen::in, prog_var::in,
-    unify_mode::in, constructor_arg_repn::in, field_offset::in, int::in,
-    prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out,
+:- pred ml_gen_unify_arg(field_gen::in,
+    pair(prog_var, constructor_arg_repn)::in, unify_mode::in,
+    field_offset::in, int::in, prog_context::in,
+    list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_arg(FieldGen, ArgVar, Mode, CtorArgRepn, Offset, ArgNum,
+ml_gen_unify_arg(FieldGen, ArgVar - CtorArgRepn, Mode, Offset, ArgNum,
         Context, !Stmts, !Info) :-
     FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia),
     (
@@ -2180,10 +2168,10 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
             % No need to test the primary tag.
             TagTestRval = SecondaryTagTestRval
         else
-            RvalPTag = ml_unop(std_unop(tag), Rval),
+            RvalPtag = ml_unop(std_unop(tag), Rval),
             PrimaryTagRval = ml_unop(std_unop(mktag),
                 ml_const(mlconst_int(PrimaryTag))),
-            PrimaryTagTestRval = ml_binop(eq(int_type_int), RvalPTag,
+            PrimaryTagTestRval = ml_binop(eq(int_type_int), RvalPtag,
                 PrimaryTagRval),
             TagTestRval = ml_binop(logical_and,
                 PrimaryTagTestRval, SecondaryTagTestRval)
@@ -3516,14 +3504,14 @@ ml_cast_away_any_sign_extend_bits(Fill, Rval0, Rval) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred ml_next_field_offset(constructor_arg_repn::in,
-    list(constructor_arg_repn)::in,
+:- pred ml_next_field_offset(pair(prog_var, constructor_arg_repn)::in,
+    assoc_list(prog_var, constructor_arg_repn)::in,
     field_offset::in, field_offset::out) is det.
 
 ml_next_field_offset(_, [], Offset, Offset).
 ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
-    CurArg = ctor_arg_repn(_, _, CurWidth, _),
-    NextArg = ctor_arg_repn(_, _, NextWidth, _),
+    CurArg = _ - ctor_arg_repn(_, _, CurWidth, _),
+    NextArg = _ - ctor_arg_repn(_, _, NextWidth, _),
     % XXX ARG_PACK We *could* use the same algorithm for incrementing Offset
     % here as we use elsewhere, but better still, we should not need this
     % predicate once we switch over to using the offsets of constructor
@@ -3616,17 +3604,33 @@ ml_cons_id_to_tag(Info, ConsId, ConsTag) :-
 
 is_apw_full(apw_full(_, _)).
 
-:- pred allocate_consecutive_full_word_ctor_arg_repns(int::in,
-    list(mer_type)::in, list(constructor_arg_repn)::out) is det.
+:- pred allocate_consecutive_full_word_ctor_arg_repns_boxed(int::in,
+    list(prog_var)::in,
+    assoc_list(prog_var, constructor_arg_repn)::out) is det.
 
-allocate_consecutive_full_word_ctor_arg_repns(_, [], []).
-allocate_consecutive_full_word_ctor_arg_repns(CurOffset,
-        [Type | Types], [ArgRepn | ArgRepns]) :-
-    ArgRepn = ctor_arg_repn(no, Type,
-        apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
-        term.context_init),
-    allocate_consecutive_full_word_ctor_arg_repns(CurOffset + 1,
-        Types, ArgRepns).
+allocate_consecutive_full_word_ctor_arg_repns_boxed(_, [], []).
+allocate_consecutive_full_word_ctor_arg_repns_boxed(CurOffset,
+        [Var | Vars], [VarArgRepn | VarArgRepns]) :-
+    Type = ml_make_boxed_type,
+    ArgPosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
+    ArgRepn = ctor_arg_repn(no, Type, ArgPosWidth, term.context_init),
+    VarArgRepn = Var - ArgRepn,
+    allocate_consecutive_full_word_ctor_arg_repns_boxed(CurOffset + 1,
+        Vars, VarArgRepns).
+
+:- pred allocate_consecutive_full_word_ctor_arg_repns_lookup(ml_gen_info::in,
+    int::in, list(prog_var)::in,
+    assoc_list(prog_var, constructor_arg_repn)::out) is det.
+
+allocate_consecutive_full_word_ctor_arg_repns_lookup(_, _, [], []).
+allocate_consecutive_full_word_ctor_arg_repns_lookup(Info, CurOffset,
+        [Var | Vars], [VarArgRepn | VarArgRepns]) :-
+    ml_variable_type(Info, Var, Type),
+    ArgPosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
+    ArgRepn = ctor_arg_repn(no, Type, ArgPosWidth, term.context_init),
+    VarArgRepn = Var - ArgRepn,
+    allocate_consecutive_full_word_ctor_arg_repns_lookup(Info, CurOffset + 1,
+        Vars, VarArgRepns).
 
 :- pred lookup_type_and_allocate_consecutive_full_words(arg_to_type(Arg)::in,
     int::in, list(Arg)::in, list(arg_type_and_width(Arg))::out) is det.
