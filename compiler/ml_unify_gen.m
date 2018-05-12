@@ -1634,9 +1634,6 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, FieldGen) :-
 
 ml_gen_unify_arg(FieldGen, ArgVar, Mode, CtorArgRepn, Offset, ArgNum,
         Context, !Stmts, !Info) :-
-    % XXX ARG_PACK Many of the decisions that this predicate makes
-    % are repeated the same way for every argumeny. This redundant work
-    % should be eliminated.
     FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia),
     (
         FieldVia = field_via_offset,
