@@ -146,7 +146,7 @@
             % then in this case there is an argument vector of size 1 which
             % just holds the secondary tag.)
 
-    ;       shared_local_tag(ptag, int)
+    ;       shared_local_tag(ptag, sectag)
             % This is for constants which require more than a two-bit tag.
             % In this case, we use both a primary and a secondary tag,
             % but this time the secondary tag is stored in the rest of the
@@ -198,12 +198,12 @@
     % A return value of `yes(N)' means the primary tag is N.
     % (`yes(0)' also corresponds to the case where there no primary tag.)
     %
-:- func get_primary_tag(cons_tag) = maybe(int).
+:- func get_maybe_primary_tag(cons_tag) = maybe(ptag).
 
     % Return the secondary tag, if any, for a cons_tag.
     % A return value of `no' means there is no secondary tag.
     %
-:- func get_secondary_tag(cons_tag) = maybe(int).
+:- func get_maybe_secondary_tag(cons_tag) = maybe(sectag).
 
 %---------------------%
 
@@ -220,7 +220,7 @@
 
 :- implementation.
 
-get_primary_tag(Tag) = MaybePrimaryTag :-
+get_maybe_primary_tag(Tag) = MaybePrimaryTag :-
     (
         % In some of the cases where we return `no' here,
         % it would probably be OK to return `yes(0)'.
@@ -243,7 +243,7 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         MaybePrimaryTag = no
     ;
         Tag = ground_term_const_tag(_, SubTag),
-        MaybePrimaryTag = get_primary_tag(SubTag)
+        MaybePrimaryTag = get_maybe_primary_tag(SubTag)
     ;
         Tag = single_functor_tag,
         MaybePrimaryTag = yes(0)
@@ -256,7 +256,7 @@ get_primary_tag(Tag) = MaybePrimaryTag :-
         MaybePrimaryTag = yes(PrimaryTag)
     ).
 
-get_secondary_tag(Tag) = MaybeSecondaryTag :-
+get_maybe_secondary_tag(Tag) = MaybeSecondaryTag :-
     (
         ( Tag = int_tag(_)
         ; Tag = float_tag(_)
@@ -279,7 +279,7 @@ get_secondary_tag(Tag) = MaybeSecondaryTag :-
         MaybeSecondaryTag = no
     ;
         Tag = ground_term_const_tag(_, SubTag),
-        MaybeSecondaryTag = get_secondary_tag(SubTag)
+        MaybeSecondaryTag = get_maybe_secondary_tag(SubTag)
     ;
         ( Tag = shared_remote_tag(_PrimaryTag, SecondaryTag, _)
         ; Tag = shared_local_tag(_PrimaryTag, SecondaryTag)

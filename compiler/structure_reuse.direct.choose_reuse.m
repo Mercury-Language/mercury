@@ -1093,7 +1093,7 @@ has_secondary_tag(ModuleInfo, ConsId, SecondaryTag) :-
     ( if
         get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn),
         ConsTag = ConsRepn ^ cr_tag,
-        get_secondary_tag(ConsTag) = yes(_)
+        get_maybe_secondary_tag(ConsTag) = yes(_)
     then
         SecondaryTag = yes
     else

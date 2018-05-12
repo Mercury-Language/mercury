@@ -526,7 +526,7 @@ ctors_with_and_without_secondary_tag_loop([],
 ctors_with_and_without_secondary_tag_loop([CtorRepn | CtorRepns],
         !NumWith, !NumWithout) :-
     TagVal = CtorRepn ^ cr_tag,
-    MaybeSecTag = get_secondary_tag(TagVal),
+    MaybeSecTag = get_maybe_secondary_tag(TagVal),
     (
         MaybeSecTag = yes(_),
         !:NumWith = !.NumWith + 1
@@ -545,7 +545,7 @@ ctors_with_and_without_secondary_tag_loop([CtorRepn | CtorRepns],
 
 ml_gen_hld_tag_constant(Context, CtorRepn) = Defns :-
     TagVal = CtorRepn ^ cr_tag,
-    MaybeSecondaryTag = get_secondary_tag(TagVal),
+    MaybeSecondaryTag = get_maybe_secondary_tag(TagVal),
     (
         MaybeSecondaryTag = yes(SecondaryTag),
         % Generate an MLDS definition for this secondary tag constant.
@@ -693,7 +693,7 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
 
     % Generate a constructor function to initialize the fields, if needed
     % (not all back-ends use constructor functions).
-    MaybeSecTagVal = get_secondary_tag(TagVal),
+    MaybeSecTagVal = get_maybe_secondary_tag(TagVal),
     UsesConstructors = ml_target_uses_constructors(Target),
     UsesBaseClass = ml_tag_uses_base_class(TagVal),
     (

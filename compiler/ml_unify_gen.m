@@ -285,10 +285,10 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         Context, Stmts, !Info) :-
     % Figure out how this cons_id is represented.
     ml_variable_type(!.Info, Var, VarType),
-    ml_cons_id_to_tag(!.Info, ConsId, Tag),
+    ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     (
-        ( Tag = no_tag
-        ; Tag = direct_arg_tag(_)
+        ( ConsTag = no_tag
+        ; ConsTag = direct_arg_tag(_)
         ),
         ( if
             Args = [ArgVar],
@@ -306,7 +306,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
                     aw_full_word, ArgRval, Rval0, GlobalData0, GlobalData),
                 ml_gen_info_set_global_data(GlobalData, !Info),
-                Rval = ml_cast_cons_tag(MLDS_Type, Tag, Rval0),
+                Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, Rval0),
                 GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
                 ml_gen_info_set_const_var(Var, GroundTerm, !Info),
                 Stmt = ml_gen_assign(VarLval, Rval, Context),
@@ -315,52 +315,52 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 ml_gen_var(!.Info, ArgVar, ArgLval),
                 ml_variable_type(!.Info, ArgVar, ArgType),
                 (
-                    Tag = no_tag,
+                    ConsTag = no_tag,
                     ArgRval = ml_lval(ArgLval),
                     ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
                         bp_native_if_possible, ArgRval, Rval),
                     Stmt = ml_gen_assign(VarLval, Rval, Context),
                     Stmts = [Stmt]
                 ;
-                    Tag = direct_arg_tag(Ptag),
+                    ConsTag = direct_arg_tag(Ptag),
                     ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
                         ArgLval, ArgType, VarLval, VarType, Context, Stmts)
                 )
             )
         else
             (
-                Tag = no_tag,
+                ConsTag = no_tag,
                 unexpected($pred, "no_tag: arity != 1")
             ;
-                Tag = direct_arg_tag(_),
+                ConsTag = direct_arg_tag(_),
                 unexpected($pred, "direct_arg_tag: arity != 1")
             )
         )
     ;
         % Ordinary compound terms.
         (
-            Tag = single_functor_tag,
+            ConsTag = single_functor_tag,
             Ptag = 0,
             MaybeStag = no
         ;
-            Tag = unshared_tag(Ptag),
+            ConsTag = unshared_tag(Ptag),
             MaybeStag = no
         ;
-            Tag = shared_remote_tag(Ptag, Stag, AddedBy),
+            ConsTag = shared_remote_tag(Ptag, Stag, AddedBy),
             MaybeStag = yes({Stag, AddedBy})
         ),
-        UsesBaseClass = ml_tag_uses_base_class(Tag),
+        UsesBaseClass = ml_tag_uses_base_class(ConsTag),
         ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
             Args, ArgModes, TakeAddr, HowToConstruct, Context, Stmts, !Info)
     ;
         % Lambda expressions.
-        Tag = closure_tag(PredId, ProcId, _EvalMethod),
+        ConsTag = closure_tag(PredId, ProcId, _EvalMethod),
         ml_gen_closure(PredId, ProcId, Var, Args, ArgModes, HowToConstruct,
             Context, Stmts, !Info)
     ;
-        ( Tag = type_info_const_tag(ConstNum)
-        ; Tag = typeclass_info_const_tag(ConstNum)
-        ; Tag = ground_term_const_tag(ConstNum, _)
+        ( ConsTag = type_info_const_tag(ConstNum)
+        ; ConsTag = typeclass_info_const_tag(ConstNum)
+        ; ConsTag = ground_term_const_tag(ConstNum, _)
         ),
         ml_gen_info_get_const_struct_map(!.Info, ConstStructMap),
         map.lookup(ConstStructMap, ConstNum, GroundTerm0),
@@ -374,17 +374,17 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         Stmts = [Stmt]
     ;
         % Constants.
-        ( Tag = int_tag(_)
-        ; Tag = dummy_tag
-        ; Tag = foreign_tag(_, _)
-        ; Tag = float_tag(_)
-        ; Tag = string_tag(_)
-        ; Tag = shared_local_tag(_, _)
-        ; Tag = type_ctor_info_tag(_, _, _)
-        ; Tag = base_typeclass_info_tag(_, _, _)
-        ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = tabling_info_tag(_, _)
-        ; Tag = table_io_entry_tag(_, _)
+        ( ConsTag = int_tag(_)
+        ; ConsTag = dummy_tag
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = float_tag(_)
+        ; ConsTag = string_tag(_)
+        ; ConsTag = shared_local_tag(_, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
         ),
         (
             Args = [],
@@ -392,29 +392,29 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
             (
-                Tag = int_tag(IntTag),
+                ConsTag = int_tag(IntTag),
                 Rval = ml_int_tag_to_rval_const(IntTag, VarType, MLDS_Type)
             ;
-                Tag = dummy_tag,
+                ConsTag = dummy_tag,
                 % The type information is needed by the Java backend.
                 Rval = ml_int_tag_to_rval_const(int_tag_int(0), VarType,
                     MLDS_Type)
             ;
-                Tag = float_tag(Float),
+                ConsTag = float_tag(Float),
                 Rval = ml_const(mlconst_float(Float))
             ;
-                Tag = string_tag(String),
+                ConsTag = string_tag(String),
                 Rval = ml_const(mlconst_string(String))
             ;
-                Tag = foreign_tag(ForeignLang, ForeignTag),
+                ConsTag = foreign_tag(ForeignLang, ForeignTag),
                 Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
                     MLDS_Type))
             ;
-                Tag = shared_local_tag(Bits1, Num1),
+                ConsTag = shared_local_tag(Bits1, Num1),
                 Rval = ml_unop(cast(MLDS_Type), ml_mkword(Bits1,
                     ml_unop(std_unop(mkbody), ml_const(mlconst_int(Num1)))))
             ;
-                Tag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
+                ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
                 ModuleName = fixup_builtin_module(ModuleName0),
                 MLDS_Module = mercury_module_name_to_mlds(ModuleName),
                 RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
@@ -422,7 +422,8 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
                 Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
             ;
-                Tag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
+                ConsTag = base_typeclass_info_tag(ModuleName, ClassId,
+                    Instance),
                 MLDS_Module = mercury_module_name_to_mlds(ModuleName),
                 TCName = generate_class_name(ClassId),
                 RttiId = tc_rtti_id(TCName,
@@ -430,7 +431,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
                 Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
             ;
-                Tag = tabling_info_tag(PredId, ProcId),
+                ConsTag = tabling_info_tag(PredId, ProcId),
                 ml_gen_pred_label(ModuleInfo, proc(PredId, ProcId),
                     PredLabel, PredModule),
                 ProcLabel = mlds_proc_label(PredLabel, ProcId),
@@ -438,10 +439,10 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 Const = mlconst_data_addr_tabling(QualProcLabel, tabling_info),
                 Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
             ;
-                Tag = deep_profiling_proc_layout_tag(_, _),
+                ConsTag = deep_profiling_proc_layout_tag(_, _),
                 unexpected($pred, "deep_profiling_proc_layout_tag NYI")
             ;
-                Tag = table_io_entry_tag(_, _),
+                ConsTag = table_io_entry_tag(_, _),
                 unexpected($pred, "table_io_entry_tag NYI")
             ),
             GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
@@ -524,11 +525,6 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
 ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
         ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Stmts, !Info) :-
-    % Determine the variable's type and lval, the tag to use, and the types
-    % of the argument vars.
-    ml_variable_type(!.Info, Var, VarType),
-    ml_gen_type(!.Info, VarType, MLDS_Type),
-    ml_gen_var(!.Info, Var, VarLval),
     (
         MaybeConsId = yes(ConsId),
         ConsIdOrClosure = ordinary_cons_id(ConsId)
@@ -541,41 +537,37 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     (
         HowToConstruct = construct_dynamically,
         ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName,
-            Ptag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-            ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
-            Context, Stmts, !Info)
+            Ptag, ExplicitSecTag, Var, ExtraRvalsTypesWidths,
+            ArgVars, ArgModes, TakeAddr, Context, Stmts, !Info)
     ;
         HowToConstruct = construct_statically,
         expect(unify(TakeAddr, []), $pred,
             "cannot take address of static object's field"),
         ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
-            Var, VarLval, VarType, MLDS_Type, ExtraRvalsTypesWidths,
-            ArgVars, Context, Stmts, !Info)
+            Var, ExtraRvalsTypesWidths, ArgVars, Context, Stmts, !Info)
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
-            Ptag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-            ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
-            CellToReuse, Context, Stmts, !Info)
+            Ptag, ExplicitSecTag, Var, ExtraRvalsTypesWidths,
+            ArgVars, ArgModes, TakeAddr, CellToReuse, Context, Stmts, !Info)
     ;
         HowToConstruct = construct_in_region(_RegVar),
         sorry($pred, "construct_in_region NYI")
     ).
 
 :- pred ml_gen_new_object_dynamically(cons_id_or_closure::in,
-    maybe(qual_ctor_id)::in, ptag::in, bool::in,
-    prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
+    maybe(qual_ctor_id)::in, ptag::in, bool::in, prog_var::in,
     list(mlds_rval_type_and_width)::in,
     list(prog_var)::in, list(unify_mode)::in,
     list(int)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
-        ExplicitSecTag, _Var, VarLval, VarType, MLDS_Type,
-        ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr, Context, Stmts,
-        !Info) :-
+        ExplicitSecTag, Var, ExtraRvalsTypesWidths, ArgVars, ArgModes,
+        TakeAddr, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments and generate rvals
     % for them (boxing/unboxing if needed).
+    ml_variable_type(!.Info, Var, VarType),
     maybe_cons_id_arg_types_and_widths(!.Info, VarType, ConsIdOrClosure,
         ArgVars, ArgVarsTypesWidths),
     ml_gen_info_get_use_atomic_cells(!.Info, UseAtomicCells),
@@ -631,31 +623,32 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
     % Generate a `new_object' statement to dynamically allocate the memory
     % for this term from the heap. The `new_object' statement will also
     % initialize the fields of this term with the specified arguments.
+    ml_gen_var(!.Info, Var, VarLval),
     ConvFunc = (func(rval_type_and_width(Rv, T, _)) = ml_typed_rval(Rv, T)),
     ArgRvalsTypes = list.map(ConvFunc, ArgRvalsTypesWidths),
-    MakeNewObject = new_object(VarLval, Ptag, ExplicitSecTag, MLDS_Type,
+    ml_gen_type(!.Info, VarType, MLDS_VarType),
+    MakeNewObject = new_object(VarLval, Ptag, ExplicitSecTag, MLDS_VarType,
         yes(SizeInWordsRval), MaybeCtorName, ArgRvalsTypes,
         MayUseAtomic, MaybeAllocId),
     MakeNewObjStmt = ml_stmt_atomic(MakeNewObject, Context),
 
     MaybePtag = yes(Ptag),
-    ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
+    ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_VarType,
         MaybePtag, Context, !.Info, TakeAddrStmts),
     Stmts = [MakeNewObjStmt | TakeAddrStmts].
 
 %---------------------------------------------------------------------------%
 
 :- pred ml_gen_new_object_statically(cons_id_or_closure::in,
-    maybe(qual_ctor_id)::in, ptag::in,
-    prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
+    maybe(qual_ctor_id)::in, ptag::in, prog_var::in,
     list(mlds_rval_type_and_width)::in, list(prog_var)::in,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
-        Var, VarLval, VarType, MLDS_Type, ExtraRvalsTypesWidths,
-        ArgVars, Context, Stmts, !Info) :-
+        Var, ExtraRvalsTypesWidths, ArgVars, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments.
+    ml_variable_type(!.Info, Var, VarType),
     maybe_cons_id_arg_types_and_widths(!.Info, VarType, ConsIdOrClosure,
         ArgVars, ArgVarsTypesWidths),
 
@@ -695,30 +688,31 @@ ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
         ExtraArgRvals = list.map((func(rval_type_and_width(Rv, _, _)) = Rv),
             ExtraArgRvalsTypesWidths),
         ml_gen_info_get_target(!.Info, Target),
+        ml_gen_type(!.Info, VarType, MLDS_VarType),
+
         construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-            Context, VarType, MLDS_Type, ConsIdOrClosure, UsesBaseClass, Ptag,
-            ExtraArgRvals, ArgRvalsTypesWidths, GroundTerm, !GlobalData),
+            Context, VarType, MLDS_VarType, ConsIdOrClosure, UsesBaseClass,
+            Ptag, ExtraArgRvals, ArgRvalsTypesWidths, GroundTerm, !GlobalData),
 
         ml_gen_info_set_global_data(!.GlobalData, !Info)
     ),
 
     ml_gen_info_set_const_var(Var, GroundTerm, !Info),
 
+    ml_gen_var(!.Info, Var, VarLval),
     GroundTerm = ml_ground_term(Rval, _, _),
     AssignStmt = ml_gen_assign(VarLval, Rval, Context),
     Stmts = [AssignStmt].
 
 :- pred ml_gen_new_object_reuse_cell(cons_id_or_closure::in,
-    maybe(qual_ctor_id)::in, ptag::in, bool::in,
-    prog_var::in, mlds_lval::in, mer_type::in, mlds_type::in,
+    maybe(qual_ctor_id)::in, ptag::in, bool::in, prog_var::in,
     list(mlds_rval_type_and_width)::in, list(prog_var)::in,
     list(unify_mode)::in, list(int)::in, cell_to_reuse::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
-        Ptag, ExplicitSecTag, Var, VarLval, VarType, MLDS_Type,
-        ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr, CellToReuse,
-        Context, Stmts, !Info) :-
+        Ptag, ExplicitSecTag, Var, ExtraRvalsTypesWidths, ArgVars, ArgModes,
+        TakeAddr, CellToReuse, Context, Stmts, !Info) :-
     % NOTE: if it is ever used, NeedsUpdates needs to be modified to take into
     % account argument packing, as in unify_gen.m.
     CellToReuse = cell_to_reuse(ReuseVar, ReuseConsIds, _NeedsUpdates),
@@ -730,19 +724,20 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     ),
     list.map(
         ( pred(ReuseConsId::in, ReusePrimTag::out) is det :-
-            ml_cons_id_to_tag(!.Info, ReuseConsId, ReuseConsIdTag),
-            ml_tag_offset_and_argnum(ReuseConsIdTag, ReusePrimTag,
+            ml_cons_id_to_tag(!.Info, ReuseConsId, ReuseConsTag),
+            ml_tag_initial_offset_and_argnum(ReuseConsTag, ReusePrimTag,
                 _ReuseOffSet, _ReuseArgNum)
         ), ReuseConsIds, ReusePrimaryTags0),
     list.remove_dups(ReusePrimaryTags0, ReusePrimaryTags),
 
-    ml_cons_id_to_tag(!.Info, ConsId, ConsIdTag),
-    ml_tag_offset_and_argnum(ConsIdTag, PrimaryTag, InitOffSet, ArgNum),
+    ml_variable_type(!.Info, Var, VarType),
+    ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
+    ml_tag_initial_offset_and_argnum(ConsTag, PrimaryTag,
+        InitOffSet, ArgNum),
     ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
         Fields),
 
-    ml_gen_var(!.Info, Var, Var1Lval),
-    ml_gen_var(!.Info, ReuseVar, Var2Lval),
+    ml_gen_var(!.Info, ReuseVar, ReuseVarLval),
 
     list.filter(
         ( pred(ReuseTag::in) is semidet :-
@@ -750,37 +745,40 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
         ), ReusePrimaryTags, DifferentTags),
     (
         DifferentTags = [],
-        Var2Rval = ml_lval(Var2Lval)
+        ReuseVarRval = ml_lval(ReuseVarLval)
     ;
         DifferentTags = [ReusePrimaryTag],
         % The body operator is slightly more efficient than the strip_tag
         % operator, so we use it when the old tag is known.
-        Var2Rval = ml_mkword(PrimaryTag,
+        ReuseVarRval = ml_mkword(PrimaryTag,
             ml_binop(body,
-                ml_lval(Var2Lval),
+                ml_lval(ReuseVarLval),
                 ml_gen_mktag(ReusePrimaryTag)))
     ;
         DifferentTags = [_, _ | _],
-        Var2Rval = ml_mkword(PrimaryTag,
-            ml_unop(std_unop(strip_tag), ml_lval(Var2Lval)))
+        ReuseVarRval = ml_mkword(PrimaryTag,
+            ml_unop(std_unop(strip_tag), ml_lval(ReuseVarLval)))
     ),
 
-    CastVar2Rval = ml_unop(cast(MLDS_Type), Var2Rval),
-    HeapTestStmt = ml_stmt_atomic(assign_if_in_heap(Var1Lval, CastVar2Rval),
+    ml_gen_var(!.Info, Var, VarLval),
+    ml_gen_type(!.Info, VarType, MLDS_VarType),
+    CastReuseVarRval = ml_unop(cast(MLDS_VarType), ReuseVarRval),
+    HeapTestStmt = ml_stmt_atomic(assign_if_in_heap(VarLval, CastReuseVarRval),
         Context),
 
     % For each field in the construction unification we need to generate
     % an rval. ExtraRvalsTypesWidths need to be inserted at the start
     % of the object.
     ml_gen_extra_arg_assign(ExtraRvalsTypesWidths, VarType, VarLval,
-        0, ConsIdTag, Context, ExtraRvalStmts, !Info),
+        0, ConsTag, Context, ExtraRvalStmts, !Info),
     % XXX we do more work than we need to here, as some of the cells
     % may already contain the correct values.
-    ml_gen_unify_args_for_reuse(ConsId, ArgVars, ArgModes, Fields,
-        TakeAddr, VarType, VarLval, InitOffSet, ArgNum, ConsIdTag, Context,
+    decide_field_gen(!.Info, VarLval, VarType, ConsId, ConsTag, FieldGen),
+    ml_gen_unify_args_for_reuse(FieldGen, ArgVars, ArgModes, Fields,
+        TakeAddr, InitOffSet, ArgNum, Context,
         FieldStmts, TakeAddrInfos, !Info),
     MaybePtag = yes(Ptag),
-    ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
+    ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_VarType,
         MaybePtag, Context, !.Info, TakeAddrStmts),
     ThenStmts = ExtraRvalStmts ++ FieldStmts ++ TakeAddrStmts,
     ThenStmt = ml_stmt_block([], [], ThenStmts, Context),
@@ -791,7 +789,7 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
         ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
         construct_dynamically, Context, DynamicStmts, !Info),
     ElseStmt = ml_stmt_block([], [], DynamicStmts, Context),
-    IfStmt = ml_stmt_if_then_else(ml_lval(Var1Lval), ThenStmt, yes(ElseStmt),
+    IfStmt = ml_stmt_if_then_else(ml_lval(VarLval), ThenStmt, yes(ElseStmt),
         Context),
     Stmts = [HeapTestStmt, IfStmt].
 
@@ -962,12 +960,12 @@ ml_gen_mktag(Ptag) = ml_unop(std_unop(mktag), ml_const(mlconst_int(Ptag))).
 :- func ml_cast_cons_tag(mlds_type::in, cons_tag::in(no_or_direct_arg_tag),
     mlds_rval::in) = (mlds_rval::out) is det.
 
-ml_cast_cons_tag(Type, Tag, Rval) = CastRval :-
+ml_cast_cons_tag(Type, ConsTag, Rval) = CastRval :-
     (
-        Tag = no_tag,
+        ConsTag = no_tag,
         TagRval = Rval
     ;
-        Tag = direct_arg_tag(Ptag),
+        ConsTag = direct_arg_tag(Ptag),
         TagRval = ml_mkword(Ptag, Rval)
     ),
     CastRval = ml_unop(cast(Type), TagRval).
@@ -1245,14 +1243,14 @@ ml_calc_field_offset(NumExtraArgs, ArgVarsTypesWidths, ArgNum) = Offset :-
 
 ml_gen_extra_arg_assign([], _, _, _, _, _, [], !Info).
 ml_gen_extra_arg_assign([ExtraRvalTypeWidth | ExtraRvalsTypesWidths],
-        VarType, VarLval, CurOffset, ConsIdTag, Context, [Stmt | Stmts],
+        VarType, VarLval, CurOffset, ConsTag, Context, [Stmt | Stmts],
         !Info) :-
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     expect(unify(HighLevelData, no), $pred, "high-level data"),
 
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     FieldId = ml_field_offset(ml_const(mlconst_int(CurOffset))),
-    MaybePrimaryTag = get_primary_tag(ConsIdTag),
+    MaybePrimaryTag = get_maybe_primary_tag(ConsTag),
     ExtraRvalTypeWidth =
         rval_type_and_width(ExtraRval, ExtraType, ArgPosWidth),
     expect(is_apw_full(ArgPosWidth), $pred,
@@ -1263,7 +1261,7 @@ ml_gen_extra_arg_assign([ExtraRvalTypeWidth | ExtraRvalsTypesWidths],
     Stmt = ml_gen_assign(FieldLval, ExtraRval, Context),
 
     ml_gen_extra_arg_assign(ExtraRvalsTypesWidths, VarType, VarLval,
-        NextOffset, ConsIdTag, Context, Stmts, !Info).
+        NextOffset, ConsTag, Context, Stmts, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -1283,33 +1281,33 @@ ml_gen_extra_arg_assign([ExtraRvalTypeWidth | ExtraRvalsTypesWidths],
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
-    ml_variable_type(!.Info, Var, Type),
-    ml_cons_id_to_tag(!.Info, ConsId, Tag),
+    ml_variable_type(!.Info, Var, VarType),
+    ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     (
-        ( Tag = string_tag(_String)
-        ; Tag = int_tag(_IntTag)
-        ; Tag = foreign_tag(_, _)
-        ; Tag = float_tag(_Float)
-        ; Tag = dummy_tag
-        ; Tag = shared_local_tag(_Bits1, _Num1)
+        ( ConsTag = string_tag(_String)
+        ; ConsTag = int_tag(_IntTag)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = float_tag(_Float)
+        ; ConsTag = dummy_tag
+        ; ConsTag = shared_local_tag(_Bits1, _Num1)
         ),
         % For constants, if the deconstruction is det, then we already know
         % the value of the constant, so Stmts = [].
         Stmts = []
     ;
-        ( Tag = closure_tag(_, _, _)
-        ; Tag = type_ctor_info_tag(_, _, _)
-        ; Tag = base_typeclass_info_tag(_, _, _)
-        ; Tag = type_info_const_tag(_)
-        ; Tag = typeclass_info_const_tag(_)
-        ; Tag = ground_term_const_tag(_, _)
-        ; Tag = tabling_info_tag(_, _)
-        ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_entry_tag(_, _)
+        ( ConsTag = closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
         ),
         unexpected($pred, "unexpected tag")
     ;
-        Tag = no_tag,
+        ConsTag = no_tag,
         ( if
             ArgVars = [ArgVar],
             Modes = [Mode]
@@ -1320,13 +1318,13 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_info_get_high_level_data(!.Info, HighLevelData),
             ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType,
-                VarLval, Type, apw_full(arg_only_offset(0), cell_offset(0)),
+                VarLval, VarType, apw_full(arg_only_offset(0), cell_offset(0)),
                 Context, [], Stmts)
         else
             unexpected($pred, "no_tag: arity != 1")
         )
     ;
-        Tag = direct_arg_tag(Ptag),
+        ConsTag = direct_arg_tag(Ptag),
         ( if
             ArgVars = [ArgVar],
             Modes = [Mode]
@@ -1336,21 +1334,22 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
-                ArgLval, ArgType, VarLval, Type, Context, Stmts)
+                ArgLval, ArgType, VarLval, VarType, Context, Stmts)
         else
             unexpected($pred, "direct_arg_tag: arity != 1")
         )
     ;
-        ( Tag = single_functor_tag
-        ; Tag = unshared_tag(_UnsharedPtag)
-        ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag, _AddedBy)
+        ( ConsTag = single_functor_tag
+        ; ConsTag = unshared_tag(_UnsharedPtag)
+        ; ConsTag = shared_remote_tag(_PrimaryTag, _SecondaryTag, _AddedBy)
         ),
         ml_gen_var(!.Info, Var, VarLval),
-        ml_tag_offset_and_argnum(Tag, _, InitOffSet, ArgNum),
-        ml_field_names_and_types(!.Info, Type, ConsId, InitOffSet, ArgVars,
+        decide_field_gen(!.Info, VarLval, VarType, ConsId, ConsTag, FieldGen),
+        ml_tag_initial_offset_and_argnum(ConsTag, _, InitOffSet, ArgNum),
+        ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
             Fields),
-        ml_gen_unify_args(ConsId, ArgVars, Modes, Fields, Type,
-            VarLval, InitOffSet, ArgNum, Tag, Context, Stmts, !Info)
+        ml_gen_unify_args(FieldGen, ArgVars, Modes, Fields,
+            InitOffSet, ArgNum, Context, Stmts, !Info)
     ).
 
     % Calculate the integer offset used to reference the first field of a
@@ -1358,24 +1357,24 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
     % the field using the highlevel data representation. Abort if the tag
     % indicates that the data doesn't have any fields.
     %
-:- pred ml_tag_offset_and_argnum(cons_tag::in, ptag::out,
+:- pred ml_tag_initial_offset_and_argnum(cons_tag::in, ptag::out,
     field_offset::out, int::out) is det.
 
-ml_tag_offset_and_argnum(Tag, Ptag, InitOffset, ArgNum) :-
+ml_tag_initial_offset_and_argnum(ConsTag, Ptag, InitOffset, ArgNum) :-
     (
-        Tag = single_functor_tag,
+        ConsTag = single_functor_tag,
         Ptag = 0,
         InitOffset = offset(0),
         ArgNum = 1
     ;
-        ( Tag = unshared_tag(UnsharedPtag)
-        ; Tag = direct_arg_tag(UnsharedPtag)
+        ( ConsTag = unshared_tag(UnsharedPtag)
+        ; ConsTag = direct_arg_tag(UnsharedPtag)
         ),
         Ptag = UnsharedPtag,
         InitOffset = offset(0),
         ArgNum = 1
     ;
-        Tag = shared_remote_tag(PrimaryTag, _SecondaryTag, AddedBy),
+        ConsTag = shared_remote_tag(PrimaryTag, _SecondaryTag, AddedBy),
         Ptag = PrimaryTag,
         (
             AddedBy = sectag_added_by_unify,
@@ -1386,24 +1385,24 @@ ml_tag_offset_and_argnum(Tag, Ptag, InitOffset, ArgNum) :-
         ),
         ArgNum = 1
     ;
-        Tag = ground_term_const_tag(_, SubTag),
-        ml_tag_offset_and_argnum(SubTag, Ptag, InitOffset, ArgNum)
+        ConsTag = ground_term_const_tag(_, SubTag),
+        ml_tag_initial_offset_and_argnum(SubTag, Ptag, InitOffset, ArgNum)
     ;
-        ( Tag = string_tag(_String)
-        ; Tag = int_tag(_)
-        ; Tag = foreign_tag(_, _)
-        ; Tag = float_tag(_Float)
-        ; Tag = dummy_tag
-        ; Tag = closure_tag(_, _, _)
-        ; Tag = type_ctor_info_tag(_, _, _)
-        ; Tag = base_typeclass_info_tag(_, _, _)
-        ; Tag = type_info_const_tag(_)
-        ; Tag = typeclass_info_const_tag(_)
-        ; Tag = tabling_info_tag(_, _)
-        ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_entry_tag(_, _)
-        ; Tag = no_tag
-        ; Tag = shared_local_tag(_Bits1, _Num1)
+        ( ConsTag = string_tag(_String)
+        ; ConsTag = int_tag(_)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = float_tag(_Float)
+        ; ConsTag = dummy_tag
+        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
+        ; ConsTag = no_tag
+        ; ConsTag = shared_local_tag(_Bits1, _Num1)
         ),
         unexpected($pred, "unexpected tag")
     ).
@@ -1455,50 +1454,47 @@ ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
         )
     ).
 
-:- pred ml_gen_unify_args(cons_id::in, list(prog_var)::in,
+:- pred ml_gen_unify_args(field_gen::in, list(prog_var)::in,
     list(unify_mode)::in, list(constructor_arg_repn)::in,
-    mer_type::in, mlds_lval::in, field_offset::in, int::in, cons_tag::in,
-    prog_context::in, list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out)
-    is det.
+    field_offset::in, int::in, prog_context::in,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_args(ConsId, ArgVars, Modes, CtorArgRepns, VarType, VarLval,
-        Offset, ArgNum, Tag, Context, Stmts, !Info) :-
+ml_gen_unify_args(FieldGen, ArgVars, Modes, CtorArgRepns,
+        Offset, ArgNum, Context, Stmts, !Info) :-
     ( if
-        ml_gen_unify_args_loop(ConsId, ArgVars, Modes, CtorArgRepns,
-            VarType, VarLval, Offset, ArgNum, Tag, Context,
-            [], Stmts0, !Info)
+        ml_gen_unify_args_loop(FieldGen, ArgVars, Modes, CtorArgRepns,
+            Offset, ArgNum, Context, [], StmtsPrime, !Info)
     then
-        Stmts = Stmts0
+        Stmts = StmtsPrime
     else
         unexpected($pred, "length mismatch")
     ).
 
-:- pred ml_gen_unify_args_loop(cons_id::in, list(prog_var)::in,
+:- pred ml_gen_unify_args_loop(field_gen::in, list(prog_var)::in,
     list(unify_mode)::in, list(constructor_arg_repn)::in,
-    mer_type::in, mlds_lval::in, field_offset::in, int::in,
-    cons_tag::in, prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out,
+    field_offset::in, int::in, prog_context::in,
+    list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is semidet.
 
-ml_gen_unify_args_loop(_, [], [], _, _, _, _, _, _, _, !Stmts, !Info).
-ml_gen_unify_args_loop(ConsId, [ArgVar | ArgVars], [Mode | Modes],
+ml_gen_unify_args_loop(_, [], [], _, _, _, _, !Stmts, !Info).
+ml_gen_unify_args_loop(FieldGen, [ArgVar | ArgVars], [Mode | Modes],
         [CtorArgRepn | CtorArgRepns],
-        VarType, VarLval, CurOffset, CurArgNum, Tag, Context, !Stmts, !Info) :-
+        CurOffset, CurArgNum, Context, !Stmts, !Info) :-
     ml_next_field_offset(CtorArgRepn, CtorArgRepns, CurOffset, NextOffset),
     NextArgNum = CurArgNum + 1,
-    ml_gen_unify_args_loop(ConsId, ArgVars, Modes, CtorArgRepns,
-        VarType, VarLval, NextOffset, NextArgNum, Tag, Context, !Stmts, !Info),
-    ml_gen_unify_arg(ConsId, ArgVar, Mode, CtorArgRepn,
-        VarType, VarLval, CurOffset, CurArgNum, Tag, Context, !Stmts, !Info).
+    ml_gen_unify_args_loop(FieldGen, ArgVars, Modes, CtorArgRepns,
+        NextOffset, NextArgNum, Context, !Stmts, !Info),
+    ml_gen_unify_arg(FieldGen, ArgVar, Mode, CtorArgRepn,
+        CurOffset, CurArgNum, Context, !Stmts, !Info).
 
-:- pred ml_gen_unify_args_for_reuse(cons_id::in, list(prog_var)::in,
+:- pred ml_gen_unify_args_for_reuse(field_gen::in, list(prog_var)::in,
     list(unify_mode)::in, list(constructor_arg_repn)::in,
-    list(int)::in, mer_type::in, mlds_lval::in, field_offset::in,
-    int::in, cons_tag::in, prog_context::in,
+    list(int)::in, field_offset::in, int::in, prog_context::in,
     list(mlds_stmt)::out, list(take_addr_info)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_args_for_reuse(ConsId, ArgVars, Modes, CtorArgRepns,
-        TakeAddr, VarType, VarLval, CurOffset, CurArgNum, Tag, Context,
+ml_gen_unify_args_for_reuse(FieldGen, ArgVars, Modes, CtorArgRepns,
+        TakeAddr, CurOffset, CurArgNum, Context,
         Stmts, TakeAddrInfos, !Info) :-
     ( if
         ArgVars = [],
@@ -1516,10 +1512,9 @@ ml_gen_unify_args_for_reuse(ConsId, ArgVars, Modes, CtorArgRepns,
             CurOffset, NextOffset),
         NextArgNum = CurArgNum + 1,
         ( if TakeAddr = [CurArgNum | TailTakeAddr] then
-            ml_gen_unify_args_for_reuse(ConsId, TailArgVars, TailModes,
-                TailCtorArgRepns, TailTakeAddr, VarType, VarLval,
-                NextOffset, NextArgNum, Tag, Context, Stmts,
-                TakeAddrInfosTail, !Info),
+            ml_gen_unify_args_for_reuse(FieldGen, TailArgVars, TailModes,
+                TailCtorArgRepns, TailTakeAddr, NextOffset, NextArgNum,
+                Context, Stmts, TakeAddrInfosTail, !Info),
 
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_info_get_high_level_data(!.Info, HighLevelData),
@@ -1534,73 +1529,145 @@ ml_gen_unify_args_for_reuse(ConsId, ArgVars, Modes, CtorArgRepns,
                 MLDS_BoxedFieldType),
             TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
         else
-            ml_gen_unify_args_for_reuse(ConsId, TailArgVars, TailModes,
-                TailCtorArgRepns, TakeAddr, VarType, VarLval,
-                NextOffset, NextArgNum, Tag, Context, Stmts0,
-                TakeAddrInfos, !Info),
-            ml_gen_unify_arg(ConsId, ArgVar, Mode, CtorArgRepn,
-                VarType, VarLval, CurOffset, CurArgNum, Tag, Context,
-                Stmts0, Stmts, !Info)
+            ml_gen_unify_args_for_reuse(FieldGen, TailArgVars, TailModes,
+                TailCtorArgRepns, TakeAddr, NextOffset, NextArgNum,
+                Context, Stmts0, TakeAddrInfos, !Info),
+            ml_gen_unify_arg(FieldGen, ArgVar, Mode, CtorArgRepn,
+                CurOffset, CurArgNum, Context, Stmts0, Stmts, !Info)
         )
     else
         unexpected($pred, "length mismatch")
     ).
 
-:- pred ml_gen_unify_arg(cons_id::in, prog_var::in, unify_mode::in,
-    constructor_arg_repn::in, mer_type::in, mlds_lval::in,
-    field_offset::in, int::in, cons_tag::in, prog_context::in,
-    list(mlds_stmt)::in, list(mlds_stmt)::out,
+:- type field_gen
+    --->    field_gen(
+                % The primary tag, if any, for the field reference.
+                maybe(ptag),
+
+                % The value and the MLDS type of the pointer to the cell.
+                mlds_rval,
+                mlds_type,
+
+                % How we identify the field in the cell.
+                field_via
+            ).
+
+:- type field_via
+    --->    field_via_offset
+            % We identify the field via ml_field_offset.
+
+    ;       field_via_name(
+                % We identify the field via ml_field_named.
+
+                % The MLDS module name that is the qualifier
+                % in the qual_field_var_name in the first argument
+                % of ml_field_named. (The mlds_qual_kind is type_qual.)
+                mlds_module_name,
+
+                % The class pointer type that is second argument of
+                % ml_field_named.
+                mlds_type
+            ).
+
+:- pred decide_field_gen(ml_gen_info::in, mlds_lval::in, mer_type::in,
+    cons_id::in, cons_tag::in, field_gen::out) is det.
+
+decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, FieldGen) :-
+    MaybePrimaryTag = get_maybe_primary_tag(ConsTag),
+    AddrRval = ml_lval(VarLval),
+    ml_gen_type(Info, VarType, AddrType),
+
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
+    (
+        HighLevelData = no,
+        % With the low-level data representation, we access all fields
+        % using offsets.
+        FieldVia = field_via_offset
+    ;
+        HighLevelData = yes,
+        % With the high-level data representation, we always use named fields,
+        % except for tuple types.
+        ( if type_is_tuple(VarType, _) then
+            FieldVia = field_via_offset
+        else if ConsId = cons(ConsSymName, ConsArity, TypeCtor) then
+            ml_gen_info_get_target(Info, Target),
+            ConsName = ml_gen_du_ctor_name(Target, TypeCtor,
+                ConsSymName, ConsArity),
+            % XXX ARG_PACK Delete this sanity test after it has been tested
+            % for a while.
+            type_to_ctor_det(VarType, VarTypeCtor),
+            expect(unify(TypeCtor, VarTypeCtor), $pred,
+                "TypeCtor != VarTypeCtor"),
+            ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
+            QualTypeName = qual_class_name(MLDS_Module, QualKind, TypeName),
+            TypeQualifier = mlds_append_class_qualifier(Target, MLDS_Module,
+                QualKind, TypeName, TypeArity),
+
+            UsesBaseClass = ml_tag_uses_base_class(ConsTag),
+            (
+                UsesBaseClass = tag_uses_base_class,
+                % In this case, there is only one functor for the type,
+                % and so the class name is determined by the type name.
+                ClassId = mlds_class_id(QualTypeName, TypeArity, mlds_class),
+                FieldQualifier = TypeQualifier
+            ;
+                UsesBaseClass = tag_does_not_use_base_class,
+                % In this case, the class name is determined by the constructor.
+                QualConsName =
+                    qual_class_name(TypeQualifier, type_qual, ConsName),
+                ClassId = mlds_class_id(QualConsName, ConsArity, mlds_class),
+                FieldQualifier = mlds_append_class_qualifier(Target,
+                    TypeQualifier, type_qual, ConsName, ConsArity)
+            ),
+            ClassPtrType = mlds_ptr_type(mlds_class_type(ClassId)),
+            FieldVia = field_via_name(FieldQualifier, ClassPtrType)
+        else
+            unexpected($pred, "unexpected cons_id")
+        )
+    ),
+    FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia).
+
+:- pred ml_gen_unify_arg(field_gen::in, prog_var::in,
+    unify_mode::in, constructor_arg_repn::in, field_offset::in, int::in,
+    prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_arg(ConsId, ArgVar, Mode, CtorArgRepn, VarType, VarLval,
-        Offset, ArgNum, Tag, Context, !Stmts, !Info) :-
+ml_gen_unify_arg(FieldGen, ArgVar, Mode, CtorArgRepn, Offset, ArgNum,
+        Context, !Stmts, !Info) :-
     % XXX ARG_PACK Many of the decisions that this predicate makes
     % are repeated the same way for every argumeny. This redundant work
     % should be eliminated.
-    MaybeFieldName = CtorArgRepn ^ car_field_name,
-    FieldType = CtorArgRepn ^ car_type,
-    FieldPosWidth = CtorArgRepn ^ car_pos_width,
-    ml_gen_info_get_high_level_data(!.Info, HighLevelData),
+    FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia),
     (
-        % With the low-level data representation, we access all fields
-        % using offsets.
+        FieldVia = field_via_offset,
         % XXX We should check whether the cell offset in FieldPosWidth,
         % if any, matches Offset.
-        HighLevelData = no,
         Offset = offset(OffsetInt),
         FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt)))
     ;
-        % With the high-level data representation, we always use named fields,
-        % except for tuple types.
-        HighLevelData = yes,
-        ml_gen_info_get_target(!.Info, Target),
-        ( if type_is_tuple(VarType, _) then
-            Offset = offset(OffsetInt),
-            FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt)))
-        else if ConsId = cons(ConsName, ConsArity, TypeCtor) then
-            UnqualConsName = ml_gen_du_ctor_name(Target, TypeCtor,
-                ConsName, ConsArity),
-            FieldName = ml_gen_hld_field_name(MaybeFieldName, ArgNum),
-            FieldId = ml_gen_field_id(Target, VarType, Tag, UnqualConsName,
-                ConsArity, FieldName)
-        else
-            unexpected($pred, "invalid cons_id")
-        )
+        FieldVia = field_via_name(FieldQualifier, ClassPtrType),
+        MaybeFieldName = CtorArgRepn ^ car_field_name,
+        FieldName = ml_gen_hld_field_name(MaybeFieldName, ArgNum),
+        QualifiedFieldName =
+            qual_field_var_name(FieldQualifier, type_qual, FieldName),
+        FieldId = ml_field_named(QualifiedFieldName, ClassPtrType)
     ),
     % Box the field type, if needed.
     % XXX ARG_PACK For sub-word-sized fields, this should *never* be needed,
     % so we should do this only for full- and double-word arguments.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ml_gen_info_get_high_level_data(!.Info, HighLevelData),
+    FieldPosWidth = CtorArgRepn ^ car_pos_width,
     FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
+    FieldType = CtorArgRepn ^ car_type,
     ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
         BoxedFieldType),
 
-    % Generate lvals for the LHS and the RHS.
-    ml_gen_type(!.Info, VarType, MLDS_VarType),
+    % Generate lvals for the LHS ...
     ml_gen_type(!.Info, BoxedFieldType, MLDS_BoxedFieldType),
-    MaybePrimaryTag = get_primary_tag(Tag),
-    FieldLval = ml_field(MaybePrimaryTag, ml_lval(VarLval), FieldId,
-        MLDS_BoxedFieldType, MLDS_VarType),
+    FieldLval = ml_field(MaybePrimaryTag, AddrRval, FieldId,
+        MLDS_BoxedFieldType, AddrType),
+    % ... and the RHS.
     ml_gen_var(!.Info, ArgVar, ArgLval),
     ml_variable_type(!.Info, ArgVar, ArgType),
 
@@ -2035,8 +2102,9 @@ ml_gen_tag_test(Var, ConsId, TagTestExpr, !Info) :-
 
     ml_gen_var(!.Info, Var, VarLval),
     ml_variable_type(!.Info, Var, Type),
-    ml_cons_id_to_tag(!.Info, ConsId, Tag),
-    TagTestExpr = ml_gen_tag_test_rval(!.Info, Tag, Type, ml_lval(VarLval)).
+    ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
+    TagTestExpr =
+        ml_gen_tag_test_rval(!.Info, ConsTag, Type, ml_lval(VarLval)).
 
 ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpr, !Info) :-
     % NOTE: Keep in sync with ml_gen_tag_test above.
@@ -2046,65 +2114,66 @@ ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpr, !Info) :-
 
     ml_gen_var(!.Info, Var, VarLval),
     ml_variable_type(!.Info, Var, Type),
-    TaggedConsId = tagged_cons_id(_ConsId, Tag),
-    TagTestExpr = ml_gen_tag_test_rval(!.Info, Tag, Type, ml_lval(VarLval)).
+    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
+    TagTestExpr =
+        ml_gen_tag_test_rval(!.Info, ConsTag, Type, ml_lval(VarLval)).
 
-    % ml_gen_tag_test_rval(Info, Tag, Type, VarRval) = TestRval:
+    % ml_gen_tag_test_rval(Info, ConsTag, Type, VarRval) = TestRval:
     %
     % TestRval is an rval of type bool which evaluates to true if VarRval has
-    % the specified Tag, and false otherwise. Type is the type of VarRval.
+    % the specified ConsTag, and false otherwise. Type is the type of VarRval.
     %
 :- func ml_gen_tag_test_rval(ml_gen_info, cons_tag, mer_type, mlds_rval)
     = mlds_rval.
 
-ml_gen_tag_test_rval(Info, Tag, Type, Rval) = TagTestRval :-
+ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
     (
-        Tag = string_tag(String),
+        ConsTag = string_tag(String),
         TagTestRval = ml_binop(str_eq, Rval, ml_const(mlconst_string(String)))
     ;
-        Tag = float_tag(Float),
+        ConsTag = float_tag(Float),
         TagTestRval = ml_binop(float_eq, Rval, ml_const(mlconst_float(Float)))
     ;
-        Tag = int_tag(IntTag),
+        ConsTag = int_tag(IntTag),
         ml_gen_info_get_module_info(Info, ModuleInfo),
         TagTestRval = ml_gen_int_tag_test_rval(IntTag, Type, ModuleInfo, Rval)
     ;
-        Tag = foreign_tag(ForeignLang, ForeignVal),
+        ConsTag = foreign_tag(ForeignLang, ForeignVal),
         ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal, MLDS_Type)),
         TagTestRval = ml_binop(eq(int_type_int), Rval, Const)
     ;
-        Tag = dummy_tag,
+        ConsTag = dummy_tag,
         TagTestRval = ml_const(mlconst_true)
     ;
-        ( Tag = closure_tag(_, _, _)
-        ; Tag = type_ctor_info_tag(_, _, _)
-        ; Tag = base_typeclass_info_tag(_, _, _)
-        ; Tag = type_info_const_tag(_)
-        ; Tag = typeclass_info_const_tag(_)
-        ; Tag = ground_term_const_tag(_, _)
-        ; Tag = tabling_info_tag(_, _)
-        ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_entry_tag(_, _)
+        ( ConsTag = closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
         ),
         unexpected($pred, "bad tag")
     ;
-        Tag = no_tag,
+        ConsTag = no_tag,
         TagTestRval = ml_const(mlconst_true)
     ;
-        Tag = single_functor_tag,
+        ConsTag = single_functor_tag,
         TagTestRval = ml_const(mlconst_true)
     ;
-        ( Tag = unshared_tag(UnsharedPtag)
-        ; Tag = direct_arg_tag(UnsharedPtag)
+        ( ConsTag = unshared_tag(UnsharedPtag)
+        ; ConsTag = direct_arg_tag(UnsharedPtag)
         ),
         RvalTag = ml_unop(std_unop(tag), Rval),
         UnsharedTag = ml_unop(std_unop(mktag),
             ml_const(mlconst_int(UnsharedPtag))),
         TagTestRval = ml_binop(eq(int_type_int), RvalTag, UnsharedTag)
     ;
-        Tag = shared_remote_tag(PrimaryTag, SecondaryTag, _AddedBy),
+        ConsTag = shared_remote_tag(PrimaryTag, SecondaryTag, _AddedBy),
         ml_gen_secondary_tag_rval(Info, Type, Rval, PrimaryTag,
             SecondaryTagFieldRval),
         SecondaryTagTestRval = ml_binop(eq(int_type_int),
@@ -2123,7 +2192,7 @@ ml_gen_tag_test_rval(Info, Tag, Type, Rval) = TagTestRval :-
                 PrimaryTagTestRval, SecondaryTagTestRval)
         )
     ;
-        Tag = shared_local_tag(Ptag, Num),
+        ConsTag = shared_local_tag(Ptag, Num),
         ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         TagTestRval = ml_binop(eq(int_type_int), Rval,
@@ -2268,39 +2337,6 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
         ClassQualKind, ClassName, ClassArity),
     QualifiedFieldName =
         qual_field_var_name(FieldQualifier, type_qual, fvn_data_tag),
-    FieldId = ml_field_named(QualifiedFieldName, ClassPtrType).
-
-:- func ml_gen_field_id(mlds_target_lang, mer_type, cons_tag,
-    mlds_class_name, arity, mlds_field_var_name) = mlds_field_id.
-
-ml_gen_field_id(Target, Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
-    type_to_ctor_det(Type, TypeCtor),
-    ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
-    QualTypeName = qual_class_name(MLDS_Module, QualKind, TypeName),
-    TypeQualifier = mlds_append_class_qualifier(Target, MLDS_Module, QualKind,
-        TypeName, TypeArity),
-
-    UsesBaseClass = ml_tag_uses_base_class(Tag),
-    (
-        UsesBaseClass = tag_uses_base_class,
-        % In this case, there is only one functor for the type (other than
-        % reserved_address constants), and so the class name is determined
-        % by the type name.
-        ClassId = mlds_class_id(QualTypeName, TypeArity, mlds_class),
-        ClassPtrType = mlds_ptr_type(mlds_class_type(ClassId)),
-        QualifiedFieldName =
-            qual_field_var_name(TypeQualifier, type_qual, FieldName)
-    ;
-        UsesBaseClass = tag_does_not_use_base_class,
-        % In this case, the class name is determined by the constructor.
-        QualConsName = qual_class_name(TypeQualifier, type_qual, ConsName),
-        ClassId = mlds_class_id(QualConsName, ConsArity, mlds_class),
-        ClassPtrType = mlds_ptr_type(mlds_class_type(ClassId)),
-        FieldQualifier = mlds_append_class_qualifier(Target, TypeQualifier,
-            type_qual, ConsName, ConsArity),
-        QualifiedFieldName =
-            qual_field_var_name(FieldQualifier, type_qual, FieldName)
-    ),
     FieldId = ml_field_named(QualifiedFieldName, ClassPtrType).
 
 %---------------------------------------------------------------------------%
@@ -3575,9 +3611,9 @@ ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
     %
 :- pred ml_cons_id_to_tag(ml_gen_info::in, cons_id::in, cons_tag::out) is det.
 
-ml_cons_id_to_tag(Info, ConsId, Tag) :-
+ml_cons_id_to_tag(Info, ConsId, ConsTag) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    Tag = cons_id_to_tag(ModuleInfo, ConsId).
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId).
 
 :- pred is_apw_full(arg_pos_width::in) is semidet.
 
