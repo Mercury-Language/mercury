@@ -420,15 +420,29 @@ rename_class_names_in_rval(Renaming, !Rval) :-
         rename_class_names_in_rval_const(Renaming, RvalConst0, RvalConst),
         !:Rval = ml_const(RvalConst)
     ;
-        !.Rval = ml_unop(Op0, Rval0),
-        rename_class_names_in_unary_op(Renaming, Op0, Op),
-        rename_class_names_in_rval(Renaming, Rval0, Rval),
-        !:Rval = ml_unop(Op, Rval)
+        !.Rval = ml_box(Type0, SubRval0),
+        rename_class_names_in_type(Renaming, Type0, Type),
+        rename_class_names_in_rval(Renaming, SubRval0, SubRval),
+        !:Rval = ml_box(Type, SubRval)
     ;
-        !.Rval = ml_binop(Op, RvalA0, RvalB0),
-        rename_class_names_in_rval(Renaming, RvalA0, RvalA),
-        rename_class_names_in_rval(Renaming, RvalB0, RvalB),
-        !:Rval = ml_binop(Op, RvalA, RvalB)
+        !.Rval = ml_unbox(Type0, SubRval0),
+        rename_class_names_in_type(Renaming, Type0, Type),
+        rename_class_names_in_rval(Renaming, SubRval0, SubRval),
+        !:Rval = ml_unbox(Type, SubRval)
+    ;
+        !.Rval = ml_cast(Type0, SubRval0),
+        rename_class_names_in_type(Renaming, Type0, Type),
+        rename_class_names_in_rval(Renaming, SubRval0, SubRval),
+        !:Rval = ml_cast(Type, SubRval)
+    ;
+        !.Rval = ml_unop(Op, SubRval0),
+        rename_class_names_in_rval(Renaming, SubRval0, SubRval),
+        !:Rval = ml_unop(Op, SubRval)
+    ;
+        !.Rval = ml_binop(Op, SubRvalA0, SubRvalB0),
+        rename_class_names_in_rval(Renaming, SubRvalA0, SubRvalA),
+        rename_class_names_in_rval(Renaming, SubRvalB0, SubRvalB),
+        !:Rval = ml_binop(Op, SubRvalA, SubRvalB)
     ;
         !.Rval = ml_mem_addr(Lval0),
         rename_class_names_in_lval(Renaming, Lval0, Lval),
@@ -484,26 +498,6 @@ rename_class_names_in_rval_const(Renaming, !Const) :-
         ; !.Const = mlconst_data_addr_rtti(_, _)
         ; !.Const = mlconst_data_addr_tabling(_, _)
         )
-    ).
-
-:- pred rename_class_names_in_unary_op(class_name_renaming::in,
-    mlds_unary_op::in, mlds_unary_op::out) is det.
-
-rename_class_names_in_unary_op(Renaming, !Op) :-
-    (
-        !.Op = box(Type0),
-        rename_class_names_in_type(Renaming, Type0, Type),
-        !:Op = box(Type)
-    ;
-        !.Op = unbox(Type0),
-        rename_class_names_in_type(Renaming, Type0, Type),
-        !:Op = unbox(Type)
-    ;
-        !.Op = cast(Type0),
-        rename_class_names_in_type(Renaming, Type0, Type),
-        !:Op = cast(Type)
-    ;
-        !.Op = std_unop(_)
     ).
 
 :- pred rename_class_names_in_target_code_component(class_name_renaming::in,

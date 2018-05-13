@@ -1798,7 +1798,20 @@
 
     ;       ml_const(mlds_rval_const)
 
-    ;       ml_unop(mlds_unary_op, mlds_rval)
+    ;       ml_box(mlds_type, mlds_rval)
+            % ml_box(MLDSType); convert from MLDSType to mlds_generic_type,
+            % by boxing if necessary, or just casting if not.
+
+    ;       ml_unbox(mlds_type, mlds_rval)
+            % ml_unbox(MLDSType): convert from mlds_generic_type to MLDSType,
+            % applying the inverse transformation to box/1, i.e. unboxing
+            % if boxing was necessary, and just casting otherwise.
+
+    ;       ml_cast(mlds_type, mlds_rval)
+            % ml_cast(MLDSType): Coerce the type of the rval to be MLDSType.
+            % XXX It might be worthwhile adding the type that we cast from.
+
+    ;       ml_unop(unary_op, mlds_rval)
 
     ;       ml_binop(binary_op, mlds_rval, mlds_rval)
 
@@ -1904,25 +1917,6 @@
                 qual_func_label,
                 mlds_func_signature
             ).
-
-    % XXX Now that the LLDS also has a cast operation, it may be simpler
-    % to delete this type, and make box, unbox, cast and (std) unop be
-    % distinct function symbols in the *mlds_rval* type.
-:- type mlds_unary_op
-    --->    box(mlds_type)
-            % box(MLDSType); convert from MLDSType to mlds_generic_type,
-            % by boxing if necessary, or just casting if not.
-
-    ;       unbox(mlds_type)
-            % unbox(MLDSType): convert from mlds_generic_type to MLDSType,
-            % applying the inverse transformation to box/1, i.e. unboxing
-            % if boxing was necessary, and just casting otherwise.
-
-    ;       cast(mlds_type)
-            % cast(MLDSType): Coerce the type of the rval to be MLDSType.
-            % XXX It might be worthwhile adding the type that we cast from.
-
-    ;       std_unop(builtin_ops.unary_op).
 
 :- type ml_scalar_common_type_num
     --->    ml_scalar_common_type_num(int).

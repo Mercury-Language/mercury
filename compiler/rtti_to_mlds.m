@@ -1264,7 +1264,7 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
     then
         % rtti_data_to_id/3 does not handle this case
         SrcType = mlds_native_int_type,
-        Initializer = init_obj(ml_unop(gen_cast(SrcType, DestType),
+        Initializer = init_obj(gen_cast(SrcType, DestType,
             ml_const(mlconst_int(VarNum))))
     else if
         RttiData = rtti_data_base_typeclass_info(TCName, InstanceModuleName,
@@ -1277,7 +1277,7 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
         RttiId = tc_rtti_id(TCName, type_class_base_typeclass_info(
             InstanceModuleName, InstanceString)),
         Rval = ml_const(mlconst_data_addr_rtti(MLDS_ModuleName, RttiId)),
-        Initializer = init_obj(ml_unop(gen_cast(SrcType, DestType), Rval))
+        Initializer = init_obj(gen_cast(SrcType, DestType, Rval))
     else
         rtti_data_to_id(RttiData, RttiId),
         Initializer = gen_init_cast_rtti_id(DestType, ModuleName, RttiId)
@@ -1285,9 +1285,9 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
 
     % Currently casts only store the destination type.
     %
-:- func gen_cast(mlds_type, mlds_type) = mlds_unary_op.
+:- func gen_cast(mlds_type, mlds_type, mlds_rval) = mlds_rval.
 
-gen_cast(_SrcType, DestType) = cast(DestType).
+gen_cast(_SrcType, DestType, SubRval) = ml_cast(DestType, SubRval).
 
     % Generate an MLDS initializer comprising just the rval
     % for a given rtti_id.
@@ -1325,7 +1325,7 @@ gen_init_tc_rtti_name(ModuleName, TCName, TCRttiName) =
 
 gen_init_cast_rtti_id(DestType, ModuleName, RttiId) = Initializer :-
     SrcType = mlds_rtti_type(item_type(RttiId)),
-    Initializer = init_obj(ml_unop(gen_cast(SrcType, DestType),
+    Initializer = init_obj(gen_cast(SrcType, DestType,
         gen_rtti_id(ModuleName, RttiId))).
 
     % Generate the MLDS rval for an rtti_id.
@@ -1553,7 +1553,7 @@ gen_wrapper_func_and_initializer(ModuleInfo, Target, NumExtra, RttiProcId,
 
         % The initializer for the wrapper is just the wrapper function's
         % address, converted to mlds_generic_type (by boxing).
-        Initializer = init_obj(ml_unop(box(WrapperFuncType), WrapperFuncRval))
+        Initializer = init_obj(ml_box(WrapperFuncType, WrapperFuncRval))
     ).
 
 :- func gen_init_proc_id(module_info, rtti_proc_label) = mlds_initializer.
@@ -1575,7 +1575,7 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Initializer :-
     % generic type because since the actual type for the procedure will
     % depend on how many type_info parameters it takes, which will depend
     % on the type's arity.
-    ProcAddrArg = ml_unop(box(mlds_func_type(Params)), ProcAddrRval),
+    ProcAddrArg = ml_box(mlds_func_type(Params), ProcAddrRval),
     Initializer = init_obj(ProcAddrArg).
 
 :- func gen_init_proc_id_from_univ(module_info, univ) =
@@ -1704,13 +1704,16 @@ add_rtti_defn_arcs_rval(DefnGlobalVarName, Rval, !Graph) :-
         Rval = ml_lval(Lval),
         add_rtti_defn_arcs_lval(DefnGlobalVarName, Lval, !Graph)
     ;
-        Rval = ml_mkword(_Tag, SubRvalA),
-        add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRvalA, !Graph)
-    ;
         Rval = ml_const(Const),
         add_rtti_defn_arcs_const(DefnGlobalVarName, Const, !Graph)
     ;
-        Rval = ml_unop(_, SubRvalA),
+        ( Rval = ml_mkword(_Tag, SubRvalA)
+        ; Rval = ml_box(_, SubRvalA)
+        ; Rval = ml_unbox(_, SubRvalA)
+        ; Rval = ml_cast(_, SubRvalA)
+        ; Rval = ml_unop(_, SubRvalA)
+        ; Rval = ml_vector_common_row_addr(_, SubRvalA)
+        ),
         add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRvalA, !Graph)
     ;
         Rval = ml_binop(_, SubRvalA, SubRvalB),
@@ -1720,14 +1723,10 @@ add_rtti_defn_arcs_rval(DefnGlobalVarName, Rval, !Graph) :-
         Rval = ml_mem_addr(SubLval),
         add_rtti_defn_arcs_lval(DefnGlobalVarName, SubLval, !Graph)
     ;
-        Rval = ml_scalar_common(_)
-    ;
-        Rval = ml_scalar_common_addr(_)
-    ;
-        Rval = ml_vector_common_row_addr(_, RowRval),
-        add_rtti_defn_arcs_rval(DefnGlobalVarName, RowRval, !Graph)
-    ;
-        Rval = ml_self(_)
+        ( Rval = ml_scalar_common(_)
+        ; Rval = ml_scalar_common_addr(_)
+        ; Rval = ml_self(_)
+        )
     ).
 
 :- pred add_rtti_defn_arcs_lval(mlds_global_var_name::in, mlds_lval::in,

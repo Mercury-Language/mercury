@@ -519,16 +519,9 @@ ml_specialize_generic_array_rval(!Rval) :-
     (
         !.Rval = ml_const(mlconst_float(_))
     ;
-        !.Rval = ml_unop(Op, SubRval),
-        require_complete_switch [Op]
-        (
-            ( Op = box(Type)
-            ; Op = unbox(Type)
-            ; Op = cast(Type)
-            )
-        ;
-            Op = std_unop(_),
-            fail
+        ( !.Rval = ml_box(Type, SubRval)
+        ; !.Rval = ml_unbox(Type, SubRval)
+        ; !.Rval = ml_cast(Type, SubRval)
         ),
         % XXX ARG_PACK Specialize for int64s and uint64s as well.
         (

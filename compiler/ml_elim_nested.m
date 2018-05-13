@@ -934,8 +934,7 @@ ml_chain_stack_frames(ModuleName, FuncName, Context, GCTraceStmts,
     %
     ThisFrameName = lvn_comp_var(lvnc_this_frame),
     ThisFrameRval = ml_lval(ml_local_var(ThisFrameName, mlds_generic_type)),
-    CastThisFrameRval = ml_unop(
-        cast(mlds_ptr_type(mlds_class_type(EnvClassId))),
+    CastThisFrameRval = ml_cast(mlds_ptr_type(mlds_class_type(EnvClassId)),
         ThisFrameRval),
     ml_init_env(chain_gc_stack_frames, EnvClassId, CastThisFrameRval,
         Context, FramePtrDecl, InitFramePtr),
@@ -1159,7 +1158,7 @@ ml_insert_init_env(Action, ClassId, FunctionDefn0, FunctionDefn,
 
         % Insert a cast, to downcast from mlds_generic_env_ptr_type to the
         % specific environment type for this procedure.
-        CastEnvPtrVal = ml_unop(cast(EnvPtrVarType), EnvPtrVal),
+        CastEnvPtrVal = ml_cast(EnvPtrVarType, EnvPtrVal),
 
         ml_init_env(Action, ClassId, CastEnvPtrVal, Context,
             EnvPtrDefn, InitEnvPtr),
@@ -1988,14 +1987,26 @@ fixup_rval(Action, Info, Rval0, Rval) :-
         fixup_rval(Action, Info, BaseRval0, BaseRval),
         Rval = ml_mkword(Tag, BaseRval)
     ;
-        Rval0 = ml_unop(UnOp, XRval0),
-        fixup_rval(Action, Info, XRval0, XRval),
-        Rval = ml_unop(UnOp, XRval)
+        Rval0 = ml_box(Type, SubRval0),
+        fixup_rval(Action, Info, SubRval0, SubRval),
+        Rval = ml_box(Type, SubRval)
     ;
-        Rval0 = ml_binop(BinOp, XRval0, YRval0),
-        fixup_rval(Action, Info, XRval0, XRval),
-        fixup_rval(Action, Info, YRval0, YRval),
-        Rval = ml_binop(BinOp, XRval, YRval)
+        Rval0 = ml_unbox(Type, SubRval0),
+        fixup_rval(Action, Info, SubRval0, SubRval),
+        Rval = ml_unbox(Type, SubRval)
+    ;
+        Rval0 = ml_cast(Type, SubRval0),
+        fixup_rval(Action, Info, SubRval0, SubRval),
+        Rval = ml_cast(Type, SubRval)
+    ;
+        Rval0 = ml_unop(UnOp, SubRval0),
+        fixup_rval(Action, Info, SubRval0, SubRval),
+        Rval = ml_unop(UnOp, SubRval)
+    ;
+        Rval0 = ml_binop(BinOp, SubRvalA0, SubRvalB0),
+        fixup_rval(Action, Info, SubRvalA0, SubRvalA),
+        fixup_rval(Action, Info, SubRvalB0, SubRvalB),
+        Rval = ml_binop(BinOp, SubRvalA, SubRvalB)
     ;
         Rval0 = ml_vector_common_row_addr(VectorCommon, RowRval0),
         fixup_rval(Action, Info, RowRval0, RowRval),

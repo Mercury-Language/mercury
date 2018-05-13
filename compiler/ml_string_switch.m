@@ -1479,7 +1479,7 @@ ml_gen_string_hash_switch_search(InitialComment,
             Context),
         ml_stmt_atomic(assign(SlotVarLval,
             ml_binop(bitwise_and(int_type_int),
-                ml_unop(std_unop(HashOp), VarRval),
+                ml_unop(HashOp, VarRval),
                 ml_const(mlconst_int(HashMask)))),
             Context)
         ],

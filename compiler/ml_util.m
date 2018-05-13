@@ -794,7 +794,11 @@ rval_contains_var(Rval, SearchVarName) = ContainsVar :-
             ContainsVar = no
         )
     ;
-        Rval = ml_unop(_Op, RvalA),
+        ( Rval = ml_box(_Type, RvalA)
+        ; Rval = ml_unbox(_Type, RvalA)
+        ; Rval = ml_cast(_Type, RvalA)
+        ; Rval = ml_unop(_Op, RvalA)
+        ),
         ContainsVar = rval_contains_var(RvalA, SearchVarName)
     ;
         Rval = ml_binop(_Op, RvalA, RvalB),
@@ -861,7 +865,7 @@ gen_init_bool(yes) = init_obj(ml_const(mlconst_true)).
 gen_init_int(Int) = init_obj(ml_const(mlconst_int(Int))).
 
 gen_init_boxed_int(Int) =
-    init_obj(ml_unop(box(mlds_native_int_type), ml_const(mlconst_int(Int)))).
+    init_obj(ml_box(mlds_native_int_type, ml_const(mlconst_int(Int)))).
 
 gen_init_string(String) = init_obj(ml_const(mlconst_string(String))).
 

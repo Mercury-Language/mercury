@@ -176,7 +176,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         FuncLval = ml_field(yes(0), ml_lval(ClosureLval), FieldId,
             mlds_generic_type, ClosureArgType),
         FuncType = mlds_func_type(Params),
-        FuncRval = ml_unop(unbox(FuncType), ml_lval(FuncLval))
+        FuncRval = ml_unbox(FuncType, ml_lval(FuncLval))
     ;
         GenericCall = class_method(TypeClassInfoVar, MethodNum,
             _ClassId, _PredName),
@@ -199,7 +199,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         FuncLval = ml_field(yes(0), ml_lval(BaseTypeclassInfoLval),
             MethodFieldId, mlds_generic_type, mlds_generic_type),
         FuncType = mlds_func_type(Params),
-        FuncRval = ml_unop(unbox(FuncType), ml_lval(FuncLval))
+        FuncRval = ml_unbox(FuncType, ml_lval(FuncLval))
     ),
 
     % Assign the function address rval to a new local variable. This makes
@@ -227,7 +227,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     ml_gen_args(PredOrFunc, CodeModel, Context, input_and_output_params,
         BoxedArgTypes, ArgModes, CallerArgs, InputRvals, OutputLvalsTypes,
         ConvArgLocalVarDefns, ConvOutputStmts, !Info),
-    ClosureRval = ml_unop(unbox(ClosureArgType), ml_lval(ClosureLval)),
+    ClosureRval = ml_unbox(ClosureArgType, ml_lval(ClosureLval)),
 
     ( if
         ConvArgLocalVarDefns = [],
@@ -971,7 +971,7 @@ ml_gen_simple_expr(int64_const(Int64)) = ml_const(mlconst_int64(Int64)).
 ml_gen_simple_expr(uint64_const(UInt64)) = ml_const(mlconst_uint64(UInt64)).
 ml_gen_simple_expr(float_const(Float)) = ml_const(mlconst_float(Float)).
 ml_gen_simple_expr(unary(Op, Expr)) =
-    ml_unop(std_unop(Op), ml_gen_simple_expr(Expr)).
+    ml_unop(Op, ml_gen_simple_expr(Expr)).
 ml_gen_simple_expr(binary(Op, ExprA, ExprB)) =
     ml_binop(Op, ml_gen_simple_expr(ExprA), ml_gen_simple_expr(ExprB)).
 
@@ -1018,9 +1018,12 @@ may_rval_yield_dangling_stack_ref(Rval) = MayYieldDanglingStackRef :-
         Rval = ml_const(Const),
         MayYieldDanglingStackRef = may_const_yield_dangling_stack_ref(Const)
     ;
-        Rval = ml_unop(_Op, SubRval),
-        MayYieldDanglingStackRef =
-            may_rval_yield_dangling_stack_ref(SubRval)
+        ( Rval = ml_box(_Type, SubRval)
+        ; Rval = ml_unbox(_Type, SubRval)
+        ; Rval = ml_cast(_Type, SubRval)
+        ; Rval = ml_unop(_Op, SubRval)
+        ),
+        MayYieldDanglingStackRef = may_rval_yield_dangling_stack_ref(SubRval)
     ;
         Rval = ml_binop(_Op, SubRvalA, SubRvalB),
         MayYieldDanglingStackRefA =

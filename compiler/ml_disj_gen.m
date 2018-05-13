@@ -252,8 +252,7 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
             ml_gen_ordinary_model_det_semi_disj(FirstLaterDisjunct,
                 LaterLaterDisjuncts, CodeModel, Context, LaterStmts, !Info),
             LaterStmt = ml_gen_block([], [], LaterStmts, Context),
-            IfStmt = ml_stmt_if_then_else(
-                ml_unop(std_unop(logical_not), Succeeded),
+            IfStmt = ml_stmt_if_then_else(ml_unop(logical_not, Succeeded),
                 LaterStmt, no, Context),
             Stmts = [FirstStmt, IfStmt]
         ;

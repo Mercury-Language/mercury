@@ -846,7 +846,7 @@ ml_default_value_for_type(MLDS_Type) = DefaultRval :-
         ; MLDS_Type = mlds_type_info_type
         ; MLDS_Type = mlds_pseudo_type_info_type
         ),
-        DefaultRval = ml_unop(cast(MLDS_Type), ml_const(mlconst_int(0)))
+        DefaultRval = ml_cast(MLDS_Type, ml_const(mlconst_int(0)))
     ;
         ( MLDS_Type = mlds_cont_type(_)
         ; MLDS_Type = mlds_commit_type

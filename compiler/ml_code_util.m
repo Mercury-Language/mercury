@@ -84,29 +84,10 @@
     mlds_func_params::in, prog_context::in, mlds_stmt::in,
     mlds_function_defn::out) is det.
 
-    % Test to see if the procedure is a model_det function whose function
-    % result has an output mode (whose type is not a dummy argument type
-    % like io.state), and if so, bind RetVar to the procedure's return value.
-    % These procedures need to handled specially: for such functions,
-    % we map the Mercury function result to an MLDS return value.
-    %
-:- pred ml_is_output_det_function(module_info::in, pred_proc_id::in,
-    prog_var::out) is semidet.
-:- pred proc_is_output_det_function(module_info::in,
-    pred_info::in, proc_info::in, prog_var::out) is semidet.
-
 %---------------------------------------------------------------------------%
 %
 % Routines for generating expressions.
 %
-
-    % conjunction: ml_gen_and(X,Y) = binop((and), X, Y),
-    % except that it does some constant folding on the result.
-    %
-:- func ml_gen_and(mlds_rval, mlds_rval) = mlds_rval.
-
-    % negation: ml_gen_not(X) = unop(std_unop(not), X),
-:- func ml_gen_not(mlds_rval) = mlds_rval.
 
 :- func ml_int_tag_to_rval_const(int_tag, mer_type, mlds_type) = mlds_rval.
 
@@ -640,41 +621,10 @@ ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func) :-
     Func = mlds_function_defn(mlds_function_name(FuncName), Context,
         DeclFlags, MaybePredProcId, FuncParams, Body, EnvVarNames, no).
 
-ml_is_output_det_function(ModuleInfo, PredProcId, RetArgVar) :-
-    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
-    proc_is_output_det_function(ModuleInfo, PredInfo, ProcInfo, RetArgVar).
-
-proc_is_output_det_function(ModuleInfo, PredInfo, ProcInfo, RetArgVar) :-
-    pred_info_is_pred_or_func(PredInfo) = pf_function,
-    proc_info_interface_code_model(ProcInfo) = model_det,
-
-    proc_info_get_argmodes(ProcInfo, Modes),
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    proc_info_get_headvars(ProcInfo, ArgVars),
-    modes_to_top_functor_modes(ModuleInfo, Modes, ArgTypes, TopFunctorModes),
-    pred_args_to_func_args(TopFunctorModes,
-        _InputTopFunctorModes, RetTopFunctorMode),
-    pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
-    pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
-
-    RetTopFunctorMode = top_out,
-    is_type_a_dummy(ModuleInfo, RetArgType) = is_not_dummy_type.
-
 %---------------------------------------------------------------------------%
 %
 % Code for generating expressions.
 %
-
-ml_gen_and(X, Y) =
-    ( if X = ml_const(mlconst_true) then
-        Y
-    else if Y = ml_const(mlconst_true) then
-        X
-    else
-        ml_binop(logical_and, X, Y)
-    ).
-
-ml_gen_not(X) = ml_unop(std_unop(logical_not), X).
 
 ml_int_tag_to_rval_const(IntTag, MerType, MLDS_Type) = Rval :-
     (
@@ -893,6 +843,33 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             PredName, PredArity, CodeModel, NonOutputFunc)
     ),
     MLDS_Module = mercury_module_name_to_mlds(DefiningModule).
+
+    % Test to see if the procedure is a model_det function whose function
+    % result has an output mode (whose type is not a dummy argument type
+    % like io.state), and if so, bind RetVar to the procedure's return value.
+    % These procedures need to handled specially: for such functions,
+    % we map the Mercury function result to an MLDS return value.
+    %
+:- pred ml_is_output_det_function(module_info::in, pred_proc_id::in,
+    prog_var::out) is semidet.
+
+ml_is_output_det_function(ModuleInfo, PredProcId, RetArgVar) :-
+    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+
+    pred_info_is_pred_or_func(PredInfo) = pf_function,
+    proc_info_interface_code_model(ProcInfo) = model_det,
+
+    proc_info_get_argmodes(ProcInfo, Modes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    proc_info_get_headvars(ProcInfo, ArgVars),
+    modes_to_top_functor_modes(ModuleInfo, Modes, ArgTypes, TopFunctorModes),
+    pred_args_to_func_args(TopFunctorModes,
+        _InputTopFunctorModes, RetTopFunctorMode),
+    pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
+    pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
+
+    RetTopFunctorMode = top_out,
+    is_type_a_dummy(ModuleInfo, RetArgType) = is_not_dummy_type.
 
 ml_gen_new_label(Label, !Info) :-
     ml_gen_info_new_label(LabelNum, !Info),
@@ -1159,14 +1136,14 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval, BoxedRval,
 
             % Return as the boxed rval the address of that constant,
             % cast to mlds_generic_type.
-            BoxedRval = ml_unop(cast(mlds_generic_type), ConstAddrRval)
+            BoxedRval = ml_cast(mlds_generic_type, ConstAddrRval)
         else
             % This is not a real box, but a cast. The "box" is required as it
             % may be further cast to pointer types.
-            BoxedRval = ml_unop(box(MLDS_Type), Rval)
+            BoxedRval = ml_box(MLDS_Type, Rval)
         )
     else
-        BoxedRval = ml_unop(box(MLDS_Type), Rval)
+        BoxedRval = ml_box(MLDS_Type, Rval)
     ).
 
 :- pred arg_width_is_double(arg_width::in, bool::out) is det.
@@ -1199,7 +1176,7 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
             DestType \= type_variable(_, _)
         then
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(unbox(MLDS_DestType), VarRval)
+            ArgRval = ml_unbox(MLDS_DestType, VarRval)
         else if
             % If converting from concrete type to polymorphic type, then box.
             SourceType \= type_variable(_, _),
@@ -1207,15 +1184,15 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
         then
             MLDS_SourceType =
                 mercury_type_to_mlds_type(ModuleInfo, SourceType),
-            ArgRval = ml_unop(box(MLDS_SourceType), VarRval)
+            ArgRval = ml_box(MLDS_SourceType, VarRval)
         else if
             % If converting to float, cast to mlds_generic_type and then unbox.
             DestType = builtin_type(builtin_type_float),
             SourceType \= builtin_type(builtin_type_float)
         then
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(unbox(MLDS_DestType),
-                ml_unop(cast(mlds_generic_type), VarRval))
+            ArgRval = ml_unbox(MLDS_DestType,
+                ml_cast(mlds_generic_type, VarRval))
         else if
             % If converting from float, box and then cast the result.
             SourceType = builtin_type(builtin_type_float),
@@ -1224,8 +1201,8 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
             MLDS_SourceType =
                 mercury_type_to_mlds_type(ModuleInfo, SourceType),
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(cast(MLDS_DestType),
-                ml_unop(box(MLDS_SourceType), VarRval))
+            ArgRval = ml_cast(MLDS_DestType,
+                ml_box(MLDS_SourceType, VarRval))
         else if
             % If converting to int64 / uint64, cast to mlds_generic_type and
             % then unbox.
@@ -1236,8 +1213,8 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
             SourceType \= builtin_type(builtin_type_int(IntType))
         then
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(unbox(MLDS_DestType),
-                ml_unop(cast(mlds_generic_type), VarRval))
+            ArgRval = ml_unbox(MLDS_DestType,
+                ml_cast(mlds_generic_type, VarRval))
         else if
             % If converting from int64 / uint64, box then cast the result.
             SourceType = builtin_type(builtin_type_int(IntType)),
@@ -1249,8 +1226,8 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
             MLDS_SourceType =
                 mercury_type_to_mlds_type(ModuleInfo, SourceType),
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(cast(MLDS_DestType),
-                ml_unop(box(MLDS_SourceType), VarRval))
+            ArgRval = ml_cast(MLDS_DestType,
+                ml_box(MLDS_SourceType, VarRval))
         else if
             % If converting from an array(T) to array(X) where X is a concrete
             % instance, we should insert a cast to the concrete instance.
@@ -1271,7 +1248,7 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
             SourceType \= DestType
         then
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
+            ArgRval = ml_cast(MLDS_DestType, VarRval)
         else if
             % If converting from one concrete type to a different one, then
             % cast. This is needed to handle construction/deconstruction
@@ -1280,7 +1257,7 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
             not type_unify(SourceType, DestType, [], map.init, _)
         then
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
+            ArgRval = ml_cast(MLDS_DestType, VarRval)
         else
             % Otherwise leave unchanged.
             ArgRval = VarRval

@@ -4778,8 +4778,17 @@ mlds_output_rval(Opts, Rval, !IO) :-
         Rval = ml_const(Const),
         mlds_output_rval_const(Opts, Const, !IO)
     ;
-        Rval = ml_unop(UnOp, RvalA),
-        mlds_output_unop(Opts, UnOp, RvalA, !IO)
+        Rval = ml_cast(Type, SubRval),
+        mlds_output_cast_rval(Opts, Type, SubRval, !IO)
+    ;
+        Rval = ml_box(Type, SubRval),
+        mlds_output_boxed_rval(Opts, Type, SubRval, !IO)
+    ;
+        Rval = ml_unbox(Type, SubRval),
+        mlds_output_unboxed_rval(Opts, Type, SubRval, !IO)
+    ;
+        Rval = ml_unop(Unop, SubRval),
+        mlds_output_unop(Opts, Unop, SubRval, !IO)
     ;
         Rval = ml_binop(BinOp, RvalA, RvalB),
         mlds_output_binop(Opts, BinOp, RvalA, RvalB, !IO)
@@ -4816,36 +4825,18 @@ mlds_output_rval(Opts, Rval, !IO) :-
         io.write_string("this", !IO)
     ).
 
-:- pred mlds_output_unop(mlds_to_c_opts::in, mlds_unary_op::in, mlds_rval::in,
-    io::di, io::uo) is det.
-
-mlds_output_unop(Opts, Unop, Expr, !IO) :-
-    (
-        Unop = cast(Type),
-        mlds_output_cast_rval(Opts, Type, Expr, !IO)
-    ;
-        Unop = box(Type),
-        mlds_output_boxed_rval(Opts, Type, Expr, !IO)
-    ;
-        Unop = unbox(Type),
-        mlds_output_unboxed_rval(Opts, Type, Expr, !IO)
-    ;
-        Unop = std_unop(StdUnop),
-        mlds_output_std_unop(Opts, StdUnop, Expr, !IO)
-    ).
-
 :- pred mlds_output_cast_rval(mlds_to_c_opts::in, mlds_type::in, mlds_rval::in,
     io::di, io::uo) is det.
 
-mlds_output_cast_rval(Opts, Type, Expr, !IO) :-
+mlds_output_cast_rval(Opts, Type, Rval, !IO) :-
     mlds_output_cast(Opts, Type, !IO),
     ( if
         Opts ^ m2co_highlevel_data = yes,
-        Expr = ml_const(mlconst_float(Float))
+        Rval = ml_const(mlconst_float(Float))
     then
         mlds_output_float_bits(Opts, Float, !IO)
     else
-        mlds_output_rval(Opts, Expr, !IO)
+        mlds_output_rval(Opts, Rval, !IO)
     ).
 
 :- pred mlds_output_cast(mlds_to_c_opts::in, mlds_type::in, io::di, io::uo)
@@ -4866,12 +4857,8 @@ is_an_address(Rval) = IsAddr :-
         Rval = ml_mkword(_Ptag, SubRval),
         IsAddr = is_an_address(SubRval)
     ;
-        Rval = ml_unop(UnOp, SubRval),
-        ( if UnOp = cast(_) then
-            IsAddr = is_an_address(SubRval)
-        else
-            IsAddr = no
-        )
+        Rval = ml_cast(_, SubRval),
+        IsAddr = is_an_address(SubRval)
     ;
         ( Rval = ml_mem_addr(_)
         ; Rval = ml_scalar_common_addr(_)
@@ -4880,6 +4867,9 @@ is_an_address(Rval) = IsAddr :-
         IsAddr = yes
     ;
         ( Rval = ml_lval(_)
+        ; Rval = ml_box(_, _)
+        ; Rval = ml_unbox(_, _)
+        ; Rval = ml_unop(_, _)
         ; Rval = ml_binop(_, _, _)
         ; Rval = ml_self(_)
         ; Rval = ml_scalar_common(_)
@@ -4928,7 +4918,7 @@ is_an_address(Rval) = IsAddr :-
 
 mlds_output_boxed_rval(Opts, Type, Rval, !IO) :-
     ( if
-        Rval = ml_unop(cast(OtherType), InnerRval),
+        Rval = ml_cast(OtherType, InnerRval),
         ( Type = OtherType
         ; is_an_address(InnerRval) = yes
         )
@@ -5232,10 +5222,10 @@ mlds_output_unboxed_rval_default(Opts, Type, Rval, !IO) :-
 
 %---------------------%
 
-:- pred mlds_output_std_unop(mlds_to_c_opts::in, builtin_ops.unary_op::in,
-    mlds_rval::in, io::di, io::uo) is det.
+:- pred mlds_output_unop(mlds_to_c_opts::in, unary_op::in, mlds_rval::in,
+    io::di, io::uo) is det.
 
-mlds_output_std_unop(Opts, UnaryOp, Expr, !IO) :-
+mlds_output_unop(Opts, UnaryOp, Expr, !IO) :-
     c_util.unary_prefix_op(UnaryOp, UnaryOpString),
     io.write_string(UnaryOpString, !IO),
     io.write_string("(", !IO),

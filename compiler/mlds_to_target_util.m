@@ -437,6 +437,9 @@ add_scalar_deps(FromScalar, Initializer, !Graph) :-
 add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
     (
         ( Rval = ml_mkword(_, SubRvalA)
+        ; Rval = ml_box(_, SubRvalA)
+        ; Rval = ml_unbox(_, SubRvalA)
+        ; Rval = ml_cast(_, SubRvalA)
         ; Rval = ml_unop(_, SubRvalA)
         ; Rval = ml_vector_common_row_addr(_, SubRvalA)
         ),
@@ -776,7 +779,11 @@ method_ptrs_in_rval(Rval, !CodeAddrsInConsts) :-
             )
         )
     ;
-        Rval = ml_unop(_UnaryOp, SubRval),
+        ( Rval = ml_box(_Type, SubRval)
+        ; Rval = ml_unbox(_Type, SubRval)
+        ; Rval = ml_cast(_Type, SubRval)
+        ; Rval = ml_unop(_UnaryOp, SubRval)
+        ),
         method_ptrs_in_rval(SubRval, !CodeAddrsInConsts)
     ;
         Rval = ml_binop(_BinaryOp, SubRvalA, SubRvalB),

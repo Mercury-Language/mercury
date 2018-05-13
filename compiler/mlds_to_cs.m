@@ -3162,11 +3162,26 @@ output_rval_for_csharp(Info, Rval, !IO) :-
         Rval = ml_const(Const),
         output_rval_const_for_csharp(Info, Const, !IO)
     ;
-        Rval = ml_unop(Op, RvalA),
-        output_unop_for_csharp(Info, Op, RvalA, !IO)
+        Rval = ml_cast(Type, SubRval),
+        output_cast_rval_for_csharp(Info, Type, SubRval, !IO)
     ;
-        Rval = ml_binop(Op, RvalA, RvalB),
-        output_binop_for_csharp(Info, Op, RvalA, RvalB, !IO)
+        Rval = ml_box(Type, SubRval),
+        ( if Type = mercury_type(comparison_result_type, _, _) then
+            io.write_string("builtin.comparison_result_object[(int) ", !IO),
+            output_rval_for_csharp(Info, SubRval, !IO),
+            io.write_string("]", !IO)
+        else
+            output_boxed_rval_for_csharp(Info, Type, SubRval, !IO)
+        )
+    ;
+        Rval = ml_unbox(Type, SubRval),
+        output_unboxed_rval_for_csharp(Info, Type, SubRval, !IO)
+    ;
+        Rval = ml_unop(Unop, SubRval),
+        output_unop_for_csharp(Info, Unop, SubRval, !IO)
+    ;
+        Rval = ml_binop(Op, SubRvalA, SubRvalB),
+        output_binop_for_csharp(Info, Op, SubRvalA, SubRvalB, !IO)
     ;
         Rval = ml_mem_addr(Lval),
         io.write_string("out ", !IO),
@@ -3196,30 +3211,6 @@ output_rval_for_csharp(Info, Rval, !IO) :-
     ;
         Rval = ml_self(_),
         io.write_string("this", !IO)
-    ).
-
-:- pred output_unop_for_csharp(csharp_out_info::in, mlds_unary_op::in,
-    mlds_rval::in, io::di, io::uo) is det.
-
-output_unop_for_csharp(Info, Unop, Expr, !IO) :-
-    (
-        Unop = cast(Type),
-        output_cast_rval_for_csharp(Info, Type, Expr, !IO)
-    ;
-        Unop = box(Type),
-        ( if Type = mercury_type(comparison_result_type, _, _) then
-            io.write_string("builtin.comparison_result_object[(int) ", !IO),
-            output_rval_for_csharp(Info, Expr, !IO),
-            io.write_string("]", !IO)
-        else
-            output_boxed_rval_for_csharp(Info, Type, Expr, !IO)
-        )
-    ;
-        Unop = unbox(Type),
-        output_unboxed_rval_for_csharp(Info, Type, Expr, !IO)
-    ;
-        Unop = std_unop(StdUnop),
-        output_std_unop_for_csharp(Info, StdUnop, Expr, !IO)
     ).
 
 :- pred output_cast_rval_for_csharp(csharp_out_info::in, mlds_type::in,
@@ -3391,10 +3382,10 @@ csharp_builtin_type(Type, TargetType) :-
         unexpected($file, $pred, "unknown typed")
     ).
 
-:- pred output_std_unop_for_csharp(csharp_out_info::in,
-    builtin_ops.unary_op::in, mlds_rval::in, io::di, io::uo) is det.
+:- pred output_unop_for_csharp(csharp_out_info::in, unary_op::in,
+    mlds_rval::in, io::di, io::uo) is det.
 
-output_std_unop_for_csharp(Info, UnaryOp, Expr, !IO) :-
+output_unop_for_csharp(Info, UnaryOp, Expr, !IO) :-
     % For the C# backend, there are no tags, so all the tagging operators
     % are no-ops, except for `tag', which always returns zero (a tag of zero
     % means there is no tag).

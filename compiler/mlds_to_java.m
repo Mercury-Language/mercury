@@ -1025,7 +1025,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
 
     % Create a return statement that returns the result of the call to the
     % original method, boxed as a java.lang.Object.
-    ReturnRval = ml_unop(box(ReturnVarType), ml_lval(ReturnLval)),
+    ReturnRval = ml_box(ReturnVarType, ml_lval(ReturnLval)),
     ReturnStmt = ml_stmt_return([ReturnRval], Context),
 
     Stmt = ml_stmt_block([ReturnVarDefn], [], [CallStmt, ReturnStmt], Context).
@@ -1035,7 +1035,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
 
 generate_call_method_nth_arg(Type, MethodArgVariable, CallArg) :-
     Rval = ml_lval(ml_local_var(MethodArgVariable, mlds_generic_type)),
-    CallArg = ml_unop(unbox(Type), Rval).
+    CallArg = ml_unbox(Type, Rval).
 
 :- pred generate_call_method_args_from_array(list(mlds_type)::in,
     mlds_local_var_name::in, int::in,
@@ -1048,7 +1048,7 @@ generate_call_method_args_from_array([Type | Types], ArrayVar, Counter,
     IndexRval = ml_const(mlconst_int(Counter)),
     ElemType = array_elem_scalar(scalar_elem_generic),
     Rval = ml_binop(array_index(ElemType), ArrayRval, IndexRval),
-    UnBoxedRval = ml_unop(unbox(Type), Rval),
+    UnBoxedRval = ml_unbox(Type, Rval),
     Args1 = Args0 ++ [UnBoxedRval],
     generate_call_method_args_from_array(Types, ArrayVar, Counter + 1,
         Args1, Args).
@@ -3972,8 +3972,17 @@ output_rval_for_java(Info, Rval, !IO) :-
         Rval = ml_const(Const),
         output_rval_const_for_java(Info, Const, !IO)
     ;
-        Rval = ml_unop(UnOp, RvalA),
-        output_unop_for_java(Info, UnOp, RvalA, !IO)
+        Rval = ml_cast(Type, SubRval),
+        output_cast_rval_for_java(Info, Type, SubRval, !IO)
+    ;
+        Rval = ml_box(Type, SubRval),
+        output_boxed_rval_for_java(Info, Type, SubRval, !IO)
+    ;
+        Rval = ml_unbox(Type, SubRval),
+        output_unboxed_rval_for_java(Info, Type, SubRval, !IO)
+    ;
+        Rval = ml_unop(Unop, SubRval),
+        output_unop_for_java(Info, Unop, SubRval, !IO)
     ;
         Rval = ml_binop(BinOp, RvalA, RvalB),
         output_binop_for_java(Info, BinOp, RvalA, RvalB, !IO)
@@ -4006,24 +4015,6 @@ output_rval_for_java(Info, Rval, !IO) :-
     ;
         Rval = ml_self(_),
         io.write_string("this", !IO)
-    ).
-
-:- pred output_unop_for_java(java_out_info::in, mlds_unary_op::in,
-    mlds_rval::in, io::di, io::uo) is det.
-
-output_unop_for_java(Info, Unop, Expr, !IO) :-
-    (
-        Unop = cast(Type),
-        output_cast_rval_for_java(Info, Type, Expr, !IO)
-    ;
-        Unop = box(Type),
-        output_boxed_rval_for_java(Info, Type, Expr, !IO)
-    ;
-        Unop = unbox(Type),
-        output_unboxed_rval_for_java(Info, Type, Expr, !IO)
-    ;
-        Unop = std_unop(StdUnop),
-        output_std_unop_for_java(Info, StdUnop, Expr, !IO)
     ).
 
 :- pred output_cast_rval_for_java(java_out_info::in, mlds_type::in,
@@ -4316,10 +4307,10 @@ java_primitive_foreign_language_type(ForeignLangType, PrimitiveType,
         DefaultValue = "'\\u0000'"
     ).
 
-:- pred output_std_unop_for_java(java_out_info::in, builtin_ops.unary_op::in,
+:- pred output_unop_for_java(java_out_info::in, builtin_ops.unary_op::in,
     mlds_rval::in, io::di, io::uo) is det.
 
-output_std_unop_for_java(Info, UnaryOp, Expr, !IO) :-
+output_unop_for_java(Info, UnaryOp, Expr, !IO) :-
     % For the Java back-end, there are no tags, so all the tagging operators
     % are no-ops, except for `tag', which always returns zero (a tag of zero
     % means there is no tag).

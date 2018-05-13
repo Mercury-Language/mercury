@@ -254,8 +254,7 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
             CanCGC = can_cgc,
             ml_gen_var(!.Info, Var, VarLval),
             % XXX Avoid strip_tag when we know what tag it will have.
-            Delete = delete_object(
-                ml_unop(std_unop(strip_tag), ml_lval(VarLval))),
+            Delete = delete_object(ml_unop(strip_tag, ml_lval(VarLval))),
             CGCStmt = ml_stmt_atomic(Delete, Context),
             Stmts0 = UnifyStmts ++ [CGCStmt]
         ;
@@ -411,9 +410,9 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
                     MLDS_Type))
             ;
-                ConsTag = shared_local_tag(Bits1, Num1),
-                Rval = ml_unop(cast(MLDS_Type), ml_mkword(Bits1,
-                    ml_unop(std_unop(mkbody), ml_const(mlconst_int(Num1)))))
+                ConsTag = shared_local_tag(Ptag, SecTag),
+                Rval = ml_cast(MLDS_Type, ml_mkword(Ptag,
+                    ml_unop(mkbody, ml_const(mlconst_int(SecTag)))))
             ;
                 ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
                 ModuleName = fixup_builtin_module(ModuleName0),
@@ -421,7 +420,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
                 RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
                 Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
-                Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
+                Rval = ml_cast(MLDS_Type, ml_const(Const))
             ;
                 ConsTag = base_typeclass_info_tag(ModuleName, ClassId,
                     Instance),
@@ -430,7 +429,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 RttiId = tc_rtti_id(TCName,
                     type_class_base_typeclass_info(ModuleName, Instance)),
                 Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
-                Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
+                Rval = ml_cast(MLDS_Type, ml_const(Const))
             ;
                 ConsTag = tabling_info_tag(PredId, ProcId),
                 ml_gen_pred_label(ModuleInfo, proc(PredId, ProcId),
@@ -438,7 +437,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
                 ProcLabel = mlds_proc_label(PredLabel, ProcId),
                 QualProcLabel = qual_proc_label(PredModule, ProcLabel),
                 Const = mlconst_data_addr_tabling(QualProcLabel, tabling_info),
-                Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
+                Rval = ml_cast(MLDS_Type, ml_const(Const))
             ;
                 ConsTag = deep_profiling_proc_layout_tag(_, _),
                 unexpected($pred, "deep_profiling_proc_layout_tag NYI")
@@ -501,7 +500,7 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
             StagType0 = mlds_native_int_type,
             % With the low-level data representation, all fields -- even the
             % secondary tag -- are boxed, and so we need box it here.
-            StagRval = ml_unop(box(StagType0), StagRval0),
+            StagRval = ml_box(StagType0, StagRval0),
             StagType = mlds_generic_type,
             ExtraRvalsTypesWidths = [rval_type_and_width(StagRval, StagType,
                 apw_full(arg_only_offset(0), cell_offset(0)))]
@@ -758,11 +757,11 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     ;
         DifferentTags = [_, _ | _],
         ReuseVarRval = ml_mkword(PrimaryTag,
-            ml_unop(std_unop(strip_tag), ml_lval(ReuseVarLval)))
+            ml_unop(strip_tag, ml_lval(ReuseVarLval)))
     ),
 
     ml_gen_var(!.Info, Var, VarLval),
-    CastReuseVarRval = ml_unop(cast(MLDS_VarType), ReuseVarRval),
+    CastReuseVarRval = ml_cast(MLDS_VarType, ReuseVarRval),
     HeapTestStmt = ml_stmt_atomic(assign_if_in_heap(VarLval, CastReuseVarRval),
         Context),
 
@@ -818,7 +817,7 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         ml_variable_type(Info, AddrVar, AddrVarType),
         ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_AddrVarType = mercury_type_to_mlds_type(ModuleInfo, AddrVarType),
-        CastSourceRval = ml_unop(cast(MLDS_AddrVarType), SourceRval),
+        CastSourceRval = ml_cast(MLDS_AddrVarType, SourceRval),
         Assign = ml_gen_assign(AddrLval, CastSourceRval, Context)
     ;
         HighLevelData = yes,
@@ -955,7 +954,7 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
 
 :- func ml_gen_mktag(int) = mlds_rval.
 
-ml_gen_mktag(Ptag) = ml_unop(std_unop(mktag), ml_const(mlconst_int(Ptag))).
+ml_gen_mktag(Ptag) = ml_unop(mktag, ml_const(mlconst_int(Ptag))).
 
 :- func ml_cast_cons_tag(mlds_type::in, cons_tag::in(no_or_direct_arg_tag),
     mlds_rval::in) = (mlds_rval::out) is det.
@@ -968,7 +967,7 @@ ml_cast_cons_tag(Type, ConsTag, Rval) = CastRval :-
         ConsTag = direct_arg_tag(Ptag),
         TagRval = ml_mkword(Ptag, Rval)
     ),
-    CastRval = ml_unop(cast(Type), TagRval).
+    CastRval = ml_cast(Type, TagRval).
 
 :- pred ml_gen_box_or_unbox_const_rval_list_hld(ml_gen_info::in,
     prog_context::in, list(arg_var_type_and_width)::in,
@@ -1789,7 +1788,7 @@ ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
                 MerType = builtin_type(builtin_type_int(IntType)),
                 CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
                 MLDSType = mercury_type(MerType, no, CtorCat),
-                ToAssignRval = ml_unop(cast(MLDSType), MaskedRval)
+                ToAssignRval = ml_cast(MLDSType, MaskedRval)
             )
         ),
         Stmt = ml_gen_assign(ArgLval, ToAssignRval, Context),
@@ -1827,8 +1826,8 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
     ;
         FieldWidth = apw_double(_, _, _),
         ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
-            FloatWordA = ml_unop(std_unop(dword_float_get_word0), ArgRval),
-            FloatWordB = ml_unop(std_unop(dword_float_get_word1), ArgRval),
+            FloatWordA = ml_unop(dword_float_get_word0, ArgRval),
+            FloatWordB = ml_unop(dword_float_get_word1, ArgRval),
             ml_type_as_field(ModuleInfo, HighLevelData, int_type,
                 aw_full_word, IntFieldType),
             ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntFieldType,
@@ -1852,7 +1851,7 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
         % XXX ARG_PACK Optimize this when replacing the whole word.
         Shift = arg_shift(ShiftInt),
         Mask = arg_mask(MaskInt),
-        CastVal = ml_unop(unbox(mlds_native_int_type), ml_lval(FieldLval)),
+        CastVal = ml_unbox(mlds_native_int_type, ml_lval(FieldLval)),
         MaskOld = ml_bitwise_and(CastVal, \ (MaskInt << ShiftInt)),
         ShiftNew = ml_lshift(ArgRval, Shift, Fill),
         Combined = ml_bitwise_or(MaskOld, ShiftNew),
@@ -1925,7 +1924,7 @@ ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
             ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
                 bp_native_if_possible, ml_lval(ArgLval), ArgRval),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-            CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
+            CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, ArgRval)),
             Stmt = ml_gen_assign(VarLval, CastRval, Context),
             Stmts = [Stmt]
         ;
@@ -1945,7 +1944,7 @@ ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
                 bp_native_if_possible, ml_const(mlconst_null(MLDS_ArgType)),
                 ArgRval),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-            CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
+            CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, ArgRval)),
             Stmt = ml_gen_assign(VarLval, CastRval, Context),
             Stmts = [Stmt]
         ;
@@ -1991,7 +1990,7 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
             ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
                 bp_native_if_possible, ml_lval(VarLval), VarRval),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-            CastRval = ml_unop(cast(MLDS_Type),
+            CastRval = ml_cast(MLDS_Type,
                 ml_binop(body, VarRval, ml_const(mlconst_int(Ptag)))),
             Stmt = ml_gen_assign(ArgLval, CastRval, Context),
             Stmts = [Stmt]
@@ -2007,7 +2006,7 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
             ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
                 bp_native_if_possible, ml_lval(ArgLval), ArgRval),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-            CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
+            CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, ArgRval)),
             Stmt = ml_gen_assign(VarLval, CastRval, Context),
             Stmts = [Stmt]
         ;
@@ -2153,9 +2152,8 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
         ( ConsTag = unshared_tag(UnsharedPtag)
         ; ConsTag = direct_arg_tag(UnsharedPtag)
         ),
-        RvalTag = ml_unop(std_unop(tag), Rval),
-        UnsharedTag = ml_unop(std_unop(mktag),
-            ml_const(mlconst_int(UnsharedPtag))),
+        RvalTag = ml_unop(tag, Rval),
+        UnsharedTag = ml_unop(mktag, ml_const(mlconst_int(UnsharedPtag))),
         TagTestRval = ml_binop(eq(int_type_int), RvalTag, UnsharedTag)
     ;
         ConsTag = shared_remote_tag(PrimaryTag, SecondaryTag, _AddedBy),
@@ -2168,9 +2166,8 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
             % No need to test the primary tag.
             TagTestRval = SecondaryTagTestRval
         else
-            RvalPtag = ml_unop(std_unop(tag), Rval),
-            PrimaryTagRval = ml_unop(std_unop(mktag),
-                ml_const(mlconst_int(PrimaryTag))),
+            RvalPtag = ml_unop(tag, Rval),
+            PrimaryTagRval = ml_unop(mktag, ml_const(mlconst_int(PrimaryTag))),
             PrimaryTagTestRval = ml_binop(eq(int_type_int), RvalPtag,
                 PrimaryTagRval),
             TagTestRval = ml_binop(logical_and,
@@ -2181,9 +2178,8 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
         ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         TagTestRval = ml_binop(eq(int_type_int), Rval,
-            ml_unop(cast(MLDS_Type),
-                ml_mkword(Ptag,
-                    ml_unop(std_unop(mkbody), ml_const(mlconst_int(Num))))))
+            ml_cast(MLDS_Type,
+                ml_mkword(Ptag, ml_unop(mkbody, ml_const(mlconst_int(Num))))))
     ).
 
 :- func ml_gen_int_tag_test_rval(int_tag, mer_type, module_info, mlds_rval) =
@@ -2249,7 +2245,7 @@ ml_gen_secondary_tag_rval(Info, VarType, Rval, PrimaryTag, StagFieldRval) :-
         % even the secondary tag, and so we need to unbox (i.e. cast) it
         % back to the right type here.
         StagFieldRval =
-            ml_unop(unbox(mlds_native_int_type),
+            ml_unbox(mlds_native_int_type,
                 ml_lval(ml_field(yes(PrimaryTag), Rval,
                     ml_field_offset(ml_const(mlconst_int(0))),
                     mlds_generic_type, MLDS_VarType)))
@@ -2437,8 +2433,8 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ConstRval = ml_const(mlconst_string(String))
         ;
             ConsTag = shared_local_tag(Ptag, Stag),
-            ConstRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag,
-                ml_unop(std_unop(mkbody), ml_const(mlconst_int(Stag)))))
+            ConstRval = ml_cast(MLDS_Type, ml_mkword(Ptag,
+                ml_unop(mkbody, ml_const(mlconst_int(Stag)))))
         ;
             ConsTag = foreign_tag(ForeignLang, ForeignTag),
             ConstRval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
@@ -2505,7 +2501,7 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
                 (
                     HighLevelData = no,
                     % XXX why is this cast here?
-                    StagRval = ml_unop(box(mlds_native_char_type), StagRval0)
+                    StagRval = ml_box(mlds_native_char_type, StagRval0)
                 ;
                     HighLevelData = yes,
                     StagRval = StagRval0
@@ -2713,7 +2709,7 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
                 (
                     HighLevelData = no,
                     % XXX why is this cast here?
-                    StagRval = ml_unop(box(mlds_native_char_type), StagRval0)
+                    StagRval = ml_box(mlds_native_char_type, StagRval0)
                 ;
                     HighLevelData = yes,
                     StagRval = StagRval0
@@ -2852,8 +2848,8 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         Rval = ml_const(mlconst_string(String))
     ;
         ConsTag = shared_local_tag(Ptag, Stag),
-        Rval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag,
-            ml_unop(std_unop(mkbody), ml_const(mlconst_int(Stag)))))
+        Rval = ml_cast(MLDS_Type, ml_mkword(Ptag,
+            ml_unop(mkbody, ml_const(mlconst_int(Stag)))))
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignTag),
         Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_Type))
@@ -2870,7 +2866,7 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
         RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
         Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
-        Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
+        Rval = ml_cast(MLDS_Type, ml_const(Const))
     ;
         ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
         MLDS_Module = mercury_module_name_to_mlds(ModuleName),
@@ -2878,7 +2874,7 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         RttiId = tc_rtti_id(TCName,
             type_class_base_typeclass_info(ModuleName, Instance)),
         Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
-        Rval = ml_unop(cast(MLDS_Type), ml_const(Const))
+        Rval = ml_cast(MLDS_Type, ml_const(Const))
     ;
         % Instead of these tags in csa_constants, polymorphism.m builds
         % csa_const_structs.
@@ -3137,7 +3133,7 @@ construct_static_ground_term(ModuleInfo, Target, HighLevelData,
     else
         TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
     ),
-    Rval = ml_unop(cast(MLDS_Type), TaggedRval),
+    Rval = ml_cast(MLDS_Type, TaggedRval),
     GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type).
 
 %---------------------------------------------------------------------------%
@@ -3238,16 +3234,16 @@ ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
             SubstType = mlds_native_int_type,
             (
                 DoubleWordKind = dw_float,
-                RvalA = ml_unop(std_unop(dword_float_get_word0), Rval),
-                RvalB = ml_unop(std_unop(dword_float_get_word1), Rval)
+                RvalA = ml_unop(dword_float_get_word0, Rval),
+                RvalB = ml_unop(dword_float_get_word1, Rval)
             ;
                 DoubleWordKind = dw_int64,
-                RvalA = ml_unop(std_unop(dword_int64_get_word0), Rval),
-                RvalB = ml_unop(std_unop(dword_int64_get_word1), Rval)
+                RvalA = ml_unop(dword_int64_get_word0, Rval),
+                RvalB = ml_unop(dword_int64_get_word1, Rval)
             ;
                 DoubleWordKind = dw_uint64,
-                RvalA = ml_unop(std_unop(dword_uint64_get_word0), Rval),
-                RvalB = ml_unop(std_unop(dword_uint64_get_word1), Rval)
+                RvalA = ml_unop(dword_uint64_get_word0, Rval),
+                RvalB = ml_unop(dword_uint64_get_word1, Rval)
             )
         ),
         RvalTypeWidthA = rval_type_and_width(RvalA, SubstType,
@@ -3369,10 +3365,10 @@ maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
     else
         ( if ShiftInt = 0 then
             ShiftedRval = CastRval
-        else if CastRval = ml_unop(box(Type), SubRval) then
+        else if CastRval = ml_box(Type, SubRval) then
             ShiftedSubRval = ml_binop(unchecked_left_shift(int_type_uint),
                 SubRval, ml_const(mlconst_int(ShiftInt))),
-            ShiftedRval = ml_unop(box(Type), ShiftedSubRval)
+            ShiftedRval = ml_box(Type, ShiftedSubRval)
         else
             ShiftedRval = ml_binop(unchecked_left_shift(int_type_uint),
                 CastRval, ml_const(mlconst_int(ShiftInt)))
@@ -3396,10 +3392,10 @@ ml_lshift(Rval, Shift, Fill) = ShiftedRval :-
         % Shifting anything by zero bits is a noop.
         ShiftedRval = CastRval
     else
-        ( if CastRval = ml_unop(box(Type), SubRval) then
+        ( if CastRval = ml_box(Type, SubRval) then
             ShiftedSubRval = ml_binop(unchecked_left_shift(int_type_uint),
                 SubRval, ml_const(mlconst_int(ShiftInt))),
-            ShiftedRval = ml_unop(box(Type), ShiftedSubRval)
+            ShiftedRval = ml_box(Type, ShiftedSubRval)
         else
             ShiftedRval = ml_binop(unchecked_left_shift(int_type_uint),
                 CastRval, ml_const(mlconst_int(ShiftInt)))
@@ -3428,13 +3424,13 @@ ml_rshift(Rval, Shift) = ShiftedRval :-
 ml_bitwise_or(RvalA, RvalB) = Rval :-
     some [!MaybeType] (
         !:MaybeType = no,
-        ( if RvalA = ml_unop(box(TypeA), UnboxRvalA0) then
+        ( if RvalA = ml_box(TypeA, UnboxRvalA0) then
             UnboxRvalA = UnboxRvalA0,
             !:MaybeType = yes(TypeA)
         else
             UnboxRvalA = RvalA
         ),
-        ( if RvalB = ml_unop(box(TypeB), UnboxRvalB0) then
+        ( if RvalB = ml_box(TypeB, UnboxRvalB0) then
             UnboxRvalB = UnboxRvalB0,
             !:MaybeType = yes(TypeB)
         else
@@ -3444,7 +3440,7 @@ ml_bitwise_or(RvalA, RvalB) = Rval :-
             UnboxRvalA, UnboxRvalB),
         (
             !.MaybeType = yes(BoxType),
-            Rval = ml_unop(box(BoxType), UnboxRval)
+            Rval = ml_box(BoxType, UnboxRval)
         ;
             !.MaybeType = no,
             Rval = UnboxRval
@@ -3492,13 +3488,13 @@ ml_cast_away_any_sign_extend_bits(Fill, Rval0, Rval) :-
         ToMerType = builtin_type(builtin_type_int(ToIntType)),
         ToCtorCat = ctor_cat_builtin(cat_builtin_int(ToIntType)),
         ToMLDSType = mercury_type(ToMerType, no, ToCtorCat),
-        ( if Rval0 = ml_unop(box(FromMLDSType), SubRval) then
+        ( if Rval0 = ml_box(FromMLDSType, SubRval) then
             % We can't apply this cast to Rval0 without getting a gcc warning:
             % "warning: cast from pointer to integer of different size
             % [-Wpointer-to-int-cast]".
-            Rval = ml_unop(cast(ToMLDSType), SubRval)
+            Rval = ml_cast(ToMLDSType, SubRval)
         else
-            Rval = ml_unop(cast(ToMLDSType), Rval0)
+            Rval = ml_cast(ToMLDSType, Rval0)
         )
     ).
 

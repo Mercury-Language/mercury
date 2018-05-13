@@ -83,7 +83,7 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
     ;
         Expr = trace_not(ExprA),
         ml_generate_runtime_cond_code(ExprA, RvalA, !Info),
-        CondRval = ml_unop(std_unop(logical_not), RvalA)
+        CondRval = ml_unop(logical_not, RvalA)
     ;
         Expr = trace_op(TraceOp, ExprA, ExprB),
         ml_generate_runtime_cond_code(ExprA, RvalA, !Info),
@@ -861,7 +861,7 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
             ( if OrigType = int_type then
                 Rval = ml_lval(LocalVarLval)
             else
-                Rval = ml_unop(unbox(MLDSType), ml_lval(LocalVarLval))
+                Rval = ml_unbox(MLDSType, ml_lval(LocalVarLval))
             )
         ),
         AssignOutput = [ml_gen_assign(ArgLval, Rval, Context)]

@@ -389,7 +389,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
 
     % Generate the call
     % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
-    CastVarAddr = ml_unop(cast(CPointerType), ml_mem_addr(VarLval)),
+    CastVarAddr = ml_cast(CPointerType, ml_mem_addr(VarLval)),
     TraceStmt = ml_stmt_call(Signature, FuncAddr,
         [TypeInfoRval, CastVarAddr], [], ordinary_call, Context).
 
@@ -570,7 +570,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         % declaration.
 
         VarLval = ml_local_var(VarName, VarType),
-        PtrRval = ml_unop(cast(PointerType), ml_mem_addr(VarLval)),
+        PtrRval = ml_cast(PointerType, ml_mem_addr(VarLval)),
         list.map_foldl(init_field_n(PointerType, PtrRval, Context),
             ArgRvalsTypes, ArgInitStmts, 0, _NumFields),
 
@@ -579,8 +579,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         ( if Ptag = 0 then
             TaggedPtrRval = PtrRval
         else
-            TaggedPtrRval =
-                ml_unop(cast(PointerType), ml_mkword(Ptag, PtrRval))
+            TaggedPtrRval = ml_cast(PointerType, ml_mkword(Ptag, PtrRval))
         ),
         AssignStmt = ml_stmt_atomic(assign(Lval, TaggedPtrRval), Context),
         Stmt = ml_stmt_block([], [], ArgInitStmts ++ [AssignStmt], Context)

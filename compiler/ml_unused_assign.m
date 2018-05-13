@@ -590,7 +590,11 @@ see_in_rval(Rval, !Seen) :-
         ),
         see_in_rval(SubRval, !Seen)
     ;
-        Rval = ml_unop(_Unop, BaseRvalA),
+        ( Rval = ml_box(_Type, BaseRvalA)
+        ; Rval = ml_unbox(_Type, BaseRvalA)
+        ; Rval = ml_cast(_Type, BaseRvalA)
+        ; Rval = ml_unop(_Unop, BaseRvalA)
+        ),
         see_in_rval(BaseRvalA, !Seen)
     ;
         Rval = ml_binop(_Binop, BaseRvalA, BaseRvalB),

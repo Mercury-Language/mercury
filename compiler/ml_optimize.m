@@ -150,7 +150,7 @@ optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
             Then = ml_stmt_block([], [], [], _),
             MaybeElse = yes(Else)
         then
-            NotRval = ml_unop(std_unop(logical_not), Rval),
+            NotRval = ml_unop(logical_not, Rval),
             Stmt = ml_stmt_if_then_else(NotRval, Else, no, Context)
         else
             Stmt = ml_stmt_if_then_else(Rval, Then, MaybeElse, Context)
@@ -404,7 +404,11 @@ find_rval_component_lvals(Rval, !Components) :-
         Rval = ml_mkword(_, SubRval),
         find_rval_component_lvals(SubRval, !Components)
     ;
-        Rval = ml_unop(_, SubRvalA),
+        ( Rval = ml_box(_, SubRvalA)
+        ; Rval = ml_unbox(_, SubRvalA)
+        ; Rval = ml_cast(_, SubRvalA)
+        ; Rval = ml_unop(_, SubRvalA)
+        ),
         find_rval_component_lvals(SubRvalA, !Components)
     ;
         Rval = ml_binop(_, SubRvalA, SubRvalB),
@@ -859,13 +863,12 @@ try_to_eliminate_defn(OptInfo, LocalVarDefn0, LocalVarDefns0, LocalVarDefns,
     % or a variable, because duplicating any real operation would be
     % a pessimization.
     ( Count =< 1
-    ; rval_is_cheap_enough_to_duplicate(Rval)
+    ; rval_is_cheap_enough_to_duplicate(Rval) = yes
     ).
 
-:- pred rval_is_cheap_enough_to_duplicate(mlds_rval::in) is semidet.
+:- func rval_is_cheap_enough_to_duplicate(mlds_rval) = bool.
 
-rval_is_cheap_enough_to_duplicate(Rval) :-
-    require_complete_switch [Rval]
+rval_is_cheap_enough_to_duplicate(Rval) = CheapEnough :-
     (
         ( Rval = ml_const(_)
         ; Rval = ml_mem_addr(_)
@@ -873,27 +876,36 @@ rval_is_cheap_enough_to_duplicate(Rval) :-
         ; Rval = ml_scalar_common(_)
         ; Rval = ml_scalar_common_addr(_)
         ; Rval = ml_vector_common_row_addr(_, _)
-        )
+        ),
+        CheapEnough = yes
     ;
         Rval = ml_lval(Lval),
-        require_complete_switch [Lval]
         (
             ( Lval = ml_local_var(_, _)
             ; Lval = ml_global_var(_, _)
-            )
+            ),
+            CheapEnough = yes
         ;
             ( Lval = ml_mem_ref(_, _)
             ; Lval = ml_field(_, _, _, _, _)
             ; Lval = ml_target_global_var_ref(_)
             ),
-            fail
+            CheapEnough = no
         )
     ;
         ( Rval = ml_mkword(_, _)
+        ; Rval = ml_box(_, _)
+        ; Rval = ml_unbox(_, _)
         ; Rval = ml_unop(_, _)
         ; Rval = ml_binop(_, _, _)
         ),
-        fail
+        % NOTE Some instances of the box and unbox operations are zero cost,
+        % but others are not. Since we cannot distinguish between them
+        % using purely local data, we take the conservative approach.
+        CheapEnough = no
+    ;
+        Rval = ml_cast(_, SubRval),
+        CheapEnough = rval_is_cheap_enough_to_duplicate(SubRval)
     ).
 
     % Succeed only if the specified rval definitely won't change in value.
@@ -928,6 +940,9 @@ rval_will_not_change(Rval) :-
         )
     ;
         ( Rval = ml_mkword(_Tag, SubRval)
+        ; Rval = ml_box(_Type, SubRval)
+        ; Rval = ml_unbox(_Type, SubRval)
+        ; Rval = ml_cast(_Type, SubRval)
         ; Rval = ml_unop(_Op, SubRval)
         ),
         rval_will_not_change(SubRval)
@@ -960,6 +975,9 @@ rval_cannot_throw(Rval) :-
     ;
         ( Rval = ml_vector_common_row_addr(_, SubRval)
         ; Rval = ml_mkword(_Tag, SubRval)
+        ; Rval = ml_box(_, SubRval)
+        ; Rval = ml_unbox(_, SubRval)
+        ; Rval = ml_cast(_, SubRval)
         ),
         rval_cannot_throw(SubRval)
     ;
@@ -1160,6 +1178,18 @@ eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
         Rval0 = ml_mkword(Tag, ArgRval0),
         eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
         Rval = ml_mkword(Tag, ArgRval)
+    ;
+        Rval0 = ml_box(Type, ArgRval0),
+        eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
+        Rval = ml_box(Type, ArgRval)
+    ;
+        Rval0 = ml_unbox(Type, ArgRval0),
+        eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
+        Rval = ml_unbox(Type, ArgRval)
+    ;
+        Rval0 = ml_cast(Type, ArgRval0),
+        eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
+        Rval = ml_cast(Type, ArgRval)
     ;
         Rval0 = ml_unop(Op, ArgRval0),
         eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
