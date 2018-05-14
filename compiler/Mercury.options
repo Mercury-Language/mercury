@@ -103,6 +103,18 @@ MCFLAGS-parse_tree.parse_tree_out_info    = --no-warn-unknown-format-calls
 MCFLAGS-libs.mmakefiles                   = --warn-implicit-stream-calls
 MCFLAGS-parse_tree.write_deps_file        = --warn-implicit-stream-calls
 
+MCFLAGS-hlds.hlds_data                += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_class    += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_data     += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_export   += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_file     += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_func     += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_global   += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_name     += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_stmt     += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_type     += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_c_util     += --warn-inconsistent-pred-order-clauses
+
 # Bug workarounds.
 
 # This works around bug 48 in Mantis.
@@ -125,5 +137,3 @@ MCFLAGS-mode_robdd.implications = -O0
 MCFLAGS-libs.options += --erlang-switch-on-strings-as-atoms
 
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses
-
-MCFLAGS-hlds.hlds_data  += --warn-inconsistent-pred-order-clauses

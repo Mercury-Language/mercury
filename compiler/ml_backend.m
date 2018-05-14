@@ -62,7 +62,16 @@
 % Phase 7-ml: compile MLDS to target code
 
 % MLDS->C back-end
-:- include_module mlds_to_c.
+:- include_module mlds_to_c_class.
+:- include_module mlds_to_c_data.
+:- include_module mlds_to_c_export.
+:- include_module mlds_to_c_file.
+:- include_module mlds_to_c_func.
+:- include_module mlds_to_c_global.
+:- include_module mlds_to_c_name.
+:- include_module mlds_to_c_stmt.
+:- include_module mlds_to_c_type.
+:- include_module mlds_to_c_util.
 
 % MLDS->Java back-end
 :- include_module mlds_to_java.

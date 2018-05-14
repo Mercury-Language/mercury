@@ -44,7 +44,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.
 :- import_module ml_backend.mlds.               % XXX undesirable dependency
-:- import_module ml_backend.mlds_to_c.          % XXX undesirable dependency
+:- import_module ml_backend.mlds_to_c_name.     % XXX undesirable dependency
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_foreign.

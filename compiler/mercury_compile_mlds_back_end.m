@@ -66,7 +66,7 @@
 :- import_module ml_backend.rtti_to_mlds.           % HLDS/RTTI -> MLDS
 :- import_module ml_backend.ml_elim_nested.         % MLDS -> MLDS
 :- import_module ml_backend.ml_optimize.            % MLDS -> MLDS
-:- import_module ml_backend.mlds_to_c.              % MLDS -> C
+:- import_module ml_backend.mlds_to_c_file.         % MLDS -> C
 :- import_module ml_backend.mlds_to_java.           % MLDS -> Java
 :- import_module ml_backend.mlds_to_cs.             % MLDS -> C#
 :- import_module parse_tree.file_names.

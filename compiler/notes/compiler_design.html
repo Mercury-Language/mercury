@@ -2174,7 +2174,34 @@ and one generates C#.
 
 <ul>
 <li>
-mlds_to_c.m converts MLDS to C/C++ code.
+The various mlds_to_c_*.m modules together convert MLDS to C/C++ code.
+<ul>
+<li>
+The mlds_to_c_file.m module writes out .c and .h files,
+calling the other modules below as needed.
+<li>
+The mlds_to_c_func.m module outputs
+the declarations and definitions of MLDS functions.
+<li>
+The mlds_to_c_stmt.m module outputs MLDS statements.
+<li>
+The mlds_to_c_data.m module outputs MLDS rvals, lvals, and initializers.
+<li>
+The mlds_to_c_type.m module outputs MLDS types.
+<li>
+The mlds_to_c_class.m module outputs the definitions of MLDS classes.
+<li>
+The mlds_to_c_global.m module outputs
+the declarations and definitions of global variables.
+<li>
+The mlds_to_c_exports.m module outputs code that exports to C
+(i.e. makes usable from C code) functions and types defined in Mercury.
+<li>
+The mlds_to_c_name.m module outputs the names of various MLDS entities.
+<li>
+The mlds_to_c_util.m module contains utility types and predicates
+used by the other modules above.
+</ul>
 </ul>
 
 <p>
