@@ -2919,8 +2919,6 @@ output_access_for_java(_Info, Access, !IO) :-
     ;
         Access = func_private,
         io.write_string("private ", !IO)
-    ;
-        Access = func_local
     ).
 
 :- pred output_class_access_for_java(class_access::in, io::di, io::uo) is det.

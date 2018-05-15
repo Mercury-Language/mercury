@@ -892,12 +892,10 @@
     --->    func_public
             % Accessible to anyone.
 
-    ;       func_private
+    ;       func_private.
             % Accessible only to the module or class that defines the function.
-
-    ;       func_local.
-            % Accessible only within the block in which this (nested) function
-            % is defined.
+            % Also used for nested functions, which get turned into
+            % separate func_private functions.
 
 :- type constness
     --->    modifiable

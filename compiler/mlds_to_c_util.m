@@ -193,16 +193,12 @@ c_reset_context(OutputLineNumbers, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
+mlds_output_extern_or_static(Access, _PerInstance, _DeclOrDefn, DefnKind,
+        !IO) :-
     % XXX MLDS_DEFN This would be clearer as a nested switch
     % on DefnKind, DeclOrDefn and then Access and PerInstance.
     ( if
-        (
-            Access = func_private
-        ;
-            Access = func_local,
-            PerInstance = one_copy
-        ),
+        Access = func_private,
         % Do not output "static" on types.
         % Do not output "static" for functions that do not have a body,
         % which can happen for Mercury procedures that have a
@@ -213,16 +209,6 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind, !IO) :-
         DefnKind = dk_func_not_external
     then
         io.write_string("static ", !IO)
-    else if
-        % Forward declarations for GNU C nested functions need to be prefixed
-        % with "auto".
-        DeclOrDefn = forward_decl,
-        ( DefnKind = dk_func_not_external
-        ; DefnKind = dk_func_external
-        ),
-        Access = func_local
-    then
-        io.write_string("auto ", !IO)
     else
         true
     ).

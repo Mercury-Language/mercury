@@ -2221,8 +2221,6 @@ output_access_for_csharp(_Info, Access, !IO) :-
     ;
         Access = func_private,
         io.write_string("private ", !IO)
-    ;
-        Access = func_local
     ).
 
 :- pred output_class_access_for_csharp(class_access::in,

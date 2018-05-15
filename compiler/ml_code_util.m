@@ -614,7 +614,7 @@ ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func) :-
     FuncName = ml_gen_nondet_label(ModuleInfo, PredProcId, MaybeAux),
 
     % Compute the function definition.
-    DeclFlags = mlds_function_decl_flags(func_local, per_instance),
+    DeclFlags = mlds_function_decl_flags(func_private, per_instance),
     MaybePredProcId = no,
     Body = body_defined_here(Stmt),
     EnvVarNames = set.init,

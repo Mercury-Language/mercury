@@ -403,8 +403,6 @@ mlds_output_access_comment(func_public, !IO) :-
     io.write_string("/* public: */ ", !IO).
 mlds_output_access_comment(func_private, !IO) :-
     io.write_string("/* private: */ ", !IO).
-mlds_output_access_comment(func_local, !IO) :-
-    io.write_string("/* local: */ ", !IO).
 
 :- pred mlds_output_per_instance_comment(per_instance::in,
     io::di, io::uo) is det.
