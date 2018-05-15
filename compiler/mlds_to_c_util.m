@@ -88,22 +88,6 @@
     --->    forward_decl
     ;       definition.
 
-:- type defn_kind
-    --->    dk_func_not_external
-    ;       dk_func_external
-    ;       dk_type.
-
-    % mlds_output_extern_or_static handles both the `access' and the
-    % `per_instance' fields of the mlds_decl_flags. We have to handle them
-    % together because C overloads `static' to mean both `private' and
-    % `one_copy', rather than having separate keywords for each. To make it
-    % clear which MLDS construct each `static' keyword means, our caller
-    % should precede the call to this predicate with (optionally-enabled)
-    % comments saying whether it is `private', `one_copy', or both.
-    %
-:- pred mlds_output_extern_or_static(function_access::in, per_instance::in,
-    decl_or_defn::in, defn_kind::in, io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -189,28 +173,6 @@ c_reset_context(OutputLineNumbers, !IO) :-
         c_util.always_reset_line_num_cur_stream(no, !IO)
     ;
         OutputLineNumbers = no
-    ).
-
-%---------------------------------------------------------------------------%
-
-mlds_output_extern_or_static(Access, _PerInstance, _DeclOrDefn, DefnKind,
-        !IO) :-
-    % XXX MLDS_DEFN This would be clearer as a nested switch
-    % on DefnKind, DeclOrDefn and then Access and PerInstance.
-    ( if
-        Access = func_private,
-        % Do not output "static" on types.
-        % Do not output "static" for functions that do not have a body,
-        % which can happen for Mercury procedures that have a
-        % `:- pragma external_{pred/func}'
-        % Non-external functions (and global variables, which do not use
-        % this predicate) are the only two kinds of definitions we *can* put
-        % a "static" in front of.
-        DefnKind = dk_func_not_external
-    then
-        io.write_string("static ", !IO)
-    else
-        true
     ).
 
 %---------------------------------------------------------------------------%

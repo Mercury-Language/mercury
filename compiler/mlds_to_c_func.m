@@ -106,7 +106,7 @@ mlds_output_function_decl_opts(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
 
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_function_decl_flags(Opts, Flags, forward_decl, MaybeBody, !IO),
+    mlds_output_function_decl_flags(Opts, Flags, MaybeBody, !IO),
     QualFuncName = qual_function_name(ModuleName, FuncName),
 
     (
@@ -298,7 +298,7 @@ mlds_output_function_defn(Opts, Indent, ModuleName, FunctionDefn, !IO) :-
     io.nl(!IO),
     c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Indent, !IO),
-    mlds_output_function_decl_flags(Opts, Flags, definition, MaybeBody, !IO),
+    mlds_output_function_decl_flags(Opts, Flags, MaybeBody, !IO),
     (
         MaybePredProcId = no
     ;
@@ -374,10 +374,10 @@ mlds_output_func(Opts, Indent, QualFuncName, Context, Params,
 %
 
 :- pred mlds_output_function_decl_flags(mlds_to_c_opts::in,
-    mlds_function_decl_flags::in, decl_or_defn::in, mlds_function_body::in,
+    mlds_function_decl_flags::in, mlds_function_body::in,
     io::di, io::uo) is det.
 
-mlds_output_function_decl_flags(Opts, Flags, DeclOrDefn, MaybeBody, !IO) :-
+mlds_output_function_decl_flags(Opts, Flags, MaybeBody, !IO) :-
     Flags = mlds_function_decl_flags(Access, PerInstance),
     Comments = Opts ^ m2co_auto_comments,
     (
@@ -387,15 +387,15 @@ mlds_output_function_decl_flags(Opts, Flags, DeclOrDefn, MaybeBody, !IO) :-
     ;
         Comments = no
     ),
-    (
-        MaybeBody = body_defined_here(_),
-        DefnKind = dk_func_not_external
-    ;
-        MaybeBody = body_external,
-        DefnKind = dk_func_external
-    ),
-    mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, DefnKind,
-        !IO).
+    ( if
+        Access = func_private,
+        % Do not output "static" for functions that do not have a body.
+        MaybeBody = body_defined_here(_)
+    then
+        io.write_string("static ", !IO)
+    else
+        true
+    ).
 
 :- pred mlds_output_access_comment(function_access::in, io::di, io::uo) is det.
 
