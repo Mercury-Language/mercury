@@ -18,8 +18,6 @@
 % For discriminated unions, we create an MLDS base class type corresponding
 % to the HLDS type, and we also create MLDS derived class types corresponding
 % to each of the constructors which are defined from the base class type.
-% For constructors which are represented as the addresses of specially reserved
-% objects, we generate the static (one_copy) members for those objects.
 %
 %---------------------------------------------------------------------------%
 
