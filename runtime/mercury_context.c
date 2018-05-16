@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016 The Mercury team.
+// Copyright (C) 2014, 2016-2018 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -40,15 +40,21 @@ ENDINIT
   #include <math.h>         // for sqrt and pow
 #endif
 
-#ifdef MR_HAVE_SCHED_H
-  #include <sched.h>
+#if defined(MR_THREAD_SAFE) && defined(MR_HAVE_HWLOC)
+  #include <hwloc.h>
+#endif
 
-  // These macros first appeared in glibc 2.7.
-  #if defined(CPU_ALLOC) && defined(CPU_ALLOC_SIZE) && defined(CPU_FREE) && \
-      defined(CPU_ZERO_S) && defined(CPU_SET_S) && defined(CPU_CLR_S) && \
-      defined(CPU_ISSET_S) && defined(CPU_COUNT_S)
-    #define MR_HAVE_CPU_SET_MACROS 1
-  #endif
+#if defined(MR_HAVE_SCHED_H)
+  #include <sched.h>
+#endif
+
+// The CPU_* macros first appeared in glibc 2.7.
+#if defined(MR_HAVE_SCHED_GETAFFINITY) && \
+    defined(MR_HAVE_SCHED_SETAFFINITY) && \
+    defined(CPU_ALLOC) && defined(CPU_ALLOC_SIZE) && defined(CPU_FREE) && \
+    defined(CPU_ZERO_S) && defined(CPU_SET_S) && defined(CPU_CLR_S) && \
+    defined(CPU_ISSET_S) && defined(CPU_COUNT_S)
+  #define MR_HAVE_LINUX_CPU_AFFINITY_API 1
 #endif
 
 #ifdef MR_MINGW
@@ -61,10 +67,6 @@ ENDINIT
 
 #ifdef MR_WIN32_GETSYSTEMINFO
   #include "mercury_windows.h"
-#endif
-
-#if defined(MR_THREAD_SAFE) && defined(MR_HAVE_HWLOC)
-  #include <hwloc.h>
 #endif
 
 #include "mercury_memory_handlers.h"
@@ -208,16 +210,26 @@ static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
 #endif // MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 
 #ifdef MR_THREAD_SAFE
-// Detect number of processors.
 
-unsigned         MR_num_processors;
+// The detected number of processors available to this process.
+unsigned         MR_num_processors_detected;
+
 #if defined(MR_HAVE_HWLOC)
     static hwloc_topology_t MR_hw_topology;
     static hwloc_cpuset_t   MR_hw_available_pus = NULL;
-#elif defined(MR_HAVE_SCHED_SETAFFINITY)
-    static cpu_set_t        *MR_available_cpus;
-    // The number of CPUs that MR_available_cpus can refer to.
-    static unsigned         MR_cpuset_size = 0;
+#elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
+    // The number of CPUs that can be represented by MR_cpuset_available.
+    static int          MR_cpuset_num_cpus = 0;
+
+    // The size of MR_cpuset_available in bytes, given by
+    // CPU_ALLOC_SIZE(MR_cpuset_num_cpus).
+    static size_t       MR_cpuset_size = 0;
+
+    // A cpuset of MR_cpuset_size bytes, able to represent processors in the
+    // range [0, MR_cpuset_num_cpus).
+    // NOTE: the processors available to a process are NOT necessarily
+    // numbered from 0 to MR_num_processors_detected-1.
+    static cpu_set_t    *MR_cpuset_available;
 #endif
 
 // Local variables for thread pinning.
@@ -359,7 +371,7 @@ MR_init_context_stuff(void)
   #endif
 
     MR_detect_num_processors();
-    assert(MR_num_processors > 0);
+    assert(MR_num_processors_detected > 0);
 
   #ifdef MR_LL_PARALLEL_CONJ
     MR_setup_num_threads();
@@ -423,36 +435,75 @@ MR_reset_available_cpus(void)
         hwloc_topology_get_allowed_cpuset(MR_hw_topology));
 
     hwloc_bitmap_free(inherited_binding);
-  #elif defined(MR_HAVE_SCHED_GETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
-    unsigned cpuset_size;
-    unsigned num_processors;
+  #elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
+    int         num_cpus;
+    size_t      cpuset_size = 0;
+    cpu_set_t   *cpuset = NULL;
 
-    if (MR_cpuset_size) {
-        cpuset_size = MR_cpuset_size;
-        num_processors = MR_num_processors;
+    if (MR_cpuset_num_cpus > 0) {
+        // Start with the same cpuset size that we determined in a previous
+        // call to this function.
+        num_cpus = MR_cpuset_num_cpus;
     } else {
+        // The minimum cpuset size on 32-bit architectures is 32-bits.
+        num_cpus = 32;
+
       #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
-        num_processors = sysconf(_SC_NPROCESSORS_ONLN);
-      #else
-        // Make the CPU set at least 32 processors wide.
-
-        num_processors = 32;
+        {
+            long n = sysconf(_SC_NPROCESSORS_ONLN);
+            if (n > 0) {
+                num_cpus = n;
+            }
+        }
       #endif
-        cpuset_size = CPU_ALLOC_SIZE(num_processors);
+    }
+
+    // Free an existing cpuset if we have been here before.
+    if (MR_cpuset_available != NULL) {
+        CPU_FREE(MR_cpuset_available);
+        MR_cpuset_available = NULL;
+        MR_cpuset_size = 0;
+        MR_cpuset_num_cpus = 0;
+    }
+
+    // This huge limit is just to prevent the possibility of looping forever.
+    // In most cases we will succeed on the first attempt.
+    while (num_cpus <= 0x100000) {
+        int err;
+
+        cpuset_size = CPU_ALLOC_SIZE(num_cpus);
+        cpuset = CPU_ALLOC(num_cpus);
+        if (cpuset == NULL) {
+            break;
+        }
+        if (sched_getaffinity(0, cpuset_size, cpuset) == 0) {
+            break;
+        }
+        err = errno;
+        CPU_FREE(cpuset);
+        cpuset = NULL;
+        if (err != EINVAL) {
+            break;
+        }
+        // sched_getaffinity() can return EINVAL if the kernel uses larger
+        // CPU affinity masks than we provided for. Then we must retry with
+        // a larger cpuset buffer.
+        if (num_cpus < 512) {
+            num_cpus = 512;
+        } else {
+            num_cpus *= 2;
+        }
+    }
+
+    if (cpuset != NULL) {
+        MR_cpuset_num_cpus = num_cpus;
         MR_cpuset_size = cpuset_size;
-    }
-
-    if (MR_available_cpus == NULL) {
-        MR_available_cpus = CPU_ALLOC(num_processors);
-    }
-
-    if (-1 == sched_getaffinity(0, cpuset_size, MR_available_cpus)) {
+        MR_cpuset_available = cpuset;
+    } else {
         MR_perror("Couldn't get CPU affinity");
       #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
         MR_thread_pinning = MR_FALSE;
       #endif
-        CPU_FREE(MR_available_cpus);
-        MR_available_cpus = NULL;
     }
   #endif
 }
@@ -472,21 +523,26 @@ MR_detect_num_processors(void)
     // Setup num processors.
 
     MR_reset_available_cpus();
-  #ifdef MR_HAVE_HWLOC
-    MR_num_processors = hwloc_bitmap_weight(MR_hw_available_pus);
-  #elif defined(MR_HAVE_SCHED_GETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
-    MR_num_processors = CPU_COUNT_S(MR_cpuset_size, MR_available_cpus);
+  #if defined(MR_HAVE_HWLOC)
+    MR_num_processors_detected = hwloc_bitmap_weight(MR_hw_available_pus);
+  #elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
+    MR_num_processors_detected =
+        CPU_COUNT_S(MR_cpuset_size, MR_cpuset_available);
+    if (MR_num_processors_detected == 0) {
+        // Carry on even if the MR_cpuset_available is somehow empty.
+        MR_num_processors_detected = 1;
+    }
   #elif defined(MR_WIN32_GETSYSTEMINFO)
     {
         SYSTEM_INFO sysinfo;
         GetSystemInfo(&sysinfo);
-        MR_num_processors = sysinfo.dwNumberOfProcessors;
+        MR_num_processors_detected = sysinfo.dwNumberOfProcessors;
     }
   #elif defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
-    MR_num_processors = sysconf(_SC_NPROCESSORS_ONLN);
+    MR_num_processors_detected = sysconf(_SC_NPROCESSORS_ONLN);
   #else
-    #warning "Cannot detect MR_num_processors"
-    MR_num_processors = 1;
+    #warning "Cannot detect MR_num_processors_detected"
+    MR_num_processors_detected = 1;
   #endif
 }
 
@@ -499,13 +555,13 @@ MR_setup_num_threads(void)
     // affinities later on.
 
     if (MR_num_ws_engines == 0) {
-        MR_num_ws_engines = MR_num_processors;
+        MR_num_ws_engines = MR_num_processors_detected;
     }
 
   #ifdef MR_DEBUG_THREADS
     if (MR_debug_threads) {
         fprintf(stderr, "Detected %d processors, will use %d threads\n",
-            MR_num_processors, MR_num_ws_engines);
+            MR_num_processors_detected, MR_num_ws_engines);
     }
   #endif
 }
@@ -515,48 +571,58 @@ MR_setup_num_threads(void)
 // Thread pinning.
 
 #if defined(MR_HAVE_THREAD_PINNING) && defined(MR_LL_PARALLEL_CONJ)
-// Pin the primordial thread first to the CPU it is currently using
-// (if support is available for thread pinning).
 
-static unsigned
+static int
 MR_pin_thread_no_locking(void)
 {
-    unsigned    cpu;
-    unsigned    i = 0;
+    int     initial_cpu;
+    int     max;
+    int     i;
 
-    cpu = MR_current_cpu();
-#ifdef MR_DEBUG_THREAD_PINNING
-    fprintf(stderr, "Currently running on cpu %d\n", cpu);
-#endif
+    initial_cpu = MR_current_cpu();
+  #ifdef MR_DEBUG_THREAD_PINNING
+    fprintf(stderr, "Currently running on cpu %d\n", initial_cpu);
+  #endif
 
-    for (i = 0; (i < MR_num_processors) && MR_thread_pinning; i++) {
-        if (MR_do_pin_thread((cpu + i) % MR_num_processors)) {
-#ifdef MR_DEBUG_THREAD_PINNING
-            fprintf(stderr, "Pinned to cpu %d\n", (cpu + i) % MR_num_processors);
-            fprintf(stderr, "Now running on cpu %d\n", MR_current_cpu());
-#endif
+  #if defined(MR_HAVE_HWLOC)
+    max = MR_num_processors_detected;
+  #elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
+    // CPUs available to this process do not have to be numbered consecutively.
+    max = MR_cpuset_num_cpus;
+  #else
+    #error Should be unreachable
+  #endif
+
+    for (i = 0; (i < max) && MR_thread_pinning; i++) {
+        int target_cpu = (initial_cpu + i) % max;
+
+        if (MR_do_pin_thread(target_cpu)) {
+          #ifdef MR_DEBUG_THREAD_PINNING
+            fprintf(stderr, "Pinned to cpu %d, running on cpu %d\n",
+                target_cpu, MR_current_cpu());
+          #endif
             MR_num_threads_left_to_pin--;
-            MR_make_cpu_unavailable((cpu + i) % MR_num_processors);
-            return (cpu + i) % MR_num_processors;
+            MR_make_cpu_unavailable(target_cpu);
+            return target_cpu;
         }
+
         if (!MR_thread_pinning) {
             // If MR_thread_pinning becomes false then an error prevented us
             // from pinning the thread.
             // When we fail to pin a thread but MR_thread_pinning remains true
             // it means that CPU has already had a thread pinned to it.
-
             fprintf(stderr, "Couldn't pin Mercury engine to processor");
             break;
         }
     }
 
-    return cpu;
+    return initial_cpu;
 }
 
-unsigned
+int
 MR_pin_thread(void)
 {
-    unsigned cpu;
+    int cpu;
 
     MR_LOCK(&MR_thread_pinning_lock, "MR_pin_thread");
     cpu = MR_pin_thread_no_locking();
@@ -584,7 +650,7 @@ static void MR_setup_thread_pinning(void)
   // if we autodetected the number of CPUs without error.
 
 #if 0
-    if (MR_num_processors > 1) {
+    if (MR_num_processors_detected > 1) {
         MR_thread_pinning = MR_TRUE;
     }
 #endif
@@ -594,33 +660,32 @@ static void MR_setup_thread_pinning(void)
 
 static int MR_current_cpu(void)
 {
-#if defined(MR_HAVE_SCHED_GETCPU)
-    int         os_cpu;
+    int os_cpu;
+
 #if defined(MR_HAVE_HWLOC)
     hwloc_obj_t pu;
+    pu = hwloc_get_pu_obj_by_os_index(MR_hw_topology, os_cpu);
+    if (pu != NULL) {
+        os_cpu = pu->logical_index;
+    } else {
+        // XXX Quick hack to prevent crashes only.
+        os_cpu = -1;
+    }
+#elif defined(MR_HAVE_SCHED_GETCPU)
+    os_cpu = sched_getcpu();
+#else
+    os_cpu = 0;
 #endif
 
-    os_cpu = sched_getcpu();
-    if (-1 == os_cpu) {
+    if (os_cpu < 0) {
         os_cpu = 0;
-
         if (MR_thread_pinning) {
             MR_perror("Warning: unable to determine the current CPU for "
                 "this thread: ");
         }
     }
 
-#if defined(MR_HAVE_HWLOC)
-    pu = hwloc_get_pu_obj_by_os_index(MR_hw_topology, os_cpu);
-    return pu->logical_index;
-#else
     return os_cpu;
-#endif
-
-#else // ! MR_HAVE_SCHED_GETCPU
-    // We have no idea!
-    return 0;
-#endif
 }
 
 static MR_bool
@@ -643,13 +708,13 @@ MR_do_pin_thread(int cpu)
     if (!hwloc_bitmap_intersects(MR_hw_available_pus, pu->cpuset)) {
         return MR_FALSE;
     }
-#elif defined(MR_HAVE_SCHED_SETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
-    if (CPU_COUNT_S(MR_cpuset_size, MR_available_cpus) == 0) {
+#elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
+    if (CPU_COUNT_S(MR_cpuset_size, MR_cpuset_available) == 0) {
         // As above, reset the available cpus.
 
         MR_reset_available_cpus();
     }
-    if (!CPU_ISSET_S(cpu, MR_cpuset_size, MR_available_cpus)) {
+    if (!CPU_ISSET_S(cpu, MR_cpuset_size, MR_cpuset_available)) {
         return MR_FALSE;
     }
 #endif
@@ -662,20 +727,34 @@ MR_do_pin_thread(int cpu)
         MR_thread_pinning = MR_FALSE;
         return MR_FALSE;
     }
-#elif defined(MR_HAVE_SCHED_SETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
-    cpu_set_t   *cpus;
+#elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
+    size_t      cpuset_size;
+    cpu_set_t   *cpuset;
+    MR_bool     success;
 
-    cpus = CPU_ALLOC(MR_num_processors);
-
-    CPU_ZERO_S(MR_cpuset_size, cpus);
-    CPU_SET_S(cpu, MR_cpuset_size, cpus);
-    if (sched_setaffinity(0, MR_cpuset_size, cpus) == -1) {
-        MR_perror("Warning: Couldn't set CPU affinity: ");
-        // If this failed once, it will probably fail again, so we disable it.
-
-        MR_thread_pinning = MR_FALSE;
-        return MR_FALSE;
+    // The man page for sched_setaffinity() says that Linux 2.6.9 and earlier
+    // may return EINVAL if given a cpuset size smaller than size of the
+    // affinity mask used by the kernel, so we allocate a cpuset large enough
+    // for MR_cpuset_num_cpus, not just cpu.
+    cpuset_size = CPU_ALLOC_SIZE(MR_cpuset_num_cpus);
+    cpuset = CPU_ALLOC(MR_cpuset_num_cpus);
+    if (cpuset != NULL) {
+        CPU_ZERO_S(cpuset_size, cpuset);
+        CPU_SET_S(cpu, cpuset_size, cpuset);
+        if (sched_setaffinity(0, cpuset_size, cpuset) == 0) {
+            success = MR_TRUE;
+        } else {
+            MR_perror("Warning: Couldn't set CPU affinity: ");
+            // If this failed once, it will probably fail again.
+            // Disable thread pinning from now on.
+            MR_thread_pinning = MR_FALSE;
+            success = MR_FALSE;
+        }
+        CPU_FREE(cpuset);
+    } else {
+        success = MR_FALSE;
     }
+    return success;
 #endif
 
     return MR_TRUE;
@@ -691,8 +770,8 @@ static void MR_make_cpu_unavailable(int cpu)
     hwloc_obj_t pu;
     pu = hwloc_get_obj_by_type(MR_hw_topology, HWLOC_OBJ_PU, cpu);
     MR_make_pu_unavailable(pu);
-#elif defined(MR_HAVE_SCHED_SETAFFINITY) && defined(MR_HAVE_CPU_SET_MACROS)
-    CPU_CLR_S(cpu, MR_cpuset_size, MR_available_cpus);
+#elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
+    CPU_CLR_S(cpu, MR_cpuset_size, MR_cpuset_available);
 #endif
 }
 

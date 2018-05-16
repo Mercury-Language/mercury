@@ -815,7 +815,7 @@ num_processors(MaybeProcs, !IO) :-
      will_not_throw_exception, tabled_for_io],
 "
 #ifdef MR_THREAD_SAFE
-    Procs = MR_num_processors;
+    Procs = MR_num_processors_detected;
     Success = MR_YES;
 #else
     Procs = 1;

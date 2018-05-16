@@ -376,8 +376,8 @@ extern MR_Stats     MR_profile_parallel_executed_local_sparks;
 #endif
 
 #ifdef MR_THREAD_SAFE
-// The number of processors available.
-extern unsigned     MR_num_processors;
+// The number of processors detected.
+extern unsigned     MR_num_processors_detected;
 #endif
 
 // As well as the runqueue, we maintain a linked list of contexts
@@ -472,10 +472,8 @@ extern  void        MR_init_context_stuff(void);
 
 #if defined(MR_LL_PARALLEL_CONJ)
 #if defined(MR_HAVE_THREAD_PINNING)
-extern void
-MR_pin_primordial_thread(void);
-extern unsigned
-MR_pin_thread(void);
+extern void         MR_pin_primordial_thread(void);
+extern int          MR_pin_thread(void);
 
 // The CPU that the primordial thread is running on.
 
