@@ -9,7 +9,7 @@ MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
-ORDINARY_PROGS =	\
+ORDINARY_PROGS = \
 	abstract_eqv \
 	address_of_builtins \
 	agg \
@@ -260,6 +260,7 @@ ORDINARY_PROGS =	\
 	pack_args_copy \
 	pack_args_float \
 	pack_args_intermod1 \
+	pack_int32 \
 	packed_arg_partial_inst \
 	parse_number_from_io \
 	parse_number_from_string \
@@ -399,8 +400,8 @@ ORDINARY_PROGS =	\
 	uint32_from_bytes \
 	uint32_switch_test \
 	uint64_from_bytes \
-	uint64_switch_test \
 	uint64_ground_term \
+	uint64_switch_test \
 	uint8_switch_test \
 	uint_switch_test \
 	unicode_test \
@@ -556,7 +557,7 @@ ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 		pragma_export \
 		runtime_opt \
 		target_mlobjs \
-        	weak_ptr
+		weak_ptr
 else
 	C_ONLY_PROGS =
 endif
@@ -613,8 +614,8 @@ CLOSURE_LAYOUT_PROGS = \
 #     optimizing.
 #
 # XXX var_not_found -- mode error in automatically generated unification
-#		predicate. This test uses partially instantiated modes,
-#		which are not yet fully supported.
+#     predicate. This test uses partially instantiated modes,
+#     which are not yet fully supported.
 #
 # XXX needs_init doesn't work yet in profiling grades.
 #

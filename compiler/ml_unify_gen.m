@@ -141,6 +141,7 @@
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_type_gen.
+:- import_module ml_backend.ml_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_out.
@@ -1707,11 +1708,10 @@ ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
         ; FieldWidth = apw_partial_first(_, _, _, _, _)
         ; FieldWidth = apw_partial_shifted(_, _, _, _, _, _)
         ),
-        ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
-            bp_native_if_possible, ml_lval(FieldLval), FieldRval),
         (
             FieldWidth = apw_full(_, _),
-            ToAssignRval = FieldRval
+            ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
+                bp_native_if_possible, ml_lval(FieldLval), ToAssignRval)
         ;
             (
                 FieldWidth = apw_partial_first(_, _, _, Mask, Fill),
@@ -1719,6 +1719,8 @@ ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
             ;
                 FieldWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
             ),
+            UnsignedMLDSType = mlds_int_type_uint,
+            FieldRval = ml_cast(UnsignedMLDSType, ml_lval(FieldLval)),
             Mask = arg_mask(MaskInt),
             MaskedRval = ml_bitwise_and(ml_rshift(FieldRval, Shift), MaskInt),
             (
@@ -1727,27 +1729,24 @@ ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
             ;
                 (
                     Fill = fill_int8,
-                    IntType = int_type_int8
+                    CastMLDSType = mlds_int_type_int8
                 ;
                     Fill = fill_uint8,
-                    IntType = int_type_uint8
+                    CastMLDSType = mlds_int_type_uint8
                 ;
                     Fill = fill_int16,
-                    IntType = int_type_int16
+                    CastMLDSType = mlds_int_type_int16
                 ;
                     Fill = fill_uint16,
-                    IntType = int_type_uint16
+                    CastMLDSType = mlds_int_type_uint16
                 ;
                     Fill = fill_int32,
-                    IntType = int_type_int32
+                    CastMLDSType = mlds_int_type_int32
                 ;
                     Fill = fill_uint32,
-                    IntType = int_type_uint32
+                    CastMLDSType = mlds_int_type_uint32
                 ),
-                MerType = builtin_type(builtin_type_int(IntType)),
-                CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
-                MLDSType = mercury_type(MerType, no, CtorCat),
-                ToAssignRval = ml_cast(MLDSType, MaskedRval)
+                ToAssignRval = ml_cast(CastMLDSType, MaskedRval)
             )
         ),
         Stmt = ml_gen_assign(ArgLval, ToAssignRval, Context),
@@ -1776,14 +1775,16 @@ ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
 
 ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
         ArgLval, ArgType, FieldLval, FieldType, FieldWidth, Context, !Stmts) :-
-    ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
-        bp_native_if_possible, ml_lval(ArgLval), ArgRval),
     (
         FieldWidth = apw_full(_, _),
+        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
+            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
         Stmt = ml_gen_assign(FieldLval, ArgRval, Context),
         !:Stmts = [Stmt | !.Stmts]
     ;
         FieldWidth = apw_double(_, _, _),
+        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
+            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
         ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
             FloatWordA = ml_unop(dword_float_get_word0, ArgRval),
             FloatWordB = ml_unop(dword_float_get_word1, ArgRval),
@@ -1808,13 +1809,15 @@ ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
             FieldWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
         ),
         % XXX ARG_PACK Optimize this when replacing the whole word.
+        ArgRval = ml_lval(ArgLval),
         Shift = arg_shift(ShiftInt),
         Mask = arg_mask(MaskInt),
-        CastVal = ml_unbox(mlds_native_int_type, ml_lval(FieldLval)),
-        MaskOld = ml_bitwise_and(CastVal, \ (MaskInt << ShiftInt)),
-        ShiftNew = ml_lshift(ArgRval, Shift, Fill),
-        Combined = ml_bitwise_or(MaskOld, ShiftNew),
-        Stmt = ml_gen_assign(FieldLval, Combined, Context),
+        CastFieldRVal = ml_unbox(mlds_int_type_uint, ml_lval(FieldLval)),
+        OldFieldBits = ml_bitwise_and(CastFieldRVal, \ (MaskInt << ShiftInt)),
+        NewFieldBits = ml_lshift(ArgRval, Shift, Fill),
+        UpdatedFieldBits = ml_cast(mlds_generic_type,
+            ml_bitwise_or(OldFieldBits, NewFieldBits)),
+        Stmt = ml_gen_assign(FieldLval, UpdatedFieldBits, Context),
         !:Stmts = [Stmt | !.Stmts]
     ;
         ( FieldWidth = apw_none_shifted(_, _)
@@ -3073,11 +3076,11 @@ ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
         Inits = [HeadInit | TailInits]
     ;
         PosWidth = apw_partial_shifted(_, _, _, _, _, _),
-        % There should be an apw_*_first argument first.
+        % There should be an apw_partial_first argument first.
         unexpected($pred, "apw_partial_shifted")
     ;
         PosWidth = apw_none_shifted(_, _),
-        % There should be an apw_*_first argument first.
+        % There should be an apw_partial_first argument first.
         unexpected($pred, "apw_none_shifted")
     ;
         PosWidth = apw_none_nowhere,
@@ -3161,16 +3164,17 @@ ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
     list(mlds_rval)::in, mlds_rval::out) is det.
 
 ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-        RevOrRvals0, OrAllRval) :-
+        RevOrRvals0, BoxedOrAllRval) :-
     ml_pack_into_one_word_loop(RvalsTypesWidths, LeftOverRvalsTypesWidths,
         RevOrRvals0, RevOrRvals),
     list.reverse(RevOrRvals, OrRvals),
     (
         OrRvals = [],
-        OrAllRval = ml_const(mlconst_int(0))
+        BoxedOrAllRval = ml_const(mlconst_int(0))
     ;
         OrRvals = [HeadOrRval | TailOrRvals],
-        or_packed_rvals(HeadOrRval, TailOrRvals, OrAllRval)
+        or_packed_rvals(HeadOrRval, TailOrRvals, OrAllRval),
+        BoxedOrAllRval = ml_cast(mlds_generic_type, OrAllRval)
     ).
 
 :- pred ml_pack_into_one_word_loop(
@@ -3227,7 +3231,7 @@ or_packed_rvals(HeadRval, TailRvals, OrAllRval) :-
 
 maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
     Shift = arg_shift(ShiftInt),
-    ml_cast_away_any_sign_extend_bits(Fill, Rval, CastRval),
+    ml_cast_to_unsigned_without_sign_extend(Fill, Rval, CastRval),
     ( if
         Rval = ml_const(RvalConst),
         ( RvalConst = mlconst_null(_)
@@ -3256,7 +3260,7 @@ maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
 
 ml_lshift(Rval, Shift, Fill) = ShiftedRval :-
     Shift = arg_shift(ShiftInt),
-    ml_cast_away_any_sign_extend_bits(Fill, Rval, CastRval),
+    ml_cast_to_unsigned_without_sign_extend(Fill, Rval, CastRval),
     ( if Rval = ml_const(mlconst_null(_)) then
         % We may get nulls from unfilled fields. Replace them with zeroes
         % so we don't get type errors from the C compiler.
@@ -3328,51 +3332,47 @@ ml_bitwise_or(RvalA, RvalB) = Rval :-
 ml_bitwise_and(Rval, Mask) =
     ml_binop(bitwise_and(int_type_uint), Rval, ml_const(mlconst_int(Mask))).
 
-:- pred ml_cast_away_any_sign_extend_bits(fill_kind::in,
+:- pred ml_cast_to_unsigned_without_sign_extend(fill_kind::in,
     mlds_rval::in, mlds_rval::out) is det.
 
-ml_cast_away_any_sign_extend_bits(Fill, Rval0, Rval) :-
+ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
     (
         ( Fill = fill_enum
         ; Fill = fill_uint8
         ; Fill = fill_uint16
         ; Fill = fill_uint32
         ),
-        Rval = Rval0
+        Rval1 = Rval0
     ;
         (
             Fill = fill_int8,
-            FromIntType = int_type_int8,
-            ToIntType = int_type_uint8
+            FromMLDSType = mlds_int_type_int8,
+            ToMLDSType = mlds_int_type_uint8
         ;
             Fill = fill_int16,
-            FromIntType = int_type_int16,
-            ToIntType = int_type_uint16
+            FromMLDSType = mlds_int_type_int16,
+            ToMLDSType = mlds_int_type_uint16
         ;
             Fill = fill_int32,
-            FromIntType = int_type_int32,
-            ToIntType = int_type_uint32
+            FromMLDSType = mlds_int_type_int32,
+            ToMLDSType = mlds_int_type_uint32
         ),
         % XXX ARG_PACK It would be better if instead of undoing the boxing
         % here, we could *avoid* boxing sub-word-sized arguments. However,
         % that would require treating sub-word-sized arguments differently
         % from full- or double-word-sized arguments, which is a more involved
         % change.
-        FromMerType = builtin_type(builtin_type_int(FromIntType)),
-        FromCtorCat = ctor_cat_builtin(cat_builtin_int(FromIntType)),
-        FromMLDSType = mercury_type(FromMerType, no, FromCtorCat),
-        ToMerType = builtin_type(builtin_type_int(ToIntType)),
-        ToCtorCat = ctor_cat_builtin(cat_builtin_int(ToIntType)),
-        ToMLDSType = mercury_type(ToMerType, no, ToCtorCat),
         ( if Rval0 = ml_box(FromMLDSType, SubRval) then
             % We can't apply this cast to Rval0 without getting a gcc warning:
             % "warning: cast from pointer to integer of different size
             % [-Wpointer-to-int-cast]".
-            Rval = ml_cast(ToMLDSType, SubRval)
+            Rval1 = ml_cast(ToMLDSType, SubRval)
         else
-            Rval = ml_cast(ToMLDSType, Rval0)
+            Rval1 = ml_cast(ToMLDSType, Rval0)
         )
-    ).
+    ),
+    UnsignedMLDSType = mlds_int_type_uint,
+    Rval = ml_cast(UnsignedMLDSType, Rval1).
 
 %---------------------------------------------------------------------------%
 

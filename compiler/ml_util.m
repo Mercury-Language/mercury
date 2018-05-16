@@ -150,6 +150,17 @@
 :- func mlds_maybe_aux_func_id_to_suffix(mlds_maybe_aux_func_id) = string.
 
 %---------------------------------------------------------------------------%
+
+:- func mlds_int_type_int8 = mlds_type.
+:- func mlds_int_type_uint8 = mlds_type.
+:- func mlds_int_type_int16 = mlds_type.
+:- func mlds_int_type_uint16 = mlds_type.
+:- func mlds_int_type_int32 = mlds_type.
+:- func mlds_int_type_uint32 = mlds_type.
+:- func mlds_int_type_int = mlds_type.
+:- func mlds_int_type_uint = mlds_type.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -158,6 +169,7 @@
 :- import_module hlds.hlds_data.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_type.
 
 :- import_module int.
 :- import_module solutions.
@@ -928,6 +940,40 @@ mlds_maybe_aux_func_id_to_suffix(MaybeAux) = Suffix :-
         MaybeAux = gc_trace_for_proc_aux_func(SeqNum),
         Suffix = string.format("_%d", [i(10001 + SeqNum)])
     ).
+
+%---------------------------------------------------------------------------%
+
+mlds_int_type_int8 =
+    mercury_type(builtin_type(builtin_type_int(int_type_int8)), no,
+        ctor_cat_builtin(cat_builtin_int(int_type_int8))).
+
+mlds_int_type_uint8 =
+    mercury_type(builtin_type(builtin_type_int(int_type_uint8)), no,
+        ctor_cat_builtin(cat_builtin_int(int_type_uint8))).
+
+mlds_int_type_int16 =
+    mercury_type(builtin_type(builtin_type_int(int_type_int16)), no,
+        ctor_cat_builtin(cat_builtin_int(int_type_int16))).
+
+mlds_int_type_uint16 =
+    mercury_type(builtin_type(builtin_type_int(int_type_uint16)), no,
+        ctor_cat_builtin(cat_builtin_int(int_type_uint16))).
+
+mlds_int_type_int32 =
+    mercury_type(builtin_type(builtin_type_int(int_type_int32)), no,
+        ctor_cat_builtin(cat_builtin_int(int_type_int32))).
+
+mlds_int_type_uint32 =
+    mercury_type(builtin_type(builtin_type_int(int_type_uint32)), no,
+        ctor_cat_builtin(cat_builtin_int(int_type_uint32))).
+
+mlds_int_type_int =
+    mercury_type(builtin_type(builtin_type_int(int_type_int)), no,
+        ctor_cat_builtin(cat_builtin_int(int_type_int))).
+
+mlds_int_type_uint =
+    mercury_type(builtin_type(builtin_type_int(int_type_uint)), no,
+        ctor_cat_builtin(cat_builtin_int(int_type_uint))).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_util.

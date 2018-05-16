@@ -280,6 +280,8 @@ mlds_output_bracketed_rval(Opts, Rval, !IO) :-
 
 mlds_output_cast_rval(Opts, Type, Rval, !IO) :-
     mlds_output_cast(Opts, Type, !IO),
+    % Cast the *whole* of Rval, not just an initial subrval.
+    io.write_char('(', !IO),
     ( if
         Opts ^ m2co_highlevel_data = yes,
         Rval = ml_const(mlconst_float(Float))
@@ -287,7 +289,8 @@ mlds_output_cast_rval(Opts, Type, Rval, !IO) :-
         mlds_output_float_bits(Opts, Float, !IO)
     else
         mlds_output_rval(Opts, Rval, !IO)
-    ).
+    ),
+    io.write_char(')', !IO).
 
 %---------------------%
 
@@ -687,8 +690,9 @@ mlds_output_unboxed_rval_smaller_than_word(Opts, Type, Rval, !IO) :-
 mlds_output_unboxed_rval_default(Opts, Type, Rval, !IO) :-
     io.write_string("(", !IO),
     mlds_output_cast(Opts, Type, !IO),
+    io.write_string("(", !IO),
     mlds_output_rval(Opts, Rval, !IO),
-    io.write_string(")", !IO).
+    io.write_string("))", !IO).
 
 %---------------------%
 
