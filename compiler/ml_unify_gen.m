@@ -281,7 +281,7 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
+ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         Context, Stmts, !Info) :-
     % Figure out how this cons_id is represented.
     ml_variable_type(!.Info, Var, VarType),
@@ -291,7 +291,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         ; ConsTag = direct_arg_tag(_)
         ),
         ( if
-            Args = [ArgVar],
+            ArgVars = [ArgVar],
             ArgModes = [ArgMode]
         then
             ml_gen_var(!.Info, Var, VarLval),
@@ -351,11 +351,11 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         ),
         UsesBaseClass = ml_tag_uses_base_class(ConsTag),
         ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
-            Args, ArgModes, TakeAddr, HowToConstruct, Context, Stmts, !Info)
+            ArgVars, ArgModes, TakeAddr, HowToConstruct, Context, Stmts, !Info)
     ;
         % Lambda expressions.
         ConsTag = closure_tag(PredId, ProcId, _EvalMethod),
-        ml_gen_closure(PredId, ProcId, Var, Args, ArgModes, HowToConstruct,
+        ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
             Context, Stmts, !Info)
     ;
         ( ConsTag = type_info_const_tag(ConstNum)
@@ -387,7 +387,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
         ; ConsTag = table_io_entry_tag(_, _)
         ),
         (
-            Args = [],
+            ArgVars = [],
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
@@ -450,7 +450,7 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
             Stmt = ml_gen_assign(VarLval, Rval, Context),
             Stmts = [Stmt]
         ;
-            Args = [_ | _],
+            ArgVars = [_ | _],
             unexpected($pred, "bad constant term")
         )
     ).
@@ -1678,62 +1678,21 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
     % into nothing. We hope that the compilers for the other MLDS target
     % languages can do the same.
 
-    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
-    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
-        LeftTopFunctorMode),
-    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
-        RightTopFunctorMode),
-    ( if
-        % Skip dummy argument types, since they will not have been declared.
-        is_either_type_a_dummy(ModuleInfo, ArgType, FieldType) =
-            at_least_one_is_dummy_type
-    then
-        true
-    else
-        (
-            LeftTopFunctorMode = top_in,
-            (
-                RightTopFunctorMode = top_in,
-                % Both input: it is a test unification.
-                % This shouldn't happen, since mode analysis should avoid
-                % creating any tests in the arguments of a construction
-                % or deconstruction unification.
-                unexpected($pred, "test in arg of [de]construction")
-            ;
-                RightTopFunctorMode = top_out,
-                % Input - output: it is an assignment to the RHS.
-                ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
-                    FieldLval, FieldType, FieldWidth, Context, !Stmts)
-            ;
-                RightTopFunctorMode = top_unused,
-                unexpected($pred, "some strange unify")
-            )
-        ;
-            LeftTopFunctorMode = top_out,
-            (
-                RightTopFunctorMode = top_in,
-                % Output - input: it is an assignment to the LHS.
-                ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
-                    ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
-                    Context, !Stmts)
-            ;
-                ( RightTopFunctorMode = top_out
-                ; RightTopFunctorMode = top_unused
-                ),
-                unexpected($pred, "some strange unify")
-            )
-        ;
-            LeftTopFunctorMode = top_unused,
-            (
-                RightTopFunctorMode = top_unused
-                % Unused - unused: the unification has no effect.
-            ;
-                ( RightTopFunctorMode = top_in
-                ; RightTopFunctorMode = top_out
-                ),
-                unexpected($pred, "some strange unify")
-            )
+    compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir),
+    (
+        Dir = assign_nondummy_right,
+        ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
+            FieldLval, FieldType, FieldWidth, Context, !Stmts)
+    ;
+        Dir = assign_nondummy_left,
+        ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
+            ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
+            Context, !Stmts)
+    ;
+        ( Dir = assign_nondummy_unused
+        ; Dir = assign_dummy
         )
+        % The unification has no effect.
     ).
 
 :- pred ml_gen_sub_unify_assign_right(module_info::in,
@@ -1885,74 +1844,33 @@ ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) :-
 
 ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
         ArgLval, ArgType, VarLval, VarType, Context, Stmts) :-
-    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
-    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
-        LeftTopFunctorMode),
-    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
-        RightTopFunctorMode),
-    ( if
-        % Dummy argument types won't have been declared.
-        is_either_type_a_dummy(ModuleInfo, ArgType, VarType) =
-            at_least_one_is_dummy_type
-    then
-        unexpected($pred, "dummy unify")
-    else
-        true
-    ),
+    compute_assign_direction(ModuleInfo, ArgMode, ArgType, VarType, Dir),
     (
-        LeftTopFunctorMode = top_in,
-        (
-            RightTopFunctorMode = top_in,
-            % Both input: it is a test unification.
-            % This shouldn't happen, since mode analysis should avoid creating
-            % any tests in the arguments of a construction or deconstruction
-            % unification.
-            unexpected($pred, "test in arg of [de]construction")
-        ;
-            RightTopFunctorMode = top_out,
-            % Input - output: it is an assignment to the RHS.
-            unexpected($pred, "left-to-right data flow in construction")
-        ;
-            RightTopFunctorMode = top_unused,
-            unexpected($pred, "some strange unify")
-        )
+        Dir = assign_nondummy_right,
+        unexpected($pred, "left-to-right data flow in construction")
     ;
-        LeftTopFunctorMode = top_out,
-        (
-            RightTopFunctorMode = top_in,
-            % Output - input: it is an assignment to the LHS.
-            ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
-                bp_native_if_possible, ml_lval(ArgLval), ArgRval),
-            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-            CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, ArgRval)),
-            Stmt = ml_gen_assign(VarLval, CastRval, Context),
-            Stmts = [Stmt]
-        ;
-            ( RightTopFunctorMode = top_out
-            ; RightTopFunctorMode = top_unused
-            ),
-            unexpected($pred, "some strange unify")
-        )
+        Dir = assign_nondummy_left,
+        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
+            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+        CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, ArgRval)),
+        Stmt = ml_gen_assign(VarLval, CastRval, Context),
+        Stmts = [Stmt]
     ;
-        LeftTopFunctorMode = top_unused,
-        (
-            RightTopFunctorMode = top_unused,
-            % Unused - unused: it is a partial assignment to the LHS
-            % where the tag is known but the argument isn't.
-            MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-            ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
-                bp_native_if_possible, ml_const(mlconst_null(MLDS_ArgType)),
-                ArgRval),
-            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-            CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, ArgRval)),
-            Stmt = ml_gen_assign(VarLval, CastRval, Context),
-            Stmts = [Stmt]
-        ;
-            ( RightTopFunctorMode = top_in
-            ; RightTopFunctorMode = top_out
-            ),
-            unexpected($pred, "some strange unify")
-        )
+        Dir = assign_nondummy_unused,
+        % Unused - unused: it is a partial assignment to the LHS
+        % where the tag is known but the argument isn't.
+        MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
+            bp_native_if_possible, ml_const(mlconst_null(MLDS_ArgType)),
+            ArgRval),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+        CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, ArgRval)),
+        Stmt = ml_gen_assign(VarLval, CastRval, Context),
+        Stmts = [Stmt]
+    ;
+        Dir = assign_dummy,
+        unexpected($pred, "dummy unify")
     ).
 
 :- pred ml_gen_direct_arg_deconstruct(module_info::in, unify_mode::in, int::in,
@@ -1961,72 +1879,30 @@ ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
 
 ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
         ArgLval, ArgType, VarLval, VarType, Context, Stmts) :-
-    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
-    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
-        LeftTopFunctorMode),
-    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
-        RightTopFunctorMode),
-    ( if
-        % Dummy argument types won't have been declared.
-        is_either_type_a_dummy(ModuleInfo, ArgType, VarType) =
-            at_least_one_is_dummy_type
-    then
-        unexpected($pred, "dummy unify")
-    else
-        true
-    ),
+    compute_assign_direction(ModuleInfo, ArgMode, ArgType, VarType, Dir),
     (
-        LeftTopFunctorMode = top_in,
-        (
-            RightTopFunctorMode = top_in,
-            % Both input: it is a test unification.
-            % This shouldn't happen, since mode analysis should avoid creating
-            % any tests in the arguments of a construction or deconstruction
-            % unification.
-            unexpected($pred, "test in arg of [de]construction")
-        ;
-            RightTopFunctorMode = top_out,
-            % Input - output: it is an assignment to the RHS.
-            ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
-                bp_native_if_possible, ml_lval(VarLval), VarRval),
-            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-            CastRval = ml_cast(MLDS_Type,
-                ml_binop(body, VarRval, ml_const(mlconst_int(Ptag)))),
-            Stmt = ml_gen_assign(ArgLval, CastRval, Context),
-            Stmts = [Stmt]
-        ;
-            RightTopFunctorMode = top_unused,
-            unexpected($pred, "some strange unify")
-        )
+        Dir = assign_nondummy_right,
+        ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
+            bp_native_if_possible, ml_lval(VarLval), VarRval),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+        CastRval = ml_cast(MLDS_Type,
+            ml_binop(body, VarRval, ml_const(mlconst_int(Ptag)))),
+        Stmt = ml_gen_assign(ArgLval, CastRval, Context),
+        Stmts = [Stmt]
     ;
-        LeftTopFunctorMode = top_out,
-        (
-            RightTopFunctorMode = top_in,
-            % Output - input: it is an assignment to the LHS.
-            ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
-                bp_native_if_possible, ml_lval(ArgLval), ArgRval),
-            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-            CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, ArgRval)),
-            Stmt = ml_gen_assign(VarLval, CastRval, Context),
-            Stmts = [Stmt]
-        ;
-            ( RightTopFunctorMode = top_out
-            ; RightTopFunctorMode = top_unused
-            ),
-            unexpected($pred, "some strange unify")
-        )
+        Dir = assign_nondummy_left,
+        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
+            bp_native_if_possible, ml_lval(ArgLval), ArgRval),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+        CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, ArgRval)),
+        Stmt = ml_gen_assign(VarLval, CastRval, Context),
+        Stmts = [Stmt]
     ;
-        LeftTopFunctorMode = top_unused,
-        (
-            RightTopFunctorMode = top_unused,
-            % Unused - unused: the unification has no effect.
-            Stmts = []
-        ;
-            ( RightTopFunctorMode = top_in
-            ; RightTopFunctorMode = top_out
-            ),
-            unexpected($pred, "some strange unify")
-        )
+        Dir = assign_nondummy_unused,
+        Stmts = []
+    ;
+        Dir = assign_dummy,
+        unexpected($pred, "dummy unify")
     ).
 
 %---------------------------------------------------------------------------%
@@ -3649,6 +3525,72 @@ specified_arg_types_and_consecutive_full_words(Type, CurOffset,
     ArgTypeWidth = arg_type_and_width(Arg, Type, PosWidth),
     specified_arg_types_and_consecutive_full_words(Type, CurOffset + 1,
         Args, ArgsTypesWidths).
+
+:- type assign_dir
+    --->    assign_nondummy_left
+    ;       assign_nondummy_right
+    ;       assign_nondummy_unused
+    ;       assign_dummy.
+
+:- pred compute_assign_direction(module_info::in, unify_mode::in,
+    mer_type::in, mer_type::in, assign_dir::out) is det.
+:- pragma inline(compute_assign_direction/5).
+
+compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir) :-
+    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
+    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
+        LeftTopMode),
+    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
+        RightTopMode),
+    ( if
+        is_either_type_a_dummy(ModuleInfo, ArgType, FieldType) =
+            at_least_one_is_dummy_type
+    then
+        Dir = assign_dummy
+    else
+        (
+            LeftTopMode = top_in,
+            (
+                RightTopMode = top_in,
+                % Both input: it is a test unification.
+                % This shouldn't happen, since mode analysis should avoid
+                % creating any tests in the arguments of a construction
+                % or deconstruction unification.
+                unexpected($pred, "test in arg of [de]construction")
+            ;
+                RightTopMode = top_out,
+                % Input - output: it is an assignment to the RHS.
+                Dir = assign_nondummy_right
+            ;
+                RightTopMode = top_unused,
+                unexpected($pred, "some strange unify")
+            )
+        ;
+            LeftTopMode = top_out,
+            (
+                RightTopMode = top_in,
+                % Output - input: it is an assignment to the LHS.
+                Dir = assign_nondummy_left
+            ;
+                ( RightTopMode = top_out
+                ; RightTopMode = top_unused
+                ),
+                unexpected($pred, "some strange unify")
+            )
+        ;
+            LeftTopMode = top_unused,
+            (
+                RightTopMode = top_unused,
+                % Unused - unused: the unification has no effect.
+                Dir = assign_nondummy_unused
+            ;
+                ( RightTopMode = top_in
+                ; RightTopMode = top_out
+                ),
+                unexpected($pred, "some strange unify")
+            )
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_unify_gen.
