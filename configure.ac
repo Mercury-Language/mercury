@@ -5208,29 +5208,23 @@ MERCURY_CHECK_READLINE
 #
 # Check for libhwloc, http://www.open-mpi.org/projects/hwloc/
 #
+
 PKG_PROG_PKG_CONFIG
 
 AC_ARG_WITH([hwloc],
-    [AS_HELP_STRING([--without-hwloc],
-        [Do not use libhwloc to detect the processors available.])],
-    [],
-    [with_hwloc=check])
+    AS_HELP_STRING([--with-hwloc],
+        [Use libhwloc in support of thread pinning (developers only)]),
+    [with_hwloc="$withval"],
+    [with_hwloc="no"])
 
-if test "$with_hwloc" != "no"; then
+if test "$with_hwloc" = "yes"
+then
     PKG_CHECK_MODULES(libhwloc, hwloc >= 1.1,
         [
             AC_DEFINE(MR_HAVE_HWLOC)
             hwloc_static_libs="`pkg-config --libs --static hwloc`"
         ],
         [
-            case "$LIBGRADES" in
-                $BEST_LLDS_BASE_GRADE.par.gc*)
-                    MERCURY_MSG(["Warning: libhwloc not found, thread pinning in"])
-                    MERCURY_MSG(["low-level C parallel grades may be less accurate."])
-                    ;;
-                *)
-                    ;;
-            esac
             hwloc_static_libs=""
         ])
 else
