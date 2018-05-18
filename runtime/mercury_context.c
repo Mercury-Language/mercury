@@ -15,7 +15,6 @@ ENDINIT
 #ifndef _GNU_SOURCE
   // This must be defined prior to including <sched.h> for sched_setaffinity,
   // etc.
-
   #define _GNU_SOURCE
 #endif
 
@@ -211,9 +210,13 @@ static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
 
 #ifdef MR_THREAD_SAFE
 
-// The detected number of processors available to this process.
-unsigned         MR_num_processors_detected;
+// The detected number of processors available to this process,
+// or zero if not (yet) determined.
+static unsigned         MR_num_processors_detected;
 
+// Structures representing the processors available to this process.
+// These are required for thread pinning but also used to count
+// MR_num_processors_detected.
 #if defined(MR_HAVE_HWLOC)
     static hwloc_topology_t MR_hw_topology;
     static hwloc_cpuset_t   MR_hw_available_pus = NULL;
@@ -232,15 +235,15 @@ unsigned         MR_num_processors_detected;
     static cpu_set_t    *MR_cpuset_available;
 #endif
 
-// Local variables for thread pinning.
-
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
+// Variables for thread pinning.
 MR_bool                 MR_thread_pinning = MR_FALSE;
 static MercuryLock      MR_thread_pinning_lock;
 static unsigned         MR_num_threads_left_to_pin;
 MR_Unsigned             MR_primordial_thread_cpu;
 #endif
-#endif
+
+#endif  // MR_THREAD_SAFE
 
 #if defined(MR_LL_PARALLEL_CONJ) && \
     defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
@@ -285,15 +288,17 @@ MR_SparkDeque           **MR_spark_deques = NULL;
 ////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_THREAD_SAFE
-// Reset or initialize the cpuset that tracks which CPUs are available for
+// Initialize or reset the cpuset that tracks which CPUs are available for
 // binding.
-
+static void     MR_init_available_cpus_and_detect_num_processors(void);
 static void     MR_reset_available_cpus(void);
 
-static void     MR_detect_num_processors(void);
+// Free the cpuset if allocated.
+static void     MR_free_available_cpus(void);
+#endif
 
-  #ifdef MR_LL_PARALLEL_CONJ
-static void     MR_setup_num_threads(void);
+#ifdef MR_LL_PARALLEL_CONJ
+static void     MR_setup_num_ws_engines(unsigned num_processors_detected);
 
 // Try to wake up a sleeping engine and tell it to do action. The engine is
 // only woken if it is in the sleeping state. If the engine is not sleeping
@@ -316,8 +321,7 @@ static MR_bool  try_wake_engine(MR_EngineId engine_id, int action,
 static MR_bool  try_notify_engine(MR_EngineId engine_id, int action,
                     union MR_engine_wake_action_data *action_data,
                     MR_Unsigned engine_state);
-  #endif    // MR_LL_PARALLEL_CONJ
-#endif // MR_THREAD_SAFE
+#endif    // MR_LL_PARALLEL_CONJ
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 // Write out the profiling data that we collect during execution.
@@ -370,14 +374,15 @@ MR_init_context_stuff(void)
     MR_KEY_CREATE(&MR_backjump_next_choice_id_key, (void *)0);
   #endif
 
-    MR_detect_num_processors();
-    assert(MR_num_processors_detected > 0);
-
   #ifdef MR_LL_PARALLEL_CONJ
-    MR_setup_num_threads();
-    assert(MR_num_ws_engines > 0);
+    MR_init_available_cpus_and_detect_num_processors();
+    #ifndef MR_HAVE_THREAD_PINNING
+    MR_free_available_cpus();
+    #endif
 
-    #if defined(MR_HAVE_THREAD_PINNING)
+    MR_setup_num_ws_engines(MR_num_processors_detected);
+
+    #ifdef MR_HAVE_THREAD_PINNING
     MR_setup_thread_pinning();
     #endif
 
@@ -407,7 +412,64 @@ MR_init_context_stuff(void)
 }
 
 #ifdef MR_THREAD_SAFE
-// Detect number of processors.
+
+unsigned
+MR_get_num_processors(void)
+{
+    unsigned result;
+
+    MR_OBTAIN_GLOBAL_LOCK("MR_get_num_processors");
+
+    // In low-level threaded grades, MR_num_processors_detected is initialised
+    // at startup to count the number of work-stealing engines to run.
+    // In high-level grades, MR_num_processors_detected is initialised on
+    // demand.
+    if (MR_num_processors_detected == 0) {
+        MR_init_available_cpus_and_detect_num_processors();
+        MR_free_available_cpus();
+    }
+
+    result = MR_num_processors_detected;
+
+    MR_RELEASE_GLOBAL_LOCK("MR_get_num_processors");
+
+    return result;
+}
+
+static void
+MR_init_available_cpus_and_detect_num_processors(void)
+{
+  #ifdef MR_HAVE_HWLOC
+    if (-1 == hwloc_topology_init(&MR_hw_topology)) {
+        MR_fatal_error("Error allocating libhwloc topology object");
+    }
+    if (-1 == hwloc_topology_load(MR_hw_topology)) {
+        MR_fatal_error("Error detecting hardware topology (hwloc)");
+    }
+  #endif
+
+    MR_reset_available_cpus();
+
+  #if defined(MR_HAVE_HWLOC)
+    MR_num_processors_detected = hwloc_bitmap_weight(MR_hw_available_pus);
+  #elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
+    MR_num_processors_detected =
+        CPU_COUNT_S(MR_cpuset_size, MR_cpuset_available);
+  #elif defined(MR_WIN32_GETSYSTEMINFO)
+    {
+        SYSTEM_INFO sysinfo;
+        GetSystemInfo(&sysinfo);
+        MR_num_processors_detected = sysinfo.dwNumberOfProcessors;
+    }
+  #elif defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
+    {
+        long n = sysconf(_SC_NPROCESSORS_ONLN);
+        if (n > 0) {
+            MR_num_processors_detected = n;
+        }
+    }
+  #endif
+}
 
 static void
 MR_reset_available_cpus(void)
@@ -509,64 +571,43 @@ MR_reset_available_cpus(void)
 }
 
 static void
-MR_detect_num_processors(void)
+MR_free_available_cpus(void)
 {
-  #ifdef MR_HAVE_HWLOC
-    if (-1 == hwloc_topology_init(&MR_hw_topology)) {
-        MR_fatal_error("Error allocating libhwloc topology object");
-    }
-    if (-1 == hwloc_topology_load(MR_hw_topology)) {
-        MR_fatal_error("Error detecting hardware topology (hwloc)");
-    }
-  #endif
-
-    // Setup num processors.
-
-    MR_reset_available_cpus();
   #if defined(MR_HAVE_HWLOC)
-    MR_num_processors_detected = hwloc_bitmap_weight(MR_hw_available_pus);
+    // XXX Fill this in.
   #elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
-    MR_num_processors_detected =
-        CPU_COUNT_S(MR_cpuset_size, MR_cpuset_available);
-    if (MR_num_processors_detected == 0) {
-        // Carry on even if the MR_cpuset_available is somehow empty.
-        MR_num_processors_detected = 1;
+    MR_cpuset_size = 0;
+    if (MR_cpuset_available != NULL) {
+        CPU_FREE(MR_cpuset_available);
+        MR_cpuset_available = NULL;
     }
-  #elif defined(MR_WIN32_GETSYSTEMINFO)
-    {
-        SYSTEM_INFO sysinfo;
-        GetSystemInfo(&sysinfo);
-        MR_num_processors_detected = sysinfo.dwNumberOfProcessors;
-    }
-  #elif defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
-    MR_num_processors_detected = sysconf(_SC_NPROCESSORS_ONLN);
-  #else
-    #warning "Cannot detect MR_num_processors_detected"
-    MR_num_processors_detected = 1;
   #endif
 }
+
+#endif // MR_THREAD_SAFE
 
 #ifdef MR_LL_PARALLEL_CONJ
 static void
-MR_setup_num_threads(void)
+MR_setup_num_ws_engines(unsigned num_processors_detected)
 {
-    // If MR_num_threads is unset, configure it to match number of processors
-    // on the system. If we do this, then we prepare to set processor
-    // affinities later on.
-
+    // If MR_num_ws_engines is unset, configure it to match the number of
+    // processors available to the process (if known). If we do this, then we
+    // prepare to set processor affinities later on.
     if (MR_num_ws_engines == 0) {
-        MR_num_ws_engines = MR_num_processors_detected;
+        MR_num_ws_engines = num_processors_detected;
+
+        // In case CPU detection failed for some reason.
+        if (MR_num_ws_engines == 0) {
+            MR_num_ws_engines = 1;
+        }
     }
 
-  #ifdef MR_DEBUG_THREADS
     if (MR_debug_threads) {
-        fprintf(stderr, "Detected %d processors, will use %d threads\n",
-            MR_num_processors_detected, MR_num_ws_engines);
+        fprintf(stderr, "Detected %d processors, will use %d ws engines\n",
+            num_processors_detected, MR_num_ws_engines);
     }
-  #endif
 }
 #endif // MR_LL_PARALLEL_CONJ
-#endif // MR_THREAD_SAFE
 
 // Thread pinning.
 
@@ -631,13 +672,13 @@ MR_pin_thread(void)
     return cpu;
 }
 
-void
+int
 MR_pin_primordial_thread(void)
 {
     // We don't need locking to pin the primordial thread as it is called
     // before any other threads exist.
 
-    MR_primordial_thread_cpu = MR_pin_thread_no_locking();
+    return MR_pin_thread_no_locking();
 }
 
 static void MR_setup_thread_pinning(void)
@@ -646,9 +687,8 @@ static void MR_setup_thread_pinning(void)
 
     pthread_mutex_init(&MR_thread_pinning_lock, MR_MUTEX_ATTR);
 
-  // Comment this back in to enable thread pinning by default
-  // if we autodetected the number of CPUs without error.
-
+    // Restore this to enable thread pinning by default
+    // if we autodetected the number of CPUs without error.
 #if 0
     if (MR_num_processors_detected > 1) {
         MR_thread_pinning = MR_TRUE;
@@ -761,21 +801,6 @@ MR_do_pin_thread(int cpu)
 }
 
 #if defined(MR_HAVE_HWLOC)
-static MR_bool  MR_make_pu_unavailable(const struct hwloc_obj *pu);
-#endif
-
-static void MR_make_cpu_unavailable(int cpu)
-{
-#if defined(MR_HAVE_HWLOC)
-    hwloc_obj_t pu;
-    pu = hwloc_get_obj_by_type(MR_hw_topology, HWLOC_OBJ_PU, cpu);
-    MR_make_pu_unavailable(pu);
-#elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
-    CPU_CLR_S(cpu, MR_cpuset_size, MR_cpuset_available);
-#endif
-}
-
-#if defined(MR_HAVE_HWLOC)
 static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu)
 {
     hwloc_obj_t core;
@@ -831,6 +856,22 @@ static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu)
     return MR_TRUE;
 }
 #endif
+
+static void MR_make_cpu_unavailable(int cpu)
+{
+#if defined(MR_HAVE_HWLOC)
+    hwloc_obj_t pu;
+    pu = hwloc_get_obj_by_type(MR_hw_topology, HWLOC_OBJ_PU, cpu);
+    MR_make_pu_unavailable(pu);
+#elif defined(MR_HAVE_LINUX_CPU_AFFINITY_API)
+    CPU_CLR_S(cpu, MR_cpuset_size, MR_cpuset_available);
+#endif
+}
+
+void MR_done_thread_pinning(void)
+{
+    MR_free_available_cpus();
+}
 
 #endif // MR_HAVE_THREAD_PINNING && MR_LL_PARALLEL_CONJ
 

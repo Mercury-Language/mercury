@@ -815,12 +815,12 @@ num_processors(MaybeProcs, !IO) :-
      will_not_throw_exception, tabled_for_io],
 "
 #ifdef MR_THREAD_SAFE
-    Procs = MR_num_processors_detected;
-    Success = MR_YES;
+    // MR_get_num_processors() takes the global lock.
+    Procs = MR_get_num_processors();
 #else
-    Procs = 1;
-    Success = MR_YES;
+    Procs = 0;
 #endif
+    Success = (Procs > 0) ? MR_YES : MR_NO;
 ").
 
 :- pragma foreign_proc("Java",

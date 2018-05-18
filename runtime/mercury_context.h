@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014 The Mercury team.
+// Copyright (C) 2014-2016, 2018 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -365,7 +365,7 @@ extern      MR_Context  *MR_runqueue_tail;
   extern    MercuryCond MR_runqueue_cond;
 #endif
 #ifdef  MR_LL_PARALLEL_CONJ
-  extern    MR_bool         MR_thread_pinning;
+  extern    MR_bool     MR_thread_pinning;
 #endif
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
@@ -373,11 +373,6 @@ extern MR_bool      MR_profile_parallel_execution;
 
 // XXX: This is currently unused, we plan to use it in the future. -pbone
 extern MR_Stats     MR_profile_parallel_executed_local_sparks;
-#endif
-
-#ifdef MR_THREAD_SAFE
-// The number of processors detected.
-extern unsigned     MR_num_processors_detected;
 #endif
 
 // As well as the runqueue, we maintain a linked list of contexts
@@ -430,11 +425,14 @@ extern  MR_PendingContext   *MR_pending_contexts;
 
 ////////////////////////////////////////////////////////////////////////////
 
-// Initializes a context structure, and gives it the given id. If gen is
-// non-NULL, the context is for the given generator.
+#ifdef MR_THREAD_SAFE
+// Return the number of processors available to this process or 0 if unknown.
+// This function is not directly related to contexts, but shares code with the
+// code to count the number of Mercury engines to start.
+extern unsigned     MR_get_num_processors(void);
+#endif
 
-extern  void        MR_init_context(MR_Context *context, const char *id,
-                        MR_Generator *gen);
+////////////////////////////////////////////////////////////////////////////
 
 // Allocates and initializes a new context structure, and gives it
 // the given id. If gen is non-NULL, the context is for the given generator.
@@ -460,6 +458,7 @@ extern  void        MR_release_context(MR_Context *context);
 
 extern  void        MR_init_context_stuff(void);
 
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
 // MR_pin_thread() pins the current thread to the next available processor ID,
 // if thread pinning is enabled.
 // MR_pin_primordial_thread() is a special case for the primordial thread.
@@ -469,22 +468,17 @@ extern  void        MR_init_context_stuff(void);
 // Both functions return the CPU number that the thread is pinned to or would
 // be pinned to if pinning was both enabled and supported. That is a valid
 // value is always returned even if the thread is not actually pinned.
-
-#if defined(MR_LL_PARALLEL_CONJ)
-#if defined(MR_HAVE_THREAD_PINNING)
-extern void         MR_pin_primordial_thread(void);
+extern int          MR_pin_primordial_thread(void);
 extern int          MR_pin_thread(void);
 
-// The CPU that the primordial thread is running on.
-
-extern MR_Unsigned        MR_primordial_thread_cpu;
+// Free resources no longer required after thread pinning is done.
+extern void         MR_done_thread_pinning(void);
 #endif
 
+#ifdef MR_LL_PARALLEL_CONJ
 // Shutdown all the work-stealing engines.
 // (Exclusive engines shut down by themselves.)
-
-extern void
-MR_shutdown_ws_engines(void);
+extern void         MR_shutdown_ws_engines(void);
 #endif
 
 // MR_finalize_context_stuff() finalizes the lock structures for the runqueue

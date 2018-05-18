@@ -639,33 +639,29 @@ mercury_runtime_init(int argc, char **argv)
   #endif
 #else
 
-#if defined(MR_LL_PARALLEL_CONJ)
-#if defined(MR_HAVE_THREAD_PINNING)
+  #ifdef MR_LL_PARALLEL_CONJ
+    #ifdef MR_HAVE_THREAD_PINNING
     MR_pin_primordial_thread();
-#endif
-  #if defined(MR_THREADSCOPE)
+    #endif
+
+    #ifdef MR_THREADSCOPE
     // We must setup threadscope before we setup the first engine.
     // Pin the primordial thread, if thread pinning is configured.
-
     MR_setup_threadscope();
 
     // Setup the threadscope string tables before the standard library is
     // initialised or engines are created.
-
     (*MR_address_of_init_modules_threadscope_string_table)();
+    #endif
   #endif
-
-#endif
 
     // Start up the Mercury engine. We don't yet know how many slots will be
     // needed for thread-local mutable values so allocate the maximum number.
-
     MR_init_thread_inner(MR_use_now, MR_PRIMORIDAL_ENGINE_TYPE);
     MR_SET_THREAD_LOCAL_MUTABLES(
         MR_create_thread_local_mutables(MR_MAX_THREAD_LOCAL_MUTABLES));
 
     // Start up additional work-stealing Mercury engines.
-
   #ifdef MR_LL_PARALLEL_CONJ
     {
         int i;
@@ -673,24 +669,29 @@ mercury_runtime_init(int argc, char **argv)
         for (i = 1; i < MR_num_ws_engines; i++) {
             MR_create_worksteal_thread();
         }
+
     #ifdef MR_THREADSCOPE
         // TSC Synchronization is not used, support is commented out.
         // See runtime/mercury_threadscope.h for an explanation.
-        *
         for (i = 1; i < MR_num_threads; i++) {
             MR_threadscope_sync_tsc_master();
         }
-
     #endif
+
         while (MR_num_idle_ws_engines < MR_num_ws_engines-1) {
             // busy wait until the worker threads are ready
             MR_ATOMIC_PAUSE;
         }
     }
+
+    #ifdef MR_HAVE_THREAD_PINNING
+    MR_done_thread_pinning();
+    #endif
   #endif // ! MR_LL_PARALLEL_CONJ
 #endif // ! 0
 
 #ifdef MR_BOEHM_GC
+    // XXX overrides MERCURY_OPTIONS -x
     GC_enable();
 #endif
 
