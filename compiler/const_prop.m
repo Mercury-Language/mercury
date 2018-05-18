@@ -553,6 +553,20 @@ evaluate_det_call_int_3(Globals, ProcName, ModeNum, X, Y, Z,
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = xor(XVal, YVal)
+    ;
+        ProcName = "xor",
+        ModeNum = 1,
+        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = xor(XVal, ZVal)
+    ;
+        ProcName = "xor",
+        ModeNum = 2,
+        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
+        OutputArg = X,
+        OutputArgVal = xor(YVal, ZVal)
     ).
 
 :- pred evaluate_det_call_uint_3(globals::in, string::in, int::in,
@@ -721,6 +735,20 @@ evaluate_det_call_uint_3(Globals, ProcName, ModeNum, X, Y, Z,
         Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
         OutputArg = Z,
         OutputArgVal = xor(XVal, YVal)
+    ;
+        ProcName = "xor",
+        ModeNum = 1,
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        OutputArg = Y,
+        OutputArgVal = xor(XVal, ZVal)
+    ;
+        ProcName = "xor",
+        ModeNum = 2,
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        OutputArg = X,
+        OutputArgVal = xor(YVal, ZVal)
     ).
 
 :- pred evaluate_det_call_float_3(globals::in, string::in, int::in,
