@@ -336,7 +336,7 @@ X div Y = X // Y.
 :- pragma inline('//'/2).
 X // Y = Div :-
     ( if Y = 0u8 then
-        throw(math.domain_error("uint.'//': division by zero"))
+        throw(math.domain_error("uint8.'//': division by zero"))
     else
         Div = unchecked_quotient(X, Y)
     ).
