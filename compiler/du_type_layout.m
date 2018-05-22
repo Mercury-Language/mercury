@@ -334,6 +334,19 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
         MaybeDirectArgs = direct_args_disabled
     ),
 
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    (
+        HighLevelData = no
+    ;
+        HighLevelData = yes,
+        expect(unify(AllowDoubleWords, no), $pred,
+            "AllowDoubleWords != no"),
+        expect(unify(AllowPackingInts, no), $pred,
+            "AllowPackingInts != no"),
+        expect(unify(AllowPackingDummies, no), $pred,
+            "AllowPackingDummies != no")
+    ),
+
     % Compute MaybeInformPacking.
     globals.lookup_bool_option(Globals, inform_suboptimal_packing,
         InformPacking),

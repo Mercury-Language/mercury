@@ -1344,14 +1344,17 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     ),
 
     % Argument packing only works on C back-ends with low-level data.
-    % In the future, we may want to use C bit-field syntax for high-level data.
-    % For other back-ends, any RTTI code will need to be updated to cope with
-    % packed arguments.
-    %
-    % Only C targets may store a constructor argument across two words.
-    option_implies(highlevel_data, arg_pack_bits, int(0), !Globals),
-    (
+    % In the future, we may want to use bit-field syntax on C backends
+    % with high-level data. For the other target languages, implementing
+    % argument packing will require not just a lot of work on RTTI, but also
+    % generalizing field addressing, to allow both single fields and
+    % a group of adjacent fields packed into a single word to be
+    % addressed via a mechanism other than an argument's name.
+    globals.lookup_bool_option(!.Globals, highlevel_data, HighLevelData),
+    ( if
         Target = target_c,
+        HighLevelData = no
+    then
         globals.lookup_int_option(!.Globals, arg_pack_bits, ArgPackBits0),
         globals.lookup_int_option(!.Globals, bits_per_word, BitsPerWord),
         % If --arg-pack-bits is negative then it means use all word bits.
@@ -1373,13 +1376,18 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             ArgPackBits = ArgPackBits0
         ),
         globals.set_option(arg_pack_bits, int(ArgPackBits), !Globals)
-    ;
-        ( Target = target_csharp
-        ; Target = target_java
-        ; Target = target_erlang
-        ),
+        % Leave the value of num_ptag_bits as set above.
+        % Leave the value of allow_double_word_fields as set by the user.
+        % Leave the value of allow_packing_dummies as set by the user.
+        % Leave the value of allow_packing_ints as set by the user.
+    else
         globals.set_option(arg_pack_bits, int(0), !Globals),
-        globals.set_option(allow_double_word_fields, bool(no), !Globals)
+        % Leave the value of num_ptag_bits alone. We have set it to zero above
+        % for the C# and Java backends, and the C backend with high level data
+        % depends on it *not* being set to zero.
+        globals.set_option(allow_double_word_fields, bool(no), !Globals),
+        globals.set_option(allow_packing_dummies, bool(no), !Globals),
+        globals.set_option(allow_packing_ints, bool(no), !Globals)
     ),
 
     % We assume that single-precision floats do not need to be boxed.
