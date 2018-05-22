@@ -976,7 +976,7 @@
             % will keep track of the information needed to unwind the stack,
             % and so variables of this type don't need to be declared at all.
             %
-            % See also the comments in ml_code_gen.m which show how commits
+            % See also the comments in ml_commit_gen.m which show how commits
             % can be implemented for different target languages.
 
     ;       mlds_native_bool_type
@@ -1044,7 +1044,7 @@
             % since C doesn't have first-class function types.
 
     ;       mlds_generic_type
-            % A generic type (e.g. `Word') that can hold any Mercury value.
+            % A generic type (e.g. `MR_Word') that can hold any Mercury value.
             % This is used for implementing polymorphism.
 
     ;       mlds_generic_env_ptr_type
