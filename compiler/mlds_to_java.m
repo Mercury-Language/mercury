@@ -4046,8 +4046,7 @@ output_cast_rval_for_java(Info, Type, Expr, !IO) :-
         % be rather difficult as the compiler doesn't keep track of where
         % type_ctor_infos are acting as type_infos properly.
         maybe_output_comment_for_java(Info, "cast", !IO),
-        io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(",
-            !IO),
+        io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(", !IO),
         output_rval_for_java(Info, Expr, !IO),
         io.write_string(")", !IO)
     else if
