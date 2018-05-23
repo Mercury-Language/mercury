@@ -881,7 +881,7 @@ generate_and_pack_cons_word(Var, Width, VarsWidths, ArgMode, ArgModes,
             LeftOverArgModes = ArgModes,
             LeftOverArgNum = CurArgNum + 1
         ;
-            Width = apw_partial_first(_, _, _, _, _),
+            Width = apw_partial_first(_, _, _, _, Fill),
             (
                 IsReal = not_real_input_arg,
                 Completeness0 = incomplete,
@@ -889,7 +889,8 @@ generate_and_pack_cons_word(Var, Width, VarsWidths, ArgMode, ArgModes,
             ;
                 IsReal = real_input_arg,
                 Completeness0 = complete,
-                RevToOrRvals0 = [Rval]
+                cast_away_any_sign_extend_bits(Fill, Rval, CastRval),
+                RevToOrRvals0 = [CastRval]
             ),
             NextArgNum = CurArgNum + 1,
             generate_and_pack_one_cons_word(VarsWidths, ArgModes,
@@ -1801,14 +1802,15 @@ generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ConstStructMap, ConstArgsPosWidths, TailTypedRvals),
         TypedRvals = [HeadTypedRval | TailTypedRvals]
     ;
-        ArgPosWidth = apw_partial_first(_, _, _, _, _),
+        ArgPosWidth = apw_partial_first(_, _, _, _, ArgFill),
         generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ConstStructMap, ConstArgPosWidth, FirstTypedRval),
         FirstTypedRval = typed_rval(FirstRval, _FirstRvalType),
+        cast_away_any_sign_extend_bits(ArgFill, FirstRval, CastFirstRval),
         generate_const_struct_args_for_one_word(ModuleInfo,
             UnboxedFloats, UnboxedInt64s, ConstStructMap,
             ConstArgsPosWidths, LeftOverConstArgsPosWidths,
-            FirstRval, HeadRval),
+            CastFirstRval, HeadRval),
         HeadTypedRval = typed_rval(HeadRval, lt_int(int_type_uint)),
         generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ConstStructMap, LeftOverConstArgsPosWidths, TailTypedRvals),
