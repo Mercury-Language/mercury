@@ -364,7 +364,7 @@ extern      MR_Context  *MR_runqueue_tail;
   extern    MercuryLock MR_runqueue_lock;
   extern    MercuryCond MR_runqueue_cond;
 #endif
-#ifdef  MR_LL_PARALLEL_CONJ
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
   extern    MR_bool     MR_thread_pinning;
 #endif
 

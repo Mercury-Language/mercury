@@ -1814,7 +1814,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_THREAD_PINNING:
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
                 MR_thread_pinning = MR_TRUE;
 #endif
                 break;
