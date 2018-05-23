@@ -430,6 +430,11 @@
 #undef MR_THREAD_LOCAL_STORAGE
 #undef MR_PTHREADS_WIN32
 
+// MR_HAVE_SCHED_CPUSET_MACROS is defined if sched.h includes all the
+// Linux-specific CPU_* and CPU_*_S macros.
+
+#undef MR_HAVE_SCHED_CPUSET_MACROS
+
 // MR_HAVE_HWLOC is defined if the hwloc library is available.
 
 #undef MR_HAVE_HWLOC

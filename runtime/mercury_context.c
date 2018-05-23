@@ -47,12 +47,9 @@ ENDINIT
   #include <sched.h>
 #endif
 
-// The CPU_* macros first appeared in glibc 2.7.
 #if defined(MR_HAVE_SCHED_GETAFFINITY) && \
     defined(MR_HAVE_SCHED_SETAFFINITY) && \
-    defined(CPU_ALLOC) && defined(CPU_ALLOC_SIZE) && defined(CPU_FREE) && \
-    defined(CPU_ZERO_S) && defined(CPU_SET_S) && defined(CPU_CLR_S) && \
-    defined(CPU_ISSET_S) && defined(CPU_COUNT_S)
+    defined(MR_HAVE_SCHED_CPUSET_MACROS)
   #define MR_HAVE_LINUX_CPU_AFFINITY_API 1
 #endif
 

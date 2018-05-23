@@ -999,8 +999,10 @@
 // MR_HAVE_THREAD_PINNING is defined if we can pin threads, either with
 // sched_setaffinity or hwloc.
 
-#if (defined(MR_HAVE_SCHED_SETAFFINITY) &&                              \
-    defined(MR_HAVE_SCHED_GETAFFINITY)) || defined(MR_HAVE_HWLOC)
+#if defined(MR_HAVE_HWLOC) || \
+    (defined(MR_HAVE_SCHED_GETAFFINITY) && \
+      defined(MR_HAVE_SCHED_SETAFFINITY) && \
+      defined(MR_HAVE_SCHED_CPUSET_MACROS))
   #define MR_HAVE_THREAD_PINNING
 #endif
 

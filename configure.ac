@@ -2431,6 +2431,34 @@ fi
 AC_SUBST(MR_CAN_DO_PENDING_IO)
 
 #-----------------------------------------------------------------------------#
+
+AC_MSG_CHECKING(for sched.h cpuset macros)
+AC_CACHE_VAL(mercury_cv_have_sched_cpuset_macros,
+    AC_TRY_COMPILE(
+        [
+            #define _GNU_SOURCE
+            #ifdef MR_HAVE_SCHED_H
+            #include <sched.h>
+            #endif
+        ],
+        [
+            #if defined(CPU_ALLOC) && defined(CPU_COUNT_S)
+            #else
+                /* Deliberate syntax error. */
+                }
+            #endif
+        ],
+        [mercury_cv_have_sched_cpuset_macros=yes],
+        [mercury_cv_have_sched_cpuset_macros=no]
+    )
+)
+AC_MSG_RESULT($mercury_cv_have_sched_cpuset_macros)
+if test "$mercury_cv_have_sched_cpuset_macros" = yes; then
+    AC_DEFINE(MR_HAVE_SCHED_CPUSET_MACROS)
+fi
+AC_SUBST(MR_HAVE_SCHED_CPUSET_MACROS)
+
+#-----------------------------------------------------------------------------#
 # There is a problem on some BSD based systems that FD_ZERO is defined
 # defined in terms of bzero() but the appropriate header file for bzero()
 # is not automatically included. The following deals with this situation
