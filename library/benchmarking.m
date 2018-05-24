@@ -229,31 +229,29 @@ extern void ML_report_full_memory_stats(void);
 
 %---------------------------------------------------------------------------%
 
-report_memory_attribution(Label, Collect, !IO) :-
-    promise_pure (
-        impure report_memory_attribution(Label, Collect)
-    ).
+report_memory_attribution(Label, Collect) :-
+    trace [io(!IO)] (
+        report_memory_attribution(Label, Collect, !IO)
+    ),
+    impure impure_true.
 
 :- pragma foreign_proc("C",
-    report_memory_attribution(Label::in, RunCollect::in),
-    [will_not_call_mercury],
+    report_memory_attribution(Label::in, Collect::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
-    MR_bool mr_run_collect = RunCollect == MR_YES ? MR_TRUE : MR_FALSE;
+    MR_bool run_collect = (Collect) ? MR_TRUE : MR_FALSE;
 
 #ifdef  MR_MPROF_PROFILE_MEMORY_ATTRIBUTION
-    MR_report_memory_attribution(Label, mr_run_collect);
+    MR_report_memory_attribution(Label, run_collect);
 #else
     (void) Label;
 #endif
 ").
 
-report_memory_attribution(_, _) :-
-    impure impure_true.
+report_memory_attribution(_, _, !IO).
 
 report_memory_attribution(Label, !IO) :-
-    promise_pure (
-        impure report_memory_attribution(Label)
-    ).
+    report_memory_attribution(Label, yes, !IO).
 
 report_memory_attribution(Label) :-
     impure report_memory_attribution(Label, yes).
