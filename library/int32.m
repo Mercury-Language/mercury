@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
@@ -20,24 +20,72 @@
 :- import_module pretty_printer.
 
 %---------------------------------------------------------------------------%
+%
+% Conversion from int.
+%
 
     % from_int(I, I32):
+    %
     % Convert an int to an int32.
-    % Fails if not in [-2147483648, 2147483647].
+    % Fails if I is not in [-(2^31), 2^31 - 1].
     %
 :- pred from_int(int::in, int32::out) is semidet.
 
-    % As above, but throw an exception instead of failing.
+    % det_from_int(I) = I32:
+    %
+    % Convert an int to an int32.
+    % Throws an exception if I is not in [-(2^31), 2^31 - 1].
     %
 :- func det_from_int(int) = int32.
 
+    % cast_from_int(I) = I32:
+    %
+    % Convert an int to an int32.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to I only if I is in [-(2^31), 2^31 - 1].
+    %
 :- func cast_from_int(int) = int32.
 
-:- func cast_from_uint32(uint32) = int32.
+%---------------------------------------------------------------------------%
+%
+% Conversion to int.
+%
 
+    % to_int(I32) = I:
+    %
+    % Convert an int32 to an int. Since an int can be only 32 or 64 bits,
+    % this is guaranteed to yield a result that is mathematically equal
+    % to the original.
+    %
 :- func to_int(int32) = int.
 
+    % cast_to_int(I32) = I:
+    %
+    % Convert an int32 to an int. Since an int can be only 32 or 64 bits,
+    % this is guaranteed to yield a result that is mathematically equal
+    % to the original.
+    %
+:- func cast_to_int(int32) = int.
+
+%---------------------------------------------------------------------------%
+%
+% Change of signedness.
+%
+
+    % cast_from_uint32(U32) = I32:
+    %
+    % Convert a uint32 to an int32. This will yield a result that is
+    % mathematically equal to U32 only if U32 is in [0, 2^31 - 1].
+    %
+:- func cast_from_uint32(uint32) = int32.
+
+%---------------------------------------------------------------------------%
+%
+% Conversion from byte sequence.
+%
+
     % from_bytes_le(Byte0, Byte1, Byte2, Byte3) = I32:
+    %
     % I32 is the int32 whose bytes are given in little-endian order by the
     % arguments from left-to-right (i.e. Byte0 is the least significant byte
     % and Byte3 is the most significant byte).
@@ -45,6 +93,7 @@
 :- func from_bytes_le(uint8, uint8, uint8, uint8) = int32.
 
     % from_bytes_be(Byte0, Byte1, Byte2, Byte3) = I32:
+    %
     % I32 is the int32 whose bytes are given in big-endian order by the
     % arguments in left-to-right order (i.e. Byte0 is the most significant
     % byte and Byte3 is the least significant byte).
@@ -52,6 +101,9 @@
 :- func from_bytes_be(uint8, uint8, uint8, uint8) = int32.
 
 %---------------------------------------------------------------------------%
+%
+% Comparisons and related operations.
+%
 
     % Less than.
     %
@@ -69,7 +121,18 @@
     %
 :- pred (int32::in) >= (int32::in) is semidet.
 
+    % Maximum.
+    %
+:- func max(int32, int32) = int32.
+
+    % Minimum.
+    %
+:- func min(int32, int32) = int32.
+
 %---------------------------------------------------------------------------%
+%
+% Absolute values.
+%
 
     % abs(X) returns the absolute value of X.
     % Throws an exception if X = int32.min_int32.
@@ -87,16 +150,9 @@
 :- func nabs(int32) = int32.
 
 %---------------------------------------------------------------------------%
-
-    % Maximum.
-    %
-:- func max(int32, int32) = int32.
-
-    % Minimum.
-    %
-:- func min(int32, int32) = int32.
-
-%---------------------------------------------------------------------------%
+%
+% Arithmetic operations.
+%
 
     % Unary plus.
     %
@@ -109,18 +165,18 @@
     % Addition.
     %
 :- func int32 + int32 = int32.
-:- mode in   + in  = uo is det.
-:- mode uo   + in  = in is det.
-:- mode in   + uo  = in is det.
+:- mode in + in = uo is det.
+:- mode uo + in = in is det.
+:- mode in + uo = in is det.
 
 :- func plus(int32, int32) = int32.
 
     % Subtraction.
     %
 :- func int32 - int32 = int32.
-:- mode in   - in   = uo is det.
-:- mode uo   - in   = in is det.
-:- mode in   - uo   = in is det.
+:- mode in - in = uo is det.
+:- mode uo - in = in is det.
+:- mode in - uo = in is det.
 
 :- func minus(int32, int32) = int32.
 
@@ -173,6 +229,19 @@
     %
 :- func unchecked_rem(int32::in, int32::in) = (int32::uo) is det.
 
+    % even(X) is equivalent to (X mod 2 = 0).
+    %
+:- pred even(int32::in) is semidet.
+
+    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2 = 1).
+    %
+:- pred odd(int32::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Shift operations.
+%
+
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
@@ -199,13 +268,10 @@
     %
 :- func unchecked_right_shift(int32::in, int::in) = (int32::uo) is det.
 
-    % even(X) is equivalent to (X mod 2 = 0).
-    %
-:- pred even(int32::in) is semidet.
-
-    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2 = 1).
-    %
-:- pred odd(int32::in) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Logical operations.
+%
 
     % Bitwise and.
     %
@@ -227,18 +293,24 @@
 :- func \ (int32::in) = (int32::uo) is det.
 
 %---------------------------------------------------------------------------%
+%
+% Operations on bits and bytes.
+%
 
     % num_zeros(I) = N:
+    %
     % N is the number of zeros in the binary representation of I.
     %
 :- func num_zeros(int32) = int.
 
     % num_ones(I) = N:
+    %
     % N is the number of ones in the binary representation of I.
     %
 :- func num_ones(int32) = int.
 
     % num_leading_zeros(I) = N:
+    %
     % N is the number of leading zeros in the binary representation of I,
     % starting at the most significant bit position.
     % Note that num_leading_zeros(0i32) = 32.
@@ -246,6 +318,7 @@
 :- func num_leading_zeros(int32) = int.
 
     % num_trailing_zeros(I) = N:
+    %
     % N is the number of trailing zeros in the binary representation of I,
     % starting at the least significant bit position.
     % Note that num_trailing_zeros(0i32) = 32.
@@ -253,22 +326,32 @@
 :- func num_trailing_zeros(int32) = int.
 
     % reverse_bytes(A) = B:
+    %
     % B is the value that results from reversing the bytes in the binary
     % representation of A.
     %
 :- func reverse_bytes(int32) = int32.
 
     % reverse_bits(A) = B:
+    %
     % B is the is value that results from reversing the bits in the binary
     % representation of A.
     %
 :- func reverse_bits(int32) = int32.
 
 %---------------------------------------------------------------------------%
+%
+% Limits.
+%
 
 :- func min_int32 = int32.
 
 :- func max_int32 = int32.
+
+%---------------------------------------------------------------------------%
+%
+% Prettyprinting.
+%
 
     % Convert an int32 to a pretty_printer.doc for formatting.
     %
@@ -290,43 +373,45 @@
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    from_int(A::in, B::out),
+    from_int(I::in, I32::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    if (A > (MR_Integer) INT32_MAX) {
+    if (I > (MR_Integer) INT32_MAX) {
         SUCCESS_INDICATOR = MR_FALSE;
-    } else if (A < (MR_Integer) INT32_MIN) {
+    } else if (I < (MR_Integer) INT32_MIN) {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
-        B = (int32_t) A;
+        I32 = (int32_t) I;
         SUCCESS_INDICATOR = MR_TRUE;
     }
 ").
 
 :- pragma foreign_proc("C#",
-    from_int(A::in, B::out),
+    from_int(I::in, I32::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    B = A; // Mercury's 'int' type in the C# grade is 32-bits.
+    I32 = I; // Mercury's 'int' type in the C# grade is 32-bits.
     SUCCESS_INDICATOR = true;
 ").
 
 :- pragma foreign_proc("Java",
-    from_int(A::in, B::out),
+    from_int(I::in, I32::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    B = A; // Mercury's 'int' type in the Java grade is 32-bits.
+    I32 = I; // Mercury's 'int' type in the Java grade is 32-bits.
     SUCCESS_INDICATOR = true;
 ").
 
-det_from_int(I) = U :-
-    ( if from_int(I, U0) then
-        U = U0
+:- pragma no_determinism_warning(from_int/2).
+from_int(_, _) :-
+    sorry($module, "int32.from_int/1 NYI for Erlang").
+
+det_from_int(I) = I32 :-
+    ( if from_int(I, I32Prime) then
+        I32 = I32Prime
     else
         error("int32.det_from_int: cannot convert int to int32")
     ).
-
-%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (I32::out),
@@ -353,6 +438,58 @@ det_from_int(I) = U :-
 :- pragma no_determinism_warning(cast_from_int/1).
 cast_from_int(_) = _ :-
     sorry($module, "int32.cast_from_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    to_int(I32::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    I = I32;
+").
+
+:- pragma foreign_proc("C#",
+    to_int(I32::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I32;
+").
+
+:- pragma foreign_proc("Java",
+    to_int(I32::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I32;
+").
+
+:- pragma no_determinism_warning(to_int/1).
+to_int(_) = _ :-
+    sorry($module, "int32.to_int/1 NYI for Erlang").
+
+:- pragma foreign_proc("C",
+    cast_to_int(I32::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    I = I32;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_int(I32::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I32;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_int(I32::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I32;
+").
+
+:- pragma no_determinism_warning(cast_to_int/1).
+cast_to_int(_) = _ :-
+    sorry($module, "int32.cast_to_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
@@ -385,33 +522,6 @@ cast_from_uint32(_) = _ :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    to_int(I32::in) = (I::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    I = I32;
-").
-
-:- pragma foreign_proc("C#",
-    to_int(I32::in) = (I::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    I = I32;
-").
-
-:- pragma foreign_proc("Java",
-    to_int(I32::in) = (I::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    I = I32;
-").
-
-:- pragma no_determinism_warning(to_int/1).
-to_int(_) = _ :-
-    sorry($module, "int32.to_int/1 NYI for Erlang").
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
     from_bytes_le(Byte0::in, Byte1::in, Byte2::in, Byte3::in) = (I32::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
@@ -433,10 +543,11 @@ to_int(_) = _ :-
     from_bytes_le(Byte0::in, Byte1::in, Byte2::in, Byte3::in) = (I32::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    I32 = (Byte3 & 0xff) << 24 |
-          (Byte2 & 0xff) << 16 |
-          (Byte1 & 0xff) << 8  |
-          (Byte0 & 0xff);
+    I32 =
+        (Byte3 & 0xff) << 24 |
+        (Byte2 & 0xff) << 16 |
+        (Byte1 & 0xff) << 8  |
+        (Byte0 & 0xff);
 ").
 
 :- pragma foreign_proc("C#",
@@ -449,12 +560,46 @@ to_int(_) = _ :-
 from_bytes_le(_, _, _, _) = _ :-
     sorry($module, "int32.from_bytes_le/4 NYI for Erlang").
 
-%---------------------------------------------------------------------------%
-
 from_bytes_be(Byte3, Byte2, Byte1, Byte0) =
     from_bytes_le(Byte0, Byte1, Byte2, Byte3).
 
 %---------------------------------------------------------------------------%
+
+% The comparison operations <, >, =< and >= are builtins.
+
+max(X, Y) =
+    ( if X > Y then X else Y ).
+
+min(X, Y) =
+    ( if X < Y then X else Y ).
+
+%---------------------------------------------------------------------------%
+
+abs(Num) =
+    ( if Num = int32.min_int32 then
+        throw(software_error("int32.abs: abs(min_int32) would overflow"))
+    else
+        unchecked_abs(Num)
+    ).
+
+unchecked_abs(Num) =
+    ( if Num < 0i32 then
+        0i32 - Num
+    else
+        Num
+    ).
+
+nabs(Num) =
+    ( if Num > 0i32 then
+        -Num
+    else
+        Num
+    ).
+
+%---------------------------------------------------------------------------%
+
+% The operations + and - (both hand binary), plus, minus, *, and times
+% are builtins.
 
 X div Y = Div :-
     Trunc = X // Y,
@@ -490,7 +635,17 @@ X rem Y = Rem :-
         Rem = unchecked_rem(X, Y)
     ).
 
+:- pragma inline(even/1).
+even(X) :-
+    (X /\ 1i32) = 0i32.
+
+:- pragma inline(odd/1).
+odd(X) :-
+    (X /\ 1i32) \= 0i32.
+
 %---------------------------------------------------------------------------%
+
+% The operations unchecked_left_shift and unchecked_right_shift are builtins.
 
 X << Y = Result :-
     ( if cast_from_int(Y) < 32u then
@@ -510,52 +665,7 @@ X >> Y = Result :-
 
 %---------------------------------------------------------------------------%
 
-abs(Num) =
-    ( if Num = int32.min_int32 then
-        throw(software_error("int32.abs: abs(min_int32) would overflow"))
-    else
-        unchecked_abs(Num)
-    ).
-
-unchecked_abs(Num) =
-    ( if Num < 0i32 then
-        0i32 - Num
-    else
-        Num
-    ).
-
-nabs(Num) =
-    ( if Num > 0i32 then
-        -Num
-    else
-        Num
-    ).
-
-%---------------------------------------------------------------------------%
-
-max(X, Y) =
-    ( if X > Y then X else Y ).
-
-min(X, Y) =
-    ( if X < Y then X else Y ).
-
-%---------------------------------------------------------------------------%
-
-:- pragma inline(even/1).
-even(X) :-
-    (X /\ 1i32) = 0i32.
-
-:- pragma inline(odd/1).
-odd(X) :-
-    (X /\ 1i32) \= 0i32.
-
-%---------------------------------------------------------------------------%
-
 num_zeros(I) = 32 - num_ones(I).
-
-num_ones(I32) = N :-
-    U32 = uint32.cast_from_int32(I32),
-    N = uint32.num_ones(U32).
 
 :- pragma foreign_proc("Java",
     num_ones(U::in) = (N::out),
@@ -564,11 +674,11 @@ num_ones(I32) = N :-
     N = java.lang.Integer.bitCount(U);
 ").
 
-%---------------------------------------------------------------------------%
-
-num_leading_zeros(I32) = N :-
+num_ones(I32) = N :-
     U32 = uint32.cast_from_int32(I32),
-    N = uint32.num_leading_zeros(U32).
+    N = uint32.num_ones(U32).
+
+%---------------------%
 
 :- pragma foreign_proc("Java",
     num_leading_zeros(U::in) = (N::out),
@@ -577,11 +687,10 @@ num_leading_zeros(I32) = N :-
     N = java.lang.Integer.numberOfLeadingZeros(U);
 ").
 
-%---------------------------------------------------------------------------%
-
-num_trailing_zeros(I32) = N :-
+num_leading_zeros(I32) = N :-
     U32 = uint32.cast_from_int32(I32),
-    N = uint32.num_trailing_zeros(U32).
+    N = uint32.num_leading_zeros(U32).
+
 
 :- pragma foreign_proc("Java",
     num_trailing_zeros(U::in) = (N::out),
@@ -590,13 +699,17 @@ num_trailing_zeros(I32) = N :-
     N = java.lang.Integer.numberOfTrailingZeros(U);
 ").
 
-%---------------------------------------------------------------------------%
+num_trailing_zeros(I32) = N :-
+    U32 = uint32.cast_from_int32(I32),
+    N = uint32.num_trailing_zeros(U32).
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     reverse_bytes(A::in) = (B::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    B = (int32_t) MR_uint32_reverse_bytes((uint32_t)A);
+    B = (int32_t) MR_uint32_reverse_bytes((uint32_t) A);
 ").
 
 :- pragma foreign_proc("C#",
@@ -605,10 +718,11 @@ num_trailing_zeros(I32) = N :-
 "
     uint u_A = (uint) A;
 
-    B = (int) ((u_A & 0x000000ffU) << 24  |
-               (u_A & 0x0000ff00U) << 8   |
-               (u_A & 0x00ff0000U) >> 8   |
-               (u_A & 0xff000000U) >> 24);
+    B = (int)
+        ((u_A & 0x000000ffU) << 24 |
+        (u_A & 0x0000ff00U) << 8   |
+        (u_A & 0x00ff0000U) >> 8   |
+        (u_A & 0xff000000U) >> 24);
 ").
 
 :- pragma foreign_proc("Java",
@@ -622,12 +736,7 @@ num_trailing_zeros(I32) = N :-
 reverse_bytes(_) = _ :-
     sorry($module, "int32.reverse_bytes/1 NYI for Erlang").
 
-%---------------------------------------------------------------------------%
-
-reverse_bits(I32) = RevI32 :-
-    U32 = uint32.cast_from_int32(I32),
-    RevU32 = uint32.reverse_bits(U32),
-    RevI32 = int32.cast_from_uint32(RevU32).
+%---------------------%
 
 :- pragma foreign_proc("Java",
     reverse_bits(A::in) = (B::out),
@@ -635,6 +744,11 @@ reverse_bits(I32) = RevI32 :-
 "
     B = java.lang.Integer.reverse(A);
 ").
+
+reverse_bits(I32) = RevI32 :-
+    U32 = uint32.cast_from_int32(I32),
+    RevU32 = uint32.reverse_bits(U32),
+    RevI32 = int32.cast_from_uint32(RevU32).
 
 %---------------------------------------------------------------------------%
 

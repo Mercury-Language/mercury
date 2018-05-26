@@ -70,11 +70,11 @@ MCFLAGS-io += --no-warn-insts-without-matching-type
 MCFLAGS-builtin += --no-warn-unused-imports
 MCFLAGS-construct += --no-warn-unused-imports
 MCFLAGS-deconstruct += --no-warn-unused-imports
+MCFLAGS-int32 += --no-warn-unused-imports
 MCFLAGS-int64 += --no-warn-unused-imports
 MCFLAGS-library += --no-warn-unused-imports
 MCFLAGS-mer_std += --no-warn-unused-imports
 MCFLAGS-term_size_prof_builtin += --no-warn-unused-imports
-MCFLAGS-int32 += --no-warn-unused-imports
 MCFLAGS-uint64 += --no-warn-unused-imports
 
 # In parallel, low level C grades that don't reserve a machine register for
@@ -97,3 +97,12 @@ MCFLAGS-lazy += --no-warn-non-term-special-preds
 # Work around a problem with --warn-unused-imports: it complains about
 # erlang_rtti_implementation, which is needed in some grades.
 MCFLAGS-type_desc += --no-warn-unused-imports
+
+MCFLAGS-int8   += --warn-inconsistent-pred-order-clauses
+MCFLAGS-int16  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-int32  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-int64  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-uint8  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-uint16 += --warn-inconsistent-pred-order-clauses
+MCFLAGS-uint32 += --warn-inconsistent-pred-order-clauses
+MCFLAGS-uint64 += --warn-inconsistent-pred-order-clauses

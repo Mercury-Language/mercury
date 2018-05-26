@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
@@ -20,36 +20,88 @@
 :- import_module pretty_printer.
 
 %---------------------------------------------------------------------------%
+%
+% Conversion from int.
+%
 
     % from_int(I, I16):
+    %
     % Convert an int to an int16.
-    % Fails if I is not in [-32768, 32767].
+    % Fails if I is not in [-(2^15), 2^15 - 1].
     %
 :- pred from_int(int::in, int16::out) is semidet.
 
-    % As above, but throw an exception instead of failing.
+    % det_from_int(I, I16):
+    %
+    % Convert an int to an int16.
+    % Throws an exception if I is not in [-(2^15), 2^15 - 1].
     %
 :- func det_from_int(int) = int16.
 
+    % cast_from_int(I) = I16:
+    %
+    % Convert an int to an int16.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to I only if I is in [-(2^15), 2^15 - 1].
+    %
 :- func cast_from_int(int) = int16.
 
-:- func cast_from_uint16(uint16) = int16.
+%---------------------------------------------------------------------------%
+%
+% Conversion to int.
+%
 
+    % to_int(I16) = I:
+    %
+    % Convert an int16 to an int. Since an int can be only 32 or 64 bits,
+    % this is guaranteed to yield a result that is mathematically equal
+    % to the original.
+    %
 :- func to_int(int16) = int.
 
+    % cast_to_int(I16) = I:
+    %
+    % Convert an int16 to an int. Since an int can be only 32 or 64 bits,
+    % this is guaranteed to yield a result that is mathematically equal
+    % to the original.
+    %
+:- func cast_to_int(int16) = int.
+
+%---------------------------------------------------------------------------%
+%
+% Change of signedness.
+%
+
+    % cast_from_uint16(U16) = I16:
+    %
+    % Convert a uint16 to an int16. This will yield a result that is
+    % mathematically equal to U16 only if U16 is in [0, 2^15 - 1].
+    %
+:- func cast_from_uint16(uint16) = int16.
+
+%---------------------------------------------------------------------------%
+%
+% Conversion from byte sequence.
+%
+
     % from_bytes_le(LSB, MSB) = I16:
+    %
     % I16 is the int16 whose least and most significant bytes are given by the
     % uint8s LSB and MSB respectively.
     %
 :- func from_bytes_le(uint8, uint8) = int16.
 
     % from_bytes_be(MSB, LSB) = I16:
+    %
     % I16 is the int16 whose least and most significant bytes are given by the
     % uint8s LSB and MSB respectively.
     %
 :- func from_bytes_be(uint8, uint8) = int16.
 
 %---------------------------------------------------------------------------%
+%
+% Comparisons and related operations.
+%
 
     % Less than.
     %
@@ -67,7 +119,18 @@
     %
 :- pred (int16::in) >= (int16::in) is semidet.
 
+    % Maximum.
+    %
+:- func max(int16, int16) = int16.
+
+    % Minimum.
+    %
+:- func min(int16, int16) = int16.
+
 %---------------------------------------------------------------------------%
+%
+% Absolute values.
+%
 
     % abs(X) returns the absolute value of X.
     % Throws an exception if X = int16.min_int16.
@@ -85,16 +148,9 @@
 :- func nabs(int16) = int16.
 
 %---------------------------------------------------------------------------%
-
-    % Maximum.
-    %
-:- func max(int16, int16) = int16.
-
-    % Minimum.
-    %
-:- func min(int16, int16) = int16.
-
-%---------------------------------------------------------------------------%
+%
+% Arithmetic operations.
+%
 
     % Unary plus.
     %
@@ -107,18 +163,18 @@
     % Addition.
     %
 :- func int16 + int16 = int16.
-:- mode in   + in  = uo is det.
-:- mode uo   + in  = in is det.
-:- mode in   + uo  = in is det.
+:- mode in + in = uo is det.
+:- mode uo + in = in is det.
+:- mode in + uo = in is det.
 
 :- func plus(int16, int16) = int16.
 
     % Subtraction.
     %
 :- func int16 - int16 = int16.
-:- mode in   - in   = uo is det.
-:- mode uo   - in   = in is det.
-:- mode in   - uo   = in is det.
+:- mode in - in = uo is det.
+:- mode uo - in = in is det.
+:- mode in - uo = in is det.
 
 :- func minus(int16, int16) = int16.
 
@@ -171,6 +227,19 @@
     %
 :- func unchecked_rem(int16::in, int16::in) = (int16::uo) is det.
 
+    % even(X) is equivalent to (X mod 2i16 = 0i16).
+    %
+:- pred even(int16::in) is semidet.
+
+    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2i16 = 1i16).
+    %
+:- pred odd(int16::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Shift operations.
+%
+
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
@@ -197,13 +266,10 @@
     %
 :- func unchecked_right_shift(int16::in, int::in) = (int16::uo) is det.
 
-    % even(X) is equivalent to (X mod 2i16 = 0i16).
-    %
-:- pred even(int16::in) is semidet.
-
-    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2i16 = 1i16).
-    %
-:- pred odd(int16::in) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Logical operations.
+%
 
     % Bitwise and.
     %
@@ -225,18 +291,24 @@
 :- func \ (int16::in) = (int16::uo) is det.
 
 %---------------------------------------------------------------------------%
+%
+% Operations on bits and bytes.
+%
 
     % num_zeros(I) = N:
+    %
     % N is the number of zeros in the binary representation of I.
     %
 :- func num_zeros(int16) = int.
 
     % num_ones(I) = N:
+    %
     % N is the number of ones in the binary representation of I.
     %
 :- func num_ones(int16) = int.
 
     % num_leading_zeros(I) = N:
+    %
     % N is the number of leading zeros in the binary representation of I,
     % starting at the most significant bit position.
     % Note that num_leading_zeros(0i16) = 16.
@@ -244,6 +316,7 @@
 :- func num_leading_zeros(int16) = int.
 
     % num_trailing_zeros(I) = N:
+    %
     % N is the number of trailing zeros in the binary representation of I,
     % starting at the least significant bit position.
     % Note that num_trailing_zeros(0i16) = 16.
@@ -251,22 +324,32 @@
 :- func num_trailing_zeros(int16) = int.
 
     % reverse_bytes(A) = B:
+    %
     % B is the value that results from reversing the bytes in the binary
     % representation of A.
     %
 :- func reverse_bytes(int16) = int16.
 
     % reverse_bits(A) = B:
+    %
     % B is the is value that results from reversing the bits in the binary
     % representation of A.
     %
 :- func reverse_bits(int16) = int16.
 
 %---------------------------------------------------------------------------%
+%
+% Limits.
+%
 
 :- func min_int16 = int16.
 
 :- func max_int16 = int16.
+
+%---------------------------------------------------------------------------%
+%
+% Prettyprinting.
+%
 
     % Convert an int16 to a pretty_printer.doc for formatting.
     %
@@ -299,8 +382,6 @@ det_from_int(I) = I16 :-
         error("int16.det_from_int: cannot convert int to int16")
     ).
 
-%---------------------------------------------------------------------------%
-
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (I16::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -330,6 +411,58 @@ cast_from_int(_) = _ :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
+    to_int(I16::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    I = I16;
+").
+
+:- pragma foreign_proc("C#",
+    to_int(I16::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I16;
+").
+
+:- pragma foreign_proc("Java",
+    to_int(I16::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I16;
+").
+
+:- pragma no_determinism_warning(to_int/1).
+to_int(_) = _ :-
+    sorry($module, "int16.to_int/1 NYI for Erlang").
+
+:- pragma foreign_proc("C",
+    cast_to_int(I16::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    I = I16;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_int(I16::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I16;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_int(I16::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I16;
+").
+
+:- pragma no_determinism_warning(cast_to_int/1).
+cast_to_int(_) = _ :-
+    sorry($module, "int16.cast_to_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
     cast_from_uint16(U16::in) = (I16::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
@@ -354,29 +487,6 @@ cast_from_int(_) = _ :-
 :- pragma no_determinism_warning(cast_from_uint16/1).
 cast_from_uint16(_) = _ :-
     sorry($module, "int16.cast_from_uint16/1 NYI for Erlang").
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    to_int(I16::in) = (I::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    I = I16;
-").
-
-:- pragma foreign_proc("C#",
-    to_int(I16::in) = (I::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    I = I16;
-").
-
-:- pragma foreign_proc("Java",
-    to_int(I16::in) = (I::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    I = I16;
-").
 
 %---------------------------------------------------------------------------%
 
@@ -411,10 +521,18 @@ cast_from_uint16(_) = _ :-
 from_bytes_le(_, _) = _ :-
     sorry($module, "int16.from_bytes_le/2 NYI for Erlang").
 
-%---------------------------------------------------------------------------%
-
 from_bytes_be(MSB, LSB) =
     from_bytes_le(LSB, MSB).
+
+%---------------------------------------------------------------------------%
+
+% The comparison operations <, >, =< and >= are builtins.
+
+max(X, Y) =
+    ( if X > Y then X else Y ).
+
+min(X, Y) =
+    ( if X < Y then X else Y ).
 
 %---------------------------------------------------------------------------%
 
@@ -441,13 +559,8 @@ nabs(Num) =
 
 %---------------------------------------------------------------------------%
 
-max(X, Y) =
-    ( if X > Y then X else Y ).
-
-min(X, Y) =
-    ( if X < Y then X else Y ).
-
-%---------------------------------------------------------------------------%
+% The operations + and - (both hand binary), plus, minus, *, and times
+% are builtins.
 
 X div Y = Div :-
     Trunc = X // Y,
@@ -483,7 +596,17 @@ X rem Y = Rem :-
         Rem = unchecked_rem(X, Y)
     ).
 
+:- pragma inline(even/1).
+even(X) :-
+    (X /\ 1i16) = 0i16.
+
+:- pragma inline(odd/1).
+odd(X) :-
+    (X /\ 1i16) \= 0i16.
+
 %---------------------------------------------------------------------------%
+
+% The operations unchecked_left_shift and unchecked_right_shift are builtins.
 
 X << Y = Result :-
     ( if cast_from_int(Y) < 16u then
@@ -503,23 +626,11 @@ X >> Y = Result :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(even/1).
-even(X) :-
-    (X /\ 1i16) = 0i16.
-
-:- pragma inline(odd/1).
-odd(X) :-
-    (X /\ 1i16) \= 0i16.
-
-%---------------------------------------------------------------------------%
-
 num_zeros(U) = 16 - num_ones(U).
 
 num_ones(I16) = N :-
     U16 = uint16.cast_from_int16(I16),
     N = uint16.num_ones(U16).
-
-%---------------------------------------------------------------------------%
 
 num_leading_zeros(I16) = N :-
     U16 = uint16.cast_from_int16(I16),
@@ -529,7 +640,7 @@ num_trailing_zeros(I16) = N :-
     U16 = uint16.cast_from_int16(I16),
     N = uint16.num_trailing_zeros(U16).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pragma foreign_proc("C",
     reverse_bytes(A::in) = (B::out),
@@ -556,7 +667,7 @@ num_trailing_zeros(I16) = N :-
 reverse_bytes(_) = _ :-
     sorry($module, "int16.reverse_bytes/1 NYI for Erlang").
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 reverse_bits(I16) = RevI16 :-
     U16 = uint16.cast_from_int16(I16),

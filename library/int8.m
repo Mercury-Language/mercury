@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2017-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
@@ -20,23 +20,69 @@
 :- import_module pretty_printer.
 
 %---------------------------------------------------------------------------%
+%
+% Conversion from int.
+%
 
     % from_int(I, I8):
+    %
     % Convert an int to an int8.
-    % Fails if I is not in [-128, 127].
+    % Fails if I is not in [-(2^7), 2^7 - 1].
     %
 :- pred from_int(int::in, int8::out) is semidet.
 
-    % As above, but throw an exception instead of failing.
+    % from_int(I, I8):
+    %
+    % Convert an int to an int8.
+    % Throws an exception if I is not in [-(2^7), 2^7 - 1].
     %
 :- func det_from_int(int) = int8.
 
+    % cast_from_int(I) = I8:
+    %
+    % Convert an int to an int8.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to I only if I is in [-(2^7), 2^7 - 1].
+    %
 :- func cast_from_int(int) = int8.
-:- func cast_from_uint8(uint8) = int8.
-
-:- func to_int(int8) = int.
 
 %---------------------------------------------------------------------------%
+%
+% Conversion to int.
+%
+
+    % to_int(I8) = I:
+    %
+    % Convert an int8 to an int. Since an int can be only 32 or 64 bits,
+    % this is guaranteed to yield a result that is mathematically equal
+    % to the original.
+    %
+:- func to_int(int8) = int.
+
+    % cast_to_int(I8) = I:
+    %
+    % Convert an int8 to an int. Since an int can be only 32 or 64 bits,
+    % this is guaranteed to yield a result that is mathematically equal
+    % to the original.
+    %
+:- func cast_to_int(int8) = int.
+
+%---------------------------------------------------------------------------%
+%
+% Change of signedness.
+%
+
+    % cast_from_uint8(U8) = I8:
+    %
+    % Convert a uint8 to an int8. This will yield a result that is
+    % mathematically equal to U8 only if U8 is in [0, 2^7 - 1].
+    %
+:- func cast_from_uint8(uint8) = int8.
+
+%---------------------------------------------------------------------------%
+%
+% Comparisons and related operations.
+%
 
     % Less than.
     %
@@ -54,7 +100,18 @@
     %
 :- pred (int8::in) >= (int8::in) is semidet.
 
+    % Maximum.
+    %
+:- func max(int8, int8) = int8.
+
+    % Minimum.
+    %
+:- func min(int8, int8) = int8.
+
 %---------------------------------------------------------------------------%
+%
+% Absolute values.
+%
 
     % abs(X) returns the absolute value of X.
     % Throws an exception if X = int8.min_int8.
@@ -72,16 +129,9 @@
 :- func nabs(int8) = int8.
 
 %---------------------------------------------------------------------------%
-
-    % Maximum.
-    %
-:- func max(int8, int8) = int8.
-
-    % Minimum.
-    %
-:- func min(int8, int8) = int8.
-
-%---------------------------------------------------------------------------%
+%
+% Arithmetic operations.
+%
 
     % Unary plus.
     %
@@ -94,18 +144,18 @@
     % Addition.
     %
 :- func int8 + int8 = int8.
-:- mode in   + in  = uo is det.
-:- mode uo   + in  = in is det.
-:- mode in   + uo  = in is det.
+:- mode in + in = uo is det.
+:- mode uo + in = in is det.
+:- mode in + uo = in is det.
 
 :- func plus(int8, int8) = int8.
 
     % Subtraction.
     %
 :- func int8 - int8 = int8.
-:- mode in   - in   = uo is det.
-:- mode uo   - in   = in is det.
-:- mode in   - uo   = in is det.
+:- mode in - in = uo is det.
+:- mode uo - in = in is det.
+:- mode in - uo = in is det.
 
 :- func minus(int8, int8) = int8.
 
@@ -158,6 +208,19 @@
     %
 :- func unchecked_rem(int8::in, int8::in) = (int8::uo) is det.
 
+    % even(X) is equivalent to (X mod 2i8 = 0i8).
+    %
+:- pred even(int8::in) is semidet.
+
+    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2i8 = 1i8).
+    %
+:- pred odd(int8::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Shift operations.
+%
+
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
@@ -184,15 +247,10 @@
     %
 :- func unchecked_right_shift(int8::in, int::in) = (int8::uo) is det.
 
-    % even(X) is equivalent to (X mod 2i8 = 0i8).
-    %
-:- pred even(int8::in) is semidet.
-
-    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2i8 = 1i8).
-    %
-:- pred odd(int8::in) is semidet.
-
 %---------------------------------------------------------------------------%
+%
+% Logical operations.
+%
 
     % Bitwise and.
     %
@@ -214,8 +272,12 @@
 :- func \ (int8::in) = (int8::uo) is det.
 
 %---------------------------------------------------------------------------%
+%
+% Operations on bits and bytes.
+%
 
     % num_zeros(I) = N:
+    %
     % N is the number of zeros in the binary representation of I.
     %
 :- func num_zeros(int8) = int.
@@ -226,6 +288,7 @@
 :- func num_ones(int8) = int.
 
     % num_leading_zeros(I) = N:
+    %
     % N is the number of leading zeros in the binary representation of I,
     % starting at the most significant bit position.
     % Note that num_leading_zeros(0i8) = 8.
@@ -233,6 +296,7 @@
 :- func num_leading_zeros(int8) = int.
 
     % num_trailing_zeros(I) = N:
+    %
     % N is the number of trailing zeros in the binary representation of I,
     % starting at the least significant bit position.
     % Note that num_trailing_zeros(0i8) = 8.
@@ -240,18 +304,24 @@
 :- func num_trailing_zeros(int8) = int.
 
     % reverse_bits(A) = B:
+    %
     % B is the is value that results from reversing the bits in the binary
     % representation of A.
     %
 :- func reverse_bits(int8) = int8.
 
 %---------------------------------------------------------------------------%
+%
+% Limits.
 
 :- func min_int8 = int8.
 
 :- func max_int8 = int8.
 
 %---------------------------------------------------------------------------%
+%
+% Prettyprinting.
+%
 
     % Convert an int8 to a pretty_printer.doc for formatting.
     %
@@ -284,8 +354,6 @@ det_from_int(I) = I8 :-
         error("int8.det_from_int: cannot convert int to int8")
     ).
 
-%---------------------------------------------------------------------------%
-
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (I8::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -311,6 +379,58 @@ det_from_int(I) = I8 :-
 :- pragma no_determinism_warning(cast_from_int/1).
 cast_from_int(_) = _ :-
     sorry($module, "int8.cast_from_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    to_int(I8::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    I = I8;
+").
+
+:- pragma foreign_proc("C#",
+    to_int(I8::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I8;
+").
+
+:- pragma foreign_proc("Java",
+    to_int(I8::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I8;
+").
+
+:- pragma no_determinism_warning(to_int/1).
+to_int(_) = _ :-
+    sorry($module, "int8.to_int/1 NYI for Erlang").
+
+:- pragma foreign_proc("C",
+    cast_to_int(I8::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    I = I8;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_int(I8::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I8;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_int(I8::in) = (I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I = I8;
+").
+
+:- pragma no_determinism_warning(cast_to_int/1).
+cast_to_int(_) = _ :-
+    sorry($module, "int8.cast_to_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
@@ -342,28 +462,41 @@ cast_from_uint8(_) = _ :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C",
-    to_int(I8::in) = (I::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    I = I8;
-").
+% The comparison operations <, >, =< and >= are builtins.
 
-:- pragma foreign_proc("C#",
-    to_int(I8::in) = (I::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    I = I8;
-").
+max(X, Y) =
+    ( if X > Y then X else Y ).
 
-:- pragma foreign_proc("Java",
-    to_int(I8::in) = (I::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    I = I8;
-").
+min(X, Y) =
+    ( if X < Y then X else Y ).
 
 %---------------------------------------------------------------------------%
+
+abs(Num) =
+    ( if Num = int8.min_int8 then
+        throw(software_error("int8.abs: abs(min_int8) would overflow"))
+    else
+        unchecked_abs(Num)
+    ).
+
+unchecked_abs(Num) =
+    ( if Num < 0i8 then
+        0i8 - Num
+    else
+        Num
+    ).
+
+nabs(Num) =
+    ( if Num > 0i8 then
+        -Num
+    else
+        Num
+    ).
+
+%---------------------------------------------------------------------------%
+
+% The operations + and - (both hand binary), plus, minus, *, and times
+% are builtins.
 
 X div Y = Div :-
     Trunc = X // Y,
@@ -399,7 +532,17 @@ X rem Y = Rem :-
         Rem = unchecked_rem(X, Y)
     ).
 
+:- pragma inline(even/1).
+even(X) :-
+    (X /\ 1i8) = 0i8.
+
+:- pragma inline(odd/1).
+odd(X) :-
+    (X /\ 1i8) \= 0i8.
+
 %---------------------------------------------------------------------------%
+
+% The operations unchecked_left_shift and unchecked_right_shift are builtins.
 
 X << Y = Result :-
     ( if cast_from_int(Y) < 8u then
@@ -416,47 +559,6 @@ X >> Y = Result :-
         Msg = "int8.(>>): second operand is out of range",
         throw(math.domain_error(Msg))
     ).
-
-%---------------------------------------------------------------------------%
-
-abs(Num) =
-    ( if Num = int8.min_int8 then
-        throw(software_error("int8.abs: abs(min_int8) would overflow"))
-    else
-        unchecked_abs(Num)
-    ).
-
-unchecked_abs(Num) =
-    ( if Num < 0i8 then
-        0i8 - Num
-    else
-        Num
-    ).
-
-nabs(Num) =
-    ( if Num > 0i8 then
-        -Num
-    else
-        Num
-    ).
-
-%---------------------------------------------------------------------------%
-
-max(X, Y) =
-    ( if X > Y then X else Y ).
-
-min(X, Y) =
-    ( if X < Y then X else Y ).
-
-%---------------------------------------------------------------------------%
-
-:- pragma inline(even/1).
-even(X) :-
-    (X /\ 1i8) = 0i8.
-
-:- pragma inline(odd/1).
-odd(X) :-
-    (X /\ 1i8) \= 0i8.
 
 %---------------------------------------------------------------------------%
 

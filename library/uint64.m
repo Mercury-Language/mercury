@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
@@ -20,38 +20,84 @@
 :- import_module pretty_printer.
 
 %---------------------------------------------------------------------------%
+%
+% Conversion from int.
+%
 
     % from_int(I, U64):
+    %
     % Convert an int into a uint64.
     % Fails if I is not in [0, 2^63 - 1].
     %
 :- pred from_int(int::in, uint64::out) is semidet.
 
+    % det_from_int(I, U64):
+    %
+    % Convert an int into a uint64.
+    % Throws an exception if I is not in [0, 2^63 - 1].
+    %
 :- func det_from_int(int) = uint64.
 
+    % cast_from_int(I) = U64:
+    %
+    % Convert an int to a uint64.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to I only if I is in [0, 2^63 - 1].
+    %
 :- func cast_from_int(int) = uint64.
 
+%---------------------------------------------------------------------------%
+%
+% Conversion to int.
+%
+
+    % cast_to_int(U64) = I:
+    %
+    % Convert a uint64 to an int.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to U64 only if U64 is in [0, 2^63 - 1].
+    %
 :- func cast_to_int(uint64) = int.
 
+%---------------------------------------------------------------------------%
+%
+% Change of signedness.
+%
+
+    % cast_from_int64(I64) = U64:
+    %
+    % Convert an int64 to a uint64. This will yield a result that is
+    % mathematically equal to I64 only if I64 is in [0, 2^63 -1].
+    %
 :- func cast_from_int64(int64) = uint64.
 
+%---------------------------------------------------------------------------%
+%
+% Conversion from byte sequence.
+%
+
     % from_bytes_le(Byte0, Byte1, ..., Byte7) = U64:
+    %
     % U64 is the uint64 whose bytes are given in little-endian order by the
     % arguments from left-to-right (i.e. Byte0 is the least significant byte
     % and Byte7 is the most significant byte).
     %
-:- func from_bytes_le(uint8, uint8, uint8, uint8, uint8, uint8, uint8,
-    uint8) = uint64.
+:- func from_bytes_le(uint8, uint8, uint8, uint8, uint8, uint8, uint8, uint8)
+    = uint64.
 
     % from_bytes_be(Byte0, Byte1, ..., Byte7) = U64:
+    %
     % U64 is the uint64 whose bytes are given in big-endian order by the
     % arguments in left-to-right order (i.e. Byte0 is the most significant
     % byte and Byte7 is the least significant byte).
     %
-:- func from_bytes_be(uint8, uint8, uint8, uint8, uint8, uint8, uint8,
-    uint8) = uint64.
+:- func from_bytes_be(uint8, uint8, uint8, uint8, uint8, uint8, uint8, uint8)
+    = uint64.
 
 %---------------------------------------------------------------------------%
+%
+% Comparisons and related operations.
+%
 
     % Less than.
     %
@@ -69,29 +115,6 @@
     %
 :- pred (uint64::in) >= (uint64::in) is semidet.
 
-    % Addition.
-    %
-:- func uint64 + uint64 = uint64.
-:- mode in   + in  = uo is det.
-:- mode uo   + in  = in is det.
-:- mode in   + uo  = in is det.
-
-:- func plus(uint64, uint64) = uint64.
-
-    % Subtraction.
-    %
-:- func uint64 - uint64 = uint64.
-:- mode in   - in   = uo is det.
-:- mode uo   - in   = in is det.
-:- mode in   - uo   = in is det.
-
-:- func minus(uint64, uint64) = uint64.
-
-    % Multiplication.
-    %
-:- func (uint64::in) * (uint64::in) = (uint64::uo) is det.
-:- func times(uint64, uint64) = uint64.
-
     % Maximum.
     %
 :- func max(uint64, uint64) = uint64.
@@ -99,6 +122,34 @@
     % Minimum.
     %
 :- func min(uint64, uint64) = uint64.
+
+%---------------------------------------------------------------------------%
+%
+% Arithmetic operations.
+%
+
+    % Addition.
+    %
+:- func uint64 + uint64 = uint64.
+:- mode in + in = uo is det.
+:- mode uo + in = in is det.
+:- mode in + uo = in is det.
+
+:- func plus(uint64, uint64) = uint64.
+
+    % Subtraction.
+    %
+:- func uint64 - uint64 = uint64.
+:- mode in - in = uo is det.
+:- mode uo - in = in is det.
+:- mode in - uo = in is det.
+
+:- func minus(uint64, uint64) = uint64.
+
+    % Multiplication.
+    %
+:- func (uint64::in) * (uint64::in) = (uint64::uo) is det.
+:- func times(uint64, uint64) = uint64.
 
     % Truncating integer division.
     %
@@ -140,6 +191,19 @@
     %
 :- func unchecked_rem(uint64::in, uint64::in) = (uint64::uo) is det.
 
+    % even(X) is equivalent to (X mod 2 = 0).
+    %
+:- pred even(uint64::in) is semidet.
+
+    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2 = 1).
+    %
+:- pred odd(uint64::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Shift operations.
+%
+
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
@@ -147,8 +211,8 @@
     %
 :- func (uint64::in) << (int::in) = (uint64::uo) is det.
 
-    % unchecked_left_shift(X, Y) is the same as X << Y except that the
-    % behaviour is undefined if Y is not in [0, 64).
+    % unchecked_left_shift(X, Y) is the same as X << Y except that
+    % the behaviour is undefined if Y is not in [0, 64).
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(uint64::in, int::in) = (uint64::uo) is det.
@@ -160,19 +224,16 @@
     %
 :- func (uint64::in) >> (int::in) = (uint64::uo) is det.
 
-    % unchecked_right_shift(X, Y) is the same as X >> Y except that the
-    % behaviour is undefined if Y is not in [0, 64).
+    % unchecked_right_shift(X, Y) is the same as X >> Y except that
+    % the behaviour is undefined if Y is not in [0, 64).
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(uint64::in, int::in) = (uint64::uo) is det.
 
-    % even(X) is equivalent to (X mod 2 = 0).
-    %
-:- pred even(uint64::in) is semidet.
-
-    % odd(X) is equivalent to (not even(X)), i.e. (X mod 2 = 1).
-    %
-:- pred odd(uint64::in) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Logical operations.
+%
 
     % Bitwise and.
     %
@@ -193,17 +254,25 @@
     %
 :- func \ (uint64::in) = (uint64::uo) is det.
 
+%---------------------------------------------------------------------------%
+%
+% Operations on bits and bytes.
+%
+
     % num_zeros(U) = N:
+    %
     % N is the number of zeros in the binary representation of U.
     %
 :- func num_zeros(uint64) = int.
 
     % num_ones(U) = N:
+    %
     % N is the number of ones in the binary representation of U.
     %
 :- func num_ones(uint64) = int.
 
     % num_leading_zeros(U) = N:
+    %
     % N is the number of leading zeros in the binary representation of U.
     %
 :- func num_leading_zeros(uint64) = int.
@@ -214,14 +283,30 @@
 :- func num_trailing_zeros(uint64) = int.
 
     % reverse_bytes(A) = B:
+    %
     % B is the value that results from reversing the bytes in the binary
     % representation of A.
     %
 :- func reverse_bytes(uint64) = uint64.
 
+    % reverse_bits(A) = B:
+    %
+    % B is the is value that results from reversing the bits
+    % in the binary representation of A.
+    %
 :- func reverse_bits(uint64) = uint64.
 
+%---------------------------------------------------------------------------%
+%
+% Limits.
+%
+
 :- func max_uint64 = uint64.
+
+%---------------------------------------------------------------------------%
+%
+% Prettyprinting.
+%
 
     % Convert a uint64 to a pretty_printer.doc for formatting.
     %
@@ -242,32 +327,32 @@
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    from_int(I::in, U::out),
+    from_int(I::in, U64::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     if (I < 0) {
         SUCCESS_INDICATOR = MR_FALSE;
-    } else if ((uint64_t)I > (uint64_t)INT64_MAX) {
+    } else if ((uint64_t) I > (uint64_t) INT64_MAX) {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
-        U = (uint64_t) I;
+        U64 = (uint64_t) I;
         SUCCESS_INDICATOR = MR_TRUE;
     }
 ").
 
 :- pragma foreign_proc("C#",
-    from_int(I::in, U::out),
+    from_int(I::in, U64::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    U = (ulong) I;
+    U64 = (ulong) I;
     SUCCESS_INDICATOR = (I < 0) ? false : true;
 ").
 
 :- pragma foreign_proc("Java",
-    from_int(I::in, U::out),
+    from_int(I::in, U64::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    U = I;
+    U64 = I;
     SUCCESS_INDICATOR = (I < 0) ? false : true;
 ").
 
@@ -275,9 +360,9 @@
 from_int(_, _) :-
     sorry($module, "uint64.from_int NYI for Erlang").
 
-det_from_int(I) = U :-
-    ( if from_int(I, U0) then
-        U = U0
+det_from_int(I) = U64 :-
+    ( if from_int(I, U64Prime) then
+        U64 = U64Prime
     else
         error("uint64.det_from_int: cannot convert int to uint64")
     ).
@@ -400,14 +485,15 @@ cast_from_int64(_) = _ :-
         Byte4::in, Byte5::in, Byte6::in, Byte7::in) = (U64::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    U64 = (long)(Byte7 & 0xff) << 56 |
-          (long)(Byte6 & 0xff) << 48 |
-          (long)(Byte5 & 0xff) << 40 |
-          (long)(Byte4 & 0xff) << 32 |
-          (long)(Byte3 & 0xff) << 24 |
-          (long)(Byte2 & 0xff) << 16 |
-          (long)(Byte1 & 0xff) << 8  |
-          (long)(Byte0 & 0xff);
+    U64 =
+        (long) (Byte7 & 0xff) << 56 |
+        (long) (Byte6 & 0xff) << 48 |
+        (long) (Byte5 & 0xff) << 40 |
+        (long) (Byte4 & 0xff) << 32 |
+        (long) (Byte3 & 0xff) << 24 |
+        (long) (Byte2 & 0xff) << 16 |
+        (long) (Byte1 & 0xff) << 8  |
+        (long) (Byte0 & 0xff);
 ").
 
 :- pragma foreign_proc("C#",
@@ -416,25 +502,35 @@ cast_from_int64(_) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U64 = (ulong) (
-        (ulong)Byte7 << 56 |
-        (ulong)Byte6 << 48 |
-        (ulong)Byte5 << 40 |
-        (ulong)Byte4 << 32 |
-        (ulong)Byte3 << 24 |
-        (ulong)Byte2 << 16 |
-        (ulong)Byte1 << 8  |
-        (ulong)Byte0);
+        (ulong) Byte7 << 56 |
+        (ulong) Byte6 << 48 |
+        (ulong) Byte5 << 40 |
+        (ulong) Byte4 << 32 |
+        (ulong) Byte3 << 24 |
+        (ulong) Byte2 << 16 |
+        (ulong) Byte1 << 8  |
+        (ulong) Byte0);
 ").
 
 from_bytes_le(_, _, _, _, _, _, _, _) = _ :-
     sorry($module, "uint64.from_bytes_le/8 NYI for Erlang").
 
-%---------------------------------------------------------------------------%
-
 from_bytes_be(Byte7, Byte6, Byte5,Byte4, Byte3, Byte2, Byte1, Byte0) =
     from_bytes_le(Byte0, Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7).
 
 %---------------------------------------------------------------------------%
+
+% The comparison operations <, >, =< and >= are builtins.
+
+max(X, Y) =
+    ( if X > Y then X else Y ).
+
+min(X, Y) =
+    ( if X < Y then X else Y ).
+
+%---------------------------------------------------------------------------%
+
+% The operations +, -, plus, minus, *, and times are builtins.
 
 X div Y = X // Y.
 
@@ -449,6 +545,8 @@ X // Y = Div :-
 :- pragma inline('/'/2).
 X / Y = X // Y.
 
+% The operations unchecked_quotient and unchecked_rem are builtins.
+
 X mod Y = X rem Y.
 
 :- pragma inline(rem/2).
@@ -459,7 +557,17 @@ X rem Y = Rem :-
         Rem = unchecked_rem(X, Y)
     ).
 
+:- pragma inline(even/1).
+even(X) :-
+    (X /\ 1u64) = 0u64.
+
+:- pragma inline(odd/1).
+odd(X) :-
+    (X /\ 1u64) \= 0u64.
+
 %---------------------------------------------------------------------------%
+
+% The operations unchecked_left_shift and unchecked_right_shift are builtins.
 
 X << Y = Result :-
     ( if cast_from_int(Y) < 64u then
@@ -476,24 +584,6 @@ X >> Y = Result :-
         Msg = "uint64.(>>): second operand is out of range",
         throw(math.domain_error(Msg))
     ).
-
-%---------------------------------------------------------------------------%
-
-max(X, Y) =
-    ( if X > Y then X else Y ).
-
-min(X, Y) =
-    ( if X < Y then X else Y ).
-
-%---------------------------------------------------------------------------%
-
-:- pragma inline(even/1).
-even(X) :-
-    (X /\ 1u64) = 0u64.
-
-:- pragma inline(odd/1).
-odd(X) :-
-    (X /\ 1u64) \= 0u64.
 
 %---------------------------------------------------------------------------%
 
@@ -539,7 +629,7 @@ num_zeros(U) = 64 - num_ones(U).
     N = java.lang.Long.bitCount(U);
 ").
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pragma foreign_proc("C",
     num_leading_zeros(U::in) = (N::out),
@@ -549,8 +639,8 @@ num_zeros(U) = 64 - num_ones(U).
         N = 64;
     } else {
         int32_t n = 1;
-        uint32_t x = (uint32_t)(U >> 32);
-        if (x == 0) { n += 32; x = (uint32_t)U; }
+        uint32_t x = (uint32_t) (U >> 32);
+        if (x == 0) { n += 32; x = (uint32_t) U; }
         if (x >> 16 == 0) { n += 16; x <<= 16; }
         if (x >> 24 == 0) { n +=  8; x <<=  8; }
         if (x >> 28 == 0) { n +=  4; x <<=  4; }
@@ -567,13 +657,13 @@ num_zeros(U) = 64 - num_ones(U).
         N = 64;
     } else {
         int n = 1;
-        uint x = (uint)(U >> 32);
-        if (x == 0) { n += 32; x = (uint)U; }
+        uint x = (uint) (U >> 32);
+        if (x == 0) { n += 32; x = (uint) U; }
         if (x >> 16 == 0) { n += 16; x <<= 16; }
         if (x >> 24 == 0) { n +=  8; x <<=  8; }
         if (x >> 28 == 0) { n +=  4; x <<=  4; }
         if (x >> 30 == 0) { n +=  2; x <<=  2; }
-        N = n - (int)(x >> 31);
+        N = n - (int) (x >> 31);
     }
 ").
 
@@ -584,7 +674,7 @@ num_zeros(U) = 64 - num_ones(U).
     N = java.lang.Long.numberOfLeadingZeros(U);
 ").
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pragma foreign_proc("C",
     num_trailing_zeros(U::in) = (N::out),
@@ -599,13 +689,13 @@ num_zeros(U) = 64 - num_ones(U).
         if (y != 0) {
             n -=  32; x = y;
         } else {
-            x = (uint32_t)(U >> 32);
+            x = (uint32_t) (U >> 32);
         }
         y = x << 16; if (y != 0) { n -= 16; x = y; }
         y = x <<  8; if (y != 0) { n -=  8; x = y; }
         y = x <<  4; if (y != 0) { n -=  4; x = y; }
         y = x <<  2; if (y != 0) { n -=  2; x = y; }
-        N = n - (int)((x << 1) >> 31);
+        N = n - (int) ((x << 1) >> 31);
     }
 ").
 
@@ -616,20 +706,19 @@ num_zeros(U) = 64 - num_ones(U).
     if (U == 0) {
         N = 64;
     } else {
-
         uint x, y;
         int n = 63;
         y = (uint) U;
         if (y != 0) {
             n = n - 32; x = y;
         } else {
-            x = (uint)(U >> 32);
+            x = (uint) (U >> 32);
         }
         y = x << 16; if (y != 0) { n = n -16; x = y; }
         y = x <<  8; if (y != 0) { n = n - 8; x = y; }
         y = x <<  4; if (y != 0) { n = n - 4; x = y; }
         y = x <<  2; if (y != 0) { n = n - 2; x = y; }
-        N = n - (int)((x << 1) >> 31);
+        N = n - (int) ((x << 1) >> 31);
     }
 ").
 
@@ -640,7 +729,7 @@ num_zeros(U) = 64 - num_ones(U).
     N = java.lang.Long.numberOfTrailingZeros(U);
 ").
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pragma foreign_proc("C",
     reverse_bytes(A::in) = (B::out),
@@ -657,16 +746,24 @@ num_zeros(U) = 64 - num_ones(U).
 ").
 
 reverse_bytes(A) = B :-
-    B = ((A /\ 0x_0000_0000_0000_00ff_u64) << 56) \/
-    ((A /\ 0x_0000_0000_0000_ff00_u64) << 40)     \/
-    ((A /\ 0x_0000_0000_00ff_0000_u64) << 24)     \/
-    ((A /\ 0x_0000_0000_ff00_0000_u64) << 8)      \/
-    ((A /\ 0x_0000_00ff_0000_0000_u64) >> 8)      \/
-    ((A /\ 0x_0000_ff00_0000_0000_u64) >> 24)     \/
-    ((A /\ 0x_00ff_0000_0000_0000_u64) >> 40)     \/
-    ((A /\ 0x_ff00_0000_0000_0000_u64) >> 56).
+    B =
+        ((A /\ 0x_0000_0000_0000_00ff_u64) << 56) \/
+        ((A /\ 0x_0000_0000_0000_ff00_u64) << 40) \/
+        ((A /\ 0x_0000_0000_00ff_0000_u64) << 24) \/
+        ((A /\ 0x_0000_0000_ff00_0000_u64) << 8)  \/
+        ((A /\ 0x_0000_00ff_0000_0000_u64) >> 8)  \/
+        ((A /\ 0x_0000_ff00_0000_0000_u64) >> 24) \/
+        ((A /\ 0x_00ff_0000_0000_0000_u64) >> 40) \/
+        ((A /\ 0x_ff00_0000_0000_0000_u64) >> 56).
 
-%---------------------------------------------------------------------------%
+%---------------------%
+
+:- pragma foreign_proc("Java",
+    reverse_bits(A::in) = (B::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    B = java.lang.Long.reverse(A);
+").
 
 reverse_bits(!.A) = B :-
     !:A = ((!.A /\ 0x_5555_5555_5555_5555_u64) << 1) \/
@@ -680,13 +777,6 @@ reverse_bits(!.A) = B :-
     !:A = (!.A << 48) \/ ((!.A /\ 0x_ffff_0000_u64) << 16) \/
         ((!.A >> 16) /\ 0x_ffff_0000_u64) \/ (!.A >> 48),
     B = !.A.
-
-:- pragma foreign_proc("Java",
-    reverse_bits(A::in) = (B::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    B = java.lang.Long.reverse(A);
-").
 
 %---------------------------------------------------------------------------%
 
