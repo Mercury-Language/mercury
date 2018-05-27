@@ -582,8 +582,8 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
     FirstArgNum = 1,
     NumExtraRvals = list.length(ExtraRvalsTypesWidths),
     PrevOffset = NumExtraRvals - 1,
-    ml_gen_cons_args(!.Info, ArgVarsTypesWidths, ArgModes, NumExtraRvals,
-        FirstArgNum, PrevOffset, ArgVarsTypesWidths, TakeAddr,
+    ml_gen_dynamic_construct_args(!.Info, ArgVarsTypesWidths, ArgModes,
+        NumExtraRvals, FirstArgNum, PrevOffset, ArgVarsTypesWidths, TakeAddr,
         TakeAddrInfos, ArgRvalsTypesWidths0, MayUseAtomic0, MayUseAtomic),
 
     % Replace double-word and packed arguments by uniform single word rvals.
@@ -776,8 +776,9 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     decide_field_gen(!.Info, VarLval, VarType, ConsId, ConsTag, FieldGen),
     % XXX we do more work than we need to here, as some of the cells
     % may already contain the correct values.
-    ml_gen_unify_args_for_reuse(FieldGen, ArgVarRepns, ArgModes, TakeAddr,
-        InitOffSet, ArgNum, Context, FieldStmts, TakeAddrInfos, !Info),
+    ml_gen_dynamic_deconstruct_args_for_reuse(FieldGen, ArgVarRepns, ArgModes,
+        TakeAddr, InitOffSet, ArgNum, Context, FieldStmts, TakeAddrInfos,
+        !Info),
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_VarType,
         MaybePtag, Context, !.Info, TakeAddrStmts),
     ThenStmts = ExtraRvalStmts ++ FieldStmts ++ TakeAddrStmts,
@@ -1105,19 +1106,21 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
     % we produce the corresponding lval, boxed or unboxed if needed,
     % but if the argument is free, we produce a null value.
     %
-:- pred ml_gen_cons_args(ml_gen_info::in,
+:- pred ml_gen_dynamic_construct_args(ml_gen_info::in,
     list(arg_var_type_and_width)::in, list(unify_mode)::in,
     int::in, int::in, int::in,
     list(arg_var_type_and_width)::in, list(int)::in,
     list(take_addr_info)::out, list(mlds_rval_type_and_width)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
-ml_gen_cons_args(_, [], [], _, _, _, _, _, [], [], !MayUseAtomic).
-ml_gen_cons_args(_, [], [_ | _], _, _, _, _, _, _, _, !MayUseAtomic) :-
+ml_gen_dynamic_construct_args(_, [], [], _, _, _, _, _, [], [], !MayUseAtomic).
+ml_gen_dynamic_construct_args(_, [], [_ | _], _, _, _, _, _, _, _,
+        !MayUseAtomic) :-
     unexpected($pred, "length mismatch").
-ml_gen_cons_args(_, [_ | _], [], _, _, _, _, _, _, _, !MayUseAtomic) :-
+ml_gen_dynamic_construct_args(_, [_ | _], [], _, _, _, _, _, _, _,
+        !MayUseAtomic) :-
     unexpected($pred, "length mismatch").
-ml_gen_cons_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
+ml_gen_dynamic_construct_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
         [ArgMode | ArgModes], NumExtraArgs, CurArgNum, PrevOffset0,
         AllArgVarsTypesWidths, !.TakeAddr, TakeAddrInfos, RvalsMLDSTypesWidths,
         !MayUseAtomic) :-
@@ -1189,14 +1192,14 @@ ml_gen_cons_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
         OrigMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ConsArgType),
         TakeAddrInfo =
             take_addr_info(ArgVar, Offset, OrigMLDS_Type, MLDS_Type),
-        ml_gen_cons_args(Info, ArgVarsTypesWidths, ArgModes,
+        ml_gen_dynamic_construct_args(Info, ArgVarsTypesWidths, ArgModes,
             NumExtraArgs, CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths,
             !.TakeAddr, TakeAddrInfosTail, TailRvalsMLDSTypesWidths,
             !MayUseAtomic),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail],
         RvalsMLDSTypesWidths = [RvalMLDSTypeWidth | TailRvalsMLDSTypesWidths]
     else if ArgPosWidth = apw_none_nowhere then
-        ml_gen_cons_args(Info, ArgVarsTypesWidths, ArgModes,
+        ml_gen_dynamic_construct_args(Info, ArgVarsTypesWidths, ArgModes,
             NumExtraArgs, CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths,
             !.TakeAddr, TakeAddrInfos, RvalsMLDSTypesWidths, !MayUseAtomic)
     else
@@ -1213,9 +1216,10 @@ ml_gen_cons_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
             Rval = ml_const(mlconst_null(MLDS_Type))
         ),
         RvalMLDSTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgPosWidth),
-        ml_gen_cons_args(Info, ArgVarsTypesWidths, ArgModes, NumExtraArgs,
-            CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths, !.TakeAddr,
-            TakeAddrInfos, TailRvalsMLDSTypesWidths, !MayUseAtomic),
+        ml_gen_dynamic_construct_args(Info, ArgVarsTypesWidths, ArgModes,
+            NumExtraArgs, CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths,
+            !.TakeAddr, TakeAddrInfos, TailRvalsMLDSTypesWidths,
+            !MayUseAtomic),
         RvalsMLDSTypesWidths = [RvalMLDSTypeWidth | TailRvalsMLDSTypesWidths]
     ).
 
@@ -1315,9 +1319,10 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_info_get_high_level_data(!.Info, HighLevelData),
-            ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType,
-                VarLval, VarType, apw_full(arg_only_offset(0), cell_offset(0)),
-                Context, [], Stmts)
+            ml_gen_dynamic_deconstruct_arg_unify(ModuleInfo, HighLevelData,
+                Mode, ArgLval, ArgType, VarLval, VarType,
+                apw_full(arg_only_offset(0), cell_offset(0)), Context,
+                [], Stmts)
         else
             unexpected($pred, "no_tag: arity != 1")
         )
@@ -1346,7 +1351,7 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
         ml_tag_initial_offset_and_argnum(ConsTag, _, InitOffSet, ArgNum),
         ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
             ArgVarRepns),
-        ml_gen_unify_args(FieldGen, ArgVarRepns, Modes,
+        ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
             InitOffSet, ArgNum, Context, [], Stmts, !Info)
     ).
 
@@ -1454,40 +1459,44 @@ ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
         )
     ).
 
-:- pred ml_gen_unify_args(field_gen::in,
+:- pred ml_gen_dynamic_deconstruct_args(field_gen::in,
     assoc_list(prog_var, constructor_arg_repn)::in, list(unify_mode)::in,
     field_offset::in, int::in, prog_context::in,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_args(_, [], [], _, _, _, !Stmts, !Info).
-ml_gen_unify_args(_, [], [_ | _], _, _, _, !Stmts, !Info) :-
+ml_gen_dynamic_deconstruct_args(_, [], [], _, _, _, !Stmts, !Info).
+ml_gen_dynamic_deconstruct_args(_, [], [_ | _], _, _, _, !Stmts, !Info) :-
     unexpected($pred, "length mismatch").
-ml_gen_unify_args(_, [_ | _], [], _, _, _, !Stmts, !Info) :-
+ml_gen_dynamic_deconstruct_args(_, [_ | _], [], _, _, _, !Stmts, !Info) :-
     unexpected($pred, "length mismatch").
-ml_gen_unify_args(FieldGen, [ArgVarRepn | ArgVarRepns], [Mode | Modes],
+ml_gen_dynamic_deconstruct_args(FieldGen,
+        [ArgVarRepn | ArgVarRepns], [Mode | Modes],
         CurOffset, CurArgNum, Context, !Stmts, !Info) :-
     % XXX ARG_PACK Why are we generating code backwards?
     ml_next_field_offset(ArgVarRepn, ArgVarRepns, CurOffset, NextOffset),
     NextArgNum = CurArgNum + 1,
-    ml_gen_unify_args(FieldGen, ArgVarRepns, Modes,
+    ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
         NextOffset, NextArgNum, Context, !Stmts, !Info),
-    ml_gen_unify_arg(FieldGen, ArgVarRepn, Mode, CurOffset, CurArgNum,
-        Context, !Stmts, !Info).
+    ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVarRepn, Mode,
+        CurOffset, CurArgNum, Context, !Stmts, !Info).
 
-:- pred ml_gen_unify_args_for_reuse(field_gen::in,
+:- pred ml_gen_dynamic_deconstruct_args_for_reuse(field_gen::in,
     assoc_list(prog_var, constructor_arg_repn)::in, list(unify_mode)::in,
     list(int)::in, field_offset::in, int::in, prog_context::in,
     list(mlds_stmt)::out, list(take_addr_info)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_args_for_reuse(_, [], [], TakeAddr, _, _, _, [], [], !Info) :-
+ml_gen_dynamic_deconstruct_args_for_reuse(_, [], [], TakeAddr, _, _, _, [], [],
+        !Info) :-
     expect(unify(TakeAddr, []), $pred, "TakeAddr != []").
-ml_gen_unify_args_for_reuse(_, [], [_ | _], _, _, _, _, _, _, !Info) :-
+ml_gen_dynamic_deconstruct_args_for_reuse(_, [], [_ | _], _, _, _, _, _, _,
+        !Info) :-
     unexpected($pred, "length mismatch").
-ml_gen_unify_args_for_reuse(_, [_ | _], [], _, _, _, _, _, _, !Info) :-
+ml_gen_dynamic_deconstruct_args_for_reuse(_, [_ | _], [], _, _, _, _, _, _,
+        !Info) :-
     unexpected($pred, "length mismatch").
-ml_gen_unify_args_for_reuse(FieldGen,
+ml_gen_dynamic_deconstruct_args_for_reuse(FieldGen,
         [ArgVarRepn | ArgVarRepns], [Mode | Modes], TakeAddr,
         CurOffset, CurArgNum, Context, Stmts, TakeAddrInfos, !Info) :-
     % XXX ARG_PACK Why are we generating code backwards?
@@ -1496,16 +1505,17 @@ ml_gen_unify_args_for_reuse(FieldGen,
     ml_next_field_offset(ArgVarRepn, ArgVarRepns, CurOffset, NextOffset),
     NextArgNum = CurArgNum + 1,
     ( if TakeAddr = [CurArgNum | TailTakeAddr] then
-        ml_gen_unify_args_for_reuse(FieldGen, ArgVarRepns, Modes,
+        ml_gen_dynamic_deconstruct_args_for_reuse(FieldGen, ArgVarRepns, Modes,
             TailTakeAddr, NextOffset, NextArgNum, Context,
             Stmts, TakeAddrInfosTail, !Info),
         ml_gen_take_addr_of_arg(!.Info, ArgVarRepn, CurOffset, TakeAddrInfo),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
     else
-        ml_gen_unify_args_for_reuse(FieldGen, ArgVarRepns, Modes, TakeAddr,
-            NextOffset, NextArgNum, Context, Stmts0, TakeAddrInfos, !Info),
-        ml_gen_unify_arg(FieldGen, ArgVarRepn, Mode, CurOffset, CurArgNum,
-            Context, Stmts0, Stmts, !Info)
+        ml_gen_dynamic_deconstruct_args_for_reuse(FieldGen, ArgVarRepns, Modes,
+            TakeAddr, NextOffset, NextArgNum, Context, Stmts0, TakeAddrInfos,
+            !Info),
+        ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVarRepn, Mode,
+            CurOffset, CurArgNum, Context, Stmts0, Stmts, !Info)
     ).
 
 :- pred ml_gen_take_addr_of_arg(ml_gen_info::in,
@@ -1614,14 +1624,14 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, FieldGen) :-
     ),
     FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia).
 
-:- pred ml_gen_unify_arg(field_gen::in,
+:- pred ml_gen_dynamic_deconstruct_arg(field_gen::in,
     pair(prog_var, constructor_arg_repn)::in, unify_mode::in,
     field_offset::in, int::in, prog_context::in,
     list(mlds_stmt)::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_unify_arg(FieldGen, ArgVar - CtorArgRepn, Mode, Offset, ArgNum,
-        Context, !Stmts, !Info) :-
+ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar - CtorArgRepn, Mode,
+        Offset, ArgNum, Context, !Stmts, !Info) :-
     FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia),
     (
         FieldVia = field_via_offset,
@@ -1657,16 +1667,18 @@ ml_gen_unify_arg(FieldGen, ArgVar - CtorArgRepn, Mode, Offset, ArgNum,
     ml_variable_type(!.Info, ArgVar, ArgType),
 
     % Now generate code to unify them.
-    ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType,
-        FieldLval, BoxedFieldType, FieldPosWidth, Context, !Stmts).
+    ml_gen_dynamic_deconstruct_arg_unify(ModuleInfo, HighLevelData,
+        Mode, ArgLval, ArgType, FieldLval, BoxedFieldType, FieldPosWidth,
+        Context, !Stmts).
 
-:- pred ml_gen_sub_unify(module_info::in, bool::in, unify_mode::in,
-    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
+:- pred ml_gen_dynamic_deconstruct_arg_unify(module_info::in, bool::in,
+    unify_mode::in, mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
     arg_pos_width::in, prog_context::in,
     list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
-ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
-        FieldLval, FieldType, FieldWidth, Context, !Stmts) :-
+ml_gen_dynamic_deconstruct_arg_unify(ModuleInfo, HighLevelData,
+        ArgMode, ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
+        Context, !Stmts) :-
     % Figure out the direction of data-flow from the mode,
     % and generate code accordingly.
     %
@@ -1682,12 +1694,13 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
     compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir),
     (
         Dir = assign_nondummy_right,
-        ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
-            FieldLval, FieldType, FieldWidth, Context, !Stmts)
+        ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
+            ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
+            Context, !Stmts)
     ;
         Dir = assign_nondummy_left,
-        ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
-            ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
+        ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo,
+            HighLevelData, ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
             Context, !Stmts)
     ;
         ( Dir = assign_nondummy_unused
@@ -1696,12 +1709,12 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, ArgMode, ArgLval, ArgType,
         % The unification has no effect.
     ).
 
-:- pred ml_gen_sub_unify_assign_right(module_info::in,
+:- pred ml_gen_dynamic_deconstruct_arg_unify_assign_right(module_info::in,
     mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
     arg_pos_width::in, prog_context::in,
     list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
-ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
+ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo, ArgLval, ArgType,
         FieldLval, FieldType, FieldWidth, Context, !Stmts) :-
     (
         ( FieldWidth = apw_full(_, _)
@@ -1769,11 +1782,12 @@ ml_gen_sub_unify_assign_right(ModuleInfo, ArgLval, ArgType,
         % Generate no code.
     ).
 
-:- pred ml_gen_sub_unify_assign_left(module_info::in, bool::in, mlds_lval::in,
-    mer_type::in, mlds_lval::in, mer_type::in, arg_pos_width::in,
-    prog_context::in, list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
+:- pred ml_gen_dynamic_deconstruct_arg_unify_assign_left(module_info::in,
+    bool::in, mlds_lval::in, mer_type::in, mlds_lval::in,
+    mer_type::in, arg_pos_width::in, prog_context::in,
+    list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
-ml_gen_sub_unify_assign_left(ModuleInfo, HighLevelData,
+ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo, HighLevelData,
         ArgLval, ArgType, FieldLval, FieldType, FieldWidth, Context, !Stmts) :-
     (
         FieldWidth = apw_full(_, _),
