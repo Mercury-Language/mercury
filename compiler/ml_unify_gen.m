@@ -285,7 +285,6 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
 ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         Context, Stmts, !Info) :-
     % Figure out how this cons_id is represented.
-    ml_variable_type(!.Info, Var, VarType),
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     (
         ( ConsTag = no_tag
@@ -295,6 +294,7 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
             ArgVars = [ArgVar],
             ArgModes = [ArgMode]
         then
+            ml_variable_type(!.Info, Var, VarType),
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
@@ -324,8 +324,9 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
                     Stmts = [Stmt]
                 ;
                     ConsTag = direct_arg_tag(Ptag),
-                    ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
-                        ArgLval, ArgType, VarLval, VarType, Context, Stmts)
+                    ml_gen_dynamic_construct_direct_arg(ModuleInfo, Ptag,
+                        ArgMode, ArgLval, ArgType, VarLval, VarType,
+                        Context, Stmts)
                 )
             )
         else
@@ -366,6 +367,7 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         ml_gen_info_get_const_struct_map(!.Info, ConstStructMap),
         map.lookup(ConstStructMap, ConstNum, GroundTerm0),
         GroundTerm0 = ml_ground_term(Rval, _Type, _MLDS_Type),
+        ml_variable_type(!.Info, Var, VarType),
         ml_gen_var(!.Info, Var, VarLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
@@ -389,6 +391,7 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         ),
         (
             ArgVars = [],
+            ml_variable_type(!.Info, Var, VarType),
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
@@ -1283,7 +1286,6 @@ ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
-    ml_variable_type(!.Info, Var, VarType),
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     (
         ( ConsTag = string_tag(_String)
@@ -1314,15 +1316,8 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
             ArgVars = [ArgVar],
             Modes = [Mode]
         then
-            ml_variable_type(!.Info, ArgVar, ArgType),
-            ml_gen_var(!.Info, ArgVar, ArgLval),
-            ml_gen_var(!.Info, Var, VarLval),
-            ml_gen_info_get_module_info(!.Info, ModuleInfo),
-            ml_gen_info_get_high_level_data(!.Info, HighLevelData),
-            ml_gen_dynamic_deconstruct_arg_unify(ModuleInfo, HighLevelData,
-                Mode, ArgLval, ArgType, VarLval, VarType,
-                apw_full(arg_only_offset(0), cell_offset(0)), Context,
-                [], Stmts)
+            ml_gen_dynamic_deconstruct_no_tag(!.Info, Mode, ArgVar, Var,
+                Context, Stmts)
         else
             unexpected($pred, "no_tag: arity != 1")
         )
@@ -1332,12 +1327,8 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
             ArgVars = [ArgVar],
             Modes = [Mode]
         then
-            ml_variable_type(!.Info, ArgVar, ArgType),
-            ml_gen_var(!.Info, ArgVar, ArgLval),
-            ml_gen_var(!.Info, Var, VarLval),
-            ml_gen_info_get_module_info(!.Info, ModuleInfo),
-            ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
-                ArgLval, ArgType, VarLval, VarType, Context, Stmts)
+            ml_gen_dynamic_deconstruct_direct_arg(!.Info, Ptag, Mode,
+                ArgVar, Var, Context, Stmts)
         else
             unexpected($pred, "direct_arg_tag: arity != 1")
         )
@@ -1346,6 +1337,7 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
         ; ConsTag = unshared_tag(_UnsharedPtag)
         ; ConsTag = shared_remote_tag(_PrimaryTag, _SecondaryTag, _AddedBy)
         ),
+        ml_variable_type(!.Info, Var, VarType),
         ml_gen_var(!.Info, Var, VarLval),
         decide_field_gen(!.Info, VarLval, VarType, ConsId, ConsTag, FieldGen),
         ml_tag_initial_offset_and_argnum(ConsTag, _, InitOffSet, ArgNum),
@@ -1654,31 +1646,19 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar - CtorArgRepn, Mode,
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     FieldPosWidth = CtorArgRepn ^ car_pos_width,
     FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
-    FieldType = CtorArgRepn ^ car_type,
-    ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
-        BoxedFieldType),
+    FieldRawType = CtorArgRepn ^ car_type,
+    ml_type_as_field(ModuleInfo, HighLevelData, FieldRawType, FieldWidth,
+        FieldType),
 
     % Generate lvals for the LHS ...
-    ml_gen_type(!.Info, BoxedFieldType, MLDS_BoxedFieldType),
+    ml_gen_type(!.Info, FieldType, MLDS_FieldType),
     FieldLval = ml_field(MaybePrimaryTag, AddrRval, FieldId,
-        MLDS_BoxedFieldType, AddrType),
+        MLDS_FieldType, AddrType),
     % ... and the RHS.
     ml_gen_var(!.Info, ArgVar, ArgLval),
     ml_variable_type(!.Info, ArgVar, ArgType),
 
     % Now generate code to unify them.
-    ml_gen_dynamic_deconstruct_arg_unify(ModuleInfo, HighLevelData,
-        Mode, ArgLval, ArgType, FieldLval, BoxedFieldType, FieldPosWidth,
-        Context, !Stmts).
-
-:- pred ml_gen_dynamic_deconstruct_arg_unify(module_info::in, bool::in,
-    unify_mode::in, mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
-    arg_pos_width::in, prog_context::in,
-    list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
-
-ml_gen_dynamic_deconstruct_arg_unify(ModuleInfo, HighLevelData,
-        ArgMode, ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
-        Context, !Stmts) :-
     % Figure out the direction of data-flow from the mode,
     % and generate code accordingly.
     %
@@ -1691,17 +1671,17 @@ ml_gen_dynamic_deconstruct_arg_unify(ModuleInfo, HighLevelData,
     % into nothing. We hope that the compilers for the other MLDS target
     % languages can do the same.
 
-    compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir),
+    compute_assign_direction(ModuleInfo, Mode, ArgType, FieldType, Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
-            ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
+            ArgLval, ArgType, FieldLval, FieldType, FieldPosWidth,
             Context, !Stmts)
     ;
         Dir = assign_nondummy_left,
         ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo,
-            HighLevelData, ArgLval, ArgType, FieldLval, FieldType, FieldWidth,
-            Context, !Stmts)
+            HighLevelData, ArgLval, ArgType, FieldLval, FieldType,
+            FieldPosWidth, Context, !Stmts)
     ;
         ( Dir = assign_nondummy_unused
         ; Dir = assign_dummy
@@ -1855,12 +1835,12 @@ ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) :-
         sorry($pred, "unexpected field offset")
     ).
 
-:- pred ml_gen_direct_arg_construct(module_info::in, unify_mode::in, int::in,
-    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, prog_context::in,
-    list(mlds_stmt)::out) is det.
+:- pred ml_gen_dynamic_construct_direct_arg(module_info::in, ptag::in,
+    unify_mode::in, mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
+    prog_context::in, list(mlds_stmt)::out) is det.
 
-ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
-        ArgLval, ArgType, VarLval, VarType, Context, Stmts) :-
+ml_gen_dynamic_construct_direct_arg(ModuleInfo, Ptag,
+        ArgMode, ArgLval, ArgType, VarLval, VarType, Context, Stmts) :-
     compute_assign_direction(ModuleInfo, ArgMode, ArgType, VarType, Dir),
     (
         Dir = assign_nondummy_right,
@@ -1890,13 +1870,18 @@ ml_gen_direct_arg_construct(ModuleInfo, ArgMode, Ptag,
         unexpected($pred, "dummy unify")
     ).
 
-:- pred ml_gen_direct_arg_deconstruct(module_info::in, unify_mode::in, int::in,
-    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in, prog_context::in,
-    list(mlds_stmt)::out) is det.
+:- pred ml_gen_dynamic_deconstruct_direct_arg(ml_gen_info::in, ptag::in,
+    unify_mode::in, prog_var::in, prog_var::in,
+    prog_context::in, list(mlds_stmt)::out) is det.
 
-ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
-        ArgLval, ArgType, VarLval, VarType, Context, Stmts) :-
-    compute_assign_direction(ModuleInfo, ArgMode, ArgType, VarType, Dir),
+ml_gen_dynamic_deconstruct_direct_arg(Info, Ptag, Mode, ArgVar, Var,
+        Context, Stmts) :-
+    ml_variable_type(Info, ArgVar, ArgType),
+    ml_variable_type(Info, Var, VarType),
+    ml_gen_var(Info, ArgVar, ArgLval),
+    ml_gen_var(Info, Var, VarLval),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    compute_assign_direction(ModuleInfo, Mode, ArgType, VarType, Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
@@ -1920,6 +1905,36 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, ArgMode, Ptag,
     ;
         Dir = assign_dummy,
         unexpected($pred, "dummy unify")
+    ).
+
+:- pred ml_gen_dynamic_deconstruct_no_tag(ml_gen_info::in, unify_mode::in,
+    prog_var::in, prog_var::in, prog_context::in, list(mlds_stmt)::out) is det.
+
+ml_gen_dynamic_deconstruct_no_tag(Info, Mode, ArgVar, Var, Context, Stmts) :-
+    ml_variable_type(Info, ArgVar, ArgType),
+    ml_variable_type(Info, Var, VarType),
+    ml_gen_var(Info, ArgVar, ArgLval),
+    ml_gen_var(Info, Var, VarLval),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
+    FieldPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
+    compute_assign_direction(ModuleInfo, Mode, ArgType, VarType, Dir),
+    (
+        Dir = assign_nondummy_right,
+        ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
+            ArgLval, ArgType, VarLval, VarType, FieldPosWidth,
+            Context, [], Stmts)
+    ;
+        Dir = assign_nondummy_left,
+        ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo,
+            HighLevelData, ArgLval, ArgType, VarLval, VarType, FieldPosWidth,
+            Context, [], Stmts)
+    ;
+        ( Dir = assign_nondummy_unused
+        ; Dir = assign_dummy
+        ),
+        % The unification has no effect.
+        Stmts = []
     ).
 
 %---------------------------------------------------------------------------%
