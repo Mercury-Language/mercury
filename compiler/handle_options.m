@@ -2567,7 +2567,7 @@ raw_lookup_bool_option(OptionTable, Option, BoolValue) :-
         BoolValue = BoolValuePrime
     else
         OptionStr = string.string(Option),
-        unexpected($pred, OptionStr ++ "is not a bool")
+        unexpected($pred, OptionStr ++ " is not a bool")
     ).
 
 :- pred raw_lookup_int_option(option_table::in, option::in, int::out) is det.
@@ -2578,7 +2578,7 @@ raw_lookup_int_option(OptionTable, Option, IntValue) :-
         IntValue = IntValuePrime
     else
         OptionStr = string.string(Option),
-        unexpected($pred, OptionStr ++ "is not an int")
+        unexpected($pred, OptionStr ++ " is not an int")
     ).
 
 :- pred raw_lookup_string_option(option_table::in, option::in,
@@ -2590,7 +2590,7 @@ raw_lookup_string_option(OptionTable, Option, StringValue) :-
         StringValue = StringValuePrime
     else
         OptionStr = string.string(Option),
-        unexpected($pred, OptionStr ++ "is not a string")
+        unexpected($pred, OptionStr ++ " is not a string")
     ).
 
 :- pred raw_lookup_accumulating_option(option_table::in, option::in,
@@ -2602,7 +2602,7 @@ raw_lookup_accumulating_option(OptionTable, Option, AccumulatingValue) :-
         AccumulatingValue = AccumulatingValuePrime
     else
         OptionStr = string.string(Option),
-        unexpected($pred, OptionStr ++ "is not accumulating")
+        unexpected($pred, OptionStr ++ " is not accumulating")
     ).
 
 %---------------------------------------------------------------------------%
