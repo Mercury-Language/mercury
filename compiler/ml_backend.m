@@ -79,6 +79,9 @@
 % MLDS->C# back-end.
 :- include_module mlds_to_cs.
 
+% MLDS debugging back-end.
+:- include_module mlds_dump.
+
 % Utility predicates that are useful for more than one MLDS->? back-end.
 :- include_module mlds_to_target_util.
 

@@ -2073,7 +2073,7 @@ information used for code generation:
 </ul>
 
 <p>
-For the MLDS back-end, we've tried to keep the code generator simple.
+For the MLDS back-end, we have tried to keep the code generator simple.
 So we prefer to do things as HLDS to HLDS transformations where possible,
 rather than complicating the HLDS to MLDS code generator.
 Thus we have a pass which transforms the HLDS to handle trailing:
@@ -2171,6 +2171,8 @@ There are currently three backends that generate code from MLDS:
 one generates C/C++ code,
 one generates Java,
 and one generates C#.
+There is also a module, mlds_dump.m,
+that dumps out the MLDS in format designed specifically for debugging.
 
 <ul>
 <li>

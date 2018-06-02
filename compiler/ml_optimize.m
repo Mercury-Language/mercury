@@ -45,6 +45,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_util.
+:- import_module ml_backend.mlds_dump.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -92,6 +93,12 @@ optimize_in_function_body(OptInfo, !Body) :-
     ;
         !.Body = body_defined_here(Stmt0),
         optimize_in_stmt(OptInfo, Stmt0, Stmt),
+        trace [compile_time(flag("debug_ml_optimize")), io(!IO)] (
+            io.write_string("\nfunction body before\n\n", !IO),
+            dump_mlds_stmt(1, Stmt0, !IO),
+            io.write_string("\nfunction body after\n\n", !IO),
+            dump_mlds_stmt(1, Stmt, !IO)
+        ),
         !:Body = body_defined_here(Stmt)
     ).
 
