@@ -1881,22 +1881,21 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
     % unifications that implement field access; the argument variables that
     % correspond to the fields other than the one being accessed end up
     % being assigned to but not used. While we generate suboptimal C code,
-    % the C compiler is smart enough to compile these useless assignments
-    % into nothing. We hope that the compilers for the other MLDS target
-    % languages can do the same.
+    % ml_unused_assign.m can delete both the unused assignments, and the
+    % declarations of the unused variables, in most cases.
 
     compute_assign_direction(ModuleInfo, Mode, ArgType, FieldType, Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
-            ArgVar, ArgLval, ArgType, FieldLval, FieldType, FieldPosWidth,
+            FieldLval, FieldType, FieldPosWidth, ArgVar, ArgLval, ArgType,
             Context, PackedArgVars, Stmts)
     ;
         Dir = assign_nondummy_left,
         PackedArgVars = [],
         ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo,
-            HighLevelData, ArgLval, ArgType, FieldLval, FieldType,
-            FieldPosWidth, Context, Stmts)
+            HighLevelData, FieldLval, FieldType, FieldPosWidth,
+            ArgLval, ArgType, Context, Stmts)
     ;
         ( Dir = assign_nondummy_unused
         ; Dir = assign_dummy
@@ -1907,13 +1906,12 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
     ).
 
 :- pred ml_gen_dynamic_deconstruct_arg_unify_assign_right(module_info::in,
-    prog_var::in, mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
-    arg_pos_width::in, prog_context::in,
+    mlds_lval::in, mer_type::in, arg_pos_width::in,
+    prog_var::in, mlds_lval::in, mer_type::in, prog_context::in,
     list(packed_arg_var)::out, list(mlds_stmt)::out) is det.
 
-% XXX ARG_PACK: Move the Arg* arguments to the right of the Field* arguments.
 ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
-        ArgVar, ArgLval, ArgType, FieldLval, FieldType, FieldPosWidth,
+        FieldLval, FieldType, FieldPosWidth, ArgVar, ArgLval, ArgType,
         Context, PackedArgVars, Stmts) :-
     (
         FieldPosWidth = apw_double(_, _, _),
@@ -1973,11 +1971,12 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
     ).
 
 :- pred ml_gen_dynamic_deconstruct_arg_unify_assign_left(module_info::in,
-    bool::in, mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
-    arg_pos_width::in, prog_context::in, list(mlds_stmt)::out) is det.
+    bool::in, mlds_lval::in, mer_type::in, arg_pos_width::in,
+    mlds_lval::in, mer_type::in, prog_context::in,
+    list(mlds_stmt)::out) is det.
 
 ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo, HighLevelData,
-        ArgLval, ArgType, FieldLval, FieldType, FieldPosWidth, Context,
+        FieldLval, FieldType, FieldPosWidth, ArgLval, ArgType, Context,
         Stmts) :-
     (
         FieldPosWidth = apw_double(_, _, _),
@@ -2133,12 +2132,12 @@ ml_gen_dynamic_deconstruct_no_tag(Info, Mode, ArgVar, Var, Context, Stmts) :-
     (
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
-            ArgVar, ArgLval, ArgType, VarLval, VarType, FieldPosWidth,
+            VarLval, VarType, FieldPosWidth, ArgVar, ArgLval, ArgType,
             Context, _PackedArgVars, Stmts)
     ;
         Dir = assign_nondummy_left,
         ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo,
-            HighLevelData, ArgLval, ArgType, VarLval, VarType, FieldPosWidth,
+            HighLevelData, VarLval, VarType, FieldPosWidth, ArgLval, ArgType,
             Context, Stmts)
     ;
         ( Dir = assign_nondummy_unused
