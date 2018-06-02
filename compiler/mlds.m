@@ -2072,11 +2072,6 @@
             % while the second just gives the position of the field
             % in that list. Field numbers start at 0.
 
-    ;       fvn_reserved_obj_name(string, int)
-            % This field_var is the specially reserved static class member
-            % variable whose address is used to represent the function symbol
-            % with the given name and arity.
-
     ;       fvn_du_ctor_field_hld(string)
             % When compiling with --high-level-data, we generate a type
             % in the target language for each data constructor in a
@@ -2689,9 +2684,6 @@ ml_global_const_var_name_to_string(ConstVar, Num) = Str :-
 
 ml_field_var_name_to_string(FieldVar) = Str :-
     (
-        FieldVar = fvn_reserved_obj_name(CtorName, CtorArity),
-        Str = string.format("obj_%s_%d", [s(CtorName), i(CtorArity)])
-    ;
         FieldVar = fvn_global_data_field(TypeRawNum, FieldNum),
         Str = string.format("vct_%d_f_%d", [i(TypeRawNum), i(FieldNum)])
     ;
