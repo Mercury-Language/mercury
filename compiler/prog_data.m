@@ -689,7 +689,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % A type expression with an explicit kind annotation.
             % (These are not yet used.)
 
-
     % This type enumerates all of the builtin primitive types in Mercury.
     % If you add a new alternative then you may also need to update the
     % following predicates:
