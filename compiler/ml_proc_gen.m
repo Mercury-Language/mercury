@@ -1669,7 +1669,7 @@ ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal, SeenAtLabelMap,
         ConvOutputStmts = []
     then
         % No boxing/unboxing/casting required.
-        ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info)
+        ml_gen_goal(CodeModel, Goal, LocalVarDefns1, FuncDefns0, Stmts1, !Info)
     else
         DoGenGoal = ml_gen_goal(CodeModel, Goal),
 
@@ -1687,23 +1687,32 @@ ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal, SeenAtLabelMap,
         ml_combine_conj(CodeModel, Context, DoGenGoal, DoConvOutputs,
             LocalVarDefns0, FuncDefns0, Stmts0, !Info),
         Stmts1 = ConvInputStmts ++ Stmts0,
-        LocalVarDefns1 = ConvLocalVarDefns ++ LocalVarDefns0,
-        ml_gen_info_get_globals(!.Info, Globals),
-        globals.lookup_bool_option(Globals, eliminate_unused_mlds_assigns,
-            EliminateUnusedAssigns),
+        LocalVarDefns1 = ConvLocalVarDefns ++ LocalVarDefns0
+    ),
+    ml_gen_info_get_globals(!.Info, Globals),
+    globals.lookup_bool_option(Globals, eliminate_unused_mlds_assigns,
+        EliminateUnusedAssigns),
+    (
+        EliminateUnusedAssigns = no,
+        LocalVarDefns = LocalVarDefns1,
+        FuncDefns = FuncDefns0,
+        Stmts = Stmts1
+    ;
+        EliminateUnusedAssigns = yes,
+        list.map((func(var_mvar_type_mode(_, LocalVar, _, _)) = LocalVar),
+            ArgTuples) = ArgLocalVars,
         (
-            EliminateUnusedAssigns = no,
-            LocalVarDefns = LocalVarDefns1,
-            FuncDefns = FuncDefns0,
-            Stmts = Stmts1
+            ( CodeModel = model_det
+            ; CodeModel = model_non
+            ),
+            OutsideVars = ArgLocalVars
         ;
-            EliminateUnusedAssigns = yes,
-            list.map((func(var_mvar_type_mode(_, LocalVar, _, _)) = LocalVar),
-                ArgTuples) = ArgLocalVars,
-            optimize_away_unused_assigns_in_proc_body(ArgLocalVars,
-                SeenAtLabelMap, LocalVarDefns1, LocalVarDefns,
-                FuncDefns0, FuncDefns, Stmts1, Stmts)
-        )
+            CodeModel = model_semi,
+            OutsideVars = [lvn_comp_var(lvnc_succeeded) | ArgLocalVars]
+        ),
+        optimize_away_unused_assigns_in_proc_body(OutsideVars,
+            SeenAtLabelMap, LocalVarDefns1, LocalVarDefns,
+            FuncDefns0, FuncDefns, Stmts1, Stmts)
     ).
 
     % In certain cases -- for example existentially typed procedures,

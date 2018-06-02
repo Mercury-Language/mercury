@@ -185,6 +185,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module map.
 :- import_module maybe.
 
 %---------------------------------------------------------------------------%
@@ -256,12 +257,19 @@ ml_gen_commit(Goal, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         ml_get_env_ptr(EnvPtrRval),
         SuccessCont = success_cont(SuccessFuncLabelRval, EnvPtrRval, []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
+        % Do not take any information about packed args into the new function
+        % depth, since that may cause dangling cross-function references
+        % when the new function depth is flattened out.
+        ml_gen_info_set_packed_args_map(map.init, !Info),
         ml_gen_info_increment_func_nest_depth(!Info),
         ml_gen_goal(model_non, Goal, GoalLocalVarDefns, GoalFuncDefns,
             GoalStmts, !Info),
         GoalStmt = ml_gen_block(GoalLocalVarDefns, GoalFuncDefns, GoalStmts,
             GoalContext),
         ml_gen_info_decrement_func_nest_depth(!Info),
+        % Do not take any information about packed args out of the new function
+        % depth, for the same reason.
+        ml_gen_info_set_packed_args_map(map.init, !Info),
         ml_gen_info_pop_success_cont(!Info),
         ml_gen_set_success(ml_const(mlconst_false), Context, SetSuccessFalse,
             !Info),

@@ -576,24 +576,30 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 
         FirstCodeModel = model_non,
 
-        % allocate a name for the `succ_func'
+        % Allocate a name for the `succ_func'.
         ml_gen_new_func_label(no, RestFuncLabel, RestFuncLabelRval, !Info),
 
-        % generate <First && succ_func()>
+        % Generate <First && succ_func()>.
         ml_get_env_ptr(EnvPtrRval),
         SuccessCont = success_cont(RestFuncLabelRval, EnvPtrRval, []),
         ml_gen_info_push_success_cont(SuccessCont, !Info),
         DoGenFirst(FirstLocalVarDefns, FirstFuncDefns, FirstStmts, !Info),
         ml_gen_info_pop_success_cont(!Info),
 
-        % generate the `succ_func'
-        % push nesting level
+        % Generate the `succ_func'.
+        % Do not take any information about packed args into the new function
+        % depth, since that may cause dangling cross-function references
+        % when the new function depth is flattened out.
+        ml_gen_info_set_packed_args_map(map.init, !Info),
         ml_gen_info_increment_func_nest_depth(!Info),
         DoGenRest(RestLocalVarDefns, RestFuncDefns, RestStmts, !Info),
         ml_gen_info_decrement_func_nest_depth(!Info),
+        % Do not take any information about packed args out of the new function
+        % depth, for the same reason.
+        ml_gen_info_set_packed_args_map(map.init, !Info),
+
         RestStmt = ml_gen_block(RestLocalVarDefns, RestFuncDefns, RestStmts,
             Context),
-        % pop nesting level
         ml_gen_nondet_label_func(!.Info, RestFuncLabel, Context,
             RestStmt, RestFunc),
 

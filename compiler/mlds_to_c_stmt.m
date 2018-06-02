@@ -791,11 +791,16 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
     (
         AtomicStmt = comment(Comment),
         ( if Comment = "" then
-            io.nl(!IO)
+            true
         else
             CommentLines = split_at_separator(char.is_line_separator, Comment),
             write_comment_lines(Indent, CommentLines, !IO)
-        )
+        ),
+        % If a comment statement somehow ends up constituting
+        % the entirety of e.g. an if-then-else statement's then part,
+        % then it needs to be a C statement syntactically.
+        output_n_indents(Indent, !IO),
+        io.write_string(";\n", !IO)
     ;
         AtomicStmt = assign(Lval, Rval),
         output_n_indents(Indent, !IO),

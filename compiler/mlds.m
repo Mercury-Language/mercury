@@ -1694,6 +1694,8 @@
                 % not the actual type of the field. If the actual type is
                 % different, then it is the HLDS->MLDS code generator's job
                 % to insert the required boxing/unboxing code.
+                % XXX ARG_PACK The field_ptr_type should be next to the
+                % field_addr, since it gives its type.
 
                 field_ptag      :: maybe(ptag),
                 field_addr      :: mlds_rval,
@@ -2376,7 +2378,7 @@
             % This variable is used by the Java backend.
             % I (zs) don't know what its semantics is.
 
-    ;       lvnc_aux_var(mlds_compiler_aux_var, int).
+    ;       lvnc_aux_var(mlds_compiler_aux_var, int)
             % These MLDS variables contain values (most, but not all of which
             % are very short-lived) used to implement Mercury constructs
             % such as commits and switches. They contain such information
@@ -2385,6 +2387,33 @@
             % The integer is a sequence number (unique within the procedure)
             % allocated from a counter that is shared between all
             % lvnc_aux_vars.
+
+    ;       lvnc_packed_args(int).
+            % Each of these MLDS variables contains a copy of one word
+            % in a structured term's memory cell, where that word contains
+            % the values of two or more arguments packed together. The idea
+            % is that for HLDS code such as
+            %
+            % ...
+            % X0 = f(A0, B0, C0),   % deconstruction
+            % ...
+            % X  = f(A , B0, C0),   % construction
+            % ...
+            %
+            % where the B0 and C0 arguments are packed together into one word,
+            % we should generate code that copies B0 and C0 from X0 to X
+            % using just one load and one store. The shifts and masks needed
+            % to compute the values of B0 and C0 should be needed only if
+            % the HLDS code actually uses those variables in their own right.
+            %
+            % When the MLDS code generator sees a construction such as the
+            % above, which contains a word containing two or more arguments
+            % all of which are being generated, it allocates a unique integer
+            % for a new lvnc_packed_args variable and assigns that word to it.
+            % Later code that needs those same argument variables packed
+            % the same way may use this new variable instead. As its name
+            % indicates, the ml_unused_assign optimization will delete
+            % the unused assignments.
 
 :- type mlds_compiler_aux_var
     --->    mcav_commit
@@ -2934,6 +2963,9 @@ ml_local_var_name_to_string(LocalVar) = Str :-
                 AuxVarStr = "case_num"
             ),
             Str = string.format("%s_%d", [s(AuxVarStr), i(Num)])
+        ;
+            CompVar = lvnc_packed_args(Id),
+            Str = string.format("packed_args_%d", [i(Id)])
         )
     ).
 

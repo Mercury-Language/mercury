@@ -149,49 +149,57 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Stmts, !Info) :-
         % Handle empty disjunctions (a.ka. `fail').
         ml_gen_failure(CodeModel, Context, Stmts, !Info)
     ;
+        Disjuncts = [_FirstDisjunct | LaterDisjuncts],
+        LaterDisjuncts = [],
+        unexpected($pred, "single disjunct")
+    ;
         Disjuncts = [FirstDisjunct | LaterDisjuncts],
+        LaterDisjuncts = [_ | _],
+        % Start every disjunct with EntryPackedArgsMap to prevent
+        % later disjuncts from trying to use map entries added by
+        % earlier disjuncts.
+        ml_gen_info_get_packed_args_map(!.Info, EntryPackedArgsMap),
         (
-            LaterDisjuncts = [],
-            unexpected($pred, "single disjunct")
-        ;
-            LaterDisjuncts = [_ | _],
-            (
-                CodeModel = model_non,
-                ( if
-                    ml_gen_info_get_target(!.Info, Target),
-                    allow_lookup_disj(Target) = yes,
+            CodeModel = model_non,
+            ( if
+                ml_gen_info_get_target(!.Info, Target),
+                allow_lookup_disj(Target) = yes,
 
-                    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-                    module_info_get_globals(ModuleInfo, Globals),
-                    globals.lookup_bool_option(Globals, static_ground_cells,
-                        StaticGroundCells),
-                    StaticGroundCells = yes,
+                ml_gen_info_get_module_info(!.Info, ModuleInfo),
+                module_info_get_globals(ModuleInfo, Globals),
+                globals.lookup_bool_option(Globals, static_ground_cells,
+                    StaticGroundCells),
+                StaticGroundCells = yes,
 
-                    DisjNonLocals = goal_info_get_nonlocals(GoalInfo),
-                    all_disjuncts_are_conj_of_unify(DisjNonLocals, Disjuncts)
-                then
-                    % Since the MLDS backend implements trailing by a
-                    % HLDS-to-HLDS transform (which is in add_trail_ops.m),
-                    % if we get here, then trailing is not enabled, and we do
-                    % not have to worry about resetting the trail at the
-                    % starts of all non-first disjuncts.
-                    NonLocals = goal_info_get_nonlocals(GoalInfo),
-                    OutVars = set_of_var.to_sorted_list(NonLocals),
-                    list.map_foldl(ml_generate_constants_for_arm(OutVars),
-                        Disjuncts, Solns, !Info),
-                    ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info)
-                else
-                    ml_gen_ordinary_model_non_disj(FirstDisjunct,
-                        LaterDisjuncts, Context, Stmts, !Info)
-                )
-            ;
-                ( CodeModel = model_det
-                ; CodeModel = model_semi
-                ),
-                ml_gen_ordinary_model_det_semi_disj(FirstDisjunct,
-                    LaterDisjuncts, CodeModel, Context, Stmts, !Info)
+                DisjNonLocals = goal_info_get_nonlocals(GoalInfo),
+                all_disjuncts_are_conj_of_unify(DisjNonLocals, Disjuncts)
+            then
+                % Since the MLDS backend implements trailing by a
+                % HLDS-to-HLDS transform (which is in add_trail_ops.m),
+                % if we get here, then trailing is not enabled, and we do
+                % not have to worry about resetting the trail at the
+                % starts of all non-first disjuncts.
+                NonLocals = goal_info_get_nonlocals(GoalInfo),
+                OutVars = set_of_var.to_sorted_list(NonLocals),
+                list.map_foldl(ml_generate_constants_for_arm(OutVars),
+                    Disjuncts, Solns, !Info),
+                ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info)
+            else
+                ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts,
+                    EntryPackedArgsMap, Context, Stmts, !Info)
             )
-        )
+        ;
+            ( CodeModel = model_det
+            ; CodeModel = model_semi
+            ),
+            ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
+                EntryPackedArgsMap, CodeModel, Context, Stmts, !Info)
+        ),
+        % Start the code *after* the whole disjunction with
+        % EntryPackedArgsMap as well, to prevent that code from trying to use
+        % map entries added by a disjunct that may have failed or may not
+        % have been taken.
+        ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info)
     ).
 
     % Disable generation of lookup disjunctions on some backends.
@@ -207,11 +215,12 @@ allow_lookup_disj(ml_target_java) = yes.
 %---------------------------------------------------------------------------%
 
 :- pred ml_gen_ordinary_model_det_semi_disj(hlds_goal::in, list(hlds_goal)::in,
-    code_model::in, prog_context::in, list(mlds_stmt)::out,
+    packed_args_map::in, code_model::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
-        Context, Stmts, !Info) :-
+ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
+        EntryPackedArgsMap, CodeModel, Context, Stmts, !Info) :-
+    ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
     (
         LaterDisjuncts = [],
         ml_gen_goal_as_branch_block(CodeModel, FirstDisjunct, Stmt, !Info),
@@ -250,7 +259,8 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
                 !Info),
             ml_gen_test_success(Succeeded, !Info),
             ml_gen_ordinary_model_det_semi_disj(FirstLaterDisjunct,
-                LaterLaterDisjuncts, CodeModel, Context, LaterStmts, !Info),
+                LaterLaterDisjuncts, EntryPackedArgsMap, CodeModel, Context,
+                LaterStmts, !Info),
             LaterStmt = ml_gen_block([], [], LaterStmts, Context),
             IfStmt = ml_stmt_if_then_else(ml_unop(logical_not, Succeeded),
                 LaterStmt, no, Context),
@@ -266,11 +276,12 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts, CodeModel,
 %---------------------------------------------------------------------------%
 
 :- pred ml_gen_ordinary_model_non_disj(hlds_goal::in, list(hlds_goal)::in,
-    prog_context::in, list(mlds_stmt)::out,
+    packed_args_map::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts, Context,
-        Stmts, !Info) :-
+ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts,
+        EntryPackedArgsMap, Context, Stmts, !Info) :-
+    ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
     (
         LaterDisjuncts = [],
         ml_gen_goal_as_branch_block(model_non, FirstDisjunct, Stmt, !Info),
@@ -287,7 +298,7 @@ ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts, Context,
         ml_gen_goal_as_branch_block(model_non, FirstDisjunct, FirstStmt,
             !Info),
         ml_gen_ordinary_model_non_disj(FirstLaterDisjunct, LaterLaterDisjuncts,
-            Context, LaterStmts, !Info),
+            EntryPackedArgsMap, Context, LaterStmts, !Info),
         Stmts = [FirstStmt | LaterStmts]
     ).
 

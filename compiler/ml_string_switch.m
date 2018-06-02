@@ -50,8 +50,9 @@
 :- import_module list.
 
 :- pred ml_generate_string_trie_jump_switch(mlds_rval::in,
-    list(tagged_case)::in, code_model::in, can_fail::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(tagged_case)::in, code_model::in, can_fail::in, packed_args_map::in,
+    prog_context::in, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_trie_lookup_switch(mlds_rval::in,
     list(tagged_case)::in, ml_lookup_switch_info::in,
@@ -59,8 +60,8 @@
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_hash_jump_switch(mlds_rval::in,
-    list(tagged_case)::in, code_model::in, can_fail::in, prog_context::in,
-    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    list(tagged_case)::in, code_model::in, can_fail::in, packed_args_map::in,
+    prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_hash_lookup_switch(mlds_rval::in,
@@ -70,8 +71,8 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_binary_jump_switch(mlds_rval::in,
-    list(tagged_case)::in, code_model::in, can_fail::in, prog_context::in,
-    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    list(tagged_case)::in, code_model::in, can_fail::in, packed_args_map::in,
+    prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_binary_lookup_switch(mlds_rval::in,
@@ -120,9 +121,9 @@
 %
 
 ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
-        Context, Stmts, !Info) :-
-    gen_tagged_case_codes_for_string_switch(CodeModel, TaggedCases,
-        map.init, CodeMap, !Info),
+        EntryPackedArgsMap, Context, Stmts, !Info) :-
+    gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
+        TaggedCases, map.init, CodeMap, !Info),
     create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt, !Info),
@@ -734,9 +735,9 @@ chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
 %
 
 ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
-        Context, Defns, Stmts, !Info) :-
-    gen_tagged_case_codes_for_string_switch(CodeModel, TaggedCases,
-        map.init, CodeMap, !Info),
+        EntryPackedArgsMap, Context, Defns, Stmts, !Info) :-
+    gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
+        TaggedCases, map.init, CodeMap, !Info),
     build_str_case_id_assoc_list(TaggedCases, -1, _MaxCaseNum,
         [], RevStrsCaseIds),
     list.reverse(RevStrsCaseIds, StrsCaseIds),
@@ -858,36 +859,38 @@ add_to_strs_case_ids(CaseId, TaggedConsId, !RevStrsCaseIds) :-
 %---------------------------------------------------------------------------%
 
 :- pred gen_tagged_case_codes_for_string_switch(code_model::in,
-    list(tagged_case)::in,
+    packed_args_map::in, list(tagged_case)::in,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_tagged_case_codes_for_string_switch(_CodeModel, [],
+gen_tagged_case_codes_for_string_switch(_CodeModel, _EntryPackedArgsMap, [],
         !CodeMap, !Info).
-gen_tagged_case_codes_for_string_switch(CodeModel, [TaggedCase | TaggedCases],
-        !CodeMap, !Info) :-
-    gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase,
-        !CodeMap, !Info),
-    gen_tagged_case_codes_for_string_switch(CodeModel, TaggedCases,
-        !CodeMap, !Info).
+gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
+        [TaggedCase | TaggedCases], !CodeMap, !Info) :-
+    gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
+        TaggedCase, !CodeMap, !Info),
+    gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
+        TaggedCases, !CodeMap, !Info).
 
 :- pred gen_tagged_case_code_for_string_switch_dummy(code_model::in,
-    tagged_case::in, case_id::out,
+    packed_args_map::in, tagged_case::in, case_id::out,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out, unit::in, unit::out) is det.
 
-gen_tagged_case_code_for_string_switch_dummy(CodeModel, TaggedCase, CaseId,
-        !CodeMap, !Info, !Dummy) :-
+gen_tagged_case_code_for_string_switch_dummy(CodeModel, EntryPackedArgsMap,
+        TaggedCase, CaseId, !CodeMap, !Info, !Dummy) :-
     TaggedCase = tagged_case(_, _, CaseId, _),
-    gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase,
-        !CodeMap, !Info).
+    gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
+        TaggedCase, !CodeMap, !Info).
 
-:- pred gen_tagged_case_code_for_string_switch(code_model::in, tagged_case::in,
+:- pred gen_tagged_case_code_for_string_switch(code_model::in,
+    packed_args_map::in, tagged_case::in,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase,
-        !CodeMap, !Info) :-
+gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
+        TaggedCase, !CodeMap, !Info) :-
+    ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds,
         CaseId, Goal),
     ml_gen_goal_as_branch_block(CodeModel, Goal, GoalStmt, !Info),
@@ -1579,7 +1582,7 @@ ml_gen_string_hash_switch_search(InitialComment,
 %
 
 ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
-        Context, Defns, Stmts, !Info) :-
+        EntryPackedArgsMap, Context, Defns, Stmts, !Info) :-
     ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
         Context, VarRval, BinarySearchInfo, !Info),
     BinarySearchInfo = ml_binary_search_info(_CodeModel,
@@ -1615,7 +1618,8 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
     ),
     map.init(CaseLabelMap0),
     switch_util.string_binary_cases(Cases,
-        gen_tagged_case_code_for_string_switch_dummy(CodeModel),
+        gen_tagged_case_code_for_string_switch_dummy(CodeModel,
+            EntryPackedArgsMap),
         CaseLabelMap0, CaseLabelMap, !Info, unit, _, SortedTable),
     ml_gen_string_binary_jump_initializers(SortedTable, StructType,
         [], RevRowInitializers, 0, TableSize),

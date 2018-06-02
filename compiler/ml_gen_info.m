@@ -106,6 +106,23 @@
 :- pred ml_gen_info_new_conv_var(conv_seq::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
+:- type packed_arg_var
+    --->    packed_arg_var(prog_var, arg_shift, arg_num_bits, fill_kind).
+            % The argument variable, and its position, size and nature
+            % inside the packed argument word.
+
+    % Given a sequence of packed_arg_vars that together represent the sequence
+    % of variables packed together into one argument word, as either
+    % apw_partial_first or apw_partial_shifted (NOT apw_none_shifted),
+    % map it to the rval representing the value of that whole word.
+:- type packed_args_map == map(list(packed_arg_var), mlds_rval).
+
+    % Generate a new unique `ml_packed_args' variable. Such compiler-generated
+    % variables hold the packed-together values of two or more user variables.
+    %
+:- pred ml_gen_info_new_packed_args_var(mlds_compiler_var::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
 :- type ml_ground_term
     --->    ml_ground_term(
                 % The value of the ground term.
@@ -367,6 +384,7 @@
                 mgti_aux_var_counter        :: counter,
                 mgti_cond_var_counter       :: counter,
                 mgti_conv_var_counter       :: counter,
+                mgti_packed_args_counter    :: counter,
                 mgti_tail_rec_info          :: tail_rec_info
             ).
 
@@ -440,6 +458,8 @@
     tail_rec_info::out) is det.
 :- pred ml_gen_info_get_byref_output_vars(ml_gen_info::in,
     set_of_progvar::out) is det.
+:- pred ml_gen_info_get_packed_args_map(ml_gen_info::in,
+    packed_args_map::out) is det.
 
 :- pred ml_gen_info_set_const_var_map(map(prog_var, ml_ground_term)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -460,6 +480,8 @@
 :- pred ml_gen_info_set_tail_rec_info(tail_rec_info::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_byref_output_vars(set_of_progvar::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_packed_args_map(packed_args_map::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -520,6 +542,12 @@ ml_gen_info_new_conv_var(conv_seq(ConvNum), !Info) :-
     ml_gen_info_get_conv_var_counter(!.Info, ConvCounter0),
     counter.allocate(ConvNum, ConvCounter0, ConvCounter),
     ml_gen_info_set_conv_var_counter(ConvCounter, !Info).
+
+ml_gen_info_new_packed_args_var(LocalVarName, !Info) :-
+    ml_gen_info_get_packed_args_counter(!.Info, PackedArgsCounter0),
+    counter.allocate(PackedArgsNum, PackedArgsCounter0, PackedArgsCounter),
+    LocalVarName = lvnc_packed_args(PackedArgsNum),
+    ml_gen_info_set_packed_args_counter(PackedArgsCounter, !Info).
 
 ml_gen_info_set_const_var(Var, GroundTerm, !Info) :-
     ml_gen_info_get_const_var_map(!.Info, ConstVarMap0),
@@ -747,14 +775,17 @@ generate_tail_rec_start_label(TsccKind, Id) = Label :-
                 % (We used to store the list of output arguments that are
                 % returned as values in another field, but we don't need that
                 % information anymore.)
-/*  1 */        mgsi_byref_output_vars  :: set_of_progvar,
+/*  1 */        mgsi_byref_output_vars      :: set_of_progvar,
 
-/*  2 */        mgsi_label_counter      :: counter,
-/*  3 */        mgsi_aux_var_counter    :: counter,
-/*  4 */        mgsi_cond_var_counter   :: counter,
+/*  2 */        mgsi_label_counter          :: counter,
+/*  3 */        mgsi_aux_var_counter        :: counter,
+/*  4 */        mgsi_cond_var_counter       :: counter,
 
-/*  5 */        mgsi_success_cont_stack :: stack(success_cont),
-/*  6 */        mgsi_func_nest_depth    :: int
+/*  5 */        mgsi_packed_args_counter    :: counter,
+/*  6 */        mgsi_packed_args_map        :: packed_args_map,
+
+/*  7 */        mgsi_success_cont_stack     :: stack(success_cont),
+/*  8 */        mgsi_func_nest_depth        :: int
             ).
 
 % Access stats for the ml_gen_info structure:
@@ -799,6 +830,7 @@ init_ml_gen_tscc_info(ModuleInfo, InSccMap, TsccKind, TsccInfo) :-
     counter.init(0, LabelCounter),
     counter.init(0, AuxVarCounter),
     counter.init(0, CondVarCounter),
+    counter.init(0, PackedArgsCounter),
     counter.init(0, ConvVarCounter),
 
     module_info_get_globals(ModuleInfo, Globals),
@@ -845,10 +877,17 @@ init_ml_gen_tscc_info(ModuleInfo, InSccMap, TsccKind, TsccInfo) :-
     ),
     TailRecInfo = tail_rec_info(InSccMap, LoopKind, TsccKind),
     TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
-        AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo).
+        AuxVarCounter, CondVarCounter, PackedArgsCounter, ConvVarCounter,
+        TailRecInfo).
 
 ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
         GlobalData, TsccInfo) = Info :-
+    TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
+        AuxVarCounter, CondVarCounter, PackedArgsCounter, ConvVarCounter,
+        TailRecInfo),
+
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     globals.get_gc_method(Globals, GC),
@@ -857,23 +896,9 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
     globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
     globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
-
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    set_of_var.init(ByRefOutputVars),
-
-    TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
-        AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo),
-
-    map.init(ConstVarMap),
-    stack.init(SuccContStack),
-    FuncNestDepth = 0,
     map.init(VarLvals),
-    ClosureWrapperDefns = [],
     set.init(EnvVarNames),
     set.init(DisabledWarnings),
-    UsedSucceededVar = no,
-
     RareInfo = ml_gen_rare_info(
         ModuleInfo,
         PredProcId,
@@ -893,14 +918,25 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
         DisabledWarnings,
         TailRecInfo
     ),
+
+    set_of_var.init(ByRefOutputVars),
+    map.init(PackedArgsMap),
+    stack.init(SuccContStack),
+    FuncNestDepth = 0,
     SubInfo = ml_gen_sub_info(
         ByRefOutputVars,
         LabelCounter,
         AuxVarCounter,
         CondVarCounter,
+        PackedArgsCounter,
+        PackedArgsMap,
         SuccContStack,
         FuncNestDepth
     ),
+
+    map.init(ConstVarMap),
+    UsedSucceededVar = no,
+    ClosureWrapperDefns = [],
     Info = ml_gen_info(
         ConstVarMap,
         FuncLabelCounter,
@@ -948,11 +984,14 @@ ml_gen_info_final(Info, EnvVarNames, ClosureWrapperDefns, GlobalData,
         LabelCounter,
         AuxVarCounter,
         CondVarCounter,
+        PackedArgsCounter,
+        _PackedArgsMap,
         _SuccContStack,
         _FuncNestDepth
     ),
     TsccInfo = ml_gen_tscc_info(FuncLabelCounter, LabelCounter,
-        AuxVarCounter, CondVarCounter, ConvVarCounter, TailRecInfo).
+        AuxVarCounter, CondVarCounter, PackedArgsCounter, ConvVarCounter,
+        TailRecInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -961,6 +1000,8 @@ ml_gen_info_final(Info, EnvVarNames, ClosureWrapperDefns, GlobalData,
 :- pred ml_gen_info_get_label_counter(ml_gen_info::in, counter::out) is det.
 :- pred ml_gen_info_get_aux_var_counter(ml_gen_info::in, counter::out) is det.
 :- pred ml_gen_info_get_cond_var_counter(ml_gen_info::in, counter::out) is det.
+:- pred ml_gen_info_get_packed_args_counter(ml_gen_info::in,
+    counter::out) is det.
 :- pred ml_gen_info_get_success_cont_stack(ml_gen_info::in,
     stack(success_cont)::out) is det.
 
@@ -1020,6 +1061,10 @@ ml_gen_info_get_aux_var_counter(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_aux_var_counter.
 ml_gen_info_get_cond_var_counter(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_cond_var_counter.
+ml_gen_info_get_packed_args_counter(Info, X) :-
+    X = Info ^ mgi_sub_info ^ mgsi_packed_args_counter.
+ml_gen_info_get_packed_args_map(Info, X) :-
+    X = Info ^ mgi_sub_info ^ mgsi_packed_args_map.
 ml_gen_info_get_success_cont_stack(Info, X) :-
     X = Info ^ mgi_sub_info ^ mgsi_success_cont_stack.
 ml_gen_info_get_func_nest_depth(Info, X) :-
@@ -1038,6 +1083,8 @@ ml_gen_info_get_func_nest_depth(Info, X) :-
 :- pred ml_gen_info_set_aux_var_counter(counter::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_cond_var_counter(counter::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_info_set_packed_args_counter(counter::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_success_cont_stack(stack(success_cont)::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -1124,6 +1171,20 @@ ml_gen_info_set_cond_var_counter(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
     SubInfo = SubInfo0 ^ mgsi_cond_var_counter := X,
     !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_packed_args_counter(X, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    SubInfo = SubInfo0 ^ mgsi_packed_args_counter := X,
+    !Info ^ mgi_sub_info := SubInfo.
+ml_gen_info_set_packed_args_map(X, !Info) :-
+    SubInfo0 = !.Info ^ mgi_sub_info,
+    ( if
+        private_builtin.pointer_equal(X, SubInfo0 ^ mgsi_packed_args_map)
+    then
+        true
+    else
+        SubInfo = SubInfo0 ^ mgsi_packed_args_map := X,
+        !Info ^ mgi_sub_info := SubInfo
+    ).
 ml_gen_info_set_success_cont_stack(X, !Info) :-
     SubInfo0 = !.Info ^ mgi_sub_info,
     SubInfo = SubInfo0 ^ mgsi_success_cont_stack := X,

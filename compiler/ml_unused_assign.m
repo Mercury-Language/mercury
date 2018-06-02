@@ -103,27 +103,42 @@
 %---------------------------------------------------------------------------%
 
 optimize_away_unused_assigns_in_proc_body(ParamLocalVars, SeenAtLabelMap0,
-        !LocalVarDefns, !FuncDefns, Stmts0, Stmts) :-
-    SeenAtBreakSwitch0 = no,
-    SeenAtBreakLoop0 = no,
-    SeenAtContinueLoop0 = no,
-    Info0 = ua_info(SeenAtLabelMap0, SeenAtBreakSwitch0, SeenAtBreakLoop0,
-        SeenAtContinueLoop0, may_use_optimized_code),
+        LocalVarDefns0, LocalVarDefns, FuncDefns0, FuncDefns, Stmts0, Stmts) :-
     % Really, what we want as SeenAfter are the *output* variables.
     % Hovever, including the input and ignored arguments has no effect
     % (XXX except for performance), because those local variables will
     % never be assigned to.
     set.list_to_set(ParamLocalVars, SeenAfter),
+
+    % The procedure body is not inside a switch. Non-tail-recursive procedure
+    % bodies are not inside a loop either, but it is harmless to set
+    % SeenAtBreakLoop0 and SeenAtContinueLoop0 for them. Tail-recursive
+    % procedures are not in a loop *yet*, but they *will* be put into
+    % a loop by our caller after we are done here, and Stmts0 *will* contain
+    % continue statements to implement self-tail-calls, so for them, we *have*
+    % to set SeenAtBreakLoop0 and SeenAtContinueLoop0 to the parameter list.
+    SeenAtBreakSwitch0 = no,
+    SeenAtBreakLoop0 = yes(SeenAfter),
+    SeenAtContinueLoop0 = yes(SeenAfter),
+    Info0 = ua_info(SeenAtLabelMap0, SeenAtBreakSwitch0, SeenAtBreakLoop0,
+        SeenAtContinueLoop0, may_use_optimized_code),
+
     delete_unused_in_stmts(Stmts0, Stmts1, SeenAfter, SeenBefore0,
         Info0, Info),
-    delete_unused_in_func_defns(!FuncDefns, SeenBefore0, SeenBefore),
+    delete_unused_in_func_defns(FuncDefns0, FuncDefns1,
+        SeenBefore0, SeenBefore),
     OrigOrOpt = Info ^ uai_orig_opt_code,
-    (
+    ( if
         OrigOrOpt = may_use_optimized_code,
-        Stmts = Stmts1,
-        keep_only_seen_local_var_defns(SeenBefore, !LocalVarDefns)
-    ;
-        OrigOrOpt = must_use_original_code,
+        FuncDefns0 = []
+    then
+        keep_only_seen_local_var_defns(SeenBefore, _,
+            LocalVarDefns0, LocalVarDefns),
+        FuncDefns = FuncDefns1,
+        Stmts = Stmts1
+    else
+        LocalVarDefns = LocalVarDefns0,
+        FuncDefns = FuncDefns0,
         Stmts = Stmts0
     ).
 
@@ -166,9 +181,17 @@ delete_unused_in_stmt_return_cord(Stmt0, StmtCord, SeenAfter, SeenBefore,
         Stmt0 = ml_stmt_block(LocalVarDefns0, FuncDefns0, BlockStmts0, Ctxt),
         delete_unused_in_stmts(BlockStmts0, BlockStmts, SeenAfter, SeenBefore0,
             !Info),
-        delete_unused_in_func_defns(FuncDefns0, FuncDefns,
-            SeenBefore0, SeenBefore),
-        keep_only_seen_local_var_defns(SeenBefore,
+        (
+            FuncDefns0 = [_ | _],
+            % XXX ARG_PACK We don't yet handle nested functions correctly.
+            % delete_unused_in_func_defns(FuncDefns0, FuncDefns,
+            %     SeenBefore0, SeenBefore1),
+            !Info ^ uai_orig_opt_code := must_use_original_code
+        ;
+            FuncDefns0 = []
+        ),
+        FuncDefns = FuncDefns0,
+        keep_only_seen_local_var_defns(SeenBefore0, SeenBefore,
             LocalVarDefns0, LocalVarDefns),
         ( if
             LocalVarDefns = [],
@@ -192,8 +215,6 @@ delete_unused_in_stmt_return_cord(Stmt0, StmtCord, SeenAfter, SeenBefore,
         delete_unused_in_stmt(BodyStmt0, BodyStmt,
             SeenAfterBody, SeenBeforeBody, !Info),
         see_in_rval(CondRval, SeenBeforeBody, SeenBefore),
-        expect(set.subset(SeenBefore, SeenAfterBody), $pred,
-            "SeenBefore is not subset of SeenAfterBody"),
         !Info ^ uai_seen_at_break_loop := SeenAtBreakLoop0,
         !Info ^ uai_seen_at_continue_loop := SeenAtContinueLoop0,
         Stmt = ml_stmt_while(LoopKind, CondRval, BodyStmt, LoopLocalVars,
@@ -212,7 +233,11 @@ delete_unused_in_stmt_return_cord(Stmt0, StmtCord, SeenAfter, SeenBefore,
             MaybeElseStmt0 = yes(ElseStmt0),
             delete_unused_in_stmt(ElseStmt0, ElseStmt,
                 SeenAfter, SeenBeforeElse, !Info),
-            MaybeElseStmt = yes(ElseStmt),
+            ( if ElseStmt = ml_stmt_block([], [], [], _) then
+                MaybeElseStmt = no
+            else
+                MaybeElseStmt = yes(ElseStmt)
+            ),
             set.union(SeenBeforeThen, SeenBeforeElse, SeenBeforeThenElse)
         ),
         see_in_rval(CondRval, SeenBeforeThenElse, SeenBefore),
@@ -290,8 +315,7 @@ delete_unused_in_stmt_return_cord(Stmt0, StmtCord, SeenAfter, SeenBefore,
         Stmt0 = ml_stmt_call(_Signature, FuncRval, ArgRvals, ReturnValueLvals,
             _CallKind, _Ctxt),
         StmtCord = cord.singleton(Stmt0),
-        list.foldl(unsee_in_top_lval, ReturnValueLvals,
-            SeenAfter, SeenBefore0),
+        list.foldl(see_in_lval, ReturnValueLvals, SeenAfter, SeenBefore0),
         see_in_rval(FuncRval, SeenBefore0, SeenBefore1),
         list.foldl(see_in_rval, ArgRvals, SeenBefore1, SeenBefore)
     ;
@@ -308,7 +332,7 @@ delete_unused_in_stmt_return_cord(Stmt0, StmtCord, SeenAfter, SeenBefore,
         Stmt = ml_stmt_try_commit(RefLval, GoalStmt, CommitStmt, Ctxt),
         StmtCord = cord.singleton(Stmt),
         set.union(SeenBeforeGoal, SeenBeforeCommit, SeenBeforeGoalCommit),
-        unsee_in_top_lval(RefLval, SeenBeforeGoalCommit, SeenBefore)
+        see_in_lval(RefLval, SeenBeforeGoalCommit, SeenBefore)
     ;
         Stmt0 = ml_stmt_do_commit(RefRval, _Ctxt),
         StmtCord = cord.singleton(Stmt0),
@@ -377,7 +401,8 @@ delete_unused_in_atomic_stmt_return_cord(Stmt0, StmtCord,
         ),
         ( if
             TargetLval = ml_local_var(TargetLocalVarName, _Type),
-            not set.member(TargetLocalVarName, SeenAfter)
+            not set.member(TargetLocalVarName, SeenAfter),
+            not TargetLocalVarName = lvn_comp_var(_)
         then
             % We are deleting this statement, because the value it defines
             % (TargetLocalVarName) is unused.
@@ -385,7 +410,7 @@ delete_unused_in_atomic_stmt_return_cord(Stmt0, StmtCord,
             SeenBefore = SeenAfter
         else
             StmtCord = cord.singleton(Stmt0),
-            unsee_in_top_lval(TargetLval, SeenAfter, SeenBefore0),
+            see_in_lval(TargetLval, SeenAfter, SeenBefore0),
             see_in_rval(SourceRval, SeenBefore0, SeenBefore)
         )
     ;
@@ -397,7 +422,7 @@ delete_unused_in_atomic_stmt_return_cord(Stmt0, StmtCord,
             MaybeNumWordsRval, _MaybeCtorId, ArgRvals, _MayUseAtomicAlloc,
             _MaybeAllocId),
         StmtCord = cord.singleton(Stmt0),
-        unsee_in_top_lval(TargetLval, SeenAfter, SeenBefore0),
+        see_in_lval(TargetLval, SeenAfter, SeenBefore0),
         (
             MaybeNumWordsRval = no,
             SeenBefore1 = SeenBefore0
@@ -422,7 +447,7 @@ delete_unused_in_atomic_stmt_return_cord(Stmt0, StmtCord,
         AtomicStmt0 = outline_foreign_proc(_Lang, OutlineArgs, ResultLvals,
             _Code),
         StmtCord = cord.singleton(Stmt0),
-        list.foldl(unsee_in_top_lval, ResultLvals, SeenAfter, SeenBefore0),
+        list.foldl(see_in_lval, ResultLvals, SeenAfter, SeenBefore0),
         list.foldl(see_in_outline_arg, OutlineArgs, SeenBefore0, SeenBefore)
     ).
 
@@ -476,17 +501,39 @@ delete_unused_in_func_defn(FuncDefn0, FuncDefn, SeenBefore) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred keep_only_seen_local_var_defns(seen_set::in,
+    % keep_only_seen_local_var_defns(SeenBefore0, SeenBefore,
+    %   LocalVarDefns0, LocalVarDefns):
+    %
+    % Compute LocalVarDefns by deleting from LocalVarDefns0 all the definitions
+    % of variable that do NOT occur in SeenBefore. There is no point in
+    % defining a variable if that variable is never used.
+    %
+    % Compute SeenBefore by deleting from SeenBefore0 all the variables
+    % that are defined by LocalVarDefns. Our caller passes us as SeenBefore0
+    % the set of variables that are seen at the point just before the first
+    % statement of a block, and it uses the value of SeenBefore we return
+    % as the set of variables that are seen at the point just before
+    % entry to the block itself. Outside the block, the variables defined
+    % inside the block aren't relevant, and their presence in such seen_sets
+    % misleads some sanity checks.
+    %
+:- pred keep_only_seen_local_var_defns(seen_set::in, seen_set::out,
     list(mlds_local_var_defn)::in, list(mlds_local_var_defn)::out) is det.
 
-keep_only_seen_local_var_defns(SeenBefore, !LocalVarDefns) :-
-    list.filter(defined_var_was_seen(SeenBefore), !LocalVarDefns).
-
-:- pred defined_var_was_seen(seen_set::in, mlds_local_var_defn::in) is semidet.
-
-defined_var_was_seen(SeenBefore, LocalVarDefn) :-
-    LocalVarName = LocalVarDefn ^ mlvd_name,
-    set.contains(SeenBefore, LocalVarName).
+keep_only_seen_local_var_defns(!SeenBefore, [], []).
+keep_only_seen_local_var_defns(!SeenBefore,
+        [HeadLocalVarDefn0 | TailLocalVarDefns0], LocalVarDefns) :-
+    LocalVarName = HeadLocalVarDefn0 ^ mlvd_name,
+    ( if set.remove(LocalVarName, !SeenBefore) then
+        % LocalVarName was in the initial SeenBefore; keep it.
+        keep_only_seen_local_var_defns(!SeenBefore,
+            TailLocalVarDefns0, TailLocalVarDefns),
+        LocalVarDefns = [HeadLocalVarDefn0 | TailLocalVarDefns]
+    else
+        % LocalVarName was NOT in the initial SeenBefore; delete it.
+        keep_only_seen_local_var_defns(!SeenBefore,
+            TailLocalVarDefns0, LocalVarDefns)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -547,7 +594,7 @@ see_in_target_component(Component, !Seen) :-
         see_in_rval(Rval, !Seen)
     ;
         Component = target_code_output(Lval),
-        unsee_in_top_lval(Lval, !Seen)
+        see_in_lval(Lval, !Seen)
     ).
 
 :- pred see_in_outline_arg(outline_arg::in,
@@ -559,7 +606,7 @@ see_in_outline_arg(OutlineArg, !Seen) :-
         see_in_rval(Rval, !Seen)
     ;
         OutlineArg = ola_out(_Type, _Name, Lval),
-        unsee_in_top_lval(Lval, !Seen)
+        see_in_lval(Lval, !Seen)
     ;
         OutlineArg = ola_unused
     ).
@@ -632,29 +679,6 @@ see_in_lval(Lval, !Seen) :-
         ( Lval = ml_target_global_var_ref(_)
         ; Lval = ml_global_var(_, _)
         )
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % Unrecord that we have seen a use of the given lval, because
-    % we have just seen its *definition*.
-    %
-:- pred unsee_in_top_lval(mlds_lval::in, seen_set::in, seen_set::out) is det.
-
-unsee_in_top_lval(Lval, !Seen) :-
-    (
-        ( Lval = ml_field(_, _, _, _, _)
-        ; Lval = ml_mem_ref(_, _)
-        ; Lval = ml_target_global_var_ref(_)
-        ; Lval = ml_global_var(_, _)
-        ),
-        % We don't gather info about uses of these lvals, so there is nothing
-        % to delete. However, any lvals used to *address* Lval are definitely
-        % *used* by the assignment to Lval.
-        see_in_lval(Lval, !Seen)
-    ;
-        Lval = ml_local_var(LocalVarName, _Type),
-        set.delete(LocalVarName, !Seen)
     ).
 
 %---------------------------------------------------------------------------%

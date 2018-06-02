@@ -55,10 +55,21 @@
     % Generate MLDS code for a unification.
     %
 :- pred ml_gen_unification(unification::in, code_model::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
+    % We use values of this type when constructing a compound term.
+    % The first three arguments give an arguments value, its type,
+    % and its position and width in the term being constructed.
+    % The fourth argument is meaningful only when constructing a term
+    % dynamically (i.e. not when constructing it statically); if set to `yes',
+    % it contains the information needed to look up this value, together
+    % with any others packed together with it in a single word, in the
+    % packed_arg_map. As such, it should be set to `yes' only for arguments
+    % whose arg_pos_width is apw_partial_first or apw_partial_shifted.
 :- type mlds_rval_type_and_width
-    --->    rval_type_and_width(mlds_rval, mlds_type, arg_pos_width).
+    --->    rval_type_and_width(mlds_rval, mlds_type, arg_pos_width,
+                maybe(packed_arg_var)).
 
     % ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     %   ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr, HowToConstruct,
@@ -74,7 +85,8 @@
 :- pred ml_gen_new_object(maybe(cons_id)::in, maybe(qual_ctor_id)::in,
     ptag::in, bool::in, prog_var::in, list(mlds_rval_type_and_width)::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
-    how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
+    how_to_construct::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_known_tag_test(Var, TaggedConsId, Expr, !Info):
@@ -162,7 +174,7 @@
 
 %---------------------------------------------------------------------------%
 
-ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
+ml_gen_unification(Unification, CodeModel, Context, Defns, Stmts, !Info) :-
     (
         Unification = assign(TargetVar, SourceVar),
         expect(unify(CodeModel, model_det), $pred, "assign not det"),
@@ -194,7 +206,8 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
             ml_gen_info_set_const_var(TargetVar, GroundTerm, !Info)
         else
             true
-        )
+        ),
+        Defns = []
     ;
         Unification = simple_test(VarA, VarB),
         expect(unify(CodeModel, model_semi), $pred, "simple_test not semidet"),
@@ -213,6 +226,7 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
         ml_gen_var(!.Info, VarB, VarBLval),
         Test = ml_binop(EqualityOp, ml_lval(VarALval), ml_lval(VarBLval)),
         ml_gen_set_success(Test, Context, Stmt, !Info),
+        Defns = [],
         Stmts = [Stmt]
     ;
         Unification = construct(Var, ConsId, Args, ArgModes, HowToConstruct,
@@ -233,7 +247,7 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
                 "term size profiling not yet supported")
         ),
         ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr,
-            HowToConstruct, Context, Stmts, !Info)
+            HowToConstruct, Context, Defns, Stmts, !Info)
     ;
         Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail,
             CanCGC),
@@ -241,12 +255,12 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
             CanFail = can_fail,
             ExpectedCodeModel = model_semi,
             ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
-                UnifyStmts, !Info)
+                Defns, UnifyStmts, !Info)
         ;
             CanFail = cannot_fail,
             ExpectedCodeModel = model_det,
             ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
-                UnifyStmts, !Info)
+                Defns, UnifyStmts, !Info)
         ),
         (
             % Note that we can deallocate a cell even if the unification fails;
@@ -279,11 +293,11 @@ ml_gen_unification(Unification, CodeModel, Context, Stmts, !Info) :-
     %
 :- pred ml_gen_construct(prog_var::in, cons_id::in, list(prog_var)::in,
     list(unify_mode)::in, list(int)::in, how_to_construct::in,
-    prog_context::in, list(mlds_stmt)::out,
+    prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
-        Context, Stmts, !Info) :-
+        Context, Defns, Stmts, !Info) :-
     % Figure out how this cons_id is represented.
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     (
@@ -337,7 +351,8 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
                 ConsTag = direct_arg_tag(_),
                 unexpected($pred, "direct_arg_tag: arity != 1")
             )
-        )
+        ),
+        Defns = []
     ;
         % Ordinary compound terms.
         (
@@ -352,13 +367,14 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
             MaybeStag = yes({Stag, AddedBy})
         ),
         UsesBaseClass = ml_tag_uses_base_class(ConsTag),
-        ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
-            ArgVars, ArgModes, TakeAddr, HowToConstruct, Context, Stmts, !Info)
+        ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
+            ArgVars, ArgModes, TakeAddr, HowToConstruct, Context,
+            Defns, Stmts, !Info)
     ;
         % Lambda expressions.
         ConsTag = closure_tag(PredId, ProcId, _EvalMethod),
         ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
-            Context, Stmts, !Info)
+            Context, Defns, Stmts, !Info)
     ;
         ( ConsTag = type_info_const_tag(ConstNum)
         ; ConsTag = typeclass_info_const_tag(ConstNum)
@@ -373,6 +389,7 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
         GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
         ml_gen_info_set_const_var(Var, GroundTerm, !Info),
+        Defns = [],
         Stmt = ml_gen_assign(VarLval, Rval, Context),
         Stmts = [Stmt]
     ;
@@ -456,7 +473,8 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         ;
             ArgVars = [_ | _],
             unexpected($pred, "bad constant term")
-        )
+        ),
+        Defns = []
     ).
 
 :- pred ml_gen_info_lookup_const_var_rval(ml_gen_info::in, prog_var::in,
@@ -470,14 +488,16 @@ ml_gen_info_lookup_const_var_rval(Info, Var, Rval) :-
 
     % Generate code to construct a new object.
     %
-:- pred ml_gen_compound(cons_id::in,
+:- pred ml_gen_construct_compound(cons_id::in,
     ptag::in, maybe({sectag, sectag_added_by})::in, tag_uses_base_class::in,
     prog_var::in, list(prog_var)::in, list(unify_mode)::in, list(int)::in,
-    how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
+    how_to_construct::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
-        TakeAddr, HowToConstruct, Context, Stmts, !Info) :-
+ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
+        ArgVars, ArgModes, TakeAddr, HowToConstruct, Context,
+        Defns, Stmts, !Info) :-
     ml_gen_info_get_target(!.Info, CompilationTarget),
 
     % Figure out which class name to construct.
@@ -507,7 +527,7 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
             StagRval = ml_box(StagType0, StagRval0),
             StagType = mlds_generic_type,
             ExtraRvalsTypesWidths = [rval_type_and_width(StagRval, StagType,
-                apw_full(arg_only_offset(0), cell_offset(0)))]
+                apw_full(arg_only_offset(0), cell_offset(0)), no)]
         ;
             UsesConstructors = yes,
             % Secondary tag is implicitly initialised by the constructor.
@@ -524,11 +544,11 @@ ml_gen_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var, ArgVars, ArgModes,
     ),
     ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSecTag,
         Var, ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
-        HowToConstruct, Context, Stmts, !Info).
+        HowToConstruct, Context, Defns, Stmts, !Info).
 
 ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
         ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
-        HowToConstruct, Context, Stmts, !Info) :-
+        HowToConstruct, Context, Defns, Stmts, !Info) :-
     (
         MaybeConsId = yes(ConsId),
         ConsIdOrClosure = ordinary_cons_id(ConsId)
@@ -542,18 +562,21 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
         HowToConstruct = construct_dynamically,
         ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName,
             Ptag, ExplicitSecTag, Var, ExtraRvalsTypesWidths,
-            ArgVars, ArgModes, TakeAddr, Context, Stmts, !Info)
+            ArgVars, ArgModes, TakeAddr, Context, Stmts, !Info),
+        Defns = []
     ;
         HowToConstruct = construct_statically,
         expect(unify(TakeAddr, []), $pred,
             "cannot take address of static object's field"),
         ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
-            Var, ExtraRvalsTypesWidths, ArgVars, Context, Stmts, !Info)
+            Var, ExtraRvalsTypesWidths, ArgVars, Context, Stmts, !Info),
+        Defns = []
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
             Ptag, ExplicitSecTag, Var, ExtraRvalsTypesWidths,
-            ArgVars, ArgModes, TakeAddr, CellToReuse, Context, Stmts, !Info)
+            ArgVars, ArgModes, TakeAddr, CellToReuse, Context,
+            Defns, Stmts, !Info)
     ;
         HowToConstruct = construct_in_region(_RegVar),
         sorry($pred, "construct_in_region NYI")
@@ -590,7 +613,7 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
         TakeAddrInfos, ArgRvalsTypesWidths0, MayUseAtomic0, MayUseAtomic),
 
     % Replace double-word and packed arguments by uniform single word rvals.
-    ml_expand_or_pack_into_words(ArgRvalsTypesWidths0,
+    ml_expand_or_pack_into_words(!.Info, ArgRvalsTypesWidths0,
         PackedArgRvalsTypesWidths),
 
     % Add the extra rvals to the start.
@@ -628,7 +651,7 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
     % for this term from the heap. The `new_object' statement will also
     % initialize the fields of this term with the specified arguments.
     ml_gen_var(!.Info, Var, VarLval),
-    ConvFunc = (func(rval_type_and_width(Rv, T, _)) = ml_typed_rval(Rv, T)),
+    ConvFunc = (func(rval_type_and_width(Rv, T, _, _)) = ml_typed_rval(Rv, T)),
     ArgRvalsTypes = list.map(ConvFunc, ArgRvalsTypesWidths),
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     MakeNewObject = new_object(VarLval, Ptag, ExplicitSecTag, MLDS_VarType,
@@ -689,7 +712,7 @@ ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
             MaybeCtorName = no,
             UsesBaseClass = tag_uses_base_class
         ),
-        ExtraArgRvals = list.map((func(rval_type_and_width(Rv, _, _)) = Rv),
+        ExtraArgRvals = list.map((func(rval_type_and_width(Rv, _, _, _)) = Rv),
             ExtraArgRvalsTypesWidths),
         ml_gen_info_get_target(!.Info, Target),
         ml_gen_type(!.Info, VarType, MLDS_VarType),
@@ -712,11 +735,12 @@ ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
     maybe(qual_ctor_id)::in, ptag::in, bool::in, prog_var::in,
     list(mlds_rval_type_and_width)::in, list(prog_var)::in,
     list(unify_mode)::in, list(int)::in, cell_to_reuse::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
         Ptag, ExplicitSecTag, Var, ExtraRvalsTypesWidths, ArgVars, ArgModes,
-        TakeAddr, CellToReuse, Context, Stmts, !Info) :-
+        TakeAddr, CellToReuse, Context, Defns, Stmts, !Info) :-
     % NOTE: if it is ever used, NeedsUpdates needs to be modified to take into
     % account argument packing, as in unify_gen.m.
     CellToReuse = cell_to_reuse(ReuseVar, ReuseConsIds, _NeedsUpdates),
@@ -781,7 +805,7 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     % may already contain the correct values.
     ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, ArgModes,
         InitOffSet, ArgNum, Context, TakeAddr, TakeAddrInfos,
-        FieldStmts, !Info),
+        FieldDefns, FieldStmts, !Info),
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_VarType,
         MaybePtag, Context, !.Info, TakeAddrStmts),
     ThenStmts = ExtraRvalStmts ++ FieldStmts ++ TakeAddrStmts,
@@ -791,7 +815,8 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     % allocated, then fall back to dynamic allocation.
     ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSecTag, Var,
         ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
-        construct_dynamically, Context, DynamicStmts, !Info),
+        construct_dynamically, Context, DynamicDefns, DynamicStmts, !Info),
+    Defns = FieldDefns ++ DynamicDefns,
     ElseStmt = ml_stmt_block([], [], DynamicStmts, Context),
     IfStmt = ml_stmt_if_then_else(ml_lval(VarLval), ThenStmt, yes(ElseStmt),
         Context),
@@ -994,7 +1019,7 @@ ml_gen_box_or_unbox_const_rval_list_hld(Info, Context,
     ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context,
         ArgType, FieldType, ArgRval, FieldRval, !GlobalData),
     FieldRvalTypeWidth =
-        rval_type_and_width(FieldRval, mlds_generic_type, ConsArgPosWidth),
+        rval_type_and_width(FieldRval, mlds_generic_type, ConsArgPosWidth, no),
     ml_gen_box_or_unbox_const_rval_list_hld(Info, Context,
         ArgVarsTypesWidths, FieldRvalsTypesWidths, !GlobalData).
 
@@ -1042,7 +1067,7 @@ ml_gen_box_const_rval_list_lld(Info, Context,
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval,
         BoxedRval, !GlobalData),
     BoxedRvalTypeWidth =
-        rval_type_and_width(BoxedRval, mlds_generic_type, ArgPosWidth),
+        rval_type_and_width(BoxedRval, mlds_generic_type, ArgPosWidth, no),
     ml_gen_box_const_rval_list_lld(Info, Context, ArgVarsTypesWidths,
         BoxedRvalsTypesWidths, !GlobalData).
 
@@ -1054,13 +1079,15 @@ ml_gen_box_extra_const_rval_list_lld(_, _, [], [], !GlobalData).
 ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
         [RvalTypeWidth | RvalsTypesWidths],
         [BoxedRvalTypeWidth | BoxedRvalsTypesWidths], !GlobalData) :-
-    RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, PosWidth),
+    RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, PosWidth,
+        MaybePackedArgVar),
     Width = arg_pos_width_to_width_only(PosWidth),
     % Extras are always a single word.
     expect(unify(Width, aw_full_word), $pred, "Width != aw_full_word"),
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width,
         Rval, BoxedRval, !GlobalData),
-    BoxedRvalTypeWidth = rval_type_and_width(BoxedRval, MLDS_Type, PosWidth),
+    BoxedRvalTypeWidth = rval_type_and_width(BoxedRval, MLDS_Type, PosWidth,
+        MaybePackedArgVar),
     ml_gen_box_extra_const_rval_list_lld(ModuleInfo, Context,
         RvalsTypesWidths, BoxedRvalsTypesWidths, !GlobalData).
 
@@ -1185,7 +1212,8 @@ ml_gen_dynamic_construct_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
         expect(unify(ArgWidth, aw_full_word), $pred,
             "taking address of non word-sized argument"),
         Rval = ml_const(mlconst_null(MLDS_Type)),
-        RvalMLDSTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgPosWidth),
+        RvalMLDSTypeWidth =
+            rval_type_and_width(Rval, MLDS_Type, ArgPosWidth, no),
         % XXX ARG_PACK This call, the AllArgVarsTypesWidths and NumExtraArgs
         % arguments, and the ml_calc_field_offset function should not be needed
         % when we switch to taking offsets *only* from arg_pos_widths.
@@ -1218,7 +1246,26 @@ ml_gen_dynamic_construct_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
         else
             Rval = ml_const(mlconst_null(MLDS_Type))
         ),
-        RvalMLDSTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgPosWidth),
+        (
+            (
+                ArgPosWidth = apw_partial_first(_, _, NumBits, _, Fill),
+                Shift = arg_shift(0)
+            ;
+                ArgPosWidth =
+                    apw_partial_shifted(_, _, Shift, NumBits, _, Fill)
+            ),
+            PackedArgVar = packed_arg_var(ArgVar, Shift, NumBits, Fill),
+            MaybePackedArgVar = yes(PackedArgVar)
+        ;
+            ( ArgPosWidth = apw_full(_, _)
+            ; ArgPosWidth = apw_double(_, _, _)
+            ; ArgPosWidth = apw_none_shifted(_, _)
+            ; ArgPosWidth = apw_none_nowhere
+            ),
+            MaybePackedArgVar = no
+        ),
+        RvalMLDSTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgPosWidth,
+            MaybePackedArgVar),
         ml_gen_dynamic_construct_args(Info, ArgVarsTypesWidths, ArgModes,
             NumExtraArgs, CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths,
             !.TakeAddr, TakeAddrInfos, TailRvalsMLDSTypesWidths,
@@ -1256,8 +1303,8 @@ ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
     expect(unify(HighLevelData, no), $pred, "high-level data"),
 
     FieldId = ml_field_offset(ml_const(mlconst_int(CurOffset))),
-    ExtraRvalTypeWidth =
-        rval_type_and_width(ExtraRval, ExtraType, ArgPosWidth),
+    ExtraRvalTypeWidth = rval_type_and_width(ExtraRval, ExtraType,
+        ArgPosWidth, _MaybePackedArgVar),
     expect(is_apw_full(ArgPosWidth), $pred,
         "ArgPosWidth != apw_full(_)"),
     NextOffset = CurOffset + 1,
@@ -1282,10 +1329,12 @@ ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
     %       ...
     %
 :- pred ml_gen_det_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, prog_context::in, list(mlds_stmt)::out,
+    list(unify_mode)::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
+ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
+        Defns, Stmts, !Info) :-
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     (
         ( ConsTag = string_tag(_String)
@@ -1297,6 +1346,7 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
         ),
         % For constants, if the deconstruction is det, then we already know
         % the value of the constant, so Stmts = [].
+        Defns = [],
         Stmts = []
     ;
         ( ConsTag = closure_tag(_, _, _)
@@ -1317,7 +1367,8 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
             Modes = [Mode]
         then
             ml_gen_dynamic_deconstruct_no_tag(!.Info, Mode, ArgVar, Var,
-                Context, Stmts)
+                Context, Stmts),
+            Defns = []
         else
             unexpected($pred, "no_tag: arity != 1")
         )
@@ -1328,7 +1379,8 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
             Modes = [Mode]
         then
             ml_gen_dynamic_deconstruct_direct_arg(!.Info, Ptag, Mode,
-                ArgVar, Var, Context, Stmts)
+                ArgVar, Var, Context, Stmts),
+            Defns = []
         else
             unexpected($pred, "direct_arg_tag: arity != 1")
         )
@@ -1344,7 +1396,7 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context, Stmts, !Info) :-
         ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
             ArgVarRepns),
         ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
-            InitOffSet, ArgNum, Context, [], _, Stmts, !Info)
+            InitOffSet, ArgNum, Context, [], _, Defns, Stmts, !Info)
     ).
 
     % Calculate the integer offset used to reference the first field of a
@@ -1542,51 +1594,235 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, FieldGen) :-
 :- pred ml_gen_dynamic_deconstruct_args(field_gen,
     assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
     field_offset, int, prog_context, list(int), list(take_addr_info),
-    list(mlds_stmt), ml_gen_info, ml_gen_info).
+    list(mlds_local_var_defn), list(mlds_stmt), ml_gen_info, ml_gen_info).
 :- mode ml_gen_dynamic_deconstruct_args(in, in, in, in, in, in,
-    in(bound([])), out, out, in, out) is det.
+    in(bound([])), out, out, out, in, out) is det.
 :- mode ml_gen_dynamic_deconstruct_args(in, in, in, in, in, in,
-    in, out, out, in, out) is det.
+    in, out, out, out, in, out) is det.
 
-ml_gen_dynamic_deconstruct_args(_, [], [], _, _, _, TakeAddr, [], [], !Info) :-
+ml_gen_dynamic_deconstruct_args(_, [], [], _, _, _, TakeAddr,
+        [], [], [], !Info) :-
     expect(unify(TakeAddr, []), $pred, "TakeAddr != []").
-ml_gen_dynamic_deconstruct_args(_, [], [_ | _], _, _, _, _, _, _, !Info) :-
+ml_gen_dynamic_deconstruct_args(_, [], [_ | _], _, _, _, _, _, _, _, !Info) :-
     unexpected($pred, "length mismatch").
-ml_gen_dynamic_deconstruct_args(_, [_ | _], [], _, _, _, _, _, _, !Info) :-
+ml_gen_dynamic_deconstruct_args(_, [_ | _], [], _, _, _, _, _, _, _, !Info) :-
     unexpected($pred, "length mismatch").
 ml_gen_dynamic_deconstruct_args(FieldGen,
         [ArgVarRepn | ArgVarRepns], [Mode | Modes], CurOffset, CurArgNum,
-        Context, TakeAddr, TakeAddrInfos, Stmts, !Info) :-
-    ml_next_field_offset(ArgVarRepn, ArgVarRepns, CurOffset, NextOffset),
+        Context, TakeAddr, TakeAddrInfos, Defns, Stmts, !Info) :-
+    ArgVarRepn = ArgVar - CtorArgRepn,
+    ml_next_field_offset(CtorArgRepn, ArgVarRepns, CurOffset, NextOffset),
     NextArgNum = CurArgNum + 1,
-    ( if TakeAddr = [CurArgNum | TailTakeAddr] then
-        ml_gen_take_addr_of_arg(!.Info, ArgVarRepn, CurOffset, TakeAddrInfo),
+    FieldPosWidth = CtorArgRepn ^ car_pos_width,
+    ( if
+        TakeAddr = [CurArgNum | TailTakeAddr]
+    then
+        expect(is_apw_full(FieldPosWidth), $pred,
+            "taking address of something other than a full word"),
+        ml_gen_take_addr_of_arg(!.Info, ArgVar, CtorArgRepn,
+            CurOffset, TakeAddrInfo),
         ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
             NextOffset, NextArgNum, Context, TailTakeAddr, TakeAddrInfosTail,
-            Stmts, !Info),
+            Defns, Stmts, !Info),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
+    else if
+        FieldPosWidth = apw_partial_first(_, _, _, _, _),
+        % Without field_via_offset, we have no way to get a whole word
+        % from a memory cell at once.
+        FieldGen = field_gen(_MaybePtag, _AddrRval, _AddrType, FieldVia),
+        FieldVia = field_via_offset
+    then
+        ml_gen_dynamic_deconstruct_args_in_word(FieldGen,
+            ArgVar, CtorArgRepn, Mode,
+            ArgVarRepns, Modes, LeftOverArgVarRepns, LeftOverModes,
+            CurOffset, LeftOverOffset, CurArgNum, LeftOverArgNum,
+            Context, TakeAddr, HeadDefns, HeadStmts, !Info),
+        ml_gen_dynamic_deconstruct_args(FieldGen,
+            LeftOverArgVarRepns, LeftOverModes, LeftOverOffset, LeftOverArgNum,
+            Context, TakeAddr, TakeAddrInfos, TailDefns, TailStmts, !Info),
+        Defns = HeadDefns ++ TailDefns,
+        Stmts = HeadStmts ++ TailStmts
     else
-        ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVarRepn, Mode,
-            CurOffset, CurArgNum, Context, HeadStmts, !Info),
+        ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
+            CurOffset, CurArgNum, Context, _PackedArgVars, HeadStmts, !Info),
         ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
             NextOffset, NextArgNum, Context, TakeAddr, TakeAddrInfos,
-            TailStmts, !Info),
+            Defns, TailStmts, !Info),
         Stmts = HeadStmts ++ TailStmts
     ).
 
+:- pred ml_gen_dynamic_deconstruct_args_in_word(field_gen,
+    prog_var, constructor_arg_repn, unify_mode,
+    assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
+    assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
+    field_offset, field_offset, int, int, prog_context, list(int),
+    list(mlds_local_var_defn), list(mlds_stmt), ml_gen_info, ml_gen_info).
+:- mode ml_gen_dynamic_deconstruct_args_in_word(in, in, in, in, in, in,
+    out, out, in, out, in, out, in, in(bound([])), out, out, in, out) is det.
+:- mode ml_gen_dynamic_deconstruct_args_in_word(in, in, in, in, in, in,
+    out, out, in, out, in, out, in, in, out, out, in, out) is det.
+
+ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, Mode,
+        ArgVarRepns, Modes, LeftOverArgVarRepns, LeftOverModes,
+        CurOffset, LeftOverOffset, CurArgNum, LeftOverArgNum,
+        Context, TakeAddr, Defns, Stmts, !Info) :-
+    ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
+        CurOffset, CurArgNum, Context, HeadPackedArgVars, HeadStmts, !Info),
+    (
+        HeadPackedArgVars = [],
+        AllPartialsRight0 = not_all_partials_assign_right
+    ;
+        HeadPackedArgVars = [_ | _],
+        AllPartialsRight0 = all_partials_assign_right
+    ),
+    ml_next_field_offset(CtorArgRepn, ArgVarRepns, CurOffset, NextOffset),
+    NextArgNum = CurArgNum + 1,
+    ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
+        ArgVarRepns, Modes, LeftOverArgVarRepns, LeftOverModes,
+        NextOffset, LeftOverOffset, NextArgNum, LeftOverArgNum,
+        Context, TakeAddr, AllPartialsRight0, AllPartialsRight,
+        TailPackedArgVars, TailStmts, !Info),
+    % XXX ARG_PACK
+    % We could get ml_gen_dynamic_deconstruct_args_in_word_loop to tell us
+    % when all the args in the word assign left, as in that case,
+    % we could generate better code than the one generates by
+    % ml_gen_dynamic_deconstruct_arg_unify_assign_left.
+    (
+        AllPartialsRight = not_all_partials_assign_right,
+        Defns = [],
+        Stmts = HeadStmts ++ TailStmts
+    ;
+        AllPartialsRight = all_partials_assign_right,
+        PackedArgVars = HeadPackedArgVars ++ TailPackedArgVars,
+        ml_gen_info_new_packed_args_var(WordCompVar, !Info),
+
+        WordVar = lvn_comp_var(WordCompVar),
+        UnsignedType= mlds_int_type_uint,
+        WordVarDefn = mlds_local_var_defn(WordVar, Context, UnsignedType,
+            no_initializer, gc_no_stmt),
+        Defns = [WordVarDefn],
+        FieldPosWidth = CtorArgRepn ^ car_pos_width,
+        ( if FieldPosWidth = apw_partial_first(_, CellOffset, _, _, _) then
+            CurOffset = offset(CurOffsetInt),
+            CellOffset = cell_offset(CellOffsetInt),
+            expect(unify(CurOffsetInt, CellOffsetInt), $pred,
+                "CurOffset != CellOffset")
+        else
+            unexpected($pred, "no apw_partial_first")
+        ),
+
+        FieldId = ml_field_offset(ml_const(mlconst_int(CellOffsetInt))),
+        FieldGen = field_gen(MaybePtag, AddrRval, AddrType, _),
+        FieldLval = ml_field(MaybePtag, AddrRval, FieldId,
+            mlds_generic_type, AddrType),
+        CastFieldRval = ml_cast(UnsignedType, ml_lval(FieldLval)),
+
+        WordVarLval = ml_local_var(WordVar, UnsignedType),
+        WordAssignStmt = ml_gen_assign(WordVarLval, CastFieldRval, Context),
+        Stmts = [WordAssignStmt | HeadStmts] ++ TailStmts,
+
+        ml_gen_info_get_packed_args_map(!.Info, PackedArgsMap0),
+        % Since this unification *defines* the variables in PackedArgVars,
+        % none of them could have defined by another deconstruct unification
+        % earlier on this path.
+        map.det_insert(PackedArgVars, ml_lval(WordVarLval),
+            PackedArgsMap0, PackedArgsMap),
+        ml_gen_info_set_packed_args_map(PackedArgsMap, !Info)
+    ).
+
+:- type do_all_partials_assign_right
+    --->    not_all_partials_assign_right
+    ;       all_partials_assign_right.
+
+:- pred ml_gen_dynamic_deconstruct_args_in_word_loop(field_gen,
+    assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
+    assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
+    field_offset, field_offset, int, int, prog_context, list(int),
+    do_all_partials_assign_right, do_all_partials_assign_right,
+    list(packed_arg_var), list(mlds_stmt), ml_gen_info, ml_gen_info).
+:- mode ml_gen_dynamic_deconstruct_args_in_word_loop(in, in, in, out, out,
+    in, out, in, out, in, in(bound([])), in, out, out, out, in, out) is det.
+:- mode ml_gen_dynamic_deconstruct_args_in_word_loop(in, in, in, out, out,
+    in, out, in, out, in, in, in, out, out, out, in, out) is det.
+
+ml_gen_dynamic_deconstruct_args_in_word_loop(_FieldGen, [], [], [], [],
+        CurOffset, LeftOverOffset, CurArgNum, LeftOverArgNum,
+        _Context, _TakeAddr, !AllPartialsRight, [], [], !Info) :-
+    LeftOverOffset = CurOffset,
+    LeftOverArgNum = CurArgNum.
+ml_gen_dynamic_deconstruct_args_in_word_loop(_FieldGen, [], [_ | _], _, _,
+        _, _, _, _, _, _, !AllPartialsRight, _, _, !Info) :-
+    unexpected($pred, "length mismatch").
+ml_gen_dynamic_deconstruct_args_in_word_loop(_FieldGen, [_ | _], [], _, _,
+        _, _, _, _, _, _, !AllPartialsRight, _, _, !Info) :-
+    unexpected($pred, "length mismatch").
+ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
+        [ArgVarRepn | ArgVarRepns], [Mode | Modes],
+        LeftOverArgVarRepns, LeftOverModes,
+        CurOffset, LeftOverOffset, CurArgNum, LeftOverArgNum,
+        Context, TakeAddr, !AllPartialsRight,
+        PackedArgVars, Stmts, !Info) :-
+    ArgVarRepn = ArgVar - CtorArgRepn,
+    FieldPosWidth = CtorArgRepn ^ car_pos_width,
+    (
+        (
+            FieldPosWidth = apw_partial_shifted(_, _, _, _, _, _),
+            ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
+                CurOffset, CurArgNum, Context,
+                HeadPackedArgVars, HeadStmts, !Info),
+            (
+                HeadPackedArgVars = [],
+                !:AllPartialsRight = not_all_partials_assign_right
+            ;
+                HeadPackedArgVars = [_ | _]
+            )
+        ;
+            FieldPosWidth = apw_none_shifted(_, _),
+            ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
+                CurOffset, CurArgNum, Context,
+                HeadPackedArgVars, HeadStmts, !Info),
+            expect(unify(HeadPackedArgVars, []), $pred,
+                "HeadPackedArgVars != [] for apw_none_shifted")
+        ),
+        ( if TakeAddr = [CurArgNum | _TailTakeAddr] then
+            unexpected($pred,
+                "taking address of something other than a full word")
+        else
+            true
+        ),
+        ml_next_field_offset(CtorArgRepn, ArgVarRepns, CurOffset, NextOffset),
+        NextArgNum = CurArgNum + 1,
+        ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
+            ArgVarRepns, Modes, LeftOverArgVarRepns, LeftOverModes,
+            NextOffset, LeftOverOffset, NextArgNum, LeftOverArgNum,
+            Context, TakeAddr, !AllPartialsRight,
+            TailPackedArgVars, TailStmts, !Info),
+        PackedArgVars = HeadPackedArgVars ++ TailPackedArgVars,
+        Stmts = HeadStmts ++ TailStmts
+    ;
+        ( FieldPosWidth = apw_full(_, _)
+        ; FieldPosWidth = apw_double(_, _, _)
+        ; FieldPosWidth = apw_partial_first(_, _, _, _, _)
+        ; FieldPosWidth = apw_none_nowhere
+        ),
+        LeftOverArgVarRepns = [ArgVarRepn | ArgVarRepns],
+        LeftOverModes = [Mode | Modes],
+        LeftOverOffset = CurOffset,
+        LeftOverArgNum = CurArgNum,
+        PackedArgVars = [],
+        Stmts = []
+    ).
+
 :- pred ml_gen_take_addr_of_arg(ml_gen_info::in,
-    pair(prog_var, constructor_arg_repn)::in, field_offset::in,
+    prog_var::in, constructor_arg_repn::in, field_offset::in,
     take_addr_info::out) is det.
 
-ml_gen_take_addr_of_arg(Info, ArgVarRepn, CurOffset, TakeAddrInfo) :-
-    ArgVarRepn = ArgVar - CtorArgRepn,
+ml_gen_take_addr_of_arg(Info, ArgVar, CtorArgRepn, CurOffset, TakeAddrInfo) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_info_get_high_level_data(Info, HighLevelData),
     FieldType = CtorArgRepn ^ car_type,
     FieldPosWidth = CtorArgRepn ^ car_pos_width,
     FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
-    expect(unify(FieldWidth, aw_full_word), $pred,
-        "taking address of something other than a full word"),
     ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
         BoxedFieldType),
     ml_gen_type(Info, FieldType, MLDS_FieldType),
@@ -1595,12 +1831,13 @@ ml_gen_take_addr_of_arg(Info, ArgVarRepn, CurOffset, TakeAddrInfo) :-
         MLDS_BoxedFieldType).
 
 :- pred ml_gen_dynamic_deconstruct_arg(field_gen::in,
-    pair(prog_var, constructor_arg_repn)::in, unify_mode::in,
-    field_offset::in, int::in, prog_context::in, list(mlds_stmt)::out,
+    prog_var::in, constructor_arg_repn::in, unify_mode::in,
+    field_offset::in, int::in, prog_context::in,
+    list(packed_arg_var)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar - CtorArgRepn, Mode,
-        Offset, ArgNum, Context, Stmts, !Info) :-
+ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
+        Offset, ArgNum, Context, PackedArgVars, Stmts, !Info) :-
     FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia),
     (
         FieldVia = field_via_offset,
@@ -1652,10 +1889,11 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar - CtorArgRepn, Mode,
     (
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
-            ArgLval, ArgType, FieldLval, FieldType, FieldPosWidth,
-            Context, Stmts)
+            ArgVar, ArgLval, ArgType, FieldLval, FieldType, FieldPosWidth,
+            Context, PackedArgVars, Stmts)
     ;
         Dir = assign_nondummy_left,
+        PackedArgVars = [],
         ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo,
             HighLevelData, ArgLval, ArgType, FieldLval, FieldType,
             FieldPosWidth, Context, Stmts)
@@ -1664,17 +1902,22 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar - CtorArgRepn, Mode,
         ; Dir = assign_dummy
         ),
         % The unification has no effect.
+        PackedArgVars = [],
         Stmts = []
     ).
 
 :- pred ml_gen_dynamic_deconstruct_arg_unify_assign_right(module_info::in,
-    mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
-    arg_pos_width::in, prog_context::in, list(mlds_stmt)::out) is det.
+    prog_var::in, mlds_lval::in, mer_type::in, mlds_lval::in, mer_type::in,
+    arg_pos_width::in, prog_context::in,
+    list(packed_arg_var)::out, list(mlds_stmt)::out) is det.
 
-ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo, ArgLval, ArgType,
-        FieldLval, FieldType, FieldPosWidth, Context, Stmts) :-
+% XXX ARG_PACK: Move the Arg* arguments to the right of the Field* arguments.
+ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
+        ArgVar, ArgLval, ArgType, FieldLval, FieldType, FieldPosWidth,
+        Context, PackedArgVars, Stmts) :-
     (
         FieldPosWidth = apw_double(_, _, _),
+        PackedArgVars = [],
         ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
             FieldRval = ml_binop(float_from_dword,
                 ml_lval(FieldLvalA), ml_lval(FieldLvalB))
@@ -1686,17 +1929,21 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo, ArgLval, ArgType,
         Stmts = [Stmt]
     ;
         FieldPosWidth = apw_full(_, _),
+        PackedArgVars = [],
         ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
             bp_native_if_possible, ml_lval(FieldLval), FieldRval),
         Stmt = ml_gen_assign(ArgLval, FieldRval, Context),
         Stmts = [Stmt]
     ;
         (
-            FieldPosWidth = apw_partial_first(_, _, _, Mask, Fill),
+            FieldPosWidth = apw_partial_first(_, _, NumBits, Mask, Fill),
             Shift = arg_shift(0)
         ;
-            FieldPosWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
+            FieldPosWidth = apw_partial_shifted(_, _, Shift, NumBits, Mask,
+                Fill)
         ),
+        PackedArgVar = packed_arg_var(ArgVar, Shift, NumBits, Fill),
+        PackedArgVars = [PackedArgVar],
         UnsignedMLDSType = mlds_int_type_uint,
         FieldRval = ml_cast(UnsignedMLDSType, ml_lval(FieldLval)),
         Mask = arg_mask(MaskInt),
@@ -1721,6 +1968,7 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo, ArgLval, ArgType,
         ; FieldPosWidth = apw_none_shifted(_, _)
         ),
         % Generate no code.
+        PackedArgVars = [],
         Stmts = []
     ).
 
@@ -1885,8 +2133,8 @@ ml_gen_dynamic_deconstruct_no_tag(Info, Mode, ArgVar, Var, Context, Stmts) :-
     (
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
-            ArgLval, ArgType, VarLval, VarType, FieldPosWidth,
-            Context, Stmts)
+            ArgVar, ArgLval, ArgType, VarLval, VarType, FieldPosWidth,
+            Context, _PackedArgVars, Stmts)
     ;
         Dir = assign_nondummy_left,
         ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo,
@@ -1917,16 +2165,17 @@ ml_gen_dynamic_deconstruct_no_tag(Info, Mode, ArgVar, Var, Context, Stmts) :-
     %       }
     %
 :- pred ml_gen_semi_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, prog_context::in, list(mlds_stmt)::out,
+    list(unify_mode)::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_semi_deconstruct(Var, ConsId, ArgVars, ArgModes, Context,
-        Stmts, !Info) :-
+        Defns, Stmts, !Info) :-
     ml_gen_tag_test(Var, ConsId, TagTestExpr, !Info),
     ml_gen_set_success(TagTestExpr, Context, SetTagTestResult, !Info),
     ml_gen_test_success(SucceededExpr, !Info),
     ml_gen_det_deconstruct(Var, ConsId, ArgVars, ArgModes, Context,
-        GetArgsStmts, !Info),
+        Defns, GetArgsStmts, !Info),
     (
         GetArgsStmts = [],
         Stmts = [SetTagTestResult]
@@ -2461,7 +2710,7 @@ construct_ground_term_initializer_hld(ModuleInfo, Context,
     ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context,
         ArgType, BoxedArgType, ArgRval0, ArgRval, !GlobalData),
     RvalTypeWidth =
-        rval_type_and_width(ArgRval, mlds_generic_type, ArgPosWidth).
+        rval_type_and_width(ArgRval, mlds_generic_type, ArgPosWidth, no).
 
 :- pred construct_ground_term_initializers_lld(module_info::in,
     prog_context::in, list(arg_var_type_and_width)::in,
@@ -2493,7 +2742,7 @@ construct_ground_term_initializer_lld(ModuleInfo, Context,
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, ArgWidth,
         ArgRval0, ArgRval, !GlobalData),
     RvalTypeWidth =
-        rval_type_and_width(ArgRval, mlds_generic_type, ArgPosWidth).
+        rval_type_and_width(ArgRval, mlds_generic_type, ArgPosWidth, no).
 
 %---------------------------------------------------------------------------%
 
@@ -2545,8 +2794,8 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
             ml_gen_const_struct_arg(Info, !.ConstStructMap, Arg,
                 apw_full(arg_only_offset(0), cell_offset(0)),
                 ArgRvalTypeWidth, !GlobalData),
-            ArgRvalTypeWidth =
-                rval_type_and_width(ArgRval, _RvalMLDSType, _Width),
+            ArgRvalTypeWidth = rval_type_and_width(ArgRval, _RvalMLDSType,
+                _Width, _MaybePackedArgVar),
             Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, ArgRval),
             GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
             map.det_insert(ConstNum, GroundTerm, !ConstStructMap)
@@ -2701,7 +2950,7 @@ ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, PosWidth,
     Width = arg_pos_width_to_width_only(PosWidth),
     ml_gen_box_const_rval(ModuleInfo, term.context_init, MLDS_Type,
         Width, Rval0, Rval, !GlobalData),
-    RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, PosWidth).
+    RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, PosWidth, no).
 
 :- pred ml_gen_const_struct_arg_tag(cons_tag::in, mer_type::in, mlds_type::in,
     mlds_rval::out) is det.
@@ -3018,7 +3267,8 @@ construct_static_ground_term(ModuleInfo, Target, HighLevelData,
 ml_pack_ground_term_args_into_word_inits([], []).
 ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
         Inits) :-
-    RvalTypeWidth = rval_type_and_width(Rval, _Type, PosWidth),
+    RvalTypeWidth = rval_type_and_width(Rval, _Type, PosWidth,
+        _MaybePackedArgVar),
     (
         ( PosWidth = apw_full(_, _)
         ; PosWidth = apw_double(_, _, _)
@@ -3061,7 +3311,7 @@ ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
         maybe_shift_and_accumulate_or_rval(Rval, arg_shift(0), Fill,
             [], RevOrRvals0),
         ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-            RevOrRvals0, OrAllRval),
+            RevOrRvals0, OrAllRval, [], _, no, _),
         HeadInit = init_obj(OrAllRval),
         ml_pack_ground_term_args_into_word_inits(LeftOverRvalsTypesWidths,
             TailInits),
@@ -3080,22 +3330,24 @@ ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
         ml_pack_ground_term_args_into_word_inits(RvalsTypesWidths, Inits)
     ).
 
-:- pred ml_expand_or_pack_into_words(list(mlds_rval_type_and_width)::in,
+:- pred ml_expand_or_pack_into_words(ml_gen_info::in,
+    list(mlds_rval_type_and_width)::in,
     list(mlds_rval_type_and_width)::out) is det.
 
-ml_expand_or_pack_into_words([], []).
-ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
+ml_expand_or_pack_into_words(_, [], []).
+ml_expand_or_pack_into_words(Info, [RvalTypeWidth | RvalsTypesWidths],
         PackedRvalsTypesWidths) :-
-    RvalTypeWidth = rval_type_and_width(Rval, Type, PosWidth),
+    RvalTypeWidth = rval_type_and_width(Rval, Type, PosWidth,
+        MaybePackedArgVar),
     (
         PosWidth = apw_full(_, _),
-        ml_expand_or_pack_into_words(RvalsTypesWidths,
+        ml_expand_or_pack_into_words(Info, RvalsTypesWidths,
             TailPackedRvalsTypesWidths),
         PackedRvalsTypesWidths = [RvalTypeWidth | TailPackedRvalsTypesWidths]
     ;
         PosWidth = apw_double(arg_only_offset(AOOffset),
             cell_offset(CellOffset), DoubleWordKind),
-        ml_expand_or_pack_into_words(RvalsTypesWidths,
+        ml_expand_or_pack_into_words(Info, RvalsTypesWidths,
             TailPackedRvalsTypesWidths),
         ( if Rval = ml_const(mlconst_null(_)) then
             SubstType = mlds_generic_type,
@@ -3117,24 +3369,51 @@ ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
                 RvalB = ml_unop(dword_uint64_get_word1, Rval)
             )
         ),
+        AOOffsetA = arg_only_offset(AOOffset),
+        AOOffsetB = arg_only_offset(AOOffset + 1),
+        CellOffsetA = cell_offset(CellOffset),
+        CellOffsetB = cell_offset(CellOffset + 1),
         RvalTypeWidthA = rval_type_and_width(RvalA, SubstType,
-            apw_full(arg_only_offset(AOOffset), cell_offset(CellOffset))),
+            apw_full(AOOffsetA, CellOffsetA), no),
         RvalTypeWidthB = rval_type_and_width(RvalB, SubstType,
-            apw_full(
-                arg_only_offset(AOOffset + 1), cell_offset(CellOffset + 1))),
+            apw_full(AOOffsetB, CellOffsetB), no),
         PackedRvalsTypesWidths =
             [RvalTypeWidthA, RvalTypeWidthB | TailPackedRvalsTypesWidths]
     ;
         PosWidth = apw_partial_first(AOOffset, CellOffset, _, _, Fill),
         maybe_shift_and_accumulate_or_rval(Rval, arg_shift(0), Fill,
             [], RevOrRvals0),
+        (
+            MaybePackedArgVar = no,
+            RevPackedArgVars0 = [],
+            AllPartialsHavePackedArgVars0 = no
+        ;
+            MaybePackedArgVar = yes(PackedArgVar),
+            RevPackedArgVars0 = [PackedArgVar],
+            AllPartialsHavePackedArgVars0 = yes
+        ),
         ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-            RevOrRvals0, OrAllRval),
+            RevOrRvals0, OrAllRval,
+            RevPackedArgVars0, RevPackedArgVars,
+            AllPartialsHavePackedArgVars0, AllPartialsHavePackedArgVars),
+        (
+            AllPartialsHavePackedArgVars = no,
+            WordRval = OrAllRval
+        ;
+            AllPartialsHavePackedArgVars = yes,
+            list.reverse(RevPackedArgVars, PackedArgVars),
+            ml_gen_info_get_packed_args_map(Info, PackedArgsMap),
+            ( if map.search(PackedArgsMap, PackedArgVars, OldWordRval) then
+                WordRval = ml_cast(mlds_generic_type, OldWordRval)
+            else
+                WordRval = OrAllRval
+            )
+        ),
         % XXX TYPE_REPN Using the type of the first rval for the type
         % of the whole word preserves old behavior, but seems strange.
-        PackedRvalTypeWidth = rval_type_and_width(OrAllRval, Type,
-            apw_full(AOOffset, CellOffset)),
-        ml_expand_or_pack_into_words(LeftOverRvalsTypesWidths,
+        PackedRvalTypeWidth = rval_type_and_width(WordRval, Type,
+            apw_full(AOOffset, CellOffset), no),
+        ml_expand_or_pack_into_words(Info, LeftOverRvalsTypesWidths,
             TailPackedRvalsTypesWidths),
         PackedRvalsTypesWidths =
             [PackedRvalTypeWidth | TailPackedRvalsTypesWidths]
@@ -3148,17 +3427,22 @@ ml_expand_or_pack_into_words([RvalTypeWidth | RvalsTypesWidths],
         unexpected($pred, "apw_none_shifted")
     ;
         PosWidth = apw_none_nowhere,
-        ml_expand_or_pack_into_words(RvalsTypesWidths, PackedRvalsTypesWidths)
+        ml_expand_or_pack_into_words(Info, RvalsTypesWidths,
+            PackedRvalsTypesWidths)
     ).
 
 :- pred ml_pack_into_one_word(
     list(mlds_rval_type_and_width)::in, list(mlds_rval_type_and_width)::out,
-    list(mlds_rval)::in, mlds_rval::out) is det.
+    list(mlds_rval)::in, mlds_rval::out,
+    list(packed_arg_var)::in, list(packed_arg_var)::out,
+    bool::in, bool::out) is det.
 
 ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-        RevOrRvals0, BoxedOrAllRval) :-
+        RevOrRvals0, BoxedOrAllRval,
+        !RevPackedArgVars, !AllPartialsHavePackedArgVars) :-
     ml_pack_into_one_word_loop(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-        RevOrRvals0, RevOrRvals),
+        RevOrRvals0, RevOrRvals,
+        !RevPackedArgVars, !AllPartialsHavePackedArgVars),
     list.reverse(RevOrRvals, OrRvals),
     (
         OrRvals = [],
@@ -3171,12 +3455,17 @@ ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
 
 :- pred ml_pack_into_one_word_loop(
     list(mlds_rval_type_and_width)::in, list(mlds_rval_type_and_width)::out,
-    list(mlds_rval)::in, list(mlds_rval)::out) is det.
+    list(mlds_rval)::in, list(mlds_rval)::out,
+    list(packed_arg_var)::in, list(packed_arg_var)::out,
+    bool::in, bool::out) is det.
 
-ml_pack_into_one_word_loop([], [], !RevOrRvals).
+ml_pack_into_one_word_loop([], [], !RevOrRvals,
+        !RevPackedArgVars, !AllPartialsHavePackedArgVars).
 ml_pack_into_one_word_loop([RvalTypeWidth | RvalsTypesWidths],
-        LeftOverRvalsTypesWidths, !RevOrRvals) :-
-    RvalTypeWidth = rval_type_and_width(Rval, _Type, PosWidth),
+        LeftOverRvalsTypesWidths, !RevOrRvals,
+        !RevPackedArgVars, !AllPartialsHavePackedArgVars) :-
+    RvalTypeWidth = rval_type_and_width(Rval, _Type, PosWidth,
+        MaybePackedArgVar),
     (
         ( PosWidth = apw_full(_, _)
         ; PosWidth = apw_double(_, _, _)
@@ -3187,12 +3476,19 @@ ml_pack_into_one_word_loop([RvalTypeWidth | RvalsTypesWidths],
     ;
         (
             PosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-            maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals)
+            maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals),
+            (
+                MaybePackedArgVar = no,
+                !:AllPartialsHavePackedArgVars = no
+            ;
+                MaybePackedArgVar = yes(PackedArgVar),
+                !:RevPackedArgVars = [PackedArgVar | !.RevPackedArgVars]
+            )
         ;
             PosWidth = apw_none_shifted(_, _)
         ),
         ml_pack_into_one_word_loop(RvalsTypesWidths, LeftOverRvalsTypesWidths,
-            !RevOrRvals)
+            !RevOrRvals, !RevPackedArgVars, !AllPartialsHavePackedArgVars)
     ).
 
     % OR together the given rvals.
@@ -3368,13 +3664,13 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred ml_next_field_offset(pair(prog_var, constructor_arg_repn)::in,
+:- pred ml_next_field_offset(constructor_arg_repn::in,
     assoc_list(prog_var, constructor_arg_repn)::in,
     field_offset::in, field_offset::out) is det.
 
 ml_next_field_offset(_, [], Offset, Offset).
-ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
-    CurArg = _ - ctor_arg_repn(_, _, CurWidth, _),
+ml_next_field_offset(CurArgRepn, [NextArg | _], PrevOffset, NextOffset) :-
+    CurArgRepn = ctor_arg_repn(_, _, CurWidth, _),
     NextArg = _ - ctor_arg_repn(_, _, NextWidth, _),
     % XXX ARG_PACK We *could* use the same algorithm for incrementing Offset
     % here as we use elsewhere, but better still, we should not need this
