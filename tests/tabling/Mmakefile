@@ -163,12 +163,36 @@ endif
 # XXX What is the bug? If it is lack of synchronization on table updates,
 # why are these tests enabled for hlc par grades?
 ifeq "$(findstring .par,$(GRADE))" ""
-	PROGS=$(PROGS0)
+	PROGS1 = $(PROGS0)
 else
 	ifeq "$(findstring hl,$(GRADE))" ""
-		PROGS =
+		PROGS1 =
 	else
-		PROGS = $(PROGS0)
+		PROGS1 = $(PROGS0)
+	endif
+endif
+
+# Disable these tests in MLDS grades (targeting C, C# and Java)
+# with high level data representation, because tabling is not implemented
+# for high level data representation.
+ifneq "$(findstring java,$(GRADE))$(findstring csharp,$(GRADE))" ""
+	# This is either the C# grade or the Java grade.
+	PROGS =
+else
+	ifneq "$(findstring hl,$(GRADE))" ""
+		# This is either a hl.* grade (high level data)
+		# or a hlc.* grade (low level data).
+		ifeq "$(findstring hlc,$(GRADE))" ""
+			# This is a hl.* grade.
+			PROGS =
+		else
+			# This is a hlc.* grade.
+			PROGS = $(PROGS1)
+		endif
+	else
+		# This is not a high level data grade, since those
+		# are all covered above.
+		PROGS = $(PROGS1)
 	endif
 endif
 
