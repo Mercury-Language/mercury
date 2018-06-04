@@ -831,20 +831,21 @@ make_arg(FieldInfo) = Arg :-
     mlds_module_name, mlds_field_info) = mlds_stmt is det.
 
 gen_init_field(BaseClassId, CtorClassId, ClassQualifier, FieldInfo) = Stmt :-
-    FieldInfo = mlds_field_info(FieldVarName, Type, _GcStmt, Context),
+    FieldInfo = mlds_field_info(FieldVarName, FieldType, _GcStmt, Context),
     LocalVarName = lvn_field_var_as_local(FieldVarName),
-    Param = ml_lval(ml_local_var(LocalVarName, Type)),
+    Param = ml_lval(ml_local_var(LocalVarName, FieldType)),
     CtorClassType = mlds_class_type(CtorClassId),
-    Field = ml_field(yes(0), ml_self(CtorClassType),
-        ml_field_named(
-            qual_field_var_name(ClassQualifier, type_qual, FieldVarName),
-            mlds_ptr_type(CtorClassType)),
-            % XXX we should use ClassType rather than BaseClassId here.
-            % But doing so breaks the IL back-end, because then the hack in
-            % fixup_class_qualifiers doesn't work.
-            % XXX That isn't an issue anymore.
-        Type, mlds_class_type(BaseClassId)),
-    Stmt = ml_stmt_atomic(assign(Field, Param), Context).
+    FieldId = ml_field_named(
+        qual_field_var_name(ClassQualifier, type_qual, FieldVarName),
+        mlds_ptr_type(CtorClassType)),
+    FieldLval = ml_field(yes(0),
+        % XXX We should use ClassType rather than BaseClassId here.
+        % But doing so breaks the IL back-end, because then the hack in
+        % fixup_class_qualifiers doesn't work.
+        % XXX That isn't an issue anymore.
+        ml_self(CtorClassType), mlds_class_type(BaseClassId),
+        FieldId, FieldType),
+    Stmt = ml_stmt_atomic(assign(FieldLval, Param), Context).
 
     % Generate "this->data_tag = <TagVal>;".
     %
@@ -857,15 +858,14 @@ gen_init_tag(Target, CtorClassId, SecondaryTagClassId, TagVal, Context)
     TagClass = qual_class_name(BaseClassQualifier, QualKind, TagClassName),
     TagClassQualifier = mlds_append_class_qualifier(Target,
         BaseClassQualifier, QualKind, TagClassName, TagArity),
-    Type = mlds_native_int_type,
-    Val = ml_const(mlconst_int(TagVal)),
+    Rval = ml_const(mlconst_int(TagVal)),
     CtorClassType = mlds_class_type(CtorClassId),
-    Field = ml_field(yes(0), ml_self(CtorClassType),
-        ml_field_named(
-            qual_field_var_name(TagClassQualifier, type_qual, fvn_data_tag),
-            mlds_ptr_type(mlds_class_type(SecondaryTagClassId))),
-        Type, CtorClassType),
-    Stmt = ml_stmt_atomic(assign(Field, Val), Context).
+    FieldId = ml_field_named(
+        qual_field_var_name(TagClassQualifier, type_qual, fvn_data_tag),
+        mlds_ptr_type(mlds_class_type(SecondaryTagClassId))),
+    FieldLval = ml_field(yes(0), ml_self(CtorClassType), CtorClassType,
+        FieldId, mlds_native_int_type),
+    Stmt = ml_stmt_atomic(assign(FieldLval, Rval), Context).
 
 :- pred ml_gen_hld_du_ctor_typeclass_info_field(module_info::in,
     prog_context::in, prog_constraint::in,

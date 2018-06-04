@@ -1735,17 +1735,15 @@ add_rtti_defn_arcs_rval(DefnGlobalVarName, Rval, !Graph) :-
 
 add_rtti_defn_arcs_lval(DefnGlobalVarName, Lval, !Graph) :-
     (
-        Lval = ml_field(_, SubRval, _, _, _),
+        ( Lval = ml_field(_, SubRval, _, _, _)
+        ; Lval = ml_mem_ref(SubRval, _)
+        ),
         add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRval, !Graph)
     ;
-        Lval = ml_mem_ref(SubRval, _Type),
-        add_rtti_defn_arcs_rval(DefnGlobalVarName, SubRval, !Graph)
-    ;
-        Lval = ml_target_global_var_ref(env_var_ref(_))
-    ;
-        Lval = ml_local_var(_, _)
-    ;
-        Lval = ml_global_var(_, _)
+        ( Lval = ml_target_global_var_ref(env_var_ref(_))
+        ; Lval = ml_local_var(_, _)
+        ; Lval = ml_global_var(_, _)
+        )
     ).
 
 :- pred add_rtti_defn_arcs_const(mlds_global_var_name::in,

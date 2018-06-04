@@ -1673,16 +1673,16 @@
     % Values on the heap or fields of a structure.
 
     --->    ml_field(
-                % field(MaybePtag, Address, FieldId, FieldType, PtrType):
+                % field(MaybePtag, Ptr, PtrType, FieldId, FieldType):
                 % Selects one field of a compound term.
                 %
-                % Address is a tagged pointer to a cell on the heap.
+                % Ptr is a tagged pointer to a cell on the heap.
                 % The position in the cell, FieldId, is represented either
                 % as a field name or a number of words offset.
                 %
-                % If MaybePtag is yes(Ptag), then the primary tag on Address
+                % If MaybePtag is yes(Ptag), then the primary tag on Ptr
                 % is Ptag; if MaybePtag is no, then the primary tag bits will
-                % have to be masked off of Address.
+                % have to be masked off of Ptr.
                 %
                 % The value of the primary tag should be given if it is known,
                 % since this will lead to faster code.
@@ -1694,14 +1694,12 @@
                 % not the actual type of the field. If the actual type is
                 % different, then it is the HLDS->MLDS code generator's job
                 % to insert the required boxing/unboxing code.
-                % XXX ARG_PACK The field_ptr_type should be next to the
-                % field_addr, since it gives its type.
 
-                field_ptag      :: maybe(ptag),
-                field_addr      :: mlds_rval,
-                field_field_id  :: mlds_field_id,
-                field_type      :: mlds_type,
-                field_ptr_type  :: mlds_type
+                field_ptag          :: maybe(ptag),
+                field_ptr           :: mlds_rval,
+                field_ptr_type      :: mlds_type,
+                field_field_id      :: mlds_field_id,
+                field_field_type    :: mlds_type
             )
 
     % Values somewhere in memory.

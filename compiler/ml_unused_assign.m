@@ -661,7 +661,7 @@ see_in_rval(Rval, !Seen) :-
 
 see_in_lval(Lval, !Seen) :-
     (
-        Lval = ml_field(_MaybePtag, BaseRval, FieldId, _Type, _PtrType),
+        Lval = ml_field(_MaybePtag, BaseRval, _PtrType, FieldId, _FielType),
         see_in_rval(BaseRval, !Seen),
         (
             FieldId = ml_field_offset(FieldRval),

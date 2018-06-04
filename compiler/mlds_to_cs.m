@@ -3049,7 +3049,7 @@ output_init_args_for_csharp(Info, [ArgRvalType | ArgRvalsTypes], !IO) :-
 
 output_lval_for_csharp(Info, Lval, !IO) :-
     (
-        Lval = ml_field(_MaybeTag, PtrRval, FieldId, FieldType, _),
+        Lval = ml_field(_MaybeTag, PtrRval, _PtrType, FieldId, FieldType),
         (
             FieldId = ml_field_offset(OffsetRval),
             ( if

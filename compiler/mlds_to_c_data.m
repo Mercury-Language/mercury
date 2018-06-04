@@ -91,7 +91,7 @@ mlds_output_ptag(Ptag, !IO) :-
 
 mlds_output_lval(Opts, Lval, !IO) :-
     (
-        Lval = ml_field(MaybePtag, PtrRval, FieldId, FieldType, PtrType),
+        Lval = ml_field(MaybePtag, PtrRval, PtrType, FieldId, FieldType),
         (
             FieldId = ml_field_offset(OffsetRval),
             ( if
@@ -1044,9 +1044,11 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
 :- pred is_aligned_dword_field(mlds_rval::in, mlds_rval::in, mlds_rval::out)
     is semidet.
 
-is_aligned_dword_field(X, Y, ml_mem_addr(Lval)) :-
-    X = ml_lval(ml_field(Ptag, Addr, FieldIdX, Type, PtrType) @ Lval),
-    Y = ml_lval(ml_field(Ptag, Addr, FieldIdY, Type, PtrType)),
+is_aligned_dword_field(RvalX, RvalY, ml_mem_addr(LvalX)) :-
+    RvalX = ml_lval(LvalX),
+    RvalY = ml_lval(LvalY),
+    LvalX = ml_field(Ptag, PtrRval, PtrType, FieldIdX, FieldType),
+    LvalY = ml_field(Ptag, PtrRval, PtrType, FieldIdY, FieldType),
     FieldIdX = ml_field_offset(ml_const(mlconst_int(Offset))),
     FieldIdY = ml_field_offset(ml_const(mlconst_int(Offset + 1))),
     int.even(Offset).

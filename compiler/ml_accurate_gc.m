@@ -597,7 +597,7 @@ init_field_n(PointerType, PointerRval, Context, ArgRvalType, Stmt,
     % XXX FieldType is wrong for --high-level-data: should this be _ArgType?
     FieldType = mlds_generic_type,
     MaybePtag = yes(0),
-    Field = ml_field(MaybePtag, PointerRval, FieldId, FieldType, PointerType),
+    Field = ml_field(MaybePtag, PointerRval, PointerType, FieldId, FieldType),
     Stmt = ml_stmt_atomic(assign(Field, ArgRval), Context).
 
 %---------------------------------------------------------------------------%

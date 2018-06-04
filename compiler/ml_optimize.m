@@ -439,10 +439,9 @@ find_rval_component_lvals(Rval, !Components) :-
 
 find_lval_component_lvals(Lval, !Components) :-
     (
-        Lval = ml_field(_, Rval, _, _, _),
-        find_rval_component_lvals(Rval, !Components)
-    ;
-        Lval = ml_mem_ref(Rval, _),
+        ( Lval = ml_field(_, Rval, _, _, _)
+        ; Lval = ml_mem_ref(Rval, _)
+        ),
         find_rval_component_lvals(Rval, !Components)
     ;
         ( Lval = ml_target_global_var_ref(_)
@@ -935,10 +934,10 @@ rval_will_not_change(Rval) :-
             ; Lval = ml_global_var(_, _)
             )
         ;
-            ( Lval = ml_mem_ref(Address, _Type)
-            ; Lval = ml_field(_, Address, _, _, _)
+            ( Lval = ml_mem_ref(SubRval, _Type)
+            ; Lval = ml_field(_, SubRval, _, _, _)
             ),
-            rval_will_not_change(Address)
+            rval_will_not_change(SubRval)
         ;
             Lval = ml_target_global_var_ref(_),
             % XXX How can the address of a target language global variable
@@ -1234,9 +1233,9 @@ eliminate_var_in_lvals(!Lvals, !VarElimInfo) :-
 
 eliminate_var_in_lval(Lval0, Lval, !VarElimInfo) :-
     (
-        Lval0 = ml_field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
+        Lval0 = ml_field(MaybeTag, Rval0, PtrType, FieldId, FieldType),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
-        Lval = ml_field(MaybeTag, Rval, FieldId, FieldType, PtrType)
+        Lval = ml_field(MaybeTag, Rval, PtrType, FieldId, FieldType)
     ;
         Lval0 = ml_mem_ref(Rval0, Type),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),

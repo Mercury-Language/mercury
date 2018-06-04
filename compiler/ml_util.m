@@ -849,10 +849,9 @@ lvals_contains_var([Lval | Lvals], SearchVarName) = ContainsVar :-
 
 lval_contains_var(Lval, SearchVarName) = ContainsVar :-
     (
-        Lval = ml_field(_MaybeTag, Rval, _FieldId, _, _),
-        ContainsVar = rval_contains_var(Rval, SearchVarName)
-    ;
-        Lval = ml_mem_ref(Rval, _Type),
+        ( Lval = ml_field(_MaybeTag, Rval, _, _, _)
+        ; Lval = ml_mem_ref(Rval, _Type)
+        ),
         ContainsVar = rval_contains_var(Rval, SearchVarName)
     ;
         ( Lval = ml_global_var(_, _)

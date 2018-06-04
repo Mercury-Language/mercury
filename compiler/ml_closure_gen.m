@@ -1195,8 +1195,8 @@ ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
         % Generate `MR_field(MR_mktag(0), closure, <N>)'.
         FieldId = ml_field_offset(ml_const(mlconst_int(ArgNum + Offset))),
         % XXX These types might not be right.
-        FieldLval = ml_field(yes(0), ml_lval(ClosureLval), FieldId,
-            mlds_generic_type, mlds_generic_type),
+        FieldLval = ml_field(yes(0), ml_lval(ClosureLval), mlds_generic_type,
+            FieldId, mlds_generic_type),
         % Recursively handle the remaining fields.
         ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum + 1,
             NumClosureArgs, ClosureArgLvals0, !Info),

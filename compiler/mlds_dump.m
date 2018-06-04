@@ -594,7 +594,7 @@ mlds_lval_to_strcord(Lval) = Cord :-
         Cord = strcord("mem_ref(") ++ mlds_rval_to_strcord(AddrRval) ++
             strcord(")")
     ;
-        Lval = ml_field(MaybePtag, AddrRval, FieldId, _FieldType, _PtrType),
+        Lval = ml_field(MaybePtag, PtrRval, _PtrType, FieldId, _FieldType),
         (
             MaybePtag = no,
             PtagCord = strcord("ptag unknown")
@@ -613,7 +613,7 @@ mlds_lval_to_strcord(Lval) = Cord :-
         ),
         Cord =
             strcord("field(") ++ PtagCord ++ comma_cord ++
-            mlds_rval_to_strcord(AddrRval) ++ comma_cord ++
+            mlds_rval_to_strcord(PtrRval) ++ comma_cord ++
             FieldCord ++ strcord(")")
     ).
 

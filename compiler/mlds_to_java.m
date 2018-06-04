@@ -176,7 +176,7 @@ rval_is_enum_object(Rval) :-
     ;
         Lval = ml_global_var(_, Type)
     ;
-        Lval = ml_field(_, _, _, Type, _)
+        Lval = ml_field(_, _, _, _, Type)
     ),
     type_is_enum(Type).
 
@@ -827,8 +827,8 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         FieldName =
             qual_field_var_name(MLDS_ModuleName, type_qual, fvn_ptr_num),
         FieldId = ml_field_named(FieldName, ClassType),
-        FieldLval = ml_field(no, ml_self(ClassType), FieldId,
-            mlds_native_int_type, ClassType),
+        FieldLval = ml_field(no, ml_self(ClassType), ClassType,
+            FieldId, mlds_native_int_type),
 
         CtorArgs = [mlds_argument(CtorArgName, mlds_native_int_type,
             gc_no_stmt)],
@@ -3859,7 +3859,7 @@ output_init_args_for_java(Info, [ArgRvalType | ArgRvalsTypes], !IO) :-
 
 output_lval_for_java(Info, Lval, !IO) :-
     (
-        Lval = ml_field(_MaybeTag, PtrRval, FieldId, FieldType, _),
+        Lval = ml_field(_MaybeTag, PtrRval, _PtrType, FieldId, FieldType),
         (
             FieldId = ml_field_offset(OffsetRval),
             ( if

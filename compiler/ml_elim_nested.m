@@ -747,8 +747,8 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassId,
         MaybePtag = yes(0),
         EnvPtrVarName = env_ptr_var(Action),
         EnvPtr = ml_lval(ml_local_var(EnvPtrVarName, EnvPtrTypeName)),
-        EnvArgLval = ml_field(MaybePtag, EnvPtr, FieldName, FieldType,
-            EnvPtrTypeName),
+        EnvArgLval = ml_field(MaybePtag, EnvPtr, EnvPtrTypeName,
+            FieldName, FieldType),
         ArgRval = ml_lval(ml_local_var(VarName, FieldType)),
         AssignToEnv = assign(EnvArgLval, ArgRval),
         CodeToCopyArg = ml_stmt_atomic(AssignToEnv, Context),
@@ -2035,9 +2035,9 @@ fixup_lvals(Action, Info, [X0 | Xs0], [X | Xs]) :-
 
 fixup_lval(Action, Info, Lval0, Lval) :-
     (
-        Lval0 = ml_field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
+        Lval0 = ml_field(MaybeTag, Rval0, PtrType, FieldId, FieldType),
         fixup_rval(Action, Info, Rval0, Rval),
-        Lval = ml_field(MaybeTag, Rval, FieldId, FieldType, PtrType)
+        Lval = ml_field(MaybeTag, Rval, PtrType, FieldId, FieldType)
     ;
         Lval0 = ml_mem_ref(Rval0, Type),
         fixup_rval(Action, Info, Rval0, Rval),
@@ -2145,7 +2145,7 @@ fixup_var(Action, Info, ThisVarName, ThisVarType, Lval) :-
                 fvn_env_field_from_local_var(ThisVarName)),
             EnvPtrVarType),
         MaybePtag = yes(0),
-        Lval = ml_field(MaybePtag, EnvPtr, FieldName, FieldType, EnvPtrVarType)
+        Lval = ml_field(MaybePtag, EnvPtr, EnvPtrVarType, FieldName, FieldType)
     else if
         % Check for references to the env_ptr itself.
         % For those, the code generator will have left the type as
@@ -2518,7 +2518,7 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
     PrevFieldId = ml_field_offset(ml_const(mlconst_int(0))),
     PrevFieldType = mlds_generic_type,
     PrevFieldRval = ml_lval(ml_field(MaybePtag, ml_lval(StackChain),
-        PrevFieldId, PrevFieldType, EnvPtrTypeName)),
+        EnvPtrTypeName, PrevFieldId, PrevFieldType)),
     Assignment = assign(StackChain, PrevFieldRval),
     UnchainFrame = ml_stmt_atomic(Assignment, Context).
 

@@ -357,12 +357,12 @@ rename_class_names_in_atomic(Renaming, !Stmt) :-
 
 rename_class_names_in_lval(Renaming, !Lval) :-
     (
-        !.Lval = ml_field(Tag, Address0, FieldId0, FieldType0, PtrType0),
-        rename_class_names_in_rval(Renaming, Address0, Address),
+        !.Lval = ml_field(Tag, PtrRval0, PtrType0, FieldId0, FieldType0),
+        rename_class_names_in_rval(Renaming, PtrRval0, PtrRval),
+        rename_class_names_in_type(Renaming, PtrType0, PtrType),
         rename_class_names_in_field_id(Renaming, FieldId0, FieldId),
         rename_class_names_in_type(Renaming, FieldType0, FieldType),
-        rename_class_names_in_type(Renaming, PtrType0, PtrType),
-        !:Lval = ml_field(Tag, Address, FieldId, FieldType, PtrType)
+        !:Lval = ml_field(Tag, PtrRval, PtrType, FieldId, FieldType)
     ;
         !.Lval = ml_mem_ref(Rval0, Type0),
         rename_class_names_in_rval(Renaming, Rval0, Rval),

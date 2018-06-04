@@ -808,8 +808,8 @@ method_ptrs_in_lval(Lval, !CodeAddrsInConsts) :-
         Lval = ml_mem_ref(_Rval, _Type)
         % Here, "_Rval" is the address of a variable so we don't check it.
     ;
-        Lval = ml_field(_MaybeTag, _Rval, _FieldId, _FieldType, _PtrType)
-        % Here, "_Rval" is a pointer to a cell on the heap, and doesn't need
+        Lval = ml_field(_MaybeTag, _PtrRval, _PtrType, _FieldId, _FieldType)
+        % Here, "_PtrRval" is a pointer to a cell on the heap, and doesn't need
         % to be considered.
     ;
         ( Lval = ml_local_var(_Variable, _Type)

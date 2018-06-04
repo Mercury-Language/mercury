@@ -840,9 +840,9 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         % after a *recursive* call, since recursive calls tend to generate
         % values of recursive (i.e. discriminated union) types. -zs
         Offset = offset(OffsetInt),
-        SourceRval = ml_mem_addr(ml_field(MaybePtag, ml_lval(CellLval),
-            ml_field_offset(ml_const(mlconst_int(OffsetInt))),
-            FieldType, CellType)),
+        FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt))),
+        SourceRval = ml_mem_addr(ml_field(MaybePtag,
+            ml_lval(CellLval), CellType, FieldId, FieldType)),
         ml_gen_var(Info, AddrVar, AddrLval),
         ml_variable_type(Info, AddrVar, AddrVarType),
         ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -1308,8 +1308,8 @@ ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
     expect(is_apw_full(ArgPosWidth), $pred,
         "ArgPosWidth != apw_full(_)"),
     NextOffset = CurOffset + 1,
-    FieldLval = ml_field(MaybePrimaryTag, ml_lval(VarLval), FieldId,
-        ExtraType, MLDS_VarType),
+    FieldLval = ml_field(MaybePrimaryTag, ml_lval(VarLval), MLDS_VarType,
+        FieldId, ExtraType),
     Stmt = ml_gen_assign(FieldLval, ExtraRval, Context),
 
     ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
@@ -1713,8 +1713,8 @@ ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, Mode,
 
         FieldId = ml_field_offset(ml_const(mlconst_int(CellOffsetInt))),
         FieldGen = field_gen(MaybePtag, AddrRval, AddrType, _),
-        FieldLval = ml_field(MaybePtag, AddrRval, FieldId,
-            mlds_generic_type, AddrType),
+        FieldLval = ml_field(MaybePtag, AddrRval, AddrType,
+            FieldId, mlds_generic_type),
         CastFieldRval = ml_cast(UnsignedType, ml_lval(FieldLval)),
 
         WordVarLval = ml_local_var(WordVar, UnsignedType),
@@ -1866,8 +1866,8 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
 
     % Generate lvals for the LHS ...
     ml_gen_type(!.Info, FieldType, MLDS_FieldType),
-    FieldLval = ml_field(MaybePrimaryTag, AddrRval, FieldId,
-        MLDS_FieldType, AddrType),
+    FieldLval = ml_field(MaybePrimaryTag, AddrRval, AddrType,
+        FieldId, MLDS_FieldType),
     % ... and the RHS.
     ml_gen_var(!.Info, ArgVar, ArgLval),
     ml_variable_type(!.Info, ArgVar, ArgType),
@@ -2034,13 +2034,13 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo, HighLevelData,
     is semidet.
 
 ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) :-
-    FieldLval = ml_field(Ptag, Address, FieldIdA, _, PtrType),
+    FieldLval = ml_field(Ptag, PtrRval, PtrType, FieldIdA, _),
     FieldIdA = ml_field_offset(FieldOffsetA),
     ( if FieldOffsetA = ml_const(mlconst_int(Offset)) then
         FieldIdB = ml_field_offset(ml_const(mlconst_int(Offset + 1))),
         SubstType = mlds_generic_type,
-        FieldLvalA = ml_field(Ptag, Address, FieldIdA, SubstType, PtrType),
-        FieldLvalB = ml_field(Ptag, Address, FieldIdB, SubstType, PtrType)
+        FieldLvalA = ml_field(Ptag, PtrRval, PtrType, FieldIdA, SubstType),
+        FieldLvalB = ml_field(Ptag, PtrRval, PtrType, FieldIdB, SubstType)
     else
         sorry($pred, "unexpected field offset")
     ).
@@ -2365,15 +2365,15 @@ ml_gen_secondary_tag_rval(Info, VarType, Rval, PrimaryTag, StagFieldRval) :-
         % back to the right type here.
         StagFieldRval =
             ml_unbox(mlds_native_int_type,
-                ml_lval(ml_field(yes(PrimaryTag), Rval,
+                ml_lval(ml_field(yes(PrimaryTag), Rval, MLDS_VarType,
                     ml_field_offset(ml_const(mlconst_int(0))),
-                    mlds_generic_type, MLDS_VarType)))
+                    mlds_generic_type)))
     ;
         HighLevelData = yes,
         ml_gen_info_get_target(Info, Target),
         FieldId = ml_gen_hl_tag_field_id(ModuleInfo, Target, VarType),
-        StagFieldRval = ml_lval(ml_field(yes(PrimaryTag), Rval,
-            FieldId, mlds_native_int_type, MLDS_VarType))
+        StagFieldRval = ml_lval(ml_field(yes(PrimaryTag), Rval, MLDS_VarType,
+            FieldId, mlds_native_int_type))
     ).
 
     % Return the field_id for the "data_tag" field of the specified

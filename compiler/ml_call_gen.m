@@ -173,8 +173,8 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         ml_gen_var(!.Info, ClosureVar, ClosureLval),
         FieldId = ml_field_offset(ml_const(mlconst_int(1))),
         % XXX are these types right?
-        FuncLval = ml_field(yes(0), ml_lval(ClosureLval), FieldId,
-            mlds_generic_type, ClosureArgType),
+        FuncLval = ml_field(yes(0), ml_lval(ClosureLval), ClosureArgType,
+            FieldId, mlds_generic_type),
         FuncType = mlds_func_type(Params),
         FuncRval = ml_unbox(FuncType, ml_lval(FuncLval))
     ;
@@ -189,15 +189,16 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         % Extract the base_typeclass_info from the typeclass_info.
         BaseTypeclassInfoFieldId = ml_field_offset(ml_const(mlconst_int(0))),
         BaseTypeclassInfoLval = ml_field(yes(0),
-            ml_lval(TypeClassInfoLval), BaseTypeclassInfoFieldId,
-            mlds_generic_type, ClosureArgType),
+            ml_lval(TypeClassInfoLval), ClosureArgType,
+            BaseTypeclassInfoFieldId, mlds_generic_type),
 
         % Extract the method address from the base_typeclass_info.
         Offset = ml_base_typeclass_info_method_offset,
         MethodFieldNum = MethodNum + Offset,
         MethodFieldId = ml_field_offset(ml_const(mlconst_int(MethodFieldNum))),
-        FuncLval = ml_field(yes(0), ml_lval(BaseTypeclassInfoLval),
-            MethodFieldId, mlds_generic_type, mlds_generic_type),
+        FuncLval = ml_field(yes(0),
+            ml_lval(BaseTypeclassInfoLval), mlds_generic_type,
+            MethodFieldId, mlds_generic_type),
         FuncType = mlds_func_type(Params),
         FuncRval = ml_unbox(FuncType, ml_lval(FuncLval))
     ),
@@ -1065,7 +1066,7 @@ may_lval_yield_dangling_stack_ref(Lval) = MayYieldDanglingStackRef :-
         Lval = ml_local_var(_Var0, _),
         MayYieldDanglingStackRef = may_yield_dangling_stack_ref
     ;
-        Lval = ml_field(_MaybeTag, Rval, _FieldId, _, _),
+        Lval = ml_field(_MaybeTag, Rval, _, _, _),
         MayYieldDanglingStackRef = may_rval_yield_dangling_stack_ref(Rval)
     ;
         ( Lval = ml_mem_ref(_, _)
