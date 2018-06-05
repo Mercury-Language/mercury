@@ -1,13 +1,11 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
+// Copyright (C) 2014-2016, 2018 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
 // A simple interface to read a line, normally done using GNU readline.
-//
-// This module is compiled with warnings disabled (mgnuc --no-check),
-// since the GNU readline headers don't use prototypes, const, etc.
 //
 // Main authors: fjh, zs.
 
@@ -22,7 +20,7 @@
 
 #ifndef MR_NO_USE_READLINE
   #ifdef MR_HAVE_READLINE_READLINE_H
-    #include "readline/readline.h"
+    #include <readline/readline.h>
   #else
     extern FILE         *rl_instream;
     extern FILE         *rl_outstream;
@@ -32,7 +30,7 @@
     extern void         (*rl_deprep_term_function)(void);
   #endif
   #ifdef MR_HAVE_READLINE_HISTORY_H
-    #include "readline/history.h"
+    #include <readline/history.h>
   #endif
   #ifdef MR_HAVE_UNISTD_H
      #include <unistd.h>    // for isatty()

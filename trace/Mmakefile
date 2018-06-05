@@ -177,13 +177,6 @@ MGNUCFLAGS	+= --c-debug --no-ansi
 
 #-----------------------------------------------------------------------------#
 
-# mercury_readline.c #includes the GNU readline headers, which
-# lack prototypes and `const', so we need to disable warnings
-# when compiling that file.
-MGNUCFLAGS-mercury_trace_readline = --no-check
-
-#-----------------------------------------------------------------------------#
-
 # Stuff for Windows DLLs
 
 ifeq ($(USE_DLLS),yes)

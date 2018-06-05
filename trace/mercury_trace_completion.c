@@ -1,6 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2002, 2005-2006 The University of Melbourne.
+// Copyright (C) 2014-2016, 2018 The Mercury team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 
@@ -28,7 +29,7 @@
   #else
     extern char     *rl_line_buffer;
     extern int      rl_point;
-    extern char     *filename_completion_function(char *word, int state);
+    extern char     *filename_completion_function(const char *word, int state);
   #endif
 #endif
 
