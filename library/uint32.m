@@ -453,8 +453,7 @@ cast_to_int(_) = _ :-
     cast_to_uint(U32::in) = (U::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX This is probably wrong.
-    U = (uint) U32;
+    U = U32;
 ").
 
 :- pragma foreign_proc("Java",
