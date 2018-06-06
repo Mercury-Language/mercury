@@ -744,7 +744,7 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassId,
             qual_field_var_name(EnvModuleName, type_qual,
                 fvn_env_field_from_local_var(VarName)),
             EnvPtrTypeName),
-        MaybePtag = yes(0),
+        MaybePtag = yes(ptag(0u8)),
         EnvPtrVarName = env_ptr_var(Action),
         EnvPtr = ml_lval(ml_local_var(EnvPtrVarName, EnvPtrTypeName)),
         EnvArgLval = ml_field(MaybePtag, EnvPtr, EnvPtrTypeName,
@@ -903,8 +903,8 @@ ml_create_env(Action, EnvClassName, EnvClassId, LocalVars, Context,
         % says OnHeap may be "yes" on current backends as well.
         MayUseAtomic = may_not_use_atomic_alloc,
         MaybeAllocId = no,
-        NewObj = new_object(ml_local_var(EnvVarName, EnvTypeName), 0, no,
-            EnvTypeName, no, no, [], MayUseAtomic, MaybeAllocId),
+        NewObj = new_object(ml_local_var(EnvVarName, EnvTypeName), ptag(0u8),
+            no, EnvTypeName, no, no, [], MayUseAtomic, MaybeAllocId),
         NewObjStmts = [ml_stmt_atomic(NewObj, Context)]
     ;
         OnHeap = no,
@@ -2144,7 +2144,7 @@ fixup_var(Action, Info, ThisVarName, ThisVarType, Lval) :-
             qual_field_var_name(EnvModuleName, type_qual,
                 fvn_env_field_from_local_var(ThisVarName)),
             EnvPtrVarType),
-        MaybePtag = yes(0),
+        MaybePtag = yes(ptag(0u8)),
         Lval = ml_field(MaybePtag, EnvPtr, EnvPtrVarType, FieldName, FieldType)
     else if
         % Check for references to the env_ptr itself.
@@ -2514,7 +2514,7 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
     %   stack_chain = MR_hl_field(stack_chain, 0);
 
     StackChain = ml_stack_chain_var,
-    MaybePtag = yes(0),
+    MaybePtag = yes(ptag(0u8)),
     PrevFieldId = ml_field_offset(ml_const(mlconst_int(0))),
     PrevFieldType = mlds_generic_type,
     PrevFieldRval = ml_lval(ml_field(MaybePtag, ml_lval(StackChain),

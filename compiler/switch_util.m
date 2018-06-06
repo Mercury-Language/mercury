@@ -300,7 +300,7 @@
             ).
 
     % Map each secondary tag value to the representation of the associated
-    % code.
+    % code. A negative secondary tag "value" means "no secondary tag".
     %
     % It is of course possible that there is more than one secondary tag value
     % that maps to the same code. Exploiting such sharing is up to
@@ -319,7 +319,7 @@
     % Map case ids to the set of primary tags used in the cons_ids
     % of that case.
     %
-:- type case_id_ptags_map == map(case_id, set(int)).
+:- type case_id_ptags_map == map(case_id, set(ptag)).
 
     % Group together all the cases that depend on the given variable
     % having the same primary tag value.
@@ -349,14 +349,14 @@
     % Note that it is not an error for a primary tag to have no case list,
     % for the reason documented in the comment above for order_ptags_by_count.
     %
-:- pred order_ptags_by_value(int::in, int::in,
+:- pred order_ptags_by_value(ptag::in, ptag::in,
     ptag_case_map(CaseRep)::in, ptag_case_list(CaseRep)::out) is det.
 
     % Find out how many secondary tags share each primary tag
     % of the given variable.
     %
 :- pred get_ptag_counts(mer_type::in, module_info::in,
-    int::out, ptag_count_map::out) is det.
+    uint8::out, ptag_count_map::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -385,6 +385,8 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
+:- import_module uint8.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -590,7 +592,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         % XXX they're not that common anymore.
         Cost = 3
     ;
-        Tag = shared_remote_tag(_, _, _),
+        Tag = shared_remote_tag(_, _),
         % You need to compute the primary tag, compare it, follow a pointer
         % and then compare the remote secondary tag.
         Cost = 4
@@ -1185,12 +1187,12 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
         ),
         unexpected($pred, "non-du type")
     ),
-    MaXPrimary0 = -1,
+    MaXPrimary0 = 0u8,
     map.init(PtagCountMap0),
     get_ptag_counts_loop(CtorRepns,
         MaXPrimary0, MaxPrimary, PtagCountMap0, PtagCountMap).
 
-:- pred get_ptag_counts_loop(list(constructor_repn)::in, int::in, int::out,
+:- pred get_ptag_counts_loop(list(constructor_repn)::in, uint8::in, uint8::out,
     ptag_count_map::in, ptag_count_map::out) is det.
 
 get_ptag_counts_loop([], !MaxPrimary, !PtagCountMap).
@@ -1199,58 +1201,65 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
     (
         (
             Tag = single_functor_tag,
-            Primary = 0,
-            SecTag = sectag_none
+            Ptag = ptag(0u8),
+            SecTagLocn = sectag_none
         ;
-            Tag = unshared_tag(Primary),
-            SecTag = sectag_none
+            Tag = unshared_tag(Ptag),
+            SecTagLocn = sectag_none
         ;
-            Tag = direct_arg_tag(Primary),
-            SecTag = sectag_none_direct_arg
+            Tag = direct_arg_tag(Ptag),
+            SecTagLocn = sectag_none_direct_arg
         ),
-        int.max(Primary, !MaxPrimary),
-        ( if map.search(!.PtagCountMap, Primary, _) then
+        Ptag = ptag(Primary),
+        !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
+        ( if map.search(!.PtagCountMap, Ptag, _) then
             unexpected($pred, "unshared tag is shared")
         else
-            map.det_insert(Primary, SecTag - (-1), !PtagCountMap)
+            map.det_insert(Ptag, SecTagLocn - (-1), !PtagCountMap)
         )
     ;
-        Tag = shared_remote_tag(Primary, Secondary, _),
-        int.max(Primary, !MaxPrimary),
-        ( if map.search(!.PtagCountMap, Primary, Target) then
-            Target = TagType - MaxSoFar,
+        Tag = shared_remote_tag(Ptag, RemoteSecTag),
+        Ptag = ptag(Primary),
+        !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
+        RemoteSecTag = remote_sectag(SecondaryUint, _),
+        Secondary = uint.cast_to_int(SecondaryUint),
+        ( if map.search(!.PtagCountMap, Ptag, Target) then
+            Target = SecTagLocn - MaxSoFar,
             (
-                TagType = sectag_remote
+                SecTagLocn = sectag_remote
             ;
-                ( TagType = sectag_local
-                ; TagType = sectag_none
-                ; TagType = sectag_none_direct_arg
+                ( SecTagLocn = sectag_local
+                ; SecTagLocn = sectag_none
+                ; SecTagLocn = sectag_none_direct_arg
                 ),
                 unexpected($pred, "remote tag is shared with non-remote")
             ),
             int.max(Secondary, MaxSoFar, Max),
-            map.det_update(Primary, sectag_remote - Max, !PtagCountMap)
+            map.det_update(Ptag, sectag_remote - Max, !PtagCountMap)
         else
-            map.det_insert(Primary, sectag_remote - Secondary, !PtagCountMap)
+            map.det_insert(Ptag, sectag_remote - Secondary, !PtagCountMap)
         )
     ;
-        Tag = shared_local_tag(Primary, Secondary),
-        int.max(Primary, !MaxPrimary),
-        ( if map.search(!.PtagCountMap, Primary, Target) then
-            Target = TagType - MaxSoFar,
+        Tag = shared_local_tag(Ptag, LocalSecTag),
+        Ptag = ptag(Primary),
+        !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
+        LocalSecTag = local_sectag(SecondaryUint, _),
+        Secondary = uint.cast_to_int(SecondaryUint),
+        ( if map.search(!.PtagCountMap, Ptag, Target) then
+            Target = SecTagLocn - MaxSoFar,
             (
-                TagType = sectag_local
+                SecTagLocn = sectag_local
             ;
-                ( TagType = sectag_remote
-                ; TagType = sectag_none
-                ; TagType = sectag_none_direct_arg
+                ( SecTagLocn = sectag_remote
+                ; SecTagLocn = sectag_none
+                ; SecTagLocn = sectag_none_direct_arg
                 ),
                 unexpected($pred, "local tag is shared with non-local")
             ),
             int.max(Secondary, MaxSoFar, Max),
-            map.det_update(Primary, sectag_local - Max, !PtagCountMap)
+            map.det_update(Ptag, sectag_local - Max, !PtagCountMap)
         else
-            map.det_insert(Primary, sectag_local - Secondary, !PtagCountMap)
+            map.det_insert(Ptag, sectag_local - Secondary, !PtagCountMap)
         )
     ;
         ( Tag = no_tag
@@ -1302,83 +1311,87 @@ group_cases_by_ptag_loop([TaggedCase | TaggedCases], RepresentCase,
         !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap).
 
 :- pred group_case_by_ptag(case_id::in, CaseRep::in, tagged_cons_id::in,
-    map(case_id, set(int))::in, map(case_id, set(int))::out,
+    map(case_id, set(ptag))::in, map(case_id, set(ptag))::out,
     ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
 
 group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         !CaseIdPtagsMap, !PtagCaseMap) :-
-    TaggedConsId = tagged_cons_id(_ConsId, Tag),
+    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
     (
         (
-            Tag = single_functor_tag,
-            Primary = 0,
-            SecTag = sectag_none
+            ConsTag = single_functor_tag,
+            Ptag = ptag(0u8),
+            SecTagLocn = sectag_none
         ;
-            Tag = unshared_tag(Primary),
-            SecTag = sectag_none
+            ConsTag = unshared_tag(Ptag),
+            SecTagLocn = sectag_none
         ;
-            Tag = direct_arg_tag(Primary),
-            SecTag = sectag_none_direct_arg
+            ConsTag = direct_arg_tag(Ptag),
+            SecTagLocn = sectag_none_direct_arg
         ),
-        ( if map.search(!.PtagCaseMap, Primary, _Group) then
+        ( if map.search(!.PtagCaseMap, Ptag, _Group) then
             unexpected($pred, "unshared tag is shared")
         else
             StagGoalMap = map.singleton(-1, CaseRep),
-            map.det_insert(Primary, ptag_case(SecTag, StagGoalMap),
+            map.det_insert(Ptag, ptag_case(SecTagLocn, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
-        Tag = shared_remote_tag(Primary, Secondary, _),
-        ( if map.search(!.PtagCaseMap, Primary, Group) then
-            Group = ptag_case(StagLoc, StagGoalMap0),
-            expect(unify(StagLoc, sectag_remote), $pred,
+        ConsTag = shared_remote_tag(Ptag, RemoteSecTag),
+        RemoteSecTag = remote_sectag(SecondaryUint, _),
+        Secondary = uint.cast_to_int(SecondaryUint),
+        ( if map.search(!.PtagCaseMap, Ptag, Group) then
+            Group = ptag_case(SecTagLoc, StagGoalMap0),
+            expect(unify(SecTagLoc, sectag_remote), $pred,
                 "remote tag is shared with non-remote"),
             map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
-            map.det_update(Primary, ptag_case(sectag_remote, StagGoalMap),
+            map.det_update(Ptag, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         else
             StagGoalMap = map.singleton(Secondary, CaseRep),
-            map.det_insert(Primary, ptag_case(sectag_remote, StagGoalMap),
+            map.det_insert(Ptag, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
-        Tag = shared_local_tag(Primary, Secondary),
-        ( if map.search(!.PtagCaseMap, Primary, Group) then
+        ConsTag = shared_local_tag(Ptag, LocalSecTag),
+        LocalSecTag = local_sectag(SecondaryUint, _),
+        Secondary = uint.cast_to_int(SecondaryUint),
+        ( if map.search(!.PtagCaseMap, Ptag, Group) then
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, sectag_local), $pred,
                 "local tag is shared with non-local"),
             map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
-            map.det_update(Primary, ptag_case(sectag_local, StagGoalMap),
+            map.det_update(Ptag, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         else
             StagGoalMap = map.singleton(Secondary, CaseRep),
-            map.det_insert(Primary, ptag_case(sectag_local, StagGoalMap),
+            map.det_insert(Ptag, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
-        ( Tag = no_tag
-        ; Tag = dummy_tag
-        ; Tag = string_tag(_)
-        ; Tag = float_tag(_)
-        ; Tag = int_tag(_)
-        ; Tag = foreign_tag(_, _)
-        ; Tag = closure_tag(_, _, _)
-        ; Tag = type_ctor_info_tag(_, _, _)
-        ; Tag = base_typeclass_info_tag(_, _, _)
-        ; Tag = type_info_const_tag(_)
-        ; Tag = typeclass_info_const_tag(_)
-        ; Tag = ground_term_const_tag(_, _)
-        ; Tag = tabling_info_tag(_, _)
-        ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_entry_tag(_, _)
+        ( ConsTag = no_tag
+        ; ConsTag = dummy_tag
+        ; ConsTag = string_tag(_)
+        ; ConsTag = float_tag(_)
+        ; ConsTag = int_tag(_)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
         ),
         unexpected($pred, "non-du tag")
     ),
     ( if map.search(!.CaseIdPtagsMap, CaseId, Ptags0) then
-        set.insert(Primary, Ptags0, Ptags),
+        set.insert(Ptag, Ptags0, Ptags),
         map.det_update(CaseId, Ptags, !CaseIdPtagsMap)
     else
-        Ptags = set.make_singleton_set(Primary),
+        Ptags = set.make_singleton_set(Ptag),
         map.det_insert(CaseId, Ptags, !CaseIdPtagsMap)
     ).
 
@@ -1467,8 +1480,11 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
 %-----------------------------------------------------------------------------%
 
 order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
-    ( if MaxPtag >= Ptag then
-        NextPtag = Ptag + 1,
+    Ptag = ptag(PtagUint8),
+    MaxPtag = ptag(MaxPtagUint8),
+    ( if PtagUint8 =< MaxPtagUint8 then
+        NextPtagUint8 = PtagUint8 + 1u8,
+        NextPtag = ptag(NextPtagUint8),
         ( if map.search(PtagCaseMap0, Ptag, PtagCase) then
             map.delete(Ptag, PtagCaseMap0, PtagCaseMap1),
             order_ptags_by_value(NextPtag, MaxPtag,

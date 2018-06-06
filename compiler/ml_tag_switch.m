@@ -58,6 +58,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module uint8.
 :- import_module unit.
 
 :- type code_map == map(case_id, maybe_code).
@@ -112,7 +113,7 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail,
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
 
     % Package up the results into a switch statement.
-    Range = mlds_switch_range(0, MaxPrimary),
+    Range = mlds_switch_range(0, uint8.cast_to_int(MaxPrimary)),
     SwitchStmt0 = ml_stmt_switch(mlds_native_int_type, PtagRval, Range,
         PtagCases, Default, Context),
     ml_simplify_switch(SwitchStmt0, SwitchStmt, !Info),
@@ -161,7 +162,7 @@ find_any_split_cases(CaseIdPtagsMap, IsAnyCaseSplit) :-
     map.foldl(find_any_split_cases_2, CaseIdPtagsMap,
         no_case_is_split_between_ptags, IsAnyCaseSplit).
 
-:- pred find_any_split_cases_2(case_id::in, set(int)::in,
+:- pred find_any_split_cases_2(case_id::in, set(ptag)::in,
     is_a_case_split_between_ptags::in, is_a_case_split_between_ptags::out)
     is det.
 
@@ -257,7 +258,9 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
 
 :- func make_ptag_match(ptag) = mlds_case_match_cond.
 
-make_ptag_match(Ptag) = match_value(ml_const(mlconst_int(Ptag))).
+make_ptag_match(Ptag) = Cond :-
+    Ptag = ptag(PtagUint8),
+    Cond = match_value(ml_const(mlconst_int(uint8.cast_to_int(PtagUint8)))).
 
 :- pred lookup_code_map(code_map::in, case_id::in, code_model::in,
     mlds_stmt::out, ml_gen_info::in, ml_gen_info::out) is det.
@@ -311,11 +314,11 @@ build_stag_rev_map([Entry | Entries], !RevMap) :-
 %---------------------------------------------------------------------------%
 
 :- pred gen_stag_switch(assoc_list(case_id, stags)::in,
-    code_map::in, int::in, sectag_locn::in, prog_var::in,
+    code_map::in, ptag::in, sectag_locn::in, prog_var::in,
     code_model::in, can_fail::in, prog_context::in, mlds_stmt::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
+gen_stag_switch(Cases, CodeMap, Ptag, StagLocn, Var, CodeModel,
         CanFail, Context, Stmt, !Info) :-
     % Generate the rval for the secondary tag.
     ml_variable_type(!.Info, Var, VarType),
@@ -327,7 +330,7 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
     ;
         StagLocn = sectag_remote,
         ml_gen_secondary_tag_rval(!.Info, VarType, VarRval,
-            PrimaryTag, StagRval)
+            Ptag, StagRval)
     ;
         ( StagLocn = sectag_none
         ; StagLocn = sectag_none_direct_arg

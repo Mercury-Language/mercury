@@ -97,7 +97,13 @@
 
 :- pred output_test_rval(llds_out_info::in, rval::in, io::di, io::uo) is det.
 
+    % Write out the given ptag, wrapped up in MR_mktag(_).
+    %
 :- pred output_ptag(ptag::in, io::di, io::uo) is det.
+
+    % Write out the given ptag.
+    %
+:- pred write_ptag(ptag::in, io::di, io::uo) is det.
 
     % Return true iff an integer constant can be used directly as a value
     % in a structure field of the given type, instead of being cast to
@@ -175,6 +181,8 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
+:- import_module uint8.
 
 %----------------------------------------------------------------------------%
 %
@@ -329,7 +337,7 @@ output_lval(Info, Lval, !IO) :-
         (
             MaybePtag = yes(Ptag),
             io.write_string("MR_tfield(", !IO),
-            io.write_int(Ptag, !IO),
+            write_ptag(Ptag, !IO),
             io.write_string(", ", !IO)
         ;
             MaybePtag = no,
@@ -477,7 +485,7 @@ output_lval_for_assign(Info, Lval, Type, !IO) :-
         (
             MaybePtag = yes(Ptag),
             io.write_string("MR_tfield(", !IO),
-            io.write_int(Ptag, !IO),
+            write_ptag(Ptag, !IO),
             io.write_string(", ", !IO)
         ;
             MaybePtag = no,
@@ -1224,7 +1232,7 @@ output_rval(Info, Rval, !IO) :-
             DataId = scalar_common_data_id(type_num(TypeNum), CellNum)
         then
             io.write_string("MR_TAG_COMMON(", !IO),
-            io.write_int(Ptag, !IO),
+            write_ptag(Ptag, !IO),
             io.write_string(",", !IO),
             io.write_int(TypeNum, !IO),
             io.write_string(",", !IO),
@@ -1234,13 +1242,13 @@ output_rval(Info, Rval, !IO) :-
             SubRval = unop(mkbody, const(llconst_int(Body)))
         then
             io.write_string("MR_tbmkword(", !IO),
-            io.write_int(Ptag, !IO),
+            write_ptag(Ptag, !IO),
             io.write_string(", ", !IO),
             io.write_int(Body, !IO),
             io.write_string(")", !IO)
         else
             io.write_string("MR_tmkword(", !IO),
-            io.write_int(Ptag, !IO),
+            write_ptag(Ptag, !IO),
             io.write_string(", ", !IO),
             output_rval_as_type(Info, SubRval, lt_data_ptr, !IO),
             io.write_string(")", !IO)
@@ -1248,7 +1256,7 @@ output_rval(Info, Rval, !IO) :-
     ;
         Rval = mkword_hole(Ptag),
         io.write_string("MR_tmkword(", !IO),
-        io.write_int(Ptag, !IO),
+        write_ptag(Ptag, !IO),
         io.write_string(", 0)", !IO)
     ;
         Rval = lval(Lval),
@@ -1259,7 +1267,7 @@ output_rval(Info, Rval, !IO) :-
             (
                 MaybePtag = yes(Ptag),
                 io.write_string("MR_ctfield(", !IO),
-                io.write_int(Ptag, !IO),
+                write_ptag(Ptag, !IO),
                 io.write_string(", ", !IO)
             ;
                 MaybePtag = no,
@@ -1308,7 +1316,7 @@ output_rval(Info, Rval, !IO) :-
             (
                 MaybePtag = yes(Ptag),
                 io.write_string("&MR_tfield(", !IO),
-                io.write_int(Ptag, !IO),
+                write_ptag(Ptag, !IO),
                 io.write_string(", ", !IO)
             ;
                 MaybePtag = no,
@@ -1813,7 +1821,7 @@ output_test_rval(Info, Test, !IO) :-
         ),
         output_rval(Info, Rval, !IO),
         io.write_string(",", !IO),
-        io.write_int(Ptag, !IO),
+        write_ptag(Ptag, !IO),
         io.write_string(")", !IO)
     else if
         Test = unop(logical_not, InnerTest),
@@ -1828,7 +1836,7 @@ output_test_rval(Info, Test, !IO) :-
         ),
         output_rval(Info, Rval, !IO),
         io.write_string(",", !IO),
-        io.write_int(Ptag, !IO),
+        write_ptag(Ptag, !IO),
         io.write_string(")", !IO)
     else if
         Test = binop(logical_and, Left, Right),
@@ -1838,9 +1846,9 @@ output_test_rval(Info, Test, !IO) :-
         io.write_string("MR_RTAGS_TEST(", !IO),
         output_rval(Info, Rval, !IO),
         io.write_string(",", !IO),
-        io.write_int(Ptag, !IO),
+        write_ptag(Ptag, !IO),
         io.write_string(",", !IO),
-        io.write_int(Stag, !IO),
+        io.write_uint(Stag, !IO),
         io.write_string(")", !IO)
     else if
         Test = unop(logical_not, InnerTest),
@@ -1851,9 +1859,9 @@ output_test_rval(Info, Test, !IO) :-
         io.write_string("MR_RTAGS_TESTR(", !IO),
         output_rval(Info, Rval, !IO),
         io.write_string(",", !IO),
-        io.write_int(Ptag, !IO),
+        write_ptag(Ptag, !IO),
         io.write_string(",", !IO),
-        io.write_int(Stag, !IO),
+        io.write_uint(Stag, !IO),
         io.write_string(")", !IO)
     else if
         is_local_stag_test(Test, Rval, Ptag, Stag, Negated)
@@ -1867,9 +1875,9 @@ output_test_rval(Info, Test, !IO) :-
         ),
         output_rval(Info, Rval, !IO),
         io.write_string(",", !IO),
-        io.write_int(Ptag, !IO),
+        write_ptag(Ptag, !IO),
         io.write_string(",", !IO),
-        io.write_int(Stag, !IO),
+        io.write_uint(Stag, !IO),
         io.write_string(")", !IO)
     else if
         Test = unop(logical_not, InnerTest),
@@ -1884,9 +1892,9 @@ output_test_rval(Info, Test, !IO) :-
         ),
         output_rval(Info, Rval, !IO),
         io.write_string(",", !IO),
-        io.write_int(Ptag, !IO),
+        write_ptag(Ptag, !IO),
         io.write_string(",", !IO),
-        io.write_int(Stag, !IO),
+        io.write_uint(Stag, !IO),
         io.write_string(")", !IO)
     else
         output_rval_as_type(Info, Test, lt_bool, !IO)
@@ -1924,12 +1932,14 @@ is_int_cmp(Test, Left, RightConst, OpStr, NegOpStr) :-
         NegOpStr = "MR_INT_LT"
     ).
 
-:- pred is_ptag_test(rval::in, rval::out, int::out, bool::out) is semidet.
+:- pred is_ptag_test(rval::in, rval::out, ptag::out, bool::out) is semidet.
 
 is_ptag_test(Test, Rval, Ptag, Negated) :-
     Test = binop(Op, Left, Right),
     Left = unop(tag, Rval),
-    Right = unop(mktag, const(llconst_int(Ptag))),
+    Right = unop(mktag, const(llconst_int(PtagInt))),
+    uint8.from_int(PtagInt, PtagUint8),
+    Ptag = ptag(PtagUint8),
     (
         Op = eq(_),
         Negated = no
@@ -1938,20 +1948,23 @@ is_ptag_test(Test, Rval, Ptag, Negated) :-
         Negated = yes
     ).
 
-:- pred is_remote_stag_test(rval::in, rval::in, int::in, int::out) is semidet.
+:- pred is_remote_stag_test(rval::in, rval::in, ptag::in, uint::out)
+    is semidet.
 
 is_remote_stag_test(Test, Rval, Ptag, Stag) :-
     Test = binop(eq(int_type_int), Left, Right),
     Left = lval(field(yes(Ptag), Rval, Zero)),
     Zero = const(llconst_int(0)),
-    Right = const(llconst_int(Stag)).
+    Right = const(llconst_int(StagInt)),
+    uint.from_int(StagInt, Stag).
 
-:- pred is_local_stag_test(rval::in, rval::out, int::out, int::out, bool::out)
-    is semidet.
+:- pred is_local_stag_test(rval::in, rval::out, ptag::out, uint::out,
+    bool::out) is semidet.
 
 is_local_stag_test(Test, Rval, Ptag, Stag, Negated) :-
     Test = binop(Op, Rval, Right),
-    Right = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
+    Right = mkword(Ptag, unop(mkbody, const(llconst_int(StagInt)))),
+    uint.from_int(StagInt, Stag),
     (
         Op = eq(_),
         Negated = no
@@ -1962,8 +1975,12 @@ is_local_stag_test(Test, Rval, Ptag, Stag, Negated) :-
 
 output_ptag(Ptag, !IO) :-
     io.write_string("MR_mktag(", !IO),
-    io.write_int(Ptag, !IO),
+    write_ptag(Ptag, !IO),
     io.write_string(")", !IO).
+
+write_ptag(Ptag, !IO) :-
+    Ptag = ptag(PtagUint8),
+    io.write_uint8(PtagUint8, !IO).
 
 direct_field_int_constant(LLDSType) = DirectFieldIntConstant :-
     (

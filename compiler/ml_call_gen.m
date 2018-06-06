@@ -83,6 +83,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -173,7 +174,8 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         ml_gen_var(!.Info, ClosureVar, ClosureLval),
         FieldId = ml_field_offset(ml_const(mlconst_int(1))),
         % XXX are these types right?
-        FuncLval = ml_field(yes(0), ml_lval(ClosureLval), ClosureArgType,
+        FuncLval = ml_field(yes(ptag(0u8)),
+            ml_lval(ClosureLval), ClosureArgType,
             FieldId, mlds_generic_type),
         FuncType = mlds_func_type(Params),
         FuncRval = ml_unbox(FuncType, ml_lval(FuncLval))
@@ -188,7 +190,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 
         % Extract the base_typeclass_info from the typeclass_info.
         BaseTypeclassInfoFieldId = ml_field_offset(ml_const(mlconst_int(0))),
-        BaseTypeclassInfoLval = ml_field(yes(0),
+        BaseTypeclassInfoLval = ml_field(yes(ptag(0u8)),
             ml_lval(TypeClassInfoLval), ClosureArgType,
             BaseTypeclassInfoFieldId, mlds_generic_type),
 
@@ -196,7 +198,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         Offset = ml_base_typeclass_info_method_offset,
         MethodFieldNum = MethodNum + Offset,
         MethodFieldId = ml_field_offset(ml_const(mlconst_int(MethodFieldNum))),
-        FuncLval = ml_field(yes(0),
+        FuncLval = ml_field(yes(ptag(0u8)),
             ml_lval(BaseTypeclassInfoLval), mlds_generic_type,
             MethodFieldId, mlds_generic_type),
         FuncType = mlds_func_type(Params),

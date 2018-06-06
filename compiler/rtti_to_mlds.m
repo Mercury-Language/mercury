@@ -55,6 +55,7 @@
 
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.type_ctor_info.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.
@@ -76,13 +77,14 @@
 :- import_module bool.
 :- import_module counter.
 :- import_module digraph.
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module term.
+:- import_module uint.
+:- import_module uint8.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%
@@ -804,6 +806,8 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         Rep = du_hl_rep(_),
         unexpected($module, $pred, "du_hl_rep")
     ),
+    Ptag = ptag(PtagUint8),
+    PtagInt = uint8.cast_to_int(PtagUint8),
     (
         SectagAndLocn = sectag_locn_none,
         Locn = sectag_none,
@@ -813,11 +817,13 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         Locn = sectag_none_direct_arg,
         Stag = -1
     ;
-        SectagAndLocn = sectag_locn_local(Stag),
-        Locn = sectag_local
+        SectagAndLocn = sectag_locn_local(StagUint),
+        Locn = sectag_local,
+        Stag = uint.cast_to_int(StagUint)
     ;
-        SectagAndLocn = sectag_locn_remote(Stag),
-        Locn = sectag_remote
+        SectagAndLocn = sectag_locn_remote(StagUint),
+        Locn = sectag_remote,
+        Stag = uint.cast_to_int(StagUint)
     ),
     RttiName = type_ctor_du_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
@@ -826,7 +832,7 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         gen_init_int(Arity),
         gen_init_int(ContainsVarBitVector),
         gen_init_sectag_locn(Locn),
-        gen_init_int(Ptag),
+        gen_init_int(PtagInt),
         gen_init_int(Stag),
         gen_init_int(Ordinal),
         ArgTypeInitializer,
@@ -1133,7 +1139,7 @@ gen_foreign_enum_name_ordered_table(ModuleInfo, RttiTypeCtor,
         !GlobalData).
 
 :- pred gen_du_ptag_ordered_table(module_info::in, rtti_type_ctor::in,
-    map(int, sectag_table)::in, ml_global_data::in, ml_global_data::out)
+    map(ptag, sectag_table)::in, ml_global_data::in, ml_global_data::out)
     is det.
 
 gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap, !GlobalData) :-
@@ -1143,62 +1149,46 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap, !GlobalData) :-
         !GlobalData),
     (
         PtagList = [],
-        PtagInitPrefix = [],
-        FirstPtag = 0
+        FirstPtag = ptag(0u8)
     ;
         PtagList = [FirstPtag - _ | _],
-        ( if FirstPtag = 0 then
-            PtagInitPrefix = [],
-            FirstPtag = 0
-        else if  FirstPtag = 1 then
-            % Output a dummy ptag definition for the reserved tag first.
-            sectag_locn_to_string(sectag_none, SecTagTargetPrefixes, _),
-            RttiElemName = type_ctor_du_ptag_layout(0),
-            RttiElemId = ctor_rtti_id(RttiTypeCtor, RttiElemName),
-            PtagInitPrefix = [
-                init_struct(mlds_rtti_type(item_type(RttiElemId)),
-                [gen_init_int(0),
-                gen_init_builtin_const(SecTagTargetPrefixes,
-                    "MR_SECTAG_VARIABLE"),
-                gen_init_null_pointer(
-                    mlds_rtti_type(item_type(
-                        ctor_rtti_id(RttiTypeCtor,
-                            type_ctor_du_stag_ordered_table(0)))))]
-            )],
-            FirstPtag = 1
+        ( if FirstPtag = ptag(0u8) then
+            true
         else
             unexpected($module, $pred, "bad ptag list")
         )
     ),
-    PtagInitializers = gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
-        PtagList, FirstPtag),
+    gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, FirstPtag,
+        PtagList, PtagInitializers),
     RttiName = type_ctor_du_ptag_ordered_table,
-    Initializer = init_array(PtagInitPrefix ++ PtagInitializers),
+    Initializer = init_array(PtagInitializers),
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
 
-:- func gen_du_ptag_ordered_table_body(module_name, rtti_type_ctor,
-    assoc_list(int, sectag_table), int) = list(mlds_initializer).
+:- pred gen_du_ptag_ordered_table_body(module_name::in, rtti_type_ctor::in,
+    ptag::in, assoc_list(ptag, sectag_table)::in, list(mlds_initializer)::out)
+    is det.
 
-gen_du_ptag_ordered_table_body(_, _, [], _) = [].
-gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
-        [Ptag - SectagTable | PtagTail], CurPtag)
-        = [Initializer | Initializers] :-
+gen_du_ptag_ordered_table_body(_, _, _, [], []).
+gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, CurPtag,
+        [Ptag - SectagTable | PtagTail], [Initializer | Initializers]) :-
     expect(unify(Ptag, CurPtag), $module, $pred, "ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
     RttiName = type_ctor_du_ptag_layout(Ptag),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        gen_init_int(NumSharers),
+        gen_init_int(uint.cast_to_int(NumSharers)),
         gen_init_sectag_locn(SectagLocn),
         gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_stag_ordered_table(Ptag))
     ]),
-    Initializers = gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
-        PtagTail, CurPtag + 1).
+    CurPtag = ptag(CurPtagUint8),
+    NextPtag = ptag(CurPtagUint8 + 1u8),
+    gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, NextPtag,
+        PtagTail, Initializers).
 
 :- pred gen_du_stag_ordered_table(module_name::in, rtti_type_ctor::in,
-    pair(int, sectag_table)::in,
+    pair(ptag, sectag_table)::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_du_stag_ordered_table(ModuleName, RttiTypeCtor, Ptag - SectagTable,

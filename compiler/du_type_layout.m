@@ -133,6 +133,8 @@
 :- import_module set_tree234.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 
@@ -147,7 +149,8 @@
 
 :- type maybe_primary_tags
     --->    no_primary_tags
-    ;       max_primary_tag(int).
+    ;       max_primary_tag(ptag, int).
+            % The maximum ptag, and the number of bits it occupies.
 
 :- type maybe_unboxed_no_tag_types
     --->    no_unboxed_no_tag_types
@@ -294,8 +297,14 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
     globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
     ( if NumPtagBits = 0 then
         MaybePrimaryTags = no_primary_tags
+    else if NumPtagBits = 2 then
+        MaybePrimaryTags = max_primary_tag(ptag(3u8), NumPtagBits)
+    else if NumPtagBits = 3 then
+        MaybePrimaryTags = max_primary_tag(ptag(7u8), NumPtagBits)
     else
-        MaybePrimaryTags = max_primary_tag(int.pow(2, NumPtagBits) - 1)
+        MaxPtagInt = int.pow(2, NumPtagBits) - 1,
+        MaxPtagUint8 = uint8.det_from_int(MaxPtagInt),
+        MaybePrimaryTags = max_primary_tag(ptag(MaxPtagUint8), NumPtagBits)
     ),
 
     % Compute ArgPackBits.
@@ -917,11 +926,11 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
     MaybePrimaryTags = Params ^ ddp_maybe_primary_tags,
     (
         MaybePrimaryTags = no_primary_tags,
-        assign_tags_to_non_direct_arg_functors(TypeCtor, 0, 0, AddedBy, Ctors,
-            NumRemoteSecTags, map.init, CtorTagMap),
+        assign_tags_to_non_direct_arg_functors(TypeCtor, ptag(0u8), 0u8,
+            AddedBy, Ctors, NumRemoteSecTags, map.init, CtorTagMap),
         DirectArgFunctorNames = []
     ;
-        MaybePrimaryTags = max_primary_tag(MaxPtag),
+        MaybePrimaryTags = max_primary_tag(MaxPtag, NumPtagBits),
         separate_out_constants(Ctors, Constants, Functors),
         MaybeDirectArgs = Params ^ ddp_maybe_direct_args,
         (
@@ -951,33 +960,36 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
             DirectArgFunctorNames = [],
             NonDirectArgFunctors = Functors
         ),
-        some [!CurPtag, !CtorTagMap] (
-            !:CurPtag = 0,
+        some [!CurPtagUint8, !CtorTagMap] (
+            !:CurPtagUint8 = 0u8,
             map.init(!:CtorTagMap),
             (
                 Constants = []
             ;
                 Constants = [_ | _],
-                ConstantsPtag = !.CurPtag,
-                CurLocalSecTag = 0,
-                assign_tags_to_constants(TypeCtor, ConstantsPtag,
-                    CurLocalSecTag, Constants, !CtorTagMap),
-                !:CurPtag = !.CurPtag + 1
+                ConstantsPtag = ptag(!.CurPtagUint8),
+                CurLocalSecTag = 0u,
+                compute_sectag_bits(Constants, SectagBits),
+                assign_tags_to_constants(TypeCtor, ConstantsPtag, NumPtagBits,
+                    SectagBits, CurLocalSecTag, Constants, !CtorTagMap),
+                !:CurPtagUint8 = !.CurPtagUint8 + 1u8
             ),
             assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag,
-                !CurPtag, DirectArgFunctors, NonDirectArgFunctors,
+                !CurPtagUint8, DirectArgFunctors, NonDirectArgFunctors,
                 LeftOverDirectArgFunctors, !CtorTagMap),
             assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag,
-                !.CurPtag, AddedBy,
+                !.CurPtagUint8, AddedBy,
                 LeftOverDirectArgFunctors ++ NonDirectArgFunctors,
                 NumRemoteSecTags, !CtorTagMap),
             CtorTagMap = !.CtorTagMap
         )
     ),
-    ( if NumRemoteSecTags = 0 then
+    ( if NumRemoteSecTags = 0u then
         NumRemoteSecTagBits = 0
     else
-        int.log2(NumRemoteSecTags, NumRemoteSecTagBits)
+        NumRemoteSecTagsInt = uint.cast_to_int(NumRemoteSecTags),
+        % XXX int.log2 should actually be uint.log2.
+        int.log2(NumRemoteSecTagsInt, NumRemoteSecTagBits)
     ),
     list.map_foldl2(
         decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
@@ -1030,12 +1042,12 @@ decide_complex_du_ctor_args(ModuleInfo, Params, ComponentTypeMap,
         TypeStatus, _NumRemoteSecTagBits, CtorTag, MaybeExistConstraints,
         CtorSymName, CtorContext, CtorArgs, CtorArgRepns, !Specs) :-
     ( if
-        CtorTag = shared_remote_tag(_, _, AddedBy),
+        CtorTag = shared_remote_tag(_, RemoteSectag),
         % If the target uses constructors, then the *Mercury* compiler
         % is not responsible for adding the secondary tag to the start
         % of the memory cell, and for the purposes of unifications,
         % the cell starts *after* the tag.
-        AddedBy = sectag_added_by_unify
+        RemoteSectag ^ rsectag_added = sectag_added_by_unify
     then
         NumSecTagWords = 1
     else
@@ -1349,91 +1361,98 @@ padding_increment(CurShift, PaddingIncrement) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred assign_tags_to_constants(type_ctor::in, int::in, int::in,
-    list(constructor)::in,
+:- pred assign_tags_to_constants(type_ctor::in, ptag::in, int::in,
+    sectag_bits::in, uint::in, list(constructor)::in,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_tags_to_constants(_, _, _, [], !CtorTagMap).
-assign_tags_to_constants(TypeCtor, Ptag, CurSecTag,
+assign_tags_to_constants(_, _, _, _, _, [], !CtorTagMap).
+assign_tags_to_constants(TypeCtor, Ptag, NumPtagBits, SectagBits, CurSecTag,
         [Ctor | Ctors], !CtorTagMap) :-
     Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Context),
     ConsId = cons(SymName, Arity, TypeCtor),
-    Tag = shared_local_tag(Ptag, CurSecTag),
-    map.det_insert(ConsId, Tag, !CtorTagMap),
-    assign_tags_to_constants(TypeCtor, Ptag, CurSecTag + 1,
-        Ctors, !CtorTagMap).
+    Ptag = ptag(PtagUint8),
+    WholeWord = (CurSecTag << NumPtagBits) \/ uint8.cast_to_uint(PtagUint8),
+    % XXX SectagBits is currently ignored.
+    LocalSectag = local_sectag(CurSecTag, lsectag_rest_of_word(WholeWord)),
+    ConsTag = shared_local_tag(Ptag, LocalSectag),
+    map.det_insert(ConsId, ConsTag, !CtorTagMap),
+    assign_tags_to_constants(TypeCtor, Ptag, NumPtagBits,
+        SectagBits, CurSecTag + 1u, Ctors, !CtorTagMap).
 
 :- pred assign_tags_to_direct_arg_functors(type_ctor::in,
-    int::in, int::in, int::out,
+    ptag::in, uint8::in, uint8::out,
     list(constructor)::in, list(constructor)::in, list(constructor)::out,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
 assign_tags_to_direct_arg_functors(_, _, !CurPtag, [], _, [], !CtorTagMap).
-assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtag,
+assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtagUint8,
         [DirectArgCtor | DirectArgCtors], NonDirectArgCtors, LeftOverCtors,
         !CtorTagMap) :-
     DirectArgCtor = ctor(_MaybeExistConstraints, Name, _Args, Arity, _Context),
     ConsId = cons(Name, Arity, TypeCtor),
+    MaxPtag = ptag(MaxPtagUint8),
     ( if
         % If we are about to run out of unshared tags, stop, and return
         % the leftovers.
-        !.CurPtag = MaxPtag,
+        !.CurPtagUint8 = MaxPtagUint8,
         ( DirectArgCtors = [_ | _]
         ; NonDirectArgCtors = [_ | _]
         )
     then
         LeftOverCtors = [DirectArgCtor | DirectArgCtors]
     else
-        Tag = direct_arg_tag(!.CurPtag),
-        map.det_insert(ConsId, Tag, !CtorTagMap),
-        !:CurPtag = !.CurPtag + 1,
-        assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtag,
+        ConsTag = direct_arg_tag(ptag(!.CurPtagUint8)),
+        map.det_insert(ConsId, ConsTag, !CtorTagMap),
+        !:CurPtagUint8 = !.CurPtagUint8 + 1u8,
+        assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtagUint8,
             DirectArgCtors, NonDirectArgCtors, LeftOverCtors, !CtorTagMap)
     ).
 
 :- pred assign_tags_to_non_direct_arg_functors(type_ctor::in,
-    ptag::in, ptag::in, sectag_added_by::in, list(constructor)::in, int::out,
-    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
+    ptag::in, uint8::in, sectag_added_by::in, list(constructor)::in,
+    uint::out, cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_tags_to_non_direct_arg_functors(_, _, _, _, [], 0, !CtorTagMap).
-assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtag, AddedBy,
-        [Ctor | Ctors], NumRemoteSecTags, !CtorTagMap) :-
+assign_tags_to_non_direct_arg_functors(_, _, _, _, [], 0u, !CtorTagMap).
+assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtagUint8,
+        AddedBy, [Ctor | Ctors], NumRemoteSecTags, !CtorTagMap) :-
     Ctor = ctor(_MaybeExistConstraints, Name, _Args, Arity, _Context),
     ConsId = cons(Name, Arity, TypeCtor),
+    MaxPtag = ptag(MaxPtagUint8),
     ( if
         % If we are about to run out of unshared tags, start assigning
         % shared remote tags instead.
-        !.CurPtag = MaxPtag,
+        !.CurPtagUint8 = MaxPtagUint8,
         Ctors = [_ | _]
     then
-        CurRemoteSecTag0 = 0,
+        CurRemoteSecTag0 = 0u,
         assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
-            !.CurPtag, AddedBy, [Ctor | Ctors],
+            ptag(!.CurPtagUint8), AddedBy, [Ctor | Ctors],
             CurRemoteSecTag0, CurRemoteSecTag, !CtorTagMap),
         % We assigned remote sec tags 0 .. CurRemoteSecTag-1,
         % which is CurRemoteSecTag sec tags.
         NumRemoteSecTags = CurRemoteSecTag
     else
-        Tag = unshared_tag(!.CurPtag),
-        map.det_insert(ConsId, Tag, !CtorTagMap),
-        !:CurPtag = !.CurPtag + 1,
-        assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtag,
-            AddedBy, Ctors, NumRemoteSecTags, !CtorTagMap)
+        ConsTag = unshared_tag(ptag(!.CurPtagUint8)),
+        map.det_insert(ConsId, ConsTag, !CtorTagMap),
+        !:CurPtagUint8 = !.CurPtagUint8 + 1u8,
+        assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag,
+            !.CurPtagUint8, AddedBy, Ctors, NumRemoteSecTags, !CtorTagMap)
     ).
 
 :- pred assign_shared_remote_tags_to_non_direct_arg_functors(type_ctor::in,
-    ptag::in, sectag_added_by::in, list(constructor)::in, int::in, int::out,
+    ptag::in, sectag_added_by::in, list(constructor)::in, uint::in, uint::out,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
 assign_shared_remote_tags_to_non_direct_arg_functors(_, _, _,
-        [], !CurRemoteSecTag,!CtorTagMap).
+        [], !CurRemoteSecTag, !CtorTagMap).
 assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
         Ptag, AddedBy, [Ctor | Ctors], !CurRemoteSecTag, !CtorTagMap) :-
     Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Context),
     ConsId = cons(SymName, Arity, TypeCtor),
-    Tag = shared_remote_tag(Ptag, !.CurRemoteSecTag, AddedBy),
-    map.det_insert(ConsId, Tag, !CtorTagMap),
-    !:CurRemoteSecTag = !.CurRemoteSecTag + 1,
+    RemoteSectag = remote_sectag(!.CurRemoteSecTag, AddedBy),
+    ConsTag = shared_remote_tag(Ptag, RemoteSectag),
+    map.det_insert(ConsId, ConsTag, !CtorTagMap),
+    !:CurRemoteSecTag = !.CurRemoteSecTag + 1u,
     assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
         Ptag, AddedBy, Ctors, !CurRemoteSecTag, !CtorTagMap).
 
@@ -1779,8 +1798,8 @@ check_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors], !Specs) :-
     ( if list.contains(AssertedDirectArgCtors, SymNameArity) then
         Pieces = [words("Error:"),
             unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
-            words("cannot be represented as a direct pointer to its"),
-            words("sole argument."), nl],
+            words("cannot be represented as a direct pointer"),
+            words("to its sole argument."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_type_check, [Msg]),
         !:Specs = [Spec | !.Specs]
@@ -2084,6 +2103,35 @@ output_direct_arg_functor_summary(ModuleName, TypeCtor, DirectArgFunctorNames,
     io.nl(!IO).
 
 %---------------------------------------------------------------------------%
+
+:- pred compute_sectag_bits(list(T)::in, sectag_bits::out) is det.
+
+compute_sectag_bits(Sharers, SectagBits) :-
+    list.length(Sharers, NumSharers),
+    ( if uint.from_int(NumSharers, UnsignedNumSharers) then
+        num_bits_needed_for_n_things_loop(UnsignedNumSharers, 0, NumBits),
+        NumBitsMask = (1 << NumBits) - 1,
+        ( if
+            uint8.from_int(NumBits, NumBitsUint8),
+            uint.from_int(NumBitsMask, NumBitsMaskUint)
+        then
+            SectagBits = sectag_bits(NumBitsUint8, NumBitsMaskUint)
+        else
+            unexpected($pred, "NumBitsNeeded does not fit in 8 bits")
+        )
+    else
+        unexpected($pred, "N < 0")
+    ).
+
+:- pred num_bits_needed_for_n_things_loop(uint::in, int::in, int::out) is det.
+
+num_bits_needed_for_n_things_loop(N, NumBits0, NumBits) :-
+    ( if N < (1u << NumBits0) then
+        NumBits = NumBits0
+    else
+        num_bits_needed_for_n_things_loop(N, NumBits0 + 1, NumBits)
+    ).
+
 %---------------------------------------------------------------------------%
 :- end_module hlds.du_type_layout.
 %---------------------------------------------------------------------------%

@@ -84,7 +84,8 @@
 
 mlds_output_ptag(Ptag, !IO) :-
     io.write_string("MR_mktag(", !IO),
-    io.write_int(Ptag, !IO),
+    Ptag = ptag(PtagUint8),
+    io.write_uint8(PtagUint8, !IO),
     io.write_string(")", !IO).
 
 %---------------------------------------------------------------------------%
@@ -128,7 +129,7 @@ mlds_output_lval(Opts, Lval, !IO) :-
         ;
             FieldId = ml_field_named(QualFieldVarName, CtorType),
             io.write_string("(", !IO),
-            ( if MaybePtag = yes(0) then
+            ( if MaybePtag = yes(ptag(0u8)) then
                 ( if PtrType = CtorType then
                     true
                 else

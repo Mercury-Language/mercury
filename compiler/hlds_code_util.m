@@ -87,88 +87,88 @@
 
 %-----------------------------------------------------------------------------%
 
-cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
+cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
     (
         ConsId = int_const(Int),
-        Tag = int_tag(int_tag_int(Int))
+        ConsTag = int_tag(int_tag_int(Int))
     ;
         ConsId = uint_const(UInt),
-        Tag = int_tag(int_tag_uint(UInt))
+        ConsTag = int_tag(int_tag_uint(UInt))
     ;
         ConsId = int8_const(Int8),
-        Tag = int_tag(int_tag_int8(Int8))
+        ConsTag = int_tag(int_tag_int8(Int8))
     ;
         ConsId = uint8_const(UInt8),
-        Tag = int_tag(int_tag_uint8(UInt8))
+        ConsTag = int_tag(int_tag_uint8(UInt8))
     ;
         ConsId = int16_const(Int16),
-        Tag = int_tag(int_tag_int16(Int16))
+        ConsTag = int_tag(int_tag_int16(Int16))
     ;
         ConsId = uint16_const(UInt16),
-        Tag = int_tag(int_tag_uint16(UInt16))
+        ConsTag = int_tag(int_tag_uint16(UInt16))
     ;
         ConsId = int32_const(Int32),
-        Tag = int_tag(int_tag_int32(Int32))
+        ConsTag = int_tag(int_tag_int32(Int32))
     ;
         ConsId = uint32_const(UInt32),
-        Tag = int_tag(int_tag_uint32(UInt32))
+        ConsTag = int_tag(int_tag_uint32(UInt32))
     ;
         ConsId = int64_const(Int64),
-        Tag = int_tag(int_tag_int64(Int64))
+        ConsTag = int_tag(int_tag_int64(Int64))
     ;
         ConsId = uint64_const(UInt64),
-        Tag = int_tag(int_tag_uint64(UInt64))
+        ConsTag = int_tag(int_tag_uint64(UInt64))
     ;
         ConsId = float_const(Float),
-        Tag = float_tag(Float)
+        ConsTag = float_tag(Float)
     ;
         ConsId = char_const(Char),
         char.to_int(Char, CharCode),
-        Tag = int_tag(int_tag_int(CharCode))
+        ConsTag = int_tag(int_tag_int(CharCode))
     ;
         ConsId = string_const(String),
-        Tag = string_tag(String)
+        ConsTag = string_tag(String)
     ;
         ConsId = impl_defined_const(_),
         unexpected($pred, "implementation_defined_const")
     ;
         ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        Tag = closure_tag(PredId, ProcId, EvalMethod)
+        ConsTag = closure_tag(PredId, ProcId, EvalMethod)
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
-        Tag = type_ctor_info_tag(ModuleName, TypeName, Arity)
+        ConsTag = type_ctor_info_tag(ModuleName, TypeName, Arity)
     ;
         ConsId = base_typeclass_info_const(ModuleName, ClassName,
             _Instance, EncodedArgs),
-        Tag = base_typeclass_info_tag(ModuleName, ClassName, EncodedArgs)
+        ConsTag = base_typeclass_info_tag(ModuleName, ClassName, EncodedArgs)
     ;
         ( ConsId = type_info_cell_constructor(_)
         ; ConsId = typeclass_info_cell_constructor
         ),
-        Tag = unshared_tag(0)
+        ConsTag = unshared_tag(ptag(0u8))
     ;
         ConsId = type_info_const(TIConstNum),
-        Tag = type_info_const_tag(TIConstNum)
+        ConsTag = type_info_const_tag(TIConstNum)
     ;
         ConsId = typeclass_info_const(TCIConstNum),
-        Tag = typeclass_info_const_tag(TCIConstNum)
+        ConsTag = typeclass_info_const_tag(TCIConstNum)
     ;
         ConsId = ground_term_const(ConstNum, SubConsId),
         SubConsTag = cons_id_to_tag(ModuleInfo, SubConsId),
-        Tag = ground_term_const_tag(ConstNum, SubConsTag)
+        ConsTag = ground_term_const_tag(ConstNum, SubConsTag)
     ;
         ConsId = tabling_info_const(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        Tag = tabling_info_tag(PredId, ProcId)
+        ConsTag = tabling_info_tag(PredId, ProcId)
     ;
         ConsId = deep_profiling_proc_layout(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        Tag = deep_profiling_proc_layout_tag(PredId, ProcId)
+        ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId)
     ;
         ConsId = table_io_entry_desc(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        Tag = table_io_entry_tag(PredId, ProcId)
+        ConsTag = table_io_entry_tag(PredId, ProcId)
     ;
         ConsId = tuple_cons(Arity),
         % Tuples do not need a tag. Note that unary tuples are not treated
@@ -181,9 +181,9 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
             ; TargetLang = target_erlang
             ),
             ( if Arity = 0 then
-                Tag = int_tag(int_tag_int(0))
+                ConsTag = int_tag(int_tag_int(0))
             else
-                Tag = single_functor_tag
+                ConsTag = single_functor_tag
             )
         ;
             % For these target languages, converting arity-zero tuples into
@@ -191,12 +191,12 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
             ( TargetLang = target_csharp
             ; TargetLang = target_java
             ),
-            Tag = single_functor_tag
+            ConsTag = single_functor_tag
         )
     ;
         ConsId = cons(_Name, _Arity, _TypeCtor),
         get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepn),
-        Tag = ConsRepn ^ cr_tag
+        ConsTag = ConsRepn ^ cr_tag
     ).
 
 %-----------------------------------------------------------------------------%

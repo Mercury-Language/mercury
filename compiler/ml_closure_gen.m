@@ -81,6 +81,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.mark_tail_calls.          % for ntrcr_program
 :- import_module libs.
@@ -165,11 +166,11 @@ ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     % even if we created a cons_id specifically for this purpose.
     MaybeConsId = no,
     MaybeConsName = no,
-    PTag = 0,
-    MaybeSTag = no,
+    Ptag = ptag(0u8),
+    MaybeStag = no,
 
     % Generate a `new_object' statement (or static constant) for the closure.
-    ml_gen_new_object(MaybeConsId, MaybeConsName, PTag, MaybeSTag,
+    ml_gen_new_object(MaybeConsId, MaybeConsName, Ptag, MaybeStag,
         Var, ExtraArgRvalsTypes, ArgVars, ArgModes, [],
         HowToConstruct, Context, Defns, Stmts, !Info).
 
@@ -1195,7 +1196,8 @@ ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
         % Generate `MR_field(MR_mktag(0), closure, <N>)'.
         FieldId = ml_field_offset(ml_const(mlconst_int(ArgNum + Offset))),
         % XXX These types might not be right.
-        FieldLval = ml_field(yes(0), ml_lval(ClosureLval), mlds_generic_type,
+        FieldLval = ml_field(yes(ptag(0u8)),
+            ml_lval(ClosureLval), mlds_generic_type,
             FieldId, mlds_generic_type),
         % Recursively handle the remaining fields.
         ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum + 1,

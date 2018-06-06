@@ -30,6 +30,7 @@
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.
@@ -278,7 +279,7 @@
     %
 :- type du_rep
     --->    du_ll_rep(
-                du_ll_ptag          :: int,
+                du_ll_ptag          :: ptag,
                 du_ll_sec_tag       :: sectag_and_locn
             )
     ;       du_hl_rep(
@@ -330,13 +331,13 @@
     % The type sectag_table corresponds to the C type MR_DuPtagLayout.
     % The two maps are implemented in C as simple arrays.
     %
-:- type ptag_map == map(int, sectag_table).  % key is primary tag
-:- type stag_map == map(int, du_functor).    % key is secondary tag
+:- type ptag_map == map(ptag, sectag_table).  % key is primary tag
+:- type stag_map == map(uint, du_functor).    % key is secondary tag
 
 :- type sectag_table
     --->    sectag_table(
                 sectag_locn         :: sectag_locn,
-                sectag_num_sharers  :: int,
+                sectag_num_sharers  :: uint,
                 sectag_map          :: stag_map
             ).
 
@@ -355,8 +356,8 @@
 :- type sectag_and_locn
     --->    sectag_locn_none
     ;       sectag_locn_none_direct_arg
-    ;       sectag_locn_local(int)
-    ;       sectag_locn_remote(int).
+    ;       sectag_locn_local(uint)
+    ;       sectag_locn_remote(uint).
 
     % Information about an argument of a functor in a discriminated union type.
     %
@@ -625,9 +626,9 @@
     ;       type_ctor_foreign_enum_name_ordered_table
     ;       type_ctor_foreign_enum_ordinal_ordered_table
     ;       type_ctor_du_name_ordered_table
-    ;       type_ctor_du_stag_ordered_table(int)        % primary tag
+    ;       type_ctor_du_stag_ordered_table(ptag)
     ;       type_ctor_du_ptag_ordered_table
-    ;       type_ctor_du_ptag_layout(int)               % primary tag
+    ;       type_ctor_du_ptag_layout(ptag)
     ;       type_ctor_functor_number_map
     ;       type_ctor_type_functors
     ;       type_ctor_type_layout
@@ -957,6 +958,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module table_builtin.
+:- import_module uint8.
 
 %----------------------------------------------------------------------------%
 
@@ -1241,7 +1243,8 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_ctor_du_stag_ordered_table(Ptag),
-        string.int_to_string(Ptag, P_str),
+        Ptag = ptag(PtagUint8),
+        P_str = string.uint8_to_string(PtagUint8),
         string.append_list([ModuleName, "__du_stag_ordered_",
             TypeName, "_", A_str, "_", P_str], Str)
     ;
@@ -1250,7 +1253,8 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_ctor_du_ptag_layout(Ptag),
-        string.int_to_string(Ptag, P_str),
+        Ptag = ptag(PtagUint8),
+        P_str = string.uint8_to_string(PtagUint8),
         string.append_list([ModuleName, "__du_ptag_layout_",
             TypeName, "_", A_str, "_", P_str], Str)
     ;
@@ -1734,7 +1738,8 @@ type_ctor_details_num_ptags(TypeCtorDetails) = NumPtags :-
         TypeCtorDetails = tcd_du(_, _, PtagMap, _, _),
         map.keys(PtagMap, Ptags),
         list.det_last(Ptags, LastPtag),
-        NumPtags = LastPtag + 1
+        LastPtag = ptag(LastPtagUint8),
+        NumPtags = uint8.cast_to_int(LastPtagUint8) + 1
     ).
 
 type_ctor_details_num_functors(TypeCtorDetails) = NumFunctors :-

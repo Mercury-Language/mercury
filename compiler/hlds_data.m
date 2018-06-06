@@ -38,6 +38,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -137,16 +138,18 @@
             % it IS the value of that argument, which must be an untagged
             % pointer to a cell.
 
-    ;       shared_remote_tag(ptag, sectag, sectag_added_by)
+    ;       shared_remote_tag(ptag, remote_sectag)
             % This is for functors or constants which require more than just
             % a primary tag. In this case, we use both a primary and a
             % secondary tag. Several functors share the primary tag and are
             % distinguished by the secondary tag. The secondary tag is stored
-            % as the first word of the argument vector. (If it is a constant,
-            % then in this case there is an argument vector of size 1 which
-            % just holds the secondary tag.)
+            % as either the whole of or as part of the first word of the
+            % argument vector. (If the functor is a constant, and we cannot
+            % use primary tag bits to distinguish it from other functors,
+            % then there will be an argument vector of size 1 which holds
+            % just the secondary tag.)
 
-    ;       shared_local_tag(ptag, sectag)
+    ;       shared_local_tag(ptag, local_sectag)
             % This is for constants which require more than a two-bit tag.
             % In this case, we use both a primary and a secondary tag,
             % but this time the secondary tag is stored in the rest of the
@@ -184,10 +187,58 @@
 
     % The type `ptag' holds a primary tag value.
     % It consists of 2 bits on 32 bit machines and 3 bits on 64 bit machines.
+    % If we are not using primary tags to distinguish function symbols
+    % from each other, the ptag will always be 0u8.
     %
-:- type ptag == int.
+:- type ptag
+    --->    ptag(uint8).
 
-:- type sectag == int.
+:- type local_sectag
+    --->    local_sectag(
+                lsectag_value       :: uint,
+                lsectag_size        :: lsectag_size
+            ).
+
+:- type remote_sectag
+    --->    remote_sectag(
+                rsectag_value       :: uint,
+
+                % For now, all remote sectags occupy a whole word
+                % at the start of the cell, so this field is disabled.
+                % rsectag_size        :: rsectag_size,
+
+                rsectag_added       :: sectag_added_by
+            ).
+
+:- type lsectag_size
+    --->    lsectag_rest_of_word(
+                % For now, *all* local tags occupy the whole of the word
+                % after the primary tag. When it becomes necessary to
+                % distinguish them from words that contain packed
+                % arguments as well as the primary tag and the local
+                % secondary tag, *then* we will need the lrow_sectag_bits
+                % field.
+                % lrow_sectag_bits  :: sectag_bits
+
+                % The ptag and the local sectag together.
+                lrow_whole_word     :: uint
+            ).
+    % ;     lsectag_subword(sectag_bits).
+            % This will represent the case where a word contains packed
+            % arguments as well as the primary tag and the local secondary tag.
+
+:- type rsectag_size
+    --->    rsectag_word
+    ;       rsectag_subword(sectag_bits).
+
+:- type sectag_bits
+    --->    sectag_bits(
+                % A local secondary tag is always next to the primary tag.
+                % A remote secondary tag is always at the start of the word
+                % at offset 0 in the memory cell.
+                sectag_num_bits     :: uint8,
+                sectag_mask         :: uint
+            ).
 
 :- type sectag_added_by
     --->    sectag_added_by_unify
@@ -203,7 +254,7 @@
     % Return the secondary tag, if any, for a cons_tag.
     % A return value of `no' means there is no secondary tag.
     %
-:- func get_maybe_secondary_tag(cons_tag) = maybe(sectag).
+:- func get_maybe_secondary_tag(cons_tag) = maybe(int).
 
 %---------------------%
 
@@ -220,7 +271,7 @@
 
 :- implementation.
 
-get_maybe_primary_tag(Tag) = MaybePrimaryTag :-
+get_maybe_primary_tag(Tag) = MaybePtag :-
     (
         % In some of the cases where we return `no' here,
         % it would probably be OK to return `yes(0)'.
@@ -240,23 +291,23 @@ get_maybe_primary_tag(Tag) = MaybePrimaryTag :-
         ; Tag = table_io_entry_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ),
-        MaybePrimaryTag = no
+        MaybePtag = no
     ;
         Tag = ground_term_const_tag(_, SubTag),
-        MaybePrimaryTag = get_maybe_primary_tag(SubTag)
+        MaybePtag = get_maybe_primary_tag(SubTag)
     ;
         Tag = single_functor_tag,
-        MaybePrimaryTag = yes(0)
+        MaybePtag = yes(ptag(0u8))
     ;
-        ( Tag = unshared_tag(PrimaryTag)
-        ; Tag = direct_arg_tag(PrimaryTag)
-        ; Tag = shared_remote_tag(PrimaryTag, _SecondaryTag, _)
-        ; Tag = shared_local_tag(PrimaryTag, _SecondaryTag)
+        ( Tag = unshared_tag(Ptag)
+        ; Tag = direct_arg_tag(Ptag)
+        ; Tag = shared_remote_tag(Ptag, _)
+        ; Tag = shared_local_tag(Ptag, _)
         ),
-        MaybePrimaryTag = yes(PrimaryTag)
+        MaybePtag = yes(Ptag)
     ).
 
-get_maybe_secondary_tag(Tag) = MaybeSecondaryTag :-
+get_maybe_secondary_tag(Tag) = MaybeSectag :-
     (
         ( Tag = int_tag(_)
         ; Tag = float_tag(_)
@@ -276,15 +327,20 @@ get_maybe_secondary_tag(Tag) = MaybeSecondaryTag :-
         ; Tag = direct_arg_tag(_PrimaryTag)
         ; Tag = single_functor_tag
         ),
-        MaybeSecondaryTag = no
+        MaybeSectag = no
     ;
         Tag = ground_term_const_tag(_, SubTag),
-        MaybeSecondaryTag = get_maybe_secondary_tag(SubTag)
+        MaybeSectag = get_maybe_secondary_tag(SubTag)
     ;
-        ( Tag = shared_remote_tag(_PrimaryTag, SecondaryTag, _)
-        ; Tag = shared_local_tag(_PrimaryTag, SecondaryTag)
-        ),
-        MaybeSecondaryTag = yes(SecondaryTag)
+        Tag = shared_local_tag(_Ptag, LocalSectag),
+        LocalSectag = local_sectag(SectagUint, _),
+        Sectag = uint.cast_to_int(SectagUint),
+        MaybeSectag = yes(Sectag)
+    ;
+        Tag = shared_remote_tag(_Ptag, RemoteSectag),
+        RemoteSectag = remote_sectag(SectagUint, _),
+        Sectag = uint.cast_to_int(SectagUint),
+        MaybeSectag = yes(Sectag)
     ).
 
 project_tagged_cons_id_tag(TaggedConsId) = Tag :-

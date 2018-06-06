@@ -711,8 +711,7 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
         ),
         SubClassCtorFunc = ml_gen_constructor_function(Target,
             BaseClassId, CtorClassId, CtorClassQualifier,
-            SecondaryTagClassId, MaybeSecTagVal, SubClassFieldInfos,
-            Context),
+            SecondaryTagClassId, MaybeSecTagVal, SubClassFieldInfos, Context),
         % If this constructor is going to go in the base class, then we may
         % also need to generate an additional zero-argument constructor,
         % which is used to construct the class that is used for
@@ -838,7 +837,7 @@ gen_init_field(BaseClassId, CtorClassId, ClassQualifier, FieldInfo) = Stmt :-
     FieldId = ml_field_named(
         qual_field_var_name(ClassQualifier, type_qual, FieldVarName),
         mlds_ptr_type(CtorClassType)),
-    FieldLval = ml_field(yes(0),
+    FieldLval = ml_field(yes(ptag(0u8)),
         % XXX We should use ClassType rather than BaseClassId here.
         % But doing so breaks the IL back-end, because then the hack in
         % fixup_class_qualifiers doesn't work.
@@ -863,7 +862,7 @@ gen_init_tag(Target, CtorClassId, SecondaryTagClassId, TagVal, Context)
     FieldId = ml_field_named(
         qual_field_var_name(TagClassQualifier, type_qual, fvn_data_tag),
         mlds_ptr_type(mlds_class_type(SecondaryTagClassId))),
-    FieldLval = ml_field(yes(0), ml_self(CtorClassType), CtorClassType,
+    FieldLval = ml_field(yes(ptag(0u8)), ml_self(CtorClassType), CtorClassType,
         FieldId, mlds_native_int_type),
     Stmt = ml_stmt_atomic(assign(FieldLval, Rval), Context).
 
@@ -1024,7 +1023,7 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         ; Tag = table_io_entry_tag(_, _)
         ; Tag = unshared_tag(_)
         ; Tag = direct_arg_tag(_)
-        ; Tag = shared_remote_tag(_, _, _)
+        ; Tag = shared_remote_tag(_, _)
         ; Tag = shared_local_tag(_, _)
         ; Tag = no_tag
         ; Tag = dummy_tag
@@ -1117,7 +1116,7 @@ enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval) :-
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
-        ; ConsTag = shared_remote_tag(_, _, _)
+        ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = shared_local_tag(_, _)
         ; ConsTag = no_tag
         ),

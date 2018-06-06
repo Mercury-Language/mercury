@@ -953,7 +953,7 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
     output_n_indents(Indent + 1, !IO),
     write_lval_or_string(Opts, Base, !IO),
     io.write_string(" = ", !IO),
-    ( if Ptag = 0 then
+    ( if Ptag = ptag(0u8) then
         % XXX We should not need the cast here, but currently the type that
         % we include in the call to MR_new_object() is not always correct.
         mlds_output_cast(Opts, Type, !IO),

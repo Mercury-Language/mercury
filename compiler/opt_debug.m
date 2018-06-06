@@ -331,8 +331,8 @@ dump_lval(MaybeProcLabel, Lval) = Str :-
     ;
         Lval = field(MT, N, F),
         (
-            MT = yes(T),
-            string.int_to_string(T, T_str)
+            MT = yes(Ptag),
+            T_str = dump_ptag(Ptag)
         ;
             MT = no,
             T_str = "no"
@@ -353,6 +353,12 @@ dump_lval(MaybeProcLabel, Lval) = Str :-
         Str = "global_var_ref(env_var_ref(" ++ VarName ++ "))"
     ).
 
+:- func dump_ptag(ptag) = string.
+
+dump_ptag(Ptag) = Str :-
+    Ptag = ptag(PtagUint8),
+    Str = string.uint8_to_string(PtagUint8).
+
 dump_lvals(MaybeProcLabel, Lvals) =
     dump_lvals_2(MaybeProcLabel, Lvals, "").
 
@@ -372,11 +378,11 @@ dump_rval(MaybeProcLabel, Rval) = Str :-
         Str = "var(" ++ int_to_string(term.var_to_int(Var)) ++ ")"
     ;
         Rval = mkword(T, N),
-        Str = "mkword(" ++ int_to_string(T) ++ ", " ++
+        Str = "mkword(" ++ dump_ptag(T) ++ ", " ++
             dump_rval(MaybeProcLabel, N) ++ ")"
     ;
         Rval = mkword_hole(T),
-        Str = "mkword_hole(" ++ int_to_string(T) ++ ")"
+        Str = "mkword_hole(" ++ dump_ptag(T) ++ ")"
     ;
         Rval = const(C),
         Str = dump_const(MaybeProcLabel, C)
@@ -424,8 +430,8 @@ dump_mem_ref(MaybeProcLabel, MemRef) = Str :-
     ;
         MemRef = heap_ref(R, MaybeTag, N),
         (
-            MaybeTag = yes(Tag),
-            TagString = int_to_string(Tag)
+            MaybeTag = yes(Ptag),
+            TagString = dump_ptag(Ptag)
         ;
             MaybeTag = no,
             TagString = "unknown_tag"
@@ -595,13 +601,13 @@ dump_rtti_name(RttiName) = Str :-
         Str = "du_name_ordered_table"
     ;
         RttiName = type_ctor_du_stag_ordered_table(Ptag),
-        Str = "du_stag_ordered_table_" ++ int_to_string(Ptag)
+        Str = "du_stag_ordered_table_" ++ dump_ptag(Ptag)
     ;
         RttiName = type_ctor_du_ptag_ordered_table,
         Str = "du_ptag_ordered_table"
     ;
         RttiName = type_ctor_du_ptag_layout(Ptag),
-        Str = "du_ptag_layout" ++ int_to_string(Ptag)
+        Str = "du_ptag_layout" ++ dump_ptag(Ptag)
     ;
         RttiName = type_ctor_type_layout,
         Str = "type_layout"
@@ -1185,8 +1191,8 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
             MaybeTag = no,
             T_str = "no"
         ;
-            MaybeTag = yes(Tag),
-            string.int_to_string(Tag, T_str)
+            MaybeTag = yes(Ptag),
+            T_str = dump_ptag(Ptag)
         ),
         (
             MaybeOffset = no,

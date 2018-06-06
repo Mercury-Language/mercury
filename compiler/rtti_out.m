@@ -107,6 +107,7 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.type_ctor_info.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.
 :- import_module libs.globals.
@@ -130,6 +131,8 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
+:- import_module uint8.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%
@@ -911,6 +914,7 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         Rep = du_hl_rep(_),
         unexpected($module, $pred, "du_hl_rep")
     ),
+    Ptag = ptag(PtagUint8),
     (
         SectagAndLocn = sectag_locn_none,
         Locn = "MR_SECTAG_NONE",
@@ -920,15 +924,17 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         Locn = "MR_SECTAG_NONE_DIRECT_ARG",
         Stag = -1
     ;
-        SectagAndLocn = sectag_locn_local(Stag),
-        Locn = "MR_SECTAG_LOCAL"
+        SectagAndLocn = sectag_locn_local(StagUint),
+        Locn = "MR_SECTAG_LOCAL",
+        Stag = uint.cast_to_int(StagUint)
     ;
-        SectagAndLocn = sectag_locn_remote(Stag),
-        Locn = "MR_SECTAG_REMOTE"
+        SectagAndLocn = sectag_locn_remote(StagUint),
+        Locn = "MR_SECTAG_REMOTE",
+        Stag = uint.cast_to_int(StagUint)
     ),
     io.write_string(Locn, !IO),
     io.write_string(",\n\t", !IO),
-    io.write_int(Ptag, !IO),
+    io.write_uint8(PtagUint8, !IO),
     io.write_string(",\n\t", !IO),
     io.write_int(Stag, !IO),
     io.write_string(",\n\t", !IO),
@@ -1284,7 +1290,7 @@ output_du_name_ordered_table(Info, RttiTypeCtor, NameArityMap,
     io.write_string("};\n", !IO).
 
 :- pred output_du_stag_ordered_table(llds_out_info::in, rtti_type_ctor::in,
-    pair(int, sectag_table)::in, decl_set::in, decl_set::out,
+    pair(ptag, sectag_table)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
 output_du_stag_ordered_table(Info, RttiTypeCtor, Ptag - SectagTable,
@@ -1300,7 +1306,7 @@ output_du_stag_ordered_table(Info, RttiTypeCtor, Ptag - SectagTable,
     io.write_string("\n};\n", !IO).
 
 :- pred output_du_ptag_ordered_table(llds_out_info::in, rtti_type_ctor::in,
-    map(int, sectag_table)::in, decl_set::in, decl_set::out,
+    map(ptag, sectag_table)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
 output_du_ptag_ordered_table(Info, RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
@@ -1311,12 +1317,8 @@ output_du_ptag_ordered_table(Info, RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_du_ptag_ordered_table),
         !DeclSet, !IO),
     io.write_string(" = {\n", !IO),
-    ( if PtagList = [1 - _ | _] then
-        % Output a dummy ptag definition for the reserved tag first.
-        output_dummy_ptag_layout_defn(!IO),
-        FirstPtag = 1
-    else if PtagList = [0 - _ | _] then
-        FirstPtag = 0
+    ( if PtagList = [ptag(0u8) - _ | _] then
+        FirstPtag = ptag(0u8)
     else
         unexpected($module, $pred, "bad ptag list")
     ),
@@ -1324,7 +1326,7 @@ output_du_ptag_ordered_table(Info, RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
     io.write_string("\n};\n", !IO).
 
 :- pred output_du_ptag_ordered_table_body(rtti_type_ctor::in,
-    assoc_list(int, sectag_table)::in, int::in, io::di, io::uo) is det.
+    assoc_list(ptag, sectag_table)::in, ptag::in, io::di, io::uo) is det.
 
 output_du_ptag_ordered_table_body(_RttiTypeCtor, [], _CurPtag, !IO).
 output_du_ptag_ordered_table_body(RttiTypeCtor,
@@ -1332,7 +1334,7 @@ output_du_ptag_ordered_table_body(RttiTypeCtor,
     expect(unify(Ptag, CurPtag), $module, $pred, "ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
     io.write_string("\t{ ", !IO),
-    io.write_int(NumSharers, !IO),
+    io.write_uint(NumSharers, !IO),
     io.write_string(", ", !IO),
     rtti.sectag_locn_to_string(SectagLocn, _TargetPrefixes, LocnStr),
     io.write_string(LocnStr, !IO),
@@ -1345,8 +1347,10 @@ output_du_ptag_ordered_table_body(RttiTypeCtor,
     ;
         PtagTail = [_ | _],
         io.write_string(" },\n", !IO),
+        CurPtag = ptag(CurPtagUint8),
+        NextPtag = ptag(CurPtagUint8 + 1u8),
         output_du_ptag_ordered_table_body(RttiTypeCtor, PtagTail,
-            CurPtag + 1, !IO)
+            NextPtag, !IO)
     ).
 
     % Output a `dummy' ptag layout, for use by tags that aren't *real* tags,

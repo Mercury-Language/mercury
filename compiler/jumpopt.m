@@ -64,6 +64,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
@@ -1022,12 +1023,12 @@ needs_workaround(Lval, Cond) :-
         (
             Right = lval(Lval),
             ( Left = const(llconst_int(0))
-            ; Left = mkword(0, unop(mkbody, const(llconst_int(0))))
+            ; Left = mkword(ptag(0u8), unop(mkbody, const(llconst_int(0))))
             )
         ;
             Left = lval(Lval),
             ( Right = const(llconst_int(0))
-            ; Right = mkword(0, unop(mkbody, const(llconst_int(0))))
+            ; Right = mkword(ptag(0u8), unop(mkbody, const(llconst_int(0))))
             )
         )
     ).

@@ -60,6 +60,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module uint8.
 
 %-----------------------------------------------------------------------------%
 
@@ -294,14 +295,16 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
 
     (
         PrimaryMethod = binary_search,
-        order_ptags_by_value(0, MaxPrimary, PtagCaseMap, PtagCaseList),
-        generate_primary_binary_search(PtagCaseList, 0, MaxPrimary, PtagRval,
+        order_ptags_by_value(ptag(0u8), ptag(MaxPrimary),
+            PtagCaseMap, PtagCaseList),
+        generate_primary_binary_search(PtagCaseList, 0u8, MaxPrimary, PtagRval,
             StagReg, VarRval, MaybeFailLabel, PtagCountMap, CasesCode,
             CaseLabelMap0, CaseLabelMap, !CI)
     ;
         PrimaryMethod = jump_table,
-        order_ptags_by_value(0, MaxPrimary, PtagCaseMap, PtagCaseList),
-        generate_primary_jump_table(PtagCaseList, 0, MaxPrimary, StagReg,
+        order_ptags_by_value(ptag(0u8), ptag(MaxPrimary),
+            PtagCaseMap, PtagCaseList),
+        generate_primary_jump_table(PtagCaseList, 0u8, MaxPrimary, StagReg,
             VarRval, MaybeFailLabel, PtagCountMap, Targets, TableCode,
             CaseLabelMap0, CaseLabelMap, !CI),
         SwitchCode = singleton(
@@ -395,8 +398,9 @@ generate_primary_try_me_else_chain_case(PtagRval, StagReg,
         MainPtag, OtherPtags, PtagCase, MaxSecondary, VarRval, MaybeFailLabel,
         Code, !CaseLabelMap, !CI) :-
     get_next_label(ElseLabel, !CI),
+    MainPtag = ptag(MainPtagUint8),
     TestRval0 = binop(ne(int_type_int), PtagRval,
-        unop(mktag, const(llconst_int(MainPtag)))),
+        unop(mktag, const(llconst_int(uint8.cast_to_int(MainPtagUint8))))),
     generate_primary_try_me_else_chain_other_ptags(OtherPtags, PtagRval,
         TestRval0, TestRval),
     TestCode = singleton(
@@ -418,8 +422,9 @@ generate_primary_try_me_else_chain_case(PtagRval, StagReg,
 generate_primary_try_me_else_chain_other_ptags([], _, TestRval, TestRval).
 generate_primary_try_me_else_chain_other_ptags([OtherPtag | OtherPtags],
         PtagRval, TestRval0, TestRval) :-
+    OtherPtag = ptag(OtherPtagUint8),
     ThisTestRval = binop(ne(int_type_int), PtagRval,
-        unop(mktag, const(llconst_int(OtherPtag)))),
+        unop(mktag, const(llconst_int(uint8.cast_to_int(OtherPtagUint8))))),
     TestRval1 = binop(logical_and, TestRval0, ThisTestRval),
     generate_primary_try_me_else_chain_other_ptags(OtherPtags,
         PtagRval, TestRval1, TestRval).
@@ -495,8 +500,9 @@ generate_primary_try_chain_case(PtagRval, StagReg, MainPtag, OtherPtags,
         PrevTestsCode0, PrevTestsCode, PrevCasesCode0, PrevCasesCode,
         !CaseLabelMap, !CI) :-
     get_next_label(ThisPtagLabel, !CI),
+    MainPtag = ptag(MainPtagUint8),
     TestRval0 = binop(eq(int_type_int), PtagRval,
-        unop(mktag, const(llconst_int(MainPtag)))),
+        unop(mktag, const(llconst_int(uint8.cast_to_int(MainPtagUint8))))),
     generate_primary_try_chain_other_ptags(OtherPtags, PtagRval,
         TestRval0, TestRval),
     TestCode = singleton(
@@ -520,8 +526,9 @@ generate_primary_try_chain_case(PtagRval, StagReg, MainPtag, OtherPtags,
 generate_primary_try_chain_other_ptags([], _, TestRval, TestRval).
 generate_primary_try_chain_other_ptags([OtherPtag | OtherPtags],
         PtagRval, TestRval0, TestRval) :-
+    OtherPtag = ptag(OtherPtagUint8),
     ThisTestRval = binop(eq(int_type_int), PtagRval,
-        unop(mktag, const(llconst_int(OtherPtag)))),
+        unop(mktag, const(llconst_int(uint8.cast_to_int(OtherPtagUint8))))),
     TestRval1 = binop(logical_or, TestRval0, ThisTestRval),
     generate_primary_try_chain_other_ptags(OtherPtags,
         PtagRval, TestRval1, TestRval).
@@ -531,8 +538,9 @@ generate_primary_try_chain_other_ptags([OtherPtag | OtherPtags],
     % Generate the cases for a primary tag using a dense jump table
     % that has an entry for all possible primary tag values.
     %
-:- pred generate_primary_jump_table(ptag_case_list(label)::in, int::in,
-    int::in, lval::in, rval::in, maybe(label)::in, ptag_count_map::in,
+:- pred generate_primary_jump_table(ptag_case_list(label)::in,
+    uint8::in, uint8::in, lval::in, rval::in,
+    maybe(label)::in, ptag_count_map::in,
     list(maybe(label))::out, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
@@ -546,21 +554,21 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
         Targets = [],
         Code = empty
     else
-        NextPrimary = CurPrimary + 1,
+        NextPrimary = CurPrimary + 1u8,
         ( if
             PtagGroups = [PtagCaseEntry | PtagGroupsTail],
-            PtagCaseEntry = ptag_case_entry(CurPrimary, PrimaryInfo)
+            PtagCaseEntry = ptag_case_entry(ptag(CurPrimary), PrimaryInfo)
         then
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
-            map.lookup(PtagCountMap, CurPrimary, CountInfo),
+            map.lookup(PtagCountMap, ptag(CurPrimary), CountInfo),
             CountInfo = StagLocPrime - MaxSecondary,
             expect(unify(StagLoc, StagLocPrime), $pred,
                 "secondary tag locations differ"),
             get_next_label(NewLabel, !CI),
             Comment = "start of a case in primary tag switch: ptag " ++
-                string.int_to_string(CurPrimary),
+                string.uint8_to_string(CurPrimary),
             LabelCode = singleton(llds_instr(label(NewLabel), Comment)),
-            generate_primary_tag_code(StagGoalMap, CurPrimary, [],
+            generate_primary_tag_code(StagGoalMap, ptag(CurPrimary), [],
                 MaxSecondary, StagReg, StagLoc, VarRval, MaybeFailLabel,
                 ThisTagCode, !CaseLabelMap, !CI),
             generate_primary_jump_table(PtagGroupsTail, NextPrimary,
@@ -583,8 +591,8 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
     % This invocation looks after primary tag values in the range
     % MinPtag to MaxPtag (including both boundary values).
     %
-:- pred generate_primary_binary_search(ptag_case_list(label)::in, int::in,
-    int::in, rval::in, lval::in, rval::in, maybe(label)::in,
+:- pred generate_primary_binary_search(ptag_case_list(label)::in,
+    uint8::in, uint8::in, rval::in, lval::in, rval::in, maybe(label)::in,
     ptag_count_map::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
@@ -598,7 +606,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
             % There is no code for this tag.
             (
                 MaybeFailLabel = yes(FailLabel),
-                string.int_to_string(CurPrimary, PtagStr),
+                PtagStr = string.uint8_to_string(CurPrimary),
                 Comment = "no code for ptag " ++ PtagStr,
                 Code = singleton(
                     llds_instr(goto(code_label(FailLabel)), Comment)
@@ -610,15 +618,15 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
                 Code = empty
             )
         ;
-            PtagGroups = [ptag_case_entry(CurPrimaryPrime, PrimaryInfo)],
+            PtagGroups = [ptag_case_entry(ptag(CurPrimaryPrime), PrimaryInfo)],
             expect(unify(CurPrimary, CurPrimaryPrime), $pred,
                 "cur_primary mismatch"),
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
-            map.lookup(PtagCountMap, CurPrimary, CountInfo),
+            map.lookup(PtagCountMap, ptag(CurPrimary), CountInfo),
             CountInfo = StagLocPrime - MaxSecondary,
             expect(unify(StagLoc, StagLocPrime), $pred,
                 "secondary tag locations differ"),
-            generate_primary_tag_code(StagGoalMap, CurPrimary, [],
+            generate_primary_tag_code(StagGoalMap, ptag(CurPrimary), [],
                 MaxSecondary, StagReg, StagLoc, VarRval, MaybeFailLabel, Code,
                 !CaseLabelMap, !CI)
         ;
@@ -627,23 +635,25 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
                 "caselist not singleton or empty when binary search ends")
         )
     else
-        LowRangeEnd = (MinPtag + MaxPtag) // 2,
-        HighRangeStart = LowRangeEnd + 1,
-        InLowGroup = (pred(PtagGroup::in) is semidet :-
-            PtagGroup = ptag_case_entry(Ptag, _),
-            Ptag =< LowRangeEnd
-        ),
+        LowRangeEnd = (MinPtag + MaxPtag) // 2u8,
+        HighRangeStart = LowRangeEnd + 1u8,
+        InLowGroup =
+            ( pred(PtagGroup::in) is semidet :-
+                PtagGroup = ptag_case_entry(ptag(Ptag), _),
+                Ptag =< LowRangeEnd
+            ),
         list.filter(InLowGroup, PtagGroups, LowGroups, HighGroups),
         get_next_label(NewLabel, !CI),
-        string.int_to_string(MinPtag, LowStartStr),
-        string.int_to_string(LowRangeEnd, LowEndStr),
-        string.int_to_string(HighRangeStart, HighStartStr),
-        string.int_to_string(MaxPtag, HighEndStr),
+        string.uint8_to_string(MinPtag) = LowStartStr,
+        string.uint8_to_string(LowRangeEnd) = LowEndStr,
+        string.uint8_to_string(HighRangeStart) = HighStartStr,
+        string.uint8_to_string(MaxPtag) = HighEndStr,
         IfComment = "fallthrough for ptags " ++
             LowStartStr ++ " to " ++ LowEndStr,
         LabelComment = "code for ptags " ++
             HighStartStr ++ " to " ++ HighEndStr,
-        LowRangeEndConst = const(llconst_int(LowRangeEnd)),
+        % XXX ARG_PACK We should do the comparison on uint8s, not ints.
+        LowRangeEndConst = const(llconst_int(uint8.cast_to_int(LowRangeEnd))),
         TestRval = binop(int_gt(int_type_int), PtagRval, LowRangeEndConst),
         IfCode = singleton(
             llds_instr(if_val(TestRval, code_label(NewLabel)), IfComment)
@@ -1012,14 +1022,18 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
 make_ptag_comment(BaseStr, MainPtag, OtherPtags, Comment) :-
     (
         OtherPtags = [],
-        Comment = BaseStr ++ string.int_to_string(MainPtag)
+        Comment = BaseStr ++ ptag_to_string(MainPtag)
     ;
         OtherPtags = [_ | _],
-        Comment = BaseStr ++ string.int_to_string(MainPtag)
+        Comment = BaseStr ++ ptag_to_string(MainPtag)
             ++ "(shared with " ++
-            string.join_list(", ", list.map(string.int_to_string, OtherPtags))
+            string.join_list(", ", list.map(ptag_to_string, OtherPtags))
             ++ ")"
     ).
+
+:- func ptag_to_string(ptag) = string.
+
+ptag_to_string(ptag(Ptag)) = string.uint8_to_string(Ptag).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.tag_switch.

@@ -442,7 +442,8 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
         BaseRegInitCode = cord.singleton(
             llds_instr(
                 assign(BaseReg,
-                    mem_addr(heap_ref(VectorAddrRval, yes(0), BaseRval))),
+                    mem_addr(heap_ref(VectorAddrRval, yes(ptag(0u8)),
+                        BaseRval))),
                 "Compute base address for this case")
         ),
         generate_offset_assigns(OutVars, 0, BaseReg, !.CI, !CLD)
@@ -543,7 +544,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     BaseRegInitCode = cord.singleton(
         llds_instr(
             assign(BaseReg,
-                mem_addr(heap_ref(MainVectorAddrRval, yes(0),
+                mem_addr(heap_ref(MainVectorAddrRval, yes(ptag(0u8)),
                     binop(int_mul(int_type_int),
                         IndexRval,
                         const(llconst_int(MainNumColumns)))))),
@@ -638,10 +639,12 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
             SaveSlotsCode = cord.from_list([
                 llds_instr(assign(CurSlot,
-                    lval(field(yes(0), lval(BaseReg), MinOffsetColumnRval))),
+                    lval(field(yes(ptag(0u8)), lval(BaseReg),
+                        MinOffsetColumnRval))),
                     "Setup current slot in the later solution array"),
                 llds_instr(assign(MaxSlot,
-                    lval(field(yes(0), lval(BaseReg), MaxOffsetColumnRval))),
+                    lval(field(yes(ptag(0u8)), lval(BaseReg),
+                        MaxOffsetColumnRval))),
                     "Setup maximum slot in the later solution array")
             ]),
             maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
@@ -716,7 +719,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
                 llds_instr(label(AfterUndoLabel),
                     "Return later answer code"),
                 llds_instr(assign(LaterBaseReg,
-                    mem_addr(heap_ref(LaterVectorAddrRval, yes(0),
+                    mem_addr(heap_ref(LaterVectorAddrRval, yes(ptag(0u8)),
                         lval(LaterBaseReg)))),
                     "Compute base address in later array for this solution")
             ]),
@@ -758,7 +761,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
         Kinds = [NextKind | _],
         get_next_label(NextKindLabel, !CI),
         TestRval = binop(TestOp,
-            lval(field(yes(0), lval(BaseReg),
+            lval(field(yes(ptag(0u8)), lval(BaseReg),
                 const(llconst_int(NumPrevColumns)))),
             const(llconst_int(0))),
         TestCode = cord.from_list([
@@ -884,7 +887,7 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode,
         WordNum = binop(unchecked_right_shift(int_type_int), IndexRval,
             const(llconst_int(Log2WordBits))),
 
-        Word = lval(field(yes(0), BitVecRval, WordNum)),
+        Word = lval(field(yes(ptag(0u8)), BitVecRval, WordNum)),
 
         % This is the same as
         % BitNum = binop(int_mod, IndexRval, const(llconst_int(WordBits)))

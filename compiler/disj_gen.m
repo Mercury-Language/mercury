@@ -43,6 +43,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.vartypes.
 :- import_module libs.
@@ -235,7 +236,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
 
     BaseRegInitCode = cord.singleton(
         llds_instr(assign(BaseReg,
-            mem_addr(heap_ref(SolnVectorAddrRval, yes(0),
+            mem_addr(heap_ref(SolnVectorAddrRval, yes(ptag(0u8)),
                 const(llconst_int(0))))),
             "Compute base address for this case")
     ),
@@ -298,7 +299,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
         llds_instr(label(AfterUndoLabel),
             "Return later answer code"),
         llds_instr(assign(LaterBaseReg,
-            mem_addr(heap_ref(SolnVectorAddrRval, yes(0),
+            mem_addr(heap_ref(SolnVectorAddrRval, yes(ptag(0u8)),
                 lval(LaterBaseReg)))),
             "Compute base address in later array for this solution")
     ]),

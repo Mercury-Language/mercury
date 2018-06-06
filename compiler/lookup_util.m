@@ -87,6 +87,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module ll_backend.code_gen.
@@ -223,7 +224,8 @@ set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
 
 generate_offset_assigns([], _, _, _CI, !CLD).
 generate_offset_assigns([Var | Vars], Offset, BaseReg, CI, !CLD) :-
-    LookupLval = field(yes(0), lval(BaseReg), const(llconst_int(Offset))),
+    LookupLval = field(yes(ptag(0u8)), lval(BaseReg),
+        const(llconst_int(Offset))),
     assign_lval_to_var(Var, LookupLval, Code, CI, !CLD),
     expect(cord.is_empty(Code), $pred, "nonempty code"),
     generate_offset_assigns(Vars, Offset + 1, BaseReg, CI, !CLD).

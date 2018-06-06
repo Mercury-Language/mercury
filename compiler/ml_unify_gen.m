@@ -71,7 +71,7 @@
     --->    rval_type_and_width(mlds_rval, mlds_type, arg_pos_width,
                 maybe(packed_arg_var)).
 
-    % ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
+    % ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag, Var,
     %   ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr, HowToConstruct,
     %   Context, Stmts, !Info):
     %
@@ -167,6 +167,8 @@
 :- import_module require.
 :- import_module term.
 :- import_module varset.
+:- import_module uint.
+:- import_module uint8.
 
 :- inst no_or_direct_arg_tag for cons_tag/0
     --->    no_tag
@@ -357,14 +359,14 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         % Ordinary compound terms.
         (
             ConsTag = single_functor_tag,
-            Ptag = 0,
+            Ptag = ptag(0u8),
             MaybeStag = no
         ;
             ConsTag = unshared_tag(Ptag),
             MaybeStag = no
         ;
-            ConsTag = shared_remote_tag(Ptag, Stag, AddedBy),
-            MaybeStag = yes({Stag, AddedBy})
+            ConsTag = shared_remote_tag(Ptag, RemoteSectag),
+            MaybeStag = yes(RemoteSectag)
         ),
         UsesBaseClass = ml_tag_uses_base_class(ConsTag),
         ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
@@ -431,9 +433,11 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
                 Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
                     MLDS_Type))
             ;
-                ConsTag = shared_local_tag(Ptag, SecTag),
-                Rval = ml_cast(MLDS_Type, ml_mkword(Ptag,
-                    ml_unop(mkbody, ml_const(mlconst_int(SecTag)))))
+                ConsTag = shared_local_tag(_Ptag, LocalSectag),
+                LocalSectag = local_sectag(_, LocalSectagSize),
+                LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
+                Rval = ml_cast(MLDS_Type, ml_const(mlconst_int(
+                    uint.cast_to_int(SectagWholeWordUint))))
             ;
                 ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
                 ModuleName = fixup_builtin_module(ModuleName0),
@@ -489,7 +493,7 @@ ml_gen_info_lookup_const_var_rval(Info, Var, Rval) :-
     % Generate code to construct a new object.
     %
 :- pred ml_gen_construct_compound(cons_id::in,
-    ptag::in, maybe({sectag, sectag_added_by})::in, tag_uses_base_class::in,
+    ptag::in, maybe(remote_sectag)::in, tag_uses_base_class::in,
     prog_var::in, list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
@@ -512,15 +516,16 @@ ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
 
     % If there is a secondary tag, it goes in the first field.
     (
-        MaybeStag = yes({Stag, AddedBy}),
+        MaybeStag = yes(RemoteSectag),
+        RemoteSectag = remote_sectag(SectagUint, AddedBy),
         UsesConstructors = ml_target_uses_constructors(CompilationTarget),
         (
             UsesConstructors = no,
             % XXX ARG_PACK
             expect(unify(AddedBy, sectag_added_by_unify), $pred,
                 "AddedBy != sectag_added_by_unify"),
-            ExplicitSecTag = yes,
-            StagRval0 = ml_const(mlconst_int(Stag)),
+            ExplicitSectag = yes,
+            StagRval0 = ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
             StagType0 = mlds_native_int_type,
             % With the low-level data representation, all fields -- even the
             % secondary tag -- are boxed, and so we need box it here.
@@ -534,19 +539,19 @@ ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
             % XXX ARG_PACK
             expect(unify(AddedBy, sectag_added_by_constructor), $pred,
                 "AddedBy != sectag_added_by_constructor"),
-            ExplicitSecTag = no,
+            ExplicitSectag = no,
             ExtraRvalsTypesWidths = []
         )
     ;
         MaybeStag = no,
-        ExplicitSecTag = no,
+        ExplicitSectag = no,
         ExtraRvalsTypesWidths = []
     ),
-    ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSecTag,
+    ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag,
         Var, ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Defns, Stmts, !Info).
 
-ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
+ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag, Var,
         ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Defns, Stmts, !Info) :-
     (
@@ -554,14 +559,14 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
         ConsIdOrClosure = ordinary_cons_id(ConsId)
     ;
         MaybeConsId = no,
-        expect(unify(ExplicitSecTag, no), $pred, "sectag on closure"),
+        expect(unify(ExplicitSectag, no), $pred, "sectag on closure"),
         list.length(ExtraRvalsTypesWidths, NumExtras),
         ConsIdOrClosure = closure_object(NumExtras)
     ),
     (
         HowToConstruct = construct_dynamically,
         ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName,
-            Ptag, ExplicitSecTag, Var, ExtraRvalsTypesWidths,
+            Ptag, ExplicitSectag, Var, ExtraRvalsTypesWidths,
             ArgVars, ArgModes, TakeAddr, Context, Stmts, !Info),
         Defns = []
     ;
@@ -574,7 +579,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
-            Ptag, ExplicitSecTag, Var, ExtraRvalsTypesWidths,
+            Ptag, ExplicitSectag, Var, ExtraRvalsTypesWidths,
             ArgVars, ArgModes, TakeAddr, CellToReuse, Context,
             Defns, Stmts, !Info)
     ;
@@ -590,7 +595,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSecTag, Var,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
-        ExplicitSecTag, Var, ExtraRvalsTypesWidths, ArgVars, ArgModes,
+        ExplicitSectag, Var, ExtraRvalsTypesWidths, ArgVars, ArgModes,
         TakeAddr, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments and generate rvals
     % for them (boxing/unboxing if needed).
@@ -654,7 +659,7 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
     ConvFunc = (func(rval_type_and_width(Rv, T, _, _)) = ml_typed_rval(Rv, T)),
     ArgRvalsTypes = list.map(ConvFunc, ArgRvalsTypesWidths),
     ml_gen_type(!.Info, VarType, MLDS_VarType),
-    MakeNewObject = new_object(VarLval, Ptag, ExplicitSecTag, MLDS_VarType,
+    MakeNewObject = new_object(VarLval, Ptag, ExplicitSectag, MLDS_VarType,
         yes(SizeInWordsRval), MaybeCtorName, ArgRvalsTypes,
         MayUseAtomic, MaybeAllocId),
     MakeNewObjStmt = ml_stmt_atomic(MakeNewObject, Context),
@@ -739,7 +744,7 @@ ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
-        Ptag, ExplicitSecTag, Var, ExtraRvalsTypesWidths, ArgVars, ArgModes,
+        Ptag, ExplicitSectag, Var, ExtraRvalsTypesWidths, ArgVars, ArgModes,
         TakeAddr, CellToReuse, Context, Defns, Stmts, !Info) :-
     % NOTE: if it is ever used, NeedsUpdates needs to be modified to take into
     % account argument packing, as in unify_gen.m.
@@ -778,10 +783,11 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
         DifferentTags = [ReusePrimaryTag],
         % The body operator is slightly more efficient than the strip_tag
         % operator, so we use it when the old tag is known.
+        ReusePrimaryTag = ptag(ReusePrimaryTagUint8),
         ReuseVarRval = ml_mkword(PrimaryTag,
             ml_binop(body,
                 ml_lval(ReuseVarLval),
-                ml_gen_mktag(ReusePrimaryTag)))
+                ml_gen_mktag(uint8.cast_to_int(ReusePrimaryTagUint8))))
     ;
         DifferentTags = [_, _ | _],
         ReuseVarRval = ml_mkword(PrimaryTag,
@@ -813,7 +819,7 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
 
     % If the reassignment isn't possible because the target is statically
     % allocated, then fall back to dynamic allocation.
-    ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSecTag, Var,
+    ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag, Var,
         ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
         construct_dynamically, Context, DynamicDefns, DynamicStmts, !Info),
     Defns = FieldDefns ++ DynamicDefns,
@@ -1386,8 +1392,8 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
         )
     ;
         ( ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_UnsharedPtag)
-        ; ConsTag = shared_remote_tag(_PrimaryTag, _SecondaryTag, _AddedBy)
+        ; ConsTag = unshared_tag(_Ptag)
+        ; ConsTag = shared_remote_tag(_Ptag, _)
         ),
         ml_variable_type(!.Info, Var, VarType),
         ml_gen_var(!.Info, Var, VarLval),
@@ -1410,19 +1416,18 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
 ml_tag_initial_offset_and_argnum(ConsTag, Ptag, InitOffset, ArgNum) :-
     (
         ConsTag = single_functor_tag,
-        Ptag = 0,
+        Ptag = ptag(0u8),
         InitOffset = offset(0),
         ArgNum = 1
     ;
-        ( ConsTag = unshared_tag(UnsharedPtag)
-        ; ConsTag = direct_arg_tag(UnsharedPtag)
+        ( ConsTag = unshared_tag(Ptag)
+        ; ConsTag = direct_arg_tag(Ptag)
         ),
-        Ptag = UnsharedPtag,
         InitOffset = offset(0),
         ArgNum = 1
     ;
-        ConsTag = shared_remote_tag(PrimaryTag, _SecondaryTag, AddedBy),
-        Ptag = PrimaryTag,
+        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
+        RemoteSectag = remote_sectag(_, AddedBy),
         (
             AddedBy = sectag_added_by_unify,
             InitOffset = offset(1)
@@ -2097,8 +2102,10 @@ ml_gen_dynamic_deconstruct_direct_arg(Info, Ptag, Mode, ArgVar, Var,
         ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
             bp_native_if_possible, ml_lval(VarLval), VarRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+        Ptag = ptag(PtagUint8),
+        PtagInt = uint8.cast_to_int(PtagUint8),
         CastRval = ml_cast(MLDS_Type,
-            ml_binop(body, VarRval, ml_const(mlconst_int(Ptag)))),
+            ml_binop(body, VarRval, ml_const(mlconst_int(PtagInt)))),
         Stmt = ml_gen_assign(ArgLval, CastRval, Context),
         Stmts = [Stmt]
     ;
@@ -2268,37 +2275,45 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
         ConsTag = single_functor_tag,
         TagTestRval = ml_const(mlconst_true)
     ;
-        ( ConsTag = unshared_tag(UnsharedPtag)
-        ; ConsTag = direct_arg_tag(UnsharedPtag)
+        ( ConsTag = unshared_tag(Ptag)
+        ; ConsTag = direct_arg_tag(Ptag)
         ),
         RvalTag = ml_unop(tag, Rval),
-        UnsharedTag = ml_unop(mktag, ml_const(mlconst_int(UnsharedPtag))),
-        TagTestRval = ml_binop(eq(int_type_int), RvalTag, UnsharedTag)
+        Ptag = ptag(PtagUint8),
+        PrimaryTagRval = ml_unop(mktag,
+            ml_const(mlconst_int(uint8.cast_to_int(PtagUint8)))),
+        TagTestRval = ml_binop(eq(int_type_int), RvalTag, PrimaryTagRval)
     ;
-        ConsTag = shared_remote_tag(PrimaryTag, SecondaryTag, _AddedBy),
-        ml_gen_secondary_tag_rval(Info, Type, Rval, PrimaryTag,
+        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
+        ml_gen_secondary_tag_rval(Info, Type, Rval, Ptag,
             SecondaryTagFieldRval),
+        RemoteSectag = remote_sectag(SectagUint, _),
         SecondaryTagTestRval = ml_binop(eq(int_type_int),
-            SecondaryTagFieldRval, ml_const(mlconst_int(SecondaryTag))),
+            SecondaryTagFieldRval,
+            ml_const(mlconst_int(uint.cast_to_int(SectagUint)))),
         ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
         ( if NumPtagBits = 0 then
             % No need to test the primary tag.
             TagTestRval = SecondaryTagTestRval
         else
             RvalPtag = ml_unop(tag, Rval),
-            PrimaryTagRval = ml_unop(mktag, ml_const(mlconst_int(PrimaryTag))),
+            Ptag = ptag(PtagUint8),
+            PrimaryTagRval = ml_unop(mktag,
+                ml_const(mlconst_int(uint8.cast_to_int(PtagUint8)))),
             PrimaryTagTestRval = ml_binop(eq(int_type_int), RvalPtag,
                 PrimaryTagRval),
             TagTestRval = ml_binop(logical_and,
                 PrimaryTagTestRval, SecondaryTagTestRval)
         )
     ;
-        ConsTag = shared_local_tag(Ptag, Num),
+        ConsTag = shared_local_tag(_Ptag, LocalSectag),
+        LocalSectag = local_sectag(_, LocalSectagSize),
+        LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
         ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
         TagTestRval = ml_binop(eq(int_type_int), Rval,
             ml_cast(MLDS_Type,
-                ml_mkword(Ptag, ml_unop(mkbody, ml_const(mlconst_int(Num))))))
+                ml_const(mlconst_int(uint.cast_to_int(SectagWholeWordUint)))))
     ).
 
 :- func ml_gen_int_tag_test_rval(int_tag, mer_type, module_info, mlds_rval) =
@@ -2551,9 +2566,11 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ConsTag = string_tag(String),
             ConstRval = ml_const(mlconst_string(String))
         ;
-            ConsTag = shared_local_tag(Ptag, Stag),
-            ConstRval = ml_cast(MLDS_Type, ml_mkword(Ptag,
-                ml_unop(mkbody, ml_const(mlconst_int(Stag)))))
+            ConsTag = shared_local_tag(_Ptag, LocalSectag),
+            LocalSectag = local_sectag(_, LocalSectagSize),
+            LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
+            ConstRval = ml_cast(MLDS_Type,
+                ml_const(mlconst_int(uint.cast_to_int(SectagWholeWordUint))))
         ;
             ConsTag = foreign_tag(ForeignLang, ForeignTag),
             ConstRval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
@@ -2603,20 +2620,22 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         % This code (loosely) follows the code of ml_gen_compound.
         (
             ConsTag = single_functor_tag,
-            Ptag = 0,
+            Ptag = ptag(0u8),
             ExtraRvals = []
         ;
             ConsTag = unshared_tag(Ptag),
             ExtraRvals = []
         ;
-            ConsTag = shared_remote_tag(Ptag, Stag, AddedBy),
+            ConsTag = shared_remote_tag(Ptag, RemoteSectag),
+            RemoteSectag = remote_sectag(SectagUint, AddedBy),
             UsesConstructors = ml_target_uses_constructors(Target),
             (
                 UsesConstructors = no,
                 % XXX ARG_PACK
                 expect(unify(AddedBy, sectag_added_by_unify), $pred,
                     "AddedBy != sectag_added_by_unify"),
-                StagRval0 = ml_const(mlconst_int(Stag)),
+                StagRval0 =
+                    ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
                 (
                     HighLevelData = no,
                     % XXX why is this cast here?
@@ -2642,7 +2661,7 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
 :- pred ml_gen_ground_term_conjunct_compound(module_info::in,
     mlds_target_lang::in, bool::in, vartypes::in,
     prog_var::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
-    int::in, list(mlds_rval)::in, list(prog_var)::in,
+    ptag::in, list(mlds_rval)::in, list(prog_var)::in,
     prog_context::in, ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
@@ -2809,13 +2828,14 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
         % This code (loosely) follows the code of ml_gen_compound.
         (
             ConsTag = single_functor_tag,
-            Ptag = 0,
+            Ptag = ptag(0u8),
             ExtraRvals = []
         ;
             ConsTag = unshared_tag(Ptag),
             ExtraRvals = []
         ;
-            ConsTag = shared_remote_tag(Ptag, Stag, AddedBy),
+            ConsTag = shared_remote_tag(Ptag, RemoteSectag),
+            RemoteSectag = remote_sectag(SectagUint, AddedBy),
             Target = Info ^ mcsi_target,
             UsesConstructors = ml_target_uses_constructors(Target),
             (
@@ -2823,7 +2843,8 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
                 % XXX ARG_PACK
                 expect(unify(AddedBy, sectag_added_by_unify), $pred,
                     "AddedBy != sectag_added_by_unify"),
-                StagRval0 = ml_const(mlconst_int(Stag)),
+                StagRval0 =
+                    ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
                 HighLevelData = Info ^ mcsi_high_level_data,
                 (
                     HighLevelData = no,
@@ -2871,7 +2892,7 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
 
 :- pred ml_gen_const_static_compound(ml_const_struct_info::in,
     int::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
-    int::in, list(mlds_rval)::in, list(const_struct_arg)::in,
+    ptag::in, list(mlds_rval)::in, list(const_struct_arg)::in,
     ml_const_struct_map::in, ml_const_struct_map::out,
     ml_global_data::in, ml_global_data::out) is det.
 
@@ -2966,9 +2987,11 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         ConsTag = string_tag(String),
         Rval = ml_const(mlconst_string(String))
     ;
-        ConsTag = shared_local_tag(Ptag, Stag),
-        Rval = ml_cast(MLDS_Type, ml_mkword(Ptag,
-            ml_unop(mkbody, ml_const(mlconst_int(Stag)))))
+        ConsTag = shared_local_tag(_Ptag, LocalSectag),
+        LocalSectag = local_sectag(_, LocalSectagSize),
+        LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
+        Rval = ml_cast(MLDS_Type,
+            ml_const(mlconst_int(uint.cast_to_int(SectagWholeWordUint))))
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignTag),
         Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_Type))
@@ -3005,7 +3028,7 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
-        ; ConsTag = shared_remote_tag(_, _, _)
+        ; ConsTag = shared_remote_tag(_, _)
         % These tag should never occur in constant data.
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = tabling_info_tag(_, _)
@@ -3147,7 +3170,9 @@ cons_id_arg_types_and_widths(ModuleInfo, ArgToType, MayHaveExtraArgs,
                 % types. We can get the type of these from VarTypes.
                 det_split_list(NumExtraArgs, Args, ExtraArgs, NonExtraArgs),
                 ( if
-                    ConsRepnDefn ^ cr_tag = shared_remote_tag(_, _, AddedBy),
+                    ConsRepnDefn ^ cr_tag =
+                        shared_remote_tag(_, RemoteSectag),
+                    RemoteSectag = remote_sectag(_, AddedBy),
                     AddedBy = sectag_added_by_unify
                 then
                     InitOffset = 1
@@ -3215,7 +3240,7 @@ zip_args_types_widths([Arg | Args], [ConsArgRepn | ConsArgRepns],
     %
 :- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
     bool::in, prog_context::in, mer_type::in, mlds_type::in,
-    cons_id_or_closure::in, tag_uses_base_class::in, int::in,
+    cons_id_or_closure::in, tag_uses_base_class::in, ptag::in,
     list(mlds_rval)::in, list(mlds_rval_type_and_width)::in,
     ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
 
@@ -3247,7 +3272,7 @@ construct_static_ground_term(ModuleInfo, Target, HighLevelData,
 
     % Assign the (possibly tagged) address of the local static constant
     % to the variable.
-    ( if Ptag = 0 then
+    ( if Ptag = ptag(0u8) then
         TaggedRval = ConstDataAddrRval
     else
         TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)

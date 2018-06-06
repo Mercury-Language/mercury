@@ -150,6 +150,7 @@
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -1330,9 +1331,12 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn),
-            ConsRepn ^ cr_tag = shared_local_tag(_, LocalTag)
+            ConsRepn ^ cr_tag = shared_local_tag(_, LocalSectag)
         then
-            BoundFunctor = bound_functor(int_const(LocalTag), []),
+            LocalSectag = local_sectag(_, LocalSectagSize),
+            LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
+            SectagWholeWord = uint.cast_to_int(SectagWholeWordUint),
+            BoundFunctor = bound_functor(int_const(SectagWholeWord), []),
             BoundInst = bound(Unique, inst_test_results_fgtc, [BoundFunctor]),
             NewMode2 = from_to_mode(free, BoundInst),
             Modes = [Mode1, NewMode2]

@@ -84,6 +84,7 @@
 :- import_module check_hlds.polymorphism.
 :- import_module hlds.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -576,7 +577,7 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
 
         % Generate code to assign the address of the new local variable
         % to the Lval.
-        ( if Ptag = 0 then
+        ( if Ptag = ptag(0u8) then
             TaggedPtrRval = PtrRval
         else
             TaggedPtrRval = ml_cast(PointerType, ml_mkword(Ptag, PtrRval))
@@ -596,7 +597,7 @@ init_field_n(PointerType, PointerRval, Context, ArgRvalType, Stmt,
     FieldId = ml_field_offset(ml_const(mlconst_int(FieldNum))),
     % XXX FieldType is wrong for --high-level-data: should this be _ArgType?
     FieldType = mlds_generic_type,
-    MaybePtag = yes(0),
+    MaybePtag = yes(ptag(0u8)),
     Field = ml_field(MaybePtag, PointerRval, PointerType, FieldId, FieldType),
     Stmt = ml_stmt_atomic(assign(Field, ArgRval), Context).
 

@@ -96,6 +96,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 :- import_module univ.
 :- import_module varset.
 
@@ -641,7 +642,7 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], NextOrdinal,
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
-        ; ConsTag = shared_remote_tag(_, _, _)
+        ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = shared_local_tag(_, _)
         ; ConsTag = no_tag
         ; ConsTag = dummy_tag
@@ -731,23 +732,21 @@ get_du_rep(ConsTag, DuRep) :-
         ( ConsTag = single_functor_tag
         ; ConsTag = dummy_tag
         ),
-        ConsPtag = 0,
-        SecTagLocn = sectag_locn_none,
-        DuRep = du_ll_rep(ConsPtag, SecTagLocn)
+        DuRep = du_ll_rep(ptag(0u8), sectag_locn_none)
     ;
-        ConsTag = unshared_tag(ConsPtag),
-        SecTagLocn = sectag_locn_none,
-        DuRep = du_ll_rep(ConsPtag, SecTagLocn)
+        ConsTag = unshared_tag(Ptag),
+        DuRep = du_ll_rep(Ptag, sectag_locn_none)
     ;
-        ConsTag = direct_arg_tag(ConsPtag),
-        SecTagLocn = sectag_locn_none_direct_arg,
-        DuRep = du_ll_rep(ConsPtag, SecTagLocn)
+        ConsTag = direct_arg_tag(Ptag),
+        DuRep = du_ll_rep(Ptag, sectag_locn_none_direct_arg)
     ;
-        ConsTag = shared_local_tag(ConsPtag, ConsStag),
-        DuRep = du_ll_rep(ConsPtag, sectag_locn_local(ConsStag))
+        ConsTag = shared_local_tag(Ptag, LocalSectag),
+        LocalSectag = local_sectag(SectagUint, _),
+        DuRep = du_ll_rep(Ptag, sectag_locn_local(SectagUint))
     ;
-        ConsTag = shared_remote_tag(ConsPtag, ConsStag, _),
-        DuRep = du_ll_rep(ConsPtag, sectag_locn_remote(ConsStag))
+        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
+        RemoteSectag = remote_sectag(SectagUint, _),
+        DuRep = du_ll_rep(Ptag, sectag_locn_remote(SectagUint))
     ;
         ( ConsTag = no_tag
         ; ConsTag = string_tag(_)
@@ -870,8 +869,8 @@ first_matching_type_class_info([Constraint | Constraints], TVar,
 
 %---------------------------------------------------------------------------%
 
-:- pred make_du_ptag_ordered_table(du_functor::in, map(int, sectag_table)::in,
-    map(int, sectag_table)::out) is det.
+:- pred make_du_ptag_ordered_table(du_functor::in,
+    map(ptag, sectag_table)::in, map(ptag, sectag_table)::out) is det.
 
 make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
     DuRep = DuFunctor ^ du_rep,
@@ -880,11 +879,11 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         (
             SectagAndLocn = sectag_locn_none,
             SectagLocn = sectag_none,
-            Sectag = 0
+            Sectag = 0u
         ;
             SectagAndLocn = sectag_locn_none_direct_arg,
             SectagLocn = sectag_none_direct_arg,
-            Sectag = 0
+            Sectag = 0u
         ;
             SectagAndLocn = sectag_locn_local(Sectag),
             SectagLocn = sectag_local
@@ -897,11 +896,11 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
             expect(unify(SectagLocn, Locn0), $pred,
                 "sectag locn disagreement"),
             map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
-            SectagTable = sectag_table(Locn0, NumSharers0 + 1, SectagMap),
+            SectagTable = sectag_table(Locn0, NumSharers0 + 1u, SectagMap),
             map.det_update(Ptag, SectagTable, !PtagTable)
         else
             SectagMap = map.singleton(Sectag, DuFunctor),
-            SectagTable = sectag_table(SectagLocn, 1, SectagMap),
+            SectagTable = sectag_table(SectagLocn, 1u, SectagMap),
             map.det_insert(Ptag, SectagTable, !PtagTable)
         )
     ;

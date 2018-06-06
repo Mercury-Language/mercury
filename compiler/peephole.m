@@ -45,6 +45,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module uint8.
 
 %-----------------------------------------------------------------------------%
 
@@ -672,7 +673,9 @@ replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             UnOp = tag,
             RvalA0 = lval(OldLval)
         then
-            Rval = unop(mktag, const(llconst_int(OldPtag)))
+            OldPtag = ptag(OldPtagUint8),
+            Rval = unop(mktag,
+                const(llconst_int(uint8.cast_to_int(OldPtagUint8))))
         else
             replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
                 RvalA0, RvalA),
@@ -683,7 +686,9 @@ replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
         ( if
             BinOp = body,
             RvalA0 = lval(OldLval),
-            RvalB0 = unop(mktag, const(llconst_int(OldPtag))),
+            RvalB0 = unop(mktag, const(llconst_int(RvalB0Int))),
+            OldPtag = ptag(OldPtagUint8),
+            RvalB0Int = uint8.cast_to_int(OldPtagUint8),
             OldBase = const(_)
         then
             Rval = OldBase

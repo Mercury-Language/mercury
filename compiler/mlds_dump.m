@@ -37,6 +37,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -52,6 +53,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 
@@ -371,7 +373,7 @@ mlds_atomic_stmt_to_strcord(Indent, AtomicStmt) = Cord :-
         ),
         Cord =
             indent_strcord(Indent) ++ mlds_lval_to_strcord(Target) ++
-                strcord(" := new object(ptag ") ++ intcord(Ptag) ++
+                strcord(" := new object(ptag ") ++ ptag_to_strcord(Ptag) ++
                 comma_cord ++ SecTagCord ++ comma_cord ++ SizeCord ++
                 comma_cord ++ mlds_type_to_strcord(Type) ++ strcord(")") ++
                 nl_strcord
@@ -600,7 +602,7 @@ mlds_lval_to_strcord(Lval) = Cord :-
             PtagCord = strcord("ptag unknown")
         ;
             MaybePtag = yes(Ptag),
-            PtagCord = strcord("ptag " ) ++ intcord(Ptag)
+            PtagCord = strcord("ptag " ) ++ ptag_to_strcord(Ptag)
         ),
         (
             FieldId = ml_field_offset(OffsetRval),
@@ -639,7 +641,7 @@ mlds_rval_to_strcord(Rval) = Cord :-
         Cord = mlds_lval_to_strcord(Lval)
     ;
         Rval = ml_mkword(Ptag, SubRval),
-        Cord = strcord("mkword(") ++ intcord(Ptag) ++ comma_cord ++
+        Cord = strcord("mkword(") ++ ptag_to_strcord(Ptag) ++ comma_cord ++
             mlds_rval_to_strcord(SubRval) ++ strcord(")")
     ;
         Rval = ml_const(RvalConst),
@@ -686,6 +688,12 @@ mlds_rval_to_strcord(Rval) = Cord :-
         Rval = ml_self(_Type),
         Cord = strcord("self")
     ).
+
+:- func ptag_to_strcord(ptag) = strcord.
+
+ptag_to_strcord(Ptag) = Cord :-
+    Ptag = ptag(PtagUint8),
+    Cord = intcord(uint8.cast_to_int(PtagUint8)).
 
 :- func mlds_rval_const_to_strcord(mlds_rval_const) = strcord.
 

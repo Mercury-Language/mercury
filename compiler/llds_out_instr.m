@@ -1724,7 +1724,7 @@ output_incr_hp_no_reuse(Info, Lval, MaybePtag, MaybeOffset, Rval, MaybeAllocId,
                     ),
                     output_lval_as_word(Info, Lval, !IO),
                     io.write_string(", ", !IO),
-                    io.write_int(Ptag, !IO)
+                    write_ptag(Ptag, !IO)
                 )
             ),
             io.write_string(", ", !IO),

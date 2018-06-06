@@ -80,6 +80,8 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
+:- import_module uint8.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -889,71 +891,104 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
 
 :- pred map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
 
-map_cons_tag(no_tag, byte_no_tag).
-    % `single_functor' is just an optimized version of `unshared_tag(0)'
-    % this optimization is not important for the bytecode
-map_cons_tag(single_functor_tag, byte_unshared_tag(0)).
-map_cons_tag(unshared_tag(Primary), byte_unshared_tag(Primary)).
-map_cons_tag(direct_arg_tag(_), _) :-
-    sorry($pred, "bytecode with direct_arg_tag").
-map_cons_tag(shared_remote_tag(Primary, Secondary, _),
-    byte_shared_remote_tag(Primary, Secondary)).
-map_cons_tag(shared_local_tag(Primary, Secondary),
-    byte_shared_local_tag(Primary, Secondary)).
-map_cons_tag(string_tag(_), _) :-
-    unexpected($pred, "string_tag cons tag " ++
-        "for non-string_constant cons id").
-map_cons_tag(int_tag(IntTagType), ByteConsTag) :-
+map_cons_tag(ConsTag, ByteConsTag) :-
     (
-        IntTagType = int_tag_int(IntVal),
-        ByteConsTag = byte_enum_tag(IntVal)
+        ConsTag = no_tag,
+        ByteConsTag = byte_no_tag
     ;
-        ( IntTagType = int_tag_uint(_)
-        ; IntTagType = int_tag_int8(_)
-        ; IntTagType = int_tag_uint8(_)
-        ; IntTagType = int_tag_int16(_)
-        ; IntTagType = int_tag_uint16(_)
-        ; IntTagType = int_tag_int32(_)
-        ; IntTagType = int_tag_uint32(_)
-        ; IntTagType = int_tag_int64(_)
-        ; IntTagType = int_tag_uint64(_)
-        ),
-        sorry($pred, "bytecode with uint or fixed size int")
+        ConsTag = single_functor_tag,
+        % `single_functor' is just an optimized version of `unshared_tag(0)';
+        % this optimization is not important for the bytecode.
+        ByteConsTag = byte_unshared_tag(0)
+    ;
+        ConsTag = unshared_tag(Ptag),
+        ByteConsTag = byte_unshared_tag(ptag_to_int(Ptag))
+    ;
+        ConsTag = direct_arg_tag(_),
+        sorry($pred, "bytecode with direct_arg_tag")
+    ;
+        ConsTag = shared_local_tag(Ptag, LocalSecTag),
+        LocalSecTag = local_sectag(SectagUint, _),
+        Sectag = uint.cast_to_int(SectagUint),
+        ByteConsTag = byte_shared_local_tag(ptag_to_int(Ptag), Sectag)
+    ;
+        ConsTag = shared_remote_tag(Ptag, RemoteSecTag),
+        RemoteSecTag = remote_sectag(SectagUint, _),
+        Sectag = uint.cast_to_int(SectagUint),
+        ByteConsTag = byte_shared_remote_tag(ptag_to_int(Ptag), Sectag)
+    ;
+        ConsTag = string_tag(_),
+        unexpected($pred,
+            "string_tag cons tag for non-string_constant cons id")
+    ;
+        ConsTag = int_tag(IntTagType),
+        (
+            IntTagType = int_tag_int(IntVal),
+            ByteConsTag = byte_enum_tag(IntVal)
+        ;
+            ( IntTagType = int_tag_uint(_)
+            ; IntTagType = int_tag_int8(_)
+            ; IntTagType = int_tag_uint8(_)
+            ; IntTagType = int_tag_int16(_)
+            ; IntTagType = int_tag_uint16(_)
+            ; IntTagType = int_tag_int32(_)
+            ; IntTagType = int_tag_uint32(_)
+            ; IntTagType = int_tag_int64(_)
+            ; IntTagType = int_tag_uint64(_)
+            ),
+            sorry($pred, "bytecode with uint or fixed size int")
+        )
+    ;
+        ConsTag = dummy_tag,
+        sorry($pred, "bytecode with dummy tags")
+    ;
+        ConsTag = foreign_tag(_, _),
+        sorry($pred, "bytecode with foreign tags")
+    ;
+        ConsTag = float_tag(_),
+        unexpected($pred, "float_tag cons tag for non-float_constant cons id")
+    ;
+        ConsTag = closure_tag(_, _, _),
+        unexpected($pred, "closure_tag cons tag for non-closure_cons cons id")
+    ;
+        ConsTag = type_ctor_info_tag(_, _, _),
+        unexpected($pred, "type_ctor_info_tag cons tag " ++
+            "for non-type_ctor_info_constant cons id")
+    ;
+        ConsTag = base_typeclass_info_tag(_, _, _),
+        unexpected($pred, "base_typeclass_info_tag cons tag " ++
+            "for non-base_typeclass_info_constant cons id")
+    ;
+        ConsTag = type_info_const_tag(_),
+        unexpected($pred, "type_info_const cons tag " ++
+            "for non-type_info_const cons id")
+    ;
+        ConsTag = typeclass_info_const_tag(_),
+        unexpected($pred, "typeclass_info_const cons tag " ++
+            "for non-typeclass_info_const cons id")
+    ;
+        ConsTag = ground_term_const_tag(_, _),
+        unexpected($pred, "ground_term_const cons tag " ++
+            "for non-ground_term_const cons id")
+    ;
+        ConsTag = tabling_info_tag(_, _),
+        unexpected($pred, "tabling_info_tag cons tag " ++
+            "for non-tabling_info_constant cons id")
+    ;
+        ConsTag = deep_profiling_proc_layout_tag(_, _),
+        unexpected($pred, "deep_profiling_proc_layout_tag cons tag " ++
+            "for non-deep_profiling_proc_static cons id")
+    ;
+        ConsTag = table_io_entry_tag(_, _),
+        unexpected($pred, "table_io_entry_tag cons tag " ++
+            "for non-table_io_entry_desc cons id")
     ).
-map_cons_tag(dummy_tag, _) :-
-    sorry($pred, "bytecode with dummy tags").
-map_cons_tag(foreign_tag(_, _), _) :-
-    sorry($pred, "bytecode with foreign tags").
-map_cons_tag(float_tag(_), _) :-
-    unexpected($pred, "float_tag cons tag " ++
-        "for non-float_constant cons id").
-map_cons_tag(closure_tag(_, _, _), _) :-
-    unexpected($pred, "closure_tag cons tag " ++
-        "for non-closure_cons cons id").
-map_cons_tag(type_ctor_info_tag(_, _, _), _) :-
-    unexpected($pred, "type_ctor_info_tag cons tag " ++
-        "for non-type_ctor_info_constant cons id").
-map_cons_tag(base_typeclass_info_tag(_, _, _), _) :-
-    unexpected($pred, "base_typeclass_info_tag cons tag " ++
-        "for non-base_typeclass_info_constant cons id").
-map_cons_tag(type_info_const_tag(_), _) :-
-    unexpected($pred, "type_info_const cons tag " ++
-        "for non-type_info_const cons id").
-map_cons_tag(typeclass_info_const_tag(_), _) :-
-    unexpected($pred, "typeclass_info_const cons tag " ++
-        "for non-typeclass_info_const cons id").
-map_cons_tag(ground_term_const_tag(_, _), _) :-
-    unexpected($pred, "ground_term_const cons tag " ++
-        "for non-ground_term_const cons id").
-map_cons_tag(tabling_info_tag(_, _), _) :-
-    unexpected($pred, "tabling_info_tag cons tag " ++
-        "for non-tabling_info_constant cons id").
-map_cons_tag(deep_profiling_proc_layout_tag(_, _), _) :-
-    unexpected($pred, "deep_profiling_proc_layout_tag cons tag " ++
-        "for non-deep_profiling_proc_static cons id").
-map_cons_tag(table_io_entry_tag(_, _), _) :-
-    unexpected($pred, "table_io_entry_tag cons tag " ++
-        "for non-table_io_entry_desc cons id").
+
+:- func ptag_to_int(ptag) = int.
+
+ptag_to_int(Ptag) = PtagInt :-
+    Ptag = ptag(PtagUint8),
+    PtagInt = uint8.cast_to_int(PtagUint8).
 
 %---------------------------------------------------------------------------%
 

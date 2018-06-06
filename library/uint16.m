@@ -69,6 +69,19 @@
 
 %---------------------------------------------------------------------------%
 %
+% Conversion to uint.
+%
+
+    % cast_to_uint(U16) = U:
+    %
+    % Convert a uint16 to a uint.
+    % Always succeeds, and yields a result that is mathematically equal
+    % to U16.
+    %
+:- func cast_to_uint(uint16) = uint.
+
+%---------------------------------------------------------------------------%
+%
 % Change of signedness.
 %
 
@@ -426,6 +439,36 @@ to_int(_) = _ :-
 :- pragma no_determinism_warning(cast_to_int/1).
 cast_to_int(_) = _ :-
     sorry($module, "uint16.cast_to_int/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_to_uint(U16::in) = (U::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U = (MR_Unsigned) U16;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_uint(U16::in) = (U::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // XXX This is probably wrong.
+    U = U16;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_uint(U16::in) = (U::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // XXX This is probably wrong.
+    U = U16;
+").
+
+:- pragma no_determinism_warning(cast_to_uint/1).
+cast_to_uint(_) = _ :-
+    sorry($module, "uint16.cast_to_uint/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
