@@ -461,8 +461,7 @@ cast_to_int(_) = _ :-
     cast_to_uint(U16::in) = (U::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX This is probably wrong.
-    U = U16;
+    U = U16 & 0xffff;
 ").
 
 :- pragma no_determinism_warning(cast_to_uint/1).
