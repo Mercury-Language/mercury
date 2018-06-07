@@ -395,7 +395,9 @@ io_read_bug.out: io_read_bug io_read_bug.inp
 	|| { grep . $@ /dev/null; exit 1; }
 
 io_stream_test.out: io_stream_test io_stream_test.inp
-	$(MDB_STD) ./io_stream_test < io_stream_test.inp \
+	$(MDB_STD) ./io_stream_test < io_stream_test.inp | \
+		sed 's/0x[-0-9A-Fa-f]*/0xXXXX/g' | \
+		sed 's/(nil)/0xXXXX/g'\
 		> io_stream_test.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
