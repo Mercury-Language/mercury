@@ -1038,8 +1038,16 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         mlds_output_maybe_qualified_global_var_name(MLDS_ModuleName,
             GlobalVarName, !IO)
     ;
-        Const = mlconst_null(_),
-        io.write_string("NULL", !IO)
+        Const = mlconst_null(MLDS_Type),
+        ( if
+            ( MLDS_Type = mlds_native_float_type
+            ; MLDS_Type = mercury_type(builtin_type(builtin_type_float), _, _)
+            )
+        then
+            io.write_string("0.0", !IO)
+        else
+            io.write_string("NULL", !IO)
+        )
     ).
 
 :- pred is_aligned_dword_field(mlds_rval::in, mlds_rval::in, mlds_rval::out)
