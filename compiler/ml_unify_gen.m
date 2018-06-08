@@ -132,7 +132,6 @@
 :- implementation.
 
 :- import_module backend_libs.
-:- import_module backend_libs.arg_pack.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
@@ -611,11 +610,9 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
         MayUseAtomic0 = may_not_use_atomic_alloc
     ),
     FirstArgNum = 1,
-    NumExtraRvals = list.length(ExtraRvalsTypesWidths),
-    PrevOffset = NumExtraRvals - 1,
     ml_gen_dynamic_construct_args(!.Info, ArgVarsTypesWidths, ArgModes,
-        NumExtraRvals, FirstArgNum, PrevOffset, ArgVarsTypesWidths, TakeAddr,
-        TakeAddrInfos, ArgRvalsTypesWidths0, MayUseAtomic0, MayUseAtomic),
+        FirstArgNum, TakeAddr, TakeAddrInfos, ArgRvalsTypesWidths0,
+        MayUseAtomic0, MayUseAtomic),
 
     % Replace double-word and packed arguments by uniform single word rvals.
     ml_expand_or_pack_into_words(!.Info, ArgRvalsTypesWidths0,
@@ -810,7 +807,7 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     % XXX we do more work than we need to here, as some of the cells
     % may already contain the correct values.
     ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, ArgModes,
-        InitOffSet, ArgNum, Context, TakeAddr, TakeAddrInfos,
+        ArgNum, Context, TakeAddr, TakeAddrInfos,
         FieldDefns, FieldStmts, !Info),
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_VarType,
         MaybePtag, Context, !.Info, TakeAddrStmts),
@@ -845,7 +842,7 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         % of a test case in which a predicate fills in a field of such a type
         % after a *recursive* call, since recursive calls tend to generate
         % values of recursive (i.e. discriminated union) types. -zs
-        Offset = offset(OffsetInt),
+        Offset = cell_offset(OffsetInt),
         FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt))),
         SourceRval = ml_mem_addr(ml_field(MaybePtag,
             ml_lval(CellLval), CellType, FieldId, FieldType)),
@@ -1123,7 +1120,7 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
 
                 % The offset of the field. This must take into account
                 % extra arguments and argument packing.
-                tai_offset                  :: field_offset,
+                tai_offset                  :: cell_offset,
 
                 % The type of the field variable.
                 tai_field_var_type          :: mlds_type,
@@ -1131,9 +1128,6 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
                 % The type of the field, possibly after boxing.
                 tai_maybe_boxed_field_type  :: mlds_type
             ).
-
-:- type field_offset
-    --->    offset(int).
 
     % Create a list of rval_type_widths for the arguments of a
     % construction unification.
@@ -1144,22 +1138,18 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
     %
 :- pred ml_gen_dynamic_construct_args(ml_gen_info::in,
     list(arg_var_type_and_width)::in, list(unify_mode)::in,
-    int::in, int::in, int::in,
-    list(arg_var_type_and_width)::in, list(int)::in,
+    int::in, list(int)::in,
     list(take_addr_info)::out, list(mlds_rval_type_and_width)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
-ml_gen_dynamic_construct_args(_, [], [], _, _, _, _, _, [], [], !MayUseAtomic).
-ml_gen_dynamic_construct_args(_, [], [_ | _], _, _, _, _, _, _, _,
-        !MayUseAtomic) :-
+ml_gen_dynamic_construct_args(_, [], [], _, _, [], [], !MayUseAtomic).
+ml_gen_dynamic_construct_args(_, [], [_ | _], _, _, _, _, !MayUseAtomic) :-
     unexpected($pred, "length mismatch").
-ml_gen_dynamic_construct_args(_, [_ | _], [], _, _, _, _, _, _, _,
-        !MayUseAtomic) :-
+ml_gen_dynamic_construct_args(_, [_ | _], [], _, _, _, _, !MayUseAtomic) :-
     unexpected($pred, "length mismatch").
 ml_gen_dynamic_construct_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
-        [ArgMode | ArgModes], NumExtraArgs, CurArgNum, PrevOffset0,
-        AllArgVarsTypesWidths, !.TakeAddr, TakeAddrInfos, RvalsMLDSTypesWidths,
-        !MayUseAtomic) :-
+        [ArgMode | ArgModes], CurArgNum, !.TakeAddr, TakeAddrInfos,
+        RvalsMLDSTypesWidths, !MayUseAtomic) :-
     ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgPosWidth),
     ml_gen_var(Info, ArgVar, Lval),
     ml_variable_type(Info, ArgVar, ArgType),
@@ -1181,36 +1171,16 @@ ml_gen_dynamic_construct_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
         BoxedArgType),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
     (
-        ArgPosWidth = apw_full(_, CellOffset),
-        CurOffset = PrevOffset0 + 1,
-        CellOffset = cell_offset(CellOffsetInt),
-        expect(unify(CurOffset, CellOffsetInt), $pred, "full"),
-        PrevOffset = PrevOffset0 + 1
-    ;
-        ArgPosWidth = apw_double(_, CellOffset, _),
-        CurOffset = PrevOffset0 + 1,
-        CellOffset = cell_offset(CellOffsetInt),
-        expect(unify(CurOffset, CellOffsetInt), $pred, "double"),
-        PrevOffset = PrevOffset0 + 2
-    ;
-        ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _),
-        CurOffset = PrevOffset0 + 1,
-        CellOffset = cell_offset(CellOffsetInt),
-        expect(unify(CurOffset, CellOffsetInt), $pred, "first"),
-        PrevOffset = PrevOffset0 + 1
-    ;
-        ( ArgPosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
+        ( ArgPosWidth = apw_full(_, CellOffset)
+        ; ArgPosWidth = apw_double(_, CellOffset, _)
+        ; ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _)
+        ; ArgPosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
         ; ArgPosWidth = apw_none_shifted(_, CellOffset)
-        ),
-        CurOffset = PrevOffset0,
-        CellOffset = cell_offset(CellOffsetInt),
-        expect(unify(CurOffset, CellOffsetInt), $pred, "shifted"),
-        PrevOffset = PrevOffset0
+        )
     ;
         ArgPosWidth = apw_none_nowhere,
         % There *is* no offset at which the current argument is stored.
-        CurOffset = -1,
-        PrevOffset = PrevOffset0
+        CellOffset = cell_offset(-1)
     ),
 
     % Compute the value of the field.
@@ -1223,22 +1193,18 @@ ml_gen_dynamic_construct_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
         % XXX ARG_PACK This call, the AllArgVarsTypesWidths and NumExtraArgs
         % arguments, and the ml_calc_field_offset function should not be needed
         % when we switch to taking offsets *only* from arg_pos_widths.
-        Offset = ml_calc_field_offset(NumExtraArgs, AllArgVarsTypesWidths,
-            CurArgNum),
-        expect(unify(Offset, offset(CurOffset)), $pred, "Offset != CurOffset"),
         OrigMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ConsArgType),
         TakeAddrInfo =
-            take_addr_info(ArgVar, Offset, OrigMLDS_Type, MLDS_Type),
+            take_addr_info(ArgVar, CellOffset, OrigMLDS_Type, MLDS_Type),
         ml_gen_dynamic_construct_args(Info, ArgVarsTypesWidths, ArgModes,
-            NumExtraArgs, CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths,
-            !.TakeAddr, TakeAddrInfosTail, TailRvalsMLDSTypesWidths,
-            !MayUseAtomic),
+            CurArgNum + 1, !.TakeAddr, TakeAddrInfosTail,
+            TailRvalsMLDSTypesWidths, !MayUseAtomic),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail],
         RvalsMLDSTypesWidths = [RvalMLDSTypeWidth | TailRvalsMLDSTypesWidths]
     else if ArgPosWidth = apw_none_nowhere then
         ml_gen_dynamic_construct_args(Info, ArgVarsTypesWidths, ArgModes,
-            NumExtraArgs, CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths,
-            !.TakeAddr, TakeAddrInfos, RvalsMLDSTypesWidths, !MayUseAtomic)
+            CurArgNum + 1, !.TakeAddr, TakeAddrInfos,
+            RvalsMLDSTypesWidths, !MayUseAtomic)
     else
         ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
         ( if
@@ -1273,25 +1239,9 @@ ml_gen_dynamic_construct_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
         RvalMLDSTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgPosWidth,
             MaybePackedArgVar),
         ml_gen_dynamic_construct_args(Info, ArgVarsTypesWidths, ArgModes,
-            NumExtraArgs, CurArgNum + 1, PrevOffset, AllArgVarsTypesWidths,
-            !.TakeAddr, TakeAddrInfos, TailRvalsMLDSTypesWidths,
-            !MayUseAtomic),
+            CurArgNum + 1, !.TakeAddr, TakeAddrInfos,
+            TailRvalsMLDSTypesWidths, !MayUseAtomic),
         RvalsMLDSTypesWidths = [RvalMLDSTypeWidth | TailRvalsMLDSTypesWidths]
-    ).
-
-:- func ml_calc_field_offset(int, list(arg_var_type_and_width), int)
-    = field_offset.
-
-ml_calc_field_offset(NumExtraArgs, ArgVarsTypesWidths, ArgNum) = Offset :-
-    ( if
-        list.take(ArgNum - 1, ArgVarsTypesWidths, ArgVarsTypesWidthsBeforeArg)
-    then
-        PosWidthsBeforeArg = list.map(func(arg_type_and_width(_, _, W)) = W,
-            ArgVarsTypesWidthsBeforeArg),
-        WordsBeforeArg = count_distinct_words(PosWidthsBeforeArg),
-        Offset = offset(NumExtraArgs + WordsBeforeArg)
-    else
-        unexpected($pred, "more fields than arg_widths")
     ).
 
     % Generate assignment statements for each of ExtraRvals into the object at
@@ -1402,7 +1352,7 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
         ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
             ArgVarRepns),
         ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
-            InitOffSet, ArgNum, Context, [], _, Defns, Stmts, !Info)
+            ArgNum, Context, [], _, Defns, Stmts, !Info)
     ).
 
     % Calculate the integer offset used to reference the first field of a
@@ -1411,29 +1361,29 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
     % indicates that the data doesn't have any fields.
     %
 :- pred ml_tag_initial_offset_and_argnum(cons_tag::in, ptag::out,
-    field_offset::out, int::out) is det.
+    cell_offset::out, int::out) is det.
 
 ml_tag_initial_offset_and_argnum(ConsTag, Ptag, InitOffset, ArgNum) :-
     (
         ConsTag = single_functor_tag,
         Ptag = ptag(0u8),
-        InitOffset = offset(0),
+        InitOffset = cell_offset(0),
         ArgNum = 1
     ;
         ( ConsTag = unshared_tag(Ptag)
         ; ConsTag = direct_arg_tag(Ptag)
         ),
-        InitOffset = offset(0),
+        InitOffset = cell_offset(0),
         ArgNum = 1
     ;
         ConsTag = shared_remote_tag(Ptag, RemoteSectag),
         RemoteSectag = remote_sectag(_, AddedBy),
         (
             AddedBy = sectag_added_by_unify,
-            InitOffset = offset(1)
+            InitOffset = cell_offset(1)
         ;
             AddedBy = sectag_added_by_constructor,
-            InitOffset = offset(0)
+            InitOffset = cell_offset(0)
         ),
         ArgNum = 1
     ;
@@ -1467,13 +1417,13 @@ ml_tag_initial_offset_and_argnum(ConsTag, Ptag, InitOffset, ArgNum) :-
     % of the field types.
     %
 :- pred ml_field_names_and_types(ml_gen_info::in, mer_type::in,
-    cons_id::in, field_offset::in, list(prog_var)::in,
+    cons_id::in, cell_offset::in, list(prog_var)::in,
     assoc_list(prog_var, constructor_arg_repn)::out) is det.
 
 ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
         ArgVarRepns) :-
     % Lookup the field types for the arguments of this cons_id.
-    InitOffset = offset(InitOffsetInt),
+    InitOffset = cell_offset(InitOffsetInt),
     ( if type_is_tuple(Type, _) then
         % Fields in tuples are all word-sized, and have no extra type_infos
         % and/or typeclass_infos in front of them. Their types are all
@@ -1500,8 +1450,7 @@ ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
                 InitOffsetInt, ExtraArgVars, ExtraArgVarRepns),
             assoc_list.from_corresponding_lists(NonExtraArgVars, CtorArgRepns,
                 NonExtraArgVarRepns),
-            ArgVarRepns =
-                ExtraArgVarRepns ++ NonExtraArgVarRepns
+            ArgVarRepns = ExtraArgVarRepns ++ NonExtraArgVarRepns
         else
             assoc_list.from_corresponding_lists(ArgVars, CtorArgRepns,
                 ArgVarRepns)
@@ -1598,36 +1547,39 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, FieldGen) :-
 
 :- pred ml_gen_dynamic_deconstruct_args(field_gen,
     assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
-    field_offset, int, prog_context, list(int), list(take_addr_info),
+    int, prog_context, list(int), list(take_addr_info),
     list(mlds_local_var_defn), list(mlds_stmt), ml_gen_info, ml_gen_info).
-:- mode ml_gen_dynamic_deconstruct_args(in, in, in, in, in, in,
+:- mode ml_gen_dynamic_deconstruct_args(in, in, in, in, in,
     in(bound([])), out, out, out, in, out) is det.
-:- mode ml_gen_dynamic_deconstruct_args(in, in, in, in, in, in,
+:- mode ml_gen_dynamic_deconstruct_args(in, in, in, in, in,
     in, out, out, out, in, out) is det.
 
-ml_gen_dynamic_deconstruct_args(_, [], [], _, _, _, TakeAddr,
+ml_gen_dynamic_deconstruct_args(_, [], [], _, _, TakeAddr,
         [], [], [], !Info) :-
     expect(unify(TakeAddr, []), $pred, "TakeAddr != []").
-ml_gen_dynamic_deconstruct_args(_, [], [_ | _], _, _, _, _, _, _, _, !Info) :-
+ml_gen_dynamic_deconstruct_args(_, [], [_ | _], _, _, _, _, _, _, !Info) :-
     unexpected($pred, "length mismatch").
-ml_gen_dynamic_deconstruct_args(_, [_ | _], [], _, _, _, _, _, _, _, !Info) :-
+ml_gen_dynamic_deconstruct_args(_, [_ | _], [], _, _, _, _, _, _, !Info) :-
     unexpected($pred, "length mismatch").
 ml_gen_dynamic_deconstruct_args(FieldGen,
-        [ArgVarRepn | ArgVarRepns], [Mode | Modes], CurOffset, CurArgNum,
+        [ArgVarRepn | ArgVarRepns], [Mode | Modes], CurArgNum,
         Context, TakeAddr, TakeAddrInfos, Defns, Stmts, !Info) :-
     ArgVarRepn = ArgVar - CtorArgRepn,
-    ml_next_field_offset(CtorArgRepn, ArgVarRepns, CurOffset, NextOffset),
     NextArgNum = CurArgNum + 1,
     FieldPosWidth = CtorArgRepn ^ car_pos_width,
     ( if
         TakeAddr = [CurArgNum | TailTakeAddr]
     then
-        expect(is_apw_full(FieldPosWidth), $pred,
-            "taking address of something other than a full word"),
+        ( if FieldPosWidth = apw_full(_, CellOffsetPrime) then
+            CellOffset = CellOffsetPrime
+        else
+            unexpected($pred,
+                "taking address of something other than a full word")
+        ),
         ml_gen_take_addr_of_arg(!.Info, ArgVar, CtorArgRepn,
-            CurOffset, TakeAddrInfo),
+            CellOffset, TakeAddrInfo),
         ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
-            NextOffset, NextArgNum, Context, TailTakeAddr, TakeAddrInfosTail,
+            NextArgNum, Context, TailTakeAddr, TakeAddrInfosTail,
             Defns, Stmts, !Info),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
     else if
@@ -1640,18 +1592,18 @@ ml_gen_dynamic_deconstruct_args(FieldGen,
         ml_gen_dynamic_deconstruct_args_in_word(FieldGen,
             ArgVar, CtorArgRepn, Mode,
             ArgVarRepns, Modes, LeftOverArgVarRepns, LeftOverModes,
-            CurOffset, LeftOverOffset, CurArgNum, LeftOverArgNum,
+            CurArgNum, LeftOverArgNum,
             Context, TakeAddr, HeadDefns, HeadStmts, !Info),
         ml_gen_dynamic_deconstruct_args(FieldGen,
-            LeftOverArgVarRepns, LeftOverModes, LeftOverOffset, LeftOverArgNum,
+            LeftOverArgVarRepns, LeftOverModes, LeftOverArgNum,
             Context, TakeAddr, TakeAddrInfos, TailDefns, TailStmts, !Info),
         Defns = HeadDefns ++ TailDefns,
         Stmts = HeadStmts ++ TailStmts
     else
         ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
-            CurOffset, CurArgNum, Context, _PackedArgVars, HeadStmts, !Info),
+            CurArgNum, Context, _PackedArgVars, HeadStmts, !Info),
         ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
-            NextOffset, NextArgNum, Context, TakeAddr, TakeAddrInfos,
+            NextArgNum, Context, TakeAddr, TakeAddrInfos,
             Defns, TailStmts, !Info),
         Stmts = HeadStmts ++ TailStmts
     ).
@@ -1660,19 +1612,18 @@ ml_gen_dynamic_deconstruct_args(FieldGen,
     prog_var, constructor_arg_repn, unify_mode,
     assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
     assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
-    field_offset, field_offset, int, int, prog_context, list(int),
+    int, int, prog_context, list(int),
     list(mlds_local_var_defn), list(mlds_stmt), ml_gen_info, ml_gen_info).
 :- mode ml_gen_dynamic_deconstruct_args_in_word(in, in, in, in, in, in,
-    out, out, in, out, in, out, in, in(bound([])), out, out, in, out) is det.
+    out, out, in, out, in, in(bound([])), out, out, in, out) is det.
 :- mode ml_gen_dynamic_deconstruct_args_in_word(in, in, in, in, in, in,
-    out, out, in, out, in, out, in, in, out, out, in, out) is det.
+    out, out, in, out, in, in, out, out, in, out) is det.
 
 ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, Mode,
         ArgVarRepns, Modes, LeftOverArgVarRepns, LeftOverModes,
-        CurOffset, LeftOverOffset, CurArgNum, LeftOverArgNum,
-        Context, TakeAddr, Defns, Stmts, !Info) :-
+        CurArgNum, LeftOverArgNum, Context, TakeAddr, Defns, Stmts, !Info) :-
     ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
-        CurOffset, CurArgNum, Context, HeadPackedArgVars, HeadStmts, !Info),
+        CurArgNum, Context, HeadPackedArgVars, HeadStmts, !Info),
     (
         HeadPackedArgVars = [],
         AllPartialsRight0 = not_all_partials_assign_right
@@ -1680,11 +1631,10 @@ ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, Mode,
         HeadPackedArgVars = [_ | _],
         AllPartialsRight0 = all_partials_assign_right
     ),
-    ml_next_field_offset(CtorArgRepn, ArgVarRepns, CurOffset, NextOffset),
     NextArgNum = CurArgNum + 1,
     ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
         ArgVarRepns, Modes, LeftOverArgVarRepns, LeftOverModes,
-        NextOffset, LeftOverOffset, NextArgNum, LeftOverArgNum,
+        NextArgNum, LeftOverArgNum,
         Context, TakeAddr, AllPartialsRight0, AllPartialsRight,
         TailPackedArgVars, TailStmts, !Info),
     % XXX ARG_PACK
@@ -1708,10 +1658,7 @@ ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, Mode,
         Defns = [WordVarDefn],
         FieldPosWidth = CtorArgRepn ^ car_pos_width,
         ( if FieldPosWidth = apw_partial_first(_, CellOffset, _, _, _) then
-            CurOffset = offset(CurOffsetInt),
-            CellOffset = cell_offset(CellOffsetInt),
-            expect(unify(CurOffsetInt, CellOffsetInt), $pred,
-                "CurOffset != CellOffset")
+            CellOffset = cell_offset(CellOffsetInt)
         else
             unexpected($pred, "no apw_partial_first")
         ),
@@ -1742,29 +1689,27 @@ ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, Mode,
 :- pred ml_gen_dynamic_deconstruct_args_in_word_loop(field_gen,
     assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
     assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
-    field_offset, field_offset, int, int, prog_context, list(int),
+    int, int, prog_context, list(int),
     do_all_partials_assign_right, do_all_partials_assign_right,
     list(packed_arg_var), list(mlds_stmt), ml_gen_info, ml_gen_info).
 :- mode ml_gen_dynamic_deconstruct_args_in_word_loop(in, in, in, out, out,
-    in, out, in, out, in, in(bound([])), in, out, out, out, in, out) is det.
+    in, out, in, in(bound([])), in, out, out, out, in, out) is det.
 :- mode ml_gen_dynamic_deconstruct_args_in_word_loop(in, in, in, out, out,
-    in, out, in, out, in, in, in, out, out, out, in, out) is det.
+    in, out, in, in, in, out, out, out, in, out) is det.
 
 ml_gen_dynamic_deconstruct_args_in_word_loop(_FieldGen, [], [], [], [],
-        CurOffset, LeftOverOffset, CurArgNum, LeftOverArgNum,
+        CurArgNum, LeftOverArgNum,
         _Context, _TakeAddr, !AllPartialsRight, [], [], !Info) :-
-    LeftOverOffset = CurOffset,
     LeftOverArgNum = CurArgNum.
 ml_gen_dynamic_deconstruct_args_in_word_loop(_FieldGen, [], [_ | _], _, _,
-        _, _, _, _, _, _, !AllPartialsRight, _, _, !Info) :-
+        _, _, _, _, !AllPartialsRight, _, _, !Info) :-
     unexpected($pred, "length mismatch").
 ml_gen_dynamic_deconstruct_args_in_word_loop(_FieldGen, [_ | _], [], _, _,
-        _, _, _, _, _, _, !AllPartialsRight, _, _, !Info) :-
+        _, _, _, _, !AllPartialsRight, _, _, !Info) :-
     unexpected($pred, "length mismatch").
 ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
         [ArgVarRepn | ArgVarRepns], [Mode | Modes],
-        LeftOverArgVarRepns, LeftOverModes,
-        CurOffset, LeftOverOffset, CurArgNum, LeftOverArgNum,
+        LeftOverArgVarRepns, LeftOverModes, CurArgNum, LeftOverArgNum,
         Context, TakeAddr, !AllPartialsRight,
         PackedArgVars, Stmts, !Info) :-
     ArgVarRepn = ArgVar - CtorArgRepn,
@@ -1773,8 +1718,7 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
         (
             FieldPosWidth = apw_partial_shifted(_, _, _, _, _, _),
             ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
-                CurOffset, CurArgNum, Context,
-                HeadPackedArgVars, HeadStmts, !Info),
+                CurArgNum, Context, HeadPackedArgVars, HeadStmts, !Info),
             (
                 HeadPackedArgVars = [],
                 !:AllPartialsRight = not_all_partials_assign_right
@@ -1784,8 +1728,7 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
         ;
             FieldPosWidth = apw_none_shifted(_, _),
             ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
-                CurOffset, CurArgNum, Context,
-                HeadPackedArgVars, HeadStmts, !Info),
+                CurArgNum, Context, HeadPackedArgVars, HeadStmts, !Info),
             expect(unify(HeadPackedArgVars, []), $pred,
                 "HeadPackedArgVars != [] for apw_none_shifted")
         ),
@@ -1795,11 +1738,10 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
         else
             true
         ),
-        ml_next_field_offset(CtorArgRepn, ArgVarRepns, CurOffset, NextOffset),
         NextArgNum = CurArgNum + 1,
         ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
             ArgVarRepns, Modes, LeftOverArgVarRepns, LeftOverModes,
-            NextOffset, LeftOverOffset, NextArgNum, LeftOverArgNum,
+            NextArgNum, LeftOverArgNum,
             Context, TakeAddr, !AllPartialsRight,
             TailPackedArgVars, TailStmts, !Info),
         PackedArgVars = HeadPackedArgVars ++ TailPackedArgVars,
@@ -1812,14 +1754,13 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
         ),
         LeftOverArgVarRepns = [ArgVarRepn | ArgVarRepns],
         LeftOverModes = [Mode | Modes],
-        LeftOverOffset = CurOffset,
         LeftOverArgNum = CurArgNum,
         PackedArgVars = [],
         Stmts = []
     ).
 
 :- pred ml_gen_take_addr_of_arg(ml_gen_info::in,
-    prog_var::in, constructor_arg_repn::in, field_offset::in,
+    prog_var::in, constructor_arg_repn::in, cell_offset::in,
     take_addr_info::out) is det.
 
 ml_gen_take_addr_of_arg(Info, ArgVar, CtorArgRepn, CurOffset, TakeAddrInfo) :-
@@ -1837,19 +1778,30 @@ ml_gen_take_addr_of_arg(Info, ArgVar, CtorArgRepn, CurOffset, TakeAddrInfo) :-
 
 :- pred ml_gen_dynamic_deconstruct_arg(field_gen::in,
     prog_var::in, constructor_arg_repn::in, unify_mode::in,
-    field_offset::in, int::in, prog_context::in,
+    int::in, prog_context::in,
     list(packed_arg_var)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
-        Offset, ArgNum, Context, PackedArgVars, Stmts, !Info) :-
+        ArgNum, Context, PackedArgVars, Stmts, !Info) :-
     FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia),
+    FieldPosWidth = CtorArgRepn ^ car_pos_width,
     (
         FieldVia = field_via_offset,
-        % XXX We should check whether the cell offset in FieldPosWidth,
-        % if any, matches Offset.
-        Offset = offset(OffsetInt),
-        FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt)))
+        (
+            ( FieldPosWidth = apw_full(_, CellOffset)
+            ; FieldPosWidth = apw_double(_, CellOffset, _)
+            ; FieldPosWidth = apw_partial_first(_, CellOffset, _, _, _)
+            ; FieldPosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
+            ; FieldPosWidth = apw_none_shifted(_, CellOffset)
+            ),
+            CellOffset = cell_offset(CellOffsetInt)
+        ;
+            FieldPosWidth = apw_none_nowhere,
+            % The FieldId we generate from this will *not* be used.
+            CellOffsetInt = -1
+        ),
+        FieldId = ml_field_offset(ml_const(mlconst_int(CellOffsetInt)))
     ;
         FieldVia = field_via_name(FieldQualifier, ClassPtrType),
         MaybeFieldName = CtorArgRepn ^ car_field_name,
@@ -1863,7 +1815,6 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
     % so we should do this only for full- and double-word arguments.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_high_level_data(!.Info, HighLevelData),
-    FieldPosWidth = CtorArgRepn ^ car_pos_width,
     FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
     FieldRawType = CtorArgRepn ^ car_type,
     ml_type_as_field(ModuleInfo, HighLevelData, FieldRawType, FieldWidth,
@@ -3685,91 +3636,6 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
     ),
     UnsignedMLDSType = mlds_int_type_uint,
     Rval = ml_cast(UnsignedMLDSType, Rval1).
-
-%---------------------------------------------------------------------------%
-
-:- pred ml_next_field_offset(constructor_arg_repn::in,
-    assoc_list(prog_var, constructor_arg_repn)::in,
-    field_offset::in, field_offset::out) is det.
-
-ml_next_field_offset(_, [], Offset, Offset).
-ml_next_field_offset(CurArgRepn, [NextArg | _], PrevOffset, NextOffset) :-
-    CurArgRepn = ctor_arg_repn(_, _, CurWidth, _),
-    NextArg = _ - ctor_arg_repn(_, _, NextWidth, _),
-    % XXX ARG_PACK We *could* use the same algorithm for incrementing Offset
-    % here as we use elsewhere, but better still, we should not need this
-    % predicate once we switch over to using the offsets of constructor
-    % arguments' representations exclusively.
-    (
-        CurWidth = apw_full(_, _),
-        (
-            ( NextWidth = apw_full(_, _)
-            ; NextWidth = apw_double(_, _, _)
-            ; NextWidth = apw_partial_first(_, _, _, _, _)
-            ; NextWidth = apw_none_nowhere
-            ),
-            PrevOffset = offset(Int),
-            NextOffset = offset(Int + 1)
-        ;
-            ( NextWidth = apw_partial_shifted(_, _, _, _, _, _)
-            ; NextWidth = apw_none_shifted(_, _)
-            ),
-            unexpected($pred, "shifted follows full")
-        )
-    ;
-        CurWidth = apw_double(_, _, _),
-        (
-            ( NextWidth = apw_full(_, _)
-            ; NextWidth = apw_double(_, _, _)
-            ; NextWidth = apw_partial_first(_, _, _, _, _)
-            ; NextWidth = apw_none_nowhere
-            ),
-            PrevOffset = offset(Int),
-            NextOffset = offset(Int + 2)
-        ;
-            ( NextWidth = apw_partial_shifted(_, _, _, _, _, _)
-            ; NextWidth = apw_none_shifted(_, _)
-            ),
-            unexpected($pred, "shifted follows double")
-        )
-    ;
-        CurWidth = apw_partial_first(_, _, _, _, _),
-        (
-            ( NextWidth = apw_partial_shifted(_, _, _, _, _, _)
-            ; NextWidth = apw_none_shifted(_, _)
-            ),
-            NextOffset = PrevOffset
-        ;
-            ( NextWidth = apw_full(_, _)
-            ; NextWidth = apw_double(_, _, _)
-            ; NextWidth = apw_partial_first(_, _, _, _, _)
-            ; NextWidth = apw_none_nowhere
-            ),
-            unexpected($pred,
-                "partial_first not followed by partial_shifted")
-        )
-    ;
-        ( CurWidth = apw_partial_shifted(_, _, _, _, _, _)
-        ; CurWidth = apw_none_shifted(_, _)
-        ),
-        (
-            ( NextWidth = apw_full(_, _)
-            ; NextWidth = apw_double(_, _, _)
-            ; NextWidth = apw_partial_first(_, _, _, _, _)
-            ; NextWidth = apw_none_nowhere
-            ),
-            PrevOffset = offset(Int),
-            NextOffset = offset(Int + 1)
-        ;
-            ( NextWidth = apw_partial_shifted(_, _, _, _, _, _)
-            ; NextWidth = apw_none_shifted(_, _)
-            ),
-            NextOffset = PrevOffset
-        )
-    ;
-        CurWidth = apw_none_nowhere,
-        NextOffset = PrevOffset
-    ).
 
 %---------------------------------------------------------------------------%
 %
