@@ -2814,7 +2814,11 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_char,
         det_dynamic_cast(Term, Char),
-        Functor = string.from_char_list(['\'', Char, '\'']),
+        ( if quote_special_escape_char(Char, EscapedChar) then
+            Functor = EscapedChar
+        else
+            Functor = string.from_char_list(['\'', Char, '\''])
+        ),
         Ordinal = -1,
         Arity = 0,
         Arguments = []
@@ -3009,6 +3013,18 @@ univ_named_arg(Term, NonCanon, Name, Argument) :-
     univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
         MaybeArgument),
     MaybeArgument = yes(Argument).
+
+:- pred quote_special_escape_char(character::in, string::out) is semidet.
+
+quote_special_escape_char('\\', "'\\\\'").
+quote_special_escape_char('\'', "'\\'").
+quote_special_escape_char('\a', "'\\a'").
+quote_special_escape_char('\b', "'\\b'").
+quote_special_escape_char('\r', "'\\r'").
+quote_special_escape_char('\f', "'\\f'").
+quote_special_escape_char('\t', "'\\t'").
+quote_special_escape_char('\n', "'\\n'").
+quote_special_escape_char('\v', "'\\v'").
 
 :- pred univ_named_arg_2(T, type_info, type_ctor_info, type_ctor_rep,
     noncanon_handling, string, maybe(univ)).

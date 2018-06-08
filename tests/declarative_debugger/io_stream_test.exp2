@@ -26,8 +26,7 @@ test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '1', <<foreign(system_error, 0xXXXX)>>)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '2', <<foreign(system_error, 0xXXXX)>>)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '3', <<foreign(system_error, 0xXXXX)>>)
-read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '
-', <<foreign(system_error, 0xXXXX)>>)
+read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '\n', <<foreign(system_error, 0xXXXX)>>)
 Valid? print 1-2
 stream(0, input, text, file("tabled_read_decl.data"))
 1123
@@ -40,8 +39,7 @@ test_2(stream(0, input, text, file("tabled_read_decl.data")), 1, 1123, _, _)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '1', <<foreign(system_error, 0xXXXX)>>)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '2', <<foreign(system_error, 0xXXXX)>>)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '3', <<foreign(system_error, 0xXXXX)>>)
-read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '
-', <<foreign(system_error, 0xXXXX)>>)
+read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '\n', <<foreign(system_error, 0xXXXX)>>)
 Valid? yes
 Found incorrect contour:
 test_2(stream(0, input, text, file("tabled_read_decl.data")), 1, 1123, _, _)
@@ -49,15 +47,13 @@ test_2(stream(0, input, text, file("tabled_read_decl.data")), 1, 1123, _, _)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '1', <<foreign(system_error, 0xXXXX)>>)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '2', <<foreign(system_error, 0xXXXX)>>)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '3', <<foreign(system_error, 0xXXXX)>>)
-read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '
-', <<foreign(system_error, 0xXXXX)>>)
+read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '\n', <<foreign(system_error, 0xXXXX)>>)
 test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
 4 tabled IO actions:
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '1', <<foreign(system_error, 0xXXXX)>>)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '2', <<foreign(system_error, 0xXXXX)>>)
 read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '3', <<foreign(system_error, 0xXXXX)>>)
-read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '
-', <<foreign(system_error, 0xXXXX)>>)
+read_char_code_2(<<foreign(stream, 0xXXXX)>>, ok, '\n', <<foreign(system_error, 0xXXXX)>>)
 Is this a bug? yes
       E3:     C2 EXIT pred io_stream_test.test/4-0 (det)
 mdb> c -n -S

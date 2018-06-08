@@ -118,6 +118,15 @@ main(!IO) :-
 
     % test characters
     test_all('a', !IO),
+    test_all('\a', !IO),
+    test_all('\b', !IO),
+    test_all('\r', !IO),
+    test_all('\f', !IO),
+    test_all('\t', !IO),
+    test_all('\n', !IO),
+    test_all('\v', !IO),
+    test_all('\\', !IO),
+    test_all('\'', !IO),
 
     % test a float which requires 17 digits of precision
     test_all(0.12345678901234566, !IO),

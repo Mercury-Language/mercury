@@ -875,14 +875,28 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_CHAR:
 #ifdef  EXPAND_FUNCTOR_FIELD
             {
-                // XXX Should escape characters correctly.
                 char    buf[8];
                 MR_Word data_word;
-                char    *str;
+                const char  *str_ptr;
+                char        *str;
 
                 data_word = *data_word_ptr;
-                sprintf(buf, "\'%c\'", (char) data_word);
-                MR_make_aligned_string_copy_saved_hp(str, buf, NULL);
+                // XXX what should we do with other non-printable characters.
+                switch (data_word) {
+                    case '\\': str_ptr = "'\\\\'"; break;
+                    case '\'': str_ptr = "'\\''"; break;
+                    case '\a': str_ptr = "'\\a'";  break;
+                    case '\b': str_ptr = "'\\b'";  break;
+                    case '\r': str_ptr = "'\\r'";  break;
+                    case '\f': str_ptr = "'\\f'";  break;
+                    case '\t': str_ptr = "'\\t'";  break;
+                    case '\n': str_ptr = "'\\n'";  break;
+                    case '\v': str_ptr = "'\\v'";  break;
+                    default:
+                        sprintf(buf, "\'%c\'", (char) data_word);
+                        str_ptr = buf;
+                }
+                MR_make_aligned_string_copy_saved_hp(str, str_ptr, NULL);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  // EXPAND_FUNCTOR_FIELD
