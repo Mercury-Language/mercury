@@ -45,21 +45,21 @@
     % NOTE: the list of arguments and the list of modes must be the same
     % length. They must also *not* contain any typeinfo related arguments as
     % this may cause an exception to be thrown when using the
-    % `--num-data-elems' norm.  (This is because the weight table doesn't keep
-    % track of typeinfo related variables - it used to but intervening
-    % compiler passes tend to do things to the code in the mean time so the
-    % whole lot becomes inconsistent - in the end it's just easier to ignore
+    % `--num-data-elems' norm. (This is because the weight table does not
+    % keep track of typeinfo related variables - it used to, but intervening
+    % compiler passes tend to do things to the code in the mean time, so the
+    % whole lot becomes inconsistent - in the end it is just easier to ignore
     % them).
     %
 :- pred functor_norm(module_info::in, functor_info::in, type_ctor::in,
     cons_id::in, int::out, list(prog_var)::in, list(prog_var)::out,
     list(unify_mode)::in, list(unify_mode)::out) is det.
 
-    % This function computes a lower bound on the weight of a functor.  If the
-    % lower bound is zero then the weight of that functor is also zero.  If
-    % the lower bound is non-zero then there may be no upper bound on the size
-    % of the functor.  (And if there were this function wouldn't tell you about
-    % it anyhow).
+    % This function computes a lower bound on the weight of a functor.
+    % If the lower bound is zero then the weight of that functor is also zero.
+    % If the lower bound is non-zero then there may be no upper bound
+    % on the size of the functor. (And if there were, this function
+    % would not tell you about it anyhow).
     %
 :- func functor_lower_bound(module_info, functor_info, type_ctor, cons_id)
     = int.
@@ -94,7 +94,7 @@
 % where i is an element of a set I, and I is a subset of {1, ... n}
 %
 % We currently support four kinds of semilinear norms.
-% XXX Actually we currently only use three of them.  `use_map/1' is unused.
+% XXX Actually we currently only use three of them. `use_map/1' is unused.
 
 :- type functor_info
     --->    simple
@@ -173,13 +173,13 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
 :- pred find_weights_for_cons(type_ctor::in, list(type_param)::in,
     constructor::in, weight_table::in, weight_table::out) is det.
 
-% For existentially typed data items the compiler may insert some typeinfo
-% related arguments into the functor.  We ignore these arguments when
-% calculating the weight of a functor and we do not include them in the list
-% of counted arguments.
-
 find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
-    Ctor = ctor(_MaybeExistConstraints, SymName, Args, Arity, _Context),
+    % For existentially typed data items the compiler may insert some
+    % typeinfo related arguments into the functor. We ignore these arguments
+    % when calculating the weight of a functor and we do not include them
+    % in the list of counted arguments.
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, Args, Arity,
+        _Context),
     ( if Arity > 0 then
         find_and_count_nonrec_args(Args, TypeCtor, Params,
             NumNonRec, ArgInfos0),

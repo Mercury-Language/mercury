@@ -963,7 +963,7 @@ add_type_defn_ctors([Ctor | Ctors], TypeCtor, TypeCtorModuleName, TVarSet,
 add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
         TypeParams, KindMap, NeedQual, PQInfo, TypeStatus,
         !FieldNameTable, !ConsTable, !Specs) :-
-    Ctor = ctor(MaybeExistConstraints, Name, Args, Arity, Context),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, Name, Args, Arity, Context),
     BaseName = unqualify_name(Name),
     QualifiedName = qualified(TypeCtorModuleName, BaseName),
     UnqualifiedName = unqualified(BaseName),

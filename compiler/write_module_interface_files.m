@@ -991,7 +991,8 @@ constructor_list_represents_dummy_argument_type(TypeDefnMap,
 
 constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor],
         canon, no, CoveredTypes) :-
-    Ctor = ctor(MaybeExistConstraints, _Name, Args, _Arity, _Context),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, Args, _Arity,
+        _Context),
     MaybeExistConstraints = no_exist_constraints,
     (
         % A single zero-arity constructor.
@@ -1237,7 +1238,7 @@ type_to_type_ctor_set(Type, !TypeCtors) :-
 
 ctors_to_type_ctor_set([], !TypeCtors).
 ctors_to_type_ctor_set([Ctor | Ctors], !TypeCtors) :-
-    Ctor = ctor(_, _, ConsArgs, _, _),
+    Ctor = ctor(_, _, _, ConsArgs, _, _),
     cons_args_to_type_ctor_set(ConsArgs, !TypeCtors),
     ctors_to_type_ctor_set(Ctors, !TypeCtors).
 

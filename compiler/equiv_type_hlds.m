@@ -228,7 +228,7 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
 
 replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
         !TVarSet, !EquivTypeInfo) :-
-    CtorRepn0 = ctor_repn(MaybeExistConstraints0, CtorName, Tag,
+    CtorRepn0 = ctor_repn(Ordinal, MaybeExistConstraints0, CtorName, Tag,
         CtorArgRepns0, Arity, Context),
     list.map_foldl2(replace_in_ctor_arg_repn(TypeEqvMap),
         CtorArgRepns0, CtorArgRepns, !TVarSet, !EquivTypeInfo),
@@ -245,7 +245,7 @@ replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
             UnconstrainedExistQVars, ConstrainedExistQVars),
         MaybeExistConstraints = exist_constraints(ExistConstraints)
     ),
-    CtorRepn = ctor_repn(MaybeExistConstraints, CtorName, Tag,
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorName, Tag,
         CtorArgRepns, Arity, Context),
     insert_ctor_repn_into_map(CtorRepn, !CtorNameToRepnMap).
 

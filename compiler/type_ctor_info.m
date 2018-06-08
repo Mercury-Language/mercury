@@ -553,16 +553,18 @@ make_mercury_enum_details(CtorRepns, IsDummy, EqualityAxioms, Details) :-
     int::in, list(enum_functor)::out) is det.
 
 make_enum_functors([], _, _, []).
-make_enum_functors([FunctorRepn | FunctorRepns], IsDummy, NextOrdinal,
+make_enum_functors([FunctorRepn | FunctorRepns], IsDummy, CurOrdinal,
         [EnumFunctor | EnumFunctors]) :-
-    FunctorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag,
+    FunctorRepn = ctor_repn(Ordinal, MaybeExistConstraints, SymName, ConsTag,
         _FunctorArgRepns, Arity, _Context),
+    % XXX ARG_PACK We should not need CurOrdinal.
+    expect(unify(Ordinal, CurOrdinal), $pred, "Ordinal != CurOrdinal"),
     expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
         "existential constraints in functor in enum"),
     expect(unify(Arity, 0), $pred, "functor in enum has nonzero arity"),
     (
         IsDummy = enum_is_not_dummy,
-        expect(unify(ConsTag, int_tag(int_tag_int(NextOrdinal))), $pred,
+        expect(unify(ConsTag, int_tag(int_tag_int(CurOrdinal))), $pred,
             "enum functor's tag is not the expected int_tag")
     ;
         IsDummy = enum_is_dummy,
@@ -570,8 +572,8 @@ make_enum_functors([FunctorRepn | FunctorRepns], IsDummy, NextOrdinal,
             "dummy functor's tag is not dummy_tag")
     ),
     FunctorName = unqualify_name(SymName),
-    EnumFunctor = enum_functor(FunctorName, NextOrdinal),
-    make_enum_functors(FunctorRepns, IsDummy, NextOrdinal + 1, EnumFunctors).
+    EnumFunctor = enum_functor(FunctorName, CurOrdinal),
+    make_enum_functors(FunctorRepns, IsDummy, CurOrdinal + 1, EnumFunctors).
 
 :- pred make_enum_maps(enum_functor::in,
     map(int, enum_functor)::in, map(int, enum_functor)::out,
@@ -613,10 +615,12 @@ make_foreign_enum_details(Lang, CtorRepns, EqualityAxioms, Details) :-
     list(foreign_enum_functor)::out) is det.
 
 make_foreign_enum_functors(_, [], _, []).
-make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], NextOrdinal,
+make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], CurOrdinal,
         [ForeignEnumFunctor | ForeignEnumFunctors]) :-
-    FunctorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag,
+    FunctorRepn = ctor_repn(Ordinal, MaybeExistConstraints, SymName, ConsTag,
         _FunctorArgRepns, Arity, _Context),
+    % XXX ARG_PACK We should not need CurOrdinal.
+    expect(unify(Ordinal, CurOrdinal), $pred, "Ordinal != CurOrdinal"),
     expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
         "existential constraints in functor in enum"),
     expect(unify(Arity, 0), $pred,
@@ -650,9 +654,9 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], NextOrdinal,
         unexpected($pred, "non foreign tag for foreign enum functor")
     ),
     FunctorName = unqualify_name(SymName),
-    ForeignEnumFunctor = foreign_enum_functor(FunctorName, NextOrdinal,
+    ForeignEnumFunctor = foreign_enum_functor(FunctorName, CurOrdinal,
         ForeignTagValue),
-    make_foreign_enum_functors(Lang, FunctorRepns, NextOrdinal + 1,
+    make_foreign_enum_functors(Lang, FunctorRepns, CurOrdinal + 1,
         ForeignEnumFunctors).
 
 :- pred make_foreign_enum_maps(foreign_enum_functor::in,
@@ -701,9 +705,11 @@ make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, Details) :-
 
 make_du_functors(_, [], _, _, []).
 make_du_functors(ModuleInfo, [CtorRepn | CtorRepns],
-        NextOrdinal, TypeArity, [DuFunctor | DuFunctors]) :-
-    CtorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag,
+        CurOrdinal, TypeArity, [DuFunctor | DuFunctors]) :-
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, SymName, ConsTag,
         ConsArgRepns, Arity, _Context),
+    % XXX ARG_PACK We should not need CurOrdinal.
+    expect(unify(Ordinal, CurOrdinal), $pred, "Ordinal != CurOrdinal"),
     FunctorName = unqualify_name(SymName),
     get_du_rep(ConsTag, DuRep),
     (
@@ -719,11 +725,11 @@ make_du_functors(ModuleInfo, [CtorRepn | CtorRepns],
     ),
     list.map_foldl(generate_du_arg_info(TypeArity, ExistTVars),
         ConsArgRepns, ArgInfos, functor_subtype_none, FunctorSubtypeInfo),
-    DuFunctor = du_functor(FunctorName, Arity, NextOrdinal, DuRep,
+    DuFunctor = du_functor(FunctorName, Arity, CurOrdinal, DuRep,
         ArgInfos, MaybeExistInfo, FunctorSubtypeInfo),
 
     make_du_functors(ModuleInfo, CtorRepns,
-        NextOrdinal + 1, TypeArity, DuFunctors).
+        CurOrdinal + 1, TypeArity, DuFunctors).
 
 :- pred get_du_rep(cons_tag::in, du_rep::out) is det.
 

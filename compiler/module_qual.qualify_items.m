@@ -424,7 +424,7 @@ qualify_constructors(InInt, ContainingTypeCtor,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor, !Info, !Specs) :-
-    Ctor0 = ctor(MaybeExistConstraints0, FunctionSymbolSymName, Args0,
+    Ctor0 = ctor(Ordinal, MaybeExistConstraints0, FunctionSymbolSymName, Args0,
         Arity, Context),
     FunctionSymbolName = unqualify_name(FunctionSymbolSymName),
     (
@@ -444,7 +444,7 @@ qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor, !Info, !Specs) :-
     ),
     qualify_constructor_args(InInt, ContainingTypeCtor, FunctionSymbolName,
         0, Args0, Args, !Info, !Specs),
-    Ctor = ctor(MaybeExistConstraints, FunctionSymbolSymName, Args,
+    Ctor = ctor(Ordinal, MaybeExistConstraints, FunctionSymbolSymName, Args,
         Arity, Context).
 
 :- pred qualify_constructor_args(mq_in_interface::in,

@@ -978,7 +978,7 @@ output_exported_enum_constname_tag(Stream, NameAndTag, !IO) :-
     cord(exported_enum_name_and_tag_rep)::out) is det.
 
 foreign_const_name_and_tag(Mapping, CtorRepn, !NamesAndTagsCord) :-
-    CtorRepn = ctor_repn(_, SymName, ConsTag, _, Arity, _),
+    CtorRepn = ctor_repn(_, _, SymName, ConsTag, _, Arity, _),
     expect(unify(Arity, 0), $pred, "enum constant arity != 0"),
     Name = unqualify_name(SymName),
     map.lookup(Mapping, Name, ForeignName),

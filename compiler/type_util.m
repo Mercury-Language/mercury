@@ -640,7 +640,7 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
 
 ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
     % There must not be any existentially quantified type variables.
-    Ctor = ctor(no_exist_constraints, _, Args, _, _),
+    Ctor = ctor(_, no_exist_constraints, _, Args, _, _),
     % The data constructor argument types must not have user-defined equality
     % or comparison predicates.
     ArgTypes = list.map((func(A) = A ^ arg_type), Args),
@@ -1210,7 +1210,7 @@ type_constructors(ModuleInfo, Type, Constructors) :-
         CtorArgs = list.map(
             (func(ArgType) = ctor_arg(no, ArgType, Context)),
             TypeArgs),
-        Constructors = [ctor(MaybeExistConstraints, unqualified("{}"),
+        Constructors = [ctor(0, MaybeExistConstraints, unqualified("{}"),
             CtorArgs, list.length(CtorArgs), Context)]
     else
         module_info_get_type_table(ModuleInfo, TypeTable),
@@ -1247,9 +1247,9 @@ substitute_type_args_ctors(Subst, [Ctor0 | Ctors0], [Ctor | Ctors]) :-
     % constraints can only contain existentially quantified variables,
     % so there's no need to worry about applying the substitution to ExistQVars
     % or Constraints.
-    Ctor0 = ctor(MaybeExistConstraints, Name, Args0, Arity, Ctxt),
+    Ctor0 = ctor(Ordinal, MaybeExistConstraints, Name, Args0, Arity, Ctxt),
     substitute_type_args_ctor_args(Subst, Args0, Args),
-    Ctor = ctor(MaybeExistConstraints, Name, Args, Arity, Ctxt),
+    Ctor = ctor(Ordinal, MaybeExistConstraints, Name, Args, Arity, Ctxt),
     substitute_type_args_ctors(Subst, Ctors0, Ctors).
 
 :- pred substitute_type_args_ctor_args(tsubst::in, list(constructor_arg)::in,
@@ -1362,7 +1362,7 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     TypeDefnBody = hlds_du_type(Ctors, _, _, _),
     list.member(Ctor, Ctors),
-    Ctor = ctor(_MaybeExistConstraints, Name, _Args, Arity, _Ctxt),
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, _Args, Arity, _Ctxt),
     ConsId = cons(Name, Arity, TypeCtor),
 
     % We should look it up in a type_ctor-specific table, not a global one.

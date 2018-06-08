@@ -880,7 +880,7 @@ mercury_output_ctors(VarSet, First, [Ctor | Ctors], !IO) :-
     mercury_output_ctors(VarSet, no, Ctors, !IO).
 
 mercury_output_ctor(TypeVarSet, Ctor, !IO) :-
-    Ctor = ctor(MaybeExistConstraints, SymName, Args, Arity, _Ctxt),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, SymName, Args, Arity, _Ctxt),
 
     % We will have attached the module name to the type definition,
     % so there is no point adding it to the constructor as well.

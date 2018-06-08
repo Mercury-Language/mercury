@@ -1028,7 +1028,8 @@ replace_in_ctors_location(MaybeRecord, TypeEqvMap, !Ctors, !VarSet,
 
 replace_in_ctor(MaybeRecord, TypeEqvMap, Ctor0, Ctor,
         !VarSet, !EquivTypeInfo, !UsedModules) :-
-    Ctor0 = ctor(MaybeExistConstraints0, CtorName, CtorArgs0, Arity, Ctxt),
+    Ctor0 = ctor(Ordinal, MaybeExistConstraints0, CtorName, CtorArgs0, Arity,
+        Ctxt),
     replace_in_ctor_arg_list(MaybeRecord, TypeEqvMap,
         CtorArgs0, CtorArgs, _, !VarSet, !EquivTypeInfo, !UsedModules),
     (
@@ -1044,7 +1045,8 @@ replace_in_ctor(MaybeRecord, TypeEqvMap, Ctor0, Ctor,
             UnconstrainedExistQTVars, ConstrainedExistQTVars),
         MaybeExistConstraints = exist_constraints(ExistConstraints)
     ),
-    Ctor = ctor(MaybeExistConstraints, CtorName, CtorArgs, Arity, Ctxt).
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorName, CtorArgs, Arity,
+        Ctxt).
 
 %---------------------------------------------------------------------------%
 

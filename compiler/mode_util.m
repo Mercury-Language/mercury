@@ -1074,7 +1074,7 @@ constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
 constructors_to_bound_insts_loop_over_ctors(_, _, _, [], _, []).
 constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
         [Ctor | Ctors], ArgInst, [BoundInst | BoundInsts]) :-
-    Ctor = ctor(_MaybeExistConstraints, Name, Args, _Arity, _Ctxt),
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, Args, _Arity, _Ctxt),
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
     list.length(Insts, Arity),
     BoundInst = bound_functor(cons(Name, Arity, TypeCtor), Insts),
@@ -1221,8 +1221,8 @@ propagate_ctor_info_into_bound_functors(ModuleInfo, Subst,
         find_first_matching_constructor(ConsName, Arity, Constructors,
             MatchingConstructor)
     then
-        MatchingConstructor = ctor(_MaybeExistConstraints, _Name, Args,
-            _Arity, _Ctxt),
+        MatchingConstructor = ctor(_Ordinal, _MaybeExistConstraints,
+            _Name, Args, _Arity, _Ctxt),
         get_constructor_arg_types(Args, ArgTypes),
         propagate_types_into_inst_list(ModuleInfo, Subst, ArgTypes,
             ArgInsts0, ArgInsts),
@@ -1249,7 +1249,7 @@ find_first_matching_constructor(_ConsName, _Arity, [], _MatchingCtor) :-
     fail.
 find_first_matching_constructor(ConsName, Arity, [Ctor | Ctors],
         MatchingCtor) :-
-    ( if Ctor = ctor(_, ConsName, _, Arity, _) then
+    ( if Ctor = ctor(_, _, ConsName, _, Arity, _) then
         MatchingCtor = Ctor
     else
         find_first_matching_constructor(ConsName, Arity, Ctors, MatchingCtor)

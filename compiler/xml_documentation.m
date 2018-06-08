@@ -429,7 +429,7 @@ type_body_to_xml(C, TVarSet, TypeDefnBody) = Xmls :-
 :- func constructor_to_xml(comments, tvarset, constructor) = xml.
 
 constructor_to_xml(C, TVarset, Ctor) = Xml :-
-    Ctor = ctor(MaybeExistConstraints, Name, Args, Arity, Context),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, Name, Args, Arity, Context),
     (
         MaybeExistConstraints = no_exist_constraints,
         ExistQVars = [],

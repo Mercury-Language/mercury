@@ -452,7 +452,7 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 ctor_used_modules(Visibility, Ctor, !UsedModules) :-
-    Ctor = ctor(MaybeExistConstraints, _, Args, _, _),
+    Ctor = ctor(_, MaybeExistConstraints, _, Args, _, _),
     (
         MaybeExistConstraints = no_exist_constraints
     ;

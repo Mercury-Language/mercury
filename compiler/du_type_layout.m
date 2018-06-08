@@ -122,6 +122,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module io.
@@ -445,8 +446,8 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
             Ctors = [SingleCtor]
         then
             ( if
-                SingleCtor = ctor(no_exist_constraints, SingleCtorSymName,
-                    [SingleArg], 1, SingleCtorContext),
+                SingleCtor = ctor(_Ordinal, no_exist_constraints,
+                    SingleCtorSymName, [SingleArg], 1, SingleCtorContext),
                 MaybeCanonical = canon,
                 Params ^ ddp_unboxed_no_tag_types = use_unboxed_no_tag_types
             then
@@ -541,15 +542,16 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
 
 add_repn_to_foreign_enum_ctor(TypeCtor, ConsTagMap, Ctor, CtorRepn,
         !CtorRepnMap) :-
-    Ctor = ctor(MaybeExistConstraints, SymName, Args, Arity, Context),
+    Ctor = ctor(Ordinal, MaybeExistConstraints, SymName, Args, Arity,
+        Context),
     ConsId = cons(SymName, Arity, TypeCtor),
     map.lookup(ConsTagMap, ConsId, ConsTag),
     % All function symbols of a foreign enum type should have arity zero.
     % If any have a nonzero arity, our caller will generate an error message,
     % and won't proceed to code generation.
     ArgRepns = list.map(add_dummy_repn_to_ctor_arg, Args),
-    CtorRepn = ctor_repn(MaybeExistConstraints, SymName, ConsTag, ArgRepns,
-        Arity, Context),
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, SymName, ConsTag,
+        ArgRepns, Arity, Context),
     insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap).
 
 :- func add_dummy_repn_to_ctor_arg(constructor_arg) = constructor_arg_repn.
@@ -578,7 +580,7 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
     ;
         Ctors = [SingleCtor],
         DuTypeKind = du_type_kind_direct_dummy,
-        SingleCtor = ctor(_MaybeExistConstraints,
+        SingleCtor = ctor(Ordinal, _MaybeExistConstraints,
             SingleCtorSymName, _Args, _SingleCtorArity, SingleCtorContext),
         % XXX TYPE_REPN Should we have a special dummy_tag?
         % If not, we can use the same code as the enum case.
@@ -586,7 +588,7 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
         % for "is the variable's type a dummy type?" when the variable
         % is unified with a cons_id whose tag is dummy_tag.
         SingleCtorTag = dummy_tag,
-        SingleCtorRepn = ctor_repn(no_exist_constraints,
+        SingleCtorRepn = ctor_repn(Ordinal, no_exist_constraints,
             SingleCtorSymName, SingleCtorTag, [], 0, SingleCtorContext),
         CtorRepns = [SingleCtorRepn],
         insert_ctor_repn_into_map(SingleCtorRepn, map.init, CtorRepnMap),
@@ -627,14 +629,14 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
 assign_tags_to_enum_constants([], [], !CurTag, !CtorRepnMap).
 assign_tags_to_enum_constants([Ctor | Ctors], [CtorRepn | CtorRepns],
         !CurTag, !CtorRepnMap) :-
-    Ctor = ctor(MaybeExistConstraints, SymName, Args, Arity, Context),
+    Ctor = ctor(Ordinal, MaybeExistConstraints, SymName, Args, Arity, Context),
     expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
         "enum constant has existential constraints"),
     expect(unify(Args, []), $pred, "enum constant has arguments"),
     expect(unify(Arity, 0), $pred, "enum constant has nonzero arity"),
     CtorTag = int_tag(int_tag_int(!.CurTag)),
-    CtorRepn = ctor_repn(no_exist_constraints, SymName, CtorTag, [], 0,
-        Context),
+    CtorRepn = ctor_repn(Ordinal, no_exist_constraints, SymName, CtorTag,
+        [], 0, Context),
     !:CurTag = !.CurTag + 1,
     insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap),
     assign_tags_to_enum_constants(Ctors, CtorRepns, !CurTag, !CtorRepnMap).
@@ -658,8 +660,9 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, Body0,
     % if the arg type is a 64 bit float on a 32 bit platform.
     SingleArgRepn = ctor_arg_repn(MaybeSingleArgFieldName, SingleArgType,
         apw_full(arg_only_offset(0), cell_offset(0)), SingleArgContext),
-    SingleCtorRepn = ctor_repn(no_exist_constraints, SingleCtorSymName,
-        SingleCtorTag, [SingleArgRepn], 1, SingleCtorContext),
+    SingleCtorRepn = ctor_repn(0, no_exist_constraints,
+        SingleCtorSymName, SingleCtorTag, [SingleArgRepn], 1,
+        SingleCtorContext),
     insert_ctor_repn_into_map(SingleCtorRepn, map.init, CtorRepnMap),
 
     MaybeCheaperTagTest = no_cheaper_tag_test,
@@ -885,7 +888,7 @@ decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap, TypeCtor,
 
 decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
         TypeStatus, SingleCtor, Repn, !Specs) :-
-    SingleCtor = ctor(MaybeExistConstraints, SingleCtorSymName,
+    SingleCtor = ctor(Ordinal, MaybeExistConstraints, SingleCtorSymName,
         SingleCtorArgs, SingleCtorArity, SingleCtorContext),
     SingleCtorTag = single_functor_tag,
     NumRemoteSecTagBits = 0,
@@ -893,7 +896,7 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
         TypeStatus, NumRemoteSecTagBits, SingleCtorTag, MaybeExistConstraints,
         SingleCtorSymName, SingleCtorContext,
         SingleCtorArgs, SingleCtorArgRepns, !Specs),
-    SingleCtorRepn = ctor_repn(MaybeExistConstraints,
+    SingleCtorRepn = ctor_repn(Ordinal, MaybeExistConstraints,
         SingleCtorSymName, SingleCtorTag,
         SingleCtorArgRepns, SingleCtorArity, SingleCtorContext),
 
@@ -1019,14 +1022,14 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
 decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         TypeCtor, TypeStatus, CtorTagMap, NumRemoteSecTagBits,
         Ctor, CtorRepn, !CtorRepnMap, !Specs) :-
-    Ctor = ctor(MaybeExistConstraints, CtorSymName,
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, CtorArity, CtorContext),
     ConsId = cons(CtorSymName, CtorArity, TypeCtor),
     map.lookup(CtorTagMap, ConsId, CtorTag),
     decide_complex_du_ctor_args(ModuleInfo, Params, ComponentTypeMap,
         TypeStatus, NumRemoteSecTagBits, CtorTag, MaybeExistConstraints,
         CtorSymName, CtorContext, CtorArgs, CtorArgRepns, !Specs),
-    CtorRepn = ctor_repn(MaybeExistConstraints, CtorSymName, CtorTag,
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName, CtorTag,
         CtorArgRepns, CtorArity, CtorContext),
     insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap).
 
@@ -1368,7 +1371,8 @@ padding_increment(CurShift, PaddingIncrement) :-
 assign_tags_to_constants(_, _, _, _, _, [], !CtorTagMap).
 assign_tags_to_constants(TypeCtor, Ptag, NumPtagBits, SectagBits, CurSecTag,
         [Ctor | Ctors], !CtorTagMap) :-
-    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Context),
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
+        _Context),
     ConsId = cons(SymName, Arity, TypeCtor),
     Ptag = ptag(PtagUint8),
     WholeWord = (CurSecTag << NumPtagBits) \/ uint8.cast_to_uint(PtagUint8),
@@ -1388,7 +1392,8 @@ assign_tags_to_direct_arg_functors(_, _, !CurPtag, [], _, [], !CtorTagMap).
 assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtagUint8,
         [DirectArgCtor | DirectArgCtors], NonDirectArgCtors, LeftOverCtors,
         !CtorTagMap) :-
-    DirectArgCtor = ctor(_MaybeExistConstraints, Name, _Args, Arity, _Context),
+    DirectArgCtor = ctor(_Ordinal, _MaybeExistConstraints, Name, _Args, Arity,
+        _Context),
     ConsId = cons(Name, Arity, TypeCtor),
     MaxPtag = ptag(MaxPtagUint8),
     ( if
@@ -1415,7 +1420,8 @@ assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtagUint8,
 assign_tags_to_non_direct_arg_functors(_, _, _, _, [], 0u, !CtorTagMap).
 assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtagUint8,
         AddedBy, [Ctor | Ctors], NumRemoteSecTags, !CtorTagMap) :-
-    Ctor = ctor(_MaybeExistConstraints, Name, _Args, Arity, _Context),
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, _Args, Arity,
+        _Context),
     ConsId = cons(Name, Arity, TypeCtor),
     MaxPtag = ptag(MaxPtagUint8),
     ( if
@@ -1447,7 +1453,8 @@ assign_shared_remote_tags_to_non_direct_arg_functors(_, _, _,
         [], !CurRemoteSecTag, !CtorTagMap).
 assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
         Ptag, AddedBy, [Ctor | Ctors], !CurRemoteSecTag, !CtorTagMap) :-
-    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Context),
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
+        _Context),
     ConsId = cons(SymName, Arity, TypeCtor),
     RemoteSectag = remote_sectag(!.CurRemoteSecTag, AddedBy),
     ConsTag = shared_remote_tag(Ptag, RemoteSectag),
@@ -1529,8 +1536,8 @@ round_to_even(I) = E :-
 
 is_direct_arg_ctor(ComponentTypeMap, TypeCtorModule, TypeStatus,
         TypeIsImported, TypeDefinedHere, AssertedDirectArgCtors, Ctor) :-
-    Ctor = ctor(MaybeExistConstraints, ConsSymName, ConsArgs, ConsArity,
-        _CtorContext),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, ConsSymName, ConsArgs,
+        ConsArity, _CtorContext),
     MaybeExistConstraints = no_exist_constraints,
     ConsArgs = [ConsArg],
     expect(unify(ConsArity, 1), $pred, "ConsArity != 1"),
@@ -1793,7 +1800,7 @@ is_foreign_type_body_for_target(ForeignType, Target, Assertions) :-
 
 check_direct_arg_assertions(_AssertedDirectArgCtors, [], !Specs).
 check_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors], !Specs) :-
-    Ctor = ctor(_, SymName, _Args, Arity, Context),
+    Ctor = ctor(_, _, SymName, _Args, Arity, Context),
     SymNameArity = sym_name_arity(SymName, Arity),
     ( if list.contains(AssertedDirectArgCtors, SymNameArity) then
         Pieces = [words("Error:"),
@@ -1810,7 +1817,7 @@ check_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors], !Specs) :-
 
 :- func constructor_to_sym_name_and_arity(constructor) = sym_name_and_arity.
 
-constructor_to_sym_name_and_arity(ctor(_, Name, _Args, Arity, _)) =
+constructor_to_sym_name_and_arity(ctor(_, _, Name, _Args, Arity, _)) =
     sym_name_arity(Name, Arity).
 
 %---------------------------------------------------------------------------%
@@ -1824,9 +1831,9 @@ constructor_to_sym_name_and_arity(ctor(_, Name, _Args, Arity, _)) =
 
 compute_cheaper_tag_test(TypeCtor, CtorRepns, CheaperTagTest) :-
     ( if CtorRepns = [CtorRepnA, CtorRepnB] then
-        CtorRepnA = ctor_repn(_MaybeExistA, CtorSymNameA, CtorTagA,
+        CtorRepnA = ctor_repn(_OrdinalA, _MaybeExistA, CtorSymNameA, CtorTagA,
             _CtorArgsA, CtorArityA, _CtorContextA),
-        CtorRepnB = ctor_repn(_MaybeExistB, CtorSymNameB, CtorTagB,
+        CtorRepnB = ctor_repn(_OrdinalB, _MaybeExistB, CtorSymNameB, CtorTagB,
             _CtorArgsB, CtorArityB, _CtorContextB),
         ( if
             CtorArityB = 0,
@@ -2055,7 +2062,7 @@ deref_eqv_types(ModuleInfo, Type0, Type) :-
 
 ctors_are_all_constants([]).
 ctors_are_all_constants([Ctor | Ctors]) :-
-    Ctor = ctor(MaybeExistConstraints, _Name, Args, Arity, _Context),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, Args, Arity, _Context),
     MaybeExistConstraints = no_exist_constraints,
     Args = [],
     Arity = 0,
@@ -2066,7 +2073,7 @@ ctors_are_all_constants([Ctor | Ctors]) :-
 
 separate_out_constants([], [], []).
 separate_out_constants([Ctor | Ctors], Constants, Functors) :-
-    separate_out_constants(Ctors, Constants0, Functors0),
+    separate_out_constants(Ctors, ConstantsTail, FunctorsTail),
     Args = Ctor ^ cons_args,
     % XXX TYPE_REPN Consider changing the representation of constructors
     % to encode the invariant (no arguments -> no_exist_constraints)
@@ -2075,11 +2082,50 @@ separate_out_constants([Ctor | Ctors], Constants, Functors) :-
         Args = [],
         Ctor ^ cons_maybe_exist = no_exist_constraints
     then
-        Constants = [Ctor | Constants0],
-        Functors = Functors0
+        Constants = [Ctor | ConstantsTail],
+        Functors = FunctorsTail
     else
-        Constants = Constants0,
-        Functors = [Ctor | Functors0]
+        Constants = ConstantsTail,
+        Functors = [Ctor | FunctorsTail]
+    ).
+
+:- pred separate_out_local_sectag_packable(decide_du_params::in,
+    component_type_map::in, list(constructor)::in,
+    assoc_list(int, constructor)::out, list(constructor)::out) is det.
+
+separate_out_local_sectag_packable(_, _, [], [], []).
+separate_out_local_sectag_packable(Params, ComponentTypeMap,
+        [Ctor | Ctors], Packable, NonPackable) :-
+    separate_out_local_sectag_packable(Params, ComponentTypeMap,
+        Ctors, PackableTail, NonPackableTail),
+    Args = Ctor ^ cons_args,
+    ( if
+        args_are_all_packable(Params, ComponentTypeMap, Args, 0, NumBits),
+        Ctor ^ cons_maybe_exist = no_exist_constraints
+    then
+        Packable = [NumBits - Ctor | PackableTail],
+        NonPackable = NonPackableTail
+    else
+        Packable = PackableTail,
+        NonPackable = [Ctor | NonPackableTail]
+    ).
+
+:- pred args_are_all_packable(decide_du_params::in, component_type_map::in,
+    list(constructor_arg)::in, int::in, int::out) is semidet.
+
+args_are_all_packable(_, _, [], !NumBits).
+args_are_all_packable(Params, ComponentTypeMap, [Arg | Args], !NumBits) :-
+    Arg = ctor_arg(_ArgName, ArgType, _ArgContext),
+    ( if may_pack_arg_type(Params, ComponentTypeMap, ArgType, Packable) then
+        (
+            Packable = packable_n_bits(ArgNumArgBits, _FillKind),
+            !:NumBits = !.NumBits + ArgNumArgBits
+        ;
+            Packable = packable_dummy
+        ),
+        args_are_all_packable(Params, ComponentTypeMap, Args, !NumBits)
+    else
+        fail
     ).
 
 :- func type_ctor_sna(type_ctor) = format_component.

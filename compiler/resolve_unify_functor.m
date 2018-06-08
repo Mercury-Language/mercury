@@ -603,7 +603,7 @@ get_constructor_containing_field_loop(_, [], _, _, _) :-
     unexpected($pred, "can't find field").
 get_constructor_containing_field_loop(TypeCtor, [Ctor | Ctors],
         UnqualFieldName, ConsId, FieldNumber) :-
-    Ctor = ctor(_, SymName, CtorArgs, Arity, _Ctxt),
+    Ctor = ctor(_, _, SymName, CtorArgs, Arity, _Ctxt),
     ( if
         search_for_named_field(CtorArgs, UnqualFieldName, 1, FieldNumberPrime)
     then

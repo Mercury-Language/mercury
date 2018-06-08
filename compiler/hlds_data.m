@@ -1124,6 +1124,10 @@ set_type_defn_prev_errors(X, !Defn) :-
 
 :- type constructor_repn
     --->    ctor_repn(
+                % The ordinal number of the functor. The first functor
+                % in a type definition has ordinal number 0.
+                cr_ordinal          :: int,
+
                 % Existential constraints, if any.
                 cr_maybe_exist      :: maybe_cons_exist_constraints,
 
@@ -1256,7 +1260,7 @@ constructor_cons_ids(TypeCtor, Ctors) = SortedConsIds :-
 
 gather_constructor_cons_ids(_TypeCtor, [], !ConsIds).
 gather_constructor_cons_ids(TypeCtor, [Ctor | Ctors], !ConsIds) :-
-    Ctor = ctor(_MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
     ConsId = cons(SymName, Arity, TypeCtor),
     !:ConsIds = [ConsId | !.ConsIds],
     gather_constructor_cons_ids(TypeCtor, Ctors, !ConsIds).

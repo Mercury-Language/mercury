@@ -77,6 +77,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bag.
+:- import_module int.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
@@ -245,18 +246,19 @@ du_type_rhs_ctors_and_where_terms(Term, CtorsTerm, MaybeWhereTerm) :-
 parse_maybe_exist_quant_constructors(ModuleName, VarSet, Term,
         MaybeConstructors) :-
     disjunction_to_one_or_more(Term, one_or_more(HeadBodyTerm, TailBodyTerms)),
-    parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
+    parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, 0,
         HeadBodyTerm, TailBodyTerms, MaybeConstructors).
 
     % Try to parse the term as a list of constructors.
     %
 :- pred parse_maybe_exist_quant_constructors_loop(module_name::in, varset::in,
-    term::in, list(term)::in, maybe1(one_or_more(constructor))::out) is det.
+    int::in, term::in, list(term)::in,
+    maybe1(one_or_more(constructor))::out) is det.
 
-parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
+parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, CurOrdinal,
         HeadTerm, TailTerms, MaybeConstructors) :-
-    parse_maybe_exist_quant_constructor(ModuleName, VarSet, HeadTerm,
-        MaybeHeadConstructor),
+    parse_maybe_exist_quant_constructor(ModuleName, VarSet, CurOrdinal,
+        HeadTerm, MaybeHeadConstructor),
     (
         TailTerms = [],
         (
@@ -269,7 +271,8 @@ parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
     ;
         TailTerms = [HeadTailTerm | TailTailTerms],
         parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
-            HeadTailTerm, TailTailTerms, MaybeTailConstructors),
+            CurOrdinal + 1, HeadTailTerm, TailTailTerms,
+            MaybeTailConstructors),
         ( if
             MaybeHeadConstructor = ok1(HeadConstructor),
             MaybeTailConstructors = ok1(TailConstructors)
@@ -284,9 +287,9 @@ parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
     ).
 
 :- pred parse_maybe_exist_quant_constructor(module_name::in, varset::in,
-    term::in, maybe1(constructor)::out) is det.
+    int::in, term::in, maybe1(constructor)::out) is det.
 
-parse_maybe_exist_quant_constructor(ModuleName, VarSet, Term,
+parse_maybe_exist_quant_constructor(ModuleName, VarSet, Ordinal, Term,
         MaybeConstructor) :-
     ( if Term = term.functor(term.atom("some"), [VarsTerm, SubTerm], _) then
         ContextPieces = cord.from_list([words("in first argument of"),
@@ -296,7 +299,7 @@ parse_maybe_exist_quant_constructor(ModuleName, VarSet, Term,
         (
             MaybeExistQVars = ok1(ExistQVars),
             list.map(term.coerce_var, ExistQVars, ExistQTVars),
-            parse_constructor(ModuleName, VarSet, ExistQTVars, SubTerm,
+            parse_constructor(ModuleName, VarSet, Ordinal, ExistQTVars, SubTerm,
                 MaybeConstructor)
         ;
             MaybeExistQVars = error1(Specs),
@@ -304,14 +307,15 @@ parse_maybe_exist_quant_constructor(ModuleName, VarSet, Term,
         )
     else
         ExistQVars = [],
-        parse_constructor(ModuleName, VarSet, ExistQVars, Term,
+        parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
             MaybeConstructor)
     ).
 
-:- pred parse_constructor(module_name::in, varset::in, list(tvar)::in,
+:- pred parse_constructor(module_name::in, varset::in, int::in, list(tvar)::in,
     term::in, maybe1(constructor)::out) is det.
 
-parse_constructor(ModuleName, VarSet, ExistQVars, Term, MaybeConstructor) :-
+parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
+        MaybeConstructor) :-
     get_existential_constraints_from_term(ModuleName, VarSet, Term,
         BeforeConstraintsTerm, MaybeConstraints),
     (
@@ -389,7 +393,7 @@ parse_constructor(ModuleName, VarSet, ExistQVars, Term, MaybeConstructor) :-
                     MCSpecs = [],
                     list.length(ConstructorArgs, Arity),
                     MainTermContext = get_term_context(MainTerm),
-                    Ctor = ctor(MaybeExistConstraints, Functor,
+                    Ctor = ctor(Ordinal, MaybeExistConstraints, Functor,
                         ConstructorArgs, Arity, MainTermContext),
                     MaybeConstructor = ok1(Ctor)
                 ;
@@ -484,7 +488,8 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
 
 process_du_ctors(_Params, _, _, [], !Specs).
 process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
-    Ctor = ctor(MaybeExistConstraints, _CtorName, CtorArgs, _Arity, _Context),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, _CtorName, CtorArgs, _Arity,
+        _Context),
     (
         MaybeExistConstraints = no_exist_constraints,
         ExistQVars = [],
@@ -614,7 +619,8 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
         !Specs) :-
     DirectArgCtor = sym_name_arity(SymName, Arity),
     ( if find_constructor(Ctors, SymName, Arity, Ctor) then
-        Ctor = ctor(MaybeExistConstraints, _SymName, _Args, _Arity, _Context),
+        Ctor = ctor(_Ordinal, MaybeExistConstraints, _SymName, _Args, _Arity,
+            _Context),
         ( if Arity \= 1 then
             Pieces = [words("Error: the"), quote("direct_arg"),
                 words("attribute contains a function symbol whose arity"),
@@ -653,7 +659,7 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
     constructor::out) is semidet.
 
 find_constructor([Ctor | Ctors], SymName, Arity, NamedCtor) :-
-    ( if Ctor = ctor(_, SymName, _Args, Arity, _) then
+    ( if Ctor = ctor(_, _, SymName, _Args, Arity, _) then
         NamedCtor = Ctor
     else
         find_constructor(Ctors, SymName, Arity, NamedCtor)

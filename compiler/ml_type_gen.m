@@ -333,7 +333,7 @@ ml_gen_hld_enum_value_member(Context) =
 
 ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     % Figure out the value of this enumeration constant.
-    CtorRepn = ctor_repn(_, QualSymName, ConsTag, _, Arity, _),
+    CtorRepn = ctor_repn(_, _, QualSymName, ConsTag, _, Arity, _),
     expect(unify(Arity, 0), $pred, "arity != []"),
     enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval),
 
@@ -551,8 +551,8 @@ ml_gen_hld_tag_constant(Context, CtorRepn) = Defns :-
         % we don't do the same thing for primary tags, so this is most useful
         % in the `--tags none' case, where there will be no primary tags.
 
-        CtorRepn = ctor_repn(_MaybeExistConstraints, Name, _Tag, _ArgRepns,
-            _Arity, _Ctxt),
+        CtorRepn = ctor_repn(_Ordinal, _MaybeExistConstraints, Name, _Tag,
+            _ArgRepns, _Arity, _Ctxt),
         UnqualifiedName = unqualify_name(Name),
         VarName = fvn_sectag_const(UnqualifiedName),
         ConstValue = ml_const(mlconst_int(SecondaryTag)),
@@ -631,8 +631,8 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
         SecondaryTagClassId, TypeCtor, TypeDefn, CtorRepn,
         BaseClassFields0, BaseClassFields, BaseClassClasses0, BaseClassClasses,
         BaseClassCtors0, BaseClassCtors) :-
-    CtorRepn = ctor_repn(MaybeExistConstraints, CtorName, TagVal, ArgRepns,
-        CtorArity, _Ctxt),
+    CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, CtorName, TagVal,
+        ArgRepns, CtorArity, _Ctxt),
 
     % XXX We should keep a context for the constructor,
     % but we don't, so we just use the context from the type.
@@ -1064,7 +1064,7 @@ ml_gen_exported_enum(ExportedEnumInfo, MLDS_ExportedEnum) :-
 
 generate_foreign_enum_constant(Mapping, MLDS_Type, CtorRepn,
         ExportConstant) :-
-    CtorRepn = ctor_repn(_, SymName, ConsTag, _, Arity, _),
+    CtorRepn = ctor_repn(_, _, SymName, ConsTag, _, Arity, _),
     expect(unify(Arity, 0), $pred, "enum constant arity != 0"),
     enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval),
 

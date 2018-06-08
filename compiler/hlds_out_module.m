@@ -555,10 +555,10 @@ write_ctor(TVarSet, MaybePeriodNL, Ctor, !IO) :-
     io::di, io::uo) is det.
 
 write_ctor_repn(TVarSet, Indent, MaybePeriodNL, CtorRepn, !IO) :-
-    CtorRepn = ctor_repn(MaybeExistConstraints, Name, Tag, ArgRepns,
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, Name, Tag, ArgRepns,
         Arity, Context),
     Args = list.map(discard_repn_from_ctor_arg, ArgRepns),
-    Ctor = ctor(MaybeExistConstraints, Name, Args, Arity, Context),
+    Ctor = ctor(Ordinal, MaybeExistConstraints, Name, Args, Arity, Context),
     mercury_output_ctor(TVarSet, Ctor, !IO),
     io.write_string(MaybePeriodNL, !IO),
     write_indent(Indent, !IO),

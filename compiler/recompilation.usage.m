@@ -1075,7 +1075,7 @@ find_items_used_by_type_body(TypeBody, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_ctor(Ctor, !Info) :-
-    Ctor = ctor(MaybeExistConstraints, _, CtorArgs, _, _),
+    Ctor = ctor(_, MaybeExistConstraints, _, CtorArgs, _, _),
     (
         MaybeExistConstraints = no_exist_constraints
     ;

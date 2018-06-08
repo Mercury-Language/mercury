@@ -1713,7 +1713,7 @@ check_ctor_constraints(ModuleInfo, TypeCtor - TypeDefn, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn, Ctor, !Specs) :-
-    Ctor = ctor(MaybeExistConstraints, _, CtorArgs, _, _),
+    Ctor = ctor(_, MaybeExistConstraints, _, CtorArgs, _, _),
     (
         MaybeExistConstraints = no_exist_constraints
     ;

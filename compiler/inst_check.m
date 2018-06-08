@@ -199,7 +199,7 @@ get_du_functors_for_type_def(TypeDefn, Functors) :-
     functor_name_and_arity::out) is det.
 
 constructor_to_functor_name_and_arity(Ctor, FunctorNameAndArity) :-
-    Ctor = ctor(_, SymName, _ArgTypes, Arity, _),
+    Ctor = ctor(_, _, SymName, _ArgTypes, Arity, _),
     FunctorNameAndArity =
         functor_name_and_arity(unqualify_name(SymName), Arity).
 
@@ -686,7 +686,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
 find_ctors_with_given_name(_ConsName, [], []).
 find_ctors_with_given_name(ConsName, [Constructor | Constructors], Arities) :-
     find_ctors_with_given_name(ConsName, Constructors, AritiesTail),
-    Constructor = ctor(_, CtorSymName, _, CtorArity, _),
+    Constructor = ctor(_, _, CtorSymName, _, CtorArity, _),
     ( if unqualify_name(CtorSymName) = ConsName then
         Arities = [CtorArity | AritiesTail]
     else
@@ -1262,8 +1262,8 @@ find_mismatches_from_user(Ctors, CurNum,
 some_ctor_matches_exactly([], _FunctorName, _FunctorArity) :-
     fail.
 some_ctor_matches_exactly([Ctor | Ctors], FunctorName, FunctorArity) :-
-    Ctor = ctor(_MaybeExistConstraints, ConsName, _ConsArgs, ConsArity,
-        _Context),
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, ConsName, _ConsArgs,
+        ConsArity, _Context),
     ( if
         unqualify_name(ConsName) = FunctorName,
         ConsArity = FunctorArity
@@ -1280,8 +1280,8 @@ find_matching_name_wrong_arities([], _FunctorName, _FunctorArity,
         !ExpectedArities).
 find_matching_name_wrong_arities([Ctor | Ctors], FunctorName, FunctorArity,
         !ExpectedArities) :-
-    Ctor = ctor(_MaybeExistConstraints, ConsName, _ConsArgs, ConsArity,
-        _Context),
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, ConsName, _ConsArgs,
+        ConsArity, _Context),
     ( if
         unqualify_name(ConsName) = FunctorName,
         ConsArity \= FunctorArity

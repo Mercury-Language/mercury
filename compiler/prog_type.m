@@ -964,7 +964,8 @@ qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
 
 type_constructors_are_type_info(Ctors) :-
     Ctors = [Ctor],
-    Ctor = ctor(MaybeExistConstraints, FunctorName, [_CtorArg], 1, _Context),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName,
+        [_CtorArg], 1, _Context),
     unqualify_private_builtin(FunctorName, Name),
     name_is_type_info(Name),
     MaybeExistConstraints = no_exist_constraints.
@@ -1000,7 +1001,8 @@ du_type_is_enum(DuDetails, NumBits) :-
 
 all_functors_are_enum([], !NumFunctors).
 all_functors_are_enum([Ctor | Ctors], !NumFunctors) :-
-    Ctor = ctor(MaybeExistConstraints, _Name, Args, _Arity, _Context),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, Args, _Arity,
+        _Context),
     Args = [],
     MaybeExistConstraints = no_exist_constraints,
     !:NumFunctors = !.NumFunctors + 1,
@@ -1025,7 +1027,8 @@ du_type_is_notag(Ctors, MaybeCanonical) :-
 du_type_is_notag_return_info(Ctors, MaybeCanonical,
         FunctorName, ArgType, MaybeArgName) :-
     Ctors = [Ctor],
-    Ctor = ctor(MaybeExistConstraints, FunctorName, [CtorArg], 1, _Context),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName, [CtorArg], 1,
+        _Context),
     MaybeCanonical = canon,
     MaybeExistConstraints = no_exist_constraints,
 
@@ -1045,7 +1048,8 @@ du_type_is_dummy(DuDetails) :-
     MaybeCanonical = canon,
     MaybeDirectArgCtors = no,
     Ctors = [Ctor],
-    Ctor = ctor(MaybeExistConstraints, _FunctorName, [], 0, _Context),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, _FunctorName, [], 0,
+        _Context),
     MaybeExistConstraints = no_exist_constraints.
 
 %-----------------------------------------------------------------------------%

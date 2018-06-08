@@ -35,7 +35,7 @@
 % the various kinds of type definitions in the same order.
 %
 % The last section contains utility predicates.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module check_hlds.unify_proc.
@@ -530,8 +530,8 @@ can_compare_constants_as_ints(Info) = CanCompareAsInt :-
 
 generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt, Ctor, Goal,
         !Info) :-
-    Ctor = ctor(MaybeExistConstraints, FunctorName, ArgTypes, FunctorArity,
-        _Ctxt),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName, ArgTypes,
+        FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     ( if TypeCtor = type_ctor(unqualified("{}"), _) then
         FunctorConsId = tuple_cons(FunctorArity)
@@ -1072,9 +1072,9 @@ generate_compare_du_quad_switch_on_y(SpecDefnInfo, LeftCtor,
 
 generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, Ctor1, Ctor2,
         CompareOp, R, X, Y, Case, !Info) :-
-    Ctor1 = ctor(MaybeExistConstraints1, FunctorName1, ArgTypes1,
+    Ctor1 = ctor(_Ordinal1, MaybeExistConstraints1, FunctorName1, ArgTypes1,
         _Arity1, _Ctxt1),
-    Ctor2 = ctor(MaybeExistConstraints2, FunctorName2, ArgTypes2,
+    Ctor2 = ctor(_Ordinal2, MaybeExistConstraints2, FunctorName2, ArgTypes2,
         _Arity2, _Ctxt2),
     list.length(ArgTypes1, FunctorArity1),
     list.length(ArgTypes2, FunctorArity2),
@@ -1266,8 +1266,8 @@ generate_compare_du_linear_cases(SpecDefnInfo, [Ctor | Ctors], R, X, Y,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_case(SpecDefnInfo, Ctor, R, X, Y, LinearOrQuad, Case, !Info) :-
-    Ctor = ctor(MaybeExistConstraints, FunctorName, ArgTypes, FunctorArity,
-        _Ctxt),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName, ArgTypes,
+        FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
     Context = SpecDefnInfo ^ spdi_context,
@@ -1506,8 +1506,8 @@ generate_index_proc_body_du(SpecDefnInfo, Ctors, X, Index, Clause, !Info) :-
     int::in, int::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_index_du_case(SpecDefnInfo, X, Index, Ctor, Goal, !N, !Info) :-
-    Ctor = ctor(MaybeExistConstraints, FunctorName, ArgTypes, FunctorArity,
-        _Ctxt),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName, ArgTypes,
+        FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
     make_fresh_vars_for_cons_args(ArgTypes, MaybeExistConstraints, ArgVars,

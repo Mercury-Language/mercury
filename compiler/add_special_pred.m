@@ -502,10 +502,11 @@ collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
 
     make_tuple_args_and_repns(Context, TupleArgTypes, CtorArgs, CtorArgRepns),
 
+    Ordinal = 0,
     CtorSymName = unqualified("{}"),
-    Ctor = ctor(MaybeExistConstraints, CtorSymName,
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, TupleArity, Context),
-    CtorRepn = ctor_repn(MaybeExistConstraints, CtorSymName,
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName,
         single_functor_tag, CtorArgRepns, TupleArity, Context),
 
     map.from_assoc_list(["{}" - one_or_more(CtorRepn, [])], ConsCtorMap),

@@ -1676,7 +1676,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     is det.
 
 gather_foreign_enum_value_pair(CtorRepn, !Values) :-
-    CtorRepn = ctor_repn(_, SymName, Tag, _, Arity, _),
+    CtorRepn = ctor_repn(_, _, SymName, Tag, _, Arity, _),
     expect(unify(Arity, 0), $pred, "Arity != 0"),
     ( if Tag = foreign_tag(_ForeignLang, ForeignTag) then
         !:Values = [SymName - ForeignTag | !.Values]

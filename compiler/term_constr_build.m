@@ -1188,7 +1188,7 @@ find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
                 "mismatched type_ctors"),
             FindComplement =
                 ( pred(Ctor::in) is semidet :-
-                    Ctor = ctor(_, SymName, _Args, Arity, _),
+                    Ctor = ctor(_, _, SymName, _Args, Arity, _),
                     not (
                         SymName = ConsName,
                         Arity   = ConsArity
@@ -1251,7 +1251,7 @@ bounds_on_var(Norm, ModuleInfo, TypeCtor, Var, Constructors, Polyhedron) :-
 :- func lower_bound(functor_info, module_info, type_ctor, constructor) = int.
 
 lower_bound(Norm, ModuleInfo, TypeCtor, Constructor) = LowerBound :-
-    Constructor = ctor(_, SymName, _Args, Arity, _),
+    Constructor = ctor(_, _, SymName, _Args, Arity, _),
     ConsId = cons(SymName, Arity, TypeCtor),
     LowerBound = functor_lower_bound(ModuleInfo, Norm, TypeCtor, ConsId).
 
@@ -1273,7 +1273,7 @@ upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor, Ctors, Constraints) :-
     % finite size but I'm not sure that it's worth it.
 
     FindUpperBound = (pred(Ctor::in, !.B::in, !:B::out) is semidet :-
-        Ctor = ctor(_, SymName, Args, Arity, _),
+        Ctor = ctor(_, _, SymName, Args, Arity, _),
         all [Arg] (
             list.member(Arg, Args)
         =>
