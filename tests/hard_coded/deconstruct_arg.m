@@ -18,6 +18,7 @@
 %---------------------------------------------------------------------------%
 
 :- import_module array.
+:- import_module float.
 :- import_module list.
 :- import_module string.
 :- import_module deconstruct.
@@ -120,6 +121,11 @@ main(!IO) :-
 
     % test a float which requires 17 digits of precision
     test_all(0.12345678901234566, !IO),
+
+    % test infinite floats
+    test_all(float.infinity, !IO),
+    NegInf : float = -float.infinity,
+    test_all(NegInf, !IO),
 
     % test integers
     test_all(4, !IO),

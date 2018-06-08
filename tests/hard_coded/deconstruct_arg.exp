@@ -138,6 +138,34 @@ deconstruct deconstruct: functor 0.12345678901234566 arity 0
 deconstruct limited deconstruct 3 of 0.12345678901234566
 functor 0.12345678901234566 arity 0 []
 
+deconstruct functor: infinity/0
+deconstruct argument 0 of infinity doesn't exist
+deconstruct argument 1 of infinity doesn't exist
+deconstruct argument 2 of infinity doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor infinity arity 0
+[]
+deconstruct limited deconstruct 3 of infinity
+functor infinity arity 0 []
+
+deconstruct functor: -infinity/0
+deconstruct argument 0 of -infinity doesn't exist
+deconstruct argument 1 of -infinity doesn't exist
+deconstruct argument 2 of -infinity doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor -infinity arity 0
+[]
+deconstruct limited deconstruct 3 of -infinity
+functor -infinity arity 0 []
+
 deconstruct functor: 4/0
 deconstruct argument 0 of 4 doesn't exist
 deconstruct argument 1 of 4 doesn't exist
@@ -320,7 +348,7 @@ deconstruct deconstruct: functor newline arity 0
 deconstruct limited deconstruct 3 of '<<predicate>>'
 functor newline arity 0 []
 
-deconstruct functor: lambda_deconstruct_arg_m_149/1
+deconstruct functor: lambda_deconstruct_arg_m_155/1
 deconstruct argument 0 of '<<predicate>>' is [1, 2]
 deconstruct argument 1 of '<<predicate>>' doesn't exist
 deconstruct argument 2 of '<<predicate>>' doesn't exist
@@ -329,10 +357,10 @@ deconstruct argument 'mooo!' doesn't exist
 deconstruct argument 'packed1' doesn't exist
 deconstruct argument 'packed2' doesn't exist
 deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor lambda_deconstruct_arg_m_149 arity 1
+deconstruct deconstruct: functor lambda_deconstruct_arg_m_155 arity 1
 [[1, 2]]
 deconstruct limited deconstruct 3 of '<<predicate>>'
-functor lambda_deconstruct_arg_m_149 arity 1 [[1, 2]]
+functor lambda_deconstruct_arg_m_155 arity 1 [[1, 2]]
 
 deconstruct functor: p/3
 deconstruct argument 0 of '<<predicate>>' is 1

@@ -74,8 +74,9 @@
     %     handled as if it had standard equality.
     %   - for integers, the string is a base 10 number;
     %     positive integers have no sign.
-    %   - for floats, the string is a floating point, base 10 number;
+    %   - for finite floats, the string is a floating point, base 10 number;
     %     positive floating point numbers have no sign.
+    %   - for infinite floats, the string "infinity" or "-infinity";
     %   - for strings, the string, inside double quotation marks
     %   - for characters, the character inside single quotation marks
     %   - for predicates, the string <<predicate>>, and for functions,
