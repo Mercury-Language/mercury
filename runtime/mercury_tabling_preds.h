@@ -2,8 +2,7 @@
 
 // Copyright (C) 2004-2007 The University of Melbourne.
 // Copyright (C) 2016-2018 The Mercury team.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains C macros that represent the bodies of predicates
 // in library/table_builtin.m.

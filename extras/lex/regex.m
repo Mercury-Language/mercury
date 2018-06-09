@@ -4,6 +4,8 @@
 % regex.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Copyright (C) 2002, 2006, 2010 The University of Melbourne
+% Copyright (C) 2014, 2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %
 % This module provides basic string matching and search and replace
 % functionality using regular expressions defined as strings of the

@@ -1,3 +1,29 @@
+In the following, "Mercury Core Libraries" refers to all source
+code in the following directories of this distribution:
+
+    browser, java/runtime, library, mdbcomp, runtime, ssdb, trace
+
+(No other part of this distribution is automatically linked into an
+executable program by the Mercury system.)
+
+The Mercury Core Libraries are distributed under the terms of the
+GNU Library General Public License (LGPL) version 2 (included below).
+
+As a special exception to the GNU Library General Public License, you
+may link, statically or dynamically, a "work that uses the Mercury
+Core Libraries" with the Mercury Core Libraries to produce an
+executable file containing portions of the Mercury Core Libraries,
+and distribute that executable file under terms of your choice,
+without any of the additional requirements listed in clause 6 of the
+GNU Library General Public License. This exception does not however
+invalidate any other reasons why the executable file might be covered
+by the GNU Library General Public License. If you modify the Mercury
+Core Libraries, you may extend this exception to your version, but you
+are not obligated to do so. If you do not wish to do so, delete this
+exception statement from your version.
+
+----------------------------------------------------------------------
+
 		  GNU LIBRARY GENERAL PUBLIC LICENSE
 		       Version 2, June 1991
 

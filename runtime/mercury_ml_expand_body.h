@@ -2,8 +2,7 @@
 
 // Copyright (C) 2001-2007, 2012 The University of Melbourne.
 // Copyright (C) 2013, 2015-2018 The Mercury team.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_ml_expand_body.h
 //

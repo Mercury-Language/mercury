@@ -1,8 +1,8 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// Copyright (C) 2016, 2018 The Mercury team.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains the functions that we use to manipulate user-defined
 // event types.

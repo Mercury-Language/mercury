@@ -1,8 +1,8 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 Monash University,, 2003, 2006 The University of Melbourne &
-% KU Leuven.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 1999-2000 Monash University.
+% Copyright (C) 2003, 2006 The University of Melbourne & KU Leuven.
+% Copyright (C) 2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 
 % Module to test "statically" allocated references.

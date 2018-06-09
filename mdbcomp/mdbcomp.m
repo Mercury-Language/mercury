@@ -2,8 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2006, 2010-2012 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2014, 2016, 2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % This is the top module of a library that contains information shared

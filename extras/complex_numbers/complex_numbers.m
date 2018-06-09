@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-1998, 2001, 2006 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 
 :- module complex_numbers.

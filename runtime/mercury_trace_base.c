@@ -1,8 +1,8 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2008, 2011 The University of Melbourne.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// Copyright (C) 2014-2016, 2018 The Mercury team.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_trace_base.c implements the interface between the main part
 // of the runtime system (mainly mercury_wrapper.c) and the part of the

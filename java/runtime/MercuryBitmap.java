@@ -1,8 +1,7 @@
 //
 // Copyright (C) 2001-2002, 2004-2007, 2009-2011 The University of Melbourne
-// Copyright (C) 2014 The Mercury Team.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// Copyright (C) 2014, 2018 The Mercury Team.
+// This file is distributed under the terms specified in COPYING.LIB.
 //
 
 package jmercury.runtime;

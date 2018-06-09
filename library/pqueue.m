@@ -3,9 +3,8 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995, 1997, 1999, 2003-2007, 2009 The University of
 % Melbourne.
-%
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2013-2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: pqueue.m.

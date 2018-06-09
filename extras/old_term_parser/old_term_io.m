@@ -2,8 +2,8 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2006, 2009, 2011-2012 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2017-2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: old_term_io.m.

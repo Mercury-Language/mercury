@@ -10,9 +10,8 @@
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2006, 2010-2011 The University of Melbourne
-%
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2014, 2017-2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %
 % This module puts everything together, compiling a list of lexemes into state
 % machines and turning the input stream into a token stream.

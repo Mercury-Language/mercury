@@ -2,8 +2,8 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997, 2010 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
 % Some test cases for extras/trailed_update/var.m.

@@ -5,9 +5,8 @@
 % lex.convert_NFA_to_DFA.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2002, 2010 The University of Melbourne
-%
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2014, 2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %
 % Fri Aug 18 12:30:25 BST 2000
 %

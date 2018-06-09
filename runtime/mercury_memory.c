@@ -1,9 +1,8 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2000,2002-2004, 2006, 2008, 2011 The University of Melbourne.
-// Copyright (C) 2014 The Mercury Team.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// Copyright (C) 2014-2016, 2018 The Mercury Team.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines the register array and data regions of the
 // execution algorithm.

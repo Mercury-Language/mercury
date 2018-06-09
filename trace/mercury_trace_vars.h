@@ -1,8 +1,8 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1999-2008, 2011 The University of Melbourne.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// Copyright (C) 2015-2016, 2018 The Mercury team.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // This module looks after the debugger's information about the variables
 // that are live at a given program point.

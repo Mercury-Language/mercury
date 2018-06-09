@@ -1,8 +1,8 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1993-2006, 2010 The University of Melbourne.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_init.h - this file declares stuff defined in the
 // automatically generated *_init.c files. This is also the interface

@@ -2,8 +2,8 @@
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995,1997,1999,2004-2006,2008,2011-2012 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2013-2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: bimap.m.

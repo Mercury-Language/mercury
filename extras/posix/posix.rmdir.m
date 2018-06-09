@@ -2,8 +2,8 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2007 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
 % Module: posix.rmdir.

@@ -4,9 +4,8 @@
 % regex_demo.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Copyright (C) 2002 The University of Melbourne
-%
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %
 % Sun Nov 24 11:44:45 EST 2002
 %

@@ -2,8 +2,7 @@
 
 // Copyright (C) 1998-2012 The University of Melbourne.
 // Copyright (C) 2013-2018 The Mercury team.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains the top level of the code of the internal, in-process
 // debugger. The functions implementing the commands themselves are in the
@@ -263,8 +262,7 @@ static const char MR_trace_banner[] =
 "Melbourne Mercury Debugger, mdb version %s.\n\
 Copyright 1998-2012 The University of Melbourne.\n\
 Copyright 2013-2018 The Mercury team.\n\
-mdb is free software, covered by the GNU General Public License.\n\
-There is absolutely no warranty for mdb.\n";
+mdb is free software; there is absolutely no warranty for mdb.\n";
 
 static FILE *
 MR_try_fopen(const char *filename, const char *mode, FILE *default_file)

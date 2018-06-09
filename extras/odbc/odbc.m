@@ -3,9 +3,8 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
 % Copyright (C) 1997-2000, 2002, 2004-2006, 2010 The University of Melbourne.
-% Copyright (C) 2017 The Mercury team.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2017-2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: odbc.m.

@@ -2,8 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2008, 2010-2012 The University of Melbourne.
-% This file may only be copied under the terms of the GNU General
-% Public License - see the file COPYING in the Mercury distribution.
+% Copyright (C) 2014-2015, 2017-2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: trace_counts.m.

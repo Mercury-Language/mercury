@@ -3,9 +3,8 @@
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2009 The University of Melbourne.
 % Copyright (C) 2013-2016 Opturion Pty Ltd.
-% Copyright (C) 2017 The Mercury team.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2017-2018 The Mercury team.
+% This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
 % File: ranges.m.

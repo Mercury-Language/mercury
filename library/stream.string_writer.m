@@ -3,8 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2011 The University of Melbourne.
 % Copyright (C) 2014-2018 The Mercury team.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: stream.string_writer.m.

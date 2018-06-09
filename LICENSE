@@ -5,10 +5,9 @@ Copyright (C) 2013-2018 The Mercury team.
 The compiler and tools are distributed under the terms of the GNU
 General Public License.  See the file COPYING for copying permission.
 
-The Mercury libraries and runtime (the files in the library, trace,
-browser, ssdb, mdbcomp, runtime and java/runtime subdirectories) are
-distributed under the terms of the GNU Library General Public License.
-See the file COPYING.LIB for copying permissions for those files.
+The Mercury core libraries (the files in the browser, java/runtime,
+library, mdbcomp, runtime, ssdb and trace subdirectories) are
+distributed under the terms specified in the file COPYING.LIB.
 
 If those licensing arrangements are not satisfactory, please
 contact us.  We are willing to offer alternative arrangements,

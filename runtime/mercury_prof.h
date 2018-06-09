@@ -1,8 +1,8 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-1997,2000-2002, 2004-2005 The University of Melbourne.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// Copyright (C) 2015-2016, 2018 The Mercury team.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_prof.h -- definitions for profiling.
 // (See also mercury_heap_profiling.h and mercury_deep_profiling.h.)

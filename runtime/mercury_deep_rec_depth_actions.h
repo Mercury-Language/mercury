@@ -1,8 +1,8 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2001-2002, 2004, 2006 The University of Melbourne.
-// This file may only be copied under the terms of the GNU Library General
-// Public License - see the file COPYING.LIB in the Mercury distribution.
+// Copyright (C) 2016, 2018 The Mercury team.
+// This file is distributed under the terms specified in COPYING.LIB.
 
 // This file provides macros that library/profiling_builtin.m uses to compose
 // the code fragments passed to mercury_deep_rec_depth_body.h to create the

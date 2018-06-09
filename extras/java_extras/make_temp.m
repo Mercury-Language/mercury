@@ -1,9 +1,8 @@
 %-----------------------------------------------------------------------%
 % vim: ft=mercury sts=4 sw=4 et tw=78
 %-----------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury Team
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% Copyright (C) 2016, 2018 The Mercury Team
+% This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------%
 %
 % This module contains alternatives to io.make_temp and
