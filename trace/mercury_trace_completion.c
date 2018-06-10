@@ -23,7 +23,7 @@
 #include <string.h>
 
 #ifndef MR_NO_USE_READLINE
-  #ifdef MR_HAVE_READLINE_READLINE
+  #ifdef MR_HAVE_READLINE_READLINE_H
     #include <readline/readline.h>
   #else
     extern char     *rl_line_buffer;
