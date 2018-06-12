@@ -37,11 +37,6 @@ ENDINIT
 #ifdef MR_HAVE_SYS_STAT_H
 #include    <sys/stat.h>
 #endif
-#if 0 // XXX the following code breaks on Win32
-#include    <sys/types.h>
-#include    <fcntl.h>
-#include    <sys/resource.h>
-#endif // breaks on Win32
 
 #ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
   #include <excpt.h>
@@ -301,7 +296,6 @@ static  MR_bool     use_own_timer = MR_FALSE;
 static  int         repeats = 1;
 
 #define MAX_MEM_USAGE_REPORT_ATTEMPTS       100
-#define MAX_MEM_USAGE_REPORT_CMD_SIZE       1024
 
 static  char        *MR_mem_usage_report_prefix = NULL;
 
@@ -3050,66 +3044,26 @@ mercury_runtime_terminate(void)
 #ifdef MR_HAVE_SYS_STAT_H
     if (MR_mem_usage_report_prefix != NULL) {
         struct stat statbuf;
-        char        filename_buf[MAX_MEM_USAGE_REPORT_CMD_SIZE];
-        char        cmd_buf[MAX_MEM_USAGE_REPORT_CMD_SIZE];
+        char        *filename;
+        char        *cmd;
         int         i;
 
         for (i = 1; i < MAX_MEM_USAGE_REPORT_ATTEMPTS; i++) {
-            snprintf(filename_buf, MAX_MEM_USAGE_REPORT_CMD_SIZE,
+            filename = MR_make_string(MR_ALLOC_SITE_RUNTIME,
                 "%s%02d", MR_mem_usage_report_prefix, i);
-
-            if (stat(filename_buf, &statbuf) == 0) {
-                // Filename_buf exists; try next name.
+            if (stat(filename, &statbuf) == 0) {
+                // Filename exists; try next name.
                 continue;
             }
-
-            snprintf(cmd_buf, MAX_MEM_USAGE_REPORT_CMD_SIZE,
-                "cp /proc/%d/status %s", getpid(), filename_buf);
-            if (system(cmd_buf) != 0) {
+            cmd = MR_make_string(MR_ALLOC_SITE_RUNTIME,
+                "cp /proc/%d/status %s", getpid(), filename);
+            if (system(cmd) != 0) {
                 fprintf(stderr, "%s: cannot write memory usage report\n",
                     MR_progname);
                 // There is no point in aborting.
-            };
+            }
             break;
         }
-
-#if 0
-        // XXX This alternative implementation breaks on Win32 and Linux.
-        char    buf[MAX_MEM_USAGE_REPORT_CMD_SIZE];
-        int     i;
-        int     fd;
-        FILE    *fp;
-
-        fp = NULL;
-        for (i = 1; i < MAX_MEM_USAGE_REPORT_ATTEMPTS; i++) {
-            sprintf(buf, "%s%02d", MR_mem_usage_report_prefix, i);
-
-            do {
-                fd = open(buf, O_WRONLY | O_CREAT | O_EXCL, 0600);
-            } while (fd == -1 && MR_is_eintr(errno));
-            if (fd >= 0) {
-                fp = fdopen(fd, "w");
-                break;
-            }
-        }
-
-        if (fp != NULL) {
-            struct rusage   rusage;
-
-            fprintf(fp, "io actions        %10d\n", MR_io_tabling_counter_hwm);
-            if (getrusage(RUSAGE_SELF, &rusage) == 0) {
-                fprintf(fp, "max resident      %10ld\n", rusage.ru_maxrss);
-                fprintf(fp, "integral shared   %10ld\n", rusage.ru_ixrss);
-                fprintf(fp, "integral unshared %10ld\n", rusage.ru_idrss);
-                fprintf(fp, "integral stack    %10ld\n", rusage.ru_isrss);
-                fprintf(fp, "page reclaims     %10ld\n", rusage.ru_minflt);
-                fprintf(fp, "page faults       %10ld\n", rusage.ru_majflt);
-                fprintf(fp, "swaps             %10ld\n", rusage.ru_nswap);
-            }
-
-            (void) fclose(fp);
-        }
-#endif // breaks on Win32
     }
 #endif // MR_HAVE_SYS_STAT_H
 
