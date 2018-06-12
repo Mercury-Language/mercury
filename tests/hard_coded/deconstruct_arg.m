@@ -209,18 +209,13 @@ test_all(T, !IO) :-
 :- pred test_deconstruct_functor(T::in, io::di, io::uo) is cc_multi.
 
 test_deconstruct_functor(T, !IO) :-
-    io.write_string("deconstruct functor: ", !IO),
     deconstruct.functor(T, include_details_cc, Functor, Arity),
-    io.write_string(Functor, !IO),
-    io.write_string("/", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string("\n", !IO).
+    io.format("deconstruct functor: %s/%d\n", [s(Functor), i(Arity)], !IO).
 
 :- pred test_deconstruct_arg(T::in, int::in, io::di, io::uo) is cc_multi.
 
 test_deconstruct_arg(T, ArgNum, !IO) :-
-    string.format("deconstruct argument %d of ", [i(ArgNum)], Str),
-    io.write_string(Str, !IO),
+    io.format("deconstruct argument %d of ", [i(ArgNum)], !IO),
     io.print(T, !IO),
     deconstruct.arg_cc(T, ArgNum, MaybeArg),
     (
@@ -254,9 +249,8 @@ test_deconstruct_named_arg(T, Name, !IO) :-
 test_deconstruct_deconstruct(T, !IO) :-
     deconstruct.deconstruct(T, include_details_cc,
         Functor, Arity, Arguments),
-    string.format("deconstruct deconstruct: functor %s arity %d\n",
-        [s(Functor), i(Arity)], Str),
-    io.write_string(Str, !IO),
+    io.format("deconstruct deconstruct: functor %s arity %d\n",
+        [s(Functor), i(Arity)], !IO),
     io.write_string("[", !IO),
     io.write_list(Arguments, ", ", io.print, !IO),
     io.write_string("]\n", !IO).
@@ -265,15 +259,13 @@ test_deconstruct_deconstruct(T, !IO) :-
     is cc_multi.
 
 test_deconstruct_limited_deconstruct(T, Limit, !IO) :-
-    string.format("deconstruct limited deconstruct %d of ", [i(Limit)], Str),
-    io.write_string(Str, !IO),
+    io.format("deconstruct limited deconstruct %d of ", [i(Limit)], !IO),
     io.print(T, !IO),
-    io.write_string("\n", !IO),
+    io.nl(!IO),
     deconstruct.limited_deconstruct_cc(T, Limit, Result),
     (
         Result = yes({Functor, Arity, Arguments}),
-        string.format("functor %s arity %d ", [s(Functor), i(Arity)], Str2),
-        io.write_string(Str2, !IO),
+        io.format("functor %s arity %d ", [s(Functor), i(Arity)], !IO),
         io.write_string("[", !IO),
         io.write_list(Arguments, ", ", io.print, !IO),
         io.write_string("]\n", !IO)

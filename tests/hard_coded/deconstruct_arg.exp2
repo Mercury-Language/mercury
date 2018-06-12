@@ -124,6 +124,136 @@ deconstruct deconstruct: functor 'a' arity 0
 deconstruct limited deconstruct 3 of a
 functor 'a' arity 0 []
 
+deconstruct functor: '\a'/0
+deconstruct argument 0 of  doesn't exist
+deconstruct argument 1 of  doesn't exist
+deconstruct argument 2 of  doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor '\a' arity 0
+[]
+deconstruct limited deconstruct 3 of 
+functor '\a' arity 0 []
+
+deconstruct functor: '\b'/0
+deconstruct argument 0 of  doesn't exist
+deconstruct argument 1 of  doesn't exist
+deconstruct argument 2 of  doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor '\b' arity 0
+[]
+deconstruct limited deconstruct 3 of 
+functor '\b' arity 0 []
+
+deconstruct functor: '\r'/0
+deconstruct argument 0 of  doesn't exist
+deconstruct argument 1 of  doesn't exist
+deconstruct argument 2 of  doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor '\r' arity 0
+[]
+deconstruct limited deconstruct 3 of 
+functor '\r' arity 0 []
+
+deconstruct functor: '\f'/0
+deconstruct argument 0 of  doesn't exist
+deconstruct argument 1 of  doesn't exist
+deconstruct argument 2 of  doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor '\f' arity 0
+[]
+deconstruct limited deconstruct 3 of 
+functor '\f' arity 0 []
+
+deconstruct functor: '\t'/0
+deconstruct argument 0 of 	 doesn't exist
+deconstruct argument 1 of 	 doesn't exist
+deconstruct argument 2 of 	 doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor '\t' arity 0
+[]
+deconstruct limited deconstruct 3 of 	
+functor '\t' arity 0 []
+
+deconstruct functor: '\n'/0
+deconstruct argument 0 of 
+ doesn't exist
+deconstruct argument 1 of 
+ doesn't exist
+deconstruct argument 2 of 
+ doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor '\n' arity 0
+[]
+deconstruct limited deconstruct 3 of 
+
+functor '\n' arity 0 []
+
+deconstruct functor: '\v'/0
+deconstruct argument 0 of  doesn't exist
+deconstruct argument 1 of  doesn't exist
+deconstruct argument 2 of  doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor '\v' arity 0
+[]
+deconstruct limited deconstruct 3 of 
+functor '\v' arity 0 []
+
+deconstruct functor: '\\'/0
+deconstruct argument 0 of \ doesn't exist
+deconstruct argument 1 of \ doesn't exist
+deconstruct argument 2 of \ doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor '\\' arity 0
+[]
+deconstruct limited deconstruct 3 of \
+functor '\\' arity 0 []
+
+deconstruct functor: '\''/0
+deconstruct argument 0 of ' doesn't exist
+deconstruct argument 1 of ' doesn't exist
+deconstruct argument 2 of ' doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor '\'' arity 0
+[]
+deconstruct limited deconstruct 3 of '
+functor '\'' arity 0 []
+
 deconstruct functor: 0.12345678901234566/0
 deconstruct argument 0 of 0.12345678901234566 doesn't exist
 deconstruct argument 1 of 0.12345678901234566 doesn't exist
@@ -137,6 +267,34 @@ deconstruct deconstruct: functor 0.12345678901234566 arity 0
 []
 deconstruct limited deconstruct 3 of 0.12345678901234566
 functor 0.12345678901234566 arity 0 []
+
+deconstruct functor: infinity/0
+deconstruct argument 0 of infinity doesn't exist
+deconstruct argument 1 of infinity doesn't exist
+deconstruct argument 2 of infinity doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor infinity arity 0
+[]
+deconstruct limited deconstruct 3 of infinity
+functor infinity arity 0 []
+
+deconstruct functor: -infinity/0
+deconstruct argument 0 of -infinity doesn't exist
+deconstruct argument 1 of -infinity doesn't exist
+deconstruct argument 2 of -infinity doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor -infinity arity 0
+[]
+deconstruct limited deconstruct 3 of -infinity
+functor -infinity arity 0 []
 
 deconstruct functor: 4/0
 deconstruct argument 0 of 4 doesn't exist
