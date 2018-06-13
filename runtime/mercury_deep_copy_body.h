@@ -68,15 +68,15 @@ static MR_AllocSiteInfoPtr  maybe_attrib(MR_Word *data_value);
 // the forwarding pointer that was saved in the object, which will be stored
 // at pointer[forwarding_pointer_offset].
 
-#define RETURN_IF_OUT_OF_RANGE(tagged_pointer, pointer, offset, rettype) \
-        do {                                                             \
-            if (!in_range(pointer)) {                                    \
-                found_out_of_range_pointer(pointer);                     \
-                return (rettype) (tagged_pointer);                       \
-            }                                                            \
-            if_forwarding_pointer((pointer),                             \
-                return (rettype) (pointer)[offset]);                     \
-        } while (0)
+#define RETURN_IF_OUT_OF_RANGE(tagged_pointer, pointer, offset, rettype)    \
+    do {                                                                    \
+        if (!in_range(pointer)) {                                           \
+            found_out_of_range_pointer(pointer);                            \
+            return (rettype) (tagged_pointer);                              \
+        }                                                                   \
+        if_forwarding_pointer((pointer),                                    \
+            return (rettype) (pointer)[offset]);                            \
+    } while (0)
 
 MR_Word
 copy(MR_Word data, MR_TypeInfo type_info,
@@ -140,175 +140,168 @@ try_again:
                 // This requires two copies of the MR_maybe_copy_sectag() code,
                 // which is why we define that as a macro too.
 
-#define MR_maybe_copy_sectag(have_sectag)                                      \
-        do {                                                                   \
-            /* This `if' will get evaluated at compile time. */                \
-            if (!have_sectag) {                                                \
-                cur_slot = 0;                                                  \
-            } else {                                                           \
-                MR_field(0, new_data, 0) = sectag;                             \
-                cur_slot = 1;                                                  \
-            }                                                                  \
-        } while (0)
+#define MR_maybe_copy_sectag(have_sectag, sectag, new_data, cur_slot)       \
+    do {                                                                    \
+        /* This `if' will get evaluated at compile time. */                 \
+        if (have_sectag) {                                                  \
+            MR_field(0, new_data, 0) = sectag;                              \
+            cur_slot = 1;                                                   \
+        } else {                                                            \
+            cur_slot = 0;                                                   \
+        }                                                                   \
+    } while (0)
 
-#define MR_handle_sectag_remote_or_none(have_sectag)                           \
-        do {                                                                   \
-            data_value = (MR_Word *) MR_body(data, ptag);                      \
-            RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);              \
-            {                                                                  \
-                const MR_DuFunctorDesc  *functor_desc;                         \
-                const MR_DuArgLocn      *arg_locns;                            \
-                const MR_DuExistInfo    *exist_info;                           \
-                MR_AllocSiteInfoPtr     attrib;                                \
-                int                     sectag;                                \
-                int                     cell_size;                             \
-                int                     cur_slot;                              \
-                int                     arity;                                 \
-                int                     i;                                     \
-                                                                               \
-                /* This `if' will get evaluated at compile time. */            \
-                if (!have_sectag) {                                            \
-                    sectag = 0;                                                \
-                } else {                                                       \
-                    sectag = data_value[0];                                    \
-                }                                                              \
-                                                                               \
-                functor_desc = ptag_layout->MR_sectag_alternatives             \
-                    [sectag];                                                  \
-                arity = functor_desc->MR_du_functor_orig_arity;                \
-                arg_locns = functor_desc->MR_du_functor_arg_locns;             \
-                exist_info = functor_desc->MR_du_functor_exist_info;           \
-                                                                               \
-                /* This `if' will get evaluated at compile time. */            \
-                if (have_sectag) {                                             \
-                    cell_size = 1;                                             \
-                } else {                                                       \
-                    cell_size = 0;                                             \
-                }                                                              \
-                cell_size += MR_cell_size_for_args(arity, arg_locns);          \
-                cell_size += MR_SIZE_SLOT_SIZE;                                \
-                                                                               \
-                if (exist_info == NULL) {                                      \
-                    attrib = maybe_attrib(data_value);                         \
-                    MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,       \
-                        cell_size, attrib, NULL);                              \
-                                                                               \
-                    MR_copy_size_slot(0, new_data, ptag, data);                \
-                    MR_maybe_copy_sectag(have_sectag);                         \
-                } else {                                                       \
-                    int num_ti_plain;                                          \
-                    int num_tci;                                               \
-                                                                               \
-                    num_ti_plain = exist_info->MR_exist_typeinfos_plain;       \
-                    num_tci = exist_info->MR_exist_tcis;                       \
-                    cell_size += num_ti_plain + num_tci;                       \
-                                                                               \
-                    attrib = maybe_attrib(data_value);                         \
-                    MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,       \
-                        cell_size, attrib, NULL);                              \
-                                                                               \
-                    MR_copy_size_slot(0, new_data, ptag, data);                \
-                    MR_maybe_copy_sectag(have_sectag);                         \
-                                                                               \
-                    for (i = 0; i < num_ti_plain; i++) {                       \
-                        MR_field(0, new_data, cur_slot) = (MR_Word)            \
-                            copy_type_info((MR_TypeInfo)                       \
-                                data_value[cur_slot],                          \
-                                lower_limit, upper_limit);                     \
-                        cur_slot++;                                            \
-                    }                                                          \
-                                                                               \
-                    for (i = 0; i < num_tci; i++) {                            \
-                        MR_field(0, new_data, cur_slot) = (MR_Word)            \
-                            copy_typeclass_info(data_value[cur_slot],          \
-                                lower_limit, upper_limit);                     \
-                        cur_slot++;                                            \
-                    }                                                          \
-                }                                                              \
-                                                                               \
-                for (i = 0; i < arity; i++) {                                  \
-                    if (arg_locns != NULL) {                                   \
-                        /*                                                     \
-                        ** The meanings of the various special values          \
-                        ** of MR_arg_bits are documented next to the           \
-                        ** definition of the MR_DuArgLocn type                 \
-                        ** in mercury_type_info.h.                             \
-                        */                                                     \
-                        if (arg_locns[i].MR_arg_bits == 0) {                   \
-                            /*                                                 \
-                            ** The usual case of a full word argument.         \
-                            ** Only full word args may contain pointers,       \
-                            ** so only they may need to be copied recursively. \
-                            ** This case is handled below, by code that        \
-                            ** gets executed even if arg_locns == NULL.        \
-                            */                                                 \
-                        } else if (arg_locns[i].MR_arg_bits > 0) {             \
-                            /*                                                 \
-                            ** Copy words holding packed arguments             \
-                            ** when we encounter the first one.                \
-                            ** (The first packed argument is an enum.)         \
-                            */                                                 \
-                            if (arg_locns[i].MR_arg_shift == 0) {              \
-                                MR_field(0, new_data, cur_slot) =              \
-                                    data_value[cur_slot];                      \
-                                cur_slot++;                                    \
-                            }                                                  \
-                            continue;                                          \
-                        } else if (arg_locns[i].MR_arg_bits >= -3) {           \
-                            /* Double precision float, int64 or uint64. */     \
-                            MR_field(0, new_data, cur_slot) =                  \
-                                data_value[cur_slot];                          \
-                            MR_field(0, new_data, cur_slot + 1) =              \
-                                data_value[cur_slot + 1];                      \
-                            cur_slot += 2;                                     \
-                            continue;                                          \
-                        } else if (arg_locns[i].MR_arg_bits >= -9) {           \
-                            /*                                                 \
-                            ** Copy words holding packed arguments             \
-                            ** when we encounter the first one.                \
-                            ** (The first packed argument is a small int.)     \
-                            */                                                 \
-                            if (arg_locns[i].MR_arg_shift == 0) {              \
-                                MR_field(0, new_data, cur_slot) =              \
-                                    data_value[cur_slot];                      \
-                                cur_slot++;                                    \
-                            }                                                  \
-                            continue;                                          \
-                        } else if (arg_locns[i].MR_arg_bits == -10) {          \
-                            /* Dummy argument; occupies zero bits. */          \
-                            continue;                                          \
-                        } else {                                               \
-                            MR_fatal_error("MR_arg_bits < -10");               \
-                        }                                                      \
-                    }                                                          \
-                                                                               \
-                    if (MR_arg_type_may_contain_var(functor_desc, i)) {        \
-                        MR_Word *parent_data = (MR_Word *) new_data;           \
-                        if (have_sectag) {                                     \
-                            /* Skip past the secondary tag. */                 \
-                            parent_data++;                                     \
-                        }                                                      \
-                        MR_field(0, new_data, cur_slot) =                      \
-                            copy_arg(parent_data, data_value[cur_slot],        \
-                                functor_desc,                                  \
-                                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(        \
-                                    type_info),                                \
-                                functor_desc->MR_du_functor_arg_types[i],      \
-                                lower_limit, upper_limit);                     \
-                    } else {                                                   \
-                        MR_field(0, new_data, cur_slot) =                      \
-                            copy(data_value[cur_slot],                         \
-                                MR_pseudo_type_info_is_ground(                 \
-                                functor_desc->MR_du_functor_arg_types[i]),     \
-                                lower_limit, upper_limit);                     \
-                    }                                                          \
-                    cur_slot++;                                                \
-                }                                                              \
-                                                                               \
-                new_data = (MR_Word) MR_mkword(ptag, new_data);                \
-                leave_forwarding_pointer(data_value, 0, new_data);             \
-            }                                                                  \
-        } while (0)
+#define MR_handle_sectag_remote_or_none(have_sectag)                        \
+    do {                                                                    \
+        data_value = (MR_Word *) MR_body(data, ptag);                       \
+        RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);               \
+        {                                                                   \
+            const MR_DuFunctorDesc  *functor_desc;                          \
+            const MR_DuArgLocn      *arg_locns;                             \
+            const MR_DuExistInfo    *exist_info;                            \
+            MR_AllocSiteInfoPtr     attrib;                                 \
+            int                     sectag;                                 \
+            int                     cell_size;                              \
+            int                     cur_slot;                               \
+            int                     arity;                                  \
+            int                     i;                                      \
+                                                                            \
+            /* This `if' will get evaluated at compile time. */             \
+            if (have_sectag) {                                              \
+                sectag = data_value[0];                                     \
+                cell_size = 1;                                              \
+            } else {                                                        \
+                sectag = 0;                                                 \
+                cell_size = 0;                                              \
+            }                                                               \
+                                                                            \
+            functor_desc = ptag_layout->MR_sectag_alternatives[sectag];     \
+            arity = functor_desc->MR_du_functor_orig_arity;                 \
+            arg_locns = functor_desc->MR_du_functor_arg_locns;              \
+            exist_info = functor_desc->MR_du_functor_exist_info;            \
+                                                                            \
+            cell_size += MR_cell_size_for_args(arity, arg_locns);           \
+            cell_size += MR_SIZE_SLOT_SIZE;                                 \
+                                                                            \
+            if (exist_info == NULL) {                                       \
+                attrib = maybe_attrib(data_value);                          \
+                MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,        \
+                    cell_size, attrib, NULL);                               \
+                                                                            \
+                MR_copy_size_slot(0, new_data, ptag, data);                 \
+                MR_maybe_copy_sectag(have_sectag, sectag, new_data, cur_slot); \
+            } else {                                                        \
+                int num_ti_plain;                                           \
+                int num_tci;                                                \
+                                                                            \
+                num_ti_plain = exist_info->MR_exist_typeinfos_plain;        \
+                num_tci = exist_info->MR_exist_tcis;                        \
+                cell_size += num_ti_plain + num_tci;                        \
+                                                                            \
+                attrib = maybe_attrib(data_value);                          \
+                MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,        \
+                    cell_size, attrib, NULL);                               \
+                                                                            \
+                MR_copy_size_slot(0, new_data, ptag, data);                 \
+                MR_maybe_copy_sectag(have_sectag, sectag, new_data, cur_slot); \
+                                                                            \
+                for (i = 0; i < num_ti_plain; i++) {                        \
+                    MR_field(0, new_data, cur_slot) = (MR_Word)             \
+                        copy_type_info((MR_TypeInfo) data_value[cur_slot],  \
+                            lower_limit, upper_limit);                      \
+                    cur_slot++;                                             \
+                }                                                           \
+                                                                            \
+                for (i = 0; i < num_tci; i++) {                             \
+                    MR_field(0, new_data, cur_slot) = (MR_Word)             \
+                        copy_typeclass_info(data_value[cur_slot],           \
+                            lower_limit, upper_limit);                      \
+                    cur_slot++;                                             \
+                }                                                           \
+            }                                                               \
+                                                                            \
+            for (i = 0; i < arity; i++) {                                   \
+                if (arg_locns != NULL) {                                    \
+                    /*                                                      \
+                    ** The meanings of the various special values of        \
+                    ** MR_arg_bits are documented next to the definition    \
+                    ** of the MR_DuArgLocn type in mercury_type_info.h.     \
+                    */                                                      \
+                    if (arg_locns[i].MR_arg_bits == 0) {                    \
+                        /*                                                  \
+                        ** The usual case of a full word argument.          \
+                        ** Only full word args may contain pointers,        \
+                        ** so only they may need to be copied recursively.  \
+                        ** This case is handled below, by code that         \
+                        ** gets executed even if arg_locns == NULL.         \
+                        */                                                  \
+                    } else if (arg_locns[i].MR_arg_bits > 0) {              \
+                        /*                                                  \
+                        ** Copy words holding packed arguments              \
+                        ** when we encounter the first one.                 \
+                        ** (The first packed argument is an enum.)          \
+                        */                                                  \
+                        if (arg_locns[i].MR_arg_shift == 0) {               \
+                            MR_field(0, new_data, cur_slot) =               \
+                                data_value[cur_slot];                       \
+                            cur_slot++;                                     \
+                        }                                                   \
+                        continue;                                           \
+                    } else if (arg_locns[i].MR_arg_bits >= -3) {            \
+                        /* Double precision float, int64 or uint64. */      \
+                        MR_field(0, new_data, cur_slot) =                   \
+                            data_value[cur_slot];                           \
+                        MR_field(0, new_data, cur_slot + 1) =               \
+                            data_value[cur_slot + 1];                       \
+                        cur_slot += 2;                                      \
+                        continue;                                           \
+                    } else if (arg_locns[i].MR_arg_bits >= -9) {            \
+                        /*                                                  \
+                        ** Copy words holding packed arguments              \
+                        ** when we encounter the first one.                 \
+                        ** (The first packed argument is a small int.)      \
+                        */                                                  \
+                        if (arg_locns[i].MR_arg_shift == 0) {               \
+                            MR_field(0, new_data, cur_slot) =               \
+                                data_value[cur_slot];                       \
+                            cur_slot++;                                     \
+                        }                                                   \
+                        continue;                                           \
+                    } else if (arg_locns[i].MR_arg_bits == -10) {           \
+                        /* Dummy argument; occupies zero bits. */           \
+                        continue;                                           \
+                    } else {                                                \
+                        MR_fatal_error("MR_arg_bits < -10");                \
+                    }                                                       \
+                }                                                           \
+                                                                            \
+                if (MR_arg_type_may_contain_var(functor_desc, i)) {         \
+                    MR_Word *parent_data_ptr = (MR_Word *) new_data;        \
+                    if (have_sectag) {                                      \
+                        /* Skip past the secondary tag. */                  \
+                        parent_data_ptr++;                                  \
+                    }                                                       \
+                    MR_field(0, new_data, cur_slot) =                       \
+                        copy_arg(parent_data_ptr, data_value[cur_slot],     \
+                            functor_desc,                                   \
+                            MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(         \
+                                type_info),                                 \
+                            functor_desc->MR_du_functor_arg_types[i],       \
+                            lower_limit, upper_limit);                      \
+                } else {                                                    \
+                    MR_field(0, new_data, cur_slot) =                       \
+                        copy(data_value[cur_slot],                          \
+                            MR_pseudo_type_info_is_ground(                  \
+                                functor_desc->MR_du_functor_arg_types[i]),  \
+                            lower_limit, upper_limit);                      \
+                }                                                           \
+                cur_slot++;                                                 \
+            }                                                               \
+                                                                            \
+            new_data = (MR_Word) MR_mkword(ptag, new_data);                 \
+            leave_forwarding_pointer(data_value, 0, new_data);              \
+        }                                                                   \
+    } while (0)
 
             case MR_SECTAG_REMOTE:
                 // See comments above.
@@ -404,7 +397,7 @@ try_again:
     case MR_TYPECTOR_REP_UINT32: // fallthru
     case MR_TYPECTOR_REP_CHAR:
         return data;
-    
+
     case MR_TYPECTOR_REP_INT64:
         #if defined(MR_BOXED_INT64S)
             {
@@ -434,7 +427,7 @@ try_again:
             new_data = data;
         #endif
         return new_data;
-    
+
     case MR_TYPECTOR_REP_UINT64:
         #if defined(MR_BOXED_INT64S)
             {
@@ -750,10 +743,8 @@ try_again:
             data_value = (MR_Word *) MR_body(data, data_tag);
 
             if (in_range(data_value)) {
-                // This error occurs if we try to copy() a
-                // `c_pointer' type that points to memory allocated
-                // on the Mercury heap.
-
+                // This error occurs if we try to copy() a `c_pointer' type
+                // that points to memory allocated on the Mercury heap.
                 MR_fatal_error("Cannot copy a c_pointer type");
             } else {
                 new_data = data;
@@ -924,8 +915,8 @@ copy_type_info(MR_TypeInfo type_info,
         int             forwarding_pointer_size;
         MR_AllocSiteInfoPtr attrib;
 
-        // Note that we assume type_ctor_infos will always be
-        // allocated statically, so we never copy them.
+        // Note that we assume type_ctor_infos will always be allocated
+        // statically, so we never copy them.
 
         type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
@@ -1007,8 +998,8 @@ copy_pseudo_type_info(MR_PseudoTypeInfo pseudo_type_info,
         int                 forwarding_pointer_size;
         MR_AllocSiteInfoPtr attrib;
 
-        // Note that we assume type_ctor_infos will always be
-        // allocated statically, so we never copy them.
+        // Note that we assume type_ctor_infos will always be allocated
+        // statically, so we never copy them.
 
         type_ctor_info =
             MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info);
