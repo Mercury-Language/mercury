@@ -234,11 +234,10 @@
     MR_typed_list_cons_msg(MR_type_info_for_pseudo_type_info, (head),   \
         MR_type_info_for_list_of_pseudo_type_info, (tail), alloc_id)
 
-// Convert an enumeration declaration into one which assigns the same
-// values to the enumeration constants as Mercury's tag allocation scheme
-// assigns. (This is necessary because in .rt grades Mercury enumerations are
-// not assigned the same values as 'normal' C enumerations).
-// XXX We don't have .rt grades anymore.
+// When we still had .rt (reserve_tag) grades, we used this macro to ensure
+// that the values of enum constants do not collide with the reserved tag
+// value. However, since do not support .rt grades anymore, such chicanery
+// is no longer necessary.
 //
 // Note that enums have the same size as ints, but not necessarily the same
 // size as MR_Words. Types that are defined this way should not be used by
@@ -251,20 +250,13 @@
 
 #define MR_GET_ENUM_VALUE(x)            (x)
 
-// For each enumeration constant defined in the runtime (not in Mercury)
-// that we need the compiler to be able to generate, we define it using two
-// names; first we define the unqualified name, and then we define
-// another enumeration constant whose name is the unqualified name
-// prefixed with `mercury__private_builtin__' and whose value is
-// the same as that of the unqualified name.
-// The qualified versions are used by the MLDS->C back-end,
-// which generates references to them.
+// We used to define each enumeration constant in the runtime (not in Mercury)
+// twice, with the same value: once under its plain name, and once prefixed
+// with the string `mercury__private_builtin__'. The qualified version was
+// used by the MLDS->C back-end, back when it forcibly either module- or
+// type-qualified everything. We do not do that anymore.
 
-#define MR_DEFINE_BUILTIN_ENUM_CONST(x)                                 \
-        MR_PASTE2(x, _val),                                             \
-        x = MR_CONVERT_C_ENUM_CONSTANT(MR_PASTE2(x, _val)),             \
-        MR_PASTE2(mercury__private_builtin__,x) = x,                    \
-        MR_PASTE2(x, _dummy) = MR_PASTE2(x, _val)
+#define MR_DEFINE_BUILTIN_ENUM_CONST(x) x
 
 #define MR_INT_EQ(rval, val)    (((MR_Integer) (rval)) == ((MR_Integer) (val)))
 #define MR_INT_NE(rval, val)    (((MR_Integer) (rval)) != ((MR_Integer) (val)))
