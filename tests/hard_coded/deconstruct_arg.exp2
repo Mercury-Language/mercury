@@ -124,6 +124,20 @@ deconstruct deconstruct: functor 'a' arity 0
 deconstruct limited deconstruct 3 of 'a'
 functor 'a' arity 0 []
 
+deconstruct functor: ' '/0
+deconstruct argument 0 of ' ' doesn't exist
+deconstruct argument 1 of ' ' doesn't exist
+deconstruct argument 2 of ' ' doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor ' ' arity 0
+[]
+deconstruct limited deconstruct 3 of ' '
+functor ' ' arity 0 []
+
 deconstruct functor: '\a'/0
 deconstruct argument 0 of '\a' doesn't exist
 deconstruct argument 1 of '\a' doesn't exist

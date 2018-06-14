@@ -120,6 +120,7 @@ main(!IO) :-
 
     % test characters
     test_all('a', !IO),
+    test_all(' ', !IO),
     test_all('\a', !IO),
     test_all('\b', !IO),
     test_all('\r', !IO),
