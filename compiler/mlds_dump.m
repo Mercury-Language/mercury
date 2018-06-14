@@ -801,14 +801,8 @@ mlds_vector_common_to_strcord(VectorCommon) = Cord :-
 
 unop_to_strcord(UnOp) = Cord :-
     (
-        UnOp = mktag,
-        Cord = strcord("mktag")
-    ;
         UnOp = tag,
         Cord = strcord("tag")
-    ;
-        UnOp = unmktag,
-        Cord = strcord("unmktag")
     ;
         UnOp = strip_tag,
         Cord = strcord("strip_tag")

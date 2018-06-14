@@ -1472,9 +1472,9 @@ binop_debug(unchecked_right_shift(int_type_uint64), ">>(uint64)").
 
 :- pred unop_code(unary_op::in, int::out) is det.
 
-unop_code(mktag,                0).
+% unop_code(mktag,              0).
 unop_code(tag,                  1).
-unop_code(unmktag,              2).
+% unop_code(unmktag,            2).
 unop_code(mkbody,               3).
 unop_code(unmkbody,             4).
 unop_code(strip_tag,            5).
@@ -1504,9 +1504,9 @@ unop_code(dword_uint64_get_word1,               28).
 
 :- pred unop_debug(unary_op::in, string::out) is det.
 
-unop_debug(mktag,               "mktag").
+% unop_debug(mktag,             "mktag").
 unop_debug(tag,                 "tag").
-unop_debug(unmktag,             "unmktag").
+% unop_debug(unmktag,           "unmktag").
 unop_debug(mkbody,              "mkbody").
 unop_debug(unmkbody,            "unmkbody").
 unop_debug(strip_tag,           "strip_tag").

@@ -743,9 +743,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         TagsMethod0 = tags_none,
         NumPtagBits0 = 0
     ;
-        ( TagsMethod0 = tags_low
-        ; TagsMethod0 = tags_high
-        ),
+        TagsMethod0 = tags_low,
         globals.lookup_int_option(!.Globals, num_ptag_bits, NumPtagBits0)
     ),
 
@@ -2285,12 +2283,12 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         % of a non-enum du type to an integer.
         Target = target_c,
 
-        % To ensure that all constants in general du types are
-        % allocated in one word, make_tags.m need to have at least one
-        % tag bit left over after --reserve-tags possibly takes one.
-        ( TagsMethod = tags_low
-        ; TagsMethod = tags_high
-        ),
+        % We cannot represent constants in general du types in one word
+        % unless we are using primary tags in the low-order bits of a word.
+        TagsMethod = tags_low,
+
+        % Since we have never targeted 16-bit platforms, the minimum number
+        % of low ptag bits we ever configure is two.
         NumPtagBits >= 2
     then
         globals.set_option(can_compare_constants_as_ints, bool(yes), !Globals)

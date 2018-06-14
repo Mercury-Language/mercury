@@ -356,9 +356,6 @@
 
 #if MR_TAGBITS == 0
   #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9, _notags)
-#elif defined(MR_HIGHTAGS)
-  #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9,              \
-                                        MR_PASTE2(_hightags, MR_TAGBITS))
 #else
   #define MR_GRADE_PART_10      MR_PASTE2(MR_GRADE_PART_9,              \
                                         MR_PASTE2(_tags, MR_TAGBITS))

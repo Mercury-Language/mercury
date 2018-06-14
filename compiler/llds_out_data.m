@@ -1937,7 +1937,7 @@ is_int_cmp(Test, Left, RightConst, OpStr, NegOpStr) :-
 is_ptag_test(Test, Rval, Ptag, Negated) :-
     Test = binop(Op, Left, Right),
     Left = unop(tag, Rval),
-    Right = unop(mktag, const(llconst_int(PtagInt))),
+    Right = const(llconst_int(PtagInt)),
     uint8.from_int(PtagInt, PtagUint8),
     Ptag = ptag(PtagUint8),
     (

@@ -531,15 +531,13 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ),
         VarPtag = unop(tag, Rval),
         Ptag = ptag(PtagUint8),
-        ConstPtag = unop(mktag,
-            const(llconst_int(uint8.cast_to_int(PtagUint8)))),
+        ConstPtag = const(llconst_int(uint8.cast_to_int(PtagUint8))),
         TestRval = binop(eq(int_type_int), VarPtag, ConstPtag)
     ;
         ConsTag = shared_remote_tag(Ptag, RemoteSectag),
         VarPtag = unop(tag, Rval),
         Ptag = ptag(PtagUint8),
-        ConstPtag = unop(mktag,
-            const(llconst_int(uint8.cast_to_int(PtagUint8)))),
+        ConstPtag = const(llconst_int(uint8.cast_to_int(PtagUint8))),
         PtagTestRval = binop(eq(int_type_int), VarPtag, ConstPtag),
         VarStag = lval(field(yes(Ptag), Rval, const(llconst_int(0)))),
         RemoteSectag = remote_sectag(SecTagUint, _),

@@ -845,9 +845,7 @@ dump_layout_name(LayoutName) = Str :-
         Str = "module_layout(" ++ sym_name_mangle(ModuleName) ++ ")"
     ).
 
-dump_unop(mktag) = "mktag".
 dump_unop(tag) = "tag".
-dump_unop(unmktag) = "unmktag".
 dump_unop(strip_tag) = "strip_tag".
 dump_unop(mkbody) = "mkbody".
 dump_unop(unmkbody) = "unmkbody".

@@ -1700,9 +1700,7 @@ const_type(llconst_multi_string(_), lt_string).
 const_type(llconst_code_addr(_), lt_code_ptr).
 const_type(llconst_data_addr(_, _), lt_data_ptr).
 
-unop_return_type(mktag, lt_word).
 unop_return_type(tag, lt_word).
-unop_return_type(unmktag, lt_word).
 unop_return_type(strip_tag, lt_word).
 unop_return_type(mkbody, lt_word).
 unop_return_type(unmkbody, lt_word).
@@ -1721,9 +1719,7 @@ unop_return_type(dword_int64_get_word1,  lt_word).
 unop_return_type(dword_uint64_get_word0, lt_word).
 unop_return_type(dword_uint64_get_word1, lt_word).
 
-unop_arg_type(mktag, lt_word).
 unop_arg_type(tag, lt_word).
-unop_arg_type(unmktag, lt_word).
 unop_arg_type(strip_tag, lt_word).
 unop_arg_type(mkbody, lt_word).
 unop_arg_type(unmkbody, lt_word).

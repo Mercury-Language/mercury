@@ -780,11 +780,14 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
         DifferentTags = [ReusePrimaryTag],
         % The body operator is slightly more efficient than the strip_tag
         % operator, so we use it when the old tag is known.
+        % XXX We should avoid stripping the old tags and putting on
+        % the new one when they are known to be the same.
         ReusePrimaryTag = ptag(ReusePrimaryTagUint8),
+        ReusePrimaryTagInt = uint8.cast_to_int(ReusePrimaryTagUint8),
         ReuseVarRval = ml_mkword(PrimaryTag,
             ml_binop(body,
                 ml_lval(ReuseVarLval),
-                ml_gen_mktag(uint8.cast_to_int(ReusePrimaryTagUint8))))
+                ml_const(mlconst_int(ReusePrimaryTagInt))))
     ;
         DifferentTags = [_, _ | _],
         ReuseVarRval = ml_mkword(PrimaryTag,
@@ -984,10 +987,6 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
     else
         BoxedFieldType = FieldType
     ).
-
-:- func ml_gen_mktag(int) = mlds_rval.
-
-ml_gen_mktag(Ptag) = ml_unop(mktag, ml_const(mlconst_int(Ptag))).
 
 :- func ml_cast_cons_tag(mlds_type::in, cons_tag::in(no_or_direct_arg_tag),
     mlds_rval::in) = (mlds_rval::out) is det.
@@ -2231,8 +2230,7 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
         ),
         RvalTag = ml_unop(tag, Rval),
         Ptag = ptag(PtagUint8),
-        PrimaryTagRval = ml_unop(mktag,
-            ml_const(mlconst_int(uint8.cast_to_int(PtagUint8)))),
+        PrimaryTagRval = ml_const(mlconst_int(uint8.cast_to_int(PtagUint8))),
         TagTestRval = ml_binop(eq(int_type_int), RvalTag, PrimaryTagRval)
     ;
         ConsTag = shared_remote_tag(Ptag, RemoteSectag),
@@ -2249,8 +2247,8 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
         else
             RvalPtag = ml_unop(tag, Rval),
             Ptag = ptag(PtagUint8),
-            PrimaryTagRval = ml_unop(mktag,
-                ml_const(mlconst_int(uint8.cast_to_int(PtagUint8)))),
+            PrimaryTagRval = 
+                ml_const(mlconst_int(uint8.cast_to_int(PtagUint8))),
             PrimaryTagTestRval = ml_binop(eq(int_type_int), RvalPtag,
                 PrimaryTagRval),
             TagTestRval = ml_binop(logical_and,

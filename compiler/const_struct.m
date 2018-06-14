@@ -142,9 +142,7 @@ const_struct_db_init(Globals, Db) :-
                 can_enable_const_struct(Globals, PolyEnabled,
                     GroundTermEnabled)
             ;
-                ( Tags = tags_high
-                ; Tags = tags_none
-                ),
+                Tags = tags_none,
                 PolyEnabled = no,
                 GroundTermEnabled = no
             )

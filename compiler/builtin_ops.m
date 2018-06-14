@@ -32,9 +32,7 @@
 %-----------------------------------------------------------------------------%
 
 :- type unary_op
-    --->    mktag
-    ;       tag
-    ;       unmktag
+    --->    tag
     ;       strip_tag
     ;       mkbody
     ;       unmkbody

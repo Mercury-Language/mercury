@@ -779,11 +779,6 @@ mercury_runtime_init(int argc, char **argv)
 
 #ifdef MR_CONSERVATIVE_GC
 
-  #ifdef MR_HIGHTAGS
-    // MR_HIGHTAGS disguises pointers and hides them from gc.
-    #error "MR_HIGHTAGS is incompatible with MR_CONSERVATIVE_GC"
-  #endif
-
 // Boehm will call this callback when it runs out of memory, We print an error
 // and abort. Our error is printed after Boehm GC's on error, so we don't need
 // to say much.

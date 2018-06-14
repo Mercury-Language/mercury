@@ -113,8 +113,7 @@
 
 :- type tags_method
     --->    tags_none
-    ;       tags_low
-    ;       tags_high.
+    ;       tags_low.
 
 :- type termination_norm
     --->    norm_simple
@@ -434,7 +433,6 @@ convert_gc_method("automatic", gc_automatic).
 
 convert_tags_method("none", tags_none).
 convert_tags_method("low", tags_low).
-convert_tags_method("high", tags_high).
 
 convert_termination_norm("simple", norm_simple).
 convert_termination_norm("total", norm_total).

@@ -504,9 +504,7 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
 std_unop_to_elds(StdUnOp, EldsUnOp) :-
     require_complete_switch [StdUnOp]
     (
-        ( StdUnOp = mktag
-        ; StdUnOp = tag
-        ; StdUnOp = unmktag
+        ( StdUnOp = tag
         ; StdUnOp = strip_tag
         ; StdUnOp = mkbody
         ; StdUnOp = unmkbody

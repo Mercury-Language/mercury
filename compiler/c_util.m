@@ -962,9 +962,7 @@ output_float_literal_cur_stream(N, !IO) :-
 % Operators.
 %
 
-unary_prefix_op(mktag,              "MR_mktag").
 unary_prefix_op(tag,                "MR_tag").
-unary_prefix_op(unmktag,            "MR_unmktag").
 unary_prefix_op(strip_tag,          "MR_strip_tag").
 unary_prefix_op(mkbody,             "MR_mkbody").
 unary_prefix_op(unmkbody,           "MR_unmkbody").

@@ -4315,11 +4315,9 @@ output_unop_for_java(Info, UnaryOp, Expr, !IO) :-
         UnaryOp = tag,
         io.write_string("/* tag */  0", !IO)
     ;
-        ( UnaryOp = mktag,     UnaryOpStr = "/* mktag */ "
-        ; UnaryOp = unmktag,   UnaryOpStr = "/* unmktag */ "
-        ; UnaryOp = strip_tag, UnaryOpStr = "/* strip_tag */ "
+        ( UnaryOp = strip_tag, UnaryOpStr = "/* strip_tag */ "
         ; UnaryOp = mkbody,    UnaryOpStr = "/* mkbody */ "
-        ; UnaryOp = unmkbody,   UnaryOpStr = "/* unmkbody */ "
+        ; UnaryOp = unmkbody,  UnaryOpStr = "/* unmkbody */ "
         ; UnaryOp = bitwise_complement(int_type_int), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_uint), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_int32), UnaryOpStr = "~"

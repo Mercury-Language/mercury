@@ -625,16 +625,6 @@ gather_grade_defines(Globals, GradeDefines) :-
         RecordTermSizesOpt = ""
     ),
 
-    globals.get_tags_method(Globals, Tags_Method),
-    (
-        Tags_Method = tags_high,
-        TagsOpt = "-DMR_HIGHTAGS "
-    ;
-        ( Tags_Method = tags_low
-        ; Tags_Method = tags_none
-        ),
-        TagsOpt = ""
-    ),
     globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
     string.int_to_string(NumPtagBits, NumPtagBitsString),
     NumPtagBitsOpt = "-DMR_TAGBITS=" ++ NumPtagBitsString ++ " ",
@@ -803,7 +793,7 @@ gather_grade_defines(Globals, GradeDefines) :-
         ProfileCallsOpt, ProfileTimeOpt,
         ProfileMemoryOpt, ProfileDeepOpt,
         RecordTermSizesOpt,
-        TagsOpt, NumPtagBitsOpt,
+        NumPtagBitsOpt,
         ExtendOpt,
         LL_DebugOpt, DeclDebugOpt,
         SourceDebugOpt,
