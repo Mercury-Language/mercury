@@ -78,14 +78,14 @@ main(!IO) :-
     test_other(!IO).
 
 test_ops(!IO) :-
-    io.write(var("X") + int(3) * var("X^2") ; (type), !IO), newline(!IO),
-    io.write(write.{type}, !IO), newline(!IO),
-    io.write(write.{?-}, !IO), newline(!IO),
-    io.write((?-), !IO), newline(!IO),
-    io.write(write.{blah}, !IO), newline(!IO),
-    io.write((blah ; (type), (type) * blah ; (type)), !IO), newline(!IO),
-    io.write(((blah ; blah), blah) * blah ; blah, !IO), newline(!IO),
-    io.write((type) * blah ; (type), !IO), newline(!IO).
+    io.write_line(var("X") + int(3) * var("X^2") ; (type), !IO),
+    io.write_line(write.{type}, !IO),
+    io.write_line(write.{?-}, !IO),
+    io.write_line((?-), !IO),
+    io.write_line(write.{blah}, !IO),
+    io.write_line((blah ; (type), (type) * blah ; (type)), !IO),
+    io.write_line(((blah ; blah), blah) * blah ; blah, !IO),
+    io.write_line((type) * blah ; (type), !IO).
 
 test_discriminated(!IO) :-
     io.write_string("TESTING DISCRIMINATED UNIONS\n", !IO),
@@ -96,89 +96,89 @@ test_discriminated(!IO) :-
     io.write_line(three, !IO),
 
     % Test simple tags.
-    io.write(apple([9, 5, 1]), !IO), newline(!IO),
-    io.write(banana([three, one, two]), !IO), newline(!IO),
+    io.write_line(apple([9, 5, 1]), !IO),
+    io.write_line(banana([three, one, two]), !IO),
 
     % Test complicated tags.
-    io.write(zop(3.3, 2.03), !IO), newline(!IO),
-    io.write(zip(3, 2), !IO), newline(!IO),
-    io.write(zap(3, -2.111), !IO), newline(!IO),
+    io.write_line(zop(3.3, 2.03), !IO),
+    io.write_line(zip(3, 2), !IO),
+    io.write_line(zap(3, -2.111), !IO),
 
     % Test complicated constant.
-    io.write(wombat, !IO), newline(!IO),
-    io.write(foo, !IO), newline(!IO),
+    io.write_line(wombat, !IO),
+    io.write_line(foo, !IO),
 
-    newline(!IO).
+    io.nl(!IO).
 
 test_polymorphism(!IO) :-
     io.write_string("TESTING POLYMORPHISM\n", !IO),
-    io.write(poly_one([2399.3]), !IO), newline(!IO),
-    io.write(poly_two(3), !IO), newline(!IO),
-    io.write(poly_three(3.33, 4, poly_one(9.11)), !IO), newline(!IO),
+    io.write_line(poly_one([2399.3]), !IO),
+    io.write_line(poly_two(3), !IO),
+    io.write_line(poly_three(3.33, 4, poly_one(9.11)), !IO),
 
-    newline(!IO).
+    io.nl(!IO).
 
 test_builtins(!IO) :-
     io.write_string("TESTING BUILTINS\n", !IO),
 
     % Test strings.
-    io.write("", !IO), newline(!IO),
-    io.write("Hello, world\n", !IO), newline(!IO),
-    io.write("Foo%sFoo", !IO), newline(!IO),
-    io.write("""", !IO), newline(!IO),    % interesting - prints """ of course
-    io.write("\a\b\f\t\n\r\v\"\\", !IO), newline(!IO),
+    io.write_line("", !IO),
+    io.write_line("Hello, world\n", !IO),
+    io.write_line("Foo%sFoo", !IO),
+    io.write_line("""", !IO),    % interesting - prints """ of course
+    io.write_line("\a\b\f\t\n\r\v\"\\", !IO),
 
     % Test characters.
-    io.write('a', !IO), newline(!IO),
-    io.write('&', !IO), newline(!IO),
-    io.write('\a', !IO), newline(!IO),
-    io.write('\b', !IO), newline(!IO),
-    io.write('\f', !IO), newline(!IO),
-    io.write('\t', !IO), newline(!IO),
-    io.write('\n', !IO), newline(!IO),
-    io.write('\r', !IO), newline(!IO),
-    io.write('\v', !IO), newline(!IO),
-    io.write('\'', !IO), newline(!IO),
-    io.write(('\\') : character, !IO), newline(!IO),
-    io.write('\"', !IO), newline(!IO),
+    io.write_line('a', !IO),
+    io.write_line('&', !IO),
+    io.write_line('\a', !IO),
+    io.write_line('\b', !IO),
+    io.write_line('\f', !IO),
+    io.write_line('\t', !IO),
+    io.write_line('\n', !IO),
+    io.write_line('\r', !IO),
+    io.write_line('\v', !IO),
+    io.write_line('\'', !IO),
+    io.write_line(('\\') : character, !IO),
+    io.write_line('\"', !IO),
 
     % Test floats.
-    io.write(3.14159, !IO), newline(!IO),
-    io.write(11.28324983E-22, !IO), newline(!IO),
-    io.write(22.3954899E22, !IO), newline(!IO),
+    io.write_line(3.14159, !IO),
+    io.write_line(11.28324983E-22, !IO),
+    io.write_line(22.3954899E22, !IO),
     NegInf : float = -float.infinity,
-    io.write(NegInf, !IO), newline(!IO),
-    io.write(float.infinity, !IO), newline(!IO),
+    io.write_line(NegInf, !IO),
+    io.write_line(float.infinity, !IO),
 
     % Test ints.
-    io.write(-65, !IO), newline(!IO),
-    io.write(4, !IO), newline(!IO),
+    io.write_line(-65, !IO),
+    io.write_line(4, !IO),
 
     % Test uints.
-    io.write(651u, !IO), newline(!IO),
+    io.write_line(651u, !IO),
 
     % Test fixed-size ints.
-    io.write(-128i8, !IO), newline(!IO),
-    io.write(127i8, !IO), newline(!IO),
-    io.write(255u8, !IO), newline(!IO),
-    io.write(-32768i16, !IO), newline(!IO),
-    io.write(32767i16, !IO), newline(!IO),
-    io.write(65535u16, !IO), newline(!IO),
-    io.write(-2147483648i32, !IO), newline(!IO),
-    io.write(2147483647i32, !IO), newline(!IO),
-    io.write(4294967295u32, !IO), newline(!IO),
-    io.write(-9223372036854775808i64, !IO), newline(!IO),
-    io.write(9223372036854775807i64, !IO), newline(!IO),
-    io.write(18446744073709551615u64, !IO), newline(!IO),
+    io.write_line(-128i8, !IO),
+    io.write_line(127i8, !IO),
+    io.write_line(255u8, !IO),
+    io.write_line(-32768i16, !IO),
+    io.write_line(32767i16, !IO),
+    io.write_line(65535u16, !IO),
+    io.write_line(-2147483648i32, !IO),
+    io.write_line(2147483647i32, !IO),
+    io.write_line(4294967295u32, !IO),
+    io.write_line(-9223372036854775808i64, !IO),
+    io.write_line(9223372036854775807i64, !IO),
+    io.write_line(18446744073709551615u64, !IO),
 
     % Test univ.
     type_to_univ(["hi! I'm a univ!"], Univ),
-    io.write(Univ, !IO), newline(!IO),
+    io.write_line(Univ, !IO),
 
     % Test predicates.
-    io.write(newline, !IO), newline(!IO),
+    io.write_line(newline, !IO),
 
-    newline(!IO).
+    io.nl(!IO).
 
     % Note: testing abstract types is always going to have results
     % that are dependent on the implementation. If someone changes
@@ -188,25 +188,25 @@ test_other(!IO) :-
     io.write_string("TESTING OTHER TYPES\n", !IO),
     term.init_var_supply(VarSupply),
     term.create_var(Var, VarSupply, NewVarSupply),
-    io.write(Var, !IO), newline(!IO),
-    io.write(VarSupply, !IO), newline(!IO),
-    io.write(NewVarSupply, !IO), newline(!IO),
+    io.write_line(Var, !IO),
+    io.write_line(VarSupply, !IO),
+    io.write_line(NewVarSupply, !IO),
 
     % Presently, at least, map is an equivalence and
     % an abstract type.
     map.init(Map),
-    io.write(Map, !IO), newline(!IO),
+    io.write_line(Map, !IO),
 
     % A no tag type.
-    io.write(qwerty(4), !IO), newline(!IO),
+    io.write_line(qwerty(4), !IO),
 
     array.from_list([1, 2, 3, 4], Array),
-    io.write(Array, !IO), newline(!IO),
+    io.write_line(Array, !IO),
 
     VersionArray = version_array.from_list([1, 2, 3, 4]),
-    io.write(VersionArray, !IO), newline(!IO),
+    io.write_line(VersionArray, !IO),
 
-    newline(!IO).
+    io.nl(!IO).
 
 newline(!IO) :-
     io.write_char('\n', !IO).
