@@ -874,16 +874,17 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_CHAR:
 #ifdef  EXPAND_FUNCTOR_FIELD
             {
+                // Any changes to this code need to be reflected in the
+                // predicate deconstruct_2/9 in library/rtti_implementation.m.
                 char    buf[8];
                 MR_Word data_word;
                 const char  *str_ptr;
                 char        *str;
 
                 data_word = *data_word_ptr;
-                // XXX what should we do with other non-printable characters.
                 switch (data_word) {
                     case '\\': str_ptr = "'\\\\'"; break;
-                    case '\'': str_ptr = "'\\''"; break;
+                    case '\'': str_ptr = "'\\''";  break;
                     case '\a': str_ptr = "'\\a'";  break;
                     case '\b': str_ptr = "'\\b'";  break;
                     case '\r': str_ptr = "'\\r'";  break;
@@ -892,7 +893,28 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     case '\n': str_ptr = "'\\n'";  break;
                     case '\v': str_ptr = "'\\v'";  break;
                     default:
-                        sprintf(buf, "\'%c\'", (char) data_word);
+                        // Print C0 control characters and Delete in
+                        // octal.
+                        if (data_word <= 0x1f || data_word == 0x7f) {
+                            sprintf(buf, "\'\\%03o\\\'", data_word);
+                        } else if (MR_is_ascii(data_word)) {
+                            sprintf(buf, "\'%c\'", (char) data_word);
+                        } else if (MR_is_surrogate(data_word)) {
+                            // XXX Should throw an exception.
+                            MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                                ": attempt to deconstruct surrogate code point");
+                        } else {
+                            size_t n = MR_utf8_encode(buf + 1, (MR_Char)data_word);
+                            // XXX Should throw an exception.
+                            if (n == 0) {
+                                MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                                    ": attempt to deconstruct illegal code point");
+                            }
+                            buf[0] = '\'';
+                            buf[n + 1] = '\'';
+                            buf[n + 2] = '\0';
+
+                        }
                         str_ptr = buf;
                 }
                 MR_make_aligned_string_copy_saved_hp(str, str_ptr, NULL);

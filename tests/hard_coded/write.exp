@@ -28,11 +28,24 @@ TESTING BUILTINS
 "Hello, world\n"
 "Foo%sFoo"
 "\""
+"\a\b\f\t\n\r\v\"\\"
 'a'
 '&'
+'\a'
+'\b'
+'\f'
+'\t'
+'\n'
+'\r'
+'\v'
+'\''
+'\\'
+'\"'
 3.14159
 1.128324983e-21
 2.23954899e+23
+-infinity
+infinity
 -65
 4
 651u

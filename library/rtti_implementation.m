@@ -140,6 +140,7 @@
 :- import_module array.
 :- import_module bitmap.
 :- import_module bool.
+:- import_module char.
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
@@ -2811,10 +2812,26 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
+        % Changes here may need to reflected in the handling of
+        % MR_TYPCTOR_REP_CHAR in runtime/mercury_ml_expand_body.h.
         TypeCtorRep = tcr_char,
         det_dynamic_cast(Term, Char),
         ( if quote_special_escape_char(Char, EscapedChar) then
             Functor = EscapedChar
+        else if
+            Int = char.to_int(Char),
+            ( 0x0 =< Int, Int =< 0x1f
+            ; Int = 0x7f
+            )
+        then
+            string.int_to_base_string(Int, 8, OctalString0),
+            string.pad_left(OctalString0, '0', 3, OctalString),
+            Functor  = "'\\" ++ OctalString ++ "\\'"
+        else if
+            char.is_surrogate(Char)
+        then
+            unexpected($module, $pred,
+                "attempt to deconstruct surrogate code point")
         else
             Functor = string.from_char_list(['\'', Char, '\''])
         ),
@@ -3013,10 +3030,13 @@ univ_named_arg(Term, NonCanon, Name, Argument) :-
         MaybeArgument),
     MaybeArgument = yes(Argument).
 
+    % Note: changes to this predicate may require changes to the similar
+    % predicate in library/term_io.m.
+    %
 :- pred quote_special_escape_char(character::in, string::out) is semidet.
 
 quote_special_escape_char('\\', "'\\\\'").
-quote_special_escape_char('\'', "'\\'").
+quote_special_escape_char('\'', "'\\''").
 quote_special_escape_char('\a', "'\\a'").
 quote_special_escape_char('\b', "'\\b'").
 quote_special_escape_char('\r', "'\\r'").

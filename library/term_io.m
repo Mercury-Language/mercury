@@ -1000,17 +1000,22 @@ encode_escaped_char(Char::out, Str::in) :-
     %
     % Note: the code here is similar to code in compiler/mercury_to_mercury.m;
     % any changes here may require similar changes there.
+    % Likewise for the similar code in library/rtti_implementation.m.
     %
 :- pred mercury_escape_special_char(char, char).
 :- mode mercury_escape_special_char(in, out) is semidet.
 :- mode mercury_escape_special_char(out, in) is semidet.
 
+mercury_escape_special_char('\a', 'a').
+mercury_escape_special_char('\b', 'b').
+mercury_escape_special_char('\r', 'r').
+mercury_escape_special_char('\f', 'f').
+mercury_escape_special_char('\t', 't').
+mercury_escape_special_char('\n', 'n').
+mercury_escape_special_char('\v', 'v').
+mercury_escape_special_char('\\', '\\').
 mercury_escape_special_char('''', '''').
 mercury_escape_special_char('"', '"').
-mercury_escape_special_char('\\', '\\').
-mercury_escape_special_char('\n', 'n').
-mercury_escape_special_char('\t', 't').
-mercury_escape_special_char('\b', 'b').
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

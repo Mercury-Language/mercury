@@ -24,6 +24,8 @@
 :- import_module deconstruct.
 :- import_module maybe.
 :- import_module pair.
+:- import_module stream.
+:- import_module stream.string_writer.
 :- import_module univ.
 
 :- type enum
@@ -128,6 +130,15 @@ main(!IO) :-
     test_all('\\', !IO),
     test_all('\'', !IO),
 
+    % test C0 control characters
+    test_all('\1\', !IO),
+    test_all('\37\', !IO),
+    test_all('\177\', !IO),
+
+    % test a character that requires more than one byte in its
+    % UTF-8 encoding.
+    test_all('Ω', !IO),
+
     % test a float which requires 17 digits of precision
     test_all(0.12345678901234566, !IO),
 
@@ -216,7 +227,7 @@ test_deconstruct_functor(T, !IO) :-
 
 test_deconstruct_arg(T, ArgNum, !IO) :-
     io.format("deconstruct argument %d of ", [i(ArgNum)], !IO),
-    io.print(T, !IO),
+    io.write(T, !IO),
     deconstruct.arg_cc(T, ArgNum, MaybeArg),
     (
         MaybeArg = arg(Arg),
@@ -252,7 +263,7 @@ test_deconstruct_deconstruct(T, !IO) :-
     io.format("deconstruct deconstruct: functor %s arity %d\n",
         [s(Functor), i(Arity)], !IO),
     io.write_string("[", !IO),
-    io.write_list(Arguments, ", ", io.print, !IO),
+    io.write_list(Arguments, ", ", write_arg_univ, !IO),
     io.write_string("]\n", !IO).
 
 :- pred test_deconstruct_limited_deconstruct(T::in, int::in, io::di, io::uo)
@@ -260,18 +271,24 @@ test_deconstruct_deconstruct(T, !IO) :-
 
 test_deconstruct_limited_deconstruct(T, Limit, !IO) :-
     io.format("deconstruct limited deconstruct %d of ", [i(Limit)], !IO),
-    io.print(T, !IO),
+    io.write(T, !IO),
     io.nl(!IO),
     deconstruct.limited_deconstruct_cc(T, Limit, Result),
     (
         Result = yes({Functor, Arity, Arguments}),
         io.format("functor %s arity %d ", [s(Functor), i(Arity)], !IO),
         io.write_string("[", !IO),
-        io.write_list(Arguments, ", ", io.print, !IO),
+        io.write_list(Arguments, ", ", write_arg_univ, !IO),
         io.write_string("]\n", !IO)
     ;
         Result = no,
         io.write_string("failed\n", !IO)
     ).
+
+:- pred write_arg_univ(univ::in, io::di, io::uo) is det.
+
+write_arg_univ(Univ, !IO) :-
+    io.stdout_stream(Stdout, !IO),
+    stream.string_writer.write_univ(Stdout, Univ, !IO).
 
 %---------------------------------------------------------------------------%

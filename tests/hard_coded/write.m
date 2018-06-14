@@ -12,6 +12,7 @@
 :- implementation.
 
 :- import_module array.
+:- import_module float.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -125,15 +126,29 @@ test_builtins(!IO) :-
     io.write("Hello, world\n", !IO), newline(!IO),
     io.write("Foo%sFoo", !IO), newline(!IO),
     io.write("""", !IO), newline(!IO),    % interesting - prints """ of course
+    io.write("\a\b\f\t\n\r\v\"\\", !IO), newline(!IO),
 
     % Test characters.
     io.write('a', !IO), newline(!IO),
     io.write('&', !IO), newline(!IO),
+    io.write('\a', !IO), newline(!IO),
+    io.write('\b', !IO), newline(!IO),
+    io.write('\f', !IO), newline(!IO),
+    io.write('\t', !IO), newline(!IO),
+    io.write('\n', !IO), newline(!IO),
+    io.write('\r', !IO), newline(!IO),
+    io.write('\v', !IO), newline(!IO),
+    io.write('\'', !IO), newline(!IO),
+    io.write(('\\') : character, !IO), newline(!IO),
+    io.write('\"', !IO), newline(!IO),
 
     % Test floats.
     io.write(3.14159, !IO), newline(!IO),
     io.write(11.28324983E-22, !IO), newline(!IO),
     io.write(22.3954899E22, !IO), newline(!IO),
+    NegInf : float = -float.infinity,
+    io.write(NegInf, !IO), newline(!IO),
+    io.write(float.infinity, !IO), newline(!IO),
 
     % Test ints.
     io.write(-65, !IO), newline(!IO),
