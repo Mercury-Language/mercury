@@ -453,13 +453,6 @@
 :- mode write(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write(in, in, in, di, uo) is cc_multi.
 
-:- pred write_line(io.text_output_stream, deconstruct.noncanon_handling, T,
-    io, io).
-:- mode write_line(in, in(do_not_allow), in, di, uo) is det.
-:- mode write_line(in, in(canonicalize), in, di, uo) is det.
-:- mode write_line(in, in(include_details_cc), in, di, uo) is cc_multi.
-:- mode write_line(in, in, in, di, uo) is cc_multi.
-
 :- pred write_cc(T::in, io::di, io::uo) is cc_multi.
 :- pred write_cc(io.text_output_stream::in, T::in, io::di, io::uo) is cc_multi.
 
@@ -467,6 +460,13 @@
     %
 :- pred write_line(T::in, io::di, io::uo) is det.
 :- pred write_line(io.text_output_stream::in, T::in, io::di, io::uo) is det.
+
+:- pred write_line(io.text_output_stream, deconstruct.noncanon_handling, T,
+    io, io).
+:- mode write_line(in, in(do_not_allow), in, di, uo) is det.
+:- mode write_line(in, in(canonicalize), in, di, uo) is det.
+:- mode write_line(in, in(include_details_cc), in, di, uo) is cc_multi.
+:- mode write_line(in, in, in, di, uo) is cc_multi.
 
 :- pred write_line_cc(T::in, io::di, io::uo) is cc_multi.
 
