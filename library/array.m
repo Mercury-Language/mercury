@@ -788,7 +788,7 @@
 %
 % Define the array type appropriately for the different targets.
 % Note that the definitions here should match what is output by
-% mlds_to_c.m, mlds_to_il.m, or mlds_to_java.m for mlds.mercury_array_type.
+% mlds_to_c.m, mlds_to_csharp.m, or mlds_to_java.m for mlds.mercury_array_type.
 %
 
     % MR_ArrayPtr is defined in runtime/mercury_types.h.

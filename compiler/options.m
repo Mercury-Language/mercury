@@ -863,9 +863,6 @@
     ;       everything_in_one_c_function
     ;       local_thread_engine_base
 
-    %   - IL
-    %   (none yet)
-
     %   - Erlang
     ;       erlang_switch_on_strings_as_atoms
 
