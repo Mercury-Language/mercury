@@ -1333,73 +1333,42 @@ generate_deconstruct_unify_args([FieldAndArgVar | FieldsAndArgVars],
 generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code, CI, !CLD) :-
     FieldAndArgVar = field_and_arg_var(LeftUniVal, RightVar, Type),
     get_module_info(CI, ModuleInfo),
-    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
-    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, Type,
-        LeftTopFunctorMode),
-    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, Type,
-        RightTopFunctorMode),
+    compute_assign_direction(ModuleInfo, ArgMode, Type, Dir),
     (
-        LeftTopFunctorMode = top_in,
+        Dir = assign_right,
+        ( if variable_is_forward_live(!.CLD, RightVar) then
+            (
+                LeftUniVal = uv_var(LeftVar),
+                generate_sub_assign_to_var_from_var(RightVar, LeftVar,
+                    Code, CI, !CLD)
+            ;
+                LeftUniVal = uv_field(LeftField),
+                generate_sub_assign_to_var_from_field(RightVar, LeftField,
+                    Code, CI, !CLD)
+            )
+        else
+            Code = empty
+        )
+    ;
+        Dir = assign_left,
         (
-            RightTopFunctorMode = top_out,
-            % Input - Output== assignment ->
-            ( if variable_is_forward_live(!.CLD, RightVar) then
-                (
-                    LeftUniVal = uv_var(LeftVar),
-                    generate_sub_assign_to_var_from_var(RightVar, LeftVar,
-                        Code, CI, !CLD)
-                ;
-                    LeftUniVal = uv_field(LeftField),
-                    generate_sub_assign_to_var_from_field(RightVar, LeftField,
-                        Code, CI, !CLD)
-                )
+            LeftUniVal = uv_var(LeftVar),
+            ( if variable_is_forward_live(!.CLD, LeftVar) then
+                generate_sub_assign_to_var_from_var(LeftVar, RightVar,
+                    Code, CI, !CLD)
             else
                 Code = empty
             )
         ;
-            ( RightTopFunctorMode = top_in
-            ; RightTopFunctorMode = top_unused
-            ),
-            unexpected($pred, "unexpected right arg in left-in sub_unify")
+            LeftUniVal = uv_field(LeftField),
+            % Fields are always considered forward live.
+            generate_sub_assign_to_field_from_var(LeftField, RightVar,
+                Code, CI, !CLD)
         )
     ;
-        LeftTopFunctorMode = top_out,
-        (
-            RightTopFunctorMode = top_in,
-            % Output - Input== assignment <-
-            (
-                LeftUniVal = uv_var(LeftVar),
-                ( if variable_is_forward_live(!.CLD, LeftVar) then
-                    generate_sub_assign_to_var_from_var(LeftVar, RightVar,
-                        Code, CI, !CLD)
-                else
-                    Code = empty
-                )
-            ;
-                LeftUniVal = uv_field(LeftField),
-                % Fields are always considered forward live.
-                generate_sub_assign_to_field_from_var(LeftField, RightVar,
-                    Code, CI, !CLD)
-            )
-        ;
-            ( RightTopFunctorMode = top_out
-            ; RightTopFunctorMode = top_unused
-            ),
-            unexpected($pred, "unexpected right arg in left-out sub_unify")
-        )
-    ;
-        LeftTopFunctorMode = top_unused,
-        (
-            RightTopFunctorMode = top_unused,
-            % Free-free unification: ignore.
-            % XXX This will have to change if we start to support aliasing.
-            Code = empty
-        ;
-            ( RightTopFunctorMode = top_in
-            ; RightTopFunctorMode = top_out
-            ),
-            unexpected($pred, "unexpected right arg in left-ununsed sub_unify")
-        )
+        Dir = assign_unused,
+        % XXX This will have to change if we start to support aliasing.
+        Code = empty
     ).
 
 :- pred generate_sub_assign_to_var_from_var(prog_var::in, prog_var::in,
@@ -1559,41 +1528,20 @@ generate_sub_assign_to_field_from_var(LeftField, RightVar, Code, CI, !CLD) :-
 
 generate_direct_arg_construct(Var, Arg, Ptag, ArgMode, Type, Code, CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
-    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
-    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, Type,
-        LeftTopFunctorMode),
-    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, Type,
-        RightTopFunctorMode),
+    compute_assign_direction(ModuleInfo, ArgMode, Type, Dir),
     (
-        LeftTopFunctorMode = top_in,
-        unexpected($pred, "left arg input in construction")
+        Dir = assign_right,
+        unexpected($pred, "assign right in construction")
     ;
-        LeftTopFunctorMode = top_out,
-        (
-            RightTopFunctorMode = top_in,
-            % Output - Input == assignment <-
-            assign_expr_to_var(Var, mkword(Ptag, var(Arg)), Code, !CLD)
-        ;
-            ( RightTopFunctorMode = top_out
-            ; RightTopFunctorMode = top_unused
-            ),
-            unexpected($pred, "unexpected right arg in construction")
-        )
+        Dir = assign_left,
+        assign_expr_to_var(Var, mkword(Ptag, var(Arg)), Code, !CLD)
     ;
-        LeftTopFunctorMode = top_unused,
-        (
-            RightTopFunctorMode = top_unused,
-            % Construct a tagged pointer to a pointer value
-            % which is as yet unknown.
-            % XXX This will have to change if we start to support aliasing.
-            assign_const_to_var(Var, mkword_hole(Ptag), CI, !CLD),
-            Code = empty
-        ;
-            ( RightTopFunctorMode = top_in
-            ; RightTopFunctorMode = top_out
-            ),
-            unexpected($pred, "unexpected right arg in unused construction")
-        )
+        Dir = assign_unused,
+        % Construct a tagged pointer to a pointer value
+        % which is as yet unknown.
+        % XXX This will have to change if we start to support aliasing.
+        assign_const_to_var(Var, mkword_hole(Ptag), CI, !CLD),
+        Code = empty
     ).
 
     % Generate a direct arg unification between
@@ -1607,55 +1555,24 @@ generate_direct_arg_construct(Var, Arg, Ptag, ArgMode, Type, Code, CI, !CLD) :-
 generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Type, Code,
         CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
-    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
-    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, Type,
-        LeftTopFunctorMode),
-    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, Type,
-        RightTopFunctorMode),
+    compute_assign_direction(ModuleInfo, ArgMode, Type, Dir),
     (
-        LeftTopFunctorMode = top_in,
-        (
-            RightTopFunctorMode = top_out,
-            % Input - Output == assignment ->
-            ( if variable_is_forward_live(!.CLD, ArgVar) then
-                Ptag = ptag(PtagUint8),
-                BodyRval = binop(body, var(Var),
-                    const(llconst_int(uint8.cast_to_int(PtagUint8)))),
-                assign_expr_to_var(ArgVar, BodyRval, Code, !CLD)
-            else
-                Code = empty
-            )
-        ;
-            ( RightTopFunctorMode = top_in
-            ; RightTopFunctorMode = top_unused
-            ),
-            unexpected($pred, "unexpected right arg in deconstruction")
-        )
-    ;
-        LeftTopFunctorMode = top_out,
-        (
-            RightTopFunctorMode = top_in,
-            % Output - Input == assignment <-
-            reassign_mkword_hole_var(Var, Ptag, var(ArgVar), Code, !CLD)
-        ;
-            ( RightTopFunctorMode = top_out
-            ; RightTopFunctorMode = top_unused
-            ),
-            unexpected($pred, "unexpected right arg in reverse deconstruction")
-        )
-    ;
-        LeftTopFunctorMode = top_unused,
-        (
-            RightTopFunctorMode = top_unused,
-            % Free-free unification: ignore.
-            % XXX This will have to change if we start to support aliasing.
+        Dir = assign_right,
+        ( if variable_is_forward_live(!.CLD, ArgVar) then
+            Ptag = ptag(PtagUint8),
+            BodyRval = binop(body, var(Var),
+                const(llconst_int(uint8.cast_to_int(PtagUint8)))),
+            assign_expr_to_var(ArgVar, BodyRval, Code, !CLD)
+        else
             Code = empty
-        ;
-            ( RightTopFunctorMode = top_in
-            ; RightTopFunctorMode = top_out
-            ),
-            unexpected($pred, "unexpected right arg in unused deconstruction")
         )
+    ;
+        Dir = assign_left,
+        reassign_mkword_hole_var(Var, Ptag, var(ArgVar), Code, !CLD)
+    ;
+        Dir = assign_unused,
+        % XXX This will have to change if we start to support aliasing.
+        Code = empty
     ).
 
 %---------------------------------------------------------------------------%
@@ -2574,6 +2491,66 @@ cast_away_any_sign_extend_bits(Fill, Rval0, Rval) :-
     ;
         Fill = fill_int32,
         Rval = cast(lt_int(int_type_uint32), Rval0)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type assign_dir
+    --->    assign_left
+    ;       assign_right
+    ;       assign_unused.
+
+:- pred compute_assign_direction(module_info::in, unify_mode::in, mer_type::in,
+    assign_dir::out) is det.
+:- pragma inline(compute_assign_direction/4).
+
+compute_assign_direction(ModuleInfo, ArgMode, ArgType, Dir) :-
+    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
+    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
+        LeftTopMode),
+    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
+        RightTopMode),
+    (
+        LeftTopMode = top_in,
+        (
+            RightTopMode = top_in,
+            % Both input: it is a test unification.
+            % This shouldn't happen, since mode analysis should avoid
+            % creating any tests in the arguments of a construction
+            % or deconstruction unification.
+            unexpected($pred, "test in arg of [de]construction")
+        ;
+            RightTopMode = top_out,
+            % Input - output: it is an assignment to the RHS.
+            Dir = assign_right
+        ;
+            RightTopMode = top_unused,
+            unexpected($pred, "some strange unify")
+        )
+    ;
+        LeftTopMode = top_out,
+        (
+            RightTopMode = top_in,
+            % Output - input: it is an assignment to the LHS.
+            Dir = assign_left
+        ;
+            ( RightTopMode = top_out
+            ; RightTopMode = top_unused
+            ),
+            unexpected($pred, "some strange unify")
+        )
+    ;
+        LeftTopMode = top_unused,
+        (
+            RightTopMode = top_unused,
+            % Unused - unused: the unification has no effect.
+            Dir = assign_unused
+        ;
+            ( RightTopMode = top_in
+            ; RightTopMode = top_out
+            ),
+            unexpected($pred, "some strange unify")
+        )
     ).
 
 %---------------------------------------------------------------------------%
