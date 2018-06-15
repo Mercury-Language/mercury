@@ -1138,52 +1138,39 @@ generate_field_take_address_assigns([FieldAddr | FieldAddrs],
     % with variables.
     %
 :- pred make_fields_and_arg_vars(vartypes::in, rval::in, ptag::in,
-    assoc_list(prog_var, arg_pos_width)::in, int::in,
+    assoc_list(prog_var, arg_pos_width)::in,
     list(field_and_arg_var)::out) is det.
 
-make_fields_and_arg_vars(_, _, _, [], _, []).
+make_fields_and_arg_vars(_, _, _, [], []).
 make_fields_and_arg_vars(VarTypes, Rval, Ptag, [VarPosWidth | VarsPosWidths],
-        PrevOffset0, [FieldAndArgVar | FieldsAndArgVars]) :-
+        [FieldAndArgVar | FieldsAndArgVars]) :-
     VarPosWidth = Var - PosWidth,
-    % XXX ARG_PACK OFFSET
     (
         ( PosWidth = apw_full(_, CellOffset)
         ; PosWidth = apw_partial_first(_, CellOffset, _, _, _)
-        ),
-        Offset = PrevOffset0 + 1,
-        PrevOffset = Offset,
-        CellOffset = cell_offset(CellOffsetInt),
-        expect(unify(Offset, CellOffsetInt), $pred, "full or first")
-    ;
-        PosWidth = apw_double(_, CellOffset, _),
-        Offset = PrevOffset0 + 1,
-        PrevOffset = Offset + 1,
-        CellOffset = cell_offset(CellOffsetInt),
-        expect(unify(Offset, CellOffsetInt), $pred, "double")
-    ;
-        ( PosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
+        ; PosWidth = apw_double(_, CellOffset, _)
+        ; PosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
         ; PosWidth = apw_none_shifted(_, CellOffset)
         ),
-        Offset = PrevOffset0,
-        PrevOffset = Offset,
-        CellOffset = cell_offset(CellOffsetInt),
-        expect(unify(Offset, CellOffsetInt), $pred, "shifted")
+        CellOffset = cell_offset(CellOffsetInt)
     ;
         PosWidth = apw_none_nowhere,
-        Offset = -1,
-        PrevOffset = PrevOffset0
+        CellOffsetInt = -1
     ),
-    Field = uv_field(uni_field(Ptag, Rval, Offset, PosWidth)),
+    % The CellOffsetInt duplicates information that is also in PosWidth,
+    % but this way, we compute it in just one place (here), instead of
+    % all of the (about ten) places where PosWidth is used.
+    Field = uv_field(uni_field(Ptag, Rval, CellOffsetInt, PosWidth)),
     lookup_var_type(VarTypes, Var, Type),
     FieldAndArgVar = field_and_arg_var(Field, Var, Type),
     make_fields_and_arg_vars(VarTypes, Rval, Ptag, VarsPosWidths,
-        PrevOffset, FieldsAndArgVars).
+        FieldsAndArgVars).
 
 %---------------------------------------------------------------------------%
 
     % Generate a deterministic deconstruction. In a deterministic
-    % deconstruction, we know the value of the ptag, so we don't
-    % need to generate a test.
+    % deconstruction, we know the value of the ptag, so we don't need
+    % to generate a test.
 
     % Deconstructions are generated semi-eagerly. Any test sub-unifications
     % are generated eagerly (they _must_ be), but assignment unifications
@@ -1276,22 +1263,19 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
         (
             ConsTag = single_functor_tag,
             % Treat single_functor the same as unshared_tag(0).
-            Ptag = ptag(0u8),
-            PrevOffset = -1     % There is no secondary tag.
+            Ptag = ptag(0u8)
         ;
-            ConsTag = unshared_tag(Ptag),
-            PrevOffset = -1     % There is no secondary tag.
+            ConsTag = unshared_tag(Ptag)
         ;
             ConsTag = shared_remote_tag(Ptag, RemoteSectag),
             AddedBy = RemoteSectag ^ rsectag_added,
             expect(unify(AddedBy, sectag_added_by_unify), $pred,
-                "AddedBy != sectag_added_by_unify"),
-            PrevOffset = 0      % There is a secondary tag.
+                "AddedBy != sectag_added_by_unify")
         ),
         Rval = var(Var),
         get_vartypes(CI, VarTypes),
         make_fields_and_arg_vars(VarTypes, Rval, Ptag, ArgVarsWidths,
-            PrevOffset, FieldsAndArgVars),
+            FieldsAndArgVars),
         generate_deconstruct_unify_args(FieldsAndArgVars, Modes, Code,
             CI, !CLD)
     ).
