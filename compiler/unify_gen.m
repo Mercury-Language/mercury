@@ -611,7 +611,10 @@ generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
                 Type = variable_type(!.CI, RHSVar),
                 FieldAndArgVar =
                     field_and_arg_var(uv_var(LHSVar), RHSVar, Type),
-                generate_sub_unify(FieldAndArgVar, ArgMode, Code, !.CI, !CLD)
+                % Assignments can have information flow to the left
+                % as well as to the right.
+                generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code,
+                    !.CI, !CLD)
             ;
                 TakeAddr = [_ | _],
                 unexpected($pred, "notag: take_addr")
@@ -1251,7 +1254,8 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
                 ArgType = variable_type(CI, ArgVar),
                 FieldAndArgVar =
                     field_and_arg_var(uv_var(Var), ArgVar, ArgType),
-                generate_sub_unify(FieldAndArgVar, Mode, Code, CI, !CLD)
+                generate_deconstruct_unify_arg(FieldAndArgVar, Mode, Code,
+                    CI, !CLD)
             )
         else
             unexpected($pred, "no_tag: arity != 1")
@@ -1288,7 +1292,8 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
         get_vartypes(CI, VarTypes),
         make_fields_and_arg_vars(VarTypes, Rval, Ptag, ArgVarsWidths,
             PrevOffset, FieldsAndArgVars),
-        generate_unify_args(FieldsAndArgVars, Modes, Code, CI, !CLD)
+        generate_deconstruct_unify_args(FieldsAndArgVars, Modes, Code,
+            CI, !CLD)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1321,26 +1326,27 @@ generate_semi_deconstruction(Var, Tag, ArgVarsWidths, Modes, Code,
     % Generate code to perform a list of deterministic subunifications
     % for the arguments of a construction.
     %
-:- pred generate_unify_args(list(field_and_arg_var)::in, list(unify_mode)::in,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred generate_deconstruct_unify_args(list(field_and_arg_var)::in,
+    list(unify_mode)::in, llds_code::out,
+    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_unify_args([], [], empty, _CI, !CLD).
-generate_unify_args([], [_ | _], _, _, !CLD) :-
+generate_deconstruct_unify_args([], [], empty, _CI, !CLD).
+generate_deconstruct_unify_args([], [_ | _], _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_unify_args([_ | _], [], _, _, !CLD) :-
+generate_deconstruct_unify_args([_ | _], [], _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_unify_args([FieldAndArgVar | FieldsAndArgVars], [Mode | Modes],
-        Code, CI, !CLD) :-
-    generate_sub_unify(FieldAndArgVar, Mode, CodeA, CI, !CLD),
-    generate_unify_args(FieldsAndArgVars, Modes, CodeB, CI, !CLD),
+generate_deconstruct_unify_args([FieldAndArgVar | FieldsAndArgVars],
+        [Mode | Modes], Code, CI, !CLD) :-
+    generate_deconstruct_unify_arg(FieldAndArgVar, Mode, CodeA, CI, !CLD),
+    generate_deconstruct_unify_args(FieldsAndArgVars, Modes, CodeB, CI, !CLD),
     Code = CodeA ++ CodeB.
 
     % Generate a subunification between two [field | variable].
     %
-:- pred generate_sub_unify(field_and_arg_var::in, unify_mode::in,
+:- pred generate_deconstruct_unify_arg(field_and_arg_var::in, unify_mode::in,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_sub_unify(FieldAndArgVar, ArgMode, Code, CI, !CLD) :-
+generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code, CI, !CLD) :-
     FieldAndArgVar = field_and_arg_var(LeftUniVal, RightVar, Type),
     get_module_info(CI, ModuleInfo),
     ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
