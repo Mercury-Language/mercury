@@ -728,7 +728,7 @@ write_escaped_char(Char, !IO) :-
 write_escaped_char(Stream, Char, !State) :-
     % Note: the code of add_escaped_char and write_escaped_char
     % should be kept in sync. The code of both is similar to code in
-    % compiler/mercury_to_mercury.m; any changes here may require
+    % compiler/parse_tree_out_pragma.m; any changes here may require
     % similar changes there.
     ( if mercury_escape_special_char(Char, QuoteChar) then
         stream.put(Stream, ('\\'), !State),
@@ -773,8 +773,12 @@ string_is_escaped_char(Char::out, String::in) :-
     % Succeed if Char is a character which is allowed in Mercury string
     % and character literals.
     %
-    % Note: the code here is similar to code in compiler/mercury_to_mercury.m;
-    % any changes here may require similar changes there.
+    % Note: the code here is similar to code in the following spots:
+    %
+    %   - compiler/parse_tree_out_pragma.m.
+    %   - runtime/mercury_trace_base.c
+    %
+    % Any changes here may require similar changes there.
     %
 :- pred is_mercury_source_char(char::in) is semidet.
 
@@ -786,7 +790,7 @@ is_mercury_source_char(Char) :-
 
 %---------------------------------------------------------------------------%
 
-% Note: the code here is similar to code in compiler/mercury_to_mercury.m;
+% Note: the code here is similar to code in compiler/parse_tree_out_pragma.m;
 % any changes here may require similar changes there.
 
 quote_string(S, !IO) :-
@@ -817,7 +821,7 @@ escaped_string(String) =
 add_escaped_char(Char, Strings0) = Strings :-
     % Note: the code of add_escaped_char and write_escaped_char
     % should be kept in sync. The code of both is similar to code in
-    % compiler/mercury_to_mercury.m; any changes here may require
+    % compiler/parse_tree_out_pragma.m; any changes here may require
     % similar changes there.
     ( if mercury_escape_special_char(Char, QuoteChar) then
         Strings = [from_char_list(['\\', QuoteChar]) | Strings0]

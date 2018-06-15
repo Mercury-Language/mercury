@@ -613,9 +613,12 @@ MR_trace_name_count_port_ensure_init()
     }
 }
 
-// The output of this is supposed to be equivalent to term_io__quote_atom
+// The output of this is supposed to be equivalent to term_io.quote_atom
 // except that it always uses quotes, even if not strictly necessary.
-
+//
+// XXX term_io does *not* escape codepoints >= 0x80 whereas this always
+// does - juliensf.
+//
 static void
 MR_trace_write_quoted_atom(FILE *fp, const char *atom)
 {
@@ -642,11 +645,23 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
             case '\b':
                 fputs("\\b", fp);
                 break;
+            case '\a':
+                fputs("\\a", fp);
+                break;
+            case '\r':
+                fputs("\\r", fp);
+                break;
+            case '\f':
+                fputs("\\f", fp);
+                break;
+            case '\v':
+                fputs("\\v", fp);
+                break;
             default:
-                // This assumes isalnum is the same as char__isalnum.
+                // This assumes isalnum is the same as char.isalnum.
                 // The line noise is the equivalent of
                 // is_mercury_punctuation_char in library/term_io.m
-                // and compiler/mercury_to_mercury.m; any changes here
+                // and compiler/parse_tree_out_pragma.m; any changes here
                 // may require similar changes there.
 
                 if (MR_isalnum(*c) ||
@@ -687,6 +702,18 @@ MR_trace_write_string(FILE *fp, const char *atom)
                 break;
             case '\b':
                 fputs("\\b", fp);
+                break;
+            case '\a':
+                fputs("\\a", fp);
+                break;
+            case '\r':
+                fputs("\\b", fp);
+                break;
+            case '\f':
+                fputs("\\f", fp);
+                break;
+            case '\v':
+                fputs("\\v", fp);
                 break;
             default:
                 fputc(*c, fp);
