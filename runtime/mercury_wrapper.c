@@ -1865,7 +1865,7 @@ MR_process_options(int argc, char **argv)
 
             case MR_FORCE_READLINE:
                 MR_force_readline = MR_TRUE;
-#ifdef MR_NO_USE_READLINE
+#if !defined(MR_USE_READLINE) && !defined(MR_USE_EDITLINE)
                 printf("Mercury runtime: `--force-readline' is specified "
                     "in MERCURY_OPTIONS\n");
                 printf("but readline() is not available.\n");
