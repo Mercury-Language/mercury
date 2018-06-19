@@ -124,14 +124,16 @@
     % valid Mercury syntax whenever possible.
     %
     % Strings and characters are always printed out in quotes, using backslash
-    % escapes if necessary.  For higher-order types, or for types defined using
-    % the foreign language interface (pragma foreign_type), the text output
-    % will only describe the type that is being printed, not the value, and the
-    % result may not be parsable by `read'.  For the types containing
-    % existential quantifiers, the type `type_desc' and closure types, the
-    % result may not be parsable by `read', either.  But in all other cases the
-    % format used is standard Mercury syntax, and if you append a period and
-    % newline (".\n"), then the results can be read in again using `read'.
+    % escapes if necessary and backslash or octal escapes for all characters
+    % for which char.is_control/1 is true. For higher-order types, or for types
+    % defined using the foreign language interface (pragma foreign_type), the
+    % text output will only describe the type that is being printed, not the
+    % value, and the result may not be parsable by `read'.  For the types
+    % containing existential quantifiers, the type `type_desc' and closure
+    % types, the result may not be parsable by `read', either.  But in all
+    % other cases the format used is standard Mercury syntax, and if you append
+    % a period and newline (".\n"), then the results can be read in again using
+    % `read'.
     %
     % write/5 is the same as write/4 except that it allows the caller to
     % specify how non-canonical types should be handled.  write_cc/4 is the

@@ -893,10 +893,15 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     case '\n': str_ptr = "'\\n'";  break;
                     case '\v': str_ptr = "'\\v'";  break;
                     default:
-                        // Print C0 control characters and Delete in
-                        // octal.
-                        if (data_word <= 0x1f || data_word == 0x7f) {
-                            sprintf(buf, "\'\\%03o\\\'", data_word);
+                        // Print remaining control characters using octal
+                        // escapes.
+                        if ( 
+                            (0x00 <= data_word && data_word <= 0x1f) ||
+                            (0x7f <= data_word && data_word <= 0x9f)
+                        ) { 
+                            sprintf(buf,
+                                "\'\\%03" MR_INTEGER_LENGTH_MODIFIER "o\\\'",
+                                data_word);
                         } else if (MR_is_ascii(data_word)) {
                             sprintf(buf, "\'%c\'", (char) data_word);
                         } else if (MR_is_surrogate(data_word)) {

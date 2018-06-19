@@ -130,11 +130,17 @@ main(!IO) :-
     test_all('\v', !IO),
     test_all('\\', !IO),
     test_all('\'', !IO),
+    test_all('~', !IO),
 
     % test C0 control characters
-    test_all('\1\', !IO),
-    test_all('\37\', !IO),
+    test_all('\001\', !IO),
+    test_all('\037\', !IO),
     test_all('\177\', !IO),
+    % test C1 control characters
+    test_all('\200\', !IO),
+    test_all('\237\', !IO),
+    % No-break space (next codepoint after C1 control characters)
+    test_all('\240\', !IO),
 
     % test a character that requires more than one byte in its
     % UTF-8 encoding.

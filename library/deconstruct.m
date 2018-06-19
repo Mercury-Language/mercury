@@ -74,11 +74,15 @@
     %     handled as if it had standard equality.
     %   - for integers, the string is a base 10 number;
     %     positive integers have no sign.
-    %   - for finite floats, the string is a floating point, base 10 number;
-    %     positive floating point numbers have no sign.
-    %   - for infinite floats, the string "infinity" or "-infinity";
-    %   - for strings, the string, inside double quotation marks
-    %   - for characters, the character inside single quotation marks
+    %   - for finite floats, the string is a base 10 floating point number;
+    %     positive floating point numbers have no sign;
+    %     for infinite floats, the string "infinity" or "-infinity".
+    %   - for strings, the string, inside double quotation marks using
+    %     backslash escapes if necessary and backslash or octal escapes for
+    %     all characters for which char.is_control/1 is true.
+    %   - for characters, the character inside single quotation marks using
+    %     a backslash escape if necssary and a backslash or octal escape for
+    %     for all characters for which char.is_control/1 is true.
     %   - for predicates, the string <<predicate>>, and for functions,
     %     the string <<function>>, except with include_details_cc,
     %     in which case it will be the predicate or function name.

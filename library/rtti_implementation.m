@@ -2819,11 +2819,9 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         ( if quote_special_escape_char(Char, EscapedChar) then
             Functor = EscapedChar
         else if
-            Int = char.to_int(Char),
-            ( 0x0 =< Int, Int =< 0x1f
-            ; Int = 0x7f
-            )
+            char.is_control(Char)
         then
+            char.to_int(Char, Int),
             string.int_to_base_string(Int, 8, OctalString0),
             string.pad_left(OctalString0, '0', 3, OctalString),
             Functor  = "'\\" ++ OctalString ++ "\\'"

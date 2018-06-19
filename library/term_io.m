@@ -785,7 +785,7 @@ string_is_escaped_char(Char::out, String::in) :-
 is_mercury_source_char(Char) :-
     ( char.is_alnum(Char)
     ; is_mercury_punctuation_char(Char)
-    ; char.to_int(Char) >= 0x80
+    ; char.to_int(Char) >= 0xA0  % 0x7f - 0x9f are control characters.
     ).
 
 %---------------------------------------------------------------------------%
@@ -942,39 +942,43 @@ mercury_escape_char(Char) = EscapeCode :-
     % Note: the code here is similar to code in runtime/mercury_trace_base.c;
     % any changes here may require similar changes there.
 
+% Codepoints in 0x20..0x2f.
 is_mercury_punctuation_char(' ').
 is_mercury_punctuation_char('!').
-is_mercury_punctuation_char('@').
+is_mercury_punctuation_char('"').
 is_mercury_punctuation_char('#').
 is_mercury_punctuation_char('$').
 is_mercury_punctuation_char('%').
-is_mercury_punctuation_char('^').
 is_mercury_punctuation_char('&').
-is_mercury_punctuation_char('*').
+is_mercury_punctuation_char('''').
 is_mercury_punctuation_char('(').
 is_mercury_punctuation_char(')').
-is_mercury_punctuation_char('-').
-is_mercury_punctuation_char('_').
+is_mercury_punctuation_char('*').
 is_mercury_punctuation_char('+').
-is_mercury_punctuation_char('=').
-is_mercury_punctuation_char('`').
-is_mercury_punctuation_char('~').
-is_mercury_punctuation_char('{').
-is_mercury_punctuation_char('}').
-is_mercury_punctuation_char('[').
-is_mercury_punctuation_char(']').
-is_mercury_punctuation_char(';').
-is_mercury_punctuation_char(':').
-is_mercury_punctuation_char('''').
-is_mercury_punctuation_char('"').
-is_mercury_punctuation_char('<').
-is_mercury_punctuation_char('>').
-is_mercury_punctuation_char('.').
 is_mercury_punctuation_char(',').
+is_mercury_punctuation_char('-').
+is_mercury_punctuation_char('.').
 is_mercury_punctuation_char('/').
+% Codepoints in 0x3a..0x40.
+is_mercury_punctuation_char(':').
+is_mercury_punctuation_char(';').
+is_mercury_punctuation_char('<').
+is_mercury_punctuation_char('=').
+is_mercury_punctuation_char('>').
 is_mercury_punctuation_char('?').
+is_mercury_punctuation_char('@').
+% Codepoints in 0x5b..0x60.
+is_mercury_punctuation_char('[').
 is_mercury_punctuation_char('\\').
+is_mercury_punctuation_char(']').
+is_mercury_punctuation_char('^').
+is_mercury_punctuation_char('_').
+is_mercury_punctuation_char('`').
+% Codpoints in 0x7b..0x7e.
+is_mercury_punctuation_char('{').
 is_mercury_punctuation_char('|').
+is_mercury_punctuation_char('~').
+is_mercury_punctuation_char('}').
 
 %---------------------------------------------------------------------------%
 
@@ -1012,10 +1016,10 @@ encode_escaped_char(Char::out, Str::in) :-
 
 mercury_escape_special_char('\a', 'a').
 mercury_escape_special_char('\b', 'b').
-mercury_escape_special_char('\r', 'r').
 mercury_escape_special_char('\f', 'f').
-mercury_escape_special_char('\t', 't').
 mercury_escape_special_char('\n', 'n').
+mercury_escape_special_char('\r', 'r').
+mercury_escape_special_char('\t', 't').
 mercury_escape_special_char('\v', 'v').
 mercury_escape_special_char('\\', '\\').
 mercury_escape_special_char('''', '''').

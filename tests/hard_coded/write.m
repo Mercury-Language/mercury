@@ -12,6 +12,7 @@
 :- implementation.
 
 :- import_module array.
+:- import_module char.
 :- import_module float.
 :- import_module int.
 :- import_module list.
@@ -127,10 +128,14 @@ test_builtins(!IO) :-
     io.write_line("Foo%sFoo", !IO),
     io.write_line("""", !IO),    % interesting - prints """ of course
     io.write_line("\a\b\f\t\n\r\v\"\\", !IO),
+    io.write_line("\001\\037\\177\\200\\237\\240\", !IO),
 
     % Test characters.
     io.write_line('a', !IO),
+    io.write_line('A', !IO),
     io.write_line('&', !IO),
+
+    io.write_line('\001\', !IO), % Second C0 control.
     io.write_line('\a', !IO),
     io.write_line('\b', !IO),
     io.write_line('\f', !IO),
@@ -138,11 +143,21 @@ test_builtins(!IO) :-
     io.write_line('\n', !IO),
     io.write_line('\r', !IO),
     io.write_line('\v', !IO),
+    io.write_line('\037\', !IO), % Last C0 control.
+    io.write_line(' ', !IO),
+
     io.write_line('\'', !IO),
     io.write_line(('\\') : character, !IO),
     io.write_line('\"', !IO),
 
+    io.write_line('~', !IO),
+    io.write_line('\177\', !IO), % Delete.
+    io.write_line('\200\', !IO), % First C1 control.
+    io.write_line('\237\', !IO), % Last C1 control.
+    io.write_line('\240\', !IO), % No-break space.
+
     % Test floats.
+    io.write_line(0.0, !IO),
     io.write_line(3.14159, !IO),
     io.write_line(11.28324983E-22, !IO),
     io.write_line(22.3954899E22, !IO),
