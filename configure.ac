@@ -5227,10 +5227,11 @@ AC_SUBST(USE_MSVCRT)
 
 #-----------------------------------------------------------------------------#
 #
-# Check for readline
+# Check for readline and editline.
 #
 
 MERCURY_CHECK_READLINE
+MERCURY_CHECK_EDITLINE
 
 #-----------------------------------------------------------------------------#
 #

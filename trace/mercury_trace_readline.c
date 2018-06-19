@@ -17,9 +17,11 @@
 #include "mercury_trace_readline.h"
 #include "mercury_trace_completion.h"
 
-#ifndef MR_NO_USE_READLINE
-  #ifdef MR_HAVE_READLINE_READLINE_H
+#if defined(MR_USE_READLINE) || defined(MR_USE_EDITLINE)
+  #if defined(MR_HAVE_READLINE_READLINE_H)
     #include <readline/readline.h>
+  #elif defined(MR_HAVE_EDITLINE_READLINE_H)
+     #include <editline/readline.h>
   #else
     extern FILE         *rl_instream;
     extern FILE         *rl_outstream;
@@ -50,7 +52,7 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 {
 #if (defined(isatty) || defined(MR_HAVE_ISATTY)) \
  && (defined(fileno) || defined(MR_HAVE_FILENO)) \
- && !defined(MR_NO_USE_READLINE)
+ && (defined(MR_USE_READLINE) || defined(MR_USE_EDITLINE))
     char    *line;
     MR_bool in_isatty;
     char    *last_nl;
@@ -117,7 +119,7 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 
         return line;
     }
-#endif // have isatty && have fileno && !MR_NO_USE_READLINE
+#endif // have isatty && have fileno && (have readline || have editline)
 
     // Otherwise, don't use readline.
     fprintf(out, "%s", prompt);

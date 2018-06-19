@@ -201,22 +201,22 @@ AC_DEFUN([MERCURY_TRY_STATIC_ASSERT], [
 AC_DEFUN([MERCURY_CHECK_READLINE],
 [
 AC_ARG_WITH(readline,
-[  --without-readline      Don't use the GPL'd GNU readline library],
+[  --without-readline      Do not use the GPL'd GNU readline library],
 mercury_cv_with_readline="$withval", mercury_cv_with_readline=yes)
 
 if test "$mercury_cv_with_readline" = yes; then
 
-	# check for the readline header files
+	# Check for the readline header files.
 	MERCURY_CHECK_FOR_HEADERS(readline/readline.h readline/history.h)
 
-	# check for the libraries that readline depends on
+	# Check for the libraries that readline depends on.
 	MERCURY_MSG('looking for termcap or curses (needed by readline)...')
 	AC_CHECK_LIB(termcap, tgetent, mercury_cv_termcap_lib=-ltermcap,
 	 [AC_CHECK_LIB(curses,  tgetent, mercury_cv_termcap_lib=-lcurses,
 	  [AC_CHECK_LIB(ncurses, tgetent, mercury_cv_termcap_lib=-lncurses,
 	   mercury_cv_termcap_lib='')])])
 
-	# check for the readline library
+	# Check for the readline library.
 	AC_CHECK_LIB(readline, readline, mercury_cv_have_readline=yes,
 		mercury_cv_have_readline=no, $mercury_cv_termcap_lib)
 else
@@ -230,13 +230,43 @@ fi
 if test $mercury_cv_have_readline = no; then
 	TERMCAP_LIBRARY=""
 	READLINE_LIBRARIES=""
-	AC_DEFINE(MR_NO_USE_READLINE)
 else
+	AC_DEFINE(MR_USE_READLINE)
 	TERMCAP_LIBRARY="$mercury_cv_termcap_lib"
 	READLINE_LIBRARIES="-lreadline $TERMCAP_LIBRARY"
 fi
 AC_SUBST(TERMCAP_LIBRARY)
 AC_SUBST(READLINE_LIBRARIES)
+
+])
+
+#-----------------------------------------------------------------------------#
+
+AC_DEFUN([MERCURY_CHECK_EDITLINE], [
+AC_REQUIRE([MERCURY_CHECK_READLINE])
+AC_ARG_WITH(editline,
+[  --without-editline      Do not use the editline library],
+mercury_cv_with_editline="$withval", mercury_cv_with_editline=yes)
+
+if test $mercury_cv_with_editline = no; then
+	mercury_cv_have_editline=no
+elif test $mercury_cv_have_readline = no; then
+
+	# Check for the editline header files.
+	MERCURY_CHECK_FOR_HEADERS(editline/readline.h)
+
+	# Check for the editline library.
+	AC_CHECK_LIB(edit, readline, mercury_cv_have_editline=yes,
+		mercury_cv_have_editline=no)
+else
+	mercury_cv_have_editline=no
+fi
+
+if test $mercury_cv_have_editline = yes; then
+	AC_DEFINE(MR_USE_EDITLINE)
+	TERMCAP_LIBRARY=""
+	READLINE_LIBRARIES="-ledit"
+fi
 
 ])
 

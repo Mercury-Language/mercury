@@ -22,9 +22,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef MR_NO_USE_READLINE
-  #ifdef MR_HAVE_READLINE_READLINE_H
+#if defined(MR_USE_READLINE) || defined(MR_USE_EDITLINE)
+  #if defined(MR_HAVE_READLINE_READLINE_H)
     #include <readline/readline.h>
+  #elif defined(MR_HAVE_EDITLINE_READLINE_H)
+    #include <editline/readline.h>
   #else
     extern char     *rl_line_buffer;
     extern int      rl_point;
@@ -78,7 +80,7 @@ static  void                MR_trace_free_map_completer_data(
 char *
 MR_trace_line_completer(const char *passed_word, int state)
 {
-#ifdef MR_NO_USE_READLINE
+#if !defined(MR_USE_READLINE) && !defined(MR_USE_EDITLINE)
     return NULL;
 #else
     static MR_CompleterList     *completer_list;
@@ -226,7 +228,7 @@ MR_trace_line_completer(const char *passed_word, int state)
     }
 
     return completion;
-#endif // ! MR_NO_USE_READLINE
+#endif // defined(MR_USE_READLINE) || defined(MR_USE_EDITLINE)
 }
 
 static char *
@@ -585,7 +587,7 @@ static char *
 MR_trace_filename_completer_next(const char *word, size_t word_len,
     MR_CompleterData *data)
 {
-#ifdef MR_NO_USE_READLINE
+#if !defined(MR_USE_READLINE) && !defined(MR_USE_EDITLINE)
     return NULL;
 #else
     MR_Integer  state;
@@ -593,7 +595,7 @@ MR_trace_filename_completer_next(const char *word, size_t word_len,
     state = (MR_Integer) *data;
     *data = (MR_CompleterData) 1;
     return filename_completion_function((char *) word, (int) state);
-#endif // ! MR_NO_USE_READLINE
+#endif // defined(MR_USE_READLINE) || defined(MR_USE_EDITLINE)
 }
 
 ////////////////////////////////////////////////////////////////////////////

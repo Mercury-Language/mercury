@@ -533,11 +533,11 @@
 
 #undef  MR_DEEP_PROFILER_ENABLED
 
-// MR_NO_USE_READLINE
+// MR_USE_READLINE
 //
-// Set this if you want to prevent the debugger from using the GNU readline
-// library for the command-line prompt. The autoconfiguration script sets this
-// if it can't find a termcap library.
+// GNU readline and any supporting libraries required (e.g. termcap) are
+// available and should be used by the debugger for the command-line prompt.
+// this will *not* be defined if MR_USE_EDITLINE is defined.
 //
 // MR_HAVE_READLINE_READLINE_H
 // MR_HAVE_READLINE_HISTORY_H
@@ -545,9 +545,22 @@
 // Defined if the header files readline/readline.h and
 // readline/history.h are available.
 
-#undef  MR_NO_USE_READLINE
+#undef  MR_USE_READLINE
 #undef  MR_HAVE_READLINE_READLINE_H
 #undef  MR_HAVE_READLINE_HISTORY_H
+
+// MR_USE_EDITLINE
+//
+// The editline library is available and should be used by the debugger
+// for the command-line prompt.
+// This will *not* be defined if MR_USE_READLINE is defined.
+//
+// MR_HAVE_EDITLINE_READLINE_H
+//
+// Define if the header file editline/readline.h. is available.
+
+#undef MR_USE_EDITLINE
+#undef MR_HAVE_EDITLINE_READLINE_H
 
 // MR_MKFIFO
 //
