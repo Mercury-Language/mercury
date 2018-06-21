@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2010-2012 The University of Melbourne.
 % Copyright (C) 2013-2015, 2017-2018 The Mercury team.
@@ -353,7 +353,7 @@ int_hash(N, N).
     int_hash(N::in, H::out),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    const int c2 = 0x27d4eb2d; /* a prime or an odd constant */
+    const int c2 = 0x27d4eb2d; // a prime or an odd constant
     MR_Unsigned key;
 
     key = N;
@@ -365,11 +365,11 @@ int_hash(N, N).
         key = key * c2;
         key = key ^ (key >> 15);
     } else {
-        key = (~key) + (key << 21); /* key = (key << 21) - key - 1; */
+        key = (~key) + (key << 21); // key = (key << 21) - key - 1;
         key = key ^ (key >> 24);
-        key = (key + (key << 3)) + (key << 8); /* key * 265 */
+        key = (key + (key << 3)) + (key << 8); // key * 265
         key = key ^ (key >> 14);
-        key = (key + (key << 2)) + (key << 4); /* key * 21 */
+        key = (key + (key << 2)) + (key << 4); // key * 21
         key = key ^ (key >> 28);
         key = key + (key << 31);
     }

@@ -118,20 +118,18 @@
 :- pragma foreign_decl("C", "
 #ifndef MR_HIGHLEVEL_CODE
   #if (!defined(MR_EXEC_TRACE) && !defined(MR_DEEP_PROFILING)) || !defined(MR_USE_GCC_NONLOCAL_GOTOS)
-    /*
-    ** In calling thread.yield, semaphore.wait or semaphore.signal, the
-    ** calling context may need to suspend and yield to another context.
-    ** This is implemented by setting the resume address of the context to an
-    ** auxiliary function outside of the foreign_proc. This breaks when
-    ** execution tracing or deep profiling are enabled as code inserted at the
-    ** end of the foreign_proc won't be executed. In those cases we rely on
-    ** the gcc extension that allows us to take the address of labels within
-    ** the foreign_proc, so the context will resume back inside the
-    ** foreign_proc.
-    **
-    ** XXX Implement those procedures as :- pragma external_preds so that the
-    ** transforms won't be applied.
-    */
+    // In calling thread.yield, semaphore.wait or semaphore.signal,
+    // the calling context may need to suspend and yield to another context.
+    // This is implemented by setting the resume address of the context to
+    // an auxiliary function outside of the foreign_proc. This breaks when
+    // execution tracing or deep profiling are enabled as code inserted at the
+    // end of the foreign_proc won't be executed. In those cases we rely on
+    // the gcc extension that allows us to take the address of labels within
+    // the foreign_proc, so the context will resume back inside the
+    // foreign_proc.
+    //
+    // XXX Implement those procedures as :- pragma external_preds so that the
+    // transforms won't be applied.
     #define ML_THREAD_AVOID_LABEL_ADDRS
   #endif
 #endif
@@ -267,30 +265,26 @@ spawn_context_2(_, Res, "", !IO) :-
     tlm = MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
     ctxt->MR_ctxt_thread_local_mutables = tlm;
 
-    /*
-    ** Derive a thread id from the address of the thread-local mutable vector
-    ** for the Mercury thread. It should actually be more unique than a
-    ** context address as contexts are kept around and reused.
-    */
+    // Derive a thread id from the address of the thread-local mutable vector
+    // for the Mercury thread. It should actually be more unique than a
+    // context address as contexts are kept around and reused.
     ThreadId = MR_make_string(MR_ALLOC_ID, ""%p"", tlm);
 
-    /*
-    ** Store Goal and ThreadId on the top of the new context's stack.
-    */
+    // Store Goal and ThreadId on the top of the new context's stack.
     ctxt->MR_ctxt_sp += 2;
-    ctxt->MR_ctxt_sp[0] = Goal;                 /* MR_stackvar(1) */
-    ctxt->MR_ctxt_sp[-1] = (MR_Word) ThreadId;  /* MR_stackvar(2) */
+    ctxt->MR_ctxt_sp[0] = Goal;                 // MR_stackvar(1)
+    ctxt->MR_ctxt_sp[-1] = (MR_Word) ThreadId;  // MR_stackvar(2)
 
     MR_schedule_context(ctxt);
 
     Success = MR_TRUE;
 }
-#else /* MR_HIGHLEVEL_CODE */
+#else // MR_HIGHLEVEL_CODE
 {
     Success = MR_FALSE;
     ThreadId = MR_make_string_const("""");
 }
-#endif /* MR_HIGHLEVEL_CODE */
+#endif // MR_HIGHLEVEL_CODE
 ").
 
 :- pragma foreign_proc("Java",
@@ -471,9 +465,9 @@ INIT mercury_sys_init_thread_modules
 
     MR_define_entry(mercury__thread__spawn_begin_thread);
     {
-        /* Call the closure placed the top of the stack. */
-        MR_r1 = MR_stackvar(1); /* Goal */
-        MR_r2 = MR_stackvar(2); /* ThreadId */
+        // Call the closure placed the top of the stack.
+        MR_r1 = MR_stackvar(1); // Goal
+        MR_r2 = MR_stackvar(2); // ThreadId
         MR_decr_sp(2);
         MR_noprof_call(MR_ENTRY(mercury__do_call_closure_1),
             MR_LABEL(mercury__thread__spawn_end_thread));
@@ -496,7 +490,7 @@ INIT mercury_sys_init_thread_modules
 
 #endif
 
-    /* forward decls to suppress gcc warnings */
+    // Forward decls to suppress gcc warnings.
     void mercury_sys_init_thread_modules_init(void);
     void mercury_sys_init_thread_modules_init_type_tables(void);
     #ifdef  MR_DEEP_PROFILING
@@ -513,14 +507,14 @@ INIT mercury_sys_init_thread_modules
 
     void mercury_sys_init_thread_modules_init_type_tables(void)
     {
-        /* no types to register */
+        // No types to register.
     }
 
     #ifdef  MR_DEEP_PROFILING
     void mercury_sys_init_thread_modules_write_out_proc_statics(FILE *deep_fp,
         FILE *procrep_fp)
     {
-        /* no proc_statics to write out */
+        // No proc_statics to write out.
     }
     #endif
 ").
@@ -555,7 +549,7 @@ INIT mercury_sys_init_thread_modules
         ML_THREAD_START_ERROR
   };
 
-#endif /* MR_THREAD_SAFE */
+#endif // MR_THREAD_SAFE
 ").
 
 :- pragma foreign_code("C", "
@@ -576,12 +570,12 @@ INIT mercury_sys_init_thread_modules
 
     ML_incr_thread_barrier_count();
 
-    /*
-    ** The obvious synchronisation object to use here is a semaphore but
-    ** glibc < 2.21 had a bug which could result in sem_post reading from a
-    ** semaphore after (in another thread) sem_wait returns and destroys the
-    ** semaphore. <https://sourceware.org/bugzilla/show_bug.cgi?id=12674>
-    */
+    // The obvious synchronisation object to use here is a semaphore,
+    // but glibc < 2.21 had a bug which could result in sem_post reading
+    // from a semaphore after (in another thread) sem_wait returns and
+    // destroys the semaphore.
+    // <https://sourceware.org/bugzilla/show_bug.cgi?id=12674>
+
     pthread_mutex_init(&args.mutex, MR_MUTEX_ATTR);
     pthread_cond_init(&args.cond, MR_COND_ATTR);
     args.goal = goal;
@@ -605,7 +599,7 @@ INIT mercury_sys_init_thread_modules
         while (args.thread_state == ML_THREAD_NOT_READY) {
             int cond_err = MR_COND_WAIT(&args.cond, &args.mutex,
                 ""ML_create_exclusive_thread"");
-            /* EINTR should not be possible but it has happened before. */
+            // EINTR should not be possible, but it has happened before.
             if (cond_err != 0 && errno != EINTR) {
                 MR_fatal_error(
                     ""ML_create_exclusive_thread: MR_COND_WAIT error %d"",
@@ -646,9 +640,7 @@ INIT mercury_sys_init_thread_modules
         return NULL;
     }
 
-    /*
-    ** Set the context to have the current engine as its exclusive engine.
-    */
+    // Set the context to have the current engine as its exclusive engine.
     MR_assert(MR_ENGINE(MR_eng_this_context) != NULL);
     MR_ENGINE(MR_eng_this_context)->MR_ctxt_exclusive_engine =
         MR_ENGINE(MR_eng_id);
@@ -659,9 +651,7 @@ INIT mercury_sys_init_thread_modules
     thread_id = MR_make_string(MR_ALLOC_SITE_RUNTIME,
         ""%"" MR_INTEGER_LENGTH_MODIFIER ""x"", MR_SELF_THREAD_ID);
 
-    /*
-    ** Take a copy of the goal before telling the parent we are ready.
-    */
+    // Take a copy of the goal before telling the parent we are ready.
     goal = args->goal;
 
     MR_LOCK(&args->mutex, ""ML_exclusive_thread_wrapper"");
@@ -678,7 +668,7 @@ INIT mercury_sys_init_thread_modules
 
     return NULL;
   }
-#endif /* MR_THREAD_SAFE */
+#endif // MR_THREAD_SAFE
 ").
 
 :- pred call_back_to_mercury(pred(thread, io, io), thread_id, io, io).
@@ -729,11 +719,10 @@ call_back_to_mercury(Goal, ThreadId, !IO) :-
     }
   #else
     if (MR_thread_barrier_count == 0) {
-        /*
-        ** If this is the last spawned context to terminate and the
-        ** main context was just waiting on us in order to terminate
-        ** then reschedule the main context.
-        */
+        // If this is the last spawned context to terminate and the
+        // main context was just waiting on us in order to terminate,
+        // then reschedule the main context.
+
         if (MR_thread_barrier_context) {
             MR_schedule_context(MR_thread_barrier_context);
             MR_thread_barrier_context = NULL;
@@ -743,7 +732,7 @@ call_back_to_mercury(Goal, ThreadId, !IO) :-
     MR_UNLOCK(&MR_thread_barrier_lock, ""ML_decr_thread_barrier_count"");
   }
 
-#endif /* MR_THREAD_SAFE || !MR_HIGHLEVEL_CODE */
+#endif // MR_THREAD_SAFE || !MR_HIGHLEVEL_CODE
 ").
 
 %---------------------------------------------------------------------------%

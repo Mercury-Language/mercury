@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007-2011 The University of Melbourne.
 % Copyright (C) 2014-2018 The Mercury team.
@@ -124,7 +124,7 @@ backjump(Id) :-
 
 :- pragma foreign_decl("C",
 "
-/* protect against multiple inclusion */
+// protect against multiple inclusion
 #ifndef ML_BACKJUMP_GUARD
 #define ML_BACKJUMP_GUARD
 
@@ -144,8 +144,8 @@ mercury__backjump__builtin_choice_id_1_p_0(
 void MR_CALL
 mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id);
 
-#endif /* MR_HIGHLEVEL_CODE */
-#endif /* ML_BACKJUMP_GUARD */
+#endif // MR_HIGHLEVEL_CODE
+#endif // ML_BACKJUMP_GUARD
 ").
 
 :- pragma foreign_code("C",
@@ -154,12 +154,10 @@ mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id);
 
 #ifdef MR_NATIVE_GC
 
-/*
-** XXX code is needed to trace the local variables
-** in the builtin_choice_id predicate for accurate GC.
-*/
+// XXX code is needed to trace the local variables
+// in the builtin_choice_id predicate for accurate GC.
 
-#endif /* MR_NATIVE_GC */
+#endif // MR_NATIVE_GC
 
 void MR_CALL
 mercury__backjump__builtin_choice_id_1_p_0(MR_Integer *id, MR_CONT_PARAMS)
@@ -194,25 +192,24 @@ mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id)
 
     backjump_handler = MR_GET_BACKJUMP_HANDLER();
 
-    /*
-    ** XXX when we commit and prune away nondet stack frames, we leave the
-    ** backjump handlers on the stack. If the caller tries to backjump to
-    ** a frame that has been pruned away, the handler may still be on the
-    ** stack and we won't detect the problem.
-    **
-    ** We could avoid this problem by adding a trailing function which
-    ** prunes back the handler stack on a commit, which would mean that in
-    ** this case we will reach the bottom of the stack and call
-    ** ML_report_invalid_backjump rather than seg faulting. But that would
-    ** require trailing to be always available. Instead, we just rely on
-    ** the caller only backjumping to frames that actually do exist.
-    **
-    ** (The same problem would occur if the caller tries to backjump to a
-    ** frame that has already failed. In this case, though, the choice ID
-    ** will also no longer be live since the call to get_choice_id would have
-    ** been backtracked over, so this isn't as much of a problem as with
-    ** commits.)
-    */
+    // XXX when we commit and prune away nondet stack frames, we leave the
+    // backjump handlers on the stack. If the caller tries to backjump to
+    // a frame that has been pruned away, the handler may still be on the
+    // stack and we won't detect the problem.
+    //
+    // We could avoid this problem by adding a trailing function which
+    // prunes back the handler stack on a commit, which would mean that in
+    // this case we will reach the bottom of the stack and call
+    // ML_report_invalid_backjump rather than seg faulting. But that would
+    // require trailing to be always available. Instead, we just rely on
+    // the caller only backjumping to frames that actually do exist.
+    //
+    // (The same problem would occur if the caller tries to backjump to a
+    // frame that has already failed. In this case, though, the choice ID
+    // will also no longer be live since the call to get_choice_id would have
+    // been backtracked over, so this isn't as much of a problem as with
+    // commits.)
+
     while (backjump_handler != NULL) {
         if (backjump_handler->MR_bjh_id == id) {
             break;
@@ -233,7 +230,7 @@ mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id)
     }
 }
 
-#endif /* MR_HIGHLEVEL_CODE */
+#endif // MR_HIGHLEVEL_CODE
 ").
 
 %---------------------------------------------------------------------------%
@@ -251,7 +248,7 @@ mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id)
 #include ""mercury_layout_util.h""
 #include ""mercury_deep_profiling_hand.h""
 
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
 ").
 
 :- pragma foreign_code("C",
@@ -332,7 +329,7 @@ MR_define_entry(mercury__backjump__builtin_choice_id_1_0);
 }
 MR_define_label(mercury__backjump__builtin_choice_id_1_0_i1);
 {
-    /* Restore the previous handler. */
+    // Restore the previous handler.
     MR_SET_BACKJUMP_HANDLER(ML_BACKJUMP_STRUCT->MR_bjh_prev);
     MR_fail();
 }
@@ -349,9 +346,7 @@ MR_define_entry(mercury__backjump__builtin_backjump_1_0);
             ""builtin_backjump: NYI backjumping and deep profiling"");
     #endif
 
-    /*
-    ** XXX see comments in the high-level implementation.
-    */
+    // XXX see comments in the high-level implementation.
     while (backjump_handler != NULL) {
         if (backjump_handler->MR_bjh_id == id) {
             break;
@@ -368,11 +363,9 @@ MR_define_entry(mercury__backjump__builtin_backjump_1_0);
     } else {
         ML_BACKJUMP_CHECKPOINT(""found"", backjump_handler);
 
-        /*
-        ** XXX we should produce some EXCP trace events here, to give
-        ** the user an opportunity to retry a goal that calculated a
-        ** (possibly incorrect) backjump.
-        */
+        // XXX we should produce some EXCP trace events here, to give
+        // the user an opportunity to retry a goal that calculated a
+        // (possibly incorrect) backjump.
 
         MR_SET_BACKJUMP_HANDLER(backjump_handler->MR_bjh_prev);
         MR_sp_word = (MR_Word) backjump_handler->MR_bjh_saved_sp;
@@ -383,7 +376,7 @@ MR_define_entry(mercury__backjump__builtin_backjump_1_0);
 
 MR_END_MODULE
 
-#endif /* !MR_HIGHLEVEL_CODE */
+#endif // !MR_HIGHLEVEL_CODE
 
 /*
 INIT mercury_sys_init_backjumps
@@ -398,7 +391,7 @@ void mercury_sys_init_backjumps_init(void)
 
 void mercury_sys_init_backjumps_init_type_tables(void)
 {
-    /* no types to register */
+    // no types to register
 }
 
 #ifdef MR_DEEP_PROFILING
@@ -411,7 +404,7 @@ mercury_sys_init_backjumps_write_out_proc_statics(FILE *deep_fp,
     MR_write_out_user_proc_static(deep_fp, procrep_fp,
         &MR_proc_layout_user_name(backjump, builtin_backjump, 1, 0));
 }
-#endif /* MR_DEEP_PROFILING */
+#endif // MR_DEEP_PROFILING
 
 ").
 

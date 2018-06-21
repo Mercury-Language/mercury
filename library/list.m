@@ -3447,15 +3447,12 @@ one_or_more_cons(Head, one_or_more(HeadTail, TailTail)) =
 
 :- pragma foreign_code("Java", "
 
-/*
-** We don't use `:- pragma foreign_export' to generate these methods because
-** the interfaces would expect type_info arguments.
-*/
+// We don't use `:- pragma foreign_export' to generate these methods,
+// because the interfaces would expect type_info arguments.
 
-/*
-** If you need to specify the type parameter, you must use the qualified
-** method name, e.g. list.<Integer>empty_list()
-*/
+// If you need to specify the type parameter, you must use the qualified
+// method name, e.g. list.<Integer>empty_list()
+
 public static <E>
 List_1<E> empty_list()
 {
@@ -3486,10 +3483,8 @@ List_1<E> det_tail(List_1<E> lst)
     return ((List_1.F_cons_2<E>) lst).F2;
 }
 
-/*
-** A wrapper class to allow for-each syntax.
-** You must use a new instance of this class for each loop!
-*/
+// A wrapper class to allow for-each syntax.
+// You must use a new instance of this class for each loop!
 
 public static class ListIterator<E>
     implements java.lang.Iterable<E>, java.util.Iterator<E>

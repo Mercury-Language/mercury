@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997, 2000-2008, 2010-2011 The University of Melbourne.
 % Copyright (C) 2013-2018 The Mercury team.
@@ -677,8 +677,8 @@ copy_ref_value(Ref, Val) -->
 "
     #include ""mercury_type_info.h""
     #include ""mercury_heap.h""
-    #include ""mercury_misc.h""         /* for MR_fatal_error() */
-    #include ""mercury_deconstruct.h""  /* for MR_arg() */
+    #include ""mercury_misc.h""         // for MR_fatal_error()
+    #include ""mercury_deconstruct.h""  // for MR_arg()
 ").
 
 :- pragma foreign_proc("C",
@@ -727,11 +727,9 @@ copy_ref_value(Ref, Val) -->
     arg_ref(Ref::in, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /*
-    ** XXX Some dynamic type-checking should be done here to check that
-    ** the type of the specified Arg matches the type supplied by the caller.
-    ** This will require RTTI.
-    */
+    // XXX Some dynamic type-checking should be done here to check that
+    // the type of the specified Arg matches the type supplied by the caller.
+    // This will require RTTI.
 
     ArgRef = new store.Ref(Ref.getValue(), ArgNum);
 ").
@@ -740,11 +738,9 @@ copy_ref_value(Ref, Val) -->
     arg_ref(Ref::in, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /*
-    ** XXX Some dynamic type-checking should be done here to check that
-    ** the type of the specified Arg matches the type supplied by the caller.
-    ** This will require RTTI.
-    */
+    // XXX Some dynamic type-checking should be done here to check that
+    // the type of the specified Arg matches the type supplied by the caller.
+    // This will require RTTI.
 
     ArgRef = new store.Ref(Ref.getValue(), ArgNum);
 ").
@@ -786,12 +782,10 @@ copy_ref_value(Ref, Val) -->
         // that are stored unboxed in two words.
         * (MR_Word *) ArgRef = MR_arg_value(arg_ref, arg_locn);
     } else if (arg_ref == &Val) {
-        /*
-        ** For no_tag types, the argument may have the same address as the
-        ** term. Since the term (Val) is currently on the C stack, we can't
-        ** return a pointer to it; so if that is the case, then we need
-        ** to copy it to the heap before returning.
-        */
+        // For no_tag types, the argument may have the same address as the
+        // term. Since the term (Val) is currently on the C stack, we can't
+        // return a pointer to it; so if that is the case, then we need
+        // to copy it to the heap before returning.
 
         MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
             MR_SIZE_SLOT_SIZE + 1, MR_ALLOC_ID, ""store.ref/2"");
@@ -807,11 +801,9 @@ copy_ref_value(Ref, Val) -->
     new_arg_ref(Val::di, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /*
-    ** XXX Some dynamic type-checking should be done here to check that
-    ** the type of the specified Arg matches the type supplied by the caller.
-    ** This will require RTTI.
-    */
+    // XXX Some dynamic type-checking should be done here to check that
+    // the type of the specified Arg matches the type supplied by the caller.
+    // This will require RTTI.
 
     ArgRef = new store.Ref(Val, ArgNum);
 ").
@@ -820,11 +812,9 @@ copy_ref_value(Ref, Val) -->
     new_arg_ref(Val::di, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /*
-    ** XXX Some dynamic type-checking should be done here to check that
-    ** the type of the specified Arg matches the type supplied by the caller.
-    ** This will require RTTI.
-    */
+    // XXX Some dynamic type-checking should be done here to check that
+    // the type of the specified Arg matches the type supplied by the caller.
+    // This will require RTTI.
 
     ArgRef = new store.Ref(Val, ArgNum);
 ").
@@ -893,7 +883,7 @@ copy_ref_value(Ref, Val) -->
     unsafe_arg_ref(Ref::in, Arg::in, ArgRef::out, S0::di, S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    /* unsafe - does not check type & arity, won't handle no_tag types */
+    // Unsafe - does not check type & arity, won't handle no_tag types.
     MR_Word *Ptr;
 
     Ptr = (MR_Word *) MR_strip_tag((MR_Word) Ref);
@@ -919,7 +909,7 @@ copy_ref_value(Ref, Val) -->
     unsafe_new_arg_ref(Val::di, Arg::in, ArgRef::out, S0::di, S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    /* unsafe - does not check type & arity, won't handle no_tag types */
+    // Unsafe - does not check type & arity, won't handle no_tag types.
     MR_Word *Ptr;
 
     Ptr = (MR_Word *) MR_strip_tag((MR_Word) Val);

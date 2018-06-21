@@ -931,21 +931,19 @@ compare_elements(N, Size, Array1, Array2, Result) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-#include ""mercury_heap.h""             /* for MR_maybe_record_allocation() */
-#include ""mercury_library_types.h""    /* for MR_ArrayPtr */
+#include ""mercury_heap.h""             // for MR_maybe_record_allocation()
+#include ""mercury_library_types.h""    // for MR_ArrayPtr
 
-/*
-** We do not yet record term sizes for arrays in term size profiling
-** grades. Doing so would require
-**
-** - modifying ML_alloc_array to allocate an extra word for the size;
-** - modifying all the predicates that call ML_alloc_array to compute the
-**   size of the array (the sum of the sizes of the elements and the size of
-**   the array itself);
-** - modifying all the predicates that update array elements to compute the
-**   difference between the sizes of the terms being added to and deleted from
-**   the array, and updating the array size accordingly.
-*/
+// We do not yet record term sizes for arrays in term size profiling
+// grades. Doing so would require
+//
+// - modifying ML_alloc_array to allocate an extra word for the size;
+// - modifying all the predicates that call ML_alloc_array to compute the
+//   size of the array (the sum of the sizes of the elements and the size of
+//   the array itself);
+// - modifying all the predicates that update array elements to compute the
+//   difference between the sizes of the terms being added to and deleted from
+//   the array, and updating the array size accordingly.
 
 #define ML_alloc_array(newarray, arraysize, alloc_id)                   \
     do {                                                                \
@@ -961,10 +959,8 @@ void ML_init_array(MR_ArrayPtr, MR_Integer size, MR_Word item);
 ").
 
 :- pragma foreign_code("C", "
-/*
-** The caller is responsible for allocating the memory for the array.
-** This routine does the job of initializing the already-allocated memory.
-*/
+// The caller is responsible for allocating the memory for the array.
+// This routine does the job of initializing the already-allocated memory.
 void
 ML_init_array(MR_ArrayPtr array, MR_Integer size, MR_Word item)
 {
@@ -1440,11 +1436,9 @@ generate(Size, GenFunc) = Array :-
 "
     ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
 
-    /*
-    ** In debugging grades we fill the array with the first element
-    ** in case the return value of a call to this predicate is examined
-    ** in the debugger.
-    */
+    // In debugging grades, we fill the array with the first element,
+    // in case the return value of a call to this predicate is examined
+    // in the debugger.
     #if defined(MR_EXEC_TRACE)
         ML_init_array(Array, Size, FirstElem);
     #else
@@ -1533,7 +1527,7 @@ min(A) = N :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    /* Array not used */
+    // Array not used.
     Min = 0;
 ").
 
@@ -1541,7 +1535,7 @@ min(A) = N :-
     min(_Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /* Array not used */
+    // Array not used.
     Min = 0;
 ").
 
@@ -1557,7 +1551,7 @@ min(A) = N :-
     min(_Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /* Array not used */
+    // Array not used.
     Min = 0;
 ").
 
@@ -1779,7 +1773,7 @@ set(Index, Item, !Array) :-
         ])
     ],
 "
-    Array0->elements[Index] = Item; /* destructive update! */
+    Array0->elements[Index] = Item; // destructive update!
     Array = Array0;
 ").
 
@@ -1787,7 +1781,7 @@ set(Index, Item, !Array) :-
     unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    Array0.SetValue(Item, Index);   /* destructive update! */
+    Array0.SetValue(Item, Index);   // destructive update!
     Array = Array0;
 }").
 
@@ -1821,7 +1815,7 @@ set(Index, Item, !Array) :-
     } else {
         ((Object[]) Array0)[Index] = Item;
     }
-    Array = Array0;         /* destructive update! */
+    Array = Array0;         // destructive update!
 ").
 
 %---------------------------------------------------------------------------%
@@ -1840,12 +1834,10 @@ ML_resize_array(MR_ArrayPtr new_array, MR_ArrayPtr old_array,
 ").
 
 :- pragma foreign_code("C", "
-/*
-** The caller is responsible for allocating the storage for the new array.
-** This routine does the job of copying the old array elements to the
-** new array, initializing any additional elements in the new array,
-** and deallocating the old array.
-*/
+// The caller is responsible for allocating the storage for the new array.
+// This routine does the job of copying the old array elements to the
+// new array, initializing any additional elements in the new array,
+// and deallocating the old array.
 void
 ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
     MR_Integer array_size, MR_Word item)
@@ -1866,10 +1858,8 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
         array->elements[i] = item;
     }
 
-    /*
-    ** Since the mode on the old array is `array_di', it is safe to
-    ** deallocate the storage for it.
-    */
+    // Since the mode on the old array is `array_di', it is safe to
+    // deallocate the storage for it.
 #ifdef MR_CONSERVATIVE_GC
     MR_GC_free_attrib(old_array);
 #endif
@@ -1937,11 +1927,9 @@ ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 ").
 
 :- pragma foreign_code("C", "
-/*
-** The caller is responsible for allocating the storage for the new array.
-** This routine does the job of copying the old array elements to the
-** new array and deallocating the old array.
-*/
+// The caller is responsible for allocating the storage for the new array.
+// This routine does the job of copying the old array elements to the
+// new array and deallocating the old array.
 void
 ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
     MR_Integer array_size)
@@ -1953,10 +1941,8 @@ ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
         array->elements[i] = old_array->elements[i];
     }
 
-    /*
-    ** Since the mode on the old array is `array_di', it is safe to
-    ** deallocate the storage for it.
-    */
+    // Since the mode on the old array is `array_di', it is safe to
+    // deallocate the storage for it.
 #ifdef MR_CONSERVATIVE_GC
     MR_GC_free_attrib(old_array);
 #endif
@@ -2036,18 +2022,14 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array);
 ").
 
 :- pragma foreign_code("C", "
-/*
-** The caller is responsible for allocating the storage for the new array.
-** This routine does the job of copying the array elements.
-*/
+// The caller is responsible for allocating the storage for the new array.
+// This routine does the job of copying the array elements.
 void
 ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 {
-    /*
-    ** Any changes to this function will probably also require changes to
-    ** - array.append below, and
-    ** - MR_deep_copy() in runtime/mercury_deep_copy.[ch].
-    */
+    // Any changes to this function will probably also require changes to
+    // - array.append below, and
+    // - MR_deep_copy() in runtime/mercury_deep_copy.[ch].
 
     MR_Integer i;
     MR_Integer array_size;

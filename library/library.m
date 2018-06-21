@@ -204,10 +204,9 @@
 "
     MR_ConstString version_string = MR_VERSION;
     MR_ConstString fullarch_string = MR_FULLARCH;
-    /*
-    ** Cast away const needed here, because Mercury declares Version
-    ** with type MR_String rather than MR_ConstString.
-    */
+
+    // Cast away const needed here, because Mercury declares Version
+    // with type MR_String rather than MR_ConstString.
     Version = (MR_String) (MR_Word) version_string;
     Fullarch = (MR_String) (MR_Word) fullarch_string;
 ").

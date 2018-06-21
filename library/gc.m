@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999,2001-2007 The University of Melbourne.
 % Copyright (C) 2014-2015, 2018 The Mercury team.
@@ -54,7 +54,7 @@ garbage_collect(!IO) :-
 "
 #ifdef MR_CONSERVATIVE_GC
   #ifndef MR_HIGHLEVEL_CODE
-    /* clear out the stacks and registers before garbage collecting */
+    // clear out the stacks and registers before garbage collecting.
     MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp + 1);
     MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_nondetstack_zone),
         MR_maxfr + 1);
@@ -66,7 +66,7 @@ garbage_collect(!IO) :-
   #ifdef MR_HIGHLEVEL_CODE
     MR_garbage_collect();
   #else
-    /* XXX not yet implemented */
+    // XXX not yet implemented
   #endif
 #endif
 ").

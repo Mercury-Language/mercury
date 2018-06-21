@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007 The University of Melbourne.
 % Copyright (C) 2014-2018 The Mercury team.
@@ -557,7 +557,7 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     get_registers(HeapPtr::out, SolutionsHeapPtr::out, TrailPtr::out),
     [will_not_call_mercury, thread_safe],
 "
-    /* save heap states */
+    // Save heap states.
 #ifdef MR_RECLAIM_HP_ON_FAILURE
     HeapPtr = (MR_Word) MR_hp;
     SolutionsHeapPtr = (MR_Word) MR_sol_hp;
@@ -565,7 +565,7 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     HeapPtr = SolutionsHeapPtr = 0;
 #endif
 
-    /* save trail state */
+    // Save trail state.
 #ifdef MR_USE_TRAIL
     MR_store_ticket(TrailPtr);
 #else
@@ -577,15 +577,13 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     get_registers(HeapPtr::out, SolutionsHeapPtr::out, TrailPtr::out),
     [will_not_call_mercury, thread_safe],
 "
-    /*
-    ** For .NET we always use the MS garbage collector,
-    ** so we don't have to worry here about heap reclamation on failure.
-    */
+    // For .NET we always use the MS garbage collector,
+    // so we don't have to worry here about heap reclamation on failure.
     HeapPtr = null;
     SolutionsHeapPtr = null;
 
 #if MR_USE_TRAIL
-    /* XXX trailing not yet implemented for the MLDS back-end */
+    // XXX Trailing not yet implemented for the MLDS back-end.
     mercury.runtime.Errors.SORRY(""foreign code for get_registers"");
 #else
     TrailPtr = null;
@@ -596,14 +594,12 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     get_registers(HeapPtr::out, SolutionsHeapPtr::out, TrailPtr::out),
     [will_not_call_mercury, thread_safe],
 "
-    /*
-    ** Java has a builtin garbage collector,
-    ** so we don't have to worry here about heap reclamation on failure.
-    */
+    // Java has a builtin garbage collector,
+    // so we don't have to worry here about heap reclamation on failure.
     HeapPtr = null;
     SolutionsHeapPtr = null;
 
-    /* XXX No trailing for the Java back-end. */
+    // XXX No trailing for the Java back-end.
     TrailPtr = null;
 ").
 
@@ -625,7 +621,7 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     [will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-    /* check for outstanding delayed goals (``floundering'') */
+    // Check for outstanding delayed goals (``floundering'').
     MR_reset_ticket(TrailPtr, MR_solve);
 #endif
 ").
@@ -643,7 +639,7 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     check_for_floundering(_TrailPtr::in),
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -680,7 +676,7 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     discard_trail_ticket,
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -716,21 +712,17 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     swap_heap_and_solutions_heap,
     [will_not_call_mercury, thread_safe],
 "
-    //
-    // For the .NET back-end, we use the system heap, rather
-    // than defining our own heaps. So we don't need to
-    // worry about swapping them. Hence do nothing here.
-    //
+    // For the .NET back-end, we use the system heap, rather than
+    // defining our own heaps. So we don't need to worry about swapping them.
+    // Hence do nothing here.
 ").
 
 :- pragma foreign_proc("Java",
     swap_heap_and_solutions_heap,
     [will_not_call_mercury, thread_safe],
 "
-    /*
-    ** For the Java back-end, as for the .NET back-end, we don't define
-    ** our own heaps. So take no action here.
-    */
+    // For the Java back-end we don't define our own heaps.
+    // So take no action here.
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -757,17 +749,15 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
 #include ""mercury_deep_copy.h""
 
 #ifndef MR_RECLAIM_HP_ON_FAILURE
-  /* for conservative GC, shallow copies suffice */
+  // For conservative GC, shallow copies suffice.
   #define MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr,                        \\
         OldVar, NewVal, TypeInfo_for_T)                                 \\
     do {                                                                \\
         NewVal = OldVal;                                                \\
     } while (0)
 #else
-  /*
-  ** Note that we need to save/restore the MR_hp register, if it
-  ** is transient, before/after calling MR_deep_copy().
-  */
+  // Note that we need to save/restore the MR_hp register,
+  // if it is transient, before/after calling MR_deep_copy().
   #define MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr,                        \\
         OldVar, NewVal, TypeInfo_for_T)                                 \\
     do {                                                                \\
@@ -828,12 +818,9 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     partial_deep_copy(_SolutionsHeapPtr::in, OldVal::in, NewVal::out),
     [will_not_call_mercury, thread_safe],
 "
-    /*
-    ** For the Java back-end, as for the C# back-end,
-    ** we don't do heap reclamation on failure,
-    ** so we don't need to worry about making deep copies here.
-    ** Shallow copies will suffice.
-    */
+    // For the Java back-end, we don't do heap reclamation on failure,
+    // so we don't need to worry about making deep copies here.
+    // Shallow copies will suffice.
     NewVal = OldVal;
 ").
 :- pragma foreign_proc("Java",
@@ -901,7 +888,7 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     reset_solutions_heap(_SolutionsHeapPtr::in),
     [will_not_call_mercury, thread_safe],
 "
-    /* As above, we take no action. */
+    // As above, we take no action.
 ").
 
 :- pragma foreign_proc("Erlang",

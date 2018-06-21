@@ -880,7 +880,7 @@ current_directory(Res, !IO) :-
     size_t      size = 256;
 
     while (1) {
-        /* `size' includes the NUL terminator. */
+        // `size' includes the NUL terminator.
         MR_allocate_aligned_string_msg(CurDir, size - 1, MR_ALLOC_ID);
         if (getcwd(CurDir, size)) {
             Error = 0;
@@ -891,7 +891,7 @@ current_directory(Res, !IO) :-
             Error = errno;
             break;
         }
-        /* Buffer too small. Resize and try again. */
+        // Buffer too small. Resize and try again.
         size *= 1.5;
     }
 #endif
@@ -1175,9 +1175,9 @@ make_single_directory(DirName, Result, !IO) :-
         if (Error == EEXIST) {
             Status = ML_MAKE_SINGLE_DIRECTORY_NAME_EXISTS;
         }
-      #endif /* EEXIST */
+      #endif // EEXIST
     }
-#else /* !MR_WIN32 && !MR_HAVE_MKDIR */
+#else // !MR_WIN32 && !MR_HAVE_MKDIR
     Status = ML_MAKE_SINGLE_DIRECTORY_ERROR;
     Error = ENOSYS;
 #endif
@@ -1520,7 +1520,7 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 
 #if defined(MR_WIN32) && defined(MR_HAVE_WINDOWS_H)
   #include ""mercury_windows.h""
-  #include <direct.h>   /* for _wgetcwd */
+  #include <direct.h>   // for _wgetcwd
 #endif
 
 #ifdef HAVE_UNISTD_H
@@ -1537,8 +1537,8 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 
 #if defined(MR_WIN32)
     struct ML_DIR_STREAM {
-        HANDLE      handle;         /* may be INVALID_HANDLE_VALUE */
-        MR_String   pending_entry;  /* initially populated, then NULL */
+        HANDLE      handle;         // may be INVALID_HANDLE_VALUE
+        MR_String   pending_entry;  // initially populated, then NULL
     };
     typedef struct ML_DIR_STREAM *ML_DIR_STREAM;
 #elif defined(MR_HAVE_READDIR)
@@ -1626,7 +1626,7 @@ open_2(DirName, DirPattern, Res, !IO) :-
         Error = 0;
     }
 
-#else /* !MR_WIN32 && !(MR_HAVE_OPENDIR etc.) */
+#else // !MR_WIN32 && !(MR_HAVE_OPENDIR etc.)
     Dir = NULL;
     Error = ENOSYS;
 #endif
@@ -1768,7 +1768,7 @@ close(Dir, Res, !IO) :-
     dir.close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    /* Nothing to do. */
+    // Nothing to do.
     Error = null;
 ").
 
@@ -1776,7 +1776,7 @@ close(Dir, Res, !IO) :-
     dir.close_2(_Dir::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    /* Nothing to do. */
+    // Nothing to do.
     Error = null;
 ").
 
@@ -1833,12 +1833,12 @@ read_entry(Dir, Res, !IO) :-
     WIN32_FIND_DATAW file_data;
 
     if (Dir->handle == INVALID_HANDLE_VALUE) {
-        /* Directory was empty when opened. */
+        // Directory was empty when opened.
         Error = 0;
         HaveFileName = MR_NO;
         FileName = MR_make_string_const("""");
     } else if (Dir->pending_entry != NULL) {
-        /* FindFirstFileW already returned the first entry. */
+        // FindFirstFileW already returned the first entry.
         Error = 0;
         HaveFileName = MR_YES;
         FileName = Dir->pending_entry;
@@ -1859,10 +1859,10 @@ read_entry(Dir, Res, !IO) :-
 #elif defined(MR_HAVE_READDIR) && defined(MR_HAVE_CLOSEDIR)
     struct dirent *dir_entry;
 
-    errno = 0;          /* to detect end-of-stream */
+    errno = 0;          // to detect end-of-stream
     dir_entry = readdir(Dir);
     if (dir_entry == NULL) {
-        Error = errno;  /* remains zero at end-of-stream */
+        Error = errno;  // remains zero at end-of-stream
         HaveFileName = MR_NO;
         FileName = MR_make_string_const("""");
     } else {
@@ -1872,7 +1872,7 @@ read_entry(Dir, Res, !IO) :-
             MR_ALLOC_ID);
     }
 
-#else /* !MR_WIN32 && !(MR_HAVE_READDIR etc.) */
+#else // !MR_WIN32 && !(MR_HAVE_READDIR etc.)
     Error = ENOSYS;
     HaveFileName = MR_NO;
     FileName = MR_make_string_const("""");

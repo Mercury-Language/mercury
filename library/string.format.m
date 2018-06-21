@@ -92,14 +92,12 @@
 
 :- pragma foreign_decl("C",
 "
-#include ""mercury_float.h""    /* for MR_float_to_string */
+#include ""mercury_float.h""    // for MR_float_to_string
 
-/*
-** The following macro should expand to MR_TRUE if the C grades should
-** implement string.format using C's sprintf function.
-** Setting it to MR_FALSE will cause string.format to use the Mercury
-** implementation of string formatting in C grades.
-*/
+// The following macro should expand to MR_TRUE if the C grades should
+// implement string.format using C's sprintf function.
+// Setting it to MR_FALSE will cause string.format to use the Mercury
+// implementation of string formatting in C grades.
 
 #define ML_USE_SPRINTF MR_TRUE
 ").
@@ -427,7 +425,7 @@ using_sprintf_for_char(_) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    /* sprintf %c specifier is inadequate for multi-byte UTF-8 characters. */
+    // sprintf %c specifier is inadequate for multi-byte UTF-8 characters.
     SUCCESS_INDICATOR = ML_USE_SPRINTF && MR_is_ascii(Char);
 ").
 
@@ -445,10 +443,8 @@ using_sprintf_for_string(_) :-
 
     SUCCESS_INDICATOR = ML_USE_SPRINTF;
     for (s = Str; *s != '\\0'; s++) {
-        /*
-         * sprintf %s specifier is inadequate for multi-byte UTF-8 characters,
-         * if there is a field width or precision specified.
-         */
+        // sprintf %s specifier is inadequate for multi-byte UTF-8 characters,
+        // if there is a field width or precision specified.
         if (!MR_utf8_is_single_byte(*s)) {
             SUCCESS_INDICATOR = MR_FALSE;
             break;
@@ -1381,10 +1377,8 @@ convert_float_to_string(Float) = String :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    /*
-    ** Note any changes here will require the same changes in
-    ** string.float_to_string.
-    */
+    // Note any changes here will require the same changes in
+    // string.float_to_string.
     MR_float_to_string(FloatVal, FloatString, MR_ALLOC_ID);
 }").
 :- pragma foreign_proc("C#",
@@ -1393,7 +1387,7 @@ convert_float_to_string(Float) = String :-
 "
     // The R format string prints the double out such that it can be
     // round-tripped.
-    // XXX According to the documentation it tries the 15 digits of precision,
+    // XXX According to the documentation it tries 15 digits of precision,
     // then 17 digits skipping 16 digits of precision, unlike what we do
     // for the C backend.
     FloatString = FloatVal.ToString(""R"");

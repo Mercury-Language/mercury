@@ -13,7 +13,7 @@
 % Proleptic Gregorian calendar utilities.
 %
 % The Gregorian calendar is the calendar that is currently used by most of
-% the world. In this calendar a year is a leap year if it is divisible by
+% the world. In this calendar, a year is a leap year if it is divisible by
 % 4, but not divisible by 100. The only exception is if the year is divisible
 % by 400, in which case it is a leap year. For example 1900 is not leap year,
 % while 2000 is. The proleptic Gregorian calendar is an extension of the

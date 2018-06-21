@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2007, 2010 The University of Melbourne.
 % Copyright (C) 2014-2018 The Mercury team.
@@ -727,8 +727,8 @@ table_memo_non_create_answer_block_shortcut(_) :-
 % program.
 
 :- pragma foreign_decl("C", "
-    #include ""mercury_tabling.h""      /* for MR_copy_table_steps */
-    #include ""mercury_trace_base.h""   /* for MR_io_tabling_* */
+    #include ""mercury_tabling.h""      // for MR_copy_table_steps
+    #include ""mercury_trace_base.h""   // for MR_io_tabling_*
 ").
 
 :- pragma foreign_proc("C",
@@ -920,12 +920,11 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     table_mm_answer_is_not_duplicate_shortcut(Subgoal::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    /*
-    ** The body of this predicate doesn't matter, because it will never be
-    ** referred to. When the compiler creates references to this predicate,
-    ** it always overrides the predicate body.
-    */
-    /* mention Subgoal to shut up the warning */
+    // The body of this predicate doesn't matter, because it will never be
+    // referred to. When the compiler creates references to this predicate,
+    // it always overrides the predicate body.
+
+    // mention Subgoal to shut up the warning.
     MR_fatal_error(""table_mm_answer_is_not_duplicate_shortcut: direct call"");
 ").
 
@@ -1082,11 +1081,9 @@ table_mm_fill_answer_block_shortcut(_) :-
     table_mmos_save_inputs,
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    /*
-    ** The body of this predicate doesn't matter, because it will never be
-    ** referred to. When the compiler creates references to this predicate,
-    ** it always overrides the predicate body.
-    */
+    // The body of this predicate doesn't matter, because it will never be
+    // referred to. When the compiler creates references to this predicate,
+    // it always overrides the predicate body.
     MR_fatal_error(""table_mmos_save_inputs: direct call"");
 ").
 
@@ -1094,12 +1091,11 @@ table_mm_fill_answer_block_shortcut(_) :-
     table_mmos_setup_consumer(T::in, GeneratorPred::in, Consumer::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    /*
-    ** The body of this predicate doesn't matter, because it will never be
-    ** referred to. When the compiler creates references to this predicate,
-    ** it always overrides the predicate body.
-    */
-    /* mention T, GeneratorPred, Consumer to shut up the warning */
+    // The body of this predicate doesn't matter, because it will never be
+    // referred to. When the compiler creates references to this predicate,
+    // it always overrides the predicate body.
+
+    // Mention T, GeneratorPred, Consumer to shut up the warning.
     MR_fatal_error(""table_mmos_setup_consumer: direct call"");
 ").
 
@@ -1107,12 +1103,11 @@ table_mm_fill_answer_block_shortcut(_) :-
     table_mmos_answer_is_not_duplicate(T::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    /*
-    ** The body of this predicate doesn't matter, because it will never be
-    ** referred to. When the compiler creates references to this predicate,
-    ** it always overrides the predicate body.
-    */
-    /* mention T to shut up the warning */
+    // The body of this predicate doesn't matter, because it will never be
+    // referred to. When the compiler creates references to this predicate,
+    // it always overrides the predicate body.
+
+    // Mention T to shut up the warning.
     MR_fatal_error(""table_mmos_answer_is_not_duplicate: direct call"");
 ").
 
@@ -1120,12 +1115,11 @@ table_mm_fill_answer_block_shortcut(_) :-
     table_mmos_answer_is_not_duplicate_shortcut(G::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    /*
-    ** The body of this predicate doesn't matter, because it will never be
-    ** referred to. When the compiler creates references to this predicate,
-    ** it always overrides the predicate body.
-    */
-    /* mention G to shut up the warning */
+    // The body of this predicate doesn't matter, because it will never be
+    // referred to. When the compiler creates references to this predicate,
+    // it always overrides the predicate body.
+
+    // Mention G to shut up the warning.
     MR_fatal_error(
         ""table_mmos_answer_is_not_duplicate_shortcut: direct call"");
 ").
@@ -1137,12 +1131,11 @@ table_mm_fill_answer_block_shortcut(_) :-
     table_mmos_restore_answers(AnswerBlock::in),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
-    /*
-    ** The body of this predicate doesn't matter, because it will never be
-    ** referred to. When the compiler creates references to this predicate,
-    ** it always overrides the predicate body.
-    */
-    /* mention AnswerBlock to shut up the warning */
+    // The body of this predicate doesn't matter, because it will never be
+    // referred to. When the compiler creates references to this predicate,
+    // it always overrides the predicate body.
+
+    // Mention AnswerBlock to shut up the warning.
     MR_fatal_error(""table_mmos_restore_answers: direct call"");
 ").
 
@@ -1150,12 +1143,11 @@ table_mm_fill_answer_block_shortcut(_) :-
     table_mmos_pickup_inputs(Generator::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    /*
-    ** The body of this predicate doesn't matter, because it will never be
-    ** referred to. When the compiler creates references to this predicate,
-    ** it always overrides the predicate body.
-    */
-    /* mention Generator to shut up the warning */
+    // The body of this predicate doesn't matter, because it will never be
+    // referred to. When the compiler creates references to this predicate,
+    // it always overrides the predicate body.
+
+    // mention Generator to shut up the warning.
     MR_fatal_error(""table_mmos_pickup_inputs: direct call"");
 ").
 
@@ -1164,27 +1156,21 @@ table_mm_fill_answer_block_shortcut(_) :-
         AnswerBlock::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    /*
-    MR_tbl_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
-    */
+    // MR_tbl_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
     table_mmos_return_answer(Generator::in, AnswerBlock::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    /*
-    MR_tbl_mmos_return_answer(Generator, AnswerBlock);
-    */
+    // MR_tbl_mmos_return_answer(Generator, AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
     table_mmos_completion(Generator::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    /*
-    MR_tbl_mmos_completion(Generator);
-    */
+    // MR_tbl_mmos_completion(Generator);
 ").
 
 table_mmos_save_inputs :-
@@ -1541,9 +1527,9 @@ pretend_to_generate_value(Bogus) :-
 
 :- pragma foreign_decl("C", "
 
-#include ""mercury_misc.h""         /* for MR_fatal_error(); */
-#include ""mercury_type_info.h""    /* for MR_TypeCtorInfo_Struct; */
-#include ""mercury_tabling.h""      /* for MR_TrieNode, etc. */
+#include ""mercury_misc.h""         // for MR_fatal_error()
+#include ""mercury_type_info.h""    // for MR_TypeCtorInfo_Struct
+#include ""mercury_tabling.h""      // for MR_TrieNode, etc.
 
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 

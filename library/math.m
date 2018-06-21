@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2007, 2011-2012 The University of Melbourne.
 % Copyright (C) 2014, 2016-2018 The Mercury team.
@@ -235,14 +235,12 @@
 
     #include <math.h>
 
-    /*
-    ** Mathematical constants.
-    **
-    ** The maximum number of significant decimal digits which
-    ** can be packed into an IEEE-754 extended precision
-    ** floating point number is 18. Therefore 20 significant
-    ** decimal digits for these constants should be plenty.
-    */
+    // Mathematical constants.
+    //
+    // The maximum number of significant decimal digits which can be packed
+    // into an IEEE-754 extended precision floating point number is 18.
+    // Therefore 20 significant decimal digits for these constants
+    // should be plenty.
 
     #define ML_FLOAT_E      2.7182818284590452354
     #define ML_FLOAT_PI     3.1415926535897932384
@@ -256,7 +254,6 @@
     // For pi and e we use the constants defined in System.Math.
 
     public static double ML_FLOAT_LN2 = 0.69314718055994530941;
-
 
 ").
 

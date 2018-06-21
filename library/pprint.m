@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim:ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
+% vim:ts=4 sw=4 expandtab ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2010-2011 The University of Melbourne
 % Copyright (C) 2014-2018 The Mercury team.

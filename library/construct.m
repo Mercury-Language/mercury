@@ -212,28 +212,21 @@ get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
 
     type_info = (MR_TypeInfo) TypeDesc;
 
-        /*
-        ** If type_info is an equivalence type, expand it.
-        */
+    // If type_info is an equivalence type, expand it.
     MR_save_transient_registers();
     type_info = MR_collapse_equivalences(type_info);
     MR_restore_transient_registers();
 
-        /*
-        ** Get information for this functor number and store in construct_info.
-        ** If this is a discriminated union type and if the functor number
-        ** is in range, we succeed.
-        */
+    // Get information for this functor number and store in construct_info.
+    // If this is a discriminated union type and if the functor number
+    // is in range, we succeed.
     MR_save_transient_registers();
     success = MR_get_functors_check_range(FunctorNumber, type_info,
         &construct_info);
     MR_restore_transient_registers();
 
-        /*
-        ** Get the functor name and arity, construct the list
-        ** of type_infos for arguments.
-        */
-
+    // Get the functor name and arity, construct the list  of type_infos
+    // for arguments.
     if (success) {
         MR_make_aligned_string(FunctorName, construct_info.functor_name);
         arity = construct_info.arity;
@@ -295,28 +288,21 @@ get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
 
     type_info = (MR_TypeInfo) TypeDesc;
 
-        /*
-        ** If type_info is an equivalence type, expand it.
-        */
+    // If type_info is an equivalence type, expand it.
     MR_save_transient_registers();
     type_info = MR_collapse_equivalences(type_info);
     MR_restore_transient_registers();
 
-        /*
-        ** Get information for this functor number and
-        ** store in construct_info. If this is a discriminated union
-        ** type and if the functor number is in range, we
-        ** succeed.
-        */
+    // Get information for this functor number and store in construct_info.
+    // If this is a discriminated union type and if the functor number
+    // is in range, we succeed.
     MR_save_transient_registers();
     success = MR_get_functors_check_range(FunctorNumber, type_info,
         &construct_info);
     MR_restore_transient_registers();
 
-        /*
-        ** Get the functor name and arity, construct the list
-        ** of type_infos for arguments.
-        */
+    // Get the functor name and arity, construct the list of type_infos
+    // for arguments.
 
     if (success) {
         MR_make_aligned_string(FunctorName, construct_info.functor_name);
@@ -411,11 +397,9 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
 
     type_info = (MR_TypeInfo) TypeDesc;
 
-    /*
-    ** Get information for this functor number and store in construct_info.
-    ** If this is a discriminated union type and if the functor number is
-    ** in range, we succeed.
-    */
+    // Get information for this functor number and store in construct_info.
+    // If this is a discriminated union type and if the functor number is
+    // in range, we succeed.
     MR_save_transient_registers();
     success = MR_get_functors_check_range(FunctorNumber, type_info,
         &construct_info);
@@ -523,11 +507,9 @@ get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
 
     type_info = (MR_TypeInfo) TypeDesc;
 
-    /*
-    ** Get information for this functor number and store in construct_info.
-    ** If this is a discriminated union type and if the functor number is
-    ** in range, we succeed.
-    */
+    // Get information for this functor number and store in construct_info.
+    // If this is a discriminated union type and if the functor number is
+    // in range, we succeed.
     MR_save_transient_registers();
     type_info = MR_collapse_equivalences(type_info);
     num_functors = MR_get_num_functors(type_info);
@@ -735,12 +717,12 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
 
     type_info = (MR_TypeInfo) TypeDesc;
 
-    /* If type_info is an equivalence type, expand it. */
+    // If type_info is an equivalence type, expand it.
     MR_save_transient_registers();
     type_info = MR_collapse_equivalences(type_info);
     MR_restore_transient_registers();
 
-    /* Check range of FunctorNum, get info for this functor. */
+    // Check range of FunctorNum, get info for this functor.
     MR_save_transient_registers();
     success =
         MR_get_functors_check_range(FunctorNumber, type_info, &construct_info)
@@ -748,7 +730,7 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
             construct_info.arg_pseudo_type_infos);
     MR_restore_transient_registers();
 
-    /* Build the new term in `new_data'. */
+    // Build the new term in `new_data'.
     if (success) {
         type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
@@ -858,12 +840,12 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
                     break;
 
                 case MR_SECTAG_VARIABLE:
-                    new_data = (MR_Word) 0;     /* avoid a warning */
+                    new_data = (MR_Word) 0;     // avoid a warning
                     MR_fatal_error(""construct(): cannot construct variable"");
 
 #ifdef MR_INCLUDE_SWITCH_DEFAULTS
                 default:
-                    new_data = (MR_Word) 0;     /* avoid a warning */
+                    new_data = (MR_Word) 0;     // avoid a warning
                     MR_fatal_error(""construct(): unrecognised sectag locn"");
 #endif
 
@@ -917,100 +899,98 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
             break;
 
         case MR_TYPECTOR_REP_DUMMY:
-            /*
-            ** The value of the dummy type will never be looked at,
-            ** so it doesn't matter what new_data is set to.
-            */
+            // The value of the dummy type will never be looked at,
+            // so it doesn't matter what new_data is set to.
             new_data = (MR_Word) 0;
             break;
 
         case MR_TYPECTOR_REP_INT:
-            /* ints don't have functor ordinals. */
+            // ints don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct int with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_UINT:
-            /* uints don't have functor ordinals. */
+            // uints don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct uint with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_INT8:
-            /* int8s don't have functor ordinals. */
+            // int8s don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct int8 with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_UINT8:
-            /* uint8s don't have functor ordinals. */
+            // uint8s don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct uint8 with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_INT16:
-            /* int16s don't have functor ordinals. */
+            // int16s don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct int16 with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_UINT16:
-            /* uint16s don't have functor ordinals. */
+            // uint16s don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct uint16 with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_INT32:
-            /* int32s don't have functor ordinals. */
+            // int32s don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct int32 with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_UINT32:
-            /* uint32s don't have functor ordinals. */
+            // uint32s don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct uint32 with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_INT64:
-            /* int64s don't have functor ordinals. */
+            // int64s don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct int64 with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_UINT64:
-            /* uint64s don't have functor ordinals. */
+            // uint64s don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct uint64 with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_FLOAT:
-            /* floats don't have functor ordinals. */
+            // floats don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct floats with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_CHAR:
-            /* chars don't have functor ordinals. */
+            // chars don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct chars with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_STRING:
-            /* strings don't have functor ordinals. */
+            // strings don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct strings with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_BITMAP:
-            /* bitmaps don't have functor ordinals. */
+            // bitmaps don't have functor ordinals.
             MR_fatal_error(
                 ""cannot construct bitmaps with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_EQUIV:
         case MR_TYPECTOR_REP_EQUIV_GROUND:
-            /* These should be eliminated by MR_collapse_equivalences above. */
+            // These should be eliminated by MR_collapse_equivalences above.
             MR_fatal_error(""equiv type in construct.construct"");
             break;
 
@@ -1144,7 +1124,7 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
 #ifdef MR_INCLUDE_SWITCH_DEFAULTS
 
         default:
-            new_data = (MR_Word) 0;     /* avoid a warning */
+            new_data = (MR_Word) 0;     // avoid a warning
             MR_fatal_error(""bad type_ctor_rep in construct.construct"");
 
 #endif
@@ -1152,10 +1132,7 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
 
     end_of_main_switch:
 
-        /*
-        ** Create a univ.
-        */
-
+        // Create a univ.
         MR_new_univ_on_hp(Term, type_info, new_data);
     }
 
@@ -1186,17 +1163,13 @@ construct_tuple(Args) =
     MR_TypeInfo arg_type_info;
     int         size;
 
-    /*
-    ** Construct a type_info for the tuple.
-    */
+    // Construct a type_info for the tuple.
     MR_save_transient_registers();
     type_info = MR_make_type(Arity, MR_TYPECTOR_DESC_MAKE_TUPLE(Arity),
         ArgTypes);
     MR_restore_transient_registers();
 
-    /*
-    ** Create the tuple.
-    */
+    // Create the tuple.
     if (Arity == 0) {
         new_data = (MR_Word) NULL;
     } else {
@@ -1218,9 +1191,7 @@ construct_tuple(Args) =
         MR_define_size_slot(MR_mktag(0), new_data, size);
     }
 
-    /*
-    ** Create a univ.
-    */
+    // Create a univ.
     MR_new_univ_on_hp(Term, type_info, new_data);
 }").
 

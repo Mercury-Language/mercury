@@ -231,7 +231,7 @@
         #include <unistd.h>
     #endif
 
-    #include ""mercury_timing.h"" /* for MR_CLOCK_TICKS_PER_SECOND */
+    #include ""mercury_timing.h"" // for MR_CLOCK_TICKS_PER_SECOND
 ").
 
     % We use a no-tag wrapper type for time_t, rather than defining it as an
@@ -301,7 +301,7 @@ clock(Result, !IO) :-
     if (nsecs == -1) {
         Ret = -1;
     } else {
-        /* This must match the definition of clocks_per_sec. */
+        // This must match the definition of clocks_per_sec.
         Ret = (int) (nsecs / 1000L);
     }
 ").
@@ -325,7 +325,7 @@ clock(Result, !IO) :-
     clocks_per_sec = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /* Emulate the POSIX value. */
+    // Emulate the POSIX value.
     Ret = 1000000;
 ").
 
@@ -452,7 +452,7 @@ times(Tms, Result, !IO) :-
     Ut = (MR_Integer) (user.i64 / factor);
     St = (MR_Integer) (kernel.i64 / factor);
 
-        /* XXX Not sure how to return children times */
+    // XXX Not sure how to return children times.
     CUt = 0;
     CSt = 0;
   #else
@@ -466,7 +466,7 @@ times(Tms, Result, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
-    /* We can only keep the lower 31 bits of the timestamp. */
+    // We can only keep the lower 31 bits of the timestamp.
     Ret = (int) (System.currentTimeMillis() & 0x7fffffff);
 
     try {
@@ -478,7 +478,7 @@ times(Tms, Result, !IO) :-
             Ut = -1;
             St = -1;
         } else {
-            /* These units must match the definition of clk_tck. */
+            // These units must match the definition of clk_tck.
             Ut = (int) (user_nsecs / 1000000L);
             St = (int) ((cpu_nsecs - user_nsecs) / 1000000L);
         }
@@ -549,10 +549,8 @@ c_clk_tck = -1.   % default is to throw an exception.
     c_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /*
-    ** We use System.currentTimeMillis() to return elapsed time so say that
-    ** there are 1000 clock ticks per second.
-    */
+    // We use System.currentTimeMillis() to return elapsed time,
+    // so say that there are 1000 clock ticks per second.
     Ret = 1000;
 ").
 
@@ -622,7 +620,7 @@ localtime(time_t(Time)) = TM :-
 
     p = localtime(&t);
 
-    /* XXX do we need to handle the case where p == NULL here? */
+    // XXX do we need to handle the case where p == NULL here?
 
     Sec = (MR_Integer) p->tm_sec;
     Min = (MR_Integer) p->tm_min;
@@ -730,7 +728,7 @@ gmtime(time_t(Time)) = TM :-
 
     p = gmtime(&t);
 
-    /* XXX do we need to handle the case where p == NULL here? */
+    // XXX do we need to handle the case where p == NULL here?
 
     Sec = (MR_Integer) p->tm_sec;
     Min = (MR_Integer) p->tm_min;

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2006, 2008, 2010 The University of Melbourne.
 % Copyright (C) 2015-2016, 2018 The Mercury team.
@@ -107,9 +107,6 @@
 
 :- impure pred reset_activation_info_sr(proc_dynamic::in) is det.
 
-    /*
-    ** Increment a static coverage point.
-    */
 :- impure pred increment_static_coverage_point_count(proc_layout::in, int::in)
     is det.
 
@@ -262,9 +259,9 @@
   #include ""mercury_ho_call.h""
   #include <stdio.h>
 
-  #endif    /* MR_DEEP_PROFILING */
+  #endif    // MR_DEEP_PROFILING
 
-#endif  /* MR_DEEP_PROFILING_GUARD */
+#endif  // MR_DEEP_PROFILING_GUARD
 ").
 
 %---------------------------------------------------------------------------%
@@ -843,7 +840,7 @@
     MR_fatal_error(
         ""increment_static_coverage_point_count:  ""
             ""static coverage profiling not enabled"");
-#endif /* MR_DEEP_PROFILING_COVERAGE_STATIC */
+#endif // MR_DEEP_PROFILING_COVERAGE_STATIC
 ").
 
 :- pragma foreign_proc("C",
@@ -874,9 +871,7 @@
     MR_deep_assert(csd, NULL, NULL, pd != NULL);
 
 #ifdef MR_DEEP_CHECKS
-    /*
-    ** Check that CPIndex is within bounds.
-    */
+    // Check that CPIndex is within bounds.
     {
         const MR_ProcLayout *pl;
         const MR_ProcStatic *ps;
@@ -898,7 +893,7 @@
     MR_fatal_error(
         ""increment_dynamic_coverage_point_count:  ""
             ""dynamic deep profiling not enabled"");
-#endif /* MR_DEEP_PROFILING_COVERAGE_DYNAMIC */
+#endif // MR_DEEP_PROFILING_COVERAGE_DYNAMIC
 ").
 
 %---------------------------------------------------------------------------%
@@ -910,7 +905,7 @@
         OuterCount1::out),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSN, OuterCount1 */
+// shut up warning: CSD, CSN, OuterCount1
 #define MR_PROCNAME     ""save_recursion_depth_1""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1, CSN);                 \\
@@ -925,7 +920,7 @@
         OuterCount1::out, OuterCount2::out),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2
 #define MR_PROCNAME     ""save_recursion_depth_2""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
@@ -943,7 +938,7 @@
         OuterCount1::out, OuterCount2::out, OuterCount3::out),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
 #define MR_PROCNAME     ""save_recursion_depth_3""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
@@ -964,8 +959,8 @@
         OuterCount4::out),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4
 #define MR_PROCNAME     ""save_recursion_depth_4""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
@@ -988,8 +983,8 @@
         OuterCount4::out, OuterCount5::out),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5
 #define MR_PROCNAME     ""save_recursion_depth_5""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
@@ -1014,8 +1009,8 @@
         OuterCount4::out, OuterCount5::out, OuterCount6::out),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6
 #define MR_PROCNAME     ""save_recursion_depth_6""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
@@ -1043,8 +1038,8 @@
         OuterCount7::out),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7
 #define MR_PROCNAME     ""save_recursion_depth_7""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
@@ -1074,9 +1069,9 @@
         OuterCount7::out, OuterCount8::out),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
-/* shut up warning: OuterCount8 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7
+// shut up warning: OuterCount8
 #define MR_PROCNAME     ""save_recursion_depth_8""
 #define MR_REC_DEPTH_BODY   {                                       \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
@@ -1108,9 +1103,9 @@
         OuterCount7::out, OuterCount8::out, OuterCount9::out),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
-/* shut up warning: OuterCount8, OuterCount9 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7
+// shut up warning: OuterCount8, OuterCount9
 #define MR_PROCNAME     ""save_recursion_depth_9""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
@@ -1146,7 +1141,7 @@
         OuterCount1::in),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSN, OuterCount1 */
+// shut up warning: CSD, CSN, OuterCount1
 #define MR_PROCNAME     ""restore_recursion_depth_exit_1""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1, CSN);                \\
@@ -1161,7 +1156,7 @@
         OuterCount1::in, OuterCount2::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2
 #define MR_PROCNAME     ""restore_recursion_depth_exit_2""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
@@ -1179,7 +1174,7 @@
         OuterCount1::in, OuterCount2::in, OuterCount3::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
 #define MR_PROCNAME     ""restore_recursion_depth_exit_3""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
@@ -1200,8 +1195,8 @@
         OuterCount4::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4
 #define MR_PROCNAME     ""restore_recursion_depth_exit_4""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
@@ -1224,8 +1219,8 @@
         OuterCount4::in, OuterCount5::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5
 #define MR_PROCNAME     ""restore_recursion_depth_exit_5""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
@@ -1250,8 +1245,8 @@
         OuterCount4::in, OuterCount5::in, OuterCount6::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6
 #define MR_PROCNAME     ""restore_recursion_depth_exit_6""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
@@ -1279,8 +1274,8 @@
         OuterCount7::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7
 #define MR_PROCNAME     ""restore_recursion_depth_exit_7""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
@@ -1310,9 +1305,9 @@
         OuterCount7::in, OuterCount8::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
-/* shut up warning: OuterCount8 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7
+// shut up warning: OuterCount8
 #define MR_PROCNAME     ""restore_recursion_depth_exit_8""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
@@ -1344,9 +1339,9 @@
         OuterCount7::in, OuterCount8::in, OuterCount9::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
-/* shut up warning: OuterCount8, OuterCount9 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7
+// shut up warning: OuterCount8, OuterCount9
 #define MR_PROCNAME     ""restore_recursion_depth_exit_9""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
@@ -1382,7 +1377,7 @@
         OuterCount1::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSN, OuterCount1 */
+// shut up warning: CSD, CSN, OuterCount1
 #define MR_PROCNAME     ""restore_recursion_depth_fail_1""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1, CSN);                \\
@@ -1397,7 +1392,7 @@
         OuterCount1::in, OuterCount2::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2
 #define MR_PROCNAME     ""restore_recursion_depth_fail_2""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
@@ -1415,7 +1410,7 @@
         OuterCount1::in, OuterCount2::in, OuterCount3::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
 #define MR_PROCNAME     ""restore_recursion_depth_fail_3""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
@@ -1436,8 +1431,8 @@
         OuterCount4::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4
 #define MR_PROCNAME     ""restore_recursion_depth_fail_4""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
@@ -1460,8 +1455,8 @@
         OuterCount4::in, OuterCount5::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5
 #define MR_PROCNAME     ""restore_recursion_depth_fail_5""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
@@ -1486,8 +1481,8 @@
         OuterCount4::in, OuterCount5::in, OuterCount6::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6
 #define MR_PROCNAME     ""restore_recursion_depth_fail_6""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
@@ -1515,8 +1510,8 @@
         OuterCount7::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7
 #define MR_PROCNAME     ""restore_recursion_depth_fail_7""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
@@ -1546,9 +1541,9 @@
         OuterCount7::in, OuterCount8::in),
         [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
-/* shut up warning: OuterCount8 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7
+// shut up warning: OuterCount8
 #define MR_PROCNAME     ""restore_recursion_depth_fail_8""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
@@ -1580,9 +1575,9 @@
         OuterCount7::in, OuterCount8::in, OuterCount9::in),
     [thread_safe, will_not_call_mercury],
 "{
-/* shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3 */
-/* shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7 */
-/* shut up warning: OuterCount8, OuterCount9 */
+// shut up warning: CSD, CSNsVector, OuterCount1, OuterCount2, OuterCount3
+// shut up warning: OuterCount4, OuterCount5, OuterCount6, OuterCount7
+// shut up warning: OuterCount8, OuterCount9
 #define MR_PROCNAME     ""restore_recursion_depth_fail_9""
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\

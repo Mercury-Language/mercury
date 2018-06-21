@@ -924,68 +924,54 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 ").
 
 :- pragma foreign_decl("C", "
-/*
-** If index is -1 then value is undefined and rest is the latest
-** array value.
-**
-** Otherwise value is the overwritten value at index and rest is
-** a pointer to the next version in the chain.
-*/
+// If index is -1 then value is undefined and rest is the latest
+// array value.
+//
+// Otherwise value is the overwritten value at index and rest is
+// a pointer to the next version in the chain.
 
 typedef struct ML_va        *ML_va_ptr;
 typedef const struct ML_va  *ML_const_va_ptr;
 
 struct ML_va {
-    MR_Integer          index;  /* -1 for latest, >= 0 for older */
-    MR_Word             value;  /* Valid if index >= 0           */
+    MR_Integer          index;  // -1 for latest, >= 0 for older
+    MR_Word             value;  // Valid if index >= 0
     union {
-        MR_ArrayPtr     array;  /* Valid if index == -1          */
-        ML_va_ptr       next;   /* Valid if index >= 0           */
+        MR_ArrayPtr     array;  // Valid if index == -1
+        ML_va_ptr       next;   // Valid if index >= 0
     } rest;
 #ifdef MR_THREAD_SAFE
-    MercuryLock         *lock;  /* NULL or lock                  */
+    MercuryLock         *lock;  // NULL or lock
 #endif
 };
 
-/*
-** Returns a pointer to the latest version of the array.
-*/
+// Returns a pointer to the latest version of the array.
 extern ML_va_ptr
 ML_va_get_latest(ML_const_va_ptr VA);
 
-/*
-** Returns the number of items in a version array.
-*/
+// Returns the number of items in a version array.
 extern MR_Integer
 ML_va_size_dolock(ML_const_va_ptr);
 
-/*
-** If I is in range then ML_va_get(VA, I, &X) sets X to the I'th item
-** in VA (counting from zero) and returns MR_TRUE. Otherwise it
-** returns MR_FALSE.
-*/
+// If I is in range then ML_va_get(VA, I, &X) sets X to the I'th item
+// in VA (counting from zero) and returns MR_TRUE. Otherwise it
+// returns MR_FALSE.
 extern MR_bool
 ML_va_get_dolock(ML_const_va_ptr, MR_Integer, MR_Word *);
 
-/*
-** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
-** updated with the I'th item as X (counting from zero) and
-** returns MR_TRUE. Otherwise it returns MR_FALSE.
-*/
+// If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
+// updated with the I'th item as X (counting from zero) and
+// returns MR_TRUE. Otherwise it returns MR_FALSE.
 extern MR_bool
 ML_va_set_dolock(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *,
     MR_AllocSiteInfoPtr);
 
-/*
-** `Rewinds' a version array, invalidating all extant successors
-** including the argument.
-*/
+// `Rewinds' a version array, invalidating all extant successors
+// including the argument.
 extern ML_va_ptr
 ML_va_rewind_dolock(ML_va_ptr, MR_AllocSiteInfoPtr);
 
-/*
-** Resize a version array.
-*/
+// Resize a version array.
 extern ML_va_ptr
 ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 
@@ -996,53 +982,39 @@ ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 #include ""mercury_types.h""
 #include ""mercury_bitmap.h""
 
-/*
-** Returns the number of items in a version array.
-*/
+// Returns the number of items in a version array.
 static MR_Integer
 ML_va_size(ML_const_va_ptr);
 
-/*
-** If I is in range then ML_va_get(VA, I, &X) sets X to the I'th item
-** in VA (counting from zero) and returns MR_TRUE. Otherwise it
-** returns MR_FALSE.
-*/
+// If I is in range then ML_va_get(VA, I, &X) sets X to the I'th item
+// in VA (counting from zero) and returns MR_TRUE. Otherwise it
+// returns MR_FALSE.
 static MR_bool
 ML_va_get(ML_const_va_ptr VA, MR_Integer I, MR_Word *Xptr);
 
-/*
-** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
-** updated with the I'th item as X (counting from zero) and
-** returns MR_TRUE. Otherwise it returns MR_FALSE.
-*/
+// If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
+// updated with the I'th item as X (counting from zero) and
+// returns MR_TRUE. Otherwise it returns MR_FALSE.
 static MR_bool
 ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *,
     MR_AllocSiteInfoPtr alloc_id);
 
-/*
-** Create a copy of VA0 as a new array.
-*/
+// Create a copy of VA0 as a new array.
 static ML_va_ptr
 ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id);
 
-/*
-** Update the array VA using the override values in VA0
-** i.e. recreate the state of the version array as captured in VA0.
-*/
+// Update the array VA using the override values in VA0
+// i.e. recreate the state of the version array as captured in VA0.
 static void
 ML_va_rewind_into(ML_va_ptr VA, ML_const_va_ptr VA0,
     MR_AllocSiteInfoPtr alloc_id);
 
-/*
-** `Rewinds' a version array, invalidating all extant successors
-** including the argument.
-*/
+// `Rewinds' a version array, invalidating all extant successors
+// including the argument.
 static ML_va_ptr
 ML_va_rewind(ML_va_ptr VA, MR_AllocSiteInfoPtr alloc_id);
 
-/*
-** Resize a version array.
-*/
+// Resize a version array.
 static ML_va_ptr
 ML_va_resize(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 
@@ -1078,7 +1050,7 @@ ML_va_get_latest(ML_const_va_ptr VA)
         VA = VA->rest.next;
     }
 
-    /* Cast away the 'const' */
+    // Cast away the 'const'.
     return (ML_va_ptr)VA;
 }
 
@@ -1251,15 +1223,13 @@ ML_va_rewind_into(ML_va_ptr VA_dest, ML_const_va_ptr VA_src,
     MR_BitmapPtr    bitmap;
 
     if (ML_va_latest_version(VA_src)) {
-        /* Shortcut */
+        // Shortcut.
         return;
     }
 
-    /*
-    ** Rewind elements from the oldest to the newest, undoing their changes.
-    ** So that we undo elements in the correct order we use a bitmap to
-    ** ensure that we never update an array slot twice.
-    */
+    // Rewind elements from the oldest to the newest, undoing their changes.
+    // So that we undo elements in the correct order we use a bitmap to
+    // ensure that we never update an array slot twice.
     cur = VA_src;
     MR_allocate_bitmap_msg(bitmap, VA_dest->rest.array->size, alloc_id);
     MR_bitmap_zero(bitmap);
@@ -1300,15 +1270,13 @@ ML_va_rewind(ML_va_ptr VA, MR_AllocSiteInfoPtr alloc_id)
     MR_BitmapPtr    bitmap;
 
     if (ML_va_latest_version(VA)) {
-        /* Shortcut */
+        // Shortcut.
         return VA;
     }
 
-    /*
-    ** Rewind elements from the oldest to the newest, undoing their changes.
-    ** So that we undo elements in the correct order we use a bitmap to
-    ** ensure that we never update an array slot twice.
-    */
+    // Rewind elements from the oldest to the newest, undoing their changes.
+    // So that we undo elements in the correct order we use a bitmap to
+    // ensure that we never update an array slot twice.
     cur = VA;
     array = ML_va_get_latest(VA)->rest.array;
     MR_allocate_bitmap_msg(bitmap, array->size, alloc_id);
@@ -1325,9 +1293,7 @@ ML_va_rewind(ML_va_ptr VA, MR_AllocSiteInfoPtr alloc_id)
     }
     VA->rest.array = array;
 
-    /*
-     * This element is no-longer an update element.
-     */
+    // This element is no-longer an update element.
     VA->index = -1;
     VA->value = 0;
     return VA;
@@ -1485,12 +1451,12 @@ public class ML_sva : ML_va {
 // a single thread, but *much* faster than the synchronized version.
 [System.Serializable]
 public class ML_uva : ML_va {
-    private int                 index;  /* -1 for latest, >= 0 for older */
-    private object              value;  /* Valid if index >= 0           */
-    private object              rest;   /* array if index == -1          */
-                                        /* next if index >= 0            */
+    private int                 index;  // -1 for latest, >= 0 for older
+    private object              value;  // Valid if index >= 0
+    private object              rest;   // array if index == -1
+                                        // next if index >= 0
 
-    /* True if this is a fresh clone of another ML_uva */
+    // True if this is a fresh clone of another ML_uva.
     private bool                clone = false;
 
     public ML_uva() {}
@@ -1653,15 +1619,13 @@ public class ML_uva : ML_va {
         mercury.runtime.MercuryBitmap   bitmap;
 
         if (this.is_latest()) {
-            /* Shortcut */
+            // Shortcut.
             return;
         }
 
-        /*
-        ** Rewind elements from the oldest to the newest, undoing their changes.
-        ** So that we undo elements in the correct order we use a bitmap to
-        ** ensure that we never update an array slot twice.
-        */
+        // Rewind elements from the oldest to the newest, undoing their changes.
+        // So that we undo elements in the correct order we use a bitmap to
+        // ensure that we never update an array slot twice.
         cur = this;
         bitmap = new mercury.runtime.MercuryBitmap(cur.size());
         while (!cur.is_latest()) {
@@ -1693,11 +1657,9 @@ public class ML_uva : ML_va {
             return this;
         }
 
-        /*
-        ** Rewind elements from the oldest to the newest, undoing their changes.
-        ** So that we undo elements in the correct order we use a bitmap to
-        ** ensure that we never update an array slot twice.
-        */
+        // Rewind elements from the oldest to the newest, undoing their
+        // changes. So that we undo elements in the correct order,
+        // we use a bitmap to ensure that we never update an array slot twice.
         cur = this;
         array = latest().array();
         bitmap = new mercury.runtime.MercuryBitmap(array.Length);
@@ -1714,9 +1676,7 @@ public class ML_uva : ML_va {
         }
         rest = array;
 
-        /*
-         * This element is no-longer an update element.
-         */
+        // This element is no-longer an update element.
         index = -1;
         value = 0;
         return this;
@@ -1812,10 +1772,10 @@ public static class ML_sva implements ML_va, java.io.Serializable {
 // An implementation of version arrays that is only safe when used from
 // a single thread, but *much* faster than the synchronized version.
 public static class ML_uva implements ML_va, java.io.Serializable {
-    private int                 index;  /* -1 for latest, >= 0 for older */
-    private Object              value;  /* Valid if index >= 0           */
-    private Object              rest;   /* array if index == -1          */
-                                        /* next if index >= 0            */
+    private int                 index;  // -1 for latest, >= 0 for older
+    private Object              value;  // Valid if index >= 0
+    private Object              rest;   // array if index == -1
+                                        // next if index >= 0
 
     private boolean             clone = false;
 
@@ -1970,11 +1930,9 @@ public static class ML_uva implements ML_va, java.io.Serializable {
             return;
         }
 
-        /*
-        ** Rewind elements from the oldest to the newest, undoing their changes.
-        ** So that we undo elements in the correct order we use a bitmap to
-        ** ensure that we never update an array slot twice.
-        */
+        // Rewind elements from the oldest to the newest, undoing their
+        // changes. So that we undo elements in the correct order,
+        // we use a bitmap to ensure that we never update an array slot twice.
         cur = this;
         bitmap = new MercuryBitmap(cur.size());
         while (!cur.is_latest()) {
@@ -2001,11 +1959,9 @@ public static class ML_uva implements ML_va, java.io.Serializable {
             return this;
         }
 
-        /*
-        ** Rewind elements from the oldest to the newest, undoing their changes.
-        ** So that we undo elements in the correct order we use a bitmap to
-        ** ensure that we never update an array slot twice.
-        */
+        // Rewind elements from the oldest to the newest, undoing their
+        // changes. So that we undo elements in the correct order,
+        // we use a bitmap to ensure that we never update an array slot twice.
         cur = this;
         array = latest().array();
         bitmap = new MercuryBitmap(array.length);
@@ -2022,9 +1978,7 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         }
         rest = array;
 
-        /*
-         * This element is no-longer an update element.
-         */
+        // This element is no-longer an update element.
         index = -1;
         value = 0;
         return this;

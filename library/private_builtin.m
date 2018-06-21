@@ -617,7 +617,7 @@ public static /* typeclass_info */ Object[] MR_typeclass_info_superclass_info(
     /* typeclass_info */ Object[] base_tcinfo;
     int t1;
 
-    /* The zeroth argument is num_extra_instance_args. */
+    // The zeroth argument is num_extra_instance_args.
     base_tcinfo = (Object[]) tcinfo[0];
     t1 = ((Integer) base_tcinfo[0]).intValue() + index;
     return (/* typeclass_info */ Object[]) tcinfo[t1];
@@ -1200,7 +1200,7 @@ __Compare____base_typeclass_info_1_0(
     store_ticket(Ticket::out),
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
     Ticket = null;
 ").
 
@@ -1208,42 +1208,42 @@ __Compare____base_typeclass_info_1_0(
     reset_ticket_undo(_Ticket::in),
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
 ").
 
 :- pragma foreign_proc("Java",
     reset_ticket_commit(_Ticket::in),
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
 ").
 
 :- pragma foreign_proc("Java",
     reset_ticket_solve(_Ticket::in),
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
 ").
 
 :- pragma foreign_proc("Java",
     discard_ticket,
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
 ").
 
 :- pragma foreign_proc("Java",
     prune_ticket,
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
 ").
 
 :- pragma foreign_proc("Java",
     mark_ticket_stack(TicketCounter::out),
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
     TicketCounter = null;
 ").
 
@@ -1251,7 +1251,7 @@ __Compare____base_typeclass_info_1_0(
     prune_tickets_to(_TicketCounter::in),
     [will_not_call_mercury, thread_safe],
 "
-    /* XXX No trailing for the Java back-end, so take no action. */
+    // XXX No trailing for the Java back-end, so take no action.
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -1384,7 +1384,7 @@ __Compare____base_typeclass_info_1_0(
 :- pragma inline(restore_hp/1).
 
 :- pragma foreign_decl("C", "
-    #include ""mercury_heap.h"" /* for MR_free_heap() */
+    #include ""mercury_heap.h"" // for MR_free_heap()
 ").
 
 :- pragma foreign_proc("C",
@@ -1417,7 +1417,7 @@ __Compare____base_typeclass_info_1_0(
 #ifndef MR_CONSERVATIVE_GC
     MR_mark_hp(SavedHeapPointer);
 #else
-    /* We can't do heap reclamation with conservative GC. */
+    // We can't do heap reclamation with conservative GC.
     SavedHeapPointer = 0;
 #endif
 ").
@@ -1436,7 +1436,7 @@ __Compare____base_typeclass_info_1_0(
     mark_hp(SavedHeapPointer::out),
     [will_not_call_mercury, thread_safe],
 "
-    /* We can't do heap reclamation on failure in the .NET back-end. */
+    // We can't do heap reclamation on failure in the .NET back-end.
     SavedHeapPointer = null;
 ").
 
@@ -1444,34 +1444,30 @@ __Compare____base_typeclass_info_1_0(
     restore_hp(_SavedHeapPointer::in),
     [will_not_call_mercury, thread_safe],
 "
-    /* We can't do heap reclamation on failure in the .NET back-end. */
+    // We can't do heap reclamation on failure in the .NET back-end.
 ").
 
 :- pragma foreign_proc("Java",
     gc_trace(_Pointer::in),
     [will_not_call_mercury, thread_safe],
 "
-    /*
-    ** For the Java back-end, we use the Java garbage collector, so we
-    ** take no action here.
-    */
+    // For the Java back-end, we use the Java garbage collector,
+    // so we take no action here.
 ").
 
 :- pragma foreign_proc("Java",
     free_heap(_Val::di),
     [will_not_call_mercury, thread_safe],
 "
-    /*
-    ** For the Java back-end, as for the .NET back-end, we don't define
-    ** our own heaps. So take no action here.
-    */
+    // For the Java back-end, we don't define our own heaps.
+    // So take no action here.
 ").
 
 :- pragma foreign_proc("Java",
     mark_hp(SavedHeapPointer::out),
     [will_not_call_mercury, thread_safe],
 "
-    /* We can't do heap reclamation on failure in the Java back-end. */
+    // We can't do heap reclamation on failure in the Java back-end.
     SavedHeapPointer = null;
 ").
 
@@ -1479,7 +1475,7 @@ __Compare____base_typeclass_info_1_0(
     restore_hp(_SavedHeapPointer::in),
     [will_not_call_mercury, thread_safe],
 "
-    /* We can't do heap reclamation on failure in the Java back-end. */
+    // We can't do heap reclamation on failure in the Java back-end.
 ").
 
 :- pragma foreign_proc("Erlang",

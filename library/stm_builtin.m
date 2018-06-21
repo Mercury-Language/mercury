@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007-2009, 2011 The University of Melbourne.
 % Copyright (C) 2014-2015, 2018 The Mercury team.
@@ -302,7 +302,7 @@
     stm_merge_nested_logs(Child::di, Parent0::di, Parent::uo),
     [will_not_call_mercury, thread_safe],
 "
-    /* Avoid a warning: Child, Parent0, Parent */
+    // Avoid a warning: Child, Parent0, Parent
 #if defined(MR_STM_DEBUG)
     fprintf(stderr, \"STM Calling Merge Nested: log <0x%.8lx>\\n\",
         (MR_Word)(Child));
@@ -431,7 +431,7 @@ INIT mercury_sys_init_stm_builtin_modules
 
 #endif
 
-    /* forward decls to suppress gcc warnings */
+    // Forward decls to suppress gcc warnings.
     void mercury_sys_init_stm_builtin_modules_init(void);
     void mercury_sys_init_stm_builtin_modules_init_type_tables(void);
     #ifdef  MR_DEEP_PROFILING
@@ -448,14 +448,14 @@ INIT mercury_sys_init_stm_builtin_modules
 
     void mercury_sys_init_stm_builtin_modules_init_type_tables(void)
     {
-        /* no types to register */
+        // No types to register.
     }
 
     #ifdef  MR_DEEP_PROFILING
     void mercury_sys_init_stm_builtin_modules_write_out_proc_statics(
         FILE *deep_fp, FILE *procrep_fp)
     {
-        /* no proc_statics to write out */
+        // No proc_statics to write out.
     }
     #endif
 ").

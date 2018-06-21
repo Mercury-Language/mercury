@@ -242,9 +242,9 @@
 :- use_module erlang_rtti_implementation.
 
 :- pragma foreign_decl("C", "
-#include ""mercury_heap.h"" /* for MR_incr_hp_msg() etc. */
-#include ""mercury_misc.h"" /* for MR_fatal_error() */
-#include ""mercury_string.h""   /* for MR_make_aligned_string() */
+#include ""mercury_heap.h""         // for MR_incr_hp_msg() etc.
+#include ""mercury_misc.h""         // for MR_fatal_error()
+#include ""mercury_string.h""       // for MR_make_aligned_string()
 #include ""mercury_type_desc.h""
 ").
 
@@ -258,10 +258,9 @@
 % that non-Java grades are missing type definitions.
 
 :- pragma foreign_decl("Java", local, "
-/*
-** Any foreign_procs which use the unqualified names should be marked
-** `may_not_duplicate' so as not to be written to .opt files.
-*/
+// Any foreign_procs which use the unqualified names should be marked
+// `may_not_duplicate' so as not to be written to .opt files.
+
 import jmercury.runtime.PseudoTypeInfo;
 import jmercury.runtime.TypeCtorInfo_Struct;
 import jmercury.runtime.TypeInfo_Struct;
@@ -421,11 +420,9 @@ det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
 "{
     TypeInfo = TypeInfo_for_T;
 
-    /*
-    ** We used to collapse equivalences for efficiency here, but that's not
-    ** always desirable, due to the reverse mode of make_type/2, and efficiency
-    ** of type_infos probably isn't very important anyway.
-    */
+    // We used to collapse equivalences for efficiency here, but that is not
+    // always desirable, due to the reverse mode of make_type/2, and efficiency
+    // of type_infos probably isn't very important anyway.
 #if 0
     MR_save_transient_registers();
     TypeInfo = (MR_Word) MR_collapse_equivalences(
@@ -718,7 +715,7 @@ type_ctor_arity(TypeCtor) = Arity :-
 "
     runtime.TypeCtorInfo_Struct tci = TypeCtorInfo;
 
-    /* Handle variable arity types. */
+    // Handle variable arity types.
     switch (tci.type_ctor_rep) {
         case runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
         case runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
@@ -739,7 +736,7 @@ type_ctor_arity(TypeCtor) = Arity :-
 "
     TypeCtorInfo_Struct tci = TypeCtorInfo;
 
-    /* Handle variable arity types. */
+    // Handle variable arity types.
     switch (tci.type_ctor_rep.value) {
         case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
         case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
@@ -767,7 +764,7 @@ make_type_ctor_desc(_, _, _) :-
 "
     runtime.TypeCtorInfo_Struct tci = TypeCtorInfo;
 
-    /* Handle variable arity types. */
+    // Handle variable arity types.
     switch (tci.type_ctor_rep) {
         case runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
         case runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
@@ -789,7 +786,7 @@ make_type_ctor_desc(_, _, _) :-
 "
     TypeCtorInfo_Struct tci = TypeCtorInfo;
 
-    /* Handle variable arity types. */
+    // Handle variable arity types.
     switch (tci.type_ctor_rep.value) {
         case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
         case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
@@ -830,10 +827,8 @@ make_type_ctor_desc_with_arity(_, _, _) :-
         type_ctor_info =
             MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(type_ctor_desc);
 
-        /*
-        ** We cast away the const-ness of the module and type names,
-        ** because MR_String is defined as char *, not const char *.
-        */
+        // We cast away the const-ness of the module and type names,
+        // because MR_String is defined as char *, not const char *.
 
         TypeCtorModuleName = (MR_String) (MR_Integer)
             MR_type_ctor_module_name(type_ctor_info);

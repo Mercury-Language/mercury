@@ -762,7 +762,7 @@ is_zero(0.0).
 
 :- pragma foreign_decl("C",
 "
-    #define ML_FLOAT_RADIX  FLT_RADIX   /* There is no DBL_RADIX. */
+    #define ML_FLOAT_RADIX  FLT_RADIX   // There is no DBL_RADIX.
 
     #if defined MR_USE_SINGLE_PREC_FLOAT
         #define ML_FLOAT_MAX        FLT_MAX
@@ -1034,12 +1034,9 @@ float.float_to_doc(X) = str(string.float_to_string(X)).
         #if defined(MR_MINGW64) || defined(MR_CYGWIN32)
             sprintf(buf, ""%lld"", u.i);
         #elif defined(MR_WIN32)
-            /*
-            ** The I64 size prefix is specific to the Microsoft
-            ** C library -- we use it here since MSVC and (some)
-            ** versions of 32-bit MinGW GCC do not support the
-            ** standard ll size prefix.
-            */
+            // The I64 size prefix is specific to the Microsoft C library
+            // -- we use it here since MSVC and (some) versions of 32-bit
+            // MinGW GCC do not support the standard ll size prefix.
             sprintf(buf, ""%I64d"", u.i);
         #else
             sprintf(buf, ""%"" MR_INT_LEAST64_LENGTH_MODIFIER ""d"", u.i);

@@ -2001,7 +2001,7 @@
     MR_Word         ML_io_stream_db;
     MR_Word         ML_io_user_globals;
 
-    /* a counter used to generate unique stream ids */
+    // A counter used to generate unique stream ids.
     int             ML_next_stream_id;
     #if 0
       MR_Word       ML_io_ops_table;
@@ -2234,7 +2234,7 @@ finalize_state(!IO).
     [will_not_call_mercury, promise_pure, not_thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
-    /* for Windows DLLs, we need to call GC_INIT() from each DLL */
+    // For Windows DLLs, we need to call GC_INIT() from each DLL.
 #ifdef MR_BOEHM_GC
     GC_INIT();
 #endif
@@ -2726,7 +2726,7 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
         read_buffer[i++] = (char) char_code;
         MR_assert(i <= read_buf_size);
         if (i == read_buf_size) {
-            /* Grow the read buffer */
+            // Grow the read buffer.
             read_buf_size = ML_IO_READ_LINE_GROW(read_buf_size);
             if (read_buffer == initial_read_buffer) {
                 read_buffer = MR_NEW_ARRAY(char, read_buf_size);
@@ -3040,8 +3040,8 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
 #ifdef MR_HAVE_SYS_STAT_H
     #include <sys/stat.h>
 #endif
-#include ""mercury_types.h""            /* for MR_Integer */
-#include ""mercury_library_types.h""    /* for MercuryFilePtr */
+#include ""mercury_types.h""            // for MR_Integer
+#include ""mercury_library_types.h""    // for MercuryFilePtr
 ").
 
 :- pragma foreign_proc("C",
@@ -3124,7 +3124,7 @@ file_modification_time(File, Result, !IO) :-
   #endif
 
     if (stat_result == 0) {
-        /* XXX avoid ML_construct_time_t by returning time_t_rep? */
+        // XXX avoid ML_construct_time_t by returning time_t_rep?
         Time = ML_construct_time_t(s.st_mtime);
         Error = 0;
     } else {
@@ -3249,7 +3249,7 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
   #endif
 
     if (stat_result == 0) {
-        /* Do we still need the non-POSIX S_IFMT style? */
+        // Do we still need the non-POSIX S_IFMT style?
         if
             #if defined(S_ISREG)
                 (S_ISREG(s.st_mode))
@@ -3513,10 +3513,8 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     int access_result;
 
   #if !defined(MR_WIN32) || defined(MR_CYGWIN)
-    /*
-    ** Earlier versions of MSVCRT ignored flags it doesn't support,
-    ** later versions return an error (e.g. on Vista).
-    */
+    // Earlier versions of MSVCRT ignored flags it doesn't support,
+    // later versions return an error (e.g. on Vista).
     if (CheckExecute) {
         mode |= MODE_EXECUTE;
     }
@@ -3539,7 +3537,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     } else {
         Error = errno;
     }
-#else /* !MR_HAVE_ACCESS */
+#else // !MR_HAVE_ACCESS
     Error = ENOSYS;
 #endif
 ").
@@ -3828,12 +3826,10 @@ compare_file_id(Result, FileId1, FileId2) :-
     int device_cmp;
     int inode_cmp;
 
-    /*
-    ** For compilers other than GCC, glibc defines dev_t as struct (dev_t
-    ** is 64 bits, and other compilers may not have a 64 bit arithmetic type).
-    ** XXX This code assumes that dev_t and ino_t do not include padding bits.
-    ** In practice, that should be OK.
-    */
+    // For compilers other than GCC, glibc defines dev_t as struct (dev_t
+    // is 64 bits, and other compilers may not have a 64 bit arithmetic type).
+    // XXX This code assumes that dev_t and ino_t do not include padding bits.
+    // In practice, that should be OK.
     device_cmp = memcmp(&(FileId1.device), &(FileId2.device),
         sizeof(ML_dev_t));
 
@@ -3892,7 +3888,7 @@ file_id(FileName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    /* Win32 returns junk in the st_ino field of `struct stat'. */
+    // Win32 returns junk in the st_ino field of `struct stat'.
 #if defined(MR_HAVE_STAT) && !defined(MR_WIN32)
     struct stat s;
     int stat_result = stat(FileName, &s);
@@ -4007,7 +4003,7 @@ alloc_buffer(Size, buffer(Array)) :-
         assert(Buffer0 + OldSize == (char *) next);
         Buffer = Buffer0;
     } else {
-        /* just have to alloc and copy */
+        // Just have to alloc and copy.
         MR_Word buf;
         MR_offset_incr_hp_atomic_msg(buf, 0,
             (NewSize * sizeof(char) + sizeof(MR_Word) - 1)
@@ -4037,7 +4033,7 @@ resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
     Str = Buffer;
     Str[Len] = '\\0';
 
-    /* Check that the string doesn't contain null characters. */
+    // Check that the string doesn't contain null characters.
     if (strlen(Str) != Len) {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
@@ -5330,7 +5326,7 @@ unlock_globals :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    /* XXX need to globalize the memory */
+    // XXX need to globalize the memory.
     ML_io_user_globals = Globals;
 ").
 
@@ -5390,16 +5386,12 @@ progname_base(DefaultName, PrognameBase, !IO) :-
         does_not_affect_liveness, no_sharing],
 "
 #ifndef MR_NATIVE_GC
-    /*
-    ** Most of the time, we can just use the pointer to the stream
-    ** as a unique identifier.
-    */
+    // Most of the time, we can just use the pointer to the stream
+    // as a unique identifier.
     Id = (MR_Word) Stream;
 #else
-    /*
-    ** For accurate GC we embed an ID in the MercuryFile
-    ** and retrieve it here.
-    */
+    // For accurate GC we embed an ID in the MercuryFile
+    // and retrieve it here.
     Id = (Stream)->id;
 #endif
 ").
@@ -5569,7 +5561,7 @@ set_op_table(_OpTable, !IO).
 #include <limits.h>
 
 #ifdef MR_HAVE_SYS_WAIT_H
-  #include <sys/wait.h>     /* for WIFEXITED, WEXITSTATUS, etc. */
+  #include <sys/wait.h>     // for WIFEXITED, WEXITSTATUS, etc.
 #endif
 
 #ifdef MR_WIN32
@@ -5592,8 +5584,8 @@ extern MR_Unsigned mercury_current_text_output_index;
 extern MR_Unsigned mercury_current_binary_input_index;
 extern MR_Unsigned mercury_current_binary_output_index;
 
-#define MR_initial_io_state()       0   /* some random number */
-#define MR_final_io_state(r)        ((void)0)
+#define MR_initial_io_state()       0   // some random number
+#define MR_final_io_state(r)        ((void) 0)
 
 void            mercury_init_io(void);
 MercuryFilePtr  mercury_current_text_input(void);
@@ -5649,24 +5641,22 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 
 :- pragma foreign_code("Java",
 "
-    /* All text files (including stdin/stdout/stderr) are run through
-    ** stream readers/writers, which use the default charset encoding. In
-    ** other words, while strings and characters are stored internally
-    ** using unicode, all files are read and written using the default
-    ** system charset.
-    ** Binary files are opened via RandomAccessFile, which supports seek,
-    ** but not character encoding/decoding or buffering.
-    ** Binary stdin and stdout are a special case. They are opened via
-    ** FileInput/OutputStreams and seeking is controlled through use of
-    ** FileChannels (requiring Java versions >= 1.4).
-    **
-    ** The use of the methods in this implementation is not very flexible.
-    ** You may not perform text mode operations on a binary file or vice
-    ** versa.
-    ** XXX This causes problems for io.read_binary and io.write_binary,
-    ** for which the current implementations attempt to access binary
-    ** streams using text mode operations (and so will definitely break.)
-    */
+    // All text files (including stdin/stdout/stderr) are run through
+    // stream readers/writers, which use the default charset encoding.
+    // In other words, while strings and characters are stored internally
+    // using unicode, all files are read and written using the default
+    // system charset.
+    // Binary files are opened via RandomAccessFile, which supports seek,
+    // but not character encoding/decoding or buffering.
+    // Binary stdin and stdout are a special case. They are opened via
+    // FileInput/OutputStreams and seeking is controlled through use of
+    // FileChannels (requiring Java versions >= 1.4).
+    //
+    // The use of the methods in this implementation is not very flexible.
+    // You may not perform text mode operations on a binary file or vice versa.
+    // XXX This causes problems for io.read_binary and io.write_binary,
+    // for which the current implementations attempt to access binary
+    // streams using text mode operations (and so will definitely break.)
 
     public abstract static class MR_MercuryFileStruct {
         public  static int                  ML_next_stream_id = 0;
@@ -5701,10 +5691,8 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             }
         }
 
-        /*
-        ** refill_buffer():
-        ** Returns true if the end of the stream has not been reached.
-        */
+        // refill_buffer():
+        // Returns true if the end of the stream has not been reached.
         private boolean refill_buffer()
             throws java.io.IOException
         {
@@ -5731,12 +5719,10 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             return (int) c;
         }
 
-        /*
-        ** read_char(): [Java]
-        **
-        ** Reads one character in from a text input file using the default
-        ** charset decoding. Returns -1 at end of file.
-        */
+        // read_char(): [Java]
+        //
+        // Reads one character in from a text input file using the default
+        // charset decoding. Returns -1 at end of file.
         public int read_char()
             throws java.io.IOException
         {
@@ -5758,12 +5744,10 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             return Character.toCodePoint((char) c1, (char) c2);
         }
 
-        /*
-        ** read_line(): [Java]
-        **
-        ** Reads in a line of a text input file using the default
-        ** charset decoding. Returns null at end of file.
-        */
+        // read_line(): [Java]
+        //
+        // Reads in a line of a text input file using the default
+        // charset decoding. Returns null at end of file.
         public String read_line()
             throws java.io.IOException
         {
@@ -5771,7 +5755,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
                 return null;
             }
 
-            /* Commonly, the buffer already contains a complete line. */
+            // Commonly, the buffer already contains a complete line.
             for (int i = buf_pos; i < buf_end; i++) {
                 if (buf[i] == '\\n') {
                     String s = new String(buf, buf_pos, i - buf_pos + 1);
@@ -5781,7 +5765,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
                 }
             }
 
-            /* The buffer doesn't contain a complete line. */
+            // The buffer doesn't contain a complete line.
             StringBuilder sb = new StringBuilder();
 
             sb.append(buf, buf_pos, buf_end - buf_pos);
@@ -5804,12 +5788,10 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             return sb.toString();
         }
 
-        /*
-        ** read_file(): [Java]
-        **
-        ** Reads in the rest of a text input file using the default
-        ** charset decoding.
-        */
+        // read_file(): [Java]
+        //
+        // Reads in the rest of a text input file using the default
+        // charset decoding.
         public void read_file(StringBuilder sb)
             throws java.io.IOException
         {
@@ -5829,11 +5811,9 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         }
 
         private void unget_code_unit(char c) {
-            /*
-            ** If necessary, shift the unread characters in the input buffer
-            ** to make room at the front of the buffer. If the buffer is full
-            ** then allocate a bigger buffer.
-            */
+            // If necessary, shift the unread characters in the input buffer
+            // to make room at the front of the buffer. If the buffer is full
+            // then allocate a bigger buffer.
             if (buf_pos == 0) {
                 if (buf_end < buf.length) {
                     int offset = buf.length - buf_end;
@@ -5913,7 +5893,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
                 }
             }
 
-            /* Flush if we saw a newline. */
+            // Flush if we saw a newline.
             if (old_line_number != line_number) {
                 output.flush();
             }
@@ -5945,29 +5925,24 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         // use randomaccess, binary_input, binary_output instead.
         protected java.nio.channels.FileChannel channel = null;
 
-        /*
-        ** size(): [Java]
-        **
-        ** Returns the length of a file.
-        */
+        // size(): [Java]
+        //
+        // Returns the length of a file.
         public int size()
             throws java.io.IOException
         {
             return (int) channel.size();
         }
 
-        /*
-        ** getOffset():
-        **  Returns the current position in a binary file.
-        */
+        // getOffset():
+        //
+        // Returns the current position in a binary file.
         abstract public int getOffset() throws java.io.IOException;
 
-        /*
-        ** seek(): [Java]
-        **
-        ** Seek relative to start, current position or end depending on the
-        ** flag.
-        */
+        // seek(): [Java]
+        //
+        // Seek relative to start, current position or end depending on the
+        // flag.
         public void seek_binary(int flag, int offset)
             throws java.io.IOException
         {
@@ -6004,11 +5979,9 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             this.channel = in.getChannel();
         }
 
-        /*
-        ** read_byte(): [Java]
-        **
-        ** Reads one byte in from a binary file. Returns -1 at end of file.
-        */
+        // read_byte(): [Java]
+        //
+        // Reads one byte in from a binary file. Returns -1 at end of file.
         public int read_byte()
             throws java.io.IOException
         {
@@ -6181,12 +6154,10 @@ static void
 mercury_set_binary_mode(FILE *f)
 {
 #if defined(MR_MSVC) || defined(MR_MINGW)
-    /*
-    ** Calling fdopen with 'b' in the mode string does not necessarily put the
-    ** standard input or standard output file into binary translation mode on
-    ** Windows. This is the case with MinGW and MSVC. The cause is likely the
-    ** MSVC CRT. The solution is to change the mode on the file after opening.
-    */
+    // Calling fdopen with 'b' in the mode string does not necessarily put the
+    // standard input or standard output file into binary translation mode on
+    // Windows. This is the case with MinGW and MSVC. The cause is likely the
+    // MSVC CRT. The solution is to change the mode on the file after opening.
     _setmode(_fileno(f), _O_BINARY);
 #endif
 }
@@ -6212,18 +6183,16 @@ mercury_init_io(void)
     if (MR_file(mercury_stdin_binary) != NULL) {
         mercury_set_binary_mode(MR_file(mercury_stdin_binary));
     } else {
-        /*
-        ** The call to fdopen() may fail if stdin is not available.
-        ** We don't abort since we still want Mercury programs to be runnable
-        ** in such a circumstance (aside from those that use stdin).
-        ** For the same reason we treat binary stdout identically below.
-        **
-        ** NOTE: some versions of nohup may also cause the above call to
-        **       fdopen() to fail because they redirect stdin to /dev/null
-        **       in *write* mode. Setting binary stdin to stdin in such
-        **       a case also ensures that we work with those versions of
-        **       nohup.
-        */
+        // The call to fdopen() may fail if stdin is not available.
+        // We don't abort since we still want Mercury programs to be runnable
+        // in such a circumstance (aside from those that use stdin).
+        // For the same reason we treat binary stdout identically below.
+        //
+        // NOTE: some versions of nohup may also cause the above call to
+        //       fdopen() to fail because they redirect stdin to /dev/null
+        //       in *write* mode. Setting binary stdin to stdin in such
+        //       a case also ensures that we work with those versions of
+        //       nohup.
         MR_file(mercury_stdin_binary) = stdin;
     }
 
@@ -6234,10 +6203,8 @@ mercury_init_io(void)
         MR_file(mercury_stdout_binary) = stdout;
     }
 #else
-    /*
-    ** XXX Standard ANSI/ISO C provides no way to set stdin/stdout
-    ** to binary mode. I guess we just have to punt...
-    */
+    // XXX Standard ANSI/ISO C provides no way to set stdin/stdout
+    // to binary mode. I guess we just have to punt...
     MR_file(mercury_stdin_binary) = stdin;
     MR_file(mercury_stdout_binary) = stdout;
 #endif
@@ -6360,11 +6327,10 @@ public static MR_TextOutputFile mercury_stdout =
 public static MR_TextOutputFile mercury_stderr =
     new MR_TextOutputFile(java.lang.System.err);
 
-/**
- * We initialize mercury_stdin_binary and mercury_stdout_binary
- * only when they are needed,  because the initialization code
- * does not work on Google's App Engine.
- */
+// We initialize mercury_stdin_binary and mercury_stdout_binary
+// only when they are needed, because the initialization code
+// does not work on Google's App Engine.
+
 private static MR_BinaryInputFile mercury_stdin_binary = null;
 
 private static MR_BinaryOutputFile mercury_stdout_binary = null;
@@ -6835,11 +6801,9 @@ mercury_open(const char *filename, const char *openmode,
         return NULL;
     }
 
-    /*
-    ** Check if the opened file is actually a directory.
-    ** If fileno or fstat are not available then we assume the OS would not
-    ** let us open a directory as a file anyway.
-    */
+    // Check if the opened file is actually a directory.
+    // If fileno or fstat are not available then we assume the OS would not
+    // let us open a directory as a file anyway.
 #if defined(MR_HAVE_FSTAT) && \
         (defined(MR_HAVE_FILENO) || defined(fileno)) && defined(S_ISDIR)
     {
@@ -7070,7 +7034,7 @@ mercury_getc(MR_MercuryFileStruct mf)
 #ifdef EBADF
   #define MR_CLOSED_FILE_ERROR  EBADF
 #else
-  /* ANSI/ISO C guarantees that EDOM will exist */
+  // ANSI/ISO C guarantees that EDOM will exist.
   #define MR_CLOSED_FILE_ERROR  EDOM
 #endif
 
@@ -7087,14 +7051,14 @@ static int
 ME_closed_stream_read(MR_StreamInfo *info, void *buffer, size_t size)
 {
     errno = MR_CLOSED_FILE_ERROR;
-    return -1;  /* XXX should this be 0? */
+    return -1;  // XXX should this be 0?
 }
 
 static int
 ME_closed_stream_write(MR_StreamInfo *info, const void *buffer, size_t size)
 {
     errno = MR_CLOSED_FILE_ERROR;
-    return -1;  /* XXX should this be 0? */
+    return -1;  // XXX should this be 0?
 }
 
 static int
@@ -7155,17 +7119,15 @@ static const MercuryFile MR_closed_stream = {
     /* ferror   = */    ME_closed_stream_ferror
 };
 
-#endif /* MR_NEW_MERCURYFILE_STRUCT */
+#endif // MR_NEW_MERCURYFILE_STRUCT
 
 int
 mercury_close(MercuryFilePtr mf)
 {
-    /*
-    ** On some systems attempting to close a file stream that has been
-    ** previously closed will lead to a segmentation fault. We check
-    ** that we have not previously closed the file stream here so we
-    ** can give the user some idea about what has happened.
-    */
+    // On some systems, attempting to close a file stream that has been
+    // previously closed will lead to a segmentation fault. We check
+    // that we have not previously closed the file stream here so we
+    // can give the user some idea about what has happened.
     if (MR_file(*mf) == NULL) {
         errno = MR_CLOSED_FILE_ERROR;
         return EOF;
@@ -7177,22 +7139,17 @@ mercury_close(MercuryFilePtr mf)
 
 #ifdef MR_NEW_MERCURYFILE_STRUCT
 
-    /*
-    ** MR_closed_stream is a dummy stream object containing pointers to
-    ** functions that always return an error indication. Doing this ensures
-    ** that future accesses to the file will fail nicely.
-    */
-    /*
-    ** gcc 2.95.2 barfs on `*mf = MR_closed_stream;'
-    ** so we use MR_memcpy() instead.
-    */
+    // MR_closed_stream is a dummy stream object containing pointers to
+    // functions that always return an error indication. Doing this ensures
+    // that future accesses to the file will fail nicely.
+
+    // gcc 2.95.2 barfs on `*mf = MR_closed_stream;'
+    // so we use MR_memcpy() instead.
     MR_memcpy(mf, &MR_closed_stream, sizeof(*mf));
 
-    /*
-    ** XXX It would be nice to have an autoconf check for the GNU libc
-    ** function fopencookie(); we could use that to do a similar thing to what
-    ** we do in the MR_NEW_MERCURYFILE_STRUCT case.
-    */
+    // XXX It would be nice to have an autoconf check for the GNU libc
+    // function fopencookie(); we could use that to do a similar thing to what
+    // we do in the MR_NEW_MERCURYFILE_STRUCT case.
 
 /****
 #elif defined(HAVE_FOPENCOOKIE)
@@ -7201,19 +7158,17 @@ mercury_close(MercuryFilePtr mf)
 
 #else
 
-    /*
-    ** We want future accesses to the file to fail nicely. Ideally they would
-    ** throw an exception, but that would require a check at every I/O
-    ** operation, and for simple operations like putchar() or getchar(),
-    ** that would be too expensive. Instead we just set the file pointer
-    ** to NULL; on systems which trap null pointer dereferences, or if
-    ** library/io.m is compiled with MR_assert assertions enabled
-    ** (i.e. -DMR_LOWLEVEL_DEBUG), this will ensure that accessing closed files
-    ** traps immediately rather than causing problems at some later point.
-    */
+    // We want future accesses to the file to fail nicely. Ideally they would
+    // throw an exception, but that would require a check at every I/O
+    // operation, and for simple operations like putchar() or getchar(),
+    // that would be too expensive. Instead we just set the file pointer
+    // to NULL; on systems which trap null pointer dereferences, or if
+    // library/io.m is compiled with MR_assert assertions enabled
+    // (i.e. -DMR_LOWLEVEL_DEBUG), this will ensure that accessing closed files
+    // traps immediately rather than causing problems at some later point.
     MR_mercuryfile_init(NULL, 0, mf);
 
-#endif /* ! MR_NEW_MERCURYFILE_STRUCT */
+#endif // ! MR_NEW_MERCURYFILE_STRUCT
 
 #ifndef MR_CONSERVATIVE_GC
     if (mf == &mercury_stdin ||
@@ -7222,20 +7177,16 @@ mercury_close(MercuryFilePtr mf)
         mf == &mercury_stdin_binary ||
         mf == &mercury_stdout_binary)
     {
-        /*
-        ** The memory for these streams is allocated statically,
-        ** so there is nothing to free.
-        */
+        // The memory for these streams is allocated statically,
+        // so there is nothing to free.
     } else {
-        /*
-        ** For the accurate GC or no GC cases, we need to explicitly deallocate
-        ** the memory here, to avoid a memory leak. Note that the accurate
-        ** collector won't reclaim io_streams, since the io.stream type
-        ** is defined as a foreign_type.
-        */
+        // For the accurate GC or no GC cases, we need to explicitly deallocate
+        // the memory here, to avoid a memory leak. Note that the accurate
+        // collector won't reclaim io_streams, since the io.stream type
+        // is defined as a foreign_type.
         MR_GC_free(mf);
     }
-#endif /* !MR_CONSERVATIVE_GC */
+#endif // !MR_CONSERVATIVE_GC
 
     return 0;
 }
@@ -7290,10 +7241,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 :- pragma foreign_code("C", "
 #ifdef MR_WIN32
 
-/*
-** Accessing Unicode file names on Windows requires that we use the functions
-** taking wide character strings.
-*/
+// Accessing Unicode file names on Windows requires that we use the functions
+// taking wide character strings.
 wchar_t *
 ML_utf8_to_wide(const char *s)
 {
@@ -7328,15 +7277,16 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
     return s;
 }
 
-#endif /* MR_WIN32 */
+#endif // MR_WIN32
 ").
 
 %---------------------------------------------------------------------------%
 %
-% Platform checks
+% Platform checks.
 %
 
-have_win32 :- semidet_fail.
+have_win32 :-
+    semidet_fail.
 
 :- pragma foreign_proc("C",
     have_win32,
@@ -7384,18 +7334,16 @@ have_dotnet :-
 #include <string.h>
 #include <errno.h>
 
-/*
-** ML_make_err_msg(errnum, msg, alloc_id, error_msg):
-** Append `msg' and a message for errnum to give `error_msg'.
-**
-** WARNING: this must only be called when the `hp' register is valid.
-** That means it must only be called from procedures declared
-** `[will_not_call_mercury, promise_pure]'.
-**
-** This is defined as a macro rather than a C function
-** to avoid worrying about the `hp' register being
-** invalidated by the function call.
-*/
+// ML_make_err_msg(errnum, msg, alloc_id, error_msg):
+// Append `msg' and a message for errnum to give `error_msg'.
+//
+// WARNING: this must only be called when the `hp' register is valid.
+// That means it must only be called from procedures declared
+// `[will_not_call_mercury, promise_pure]'.
+//
+// This is defined as a macro rather than a C function
+// to avoid worrying about the `hp' register being
+// invalidated by the function call.
 
 #define ML_make_err_msg(errnum, msg, alloc_id, error_msg)                   \\
     do {                                                                    \\
@@ -7410,19 +7358,18 @@ have_dotnet :-
         strcat((error_msg), errno_msg);                                     \\
     } while(0)
 
-/*
-** ML_make_win32_err_msg(error, msg, alloc_id, error_msg):
-** Append `msg' and the string returned by the Win32 API function
-** FormatMessage() for the last error to give `error_msg'.
-**
-** WARNING: this must only be called when the `hp' register is valid.
-** That means it must only be called from procedures declared
-** `[will_not_call_mercury]'.
-**
-** This is defined as a macro rather than a C function
-** to avoid worrying about the `hp' register being
-** invalidated by the function call.
-*/
+// ML_make_win32_err_msg(error, msg, alloc_id, error_msg):
+// Append `msg' and the string returned by the Win32 API function
+// FormatMessage() for the last error to give `error_msg'.
+//
+// WARNING: this must only be called when the `hp' register is valid.
+// That means it must only be called from procedures declared
+// `[will_not_call_mercury]'.
+//
+// This is defined as a macro rather than a C function
+// to avoid worrying about the `hp' register being
+// invalidated by the function call.
+
 #ifdef MR_WIN32
 
 #define ML_make_win32_err_msg(error, msg, alloc_id, error_msg)              \\
@@ -7454,7 +7401,7 @@ have_dotnet :-
         }                                                                   \\
     } while(0)
 
-#endif /* !MR_WIN32 */
+#endif // !MR_WIN32
 ").
 
 :- func no_error = system_error.
@@ -7493,7 +7440,7 @@ have_dotnet :-
     is_success(Error::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    /* This works for errno and Win32 error values (ERROR_SUCCESS == 0). */
+    // This works for errno and Win32 error values (ERROR_SUCCESS == 0).
     SUCCESS_INDICATOR = (Error == 0) ? MR_TRUE : MR_FALSE;
 ").
 
@@ -7673,7 +7620,7 @@ read_char_code(input_stream(Stream), Result, Char, Error, !IO) :-
                 c = mercury_get_byte(Stream);
                 uc = c;
                 if (c == EOF) {
-                    /* Illegal byte sequence whether EOF or I/O error. */
+                    // Illegal byte sequence whether EOF or I/O error.
                     Result = ML_RESULT_CODE_ERROR;
                     Error = MR_FERROR(*Stream) ? errno : EILSEQ;
                     Char = 0;
@@ -7695,7 +7642,7 @@ read_char_code(input_stream(Stream), Result, Char, Error, !IO) :-
                 }
             }
         } else {
-            /* Invalid lead byte. */
+            // Invalid lead byte.
             Result = ML_RESULT_CODE_ERROR;
             Error = EILSEQ;
             Char = 0;
@@ -7757,7 +7704,7 @@ putback_char(input_stream(Stream), Character, !IO) :-
             }
         }
     } else {
-        /* This requires multiple pushback in the underlying C library. */
+        // This requires multiple pushback in the underlying C library.
         char        buf[5];
         ML_ssize_t  len;
         len = MR_utf8_encode(buf, Character);
@@ -8205,7 +8152,7 @@ seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
 "
     static const int seek_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END };
 
-    /* XXX check if the stream is seekable */
+    // XXX check if the stream is seekable.
     if (MR_IS_FILE_STREAM(*Stream)) {
         if (fseek(MR_file(*Stream), Off, seek_flags[Flag]) < 0) {
             Error = errno;
@@ -8233,7 +8180,7 @@ binary_output_stream_offset(binary_output_stream(Stream), Offset, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    /* XXX should check if the stream is tellable */
+    // XXX should check if the stream is tellable
     if (MR_IS_FILE_STREAM(*Stream)) {
         Offset = ftell(MR_file(*Stream));
         if (Offset < 0) {
@@ -8534,7 +8481,7 @@ write_binary_uint8(binary_output_stream(Stream), UInt8, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    /* call putc with a strictly non-negative byte-sized integer */
+    // Call putc with a strictly non-negative byte-sized integer.
     if (MR_PUTCH(*Stream, (int) ((unsigned char) Byte)) < 0) {
         Error = errno;
     } else {
@@ -10998,9 +10945,7 @@ progname(DefaultProgName, ProgName, !IO) :-
 "{
     int i;
 
-    /*
-    ** Convert mercury_argv from a vector to a list.
-    */
+    // Convert mercury_argv from a vector to a list.
     i = mercury_argc;
     Args = MR_list_empty_msg(MR_ALLOC_ID);
     while (--i >= 0) {
@@ -11027,21 +10972,19 @@ progname(DefaultProgName, ProgName, !IO) :-
 
 :- pragma foreign_decl("C", "
 
-/*
-** A note regarding the declaration of the environ global variable
-** that follows:
-**
-** The man page (on Linux) says that it should be declared by the user
-** program.
-**
-** On MinGW, environ is a macro (defined in stdlib.h) that expands to a
-** function call that returns the user environment; no additional
-** declaration is required.
-**
-** On Mac OS X shared libraries do not have direct access to environ.
-** The man page for environ(7) says that we should look it up at
-** runtime using _NSGetEnviron().
-*/
+// A note regarding the declaration of the environ global variable
+// that follows:
+//
+// The man page (on Linux) says that it should be declared by the user
+// program.
+//
+// On MinGW, environ is a macro (defined in stdlib.h) that expands to a
+// function call that returns the user environment; no additional
+// declaration is required.
+//
+// On Mac OS X shared libraries do not have direct access to environ.
+// The man page for environ(7) says that we should look it up at
+// runtime using _NSGetEnviron().
 
 #if defined(MR_HAVE_ENVIRON) && !defined(MR_MAC_OSX)
     #include <unistd.h>
@@ -11065,11 +11008,9 @@ progname(DefaultProgName, ProgName, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    /*
-    ** In multithreaded grades, try to use posix_spawn() instead of system().
-    ** There were problems with threads and system() on Linux/glibc, probably
-    ** because system() uses fork().
-    */
+    // In multithreaded grades, try to use posix_spawn() instead of system().
+    // There were problems with threads and system() on Linux/glibc, probably
+    // because system() uses fork().
 #if defined(MR_THREAD_SAFE) && defined(MR_HAVE_POSIX_SPAWN) && \
         defined(MR_HAVE_ENVIRON)
 
@@ -11083,13 +11024,11 @@ progname(DefaultProgName, ProgName, !IO) :-
     argv[2] = Command;
     argv[3] = NULL;
 
-    /* Protect `environ' from concurrent modifications. */
+    // Protect `environ' from concurrent modifications.
     MR_OBTAIN_GLOBAL_LOCK(""io.call_system_code/5"");
 
-    /*
-    ** See the comment at the head of the body of preceding foreign_decl
-    ** for details of why Mac OS X is different here.
-    */
+    // See the comment at the head of the body of preceding foreign_decl
+    // for details of why Mac OS X is different here.
     #if defined(MR_MAC_OSX)
         err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv,
             *_NSGetEnviron());
@@ -11100,10 +11039,10 @@ progname(DefaultProgName, ProgName, !IO) :-
     MR_RELEASE_GLOBAL_LOCK(""io.call_system_code/5"");
 
     if (err != 0) {
-        /* Spawn failed. */
+        // Spawn failed.
         Error = errno;
     } else {
-        /* Wait for the spawned process to exit. */
+        // Wait for the spawned process to exit.
         do {
             err = waitpid(pid, &st, 0);
         } while (err == -1 && MR_is_eintr(errno));
@@ -11115,7 +11054,7 @@ progname(DefaultProgName, ProgName, !IO) :-
         }
     }
 
-#else   /* !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON */
+#else   // !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON
 
   #ifdef MR_WIN32
     Status = _wsystem(ML_utf8_to_wide(Command));
@@ -11129,7 +11068,7 @@ progname(DefaultProgName, ProgName, !IO) :-
         Error = 0;
     }
 
-#endif  /* !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON */
+#endif  // !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON
 ").
 
 decode_system_command_exit_code(Code0) = Status :-
@@ -11411,7 +11350,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 %
 
 :- pragma foreign_decl("C", "
-#include <stdlib.h> /* for getenv() and setenv() */
+#include <stdlib.h> // for getenv() and setenv()
 ").
 
 :- pragma foreign_proc("C",
@@ -11658,10 +11597,8 @@ import java.util.Random;
 #ifdef MR_HAVE_MKSTEMP
     int err, fd;
 
-    /*
-    ** We cannot append Suffix because the last six chars in the argument
-    ** to mkstemp() must be XXXXXX.
-    */
+    // We cannot append Suffix because the last six chars in the argument
+    // to mkstemp() must be XXXXXX.
     FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
         Dir, Sep, Prefix);
     fd = mkstemp(FileName);
@@ -11678,20 +11615,19 @@ import java.util.Random;
         }
     }
 #else
-    /*
-    ** Constructs a temporary name by concatenating Dir, `/', the first 5 chars
-    ** of Prefix, six hex digits, and Suffix. The six digit hex number is
-    ** generated by starting with the pid of this process.  Uses
-    ** `open(..., O_CREATE | O_EXCL, ...)' to create the file, checking that
-    ** there was no existing file with that name.
-    */
+    // Constructs a temporary name by concatenating Dir, `/', the first 5 chars
+    // of Prefix, six hex digits, and Suffix. The six digit hex number is
+    // generated by starting with the pid of this process.  Uses
+    // `open(..., O_CREATE | O_EXCL, ...)' to create the file, checking that
+    // there was no existing file with that name.
+
     int     len, err, fd, num_tries;
     char    countstr[256];
     MR_Word filename_word;
     int     flags;
 
     len = strlen(Dir) + 1 + 5 + 6 + strlen(Suffix) + 1;
-    /* Dir + / + Prefix + counter + Suffix + \\0 */
+    // Dir + / + Prefix + counter + Suffix + \\0
     MR_offset_incr_hp_atomic_msg(filename_word, 0,
         (len + sizeof(MR_Word)) / sizeof(MR_Word),
         MR_ALLOC_ID, ""string.string/0"");
@@ -11864,10 +11800,9 @@ import java.util.Random;
 #ifdef MR_HAVE_MKDTEMP
     int err;
 
-    /*
-    ** We cannot append Suffix because the last six chars in the argument
-    ** to mkdtemp() must be XXXXXX.
-    */
+    // We cannot append Suffix because the last six chars in the argument
+    // to mkdtemp() must be XXXXXX.
+
     DirName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
         Dir, Sep, Prefix);
     DirName = mkdtemp(DirName);
@@ -11879,7 +11814,7 @@ import java.util.Random;
 #else
     Error = ENOSYS;
     DirName = MR_make_string_const("""");
-#endif /* HAVE_MKDTEMP */
+#endif // HAVE_MKDTEMP
 ").
 
 :- pragma foreign_proc("C#",
@@ -12400,7 +12335,7 @@ read_symlink(FileName, Result, !IO) :-
     int     buffer_size2 = PATH_MAX;
     char    buffer[PATH_MAX + 1];
 
-    /* readlink() does not null-terminate the buffer */
+    // readlink() does not null-terminate the buffer.
     num_chars = readlink(FileName, buffer, PATH_MAX);
 
     if (num_chars == PATH_MAX) {
@@ -12410,7 +12345,7 @@ read_symlink(FileName, Result, !IO) :-
             num_chars = readlink(FileName, buffer2, buffer_size2);
         } while (num_chars == buffer_size2);
 
-        /* Invariant: num_chars < buffer_size2 */
+        // Invariant: num_chars < buffer_size2.
 
         if (num_chars == -1) {
             TargetFileName = MR_make_string_const("""");
@@ -12430,7 +12365,7 @@ read_symlink(FileName, Result, !IO) :-
         MR_make_aligned_string_copy_msg(TargetFileName, buffer, MR_ALLOC_ID);
         Error = 0;
     }
-#else /* !MR_HAVE_READLINK */
+#else // !MR_HAVE_READLINK
     TargetFileName = MR_make_string_const("""");
     Error = ENOSYS;
 #endif

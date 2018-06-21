@@ -187,7 +187,7 @@
     evaluate_parallelism_condition,
     [will_not_call_mercury, thread_safe],
 "
-    /* All uses of this predicate should override the body. */
+    // All uses of this predicate should override the body.
     MR_fatal_error(""evaluate_parallelism_condition called"");
 ").
 
@@ -219,13 +219,13 @@ INIT mercury_sys_init_par_builtin_modules
     {
         MR_Future *Future;
 
-        /* Restore the address of the future after resuming. */
+        // Restore the address of the future after resuming.
         Future = (MR_Future *) MR_sv(1);
         MR_decr_sp(1);
 
         assert(Future->MR_fut_signalled);
 
-        /* Return to the caller of par_builtin.wait. */
+        // Return to the caller of par_builtin.wait.
         MR_r1 = Future->MR_fut_value;
         MR_proceed();
     }
@@ -233,7 +233,7 @@ INIT mercury_sys_init_par_builtin_modules
 
 #endif
 
-    /* forward decls to suppress gcc warnings */
+    // Forward decls to suppress gcc warnings.
     void mercury_sys_init_par_builtin_modules_init(void);
     void mercury_sys_init_par_builtin_modules_init_type_tables(void);
     #ifdef  MR_DEEP_PROFILING
@@ -250,14 +250,14 @@ INIT mercury_sys_init_par_builtin_modules
 
     void mercury_sys_init_par_builtin_modules_init_type_tables(void)
     {
-        /* no types to register */
+        // No types to register.
     }
 
     #ifdef  MR_DEEP_PROFILING
     void mercury_sys_init_par_builtin_modules_write_out_proc_statics(
         FILE *deep_fp, FILE *procrep_fp)
     {
-        /* no proc_statics to write out */
+        // No proc_statics to write out.
     }
     #endif
 ").
@@ -317,7 +317,7 @@ mercury__par_builtin__lc_wait_free_slot_2_p_0(MR_Box lc, MR_Integer *slot)
     MR_fatal_error(""lc_wait_free_slot is unavailable with --highlevel-code"");
 }
 
-#else /* ! MR_HIGHLEVEL_CODE */
+#else // ! MR_HIGHLEVEL_CODE
 
 MR_def_extern_entry(par_builtin__lc_finish_1_0)
 MR_def_extern_entry(par_builtin__lc_wait_free_slot_2_0)
@@ -339,7 +339,7 @@ MR_define_entry(mercury__par_builtin__lc_finish_1_0)
     MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
 
     MR_incr_sp(1);
-    MR_sv(1) = MR_r1; /* LC */
+    MR_sv(1) = MR_r1; // LC
 
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
     {
@@ -390,11 +390,9 @@ MR_define_entry(mercury__par_builtin__lc_wait_free_slot_2_0)
     MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
 
     MR_incr_sp(1);
-    MR_sv(1) = MR_r1; /* LC */
-    /*
-    ** LC must be saved to the stack so that we can resume from the label below
-    ** and retrieve it.
-    */
+    MR_sv(1) = MR_r1; // LC
+    // LC must be saved to the stack so that we can resume from the label below
+    // and retrieve it.
 
 MR_def_label(par_builtin__lc_wait_free_slot_2_0,1)
     MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
@@ -422,11 +420,9 @@ MR_def_label(par_builtin__lc_wait_free_slot_2_0,1)
 #endif
 MR_END_MODULE
 
-#endif /* ! MR_HIGHLEVEL_CODE */
+#endif // ! MR_HIGHLEVEL_CODE
 
-/*
-** Module initialization
-*/
+// Module initialization.
 /*
 INIT mercury_sys_init_lc
 */
@@ -443,7 +439,7 @@ mercury_sys_init_lc_init(void)
 void
 mercury_sys_init_lc_init_type_tables(void)
 {
-    /* no types to register */
+    // No types to register.
 }
 
 #ifdef  MR_DEEP_PROFILING
@@ -451,7 +447,7 @@ void
 mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
     FILE *procrep_fp)
 {
-    /* The deep profiler shouldn't notice loop control predicates. */
+    // The deep profiler shouldn't notice loop control predicates.
 }
 #endif
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2008 The University of Melbourne.
 % Copyright (C) 2015, 2018 The Mercury team.
@@ -89,9 +89,9 @@
 
   #ifdef MR_RECORD_TERM_SIZES
     #include ""mercury_term_size.h""
-  #endif /* MR_RECORD_TERM_SIZES */
+  #endif // MR_RECORD_TERM_SIZES
 
-#endif /* MR_TERM_SIZE_PROFILING_GUARD */
+#endif // MR_TERM_SIZE_PROFILING_GUARD
 ").
 
 :- pragma foreign_proc("C",
@@ -177,7 +177,7 @@ increment_size(_Value, _Incr) :-
     complexity_is_active(IsActive::out),
     [thread_safe, will_not_call_mercury],
 "
-    /* mention IsActive to avoid warning */
+    // Mention IsActive to avoid warning.
     MR_fatal_error(""complexity_mark_active"");
 ").
 
@@ -185,7 +185,7 @@ increment_size(_Value, _Incr) :-
     complexity_call_proc(Slot::out),
     [thread_safe, will_not_call_mercury],
 "
-    /* mention Slot to avoid warning */
+    // Mention Slot to avoid warning.
     MR_fatal_error(""complexity_call_proc"");
 ").
 
@@ -193,7 +193,7 @@ increment_size(_Value, _Incr) :-
     complexity_exit_proc(Slot::in),
     [thread_safe, will_not_call_mercury],
 "
-    /* mention Slot to avoid warning */
+    // Mention Slot to avoid warning.
     MR_fatal_error(""complexity_exit_proc"");
 ").
 
@@ -201,7 +201,7 @@ increment_size(_Value, _Incr) :-
     complexity_fail_proc(Slot::in),
     [thread_safe, will_not_call_mercury],
 "
-    /* mention Slot to avoid warning */
+    // Mention Slot to avoid warning.
     MR_fatal_error(""complexity_fail_proc"");
 ").
 
@@ -209,7 +209,7 @@ increment_size(_Value, _Incr) :-
     complexity_redo_proc(Slot::in),
     [thread_safe, will_not_call_mercury],
 "
-    /* mention Slot to avoid warning */
+    // Mention Slot to avoid warning.
     MR_fatal_error(""complexity_redo_proc"");
 ").
 

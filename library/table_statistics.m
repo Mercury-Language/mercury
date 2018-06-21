@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007 The University of Melbourne.
 % Copyright (C) 2014-2018 The Mercury team.
@@ -429,7 +429,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
 
     ptr = &(StatsStructPtr->MR_ts_steps[StepNum]);
 
-    /* The casts are to discard const. */
+    // The casts are to discard const.
     VarName = (MR_String) (MR_Integer) StepDescsPtr[StepNum].MR_tsd_var_name;
 
     NumLookups =                ptr->MR_tss_num_lookups;
