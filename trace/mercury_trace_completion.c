@@ -30,7 +30,7 @@
   #else
     extern char     *rl_line_buffer;
     extern int      rl_point;
-    extern char     *filename_completion_function(const char *word, int state);
+    extern char     *rl_filename_completion_function(const char *word, int state);
   #endif
 #endif
 
@@ -594,7 +594,7 @@ MR_trace_filename_completer_next(const char *word, size_t word_len,
 
     state = (MR_Integer) *data;
     *data = (MR_CompleterData) 1;
-    return filename_completion_function((char *) word, (int) state);
+    return rl_filename_completion_function((char *) word, (int) state);
 #endif // defined(MR_USE_READLINE) || defined(MR_USE_EDITLINE)
 }
 
