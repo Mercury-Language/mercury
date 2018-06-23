@@ -4,14 +4,16 @@
 #
 # You need GNU C (version 3.4.x or later -- note however that version 4.0 will
 # not work) and GNU Make (3.69 or later).  
-# Make sure that they are somewhere in your PATH.  It's also helpful if you
-# have GNU Readline installed in one of the standard locations (normally
-# /usr/local or /usr), but this is not essential.
+# Make sure that they are somewhere in your PATH.  It is also helpful if you
+# have GNU Readline or NetBSD Editline installed in one of the standard
+# locations (normally /usr/local or /usr), but this is not essential.
 #
 # The source distributions for GNU C, GNU Make, and GNU Readline are
-# available from <ftp://ftp.gnu.org/gnu/>.  Binaries for these are
-# included in almost all Linux distributions, Mac OS X and also in the Cygwin
-# and MinGW distributions for Windows (see README.MS-Windows).
+# available from <ftp://ftp.gnu.org/gnu/>.  The source distribution for
+# NetBSD Editline is available from <https://thrysoee.dk/editline/>.
+# Binaries for the above are included in almost all Linux distributions,
+# Mac OS X and also in the Cygwin and MinGW distributions for Windows (see
+# README.MS-Windows).
 #
 # Step 0.  Extract the files from the gzipped tar archive.
 #
@@ -192,6 +194,11 @@ make install
 #          causes the deep profiler not to be installed, even if the underlying
 #          system would be able to support it. The default is to enable the
 #          deep profiler if the system has the required features.
+#
+#          The --without-readline and --without-editline options prevent the
+#          use of GNU Readline and NetBSD Editline with the debugger.
+#          Note that GNU Readline will be used by preference to Editline if
+#          the former is present and if --without-readline is not given.
 #
 #          If you are short on RAM, you can add -DSMALL_CONFIG to the CFLAGS
 #          line in the file boehm_gc/Makefile.  (This tells the garbage
