@@ -200,8 +200,8 @@ generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo, Code,
         llds_instr(assign(LoopCounter, Three),
             "initialize loop counter"),
         % It is possible for the number of hidden arguments to be zero,
-        % in which case the body of this loop should not be executed
-        % at all. This is why we jump to the loop condition test.
+        % in which case the body of this loop should not be executed at all.
+        % This is why we jump to the loop condition test.
         llds_instr(goto(code_label(LoopTest)),
             "enter the copy loop at the conceptual top"),
         llds_instr(label(LoopStart),
@@ -297,8 +297,7 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
     IsDummy = variable_is_of_dummy_type(CI, Var),
     (
         IsDummy = is_dummy_type,
-        ProduceCode = empty,
-        AssignCode = singleton(
+        ProduceAssignCode = singleton(
             llds_instr(assign(FieldLval, const(llconst_int(0))),
                 "set new argument field (dummy type)")
         )
@@ -308,7 +307,8 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
         AssignCode = singleton(
             llds_instr(assign(FieldLval, Value),
                 "set new argument field")
-        )
+        ),
+        ProduceAssignCode = ProduceCode ++ AssignCode
     ),
     IncrCode = singleton(
         llds_instr(assign(LoopCounter,
@@ -316,9 +316,10 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
                 const(llconst_int(1)))),
             "increment argument counter")
     ),
+    VarCode = ProduceAssignCode ++ IncrCode,
     generate_extra_closure_args(Vars, LoopCounter, NewClosure, VarsCode,
         CI, !CLD),
-    Code = ProduceCode ++ AssignCode ++ IncrCode ++ VarsCode.
+    Code = VarCode ++ VarsCode.
 
 :- pred generate_pred_args(code_info::in, vartypes::in, list(prog_var)::in,
     list(arg_info)::in, list(cell_arg)::out, list(cell_arg)::out,
