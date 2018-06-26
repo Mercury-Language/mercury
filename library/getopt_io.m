@@ -17,16 +17,20 @@
 % options. It also has the GNU extension of recognizing options anywhere in
 % the command-line, not just at the start.
 %
-% To use this module, you must provide an `option' type which is an
-% enumeration of all your different options. You must provide predicates
-% `short_option(Char, Option)' and `long_option(String, Option)'
-% which convert the short and/or long names for the option to this
-% enumeration type. (An option can have as many names as you like,
-% long or short.) You must provide a predicate
-% `option_default(Option, OptionData)' which specifies both the type
-% and the default value for every option. You may optionally provide
-% a predicate `special_handler(Option, SpecialData, OptionTable,
-% MaybeOptionTable)' for handling special option types. (See below.)
+% To use this module:
+%
+% - You must provide an `option' type which is an enumeration of
+%   all your different options.
+% - You must provide predicates `short_option(Char, Option)' and
+%   `long_option(String, Option)' which convert the short and/or long names
+%   for the option to this enumeration type.
+%   (An option can have as many names as you like, long or short.)
+% - You must provide a predicate `option_default(Option, OptionData)'
+%   which specifies both the type and the default value for every option.
+%
+% You may optionally provide a predicate `special_handler(Option, SpecialData,
+% OptionTable, MaybeOptionTable)' for handling special option types.
+% (See below.)
 %
 % We support the following "simple" option types:
 %
@@ -206,6 +210,30 @@
                     maybe_option_table(OptionType))
             ).
 
+:- inst option_ops for option_ops/1
+    --->    option_ops(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(out, out) is nondet                % option_default
+            )
+    ;       option_ops_multi(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(out, out) is multi                 % option_default
+            )
+    ;       option_ops(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(out, out) is nondet,               % option_default
+                pred(in, in, in, out) is semidet        % special handler
+            )
+    ;       option_ops_multi(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(out, out) is multi,                % option_default
+                pred(in, in, in, out) is semidet        % special handler
+            ).
+
 :- type option_ops_track(OptionType)
     --->    option_ops_track(
                 pred(char, OptionType),         % short_option
@@ -216,40 +244,12 @@
                     set(OptionType))
             ).
 
-:- inst option_ops for option_ops/1 ==
-    bound((
-        option_ops(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(out, out) is nondet                % option_default
-        )
-    ;   option_ops_multi(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(out, out) is multi                 % option_default
-        )
-    ;   option_ops(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(out, out) is nondet,               % option_default
-            pred(in, in, in, out) is semidet        % special handler
-        )
-    ;   option_ops_multi(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(out, out) is multi,                % option_default
-            pred(in, in, in, out) is semidet        % special handler
-        )
-    )).
-
-:- inst option_ops_track for option_ops_track/1 ==
-    bound((
-        option_ops_track(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(in, in, in, out, out) is semidet   % special handler
-        )
-    )).
+:- inst option_ops_track for option_ops_track/1
+    --->    option_ops_track(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(in, in, in, out, out) is semidet   % special handler
+            ).
 
 :- type option_data
     --->    bool(bool)
@@ -410,6 +410,11 @@
                     set(OptionType))
             ).
 
+:- inst option_ops_special for option_ops_special/1
+    --->    none
+    ;       notrack(pred(in, in, in, out) is semidet)
+    ;       track(pred(in, in, in, out, out) is semidet).
+
 :- type option_ops_internal(OptionType)
     --->    option_ops_internal(
                 short_option    :: pred(char, OptionType),
@@ -417,34 +422,28 @@
                 special_handler :: option_ops_special(OptionType)
             ).
 
-:- inst option_ops_internal for option_ops_internal/1 ==
-    bound((
-        option_ops_internal(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            bound((                                 % special handler, if any
-                none
-            ;
-                notrack(pred(in, in, in, out) is semidet)
-            ;
-                track(pred(in, in, in, out, out) is semidet)
-            ))
-        )
-    )).
+:- inst option_ops_internal for option_ops_internal/1
+    --->    option_ops_internal(
+                pred(in, out) is semidet,           % short_option
+                pred(in, out) is semidet,           % long_option
+                option_ops_special                  % special handler, if any
+            ).
 
 init_option_table(OptionDefaultsPred, OptionTable) :-
-    solutions((pred(OptionDataPair::out) is nondet :-
+    solutions(
+        ( pred(OptionDataPair::out) is nondet :-
             OptionDataPair = Option - OptionData,
             OptionDefaultsPred(Option, OptionData)
         ), OptionDefaultsList),
-    map.from_assoc_list(OptionDefaultsList, OptionTable).
+    map.from_sorted_assoc_list(OptionDefaultsList, OptionTable).
 
 init_option_table_multi(OptionDefaultsPred, OptionTable) :-
-    solutions((pred(OptionDataPair::out) is multi :-
+    solutions(
+        ( pred(OptionDataPair::out) is multi :-
             OptionDataPair = Option - OptionData,
             OptionDefaultsPred(Option, OptionData)
         ), OptionDefaultsList),
-    map.from_assoc_list(OptionDefaultsList, OptionTable).
+    map.from_sorted_assoc_list(OptionDefaultsList, OptionTable).
 
 process_options(OptionOps, Args0, NonOptionArgs, Result, !IO) :-
     process_options_se(OptionOps, Args0, NonOptionArgs, Result0, !IO),
@@ -526,8 +525,8 @@ process_options_track_se(OptionOps, Args0, OptionArgs, NonOptionArgs,
 
 process_arguments([], [], _, OptionArgs, OptionArgs,
         OptionTable, ok(OptionTable), !OptionsSet, !IO).
-process_arguments([Option | Args0], Args, OptionOps,
-        OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet, !IO) :-
+process_arguments([Option | Args0], Args, OptionOps, OptionArgs0, OptionArgs,
+        OptionTable0, Result, !OptionsSet, !IO) :-
     ( if
         Option = "--"
     then
@@ -646,7 +645,7 @@ process_arguments([Option | Args0], Args, OptionOps,
             )
         )
     else
-        % It's a normal non-option argument.
+        % It is a normal non-option argument.
         % As a GNU extension, keep searching for options
         % in the remaining arguments.
         process_arguments(Args0, Args1, OptionOps,

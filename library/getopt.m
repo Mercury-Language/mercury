@@ -17,17 +17,20 @@
 % options. It also has the GNU extension of recognizing options anywhere in
 % the command-line, not just at the start.
 %
-% To use this module, you must provide an `option' type which
-% is an enumeration of all your different options.
-% You must provide predicates `short_option(Char, Option)'
-% and `long_option(String, Option)' which convert the short
-% and/or long names for the option to this enumeration type.
-% (An option can have as many names as you like, long or short.)
-% You must provide a predicate `option_default(Option, OptionData)'
-% which specifies both the type and the default value for every option.
-% You may optionally provide a predicate `special_handler(Option,
-% SpecialData, OptionTable, MaybeOptionTable)' for handling special
-% option types.  (See below.)
+% To use this module:
+%
+% - You must provide an `option' type which is an enumeration of
+%   all your different options.
+% - You must provide predicates `short_option(Char, Option)' and
+%   `long_option(String, Option)' which convert the short and/or long names
+%   for the option to this enumeration type.
+%   (An option can have as many names as you like, long or short.)
+% - You must provide a predicate `option_default(Option, OptionData)'
+%   which specifies both the type and the default value for every option.
+%
+% You may optionally provide a predicate `special_handler(Option, SpecialData,
+% OptionTable, MaybeOptionTable)' for handling special option types.
+% (See below.)
 %
 % We support the following "simple" option types:
 %
@@ -55,12 +58,12 @@
 %
 % For the "simple" option types, if there are multiple occurrences of the same
 % option on the command-line, then the last (right-most) occurrence will take
-% precedence.  For "accumulating" options, multiple occurrences will be
+% precedence. For "accumulating" options, multiple occurrences will be
 % appended together into a list.
 %
 % The "special" option types are handled by a special option handler (see
 % `special_handler' below), which may perform arbitrary modifications to the
-% option_table.  For example, an option which is not yet implemented could be
+% option_table. For example, an option which is not yet implemented could be
 % handled by a special handler which produces an error report, or an option
 % which is a synonym for a set of more "primitive" options could be handled by
 % a special handler which sets those "primitive" options.
@@ -202,6 +205,30 @@
                     maybe_option_table(OptionType))
             ).
 
+:- inst option_ops for option_ops/1
+    --->    option_ops(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(out, out) is nondet                % option_default
+            )
+    ;       option_ops_multi(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(out, out) is multi                 % option_default
+            )
+    ;       option_ops(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(out, out) is nondet,               % option_default
+                pred(in, in, in, out) is semidet        % special handler
+            )
+    ;       option_ops_multi(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(out, out) is multi,                % option_default
+                pred(in, in, in, out) is semidet        % special handler
+            ).
+
 :- type option_ops_track(OptionType)
     --->    option_ops_track(
                 pred(char, OptionType),         % short_option
@@ -212,40 +239,12 @@
                     set(OptionType))
             ).
 
-:- inst option_ops for option_ops/1 ==
-    bound((
-        option_ops(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(out, out) is nondet                % option_default
-        )
-    ;   option_ops_multi(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(out, out) is multi                 % option_default
-        )
-    ;   option_ops(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(out, out) is nondet,               % option_default
-            pred(in, in, in, out) is semidet        % special handler
-        )
-    ;   option_ops_multi(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(out, out) is multi,                % option_default
-            pred(in, in, in, out) is semidet        % special handler
-        )
-    )).
-
-:- inst option_ops_track for option_ops_track/1 ==
-    bound((
-        option_ops_track(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            pred(in, in, in, out, out) is semidet   % special handler
-        )
-    )).
+:- inst option_ops_track for option_ops_track/1
+    --->    option_ops_track(
+                pred(in, out) is semidet,               % short_option
+                pred(in, out) is semidet,               % long_option
+                pred(in, in, in, out, out) is semidet   % special handler
+            ).
 
 :- type option_data
     --->    bool(bool)
@@ -267,7 +266,7 @@
     ;       string(string)
     ;       maybe_string(maybe(string)).
 
-:- type option_table(OptionType) ==  map(OptionType, option_data).
+:- type option_table(OptionType) == map(OptionType, option_data).
 
 :- type maybe_option_table(OptionType)
     --->    ok(option_table(OptionType))
@@ -283,7 +282,7 @@
             % The argument gives the option as it appeared on the command line.
 
     ;       option_error(OptionType, string, option_error_reason).
-            % An error occurred with a specific option.  The first two
+            % An error occurred with a specific option. The first two
             % arguments identify the option enumeration value and the string
             % that appeared on the command line for that option respectively.
             % The third argument describes the nature of the error with that
@@ -388,6 +387,11 @@
                     set(OptionType))
             ).
 
+:- inst option_ops_special for option_ops_special/1
+    --->    none
+    ;       notrack(pred(in, in, in, out) is semidet)
+    ;       track(pred(in, in, in, out, out) is semidet).
+
 :- type option_ops_internal(OptionType)
     --->    option_ops_internal(
                 short_option    :: pred(char, OptionType),
@@ -395,34 +399,28 @@
                 special_handler :: option_ops_special(OptionType)
             ).
 
-:- inst option_ops_internal for option_ops_internal/1 ==
-    bound((
-        option_ops_internal(
-            pred(in, out) is semidet,               % short_option
-            pred(in, out) is semidet,               % long_option
-            bound((                                 % special handler, if any
-                none
-            ;
-                notrack(pred(in, in, in, out) is semidet)
-            ;
-                track(pred(in, in, in, out, out) is semidet)
-            ))
-        )
-    )).
+:- inst option_ops_internal for option_ops_internal/1
+    --->    option_ops_internal(
+                pred(in, out) is semidet,           % short_option
+                pred(in, out) is semidet,           % long_option
+                option_ops_special                  % special handler, if any
+            ).
 
 init_option_table(OptionDefaultsPred, OptionTable) :-
-    solutions((pred(OptionDataPair::out) is nondet :-
+    solutions(
+        ( pred(OptionDataPair::out) is nondet :-
             OptionDataPair = Option - OptionData,
             OptionDefaultsPred(Option, OptionData)
         ), OptionDefaultsList),
-    map.from_assoc_list(OptionDefaultsList, OptionTable).
+    map.from_sorted_assoc_list(OptionDefaultsList, OptionTable).
 
 init_option_table_multi(OptionDefaultsPred, OptionTable) :-
-    solutions((pred(OptionDataPair::out) is multi :-
+    solutions(
+        ( pred(OptionDataPair::out) is multi :-
             OptionDataPair = Option - OptionData,
             OptionDefaultsPred(Option, OptionData)
         ), OptionDefaultsList),
-    map.from_assoc_list(OptionDefaultsList, OptionTable).
+    map.from_sorted_assoc_list(OptionDefaultsList, OptionTable).
 
 process_options(OptionOps, Args0, NonOptionArgs, Result) :-
     process_options_se(OptionOps, Args0, NonOptionArgs, Result0),
@@ -502,8 +500,8 @@ process_options_track_se(OptionOps, Args0, OptionArgs, NonOptionArgs,
 
 process_arguments([], [], _, OptionArgs, OptionArgs,
         OptionTable, ok(OptionTable), !OptionsSet).
-process_arguments([Option | Args0], Args, OptionOps,
-        OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet) :-
+process_arguments([Option | Args0], Args, OptionOps, OptionArgs0, OptionArgs,
+        OptionTable0, Result, !OptionsSet) :-
     ( if
         Option = "--"
     then
@@ -572,8 +570,8 @@ process_arguments([Option | Args0], Args, OptionOps,
             Args = Args0
         )
     else if
-        string.first_char(Option, '-',
-        ShortOptions), ShortOptions \= ""
+        string.first_char(Option, '-', ShortOptions),
+        ShortOptions \= ""
     then
         string.to_char_list(ShortOptions, ShortOptionsList),
         % Process a single negated option `-x-'.
@@ -621,7 +619,7 @@ process_arguments([Option | Args0], Args, OptionOps,
             )
         )
     else
-        % It's a normal non-option argument.
+        % It is a normal non-option argument.
         % As a GNU extension, keep searching for options
         % in the remaining arguments.
         process_arguments(Args0, Args1, OptionOps,
