@@ -1,7 +1,6 @@
 typeclass_missing_mode_2.m:015: Error: no mode declaration for type class
 typeclass_missing_mode_2.m:015:   method predicate
 typeclass_missing_mode_2.m:015:   `typeclass_missing_mode_2.p'/1.
-typeclass_missing_mode_2.m:022: In instance declaration for
-typeclass_missing_mode_2.m:022:   `typeclass_missing_mode_2.c'/1:
+typeclass_missing_mode_2.m:022: In instance declaration for `c'/1:
 typeclass_missing_mode_2.m:022:   the type class has no predicate method named
 typeclass_missing_mode_2.m:022:   `p'/1.

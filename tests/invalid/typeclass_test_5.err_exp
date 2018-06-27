@@ -1,7 +1,7 @@
-typeclass_test_5.m:023: In instance declaration for `typeclass_test_5.c2(int)'
-typeclass_test_5.m:023:   superclass constraints not satisfied:
+typeclass_test_5.m:023: In instance declaration for `c2(int)':
+typeclass_test_5.m:023:   the following superclass constraint is not satisfied:
 typeclass_test_5.m:023:   `typeclass_test_5.c1(int)'.
-typeclass_test_5.m:023: In instance declaration for `typeclass_test_5.c2(int)':
+typeclass_test_5.m:023: In instance declaration for `c2(int)':
 typeclass_test_5.m:023:   multiple implementations of type class predicate
 typeclass_test_5.m:023:   method `p'/1.
 typeclass_test_5.m:024:   First definition appears here.

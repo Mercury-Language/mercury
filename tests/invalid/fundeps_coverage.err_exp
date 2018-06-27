@@ -1,4 +1,4 @@
-fundeps_coverage.m:016: In instance for typeclass `fundeps_coverage.bar'/3:
+fundeps_coverage.m:016: In instance for typeclass `bar'/3:
 fundeps_coverage.m:016:   functional dependency not satisfied: type variable
 fundeps_coverage.m:016:   `C' occurs in the range of the functional dependency,
 fundeps_coverage.m:016:   but is not determined by the domain.

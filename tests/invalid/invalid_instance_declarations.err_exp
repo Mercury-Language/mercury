@@ -1,10 +1,31 @@
-invalid_instance_declarations.m:017: In instance declaration for
-invalid_instance_declarations.m:017:   `invalid_instance_declarations.tc(((func)
-invalid_instance_declarations.m:017:   = T))':
-invalid_instance_declarations.m:017:   the first argument is a higher order
-invalid_instance_declarations.m:017:   type.
+invalid_instance_declarations.m:017: In instance declaration for `tc(((func) =
+invalid_instance_declarations.m:017:   T), int)':
+invalid_instance_declarations.m:017:   the first instance type `((func) = T)'
+invalid_instance_declarations.m:017:   is a higher order type; it should be a
+invalid_instance_declarations.m:017:   type constructor applied to zero or more
+invalid_instance_declarations.m:017:   type variables.
 invalid_instance_declarations.m:018: In instance declaration for
-invalid_instance_declarations.m:018:   `invalid_instance_declarations.tc(invalid_instance_declarations.t(int))':
-invalid_instance_declarations.m:018:   the first argument is a type whose first
-invalid_instance_declarations.m:018:   argument is not a variable.
+invalid_instance_declarations.m:018:   `tc(invalid_instance_declarations.t(int),
+invalid_instance_declarations.m:018:   int)':
+invalid_instance_declarations.m:018:   in the first instance type, one of the
+invalid_instance_declarations.m:018:   arguments of the type constructor `t'/1
+invalid_instance_declarations.m:018:   is not a type variable, but should be.
+invalid_instance_declarations.m:018:   This is the first argument, `int'.
+invalid_instance_declarations.m:019: In instance declaration for
+invalid_instance_declarations.m:019:   `tc(invalid_instance_declarations.t(int),
+invalid_instance_declarations.m:019:   invalid_instance_declarations.t(int,
+invalid_instance_declarations.m:019:   string))':
+invalid_instance_declarations.m:019:   in the first instance type, one of the
+invalid_instance_declarations.m:019:   arguments of the type constructor `t'/1
+invalid_instance_declarations.m:019:   is not a type variable, but should be.
+invalid_instance_declarations.m:019:   This is the first argument, `int'.
+invalid_instance_declarations.m:019: In instance declaration for
+invalid_instance_declarations.m:019:   `tc(invalid_instance_declarations.t(int),
+invalid_instance_declarations.m:019:   invalid_instance_declarations.t(int,
+invalid_instance_declarations.m:019:   string))':
+invalid_instance_declarations.m:019:   in the second instance type, some of the
+invalid_instance_declarations.m:019:   arguments of the type constructor `t'/2
+invalid_instance_declarations.m:019:   are not type variables, but should be.
+invalid_instance_declarations.m:019:   These are the first argument, `int' and
+invalid_instance_declarations.m:019:   the second argument, `string'.
 For more information, recompile with `-E'.

@@ -133,6 +133,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
@@ -242,8 +243,8 @@ check_instance_declaration_types_for_instance(ModuleInfo,
     list.foldl2(is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn),
         OriginalTypes, 1, _, !Specs),
     Types = InstanceDefn ^ instdefn_types,
-    list.foldl3(is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn),
-        Types, 1, _, set.init, _, !Specs).
+    list.foldl2(is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn),
+        Types, 1, _, !Specs).
 
 :- pred is_valid_instance_orig_type(module_info::in,
     class_id::in, hlds_instance_defn::in, mer_type::in,
@@ -267,7 +268,7 @@ is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn, Type,
                     InstanceDefn ^ instdefn_body = instance_body_concrete(_)
                 then
                     Spec = abstract_eqv_instance_type_msg(ClassId,
-                        InstanceDefn, N),
+                        InstanceDefn, N, Type),
                     !:Specs = [Spec | !.Specs]
                 else
                     true
@@ -301,54 +302,56 @@ is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn, Type,
     %
 :- pred is_valid_instance_type(module_info::in,
     class_id::in, hlds_instance_defn::in, mer_type::in,
-    int::in, int::out, set(mer_type)::in, set(mer_type)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    int::in, int::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
-        N, N+1, !SeenTypes, !Specs) :-
+        N, N+1, !Specs) :-
     (
         Type = builtin_type(_)
     ;
         (
             Type = higher_order_type(_, _, _, _, _),
-            EndPieces = [words("is a higher order type.")]
+            KindPiece = words("is a higher order type;")
         ;
             Type = apply_n_type(_, _, _),
-            EndPieces = [words("is an apply/N type.")]
+            KindPiece = words("is an apply/N type;")
         ;
             Type = type_variable(_, _),
-            EndPieces = [words("is a type variable.")]
+            KindPiece = words("is a type variable;")
         ),
-        Spec = bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces,
+        TVarSet = InstanceDefn ^ instdefn_tvarset,
+        TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
+        EndPieces = [words("the"), nth_fixed(N), words("instance type"),
+            quote(TypeStr), KindPiece, words("it should be"),
+            words("a type constructor applied to zero or more"),
+            words("type variables."), nl],
+        Spec = bad_instance_type_msg(ClassId, InstanceDefn, EndPieces,
             badly_formed),
         !:Specs = [Spec | !.Specs]
     ;
-        Type = tuple_type(Args, _),
-        each_arg_is_a_type_variable(!.SeenTypes, Args, 1, Result),
+        Type = tuple_type(ArgTypes, _),
+        find_non_type_variables(ArgTypes, 1, NonTVarArgs),
         (
-            Result = no_error,
-            set.insert_list(Args, !SeenTypes)
+            NonTVarArgs = []
         ;
-            Result = arg_not_type_variable(_),
+            NonTVarArgs = [_ | _],
+            TypeNameArity =
+                sym_name_arity(unqualified("{}"), list.length(ArgTypes)),
             Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
-                N, Result),
+                N, TypeNameArity, NonTVarArgs),
             !:Specs = [Spec | !.Specs]
         )
     ;
-        Type = kinded_type(_, _),
-        unexpected("check_typeclass", "kinded_type")
-    ;
-        Type = defined_type(_TypeName, Args, _),
-        each_arg_is_a_type_variable(!.SeenTypes, Args, 1, Result),
+        Type = defined_type(TypeName, ArgTypes, _),
+        find_non_type_variables(ArgTypes, 1, NonTVarArgs),
         (
-            Result = no_error,
-            set.insert_list(Args, !SeenTypes),
+            NonTVarArgs = [],
             ( if type_to_type_defn(ModuleInfo, Type, TypeDefn) then
                 get_type_defn_body(TypeDefn, TypeBody),
                 (
                     TypeBody = hlds_eqv_type(EqvType),
                     is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn,
-                        EqvType, N, _, !SeenTypes, !Specs)
+                        EqvType, N, _, !Specs)
                 ;
                     ( TypeBody = hlds_du_type(_, _, _, _)
                     ; TypeBody = hlds_foreign_type(_)
@@ -361,69 +364,87 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
                 true
             )
         ;
-            Result = arg_not_type_variable(_),
+            NonTVarArgs = [_ | _],
+            TypeNameArity = sym_name_arity(TypeName, list.length(ArgTypes)),
             Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
-                N, Result),
+                N, TypeNameArity, NonTVarArgs),
             !:Specs = [Spec | !.Specs]
         )
-    ).
-
-:- type instance_arg_result
-    --->    no_error
-    ;       arg_not_type_variable(int).
-
-:- inst instance_arg_result_error for instance_arg_result/0
-    --->    arg_not_type_variable(ground).
-
-:- pred each_arg_is_a_type_variable(set(mer_type)::in,
-    list(mer_type)::in, int::in, instance_arg_result::out) is det.
-
-each_arg_is_a_type_variable(_, [], _, no_error).
-each_arg_is_a_type_variable(SeenTypes, [Type | Types], N, Result) :-
-    (
-        Type = type_variable(_, _),
-        each_arg_is_a_type_variable(SeenTypes, Types, N + 1, Result)
     ;
-        ( Type = defined_type(_, _, _)
-        ; Type = builtin_type(_)
-        ; Type = higher_order_type(_, _, _, _, _)
-        ; Type = tuple_type(_, _)
-        ; Type = apply_n_type(_, _, _)
-        ; Type = kinded_type(_, _)
-        ),
-        % XXX STATUS keep going, return other errors
-        Result = arg_not_type_variable(N)
+        Type = kinded_type(_, _),
+        unexpected("check_typeclass", "kinded_type")
     ).
 
-:- func badly_formed_instance_type_msg(class_id::in, hlds_instance_defn::in,
-    int::in, instance_arg_result::in(instance_arg_result_error))
-    = (error_spec::out) is det.
+:- pred find_non_type_variables(list(mer_type)::in, int::in,
+    assoc_list(int, mer_type)::out) is det.
 
-badly_formed_instance_type_msg(ClassId, InstanceDefn, N, Error) = Spec :-
-    Error = arg_not_type_variable(ArgNum),
-    EndPieces = [words("is a type whose"), nth_fixed(ArgNum),
-        words("argument is not a variable.")],
-    Spec = bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces,
+find_non_type_variables([], _, []).
+find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
+    find_non_type_variables(ArgTypes, ArgNum + 1, TailNonTVarArgs),
+    (
+        ArgType = type_variable(_, _),
+        NonTVarArgs = TailNonTVarArgs
+    ;
+        ( ArgType = defined_type(_, _, _)
+        ; ArgType = builtin_type(_)
+        ; ArgType = higher_order_type(_, _, _, _, _)
+        ; ArgType = tuple_type(_, _)
+        ; ArgType = apply_n_type(_, _, _)
+        ; ArgType = kinded_type(_, _)
+        ),
+        NonTVarArgs = [ArgNum - ArgType | TailNonTVarArgs]
+    ).
+
+:- func badly_formed_instance_type_msg(class_id, hlds_instance_defn, int,
+    sym_name_and_arity, assoc_list(int, mer_type)) = error_spec.
+
+badly_formed_instance_type_msg(ClassId, InstanceDefn, N, TypeNameArity,
+        NonTVarArgs) = Spec :-
+    TVarSet = InstanceDefn ^ instdefn_tvarset,
+    NonTVarArgPieceLists =
+        list.map(non_tvar_arg_to_pieces(TVarSet), NonTVarArgs),
+    NonTVarArgPieces = component_lists_to_pieces("and", NonTVarArgPieceLists),
+    EndPieces = [words("in the"), nth_fixed(N), words("instance type,"),
+        words(choose_number(NonTVarArgs, "one", "some")),
+        words("of the arguments of the type constructor"),
+        unqual_sym_name_and_arity(TypeNameArity),
+        words(choose_number(NonTVarArgs,
+            "is not a type variable, but should be. This is",
+            "are not type variables, but should be. These are"))
+        | NonTVarArgPieces] ++ [suffix("."), nl],
+    Spec = bad_instance_type_msg(ClassId, InstanceDefn, EndPieces,
         badly_formed).
 
-:- func abstract_eqv_instance_type_msg(class_id, hlds_instance_defn, int) =
-    error_spec.
+:- func non_tvar_arg_to_pieces(tvarset, pair(int, mer_type))
+    = list(format_component).
 
-abstract_eqv_instance_type_msg(ClassId, InstanceDefn, N) = Spec :-
-    EndPieces = [words("is an abstract exported equivalence type.")],
-    Spec = bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces,
+non_tvar_arg_to_pieces(TVarSet, ArgNum - ArgType) = Pieces :-
+    TypeStr = mercury_type_to_string(TVarSet, print_name_only, ArgType),
+    Pieces = [words("the"), nth_fixed(ArgNum), words("argument,"),
+        quote(TypeStr)].
+ 
+:- func abstract_eqv_instance_type_msg(class_id, hlds_instance_defn, int,
+    mer_type) = error_spec.
+
+abstract_eqv_instance_type_msg(ClassId, InstanceDefn, N, Type) = Spec :-
+    TVarSet = InstanceDefn ^ instdefn_tvarset,
+    TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
+    EndPieces = [words("the"), nth_fixed(N), words("instance type"),
+        quote(TypeStr), words("is an abstract exported equivalence type."),
+        nl],
+    Spec = bad_instance_type_msg(ClassId, InstanceDefn, EndPieces,
         abstract_exported_eqv).
 
 :- type bad_instance_type_kind
     --->    badly_formed
     ;       abstract_exported_eqv.
 
-:- func bad_instance_type_msg(class_id, hlds_instance_defn, int,
+:- func bad_instance_type_msg(class_id, hlds_instance_defn,
     list(format_component), bad_instance_type_kind) = error_spec.
 
-bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces, Kind) = Spec :-
+bad_instance_type_msg(ClassId, InstanceDefn, EndPieces, Kind) = Spec :-
     ClassId = class_id(ClassName, _),
-    ClassNameString = sym_name_to_string(ClassName),
+    ClassNameString = unqualify_name(ClassName),
 
     InstanceVarSet = InstanceDefn ^ instdefn_tvarset,
     InstanceContext = InstanceDefn ^ instdefn_context,
@@ -438,25 +459,27 @@ bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces, Kind) = Spec :-
         % would not make sense.
         InstanceTypes = InstanceDefn ^ instdefn_orig_types
     ),
+    % XXX Removing the module qualification from the type type constructors
+    % in InstanceTypes before converting them to strings would make
+    % the error message less cluttered.
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
         InstanceTypes),
 
     HeaderPieces = [words("In instance declaration for"),
         words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
-        suffix(":")],
-    ArgNumPieces = [words("the"), nth_fixed(N), words("argument") | EndPieces]
-        ++ [nl],
+        suffix(":"), nl],
     (
         Kind = abstract_exported_eqv,
         HeadingMsg = simple_msg(InstanceContext,
-            [always(HeaderPieces), always(ArgNumPieces)])
+            [always(HeaderPieces), always(EndPieces)])
     ;
         Kind = badly_formed,
         VerbosePieces =
-            [words("(Types in instance declarations must be functors " ++
-                "with variables as arguments.)"), nl],
+            [words("(Every type in an instance declaration must consist of"),
+            words("a type constructor applied to zero or more type variables"),
+            words("as arguments.)"), nl],
         HeadingMsg = simple_msg(InstanceContext,
-            [always(HeaderPieces), always(ArgNumPieces),
+            [always(HeaderPieces), always(EndPieces),
             verbose_only(verbose_once, VerbosePieces)])
     ),
     Spec = error_spec(severity_error, phase_type_check, [HeadingMsg]).
@@ -565,7 +588,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         ClassInterface = class_interface_abstract,
         ClassId = class_id(ClassName, ClassArity),
         Pieces = [words("Error: instance declaration for abstract typeclass"),
-            qual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            unqual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
             suffix("."), nl],
         Msg = simple_msg(TermContext, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_type_check, [Msg]),
@@ -690,7 +713,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     adjust_func_arity(PredOrFunc, Arity, PredArity),
     pred_info_get_proc_table(PredInfo, ProcTable),
     list.map(
-        (pred(TheProcId::in, ModesAndDetism::out) is det :-
+        ( pred(TheProcId::in, ModesAndDetism::out) is det :-
             map.lookup(ProcTable, TheProcId, ProcInfo),
             proc_info_get_argmodes(ProcInfo, Modes),
             % If the determinism declaration on the method was omitted,
@@ -843,10 +866,11 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
         % If all of the instance method definitions for this pred/func
         % are clauses, and there are more than one of them, then we must
         % combine them all into a single definition.
-        MethodToClause = (pred(Method::in, Clauses::out) is semidet :-
-            Method = instance_method(_, _, Defn, _, _),
-            Defn = instance_proc_def_clauses(Clauses)
-        ),
+        MethodToClause =
+            ( pred(Method::in, Clauses::out) is semidet :-
+                Method = instance_method(_, _, Defn, _, _),
+                Defn = instance_proc_def_clauses(Clauses)
+            ),
         list.filter_map(MethodToClause, MatchingMethods, ClausesList),
         list.condense(ClausesList, FlattenedClauses),
         CombinedMethod = instance_method(PredOrFunc, MethodName,
@@ -970,18 +994,20 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     pred_info_set_instance_method_arg_types(UnsubstArgTypes,
         PredInfo1, PredInfo2),
 
-    % Add procs with the expected modes and determinisms
-    AddProc = (pred(ModeAndDet::in, NewProcId::out,
-            OldPredInfo::in, NewPredInfo::out) is det :-
-        ModeAndDet = modes_and_detism(Modes, InstVarSet, MaybeDet),
-        ItemNumber = -1,
-        % Before the simplification pass, HasParallelConj is not meaningful.
-        HasParallelConj = has_no_parallel_conj,
-        add_new_proc(Context, ItemNumber, PredArity,
-            InstVarSet, Modes, yes(Modes), no, detism_decl_implicit, MaybeDet,
-            address_is_taken, HasParallelConj,
-            OldPredInfo, NewPredInfo, NewProcId)
-    ),
+    % Add procs with the expected modes and determinisms.
+    AddProc =
+        ( pred(ModeAndDet::in, NewProcId::out,
+                OldPredInfo::in, NewPredInfo::out) is det :-
+            ModeAndDet = modes_and_detism(Modes, InstVarSet, MaybeDet),
+            ItemNumber = -1,
+            % Before the simplification pass, HasParallelConj
+            % is not meaningful.
+            HasParallelConj = has_no_parallel_conj,
+            add_new_proc(Context, ItemNumber, PredArity,
+                InstVarSet, Modes, yes(Modes), no, detism_decl_implicit,
+                MaybeDet, address_is_taken, HasParallelConj,
+                OldPredInfo, NewPredInfo, NewProcId)
+        ),
     list.map_foldl(AddProc, ArgModes, InstanceProcIds, PredInfo2, PredInfo),
 
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
@@ -1085,19 +1111,21 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
             InstanceTypes, OriginalTypes, Status, Context,
             InstanceProgConstraints, Body, Interface, InstanceVarSet2, Proofs1)
     ;
-        UnprovenConstraints = [_ | UnprovenConstraintsTail],
+        UnprovenConstraints = [_ | _],
         ClassId = class_id(ClassName, _ClassArity),
-        ClassNameString = sym_name_to_string(ClassName),
+        ClassNameString = unqualify_name(ClassName),
         InstanceTypesString = mercury_type_list_to_string(InstanceVarSet2,
             InstanceTypes),
         constraint_list_to_string(ClassVarSet, UnprovenConstraints,
             ConstraintsString),
         Pieces = [words("In instance declaration for"),
             words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
-            words(choose_number(UnprovenConstraintsTail,
-                "superclass constraint", "superclass constraints")),
-            words("not satisfied:"), words(ConstraintsString), suffix("."),
-            nl],
+        suffix(":"), nl,
+        words("the following superclass"),
+        words(choose_number(UnprovenConstraints,
+            "constraint is", "constraints are")),
+        words("not satisfied:"), nl,
+        words(ConstraintsString), suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_type_check, [Msg]),
         !:Specs = [Spec | !.Specs],
@@ -1577,7 +1605,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
 
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
     Pieces = [words("In instance for typeclass"),
-        qual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
+        unqual_sym_name_and_arity(sym_name_arity(SymName, Arity)),
         suffix(":"), nl,
         words("functional dependency not satisfied:"),
         words(choose_number(Vars, "type variable", "type variables"))]
@@ -1866,7 +1894,7 @@ check_constraint_quant(PredInfo, !Specs) :-
     Constraints = constraints(UnivCs, ExistCs),
     prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
     solutions.solutions(
-        (pred(V::out) is nondet :-
+        ( pred(V::out) is nondet :-
             list.member(V, UnivTVars),
             list.member(V, ExistQVars)
         ), BadUnivTVars),
@@ -1903,7 +1931,7 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
 
     InDeclaration = [words("In declaration of")] ++
         describe_one_pred_info_name(should_module_qualify, PredInfo) ++
-        [suffix(":")],
+        [suffix(":"), nl],
     TypeVariables = [words("type variable"),
         suffix(choose_number(TVars, "", "s"))],
     TVarsStrs = list.map(mercury_var_to_name_only(TVarSet), TVars),
@@ -2064,13 +2092,14 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
     InstanceTypes = InstanceDefn ^ instdefn_types,
     InstanceContext = InstanceDefn ^ instdefn_context,
     ClassId = class_id(ClassName, _ClassArity),
-    ClassNameString = sym_name_to_string(ClassName),
+    ClassNameString = unqualify_name(ClassName),
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
         InstanceTypes),
     HeaderPieces =
         [words("In instance declaration for"),
         words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
-        suffix(":"), words("multiple implementations of type class"),
+        suffix(":"), nl,
+        words("multiple implementations of type class"),
         p_or_f(PredOrFunc), words("method"),
         unqual_sym_name_and_arity(sym_name_arity(MethodName, Arity)),
         suffix("."), nl],
@@ -2085,7 +2114,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
     FirstPieces = [words("First definition appears here."), nl],
     FirstMsg = simple_msg(FirstInstanceContext, [always(FirstPieces)]),
     DefnToMsg =
-        (pred(Definition::in, Msg::out) is det :-
+        ( pred(Definition::in, Msg::out) is det :-
             TheContext = Definition ^ instance_method_decl_context,
             SubsequentPieces =
                 [words("Subsequent definition appears here."), nl],
@@ -2109,13 +2138,13 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
     InstanceTypes = InstanceDefn ^ instdefn_types,
     InstanceContext = InstanceDefn ^ instdefn_context,
     ClassId = class_id(ClassName, _ClassArity),
-    ClassNameString = sym_name_to_string(ClassName),
+    ClassNameString = unqualify_name(ClassName),
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
         InstanceTypes),
 
     Pieces = [words("In instance declaration for"),
         words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
-        suffix(":"),
+        suffix(":"), nl,
         words("no implementation for type class"), p_or_f(PredOrFunc),
         words("method"),
         unqual_sym_name_and_arity(sym_name_arity(MethodName, Arity)),
@@ -2139,7 +2168,7 @@ report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
             HeadArity, _Context),
         adjust_func_arity(HeadPredOrFunc, HeadArity, HeadPredArity),
         Pieces = [words("In instance declaration for"),
-            qual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            unqual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
             suffix(":"), nl,
             words("the type class has no"),
             p_or_f(HeadPredOrFunc), words("method named"),
@@ -2149,8 +2178,8 @@ report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
     ;
         TailMethods = [_ | _],
         Pieces1 = [words("In instance declaration for"),
-            qual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
-            suffix(":"),
+            unqual_sym_name_and_arity(sym_name_arity(ClassName, ClassArity)),
+            suffix(":"), nl,
             words("the type class has none of these methods:"), nl],
         format_method_names(HeadMethod, TailMethods, Pieces2),
         Pieces = Pieces1 ++ Pieces2

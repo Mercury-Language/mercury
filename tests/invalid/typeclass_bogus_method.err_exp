@@ -1,20 +1,15 @@
-typeclass_bogus_method.m:025: In instance declaration for
-typeclass_bogus_method.m:025:   `typeclass_bogus_method.tc1'/1:
+typeclass_bogus_method.m:025: In instance declaration for `tc1'/1:
 typeclass_bogus_method.m:025:   the type class has no function method named
 typeclass_bogus_method.m:025:   `bar'/3.
-typeclass_bogus_method.m:029: In instance declaration for
-typeclass_bogus_method.m:029:   `typeclass_bogus_method.tc2'/1:
+typeclass_bogus_method.m:029: In instance declaration for `tc2'/1:
 typeclass_bogus_method.m:029:   the type class has no function method named
 typeclass_bogus_method.m:029:   `baz'/2.
-typeclass_bogus_method.m:033: In instance declaration for
-typeclass_bogus_method.m:033:   `typeclass_bogus_method.tc3(int)': no
-typeclass_bogus_method.m:033:   implementation for type class function method
-typeclass_bogus_method.m:033:   `foo3'/1.
-typeclass_bogus_method.m:033: In instance declaration for
-typeclass_bogus_method.m:033:   `typeclass_bogus_method.tc3'/1:
+typeclass_bogus_method.m:033: In instance declaration for `tc3(int)':
+typeclass_bogus_method.m:033:   no implementation for type class function
+typeclass_bogus_method.m:033:   method `foo3'/1.
+typeclass_bogus_method.m:033: In instance declaration for `tc3'/1:
 typeclass_bogus_method.m:033:   the type class has no function method named
 typeclass_bogus_method.m:033:   `foo5'/2.
-typeclass_bogus_method.m:036: In instance declaration for
-typeclass_bogus_method.m:036:   `typeclass_bogus_method.tc4'/1:
+typeclass_bogus_method.m:036: In instance declaration for `tc4'/1:
 typeclass_bogus_method.m:036:   the type class has no function method named
 typeclass_bogus_method.m:036:   `foo5'/2.
