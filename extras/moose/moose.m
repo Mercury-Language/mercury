@@ -528,7 +528,7 @@ write_state_actions(SS, End, StateActions, !IO) :-
         Term = functor(atom(Name),
             [Token,
             functor(atom(Kind), [], Ctxt),
-            decimal_int_to_term(Val, Ctxt)], Ctxt),
+            int_to_decimal_term(Val, Ctxt)], Ctxt),
         (
             Action = shift(Val),
             Kind = "shift"
@@ -620,7 +620,7 @@ write_state_gotos(SS, StateActions, !IO) :-
         nonterminal_to_term(NT, Token),
         term.context_init(Ctxt),
         Term = functor(atom(Name),
-            [Token, decimal_int_to_term(NS, Ctxt)], Ctxt),
+            [Token, int_to_decimal_term(NS, Ctxt)], Ctxt),
         varset.init(Varset),
         term_io.write_term_nl(Varset, Term, !IO)
     ), StateActions, !IO),
