@@ -2174,57 +2174,54 @@ and one generates C#.
 There is also a module, mlds_dump.m,
 that dumps out the MLDS in format designed specifically for debugging.
 
+<p>
+The various mlds_to_c_*.m modules together convert MLDS to C/C++ code,
+the various mlds_to_cs_*.m modules together convert it to C# code, while
+the various mlds_to_java_*.m modules together convert it to Java code.
+
+<p>
+Generated C or C# code is intended to be given to a C or C# compiler
+to turn the .c file into a .o file, or the .cs file into a .dll or .exe.
+Generated Java code is intended to be given to a Java compiler (normally javac)
+to turn the .java file into a .class file containing Java bytecodes.
+
+<p>
 <ul>
 <li>
-The various mlds_to_c_*.m modules together convert MLDS to C/C++ code.
-<ul>
-<li>
-The mlds_to_c_file.m module writes out .c and .h files,
+The mlds_to_{c,cs,java}_file.m modules write out
+.c and .h files (for C), .cs files (for C#) and .java files (for Java),
 calling the other modules below as needed.
 <li>
-The mlds_to_c_func.m module outputs
+The mlds_to_{c,cs,java}_func.m modules output
 the declarations and definitions of MLDS functions.
 <li>
-The mlds_to_c_stmt.m module outputs MLDS statements.
+The mlds_to_{c,cs,java}_stmt.m modules output MLDS statements.
 <li>
-The mlds_to_c_data.m module outputs MLDS rvals, lvals, and initializers.
+The mlds_to_{c,cs,java}_data.m modules output
+MLDS rvals, lvals, and initializers.
 <li>
-The mlds_to_c_type.m module outputs MLDS types.
+The mlds_to_{c,cs,java}_type.m modules output MLDS types.
 <li>
-The mlds_to_c_class.m module outputs the definitions of MLDS classes.
+The mlds_to_{c,cs,java}_class.m modules output the definitions of MLDS classes.
 <li>
-The mlds_to_c_global.m module outputs
+The mlds_to_{c,cs,java}_global.m modules output
 the declarations and definitions of global variables.
 <li>
-The mlds_to_c_exports.m module outputs code that exports to C
-(i.e. makes usable from C code) functions and types defined in Mercury.
+The mlds_to_{c,cs,java}_export.m modules output code
+that exports to C, C# or Java (i.e. makes usable from those languages)
+functions and types defined in Mercury.
 <li>
-The mlds_to_c_name.m module outputs the names of various MLDS entities.
+The mlds_to_{c,cs,java}_name.m modules output
+the names of various MLDS entities.
 <li>
-The mlds_to_c_util.m module contains utility types and predicates
+The mlds_to_java_wrap.m module creates wrapper classes around methods
+as way of implementing function pointers.
+<li>
+The mlds_to_{c,cs,java}_util.m modules contain utility types and predicates
 used by the other modules above.
 </ul>
-</ul>
 
 <p>
-
-<ul>
-<li>
-mlds_to_java.m converts MLDS to Java and writes it to a .java file.
-</ul>
-
-After the Java code has been emitted, a Java compiler (normally javac)
-is invoked to turn the .java file into a .class file containing Java bytecodes.
-
-<p>
-
-<ul>
-<li>
-mlds_to_cs.m converts MLDS to C# code.
-</ul>
-
-After the C# code has been emitted, a C# compiler is invoked to turn the .cs
-file into a .dll or .exe.
 
 The mlds_to_target_util.m module contains types, functions and predicates
 that are needed by more than one of these MLDS backends.
