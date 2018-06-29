@@ -470,7 +470,7 @@ init_requirement_specs = [
 
 % Requirements of values of svar_datarep.
     requirement_spec(
-        "Representing data using classes data requires the MLDS backend.",
+        "Representing data using classes requires the MLDS backend.",
         (svar_datarep `being` svalue_datarep_classes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
