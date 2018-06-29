@@ -3857,7 +3857,7 @@ strip_mercury_and_mangle_sym_name_for_csharp(SymName) = MangledSymName :-
 
 output_int_const_for_csharp(N, !IO) :-
     % You may wish to see the comment on output_int_const_for_java
-    % in mlds_to_java.m.
+    % in mlds_to_java_data.m.
     ( if
         N >= 0,
         N /\ 0x80000000 = 0x80000000,

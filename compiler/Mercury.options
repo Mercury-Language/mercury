@@ -114,6 +114,17 @@ MCFLAGS-ml_backend.mlds_to_c_name     += --warn-inconsistent-pred-order-clauses
 MCFLAGS-ml_backend.mlds_to_c_stmt     += --warn-inconsistent-pred-order-clauses
 MCFLAGS-ml_backend.mlds_to_c_type     += --warn-inconsistent-pred-order-clauses
 MCFLAGS-ml_backend.mlds_to_c_util     += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_class += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_data  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_export+= --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_file  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_func  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_global+= --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_name  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_stmt  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_type  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_util  += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ml_backend.mlds_to_java_wrap  += --warn-inconsistent-pred-order-clauses
 
 # Bug workarounds.
 

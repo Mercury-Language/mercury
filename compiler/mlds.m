@@ -605,8 +605,9 @@
                 mcd_tparams         :: list(type_param),
 
                 % Contains these members.
-                % The mcd_member_methods field is used only by mlds_to_java.m;
-                % it should be set to the empty list everywhere else.
+                % The mcd_member_methods field is used only
+                % by mlds_to_java_*.m; it should be set to the empty list
+                % everywhere else.
                 mcd_member_fields   :: list(mlds_field_var_defn),
                 mcd_member_classes  :: list(mlds_class_defn),
                 mcd_member_methods  :: list(mlds_function_defn),
@@ -1972,7 +1973,7 @@
                 exported_enum_lang      :: foreign_language,
                 exported_enum_context   :: prog_context,
 
-                % mlds_to_cs.m and mlds_to_java.m need to know the type_ctor.
+                % mlds_to_cs.m and mlds_to_java_*.m need to know the type_ctor.
                 exported_enum_type_ctor :: type_ctor,
 
                 % The name of each constant plus the value to initialize it to.

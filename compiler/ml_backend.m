@@ -74,7 +74,17 @@
 :- include_module mlds_to_c_util.
 
 % MLDS->Java back-end
-:- include_module mlds_to_java.
+:- include_module mlds_to_java_class.
+:- include_module mlds_to_java_data.
+:- include_module mlds_to_java_export.
+:- include_module mlds_to_java_file.
+:- include_module mlds_to_java_func.
+:- include_module mlds_to_java_global.
+:- include_module mlds_to_java_name.
+:- include_module mlds_to_java_stmt.
+:- include_module mlds_to_java_type.
+:- include_module mlds_to_java_util.
+:- include_module mlds_to_java_wrap.
 
 % MLDS->C# back-end.
 :- include_module mlds_to_cs.

@@ -51,7 +51,6 @@
 :- import_module term.
 
 %---------------------------------------------------------------------------%
-% ZZZ class decls
 
 :- pred mlds_output_class_decl_opts(mlds_to_c_opts::in, indent::in,
     mlds_module_name::in, mlds_class_defn::in, io::di, io::uo) is det.
@@ -100,7 +99,6 @@ mlds_output_class_decl(_Indent, ModuleName, ClassName, Arity,
     ).
 
 %---------------------------------------------------------------------------%
-% ZZZ class defns
 
 :- pred mlds_output_class_defns(mlds_to_c_opts::in, indent::in,
     mlds_module_name::in, list(mlds_class_defn)::in,

@@ -67,7 +67,7 @@
 :- import_module ml_backend.ml_elim_nested.         % MLDS -> MLDS
 :- import_module ml_backend.ml_optimize.            % MLDS -> MLDS
 :- import_module ml_backend.mlds_to_c_file.         % MLDS -> C
-:- import_module ml_backend.mlds_to_java.           % MLDS -> Java
+:- import_module ml_backend.mlds_to_java_file.      % MLDS -> Java
 :- import_module ml_backend.mlds_to_cs.             % MLDS -> C#
 :- import_module parse_tree.file_names.
 :- import_module top_level.mercury_compile_front_end.
