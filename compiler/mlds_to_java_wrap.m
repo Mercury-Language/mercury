@@ -36,18 +36,9 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module multi_map.
 :- import_module pair.
 
 %---------------------------------------------------------------------------%
-
-:- type call_method_inputs
-    --->    cmi_separate(list(mlds_local_var_name))
-    ;       cmi_array(mlds_local_var_name).
-
-:- pred make_code_addr_map_for_java(list(mlds_code_addr)::in,
-    multi_map(arity, mlds_code_addr)::in,
-    multi_map(arity, mlds_code_addr)::out) is det.
 
 :- pred generate_addr_wrapper_class(mlds_module_name::in,
     pair(arity, list(mlds_code_addr))::in, mlds_class_defn::out,
@@ -76,14 +67,6 @@
 :- import_module term.
 
 %---------------------------------------------------------------------------%
-
-make_code_addr_map_for_java([], !Map).
-make_code_addr_map_for_java([CodeAddr | CodeAddrs], !Map) :-
-    CodeAddr = mlds_code_addr(_QualFuncLabel, OrigFuncSignature),
-    OrigFuncSignature = mlds_func_signature(OrigArgTypes, _OrigRetTypes),
-    list.length(OrigArgTypes, Arity),
-    multi_map.set(Arity, CodeAddr, !Map),
-    make_code_addr_map_for_java(CodeAddrs, !Map).
 
 generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         !AddrOfMap) :-
@@ -248,6 +231,10 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
 create_generic_arg(I, ArgName, Arg) :-
     ArgName = lvn_comp_var(lvnc_arg(I)),
     Arg = mlds_argument(ArgName, mlds_generic_type, gc_no_stmt).
+
+:- type call_method_inputs
+    --->    cmi_separate(list(mlds_local_var_name))
+    ;       cmi_array(mlds_local_var_name).
 
 :- pred generate_call_statement_for_addr(call_method_inputs::in,
     mlds_code_addr::in, mlds_stmt::out) is det.

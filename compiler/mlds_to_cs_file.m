@@ -79,11 +79,6 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     output_to_file(Globals, SourceFile,
         output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
-%---------------------------------------------------------------------------%
-%
-% Code to generate the `.cs' file.
-%
-
 :- pred output_csharp_src_file(module_info::in, indent::in, mlds::in,
     io::di, io::uo) is det.
 

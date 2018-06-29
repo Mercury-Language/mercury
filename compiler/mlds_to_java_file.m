@@ -284,6 +284,18 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_src_end_for_java(Indent, ModuleName, !IO).
     % XXX Need to handle non-Java foreign code at this point.
 
+:- pred make_code_addr_map_for_java(list(mlds_code_addr)::in,
+    multi_map(arity, mlds_code_addr)::in,
+    multi_map(arity, mlds_code_addr)::out) is det.
+
+make_code_addr_map_for_java([], !Map).
+make_code_addr_map_for_java([CodeAddr | CodeAddrs], !Map) :-
+    CodeAddr = mlds_code_addr(_QualFuncLabel, OrigFuncSignature),
+    OrigFuncSignature = mlds_func_signature(OrigArgTypes, _OrigRetTypes),
+    list.length(OrigArgTypes, Arity),
+    multi_map.set(Arity, CodeAddr, !Map),
+    make_code_addr_map_for_java(CodeAddrs, !Map).
+
 %---------------------------------------------------------------------------%
 %
 % Code to output imports.
