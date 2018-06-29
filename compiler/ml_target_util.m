@@ -129,8 +129,8 @@ target_supports_computed_goto(target_erlang) =
     unexpected($pred, "target erlang").
 
 target_supports_goto(target_c) = yes.
-% XXX C# *does* support gotos but mlds_to_cs.m currently aborts if it
-% encounters them.
+% XXX C# *does* support gotos but mlds_to_cs_stmt.m currently aborts
+% if it encounters them.
 target_supports_goto(target_csharp) = no.
 target_supports_goto(target_java) = no.
 target_supports_goto(target_erlang) =

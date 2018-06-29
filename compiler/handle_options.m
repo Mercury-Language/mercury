@@ -882,7 +882,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         %
         % C# should be the same as Java, except that:
         %   - C# supports pass-by-reference, but for reasons explained in
-        %     mlds_to_cs.m, we pretend it doesn't at the MLDS level
+        %     mlds_to_cs_stmt.m, we pretend it doesn't at the MLDS level.
 
         globals.set_gc_method(gc_automatic, !Globals),
         globals.set_option(gc, string("automatic"), !Globals),

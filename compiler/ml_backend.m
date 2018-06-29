@@ -87,7 +87,16 @@
 :- include_module mlds_to_java_wrap.
 
 % MLDS->C# back-end.
-:- include_module mlds_to_cs.
+:- include_module mlds_to_cs_class.
+:- include_module mlds_to_cs_data.
+:- include_module mlds_to_cs_export.
+:- include_module mlds_to_cs_file.
+:- include_module mlds_to_cs_func.
+:- include_module mlds_to_cs_global.
+:- include_module mlds_to_cs_name.
+:- include_module mlds_to_cs_stmt.
+:- include_module mlds_to_cs_type.
+:- include_module mlds_to_cs_util.
 
 % MLDS debugging back-end.
 :- include_module mlds_dump.
