@@ -360,44 +360,21 @@ output_rtti_array_assignments_for_java(Info, Indent, GlobalVarName,
 
 output_global_var_decl_flags_for_java(Flags, !IO) :-
     Flags = mlds_global_var_decl_flags(Access, Constness),
-    output_global_var_access_for_java(Access, !IO),
-    output_per_instance_for_java(one_copy, !IO),
-    output_overridability_constness_for_java(overridable, Constness, !IO).
-
-:- pred output_global_var_access_for_java(global_var_access::in,
-    io::di, io::uo) is det.
-
-output_global_var_access_for_java(Access, !IO) :-
     (
         Access = gvar_acc_whole_program,
         io.write_string("public ", !IO)
     ;
         Access = gvar_acc_module_only,
         io.write_string("private ", !IO)
-    ).
-
-:- pred output_per_instance_for_java(per_instance::in, io::di, io::uo) is det.
-
-output_per_instance_for_java(PerInstance, !IO) :-
+    ),
+    % PerInstance = one_copy,
+    io.write_string("static ", !IO),
+    % Overridability = overridable,
     (
-        PerInstance = per_instance
-    ;
-        PerInstance = one_copy,
-        io.write_string("static ", !IO)
-    ).
-
-:- pred output_overridability_constness_for_java(overridability::in,
-    constness::in, io::di, io::uo) is det.
-
-output_overridability_constness_for_java(Overridability, Constness, !IO) :-
-    ( if
-        ( Overridability = sealed
-        ; Constness = const
-        )
-    then
+        Constness = const,
         io.write_string("final ", !IO)
-    else
-        true
+    ;
+        Constness = modifiable
     ).
 
 %---------------------------------------------------------------------------%

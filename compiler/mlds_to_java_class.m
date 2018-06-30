@@ -316,40 +316,31 @@ output_field_var_defn_for_java(Info, Indent, OutputAux, FieldVarDefn, !IO) :-
     io::di, io::uo) is det.
 
 output_field_var_decl_flags_for_java(Flags, !IO) :-
+    Flags = mlds_field_var_decl_flags(PerInstance, Constness),
     io.write_string("public ", !IO),
-    output_per_instance_for_java(Flags ^ mfvdf_per_instance, !IO),
-    output_overridability_constness_for_java(overridable,
-        Flags ^ mfvdf_constness, !IO).
+    (
+        PerInstance = per_instance
+    ;
+        PerInstance = one_copy,
+        io.write_string("static ", !IO)
+    ),
+    output_overridability_constness_for_java(overridable, Constness, !IO).
 
 :- pred output_class_decl_flags_for_java(java_out_info::in,
     mlds_class_decl_flags::in, io::di, io::uo) is det.
 
 output_class_decl_flags_for_java(_Info, Flags, !IO) :-
     Flags = mlds_class_decl_flags(Access, Overrability, Constness),
-    output_class_access_for_java(Access, !IO),
-    output_per_instance_for_java(one_copy, !IO),
-    output_overridability_constness_for_java(Overrability, Constness, !IO).
-
-:- pred output_class_access_for_java(class_access::in, io::di, io::uo) is det.
-
-output_class_access_for_java(Access, !IO) :-
     (
         Access = class_public,
         io.write_string("public ", !IO)
     ;
         Access = class_private,
         io.write_string("private ", !IO)
-    ).
-
-:- pred output_per_instance_for_java(per_instance::in, io::di, io::uo) is det.
-
-output_per_instance_for_java(PerInstance, !IO) :-
-    (
-        PerInstance = per_instance
-    ;
-        PerInstance = one_copy,
-        io.write_string("static ", !IO)
-    ).
+    ),
+    % PerInstance = one_copy,
+    io.write_string("static ", !IO),
+    output_overridability_constness_for_java(Overrability, Constness, !IO).
 
 :- pred output_overridability_constness_for_java(overridability::in,
     constness::in, io::di, io::uo) is det.

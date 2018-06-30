@@ -282,7 +282,7 @@ output_field_var_decl_flags_for_csharp(Flags, !IO) :-
     mlds_class_decl_flags::in, mlds_class_kind::in, io::di, io::uo) is det.
 
 output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
-    Flags = mlds_class_decl_flags(Access, Overridable0, Constness),
+    Flags = mlds_class_decl_flags(Access, Overridability0, Constness),
     (
         (
             % `static' keyword not allowed on enumerations.
@@ -292,45 +292,32 @@ output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
             Kind = mlds_class
         ),
         PerInstance = per_instance,
-        Overridable = Overridable0
+        Overridability = Overridability0
     ;
         % `static' and `sealed' not wanted or allowed on structs.
         Kind = mlds_struct,
         PerInstance = per_instance,
-        Overridable = overridable
+        Overridability = overridable
     ;
         Kind = mlds_interface,
         PerInstance = one_copy,
-        Overridable = Overridable0
+        Overridability = Overridability0
     ),
-    output_class_access_for_csharp(Access, !IO),
-    output_per_instance_for_csharp(PerInstance, !IO),
-    output_overridability_for_csharp(Overridable, !IO),
-    output_constness_for_csharp(Constness, !IO).
-
-:- pred output_access_for_csharp(csharp_out_info::in, function_access::in,
-    io::di, io::uo) is det.
-
-output_access_for_csharp(_Info, Access, !IO) :-
-    (
-        Access = func_public,
-        io.write_string("public ", !IO)
-    ;
-        Access = func_private,
-        io.write_string("private ", !IO)
-    ).
-
-:- pred output_class_access_for_csharp(class_access::in,
-    io::di, io::uo) is det.
-
-output_class_access_for_csharp(Access, !IO) :-
     (
         Access = class_public,
         io.write_string("public ", !IO)
     ;
         Access = class_private,
         io.write_string("private ", !IO)
-    ).
+    ),
+    output_per_instance_for_csharp(PerInstance, !IO),
+    (
+        Overridability = sealed,
+        io.write_string("sealed ", !IO)
+    ;
+        Overridability = overridable
+    ),
+    output_constness_for_csharp(Constness, !IO).
 
 :- pred output_per_instance_for_csharp(per_instance::in,
     io::di, io::uo) is det.
@@ -343,6 +330,16 @@ output_per_instance_for_csharp(PerInstance, !IO) :-
         io.write_string("static ", !IO)
     ).
 
+:- pred output_constness_for_csharp(constness::in, io::di, io::uo) is det.
+
+output_constness_for_csharp(Constness, !IO) :-
+    (
+        Constness = const,
+        io.write_string("readonly ", !IO)
+    ;
+        Constness = modifiable
+    ).
+
 % :- pred output_virtuality_for_csharp(virtuality::in, io::di, io::uo) is det.
 %
 % output_virtuality_for_csharp(Virtual, !IO) :-
@@ -353,27 +350,6 @@ output_per_instance_for_csharp(PerInstance, !IO) :-
 %     ;
 %         Virtual = non_virtual
 %     ).
-
-:- pred output_overridability_for_csharp(overridability::in,
-    io::di, io::uo) is det.
-
-output_overridability_for_csharp(Overridability, !IO) :-
-    (
-        Overridability = sealed,
-        io.write_string("sealed ", !IO)
-    ;
-        Overridability = overridable
-    ).
-
-:- pred output_constness_for_csharp(constness::in, io::di, io::uo) is det.
-
-output_constness_for_csharp(Constness, !IO) :-
-    (
-        Constness = const,
-        io.write_string("readonly ", !IO)
-    ;
-        Constness = modifiable
-    ).
 
 % :- pred output_abstractness_for_csharp(abstractness::in,
 %     io::di, io::uo) is det.

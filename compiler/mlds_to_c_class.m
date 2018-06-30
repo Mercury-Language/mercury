@@ -350,7 +350,12 @@ mlds_output_field_var_decl_flags(Opts, Flags, DeclOrDefn, !IO) :-
     ;
         Comments = no
     ),
-    mlds_output_field_var_extern(DeclOrDefn, !IO),
+    (
+        DeclOrDefn = forward_decl,
+        io.write_string("extern ", !IO)
+    ;
+        DeclOrDefn = definition
+    ),
     mlds_output_constness(Constness, !IO).
 
 :- pred mlds_output_class_decl_flags(mlds_to_c_opts::in,
@@ -361,23 +366,24 @@ mlds_output_class_decl_flags(Opts, Flags, _DeclOrDefn, !IO) :-
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
-        mlds_output_class_access_comment(Access, !IO),
-        mlds_output_per_instance_comment(one_copy, !IO)
+        (
+            Access = class_public,
+            io.write_string("/* public: */ ", !IO)
+        ;
+            Access = class_private,
+            io.write_string("/* private: */ ", !IO)
+        ),
+        io.write_string("/* one_copy */ ", !IO)
     ;
         Comments = no
     ),
-    mlds_output_overridability(Overridability, !IO),
+    (
+        Overridability = overridable
+    ;
+        Overridability = sealed,
+        io.write_string("/* sealed */ ", !IO)
+    ),
     mlds_output_constness(Constness, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred mlds_output_class_access_comment(class_access::in,
-    io::di, io::uo) is det.
-
-mlds_output_class_access_comment(class_public, !IO) :-
-    io.write_string("/* public: */ ", !IO).
-mlds_output_class_access_comment(class_private, !IO) :-
-    io.write_string("/* private: */ ", !IO).
 
 :- pred mlds_output_per_instance_comment(per_instance::in,
     io::di, io::uo) is det.
@@ -385,20 +391,6 @@ mlds_output_class_access_comment(class_private, !IO) :-
 mlds_output_per_instance_comment(per_instance, !IO).
 mlds_output_per_instance_comment(one_copy, !IO) :-
     io.write_string("/* one_copy */ ", !IO).
-
-    %
-:- pred mlds_output_field_var_extern(decl_or_defn::in, io::di, io::uo) is det.
-
-mlds_output_field_var_extern(forward_decl, !IO) :-
-    io.write_string("extern ", !IO).
-mlds_output_field_var_extern(definition, !IO).
-    % Print no storage class.
-
-:- pred mlds_output_overridability(overridability::in, io::di, io::uo) is det.
-
-mlds_output_overridability(sealed, !IO) :-
-    io.write_string("/* sealed */ ", !IO).
-mlds_output_overridability(overridable, !IO).
 
 :- pred mlds_output_constness(constness::in, io::di, io::uo) is det.
 
