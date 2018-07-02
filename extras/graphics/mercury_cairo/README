@@ -1,6 +1,8 @@
 This directory contains the package `mercury_cairo' which is a Mercury binding
 to the Cairo 2D graphics library.  (See: <http://www.cairographics.org>.)
 
+See the file COPYING.LIB in this directory for copyright and licensing
+information.
 
 Building the binding
 ====================
@@ -89,8 +91,8 @@ For example:
     ...
 
 
-Backends Submodules
-===================
+Backend Submodules
+==================
 
 The Mercury binding has submodules that provide image, PDF, PostScript, SVG and
 recording surfaces.  Each surface is represented by a type that is an instance
