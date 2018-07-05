@@ -603,13 +603,13 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     else if univ_to_type(Univ, UInt16) then
         put_uint16(Stream, UInt16, !State),
         put(Stream, "u16", !State)
-    else if univ_to_type(Univ, Int32)then
+    else if univ_to_type(Univ, Int32) then
         put_int32(Stream, Int32, !State),
         put(Stream, "i32", !State)
     else if univ_to_type(Univ, UInt32) then
         put_uint32(Stream, UInt32, !State),
         put(Stream, "u32", !State)
-    else if univ_to_type(Univ, Int64)then
+    else if univ_to_type(Univ, Int64) then
         put_int64(Stream, Int64, !State),
         put(Stream, "i64", !State)
     else if univ_to_type(Univ, UInt64) then
