@@ -2235,7 +2235,7 @@ output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
     ;
         Name = module_layout_event_synth_attr_order(_ModuleName,
             _EventNumber, _SynthCallArgNumber),
-        io.write_string("static MR_uint_least16_t ", !IO),
+        io.write_string("static MR_int_least16_t ", !IO),
         output_layout_name(Name, !IO),
         io.write_string("[]", !IO)
     ;
