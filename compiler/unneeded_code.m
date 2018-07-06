@@ -323,9 +323,10 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     instmap.apply_instmap_delta(InitInstMap, InstMapDelta, FinalInstMap),
     proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo, NeededVarsList),
     map.init(WhereNeededMap0),
-    NeededEverywhere = (pred(Var::in, NeededMap0::in, NeededMap::out) is det :-
-        map.det_insert(Var, everywhere, NeededMap0, NeededMap)
-    ),
+    NeededEverywhere =
+        ( pred(Var::in, NeededMap0::in, NeededMap::out) is det :-
+            map.det_insert(Var, everywhere, NeededMap0, NeededMap)
+        ),
     list.foldl(NeededEverywhere, NeededVarsList,
         WhereNeededMap0, WhereNeededMap1),
     module_info_get_globals(!.ModuleInfo, Globals),
