@@ -345,6 +345,7 @@
     ;       mode_constraints
     ;       simple_mode_constraints
     ;       prop_mode_constraints
+    ;       compute_goal_modes
     ;       benchmark_modes
     ;       benchmark_modes_repeat
 
@@ -1338,6 +1339,7 @@ option_defaults_2(aux_output_option, [
     mode_constraints                    -   bool(no),
     simple_mode_constraints             -   bool(no),
     prop_mode_constraints               -   bool(no),
+    compute_goal_modes                  -   bool(no),
     benchmark_modes                     -   bool(no),
     benchmark_modes_repeat              -   int(1)
 ]).
@@ -2281,6 +2283,7 @@ long_option("verbose-mlds-dump",        verbose_dump_mlds).
 long_option("mode-constraints",         mode_constraints).
 long_option("simple-mode-constraints",  simple_mode_constraints).
 long_option("prop-mode-constraints",    prop_mode_constraints).
+long_option("compute-goal-modes",       compute_goal_modes).
 long_option("propagate-mode-constraints",   prop_mode_constraints).
 long_option("benchmark-modes",          benchmark_modes).
 long_option("benchmark-modes-repeat",   benchmark_modes_repeat).
@@ -4422,6 +4425,8 @@ options_help_aux_output -->
 %       "--prop-mode-constraints",
 %       "\tUse the new propagation solver for constraints based",
 %       "\tmode analysis.",
+%       "--compute-goal-modes",
+%       "\tCompute goal modes.",
     ]).
 
 :- pred options_help_semantics(io::di, io::uo) is det.

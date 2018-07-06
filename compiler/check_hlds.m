@@ -46,6 +46,8 @@
 
 % Mode analysis.
 %:- module mode_analysis.
+   % The current mode analysis system, which is based (quite loosely)
+   % on the idea of abtract interpretation.
    :- include_module delay_info.
    :- include_module inst_match.
    :- include_module inst_test.

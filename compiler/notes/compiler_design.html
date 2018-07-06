@@ -749,7 +749,7 @@ the representation of every type used by the module being compiled:
     platforms where they don't fit in words) and the packing of data structures
     as densely as possible.
 
-    Once the representations of all types are known, this module uses
+    Once the representations of all types are known, this module invokes
     add_special_pred.m to declare, and if need be, define the unify and compare
     predicate of each type.
 
@@ -1148,9 +1148,15 @@ so that the compiler does the right thing for options such as
 
 <dt> constraint based mode analysis
 <dd>
-    This is an experimental alternative to the usual mode analysis algorithm.
-    It works by building a system of boolean constraints about where
-    (parts of) variables can be bound, and then solving those constraints.
+    This was an experimental alternative to the usual mode analysis algorithm.
+    It worked by building a system of boolean constraints about where
+    (parts of) variables can be bound, and then solving those constraints
+    using reduced ordered binary decision diagrams (robdds).
+    It has been abandoned in favor of the propagation based constraint
+    solver, for two main reasons. First, its performance was far too dependent
+    on finding a good ordering of variables for the robdds, and we found
+    no heuristics that could ensure such an ordering. And second, even with
+    the best orderings, the performance left a lot to be desired.
 
     <ul>
     <li>
@@ -1194,6 +1200,17 @@ so that the compiler does the right thing for options such as
     <li>
         mcsolver.m contains the constraint solver used by
         ordering_mode_constraints.m.
+    <li>
+        goal_mode.m is intended to help implement the transition
+        from the original mode analysis algorithm implemented by modes.m
+        and related modules to the propagation based constraint solver.
+        It is intended to represent an interface between mode analysis
+        on the one hand, and the rest of the compiler on the other hand,
+        that is sufficiently abstract that it could be implemented on top of
+        both mode analysis systems. Initially, it will be implemented
+        on top of the old mode analysis system. Once the rest of the compiler
+        is transitioned to use this interface, we will transition its
+        implementation to the propagation based constraint solver.
     </ul>
     <p>
 

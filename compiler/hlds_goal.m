@@ -17,6 +17,7 @@
 :- module hlds.hlds_goal.
 :- interface.
 
+:- import_module hlds.goal_mode.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
@@ -268,7 +269,7 @@
                 %
                 % Note that ordinary implications (A => B) and reverse
                 % implications (A <= B) are expanded out before we construct
-                % the HLDS.  We cannot do that for bi-implications, because
+                % the HLDS. We cannot do that for bi-implications, because
                 % if expansion of bi-implications is done before implicit
                 % quantification, then the quantification would be wrong.
                 %
@@ -321,7 +322,7 @@
                 % The variables holding the initial and final I/O states for
                 % the goal to be executed in the `try' proper, i.e. not
                 % inclusive of the I/O states that may be in the arms following
-                % the try.  Will be `no' if no `io(_)' component was specified.
+                % the try. Will be `no' if no `io(_)' component was specified.
                 try_maybe_io        :: maybe(try_io_state_vars),
 
                 % The variable that will hold the result of the `try' or
@@ -1001,7 +1002,7 @@
 :- type unify_sub_contexts == list(unify_sub_context).
 
     % A call_unify_context is used for unifications that get turned into
-    % calls to out-of-line unification predicates, and functions.  It records
+    % calls to out-of-line unification predicates, and functions. It records
     % which part of the original source code the unification (which may be
     % a function application) occurred in.
     %
@@ -1525,13 +1526,12 @@
 :- pred add_impurity_if_needed(bool::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-% Instead of recording the liveness of every variable at every
-% part of the goal, we just keep track of the initial liveness
-% and the changes in liveness.  Note that when traversing forwards
-% through a goal, deaths must be applied before births;
-% this is necessary to handle certain circumstances where a
-% variable can occur in both the post-death and post-birth sets,
-% or in both the pre-death and pre-birth sets.
+% Instead of recording the liveness of every variable at every part
+% of the goal, we just keep track of the initial liveness, and of the changes
+% in liveness. Note that when traversing forwards through a goal,
+% deaths must be applied before births. This is necessary to handle
+% certain circumstances where a variable can occur in both the post-death
+% and post-birth sets, or in both the pre-death and pre-birth sets.
 
     % see also goal_info_get_code_model in code_model.m
 :- func goal_info_get_determinism(hlds_goal_info) = determinism.
@@ -1545,6 +1545,7 @@
 :- func goal_info_get_reverse_goal_path(hlds_goal_info) = reverse_goal_path.
 :- func goal_info_get_code_gen_info(hlds_goal_info) = hlds_goal_code_gen_info.
 :- func goal_info_get_ho_values(hlds_goal_info) = ho_values.
+:- func goal_info_get_goal_mode(hlds_goal_info) = goal_mode.
 :- func goal_info_get_maybe_rbmm(hlds_goal_info) = maybe(rbmm_goal_info).
 :- func goal_info_get_maybe_mode_constr(hlds_goal_info) =
     maybe(mode_constr_goal_info).
@@ -1575,6 +1576,8 @@
 :- pred goal_info_set_code_gen_info(hlds_goal_code_gen_info::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_ho_values(ho_values::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_goal_mode(goal_mode::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_maybe_rbmm(maybe(rbmm_goal_info)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -1962,6 +1965,8 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
 
                 egi_ho_vals             :: ho_values,
 
+                egi_goal_mode           :: goal_mode,
+
                 % Any information related to structure reuse (CTGC).
                 egi_maybe_ctgc          :: maybe(ctgc_goal_info),
 
@@ -2016,7 +2021,8 @@ goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
 
 hlds_goal_extra_info_init(Context) = ExtraInfo :-
     HO_Values = map.init,
-    ExtraInfo = extra_goal_info(Context, rgp_nil, HO_Values, no, no, no, no).
+    ExtraInfo = extra_goal_info(Context, rgp_nil, HO_Values,
+        make_dummy_goal_mode, no, no, no, no).
 
 :- func ctgc_goal_info_init = ctgc_goal_info.
 
@@ -2072,22 +2078,36 @@ add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
         make_impure(!GoalInfo)
     ).
 
-goal_info_get_determinism(GoalInfo) = GoalInfo ^ gi_determinism.
-goal_info_get_instmap_delta(GoalInfo) = GoalInfo ^ gi_instmap_delta.
-goal_info_get_nonlocals(GoalInfo) = GoalInfo ^ gi_nonlocals.
-goal_info_get_purity(GoalInfo) = GoalInfo ^ gi_purity.
-goal_info_get_features(GoalInfo) = GoalInfo ^ gi_features.
-goal_info_get_goal_id(GoalInfo) = GoalInfo ^ gi_goal_id.
-goal_info_get_reverse_goal_path(GoalInfo) =
-    GoalInfo ^ gi_extra ^ egi_rev_goal_path.
-goal_info_get_code_gen_info(GoalInfo) = GoalInfo ^ gi_code_gen_info.
-goal_info_get_context(GoalInfo) = GoalInfo ^ gi_extra ^ egi_context.
-goal_info_get_ho_values(GoalInfo) = GoalInfo ^ gi_extra ^ egi_ho_vals.
-goal_info_get_maybe_rbmm(GoalInfo) = GoalInfo ^ gi_extra ^ egi_maybe_rbmm.
-goal_info_get_maybe_mode_constr(GoalInfo) =
-    GoalInfo ^ gi_extra ^ egi_maybe_mode_constr.
-goal_info_get_maybe_ctgc(GoalInfo) = GoalInfo ^ gi_extra ^ egi_maybe_ctgc.
-goal_info_get_maybe_dp_info(GoalInfo) = GoalInfo ^ gi_extra ^ egi_maybe_dp.
+goal_info_get_determinism(GoalInfo) = X :-
+    X = GoalInfo ^ gi_determinism.
+goal_info_get_instmap_delta(GoalInfo) = X :-
+    X = GoalInfo ^ gi_instmap_delta.
+goal_info_get_nonlocals(GoalInfo) = X :-
+    X = GoalInfo ^ gi_nonlocals.
+goal_info_get_purity(GoalInfo) = X :-
+    X = GoalInfo ^ gi_purity.
+goal_info_get_features(GoalInfo) = X :-
+    X = GoalInfo ^ gi_features.
+goal_info_get_goal_id(GoalInfo) = X :-
+    X = GoalInfo ^ gi_goal_id.
+goal_info_get_reverse_goal_path(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_rev_goal_path.
+goal_info_get_code_gen_info(GoalInfo) = X :-
+    X = GoalInfo ^ gi_code_gen_info.
+goal_info_get_context(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_context.
+goal_info_get_ho_values(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_ho_vals.
+goal_info_get_goal_mode(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_goal_mode.
+goal_info_get_maybe_rbmm(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_maybe_rbmm.
+goal_info_get_maybe_mode_constr(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_maybe_mode_constr.
+goal_info_get_maybe_ctgc(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_maybe_ctgc.
+goal_info_get_maybe_dp_info(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_maybe_dp.
 
 goal_info_set_determinism(X, !GoalInfo) :-
     !GoalInfo ^ gi_determinism := X.
@@ -2122,6 +2142,8 @@ goal_info_set_ho_values(X, !GoalInfo) :-
     else
         !GoalInfo ^ gi_extra ^ egi_ho_vals := X
     ).
+goal_info_set_goal_mode(X, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_goal_mode := X.
 goal_info_set_maybe_rbmm(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_maybe_rbmm := X.
 goal_info_set_maybe_mode_constr(X, !GoalInfo) :-
@@ -3078,8 +3100,9 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
         CodeGenInfo = llds_code_gen_info(LldsInfo)
     ),
 
-    ExtraInfo0 = extra_goal_info(Context, RevGoalPath, HO_Values,
+    ExtraInfo0 = extra_goal_info(Context, RevGoalPath, HO_Values, GoalMode0,
         MaybeCTGC0, MaybeRBMM0, MaybeMCI0, MaybeDPInfo0),
+    rename_vars_in_goal_mode(Must, Subn, GoalMode0, GoalMode),
     (
         MaybeCTGC0 = no,
         MaybeCTGC = no
@@ -3140,7 +3163,7 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
         MaybeMCI = yes(MCI)
     ),
     MaybeDPInfo = MaybeDPInfo0,
-    ExtraInfo = extra_goal_info(Context, RevGoalPath, HO_Values,
+    ExtraInfo = extra_goal_info(Context, RevGoalPath, HO_Values, GoalMode,
         MaybeCTGC, MaybeRBMM, MaybeMCI, MaybeDPInfo),
 
     !:GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,

@@ -210,6 +210,10 @@
     %
 :- pred write_indent(int::in, io::di, io::uo) is det.
 
+    % Return the indent for the given level as a string.
+    %
+:- func indent_string(int) = string.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1125,6 +1129,13 @@ write_indent(Indent, !IO) :-
     else
         io.write_string("  ", !IO),
         write_indent(Indent - 1, !IO)
+    ).
+
+indent_string(Indent) = Str :-
+    ( if Indent = 0 then
+        Str = ""
+    else
+        Str = "  " ++ indent_string(Indent - 1)
     ).
 
 %-----------------------------------------------------------------------------%

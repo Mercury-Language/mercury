@@ -104,6 +104,7 @@
 :- import_module check_hlds.unique_modes.
 :- import_module check_hlds.unused_imports.
 :- import_module hlds.du_type_layout.
+:- import_module hlds.goal_mode.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
@@ -524,6 +525,9 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
             !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 35, "modecheck", !DumpInfo, !IO),
 
+        maybe_compute_goal_modes(Verbose, Stats, !HLDS, !Specs, !IO),
+        maybe_dump_hlds(!.HLDS, 36, "goal_modes", !DumpInfo, !IO),
+
         (
             ModesSafeToContinue = unsafe_to_continue,
             FoundError = yes
@@ -843,6 +847,26 @@ maybe_benchmark_modes(Pred, Stage, !HLDS, !IO) :-
 
 do_io_benchmark(Pred, Repeats, A0, A - Time, !IO) :-
     benchmark_det_io(Pred, A0, A, !IO, Repeats, Time).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_compute_goal_modes(bool::in, bool::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+maybe_compute_goal_modes(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, compute_goal_modes, ComputeGoalModes),
+    (
+        ComputeGoalModes = no
+    ;
+        ComputeGoalModes = yes,
+        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_string(Verbose, "% Computing goal modes... ", !IO),
+        compute_goal_modes_in_module(!HLDS),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

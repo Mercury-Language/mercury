@@ -49,6 +49,21 @@
 :- include_module pre_quantification.
 :- include_module quantification.
 
+% A start on the infrastructure needed to transition mode analysis
+% from the current abstract interpretation based system to the propagation
+% based solver.
+%
+% Logically, the code of mode analysis belongs in the check_hlds package,
+% not the hlds package. However, while goal_modes are experimental, we want
+% to keep changes to their representations as cheap as possible, and
+% specifically, we do not want to require recompilation of the whole compiler
+% after every such change. This is possible only if the goal_mode structure
+% is *not* included in hlds_goal.m, but is kept as an abstract type in
+% goal_mode.m. Since hlds_goal.m should include modules only from the
+% hlds package and not from the check_hlds package, this requires goal_mode.m
+% to be here.
+:- include_module goal_mode.
+
 % Modules for pretty-printing it.
 :- include_module hlds_desc.
 :- include_module hlds_out.

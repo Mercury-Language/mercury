@@ -120,6 +120,7 @@
 
 :- implementation.
 
+:- import_module hlds.goal_mode.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
@@ -420,7 +421,12 @@ do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
                     InstMapDelta, !IO),
                 io.write_string("\n", !IO)
             )
-        )
+        ),
+
+        GoalMode = goal_info_get_goal_mode(GoalInfo),
+        PrefixStr = indent_string(Indent) ++ "% ",
+        GoalModeStrs = dump_goal_mode(PrefixStr, VarSet, GoalMode),
+        list.foldl(io.write_string, GoalModeStrs, !IO)
     else
         true
     ),
