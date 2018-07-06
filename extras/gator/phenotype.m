@@ -153,7 +153,7 @@ selection(Genotypes, Fitness, _, Parent, !RNG) :-
     % since the last element of CumulativeNormalFitness (and therefore
     % AfterList) is exactly 1.0, and Float is no greater than 1.0.
     %
-    list.takewhile(>(Float), CumulativeNormalFitness, _, AfterList),
+    list.take_while(>(Float), CumulativeNormalFitness, _, AfterList),
     Head = list.det_head(AfterList),
     Index = list.det_index0_of_first_occurrence(CumulativeNormalFitness, Head),
     list.det_index0(Genotypes, Index, Parent).

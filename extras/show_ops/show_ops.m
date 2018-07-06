@@ -12,7 +12,7 @@
 % containing operators, and (which is sometimes just as important)
 % *why* it parses a term the way it does.
 %
-% One can also explore the effects of differents operator tables on
+% One can also explore the effects of different operator tables on
 % term parsing by simply replacing the operator table assigned to Ops in main
 % with a table of one's own choosing.
 %
@@ -28,6 +28,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module integer.
 :- import_module list.
 :- import_module ops.
 :- import_module string.
@@ -71,20 +72,18 @@ print_term(Indent, Ops, VarSet, Term, !IO) :-
                 true
             )
         ;
-            Functor = integer(Int),
-            io.write_int(Int, !IO)
-        ;   
-            Functor = big_integer(_, _),
-            io.write_string("big_integer", !IO)
-        ;   
+            Functor = integer(_Base, Integer, _Signedeness, _Size),
+            % XXX should not just write this out as a decimal integer.
+            io.write_string(to_string(Integer), !IO)
+        ;
             Functor = string(Str),
             io.write_string("\"", !IO),
             io.write_string(Str, !IO),
             io.write_string("\"", !IO)
-        ;   
+        ;
             Functor = float(Float),
             io.write_float(Float, !IO)
-        ;   
+        ;
             Functor = implementation_defined(Str),
             io.write_string("impl_def ", !IO),
             io.write_string(Str, !IO)

@@ -241,7 +241,7 @@ void MOPENSSL_throw_error()
     while (error) {
         ERR_error_string_n(error, string, BUFFER_SIZE);
 
-        s = MR_make_string((char *) ""%s"", string);
+        s = MR_make_string(MR_ALLOC_SITE_NONE, (char *) ""%s"", string);
         list = MOPENSSL_cons(s, list);
 
         error = ERR_get_error();
@@ -465,7 +465,7 @@ typedef struct {
     if (error) {
         ERR_error_string_n(error, string, BUFFER_SIZE);
 
-        Msg = MR_make_string((char *) ""%s"", string);
+        Msg = MR_make_string(MR_ALLOC_ID, (char *) ""%s"", string);
 		Success = MR_TRUE;
         
     } else {
@@ -564,7 +564,7 @@ typedef struct {
     %
 :- interface.
 
-:- pragma foreign_type(c, ssl_method, "SSL_METHOD *").
+:- pragma foreign_type(c, ssl_method, "const SSL_METHOD *").
 :- pragma foreign_type(c, ssl_ctx, "SSL_CTX *").
 
 %------------------------------------------------------------------------------%
