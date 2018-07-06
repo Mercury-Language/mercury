@@ -62,7 +62,8 @@ run_binop_test_3(BinOpFunc, Desc, A, B, !IO) :-
         ResultStr = "<<exception>>"
     ),
     io.format("%s %s %s = %s\n",
-        [s(uint16_to_string(A)), s(Desc), s(uint16_to_string(B)), s(ResultStr)], !IO).
+        [s(uint16_to_string(A)), s(Desc), s(uint16_to_string(B)),
+        s(ResultStr)], !IO).
 
 :- func numbers = list(uint16).
 
