@@ -157,12 +157,13 @@ read_specs_file(SpecsFile, TermFile, Result, !IO) :-
 #include <stdio.h>
 
 MR_String   read_specs_file_2(MR_AllocSiteInfoPtr alloc_id,
-    MR_String specs_file_name, MR_String term_file_name);
+                MR_String specs_file_name, MR_String term_file_name);
 MR_String   read_specs_file_3(MR_AllocSiteInfoPtr alloc_id,
-    MR_String specs_file_name, MR_String term_file_name, int spec_fd);
+                MR_String specs_file_name, MR_String term_file_name,
+                int spec_fd);
 MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
-    MR_String specs_file_name, MR_String term_file_name, int spec_fd,
-    size_t size, char *spec_buf);
+                MR_String specs_file_name, MR_String term_file_name,
+                int spec_fd, size_t size, char *spec_buf);
 ").
 
 :- pragma foreign_proc("C",
@@ -170,10 +171,8 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    /*
-    ** We need to save/restore MR_hp so that we can allocate the return
-    ** value on Mercury's heap if necessary.
-    */
+    // We need to save/restore MR_hp so that we can allocate the return
+    // value on Mercury's heap if necessary.
     MR_save_transient_hp();
     Problem = read_specs_file_2(MR_ALLOC_ID, SpecsFileName, TermFileName);
     MR_restore_transient_hp();
@@ -193,11 +192,9 @@ read_specs_file_2(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
     MR_String   problem;
     char        errbuf[MR_STRERROR_BUF_SIZE];
 
-    /*
-    ** There are race conditions between opening the file, stat'ing the file
-    ** and reading the contents of the file, but the Unix API doesn't really
-    ** allow these race conditions to be resolved.
-    */
+    // There are race conditions between opening the file, stat'ing the file
+    // and reading the contents of the file, but the Unix API doesn't really
+    // allow these race conditions to be resolved.
 
     spec_fd = open(specs_file_name, O_RDONLY);
     if (spec_fd < 0) {
@@ -245,7 +242,7 @@ read_specs_file_4(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
     size_t      num_bytes_read;
     MR_String   problem;
 
-    /* XXX we don't handle successful but partial reads */
+    // XXX We don't handle successful but partial reads.
     do {
         num_bytes_read = read(spec_fd, spec_buf, size);
     } while (num_bytes_read == -1 && MR_is_eintr(errno));
@@ -255,7 +252,7 @@ read_specs_file_4(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
     } else {
         MR_EventSet event_set;
 
-        /* NULL terminate the string we have read in. */
+        // NULL terminate the string we have read in.
         spec_buf[num_bytes_read] = '\\0';
         event_set = MR_read_event_set(specs_file_name, spec_buf);
         if (event_set == NULL) {
@@ -274,9 +271,7 @@ read_specs_file_4(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
                 MR_print_event_set(term_fp, event_set);
                 fclose(term_fp);
 
-                /*
-                ** Our caller tests Problem against the empty string, not NULL.
-                */
+                // Our caller tests Problem against the empty string, not NULL.
                 problem = MR_make_string(alloc_id, """");
             }
         }
