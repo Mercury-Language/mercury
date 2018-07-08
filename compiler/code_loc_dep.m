@@ -2873,6 +2873,9 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI, !CLD) :-
 :- pred reassign_mkword_hole_var(prog_var::in, ptag::in, rval::in,
     llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
+:- pred reassign_tagword_var(prog_var::in, uint::in, rval::in,
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+
 :- pred assign_field_lval_expr_to_var(prog_var::in, list(lval)::in, rval::in,
     llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
@@ -3035,6 +3038,20 @@ reassign_mkword_hole_var(Var, Ptag, Rval, Code, !CLD) :-
         Lvals = [],
         var_locn_reassign_mkword_hole_var(Var, Ptag, Rval, Code,
             VarLocnInfo0, VarLocnInfo)
+    ;
+        Lvals = [_ | _],
+        unexpected($pred, "non-var lvals")
+    ),
+    set_var_locn_info(VarLocnInfo, !CLD).
+
+reassign_tagword_var(Var, ToOrMask, ToOrRval, Code, CI, !CLD) :-
+    get_var_locn_info(!.CLD, VarLocnInfo0),
+    Lvals = lvals_in_rval(ToOrRval),
+    (
+        Lvals = [],
+        get_module_info(CI, ModuleInfo),
+        var_locn_reassign_tagword_var(ModuleInfo, Var, ToOrMask, ToOrRval,
+            Code, VarLocnInfo0, VarLocnInfo)
     ;
         Lvals = [_ | _],
         unexpected($pred, "non-var lvals")

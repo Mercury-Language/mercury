@@ -54,6 +54,7 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_out.hlds_out_pred.
+:- import_module hlds.status.
 % XXX :- import_module hlds.pred_table.
 % We actually use a type equivalence from pred_table.m (specifically,
 % the fact that pred_table is a map), but we get an unused import warning
@@ -140,10 +141,15 @@ write_hlds(Indent, ModuleInfo, !IO) :-
             true
         ),
         ( if string.contains_char(DumpOptions, 'T') then
+            ( if string.contains_char(DumpOptions, 'L') then
+                LocalOnly = yes
+            else
+                LocalOnly = no
+            ),
             module_info_get_type_table(ModuleInfo, TypeTable),
             module_info_get_instance_table(ModuleInfo, InstanceTable),
             module_info_get_class_table(ModuleInfo, ClassTable),
-            write_types(Info, Indent, TypeTable, !IO),
+            write_type_table(Info, Indent, LocalOnly, TypeTable, !IO),
             write_classes(Info, Indent, ClassTable, !IO),
             write_instances(Info, Indent, InstanceTable, !IO)
         else
@@ -254,15 +260,31 @@ write_avail_entry(Indent, ModuleName, Entry, !IO) :-
 % Write out the type table.
 %
 
-:- pred write_types(hlds_out_info::in, int::in, type_table::in,
-    io::di, io::uo) is det.
+:- pred write_type_table(hlds_out_info::in, int::in, bool::in,
+    type_table::in, io::di, io::uo) is det.
 
-write_types(Info, Indent, TypeTable, !IO) :-
+write_type_table(Info, Indent, LocalOnly, TypeTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Types --------\n", !IO),
     get_all_type_ctor_defns(TypeTable, TypeAssocList),
-    write_type_table_entries(Info, Indent, TypeAssocList, !IO),
+    list.sort(TypeAssocList, SortedTypeAssocList),
+    (
+        LocalOnly = no,
+        PrintedTypeAssocList = SortedTypeAssocList
+    ;
+        LocalOnly = yes,
+        list.filter(type_table_entry_is_local, SortedTypeAssocList,
+            PrintedTypeAssocList)
+    ),
+    write_type_table_entries(Info, Indent, PrintedTypeAssocList, !IO),
     io.nl(!IO).
+
+:- pred type_table_entry_is_local(pair(type_ctor, hlds_type_defn)::in)
+    is semidet.
+
+type_table_entry_is_local(_TypeCtor - TypeDefn) :-
+    hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+    type_status_defined_in_this_module(TypeStatus) = yes.
 
 :- pred write_type_table_entries(hlds_out_info::in, int::in,
     assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.

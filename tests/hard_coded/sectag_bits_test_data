@@ -1,0 +1,10 @@
+test_two(
+    test_two(
+        test_kind(kind_a),
+        test_int(42)
+    ),
+    test_two(
+        test_int(43),
+        test_kinds(kind_b, kind_a)
+    )
+).

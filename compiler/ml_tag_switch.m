@@ -218,7 +218,8 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
             unexpected($pred, "more than one goal for non-shared tag")
         )
     ;
-        ( SecTagLocn = sectag_local
+        ( SecTagLocn = sectag_local_rest_of_word
+        ; SecTagLocn = sectag_local_bits(_, _)
         ; SecTagLocn = sectag_remote
         ),
         expect(unify(OtherPtags, []), $pred, ">1 ptag with secondary tag"),
@@ -325,8 +326,13 @@ gen_stag_switch(Cases, CodeMap, Ptag, StagLocn, Var, CodeModel,
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
     (
-        StagLocn = sectag_local,
+        StagLocn = sectag_local_rest_of_word,
         StagRval = ml_unop(unmkbody, VarRval)
+    ;
+        StagLocn = sectag_local_bits(_, Mask),
+        StagRval = ml_binop(bitwise_and(int_type_uint),
+            ml_unop(unmkbody, VarRval),
+            ml_const(mlconst_uint(Mask)))
     ;
         StagLocn = sectag_remote,
         ml_gen_secondary_tag_rval(!.Info, VarType, VarRval,

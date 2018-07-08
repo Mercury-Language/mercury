@@ -74,6 +74,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module uint8.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -126,6 +127,7 @@
 :- pred get_profile_memory(code_info::in, bool::out) is det.
 :- pred get_may_use_atomic_alloc(code_info::in,
     may_use_atomic_alloc::out) is det.
+:- pred get_num_ptag_bits(code_info::in, uint8::out) is det.
 :- pred get_gc_method(code_info::in, gc_method::out) is det.
 :- pred get_maybe_containing_goal_map(code_info::in,
     maybe(containing_goal_map)::out) is det.
@@ -275,6 +277,9 @@
                 cis_profile_memory      :: bool,
                 cis_may_use_atomic_alloc :: may_use_atomic_alloc,
 
+                % The number of primary tags bits we are using.
+                cis_num_ptag_bits       :: uint8,
+
                 % The GC method.
                 cis_gc_method           :: gc_method,
 
@@ -411,6 +416,8 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         UseAtomicCells = yes,
         InitMayUseAtomic = may_use_atomic_alloc
     ),
+    globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBitsInt),
+    NumPtagBits = uint8.det_from_int(NumPtagBitsInt),
     globals.get_gc_method(Globals, GCMethod),
     % argument MaybeContainingGoalMap
     % argument ConstStructMap
@@ -437,6 +444,7 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         LCMCNull,
         ProfileMemory,
         InitMayUseAtomic,
+        NumPtagBits,
         GCMethod,
         MaybeContainingGoalMap,
         ConstStructMap
@@ -671,6 +679,8 @@ get_profile_memory(CI, X) :-
     X = CI ^ code_info_static ^ cis_profile_memory.
 get_may_use_atomic_alloc(CI, X) :-
     X = CI ^ code_info_static ^ cis_may_use_atomic_alloc.
+get_num_ptag_bits(CI, X) :-
+    X = CI ^ code_info_static ^ cis_num_ptag_bits.
 get_gc_method(CI, X) :-
     X = CI ^ code_info_static ^ cis_gc_method.
 get_maybe_containing_goal_map(CI, X) :-

@@ -655,8 +655,9 @@ ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type, TaggedConsId, MatchCond) :-
         ; Tag = single_functor_tag
         ; Tag = unshared_tag(_)
         ; Tag = direct_arg_tag(_)
+        ; Tag = shared_local_tag_no_args(_, _, _)
+        ; Tag = shared_local_tag_with_args(_, _)
         ; Tag = shared_remote_tag(_, _)
-        ; Tag = shared_local_tag(_, _)
         ; Tag = no_tag
         ; Tag = dummy_tag
         ),

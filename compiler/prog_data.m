@@ -439,9 +439,12 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             ).
 
     % The arg_pos_width type and its components specify how much space
-    % does a constructor argument occupy in the memory cell that
-    % represents a term with that constructor, and where.
+    % does a constructor argument occupy in the memory that represents
+    % a term with that constructor, and where. This memory will usually be
+    % in a heap cell, so this is what the discussion below assumes,
+    % but see below for an exception.
     %
+    % XXX ARG_PACK document the CellOffset fields.
     % `apw_full(ArgOnlyOffset)' indicates that the argument fully occupies
     % a single word, and this word is ArgOnlyOffset words after the first word
     % of the memory cell cell that starts storing visible arguments.
@@ -484,16 +487,29 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     % argument is missing, or if either is full word sized or larger,
     % then the arguments in the run will all be apw_none_nowhere.
     %
-    % The EBNF grammar of possible sequences of argument representations is:
+    % The exception mentioned above is that if a function symbol only has
+    % a small number of small (subword-sized) arguments, then we try to fit
+    % the representation of all the arguments next to the primary and local
+    % secondary tags, *without* using a heap cell. In this case, all these
+    % arguments will be represented by apw_partial_shifted with -1 as the
+    % offset (both kinds), unless they are of a dummy type, in which case
+    % their representation will be apw_none_shifted, also with -1 as offset.
     %
-    % constructor
-    %   :  integral_word_unit*
+    % The EBNF grammar of possible sequences of representations of nonconstant
+    % terms is:
     %
-    % integral_word_unit
-    %   :  apw_none_nowhere
-    %   |  apw_full
-    %   |  apw_double
-    %   |  apw_partial_first (apw_none_shifted* apw_partial_shifted)+
+    % repn:
+    %   :   ptag ptr_to_heap_cell
+    %   |   ptag local_sectag (apw_none_shifted | apw_partial_shifted)+
+    %
+    % heap_cell
+    %   :   remote_sectag_word? integral_cell_word_unit*
+    %
+    % integral_cell_word_unit
+    %   :   apw_none_nowhere
+    %   |   apw_full
+    %   |   apw_double
+    %   |   apw_partial_first (apw_none_shifted* apw_partial_shifted)+
     %
     % We wrap function symbols around the integer arguments mentioned above
     % to make the different integers harder to confuse with each other.

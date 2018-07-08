@@ -1331,11 +1331,10 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn),
-            ConsRepn ^ cr_tag = shared_local_tag(_, LocalSectag)
+            ConsRepn ^ cr_tag = shared_local_tag_no_args(_, LocalSectag, _)
         then
-            LocalSectag = local_sectag(_, LocalSectagSize),
-            LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
-            SectagWholeWord = uint.cast_to_int(SectagWholeWordUint),
+            LocalSectag = local_sectag(_, PrimSec, _),
+            SectagWholeWord = uint.cast_to_int(PrimSec),
             BoundFunctor = bound_functor(int_const(SectagWholeWord), []),
             BoundInst = bound(Unique, inst_test_results_fgtc, [BoundFunctor]),
             NewMode2 = from_to_mode(free, BoundInst),

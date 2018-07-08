@@ -156,8 +156,13 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                 case MR_SECTAG_NONE_DIRECT_ARG:
                     functor_desc = ptag_layout->MR_sectag_alternatives[0];
                     break;
-                case MR_SECTAG_LOCAL:
+                case MR_SECTAG_LOCAL_REST_OF_WORD:
                     sectag = MR_unmkbody(data);
+                    functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
+                    break;
+                case MR_SECTAG_LOCAL_BITS:
+                    sectag = MR_unmkbody(data) &
+                        ((1 << ptag_layout->MR_sectag_numbits) - 1);
                     functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
                     break;
                 case MR_SECTAG_REMOTE:

@@ -1833,17 +1833,18 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
         // XXX stub only
     }
 
-    public static final int MR_SECTAG_NONE              = 0;
-    public static final int MR_SECTAG_NONE_DIRECT_ARG   = 1;
-    public static final int MR_SECTAG_LOCAL             = 2;
-    public static final int MR_SECTAG_REMOTE            = 3;
-    public static final int MR_SECTAG_VARIABLE          = 4;
+    public static final int MR_SECTAG_NONE               = 0;
+    public static final int MR_SECTAG_NONE_DIRECT_ARG    = 1;
+    public static final int MR_SECTAG_LOCAL              = 2;
+    public static final int MR_SECTAG_LOCAL_REST_OF_WORD = 2;   // synonym
+    public static final int MR_SECTAG_REMOTE             = 3;
+    public static final int MR_SECTAG_VARIABLE           = 4;
 
-    public static final int MR_FUNCTOR_SUBTYPE_NONE     = 0;
-    public static final int MR_FUNCTOR_SUBTYPE_EXISTS   = 1;
+    public static final int MR_FUNCTOR_SUBTYPE_NONE      = 0;
+    public static final int MR_FUNCTOR_SUBTYPE_EXISTS    = 1;
 
-    public static final int MR_PREDICATE    = 0;
-    public static final int MR_FUNCTION     = 1;
+    public static final int MR_PREDICATE = 0;
+    public static final int MR_FUNCTION  = 1;
 
     // The dummy_var is used to represent io.states and values of other types
     // (dummy types) that contain no information. Occasionally a dummy variable

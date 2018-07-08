@@ -89,6 +89,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module int8.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -646,8 +647,9 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], CurOrdinal,
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
+        ; ConsTag = shared_local_tag_no_args(_, _, _)
+        ; ConsTag = shared_local_tag_with_args(_, _)
         ; ConsTag = shared_remote_tag(_, _)
-        ; ConsTag = shared_local_tag(_, _)
         ; ConsTag = no_tag
         ; ConsTag = dummy_tag
         ),
@@ -746,9 +748,23 @@ get_du_rep(ConsTag, DuRep) :-
         ConsTag = direct_arg_tag(Ptag),
         DuRep = du_ll_rep(Ptag, sectag_locn_none_direct_arg)
     ;
-        ConsTag = shared_local_tag(Ptag, LocalSectag),
-        LocalSectag = local_sectag(SectagUint, _),
-        DuRep = du_ll_rep(Ptag, sectag_locn_local(SectagUint))
+        ConsTag = shared_local_tag_no_args(Ptag, LocalSectag, MustMask),
+        LocalSectag = local_sectag(SectagUint, _PrimSec, SectagBits),
+        (
+            MustMask = lsectag_always_rest_of_word,
+            SectagAndLocn = sectag_locn_local_rest_of_word(SectagUint)
+        ;
+            MustMask = lsectag_must_be_masked,
+            SectagBits = sectag_bits(NumBits, Mask),
+            SectagAndLocn = sectag_locn_local_bits(SectagUint, NumBits, Mask)
+        ),
+        DuRep = du_ll_rep(Ptag, SectagAndLocn)
+    ;
+        ConsTag = shared_local_tag_with_args(Ptag, LocalSectag),
+        LocalSectag = local_sectag(SectagUint, _PrimSec, SectagBits),
+        SectagBits = sectag_bits(NumBits, Mask),
+        SectagAndLocn = sectag_locn_local_bits(SectagUint, NumBits, Mask),
+        DuRep = du_ll_rep(Ptag, SectagAndLocn)
     ;
         ConsTag = shared_remote_tag(Ptag, RemoteSectag),
         RemoteSectag = remote_sectag(SectagUint, _),
@@ -885,28 +901,40 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         (
             SectagAndLocn = sectag_locn_none,
             SectagLocn = sectag_none,
-            Sectag = 0u
+            Sectag = 0u,
+            NumSectagBits = -1i8
         ;
             SectagAndLocn = sectag_locn_none_direct_arg,
             SectagLocn = sectag_none_direct_arg,
-            Sectag = 0u
+            Sectag = 0u,
+            NumSectagBits = -1i8
         ;
-            SectagAndLocn = sectag_locn_local(Sectag),
-            SectagLocn = sectag_local
+            SectagAndLocn = sectag_locn_local_rest_of_word(Sectag),
+            SectagLocn = sectag_local_rest_of_word,
+            NumSectagBits = -1i8
+        ;
+            SectagAndLocn = sectag_locn_local_bits(Sectag, NumSectagBitsUint8,
+                Mask),
+            SectagLocn = sectag_local_bits(NumSectagBitsUint8, Mask),
+            NumSectagBits = int8.cast_from_uint8(NumSectagBitsUint8)
         ;
             SectagAndLocn = sectag_locn_remote(Sectag),
-            SectagLocn = sectag_remote
+            SectagLocn = sectag_remote,
+            NumSectagBits = -1i8
         ),
         ( if map.search(!.PtagTable, Ptag, SectagTable0) then
-            SectagTable0 = sectag_table(Locn0, NumSharers0, SectagMap0),
-            expect(unify(SectagLocn, Locn0), $pred,
-                "sectag locn disagreement"),
+            SectagTable0 = sectag_table(Locn0, NumSectagBits0, NumSharers0,
+                SectagMap0),
+            expect(unify(NumSectagBits0, NumSectagBits), $pred,
+                "sectag num bits disagreement"),
             map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
-            SectagTable = sectag_table(Locn0, NumSharers0 + 1u, SectagMap),
+            SectagTable = sectag_table(Locn0, NumSectagBits0, NumSharers0 + 1u,
+                SectagMap),
             map.det_update(Ptag, SectagTable, !PtagTable)
         else
             SectagMap = map.singleton(Sectag, DuFunctor),
-            SectagTable = sectag_table(SectagLocn, 1u, SectagMap),
+            SectagTable = sectag_table(SectagLocn, NumSectagBits, 1u,
+                SectagMap),
             map.det_insert(Ptag, SectagTable, !PtagTable)
         )
     ;

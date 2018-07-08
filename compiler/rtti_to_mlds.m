@@ -811,19 +811,27 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
     (
         SectagAndLocn = sectag_locn_none,
         Locn = sectag_none,
-        Stag = -1
+        Stag = -1,
+        NumSectagBits = 0u8
     ;
         SectagAndLocn = sectag_locn_none_direct_arg,
         Locn = sectag_none_direct_arg,
-        Stag = -1
+        Stag = -1,
+        NumSectagBits = 0u8
     ;
-        SectagAndLocn = sectag_locn_local(StagUint),
-        Locn = sectag_local,
+        SectagAndLocn = sectag_locn_local_rest_of_word(StagUint),
+        Locn = sectag_local_rest_of_word,
+        Stag = uint.cast_to_int(StagUint),
+        NumSectagBits = 0u8
+    ;
+        SectagAndLocn = sectag_locn_local_bits(StagUint, NumSectagBits, Mask),
+        Locn = sectag_local_bits(NumSectagBits, Mask),
         Stag = uint.cast_to_int(StagUint)
     ;
         SectagAndLocn = sectag_locn_remote(StagUint),
         Locn = sectag_remote,
-        Stag = uint.cast_to_int(StagUint)
+        Stag = uint.cast_to_int(StagUint),
+        NumSectagBits = 0u8
     ),
     RttiName = type_ctor_du_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
@@ -839,7 +847,8 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         ArgNameInitializer,
         ArgLocnsInitializer,
         ExistInfoInitializer,
-        gen_init_functor_subtype_info(FunctorSubtypeInfo)
+        gen_init_functor_subtype_info(FunctorSubtypeInfo),
+        wrap_init_obj(ml_const(mlconst_uint8(NumSectagBits)))
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
@@ -1173,14 +1182,17 @@ gen_du_ptag_ordered_table_body(_, _, _, [], []).
 gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, CurPtag,
         [Ptag - SectagTable | PtagTail], [Initializer | Initializers]) :-
     expect(unify(Ptag, CurPtag), $module, $pred, "ptag mismatch"),
-    SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
+    SectagTable = sectag_table(SectagLocn, NumSectagBits, NumSharers,
+        _SectagMap),
     RttiName = type_ctor_du_ptag_layout(Ptag),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
+        % XXX ARG_PACK Why isn't the num_sharers field itself unsigned?
         gen_init_int(uint.cast_to_int(NumSharers)),
         gen_init_sectag_locn(SectagLocn),
         gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_du_stag_ordered_table(Ptag))
+            type_ctor_du_stag_ordered_table(Ptag)),
+        init_obj(ml_const(mlconst_int8(NumSectagBits)))
     ]),
     CurPtag = ptag(CurPtagUint8),
     NextPtag = ptag(CurPtagUint8 + 1u8),
@@ -1193,7 +1205,8 @@ gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, CurPtag,
 
 gen_du_stag_ordered_table(ModuleName, RttiTypeCtor, Ptag - SectagTable,
         !GlobalData) :-
-    SectagTable = sectag_table(_SectagLocn, _NumSharers, SectagMap),
+    SectagTable = sectag_table(_SectagLocn, _NumSectagBits, _NumSharers,
+        SectagMap),
     map.values(SectagMap, SectagFunctors),
     FunctorRttiNames = list.map(du_functor_rtti_name, SectagFunctors),
     Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,

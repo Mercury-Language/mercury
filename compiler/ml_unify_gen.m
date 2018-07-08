@@ -372,6 +372,13 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
             ArgVars, ArgModes, TakeAddr, HowToConstruct, Context,
             Defns, Stmts, !Info)
     ;
+        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        expect(unify(TakeAddr, []), $pred,
+            "taking address of non word-sized argument"),
+        ml_gen_construct_tagword_compound(ConsId, LocalSectag, Var,
+            ArgVars, ArgModes, HowToConstruct, Context, Stmts, !Info),
+        Defns = []
+    ;
         % Lambda expressions.
         ConsTag = closure_tag(PredId, ProcId, _EvalMethod),
         ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
@@ -400,7 +407,7 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = string_tag(_)
-        ; ConsTag = shared_local_tag(_, _)
+        ; ConsTag = shared_local_tag_no_args(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
@@ -432,11 +439,9 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
                 Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
                     MLDS_Type))
             ;
-                ConsTag = shared_local_tag(_Ptag, LocalSectag),
-                LocalSectag = local_sectag(_, LocalSectagSize),
-                LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
-                Rval = ml_cast(MLDS_Type, ml_const(mlconst_int(
-                    uint.cast_to_int(SectagWholeWordUint))))
+                ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _),
+                LocalSectag = local_sectag(_, PrimSec, _),
+                Rval = ml_cast(MLDS_Type, ml_const(mlconst_uint(PrimSec)))
             ;
                 ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
                 ModuleName = fixup_builtin_module(ModuleName0),
@@ -475,6 +480,7 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
             Stmts = [Stmt]
         ;
             ArgVars = [_ | _],
+            % XXX ARG_PACK Move the ArgVars = [] code *after* this switch.
             unexpected($pred, "bad constant term")
         ),
         Defns = []
@@ -550,6 +556,51 @@ ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
         Var, ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Defns, Stmts, !Info).
 
+:- pred ml_gen_construct_tagword_compound(cons_id::in,
+    local_sectag::in, prog_var::in, list(prog_var)::in, list(unify_mode)::in,
+    how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_construct_tagword_compound(ConsId, LocalSectag, Var,
+        ArgVars, ArgModes, HowToConstruct, Context, Stmts, !Info) :-
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ml_gen_info_get_var_types(!.Info, VarTypes),
+    lookup_var_type(VarTypes, Var, VarType),
+    cons_id_arg_types_and_widths(ModuleInfo,
+        lookup_var_type_func(VarTypes), may_not_have_extra_args,
+        VarType, ConsId, ArgVars, ArgVarsTypesWidths),
+    (
+        list.reverse(RevOrRvals, OrRvals),
+        LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
+        or_rvals(ml_const(mlconst_uint(PrimSec)), OrRvals, TagwordRval),
+        (
+            HowToConstruct = construct_dynamically,
+            ml_gen_tagword_dynamically(!.Info, ArgVarsTypesWidths, ArgModes,
+                [], RevOrRvals)
+        ;
+            HowToConstruct = construct_statically,
+            ml_gen_tagword_statically(!.Info, ArgVarsTypesWidths,
+                [], RevOrRvals)
+        ),
+        ml_gen_var(!.Info, Var, VarLval),
+        Stmt = ml_gen_assign(VarLval, TagwordRval, Context),
+        Stmts = [Stmt],
+        (
+            HowToConstruct = construct_dynamically
+        ;
+            HowToConstruct = construct_statically,
+            MLDS_Type = mlds_native_uint_type,
+            GroundTerm = ml_ground_term(TagwordRval, VarType, MLDS_Type),
+            ml_gen_info_set_const_var(Var, GroundTerm, !Info)
+        )
+    ;
+        HowToConstruct = reuse_cell(_),
+        unexpected($pred, "reuse_cell")
+    ;
+        HowToConstruct = construct_in_region(_RegVar),
+        unexpected($pred, "construct_in_region")
+    ).
+
 ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag, Var,
         ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Defns, Stmts, !Info) :-
@@ -610,6 +661,8 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
         MayUseAtomic0 = may_not_use_atomic_alloc
     ),
     FirstArgNum = 1,
+    % XXX ARG_PACK Merge ml_gen_dynamic_construct_args and
+    % ml_expand_or_pack_into_words into one predicate.
     ml_gen_dynamic_construct_args(!.Info, ArgVarsTypesWidths, ArgModes,
         FirstArgNum, TakeAddr, TakeAddrInfos, ArgRvalsTypesWidths0,
         MayUseAtomic0, MayUseAtomic),
@@ -1270,6 +1323,83 @@ ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
     ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
         NextOffset, ExtraRvalsTypesWidths, Context, Stmts, !Info).
 
+:- pred ml_gen_tagword_dynamically(ml_gen_info::in,
+    list(arg_var_type_and_width)::in, list(unify_mode)::in,
+    list(mlds_rval)::in, list(mlds_rval)::out) is det.
+
+ml_gen_tagword_dynamically(_, [], [], !RevOrRvals).
+ml_gen_tagword_dynamically(_, [], [_ | _], !RevOrRvals) :-
+    unexpected($pred, "length mismatch").
+ml_gen_tagword_dynamically(_, [_ | _], [], !RevOrRvals) :-
+    unexpected($pred, "length mismatch").
+ml_gen_tagword_dynamically(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
+        [ArgMode | ArgModes], !RevOrRvals) :-
+    ml_gen_tagword_dynamically(Info, ArgVarsTypesWidths, ArgModes,
+        !RevOrRvals),
+
+    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgPosWidth),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
+    ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
+    ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ArgWidth,
+        BoxedArgType),
+
+    ml_variable_type(Info, ArgVar, ArgType),
+    ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
+    ( if
+        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, ArgType,
+            top_in),
+        is_either_type_a_dummy(ModuleInfo, ArgType, ConsArgType) =
+            neither_is_dummy_type
+    then
+        ml_gen_var(Info, ArgVar, ArgLval),
+        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, BoxedArgType,
+            bp_native_if_possible, ml_lval(ArgLval), ArgRval)
+    else
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
+        ArgRval = ml_const(mlconst_null(MLDS_Type))
+    ),
+
+    (
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
+        maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill, !RevOrRvals)
+    ;
+        ArgPosWidth = apw_none_shifted(_, _)
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        unexpected($pred, "not apw_partial_shifted or apw_none_shifted")
+    ).
+
+:- pred ml_gen_tagword_statically(ml_gen_info::in,
+    list(arg_var_type_and_width)::in,
+    list(mlds_rval)::in, list(mlds_rval)::out) is det.
+
+ml_gen_tagword_statically(_, [], !RevOrRvals).
+ml_gen_tagword_statically(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
+        !RevOrRvals) :-
+    ml_gen_tagword_statically(Info, ArgVarsTypesWidths, !RevOrRvals),
+
+    ArgVarTypeWidth = arg_type_and_width(ArgVar, _ConsArgType, ArgPosWidth),
+    ml_gen_info_lookup_const_var(Info, ArgVar, GroundTerm),
+    GroundTerm = ml_ground_term(ArgRval, _MercuryType, _MLDS_Type),
+    (
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
+        maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill, !RevOrRvals)
+    ;
+        ArgPosWidth = apw_none_shifted(_, _)
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        unexpected($pred, "not apw_partial_shifted or apw_none_shifted")
+    ).
+
 %---------------------------------------------------------------------------%
 
     % Generate a deterministic deconstruction. In a deterministic
@@ -1297,7 +1427,7 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_Float)
         ; ConsTag = dummy_tag
-        ; ConsTag = shared_local_tag(_Bits1, _Num1)
+        ; ConsTag = shared_local_tag_no_args(_, _, _)
         ),
         % For constants, if the deconstruction is det, then we already know
         % the value of the constant, so Stmts = [].
@@ -1352,6 +1482,32 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
             ArgVarRepns),
         ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
             ArgNum, Context, [], _, Defns, Stmts, !Info)
+    ;
+        ConsTag = shared_local_tag_with_args(_, _),
+        ml_gen_var(!.Info, Var, VarLval),
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
+        CtorArgRepns = ConsRepnDefn ^ cr_args,
+        assoc_list.from_corresponding_lists(ArgVars, CtorArgRepns,
+            ArgVarRepns),
+        ml_gen_deconstruct_tagword_args(!.Info, ml_lval(VarLval),
+            ArgVarRepns, Modes, Context, [], ToOrRvals, 0u, ToOrMask,
+            RightStmts),
+        (
+            ToOrRvals = [],
+            Stmts = RightStmts
+        ;
+            ToOrRvals = [HeadToOrRval | TailToOrRvals],
+            ComplementMask = ml_const(mlconst_uint(\ ToOrMask)),
+            MaskedOldVarRval = ml_binop(bitwise_and(int_type_uint),
+                ml_lval(VarLval), ComplementMask),
+            or_rvals(HeadToOrRval, TailToOrRvals, ToOrRval),
+            NewVarRval = ml_binop(bitwise_or(int_type_uint),
+                MaskedOldVarRval, ToOrRval),
+            LeftStmt = ml_gen_assign(VarLval, NewVarRval, Context),
+            Stmts = [LeftStmt | RightStmts]
+        ),
+        Defns = []
     ).
 
     % Calculate the integer offset used to reference the first field of a
@@ -1363,6 +1519,7 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
     cell_offset::out, int::out) is det.
 
 ml_tag_initial_offset_and_argnum(ConsTag, Ptag, InitOffset, ArgNum) :-
+    % XXX ARG_PACK We always return the same ArgNum.
     (
         ConsTag = single_functor_tag,
         Ptag = ptag(0u8),
@@ -1403,7 +1560,8 @@ ml_tag_initial_offset_and_argnum(ConsTag, Ptag, InitOffset, ArgNum) :-
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = no_tag
-        ; ConsTag = shared_local_tag(_Bits1, _Num1)
+        ; ConsTag = shared_local_tag_no_args(_, _, _)
+        ; ConsTag = shared_local_tag_with_args(_, _)
         ),
         unexpected($pred, "unexpected tag")
     ).
@@ -1639,7 +1797,7 @@ ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, Mode,
     % XXX ARG_PACK
     % We could get ml_gen_dynamic_deconstruct_args_in_word_loop to tell us
     % when all the args in the word assign left, as in that case,
-    % we could generate better code than the one generates by
+    % we could generate better code than the one generated by
     % ml_gen_dynamic_deconstruct_arg_unify_assign_left.
     (
         AllPartialsRight = not_all_partials_assign_right,
@@ -1897,23 +2055,8 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
         ),
         PackedArgVar = packed_arg_var(ArgVar, Shift, NumBits, Fill),
         PackedArgVars = [PackedArgVar],
-        UnsignedMLDSType = mlds_int_type_uint,
-        FieldRval = ml_cast(UnsignedMLDSType, ml_lval(FieldLval)),
-        Mask = arg_mask(MaskInt),
-        MaskedRval = ml_bitwise_and(ml_rshift(FieldRval, Shift), MaskInt),
-        (
-            Fill = fill_enum,
-            ToAssignRval = MaskedRval
-        ;
-            ( Fill = fill_int8,   CastMLDSType = mlds_int_type_int8
-            ; Fill = fill_uint8,  CastMLDSType = mlds_int_type_uint8
-            ; Fill = fill_int16,  CastMLDSType = mlds_int_type_int16
-            ; Fill = fill_uint16, CastMLDSType = mlds_int_type_uint16
-            ; Fill = fill_int32,  CastMLDSType = mlds_int_type_int32
-            ; Fill = fill_uint32, CastMLDSType = mlds_int_type_uint32
-            ),
-            ToAssignRval = ml_cast(CastMLDSType, MaskedRval)
-        ),
+        ml_extract_subword_value(ml_lval(FieldLval), Shift, Mask, Fill,
+            ToAssignRval),
         Stmt = ml_gen_assign(ArgLval, ToAssignRval, Context),
         Stmts = [Stmt]
     ;
@@ -1983,6 +2126,115 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo, HighLevelData,
         ),
         % Nothing to do.
         Stmts = []
+    ).
+
+:- pred ml_gen_deconstruct_tagword_args(ml_gen_info::in, mlds_rval::in,
+    assoc_list(prog_var, constructor_arg_repn)::in, list(unify_mode)::in,
+    prog_context::in,
+    list(mlds_rval)::in, list(mlds_rval)::out, uint::in, uint::out,
+    list(mlds_stmt)::out) is det.
+
+ml_gen_deconstruct_tagword_args(_, _, [], [], _, !ToOrRvals, !ToOrMask, []).
+ml_gen_deconstruct_tagword_args(_, _, [], [_ | _],
+        _, !ToOrRvals, !ToOrMask, _) :-
+    unexpected($pred, "length mismatch").
+ml_gen_deconstruct_tagword_args(_, _, [_ | _], [],
+        _, !ToOrRvals, !ToOrMask, _) :-
+    unexpected($pred, "length mismatch").
+ml_gen_deconstruct_tagword_args(Info, WordRval,
+        [ArgVarRepn | ArgVarRepns], [Mode | Modes],
+        Context, !ToOrRvals, !ToOrMask, Stmts) :-
+    ml_gen_deconstruct_tagword_arg(Info, WordRval, ArgVarRepn, Mode,
+        Context, !ToOrRvals, !ToOrMask, HeadStmts),
+    ml_gen_deconstruct_tagword_args(Info, WordRval, ArgVarRepns, Modes,
+        Context, !ToOrRvals, !ToOrMask, TailStmts),
+    Stmts = HeadStmts ++ TailStmts.
+
+:- pred ml_gen_deconstruct_tagword_arg(ml_gen_info::in, mlds_rval::in,
+    pair(prog_var, constructor_arg_repn)::in, unify_mode::in, prog_context::in,
+    list(mlds_rval)::in, list(mlds_rval)::out, uint::in, uint::out,
+    list(mlds_stmt)::out) is det.
+
+ml_gen_deconstruct_tagword_arg(Info, WordRval,
+        ArgVar - CtorArgRepn, Mode, Context, !ToOrRvals, !ToOrMask, Stmts) :-
+    ml_gen_var(Info, ArgVar, ArgLval),
+    ml_variable_type(Info, ArgVar, ArgType),
+
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
+    FieldPosWidth = CtorArgRepn ^ car_pos_width,
+    FieldWidth = arg_pos_width_to_width_only(FieldPosWidth),
+    FieldRawType = CtorArgRepn ^ car_type,
+    ml_type_as_field(ModuleInfo, HighLevelData, FieldRawType, FieldWidth,
+        FieldType),
+
+    compute_assign_direction(ModuleInfo, Mode, ArgType, FieldType, Dir),
+    (
+        Dir = assign_nondummy_right,
+        ml_gen_deconstruct_tagword_arg_assign_right(WordRval,
+            FieldPosWidth, ArgLval, Context, Stmts)
+    ;
+        Dir = assign_nondummy_left,
+        ml_gen_deconstruct_tagword_arg_assign_left(WordRval,
+            FieldPosWidth, ArgLval, !ToOrRvals, !ToOrMask),
+        Stmts = []
+    ;
+        ( Dir = assign_nondummy_unused
+        ; Dir = assign_dummy
+        ),
+        % The unification has no effect.
+        Stmts = []
+    ).
+
+:- pred ml_gen_deconstruct_tagword_arg_assign_right(mlds_rval::in,
+    arg_pos_width::in, mlds_lval::in, prog_context::in,
+    list(mlds_stmt)::out) is det.
+
+ml_gen_deconstruct_tagword_arg_assign_right(WordRval, FieldPosWidth, ArgLval,
+        Context, Stmts) :-
+    (
+        FieldPosWidth = apw_partial_shifted(_, _, Shift, _NumBits, Mask, Fill),
+        ml_extract_subword_value(WordRval, Shift, Mask, Fill, ToAssignRval),
+        Stmt = ml_gen_assign(ArgLval, ToAssignRval, Context),
+        Stmts = [Stmt]
+    ;
+        FieldPosWidth = apw_none_shifted(_, _),
+        % The value being assigned is of a dummy type, so no assignment
+        % is actually necessary.
+        Stmts = []
+    ;
+        ( FieldPosWidth = apw_double(_, _, _)
+        ; FieldPosWidth = apw_full(_, _)
+        ; FieldPosWidth = apw_partial_first(_, _, _, _, _)
+        ; FieldPosWidth = apw_none_nowhere
+        ),
+        unexpected($pred, "FieldPosWidth does not belong in tagword")
+    ).
+
+:- pred ml_gen_deconstruct_tagword_arg_assign_left(mlds_rval::in,
+    arg_pos_width::in, mlds_lval::in,
+    list(mlds_rval)::in, list(mlds_rval)::out, uint::in, uint::out) is det.
+
+ml_gen_deconstruct_tagword_arg_assign_left(_WordRval, FieldPosWidth, ArgLval,
+        !ToOrRvals, !ToOrMask) :-
+    (
+        FieldPosWidth = apw_partial_shifted(_, _, Shift, _NumBits, Mask, Fill),
+        Shift = arg_shift(ShiftInt),
+        Mask = arg_mask(MaskInt),
+        LeftShiftedArgRval = ml_lshift(ml_lval(ArgLval), Shift, Fill),
+        !:ToOrRvals = [LeftShiftedArgRval | !.ToOrRvals],
+        !:ToOrMask = (uint.cast_from_int(MaskInt) << ShiftInt) \/ !.ToOrMask
+    ;
+        FieldPosWidth = apw_none_shifted(_, _)
+        % The value being assigned is of a dummy type, so no assignment
+        % is actually necessary.
+    ;
+        ( FieldPosWidth = apw_double(_, _, _)
+        ; FieldPosWidth = apw_full(_, _)
+        ; FieldPosWidth = apw_partial_first(_, _, _, _, _)
+        ; FieldPosWidth = apw_none_nowhere
+        ),
+        unexpected($pred, "FieldPosWidth does not belong in tagword")
     ).
 
 :- pred ml_field_offset_pair(mlds_lval::in, mlds_lval::out, mlds_lval::out)
@@ -2204,25 +2456,13 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
         Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal, MLDS_Type)),
         TagTestRval = ml_binop(eq(int_type_int), Rval, Const)
     ;
-        ConsTag = dummy_tag,
-        TagTestRval = ml_const(mlconst_true)
-    ;
-        ( ConsTag = closure_tag(_, _, _)
-        ; ConsTag = type_ctor_info_tag(_, _, _)
-        ; ConsTag = base_typeclass_info_tag(_, _, _)
-        ; ConsTag = type_info_const_tag(_)
-        ; ConsTag = typeclass_info_const_tag(_)
-        ; ConsTag = ground_term_const_tag(_, _)
-        ; ConsTag = tabling_info_tag(_, _)
-        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
-        ; ConsTag = table_io_entry_tag(_, _)
+        ( ConsTag = dummy_tag
+        ; ConsTag = no_tag
+        ; ConsTag = single_functor_tag
         ),
-        unexpected($pred, "bad tag")
-    ;
-        ConsTag = no_tag,
-        TagTestRval = ml_const(mlconst_true)
-    ;
-        ConsTag = single_functor_tag,
+        % In a type with only one value, all equality tests succeed.
+        % In a type with only one ptag value, all equality tests on ptags
+        % succeed.
         TagTestRval = ml_const(mlconst_true)
     ;
         ( ConsTag = unshared_tag(Ptag)
@@ -2241,13 +2481,13 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
             SecondaryTagFieldRval,
             ml_const(mlconst_int(uint.cast_to_int(SectagUint)))),
         ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
-        ( if NumPtagBits = 0 then
+        ( if NumPtagBits = 0u8 then
             % No need to test the primary tag.
             TagTestRval = SecondaryTagTestRval
         else
             RvalPtag = ml_unop(tag, Rval),
             Ptag = ptag(PtagUint8),
-            PrimaryTagRval = 
+            PrimaryTagRval =
                 ml_const(mlconst_int(uint8.cast_to_int(PtagUint8))),
             PrimaryTagTestRval = ml_binop(eq(int_type_int), RvalPtag,
                 PrimaryTagRval),
@@ -2255,14 +2495,56 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
                 PrimaryTagTestRval, SecondaryTagTestRval)
         )
     ;
-        ConsTag = shared_local_tag(_Ptag, LocalSectag),
-        LocalSectag = local_sectag(_, LocalSectagSize),
-        LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
-        ml_gen_info_get_module_info(Info, ModuleInfo),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-        TagTestRval = ml_binop(eq(int_type_int), Rval,
-            ml_cast(MLDS_Type,
-                ml_const(mlconst_int(uint.cast_to_int(SectagWholeWordUint)))))
+        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        % We handle this the same was as the lsectag_must_be_masked case
+        % of shared_local_tag_no_args below.
+        LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),
+        ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
+        SectagBits = sectag_bits(NumSectagBits, _SectagMask),
+        NumPtagSectagBits = uint8.cast_to_int(NumPtagBits + NumSectagBits),
+        PrimSecMask = (1u << NumPtagSectagBits) - 1u,
+        % There is no need for a cast, since the Java backend
+        % does not support local secondary tags that must be masked.
+        TagTestRval = ml_binop(eq(int_type_uint),
+            ml_binop(bitwise_and(int_type_uint),
+                Rval, ml_const(mlconst_uint(PrimSecMask))),
+            ml_const(mlconst_uint(PrimSec)))
+    ;
+        ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, MustMask),
+        LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),
+        (
+            MustMask = lsectag_always_rest_of_word,
+            ml_gen_info_get_module_info(Info, ModuleInfo),
+            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+            % The cast is needed only by the Java backend.
+            TagTestRval = ml_binop(eq(int_type_int), Rval,
+                ml_cast(MLDS_Type, ml_const(mlconst_uint(PrimSec))))
+        ;
+            MustMask = lsectag_must_be_masked,
+            % We handle this the same was as shared_local_tag_with_args above.
+            ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
+            SectagBits = sectag_bits(NumSectagBits, _SectagMask),
+            NumPtagSectagBits = uint8.cast_to_int(NumPtagBits + NumSectagBits),
+            PrimSecMask = (1u << NumPtagSectagBits) - 1u,
+            % There is no need for a cast, since the Java backend
+            % does not support local secondary tags that must be masked.
+            TagTestRval = ml_binop(eq(int_type_uint),
+                ml_binop(bitwise_and(int_type_uint),
+                    Rval, ml_const(mlconst_uint(PrimSecMask))),
+                ml_const(mlconst_uint(PrimSec)))
+        )
+    ;
+        ( ConsTag = closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
+        ),
+        unexpected($pred, "bad tag")
     ).
 
 :- func ml_gen_int_tag_test_rval(int_tag, mer_type, module_info, mlds_rval) =
@@ -2515,11 +2797,9 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ConsTag = string_tag(String),
             ConstRval = ml_const(mlconst_string(String))
         ;
-            ConsTag = shared_local_tag(_Ptag, LocalSectag),
-            LocalSectag = local_sectag(_, LocalSectagSize),
-            LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
-            ConstRval = ml_cast(MLDS_Type,
-                ml_const(mlconst_int(uint.cast_to_int(SectagWholeWordUint))))
+            ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _),
+            LocalSectag = local_sectag(_, PrimSec, _),
+            ConstRval = ml_cast(MLDS_Type, ml_const(mlconst_uint(PrimSec)))
         ;
             ConsTag = foreign_tag(ForeignLang, ForeignTag),
             ConstRval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
@@ -2540,6 +2820,12 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ),
         unexpected($pred, "bad constant")
     ;
+        % Lambda expressions cannot occur in from_ground_term_construct scopes
+        % during code generation, because if they do occur there originally,
+        % semantic analysis will change the scope reason to something else.
+        ConsTag = closure_tag(_PredId, _ProcId, _EvalMethod),
+        unexpected($pred, "pred_closure_tag")
+    ;
         ( ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
         ),
@@ -2558,12 +2844,6 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ),
             unexpected($pred, "no_tag arity != 1")
         )
-    ;
-        % Lambda expressions cannot occur in from_ground_term_construct scopes
-        % during code generation, because if they do occur there originally,
-        % semantic analysis will change the scope reason to something else.
-        ConsTag = closure_tag(_PredId, _ProcId, _EvalMethod),
-        unexpected($pred, "pred_closure_tag")
     ;
         % Ordinary compound terms.
         % This code (loosely) follows the code of ml_gen_compound.
@@ -2605,6 +2885,24 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
             VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
             ExtraRvals, ArgVars, Context, !GlobalData, !GroundTermMap)
+    ;
+        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
+        cons_id_arg_types_and_widths(ModuleInfo,
+            lookup_var_type_func(VarTypes), may_not_have_extra_args,
+            VarType, ConsId, ArgVars, ArgVarsTypesWidths),
+        (
+            HighLevelData = yes,
+            unexpected($pred, "HighLevelData = yes")
+        ;
+            HighLevelData = no
+        ),
+        list.foldl2(construct_ground_term_tagword_initializer_lld,
+            ArgVarsTypesWidths, [], RevOrRvals, !GroundTermMap),
+        list.reverse(RevOrRvals, OrRvals),
+        or_rvals(ml_const(mlconst_uint(PrimSec)), OrRvals, TagwordRval),
+        ConstGroundTerm = ml_ground_term(TagwordRval, VarType, MLDS_Type),
+        map.det_insert(Var, ConstGroundTerm, !GroundTermMap)
     ).
 
 :- pred ml_gen_ground_term_conjunct_compound(module_info::in,
@@ -2636,6 +2934,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
             ArgVarsTypesWidths, ArgRvalsTypesWidths,
             !GlobalData, !GroundTermMap)
     ),
+    % XXX ARG_PACK move to caller, and inline in each branch
     UsesBaseClass = ml_tag_uses_base_class(ConsTag),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         Context, VarType, MLDS_Type, ordinary_cons_id(ConsId),
@@ -2711,6 +3010,31 @@ construct_ground_term_initializer_lld(ModuleInfo, Context,
     RvalTypeWidth =
         rval_type_and_width(ArgRval, mlds_generic_type, ArgPosWidth, no).
 
+:- pred construct_ground_term_tagword_initializer_lld(
+    arg_var_type_and_width::in, list(mlds_rval)::in, list(mlds_rval)::out,
+    ml_ground_term_map::in, ml_ground_term_map::out) is det.
+
+construct_ground_term_tagword_initializer_lld(ArgVarTypeWidth,
+        !RevOrRvals, !GroundTermMap) :-
+    ArgVarTypeWidth = arg_type_and_width(ArgVar, _ConsArgType, ArgPosWidth),
+    map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
+    % Boxing cannot be applicable to subword rvals.
+    ArgGroundTerm = ml_ground_term(ArgRval, _ArgType, _MLDS_ArgType),
+    (
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
+        maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill, !RevOrRvals)
+    ;
+        ArgPosWidth = apw_none_shifted(_, _)
+        % Nothing to add to !RevOrRvals.
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        unexpected($pred, "ArgPosWidth does not belong in tagword")
+    ).
+
 %---------------------------------------------------------------------------%
 
 ml_gen_const_structs(ModuleInfo, Target, ConstStructMap, !GlobalData) :-
@@ -2741,17 +3065,6 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
     ModuleInfo = Info ^ mcsi_module_info,
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-    ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
-        Args, !ConstStructMap, !GlobalData).
-
-:- pred ml_gen_const_struct_tag(ml_const_struct_info::in, int::in,
-    mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
-    list(const_struct_arg)::in,
-    ml_const_struct_map::in, ml_const_struct_map::out,
-    ml_global_data::in, ml_global_data::out) is det.
-
-ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
-        Args, !ConstStructMap, !GlobalData) :-
     (
         ( ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
@@ -2816,12 +3129,30 @@ ml_gen_const_struct_tag(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
             ConsId, ConsTag, Ptag, ExtraRvals, Args,
             !ConstStructMap, !GlobalData)
     ;
+        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
+        ml_gen_const_static_args_widths(Info, Type, ConsId, Args,
+            ArgsTypesWidths),
+        HighLevelData = Info ^ mcsi_high_level_data,
+        (
+            HighLevelData = yes,
+            unexpected($pred, "HighLevelData = yes")
+        ;
+            HighLevelData = no
+        ),
+        list.foldl(ml_gen_const_tagword_arg(Info), ArgsTypesWidths,
+            [], RevOrRvals),
+        list.reverse(RevOrRvals, OrRvals),
+        or_rvals(ml_const(mlconst_uint(PrimSec)), OrRvals, TagwordRval),
+        GroundTerm = ml_ground_term(TagwordRval, Type, MLDS_Type),
+        map.det_insert(ConstNum, GroundTerm, !ConstStructMap)
+    ;
         % These tags don't build heap cells.
         ( ConsTag = int_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = string_tag(_)
         ; ConsTag = dummy_tag
-        ; ConsTag = shared_local_tag(_, _)
+        ; ConsTag = shared_local_tag_no_args(_, _, _)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
@@ -2850,30 +3181,11 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
     % This code (loosely) follows the code of
     % ml_gen_ground_term_conjunct_compound.
 
-    Target = Info ^ mcsi_target,
+    ml_gen_const_static_args_widths(Info, VarType, ConsId, Args,
+        ArgsTypesWidths),
     ModuleInfo = Info ^ mcsi_module_info,
-    % It is ok to specify the wrong type for Args by passing AllTypesVoid,
-    % because all uses of ArgsTypesWidths later on ignore the types inside it.
-    AllTypesVoid = (func(_Arg) = void_type),
-    % XXX TYPE_REPN The may_not_have_extra_args preserves old behavior,
-    % but may be a bug. It depends on whether we ever put into the
-    % const struct db terms that need extra args.
-    cons_id_arg_types_and_widths(ModuleInfo, AllTypesVoid,
-        may_not_have_extra_args, VarType, ConsId, Args, ArgsTypesWidths),
+    Target = Info ^ mcsi_target,
     HighLevelData = Info ^ mcsi_high_level_data,
-    ( if
-        (
-            HighLevelData = no
-        ;
-            HighLevelData = yes,
-            Target = ml_target_java
-        )
-    then
-        true
-    else
-        unexpected($pred,
-            "Constant structures are not supported for this grade")
-    ),
     ml_gen_const_struct_args(Info, !.ConstStructMap,
         ArgsTypesWidths, RvalsTypesWidths, !GlobalData),
     UsesBaseClass = ml_tag_uses_base_class(ConsTag),
@@ -2882,6 +3194,40 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
         UsesBaseClass, Ptag, ExtraRvals, RvalsTypesWidths, GroundTerm,
         !GlobalData),
     map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
+
+:- pred ml_gen_const_static_args_widths(ml_const_struct_info::in,
+    mer_type::in, cons_id::in, list(const_struct_arg)::in,
+    list(arg_const_type_and_width)::out) is det.
+
+ml_gen_const_static_args_widths(Info, VarType, ConsId, Args,
+        ArgsTypesWidths) :-
+    % This code (loosely) follows the code of
+    % ml_gen_ground_term_conjunct_compound.
+
+    HighLevelData = Info ^ mcsi_high_level_data,
+    Target = Info ^ mcsi_target,
+    ( if
+        (
+            HighLevelData = no
+        ;
+            HighLevelData = yes,
+            Target = ml_target_java
+        )
+    then
+        ModuleInfo = Info ^ mcsi_module_info,
+        % It is ok to specify the wrong type for Args by passing AllTypesVoid,
+        % because all uses of ArgsTypesWidths later on ignore the types
+        % inside it.
+        AllTypesVoid = (func(_Arg) = void_type),
+        % XXX TYPE_REPN The may_not_have_extra_args preserves old behavior,
+        % but may be a bug. It depends on whether we ever put into the
+        % const struct db terms that need extra args.
+        cons_id_arg_types_and_widths(ModuleInfo, AllTypesVoid,
+            may_not_have_extra_args, VarType, ConsId, Args, ArgsTypesWidths)
+    else
+        unexpected($pred,
+            "constant structures are not supported for this grade")
+    ).
 
 :- pred ml_gen_const_struct_args(ml_const_struct_info::in,
     ml_const_struct_map::in, list(arg_const_type_and_width)::in,
@@ -2921,6 +3267,37 @@ ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, PosWidth,
         Width, Rval0, Rval, !GlobalData),
     RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, PosWidth, no).
 
+:- pred ml_gen_const_tagword_arg(ml_const_struct_info::in,
+    arg_const_type_and_width::in,
+    list(mlds_rval)::in, list(mlds_rval)::out) is det.
+
+ml_gen_const_tagword_arg(Info, ArgTypeWidth, !RevOrRvals) :-
+    ArgTypeWidth = arg_type_and_width(ConstArg, _Type, ArgPosWidth),
+    ModuleInfo = Info ^ mcsi_module_info,
+    (
+        ConstArg = csa_const_struct(_StructNum),
+        unexpected($pred, "csa_const_struct in tagword")
+    ;
+        ConstArg = csa_constant(ConsId, Type),
+        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+        ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, ArgRval)
+    ),
+    (
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
+        maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill, !RevOrRvals)
+    ;
+        ArgPosWidth = apw_none_shifted(_, _)
+        % Nothing to add to !RevOrRvals.
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        unexpected($pred, "ArgPosWidth does not belong in tagword")
+    ).
+
 :- pred ml_gen_const_struct_arg_tag(cons_tag::in, mer_type::in, mlds_type::in,
     mlds_rval::out) is det.
 
@@ -2936,11 +3313,9 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         ConsTag = string_tag(String),
         Rval = ml_const(mlconst_string(String))
     ;
-        ConsTag = shared_local_tag(_Ptag, LocalSectag),
-        LocalSectag = local_sectag(_, LocalSectagSize),
-        LocalSectagSize = lsectag_rest_of_word(SectagWholeWordUint),
-        Rval = ml_cast(MLDS_Type,
-            ml_const(mlconst_int(uint.cast_to_int(SectagWholeWordUint))))
+        ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _),
+        LocalSectag = local_sectag(_, PrimSec, _),
+        Rval = ml_cast(MLDS_Type, ml_const(mlconst_uint(PrimSec)))
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignTag),
         Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_Type))
@@ -2978,6 +3353,10 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
         ; ConsTag = shared_remote_tag(_, _)
+        % This tag *looks like* it build heap cells (since it *does* build
+        % non-constant terms), so it is handled with the other tags that
+        % built structures.
+        ; ConsTag = shared_local_tag_with_args(_, _)
         % These tag should never occur in constant data.
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = tabling_info_tag(_, _)
@@ -3422,7 +3801,7 @@ ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
         BoxedOrAllRval = ml_const(mlconst_int(0))
     ;
         OrRvals = [HeadOrRval | TailOrRvals],
-        or_packed_rvals(HeadOrRval, TailOrRvals, OrAllRval),
+        or_rvals(HeadOrRval, TailOrRvals, OrAllRval),
         BoxedOrAllRval = ml_cast(mlds_generic_type, OrAllRval)
     ).
 
@@ -3472,16 +3851,15 @@ ml_pack_into_one_word_loop([RvalTypeWidth | RvalsTypesWidths],
     % We should explore whether other strategies, such as balanced trees,
     % (or rather, trees that are as balanced as possible) would work better.
     %
-:- pred or_packed_rvals(mlds_rval::in, list(mlds_rval)::in,
-    mlds_rval::out) is det.
+:- pred or_rvals(mlds_rval::in, list(mlds_rval)::in, mlds_rval::out) is det.
 
-or_packed_rvals(HeadRval, TailRvals, OrAllRval) :-
+or_rvals(HeadRval, TailRvals, OrAllRval) :-
     (
         TailRvals = [],
         OrAllRval = HeadRval
     ;
         TailRvals = [HeadTailRval | TailTailRvals],
-        or_packed_rvals(HeadTailRval, TailTailRvals, TailOrAllRval),
+        or_rvals(HeadTailRval, TailTailRvals, TailOrAllRval),
         OrAllRval = ml_bitwise_or(HeadRval, TailOrAllRval)
     ).
 
@@ -3497,6 +3875,7 @@ maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
         Rval = ml_const(RvalConst),
         ( RvalConst = mlconst_null(_)
         ; RvalConst = mlconst_int(0)
+        ; RvalConst = mlconst_uint(0u)
         )
     then
         % We may get nulls from unfilled fields, and zeros from constant
@@ -3635,6 +4014,27 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
     UnsignedMLDSType = mlds_int_type_uint,
     Rval = ml_cast(UnsignedMLDSType, Rval1).
 
+:- pred ml_extract_subword_value(mlds_rval::in, arg_shift::in, arg_mask::in,
+    fill_kind::in, mlds_rval::out) is det.
+
+ml_extract_subword_value(WordRval, Shift, Mask, Fill, Rval) :-
+    UnsignedWordRval = ml_cast(mlds_int_type_uint, WordRval),
+    Mask = arg_mask(MaskInt),
+    MaskedRval = ml_bitwise_and(ml_rshift(UnsignedWordRval, Shift), MaskInt),
+    (
+        Fill = fill_enum,
+        Rval = MaskedRval
+    ;
+        ( Fill = fill_int8,   CastMLDSType = mlds_int_type_int8
+        ; Fill = fill_uint8,  CastMLDSType = mlds_int_type_uint8
+        ; Fill = fill_int16,  CastMLDSType = mlds_int_type_int16
+        ; Fill = fill_uint16, CastMLDSType = mlds_int_type_uint16
+        ; Fill = fill_int32,  CastMLDSType = mlds_int_type_int32
+        ; Fill = fill_uint32, CastMLDSType = mlds_int_type_uint32
+        ),
+        Rval = ml_cast(CastMLDSType, MaskedRval)
+    ).
+
 %---------------------------------------------------------------------------%
 %
 % Utility predicates.
@@ -3719,6 +4119,9 @@ compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir) :-
     from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
         RightTopMode),
     ( if
+        % XXX ARG_PACK We should not need to check here whether
+        % FieldType is a dummy type; the arg_pos_width should tell us that.
+        % Computing FieldType is expensive for our callers.
         is_either_type_a_dummy(ModuleInfo, ArgType, FieldType) =
             at_least_one_is_dummy_type
     then

@@ -138,22 +138,44 @@
             % it IS the value of that argument, which must be an untagged
             % pointer to a cell.
 
-    ;       shared_remote_tag(ptag, remote_sectag)
-            % This is for functors or constants which require more than just
-            % a primary tag. In this case, we use both a primary and a
-            % secondary tag. Several functors share the primary tag and are
-            % distinguished by the secondary tag. The secondary tag is stored
-            % as either the whole of or as part of the first word of the
-            % argument vector. (If the functor is a constant, and we cannot
-            % use primary tag bits to distinguish it from other functors,
-            % then there will be an argument vector of size 1 which holds
-            % just the secondary tag.)
+    ;       shared_local_tag_no_args(ptag, local_sectag, lsectag_mask)
+            % This is for constants in types that also have non-constants.
+            % We allocate a primary tag value to be shared by all the
+            % constants, and distinguish the constants from each other
+            % using a secondary tag stored in the rest of the word,
+            % immediately after the primary tag bits. The second field
+            % says how big the secondary tag is. The third field says
+            % whether this primary tag values is also shared with
+            % some non-constants whose cons_id is shared_local_tag_with_args.
+            % If it is, the third field will be lsectag_must_be_masked,
+            % otherwise, it will be lsectag_always_rest_of_word. (See below.)
+            %
+            % Note that the name may sometimes be misleading. While most uses
+            % of shared_local_tag_no_args (and shared_local_tag_with_args)
+            % *do* share the given primary tag value with another function
+            % symbol, it is possible for this not to be the case. In that case,
+            % the local secondary tag will occupy zero bits.
 
-    ;       shared_local_tag(ptag, local_sectag)
-            % This is for constants which require more than a two-bit tag.
-            % In this case, we use both a primary and a secondary tag,
-            % but this time the secondary tag is stored in the rest of the
-            % main word rather than in the first word of the argument vector.
+    ;       shared_local_tag_with_args(ptag, local_sectag)
+            % As the name implies this cons_id is a variant of
+            % shared_local_tag_no_args that is intended for function symbols
+            % that *do* have arguments, arguments that fit into a single word
+            % *after* the primary and the local secondary tag.
+            % If a primary tag value has any such cons_ids allocated for it,
+            % then the bits in a word after the primary tag may include
+            % these arguments, so accessing the secondary tag requires masking
+            % off all the non-sectag bits.
+
+    ;       shared_remote_tag(ptag, remote_sectag)
+            % This is for functors or constants which cannot be distinguished
+            % from the other functors or constants using just the primary tag,
+            % either because the type has too many function symbols, or because
+            % the use of primary tags has been disabled.
+            %
+            % In this case, we use both a primary and a secondary tag.
+            % The secondary tag is stored as the whole of first word of
+            % the memory cell containing the arguments, and distinguishes
+            % the several functors that all share the same primary tag value.
 
     ;       dummy_tag
             % This is for constants that are the only function symbol in their
@@ -196,8 +218,29 @@
 :- type local_sectag
     --->    local_sectag(
                 lsectag_value       :: uint,
-                lsectag_size        :: lsectag_size
+
+                % The ptag and the local sectag together.
+                lsectag_prim_sec    :: uint,
+
+                % The size and mask of the sectag.
+                lsectag_bits        :: sectag_bits
             ).
+
+:- type lsectag_mask
+    --->    lsectag_always_rest_of_word
+            % All the local secondary tags in this type are the "traditional"
+            % kind of local tags, which occupy the whole of the word
+            % after the primary tag. In other words, there is never any
+            % argument packed after the primary and secondary tag bits.
+            % Therefore computing the secondary tag needs only the primary tag
+            % bits to be masked off.
+    ;       lsectag_must_be_masked.
+            % At least one of the functors of this type is represented
+            % by a local secondary tag that *is* followed by packed arguments.
+            % Therefore computing the secondary tag needs not only
+            % the primary tag bits to be masked off, but the arguments as well.
+            % The sectag bits argument gives the mask to apply to the
+            % post-primary-tag part of the word.
 
 :- type remote_sectag
     --->    remote_sectag(
@@ -209,23 +252,6 @@
 
                 rsectag_added       :: sectag_added_by
             ).
-
-:- type lsectag_size
-    --->    lsectag_rest_of_word(
-                % For now, *all* local tags occupy the whole of the word
-                % after the primary tag. When it becomes necessary to
-                % distinguish them from words that contain packed
-                % arguments as well as the primary tag and the local
-                % secondary tag, *then* we will need the lrow_sectag_bits
-                % field.
-                % lrow_sectag_bits  :: sectag_bits
-
-                % The ptag and the local sectag together.
-                lrow_whole_word     :: uint
-            ).
-    % ;     lsectag_subword(sectag_bits).
-            % This will represent the case where a word contains packed
-            % arguments as well as the primary tag and the local secondary tag.
 
 :- type rsectag_size
     --->    rsectag_word
@@ -301,8 +327,9 @@ get_maybe_primary_tag(Tag) = MaybePtag :-
     ;
         ( Tag = unshared_tag(Ptag)
         ; Tag = direct_arg_tag(Ptag)
+        ; Tag = shared_local_tag_no_args(Ptag, _, _)
+        ; Tag = shared_local_tag_with_args(Ptag, _)
         ; Tag = shared_remote_tag(Ptag, _)
-        ; Tag = shared_local_tag(Ptag, _)
         ),
         MaybePtag = yes(Ptag)
     ).
@@ -332,8 +359,13 @@ get_maybe_secondary_tag(Tag) = MaybeSectag :-
         Tag = ground_term_const_tag(_, SubTag),
         MaybeSectag = get_maybe_secondary_tag(SubTag)
     ;
-        Tag = shared_local_tag(_Ptag, LocalSectag),
-        LocalSectag = local_sectag(SectagUint, _),
+        Tag = shared_local_tag_no_args(_Ptag, LocalSectag, _),
+        LocalSectag = local_sectag(SectagUint, _, _),
+        Sectag = uint.cast_to_int(SectagUint),
+        MaybeSectag = yes(Sectag)
+    ;
+        Tag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        LocalSectag = local_sectag(SectagUint, _, _),
         Sectag = uint.cast_to_int(SectagUint),
         MaybeSectag = yes(Sectag)
     ;

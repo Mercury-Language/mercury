@@ -2554,6 +2554,7 @@ convert_dump_alias("vars", "npBis").    % Var instantiations, liveness etc.
 convert_dump_alias("statevar", "gvCP").
 convert_dump_alias("lco", "agiuvzD").
 convert_dump_alias("poly", "vxX").
+convert_dump_alias("du", "TL").
 
 %---------------------------------------------------------------------------%
 

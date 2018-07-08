@@ -57,11 +57,17 @@
                 val = (ei).args_field.arg_values[i +                    \
                     (ei).args_field.num_extra_args];                    \
             } else {                                                    \
+                MR_Word *argp;                                          \
+                                                                        \
                 const MR_DuArgLocn *locn =                              \
-                    &(ei).args_field.arg_locns[i];                      \
-                MR_Word *argp = &(ei).args_field.arg_values[            \
-                    locn->MR_arg_offset +                               \
-                    (ei).args_field.num_extra_args];                    \
+                    &((ei).args_field.arg_locns[i]);                    \
+                if (locn->MR_arg_offset == -1) {                        \
+                    argp = &((ei).args_field.arg_values);               \
+                } else {                                                \
+                    argp = &((ei).args_field.arg_values[                \
+                        locn->MR_arg_offset +                           \
+                        (ei).args_field.num_extra_args]);               \
+                }                                                       \
                 val = MR_arg_value(argp, locn);                         \
             }                                                           \
                                                                         \

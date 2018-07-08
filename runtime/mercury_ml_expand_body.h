@@ -423,11 +423,20 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         direct_arg = MR_body(data, ptag);
                         arg_vector = &direct_arg;
                         break;
-                    case MR_SECTAG_LOCAL:
+                    case MR_SECTAG_LOCAL_REST_OF_WORD:
                         sectag = MR_unmkbody(data);
                         functor_desc =
                             ptag_layout->MR_sectag_alternatives[sectag];
                         arg_vector = NULL;
+                        break;
+                    case MR_SECTAG_LOCAL_BITS:
+                        sectag = MR_unmkbody(data) &
+                        // XXX ARG_PACK
+                        // Consider storing this mask in the ptag_layout.
+                            ((1 << ptag_layout->MR_sectag_numbits) - 1);
+                        functor_desc =
+                            ptag_layout->MR_sectag_alternatives[sectag];
+                        arg_vector = (MR_Word *) data;
                         break;
                     case MR_SECTAG_REMOTE:
                         sectag = MR_field(ptag, data, 0);
@@ -533,7 +542,20 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     }
 
                     expand_info->chosen_index_exists = MR_TRUE;
-                    expand_info->chosen_value_ptr = &arg_vector[slot];
+                    // slot < 0 means that we are processing a functor
+                    // whose representation is MR_SECTAG_LOCAL_BITS,
+                    // so the arguments are not in an argument *vector*,
+                    // but in the data word itself, which code above
+                    // has copied into arg_vector itself.
+                    // XXX ARG_VECTOR
+                    // We will need a different code when we start storing
+                    // subword-sized arguments next to *remote* secondary
+                    // tags.
+                    if (slot < 0) {
+                        expand_info->chosen_value_ptr = arg_vector;
+                    } else {
+                        expand_info->chosen_value_ptr = &arg_vector[slot];
+                    }
                     expand_info->chosen_arg_locn = arg_locn;
 
                     if (MR_arg_type_may_contain_var(functor_desc, chosen)) {

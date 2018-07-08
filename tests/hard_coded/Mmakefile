@@ -304,6 +304,7 @@ ORDINARY_PROGS = \
 	rnd \
 	rtree_test \
 	rtti_strings \
+	sectag_bits \
 	seek_test \
 	semi_disj \
 	semi_tail_call_in_nonlast_disjunct \

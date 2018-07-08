@@ -85,10 +85,10 @@ try_again:
                 case MR_SECTAG_NONE_DIRECT_ARG:
                      // The compiler should not generate direct arg tags
                      // in term size recording grades.
-
                      MR_fatal_error("MR_term_size: DIRECT_ARG");
 
-                case MR_SECTAG_LOCAL:
+                case MR_SECTAG_LOCAL_REST_OF_WORD:  // fall-through
+                case MR_SECTAG_LOCAL_BITS:
 #ifdef MR_DEBUG_TERM_SIZES
                     if (MR_heapdebug && MR_lld_print_enabled) {
                         printf("MR_term_size: du sectag local %p\n",

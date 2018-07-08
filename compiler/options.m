@@ -487,9 +487,11 @@
     ;       unboxed_no_tag_types
     ;       arg_pack_bits
     ;       allow_double_word_fields
-    ;       allow_double_word_ints      % XXX bootstrapping option
-    ;       allow_packing_dummies       % XXX bootstrapping option
-    ;       allow_packing_ints          % XXX bootstrapping option
+    ;       allow_double_word_ints          % XXX bootstrapping option
+    ;       allow_packing_dummies           % XXX bootstrapping option
+    ;       allow_packing_ints              % XXX bootstrapping option
+    ;       allow_packing_local_sectags     % XXX bootstrapping option
+    ;       allow_packing_remote_sectags    % XXX bootstrapping option
     ;       sync_term_size % in words
 
     % LLDS back-end compilation model options
@@ -1454,6 +1456,8 @@ option_defaults_2(compilation_model_option, [
     allow_double_word_ints              -   bool(no),
     allow_packing_dummies               -   bool(no),
     allow_packing_ints                  -   bool(no),
+    allow_packing_local_sectags         -   bool(no),
+    allow_packing_remote_sectags        -   bool(no),
     sync_term_size                      -   int(8),
                                         % 8 is the size on linux (at the time
                                         % of writing) - will usually be
@@ -2408,6 +2412,8 @@ long_option("allow-double-word-fields", allow_double_word_fields).
 long_option("allow-double-word-ints", allow_double_word_ints).
 long_option("allow-packing-dummies", allow_packing_dummies).
 long_option("allow-packing-ints",   allow_packing_ints).
+long_option("allow-packing-local-sectags",  allow_packing_local_sectags).
+long_option("allow-packing-remote-sectags", allow_packing_remote_sectags).
 long_option("sync-term-size",       sync_term_size).
 long_option("highlevel-data",       highlevel_data).
 long_option("high-level-data",      highlevel_data).

@@ -1073,10 +1073,12 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
     Arity = DuFunctorDesc ^ du_functor_arity,
 
     ArgTypes = DuFunctorDesc ^ du_functor_arg_types,
-    F = (func(I) = ArgPseudoTypeInfo :-
-        PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, I),
-        ArgPseudoTypeInfo = create_pseudo_type_info(TypeInfo, PseudoTypeInfo)
-    ),
+    F =
+        ( func(I) = ArgPseudoTypeInfo :-
+            PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, I),
+            ArgPseudoTypeInfo =
+                create_pseudo_type_info(TypeInfo, PseudoTypeInfo)
+        ),
     PseudoTypeInfoList = iterate(0, Arity - 1, F),
 
     ( if get_du_functor_arg_names(DuFunctorDesc, ArgNames) then
@@ -2685,7 +2687,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Arguments = iterate(0, Arity - 1,
                 get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo))
         ;
-            SecTagLocn = stag_local,
+            SecTagLocn = stag_local_rest_of_word,
             Functor = "some_du_local_sectag",
             % XXX incomplete
             Ordinal = -1,
@@ -3096,7 +3098,7 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
                 MaybeArgument = no
             )
         ;
-            SecTagLocn = stag_local,
+            SecTagLocn = stag_local_rest_of_word,
             MaybeArgument = no
         ;
             SecTagLocn = stag_variable,
@@ -3640,9 +3642,9 @@ get_tuple_subterm(TypeInfo, Term, Index) = SubTerm :-
 ").
 
     % Test whether a (pseudo-) type info is variable.
-    % The argument type is pseudo_type_info because when we call this we have a
-    % pseudo_type_info but aren't sure if it's actually a variable or a
-    % type_info.
+    % The argument type is pseudo_type_info, because when we call this,
+    % we have a pseudo_type_info but aren't sure if it is actually
+    % a variable or a type_info.
     %
 :- pred pseudo_type_info_is_variable(pseudo_type_info::in, int::out)
     is semidet.
@@ -3749,7 +3751,8 @@ public static final int first_exist_quant_varnum = 513;
     enum ptag_layout_field_nums {
         sectag_sharers                      = 0,
         sectag_locn                         = 1,
-        sectag_alternatives                 = 2
+        sectag_alternatives                 = 2,
+        sectag_num_bits                     = 3
     }
 
     enum du_functor_field_nums {
@@ -3762,7 +3765,9 @@ public static final int first_exist_quant_varnum = 513;
         du_functor_ordinal                  = 6,
         du_functor_arg_types                = 7,
         du_functor_arg_names                = 8,
-        du_functor_exist_info               = 9
+        du_functor_exist_info               = 9,
+        du_functor_subtype                  = 10,
+        du_functor_num_sectag_bits          = 11,
     }
 
     enum exist_info_field_nums {
@@ -3878,7 +3883,10 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 :- type sectag_locn
     --->    stag_none
     ;       stag_none_direct_arg
-    ;       stag_local
+    ;       stag_local_rest_of_word
+    % We now use rtti_implementation.m for the C# and Java grades.
+    % Type representations do not use stag_local_bits in those grades.
+    % ;     stag_local_bits             
     ;       stag_remote
     ;       stag_variable.
 
@@ -5399,8 +5407,8 @@ unsafe_get_enum_value(_) = _ :-
 unsafe_get_foreign_enum_value(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    % XXX We cannot provide a Java version of this until mlds_to_java.m is
-    % updated to support foreign enumerations.
+    % XXX We cannot provide a Java version of this until mlds_to_java_*.m
+    % are updated to support foreign enumerations.
     private_builtin.sorry(
         "rtti_implementation.unsafe_get_foreign_enum_value/1").
 

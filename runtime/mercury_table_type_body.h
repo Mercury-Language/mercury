@@ -68,6 +68,9 @@
                 int                     ptag;
                 MR_Word                 sectag;
                 MR_Word                 *arg_vector;
+                int                     arity_to_table;
+                MR_Word                 tagword;
+                MR_bool                 table_tagword;
                 MR_Word                 direct_arg;
                 int                     meta_args;
                 int                     i;
@@ -82,15 +85,21 @@
                     case MR_SECTAG_NONE:
                         functor_desc = ptag_layout->MR_sectag_alternatives[0];
                         arg_vector = (MR_Word *) MR_body(data, ptag);
+                        arity_to_table =
+                            functor_desc->MR_du_functor_orig_arity;
+                        table_tagword = MR_FALSE;
                         break;
 
                     case MR_SECTAG_NONE_DIRECT_ARG:
                         functor_desc = ptag_layout->MR_sectag_alternatives[0];
                         direct_arg = MR_body(data, ptag);
                         arg_vector = &direct_arg;
+                        arity_to_table =
+                            functor_desc->MR_du_functor_orig_arity;
+                        table_tagword = MR_FALSE;
                         break;
 
-                    case MR_SECTAG_LOCAL:
+                    case MR_SECTAG_LOCAL_REST_OF_WORD:
                         sectag = MR_unmkbody(data);
                         functor_desc =
                             ptag_layout->MR_sectag_alternatives[sectag];
@@ -99,6 +108,22 @@
                         MR_table_assert(
                             functor_desc->MR_du_functor_exist_info == NULL);
                         arg_vector = NULL;
+                        arity_to_table =
+                            functor_desc->MR_du_functor_orig_arity;
+                        table_tagword = MR_FALSE;
+                        break;
+
+                    case MR_SECTAG_LOCAL_BITS:
+                        sectag = MR_unmkbody(data) &
+                            ((1 << ptag_layout->MR_sectag_numbits) - 1);
+                        functor_desc =
+                            ptag_layout->MR_sectag_alternatives[sectag];
+                        MR_table_assert(
+                            functor_desc->MR_du_functor_exist_info == NULL);
+                        arg_vector = NULL;
+                        arity_to_table = 0;
+                        tagword = data;
+                        table_tagword = MR_TRUE;
                         break;
 
                     case MR_SECTAG_REMOTE:
@@ -106,6 +131,9 @@
                         functor_desc =
                             ptag_layout->MR_sectag_alternatives[sectag];
                         arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
+                        arity_to_table =
+                            functor_desc->MR_du_functor_orig_arity;
+                        table_tagword = MR_FALSE;
                         break;
 
                     case MR_SECTAG_VARIABLE:
@@ -154,7 +182,13 @@
                     meta_args = 0;
                 }
 
-                for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
+                if (table_tagword) {
+                    MR_TABLE_INT(STATS, DEBUG, BACK, table_next, table,
+                        tagword);
+                    table = table_next;
+                }
+
+                for (i = 0; i < arity_to_table; i++) {
                     const MR_DuArgLocn *arg_locn;
                     MR_Word            *arg_ptr;
                     MR_Word             arg_value;

@@ -706,8 +706,20 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
             unexpected($pred, "more than one goal for non-shared tag")
         )
     ;
-        ( StagLoc = sectag_local
-        ; StagLoc = sectag_remote
+        (
+            StagLoc = sectag_remote,
+            OrigStagRval = lval(field(yes(MainPtag), Rval,
+                const(llconst_int(0)))),
+            Comment = "compute remote sec tag to switch on"
+        ;
+            StagLoc = sectag_local_rest_of_word,
+            OrigStagRval = unop(unmkbody, Rval),
+            Comment = "compute local rest-of-word sec tag to switch on"
+        ;
+            StagLoc = sectag_local_bits(_NumBits, Mask),
+            OrigStagRval = binop(bitwise_and(int_type_uint),
+                unop(unmkbody, Rval), const(llconst_uint(Mask))),
+            Comment = "compute local sec tag bits to switch on"
         ),
         expect(unify(OtherPtags, []), $pred, ">1 ptag with secondary tag"),
 
@@ -726,17 +738,6 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
             SecondaryMethod = try_chain
         else
             SecondaryMethod = try_me_else_chain
-        ),
-
-        (
-            StagLoc = sectag_remote,
-            OrigStagRval = lval(field(yes(MainPtag), Rval,
-                const(llconst_int(0)))),
-            Comment = "compute remote sec tag to switch on"
-        ;
-            StagLoc = sectag_local,
-            OrigStagRval = unop(unmkbody, Rval),
-            Comment = "compute local sec tag to switch on"
         ),
 
         ( if

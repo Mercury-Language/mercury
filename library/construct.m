@@ -557,10 +557,17 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
 // Once this code has been operation for a while without problems,
 // we should consider turning it into a macro.
 
-extern void ML_copy_memory_cell_args(MR_Word *arg_list_ptr,
-                MR_Word *new_data_ptr,
-                const MR_Word ptag, const MR_DuFunctorDesc *functor_desc,
-                const MR_bool has_sectag, MR_AllocSiteInfoPtr);
+extern void         ML_copy_memory_cell_args(MR_Word *arg_list_ptr,
+                        MR_Word *new_data_ptr, const MR_Word ptag,
+                        const MR_DuFunctorDesc *functor_desc,
+                        const MR_bool has_sectag,
+                        const MR_AllocSiteInfoPtr alloc_id);
+
+// This is a version of ML_copy_memory_cell_args that puts arguments
+// not into a memory cell, but next to the primary and secondary tag.
+extern MR_Unsigned  ML_copy_tagword_args(MR_Word *arg_list_ptr,
+                        const MR_Word ptag,
+                        const MR_DuFunctorDesc *functor_desc);
 ").
 
 
@@ -569,7 +576,7 @@ extern void ML_copy_memory_cell_args(MR_Word *arg_list_ptr,
 void
 ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
     const MR_Word ptag, const MR_DuFunctorDesc *functor_desc,
-    MR_bool has_sectag, MR_AllocSiteInfoPtr alloc_id)
+    const MR_bool has_sectag, const MR_AllocSiteInfoPtr alloc_id)
 {
     MR_Word             arg_list = *arg_list_ptr;
     MR_Word             new_data;
@@ -656,7 +663,7 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
   #endif
                 break;
 
-            case -4:
+            case -4:    // fall-through
             case -5:
                 // This is an int8 (-4) or uint8 (-5) argument.
                 bits_to_or = (((MR_Unsigned) arg_data) & 0xff);
@@ -664,7 +671,7 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
                     |= (bits_to_or << locn->MR_arg_shift);
                 break;
 
-            case -6:
+            case -6:    // fall-through
             case -7:
                 // This is an int16 (-6) or uint16 (-7) argument.
                 bits_to_or = (((MR_Unsigned) arg_data) & 0xffff);
@@ -672,7 +679,7 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
                     |= (bits_to_or << locn->MR_arg_shift);
                 break;
 
-            case -8:
+            case -8:    // fall-through
             case -9:
                 // This is an int32 (-8) or uint32 (-9) argument.
                 bits_to_or = (((MR_Unsigned) arg_data) & 0xffffffff);
@@ -701,6 +708,94 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
 
     *arg_list_ptr = arg_list;
     MR_define_size_slot(ptag, new_data, size);
+}
+
+MR_Unsigned
+ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
+    const MR_DuFunctorDesc *functor_desc)
+{
+    MR_Word             arg_list = *arg_list_ptr;
+    MR_Unsigned         new_data;
+    const MR_Word       arity = functor_desc->MR_du_functor_orig_arity;
+    const MR_DuArgLocn  *arg_locns = functor_desc->MR_du_functor_arg_locns;
+    MR_Unsigned         i;
+
+    new_data = ptag | (functor_desc->MR_du_functor_secondary << MR_TAGBITS);
+
+    for (i = 0; i < arity; i++) {
+        MR_Word         arg_data;
+        MR_TypeInfo     arg_type_info;
+
+        arg_data = MR_field(MR_UNIV_TAG, MR_list_head(arg_list),
+            MR_UNIV_OFFSET_FOR_DATA);
+        arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
+            MR_list_head(arg_list), MR_UNIV_OFFSET_FOR_TYPEINFO);
+        if (arg_locns == NULL) {
+            MR_fatal_error(""construct(): arg_locns == NULL"");
+        }
+
+        const MR_DuArgLocn *locn = &arg_locns[i];
+
+        // The meanings of the various special values of MR_arg_bits
+        // are documented next to the definition of the MR_DuArgLocn type
+        // in mercury_type_info.h.
+
+        switch (locn->MR_arg_bits) {
+
+        case 0:
+            MR_fatal_error(""construct(): full word argument in tagword"");
+            break;
+
+        case -1:    // fall-through
+        case -2:    // fall-through
+        case -3:
+            // This is an argument that takes two words, the type being
+            // float, int64, or uint64.
+            MR_fatal_error(""construct(): double word argument in tagword"");
+            break;
+
+        case -4:    // fall-through
+        case -5:
+            // This is an int8 (-4) or uint8 (-5) argument.
+            new_data = new_data |
+                ((((MR_Unsigned) arg_data) & 0xff) << locn->MR_arg_shift);
+            break;
+
+        case -6:    // fall-through
+        case -7:
+            // This is an int16 (-6) or uint16 (-7) argument.
+            new_data = new_data |
+                ((((MR_Unsigned) arg_data) & 0xffff) << locn->MR_arg_shift);
+            break;
+
+        case -8:    // fall-through
+        case -9:
+            // This is an int32 (-8) or uint32 (-9) argument.
+            new_data = new_data |
+                ((((MR_Unsigned) arg_data) & 0xffffffff)
+                    << locn->MR_arg_shift);
+            break;
+
+        case -10:
+            // This is a dummy argument, which does not need setting.
+            break;
+
+        default:
+            if (locn->MR_arg_bits > 0) {
+                MR_Unsigned arg_value = ((MR_Unsigned) arg_data) &
+                    ((1 << locn->MR_arg_bits) - 1);
+                new_data = new_data | (arg_value << locn->MR_arg_shift);
+            } else {
+                MR_fatal_error(""unknown MR_arg_bits value"");
+            }
+            break;
+        }
+
+        arg_list = MR_list_tail(arg_list);
+    }
+
+    *arg_list_ptr = arg_list;
+    return new_data;
 }
 ").
 
@@ -806,10 +901,15 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
                 ptag = functor_desc->MR_du_functor_primary;
                 switch (functor_desc->MR_du_functor_sectag_locn) {
 
-                case MR_SECTAG_LOCAL:
+                case MR_SECTAG_LOCAL_REST_OF_WORD:
                     new_data = (MR_Word) MR_mkword(ptag,
                         MR_mkbody((MR_Word)
                             functor_desc->MR_du_functor_secondary));
+                    break;
+
+                case MR_SECTAG_LOCAL_BITS:
+                    new_data = ML_copy_tagword_args(&arg_list, ptag,
+                        functor_desc);
                     break;
 
                 case MR_SECTAG_REMOTE:
@@ -842,6 +942,9 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
                 case MR_SECTAG_VARIABLE:
                     new_data = (MR_Word) 0;     // avoid a warning
                     MR_fatal_error(""construct(): cannot construct variable"");
+
+                case MR_SECTAG_REMOTE_BITS:
+                    MR_fatal_error(""construct(): MR_SECTAG_REMOTE_BITS NYI"");
 
 #ifdef MR_INCLUDE_SWITCH_DEFAULTS
                 default:

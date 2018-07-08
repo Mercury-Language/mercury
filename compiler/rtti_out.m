@@ -918,19 +918,27 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
     (
         SectagAndLocn = sectag_locn_none,
         Locn = "MR_SECTAG_NONE",
-        Stag = -1
+        Stag = -1,
+        NumSectagBits = 0u8
     ;
         SectagAndLocn = sectag_locn_none_direct_arg,
         Locn = "MR_SECTAG_NONE_DIRECT_ARG",
-        Stag = -1
+        Stag = -1,
+        NumSectagBits = 0u8
     ;
-        SectagAndLocn = sectag_locn_local(StagUint),
-        Locn = "MR_SECTAG_LOCAL",
+        SectagAndLocn = sectag_locn_local_rest_of_word(StagUint),
+        Locn = "MR_SECTAG_LOCAL_REST_OF_WORD",
+        Stag = uint.cast_to_int(StagUint),
+        NumSectagBits = 0u8
+    ;
+        SectagAndLocn = sectag_locn_local_bits(StagUint, NumSectagBits, _Mask),
+        Locn = "MR_SECTAG_LOCAL_BITS",
         Stag = uint.cast_to_int(StagUint)
     ;
         SectagAndLocn = sectag_locn_remote(StagUint),
         Locn = "MR_SECTAG_REMOTE",
-        Stag = uint.cast_to_int(StagUint)
+        Stag = uint.cast_to_int(StagUint),
+        NumSectagBits = 0u8
     ),
     io.write_string(Locn, !IO),
     io.write_string(",\n\t", !IO),
@@ -978,6 +986,8 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
     ),
     io.write_string(",\n\t", !IO),
     output_functor_subtype_info(FunctorSubtypeInfo, !IO),
+    io.write_string(",\n\t", !IO),
+    io.write_uint8(NumSectagBits, !IO),
     io.write_string("\n};\n", !IO).
 
 :- pred output_functor_subtype_info(functor_subtype_info::in, io::di, io::uo)
@@ -1295,7 +1305,8 @@ output_du_name_ordered_table(Info, RttiTypeCtor, NameArityMap,
 
 output_du_stag_ordered_table(Info, RttiTypeCtor, Ptag - SectagTable,
         !DeclSet, !IO) :-
-    SectagTable = sectag_table(_SectagLocn, _NumSharers, SectagMap),
+    SectagTable = sectag_table(_SectagLocn, _NumSectagBits, _NumSharers,
+        SectagMap),
     map.values(SectagMap, SectagFunctors),
     FunctorNames = list.map(du_functor_rtti_name, SectagFunctors),
     output_generic_rtti_data_defn_start(Info,
@@ -1332,7 +1343,8 @@ output_du_ptag_ordered_table_body(_RttiTypeCtor, [], _CurPtag, !IO).
 output_du_ptag_ordered_table_body(RttiTypeCtor,
         [Ptag - SectagTable | PtagTail], CurPtag, !IO) :-
     expect(unify(Ptag, CurPtag), $module, $pred, "ptag mismatch"),
-    SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
+    SectagTable = sectag_table(SectagLocn, NumSectagBits, NumSharers,
+        _SectagMap),
     io.write_string("\t{ ", !IO),
     io.write_uint(NumSharers, !IO),
     io.write_string(", ", !IO),
@@ -1341,6 +1353,8 @@ output_du_ptag_ordered_table_body(RttiTypeCtor,
     io.write_string(",\n\t", !IO),
     output_ctor_rtti_id(RttiTypeCtor, type_ctor_du_stag_ordered_table(Ptag),
         !IO),
+    io.write_string(",\n\t", !IO),
+    io.write_int8(NumSectagBits, !IO),
     (
         PtagTail = [],
         io.write_string(" }\n", !IO)

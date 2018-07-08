@@ -118,7 +118,8 @@ try_again:
             ptag_layout = &du_type_layout[ptag];
 
             switch (ptag_layout->MR_sectag_locn) {
-            case MR_SECTAG_LOCAL:
+            case MR_SECTAG_LOCAL_REST_OF_WORD:      // fall-through
+            case MR_SECTAG_LOCAL_BITS:
                 return data;    // Just a copy of the actual item.
 
             // case MR_SECTAG_REMOTE:

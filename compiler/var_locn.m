@@ -192,11 +192,23 @@
     % var_locn_reassign_mkword_hole_var(Var, Ptag, Rval, Code, !VarLocnInfo):
     %
     % Generates code to execute the assignment Var := mkword(Ptag, Rval), and
-    % updates the state of !VarLocnInfo accordingly.  Var must previously have
+    % updates the state of !VarLocnInfo accordingly. Var must previously have
     % been assigned the constant expression mkword_hole(Ptag).
     %
 :- pred var_locn_reassign_mkword_hole_var(prog_var::in, ptag::in, rval::in,
     llds_code::out, var_locn_info::in, var_locn_info::out) is det.
+
+    % var_locn_reassign_tagword_var(ModuleInfo, Var, ToOrMask, ToOrRval, Code,
+    %   !VarLocnInfo):
+    %
+    % Generates code to assign (Var & \ToOrMask) | ToOrRval to Var.
+    % Obviously, Var must have previously been assigned a value.
+    % ToOrRval may (and typically will) contain references to other variables
+    % in var(_) form; it should *not* contain references directly to lvals.
+    %
+:- pred var_locn_reassign_tagword_var(module_info::in, prog_var::in,
+    uint::in, rval::in, llds_code::out,
+    var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var,
     %   ReserveWordAtStart, Ptag, MaybeRvals, MaybeSize, FieldAddrs, TypeMsg,
@@ -426,6 +438,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 :- import_module varset.
 
 %----------------------------------------------------------------------------%
@@ -751,6 +764,48 @@ var_locn_reassign_mkword_hole_var(Var, Ptag, Rval, Code, !VLI) :-
     else
         unexpected($pred, "unexpected var_state")
     ).
+
+%-----------------------------------------------------------------------------%
+
+var_locn_reassign_tagword_var(ModuleInfo, Var, ToOrMask, ToOrRval0, Code,
+        !VLI) :-
+    var_locn_produce_var_in_reg_or_stack(ModuleInfo, Var, VarLval,
+        VarCode, !VLI),
+    var_locn_get_var_state_map(!.VLI, VarStateMap0),
+    map.lookup(VarStateMap0, Var, State0),
+    ( if
+        State0 = var_state(Lvals, _MaybeConstRval, _MaybeExprRval, Using0,
+            DeadOrAlive0),
+        set_of_var.is_empty(Using0),
+        DeadOrAlive0 = doa_alive
+    then
+        % After the assignment we are generating, the new value of Var
+        % will be available *only* in VarLval.
+        set.delete(VarLval, Lvals, OtherLvals),
+        set.fold(clobber_old_lval(Var), OtherLvals, !VLI),
+
+        ComplementMask = const(llconst_uint(\ ToOrMask)),
+        MaskedOldVarRval = binop(bitwise_and(int_type_uint),
+            lval(VarLval), ComplementMask),
+        var_locn_materialize_vars_in_rval(ModuleInfo, ToOrRval0, ToOrRval,
+            MaterializeCode, !VLI),
+        NewVarRval = binop(bitwise_or(int_type_uint),
+            MaskedOldVarRval, ToOrRval),
+        Comment = "updating tagword",
+        AssignCode = singleton(
+            llds_instr(assign(VarLval, NewVarRval), Comment)),
+        Code = VarCode ++ MaterializeCode ++ AssignCode,
+
+        var_locn_get_var_state_map(!.VLI, VarStateMap1),
+        State = var_state(set.make_singleton_set(VarLval), no, no,
+            Using0, DeadOrAlive0),
+        map.det_update(Var, State, VarStateMap1, VarStateMap),
+        var_locn_set_var_state_map(VarStateMap, !VLI)
+    else
+        unexpected($pred, "unexpected var_state")
+    ).
+
+%----------------------------------------------------------------------------%
 
 :- pred clobber_old_lval(prog_var::in, lval::in,
     var_locn_info::in, var_locn_info::out) is det.
@@ -1797,8 +1852,7 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
     %
     % If FirstTime = no, then it is possible that this predicate has already
     % been called for Var, if FirstTime = yes, then as a consistency check
-    % we would like to insist on Var being alive (but don't (yet) due to bugs
-    % in liveness).
+    % we want to insist on Var being alive.
 
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     ( if map.search(VarStateMap0, Var, State0) then

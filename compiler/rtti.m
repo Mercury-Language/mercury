@@ -337,6 +337,8 @@
 :- type sectag_table
     --->    sectag_table(
                 sectag_locn         :: sectag_locn,
+                sectag_num_bits     :: int8,
+                % XXX The number of sharers *should* fit in a 32 bit number.
                 sectag_num_sharers  :: uint,
                 sectag_map          :: stag_map
             ).
@@ -347,16 +349,18 @@
 :- type sectag_locn
     --->    sectag_none
     ;       sectag_none_direct_arg
-    ;       sectag_local
+    ;       sectag_local_rest_of_word
+    ;       sectag_local_bits(uint8, uint)              % #bits, mask
     ;       sectag_remote.
 
-    % Describes the location of the secondary tag and its value for a
-    % given functor in a given type.
+    % Describes the location, maybe size, and value of the secondary tag,
+    % for a given functor in a given type.
     %
 :- type sectag_and_locn
     --->    sectag_locn_none
     ;       sectag_locn_none_direct_arg
-    ;       sectag_locn_local(uint)
+    ;       sectag_locn_local_rest_of_word(uint)        % value
+    ;       sectag_locn_local_bits(uint, uint8, uint)   % value, #bits, mask
     ;       sectag_locn_remote(uint).
 
     % Information about an argument of a functor in a discriminated union type.
@@ -1515,6 +1519,8 @@ pred_or_func_to_string(PredOrFunc, TargetPrefixes, String) :-
     ).
 
 sectag_locn_to_string(SecTag, TargetPrefixes, String) :-
+    % The code of this predicate should produce output using the same scheme
+    % as sectag_and_locn_to_locn_string.
     TargetPrefixes =
         target_prefixes("private_builtin.", "runtime.Sectag_Locn."),
     (
@@ -1524,14 +1530,19 @@ sectag_locn_to_string(SecTag, TargetPrefixes, String) :-
         SecTag = sectag_none_direct_arg,
         String = "MR_SECTAG_NONE_DIRECT_ARG"
     ;
-        SecTag = sectag_local,
-        String = "MR_SECTAG_LOCAL"
+        SecTag = sectag_local_rest_of_word,
+        String = "MR_SECTAG_LOCAL_REST_OF_WORD"
+    ;
+        SecTag = sectag_local_bits(_, _),
+        String = "MR_SECTAG_LOCAL_BITS"
     ;
         SecTag = sectag_remote,
         String = "MR_SECTAG_REMOTE"
     ).
 
 sectag_and_locn_to_locn_string(SecTag, TargetPrefixes, String) :-
+    % The code of this predicate should produce output using the same scheme
+    % as sectag_locn_to_string.
     TargetPrefixes =
         target_prefixes("private_builtin.", "runtime.Sectag_Locn."),
     (
@@ -1541,8 +1552,11 @@ sectag_and_locn_to_locn_string(SecTag, TargetPrefixes, String) :-
         SecTag = sectag_locn_none_direct_arg,
         String = "MR_SECTAG_NONE_DIRECT_ARG"
     ;
-        SecTag = sectag_locn_local(_),
-        String = "MR_SECTAG_LOCAL"
+        SecTag = sectag_locn_local_rest_of_word(_),
+        String = "MR_SECTAG_LOCAL_REST_OF_WORD"
+    ;
+        SecTag = sectag_locn_local_bits(_, _, _),
+        String = "MR_SECTAG_LOCAL_BITS"
     ;
         SecTag = sectag_locn_remote(_),
         String = "MR_SECTAG_REMOTE"

@@ -679,6 +679,7 @@ public class DuFunctorDesc {
     public DuArgLocn[]      du_functor_arg_locns;
     public DuExistInfo      du_functor_exist_info;
     public FunctorSubtypeInfo   du_functor_subtype_info;
+    public int              du_functor_num_sectag_bits;
 
     public DuFunctorDesc() {
     }
@@ -696,7 +697,8 @@ public class DuFunctorDesc {
         object arg_names,
         object arg_locns,
         object exist_info,
-        FunctorSubtypeInfo functor_subtype_info)
+        FunctorSubtypeInfo functor_subtype_info,
+        int num_sectag_bits)
     {
         du_functor_name = functor_name;
         du_functor_orig_arity = orig_arity;
@@ -711,14 +713,16 @@ public class DuFunctorDesc {
         du_functor_arg_locns = (DuArgLocn[]) arg_locns;
         du_functor_exist_info = (DuExistInfo) exist_info;
         du_functor_subtype_info = functor_subtype_info;
+        du_functor_num_sectag_bits = num_sectag_bits;
     }
 }
 
 public enum Sectag_Locn {
-    MR_SECTAG_NONE              = 0,
-    MR_SECTAG_NONE_DIRECT_ARG   = 1,
-    MR_SECTAG_LOCAL             = 2,
-    MR_SECTAG_REMOTE            = 3
+    MR_SECTAG_NONE               = 0,
+    MR_SECTAG_NONE_DIRECT_ARG    = 1,
+    MR_SECTAG_LOCAL              = 2,
+    MR_SECTAG_LOCAL_REST_OF_WORD = 2,       // synonym
+    MR_SECTAG_REMOTE             = 3
 }
 
 public enum FunctorSubtypeInfo {
