@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module tc_memo2.
 
 :- interface.
@@ -18,13 +18,13 @@
 :- pragma require_feature_set([memo]).
 
 main(!IO) :-
-    (
+    ( if
         tc(1, 4),
         tc(3, 4)
-    ->
-        io__write_string("yes\n", !IO)
-    ;
-        io__write_string("no\n", !IO)
+    then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
 :- pred tc(int::in, int::out) is nondet.

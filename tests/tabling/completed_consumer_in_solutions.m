@@ -24,10 +24,10 @@
 
 main(!IO) :-
     q(Solns1, Solns2),
-    io__write(Solns1, !IO),
-    io__write_string("\n", !IO),
-    io__write(Solns2, !IO),
-    io__write_string("\n", !IO).
+    io.write(Solns1, !IO),
+    io.write_string("\n", !IO),
+    io.write(Solns2, !IO),
+    io.write_string("\n", !IO).
 
 :- pred q(list(int)::out, list(int)::out) is det.
 

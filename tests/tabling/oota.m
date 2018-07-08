@@ -35,12 +35,12 @@
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
-    (
+    ( if
         Args = [Arg],
         string.to_int(Arg, NumRepeatsPrime)
-    ->
+    then
         NumRepeats = NumRepeatsPrime
-    ;
+    else
         NumRepeats = 1
     ),
     benchmark_det(benchmark_d, unit, MaybeD, NumRepeats, Time),
@@ -60,9 +60,9 @@ main(!IO) :-
 :- pred benchmark_d(unit::in, maybe(int)::out) is det.
 
 benchmark_d(unit, MaybeD) :-
-    ( d(D) ->
+    ( if d(D) then
         MaybeD = yes(D)
-    ;
+    else
         MaybeD = no
     ).
 
@@ -76,17 +76,17 @@ d(D) :-
 :- pragma memo(d/4).
 
 d(GC, I, J, D) :-
-    ( I = 0, J = 0 ->
+    ( if I = 0, J = 0 then
         D = 0
-    ; I = 0 ->
+    else if I = 0 then
         J1 = J - 1,
         d(GC, 0, J1, D1),
         D = D1 + GC
-    ; J = 0 ->
+    else if J = 0 then
         I1 = I - 1,
         d(GC, I1, 0, D1),
         D = D1 + GC
-    ;
+    else
         I1 = I - 1,
         J1 = J - 1,
         ms(I, J, MS),

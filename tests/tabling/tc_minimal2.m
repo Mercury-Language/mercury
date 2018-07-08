@@ -21,17 +21,17 @@
 
 main(!IO) :-
     solutions(tc_l(1), SolnsL),
-    io__write_string("L = ", !IO),
-    io__write(SolnsL, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("L = ", !IO),
+    io.write(SolnsL, !IO),
+    io.write_string("\n", !IO),
     solutions(tc_r(1), SolnsR),
-    io__write_string("R = ", !IO),
-    io__write(SolnsR, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("R = ", !IO),
+    io.write(SolnsR, !IO),
+    io.write_string("\n", !IO),
     solutions(tc_d(1), SolnsD),
-    io__write_string("D = ", !IO),
-    io__write(SolnsD, !IO),
-    io__write_string("\n", !IO).
+    io.write_string("D = ", !IO),
+    io.write(SolnsD, !IO),
+    io.write_string("\n", !IO).
 
 :- pred tc_l(int::in, int::out) is nondet.
 :- pragma minimal_model(tc_l/2).

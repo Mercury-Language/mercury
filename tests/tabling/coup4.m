@@ -25,17 +25,17 @@
 
 main(!IO) :-
     solutions(p, SolnsP),
-    io__write_string("P = ", !IO),
-    io__write(SolnsP, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("P = ", !IO),
+    io.write(SolnsP, !IO),
+    io.write_string("\n", !IO),
     solutions(q, SolnsQ),
-    io__write_string("Q = ", !IO),
-    io__write(SolnsQ, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("Q = ", !IO),
+    io.write(SolnsQ, !IO),
+    io.write_string("\n", !IO),
     solutions(r, SolnsR),
-    io__write_string("R = ", !IO),
-    io__write(SolnsR, !IO),
-    io__write_string("\n", !IO).
+    io.write_string("R = ", !IO),
+    io.write(SolnsR, !IO),
+    io.write_string("\n", !IO).
 
 :- pred p(int::out) is nondet.
 :- pragma minimal_model(p/1).

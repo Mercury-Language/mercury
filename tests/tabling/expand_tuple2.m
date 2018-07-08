@@ -32,9 +32,9 @@ main(!IO) :-
     random.init(0, RS0),
     random.permutation(range(0, 1023), Perm, RS0, RS1),
     choose_signs_and_enter(Perm, "0", Solns1, RS1, _RS2),
-    ( test_tables(Solns1, yes) ->
+    ( if test_tables(Solns1, yes) then
         io.write_string("Test successful.\n", !IO)
-    ;
+    else
         io.write_string("Test unsuccessful.\n", !IO)
     ).
     % io.report_tabling_stats(!IO).
@@ -55,9 +55,9 @@ range(Min, Max) =
 choose_signs_and_enter([], _, [], RS, RS).
 choose_signs_and_enter([N | Ns], A, [record(F, A, S, B) | ISs], RS0, RS) :-
     random.random(Random, RS0, RS1),
-    ( Random mod 2 = 0 ->
+    ( if Random mod 2 = 0 then
         F = N
-    ;
+    else
         F = 0 - N
     ),
     sum({F, A}, {S, B}),
@@ -68,9 +68,9 @@ choose_signs_and_enter([N | Ns], A, [record(F, A, S, B) | ISs], RS0, RS) :-
 test_tables([], yes).
 test_tables([record(F, A, S0, B0) | Is], Correct) :-
     sum({F, A}, {S1, B1}),
-    ( S0 = S1, B0 = B1 ->
+    ( if S0 = S1, B0 = B1 then
         test_tables(Is, Correct)
-    ;
+    else
         Correct = no
     ).
 
@@ -78,14 +78,14 @@ test_tables([record(F, A, S0, B0) | Is], Correct) :-
 :- pragma memo(sum/2).
 
 sum({N, A}, {S, B}) :-
-    ( N < 0 ->
+    ( if N < 0 then
         sum({0 - N, A}, {S0, B0}),
         S = 0 - S0,
         B = "-" ++ B0
-    ; N = 0 ->
+    else if N = 0 then
         S = 0,
         B = A
-    ;
+    else
         sum({N - 1, A}, {S0, B0}),
         S = S0 + 1,
         B = B0 ++ "+"

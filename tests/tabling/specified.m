@@ -43,15 +43,15 @@ main(!IO) :-
 
 perform_trials(TrialType, ListN, IntN, Incr, NumDouble0, NumTrials0, !IO) :-
     trial(TrialType, ListN, IntN, Time, MTime, !IO),
-    (
+    ( if
         MTime > 10,
         Time > MTime * 2
-    ->
+    then
         NumDouble = NumDouble0 + 1
-    ;
+    else
         NumDouble = 0
     ),
-    (
+    ( if
         (
             Time > 10 * MTime,
             MTime > 0   % "should be slower" version takes ten times as long
@@ -64,19 +64,19 @@ perform_trials(TrialType, ListN, IntN, Incr, NumDouble0, NumTrials0, !IO) :-
                         % double the speed of the "should be slower" version
                         % for the last ten trials.
         )
-    ->
+    then
         io.write(TrialType, !IO),
         io.write_string(": tabling works\n", !IO)
-    ;
+    else if
         (
             Time > 10000        % "should be slower" takes at least 10 seconds
         ;
             NumTrials0 > 1000
         )
-    ->
+    then
         io.write(TrialType, !IO),
         io.write_string(": tabling does not appear to work\n", !IO)
-    ;
+    else
         % We couldn't get a measurable result with N,
         % and it looks like we can afford a bigger trial.
         perform_trials(TrialType,
@@ -145,9 +145,9 @@ vv_ll_fib_test(N - CopyN, F) :-
 
 ap_lp_fib(N, Dummy, F) :-
     RawN = digits_to_num(N),
-    ( RawN < 2 ->
+    ( if RawN < 2 then
         F = num_to_digits(1)
-    ;
+    else
         One = num_to_digits(1),
         Two = num_to_digits(2),
         ap_lp_fib(subtract_digits(N, One), Dummy, F1),
@@ -161,9 +161,9 @@ ap_lp_fib(N, Dummy, F) :-
 
 vp_lp_fib(N, Dummy, F) :-
     RawN = digits_to_num(N),
-    ( RawN < 2 ->
+    ( if RawN < 2 then
         F = num_to_digits(1)
-    ;
+    else
         One = num_to_digits(1),
         Two = num_to_digits(2),
         vp_lp_fib(subtract_digits(N, One), Dummy, F1),
@@ -177,13 +177,13 @@ vp_lp_fib(N, Dummy, F) :-
 
 ap_li_fib(N, CopyN, F) :-
     RawN = digits_to_num(N),
-    ( RawN < 2 ->
-        ( RawN = CopyN ->
+    ( if RawN < 2 then
+        ( if RawN = CopyN then
             F = num_to_digits(1)
-        ;
+        else
             error("ap_li_fib")
         )
-    ;
+    else
         One = num_to_digits(1),
         Two = num_to_digits(2),
         ap_li_fib(subtract_digits(N, One), RawN - 1, F1),
@@ -197,13 +197,13 @@ ap_li_fib(N, CopyN, F) :-
 
 vp_li_fib(N, CopyN, F) :-
     RawN = digits_to_num(N),
-    ( RawN < 2 ->
-        ( RawN = CopyN ->
+    ( if RawN < 2 then
+        ( if RawN = CopyN then
             F = num_to_digits(1)
-        ;
+        else
             error("vp_li_fib")
         )
-    ;
+    else
         One = num_to_digits(1),
         Two = num_to_digits(2),
         vp_li_fib(subtract_digits(N, One), CopyN - 1, F1),
@@ -217,13 +217,13 @@ vp_li_fib(N, CopyN, F) :-
 
 vp_ll_fib(N, CopyN, F) :-
     RawN = digits_to_num(N),
-    ( RawN < 2 ->
-        ( RawN = digits_to_num(CopyN) ->
+    ( if RawN < 2 then
+        ( if RawN = digits_to_num(CopyN) then
             F = num_to_digits(1)
-        ;
+        else
             error("vp_ll_fib")
         )
-    ;
+    else
         One = num_to_digits(1),
         Two = num_to_digits(2),
         vp_ll_fib(subtract_digits(N, One), subtract_digits(N, One), F1),
@@ -237,13 +237,13 @@ vp_ll_fib(N, CopyN, F) :-
 
 vv_ll_fib(N, CopyN, F) :-
     RawN = digits_to_num(N),
-    ( RawN < 2 ->
-        ( RawN = digits_to_num(CopyN) ->
+    ( if RawN < 2 then
+        ( if RawN = digits_to_num(CopyN) then
             F = num_to_digits(1)
-        ;
+        else
             error("vv_ll_fib")
         )
-    ;
+    else
         One = num_to_digits(1),
         Two = num_to_digits(2),
         vv_ll_fib(subtract_digits(N, One), subtract_digits(N, One), F1),
@@ -283,9 +283,9 @@ digits_to_num_2([Last | Rest]) =
 :- func num_to_digits(int) = list(int).
 
 num_to_digits(Int) = Digits :-
-    ( Int < 10 ->
+    ( if Int < 10 then
         Digits = [Int]
-    ;
+    else
         Last = Int mod 10,
         Rest = Int // 10,
         list.append(num_to_digits(Rest), [Last], Digits)

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module tc_loop.
 
 :- interface.
@@ -19,11 +19,12 @@
 
 main(!IO) :-
     solutions(tc(1), Solns),
-    ( Solns = [] ->
-        io__write_string("loopcheck failed, tc has no solutions\n",
-            !IO)
+    (
+        Solns = [],
+        io.write_string("loopcheck failed, tc has no solutions\n", !IO)
     ;
-        io__write_string("loopcheck failed, tc has solutions\n", !IO)
+        Solns = [_ | _],
+        io.write_string("loopcheck failed, tc has solutions\n", !IO)
     ).
 
 :- pred tc(int::in, int::out) is nondet.

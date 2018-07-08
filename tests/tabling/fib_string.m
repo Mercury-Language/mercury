@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module fib_string.
 
 :- interface.
@@ -30,13 +30,13 @@ main(!IO) :-
 
 perform_trials(N, !IO) :-
     trial(N, Time, MTime),
-    % io__write_string(N, !IO),
-    % io__write_string(": ", !IO),
-    % io__write_int(Time, !IO),
-    % io__write_string("ms vs ", !IO),
-    % io__write_int(MTime, !IO),
-    % io__write_string("ms\n", !IO),
-    (
+    % io.write_string(N, !IO),
+    % io.write_string(": ", !IO),
+    % io.write_int(Time, !IO),
+    % io.write_string("ms vs ", !IO),
+    % io.write_int(MTime, !IO),
+    % io.write_string("ms\n", !IO),
+    ( if
         (
             Time > 10 * MTime,
             MTime > 0   % untabled takes ten times as long
@@ -44,13 +44,13 @@ perform_trials(N, !IO) :-
             Time > 100, % untabled takes at least 100 ms
             MTime < 1   % while tabled takes at most 1 ms
         )
-    ->
-        io__write_string("tabling works\n", !IO)
-    ;
+    then
+        io.write_string("tabling works\n", !IO)
+    else if
         Time > 10000        % untabled takes at least 10 seconds
-    ->
-        io__write_string("tabling does not appear to work\n", !IO)
-    ;
+    then
+        io.write_string("tabling does not appear to work\n", !IO)
+    else
         % We couldn't get a measurable result with N,
         % and it looks like we can afford a bigger trial
         perform_trials(add_strings(N, "three"), !IO)
@@ -66,9 +66,9 @@ trial(N, Time, MTime) :-
 :- pred fib(string::in, string::out) is det.
 
 fib(N, F) :-
-    ( string_to_num(N) < 2 ->
+    ( if string_to_num(N) < 2 then
         F = num_to_string(1)
-    ;
+    else
         One = num_to_string(1),
         Two = num_to_string(2),
         fib(subtract_strings(N, One), F1),
@@ -80,9 +80,9 @@ fib(N, F) :-
 :- pragma memo(mfib/2).
 
 mfib(N, F) :-
-    ( string_to_num(N) < 2 ->
+    ( if string_to_num(N) < 2 then
         F = num_to_string(1)
-    ;
+    else
         One = num_to_string(1),
         Two = num_to_string(2),
         mfib(subtract_strings(N, One), F1),
@@ -104,9 +104,9 @@ subtract_strings(S1, S2) =
 
 string_to_num(String) = Num :-
     translate_last_digit(String, LastNum, RestString),
-    ( RestString = "" ->
+    ( if RestString = "" then
         Num = LastNum
-    ;
+    else
         Num = string_to_num(RestString) * 10 + LastNum
     ).
 
@@ -122,10 +122,10 @@ translate_last_digit(String, LastDigit, Rest) :-
 translate_last_digit_2([], _, _, _) :-
     error("cannot determine last digit").
 translate_last_digit_2([DigitStr - DigitNum | Digits], String, Last, Rest) :-
-    ( string__remove_suffix(String, DigitStr, RestPrime) ->
+    ( if string.remove_suffix(String, DigitStr, RestPrime) then
         Last = DigitNum,
         Rest = RestPrime
-    ;
+    else
         translate_last_digit_2(Digits, String, Last, Rest)
     ).
 
@@ -133,28 +133,28 @@ translate_last_digit_2([DigitStr - DigitNum | Digits], String, Last, Rest) :-
 
 num_to_string(Int) = String :-
     translate_digits(Int, Digits),
-    string__append_list(Digits, String).
+    string.append_list(Digits, String).
 
 :- pred translate_digits(int::in, list(string)::out) is det.
 
 translate_digits(N, Digits) :-
-    ( N < 10 ->
+    ( if N < 10 then
         translate_digit(N, Digit),
         Digits = [Digit]
-    ;
+    else
         Last = N mod 10,
         Rest = N // 10,
         translate_digit(Last, LastDigit),
         translate_digits(Rest, RestDigits),
-        list__append(RestDigits, [LastDigit], Digits)
+        list.append(RestDigits, [LastDigit], Digits)
     ).
 
 :- pred translate_digit(int::in, string::out) is det.
 
 translate_digit(Int, String) :-
-    ( translate_digit_2(Int, StringPrime) ->
+    ( if translate_digit_2(Int, StringPrime) then
         String = StringPrime
-    ;
+    else
         error("translate_digit give non-digit")
     ).
 
@@ -177,7 +177,8 @@ translate_digit_2(9, "nine").
 :- pragma memo(digits/1).
 
 digits(PairList) :-
-    solutions((pred(Pair::out) is multi :-
-        translate_digit_2(Int, String),
-        Pair = String - Int
-    ), PairList).
+    solutions(
+        ( pred(Pair::out) is multi :-
+            translate_digit_2(Int, String),
+            Pair = String - Int
+        ), PairList).

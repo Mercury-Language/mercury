@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module fast_loose.
 
 :- interface.
@@ -26,13 +26,13 @@ main(!IO) :-
 
 perform_trials(N, !IO) :-
     trial(N, STime, FLTime),
-    % io__write_int(N, !IO),
-    % io__write_string(": ", !IO),
-    % io__write_int(STime, !IO),
-    % io__write_string("ms vs ", !IO),
-    % io__write_int(FLTime, !IO),
-    % io__write_string("ms\n", !IO),
-    (
+    % io.write_int(N, !IO),
+    % io.write_string(": ", !IO),
+    % io.write_int(STime, !IO),
+    % io.write_string("ms vs ", !IO),
+    % io.write_int(FLTime, !IO),
+    % io.write_string("ms\n", !IO),
+    ( if
         (
             STime > 10 * FLTime,
             FLTime > 0  % strict takes ten times as long
@@ -40,13 +40,13 @@ perform_trials(N, !IO) :-
             STime > 100,    % strict takes at least 100 ms
             FLTime < 1  % while fast_loose takes at most 1 ms
         )
-    ->
-        io__write_string("fast_loose works\n", !IO)
-    ;
+    then
+        io.write_string("fast_loose works\n", !IO)
+    else if
         STime > 10000   % Strict takes at least 10 seconds
-    ->
-        io__write_string("fast_loose does not appear to work\n", !IO)
-    ;
+    then
+        io.write_string("fast_loose does not appear to work\n", !IO)
+    else
         % We couldn't get a measurable result with N,
         % and it looks like we can afford a bigger trial.
         perform_trials(N+5, !IO)
@@ -86,8 +86,8 @@ fast_loose_sum([H | T], H + TS) :-
 :- func iota(int) = list(int).
 
 iota(N) =
-    ( N =< 0 ->
+    ( if N =< 0 then
         []
-    ;
+    else
         [N | iota(N - 1)]
     ).

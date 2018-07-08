@@ -18,7 +18,7 @@
 
 main(!IO) :-
     loop(10),
-    io__write_string("Hello, world\n", !IO).
+    io.write_string("Hello, world\n", !IO).
 
 :- pragma loop_check(loop/1).
 :- pred loop(int::in) is det.

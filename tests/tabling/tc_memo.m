@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module tc_memo.
 
 :- interface.
@@ -19,8 +19,8 @@
 
 main(!IO) :-
     solutions(tc(1), Solns),
-    io__write(Solns, !IO),
-    io__write_string("\n", !IO).
+    io.write(Solns, !IO),
+    io.write_string("\n", !IO).
 
 :- pred tc(int::in, int::out) is nondet.
 :- pragma memo(tc/2).

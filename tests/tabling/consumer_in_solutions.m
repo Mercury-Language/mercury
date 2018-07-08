@@ -23,8 +23,8 @@
 
 main(!IO) :-
     solutions(q, Solns),
-    io__write(Solns, !IO),
-    io__write_string("\n", !IO).
+    io.write(Solns, !IO),
+    io.write_string("\n", !IO).
 
 :- pragma minimal_model(q/1).
 :- pred q(pair(int, list(int))).

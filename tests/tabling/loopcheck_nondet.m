@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module loopcheck_nondet.
 
 :- interface.
@@ -18,18 +18,18 @@
 
 main(!IO) :-
     solutions(loop(2), Y),
-    io__write(Y, !IO),
-    io__write_string("\n", !IO).
+    io.write(Y, !IO),
+    io.write_string("\n", !IO).
 
 :- pragma loop_check(loop/2).
 :- pred loop(int::in, int::out) is nondet.
 
 loop(X, Y) :-
-    ( X < 0 ->
+    ( if X < 0 then
         fail
-    ; X > 100 ->
+    else if X > 100 then
         fail
-    ;
+    else
         (
             Y = X
         ;

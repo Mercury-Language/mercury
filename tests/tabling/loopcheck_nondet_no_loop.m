@@ -20,19 +20,19 @@
 
 main(!IO) :-
     solutions(non(10), N),
-    io__write(N, !IO),
-    io__write_string("\n", !IO),
+    io.write(N, !IO),
+    io.write_string("\n", !IO),
     solutions(mul(20), M),
-    io__write(M, !IO),
-    io__write_string("\n", !IO).
+    io.write(M, !IO),
+    io.write_string("\n", !IO).
 
 :- pred non(int::in, int::out) is nondet.
 :- pragma loop_check(non/2).
 
 non(A, B) :-
-    ( A < 0 ->
+    ( if A < 0 then
         fail
-    ;
+    else
         (
             B = A
         ;
@@ -47,9 +47,9 @@ non(A, B) :-
 :- pragma loop_check(mul/2).
 
 mul(A, B) :-
-    ( A < 0 ->
+    ( if A < 0 then
         B = -1
-    ;
+    else
         (
             B = A
         ;

@@ -33,12 +33,12 @@ main(!IO) :-
 :- pred test(int::in, int::in, io::di, io::uo) is det.
 
 test(A, B, !IO) :-
-    io__write_string("tc(" ++ int_to_string(A) ++ ", "
+    io.write_string("tc(" ++ int_to_string(A) ++ ", "
         ++ int_to_string(B) ++ "): ", !IO),
-    ( tc(A, B) ->
-        io__write_string("succeeded\n", !IO)
-    ;
-        io__write_string("failed\n", !IO)
+    ( if tc(A, B) then
+        io.write_string("succeeded\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ).
 
 :- pred tc(int::in, int::in) is semidet.

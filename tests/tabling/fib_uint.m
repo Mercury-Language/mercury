@@ -32,7 +32,7 @@ perform_trials(N, !IO) :-
         io.write_int(MTime, !S),
         io.write_string("ms memoed\n", !S)
     ),
-    (
+    ( if
         (
             Time > 10 * MTime,
             MTime > 0   % untabled takes ten times as long
@@ -40,13 +40,13 @@ perform_trials(N, !IO) :-
             Time > 100, % untabled takes at least 100 ms
             MTime < 1   % while tabled takes at most 1 ms
         )
-    ->
+    then
         io.write_string("tabling works\n", !IO)
-    ;
+    else if
         Time > 10000    % Untabled takes at least 10 seconds
-    ->
+    then
         io.write_string("tabling does not appear to work\n", !IO)
-    ;
+    else
         % We couldn't get a measurable result with N,
         % and it looks like we can afford a bigger trial
         perform_trials(N + 3u, !IO)
@@ -62,9 +62,9 @@ trial(N, Time, MTime) :-
 :- pred fib(uint::in, uint::out) is det.
 
 fib(N, F) :-
-    ( N < 2u ->
+    ( if N < 2u then
         F = 1u
-    ;
+    else
         fib(N - 1u, F1),
         fib(N - 2u, F2),
         F = F1 + F2
@@ -74,9 +74,9 @@ fib(N, F) :-
 :- pragma memo(mfib/2).
 
 mfib(N, F) :-
-    ( N < 2u ->
+    ( if N < 2u then
         F = 1u
-    ;
+    else
         mfib(N - 1u, F1),
         mfib(N - 2u, F2),
         F = F1 + F2

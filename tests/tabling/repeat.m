@@ -22,11 +22,11 @@
 
 main(!IO) :-
     solutions(p, Solns1),
-    io__write(Solns1, !IO),
-    io__write_string("\n", !IO),
+    io.write(Solns1, !IO),
+    io.write_string("\n", !IO),
     solutions(p, Solns2),
-    io__write(Solns2, !IO),
-    io__write_string("\n", !IO).
+    io.write(Solns2, !IO),
+    io.write_string("\n", !IO).
 
 :- pragma minimal_model(p/1).
 :- pred p(int).

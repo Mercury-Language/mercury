@@ -34,8 +34,8 @@ main(!IO) :-
 
 test(Cond, In, !IO) :-
     Out = get_start_state(Cond, In),
-    io__write(Cond, !IO),
-    io__format(" %d: %d\n", [i(In), i(Out)], !IO).
+    io.write(Cond, !IO),
+    io.format(" %d: %d\n", [i(In), i(Out)], !IO).
 
 :- pragma no_inline(get_start_state/2).
 :- pragma memo(get_start_state/2).

@@ -49,11 +49,11 @@ test(Cur, Max, !IO) :-
 :- pred test_loop(int::in, int::in, io::di, io::uo) is det.
 
 test_loop(Cur, Max, !IO) :-
-    ( Cur =< Max ->
+    ( if Cur =< Max then
         mfib(Cur, Fib),
         io.format("fib(%d): %d\n", [i(Cur), i(Fib)], !IO),
         test_loop(Cur + 1, Max, !IO)
-    ;
+    else
         true
     ).
 
@@ -61,9 +61,9 @@ test_loop(Cur, Max, !IO) :-
 :- pragma memo(mfib/2, [statistics]).
 
 mfib(N, F) :-
-    ( N < 2 ->
+    ( if N < 2 then
         F = 1
-    ;
+    else
         mfib(N - 1, F1),
         mfib(N - 2, F2),
         F = F1 + F2

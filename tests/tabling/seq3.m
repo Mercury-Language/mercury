@@ -25,8 +25,8 @@
 
 main(!IO) :-
     solutions(p, Solns),
-    io__write(Solns, !IO),
-    io__write_string("\n", !IO).
+    io.write(Solns, !IO),
+    io.write_string("\n", !IO).
 
 :- pred p(int).
 :- mode p(out) is nondet.

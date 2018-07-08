@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 %
 % This is a regression test. In versions of the compiler before 7 Aug 2007,

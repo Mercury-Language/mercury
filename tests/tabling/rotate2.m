@@ -43,15 +43,15 @@ testgroup(E, R, !IO) :-
 
 test(NumElements, NumRotations, BaseList, !IO) :-
     solutions(rotations(NumElements, NumRotations, BaseList), Solns),
-    io__write_string("rotations(", !IO),
-    io__write_int(NumElements, !IO),
-    io__write_string(", ", !IO),
-    io__write_int(NumRotations, !IO),
-    io__write_string(", ", !IO),
-    io__write(BaseList, !IO),
-    io__write_string(") =\n", !IO),
+    io.write_string("rotations(", !IO),
+    io.write_int(NumElements, !IO),
+    io.write_string(", ", !IO),
+    io.write_int(NumRotations, !IO),
+    io.write_string(", ", !IO),
+    io.write(BaseList, !IO),
+    io.write_string(") =\n", !IO),
     write_solns(Solns, 0, !IO),
-    io__write_string("\n", !IO).
+    io.write_string("\n", !IO).
 
 :- pred rotations(int::in, int::in, list(T)::in, list(T)::out) is nondet.
 :- pragma minimal_model(rotations/4).
@@ -113,12 +113,12 @@ do_rotate(N, In, M1, M2, M3, Rest) :-
 :- pred rotate(int::in, list(T)::in, list(T)::out) is semidet.
 
 rotate(N, In, Out) :-
-    list__split_list(N, In, Start, End),
-    list__append(End, Start, Out).
+    list.split_list(N, In, Start, End),
+    list.append(End, Start, Out).
 
 :- func set_func(list(T)) = set(T).
 
-set_func(List) = set__list_to_set(List).
+set_func(List) = set.list_to_set(List).
 
 :- pred write_solns(list(list(T))::in, int::in, io::di, io::uo) is det.
 
@@ -130,8 +130,8 @@ write_solns([Soln | Solns], N, !IO) :-
 :- pred write_soln(list(T)::in, int::in, io::di, io::uo) is det.
 
 write_soln(Soln, Seq, !IO) :-
-    io__write_string("\tsoln ", !IO),
-    io__write_int(Seq, !IO),
-    io__write_string(": ", !IO),
-    io__write(Soln, !IO),
-    io__write_string("\n", !IO).
+    io.write_string("\tsoln ", !IO),
+    io.write_int(Seq, !IO),
+    io.write_string(": ", !IO),
+    io.write(Soln, !IO),
+    io.write_string("\n", !IO).

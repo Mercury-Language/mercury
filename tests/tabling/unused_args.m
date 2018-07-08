@@ -32,17 +32,17 @@ test(!IO) :-
     foo_unused_args(42, Z),
     print(Z, !IO),
     nl(!IO),
-    ( foo_unused_args_semi(42, Y) ->
+    ( if foo_unused_args_semi(42, Y) then
         print(Y, !IO),
         nl(!IO)
-    ;
-        io__write_string("foo_unused_args failed\n", !IO)
+    else
+        io.write_string("foo_unused_args failed\n", !IO)
     ),
-    ( foo_fail(X) ->
+    ( if foo_fail(X) then
         print(X, !IO),
         nl(!IO)
-    ;
-        io__write_string("foo_fail failed, as expected\n", !IO)
+    else
+        io.write_string("foo_fail failed, as expected\n", !IO)
     ).
 
 :- pred foo_unused_args(int::in, string::out) is det.
@@ -66,8 +66,8 @@ foo_fail("FOO_FAIL SUCCEEDED (this is an error)") :-
 
 test_no_input(!IO) :-
     no_input(X1),
-    io__write_string(X1, !IO),
-    io__nl(!IO).
+    io.write_string(X1, !IO),
+    io.nl(!IO).
 
 :- pred no_input(string::out) is det.
 :- pragma memo(no_input/1).

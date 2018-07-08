@@ -31,27 +31,27 @@
     --->    record(T1, T1, T2).
 
 main(!IO) :-
-    random__init(0, RS0),
-    random__permutation(range(0, 1023), Perm, RS0, RS1),
+    random.init(0, RS0),
+    random.permutation(range(0, 1023), Perm, RS0, RS1),
     choose_signs_and_enter(Perm, {}, Solns1, RS1, RS2),
-    ( test_tables(Solns1, yes) ->
-        io__write_string("First test successful.\n", !IO)
-    ;
-        io__write_string("First test unsuccessful.\n", !IO)
+    ( if test_tables(Solns1, yes) then
+        io.write_string("First test successful.\n", !IO)
+    else
+        io.write_string("First test unsuccessful.\n", !IO)
     ),
     choose_signs_and_enter(Perm, {'a', [1, 2]}, Solns2, RS2, RS3),
-    ( test_tables(Solns2, yes) ->
-        io__write_string("Second test successful.\n", !IO)
-    ;
-        io__write_string("Second test unsuccessful.\n", !IO)
+    ( if test_tables(Solns2, yes) then
+        io.write_string("Second test successful.\n", !IO)
+    else
+        io.write_string("Second test unsuccessful.\n", !IO)
     ),
     choose_signs_and_enter(Perm, {{'a', 'b'}, 3, 4}, Solns3, RS3, _),
-    ( test_tables(Solns3, yes) ->
-        io__write_string("Third test successful.\n", !IO)
-    ;
-        io__write_string("Third test unsuccessful.\n", !IO)
+    ( if test_tables(Solns3, yes) then
+        io.write_string("Third test successful.\n", !IO)
+    else
+        io.write_string("Third test unsuccessful.\n", !IO)
     ).
-    % io__report_tabling_stats(!IO).
+    % io.report_tabling_stats(!IO).
 
 :- func range(int, int) = list(int).
 
@@ -63,14 +63,14 @@ range(Min, Max) =
     ).
 
 :- pred choose_signs_and_enter(list(int)::in, T::in, list(record(int, T))::out,
-    random__supply::mdi, random__supply::muo) is det.
+    random.supply::mdi, random.supply::muo) is det.
 
 choose_signs_and_enter([], _, [], RS, RS).
 choose_signs_and_enter([N | Ns], A, [record(F, S, A) | ISs], RS0, RS) :-
-    random__random(Random, RS0, RS1),
-    ( Random mod 2 = 0 ->
+    random.random(Random, RS0, RS1),
+    ( if Random mod 2 = 0 then
         F = N
-    ;
+    else
         F = 0 - N
     ),
     sum(F, A, S),
@@ -81,9 +81,9 @@ choose_signs_and_enter([N | Ns], A, [record(F, S, A) | ISs], RS0, RS) :-
 test_tables([], yes).
 test_tables([record(I, S0, A) | Is], Correct) :-
     sum(I, A, S1),
-    ( S0 = S1 ->
+    ( if S0 = S1 then
         test_tables(Is, Correct)
-    ;
+    else
         Correct = no
     ).
 
@@ -91,12 +91,12 @@ test_tables([record(I, S0, A) | Is], Correct) :-
 :- pragma memo(sum/3).
 
 sum(N, A, F) :-
-    ( N < 0 ->
+    ( if N < 0 then
         sum(0 - N, A, NF),
         F = 0 - NF
-    ; N = 1 ->
+    else if N = 1 then
         F = 1
-    ;
+    else
         sum(N - 1, A, F1),
         F = N + F1
     ).

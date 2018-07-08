@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module mday.
 
 :- interface.
@@ -15,9 +15,9 @@
 :- pragma require_feature_set([memo]).
 
 main(!IO) :-
-    ( x(_) ->
+    ( if x(_) then
         write_string("yes\n", !IO)
-    ;
+    else
         write_string("no\n", !IO)
     ).
 

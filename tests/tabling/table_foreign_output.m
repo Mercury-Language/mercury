@@ -30,12 +30,12 @@ main(!IO) :-
     % solutions sorts foreign types as C pointers, so the order of the
     % solutions depends on memory layout. This means the order is not
     % predictable enough to let us print the solutions themselves.
-    list__map(extract_str, Solns, Strs),
-    list__map(extract_str, MemoSolns, MemoStrs),
-    io__write_int(list__length(Strs), !IO),
-    io__nl(!IO),
-    io__write_int(list__length(MemoStrs), !IO),
-    io__nl(!IO).
+    list.map(extract_str, Solns, Strs),
+    list.map(extract_str, MemoSolns, MemoStrs),
+    io.write_int(list.length(Strs), !IO),
+    io.nl(!IO),
+    io.write_int(list.length(MemoStrs), !IO),
+    io.nl(!IO).
 
 :- type foreign ---> foreign.
 :- pragma foreign_type("C", foreign, "Foreign").
@@ -51,13 +51,13 @@ typedef struct {
 :- pred test(assoc_list(int, string)::in, foreign::out) is nondet.
 
 test(Pairs, F) :-
-    list__member(N - S, Pairs),
+    list.member(N - S, Pairs),
     make_foreign(N, S, F).
 
 :- pred test_memo(assoc_list(int, string)::in, foreign::out) is nondet.
 
 test_memo(Pairs, F) :-
-    list__member(N - S, Pairs),
+    list.member(N - S, Pairs),
     make_foreign_memo(N, S, F).
 
 :- pred make_foreign(int::in, string::in, foreign::out) is det.

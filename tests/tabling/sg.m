@@ -22,11 +22,11 @@
 
 main(!IO) :-
     solutions(sg1, Solns1),
-    io__write(Solns1, !IO),
-    io__write_string("\n", !IO),
+    io.write(Solns1, !IO),
+    io.write_string("\n", !IO),
     solutions(sg, Solns),
-    io__write_int(list__length(Solns), !IO),
-    io__write_string("\n", !IO).
+    io.write_int(list.length(Solns), !IO),
+    io.write_string("\n", !IO).
 
 :- pred sg(pair(int, int)::out) is nondet.
 

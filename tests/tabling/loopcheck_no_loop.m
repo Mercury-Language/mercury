@@ -18,52 +18,52 @@
 
 main(!IO) :-
     sum(3, Sum3),
-    io__write_int(Sum3, !IO),
-    io__write_string("\n", !IO),
+    io.write_int(Sum3, !IO),
+    io.write_string("\n", !IO),
     sum(2, Sum2),
-    io__write_int(Sum2, !IO),
-    io__write_string("\n", !IO),
-    ( semisum(3, Semisum3) ->
-        io__write_int(Semisum3, !IO),
-        io__write_string("\n", !IO)
-    ;
-        io__write_string("semisum(3) failed\n", !IO)
+    io.write_int(Sum2, !IO),
+    io.write_string("\n", !IO),
+    ( if semisum(3, Semisum3) then
+        io.write_int(Semisum3, !IO),
+        io.write_string("\n", !IO)
+    else
+        io.write_string("semisum(3) failed\n", !IO)
     ),
-    ( semisum(2, Semisum2) ->
-        io__write_int(Semisum2, !IO),
-        io__write_string("\n", !IO)
-    ;
-        io__write_string("semisum(2) failed\n", !IO)
+    ( if semisum(2, Semisum2) then
+        io.write_int(Semisum2, !IO),
+        io.write_string("\n", !IO)
+    else
+        io.write_string("semisum(2) failed\n", !IO)
     ),
-    ( semisum(-2, SemisumN2) ->
-        io__write_int(SemisumN2, !IO),
-        io__write_string("\n", !IO)
-    ;
-        io__write_string("semisum(-2) failed\n", !IO)
+    ( if semisum(-2, SemisumN2) then
+        io.write_int(SemisumN2, !IO),
+        io.write_string("\n", !IO)
+    else
+        io.write_string("semisum(-2) failed\n", !IO)
     ),
-    ( count(3) ->
-        io__write_string("count(3) succeeded\n", !IO)
-    ;
-        io__write_string("count(3) failed\n", !IO)
+    ( if count(3) then
+        io.write_string("count(3) succeeded\n", !IO)
+    else
+        io.write_string("count(3) failed\n", !IO)
     ),
-    ( count(2) ->
-        io__write_string("count(2) succeeded\n", !IO)
-    ;
-        io__write_string("count(2) failed\n", !IO)
+    ( if count(2) then
+        io.write_string("count(2) succeeded\n", !IO)
+    else
+        io.write_string("count(2) failed\n", !IO)
     ),
-    ( count(-2) ->
-        io__write_string("count(-2) succeeded\n", !IO)
-    ;
-        io__write_string("count(-2) failed\n", !IO)
+    ( if count(-2) then
+        io.write_string("count(-2) succeeded\n", !IO)
+    else
+        io.write_string("count(-2) failed\n", !IO)
     ).
 
 :- pred sum(int::in, int::out) is det.
 :- pragma loop_check(sum/2).
 
 sum(N, SumN) :-
-    ( N = 0 ->
+    ( if N = 0 then
         SumN = 0
-    ;
+    else
         sum(N - 1, Sum1),
         SumN = Sum1 + N
     ).
@@ -72,11 +72,11 @@ sum(N, SumN) :-
 :- pragma loop_check(semisum/2).
 
 semisum(N, SumN) :-
-    ( N < 0 ->
+    ( if N < 0 then
         fail
-    ; N = 0 ->
+    else if N = 0 then
         SumN = 0
-    ;
+    else
         semisum(N - 1, Sum1),
         SumN = Sum1 + N
     ).
@@ -85,10 +85,10 @@ semisum(N, SumN) :-
 :- pragma loop_check(count/1).
 
 count(N) :-
-    ( N < 0 ->
+    ( if N < 0 then
         fail
-    ; N = 0 ->
+    else if N = 0 then
         true
-    ;
+    else
         count(N - 1)
     ).
