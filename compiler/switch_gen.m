@@ -115,7 +115,7 @@
 :- import_module ll_backend.string_switch.
 :- import_module ll_backend.tag_switch.
 :- import_module ll_backend.trace_gen.
-:- import_module ll_backend.unify_gen.
+:- import_module ll_backend.unify_gen_test.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.

@@ -37,6 +37,10 @@
    :- include_module call_gen.
    :- include_module disj_gen.
    :- include_module unify_gen.
+      :- include_module unify_gen_construct.
+      :- include_module unify_gen_deconstruct.
+      :- include_module unify_gen_test.
+      :- include_module unify_gen_util.
    :- include_module closure_gen.
    :- include_module commit_gen.
    :- include_module switch_gen.

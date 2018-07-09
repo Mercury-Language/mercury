@@ -57,6 +57,7 @@
 :- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.switch_gen.
 :- import_module ll_backend.unify_gen.
+:- import_module ll_backend.unify_gen_construct.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
@@ -270,7 +271,8 @@ generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         ( if
             Reason = from_ground_term(TermVar, from_ground_term_construct)
         then
-            unify_gen.generate_ground_term(TermVar, SubGoal, !CI, !CLD),
+            unify_gen_construct.generate_ground_term(TermVar, SubGoal,
+                !CI, !CLD),
             Code = empty
         else if
             Reason = loop_control(LCVar, LCSVar, UseParentStack)

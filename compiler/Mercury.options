@@ -104,6 +104,11 @@ MCFLAGS-libs.mmakefiles                   = --warn-implicit-stream-calls
 MCFLAGS-parse_tree.write_deps_file        = --warn-implicit-stream-calls
 
 MCFLAGS-hlds.hlds_data                += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ll_backend.unify_gen          += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ll_backend.unify_gen_deconstruct+= --warn-inconsistent-pred-order-clauses
+MCFLAGS-ll_backend.unify_gen_construct+= --warn-inconsistent-pred-order-clauses
+MCFLAGS-ll_backend.unify_gen_test     += --warn-inconsistent-pred-order-clauses
+MCFLAGS-ll_backend.unify_gen_util     += --warn-inconsistent-pred-order-clauses
 MCFLAGS-ml_backend.mlds_to_c_class    += --warn-inconsistent-pred-order-clauses
 MCFLAGS-ml_backend.mlds_to_c_data     += --warn-inconsistent-pred-order-clauses
 MCFLAGS-ml_backend.mlds_to_c_export   += --warn-inconsistent-pred-order-clauses

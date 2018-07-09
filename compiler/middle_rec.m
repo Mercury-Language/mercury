@@ -38,7 +38,7 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
 :- import_module ll_backend.proc_gen.
-:- import_module ll_backend.unify_gen.
+:- import_module ll_backend.unify_gen_test.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

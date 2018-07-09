@@ -1,0 +1,354 @@
+%---------------------------------------------------------------------------e
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------e
+% Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%---------------------------------------------------------------------------%
+
+:- module ll_backend.unify_gen_util.
+:- interface.
+
+:- import_module hlds.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module ll_backend.llds.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
+
+:- import_module assoc_list.
+:- import_module list.
+
+%---------------------------------------------------------------------------%
+
+:- pred int_tag_to_const_and_int_type(int_tag::in, rval_const::out,
+    int_type::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred get_cons_arg_widths(module_info::in, cons_id::in,
+    list(T)::in, assoc_list(T, arg_pos_width)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % OR together the given rvals.
+    %
+:- pred or_packed_rvals(list(rval)::in, rval::out) is det.
+
+:- func or_two_rvals(rval, rval) = rval.
+
+:- func left_shift_rval(rval, arg_shift, fill_kind) = rval.
+
+:- func right_shift_rval(rval, arg_shift) = rval.
+
+%---------------------------------------------------------------------------%
+
+    % If a sub-word-sized signed integer has a negative value, then it will
+    % have sign-extend bits *beyond* its usual size. OR-ing the raw form
+    % of that sub-word-sized integer with the values of the other fields
+    % may thus stomp all over the bits assigned to store the other fields
+    % that are to the left of the sub-word-sized signed integer.
+    %
+    % Prevent this by casting sub-word-sized signed integers to their
+    % unsigned counterparts before the shift and the OR operations.
+    %
+:- pred cast_away_any_sign_extend_bits(fill_kind::in, rval::in, rval::out)
+    is det.
+
+:- pred maybe_cast_masked_off_rval(fill_kind::in, rval::in, rval::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- type assign_dir
+    --->    assign_left
+    ;       assign_right
+    ;       assign_unused.
+
+:- pred compute_assign_direction(module_info::in, unify_mode::in, mer_type::in,
+    assign_dir::out) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module backend_libs.
+:- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_pred.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
+
+:- import_module int.
+:- import_module maybe.
+:- import_module pair.
+:- import_module require.
+:- import_module term.
+
+%---------------------------------------------------------------------------%
+
+int_tag_to_const_and_int_type(IntTag, Const, Type) :-
+    (
+        IntTag = int_tag_int(Int),
+        Const = llconst_int(Int),
+        Type = int_type_int
+    ;
+        IntTag = int_tag_uint(UInt),
+        Const = llconst_uint(UInt),
+        Type = int_type_uint
+    ;
+        IntTag = int_tag_int8(Int8),
+        Const = llconst_int8(Int8),
+        Type = int_type_int8
+    ;
+        IntTag = int_tag_uint8(UInt8),
+        Const = llconst_uint8(UInt8),
+        Type = int_type_uint8
+    ;
+        IntTag = int_tag_int16(Int16),
+        Const = llconst_int16(Int16),
+        Type = int_type_int16
+    ;
+        IntTag = int_tag_uint16(UInt16),
+        Const = llconst_uint16(UInt16),
+        Type = int_type_uint16
+    ;
+        IntTag = int_tag_int32(Int32),
+        Const = llconst_int32(Int32),
+        Type = int_type_int32
+    ;
+        IntTag = int_tag_uint32(UInt32),
+        Const = llconst_uint32(UInt32),
+        Type = int_type_uint32
+    ;
+        IntTag = int_tag_int64(Int64),
+        Const = llconst_int64(Int64),
+        Type = int_type_int64
+    ;
+        IntTag = int_tag_uint64(UInt64),
+        Const = llconst_uint64(UInt64),
+        Type = int_type_uint64
+    ).
+
+%---------------------------------------------------------------------------%
+
+get_cons_arg_widths(ModuleInfo, ConsId, AllArgs, AllArgsPosWidths) :-
+    ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
+        ConsArgRepns = ConsRepnDefn ^ cr_args,
+        ConsTag = ConsRepnDefn ^ cr_tag,
+        ArgPosWidths = list.map((func(C) = C ^ car_pos_width), ConsArgRepns),
+        list.length(AllArgs, NumAllArgs),
+        list.length(ConsArgRepns, NumConsArgs),
+        NumExtraArgs = NumAllArgs - NumConsArgs,
+        ( if NumExtraArgs = 0 then
+            assoc_list.from_corresponding_lists(AllArgs, ArgPosWidths,
+                AllArgsPosWidths)
+        else if NumExtraArgs > 0 then
+            list.det_split_list(NumExtraArgs, AllArgs, ExtraArgs, ConsArgs),
+            ( if ConsTag = shared_remote_tag(_, RemoteSecTag) then
+                RemoteSecTag = remote_sectag(_, AddedBy),
+                expect(unify(AddedBy, sectag_added_by_unify), $pred,
+                    "AddedBy != sectag_added_by_unify"),
+                InitOffset = 1
+            else
+                InitOffset = 0
+            ),
+            allocate_consecutive_full_words(InitOffset,
+                ExtraArgs, ExtraArgsPosWidths),
+            assoc_list.from_corresponding_lists(ConsArgs, ArgPosWidths,
+                ConsArgsPosWidths),
+            AllArgsPosWidths = ExtraArgsPosWidths ++ ConsArgsPosWidths
+        else
+            unexpected($pred, "too few arguments")
+        )
+    else
+        allocate_consecutive_full_words(0, AllArgs, AllArgsPosWidths)
+    ).
+
+    % The initial offset that our callers should specify
+    % depends on the absence/presence of a secondary tag.
+    %
+:- pred allocate_consecutive_full_words(int::in,
+    list(T)::in, assoc_list(T, arg_pos_width)::out) is det.
+
+allocate_consecutive_full_words(_, [], []).
+allocate_consecutive_full_words(CurOffset,
+        [Arg | Args], [ArgPosWidth | ArgsPosWidths]) :-
+    PosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
+    ArgPosWidth = Arg - PosWidth,
+    allocate_consecutive_full_words(CurOffset + 1, Args, ArgsPosWidths).
+
+%---------------------------------------------------------------------------%
+
+or_packed_rvals(Rvals, OrAllRval) :-
+    % We currently do this a linear fashion, starting at the rightmost
+    % arguments, and moving towards the left.
+    %
+    % We could explore whether other strategies, such as balanced trees,
+    % (or rather, trees that are as balanced as possible) would work better.
+    (
+        Rvals = [],
+        OrAllRval = const(llconst_int(0))
+    ;
+        Rvals = [HeadRval | TailRvals],
+        or_packed_rvals_lag(HeadRval, TailRvals, OrAllRval)
+    ).
+
+:- pred or_packed_rvals_lag(rval::in, list(rval)::in, rval::out) is det.
+
+or_packed_rvals_lag(HeadRval, TailRvals, OrAllRval) :-
+    (
+        TailRvals = [],
+        OrAllRval = HeadRval
+    ;
+        TailRvals = [HeadTailRval | TailTailRvals],
+        or_packed_rvals_lag(HeadTailRval, TailTailRvals, TailOrAllRval),
+        OrAllRval = or_two_rvals(HeadRval, TailOrAllRval)
+    ).
+
+or_two_rvals(RvalA, RvalB) = OrRval :-
+    % OR-ing anything with zero has no effect.
+    ( if
+        ( RvalA = const(llconst_int(0))
+        ; RvalA = const(llconst_uint(0u))
+        )
+    then
+        OrRval = RvalB
+    else if
+        ( RvalB = const(llconst_int(0))
+        ; RvalB = const(llconst_uint(0u))
+        )
+    then
+        OrRval = RvalA
+    else
+        OrRval = binop(bitwise_or(int_type_uint), RvalA, RvalB)
+    ).
+
+left_shift_rval(Rval, Shift, Fill) = ShiftedRval :-
+    Shift = arg_shift(ShiftInt),
+    cast_away_any_sign_extend_bits(Fill, Rval, CastRval),
+    ( if ShiftInt = 0 then
+        % Shifting anything by zero bits has no effect.
+        ShiftedRval = CastRval
+    else if Rval = const(llconst_int(0)) then
+        % Shifting zero any number of bits has no effect.
+        ShiftedRval = CastRval
+    else
+        ShiftedRval = binop(unchecked_left_shift(int_type_uint),
+            CastRval, const(llconst_int(ShiftInt)))
+    ).
+
+right_shift_rval(Rval, Shift) = ShiftedRval :-
+    Shift = arg_shift(ShiftInt),
+    % Shifting anything by zero bits has no effect.
+    % Shifting zero any number of bits has no effect.
+    % However, our caller won't give us either a zero shift amount
+    % or a constant zero rval to shift.
+    ShiftedRval = binop(unchecked_right_shift(int_type_uint),
+        Rval, const(llconst_int(ShiftInt))).
+
+%---------------------------------------------------------------------------%
+
+cast_away_any_sign_extend_bits(Fill, Rval0, Rval) :-
+    (
+        ( Fill = fill_enum
+        ; Fill = fill_uint8
+        ; Fill = fill_uint16
+        ; Fill = fill_uint32
+        ),
+        Rval = Rval0
+    ;
+        Fill = fill_int8,
+        Rval = cast(lt_int(int_type_uint8), Rval0)
+    ;
+        Fill = fill_int16,
+        Rval = cast(lt_int(int_type_uint16), Rval0)
+    ;
+        Fill = fill_int32,
+        Rval = cast(lt_int(int_type_uint32), Rval0)
+    ).
+
+maybe_cast_masked_off_rval(Fill, MaskedRval0, MaskedRval) :-
+    (
+        Fill = fill_enum,
+        MaskedRval = MaskedRval0
+    ;
+        Fill = fill_int8,
+        MaskedRval = cast(lt_int(int_type_int8), MaskedRval0)
+    ;
+        Fill = fill_uint8,
+        MaskedRval = cast(lt_int(int_type_uint8), MaskedRval0)
+    ;
+        Fill = fill_int16,
+        MaskedRval = cast(lt_int(int_type_int16), MaskedRval0)
+    ;
+        Fill = fill_uint16,
+        MaskedRval = cast(lt_int(int_type_uint16), MaskedRval0)
+    ;
+        Fill = fill_int32,
+        MaskedRval = cast(lt_int(int_type_int32), MaskedRval0)
+    ;
+        Fill = fill_uint32,
+        MaskedRval = cast(lt_int(int_type_uint32), MaskedRval0)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pragma inline(compute_assign_direction/4).
+
+compute_assign_direction(ModuleInfo, ArgMode, ArgType, Dir) :-
+    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
+    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
+        LeftTopMode),
+    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
+        RightTopMode),
+    (
+        LeftTopMode = top_in,
+        (
+            RightTopMode = top_in,
+            % Both input: it is a test unification.
+            % This shouldn't happen, since mode analysis should avoid
+            % creating any tests in the arguments of a construction
+            % or deconstruction unification.
+            unexpected($pred, "test in arg of [de]construction")
+        ;
+            RightTopMode = top_out,
+            % Input - output: it is an assignment to the RHS.
+            Dir = assign_right
+        ;
+            RightTopMode = top_unused,
+            unexpected($pred, "some strange unify")
+        )
+    ;
+        LeftTopMode = top_out,
+        (
+            RightTopMode = top_in,
+            % Output - input: it is an assignment to the LHS.
+            Dir = assign_left
+        ;
+            ( RightTopMode = top_out
+            ; RightTopMode = top_unused
+            ),
+            unexpected($pred, "some strange unify")
+        )
+    ;
+        LeftTopMode = top_unused,
+        (
+            RightTopMode = top_unused,
+            % Unused - unused: the unification has no effect.
+            Dir = assign_unused
+        ;
+            ( RightTopMode = top_in
+            ; RightTopMode = top_out
+            ),
+            unexpected($pred, "some strange unify")
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+:- end_module ll_backend.unify_gen_util.
+%---------------------------------------------------------------------------%

@@ -84,7 +84,7 @@
 :- import_module ll_backend.stack_opt.
 :- import_module ll_backend.store_alloc.
 :- import_module ll_backend.transform_llds.
-:- import_module ll_backend.unify_gen.
+:- import_module ll_backend.unify_gen_construct.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.error_util.
