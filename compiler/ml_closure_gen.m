@@ -97,7 +97,7 @@
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
-:- import_module ml_backend.ml_unify_gen.
+:- import_module ml_backend.ml_unify_gen_construct.
 :- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.

@@ -46,6 +46,10 @@
       :- include_module ml_lookup_switch.
    :- include_module ml_type_gen.
    :- include_module ml_unify_gen.
+      :- include_module ml_unify_gen_construct.
+      :- include_module ml_unify_gen_deconstruct.
+      :- include_module ml_unify_gen_test.
+      :- include_module ml_unify_gen_util.
 :- include_module ml_gen_info.
 :- include_module ml_args_util.
 :- include_module ml_code_util.

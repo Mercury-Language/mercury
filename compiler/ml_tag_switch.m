@@ -49,7 +49,7 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_simplify_switch.
 :- import_module ml_backend.ml_switch_gen.
-:- import_module ml_backend.ml_unify_gen.
+:- import_module ml_backend.ml_unify_gen_util.
 :- import_module ml_backend.ml_util.
 
 :- import_module assoc_list.

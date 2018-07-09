@@ -491,6 +491,7 @@
 :- import_module ml_backend.ml_foreign_proc_gen.
 :- import_module ml_backend.ml_switch_gen.
 :- import_module ml_backend.ml_unify_gen.
+:- import_module ml_backend.ml_unify_gen_construct.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
 

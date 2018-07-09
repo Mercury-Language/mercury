@@ -152,7 +152,7 @@
 :- import_module ml_backend.ml_string_switch.
 :- import_module ml_backend.ml_tag_switch.
 :- import_module ml_backend.ml_target_util.
-:- import_module ml_backend.ml_unify_gen.
+:- import_module ml_backend.ml_unify_gen_test.
 
 :- import_module assoc_list.
 :- import_module bool.

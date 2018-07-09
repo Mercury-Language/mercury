@@ -48,7 +48,7 @@
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_proc_gen.
 :- import_module ml_backend.ml_type_gen.
-:- import_module ml_backend.ml_unify_gen.
+:- import_module ml_backend.ml_unify_gen_construct.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
