@@ -22,50 +22,54 @@
 
 %---------------------------------------------------------------------------%
 
+% Phase 4-ml: MLDS-specific pre-passes to transform or annotate the HLDS.
+:- include_module add_heap_ops.         % transform
+:- include_module add_trail_ops.        % transform
+
+% Phase 5-ml: compile HLDS to MLDS.
+
+% The MLDS data structure itself, and some utility predicates on it.
 :- include_module mlds.
 :- include_module ml_target_util.
 :- include_module ml_util.
 
-% Phase 4-ml: MLDS-specific HLDS to HLDS transformations and annotations.
-:- include_module add_heap_ops.         % transformation
-:- include_module add_trail_ops.        % transformation
-
-% Phase 5-ml: compile HLDS to MLDS
+% The HLDS->MLDS code generator.
 :- include_module ml_top_gen.
 :- include_module ml_proc_gen.
-:- include_module ml_code_gen.
-   :- include_module ml_call_gen.
-   :- include_module ml_foreign_proc_gen.
-   :- include_module ml_closure_gen.
-   :- include_module ml_commit_gen.
-   :- include_module ml_disj_gen.
-   :- include_module ml_switch_gen.
-      :- include_module ml_simplify_switch.
-      :- include_module ml_string_switch.
-      :- include_module ml_tag_switch.
-      :- include_module ml_lookup_switch.
-   :- include_module ml_type_gen.
-   :- include_module ml_unify_gen.
-      :- include_module ml_unify_gen_construct.
-      :- include_module ml_unify_gen_deconstruct.
-      :- include_module ml_unify_gen_test.
-      :- include_module ml_unify_gen_util.
-:- include_module ml_gen_info.
-:- include_module ml_args_util.
-:- include_module ml_code_util.
+    :- include_module ml_code_gen.
+    :- include_module ml_unify_gen.
+        :- include_module ml_unify_gen_construct.
+        :- include_module ml_unify_gen_deconstruct.
+        :- include_module ml_unify_gen_test.
+        :- include_module ml_unify_gen_util.
+        :- include_module ml_closure_gen.
+    :- include_module ml_call_gen.
+    :- include_module ml_foreign_proc_gen.
+    :- include_module ml_disj_gen.
+    :- include_module ml_switch_gen.
+        :- include_module ml_simplify_switch.
+        :- include_module ml_string_switch.
+        :- include_module ml_tag_switch.
+        :- include_module ml_lookup_switch.
+    :- include_module ml_commit_gen.
+
+    :- include_module ml_gen_info.
+    :- include_module ml_args_util.
+    :- include_module ml_code_util.
 :- include_module ml_accurate_gc.
+:- include_module ml_type_gen.
 :- include_module ml_global_data.
 :- include_module rtti_to_mlds.
 
-% Phase 6-ml: MLDS -> MLDS transformations
+% Phase 6-ml: MLDS -> MLDS transformations.
 :- include_module ml_elim_nested.
 :- include_module ml_rename_classes.
 :- include_module ml_unused_assign.
 :- include_module ml_optimize.
 
-% Phase 7-ml: compile MLDS to target code
+% Phase 7-ml: compile MLDS to target code.
 
-% MLDS->C back-end
+% MLDS->C back-end.
 :- include_module mlds_to_c_class.
 :- include_module mlds_to_c_data.
 :- include_module mlds_to_c_export.
@@ -77,7 +81,7 @@
 :- include_module mlds_to_c_type.
 :- include_module mlds_to_c_util.
 
-% MLDS->Java back-end
+% MLDS->Java back-end.
 :- include_module mlds_to_java_class.
 :- include_module mlds_to_java_data.
 :- include_module mlds_to_java_export.
