@@ -1,12 +1,11 @@
-/*
-** Copyright (C) 2004, 2006 The University of Melbourne.
-** Copyright (C) 2018 The Mercury team.
-** This file is distributed under the terms specified in COPYING.LIB.
-*/
+// vim: ts=4 sw=4 expandtab ft=c
+//
+// Copyright (C) 2004, 2006 The University of Melbourne.
+// Copyright (C) 2018 The Mercury team.
+// This file is distributed under the terms specified in COPYING.LIB.
+//
 
-/*
-** File: Native.c	- Native code for java/runtime/Native.java
-*/
+// File: Native.c - Native code for java/runtime/Native.java.
 
 #include <jni.h>
 
@@ -23,7 +22,7 @@ JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_clock(JNIEnv *, jclass);
  * Signature: ()I
  */
 JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_clocks_1per_1sec(
-		JNIEnv *, jclass);
+        JNIEnv *, jclass);
 
 /*
  * Class:     Native
@@ -31,7 +30,7 @@ JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_clocks_1per_1sec(
  * Signature: ()[I
  */
 JNIEXPORT jintArray JNICALL Java_jmercury_runtime_Native_times(
-		JNIEnv *, jclass);
+        JNIEnv *, jclass);
 
 /*
  * Class:     Native
@@ -46,71 +45,70 @@ JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_clk_1tck(JNIEnv *, jclass);
  * Signature: ()I
  */
 JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_get_1user_1cpu_1milliseconds(
-		JNIEnv *, jclass);
+        JNIEnv *, jclass);
 
 #include "mercury_imp.h"
 #include "mercury_timing.h"
 
 #include <time.h>
 #ifdef MR_HAVE_SYS_TYPES_H
-	#include <sys/types.h>
+    #include <sys/types.h>
 #endif
 #ifdef MR_HAVE_SYS_TIMES_H
-	#include <sys/times.h>
+    #include <sys/times.h>
 #endif
 #ifdef MR_HAVE_UNISTD_H
-	#include <unistd.h>
+    #include <unistd.h>
 #endif
 
 JNIEXPORT jint JNICALL
 Java_jmercury_runtime_Native_clock(JNIEnv *env, jclass obj) {
-	return (MR_Integer) clock();
+    return (MR_Integer) clock();
 }
 
 JNIEXPORT jint JNICALL
 Java_jmercury_runtime_Native_clocks_1per_1sec(JNIEnv *env, jclass obj) {
-	return CLOCKS_PER_SEC;
+    return CLOCKS_PER_SEC;
 }
 
 JNIEXPORT jintArray JNICALL
 Java_jmercury_runtime_Native_times(JNIEnv *env, jclass obj) {
-	jint		intarray[5];
-	jintArray	result;
+    jint        intarray[5];
+    jintArray   result;
 
 #ifdef MR_HAVE_POSIX_TIMES
-	struct tms	t;
+    struct tms  t;
 
-	intarray[0] = (MR_Integer) times(&t);
-	intarray[1] = (MR_Integer) t.tms_utime;
-	intarray[2] = (MR_Integer) t.tms_stime;
-	intarray[3] = (MR_Integer) t.tms_cutime;
-	intarray[4] = (MR_Integer) t.tms_cstime;
+    intarray[0] = (MR_Integer) times(&t);
+    intarray[1] = (MR_Integer) t.tms_utime;
+    intarray[2] = (MR_Integer) t.tms_stime;
+    intarray[3] = (MR_Integer) t.tms_cutime;
+    intarray[4] = (MR_Integer) t.tms_cstime;
 #else
-	intarray[0] = -1;
+    intarray[0] = -1;
 #endif
 
-	result = (*env)->NewIntArray(env, 5);
-	if (result != NULL) {
-		(*env)->SetIntArrayRegion(env, result, 0, 5, intarray);
-	}
+    result = (*env)->NewIntArray(env, 5);
+    if (result != NULL) {
+        (*env)->SetIntArrayRegion(env, result, 0, 5, intarray);
+    }
 
-	return result;
+    return result;
 }
 
 JNIEXPORT jint JNICALL Java_jmercury_runtime_Native_clk_1tck(
-		JNIEnv *env, jclass obj)
+        JNIEnv *env, jclass obj)
 {
 #if defined(MR_CLOCK_TICKS_PER_SECOND)
-	return MR_CLOCK_TICKS_PER_SECOND;
+    return MR_CLOCK_TICKS_PER_SECOND;
 #else
-	return -1;
+    return -1;
 #endif
 }
 
 JNIEXPORT jint JNICALL
 Java_jmercury_runtime_Native_get_1user_1cpu_1milliseconds(
-		JNIEnv *env, jclass obj)
+        JNIEnv *env, jclass obj)
 {
-	return MR_get_user_cpu_milliseconds();
+    return MR_get_user_cpu_milliseconds();
 }
-

@@ -1,3 +1,5 @@
+// vim: ts=4 sw=4 expandtab ft=java
+//
 // @configure_input@
 //
 // Copyright (C) 2001-2004 The University of Melbourne.
@@ -11,6 +13,6 @@
 package jmercury.runtime;
 
 public class Constants {
-	public static final java.lang.String MR_VERSION = "@VERSION@";
-	public static final java.lang.String MR_FULLARCH = "@FULLARCH@";
+    public static final java.lang.String MR_VERSION = "@VERSION@";
+    public static final java.lang.String MR_FULLARCH = "@FULLARCH@";
 }

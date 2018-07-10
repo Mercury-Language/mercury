@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2014, 2018 The Mercury Team
 // This file is distributed under the terms specified in COPYING.LIB.
@@ -60,15 +61,12 @@ public class Semaphore
         boolean keep_trying;
         boolean success;
 
-        // Avoid a warning with the loop below
+        // Avoid a warning with the loop below.
         success = false;
 
-        /*
-         * tryAcquire is interruptable so we keep trying until we've
-         * executed it at least once and it was not interrupted.  We also
-         * track if we were interrupted so we can raise this condition
-         * again.
-         */
+        // tryAcquire is interruptable so we keep trying until we have
+        // executed it at least once and it was not interrupted. We also track
+        // if we were interrupted, so we can raise this condition again.
         do {
             keep_trying = true;
             try {
@@ -87,10 +85,8 @@ public class Semaphore
         }
 
         if (interrupted_once) {
-            /*
-            ** Because this was supposed to be uninterruptable we need to
-            ** raise the interrupt that we received earlier.
-            */
+            // Because this was supposed to be uninterruptable,
+            // we need to raise the interrupt that we received earlier.
             Thread.currentThread().interrupt();
         }
     }
@@ -111,7 +107,7 @@ public class Semaphore
 
             result = tryAcquire(permits, 0, unit);
             if (result) {
-                // Blocking wasn't necessary
+                // Blocking wasn't necessary.
                 return true;
             } else {
                 // Blocking required, notify thread.
@@ -146,4 +142,3 @@ public class Semaphore
         }
     }
 }
-

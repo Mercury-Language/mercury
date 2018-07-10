@@ -1,3 +1,8 @@
+// vim: ts=4 sw=4 expandtab ft=java
+//
+// Copyright (C) 2018 The Mercury team.
+// This file is distributed under the terms specified in COPYING.LIB.
+//
 
 package jmercury.runtime;
 
@@ -39,4 +44,3 @@ public class NativeThread extends MercuryThread
         ;
     }
 }
-

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 # Copyright (C) 2004 The University of Melbourne.
@@ -7,7 +7,7 @@
 # This file is distributed under the terms specified in COPYING.LIB.
 #
 # This Makefile compiles the shared object for use with
-# jmercury.runtime.Native
+# jmercury.runtime.Native.
 #
 
 MERCURY_DIR	= ../..
@@ -21,7 +21,7 @@ NATIVE_SO	= Native.$(EXT_FOR_SHARED_LIB)
 MAIN_TARGET	= $(NATIVE_SO)
 
 PIC_OBJS	= $(RUNTIME_DIR)/mercury_timing.$(EXT_FOR_PIC_OBJECTS) \
-		$(NATIVE_PIC)
+			$(NATIVE_PIC)
 
 CFLAGS		= -I$(RUNTIME_DIR)
 
@@ -30,7 +30,7 @@ $(NATIVE_SO):	$(PIC_OBJS)
 
 $(NATIVE_PIC):	Native.c
 		$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
-		$(CFLAGS_FOR_PIC) -o $(NATIVE_PIC) -c Native.c
+			$(CFLAGS_FOR_PIC) -o $(NATIVE_PIC) -c Native.c
 
 clean:
 		rm -f $(PIC_OBJS)

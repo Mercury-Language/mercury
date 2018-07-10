@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2014, 2018 The Mercury Team
 // This file is distributed under the terms specified in COPYING.LIB.
@@ -66,8 +67,8 @@ public class Task implements Runnable
 
     /**
      * Wait for the task to complete.
-     * This waits on the task's monitor.  Callers should not be holding any
-     * other monitors.
+     * This waits on the task's monitor. Callers should not be holding
+     * any other monitors.
      */
     public synchronized void waitForTask()
         throws InterruptedException
@@ -81,5 +82,3 @@ public class Task implements Runnable
         return "Task " + id;
     }
 }
-
-

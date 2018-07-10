@@ -1,3 +1,5 @@
+// vim: ts=4 sw=4 expandtab ft=java
+//
 // @configure_input@
 //
 // Copyright (C) 2004, 2006 The University of Melbourne.
@@ -8,139 +10,131 @@
 // This class exists to provide any native functionality required by the Java
 // implementation.  It uses JNI to access a shared object which it searches
 // for in all the directories listed in the current CLASSPATH.
-// 
+//
 // At the moment the only services provided are those relating to timing.
 //
 
 package jmercury.runtime;
 
 public class Native {
-	/*
-	** SHARED_OBJ is the name of the shared object which contains all the
-	** compiled native code.
-	*/
-	private	static final java.lang.String	SHARED_OBJ =
-			"Native.@EXT_FOR_SHARED_LIB@";
+    /**
+     * SHARED_OBJ is the name of the shared object which contains
+     * all the compiled native code.
+     */
+    private static final java.lang.String   SHARED_OBJ =
+        "Native.@EXT_FOR_SHARED_LIB@";
 
-	/*
-	** attemptedLoad records whether or not the user has yet attempted to
-	** load the shared library.
-	*/
-	private static boolean			attemptedLoad = false;
+    /**
+     * attemptedLoad records whether or not the user has yet attempted
+     * to load the shared library.
+     */
+    private static boolean  attemptedLoad = false;
 
-	/*
-	** available and isAvailable() are true when native functionality
-	** is available. (ie SHARED_OBJ was loaded successfully)
-	*/
-	private	static boolean			available  = false;
+    /**
+     * available and isAvailable() are true when native functionality
+     * is available. (ie SHARED_OBJ was loaded successfully)
+     */
+    private static boolean  available  = false;
 
-	/*
-	** isAvailable() as the side effect of attempting to load the library
-	** if this has not already been done.
-	*/
-	public static boolean isAvailable() {
-		if (!attemptedLoad) {
-			load_library();
-		}
-		return available;
-	}
+    /**
+     * isAvailable() as the side effect of attempting to load the library
+     * if this has not already been done.
+     */
+    public static boolean isAvailable() {
+        if (!attemptedLoad) {
+            load_library();
+        }
+        return available;
+    }
 
-	static {
-		load_library();
-	}
+    static {
+        load_library();
+    }
 
-	/*
-	** load_library():
-	** 	Searches all the directories listed in the classpath,
-	** 	(including the directories containing each jar file) for
-	** 	the shared object SHARED_OBJ and attempts to load this file
-	** 	if found.
-	**	Also searches in the subdirectory Constants.MR_FULLARCH.
-	** 	Sets available to true if successful, false otherwise.
-	*/
-	private static void load_library() {
-		attemptedLoad = true;
+    /**
+     * load_library():
+     *  Searches all the directories listed in the classpath,
+     *  (including the directories containing each jar file) for the
+     *  shared object SHARED_OBJ, and attempts to load this file if found.
+     *  Also searches in the subdirectory Constants.MR_FULLARCH.
+     *  Sets available to true if successful, false otherwise.
+     */
+    private static void load_library() {
+        attemptedLoad = true;
 
-		java.util.StringTokenizer classpath =
-				new java.util.StringTokenizer(
-				java.lang.System.getProperty("java.class.path")
-				,java.lang.System.getProperty("path.separator")
-				);
+        java.util.StringTokenizer classpath =
+            new java.util.StringTokenizer(
+                java.lang.System.getProperty("java.class.path"),
+                java.lang.System.getProperty("path.separator")
+            );
 
-		while (classpath.hasMoreTokens()) {
-			java.io.File dir;
-			java.io.File entry = new java.io.File(
-					classpath.nextToken());
+        while (classpath.hasMoreTokens()) {
+            java.io.File dir;
+            java.io.File entry = new java.io.File(classpath.nextToken());
 
-			try {
-				if (entry.isDirectory()) {
-					dir = entry;
-				} else {
-					dir = entry.getParentFile();
-				}
-				if (dir == null) {
-					dir = new java.io.File("");
-				}
+            try {
+                if (entry.isDirectory()) {
+                    dir = entry;
+                } else {
+                    dir = entry.getParentFile();
+                }
+                if (dir == null) {
+                    dir = new java.io.File("");
+                }
 
-				java.io.File match = new java.io.File(dir,
-						SHARED_OBJ);
-				if (match.exists() == false) {
-					dir = new java.io.File(dir,
-						Constants.MR_FULLARCH);
-					match = new java.io.File(dir,
-						SHARED_OBJ);
-				}
+                java.io.File match = new java.io.File(dir, SHARED_OBJ);
+                if (match.exists() == false) {
+                    dir = new java.io.File(dir, Constants.MR_FULLARCH);
+                    match = new java.io.File(dir, SHARED_OBJ);
+                }
 
-				java.lang.System.load(match.getAbsolutePath());
-				available = true;
-				return;
-			}
-			catch (java.lang.Exception e) {
-				continue;
-			}
-		} // while classpath.hasMoreTokens()
+                java.lang.System.load(match.getAbsolutePath());
+                available = true;
+                return;
+            }
+            catch (java.lang.Exception e) {
+                continue;
+            }
+        } // while classpath.hasMoreTokens()
 
-		return;
-	} // load_library()
+        return;
+    } // load_library()
 
-	/*
-	** clock():
-	** 	Calls clock() from the <time.h> library.
-	*/
-	public static native int clock();
+    /**
+     * clock():
+     *  Calls clock() from the <time.h> library.
+     */
+    public static native int clock();
 
-	/*
-	** clocks_per_sec():
-	**	Returns the number of "clocks" per sec as defined by
-	**	CLOCKS_PER_SEC.
-	*/
-	public static native int clocks_per_sec();
+    /**
+     * clocks_per_sec():
+     *  Returns the number of "clocks" per sec as defined by CLOCKS_PER_SEC.
+     */
+    public static native int clocks_per_sec();
 
-	/*
-	** times():
-	** 	Calls times() from the <time.h> library.  Results are returned
-	** 	in an int array of the form:
-	**	{ <return value>, utime, stime, cutime, cstime }
-	**	If POSIX times are not available, <return value> will be set
-	**	to -1, and the other values are undefined.
-	**	Returns null if the array cannot be constructed.
-	*/
-	public static native int[] times();
+    /**
+     * times():
+     *  Calls times() from the <time.h> library.  Results are returned
+     *  in an int array of the form:
+     *  { <return value>, utime, stime, cutime, cstime }
+     *  If POSIX times are not available, <return value> will be set to -1,
+     *  and the other values are undefined.
+     *  Returns null if the array cannot be constructed.
+     */
+    public static native int[] times();
 
-	/*
-	** clk_tck():
-	**	Returns the number of "clock ticks" per second as defined by
-	**	sysconf(_SC_CLK_TCK).  A `clock_t' value returned by
-	**	'times()' can be divided by this value to obtain a time in
-	**	seconds.
-	*/
-	public static native int clk_tck();
+    /**
+     * clk_tck():
+     *  Returns the number of "clock ticks" per second as defined by
+     *  sysconf(_SC_CLK_TCK). A `clock_t' value returned by 'times()'
+     *  can be divided by this value to obtain a time in seconds.
+     */
+    public static native int clk_tck();
 
-	/*
-	** get_user_cpu_milliseconds():
-	**	Native method to return the CPU time consumed by the process,
-	**	in milliseconds, from an arbitrary initial time.
-	*/
-	public static native int get_user_cpu_milliseconds();
+    /**
+     * get_user_cpu_milliseconds():
+     *  Native method to return the CPU time consumed by the process,
+     *  in milliseconds, from an arbitrary initial time.
+     */
+    public static native int get_user_cpu_milliseconds();
 }
-

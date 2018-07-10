@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=cs
 //
 // Copyright (C) 2003-2004, 2010-2011 The University of Melbourne.
 // Copyright (C) 2014-2018 The Mercury team.
@@ -7,8 +8,8 @@
 // mercury_dotnet.cs - This file defines the system runtime types and
 // methods that are used when generating code for the .NET backend.
 
-// the following "using" declaration works around a bug in GNU Portable.NET's
-// C# compiler
+// The following "using" declaration works around a bug in GNU Portable.NET's
+// C# compiler.
 using System.Runtime.InteropServices;
 
 namespace mercury.runtime {
@@ -382,7 +383,7 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
     public short            type_ctor_flags;
     public int[]            type_functor_number_map;
 
-    // This attribute is also to to prevent cyclic copying in deep_copy.
+    // This attribute is also to prevent cyclic copying in deep_copy.
     [System.NonSerialized]
     private TypeInfo_Struct cached_type_info;
 
@@ -416,7 +417,7 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
         object compare_proc,
         string module,
         string name,
-        object name_ordered_functor_descs, // TypeFunctors
+        object name_ordered_functor_descs,  // TypeFunctors
         object value_ordered_functor_descs, // TypeLayout
         int num_functors,
         short flags,
@@ -439,7 +440,7 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
 
     public override bool Equals(object other) {
         TypeCtorInfo_Struct tci = other as TypeCtorInfo_Struct;
-        if ((System.Object)tci == null) {
+        if ((System.Object) tci == null) {
             return false;
         }
         return this.Equals(tci);
@@ -542,7 +543,7 @@ public class TypeInfo_Struct : PseudoTypeInfo {
 
     public override bool Equals(object other) {
         TypeInfo_Struct ti = other as TypeInfo_Struct;
-        if ((System.Object)ti == null) {
+        if ((System.Object) ti == null) {
             return false;
         }
         return this.Equals(ti);
@@ -591,7 +592,7 @@ public class TypeInfo_Struct : PseudoTypeInfo {
     private TypeInfo_Struct collapse_equivalences() {
         TypeInfo_Struct ti = this;
 
-        /* Look past equivalences */
+        // Look past equivalences.
         while (ti.type_ctor.type_ctor_rep ==
                 TypeCtorRep.MR_TYPECTOR_REP_EQUIV_GROUND
             || ti.type_ctor.type_ctor_rep ==
@@ -679,7 +680,7 @@ public class DuFunctorDesc {
     public DuArgLocn[]      du_functor_arg_locns;
     public DuExistInfo      du_functor_exist_info;
     public FunctorSubtypeInfo   du_functor_subtype_info;
-    public int              du_functor_num_sectag_bits;
+    public int              du_functor_num_sectag_bits; // unused in C# grades
 
     public DuFunctorDesc() {
     }
@@ -748,8 +749,12 @@ public class DuPtagLayout {
         sectag_numbits = numbits;
     }
 
-    public DuPtagLayout(int sharers, int locn, DuFunctorDesc[] alts, sbyte numbits)
-        : this(sharers, (Sectag_Locn)locn, alts, numbits)
+    public DuPtagLayout(
+        int sharers,
+        int locn,
+        DuFunctorDesc[] alts,
+        sbyte numbits)
+        : this(sharers, (Sectag_Locn) locn, alts, numbits)
     {
     }
 }
@@ -984,11 +989,11 @@ public class UnreachableDefault : System.Exception {
 
 public class ThreadLocalMutables
 {
-    // Child threads do not inherit [ThreadStatic] values so we cannot use the
-    // attribute to implement `thread_local' mutables directly.  Instead, all
-    // thread-local mutables are stored in a single array, which is copied from
-    // the parent thread when a new thread is spawned.  The array indices are
-    // allocated by module initialisation predicates.
+    // Child threads do not inherit [ThreadStatic] values, so we cannot use
+    // the attribute to implement `thread_local' mutables directly. Instead,
+    // all thread-local mutables are stored in a single array, which is copied
+    // from the parent thread when a new thread is spawned. The array indices
+    // are allocated by module initialisation predicates.
     [System.ThreadStatic]
     private static object[] array = null;
 
@@ -1049,7 +1054,7 @@ public class Environment
 
 public class LowLevelData
 {
-	// Make a Mercury enumeration with the given integer value.
+    // Make a Mercury enumeration with the given integer value.
     public static object[] make_enum(int enum_value)
     {
         object[] e;
@@ -1057,7 +1062,7 @@ public class LowLevelData
         return e;
     }
 
-	// Make a MR_Word with the given tag and arity.
+    // Make a MR_Word with the given tag and arity.
     public static object[] make_MR_Word(int tag, int arity)
     {
         object[] o = new object[arity + 1];
@@ -1065,15 +1070,15 @@ public class LowLevelData
         return o;
     }
 
-	// Set a field of an MR_Word with a given value.
-	// The first field is at index 1.
+    // Set a field of an MR_Word with a given value.
+    // The first field is at index 1.
     public static void set_MR_Word_field(object[] w, int index, object value)
     {
         w[index] = value;
     }
 
-	// Get the value from an MR_Word.
-	// The first field is at index 1.
+    // Get the value from an MR_Word.
+    // The first field is at index 1.
     public static object get_MR_Word_field(object[] w, int index)
     {
         return w[index];
@@ -1081,7 +1086,7 @@ public class LowLevelData
 
     public static bool list_is_cons(object[] w)
     {
-	    return (System.Convert.ToInt32(w[0]) != 0);
+        return (System.Convert.ToInt32(w[0]) != 0);
     }
 
     public static object list_get_head(object[] w)
@@ -1101,9 +1106,7 @@ class PInvoke {
     public static extern int _putenv(string env);
 }
 
-/*
- * A bitmap class for bitmap.m and the rewind code in version_array.m
- */
+// A bitmap class for bitmap.m and the rewind code in version_array.m.
 [System.Serializable]
 public class MercuryBitmap {
     public int num_bits;
@@ -1169,5 +1172,3 @@ public class MercuryBitmap {
 }
 
 }
-
-/* vim: set sts=4 sw=4 et: */

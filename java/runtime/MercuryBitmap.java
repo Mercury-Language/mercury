@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2001-2002, 2004-2007, 2009-2011 The University of Melbourne
 // Copyright (C) 2014, 2018 The Mercury Team.
@@ -8,9 +9,9 @@ package jmercury.runtime;
 
 /**
  * Simple bitmap implementation.
- * This bitmap class is mainly used by bitmap.m in the standard library.  It
- * is also used by version_array.m which is why it is part of the
- * jmercury.runtime package rather than being internal to bitmap.m
+ * This bitmap class is mainly used by bitmap.m in the standard library.
+ * It is also used by version_array.m which is why it is part of the
+ * jmercury.runtime package rather than being internal to bitmap.m.
  */
 public class MercuryBitmap implements java.io.Serializable {
     public static final int BITS_PER_BYTE = 8;
@@ -69,4 +70,3 @@ public class MercuryBitmap implements java.io.Serializable {
         return bit % BITS_PER_BYTE;
     }
 }
-

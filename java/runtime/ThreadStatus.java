@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2014, 2018 The Mercury Team
 // This file is distributed under the terms specified in COPYING.LIB.
@@ -16,4 +17,3 @@ public enum ThreadStatus {
      */
     OTHER
 }
-

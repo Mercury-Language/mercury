@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2003 The University of Melbourne.
 // Copyright (C) 2018 The Mercury team.
@@ -7,12 +8,11 @@
 package jmercury.runtime;
 
 public class MaybeResFunctorDesc {
-	public DuFunctorDesc		maybe_res_du;
-	public ReservedAddrFunctorDesc	maybe_res_res;
-	public MaybeResFunctorDesc(DuFunctorDesc du, 
-		ReservedAddrFunctorDesc res)
-	{
-		maybe_res_du = du;
-		maybe_res_res = res;
-	}
+    public DuFunctorDesc            maybe_res_du;
+    public ReservedAddrFunctorDesc  maybe_res_res;
+
+    public MaybeResFunctorDesc(DuFunctorDesc du, ReservedAddrFunctorDesc res) {
+        maybe_res_du = du;
+        maybe_res_res = res;
+    }
 }

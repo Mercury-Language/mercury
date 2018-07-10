@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2001-2003 The University of Melbourne.
 // Copyright (C) 2018 The Mercury team.
@@ -6,14 +7,14 @@
 
 package jmercury.runtime;
 
-// Corresponds to MR_DuExistLocn in runtime/mercury_type_info.h
+// Corresponds to MR_DuExistLocn in runtime/mercury_type_info.h.
 
 public class DuExistLocn implements java.io.Serializable {
-	public int exist_arg_num;
-	public int exist_offset_in_tci;
+    public int exist_arg_num;
+    public int exist_offset_in_tci;
 
-	public DuExistLocn(int arg_num, int offset_in_tci) {
-		exist_arg_num = arg_num;
-		exist_offset_in_tci = offset_in_tci;
-	}
+    public DuExistLocn(int arg_num, int offset_in_tci) {
+        exist_arg_num = arg_num;
+        exist_offset_in_tci = offset_in_tci;
+    }
 }

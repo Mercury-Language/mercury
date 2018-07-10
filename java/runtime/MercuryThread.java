@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2014, 2018 The Mercury Team
 // This file is distributed under the terms specified in COPYING.LIB.
@@ -10,7 +11,7 @@ package jmercury.runtime;
  */
 public abstract class MercuryThread extends Thread
 {
-    private int                 id;
+    private int id;
 
     /**
      * Construct a new MercuryThread with the given ID.
@@ -34,8 +35,7 @@ public abstract class MercuryThread extends Thread
     public abstract void running();
 
     /**
-     * If the current thread is a MercuryThread then return a reference to
-     * it.
+     * If the current thread is a MercuryThread then return a reference to it.
      */
     public static MercuryThread currentThread()
     {
@@ -50,4 +50,3 @@ public abstract class MercuryThread extends Thread
     }
 
 }
-

@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2014, 2018 The Mercury Team
 // This file is distributed under the terms specified in COPYING.LIB.
@@ -16,7 +17,7 @@ public class MercuryRuntime
     /**
      * Private constructor.
      * This private constructor doesn't do anything and isn't called by
-     * anyone.  It exists only to prevent people from creating an instance.
+     * anyone. It exists only to prevent people from creating an instance.
      */
     private MercuryRuntime() {
     }
@@ -25,7 +26,7 @@ public class MercuryRuntime
 
     /**
      * Return the thread pool, initialising it if required.
-     * This does not start the thread pool.  It is started either when
+     * This does not start the thread pool. It is started either when
      * startup() is called or automatically when the first task is
      * submitted.
      */
@@ -47,9 +48,9 @@ public class MercuryRuntime
 
     /**
      * Finalise the runtime system.
-     * This _must_ be called at the end of any program.  It runs
-     * finalisers and stops the thread pool.  This will wait for the thread
-     * pool to shutdown (unless abort=true).
+     * This _must_ be called at the end of any program. It runs finalisers
+     * and stops the thread pool. This will wait for the thread pool
+     * to shutdown (unless abort=true).
      */
     public static void finalise(boolean abort) {
         MercuryThreadPool pool;
@@ -66,13 +67,12 @@ public class MercuryRuntime
 
     /**
      * Finalise the runtime system.
-     * This _must_ be called at the end of any program.  It runs
-     * finalisers and stops the thread pool.  This will wait for the thread
-     * pool to shutdown.
+     * This _must_ be called at the end of any program. It runs finalisers
+     * and stops the thread pool. This will wait for the thread pool
+     * to shutdown.
      * This is the same as calling finalise(false)
      */
     public static void finalise() {
         finalise(false);
     }
 }
-

@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2009 The University of Melbourne.
 // Copyright (C) 2018 The Mercury team.
@@ -12,4 +13,3 @@ package jmercury.runtime;
 public interface MethodPtrN extends MethodPtr {
     public abstract java.lang.Object call___0_0(java.lang.Object[] args);
 }
-

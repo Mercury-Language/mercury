@@ -1,3 +1,4 @@
+// vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2014, 2018 The Mercury Team
 // This file is distributed under the terms specified in COPYING.LIB.
@@ -70,11 +71,9 @@ public class Getopt implements Iterable<Getopt.Option>
                     option = null;
                 } else {
                     arguments.add(str);
-                    /*
-                     * The token we've got is an argument not an option,
-                     * Store the remaining strings as arguments and stop
-                     * processing.
-                     */
+                    // The token we have got is an argument, not an option.
+                    // Store the remaining strings as arguments, and
+                    // stop processing.
                     while (tok.hasMoreTokens()) {
                         str = tok.nextToken();
                         arguments.add(str);
@@ -103,7 +102,7 @@ public class Getopt implements Iterable<Getopt.Option>
         private String option;
         // the value of the option or null.
         private String value;
-  
+
         /**
          * Create a new option.
          * @param option The name of the option, excluding any leading - or
@@ -131,7 +130,7 @@ public class Getopt implements Iterable<Getopt.Option>
         {
             this.value = value;
         }
-        
+
         /**
          * True if this option matches the given option name.
          * @param option The option name for comparison without leading --
@@ -167,5 +166,3 @@ public class Getopt implements Iterable<Getopt.Option>
         }
     }
 }
-
-
