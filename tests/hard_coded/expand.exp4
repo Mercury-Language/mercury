@@ -87,12 +87,10 @@ no arguments
 expand: functor "" arity 0 arguments []
 deconstruct_du failed
 
-"Hello, world
-"/0
+"Hello, world\n"/0
 functor_number_cc failed
 no arguments
-expand: functor "Hello, world
-" arity 0 arguments []
+expand: functor "Hello, world\n" arity 0 arguments []
 deconstruct_du failed
 
 "Foo%sFoo"/0
@@ -101,10 +99,10 @@ no arguments
 expand: functor "Foo%sFoo" arity 0 arguments []
 deconstruct_du failed
 
-"""/0
+"\""/0
 functor_number_cc failed
 no arguments
-expand: functor """ arity 0 arguments []
+expand: functor "\"" arity 0 arguments []
 deconstruct_du failed
 
 'a'/0
