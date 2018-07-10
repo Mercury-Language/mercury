@@ -748,8 +748,8 @@ public class DuPtagLayout {
         sectag_numbits = numbits;
     }
 
-    public DuPtagLayout(int sharers, int locn, DuFunctorDesc[] alts)
-        : this(sharers, (Sectag_Locn)locn, alts)
+    public DuPtagLayout(int sharers, int locn, DuFunctorDesc[] alts, sbyte numbits)
+        : this(sharers, (Sectag_Locn)locn, alts, numbits)
     {
     }
 }
