@@ -146,6 +146,17 @@ main(!IO) :-
     % UTF-8 encoding.
     test_all('Ω', !IO),
 
+    % test strings (that do not require escapes)
+    test_all("", !IO),
+    test_all("azBZ09", !IO),
+    test_all("\u03b1\u2200\U0001f713", !IO),
+
+    % test strings (that do require escapes)
+    test_all("\a\b\f\n\t\r\v\"\\", !IO),
+    test_all("\x1\\a\x1f\AZ[`az~\x7f\", !IO),
+    test_all("\x80\\a\x9f\\xa0\\xc0\\xff\", !IO),
+    test_all("α\nβ\tγ,a\nα\001\α\001\a\001\α", !IO),
+
     % test a float which requires 17 digits of precision
     test_all(0.12345678901234566, !IO),
 
@@ -157,7 +168,7 @@ main(!IO) :-
     % test integers
     test_all(4, !IO),
 
-    % test unigned integers
+    % test unsigned integers
     test_all(561u, !IO),
 
     % test fixed size integers.

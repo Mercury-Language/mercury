@@ -728,8 +728,9 @@ write_escaped_char(Char, !IO) :-
 write_escaped_char(Stream, Char, !State) :-
     % Note: the code of add_escaped_char and write_escaped_char
     % should be kept in sync. The code of both is similar to code in
-    % compiler/parse_tree_out_pragma.m; any changes here may require
-    % similar changes there.
+    % compiler/parse_tree_out_pragma.m and MR_escape_string_quote
+    % in runtime/mercury_string.c; any changes here may require similar
+    % changes in those spots.
     ( if mercury_escape_special_char(Char, QuoteChar) then
         stream.put(Stream, ('\\'), !State),
         stream.put(Stream, QuoteChar, !State)

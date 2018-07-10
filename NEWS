@@ -525,6 +525,10 @@ Changes to the Mercury standard library:
   - get_uint8/1, unsafe_get_uint8/1
   - set_uint8/4, unsafe_set_uint8/4
 
+* The functor/4 predicate in the deconstruct module has been modified so
+  that for character and string data, any control characters in the functor
+  representation are escaped.
+
 Changes to the Mercury compiler:
 
 * We have extended tail call optimization from self recursive calls only

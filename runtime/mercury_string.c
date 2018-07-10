@@ -91,6 +91,127 @@ MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...)
     return result;
 }
 
+// The code for this function should be kept in sync with that of the
+// quote_string predicates in library/term_io.m.
+MR_bool
+MR_escape_string_quote(MR_String *ptr, const char * string)
+{
+    MR_Integer pos = 0;
+    size_t  num_code_units = 0;
+    MR_Char ch;
+    MR_bool must_escape = MR_FALSE;
+
+    // Check if we need to add character escapes to the string.
+    //
+    while ((ch = MR_utf8_get_next((MR_String) string, &pos)) > 0) {
+        switch (ch) {
+            case '\a':
+            case '\b':
+            case '\f':
+            case '\n':
+            case '\t':
+            case '\r':
+            case '\v':
+            case '\"':
+            case '\\':
+                num_code_units += 2;
+                must_escape = MR_TRUE;
+                break;
+            default:
+                if (MR_is_control(ch)) {
+                    // All control characters that do not have a specific
+                    // backslash escape are octal escaped.
+                    // This takes five code units.
+                    num_code_units += 5;
+                    must_escape = MR_TRUE;
+                } else {
+                    num_code_units += MR_utf8_width(ch);
+                }
+        }
+    }
+
+    // Check that the string's encoding was valid.
+    if (ch < 0) {
+        *ptr = NULL;
+        return MR_FALSE;
+    }
+
+    if (must_escape) {
+        char *dst;
+   
+        MR_allocate_aligned_string_saved_hp(*ptr,
+            num_code_units + 2 /* quotes */ + 1 /* \0 */,
+            NULL);
+
+        dst = *ptr;
+        dst[0] = '\"';
+        dst++;
+        pos = 0;
+        while ((ch = MR_utf8_get_next((MR_String) string, &pos)) > 0) {
+            switch (ch) {
+                case '\a':
+                    dst[0] = '\\';
+                    dst[1] = 'a';
+                    dst += 2;
+                    break; 
+                case '\b':
+                    dst[0] = '\\';
+                    dst[1] = 'b';
+                    dst += 2;
+                    break; 
+                case '\f':
+                    dst[0] = '\\';
+                    dst[1] = 'f';
+                    dst += 2;
+                    break; 
+                case '\n':
+                    dst[0] = '\\';
+                    dst[1] = 'n';
+                    dst += 2;
+                    break; 
+                case '\t':
+                    dst[0] = '\\';
+                    dst[1] = 't';
+                    dst += 2;
+                    break; 
+                case '\r':
+                    dst[0] = '\\';
+                    dst[1] = 'r';
+                    dst += 2;
+                    break; 
+                case '\v':
+                    dst[0] = '\\';
+                    dst[1] = 'b';
+                    dst += 2;
+                    break; 
+                case '\"':
+                    dst[0] = '\\';
+                    dst[1] = '\"';
+                    dst += 2;
+                    break; 
+                case '\\':
+                    dst[0] = '\\';
+                    dst[1] = '\\';
+                    dst += 2;
+                    break;
+                default:
+                    if (MR_is_control(ch)) {
+                        sprintf(dst, "\\%03" MR_INTEGER_LENGTH_MODIFIER "o\\",
+                            (MR_Integer) ch);
+                        dst += 5;
+                    } else {
+                        dst += MR_utf8_encode(dst, ch);
+                    }
+             }
+        }
+        dst[0] = '\"';
+        dst[1] = '\0';
+    } else {
+        MR_make_aligned_string_copy_saved_hp_quote(*ptr, string, NULL);
+    }
+    return MR_TRUE;
+}
+
 // Note that MR_hash_string{,2,3,4,5,6} are actually defined as macros in
 // mercury_string.h, if we are using GNU C.
 // We define them here whether or not we are using gcc, so that users

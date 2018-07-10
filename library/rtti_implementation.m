@@ -145,6 +145,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
+:- import_module term_io.
 :- import_module type_desc.
 
 %---------------------------------------------------------------------------%
@@ -2848,7 +2849,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_string,
         det_dynamic_cast(Term, String),
-        Functor = string.append_list(["\"", String, "\""]),
+        Functor = term_io.quoted_string(String),
         Ordinal = -1,
         Arity = 0,
         Arguments = []

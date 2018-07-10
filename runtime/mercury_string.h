@@ -383,19 +383,35 @@ MR_Integer      MR_hash_string6(MR_ConstString);
 
 MR_String MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...);
 
+// Given a Mercury string `string', make a copy that inserts any required
+// character escapes and places double quote marks at the start and end of
+// the copy. On success, returns MR_TRUE and sets `ptr' to point to the copy
+// of the string. Returns MR_FALSE if `string' is not a valid UTF-8 encoded
+// string.
+//
+extern MR_bool MR_escape_string_quote(MR_String *ptr,
+    const char * string);
+
 // True if c is an ASCII code point, i.e. U+0000..U+007f.
 
-#define MR_is_ascii(c)              ((unsigned)(c) <= 0x7f)
+#define MR_is_ascii(c)              ((unsigned) (c) <= 0x7f)
 
 // True if c is a Unicode surrogate code point, i.e. U+D800..U+DFFF.
 
-#define MR_is_surrogate(c)          (((unsigned)(c) & 0xF800) == 0xD800)
+#define MR_is_surrogate(c)          (((unsigned) (c) & 0xF800) == 0xD800)
+
+// True if c is a Unicode control code point, i.e. U+0000..U+001f,
+// U+007f..U+009f.
+
+#define MR_is_control(c) \
+    ((0x00 <= (unsigned) (c) && (unsigned) (c) <= 0x1f) || \
+     (0x7f <= (unsigned) (c) && (unsigned) (c) <= 0x9f))
 
 // UTF-8 manipulation
 
-#define MR_utf8_is_single_byte(c)   (((unsigned)(c) & 0x80) == 0)
-#define MR_utf8_is_lead_byte(c)     (((unsigned)(c) - 0xC0) < 0x3E)
-#define MR_utf8_is_trail_byte(c)    (((unsigned)(c) & 0xC0) == 0x80)
+#define MR_utf8_is_single_byte(c)   (((unsigned) (c) & 0x80) == 0)
+#define MR_utf8_is_lead_byte(c)     (((unsigned) (c) - 0xC0) < 0x3E)
+#define MR_utf8_is_trail_byte(c)    (((unsigned) (c) & 0xC0) == 0x80)
 
 // Advance `*pos' to the beginning of the next code point in `s'.
 // If `*pos' is already at the end of the string, return MR_FALSE

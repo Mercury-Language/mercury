@@ -376,6 +376,104 @@ deconstruct deconstruct: functor 'Ω' arity 0
 deconstruct limited deconstruct 3 of 'Ω'
 functor 'Ω' arity 0 []
 
+deconstruct functor: ""/0
+deconstruct argument 0 of "" doesn't exist
+deconstruct argument 1 of "" doesn't exist
+deconstruct argument 2 of "" doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor "" arity 0
+[]
+deconstruct limited deconstruct 3 of ""
+functor "" arity 0 []
+
+deconstruct functor: "azBZ09"/0
+deconstruct argument 0 of "azBZ09" doesn't exist
+deconstruct argument 1 of "azBZ09" doesn't exist
+deconstruct argument 2 of "azBZ09" doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor "azBZ09" arity 0
+[]
+deconstruct limited deconstruct 3 of "azBZ09"
+functor "azBZ09" arity 0 []
+
+deconstruct functor: "α∀🜓"/0
+deconstruct argument 0 of "α∀🜓" doesn't exist
+deconstruct argument 1 of "α∀🜓" doesn't exist
+deconstruct argument 2 of "α∀🜓" doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor "α∀🜓" arity 0
+[]
+deconstruct limited deconstruct 3 of "α∀🜓"
+functor "α∀🜓" arity 0 []
+
+deconstruct functor: "\a\b\f\n\t\r\b\"\\"/0
+deconstruct argument 0 of "\a\b\f\n\t\r\v\"\\" doesn't exist
+deconstruct argument 1 of "\a\b\f\n\t\r\v\"\\" doesn't exist
+deconstruct argument 2 of "\a\b\f\n\t\r\v\"\\" doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor "\a\b\f\n\t\r\b\"\\" arity 0
+[]
+deconstruct limited deconstruct 3 of "\a\b\f\n\t\r\v\"\\"
+functor "\a\b\f\n\t\r\b\"\\" arity 0 []
+
+deconstruct functor: "\001\\a\037\AZ[`az~\177\"/0
+deconstruct argument 0 of "\001\\a\037\AZ[`az~\177\" doesn't exist
+deconstruct argument 1 of "\001\\a\037\AZ[`az~\177\" doesn't exist
+deconstruct argument 2 of "\001\\a\037\AZ[`az~\177\" doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor "\001\\a\037\AZ[`az~\177\" arity 0
+[]
+deconstruct limited deconstruct 3 of "\001\\a\037\AZ[`az~\177\"
+functor "\001\\a\037\AZ[`az~\177\" arity 0 []
+
+deconstruct functor: "\200\\a\237\ Àÿ"/0
+deconstruct argument 0 of "\200\\a\237\ Àÿ" doesn't exist
+deconstruct argument 1 of "\200\\a\237\ Àÿ" doesn't exist
+deconstruct argument 2 of "\200\\a\237\ Àÿ" doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor "\200\\a\237\ Àÿ" arity 0
+[]
+deconstruct limited deconstruct 3 of "\200\\a\237\ Àÿ"
+functor "\200\\a\237\ Àÿ" arity 0 []
+
+deconstruct functor: "α\nβ\tγ,a\nα\001\α\001\a\001\α"/0
+deconstruct argument 0 of "α\nβ\tγ,a\nα\001\α\001\a\001\α" doesn't exist
+deconstruct argument 1 of "α\nβ\tγ,a\nα\001\α\001\a\001\α" doesn't exist
+deconstruct argument 2 of "α\nβ\tγ,a\nα\001\α\001\a\001\α" doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct argument 'packed1' doesn't exist
+deconstruct argument 'packed2' doesn't exist
+deconstruct argument 'packed3' doesn't exist
+deconstruct deconstruct: functor "α\nβ\tγ,a\nα\001\α\001\a\001\α" arity 0
+[]
+deconstruct limited deconstruct 3 of "α\nβ\tγ,a\nα\001\α\001\a\001\α"
+functor "α\nβ\tγ,a\nα\001\α\001\a\001\α" arity 0 []
+
 deconstruct functor: 0.12345678901234566/0
 deconstruct argument 0 of 0.12345678901234566 doesn't exist
 deconstruct argument 1 of 0.12345678901234566 doesn't exist
@@ -600,7 +698,7 @@ deconstruct deconstruct: functor newline arity 0
 deconstruct limited deconstruct 3 of '<<predicate>>'
 functor newline arity 0 []
 
-deconstruct functor: lambda_deconstruct_arg_m_182/1
+deconstruct functor: lambda_deconstruct_arg_m_193/1
 deconstruct argument 0 of '<<predicate>>' is [1, 2]
 deconstruct argument 1 of '<<predicate>>' doesn't exist
 deconstruct argument 2 of '<<predicate>>' doesn't exist
@@ -609,10 +707,10 @@ deconstruct argument 'mooo!' doesn't exist
 deconstruct argument 'packed1' doesn't exist
 deconstruct argument 'packed2' doesn't exist
 deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor lambda_deconstruct_arg_m_182 arity 1
+deconstruct deconstruct: functor lambda_deconstruct_arg_m_193 arity 1
 [[1, 2]]
 deconstruct limited deconstruct 3 of '<<predicate>>'
-functor lambda_deconstruct_arg_m_182 arity 1 [[1, 2]]
+functor lambda_deconstruct_arg_m_193 arity 1 [[1, 2]]
 
 deconstruct functor: p/3
 deconstruct argument 0 of '<<predicate>>' is 1

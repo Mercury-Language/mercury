@@ -917,10 +917,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     default:
                         // Print remaining control characters using octal
                         // escapes.
-                        if ( 
-                            (0x00 <= data_word && data_word <= 0x1f) ||
-                            (0x7f <= data_word && data_word <= 0x9f)
-                        ) { 
+                        if (MR_is_control(data_word)) {
                             sprintf(buf,
                                 "\'\\%03" MR_INTEGER_LENGTH_MODIFIER "o\\\'",
                                 data_word);
@@ -974,14 +971,17 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_STRING:
 #ifdef  EXPAND_FUNCTOR_FIELD
             {
-                // XXX Should escape characters correctly.
                 MR_Word data_word;
                 char    *str;
-
+                
                 data_word = *data_word_ptr;
-                MR_make_aligned_string_copy_saved_hp_quote(str,
-                        (MR_String) data_word, NULL);
-                expand_info->EXPAND_FUNCTOR_FIELD = str;
+                if (MR_escape_string_quote(&str, (MR_ConstString)data_word)) {
+                    expand_info->EXPAND_FUNCTOR_FIELD = str;
+                } else {
+                    // XXX should throw an exception.
+                    MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                        ": invalid string encoding");
+                }
             }
 #endif  // EXPAND_FUNCTOR_FIELD
 
