@@ -41,6 +41,8 @@
 //      runtime/mercury_type_info.c
 //      library/type_desc.m
 //
+//      runtime/mercury_dotnet.cs.in
+//          (for updating the C# backend RTTI structures)
 //      java/ *.java
 //          (for updating the Java backend RTTI structures)
 //
@@ -50,7 +52,7 @@
 #ifndef MERCURY_TYPE_INFO_H
 #define MERCURY_TYPE_INFO_H
 
-#include "mercury_std.h"    // for `MR_STRINGIFY', `MR_PASTEn' and MR_CALL
+#include "mercury_std.h"        // for `MR_STRINGIFY', `MR_PASTEn' and MR_CALL
 #include "mercury_types.h"      // for `MR_Word'
 #include "mercury_tags.h"       // for `MR_DEFINE_BUILTIN_ENUM_CONST'
 #include "mercury_hlc_types.h"  // for `MR_Mercury_Type_Info'

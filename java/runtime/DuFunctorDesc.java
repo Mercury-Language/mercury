@@ -22,6 +22,7 @@ public class DuFunctorDesc implements java.io.Serializable {
 	public /*final*/ DuArgLocn[] du_functor_arg_locns;
 	public /*final*/ DuExistInfo du_functor_exist_info;
 	public FunctorSubtypeInfo du_functor_subtype_info;
+    public byte du_functor_num_sectag_bits;
 
 	public DuFunctorDesc()
 	{
@@ -35,7 +36,8 @@ public class DuFunctorDesc implements java.io.Serializable {
 		java.lang.Object arg_names,
 		java.lang.Object arg_locns,
 		java.lang.Object exist_info,
-		int functor_subtype_info)
+		int functor_subtype_info,
+        byte num_sectag_bits)
 	{
 		du_functor_name = functor_name;
 		du_functor_orig_arity = orig_arity;
@@ -51,5 +53,6 @@ public class DuFunctorDesc implements java.io.Serializable {
 		du_functor_exist_info = (DuExistInfo) exist_info;
 		du_functor_subtype_info =
 			new FunctorSubtypeInfo(functor_subtype_info);
+		du_functor_num_sectag_bits = num_sectag_bits;
 	}
 }
