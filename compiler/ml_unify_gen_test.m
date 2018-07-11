@@ -16,37 +16,32 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module list.
+
 %---------------------------------------------------------------------------%
 
-    % ml_gen_tag_test(Var, ConsId, Rval, !Info):
+    % ml_generate_test_var_has_cons_id(Var, ConsId, TestRval, !Info):
     %
-    % Generate code to perform a tag test.
+    % We generate the boolean rval TestRval, which will evaluate to true
+    % iff Var has the functor specified by ConsId.
     %
-    % The test checks whether Var has the functor specified by ConsId.
-    % The generated code will not contain Defns or Stmts. It will be
-    % the boolean Rval, which will evaluate to true iff the Var has
-    % the functor specified by ConsId.
-    %
-:- pred ml_gen_tag_test(prog_var::in, cons_id::in, mlds_rval::out,
+:- pred ml_generate_test_var_has_cons_id(prog_var::in,
+    cons_id::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
-    % ml_gen_known_tag_test(Var, TaggedConsId, Rval, !Info):
+    % ml_generate_test_var_has_tagged_cons_id(Var,
+    %   MainTaggedConsId, OtherTaggedConsIds, TestRval, !Info):
     %
-    % Generate code to perform a tag test.
-    %
-    % The test checks whether Var has the functor specified by TaggedConsId.
-    % The generated code will not contain Defns or Stmts. It will be
-    % the boolean Rval, which will evaluate to true iff the Var has
-    % the functor specified by ConsId.
-    %
-    % (The "known" part of the name refers to the fact that the tag of
-    % the cons_id is already known.)
+    % We generate the boolean rval TestRval, which will evaluate to true
+    % iff Var's functor is one of those specified by MainTaggedConsId
+    % or OtherTaggedConsIds.
     %
     % Exported for use by ml_switch_gen.m.
     %
-:- pred ml_gen_known_tag_test(prog_var::in, tagged_cons_id::in, mlds_rval::out,
+:- pred ml_generate_test_var_has_one_tagged_cons_id(prog_var::in,
+    tagged_cons_id::in, list(tagged_cons_id)::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -73,136 +68,165 @@
 
 %---------------------------------------------------------------------------%
 
-ml_gen_tag_test(Var, ConsId, TagTestExpr, !Info) :-
-    % NOTE: Keep in sync with ml_gen_known_tag_test below.
+ml_generate_test_var_has_cons_id(Var, ConsId, TestRval, !Info) :-
+    % NOTE: Keep in sync with ml_generate_test_var_has_tagged_cons_id below.
 
     % TODO: apply the reverse tag test optimization for types with two
     % functors (see unify_gen.m).
 
     ml_gen_var(!.Info, Var, VarLval),
-    ml_variable_type(!.Info, Var, Type),
+    VarRval = ml_lval(VarLval),
+    ml_variable_type(!.Info, Var, VarType),
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
-    TagTestExpr =
-        ml_gen_tag_test_rval(!.Info, ConsTag, Type, ml_lval(VarLval)).
+    ml_generate_test_rval_has_cons_tag(!.Info, VarRval, VarType, ConsTag,
+        TestRval).
 
 %---------------------------------------------------------------------------%
 
-ml_gen_known_tag_test(Var, TaggedConsId, TagTestExpr, !Info) :-
-    % NOTE: Keep in sync with ml_gen_tag_test above.
-
-    % TODO: apply the reverse tag test optimization for types with two
-    % functors (see unify_gen.m).
+ml_generate_test_var_has_one_tagged_cons_id(Var,
+        MainTaggedConsId, OtherTaggedConsIds, TestRval, !Info) :-
+    % NOTE: Keep in sync with ml_generate_test_var_has_cons_id above.
 
     ml_gen_var(!.Info, Var, VarLval),
-    ml_variable_type(!.Info, Var, Type),
-    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    TagTestExpr =
-        ml_gen_tag_test_rval(!.Info, ConsTag, Type, ml_lval(VarLval)).
+    VarRval = ml_lval(VarLval),
+    ml_variable_type(!.Info, Var, VarType),
+
+    ml_generate_test_rval_has_tagged_cons_id(!.Info, VarRval, VarType,
+        MainTaggedConsId, MainTestRval),
+    list.map(
+        ml_generate_test_rval_has_tagged_cons_id(!.Info, VarRval, VarType),
+        OtherTaggedConsIds, OtherTestRvals),
+    ml_logical_or_rvals(MainTestRval, OtherTestRvals, TestRval).
+
+    % logical_or_rvals(FirstRval, LaterRvals, Rval):
+    %
+    % Rval is true iff any one of FirstRval and LaterRvals is true.
+    %
+:- pred ml_logical_or_rvals(mlds_rval::in, list(mlds_rval)::in, mlds_rval::out)
+    is det.
+
+ml_logical_or_rvals(FirstRval, LaterRvals, Rval) :-
+    (
+        LaterRvals = [],
+        Rval = FirstRval
+    ;
+        LaterRvals = [SecondRval | OtherRvals],
+        FirstSecondRval = ml_binop(logical_or, FirstRval, SecondRval),
+        ml_logical_or_rvals(FirstSecondRval, OtherRvals, Rval)
+    ).
 
 %---------------------------------------------------------------------------%
 
-    % ml_gen_tag_test_rval(Info, ConsTag, Type, VarRval) = TestRval:
+:- pred ml_generate_test_rval_has_tagged_cons_id(ml_gen_info::in,
+    mlds_rval::in, mer_type::in, tagged_cons_id::in, mlds_rval::out) is det.
+
+ml_generate_test_rval_has_tagged_cons_id(Info, Rval, Type, TaggedConsId,
+        TestRval) :-
+    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
+    ml_generate_test_rval_has_cons_tag(Info, Rval, Type, ConsTag, TestRval).
+
+    % ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, ConsTag,
+    %   TestRval):
     %
     % TestRval is an rval of type bool which evaluates to true if VarRval has
     % the specified ConsTag, and false otherwise. Type is the type of VarRval.
     %
-:- func ml_gen_tag_test_rval(ml_gen_info, cons_tag, mer_type, mlds_rval)
-    = mlds_rval.
+:- pred ml_generate_test_rval_has_cons_tag(ml_gen_info::in,
+    mlds_rval::in, mer_type::in, cons_tag::in, mlds_rval::out) is det.
 
-ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
+ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, ConsTag, TestRval) :-
     (
-        ConsTag = string_tag(String),
-        TagTestRval = ml_binop(str_eq, Rval, ml_const(mlconst_string(String)))
-    ;
-        ConsTag = float_tag(Float),
-        TagTestRval = ml_binop(float_eq, Rval, ml_const(mlconst_float(Float)))
-    ;
         ConsTag = int_tag(IntTag),
         ml_gen_info_get_module_info(Info, ModuleInfo),
-        TagTestRval = ml_gen_int_tag_test_rval(IntTag, Type, ModuleInfo, Rval)
+        ml_generate_test_rval_is_int_tag(ModuleInfo, VarRval, Type, IntTag,
+            TestRval)
+    ;
+        ConsTag = float_tag(Float),
+        TestRval = ml_binop(float_eq, VarRval, ml_const(mlconst_float(Float)))
+    ;
+        ConsTag = string_tag(String),
+        TestRval = ml_binop(str_eq, VarRval, ml_const(mlconst_string(String)))
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignVal),
         ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-        Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal, MLDS_Type)),
-        TagTestRval = ml_binop(eq(int_type_int), Rval, Const)
+        TestRval = ml_binop(eq(int_type_int), VarRval,
+            ml_const(mlconst_foreign(ForeignLang, ForeignVal, MLDS_Type)))
     ;
         ( ConsTag = dummy_tag
         ; ConsTag = no_tag
         ; ConsTag = single_functor_tag
         ),
-        % In a type with only one value, all equality tests succeed.
-        % In a type with only one ptag value, all equality tests on ptags
-        % succeed.
-        TagTestRval = ml_const(mlconst_true)
+        % In a type with only one cons_id, all vars have that one cons_id.
+        TestRval = ml_const(mlconst_true)
     ;
         ( ConsTag = unshared_tag(Ptag)
         ; ConsTag = direct_arg_tag(Ptag)
         ),
-        RvalTag = ml_unop(tag, Rval),
+        VarPtag = ml_unop(tag, VarRval),
         Ptag = ptag(PtagUint8),
-        PrimaryTagRval = ml_const(mlconst_int(uint8.cast_to_int(PtagUint8))),
-        TagTestRval = ml_binop(eq(int_type_int), RvalTag, PrimaryTagRval)
+        PtagConstRval = ml_const(mlconst_int(uint8.cast_to_int(PtagUint8))),
+        TestRval = ml_binop(eq(int_type_int), VarPtag, PtagConstRval)
     ;
         ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-        ml_gen_secondary_tag_rval(Info, Type, Rval, Ptag,
-            SecondaryTagFieldRval),
+        ml_gen_secondary_tag_rval(Info, Type, VarRval, Ptag, VarSectagRval),
         RemoteSectag = remote_sectag(SectagUint, _),
-        SecondaryTagTestRval = ml_binop(eq(int_type_int),
-            SecondaryTagFieldRval,
-            ml_const(mlconst_int(uint.cast_to_int(SectagUint)))),
+        ConstSectagRval = ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
+        SectagTestRval = ml_binop(eq(int_type_int),
+            VarSectagRval, ConstSectagRval),
         ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
         ( if NumPtagBits = 0u8 then
             % No need to test the primary tag.
-            TagTestRval = SecondaryTagTestRval
+            TestRval = SectagTestRval
         else
-            RvalPtag = ml_unop(tag, Rval),
+            VarPtag = ml_unop(tag, VarRval),
             Ptag = ptag(PtagUint8),
-            PrimaryTagRval =
+            ConstPtagRval =
                 ml_const(mlconst_int(uint8.cast_to_int(PtagUint8))),
-            PrimaryTagTestRval = ml_binop(eq(int_type_int), RvalPtag,
-                PrimaryTagRval),
-            TagTestRval = ml_binop(logical_and,
-                PrimaryTagTestRval, SecondaryTagTestRval)
+            PtagTestRval = ml_binop(eq(int_type_int), VarPtag, ConstPtagRval),
+            TestRval = ml_binop(logical_and, PtagTestRval, SectagTestRval)
         )
     ;
         ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
-        % We handle this the same was as the lsectag_must_be_masked case
-        % of shared_local_tag_no_args below.
+        % We generate the same test as for shared_local_tag_no_args
+        % with lsectag_must_be_masked.
         LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),
+        ConstPrimSecRval = ml_const(mlconst_uint(PrimSec)),
+
         ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
         SectagBits = sectag_bits(NumSectagBits, _SectagMask),
         NumPtagSectagBits = uint8.cast_to_int(NumPtagBits + NumSectagBits),
         PrimSecMask = (1u << NumPtagSectagBits) - 1u,
+        MaskedVarRval = ml_binop(bitwise_and(int_type_uint),
+            VarRval, ml_const(mlconst_uint(PrimSecMask))),
+
         % There is no need for a cast, since the Java backend
         % does not support local secondary tags that must be masked.
-        TagTestRval = ml_binop(eq(int_type_uint),
-            ml_binop(bitwise_and(int_type_uint),
-                Rval, ml_const(mlconst_uint(PrimSecMask))),
-            ml_const(mlconst_uint(PrimSec)))
+        TestRval = ml_binop(eq(int_type_uint), MaskedVarRval, ConstPrimSecRval)
     ;
         ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, MustMask),
         LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),
+        ConstPrimSecRval = ml_const(mlconst_uint(PrimSec)),
         (
             MustMask = lsectag_always_rest_of_word,
             ml_gen_info_get_module_info(Info, ModuleInfo),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
             % The cast is needed only by the Java backend.
-            TagTestRval = ml_binop(eq(int_type_int), Rval,
-                ml_cast(MLDS_Type, ml_const(mlconst_uint(PrimSec))))
+            TestRval = ml_binop(eq(int_type_int),
+                VarRval, ml_cast(MLDS_Type, ConstPrimSecRval))
         ;
             MustMask = lsectag_must_be_masked,
-            % We handle this the same was as shared_local_tag_with_args above.
+            % We generate the same test as for shared_local_tag_with_args.
             ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
             SectagBits = sectag_bits(NumSectagBits, _SectagMask),
             NumPtagSectagBits = uint8.cast_to_int(NumPtagBits + NumSectagBits),
             PrimSecMask = (1u << NumPtagSectagBits) - 1u,
+            MaskedVarRval = ml_binop(bitwise_and(int_type_uint),
+                VarRval, ml_const(mlconst_uint(PrimSecMask))),
             % There is no need for a cast, since the Java backend
             % does not support local secondary tags that must be masked.
-            TagTestRval = ml_binop(eq(int_type_uint),
-                ml_binop(bitwise_and(int_type_uint),
-                    Rval, ml_const(mlconst_uint(PrimSecMask))),
-                ml_const(mlconst_uint(PrimSec)))
+            TestRval = ml_binop(eq(int_type_uint),
+                MaskedVarRval, ConstPrimSecRval)
         )
     ;
         ( ConsTag = closure_tag(_, _, _)
@@ -215,61 +239,63 @@ ml_gen_tag_test_rval(Info, ConsTag, Type, Rval) = TagTestRval :-
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
         ),
-        unexpected($pred, "bad tag")
+        unexpected($pred, "unexpacted ConsTag")
     ).
 
-:- func ml_gen_int_tag_test_rval(int_tag, mer_type, module_info, mlds_rval) =
-    mlds_rval.
+:- pred ml_generate_test_rval_is_int_tag(module_info::in, mlds_rval::in,
+    mer_type::in, int_tag::in, mlds_rval::out) is det.
 
-ml_gen_int_tag_test_rval(IntTag, Type, ModuleInfo, Rval) = TagTestRval :-
+ml_generate_test_rval_is_int_tag(ModuleInfo, Rval, Type, IntTag, TestRval) :-
+    % Keep this code in sync with ml_int_tag_to_rval_const in ml_code_util.m.
     (
         IntTag = int_tag_int(Int),
         ( if Type = int_type then
-            ConstRval = ml_const(mlconst_int(Int))
+            Const = mlconst_int(Int)
         else if Type = char_type then
-            ConstRval = ml_const(mlconst_char(Int))
+            Const = mlconst_char(Int)
         else
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-            ConstRval = ml_const(mlconst_enum(Int, MLDS_Type))
+            Const = mlconst_enum(Int, MLDS_Type)
         ),
-        TagTestRval = ml_binop(eq(int_type_int), Rval, ConstRval)
+        EqType = int_type_int
     ;
         IntTag = int_tag_uint(UInt),
-        TagTestRval = ml_binop(eq(int_type_uint), Rval,
-            ml_const(mlconst_uint(UInt)))
+        EqType = int_type_uint,
+        Const = mlconst_uint(UInt)
     ;
         IntTag = int_tag_int8(Int8),
-        TagTestRval = ml_binop(eq(int_type_int8), Rval,
-            ml_const(mlconst_int8(Int8)))
+        EqType = int_type_int8,
+        Const = mlconst_int8(Int8)
     ;
         IntTag = int_tag_uint8(UInt8),
-        TagTestRval = ml_binop(eq(int_type_uint8), Rval,
-            ml_const(mlconst_uint8(UInt8)))
+        EqType = int_type_uint8,
+        Const = mlconst_uint8(UInt8)
     ;
         IntTag = int_tag_int16(Int16),
-        TagTestRval = ml_binop(eq(int_type_int16), Rval,
-            ml_const(mlconst_int16(Int16)))
+        EqType = int_type_int16,
+        Const = mlconst_int16(Int16)
     ;
         IntTag = int_tag_uint16(UInt16),
-        TagTestRval = ml_binop(eq(int_type_uint16), Rval,
-            ml_const(mlconst_uint16(UInt16)))
+        EqType = int_type_uint16,
+        Const = mlconst_uint16(UInt16)
     ;
         IntTag = int_tag_int32(Int32),
-        TagTestRval = ml_binop(eq(int_type_int32), Rval,
-            ml_const(mlconst_int32(Int32)))
+        EqType = int_type_int32,
+        Const = mlconst_int32(Int32)
     ;
         IntTag = int_tag_uint32(UInt32),
-        TagTestRval = ml_binop(eq(int_type_uint32), Rval,
-            ml_const(mlconst_uint32(UInt32)))
+        EqType = int_type_uint32,
+        Const = mlconst_uint32(UInt32)
     ;
         IntTag = int_tag_int64(Int64),
-        TagTestRval = ml_binop(eq(int_type_int64), Rval,
-            ml_const(mlconst_int64(Int64)))
+        EqType = int_type_int64,
+        Const = mlconst_int64(Int64)
     ;
         IntTag = int_tag_uint64(UInt64),
-        TagTestRval = ml_binop(eq(int_type_uint64), Rval,
-            ml_const(mlconst_uint64(UInt64)))
-    ).
+        EqType = int_type_uint64,
+        Const = mlconst_uint64(UInt64)
+    ),
+    TestRval = ml_binop(eq(EqType), Rval, ml_const(Const)).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_unify_gen_test.

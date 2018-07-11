@@ -568,7 +568,7 @@ generate_if_then_else_chain_cases(BranchStart, Cases, VarRval, VarType,
             ; CanFail = can_fail
             )
         then
-            generate_raw_tag_test_case(VarRval, VarType, VarName,
+            generate_test_var_has_one_tagged_cons_id(VarRval, VarName,
                 MainTaggedConsId, OtherTaggedConsIds, CheaperTagTest,
                 branch_on_failure, NextLabel, TestCode, !CI),
             ElseCode = from_list([

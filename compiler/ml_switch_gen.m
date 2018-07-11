@@ -137,7 +137,6 @@
 :- implementation.
 
 :- import_module backend_libs.
-:- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
@@ -535,29 +534,9 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
     mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_if_then_else_cond(TaggedCase, Var, CondRval, !Info) :-
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, _),
-    ml_gen_known_tag_test(Var,
-        TaggedMainConsId, MainTagTestRval, !Info),
-    list.map_foldl(ml_gen_known_tag_test(Var),
-        TaggedOtherConsIds, OtherTagTestRval, !Info),
-    chain_ors(MainTagTestRval, OtherTagTestRval, CondRval).
-
-    % chain_ors(FirstExpr, LaterExprs, Expr):
-    %
-    % Expr is true iff any one of FirstExpr and LaterExprs is true.
-    %
-:- pred chain_ors(mlds_rval::in, list(mlds_rval)::in, mlds_rval::out)
-    is det.
-
-chain_ors(FirstExpr, LaterExprs, Expr) :-
-    (
-        LaterExprs = [],
-        Expr = FirstExpr
-    ;
-        LaterExprs = [SecondExpr | OtherExprs],
-        FirstSecondExpr = ml_binop(logical_or, FirstExpr, SecondExpr),
-        chain_ors(FirstSecondExpr, OtherExprs, Expr)
-    ).
+    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
+    ml_generate_test_var_has_one_tagged_cons_id(Var,
+        MainTaggedConsId, OtherTaggedConsIds, CondRval, !Info).
 
 %---------------------------------------------------------------------------%
 

@@ -154,19 +154,22 @@ generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     llds_code::out, code_info::in, code_info::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_semi_deconstruction(Var, Tag, ArgVarsWidths, Modes, Code,
+generate_semi_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
         !CI, !CLD) :-
+    produce_variable(Var, VarCode, VarRval, !.CI, !CLD),
+    VarName = variable_name(!.CI, Var),
     VarType = variable_type(!.CI, Var),
     CheaperTagTest = lookup_cheaper_tag_test(!.CI, VarType),
-    generate_tag_test(Var, Tag, CheaperTagTest, branch_on_success, SuccLabel,
-        TagTestCode, !CI, !CLD),
+    generate_test_var_has_cons_id(VarRval, VarName, ConsId,
+        CheaperTagTest, branch_on_success, SuccLabel, TagTestCode, !CI),
     remember_position(!.CLD, AfterUnify),
     generate_failure(FailCode, !CI, !.CLD),
     reset_to_position(AfterUnify, !.CI, !:CLD),
-    generate_det_deconstruction(Var, Tag, ArgVarsWidths, Modes, DeconsCode,
-        !.CI, !CLD),
+    generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes,
+        DetDeconstructCode, !.CI, !CLD),
     SuccessLabelCode = singleton(llds_instr(label(SuccLabel), "")),
-    Code = TagTestCode ++ FailCode ++ SuccessLabelCode ++ DeconsCode.
+    Code = VarCode ++ TagTestCode ++ FailCode ++
+        SuccessLabelCode ++ DetDeconstructCode.
 
 %---------------------------------------------------------------------------%
 

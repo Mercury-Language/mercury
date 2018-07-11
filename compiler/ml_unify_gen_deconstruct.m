@@ -156,7 +156,7 @@ ml_generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
 
 ml_gen_semi_deconstruct(Var, ConsId, ArgVars, ArgModes, Context,
         Defns, Stmts, !Info) :-
-    ml_gen_tag_test(Var, ConsId, TagTestRval, !Info),
+    ml_generate_test_var_has_cons_id(Var, ConsId, TagTestRval, !Info),
     ml_gen_set_success(TagTestRval, Context, SetTagTestResult, !Info),
     ml_gen_test_success(SucceededRval, !Info),
     ml_gen_det_deconstruct(Var, ConsId, ArgVars, ArgModes, Context,

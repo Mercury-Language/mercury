@@ -633,43 +633,46 @@ ml_gen_label_func(Info, MaybeAux, FuncParams, Context, Stmt, Func) :-
 %
 
 ml_int_tag_to_rval_const(IntTag, MerType, MLDS_Type) = Rval :-
+    % Keep this code in sync with ml_generate_test_rval_is_int_tag
+    % in ml_unify_gen_test.m.
     (
         IntTag = int_tag_int(Int),
         ( if MerType = int_type then
-            Rval = ml_const(mlconst_int(Int))
+            Const = mlconst_int(Int)
         else if MerType = char_type then
-            Rval = ml_const(mlconst_char(Int))
+            Const = mlconst_char(Int)
         else
-            Rval = ml_const(mlconst_enum(Int, MLDS_Type))
+            Const = mlconst_enum(Int, MLDS_Type)
         )
     ;
         IntTag = int_tag_uint(UInt),
-        Rval = ml_const(mlconst_uint(UInt))
+        Const = mlconst_uint(UInt)
     ;
         IntTag = int_tag_int8(Int8),
-        Rval = ml_const(mlconst_int8(Int8))
+        Const = mlconst_int8(Int8)
     ;
         IntTag = int_tag_uint8(UInt8),
-        Rval = ml_const(mlconst_uint8(UInt8))
+        Const = mlconst_uint8(UInt8)
     ;
         IntTag = int_tag_int16(Int16),
-        Rval = ml_const(mlconst_int16(Int16))
+        Const = mlconst_int16(Int16)
     ;
         IntTag = int_tag_uint16(UInt16),
-        Rval = ml_const(mlconst_uint16(UInt16))
+        Const = mlconst_uint16(UInt16)
     ;
         IntTag = int_tag_int32(Int32),
-        Rval = ml_const(mlconst_int32(Int32))
+        Const = mlconst_int32(Int32)
     ;
         IntTag = int_tag_uint32(UInt32),
-        Rval = ml_const(mlconst_uint32(UInt32))
+        Const = mlconst_uint32(UInt32)
     ;
         IntTag = int_tag_int64(Int64),
-        Rval = ml_const(mlconst_int64(Int64))
+        Const = mlconst_int64(Int64)
     ;
         IntTag = int_tag_uint64(UInt64),
-        Rval = ml_const(mlconst_uint64(UInt64))
-    ).
+        Const = mlconst_uint64(UInt64)
+    ),
+    Rval = ml_const(Const).
 
 %---------------------------------------------------------------------------%
 %
