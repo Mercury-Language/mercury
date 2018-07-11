@@ -29,7 +29,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes,
+    % ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes,
     %   HowToConstruct, Context, Defns, Stmts, !Info):
     %
     % Generate code to construct a closure for the procedure specified
@@ -37,9 +37,9 @@
     % by ArgVars (and ArgModes), and to store the pointer to the resulting
     % closure in Var.
     %
-:- pred ml_gen_closure(pred_id::in, proc_id::in, prog_var::in, prog_vars::in,
-    list(unify_mode)::in, how_to_construct::in, prog_context::in,
-    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+:- pred ml_construct_closure(pred_id::in, proc_id::in, prog_var::in,
+    list(prog_var)::in, list(unify_mode)::in, how_to_construct::in,
+    prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
@@ -115,8 +115,8 @@
 
 %---------------------------------------------------------------------------%
 
-ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
-        Defns, Stmts, !Info) :-
+ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
+        Context, Defns, Stmts, !Info) :-
     % This constructs a closure.
     % The representation of closures for the LLDS backend is defined in
     % runtime/mercury_ho_call.h.

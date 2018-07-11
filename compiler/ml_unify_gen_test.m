@@ -18,28 +18,28 @@
 
 %---------------------------------------------------------------------------%
 
-    % ml_gen_tag_test(Var, ConsId, Expr, !Info):
+    % ml_gen_tag_test(Var, ConsId, Rval, !Info):
     %
     % Generate code to perform a tag test.
     %
     % The test checks whether Var has the functor specified by ConsId.
-    % The generated code will not contain Defns or Stmts; it will be
-    % only an Expr, which will be a boolean rval. Expr will evaluate to true
-    % iff the Var has the functor specified by ConsId.
+    % The generated code will not contain Defns or Stmts. It will be
+    % the boolean Rval, which will evaluate to true iff the Var has
+    % the functor specified by ConsId.
     %
 :- pred ml_gen_tag_test(prog_var::in, cons_id::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
-    % ml_gen_known_tag_test(Var, TaggedConsId, Expr, !Info):
+    % ml_gen_known_tag_test(Var, TaggedConsId, Rval, !Info):
     %
     % Generate code to perform a tag test.
     %
     % The test checks whether Var has the functor specified by TaggedConsId.
-    % The generated code will not contain Defns or Stmts; it will be
-    % only an Expr, which will be a boolean rval. Expr will evaluate to true
-    % iff the Var has the functor specified by ConsId.
+    % The generated code will not contain Defns or Stmts. It will be
+    % the boolean Rval, which will evaluate to true iff the Var has
+    % the functor specified by ConsId.
     %
     % (The "known" part of the name refers to the fact that the tag of
     % the cons_id is already known.)

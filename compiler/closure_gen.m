@@ -29,7 +29,7 @@
     % This predicate constructs or extends a closure.
     % The structure of closures is defined in runtime/mercury_ho_call.h.
     %
-:- pred generate_closure(pred_id::in, proc_id::in, lambda_eval_method::in,
+:- pred construct_closure(pred_id::in, proc_id::in, lambda_eval_method::in,
     prog_var::in, list(prog_var)::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
@@ -70,7 +70,7 @@
 
 %---------------------------------------------------------------------------%
 
-generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
+construct_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
         !CI, !CLD) :-
     get_module_info(!.CI, ModuleInfo),
     module_info_get_preds(ModuleInfo, Preds),
@@ -246,8 +246,7 @@ generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName),
     term.context_line(Context, LineNumber),
-    GoalId = goal_info_get_goal_id(GoalInfo),
-    GoalId = goal_id(GoalIdNum),
+    goal_id(GoalIdNum) = goal_info_get_goal_id(GoalInfo),
     GoalIdStr = string.int_to_string(GoalIdNum),
     get_proc_label(!.CI, CallerProcLabel),
     get_next_closure_seq_no(SeqNo, !CI),

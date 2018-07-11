@@ -564,7 +564,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
     (
         GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
-        ml_gen_unification(Unification, CodeModel, Context,
+        ml_generate_unification(CodeModel, Unification, Context,
             LocalVarDefns, Stmts, !Info),
         FuncDefns = []
     ;

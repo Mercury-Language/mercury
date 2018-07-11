@@ -22,13 +22,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % from the cache, and producing code that branches to the fall-through
-    % point if the two values are not the same. Simple tests are in-in
-    % unifications on enumerations, integers, strings and floats.
-    %
-:- pred generate_simple_test_unification(prog_var::in, prog_var::in,
-    llds_code::out, code_info::in, code_info::out,
-    code_loc_dep::in, code_loc_dep::out) is det.
+%---------------------------------------------------------------------------%
 
 :- type test_sense
     --->    branch_on_success
@@ -50,7 +44,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
@@ -70,40 +63,6 @@
 :- import_module term.
 :- import_module uint.
 :- import_module uint8.
-
-%---------------------------------------------------------------------------%
-
-generate_simple_test_unification(VarA, VarB, Code, !CI, !CLD) :-
-    IsDummy = variable_is_of_dummy_type(!.CI, VarA),
-    (
-        IsDummy = is_dummy_type,
-        Code = empty
-    ;
-        IsDummy = is_not_dummy_type,
-        produce_variable(VarA, CodeA, ValA, !.CI, !CLD),
-        produce_variable(VarB, CodeB, ValB, !.CI, !CLD),
-        Type = variable_type(!.CI, VarA),
-        ( if Type = builtin_type(BuiltinType) then
-            (
-                BuiltinType = builtin_type_string,
-                Op = str_eq
-            ;
-                BuiltinType = builtin_type_float,
-                Op = float_eq
-            ;
-                BuiltinType = builtin_type_char,
-                Op = eq(int_type_int)
-            ;
-                BuiltinType = builtin_type_int(IntType),
-                Op = eq(IntType)
-            )
-        else
-            % The else branch handles enumerations.
-            Op = eq(int_type_int)
-        ),
-        fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode, !CI, !CLD),
-        Code = CodeA ++ CodeB ++ FailCode
-    ).
 
 %---------------------------------------------------------------------------%
 

@@ -19,8 +19,14 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module assoc_list.
 :- import_module list.
+
+%---------------------------------------------------------------------------%
+
+:- pred generate_deconstruction_unification(prog_var::in, cons_id::in,
+    list(prog_var)::in, list(unify_mode)::in, can_fail::in, can_cgc::in,
+    llds_code::out, code_info::in, code_info::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -58,27 +64,6 @@
 :- inst field_and_arg_var for field_and_arg_var/0
     --->    field_and_arg_var(uni_val_field, ground, ground).
 
-    % Generate a semideterministic deconstruction.
-    % A semideterministic deconstruction unification is tag-test
-    % followed by a deterministic deconstruction.
-    %
-:- pred generate_semi_deconstruction(prog_var::in, cons_id::in,
-    assoc_list(prog_var, arg_pos_width)::in, list(unify_mode)::in,
-    llds_code::out, code_info::in, code_info::out,
-    code_loc_dep::in, code_loc_dep::out) is det.
-
-    % Generate a deterministic deconstruction. In a deterministic
-    % deconstruction, we know the value of the ptag, so we don't need
-    % to generate a test.
-    %
-    % Deconstructions are generated semi-eagerly. Any test sub-unifications
-    % are generated eagerly (they _must_ be), but assignment unifications
-    % are cached.
-    %
-:- pred generate_det_deconstruction(prog_var::in, cons_id::in,
-    assoc_list(prog_var, arg_pos_width)::in, list(unify_mode)::in,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
-
 %---------------------------------------------------------------------------%
 
     % Generate a subunification between two [field | variable].
@@ -112,13 +97,62 @@
 :- import_module cord.
 :- import_module int.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
+:- import_module string.
 :- import_module term.
 :- import_module uint.
 :- import_module uint8.
 
 %---------------------------------------------------------------------------%
+
+generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
+        CanFail, CanCGC, Code, !CI, !CLD) :-
+    get_module_info(!.CI, ModuleInfo),
+    associate_cons_id_args_with_widths(ModuleInfo, ConsId,
+        RHSVars, RHSVarsWidths),
+    (
+        CanFail = can_fail,
+        generate_semi_deconstruction(LHSVar, ConsId,
+            RHSVarsWidths, ArgModes, DeconstructCode, !CI, !CLD)
+    ;
+        CanFail = cannot_fail,
+        generate_det_deconstruction(LHSVar, ConsId,
+            RHSVarsWidths, ArgModes, DeconstructCode, !.CI, !CLD)
+    ),
+    (
+        CanCGC = can_cgc,
+        LHSVarName = variable_name(!.CI, LHSVar),
+        produce_variable(LHSVar, ProduceVarCode, VarRval, !.CI, !CLD),
+        ( if VarRval = lval(VarLval) then
+            save_reused_cell_fields(LHSVar, VarLval, SaveArgsCode, Regs,
+                !.CI, !CLD),
+            % This seems to be fine.
+            list.foldl(release_reg, Regs, !CLD),
+            % XXX avoid strip_tag when we know what ptag it will have
+            FreeVarCode = singleton(
+                llds_instr(free_heap(unop(strip_tag, VarRval)),
+                    "Free " ++ LHSVarName)
+            ),
+            Code = DeconstructCode ++
+                ProduceVarCode ++ SaveArgsCode ++ FreeVarCode
+        else
+            Code = DeconstructCode
+        )
+    ;
+        CanCGC = cannot_cgc,
+        Code = DeconstructCode
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % Generate a semideterministic deconstruction.
+    % A semideterministic deconstruction unification is tag-test
+    % followed by a deterministic deconstruction.
+    %
+:- pred generate_semi_deconstruction(prog_var::in, cons_id::in,
+    list(arg_and_width(prog_var))::in, list(unify_mode)::in,
+    llds_code::out, code_info::in, code_info::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_semi_deconstruction(Var, Tag, ArgVarsWidths, Modes, Code,
         !CI, !CLD) :-
@@ -135,6 +169,18 @@ generate_semi_deconstruction(Var, Tag, ArgVarsWidths, Modes, Code,
     Code = TagTestCode ++ FailCode ++ SuccessLabelCode ++ DeconsCode.
 
 %---------------------------------------------------------------------------%
+
+    % Generate a deterministic deconstruction. In a deterministic
+    % deconstruction, we know the value of the ptag, so we don't need
+    % to generate a test.
+    %
+    % Deconstructions are generated semi-eagerly. Any test sub-unifications
+    % are generated eagerly (they _must_ be), but assignment unifications
+    % are cached.
+    %
+:- pred generate_det_deconstruction(prog_var::in, cons_id::in,
+    list(arg_and_width(prog_var))::in, list(unify_mode)::in,
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
         CI, !CLD) :-
@@ -166,7 +212,7 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
     ;
         ConsTag = no_tag,
         ( if
-            ArgVarsWidths = [ArgVar - _Width],
+            ArgVarsWidths = [arg_and_width(ArgVar, _Width)],
             ArgModes = [ArgMode]
         then
             VarType = variable_type(CI, Var),
@@ -201,7 +247,7 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
     ;
         ConsTag = direct_arg_tag(Ptag),
         ( if
-            ArgVarsWidths = [ArgVar - _Width],
+            ArgVarsWidths = [arg_and_width(ArgVar, _Width)],
             ArgModes = [ArgMode]
         then
             generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Code,
@@ -236,8 +282,8 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
             ToOrRvals = [],
             Code = AssignRightCode
         ;
-            ToOrRvals = [_ | _],
-            or_packed_rvals(ToOrRvals, ToOrRval),
+            ToOrRvals = [HeadToOrRval | TailToOrRvals],
+            ToOrRval = bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
             reassign_tagword_var(Var, ToOrMask, ToOrRval, AssignLeftCode,
                 CI, !CLD),
             Code = AssignRightCode ++ AssignLeftCode
@@ -266,7 +312,7 @@ generate_deconstruct_unify_args([FieldAndArgVar | FieldsAndArgVars],
     Code = CodeA ++ CodeB.
 
 :- pred generate_deconstruct_tagword_unify_args(prog_var::in,
-    assoc_list(prog_var, arg_pos_width)::in, list(unify_mode)::in,
+    list(arg_and_width(prog_var))::in, list(unify_mode)::in,
     list(rval)::in, list(rval)::out, uint::in, uint::out,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
@@ -281,7 +327,7 @@ generate_deconstruct_tagword_unify_args(_LeftVar, [_ | _], [],
 generate_deconstruct_tagword_unify_args(LeftVar,
         [ArgVarWidth | ArgVarsWidths], [ArgMode | ArgModes],
         !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
-    ArgVarWidth = RightVar - LeftWidth,
+    ArgVarWidth = arg_and_width(RightVar, LeftWidth),
     generate_deconstruct_tagword_unify_arg(LeftVar, LeftWidth, RightVar,
         ArgMode, !ToOrRvals, !ToOrMask, CodeA, CI, !CLD),
     generate_deconstruct_tagword_unify_args(LeftVar, ArgVarsWidths, ArgModes,
@@ -492,7 +538,7 @@ generate_deconstruct_assign_left(LeftField, RightVar, Code, CI, !CLD) :-
         MaskOld = binop(bitwise_and(int_type_uint),
             lval(LeftLval), ComplementMask),
         ShiftedRightRval = left_shift_rval(RightRval, Shift, Fill),
-        CombinedRval = or_two_rvals(MaskOld, ShiftedRightRval),
+        CombinedRval = bitwise_or_two_rvals(MaskOld, ShiftedRightRval),
         AssignCode = singleton(llds_instr(assign(LeftLval, CombinedRval),
             "Update part of word"))
     ;
@@ -571,13 +617,13 @@ generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Code,
 %---------------------------------------------------------------------------%
 
 :- pred make_fields_and_arg_vars(vartypes::in, rval::in, ptag::in,
-    assoc_list(prog_var, arg_pos_width)::in,
+    list(arg_and_width(prog_var))::in,
     list(field_and_arg_var)::out(list_skel(field_and_arg_var))) is det.
 
 make_fields_and_arg_vars(_, _, _, [], []).
 make_fields_and_arg_vars(VarTypes, Rval, Ptag, [VarPosWidth | VarsPosWidths],
         [FieldAndArgVar | FieldsAndArgVars]) :-
-    VarPosWidth = Var - PosWidth,
+    VarPosWidth = arg_and_width(Var, PosWidth),
     (
         ( PosWidth = apw_full(_, CellOffset)
         ; PosWidth = apw_partial_first(_, CellOffset, _, _, _)

@@ -31,6 +31,8 @@
 
 %---------------------------------------------------------------------------%
 
+    % Generate LLDS code for a unification.
+    %
 :- pred generate_unification(code_model::in, unification::in,
     hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
@@ -42,51 +44,34 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
 :- import_module ll_backend.unify_gen_construct.
 :- import_module ll_backend.unify_gen_deconstruct.
-:- import_module ll_backend.unify_gen_test.
-:- import_module ll_backend.unify_gen_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module cord.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
-:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
 
-generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
+generate_unification(CodeModel, Unification, GoalInfo, Code, !CI, !CLD) :-
     (
-        Uni = assign(LHSVar, RHSVar),
-        (
-            CodeModel = model_det
-        ;
-            ( CodeModel = model_semi
-            ; CodeModel = model_non
-            ),
-            unexpected($pred, "assign is not model_det")
-        ),
-        ( if variable_is_forward_live(!.CLD, LHSVar) then
-            generate_assignment(LHSVar, RHSVar, Code, !CLD)
-        else
-            Code = empty
-        )
+        Unification = assign(LHSVar, RHSVar),
+        expect(unify(CodeModel, model_det), $pred, "assign not det"),
+        generate_assignment_unification(LHSVar, RHSVar, Code, !CLD)
     ;
-        Uni = construct(LHSVar, ConsId, RHSVars, ArgModes, HowToConstruct, _,
-            SubInfo),
-        (
-            CodeModel = model_det
-        ;
-            ( CodeModel = model_semi
-            ; CodeModel = model_non
-            ),
-            unexpected($pred, "construct is not model_det")
-        ),
+        Unification = simple_test(VarA, VarB),
+        expect(unify(CodeModel, model_semi), $pred, "simple_test not semidet"),
+        generate_simple_test_unification(VarA, VarB, Code, !CI, !CLD)
+    ;
+        Unification = construct(LHSVar, ConsId, RHSVars, ArgModes,
+            HowToConstruct, _CellIsUnique, SubInfo),
+        expect(unify(CodeModel, model_det), $pred, "construct not det"),
         (
             SubInfo = no_construct_sub_info,
             MaybeTakeAddr = no,
@@ -105,87 +90,91 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
                 MaybeTakeAddr = no,
                 TakeAddr = []
             ),
-            get_module_info(!.CI, ModuleInfo),
-            get_cons_arg_widths(ModuleInfo, ConsId, RHSVars, RHSVarsWidths),
-            generate_construction(LHSVar, ConsId, RHSVarsWidths, ArgModes,
-                HowToConstruct, TakeAddr, MaybeSize, GoalInfo, Code, !CI, !CLD)
+            generate_construction_unification(LHSVar, ConsId,
+                RHSVars, ArgModes, HowToConstruct, TakeAddr, MaybeSize,
+                GoalInfo, Code, !CI, !CLD)
         else
             Code = empty
         )
     ;
-        Uni = deconstruct(LHSVar, ConsId, RHSVars, ArgModes, _CanFail, CanCGC),
-        get_module_info(!.CI, ModuleInfo),
-        get_cons_arg_widths(ModuleInfo, ConsId, RHSVars, RHSVarsWidths),
-        (
-            CodeModel = model_det,
-            generate_det_deconstruction(LHSVar, ConsId,
-                RHSVarsWidths, ArgModes, DeconstructCode, !.CI, !CLD)
-        ;
-            CodeModel = model_semi,
-            generate_semi_deconstruction(LHSVar, ConsId,
-                RHSVarsWidths, ArgModes, DeconstructCode, !CI, !CLD)
-        ;
-            CodeModel = model_non,
-            unexpected($pred, "deconstruct is model_non")
-        ),
-        (
-            CanCGC = can_cgc,
-            LHSVarName = variable_name(!.CI, LHSVar),
-            produce_variable(LHSVar, ProduceVarCode, VarRval, !.CI, !CLD),
-            ( if VarRval = lval(VarLval) then
-                save_reused_cell_fields(LHSVar, VarLval, SaveArgsCode, Regs,
-                    !.CI, !CLD),
-                % This seems to be fine.
-                list.foldl(release_reg, Regs, !CLD),
-                % XXX avoid strip_tag when we know what ptag it will have
-                FreeVarCode = singleton(
-                    llds_instr(free_heap(unop(strip_tag, VarRval)),
-                        "Free " ++ LHSVarName)
-                ),
-                Code = DeconstructCode ++
-                    ProduceVarCode ++ SaveArgsCode ++ FreeVarCode
-            else
-                Code = DeconstructCode
-            )
-        ;
-            CanCGC = cannot_cgc,
-            Code = DeconstructCode
-        )
+        Unification = deconstruct(LHSVar, ConsId, RHSVars, ArgModes,
+            CanFail, CanCGC),
+        generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
+            CanFail, CanCGC, Code, !CI, !CLD)
     ;
-        Uni = simple_test(VarA, VarB),
-        (
-            CodeModel = model_semi,
-            generate_simple_test_unification(VarA, VarB, Code, !CI, !CLD)
-        ;
-            ( CodeModel = model_det
-            ; CodeModel = model_non
-            ),
-            unexpected($pred, "simple_test is not model_semi")
-        )
-    ;
-        % These should have been transformed into calls to unification
-        % procedures by polymorphism.m.
-        Uni = complicated_unify(_Mode, _CanFail, _TypeInfoVars),
+        Unification = complicated_unify(_, _, _),
+        % These should have been converted into calls to unification predicates
+        % by the simplification pass.
         unexpected($pred, "complicated unify")
     ).
 
 %---------------------------------------------------------------------------%
 
-    % Assignment unifications are generated by simply caching the bound
-    % variable as the expression that generates the free variable.
-    % No immediate code is generated.
+    % Generate code for the assignment unification LHSVar := RHSVar.
     %
-:- pred generate_assignment(prog_var::in, prog_var::in, llds_code::out,
-    code_loc_dep::in, code_loc_dep::out) is det.
+:- pred generate_assignment_unification(prog_var::in, prog_var::in,
+    llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_assignment(VarA, VarB, empty, !CLD) :-
-    ( if variable_is_forward_live(!.CLD, VarA) then
-        assign_var_to_var(VarA, VarB, !CLD)
+generate_assignment_unification(LHSVar, RHSVar, Code, !CLD) :-
+    ( if variable_is_forward_live(!.CLD, LHSVar) then
+        assign_var_to_var(LHSVar, RHSVar, !CLD),
+        % The assignment is cached; we do not generate any code for it *here*
+        % (though we *will* generate code for it later, when the value
+        % of LHSVar is materialized).
+        Code = empty
     else
         % Mode analysis reports free-free unifications as assignments
         % to a dead variable. For such unifications, we of course
         % do not generate any code.
-        true
+        Code = empty
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % generate_simple_test_unification(VarA, VarB, Code, !CI, !CLD):
+    %
+    % We generate code for a simple test unification by flushing both variables
+    % from the cache, and producing code that branches to the location that is
+    % appropriate for a failure in the current environment if the two values
+    % are not the same. Simple tests are in-in unifications on enumerations,
+    % integers, strings and floats.
+    %
+:- pred generate_simple_test_unification(prog_var::in, prog_var::in,
+    llds_code::out, code_info::in, code_info::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
+
+generate_simple_test_unification(VarA, VarB, Code, !CI, !CLD) :-
+    Type = variable_type(!.CI, VarA),
+    get_module_info(!.CI, ModuleInfo),
+    IsDummyType = is_type_a_dummy(ModuleInfo, Type),
+    (
+        IsDummyType = is_dummy_type,
+        Code = empty
+    ;
+        IsDummyType = is_not_dummy_type,
+        ( if Type = builtin_type(BuiltinType) then
+            (
+                BuiltinType = builtin_type_string,
+                EqOp = str_eq
+            ;
+                BuiltinType = builtin_type_float,
+                EqOp = float_eq
+            ;
+                BuiltinType = builtin_type_char,
+                EqOp = eq(int_type_int)
+            ;
+                BuiltinType = builtin_type_int(IntType),
+                EqOp = eq(IntType)
+            )
+        else
+            % The else branch handles enumerations.
+            EqOp = eq(int_type_int)
+        ),
+        produce_variable(VarA, VarCodeA, VarRvalA, !.CI, !CLD),
+        produce_variable(VarB, VarCodeB, VarRvalB, !.CI, !CLD),
+        fail_if_rval_is_false(binop(EqOp, VarRvalA, VarRvalB), FailCode,
+            !CI, !CLD),
+        Code = VarCodeA ++ VarCodeB ++ FailCode
     ).
 
 %---------------------------------------------------------------------------%

@@ -18,7 +18,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module assoc_list.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -28,16 +27,19 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred get_cons_arg_widths(module_info::in, cons_id::in,
-    list(T)::in, assoc_list(T, arg_pos_width)::out) is det.
+:- type arg_and_width(Arg)
+    --->    arg_and_width(Arg, arg_pos_width).
+
+:- pred associate_cons_id_args_with_widths(module_info::in, cons_id::in,
+    list(Arg)::in, list(arg_and_width(Arg))::out) is det.
 
 %---------------------------------------------------------------------------%
 
     % OR together the given rvals.
     %
-:- pred or_packed_rvals(list(rval)::in, rval::out) is det.
-
-:- func or_two_rvals(rval, rval) = rval.
+:- func bitwise_or_rvals(list(rval)) = rval.
+:- func bitwise_or_some_rvals(rval, list(rval)) = rval.
+:- func bitwise_or_two_rvals(rval, rval) = rval.
 
 :- func left_shift_rval(rval, arg_shift, fill_kind) = rval.
 
@@ -66,6 +68,9 @@
     ;       assign_right
     ;       assign_unused.
 
+    % Figure out in which direction the assignment goes
+    % between a field of a term, and the corresponding argument.
+    %
 :- pred compute_assign_direction(module_info::in, unify_mode::in, mer_type::in,
     assign_dir::out) is det.
 
@@ -85,7 +90,6 @@
 
 :- import_module int.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module term.
 
@@ -136,17 +140,16 @@ int_tag_to_const_and_int_type(IntTag, Const, Type) :-
 
 %---------------------------------------------------------------------------%
 
-get_cons_arg_widths(ModuleInfo, ConsId, AllArgs, AllArgsPosWidths) :-
+associate_cons_id_args_with_widths(ModuleInfo, ConsId, AllArgs,
+        AllArgsPosWidths) :-
     ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
         ConsArgRepns = ConsRepnDefn ^ cr_args,
         ConsTag = ConsRepnDefn ^ cr_tag,
-        ArgPosWidths = list.map((func(C) = C ^ car_pos_width), ConsArgRepns),
         list.length(AllArgs, NumAllArgs),
         list.length(ConsArgRepns, NumConsArgs),
         NumExtraArgs = NumAllArgs - NumConsArgs,
         ( if NumExtraArgs = 0 then
-            assoc_list.from_corresponding_lists(AllArgs, ArgPosWidths,
-                AllArgsPosWidths)
+            zip_args_widths(AllArgs, ConsArgRepns, AllArgsPosWidths)
         else if NumExtraArgs > 0 then
             list.det_split_list(NumExtraArgs, AllArgs, ExtraArgs, ConsArgs),
             ( if ConsTag = shared_remote_tag(_, RemoteSecTag) then
@@ -159,8 +162,7 @@ get_cons_arg_widths(ModuleInfo, ConsId, AllArgs, AllArgsPosWidths) :-
             ),
             allocate_consecutive_full_words(InitOffset,
                 ExtraArgs, ExtraArgsPosWidths),
-            assoc_list.from_corresponding_lists(ConsArgs, ArgPosWidths,
-                ConsArgsPosWidths),
+            zip_args_widths(ConsArgs, ConsArgRepns, ConsArgsPosWidths),
             AllArgsPosWidths = ExtraArgsPosWidths ++ ConsArgsPosWidths
         else
             unexpected($pred, "too few arguments")
@@ -169,48 +171,59 @@ get_cons_arg_widths(ModuleInfo, ConsId, AllArgs, AllArgsPosWidths) :-
         allocate_consecutive_full_words(0, AllArgs, AllArgsPosWidths)
     ).
 
+:- pred zip_args_widths(list(Arg)::in,
+    list(constructor_arg_repn)::in, list(arg_and_width(Arg))::out) is det.
+
+zip_args_widths([], [], []).
+zip_args_widths([], [_ | _], _) :-
+    unexpected($pred, "length mismatch").
+zip_args_widths([_ | _], [], _) :-
+    unexpected($pred, "length mismatch").
+zip_args_widths([Arg | Args], [ConsArgRepn | ConsArgRepns],
+        [ArgTypeWidth | ArgsTypesWidth]) :-
+    ArgTypeWidth = arg_and_width(Arg, ConsArgRepn ^ car_pos_width),
+    zip_args_widths(Args, ConsArgRepns, ArgsTypesWidth).
+
     % The initial offset that our callers should specify
     % depends on the absence/presence of a secondary tag.
     %
 :- pred allocate_consecutive_full_words(int::in,
-    list(T)::in, assoc_list(T, arg_pos_width)::out) is det.
+    list(Arg)::in, list(arg_and_width(Arg))::out) is det.
 
 allocate_consecutive_full_words(_, [], []).
 allocate_consecutive_full_words(CurOffset,
         [Arg | Args], [ArgPosWidth | ArgsPosWidths]) :-
     PosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
-    ArgPosWidth = Arg - PosWidth,
+    ArgPosWidth = arg_and_width(Arg, PosWidth),
     allocate_consecutive_full_words(CurOffset + 1, Args, ArgsPosWidths).
 
 %---------------------------------------------------------------------------%
 
-or_packed_rvals(Rvals, OrAllRval) :-
+bitwise_or_rvals(Rvals) = OrAllRval :-
+    (
+        Rvals = [],
+        OrAllRval = const(llconst_int(0))
+    ;
+        Rvals = [HeadRval | TailRvals],
+        OrAllRval = bitwise_or_some_rvals(HeadRval, TailRvals)
+    ).
+
+bitwise_or_some_rvals(HeadRval, TailRvals) = OrAllRval :-
     % We currently do this a linear fashion, starting at the rightmost
     % arguments, and moving towards the left.
     %
     % We could explore whether other strategies, such as balanced trees,
     % (or rather, trees that are as balanced as possible) would work better.
     (
-        Rvals = [],
-        OrAllRval = const(llconst_int(0))
-    ;
-        Rvals = [HeadRval | TailRvals],
-        or_packed_rvals_lag(HeadRval, TailRvals, OrAllRval)
-    ).
-
-:- pred or_packed_rvals_lag(rval::in, list(rval)::in, rval::out) is det.
-
-or_packed_rvals_lag(HeadRval, TailRvals, OrAllRval) :-
-    (
         TailRvals = [],
         OrAllRval = HeadRval
     ;
         TailRvals = [HeadTailRval | TailTailRvals],
-        or_packed_rvals_lag(HeadTailRval, TailTailRvals, TailOrAllRval),
-        OrAllRval = or_two_rvals(HeadRval, TailOrAllRval)
+        TailOrAllRval = bitwise_or_some_rvals(HeadTailRval, TailTailRvals),
+        OrAllRval = bitwise_or_two_rvals(HeadRval, TailOrAllRval)
     ).
 
-or_two_rvals(RvalA, RvalB) = OrRval :-
+bitwise_or_two_rvals(RvalA, RvalB) = OrRval :-
     % OR-ing anything with zero has no effect.
     ( if
         ( RvalA = const(llconst_int(0))
@@ -298,9 +311,9 @@ maybe_cast_masked_off_rval(Fill, MaskedRval0, MaskedRval) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(compute_assign_direction/4).
-
 compute_assign_direction(ModuleInfo, ArgMode, ArgType, Dir) :-
+    % Any change here will require a corresponding change
+    % in ml_compute_assign_direction.
     ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
     from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
         LeftTopMode),

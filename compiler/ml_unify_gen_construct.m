@@ -27,9 +27,10 @@
 
     % ml_gen_construct generates code for a construction unification.
     %
-:- pred ml_gen_construct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, list(int)::in, how_to_construct::in,
-    prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+:- pred ml_generate_construction_unification(prog_var::in, cons_id::in,
+    list(prog_var)::in, list(unify_mode)::in, list(int)::in,
+    how_to_construct::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % We use values of this type when constructing a compound term.
@@ -120,14 +121,104 @@
 
 %---------------------------------------------------------------------------%
 
-ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
-        Context, Defns, Stmts, !Info) :-
-    % Figure out how this cons_id is represented.
+ml_generate_construction_unification(Var, ConsId, ArgVars, ArgModes,
+        TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info) :-
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     (
+        % Constants.
+        ( ConsTag = int_tag(_)
+        ; ConsTag = dummy_tag
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = float_tag(_)
+        ; ConsTag = string_tag(_)
+        ; ConsTag = shared_local_tag_no_args(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
+        ),
+        expect(unify(ArgVars, []), $pred, "constant has arguments"),
+        ml_variable_type(!.Info, Var, VarType),
+        ml_gen_var(!.Info, Var, VarLval),
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+        (
+            ConsTag = int_tag(IntTag),
+            ConstRval = ml_int_tag_to_rval_const(IntTag, VarType, MLDS_Type)
+        ;
+            ConsTag = dummy_tag,
+            % The type information is needed by the Java backend.
+            ConstRval = ml_int_tag_to_rval_const(int_tag_int(0), VarType,
+                MLDS_Type)
+        ;
+            ConsTag = float_tag(Float),
+            ConstRval = ml_const(mlconst_float(Float))
+        ;
+            ConsTag = string_tag(String),
+            ConstRval = ml_const(mlconst_string(String))
+        ;
+            ConsTag = foreign_tag(ForeignLang, ForeignTag),
+            ConstRval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
+                MLDS_Type))
+        ;
+            ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _),
+            LocalSectag = local_sectag(_, PrimSec, _),
+            ConstRval = ml_cast(MLDS_Type, ml_const(mlconst_uint(PrimSec)))
+        ;
+            ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
+            ModuleName = fixup_builtin_module(ModuleName0),
+            MLDS_Module = mercury_module_name_to_mlds(ModuleName),
+            RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
+            RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+            Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
+            ConstRval = ml_cast(MLDS_Type, ml_const(Const))
+        ;
+            ConsTag = base_typeclass_info_tag(ModuleName, ClassId,
+                Instance),
+            MLDS_Module = mercury_module_name_to_mlds(ModuleName),
+            TCName = generate_class_name(ClassId),
+            RttiId = tc_rtti_id(TCName,
+                type_class_base_typeclass_info(ModuleName, Instance)),
+            Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
+            ConstRval = ml_cast(MLDS_Type, ml_const(Const))
+        ;
+            ( ConsTag = type_info_const_tag(ConstNum)
+            ; ConsTag = typeclass_info_const_tag(ConstNum)
+            ; ConsTag = ground_term_const_tag(ConstNum, _)
+            ),
+            ml_gen_info_get_const_struct_map(!.Info, ConstStructMap),
+            map.lookup(ConstStructMap, ConstNum, GroundTerm0),
+            GroundTerm0 = ml_ground_term(ConstRval, _Type, _MLDS_Type)
+        ;
+            ConsTag = tabling_info_tag(PredId, ProcId),
+            ml_gen_pred_label(ModuleInfo, proc(PredId, ProcId),
+                PredLabel, PredModule),
+            ProcLabel = mlds_proc_label(PredLabel, ProcId),
+            QualProcLabel = qual_proc_label(PredModule, ProcLabel),
+            Const = mlconst_data_addr_tabling(QualProcLabel, tabling_info),
+            ConstRval = ml_cast(MLDS_Type, ml_const(Const))
+        ;
+            ConsTag = deep_profiling_proc_layout_tag(_, _),
+            unexpected($pred, "deep_profiling_proc_layout_tag NYI")
+        ;
+            ConsTag = table_io_entry_tag(_, _),
+            unexpected($pred, "table_io_entry_tag NYI")
+        ),
+        GroundTerm = ml_ground_term(ConstRval, VarType, MLDS_Type),
+        ml_gen_info_set_const_var(Var, GroundTerm, !Info),
+        Stmt = ml_gen_assign(VarLval, ConstRval, Context),
+        Stmts = [Stmt],
+        Defns = []
+    ;
         ( ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
         ),
+        expect(unify(TakeAddr, []), $pred,
+            "notag or direct_arg_tag: take_addr"),
         ( if
             ArgVars = [ArgVar],
             ArgModes = [ArgMode]
@@ -139,6 +230,8 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
             ( if
                 ml_gen_info_search_const_var(!.Info, ArgVar, ArgGroundTerm)
             then
+                % XXX ARG_PACK: This likely generates the wrong constant
+                % for direct_arg_tag with Ptag != 0.
                 ArgGroundTerm = ml_ground_term(ArgRval, _ArgType,
                     MLDS_ArgType),
                 ml_gen_info_get_global_data(!.Info, GlobalData0),
@@ -168,13 +261,8 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
                 )
             )
         else
-            (
-                ConsTag = no_tag,
-                unexpected($pred, "no_tag: arity != 1")
-            ;
-                ConsTag = direct_arg_tag(_),
-                unexpected($pred, "direct_arg_tag: arity != 1")
-            )
+            unexpected($pred, "no_tag or direct_arg_tag: arity != 1")
+
         ),
         Defns = []
     ;
@@ -190,6 +278,7 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
             ConsTag = shared_remote_tag(Ptag, RemoteSectag),
             MaybeStag = yes(RemoteSectag)
         ),
+        % XXX ARG_PACK inline this into the subswitch above.
         UsesBaseClass = ml_tag_uses_base_class(ConsTag),
         ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
             ArgVars, ArgModes, TakeAddr, HowToConstruct, Context,
@@ -202,111 +291,9 @@ ml_gen_construct(Var, ConsId, ArgVars, ArgModes, TakeAddr, HowToConstruct,
             ArgVars, ArgModes, HowToConstruct, Context, Stmts, !Info),
         Defns = []
     ;
-        % Lambda expressions.
         ConsTag = closure_tag(PredId, ProcId, _EvalMethod),
-        ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
-            Context, Defns, Stmts, !Info)
-    ;
-        ( ConsTag = type_info_const_tag(ConstNum)
-        ; ConsTag = typeclass_info_const_tag(ConstNum)
-        ; ConsTag = ground_term_const_tag(ConstNum, _)
-        ),
-        ml_gen_info_get_const_struct_map(!.Info, ConstStructMap),
-        map.lookup(ConstStructMap, ConstNum, GroundTerm0),
-        GroundTerm0 = ml_ground_term(Rval, _Type, _MLDS_Type),
-        ml_variable_type(!.Info, Var, VarType),
-        ml_gen_var(!.Info, Var, VarLval),
-        ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-        GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
-        ml_gen_info_set_const_var(Var, GroundTerm, !Info),
-        Defns = [],
-        Stmt = ml_gen_assign(VarLval, Rval, Context),
-        Stmts = [Stmt]
-    ;
-        % Constants.
-        ( ConsTag = int_tag(_)
-        ; ConsTag = dummy_tag
-        ; ConsTag = foreign_tag(_, _)
-        ; ConsTag = float_tag(_)
-        ; ConsTag = string_tag(_)
-        ; ConsTag = shared_local_tag_no_args(_, _, _)
-        ; ConsTag = type_ctor_info_tag(_, _, _)
-        ; ConsTag = base_typeclass_info_tag(_, _, _)
-        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
-        ; ConsTag = tabling_info_tag(_, _)
-        ; ConsTag = table_io_entry_tag(_, _)
-        ),
-        (
-            ArgVars = [],
-            ml_variable_type(!.Info, Var, VarType),
-            ml_gen_var(!.Info, Var, VarLval),
-            ml_gen_info_get_module_info(!.Info, ModuleInfo),
-            MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-            (
-                ConsTag = int_tag(IntTag),
-                Rval = ml_int_tag_to_rval_const(IntTag, VarType, MLDS_Type)
-            ;
-                ConsTag = dummy_tag,
-                % The type information is needed by the Java backend.
-                Rval = ml_int_tag_to_rval_const(int_tag_int(0), VarType,
-                    MLDS_Type)
-            ;
-                ConsTag = float_tag(Float),
-                Rval = ml_const(mlconst_float(Float))
-            ;
-                ConsTag = string_tag(String),
-                Rval = ml_const(mlconst_string(String))
-            ;
-                ConsTag = foreign_tag(ForeignLang, ForeignTag),
-                Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
-                    MLDS_Type))
-            ;
-                ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _),
-                LocalSectag = local_sectag(_, PrimSec, _),
-                Rval = ml_cast(MLDS_Type, ml_const(mlconst_uint(PrimSec)))
-            ;
-                ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
-                ModuleName = fixup_builtin_module(ModuleName0),
-                MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-                RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
-                RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
-                Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
-                Rval = ml_cast(MLDS_Type, ml_const(Const))
-            ;
-                ConsTag = base_typeclass_info_tag(ModuleName, ClassId,
-                    Instance),
-                MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-                TCName = generate_class_name(ClassId),
-                RttiId = tc_rtti_id(TCName,
-                    type_class_base_typeclass_info(ModuleName, Instance)),
-                Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
-                Rval = ml_cast(MLDS_Type, ml_const(Const))
-            ;
-                ConsTag = tabling_info_tag(PredId, ProcId),
-                ml_gen_pred_label(ModuleInfo, proc(PredId, ProcId),
-                    PredLabel, PredModule),
-                ProcLabel = mlds_proc_label(PredLabel, ProcId),
-                QualProcLabel = qual_proc_label(PredModule, ProcLabel),
-                Const = mlconst_data_addr_tabling(QualProcLabel, tabling_info),
-                Rval = ml_cast(MLDS_Type, ml_const(Const))
-            ;
-                ConsTag = deep_profiling_proc_layout_tag(_, _),
-                unexpected($pred, "deep_profiling_proc_layout_tag NYI")
-            ;
-                ConsTag = table_io_entry_tag(_, _),
-                unexpected($pred, "table_io_entry_tag NYI")
-            ),
-            GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
-            ml_gen_info_set_const_var(Var, GroundTerm, !Info),
-            Stmt = ml_gen_assign(VarLval, Rval, Context),
-            Stmts = [Stmt]
-        ;
-            ArgVars = [_ | _],
-            % XXX ARG_PACK Move the ArgVars = [] code *after* this switch.
-            unexpected($pred, "bad constant term")
-        ),
-        Defns = []
+        ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes,
+            HowToConstruct, Context, Defns, Stmts, !Info)
     ).
 
 %---------------------------------------------------------------------------%
@@ -382,13 +369,14 @@ ml_gen_construct_tagword_compound(ConsId, LocalSectag, Var,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_var_types(!.Info, VarTypes),
     lookup_var_type(VarTypes, Var, VarType),
-    cons_id_arg_types_and_widths(ModuleInfo,
+    associate_cons_id_args_with_types_widths(ModuleInfo,
         lookup_var_type_func(VarTypes), may_not_have_extra_args,
         VarType, ConsId, ArgVars, ArgVarsTypesWidths),
     (
         list.reverse(RevOrRvals, OrRvals),
         LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
-        or_rvals(ml_const(mlconst_uint(PrimSec)), OrRvals, TagwordRval),
+        TagwordRval = ml_bitwise_or_some_rvals(
+            ml_const(mlconst_uint(PrimSec)), OrRvals),
         (
             HowToConstruct = construct_dynamically,
             ml_gen_tagword_dynamically(!.Info, ArgVarsTypesWidths, ArgModes,
@@ -468,8 +456,8 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
     % Find out the types of the constructor arguments and generate rvals
     % for them (boxing/unboxing if needed).
     ml_variable_type(!.Info, Var, VarType),
-    maybe_cons_id_arg_types_and_widths(!.Info, VarType, ConsIdOrClosure,
-        ArgVars, ArgVarsTypesWidths),
+    associate_maybe_cons_id_args_with_types_widths(!.Info, VarType,
+        ConsIdOrClosure, ArgVars, ArgVarsTypesWidths),
     ml_gen_info_get_use_atomic_cells(!.Info, UseAtomicCells),
     (
         UseAtomicCells = yes,
@@ -547,8 +535,8 @@ ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
         Var, ExtraRvalsTypesWidths, ArgVars, Context, Stmts, !Info) :-
     % Find out the types of the constructor arguments.
     ml_variable_type(!.Info, Var, VarType),
-    maybe_cons_id_arg_types_and_widths(!.Info, VarType, ConsIdOrClosure,
-        ArgVars, ArgVarsTypesWidths),
+    associate_maybe_cons_id_args_with_types_widths(!.Info, VarType,
+        ConsIdOrClosure, ArgVars, ArgVarsTypesWidths),
 
     some [!GlobalData] (
         % Generate rvals for the arguments.
@@ -624,15 +612,14 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     list.map(
         ( pred(ReuseConsId::in, ReusePrimTag::out) is det :-
             ml_cons_id_to_tag(!.Info, ReuseConsId, ReuseConsTag),
-            ml_tag_initial_offset_and_argnum(ReuseConsTag, ReusePrimTag,
-                _ReuseOffSet, _ReuseArgNum)
+            ml_tag_ptag_and_initial_offset(ReuseConsTag, ReusePrimTag,
+                _ReuseOffSet)
         ), ReuseConsIds, ReusePrimaryTags0),
     list.remove_dups(ReusePrimaryTags0, ReusePrimaryTags),
 
     ml_variable_type(!.Info, Var, VarType),
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
-    ml_tag_initial_offset_and_argnum(ConsTag, PrimaryTag,
-        InitOffSet, ArgNum),
+    ml_tag_ptag_and_initial_offset(ConsTag, PrimaryTag, InitOffSet),
     ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
         ArgVarRepns),
 
@@ -678,8 +665,9 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     decide_field_gen(!.Info, VarLval, VarType, ConsId, ConsTag, FieldGen),
     % XXX We do more work than we need to here, as some of the cells
     % may already contain the correct values.
+    FirstArgNum = 1,
     ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, ArgModes,
-        ArgNum, Context, TakeAddr, TakeAddrInfos,
+        FirstArgNum, Context, TakeAddr, TakeAddrInfos,
         FieldDefns, FieldStmts, !Info),
     ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_VarType,
         MaybePtag, Context, !.Info, TakeAddrStmts),
@@ -1058,7 +1046,7 @@ ml_gen_tagword_statically(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
 
 ml_gen_dynamic_construct_direct_arg(ModuleInfo, Ptag,
         ArgMode, ArgLval, ArgType, VarLval, VarType, Context, Stmts) :-
-    compute_assign_direction(ModuleInfo, ArgMode, ArgType, VarType, Dir),
+    ml_compute_assign_direction(ModuleInfo, ArgMode, ArgType, VarType, Dir),
     (
         Dir = assign_nondummy_right,
         unexpected($pred, "left-to-right data flow in construction")
@@ -1291,7 +1279,7 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
     ;
         ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
         LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
-        cons_id_arg_types_and_widths(ModuleInfo,
+        associate_cons_id_args_with_types_widths(ModuleInfo,
             lookup_var_type_func(VarTypes), may_not_have_extra_args,
             VarType, ConsId, ArgVars, ArgVarsTypesWidths),
         (
@@ -1303,7 +1291,8 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         list.foldl2(construct_ground_term_tagword_initializer_lld,
             ArgVarsTypesWidths, [], RevOrRvals, !GroundTermMap),
         list.reverse(RevOrRvals, OrRvals),
-        or_rvals(ml_const(mlconst_uint(PrimSec)), OrRvals, TagwordRval),
+        TagwordRval = ml_bitwise_or_some_rvals(
+            ml_const(mlconst_uint(PrimSec)), OrRvals),
         ConstGroundTerm = ml_ground_term(TagwordRval, VarType, MLDS_Type),
         map.det_insert(Var, ConstGroundTerm, !GroundTermMap)
     ).
@@ -1324,7 +1313,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     % then polymorphism should have changed its scope_reason away from
     % from_ground_term_construct. Therefore the static struct we are
     % constructing should not need any extra type_info or typeclass_info args.
-    cons_id_arg_types_and_widths(ModuleInfo, lookup_var_type_func(VarTypes),
+    associate_cons_id_args_with_types_widths(ModuleInfo, lookup_var_type_func(VarTypes),
         may_not_have_extra_args, VarType, ConsId, ArgVars, ArgVarsTypesWidths),
     (
         HighLevelData = yes,
@@ -1547,7 +1536,8 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
         list.foldl(ml_gen_const_tagword_arg(Info), ArgsTypesWidths,
             [], RevOrRvals),
         list.reverse(RevOrRvals, OrRvals),
-        or_rvals(ml_const(mlconst_uint(PrimSec)), OrRvals, TagwordRval),
+        TagwordRval = ml_bitwise_or_some_rvals(
+            ml_const(mlconst_uint(PrimSec)), OrRvals),
         GroundTerm = ml_ground_term(TagwordRval, Type, MLDS_Type),
         map.det_insert(ConstNum, GroundTerm, !ConstStructMap)
     ;
@@ -1626,7 +1616,7 @@ ml_gen_const_static_args_widths(Info, VarType, ConsId, Args,
         % XXX TYPE_REPN The may_not_have_extra_args preserves old behavior,
         % but may be a bug. It depends on whether we ever put into the
         % const struct db terms that need extra args.
-        cons_id_arg_types_and_widths(ModuleInfo, AllTypesVoid,
+        associate_cons_id_args_with_types_widths(ModuleInfo, AllTypesVoid,
             may_not_have_extra_args, VarType, ConsId, Args, ArgsTypesWidths)
     else
         unexpected($pred,
@@ -2144,7 +2134,7 @@ ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
         BoxedOrAllRval = ml_const(mlconst_int(0))
     ;
         OrRvals = [HeadOrRval | TailOrRvals],
-        or_rvals(HeadOrRval, TailOrRvals, OrAllRval),
+        OrAllRval = ml_bitwise_or_some_rvals(HeadOrRval, TailOrRvals),
         BoxedOrAllRval = ml_cast(mlds_generic_type, OrAllRval)
     ).
 

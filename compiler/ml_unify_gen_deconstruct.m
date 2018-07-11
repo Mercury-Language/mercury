@@ -10,6 +10,7 @@
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module ml_backend.ml_gen_info.
@@ -23,47 +24,16 @@
 
 %---------------------------------------------------------------------------%
 
-    % Generate a semidet deconstruction. A semidet deconstruction unification
-    % is a tag test, followed by a deterministic deconstruction which is
-    % executed only if the tag test succeeds.
-    %
-    %   semidet (can_fail) deconstruction:
-    %       <succeeded = (X => f(A1, A2, ...))>
-    %   ===>
-    %       <succeeded = (X => f(_, _, _, _))>  % tag test
-    %       if (succeeded) {
-    %           A1 = arg(X, f, 1);      % extract arguments
-    %           A2 = arg(X, f, 2);
-    %           ...
-    %       }
-    %
-:- pred ml_gen_semi_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, prog_context::in,
-    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-%---------------------------------------------------------------------------%
-
-    % Generate a deterministic deconstruction. In a deterministic
-    % deconstruction, we know the value of the tag, so we don't need
-    % to generate a test.
-    %
-    %   det (cannot_fail) deconstruction:
-    %       <do (X => f(A1, A2, ...))>
-    %   ===>
-    %       A1 = arg(X, f, 1);      % extract arguments
-    %       A2 = arg(X, f, 2);
-    %       ...
-    %
-:- pred ml_gen_det_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, prog_context::in,
+:- pred ml_generate_deconstruction_unification(prog_var::in, cons_id::in,
+    list(prog_var)::in, list(unify_mode)::in, can_fail::in, can_cgc::in,
+    code_model::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% We exxported ml_gen_dynamic_deconstruct_args for use
-% by ml_unify_gen_construct.m when handling reused cells.
+% We export ml_gen_dynamic_deconstruct_args for use by ml_unify_gen_construct.m
+% when handling reused cells.
 %
 % While deconstruct unifications cannot take the addresses of any arguments,
 % construction unifications with reuse can.
@@ -109,6 +79,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_unify_gen_test.
 :- import_module ml_backend.ml_util.
@@ -126,6 +97,62 @@
 :- import_module uint8.
 
 %---------------------------------------------------------------------------%
+
+ml_generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
+        CanFail, CanCGC, CodeModel, Context, Defns, Stmts, !Info) :-
+    (
+        CanFail = can_fail,
+        ExpectedCodeModel = model_semi,
+        ml_gen_semi_deconstruct(LHSVar, ConsId, RHSVars, ArgModes, Context,
+            Defns, UnifyStmts, !Info)
+    ;
+        CanFail = cannot_fail,
+        ExpectedCodeModel = model_det,
+        ml_gen_det_deconstruct(LHSVar, ConsId, RHSVars, ArgModes, Context,
+            Defns, UnifyStmts, !Info)
+    ),
+    (
+        % Note that we can deallocate a cell even if the unification fails;
+        % it is the responsibility of the structure reuse phase to ensure
+        % that this is safe.
+        CanCGC = can_cgc,
+        ml_gen_var(!.Info, LHSVar, LHSVarLval),
+        % XXX Avoid strip_tag when we know what tag it will have.
+        Delete = delete_object(ml_unop(strip_tag, ml_lval(LHSVarLval))),
+        CGCStmt = ml_stmt_atomic(Delete, Context),
+        Stmts0 = UnifyStmts ++ [CGCStmt]
+    ;
+        CanCGC = cannot_cgc,
+        Stmts0 = UnifyStmts
+    ),
+
+    % We used to require that CodeModel = ExpectedCodeModel. But the
+    % determinism field in the goal_info is allowed to be a conservative
+    % approximation, so we need to handle the case were CodeModel is less
+    % precise than ExpectedCodeModel.
+    ml_gen_maybe_convert_goal_code_model(CodeModel, ExpectedCodeModel,
+        Context, Stmts0, Stmts, !Info).
+
+%---------------------------------------------------------------------------%
+
+    % Generate a semidet deconstruction. A semidet deconstruction unification
+    % is a tag test, followed by a deterministic deconstruction which is
+    % executed only if the tag test succeeds.
+    %
+    %   semidet (can_fail) deconstruction:
+    %       <succeeded = (X => f(A1, A2, ...))>
+    %   ===>
+    %       <succeeded = (X => f(_, _, _, _))>  % tag test
+    %       if (succeeded) {
+    %           A1 = arg(X, f, 1);      % extract arguments
+    %           A2 = arg(X, f, 2);
+    %           ...
+    %       }
+    %
+:- pred ml_gen_semi_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
+    list(unify_mode)::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_semi_deconstruct(Var, ConsId, ArgVars, ArgModes, Context,
         Defns, Stmts, !Info) :-
@@ -145,6 +172,22 @@ ml_gen_semi_deconstruct(Var, ConsId, ArgVars, ArgModes, Context,
     ).
 
 %---------------------------------------------------------------------------%
+
+    % Generate a deterministic deconstruction. In a deterministic
+    % deconstruction, we know the value of the tag, so we don't need
+    % to generate a test.
+    %
+    %   det (cannot_fail) deconstruction:
+    %       <do (X => f(A1, A2, ...))>
+    %   ===>
+    %       A1 = arg(X, f, 1);      % extract arguments
+    %       A2 = arg(X, f, 2);
+    %       ...
+    %
+:- pred ml_gen_det_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
+    list(unify_mode)::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
         Defns, Stmts, !Info) :-
@@ -205,11 +248,12 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
         ml_variable_type(!.Info, Var, VarType),
         ml_gen_var(!.Info, Var, VarLval),
         decide_field_gen(!.Info, VarLval, VarType, ConsId, ConsTag, FieldGen),
-        ml_tag_initial_offset_and_argnum(ConsTag, _, InitOffSet, ArgNum),
+        ml_tag_ptag_and_initial_offset(ConsTag, _, InitOffSet),
         ml_field_names_and_types(!.Info, VarType, ConsId, InitOffSet, ArgVars,
             ArgVarRepns),
+        FirstArgNum = 1,
         ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, Modes,
-            ArgNum, Context, [], _, Defns, Stmts, !Info)
+            FirstArgNum, Context, [], _, Defns, Stmts, !Info)
     ;
         ConsTag = shared_local_tag_with_args(_, _),
         ml_gen_var(!.Info, Var, VarLval),
@@ -229,7 +273,7 @@ ml_gen_det_deconstruct(Var, ConsId, ArgVars, Modes, Context,
             ComplementMask = ml_const(mlconst_uint(\ ToOrMask)),
             MaskedOldVarRval = ml_binop(bitwise_and(int_type_uint),
                 ml_lval(VarLval), ComplementMask),
-            or_rvals(HeadToOrRval, TailToOrRvals, ToOrRval),
+            ToOrRval = ml_bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
             NewVarRval = ml_binop(bitwise_or(int_type_uint),
                 MaskedOldVarRval, ToOrRval),
             LeftStmt = ml_gen_assign(VarLval, NewVarRval, Context),
@@ -507,7 +551,7 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, Mode,
     % ml_unused_assign.m can delete both the unused assignments, and the
     % declarations of the unused variables, in most cases.
 
-    compute_assign_direction(ModuleInfo, Mode, ArgType, FieldType, Dir),
+    ml_compute_assign_direction(ModuleInfo, Mode, ArgType, FieldType, Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
@@ -624,10 +668,10 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo, HighLevelData,
         Shift = arg_shift(ShiftInt),
         Mask = arg_mask(MaskInt),
         CastFieldRVal = ml_unbox(mlds_int_type_uint, ml_lval(FieldLval)),
-        OldFieldBits = ml_bitwise_and(CastFieldRVal, \ (MaskInt << ShiftInt)),
-        NewFieldBits = ml_lshift(ArgRval, Shift, Fill),
+        OldFieldBits = ml_bitwise_mask(CastFieldRVal, \ (MaskInt << ShiftInt)),
+        NewFieldBits = ml_left_shift_rval(ArgRval, Shift, Fill),
         UpdatedFieldBits = ml_cast(mlds_generic_type,
-            ml_bitwise_or(OldFieldBits, NewFieldBits)),
+            ml_bitwise_or_two_rvals(OldFieldBits, NewFieldBits)),
         Stmt = ml_gen_assign(FieldLval, UpdatedFieldBits, Context),
         Stmts = [Stmt]
     ;
@@ -678,7 +722,7 @@ ml_gen_deconstruct_tagword_arg(Info, WordRval,
     ml_type_as_field(ModuleInfo, HighLevelData, FieldRawType, FieldWidth,
         FieldType),
 
-    compute_assign_direction(ModuleInfo, Mode, ArgType, FieldType, Dir),
+    ml_compute_assign_direction(ModuleInfo, Mode, ArgType, FieldType, Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_deconstruct_tagword_arg_assign_right(WordRval,
@@ -731,7 +775,7 @@ ml_gen_deconstruct_tagword_arg_assign_left(_WordRval, ArgPosWidth, ArgLval,
         ArgPosWidth = apw_partial_shifted(_, _, Shift, _NumBits, Mask, Fill),
         Shift = arg_shift(ShiftInt),
         Mask = arg_mask(MaskInt),
-        LeftShiftedArgRval = ml_lshift(ml_lval(ArgLval), Shift, Fill),
+        LeftShiftedArgRval = ml_left_shift_rval(ml_lval(ArgLval), Shift, Fill),
         !:ToOrRvals = [LeftShiftedArgRval | !.ToOrRvals],
         !:ToOrMask = (uint.cast_from_int(MaskInt) << ShiftInt) \/ !.ToOrMask
     ;
@@ -758,7 +802,7 @@ ml_gen_dynamic_deconstruct_direct_arg(Info, Ptag, Mode, ArgVar, Var,
     ml_gen_var(Info, ArgVar, ArgLval),
     ml_gen_var(Info, Var, VarLval),
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    compute_assign_direction(ModuleInfo, Mode, ArgType, VarType, Dir),
+    ml_compute_assign_direction(ModuleInfo, Mode, ArgType, VarType, Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
@@ -797,7 +841,7 @@ ml_gen_dynamic_deconstruct_no_tag(Info, Mode, ArgVar, Var, Context, Stmts) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_info_get_high_level_data(Info, HighLevelData),
     ArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
-    compute_assign_direction(ModuleInfo, Mode, ArgType, VarType, Dir),
+    ml_compute_assign_direction(ModuleInfo, Mode, ArgType, VarType, Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
@@ -856,7 +900,8 @@ ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) :-
 ml_extract_subword_value(WordRval, Shift, Mask, Fill, Rval) :-
     UnsignedWordRval = ml_cast(mlds_int_type_uint, WordRval),
     Mask = arg_mask(MaskInt),
-    MaskedRval = ml_bitwise_and(ml_rshift(UnsignedWordRval, Shift), MaskInt),
+    MaskedRval = ml_bitwise_mask(
+        ml_right_shift_rval(UnsignedWordRval, Shift), MaskInt),
     (
         Fill = fill_enum,
         Rval = MaskedRval

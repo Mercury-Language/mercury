@@ -64,7 +64,7 @@
 :- type arg_var_type_and_width == arg_type_and_width(prog_var).
 :- type arg_const_type_and_width == arg_type_and_width(const_struct_arg).
 
-:- pred maybe_cons_id_arg_types_and_widths(ml_gen_info::in,
+:- pred associate_maybe_cons_id_args_with_types_widths(ml_gen_info::in,
     mer_type::in, cons_id_or_closure::in, list(prog_var)::in,
     list(arg_var_type_and_width)::out) is det.
 
@@ -94,23 +94,22 @@
     % does not need the types inside ArgsTypesWidths; such callers can supply
     % dummy values for ArgToTypes, if they also pass may_not_have_extra_args.
     %
-:- pred cons_id_arg_types_and_widths(module_info, arg_to_type(Arg),
+:- pred associate_cons_id_args_with_types_widths(module_info, arg_to_type(Arg),
     may_have_extra_args, mer_type, cons_id, list(Arg),
     list(arg_type_and_width(Arg))).
-:- mode cons_id_arg_types_and_widths(in, in,
+:- mode associate_cons_id_args_with_types_widths(in, in,
     in(bound(may_have_extra_args)), in, in, in, out) is det.
-:- mode cons_id_arg_types_and_widths(in, in,
+:- mode associate_cons_id_args_with_types_widths(in, in,
     in(bound(may_not_have_extra_args)), in, in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
-    % Calculate the integer offset used to reference the first field of a
-    % structure for lowlevel data or the first argument number to access
-    % the field using the highlevel data representation. Abort if the tag
-    % indicates that the data doesn't have any fields.
+    % Given a cons_tag, return its primary tag, and the integer offset
+    % used to reference the first field of a structure for lowlevel data.
+    % Abort if the tag indicates that the data doesn't have any fields.
     %
-:- pred ml_tag_initial_offset_and_argnum(cons_tag::in, ptag::out,
-    cell_offset::out, int::out) is det.
+:- pred ml_tag_ptag_and_initial_offset(cons_tag::in, ptag::out,
+    cell_offset::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -163,15 +162,15 @@
 
     % OR together the given rvals.
     %
-:- pred or_rvals(mlds_rval::in, list(mlds_rval)::in, mlds_rval::out) is det.
+:- func ml_bitwise_or_rvals(list(mlds_rval)) = mlds_rval.
+:- func ml_bitwise_or_some_rvals(mlds_rval, list(mlds_rval)) = mlds_rval.
+:- func ml_bitwise_or_two_rvals(mlds_rval, mlds_rval) = mlds_rval.
 
-:- func ml_bitwise_or(mlds_rval, mlds_rval) = mlds_rval.
+:- func ml_bitwise_mask(mlds_rval, int) = mlds_rval.
 
-:- func ml_bitwise_and(mlds_rval, int) = mlds_rval.
+:- func ml_left_shift_rval(mlds_rval, arg_shift, fill_kind) = mlds_rval.
 
-:- func ml_lshift(mlds_rval, arg_shift, fill_kind) = mlds_rval.
-
-:- func ml_rshift(mlds_rval, arg_shift) = mlds_rval.
+:- func ml_right_shift_rval(mlds_rval, arg_shift) = mlds_rval.
 
 :- pred ml_cast_to_unsigned_without_sign_extend(fill_kind::in,
     mlds_rval::in, mlds_rval::out) is det.
@@ -184,7 +183,16 @@
     ;       assign_nondummy_unused
     ;       assign_dummy.
 
-:- pred compute_assign_direction(module_info::in, unify_mode::in,
+    % Figure out in which direction the assignment goes
+    % between a field of a term, and the corresponding argument.
+    %
+    % This predicate differs from compute_assign_direction, because
+    % the MLDS backend never declares MLDS variables for HLDS variables
+    % of dummy types. It must therefore avoid all mention of such variables.
+    % This is why it must distinguish assignments involving dummy values
+    % even from assignments where the target is unused.
+    %
+:- pred ml_compute_assign_direction(module_info::in, unify_mode::in,
     mer_type::in, mer_type::in, assign_dir::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -324,13 +332,13 @@ allocate_consecutive_full_word_ctor_arg_repns_lookup(Info, CurOffset,
 
 %---------------------------------------------------------------------------%
 
-maybe_cons_id_arg_types_and_widths(Info, VarType, ConsIdOrClosure, ArgVars,
-        ArgVarsTypesWidths) :-
+associate_maybe_cons_id_args_with_types_widths(Info, VarType, ConsIdOrClosure,
+        ArgVars, ArgVarsTypesWidths) :-
     (
         ConsIdOrClosure = ordinary_cons_id(ConsId),
         ml_gen_info_get_module_info(Info, ModuleInfo),
         ml_gen_info_get_var_types(Info, VarTypes),
-        cons_id_arg_types_and_widths(ModuleInfo,
+        associate_cons_id_args_with_types_widths(ModuleInfo,
             lookup_var_type_func(VarTypes), may_have_extra_args,
             VarType, ConsId, ArgVars, ArgVarsTypesWidths)
     ;
@@ -340,8 +348,8 @@ maybe_cons_id_arg_types_and_widths(Info, VarType, ConsIdOrClosure, ArgVars,
             InitOffset, ArgVars, ArgVarsTypesWidths)
     ).
 
-cons_id_arg_types_and_widths(ModuleInfo, ArgToType, MayHaveExtraArgs,
-        VarType, ConsId, Args, ArgsTypesWidths) :-
+associate_cons_id_args_with_types_widths(ModuleInfo, ArgToType,
+        MayHaveExtraArgs, VarType, ConsId, Args, ArgsTypesWidths) :-
     ( if
         ConsId = cons(_, _, _),
         not is_introduced_type_info_type(VarType)
@@ -442,19 +450,17 @@ specified_arg_types_and_consecutive_full_words(Type, CurOffset,
 
 %---------------------------------------------------------------------------%
 
-ml_tag_initial_offset_and_argnum(ConsTag, Ptag, InitOffset, ArgNum) :-
+ml_tag_ptag_and_initial_offset(ConsTag, Ptag, InitOffset) :-
     % XXX ARG_PACK We always return the same ArgNum.
     (
         ConsTag = single_functor_tag,
         Ptag = ptag(0u8),
-        InitOffset = cell_offset(0),
-        ArgNum = 1
+        InitOffset = cell_offset(0)
     ;
         ( ConsTag = unshared_tag(Ptag)
         ; ConsTag = direct_arg_tag(Ptag)
         ),
-        InitOffset = cell_offset(0),
-        ArgNum = 1
+        InitOffset = cell_offset(0)
     ;
         ConsTag = shared_remote_tag(Ptag, RemoteSectag),
         RemoteSectag = remote_sectag(_, AddedBy),
@@ -464,11 +470,10 @@ ml_tag_initial_offset_and_argnum(ConsTag, Ptag, InitOffset, ArgNum) :-
         ;
             AddedBy = sectag_added_by_constructor,
             InitOffset = cell_offset(0)
-        ),
-        ArgNum = 1
+        )
     ;
         ConsTag = ground_term_const_tag(_, SubTag),
-        ml_tag_initial_offset_and_argnum(SubTag, Ptag, InitOffset, ArgNum)
+        ml_tag_ptag_and_initial_offset(SubTag, Ptag, InitOffset)
     ;
         ( ConsTag = string_tag(_String)
         ; ConsTag = int_tag(_)
@@ -636,7 +641,16 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
 
 %---------------------------------------------------------------------------%
 
-or_rvals(HeadRval, TailRvals, OrAllRval) :-
+ml_bitwise_or_rvals(Rvals) = OrAllRval :-
+    (
+        Rvals = [],
+        OrAllRval = ml_const(mlconst_int(0))
+    ;
+        Rvals = [HeadRval | TailRvals],
+        OrAllRval = ml_bitwise_or_some_rvals(HeadRval, TailRvals)
+    ).
+
+ml_bitwise_or_some_rvals(HeadRval, TailRvals) = OrAllRval :-
     % We currently do this a linear fashion, starting at the rightmost
     % arguments, and moving towards the left.
     %
@@ -647,11 +661,11 @@ or_rvals(HeadRval, TailRvals, OrAllRval) :-
         OrAllRval = HeadRval
     ;
         TailRvals = [HeadTailRval | TailTailRvals],
-        or_rvals(HeadTailRval, TailTailRvals, TailOrAllRval),
-        OrAllRval = ml_bitwise_or(HeadRval, TailOrAllRval)
+        TailOrAllRval = ml_bitwise_or_some_rvals(HeadTailRval, TailTailRvals),
+        OrAllRval = ml_bitwise_or_two_rvals(HeadRval, TailOrAllRval)
     ).
 
-ml_bitwise_or(RvalA, RvalB) = Rval :-
+ml_bitwise_or_two_rvals(RvalA, RvalB) = OrRval :-
     some [!MaybeType] (
         !:MaybeType = no,
         ( if RvalA = ml_box(TypeA, UnboxRvalA0) then
@@ -666,23 +680,38 @@ ml_bitwise_or(RvalA, RvalB) = Rval :-
         else
             UnboxRvalB = RvalB
         ),
-        UnboxRval = ml_binop(bitwise_or(int_type_uint),
-            UnboxRvalA, UnboxRvalB),
+        % OR-ing anything with zero has no effect.
+        ( if
+            ( RvalA = ml_const(mlconst_int(0))
+            ; RvalA = ml_const(mlconst_uint(0u))
+            )
+        then
+            UnboxRval = UnboxRvalB
+        else if
+            ( RvalB = ml_const(mlconst_int(0))
+            ; RvalB = ml_const(mlconst_uint(0u))
+            )
+        then
+            UnboxRval = UnboxRvalA
+        else
+            UnboxRval = ml_binop(bitwise_or(int_type_uint),
+                UnboxRvalA, UnboxRvalB)
+        ),
         (
             !.MaybeType = yes(BoxType),
-            Rval = ml_box(BoxType, UnboxRval)
+            OrRval = ml_box(BoxType, UnboxRval)
         ;
             !.MaybeType = no,
-            Rval = UnboxRval
+            OrRval = UnboxRval
         )
     ).
 
-ml_bitwise_and(Rval, Mask) =
+ml_bitwise_mask(Rval, Mask) =
     ml_binop(bitwise_and(int_type_uint), Rval, ml_const(mlconst_int(Mask))).
 
 %---------------------------------------------------------------------------%
 
-ml_lshift(Rval, Shift, Fill) = ShiftedRval :-
+ml_left_shift_rval(Rval, Shift, Fill) = ShiftedRval :-
     Shift = arg_shift(ShiftInt),
     ml_cast_to_unsigned_without_sign_extend(Fill, Rval, CastRval),
     ( if Rval = ml_const(mlconst_null(_)) then
@@ -706,7 +735,7 @@ ml_lshift(Rval, Shift, Fill) = ShiftedRval :-
         )
     ).
 
-ml_rshift(Rval, Shift) = ShiftedRval :-
+ml_right_shift_rval(Rval, Shift) = ShiftedRval :-
     % While ml_lshift may be called on a boxed Rval, ml_rshift will never
     % be called that way, which is why we don't handle that as a special case.
     Shift = arg_shift(ShiftInt),
@@ -720,6 +749,8 @@ ml_rshift(Rval, Shift) = ShiftedRval :-
         ShiftedRval = ml_binop(unchecked_right_shift(int_type_uint),
             Rval, ml_const(mlconst_int(ShiftInt)))
     ).
+
+%---------------------------------------------------------------------------%
 
 ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
     (
@@ -762,14 +793,7 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(compute_assign_direction/5).
-
-compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir) :-
-    ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
-    from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts, ArgType,
-        LeftTopMode),
-    from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts, ArgType,
-        RightTopMode),
+ml_compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir) :-
     ( if
         % XXX ARG_PACK We should not need to check here whether
         % FieldType is a dummy type; the arg_pos_width should tell us that.
@@ -779,6 +803,17 @@ compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir) :-
     then
         Dir = assign_dummy
     else
+        % The test of the code in this predicate is the same as
+        % the code of compute_assign_direction, with one exception
+        % that prevents any simple kind of code reuse: the fact that
+        % we return assign_nondummy_X instead of assign_X.
+        %
+        % Any change here will require a corresponding change there.
+        ArgMode = unify_modes_lhs_rhs(LeftFromToInsts, RightFromToInsts),
+        from_to_insts_to_top_functor_mode(ModuleInfo, LeftFromToInsts,
+            ArgType, LeftTopMode),
+        from_to_insts_to_top_functor_mode(ModuleInfo, RightFromToInsts,
+            ArgType, RightTopMode),
         (
             LeftTopMode = top_in,
             (
