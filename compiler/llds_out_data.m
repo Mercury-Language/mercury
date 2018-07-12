@@ -1117,20 +1117,25 @@ output_rval(Info, Rval, !IO) :-
                 % MR_Integer.
                 ( Op = eq(_) ; Op = ne(_) ),
 
-                % Don't apply this special case for 64-bit integer types since
-                % they may be boxed.
-                require_complete_switch [IntType] (
+                require_complete_switch [IntType]
+                (
                     ( IntType = int_type_int
                     ; IntType = int_type_uint
-                    ; IntType = int_type_int8
+                    )
+                ;
+                    % Don't apply this special case for sub-word-sized types,
+                    % to avoid having any differences in the rest of the word
+                    % convert an "equal" result to a "not equal" result.
+                    %
+                    % Don't apply this special case for 64-bit integer types,
+                    % since they may be boxed.
+                    ( IntType = int_type_int8
                     ; IntType = int_type_uint8
                     ; IntType = int_type_int16
                     ; IntType = int_type_uint16
                     ; IntType = int_type_int32
                     ; IntType = int_type_uint32
-                    )
-                ;
-                    ( IntType = int_type_int64
+                    ; IntType = int_type_int64
                     ; IntType = int_type_uint64
                     ),
                     fail

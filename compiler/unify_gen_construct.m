@@ -1096,10 +1096,11 @@ generate_ground_term_args([ArgVarWidth | ArgVarsWidths],
         ),
         generate_ground_term_args(ArgVarsWidths, TypedRvals, !ActiveMap)
     ;
-        ArgPosWidth = apw_partial_first(_, _, _, _, _),
+        ArgPosWidth = apw_partial_first(_, _, _, _, Fill),
         ArgTypedRval = typed_rval(ArgRval, _),
+        cast_away_any_sign_extend_bits(Fill, ArgRval, CastArgRval),
         generate_ground_term_args_for_one_word(ArgVarsWidths,
-            LeftOverArgVarsWidths, ArgRval, WordRval, !ActiveMap),
+            LeftOverArgVarsWidths, CastArgRval, WordRval, !ActiveMap),
         TypedRval = typed_rval(WordRval, lt_int(int_type_uint)),
         generate_ground_term_args(LeftOverArgVarsWidths, TypedRvals,
             !ActiveMap)
