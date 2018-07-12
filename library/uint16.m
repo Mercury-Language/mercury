@@ -26,14 +26,14 @@
     % from_int(I, U16):
     %
     % Convert an int into a uint16.
-    % Fails if I is not in [0, 2^15 - 1].
+    % Fails if I is not in [0, 2^16 - 1].
     %
 :- pred from_int(int::in, uint16::out) is semidet.
 
-    % from_int(I, U16):
+    % det_from_int(I) = U16:
     %
     % Convert an int into a uint16.
-    % Throws an exception if I is not in [0, 2^15 - 1].
+    % Throws an exception if I is not in [0, 2^16 - 1].
     %
 :- func det_from_int(int) = uint16.
 
@@ -41,7 +41,7 @@
     %
     % Convert an int to a uint16.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^15 - 1].
+    % to I only if I is in [0, 2^16 - 1].
     %
 :- func cast_from_int(int) = uint16.
 
@@ -87,7 +87,7 @@
     % cast_from_int16(I16) = U16:
     %
     % Convert an int16 to a uint16. This will yield a result that is
-    % mathematically equal to I16 only if I16 is in [0, 2^15 -1].
+    % mathematically equal to I16 only if I16 is in [0, 2^15 - 1].
     %
 :- func cast_from_int16(int16) = uint16.
 

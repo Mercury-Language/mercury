@@ -26,14 +26,14 @@
     % from_int(I, U64):
     %
     % Convert an int into a uint64.
-    % Fails if I is not in [0, 2^63 - 1].
+    % Fails if I is not in [0, 2^64 - 1].
     %
 :- pred from_int(int::in, uint64::out) is semidet.
 
-    % det_from_int(I, U64):
+    % det_from_int(I) = U64:
     %
     % Convert an int into a uint64.
-    % Throws an exception if I is not in [0, 2^63 - 1].
+    % Throws an exception if I is not in [0, 2^64 - 1].
     %
 :- func det_from_int(int) = uint64.
 
@@ -41,7 +41,7 @@
     %
     % Convert an int to a uint64.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^63 - 1].
+    % to I only if I is in [0, 2^64 - 1].
     %
 :- func cast_from_int(int) = uint64.
 
@@ -53,8 +53,10 @@
     % cast_to_int(U64) = I:
     %
     % Convert a uint64 to an int.
-    % Always succeeds, but will yield a result that is mathematically equal
-    % to U64 only if U64 is in [0, 2^63 - 1].
+    % Always succeeds. If ints are 64 bits, I will be mathematically
+    % equal to U64 only if U64 is in [0, 2^63 - 1]. If ints are 32
+    % bits, I will be mathematically equal to U64 only if U64 is in
+    % [0, 2^31 - 1].
     %
 :- func cast_to_int(uint64) = int.
 
@@ -79,7 +81,7 @@
     % cast_from_int64(I64) = U64:
     %
     % Convert an int64 to a uint64. This will yield a result that is
-    % mathematically equal to I64 only if I64 is in [0, 2^63 -1].
+    % mathematically equal to I64 only if I64 is in [0, 2^63 - 1].
     %
 :- func cast_from_int64(int64) = uint64.
 

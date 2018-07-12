@@ -26,14 +26,14 @@
     % from_int(I, U8):
     %
     % Convert an int to a uint8.
-    % Fails if I is not in [0, 2^7 - 1].
+    % Fails if I is not in [0, 2^8 - 1].
     %
 :- pred from_int(int::in, uint8::out) is semidet.
 
-    % from_int(I, U8):
+    % det_from_int(I) = U8:
     %
     % Convert an int to a uint8.
-    % Throws an exception if I is not in [0, 2^7 - 1].
+    % Throws an exception if I is not in [0, 2^8 - 1].
     %
 :- func det_from_int(int) = uint8.
 
@@ -41,7 +41,7 @@
     %
     % Convert an int to a uint8.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^7 - 1].
+    % to I only if I is in [0, 2^8 - 1].
     %
 :- func cast_from_int(int) = uint8.
 
@@ -87,7 +87,7 @@
     % cast_from_int8(I8) = U8:
     %
     % Convert an int8 to a uint8. This will yield a result that is
-    % mathematically equal to I8 only if I8 is in [0, 2^7 -1].
+    % mathematically equal to I8 only if I8 is in [0, 2^7 - 1].
     %
 :- func cast_from_int8(int8) = uint8.
 
