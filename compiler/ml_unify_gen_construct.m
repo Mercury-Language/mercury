@@ -1313,8 +1313,9 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     % then polymorphism should have changed its scope_reason away from
     % from_ground_term_construct. Therefore the static struct we are
     % constructing should not need any extra type_info or typeclass_info args.
-    associate_cons_id_args_with_types_widths(ModuleInfo, lookup_var_type_func(VarTypes),
-        may_not_have_extra_args, VarType, ConsId, ArgVars, ArgVarsTypesWidths),
+    associate_cons_id_args_with_types_widths(ModuleInfo,
+        lookup_var_type_func(VarTypes), may_not_have_extra_args,
+        VarType, ConsId, ArgVars, ArgVarsTypesWidths),
     (
         HighLevelData = yes,
         construct_ground_term_initializers_hld(ModuleInfo, Context,
