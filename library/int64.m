@@ -53,9 +53,11 @@
 
     % cast_to_int(I64) = I:
     %
-    % Convert an int64 to an int. Since an int can be only 32 or 64 bits,
-    % this is guaranteed to yield a result that is mathematically equal
-    % to the original.
+    % Convert an int64 to an int.
+    % Always succeeds. If ints are 64 bits, I will always be
+    % mathematically equal to I64. However, if ints are 32 bits,
+    % then I will be mathematically equal to I64 only if
+    % I64 is in [-(2^31), 2^31 - 1].
     %
 :- func cast_to_int(int64) = int.
 

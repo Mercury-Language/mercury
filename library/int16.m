@@ -30,7 +30,7 @@
     %
 :- pred from_int(int::in, int16::out) is semidet.
 
-    % det_from_int(I, I16):
+    % det_from_int(I) = I16:
     %
     % Convert an int to an int16.
     % Throws an exception if I is not in [-(2^15), 2^15 - 1].

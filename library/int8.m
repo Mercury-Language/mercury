@@ -30,7 +30,7 @@
     %
 :- pred from_int(int::in, int8::out) is semidet.
 
-    % from_int(I, I8):
+    % det_from_int(I) = I8:
     %
     % Convert an int to an int8.
     % Throws an exception if I is not in [-(2^7), 2^7 - 1].

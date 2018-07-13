@@ -26,14 +26,14 @@
     % from_int(I, U32):
     %
     % Convert an int into a uint32.
-    % Fails if I is not in [0, 2^31 - 1].
+    % Fails if I is not in [0, 2^32 - 1].
     %
 :- pred from_int(int::in, uint32::out) is semidet.
 
-    % from_int(I, U32):
+    % det_from_int(I) = U32:
     %
     % Convert an int into a uint32.
-    % Throws an exception if I is not in [0, 2^31 - 1].
+    % Throws an exception if I is not in [0, 2^32 - 1].
     %
 :- func det_from_int(int) = uint32.
 
@@ -41,7 +41,7 @@
     %
     % Convert an int to a uint32.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^31 - 1].
+    % to I only if I is in [0, 2^32 - 1].
     %
 :- func cast_from_int(int) = uint32.
 
@@ -81,7 +81,7 @@
     % cast_from_int32(I32) = U32:
     %
     % Convert an int32 to a uint32. This will yield a result that is
-    % mathematically equal to I32 only if I32 is in [0, 2^31 -1].
+    % mathematically equal to I32 only if I32 is in [0, 2^31 - 1].
     %
 :- func cast_from_int32(int32) = uint32.
 
