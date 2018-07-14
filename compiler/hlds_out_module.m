@@ -647,30 +647,25 @@ write_arg_widths(Indent, CurArgNum, [Arg | Args], !IO) :-
             [i(CurArgNum), s(KindStr), i(AOWordNum), i(CellWordNum),
             i(AOWordNum+1), i(CellWordNum + 1)], !IO)
     ;
-        PosWidth = apw_partial_first(ArgOnlyOffset, CellOffset,
-            NumBits, Mask, FillKind),
-        ArgOnlyOffset = arg_only_offset(AOWordNum),
-        CellOffset = cell_offset(CellWordNum),
-        NumBits = arg_num_bits(NumBitsInt),
-        Mask = arg_mask(MaskInt),
-        FillStr = fill_kind_to_string(FillKind),
-        io.format("%% arg %d: partial word first " ++
-            "at offset %d/%d, #bits %d, mask %x, %s\n",
-            [i(CurArgNum), i(AOWordNum), i(CellWordNum),
-            i(NumBitsInt), i(MaskInt), s(FillStr)], !IO)
-    ;
-        PosWidth = apw_partial_shifted(ArgOnlyOffset, CellOffset, Shift,
-            NumBits, Mask, FillKind),
+        (
+            PosWidth = apw_partial_first(ArgOnlyOffset, CellOffset, Shift,
+                NumBits, Mask, FillKind),
+            FirstShifted = "first"
+        ;
+            PosWidth = apw_partial_shifted(ArgOnlyOffset, CellOffset, Shift,
+                NumBits, Mask, FillKind),
+            FirstShifted = "shifted"
+        ),
         ArgOnlyOffset = arg_only_offset(AOWordNum),
         CellOffset = cell_offset(CellWordNum),
         Shift = arg_shift(ShiftInt),
         NumBits = arg_num_bits(NumBitsInt),
         Mask = arg_mask(MaskInt),
         FillStr = fill_kind_to_string(FillKind),
-        io.format("%% arg %d: partial word shifted " ++
+        io.format("%% arg %d: partial word %s " ++
             "at offset %d/%d, shift %d, #bits %d, mask %x, %s\n",
-            [i(CurArgNum), i(AOWordNum), i(CellWordNum), i(ShiftInt),
-            i(NumBitsInt), i(MaskInt), s(FillStr)], !IO)
+            [i(CurArgNum), s(FirstShifted), i(AOWordNum), i(CellWordNum),
+            i(ShiftInt), i(NumBitsInt), i(MaskInt), s(FillStr)], !IO)
     ;
         PosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(AOWordNum),

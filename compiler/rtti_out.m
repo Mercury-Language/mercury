@@ -1171,8 +1171,7 @@ output_du_arg_locns_loop([ArgInfo | ArgInfos], !IO) :-
     ;
         (
             ArgWidth = apw_partial_first(arg_only_offset(ArgOnlyOffset), _,
-                arg_num_bits(NumBits0), _Mask, Fill),
-            Shift = 0
+                arg_shift(Shift), arg_num_bits(NumBits0), _Mask, Fill)
         ;
             ArgWidth = apw_partial_shifted(arg_only_offset(ArgOnlyOffset), _,
                 arg_shift(Shift), arg_num_bits(NumBits0), _Mask, Fill)

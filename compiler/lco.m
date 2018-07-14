@@ -884,7 +884,7 @@ all_delayed_arg_vars_are_full_words([ArgVar | ArgVars], [ArgRepn | ArgRepns],
         % is as rare as hen's teeth, this is not a great loss.
         fail
     ;
-        ( ArgWidth = apw_partial_first(_, _, _, _, _)
+        ( ArgWidth = apw_partial_first(_, _, _, _, _, _)
         ; ArgWidth = apw_partial_shifted(_, _, _, _, _, _)
         ),
         % It is ok for the cell to have subword arguments (packed two or more

@@ -863,7 +863,7 @@ ml_gen_dynamic_construct_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
     (
         ( ArgPosWidth = apw_full(_, CellOffset)
         ; ArgPosWidth = apw_double(_, CellOffset, _)
-        ; ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _)
+        ; ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _, _)
         ; ArgPosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
         ; ArgPosWidth = apw_none_shifted(_, CellOffset)
         )
@@ -910,8 +910,7 @@ ml_gen_dynamic_construct_args(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
         ),
         (
             (
-                ArgPosWidth = apw_partial_first(_, _, NumBits, _, Fill),
-                Shift = arg_shift(0)
+                ArgPosWidth = apw_partial_first(_, _, Shift, NumBits, _, Fill)
             ;
                 ArgPosWidth =
                     apw_partial_shifted(_, _, Shift, NumBits, _, Fill)
@@ -1000,13 +999,14 @@ ml_gen_tagword_dynamically(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
 
     (
         ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill, !RevOrRvals)
+        ml_maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
+            !RevOrRvals)
     ;
         ArgPosWidth = apw_none_shifted(_, _)
     ;
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
         ; ArgPosWidth = apw_none_nowhere
         ),
         unexpected($pred, "not apw_partial_shifted or apw_none_shifted")
@@ -1026,13 +1026,14 @@ ml_gen_tagword_statically(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
     GroundTerm = ml_ground_term(ArgRval, _MercuryType, _MLDS_Type),
     (
         ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill, !RevOrRvals)
+        ml_maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
+            !RevOrRvals)
     ;
         ArgPosWidth = apw_none_shifted(_, _)
     ;
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
         ; ArgPosWidth = apw_none_nowhere
         ),
         unexpected($pred, "not apw_partial_shifted or apw_none_shifted")
@@ -1415,14 +1416,15 @@ construct_ground_term_tagword_initializer_lld(ArgVarTypeWidth,
     ArgGroundTerm = ml_ground_term(ArgRval, _ArgType, _MLDS_ArgType),
     (
         ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill, !RevOrRvals)
+        ml_maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
+            !RevOrRvals)
     ;
         ArgPosWidth = apw_none_shifted(_, _)
         % Nothing to add to !RevOrRvals.
     ;
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
         ; ArgPosWidth = apw_none_nowhere
         ),
         unexpected($pred, "ArgPosWidth does not belong in tagword")
@@ -1680,14 +1682,15 @@ ml_gen_const_tagword_arg(Info, ArgTypeWidth, !RevOrRvals) :-
     ),
     (
         ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill, !RevOrRvals)
+        ml_maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
+            !RevOrRvals)
     ;
         ArgPosWidth = apw_none_shifted(_, _)
         % Nothing to add to !RevOrRvals.
     ;
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
         ; ArgPosWidth = apw_none_nowhere
         ),
         unexpected($pred, "ArgPosWidth does not belong in tagword")
@@ -1993,8 +1996,8 @@ ml_pack_ground_term_args_into_word_inits([RvalTypeWidth | RvalsTypesWidths],
         ml_pack_ground_term_args_into_word_inits(RvalsTypesWidths, TailInits),
         Inits = [HeadInit | TailInits]
     ;
-        PosWidth = apw_partial_first(_, _, _, _, Fill),
-        maybe_shift_and_accumulate_or_rval(Rval, arg_shift(0), Fill,
+        PosWidth = apw_partial_first(_, _, Shift, _, _, Fill),
+        ml_maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill,
             [], RevOrRvals0),
         ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
             RevOrRvals0, OrAllRval, [], _, no, _),
@@ -2066,8 +2069,8 @@ ml_expand_or_pack_into_words(Info, [RvalTypeWidth | RvalsTypesWidths],
         PackedRvalsTypesWidths =
             [RvalTypeWidthA, RvalTypeWidthB | TailPackedRvalsTypesWidths]
     ;
-        PosWidth = apw_partial_first(AOOffset, CellOffset, _, _, Fill),
-        maybe_shift_and_accumulate_or_rval(Rval, arg_shift(0), Fill,
+        PosWidth = apw_partial_first(AOOffset, CellOffset, Shift, _, _, Fill),
+        ml_maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill,
             [], RevOrRvals0),
         (
             MaybePackedArgVar = no,
@@ -2155,14 +2158,15 @@ ml_pack_into_one_word_loop([RvalTypeWidth | RvalsTypesWidths],
     (
         ( PosWidth = apw_full(_, _)
         ; PosWidth = apw_double(_, _, _)
-        ; PosWidth = apw_partial_first(_, _, _, _, _)
+        ; PosWidth = apw_partial_first(_, _, _, _, _, _)
         ; PosWidth = apw_none_nowhere
         ),
         LeftOverRvalsTypesWidths = [RvalTypeWidth | RvalsTypesWidths]
     ;
         (
             PosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-            maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals),
+            ml_maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill,
+                !RevOrRvals),
             (
                 MaybePackedArgVar = no,
                 !:AllPartialsHavePackedArgVars = no
@@ -2182,17 +2186,14 @@ ml_pack_into_one_word_loop([RvalTypeWidth | RvalsTypesWidths],
 % Utility predicates.
 %
 
-:- pred maybe_shift_and_accumulate_or_rval(mlds_rval::in, arg_shift::in,
+:- pred ml_maybe_shift_and_accumulate_or_rval(mlds_rval::in, arg_shift::in,
     fill_kind::in, list(mlds_rval)::in, list(mlds_rval)::out) is det.
 
-maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
-    Shift = arg_shift(ShiftInt),
-    ml_cast_to_unsigned_without_sign_extend(Fill, Rval, CastRval),
+ml_maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
     ( if
         Rval = ml_const(RvalConst),
         ( RvalConst = mlconst_null(_)
-        ; RvalConst = mlconst_int(0)
-        ; RvalConst = mlconst_uint(0u)
+        ; ml_is_zero_const(RvalConst) = ml_is_zero_const
         )
     then
         % We may get nulls from unfilled fields, and zeros from constant
@@ -2200,16 +2201,7 @@ maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
         % in the list of rvals to be OR-ed later.
         true
     else
-        ( if ShiftInt = 0 then
-            ShiftedRval = CastRval
-        else if CastRval = ml_box(Type, SubRval) then
-            ShiftedSubRval = ml_binop(unchecked_left_shift(int_type_uint),
-                SubRval, ml_const(mlconst_int(ShiftInt))),
-            ShiftedRval = ml_box(Type, ShiftedSubRval)
-        else
-            ShiftedRval = ml_binop(unchecked_left_shift(int_type_uint),
-                CastRval, ml_const(mlconst_int(ShiftInt)))
-        ),
+        ShiftedRval = ml_left_shift_rval(Rval, Shift, Fill),
         !:RevOrRvals = [ShiftedRval | !.RevOrRvals]
     ).
 

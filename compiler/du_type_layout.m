@@ -1231,13 +1231,13 @@ decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
             ( if CurShift + NumArgBits =< Params ^ ddp_arg_pack_bits then
                 ArgOnlyOffset0 = arg_only_offset(CurAOWordNum),
                 CellOffset0 = cell_offset(CurCellWordNum),
+                Shift = arg_shift(CurShift),
                 ( if CurShift = 0 then
                     ArgPosWidth0 = apw_partial_first(ArgOnlyOffset0,
-                        CellOffset0, ArgNumBits, ArgMask, FillKind)
+                        CellOffset0, Shift, ArgNumBits, ArgMask, FillKind)
                 else
                     ArgPosWidth0 = apw_partial_shifted(ArgOnlyOffset0,
-                        CellOffset0, arg_shift(CurShift), ArgNumBits,
-                        ArgMask, FillKind)
+                        CellOffset0, Shift, ArgNumBits, ArgMask, FillKind)
                 ),
                 NextAOWordNum = CurAOWordNum,
                 NextCellWordNum = CurCellWordNum,
@@ -1248,8 +1248,9 @@ decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
                 AfterPaddingCellWordNum = CurCellWordNum + PaddingIncrement,
                 ArgOnlyOffset0 = arg_only_offset(AfterPaddingAOWordNum),
                 CellOffset0 = cell_offset(AfterPaddingCellWordNum),
+                Shift = arg_shift(0),
                 ArgPosWidth0 = apw_partial_first(ArgOnlyOffset0, CellOffset0,
-                    ArgNumBits, ArgMask, FillKind),
+                    Shift, ArgNumBits, ArgMask, FillKind),
                 NextAOWordNum = AfterPaddingAOWordNum,
                 NextCellWordNum = AfterPaddingCellWordNum,
                 NextShift = NumArgBits
@@ -1272,7 +1273,7 @@ decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
             Args, ArgRepns),
         (
             ArgPosWidth0 = apw_partial_first(ArgOnlyOffset, CellOffset,
-                _, _, _),
+                _, _, _, _),
             % If this argument starts a word, then it is a *partial* word
             % only if (a) there is a next argument, and (b) it is packed
             % with it. Otherwise, it is not packed.
@@ -1931,7 +1932,7 @@ count_words([Arg | Args], !Count) :-
         )
     ;
         ( ArgPosWidth = apw_full(_, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
         ),
         !:Count = !.Count + 1
     ;
@@ -2360,7 +2361,7 @@ record_subword_args_and_count_their_words([ArgRepn | ArgRepns], CurArgNum,
         )
     ;
         (
-            PosWidth = apw_partial_first(_, _, ArgNumBits, _, _),
+            PosWidth = apw_partial_first(_, _, _, ArgNumBits, _, _),
             !:NumWords = !.NumWords + 1
         ;
             PosWidth = apw_partial_shifted(_, _, _, ArgNumBits, _, _)

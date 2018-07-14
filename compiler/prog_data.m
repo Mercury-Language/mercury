@@ -584,7 +584,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
                 awpf_ao_offset      :: arg_only_offset,
                 awpf_cell_offset    :: cell_offset,
-                % The shift is implicitly zero.
+                awpf_shift          :: arg_shift,
                 awpf_num_bits       :: arg_num_bits,
                 awpf_mask           :: arg_mask,
                 awpf_fill           :: fill_kind
@@ -793,7 +793,7 @@ arg_pos_width_to_width_only(ArgPosWidth) = ArgWidth :-
         ArgPosWidth = apw_double(_, _, _),
         ArgWidth = aw_double_word
     ;
-        ( ArgPosWidth = apw_partial_first(_, _, _, _, _)
+        ( ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
         ; ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
         ),
         ArgWidth = aw_partial_word

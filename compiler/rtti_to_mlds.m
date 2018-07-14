@@ -1037,8 +1037,7 @@ gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer) :-
     ;
         (
             ArgPosWidth = apw_partial_first(arg_only_offset(ArgOnlyOffset),
-                _, arg_num_bits(NumBits0), _, Fill),
-            Shift = 0
+                _, arg_shift(Shift), arg_num_bits(NumBits0), _, Fill)
         ;
             ArgPosWidth = apw_partial_shifted(arg_only_offset(ArgOnlyOffset),
                 _, arg_shift(Shift), arg_num_bits(NumBits0), _, Fill)

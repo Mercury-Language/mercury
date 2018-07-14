@@ -172,8 +172,11 @@
 
 :- func ml_right_shift_rval(mlds_rval, arg_shift) = mlds_rval.
 
-:- pred ml_cast_to_unsigned_without_sign_extend(fill_kind::in,
-    mlds_rval::in, mlds_rval::out) is det.
+:- type ml_maybe_zero_const
+    --->    ml_is_not_zero_const
+    ;       ml_is_zero_const.
+
+:- func ml_is_zero_const(mlds_rval_const) = ml_maybe_zero_const.
 
 %---------------------------------------------------------------------------%
 
@@ -714,15 +717,24 @@ ml_bitwise_mask(Rval, Mask) =
 ml_left_shift_rval(Rval, Shift, Fill) = ShiftedRval :-
     Shift = arg_shift(ShiftInt),
     ml_cast_to_unsigned_without_sign_extend(Fill, Rval, CastRval),
-    ( if Rval = ml_const(mlconst_null(_)) then
+    ( if
+        Rval = ml_const(mlconst_null(_))
+    then
         % We may get nulls from unfilled fields. Replace them with zeroes
         % so we don't get type errors from the C compiler.
-        ShiftedRval = ml_const(mlconst_int(0))
-    else if Rval = ml_const(mlconst_int(0)) then
-        % Shifting a zero by any amount is a noop.
-        ShiftedRval = CastRval
-    else if ShiftInt = 0 then
-        % Shifting anything by zero bits is a noop.
+        % The shift amount does not matter, since shifting a zero
+        % by any amount is a noop.
+        ShiftedRval = ml_const(mlconst_uint(0u))
+    else if
+        (
+            % Shifting anything by zero bits has no effect.
+            ShiftInt = 0
+        ;
+            % Shifting a zero any number of bits has no effect.
+            Rval = ml_const(Const),
+            ml_is_zero_const(Const) = ml_is_zero_const
+        )
+    then
         ShiftedRval = CastRval
     else
         ( if CastRval = ml_box(Type, SubRval) then
@@ -739,11 +751,17 @@ ml_right_shift_rval(Rval, Shift) = ShiftedRval :-
     % While ml_lshift may be called on a boxed Rval, ml_rshift will never
     % be called that way, which is why we don't handle that as a special case.
     Shift = arg_shift(ShiftInt),
-    ( if Rval = ml_const(mlconst_int(0)) then
-        % Shifting a zero by any amount is a noop.
-        ShiftedRval = Rval
-    else if ShiftInt = 0 then
-        % Shifting anything by zero bits is a noop.
+    % XXX ARG_PACK Should we cast Rval to unsigned like left_shift_rval?
+    ( if
+        (
+            % Shifting anything by zero bits has no effect.
+            ShiftInt = 0
+        ;
+            % Shifting a zero any number of bits has no effect.
+            Rval = ml_const(Const),
+            ml_is_zero_const(Const) = ml_is_zero_const
+        )
+    then
         ShiftedRval = Rval
     else
         ShiftedRval = ml_binop(unchecked_right_shift(int_type_uint),
@@ -751,6 +769,85 @@ ml_right_shift_rval(Rval, Shift) = ShiftedRval :-
     ).
 
 %---------------------------------------------------------------------------%
+
+ml_is_zero_const(Const) = IsZero :-
+    (
+        Const = mlconst_int(Int),
+        IsZero =
+            (if Int = 0 then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        Const = mlconst_uint(Uint),
+        IsZero =
+            (if Uint = 0u then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        Const = mlconst_int8(Int8),
+        IsZero =
+            (if Int8 = 0i8 then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        Const = mlconst_uint8(Uint8),
+        IsZero =
+            (if Uint8 = 0u8 then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        Const = mlconst_int16(Int16),
+        IsZero =
+            (if Int16 = 0i16 then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        Const = mlconst_uint16(Uint16),
+        IsZero =
+            (if Uint16 = 0u16 then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        Const = mlconst_int32(Int32),
+        IsZero =
+            (if Int32 = 0i32 then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        Const = mlconst_uint32(Uint32),
+        IsZero =
+            (if Uint32 = 0u32 then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        Const = mlconst_int64(Int64),
+        IsZero =
+            (if Int64 = 0i64 then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        Const = mlconst_uint64(Uint64),
+        IsZero =
+            (if Uint64 = 0u64 then ml_is_zero_const else ml_is_not_zero_const)
+    ;
+        ( Const = mlconst_null(_)
+        % For the purposes of bit manipulation, null pointers are *not* zero,
+        % because they need to be replaced by an int before they can take part
+        % in bitwise operations.
+        ; Const = mlconst_true
+        ; Const = mlconst_false
+        ; Const = mlconst_enum(_, _)
+        ; Const = mlconst_foreign(_, _, _)
+        ; Const = mlconst_named_const(_, _)
+        ; Const = mlconst_float(_)
+        ; Const = mlconst_char(_)
+        ; Const = mlconst_string(_)
+        ; Const = mlconst_multi_string(_)
+        ; Const = mlconst_data_addr_global_var(_, _)
+        ; Const = mlconst_data_addr_local_var(_)
+        ; Const = mlconst_data_addr_rtti(_, _)
+        ; Const = mlconst_data_addr_tabling(_, _)
+        ; Const = mlconst_code_addr(_)
+        ),
+        IsZero = ml_is_not_zero_const
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % If a sub-word-sized signed integer has a negative value, then it will
+    % have sign-extend bits *beyond* its usual size. OR-ing the raw form
+    % of that sub-word-sized signed integer with the values of the other fields
+    % may thus stomp all over the bits assigned to store the other fields
+    % that are to the left of the sub-word-sized signed integer.
+    %
+    % Prevent this by casting sub-word-sized signed integers to their
+    % unsigned counterparts before casting them to the word-sized unsigned type
+    % that is the usual input type of shift and OR operations.
+    %
+:- pred ml_cast_to_unsigned_without_sign_extend(fill_kind::in,
+    mlds_rval::in, mlds_rval::out) is det.
 
 ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
     (
@@ -788,8 +885,7 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
             Rval1 = ml_cast(ToMLDSType, Rval0)
         )
     ),
-    UnsignedMLDSType = mlds_int_type_uint,
-    Rval = ml_cast(UnsignedMLDSType, Rval1).
+    Rval = ml_cast(mlds_int_type_uint, Rval1).
 
 %---------------------------------------------------------------------------%
 

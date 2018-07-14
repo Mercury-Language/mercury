@@ -107,17 +107,14 @@
 
 generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         CanFail, CanCGC, Code, !CI, !CLD) :-
-    get_module_info(!.CI, ModuleInfo),
-    associate_cons_id_args_with_widths(ModuleInfo, ConsId,
-        RHSVars, RHSVarsWidths),
     (
         CanFail = can_fail,
-        generate_semi_deconstruction(LHSVar, ConsId,
-            RHSVarsWidths, ArgModes, DeconstructCode, !CI, !CLD)
+        generate_semi_deconstruction(LHSVar, ConsId, RHSVars, ArgModes,
+            DeconstructCode, !CI, !CLD)
     ;
         CanFail = cannot_fail,
-        generate_det_deconstruction(LHSVar, ConsId,
-            RHSVarsWidths, ArgModes, DeconstructCode, !.CI, !CLD)
+        generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes,
+            DeconstructCode, !.CI, !CLD)
     ),
     (
         CanCGC = can_cgc,
@@ -150,25 +147,25 @@ generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     % followed by a deterministic deconstruction.
     %
 :- pred generate_semi_deconstruction(prog_var::in, cons_id::in,
-    list(arg_and_width(prog_var))::in, list(unify_mode)::in,
+    list(prog_var)::in, list(unify_mode)::in,
     llds_code::out, code_info::in, code_info::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_semi_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
+generate_semi_deconstruction(LHSVar, ConsId, RHSVars, Modes, Code,
         !CI, !CLD) :-
-    produce_variable(Var, VarCode, VarRval, !.CI, !CLD),
-    VarName = variable_name(!.CI, Var),
-    VarType = variable_type(!.CI, Var),
-    CheaperTagTest = lookup_cheaper_tag_test(!.CI, VarType),
-    generate_test_var_has_cons_id(VarRval, VarName, ConsId,
+    produce_variable(LHSVar, LHSVarCode, LHSVarRval, !.CI, !CLD),
+    LHSVarName = variable_name(!.CI, LHSVar),
+    LHSVarType = variable_type(!.CI, LHSVar),
+    CheaperTagTest = lookup_cheaper_tag_test(!.CI, LHSVarType),
+    generate_test_var_has_cons_id(LHSVarRval, LHSVarName, ConsId,
         CheaperTagTest, branch_on_success, SuccLabel, TagTestCode, !CI),
     remember_position(!.CLD, AfterUnify),
     generate_failure(FailCode, !CI, !.CLD),
     reset_to_position(AfterUnify, !.CI, !:CLD),
-    generate_det_deconstruction(Var, ConsId, ArgVarsWidths, Modes,
+    generate_det_deconstruction(LHSVar, ConsId, RHSVars, Modes,
         DetDeconstructCode, !.CI, !CLD),
     SuccessLabelCode = singleton(llds_instr(label(SuccLabel), "")),
-    Code = VarCode ++ TagTestCode ++ FailCode ++
+    Code = LHSVarCode ++ TagTestCode ++ FailCode ++
         SuccessLabelCode ++ DetDeconstructCode.
 
 %---------------------------------------------------------------------------%
@@ -182,10 +179,10 @@ generate_semi_deconstruction(Var, ConsId, ArgVarsWidths, Modes, Code,
     % are cached.
     %
 :- pred generate_det_deconstruction(prog_var::in, cons_id::in,
-    list(arg_and_width(prog_var))::in, list(unify_mode)::in,
+    list(prog_var)::in, list(unify_mode)::in,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
+generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
         CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
@@ -215,10 +212,10 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
     ;
         ConsTag = no_tag,
         ( if
-            ArgVarsWidths = [arg_and_width(ArgVar, _Width)],
+            RHSVars = [RHSVar],
             ArgModes = [ArgMode]
         then
-            VarType = variable_type(CI, Var),
+            VarType = variable_type(CI, LHSVar),
             IsDummy = is_type_a_dummy(ModuleInfo, VarType),
             (
                 IsDummy = is_dummy_type,
@@ -229,8 +226,8 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
                 % may not be a dummy type, it would actually use that location.
                 % This can happen in the unify/compare routines for e.g.
                 % io.state.
-                ( if variable_is_forward_live(!.CLD, ArgVar) then
-                    assign_const_to_var(ArgVar, const(llconst_int(0)),
+                ( if variable_is_forward_live(!.CLD, RHSVar) then
+                    assign_const_to_var(RHSVar, const(llconst_int(0)),
                         CI, !CLD)
                 else
                     true
@@ -238,9 +235,9 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
                 Code = empty
             ;
                 IsDummy = is_not_dummy_type,
-                ArgType = variable_type(CI, ArgVar),
+                ArgType = variable_type(CI, RHSVar),
                 FieldAndArgVar =
-                    field_and_arg_var(uv_var(Var), ArgVar, ArgType),
+                    field_and_arg_var(uv_var(LHSVar), RHSVar, ArgType),
                 generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code,
                     CI, !CLD)
             )
@@ -250,11 +247,11 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
     ;
         ConsTag = direct_arg_tag(Ptag),
         ( if
-            ArgVarsWidths = [arg_and_width(ArgVar, _Width)],
+            RHSVars = [RHSVar],
             ArgModes = [ArgMode]
         then
-            generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Code,
-                CI, !CLD)
+            generate_direct_arg_deconstruct(LHSVar, RHSVar, Ptag, ArgMode,
+                Code, CI, !CLD)
         else
             unexpected($pred, "direct_arg_tag: arity != 1")
         )
@@ -271,23 +268,27 @@ generate_det_deconstruction(Var, ConsId, ArgVarsWidths, ArgModes, Code,
             expect(unify(AddedBy, sectag_added_by_unify), $pred,
                 "AddedBy != sectag_added_by_unify")
         ),
-        Rval = var(Var),
+        LHSRval = var(LHSVar),
         get_vartypes(CI, VarTypes),
-        make_fields_and_arg_vars(VarTypes, Rval, Ptag, ArgVarsWidths,
+        associate_cons_id_args_with_widths(ModuleInfo, ConsId,
+            RHSVars, RHSVarsWidths),
+        make_fields_and_arg_vars(VarTypes, LHSRval, Ptag, RHSVarsWidths,
             FieldsAndArgVars),
         generate_deconstruct_unify_args(FieldsAndArgVars, ArgModes, Code,
             CI, !CLD)
     ;
         ConsTag = shared_local_tag_with_args(_, _),
-        generate_deconstruct_tagword_unify_args(Var, ArgVarsWidths, ArgModes,
-            [], ToOrRvals, 0u, ToOrMask, AssignRightCode, CI, !CLD),
+        associate_cons_id_args_with_widths(ModuleInfo, ConsId,
+            RHSVars, RHSVarsWidths),
+        generate_deconstruct_tagword_unify_args(LHSVar, RHSVarsWidths,
+            ArgModes, [], ToOrRvals, 0u, ToOrMask, AssignRightCode, CI, !CLD),
         (
             ToOrRvals = [],
             Code = AssignRightCode
         ;
             ToOrRvals = [HeadToOrRval | TailToOrRvals],
             ToOrRval = bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
-            reassign_tagword_var(Var, ToOrMask, ToOrRval, AssignLeftCode,
+            reassign_tagword_var(LHSVar, ToOrMask, ToOrRval, AssignLeftCode,
                 CI, !CLD),
             Code = AssignRightCode ++ AssignLeftCode
         )
@@ -309,33 +310,35 @@ generate_deconstruct_unify_args([], [_ | _], _, _, !CLD) :-
 generate_deconstruct_unify_args([_ | _], [], _, _, !CLD) :-
     unexpected($pred, "length mismatch").
 generate_deconstruct_unify_args([FieldAndArgVar | FieldsAndArgVars],
-        [Mode | Modes], Code, CI, !CLD) :-
-    generate_deconstruct_unify_arg(FieldAndArgVar, Mode, CodeA, CI, !CLD),
-    generate_deconstruct_unify_args(FieldsAndArgVars, Modes, CodeB, CI, !CLD),
-    Code = CodeA ++ CodeB.
+        [ArgMode | ArgModes], Code, CI, !CLD) :-
+    generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, HeadCode,
+        CI, !CLD),
+    generate_deconstruct_unify_args(FieldsAndArgVars, ArgModes, TailCode,
+        CI, !CLD),
+    Code = HeadCode ++ TailCode.
 
 :- pred generate_deconstruct_tagword_unify_args(prog_var::in,
     list(arg_and_width(prog_var))::in, list(unify_mode)::in,
     list(rval)::in, list(rval)::out, uint::in, uint::out,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_tagword_unify_args(_LeftVar, [], [],
+generate_deconstruct_tagword_unify_args(_LHSVar, [], [],
         !ToOrRvals, !ToOrMask, empty, _CI, !CLD).
-generate_deconstruct_tagword_unify_args(_LeftVar, [], [_ | _],
+generate_deconstruct_tagword_unify_args(_LHSVar, [], [_ | _],
         !ToOrRvals, !ToOrMask, _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_deconstruct_tagword_unify_args(_LeftVar, [_ | _], [],
+generate_deconstruct_tagword_unify_args(_LHSVar, [_ | _], [],
         !ToOrRvals, !ToOrMask, _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_deconstruct_tagword_unify_args(LeftVar,
-        [ArgVarWidth | ArgVarsWidths], [ArgMode | ArgModes],
+generate_deconstruct_tagword_unify_args(LHSVar,
+        [RRHSVarWidth | RRHSVarsWidths], [ArgMode | ArgModes],
         !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
-    ArgVarWidth = arg_and_width(RightVar, LeftWidth),
-    generate_deconstruct_tagword_unify_arg(LeftVar, LeftWidth, RightVar,
-        ArgMode, !ToOrRvals, !ToOrMask, CodeA, CI, !CLD),
-    generate_deconstruct_tagword_unify_args(LeftVar, ArgVarsWidths, ArgModes,
-        !ToOrRvals, !ToOrMask, CodeB, CI, !CLD),
-    Code = CodeA ++ CodeB.
+    RRHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
+    generate_deconstruct_tagword_unify_arg(LHSVar, RHSVar, ArgPosWidth,
+        ArgMode, !ToOrRvals, !ToOrMask, HeadCode, CI, !CLD),
+    generate_deconstruct_tagword_unify_args(LHSVar, RRHSVarsWidths, ArgModes,
+        !ToOrRvals, !ToOrMask, TailCode, CI, !CLD),
+    Code = HeadCode ++ TailCode.
 
 generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code, CI, !CLD) :-
     FieldAndArgVar = field_and_arg_var(LeftUniVal, RightVar, Type),
@@ -383,28 +386,28 @@ generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code, CI, !CLD) :-
     % the assignments to the right, and update the state variables to help
     % our caller generate a single assignment to the left.
     %
-:- pred generate_deconstruct_tagword_unify_arg(prog_var::in,
-    arg_pos_width::in, prog_var::in, unify_mode::in,
+:- pred generate_deconstruct_tagword_unify_arg(prog_var::in, prog_var::in,
+    arg_pos_width::in, unify_mode::in,
     list(rval)::in, list(rval)::out, uint::in, uint::out,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_tagword_unify_arg(LeftVar, LeftWidth, RightVar, ArgMode,
+generate_deconstruct_tagword_unify_arg(LHSVar, RHSVar, ArgPosWidth, ArgMode,
         !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
     get_vartypes(CI, VarTypes),
-    lookup_var_type(VarTypes, RightVar, Type),
-    compute_assign_direction(ModuleInfo, ArgMode, Type, Dir),
+    lookup_var_type(VarTypes, RHSVar, RHSType),
+    compute_assign_direction(ModuleInfo, ArgMode, RHSType, Dir),
     (
         Dir = assign_right,
-        ( if variable_is_forward_live(!.CLD, RightVar) then
-            generate_deconstruct_tagword_assign_right(LeftVar, LeftWidth,
-                RightVar, Code, !CLD)
+        ( if variable_is_forward_live(!.CLD, RHSVar) then
+            generate_deconstruct_tagword_assign_right(LHSVar, RHSVar,
+                ArgPosWidth, Code, !CLD)
         else
             Code = empty
         )
     ;
         Dir = assign_left,
-        generate_deconstruct_tagword_assign_left(LeftWidth, RightVar,
+        generate_deconstruct_tagword_assign_left(RHSVar, ArgPosWidth,
             !ToOrRvals, !ToOrMask),
         Code = empty
     ;
@@ -418,14 +421,14 @@ generate_deconstruct_tagword_unify_arg(LeftVar, LeftWidth, RightVar, ArgMode,
 
 generate_deconstruct_assign_right(RightField, LeftVar, Code, CI, !CLD) :-
     % XXX ARG_PACK The LeftX variables should be named RightX, and vice versa.
-    RightField = uni_field(RightPtag, RightBaseRval, RightOffset, RightWidth),
+    RightField = uni_field(RightPtag, RightBaseRval, RightOffset, ArgPosWidth),
     (
-        RightWidth = apw_full(_, _),
+        ArgPosWidth = apw_full(_, _),
         RightLval = field(yes(RightPtag), RightBaseRval,
             const(llconst_int(RightOffset))),
         assign_lval_to_var(LeftVar, RightLval, Code, CI, !CLD)
     ;
-        RightWidth = apw_double(_, _, _),
+        ArgPosWidth = apw_double(_, _, _),
         RightLvalA = field(yes(RightPtag), RightBaseRval,
             const(llconst_int(RightOffset))),
         RightLvalB = field(yes(RightPtag), RightBaseRval,
@@ -436,16 +439,14 @@ generate_deconstruct_assign_right(RightField, LeftVar, Code, CI, !CLD) :-
             RightRval, Code, !CLD)
     ;
         (
-            RightWidth = apw_partial_first(_, _, _, Mask, Fill),
-            RightLval = field(yes(RightPtag), RightBaseRval,
-                const(llconst_int(RightOffset))),
-            RightRval0 = lval(RightLval)
+            ArgPosWidth = apw_partial_first(_, _, Shift, _, Mask, Fill)
         ;
-            RightWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill),
-            RightLval = field(yes(RightPtag), RightBaseRval,
-                const(llconst_int(RightOffset))),
-            RightRval0 = right_shift_rval(lval(RightLval), Shift)
+            ArgPosWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
         ),
+        % XXX ARG_PACK factor out the following code
+        RightLval = field(yes(RightPtag), RightBaseRval,
+            const(llconst_int(RightOffset))),
+        RightRval0 = right_shift_rval(lval(RightLval), Shift),
         Mask = arg_mask(MaskInt),
         MaskedRightRval0 = binop(bitwise_and(int_type_uint), RightRval0,
             const(llconst_int(MaskInt))),
@@ -453,77 +454,76 @@ generate_deconstruct_assign_right(RightField, LeftVar, Code, CI, !CLD) :-
         assign_field_lval_expr_to_var(LeftVar, [RightLval], MaskedRightRval,
             Code, !CLD)
     ;
-        ( RightWidth = apw_none_nowhere
-        ; RightWidth = apw_none_shifted(_, _)
+        ( ArgPosWidth = apw_none_nowhere
+        ; ArgPosWidth = apw_none_shifted(_, _)
         ),
         % The value being assigned is of a dummy type, so no assignment
         % is actually necessary.
         Code = empty
     ).
 
-:- pred generate_deconstruct_tagword_assign_right(prog_var::in,
-    arg_pos_width::in, prog_var::in, llds_code::out,
+:- pred generate_deconstruct_tagword_assign_right(prog_var::in, prog_var::in,
+    arg_pos_width::in, llds_code::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_tagword_assign_right(LeftVar, LeftWidth, RightVar, Code,
+generate_deconstruct_tagword_assign_right(LHSVar, RHSVar, ArgPosWidth, Code,
         !CLD) :-
     (
-        LeftWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill),
-        LeftRval0 = right_shift_rval(var(LeftVar), Shift),
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill),
+        LeftRval0 = right_shift_rval(var(LHSVar), Shift),
         Mask = arg_mask(MaskInt),
         MaskedLeftRval0 = binop(bitwise_and(int_type_uint), LeftRval0,
             const(llconst_int(MaskInt))),
         maybe_cast_masked_off_rval(Fill, MaskedLeftRval0, MaskedLeftRval),
-        assign_expr_to_var(RightVar, MaskedLeftRval, Code, !CLD)
+        assign_expr_to_var(RHSVar, MaskedLeftRval, Code, !CLD)
     ;
-        LeftWidth = apw_none_shifted(_, _),
+        ArgPosWidth = apw_none_shifted(_, _),
         % The value being assigned is of a dummy type, so no assignment
         % is actually necessary.
         Code = empty
     ;
-        ( LeftWidth = apw_full(_, _)
-        ; LeftWidth = apw_double(_, _, _)
-        ; LeftWidth = apw_partial_first(_, _, _, _, _)
-        ; LeftWidth = apw_none_nowhere
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
         ),
-        unexpected($pred, "LeftWidth does not belong in tagword")
+        unexpected($pred, "ArgPosWidth does not belong in tagword")
     ).
 
 :- pred generate_deconstruct_assign_left(uni_field::in, prog_var::in,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_assign_left(LeftField, RightVar, Code, CI, !CLD) :-
-    LeftField = uni_field(LeftPtag, LeftBaseRval0, LeftOffset, LeftWidth),
+generate_deconstruct_assign_left(LHSField, RHSVar, Code, CI, !CLD) :-
+    LHSField = uni_field(LHSPtag, LHSBaseRval0, LHSOffset, ArgPosWidth),
     % Assignment from a variable to an lvalue - cannot cache
     % so generate immediately.
-    produce_variable(RightVar, ProduceRightVarCode, RightRval, CI, !CLD),
-    materialize_vars_in_rval(LeftBaseRval0, LeftBaseRval,
-        MaterializeLeftBaseCode, CI, !CLD),
+    produce_variable(RHSVar, ProduceRHSVarCode, RHSRval, CI, !CLD),
+    materialize_vars_in_rval(LHSBaseRval0, LHSBaseRval,
+        MaterializeLHSBaseCode, CI, !CLD),
     (
-        LeftWidth = apw_full(_, _),
-        LeftLval = field(yes(LeftPtag), LeftBaseRval,
-            const(llconst_int(LeftOffset))),
-        AssignCode = singleton(llds_instr(assign(LeftLval, RightRval),
+        ArgPosWidth = apw_full(_, _),
+        LHSLval = field(yes(LHSPtag), LHSBaseRval,
+            const(llconst_int(LHSOffset))),
+        AssignCode = singleton(llds_instr(assign(LHSLval, RHSRval),
             "Copy value"))
     ;
-        LeftWidth = apw_double(_, _, _),
-        LeftLvalA = field(yes(LeftPtag), LeftBaseRval,
-            const(llconst_int(LeftOffset))),
-        LeftLvalB = field(yes(LeftPtag), LeftBaseRval,
-            const(llconst_int(LeftOffset + 1))),
-        SrcA = unop(dword_float_get_word0, RightRval),
-        SrcB = unop(dword_float_get_word1, RightRval),
+        ArgPosWidth = apw_double(_, _, _),
+        LHSLvalA = field(yes(LHSPtag), LHSBaseRval,
+            const(llconst_int(LHSOffset))),
+        LHSLvalB = field(yes(LHSPtag), LHSBaseRval,
+            const(llconst_int(LHSOffset + 1))),
+        SrcA = unop(dword_float_get_word0, RHSRval),
+        SrcB = unop(dword_float_get_word1, RHSRval),
         Comment = "Update double word",
         AssignCode = from_list([
-            llds_instr(assign(LeftLvalA, SrcA), Comment),
-            llds_instr(assign(LeftLvalB, SrcB), Comment)
+            llds_instr(assign(LHSLvalA, SrcA), Comment),
+            llds_instr(assign(LHSLvalB, SrcB), Comment)
         ])
     ;
         (
-            LeftWidth = apw_partial_first(_, _, _, Mask, Fill),
-            Shift = arg_shift(0)
+            ArgPosWidth = apw_partial_first(_, _, Shift, _, Mask, Fill)
         ;
-            LeftWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
+            ArgPosWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill)
         ),
         Shift = arg_shift(ShiftInt),
         Mask = arg_mask(MaskInt),
@@ -535,52 +535,53 @@ generate_deconstruct_assign_left(LeftField, RightVar, Code, CI, !CLD) :-
         % and then putting them back, we should just compute the bits
         % for each variable (shifted by the appropriate amount),
         % and OR them together.
-        LeftLval = field(yes(LeftPtag), LeftBaseRval,
-            const(llconst_int(LeftOffset))),
+        LHSLval = field(yes(LHSPtag), LHSBaseRval,
+            const(llconst_int(LHSOffset))),
         ComplementMask = const(llconst_int(\ (MaskInt << ShiftInt))),
         MaskOld = binop(bitwise_and(int_type_uint),
-            lval(LeftLval), ComplementMask),
-        ShiftedRightRval = left_shift_rval(RightRval, Shift, Fill),
-        CombinedRval = bitwise_or_two_rvals(MaskOld, ShiftedRightRval),
-        AssignCode = singleton(llds_instr(assign(LeftLval, CombinedRval),
+            lval(LHSLval), ComplementMask),
+        ShiftedRHSRval = left_shift_rval(RHSRval, Shift, Fill),
+        CombinedRval = bitwise_or_two_rvals(MaskOld, ShiftedRHSRval),
+        AssignCode = singleton(llds_instr(assign(LHSLval, CombinedRval),
             "Update part of word"))
     ;
-        ( LeftWidth = apw_none_nowhere
-        ; LeftWidth = apw_none_shifted(_, _)
+        ( ArgPosWidth = apw_none_nowhere
+        ; ArgPosWidth = apw_none_shifted(_, _)
         ),
         % The value being assigned is of a dummy type, so no assignment
         % is actually necessary.
-        % XXX Should we try to avoid generating ProduceRightVarCode
-        % and MaterializeLeftBaseCode as well? MaterializeLeftBaseCode
+        % XXX Should we try to avoid generating ProduceRHSVarCode
+        % and MaterializeLHSBaseCode as well? MaterializeLHSBaseCode
         % is probably needed by other, non-dummy fields, and
-        % ProduceRightVarCode is probably very cheap, so probably not.
+        % ProduceRHSVarCode is probably very cheap, so probably not.
         AssignCode = empty
     ),
-    Code = ProduceRightVarCode ++ MaterializeLeftBaseCode ++ AssignCode.
+    Code = ProduceRHSVarCode ++ MaterializeLHSBaseCode ++ AssignCode.
 
-:- pred generate_deconstruct_tagword_assign_left(arg_pos_width::in,
-    prog_var::in, list(rval)::in, list(rval)::out, uint::in, uint::out) is det.
+:- pred generate_deconstruct_tagword_assign_left(prog_var::in,
+    arg_pos_width::in,
+    list(rval)::in, list(rval)::out, uint::in, uint::out) is det.
 
-generate_deconstruct_tagword_assign_left(LeftWidth, RightVar,
+generate_deconstruct_tagword_assign_left(RightVar, ArgPosWidth,
         !ToOrRvals, !ToOrMask) :-
     (
-        LeftWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill),
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, Mask, Fill),
         Shift = arg_shift(ShiftInt),
         Mask = arg_mask(MaskInt),
         LeftShiftedRightRval = left_shift_rval(var(RightVar), Shift, Fill),
         !:ToOrRvals = [LeftShiftedRightRval | !.ToOrRvals],
         !:ToOrMask = (uint.cast_from_int(MaskInt) << ShiftInt) \/ !.ToOrMask
     ;
-        LeftWidth = apw_none_shifted(_, _)
+        ArgPosWidth = apw_none_shifted(_, _)
         % The value being assigned is of a dummy type, so no assignment
         % is actually necessary.
     ;
-        ( LeftWidth = apw_full(_, _)
-        ; LeftWidth = apw_double(_, _, _)
-        ; LeftWidth = apw_partial_first(_, _, _, _, _)
-        ; LeftWidth = apw_none_nowhere
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
         ),
-        unexpected($pred, "LeftWidth is not a packed arg_pos_width")
+        unexpected($pred, "ArgPosWidth is not a packed arg_pos_width")
     ).
 
 %---------------------------------------------------------------------------%
@@ -593,24 +594,24 @@ generate_deconstruct_tagword_assign_left(LeftWidth, RightVar,
     ptag::in, unify_mode::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Code,
+generate_direct_arg_deconstruct(LHSVar, RHSVar, Ptag, ArgMode, Code,
         CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
-    Type = variable_type(CI, ArgVar),
-    compute_assign_direction(ModuleInfo, ArgMode, Type, Dir),
+    RHSType = variable_type(CI, RHSVar),
+    compute_assign_direction(ModuleInfo, ArgMode, RHSType, Dir),
     (
         Dir = assign_right,
-        ( if variable_is_forward_live(!.CLD, ArgVar) then
+        ( if variable_is_forward_live(!.CLD, RHSVar) then
             Ptag = ptag(PtagUint8),
-            BodyRval = binop(body, var(Var),
+            LHSBodyRval = binop(body, var(LHSVar),
                 const(llconst_int(uint8.cast_to_int(PtagUint8)))),
-            assign_expr_to_var(ArgVar, BodyRval, Code, !CLD)
+            assign_expr_to_var(RHSVar, LHSBodyRval, Code, !CLD)
         else
             Code = empty
         )
     ;
         Dir = assign_left,
-        reassign_mkword_hole_var(Var, Ptag, var(ArgVar), Code, !CLD)
+        reassign_mkword_hole_var(LHSVar, Ptag, var(RHSVar), Code, !CLD)
     ;
         Dir = assign_unused,
         % XXX This will have to change if we start to support aliasing.
@@ -624,28 +625,28 @@ generate_direct_arg_deconstruct(Var, ArgVar, Ptag, ArgMode, Code,
     list(field_and_arg_var)::out(list_skel(field_and_arg_var))) is det.
 
 make_fields_and_arg_vars(_, _, _, [], []).
-make_fields_and_arg_vars(VarTypes, Rval, Ptag, [VarPosWidth | VarsPosWidths],
+make_fields_and_arg_vars(VarTypes, Rval, Ptag, [VarWidth | VarsWidths],
         [FieldAndArgVar | FieldsAndArgVars]) :-
-    VarPosWidth = arg_and_width(Var, PosWidth),
+    VarWidth = arg_and_width(Var, ArgPosWidth),
     (
-        ( PosWidth = apw_full(_, CellOffset)
-        ; PosWidth = apw_partial_first(_, CellOffset, _, _, _)
-        ; PosWidth = apw_double(_, CellOffset, _)
-        ; PosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
-        ; PosWidth = apw_none_shifted(_, CellOffset)
+        ( ArgPosWidth = apw_full(_, CellOffset)
+        ; ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _, _)
+        ; ArgPosWidth = apw_double(_, CellOffset, _)
+        ; ArgPosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
+        ; ArgPosWidth = apw_none_shifted(_, CellOffset)
         ),
         CellOffset = cell_offset(CellOffsetInt)
     ;
-        PosWidth = apw_none_nowhere,
+        ArgPosWidth = apw_none_nowhere,
         CellOffsetInt = -1
     ),
-    % The CellOffsetInt duplicates information that is also in PosWidth,
+    % The CellOffsetInt duplicates information that is also in ArgPosWidth,
     % but this way, we compute it in just one place (here), instead of
-    % all of the (about ten) places where PosWidth is used.
-    Field = uv_field(uni_field(Ptag, Rval, CellOffsetInt, PosWidth)),
+    % all of the (about ten) places where ArgPosWidth is used.
+    Field = uv_field(uni_field(Ptag, Rval, CellOffsetInt, ArgPosWidth)),
     lookup_var_type(VarTypes, Var, Type),
     FieldAndArgVar = field_and_arg_var(Field, Var, Type),
-    make_fields_and_arg_vars(VarTypes, Rval, Ptag, VarsPosWidths,
+    make_fields_and_arg_vars(VarTypes, Rval, Ptag, VarsWidths,
         FieldsAndArgVars).
 
 %---------------------------------------------------------------------------%

@@ -47,17 +47,26 @@
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_zero_const
+    --->    is_not_zero_const
+    ;       is_zero_const.
+
+:- func is_zero_const(rval_const) = maybe_zero_const.
+
+%---------------------------------------------------------------------------%
+
     % If a sub-word-sized signed integer has a negative value, then it will
     % have sign-extend bits *beyond* its usual size. OR-ing the raw form
-    % of that sub-word-sized integer with the values of the other fields
+    % of that sub-word-sized signed integer with the values of the other fields
     % may thus stomp all over the bits assigned to store the other fields
     % that are to the left of the sub-word-sized signed integer.
     %
     % Prevent this by casting sub-word-sized signed integers to their
-    % unsigned counterparts before the shift and the OR operations.
+    % unsigned counterparts before casting them to the word-sized unsigned type
+    % that is the usual input type of shift and OR operations.
     %
-:- pred cast_away_any_sign_extend_bits(fill_kind::in, rval::in, rval::out)
-    is det.
+:- pred cast_to_unsigned_without_sign_extend(fill_kind::in,
+    rval::in, rval::out) is det.
 
 :- pred maybe_cast_masked_off_rval(fill_kind::in, rval::in, rval::out) is det.
 
@@ -241,18 +250,23 @@ bitwise_or_two_rvals(RvalA, RvalB) = OrRval :-
         OrRval = binop(bitwise_or(int_type_uint), RvalA, RvalB)
     ).
 
-left_shift_rval(Rval, Shift, Fill) = ShiftedRval :-
+left_shift_rval(Rval, Shift, Fill) = ShiftedUnsignedRval :-
     Shift = arg_shift(ShiftInt),
-    cast_away_any_sign_extend_bits(Fill, Rval, CastRval),
-    ( if ShiftInt = 0 then
-        % Shifting anything by zero bits has no effect.
-        ShiftedRval = CastRval
-    else if Rval = const(llconst_int(0)) then
-        % Shifting zero any number of bits has no effect.
-        ShiftedRval = CastRval
+    cast_to_unsigned_without_sign_extend(Fill, Rval, UnsignedRval),
+    ( if
+        (
+            % Shifting anything by zero bits has no effect.
+            ShiftInt = 0
+        ;
+            % Shifting zero any number of bits has no effect.
+            Rval = const(Const),
+            is_zero_const(Const) = is_zero_const
+        )
+    then
+        ShiftedUnsignedRval = UnsignedRval
     else
-        ShiftedRval = binop(unchecked_left_shift(int_type_uint),
-            CastRval, const(llconst_int(ShiftInt)))
+        ShiftedUnsignedRval = binop(unchecked_left_shift(int_type_uint),
+            UnsignedRval, const(llconst_int(ShiftInt)))
     ).
 
 right_shift_rval(Rval, Shift) = ShiftedRval :-
@@ -261,29 +275,77 @@ right_shift_rval(Rval, Shift) = ShiftedRval :-
     % Shifting zero any number of bits has no effect.
     % However, our caller won't give us either a zero shift amount
     % or a constant zero rval to shift.
+    % XXX ARG_PACK Should we cast Rval to unsigned like left_shift_rval?
     ShiftedRval = binop(unchecked_right_shift(int_type_uint),
         Rval, const(llconst_int(ShiftInt))).
 
 %---------------------------------------------------------------------------%
 
-cast_away_any_sign_extend_bits(Fill, Rval0, Rval) :-
+is_zero_const(Const) = IsZero :-
+    (
+        Const = llconst_int(Int),
+        IsZero = (if Int = 0 then is_zero_const else is_not_zero_const)
+    ;
+        Const = llconst_uint(Uint),
+        IsZero = (if Uint = 0u then is_zero_const else is_not_zero_const)
+    ;
+        Const = llconst_int8(Int8),
+        IsZero = (if Int8 = 0i8 then is_zero_const else is_not_zero_const)
+    ;
+        Const = llconst_uint8(Uint8),
+        IsZero = (if Uint8 = 0u8 then is_zero_const else is_not_zero_const)
+    ;
+        Const = llconst_int16(Int16),
+        IsZero = (if Int16 = 0i16 then is_zero_const else is_not_zero_const)
+    ;
+        Const = llconst_uint16(Uint16),
+        IsZero = (if Uint16 = 0u16 then is_zero_const else is_not_zero_const)
+    ;
+        Const = llconst_int32(Int32),
+        IsZero = (if Int32 = 0i32 then is_zero_const else is_not_zero_const)
+    ;
+        Const = llconst_uint32(Uint32),
+        IsZero = (if Uint32 = 0u32 then is_zero_const else is_not_zero_const)
+    ;
+        Const = llconst_int64(Int64),
+        IsZero = (if Int64 = 0i64 then is_zero_const else is_not_zero_const)
+    ;
+        Const = llconst_uint64(Uint64),
+        IsZero = (if Uint64 = 0u64 then is_zero_const else is_not_zero_const)
+    ;
+        ( Const = llconst_true
+        ; Const = llconst_false
+        ; Const = llconst_foreign(_, _)
+        ; Const = llconst_float(_)
+        ; Const = llconst_string(_)
+        ; Const = llconst_multi_string(_)
+        ; Const = llconst_code_addr(_)
+        ; Const = llconst_data_addr(_, _)
+        ),
+        IsZero = is_not_zero_const
+    ).
+
+%---------------------------------------------------------------------------%
+
+cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
     (
         ( Fill = fill_enum
         ; Fill = fill_uint8
         ; Fill = fill_uint16
         ; Fill = fill_uint32
         ),
-        Rval = Rval0
+        Rval1 = Rval0
     ;
         Fill = fill_int8,
-        Rval = cast(lt_int(int_type_uint8), Rval0)
+        Rval1 = cast(lt_int(int_type_uint8), Rval0)
     ;
         Fill = fill_int16,
-        Rval = cast(lt_int(int_type_uint16), Rval0)
+        Rval1 = cast(lt_int(int_type_uint16), Rval0)
     ;
         Fill = fill_int32,
-        Rval = cast(lt_int(int_type_uint32), Rval0)
-    ).
+        Rval1 = cast(lt_int(int_type_uint32), Rval0)
+    ),
+    Rval = cast(lt_int(int_type_uint), Rval1).
 
 maybe_cast_masked_off_rval(Fill, MaskedRval0, MaskedRval) :-
     (
