@@ -1,6 +1,7 @@
 echo on
 register --quiet
 table_io start
+max_io_actions 30
 finish
 format pretty
 format_param depth 1

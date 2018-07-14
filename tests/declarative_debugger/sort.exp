@@ -4,6 +4,7 @@ Command echo enabled.
 mdb> register --quiet
 mdb> table_io start
 I/O tabling started.
+mdb> max_io_actions 30
 mdb> finish
 ian
 ian
@@ -14,7 +15,7 @@ mdb> format pretty
 mdb> format_param depth 1
 mdb> dd
 main(...)
-18 tabled IO actions:
+25 tabled IO actions:
 command_line_arguments(...)
 do_open_text(...)
 lock_stream_db
@@ -26,17 +27,25 @@ read_line_as_string_2(...)
 read_line_as_string_2(...)
 read_line_as_string_2(...)
 read_line_as_string_2(...)
-write_string(...)
-write_string(...)
-write_string(...)
-write_string(...)
-write_string(...)
-write_string(...)
-write_string(...)
+output_stream_2(...)
+do_write_string(...)
+output_stream_2(...)
+do_write_string(...)
+output_stream_2(...)
+do_write_string(...)
+output_stream_2(...)
+do_write_string(...)
+output_stream_2(...)
+do_write_string(...)
+output_stream_2(...)
+do_write_string(...)
+output_stream_2(...)
+do_write_string(...)
 Valid? depth io 10
 dd> print io 9
-read_line_as_string_2('<<foreign(stream, 0xNNNN)>>', yes, 0, "rafe
-")
+read_line_as_string_2('<<foreign(stream, 0xNNNN)>>', yes, ok, "rafe
+", 
+  '<<foreign(system_error, (nil))>>')
 dd> depth io 1
 dd> no
 open_stream(...)
