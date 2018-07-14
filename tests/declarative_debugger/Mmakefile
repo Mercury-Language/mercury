@@ -257,7 +257,10 @@ comp_gen.out: comp_gen comp_gen.inp
 condition_bug.out: condition_bug condition_bug.inp
 	$(MDB_STD) ./condition_bug < condition_bug.inp 2>&1 | \
 		sed -e 's/io.m:[0-9]*/io.m:NNNN/g' | \
-		sed -e 's/term_to_xml.m:[0-9]*/term_to_xml.m:NNNN/g' \
+		sed -e 's/stream.m:[0-9]*/stream.m:NNNN/g' | \
+		sed -e 's/term_to_xml.m:[0-9]*/term_to_xml.m:NNNN/g' | \
+		sed 's/0x[-0-9A-Fa-f]*/0xXXXX/g' | \
+		sed 's/(nil)/0xXXXX/g'\
 		> condition_bug.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 

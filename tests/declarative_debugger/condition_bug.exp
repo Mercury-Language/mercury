@@ -13,13 +13,13 @@ mdb> continue
 <?xml version="1.0"?>
 <translations>
 	<word>
-		<      E2:     C2 CALL pred stream.put/4-0 (det) (term_to_xml.m:NNNN)
+		<      E2:     C2 CALL pred stream.put/4-0 (det) stream.m:NNNN (term_to_xml.m:NNNN)
 mdb> finish
-english      E3:     C2 EXIT pred stream.put/4-0 (det) (term_to_xml.m:NNNN)
+english      E3:     C2 EXIT pred stream.put/4-0 (det) stream.m:NNNN (term_to_xml.m:NNNN)
 mdb> dd
-put(stream(1, output, preopen, stdout), "english", _, <<foreign(state, 0x1)>>)
+put(stream(1, output, preopen, stdout), "english", _, <<foreign(state, 0xXXXX)>>)
 1 tabled IO action:
-write_string_2(stream(1, output, preopen, stdout), "english")
+do_write_string(<<foreign(stream, 0xXXXX)>>, "english", <<foreign(system_error, 0xXXXX)>>)
 Valid? browse 2
 browser> track
 >critical</english>
@@ -41,5 +41,5 @@ condition_bug.translation_pairs_to_xml/2 (condition_bug.m:51). The path
 to the subterm in the atom is 2/1/3/1/1.
 dd> quit
 Diagnosis aborted.
-      E3:     C2 EXIT pred stream.put/4-0 (det) (term_to_xml.m:NNNN)
+      E3:     C2 EXIT pred stream.put/4-0 (det) stream.m:NNNN (term_to_xml.m:NNNN)
 mdb> quit -y
