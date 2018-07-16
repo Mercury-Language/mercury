@@ -636,7 +636,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
         GoalExpr = scope(Reason, SubGoal),
         (
             Reason = from_ground_term(TermVar, from_ground_term_construct),
-            ml_gen_ground_term(TermVar, SubGoal, Stmts, !Info),
+            ml_generate_ground_term(TermVar, SubGoal, Stmts, !Info),
             LocalVarDefns = [],
             FuncDefns = []
         ;

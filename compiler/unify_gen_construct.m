@@ -871,13 +871,10 @@ generate_ground_term(TermVar, Goal, !CI, !CLD) :-
             ( if GoalExpr = conj(plain_conj, Conjuncts) then
                 get_module_info(!.CI, ModuleInfo),
                 get_exprn_opts(!.CI, ExprnOpts),
-                UnboxedFloats = get_unboxed_floats(ExprnOpts),
-                UnboxedInt64s = get_unboxed_int64s(ExprnOpts),
                 get_static_cell_info(!.CI, StaticCellInfo0),
                 map.init(ActiveMap0),
-                generate_ground_term_conjuncts(ModuleInfo, Conjuncts,
-                    UnboxedFloats, UnboxedInt64s,
-                    StaticCellInfo0, StaticCellInfo,
+                generate_ground_term_conjuncts(ModuleInfo, ExprnOpts,
+                    Conjuncts, StaticCellInfo0, StaticCellInfo,
                     ActiveMap0, ActiveMap),
                 map.to_assoc_list(ActiveMap, ActivePairs),
                 ( if ActivePairs = [TermVar - GroundTerm] then
@@ -901,72 +898,53 @@ generate_ground_term(TermVar, Goal, !CI, !CLD) :-
 
 :- type active_ground_term_map == map(prog_var, typed_rval).
 
-:- pred generate_ground_term_conjuncts(module_info::in, list(hlds_goal)::in,
-    have_unboxed_floats::in, have_unboxed_int64s::in,
-    static_cell_info::in, static_cell_info::out,
+:- pred generate_ground_term_conjuncts(module_info::in, exprn_opts::in,
+    list(hlds_goal)::in, static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_conjuncts(_ModuleInfo, [],
-        _UnboxedFloats, _UnboxedInt64s, !StaticCellInfo, !ActiveMap).
-generate_ground_term_conjuncts(ModuleInfo, [Goal | Goals],
-        UnboxedFloats, UnboxedInt64s, !StaticCellInfo, !ActiveMap) :-
-    generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
-        UnboxedInt64s, !StaticCellInfo, !ActiveMap),
-    generate_ground_term_conjuncts(ModuleInfo, Goals, UnboxedFloats,
-        UnboxedInt64s, !StaticCellInfo, !ActiveMap).
+generate_ground_term_conjuncts(_ModuleInfo, _ExprnOpts, [],
+        !StaticCellInfo, !ActiveMap).
+generate_ground_term_conjuncts(ModuleInfo, ExprnOpts, [Goal | Goals],
+        !StaticCellInfo, !ActiveMap) :-
+    generate_ground_term_conjunct(ModuleInfo, ExprnOpts, Goal,
+        !StaticCellInfo, !ActiveMap),
+    generate_ground_term_conjuncts(ModuleInfo, ExprnOpts, Goals,
+        !StaticCellInfo, !ActiveMap).
 
-:- pred generate_ground_term_conjunct(module_info::in, hlds_goal::in,
-    have_unboxed_floats::in, have_unboxed_int64s::in,
-    static_cell_info::in, static_cell_info::out,
+:- pred generate_ground_term_conjunct(module_info::in, exprn_opts::in,
+    hlds_goal::in, static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
-        UnboxedInt64s, !StaticCellInfo, !ActiveMap) :-
+generate_ground_term_conjunct(ModuleInfo, ExprnOpts, Goal,
+        !StaticCellInfo, !ActiveMap) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     ( if
         GoalExpr = unify(_, _, _, Unify, _),
-        Unify = construct(Var, ConsId, ArgVars, _, _, _, SubInfo),
+        Unify = construct(LHSVar, ConsId, RHSVars, _, _, _, SubInfo),
         SubInfo = no_construct_sub_info
     then
-        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-        associate_cons_id_args_with_widths(ModuleInfo, ConsId,
-            ArgVars, ArgVarsWidths),
-        generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
-            UnboxedFloats, UnboxedInt64s, !StaticCellInfo, !ActiveMap)
+        generate_ground_term_unify(ModuleInfo, ExprnOpts,
+            LHSVar, ConsId, RHSVars, !StaticCellInfo, !ActiveMap)
     else
         unexpected($pred, "malformed goal")
     ).
 
-:- pred generate_ground_term_conjunct_tag(prog_var::in, cons_tag::in,
-    list(arg_and_width(prog_var))::in, have_unboxed_floats::in,
-    have_unboxed_int64s::in, static_cell_info::in, static_cell_info::out,
+:- pred generate_ground_term_unify(module_info::in,
+    exprn_opts::in, prog_var::in, cons_id::in, list(prog_var)::in,
+    static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
-generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
-        UnboxedFloats, UnboxedInt64s, !StaticCellInfo, !ActiveMap) :-
+generate_ground_term_unify(ModuleInfo, ExprnOpts, LHSVar, ConsId, RHSVars,
+        !StaticCellInfo, !ActiveMap) :-
     % The code of this predicate is very similar to the code of
     % generate_const_struct_arg_tag. Any changes here may also
     % require similar changes there.
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     (
         (
-            ConsTag = string_tag(String),
-            Const = llconst_string(String),
-            Type = lt_string
-        ;
             ConsTag = int_tag(IntTag),
             int_tag_to_const_and_int_type(IntTag, Const, IntType),
             (
-                ( IntType = int_type_int64
-                ; IntType = int_type_uint64
-                ),
-                (
-                    UnboxedInt64s = have_unboxed_int64s,
-                    Type = lt_int(IntType)
-                ;
-                    UnboxedInt64s = do_not_have_unboxed_int64s,
-                    Type = lt_data_ptr
-                )
-            ;
                 ( IntType = int_type_int
                 ; IntType = int_type_int8
                 ; IntType = int_type_int16
@@ -980,20 +958,27 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
                 ; IntType = int_type_uint32
                 ),
                 Type = lt_int(int_type_uint)
+            ;
+                ( IntType = int_type_int64
+                ; IntType = int_type_uint64
+                ),
+                UnboxedInt64s = get_unboxed_int64s(ExprnOpts),
+                (
+                    UnboxedInt64s = have_unboxed_int64s,
+                    Type = lt_int(IntType)
+                ;
+                    UnboxedInt64s = do_not_have_unboxed_int64s,
+                    Type = lt_data_ptr
+                )
             )
         ;
             ConsTag = dummy_tag,
             Const = llconst_int(0),
             Type = lt_int(int_type_int)
         ;
-            ConsTag = foreign_tag(Lang, Val),
-            expect(unify(Lang, lang_c), $pred,
-                "foreign_tag for language other than C"),
-            Const = llconst_foreign(Val, lt_int(int_type_int)),
-            Type = lt_int(int_type_int)
-        ;
             ConsTag = float_tag(Float),
             Const = llconst_float(Float),
+            UnboxedFloats = get_unboxed_floats(ExprnOpts),
             (
                 UnboxedFloats = have_unboxed_floats,
                 Type = lt_float
@@ -1001,92 +986,29 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
                 UnboxedFloats = do_not_have_unboxed_floats,
                 Type = lt_data_ptr
             )
+        ;
+            ConsTag = string_tag(String),
+            Const = llconst_string(String),
+            Type = lt_string
+        ;
+            ConsTag = foreign_tag(Lang, Val),
+            expect(unify(Lang, lang_c), $pred,
+                "foreign_tag for language other than C"),
+            Const = llconst_foreign(Val, lt_int(int_type_int)),
+            Type = lt_int(int_type_int)
+        ;
+            ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _MustMask),
+            LocalSectag = local_sectag(_, PrimSec, _),
+            Const = llconst_int(uint.cast_to_int(PrimSec)),
+            Type = lt_data_ptr
         ),
-        expect(unify(ArgVarsWidths, []), $pred, "constant has args"),
+        expect(unify(RHSVars, []), $pred, "constant has args"),
         ActiveGroundTerm = typed_rval(const(Const), Type),
-        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+        map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
     ;
-        ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _MustMask),
-        expect(unify(ArgVarsWidths, []), $pred,
-            "shared_local_tag_no_args has args"),
-        LocalSectag = local_sectag(_, PrimSec, _),
-        Rval = const(llconst_int(uint.cast_to_int(PrimSec))),
-        ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
-        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
-    ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
-        expect_not(unify(ArgVarsWidths, []), $pred,
-            "shared_local_tag_with_args has no args"),
-        LocalSectag = local_sectag(_, PrimSec, _),
-        ( if PrimSec = 0u then
-            RevToOrRvals0 = []
-        else
-            RevToOrRvals0 = [const(llconst_uint(PrimSec))]
-        ),
-        generate_ground_term_args_for_one_word(ArgVarsWidths,
-            LeftOverArgVarsWidths, RevToOrRvals0, RevToOrRvals, !ActiveMap),
-        list.reverse(RevToOrRvals, ToOrRvals),
-        PackedRval = bitwise_or_rvals(ToOrRvals),
-        expect(unify(LeftOverArgVarsWidths, []), $pred, "left over args"),
-        ActiveGroundTerm = typed_rval(PackedRval, lt_data_ptr),
-        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
-    ;
-        ConsTag = no_tag,
-        (
-            ArgVarsWidths = [arg_and_width(ArgVar, _ArgPosWidth)],
-            map.det_remove(ArgVar, RvalType, !ActiveMap),
-            map.det_insert(Var, RvalType, !ActiveMap)
-        ;
-            ( ArgVarsWidths = []
-            ; ArgVarsWidths = [_, _ | _]
-            ),
-            unexpected($pred, "no_tag arity != 1")
-        )
-    ;
-        ConsTag = direct_arg_tag(Ptag),
-        (
-            ArgVarsWidths = [arg_and_width(ArgVar, _ArgPosWidth)],
-            map.det_remove(ArgVar, typed_rval(ArgRval, _RvalType), !ActiveMap),
-            Rval = mkword(Ptag, ArgRval),
-            ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
-            map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
-        ;
-            ( ArgVarsWidths = []
-            ; ArgVarsWidths = [_, _ | _]
-            ),
-            unexpected($pred, "direct_arg_tag arity != 1")
-        )
-    ;
-        (
-            ConsTag = single_functor_tag,
-            Ptag = ptag(0u8)
-        ;
-            ConsTag = unshared_tag(Ptag)
-        ;
-            ConsTag = shared_remote_tag(Ptag, _)
-        ),
-        generate_ground_term_args(ArgVarsWidths, PackedArgTypedRvals,
-            !ActiveMap),
-        (
-            ( ConsTag = single_functor_tag
-            ; ConsTag = unshared_tag(_Ptag)
-            ),
-            AllTypedRvals = PackedArgTypedRvals
-        ;
-            ConsTag = shared_remote_tag(_Ptag, RemoteSectag),
-            SectagUint = RemoteSectag ^ rsectag_value,
-            StagTypedRval = typed_rval(
-                const(llconst_int(uint.cast_to_int(SectagUint))),
-                lt_int(int_type_int)),
-            AllTypedRvals = [StagTypedRval | PackedArgTypedRvals]
-        ),
-        add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
-        MaybeOffset = no,
-        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
-        Rval = mkword(Ptag, CellPtrConst),
-        ActiveGroundTerm = typed_rval(Rval, lt_data_ptr),
-        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
-    ;
+        % Lambda expressions cannot occur in from_ground_term_construct scopes
+        % during code generation, because if they do occur there originally,
+        % semantic analysis will change the scope reason to something else.
         ( ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
@@ -1097,7 +1019,84 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
         ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
-        unexpected($pred, "unexpected tag")
+        unexpected($pred, "unexpected constant")
+    ;
+        ConsTag = no_tag,
+        (
+            RHSVars = [RHSVar],
+            map.det_remove(RHSVar, RvalType, !ActiveMap),
+            map.det_insert(LHSVar, RvalType, !ActiveMap)
+        ;
+            ( RHSVars = []
+            ; RHSVars = [_, _ | _]
+            ),
+            unexpected($pred, "no_tag arity != 1")
+        )
+    ;
+        ConsTag = direct_arg_tag(Ptag),
+        (
+            RHSVars = [RHSVar],
+            map.det_remove(RHSVar, typed_rval(RHSRval, _RvalType), !ActiveMap),
+            LHSRval = mkword(Ptag, RHSRval),
+            ActiveGroundTerm = typed_rval(LHSRval, lt_data_ptr),
+            map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
+        ;
+            ( RHSVars = []
+            ; RHSVars = [_, _ | _]
+            ),
+            unexpected($pred, "direct_arg_tag arity != 1")
+        )
+    ;
+        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        expect_not(unify(RHSVars, []), $pred,
+            "shared_local_tag_with_args has no args"),
+        LocalSectag = local_sectag(_, PrimSec, _),
+        ( if PrimSec = 0u then
+            RevToOrRvals0 = []
+        else
+            RevToOrRvals0 = [const(llconst_uint(PrimSec))]
+        ),
+        associate_cons_id_args_with_widths(ModuleInfo, ConsId,
+            RHSVars, RHSVarsWidths),
+        generate_ground_term_args_for_one_word(RHSVarsWidths,
+            LeftOverRHSVarsWidths, RevToOrRvals0, RevToOrRvals, !ActiveMap),
+        expect(unify(LeftOverRHSVarsWidths, []), $pred, "left over args"),
+        list.reverse(RevToOrRvals, ToOrRvals),
+        PackedRval = bitwise_or_rvals(ToOrRvals),
+        ActiveGroundTerm = typed_rval(PackedRval, lt_data_ptr),
+        map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
+    ;
+        (
+            ConsTag = single_functor_tag,
+            Ptag = ptag(0u8)
+        ;
+            ConsTag = unshared_tag(Ptag)
+        ;
+            ConsTag = shared_remote_tag(Ptag, _)
+        ),
+        associate_cons_id_args_with_widths(ModuleInfo, ConsId,
+            RHSVars, RHSVarsWidths),
+        generate_ground_term_args(RHSVarsWidths, PackedRHSTypedRvals,
+            !ActiveMap),
+        (
+            ( ConsTag = single_functor_tag
+            ; ConsTag = unshared_tag(_Ptag)
+            ),
+            AllRHSTypedRvals = PackedRHSTypedRvals
+        ;
+            ConsTag = shared_remote_tag(_Ptag, RemoteSectag),
+            SectagUint = RemoteSectag ^ rsectag_value,
+            StagTypedRval = typed_rval(
+                const(llconst_int(uint.cast_to_int(SectagUint))),
+                lt_int(int_type_int)),
+            AllRHSTypedRvals = [StagTypedRval | PackedRHSTypedRvals]
+        ),
+        add_scalar_static_cell(AllRHSTypedRvals, DataAddr, !StaticCellInfo),
+        MaybeOffset = no,
+        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
+        LHSRval = mkword(Ptag, CellPtrConst),
+        ActiveGroundTerm = typed_rval(LHSRval, lt_data_ptr),
+        map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
     ).
 
 :- pred generate_ground_term_args(list(arg_and_width(prog_var))::in,

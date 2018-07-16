@@ -187,6 +187,11 @@
             % case, we don't need to store the functor, and instead we store
             % the argument directly.
 
+:- inst memory_cell_tag for cons_tag/0
+    --->    single_functor_tag
+    ;       unshared_tag(ground)
+    ;       shared_remote_tag(ground, ground).
+
 :- type int_tag
     --->    int_tag_int(int)
             % This means the constant is represented just as a word containing

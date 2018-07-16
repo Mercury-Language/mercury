@@ -68,7 +68,7 @@
 
     % Generate MLDS code for a scope that constructs a ground term.
     %
-:- pred ml_gen_ground_term(prog_var::in, hlds_goal::in,
+:- pred ml_generate_ground_term(prog_var::in, hlds_goal::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -1079,7 +1079,7 @@ ml_gen_dynamic_construct_direct_arg(ModuleInfo, Ptag,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-ml_gen_ground_term(TermVar, Goal, Stmts, !Info) :-
+ml_generate_ground_term(TermVar, Goal, Stmts, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     set_of_var.to_sorted_list(NonLocals, NonLocalList),
@@ -1098,9 +1098,9 @@ ml_gen_ground_term(TermVar, Goal, Stmts, !Info) :-
                 ml_gen_info_get_var_types(!.Info, VarTypes),
 
                 ml_gen_info_get_global_data(!.Info, GlobalData0),
-                ml_gen_ground_term_conjuncts(ModuleInfo, Target, HighLevelData,
-                    VarTypes, Conjuncts, GlobalData0, GlobalData,
-                    map.init, GroundTermMap),
+                ml_generate_ground_term_conjuncts(ModuleInfo, Target,
+                    HighLevelData, VarTypes, Conjuncts,
+                    GlobalData0, GlobalData, map.init, GroundTermMap),
                 ml_gen_info_set_global_data(GlobalData, !Info),
 
                 map.lookup(GroundTermMap, TermVar, TermVarGroundTerm),
@@ -1122,65 +1122,67 @@ ml_gen_ground_term(TermVar, Goal, Stmts, !Info) :-
         unexpected($pred, "unexpected nonlocals")
     ).
 
-:- pred ml_gen_ground_term_conjuncts(module_info::in, mlds_target_lang::in,
-    bool::in, vartypes::in, list(hlds_goal)::in,
+:- pred ml_generate_ground_term_conjuncts(module_info::in,
+    mlds_target_lang::in, bool::in, vartypes::in, list(hlds_goal)::in,
     ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
-ml_gen_ground_term_conjuncts(_, _, _, _, [], !GlobalData, !GroundTermMap).
-ml_gen_ground_term_conjuncts(ModuleInfo, Target, HighLevelData, VarTypes,
-        [Goal | Goals], !GlobalData, !GroundTermMap) :-
-    ml_gen_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
-        Goal, !GlobalData, !GroundTermMap),
-    ml_gen_ground_term_conjuncts(ModuleInfo, Target, HighLevelData, VarTypes,
-        Goals, !GlobalData, !GroundTermMap).
+ml_generate_ground_term_conjuncts(_, _, _, _, [],
+        !GlobalData, !GroundTermMap).
+ml_generate_ground_term_conjuncts(ModuleInfo, Target, HighLevelData,
+        VarTypes, [Goal | Goals], !GlobalData, !GroundTermMap) :-
+    ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData,
+        VarTypes, Goal, !GlobalData, !GroundTermMap),
+    ml_generate_ground_term_conjuncts(ModuleInfo, Target, HighLevelData,
+        VarTypes, Goals, !GlobalData, !GroundTermMap).
 
-:- pred ml_gen_ground_term_conjunct(module_info::in, mlds_target_lang::in,
-    bool::in, vartypes::in, hlds_goal::in,
+:- pred ml_generate_ground_term_conjunct(module_info::in,
+    mlds_target_lang::in, bool::in, vartypes::in, hlds_goal::in,
     ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
-ml_gen_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
+ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         Goal, !GlobalData, !GroundTermMap) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     ( if
         GoalExpr = unify(_, _, _, Unify, _),
-        Unify = construct(Var, ConsId, ArgVars, _, _HowToConstruct,
+        Unify = construct(LHSVar, ConsId, RHSVars, _, _HowToConstruct,
             _, SubInfo),
         SubInfo = no_construct_sub_info
     then
-        lookup_var_type(VarTypes, Var, VarType),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
-        ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-        Context = goal_info_get_context(GoalInfo),
-        ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData,
-            VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, ArgVars,
-            Context, !GlobalData, !GroundTermMap)
+        ml_generate_ground_term_unify(ModuleInfo, Target, HighLevelData,
+            VarTypes, LHSVar, ConsId, RHSVars, GoalInfo,
+            !GlobalData, !GroundTermMap)
     else
         unexpected($pred, "malformed goal")
     ).
 
-:- pred ml_gen_ground_term_conjunct_tag(module_info::in,
+:- pred ml_generate_ground_term_unify(module_info::in,
     mlds_target_lang::in, bool::in, vartypes::in,
-    prog_var::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
-    list(prog_var)::in, prog_context::in,
+    prog_var::in, cons_id::in, list(prog_var)::in, hlds_goal_info::in,
     ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
-ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
-        Var, VarType, MLDS_Type, ConsId, ConsTag, ArgVars, Context,
+ml_generate_ground_term_unify(ModuleInfo, Target, HighLevelData,
+        VarTypes, LHSVar, ConsId, RHSVars, GoalInfo,
         !GlobalData, !GroundTermMap) :-
+    lookup_var_type(VarTypes, LHSVar, LHSType),
+    LHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, LHSType),
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+    Context = goal_info_get_context(GoalInfo),
     (
         % Constants.
         (
             ConsTag = int_tag(IntTag),
-            IntConst = int_tag_to_mlds_rval_const(VarType, MLDS_Type, IntTag),
+            IntConst =
+                int_tag_to_mlds_rval_const(LHSType, LHS_MLDS_Type, IntTag),
             ConstRval = ml_const(IntConst)
         ;
             ConsTag = dummy_tag,
             % The type information is needed by the Java backend.
             IntTag = int_tag_int(0),
-            IntConst = int_tag_to_mlds_rval_const(VarType, MLDS_Type, IntTag),
+            IntConst =
+                int_tag_to_mlds_rval_const(LHSType, LHS_MLDS_Type, IntTag),
             ConstRval = ml_const(IntConst)
         ;
             ConsTag = float_tag(Float),
@@ -1189,19 +1191,23 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
             ConsTag = string_tag(String),
             ConstRval = ml_const(mlconst_string(String))
         ;
-            ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _),
-            LocalSectag = local_sectag(_, PrimSec, _),
-            ConstRval = ml_cast(MLDS_Type, ml_const(mlconst_uint(PrimSec)))
-        ;
             ConsTag = foreign_tag(ForeignLang, ForeignTag),
             ConstRval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
-                MLDS_Type))
+                LHS_MLDS_Type))
+        ;
+            ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _),
+            LocalSectag = local_sectag(_, PrimSec, _),
+            ConstRval = ml_cast(LHS_MLDS_Type, ml_const(mlconst_uint(PrimSec)))
         ),
-        expect(unify(ArgVars, []), $pred, "constant tag with args"),
-        ConstGroundTerm = ml_ground_term(ConstRval, VarType, MLDS_Type),
-        map.det_insert(Var, ConstGroundTerm, !GroundTermMap)
+        expect(unify(RHSVars, []), $pred, "constant has args"),
+        ConstGroundTerm = ml_ground_term(ConstRval, LHSType, LHS_MLDS_Type),
+        map.det_insert(LHSVar, ConstGroundTerm, !GroundTermMap)
     ;
-        ( ConsTag = type_ctor_info_tag(_, _, _)
+        % Lambda expressions cannot occur in from_ground_term_construct scopes
+        % during code generation, because if they do occur there originally,
+        % semantic analysis will change the scope reason to something else.
+        ( ConsTag = closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
@@ -1210,104 +1216,101 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
         ),
-        unexpected($pred, "bad constant")
-    ;
-        % Lambda expressions cannot occur in from_ground_term_construct scopes
-        % during code generation, because if they do occur there originally,
-        % semantic analysis will change the scope reason to something else.
-        ConsTag = closure_tag(_PredId, _ProcId, _EvalMethod),
-        unexpected($pred, "pred_closure_tag")
+        unexpected($pred, "unexpected constant")
     ;
         ( ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
         ),
+        % XXX BUG: We should NOT ignore the ptag, we need to put it
+        % on the value inside the direct_arg_tag.
         (
-            ArgVars = [ArgVar],
-            map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
-            ArgGroundTerm = ml_ground_term(ArgRval, _ArgType, MLDS_ArgType),
-            ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
-                aw_full_word, ArgRval, Rval0, !GlobalData),
-            Rval = ml_cast_cons_tag(MLDS_Type, ConsTag, Rval0),
-            GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
-            map.det_insert(Var, GroundTerm, !GroundTermMap)
+            RHSVars = [RHSVar],
+            map.det_remove(RHSVar, RHSGroundTerm, !GroundTermMap),
+            RHSGroundTerm = ml_ground_term(RHSRval, _RHSType, RHS_MLDS_Type),
+            ml_gen_box_const_rval(ModuleInfo, Context, RHS_MLDS_Type,
+                aw_full_word, RHSRval, BoxedRHSRval0, !GlobalData),
+            BoxedRHSRval =
+                ml_cast_cons_tag(LHS_MLDS_Type, ConsTag, BoxedRHSRval0),
+            GroundTerm = ml_ground_term(BoxedRHSRval, LHSType, LHS_MLDS_Type),
+            map.det_insert(LHSVar, GroundTerm, !GroundTermMap)
         ;
-            ( ArgVars = []
-            ; ArgVars = [_, _ | _]
+            ( RHSVars = []
+            ; RHSVars = [_, _ | _]
             ),
             unexpected($pred, "no_tag arity != 1")
         )
-    ;
-        % Ordinary compound terms.
-        % This code (loosely) follows the code of ml_gen_compound.
-        (
-            ConsTag = single_functor_tag,
-            Ptag = ptag(0u8),
-            ExtraRvals = []
-        ;
-            ConsTag = unshared_tag(Ptag),
-            ExtraRvals = []
-        ;
-            ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-            RemoteSectag = remote_sectag(SectagUint, AddedBy),
-            UsesConstructors = ml_target_uses_constructors(Target),
-            (
-                UsesConstructors = no,
-                % XXX ARG_PACK
-                expect(unify(AddedBy, sectag_added_by_unify), $pred,
-                    "AddedBy != sectag_added_by_unify"),
-                StagRval0 =
-                    ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
-                (
-                    HighLevelData = no,
-                    % XXX why is this cast here?
-                    StagRval = ml_box(mlds_native_char_type, StagRval0)
-                ;
-                    HighLevelData = yes,
-                    StagRval = StagRval0
-                ),
-                ExtraRvals = [StagRval]
-            ;
-                UsesConstructors = yes,
-                % XXX ARG_PACK
-                expect(unify(AddedBy, sectag_added_by_constructor), $pred,
-                    "AddedBy != sectag_added_by_constructor"),
-                ExtraRvals = []
-            )
-        ),
-        ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
-            VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
-            ExtraRvals, ArgVars, Context, !GlobalData, !GroundTermMap)
     ;
         ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
         LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
         associate_cons_id_args_with_types_widths(ModuleInfo,
             lookup_var_type_func(VarTypes), may_not_have_extra_args,
-            VarType, ConsId, ArgVars, ArgVarsTypesWidths),
-        (
-            HighLevelData = yes,
-            unexpected($pred, "HighLevelData = yes")
-        ;
-            HighLevelData = no
-        ),
+            LHSType, ConsId, RHSVars, RHSVarsTypesWidths),
+        expect(unify(HighLevelData, no), $pred, "HighLevelData = yes"),
         list.foldl2(construct_ground_term_tagword_initializer_lld,
-            ArgVarsTypesWidths, [], RevOrRvals, !GroundTermMap),
+            RHSVarsTypesWidths, [], RevOrRvals, !GroundTermMap),
         list.reverse(RevOrRvals, OrRvals),
         TagwordRval = ml_bitwise_or_some_rvals(
             ml_const(mlconst_uint(PrimSec)), OrRvals),
-        ConstGroundTerm = ml_ground_term(TagwordRval, VarType, MLDS_Type),
-        map.det_insert(Var, ConstGroundTerm, !GroundTermMap)
+        ConstGroundTerm = ml_ground_term(TagwordRval, LHSType, LHS_MLDS_Type),
+        map.det_insert(LHSVar, ConstGroundTerm, !GroundTermMap)
+    ;
+        % Ordinary compound terms.
+        ( ConsTag = single_functor_tag
+        ; ConsTag = unshared_tag(_)
+        ; ConsTag = shared_remote_tag(_, _)
+        ),
+        ml_generate_ground_term_memory_cell(ModuleInfo, Target,
+            HighLevelData, VarTypes, LHSVar, LHSType, LHS_MLDS_Type,
+            ConsId, ConsTag, RHSVars, Context,
+            !GlobalData, !GroundTermMap)
     ).
 
-:- pred ml_gen_ground_term_conjunct_compound(module_info::in,
+:- pred ml_generate_ground_term_memory_cell(module_info::in,
     mlds_target_lang::in, bool::in, vartypes::in,
-    prog_var::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
-    ptag::in, list(mlds_rval)::in, list(prog_var)::in,
+    prog_var::in, mer_type::in, mlds_type::in,
+    cons_id::in, cons_tag::in(memory_cell_tag), list(prog_var)::in,
     prog_context::in, ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
-ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
-        VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, Ptag,
-        ExtraRvals, ArgVars, Context, !GlobalData, !GroundTermMap) :-
+ml_generate_ground_term_memory_cell(ModuleInfo, Target, HighLevelData,
+        VarTypes, LHSVar, LHSType, LHS_MLDS_Type, ConsId, ConsTag,
+        RHSVars, Context, !GlobalData, !GroundTermMap) :-
+    % This code (loosely) follows the code of ml_gen_compound.
+    (
+        ConsTag = single_functor_tag,
+        Ptag = ptag(0u8),
+        ExtraRHSRvals = []
+    ;
+        ConsTag = unshared_tag(Ptag),
+        ExtraRHSRvals = []
+    ;
+        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
+        RemoteSectag = remote_sectag(SectagUint, AddedBy),
+        UsesConstructors = ml_target_uses_constructors(Target),
+        (
+            UsesConstructors = no,
+            % XXX ARG_PACK
+            expect(unify(AddedBy, sectag_added_by_unify), $pred,
+                "AddedBy != sectag_added_by_unify"),
+            StagRval0 = ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
+            (
+                HighLevelData = no,
+                % XXX why is this cast here?
+                StagRval = ml_box(mlds_native_char_type, StagRval0)
+            ;
+                HighLevelData = yes,
+                StagRval = StagRval0
+            ),
+            ExtraRHSRvals = [StagRval]
+        ;
+            UsesConstructors = yes,
+            % XXX ARG_PACK
+            expect(unify(AddedBy, sectag_added_by_constructor), $pred,
+                "AddedBy != sectag_added_by_constructor"),
+            ExtraRHSRvals = []
+        )
+    ),
+
     % This code (loosely) follows the code of ml_gen_new_object.
 
     % If the scope contains existentially typed constructions,
@@ -1316,25 +1319,25 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     % constructing should not need any extra type_info or typeclass_info args.
     associate_cons_id_args_with_types_widths(ModuleInfo,
         lookup_var_type_func(VarTypes), may_not_have_extra_args,
-        VarType, ConsId, ArgVars, ArgVarsTypesWidths),
+        LHSType, ConsId, RHSVars, RHSVarsTypesWidths),
     (
         HighLevelData = yes,
         construct_ground_term_initializers_hld(ModuleInfo, Context,
-            ArgVarsTypesWidths, ArgRvalsTypesWidths,
+            RHSVarsTypesWidths, RHSRvalsTypesWidths,
             !GlobalData, !GroundTermMap)
     ;
         HighLevelData = no,
         construct_ground_term_initializers_lld(ModuleInfo, Context,
-            ArgVarsTypesWidths, ArgRvalsTypesWidths,
+            RHSVarsTypesWidths, RHSRvalsTypesWidths,
             !GlobalData, !GroundTermMap)
     ),
-    % XXX ARG_PACK move to caller, and inline in each branch
+    % XXX ARG_PACK move to top, and inline in each branch.
     UsesBaseClass = ml_tag_uses_base_class(ConsTag),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        Context, VarType, MLDS_Type, ordinary_cons_id(ConsId),
-        UsesBaseClass, Ptag, ExtraRvals, ArgRvalsTypesWidths, GroundTerm,
+        Context, LHSType, LHS_MLDS_Type, ordinary_cons_id(ConsId),
+        UsesBaseClass, Ptag, ExtraRHSRvals, RHSRvalsTypesWidths, GroundTerm,
         !GlobalData),
-    map.det_insert(Var, GroundTerm, !GroundTermMap).
+    map.det_insert(LHSVar, GroundTerm, !GroundTermMap).
 
 %---------------------------------------------------------------------------%
 
@@ -1347,12 +1350,13 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
 construct_ground_term_initializers_hld(_, _, [], [],
         !GlobalData, !GroundTermMap).
 construct_ground_term_initializers_hld(ModuleInfo, Context,
-        [ArgVarTypeWidth | ArgVarsTypesWidths],
-        [RvalTypeWidth | RvalsTypesWidths], !GlobalData, !GroundTermMap) :-
+        [RHSVarTypeWidth | RHSVarsTypesWidths],
+        [RHSRvalTypeWidth | RHSRvalsTypesWidths],
+        !GlobalData, !GroundTermMap) :-
     construct_ground_term_initializer_hld(ModuleInfo, Context,
-        ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap),
+        RHSVarTypeWidth, RHSRvalTypeWidth, !GlobalData, !GroundTermMap),
     construct_ground_term_initializers_hld(ModuleInfo, Context,
-        ArgVarsTypesWidths, RvalsTypesWidths, !GlobalData, !GroundTermMap).
+        RHSVarsTypesWidths, RHSRvalsTypesWidths, !GlobalData, !GroundTermMap).
 
 :- pred construct_ground_term_initializer_hld(module_info::in,
     prog_context::in, arg_var_type_and_width::in,
@@ -1361,16 +1365,16 @@ construct_ground_term_initializers_hld(ModuleInfo, Context,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 construct_ground_term_initializer_hld(ModuleInfo, Context,
-        ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap) :-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgPosWidth),
-    map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
-    ArgGroundTerm = ml_ground_term(ArgRval0, ArgType, _MLDS_ArgType),
+        RHSVarTypeWidth, RHSRvalTypeWidth, !GlobalData, !GroundTermMap) :-
+    RHSVarTypeWidth = arg_type_and_width(RHSVar, ConsArgType, ArgPosWidth),
+    map.det_remove(RHSVar, RHSGroundTerm, !GroundTermMap),
+    RHSGroundTerm = ml_ground_term(RHSRval0, RHSType, _RHS_MLDS_Type),
     ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
-    ml_type_as_field(ModuleInfo, yes, ConsArgType, ArgWidth, BoxedArgType),
+    ml_type_as_field(ModuleInfo, yes, ConsArgType, ArgWidth, BoxedRHSType),
     ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context,
-        ArgType, BoxedArgType, ArgRval0, ArgRval, !GlobalData),
-    RvalTypeWidth =
-        rval_type_and_width(ArgRval, mlds_generic_type, ArgPosWidth, no).
+        RHSType, BoxedRHSType, RHSRval0, RHSRval, !GlobalData),
+    RHSRvalTypeWidth =
+        rval_type_and_width(RHSRval, mlds_generic_type, ArgPosWidth, no).
 
 :- pred construct_ground_term_initializers_lld(module_info::in,
     prog_context::in, list(arg_var_type_and_width)::in,
@@ -1381,12 +1385,13 @@ construct_ground_term_initializer_hld(ModuleInfo, Context,
 construct_ground_term_initializers_lld(_, _, [], [],
         !GlobalData, !GroundTermMap).
 construct_ground_term_initializers_lld(ModuleInfo, Context,
-        [ArgVarTypeWidth | ArgVarsTypesWidths],
-        [RvalTypeWidth | RvalsTypesWidths], !GlobalData, !GroundTermMap) :-
+        [RHSVarTypeWidth | RHSVarsTypesWidths],
+        [RHSRvalTypeWidth | RHSRvalsTypesWidths],
+        !GlobalData, !GroundTermMap) :-
     construct_ground_term_initializer_lld(ModuleInfo, Context,
-        ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap),
+        RHSVarTypeWidth, RHSRvalTypeWidth, !GlobalData, !GroundTermMap),
     construct_ground_term_initializers_lld(ModuleInfo, Context,
-        ArgVarsTypesWidths, RvalsTypesWidths, !GlobalData, !GroundTermMap).
+        RHSVarsTypesWidths, RHSRvalsTypesWidths, !GlobalData, !GroundTermMap).
 
 :- pred construct_ground_term_initializer_lld(module_info::in,
     prog_context::in, arg_var_type_and_width::in,
@@ -1394,29 +1399,29 @@ construct_ground_term_initializers_lld(ModuleInfo, Context,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 construct_ground_term_initializer_lld(ModuleInfo, Context,
-        ArgVarTypeWidth, RvalTypeWidth, !GlobalData, !GroundTermMap) :-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, _ConsArgType, ArgPosWidth),
-    map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
-    ArgGroundTerm = ml_ground_term(ArgRval0, _ArgType, MLDS_ArgType),
+        RHSVarTypeWidth, RHSRvalTypeWidth, !GlobalData, !GroundTermMap) :-
+    RHSVarTypeWidth = arg_type_and_width(RHSVar, _ConsArgType, ArgPosWidth),
+    map.det_remove(RHSVar, RHSGroundTerm, !GroundTermMap),
+    RHSGroundTerm = ml_ground_term(RHSRval0, _RHSType, RHS_MLDS_Type),
     ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
-    ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType, ArgWidth,
-        ArgRval0, ArgRval, !GlobalData),
-    RvalTypeWidth =
-        rval_type_and_width(ArgRval, mlds_generic_type, ArgPosWidth, no).
+    ml_gen_box_const_rval(ModuleInfo, Context, RHS_MLDS_Type, ArgWidth,
+        RHSRval0, RHSRval, !GlobalData),
+    RHSRvalTypeWidth =
+        rval_type_and_width(RHSRval, mlds_generic_type, ArgPosWidth, no).
 
 :- pred construct_ground_term_tagword_initializer_lld(
     arg_var_type_and_width::in, list(mlds_rval)::in, list(mlds_rval)::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
-construct_ground_term_tagword_initializer_lld(ArgVarTypeWidth,
+construct_ground_term_tagword_initializer_lld(RHSVarTypeWidth,
         !RevOrRvals, !GroundTermMap) :-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, _ConsArgType, ArgPosWidth),
-    map.det_remove(ArgVar, ArgGroundTerm, !GroundTermMap),
+    RHSVarTypeWidth = arg_type_and_width(RHSVar, _ConsArgType, ArgPosWidth),
+    map.det_remove(RHSVar, RHSGroundTerm, !GroundTermMap),
     % Boxing cannot be applicable to subword rvals.
-    ArgGroundTerm = ml_ground_term(ArgRval, _ArgType, _MLDS_ArgType),
+    RHSGroundTerm = ml_ground_term(RHSRval, _RHSType, _RHS_MLDS_Type),
     (
         ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        ml_maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
+        ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
             !RevOrRvals)
     ;
         ArgPosWidth = apw_none_shifted(_, _)
@@ -1576,7 +1581,7 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
 ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
         ConsTag, Ptag, ExtraRvals, Args, !ConstStructMap, !GlobalData) :-
     % This code (loosely) follows the code of
-    % ml_gen_ground_term_conjunct_compound.
+    % ml_generate_ground_term_compound.
 
     ml_gen_const_static_args_widths(Info, VarType, ConsId, Args,
         ArgsTypesWidths),
@@ -1599,7 +1604,7 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
 ml_gen_const_static_args_widths(Info, VarType, ConsId, Args,
         ArgsTypesWidths) :-
     % This code (loosely) follows the code of
-    % ml_gen_ground_term_conjunct_compound.
+    % ml_generate_ground_term_compound.
 
     HighLevelData = Info ^ mcsi_high_level_data,
     Target = Info ^ mcsi_target,
