@@ -872,10 +872,12 @@ generate_ground_term(TermVar, Goal, !CI, !CLD) :-
                 get_module_info(!.CI, ModuleInfo),
                 get_exprn_opts(!.CI, ExprnOpts),
                 UnboxedFloats = get_unboxed_floats(ExprnOpts),
+                UnboxedInt64s = get_unboxed_int64s(ExprnOpts),
                 get_static_cell_info(!.CI, StaticCellInfo0),
                 map.init(ActiveMap0),
                 generate_ground_term_conjuncts(ModuleInfo, Conjuncts,
-                    UnboxedFloats, StaticCellInfo0, StaticCellInfo,
+                    UnboxedFloats, UnboxedInt64s,
+                    StaticCellInfo0, StaticCellInfo,
                     ActiveMap0, ActiveMap),
                 map.to_assoc_list(ActiveMap, ActivePairs),
                 ( if ActivePairs = [TermVar - GroundTerm] then
@@ -899,27 +901,27 @@ generate_ground_term(TermVar, Goal, !CI, !CLD) :-
 
 :- type active_ground_term_map == map(prog_var, typed_rval).
 
-:- pred generate_ground_term_conjuncts(module_info::in,
-    list(hlds_goal)::in, have_unboxed_floats::in,
+:- pred generate_ground_term_conjuncts(module_info::in, list(hlds_goal)::in,
+    have_unboxed_floats::in, have_unboxed_int64s::in,
     static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
 generate_ground_term_conjuncts(_ModuleInfo, [],
-        _UnboxedFloats, !StaticCellInfo, !ActiveMap).
+        _UnboxedFloats, _UnboxedInt64s, !StaticCellInfo, !ActiveMap).
 generate_ground_term_conjuncts(ModuleInfo, [Goal | Goals],
-        UnboxedFloats, !StaticCellInfo, !ActiveMap) :-
+        UnboxedFloats, UnboxedInt64s, !StaticCellInfo, !ActiveMap) :-
     generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
-        !StaticCellInfo, !ActiveMap),
+        UnboxedInt64s, !StaticCellInfo, !ActiveMap),
     generate_ground_term_conjuncts(ModuleInfo, Goals, UnboxedFloats,
-        !StaticCellInfo, !ActiveMap).
+        UnboxedInt64s, !StaticCellInfo, !ActiveMap).
 
-:- pred generate_ground_term_conjunct(module_info::in,
-    hlds_goal::in, have_unboxed_floats::in,
+:- pred generate_ground_term_conjunct(module_info::in, hlds_goal::in,
+    have_unboxed_floats::in, have_unboxed_int64s::in,
     static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
 generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
-        !StaticCellInfo, !ActiveMap) :-
+        UnboxedInt64s, !StaticCellInfo, !ActiveMap) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     ( if
         GoalExpr = unify(_, _, _, Unify, _),
@@ -930,18 +932,18 @@ generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
         associate_cons_id_args_with_widths(ModuleInfo, ConsId,
             ArgVars, ArgVarsWidths),
         generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
-            UnboxedFloats, !StaticCellInfo, !ActiveMap)
+            UnboxedFloats, UnboxedInt64s, !StaticCellInfo, !ActiveMap)
     else
         unexpected($pred, "malformed goal")
     ).
 
 :- pred generate_ground_term_conjunct_tag(prog_var::in, cons_tag::in,
     list(arg_and_width(prog_var))::in, have_unboxed_floats::in,
-    static_cell_info::in, static_cell_info::out,
+    have_unboxed_int64s::in, static_cell_info::in, static_cell_info::out,
     active_ground_term_map::in, active_ground_term_map::out) is det.
 
 generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
-        UnboxedFloats, !StaticCellInfo, !ActiveMap) :-
+        UnboxedFloats, UnboxedInt64s, !StaticCellInfo, !ActiveMap) :-
     % The code of this predicate is very similar to the code of
     % generate_const_struct_arg_tag. Any changes here may also
     % require similar changes there.
@@ -953,7 +955,32 @@ generate_ground_term_conjunct_tag(Var, ConsTag, ArgVarsWidths,
         ;
             ConsTag = int_tag(IntTag),
             int_tag_to_const_and_int_type(IntTag, Const, IntType),
-            Type = lt_int(IntType)
+            (
+                ( IntType = int_type_int64
+                ; IntType = int_type_uint64
+                ),
+                (
+                    UnboxedInt64s = have_unboxed_int64s,
+                    Type = lt_int(IntType)
+                ;
+                    UnboxedInt64s = do_not_have_unboxed_int64s,
+                    Type = lt_data_ptr
+                )
+            ;
+                ( IntType = int_type_int
+                ; IntType = int_type_int8
+                ; IntType = int_type_int16
+                ; IntType = int_type_int32
+                ),
+                Type = lt_int(int_type_int)
+            ;
+                ( IntType = int_type_uint
+                ; IntType = int_type_uint8
+                ; IntType = int_type_uint16
+                ; IntType = int_type_uint32
+                ),
+                Type = lt_int(int_type_uint)
+            )
         ;
             ConsTag = dummy_tag,
             Const = llconst_int(0),
