@@ -7,7 +7,7 @@ mdb> break p
 mdb> continue
        2:      2  2 CALL pred solns.p/2-0 (det) solns.m:23 (solns.m:17)
 mdb> finish
-     204:      2  2 EXIT pred solns.p/2-0 (det) solns.m:23 (solns.m:17)
+     206:      2  2 EXIT pred solns.p/2-0 (det) solns.m:23 (solns.m:17)
 mdb> dd -d 3 -n 7
 p(1, [1, 2, 3])
 Valid? no
@@ -27,5 +27,5 @@ Found incorrect contour:
 solutions(q(1), [1, 2, 3])
 p(1, [1, 2, 3])
 Is this a bug? yes
-     204:      2  2 EXIT pred solns.p/2-0 (det) solns.m:23 (solns.m:17)
+     206:      2  2 EXIT pred solns.p/2-0 (det) solns.m:23 (solns.m:17)
 mdb> quit -y
