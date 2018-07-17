@@ -22,6 +22,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -195,12 +196,51 @@
 :- func goal_expr_has_subgoals(hlds_goal_expr) = has_subgoals.
 
 %-----------------------------------------------------------------------------%
+
+    % Insist on both given lists having exactly one element,
+    % and return those elements. The lists are intended to contain
+    % the arguments and unify modes respectively of a function symbol
+    % whose representation is no_tag or direct_arg_tag, which means
+    % that its arity must be exactly one.
+    %
+:- pred get_notag_or_direct_arg_arg_mode(list(Arg)::in, list(UM)::in,
+    Arg::out, UM::out) is det.
+
+    % A version of the above without the modes.
+    %
+:- pred get_notag_or_direct_arg_arg(list(Arg)::in, Arg::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- type is_termvar_needed
+    --->    termvar_is_not_needed
+    ;       termvar_is_needed.
+
+    % Given the TermVar and the subgoal of a from_ground_term_construct scope,
+    % return an indication of whether the termvar is needed outside the scope,
+    % the conjuncts inside the scope, and the conjunction's goal_info.
+    % The conjuncts should all be processable (without an abort) by
+    % get_from_ground_term_construct_conjunct_info.
+    %
+:- pred get_from_ground_term_construct_info(prog_var::in, hlds_goal::in,
+    is_termvar_needed::out, list(hlds_goal)::out, hlds_goal_info::out) is det.
+
+    % get_from_ground_term_construct_conjunct_info(Goal,
+    %   LHSVar, ConsId, RHSVars, GoalInfo):
+    %
+    % A conjunct inside a from_ground_term_construct scope *must* be a
+    % construction unification; return its details.
+    % 
+:- pred get_from_ground_term_construct_conjunct_info(hlds_goal::in,
+    prog_var::out, cons_id::out, list(prog_var)::out, hlds_goal_info::out)
+    is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds.code_model.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module transform_hlds.
@@ -1213,6 +1253,71 @@ goal_expr_has_subgoals(GoalExpr) = HasSubGoals :-
         ; ShortHand = bi_implication(_, _)
         ),
         HasSubGoals = has_subgoals
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode) :-
+    ( if
+        RHSVars = [RHSVarPrime],
+        ArgModes = [ArgModePrime]
+    then
+        RHSVar = RHSVarPrime,
+        ArgMode = ArgModePrime
+    else
+        unexpected($pred, "arity != 1)")
+    ).
+
+get_notag_or_direct_arg_arg(RHSVars, RHSVar) :-
+    ( if RHSVars = [RHSVarPrime] then
+        RHSVar = RHSVarPrime
+    else
+        unexpected($pred, "arity != 1)")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_from_ground_term_construct_info(TermVar, Goal,
+         TermVarIsNeeded, Conjuncts, GoalInfo) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    set_of_var.to_sorted_list(NonLocals, NonLocalList),
+    (
+        (
+            NonLocalList = [],
+            TermVarIsNeeded = termvar_is_not_needed
+        ;
+            NonLocalList = [NonLocal],
+            ( if NonLocal = TermVar then
+                TermVarIsNeeded = termvar_is_needed
+            else
+                unexpected($pred, "unexpected nonlocal")
+            )
+        ),
+        ( if GoalExpr = conj(plain_conj, ConjunctsPrime) then
+            Conjuncts = ConjunctsPrime
+        else
+            unexpected($pred, "unexpected nonlocal")
+        )
+    ;
+        NonLocalList = [_, _ | _],
+        unexpected($pred, "unexpected nonlocals")
+    ).
+
+get_from_ground_term_construct_conjunct_info(Goal, LHSVar, ConsId, RHSVars,
+        GoalInfo) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    ( if
+        GoalExpr = unify(_, _, _, Unify, _),
+        Unify = construct(LHSVarPrime, ConsIdPrime, RHSVarsPrime,
+            _, _, _, SubInfo),
+        SubInfo = no_construct_sub_info
+    then
+        LHSVar = LHSVarPrime,
+        ConsId = ConsIdPrime,
+        RHSVars = RHSVarsPrime
+    else
+        unexpected($pred, "unexpected goal as fgt_construct conjunct")
     ).
 
 %-----------------------------------------------------------------------------%

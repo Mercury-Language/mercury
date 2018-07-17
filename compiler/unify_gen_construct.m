@@ -63,6 +63,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
@@ -102,16 +103,16 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     (
         % Constants.
         ( ConsTag = int_tag(_)
-        ; ConsTag = dummy_tag
-        ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
         ; ConsTag = string_tag(_)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = dummy_tag
         ; ConsTag = shared_local_tag_no_args(_, _, _)
-        ; ConsTag = type_ctor_info_tag(_, _, _)
-        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
-        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
@@ -122,25 +123,33 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             int_tag_to_const_and_int_type(IntTag, Const, _),
             ConstRval = const(Const)
         ;
-            ConsTag = dummy_tag,
-            % XXX The assignment is likely to be dead code, but *proving*
-            % that the assigned-to variable is never used is difficult.
-            ConstRval = const(llconst_int(0))
-        ;
-            ConsTag = foreign_tag(Lang, Value),
-            expect(unify(Lang, lang_c), $pred,
-                "foreign_tag for language other than C"),
-            ConstRval = const(llconst_foreign(Value, lt_int(int_type_int)))
-        ;
             ConsTag = float_tag(Float),
             ConstRval = const(llconst_float(Float))
         ;
             ConsTag = string_tag(String),
             ConstRval = const(llconst_string(String))
         ;
+            ConsTag = foreign_tag(Lang, Value),
+            expect(unify(Lang, lang_c), $pred,
+                "foreign_tag for language other than C"),
+            ConstRval = const(llconst_foreign(Value, lt_int(int_type_int)))
+        ;
+            ConsTag = dummy_tag,
+            % XXX The assignment is likely to be dead code, but *proving*
+            % that the assigned-to variable is never used is difficult.
+            ConstRval = const(llconst_int(0))
+        ;
             ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _MustMask),
             LocalSectag = local_sectag(_, PrimSec, _),
             ConstRval = const(llconst_int(uint.cast_to_int(PrimSec)))
+        ;
+            ( ConsTag = type_info_const_tag(ConstNum)
+            ; ConsTag = typeclass_info_const_tag(ConstNum)
+            ; ConsTag = ground_term_const_tag(ConstNum, _)
+            ),
+            get_const_struct_map(!.CI, ConstStructMap),
+            map.lookup(ConstStructMap, ConstNum, TypedRval),
+            TypedRval = typed_rval(ConstRval, _Type)
         ;
             ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
             RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
@@ -152,19 +161,6 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             TCName = generate_class_name(ClassId),
             DataId = rtti_data_id(tc_rtti_id(TCName,
                 type_class_base_typeclass_info(ModuleName, Instance))),
-            ConstRval = const(llconst_data_addr(DataId, no))
-        ;
-            ( ConsTag = type_info_const_tag(ConstNum)
-            ; ConsTag = typeclass_info_const_tag(ConstNum)
-            ; ConsTag = ground_term_const_tag(ConstNum, _)
-            ),
-            get_const_struct_map(!.CI, ConstStructMap),
-            map.lookup(ConstStructMap, ConstNum, TypedRval),
-            TypedRval = typed_rval(ConstRval, _Type)
-        ;
-            ConsTag = tabling_info_tag(PredId, ProcId),
-            ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-            DataId = proc_tabling_data_id(ProcLabel, tabling_info),
             ConstRval = const(llconst_data_addr(DataId, no))
         ;
             ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
@@ -179,6 +175,11 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             DataId = layout_id(proc_layout(RttiProcLabel, ProcKind)),
             ConstRval = const(llconst_data_addr(DataId, no))
         ;
+            ConsTag = tabling_info_tag(PredId, ProcId),
+            ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
+            DataId = proc_tabling_data_id(ProcLabel, tabling_info),
+            ConstRval = const(llconst_data_addr(DataId, no))
+        ;
             ConsTag = table_io_entry_tag(PredId, ProcId),
             PredProcId = proc(PredId, ProcId),
             DataId = layout_slot_id(table_io_entry_id, PredProcId),
@@ -186,33 +187,6 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         ),
         assign_const_to_var(LHSVar, ConstRval, !.CI, !CLD),
         Code = empty
-    ;
-        ( ConsTag = no_tag
-        ; ConsTag = direct_arg_tag(_)
-        ),
-        expect(unify(TakeAddr, []), $pred,
-            "notag or direct_arg_tag: take_addr"),
-        ( if
-            RHSVars = [RHSVar],
-            ArgModes = [ArgMode]
-        then
-            Type = variable_type(!.CI, RHSVar),
-            (
-                ConsTag = no_tag,
-                FieldAndArgVar =
-                    field_and_arg_var(uv_var(LHSVar), RHSVar, Type),
-                % Information can flow to the left as well as to the right
-                % in deconstructions.
-                generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code,
-                    !.CI, !CLD)
-            ;
-                ConsTag = direct_arg_tag(Ptag),
-                generate_direct_arg_construct(LHSVar, RHSVar, Ptag,
-                    ArgMode, Type, Code, !.CI, !CLD)
-            )
-        else
-            unexpected($pred, "no_tag or direct_arg_tag: arity != 1")
-        )
     ;
         (
             ConsTag = single_functor_tag,
@@ -261,11 +235,26 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         PackedRval = bitwise_or_rvals(ToOrRvals),
         assign_expr_to_var(LHSVar, PackedRval, Code, !CLD)
     ;
+        ConsTag = no_tag,
+        expect(unify(TakeAddr, []), $pred, "notag: take_addr"),
+        get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
+        Type = variable_type(!.CI, RHSVar),
+        FieldAndArgVar = field_and_arg_var(uv_var(LHSVar), RHSVar, Type),
+        % Information can flow to the left as well as to the right
+        % in deconstructions.
+        generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code,
+            !.CI, !CLD)
+    ;
+        ConsTag = direct_arg_tag(Ptag),
+        expect(unify(TakeAddr, []), $pred, "direct_arg_tag: take_addr"),
+        get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
+        Type = variable_type(!.CI, RHSVar),
+        generate_direct_arg_construct(LHSVar, RHSVar, Ptag,
+            ArgMode, Type, Code, !.CI, !CLD)
+    ;
         ConsTag = closure_tag(PredId, ProcId, EvalMethod),
-        expect(unify(TakeAddr, []), $pred,
-            "closure_tag has take_addr"),
-        expect(unify(MaybeSize, no), $pred,
-            "closure_tag has size"),
+        expect(unify(TakeAddr, []), $pred, "closure_tag has take_addr"),
+        expect(unify(MaybeSize, no), $pred, "closure_tag has size"),
         % XXX TYPE_REPN
         construct_closure(PredId, ProcId, EvalMethod, LHSVar, RHSVars,
             GoalInfo, Code, !CI, !CLD)
@@ -339,15 +328,10 @@ generate_and_pack_construct_args([VarWidth | VarsWidths], [ArgMode | ArgModes],
     llds_code::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_and_pack_construct_word(Var, ArgPosWidth, VarsWidths,
+generate_and_pack_construct_word(RHSVar, ArgPosWidth, VarsWidths,
         ArgMode, ArgModes, LeftOverVarsWidths, LeftOverArgModes,
         CurArgNum, LeftOverArgNum, !TakeAddr, CellArg,
         !MayUseAtomic, !Code, CI, !CLD) :-
-    get_vartypes(CI, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
-    get_module_info(CI, ModuleInfo),
-    % XXX Should we update !MayUseAtomic for dummy types?
-    update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
     ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
         LeftOverVarsWidths = VarsWidths,
         LeftOverArgModes = ArgModes,
@@ -362,7 +346,7 @@ generate_and_pack_construct_word(Var, ArgPosWidth, VarsWidths,
                 LCMCNull = yes,
                 MaybeNull = yes(const(llconst_int(0)))
             ),
-            CellArg = cell_arg_take_addr_one_word(Var, MaybeNull)
+            CellArg = cell_arg_take_addr_one_word(RHSVar, MaybeNull)
         ;
             ArgPosWidth = apw_double(_, _, _),
             (
@@ -373,7 +357,7 @@ generate_and_pack_construct_word(Var, ArgPosWidth, VarsWidths,
                 Null = const(llconst_int(0)),
                 MaybeNulls = yes({Null, Null})
             ),
-            CellArg = cell_arg_take_addr_two_words(Var, MaybeNulls)
+            CellArg = cell_arg_take_addr_two_words(RHSVar, MaybeNulls)
         ;
             ( ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
             ; ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
@@ -382,15 +366,18 @@ generate_and_pack_construct_word(Var, ArgPosWidth, VarsWidths,
         ;
             ArgPosWidth = apw_none_shifted(_, _),
             % Even if the variable in this field is produced *after*
-            % the recursive call, we know in advance what its value
-            % will be, so we should be able to fill in this field
-            % *before* the recursive call.
+            % the recursive call, we know in advance what its value will be,
+            % so we should be able to fill in this field *before*
+            % the recursive call.
             unexpected($pred, "taking address of dummy")
         ),
         !:MayUseAtomic = may_not_use_atomic_alloc
     else
-        generate_construct_arg_rval(ModuleInfo, Var, Type, ArgMode,
-            IsReal, Rval, !Code, CI, !CLD),
+        generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal, RHSRval,
+            !Code, CI, !CLD),
+        get_module_info(CI, ModuleInfo),
+        % XXX Should we update !MayUseAtomic for dummy types?
+        update_type_may_use_atomic_alloc(ModuleInfo, RHSType, !MayUseAtomic),
         (
             (
                 ArgPosWidth = apw_full(_, _),
@@ -399,7 +386,7 @@ generate_and_pack_construct_word(Var, ArgPosWidth, VarsWidths,
                     CellArg = cell_arg_skip_one_word
                 ;
                     IsReal = real_input_arg,
-                    CellArg = cell_arg_full_word(Rval, complete)
+                    CellArg = cell_arg_full_word(RHSRval, complete)
                 )
             ;
                 ArgPosWidth = apw_double(_, _, _),
@@ -408,7 +395,7 @@ generate_and_pack_construct_word(Var, ArgPosWidth, VarsWidths,
                     CellArg = cell_arg_skip_two_words
                 ;
                     IsReal = real_input_arg,
-                    CellArg = cell_arg_double_word(Rval)
+                    CellArg = cell_arg_double_word(RHSRval)
                 )
             ),
             LeftOverVarsWidths = VarsWidths,
@@ -423,7 +410,7 @@ generate_and_pack_construct_word(Var, ArgPosWidth, VarsWidths,
             ;
                 IsReal = real_input_arg,
                 Completeness0 = complete,
-                maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill,
+                maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
                     [], RevToOrRvals0)
             ),
             NextArgNum = CurArgNum + 1,
@@ -471,7 +458,7 @@ generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
         LeftOverVarsWidths, LeftOverArgModes, CurArgNum, LeftOverArgNum,
         !TakeAddr, !RevToOrRvals, !Completeness, !MayUseAtomic,
         !Code, CI, !CLD) :-
-    VarWidth = arg_and_width(Var, ArgPosWidth),
+    VarWidth = arg_and_width(RHSVar, ArgPosWidth),
     (
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
@@ -487,17 +474,15 @@ generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
         ; ArgPosWidth = apw_none_shifted(_, _)
         ),
         % This argument *is* part of this word.
-        get_vartypes(CI, VarTypes),
-        lookup_var_type(VarTypes, Var, Type),
-        get_module_info(CI, ModuleInfo),
-        update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
         ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
             unexpected($pred, "taking address of partial word")
         else
             true
         ),
-        generate_construct_arg_rval(ModuleInfo, Var, Type, ArgMode,
-            IsReal, ArgRval, !Code, CI, !CLD),
+        generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal, RHSRval,
+            !Code, CI, !CLD),
+        get_module_info(CI, ModuleInfo),
+        update_type_may_use_atomic_alloc(ModuleInfo, RHSType, !MayUseAtomic),
         (
             ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
             (
@@ -505,7 +490,7 @@ generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
                 !:Completeness = incomplete
             ;
                 IsReal = real_input_arg,
-                maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
+                maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
                     !RevToOrRvals)
             )
         ;
@@ -530,7 +515,7 @@ generate_and_pack_tagword([_ | _], [], !RevToOrRvals, _) :-
     unexpected($pred, "length misnatch").
 generate_and_pack_tagword([VarWidth | VarsWidths], [ArgMode | ArgModes],
         !RevToOrRvals, CI) :-
-    VarWidth = arg_and_width(Var, ArgPosWidth),
+    VarWidth = arg_and_width(RHSVar, ArgPosWidth),
     (
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
@@ -540,34 +525,37 @@ generate_and_pack_tagword([VarWidth | VarsWidths], [ArgMode | ArgModes],
         unexpected($pred, "ArgPosWidth is not a packed arg_pos_width")
     ;
         ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
-        get_module_info(CI, ModuleInfo),
-        get_vartypes(CI, VarTypes),
-        lookup_var_type(VarTypes, Var, Type),
-        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, Type,
-            RHSTopFunctorMode),
+        is_arg_unify_real(CI, RHSVar, ArgMode, _RHSType, IsReal),
         (
-            RHSTopFunctorMode = top_in,
-            IsDummy = variable_is_of_dummy_type(CI, Var),
-            (
-                IsDummy = is_dummy_type,
-                ArgRval = const(llconst_int(0))     % Dummy.
-            ;
-                IsDummy = is_not_dummy_type,
-                ArgRval = var(Var)
-            )
+            IsReal = not_real_input_arg,
+            RHSRval = const(llconst_int(0))     % Dummy.
         ;
-            ( RHSTopFunctorMode = top_out
-            ; RHSTopFunctorMode = top_unused
-            ),
-            ArgRval = const(llconst_int(0))         % Dummy.
+            IsReal = real_input_arg,
+            RHSRval = var(RHSVar)
         ),
-        ShiftedArgRval = left_shift_rval(ArgRval, Shift, Fill),
-        !:RevToOrRvals = [ShiftedArgRval | !.RevToOrRvals]
+        ShiftedRHSRval = left_shift_rval(RHSRval, Shift, Fill),
+        !:RevToOrRvals = [ShiftedRHSRval | !.RevToOrRvals]
     ;
         ArgPosWidth = apw_none_shifted(_, _)
     ),
     generate_and_pack_tagword(VarsWidths, ArgModes, !RevToOrRvals, CI).
+
+:- pred generate_construct_arg_rval(prog_var::in, unify_mode::in,
+    mer_type::out, maybe_real_input_arg::out, rval::out,
+    llds_code::in, llds_code::out,
+    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+
+generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal, RHSRval,
+        !Code, CI, !CLD) :-
+    is_arg_unify_real(CI, RHSVar, ArgMode, RHSType, IsReal),
+    (
+        IsReal = not_real_input_arg,
+        RHSRval = const(llconst_int(0))    % Dummy.
+    ;
+        IsReal = real_input_arg,
+        produce_variable(RHSVar, RHSVarCode, RHSRval, CI, !CLD),
+        !:Code = !.Code ++ RHSVarCode
+    ).
 
 :- type maybe_real_input_arg
     --->    not_real_input_arg
@@ -583,35 +571,31 @@ generate_and_pack_tagword([VarWidth | VarsWidths], [ArgMode | ArgModes],
             % construction unifications are one of the most frequent types
             % of goals.)
 
-:- pred generate_construct_arg_rval(module_info::in, prog_var::in,
-    mer_type::in, unify_mode::in, maybe_real_input_arg::out, rval::out,
-    llds_code::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred is_arg_unify_real(code_info::in, prog_var::in,
+    unify_mode::in, mer_type::out, maybe_real_input_arg::out) is det.
 
-generate_construct_arg_rval(ModuleInfo, Var, Type, ArgMode, IsReal, Rval,
-        !Code, CI, !CLD) :-
+is_arg_unify_real(CI, RHSVar, ArgMode, RHSType, IsReal) :-
+    get_module_info(CI, ModuleInfo),
     ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
-    from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, Type,
+    get_vartypes(CI, VarTypes),
+    lookup_var_type(VarTypes, RHSVar, RHSType),
+    from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, RHSType,
         RHSTopFunctorMode),
     (
         RHSTopFunctorMode = top_in,
-        IsDummy = variable_is_of_dummy_type(CI, Var),
+        IsDummy = variable_is_of_dummy_type(CI, RHSVar),
         (
             IsDummy = is_dummy_type,
-            IsReal = not_real_input_arg,
-            Rval = const(llconst_int(0))    % Dummy.
+            IsReal = not_real_input_arg
         ;
             IsDummy = is_not_dummy_type,
-            IsReal = real_input_arg,
-            produce_variable(Var, VarCode, Rval, CI, !CLD),
-            !:Code = !.Code ++ VarCode
+            IsReal = real_input_arg
         )
     ;
         ( RHSTopFunctorMode = top_out
         ; RHSTopFunctorMode = top_unused
         ),
-        IsReal = not_real_input_arg,
-        Rval = const(llconst_int(0))    % Dummy.
+        IsReal = not_real_input_arg
     ).
 
 :- pred construct_cell(prog_var::in, ptag::in, list(cell_arg)::in,
@@ -619,10 +603,10 @@ generate_construct_arg_rval(ModuleInfo, Var, Type, ArgMode, IsReal, Rval,
     may_use_atomic_alloc::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
+construct_cell(LHSVar, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
         MayUseAtomic, Code, !CI, !CLD) :-
-    VarType = variable_type(!.CI, Var),
-    var_type_msg(VarType, VarTypeMsg),
+    LHSType = variable_type(!.CI, LHSVar),
+    var_type_msg(LHSType, VarTypeMsg),
     % If we are doing accurate GC, then for types which hold RTTI that
     % will be traversed by the collector at GC-time, we need to allocate
     % an extra word at the start, to hold the forwarding pointer.
@@ -632,7 +616,7 @@ construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
     get_gc_method(!.CI, GCMethod),
     ( if
         GCMethod = gc_accurate,
-        is_introduced_type_info_type(VarType)
+        is_introduced_type_info_type(LHSType)
     then
         ReserveWordAtStart = yes
     else
@@ -640,8 +624,9 @@ construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
     ),
     Size = size_of_cell_args(CellArgs),
     maybe_add_alloc_site_info(Context, VarTypeMsg, Size, MaybeAllocId, !CI),
-    assign_cell_to_var(Var, ReserveWordAtStart, Ptag, CellArgs, HowToConstruct,
-        MaybeSize, MaybeAllocId, MayUseAtomic, CellCode, !CI, !CLD),
+    assign_cell_to_var(LHSVar, ReserveWordAtStart, Ptag, CellArgs,
+        HowToConstruct, MaybeSize, MaybeAllocId, MayUseAtomic, CellCode,
+        !CI, !CLD),
     generate_field_addrs(CellArgs, FieldAddrs),
     (
         FieldAddrs = [],
@@ -652,7 +637,7 @@ construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
         % Any field whose address we take will be represented by a
         % `cell_arg_take_addr' which should prevent the cell from being made
         % into static data.
-        generate_field_take_address_assigns(FieldAddrs, Var, Ptag,
+        generate_field_take_address_assigns(FieldAddrs, LHSVar, Ptag,
             FieldCode, !CLD),
         Code = CellCode ++ FieldCode
     ).
@@ -684,6 +669,9 @@ generate_field_addrs(CellArgs, FieldAddrs) :-
     list(field_addr)::in, list(field_addr)::out) is det.
 
 generate_field_addr(CellArg, ArgOffset, NextOffset, !RevFieldAddrs) :-
+    % XXX ARG_PACK We should be able to take the offsets for FieldAddrs
+    % from the ArgPosWidth of the field whose address is being taken.
+    % Counting offsets should *not* be necessary.
     (
         ( CellArg = cell_arg_full_word(_, _)
         ; CellArg = cell_arg_skip_one_word
@@ -858,42 +846,30 @@ does_any_arg_in_word_need_update([VarWidth | VarsWidths], [ArgNU | ArgNUs],
 %---------------------------------------------------------------------------%
 
 generate_ground_term(TermVar, Goal, !CI, !CLD) :-
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set_of_var.to_sorted_list(NonLocals, NonLocalList),
+    get_from_ground_term_construct_info(TermVar, Goal,
+        TermVarIsNeeded, Conjuncts, GoalInfo),
     (
-        NonLocalList = []
-        % The term being constructed by the scope is not needed, so there is
-        % nothing to do.
+        TermVarIsNeeded = termvar_is_not_needed
+        % There is nothing to do.
     ;
-        NonLocalList = [NonLocal],
-        ( if NonLocal = TermVar then
-            ( if GoalExpr = conj(plain_conj, Conjuncts) then
-                get_module_info(!.CI, ModuleInfo),
-                get_exprn_opts(!.CI, ExprnOpts),
-                get_static_cell_info(!.CI, StaticCellInfo0),
-                map.init(ActiveMap0),
-                generate_ground_term_conjuncts(ModuleInfo, ExprnOpts,
-                    Conjuncts, StaticCellInfo0, StaticCellInfo,
-                    ActiveMap0, ActiveMap),
-                map.to_assoc_list(ActiveMap, ActivePairs),
-                ( if ActivePairs = [TermVar - GroundTerm] then
-                    add_forward_live_vars(NonLocals, !CLD),
-                    set_static_cell_info(StaticCellInfo, !CI),
-                    GroundTerm = typed_rval(Rval, _),
-                    assign_const_to_var(TermVar, Rval, !.CI, !CLD)
-                else
-                    unexpected($pred, "no active pairs")
-                )
-            else
-                unexpected($pred, "malformed goal")
-            )
+        TermVarIsNeeded = termvar_is_needed,
+        get_module_info(!.CI, ModuleInfo),
+        get_exprn_opts(!.CI, ExprnOpts),
+        get_static_cell_info(!.CI, StaticCellInfo0),
+        map.init(ActiveMap0),
+        generate_ground_term_conjuncts(ModuleInfo, ExprnOpts,
+            Conjuncts, StaticCellInfo0, StaticCellInfo,
+            ActiveMap0, ActiveMap),
+        map.to_assoc_list(ActiveMap, ActivePairs),
+        ( if ActivePairs = [TermVar - GroundTerm] then
+            NonLocals = goal_info_get_nonlocals(GoalInfo),
+            add_forward_live_vars(NonLocals, !CLD),
+            set_static_cell_info(StaticCellInfo, !CI),
+            GroundTerm = typed_rval(Rval, _),
+            assign_const_to_var(TermVar, Rval, !.CI, !CLD)
         else
-            unexpected($pred, "unexpected nonlocal")
+            unexpected($pred, "no active pairs")
         )
-    ;
-        NonLocalList = [_, _ | _],
-        unexpected($pred, "unexpected nonlocals")
     ).
 
 :- type active_ground_term_map == map(prog_var, typed_rval).
@@ -917,25 +893,8 @@ generate_ground_term_conjuncts(ModuleInfo, ExprnOpts, [Goal | Goals],
 
 generate_ground_term_conjunct(ModuleInfo, ExprnOpts, Goal,
         !StaticCellInfo, !ActiveMap) :-
-    Goal = hlds_goal(GoalExpr, _GoalInfo),
-    ( if
-        GoalExpr = unify(_, _, _, Unify, _),
-        Unify = construct(LHSVar, ConsId, RHSVars, _, _, _, SubInfo),
-        SubInfo = no_construct_sub_info
-    then
-        generate_ground_term_unify(ModuleInfo, ExprnOpts,
-            LHSVar, ConsId, RHSVars, !StaticCellInfo, !ActiveMap)
-    else
-        unexpected($pred, "malformed goal")
-    ).
-
-:- pred generate_ground_term_unify(module_info::in,
-    exprn_opts::in, prog_var::in, cons_id::in, list(prog_var)::in,
-    static_cell_info::in, static_cell_info::out,
-    active_ground_term_map::in, active_ground_term_map::out) is det.
-
-generate_ground_term_unify(ModuleInfo, ExprnOpts, LHSVar, ConsId, RHSVars,
-        !StaticCellInfo, !ActiveMap) :-
+    get_from_ground_term_construct_conjunct_info(Goal, LHSVar, ConsId, RHSVars,
+        _GoalInfo),
     % The code of this predicate is very similar to the code of
     % generate_const_struct_arg_tag. Any changes here may also
     % require similar changes there.
@@ -944,48 +903,15 @@ generate_ground_term_unify(ModuleInfo, ExprnOpts, LHSVar, ConsId, RHSVars,
         (
             ConsTag = int_tag(IntTag),
             int_tag_to_const_and_int_type(IntTag, Const, IntType),
-            (
-                ( IntType = int_type_int
-                ; IntType = int_type_int8
-                ; IntType = int_type_int16
-                ; IntType = int_type_int32
-                ),
-                Type = lt_int(int_type_int)
-            ;
-                ( IntType = int_type_uint
-                ; IntType = int_type_uint8
-                ; IntType = int_type_uint16
-                ; IntType = int_type_uint32
-                ),
-                Type = lt_int(int_type_uint)
-            ;
-                ( IntType = int_type_int64
-                ; IntType = int_type_uint64
-                ),
-                UnboxedInt64s = get_unboxed_int64s(ExprnOpts),
-                (
-                    UnboxedInt64s = have_unboxed_int64s,
-                    Type = lt_int(IntType)
-                ;
-                    UnboxedInt64s = do_not_have_unboxed_int64s,
-                    Type = lt_data_ptr
-                )
-            )
-        ;
-            ConsTag = dummy_tag,
-            Const = llconst_int(0),
-            Type = lt_int(int_type_int)
+            UnboxedInt64s = get_unboxed_int64s(ExprnOpts),
+            store_int_tag_statically(IntType, UnboxedInt64s,
+                may_not_store_double_width_natively, Type)
         ;
             ConsTag = float_tag(Float),
             Const = llconst_float(Float),
             UnboxedFloats = get_unboxed_floats(ExprnOpts),
-            (
-                UnboxedFloats = have_unboxed_floats,
-                Type = lt_float
-            ;
-                UnboxedFloats = do_not_have_unboxed_floats,
-                Type = lt_data_ptr
-            )
+            store_float_tag_statically(UnboxedFloats,
+                may_not_store_double_width_natively, Type)
         ;
             ConsTag = string_tag(String),
             Const = llconst_string(String),
@@ -997,6 +923,10 @@ generate_ground_term_unify(ModuleInfo, ExprnOpts, LHSVar, ConsId, RHSVars,
             Const = llconst_foreign(Val, lt_int(int_type_int)),
             Type = lt_int(int_type_int)
         ;
+            ConsTag = dummy_tag,
+            Const = llconst_int(0),
+            Type = lt_int(int_type_int)
+        ;
             ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _MustMask),
             LocalSectag = local_sectag(_, PrimSec, _),
             Const = llconst_int(uint.cast_to_int(PrimSec)),
@@ -1006,65 +936,16 @@ generate_ground_term_unify(ModuleInfo, ExprnOpts, LHSVar, ConsId, RHSVars,
         ActiveGroundTerm = typed_rval(const(Const), Type),
         map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
     ;
-        % Lambda expressions cannot occur in from_ground_term_construct scopes
-        % during code generation, because if they do occur there originally,
-        % semantic analysis will change the scope reason to something else.
-        ( ConsTag = closure_tag(_, _, _)
-        ; ConsTag = type_ctor_info_tag(_, _, _)
-        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ( ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
-        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
         unexpected($pred, "unexpected constant")
-    ;
-        ConsTag = no_tag,
-        (
-            RHSVars = [RHSVar],
-            map.det_remove(RHSVar, RvalType, !ActiveMap),
-            map.det_insert(LHSVar, RvalType, !ActiveMap)
-        ;
-            ( RHSVars = []
-            ; RHSVars = [_, _ | _]
-            ),
-            unexpected($pred, "no_tag arity != 1")
-        )
-    ;
-        ConsTag = direct_arg_tag(Ptag),
-        (
-            RHSVars = [RHSVar],
-            map.det_remove(RHSVar, typed_rval(RHSRval, _RvalType), !ActiveMap),
-            LHSRval = mkword(Ptag, RHSRval),
-            ActiveGroundTerm = typed_rval(LHSRval, lt_data_ptr),
-            map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
-        ;
-            ( RHSVars = []
-            ; RHSVars = [_, _ | _]
-            ),
-            unexpected($pred, "direct_arg_tag arity != 1")
-        )
-    ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
-        expect_not(unify(RHSVars, []), $pred,
-            "shared_local_tag_with_args has no args"),
-        LocalSectag = local_sectag(_, PrimSec, _),
-        ( if PrimSec = 0u then
-            RevToOrRvals0 = []
-        else
-            RevToOrRvals0 = [const(llconst_uint(PrimSec))]
-        ),
-        associate_cons_id_args_with_widths(ModuleInfo, ConsId,
-            RHSVars, RHSVarsWidths),
-        generate_ground_term_args_for_one_word(RHSVarsWidths,
-            LeftOverRHSVarsWidths, RevToOrRvals0, RevToOrRvals, !ActiveMap),
-        expect(unify(LeftOverRHSVarsWidths, []), $pred, "left over args"),
-        list.reverse(RevToOrRvals, ToOrRvals),
-        PackedRval = bitwise_or_rvals(ToOrRvals),
-        ActiveGroundTerm = typed_rval(PackedRval, lt_data_ptr),
-        map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
     ;
         (
             ConsTag = single_functor_tag,
@@ -1097,6 +978,43 @@ generate_ground_term_unify(ModuleInfo, ExprnOpts, LHSVar, ConsId, RHSVars,
         LHSRval = mkword(Ptag, CellPtrConst),
         ActiveGroundTerm = typed_rval(LHSRval, lt_data_ptr),
         map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
+    ;
+        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        expect_not(unify(RHSVars, []), $pred,
+            "shared_local_tag_with_args has no args"),
+        LocalSectag = local_sectag(_, PrimSec, _),
+        ( if PrimSec = 0u then
+            RevToOrRvals0 = []
+        else
+            RevToOrRvals0 = [const(llconst_uint(PrimSec))]
+        ),
+        associate_cons_id_args_with_widths(ModuleInfo, ConsId,
+            RHSVars, RHSVarsWidths),
+        generate_ground_term_args_for_one_word(RHSVarsWidths,
+            LeftOverRHSVarsWidths, RevToOrRvals0, RevToOrRvals, !ActiveMap),
+        expect(unify(LeftOverRHSVarsWidths, []), $pred, "left over args"),
+        list.reverse(RevToOrRvals, ToOrRvals),
+        PackedRval = bitwise_or_rvals(ToOrRvals),
+        ActiveGroundTerm = typed_rval(PackedRval, lt_data_ptr),
+        map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
+    ;
+        ConsTag = no_tag,
+        get_notag_or_direct_arg_arg(RHSVars, RHSVar),
+        map.det_remove(RHSVar, RvalType, !ActiveMap),
+        map.det_insert(LHSVar, RvalType, !ActiveMap)
+    ;
+        ConsTag = direct_arg_tag(Ptag),
+        get_notag_or_direct_arg_arg(RHSVars, RHSVar),
+        map.det_remove(RHSVar, typed_rval(RHSRval, _RvalType), !ActiveMap),
+        LHSRval = mkword(Ptag, RHSRval),
+        ActiveGroundTerm = typed_rval(LHSRval, lt_data_ptr),
+        map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
+    ;
+        % Lambda expressions cannot occur in from_ground_term_construct scopes
+        % during code generation, because if they do occur there originally,
+        % semantic analysis will change the scope reason to something else.
+        ConsTag = closure_tag(_, _, _),
+        unexpected($pred, "unexpected closure")
     ).
 
 :- pred generate_ground_term_args(list(arg_and_width(prog_var))::in,
@@ -1242,34 +1160,6 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ConstStructMap, ConsTag, ConstArgsPosWidths, TypedRval,
         !StaticCellInfo) :-
     (
-        ConsTag = no_tag,
-        (
-            ConstArgsPosWidths = [ConstArgPosWidth],
-            generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-                ConstStructMap, ConstArgPosWidth, ArgTypedRval),
-            TypedRval = ArgTypedRval
-        ;
-            ( ConstArgsPosWidths = []
-            ; ConstArgsPosWidths = [_, _ | _]
-            ),
-            unexpected($pred, "no_tag arity != 1")
-        )
-    ;
-        ConsTag = direct_arg_tag(Ptag),
-        (
-            ConstArgsPosWidths = [ConstArgPosWidth],
-            generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-                ConstStructMap, ConstArgPosWidth, ArgTypedRval),
-            ArgTypedRval = typed_rval(ArgRval, _RvalType),
-            Rval = mkword(Ptag, ArgRval),
-            TypedRval = typed_rval(Rval, lt_data_ptr)
-        ;
-            ( ConstArgsPosWidths = []
-            ; ConstArgsPosWidths = [_, _ | _]
-            ),
-            unexpected($pred, "direct_arg_tag: arity != 1")
-        )
-    ;
         (
             ConsTag = single_functor_tag,
             Ptag = ptag(0u8)
@@ -1313,21 +1203,35 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         expect(unify(LeftOverConstArgsPosWidths, []), $pred, "left over args"),
         TypedRval = typed_rval(Rval, lt_data_ptr)
     ;
-        ( ConsTag = string_tag(_)
-        ; ConsTag = int_tag(_)
-        ; ConsTag = foreign_tag(_, _)
+        ConsTag = no_tag,
+        get_notag_or_direct_arg_arg(ConstArgsPosWidths, ConstArgPosWidth),
+        generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConstArgPosWidth, ArgTypedRval),
+        TypedRval = ArgTypedRval
+    ;
+        ConsTag = direct_arg_tag(Ptag),
+        get_notag_or_direct_arg_arg(ConstArgsPosWidths, ConstArgPosWidth),
+        generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+            ConstStructMap, ConstArgPosWidth, ArgTypedRval),
+        ArgTypedRval = typed_rval(ArgRval, _RvalType),
+        Rval = mkword(Ptag, ArgRval),
+        TypedRval = typed_rval(Rval, lt_data_ptr)
+    ;
+        ( ConsTag = int_tag(_)
         ; ConsTag = float_tag(_)
-        ; ConsTag = shared_local_tag_no_args(_, _, _)
+        ; ConsTag = string_tag(_)
+        ; ConsTag = foreign_tag(_, _)
         ; ConsTag = dummy_tag
-        ; ConsTag = closure_tag(_, _, _)
-        ; ConsTag = type_ctor_info_tag(_, _, _)
-        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = shared_local_tag_no_args(_, _, _)
+        ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
-        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = closure_tag(_, _, _)
         ),
         unexpected($pred, "unexpected tag")
     ).
@@ -1445,49 +1349,19 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
     % require similar changes there.
     (
         (
+            ConsTag = int_tag(IntTag),
+            int_tag_to_const_and_int_type(IntTag, Const, IntType),
+            store_int_tag_statically(IntType, UnboxedInt64s,
+                may_store_double_width_natively(ArgPosWidth), Type)
+        ;
+            ConsTag = float_tag(Float),
+            Const = llconst_float(Float),
+            store_float_tag_statically(UnboxedFloats,
+                may_store_double_width_natively(ArgPosWidth), Type)
+        ;
             ConsTag = string_tag(String),
             Const = llconst_string(String),
             Type = lt_string
-        ;
-            ConsTag = int_tag(IntTag),
-            int_tag_to_const_and_int_type(IntTag, Const, IntType),
-            (
-                ( IntType = int_type_int64
-                ; IntType = int_type_uint64
-                ),
-                (
-                    UnboxedInt64s = have_unboxed_int64s,
-                    Type = lt_int(IntType)
-                ;
-                    UnboxedInt64s = do_not_have_unboxed_int64s,
-                    % Though a standalone int64 or uint64 value might have
-                    % needed to boxed, it may be stored in unboxed form
-                    % as a constructor argument.
-                    ( if ArgPosWidth = apw_double(_, _, _) then
-                        Type = lt_int(IntType)
-                    else
-                        Type = lt_data_ptr
-                    )
-                )
-            ;
-                ( IntType = int_type_int
-                ; IntType = int_type_int8
-                ; IntType = int_type_int16
-                ; IntType = int_type_int32
-                ),
-                Type = lt_int(int_type_int)
-            ;
-                ( IntType = int_type_uint
-                ; IntType = int_type_uint8
-                ; IntType = int_type_uint16
-                ; IntType = int_type_uint32
-                ),
-                Type = lt_int(int_type_uint)
-            )
-        ;
-            ConsTag = dummy_tag,
-            Const = llconst_int(0),
-            Type = lt_int(int_type_int)
         ;
             ConsTag = foreign_tag(Lang, Val),
             expect(unify(Lang, lang_c), $pred,
@@ -1495,21 +1369,9 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
             Const = llconst_foreign(Val, lt_int(int_type_int)),
             Type = lt_int(int_type_int)
         ;
-            ConsTag = float_tag(Float),
-            Const = llconst_float(Float),
-            (
-                UnboxedFloats = have_unboxed_floats,
-                Type = lt_float
-            ;
-                UnboxedFloats = do_not_have_unboxed_floats,
-                % Though a standalone float might have needed to boxed,
-                % it may be stored in unboxed form as a constructor argument.
-                ( if ArgPosWidth = apw_double(_, _, _) then
-                    Type = lt_float
-                else
-                    Type = lt_data_ptr
-                )
-            )
+            ConsTag = dummy_tag,
+            Const = llconst_int(0),
+            Type = lt_int(int_type_int)
         ),
         TypedRval = typed_rval(const(Const), Type)
     ;
@@ -1534,19 +1396,26 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
         Type = lt_data_ptr,
         TypedRval = typed_rval(Rval, Type)
     ;
-        ( ConsTag = no_tag
-        ; ConsTag = direct_arg_tag(_)
+        % XXX ARG_PACK Document why these should not occur here ...
+        ( ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+
+        % These should not occur here because the structures that these tags
+        % point to are writeable.
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
+
+        % These tags have arguments, and thus should be handled in
+        % generate_const_struct_rval. 
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
         ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = shared_local_tag_with_args(_, _)
-        ; ConsTag = type_info_const_tag(_)
-        ; ConsTag = typeclass_info_const_tag(_)
-        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = no_tag
+        ; ConsTag = direct_arg_tag(_)
         ; ConsTag = closure_tag(_, _, _)
-        ; ConsTag = tabling_info_tag(_, _)
-        ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
         unexpected($pred, "unexpected tag")
     ).
@@ -1568,6 +1437,72 @@ maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevToOrRvals) :-
     else
         ShiftedUnsignedRval = left_shift_rval(Rval, Shift, Fill),
         !:RevToOrRvals = [ShiftedUnsignedRval | !.RevToOrRvals]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type may_store_double_width_natively
+    --->    may_not_store_double_width_natively
+    ;       may_store_double_width_natively(arg_pos_width).
+
+:- pred store_int_tag_statically(int_type::in, have_unboxed_int64s::in,
+    may_store_double_width_natively::in, llds_type::out) is det.
+
+store_int_tag_statically(IntType, UnboxedInt64s, MayStoreDoubleWidthStatically,
+        Type) :-
+    (
+        ( IntType = int_type_int
+        ; IntType = int_type_int8
+        ; IntType = int_type_int16
+        ; IntType = int_type_int32
+        ),
+        Type = lt_int(int_type_int)
+    ;
+        ( IntType = int_type_uint
+        ; IntType = int_type_uint8
+        ; IntType = int_type_uint16
+        ; IntType = int_type_uint32
+        ),
+        Type = lt_int(int_type_uint)
+    ;
+        ( IntType = int_type_int64
+        ; IntType = int_type_uint64
+        ),
+        (
+            UnboxedInt64s = have_unboxed_int64s,
+            Type = lt_int(IntType)
+        ;
+            UnboxedInt64s = do_not_have_unboxed_int64s,
+            ( if
+                MayStoreDoubleWidthStatically =
+                    may_store_double_width_natively(ArgPosWidth),
+                ArgPosWidth = apw_double(_, _, _)
+            then
+                Type = lt_int(IntType)
+            else
+                Type = lt_data_ptr
+            )
+        )
+    ).
+
+:- pred store_float_tag_statically(have_unboxed_floats::in,
+    may_store_double_width_natively::in, llds_type::out) is det.
+
+store_float_tag_statically(UnboxedFloats, MayStoreDoubleWidthStatically, Type) :-
+    (
+        UnboxedFloats = have_unboxed_floats,
+        Type = lt_float
+    ;
+        UnboxedFloats = do_not_have_unboxed_floats,
+        ( if
+            MayStoreDoubleWidthStatically =
+                may_store_double_width_natively(ArgPosWidth),
+            ArgPosWidth = apw_double(_, _, _)
+        then
+            Type = lt_float
+        else
+            Type = lt_data_ptr
+        )
     ).
 
 %---------------------------------------------------------------------------%

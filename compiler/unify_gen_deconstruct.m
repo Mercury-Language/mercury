@@ -84,6 +84,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
@@ -171,8 +172,8 @@ generate_semi_deconstruction(LHSVar, ConsId, RHSVars, Modes, Code,
 %---------------------------------------------------------------------------%
 
     % Generate a deterministic deconstruction. In a deterministic
-    % deconstruction, we know the value of the ptag, so we don't need
-    % to generate a test.
+    % deconstruction, we know the value of the cons_id, so we don't need
+    % to generate a test for it.
     %
     % Deconstructions are generated semi-eagerly. Any test sub-unifications
     % are generated eagerly (they _must_ be), but assignment unifications
@@ -211,50 +212,37 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
         unexpected($pred, "unexpected tag")
     ;
         ConsTag = no_tag,
-        ( if
-            RHSVars = [RHSVar],
-            ArgModes = [ArgMode]
-        then
-            VarType = variable_type(CI, LHSVar),
-            IsDummy = is_type_a_dummy(ModuleInfo, VarType),
-            (
-                IsDummy = is_dummy_type,
-                % We must handle this case specially. If we didn't, the
-                % generated code would copy the reference to the Var's
-                % current location, which may be stackvar(N) or framevar(N)
-                % for negative N, to be the location of Arg, and since Arg
-                % may not be a dummy type, it would actually use that location.
-                % This can happen in the unify/compare routines for e.g.
-                % io.state.
-                ( if variable_is_forward_live(!.CLD, RHSVar) then
-                    assign_const_to_var(RHSVar, const(llconst_int(0)),
-                        CI, !CLD)
-                else
-                    true
-                ),
-                Code = empty
-            ;
-                IsDummy = is_not_dummy_type,
-                ArgType = variable_type(CI, RHSVar),
-                FieldAndArgVar =
-                    field_and_arg_var(uv_var(LHSVar), RHSVar, ArgType),
-                generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code,
-                    CI, !CLD)
-            )
-        else
-            unexpected($pred, "no_tag: arity != 1")
+        get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
+        VarType = variable_type(CI, LHSVar),
+        IsDummy = is_type_a_dummy(ModuleInfo, VarType),
+        (
+            IsDummy = is_dummy_type,
+            % We must handle this case specially. If we didn't, the
+            % generated code would copy the reference to the Var's
+            % current location, which may be stackvar(N) or framevar(N)
+            % for negative N, to be the location of Arg, and since Arg
+            % may not be a dummy type, it would actually use that location.
+            % This can happen in the unify/compare routines for e.g.
+            % io.state.
+            ( if variable_is_forward_live(!.CLD, RHSVar) then
+                assign_const_to_var(RHSVar, const(llconst_int(0)), CI, !CLD)
+            else
+                true
+            ),
+            Code = empty
+        ;
+            IsDummy = is_not_dummy_type,
+            ArgType = variable_type(CI, RHSVar),
+            FieldAndArgVar =
+                field_and_arg_var(uv_var(LHSVar), RHSVar, ArgType),
+            generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code,
+                CI, !CLD)
         )
     ;
         ConsTag = direct_arg_tag(Ptag),
-        ( if
-            RHSVars = [RHSVar],
-            ArgModes = [ArgMode]
-        then
-            generate_direct_arg_deconstruct(LHSVar, RHSVar, Ptag, ArgMode,
-                Code, CI, !CLD)
-        else
-            unexpected($pred, "direct_arg_tag: arity != 1")
-        )
+        get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
+        generate_direct_arg_deconstruct(LHSVar, RHSVar, Ptag, ArgMode,
+            Code, CI, !CLD)
     ;
         (
             ConsTag = single_functor_tag,

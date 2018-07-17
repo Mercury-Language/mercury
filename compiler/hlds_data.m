@@ -55,88 +55,33 @@
     % tagged) pointer to memory on the heap.
     %
 :- type cons_tag
-    --->    string_tag(string)
-            % Strings are represented using the MR_string_const() macro;
-            % in the current implementation, Mercury strings are represented
-            % just as C null-terminated strings.
+    % The kinds of constants that may appear in user code.
+    --->    int_tag(int_tag)
+            % This means the constant is represented as a word containing
+            % the specified integer value. This is used for enumerations and
+            % character constants, as well as for integer constants of every
+            % possible size and signedness.
 
     ;       float_tag(float)
             % Floats are represented using the MR_float_to_word(),
             % MR_word_to_float(), and MR_float_const() macros. The default
             % implementation of these is to use boxed double-precision floats.
 
-    ;       int_tag(int_tag)
-            % This means the constant is represented as a word containing
-            % the specified integer value. This is used for enumerations and
-            % character constants, as well as for integer constants of every
-            % possible size and signedness.
+    ;       string_tag(string)
+            % Strings are represented using the MR_string_const() macro;
+            % in the current implementation, Mercury strings are represented
+            % just as C null-terminated strings.
 
     ;       foreign_tag(foreign_language, string)
-            % This means the constant is represented by the string which is
+            % This means the constant is represented by the string, which is
             % embedded directly in the target language. This is used for
-            % foreign enumerations, i.e. those enumeration types that are the
-            % subject of a foreign_enum pragma.
+            % foreign enumerations, i.e. those enumeration types that are
+            % the subject of a foreign_enum pragma.
 
-    ;       closure_tag(pred_id, proc_id, lambda_eval_method)
-            % Higher-order pred closures tags. These are represented as
-            % a pointer to an argument vector. For closures with
-            % lambda_eval_method `normal', the first two words of the argument
-            % vector hold the number of args and the address of the procedure
-            % respectively. The remaining words hold the arguments.
-
-    ;       type_ctor_info_tag(module_name, string, arity)
-            % This is how we refer to type_ctor_info structures represented
-            % as global data. The args are the name of the module the type
-            % is defined in, and the name of the type, and its arity.
-
-    ;       base_typeclass_info_tag(module_name, class_id, string)
-            % This is how we refer to base_typeclass_info structures
-            % represented as global data. The first argument is the name
-            % of the module containing the instance declaration, the second
-            % is the class name and arity, while the third is the string which
-            % uniquely identifies the instance declaration (it is made from
-            % the type of the arguments to the instance decl).
-
-    ;       type_info_const_tag(int)
-    ;       typeclass_info_const_tag(int)
-
-    ;       ground_term_const_tag(int, cons_tag)
-
-    ;       tabling_info_tag(pred_id, proc_id)
-            % This is how we refer to the global structures containing
-            % tabling pointer variables and related data. The word just
-            % contains the address of the global struct.
-
-    ;       deep_profiling_proc_layout_tag(pred_id, proc_id)
-            % This is for constants representing procedure descriptions for
-            % deep profiling.
-
-    ;       table_io_entry_tag(pred_id, proc_id)
-            % This is for constants representing the structure that allows us
-            % to decode the contents of the answer block containing the
-            % headvars of I/O primitives.
-
-    ;       single_functor_tag
-            % This is for types with a single functor (and possibly also some
-            % constants represented using reserved addresses -- see below).
-            % For these types, we don't need any tags. We just store a pointer
-            % to the argument vector.
-
-    ;       unshared_tag(ptag)
-            % This is for constants or functors which can be distinguished
-            % with just a primary tag. An "unshared" tag is one which fits
-            % on the bottom of a pointer (i.e. two bits for 32-bit
-            % architectures, or three bits for 64-bit architectures), and is
-            % used for just one functor. For constants we store a tagged zero,
-            % for functors we store a tagged pointer to the argument vector.
-
-    ;       direct_arg_tag(ptag)
-            % This is for functors which can be distinguished with just a
-            % primary tag. The primary tag says which of the type's functors
-            % (which must have arity 1) this word represents. However, the
-            % body of the word is not a pointer to a cell holding the argument;
-            % it IS the value of that argument, which must be an untagged
-            % pointer to a cell.
+    ;       dummy_tag
+            % This is for constants that are the only function symbol in their
+            % type. Such function symbols contain no information, and thus
+            % do not need to be represented at all.
 
     ;       shared_local_tag_no_args(ptag, local_sectag, lsectag_mask)
             % This is for constants in types that also have non-constants.
@@ -156,15 +101,56 @@
             % symbol, it is possible for this not to be the case. In that case,
             % the local secondary tag will occupy zero bits.
 
-    ;       shared_local_tag_with_args(ptag, local_sectag)
-            % As the name implies this cons_id is a variant of
-            % shared_local_tag_no_args that is intended for function symbols
-            % that *do* have arguments, arguments that fit into a single word
-            % *after* the primary and the local secondary tag.
-            % If a primary tag value has any such cons_ids allocated for it,
-            % then the bits in a word after the primary tag may include
-            % these arguments, so accessing the secondary tag requires masking
-            % off all the non-sectag bits.
+    % The kinds of constants that cannot appear in user code,
+    % being generated only inside the compiler.
+
+    ;       ground_term_const_tag(int, cons_tag)
+
+    ;       type_info_const_tag(int)
+    ;       typeclass_info_const_tag(int)
+
+    ;       type_ctor_info_tag(module_name, string, arity)
+            % This is how we refer to type_ctor_info structures represented
+            % as global data. The args are the name of the module the type
+            % is defined in, and the name of the type, and its arity.
+
+    ;       base_typeclass_info_tag(module_name, class_id, string)
+            % This is how we refer to base_typeclass_info structures
+            % represented as global data. The first argument is the name
+            % of the module containing the instance declaration, the second
+            % is the class name and arity, while the third is the string which
+            % uniquely identifies the instance declaration (it is made from
+            % the type of the arguments to the instance decl).
+
+    ;       deep_profiling_proc_layout_tag(pred_id, proc_id)
+            % This is for constants representing procedure descriptions for
+            % deep profiling.
+
+    ;       tabling_info_tag(pred_id, proc_id)
+            % This is how we refer to the global structures containing
+            % tabling pointer variables and related data. The word just
+            % contains the address of the global struct.
+
+    ;       table_io_entry_tag(pred_id, proc_id)
+            % This is for constants representing the structure that allows us
+            % to decode the contents of the answer block containing the
+            % headvars of I/O primitives.
+
+    % The kinds of non-constants that may appear in user code.
+
+    ;       single_functor_tag
+            % This is for types with a single functor (and possibly also some
+            % constants represented using reserved addresses -- see below).
+            % For these types, we don't need any tags. We just store a pointer
+            % to the argument vector.
+
+    ;       unshared_tag(ptag)
+            % This is for constants or functors which can be distinguished
+            % with just a primary tag. An "unshared" tag is one which fits
+            % on the bottom of a pointer (i.e. two bits for 32-bit
+            % architectures, or three bits for 64-bit architectures), and is
+            % used for just one functor. For constants we store a tagged zero,
+            % for functors we store a tagged pointer to the argument vector.
 
     ;       shared_remote_tag(ptag, remote_sectag)
             % This is for functors or constants which cannot be distinguished
@@ -177,15 +163,38 @@
             % the memory cell containing the arguments, and distinguishes
             % the several functors that all share the same primary tag value.
 
-    ;       dummy_tag
-            % This is for constants that are the only function symbol in their
-            % type. Such function symbols contain no information, and thus
-            % do not need to be represented at all.
+    ;       shared_local_tag_with_args(ptag, local_sectag)
+            % As the name implies this cons_id is a variant of
+            % shared_local_tag_no_args that is intended for function symbols
+            % that *do* have arguments, arguments that fit into a single word
+            % *after* the primary and the local secondary tag.
+            % If a primary tag value has any such cons_ids allocated for it,
+            % then the bits in a word after the primary tag may include
+            % these arguments, so accessing the secondary tag requires masking
+            % off all the non-sectag bits.
 
-    ;       no_tag.
+    ;       no_tag
             % This is for types with a single functor of arity one. In this
             % case, we don't need to store the functor, and instead we store
             % the argument directly.
+
+    ;       direct_arg_tag(ptag)
+            % This is for functors which can be distinguished with just a
+            % primary tag. The primary tag says which of the type's functors
+            % (which must have arity 1) this word represents. However, the
+            % body of the word is not a pointer to a cell holding the argument;
+            % it IS the value of that argument, which must be an untagged
+            % pointer to a cell.
+
+    % The kinds of non-constants that cannot appear in user code,
+    % being generated only inside the compiler.
+
+    ;       closure_tag(pred_id, proc_id, lambda_eval_method).
+            % Higher-order pred closures tags. These are represented as
+            % a pointer to an argument vector. For closures with
+            % lambda_eval_method `normal', the first two words of the argument
+            % vector hold the number of args and the address of the procedure
+            % respectively. The remaining words hold the arguments.
 
 :- inst memory_cell_tag for cons_tag/0
     --->    single_functor_tag

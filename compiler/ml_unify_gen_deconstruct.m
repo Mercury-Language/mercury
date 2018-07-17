@@ -73,6 +73,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
@@ -103,13 +104,13 @@ ml_generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     (
         CanFail = can_fail,
         ExpectedCodeModel = model_semi,
-        ml_gen_semi_deconstruct(LHSVar, ConsId, RHSVars, ArgModes, Context,
-            Defns, UnifyStmts, !Info)
+        ml_generate_semi_deconstruction(LHSVar, ConsId, RHSVars, ArgModes,
+            Context, Defns, UnifyStmts, !Info)
     ;
         CanFail = cannot_fail,
         ExpectedCodeModel = model_det,
-        ml_gen_det_deconstruct(LHSVar, ConsId, RHSVars, ArgModes, Context,
-            Defns, UnifyStmts, !Info)
+        ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes,
+            Context, Defns, UnifyStmts, !Info)
     ),
     (
         % Note that we can deallocate a cell even if the unification fails;
@@ -149,17 +150,17 @@ ml_generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     %           ...
     %       }
     %
-:- pred ml_gen_semi_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, prog_context::in,
+:- pred ml_generate_semi_deconstruction(prog_var::in, cons_id::in,
+    list(prog_var)::in, list(unify_mode)::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_semi_deconstruct(LHSVar, ConsId, RHSVars, ArgModes, Context,
+ml_generate_semi_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
         Defns, Stmts, !Info) :-
     ml_generate_test_var_has_cons_id(LHSVar, ConsId, TestRval, !Info),
     ml_gen_set_success(TestRval, Context, SetTestResultStmt, !Info),
     ml_gen_test_success(SucceededRval, !Info),
-    ml_gen_det_deconstruct(LHSVar, ConsId, RHSVars, ArgModes, Context,
+    ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
         Defns, DetDeconstructStmts, !Info),
     (
         DetDeconstructStmts = [],
@@ -190,19 +191,19 @@ ml_gen_semi_deconstruct(LHSVar, ConsId, RHSVars, ArgModes, Context,
     %       A2 = arg(X, f, 2);
     %       ...
     %
-:- pred ml_gen_det_deconstruct(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(unify_mode)::in, prog_context::in,
+:- pred ml_generate_det_deconstruction(prog_var::in, cons_id::in,
+    list(prog_var)::in, list(unify_mode)::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_det_deconstruct(LHSVar, ConsId, RHSVars, ArgModes, Context,
+ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
         Defns, Stmts, !Info) :-
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     (
-        ( ConsTag = string_tag(_String)
-        ; ConsTag = int_tag(_IntTag)
+        ( ConsTag = int_tag(_)
+        ; ConsTag = float_tag(_)
+        ; ConsTag = string_tag(_)
         ; ConsTag = foreign_tag(_, _)
-        ; ConsTag = float_tag(_Float)
         ; ConsTag = dummy_tag
         ; ConsTag = shared_local_tag_no_args(_, _, _)
         ),
@@ -211,45 +212,33 @@ ml_gen_det_deconstruct(LHSVar, ConsId, RHSVars, ArgModes, Context,
         Defns = [],
         Stmts = []
     ;
-        ( ConsTag = closure_tag(_, _, _)
+        ( ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)
         ; ConsTag = typeclass_info_const_tag(_)
-        ; ConsTag = ground_term_const_tag(_, _)
-        ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
+        ; ConsTag = closure_tag(_, _, _)
         ),
         unexpected($pred, "unexpected tag")
     ;
         ConsTag = no_tag,
-        ( if
-            RHSVars = [RHSVar],
-            ArgModes = [ArgMode]
-        then
-            ml_gen_dynamic_deconstruct_no_tag(!.Info, LHSVar, RHSVar, ArgMode,
-                Context, Stmts),
-            Defns = []
-        else
-            unexpected($pred, "no_tag: arity != 1")
-        )
+        get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
+        ml_gen_dynamic_deconstruct_no_tag(!.Info, LHSVar, RHSVar, ArgMode,
+            Context, Stmts),
+        Defns = []
     ;
         ConsTag = direct_arg_tag(Ptag),
-        ( if
-            RHSVars = [RHSVar],
-            ArgModes = [ArgMode]
-        then
-            ml_gen_dynamic_deconstruct_direct_arg(!.Info, Ptag, LHSVar, RHSVar,
-                ArgMode, Context, Stmts),
-            Defns = []
-        else
-            unexpected($pred, "direct_arg_tag: arity != 1")
-        )
+        get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
+        ml_gen_dynamic_deconstruct_direct_arg(!.Info, Ptag, LHSVar, RHSVar,
+            ArgMode, Context, Stmts),
+        Defns = []
     ;
         ( ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_Ptag)
-        ; ConsTag = shared_remote_tag(_Ptag, _)
+        ; ConsTag = unshared_tag(_)
+        ; ConsTag = shared_remote_tag(_, _)
         ),
         ml_variable_type(!.Info, LHSVar, LHSVarType),
         ml_gen_var(!.Info, LHSVar, LHSVarLval),
