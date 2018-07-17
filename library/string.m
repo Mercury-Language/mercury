@@ -1417,6 +1417,7 @@
 :- import_module require.
 :- import_module string.format.
 :- import_module string.to_string.
+:- import_module term_io.
 
 % Many routines in this module are implemented using foreign language code.
 
@@ -5389,7 +5390,7 @@ max_str_length(Str, PrevMaxLen, MaxLen) :-
 % Converting strings to docs.
 %
 
-string_to_doc(S) = docs([str("\""), str(S), str("\"")]).
+string_to_doc(S) = docs([str(term_io.quoted_string(S))]).
 
 %---------------------------------------------------------------------------%
 %

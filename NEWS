@@ -314,6 +314,9 @@ Changes to the Mercury standard library:
 
 * We have reduced the memory allocated by string.to_lower and string.to_upper.
 
+* string.string_to_doc/1 now replaces characters in its input argument with
+  backslash escapes when required.
+
 * The following classification predicates have been added to the float module:
 
    - is_finite/1
