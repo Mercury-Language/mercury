@@ -25,7 +25,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % ml_gen_construct generates code for a construction unification.
+    % ml_generate_construction_unification generates code
+    % for a construction unification.
     %
 :- pred ml_generate_construction_unification(prog_var::in, cons_id::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
@@ -215,27 +216,18 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         Defns = []
     ;
         % Ordinary compound terms.
-        (
-            ConsTag = single_functor_tag,
-            Ptag = ptag(0u8),
-            MaybeStag = no
-        ;
-            ConsTag = unshared_tag(Ptag),
-            MaybeStag = no
-        ;
-            ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-            MaybeStag = yes(RemoteSectag)
+        ( ConsTag = single_functor_tag
+        ; ConsTag = unshared_tag(_)
+        ; ConsTag = shared_remote_tag(_, _)
         ),
-        % XXX ARG_PACK inline this into the subswitch above.
-        UsesBaseClass = ml_tag_uses_base_class(ConsTag),
-        ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass,
-            LHSVar, RHSVars, ArgModes, TakeAddr, HowToConstruct, Context,
+        ml_generate_dynamic_construct_compound(LHSVar, ConsId, ConsTag,
+            RHSVars, ArgModes, TakeAddr, HowToConstruct, Context,
             Defns, Stmts, !Info)
     ;
         ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
         expect(unify(TakeAddr, []), $pred,
             "taking address of non word-sized argument"),
-        ml_gen_construct_tagword_compound(ConsId, LocalSectag,
+        ml_generate_dynamic_construct_tagword_compound(ConsId, LocalSectag,
             LHSVar, RHSVars, ArgModes, HowToConstruct, Context, Stmts, !Info),
         Defns = []
     ;
@@ -244,41 +236,8 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         ),
         expect(unify(TakeAddr, []), $pred,
             "notag or direct_arg_tag: take_addr"),
-        get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
-        ml_variable_type(!.Info, LHSVar, LHSType),
-        ml_gen_var(!.Info, LHSVar, LHSLval),
-        ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        LHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, LHSType),
-        ( if ml_gen_info_search_const_var(!.Info, RHSVar, RHSGroundTerm) then
-            % XXX ARG_PACK: This likely generates the wrong constant
-            % for direct_arg_tag with Ptag != 0.
-            RHSGroundTerm = ml_ground_term(RHSRval0, _RHSType, RHS_MLDS_Type),
-            ml_gen_info_get_global_data(!.Info, GlobalData0),
-            ml_gen_box_const_rval(ModuleInfo, Context, RHS_MLDS_Type,
-                aw_full_word, RHSRval0, RHSRval, GlobalData0, GlobalData),
-            ml_gen_info_set_global_data(GlobalData, !Info),
-            LHSRval = ml_cast_cons_tag(LHS_MLDS_Type, ConsTag, RHSRval),
-            LHSGroundTerm = ml_ground_term(LHSRval, LHSType, LHS_MLDS_Type),
-            ml_gen_info_set_const_var(LHSVar, LHSGroundTerm, !Info),
-            Stmt = ml_gen_assign(LHSLval, RHSRval, Context),
-            Stmts = [Stmt]
-        else
-            ml_gen_var(!.Info, RHSVar, RHSLval),
-            ml_variable_type(!.Info, RHSVar, RHSType),
-            (
-                ConsTag = no_tag,
-                RHSRval0 = ml_lval(RHSLval),
-                ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
-                    bp_native_if_possible, RHSRval0, RHSRval),
-                Stmt = ml_gen_assign(LHSLval, RHSRval, Context),
-                Stmts = [Stmt]
-            ;
-                ConsTag = direct_arg_tag(Ptag),
-                ml_gen_dynamic_construct_direct_arg(ModuleInfo,
-                    LHSLval, LHSType, Ptag, RHSLval, RHSType, ArgMode,
-                    Context, Stmts)
-            )
-        ),
+        ml_genenate_dynamic_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
+            ArgModes, Context, Stmts, !Info),
         Defns = []
     ;
         ConsTag = closure_tag(PredId, ProcId, _EvalMethod),
@@ -288,21 +247,18 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
 
 %---------------------------------------------------------------------------%
 
-    % Generate code to construct a new object.
-    %
-:- pred ml_gen_construct_compound(cons_id::in,
-    ptag::in, maybe(remote_sectag)::in, tag_uses_base_class::in,
-    prog_var::in, list(prog_var)::in, list(unify_mode)::in, list(int)::in,
+:- pred ml_generate_dynamic_construct_compound(prog_var::in,
+    cons_id::in, cons_tag::in(memory_cell_tag),
+    list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
-        ArgVars, ArgModes, TakeAddr, HowToConstruct, Context,
-        Defns, Stmts, !Info) :-
-    ml_gen_info_get_target(!.Info, CompilationTarget),
-
+ml_generate_dynamic_construct_compound(LHSVar, ConsId, ConsTag, RHSVars,
+        ArgModes, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info) :-
     % Figure out which class name to construct.
+    ml_gen_info_get_target(!.Info, CompilationTarget),
+    UsesBaseClass = ml_tag_uses_base_class(ConsTag),
     (
         UsesBaseClass = tag_uses_base_class,
         MaybeCtorName = no
@@ -314,7 +270,7 @@ ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
 
     % If there is a secondary tag, it goes in the first field.
     (
-        MaybeStag = yes(RemoteSectag),
+        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
         RemoteSectag = remote_sectag(SectagUint, AddedBy),
         UsesConstructors = ml_target_uses_constructors(CompilationTarget),
         (
@@ -323,13 +279,13 @@ ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
             expect(unify(AddedBy, sectag_added_by_unify), $pred,
                 "AddedBy != sectag_added_by_unify"),
             ExplicitSectag = yes,
-            StagRval0 = ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
-            StagType0 = mlds_native_int_type,
+            SectagRval0 = ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
+            SectagType0 = mlds_native_int_type,
             % With the low-level data representation, all fields -- even the
             % secondary tag -- are boxed, and so we need box it here.
-            StagRval = ml_box(StagType0, StagRval0),
-            StagType = mlds_generic_type,
-            ExtraRvalsTypesWidths = [rval_type_and_width(StagRval, StagType,
+            SectagRval = ml_box(SectagType0, SectagRval0),
+            SectagType = mlds_generic_type,
+            ExtraRvalsTypesWidths = [rval_type_and_width(SectagRval, SectagType,
                 apw_full(arg_only_offset(0), cell_offset(0)), no)]
         ;
             UsesConstructors = yes,
@@ -341,20 +297,25 @@ ml_gen_construct_compound(ConsId, Ptag, MaybeStag, UsesBaseClass, Var,
             ExtraRvalsTypesWidths = []
         )
     ;
-        MaybeStag = no,
+        (
+            ConsTag = single_functor_tag,
+            Ptag = ptag(0u8)
+        ;
+            ConsTag = unshared_tag(Ptag)
+        ),
         ExplicitSectag = no,
         ExtraRvalsTypesWidths = []
     ),
     ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag,
-        Var, ExtraRvalsTypesWidths, ArgVars, ArgModes, TakeAddr,
+        LHSVar, ExtraRvalsTypesWidths, RHSVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Defns, Stmts, !Info).
 
-:- pred ml_gen_construct_tagword_compound(cons_id::in,
+:- pred ml_generate_dynamic_construct_tagword_compound(cons_id::in,
     local_sectag::in, prog_var::in, list(prog_var)::in, list(unify_mode)::in,
     how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_construct_tagword_compound(ConsId, LocalSectag, Var,
+ml_generate_dynamic_construct_tagword_compound(ConsId, LocalSectag, Var,
         ArgVars, ArgModes, HowToConstruct, Context, Stmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_var_types(!.Info, VarTypes),
@@ -958,107 +919,114 @@ ml_gen_tagword_dynamically(_, [], [_ | _], !RevOrRvals) :-
     unexpected($pred, "length mismatch").
 ml_gen_tagword_dynamically(_, [_ | _], [], !RevOrRvals) :-
     unexpected($pred, "length mismatch").
-ml_gen_tagword_dynamically(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
+ml_gen_tagword_dynamically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
         [ArgMode | ArgModes], !RevOrRvals) :-
-    ml_gen_tagword_dynamically(Info, ArgVarsTypesWidths, ArgModes,
-        !RevOrRvals),
-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgPosWidth),
+    RHSVarTypeWidth = arg_type_and_width(RHSVar, ConsArgType, ArgPosWidth),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_info_get_high_level_data(Info, HighLevelData),
     ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
     ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ArgWidth,
-        BoxedArgType),
+        BoxedRHSType),
 
-    ml_variable_type(Info, ArgVar, ArgType),
+    ml_variable_type(Info, RHSVar, RHSType),
     ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
     ( if
-        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, ArgType,
+        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, RHSType,
             top_in),
-        is_either_type_a_dummy(ModuleInfo, ArgType, ConsArgType) =
+        is_either_type_a_dummy(ModuleInfo, RHSType, ConsArgType) =
             neither_is_dummy_type
     then
-        ml_gen_var(Info, ArgVar, ArgLval),
-        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, BoxedArgType,
-            bp_native_if_possible, ml_lval(ArgLval), ArgRval)
+        ml_gen_var(Info, RHSVar, RHSLval),
+        ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, BoxedRHSType,
+            bp_native_if_possible, ml_lval(RHSLval), RHSRval)
     else
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
-        ArgRval = ml_const(mlconst_null(MLDS_Type))
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedRHSType),
+        RHSRval = ml_const(mlconst_null(MLDS_Type))
     ),
 
-    (
-        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        ml_maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
-            !RevOrRvals)
-    ;
-        ArgPosWidth = apw_none_shifted(_, _)
-    ;
-        ( ArgPosWidth = apw_full(_, _)
-        ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
-        ; ArgPosWidth = apw_none_nowhere
-        ),
-        unexpected($pred, "not apw_partial_shifted or apw_none_shifted")
-    ).
+    ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
+        !RevOrRvals),
+    ml_gen_tagword_dynamically(Info, RHSVarsTypesWidths, ArgModes,
+        !RevOrRvals).
 
 :- pred ml_gen_tagword_statically(ml_gen_info::in,
     list(arg_var_type_and_width)::in,
     list(mlds_rval)::in, list(mlds_rval)::out) is det.
 
 ml_gen_tagword_statically(_, [], !RevOrRvals).
-ml_gen_tagword_statically(Info, [ArgVarTypeWidth | ArgVarsTypesWidths],
+ml_gen_tagword_statically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
         !RevOrRvals) :-
-    ml_gen_tagword_statically(Info, ArgVarsTypesWidths, !RevOrRvals),
-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, _ConsArgType, ArgPosWidth),
-    ml_gen_info_lookup_const_var(Info, ArgVar, GroundTerm),
-    GroundTerm = ml_ground_term(ArgRval, _MercuryType, _MLDS_Type),
-    (
-        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        ml_maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
-            !RevOrRvals)
-    ;
-        ArgPosWidth = apw_none_shifted(_, _)
-    ;
-        ( ArgPosWidth = apw_full(_, _)
-        ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
-        ; ArgPosWidth = apw_none_nowhere
-        ),
-        unexpected($pred, "not apw_partial_shifted or apw_none_shifted")
-    ).
+    RHSVarTypeWidth = arg_type_and_width(RHSVar, _ConsArgType, ArgPosWidth),
+    ml_gen_info_lookup_const_var(Info, RHSVar, GroundTerm),
+    GroundTerm = ml_ground_term(RHSRval, _MercuryType, _MLDS_Type),
+    ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
+        !RevOrRvals),
+    ml_gen_tagword_statically(Info, RHSVarsTypesWidths, !RevOrRvals).
 
 %---------------------------------------------------------------------------%
 
-:- pred ml_gen_dynamic_construct_direct_arg(module_info::in,
-    mlds_lval::in, mer_type::in, ptag::in, mlds_lval::in, mer_type::in,
-    unify_mode::in, prog_context::in, list(mlds_stmt)::out) is det.
+:- pred ml_genenate_dynamic_construct_notag_direct_arg(
+    prog_var::in, cons_tag::in(no_or_direct_arg_tag), list(prog_var)::in,
+    list(unify_mode)::in, prog_context::in, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_dynamic_construct_direct_arg(ModuleInfo, LHSLval, LHSType, Ptag,
-        RHSLval, RHSType, ArgMode, Context, Stmts) :-
-    ml_compute_assign_direction(ModuleInfo, ArgMode, RHSType, LHSType, Dir),
-    (
-        Dir = assign_nondummy_right,
-        unexpected($pred, "left-to-right data flow in construction")
-    ;
-        Dir = assign_nondummy_left,
-        RHSRval0 = ml_lval(RHSLval)
-    ;
-        Dir = assign_nondummy_unused,
-        % Unused - unused: it is a partial assignment to the LHS
-        % where the tag is known but the argument isn't.
-        RHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, RHSType),
-        RHSRval0 = ml_const(mlconst_null(RHS_MLDS_Type))
-    ;
-        Dir = assign_dummy,
-        unexpected($pred, "dummy unify")
-    ),
+ml_genenate_dynamic_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
+        ArgModes, Context, Stmts, !Info) :-
+    get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
+    ml_variable_type(!.Info, LHSVar, LHSType),
+    ml_gen_var(!.Info, LHSVar, LHSLval),
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
     LHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, LHSType),
-    ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
-        bp_native_if_possible, RHSRval0, RHSRval),
-    CastRHSRval = ml_cast(LHS_MLDS_Type, ml_mkword(Ptag, RHSRval)),
-    Stmt = ml_gen_assign(LHSLval, CastRHSRval, Context),
-    Stmts = [Stmt].
+    ( if ml_gen_info_search_const_var(!.Info, RHSVar, RHSGroundTerm) then
+        RHSGroundTerm = ml_ground_term(RHSRval0, _RHSType, RHS_MLDS_Type),
+        ml_gen_info_get_global_data(!.Info, GlobalData0),
+        ml_gen_box_const_rval(ModuleInfo, Context, RHS_MLDS_Type,
+            aw_full_word, RHSRval0, RHSRval, GlobalData0, GlobalData),
+        ml_gen_info_set_global_data(GlobalData, !Info),
+        LHSRval = ml_cast_cons_tag(LHS_MLDS_Type, ConsTag, RHSRval),
+        LHSGroundTerm = ml_ground_term(LHSRval, LHSType, LHS_MLDS_Type),
+        ml_gen_info_set_const_var(LHSVar, LHSGroundTerm, !Info),
+        Stmt = ml_gen_assign(LHSLval, RHSRval, Context),
+        Stmts = [Stmt]
+    else
+        ml_gen_var(!.Info, RHSVar, RHSLval),
+        ml_variable_type(!.Info, RHSVar, RHSType),
+        (
+            ConsTag = no_tag,
+            RHSRval0 = ml_lval(RHSLval),
+            ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
+                bp_native_if_possible, RHSRval0, RHSRval)
+        ;
+            ConsTag = direct_arg_tag(Ptag),
+            % The reason this case needs a switch on Dir is the arm below
+            % for assign_nondummy_unused. We don't need to put a ptag on
+            % a dummy value if either we have a nondummy value (the then
+            % part above), or if there is no ptag (the arm for no_tag above).
+            ml_compute_assign_direction(ModuleInfo, ArgMode, RHSType, LHSType,
+                Dir),
+            (
+                Dir = assign_nondummy_right,
+                unexpected($pred, "left-to-right data flow in construction")
+            ;
+                Dir = assign_nondummy_left,
+                RHSRval0 = ml_lval(RHSLval)
+            ;
+                Dir = assign_nondummy_unused,
+                % Unused - unused: it is a partial assignment to the LHS
+                % where the tag is known but the argument isn't.
+                RHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, RHSType),
+                RHSRval0 = ml_const(mlconst_null(RHS_MLDS_Type))
+            ;
+                Dir = assign_dummy,
+                unexpected($pred, "dummy unify")
+            ),
+            ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
+                bp_native_if_possible, RHSRval0, RHSRval1),
+            RHSRval = ml_cast(LHS_MLDS_Type, ml_mkword(Ptag, RHSRval1))
+        ),
+        Stmt = ml_gen_assign(LHSLval, RHSRval, Context),
+        Stmts = [Stmt]
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1191,24 +1159,15 @@ ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         ( ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
         ),
-        % XXX BUG: We should NOT ignore the ptag, we need to put it
-        % on the value inside the direct_arg_tag.
-        (
-            RHSVars = [RHSVar],
-            map.det_remove(RHSVar, RHSGroundTerm, !GroundTermMap),
-            RHSGroundTerm = ml_ground_term(RHSRval, _RHSType, RHS_MLDS_Type),
-            ml_gen_box_const_rval(ModuleInfo, Context, RHS_MLDS_Type,
-                aw_full_word, RHSRval, BoxedRHSRval0, !GlobalData),
-            BoxedRHSRval =
-                ml_cast_cons_tag(LHS_MLDS_Type, ConsTag, BoxedRHSRval0),
-            GroundTerm = ml_ground_term(BoxedRHSRval, LHSType, LHS_MLDS_Type),
-            map.det_insert(LHSVar, GroundTerm, !GroundTermMap)
-        ;
-            ( RHSVars = []
-            ; RHSVars = [_, _ | _]
-            ),
-            unexpected($pred, "no_tag arity != 1")
-        )
+        get_notag_or_direct_arg_arg(RHSVars, RHSVar),
+        map.det_remove(RHSVar, RHSGroundTerm, !GroundTermMap),
+        RHSGroundTerm = ml_ground_term(RHSRval, _RHSType, RHS_MLDS_Type),
+        ml_gen_box_const_rval(ModuleInfo, Context, RHS_MLDS_Type,
+            aw_full_word, RHSRval, BoxedRHSRval0, !GlobalData),
+        BoxedRHSRval =
+            ml_cast_cons_tag(LHS_MLDS_Type, ConsTag, BoxedRHSRval0),
+        GroundTerm = ml_ground_term(BoxedRHSRval, LHSType, LHS_MLDS_Type),
+        map.det_insert(LHSVar, GroundTerm, !GroundTermMap)
     ;
         % Lambda expressions cannot occur in from_ground_term_construct scopes
         % during code generation, because if they do occur there originally,
@@ -1371,21 +1330,8 @@ construct_ground_term_tagword_initializer_lld(RHSVarTypeWidth,
     map.det_remove(RHSVar, RHSGroundTerm, !GroundTermMap),
     % Boxing cannot be applicable to subword rvals.
     RHSGroundTerm = ml_ground_term(RHSRval, _RHSType, _RHS_MLDS_Type),
-    (
-        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
-            !RevOrRvals)
-    ;
-        ArgPosWidth = apw_none_shifted(_, _)
-        % Nothing to add to !RevOrRvals.
-    ;
-        ( ArgPosWidth = apw_full(_, _)
-        ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
-        ; ArgPosWidth = apw_none_nowhere
-        ),
-        unexpected($pred, "ArgPosWidth does not belong in tagword")
-    ).
+    ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
+        !RevOrRvals).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1621,8 +1567,8 @@ ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, PosWidth,
     arg_const_type_and_width::in,
     list(mlds_rval)::in, list(mlds_rval)::out) is det.
 
-ml_gen_const_tagword_arg(Info, ArgTypeWidth, !RevOrRvals) :-
-    ArgTypeWidth = arg_type_and_width(ConstArg, _Type, ArgPosWidth),
+ml_gen_const_tagword_arg(Info, RHSTypeWidth, !RevOrRvals) :-
+    RHSTypeWidth = arg_type_and_width(ConstArg, _Type, ArgPosWidth),
     ModuleInfo = Info ^ mcsi_module_info,
     (
         ConstArg = csa_const_struct(_StructNum),
@@ -1631,23 +1577,10 @@ ml_gen_const_tagword_arg(Info, ArgTypeWidth, !RevOrRvals) :-
         ConstArg = csa_constant(ConsId, Type),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-        ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, ArgRval)
+        ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, RHSRval)
     ),
-    (
-        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        ml_maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
-            !RevOrRvals)
-    ;
-        ArgPosWidth = apw_none_shifted(_, _)
-        % Nothing to add to !RevOrRvals.
-    ;
-        ( ArgPosWidth = apw_full(_, _)
-        ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
-        ; ArgPosWidth = apw_none_nowhere
-        ),
-        unexpected($pred, "ArgPosWidth does not belong in tagword")
-    ).
+    ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
+        !RevOrRvals).
 
 :- pred ml_gen_const_struct_arg_tag(cons_tag::in, mer_type::in, mlds_type::in,
     mlds_rval::out) is det.
@@ -2134,6 +2067,26 @@ ml_pack_into_one_word_loop([RvalTypeWidth | RvalsTypesWidths],
 %
 % Utility predicates.
 %
+
+:- pred ml_maybe_shift_and_accumulate_packed_arg_rval(arg_pos_width::in,
+    mlds_rval::in, list(mlds_rval)::in, list(mlds_rval)::out) is det.
+
+ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
+        !RevOrRvals) :-
+    (
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
+        ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
+            !RevOrRvals)
+    ;
+        ArgPosWidth = apw_none_shifted(_, _)
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        unexpected($pred, "not apw_partial_shifted or apw_none_shifted")
+    ).
 
 :- pred ml_maybe_shift_and_accumulate_or_rval(mlds_rval::in, arg_shift::in,
     fill_kind::in, list(mlds_rval)::in, list(mlds_rval)::out) is det.
