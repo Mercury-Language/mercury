@@ -62,7 +62,8 @@
                 const MR_DuArgLocn *locn =                              \
                     &((ei).args_field.arg_locns[i]);                    \
                 if (locn->MR_arg_offset == -1) {                        \
-                    argp = &((ei).args_field.arg_values);               \
+                    argp = (MR_Word *)                                  \
+                        &((ei).args_field.arg_values);                  \
                 } else {                                                \
                     argp = &((ei).args_field.arg_values[                \
                         locn->MR_arg_offset +                           \
