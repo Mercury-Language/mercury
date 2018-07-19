@@ -270,7 +270,7 @@ generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     list.length(ArgsF, NumArgsF),
     NumArgsRF = encode_num_generic_call_vars(NumArgsR, NumArgsF),
     list.append(ArgsR, ArgsF, ArgsRF),
-    Vector = [
+    CellArgs = [
         cell_arg_full_word(ClosureLayoutRval, complete),
         cell_arg_full_word(CodeAddrRval, complete),
         cell_arg_full_word(const(llconst_int(NumArgsRF)), complete)
@@ -280,9 +280,9 @@ generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     % something which is not construct_in_region(_).
     HowToConstruct = construct_dynamically,
     MaybeSize = no,
-    maybe_add_alloc_site_info(Context, "closure", length(Vector),
+    maybe_add_alloc_site_info(Context, "closure", length(CellArgs),
         MaybeAllocId, !CI),
-    assign_cell_to_var(Var, no, ptag(0u8), Vector, HowToConstruct,
+    assign_cell_to_var(Var, no, ptag(0u8), CellArgs, HowToConstruct,
         MaybeSize, MaybeAllocId, MayUseAtomic, Code, !CI, !CLD).
 
 :- pred generate_extra_closure_args(list(prog_var)::in, lval::in,

@@ -859,13 +859,13 @@ var_locn_assign_cell_to_var(ModuleInfo, ExprnOpts, Var, ReserveWordAtStart,
     label::in, llds_code::out, var_locn_info::in, var_locn_info::out) is det.
 
 var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        Vector, HowToConstruct, MaybeOffset, MaybeAllocId, MayUseAtomic, Label,
-        Code, !VLI) :-
+        CellArgs, HowToConstruct, MaybeOffset, MaybeAllocId, MayUseAtomic,
+        Label, Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
     select_preferred_reg_or_stack(!.VLI, Var, reg_r, Lval),
     get_var_name(!.VLI, Var, VarName),
-    Size = size_of_cell_args(Vector),
+    Size = size_of_cell_args(CellArgs),
     (
         ReserveWordAtStart = yes,
         (
@@ -918,7 +918,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
             RegionVarCode = empty,
             MaybeRegionRval = no
         ),
-        assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
+        assign_all_cell_args(ModuleInfo, CellArgs, yes(Ptag), lval(Lval),
             StartOffset, ArgsCode, !VLI),
         SetupReuseCode = empty,
         MaybeReuse = no_llds_reuse
@@ -929,7 +929,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
             !VLI),
         ( if ReuseRval = lval(ReuseLval) then
             LldsComment = "Reusing cell on heap for ",
-            assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector,
+            assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, CellArgs,
                 CellToReuse, ReuseLval, ReuseVarCode, StartOffset, Label,
                 MaybeReuse, SetupReuseCode, ArgsCode, !VLI),
             MaybeRegionRval = no,
@@ -940,7 +940,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
             RegionVarCode = empty,
             MaybeRegionRval = no,
             LldsComment = "Allocating heap for ",
-            assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
+            assign_all_cell_args(ModuleInfo, CellArgs, yes(Ptag), lval(Lval),
                 StartOffset, ArgsCode, !VLI),
             SetupReuseCode = empty,
             MaybeReuse = no_llds_reuse
@@ -960,7 +960,7 @@ var_locn_assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
     int::in, label::in, llds_reuse::out, llds_code::out, llds_code::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
+assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, CellArgs, CellToReuse,
         ReuseLval, ReuseVarCode, StartOffset, Label, MaybeReuse,
         SetupReuseCode, ArgsCode, !VLI) :-
     CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsId, NeedsUpdates0),
@@ -987,8 +987,8 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
     % or the old ptag is known, as we do in the high level backend.
     MaybeReuse = llds_reuse(unop(strip_tag, lval(ReuseLval)), MaybeFlag),
 
-    % NeedsUpdates0 can be shorter than Vector due to extra fields.
-    Padding = list.length(Vector) - list.length(NeedsUpdates0),
+    % NeedsUpdates0 can be shorter than CellArgs due to extra fields.
+    Padding = list.length(CellArgs) - list.length(NeedsUpdates0),
     ( if Padding >= 0 then
         NeedsUpdates = list.duplicate(Padding, needs_update) ++ NeedsUpdates0
     else
@@ -997,7 +997,7 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
 
     (
         MaybeFlag = yes(FlagLval),
-        assign_some_cell_args(ModuleInfo, Vector, NeedsUpdates, yes(Ptag),
+        assign_some_cell_args(ModuleInfo, CellArgs, NeedsUpdates, yes(Ptag),
             lval(Lval), StartOffset, CannotSkipArgsCode, CanSkipArgsCode,
             !VLI),
         ArgsCode =
@@ -1013,7 +1013,7 @@ assign_reused_cell_to_var(ModuleInfo, Lval, Ptag, Vector, CellToReuse,
             CannotSkipArgsCode
     ;
         MaybeFlag = no,
-        assign_all_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval),
+        assign_all_cell_args(ModuleInfo, CellArgs, yes(Ptag), lval(Lval),
             StartOffset, ArgsCode, !VLI)
     ),
 
@@ -2220,10 +2220,9 @@ cell_is_constant(VarStateMap, ExprnOpts, [CellArg | CellArgs],
     cell_is_constant(VarStateMap, ExprnOpts, CellArgs, TypedRvals).
 
     % expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval):
+    %
     % Check if Rval0 is a constant rval, after substituting the values of the
     % variables inside it. Returns the substituted, ground rval in Rval.
-    % Note that this predicate is similar to code_exprn.expr_is_constant,
-    % but it uses its own version of the variable state data structure.
     %
 :- pred expr_is_constant(var_state_map::in, exprn_opts::in,
     rval::in, rval::out) is semidet.
