@@ -1627,28 +1627,29 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, ModuleAndImports0, HLDS1,
     globals.lookup_bool_option(Globals, verbose, Verbose),
 
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, MMCMake),
-    (
-        MMCMake = yes,
+    ( if
+        % Don't write the `.d' file when making the `.opt' file because
+        % we can't work out the full transitive implementation dependencies.
+        ( MMCMake = yes
+        ; OpModeAugment = opmau_make_opt_int
+        )
+    then
         WriteDFile = do_not_write_d_file
-    ;
-        MMCMake = no,
+    else
         WriteDFile = WriteDFile0
     ),
 
     module_and_imports_get_module_name(ModuleAndImports0, ModuleName),
     (
-        ( OpModeAugment = opmau_make_opt_int
-        ; OpModeAugment = opmau_make_analysis_registry
-        ; OpModeAugment = opmau_make_xml_documentation
-        ; OpModeAugment = opmau_typecheck_only
-        ; OpModeAugment = opmau_errorcheck_only
-        ; OpModeAugment = opmau_generate_code(_)
-        ),
+        WriteDFile = do_not_write_d_file,
         MaybeTransOptDeps = no
     ;
-        OpModeAugment = opmau_make_trans_opt_int,
-        % The only time the TransOptDeps are required is when creating the
-        % .trans_opt file.
+        WriteDFile = write_d_file,
+        % We need the MaybeTransOptDeps when creating the .trans_opt file.
+        % However, we *also* need the MaybeTransOptDeps when writing out
+        % .d files. In the absence of MaybeTransOptDeps, we will write out
+        % a .d file that does not include the trans_opt_deps mmake rule,
+        % which will require an "mmake depend" before the next rebuild.
         maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO)
     ),
 
