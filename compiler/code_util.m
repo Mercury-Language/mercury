@@ -464,22 +464,28 @@ encode_num_generic_call_vars(NumR, NumF) = (NumR \/ (NumF << 16)).
 
 %-----------------------------------------------------------------------------%
 
-size_of_cell_args([]) = 0.
-size_of_cell_args([CellArg | CellArgs]) = Size + Sizes :-
+size_of_cell_args(CellArgs) = Size :-
+    size_of_cell_args_acc(CellArgs, 0, Size).
+
+:- pred size_of_cell_args_acc(list(cell_arg)::in, int::in, int::out) is det.
+
+size_of_cell_args_acc([], !Size).
+size_of_cell_args_acc([CellArg | CellArgs], !Size) :-
     (
         ( CellArg = cell_arg_full_word(_, _)
-        ; CellArg = cell_arg_take_addr_one_word(_, _)
         ; CellArg = cell_arg_skip_one_word
+        ; CellArg = cell_arg_take_addr_one_word(_, _)
         ),
-        Size = 1
+        CellSize = 1
     ;
         ( CellArg = cell_arg_double_word(_)
-        ; CellArg = cell_arg_take_addr_two_words(_, _)
         ; CellArg = cell_arg_skip_two_words
+        ; CellArg = cell_arg_take_addr_two_words(_, _)
         ),
-        Size = 2
+        CellSize = 2
     ),
-    Sizes = size_of_cell_args(CellArgs).
+    !:Size = !.Size + CellSize,
+    size_of_cell_args_acc(CellArgs, !Size).
 
 %-----------------------------------------------------------------------------%
 
