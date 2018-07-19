@@ -1071,7 +1071,7 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         CtorTag = shared_local_tag_with_args(_Ptag, LocalSectag),
         expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
             "shared_local_tag_with_args but exist_constraints"),
-        decide_complex_du_ctor_local_args(ModuleInfo, Params, ComponentTypeMap,
+        decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
             LocalSectag, CtorArgs, CtorArgRepns, !Specs)
     ;
         ( CtorTag = dummy_tag
@@ -1173,15 +1173,14 @@ decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
     %
     FirstArgWordNum = 0,
     FirstCellWordNum = NumSecTagWords + NumExtraArgWords,
-    FirstShift = 0,
     NoPackParams = ((Params
         ^ ddp_allow_packing_ints := no)
         ^ ddp_allow_packing_dummies := no),
     decide_complex_du_ctor_remote_args_loop(ModuleInfo, NoPackParams,
-        map.init, FirstArgWordNum, FirstCellWordNum, FirstShift,
+        map.init, FirstArgWordNum, FirstCellWordNum,
         CtorArgs, CtorArgRepnsBase),
     decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params,
-        ComponentTypeMap, FirstArgWordNum, FirstCellWordNum, FirstShift,
+        ComponentTypeMap, FirstArgWordNum, FirstCellWordNum,
         CtorArgs, CtorArgRepnsPacked),
     WorthPacking = worth_arg_packing(CtorArgRepnsBase, CtorArgRepnsPacked),
     (
@@ -1212,118 +1211,39 @@ target_uses_constructors(target_erlang) = no.
 % ml_type_gen.m; any changes here will require corresponding changes there.
 
 :- pred decide_complex_du_ctor_remote_args_loop(module_info::in,
-    decide_du_params::in, component_type_map::in, int::in, int::in, int::in,
+    decide_du_params::in, component_type_map::in, int::in, int::in,
     list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
 
-decide_complex_du_ctor_remote_args_loop(_, _, _, _, _, _, [], []).
+decide_complex_du_ctor_remote_args_loop(_, _, _, _, _, [], []).
 decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
-        CurAOWordNum, CurCellWordNum, CurShift,
-        [Arg | Args], [ArgRepn | ArgRepns]) :-
-    Arg = ctor_arg(ArgName, ArgType, ArgContext),
-    ( if may_pack_arg_type(Params, ComponentTypeMap, ArgType, Packable) then
-        (
-            Packable = packable_n_bits(NumArgBits, FillKind),
-            ArgNumBits = arg_num_bits(NumArgBits),
-            ArgMaskInt = int.pow(2, NumArgBits) - 1,
-            ArgMask = arg_mask(ArgMaskInt),
-            % Try to place Arg in the current word.
-            % If it does not fit, move on to the next word.
-            ( if CurShift + NumArgBits =< Params ^ ddp_arg_pack_bits then
-                ArgOnlyOffset0 = arg_only_offset(CurAOWordNum),
-                CellOffset0 = cell_offset(CurCellWordNum),
-                Shift = arg_shift(CurShift),
-                ( if CurShift = 0 then
-                    ArgPosWidth0 = apw_partial_first(ArgOnlyOffset0,
-                        CellOffset0, Shift, ArgNumBits, ArgMask, FillKind)
-                else
-                    ArgPosWidth0 = apw_partial_shifted(ArgOnlyOffset0,
-                        CellOffset0, Shift, ArgNumBits, ArgMask, FillKind)
-                ),
-                NextAOWordNum = CurAOWordNum,
-                NextCellWordNum = CurCellWordNum,
-                NextShift = CurShift + NumArgBits
-            else
-                padding_increment(CurShift, PaddingIncrement),
-                AfterPaddingAOWordNum = CurAOWordNum + PaddingIncrement,
-                AfterPaddingCellWordNum = CurCellWordNum + PaddingIncrement,
-                ArgOnlyOffset0 = arg_only_offset(AfterPaddingAOWordNum),
-                CellOffset0 = cell_offset(AfterPaddingCellWordNum),
-                Shift = arg_shift(0),
-                ArgPosWidth0 = apw_partial_first(ArgOnlyOffset0, CellOffset0,
-                    Shift, ArgNumBits, ArgMask, FillKind),
-                NextAOWordNum = AfterPaddingAOWordNum,
-                NextCellWordNum = AfterPaddingCellWordNum,
-                NextShift = NumArgBits
-            )
-        ;
-            Packable = packable_dummy,
-            ( if CurShift = 0 then
-                ArgPosWidth0 = apw_none_nowhere
-            else
-                ArgOnlyOffset0 = arg_only_offset(CurAOWordNum),
-                CellOffset0 = cell_offset(CurCellWordNum),
-                ArgPosWidth0 = apw_none_shifted(ArgOnlyOffset0, CellOffset0)
-            ),
+        CurAOWordNum, CurCellWordNum, [Arg | Args], ArgRepns) :-
+    ArgOnlyOffset = arg_only_offset(CurAOWordNum),
+    CellOffset = cell_offset(CurCellWordNum),
+    NumAvailBits = Params ^ ddp_arg_pack_bits,
+    NumUsedBits0 = 0,
+    find_word_packable_args(Params, ComponentTypeMap,
+        NumAvailBits, NumUsedBits0, NumUsedBits,
+        [Arg | Args], ArgsPackables, LeftOverArgs),
+    (
+        ArgsPackables = [_ | _],
+        NumPrefixBits = 0,
+        decide_packed_arg_word_loop(treat_as_first_arg,
+            ArgOnlyOffset, CellOffset, NumPrefixBits, _,
+            ArgsPackables, WordArgRepns),
+        ( if NumUsedBits > 0 then
+            NextAOWordNum = CurAOWordNum + 1,
+            NextCellWordNum = CurCellWordNum + 1
+        else
             NextAOWordNum = CurAOWordNum,
-            NextCellWordNum = CurCellWordNum,
-            NextShift = CurShift
+            NextCellWordNum = CurCellWordNum
         ),
         decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params,
-            ComponentTypeMap, NextAOWordNum, NextCellWordNum, NextShift,
-            Args, ArgRepns),
-        (
-            ArgPosWidth0 = apw_partial_first(ArgOnlyOffset, CellOffset,
-                _, _, _, _),
-            % If this argument starts a word, then it is a *partial* word
-            % only if (a) there is a next argument, and (b) it is packed
-            % with it. Otherwise, it is not packed.
-            ( if
-                ArgRepns = [NextArgRepn | _],
-                NextArgPosWidth = NextArgRepn ^ car_pos_width,
-                ( NextArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
-                ; NextArgPosWidth = apw_none_shifted(_, _)
-                )
-            then
-                ArgPosWidth = ArgPosWidth0
-            else
-                ArgPosWidth = apw_full(ArgOnlyOffset, CellOffset)
-            )
-        ;
-            ArgPosWidth0 = apw_none_shifted(_, _),
-            % We represent a dummy argument as apw_none_shifted
-            % only if it is packed with other sub-word arguments both
-            % before it and after it. The "before it" part was tested above.
-            % Here we test the "after it" part.
-            ( if
-                ArgRepns = [NextArgRepn | _],
-                NextArgPosWidth = NextArgRepn ^ car_pos_width,
-                ( NextArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
-                ; NextArgPosWidth = apw_none_shifted(_, _)
-                )
-            then
-                ArgPosWidth = ArgPosWidth0
-            else
-                ArgPosWidth = apw_none_nowhere
-            )
-        ;
-            ArgPosWidth0 = apw_partial_shifted(_, _, _, _, _, _),
-            % If this argument is shifted, then it is packed together
-            % with whatever came before.
-            ArgPosWidth = ArgPosWidth0
-        ;
-            ArgPosWidth0 = apw_none_nowhere,
-            % This argument is effectively a zero-width sliver either
-            % between two complete words, or after a complete word
-            % at the end of the cell.
-            ArgPosWidth = ArgPosWidth0
-        ),
-        ArgRepn = ctor_arg_repn(ArgName, ArgType, ArgPosWidth, ArgContext)
-    else
-        padding_increment(CurShift, PaddingIncrement),
-        AfterPaddingAOWordNum = CurAOWordNum + PaddingIncrement,
-        AfterPaddingCellWordNum = CurCellWordNum + PaddingIncrement,
-        ArgOnlyOffset = arg_only_offset(AfterPaddingAOWordNum),
-        CellOffset = cell_offset(AfterPaddingCellWordNum),
+            ComponentTypeMap, NextAOWordNum, NextCellWordNum,
+            LeftOverArgs, TailArgRepns),
+        ArgRepns = WordArgRepns ++ TailArgRepns
+    ;
+        ArgsPackables = [],
+        Arg = ctor_arg(ArgName, ArgType, ArgContext),
         deref_eqv_types(ModuleInfo, ArgType, DerefArgType),
         ( if
             DerefArgType = builtin_type(BuiltinType),
@@ -1346,28 +1266,28 @@ decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
             )
         then
             ArgPosWidth = apw_double(ArgOnlyOffset, CellOffset, DWKind),
-            NextAOWordNum = AfterPaddingAOWordNum + 2,
-            NextCellWordNum = AfterPaddingCellWordNum + 2
+            NextAOWordNum = CurAOWordNum + 2,
+            NextCellWordNum = CurCellWordNum + 2
         else
             ArgPosWidth = apw_full(ArgOnlyOffset, CellOffset),
-            NextAOWordNum = AfterPaddingAOWordNum + 1,
-            NextCellWordNum = AfterPaddingCellWordNum + 1
+            NextAOWordNum = CurAOWordNum + 1,
+            NextCellWordNum = CurCellWordNum + 1
         ),
-        ArgRepn = ctor_arg_repn(ArgName, ArgType, ArgPosWidth, ArgContext),
-        NextShift = 0,
+        HeadArgRepn = ctor_arg_repn(ArgName, ArgType, ArgPosWidth, ArgContext),
         decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params,
-            ComponentTypeMap, NextAOWordNum, NextCellWordNum, NextShift,
-            Args, ArgRepns)
+            ComponentTypeMap, NextAOWordNum, NextCellWordNum,
+            Args, TailArgRepns),
+        ArgRepns = [HeadArgRepn | TailArgRepns]
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred decide_complex_du_ctor_local_args(module_info::in,
-    decide_du_params::in, component_type_map::in, local_sectag::in,
+:- pred decide_complex_du_ctor_local_args(decide_du_params::in,
+    component_type_map::in, local_sectag::in,
     list(constructor_arg)::in, list(constructor_arg_repn)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_complex_du_ctor_local_args(ModuleInfo, Params, ComponentTypeMap,
+decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
         LocalSectag, CtorArgs, CtorArgRepns, !Specs) :-
     % A word representing a constructor with locally packed arguments contains,
     % in order:
@@ -1405,47 +1325,157 @@ decide_complex_du_ctor_local_args(ModuleInfo, Params, ComponentTypeMap,
         % We ruled this out in compute_local_packable_functors.
         unexpected($pred, "MaybePrimaryTags = no_primary_tags")
     ),
+    ArgOnlyOffset = arg_only_offset(-1),
+    CellOffset = cell_offset(-1),
     LocalSectag = local_sectag(_, _, SectagBits),
     SectagBits = sectag_bits(NumSectagBits, _),
     NumPrimSecTagBits = NumPtagBits + uint8.cast_to_int(NumSectagBits),
-    decide_complex_du_ctor_local_args_loop(ModuleInfo, Params,
-        ComponentTypeMap, NumPrimSecTagBits, _, CtorArgs, CtorArgRepns).
+    pair_args_with_packable(Params, ComponentTypeMap,
+        CtorArgs, CtorArgsPackables),
+    decide_packed_arg_word_loop(do_not_treat_as_first_arg,
+        ArgOnlyOffset, CellOffset, NumPrimSecTagBits, _,
+        CtorArgsPackables, CtorArgRepns).
 
-:- pred decide_complex_du_ctor_local_args_loop(module_info::in,
-    decide_du_params::in, component_type_map::in, int::in, int::out,
-    list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
+:- type maybe_treat_as_first_arg
+    --->    do_not_treat_as_first_arg
+    ;       treat_as_first_arg.
 
-decide_complex_du_ctor_local_args_loop(_, _, _,
-        NumPrimSecTagBits, NumPrimSecTagBits, [], []).
-decide_complex_du_ctor_local_args_loop(ModuleInfo, Params, ComponentTypeMap,
-        NumPrimSecTagBits, NextShift, [Arg | Args], [ArgRepn | ArgRepns]) :-
-    decide_complex_du_ctor_local_args_loop(ModuleInfo, Params,
-        ComponentTypeMap, NumPrimSecTagBits, CurShift, Args, ArgRepns),
-    Arg = ctor_arg(ArgName, ArgType, ArgContext),
-    ( if
-        may_pack_arg_type(Params, ComponentTypeMap, ArgType, PackablePrime)
-    then
-        Packable = PackablePrime
-    else
-        unexpected($pred, "not packable")
-    ),
-    ArgOnlyOffset = arg_only_offset(-1),
-    CellOffset = cell_offset(-1),
+    % Assign representations to the arguments packed together into a single
+    % word at the offset given by ArgOnlyOffset and CellOffset.
+    %
+    % We assign bit fields to the packed arguments in reverse order,
+    % putting the last argument next to the fixed bits (which occupy
+    % the low-order NumPrefixBits bits of the word), then the next last,
+    % and so on. We do this to put earlier arguments into more significant
+    % bits than later arguments, which will let us use a single unsigned
+    % comparison to compare any run of consecutive unsigned arguments.
+    %
+    % We assume that the ArgPackable list ends with a nondummy argument;
+    % this is intended to be ensured by having our caller compute ArgPackable
+    % by calling find_word_packable_args. We do *not* assume that ArgPackable
+    % *starts* with a nondummy argument, but we assign the apw_none_nowhere
+    % representation to any dummy in any such initial subsequence.
+    %
+    % We
+:- pred decide_packed_arg_word_loop(maybe_treat_as_first_arg::in,
+    arg_only_offset::in, cell_offset::in, int::in, int::out,
+    assoc_list(constructor_arg, packable_kind)::in,
+    list(constructor_arg_repn)::out) is det.
+
+decide_packed_arg_word_loop(_, _, _, NumPrefixBits, NumPrefixBits,
+        [], []).
+decide_packed_arg_word_loop(TreatAsFirst, ArgOnlyOffset, CellOffset,
+        NumPrefixBits, NextShift,
+        [ArgPackable | ArgsPackables], [ArgRepn | ArgRepns]) :-
+    ArgPackable = Arg - Packable,
     (
         Packable = packable_n_bits(NumArgBits, FillKind),
+        decide_packed_arg_word_loop(do_not_treat_as_first_arg,
+            ArgOnlyOffset, CellOffset, NumPrefixBits, CurShift,
+            ArgsPackables, ArgRepns),
         ArgMask = int.pow(2, NumArgBits) - 1,
-        ArgPosWidth = apw_partial_shifted(ArgOnlyOffset, CellOffset,
-            arg_shift(CurShift), arg_num_bits(NumArgBits), arg_mask(ArgMask),
-            FillKind),
+        (
+            TreatAsFirst = treat_as_first_arg,
+            ArgPosWidth = apw_partial_first(ArgOnlyOffset, CellOffset,
+                arg_shift(CurShift), arg_num_bits(NumArgBits),
+                arg_mask(ArgMask), FillKind)
+        ;
+            TreatAsFirst = do_not_treat_as_first_arg,
+            ArgPosWidth = apw_partial_shifted(ArgOnlyOffset, CellOffset,
+                arg_shift(CurShift), arg_num_bits(NumArgBits),
+                arg_mask(ArgMask), FillKind)
+        ),
         NextShift = CurShift + NumArgBits
     ;
         Packable = packable_dummy,
-        ArgPosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset),
+        decide_packed_arg_word_loop(TreatAsFirst,
+            ArgOnlyOffset, CellOffset, NumPrefixBits, CurShift,
+            ArgsPackables, ArgRepns),
+        (
+            TreatAsFirst = treat_as_first_arg,
+            ArgPosWidth = apw_none_nowhere
+        ;
+            TreatAsFirst = do_not_treat_as_first_arg,
+            ArgPosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset)
+        ),
         NextShift = CurShift
     ),
+    Arg = ctor_arg(ArgName, ArgType, ArgContext),
     ArgRepn = ctor_arg_repn(ArgName, ArgType, ArgPosWidth, ArgContext).
 
 %---------------------------------------------------------------------------%
+
+    % Find an initial subsequence of arguments that may all be packed
+    % together into a word which has NumAvailBits available. Return these
+    % arguments with their packability information, and return the remaining
+    % arguments. Make sure that the last packable argument is not of a dummy
+    % type; if the list of packable arguments ends with a run of one or more
+    % arguments of dummy types, return these as part of the LeftOverArgs.
+    % 
+:- pred find_word_packable_args(decide_du_params::in, component_type_map::in,
+    int::in, int::in, int::out, list(constructor_arg)::in,
+    assoc_list(constructor_arg, packable_kind)::out,
+    list(constructor_arg)::out) is det.
+
+find_word_packable_args(_, _, _, !NumUsedBits, [], [], []).
+find_word_packable_args(Params, ComponentTypeMap, NumAvailBits, !NumUsedBits,
+        [Arg | Args], ArgsPackables, LeftOverArgs) :-
+    Arg = ctor_arg(_ArgName, ArgType, _ArgContext),
+    InitNumUsedBits = !.NumUsedBits,
+    ( if
+        may_pack_arg_type(Params, ComponentTypeMap, ArgType, Packable),
+        (
+            Packable = packable_n_bits(NumArgBits, _FillKind),
+            NextNumAvailBits = NumAvailBits - NumArgBits,
+            !:NumUsedBits = !.NumUsedBits + NumArgBits
+        ;
+            Packable = packable_dummy,
+            NextNumAvailBits = NumAvailBits
+        ),
+        NextNumAvailBits >= 0
+    then
+        find_word_packable_args(Params, ComponentTypeMap,
+            NextNumAvailBits, !NumUsedBits,
+            Args, TailArgsPackables, TailLeftOverArgs),
+        % If we have allocated any bits at all to nondummy values,
+        % do not let the ArgsPackables list end with one or more dummy args.
+        % The recursive application of this principle ensures that
+        % if ArgsPackables contains any nondummy args at all, then
+        % the last element in ArgsPackables will be a non-dummy.
+        ( if
+            InitNumUsedBits > 0,
+            TailArgsPackables = [],
+            Packable = packable_dummy
+        then
+            ArgsPackables = [],
+            LeftOverArgs = [Arg | Args]
+        else
+            HeadArgPackable = Arg - Packable,
+            ArgsPackables = [HeadArgPackable | TailArgsPackables],
+            LeftOverArgs = TailLeftOverArgs
+        )
+    else
+        ArgsPackables = [],
+        LeftOverArgs = [Arg | Args]
+    ).
+
+    % Pair each of the given args, which must be packable,
+    % with its packability information.
+    % 
+:- pred pair_args_with_packable(decide_du_params::in, component_type_map::in,
+    list(constructor_arg)::in, assoc_list(constructor_arg, packable_kind)::out)
+    is det.
+
+pair_args_with_packable(_, _, [], []).
+pair_args_with_packable(Params, ComponentTypeMap,
+        [Arg | Args], [ArgPackable | ArgsPackables]) :-
+    Arg = ctor_arg(_ArgName, ArgType, _ArgContext),
+    ( if may_pack_arg_type(Params, ComponentTypeMap, ArgType, Packable) then
+        ArgPackable = Arg - Packable
+    else
+        unexpected($pred, "not packable")
+    ),
+    pair_args_with_packable(Params, ComponentTypeMap, Args, ArgsPackables).
 
 :- pred may_pack_arg_type(decide_du_params::in, component_type_map::in,
     mer_type::in, packable_kind::out) is semidet.
@@ -1499,17 +1529,6 @@ may_pack_arg_type(Params, ComponentTypeMap, ArgType, PackableKind) :-
             )
         ),
         PackableKind = packable_n_bits(NumArgBits, FillKind)
-    ).
-
-:- pred padding_increment(int::in, int::out) is det.
-
-padding_increment(CurShift, PaddingIncrement) :-
-    ( if CurShift = 0 then
-        % No padding is needed.
-        PaddingIncrement = 0
-    else
-        % The part of CurWordNum after CurShift is padding.
-        PaddingIncrement = 1
     ).
 
 %---------------------------------------------------------------------------%
