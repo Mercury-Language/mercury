@@ -419,20 +419,22 @@ do_detect_libgrade(VeryVerbose, DirName, FileName, FileType, Continue,
     (
         FileType = directory,
         ( if
-            % We do not generate .init files for the non-C grades so just
+            % We do not generate .init files for the Java and C# grades so just
             % check for directories in StdLibDir / "modules" containing
             % the name of their base grade.
+            % XXX we should check for the presence of mer_std.{dll,jar}
+            % instead.
             %
             ( string.prefix(FileName, "csharp")
-            ; string.prefix(FileName, "erlang")
             ; string.prefix(FileName, "java")
             )
         then
             maybe_report_detected_libgrade(VeryVerbose, FileName, !IO),
             !:GradeOpts = ["--libgrade", FileName | !.GradeOpts]
         else
-            % For C grades, we check for the presence of the .init file for
-            % mer_std to test whether the grade is present or not.
+            % For the C and Erlang grades, we check for the presence of the
+            % .init file for mer_std to test whether the grade is present or
+            % not.
             %
             InitFile = DirName / FileName / "mer_std.init",
             io.check_file_accessibility(InitFile, [read], Result, !IO),
