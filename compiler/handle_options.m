@@ -618,19 +618,6 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         add_error(phase_options, TargetEnvTypeSpec, !Specs)
     ),
 
-    ( if
-        HostEnvType = env_type_posix,
-        CSharp_CompilerType = csharp_microsoft
-    then
-        PosixCSMSpec =
-            [words_quote("--host-env-type posix"),
-            words("is incompatible with"),
-            words_quote("--csharp-compiler-type microsoft"), suffix("."), nl],
-        add_error(phase_options, PosixCSMSpec, !Specs)
-    else
-        true
-    ),
-
     raw_lookup_accumulating_option(!.OptionTable, limit_error_contexts,
         LimitErrorContextsOptionStrs),
     convert_limit_error_contexts(LimitErrorContextsOptionStrs,
