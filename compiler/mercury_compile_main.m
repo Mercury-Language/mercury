@@ -402,64 +402,112 @@ detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
 
 do_detect_libgrades(VeryVerbose, StdLibDir, GradeOpts, !IO) :-
     ModulesDir = StdLibDir / "modules",
-    dir.foldl2(do_detect_libgrade(VeryVerbose), ModulesDir,
-        [], MaybeGradeOpts, !IO),
+    dir.foldl2(do_detect_libgrade_using_init_file(VeryVerbose), ModulesDir,
+        [], MaybeGradeOpts0, !IO),
     (
-        MaybeGradeOpts = ok(GradeOpts)
+        MaybeGradeOpts0 = ok(GradeOpts0),
+        LibsDir = StdLibDir / "lib",
+        dir.foldl2(do_detect_libgrade_using_lib_file(VeryVerbose), LibsDir,
+            GradeOpts0, MaybeGradeOpts, !IO),
+        (
+            MaybeGradeOpts = ok(GradeOpts)
+        ;
+            MaybeGradeOpts = error(_, _),
+            GradeOpts = []
+        )
     ;
-        MaybeGradeOpts = error(_, _),
+        MaybeGradeOpts0 = error(_, _),
         GradeOpts = []
     ).
 
-:- pred do_detect_libgrade(bool::in, string::in, string::in, io.file_type::in,
-    bool::out, list(string)::in, list(string)::out, io::di, io::uo) is det.
+    % Test for the presence of an installed grade by looking for mer_std.init.
+    % This works for all grades except the C# and Java grades.
+    %
+:- pred do_detect_libgrade_using_init_file(bool::in, string::in, string::in,
+    io.file_type::in, bool::out, list(string)::in, list(string)::out,
+    io::di, io::uo) is det.
 
-do_detect_libgrade(VeryVerbose, DirName, FileName, FileType, Continue,
-        !GradeOpts, !IO) :-
+do_detect_libgrade_using_init_file(VeryVerbose, DirName, GradeFileName,
+        GradeFileType, Continue, !GradeOpts, !IO) :-
     (
-        FileType = directory,
-        ( if
-            % We do not generate .init files for the Java and C# grades so just
-            % check for directories in StdLibDir / "modules" containing
-            % the name of their base grade.
-            % XXX we should check for the presence of mer_std.{dll,jar}
-            % instead.
-            %
-            ( string.prefix(FileName, "csharp")
-            ; string.prefix(FileName, "java")
-            )
-        then
-            maybe_report_detected_libgrade(VeryVerbose, FileName, !IO),
-            !:GradeOpts = ["--libgrade", FileName | !.GradeOpts]
-        else
-            % For the C and Erlang grades, we check for the presence of the
-            % .init file for mer_std to test whether the grade is present or
-            % not.
-            %
-            InitFile = DirName / FileName / "mer_std.init",
-            io.check_file_accessibility(InitFile, [read], Result, !IO),
-            (
-                Result = ok,
-                maybe_report_detected_libgrade(VeryVerbose, FileName, !IO),
-                !:GradeOpts = ["--libgrade", FileName | !.GradeOpts]
-            ;
-                Result = error(_)
-            )
+        GradeFileType = directory,
+        InitFile = DirName / GradeFileName / "mer_std.init",
+        io.check_file_accessibility(InitFile, [read], Result, !IO),
+        (
+            Result = ok,
+            maybe_report_detected_libgrade(VeryVerbose, GradeFileName, !IO),
+            !:GradeOpts = ["--libgrade", GradeFileName | !.GradeOpts]
+        ;
+            Result = error(_)
         ),
         Continue = yes
     ;
-        ( FileType = regular_file
-        ; FileType = symbolic_link
-        ; FileType = named_pipe
-        ; FileType = socket
-        ; FileType = character_device
-        ; FileType = block_device
-        ; FileType = message_queue
-        ; FileType = semaphore
-        ; FileType = shared_memory
-        ; FileType = unknown
+        ( GradeFileType = regular_file
+        ; GradeFileType = symbolic_link
+        ; GradeFileType = named_pipe
+        ; GradeFileType = socket
+        ; GradeFileType = character_device
+        ; GradeFileType = block_device
+        ; GradeFileType = message_queue
+        ; GradeFileType = semaphore
+        ; GradeFileType = shared_memory
+        ; GradeFileType = unknown
         ),
         Continue = yes
+    ).
+
+    % Test for the presence of installed Java and C# grades by looking for
+    % the standard library JAR or assembly respectively.
+    %
+:- pred do_detect_libgrade_using_lib_file(bool::in, string::in, string::in,
+    io.file_type::in, bool::out, list(string)::in, list(string)::out,
+    io::di, io::uo) is det.
+
+do_detect_libgrade_using_lib_file(VeryVerbose, DirName, GradeFileName,
+        GradeFileType, Continue, !GradeOpts, !IO) :-
+    (
+        GradeFileType = directory,
+        ( if
+            csharp_or_java_libgrade_target(GradeFileName, LibFile)
+        then
+            TargetFile = DirName / GradeFileName / LibFile,
+            io.check_file_accessibility(TargetFile, [read], Result, !IO),
+            (
+                Result = ok,
+                maybe_report_detected_libgrade(VeryVerbose, GradeFileName,
+                    !IO),
+                !:GradeOpts = ["--libgrade", GradeFileName | !.GradeOpts]
+            ;
+                Result = error(_)
+            )
+        else
+            true
+        ),
+        Continue = yes
+    ;
+        ( GradeFileType = regular_file
+        ; GradeFileType = symbolic_link
+        ; GradeFileType = named_pipe
+        ; GradeFileType = socket
+        ; GradeFileType = character_device
+        ; GradeFileType = block_device
+        ; GradeFileType = message_queue
+        ; GradeFileType = semaphore
+        ; GradeFileType = shared_memory
+        ; GradeFileType = unknown
+        ),
+        Continue = yes
+    ).
+
+:- pred csharp_or_java_libgrade_target(string::in, string::out) is semidet.
+
+csharp_or_java_libgrade_target(GradeFileName, LibFile) :-
+    ( if string.prefix(GradeFileName, "csharp") then
+        LibFile = "mer_std.dll"
+    else if string.prefix(GradeFileName, "java") then
+         LibFile = "mer_std.jar"
+    else
+        false
     ).
 
 :- pred maybe_report_detected_libgrade(bool::in, string::in,
