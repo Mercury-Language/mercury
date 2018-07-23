@@ -1083,8 +1083,6 @@ MR_process_environment_options(void)
         prog_env_options = (char *) "";
     }
 
-    MR_GC_free(prog_env_option_name);
-
     if (gen_env_options[0] != '\0' || prog_env_options[0] != '\0'
         || MR_runtime_flags[0] != '\0')
     {
@@ -1155,33 +1153,32 @@ MR_process_environment_options(void)
             &option_argv, &option_argc);
         if (error_msg != NULL) {
             char    *where_buf;
-            int     where_buf_next;
+            int     where_buf_cur;
 
             where_buf = MR_GC_NEW_ARRAY(char, WHERE_BUF_SIZE);
             where_buf[0] = '\0';
-            where_buf_next = strlen(where_buf);
+            where_buf_cur = 0;
 
             if (gen_env_options[0] != '\0') {
-                snprintf(where_buf + where_buf_next, WHERE_BUF_SIZE,
-                    "%sthe %s environment variable",
-                    where_buf_next == 0 ? "" : " and/or ",
-                    MERCURY_OPTIONS);
-                where_buf_next = strlen(where_buf);
+                snprintf(where_buf, WHERE_BUF_SIZE,
+                    "the %s environment variable", MERCURY_OPTIONS);
             }
 
             if (prog_env_options[0] != '\0') {
-                snprintf(where_buf + where_buf_next, WHERE_BUF_SIZE,
+                where_buf_cur = strlen(where_buf);
+                snprintf(where_buf + where_buf_cur,
+                    WHERE_BUF_SIZE - where_buf_cur,
                     "%sthe %s environment variable",
-                    where_buf_next == 0 ? "" : " and/or ",
+                    where_buf_cur == 0 ? "" : " and/or ",
                     prog_env_option_name);
-                where_buf_next = strlen(where_buf);
             }
 
             if (MR_runtime_flags[0] != '\0') {
-                snprintf(where_buf + where_buf_next, WHERE_BUF_SIZE,
+                where_buf_cur = strlen(where_buf);
+                snprintf(where_buf + where_buf_cur,
+                    WHERE_BUF_SIZE - where_buf_cur,
                     "%sthe runtime options built into the executable",
-                    where_buf_next == 0 ? "" : " and/or ");
-                where_buf_next = strlen(where_buf);
+                    where_buf_cur == 0 ? "" : " and/or ");
             }
 
             MR_fatal_error("error parsing %s:\n%s\n", where_buf, error_msg);
@@ -1192,6 +1189,8 @@ MR_process_environment_options(void)
         MR_GC_free(option_arg_str);
         MR_GC_free(option_argv);
     }
+
+    MR_GC_free(prog_env_option_name);
 }
 
 enum MR_long_option {
