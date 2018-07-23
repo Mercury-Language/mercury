@@ -115,10 +115,6 @@
 #define MDBRC_FILENAME          ".mdbrc"
 #define DEFAULT_MDBRC_FILENAME  "mdbrc"
 
-#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
-  #define snprintf  _snprintf
-#endif
-
 // XXX We should consider whether all the static variables in this module
 // should be thread local.
 
@@ -1381,9 +1377,9 @@ MR_trace_event_print_internal_report(MR_EventInfo *event_info)
 
         event_num = MR_standardize_event_num(event_info->MR_event_number);
         call_num = MR_standardize_call_num(event_info->MR_call_seqno);
-        snprintf(buf, 64, "E%ld", (long) event_num);
+        MR_snprintf(buf, 64, "E%ld", (long) event_num);
         fprintf(MR_mdb_out, "%8s: ", buf);
-        snprintf(buf, 64, "C%ld", (long) call_num);
+        MR_snprintf(buf, 64, "C%ld", (long) call_num);
         fprintf(MR_mdb_out, "%6s ", buf);
         fprintf(MR_mdb_out, "%s",
             MR_simplified_port_names[event_info->MR_trace_port]);

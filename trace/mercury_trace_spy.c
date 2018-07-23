@@ -24,14 +24,6 @@
 
 #include <stdlib.h>
 
-#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
-  #define snprintf  _snprintf
-#endif
-
-#if defined(MR_HAVE_SNPRINTF) || defined(MR_HAVE__SNPRINTF)
-  #define MR_HAVE_A_SNPRINTF
-#endif
-
 const char      *MR_spy_when_names[] =
 {
     "all",
@@ -735,29 +727,14 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
         }
 
         // There were no matching labels.
-#ifdef  MR_HAVE_A_SNPRINTF
         if (num_file_matches == 0) {
-            snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
+            MR_snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
                 "there is no debuggable source file named %s", filename);
         } else {
-            snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
+            MR_snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
                 "there is no event at line %d in %s",
                 linenumber, filename);
         }
-#else
-        // Not absolutely safe, but the risk of overflow is minimal.
-        if (num_file_matches == 0) {
-            sprintf(MR_error_msg_buf,
-                "there is no debuggable source file named %s", filename);
-        } else {
-            sprintf(MR_error_msg_buf,
-                "there is no event at line %d in file %s",
-                linenumber, filename);
-        }
-        if (strlen(MR_error_msg_buf) >= MR_ERROR_MSG_BUF_SIZE) {
-            MR_fatal_error("MR_add_line_spy_point: buf overflow");
-        }
-#endif
         *problem = MR_error_msg_buf;
         return -1;
     }

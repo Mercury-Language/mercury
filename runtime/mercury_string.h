@@ -13,6 +13,32 @@
 
 #include <string.h>             // for strcmp() etc.
 #include <stdarg.h>
+#include <stdio.h>
+
+// On Windows, snprintf/vsnprintf may be synonyms for _snprintf/_vsnprintf and
+// thus not conform to the C99 specification. Since it is next to impossible to
+// tell at compile time which implementation we are getting, just define a
+// wrapper over _vsnprintf if it exists.
+// Beginning with the UCRT in Visual Studio 2015 and Windows 10, snprintf and
+// vsnprintf are C99 standard compliant so we may be able to drop this code
+// eventually.
+
+#if defined(MR_HAVE__VSNPRINTF)
+    extern int
+    MR_vsnprintf(char *str, size_t size, const char *format, va_list ap);
+#elif defined(MR_HAVE_VSNPRINTF)
+    #define MR_vsnprintf vsnprintf
+#else
+    #error "Missing both vsnprintf and _vsnprintf"
+#endif
+
+#if defined(MR_HAVE__SNPRINTF)
+    extern int MR_snprintf(char *str, size_t size, const char *format, ...);
+#elif defined(MR_HAVE_SNPRINTF)
+    #define MR_snprintf snprintf
+#else
+    #error "Missing both snprintf and _snprintf"
+#endif
 
 // Mercury characters (Unicode code points) are given type `MR_Char',
 // which is a typedef for `MR_int_least32_t'.

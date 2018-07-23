@@ -1314,14 +1314,7 @@ MR_debug_log_message(const char *format, ...)
     buffer = MR_GC_malloc(len);
     while (1) {
         va_start(args, format);
-#ifdef MR_HAVE_VSNPRINTF
-        result = vsnprintf(buffer, len, format, args);
-#elif MR_HAVE__VSNPRINTF
-        result = _vsnprintf(buffer, len, formst, args);
-#else
-        MR_fatal_error(
-            "MR_debug_log_message: Don't have vsnprintf or _vsnprintf\n");
-#endif
+        result = MR_vsnprintf(buffer, len, format, args);
         va_end(args);
         if (result < len) {
             break;

@@ -64,66 +64,34 @@ MR_name_in_string_table(const char *string_table, MR_Integer string_table_size,
         switch (kind) {
             case 0:
                 if (n == 0) {
-#ifdef  MR_HAVE_SNPRINTF
-                    snprintf(buf, MR_MAX_VARNAME_SIZE, "STATE_VARIABLE_%s",
-                        string_table + offset);
-#else
-                    sprintf(buf, "STATE_VARIABLE_%s",
-                        string_table + offset);
-#endif
+                    MR_snprintf(buf, MR_MAX_VARNAME_SIZE,
+                        "STATE_VARIABLE_%s", string_table + offset);
                 } else {
-#ifdef  MR_HAVE_SNPRINTF
-                    snprintf(buf, MR_MAX_VARNAME_SIZE, "STATE_VARIABLE_%s_%d",
-                        string_table + offset, n - 1);
-#else
-                    sprintf(buf, "STATE_VARIABLE_%s_%d",
-                        string_table + offset, n - 1);
-#endif
+                    MR_snprintf(buf, MR_MAX_VARNAME_SIZE,
+                        "STATE_VARIABLE_%s_%d", string_table + offset, n - 1);
                 }
                 break;
 
             case 1:
-#ifdef  MR_HAVE_SNPRINTF
-                snprintf(buf, MR_MAX_VARNAME_SIZE, "TypeCtorInfo_%d", n);
-#else
-                sprintf(buf, "TypeCtorInfo_%d", n);
-#endif
+                MR_snprintf(buf, MR_MAX_VARNAME_SIZE, "TypeCtorInfo_%d", n);
                 break;
 
             case 2:
-#ifdef  MR_HAVE_SNPRINTF
-                snprintf(buf, MR_MAX_VARNAME_SIZE, "TypeInfo_%d", n);
-#else
-                sprintf(buf, "TypeInfo_%d", n);
-#endif
+                MR_snprintf(buf, MR_MAX_VARNAME_SIZE, "TypeInfo_%d", n);
                 break;
 
             case 3:
-#ifdef  MR_HAVE_SNPRINTF
-                snprintf(buf, MR_MAX_VARNAME_SIZE, "BaseTypeClassInfo_for_%s",
-                    string_table + offset);
-#else
-                sprintf(buf, "BaseTypeClassInfo_for_%s",
-                    string_table + offset);
-#endif
+                MR_snprintf(buf, MR_MAX_VARNAME_SIZE,
+                    "BaseTypeClassInfo_for_%s", string_table + offset);
                 break;
 
             case 4:
-#ifdef  MR_HAVE_SNPRINTF
-                snprintf(buf, MR_MAX_VARNAME_SIZE, "TypeClassInfo_for_%s",
-                    string_table + offset);
-#else
-                sprintf(buf, "TypeClassInfo_for_%s",
-                    string_table + offset);
-#endif
+                MR_snprintf(buf, MR_MAX_VARNAME_SIZE,
+                    "TypeClassInfo_for_%s", string_table + offset);
                 break;
 
             case 5:
-#ifdef  MR_HAVE_SNPRINTF
-                snprintf(buf, MR_MAX_VARNAME_SIZE, "PolyConst%d", n);
-#else
-                sprintf(buf, "PolyConst%d", n);
-#endif
+                MR_snprintf(buf, MR_MAX_VARNAME_SIZE, "PolyConst%d", n);
                 break;
 
             default:

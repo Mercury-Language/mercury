@@ -12,6 +12,7 @@
 
 #include "mercury_memory.h"
 #include "mercury_std.h"
+#include "mercury_string.h"
 #include "mercury_array_macros.h"
 #include "mercury_trace_completion.h"
 #include "mercury_trace_internal.h"
@@ -496,7 +497,7 @@ MR_insert_module_into_source_file_line_table(const MR_ModuleLayout *module)
                 continue;
             }
 
-            snprintf(&MR_source_file_line_chars[file_name_len + 1],
+            MR_snprintf(&MR_source_file_line_chars[file_name_len + 1],
                 LINE_NUM_MAX_CHARS, "%d", line_num);
             MR_source_file_lines[MR_source_file_line_next] =
                 strdup(MR_source_file_line_chars);

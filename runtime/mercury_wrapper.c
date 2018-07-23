@@ -58,10 +58,6 @@ ENDINIT
 #include    "mercury_thread.h"          // for MR_debug_threads
 #include    "mercury_threadscope.h"
 
-#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
-  #define snprintf  _snprintf
-#endif
-
 // global variables concerned with testing (i.e. not with the engine)
 
 // command-line options
@@ -1160,13 +1156,13 @@ MR_process_environment_options(void)
             where_buf_cur = 0;
 
             if (gen_env_options[0] != '\0') {
-                snprintf(where_buf, WHERE_BUF_SIZE,
+                MR_snprintf(where_buf, WHERE_BUF_SIZE,
                     "the %s environment variable", MERCURY_OPTIONS);
             }
 
             if (prog_env_options[0] != '\0') {
                 where_buf_cur = strlen(where_buf);
-                snprintf(where_buf + where_buf_cur,
+                MR_snprintf(where_buf + where_buf_cur,
                     WHERE_BUF_SIZE - where_buf_cur,
                     "%sthe %s environment variable",
                     where_buf_cur == 0 ? "" : " and/or ",
@@ -1175,7 +1171,7 @@ MR_process_environment_options(void)
 
             if (MR_runtime_flags[0] != '\0') {
                 where_buf_cur = strlen(where_buf);
-                snprintf(where_buf + where_buf_cur,
+                MR_snprintf(where_buf + where_buf_cur,
                     WHERE_BUF_SIZE - where_buf_cur,
                     "%sthe runtime options built into the executable",
                     where_buf_cur == 0 ? "" : " and/or ");

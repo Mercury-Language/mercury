@@ -1095,7 +1095,7 @@ MR_pneg_enter_else(const char *context)
                 len = strlen(context) + strlen(msg) + 10;
                 buf = malloc(len);
                 if (buf != NULL) {
-                    snprintf(buf, len, "%s: %s", context, msg);
+                    MR_snprintf(buf, len, "%s: %s", context, msg);
                     MR_fatal_error(buf);
                 } else {
                     MR_fatal_error(msg);

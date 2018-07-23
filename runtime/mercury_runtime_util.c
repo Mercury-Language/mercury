@@ -23,17 +23,7 @@
 static void
 generic_strerror(char *buf, size_t buflen, int errnum)
 {
-#if defined(MR_HAVE_SNPRINTF)
-    snprintf(buf, buflen, "Error %d", errnum);
-#elif defined(MR_HAVE__SNPRINTF)
-    // _snprintf does not guarantee null termination.
-    _snprintf(buf, buflen, "Error %d", errnum);
-    if (buflen > 0) {
-        buf[buflen - 1] = '\0';
-    }
-#else
-    #error "generic_error: unable to define"
-#endif
+    MR_snprintf(buf, buflen, "Error %d", errnum);
 }
 
 const char *

@@ -1669,7 +1669,8 @@ MR_table_assert_failed(const char *file, unsigned line)
 {
     char    buf[256];
 
-    snprintf(buf, 256, "assertion failed: file %s, line %d", file, line);
+    MR_snprintf(buf, sizeof(buf), "assertion failed: file %s, line %d",
+        file, line);
     MR_fatal_error(buf);
 }
 #endif

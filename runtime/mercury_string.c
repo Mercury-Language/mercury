@@ -9,12 +9,58 @@
 #include "mercury_imp.h"
 #include "mercury_string.h"
 
-#if defined(MR_HAVE__VSNPRINTF) && ! defined(MR_HAVE_VSNPRINTF)
-  #define vsnprintf _vsnprintf
+#ifdef _MSC_VER
+    // Disable warnings about using _vsnprintf being deprecated.
+    #pragma warning(disable:4996)
+
+    // va_copy is available from VC 2013 onwards.
+    #if _MSC_VER < 1800
+        #define va_copy(a, b)   ((a) = (b))
+    #endif
 #endif
 
-#if defined(MR_HAVE_VSNPRINTF) || defined(MR_HAVE__VSNPRINTF)
-  #define MR_HAVE_A_VSNPRINTF
+#if defined(MR_HAVE__VSNPRINTF)
+int
+MR_vsnprintf(char *str, size_t size, const char *format, va_list ap)
+{
+    va_list     ap_copy;
+    int         n;
+
+    if (size == 0) {
+        return _vsnprintf(NULL, 0, format, ap);
+    }
+
+    // _vsnprintf does not append a null terminator if the output is truncated.
+    // Follow the MS advice of initialising the buffer to null before calling
+    // _vsnprintf with a count strictly less than the buffer length.
+    memset(str, 0, size);
+    va_copy(ap_copy, ap);
+    n = _vsnprintf(str, size - 1, format, ap_copy);
+    va_end(ap_copy);
+
+    if (n == -1) {
+        // Return the number of characters that would have been written
+        // without truncation, to match the behaviour of C99 vsnprintf.
+        n = _vsnprintf(NULL, 0, format, ap);
+    }
+
+    return n;
+}
+#endif
+
+#if defined(MR_HAVE__SNPRINTF)
+int
+MR_snprintf(char *str, size_t size, const char *format, ...)
+{
+    va_list     ap;
+    int         n;
+
+    va_start(ap, format);
+    n = MR_vsnprintf(str, size, format, ap);
+    va_end(ap);
+
+    return n;
+}
 #endif
 
 #define BUFFER_SIZE 4096
@@ -27,7 +73,6 @@ MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...)
     int         n;
     char        *p;
 
-#ifdef MR_HAVE_A_VSNPRINTF
     int         size = BUFFER_SIZE;
     char        fixed[BUFFER_SIZE];
     MR_bool     dynamically_allocated = MR_FALSE;
@@ -42,7 +87,7 @@ MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...)
     while (1) {
         // Try to print in the allocated space.
         va_start(ap, fmt);
-        n = vsnprintf(p, size, fmt, ap);
+        n = MR_vsnprintf(p, size, fmt, ap);
         va_end(ap);
 
         // If that worked, return the string.
@@ -65,28 +110,14 @@ MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...)
         }
     }
 
-#else
-    // It is possible for this buffer to overflow,
-    // and then bad things may happen.
-
-    char fixed[40960];
-
-    va_start(ap, fmt);
-    n = vsprintf(fixed, fmt, ap);
-    va_end(ap);
-
-    p = fixed;
-#endif
     MR_restore_transient_hp();
     MR_allocate_aligned_string_msg(result, strlen(p), alloc_id);
     MR_save_transient_hp();
     strcpy(result, p);
 
-#ifdef MR_HAVE_A_VSNPRINTF
     if (dynamically_allocated) {
         MR_free(p);
     }
-#endif
 
     return result;
 }

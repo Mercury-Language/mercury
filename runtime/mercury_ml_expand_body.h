@@ -1623,17 +1623,10 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_FOREIGN:
             {
                 char buf[MR_FOREIGN_NAME_BUF_SIZE];
-#ifdef  MR_HAVE_SNPRINTF
-                snprintf(buf, MR_FOREIGN_NAME_BUF_SIZE,
+                MR_snprintf(buf, MR_FOREIGN_NAME_BUF_SIZE,
                     "<<foreign(%s, %p)>>",
                     type_ctor_info->MR_type_ctor_name,
                     (void *) *data_word_ptr);
-#else
-                sprintf(buf,
-                    "<<foreign(%s, %p)>>",
-                    type_ctor_info->MR_type_ctor_name,
-                    (void *) *data_word_ptr);
-#endif
                 // The contents of the memory occupied by buf may change.
                 copy_and_handle_functor_name(buf);
                 handle_zero_arity_args();
@@ -1643,17 +1636,10 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
             {
                 char buf[MR_FOREIGN_NAME_BUF_SIZE];
-#ifdef  MR_HAVE_SNPRINTF
-                snprintf(buf, MR_FOREIGN_NAME_BUF_SIZE,
+                MR_snprintf(buf, MR_FOREIGN_NAME_BUF_SIZE,
                     "<<stable_foreign(%s, %p)>>",
                     type_ctor_info->MR_type_ctor_name,
                     (void *) *data_word_ptr);
-#else
-                sprintf(buf,
-                    "<<stable_foreign(%s, %p)>>",
-                    type_ctor_info->MR_type_ctor_name,
-                    (void *) *data_word_ptr);
-#endif
                 // The contents of the memory occupied by buf may change.
                 copy_and_handle_functor_name(buf);
                 handle_zero_arity_args();

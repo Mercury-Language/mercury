@@ -2160,27 +2160,15 @@ MR_trace_printed_var_name(const MR_ProcLayout *proc,
             attr = &value->MR_value_attr;
             attr_var_name = MR_hlds_var_name(proc,
                 attr->MR_attr_var_hlds_number, NULL);
-#ifdef  MR_HAVE_SNPRINTF
             if (attr_var_name != NULL && strcmp(attr_var_name, "") != 0) {
-                snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                MR_snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
                     "%s (attr %d, %s)", attr->MR_attr_name,
                     attr->MR_attr_num, attr_var_name);
             } else {
-                snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                MR_snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
                     "%s (attr %d)", attr->MR_attr_name,
                     attr->MR_attr_num);
             }
-#else
-            if (attr_var_name != NULL && strcmp(attr_var_name, "") != 0) {
-                sprintf(MR_var_name_buf,
-                    "%s (attr %d, %s)", attr->MR_attr_name,
-                    attr->MR_attr_num, attr_var_name);
-            } else {
-                sprintf(MR_var_name_buf,
-                    "%s (attr %d)", attr->MR_attr_name,
-                    attr->MR_attr_num);
-            }
-#endif
             break;
 
         case MR_VALUE_PROG_VAR:
@@ -2193,42 +2181,22 @@ MR_trace_printed_var_name(const MR_ProcLayout *proc,
                 ! MR_streq(var->MR_var_basename, "HeadVar__"))
             {
                 if (var->MR_var_is_ambiguous) {
-#ifdef  MR_HAVE_SNPRINTF
-                    snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                    MR_snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
                         "%s(%d) (arg %d)", var->MR_var_fullname,
                         var->MR_var_hlds_number, var->MR_var_is_headvar);
-#else
-                    sprintf(MR_var_name_buf, "%s(%d) (arg %d)",
-                        var->MR_var_fullname,
-                        var->MR_var_hlds_number, var->MR_var_is_headvar);
-#endif
                 } else {
-#ifdef  MR_HAVE_SNPRINTF
-                    snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                    MR_snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
                         "%s (arg %d)", var->MR_var_fullname,
                         var->MR_var_is_headvar);
-#else
-                    sprintf(MR_var_name_buf, "%s (arg %d)",
-                        var->MR_var_fullname, var->MR_var_is_headvar);
-#endif
                 }
             } else {
                 if (var->MR_var_is_ambiguous) {
-#ifdef  MR_HAVE_SNPRINTF
-                    snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                    MR_snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
                         "%s(%d)", var->MR_var_fullname,
                         var->MR_var_hlds_number);
-#else
-                    sprintf(MR_var_name_buf, "%s(%d)",
-                        var->MR_var_fullname, var->MR_var_hlds_number);
-#endif
                 } else {
-#ifdef  MR_HAVE_SNPRINTF
-                    snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE, "%s",
-                        var->MR_var_fullname);
-#else
-                    sprintf(MR_var_name_buf, "%s", var->MR_var_fullname);
-#endif
+                    MR_snprintf(MR_var_name_buf, MR_TRACE_VAR_NAME_BUF_SIZE,
+                        "%s", var->MR_var_fullname);
                 }
             }
 

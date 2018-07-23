@@ -39,10 +39,6 @@ ENDINIT
   #include <sys/wait.h>     // for the wait system call
 #endif
 
-#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
-  #define snprintf  _snprintf
-#endif
-
 #define MR_TRACE_COUNT_SUMMARY_MAX_DEFAULT  20
 
 void                (*MR_trace_shutdown)(void) = NULL;
@@ -297,7 +293,7 @@ MR_trace_record_label_exec_counts(void *dummy)
             fp = NULL;
             // Search for a suffix that doesn't exist yet.
             for (i = 1; i <= MR_trace_count_summary_max; i++) {
-                snprintf(name, name_len, "%s.%d",
+                MR_snprintf(name, name_len, "%s.%d",
                     MR_trace_count_summary_file, i);
                 if (! MR_FILE_EXISTS(name)) {
                     // File doesn't exist, commit to this one.
@@ -325,7 +321,7 @@ MR_trace_record_label_exec_counts(void *dummy)
         name_len = strlen(MERCURY_TRACE_COUNTS_PREFIX) + strlen(program_name)
             + 100;
         name = MR_malloc(name_len);
-        snprintf(name, name_len, ".%s.%s.%d", MERCURY_TRACE_COUNTS_PREFIX,
+        MR_snprintf(name, name_len, ".%s.%s.%d", MERCURY_TRACE_COUNTS_PREFIX,
             program_name, getpid());
 
         // Make sure name is an acceptable filename.
@@ -389,7 +385,8 @@ MR_trace_record_label_exec_counts(void *dummy)
         strcat(cmd, MR_trace_count_summary_file);
 
         for (i = 1; i <= MR_trace_count_summary_max; i++) {
-            snprintf(name, name_len, "%s.%d", MR_trace_count_summary_file, i);
+            MR_snprintf(name, name_len, "%s.%d",
+                MR_trace_count_summary_file, i);
             strcat(cmd, " ");
             strcat(cmd, name);
         }
@@ -416,7 +413,7 @@ MR_trace_record_label_exec_counts(void *dummy)
             if (mv_status == 0) {
                 // Delete all files whose data is now in the summary file.
                 for (i = 1; i <= MR_trace_count_summary_max; i++) {
-                    snprintf(name, name_len, "%s.%d",
+                    MR_snprintf(name, name_len, "%s.%d",
                         MR_trace_count_summary_file, i);
                     unlink_status = unlink(name);
                     if (unlink_status != 0) {

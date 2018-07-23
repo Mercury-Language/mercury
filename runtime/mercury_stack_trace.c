@@ -17,10 +17,6 @@
 #include "mercury_tabling.h"
 #include <stdio.h>
 
-#if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
-  #define snprintf  _snprintf
-#endif
-
 static int          MR_compare_proc_layout_ptrs(
                         const void *pl1, const void *pl2);
 
@@ -1965,9 +1961,9 @@ MR_print_call_trace_info(FILE *fp, const MR_ProcLayout *proc_layout,
             // Do not print the context id, since it is not standardized.
             event_num = MR_standardize_event_num(event_num);
             call_num = MR_standardize_call_num(call_num);
-            snprintf(buf, 64, "E%lu", event_num);
+            MR_snprintf(buf, 64, "E%lu", event_num);
             fprintf(fp, "%7s ", buf);
-            snprintf(buf, 64, "C%lu", call_num);
+            MR_snprintf(buf, 64, "C%lu", call_num);
             fprintf(fp, "%7s ", buf);
             fprintf(fp, "%4lu ", depth);
         } else {

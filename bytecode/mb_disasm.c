@@ -61,14 +61,14 @@ static void str_op_arg(MB_Op_arg op_arg, char *buffer, int buffer_len);
 /*
 ** Macros for printing:
 ** Expects buffer & buffer_len to be defined.
-** Wraps calls to snprintf, checks if the buffer is full and
+** Wraps calls to MR_snprintf, checks if the buffer is full and
 ** if it is, returns from the function
 */
 
 #define PRINT()		if (buffer_len > 1) {			\
 				int last_len;			\
 				assert(buffer_len > 0);		\
-				last_len = snprintf(buffer, buffer_len,
+				last_len = MR_snprintf(buffer, buffer_len,
 
 /* printf arguments get sandwiched between these macros */
 #define ENDPRINT()				);		\
@@ -749,8 +749,6 @@ str_cons_id(MB_Cons_id cons_id, char *buffer, int buffer_len)
 	PRINT()
 		"]"
 	ENDPRINT()
-
-	buffer[buffer_len-1] = 0; /* snprintf may not do it if a long string */
 } /* end str_cons_id() */
 
 static void
@@ -759,33 +757,33 @@ str_tag(MB_Tag tag, char *buffer, int buffer_len)
 	
 	switch (tag.id) {
 		case MB_TAG_SIMPLE:
-			snprintf(buffer, buffer_len,
+			MR_snprintf(buffer, buffer_len,
 				"%s %d",
 				"simple_tag",
 				(int) tag.opt.primary);
 			break;
 		case MB_TAG_COMPLICATED:
-			snprintf(buffer, buffer_len,
+			MR_snprintf(buffer, buffer_len,
 				"%s %d %ld",
 				"complicated_tag", 
 				(int) tag.opt.pair.primary, 
 				(long int) tag.opt.pair.secondary);
 			break;
 		case MB_TAG_COMPLICATED_CONSTANT:
-			snprintf(buffer, buffer_len,
+			MR_snprintf(buffer, buffer_len,
 				"%s %d %ld",
 				"complicated_constant_tag", 
 				(int) tag.opt.pair.primary, 
 				(long int) tag.opt.pair.secondary);
 			break;
 		case MB_TAG_ENUM:
-			snprintf(buffer, buffer_len,
+			MR_snprintf(buffer, buffer_len,
 				"%s %d",
 				"enum_tag",
 				(int) tag.opt.enum_tag);
 			break;
 		case MB_TAG_NONE:
-			snprintf(buffer, buffer_len,
+			MR_snprintf(buffer, buffer_len,
 				"%s",
 				"no_tag");
 			break;
@@ -794,9 +792,6 @@ str_tag(MB_Tag tag, char *buffer, int buffer_len)
 			assert(FALSE); /* XXX */
 			break;
 	} /* end switch */
-	
-	/* snprintf may not append a null character */
-	buffer[buffer_len-1] = 0;
 } /* end str_tag() */
 
 /*

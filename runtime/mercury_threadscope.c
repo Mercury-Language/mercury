@@ -1875,7 +1875,7 @@ MR_open_output_file_and_write_prelude(void)
 
     filename_len = strlen(progname_base) + strlen(MR_TS_FILENAME_FORMAT) + 1;
     MR_threadscope_output_filename = MR_GC_NEW_ARRAY(char, filename_len);
-    snprintf(MR_threadscope_output_filename, filename_len,
+    MR_snprintf(MR_threadscope_output_filename, filename_len,
         MR_TS_FILENAME_FORMAT, progname_base);
     free(progname_copy);
     progname_copy = NULL;
