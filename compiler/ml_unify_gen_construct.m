@@ -986,7 +986,7 @@ ml_genenate_dynamic_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
         LHSRval = ml_cast_cons_tag(LHS_MLDS_Type, ConsTag, RHSRval),
         LHSGroundTerm = ml_ground_term(LHSRval, LHSType, LHS_MLDS_Type),
         ml_gen_info_set_const_var(LHSVar, LHSGroundTerm, !Info),
-        Stmt = ml_gen_assign(LHSLval, RHSRval, Context),
+        Stmt = ml_gen_assign(LHSLval, LHSRval, Context),
         Stmts = [Stmt]
     else
         ml_gen_var(!.Info, RHSVar, RHSLval),
