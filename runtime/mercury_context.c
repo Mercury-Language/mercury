@@ -1619,6 +1619,12 @@ MR_check_pending_contexts(MR_bool block)
         return 0;
     }
 
+    // The following code (and the select interface in general) assumes that
+    // relevant file descriptors are all < FD_SETSIZE, but some systems allow
+    // the file descriptor limit to be raised higher.
+    // Fixing this potential problem is not a high priority as pending I/O is
+    // not actually implemented.
+
     MR_fd_zero(&rd_set0);
     MR_fd_zero(&wr_set0);
     MR_fd_zero(&ex_set0);
