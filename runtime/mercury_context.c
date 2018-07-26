@@ -1605,7 +1605,7 @@ MR_check_pending_contexts(MR_bool block)
 #ifdef  MR_CAN_DO_PENDING_IO
     int                 err;
     int                 max_fd;
-    int                 num_ids;
+    int                 num_fds;
     int                 n_ids;
     fd_set              rd_set0;
     fd_set              wr_set0;
