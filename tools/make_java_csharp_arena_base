@@ -28,12 +28,18 @@
 # The companion script make_java_csharp_diff then puts the output
 # of the compiler under test in those grades in arena.java and arena.csharp
 # respectively, and compares them to their respective bases.
+#
+# The environment variable PARALLEL controls the maximum number of compiler
+# processes to run at a time.
 
 if test "${BASE_MMC}" = ""
 then
     echo "make_java_csharp_base: you need to set BASE_MMC in the environment"
     exit 1
 fi
+
+PARALLEL=${PARALLEL:-`nproc 2>/dev/null`}
+PARALLEL=${PARALLEL:-1}
 
 dirs="library mdbcomp browser compiler slice profiler deep_profiler"
 
@@ -65,19 +71,15 @@ ${BASE_MMC} -f *.m
 cd ${root}
 cp -rp arena.base arena.base.java
 cd ${root}/arena.base.java
-for f in *.m
-do
-    echo === JAVA ${f} ===
-    ${BASE_MMC} --grade java --target-code-only ${f}
-done
+echo === JAVA ===
+echo *.m | xargs -P${PARALLEL} -n1 -t \
+    ${BASE_MMC} --grade java --target-code-only
 
 cd ${root}
 cp -rp arena.base arena.base.csharp
 cd ${root}/arena.base.csharp
-for f in *.m
-do
-    echo === CSHARP ${f} ===
-    ${BASE_MMC} --grade csharp --target-code-only ${f}
-done
+echo === CSHARP ===
+echo *.m | xargs -P${PARALLEL} -n1 -t \
+    ${BASE_MMC} --grade csharp --target-code-only
 
 exit 0

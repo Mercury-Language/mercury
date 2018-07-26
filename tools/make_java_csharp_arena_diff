@@ -9,6 +9,9 @@ then
     exit 1
 fi
 
+PARALLEL=${PARALLEL:-`nproc 2>/dev/null`}
+PARALLEL=${PARALLEL:-1}
+
 root=`/bin/pwd`
 
 /bin/rm -fr arena.java arena.csharp > /dev/null 2>&1
@@ -16,18 +19,14 @@ cp -rp arena.base arena.java
 cp -rp arena.base arena.csharp
 
 cd ${root}/arena.java
-for f in *.m
-do
-    echo === JAVA ${f} ===
-    ${TEST_MMC} --grade java --target-code-only ${f}
-done
+echo === JAVA ===
+echo *.m | xargs -P${PARALLEL} -n1 -t \
+    ${TEST_MMC} --grade java --target-code-only
 
 cd ${root}/arena.csharp
-for f in *.m
-do
-    echo === CSHARP ${f} ===
-    ${TEST_MMC} --grade csharp --target-code-only ${f}
-done
+echo === CSHARP ===
+echo *.m | xargs -P${PARALLEL} -n1 -t \
+    ${TEST_MMC} --grade csharp --target-code-only
 
 cd ${root}
 diff -ur arena.base.java arena.java > DIFF.ARENA.JAVA 2>&1
