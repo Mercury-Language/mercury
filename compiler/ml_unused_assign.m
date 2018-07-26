@@ -402,7 +402,10 @@ delete_unused_in_atomic_stmt_return_cord(Stmt0, StmtCord,
         ( if
             TargetLval = ml_local_var(TargetLocalVarName, _Type),
             not set.member(TargetLocalVarName, SeenAfter),
-            not TargetLocalVarName = lvn_comp_var(_)
+            ( TargetLocalVarName = lvn_prog_var(_, _)
+            ; TargetLocalVarName = lvn_prog_var_boxed(_, _)
+            ; TargetLocalVarName = lvn_prog_var_conv(_, _, _)
+            )
         then
             % We are deleting this statement, because the value it defines
             % (TargetLocalVarName) is unused.
