@@ -318,6 +318,7 @@ ORDINARY_PROGS = \
 	special_char \
 	stable_sort \
 	static_no_tag \
+	static_term_bug \
 	stdlib_init \
 	stream_format \
 	stream_ignore_ws \
