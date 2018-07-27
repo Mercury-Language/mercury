@@ -399,7 +399,13 @@ build_type_repn_map([TypeRepn | TypeRepns], !TypeRepnMap) :-
 
 :- type packable_kind
     --->    packable_dummy
-    ;       packable_n_bits(int, fill_kind).    % XXX ARG_PACK should be uint
+    ;       packable_n_bits(int, fill_kind).
+            % The number of bits should logically be a uint, not an int,
+            % since an argument cannot take a negative number of bits.
+            % However, it is better to represent it as an int until
+            % the infrastructure for uints is better developed,
+            % e.g. until we can do logs operations on them, or print them,
+            % without converting them to an int first.
 
 :- type component_type_kind
     --->    packable(packable_kind)
@@ -1015,8 +1021,9 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
             TypeCtor, TypeStatus, CtorTagMap, NumRemoteSecTagBits),
         Ctors, CtorRepns, map.init, CtorRepnMap, !Specs),
     compute_cheaper_tag_test(TypeCtor, CtorRepns, CheaperTagTest),
-    % XXX TYPE_REPN The maybe() wrapper is unnecessary; the info it contains
-    % is already present in the nil vs cons distinction on the list.
+    % The maybe() wrapper looks to be unnecessary, but we currently use it
+    % to allow the representation of "where direct_arg is []" annotations
+    % on types, such as in tests/invalid/where_direct_arg.m.
     (
         DirectArgFunctorNames = [],
         MaybeDirectArgFunctorNames = no

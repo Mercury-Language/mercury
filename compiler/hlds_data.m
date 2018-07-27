@@ -1188,6 +1188,10 @@ set_type_defn_prev_errors(X, !Defn) :-
                 % XXX TYPE_REPN Include this information in the
                 % constructor_repns in the dur_ctor_repns and dur_ctor_map
                 % fields.
+                % The maybe() wrapper looks to be unnecessary, but we
+                % currently use it to allow the representation of
+                % "where direct_arg is []" annotations on types,
+                % such as in tests/invalid/where_direct_arg.m.
                 dur_direct_arg_ctors        :: maybe(list(sym_name_and_arity))
             ).
 
