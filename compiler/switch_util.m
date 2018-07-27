@@ -593,7 +593,7 @@ estimate_switch_tag_test_cost(ConsTag) = Cost :-
         Cost = 3
     ;
         ( ConsTag = shared_local_tag_no_args(_, _, lsectag_must_be_masked)
-        ; ConsTag = shared_local_tag_with_args(_, _)
+        ; ConsTag = local_args_tag(_)
         ),
         % You need to compute the primary tag, compare it, then compute
         % and compare the local secondary tag.
@@ -1252,10 +1252,19 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
                 SectagLocn = sectag_local_bits(NumSectagBits, Mask)
             )
         ;
-            ConsTag = shared_local_tag_with_args(Ptag, LocalSectag),
-            LocalSectag = local_sectag(SecondaryUint, _, SectagBits),
-            SectagBits = sectag_bits(NumSectagBits, Mask),
-            SectagLocn = sectag_local_bits(NumSectagBits, Mask)
+            ConsTag = local_args_tag(LocalArgsTagInfo),
+            (
+                LocalArgsTagInfo = local_args_only_functor,
+                % You can't switch on a variable of a type that has
+                % only one function symbol.
+                unexpected($pred, "local_args_only_functor")
+            ;
+                LocalArgsTagInfo = local_args_not_only_functor(Ptag,
+                    LocalSectag),
+                LocalSectag = local_sectag(SecondaryUint, _, SectagBits),
+                SectagBits = sectag_bits(NumSectagBits, Mask),
+                SectagLocn = sectag_local_bits(NumSectagBits, Mask)
+            )
         ),
         Ptag = ptag(Primary),
         Secondary = uint.cast_to_int(SecondaryUint),
@@ -1373,10 +1382,19 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
                 SectagLocn = sectag_local_bits(NumSectagBits, Mask)
             )
         ;
-            ConsTag = shared_local_tag_with_args(Ptag, LocalSectag),
-            LocalSectag = local_sectag(SecondaryUint, _, SectagBits),
-            SectagBits = sectag_bits(NumSectagBits, Mask),
-            SectagLocn = sectag_local_bits(NumSectagBits, Mask)
+            ConsTag = local_args_tag(LocalArgsTagInfo),
+            (
+                LocalArgsTagInfo = local_args_only_functor,
+                % You can't switch on a variable of a type that has
+                % only one function symbol.
+                unexpected($pred, "local_args_only_functor")
+            ;
+                LocalArgsTagInfo = local_args_not_only_functor(Ptag,
+                    LocalSectag),
+                LocalSectag = local_sectag(SecondaryUint, _, SectagBits),
+                SectagBits = sectag_bits(NumSectagBits, Mask),
+                SectagLocn = sectag_local_bits(NumSectagBits, Mask)
+            )
         ),
         Secondary = uint.cast_to_int(SecondaryUint),
         ( if map.search(!.PtagCaseMap, Ptag, Group) then

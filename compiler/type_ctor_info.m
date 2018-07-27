@@ -648,7 +648,7 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], CurOrdinal,
         ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = shared_local_tag_no_args(_, _, _)
-        ; ConsTag = shared_local_tag_with_args(_, _)
+        ; ConsTag = local_args_tag(_)
         ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = no_tag
         ; ConsTag = dummy_tag
@@ -760,10 +760,20 @@ get_du_rep(ConsTag, DuRep) :-
         ),
         DuRep = du_ll_rep(Ptag, SectagAndLocn)
     ;
-        ConsTag = shared_local_tag_with_args(Ptag, LocalSectag),
-        LocalSectag = local_sectag(SectagUint, _PrimSec, SectagBits),
-        SectagBits = sectag_bits(NumBits, Mask),
-        SectagAndLocn = sectag_locn_local_bits(SectagUint, NumBits, Mask),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            Ptag = ptag(0u8),
+            SectagUint = 0u,
+            NumSectagBits = 0u8,
+            SectagMask = 0u
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(Ptag, LocalSectag),
+            LocalSectag = local_sectag(SectagUint, _PrimSec, SectagBits),
+            SectagBits = sectag_bits(NumSectagBits, SectagMask)
+        ),
+        SectagAndLocn =
+            sectag_locn_local_bits(SectagUint, NumSectagBits, SectagMask),
         DuRep = du_ll_rep(Ptag, SectagAndLocn)
     ;
         ConsTag = shared_remote_tag(Ptag, RemoteSectag),

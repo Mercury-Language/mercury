@@ -226,21 +226,28 @@ generate_test_rval_has_cons_tag(CI, VarRval, ConsTag, TestRval) :-
             VarSectagRval, ConstSectagRval),
         TestRval = binop(logical_and, PtagTestRval, SectagTestRval)
     ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
-        % We generate the same test as for shared_local_tag_no_args
-        % with lsectag_must_be_masked.
-        LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),
-        ConstPrimSecRval = const(llconst_uint(PrimSec)),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            % In a type with only one cons_id, all vars have that one cons_id.
+            TestRval = const(llconst_true)
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag),
+            % We generate the same test as for shared_local_tag_no_args
+            % with lsectag_must_be_masked.
+            LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),
+            ConstPrimSecRval = const(llconst_uint(PrimSec)),
 
-        code_info.get_num_ptag_bits(CI, NumPtagBits),
-        SectagBits = sectag_bits(NumSectagBits, _SectagMask),
-        NumPtagSectagBits = uint8.cast_to_int(NumPtagBits + NumSectagBits),
-        PrimSecMask = (1u << NumPtagSectagBits) - 1u,
-        % ZZZ uint vs int
-        MaskedVarRval = binop(bitwise_and(int_type_uint),
-            VarRval, const(llconst_uint(PrimSecMask))),
+            code_info.get_num_ptag_bits(CI, NumPtagBits),
+            SectagBits = sectag_bits(NumSectagBits, _SectagMask),
+            NumPtagSectagBits = uint8.cast_to_int(NumPtagBits + NumSectagBits),
+            PrimSecMask = (1u << NumPtagSectagBits) - 1u,
+            MaskedVarRval = binop(bitwise_and(int_type_uint),
+                VarRval, const(llconst_uint(PrimSecMask))),
 
-        TestRval = binop(eq(int_type_uint), MaskedVarRval, ConstPrimSecRval)
+            TestRval = binop(eq(int_type_uint),
+                MaskedVarRval, ConstPrimSecRval)
+        )
     ;
         ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, MustMask),
         LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),

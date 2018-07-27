@@ -493,7 +493,7 @@ ml_tag_ptag_and_initial_offset(ConsTag, Ptag, InitOffset) :-
         ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = no_tag
         ; ConsTag = shared_local_tag_no_args(_, _, _)
-        ; ConsTag = shared_local_tag_with_args(_, _)
+        ; ConsTag = local_args_tag(_)
         ),
         unexpected($pred, "unexpected tag")
     ).

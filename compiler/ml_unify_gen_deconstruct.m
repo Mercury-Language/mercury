@@ -251,7 +251,7 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
         ml_gen_dynamic_deconstruct_args(FieldGen, RHSVarRepns, ArgModes,
             FirstArgNum, Context, [], _, Defns, Stmts, !Info)
     ;
-        ConsTag = shared_local_tag_with_args(_, _),
+        ConsTag = local_args_tag(_),
         ml_gen_var(!.Info, LHSVar, LHSVarLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),

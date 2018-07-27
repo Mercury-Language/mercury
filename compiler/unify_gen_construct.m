@@ -220,15 +220,9 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             Context, MayUseAtomic, ConstructCode, !CI, !CLD),
         Code = PackCode ++ ConstructCode
     ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
-        expect(unify(TakeAddr, []), $pred,
-            "shared_local_tag_with_args, TakeAddr != []"),
-        LocalSectag = local_sectag(_, PrimSec, _),
-        ( if PrimSec = 0u then
-            RevToOrRvals0 = []
-        else
-            RevToOrRvals0 = [const(llconst_uint(PrimSec))]
-        ),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
+        expect(unify(TakeAddr, []), $pred, "local_args_tag, TakeAddr != []"),
+        maybe_accumulate_local_sectag(LocalArgsTagInfo, RevToOrRvals0),
         generate_and_pack_tagword(RHSVarsWidths, ArgModes,
             RevToOrRvals0, RevToOrRvals, !.CI),
         list.reverse(RevToOrRvals, ToOrRvals),
@@ -979,15 +973,9 @@ generate_ground_term_conjunct(ModuleInfo, ExprnOpts, Goal,
         ActiveGroundTerm = typed_rval(LHSRval, lt_data_ptr),
         map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
     ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
-        expect_not(unify(RHSVars, []), $pred,
-            "shared_local_tag_with_args has no args"),
-        LocalSectag = local_sectag(_, PrimSec, _),
-        ( if PrimSec = 0u then
-            RevToOrRvals0 = []
-        else
-            RevToOrRvals0 = [const(llconst_uint(PrimSec))]
-        ),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
+        expect_not(unify(RHSVars, []), $pred, "local_args_tag has no args"),
+        maybe_accumulate_local_sectag(LocalArgsTagInfo, RevToOrRvals0),
         associate_cons_id_args_with_widths(ModuleInfo, ConsId,
             RHSVars, RHSVarsWidths),
         generate_ground_term_args_for_one_word(RHSVarsWidths,
@@ -1189,15 +1177,14 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         Rval = mkword(Ptag, CellPtrConst),
         TypedRval = typed_rval(Rval, lt_data_ptr)
     ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
         expect_not(unify(ConstArgsPosWidths, []), $pred,
-            "shared_local_tag_with_args has no args"),
-        LocalSectag = local_sectag(_, PrimSec, _),
-        PrimSecRval = const(llconst_int(uint.cast_to_int(PrimSec))),
+            "local_args_tag has no args"),
+        maybe_accumulate_local_sectag(LocalArgsTagInfo, RevToOrRvals0),
         generate_const_struct_args_for_one_word(ModuleInfo,
             UnboxedFloats, UnboxedInt64s, ConstStructMap,
             ConstArgsPosWidths, LeftOverConstArgsPosWidths,
-            [PrimSecRval], RevToOrRvals),
+            RevToOrRvals0, RevToOrRvals),
         list.reverse(RevToOrRvals, ToOrRvals),
         Rval = bitwise_or_rvals(ToOrRvals),
         expect(unify(LeftOverConstArgsPosWidths, []), $pred, "left over args"),
@@ -1412,7 +1399,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
         ; ConsTag = shared_remote_tag(_, _)
-        ; ConsTag = shared_local_tag_with_args(_, _)
+        ; ConsTag = local_args_tag(_)
         ; ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = closure_tag(_, _, _)
@@ -1422,6 +1409,23 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
+:- pred maybe_accumulate_local_sectag(local_args_tag_info::in,
+    list(rval)::out) is det.
+
+maybe_accumulate_local_sectag(LocalArgsTagInfo, RevToOrRvals0) :-
+    (
+        LocalArgsTagInfo = local_args_only_functor,
+        PrimSec = 0u
+    ;
+        LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag),
+        LocalSectag = local_sectag(_, PrimSec, _)
+    ),
+    ( if PrimSec = 0u then
+        RevToOrRvals0 = []
+    else
+        RevToOrRvals0 = [const(llconst_uint(PrimSec))]
+    ).
 
 :- pred maybe_shift_and_accumulate_or_rval(rval::in, arg_shift::in,
     fill_kind::in, list(rval)::in, list(rval)::out) is det.

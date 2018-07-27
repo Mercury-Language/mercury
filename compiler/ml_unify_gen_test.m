@@ -187,22 +187,30 @@ ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, ConsTag, TestRval) :-
             TestRval = ml_binop(logical_and, PtagTestRval, SectagTestRval)
         )
     ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
-        % We generate the same test as for shared_local_tag_no_args
-        % with lsectag_must_be_masked.
-        LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),
-        ConstPrimSecRval = ml_const(mlconst_uint(PrimSec)),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            % In a type with only one cons_id, all vars have that one cons_id.
+            TestRval = ml_const(mlconst_true)
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag),
+            % We generate the same test as for shared_local_tag_no_args
+            % with lsectag_must_be_masked.
+            LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),
+            ConstPrimSecRval = ml_const(mlconst_uint(PrimSec)),
 
-        ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
-        SectagBits = sectag_bits(NumSectagBits, _SectagMask),
-        NumPtagSectagBits = uint8.cast_to_int(NumPtagBits + NumSectagBits),
-        PrimSecMask = (1u << NumPtagSectagBits) - 1u,
-        MaskedVarRval = ml_binop(bitwise_and(int_type_uint),
-            VarRval, ml_const(mlconst_uint(PrimSecMask))),
+            ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
+            SectagBits = sectag_bits(NumSectagBits, _SectagMask),
+            NumPtagSectagBits = uint8.cast_to_int(NumPtagBits + NumSectagBits),
+            PrimSecMask = (1u << NumPtagSectagBits) - 1u,
+            MaskedVarRval = ml_binop(bitwise_and(int_type_uint),
+                VarRval, ml_const(mlconst_uint(PrimSecMask))),
 
-        % There is no need for a cast, since the Java backend
-        % does not support local secondary tags that must be masked.
-        TestRval = ml_binop(eq(int_type_uint), MaskedVarRval, ConstPrimSecRval)
+            % There is no need for a cast, since the Java backend
+            % does not support local secondary tags that must be masked.
+            TestRval = ml_binop(eq(int_type_uint),
+                MaskedVarRval, ConstPrimSecRval)
+        )
     ;
         ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, MustMask),
         LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),

@@ -163,15 +163,15 @@
             % the memory cell containing the arguments, and distinguishes
             % the several functors that all share the same primary tag value.
 
-    ;       shared_local_tag_with_args(ptag, local_sectag)
-            % As the name implies this cons_id is a variant of
-            % shared_local_tag_no_args that is intended for function symbols
-            % that *do* have arguments, arguments that fit into a single word
-            % *after* the primary and the local secondary tag.
+    ;       local_args_tag(local_args_tag_info)
+            % This cons_id is a variant of shared_local_tag_no_args that is
+            % intended for function symbols that *do* have arguments,
+            % arguments that fit into a single word *after* the primary
+            % and the local secondary tag (if there is a sectag).
             % If a primary tag value has any such cons_ids allocated for it,
             % then the bits in a word after the primary tag may include
-            % these arguments, so accessing the secondary tag requires masking
-            % off all the non-sectag bits.
+            % these arguments, so accessing the secondary tag (if any)
+            % requires masking off all the non-sectag bits.
 
     ;       no_tag
             % This is for types with a single functor of arity one. In this
@@ -229,6 +229,14 @@
 :- type ptag
     --->    ptag(uint8).
 
+:- type local_args_tag_info
+    --->    local_args_only_functor
+            % There are no other function symbols in the type.
+            % The ptag is implicitly zero, and there is no local sectag.
+    ;       local_args_not_only_functor(ptag, local_sectag).
+            % There are other function symbols in the type.
+            % The arguments specify the ptag and the local sectag (if any).
+
 :- type local_sectag
     --->    local_sectag(
                 lsectag_value       :: uint,
@@ -236,7 +244,8 @@
                 % The ptag and the local sectag together.
                 lsectag_prim_sec    :: uint,
 
-                % The size and mask of the sectag.
+                % The size and mask of the sectag. If the number of bits
+                % is zero, then there is no local sectag.
                 lsectag_bits        :: sectag_bits
             ).
 
@@ -341,9 +350,17 @@ get_maybe_primary_tag(Tag) = MaybePtag :-
     ;
         ( Tag = unshared_tag(Ptag)
         ; Tag = direct_arg_tag(Ptag)
-        ; Tag = shared_local_tag_no_args(Ptag, _, _)
-        ; Tag = shared_local_tag_with_args(Ptag, _)
         ; Tag = shared_remote_tag(Ptag, _)
+        ; Tag = shared_local_tag_no_args(Ptag, _, _)
+        ),
+        MaybePtag = yes(Ptag)
+    ;
+        Tag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            Ptag = ptag(0u8)
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(Ptag, _LocalSectag)
         ),
         MaybePtag = yes(Ptag)
     ).
@@ -378,9 +395,15 @@ get_maybe_secondary_tag(Tag) = MaybeSectag :-
         Sectag = uint.cast_to_int(SectagUint),
         MaybeSectag = yes(Sectag)
     ;
-        Tag = shared_local_tag_with_args(_Ptag, LocalSectag),
-        LocalSectag = local_sectag(SectagUint, _, _),
-        Sectag = uint.cast_to_int(SectagUint),
+        Tag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            Sectag = 0
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag),
+            LocalSectag = local_sectag(SectagUint, _, _),
+            Sectag = uint.cast_to_int(SectagUint)
+        ),
         MaybeSectag = yes(Sectag)
     ;
         Tag = shared_remote_tag(_Ptag, RemoteSectag),

@@ -132,7 +132,6 @@
 :- import_module multi_map.
 :- import_module pair.
 :- import_module require.
-:- import_module set_tree234.
 :- import_module string.
 :- import_module term.
 :- import_module uint.
@@ -218,30 +217,19 @@ decide_type_repns(!ModuleInfo, !Specs) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     get_all_type_ctor_defns(TypeTable0, TypeCtorsTypeDefns0),
 
-    % We use MustBeSingleFunctorTagTypes as a sanity check.
-    % Pass 1 adds a type to it if it requires pass 2 to represent its one
-    % constructor with a single_functor_tag; pass 2 removes a type from it
-    % when it does so. At the end, we check that the resulting set is empty,
-    % which means pass 2 fulfilled all the expectations of pass 1 in this
-    % respect.
-    MustBeSingleFunctorTagTypes0 = set_tree234.init,
     map.init(ComponentTypeMap0),
     map.init(NoTagTypeMap0),
-    list.map_foldl4(
+    list.map_foldl3(
         decide_if_simple_du_type(!.ModuleInfo, Params,
             TypeCtorToForeignEnumMap),
         TypeCtorsTypeDefns0, TypeCtorsTypeDefns1,
-        MustBeSingleFunctorTagTypes0, MustBeSingleFunctorTagTypes1,
         ComponentTypeMap0, ComponentTypeMap,
         NoTagTypeMap0, NoTagTypeMap, !Specs),
     module_info_set_no_tag_types(NoTagTypeMap, !ModuleInfo),
 
-    list.map_foldl2(
+    list.map_foldl(
         decide_if_complex_du_type(!.ModuleInfo, Params, ComponentTypeMap),
-        TypeCtorsTypeDefns1, TypeCtorsTypeDefns,
-        MustBeSingleFunctorTagTypes1, MustBeSingleFunctorTagTypes, !Specs),
-    expect(set_tree234.is_empty(MustBeSingleFunctorTagTypes), $pred,
-        "some MustBeSingleFunctionTag type is not SingleFunctionTag"),
+        TypeCtorsTypeDefns1, TypeCtorsTypeDefns, !Specs),
     set_all_type_ctor_defns(TypeCtorsTypeDefns, TypeTable),
     module_info_set_type_table(TypeTable, !ModuleInfo),
 
@@ -411,7 +399,7 @@ build_type_repn_map([TypeRepn | TypeRepns], !TypeRepnMap) :-
 
 :- type packable_kind
     --->    packable_dummy
-    ;       packable_n_bits(int, fill_kind).
+    ;       packable_n_bits(int, fill_kind).    % XXX ARG_PACK should be uint
 
 :- type component_type_kind
     --->    packable(packable_kind)
@@ -423,13 +411,12 @@ build_type_repn_map([TypeRepn | TypeRepns], !TypeRepnMap) :-
 :- pred decide_if_simple_du_type(module_info::in, decide_du_params::in,
     type_ctor_to_foreign_enums_map::in,
     pair(type_ctor, hlds_type_defn)::in, pair(type_ctor, hlds_type_defn)::out,
-    set_tree234(type_ctor)::in, set_tree234(type_ctor)::out,
     component_type_map::in, component_type_map::out,
     no_tag_type_table::in, no_tag_type_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
-        TypeCtorTypeDefn0, TypeCtorTypeDefn, !MustBeSingleFunctorTagTypes,
+        TypeCtorTypeDefn0, TypeCtorTypeDefn,
         !ComponentTypeMap, !NoTagTypeMap, !Specs) :-
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
@@ -469,7 +456,7 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
             else
                 add_du_if_single_ctor_is_word_aligned_ptr(Params, TypeCtor,
                     TypeDefn0, MaybeForeign,
-                    !MustBeSingleFunctorTagTypes, !ComponentTypeMap),
+                    !ComponentTypeMap),
 
                 % Figure out the representation of these types
                 % in the second pass.
@@ -713,11 +700,10 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, Body0,
 
 :- pred add_du_if_single_ctor_is_word_aligned_ptr(decide_du_params::in,
     type_ctor::in, hlds_type_defn::in, maybe(foreign_type_body)::in,
-    set_tree234(type_ctor)::in, set_tree234(type_ctor)::out,
     component_type_map::in, component_type_map::out) is det.
 
 add_du_if_single_ctor_is_word_aligned_ptr(Params, TypeCtor, TypeDefn,
-        MaybeForeign, !MustBeSingleFunctorTagTypes, !ComponentTypeMap) :-
+        MaybeForeign, !ComponentTypeMap) :-
     % Are we guaranteed to choose a word aligned pointer as the representation?
     ( if
         TypeCtor = type_ctor(_TypeCtorSymName, TypeCtorArity),
@@ -738,8 +724,6 @@ add_du_if_single_ctor_is_word_aligned_ptr(Params, TypeCtor, TypeDefn,
         DirectArgMap = Params ^ ddp_direct_arg_map,
         not map.search(DirectArgMap, TypeCtor, _DirectArgFunctors)
     then
-        set_tree234.insert(TypeCtor, !MustBeSingleFunctorTagTypes),
-
         % XXX TYPE_REPN This test is only for backward compatibility.
         % The code we should use long term is the else arm.
         ( if
@@ -829,12 +813,10 @@ add_abstract_if_packable(TypeCtor, AbstractDetails,
 :- pred decide_if_complex_du_type(module_info::in, decide_du_params::in,
     component_type_map::in,
     pair(type_ctor, hlds_type_defn)::in, pair(type_ctor, hlds_type_defn)::out,
-    set_tree234(type_ctor)::in, set_tree234(type_ctor)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
-        TypeCtorTypeDefn0, TypeCtorTypeDefn,
-        !MustBeSingleFunctorTagTypes, !Specs) :-
+        TypeCtorTypeDefn0, TypeCtorTypeDefn, !Specs) :-
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
@@ -847,8 +829,7 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
         ;
             MaybeRepn0 = no,
             decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
-                TypeCtor, TypeDefn0, Ctors, MaybeCanonical, Repn,
-                !MustBeSingleFunctorTagTypes, !Specs),
+                TypeCtor, TypeDefn0, Ctors, MaybeCanonical, Repn, !Specs),
             Body = Body0 ^ du_type_repn := yes(Repn),
             set_type_defn_body(Body, TypeDefn0, TypeDefn),
             TypeCtorTypeDefn = TypeCtor - TypeDefn
@@ -866,28 +847,17 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
 :- pred decide_complex_du_type(module_info::in, decide_du_params::in,
     component_type_map::in, type_ctor::in, hlds_type_defn::in,
     list(constructor)::in, maybe_canonical::in, du_type_repn::out,
-    set_tree234(type_ctor)::in, set_tree234(type_ctor)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap, TypeCtor,
-        TypeDefn0, Ctors, MaybeCanonical, Repn,
-        !MustBeSingleFunctorTagTypes, !Specs) :-
-    ( if set_tree234.remove(TypeCtor, !MustBeSingleFunctorTagTypes) then
-        ( if Ctors = [SingleCtorPrime] then
-            SingleCtor = SingleCtorPrime
-        else
-            unexpected($pred, "unexpected type in MustBeSingleFunctorTagTypes")
-        ),
-        get_type_defn_status(TypeDefn0, TypeStatus),
-        decide_complex_du_type_single_ctor(ModuleInfo, Params,
-            ComponentTypeMap, TypeStatus, SingleCtor, Repn, !Specs)
-    else if Ctors = [SingleCtor] then
-        get_type_defn_status(TypeDefn0, TypeStatus),
+        TypeDefn0, Ctors, MaybeCanonical, Repn, !Specs) :-
+    get_type_defn_status(TypeDefn0, TypeStatus),
+    ( if Ctors = [SingleCtor] then
         decide_complex_du_type_single_ctor(ModuleInfo, Params,
             ComponentTypeMap, TypeStatus, SingleCtor, Repn, !Specs)
     else
         decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
-            TypeCtor, TypeDefn0, Ctors, MaybeCanonical, Repn, !Specs)
+            TypeCtor, TypeStatus, Ctors, MaybeCanonical, Repn, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -912,12 +882,28 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
     % treat it differently when implementing deconstructions; a deconstruction
     % unification with a shared_local_tag_with_args cons_id may fail,
     % whereas a similar unification with the new tag cannot fail.
-    SingleCtorTag = single_functor_tag,
-    NumRemoteSecTagBits = 0,
-    decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
-        TypeStatus, NumRemoteSecTagBits, SingleCtorTag, MaybeExistConstraints,
-        SingleCtorSymName, SingleCtorContext,
-        SingleCtorArgs, SingleCtorArgRepns, !Specs),
+    ( if
+        Params ^ ddp_maybe_primary_tags = max_primary_tag(_, NumPtagBits),
+        Params ^ ddp_allow_packing_local_sectags = yes,
+        ctor_has_all_packable_args(Params, ComponentTypeMap, SingleCtor,
+            NumCtorArgBits),
+        NumPtagBits + NumCtorArgBits =< Params ^ ddp_arg_pack_bits
+    then
+        SingleCtorTag = local_args_tag(local_args_only_functor),
+        % This LocalSectag says the local sectag contains zero bits,
+        % and its value is zero both without and with the primary tag
+        % (which is therefore also zero).
+        LocalSectag = local_sectag(0u, 0u, sectag_bits(0u8, 0u)),
+        decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
+            LocalSectag, SingleCtorArgs, SingleCtorArgRepns, !Specs)
+    else
+        SingleCtorTag = single_functor_tag,
+        NumRemoteSecTagBits = 0,
+        decide_complex_du_ctor_remote_args(ModuleInfo, Params,
+            ComponentTypeMap, TypeStatus, NumRemoteSecTagBits, SingleCtorTag,
+            MaybeExistConstraints, SingleCtorSymName, SingleCtorContext,
+            SingleCtorArgs, SingleCtorArgRepns, !Specs)
+    ),
     SingleCtorRepn = ctor_repn(Ordinal, MaybeExistConstraints,
         SingleCtorSymName, SingleCtorTag,
         SingleCtorArgRepns, SingleCtorArity, SingleCtorContext),
@@ -932,13 +918,12 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
 %---------------------------------------------------------------------------%
 
 :- pred decide_complex_du_type_general(module_info::in, decide_du_params::in,
-    component_type_map::in, type_ctor::in, hlds_type_defn::in,
+    component_type_map::in, type_ctor::in, type_status::in,
     list(constructor)::in, maybe_canonical::in, du_type_repn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
-        TypeCtor, TypeDefn0, Ctors, _MaybeCanonical, Repn, !Specs) :-
-    get_type_defn_status(TypeDefn0, TypeStatus),
+        TypeCtor, TypeStatus, Ctors, _MaybeCanonical, Repn, !Specs) :-
     Target = Params ^ ddp_target,
     UsesConstructors = target_uses_constructors(Target),
     (
@@ -1068,7 +1053,17 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
             TypeStatus, NumRemoteSecTagBits, CtorTag, MaybeExistConstraints,
             CtorSymName, CtorContext, CtorArgs, CtorArgRepns, !Specs)
     ;
-        CtorTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        CtorTag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            % Our parent predicate decide_complex_du_type_general
+            % should never assign this tag to a Ctor. Any ctor for which
+            % this tag is the right tag should be handled by our parent's
+            % sister predicate decide_complex_du_type_single_ctor.
+            unexpected($pred, "local_args_only_functor")
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag)
+        ),
         expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
             "shared_local_tag_with_args but exist_constraints"),
         decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
@@ -1566,7 +1561,7 @@ assign_tags_to_local_packed_functors(TypeCtor, Ptag, NumPtagBits, SectagBits,
     Ptag = ptag(PtagUint8),
     PrimSec = (CurSecTag << NumPtagBits) \/ uint8.cast_to_uint(PtagUint8),
     LocalSectag = local_sectag(CurSecTag, PrimSec, SectagBits),
-    ConsTag = shared_local_tag_with_args(Ptag, LocalSectag),
+    ConsTag = local_args_tag(local_args_not_only_functor(Ptag, LocalSectag)),
     map.det_insert(ConsId, ConsTag, !CtorTagMap),
     assign_tags_to_local_packed_functors(TypeCtor, Ptag, NumPtagBits,
         SectagBits, CurSecTag + 1u, Ctors, !CtorTagMap).
@@ -2539,19 +2534,25 @@ separate_out_local_sectag_packable(Params, ComponentTypeMap,
         [Ctor | Ctors], Packable, NonPackable) :-
     separate_out_local_sectag_packable(Params, ComponentTypeMap,
         Ctors, PackableTail, NonPackableTail),
-    Args = Ctor ^ cons_args,
     ( if
-        args_are_all_packable(Params, ComponentTypeMap, Args, 0, NumBits),
-        Ctor ^ cons_maybe_exist = no_exist_constraints,
-        not (
-            unqualify_name(Ctor ^ cons_name) = Params ^ ddp_experiment
-        )
+        ctor_has_all_packable_args(Params, ComponentTypeMap, Ctor, NumBits)
     then
         Packable = [NumBits - Ctor | PackableTail],
         NonPackable = NonPackableTail
     else
         Packable = PackableTail,
         NonPackable = [Ctor | NonPackableTail]
+    ).
+
+:- pred ctor_has_all_packable_args(decide_du_params::in,
+    component_type_map::in, constructor::in, int::out) is semidet.
+
+ctor_has_all_packable_args(Params, ComponentTypeMap, Ctor, NumBits) :-
+    Args = Ctor ^ cons_args,
+    args_are_all_packable(Params, ComponentTypeMap, Args, 0, NumBits),
+    Ctor ^ cons_maybe_exist = no_exist_constraints,
+    not (
+        unqualify_name(Ctor ^ cons_name) = Params ^ ddp_experiment
     ).
 
 :- pred args_are_all_packable(decide_du_params::in, component_type_map::in,

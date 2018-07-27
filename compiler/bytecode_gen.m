@@ -912,8 +912,8 @@ map_cons_tag(ConsTag, ByteConsTag) :-
         Sectag = uint.cast_to_int(SectagUint),
         ByteConsTag = byte_shared_local_tag(ptag_to_int(Ptag), Sectag)
     ;
-        ConsTag = shared_local_tag_with_args(_Ptag, _LocalSecTag),
-        sorry($pred, "bytecode with shared_local_tag_with_args")
+        ConsTag = local_args_tag(_),
+        sorry($pred, "bytecode with local_args_tag")
     ;
         ConsTag = shared_remote_tag(Ptag, RemoteSecTag),
         RemoteSecTag = remote_sectag(SectagUint, _),

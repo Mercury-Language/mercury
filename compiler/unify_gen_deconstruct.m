@@ -265,7 +265,7 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
         generate_deconstruct_unify_args(FieldsAndArgVars, ArgModes, Code,
             CI, !CLD)
     ;
-        ConsTag = shared_local_tag_with_args(_, _),
+        ConsTag = local_args_tag(_),
         associate_cons_id_args_with_widths(ModuleInfo, ConsId,
             RHSVars, RHSVarsWidths),
         generate_deconstruct_tagword_unify_args(LHSVar, RHSVarsWidths,

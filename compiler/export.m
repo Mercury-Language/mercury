@@ -1022,7 +1022,7 @@ foreign_const_name_and_tag(Mapping, CtorRepn, !NamesAndTagsCord) :-
         ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = shared_local_tag_no_args(_, _, _)
-        ; ConsTag = shared_local_tag_with_args(_, _)
+        ; ConsTag = local_args_tag(_)
         ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = no_tag
         ),

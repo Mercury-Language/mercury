@@ -1024,7 +1024,7 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
         ; Tag = unshared_tag(_)
         ; Tag = direct_arg_tag(_)
         ; Tag = shared_local_tag_no_args(_, _, _)
-        ; Tag = shared_local_tag_with_args(_, _)
+        ; Tag = local_args_tag(_)
         ; Tag = shared_remote_tag(_, _)
         ; Tag = no_tag
         ; Tag = dummy_tag
@@ -1118,7 +1118,7 @@ enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval) :-
         ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = shared_local_tag_no_args(_, _, _)
-        ; ConsTag = shared_local_tag_with_args(_, _)
+        ; ConsTag = local_args_tag(_)
         ; ConsTag = shared_remote_tag(_, _)
         ; ConsTag = no_tag
         ),

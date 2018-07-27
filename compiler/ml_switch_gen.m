@@ -635,7 +635,7 @@ ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type, TaggedConsId, MatchCond) :-
         ; Tag = unshared_tag(_)
         ; Tag = direct_arg_tag(_)
         ; Tag = shared_local_tag_no_args(_, _, _)
-        ; Tag = shared_local_tag_with_args(_, _)
+        ; Tag = local_args_tag(_)
         ; Tag = shared_remote_tag(_, _)
         ; Tag = no_tag
         ; Tag = dummy_tag
@@ -644,8 +644,6 @@ ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type, TaggedConsId, MatchCond) :-
     ),
     MatchCond = match_value(Rval).
 
-    % Generate an appropriate default for a switch.
-    %
 ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info) :-
     (
         CanFail = can_fail,

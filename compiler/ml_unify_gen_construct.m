@@ -224,10 +224,17 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             RHSVars, ArgModes, TakeAddr, HowToConstruct, Context,
             Defns, Stmts, !Info)
     ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            PrimSec = 0u
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag),
+            LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits)
+        ),
         expect(unify(TakeAddr, []), $pred,
             "taking address of non word-sized argument"),
-        ml_generate_dynamic_construct_tagword_compound(ConsId, LocalSectag,
+        ml_generate_dynamic_construct_tagword_compound(ConsId, PrimSec,
             LHSVar, RHSVars, ArgModes, HowToConstruct, Context, Stmts, !Info),
         Defns = []
     ;
@@ -311,11 +318,11 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, ConsTag, RHSVars,
         HowToConstruct, Context, Defns, Stmts, !Info).
 
 :- pred ml_generate_dynamic_construct_tagword_compound(cons_id::in,
-    local_sectag::in, prog_var::in, list(prog_var)::in, list(unify_mode)::in,
+    uint::in, prog_var::in, list(prog_var)::in, list(unify_mode)::in,
     how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_dynamic_construct_tagword_compound(ConsId, LocalSectag, Var,
+ml_generate_dynamic_construct_tagword_compound(ConsId, PrimSec, Var,
         ArgVars, ArgModes, HowToConstruct, Context, Stmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_var_types(!.Info, VarTypes),
@@ -325,7 +332,6 @@ ml_generate_dynamic_construct_tagword_compound(ConsId, LocalSectag, Var,
         VarType, ConsId, ArgVars, ArgVarsTypesWidths),
     (
         list.reverse(RevOrRvals, OrRvals),
-        LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
         TagwordRval = ml_bitwise_or_some_rvals(
             ml_const(mlconst_uint(PrimSec)), OrRvals),
         (
@@ -1132,7 +1138,13 @@ ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         ),
         unexpected($pred, "unexpected constant")
     ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            LocalSectag = local_sectag(0u, 0u, sectag_bits(0u8, 0u))
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag)
+        ),
         LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
         associate_cons_id_args_with_types_widths(ModuleInfo,
             lookup_var_type_func(VarTypes), may_not_have_extra_args,
@@ -1429,7 +1441,13 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
             ConsId, ConsTag, Ptag, ExtraRvals, Args,
             !ConstStructMap, !GlobalData)
     ;
-        ConsTag = shared_local_tag_with_args(_Ptag, LocalSectag),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            LocalSectag = local_sectag(0u, 0u, sectag_bits(0u8, 0u))
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag)
+        ),
         LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
         ml_gen_const_static_args_widths(Info, Type, ConsId, Args,
             ArgsTypesWidths),
@@ -1640,7 +1658,7 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         % This tag *looks like* it builds heap cells (since it *does* build
         % non-constant terms), so it is handled with the other tags that
         % build structures.
-        ; ConsTag = shared_local_tag_with_args(_, _)
+        ; ConsTag = local_args_tag(_)
         % These tag should never occur in constant data.
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = tabling_info_tag(_, _)
