@@ -25,6 +25,7 @@
 --c-include-directory ../mdbcomp
 --c-include-directory ../mdbcomp/Mercury/mihs
 --csharp-flag -keyfile:../mercury.snk
+@CSHARP_DELAYSIGN_FLAG@
 --erlang-include-directory ../library/Mercury/hrls
 --erlang-include-directory ../mdbcomp/Mercury/hrls
 -L../boehm_gc

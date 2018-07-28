@@ -21,6 +21,7 @@
 --c-include-directory ../runtime
 --c-include-directory ../robdd
 --csharp-flag -keyfile:../mercury.snk
+@CSHARP_DELAYSIGN_FLAG@
 -L../boehm_gc
 -L../runtime
 -L../library

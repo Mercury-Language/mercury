@@ -20,6 +20,7 @@
 --c-include-directory ../library
 --c-include-directory ../library/Mercury/mihs
 --csharp-flag -keyfile:../mercury.snk
+@CSHARP_DELAYSIGN_FLAG@
 --erlang-include-directory ../library/Mercury/hrls
 -L../boehm_gc
 -L../runtime
