@@ -1573,14 +1573,9 @@ __Compare__private_builtin__ref_1_0(
     %
 :- impure pred store_at_ref_impure(store_at_ref_type(T)::in, T::in) is det.
 
-    % This is deprecated. The compiler should now generate calls to
-    % store_at_ref_impure.
-    %
-:- pred store_at_ref(store_at_ref_type(T)::in, T::in) is det.
-
     % This type should be used only by the program transformation that
-    % introduces calls to store_at_ref. Any other use is will cause bad things
-    % to happen.
+    % introduces calls to store_at_ref_impure. Any other use is will cause
+    % bad things to happen.
 :- type store_at_ref_type(T)
     --->    store_at_ref_type(int).
 

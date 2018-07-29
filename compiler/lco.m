@@ -60,11 +60,11 @@
 %   (
 %       A == [],
 %       C := B,
-%       store_at_ref(AddrC, C)
+%       store_at_ref_impure(AddrC, C)
 %   ;
 %       A => [H | T],
 %       C <= [H | _HT] capture &HT in AddrHT
-%       store_at_ref(AddrC, C)
+%       store_at_ref_impure(AddrC, C)
 %       app'(T, B, AddrHT)
 %   )
 %
@@ -102,12 +102,12 @@
 %
 %   p'(In1, ... InN, Ref1, ... OutM) :-
 %       Out1 = ground,
-%       store_at_ref(Ref1, Out1)
+%       store_at_ref_impure(Ref1, Out1)
 %   p'(In1, ... InN, Ref1, Out2... OutM) :-
 %       ...
 %       Out1 = f1(...Mid1...)
 %           capture addr of Mid1 in Addr1
-%       store_at_ref(Ref1, Out1)
+%       store_at_ref_impure(Ref1, Out1)
 %       p'(In1, ... InN, Addr1, Out2... OutM)
 %
 %-----------------------------------------------------------------------------%
@@ -147,7 +147,7 @@
 %   instead of store_at_ref_type(T) arguments.
 %
 % 2 The holes in the output arguments are filled in with unifications
-%   instead of a store_at_ref builtin.
+%   instead of a store_at_ref_impure builtin.
 %
 % 3 Variant procedures need to know the functor and position of the argument in
 %   the partially instantiated structures, so many more variants could be

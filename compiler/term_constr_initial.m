@@ -542,8 +542,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
             SizeVar2 = prog_var_to_size_var(SizeVarMap, HVar2),
             ConstraintsPrime = [make_vars_eq_constraint(SizeVar1, SizeVar2)]
         else if
-            ( PredName = "store_at_ref"
-            ; PredName = "store_at_ref_impure"
+            ( PredName = "store_at_ref_impure"
             ; PredName = "builtin_compound_eq"
             ; PredName = "builtin_compound_lt"
             )

@@ -345,9 +345,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
             )
         ;
             % These predicates are incompatible with some backends.
-            ( Name = "store_at_ref_impure"
-            ; Name = "store_at_ref"
-            ),
+            Name = "store_at_ref_impure",
             require_complete_switch [CompilationTarget]
             (
                 ( CompilationTarget = target_java
