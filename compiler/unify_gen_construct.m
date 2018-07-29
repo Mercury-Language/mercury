@@ -274,158 +274,118 @@ generate_and_pack_construct_args([], [_ | _], _, _, _,
 generate_and_pack_construct_args([_ | _], [], _, _, _,
         !MayUseAtomic, !Code, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_and_pack_construct_args([VarWidth | VarsWidths], [ArgMode | ArgModes],
-        !.CurArgNum, !.TakeAddr, CellArgs,
+generate_and_pack_construct_args([RHSVarWidth | RHSVarsWidths],
+        [ArgMode | ArgModes], CurArgNum, !.TakeAddr, CellArgs,
         !MayUseAtomic, !Code, CI, !CLD) :-
-    VarWidth = arg_and_width(Var, ArgPosWidth),
+    RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
     (
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
-        ; ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
-        ; ArgPosWidth = apw_none_shifted(_, _)
         ),
-        generate_and_pack_construct_word(Var, ArgPosWidth, VarsWidths,
-            ArgMode, ArgModes, LeftOverVarsWidths, LeftOverArgModes,
-            !CurArgNum, !TakeAddr, HeadCellArg, !MayUseAtomic, !Code,
-            CI, !CLD),
-        generate_and_pack_construct_args(LeftOverVarsWidths, LeftOverArgModes,
-            !.CurArgNum, !.TakeAddr,
-            TailCellArgs, !MayUseAtomic, !Code, CI, !CLD),
-        CellArgs = [HeadCellArg | TailCellArgs]
-    ;
-        ArgPosWidth = apw_none_nowhere,
-        ( if !.TakeAddr = [!.CurArgNum | _] then
-            unexpected($pred, "taking address of dummy")
+        ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
+            get_lcmc_null(CI, LCMCNull),
+            (
+                ArgPosWidth = apw_full(_, _),
+                (
+                    LCMCNull = no,
+                    MaybeNull = no
+                ;
+                    LCMCNull = yes,
+                    MaybeNull = yes(const(llconst_int(0)))
+                ),
+                HeadCellArgs = [cell_arg_take_addr_one_word(RHSVar, MaybeNull)]
+            ;
+                ArgPosWidth = apw_double(_, _, _),
+                (
+                    LCMCNull = no,
+                    MaybeNulls = no
+                ;
+                    LCMCNull = yes,
+                    Null = const(llconst_int(0)),
+                    MaybeNulls = yes({Null, Null})
+                ),
+                HeadCellArgs =
+                    [cell_arg_take_addr_two_words(RHSVar, MaybeNulls)]
+            ),
+            !:MayUseAtomic = may_not_use_atomic_alloc
         else
-            !:CurArgNum = !.CurArgNum + 1,
-            generate_and_pack_construct_args(VarsWidths, ArgModes,
-                !.CurArgNum, !.TakeAddr, CellArgs,
-                !MayUseAtomic, !Code, CI, !CLD)
-        )
-    ).
-
-:- inst not_nowhere for arg_pos_width/0
-    --->    apw_full(ground, ground)
-    ;       apw_double(ground, ground, ground)
-    ;       apw_partial_first(ground, ground, ground, ground, ground, ground)
-    ;       apw_partial_shifted(ground, ground, ground, ground, ground, ground)
-    ;       apw_none_shifted(ground, ground).
-
-:- pred generate_and_pack_construct_word(
-    prog_var::in, arg_pos_width::in(not_nowhere),
-    list(arg_and_width(prog_var))::in,
-    unify_mode::in, list(unify_mode)::in,
-    list(arg_and_width(prog_var))::out, list(unify_mode)::out,
-    int::in, int::out, list(int)::in, list(int)::out, cell_arg::out,
-    may_use_atomic_alloc::in, may_use_atomic_alloc::out,
-    llds_code::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
-
-generate_and_pack_construct_word(RHSVar, ArgPosWidth, VarsWidths,
-        ArgMode, ArgModes, LeftOverVarsWidths, LeftOverArgModes,
-        CurArgNum, LeftOverArgNum, !TakeAddr, CellArg,
-        !MayUseAtomic, !Code, CI, !CLD) :-
-    ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
-        LeftOverVarsWidths = VarsWidths,
-        LeftOverArgModes = ArgModes,
-        LeftOverArgNum = CurArgNum + 1,
-        get_lcmc_null(CI, LCMCNull),
-        (
-            ArgPosWidth = apw_full(_, _),
-            (
-                LCMCNull = no,
-                MaybeNull = no
-            ;
-                LCMCNull = yes,
-                MaybeNull = yes(const(llconst_int(0)))
-            ),
-            CellArg = cell_arg_take_addr_one_word(RHSVar, MaybeNull)
-        ;
-            ArgPosWidth = apw_double(_, _, _),
-            (
-                LCMCNull = no,
-                MaybeNulls = no
-            ;
-                LCMCNull = yes,
-                Null = const(llconst_int(0)),
-                MaybeNulls = yes({Null, Null})
-            ),
-            CellArg = cell_arg_take_addr_two_words(RHSVar, MaybeNulls)
-        ;
-            ( ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
-            ; ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
-            ),
-            unexpected($pred, "taking address of partial word")
-        ;
-            ArgPosWidth = apw_none_shifted(_, _),
-            % Even if the variable in this field is produced *after*
-            % the recursive call, we know in advance what its value will be,
-            % so we should be able to fill in this field *before*
-            % the recursive call.
-            unexpected($pred, "taking address of dummy")
-        ),
-        !:MayUseAtomic = may_not_use_atomic_alloc
-    else
-        generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal, RHSRval,
-            !Code, CI, !CLD),
-        get_module_info(CI, ModuleInfo),
-        % XXX Should we update !MayUseAtomic for dummy types?
-        update_type_may_use_atomic_alloc(ModuleInfo, RHSType, !MayUseAtomic),
-        (
+            generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal,
+                RHSRval, !Code, CI, !CLD),
+            get_module_info(CI, ModuleInfo),
+            % XXX Should we update !MayUseAtomic for dummy types?
+            update_type_may_use_atomic_alloc(ModuleInfo, RHSType,
+                !MayUseAtomic),
             (
                 ArgPosWidth = apw_full(_, _),
                 (
                     IsReal = not_real_input_arg,
-                    CellArg = cell_arg_skip_one_word
+                    HeadCellArgs = [cell_arg_skip_one_word]
                 ;
                     IsReal = real_input_arg,
-                    CellArg = cell_arg_full_word(RHSRval, complete)
+                    HeadCellArgs = [cell_arg_full_word(RHSRval, complete)]
                 )
             ;
                 ArgPosWidth = apw_double(_, _, _),
                 (
                     IsReal = not_real_input_arg,
-                    CellArg = cell_arg_skip_two_words
+                    HeadCellArgs = [cell_arg_skip_two_words]
                 ;
                     IsReal = real_input_arg,
-                    CellArg = cell_arg_double_word(RHSRval)
+                    HeadCellArgs = [cell_arg_double_word(RHSRval)]
                 )
-            ),
-            LeftOverVarsWidths = VarsWidths,
-            LeftOverArgModes = ArgModes,
-            LeftOverArgNum = CurArgNum + 1
+            )
+        ),
+        LeftOverRHSVarsWidths = RHSVarsWidths,
+        LeftOverArgModes = ArgModes,
+        LeftOverArgNum = CurArgNum + 1
+    ;
+        ArgPosWidth = apw_partial_first(_, _, Shift, _, _, Fill),
+        expect(not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
+            "taking address of partial word"),
+        generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal,
+            RHSRval, !Code, CI, !CLD),
+        get_module_info(CI, ModuleInfo),
+        update_type_may_use_atomic_alloc(ModuleInfo, RHSType, !MayUseAtomic),
+        (
+            IsReal = not_real_input_arg,
+            Completeness0 = incomplete,
+            RevToOrRvals0 = []
         ;
-            ArgPosWidth = apw_partial_first(_, _, Shift, _, _, Fill),
-            (
-                IsReal = not_real_input_arg,
-                Completeness0 = incomplete,
-                RevToOrRvals0 = []
-            ;
-                IsReal = real_input_arg,
-                Completeness0 = complete,
-                maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
-                    [], RevToOrRvals0)
-            ),
-            NextArgNum = CurArgNum + 1,
-            generate_and_pack_one_cons_word(VarsWidths, ArgModes,
-                LeftOverVarsWidths, LeftOverArgModes,
-                NextArgNum, LeftOverArgNum, !TakeAddr,
-                RevToOrRvals0, RevToOrRvals, Completeness0, Completeness,
-                !MayUseAtomic, !Code, CI, !CLD),
-            list.reverse(RevToOrRvals, ToOrRvals),
-            PackedRval = bitwise_or_rvals(ToOrRvals),
-            % ARG_PACK: Attach Completeness to the *vector* of cell args,
-            % not to each *individual* cell arg.
-            CellArg = cell_arg_full_word(PackedRval, Completeness)
-        ;
-            ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _),
-            unexpected($pred, "apw_partial_shifted")
-        ;
-            ArgPosWidth = apw_none_shifted(_, _),
-            unexpected($pred, "apw_none_shifted")
-        )
-    ).
+            IsReal = real_input_arg,
+            Completeness0 = complete,
+            maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
+                [], RevToOrRvals0)
+        ),
+        NextArgNum = CurArgNum + 1,
+        generate_and_pack_one_cons_word(RHSVarsWidths, ArgModes,
+            LeftOverRHSVarsWidths, LeftOverArgModes,
+            NextArgNum, LeftOverArgNum, !TakeAddr,
+            RevToOrRvals0, RevToOrRvals, Completeness0, Completeness,
+            !MayUseAtomic, !Code, CI, !CLD),
+        list.reverse(RevToOrRvals, ToOrRvals),
+        PackedRval = bitwise_or_rvals(ToOrRvals),
+        % ARG_PACK: Attach Completeness to the *vector* of cell args,
+        % not to each *individual* cell arg.
+        HeadCellArgs = [cell_arg_full_word(PackedRval, Completeness)]
+    ;
+        ArgPosWidth = apw_none_nowhere,
+        expect(not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
+            "taking address of dummy"),
+        HeadCellArgs = [],
+        LeftOverRHSVarsWidths = RHSVarsWidths,
+        LeftOverArgModes = ArgModes,
+        LeftOverArgNum = CurArgNum + 1
+    ;
+        ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _),
+        unexpected($pred, "apw_partial_shifted")
+    ;
+        ArgPosWidth = apw_none_shifted(_, _),
+        unexpected($pred, "apw_none_shifted")
+    ),
+    generate_and_pack_construct_args(LeftOverRHSVarsWidths, LeftOverArgModes,
+        LeftOverArgNum, !.TakeAddr, TailCellArgs,
+        !MayUseAtomic, !Code, CI, !CLD),
+    CellArgs = HeadCellArgs ++ TailCellArgs.
 
 :- pred generate_and_pack_one_cons_word(
     list(arg_and_width(prog_var))::in, list(unify_mode)::in,
@@ -448,11 +408,12 @@ generate_and_pack_one_cons_word([_ | _], [], _, _, _, _,
         !TakeAddr, !RevToOrRvals, !Completeness, !MayUseAtomic,
         !Code, _, !CLD) :-
     unexpected($pred, "length misnatch").
-generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
-        LeftOverVarsWidths, LeftOverArgModes, CurArgNum, LeftOverArgNum,
+generate_and_pack_one_cons_word([RHSVarWidth | RHSVarsWidths],
+        [ArgMode | ArgModes], LeftOverRHSVarsWidths, LeftOverArgModes,
+        CurArgNum, LeftOverArgNum,
         !TakeAddr, !RevToOrRvals, !Completeness, !MayUseAtomic,
         !Code, CI, !CLD) :-
-    VarWidth = arg_and_width(RHSVar, ArgPosWidth),
+    RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
     (
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
@@ -460,7 +421,7 @@ generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
         ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
         ),
         % This argument is not part of this word.
-        LeftOverVarsWidths = [VarWidth | VarsWidths],
+        LeftOverRHSVarsWidths = [RHSVarWidth | RHSVarsWidths],
         LeftOverArgModes = [ArgMode | ArgModes],
         LeftOverArgNum = CurArgNum
     ;
@@ -468,11 +429,8 @@ generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
         ; ArgPosWidth = apw_none_shifted(_, _)
         ),
         % This argument *is* part of this word.
-        ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
-            unexpected($pred, "taking address of partial word")
-        else
-            true
-        ),
+        expect(not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
+            "taking address of partial word"),
         generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal, RHSRval,
             !Code, CI, !CLD),
         get_module_info(CI, ModuleInfo),
@@ -492,8 +450,8 @@ generate_and_pack_one_cons_word([VarWidth | VarsWidths], [ArgMode | ArgModes],
             % We change neither !Completeness nor !RevToOrRvals.
         ),
         NextArgNum = CurArgNum + 1,
-        generate_and_pack_one_cons_word(VarsWidths, ArgModes,
-            LeftOverVarsWidths, LeftOverArgModes, NextArgNum, LeftOverArgNum,
+        generate_and_pack_one_cons_word(RHSVarsWidths, ArgModes,
+            LeftOverRHSVarsWidths, LeftOverArgModes, NextArgNum, LeftOverArgNum,
             !TakeAddr, !RevToOrRvals, !Completeness, !MayUseAtomic,
             !Code, CI, !CLD)
     ).
@@ -507,9 +465,9 @@ generate_and_pack_tagword([], [_ | _], !RevToOrRvals, _) :-
     unexpected($pred, "length misnatch").
 generate_and_pack_tagword([_ | _], [], !RevToOrRvals, _) :-
     unexpected($pred, "length misnatch").
-generate_and_pack_tagword([VarWidth | VarsWidths], [ArgMode | ArgModes],
+generate_and_pack_tagword([RHSVarWidth | RHSVarsWidths], [ArgMode | ArgModes],
         !RevToOrRvals, CI) :-
-    VarWidth = arg_and_width(RHSVar, ArgPosWidth),
+    RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
     (
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
@@ -532,7 +490,7 @@ generate_and_pack_tagword([VarWidth | VarsWidths], [ArgMode | ArgModes],
     ;
         ArgPosWidth = apw_none_shifted(_, _)
     ),
-    generate_and_pack_tagword(VarsWidths, ArgModes, !RevToOrRvals, CI).
+    generate_and_pack_tagword(RHSVarsWidths, ArgModes, !RevToOrRvals, CI).
 
 :- pred generate_construct_arg_rval(prog_var::in, unify_mode::in,
     mer_type::out, maybe_real_input_arg::out, rval::out,
@@ -1492,7 +1450,8 @@ store_int_tag_statically(IntType, UnboxedInt64s, MayStoreDoubleWidthStatically,
 :- pred store_float_tag_statically(have_unboxed_floats::in,
     may_store_double_width_natively::in, llds_type::out) is det.
 
-store_float_tag_statically(UnboxedFloats, MayStoreDoubleWidthStatically, Type) :-
+store_float_tag_statically(UnboxedFloats, MayStoreDoubleWidthStatically,
+        Type) :-
     (
         UnboxedFloats = have_unboxed_floats,
         Type = lt_float
@@ -1507,6 +1466,15 @@ store_float_tag_statically(UnboxedFloats, MayStoreDoubleWidthStatically, Type) :
         else
             Type = lt_data_ptr
         )
+    ).
+
+:- pred not_taking_addr_of_cur_arg(list(int)::in, int::in) is semidet.
+
+not_taking_addr_of_cur_arg(TakeAddr, CurArgNum) :-
+    ( if TakeAddr = [CurArgNum | _TailTakeAddr] then
+        fail
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
