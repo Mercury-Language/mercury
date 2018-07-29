@@ -154,11 +154,11 @@ ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
     ClosureLayoutType = mlds_generic_type,
     ExtraArgRvalsTypes =
         [rval_type_and_width(ClosureLayoutRval, ClosureLayoutType,
-            apw_full(arg_only_offset(0), cell_offset(0)), no),
+            apw_full(arg_only_offset(0), cell_offset(0))),
         rval_type_and_width(WrapperFuncRval, WrapperFuncType,
-            apw_full(arg_only_offset(1), cell_offset(1)), no),
+            apw_full(arg_only_offset(1), cell_offset(1))),
         rval_type_and_width(NumArgsRval, NumArgsType,
-            apw_full(arg_only_offset(2), cell_offset(2)), no)],
+            apw_full(arg_only_offset(2), cell_offset(2)))],
 
     % MaybeConsId = no means that the pointer will not be tagged
     % (i.e. its primary tag bits will be zero).
