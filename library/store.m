@@ -849,6 +849,13 @@ copy_ref_value(Ref, Val) -->
     S = S0;
 ").
 
+:- pragma foreign_proc("C#",
+    set_ref_value(Ref::in, Val::di, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Ref.setValue(Val);
+").
+
 :- pragma foreign_proc("Java",
     set_ref_value(Ref::in, Val::di, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
