@@ -212,7 +212,7 @@ MR_escape_string_quote(MR_String *ptr, const char * string)
                     break; 
                 case '\v':
                     dst[0] = '\\';
-                    dst[1] = 'b';
+                    dst[1] = 'v';
                     dst += 2;
                     break; 
                 case '\"':

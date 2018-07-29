@@ -418,7 +418,7 @@ deconstruct deconstruct: functor "α∀🜓" arity 0
 deconstruct limited deconstruct 3 of "α∀🜓"
 functor "α∀🜓" arity 0 []
 
-deconstruct functor: "\a\b\f\n\t\r\b\"\\"/0
+deconstruct functor: "\a\b\f\n\t\r\v\"\\"/0
 deconstruct argument 0 of "\a\b\f\n\t\r\v\"\\" doesn't exist
 deconstruct argument 1 of "\a\b\f\n\t\r\v\"\\" doesn't exist
 deconstruct argument 2 of "\a\b\f\n\t\r\v\"\\" doesn't exist
@@ -427,10 +427,10 @@ deconstruct argument 'mooo!' doesn't exist
 deconstruct argument 'packed1' doesn't exist
 deconstruct argument 'packed2' doesn't exist
 deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor "\a\b\f\n\t\r\b\"\\" arity 0
+deconstruct deconstruct: functor "\a\b\f\n\t\r\v\"\\" arity 0
 []
 deconstruct limited deconstruct 3 of "\a\b\f\n\t\r\v\"\\"
-functor "\a\b\f\n\t\r\b\"\\" arity 0 []
+functor "\a\b\f\n\t\r\v\"\\" arity 0 []
 
 deconstruct functor: "\001\\a\037\AZ[`az~\177\"/0
 deconstruct argument 0 of "\001\\a\037\AZ[`az~\177\" doesn't exist
