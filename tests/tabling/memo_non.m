@@ -76,6 +76,7 @@ test_multi(A, B, C) :-
     marker(S::in, A::in, B::in, X::out),
     [will_not_call_mercury],
 "
-    printf(""marker executed: %s %d %d\\n"", S, A, B);
+    printf(""marker executed: %s %"" MR_INTEGER_LENGTH_MODIFIER ""d %""
+        MR_INTEGER_LENGTH_MODIFIER ""d\\n"", S, A, B);
     X = 0;
 ").

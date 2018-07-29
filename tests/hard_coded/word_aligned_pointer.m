@@ -43,10 +43,10 @@ main(!IO) :-
 write_bar(Bar, !IO) :-
     (
         Bar = yes(Foo),
-        format("yes(0x%x)\n", [i(get_foo(Foo))], !IO)
+        io.format("yes(0x%x)\n", [i(get_foo(Foo))], !IO)
     ;
         Bar = no,
-        write_string("no", !IO)
+        io.write_string("no", !IO)
     ).
 
 %---------------------------------------------------------------------------%

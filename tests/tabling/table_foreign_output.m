@@ -68,7 +68,7 @@ test_memo(Pairs, F) :-
 "
     Foreign *p;
 
-    printf(""make_foreign(%d, %s)\\n"", N, S);
+    printf(""make_foreign(%"" MR_INTEGER_LENGTH_MODIFIER ""d, %s)\\n"", N, S);
     p = (Foreign *) malloc(sizeof(Foreign));
     if (p == NULL) {
         exit(1);
@@ -88,7 +88,8 @@ test_memo(Pairs, F) :-
 "
     Foreign *p;
 
-    printf(""make_foreign_memo(%d, %s)\\n"", N, S);
+    printf(""make_foreign_memo(%"" MR_INTEGER_LENGTH_MODIFIER ""d, %s)\\n"",
+        N, S);
     p = (Foreign *) malloc(sizeof(Foreign));
     if (p == NULL) {
         exit(1);

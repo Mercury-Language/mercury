@@ -57,6 +57,6 @@ get_start_state(StartCond, Anchor) = State :-
     test_exec(In::in, Out::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    printf(""test_exec %d\\n"", In);
+    printf(""test_exec %"" MR_INTEGER_LENGTH_MODIFIER ""d\\n"", In);
     Out = In + 1;
 ").

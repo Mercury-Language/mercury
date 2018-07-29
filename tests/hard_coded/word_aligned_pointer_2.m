@@ -55,7 +55,8 @@ make_foo = foo(0xcafe).
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (X != MR_strip_tag(X)) {
-        fprintf(stderr, ""tag bits not clear in value 0x%x\\n"", X);
+        fprintf(stderr, ""tag bits not clear in value""
+            ""0x%"" MR_INTEGER_LENGTH_MODIFIER ""x\\n"", (MR_Unsigned) X);
         abort();
     }
     Int = MR_unmkbody(X);
@@ -76,10 +77,10 @@ make_bar = yes(make_foo).
 write_bar(Bar, !IO) :-
     (
         Bar = yes(Foo),
-        format("yes(0x%x)\n", [i(get_foo(Foo))], !IO)
+        io.format("yes(0x%x)\n", [i(get_foo(Foo))], !IO)
     ;
         Bar = no,
-        write_string("no", !IO)
+        io.write_string("no", !IO)
     ).
 
 %---------------------------------------------------------------------------%

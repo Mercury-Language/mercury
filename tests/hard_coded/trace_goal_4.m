@@ -15,12 +15,12 @@
 :- implementation.
 
 main(!IO) :-
-    (
+    ( if
         trace [] impure progress_report(1),
         fail
-    ->
+    then
         true
-    ;
+    else
         trace [] impure progress_report(2)
     ).
 
@@ -30,7 +30,7 @@ main(!IO) :-
     progress_report(X::in),
     [will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    printf(""Progress reported %d\\n"", X);
+    printf(""Progress reported %"" MR_INTEGER_LENGTH_MODIFIER ""d\\n"", X);
 ").
 
 :- pragma foreign_proc("C#",
