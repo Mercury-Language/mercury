@@ -70,6 +70,9 @@
             unset mercury_stdlib_dir
             unset mercury_config_dir
             ;;
- 
-	--no-filter-cc)
-	    do_filter_cc=false ;;
+
+        --no-filter-cc)
+            do_filter_cc=false ;;
+
+        --halt-at-warn-if-possible)
+            halt_at_warn_if_possible=true ;;

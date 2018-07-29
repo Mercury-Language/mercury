@@ -71,6 +71,7 @@ case "$C_COMPILER_TYPE" in
         esac
         DEBUG_OPT="-g"
         DISABLE_OPTS_OPT="-O0"
+        COMPILER_HALT_AT_WARN_OPT="-Werror"
         COMPILER=gcc
         ;;
     clang*)
@@ -79,6 +80,7 @@ case "$C_COMPILER_TYPE" in
         OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
         DEBUG_OPT="-g"
         DISABLE_OPTS_OPT="-O0"
+        COMPILER_HALT_AT_WARN_OPT="-Werror"
         COMPILER=clang
         ;;
     msvc*)
@@ -89,6 +91,7 @@ case "$C_COMPILER_TYPE" in
         #DEBUG_OPTS="-Zi"
         DEBUG_OPTS=""
         DISABLE_OPTS_OPT="-Od"
+        COMPILER_HALT_AT_WARN_OPT=""
         COMPILER=cl
         ;;
     *)
@@ -97,6 +100,7 @@ case "$C_COMPILER_TYPE" in
         OPT_OPTS="-O"
         DEBUG_OPT="-g"
         DISABLE_OPTS_OPT="-O0"
+        COMPILER_HALT_AT_WARN_OPT=""
         COMPILER=unknown
         ;;
 esac
@@ -115,6 +119,7 @@ mercury_config_dir=${MERCURY_STDLIB_DIR-@LIBDIR@}
 mercury_config_dir=${MERCURY_CONFIG_DIR=$mercury_config_dir}
 mercury_stdlib_dir=${MERCURY_STDLIB_DIR=@LIBDIR@}
 do_filter_cc=true
+halt_at_warn_if_possible=false
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
@@ -145,6 +150,10 @@ Options:
         Don't use an installed Mercury standard library.
     --no-filter-cc
         Do not filter warnings from the C compiler.
+    --halt-at-warn-if-possible
+        Convert warnings into errors if (a) the C compiler supports this,
+        and (c) the grade is an MLDS grade. (LLDS grades get some warnings
+        that cannot be avoided.)
 
 $grade_usage
 
@@ -265,8 +274,13 @@ esac
 # mentioned in runtime/mercury_grade.h.
 #
 
+HALT_AT_WARN_OPT=""
 case $highlevel_code in
-    true)       HLC_OPTS="-DMR_HIGHLEVEL_CODE" ;;
+    true)       HLC_OPTS="-DMR_HIGHLEVEL_CODE"
+                case $halt_at_warn_if_possible in
+                true)   HALT_AT_WARN_OPT="$COMPILER_HALT_AT_WARN_OPT" ;;
+                esac
+                ;;
     false)      HLC_OPTS="" ;;
 esac
 
@@ -624,6 +638,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $HLC_OPTS\
     $HLD_OPTS\
     $GCC_OPTS\
+    $HALT_AT_WARN_OPT\
     $MSVCRT_OPTS\
     $GC_OPTS\
     $DEFINE_OPTS\
