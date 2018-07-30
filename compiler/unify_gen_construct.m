@@ -80,7 +80,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module cord.
