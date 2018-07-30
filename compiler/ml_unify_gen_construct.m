@@ -892,8 +892,7 @@ ml_generate_and_pack_dynamic_construct_args(Info,
                 NumBits, _, Fill),
             expect(ml_not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
                 "taking address of apw_partial_first"),
-            ml_maybe_box_or_unbox_lval(ModuleInfo, ConsArgType, RHSType,
-                BoxedRHSType, RHS_MLDS_Type, ArgMode, RHSLval, RHSRval),
+            RHSRval = ml_lval(RHSLval),
             ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
                 [], RevToOrRvals0),
             RevPackedRHSVars0 = [packed_arg_var(RHSVar, Shift, NumBits, Fill)],
@@ -963,12 +962,12 @@ ml_generate_and_pack_dynamic_construct_packed_word(_,
         !RevToOrRvals, !RevPackedArgVars, !MayUseAtomic) :-
     unexpected($pred, "length mismatch").
 ml_generate_and_pack_dynamic_construct_packed_word(Info,
-        [ArgVarTypeWidth | ArgVarsTypesWidths], LeftOverArgVarsTypesWidths,
+        [RHSVarTypeWidth | RHSVarsTypesWidths], LeftOverRHSVarsTypesWidths,
         [ArgMode | ArgModes], LeftOverArgModes, CurArgNum, LeftOverArgNum,
         TakeAddr, !RevToOrRvals, !RevPackedArgVars, !MayUseAtomic) :-
-    ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ArgPosWidth),
-    ml_gen_var(Info, ArgVar, Lval),
-    ml_variable_type(Info, ArgVar, ArgType),
+    RHSVarTypeWidth = arg_type_and_width(RHSVar, _ConsArgType, ArgPosWidth),
+    ml_gen_var(Info, RHSVar, RHSLval),
+    ml_variable_type(Info, RHSVar, RHSType),
     % It is important to use ArgType instead of ConsArgType here. ConsArgType
     % is the declared type of the argument of the cons_id, while ArgType is
     % the actual type of the variable being assigned to the given slot.
@@ -978,14 +977,7 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
     % may see behind abstraction barriers, and may thus see that e.g. pred_id
     % is actually the same as integer.
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    update_type_may_use_atomic_alloc(ModuleInfo, ArgType, !MayUseAtomic),
-
-    % Figure out the type of the field.
-    ml_gen_info_get_high_level_data(Info, HighLevelData),
-    ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
-    ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ArgWidth,
-        BoxedArgType),
-    MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
+    update_type_may_use_atomic_alloc(ModuleInfo, RHSType, !MayUseAtomic),
 
     (
         ( ArgPosWidth = apw_full(_, _)
@@ -993,7 +985,7 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
         ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
         ; ArgPosWidth = apw_none_nowhere
         ),
-        LeftOverArgVarsTypesWidths = [ArgVarTypeWidth | ArgVarsTypesWidths],
+        LeftOverRHSVarsTypesWidths = [RHSVarTypeWidth | RHSVarsTypesWidths],
         LeftOverArgModes = [ArgMode | ArgModes],
         LeftOverArgNum = CurArgNum
     ;
@@ -1001,11 +993,10 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
             ArgPosWidth = apw_partial_shifted(_, _, Shift, NumBits, _, Fill),
             expect(ml_not_taking_addr_of_cur_arg(TakeAddr, CurArgNum), $pred,
                 "taking address of apw_partial_shifted"),
-            ml_maybe_box_or_unbox_lval(ModuleInfo, ConsArgType, ArgType,
-                BoxedArgType, MLDS_Type, ArgMode, Lval, Rval),
-            ml_maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill,
+            RHSRval = ml_lval(RHSLval),
+            ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
                 !RevToOrRvals),
-            PackedArgVar = packed_arg_var(ArgVar, Shift, NumBits, Fill),
+            PackedArgVar = packed_arg_var(RHSVar, Shift, NumBits, Fill),
             !:RevPackedArgVars = [PackedArgVar | !.RevPackedArgVars]
         ;
             ArgPosWidth = apw_none_shifted(_, _),
@@ -1013,7 +1004,7 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
                 "taking address of apw_none_shifted")
         ),
         ml_generate_and_pack_dynamic_construct_packed_word(Info,
-            ArgVarsTypesWidths, LeftOverArgVarsTypesWidths,
+            RHSVarsTypesWidths, LeftOverRHSVarsTypesWidths,
             ArgModes, LeftOverArgModes, CurArgNum + 1, LeftOverArgNum,
             TakeAddr, !RevToOrRvals, !RevPackedArgVars, !MayUseAtomic)
     ).
@@ -1074,11 +1065,6 @@ ml_gen_tagword_dynamically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
         [ArgMode | ArgModes], !RevOrRvals) :-
     RHSVarTypeWidth = arg_type_and_width(RHSVar, ConsArgType, ArgPosWidth),
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    ml_gen_info_get_high_level_data(Info, HighLevelData),
-    ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
-    ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ArgWidth,
-        BoxedRHSType),
-
     ml_variable_type(Info, RHSVar, RHSType),
     ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
     ( if
@@ -1088,13 +1074,10 @@ ml_gen_tagword_dynamically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
             neither_is_dummy_type
     then
         ml_gen_var(Info, RHSVar, RHSLval),
-        ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, BoxedRHSType,
-            bp_native_if_possible, ml_lval(RHSLval), RHSRval)
+        RHSRval = ml_lval(RHSLval)
     else
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedRHSType),
-        RHSRval = ml_const(mlconst_null(MLDS_Type))
+        RHSRval = ml_const(mlconst_uint(0u))
     ),
-
     ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
         !RevOrRvals),
     ml_gen_tagword_dynamically(Info, RHSVarsTypesWidths, ArgModes,
@@ -2079,7 +2062,7 @@ ml_pack_into_one_word(RvalsTypesWidths, LeftOverRvalsTypesWidths,
     list.reverse(RevOrRvals, OrRvals),
     (
         OrRvals = [],
-        BoxedOrAllRval = ml_const(mlconst_int(0))
+        BoxedOrAllRval = ml_const(mlconst_uint(0u))
     ;
         OrRvals = [HeadOrRval | TailOrRvals],
         OrAllRval = ml_bitwise_or_some_rvals(HeadOrRval, TailOrRvals),
@@ -2125,7 +2108,8 @@ ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
         !RevOrRvals) :-
     (
         ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
-        ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
+        ml_unbox_rval_if_needed(RHSRval, UnboxedRHSRval),
+        ml_maybe_shift_and_accumulate_or_rval(UnboxedRHSRval, Shift, Fill,
             !RevOrRvals)
     ;
         ArgPosWidth = apw_none_shifted(_, _)
@@ -2153,7 +2137,8 @@ ml_maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
         % in the list of rvals to be OR-ed later.
         true
     else
-        ShiftedRval = ml_left_shift_rval(Rval, Shift, Fill),
+        ml_unbox_rval_if_needed(Rval, UnboxedRval),
+        ShiftedRval = ml_left_shift_rval(UnboxedRval, Shift, Fill),
         !:RevOrRvals = [ShiftedRval | !.RevOrRvals]
     ).
 
@@ -2211,6 +2196,15 @@ ml_not_taking_addr_of_cur_arg(TakeAddr, CurArgNum) :-
         fail
     else
         true
+    ).
+
+:- pred ml_unbox_rval_if_needed(mlds_rval::in, mlds_rval::out) is det.
+
+ml_unbox_rval_if_needed(Rval, UnboxedRval) :-
+    ( if Rval = ml_box(_, UnboxedRvalPrime) then
+        UnboxedRval = UnboxedRvalPrime
+    else
+        UnboxedRval = Rval
     ).
 
 %---------------------------------------------------------------------------%

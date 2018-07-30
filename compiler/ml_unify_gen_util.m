@@ -737,14 +737,8 @@ ml_left_shift_rval(Rval, Shift, Fill) = ShiftedRval :-
     then
         ShiftedRval = CastRval
     else
-        ( if CastRval = ml_box(Type, SubRval) then
-            ShiftedSubRval = ml_binop(unchecked_left_shift(int_type_uint),
-                SubRval, ml_const(mlconst_int(ShiftInt))),
-            ShiftedRval = ml_box(Type, ShiftedSubRval)
-        else
-            ShiftedRval = ml_binop(unchecked_left_shift(int_type_uint),
-                CastRval, ml_const(mlconst_int(ShiftInt)))
-        )
+        ShiftedRval = ml_binop(unchecked_left_shift(int_type_uint),
+            CastRval, ml_const(mlconst_int(ShiftInt)))
     ).
 
 ml_right_shift_rval(Rval, Shift) = ShiftedRval :-
@@ -860,30 +854,15 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
     ;
         (
             Fill = fill_int8,
-            FromMLDSType = mlds_int_type_int8,
             ToMLDSType = mlds_int_type_uint8
         ;
             Fill = fill_int16,
-            FromMLDSType = mlds_int_type_int16,
             ToMLDSType = mlds_int_type_uint16
         ;
             Fill = fill_int32,
-            FromMLDSType = mlds_int_type_int32,
             ToMLDSType = mlds_int_type_uint32
         ),
-        % XXX ARG_PACK It would be better if instead of undoing the boxing
-        % here, we could *avoid* boxing sub-word-sized arguments. However,
-        % that would require treating sub-word-sized arguments differently
-        % from full- or double-word-sized arguments, which is a more involved
-        % change.
-        ( if Rval0 = ml_box(FromMLDSType, SubRval) then
-            % We can't apply this cast to Rval0 without getting a gcc warning:
-            % "warning: cast from pointer to integer of different size
-            % [-Wpointer-to-int-cast]".
-            Rval1 = ml_cast(ToMLDSType, SubRval)
-        else
-            Rval1 = ml_cast(ToMLDSType, Rval0)
-        )
+        Rval1 = ml_cast(ToMLDSType, Rval0)
     ),
     Rval = ml_cast(mlds_int_type_uint, Rval1).
 
