@@ -802,11 +802,10 @@ ml_generate_and_pack_dynamic_construct_args(Info,
     (
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
         ),
         ml_gen_var(Info, RHSVar, RHSLval),
         ml_variable_type(Info, RHSVar, RHSType),
-        % It is important to use ArgType instead of ConsArgType here.
+        % It is important to use RHSType instead of ConsArgType here.
         % ConsArgType is the declared type of the argument of the cons_id,
         % while ArgType is the actual type of the variable being assigned
         % to the given slot. ConsArgType may be a type such as pred_id,
@@ -838,13 +837,10 @@ ml_generate_and_pack_dynamic_construct_args(Info,
                     BoxedRHSType, RHS_MLDS_Type, ArgMode, RHSLval, RHSRval),
                 HeadTakeAddrInfos = []
             ),
-            % XXX ARG_PACK We should not need the the last two fields.
+            % XXX ARG_PACK We should not need the the last field.
             RHSRvalTypeWidth =
                 rval_type_and_width(RHSRval, RHS_MLDS_Type, ArgPosWidth),
-            HeadRHSRvalsTypesWidths = [RHSRvalTypeWidth],
-            LeftOverRHSVarsTypesWidths = RHSVarsTypesWidths,
-            LeftOverArgModes = ArgModes,
-            LeftOverArgNum = CurArgNum + 1
+            HeadRHSRvalsTypesWidths = [RHSRvalTypeWidth]
         ;
             ArgPosWidth = apw_double(ArgOnlyOffset, CellOffset,
                 DoubleWordKind),
@@ -883,42 +879,55 @@ ml_generate_and_pack_dynamic_construct_args(Info,
             RHSRvalTypeWidthB = rval_type_and_width(RHSRvalB, SubstType,
                 apw_full(ArgOnlyOffsetB, CellOffsetB)),
             HeadRHSRvalsTypesWidths = [RHSRvalTypeWidthA, RHSRvalTypeWidthB],
-            HeadTakeAddrInfos = [],
-            LeftOverRHSVarsTypesWidths = RHSVarsTypesWidths,
-            LeftOverArgModes = ArgModes,
-            LeftOverArgNum = CurArgNum + 1
-        ;
-            ArgPosWidth = apw_partial_first(ArgOnlyOffset, CellOffset, Shift,
-                NumBits, _, Fill),
-            expect(ml_not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
-                "taking address of apw_partial_first"),
-            RHSRval = ml_lval(RHSLval),
-            ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
-                [], RevToOrRvals0),
-            RevPackedRHSVars0 = [packed_arg_var(RHSVar, Shift, NumBits, Fill)],
-            ml_generate_and_pack_dynamic_construct_packed_word(Info,
-                RHSVarsTypesWidths, LeftOverRHSVarsTypesWidths,
-                ArgModes, LeftOverArgModes, CurArgNum + 1, LeftOverArgNum,
-                !.TakeAddr, RevToOrRvals0, RevToOrRvals,
-                RevPackedRHSVars0, RevPackedRHSVars, !MayUseAtomic),
-            list.reverse(RevPackedRHSVars, PackedRHSVars),
-            ml_gen_info_get_packed_args_map(Info, PackedArgsMap),
-            ( if map.search(PackedArgsMap, PackedRHSVars, OldWordRval) then
-                WordRval = OldWordRval
-            else
-                % XXX ARG_PACK Consider allocating an lvnc_packed_args
-                % variable for this word, and entering it into PackedArgsMap.
-                list.reverse(RevToOrRvals, ToOrRvals),
-                WordRval = ml_bitwise_or_rvals(ToOrRvals)
-            ),
-            CastWordRval = ml_cast(mlds_generic_type, WordRval),
-            % XXX TYPE_REPN Using the type of the first rval for the type
-            % of the whole word preserves old behavior, but seems strange.
-            RHSRvalTypeWidth = rval_type_and_width(CastWordRval, RHS_MLDS_Type,
-                apw_full(ArgOnlyOffset, CellOffset)),
-            HeadRHSRvalsTypesWidths = [RHSRvalTypeWidth],
             HeadTakeAddrInfos = []
-        )
+        ),
+        LeftOverRHSVarsTypesWidths = RHSVarsTypesWidths,
+        LeftOverArgModes = ArgModes,
+        LeftOverArgNum = CurArgNum + 1
+    ;
+        ArgPosWidth = apw_partial_first(ArgOnlyOffset, CellOffset, Shift,
+            NumBits, _, Fill),
+        expect(ml_not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
+            "taking address of apw_partial_first"),
+        ml_gen_var(Info, RHSVar, RHSLval),
+        RHSRval = ml_lval(RHSLval),
+
+        % Figure out the type of the field.
+        ml_gen_info_get_module_info(Info, ModuleInfo),
+        ml_gen_info_get_high_level_data(Info, HighLevelData),
+        ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
+        ml_type_as_field(ModuleInfo, HighLevelData, ConsArgType, ArgWidth,
+            BoxedRHSType),
+        RHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedRHSType),
+
+        ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
+            [], RevToOrRvals0),
+        RevPackedRHSVars0 = [packed_arg_var(RHSVar, Shift, NumBits, Fill)],
+        % Since we define a word to be the same size as a pointer,
+        % a sub-word-sized argument cannot possibly hold a pointer.
+        % this is why we don't need to update !MayUseAtomic here.
+        ml_generate_and_pack_dynamic_construct_packed_word(Info,
+            RHSVarsTypesWidths, LeftOverRHSVarsTypesWidths,
+            ArgModes, LeftOverArgModes, CurArgNum + 1, LeftOverArgNum,
+            !.TakeAddr, RevToOrRvals0, RevToOrRvals,
+            RevPackedRHSVars0, RevPackedRHSVars),
+        list.reverse(RevPackedRHSVars, PackedRHSVars),
+        ml_gen_info_get_packed_args_map(Info, PackedArgsMap),
+        ( if map.search(PackedArgsMap, PackedRHSVars, OldWordRval) then
+            WordRval = OldWordRval
+        else
+            % XXX ARG_PACK Consider allocating an lvnc_packed_args
+            % variable for this word, and entering it into PackedArgsMap.
+            list.reverse(RevToOrRvals, ToOrRvals),
+            WordRval = ml_bitwise_or_rvals(ToOrRvals)
+        ),
+        CastWordRval = ml_cast(mlds_generic_type, WordRval),
+        % XXX TYPE_REPN Using the type of the first rval for the type
+        % of the whole word preserves old behavior, but seems strange.
+        RHSRvalTypeWidth = rval_type_and_width(CastWordRval, RHS_MLDS_Type,
+            apw_full(ArgOnlyOffset, CellOffset)),
+        HeadRHSRvalsTypesWidths = [RHSRvalTypeWidth],
+        HeadTakeAddrInfos = []
     ;
         ArgPosWidth = apw_none_nowhere,
         expect(ml_not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
@@ -947,38 +956,24 @@ ml_generate_and_pack_dynamic_construct_args(Info,
     list(unify_mode)::in, list(unify_mode)::out,
     int::in, int::out, list(int)::in,
     list(mlds_rval)::in, list(mlds_rval)::out,
-    list(packed_arg_var)::in, list(packed_arg_var)::out,
-    may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
+    list(packed_arg_var)::in, list(packed_arg_var)::out) is det.
 
 ml_generate_and_pack_dynamic_construct_packed_word(_,
         [], [], [], [], !CurArgNum, _,
-        !RevToOrRvals, !RevPackedArgVars, !MayUseAtomic).
+        !RevToOrRvals, !RevPackedArgVars).
 ml_generate_and_pack_dynamic_construct_packed_word(_,
         [], _, [_ | _], _, !CurArgNum, _,
-        !RevToOrRvals, !RevPackedArgVars, !MayUseAtomic) :-
+        !RevToOrRvals, !RevPackedArgVars) :-
     unexpected($pred, "length mismatch").
 ml_generate_and_pack_dynamic_construct_packed_word(_,
         [_ | _], _, [], _, !CurArgNum, _,
-        !RevToOrRvals, !RevPackedArgVars, !MayUseAtomic) :-
+        !RevToOrRvals, !RevPackedArgVars) :-
     unexpected($pred, "length mismatch").
 ml_generate_and_pack_dynamic_construct_packed_word(Info,
         [RHSVarTypeWidth | RHSVarsTypesWidths], LeftOverRHSVarsTypesWidths,
         [ArgMode | ArgModes], LeftOverArgModes, CurArgNum, LeftOverArgNum,
-        TakeAddr, !RevToOrRvals, !RevPackedArgVars, !MayUseAtomic) :-
+        TakeAddr, !RevToOrRvals, !RevPackedArgVars) :-
     RHSVarTypeWidth = arg_type_and_width(RHSVar, _ConsArgType, ArgPosWidth),
-    ml_gen_var(Info, RHSVar, RHSLval),
-    ml_variable_type(Info, RHSVar, RHSType),
-    % It is important to use ArgType instead of ConsArgType here. ConsArgType
-    % is the declared type of the argument of the cons_id, while ArgType is
-    % the actual type of the variable being assigned to the given slot.
-    % ConsArgType may be a type such as pred_id, which is a user-defined type
-    % that may not appear in atomic cells, while ArgType may be a type such
-    % as int, which may appear in atomic cells. This is because the actual type
-    % may see behind abstraction barriers, and may thus see that e.g. pred_id
-    % is actually the same as integer.
-    ml_gen_info_get_module_info(Info, ModuleInfo),
-    update_type_may_use_atomic_alloc(ModuleInfo, RHSType, !MayUseAtomic),
-
     (
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
@@ -993,6 +988,7 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
             ArgPosWidth = apw_partial_shifted(_, _, Shift, NumBits, _, Fill),
             expect(ml_not_taking_addr_of_cur_arg(TakeAddr, CurArgNum), $pred,
                 "taking address of apw_partial_shifted"),
+            ml_gen_var(Info, RHSVar, RHSLval),
             RHSRval = ml_lval(RHSLval),
             ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
                 !RevToOrRvals),
@@ -1006,7 +1002,7 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
         ml_generate_and_pack_dynamic_construct_packed_word(Info,
             RHSVarsTypesWidths, LeftOverRHSVarsTypesWidths,
             ArgModes, LeftOverArgModes, CurArgNum + 1, LeftOverArgNum,
-            TakeAddr, !RevToOrRvals, !RevPackedArgVars, !MayUseAtomic)
+            TakeAddr, !RevToOrRvals, !RevPackedArgVars)
     ).
 
 :- pred ml_maybe_box_or_unbox_lval(module_info::in,

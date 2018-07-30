@@ -356,11 +356,14 @@ generate_and_pack_construct_args([RHSVarWidth | RHSVarsWidths],
                 [], RevToOrRvals0)
         ),
         NextArgNum = CurArgNum + 1,
+        % Since we define a word to be the same size as a pointer,
+        % a sub-word-sized argument cannot possibly hold a pointer.
+        % this is why we don't need to update !MayUseAtomic here.
         generate_and_pack_one_cons_word(RHSVarsWidths, ArgModes,
             LeftOverRHSVarsWidths, LeftOverArgModes,
             NextArgNum, LeftOverArgNum, !TakeAddr,
             RevToOrRvals0, RevToOrRvals, Completeness0, Completeness,
-            !MayUseAtomic, !Code, CI, !CLD),
+            !Code, CI, !CLD),
         list.reverse(RevToOrRvals, ToOrRvals),
         PackedRval = bitwise_or_rvals(ToOrRvals),
         % ARG_PACK: Attach Completeness to the *vector* of cell args,
@@ -391,27 +394,22 @@ generate_and_pack_construct_args([RHSVarWidth | RHSVarsWidths],
     list(arg_and_width(prog_var))::out, list(unify_mode)::out,
     int::in, int::out, list(int)::in, list(int)::out,
     list(rval)::in, list(rval)::out, completeness::in, completeness::out,
-    may_use_atomic_alloc::in, may_use_atomic_alloc::out,
     llds_code::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_and_pack_one_cons_word([], [], [], [], CurArgNum, LeftOverArgNum,
-        !TakeAddr, !RevToOrRvals, !Completeness, !MayUseAtomic,
-        !Code, _, !CLD) :-
+        !TakeAddr, !RevToOrRvals, !Completeness, !Code, _, !CLD) :-
     LeftOverArgNum = CurArgNum.
 generate_and_pack_one_cons_word([], [_ | _], _, _, _, _,
-        !TakeAddr, !RevToOrRvals, !Completeness, !MayUseAtomic,
-        !Code, _, !CLD) :-
+        !TakeAddr, !RevToOrRvals, !Completeness, !Code, _, !CLD) :-
     unexpected($pred, "length misnatch").
 generate_and_pack_one_cons_word([_ | _], [], _, _, _, _,
-        !TakeAddr, !RevToOrRvals, !Completeness, !MayUseAtomic,
-        !Code, _, !CLD) :-
+        !TakeAddr, !RevToOrRvals, !Completeness, !Code, _, !CLD) :-
     unexpected($pred, "length misnatch").
 generate_and_pack_one_cons_word([RHSVarWidth | RHSVarsWidths],
         [ArgMode | ArgModes], LeftOverRHSVarsWidths, LeftOverArgModes,
         CurArgNum, LeftOverArgNum,
-        !TakeAddr, !RevToOrRvals, !Completeness, !MayUseAtomic,
-        !Code, CI, !CLD) :-
+        !TakeAddr, !RevToOrRvals, !Completeness, !Code, CI, !CLD) :-
     RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
     (
         ( ArgPosWidth = apw_full(_, _)
@@ -430,10 +428,8 @@ generate_and_pack_one_cons_word([RHSVarWidth | RHSVarsWidths],
         % This argument *is* part of this word.
         expect(not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
             "taking address of partial word"),
-        generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal, RHSRval,
+        generate_construct_arg_rval(RHSVar, ArgMode, _RHSType, IsReal, RHSRval,
             !Code, CI, !CLD),
-        get_module_info(CI, ModuleInfo),
-        update_type_may_use_atomic_alloc(ModuleInfo, RHSType, !MayUseAtomic),
         (
             ArgPosWidth = apw_partial_shifted(_, _, Shift, _, _, Fill),
             (
@@ -451,8 +447,7 @@ generate_and_pack_one_cons_word([RHSVarWidth | RHSVarsWidths],
         NextArgNum = CurArgNum + 1,
         generate_and_pack_one_cons_word(RHSVarsWidths, ArgModes,
             LeftOverRHSVarsWidths, LeftOverArgModes, NextArgNum, LeftOverArgNum,
-            !TakeAddr, !RevToOrRvals, !Completeness, !MayUseAtomic,
-            !Code, CI, !CLD)
+            !TakeAddr, !RevToOrRvals, !Completeness, !Code, CI, !CLD)
     ).
 
 :- pred generate_and_pack_tagword(
