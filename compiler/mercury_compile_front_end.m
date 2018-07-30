@@ -722,7 +722,7 @@ maybe_polymorphism(Verbose, Stats, ExistsCastPredIds, SafeToContinue,
 clause_to_proc(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
-    maybe_write_string(Verbose, "% Copying clauses to proceduress...", !IO),
+    maybe_write_string(Verbose, "% Copying clauses to procedures...", !IO),
     copy_clauses_to_proc_for_all_valid_procs(!HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
