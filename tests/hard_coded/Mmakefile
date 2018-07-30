@@ -910,13 +910,18 @@ final_excp.out: final_excp
 	fi
 
 # init_excp.out is expected to fail (it calls throw/1).
+# We need to filter the output for the C# and Java backends in order to remove
+# the stack trace in those grades.   Because the exception is thrown from
+# an initialiser rather than from main/2 we don't have any control over
+# whether the stack trace is printed or not.
 #
 init_excp.out: init_excp
 	if MERCURY_SUPPRESS_STACK_TRACE=yes ./init_excp > $@.tmp 2>&1; then \
 		grep  . $@.tmp; \
 		exit 1; \
 	else \
-		mv $@.tmp $@; \
+		grep -v "at\ j\?mercury\|System\|\-\-\-" $@.tmp > $@; \
+		rm -f #@.tmp; \
 	fi
 
 # functor_ho_inst_excp.out is expected to throw an exception or cause
