@@ -943,13 +943,10 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
             ml_gen_set_success(TestRval, Context, Stmt, !Info),
             Stmts = [Stmt]
         ;
-            SimpleCode = ref_assign(_, _),
-            unexpected($pred, "malformed model_semi builtin predicate")
-        ;
-            SimpleCode = assign(_, _),
-            unexpected($pred, "malformed model_semi builtin predicate")
-        ;
-            SimpleCode = noop(_),
+            ( SimpleCode = ref_assign(_, _)
+            ; SimpleCode = assign(_, _)
+            ; SimpleCode = noop(_)
+            ),
             unexpected($pred, "malformed model_semi builtin predicate")
         )
     ;
