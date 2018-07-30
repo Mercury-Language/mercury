@@ -798,18 +798,8 @@ output_int_const_for_csharp(N, !IO) :-
     % You may wish to see the comment on output_int_const_for_java
     % in mlds_to_java_data.m.
     ( if
-        N >= 0,
-        N /\ 0x80000000 = 0x80000000,
-
-        % The next six lines are the result of inlining
-        % "N `legacy_right_shift` 32 = 0" here and simplifying.
-        % We don't want to call legacy_right_shift because it is obsolete.
-        bits_per_int(IntBits),
-        ( if IntBits > 32 then
-            unchecked_right_shift(N, 32) = 0
-        else
-            true
-        )
+        N > 0,
+        N >> 31 = 1
     then
         % The bit pattern fits in 32 bits, but is too big for a positive
         % integer. The C# compiler will give an error about this, unless we
