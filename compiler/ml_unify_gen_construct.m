@@ -330,27 +330,29 @@ ml_generate_dynamic_construct_tagword_compound(ConsId, PrimSec, LHSVar,
         lookup_var_type_func(VarTypes), may_not_have_extra_args,
         LHSType, ConsId, ArgVars, ArgVarsTypesWidths),
     (
-        list.reverse(RevOrRvals, OrRvals),
-        TagwordRval = ml_bitwise_or_some_rvals(
-            ml_const(mlconst_uint(PrimSec)), OrRvals),
         (
             HowToConstruct = construct_dynamically,
             ml_gen_tagword_dynamically(!.Info, ArgVarsTypesWidths, ArgModes,
-                [], RevOrRvals)
+                [], RevToOrRvals)
         ;
             HowToConstruct = construct_statically,
             ml_gen_tagword_statically(!.Info, ArgVarsTypesWidths,
-                [], RevOrRvals)
+                [], RevToOrRvals)
         ),
-        ml_gen_var(!.Info, LHSVar, VarLval),
-        Stmt = ml_gen_assign(VarLval, TagwordRval, Context),
+        list.reverse(RevToOrRvals, ToOrRvals),
+        TagwordRval = ml_bitwise_or_some_rvals(
+            ml_const(mlconst_uint(PrimSec)), ToOrRvals),
+        LHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, LHSType),
+        CastTagwordRval = ml_cast(LHS_MLDS_Type, TagwordRval),
+        ml_gen_var(!.Info, LHSVar, LHSLval),
+        Stmt = ml_gen_assign(LHSLval, CastTagwordRval, Context),
         Stmts = [Stmt],
         (
             HowToConstruct = construct_dynamically
         ;
             HowToConstruct = construct_statically,
-            MLDS_Type = mlds_native_uint_type,
-            GroundTerm = ml_ground_term(TagwordRval, LHSType, MLDS_Type),
+            GroundTerm =
+                ml_ground_term(CastTagwordRval, LHSType, LHS_MLDS_Type),
             ml_gen_info_set_const_var(LHSVar, GroundTerm, !Info)
         )
     ;
@@ -902,17 +904,18 @@ ml_generate_and_pack_dynamic_construct_args(Info,
                 RevPackedRHSVars0, RevPackedRHSVars, !MayUseAtomic),
             list.reverse(RevPackedRHSVars, PackedRHSVars),
             ml_gen_info_get_packed_args_map(Info, PackedArgsMap),
-            ( if map.search(PackedArgsMap, PackedRHSVars, OldRHSRval) then
-                WordRval = ml_cast(mlds_generic_type, OldRHSRval)
+            ( if map.search(PackedArgsMap, PackedRHSVars, OldWordRval) then
+                WordRval = OldWordRval
             else
                 % XXX ARG_PACK Consider allocating an lvnc_packed_args
                 % variable for this word, and entering it into PackedArgsMap.
                 list.reverse(RevToOrRvals, ToOrRvals),
                 WordRval = ml_bitwise_or_rvals(ToOrRvals)
             ),
+            CastWordRval = ml_cast(mlds_generic_type, WordRval),
             % XXX TYPE_REPN Using the type of the first rval for the type
             % of the whole word preserves old behavior, but seems strange.
-            RHSRvalTypeWidth = rval_type_and_width(WordRval, RHS_MLDS_Type,
+            RHSRvalTypeWidth = rval_type_and_width(CastWordRval, RHS_MLDS_Type,
                 apw_full(ArgOnlyOffset, CellOffset)),
             HeadRHSRvalsTypesWidths = [RHSRvalTypeWidth],
             HeadTakeAddrInfos = []
@@ -1297,7 +1300,9 @@ ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         list.reverse(RevOrRvals, OrRvals),
         TagwordRval = ml_bitwise_or_some_rvals(
             ml_const(mlconst_uint(PrimSec)), OrRvals),
-        ConstGroundTerm = ml_ground_term(TagwordRval, LHSType, LHS_MLDS_Type),
+        CastTagwordRval = ml_cast(LHS_MLDS_Type, TagwordRval),
+        ConstGroundTerm =
+            ml_ground_term(CastTagwordRval, LHSType, LHS_MLDS_Type),
         map.det_insert(LHSVar, ConstGroundTerm, !GroundTermMap)
     ;
         % Ordinary compound terms.
@@ -1605,7 +1610,8 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
         list.reverse(RevOrRvals, OrRvals),
         TagwordRval = ml_bitwise_or_some_rvals(
             ml_const(mlconst_uint(PrimSec)), OrRvals),
-        GroundTerm = ml_ground_term(TagwordRval, Type, MLDS_Type),
+        CastTagwordRval = ml_cast(MLDS_Type, TagwordRval),
+        GroundTerm = ml_ground_term(CastTagwordRval, Type, MLDS_Type),
         map.det_insert(ConstNum, GroundTerm, !ConstStructMap)
     ;
         ( ConsTag = no_tag
