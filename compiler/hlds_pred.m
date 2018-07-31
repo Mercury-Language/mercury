@@ -69,6 +69,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
 :- import_module libs.options.
+:- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -3823,7 +3824,15 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
             AllowInlining = yes,
             globals.lookup_bool_option(Globals, inline_builtins,
                 InlineBuiltins),
-            InlineBuiltins = yes
+            (
+                InlineBuiltins = yes
+            ;
+                module_info_pred_info(ModuleInfo, PredId, PredInfo),
+                pred_info_get_name(PredInfo, PredName),
+                PredName = "store_at_ref_impure",
+                pred_info_get_module_name(PredInfo, ModuleName),
+                ModuleName = mercury_private_builtin_module
+            )
         ;
             % The "recursive" call in the automatically generated body
             % of each builtin predicate MUST be generated inline.
