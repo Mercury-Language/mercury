@@ -921,7 +921,7 @@ init_excp.out: init_excp
 		exit 1; \
 	else \
 		grep -v "at\ j\?mercury\|System\|\-\-\-" $@.tmp > $@; \
-		rm -f #@.tmp; \
+		rm -f $@.tmp; \
 	fi
 
 # functor_ho_inst_excp.out is expected to throw an exception or cause
