@@ -70,8 +70,9 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred preds_add_implicit_for_assertion(module_info::in, module_info::out,
-    module_name::in, sym_name::in, arity::in, pred_or_func::in, prog_vars::in,
-    pred_status::in, prog_context::in, pred_id::out) is det.
+    module_name::in, sym_name::in, arity::in, pred_or_func::in,
+    list(prog_var)::in, pred_status::in, prog_context::in, pred_id::out)
+    is det.
 
 :- pred check_pred_if_field_access_function(module_info::in,
     sec_item(item_pred_decl_info)::in,
@@ -323,19 +324,19 @@ item_decl_section(ItemExport) = DeclSection :-
 :- pred add_builtin(pred_id::in, list(mer_type)::in, compilation_target::in,
     pred_info::in, pred_info::out) is det.
 
-add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
+add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
     Module = pred_info_module(!.PredInfo),
     Name = pred_info_name(!.PredInfo),
     pred_info_get_context(!.PredInfo, Context),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_varset(ClausesInfo0, VarSet0),
-    clauses_info_get_headvars(ClausesInfo0, HeadVars),
+    clauses_info_get_headvars(ClausesInfo0, ProcArgVector),
     % XXX ARGVEC - clean this up after the pred_info is converted to use
     % the arg_vector structure.
-    clauses_info_get_headvar_list(ClausesInfo0, HeadVarList),
+    HeadVars0 = proc_arg_vector_to_list(ProcArgVector),
 
     goal_info_init(Context, GoalInfo0),
-    NonLocals = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
+    NonLocals = set_of_var.list_to_set(HeadVars0),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
     ( if
         Module = mercury_private_builtin_module,
@@ -362,8 +363,8 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
     then
         GoalExpr = conj(plain_conj, []),
         GoalInfo = GoalInfo1,
-        ExtraVars = [],
-        ExtraTypes = [],
+        HeadVars = HeadVars0,
+        HeadTypes = HeadTypes0,
         VarSet = VarSet0,
         Stub = yes
     else if
@@ -376,8 +377,8 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         )
     then
         varset.new_var(ZeroVar, VarSet0, VarSet),
-        ExtraVars = [ZeroVar],
-        ExtraTypes = [int_type],
+        HeadVars = [ZeroVar | HeadVars0],
+        HeadTypes = [int_type | HeadTypes0],
 
         ConsId = int_const(0),
         LHS = ZeroVar,
@@ -393,11 +394,9 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
             GoalInfo0, GoalInfoWithZero),
         AssignGoal = hlds_goal(AssignExpr, GoalInfoWithZero),
 
-        CastExpr = generic_call(cast(unsafe_type_inst_cast),
-            [ZeroVar] ++ HeadVarList, [in_mode, uo_mode], arg_reg_types_unset,
-            detism_det),
-        goal_info_set_nonlocals(
-            set_of_var.list_to_set([ZeroVar | HeadVarList]),
+        CastExpr = generic_call(cast(unsafe_type_inst_cast), HeadVars,
+            [in_mode, uo_mode], arg_reg_types_unset, detism_det),
+        goal_info_set_nonlocals(set_of_var.list_to_set(HeadVars),
             GoalInfo0, GoalInfoWithZeroHeadVars),
         CastGoal = hlds_goal(CastExpr, GoalInfoWithZeroHeadVars),
 
@@ -422,8 +421,8 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         Reason = promise_purity(purity_impure),
         GoalExpr = scope(Reason, ConjGoal),
         GoalInfo = GoalInfo1,
-        ExtraVars = [],
-        ExtraTypes = [],
+        HeadVars = HeadVars0,
+        HeadTypes = HeadTypes0,
         VarSet = VarSet0,
         Stub = no
     else
@@ -433,12 +432,12 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         ModeId = invalid_proc_id,
         MaybeUnifyContext = no,
         % XXX ARGVEC
-        GoalExpr = plain_call(PredId, ModeId, HeadVarList, inline_builtin,
+        GoalExpr = plain_call(PredId, ModeId, HeadVars0, inline_builtin,
             MaybeUnifyContext, SymName),
         pred_info_get_purity(!.PredInfo, Purity),
         goal_info_set_purity(Purity, GoalInfo1, GoalInfo),
-        ExtraVars = [],
-        ExtraTypes = [],
+        HeadVars = HeadVars0,
+        HeadTypes = HeadTypes0,
         VarSet = VarSet0,
         Stub = no
     ),
@@ -456,18 +455,17 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
 
     % Put the clause we just built (if any) into the pred_info,
     % annotated with the appropriate types.
-    vartypes_from_corresponding_lists(ExtraVars ++ HeadVarList,
-        ExtraTypes ++ Types, VarTypes),
+    vartypes_from_corresponding_lists(HeadVars, HeadTypes, VarTypes),
     map.init(TVarNameMap),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     HadSyntaxError = no,
     ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
-        HeadVars, ClausesRep, init_clause_item_numbers_comp_gen,
+        ProcArgVector, ClausesRep, init_clause_item_numbers_comp_gen,
         RttiVarMaps, HasForeignClauses, HadSyntaxError),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
-    % It's pointless but harmless to inline these clauses. The main purpose
+    % It is pointless but harmless to inline these clauses. The main purpose
     % of the `no_inline' marker is to stop constraint propagation creating
     % real infinite loops in the generated code when processing calls to these
     % predicates. The code generator will still generate inline code for calls
