@@ -182,7 +182,7 @@ ERROR_OUTPUT_FILE = runtests.errs
 
 realclean_local: clean_logs clean_errors clean_mdbrc
 
-clean_local: clean_out clean_res clean_zip clean_trace_counts clean_mdbrc_in
+clean_local: clean_out clean_res clean_trace_counts clean_mdbrc_in
 
 clean_mdbrc:
 	-rm -f mdbrc
@@ -207,17 +207,6 @@ clean_errors:
 
 clean_trace_counts:
 	rm -f *.pass1 *.pass2 *.pass3 *.fail
-
-# Remove gzipped executables for tests which have failed.
-ifeq ($(TESTS),)
-clean_zip: ;
-else
-clean_zip:
-	for test in $(TESTS); do \
-		prog=`basename $$test -nodepend`; \
-		rm -f $$prog.gz $$prog.exe.gz; \
-	done
-endif
 
 # The `foo' targets make recursively make `foo' in all subdirectories.
 # before making `foo_local' in the current directory.
@@ -317,7 +306,7 @@ start_runtests_local:
 	@> FAILED_TESTS
 
 # Run a single test, cleaning up if it succeeds, or producing a log file
-# and gzipping the executable if the test fails.
+# if the test fails.
 
 .PHONY: %.log
 %.log: start_runtests_local

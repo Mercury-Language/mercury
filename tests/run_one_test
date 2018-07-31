@@ -37,17 +37,6 @@ else
     if test -f "${test_full}.failed"
     then
         rm -f "${test_full}.failed"
-        case "${GRADE}" in
-            csharp*|java*|erlang*)
-                ;;
-            *)
-                if test -f "${test}"
-                then
-                    rm -f "${test}.gz" "${test}.exe.gz"
-                    gzip "${test}" || gzip "${test}.exe"
-                fi
-                ;;
-        esac
         echo FAILED TEST "${this_dir}/${test_full}" "${params_msg}"
         echo "LOG OF THE FAILED TEST"
         cat "${test_full}.log"

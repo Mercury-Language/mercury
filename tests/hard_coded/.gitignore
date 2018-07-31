@@ -15,7 +15,6 @@
 *.opt
 *.optdate
 *.res1
-*.gz
 *.c_date
 *.log
 export_test.h pragma_import.h

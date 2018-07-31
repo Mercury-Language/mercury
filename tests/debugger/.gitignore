@@ -7,7 +7,6 @@
 *.dep
 *.dv
 *.err
-*.gz
 *.int0
 *.int
 *.int2
