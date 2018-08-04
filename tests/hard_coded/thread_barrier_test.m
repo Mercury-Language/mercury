@@ -73,7 +73,7 @@ test_spawn_and_wait_thread(Thread, AllThreadOutput, Barrier, !IO) :-
     close_thread_output(Output, !IO).
 
     % This state allows us to determine if certain actions have already
-    % taken place.  This lets us prove that some things happen before/after
+    % taken place.  This lets us show that some things happen before/after
     % release is called on the barrier.
     %
 :- type state
@@ -98,7 +98,9 @@ test_release(AbortAt, ThreadCount, !IO) :-
                 StateMvar),
             !IO)
     ), 1 `..` ThreadCount, !IO),
-    log_with_state(Output, StateMvar, "waiting", !IO),
+    % There is no guarantee that we will reach this point before the AbortAt
+    % thread releases the barrier, so don't log the state as expected.
+    t_write_string(Output, "waiting", !IO),
     barrier.wait(Barrier, !IO),
     log_with_state(Output, StateMvar, "done waiting, test finished", !IO),
     close_thread_output(Output, !IO),
@@ -121,6 +123,10 @@ release_thread(AllOutput, Thread, AbortAt, Barrier, StateMvar, !IO) :-
         mvar.put(StateMvar, state_after_release, !IO),
         t_write_string(Output, "released.", !IO)
     ;
+        % There is no guarantee whether the AbortAt thread will finish its
+        % computation and release the barrier before or after the current
+        % thread reaches this point. Logging the state here may lead to
+        % spurious test failures -- change it if necessary.
         log_with_state(Output, StateMvar, "waiting", !IO),
         barrier.wait(Barrier, !IO),
         log_with_state(Output, StateMvar, "done waiting", !IO)

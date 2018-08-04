@@ -36,7 +36,7 @@ Messages from thread 0:
 	spawning thread #3
 	spawning thread #4
 	spawning thread #5
-	waiting:	before release
+	waiting
 	done waiting, test finished:	after release
 Messages from thread 1:
 	thread starting
