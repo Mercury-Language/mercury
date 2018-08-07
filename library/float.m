@@ -400,20 +400,20 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C",
-    float.ceiling_to_int(X :: in) = (Ceil :: out),
+    ceiling_to_int(X::in) = (Ceil::out),
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
     Ceil = (MR_Integer) ceil(X);
 ").
 :- pragma foreign_proc("C#",
-    float.ceiling_to_int(X :: in) = (Ceil :: out),
+    ceiling_to_int(X::in) = (Ceil::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ceil = System.Convert.ToInt32(System.Math.Ceiling(X));
 ").
 :- pragma foreign_proc("Java",
-    float.ceiling_to_int(X :: in) = (Ceil :: out),
+    ceiling_to_int(X::in) = (Ceil::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (X > (double) java.lang.Integer.MAX_VALUE ||
@@ -426,7 +426,7 @@ X / Y = Z :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    float.ceiling_to_int(X :: in) = (Ceil :: out),
+    ceiling_to_int(X::in) = (Ceil::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     T = erlang:trunc(X),
@@ -439,20 +439,20 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C",
-    float.floor_to_int(X :: in) = (Floor :: out),
+    floor_to_int(X::in) = (Floor::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Floor = (MR_Integer) floor(X);
 ").
 :- pragma foreign_proc("C#",
-    float.floor_to_int(X :: in) = (Floor :: out),
+    floor_to_int(X::in) = (Floor::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Floor = System.Convert.ToInt32(System.Math.Floor(X));
 ").
 :- pragma foreign_proc("Java",
-    float.floor_to_int(X :: in) = (Floor :: out),
+    floor_to_int(X :: in) = (Floor :: out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (X >= (double) java.lang.Integer.MAX_VALUE + 1 ||
@@ -465,7 +465,7 @@ X / Y = Z :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    float.floor_to_int(X :: in) = (Floor :: out),
+    floor_to_int(X::in) = (Floor::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     T = erlang:trunc(X),
@@ -478,20 +478,20 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C",
-    float.round_to_int(X :: in) = (Round :: out),
+    round_to_int(X::in) = (Round::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Round = (MR_Integer) floor(X + 0.5);
 ").
 :- pragma foreign_proc("C#",
-    float.round_to_int(X :: in) = (Round :: out),
+    round_to_int(X::in) = (Round::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Round = System.Convert.ToInt32(System.Math.Floor(X + 0.5));
 ").
 :- pragma foreign_proc("Java",
-    float.round_to_int(X :: in) = (Round :: out),
+    round_to_int(X::in) = (Round::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (X >= (double) java.lang.Integer.MAX_VALUE + 0.5 ||
@@ -504,7 +504,7 @@ X / Y = Z :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    float.round_to_int(X :: in) = (Round :: out),
+    round_to_int(X::in) = (Round::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     % XXX erlang:round returns the closest integer to x, rounding to even when
@@ -513,20 +513,20 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C",
-    float.truncate_to_int(X :: in) = (Trunc :: out),
+    truncate_to_int(X::in) = (Trunc::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Trunc = (MR_Integer) X;
 ").
 :- pragma foreign_proc("C#",
-    float.truncate_to_int(X :: in) = (Trunc :: out),
+    truncate_to_int(X::in) = (Trunc::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Trunc = System.Convert.ToInt32(X);
 ").
 :- pragma foreign_proc("Java",
-    float.truncate_to_int(X :: in) = (Trunc :: out),
+    truncate_to_int(X::in) = (Trunc::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (X >= (double) java.lang.Integer.MAX_VALUE + 1 ||
@@ -539,7 +539,7 @@ X / Y = Z :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    float.truncate_to_int(X :: in) = (Trunc :: out),
+    truncate_to_int(X::in) = (Trunc::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Trunc = erlang:trunc(X)
@@ -550,36 +550,36 @@ X / Y = Z :-
 % Miscellaneous functions
 %
 
-float.abs(Num) = Abs :-
+abs(Num) = Abs :-
     ( if Num =< 0.0 then
         Abs = - Num
     else
         Abs = Num
     ).
 
-float.max(X, Y) = Max :-
+max(X, Y) = Max :-
     ( if X >= Y then
         Max = X
     else
         Max = Y
     ).
 
-float.min(X, Y) = Min :-
+min(X, Y) = Min :-
     ( if X =< Y then
         Min = X
     else
         Min = Y
     ).
 
-float.pow(Base, Exp) = Ans :-
+pow(Base, Exp) = Ans :-
     ( if Exp >= 0 then
-        Ans = float.multiply_by_pow(1.0, Base, Exp)
+        Ans = multiply_by_pow(1.0, Base, Exp)
     else
         ( if float_domain_checks, Base = 0.0 then
             throw(math.domain_error("float.pow: zero base"))
         else
             Ans = unchecked_quotient(1.0,
-                float.multiply_by_pow(1.0, Base, -Exp))
+                multiply_by_pow(1.0, Base, -Exp))
             % See below re use of unchecked_quotient.
         )
     ).
@@ -588,9 +588,9 @@ float.pow(Base, Exp) = Ans :-
     % Requires that Exp >= 0.
     % Uses a simple "Russian peasants" algorithm. O(lg(Exp+1)).
     %
-:- func float.multiply_by_pow(float, float, int) = float.
+:- func multiply_by_pow(float, float, int) = float.
 
-float.multiply_by_pow(Scale0, Base, Exp) = Result :-
+multiply_by_pow(Scale0, Base, Exp) = Result :-
     ( if Exp = 0 then
         Result = Scale0
     else
@@ -599,7 +599,7 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
         else
             Scale1 = Scale0
         ),
-        Result = float.multiply_by_pow(Scale1, Base * Base, Exp div 2)
+        Result = multiply_by_pow(Scale1, Base * Base, Exp div 2)
     ).
 
     % The reason for using unchecked_quotient in float.pow is so
@@ -627,14 +627,14 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
     % In hashing a float in .NET or Java, we ensure that the value is
     % non-negative, as this condition is not guaranteed by either API.
 :- pragma foreign_proc("C",
-    float.hash(F::in) = (H::out),
+    hash(F::in) = (H::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     H = MR_hash_float(F);
 ").
 :- pragma foreign_proc("C#",
-    float.hash(F::in) = (H::out),
+    hash(F::in) = (H::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int Code = F.GetHashCode();
@@ -645,7 +645,7 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
     }
 ").
 :- pragma foreign_proc("Java",
-    float.hash(F::in) = (H::out),
+    hash(F::in) = (H::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int Code = (new java.lang.Double(F)).hashCode();
@@ -656,7 +656,7 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    float.hash(F::in) = (H::out),
+    hash(F::in) = (H::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     H = erlang:phash2(F)
@@ -782,33 +782,33 @@ is_zero(0.0).
 ").
 
 :- pragma foreign_proc("C",
-    float.max = (Max::out),
+    max = (Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Max = ML_FLOAT_MAX;
 ").
 :- pragma foreign_proc("C#",
-    float.max = (Max::out),
+    max = (Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = System.Double.MaxValue;
 ").
 :- pragma foreign_proc("Java",
-    float.max = (Max::out),
+    max = (Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = java.lang.Double.MAX_VALUE;
 ").
 :- pragma foreign_proc("Erlang",
-    float.max = (Max::out),
+    max = (Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = 1.797693E+308
 ").
 
 :- pragma foreign_proc("C",
-    float.min = (Min::out),
+    min = (Min::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -827,7 +827,7 @@ is_zero(0.0).
 %   so can't be used, so we use the same constant as for .NET, as the
 %   Java Language Specification also describes Java doubles as 64 bit IEEE.
 %
-float.min = 2.2250738585072014e-308.
+min = 2.2250738585072014e-308.
 
 % Java and C# provide constants for +infinity.
 % For C, the situation is more complicated.
@@ -843,7 +843,7 @@ float.min = 2.2250738585072014e-308.
 % revision of POSIX is supported.
 
 :- pragma foreign_proc("C",
-    float.infinity = (F::out),
+    infinity = (F::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -861,25 +861,25 @@ float.min = 2.2250738585072014e-308.
 ").
 
 :- pragma foreign_proc("Java",
-    float.infinity = (F::out),
+    infinity = (F::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     F = java.lang.Double.POSITIVE_INFINITY;
 ").
 
 :- pragma foreign_proc("C#",
-    float.infinity = (F::out),
+    infinity = (F::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     F = System.Double.PositiveInfinity;
 ").
 
-float.infinity = _ :-
+infinity = _ :-
     private_builtin.sorry(
         "infinity/0 not currently available for this backend").
 
 :- pragma foreign_proc("C",
-    float.epsilon = (Eps::out),
+    epsilon = (Eps::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -899,10 +899,10 @@ float.infinity = _ :-
 %   The Java API doesn't provide an epsilon constant, so we use the
 %   same constant, which is ok since Java defines doubles as 64 bit IEEE.
 %
-float.epsilon = 2.2204460492503131e-16.
+epsilon = 2.2204460492503131e-16.
 
 :- pragma foreign_proc("C",
-    float.radix = (Radix::out),
+    radix = (Radix::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -918,10 +918,10 @@ float.epsilon = 2.2204460492503131e-16.
 %   same constant as .NET, which is ok since Java defines doubles as 64 bit
 %   IEEE.
 %
-float.radix = 2.
+radix = 2.
 
 :- pragma foreign_proc("C",
-    float.mantissa_digits = (MantDig::out),
+    mantissa_digits = (MantDig::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -935,10 +935,10 @@ float.radix = 2.
 %   same constant as .NET, which is ok since Java defines doubles as 64 bit
 %   IEEE.
 %
-float.mantissa_digits = 53.
+mantissa_digits = 53.
 
 :- pragma foreign_proc("C",
-    float.min_exponent = (MinExp::out),
+    min_exponent = (MinExp::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -952,10 +952,10 @@ float.mantissa_digits = 53.
 %   same constant as .NET, which is ok since Java defines doubles as 64 bit
 %   IEEE.
 %
-float.min_exponent = -1021.
+min_exponent = -1021.
 
 :- pragma foreign_proc("C",
-    float.max_exponent = (MaxExp::out),
+    max_exponent = (MaxExp::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -969,11 +969,11 @@ float.min_exponent = -1021.
 %   same constant as .NET, which is ok since Java defines doubles as 64 bit
 %   IEEE.
 %
-float.max_exponent = 1024.
+max_exponent = 1024.
 
     % Convert a float to a pretty_printer.doc.
     %
-float.float_to_doc(X) = str(string.float_to_string(X)).
+float_to_doc(X) = str(string.float_to_string(X)).
 
 %---------------------------------------------------------------------------%
 
