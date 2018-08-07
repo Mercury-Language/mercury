@@ -15,13 +15,17 @@ mdb> finish
 5
 6
       E2:     C1 EXIT pred tabled_typeclass.main/2-0 (det)
-mdb> print io *
+mdb> print io limits
+I/O tabling has recorded actions 0 to 5.
+mdb> print io 0-5
 action 0: tc_action("the arguments are not available due to the presence of one or more type class constraints")
 action 1: notc_action(status, status_success, 2)
 action 2: tc_action("the arguments are not available due to the presence of one or more type class constraints")
 action 3: notc_action(status, status_no_memory, 4)
 action 4: tc_action("the arguments are not available due to the presence of one or more type class constraints")
 action 5: notc_action(status, status_null_pointer, 6)
+mdb> print io 6-29
+I/O tabling has only recorded actions 0 to 5.
 mdb> retry -f
       E1:     C1 CALL pred tabled_typeclass.main/2-0 (det)
 mdb> continue

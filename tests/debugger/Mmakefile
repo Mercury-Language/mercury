@@ -597,7 +597,9 @@ tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.dat
 		> tabled_read_decl.out 2>&1
 
 tabled_typeclass.out: tabled_typeclass tabled_typeclass.inp
-	$(MDB_STD) ./tabled_typeclass < tabled_typeclass.inp \
+	$(MDB_STD) ./tabled_typeclass < tabled_typeclass.inp 2>&1 | \
+		sed 's/0x[-0-9A-Fa-f]*/0xXXXX/g' | \
+		sed 's/(nil)/0xXXXX/g' \
 		> tabled_typeclass.out 2>&1
 
 tailrec1.out: tailrec1 tailrec1.inp tailrec1.data
