@@ -41,12 +41,12 @@ Messages from thread 0:
 Messages from thread 1:
 	thread starting
 	fib(10) = 89
-	waiting:	before release
+	waiting
 	done waiting:	after release
 Messages from thread 2:
 	thread starting
 	fib(15) = 987
-	waiting:	before release
+	waiting
 	done waiting:	after release
 Messages from thread 3:
 	thread starting
@@ -56,10 +56,10 @@ Messages from thread 3:
 Messages from thread 4:
 	thread starting
 	fib(25) = 121393
-	waiting:	after release
+	waiting
 	done waiting:	after release
 Messages from thread 5:
 	thread starting
 	fib(30) = 1346269
-	waiting:	after release
+	waiting
 	done waiting:	after release
