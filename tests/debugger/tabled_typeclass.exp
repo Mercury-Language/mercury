@@ -17,14 +17,13 @@ mdb> finish
       E2:     C1 EXIT pred tabled_typeclass.main/2-0 (det)
 mdb> print io limits
 I/O tabling has recorded actions 0 to 29.
-mdb> print io 0-5
+mdb> print -m 100 io *
 action 0: tc_action("the arguments are not available due to the presence of one or more type class constraints")
 action 1: output_stream_2(stream(1, output, preopen, stdout))
 action 2: do_write_int(<<foreign(stream, 0xXXXX)>>, 1, <<foreign(system_error, 0xXXXX)>>)
 action 3: output_stream_2(stream(1, output, preopen, stdout))
 action 4: do_write_char(<<foreign(stream, 0xXXXX)>>, '\n', <<foreign(system_error, 0xXXXX)>>)
 action 5: notc_action(status, status_success, 2)
-mdb> print io 6-29
 action 6: output_stream_2(stream(1, output, preopen, stdout))
 action 7: do_write_int(<<foreign(stream, 0xXXXX)>>, 2, <<foreign(system_error, 0xXXXX)>>)
 action 8: output_stream_2(stream(1, output, preopen, stdout))

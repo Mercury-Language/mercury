@@ -87,6 +87,6 @@ poly_read_char_code(list(character), c_pointer(0xXXXX), ['a', 'b', 'c'], 54)
 mdb> print action 8
 poly_read_char_code(list(character), c_pointer(0xXXXX), ['a', 'b', 'c'], 10)
 mdb> print action 9
-mdb: I/O action number not in range.
+I/O tabling has only recorded actions 0 to 8.
 mdb> continue -S
 789

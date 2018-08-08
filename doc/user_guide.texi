@@ -2999,9 +2999,47 @@ Reports an error if the current event does not refer to such a port.
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
+@item print action limits
+Prints the numbers of the lowest and highest numbered
+I/O actions executed and recorded by the program, if any.
+@sp 1
 @item print [-fpv] action @var{num}
 Prints a representation
-of the @var{num}'th I/O action executed by the program.
+of the @var{num}'th I/O action executed by the program,
+if there was such an action and if it was recorded.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
+@item print [-fpv] action @var{min}-@var{max}
+Prints a representation of the I/O actions executed by the program
+from the @var{min}'th to the @var{min}'th,
+if there were such actions and if they were recorded.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
+@item print [-fpv] [-m @var{max}] action
+If no I/O actions have been printed yet,
+or if the last mdb command to print I/O actions was not successful,
+prints a representation of the first @var{max} I/O actions
+executed and recorded by the program.
+If there was an mdb command to print I/O actions and it was successful,
+prints a representation of the next @var{max} I/O actions
+executed and recorded by the program.
+@sp 1
+The value of @var{max} is given by the @samp{-m} option.
+If the option is not specified, the default is 20.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
+@item print [-fpv] [-m @var{max}] action *
+Prints a representation of the first @var{max} I/O actions
+executed and recorded by the program.
+@sp 1
+The value of @var{max} is given by the @samp{-m} option.
+If the option is not specified, the default is 500.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
@@ -3048,12 +3086,13 @@ the goal of the current call in its present state of instantiation.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
-The @samp{-x} or @samp{--xml} option tells mdb to dump the goal to an XML file
-and then invoke an XML browser on the file.  The XML filename as well as the
-command to invoke the XML browser can be set using the @samp{set} command.  See
-the documentation for @samp{set} for more details.
-The @samp{-w} or @samp{--web} option tells mdb to dump the goal to an HTML file
-and then invoke a web browser on that file.
+The @samp{-x} or @samp{--xml} option tells mdb
+to dump the goal to an XML file and then invoke an XML browser on the file.
+The XML filename as well as the command to invoke the XML browser
+can be set using the @samp{set} command.
+See the documentation for @samp{set} for more details.
+The @samp{-w} or @samp{--web} option tells mdb
+to dump the goal to an HTML file and then invoke a web browser on that file.
 @sp 1
 @item browse [-fpvxw] exception
 Invokes the interactive term browser to browse
@@ -3062,25 +3101,32 @@ Reports an error if the current event does not refer to such a port.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
-The @samp{-x} or @samp{--xml} option tells mdb to dump the exception to an
-XML file and then invoke an XML browser on the file.  The XML filename as well
-as the command to invoke the XML browser can be set using the @samp{set}
-command.  See the documentation for @samp{set} for more details.
-The @samp{-w} or @samp{--web} option tells mdb to dump the exception to an
-HTML file and then invoke a web browser on that file.
+The @samp{-x} or @samp{--xml} option tells mdb
+to dump the exception to an XML file
+and then invoke an XML browser on the file.
+The XML filename as well as the command to invoke the XML browser
+can be set using the @samp{set} command.
+See the documentation for @samp{set} for more details.
+The @samp{-w} or @samp{--web} option tells mdb
+to dump the exception to an HTML file
+and then invoke a web browser on that file.
 @sp 1
 @item browse [-fpvxw] action @var{num}
 Invokes an interactive term browser to browse a representation
-of the @var{num}'th I/O action executed by the program.
+of the @var{num}'th I/O action executed by the program,
+if there was such an action and if it was recorded.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
-The @samp{-x} or @samp{--xml} option tells mdb to dump the io action
-representation to an XML file and then invoke an XML browser on the file.  The
-XML filename as well as the command to invoke the XML browser can be set using
-the @samp{set} command.  See the documentation for @samp{set} for more details.
-The @samp{-w} or @samp{--web} option tells mdb to dump the io action
-representation to an HTML file and then invoke a web browser on that file.
+The @samp{-x} or @samp{--xml} option tells mdb
+to dump the I/O action representation to an XML file
+and then invoke an XML browser on the file.
+The XML filename as well as the command to invoke the XML browser
+can be set using the @samp{set} command.
+See the documentation for @samp{set} for more details.
+The @samp{-w} or @samp{--web} option tells mdb
+to dump the I/O action representation to an HTML file,
+and then invoke a web browser on that file.
 @c @sp 1
 @c @item browse [-fpvx] proc_body
 @c Invokes an interactive term browser to browse a representation

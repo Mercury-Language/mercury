@@ -67,20 +67,25 @@ static  const char  *MR_trace_new_source_window(const char *window_cmd,
                         int timeout, MR_bool force, MR_bool verbose,
                         MR_bool split);
 
-static  MR_bool     MR_trace_options_detailed(MR_bool *detailed, char ***words,
-                        int *word_count);
+static  MR_bool     MR_trace_options_detailed(MR_bool *detailed,
+                        char ***words, int *word_count);
 static  MR_bool     MR_trace_options_stack_trace(MR_bool *print_all,
                         MR_bool *detailed, MR_SpecLineLimit *line_limit,
                         MR_SpecLineLimit *clique_line_limit,
                         MR_FrameLimit *frame_limit,
                         char ***words, int *word_count);
-static  MR_bool     MR_trace_options_format(MR_BrowseFormat *format,
-                        MR_bool *xml, MR_bool *web, char ***words, int *word_count);
+static  MR_bool     MR_trace_options_print(MR_BrowseFormat *format,
+                        MR_Unsigned *max_printed_actions,
+                        MR_bool *set_max_printed_actions,
+                        char ***words, int *word_count);
+static  MR_bool     MR_trace_options_browse(MR_BrowseFormat *format,
+                        MR_bool *xml, MR_bool *web,
+                        char ***words, int *word_count);
 static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         const char **server_cmd, const char **server_name,
                         MR_Unsigned *timeout, MR_bool *force, MR_bool *verbose,
-                        MR_bool *split, MR_bool *close_window, char ***words,
-                        int *word_count);
+                        MR_bool *split, MR_bool *close_window,
+                        char ***words, int *word_count);
 static  MR_bool     MR_trace_options_diff(MR_Unsigned *start,
                         MR_Unsigned *max, char ***words, int *word_count);
 static  MR_bool     MR_trace_options_dump(MR_bool *quiet, MR_bool *xml,
@@ -208,15 +213,16 @@ MR_trace_cmd_held_vars(char **words, int word_count, MR_TraceCmdInfo *cmd,
     return KEEP_INTERACTING;
 }
 
-#define MR_MAX_NUM_IO_ACTIONS_TO_PRINT  20
+#define MR_NEXT_NUM_IO_ACTIONS_TO_PRINT     20
+#define MR_ALL_NUM_IO_ACTIONS_TO_PRINT      500
 
 MR_Next
 MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_BrowseFormat     format;
-    MR_bool             xml;
-    MR_bool             web;
+    MR_Unsigned         max_printed_actions;
+    MR_bool             set_max_printed_actions;
     const char          *problem;
     MR_Unsigned         action;
     MR_Unsigned         lo_action;
@@ -224,15 +230,11 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
     static MR_bool      have_next_io_action = MR_FALSE;
     static MR_Unsigned  next_io_action = 0;
 
-    if (! MR_trace_options_format(&format, &xml, &web, &words, &word_count)) {
+    if (! MR_trace_options_print(&format,
+        &max_printed_actions, &set_max_printed_actions, &words, &word_count))
+    {
         // The usage message has already been printed.
         ;
-    } else if (xml) {
-        // The --xml option is not valid for print.
-        MR_trace_usage_cur_cmd();
-    } else if (web) {
-        // The --web option is not valid for print.
-        MR_trace_usage_cur_cmd();
     } else if (word_count == 1) {
         problem = MR_trace_browse_one_goal(MR_mdb_out,
             MR_trace_browse_goal_internal, MR_BROWSE_CALLER_PRINT, format);
@@ -257,6 +259,10 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
         } else if ((MR_streq(words[1], "io") || MR_streq(words[1], "action")))
         {
             MR_Unsigned num_printed_actions;
+
+            if (!set_max_printed_actions) {
+                max_printed_actions = MR_NEXT_NUM_IO_ACTIONS_TO_PRINT;
+            }
 
             if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
                 fflush(MR_mdb_out);
@@ -285,7 +291,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 lo_action = MR_io_tabling_start;
             }
 
-            hi_action = lo_action + MR_MAX_NUM_IO_ACTIONS_TO_PRINT;
+            hi_action = lo_action + max_printed_actions;
             if (hi_action >= MR_io_tabling_counter_hwm) {
                 hi_action = MR_io_tabling_counter_hwm - 1;
             }
@@ -357,6 +363,19 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_io_tabling_start, MR_io_tabling_counter_hwm - 1);
             fflush(MR_mdb_out);
         } else if (MR_trace_is_natural_number(words[2], &action)) {
+            if (! (MR_io_tabling_start <= action
+                && action < MR_io_tabling_counter_hwm))
+            {
+                fflush(MR_mdb_out);
+                fprintf(MR_mdb_err,
+                    "I/O tabling has only recorded actions "
+                    "%" MR_INTEGER_LENGTH_MODIFIER "u to "
+                    "%" MR_INTEGER_LENGTH_MODIFIER "u.\n",
+                    MR_io_tabling_start, MR_io_tabling_counter_hwm - 1);
+                have_next_io_action = MR_FALSE;
+                return KEEP_INTERACTING;
+            }
+
             problem = MR_trace_browse_action(MR_mdb_out, action,
                 MR_trace_browse_goal_internal,
                 MR_BROWSE_CALLER_PRINT, format);
@@ -411,22 +430,37 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
             next_io_action = hi_action + 1;
             have_next_io_action = MR_TRUE;
         } else if (MR_streq(words[2], "*")) {
+            if (!set_max_printed_actions) {
+                max_printed_actions = MR_ALL_NUM_IO_ACTIONS_TO_PRINT;
+            }
+
             lo_action = MR_io_tabling_start;
             hi_action = MR_io_tabling_counter_hwm - 1;
 
-            if (lo_action + MR_MAX_NUM_IO_ACTIONS_TO_PRINT < hi_action) {
+            if (lo_action + max_printed_actions < hi_action) {
                 fflush(MR_mdb_out);
                 fprintf(MR_mdb_err,
                     "I/O tabling has recorded "
                     "%" MR_INTEGER_LENGTH_MODIFIER "d actions, "
                     "numbered %" MR_INTEGER_LENGTH_MODIFIER "u to "
-                    "%" MR_INTEGER_LENGTH_MODIFIER "u.\n"
-                    "Without an explicit request, "
-                    "only a maximum of %d actions will be printed.\n",
+                    "%" MR_INTEGER_LENGTH_MODIFIER "u.\n",
                     MR_io_tabling_counter_hwm + MR_io_tabling_start - 1,
-                    MR_io_tabling_start, MR_io_tabling_counter_hwm - 1,
-                    MR_MAX_NUM_IO_ACTIONS_TO_PRINT);
-                return KEEP_INTERACTING;
+                    MR_io_tabling_start, MR_io_tabling_counter_hwm - 1);
+                if (set_max_printed_actions) {
+                    fprintf(MR_mdb_err,
+                        "Following your request via the -m option, "
+                        "only the first %" MR_INTEGER_LENGTH_MODIFIER "d "
+                        "actions will be printed.\n",
+                        max_printed_actions);
+                } else {
+                    fprintf(MR_mdb_err,
+                        "Without your explicit request via the -m option, "
+                        "only the default maximum of %d actions "
+                        "will be printed.\n",
+                        max_printed_actions);
+                }
+
+                hi_action = lo_action + max_printed_actions - 1;
             }
 
             for (action = lo_action; action <= hi_action; action++) {
@@ -467,7 +501,7 @@ MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_Browser          browser;
     const char          *problem;
 
-    if (! MR_trace_options_format(&format, &xml, &web, &words, &word_count)) {
+    if (! MR_trace_options_browse(&format, &xml, &web, &words, &word_count)) {
         // The usage message has already been printed.
         ;
     } else {
@@ -1291,8 +1325,79 @@ MR_trace_options_stack_trace(MR_bool *print_all, MR_bool *detailed,
     return MR_TRUE;
 }
 
-static struct MR_option MR_trace_format_opts[] =
+static struct MR_option MR_trace_print_opts[] =
 {
+    // Please keep the formatting options in sync with MR_trace_browse_opts.
+    { "flat",       MR_no_argument,         NULL,   'f' },
+    { "raw_pretty", MR_no_argument,         NULL,   'r' },
+    { "verbose",    MR_no_argument,         NULL,   'v' },
+    { "pretty",     MR_no_argument,         NULL,   'p' },
+    { "max",        MR_required_argument,   NULL,   'm' },
+    { NULL,         MR_no_argument,         NULL,   0   }
+};
+
+static MR_bool
+MR_trace_options_print(MR_BrowseFormat *format,
+    MR_Unsigned *max_printed_actions, MR_bool *set_max_printed_actions,
+    char ***words, int *word_count)
+{
+    int c;
+
+    *format = MR_BROWSE_DEFAULT_FORMAT;
+    *max_printed_actions = -1;
+    *set_max_printed_actions = MR_FALSE;
+    MR_optind = 0;
+    while ((c = MR_getopt_long(*word_count, *words, "frvpm:",
+        MR_trace_print_opts, NULL)) != EOF)
+    {
+        switch (c) {
+
+            case 'f':
+                *format = MR_BROWSE_FORMAT_FLAT;
+                break;
+
+            case 'r':
+                *format = MR_BROWSE_FORMAT_RAW_PRETTY;
+                break;
+
+            case 'v':
+                *format = MR_BROWSE_FORMAT_VERBOSE;
+                break;
+
+            case 'p':
+                *format = MR_BROWSE_FORMAT_PRETTY;
+                break;
+
+            case 'm':
+                if (! MR_trace_is_natural_number(MR_optarg,
+                    max_printed_actions))
+                {
+                    MR_trace_usage_cur_cmd();
+                    return MR_FALSE;
+                }
+                if (*max_printed_actions == 0) {
+                    // Printing a maximum of zero I/O actions
+                    // does not make any sense.
+                    MR_trace_usage_cur_cmd();
+                    return MR_FALSE;
+                }
+                *set_max_printed_actions = MR_TRUE;
+                break;
+
+            default:
+                MR_trace_usage_cur_cmd();
+                return MR_FALSE;
+        }
+    }
+
+    *words = *words + MR_optind - 1;
+    *word_count = *word_count - MR_optind + 1;
+    return MR_TRUE;
+}
+
+static struct MR_option MR_trace_browse_opts[] =
+{
+    // Please keep the formatting options in sync with MR_trace_print_opts.
     { "flat",       MR_no_argument, NULL,   'f' },
     { "raw_pretty", MR_no_argument, NULL,   'r' },
     { "verbose",    MR_no_argument, NULL,   'v' },
@@ -1303,7 +1408,7 @@ static struct MR_option MR_trace_format_opts[] =
 };
 
 static MR_bool
-MR_trace_options_format(MR_BrowseFormat *format, MR_bool *xml, MR_bool *web,
+MR_trace_options_browse(MR_BrowseFormat *format, MR_bool *xml, MR_bool *web,
     char ***words, int *word_count)
 {
     int c;
@@ -1313,7 +1418,7 @@ MR_trace_options_format(MR_BrowseFormat *format, MR_bool *xml, MR_bool *web,
     *web = MR_FALSE;
     MR_optind = 0;
     while ((c = MR_getopt_long(*word_count, *words, "frvpxw",
-        MR_trace_format_opts, NULL)) != EOF)
+        MR_trace_browse_opts, NULL)) != EOF)
     {
         switch (c) {
 

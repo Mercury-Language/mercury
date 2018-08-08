@@ -5,7 +5,6 @@ table_io allow
 table_io start
 finish
 print io limits
-print io 0-5
-print io 6-29
+print -m 100 io *
 retry -f
 continue
