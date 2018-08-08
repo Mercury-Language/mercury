@@ -829,7 +829,7 @@ encode_short(Short, [Byte1, Byte2]) :-
     Byte1 < 128.
 
 encode_short_det(Short, Bytes) :-
-    ( if encode_short(Short, BytesPrime)then
+    ( if encode_short(Short, BytesPrime) then
         Bytes = BytesPrime
     else
         unexpected($pred, "encode_short failed")
@@ -876,7 +876,7 @@ encode_num_2(Num, RestBytes, Bytes) :-
     ).
 
 encode_num_det(Num, Bytes) :-
-    ( if encode_num(Num, BytesPrime)then
+    ( if encode_num(Num, BytesPrime) then
         Bytes = BytesPrime
     else
         unexpected($pred, "encode_num failed")
