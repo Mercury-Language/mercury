@@ -2999,11 +2999,13 @@ Reports an error if the current event does not refer to such a port.
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
-@item print action limits
+@item print io limits
+@itemx print action limits
 Prints the numbers of the lowest and highest numbered
 I/O actions executed and recorded by the program, if any.
 @sp 1
-@item print [-fpv] action @var{num}
+@item print [-fpv] io @var{num}
+@itemx print [-fpv] action @var{num}
 Prints a representation
 of the @var{num}'th I/O action executed by the program,
 if there was such an action and if it was recorded.
@@ -3011,7 +3013,8 @@ if there was such an action and if it was recorded.
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
-@item print [-fpv] action @var{min}-@var{max}
+@item print [-fpv] io @var{min}-@var{max}
+@itemx print [-fpv] action @var{min}-@var{max}
 Prints a representation of the I/O actions executed by the program
 from the @var{min}'th to the @var{min}'th,
 if there were such actions and if they were recorded.
@@ -3019,7 +3022,8 @@ if there were such actions and if they were recorded.
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
-@item print [-fpv] [-m @var{max}] action
+@item print [-fpv] [-m @var{max}] io
+@itemx print [-fpv] [-m @var{max}] action
 If no I/O actions have been printed yet,
 or if the last mdb command to print I/O actions was not successful,
 prints a representation of the first @var{max} I/O actions
@@ -3034,7 +3038,8 @@ If the option is not specified, the default is 20.
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
-@item print [-fpv] [-m @var{max}] action *
+@item print [-fpv] [-m @var{max}] io *
+@itemx print [-fpv] [-m @var{max}] action *
 Prints a representation of the first @var{max} I/O actions
 executed and recorded by the program.
 @sp 1
@@ -3111,7 +3116,8 @@ The @samp{-w} or @samp{--web} option tells mdb
 to dump the exception to an HTML file
 and then invoke a web browser on that file.
 @sp 1
-@item browse [-fpvxw] action @var{num}
+@item browse [-fpvxw] io @var{num}
+@itemx browse [-fpvxw] action @var{num}
 Invokes an interactive term browser to browse a representation
 of the @var{num}'th I/O action executed by the program,
 if there was such an action and if it was recorded.
