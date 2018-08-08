@@ -577,7 +577,7 @@ process_arguments([Option | Args0], Args, OptionOps, OptionArgs0, OptionArgs,
         ),
         OptionName = "--" ++ LongOption,
         ( if LongOptionPred(LongOption, Flag) then
-            ( if map.search(OptionTable0, Flag, OptionData)then
+            ( if map.search(OptionTable0, Flag, OptionData) then
                 handle_long_option(OptionName, Flag, OptionData,
                     MaybeArg, Args0, Args, OptionOps,
                     [Option | OptionArgs0], OptionArgs,
