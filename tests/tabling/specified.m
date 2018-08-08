@@ -53,25 +53,28 @@ perform_trials(TrialType, ListN, IntN, Incr, NumDouble0, NumTrials0, !IO) :-
     ),
     ( if
         (
-            Time > 10 * MTime,
-            MTime > 0   % "should be slower" version takes ten times as long
+            % The "should be slower" version takes five times as long.
+            Time > 5 * MTime,
+            MTime > 0
         ;
-            Time > 100, % "should be slower" version takes at least 100 ms
-            MTime < 1   % while "should be faster" version takes at most 1 ms
+            % The "should be slower" version takes at least 100 ms
+            % while "should be faster" version takes at most 1 ms.
+            Time > 100,
+            MTime < 1
         ;
+            % The "should be faster" version has been at least double the speed
+            % of the "should be slower" version for the last ten trials.
             NumDouble >= 10
-                        % The "should be faster" version has been at least
-                        % double the speed of the "should be slower" version
-                        % for the last ten trials.
         )
     then
         io.write(TrialType, !IO),
         io.write_string(": tabling works\n", !IO)
     else if
         (
-            Time > 10000        % "should be slower" takes at least 10 seconds
+            % "should be slower" takes at least 1 second.
+            Time > 1000
         ;
-            NumTrials0 > 1000
+            NumTrials0 > 100
         )
     then
         io.write(TrialType, !IO),
