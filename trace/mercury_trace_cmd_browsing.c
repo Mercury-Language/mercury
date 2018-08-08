@@ -449,14 +449,15 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 if (set_max_printed_actions) {
                     fprintf(MR_mdb_err,
                         "Following your request via the -m option, "
-                        "only the first %" MR_INTEGER_LENGTH_MODIFIER "d "
+                        "only the first %" MR_INTEGER_LENGTH_MODIFIER "u "
                         "actions will be printed.\n",
                         max_printed_actions);
                 } else {
                     fprintf(MR_mdb_err,
                         "Without your explicit request via the -m option, "
-                        "only the default maximum of %d actions "
-                        "will be printed.\n",
+                        "only the default maximum "
+                        "of %" MR_INTEGER_LENGTH_MODIFIER "u "
+                        "actions will be printed.\n",
                         max_printed_actions);
                 }
 
