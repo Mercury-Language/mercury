@@ -486,7 +486,9 @@ write_attrib_counts(FILE *fp, MR_AttribCount *table, size_t table_size)
         if (table[i].MR_atc_alloc_site != NULL &&
             table[i].MR_atc_num_cells != 0)
         {
-            fprintf(fp, "%d %lu %lu\n",
+            fprintf(fp, "%d "
+                "%" MR_INTEGER_LENGTH_MODIFIER "u "
+                "%" MR_INTEGER_LENGTH_MODIFIER "u\n",
                 table[i].MR_atc_id,
                 table[i].MR_atc_num_cells,
                 table[i].MR_atc_num_words);
@@ -504,7 +506,9 @@ write_var_size_counts(FILE *fp, const char *prefix, MR_VarSizeCount *node)
         write_var_size_counts(fp, prefix, node->MR_vsc_left);
 
         if (node->MR_vsc_count != 0) {
-            fprintf(fp, "%s %ld %ld\n",
+            fprintf(fp, "%s "
+                "%" MR_INTEGER_LENGTH_MODIFIER "d "
+                "%" MR_INTEGER_LENGTH_MODIFIER "d\n",
                 prefix,
                 node->MR_vsc_count,
                 node->MR_vsc_size);
