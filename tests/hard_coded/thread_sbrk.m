@@ -39,20 +39,20 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    ( can_spawn ->
+    ( can_spawn_native ->
         semaphore.init(Sem, !IO),
-        thread.spawn(alloc_thread(Sem), !IO),
+        thread.spawn_native(alloc_thread(Sem), _, !IO),
         semaphore.wait(Sem, !IO),
         sbrk_loop(Sem, !IO),
         io.write_string("done.\n", !IO)
     ;
-        io.write_string("spawn not supported.\n", !IO)
+        io.write_string("spawn_native not supported.\n", !IO)
     ).
 
 :- pred sbrk_loop(semaphore::in, io::di, io::uo) is det.
 
 sbrk_loop(Sem, !IO) :-
-    thread.yield(!IO),
+    % io.write_string("sbrk thread\n", !IO),
     semaphore.try_wait(Sem, Success, !IO),
     (
         Success = yes
@@ -77,21 +77,21 @@ sbrk(_, !IO).
 #endif
 ").
 
-:- pred alloc_thread(semaphore::in, io::di, io::uo) is cc_multi.
+:- pred alloc_thread(semaphore::in, thread::in, io::di, io::uo) is cc_multi.
 
-alloc_thread(Sem, !IO) :-
+alloc_thread(Sem, _Thread, !IO) :-
     semaphore.signal(Sem, !IO),
     alloc_loop(Sem, 1, !IO).
 
 :- pred alloc_loop(semaphore::in, int::in, io::di, io::uo) is cc_multi.
 
 alloc_loop(Sem, Depth, !IO) :-
+    % io.write_string("alloc thread\n", !IO),
     ( Depth > 20 ->
         semaphore.signal(Sem, !IO)
     ;
         build(Depth, T, 0, _Id),
         io.format("depth %d, size %d\n", [i(Depth), i(size(T))], !IO),
-        thread.yield(!IO),
         alloc_loop(Sem, Depth + 1, !IO)
     ).
 
