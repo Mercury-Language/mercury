@@ -200,8 +200,8 @@ typedef struct MR_VarSizeCount_Struct   MR_VarSizeCount;
 struct MR_AttribCount_Struct {
     unsigned                MR_atc_id;
     MR_AllocSiteInfo const  *MR_atc_alloc_site;
-    size_t                  MR_atc_num_cells;
-    size_t                  MR_atc_num_words;
+    MR_Unsigned             MR_atc_num_cells;
+    MR_Unsigned             MR_atc_num_words;
 };
 
 // Objects which are unattributed, or explicitly attributed as runtime
@@ -210,7 +210,7 @@ struct MR_AttribCount_Struct {
 
 struct MR_VarSizeCount_Struct {
     size_t              MR_vsc_size;
-    size_t              MR_vsc_count;
+    MR_Unsigned         MR_vsc_count;
     MR_VarSizeCount     *MR_vsc_left;
     MR_VarSizeCount     *MR_vsc_right;
 };
@@ -234,7 +234,7 @@ static unsigned hash_addr(MR_Word key);
 static void * GC_CALLBACK enumerate_reachable_objects_locked(void *data);
 static GC_CALLBACK void
                 reachable_object_callback(void *p, size_t bytes, void *data);
-static MR_bool  increment_attrib_count(MR_Word addr, size_t num_words);
+static MR_bool  increment_attrib_count(MR_Word addr, unsigned num_words);
 static void     increment_var_size_count(MR_VarSizeCount **node, size_t words);
 static void     finish_reachable_report(const char *label);
 static void     write_attrib_counts(FILE *fp, MR_AttribCount *table,
@@ -396,9 +396,9 @@ static GC_CALLBACK void
 reachable_object_callback(void *p, size_t bytes, void *data)
 {
     MR_Word addr;
-    size_t words = bytes/MR_BYTES_PER_WORD;
+    unsigned words = bytes / MR_BYTES_PER_WORD;
 
-    addr = ((MR_Word*)p)[0];
+    addr = ((MR_Word *) p)[0];
 
     if ((void *) addr == MR_ALLOC_SITE_RUNTIME) {
         increment_var_size_count(&runtime_count_tree, words);
@@ -413,7 +413,7 @@ reachable_object_callback(void *p, size_t bytes, void *data)
 }
 
 static MR_bool
-increment_attrib_count(MR_Word addr, size_t num_words)
+increment_attrib_count(MR_Word addr, unsigned num_words)
 {
     MR_AttribCount   *entry;
     MR_Unsigned     orig;
@@ -486,7 +486,7 @@ write_attrib_counts(FILE *fp, MR_AttribCount *table, size_t table_size)
         if (table[i].MR_atc_alloc_site != NULL &&
             table[i].MR_atc_num_cells != 0)
         {
-            fprintf(fp, "%d "
+            fprintf(fp, "%u "
                 "%" MR_INTEGER_LENGTH_MODIFIER "u "
                 "%" MR_INTEGER_LENGTH_MODIFIER "u\n",
                 table[i].MR_atc_id,
@@ -507,11 +507,11 @@ write_var_size_counts(FILE *fp, const char *prefix, MR_VarSizeCount *node)
 
         if (node->MR_vsc_count != 0) {
             fprintf(fp, "%s "
-                "%" MR_INTEGER_LENGTH_MODIFIER "d "
-                "%" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                "%" MR_INTEGER_LENGTH_MODIFIER "u "
+                "%" MR_INTEGER_LENGTH_MODIFIER "u\n",
                 prefix,
                 node->MR_vsc_count,
-                node->MR_vsc_size);
+                (MR_Unsigned) node->MR_vsc_size);
             node->MR_vsc_count = 0;
         }
 
@@ -537,7 +537,7 @@ MR_finish_prof_snapshots_file(void)
     for (i = 0; i < attrib_count_table_size; i++) {
         site = attrib_count_table[i].MR_atc_alloc_site;
         if (site != NULL) {
-            fprintf(fp, "%d\t", attrib_count_table[i].MR_atc_id);
+            fprintf(fp, "%u\t", attrib_count_table[i].MR_atc_id);
             fprintf(fp, "%s\t", MR_lookup_entry_or_internal(site->MR_asi_proc));
             fprintf(fp, "%s\t", maybe_filename(site->MR_asi_file_name));
             fprintf(fp, "%d\t", site->MR_asi_line_number);
