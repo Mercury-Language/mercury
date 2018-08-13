@@ -595,6 +595,8 @@
     pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+%---------------------%
+
     % foldr(Fn, Array, X) is equivalent to
     %   list.foldr(Fn, to_list(Array), X)
     % but more efficient.
@@ -690,6 +692,47 @@
     pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+%---------------------%
+
+    % foldl_corresponding(P, A, B, !Acc):
+    %
+    % Does the same job as foldl, but works on two arrays in parallel.
+    % An exception is raised if the array arguments differ in size.
+    %
+:- pred foldl_corresponding(pred(T1, T2, T3, T3), array(T1), array(T2),
+    T3, T3).
+:- mode foldl_corresponding(in(pred(in, in, in, out) is det), in, in,
+    in, out) is det.
+:- mode foldl_corresponding(in(pred(in, in, mdi, muo) is det), in, in,
+    mdi, muo) is det.
+:- mode foldl_corresponding(in(pred(in, in, di, uo) is det), in, in,
+    di, uo) is det.
+:- mode foldl_corresponding(in(pred(in, in, in, out) is semidet), in, in,
+    in, out) is semidet.
+:- mode foldl_corresponding(in(pred(in, in, mdi, muo) is semidet), in, in,
+    mdi, muo) is semidet.
+:- mode foldl_corresponding(in(pred(in, in, di, uo) is semidet), in, in,
+    di, uo) is semidet.
+
+    % As above, but with two accumulators.
+    %
+:- pred foldl2_corresponding(pred(T1, T2, T3, T3, T4, T4),
+    array(T1), array(T2), T3, T3, T4, T4).
+:- mode foldl2_corresponding(in(pred(in, in, in, out, in, out) is det),
+    in, in, in, out, in, out) is det.
+:- mode foldl2_corresponding(in(pred(in, in, in, out, mdi, muo) is det),
+    in, in, in, out, mdi, muo) is det.
+:- mode foldl2_corresponding(in(pred(in, in, in, out, di, uo) is det),
+    in, in, in, out, di, uo) is det.
+:- mode foldl2_corresponding(in(pred(in, in, in, out, in, out) is semidet),
+    in, in, in, out, in, out) is semidet.
+:- mode foldl2_corresponding(in(pred(in, in, in, out, mdi, muo) is semidet),
+    in, in, in, out, mdi, muo) is semidet.
+:- mode foldl2_corresponding(in(pred(in, in,in, out,  di, uo) is semidet),
+    in, in, in, out, di, uo) is semidet.
+
+%---------------------%
+
     % map_foldl(P, A, B, !Acc):
     % Invoke P(Aelt, Belt, !Acc) on each element of the A array,
     % and construct array B from the resulting values of Belt.
@@ -703,6 +746,8 @@
     in, array_uo, di, uo) is det.
 :- mode map_foldl(in(pred(in, out, in, out) is semidet),
     in, array_uo, in, out) is semidet.
+
+%---------------------%
 
     % map_corresponding_foldl(P, A, B, C, !Acc):
     %
@@ -728,6 +773,8 @@
 :- mode map_corresponding_foldl(
     in(pred(in, in, out, in, out) is semidet),
     in, in, array_uo, in, out) is semidet.
+
+%---------------------%
 
     % all_true(Pred, Array):
     % True iff Pred is true for every element of Array.
@@ -2772,6 +2819,72 @@ do_foldr5(P, Min, I, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5) :-
 
 %---------------------------------------------------------------------------%
 
+foldl_corresponding(P, A, B, !Acc) :-
+    MaxA = array.max(A),
+    MaxB = array.max(B),
+    ( if MaxA = MaxB then
+        do_foldl_corresponding(P, 0, MaxA, A, B, !Acc)
+    else
+        error("array.foldl_corresponding: array arguments differ in size")
+    ).
+
+:- pred do_foldl_corresponding(pred(T1, T2, T3, T3), int, int,
+    array(T1), array(T2), T3, T3).
+:- mode do_foldl_corresponding(in(pred(in, in, in, out) is det), in, in,
+    in, in, in, out) is det.
+:- mode do_foldl_corresponding(in(pred(in, in, mdi, muo) is det), in, in,
+    in, in, mdi, muo) is det.
+:- mode do_foldl_corresponding(in(pred(in, in, di, uo) is det), in, in,
+    in, in, di, uo) is det.
+:- mode do_foldl_corresponding(in(pred(in, in, in, out) is semidet), in, in,
+    in, in, in, out) is semidet.
+:- mode do_foldl_corresponding(in(pred(in, in, mdi, muo) is semidet), in, in,
+    in, in, mdi, muo) is semidet.
+:- mode do_foldl_corresponding(in(pred(in, in, di, uo) is semidet), in, in,
+    in, in, di, uo) is semidet.
+
+do_foldl_corresponding(P, I, Max, A, B, !Acc) :-
+    ( if Max < I then
+        true
+    else
+        P(A ^ unsafe_elem(I), B ^ unsafe_elem(I), !Acc),
+        do_foldl_corresponding(P, I + 1, Max, A, B, !Acc)
+    ).
+
+foldl2_corresponding(P, A, B, !Acc1, !Acc2) :-
+    MaxA = array.max(A),
+    MaxB = array.max(B),
+    ( if MaxA = MaxB then
+        do_foldl2_corresponding(P, 0, MaxA, A, B, !Acc1, !Acc2)
+    else
+        error("array.foldl2_corresponding: array arguments differ in size")
+    ).
+
+:- pred do_foldl2_corresponding(pred(T1, T2, T3, T3, T4, T4), int, int,
+    array(T1), array(T2), T3, T3, T4, T4).
+:- mode do_foldl2_corresponding(in(pred(in, in, in, out, in, out) is det),
+    in, in, in, in, in, out, in, out) is det.
+:- mode do_foldl2_corresponding(in(pred(in, in, in, out, mdi, muo) is det),
+    in, in, in, in, in, out, mdi, muo) is det.
+:- mode do_foldl2_corresponding(in(pred(in, in, in, out, di, uo) is det),
+    in, in, in, in, in, out, di, uo) is det.
+:- mode do_foldl2_corresponding(in(pred(in, in, in, out, in, out) is semidet),
+    in, in, in, in, in, out, in, out) is semidet.
+:- mode do_foldl2_corresponding(in(pred(in, in, in, out, mdi, muo) is semidet),
+    in, in, in, in, in, out, mdi, muo) is semidet.
+:- mode do_foldl2_corresponding(in(pred(in, in, in, out, di, uo) is semidet),
+    in, in, in, in, in, out, di, uo) is semidet.
+
+do_foldl2_corresponding(P, I, Max, A, B, !Acc1, !Acc2) :-
+    ( if Max < I then
+        true
+    else
+        P(A ^ unsafe_elem(I), B ^ unsafe_elem(I), !Acc1, !Acc2),
+        do_foldl2_corresponding(P, I + 1, Max, A, B, !Acc1, !Acc2)
+    ).
+
+%---------------------------------------------------------------------------%
+
 map_foldl(P, A, B, !Acc) :-
     N = array.size(A),
     ( if N =< 0 then
@@ -2803,6 +2916,8 @@ map_foldl_2(P, I, A, !B, !Acc) :-
     else
         true
     ).
+
+%---------------------------------------------------------------------------%
 
 map_corresponding_foldl(P, A, B, C, !Acc) :-
     N = array.size(A),

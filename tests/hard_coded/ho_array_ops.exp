@@ -1,0 +1,36 @@
+TESTING: foldl_corresponding (ok)
+1 - 2
+2 - 4
+3 - 6
+4 - 8
+5 - 10
+RESULT: OK
+FINISHED TESTING: foldl_corresponding (ok)
+
+TESTING: foldl_corresponding (empty)
+RESULT: OK
+FINISHED TESTING: foldl_corresponding (empty)
+
+TESTING: foldl_corresponding (mismatch)
+RESULT: EXCEPTION: software_error("array.foldl_corresponding: array arguments differ in size")
+FINISHED TESTING: foldl_corresponding (mismatch)
+
+TESTING: foldl2_corresponding (ok)
+1 - 2
+2 - 4
+3 - 6
+4 - 8
+5 - 10
+Sum is 45.
+RESULT: OK
+FINISHED TESTING: foldl2_corresponding (ok)
+
+TESTING: foldl2_corresponding (empty)
+Sum is 0.
+RESULT: OK
+FINISHED TESTING: foldl2_corresponding (empty)
+
+TESTING: foldl2_corresponding (mismatch)
+RESULT: EXCEPTION: software_error("array.foldl2_corresponding: array arguments differ in size")
+FINISHED TESTING: foldl2_corresponding (mismatch)
+
