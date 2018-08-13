@@ -6,6 +6,14 @@
 %
 % Author: zs
 %
+% There are two expected output files for this test case.
+% The .exp file is for LLDS grades.
+% The .exp2 file is for MLDS grades.
+%
+% According to the first log entry of the .exp2 file, they are different
+% because of missing information in closure layout structures in hlc grades.
+%
+%---------------------------------------------------------------------------%
 
 :- module deconstruct_arg.
 :- interface.
@@ -18,6 +26,7 @@
 %---------------------------------------------------------------------------%
 
 :- import_module array.
+:- import_module assoc_list.
 :- import_module float.
 :- import_module list.
 :- import_module string.
@@ -220,87 +229,158 @@ newline(!IO) :-
 :- pred test_all(T::in, io::di, io::uo) is cc_multi.
 
 test_all(T, !IO) :-
-    test_deconstruct_functor(T, !IO),
-    test_deconstruct_arg(T, 0, !IO),
-    test_deconstruct_arg(T, 1, !IO),
-    test_deconstruct_arg(T, 2, !IO),
-    test_deconstruct_named_arg(T, "moo", !IO),
-    test_deconstruct_named_arg(T, "mooo!", !IO),
-    test_deconstruct_named_arg(T, "packed1", !IO),
-    test_deconstruct_named_arg(T, "packed2", !IO),
-    test_deconstruct_named_arg(T, "packed3", !IO),
-    test_deconstruct_deconstruct(T, !IO),
-    test_deconstruct_limited_deconstruct(T, 3, !IO),
+    io.write_string("test term: ", !IO),
+    io.write_line(T, !IO),
+    test_deconstruct_functor(T, MaybeConstant, !IO),
+
+    some [!RevPairs] (
+        !:RevPairs = [],
+        test_deconstruct_arg(T, 0, !RevPairs),
+        test_deconstruct_arg(T, 1, !RevPairs),
+        test_deconstruct_arg(T, 2, !RevPairs),
+        test_deconstruct_named_arg(T, "moo", !RevPairs),
+        test_deconstruct_named_arg(T, "mooo!", !RevPairs),
+        test_deconstruct_named_arg(T, "packed1", !RevPairs),
+        test_deconstruct_named_arg(T, "packed2", !RevPairs),
+        test_deconstruct_named_arg(T, "packed3", !RevPairs),
+        list.reverse(!.RevPairs, Pairs),
+
+        % Do not bore readers with each negative result individually;
+        % print just one message for them all collectively, and even that
+        % only if is not the expected result.
+        list.filter(has_arg, Pairs, HasArgPairs, NoArgPairs),
+        (
+            HasArgPairs = [],
+            (
+                MaybeConstant = constant(_)
+                % Not being able to get any arguments is not surprising
+                % for terms that do not have any.
+            ;
+                MaybeConstant = not_constant(_, _),
+                io.write_string("no argument access succeeded\n", !IO)
+            )
+        ;
+            HasArgPairs = [_ | _],
+            list.foldl(write_arg_pair, HasArgPairs, !IO),
+            (
+                NoArgPairs = [_ | _],
+                io.write_string("no other argument access succeeded\n", !IO)
+            ;
+                NoArgPairs = []
+            )
+        )
+    ),
+
+    test_deconstruct_deconstruct(MaybeConstant, T, !IO),
+    test_deconstruct_limited_deconstruct(MaybeConstant, T, 3, !IO),
     io.nl(!IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred test_deconstruct_functor(T::in, io::di, io::uo) is cc_multi.
+:- type maybe_constant
+    --->    not_constant(string, int)
+    ;       constant(string).
 
-test_deconstruct_functor(T, !IO) :-
+:- pred test_deconstruct_functor(T::in, maybe_constant::out,
+    io::di, io::uo) is cc_multi.
+
+test_deconstruct_functor(T, MaybeConstant, !IO) :-
     deconstruct.functor(T, include_details_cc, Functor, Arity),
+    ( if Arity = 0 then
+        MaybeConstant = constant(Functor)
+    else
+        MaybeConstant = not_constant(Functor, Arity)
+    ),
     io.format("deconstruct functor: %s/%d\n", [s(Functor), i(Arity)], !IO).
 
-:- pred test_deconstruct_arg(T::in, int::in, io::di, io::uo) is cc_multi.
+%---------------------------------------------------------------------------%
 
-test_deconstruct_arg(T, ArgNum, !IO) :-
-    io.format("deconstruct argument %d of ", [i(ArgNum)], !IO),
-    io.write(T, !IO),
-    deconstruct.arg_cc(T, ArgNum, MaybeArg),
-    (
-        MaybeArg = arg(Arg),
-        io.write_string(" is ", !IO),
-        io.write(Arg, !IO),
-        io.write_string("\n", !IO)
-    ;
-        MaybeArg = no_arg,
-        io.write_string(" doesn't exist\n", !IO)
-    ).
-
-:- pred test_deconstruct_named_arg(T::in, string::in, io::di, io::uo)
+:- pred test_deconstruct_arg(T::in, int::in,
+    assoc_list(string, maybe_arg)::in, assoc_list(string, maybe_arg)::out)
     is cc_multi.
 
-test_deconstruct_named_arg(T, Name, !IO) :-
-    io.format("deconstruct argument '%s'", [s(Name)], !IO),
+test_deconstruct_arg(T, ArgNum, !RevPairs) :-
+    string.format("argument #%d: ", [i(ArgNum)], Desc),
+    deconstruct.arg_cc(T, ArgNum, MaybeArg),
+    !:RevPairs = [Desc - MaybeArg | !.RevPairs].
+
+:- pred test_deconstruct_named_arg(T::in, string::in,
+    assoc_list(string, maybe_arg)::in, assoc_list(string, maybe_arg)::out)
+    is cc_multi.
+
+test_deconstruct_named_arg(T, Name, !RevPairs) :-
+    string.format("argument named '%s': ", [s(Name)], Desc),
     deconstruct.named_arg_cc(T, Name, MaybeArg),
+    !:RevPairs = [Desc - MaybeArg | !.RevPairs].
+
+%---------------------------------------------------------------------------%
+
+:- pred has_arg(pair(string, maybe_arg)::in) is semidet.
+
+has_arg(_Desc - arg(_)).
+
+:- pred write_arg_pair(pair(string, maybe_arg)::in, io::di, io::uo) is det.
+
+write_arg_pair(Desc - MaybeArg, !IO) :-
+    io.write_string(Desc, !IO),
     (
         MaybeArg = arg(Arg),
-        io.write_string(" is ", !IO),
         io.write(Arg, !IO),
         io.nl(!IO)
     ;
         MaybeArg = no_arg,
-        io.write_string(" doesn't exist\n", !IO)
+        io.write_string("does not exist\n", !IO)
     ).
 
-:- pred test_deconstruct_deconstruct(T::in, io::di, io::uo) is cc_multi.
+%---------------------------------------------------------------------------%
 
-test_deconstruct_deconstruct(T, !IO) :-
-    deconstruct.deconstruct(T, include_details_cc,
-        Functor, Arity, Arguments),
-    io.format("deconstruct deconstruct: functor %s arity %d\n",
-        [s(Functor), i(Arity)], !IO),
-    io.write_string("[", !IO),
-    io.write_list(Arguments, ", ", write_arg_univ, !IO),
-    io.write_string("]\n", !IO).
+:- pred test_deconstruct_deconstruct(maybe_constant::in, T::in,
+    io::di, io::uo) is cc_multi.
 
-:- pred test_deconstruct_limited_deconstruct(T::in, int::in, io::di, io::uo)
-    is cc_multi.
+test_deconstruct_deconstruct(MaybeConstant, T, !IO) :-
+    Desc = "plain deconstruct:",
+    deconstruct.deconstruct(T, include_details_cc, Functor, Arity, ArgUnivs),
+    write_deconstruct_results_if_interesting(Desc, MaybeConstant,
+        Functor, Arity, ArgUnivs, !IO).
 
-test_deconstruct_limited_deconstruct(T, Limit, !IO) :-
-    io.format("deconstruct limited deconstruct %d of ", [i(Limit)], !IO),
-    io.write(T, !IO),
-    io.nl(!IO),
+:- pred test_deconstruct_limited_deconstruct(maybe_constant::in, T::in,
+    int::in, io::di, io::uo) is cc_multi.
+
+test_deconstruct_limited_deconstruct(MaybeConstant, T, Limit, !IO) :-
+    string.format("limited deconstruct %d:", [i(Limit)], Desc),
     deconstruct.limited_deconstruct_cc(T, Limit, Result),
     (
-        Result = yes({Functor, Arity, Arguments}),
-        io.format("functor %s arity %d ", [s(Functor), i(Arity)], !IO),
-        io.write_string("[", !IO),
-        io.write_list(Arguments, ", ", write_arg_univ, !IO),
-        io.write_string("]\n", !IO)
+        Result = yes({Functor, Arity, ArgUnivs}),
+        write_deconstruct_results_if_interesting(Desc, MaybeConstant,
+            Functor, Arity, ArgUnivs, !IO)
     ;
         Result = no,
-        io.write_string("failed\n", !IO)
+        io.format("%s failed\n", [s(Desc)], !IO)
+    ).
+
+:- pred write_deconstruct_results_if_interesting(string::in,
+    maybe_constant::in, string::in, int::in, list(univ)::in,
+    io::di, io::uo) is det.
+
+write_deconstruct_results_if_interesting(Desc, MaybeConstant,
+        Functor, Arity, ArgUnivs, !IO) :-
+    ( if
+        MaybeConstant = constant(ConstantFunctor),
+        Functor = ConstantFunctor,
+        Arity = 0,
+        ArgUnivs = []
+    then
+        % The result of the deconstruct operation is exactly what we expected.
+        % The test_deconstruct_functor predicate has already printed
+        % the functor and the arity, so there is nothing interesting for us
+        % to print here.
+        true
+    else
+        io.format("%s\n", [s(Desc)], !IO),
+        io.format("functor %s arity %d ", [s(Functor), i(Arity)], !IO),
+        io.write_string("[", !IO),
+        io.write_list(ArgUnivs, ", ", write_arg_univ, !IO),
+        io.write_string("]\n", !IO)
     ).
 
 :- pred write_arg_univ(univ::in, io::di, io::uo) is det.

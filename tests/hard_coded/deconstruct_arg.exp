@@ -1,826 +1,306 @@
+test term: apple([])
 deconstruct functor: apple/1
-deconstruct argument 0 of apple([]) is []
-deconstruct argument 1 of apple([]) doesn't exist
-deconstruct argument 2 of apple([]) doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor apple arity 1
-[[]]
-deconstruct limited deconstruct 3 of apple([])
+argument #0: []
+no other argument access succeeded
+plain deconstruct:
+functor apple arity 1 [[]]
+limited deconstruct 3:
 functor apple arity 1 [[]]
 
+test term: apple([9, 5, 1])
 deconstruct functor: apple/1
-deconstruct argument 0 of apple([9, 5, 1]) is [9, 5, 1]
-deconstruct argument 1 of apple([9, 5, 1]) doesn't exist
-deconstruct argument 2 of apple([9, 5, 1]) doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor apple arity 1
-[[9, 5, 1]]
-deconstruct limited deconstruct 3 of apple([9, 5, 1])
+argument #0: [9, 5, 1]
+no other argument access succeeded
+plain deconstruct:
+functor apple arity 1 [[9, 5, 1]]
+limited deconstruct 3:
 functor apple arity 1 [[9, 5, 1]]
 
+test term: zop(3.3, 2.03)
 deconstruct functor: zop/2
-deconstruct argument 0 of zop(3.3, 2.03) is 3.3
-deconstruct argument 1 of zop(3.3, 2.03) is 2.03
-deconstruct argument 2 of zop(3.3, 2.03) doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor zop arity 2
-[3.3, 2.03]
-deconstruct limited deconstruct 3 of zop(3.3, 2.03)
+argument #0: 3.3
+argument #1: 2.03
+no other argument access succeeded
+plain deconstruct:
+functor zop arity 2 [3.3, 2.03]
+limited deconstruct 3:
 functor zop arity 2 [3.3, 2.03]
 
+test term: zap(50, 51.0, 52)
 deconstruct functor: zap/3
-deconstruct argument 0 of zap(50, 51.0, 52) is 50
-deconstruct argument 1 of zap(50, 51.0, 52) is 51.0
-deconstruct argument 2 of zap(50, 51.0, 52) is 52
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor zap arity 3
-[50, 51.0, 52]
-deconstruct limited deconstruct 3 of zap(50, 51.0, 52)
+argument #0: 50
+argument #1: 51.0
+argument #2: 52
+no other argument access succeeded
+plain deconstruct:
+functor zap arity 3 [50, 51.0, 52]
+limited deconstruct 3:
 functor zap arity 3 [50, 51.0, 52]
 
+test term: zip(50, 51, 52, 53)
 deconstruct functor: zip/4
-deconstruct argument 0 of zip(50, 51, 52, 53) is 50
-deconstruct argument 1 of zip(50, 51, 52, 53) is 51
-deconstruct argument 2 of zip(50, 51, 52, 53) is 52
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor zip arity 4
-[50, 51, 52, 53]
-deconstruct limited deconstruct 3 of zip(50, 51, 52, 53)
-failed
+argument #0: 50
+argument #1: 51
+argument #2: 52
+no other argument access succeeded
+plain deconstruct:
+functor zip arity 4 [50, 51, 52, 53]
+limited deconstruct 3: failed
 
+test term: wombat
 deconstruct functor: wombat/0
-deconstruct argument 0 of wombat doesn't exist
-deconstruct argument 1 of wombat doesn't exist
-deconstruct argument 2 of wombat doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor wombat arity 0
-[]
-deconstruct limited deconstruct 3 of wombat
-functor wombat arity 0 []
 
+test term: qwerty(5)
 deconstruct functor: qwerty/1
-deconstruct argument 0 of qwerty(5) is 5
-deconstruct argument 1 of qwerty(5) doesn't exist
-deconstruct argument 2 of qwerty(5) doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor qwerty arity 1
-[5]
-deconstruct limited deconstruct 3 of qwerty(5)
+argument #0: 5
+no other argument access succeeded
+plain deconstruct:
+functor qwerty arity 1 [5]
+limited deconstruct 3:
 functor qwerty arity 1 [5]
 
+test term: moomoo(50, "moo.")
 deconstruct functor: moomoo/2
-deconstruct argument 0 of moomoo(50, "moo.") is 50
-deconstruct argument 1 of moomoo(50, "moo.") is "moo."
-deconstruct argument 2 of moomoo(50, "moo.") doesn't exist
-deconstruct argument 'moo' is 50
-deconstruct argument 'mooo!' is "moo."
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor moomoo arity 2
-[50, "moo."]
-deconstruct limited deconstruct 3 of moomoo(50, "moo.")
+argument #0: 50
+argument #1: "moo."
+argument named 'moo': 50
+argument named 'mooo!': "moo."
+no other argument access succeeded
+plain deconstruct:
+functor moomoo arity 2 [50, "moo."]
+limited deconstruct 3:
 functor moomoo arity 2 [50, "moo."]
 
+test term: 'a'
 deconstruct functor: 'a'/0
-deconstruct argument 0 of 'a' doesn't exist
-deconstruct argument 1 of 'a' doesn't exist
-deconstruct argument 2 of 'a' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 'a' arity 0
-[]
-deconstruct limited deconstruct 3 of 'a'
-functor 'a' arity 0 []
 
+test term: ' '
 deconstruct functor: ' '/0
-deconstruct argument 0 of ' ' doesn't exist
-deconstruct argument 1 of ' ' doesn't exist
-deconstruct argument 2 of ' ' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor ' ' arity 0
-[]
-deconstruct limited deconstruct 3 of ' '
-functor ' ' arity 0 []
 
+test term: '\a'
 deconstruct functor: '\a'/0
-deconstruct argument 0 of '\a' doesn't exist
-deconstruct argument 1 of '\a' doesn't exist
-deconstruct argument 2 of '\a' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\a' arity 0
-[]
-deconstruct limited deconstruct 3 of '\a'
-functor '\a' arity 0 []
 
+test term: '\b'
 deconstruct functor: '\b'/0
-deconstruct argument 0 of '\b' doesn't exist
-deconstruct argument 1 of '\b' doesn't exist
-deconstruct argument 2 of '\b' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\b' arity 0
-[]
-deconstruct limited deconstruct 3 of '\b'
-functor '\b' arity 0 []
 
+test term: '\r'
 deconstruct functor: '\r'/0
-deconstruct argument 0 of '\r' doesn't exist
-deconstruct argument 1 of '\r' doesn't exist
-deconstruct argument 2 of '\r' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\r' arity 0
-[]
-deconstruct limited deconstruct 3 of '\r'
-functor '\r' arity 0 []
 
+test term: '\f'
 deconstruct functor: '\f'/0
-deconstruct argument 0 of '\f' doesn't exist
-deconstruct argument 1 of '\f' doesn't exist
-deconstruct argument 2 of '\f' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\f' arity 0
-[]
-deconstruct limited deconstruct 3 of '\f'
-functor '\f' arity 0 []
 
+test term: '\t'
 deconstruct functor: '\t'/0
-deconstruct argument 0 of '\t' doesn't exist
-deconstruct argument 1 of '\t' doesn't exist
-deconstruct argument 2 of '\t' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\t' arity 0
-[]
-deconstruct limited deconstruct 3 of '\t'
-functor '\t' arity 0 []
 
+test term: '\n'
 deconstruct functor: '\n'/0
-deconstruct argument 0 of '\n' doesn't exist
-deconstruct argument 1 of '\n' doesn't exist
-deconstruct argument 2 of '\n' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\n' arity 0
-[]
-deconstruct limited deconstruct 3 of '\n'
-functor '\n' arity 0 []
 
+test term: '\v'
 deconstruct functor: '\v'/0
-deconstruct argument 0 of '\v' doesn't exist
-deconstruct argument 1 of '\v' doesn't exist
-deconstruct argument 2 of '\v' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\v' arity 0
-[]
-deconstruct limited deconstruct 3 of '\v'
-functor '\v' arity 0 []
 
+test term: '\\'
 deconstruct functor: '\\'/0
-deconstruct argument 0 of '\\' doesn't exist
-deconstruct argument 1 of '\\' doesn't exist
-deconstruct argument 2 of '\\' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\\' arity 0
-[]
-deconstruct limited deconstruct 3 of '\\'
-functor '\\' arity 0 []
 
+test term: '\''
 deconstruct functor: '\''/0
-deconstruct argument 0 of '\'' doesn't exist
-deconstruct argument 1 of '\'' doesn't exist
-deconstruct argument 2 of '\'' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\'' arity 0
-[]
-deconstruct limited deconstruct 3 of '\''
-functor '\'' arity 0 []
 
+test term: '~'
 deconstruct functor: '~'/0
-deconstruct argument 0 of '~' doesn't exist
-deconstruct argument 1 of '~' doesn't exist
-deconstruct argument 2 of '~' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '~' arity 0
-[]
-deconstruct limited deconstruct 3 of '~'
-functor '~' arity 0 []
 
+test term: '\001\'
 deconstruct functor: '\001\'/0
-deconstruct argument 0 of '\001\' doesn't exist
-deconstruct argument 1 of '\001\' doesn't exist
-deconstruct argument 2 of '\001\' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\001\' arity 0
-[]
-deconstruct limited deconstruct 3 of '\001\'
-functor '\001\' arity 0 []
 
+test term: '\037\'
 deconstruct functor: '\037\'/0
-deconstruct argument 0 of '\037\' doesn't exist
-deconstruct argument 1 of '\037\' doesn't exist
-deconstruct argument 2 of '\037\' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\037\' arity 0
-[]
-deconstruct limited deconstruct 3 of '\037\'
-functor '\037\' arity 0 []
 
+test term: '\177\'
 deconstruct functor: '\177\'/0
-deconstruct argument 0 of '\177\' doesn't exist
-deconstruct argument 1 of '\177\' doesn't exist
-deconstruct argument 2 of '\177\' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\177\' arity 0
-[]
-deconstruct limited deconstruct 3 of '\177\'
-functor '\177\' arity 0 []
 
+test term: '\200\'
 deconstruct functor: '\200\'/0
-deconstruct argument 0 of '\200\' doesn't exist
-deconstruct argument 1 of '\200\' doesn't exist
-deconstruct argument 2 of '\200\' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\200\' arity 0
-[]
-deconstruct limited deconstruct 3 of '\200\'
-functor '\200\' arity 0 []
 
+test term: '\237\'
 deconstruct functor: '\237\'/0
-deconstruct argument 0 of '\237\' doesn't exist
-deconstruct argument 1 of '\237\' doesn't exist
-deconstruct argument 2 of '\237\' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor '\237\' arity 0
-[]
-deconstruct limited deconstruct 3 of '\237\'
-functor '\237\' arity 0 []
 
+test term: ' '
 deconstruct functor: ' '/0
-deconstruct argument 0 of ' ' doesn't exist
-deconstruct argument 1 of ' ' doesn't exist
-deconstruct argument 2 of ' ' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor ' ' arity 0
-[]
-deconstruct limited deconstruct 3 of ' '
-functor ' ' arity 0 []
 
+test term: 'Ω'
 deconstruct functor: 'Ω'/0
-deconstruct argument 0 of 'Ω' doesn't exist
-deconstruct argument 1 of 'Ω' doesn't exist
-deconstruct argument 2 of 'Ω' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 'Ω' arity 0
-[]
-deconstruct limited deconstruct 3 of 'Ω'
-functor 'Ω' arity 0 []
 
+test term: ""
 deconstruct functor: ""/0
-deconstruct argument 0 of "" doesn't exist
-deconstruct argument 1 of "" doesn't exist
-deconstruct argument 2 of "" doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor "" arity 0
-[]
-deconstruct limited deconstruct 3 of ""
-functor "" arity 0 []
 
+test term: "azBZ09"
 deconstruct functor: "azBZ09"/0
-deconstruct argument 0 of "azBZ09" doesn't exist
-deconstruct argument 1 of "azBZ09" doesn't exist
-deconstruct argument 2 of "azBZ09" doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor "azBZ09" arity 0
-[]
-deconstruct limited deconstruct 3 of "azBZ09"
-functor "azBZ09" arity 0 []
 
+test term: "α∀🜓"
 deconstruct functor: "α∀🜓"/0
-deconstruct argument 0 of "α∀🜓" doesn't exist
-deconstruct argument 1 of "α∀🜓" doesn't exist
-deconstruct argument 2 of "α∀🜓" doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor "α∀🜓" arity 0
-[]
-deconstruct limited deconstruct 3 of "α∀🜓"
-functor "α∀🜓" arity 0 []
 
+test term: "\a\b\f\n\t\r\v\"\\"
 deconstruct functor: "\a\b\f\n\t\r\v\"\\"/0
-deconstruct argument 0 of "\a\b\f\n\t\r\v\"\\" doesn't exist
-deconstruct argument 1 of "\a\b\f\n\t\r\v\"\\" doesn't exist
-deconstruct argument 2 of "\a\b\f\n\t\r\v\"\\" doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor "\a\b\f\n\t\r\v\"\\" arity 0
-[]
-deconstruct limited deconstruct 3 of "\a\b\f\n\t\r\v\"\\"
-functor "\a\b\f\n\t\r\v\"\\" arity 0 []
 
+test term: "\001\\a\037\AZ[`az~\177\"
 deconstruct functor: "\001\\a\037\AZ[`az~\177\"/0
-deconstruct argument 0 of "\001\\a\037\AZ[`az~\177\" doesn't exist
-deconstruct argument 1 of "\001\\a\037\AZ[`az~\177\" doesn't exist
-deconstruct argument 2 of "\001\\a\037\AZ[`az~\177\" doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor "\001\\a\037\AZ[`az~\177\" arity 0
-[]
-deconstruct limited deconstruct 3 of "\001\\a\037\AZ[`az~\177\"
-functor "\001\\a\037\AZ[`az~\177\" arity 0 []
 
+test term: "\200\\a\237\ Àÿ"
 deconstruct functor: "\200\\a\237\ Àÿ"/0
-deconstruct argument 0 of "\200\\a\237\ Àÿ" doesn't exist
-deconstruct argument 1 of "\200\\a\237\ Àÿ" doesn't exist
-deconstruct argument 2 of "\200\\a\237\ Àÿ" doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor "\200\\a\237\ Àÿ" arity 0
-[]
-deconstruct limited deconstruct 3 of "\200\\a\237\ Àÿ"
-functor "\200\\a\237\ Àÿ" arity 0 []
 
+test term: "α\nβ\tγ,a\nα\001\α\001\a\001\α"
 deconstruct functor: "α\nβ\tγ,a\nα\001\α\001\a\001\α"/0
-deconstruct argument 0 of "α\nβ\tγ,a\nα\001\α\001\a\001\α" doesn't exist
-deconstruct argument 1 of "α\nβ\tγ,a\nα\001\α\001\a\001\α" doesn't exist
-deconstruct argument 2 of "α\nβ\tγ,a\nα\001\α\001\a\001\α" doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor "α\nβ\tγ,a\nα\001\α\001\a\001\α" arity 0
-[]
-deconstruct limited deconstruct 3 of "α\nβ\tγ,a\nα\001\α\001\a\001\α"
-functor "α\nβ\tγ,a\nα\001\α\001\a\001\α" arity 0 []
 
+test term: 0.12345678901234566
 deconstruct functor: 0.12345678901234566/0
-deconstruct argument 0 of 0.12345678901234566 doesn't exist
-deconstruct argument 1 of 0.12345678901234566 doesn't exist
-deconstruct argument 2 of 0.12345678901234566 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 0.12345678901234566 arity 0
-[]
-deconstruct limited deconstruct 3 of 0.12345678901234566
-functor 0.12345678901234566 arity 0 []
 
+test term: infinity
 deconstruct functor: infinity/0
-deconstruct argument 0 of infinity doesn't exist
-deconstruct argument 1 of infinity doesn't exist
-deconstruct argument 2 of infinity doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor infinity arity 0
-[]
-deconstruct limited deconstruct 3 of infinity
-functor infinity arity 0 []
 
+test term: -infinity
 deconstruct functor: -infinity/0
-deconstruct argument 0 of -infinity doesn't exist
-deconstruct argument 1 of -infinity doesn't exist
-deconstruct argument 2 of -infinity doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor -infinity arity 0
-[]
-deconstruct limited deconstruct 3 of -infinity
-functor -infinity arity 0 []
 
+test term: 4
 deconstruct functor: 4/0
-deconstruct argument 0 of 4 doesn't exist
-deconstruct argument 1 of 4 doesn't exist
-deconstruct argument 2 of 4 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 4 arity 0
-[]
-deconstruct limited deconstruct 3 of 4
-functor 4 arity 0 []
 
+test term: 561u
 deconstruct functor: 561u/0
-deconstruct argument 0 of 561u doesn't exist
-deconstruct argument 1 of 561u doesn't exist
-deconstruct argument 2 of 561u doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 561u arity 0
-[]
-deconstruct limited deconstruct 3 of 561u
-functor 561u arity 0 []
 
+test term: 42i8
 deconstruct functor: 42i8/0
-deconstruct argument 0 of 42i8 doesn't exist
-deconstruct argument 1 of 42i8 doesn't exist
-deconstruct argument 2 of 42i8 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 42i8 arity 0
-[]
-deconstruct limited deconstruct 3 of 42i8
-functor 42i8 arity 0 []
 
+test term: 42u8
 deconstruct functor: 42u8/0
-deconstruct argument 0 of 42u8 doesn't exist
-deconstruct argument 1 of 42u8 doesn't exist
-deconstruct argument 2 of 42u8 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 42u8 arity 0
-[]
-deconstruct limited deconstruct 3 of 42u8
-functor 42u8 arity 0 []
 
+test term: 42i16
 deconstruct functor: 42i16/0
-deconstruct argument 0 of 42i16 doesn't exist
-deconstruct argument 1 of 42i16 doesn't exist
-deconstruct argument 2 of 42i16 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 42i16 arity 0
-[]
-deconstruct limited deconstruct 3 of 42i16
-functor 42i16 arity 0 []
 
+test term: 42u16
 deconstruct functor: 42u16/0
-deconstruct argument 0 of 42u16 doesn't exist
-deconstruct argument 1 of 42u16 doesn't exist
-deconstruct argument 2 of 42u16 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 42u16 arity 0
-[]
-deconstruct limited deconstruct 3 of 42u16
-functor 42u16 arity 0 []
 
+test term: 42i32
 deconstruct functor: 42i32/0
-deconstruct argument 0 of 42i32 doesn't exist
-deconstruct argument 1 of 42i32 doesn't exist
-deconstruct argument 2 of 42i32 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 42i32 arity 0
-[]
-deconstruct limited deconstruct 3 of 42i32
-functor 42i32 arity 0 []
 
+test term: 43u32
 deconstruct functor: 43u32/0
-deconstruct argument 0 of 43u32 doesn't exist
-deconstruct argument 1 of 43u32 doesn't exist
-deconstruct argument 2 of 43u32 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 43u32 arity 0
-[]
-deconstruct limited deconstruct 3 of 43u32
-functor 43u32 arity 0 []
 
+test term: 66i64
 deconstruct functor: 66i64/0
-deconstruct argument 0 of 66i64 doesn't exist
-deconstruct argument 1 of 66i64 doesn't exist
-deconstruct argument 2 of 66i64 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 66i64 arity 0
-[]
-deconstruct limited deconstruct 3 of 66i64
-functor 66i64 arity 0 []
 
+test term: 67u64
 deconstruct functor: 67u64/0
-deconstruct argument 0 of 67u64 doesn't exist
-deconstruct argument 1 of 67u64 doesn't exist
-deconstruct argument 2 of 67u64 doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor 67u64 arity 0
-[]
-deconstruct limited deconstruct 3 of 67u64
-functor 67u64 arity 0 []
 
+test term: univ_cons(["hi! I\'m a univ!"])
 deconstruct functor: univ_cons/1
-deconstruct argument 0 of univ_cons(["hi! I\'m a univ!"]) is ["hi! I\'m a univ!"]
-deconstruct argument 1 of univ_cons(["hi! I\'m a univ!"]) doesn't exist
-deconstruct argument 2 of univ_cons(["hi! I\'m a univ!"]) doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor univ_cons arity 1
-[["hi! I\'m a univ!"]]
-deconstruct limited deconstruct 3 of univ_cons(["hi! I\'m a univ!"])
+argument #0: ["hi! I\'m a univ!"]
+no other argument access succeeded
+plain deconstruct:
+functor univ_cons arity 1 [["hi! I\'m a univ!"]]
+limited deconstruct 3:
 functor univ_cons arity 1 [["hi! I\'m a univ!"]]
 
+test term: '<<deconstruct_arg.set/1>>'
 deconstruct functor: set_rep/1
-deconstruct argument 0 of '<<deconstruct_arg.set/1>>' is [1, 2, 3, 3]
-deconstruct argument 1 of '<<deconstruct_arg.set/1>>' doesn't exist
-deconstruct argument 2 of '<<deconstruct_arg.set/1>>' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor set_rep arity 1
-[[1, 2, 3, 3]]
-deconstruct limited deconstruct 3 of '<<deconstruct_arg.set/1>>'
+argument #0: [1, 2, 3, 3]
+no other argument access succeeded
+plain deconstruct:
+functor set_rep arity 1 [[1, 2, 3, 3]]
+limited deconstruct 3:
 functor set_rep arity 1 [[1, 2, 3, 3]]
 
+test term: '<<predicate>>'
 deconstruct functor: newline/0
-deconstruct argument 0 of '<<predicate>>' doesn't exist
-deconstruct argument 1 of '<<predicate>>' doesn't exist
-deconstruct argument 2 of '<<predicate>>' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor newline arity 0
-[]
-deconstruct limited deconstruct 3 of '<<predicate>>'
-functor newline arity 0 []
 
-deconstruct functor: lambda_deconstruct_arg_m_193/1
-deconstruct argument 0 of '<<predicate>>' is [1, 2]
-deconstruct argument 1 of '<<predicate>>' doesn't exist
-deconstruct argument 2 of '<<predicate>>' doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor lambda_deconstruct_arg_m_193 arity 1
-[[1, 2]]
-deconstruct limited deconstruct 3 of '<<predicate>>'
-functor lambda_deconstruct_arg_m_193 arity 1 [[1, 2]]
+test term: '<<predicate>>'
+deconstruct functor: lambda_deconstruct_arg_m_202/1
+argument #0: [1, 2]
+no other argument access succeeded
+plain deconstruct:
+functor lambda_deconstruct_arg_m_202 arity 1 [[1, 2]]
+limited deconstruct 3:
+functor lambda_deconstruct_arg_m_202 arity 1 [[1, 2]]
 
+test term: '<<predicate>>'
 deconstruct functor: p/3
-deconstruct argument 0 of '<<predicate>>' is 1
-deconstruct argument 1 of '<<predicate>>' is 2.2
-deconstruct argument 2 of '<<predicate>>' is "three"
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor p arity 3
-[1, 2.2, "three"]
-deconstruct limited deconstruct 3 of '<<predicate>>'
+argument #0: 1
+argument #1: 2.2
+argument #2: "three"
+no other argument access succeeded
+plain deconstruct:
+functor p arity 3 [1, 2.2, "three"]
+limited deconstruct 3:
 functor p arity 3 [1, 2.2, "three"]
 
+test term: {1, 'b'}
 deconstruct functor: {}/2
-deconstruct argument 0 of {1, 'b'} is 1
-deconstruct argument 1 of {1, 'b'} is 'b'
-deconstruct argument 2 of {1, 'b'} doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor {} arity 2
-[1, 'b']
-deconstruct limited deconstruct 3 of {1, 'b'}
+argument #0: 1
+argument #1: 'b'
+no other argument access succeeded
+plain deconstruct:
+functor {} arity 2 [1, 'b']
+limited deconstruct 3:
 functor {} arity 2 [1, 'b']
 
+test term: {1, 'b', "third"}
 deconstruct functor: {}/3
-deconstruct argument 0 of {1, 'b', "third"} is 1
-deconstruct argument 1 of {1, 'b', "third"} is 'b'
-deconstruct argument 2 of {1, 'b', "third"} is "third"
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor {} arity 3
-[1, 'b', "third"]
-deconstruct limited deconstruct 3 of {1, 'b', "third"}
+argument #0: 1
+argument #1: 'b'
+argument #2: "third"
+no other argument access succeeded
+plain deconstruct:
+functor {} arity 3 [1, 'b', "third"]
+limited deconstruct 3:
 functor {} arity 3 [1, 'b', "third"]
 
+test term: {1, 'b', "third", {1, 2, 3, 4}}
 deconstruct functor: {}/4
-deconstruct argument 0 of {1, 'b', "third", {1, 2, 3, 4}} is 1
-deconstruct argument 1 of {1, 'b', "third", {1, 2, 3, 4}} is 'b'
-deconstruct argument 2 of {1, 'b', "third", {1, 2, 3, 4}} is "third"
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor {} arity 4
-[1, 'b', "third", {1, 2, 3, 4}]
-deconstruct limited deconstruct 3 of {1, 'b', "third", {1, 2, 3, 4}}
-failed
+argument #0: 1
+argument #1: 'b'
+argument #2: "third"
+no other argument access succeeded
+plain deconstruct:
+functor {} arity 4 [1, 'b', "third", {1, 2, 3, 4}]
+limited deconstruct 3: failed
 
+test term: array([1000, 2000])
 deconstruct functor: <<array>>/2
-deconstruct argument 0 of array([1000, 2000]) is 1000
-deconstruct argument 1 of array([1000, 2000]) is 2000
-deconstruct argument 2 of array([1000, 2000]) doesn't exist
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor <<array>> arity 2
-[1000, 2000]
-deconstruct limited deconstruct 3 of array([1000, 2000])
+argument #0: 1000
+argument #1: 2000
+no other argument access succeeded
+plain deconstruct:
+functor <<array>> arity 2 [1000, 2000]
+limited deconstruct 3:
 functor <<array>> arity 2 [1000, 2000]
 
+test term: array([100, 200, 300])
 deconstruct functor: <<array>>/3
-deconstruct argument 0 of array([100, 200, 300]) is 100
-deconstruct argument 1 of array([100, 200, 300]) is 200
-deconstruct argument 2 of array([100, 200, 300]) is 300
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor <<array>> arity 3
-[100, 200, 300]
-deconstruct limited deconstruct 3 of array([100, 200, 300])
+argument #0: 100
+argument #1: 200
+argument #2: 300
+no other argument access succeeded
+plain deconstruct:
+functor <<array>> arity 3 [100, 200, 300]
+limited deconstruct 3:
 functor <<array>> arity 3 [100, 200, 300]
 
+test term: array([10, 20, 30, 40])
 deconstruct functor: <<array>>/4
-deconstruct argument 0 of array([10, 20, 30, 40]) is 10
-deconstruct argument 1 of array([10, 20, 30, 40]) is 20
-deconstruct argument 2 of array([10, 20, 30, 40]) is 30
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' doesn't exist
-deconstruct argument 'packed2' doesn't exist
-deconstruct argument 'packed3' doesn't exist
-deconstruct deconstruct: functor <<array>> arity 4
-[10, 20, 30, 40]
-deconstruct limited deconstruct 3 of array([10, 20, 30, 40])
-failed
+argument #0: 10
+argument #1: 20
+argument #2: 30
+no other argument access succeeded
+plain deconstruct:
+functor <<array>> arity 4 [10, 20, 30, 40]
+limited deconstruct 3: failed
 
+test term: packed(100, one, two, three, "four")
 deconstruct functor: packed/5
-deconstruct argument 0 of packed(100, one, two, three, "four") is 100
-deconstruct argument 1 of packed(100, one, two, three, "four") is one
-deconstruct argument 2 of packed(100, one, two, three, "four") is two
-deconstruct argument 'moo' doesn't exist
-deconstruct argument 'mooo!' doesn't exist
-deconstruct argument 'packed1' is 100
-deconstruct argument 'packed2' is one
-deconstruct argument 'packed3' is two
-deconstruct deconstruct: functor packed arity 5
-[100, one, two, three, "four"]
-deconstruct limited deconstruct 3 of packed(100, one, two, three, "four")
-failed
+argument #0: 100
+argument #1: one
+argument #2: two
+argument named 'packed1': 100
+argument named 'packed2': one
+argument named 'packed3': two
+no other argument access succeeded
+plain deconstruct:
+functor packed arity 5 [100, one, two, three, "four"]
+limited deconstruct 3: failed
 
