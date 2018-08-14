@@ -12,7 +12,7 @@ RESULT: OK
 FINISHED TESTING: foldl_corresponding (empty)
 
 TESTING: foldl_corresponding (mismatch)
-RESULT: EXCEPTION: software_error("array.foldl_corresponding: array arguments differ in size")
+RESULT: EXCEPTION: software_error("predicate `array.foldl_corresponding\'/5: Unexpected: mismatched array sizes")
 FINISHED TESTING: foldl_corresponding (mismatch)
 
 TESTING: foldl2_corresponding (ok)
@@ -31,6 +31,27 @@ RESULT: OK
 FINISHED TESTING: foldl2_corresponding (empty)
 
 TESTING: foldl2_corresponding (mismatch)
-RESULT: EXCEPTION: software_error("array.foldl2_corresponding: array arguments differ in size")
+RESULT: EXCEPTION: software_error("predicate `array.foldl2_corresponding\'/7: Unexpected: mismatched array sizes")
 FINISHED TESTING: foldl2_corresponding (mismatch)
+
+TESTING: map_corresponding_foldl (ok)
+1 + 2 = 3
+2 + 4 = 6
+3 + 6 = 9
+4 + 8 = 12
+5 + 10 = 15
+array([3, 6, 9, 12, 15])
+
+RESULT: OK
+FINISHED TESTING: map_corresponding_foldl (ok)
+
+TESTING: map_corresponding_foldl (empty)
+array([])
+
+RESULT: OK
+FINISHED TESTING: map_corresponding_foldl (empty)
+
+TESTING: map_corresponding_foldl (mismatch)
+RESULT: EXCEPTION: software_error("predicate `array.map_corresponding_foldl\'/6: Unexpected: mismatched array sizes")
+FINISHED TESTING: map_corresponding_foldl (mismatch)
 

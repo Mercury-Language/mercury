@@ -117,6 +117,9 @@ Changes that may break compatibility:
   if its argument is equal to int.min_int.  The old behaviour of this function
   is provided by the the new function int.unchecked_abs/1.
 
+* We have changed the semantics of array.map_corresponding_foldl/6 so that it
+  throws an exception if the input arrays differ in size.
+
 Changes to the Mercury language:
 
 * We have added a new primitive type, uint, which is an unsigned integer type

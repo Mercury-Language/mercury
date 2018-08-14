@@ -35,7 +35,13 @@ main(!IO) :-
     do_test("foldl2_corresponding (ok)", foldl2_corresponding_ok, !IO),
     do_test("foldl2_corresponding (empty)", foldl2_corresponding_empty, !IO),
     do_test("foldl2_corresponding (mismatch)", foldl2_corresponding_mismatch,
-        !IO).
+        !IO),
+
+    do_test("map_corresponding_foldl (ok)", map_corresponding_foldl_ok, !IO),
+    do_test("map_corresponding_foldl (empty)", map_corresponding_foldl_empty,
+        !IO),
+    do_test("map_corresponding_foldl (mismatch)",
+        map_corresponding_foldl_mismatch, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -121,6 +127,41 @@ foldl2_corresponding_mismatch(!IO) :-
 print_and_sum_corresponding(A, B, !Sum, !IO) :-
     !:Sum = !.Sum + A + B,
     io.format("%d - %d\n", [i(A), i(B)], !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred map_corresponding_foldl_ok(io::di, io::uo) is det.
+
+map_corresponding_foldl_ok(!IO) :-
+    A = array.from_list([1, 2, 3, 4, 5]),
+    B = array.from_list([2, 4, 6, 8, 10]),
+    array.map_corresponding_foldl(print_and_partial_sum, A, B, C, !IO),
+    io.write_line(C, !IO),
+    io.nl(!IO).
+
+:- pred map_corresponding_foldl_empty(io::di, io::uo) is det.
+
+map_corresponding_foldl_empty(!IO) :-
+    make_empty_array(A),
+    make_empty_array(B),
+    array.map_corresponding_foldl(print_and_partial_sum, A, B, C, !IO),
+    io.write_line(C, !IO),
+    io.nl(!IO).
+
+:- pred map_corresponding_foldl_mismatch(io::di, io::uo) is det.
+
+map_corresponding_foldl_mismatch(!IO) :-
+    A = array.from_list([1, 2, 3, 4, 5]),
+    make_empty_array(B),
+    array.map_corresponding_foldl(print_and_partial_sum, A, B, C, !IO),
+    io.write_line(C, !IO),
+    io.nl(!IO).
+
+:- pred print_and_partial_sum(int::in, int::in, int::out, io::di, io::uo) is det.
+
+print_and_partial_sum(A, B, C, !IO) :-
+    C = A + B,
+    io.format("%d + %d = %d\n", [i(A), i(B), i(C)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ho_array_ops.

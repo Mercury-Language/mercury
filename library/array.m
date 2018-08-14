@@ -697,7 +697,7 @@
     % foldl_corresponding(P, A, B, !Acc):
     %
     % Does the same job as foldl, but works on two arrays in parallel.
-    % An exception is raised if the array arguments differ in size.
+    % Throws an exception if the array arguments differ in size.
     %
 :- pred foldl_corresponding(pred(T1, T2, T3, T3), array(T1), array(T2),
     T3, T3).
@@ -756,8 +756,7 @@
     % from the result Celt values. Return C and the final value of the
     % accumulator.
     %
-    % C will have as many elements as A does. In most uses, B will also have
-    % this many elements, but may have more; it may NOT have fewer.
+    % Throws an exception if A and B differ in size.
     %
 :- pred map_corresponding_foldl(pred(T1, T2, T3, T4, T4),
     array(T1), array(T2), array(T3), T4, T4).
@@ -773,6 +772,12 @@
 :- mode map_corresponding_foldl(
     in(pred(in, in, out, in, out) is semidet),
     in, in, array_uo, in, out) is semidet.
+:- mode map_corresponding_foldl(
+    in(pred(in, in, out, mdi, muo) is semidet),
+    in, in, array_uo, mdi, muo) is semidet.
+:- mode map_corresponding_foldl(
+    in(pred(in, in, out, di, uo) is semidet),
+    in, in, array_uo, di, uo) is semidet.
 
 %---------------------%
 
@@ -1379,7 +1384,7 @@ init(N, X) = A :-
 
 init(Size, Item, Array) :-
     ( if Size < 0 then
-        error("array.init: negative size")
+        unexpected($pred, "negative size")
     else
         array.init_2(Size, Item, Array)
     ).
@@ -1464,7 +1469,7 @@ generate(Size, GenFunc) = Array :-
     compare(Result, Size, 0),
     (
         Result = (<),
-        error("array.generate: negative size")
+        unexpected($pred, "negative size")
     ;
         Result = (=),
         make_empty_array(Array)
@@ -1529,7 +1534,7 @@ generate_foldl(Size, GenPred, Array, !Acc) :-
     compare(Result, Size, 0),
     (
         Result = (<),
-        error("array.generate_foldl: negative size")
+        unexpected($pred, "negative size")
     ;
         Result = (=),
         make_empty_array(Array)
@@ -2002,7 +2007,7 @@ shrink(!.Array, N) = !:Array :-
 shrink(Size, !Array) :-
     OldSize = array.size(!.Array),
     ( if Size > OldSize then
-        error("array.shrink: can't shrink to a larger size")
+        unexpected($pred, "cannot shrink to a larger size")
     else if Size = OldSize then
         true
     else
@@ -2223,7 +2228,7 @@ fetch_items(Array, Low, High, List) :-
     then
         List = do_foldr_func(func(X, Xs) = [X | Xs], Array, [], Low, High)
     else
-        error("array.fetch_items/4: One or more index is out of bounds")
+        unexpected($pred, "one or more indexes is out-of-bounds")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2825,7 +2830,7 @@ foldl_corresponding(P, A, B, !Acc) :-
     ( if MaxA = MaxB then
         do_foldl_corresponding(P, 0, MaxA, A, B, !Acc)
     else
-        error("array.foldl_corresponding: array arguments differ in size")
+        unexpected($pred, "mismatched array sizes")
     ).
 
 :- pred do_foldl_corresponding(pred(T1, T2, T3, T3), int, int,
@@ -2857,7 +2862,7 @@ foldl2_corresponding(P, A, B, !Acc1, !Acc2) :-
     ( if MaxA = MaxB then
         do_foldl2_corresponding(P, 0, MaxA, A, B, !Acc1, !Acc2)
     else
-        error("array.foldl2_corresponding: array arguments differ in size")
+        unexpected($pred, "mismatched array sizes")
     ).
 
 :- pred do_foldl2_corresponding(pred(T1, T2, T3, T3, T4, T4), int, int,
@@ -2920,15 +2925,18 @@ map_foldl_2(P, I, A, !B, !Acc) :-
 %---------------------------------------------------------------------------%
 
 map_corresponding_foldl(P, A, B, C, !Acc) :-
-    N = array.size(A),
-    ( if N =< 0 then
+    SizeA = array.size(A),
+    SizeB = array.size(B),
+    ( if SizeA \= SizeB then
+        unexpected($pred, "mismatched array sizes")
+    else if SizeA =< 0 then
         C = array.make_empty_array
     else
         array.unsafe_lookup(A, 0, X),
         array.unsafe_lookup(B, 0, Y),
         P(X, Y, Z, !Acc),
-        C1 = array.init(N, Z),
-        map_corresponding_foldl_2(P, 1, N, A, B, C1, C, !Acc)
+        C1 = array.init(SizeA, Z),
+        map_corresponding_foldl_2(P, 1, SizeA, A, B, C1, C, !Acc)
     ).
 
 :- pred map_corresponding_foldl_2(pred(T1, T2, T3, T4, T4),
@@ -2945,6 +2953,12 @@ map_corresponding_foldl(P, A, B, C, !Acc) :-
 :- mode map_corresponding_foldl_2(
     in(pred(in, in, out, in, out) is semidet),
     in, in, in, in, array_di, array_uo, in, out) is semidet.
+:- mode map_corresponding_foldl_2(
+    in(pred(in, in, out, mdi, muo) is semidet),
+    in, in, in, in, array_di, array_uo, mdi, muo) is semidet.
+:- mode map_corresponding_foldl_2(
+    in(pred(in, in, out, di, uo) is semidet),
+    in, in, in, in, array_di, array_uo, di, uo) is semidet.
 
 map_corresponding_foldl_2(P, I, N, A, B, !C, !Acc) :-
     ( if I < N then
@@ -3275,7 +3289,7 @@ least_index(A) = array.min(A).
 
 det_least_index(A) = Index :-
     ( if array.is_empty(A) then
-        error("array.det_least_index: empty array")
+        unexpected($pred, "empty array")
     else
         Index = array.min(A)
     ).
@@ -3293,7 +3307,7 @@ greatest_index(A) = array.max(A).
 
 det_greatest_index(A) = Index :-
     ( if array.is_empty(A) then
-        error("array.det_greatest_index: empty array")
+        unexpected($pred, "empty array")
     else
         Index = array.max(A)
     ).
