@@ -1,0 +1,51 @@
+unify(array([]), array([])) ==> true
+unify(array([]), array([1])) ==> false
+unify(array([]), array([1, 2])) ==> false
+unify(array([]), array([2, 1])) ==> false
+unify(array([]), array([2])) ==> false
+unify(array([1]), array([])) ==> false
+unify(array([1]), array([1])) ==> true
+unify(array([1]), array([1, 2])) ==> false
+unify(array([1]), array([2, 1])) ==> false
+unify(array([1]), array([2])) ==> false
+unify(array([1, 2]), array([])) ==> false
+unify(array([1, 2]), array([1])) ==> false
+unify(array([1, 2]), array([1, 2])) ==> true
+unify(array([1, 2]), array([2, 1])) ==> false
+unify(array([1, 2]), array([2])) ==> false
+unify(array([2, 1]), array([])) ==> false
+unify(array([2, 1]), array([1])) ==> false
+unify(array([2, 1]), array([1, 2])) ==> false
+unify(array([2, 1]), array([2, 1])) ==> true
+unify(array([2, 1]), array([2])) ==> false
+unify(array([2]), array([])) ==> false
+unify(array([2]), array([1])) ==> false
+unify(array([2]), array([1, 2])) ==> false
+unify(array([2]), array([2, 1])) ==> false
+unify(array([2]), array([2])) ==> true
+
+compare(array([]), array([])) ==> '='
+compare(array([]), array([1])) ==> '<'
+compare(array([]), array([1, 2])) ==> '<'
+compare(array([]), array([2, 1])) ==> '<'
+compare(array([]), array([2])) ==> '<'
+compare(array([1]), array([])) ==> '>'
+compare(array([1]), array([1])) ==> '='
+compare(array([1]), array([1, 2])) ==> '<'
+compare(array([1]), array([2, 1])) ==> '<'
+compare(array([1]), array([2])) ==> '<'
+compare(array([1, 2]), array([])) ==> '>'
+compare(array([1, 2]), array([1])) ==> '>'
+compare(array([1, 2]), array([1, 2])) ==> '='
+compare(array([1, 2]), array([2, 1])) ==> '<'
+compare(array([1, 2]), array([2])) ==> '>'
+compare(array([2, 1]), array([])) ==> '>'
+compare(array([2, 1]), array([1])) ==> '>'
+compare(array([2, 1]), array([1, 2])) ==> '>'
+compare(array([2, 1]), array([2, 1])) ==> '='
+compare(array([2, 1]), array([2])) ==> '>'
+compare(array([2]), array([])) ==> '>'
+compare(array([2]), array([1])) ==> '>'
+compare(array([2]), array([1, 2])) ==> '<'
+compare(array([2]), array([2, 1])) ==> '<'
+compare(array([2]), array([2])) ==> '='

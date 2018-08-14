@@ -874,22 +874,22 @@ array_equal(Array1, Array2) :-
         array.size(Array1, Size),
         array.size(Array2, Size)
     then
-        array.equal_elements(0, Size, Array1, Array2)
+        equal_elements(0, Size, Array1, Array2)
     else
         fail
     ).
 
-:- pred array.equal_elements(int, int, array(T), array(T)).
-:- mode array.equal_elements(in, in, in, in) is semidet.
+:- pred equal_elements(int, int, array(T), array(T)).
+:- mode equal_elements(in, in, in, in) is semidet.
 
 equal_elements(N, Size, Array1, Array2) :-
     ( if N = Size then
         true
     else
-        array.lookup(Array1, N, Elem),
-        array.lookup(Array2, N, Elem),
+        array.unsafe_lookup(Array1, N, Elem),
+        array.unsafe_lookup(Array2, N, Elem),
         N1 = N + 1,
-        array.equal_elements(N1, Size, Array1, Array2)
+        equal_elements(N1, Size, Array1, Array2)
     ).
 
 array_compare(A1, A2) = C :-
@@ -907,7 +907,7 @@ array_compare(Result, Array1, Array2) :-
     compare(SizeResult, Size1, Size2),
     (
         SizeResult = (=),
-        array.compare_elements(0, Size1, Array1, Array2, Result)
+        compare_elements(0, Size1, Array1, Array2, Result)
     ;
         ( SizeResult = (<)
         ; SizeResult = (>)
@@ -922,13 +922,13 @@ compare_elements(N, Size, Array1, Array2, Result) :-
     ( if N = Size then
         Result = (=)
     else
-        array.lookup(Array1, N, Elem1),
-        array.lookup(Array2, N, Elem2),
+        array.unsafe_lookup(Array1, N, Elem1),
+        array.unsafe_lookup(Array2, N, Elem2),
         compare(ElemResult, Elem1, Elem2),
         (
             ElemResult = (=),
             N1 = N + 1,
-            array.compare_elements(N1, Size, Array1, Array2, Result)
+            compare_elements(N1, Size, Array1, Array2, Result)
         ;
             ( ElemResult = (<)
             ; ElemResult = (>)

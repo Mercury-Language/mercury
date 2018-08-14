@@ -16,6 +16,7 @@ ORDINARY_PROGS = \
 	array_all_tf \
 	array_gen \
 	array_sort \
+	array_unify_compare \
 	array_test \
 	array_test2 \
 	bag_various \
