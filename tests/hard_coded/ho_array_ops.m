@@ -27,6 +27,22 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
+    do_test("foldl (empty)", foldl_test([]), !IO),
+    do_test("foldl (singleton)", foldl_test([1]), !IO),
+    do_test("foldl (> 1)", foldl_test([1, 2, 3]), !IO),
+
+    do_test("foldl2 (empty)", foldl2_test([]), !IO),
+    do_test("foldl2 (singleton)", foldl2_test([1]), !IO),
+    do_test("foldl2 (> 1)", foldl2_test([1, 2, 3]), !IO),
+
+    do_test("foldr (empty)", foldr_test([]), !IO),
+    do_test("foldr (singleton)", foldr_test([1]), !IO),
+    do_test("foldr (> 1)", foldr_test([1, 2, 3]), !IO),
+
+    do_test("foldr2 (empty)", foldr2_test([]), !IO),
+    do_test("foldr2 (singleton)", foldr2_test([1]), !IO),
+    do_test("foldr2 (> 1)", foldr2_test([1, 2, 3]), !IO),
+
     do_test("foldl_corresponding (ok)", foldl_corresponding_ok, !IO),
     do_test("foldl_corresponding (empty)", foldl_corresponding_empty, !IO),
     do_test("foldl_corresponding (mismatch)", foldl_corresponding_mismatch,
@@ -60,6 +76,60 @@ do_test(Desc, Pred, !IO) :-
         io.write_line(Excp, !IO)
     ),
     io.format("FINISHED TESTING: %s\n\n", [s(Desc)], !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Tests for foldl and foldr.
+%
+
+:- pred foldl_test(list(int)::in, io::di, io::uo) is det.
+
+foldl_test(Elems, !IO) :-
+    Array = array.from_list(Elems),
+    array.foldl(write_elem, Array, !IO),
+    io.nl(!IO).
+
+:- pred foldr_test(list(int)::in, io::di, io::uo) is det.
+
+foldr_test(Elems, !IO) :-
+    Array = array.from_list(Elems),
+    array.foldr(write_elem, Array, !IO),
+    io.nl(!IO).
+
+:- pred write_elem(int::in, io::di, io::uo) is det.
+
+write_elem(X, !IO) :-
+    io.write_int(X, !IO),
+    io.write_string(" ", !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Tests for foldl2 and foldr2.
+%
+
+:- pred foldl2_test(list(int)::in, io::di, io::uo) is det.
+
+foldl2_test(Elems, !IO) :-
+    Array = array.from_list(Elems),
+    array.foldl2(write_elem_and_sum, Array, 0, Sum, !IO),
+    io.nl(!IO),
+    io.format("The sum is %d\n", [i(Sum)], !IO).
+
+:- pred foldr2_test(list(int)::in, io::di, io::uo) is det.
+
+foldr2_test(Elems, !IO) :-
+    Array = array.from_list(Elems),
+    array.foldr2(write_elem_and_sum, Array, 0, Sum, !IO),
+    io.nl(!IO),
+    io.format("The sum is %d\n", [i(Sum)], !IO).
+
+:- pred write_elem_and_sum(int::in, int::in, int::out, io::di, io::uo)
+    is det.
+
+write_elem_and_sum(X, !Sum, !IO) :-
+    io.write_int(X, !IO),
+    io.write_string(" ", !IO),
+    !:Sum = !.Sum + X.
 
 %---------------------------------------------------------------------------%
 %

@@ -1,3 +1,69 @@
+TESTING: foldl (empty)
+
+RESULT: OK
+FINISHED TESTING: foldl (empty)
+
+TESTING: foldl (singleton)
+1 
+RESULT: OK
+FINISHED TESTING: foldl (singleton)
+
+TESTING: foldl (> 1)
+1 2 3 
+RESULT: OK
+FINISHED TESTING: foldl (> 1)
+
+TESTING: foldl2 (empty)
+
+The sum is 0
+RESULT: OK
+FINISHED TESTING: foldl2 (empty)
+
+TESTING: foldl2 (singleton)
+1 
+The sum is 1
+RESULT: OK
+FINISHED TESTING: foldl2 (singleton)
+
+TESTING: foldl2 (> 1)
+1 2 3 
+The sum is 6
+RESULT: OK
+FINISHED TESTING: foldl2 (> 1)
+
+TESTING: foldr (empty)
+
+RESULT: OK
+FINISHED TESTING: foldr (empty)
+
+TESTING: foldr (singleton)
+1 
+RESULT: OK
+FINISHED TESTING: foldr (singleton)
+
+TESTING: foldr (> 1)
+3 2 1 
+RESULT: OK
+FINISHED TESTING: foldr (> 1)
+
+TESTING: foldr2 (empty)
+
+The sum is 0
+RESULT: OK
+FINISHED TESTING: foldr2 (empty)
+
+TESTING: foldr2 (singleton)
+1 
+The sum is 1
+RESULT: OK
+FINISHED TESTING: foldr2 (singleton)
+
+TESTING: foldr2 (> 1)
+3 2 1 
+The sum is 6
+RESULT: OK
+FINISHED TESTING: foldr2 (> 1)
+
 TESTING: foldl_corresponding (ok)
 1 - 2
 2 - 4
