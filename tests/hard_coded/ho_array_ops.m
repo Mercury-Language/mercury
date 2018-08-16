@@ -53,6 +53,14 @@ main(!IO) :-
     do_test("foldl2_corresponding (mismatch)", foldl2_corresponding_mismatch,
         !IO),
 
+    do_test("map (pred) (empty)", map_pred_test([]), !IO),
+    do_test("map (pred) (singleton)", map_pred_test([1]), !IO),
+    do_test("map (pred) (> 1)", map_pred_test([1, 2, 3]), !IO),
+
+    do_test("map (func) (empty)", map_func_test([]), !IO),
+    do_test("map (func) (singleton)", map_func_test([1]), !IO),
+    do_test("map (func) (> 1)", map_func_test([1, 2, 3]), !IO),
+
     do_test("map_corresponding_foldl (ok)", map_corresponding_foldl_ok, !IO),
     do_test("map_corresponding_foldl (empty)", map_corresponding_foldl_empty,
         !IO),
@@ -197,6 +205,22 @@ foldl2_corresponding_mismatch(!IO) :-
 print_and_sum_corresponding(A, B, !Sum, !IO) :-
     !:Sum = !.Sum + A + B,
     io.format("%d - %d\n", [i(A), i(B)], !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred map_pred_test(list(int)::in, io::di, io::uo) is det.
+
+map_pred_test(Elems, !IO) :-
+    A = array.from_list(Elems),
+    array.map(int_to_string, A, B),
+    io.write_line(B, !IO).
+
+:- pred map_func_test(list(int)::in, io::di, io::uo) is det.
+
+map_func_test(Elems, !IO) :-
+    A  = array.from_list(Elems),
+    B : array(string) = array.map(int_to_string, A),
+    io.write_line(B, !IO).
 
 %---------------------------------------------------------------------------%
 

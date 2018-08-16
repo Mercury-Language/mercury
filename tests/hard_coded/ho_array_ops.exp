@@ -100,6 +100,36 @@ TESTING: foldl2_corresponding (mismatch)
 RESULT: EXCEPTION: software_error("predicate `array.foldl2_corresponding\'/7: Unexpected: mismatched array sizes")
 FINISHED TESTING: foldl2_corresponding (mismatch)
 
+TESTING: map (pred) (empty)
+array([])
+RESULT: OK
+FINISHED TESTING: map (pred) (empty)
+
+TESTING: map (pred) (singleton)
+array(["1"])
+RESULT: OK
+FINISHED TESTING: map (pred) (singleton)
+
+TESTING: map (pred) (> 1)
+array(["1", "2", "3"])
+RESULT: OK
+FINISHED TESTING: map (pred) (> 1)
+
+TESTING: map (func) (empty)
+array([])
+RESULT: OK
+FINISHED TESTING: map (func) (empty)
+
+TESTING: map (func) (singleton)
+array(["1"])
+RESULT: OK
+FINISHED TESTING: map (func) (singleton)
+
+TESTING: map (func) (> 1)
+array(["1", "2", "3"])
+RESULT: OK
+FINISHED TESTING: map (func) (> 1)
+
 TESTING: map_corresponding_foldl (ok)
 1 + 2 = 3
 2 + 4 = 6

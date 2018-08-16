@@ -473,10 +473,12 @@
     % each of the elements of `OldArray' to create `NewArray'.
     %
 :- pred map(pred(T1, T2), array(T1), array(T2)).
-:- mode map(pred(in, out) is det, array_di, array_uo) is det.
+%:- mode map(pred(in, out) is det, array_ui, array_uo) is det.
+:- mode map(pred(in, out) is det, in, array_uo) is det.
 
 :- func map(func(T1) = T2, array(T1)) = array(T2).
-:- mode map(func(in) = out is det, array_di) = array_uo is det.
+%:- mode map(func(in) = out is det, array_ui) = array_uo is det.
+:- mode map(func(in) = out is det, in) = array_uo is det.
 
 :- func array_compare(array(T), array(T)) = comparison_result.
 :- mode array_compare(in, in) = uo is det.
@@ -2897,7 +2899,7 @@ map_foldl(P, A, B, !Acc) :-
     else
         array.unsafe_lookup(A, 0, X),
         P(X, Y, !Acc),
-        B1 = array.init(N, Y),
+        B1 = unsafe_init(N, Y, 0),
         map_foldl_2(P, 1, A, B1, B, !Acc)
     ).
 
@@ -2935,7 +2937,7 @@ map_corresponding_foldl(P, A, B, C, !Acc) :-
         array.unsafe_lookup(A, 0, X),
         array.unsafe_lookup(B, 0, Y),
         P(X, Y, Z, !Acc),
-        C1 = array.init(SizeA, Z),
+        C1 = unsafe_init(SizeA, Z, 0),
         map_corresponding_foldl_2(P, 1, SizeA, A, B, C1, C, !Acc)
     ).
 
