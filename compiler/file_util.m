@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2011 The University of Melbourne.
+% Copyright (C) 2013-2015, 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -93,25 +94,18 @@
 
     % Write to a given filename, giving appropriate status messages
     % and error messages if the file cannot be opened.
-    % This will catch and report include_file_error exceptions.
     %
 :- pred output_to_file(globals::in, string::in,
-    pred(io, io)::in(pred(di, uo) is det), bool::out, io::di, io::uo) is det.
+    pred(list(string), io, io)::in(pred(out, di, uo) is det), bool::out,
+    io::di, io::uo) is det.
 
-    % Same as output_to_file above, but allow the writing predicate
-    % to generate something, and if it succeeds, return its result.
-    %
-:- pred output_to_file_return_result(globals::in, string::in,
-    pred(T, io, io)::in(pred(out, di, uo) is det),
-    maybe(T)::out, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
 
     % Write the contents of the given file to the specified output stream.
-    % Throws include_file_error exceptions for errors relating to the
-    % include file.
     %
 :- pred write_include_file_contents(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
-:- pred write_include_file_contents_cur_stream(string::in,
+    maybe_error::out, io::di, io::uo) is det.
+:- pred write_include_file_contents_cur_stream(string::in, maybe_error::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -184,9 +178,6 @@
 :- import_module exception.
 :- import_module string.
 :- import_module univ.
-
-:- type include_file_error
-    --->    include_file_error(string, string).
 
 %---------------------------------------------------------------------------%
 
@@ -335,18 +326,6 @@ make_path_name_noncanon(Dir, FileName, PathName) :-
 %---------------------------------------------------------------------------%
 
 output_to_file(Globals, FileName, Action, Succeeded, !IO) :-
-    ActionReturnDummy = (pred(0::out, di, uo) is det --> Action),
-    output_to_file_return_result(Globals, FileName, ActionReturnDummy,
-        Result, !IO),
-    (
-        Result = yes(_),
-        Succeeded = yes
-    ;
-        Result = no,
-        Succeeded = no
-    ).
-
-output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_write_string(Verbose, "% Writing to file `", !IO),
@@ -365,20 +344,19 @@ output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         (
-            TryResult = succeeded(ActionResult),
-            Result = yes(ActionResult)
-        ;
-            TryResult = exception(Univ),
-            ( if univ_to_type(Univ, IncludeError) then
-                IncludeError = include_file_error(IncludeFileName, Detail),
-                string.format("can't open `%s' for input: %s",
-                    [s(IncludeFileName), s(Detail)], ErrorMessage),
+            TryResult = succeeded(Errors),
+            (
+                Errors = [],
+                Succeeded = yes
+            ;
+                Errors = [_ | _],
                 maybe_write_string(Verbose, "\n", !IO),
-                report_error(ErrorMessage, !IO),
-                Result = no
-            else
-                rethrow(TryResult)
+                foldl(report_error, Errors, !IO),
+                Succeeded = no
             )
+        ;
+            TryResult = exception(_),
+            rethrow(TryResult)
         )
     ;
         Res = error(_),
@@ -386,36 +364,45 @@ output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
         string.append_list(["can't open file `", FileName, "' for output."],
             ErrorMessage),
         report_error(ErrorMessage, !IO),
-        Result = no
+        Succeeded = no
     ).
 
 %---------------------------------------------------------------------------%
 
-write_include_file_contents(OutputStream, FileName, !IO) :-
+write_include_file_contents(OutputStream, FileName, Res, !IO) :-
     FollowSymLinks = yes,
-    io.file_type(FollowSymLinks, FileName, MaybeType, !IO),
+    io.file_type(FollowSymLinks, FileName, MaybeFileType, !IO),
     (
-        MaybeType = ok(Type),
-        ( if possibly_regular_file(Type) then
-            copy_file_to_stream(FileName, OutputStream, !IO)
+        MaybeFileType = ok(FileType),
+        ( if possibly_regular_file(FileType) then
+            copy_file_to_stream(FileName, OutputStream, CopyRes, !IO),
+            (
+                CopyRes = ok,
+                Res = ok
+            ;
+                CopyRes = error(Error),
+                Message = io.error_message(Error),
+                Res = error(cannot_open_file_for_input(FileName, Message))
+            )
         else
-            throw(include_file_error(FileName, "Not a regular file"))
+            Message = "Not a regular file",
+            Res = error(cannot_open_file_for_input(FileName, Message))
         )
     ;
-        MaybeType = error(Error),
-        Msg = string.remove_prefix_if_present("can't find file type: ",
-            io.error_message(Error)),
-        throw(include_file_error(FileName, Msg))
+        MaybeFileType = error(FileTypeError),
+        Message = string.remove_prefix_if_present("can't find file type: ",
+            io.error_message(FileTypeError)),
+        Res = error(cannot_open_file_for_input(FileName, Message))
     ).
 
-write_include_file_contents_cur_stream(FileName, !IO) :-
+write_include_file_contents_cur_stream(FileName, Res, !IO) :-
     io.output_stream(OutputStream, !IO),
-    write_include_file_contents(OutputStream, FileName, !IO).
+    write_include_file_contents(OutputStream, FileName, Res, !IO).
 
-:- pred copy_file_to_stream(string::in, io.output_stream::in,
+:- pred copy_file_to_stream(string::in, io.output_stream::in, io.res::out,
     io::di, io::uo) is det.
 
-copy_file_to_stream(FileName, OutputStream, !IO) :-
+copy_file_to_stream(FileName, OutputStream, Res, !IO) :-
     io.open_input(FileName, OpenRes, !IO),
     (
         OpenRes = ok(InputStream),
@@ -424,17 +411,18 @@ copy_file_to_stream(FileName, OutputStream, !IO) :-
         ),
         io.close_input(InputStream, !IO),
         (
-            TryResult = succeeded(ok)
+            TryResult = succeeded(ok),
+            Res = ok
         ;
             TryResult = succeeded(error(Error)),
-            throw(Error)
+            Res = error(Error)
         ;
             TryResult = exception(_),
             rethrow(TryResult)
         )
     ;
         OpenRes = error(Error),
-        throw(include_file_error(FileName, io.error_message(Error)))
+        Res = error(Error)
     ).
 
 :- pred copy_stream(io.input_stream::in, io.output_stream::in,
@@ -455,6 +443,11 @@ copy_stream(InputStream, OutputStream, Res, !IO) :-
 
 possibly_regular_file(regular_file).
 possibly_regular_file(unknown).
+
+:- func cannot_open_file_for_input(string, string) = string.
+
+cannot_open_file_for_input(FileName, Error) =
+    string.format("can't open `%s' for input: %s", [s(FileName), s(Error)]).
 
 %---------------------------------------------------------------------------%
 

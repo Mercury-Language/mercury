@@ -53,6 +53,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module libs.
+:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -110,9 +111,9 @@ output_elds(ModuleInfo, ELDS, Succeeded, !IO) :-
     ).
 
 :- pred output_erl_file(module_info::in, elds::in, string::in,
-    io::di, io::uo) is det.
+    list(string)::out, io::di, io::uo) is det.
 
-output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
+output_erl_file(ModuleInfo, ELDS, SourceFileName, Errors, !IO) :-
     ELDS = elds(ModuleName, Imports, ForeignDecls, ForeignBodies, ProcDefns,
         ForeignExportDefns, RttiDefns, InitPreds, FinalPreds),
     AddMainWrapper = should_add_main_wrapper(ModuleInfo),
@@ -142,7 +143,8 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     set.fold(output_include_header_ann(Globals), Imports, !IO),
 
     % Output foreign declarations.
-    list.foldl(output_foreign_decl_code(SourceFileName), ForeignDecls, !IO),
+    list.map_foldl(output_foreign_decl_code(SourceFileName),
+        ForeignDecls, ForeignDeclResults, !IO),
 
     % Write directives for mkinit_erl.
     ErlangModuleNameStr = erlang_module_name_to_str(ModuleName),
@@ -169,7 +171,8 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     io.write_string("% ENDINIT\n", !IO),
 
     % Output foreign code written in Erlang.
-    list.foldl(output_foreign_body_code(SourceFileName), ForeignBodies, !IO),
+    list.map_foldl(output_foreign_body_code(SourceFileName),
+        ForeignBodies, ForeignCodeResults, !IO),
 
     % Output the main wrapper, if any.
     (
@@ -188,7 +191,11 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     list.foldl(output_defn(ModuleInfo), ProcDefns, !IO),
     list.foldl(output_foreign_export_defn(ModuleInfo), ForeignExportDefns,
         !IO),
-    list.foldl(output_rtti_defn(ModuleInfo), RttiDefns, !IO).
+    list.foldl(output_rtti_defn(ModuleInfo), RttiDefns, !IO),
+
+    list.filter_map(maybe_is_error, ForeignDeclResults, ForeignDeclErrors),
+    list.filter_map(maybe_is_error, ForeignCodeResults, ForeignCodeErrors),
+    Errors = ForeignDeclErrors ++ ForeignCodeErrors.
 
 :- pred output_do_no_edit_comment(string::in, io::di, io::uo) is det.
 
@@ -415,36 +422,38 @@ output_include_header_ann(Globals, Import, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred output_foreign_decl_code(string::in, foreign_decl_code::in,
-    io::di, io::uo) is det.
+    maybe_error::out, io::di, io::uo) is det.
 
-output_foreign_decl_code(SourceFileName, ForeignDecl, !IO) :-
+output_foreign_decl_code(SourceFileName, ForeignDecl, Res, !IO) :-
     ForeignDecl = foreign_decl_code(_Lang, _IsLocal, LiteralOrInclude,
         Context),
     output_foreign_literal_or_include(SourceFileName, LiteralOrInclude,
-        Context, !IO).
+        Context, Res, !IO).
 
 :- pred output_foreign_body_code(string::in, foreign_body_code::in,
-    io::di, io::uo) is det.
+    maybe_error::out, io::di, io::uo) is det.
 
-output_foreign_body_code(SourceFileName, ForeignBody, !IO) :-
+output_foreign_body_code(SourceFileName, ForeignBody, Res, !IO) :-
     ForeignBody = foreign_body_code(_Lang, LiteralOrInclude, Context),
     output_foreign_literal_or_include(SourceFileName, LiteralOrInclude,
-        Context, !IO).
+        Context, Res, !IO).
 
 :- pred output_foreign_literal_or_include(string::in,
-    foreign_literal_or_include::in, context::in, io::di, io::uo) is det.
+    foreign_literal_or_include::in, context::in, maybe_error::out,
+    io::di, io::uo) is det.
 
 output_foreign_literal_or_include(SourceFileName, LiteralOrInclude, Context,
-        !IO) :-
+        Res, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
         output_file_directive(Context, !IO),
-        io.write_string(Code, !IO)
+        io.write_string(Code, !IO),
+        Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         output_file_directive(context(IncludePath, 1), !IO),
-        write_include_file_contents_cur_stream(IncludePath, !IO)
+        write_include_file_contents_cur_stream(IncludePath, Res, !IO)
     ),
     io.nl(!IO),
     reset_file_directive(!IO).
@@ -1357,9 +1366,9 @@ escape("\\\\", 92).
 %-----------------------------------------------------------------------------%
 
 :- pred output_hrl_file(module_name::in, elds::in, string::in,
-    io::di, io::uo) is det.
+    list(string)::out, io::di, io::uo) is det.
 
-output_hrl_file(ModuleName, ELDS, SourceFileName, !IO) :-
+output_hrl_file(ModuleName, ELDS, SourceFileName, Errors, !IO) :-
     output_do_no_edit_comment(SourceFileName, !IO),
 
     MangledModuleName = sym_name_mangle(ModuleName),
@@ -1371,21 +1380,23 @@ output_hrl_file(ModuleName, ELDS, SourceFileName, !IO) :-
     ], !IO),
 
     ForeignDecls = ELDS ^ elds_foreign_decls,
-    list.foldl(output_exported_foreign_decl_code(SourceFileName), ForeignDecls,
-        !IO),
+    list.map_foldl(output_exported_foreign_decl_code(SourceFileName),
+        ForeignDecls, ForeignDeclResults, !IO),
+    list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
 
     io.write_string("-endif.\n", !IO).
 
 :- pred output_exported_foreign_decl_code(string::in, foreign_decl_code::in,
-    io::di, io::uo) is det.
+    maybe_error::out, io::di, io::uo) is det.
 
-output_exported_foreign_decl_code(SourceFileName, ForeignDecl, !IO) :-
+output_exported_foreign_decl_code(SourceFileName, ForeignDecl, Res, !IO) :-
     IsLocal = ForeignDecl ^ fdecl_is_local,
     (
-        IsLocal = foreign_decl_is_local
+        IsLocal = foreign_decl_is_local,
+        Res = ok
     ;
         IsLocal = foreign_decl_is_exported,
-        output_foreign_decl_code(SourceFileName, ForeignDecl, !IO)
+        output_foreign_decl_code(SourceFileName, ForeignDecl, Res, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

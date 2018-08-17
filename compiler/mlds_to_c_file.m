@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2013-2017 The Mercury team.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -73,6 +73,7 @@
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
+:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -194,26 +195,31 @@ func_defn_has_name_in_list(DumpPredNames, FuncDefn) :-
 
 :- pred mlds_output_named_function_defns(mlds_to_c_opts::in,
     list(string)::in, mlds_module_name::in, list(mlds_function_defn)::in,
-    io::di, io::uo) is det.
+    list(string)::out, io::di, io::uo) is det.
 
-mlds_output_named_function_defns(_Opts, _DumpPredNames, _ModuleName, [], !IO).
-mlds_output_named_function_defns(Opts, DumpPredNames, ModuleName,
-        [FuncDefn | FuncDefns], !IO) :-
-    ( if func_defn_has_name_in_list(DumpPredNames, FuncDefn) then
-        Indent = 0,
-        mlds_output_function_defn(Opts, Indent, ModuleName, FuncDefn, !IO)
-    else
-        true
-    ),
-    mlds_output_named_function_defns(Opts, DumpPredNames, ModuleName,
-        FuncDefns, !IO).
+mlds_output_named_function_defns(Opts, DumpPredNames, ModuleName, FuncDefns,
+        Errors, !IO) :-
+    (
+        FuncDefns = [],
+        Errors = []
+    ;
+        FuncDefns = [FuncDefn | FuncDefnsTail],
+        ( if func_defn_has_name_in_list(DumpPredNames, FuncDefn) then
+            Indent = 0,
+            mlds_output_function_defn(Opts, Indent, ModuleName, FuncDefn, !IO)
+        else
+            true
+        ),
+        mlds_output_named_function_defns(Opts, DumpPredNames, ModuleName,
+            FuncDefnsTail, Errors, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 
 :- pred mlds_output_hdr_file(mlds_to_c_opts::in, indent::in, mlds::in,
-    io::di, io::uo) is det.
+    list(string)::out, io::di, io::uo) is det.
 
-mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
+mlds_output_hdr_file(Opts, Indent, MLDS, Errors, !IO) :-
     % The header file must contain _definitions_ of all public types, but only
     % _declarations_ of all public variables, constants, and functions.
     %
@@ -260,7 +266,8 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
 
     % Get the foreign code for C.
     ForeignCode = mlds_get_c_foreign_code(AllForeignCode),
-    mlds_output_c_hdr_decls(Opts, Indent, MLDS_ModuleName, ForeignCode, !IO),
+    mlds_output_c_hdr_decls(Opts, Indent, MLDS_ModuleName, ForeignCode,
+        Errors, !IO),
     io.nl(!IO),
     mlds_output_export_enums(Opts, Indent, ExportEnums, !IO),
     io.nl(!IO),
@@ -335,9 +342,9 @@ mlds_output_src_import(Opts, _Indent, Import, !IO) :-
     % to use which also has a clear and concise abbreviation, so never mind...)
     %
 :- pred mlds_output_src_file(mlds_to_c_opts::in, indent::in, mlds::in,
-    io::di, io::uo) is det.
+    list(string)::out, io::di, io::uo) is det.
 
-mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
+mlds_output_src_file(Opts, Indent, MLDS, Errors, !IO) :-
     % The public types have already been defined in the header file, and the
     % public vars, consts, and functions have already been declared in the
     % header file. In the source file, we need to have
@@ -385,7 +392,7 @@ mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
     mlds_output_src_imports(Opts, Indent, Imports, !IO),
     io.nl(!IO),
 
-    mlds_output_c_decls(Opts, Indent, ForeignCode, !IO),
+    mlds_output_c_decls(Opts, Indent, ForeignCode, ForeignDeclErrors, !IO),
     io.nl(!IO),
 
     list.foldl(mlds_output_env_var_decl, EnvVarNames, !IO),
@@ -422,7 +429,8 @@ mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
         !IO),
     io.nl(!IO),
 
-    mlds_output_c_defns(Opts, MLDS_ModuleName, Indent, ForeignCode, !IO),
+    mlds_output_c_defns(Opts, MLDS_ModuleName, Indent, ForeignCode,
+        ForeignCodeErrors, !IO),
     io.nl(!IO),
     mlds_output_global_var_defns(Opts, Indent, yes, MLDS_ModuleName,
         RttiDefns, !IO),
@@ -440,7 +448,9 @@ mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
     io.nl(!IO),
     mlds_output_grade_check_fn_defn(MLDS_ModuleName, !IO),
     io.nl(!IO),
-    mlds_output_src_end(Indent, ModuleName, !IO).
+    mlds_output_src_end(Indent, ModuleName, !IO),
+
+    Errors = ForeignDeclErrors ++ ForeignCodeErrors.
 
 :- func mlds_get_env_var_names(list(mlds_function_defn)) = set(string).
 
@@ -896,9 +906,10 @@ mlds_output_call_to_register_alloc_sites(AllocSites, !IO) :-
 %
 
 :- pred mlds_output_c_hdr_decls(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, mlds_foreign_code::in, io::di, io::uo) is det.
+    mlds_module_name::in, mlds_foreign_code::in, list(string)::out,
+    io::di, io::uo) is det.
 
-mlds_output_c_hdr_decls(Opts, Indent, ModuleName, ForeignCode, !IO) :-
+mlds_output_c_hdr_decls(Opts, Indent, ModuleName, ForeignCode, Errors, !IO) :-
     ForeignCode = mlds_foreign_code(DeclCodes, _BodyCodes, _Imports,
         _ExportDefns),
     ( if is_std_lib_module(ModuleName, StdlibModuleName) then
@@ -922,16 +933,18 @@ mlds_output_c_hdr_decls(Opts, Indent, ModuleName, ForeignCode, !IO) :-
         io.write_strings(["#include \"", Ancestor, ".mih", "\"\n"], !IO)
     ),
     list.foldl(WriteAncestorInclude, AncestorFileNames, !IO),
-    io.write_list(DeclCodes, "\n",
+    list.map_foldl(
         mlds_output_c_hdr_decl(Opts, Indent, yes(foreign_decl_is_exported)),
-        !IO),
+        DeclCodes, DeclResults, !IO),
+    list.filter_map(maybe_is_error, DeclResults, Errors),
     io.write_string("\n#endif\n", !IO).
 
 :- pred mlds_output_c_hdr_decl(mlds_to_c_opts::in, indent::in,
-    maybe(foreign_decl_is_local)::in, foreign_decl_code::in,
+    maybe(foreign_decl_is_local)::in, foreign_decl_code::in, maybe_error::out,
     io::di, io::uo) is det.
 
-mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
+mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, Res,
+        !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     % Only output C code in the C header file.
     (
@@ -945,9 +958,9 @@ mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
             )
         then
             mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude,
-                Context, !IO)
+                Context, Res, !IO)
         else
-            true
+            Res = ok
         )
     ;
         ( Lang = lang_java
@@ -958,26 +971,30 @@ mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
     ).
 
 :- pred mlds_output_c_decls(mlds_to_c_opts::in, indent::in,
-    mlds_foreign_code::in, io::di, io::uo) is det.
+    mlds_foreign_code::in, list(string)::out, io::di, io::uo) is det.
 
-mlds_output_c_decls(Opts, Indent, ForeignCode, !IO) :-
+mlds_output_c_decls(Opts, Indent, ForeignCode, Errors, !IO) :-
     ForeignCode = mlds_foreign_code(HeaderCodes, _BodyCodes, _Imports,
         _ExportDefns),
-    io.write_list(HeaderCodes, "\n",
-        mlds_output_c_hdr_decl(Opts, Indent, yes(foreign_decl_is_local)), !IO).
+    list.map_foldl(
+        mlds_output_c_hdr_decl(Opts, Indent, yes(foreign_decl_is_local)),
+        HeaderCodes, Results, !IO),
+    list.filter_map(maybe_is_error, Results, Errors).
 
 :- pred mlds_output_c_defns(mlds_to_c_opts::in, mlds_module_name::in,
-    indent::in, mlds_foreign_code::in, io::di, io::uo) is det.
+    indent::in, mlds_foreign_code::in, list(string)::out, io::di, io::uo)
+    is det.
 
-mlds_output_c_defns(Opts, ModuleName, Indent, ForeignCode, !IO) :-
+mlds_output_c_defns(Opts, ModuleName, Indent, ForeignCode, Errors, !IO) :-
     ForeignCode = mlds_foreign_code(_HeaderCodes, BodyCodes,
         Imports, ExportDefns),
     list.foldl(mlds_output_c_foreign_import_module(Opts, Indent),
         Imports, !IO),
-    io.write_list(BodyCodes, "\n", mlds_output_c_defn(Opts, Indent), !IO),
+    list.map_foldl(mlds_output_c_defn(Opts, Indent), BodyCodes, Results, !IO),
     io.write_string("\n", !IO),
     io.write_list(ExportDefns, "\n",
-        mlds_output_pragma_export_defn(Opts, ModuleName, Indent), !IO).
+        mlds_output_pragma_export_defn(Opts, ModuleName, Indent), !IO),
+    list.filter_map(maybe_is_error, Results, Errors).
 
 :- pred mlds_output_c_foreign_import_module(mlds_to_c_opts::in, int::in,
     foreign_import_module_info::in, io::di, io::uo) is det.
@@ -998,14 +1015,14 @@ mlds_output_c_foreign_import_module(Opts, Indent, ForeignImport, !IO) :-
     ).
 
 :- pred mlds_output_c_defn(mlds_to_c_opts::in, indent::in,
-    foreign_body_code::in, io::di, io::uo) is det.
+    foreign_body_code::in, maybe_error::out, io::di, io::uo) is det.
 
-mlds_output_c_defn(Opts, _Indent, ForeignBodyCode, !IO) :-
+mlds_output_c_defn(Opts, _Indent, ForeignBodyCode, Res, !IO) :-
     ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     (
         Lang = lang_c,
         mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude, Context,
-            !IO)
+            Res, !IO)
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java
@@ -1015,21 +1032,25 @@ mlds_output_c_defn(Opts, _Indent, ForeignBodyCode, !IO) :-
     ).
 
 :- pred mlds_output_foreign_literal_or_include(mlds_to_c_opts::in,
-    foreign_literal_or_include::in, prog_context::in, io::di, io::uo) is det.
+    foreign_literal_or_include::in, prog_context::in, maybe_error::out,
+    io::di, io::uo) is det.
 
-mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude, Context, !IO) :-
+mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude, Context, Res,
+        !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
         c_output_context(Opts ^ m2co_foreign_line_numbers, Context, !IO),
-        io.write_string(Code, !IO)
+        io.write_string(Code, !IO),
+        Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Opts ^ m2co_source_filename,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         c_output_file_line(Opts ^ m2co_foreign_line_numbers,
             IncludePath, 1, !IO),
-        write_include_file_contents_cur_stream(IncludePath, !IO)
-    ).
+        write_include_file_contents_cur_stream(IncludePath, Res, !IO)
+    ),
+    io.nl(!IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_file.

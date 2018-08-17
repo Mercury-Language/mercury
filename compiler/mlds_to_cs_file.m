@@ -35,6 +35,7 @@
 :- implementation.
 
 :- import_module libs.
+:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -62,6 +63,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -80,9 +82,9 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
         output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_csharp_src_file(module_info::in, indent::in, mlds::in,
-    io::di, io::uo) is det.
+    list(string)::out, io::di, io::uo) is det.
 
-output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
+output_csharp_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, Imports, GlobalData,
         TypeDefns, TableStructDefns, ProcDefns,
@@ -121,9 +123,10 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     module_source_filename(Globals, ModuleName, SourceFileName, !IO),
     Info = init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs),
     output_src_start_for_csharp(Info, Indent, ModuleName, Imports,
-        ForeignDeclCodes, ProcDefns, !IO),
-    io.write_list(ForeignBodyCodes, "\n",
-        output_csharp_body_code(Info, Indent), !IO),
+        ForeignDeclCodes, ProcDefns, ForeignDeclErrors, !IO),
+    list.map_foldl(output_csharp_body_code(Info, Indent),
+        ForeignBodyCodes, ForeignCodeResults, !IO),
+    list.filter_map(maybe_is_error, ForeignCodeResults, ForeignCodeErrors),
 
     output_pragma_warning_disable(!IO),
 
@@ -188,7 +191,9 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     output_static_constructor(ModuleName, Indent + 1, StaticCtorCalls,
         FinalPreds, !IO),
 
-    output_src_end_for_csharp(Indent, ModuleName, !IO).
+    output_src_end_for_csharp(Indent, ModuleName, !IO),
+
+    Errors = ForeignDeclErrors ++ ForeignCodeErrors.
 
 :- pred make_code_addr_map_for_csharp(assoc_list(int, mlds_code_addr)::in,
     map(mlds_code_addr, string)::in, map(mlds_code_addr, string)::out) is det.
@@ -206,14 +211,14 @@ make_code_addr_map_for_csharp([SeqNum - CodeAddr | SeqNumsCodeAddrs],
 %
 
 :- pred output_csharp_decl(csharp_out_info::in, indent::in,
-    foreign_decl_code::in, io::di, io::uo) is det.
+    foreign_decl_code::in, maybe_error::out, io::di, io::uo) is det.
 
-output_csharp_decl(Info, Indent, DeclCode, !IO) :-
+output_csharp_decl(Info, Indent, DeclCode, Res, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_csharp,
         output_csharp_foreign_literal_or_include(Info, Indent,
-            LiteralOrInclude, Context, !IO)
+            LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_java
@@ -223,15 +228,15 @@ output_csharp_decl(Info, Indent, DeclCode, !IO) :-
     ).
 
 :- pred output_csharp_body_code(csharp_out_info::in, indent::in,
-    foreign_body_code::in, io::di, io::uo) is det.
+    foreign_body_code::in, maybe_error::out, io::di, io::uo) is det.
 
-output_csharp_body_code(Info, Indent, ForeignBodyCode, !IO) :-
+output_csharp_body_code(Info, Indent, ForeignBodyCode, Res, !IO) :-
     ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     % Only output C# code.
     (
         Lang = lang_csharp,
         output_csharp_foreign_literal_or_include(Info, Indent,
-            LiteralOrInclude, Context, !IO)
+            LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_java
@@ -242,22 +247,23 @@ output_csharp_body_code(Info, Indent, ForeignBodyCode, !IO) :-
 
 :- pred output_csharp_foreign_literal_or_include(csharp_out_info::in,
     indent::in, foreign_literal_or_include::in, prog_context::in,
-    io::di, io::uo) is det.
+    maybe_error::out, io::di, io::uo) is det.
 
 output_csharp_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
-        Context, !IO) :-
+        Context, Res, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
         indent_line_after_context(Info ^ csoi_foreign_line_numbers, Context,
             Indent, !IO),
-        io.write_string(Code, !IO)
+        io.write_string(Code, !IO),
+        Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Info ^ csoi_source_filename,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         cs_output_context(Info ^ csoi_foreign_line_numbers,
             context(IncludePath, 1), !IO),
-        write_include_file_contents_cur_stream(IncludePath, !IO)
+        write_include_file_contents_cur_stream(IncludePath, Res, !IO)
     ),
     io.nl(!IO),
     cs_output_default_context(Info ^ csoi_foreign_line_numbers, !IO).
@@ -321,10 +327,11 @@ output_env_var_definition_for_csharp(Indent, EnvVarName, !IO) :-
 
 :- pred output_src_start_for_csharp(csharp_out_info::in, indent::in,
     mercury_module_name::in, mlds_imports::in, list(foreign_decl_code)::in,
-    list(mlds_function_defn)::in, io::di, io::uo) is det.
+    list(mlds_function_defn)::in, list(string)::out, io::di, io::uo)
+    is det.
 
 output_src_start_for_csharp(Info, Indent, MercuryModuleName, _Imports,
-        ForeignDecls, Defns, !IO) :-
+        ForeignDecls, Defns, Errors, !IO) :-
     output_auto_gen_comment(Info ^ csoi_source_filename, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("/* :- module ", !IO),
@@ -333,7 +340,10 @@ output_src_start_for_csharp(Info, Indent, MercuryModuleName, _Imports,
     output_n_indents(Indent, !IO),
     io.write_string("namespace mercury {\n\n", !IO),
 
-    io.write_list(ForeignDecls, "\n", output_csharp_decl(Info, Indent), !IO),
+    list.map_foldl(output_csharp_decl(Info, Indent),
+        ForeignDecls, ForeignDeclResults, !IO),
+    list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
+
     io.write_string("public static class ", !IO),
     mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
         ClassName),

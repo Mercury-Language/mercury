@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -95,6 +96,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module libs.
+:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -797,7 +799,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         then
             % The two folds below won't output anything.
             % There is no point in printing guards around nothing.
-            true
+            CForeignDeclCodeResults = []
         else
             MaybeSetLineNumbers = lookup_line_numbers(Globals,
                 line_numbers_for_c_headers),
@@ -808,11 +810,11 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
                 output_exported_c_enum(FileStream, MaybeSetLineNumbers,
                     MaybeThisFileName),
                 CExportedEnums, !IO),
-            list.foldl(
+            list.map_foldl(
                 output_foreign_decl(FileStream, MaybeSetLineNumbers,
                     MaybeThisFileName, SourceFileName,
                     yes(foreign_decl_is_exported)),
-                CForeignDeclCodes, !IO),
+                CForeignDeclCodes, CForeignDeclCodeResults, !IO),
             io.write_string(FileStream, "\n#endif\n", !IO)
         ),
 
@@ -825,8 +827,18 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             "\n",
             "#endif /* ", GuardMacroName, " */\n"], !IO),
         io.close_output(FileStream, !IO),
-        % rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
-        update_interface(Globals, FileName, !IO)
+
+        list.filter_map(maybe_is_error, CForeignDeclCodeResults, Errors),
+        (
+            Errors = [],
+            % Rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
+            update_interface(Globals, FileName, !IO)
+        ;
+            Errors = [_ | _],
+            io.remove_file(FileName ++ ".tmp", _, !IO),
+            % report_error sets the exit status.
+            foldl(report_error, Errors, !IO)
+        )
     ;
         Result = error(_),
         io.progname_base("export.m", ProgName, !IO),
@@ -864,11 +876,11 @@ write_export_decls(Stream, [ExportDecl | ExportDecls], !IO) :-
 
 :- pred output_foreign_decl(io.text_output_stream::in,
     maybe_set_line_numbers::in, maybe(string)::in, string::in,
-    maybe(foreign_decl_is_local)::in, foreign_decl_code::in,
+    maybe(foreign_decl_is_local)::in, foreign_decl_code::in, maybe_error::out,
     io::di, io::uo) is det.
 
 output_foreign_decl(Stream, MaybeSetLineNumbers, MaybeThisFileName,
-        SourceFileName, MaybeDesiredIsLocal, DeclCode, !IO) :-
+        SourceFileName, MaybeDesiredIsLocal, DeclCode, Res, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     expect(unify(Lang, lang_c), $pred, "Lang != lang_c"),
     ( if
@@ -880,30 +892,34 @@ output_foreign_decl(Stream, MaybeSetLineNumbers, MaybeThisFileName,
         )
     then
         output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
-            MaybeThisFileName, SourceFileName, LiteralOrInclude, Context, !IO)
+            MaybeThisFileName, SourceFileName, LiteralOrInclude, Context,
+            Res, !IO)
     else
-        true
+        Res = ok
     ).
 
 :- pred output_foreign_literal_or_include(io.text_output_stream::in,
     maybe_set_line_numbers::in, maybe(string)::in, string::in,
-    foreign_literal_or_include::in, prog_context::in, io::di, io::uo) is det.
+    foreign_literal_or_include::in, prog_context::in, maybe_error::out,
+    io::di, io::uo) is det.
 
 output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
-        MaybeThisFileName, SourceFileName, LiteralOrInclude, Context, !IO) :-
+        MaybeThisFileName, SourceFileName, LiteralOrInclude, Context,
+        Res, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
         term.context_file(Context, File),
         term.context_line(Context, Line),
         c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line,
             !IO),
-        io.write_string(Stream, Code, !IO)
+        io.write_string(Stream, Code, !IO),
+        Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, IncludePath, 1,
             !IO),
-        write_include_file_contents(Stream, IncludePath, !IO)
+        write_include_file_contents(Stream, IncludePath, Res, !IO)
     ),
     io.nl(Stream, !IO),
     c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeThisFileName,

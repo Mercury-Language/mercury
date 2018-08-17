@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -74,6 +75,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
@@ -119,16 +121,17 @@ output_llds(Globals, CFile, Succeeded, !IO) :-
     output_to_file(Globals, FileName, output_llds_2(Globals, CFile),
         Succeeded, !IO).
 
-:- pred output_llds_2(globals::in, c_file::in, io::di, io::uo) is det.
+:- pred output_llds_2(globals::in, c_file::in, list(string)::out,
+    io::di, io::uo) is det.
 
-output_llds_2(Globals, CFile, !IO) :-
+output_llds_2(Globals, CFile, Errors, !IO) :-
     decl_set_init(DeclSet0),
-    output_single_c_file(Globals, CFile, DeclSet0, _, !IO).
+    output_single_c_file(Globals, CFile, Errors, DeclSet0, _, !IO).
 
-:- pred output_single_c_file(globals::in, c_file::in,
+:- pred output_single_c_file(globals::in, c_file::in, list(string)::out,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
+output_single_c_file(Globals, CFile, Errors, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, ForeignBodyCodes, Exports,
         TablingInfoStructs, ScalarCommonDatas, VectorCommonDatas,
         RttiDatas, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns,
@@ -159,7 +162,8 @@ output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
         EnvVarNames, !IO),
     output_c_file_mercury_headers(Info, !IO),
 
-    output_foreign_header_include_lines(Info, C_HeaderLines, !IO),
+    output_foreign_header_include_lines(Info, C_HeaderLines,
+        ForeignIncludeResults, !IO),
     io.write_string("\n", !IO),
 
     output_static_linkage_define(!IO),
@@ -205,7 +209,8 @@ output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
 
     list.foldl2(output_annotated_c_module(Info), AnnotatedModules,
         !DeclSet, !IO),
-    list.foldl(output_foreign_body_code(Info), ForeignBodyCodes, !IO),
+    list.map_foldl(output_foreign_body_code(Info), ForeignBodyCodes,
+        ForeignCodeResults, !IO),
     WriteForeignExportDefn =
         (pred(ForeignExportDefn::in, IO0::di, IO::uo) is det :-
             ForeignExportDefn = foreign_export_defn(ForeignExportCode),
@@ -215,7 +220,11 @@ output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
         ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
-        AllocSites, UserInitPredCNames, UserFinalPredCNames, !DeclSet, !IO).
+        AllocSites, UserInitPredCNames, UserFinalPredCNames, !DeclSet, !IO),
+
+    list.filter_map(maybe_is_error, ForeignIncludeResults, ErrorsA),
+    list.filter_map(maybe_is_error, ForeignCodeResults, ErrorsB),
+    Errors = ErrorsA ++ ErrorsB.
 
 %-----------------------------------------------------------------------------%
 
@@ -886,14 +895,14 @@ output_static_linkage_define(!IO) :-
 %----------------------------------------------------------------------------%
 
 :- pred output_foreign_body_code(llds_out_info::in, foreign_body_code::in,
-    io::di, io::uo) is det.
+    maybe_error::out, io::di, io::uo) is det.
 
-output_foreign_body_code(Info, ForeignBodyCode, !IO) :-
+output_foreign_body_code(Info, ForeignBodyCode, Res, !IO) :-
     ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     (
         Lang = lang_c,
         output_foreign_decl_or_code(Info, "foreign_code", Lang,
-            LiteralOrInclude, Context, !IO)
+            LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_java
         ; Lang = lang_csharp
@@ -903,27 +912,28 @@ output_foreign_body_code(Info, ForeignBodyCode, !IO) :-
     ).
 
 :- pred output_foreign_header_include_lines(llds_out_info::in,
-    list(foreign_decl_code)::in, io::di, io::uo) is det.
+    list(foreign_decl_code)::in, list(maybe_error)::out, io::di, io::uo)
+    is det.
 
-output_foreign_header_include_lines(Info, Decls, !IO) :-
-    list.foldl2(output_foreign_header_include_line(Info), Decls,
+output_foreign_header_include_lines(Info, Decls, Results, !IO) :-
+    list.map_foldl2(output_foreign_header_include_line(Info), Decls, Results,
         set.init, _, !IO).
 
 :- pred output_foreign_header_include_line(llds_out_info::in,
-    foreign_decl_code::in,
+    foreign_decl_code::in, maybe_error::out,
     set(foreign_literal_or_include)::in, set(foreign_literal_or_include)::out,
     io::di, io::uo) is det.
 
-output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
+output_foreign_header_include_line(Info, Decl, Res, !AlreadyDone, !IO) :-
     Decl = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_c,
         % This will not deduplicate the content of included files.
         ( if set.insert_new(LiteralOrInclude, !AlreadyDone) then
             output_foreign_decl_or_code(Info, "foreign_decl", Lang,
-                LiteralOrInclude, Context, !IO)
+                LiteralOrInclude, Context, Res, !IO)
         else
-            true
+            Res = ok
         )
     ;
         ( Lang = lang_java
@@ -935,10 +945,10 @@ output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
 
 :- pred output_foreign_decl_or_code(llds_out_info::in, string::in,
     foreign_language::in, foreign_literal_or_include::in, prog_context::in,
-    io::di, io::uo) is det.
+    maybe_error::out, io::di, io::uo) is det.
 
 output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
-        !IO) :-
+        Res, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     ForeignLineNumbers = Info ^ lout_foreign_line_numbers,
     ( if
@@ -958,13 +968,14 @@ output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
     (
         LiteralOrInclude = floi_literal(Code),
         output_set_line_num(ForeignLineNumbers, Context, !IO),
-        io.write_string(Code, !IO)
+        io.write_string(Code, !IO),
+        Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Info ^ lout_source_file_name,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         output_set_line_num(ForeignLineNumbers, context(IncludePath, 1), !IO),
-        write_include_file_contents_cur_stream(IncludePath, !IO)
+        write_include_file_contents_cur_stream(IncludePath, Res, !IO)
     ),
     io.nl(!IO),
     output_reset_line_num(ForeignLineNumbers, !IO).
