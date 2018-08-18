@@ -75,6 +75,19 @@
 
 %---------------------------------------------------------------------------%
 %
+% Conversion to uint64.
+%
+
+    % cast_to_uint64(U32) = U64:
+    %
+    % Convert a uint32 to a uint64.
+    % Always succeeds, and always yields a result that is
+    % mathematically equal to U32.
+    %
+:- func cast_to_uint64(uint32) = uint64.
+
+%---------------------------------------------------------------------------%
+%
 % Change of signedness.
 %
 
@@ -465,6 +478,34 @@ cast_to_int(_) = _ :-
 :- pragma no_determinism_warning(cast_to_uint/1).
 cast_to_uint(_) = _ :-
     sorry($module, "uint32.cast_to_uint/1 NYI for Erlang").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_to_uint64(U32::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U64 = (uint64_t) U32;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_uint64(U32::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (ulong) U32;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_uint64(U32::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (long) U32 & 0xffffffffL;
+").
+
+:- pragma no_determinism_warning(cast_to_uint64/1).
+cast_to_uint64(_) = _ :-
+    sorry($module, "uint32.cast_to_uint64/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 

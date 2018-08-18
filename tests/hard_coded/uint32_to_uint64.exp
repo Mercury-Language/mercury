@@ -1,0 +1,11 @@
+cast_to_uint64(0u32) = 0u64
+cast_to_uint64(1u32) = 1u64
+cast_to_uint64(2u32) = 2u64
+cast_to_uint64(8u32) = 8u64
+cast_to_uint64(10u32) = 10u64
+cast_to_uint64(16u32) = 16u64
+cast_to_uint64(127u32) = 127u64
+cast_to_uint64(32767u32) = 32767u64
+cast_to_uint64(2147483647u32) = 2147483647u64
+cast_to_uint64(2147483648u32) = 2147483648u64
+cast_to_uint64(4294967295u32) = 4294967295u64
