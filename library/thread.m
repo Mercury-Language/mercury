@@ -602,8 +602,8 @@ INIT mercury_sys_init_thread_modules
             // EINTR should not be possible, but it has happened before.
             if (cond_err != 0 && errno != EINTR) {
                 MR_fatal_error(
-                    ""ML_create_exclusive_thread: MR_COND_WAIT error %d"",
-                    errno);
+                    ""ML_create_exclusive_thread: MR_COND_WAIT error: %s"",
+                    MR_strerror(errno, errbuf, sizeof(errbuf)));
             }
         }
         MR_UNLOCK(&args.mutex, ""ML_create_exclusive_thread"");

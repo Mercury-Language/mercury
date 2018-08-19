@@ -69,6 +69,7 @@ ENDINIT
 #include "mercury_engine.h"             // for `MR_memdebug'
 #include "mercury_threadscope.h"        // for data types and posting events
 #include "mercury_reg_workarounds.h"    // for `MR_fd*' stuff
+#include "mercury_runtime_util.h"
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 #define MR_PROFILE_PARALLEL_EXECUTION_FILENAME "parallel_execution_profile.txt"
@@ -1604,6 +1605,7 @@ MR_check_pending_contexts(MR_bool block)
 {
 #ifdef  MR_CAN_DO_PENDING_IO
     int                 err;
+    char                errbuf[MR_STRERROR_BUF_SIZE];
     int                 max_fd;
     int                 num_fds;
     int                 n_ids;
@@ -1679,7 +1681,8 @@ MR_check_pending_contexts(MR_bool block)
     }
 
     if (err < 0) {
-        MR_fatal_error("select failed!");
+        MR_fatal_error("select failed: %s",
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
     n_ids = 0;

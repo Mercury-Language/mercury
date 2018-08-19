@@ -1387,7 +1387,7 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
                     MR_traverse_nondet_stack_frame, &func_info,
                     level_number, base_maxfr);
                 if (problem != NULL) {
-                    MR_fatal_error(problem);
+                    MR_fatal_error("%s", problem);
                 }
             }
         }
@@ -1437,7 +1437,7 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
         result = MR_stack_walk_step(proc_layout, &label_layout,
             &stack_pointer, &current_frame, &reused_frames, &problem);
         if (result == MR_STEP_ERROR_BEFORE || result == MR_STEP_ERROR_AFTER) {
-            MR_fatal_error(problem);
+            MR_fatal_error("%s", problem);
         }
 
     } while (label_layout != NULL);

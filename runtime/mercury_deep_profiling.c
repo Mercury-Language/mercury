@@ -150,9 +150,8 @@ MR_deep_assert_failed(const MR_CallSiteDynamic *csd, const MR_ProcLayout *pl,
     const MR_ProcStatic *ps, const char *cond,
     const char *filename, int linenumber)
 {
-    char    buf[1024];
-    char    bufcsd[1024];
-    char    bufps[1024];
+    char    bufcsd[64];
+    char    bufps[64];
 
     if (csd != NULL) {
         sprintf(bufcsd, ", csd %p\n", csd);
@@ -172,9 +171,8 @@ MR_deep_assert_failed(const MR_CallSiteDynamic *csd, const MR_ProcLayout *pl,
         strcpy(bufps, "");
     }
 
-    sprintf(buf, "Deep profiling assertion failed, %s:%d\n%s%s%s\n",
+    MR_fatal_error("Deep profiling assertion failed, %s:%d\n%s%s%s\n",
         filename, linenumber, cond, bufcsd, bufps);
-    MR_fatal_error(buf);
 }
 
 void

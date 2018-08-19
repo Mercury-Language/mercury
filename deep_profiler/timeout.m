@@ -395,7 +395,10 @@ MP_handle_timeout(void)
 
     dir = opendir(MP_timeout_want_dir);
     if (dir == NULL) {
-        MR_fatal_error(""MP_handle_timeout: opendir failed"");
+        char    errbuf[MR_STRERROR_BUF_SIZE];
+
+        MR_fatal_error(""MP_handle_timeout: opendir failed: %s"",
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
     while ((dirent = readdir(dir)) != NULL) {
@@ -539,7 +542,10 @@ MP_do_try_get_lock(const char *mutex_file)
 
         success = MR_FALSE;
     } else {
-        MR_fatal_error(""MP_do_try_get_lock failed"");
+        char    errbuf[MR_STRERROR_BUF_SIZE];
+
+        MR_fatal_error(""MP_do_try_get_lock failed: %s"",
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
     return success;
@@ -582,7 +588,10 @@ MP_do_get_lock(const char *mutex_file)
             sleep(5);
             continue;
         } else {
-            MR_fatal_error(""MP_do_get_lock failed"");
+            char    errbuf[MR_STRERROR_BUF_SIZE];
+
+            MR_fatal_error(""MP_do_get_lock failed: %s"",
+                MR_strerror(errno, errbuf, sizeof(errbuf)));
         }
     }
 }
@@ -773,11 +782,13 @@ release_lock(Debug, MutexFile, !IO) :-
     [will_not_call_mercury, promise_pure],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
-    int fd;
+    int     fd;
+    char    errbuf[MR_STRERROR_BUF_SIZE];
 
     fd = open(WantFileName, O_CREAT, 0);
     if (fd < 0) {
-        MR_fatal_error(""make_want_file: open failed"");
+        MR_fatal_error(""make_want_file: open failed: %s"",
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
     (void) close(fd);
     MP_register_cleanup_file(WantFileName);

@@ -52,9 +52,11 @@
 #if defined(MR_HAVE_SETRLIMIT)
     struct rlimit   limit_struct;
     rlim_t          max_value;
+    char            errbuf[MR_STRERROR_BUF_SIZE];
 
     if (getrlimit(RLIMIT_STACK, &limit_struct) != 0) {
-        MR_fatal_error(""could not get current stack limit"");
+        MR_fatal_error(""could not get current stack limit: %s"",
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
     max_value = limit_struct.rlim_max;

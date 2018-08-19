@@ -80,5 +80,5 @@ MR_fatal_zone_error(MR_OverflowZone ptr_kind,
     }
 #endif
 
-    MR_fatal_error(error);
+    MR_fatal_error("%s", error);
 }

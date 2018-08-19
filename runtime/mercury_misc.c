@@ -11,7 +11,6 @@
 #include    "mercury_string.h"
 #include    "mercury_misc.h"
 #include    "mercury_array_macros.h"
-#include    "mercury_runtime_util.h"
 
 #include    <stdio.h>
 #include    <stdarg.h>
@@ -82,15 +81,9 @@ void
 MR_fatal_error(const char *fmt, ...)
 {
     va_list args;
-    int error = errno;
-    char errbuf[MR_STRERROR_BUF_SIZE];
 
     fflush(stdout);     // In case stdout and stderr are the same.
 
-    if (error != 0) {
-        fprintf(stderr, "Errno = %d: %s\n", error,
-            MR_strerror(error, errbuf, sizeof(errbuf)));
-    }
     fprintf(stderr, "Mercury runtime: ");
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);

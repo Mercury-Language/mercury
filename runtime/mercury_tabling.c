@@ -1667,11 +1667,7 @@ void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp)
 static void
 MR_table_assert_failed(const char *file, unsigned line)
 {
-    char    buf[256];
-
-    MR_snprintf(buf, sizeof(buf), "assertion failed: file %s, line %d",
-        file, line);
-    MR_fatal_error(buf);
+    MR_fatal_error("assertion failed: file %s, line %d", file, line);
 }
 #endif
 

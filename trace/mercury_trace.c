@@ -1706,14 +1706,9 @@ MR_maybe_record_call_table(const MR_ProcLayout *level_layout,
         return;
     }
 
-    {
-        char    buf[256];
-
-        sprintf(buf,
-            "unknown evaluation method %d in MR_maybe_record_call_table",
-            MR_sle_eval_method(level_layout));
-        MR_fatal_error(buf);
-    }
+    MR_fatal_error(
+        "unknown evaluation method %d in MR_maybe_record_call_table",
+        MR_sle_eval_method(level_layout));
 }
 
 static void

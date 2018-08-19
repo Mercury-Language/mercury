@@ -198,6 +198,10 @@ struct MR_MemoryZonesFree_Struct {
     #endif
   #endif
 
+// MR_protect_pages() is currently only a wrapper around mprotect() so callers
+// may expect errno to be set appropriately on error to provide better error
+// messages. If MR_protect_pages() gains another implementation then it may be
+// necessary to update callers to not depend on errno being set.
 extern int      MR_protect_pages(void *addr, size_t size, int prot_flags);
 
 #endif

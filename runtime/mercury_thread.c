@@ -9,6 +9,7 @@
 #include "mercury_engine.h"
 #include "mercury_memory.h"
 #include "mercury_context.h"    // for MR_do_runnext
+#include "mercury_runtime_util.h"
 #include "mercury_thread.h"
 #include "mercury_threadscope.h"
 
@@ -65,6 +66,7 @@ MR_create_worksteal_thread(void)
     MercuryThread   *thread;
     pthread_attr_t  attrs;
     int             err;
+    char            errbuf[MR_STRERROR_BUF_SIZE];
 
     assert(!MR_thread_equal(MR_primordial_thread, MR_null_thread()));
 
@@ -83,7 +85,8 @@ MR_create_worksteal_thread(void)
 #endif
 
     if (err != 0) {
-        MR_fatal_error("error creating thread");
+        MR_fatal_error("error creating thread: %s",
+            MR_strerror(err, errbuf, sizeof(errbuf)));
     }
 
     return thread;

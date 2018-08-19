@@ -57,6 +57,7 @@
 #endif
 
 #include "mercury_memory_handlers.h"
+#include "mercury_runtime_util.h"
 
 // This macro can be used to update a high water mark of a statistic.
 
@@ -399,12 +400,15 @@ MR_free_zone(MR_MemoryZone *zone)
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
     size_t          redsize;
     int             res;
+    char            errbuf[MR_STRERROR_BUF_SIZE];
 
     redsize = zone->MR_zone_redzone_size;
     res = MR_protect_pages((char *) zone->MR_zone_redzone,
         redsize + MR_page_size, NORMAL_PROT);
     if (res) {
-        MR_fatal_error("Could not unprotect memory pages in MR_free_zone");
+        MR_fatal_error(
+            "Could not unprotect memory pages in MR_free_zone: %s",
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 #endif
 
@@ -631,6 +635,7 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     size_t          new_total_size;
     MR_Integer      base_incr;
     int             res;
+    char            errbuf[MR_STRERROR_BUF_SIZE];
 #ifdef MR_PROFILE_ZONES
     size_t          size_delta;
 #endif
@@ -667,22 +672,20 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
         ((char *) zone->MR_zone_top) - ((char *) zone->MR_zone_bottom),
         NORMAL_PROT);
     if (res < 0) {
-        char buf[2560];
-        sprintf(buf, "unable to reset %s#%" MR_INTEGER_LENGTH_MODIFIER
-                "d total area\nbase=%p, redzone=%p",
+        MR_fatal_error(
+            "unable to reset %s#%" MR_INTEGER_LENGTH_MODIFIER
+                "d total area\nbase=%p, redzone=%p, errno=%s",
             zone->MR_zone_name, zone->MR_zone_id,
-            zone->MR_zone_bottom, zone->MR_zone_top);
-        MR_fatal_error(buf);
+            zone->MR_zone_bottom, zone->MR_zone_top,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 #endif  // MR_CHECK_OVERFLOW_VIA_MPROTECT
 
     new_base = MR_realloc_zone_memory(old_base, copy_size, new_size);
     if (new_base == NULL) {
-        char buf[2560];
-        sprintf(buf, "unable reallocate memory zone: %s#%"
+        MR_fatal_error("unable reallocate memory zone: %s#%"
                 MR_INTEGER_LENGTH_MODIFIER "d",
             zone->MR_zone_name, zone->MR_zone_id);
-        MR_fatal_error(buf);
     }
 
     // XXX The casts to MR_Integer are here because this code was relying
@@ -749,6 +752,7 @@ MR_setup_redzones(MR_MemoryZone *zone)
     size_t      size;
     size_t      redsize;
     int         res;
+    char        errbuf[MR_STRERROR_BUF_SIZE];
 
     size = zone->MR_zone_desired_size;
     redsize = zone->MR_zone_redzone_size;
@@ -767,15 +771,15 @@ MR_setup_redzones(MR_MemoryZone *zone)
     res = MR_protect_pages((char *) zone->MR_zone_redzone,
         redsize + MR_page_size, REDZONE_PROT);
     if (res < 0) {
-        char buf[2560];
         if (zone->MR_zone_name == NULL) {
             zone->MR_zone_name = "unknown";
         }
-        sprintf(buf, "unable to set %s#%" MR_INTEGER_LENGTH_MODIFIER
-                "d redzone\nbase=%p, redzone=%p",
+        MR_fatal_error(
+            "unable to set %s#%" MR_INTEGER_LENGTH_MODIFIER
+              "d redzone\nbase=%p, redzone=%p, errno=%s",
             zone->MR_zone_name, zone->MR_zone_id,
-            zone->MR_zone_bottom, zone->MR_zone_redzone);
-        MR_fatal_error(buf);
+            zone->MR_zone_bottom, zone->MR_zone_redzone,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 #endif // MR_CHECK_OVERFLOW_VIA_MPROTECT
 
@@ -788,15 +792,15 @@ MR_setup_redzones(MR_MemoryZone *zone)
     res = MR_protect_pages((char *) zone->MR_zone_hardmax, MR_page_size,
         REDZONE_PROT);
     if (res < 0) {
-        char buf[2560];
         if (zone->MR_zone_name == NULL) {
             zone->MR_zone_name = "unknown";
         }
-        sprintf(buf, "unable to set %s#%" MR_INTEGER_LENGTH_MODIFIER
-                "d hardmax\nbase=%p, hardmax=%p top=%p",
+        MR_fatal_error(
+            "unable to set %s#%" MR_INTEGER_LENGTH_MODIFIER
+                "d hardmax\nbase=%p, hardmax=%p top=%p, errno=%s",
             zone->MR_zone_name, zone->MR_zone_id,
-            zone->MR_zone_bottom, zone->MR_zone_hardmax, zone->MR_zone_top);
-        MR_fatal_error(buf);
+            zone->MR_zone_bottom, zone->MR_zone_hardmax, zone->MR_zone_top,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 #endif  // MR_PROTECTPAGE
 
@@ -840,7 +844,8 @@ void
 MR_reset_redzone(MR_MemoryZone *zone)
 {
 #ifdef  MR_CHECK_OVERFLOW_VIA_MPROTECT
-    int res;
+    int     res;
+    char    errbuf[MR_STRERROR_BUF_SIZE];
 
     zone->MR_zone_redzone = zone->MR_zone_redzone_base;
 
@@ -849,24 +854,24 @@ MR_reset_redzone(MR_MemoryZone *zone)
         ((char *) zone->MR_zone_redzone) - ((char *) zone->MR_zone_bottom),
         NORMAL_PROT);
     if (res < 0) {
-        char buf[2560];
-        sprintf(buf, "unable to reset %s#%" MR_INTEGER_LENGTH_MODIFIER
-                "d normal area\nbase=%p, redzone=%p",
+        MR_fatal_error(
+            "unable to reset %s#%" MR_INTEGER_LENGTH_MODIFIER
+                "d normal area\nbase=%p, redzone=%p, errno=%s",
             zone->MR_zone_name, zone->MR_zone_id,
-            zone->MR_zone_bottom, zone->MR_zone_redzone);
-        MR_fatal_error(buf);
+            zone->MR_zone_bottom, zone->MR_zone_redzone,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
     // Protect the redzone area.
     res = MR_protect_pages((char *) zone->MR_zone_redzone,
         ((char *) zone->MR_zone_top) - ((char *) zone->MR_zone_redzone),
         REDZONE_PROT);
     if (res < 0) {
-        char buf[2560];
-        sprintf(buf, "unable to reset %s#%" MR_INTEGER_LENGTH_MODIFIER
-                "d redzone\nbase=%p, redzone=%p",
+        MR_fatal_error(
+            "unable to reset %s#%" MR_INTEGER_LENGTH_MODIFIER
+                "d redzone\nbase=%p, redzone=%p, errno=%s",
             zone->MR_zone_name, zone->MR_zone_id,
-            zone->MR_zone_bottom, zone->MR_zone_redzone);
-        MR_fatal_error(buf);
+            zone->MR_zone_bottom, zone->MR_zone_redzone,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 #endif  // MR_CHECK_OVERFLOW_VIA_MPROTECT
 }
