@@ -9491,7 +9491,7 @@ A program may place constraints on and between variables of a solver type,
 limiting the values those variables may take on before they are actually bound.
 For example, if @code{X} and @code{Y} are variables belonging to a constrained
 integer solver type, we might place constraints upon them such that
-@code{X > 3 + Y} and @code{Y =< 7}.
+@w{@code{X > 3 + Y}} and @w{@code{Y =< 7}}.
 A later attempt to unify @code{Y} with @code{10} will fail (it would violate
 the second constraint); similarly an attempt to unify @code{X} with @code{5}
 and @code{Y} with @code{4} would fail (it would violate the first constraint).
