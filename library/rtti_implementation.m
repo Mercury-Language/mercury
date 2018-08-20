@@ -1787,10 +1787,50 @@ is_exist_pseudo_type_info(_, _) :-
                 throw new System.Exception(
                     ""cannot construct int with construct.construct"");
 
+            case runtime.TypeCtorRep.MR_TYPECTOR_REP_INT8:
+                // int8s don't have functor ordinals.
+                throw new System.Exception(
+                    ""cannot construct int8 with construct.construct"");
+
+            case runtime.TypeCtorRep.MR_TYPECTOR_REP_INT16:
+                // int16s don't have functor ordinals.
+                throw new System.Exception(
+                    ""cannot construct int16 with construct.construct"");
+
+            case runtime.TypeCtorRep.MR_TYPECTOR_REP_INT32:
+                // int32s don't have functor ordinals.
+                throw new System.Exception(
+                    ""cannot construct int32 with construct.construct"");
+
+            case runtime.TypeCtorRep.MR_TYPECTOR_REP_INT64:
+                // int64s don't have functor ordinals.
+                throw new System.Exception(
+                    ""cannot construct int64 with construct.construct"");
+
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT:
                 // uints don't have functor ordinals.
                 throw new System.Exception(
                     ""cannot construct uint with construct.construct"");
+
+            case runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT8:
+                // uint8s don't have functor ordinals.
+                throw new System.Exception(
+                    ""cannot construct uint8 with construct.construct"");
+
+            case runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT16:
+                // uint16s don't have functor ordinals.
+                throw new System.Exception(
+                    ""cannot construct uint16 with construct.construct"");
+
+            case runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT32:
+                // uint32s don't have functor ordinals.
+                throw new System.Exception(
+                    ""cannot construct uint32 with construct.construct"");
+
+            case runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT64:
+                // uint64s don't have functor ordinals.
+                throw new System.Exception(
+                    ""cannot construct uint64 with construct.construct"");
 
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_FLOAT:
                 // floats don't have functor ordinals.
@@ -2178,10 +2218,50 @@ is_exist_pseudo_type_info(_, _) :-
                 throw new Error(
                     ""cannot construct int with construct.construct"");
 
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_INT8:
+                // int8s don't have functor ordinals.
+                throw new Error(
+                    ""cannot construct int8 with construct.construct"");
+
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_INT16:
+                // int16s don't have functor ordinals.
+                throw new Error(
+                    ""cannot construct int16 with construct.construct"");
+
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_INT32:
+                // int32s don't have functor ordinals.
+                throw new Error(
+                    ""cannot construct int32 with construct.construct"");
+
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_INT64:
+                // int64s don't have functor ordinals.
+                throw new Error(
+                    ""cannot construct int64 with construct.construct"");
+
             case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT:
                 // ints don't have functor ordinals.
                 throw new Error(
                     ""cannot construct uint with construct.construct"");
+
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT8:
+                // uint8s don't have functor ordinals.
+                throw new Error(
+                    ""cannot construct uint8 with construct.construct"");
+
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT16:
+                // uint16s don't have functor ordinals.
+                throw new Error(
+                    ""cannot construct uint16 with construct.construct"");
+
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT32:
+                // uint32s don't have functor ordinals.
+                throw new Error(
+                    ""cannot construct uint32 with construct.construct"");
+
+            case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_UINT64:
+                // uint64s don't have functor ordinals.
+                throw new Error(
+                    ""cannot construct uint64 with construct.construct"");
 
             case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FLOAT:
                 // floats don't have functor ordinals.
