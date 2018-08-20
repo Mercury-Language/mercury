@@ -876,14 +876,10 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
         ; TypeCtorRep = tcr_reserved_addr_usereq
         ; TypeCtorRep = tcr_enum
         ; TypeCtorRep = tcr_enum_usereq
-        ),
-        NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
-    ;
-        ( TypeCtorRep = tcr_foreign_enum
+        ; TypeCtorRep = tcr_foreign_enum
         ; TypeCtorRep = tcr_foreign_enum_usereq
         ),
-        % XXX todo
-        fail
+        NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
     ;
         ( TypeCtorRep = tcr_dummy
         ; TypeCtorRep = tcr_notag
@@ -988,8 +984,8 @@ get_functor_impl(TypeInfo, FunctorNumber,
         ( TypeCtorRep = tcr_foreign_enum
         ; TypeCtorRep = tcr_foreign_enum_usereq
         ),
-        % XXX todo
-        fail
+        get_functor_foreign_enum(TypeCtorRep, TypeCtorInfo,
+            FunctorNumber, FunctorName, Arity, PseudoTypeInfoList, Names)
     ;
         ( TypeCtorRep = tcr_notag
         ; TypeCtorRep = tcr_notag_usereq
@@ -1099,6 +1095,21 @@ get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
         TypeFunctors),
 
     FunctorName = EnumFunctorDesc ^ enum_functor_name,
+    Arity = 0,
+    PseudoTypeInfoList = [],
+    Names = [].
+
+:- pred get_functor_foreign_enum(type_ctor_rep::in(foreign_enum),
+    type_ctor_info::in, int::in, string::out, int::out,
+    list(pseudo_type_info)::out, list(string)::out) is det.
+
+get_functor_foreign_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber,
+        FunctorName, Arity, PseudoTypeInfoList, Names) :-
+    TypeFunctors = get_type_functors(TypeCtorInfo),
+    ForeignEnumFunctorDesc = get_foreign_enum_functor_desc(TypeCtorRep,
+        FunctorNumber, TypeFunctors),
+
+    FunctorName = ForeignEnumFunctorDesc ^ foreign_enum_functor_name,
     Arity = 0,
     PseudoTypeInfoList = [],
     Names = [].
@@ -1228,8 +1239,10 @@ type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
         ( TypeCtorRep = tcr_foreign_enum
         ; TypeCtorRep = tcr_foreign_enum_usereq
         ),
-        % XXX todo
-        fail
+        TypeFunctors = get_type_functors(TypeCtorInfo),
+        ForeignEnumFunctorDesc = get_foreign_enum_functor_desc(TypeCtorRep,
+            FunctorNum, TypeFunctors),
+        Ordinal = foreign_enum_functor_ordinal(ForeignEnumFunctorDesc)
     ;
         ( TypeCtorRep = tcr_dummy
         ; TypeCtorRep = tcr_notag
@@ -1744,6 +1757,17 @@ is_exist_pseudo_type_info(_, _) :-
 
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_FOREIGN_ENUM:
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
+                runtime.ForeignEnumFunctorDesc[] functors_foreign_enum =
+                    tc.type_functors.functors_foreign_enum();
+                if (
+                    FunctorNumber >= 0 &&
+                    FunctorNumber < functors_foreign_enum.Length
+                ) {
+                    new_data = ML_construct_static_member(tc,
+                        functors_foreign_enum[FunctorNumber].foreign_enum_functor_value);
+                }
+                break;
+
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_NOTAG:
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_NOTAG_USEREQ:
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_NOTAG_GROUND:
@@ -5200,6 +5224,31 @@ enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ordinal = EnumFunctorDesc.enum_functor_ordinal;
+").
+
+%---------------------------------------------------------------------------%
+
+:- func get_foreign_enum_functor_desc(type_ctor_rep, int, type_functors)
+    = foreign_enum_functor_desc.
+:- mode get_foreign_enum_functor_desc(in(foreign_enum), in, in) = out is det.
+
+get_foreign_enum_functor_desc(_, _, _) = _ :-
+    unexpected($module, $pred, "get_foreign_enum_functor_desc").
+
+:- pragma foreign_proc("C#",
+    get_foreign_enum_functor_desc(_TypeCtorRep::in(foreign_enum), X::in,
+        TypeFunctors::in) = (ForeignEnumFunctorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ForeignEnumFunctorDesc = TypeFunctors.functors_foreign_enum()[X];
+").
+
+:- pragma foreign_proc("Java",
+    get_foreign_enum_functor_desc(_TypeCtorRep::in(foreign_enum), X::in,
+        TypeFunctors::in) = (ForeignEnumFunctorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ForeignEnumFunctorDesc = TypeFunctors.functors_foreign_enum()[X];
 ").
 
 %---------------------------------------------------------------------------%
