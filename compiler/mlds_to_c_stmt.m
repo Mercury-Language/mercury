@@ -823,9 +823,7 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
         mlds_output_rval(Opts, Rval, !IO),
         io.write_string(");\n", !IO)
     ;
-        AtomicStmt = new_object(_Target, _Ptag, _ExplicitSecTag, _Type,
-            _MaybeSize, _MaybeCtorName, _ArgRvalsTypes, _MayUseAtomic,
-            _MaybeAllocId),
+        AtomicStmt = new_object(_, _, _, _, _, _, _, _, _),
         mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context,
             !IO)
     ;
