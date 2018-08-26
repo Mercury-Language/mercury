@@ -1901,6 +1901,7 @@ does_case_contain_nested_func_defn(Case, !ContainsNestedFuncs) :-
 
 :- pred describe_pred_proc_ids(module_info::in, string::in,
     set(pred_proc_id)::in, list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
+:- pragma consider_used(describe_pred_proc_ids/5).
 
 describe_pred_proc_ids(ModuleInfo, Msg, PredProcIds, !StartCommentStmts) :-
     MsgStmt = ml_stmt_atomic(comment(Msg), term.context_init),
