@@ -27,9 +27,9 @@
 
 main(!IO) :-
     data(Data),
-    ( queen(Data, Out) ->
+    ( if queen(Data, Out) then
         print_list(Out, !IO)
-    ;
+    else
         io.write_string("No solution\n", !IO)
     ).
 
@@ -67,9 +67,9 @@ int         safe_counter = 0;
 
 testlen(Min, L) = N :-
     list.length(L, N0),
-    ( N0 >= Min ->
+    ( if N0 >= Min then
         N = N0
-    ;
+    else
         error("testlen: N < Min")
     ).
 
@@ -101,15 +101,15 @@ nodiag(_, _, []).
 nodiag(B, D, [N | L]) :-
     NmB = N - B,
     BmN = B - N,
-    ( D = NmB ->
+    ( if D = NmB then
         event nodiag_fail("N - B", B, N, list.length, list.sort,
             [N | L]),
         fail
-    ; D = BmN ->
+    else if D = BmN then
         event nodiag_fail("B - N", B, N, list.length, list.sort,
             [N | L]),
         fail
-    ;
+    else
         true
     ),
     D1 = D + 1,
@@ -137,6 +137,6 @@ print_list_2([X | Xs], !IO) :-
         Xs = []
     ;
         Xs = [_ | _],
-        io__write_string(", ", !IO),
+        io.write_string(", ", !IO),
         print_list_2(Xs, !IO)
     ).

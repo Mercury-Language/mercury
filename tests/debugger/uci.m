@@ -21,66 +21,66 @@
 
 main(!IO) :-
     test([], RevResults),
-    list__reverse(RevResults, Results),
-    string__append_list(Results, ResultString),
-    io__write_string(ResultString, !IO).
+    list.reverse(RevResults, Results),
+    string.append_list(Results, ResultString),
+    io.write_string(ResultString, !IO).
 
 :- pred test(list(string)::in, list(string)::out) is det.
 
 test(!Res) :-
-    ( compare((<), ma0, mb0) ->
+    ( if compare((<), ma0, mb0) then
         add_res("0 lt\n", !Res)
-    ;
+    else
         add_res("0 ge\n", !Res)
     ),
-    ( compare((<), mb1, ma1) ->
+    ( if compare((<), mb1, ma1) then
         add_res("1 lt\n", !Res)
-    ;
+    else
         add_res("1 ge\n", !Res)
     ),
-    ( compare((<), ma2, ma2) ->
+    ( if compare((<), ma2, ma2) then
         add_res("2 lt\n", !Res)
-    ;
+    else
         add_res("2 ge\n", !Res)
     ),
-    ( compare((<), mb3, ma3) ->
+    ( if compare((<), mb3, ma3) then
         add_res("3 lt\n", !Res)
-    ;
+    else
         add_res("3 ge\n", !Res)
     ),
-    ( compare((<), ma4, mb4) ->
+    ( if compare((<), ma4, mb4) then
         add_res("4 lt\n", !Res)
-    ;
+    else
         add_res("4 ge\n", !Res)
     ),
-    ( unify(ma0, mb0) ->
+    ( if unify(ma0, mb0) then
         add_res("0 eq\n", !Res)
-    ;
+    else
         add_res("0 ne\n", !Res)
     ),
-    ( unify(ma1, ma1) ->
+    ( if unify(ma1, ma1) then
         add_res("1 eq\n", !Res)
-    ;
+    else
         add_res("1 ne\n", !Res)
     ),
-    ( unify(ma2, mb2) ->
+    ( if unify(ma2, mb2) then
         add_res("2 eq\n", !Res)
-    ;
+    else
         add_res("2 ne\n", !Res)
     ),
-    ( unify(mb3, mb3) ->
+    ( if unify(mb3, mb3) then
         add_res("3 eq\n", !Res)
-    ;
+    else
         add_res("3 ne\n", !Res)
     ),
-    ( unify(ma4, mb4) ->
+    ( if unify(ma4, mb4) then
         add_res("4 eq\n", !Res)
-    ;
+    else
         add_res("4 ne\n", !Res)
     ),
-    ( compare((<), mai, mbi) ->
+    ( if compare((<), mai, mbi) then
         add_res("i lt\n", !Res)
-    ;
+    else
         add_res("i ge\n", !Res)
     ).
 

@@ -22,13 +22,13 @@
 
 main(!IO) :-
     fake_open_input("print_io_actions.data", Res, Stream, !IO),
-    ( Res = 0 ->
+    ( if Res = 0 then
         fake_read_n_chars(Stream, 40, CharList1, !IO),
         fake_read_n_chars(Stream, 40, CharList2, !IO),
         Str = string.from_char_list(CharList1 ++ CharList2),
         io.write_string(Str, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("could not open print_io_actions.data\n", !IO)
     ).
 
@@ -36,13 +36,13 @@ main(!IO) :-
     io::di, io::uo) is det.
 
 fake_read_n_chars(Stream, N, Chars, !IO) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         Chars = []
-    ;
+    else
         fake_read_char_code(Stream, CharCode, !IO),
-        ( CharCode = -1 ->
+        ( if CharCode = -1 then
             Chars = []
-        ;
+        else
             Char = char.det_from_int(CharCode),
             fake_read_n_chars(Stream, N - 1, TailChars, !IO),
             Chars = [Char | TailChars]

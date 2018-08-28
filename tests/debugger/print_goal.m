@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module print_goal.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -17,20 +17,20 @@
     --->    big(big, int, big)
     ;       small.
 
-main -->
-    { big_data(Data) },
-    io__print(Data),
-    io__write_string(".\n"),
-    print_goal(yes, 100, 101, _, Y, 102, Z),
-    io__print(Y),
-    io__write_string(".\n"),
-    io__print(Z),
-    io__write_string(".\n"),
-    print_goal(no, 100, 101, _, Y2, 102, Z2),
-    io__print(Y2),
-    io__write_string(".\n"),
-    io__print(Z2),
-    io__write_string(".\n").
+main(!IO) :-
+    big_data(Data),
+    io.print(Data, !IO),
+    io.write_string(".\n", !IO),
+    print_goal(yes, 100, 101, _, Y, 102, Z, !IO),
+    io.print(Y, !IO),
+    io.write_string(".\n", !IO),
+    io.print(Z, !IO),
+    io.write_string(".\n", !IO),
+    print_goal(no, 100, 101, _, Y2, 102, Z2, !IO),
+    io.print(Y2, !IO),
+    io.write_string(".\n", !IO),
+    io.print(Z2, !IO),
+    io.write_string(".\n", !IO).
 
 :- pred big_data(big::out) is det.
 
@@ -62,7 +62,7 @@ big_data(Data) :-
     ).
 
 :- pred print_goal(bool::in, int::in, int::in, int::out, int::out, int::in,
-    int::out, io__state::di, io__state::uo) is det.
+    int::out, io::di, io::uo) is det.
 
-print_goal(yes, _W, X, X + 1, X + 2, Y, Y + 1) --> [].
-print_goal(no, _W, X, X + 2, X + 3, Y, Y + 2) --> [].
+print_goal(yes, _W, X, X + 1, X + 2, Y, Y + 1, !IO).
+print_goal(no, _W, X, X + 2, X + 3, Y, Y + 2, !IO).

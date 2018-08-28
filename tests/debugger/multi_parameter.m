@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -20,16 +20,17 @@
 ].
 
 :- instance m(char, int) where [
-    pred(a/2) is char__to_int
+    pred(a/2) is char.to_int
 ].
 
-main -->
-    { foo('z', X) },
-    io__write_int(X),
-    io__nl.
+main(!IO) :-
+    foo('z', X) ,
+    io.write_int(X, !IO),
+    io.nl(!IO).
 
 :- pred foo(A, B) <= m(A, B).
 :- mode foo(in, out) is det.
 :- pragma no_inline(foo/2).
 
-foo(X, Y) :- a(X, Y).
+foo(X, Y) :-
+    a(X, Y).

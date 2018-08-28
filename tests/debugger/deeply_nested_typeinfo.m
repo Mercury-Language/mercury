@@ -43,7 +43,7 @@
 :- instance foo(int).
 :- instance foo(list(T)) <= foo(T).
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
@@ -62,18 +62,18 @@ main -->
 :- pred list_b(list(T)::in) is semidet <= foo(T).
 
 list_b(List) :-
-    list__map((pred(A::in, A::out) is semidet :- b(A)), List, _).
+    list.map((pred(A::in, A::out) is semidet :- b(A)), List, _).
 
 :- pred int_b(int::in) is semidet.
 
 int_b(1).
 
-:- pred blah(T, io__state, io__state) <= foo(list(T)).
+:- pred blah(T, io, io) <= foo(list(T)).
 :- mode blah(in, di, uo) is det.
 
-blah(X) -->
-    ( { b([X]) } ->
-        io__write_string("true\n")
-    ;
-        io__write_string("false\n")
+blah(X, !IO) :-
+    ( if b([X]) then
+        io.write_string("true\n", !IO)
+    else
+        io.write_string("false\n", !IO)
     ).

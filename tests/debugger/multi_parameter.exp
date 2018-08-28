@@ -10,7 +10,7 @@ mdb> print *
        X (arg 1)              	'z'
 mdb> 
        3:      3  3 CALL pred multi_parameter.a/2-0 (det)
-                         multi_parameter.m:18 (from multi_parameter.m:35)
+                         multi_parameter.m:18 (from multi_parameter.m:36)
 mdb> print *
        HeadVar__1             	'z'
 mdb> 
@@ -26,7 +26,7 @@ mdb> print *
        HeadVar__2             	122
 mdb> 
        6:      3  3 EXIT pred multi_parameter.a/2-0 (det)
-                         multi_parameter.m:18 (from multi_parameter.m:35)
+                         multi_parameter.m:18 (from multi_parameter.m:36)
 mdb> print *
        HeadVar__1             	'z'
        HeadVar__2             	122

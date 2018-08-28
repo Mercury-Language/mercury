@@ -8,64 +8,52 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
+:- pred main(io, io).
 :- mode main(di, uo) is cc_multi.
 :- func string / string = string.
 
 :- implementation.
 
-:- include_module breakpoints__print_list.
-:- include_module breakpoints__a.
-:- include_module breakpoints__b.
-:- import_module breakpoints__print_list.
-:- import_module breakpoints__a.
-:- import_module breakpoints__b.
-:- import_module breakpoints__a__testmod.
-:- import_module breakpoints__b__testmod.
+:- include_module breakpoints.print_list.
+:- include_module breakpoints.a.
+:- include_module breakpoints.b.
+:- import_module breakpoints.print_list.
+:- import_module breakpoints.a.
+:- import_module breakpoints.b.
+:- import_module breakpoints.a.testmod.
+:- import_module breakpoints.b.testmod.
 
 :- import_module list.
 :- import_module int.
 :- import_module string.
 
-main -->
-    ( { queen(data, Out) } ->
-        print_list(Out),
-        io__write(test_in_a),
-        io__nl,
-        io__write(test_in_b),
-        io__nl
-    ;
-        io__write_string("No solution\n")
+main(!IO) :-
+    ( if queen(data, Out) then
+        print_list(Out, !IO),
+        io.write(test_in_a, !IO),
+        io.nl(!IO),
+        io.write(test_in_b, !IO),
+        io.nl(!IO)
+    else
+        io.write_string("No solution\n", !IO)
     ).
 
 :- func data = list(int).
 
-:- pred data(list(int)).
-:- mode data(out) is det.
-
-:- pred queen(list(int), list(int)).
-:- mode queen(in, out) is nondet.
-
-:- pred qperm(list(T), list(T)).
-:- mode qperm(in, out) is nondet.
-
-:- pred qdelete(T, list(T), list(T)).
-:- mode qdelete(out, in, out) is nondet.
-
-:- pred safe(list(int)).
-:- mode safe(in) is semidet.
-
-:- pred nodiag(int, int, list(int)).
-:- mode nodiag(in, in, in) is semidet.
-
 data = D :-
     data(D).
 
+:- pred data(list(int)::out) is det.
+
 data([1, 2, 3, 4, 5]).
+
+:- pred queen(list(int)::in, list(int)::out) is nondet.
 
 queen(Data, Out) :-
     qperm(Data, Out),
     safe(Out).
+
+:- pred qperm(list(T)::in, list(T)::out) is nondet.
 
 qperm([], []).
 qperm([X | Y], K) :-
@@ -73,24 +61,30 @@ qperm([X | Y], K) :-
     K = [U | V],
     qperm(Z, V).
 
+:- pred qdelete(T::out, list(T)::in, list(T)::out) is nondet.
+
 qdelete(A, [A | L], L).
 qdelete(X, [A | Z], [A | R]) :-
     qdelete(X, Z, R).
+
+:- pred safe(list(int)::in) is semidet.
 
 safe([]).
 safe([N | L]) :-
     nodiag(N, 1, L),
     safe(L).
 
+:- pred nodiag(int::in, int::in, list(int)::in) is semidet.
+
 nodiag(_, _, []).
 nodiag(B, D, [N | L]) :-
     NmB = N - B,
     BmN = B - N,
-    ( D = NmB ->
+    ( if D = NmB then
         fail
-    ; D = BmN ->
+    else if D = BmN then
         fail
-    ;
+    else
         true
     ),
     D1 = D + 1,
@@ -101,4 +95,4 @@ X / _ = X.
 :- pred test_in_both(io::di, io::uo) is det.
 
 test_in_both(!IO) :-
-    io__write_string("test_in_both in breakpoints\n", !IO).
+    io.write_string("test_in_both in breakpoints\n", !IO).

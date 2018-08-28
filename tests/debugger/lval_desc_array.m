@@ -12,17 +12,17 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 
-main -->
-    { A0 = 0 },
-    { perform_increments(A0, A) },
-    io__write_int(A),
-    io__write_string("\n").
+main(!IO) :-
+    A0 = 0,
+    perform_increments(A0, A),
+    io.write_int(A, !IO),
+    io.write_string("\n", !IO).
 
 :- pred perform_increments(int::in, int::out) is det.
 

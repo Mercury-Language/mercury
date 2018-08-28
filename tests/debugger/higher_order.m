@@ -1,13 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module higher_order.
 
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, state::uo) is det.
+:- pred main(io::di, state::uo) is det.
 
 :- implementation.
 
@@ -15,23 +15,23 @@
 :- import_module float.
 :- import_module list.
 
-main -->
-    { IntIn = [1, 2, 3, 4, 5] },
-    { FloatIn = [1.0, 2.0, 3.0, 4.0, 5.0] },
-    { IntListIn = [[1, 2], [3, 4, 5]] },
-    { StringListIn = [["one", "two"], ["three", "four", "five"]] },
+main(!IO) :-
+    IntIn = [1, 2, 3, 4, 5],
+    FloatIn = [1.0, 2.0, 3.0, 4.0, 5.0],
+    IntListIn = [[1, 2], [3, 4, 5]],
+    StringListIn = [["one", "two"], ["three", "four", "five"]],
 
-    { domap(float_add2(3.0), FloatIn, FloatAdd2Out) },
-    { domap(float_op3(4.0, 5.0), FloatIn, FloatOp3Out) },
-    { domap(int__max(3), IntIn, IntMaxOut) },
-    { domap(do_append([6]), IntListIn, IntAppendOut) },
-    { domap(do_append(["a"]), StringListIn, StringAppendOut) },
+    domap(float_add2(3.0), FloatIn, FloatAdd2Out),
+    domap(float_op3(4.0, 5.0), FloatIn, FloatOp3Out),
+    domap(int.max(3), IntIn, IntMaxOut),
+    domap(do_append([6]), IntListIn, IntAppendOut),
+    domap(do_append(["a"]), StringListIn, StringAppendOut),
 
-    io__write(FloatAdd2Out), nl,
-    io__write(FloatOp3Out), nl,
-    io__write(IntMaxOut), nl,
-    io__write(IntAppendOut), nl,
-    io__write(StringAppendOut), nl.
+    io.write_line(FloatAdd2Out, !IO),
+    io.write_line(FloatOp3Out, !IO),
+    io.write_line(IntMaxOut, !IO),
+    io.write_line(IntAppendOut, !IO),
+    io.write_line(StringAppendOut, !IO).
 
 :- pred domap(pred(X, Y), list(X), list(Y)).
 :- mode domap(pred(in, out) is det, in, out) is det.
@@ -52,4 +52,4 @@ float_op3(A, B, C, A + B * C).
 :- pred do_append(list(T)::in, list(T)::in, list(T)::out) is det.
 
 do_append(A, B, C) :-
-    list__append(A, B, C).
+    list.append(A, B, C).

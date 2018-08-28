@@ -16,28 +16,28 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module type_desc.
 
-main -->
-    test([1, 2]),
-    test(["one", "two", "three"]).
+main(!IO) :-
+    test([1, 2], !IO),
+    test(["one", "two", "three"], !IO).
 
-:- pred test(T::in, io__state::di, io__state::uo) is det.
+:- pred test(T::in, io::di, io::uo) is det.
 
-test(Val) -->
-    { TypeDesc = get_type_desc(Val) },
-    io__write_string("type_desc: "),
-    io__write(TypeDesc),
-    io__nl,
-    { TypeCtorDesc = get_type_ctor_desc(TypeDesc) },
-    io__write_string("type_ctor_desc: "),
-    io__write(TypeCtorDesc),
-    io__nl.
+test(Val, !IO) :-
+    TypeDesc = get_type_desc(Val),
+    io.write_string("type_desc: ", !IO),
+    io.write(TypeDesc, !IO),
+    io.nl(!IO),
+    TypeCtorDesc = get_type_ctor_desc(TypeDesc),
+    io.write_string("type_ctor_desc: ", !IO),
+    io.write(TypeCtorDesc, !IO),
+    io.nl(!IO).
 
 :- func get_type_desc(T) = type_desc.
 

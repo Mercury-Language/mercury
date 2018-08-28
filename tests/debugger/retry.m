@@ -20,7 +20,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -28,23 +28,22 @@
 :- import_module list.
 :- import_module solutions.
 
-main -->
-    {
-        det_without_cut(1, A),
-        det_with_cut(2, B),
-        det_with_cut(3, C),
-        solutions(nondet(4), Ds),
-        solutions(nondet(5), Es)
-    },
-    output(A),
-    output(B),
-    output(C),
-    outputs(Ds),
-    outputs(Es),
-    { fib(15, F) },
-    output(F),
-    { solutions(t(1, 2), T12) },
-    outputs(T12).
+main(!IO) :-
+    det_without_cut(1, A),
+    det_with_cut(2, B),
+    det_with_cut(3, C),
+    solutions(nondet(4), Ds),
+    solutions(nondet(5), Es),
+
+    output(A, !IO),
+    output(B, !IO),
+    output(C, !IO),
+    outputs(Ds, !IO),
+    outputs(Es, !IO),
+    fib(15, F),
+    output(F, !IO),
+    solutions(t(1, 2), T12),
+    outputs(T12, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -67,9 +66,9 @@ det_without_cut_2(X, X).
 :- pred det_with_cut(int::in, int::out) is det.
 
 det_with_cut(X0, X) :-
-    ( det_with_cut_1(X0, _) ->
+    ( if det_with_cut_1(X0, _) then
         X = X0 * 2
-    ;
+    else
         X = X0 * 3
     ).
 
@@ -94,9 +93,9 @@ det_with_cut_2(X, X).
 nondet(X0, X) :-
     nondet_1(X0, X1),
     nondet_2(X1, X2),
-    ( X2 < 75 ->
+    ( if X2 < 75 then
         X = X2
-    ;
+    else
         X = 2 * X2
     ).
 
@@ -120,9 +119,9 @@ nondet_2(X, X).
 :- pragma memo(fib/2).
 
 fib(N, F) :-
-    ( N < 2 ->
+    ( if N < 2 then
         F = 1
-    ;
+    else
         fib(N - 1, F1),
         fib(N - 2, F2),
         F = F1 + F2
@@ -133,13 +132,13 @@ fib(N, F) :-
 
 t(A, B, C) :-
     marker("t", A, B, Zero),
-    ( A = 1 ->
+    ( if A = 1 then
         (
             C = Zero + (A * 100) + (B * 10)
         ;
             C = Zero + (B * 100) + (A * 10)
         )
-    ;
+    else
         fail
     ).
 
@@ -155,22 +154,22 @@ t(A, B, C) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred output(int::in, io__state::di, io__state::uo) is det.
+:- pred output(int::in, io::di, io::uo) is det.
 
-output(X) -->
-    io__write_int(X),
-    io__write_string("\n").
+output(X, !IO) :-
+    io.write_int(X, !IO),
+    io.write_string("\n", !IO).
 
-:- pred outputs(list(int)::in, io__state::di, io__state::uo) is det.
+:- pred outputs(list(int)::in, io::di, io::uo) is det.
 
-outputs(Xs) -->
-    outputs1(Xs),
-    io__write_string("\n").
+outputs(Xs, !IO) :-
+    outputs1(Xs, !IO),
+    io.write_string("\n", !IO).
 
-:- pred outputs1(list(int)::in, io__state::di, io__state::uo) is det.
+:- pred outputs1(list(int)::in, io::di, io::uo) is det.
 
-outputs1([]) --> [].
-outputs1([X | Xs]) -->
-    io__write_int(X),
-    io__write_string(" "),
-    outputs1(Xs).
+outputs1([], !IO).
+outputs1([X | Xs], !IO) :-
+    io.write_int(X, !IO),
+    io.write_string(" ", !IO),
+    outputs1(Xs, !IO).

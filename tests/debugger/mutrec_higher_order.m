@@ -72,9 +72,9 @@ write_comma_strings([Str | Strs], !IO) :-
     list(step)::in, int::in, list(string)::in, list(string)::out) is det.
 
 repeat_steps(P, Steps, N, A, R) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         R = A
-    ;
+    else
         P(Steps, A, B),
         repeat_steps(P, Steps, N-1, B, R)
     ).
@@ -91,18 +91,18 @@ p1([Step | Steps], A, R) :-
         p1(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 2 ->
+        ( if N = 2 then
             p2(Steps, B, R)
-        ;
+        else
             p3(Steps, B, R)
         )
     ;
         Step = rep(N),
-        ( N = 1 ->
+        ( if N = 1 then
             repeat_steps(q1, Steps, 1, A, R)
-        ; N = 2 ->
+        else if N = 2 then
             repeat_steps(q2, Steps, 2, A, R)
-        ;
+        else
             repeat_steps(q3, Steps, 3, A, R)
         )
     ;
@@ -120,18 +120,18 @@ p2([Step | Steps], A, R) :-
         p2(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             p1(Steps, B, R)
-        ;
+        else
             p3(Steps, B, R)
         )
     ;
         Step = rep(N),
-        ( N = 1 ->
+        ( if N = 1 then
             repeat_steps(q1, Steps, 1, A, R)
-        ; N = 2 ->
+        else if N = 2 then
             repeat_steps(q2, Steps, 2, A, R)
-        ;
+        else
             repeat_steps(q3, Steps, 3, A, R)
         )
     ;
@@ -149,18 +149,18 @@ p3([Step | Steps], A, R) :-
         p3(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             p1(Steps, B, R)
-        ;
+        else
             p2(Steps, B, R)
         )
     ;
         Step = rep(N),
-        ( N = 1 ->
+        ( if N = 1 then
             repeat_steps(q1, Steps, 1, A, R)
-        ; N = 2 ->
+        else if N = 2 then
             repeat_steps(q2, Steps, 2, A, R)
-        ;
+        else
             repeat_steps(q3, Steps, 3, A, R)
         )
     ;
@@ -180,18 +180,18 @@ q1([Step | Steps], A, R) :-
         q1(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 2 ->
+        ( if N = 2 then
             q2(Steps, B, R)
-        ;
+        else
             q3(Steps, B, R)
         )
     ;
         Step = rep(N),
-        ( N = 1 ->
+        ( if N = 1 then
             repeat_steps(r1, Steps, 1, A, R)
-        ; N = 2 ->
+        else if N = 2 then
             repeat_steps(r2, Steps, 2, A, R)
-        ;
+        else
             repeat_steps(r3, Steps, 3, A, R)
         )
     ;
@@ -209,18 +209,18 @@ q2([Step | Steps], A, R) :-
         q2(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             q1(Steps, B, R)
-        ;
+        else
             q3(Steps, B, R)
         )
     ;
         Step = rep(N),
-        ( N = 1 ->
+        ( if N = 1 then
             repeat_steps(r1, Steps, 1, A, R)
-        ; N = 2 ->
+        else if N = 2 then
             repeat_steps(r2, Steps, 2, A, R)
-        ;
+        else
             repeat_steps(r3, Steps, 3, A, R)
         )
     ;
@@ -238,18 +238,18 @@ q3([Step | Steps], A, R) :-
         q3(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             q1(Steps, B, R)
-        ;
+        else
             q2(Steps, B, R)
         )
     ;
         Step = rep(N),
-        ( N = 1 ->
+        ( if N = 1 then
             repeat_steps(r1, Steps, 1, A, R)
-        ; N = 2 ->
+        else if N = 2 then
             repeat_steps(r2, Steps, 2, A, R)
-        ;
+        else
             repeat_steps(r3, Steps, 3, A, R)
         )
     ;
@@ -287,9 +287,9 @@ r1([Step | Steps], A, R) :-
         r1(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 2 ->
+        ( if N = 2 then
             r2(Steps, B, R)
-        ;
+        else
             r3(Steps, B, R)
         )
     ;
@@ -310,9 +310,9 @@ r2([Step | Steps], A, R) :-
         r2(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             r1(Steps, B, R)
-        ;
+        else
             r3(Steps, B, R)
         )
     ;
@@ -333,9 +333,9 @@ r3([Step | Steps], A, R) :-
         r3(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             r1(Steps, B, R)
-        ;
+        else
             r2(Steps, B, R)
         )
     ;
@@ -352,9 +352,9 @@ r3([Step | Steps], A, R) :-
 
 s(N, A, R) :-
     B = ["s" | A],
-    ( N > 0 ->
+    ( if N > 0 then
         s(N-1, B, R)
-    ;
+    else
         R = B
     ).
 

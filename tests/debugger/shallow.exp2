@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred shallow.main/2-0 (cc_multi) shallow.m:20
+       1:      1  1 CALL pred shallow.main/2-0 (cc_multi) shallow.m:24
 mdb> echo on
 Command echo enabled.
 mdb> context before
@@ -6,12 +6,12 @@ Contexts will be printed before, on the same line.
 mdb> context
 Contexts are printed before, on the same line.
 mdb> step
-       2:      2  2 CALL shallow2.m:18 (shallow.m:43) pred shallow2.safe/1-0 (semidet)
+       2:      2  2 CALL shallow2.m:17 (shallow.m:39) pred shallow2.safe/1-0 (semidet)
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> stack
-   0       pred shallow2.safe/1-0 (semidet) (shallow2.m:18)
-   1       pred shallow.queen/2-0 (nondet) (shallow.m:43)
-   2       pred shallow.main/2-0 (cc_multi) (shallow.m:21)
+   0       pred shallow2.safe/1-0 (semidet) (shallow2.m:17)
+   1       pred shallow.queen/2-0 (nondet) (shallow.m:39)
+   2       pred shallow.main/2-0 (cc_multi) (shallow.m:25)
 mdb> c -S
 [1, 3, 5, 2, 4]

@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module breakpoints__a__testmod.
+:- module breakpoints.a.testmod.
 
 :- interface.
 

@@ -9,7 +9,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, state::uo) is det.
+:- pred main(io::di, state::uo) is det.
 
 :- implementation.
 :- import_module std_util.
@@ -50,23 +50,21 @@
 int_foo(X, 2*X).
 
 :- pred string_foo(string::in, int::out) is det.
-string_foo(S, N) :- string__length(S, N).
+string_foo(S, N) :- string.length(S, N).
 
-main -->
-    {
+main(!IO) :-
     do_foo(42, T1),
     do_foo("blah", T2),
     do_foo(my_exist_t, T3),
     do_foo(call_my_exist_t, T4),
     do_foo(my_univ_value(my_univ(45)), T5),
-    do_foo(call_my_univ_value(my_univ("something")), T6)
-    },
-    io__write_int(T1), nl,
-    io__write_int(T2), nl,
-    io__write_int(T3), nl,
-    io__write_int(T4), nl,
-    io__write_int(T5), nl,
-    io__write_int(T6), nl.
+    do_foo(call_my_univ_value(my_univ("something")), T6),
+    io.write_int(T1, !IO), io.nl(!IO),
+    io.write_int(T2, !IO), io.nl(!IO),
+    io.write_int(T3, !IO), io.nl(!IO),
+    io.write_int(T4, !IO), io.nl(!IO),
+    io.write_int(T5, !IO), io.nl(!IO),
+    io.write_int(T6, !IO), io.nl(!IO).
 
 :- pred do_foo(T::in, int::out) is det <= fooable(T).
 

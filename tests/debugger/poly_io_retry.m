@@ -33,7 +33,7 @@ polycall(P, !S) :- P(!S).
 
 array_update(!A) :- !:A = !.A ^ elem(0) := 1.
 
-:- pred poly_io_retry.write_int(int::in, io__state::di, io__state::uo)
+:- pred poly_io_retry.write_int(int::in, io::di, io::uo)
     is det.
 
 :- pragma foreign_proc("C",

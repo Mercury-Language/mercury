@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module completion__sub1.
+:- module completion.sub1.
 
 :- interface.
 

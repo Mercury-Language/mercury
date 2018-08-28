@@ -6,19 +6,19 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
 
 :- type big
     --->    big(big, list(int), big)
-    ;   small.
+    ;       small.
 
-main -->
-    { big_data(Data) },
-    io__print(Data),
-    io__write_string(".\n").
+main(!IO) :-
+    big_data(Data),
+    io.print(Data, !IO),
+    io.write_string(".\n", !IO).
 
 :- pred big_data(big::out) is det.
 

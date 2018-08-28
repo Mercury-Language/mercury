@@ -7,22 +7,22 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module require.
 :- import_module int.
 
-main -->
-    { test(42, X) },
-    print(X).
+main(!IO) :-
+    test(42, X),
+    io.print(X, !IO).
 
 :- pred test(int::in, int::out) is det.
 
 test(X, Y) :-
-    ( X > 0 ->
+    ( if X > 0 then
         error("oops")
-    ;
+    else
         Y = X + 1
     ).

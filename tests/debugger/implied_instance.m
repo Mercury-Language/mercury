@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module implied_instance.
 
 :- interface.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- import_module io.
 
@@ -27,13 +27,13 @@
     pred(p/2) is sum_int_list
 ].
 
-main -->
-    { p(2, SumA) },
-    { p([42, 24, 1, 2, 3], SumB) },
-    io__write_int(SumA),
-    io__write_string("\n"),
-    io__write_int(SumB),
-    io__write_string("\n").
+main(!IO) :-
+    p(2, SumA),
+    p([42, 24, 1, 2, 3], SumB),
+    io.write_int(SumA, !IO),
+    io.write_string("\n", !IO),
+    io.write_int(SumB, !IO),
+    io.write_string("\n", !IO).
 
 :- pred copy_int(int, int).
 :- mode copy_int(in, out) is det.

@@ -5,6 +5,14 @@
 % Test the mdb `dice' command.
 % Buggy merge sort taken from Lee Naish's probabalistic declarative debugging
 % paper.
+%
+%---------------------------------------------------------------------------%
+%
+% The .exp file is for asm_fast.gc bootchecks.
+% The .exp2 file is for XXX.
+% The .exp3 file is for XXX.
+%
+%---------------------------------------------------------------------------%
 
 :- module dice.
 
@@ -23,13 +31,11 @@
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
-    (
-        list.map(string.to_int, Args, Ints)
-    ->
+    ( if list.map(string.to_int, Args, Ints) then
         merge_sort(Ints, Sorted),
         io.write(Sorted, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("usage error\n", !IO)
     ).
 
@@ -42,14 +48,10 @@ merge_sort(Us, Ss) :-
 :- pred msort_n(int::in, list(int)::in, list(int)::out, list(int)::out) is det.
 
 msort_n(N, Unsorted, SortedPart, Rest) :-
-    (
-        N =< 0
-    ->
+    ( if N =< 0 then
         SortedPart = [],
         Rest = Unsorted
-    ;
-        N = 1
-    ->
+    else if N = 1 then
         (
             Unsorted = [U | Us],
             SortedPart = [U],
@@ -58,7 +60,7 @@ msort_n(N, Unsorted, SortedPart, Rest) :-
             Unsorted = [],
             throw("Unsorted = [] and N = 0")
         )
-    ;
+    else
         N1 = N // 2,
         dice.msort_n(N1, Unsorted, Ss1, Us2),
         N2 = N - N1,
@@ -72,12 +74,10 @@ merge([], [], []).
 merge([S | Ss], [], [S | Ss]).
 merge([], [S | Ss], [S | Ss]).
 merge([A | As], [B | Bs], [C | Cs]) :-
-    (
-        A =< B
-    ->
+    ( if A =< B then
         dice.merge(As, [B | Bs], Cs),
         C = A
-    ;
+    else
         dice.merge(As, [B | Bs], Cs), % BUG
         C = B
     ).

@@ -19,10 +19,10 @@
 
 main(!IO) :-
     tabled_read.open_input("tabled_read.data", Res, Stream, !IO),
-    ( Res = 0 ->
+    ( if Res = 0 then
         tabled_read.part_1(Stream, !IO),
         tabled_read.part_2(Stream, !IO)
-    ;
+    else
         io.write_string("could not open tabled_read.data\n", !IO)
     ).
 
@@ -45,13 +45,13 @@ tabled_read.part_2(Stream, !IO) :-
 
 tabled_read.test(Stream, SoFar, N, !IO) :-
     tabled_read.read_char_code(Stream, CharCode, !IO),
-    (
+    ( if
         char.to_int(Char, CharCode),
         char.is_digit(Char),
         char.digit_to_int(Char, CharInt)
-    ->
+    then
         tabled_read.test(Stream, SoFar * 10 + CharInt, N, !IO)
-    ;
+    else
         N = SoFar
     ).
 
@@ -60,13 +60,13 @@ tabled_read.test(Stream, SoFar, N, !IO) :-
 
 tabled_read.poly_test(Stream, Unused, SoFar, N, !IO) :-
     tabled_read.poly_read_char_code(Stream, Unused, CharCode, !IO),
-    (
+    ( if
         char.to_int(Char, CharCode),
         char.is_digit(Char),
         char.digit_to_int(Char, CharInt)
-    ->
+    then
         tabled_read.poly_test(Stream, Unused, SoFar * 10 + CharInt, N, !IO)
-    ;
+    else
         N = SoFar
     ).
 

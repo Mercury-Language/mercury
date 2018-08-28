@@ -13,7 +13,7 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
+:- pred main(io, io).
 :- mode main(di, uo) is det.
 
 :- implementation.
@@ -21,7 +21,7 @@
 :- import_module list.
 :- import_module int.
 
-main -->
+main(!IO) :-
     % The purpose of list is to force the tracer to call the Mercury
     % code to print a list of integers, when the input script asks
     % for the outputs of data to be printed. In the past this was
@@ -30,55 +30,55 @@ main -->
     % are derived from the register contents produced by data,
     % or from the register contents left there by the code that
     % prints _List.
-    { data(_List,
+    data(_List,
         A0, A1, A2, A3, A4, A5, A6, A7, A8, A9,
         B0, B1, B2, B3, B4, B5, B6, B7, B8, B9,
         C0, C1, C2, C3, C4, C5, C6, C7, C8, C9,
-        D0, D1, D2, D3, D4, D5, D6, D7, D8, D9) },
-    io__write_string(A0),
-    io__write_string(A1),
-    io__write_string(A2),
-    io__write_string(A3),
-    io__write_string(A4),
-    io__write_string(A5),
-    io__write_string(A6),
-    io__write_string(A7),
-    io__write_string(A8),
-    io__write_string(A9),
-    io__write_string("\n"),
-    io__write_string(B0),
-    io__write_string(B1),
-    io__write_string(B2),
-    io__write_string(B3),
-    io__write_string(B4),
-    io__write_string(B5),
-    io__write_string(B6),
-    io__write_string(B7),
-    io__write_string(B8),
-    io__write_string(B9),
-    io__write_string("\n"),
-    io__write_string(C0),
-    io__write_string(C1),
-    io__write_string(C2),
-    io__write_string(C3),
-    io__write_string(C4),
-    io__write_string(C5),
-    io__write_string(C6),
-    io__write_string(C7),
-    io__write_string(C8),
-    io__write_string(C9),
-    io__write_string("\n"),
-    io__write_string(D0),
-    io__write_string(D1),
-    io__write_string(D2),
-    io__write_string(D3),
-    io__write_string(D4),
-    io__write_string(D5),
-    io__write_string(D6),
-    io__write_string(D7),
-    io__write_string(D8),
-    io__write_string(D9),
-    io__write_string("\n").
+        D0, D1, D2, D3, D4, D5, D6, D7, D8, D9),
+    io.write_string(A0, !IO),
+    io.write_string(A1, !IO),
+    io.write_string(A2, !IO),
+    io.write_string(A3, !IO),
+    io.write_string(A4, !IO),
+    io.write_string(A5, !IO),
+    io.write_string(A6, !IO),
+    io.write_string(A7, !IO),
+    io.write_string(A8, !IO),
+    io.write_string(A9, !IO),
+    io.write_string("\n", !IO),
+    io.write_string(B0, !IO),
+    io.write_string(B1, !IO),
+    io.write_string(B2, !IO),
+    io.write_string(B3, !IO),
+    io.write_string(B4, !IO),
+    io.write_string(B5, !IO),
+    io.write_string(B6, !IO),
+    io.write_string(B7, !IO),
+    io.write_string(B8, !IO),
+    io.write_string(B9, !IO),
+    io.write_string("\n", !IO),
+    io.write_string(C0, !IO),
+    io.write_string(C1, !IO),
+    io.write_string(C2, !IO),
+    io.write_string(C3, !IO),
+    io.write_string(C4, !IO),
+    io.write_string(C5, !IO),
+    io.write_string(C6, !IO),
+    io.write_string(C7, !IO),
+    io.write_string(C8, !IO),
+    io.write_string(C9, !IO),
+    io.write_string("\n", !IO),
+    io.write_string(D0, !IO),
+    io.write_string(D1, !IO),
+    io.write_string(D2, !IO),
+    io.write_string(D3, !IO),
+    io.write_string(D4, !IO),
+    io.write_string(D5, !IO),
+    io.write_string(D6, !IO),
+    io.write_string(D7, !IO),
+    io.write_string(D8, !IO),
+    io.write_string(D9, !IO),
+    io.write_string("\n", !IO).
 
 :- pred data(list(int)::out,
     string::out, string::out, string::out, string::out, string::out,

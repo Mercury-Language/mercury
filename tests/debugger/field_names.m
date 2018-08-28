@@ -1,13 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module field_names.
 
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, state::uo) is det.
+:- pred main(io.state::di, state::uo) is det.
 
 :- implementation.
 
@@ -65,27 +65,27 @@
 :- type dummy
     --->    dummy.
 
-main -->
-    { make_t1f1(41, 42, 43, 44, T1F1) },
-    { make_t1f2(51, 52, 53, T1F2) },
-    { make_t2(0.6, 61, T1F1, T1F2, T2) },
-    { make_t3(T1F2, 72, T1F1, T3) },
-    { make_t4(T2, T4) },
-    { make_t5(T1F1, T5) },
-    { make_t6(0.9, T6) },
-    { make_t7(0.9, 77, T7) },
-    { make_t8(T8) },
-    { make_dummy(Dummy) },
-    io__write(T1F1), nl,
-    io__write(T1F2), nl,
-    io__write(T2), nl,
-    io__write(T3), nl,
-    io__write(T4), nl,
-    io__write(T5), nl,
-    io__write(T6), nl,
-    io__write(T7), nl,
-    io__write(T8), nl,
-    io__write(Dummy), nl.
+main(!IO) :-
+    make_t1f1(41, 42, 43, 44, T1F1),
+    make_t1f2(51, 52, 53, T1F2),
+    make_t2(0.6, 61, T1F1, T1F2, T2),
+    make_t3(T1F2, 72, T1F1, T3),
+    make_t4(T2, T4),
+    make_t5(T1F1, T5),
+    make_t6(0.9, T6),
+    make_t7(0.9, 77, T7),
+    make_t8(T8),
+    make_dummy(Dummy),
+    io.write_line(T1F1, !IO),
+    io.write_line(T1F2, !IO),
+    io.write_line(T2, !IO),
+    io.write_line(T3, !IO),
+    io.write_line(T4, !IO),
+    io.write_line(T5, !IO),
+    io.write_line(T6, !IO),
+    io.write_line(T7, !IO),
+    io.write_line(T8, !IO),
+    io.write_line(Dummy, !IO).
 
 :- pred make_t1f1(int::in, int::in, int::in, int::in, t1::out) is det.
 make_t1f1(A, B, C, D, t1f1(A, B, C, D)).

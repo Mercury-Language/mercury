@@ -37,9 +37,9 @@ main(!IO) :-
 
 tailrec1_read_strings(Stream, !Words, !IO) :-
     tailrec1_read_line(Stream, Word, !IO),
-    ( Word = "" ->
+    ( if Word = "" then
         true
-    ;
+    else
         !:Words = [Word | !.Words],
         tailrec1_read_strings(Stream, !Words, !IO)
     ).

@@ -24,7 +24,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -33,12 +33,12 @@
 :- import_module int.
 :- import_module list.
 
-main -->
-    ( { test([1, 2], Result) } ->
-        io__write_int(Result),
-        io__write_string("\n")
-    ;
-        io__write_string("no solution.\n")
+main(!IO) :-
+    ( if test([1, 2], Result) then
+        io.write_int(Result, !IO),
+        io.write_string("\n", !IO)
+    else
+        io.write_string("no solution.\n", !IO)
     ).
 
 :- some [U] pred introduce_new_typeinfo(list(T)::in, list(U)::out) is det.
@@ -50,18 +50,16 @@ introduce_new_typeinfo(_, ["fortytwo"]).
 
 test(TestList, Result) :-
     introduce_new_typeinfo(TestList, NewList),
-    (
-        list__length(TestList, Length),
+    ( if
+        list.length(TestList, Length),
         Length > 5
-    ->
+    then
         Result = 10
-    ;
-        % The code here does not need the typeinfo for the
-        % elements of NewList, but typeinfo liveness requires
-        % this typeinfo to be in the resume point established
-        % for the condition, since the debugger may need it to
-        % print the value of NewList at the else event.
-
+    else
+        % The code here does not need the typeinfo for the elements of NewList,
+        % but typeinfo liveness requires this typeinfo to be in the resume
+        % point established for the condition, since the debugger may need it
+        % to print the value of NewList at the else event.
         NewList = [],
         Result = 42
     ).

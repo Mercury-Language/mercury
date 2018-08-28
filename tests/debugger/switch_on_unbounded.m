@@ -19,16 +19,16 @@
 :- import_module list.
 
 main(!IO) :-
-    ( edge(2, Two) ->
+    ( if edge(2, Two) then
         io.write_int(Two, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("edge(2, _) has no solution\n", !IO)
     ),
-    ( edge_str("2", TwoStr) ->
+    ( if edge_str("2", TwoStr) then
         io.write_string(TwoStr, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("edge_str(2, _) has no solution\n", !IO)
     ).
 

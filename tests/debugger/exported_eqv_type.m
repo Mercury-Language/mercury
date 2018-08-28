@@ -22,12 +22,12 @@
 main(!IO) :-
     X = p(2, 55),
     Y = p(3, "a"),
-    io__write(X, !IO),
-    io__nl(!IO),
-    io__write(Y, !IO),
-    io__nl(!IO).
+    io.write(X, !IO),
+    io.nl(!IO),
+    io.write(Y, !IO),
+    io.nl(!IO).
 
 :- func p(int, bug(T)) = bug(list(T)).
 
 p(Num, Item) = Dups :-
-    list__duplicate(Num, Item, Dups).
+    list.duplicate(Num, Item, Dups).

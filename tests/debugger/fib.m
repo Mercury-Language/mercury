@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module fib.
 
 :- interface.
@@ -25,7 +25,7 @@ main(!IO) :-
 
 perform_trial(N, !IO) :-
     trial(N, _Time, _MTime),
-    io__write_string("got same results\n", !IO).
+    io.write_string("got same results\n", !IO).
 
 :- pred trial(int::in, int::out, int::out) is cc_multi.
 
@@ -37,9 +37,9 @@ trial(N, Time, MTime) :-
 :- pred fib(int::in, int::out) is det.
 
 fib(N, F) :-
-    ( N < 2 ->
+    ( if N < 2 then
         F = 1
-    ;
+    else
         fib(N - 1, F1),
         fib(N - 2, F2),
         F = F1 + F2
@@ -49,9 +49,9 @@ fib(N, F) :-
 :- pragma memo(mfib/2, [allow_reset]).
 
 mfib(N, F) :-
-    ( N < 2 ->
+    ( if N < 2 then
         F = 1
-    ;
+    else
         mfib(N - 1, F1),
         mfib(N - 2, F2),
         F = F1 + F2

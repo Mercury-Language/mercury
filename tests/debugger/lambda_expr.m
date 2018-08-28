@@ -21,5 +21,5 @@
 main(!IO) :-
     P = (pred(X::in, Y::out) is det :- Y = X + 1),
     P(1, Z),
-    io__write_int(Z, !IO),
-    io__nl(!IO).
+    io.write_int(Z, !IO),
+    io.nl(!IO).

@@ -67,9 +67,9 @@ test_wraps(!IO) :-
 
 test_wrap_a(A0, !IO) :-
     wrap_a(A0, X),
-    ( unwrap_a(X, A1_Prime) ->
+    ( if unwrap_a(X, A1_Prime) then
         MaybeA1 = yes(A1_Prime)
-    ;
+    else
         MaybeA1 = no
     ),
     io.write_string("test_wrap_a: A0 = ", !IO),
@@ -90,9 +90,9 @@ test_wrap_a(A0, !IO) :-
 
 test_wrap_b(B0, !IO) :-
     wrap_b(B0, X),
-    ( unwrap_b(X, B1_Prime) ->
+    ( if unwrap_b(X, B1_Prime) then
         MaybeB1 = yes(B1_Prime)
-    ;
+    else
         MaybeB1 = no
     ),
     io.write_string("test_wrap_b: B0 = ", !IO),
@@ -113,9 +113,9 @@ test_wrap_b(B0, !IO) :-
 
 test_wrap_c(C0, !IO) :-
     wrap_c(C0, X),
-    ( unwrap_c(X, C1_Prime) ->
+    ( if unwrap_c(X, C1_Prime) then
         MaybeC1 = yes(C1_Prime)
-    ;
+    else
         MaybeC1 = no
     ),
     io.write_string("test_wrap_c: C0 = ", !IO),

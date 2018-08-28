@@ -19,9 +19,9 @@
 
 main(!IO) :-
     data(Data),
-    ( queen(Data, Out) ->
+    ( if queen(Data, Out) then
         print_list(Out, !IO)
-    ;
+    else
         io.write_string("No solution\n", !IO)
     ).
 
@@ -64,13 +64,13 @@ nodiag(_, _, []).
 nodiag(B, D, [N | L]) :-
     NmB = N - B,
     BmN = B - N,
-    ( D = NmB ->
+    ( if D = NmB then
         event nodiag_fail("N - B", B, N, [N | L]),
         fail
-    ; D = BmN ->
+    else if D = BmN then
         event nodiag_fail("B - N", B, N, [N | L]),
         fail
-    ;
+    else
         true
     ),
     D1 = D + 1,
@@ -98,6 +98,6 @@ print_list_2([X | Xs], !IO) :-
         Xs = []
     ;
         Xs = [_ | _],
-        io__write_string(", ", !IO),
+        io.write_string(", ", !IO),
         print_list_2(Xs, !IO)
     ).

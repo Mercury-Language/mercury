@@ -11,8 +11,7 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -20,50 +19,47 @@
 :- import_module char.
 :- import_module int.
 
-main -->
-    tabled_read_unitize__open_input("tabled_read_unitize.data", Res,
-        Stream),
-    ( { Res = 0 } ->
-        tabled_read_unitize__read_num(Stream, A),
-        tabled_read_unitize__unitize(Stream, B),
-        tabled_read_unitize__read_num(Stream, C),
-        tabled_read_unitize__write_int(A),
-        tabled_read_unitize__write_int(B),
-        tabled_read_unitize__write_int(C)
-    ;
-        io__write_string("could not open tabled_read_unitize.data\n")
+main(!IO) :-
+    tabled_read_unitize.open_input("tabled_read_unitize.data", Res, Stream,
+        !IO),
+    ( if Res = 0 then
+        tabled_read_unitize.read_num(Stream, A, !IO),
+        tabled_read_unitize.unitize(Stream, B, !IO),
+        tabled_read_unitize.read_num(Stream, C, !IO),
+        tabled_read_unitize.write_int(A, !IO),
+        tabled_read_unitize.write_int(B, !IO),
+        tabled_read_unitize.write_int(C, !IO)
+    else
+        io.write_string("could not open tabled_read_unitize.data\n", !IO)
     ).
 
-:- pragma foreign_export("C", tabled_read_unitize__read_num(in, out, di, uo),
+:- pragma foreign_export("C", tabled_read_unitize.read_num(in, out, di, uo),
     "MT_read_num").
 
-:- pred tabled_read_unitize__read_num(c_pointer::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred read_num(c_pointer::in, int::out, io::di, io::uo) is det.
 
-tabled_read_unitize__read_num(Stream, Num) -->
-    tabled_read_unitize__read_num_2(Stream, 0, Num).
+read_num(Stream, Num, !IO) :-
+    tabled_read_unitize.read_num_2(Stream, 0, Num, !IO).
 
-:- pred tabled_read_unitize__read_num_2(c_pointer::in, int::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred read_num_2(c_pointer::in, int::in, int::out, io::di, io::uo) is det.
 
-tabled_read_unitize__read_num_2(Stream, SoFar, N) -->
-    tabled_read_unitize__read_char_code(Stream, CharCode),
-    (
-        { char__to_int(Char, CharCode) },
-        { char__is_digit(Char) },
-        { char__digit_to_int(Char, CharInt) }
-    ->
-        tabled_read_unitize__read_num_2(Stream, SoFar * 10 + CharInt,
-            N)
-    ;
-        { N = SoFar }
+read_num_2(Stream, SoFar, N, !IO) :-
+    tabled_read_unitize.read_char_code(Stream, CharCode, !IO),
+    ( if
+        char.to_int(Char, CharCode),
+        char.is_digit(Char),
+        char.decimal_digit_to_int(Char, CharInt)
+    then
+        tabled_read_unitize.read_num_2(Stream, SoFar * 10 + CharInt, N, !IO)
+    else
+        N = SoFar
     ).
 
-:- pred tabled_read_unitize__unitize(c_pointer::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred tabled_read_unitize.unitize(c_pointer::in, int::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    tabled_read_unitize__unitize(Stream::in, N::out, _IO0::di, _IO::uo),
+    tabled_read_unitize.unitize(Stream::in, N::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io_unitize,
     % This needs to be declared as thread safe, otherwise it deadlocks
     % in `.par' grades, since it acquires the global lock and then
@@ -80,12 +76,11 @@ tabled_read_unitize__read_num_2(Stream, SoFar, N) -->
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
 
-:- pred tabled_read_unitize__open_input(string::in, int::out, c_pointer::out,
-    io__state::di, io__state::uo) is det.
+:- pred open_input(string::in, int::out, c_pointer::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    tabled_read_unitize__open_input(FileName::in, Res::out, Stream::out,
-        IO0::di, IO::uo),
+    open_input(FileName::in, Res::out, Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = (MR_Word) fopen((const char *) FileName, ""r"");
@@ -93,24 +88,23 @@ tabled_read_unitize__read_num_2(Stream, SoFar, N) -->
     IO = IO0;
 ").
 
-:- pred tabled_read_unitize__read_char_code(c_pointer::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred tabled_read_unitize.read_char_code(c_pointer::in, int::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    tabled_read_unitize__read_char_code(Stream::in, CharCode::out,
-        IO0::di, IO::uo),
+    read_char_code(Stream::in, CharCode::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     CharCode = getc((FILE *) Stream);
     IO = IO0;
 ").
 
-:- pred tabled_read_unitize__poly_read_char_code(c_pointer::in, T::in, int::out,
-    io__state::di, io__state::uo) is det.
+:- pred poly_read_char_code(c_pointer::in, T::in, int::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    tabled_read_unitize__poly_read_char_code(Stream::in, Unused::in,
-        CharCode::out, IO0::di, IO::uo),
+    poly_read_char_code(Stream::in, Unused::in, CharCode::out,
+        IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     /* ignore Unused */
@@ -118,11 +112,10 @@ tabled_read_unitize__read_num_2(Stream, SoFar, N) -->
     IO = IO0;
 ").
 
-:- pred tabled_read_unitize__write_int(int::in, io__state::di, io__state::uo)
-    is det.
+:- pred write_int(int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    tabled_read_unitize__write_int(N::in, IO0::di, IO::uo),
+    write_int(N::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure],
 "{
     printf(""%d\\n"", (int) N);

@@ -76,9 +76,9 @@ p1([Step | Steps], A, R) :-
         p1(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 2 ->
+        ( if N = 2 then
             p2(Steps, B, R)
-        ;
+        else
             p3(Steps, B, R)
         )
     ;
@@ -96,9 +96,9 @@ p2([Step | Steps], A, R) :-
         p2(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             p1(Steps, B, R)
-        ;
+        else
             p3(Steps, B, R)
         )
     ;
@@ -116,9 +116,9 @@ p3([Step | Steps], A, R) :-
         p3(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             p1(Steps, B, R)
-        ;
+        else
             p2(Steps, B, R)
         )
     ;
@@ -138,9 +138,9 @@ q1([Step | Steps], A, R) :-
         q1(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 2 ->
+        ( if N = 2 then
             q2(Steps, B, R)
-        ;
+        else
             q3(Steps, B, R)
         )
     ;
@@ -158,9 +158,9 @@ q2([Step | Steps], A, R) :-
         q2(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             q1(Steps, B, R)
-        ;
+        else
             q3(Steps, B, R)
         )
     ;
@@ -178,9 +178,9 @@ q3([Step | Steps], A, R) :-
         q3(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             q1(Steps, B, R)
-        ;
+        else
             q2(Steps, B, R)
         )
     ;
@@ -218,9 +218,9 @@ r1([Step | Steps], A, R) :-
         r1(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 2 ->
+        ( if N = 2 then
             r2(Steps, B, R)
-        ;
+        else
             r3(Steps, B, R)
         )
     ;
@@ -238,9 +238,9 @@ r2([Step | Steps], A, R) :-
         r2(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             r1(Steps, B, R)
-        ;
+        else
             r3(Steps, B, R)
         )
     ;
@@ -258,9 +258,9 @@ r3([Step | Steps], A, R) :-
         r3(Steps, B, R)
     ;
         Step = mut(N),
-        ( N = 1 ->
+        ( if N = 1 then
             r1(Steps, B, R)
-        ;
+        else
             r2(Steps, B, R)
         )
     ;
@@ -274,9 +274,9 @@ r3([Step | Steps], A, R) :-
 
 s(N, A, R) :-
     B = ["s" | A],
-    ( N > 0 ->
+    ( if N > 0 then
         s(N-1, B, R)
-    ;
+    else
         R = B
     ).
 

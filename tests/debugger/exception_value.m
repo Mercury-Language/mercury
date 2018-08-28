@@ -1,13 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module exception_value.
 
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -15,13 +15,13 @@
 :- import_module list.
 :- import_module pair.
 
-main -->
-    { test1(Res1) },
-    print(Res1),
-    io__nl,
-    { test2(Res2) },
-    print(Res2),
-    io__nl.
+main(!IO) :-
+    test1(Res1),
+    print(Res1, !IO),
+    io.nl(!IO),
+    test2(Res2),
+    print(Res2, !IO),
+    io.nl(!IO).
 
 :- pred test1(exception_result(int)::out) is cc_multi.
 test1(Res) :-
@@ -40,4 +40,3 @@ p(_) :-
 
 q(_) :-
     throw("q oops" - [1, 2, 3]).
-

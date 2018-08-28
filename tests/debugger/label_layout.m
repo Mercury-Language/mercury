@@ -5,22 +5,22 @@
 :- module label_layout.
 :- interface.
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    (
-        {
+main(!IO) :-
+    ( if
+        (
             a(1, X)
         ;
             a(2, X)
-        },
-        { X = 0 }
-    ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+        ),
+        X = 0
+    then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
 :- pred a(int::in, int::out) is det.
