@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % The .exp file is for asm_fast.gc bootchecks.
-% The .exp2 file is for XXX.
+% The .exp2 file is for asm_fast.gc.debug bootchecks.
 %
 %---------------------------------------------------------------------------%
 

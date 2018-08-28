@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred queens.main/2-0 (cc_multi) queens.m:19
+      E1:     C1 CALL pred queens.main/2-0 (cc_multi) queens.m:23
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -9,21 +9,21 @@ mdb: there are no live variables.
 mdb> b data
  0: + stop  interface pred queens.data/1-0 (det)
 mdb> continue
-      E2:     C2 CALL pred queens.data/1-0 (det) queens.m:29 (queens.m:20)
+      E2:     C2 CALL pred queens.data/1-0 (det) queens.m:32 (queens.m:24)
 mdb> delete 0
  0: E stop  interface pred queens.data/1-0 (det)
 mdb> print *
 mdb: there are no live variables.
 mdb> 
-      E3:     C2 EXIT pred queens.data/1-0 (det) queens.m:29 (queens.m:20)
+      E3:     C2 EXIT pred queens.data/1-0 (det) queens.m:32 (queens.m:24)
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
-      E4:     C3 CALL pred queens.queen/2-0 (nondet) queens.m:34 (queens.m:20)
+      E4:     C3 CALL pred queens.queen/2-0 (nondet) queens.m:36 (queens.m:24)
 mdb> print *
        Data (arg 1)           	[1, 2, 3, 4, 5]
 mdb> 
-      E5:     C4 CALL pred queens.qperm/2-0 (nondet) queens.m:41 (queens.m:35)
+      E5:     C4 CALL pred queens.qperm/2-0 (nondet) queens.m:42 (queens.m:37)
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> print_optionals on
@@ -34,11 +34,11 @@ mdb> print_optionals off
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
-      E6:     C4 SWTC pred queens.qperm/2-0 (nondet) s2-2; queens.m:42
+      E6:     C4 SWTC pred queens.qperm/2-0 (nondet) s2-2; queens.m:43
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
-      E7:     C5 CALL pred queens.qdelete/3-0 (nondet) queens.m:50 (queens.m:43)
+      E7:     C5 CALL pred queens.qdelete/3-0 (nondet) queens.m:50 (queens.m:44)
 mdb> print *
        HeadVar__2             	[1, 2, 3, 4, 5]
 mdb> 
@@ -47,43 +47,43 @@ mdb> print *
        HeadVar__2             	[1, 2, 3, 4, 5]
 mdb> level 1
 Ancestor level set to 1:
-   1  pred queens.qperm/2-0 (nondet) queens.m:43
+   1  pred queens.qperm/2-0 (nondet) queens.m:44
 mdb> level -d 1
 Ancestor level set to 1:
-   1      E5      C4    3  pred queens.qperm/2-0 (nondet) queens.m:43
+   1      E5      C4    3  pred queens.qperm/2-0 (nondet) queens.m:44
 mdb> context nextline
 Contexts will be printed on the next line.
 mdb> level 1
 Ancestor level set to 1:
    1  pred queens.qperm/2-0 (nondet)
-      queens.m:43
+      queens.m:44
 mdb> level -d 1
 Ancestor level set to 1:
    1      E5      C4    3  pred queens.qperm/2-0 (nondet)
-                           queens.m:43
+                           queens.m:44
 mdb> context prevline
 Contexts will be printed on the previous line.
 mdb> level 1
 Ancestor level set to 1:
-   1  queens.m:43
+   1  queens.m:44
       pred queens.qperm/2-0 (nondet)
 mdb> level -d 1
 Ancestor level set to 1:
-   1      E5      C4    3  queens.m:43
+   1      E5      C4    3  queens.m:44
                            pred queens.qperm/2-0 (nondet)
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
        L                      	[1, 2, 3, 4, 5]
 mdb> up 1
 Ancestor level set to 2:
-   2  queens.m:35
+   2  queens.m:37
       pred queens.queen/2-0 (nondet)
 mdb> vars
         1 Data (arg 1)
 mdb> print *
        Data (arg 1)           	[1, 2, 3, 4, 5]
 mdb> 
-      E9:     C5 EXIT queens.m:50 (from queens.m:43)
+      E9:     C5 EXIT queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
 mdb> print HeadVar__1
        HeadVar__1             	1
@@ -129,17 +129,17 @@ There are 5 diffs, showing diff 5:
 mdb> diff $y $z^2
 There are no diffs.
 mdb> 
-     E10:     C6 CALL queens.m:41 (from queens.m:45)
+     E10:     C6 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> print *
        HeadVar__1             	[2, 3, 4, 5]
 mdb> 
-     E11:     C6 SWTC queens.m:42
+     E11:     C6 SWTC queens.m:43
                          pred queens.qperm/2-0 (nondet) s2-2;
 mdb> print *
        HeadVar__1             	[2, 3, 4, 5]
 mdb> 
-     E12:     C7 CALL queens.m:50 (from queens.m:43)
+     E12:     C7 CALL queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
 mdb> print *
        HeadVar__2             	[2, 3, 4, 5]
@@ -149,84 +149,84 @@ mdb>
 mdb> print *
        HeadVar__2             	[2, 3, 4, 5]
 mdb> 
-     E14:     C7 EXIT queens.m:50 (from queens.m:43)
+     E14:     C7 EXIT queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
 mdb> print *
        HeadVar__1             	2
        HeadVar__2             	[2, 3, 4, 5]
        HeadVar__3             	[3, 4, 5]
 mdb> 
-     E15:     C8 CALL queens.m:41 (from queens.m:45)
+     E15:     C8 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> goto -a 21
-     E16:     C8 SWTC queens.m:42
+     E16:     C8 SWTC queens.m:43
                          pred queens.qperm/2-0 (nondet) s2-2;
-     E17:     C9 CALL queens.m:50 (from queens.m:43)
+     E17:     C9 CALL queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
      E18:     C9 DISJ queens.m:50
                          pred queens.qdelete/3-0 (nondet) c2;d1;
-     E19:     C9 EXIT queens.m:50 (from queens.m:43)
+     E19:     C9 EXIT queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
-     E20:    C10 CALL queens.m:41 (from queens.m:45)
+     E20:    C10 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> stack
-   0    4* pred queens.qperm/2-0 (nondet) (queens.m:41 and others)
-   4       pred queens.queen/2-0 (nondet) (queens.m:35)
-   5       pred queens.main/2-0 (cc_multi) (queens.m:20)
+   0    4* pred queens.qperm/2-0 (nondet) (queens.m:42 and others)
+   4       pred queens.queen/2-0 (nondet) (queens.m:37)
+   5       pred queens.main/2-0 (cc_multi) (queens.m:24)
 mdb> stack -d
-   0     E20     C10    6 pred queens.qperm/2-0 (nondet) (queens.m:41) (empty)
-   1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:45) s2-2;c3;
-   2     E10      C6    4 pred queens.qperm/2-0 (nondet) (queens.m:45) s2-2;c3;
-   3      E5      C4    3 pred queens.qperm/2-0 (nondet) (queens.m:45) s2-2;c3;
-   4      E4      C3    2 pred queens.queen/2-0 (nondet) (queens.m:35) c2;
-   5      E1      C1    1 pred queens.main/2-0 (cc_multi) (queens.m:20) ?;c2;q!;
+   0     E20     C10    6 pred queens.qperm/2-0 (nondet) (queens.m:42) (empty)
+   1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:46) s2-2;c3;
+   2     E10      C6    4 pred queens.qperm/2-0 (nondet) (queens.m:46) s2-2;c3;
+   3      E5      C4    3 pred queens.qperm/2-0 (nondet) (queens.m:46) s2-2;c3;
+   4      E4      C3    2 pred queens.queen/2-0 (nondet) (queens.m:37) c2;
+   5      E1      C1    1 pred queens.main/2-0 (cc_multi) (queens.m:24) ?;c2;q!;
 mdb> stack 3
-   0    4* pred queens.qperm/2-0 (nondet) (queens.m:41 and others)
-   4       pred queens.queen/2-0 (nondet) (queens.m:35)
-   5       pred queens.main/2-0 (cc_multi) (queens.m:20)
+   0    4* pred queens.qperm/2-0 (nondet) (queens.m:42 and others)
+   4       pred queens.queen/2-0 (nondet) (queens.m:37)
+   5       pred queens.main/2-0 (cc_multi) (queens.m:24)
 mdb> stack -d 3
-   0     E20     C10    6 pred queens.qperm/2-0 (nondet) (queens.m:41) (empty)
-   1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:45) s2-2;c3;
-   2     E10      C6    4 pred queens.qperm/2-0 (nondet) (queens.m:45) s2-2;c3;
+   0     E20     C10    6 pred queens.qperm/2-0 (nondet) (queens.m:42) (empty)
+   1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:46) s2-2;c3;
+   2     E10      C6    4 pred queens.qperm/2-0 (nondet) (queens.m:46) s2-2;c3;
 <more stack frames snipped>
 mdb> print *
        HeadVar__1             	[4, 5]
 mdb> 
-     E21:    C10 SWTC queens.m:42
+     E21:    C10 SWTC queens.m:43
                          pred queens.qperm/2-0 (nondet) s2-2;
 mdb> retry
-     E20:    C10 CALL queens.m:41 (from queens.m:45)
+     E20:    C10 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> print *
        HeadVar__1             	[4, 5]
 mdb> finish -a
-     E21:    C10 SWTC queens.m:42
+     E21:    C10 SWTC queens.m:43
                          pred queens.qperm/2-0 (nondet) s2-2;
-     E22:    C11 CALL queens.m:50 (from queens.m:43)
+     E22:    C11 CALL queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
      E23:    C11 DISJ queens.m:50
                          pred queens.qdelete/3-0 (nondet) c2;d1;
-     E24:    C11 EXIT queens.m:50 (from queens.m:43)
+     E24:    C11 EXIT queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
-     E25:    C12 CALL queens.m:41 (from queens.m:45)
+     E25:    C12 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E26:    C12 SWTC queens.m:42
+     E26:    C12 SWTC queens.m:43
                          pred queens.qperm/2-0 (nondet) s2-2;
-     E27:    C13 CALL queens.m:50 (from queens.m:43)
+     E27:    C13 CALL queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
      E28:    C13 DISJ queens.m:50
                          pred queens.qdelete/3-0 (nondet) c2;d1;
-     E29:    C13 EXIT queens.m:50 (from queens.m:43)
+     E29:    C13 EXIT queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
-     E30:    C14 CALL queens.m:41 (from queens.m:45)
+     E30:    C14 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E31:    C14 SWTC queens.m:41
+     E31:    C14 SWTC queens.m:42
                          pred queens.qperm/2-0 (nondet) s1-2;
-     E32:    C14 EXIT queens.m:41 (from queens.m:45)
+     E32:    C14 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E33:    C12 EXIT queens.m:41 (from queens.m:45)
+     E33:    C12 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E34:    C10 EXIT queens.m:41 (from queens.m:45)
+     E34:    C10 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> register --quiet
 mdb> break print_list
@@ -237,51 +237,51 @@ mdb> break_print HeadVar__2^2
  1: + stop  interface pred queens.qdelete/3-0 (nondet)
             HeadVar__2^2 (flat)
 mdb> continue -a
-     E35:     C8 EXIT queens.m:41 (from queens.m:45)
+     E35:     C8 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E36:     C6 EXIT queens.m:41 (from queens.m:45)
+     E36:     C6 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E37:     C4 EXIT queens.m:41 (from queens.m:35)
+     E37:     C4 EXIT queens.m:42 (from queens.m:37)
                          pred queens.qperm/2-0 (nondet)
-     E38:    C15 CALL queens.m:57 (from queens.m:36)
+     E38:    C15 CALL queens.m:56 (from queens.m:38)
                          pred queens.safe/1-0 (semidet)
-     E39:    C15 SWTC queens.m:58
+     E39:    C15 SWTC queens.m:57
                          pred queens.safe/1-0 (semidet) s2-2;
-     E40:    C16 CALL queens.m:65 (from queens.m:59)
+     E40:    C16 CALL queens.m:63 (from queens.m:58)
                          pred queens.nodiag/3-0 (semidet)
-     E41:    C16 SWTC queens.m:66
+     E41:    C16 SWTC queens.m:64
                          pred queens.nodiag/3-0 (semidet) s2-2;
-     E42:    C17 CALL int.m:NNNN (from queens.m:67)
+     E42:    C17 CALL int.m:NNNN (from queens.m:65)
                          func int.-/2-0 (det)
-     E43:    C17 EXIT int.m:NNNN (from queens.m:67)
+     E43:    C17 EXIT int.m:NNNN (from queens.m:65)
                          func int.-/2-0 (det)
-     E44:    C18 CALL int.m:NNNN (from queens.m:68)
+     E44:    C18 CALL int.m:NNNN (from queens.m:66)
                          func int.-/2-0 (det)
-     E45:    C18 EXIT int.m:NNNN (from queens.m:68)
+     E45:    C18 EXIT int.m:NNNN (from queens.m:66)
                          func int.-/2-0 (det)
-     E46:    C16 COND queens.m:69
+     E46:    C16 COND queens.m:67
                          pred queens.nodiag/3-0 (semidet) s2-2;c4;?;
-     E47:    C16 THEN queens.m:70
+     E47:    C16 THEN queens.m:68
                          pred queens.nodiag/3-0 (semidet) s2-2;c4;t;
-     E48:    C16 FAIL queens.m:65 (from queens.m:59)
+     E48:    C16 FAIL queens.m:63 (from queens.m:58)
                          pred queens.nodiag/3-0 (semidet)
-     E49:    C15 FAIL queens.m:57 (from queens.m:36)
+     E49:    C15 FAIL queens.m:56 (from queens.m:38)
                          pred queens.safe/1-0 (semidet)
-     E50:     C4 REDO queens.m:41 (from queens.m:35)
+     E50:     C4 REDO queens.m:42 (from queens.m:37)
                          pred queens.qperm/2-0 (nondet)
-     E51:     C6 REDO queens.m:41 (from queens.m:45)
+     E51:     C6 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E52:     C8 REDO queens.m:41 (from queens.m:45)
+     E52:     C8 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E53:    C10 REDO queens.m:41 (from queens.m:45)
+     E53:    C10 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E54:    C12 REDO queens.m:41 (from queens.m:45)
+     E54:    C12 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E55:    C14 REDO queens.m:41 (from queens.m:45)
+     E55:    C14 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E56:    C14 FAIL queens.m:41 (from queens.m:45)
+     E56:    C14 FAIL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E57:    C13 REDO queens.m:50 (from queens.m:43)
+     E57:    C13 REDO queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
        HeadVar__2^2           	[]
 mdb> break info
@@ -300,86 +300,86 @@ mdb: the path 2 does not exist in variable HeadVar__2.
      E60:    C19 FAIL queens.m:50 (from queens.m:52)
                          pred queens.qdelete/3-0 (nondet)
 mdb: the path 2 does not exist in variable HeadVar__2.
-     E61:    C13 FAIL queens.m:50 (from queens.m:43)
+     E61:    C13 FAIL queens.m:50 (from queens.m:44)
                          pred queens.qdelete/3-0 (nondet)
        HeadVar__2^2           	[]
-     E62:    C12 FAIL queens.m:41 (from queens.m:45)
+     E62:    C12 FAIL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> disable 1
  1: - stop  interface pred queens.qdelete/3-0 (nondet)
 mdb> retry 4
-      E5:     C4 CALL queens.m:41 (from queens.m:35)
+      E5:     C4 CALL queens.m:42 (from queens.m:37)
                          pred queens.qperm/2-0 (nondet)
-mdb> break 45
- 2: + stop  linenumber queens.m:45
+mdb> break 46
+ 2: + stop  linenumber queens.m:46
 mdb> continue -n
-     E10:     C6 CALL queens.m:41 (from queens.m:45)
-                         pred queens.qperm/2-0 (nondet)
-mdb> continue -n
-     E15:     C8 CALL queens.m:41 (from queens.m:45)
+     E10:     C6 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> continue -n
-     E20:    C10 CALL queens.m:41 (from queens.m:45)
+     E15:     C8 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> continue -n
-     E25:    C12 CALL queens.m:41 (from queens.m:45)
+     E20:    C10 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> continue -n
-     E30:    C14 CALL queens.m:41 (from queens.m:45)
+     E25:    C12 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> continue -n
-     E32:    C14 EXIT queens.m:41 (from queens.m:45)
+     E30:    C14 CALL queens.m:42 (from queens.m:46)
+                         pred queens.qperm/2-0 (nondet)
+mdb> continue -n
+     E32:    C14 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> return
-     E33:    C12 EXIT queens.m:41 (from queens.m:45)
+     E33:    C12 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E34:    C10 EXIT queens.m:41 (from queens.m:45)
+     E34:    C10 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E35:     C8 EXIT queens.m:41 (from queens.m:45)
+     E35:     C8 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E36:     C6 EXIT queens.m:41 (from queens.m:45)
+     E36:     C6 EXIT queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E38:    C15 CALL queens.m:57 (from queens.m:36)
+     E38:    C15 CALL queens.m:56 (from queens.m:38)
                          pred queens.safe/1-0 (semidet)
 mdb> continue -n
-     E51:     C6 REDO queens.m:41 (from queens.m:45)
+     E51:     C6 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> continue -n
-     E52:     C8 REDO queens.m:41 (from queens.m:45)
+     E52:     C8 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> forward
-     E53:    C10 REDO queens.m:41 (from queens.m:45)
+     E53:    C10 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E54:    C12 REDO queens.m:41 (from queens.m:45)
+     E54:    C12 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E55:    C14 REDO queens.m:41 (from queens.m:45)
+     E55:    C14 REDO queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
-     E56:    C14 FAIL queens.m:41 (from queens.m:45)
+     E56:    C14 FAIL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
      E58:    C13 DISJ queens.m:51
                          pred queens.qdelete/3-0 (nondet) c2;d2;
 mdb> continue -n
-     E62:    C12 FAIL queens.m:41 (from queens.m:45)
+     E62:    C12 FAIL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> continue -n
-     E63:    C20 CALL queens.m:41 (from queens.m:45)
+     E63:    C20 CALL queens.m:42 (from queens.m:46)
                          pred queens.qperm/2-0 (nondet)
 mdb> delete *
  0: E stop  interface pred queens.print_list/3-0 (det)
  1: D stop  interface pred queens.qdelete/3-0 (nondet)
- 2: E stop  linenumber queens.m:45
+ 2: E stop  linenumber queens.m:46
 mdb> break main SWTC
 There is no SWTC port in pred queens.main/2-0 (cc_multi).
 mdb> break main EXIT
  0: + stop  specific  pred queens.main/2-0 (cc_multi) EXIT 
 mdb> continue -n
 [1, 3, 5, 2, 4]
-     E64:     C1 EXIT queens.m:19
+     E64:     C1 EXIT queens.m:23
                          pred queens.main/2-0 (cc_multi)
 mdb> retry
 Retry across I/O operations is not always safe.
 Are you sure you want to do it? yes
-      E1:     C1 CALL queens.m:19
+      E1:     C1 CALL queens.m:23
                          pred queens.main/2-0 (cc_multi)
 mdb> delete 0
  0: E stop  specific  pred queens.main/2-0 (cc_multi) EXIT 
@@ -398,12 +398,12 @@ mdb> condition HeadVar__1 = [1,2, 5, 4, 3 ]
  0: + stop  interface pred queens.safe/1-0 (semidet)
             HeadVar__1 = [1, 2, 5, 4, 3]
 mdb> continue
-     E65:    C21 CALL queens.m:57 (from queens.m:36)
+     E65:    C21 CALL queens.m:56 (from queens.m:38)
                          pred queens.safe/1-0 (semidet)
 mdb> print
 safe([1, 2, 5, 4, 3])
 mdb> retry 2
-      E1:     C1 CALL queens.m:19
+      E1:     C1 CALL queens.m:23
                          pred queens.main/2-0 (cc_multi)
 mdb> yes
 Unknown command `yes'. Give the command `help' for help.
@@ -418,7 +418,7 @@ Ambiguous port specification. The matches are:
 Which do you want to put a breakpoint on (0-1 or *)? 1
  1: + stop  specific  pred queens.nodiag/3-0 (semidet) SWTC s2-2;
 mdb> continue
-     E41:    C16 SWTC queens.m:66
+     E41:    C16 SWTC queens.m:64
                          pred queens.nodiag/3-0 (semidet) s2-2;
 mdb> print *
        B (arg 1)              	1
