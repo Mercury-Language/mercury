@@ -49,8 +49,8 @@ run_cmp_test(CmpPred, Desc, !IO) :-
 run_cmp_test_2(CmpPred, Desc, Bs, A, !IO) :-
     list.foldl(run_cmp_test_3(CmpPred, Desc, A), Bs, !IO).
 
-:- pred run_cmp_test_3(pred(int32, int32)::in(pred(in, in) is semidet), string::in,
-    int32::in, int32::in, io::di, io::uo) is det.
+:- pred run_cmp_test_3(pred(int32, int32)::in(pred(in, in) is semidet),
+    string::in, int32::in, int32::in, io::di, io::uo) is det.
 
 run_cmp_test_3(CmpPred, Desc, A, B, !IO) :-
     Result = ( if CmpPred(A, B) then "true" else "false" ),

@@ -49,13 +49,14 @@ run_cmp_test(CmpPred, Desc, !IO) :-
 run_cmp_test_2(CmpPred, Desc, Bs, A, !IO) :-
     list.foldl(run_cmp_test_3(CmpPred, Desc, A), Bs, !IO).
 
-:- pred run_cmp_test_3(pred(int8, int8)::in(pred(in, in) is semidet), string::in,
-    int8::in, int8::in, io::di, io::uo) is det.
+:- pred run_cmp_test_3(pred(int8, int8)::in(pred(in, in) is semidet),
+    string::in, int8::in, int8::in, io::di, io::uo) is det.
 
 run_cmp_test_3(CmpPred, Desc, A, B, !IO) :-
     Result = ( if CmpPred(A, B) then "true" else "false" ),
     io.format("%s %s %s = %s\n",
-        [s(int8_to_string(A)), s(Desc), s(int8_to_string(B)), s(Result)], !IO).
+        [s(int8_to_string(A)), s(Desc), s(int8_to_string(B)), s(Result)],
+        !IO).
 
 :- func numbers = list(int8).
 
