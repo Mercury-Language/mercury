@@ -1,0 +1,31 @@
+   Orig. Term: test1_struct(561)
+ Updated Term: test1_struct(41041)
+Expected Term: test1_struct(41041)
+
+   Orig. Term: test2_struct(111, 111, 111)
+ Updated Term: test2_struct(222, 222, 222)
+Expected Term: test2_struct(222, 222, 222)
+
+   Orig. Term: test3_struct(yes, yes, yes, 65535u16)
+ Updated Term: test3_struct(no, no, no, 0u16)
+Expected Term: test3_struct(no, no, no, 0u16)
+
+   Orig. Term: test4_struct(bat, bat, 561, "Hello", owl, owl, owl, owl)
+ Updated Term: test4_struct(fox, fox, 41041, "World", hog, hog, hog, hog)
+Expected Term: test4_struct(fox, fox, 41041, "World", hog, hog, hog, hog)
+
+   Orig. Term: test5_struct(561, dummy, nested_dummy(dummy), "Hello", yes, yes)
+ Updated Term: test5_struct(41041, dummy, nested_dummy(dummy), "World", no, no)
+Expected Term: test5_struct(41041, dummy, nested_dummy(dummy), "World", no, no)
+
+   Orig. Term: test6_struct(255u8, 255u8, dummy, 65535u16)
+ Updated Term: test6_struct(1u8, 1u8, dummy, 1u16)
+Expected Term: test6_struct(1u8, 1u8, dummy, 1u16)
+
+   Orig. Term: packed_2(dummy, 561.0, 1i8, 1u8, dummy, 2i8, 3u8)
+ Updated Term: packed_2(dummy, 41041.0, 127i8, 255u8, dummy, 127i8, 255u8)
+Expected Term: packed_2(dummy, 41041.0, 127i8, 255u8, dummy, 127i8, 255u8)
+
+   Orig. Term: packed_1(1i8, 1u8, dummy, dummy, 0i8, 0u8, 'A')
+ Updated Term: packed_1(127i8, 255u8, dummy, dummy, 127i8, 255u8, 'Z')
+Expected Term: packed_1(127i8, 255u8, dummy, dummy, 127i8, 255u8, 'Z')
