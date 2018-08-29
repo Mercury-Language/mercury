@@ -573,18 +573,39 @@ estimate_switch_tag_test_cost(ConsTag) = Cost :-
         % You need only a single word compare.
         Cost = 1
     ;
-        ConsTag = single_functor_tag,
-        % There is no cost incurred here except the cost of testing for all the
-        % reserved addresses this tag is shared with; the Cost = 2 is an
-        % estimate (XXX probably not very accurate) of the fixed cost
-        % of the scan over them.
-        Cost = 2
-    ;
-        ( ConsTag = unshared_tag(_)
-        ; ConsTag = direct_arg_tag(_)
-        ),
+        ConsTag = direct_arg_tag(_),
         % You need to compute the primary tag and compare it.
         Cost = 2
+    ;
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            RemoteArgsTagInfo = remote_args_only_functor,
+            % The cost we return here does not matter, since one cannot switch
+            % on a value of a type that has only one functor.
+            Cost = 2
+        ;
+            RemoteArgsTagInfo = remote_args_unshared(_),
+            % You need to compute the primary tag and compare it.
+            Cost = 2
+        ;
+            RemoteArgsTagInfo = remote_args_shared(_, RemoteSectag),
+            RemoteSectag = remote_sectag(_, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                % You need to compute the primary tag, compare it, and then
+                % fetch and compare the remote secondary tag.
+                Cost = 5
+            ;
+                SectagSize = rsectag_subword(_),
+                % You need to compute the primary tag, compare it, and then
+                % fetch, mask out and compare the remote secondary tag.
+                Cost = 6
+            )
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_),
+            % You need to fetch the data field and compare it.
+            Cost = 4
+        )
     ;
         ConsTag = float_tag(_),
         % You need to follow a pointer and then compare 64 bits
@@ -598,11 +619,6 @@ estimate_switch_tag_test_cost(ConsTag) = Cost :-
         % You need to compute the primary tag, compare it, then compute
         % and compare the local secondary tag.
         Cost = 4
-    ;
-        ConsTag = shared_remote_tag(_, _),
-        % You need to compute the primary tag, compare it, follow a pointer
-        % and then compare the remote secondary tag.
-        Cost = 5
     ;
         ConsTag = string_tag(String),
         % You need to follow a pointer and then compare all the characters to
@@ -1206,17 +1222,8 @@ get_ptag_counts_loop([], !MaxPrimary, !PtagCountMap).
 get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
     ConsTag = CtorRepn ^ cr_tag,
     (
-        (
-            ConsTag = single_functor_tag,
-            Ptag = ptag(0u8),
-            SectagLocn = sectag_none
-        ;
-            ConsTag = unshared_tag(Ptag),
-            SectagLocn = sectag_none
-        ;
-            ConsTag = direct_arg_tag(Ptag),
-            SectagLocn = sectag_none_direct_arg
-        ),
+        ConsTag = direct_arg_tag(Ptag),
+        SectagLocn = sectag_none_direct_arg,
         Ptag = ptag(Primary),
         !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
         ( if map.search(!.PtagCountMap, Ptag, _) then
@@ -1225,19 +1232,54 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
             map.det_insert(Ptag, SectagLocn - (-1), !PtagCountMap)
         )
     ;
-        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-        Ptag = ptag(Primary),
-        !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
-        RemoteSectag = remote_sectag(SecondaryUint, _),
-        Secondary = uint.cast_to_int(SecondaryUint),
-        ( if map.search(!.PtagCountMap, Ptag, Target) then
-            Target = OldSectagLocn - MaxSoFar,
-            expect(unify(OldSectagLocn, sectag_remote), $pred,
-                "remote tag is shared with non-remote"),
-            int.max(Secondary, MaxSoFar, Max),
-            map.det_update(Ptag, sectag_remote - Max, !PtagCountMap)
-        else
-            map.det_insert(Ptag, sectag_remote - Secondary, !PtagCountMap)
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            (
+                RemoteArgsTagInfo = remote_args_only_functor,
+                Ptag = ptag(0u8),
+                SectagLocn = sectag_none
+            ;
+                RemoteArgsTagInfo = remote_args_unshared(Ptag),
+                SectagLocn = sectag_none
+            ),
+            Ptag = ptag(Primary),
+            !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
+            ( if map.search(!.PtagCountMap, Ptag, _) then
+                unexpected($pred, "unshared tag is shared")
+            else
+                map.det_insert(Ptag, SectagLocn - (-1), !PtagCountMap)
+            )
+        ;
+            (
+                RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+                Ptag = ptag(Primary),
+                RemoteSectag = remote_sectag(SecondaryUint, SectagSize),
+                (
+                    SectagSize = rsectag_word,
+                    SectagLocn = sectag_remote_word
+                ;
+                    SectagSize = rsectag_subword(SectagBits),
+                    SectagBits = sectag_bits(NumSectagBits, Mask),
+                    SectagLocn = sectag_remote_bits(NumSectagBits, Mask)
+                ),
+                Secondary = uint.cast_to_int(SecondaryUint)
+            ;
+                RemoteArgsTagInfo = remote_args_ctor(Data),
+                Primary = 0u8,
+                Ptag = ptag(Primary),
+                SectagLocn = sectag_remote_word,
+                Secondary = uint.cast_to_int(Data)
+            ),
+            !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
+            ( if map.search(!.PtagCountMap, Ptag, Target) then
+                Target = OldSectagLocn - MaxSoFar,
+                expect(unify(OldSectagLocn, SectagLocn), $pred,
+                    "remote tag is shared with non-remote"),
+                int.max(Secondary, MaxSoFar, Max),
+                map.det_update(Ptag, SectagLocn - Max, !PtagCountMap)
+            else
+                map.det_insert(Ptag, SectagLocn - Secondary, !PtagCountMap)
+            )
         )
     ;
         (
@@ -1335,17 +1377,8 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         !CaseIdPtagsMap, !PtagCaseMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
     (
-        (
-            ConsTag = single_functor_tag,
-            Ptag = ptag(0u8),
-            SectagLocn = sectag_none
-        ;
-            ConsTag = unshared_tag(Ptag),
-            SectagLocn = sectag_none
-        ;
-            ConsTag = direct_arg_tag(Ptag),
-            SectagLocn = sectag_none_direct_arg
-        ),
+        ConsTag = direct_arg_tag(Ptag),
+        SectagLocn = sectag_none_direct_arg,
         ( if map.search(!.PtagCaseMap, Ptag, _Group) then
             unexpected($pred, "unshared tag is shared")
         else
@@ -1354,20 +1387,55 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
                 !PtagCaseMap)
         )
     ;
-        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-        RemoteSectag = remote_sectag(SecondaryUint, _),
-        Secondary = uint.cast_to_int(SecondaryUint),
-        ( if map.search(!.PtagCaseMap, Ptag, Group) then
-            Group = ptag_case(OldSectagLocn, StagGoalMap0),
-            expect(unify(OldSectagLocn, sectag_remote), $pred,
-                "remote tag is shared with non-remote"),
-            map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
-            map.det_update(Ptag, ptag_case(sectag_remote, StagGoalMap),
-                !PtagCaseMap)
-        else
-            StagGoalMap = map.singleton(Secondary, CaseRep),
-            map.det_insert(Ptag, ptag_case(sectag_remote, StagGoalMap),
-                !PtagCaseMap)
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            (
+                RemoteArgsTagInfo = remote_args_only_functor,
+                Ptag = ptag(0u8),
+                SectagLocn = sectag_none
+            ;
+                RemoteArgsTagInfo = remote_args_unshared(Ptag),
+                SectagLocn = sectag_none
+            ),
+            ( if map.search(!.PtagCaseMap, Ptag, _Group) then
+                unexpected($pred, "unshared tag is shared")
+            else
+                StagGoalMap = map.singleton(-1, CaseRep),
+                map.det_insert(Ptag, ptag_case(SectagLocn, StagGoalMap),
+                    !PtagCaseMap)
+            )
+        ;
+            (
+                RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+                RemoteSectag = remote_sectag(SecondaryUint, SectagSize),
+                (
+                    SectagSize = rsectag_word,
+                    SectagLocn = sectag_remote_word
+                ;
+                    SectagSize = rsectag_subword(SectagBits),
+                    SectagBits = sectag_bits(NumSectagBits, Mask),
+                    SectagLocn = sectag_remote_bits(NumSectagBits, Mask)
+                ),
+                Secondary = uint.cast_to_int(SecondaryUint)
+            ;
+                RemoteArgsTagInfo = remote_args_ctor(Data),
+                Primary = 0u8,
+                Ptag = ptag(Primary),
+                SectagLocn = sectag_remote_word,
+                Secondary = uint.cast_to_int(Data)
+            ),
+            ( if map.search(!.PtagCaseMap, Ptag, Group) then
+                Group = ptag_case(OldSectagLocn, StagGoalMap0),
+                expect(unify(OldSectagLocn, SectagLocn), $pred,
+                    "remote tag is shared with non-remote"),
+                map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
+                map.det_update(Ptag, ptag_case(SectagLocn, StagGoalMap),
+                    !PtagCaseMap)
+            else
+                StagGoalMap = map.singleton(Secondary, CaseRep),
+                map.det_insert(Ptag, ptag_case(SectagLocn, StagGoalMap),
+                    !PtagCaseMap)
+            )
         )
     ;
         (
@@ -1500,7 +1568,8 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
     ;
         ( CountSectagLocn = sectag_local_rest_of_word
         ; CountSectagLocn = sectag_local_bits(_, _)
-        ; CountSectagLocn = sectag_remote
+        ; CountSectagLocn = sectag_remote_word
+        ; CountSectagLocn = sectag_remote_bits(_, _)
         ),
         % There will only ever be at most one primary tag value with
         % a shared local tag, and there will only ever be at most one primary

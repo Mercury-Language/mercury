@@ -16,9 +16,9 @@ ORDINARY_PROGS = \
 	array_all_tf \
 	array_gen \
 	array_sort \
-	array_unify_compare \
 	array_test \
 	array_test2 \
+	array_unify_compare \
 	bag_various \
 	bidirectional \
 	bigtest \
@@ -64,6 +64,7 @@ ORDINARY_PROGS = \
 	constraint_order \
 	construct_bug \
 	construct_mangle \
+	construct_packed \
 	construct_test \
 	construct_test_exist \
 	contains_char \

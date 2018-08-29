@@ -546,7 +546,7 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
 
 :- pragma foreign_decl("C",
 "
-// This function exists to allow us to handle both the MR_SECTAG_REMOTE
+// This function exists to allow us to handle both the MR_SECTAG_REMOTE_*
 // and the MR_SECTAG_NONE cases of constructing values of discriminated
 // union types without code duplication.
 //
@@ -613,18 +613,22 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
             MR_UNIV_OFFSET_FOR_DATA);
         arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
             MR_list_head(arg_list), MR_UNIV_OFFSET_FOR_TYPEINFO);
+        // XXX ARG_PACK This test is loop-invariant; lift it out of the loop.
         if (arg_locns == NULL) {
             MR_field(ptag, new_data, sectag01 + i) = arg_data;
         } else {
             const MR_DuArgLocn *locn = &arg_locns[i];
 
             // The meanings of the various special values of MR_arg_bits
-            // are documented next to the definition of the MR_DuArgLocn type
-            // in mercury_type_info.h.
+            // and MR_arg_offset are documented next to the definition of
+            // the MR_DuArgLocn type in mercury_type_info.h.
 
             switch (locn->MR_arg_bits) {
 
             case 0:
+                if (locn->MR_arg_offset < 0) {
+                    MR_fatal_error(""construct(): full word arg in tagword"");
+                }
                 MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
                     = arg_data;
                 break;
@@ -632,6 +636,9 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
             case -1:
                 // This is a double-precision floating point argument
                 // that takes two words.
+                if (locn->MR_arg_offset < 0) {
+                    MR_fatal_error(""construct(): double word arg in tagword"");
+                }
   #ifdef MR_BOXED_FLOAT
                 MR_memcpy(
                     &MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset),
@@ -643,6 +650,9 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
 
             case -2:
                 // This is an int64 argument that takes two words.
+                if (locn->MR_arg_offset < 0) {
+                    MR_fatal_error(""construct(): double word arg in tagword"");
+                }
   #ifdef MR_BOXED_INT64S
                 MR_memcpy(
                     &MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset),
@@ -654,6 +664,9 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
 
             case -3:
                 // This is a uint64 argument that takes two words.
+                if (locn->MR_arg_offset < 0) {
+                    MR_fatal_error(""construct(): double word arg in tagword"");
+                }
   #ifdef MR_BOXED_INT64S
                 MR_memcpy(
                     &MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset),
@@ -667,24 +680,45 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
             case -5:
                 // This is an int8 (-4) or uint8 (-5) argument.
                 bits_to_or = (((MR_Unsigned) arg_data) & 0xff);
-                MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
-                    |= (bits_to_or << locn->MR_arg_shift);
+                if (locn->MR_arg_offset == -1) {
+                    MR_field(ptag, new_data, 0)
+                        |= (bits_to_or << locn->MR_arg_shift);
+                } else if (locn->MR_arg_offset < 0) {
+                    MR_fatal_error(""construct(): unknown negative offset"");
+                } else {
+                    MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                        |= (bits_to_or << locn->MR_arg_shift);
+                }
                 break;
 
             case -6:    // fall-through
             case -7:
                 // This is an int16 (-6) or uint16 (-7) argument.
                 bits_to_or = (((MR_Unsigned) arg_data) & 0xffff);
-                MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
-                    |= (bits_to_or << locn->MR_arg_shift);
+                if (locn->MR_arg_offset == -1) {
+                    MR_field(ptag, new_data, 0)
+                        |= (bits_to_or << locn->MR_arg_shift);
+                } else if (locn->MR_arg_offset < 0) {
+                    MR_fatal_error(""construct(): unknown negative offset"");
+                } else {
+                    MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                        |= (bits_to_or << locn->MR_arg_shift);
+                }
                 break;
 
             case -8:    // fall-through
             case -9:
                 // This is an int32 (-8) or uint32 (-9) argument.
                 bits_to_or = (((MR_Unsigned) arg_data) & 0xffffffff);
-                MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
-                    |= (bits_to_or << locn->MR_arg_shift);
+                if (locn->MR_arg_offset == -1) {
+                    MR_field(ptag, new_data, 0)
+                        |= (bits_to_or << locn->MR_arg_shift);
+                } else if (locn->MR_arg_offset < 0) {
+                    MR_fatal_error(""construct(): unknown negative offset"");
+                } else {
+                    MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                        |= (bits_to_or << locn->MR_arg_shift);
+                }
                 break;
 
             case -10:
@@ -693,8 +727,16 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
 
             default:
                 if (locn->MR_arg_bits > 0) {
-                    MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
-                        |= (arg_data << locn->MR_arg_shift);
+                    bits_to_or = arg_data;
+                    if (locn->MR_arg_offset == -1) {
+                        MR_field(ptag, new_data, 0)
+                            |= (bits_to_or << locn->MR_arg_shift);
+                    } else if (locn->MR_arg_offset < 0) {
+                        MR_fatal_error(""construct(): unknown negative offset"");
+                    } else {
+                        MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                            |= (bits_to_or << locn->MR_arg_shift);
+                    }
                 } else {
                     MR_fatal_error(""unknown MR_arg_bits value"");
                 }
@@ -912,7 +954,8 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
                         functor_desc);
                     break;
 
-                case MR_SECTAG_REMOTE:
+                case MR_SECTAG_REMOTE_FULL_WORD:        // fall-through
+                case MR_SECTAG_REMOTE_BITS:
                     MR_save_transient_registers();
                     ML_copy_memory_cell_args(&arg_list, &new_data, ptag,
                         functor_desc, MR_TRUE, MR_ALLOC_ID);
@@ -942,9 +985,6 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
                 case MR_SECTAG_VARIABLE:
                     new_data = (MR_Word) 0;     // avoid a warning
                     MR_fatal_error(""construct(): cannot construct variable"");
-
-                case MR_SECTAG_REMOTE_BITS:
-                    MR_fatal_error(""construct(): MR_SECTAG_REMOTE_BITS NYI"");
 
 #ifdef MR_INCLUDE_SWITCH_DEFAULTS
                 default:

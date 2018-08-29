@@ -15,6 +15,7 @@
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
+:- import_module ml_backend.ml_unify_gen_util.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -47,8 +48,8 @@
     --->    rval_type_and_width(mlds_rval, mlds_type, arg_pos_width).
 
     % ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
-    %   LHSVar, ExtraRHSRvalsTypesWidths, RHSVars, ArgModes, TakeAddr,
-    %   HowToConstruct, Context, Stmts, !Info):
+    %   LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths, ArgModes,
+    %   FirstArgNum, TakeAddr, HowToConstruct, Context, Stmts, !Info):
     %
     % Generate a `new_object' statement, or a static constant, depending on the
     % value of the how_to_construct argument. The `ExtraRvalsTypesWidths'
@@ -58,9 +59,10 @@
     % Exported for use by ml_closure_gen.m.
     %
 :- pred ml_gen_new_object(maybe(cons_id)::in, maybe(qual_ctor_id)::in,
-    ptag::in, bool::in, prog_var::in, list(mlds_rval_type_and_width)::in,
-    list(prog_var)::in, list(unify_mode)::in, list(int)::in,
-    how_to_construct::in, prog_context::in,
+    ptag::in, bool::in, prog_var::in, mer_type::in,
+    list(mlds_rval_type_and_width)::in,
+    list(arg_var_type_and_width)::in, list(unify_mode)::in,
+    int::in, list(int)::in, how_to_construct::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -75,7 +77,7 @@
 
     % Record the contents of the module's const_struct_db in !GlobalData.
     %
-:- pred ml_gen_const_structs(module_info::in, mlds_target_lang::in,
+:- pred ml_generate_const_structs(module_info::in, mlds_target_lang::in,
     ml_const_struct_map::out, ml_global_data::in, ml_global_data::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -105,7 +107,6 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_unify_gen_deconstruct.
-:- import_module ml_backend.ml_unify_gen_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_out.
@@ -116,7 +117,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module term.
-:- import_module uint.
 :- import_module uint8.
 
 %---------------------------------------------------------------------------%
@@ -215,13 +215,10 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         Defns = []
     ;
         % Ordinary compound terms.
-        ( ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
-        ),
-        ml_generate_dynamic_construct_compound(LHSVar, ConsId, ConsTag,
-            RHSVars, ArgModes, TakeAddr, HowToConstruct, Context,
-            Defns, Stmts, !Info)
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        ml_generate_dynamic_construct_compound(LHSVar, ConsId,
+            RemoteArgsTagInfo, RHSVars, ArgModes, TakeAddr, HowToConstruct,
+            Context, Defns, Stmts, !Info)
     ;
         ConsTag = local_args_tag(LocalArgsTagInfo),
         (
@@ -254,67 +251,121 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
 %---------------------------------------------------------------------------%
 
 :- pred ml_generate_dynamic_construct_compound(prog_var::in,
-    cons_id::in, cons_tag::in(memory_cell_tag),
+    cons_id::in, remote_args_tag_info::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_dynamic_construct_compound(LHSVar, ConsId, ConsTag, RHSVars,
-        ArgModes, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info) :-
+ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
+        RHSVars, ArgModes, TakeAddr, HowToConstruct, Context,
+        Defns, Stmts, !Info) :-
     % Figure out which class name to construct.
-    ml_gen_info_get_target(!.Info, CompilationTarget),
-    UsesBaseClass = ml_tag_uses_base_class(ConsTag),
+    ml_gen_info_get_target(!.Info, Target),
+    % XXX ARG_PACK We should include consider including MaybeCtorName
+    % in RemoteArgsTagInfo.
+    UsesBaseClass = ml_remote_args_tag_uses_base_class(RemoteArgsTagInfo),
     (
         UsesBaseClass = tag_uses_base_class,
         MaybeCtorName = no
     ;
         UsesBaseClass = tag_does_not_use_base_class,
-        ml_cons_name(CompilationTarget, ConsId, CtorName),
+        ml_cons_name(Target, ConsId, CtorName),
         MaybeCtorName = yes(CtorName)
     ),
 
-    % If there is a secondary tag, it goes in the first field.
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ml_gen_info_get_var_types(!.Info, VarTypes),
+    ml_variable_type(!.Info, LHSVar, LHSType),
+    associate_cons_id_args_with_types_widths(ModuleInfo,
+        lookup_var_type_func(VarTypes), may_have_extra_args,
+        LHSType, ConsId, RHSVars, RHSVarsTypesWidths),
+
+    % If there is a secondary tag, it goes in the first word, maybe together
+    % with some subword-sized arguments packed along with it.
     (
-        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-        RemoteSectag = remote_sectag(SectagUint, AddedBy),
-        UsesConstructors = ml_target_uses_constructors(CompilationTarget),
         (
-            UsesConstructors = no,
-            % XXX ARG_PACK
-            expect(unify(AddedBy, sectag_added_by_unify), $pred,
-                "AddedBy != sectag_added_by_unify"),
-            ExplicitSectag = yes,
-            SectagRval0 = ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
-            SectagType0 = mlds_native_int_type,
-            % With the low-level data representation, all fields -- even the
-            % secondary tag -- are boxed, and so we need box it here.
-            SectagRval = ml_box(SectagType0, SectagRval0),
-            SectagType = mlds_generic_type,
-            ExtraRvalsTypesWidths = [rval_type_and_width(SectagRval,
-                SectagType, apw_full(arg_only_offset(0), cell_offset(0)))]
-        ;
-            UsesConstructors = yes,
-            % Secondary tag is implicitly initialised by the constructor.
-            % XXX ARG_PACK
-            expect(unify(AddedBy, sectag_added_by_constructor), $pred,
-                "AddedBy != sectag_added_by_constructor"),
-            ExplicitSectag = no,
-            ExtraRvalsTypesWidths = []
-        )
-    ;
-        (
-            ConsTag = single_functor_tag,
+            RemoteArgsTagInfo = remote_args_only_functor,
             Ptag = ptag(0u8)
         ;
-            ConsTag = unshared_tag(Ptag)
+            RemoteArgsTagInfo = remote_args_unshared(Ptag)
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_Data),
+            UsesConstructors = ml_target_uses_constructors(Target),
+            expect(unify(UsesConstructors, yes), $pred,
+                "remote_args_ctor but UsesConstructors = no"),
+            % We are using the high level data representation. In this scheme,
+            % the various function symbols of the type are distinguished
+            % by an integer stored in a field named "data" of the base class
+            % (representing terms of the type), which is inherited by each
+            % of the subclasses (each of which represents terms whose top
+            % function symbol is a given functor).
+            % Since the compiler was originally written for the low level
+            % data representation, it assumes the presence of primary tags.
+            % When using the high level data representation, all primary tags
+            % are always set to zero while generating the MLDS, and then
+            % ignored when translating the MLDS to Java or C#.
+            Ptag = ptag(0u8)
         ),
         ExplicitSectag = no,
-        ExtraRvalsTypesWidths = []
+        FirstArgNum = 1,
+        TagwordRvalsTypesWidths = [],
+        NonTagwordRHSVarsTypesWidths = RHSVarsTypesWidths,
+        NonTagwordArgModes = ArgModes
+    ;
+        RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+        UsesConstructors = ml_target_uses_constructors(Target),
+        expect(unify(UsesConstructors, no), $pred,
+            "remote_args_shared but UsesConstructors = yes"),
+        ExplicitSectag = yes,
+        RemoteSectag = remote_sectag(SectagUint, SectagSize),
+        TagwordArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
+        (
+            SectagSize = rsectag_word,
+            FirstArgNum = 1,
+            SectagRval0 = ml_const(mlconst_uint(SectagUint)),
+            % With the low-level data representation, all fields -- even the
+            % secondary tag -- are boxed, and so we need box it here.
+            SectagRval = ml_box(mlds_native_uint_type, SectagRval0),
+            TagwordRvalsTypesWidths = [rval_type_and_width(SectagRval,
+                mlds_generic_type, TagwordArgPosWidth)],
+            NonTagwordRHSVarsTypesWidths = RHSVarsTypesWidths,
+            NonTagwordArgModes = ArgModes
+        ;
+            SectagSize = rsectag_subword(_),
+            ml_take_tagword_args_type_widths_modes(
+                RHSVarsTypesWidths, ArgModes,
+                TagwordRHSVarsTypesWidths, TagwordArgModes,
+                NonTagwordRHSVarsTypesWidths, NonTagwordArgModes,
+                1, FirstArgNum),
+            % XXX ARG_PACK Factor out common code between the two callees?
+            (
+                HowToConstruct = construct_dynamically,
+                ml_gen_tagword_dynamically(!.Info, TagwordRHSVarsTypesWidths,
+                    TagwordArgModes, [], RevToOrRvals)
+            ;
+                HowToConstruct = construct_statically,
+                ml_gen_tagword_statically(!.Info, TagwordRHSVarsTypesWidths,
+                    [], RevToOrRvals)
+            ;
+                HowToConstruct = reuse_cell(_),
+                unexpected($pred, "reuse_cell NYI")
+            ;
+                HowToConstruct = construct_in_region(_),
+                unexpected($pred, "construct_in_region NYI")
+            ),
+            list.reverse(RevToOrRvals, ToOrRvals),
+            TagwordRval = ml_bitwise_or_some_rvals(
+                ml_const(mlconst_uint(SectagUint)), ToOrRvals),
+            BoxedTagwordRval = ml_box(mlds_native_uint_type, TagwordRval),
+            TagwordRvalsTypesWidths = [rval_type_and_width(BoxedTagwordRval,
+                mlds_generic_type, TagwordArgPosWidth)]
+        )
     ),
     ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag,
-        LHSVar, ExtraRvalsTypesWidths, RHSVars, ArgModes, TakeAddr,
-        HowToConstruct, Context, Defns, Stmts, !Info).
+        LHSVar, LHSType, TagwordRvalsTypesWidths,
+        NonTagwordRHSVarsTypesWidths, NonTagwordArgModes,
+        FirstArgNum, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info).
 
 :- pred ml_generate_dynamic_construct_tagword_compound(cons_id::in,
     uint::in, prog_var::in, list(prog_var)::in, list(unify_mode)::in,
@@ -365,57 +416,47 @@ ml_generate_dynamic_construct_tagword_compound(ConsId, PrimSec, LHSVar,
 
 %---------------------------------------------------------------------------%
 
-ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag, LHSVar,
-        ExtraRHSRvalsTypesWidths, RHSVars, ArgModes, TakeAddr,
-        HowToConstruct, Context, Defns, Stmts, !Info) :-
-    (
-        MaybeConsId = yes(ConsId),
-        ConsIdOrClosure = ordinary_cons_id(ConsId)
-    ;
-        MaybeConsId = no,
-        expect(unify(ExplicitSectag, no), $pred, "sectag on closure"),
-        list.length(ExtraRHSRvalsTypesWidths, NumExtras),
-        ConsIdOrClosure = closure_object(NumExtras)
-    ),
+ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
+        LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
+        ArgModes, FirstArgNum, TakeAddr, HowToConstruct, Context,
+        Defns, Stmts, !Info) :-
     (
         HowToConstruct = construct_dynamically,
-        ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName,
-            Ptag, ExplicitSectag, LHSVar, ExtraRHSRvalsTypesWidths,
-            RHSVars, ArgModes, TakeAddr, Context, Stmts, !Info),
+        ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName,
+            Ptag, ExplicitSectag, LHSVar, LHSType, ExtraRHSRvalsTypesWidths,
+            RHSVarsTypesWidths, ArgModes, FirstArgNum, TakeAddr, Context,
+            Stmts, !Info),
         Defns = []
     ;
         HowToConstruct = construct_statically,
         expect(unify(TakeAddr, []), $pred,
             "cannot take address of static object's field"),
-        ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
-            LHSVar, ExtraRHSRvalsTypesWidths, RHSVars, Context, Stmts, !Info),
+        ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
+            LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
+            Context, Stmts, !Info),
         Defns = []
     ;
         HowToConstruct = reuse_cell(CellToReuse),
-        ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
+        ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
             Ptag, ExplicitSectag, LHSVar, ExtraRHSRvalsTypesWidths,
-            RHSVars, ArgModes, TakeAddr, CellToReuse, Context,
+            RHSVarsTypesWidths, ArgModes, TakeAddr, CellToReuse, Context,
             Defns, Stmts, !Info)
     ;
         HowToConstruct = construct_in_region(_RegVar),
         sorry($pred, "construct_in_region NYI")
     ).
 
-:- pred ml_gen_new_object_dynamically(cons_id_or_closure::in,
-    maybe(qual_ctor_id)::in, ptag::in, bool::in, prog_var::in,
+:- pred ml_gen_new_object_dynamically(maybe(cons_id)::in,
+    maybe(qual_ctor_id)::in, ptag::in, bool::in, prog_var::in, mer_type::in,
     list(mlds_rval_type_and_width)::in,
-    list(prog_var)::in, list(unify_mode)::in,
-    list(int)::in, prog_context::in, list(mlds_stmt)::out,
+    list(arg_var_type_and_width)::in, list(unify_mode)::in,
+    int::in, list(int)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
-        ExplicitSectag, LHSVar, ExtraRHSRvalsTypesWidths, RHSVars, ArgModes,
-        TakeAddr, Context, Stmts, !Info) :-
-    % Find out the types of the constructor arguments and generate rvals
-    % for them (boxing/unboxing if needed).
-    ml_variable_type(!.Info, LHSVar, LHSType),
-    associate_maybe_cons_id_args_with_types_widths(!.Info, LHSType,
-        ConsIdOrClosure, RHSVars, RHSVarsTypesWidths),
+ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
+        ExplicitSectag, LHSVar, LHSType, ExtraRHSRvalsTypesWidths,
+        RHSVarsTypesWidths, ArgModes, FirstArgNum, TakeAddr, Context,
+        Stmts, !Info) :-
     ml_gen_info_get_use_atomic_cells(!.Info, UseAtomicCells),
     (
         UseAtomicCells = yes,
@@ -424,7 +465,6 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
         UseAtomicCells = no,
         MayUseAtomic0 = may_not_use_atomic_alloc
     ),
-    FirstArgNum = 1,
     ml_generate_and_pack_dynamic_construct_args(!.Info, RHSVarsTypesWidths,
         ArgModes, FirstArgNum, TakeAddr, TakeAddrInfos,
         PackedRHSRvalsTypesWidths, MayUseAtomic0, MayUseAtomic),
@@ -445,13 +485,6 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
         ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
         ml_gen_proc_label(ModuleInfo, PredProcId, _Module, ProcLabel),
         ml_gen_info_get_global_data(!.Info, GlobalData0),
-        (
-            ConsIdOrClosure = ordinary_cons_id(ConsId),
-            MaybeConsId = yes(ConsId)
-        ;
-            ConsIdOrClosure = closure_object(_),
-            MaybeConsId = no
-        ),
         ml_gen_alloc_site(mlds_function_name(ProcLabel), MaybeConsId, Size,
             Context, AllocId, GlobalData0, GlobalData),
         ml_gen_info_set_global_data(GlobalData, !Info),
@@ -478,19 +511,15 @@ ml_gen_new_object_dynamically(ConsIdOrClosure, MaybeCtorName, Ptag,
         MaybePtag, Context, !.Info, TakeAddrStmts),
     Stmts = [MakeNewObjStmt | TakeAddrStmts].
 
-:- pred ml_gen_new_object_statically(cons_id_or_closure::in,
-    maybe(qual_ctor_id)::in, ptag::in, prog_var::in,
-    list(mlds_rval_type_and_width)::in, list(prog_var)::in,
+:- pred ml_gen_new_object_statically(maybe(cons_id)::in,
+    maybe(qual_ctor_id)::in, ptag::in, prog_var::in, mer_type::in,
+    list(mlds_rval_type_and_width)::in, list(arg_var_type_and_width)::in,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
-        LHSVar, ExtraRHSRvalsTypesWidths, RHSVars, Context, Stmts, !Info) :-
-    % Find out the types of the constructor arguments.
-    ml_variable_type(!.Info, LHSVar, LHSType),
-    associate_maybe_cons_id_args_with_types_widths(!.Info, LHSType,
-        ConsIdOrClosure, RHSVars, RHSVarsTypesWidths),
-
+ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
+        LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths, Context,
+        Stmts, !Info) :-
     some [!GlobalData] (
         % Generate rvals for the arguments.
         ml_gen_info_get_global_data(!.Info, !:GlobalData),
@@ -531,7 +560,7 @@ ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
         ml_gen_type(!.Info, LHSType, LHS_MLDS_Type),
 
         construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-            Context, LHSType, LHS_MLDS_Type, ConsIdOrClosure, UsesBaseClass,
+            Context, LHSType, LHS_MLDS_Type, MaybeConsId, UsesBaseClass,
             Ptag, ExtraRHSRvals, RHSRvalsTypesWidths, RHSGroundTerm,
             !GlobalData),
 
@@ -545,23 +574,24 @@ ml_gen_new_object_statically(ConsIdOrClosure, MaybeCtorName, Ptag,
     AssignStmt = ml_gen_assign(LHSLval, RHSRval, Context),
     Stmts = [AssignStmt].
 
-:- pred ml_gen_new_object_reuse_cell(cons_id_or_closure::in,
+:- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
     maybe(qual_ctor_id)::in, ptag::in, bool::in, prog_var::in,
-    list(mlds_rval_type_and_width)::in, list(prog_var)::in,
+    list(mlds_rval_type_and_width)::in, list(arg_var_type_and_width)::in,
     list(unify_mode)::in, list(int)::in, cell_to_reuse::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
-        Ptag, ExplicitSectag, LHSVar, ExtraRHSRvalsTypesWidths, RHSVars,
-        ArgModes, TakeAddr, CellToReuse, Context, Defns, Stmts, !Info) :-
+ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
+        Ptag, ExplicitSectag, LHSVar, ExtraRHSRvalsTypesWidths,
+        RHSVarsTypesWidths, ArgModes, TakeAddr, CellToReuse, Context,
+        Defns, Stmts, !Info) :-
     % NOTE: if it is ever used, NeedsUpdates needs to be modified to take into
     % account argument packing, as in unify_gen.m.
     CellToReuse = cell_to_reuse(ReuseVar, ReuseConsIds, _NeedsUpdates),
     (
-        ConsIdOrClosure = ordinary_cons_id(ConsId)
+        MaybeConsId = yes(ConsId)
     ;
-        ConsIdOrClosure = closure_object(_),
+        MaybeConsId = no,
         unexpected($pred, "attempt to reuse closure")
     ),
     list.map(
@@ -574,7 +604,13 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
 
     ml_variable_type(!.Info, LHSVar, LHSType),
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
+    % XXX ARG_PACK Why PrimaryTag, when we have Ptag?
+    % XXX ARG_PACK Our caller should already know the value of InitOffSet.
     ml_tag_ptag_and_initial_offset(ConsTag, PrimaryTag, InitOffSet),
+    % XXX Why do the construct and deconstruct modules use
+    % RHSVarsTypesWidths vs RHSVarRepns?
+    RHSVars = list.map((func(arg_type_and_width(V, _, _)) = V),
+        RHSVarsTypesWidths),
     ml_field_names_and_types(!.Info, LHSType, ConsId, InitOffSet, RHSVars,
         RHSVarRepns),
 
@@ -617,13 +653,14 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
     MaybePtag = yes(Ptag),
     ml_gen_extra_arg_assigns(LHSLval, LHS_MLDS_Type, MaybePtag,
         0, ExtraRHSRvalsTypesWidths, Context, ExtraRvalStmts, !Info),
-    decide_field_gen(!.Info, LHSLval, LHSType, ConsId, ConsTag, FieldGen),
+    decide_field_gen(!.Info, LHSLval, LHSType, ConsId, ConsTag, Ptag,
+        FieldGen),
     % XXX We do more work than we need to here, as some of the cells
     % may already contain the correct values.
     FirstArgNum = 1,
     ml_gen_dynamic_deconstruct_args(FieldGen, RHSVarRepns, ArgModes,
         FirstArgNum, Context, TakeAddr, TakeAddrInfos,
-        FieldDefns, FieldStmts, !Info),
+        Defns, FieldStmts, !Info),
     ml_gen_field_take_address_assigns(TakeAddrInfos, LHSLval, LHS_MLDS_Type,
         MaybePtag, Context, !.Info, TakeAddrStmts),
     ThenStmts = ExtraRvalStmts ++ FieldStmts ++ TakeAddrStmts,
@@ -631,11 +668,12 @@ ml_gen_new_object_reuse_cell(ConsIdOrClosure, MaybeCtorName,
 
     % If the reassignment isn't possible because the target is statically
     % allocated, then fall back to dynamic allocation.
-    ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag, LHSVar,
-        ExtraRHSRvalsTypesWidths, RHSVars, ArgModes, TakeAddr,
-        construct_dynamically, Context, DynamicDefns, DynamicStmts, !Info),
-    Defns = FieldDefns ++ DynamicDefns,
+    ml_gen_new_object_dynamically(yes(ConsId), MaybeCtorName,
+        Ptag, ExplicitSectag, LHSVar, LHSType, ExtraRHSRvalsTypesWidths,
+        RHSVarsTypesWidths, ArgModes, FirstArgNum, TakeAddr, Context,
+        DynamicStmts, !Info),
     ElseStmt = ml_stmt_block([], [], DynamicStmts, Context),
+    % XXX Using LHSLval on its own as a boolean is not good practice.
     IfStmt = ml_stmt_if_then_else(ml_lval(LHSLval), ThenStmt, yes(ElseStmt),
         Context),
     Stmts = [HeapTestStmt, IfStmt].
@@ -921,6 +959,7 @@ ml_generate_and_pack_dynamic_construct_args(Info,
             list.reverse(RevToOrRvals, ToOrRvals),
             WordRval = ml_bitwise_or_rvals(ToOrRvals)
         ),
+        % XXX ARG_PACK should we standardize on ml_box or ml_cast?
         CastWordRval = ml_cast(mlds_generic_type, WordRval),
         % XXX TYPE_REPN Using the type of the first rval for the type
         % of the whole word preserves old behavior, but seems strange.
@@ -1285,13 +1324,10 @@ ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         map.det_insert(LHSVar, ConstGroundTerm, !GroundTermMap)
     ;
         % Ordinary compound terms.
-        ( ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
-        ),
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
         ml_generate_ground_term_memory_cell(ModuleInfo, Target,
             HighLevelData, VarTypes, LHSVar, LHSType, LHS_MLDS_Type,
-            ConsId, ConsTag, RHSVars, Context,
+            ConsId, RemoteArgsTagInfo, RHSVars, Context,
             !GlobalData, !GroundTermMap)
     ;
         ( ConsTag = no_tag
@@ -1317,50 +1353,15 @@ ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
 :- pred ml_generate_ground_term_memory_cell(module_info::in,
     mlds_target_lang::in, bool::in, vartypes::in,
     prog_var::in, mer_type::in, mlds_type::in,
-    cons_id::in, cons_tag::in(memory_cell_tag), list(prog_var)::in,
+    cons_id::in, remote_args_tag_info::in, list(prog_var)::in,
     prog_context::in, ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 ml_generate_ground_term_memory_cell(ModuleInfo, Target, HighLevelData,
-        VarTypes, LHSVar, LHSType, LHS_MLDS_Type, ConsId, ConsTag,
+        VarTypes, LHSVar, LHSType, LHS_MLDS_Type, ConsId, RemoteArgsTagInfo,
         RHSVars, Context, !GlobalData, !GroundTermMap) :-
-    % This code (loosely) follows the code of ml_gen_compound.
-    (
-        ConsTag = single_functor_tag,
-        Ptag = ptag(0u8),
-        ExtraRHSRvals = []
-    ;
-        ConsTag = unshared_tag(Ptag),
-        ExtraRHSRvals = []
-    ;
-        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-        RemoteSectag = remote_sectag(SectagUint, AddedBy),
-        UsesConstructors = ml_target_uses_constructors(Target),
-        (
-            UsesConstructors = no,
-            % XXX ARG_PACK
-            expect(unify(AddedBy, sectag_added_by_unify), $pred,
-                "AddedBy != sectag_added_by_unify"),
-            StagRval0 = ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
-            (
-                HighLevelData = no,
-                % XXX why is this cast here?
-                StagRval = ml_box(mlds_native_char_type, StagRval0)
-            ;
-                HighLevelData = yes,
-                StagRval = StagRval0
-            ),
-            ExtraRHSRvals = [StagRval]
-        ;
-            UsesConstructors = yes,
-            % XXX ARG_PACK
-            expect(unify(AddedBy, sectag_added_by_constructor), $pred,
-                "AddedBy != sectag_added_by_constructor"),
-            ExtraRHSRvals = []
-        )
-    ),
-
-    % This code (loosely) follows the code of ml_gen_new_object.
+    % This code (loosely) follows the code of
+    % ml_generate_dynamic_construct_compound.
 
     % If the scope contains existentially typed constructions,
     % then polymorphism should have changed its scope_reason away from
@@ -1370,22 +1371,71 @@ ml_generate_ground_term_memory_cell(ModuleInfo, Target, HighLevelData,
         lookup_var_type_func(VarTypes), may_not_have_extra_args,
         LHSType, ConsId, RHSVars, RHSVarsTypesWidths),
     (
+        (
+            RemoteArgsTagInfo = remote_args_only_functor,
+            Ptag = ptag(0u8)
+        ;
+            RemoteArgsTagInfo = remote_args_unshared(Ptag)
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_Data),
+            UsesConstructors = ml_target_uses_constructors(Target),
+            expect(unify(UsesConstructors, yes), $pred,
+                "remote_args_ctor but UsesConstructors = no"),
+            Ptag = ptag(0u8)
+        ),
+        TagwordRHSRvals = [],
+        NonTagwordRHSVarsTypesWidths = RHSVarsTypesWidths
+    ;
+        RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+        UsesConstructors = ml_target_uses_constructors(Target),
+        expect(unify(UsesConstructors, no), $pred,
+            "remote_args_shared but UsesConstructors = yes"),
+        RemoteSectag = remote_sectag(SectagUint, SectagSize),
+        (
+            SectagSize = rsectag_word,
+            SectagRval0 = ml_const(mlconst_uint(SectagUint)),
+            (
+                HighLevelData = no,
+                % XXX why is this cast here?
+                TagwordRHSRval = ml_box(mlds_native_char_type, SectagRval0)
+            ;
+                HighLevelData = yes,
+                TagwordRHSRval = SectagRval0
+            ),
+            NonTagwordRHSVarsTypesWidths = RHSVarsTypesWidths
+        ;
+            SectagSize = rsectag_subword(_),
+            expect(unify(HighLevelData, no), $pred, "HighLevelData = yes"),
+            ml_take_tagword_args_type_widths(RHSVarsTypesWidths,
+                TagwordRHSVarsTypesWidths, NonTagwordRHSVarsTypesWidths),
+            list.foldl2(construct_ground_term_tagword_initializer_lld,
+                TagwordRHSVarsTypesWidths, [], RevToOrRvals, !GroundTermMap),
+            list.reverse(RevToOrRvals, ToOrRvals),
+            RawTagwordRHSRval = ml_bitwise_or_some_rvals(
+                ml_const(mlconst_uint(SectagUint)), ToOrRvals),
+            TagwordRHSRval = ml_cast(mlds_generic_type, RawTagwordRHSRval)
+    ),
+        TagwordRHSRvals = [TagwordRHSRval]
+    ),
+
+    % This code (loosely) follows the code of ml_gen_new_object.
+    (
         HighLevelData = yes,
         construct_ground_term_initializers_hld(ModuleInfo, Context,
-            RHSVarsTypesWidths, RHSRvalsTypesWidths,
+            NonTagwordRHSVarsTypesWidths, NonTagwordRHSRvalsTypesWidths,
             !GlobalData, !GroundTermMap)
     ;
         HighLevelData = no,
         construct_ground_term_initializers_lld(ModuleInfo, Context,
-            RHSVarsTypesWidths, RHSRvalsTypesWidths,
+            NonTagwordRHSVarsTypesWidths, NonTagwordRHSRvalsTypesWidths,
             !GlobalData, !GroundTermMap)
     ),
-    % XXX ARG_PACK move to top, and inline in each branch.
-    UsesBaseClass = ml_tag_uses_base_class(ConsTag),
+    % XXX ARG_PACK Move to top, and inline in each branch.
+    UsesBaseClass = ml_remote_args_tag_uses_base_class(RemoteArgsTagInfo),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        Context, LHSType, LHS_MLDS_Type, ordinary_cons_id(ConsId),
-        UsesBaseClass, Ptag, ExtraRHSRvals, RHSRvalsTypesWidths, GroundTerm,
-        !GlobalData),
+        Context, LHSType, LHS_MLDS_Type, yes(ConsId),
+        UsesBaseClass, Ptag, TagwordRHSRvals, NonTagwordRHSRvalsTypesWidths,
+        GroundTerm, !GlobalData),
     map.det_insert(LHSVar, GroundTerm, !GroundTermMap).
 
 %---------------------------------------------------------------------------%
@@ -1474,7 +1524,7 @@ construct_ground_term_tagword_initializer_lld(RHSVarTypeWidth,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-ml_gen_const_structs(ModuleInfo, Target, ConstStructMap, !GlobalData) :-
+ml_generate_const_structs(ModuleInfo, Target, ConstStructMap, !GlobalData) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     Info = ml_const_struct_info(ModuleInfo, Target, HighLevelData),
@@ -1525,47 +1575,9 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
         unexpected($pred, "unexpected tag")
     ;
         % Ordinary compound terms.
-        % This code (loosely) follows the code of ml_gen_compound.
-        (
-            ConsTag = single_functor_tag,
-            Ptag = ptag(0u8),
-            ExtraRvals = []
-        ;
-            ConsTag = unshared_tag(Ptag),
-            ExtraRvals = []
-        ;
-            ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-            RemoteSectag = remote_sectag(SectagUint, AddedBy),
-            Target = Info ^ mcsi_target,
-            UsesConstructors = ml_target_uses_constructors(Target),
-            (
-                UsesConstructors = no,
-                % XXX ARG_PACK
-                expect(unify(AddedBy, sectag_added_by_unify), $pred,
-                    "AddedBy != sectag_added_by_unify"),
-                StagRval0 =
-                    ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
-                HighLevelData = Info ^ mcsi_high_level_data,
-                (
-                    HighLevelData = no,
-                    % XXX why is this cast here?
-                    StagRval = ml_box(mlds_native_char_type, StagRval0)
-                ;
-                    HighLevelData = yes,
-                    StagRval = StagRval0
-                ),
-                ExtraRvals = [StagRval]
-            ;
-                UsesConstructors = yes,
-                % XXX ARG_PACK
-                expect(unify(AddedBy, sectag_added_by_constructor), $pred,
-                    "AddedBy != sectag_added_by_constructor"),
-                ExtraRvals = []
-            )
-        ),
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
         ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type,
-            ConsId, ConsTag, Ptag, ExtraRvals, Args,
-            !ConstStructMap, !GlobalData)
+            ConsId, RemoteArgsTagInfo, Args, !ConstStructMap, !GlobalData)
     ;
         ConsTag = local_args_tag(LocalArgsTagInfo),
         (
@@ -1578,12 +1590,7 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
         ml_gen_const_static_args_widths(Info, Type, ConsId, Args,
             ArgsTypesWidths),
         HighLevelData = Info ^ mcsi_high_level_data,
-        (
-            HighLevelData = yes,
-            unexpected($pred, "HighLevelData = yes")
-        ;
-            HighLevelData = no
-        ),
+        expect(unify(HighLevelData, no), $pred, "HighLevelData = yes"),
         list.foldl(ml_gen_const_tagword_arg(Info), ArgsTypesWidths,
             [], RevOrRvals),
         list.reverse(RevOrRvals, OrRvals),
@@ -1611,29 +1618,79 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
         unexpected($pred, "unexpected closure")
     ).
 
-:- pred ml_gen_const_static_compound(ml_const_struct_info::in,
-    int::in, mer_type::in, mlds_type::in, cons_id::in, cons_tag::in,
-    ptag::in, list(mlds_rval)::in, list(const_struct_arg)::in,
+:- pred ml_gen_const_static_compound(ml_const_struct_info::in, int::in,
+    mer_type::in, mlds_type::in, cons_id::in, remote_args_tag_info::in,
+    list(const_struct_arg)::in,
     ml_const_struct_map::in, ml_const_struct_map::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type, ConsId,
-        ConsTag, Ptag, ExtraRvals, Args, !ConstStructMap, !GlobalData) :-
+ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type,
+        ConsId, RemoteArgsTagInfo, Args, !ConstStructMap, !GlobalData) :-
     % This code (loosely) follows the code of
     % ml_generate_ground_term_compound.
-
-    ml_gen_const_static_args_widths(Info, VarType, ConsId, Args,
-        ArgsTypesWidths),
-    ModuleInfo = Info ^ mcsi_module_info,
     Target = Info ^ mcsi_target,
     HighLevelData = Info ^ mcsi_high_level_data,
+    ml_gen_const_static_args_widths(Info, VarType, ConsId, Args,
+        ArgsTypesWidths),
+    (
+        (
+            RemoteArgsTagInfo = remote_args_only_functor,
+            Ptag = ptag(0u8)
+        ;
+            RemoteArgsTagInfo = remote_args_unshared(Ptag)
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_Data),
+            UsesConstructors = ml_target_uses_constructors(Target),
+            expect(unify(UsesConstructors, yes), $pred,
+                "remote_args_ctor but UsesConstructors = no"),
+            Ptag = ptag(0u8)
+        ),
+        TagwordRvals = [],
+        NonTagwordArgsTypesWidths = ArgsTypesWidths
+    ;
+        RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+        UsesConstructors = ml_target_uses_constructors(Target),
+        expect(unify(UsesConstructors, no), $pred,
+            "remote_args_shared but UsesConstructors = yes"),
+        RemoteSectag = remote_sectag(SectagUint, SectagSize),
+        (
+            SectagSize = rsectag_word,
+            StagRval0 = ml_const(mlconst_uint(SectagUint)),
+            (
+                HighLevelData = no,
+                % XXX why is this cast here?
+                TagwordRval = ml_box(mlds_native_char_type, StagRval0)
+            ;
+                HighLevelData = yes,
+                TagwordRval = StagRval0
+            ),
+            NonTagwordArgsTypesWidths = ArgsTypesWidths
+        ;
+            SectagSize = rsectag_subword(_SectagBits),
+            expect(unify(HighLevelData, no), $pred, "HighLevelData = yes"),
+            ml_take_tagword_args_type_widths(ArgsTypesWidths,
+                TagwordArgsTypesWidths, NonTagwordArgsTypesWidths),
+            list.foldl(ml_gen_const_tagword_arg(Info), TagwordArgsTypesWidths,
+                [], RevToOrRvals),
+            list.reverse(RevToOrRvals, ToOrRvals),
+            RawTagwordRval = ml_bitwise_or_some_rvals(
+                ml_const(mlconst_uint(SectagUint)), ToOrRvals),
+            TagwordRval = ml_cast(mlds_generic_type, RawTagwordRval)
+        ),
+        TagwordRvals = [TagwordRval]
+    ),
+
+    % XXX ARGPACK Should not box args if they are packed several to a word.
     ml_gen_const_struct_args(Info, !.ConstStructMap,
-        ArgsTypesWidths, RvalsTypesWidths, !GlobalData),
-    UsesBaseClass = ml_tag_uses_base_class(ConsTag),
+        NonTagwordArgsTypesWidths, NonTagwordRvalsTypesWidths, !GlobalData),
+
+    % XXX ARG_PACK Move to top, and inline in each branch.
+    UsesBaseClass = ml_remote_args_tag_uses_base_class(RemoteArgsTagInfo),
+    ModuleInfo = Info ^ mcsi_module_info,
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        term.context_init, VarType, MLDS_Type, ordinary_cons_id(ConsId),
-        UsesBaseClass, Ptag, ExtraRvals, RvalsTypesWidths, GroundTerm,
-        !GlobalData),
+        term.context_init, VarType, MLDS_Type, yes(ConsId),
+        UsesBaseClass, Ptag, TagwordRvals, NonTagwordRvalsTypesWidths,
+        GroundTerm, !GlobalData),
     map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
 
 :- pred ml_gen_const_static_args_widths(ml_const_struct_info::in,
@@ -1777,9 +1834,7 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         ; ConsTag = typeclass_info_const_tag(_)
         ; ConsTag = ground_term_const_tag(_, _)
         % These tags build heap cells, not constants.
-        ; ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = remote_args_tag(_)
         ; ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
         % This tag *looks like* it builds heap cells (since it *does* build
@@ -1849,12 +1904,12 @@ int_tag_to_mlds_rval_const(Type, MLDS_Type, IntTag) = Const :-
     %
 :- pred construct_static_ground_term(module_info::in, mlds_target_lang::in,
     bool::in, prog_context::in, mer_type::in, mlds_type::in,
-    cons_id_or_closure::in, tag_uses_base_class::in, ptag::in,
+    maybe(cons_id)::in, tag_uses_base_class::in, ptag::in,
     list(mlds_rval)::in, list(mlds_rval_type_and_width)::in,
     ml_ground_term::out, ml_global_data::in, ml_global_data::out) is det.
 
 construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        Context, VarType, MLDS_Type, ConsIdOrClosure, UsesBaseClass, Ptag,
+        Context, VarType, MLDS_Type, MaybeConsId, UsesBaseClass, Ptag,
         ExtraRvals, RvalsTypesWidths, GroundTerm, !GlobalData) :-
     % Generate a local static constant for this term.
     ml_pack_ground_term_args_into_word_inits(RvalsTypesWidths, NonExtraInits),
@@ -1868,7 +1923,7 @@ construct_static_ground_term(ModuleInfo, Target, HighLevelData,
     ExtraInits = list.map(func(Rv) = init_obj(Rv), ExtraRvals),
     AllInits = ExtraInits ++ NonExtraInits,
     ConstType = get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type,
-        UsesBaseClass, ConsIdOrClosure),
+        UsesBaseClass, MaybeConsId),
     ( if ConstType = mlds_array_type(_) then
         Initializer = init_array(AllInits)
     else
@@ -1897,15 +1952,17 @@ construct_static_ground_term(ModuleInfo, Target, HighLevelData,
     % mlds_mostly_generic_array_type(_), if required by the elements.
     %
 :- func get_const_type_for_cons_id(mlds_target_lang, bool, mlds_type,
-    tag_uses_base_class, cons_id_or_closure) = mlds_type.
+    tag_uses_base_class, maybe(cons_id)) = mlds_type.
 
 get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
-        ConsIdOrClosure) = ConstType :-
+        MaybeConsId) = ConstType :-
     (
         HighLevelData = no,
         ConstType = mlds_array_type(mlds_generic_type)
     ;
         HighLevelData = yes,
+        % XXX Convert to a switch on MLDS_Type, and on the type_ctor category
+        % inside MLDS_Type, to the extent that is possible.
         ( if
             % Check for type_infos and typeclass_infos, since these
             % need to be handled specially; their Mercury type definitions
@@ -1921,7 +1978,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % class that is derived from the base class for this discriminated
             % union type.
             UsesBaseClass = tag_does_not_use_base_class,
-            ConsIdOrClosure = ordinary_cons_id(ConsId),
+            MaybeConsId = yes(ConsId),
             ConsId = cons(CtorSymName, CtorArity, _TypeCtor),
             (
                 MLDS_Type =
@@ -1936,8 +1993,8 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % base class for this type (since the derived class will also be
             % nested inside the base class).
             QualTypeName = qual_class_name(_, _, UnqualTypeName),
-            CtorName = ml_gen_du_ctor_name_unqual_type(Target, UnqualTypeName,
-                TypeArity, CtorSymName, CtorArity),
+            CtorName = ml_gen_du_ctor_name_unqual_type(Target,
+                UnqualTypeName, TypeArity, CtorSymName, CtorArity),
             QualTypeName = qual_class_name(MLDS_Module, _QualKind, TypeName),
             ClassQualifier = mlds_append_class_qualifier_module_qual(
                 MLDS_Module, TypeName, TypeArity),
@@ -2141,12 +2198,12 @@ ml_maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
 :- pred ml_cons_name(mlds_target_lang::in, cons_id::in, qual_ctor_id::out)
     is det.
 
-ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
+ml_cons_name(Target, HLDS_ConsId, QualifiedConsId) :-
     ( if
         HLDS_ConsId = cons(ConsSymName, ConsArity, TypeCtor),
         ConsSymName = qualified(SymModuleName, _)
     then
-        ConsName = ml_gen_du_ctor_name(CompilationTarget, TypeCtor,
+        ConsName = ml_gen_du_ctor_name(Target, TypeCtor,
             ConsSymName, ConsArity),
         ConsId = ctor_id(ConsName, ConsArity),
         ModuleName = mercury_module_name_to_mlds(SymModuleName)
@@ -2201,6 +2258,71 @@ ml_unbox_rval_if_needed(Rval, UnboxedRval) :-
         UnboxedRval = UnboxedRvalPrime
     else
         UnboxedRval = Rval
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred ml_take_tagword_args_type_widths_modes(
+    list(arg_type_and_width(ArgType))::in, list(unify_mode)::in,
+    list(arg_type_and_width(ArgType))::out, list(unify_mode)::out,
+    list(arg_type_and_width(ArgType))::out, list(unify_mode)::out,
+    int::in, int::out) is det.
+
+ml_take_tagword_args_type_widths_modes([], [], [], [], [], [], !CurArgNum).
+ml_take_tagword_args_type_widths_modes([], [_ | _], _, _, _, _, !CurArgNum) :-
+    unexpected($pred, "length mismatch").
+ml_take_tagword_args_type_widths_modes([_ | _], [], _, _, _, _, !CurArgNum) :-
+    unexpected($pred, "length mismatch").
+ml_take_tagword_args_type_widths_modes(
+        [ArgTypeWidth | ArgsTypesWidths], [ArgMode | ArgModes],
+        TagwordArgsTypesWidths, TagwordArgModes,
+        NonTagwordArgsTypesWidths, NonTagwordArgModes, !CurArgNum) :-
+    ArgTypeWidth = arg_type_and_width(_Arg, _Type, ArgPosWidth),
+    (
+        ( ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_shifted(_, _)
+        ),
+        !:CurArgNum = !.CurArgNum + 1,
+        ml_take_tagword_args_type_widths_modes(ArgsTypesWidths, ArgModes,
+            TailTagwordArgsTypesWidths, TailTagwordArgModes,
+            NonTagwordArgsTypesWidths, NonTagwordArgModes, !CurArgNum),
+        TagwordArgsTypesWidths = [ArgTypeWidth | TailTagwordArgsTypesWidths],
+        TagwordArgModes = [ArgMode | TailTagwordArgModes]
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        TagwordArgsTypesWidths = [],
+        TagwordArgModes = [],
+        NonTagwordArgsTypesWidths = [ArgTypeWidth | ArgsTypesWidths],
+        NonTagwordArgModes = [ArgMode | ArgModes]
+    ).
+
+:- pred ml_take_tagword_args_type_widths(list(arg_type_and_width(ArgType))::in,
+    list(arg_type_and_width(ArgType))::out,
+    list(arg_type_and_width(ArgType))::out) is det.
+
+ml_take_tagword_args_type_widths([], [], []).
+ml_take_tagword_args_type_widths([ArgTypeWidth | ArgsTypesWidths],
+        TagwordArgsTypesWidths, NonTagwordArgsTypesWidths) :-
+    ArgTypeWidth = arg_type_and_width(_Arg, _Type, ArgPosWidth),
+    (
+        ( ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_shifted(_, _)
+        ),
+        ml_take_tagword_args_type_widths(ArgsTypesWidths,
+            TailTagwordArgsTypesWidths, NonTagwordArgsTypesWidths),
+        TagwordArgsTypesWidths = [ArgTypeWidth | TailTagwordArgsTypesWidths]
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        TagwordArgsTypesWidths = [],
+        NonTagwordArgsTypesWidths = [ArgTypeWidth | ArgsTypesWidths]
     ).
 
 %---------------------------------------------------------------------------%

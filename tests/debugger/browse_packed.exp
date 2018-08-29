@@ -1,0 +1,62 @@
+       1:      1  1 CALL pred browse_packed.main/2-0 (det) browse_packed.m:58
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> break smallest_t
+ 0: + stop  interface pred browse_packed.smallest_t/7-0 (det)
+mdb> continue
+       2:      2  2 CALL pred browse_packed.smallest_t/7-0 (det)
+mdb> p F0_B
+       F0_B (arg 1)           	f0_b(flag_set, blue, peach)
+mdb> p F0_B^f0_b1
+       F0_B (arg 1)^f0_b1     	flag_set
+mdb> p F0_B^f0_b2
+       F0_B (arg 1)^f0_b2     	blue
+mdb> p F0_B^f0_b3
+       F0_B (arg 1)^f0_b3     	peach
+mdb> p F0_C
+       F0_C (arg 2)           	f0_c(green, orange, flag_clear)
+mdb> p F0_C^f0_c1
+       F0_C (arg 2)^f0_c1     	green
+mdb> p F0_C^f0_c2
+       F0_C (arg 2)^f0_c2     	orange
+mdb> p F0_C^f0_c3
+       F0_C (arg 2)^f0_c3     	flag_clear
+mdb> p F1
+       F1 (arg 3)             	f1(707, flag_clear, orange, red)
+mdb> p F1^f1_1
+       F1 (arg 3)^f1_1        	707
+mdb> p F1^f1_2
+       F1 (arg 3)^f1_2        	flag_clear
+mdb> p F1^f1_3
+       F1 (arg 3)^f1_3        	orange
+mdb> p F1^f1_4
+       F1 (arg 3)^f1_4        	red
+mdb> p F7_A
+       F7_A (arg 4)           	f7_a(727)
+mdb> p F7_A^f7_a1
+       F7_A (arg 4)^f7_a1     	727
+mdb> p F7_B
+       F7_B (arg 5)           	f7_b(flag_clear, red, peach, 98.7)
+mdb> p F7_B^f7_b1
+       F7_B (arg 5)^f7_b1     	flag_clear
+mdb> p F7_B^f7_b2
+       F7_B (arg 5)^f7_b2     	red
+mdb> p F7_B^f7_b3
+       F7_B (arg 5)^f7_b3     	peach
+mdb> p F7_B^f7_b4
+       F7_B (arg 5)^f7_b4     	98.7
+mdb> p F7_C
+       F7_C (arg 6)           	f7_c(pear, flag_set, green, 737)
+mdb> p F7_C^f7_c1
+       F7_C (arg 6)^f7_c1     	pear
+mdb> p F7_C^f7_c2
+       F7_C (arg 6)^f7_c2     	flag_set
+mdb> p F7_C^f7_c3
+       F7_C (arg 6)^f7_c3     	green
+mdb> p F7_C^f7_c4
+       F7_C (arg 6)^f7_c4     	737
+mdb> continue -n -S
+f0_b(flag_set, blue, peach)

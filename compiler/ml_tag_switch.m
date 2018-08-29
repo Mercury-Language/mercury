@@ -220,7 +220,8 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
     ;
         ( SecTagLocn = sectag_local_rest_of_word
         ; SecTagLocn = sectag_local_bits(_, _)
-        ; SecTagLocn = sectag_remote
+        ; SecTagLocn = sectag_remote_word
+        ; SecTagLocn = sectag_remote_bits(_, _)
         ),
         expect(unify(OtherPtags, []), $pred, ">1 ptag with secondary tag"),
         (
@@ -331,12 +332,17 @@ gen_stag_switch(Cases, CodeMap, Ptag, StagLocn, Var, CodeModel,
     ;
         StagLocn = sectag_local_bits(_, Mask),
         StagRval = ml_binop(bitwise_and(int_type_uint),
-            ml_unop(unmkbody, VarRval),
-            ml_const(mlconst_uint(Mask)))
+            ml_unop(unmkbody, VarRval), ml_const(mlconst_uint(Mask)))
     ;
-        StagLocn = sectag_remote,
+        StagLocn = sectag_remote_word,
         ml_gen_secondary_tag_rval(!.Info, VarType, VarRval,
             Ptag, StagRval)
+    ;
+        StagLocn = sectag_remote_bits(_, Mask),
+        ml_gen_secondary_tag_rval(!.Info, VarType, VarRval,
+            Ptag, StagWordRval),
+        StagRval = ml_binop(bitwise_and(int_type_uint),
+            StagWordRval, ml_const(mlconst_uint(Mask)))
     ;
         ( StagLocn = sectag_none
         ; StagLocn = sectag_none_direct_arg

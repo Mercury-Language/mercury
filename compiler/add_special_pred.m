@@ -507,7 +507,8 @@ collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, TupleArity, Context),
     CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName,
-        single_functor_tag, CtorArgRepns, TupleArity, Context),
+        remote_args_tag(remote_args_only_functor), CtorArgRepns,
+        TupleArity, Context),
 
     map.from_assoc_list(["{}" - one_or_more(CtorRepn, [])], ConsCtorMap),
     DirectArgCtors = no,

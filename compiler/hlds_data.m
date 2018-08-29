@@ -54,6 +54,18 @@
     % values which do not fit into a word are represented by a (possibly
     % tagged) pointer to memory on the heap.
     %
+    % XXX TYPE_REPN
+    % We should consider a scheme that consolidates the following cons_tags
+    % under these categories:
+    %
+    % - user_const_tag (int, float, string, foreign, dummy, shared_local)
+    % - system_const_tag (type_info, ... tabling)
+    % - ground_term_const_tag
+    % - local_args_tag
+    % - remote_args_tag
+    % - no_or_direct_arg_tag
+    % - closure_tag
+    %
 :- type cons_tag
     % The kinds of constants that may appear in user code.
     --->    int_tag(int_tag)
@@ -138,30 +150,7 @@
 
     % The kinds of non-constants that may appear in user code.
 
-    ;       single_functor_tag
-            % This is for types with a single functor (and possibly also some
-            % constants represented using reserved addresses -- see below).
-            % For these types, we don't need any tags. We just store a pointer
-            % to the argument vector.
-
-    ;       unshared_tag(ptag)
-            % This is for constants or functors which can be distinguished
-            % with just a primary tag. An "unshared" tag is one which fits
-            % on the bottom of a pointer (i.e. two bits for 32-bit
-            % architectures, or three bits for 64-bit architectures), and is
-            % used for just one functor. For constants we store a tagged zero,
-            % for functors we store a tagged pointer to the argument vector.
-
-    ;       shared_remote_tag(ptag, remote_sectag)
-            % This is for functors or constants which cannot be distinguished
-            % from the other functors or constants using just the primary tag,
-            % either because the type has too many function symbols, or because
-            % the use of primary tags has been disabled.
-            %
-            % In this case, we use both a primary and a secondary tag.
-            % The secondary tag is stored as the whole of first word of
-            % the memory cell containing the arguments, and distinguishes
-            % the several functors that all share the same primary tag value.
+    ;       remote_args_tag(remote_args_tag_info)
 
     ;       local_args_tag(local_args_tag_info)
             % This cons_id is a variant of shared_local_tag_no_args that is
@@ -195,11 +184,6 @@
             % lambda_eval_method `normal', the first two words of the argument
             % vector hold the number of args and the address of the procedure
             % respectively. The remaining words hold the arguments.
-
-:- inst memory_cell_tag for cons_tag/0
-    --->    single_functor_tag
-    ;       unshared_tag(ground)
-    ;       shared_remote_tag(ground, ground).
 
 :- type int_tag
     --->    int_tag_int(int)
@@ -265,15 +249,106 @@
             % The sectag bits argument gives the mask to apply to the
             % post-primary-tag part of the word.
 
+:- type remote_args_tag_info
+    --->    remote_args_only_functor
+            % This is for functors in types that have only a single functor.
+            % For these types, we don't need any tags, primary or secondary,
+            % to distingish between function symbols. However, we do have
+            % to decide what to put into bottom two or three bits (on 32-
+            % and 64-bit systems respectively) of the representation of
+            % every term, the area reserved for the primary tag. For these
+            % functors, we put zeroes there, which is equivalent to having
+            % zero as a ptag. The rest of the word is a pointer to the
+            % argument vector, which may start with zero or more type_infos
+            % and/or typeclass_infos added by the polymorphism transformation.
+            %
+            % This kind of tag is used by both the low level and the
+            % the high level data representation.
+
+    ;       remote_args_unshared(ptag)
+            % This is for non-constants functors which can be distinguished
+            % from other functors in their type with just the primary tag.
+            % Terms whose functor has a cons_tag using this value are
+            % represented by a word whose bottom two or three bits contain
+            % the given ptag, with the rest of the word being a pointer to the
+            % argument vector, which may start with zero or more type_infos
+            % and/or typeclass_infos added by the polymorphism transformation.
+            %
+            % This kind of tag is used only by the low level data
+            % representation.
+
+    ;       remote_args_shared(ptag, remote_sectag)
+            % This is for non-constants functors which cannot be distinguished
+            % from other functors in their type with just the primary tag,
+            % but need a remote secondary tag as well. Terms whose functor
+            % has a cons_tag using this value are represented by a word
+            % whose bottom two or three bits contain the given ptag, with
+            % the rest of the word being a pointer to the tagword, the word
+            % containing the remote secondary tag. The second argument gives
+            % both the value and the size of the remote sectag.
+            %
+            % If the size is rsectag_word, the remote sectag will occupy
+            % the whole tagword, which may then be followed by zero or more
+            % type_infos and/or typeclass_infos added by the polymorphism
+            % transformation, and then the arguments themselves.
+            %
+            % If the size is rsectag_bits, the remote sectag will occupy
+            % the bottom sectag_num_bits bits of the  tagword, with the
+            % rest of the word containing an initial subsequence of zero or
+            % more subword-sized arguments.
+            %
+            % If the number of subword-size arguments packed in the tagword
+            % is zero, then the tagword may be followed by type_infos and/or
+            % typeclass_infos added by the polymorphism transformation,
+            % followed by the arguments themselves, as usual. However,
+            % if the number of subword-size arguments packed in the tagword
+            % is *not*, zero, then these must be followed immediately by
+            % the rest of the arguments (if any); they may *not* be followed by
+            % any such type_infos and/or typeclass_infos added by polymorphism.
+            % (The implementation uses this implication in reverse: if we
+            % *would* need to add type_infos and/or typeclass_infos, then
+            % du_type_layout will choose not to pack any arguments next
+            % to the remote sectag, even if it otherwise could do so.)
+            %
+            % This restriction preserves the old invariant that the
+            % arguments added by polymorphism go before all user-visible
+            % arguments. Loosening that invariant would require substantial
+            % changes to polymorphism.m.
+            %
+            % Note that all the functors sharing a given ptag value must agree
+            % on the exact size of the remote sectag (i.e. whether it is
+            % a whole word or not, and if not, how many bits it has),
+            % since tests of the form X = f(...) need to know how many
+            % of the bits of the remote tagword to look at.
+            %
+            % This kind of tag is used only by the low level data
+            % representation.
+
+    ;       remote_args_ctor(uint).
+            % The high level data representation does not use either primary
+            % or secondary tags. Instead, the various function symbols
+            % of the type are distinguished by an integer stored in a field
+            % named "data" of the base class (representing terms of the type),
+            % which is inherited by each of the subclasses (each of which
+            % represents terms whose top function symbol is a given functor).
+            % The argument gives the value of "data" for this function symbol.
+            %
+            % This kind of tag is used only by the high level data
+            % representation.
+            %
+            % XXX ARG_PACK Maybe we should include include MaybeCtorName,
+            % the output of the first few lines of the predicate
+            % ml_generate_dynamic_construct_compound, in both
+            % remote_args_tag_infos that may be used by the high level
+            % representation, so that the constructor name, if any,
+            % is computed just once for each function symbol.
+            % This would require separating the low and high level data
+            % uses of remote_args_only_functor.
+
 :- type remote_sectag
     --->    remote_sectag(
                 rsectag_value       :: uint,
-
-                % For now, all remote sectags occupy a whole word
-                % at the start of the cell, so this field is disabled.
-                % rsectag_size        :: rsectag_size,
-
-                rsectag_added       :: sectag_added_by
+                rsectag_size        :: rsectag_size
             ).
 
 :- type rsectag_size
@@ -288,10 +363,6 @@
                 sectag_num_bits     :: uint8,
                 sectag_mask         :: uint
             ).
-
-:- type sectag_added_by
-    --->    sectag_added_by_unify
-    ;       sectag_added_by_constructor.
 
     % Return the primary tag, if any, for a cons_tag.
     % A return value of `no' means the primary tag is unknown.
@@ -345,15 +416,27 @@ get_maybe_primary_tag(Tag) = MaybePtag :-
         Tag = ground_term_const_tag(_, SubTag),
         MaybePtag = get_maybe_primary_tag(SubTag)
     ;
-        Tag = single_functor_tag,
-        MaybePtag = yes(ptag(0u8))
-    ;
-        ( Tag = unshared_tag(Ptag)
-        ; Tag = direct_arg_tag(Ptag)
-        ; Tag = shared_remote_tag(Ptag, _)
+        ( Tag = direct_arg_tag(Ptag)
         ; Tag = shared_local_tag_no_args(Ptag, _, _)
         ),
         MaybePtag = yes(Ptag)
+    ;
+        Tag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            RemoteArgsTagInfo = remote_args_only_functor,
+            MaybePtag = yes(ptag(0u8))
+        ;
+            ( RemoteArgsTagInfo = remote_args_unshared(Ptag)
+            ; RemoteArgsTagInfo = remote_args_shared(Ptag, _)
+            ),
+            MaybePtag = yes(Ptag)
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_),
+            % XXX This is a lie; the high level data representation does not
+            % use primary tags. Our caller should never call us with this
+            % value of RemoteArgsTagInfo.
+            MaybePtag = yes(ptag(0u8))
+        )
     ;
         Tag = local_args_tag(LocalArgsTagInfo),
         (
@@ -366,6 +449,7 @@ get_maybe_primary_tag(Tag) = MaybePtag :-
     ).
 
 get_maybe_secondary_tag(Tag) = MaybeSectag :-
+    % XXX Return a uint?
     (
         ( Tag = int_tag(_)
         ; Tag = float_tag(_)
@@ -381,9 +465,7 @@ get_maybe_secondary_tag(Tag) = MaybeSectag :-
         ; Tag = table_io_entry_tag(_, _)
         ; Tag = no_tag
         ; Tag = dummy_tag
-        ; Tag = unshared_tag(_PrimaryTag)
         ; Tag = direct_arg_tag(_PrimaryTag)
-        ; Tag = single_functor_tag
         ),
         MaybeSectag = no
     ;
@@ -406,10 +488,25 @@ get_maybe_secondary_tag(Tag) = MaybeSectag :-
         ),
         MaybeSectag = yes(Sectag)
     ;
-        Tag = shared_remote_tag(_Ptag, RemoteSectag),
-        RemoteSectag = remote_sectag(SectagUint, _),
-        Sectag = uint.cast_to_int(SectagUint),
-        MaybeSectag = yes(Sectag)
+        Tag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            ( RemoteArgsTagInfo = remote_args_only_functor
+            ; RemoteArgsTagInfo = remote_args_unshared(_)
+            ),
+            MaybeSectag = no
+        ;
+            RemoteArgsTagInfo = remote_args_shared(_Ptag, RemoteSectag),
+            RemoteSectag = remote_sectag(SectagUint, _),
+            Sectag = uint.cast_to_int(SectagUint),
+            MaybeSectag = yes(Sectag)
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(Data),
+            % XXX This is a sort-of lie; the high level data representation
+            % does not use secondary tags the same way as the low level
+            % data representation does. Our caller should never call us
+            % with this value of RemoteArgsTagInfo.
+            MaybeSectag = yes(uint.cast_to_int(Data))
+        )
     ).
 
 project_tagged_cons_id_tag(TaggedConsId) = Tag :-

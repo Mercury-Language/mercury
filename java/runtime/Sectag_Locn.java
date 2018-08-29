@@ -12,7 +12,9 @@ public class Sectag_Locn implements java.io.Serializable {
     public static final int MR_SECTAG_NONE = 0;
     public static final int MR_SECTAG_NONE_DIRECT_ARG = 1;
     public static final int MR_SECTAG_LOCAL = 2;
+    public static final int MR_SECTAG_LOCAL_REST_OF_WORD = 2;   // synonym
     public static final int MR_SECTAG_REMOTE = 3;
+    public static final int MR_SECTAG_REMOTE_FULL_WORD = 3;     // synonym
 
     public int value;
 

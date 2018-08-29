@@ -644,12 +644,10 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], CurOrdinal,
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = shared_local_tag_no_args(_, _, _)
         ; ConsTag = local_args_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = remote_args_tag(_)
         ; ConsTag = no_tag
         ; ConsTag = dummy_tag
         ),
@@ -737,13 +735,8 @@ make_du_functors(ModuleInfo, [CtorRepn | CtorRepns],
 
 get_du_rep(ConsTag, DuRep) :-
     (
-        ( ConsTag = single_functor_tag
-        ; ConsTag = dummy_tag
-        ),
+        ConsTag = dummy_tag,
         DuRep = du_ll_rep(ptag(0u8), sectag_locn_none)
-    ;
-        ConsTag = unshared_tag(Ptag),
-        DuRep = du_ll_rep(Ptag, sectag_locn_none)
     ;
         ConsTag = direct_arg_tag(Ptag),
         DuRep = du_ll_rep(Ptag, sectag_locn_none_direct_arg)
@@ -772,13 +765,34 @@ get_du_rep(ConsTag, DuRep) :-
             LocalSectag = local_sectag(SectagUint, _PrimSec, SectagBits),
             SectagBits = sectag_bits(NumSectagBits, SectagMask)
         ),
-        SectagAndLocn =
-            sectag_locn_local_bits(SectagUint, NumSectagBits, SectagMask),
+        SectagAndLocn = sectag_locn_local_bits(SectagUint,
+            NumSectagBits, SectagMask),
         DuRep = du_ll_rep(Ptag, SectagAndLocn)
     ;
-        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-        RemoteSectag = remote_sectag(SectagUint, _),
-        DuRep = du_ll_rep(Ptag, sectag_locn_remote(SectagUint))
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            RemoteArgsTagInfo = remote_args_only_functor,
+            DuRep = du_ll_rep(ptag(0u8), sectag_locn_none)
+        ;
+            RemoteArgsTagInfo = remote_args_unshared(Ptag),
+            DuRep = du_ll_rep(Ptag, sectag_locn_none)
+        ;
+            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+            RemoteSectag = remote_sectag(SectagUint, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                SectagAndLocn = sectag_locn_remote_word(SectagUint)
+            ;
+                SectagSize = rsectag_subword(SectagBits),
+                SectagBits = sectag_bits(NumSectagBits, SectagMask),
+                SectagAndLocn = sectag_locn_remote_bits(SectagUint,
+                    NumSectagBits, SectagMask)
+            ),
+            DuRep = du_ll_rep(Ptag, SectagAndLocn)
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(Data),
+            DuRep = du_hl_rep(Data)
+        )
     ;
         ( ConsTag = no_tag
         ; ConsTag = string_tag(_)
@@ -928,28 +942,38 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
             SectagLocn = sectag_local_bits(NumSectagBitsUint8, Mask),
             NumSectagBits = int8.cast_from_uint8(NumSectagBitsUint8)
         ;
-            SectagAndLocn = sectag_locn_remote(Sectag),
-            SectagLocn = sectag_remote,
+            SectagAndLocn = sectag_locn_remote_word(Sectag),
+            SectagLocn = sectag_remote_word,
             NumSectagBits = -1i8
-        ),
-        ( if map.search(!.PtagTable, Ptag, SectagTable0) then
-            SectagTable0 = sectag_table(Locn0, NumSectagBits0, NumSharers0,
-                SectagMap0),
-            expect(unify(NumSectagBits0, NumSectagBits), $pred,
-                "sectag num bits disagreement"),
-            map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
-            SectagTable = sectag_table(Locn0, NumSectagBits0, NumSharers0 + 1u,
-                SectagMap),
-            map.det_update(Ptag, SectagTable, !PtagTable)
-        else
-            SectagMap = map.singleton(Sectag, DuFunctor),
-            SectagTable = sectag_table(SectagLocn, NumSectagBits, 1u,
-                SectagMap),
-            map.det_insert(Ptag, SectagTable, !PtagTable)
+        ;
+            SectagAndLocn = sectag_locn_remote_bits(Sectag,
+                NumSectagBitsUint8, Mask),
+            SectagLocn = sectag_remote_bits(NumSectagBitsUint8, Mask),
+            NumSectagBits = int8.cast_from_uint8(NumSectagBitsUint8)
         )
     ;
-        DuRep = du_hl_rep(_),
-        unexpected($pred, "du_hl_rep")
+        DuRep = du_hl_rep(Data),
+        % Treat this as it were
+        %   du_ll_rep(ptag(0u8), sectag_locn_remote_word(Data)).
+        Ptag = ptag(0u8),
+        Sectag = Data,
+        SectagLocn = sectag_remote_word,
+        NumSectagBits = -1i8
+    ),
+    ( if map.search(!.PtagTable, Ptag, SectagTable0) then
+        SectagTable0 = sectag_table(Locn0, NumSectagBits0, NumSharers0,
+            SectagMap0),
+        expect(unify(NumSectagBits0, NumSectagBits), $pred,
+            "sectag num bits disagreement"),
+        map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
+        SectagTable = sectag_table(Locn0, NumSectagBits0, NumSharers0 + 1u,
+            SectagMap),
+        map.det_update(Ptag, SectagTable, !PtagTable)
+    else
+        SectagMap = map.singleton(Sectag, DuFunctor),
+        SectagTable = sectag_table(SectagLocn, NumSectagBits, 1u,
+            SectagMap),
+        map.det_insert(Ptag, SectagTable, !PtagTable)
     ).
 
 :- pred make_du_name_ordered_table(du_functor::in,

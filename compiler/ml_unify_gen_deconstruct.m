@@ -236,20 +236,91 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
             ArgMode, Context, Stmts),
         Defns = []
     ;
-        ( ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            (
+                RemoteArgsTagInfo = remote_args_only_functor,
+                Ptag = ptag(0u8)
+            ;
+                RemoteArgsTagInfo = remote_args_unshared(Ptag)
+            ;
+                RemoteArgsTagInfo = remote_args_ctor(_Data),
+                Ptag = ptag(0u8)
+            ),
+            TagwordArgs = no,
+            InitOffset = cell_offset(0)
+        ;
+            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+            RemoteSectag = remote_sectag(_, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                TagwordArgs = no,
+                InitOffset = cell_offset(1)
+            ;
+                SectagSize = rsectag_subword(_),
+                TagwordArgs = yes,
+                % The value of InitOffset is used only for tuples and
+                % extra type_info/typeclass_info args. If a function
+                % symbols has a sub-word-sized sectag, it cannot be
+                % a tuple constructor, and it cannot have any extra args,
+                % so this (obviously wrong) value won't be used.
+                InitOffset = cell_offset(-42)
+            )
         ),
         ml_variable_type(!.Info, LHSVar, LHSVarType),
         ml_gen_var(!.Info, LHSVar, LHSVarLval),
-        decide_field_gen(!.Info, LHSVarLval, LHSVarType, ConsId, ConsTag,
+        decide_field_gen(!.Info, LHSVarLval, LHSVarType, ConsId, ConsTag, Ptag,
             FieldGen),
-        ml_tag_ptag_and_initial_offset(ConsTag, _, InitOffSet),
-        ml_field_names_and_types(!.Info, LHSVarType, ConsId, InitOffSet,
+        ml_field_names_and_types(!.Info, LHSVarType, ConsId, InitOffset,
             RHSVars, RHSVarRepns),
-        FirstArgNum = 1,
-        ml_gen_dynamic_deconstruct_args(FieldGen, RHSVarRepns, ArgModes,
-            FirstArgNum, Context, [], _, Defns, Stmts, !Info)
+        (
+            TagwordArgs = yes,
+            ml_take_tagword_args(RHSVarRepns, ArgModes,
+                TagwordRHSVarRepns, TagwordArgModes,
+                NonTagwordRHSVarRepns, NonTagwordArgModes,
+                1, FirstNonTagwordArgNum),
+
+            FieldGen = field_gen(MaybePtag, AddrRval, AddrType, FieldVia),
+            expect(unify(FieldVia, field_via_offset), $pred,
+                "not field_via_offset for tagword"),
+            TagwordFieldId = ml_field_offset(ml_const(mlconst_int(0))),
+            TagwordLval = ml_field(MaybePtag, AddrRval, AddrType,
+                TagwordFieldId, mlds_generic_type),
+            CastTagwordRval =
+                ml_cast(mlds_int_type_uint, ml_lval(TagwordLval)),
+
+            ml_gen_deconstruct_tagword_args(!.Info, CastTagwordRval,
+                TagwordRHSVarRepns, TagwordArgModes, Context,
+                [], ToOrRvals, 0u, ToOrMask, RightStmts),
+            (
+                ToOrRvals = [],
+                TagwordStmts = RightStmts
+            ;
+                ToOrRvals = [HeadToOrRval | TailToOrRvals],
+                ToOrRval =
+                    ml_bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
+                ComplementMask = ml_const(mlconst_uint(\ ToOrMask)),
+                MaskedOldTagwordRval = ml_binop(bitwise_and(int_type_uint),
+                    CastTagwordRval, ComplementMask),
+                NewTagwordRval = ml_binop(bitwise_or(int_type_uint),
+                    MaskedOldTagwordRval, ToOrRval),
+                CastNewTagwordRval =
+                    ml_cast(mlds_generic_type, NewTagwordRval),
+                LeftStmt =
+                    ml_gen_assign(TagwordLval, CastNewTagwordRval, Context),
+                TagwordStmts = [LeftStmt | RightStmts]
+            ),
+            ml_gen_dynamic_deconstruct_args(FieldGen,
+                NonTagwordRHSVarRepns, NonTagwordArgModes,
+                FirstNonTagwordArgNum, Context, [], _,
+                Defns, NonTagwordStmts, !Info),
+            Stmts = TagwordStmts ++ NonTagwordStmts
+        ;
+            TagwordArgs = no,
+            FirstNonTagwordArgNum = 1,
+            ml_gen_dynamic_deconstruct_args(FieldGen, RHSVarRepns, ArgModes,
+                FirstNonTagwordArgNum, Context, [], _, Defns, Stmts, !Info)
+        )
     ;
         ConsTag = local_args_tag(_),
         ml_gen_var(!.Info, LHSVar, LHSVarLval),
@@ -266,10 +337,10 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
             Stmts = RightStmts
         ;
             ToOrRvals = [HeadToOrRval | TailToOrRvals],
+            ToOrRval = ml_bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
             ComplementMask = ml_const(mlconst_uint(\ ToOrMask)),
             MaskedOldVarRval = ml_binop(bitwise_and(int_type_uint),
                 ml_lval(LHSVarLval), ComplementMask),
-            ToOrRval = ml_bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
             NewVarRval = ml_binop(bitwise_or(int_type_uint),
                 MaskedOldVarRval, ToOrRval),
             LeftStmt = ml_gen_assign(LHSVarLval, NewVarRval, Context),
@@ -376,7 +447,7 @@ ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, ArgMode,
         ml_gen_info_new_packed_args_var(WordCompVar, !Info),
 
         WordVar = lvn_comp_var(WordCompVar),
-        UnsignedType= mlds_int_type_uint,
+        UnsignedType = mlds_int_type_uint,
         WordVarDefn = mlds_local_var_defn(WordVar, Context, UnsignedType,
             no_initializer, gc_no_stmt),
         Defns = [WordVarDefn],
@@ -909,6 +980,47 @@ ml_extract_subword_value(WordRval, Shift, Mask, Fill, Rval) :-
         ; Fill = fill_uint32, CastMLDSType = mlds_int_type_uint32
         ),
         Rval = ml_cast(CastMLDSType, MaskedRval)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred ml_take_tagword_args(
+    assoc_list(prog_var, constructor_arg_repn)::in, list(unify_mode)::in,
+    assoc_list(prog_var, constructor_arg_repn)::out, list(unify_mode)::out,
+    assoc_list(prog_var, constructor_arg_repn)::out, list(unify_mode)::out,
+    int::in, int::out) is det.
+
+ml_take_tagword_args([], [], [], [], [], [], !FirstNonTagwordArgNum).
+ml_take_tagword_args([], [_ | _], _, _, _, _, !FirstNonTagwordArgNum) :-
+    unexpected($pred, "length mismatch").
+ml_take_tagword_args([_ | _], [], _, _, _, _, !FirstNonTagwordArgNum) :-
+    unexpected($pred, "length mismatch").
+ml_take_tagword_args([RHSVarRepn | RHSVarRepns], [ArgMode | ArgModes],
+        TagwordRHSVarRepns, TagwordArgModes,
+        NonTagwordRHSVarRepns, NonTagwordArgModes, !FirstNonTagwordArgNum) :-
+    RHSVarRepn = _ - Repn,
+    ArgPosWidth = Repn ^ car_pos_width,
+    (
+        ( ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_shifted(_, _)
+        ),
+        !:FirstNonTagwordArgNum = !.FirstNonTagwordArgNum + 1,
+        ml_take_tagword_args(RHSVarRepns, ArgModes,
+            TailTagwordRHSVarRepns, TailTagwordArgModes,
+            NonTagwordRHSVarRepns, NonTagwordArgModes,
+            !FirstNonTagwordArgNum),
+        TagwordRHSVarRepns = [RHSVarRepn | TailTagwordRHSVarRepns],
+        TagwordArgModes = [ArgMode | TailTagwordArgModes]
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        TagwordRHSVarRepns = [],
+        TagwordArgModes = [],
+        NonTagwordRHSVarRepns = [RHSVarRepn | RHSVarRepns],
+        NonTagwordArgModes = [ArgMode | ArgModes]
     ).
 
 %---------------------------------------------------------------------------%

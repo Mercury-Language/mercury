@@ -801,13 +801,14 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
                 ctor_rtti_id(RttiTypeCtor, type_ctor_exist_info(0)))))
     ),
     (
-        Rep = du_ll_rep(Ptag, SectagAndLocn)
+        Rep = du_ll_rep(Ptag, SectagAndLocn),
+        Ptag = ptag(PtagUint8),
+        PtagInt = uint8.cast_to_int(PtagUint8)
     ;
-        Rep = du_hl_rep(_),
-        unexpected($module, $pred, "du_hl_rep")
+        Rep = du_hl_rep(Data),
+        PtagInt = 0,
+        SectagAndLocn = sectag_locn_remote_word(Data)
     ),
-    Ptag = ptag(PtagUint8),
-    PtagInt = uint8.cast_to_int(PtagUint8),
     (
         SectagAndLocn = sectag_locn_none,
         Locn = sectag_none,
@@ -828,10 +829,14 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         Locn = sectag_local_bits(NumSectagBits, Mask),
         Stag = uint.cast_to_int(StagUint)
     ;
-        SectagAndLocn = sectag_locn_remote(StagUint),
-        Locn = sectag_remote,
+        SectagAndLocn = sectag_locn_remote_word(StagUint),
+        Locn = sectag_remote_word,
         Stag = uint.cast_to_int(StagUint),
         NumSectagBits = 0u8
+    ;
+        SectagAndLocn = sectag_locn_remote_bits(StagUint, NumSectagBits, Mask),
+        Locn = sectag_remote_bits(NumSectagBits, Mask),
+        Stag = uint.cast_to_int(StagUint)
     ),
     RttiName = type_ctor_du_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),

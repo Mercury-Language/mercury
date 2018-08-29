@@ -688,16 +688,16 @@ copy_ref_value(Ref, Val) -->
     MR_TypeInfo         type_info;
     MR_TypeInfo         arg_type_info;
     MR_TypeInfo         exp_arg_type_info;
-    MR_Word             *arg_ref;
-    const MR_DuArgLocn  *arg_locn;
+    MR_Word             arg_value;
+    MR_Word             *word_sized_arg_ptr;
 
     type_info = (MR_TypeInfo) TypeInfo_for_T;
     exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
     MR_save_transient_registers();
 
-    if (!MR_arg(type_info, (MR_Word *) Ref, ArgNum, &arg_type_info,
-        &arg_ref, &arg_locn, MR_NONCANON_ABORT))
+    if (!MR_arg(type_info, (MR_Word *) Ref, MR_NONCANON_ABORT, ArgNum,
+        &arg_type_info, &arg_value, &word_sized_arg_ptr))
     {
         MR_fatal_error(""store.arg_ref: argument number out of range"");
     }
@@ -710,15 +710,13 @@ copy_ref_value(Ref, Val) -->
 
     MR_restore_transient_registers();
 
-    if (arg_locn != NULL && arg_locn->MR_arg_bits != 0) {
+    if (word_sized_arg_ptr == NULL) {
         MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
             MR_SIZE_SLOT_SIZE + 1, MR_ALLOC_ID, ""store.ref/2"");
         MR_define_size_slot(0, ArgRef, 1);
-        // XXX I (zs) don't think this will work for arguments
-        // that are stored unboxed in two words.
-        * (MR_Word *) ArgRef = MR_arg_value(arg_ref, arg_locn);
+        * (MR_Word *) ArgRef = arg_value;
     } else {
-        ArgRef = (MR_Word) arg_ref;
+        ArgRef = (MR_Word) word_sized_arg_ptr;
     }
     S = S0;
 }").
@@ -752,16 +750,16 @@ copy_ref_value(Ref, Val) -->
     MR_TypeInfo         type_info;
     MR_TypeInfo         arg_type_info;
     MR_TypeInfo         exp_arg_type_info;
-    MR_Word             *arg_ref;
-    const MR_DuArgLocn  *arg_locn;
+    MR_Word             arg_value;
+    MR_Word             *word_sized_arg_ptr;
 
     type_info = (MR_TypeInfo) TypeInfo_for_T;
     exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
     MR_save_transient_registers();
 
-    if (!MR_arg(type_info, (MR_Word *) &Val, ArgNum, &arg_type_info,
-        &arg_ref, &arg_locn, MR_NONCANON_ABORT))
+    if (!MR_arg(type_info, (MR_Word *) &Val, MR_NONCANON_ABORT, ArgNum,
+        &arg_type_info, &arg_value, &word_sized_arg_ptr))
     {
         MR_fatal_error(""store.new_arg_ref: argument number out of range"");
     }
@@ -774,14 +772,12 @@ copy_ref_value(Ref, Val) -->
 
     MR_restore_transient_registers();
 
-    if (arg_locn != NULL && arg_locn->MR_arg_bits != 0) {
+    if (word_sized_arg_ptr == NULL) {
         MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
             MR_SIZE_SLOT_SIZE + 1, MR_ALLOC_ID, ""store.ref/2"");
         MR_define_size_slot(0, ArgRef, 1);
-        // XXX I (zs) don't think this will work for arguments
-        // that are stored unboxed in two words.
-        * (MR_Word *) ArgRef = MR_arg_value(arg_ref, arg_locn);
-    } else if (arg_ref == &Val) {
+        * (MR_Word *) ArgRef = arg_value;
+    } else if (word_sized_arg_ptr == &Val) {
         // For no_tag types, the argument may have the same address as the
         // term. Since the term (Val) is currently on the C stack, we can't
         // return a pointer to it; so if that is the case, then we need
@@ -792,7 +788,7 @@ copy_ref_value(Ref, Val) -->
         MR_define_size_slot(0, ArgRef, 1);
         * (MR_Word *) ArgRef = Val;
     } else {
-        ArgRef = (MR_Word) arg_ref;
+        ArgRef = (MR_Word) word_sized_arg_ptr;
     }
     S = S0;
 }").

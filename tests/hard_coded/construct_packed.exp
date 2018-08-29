@@ -1,0 +1,58 @@
+Construct for terms with packed local sectags
+
+f0_a
+f0_a
+f0_a
+
+f0_b(flag_set, blue, peach)
+f0_b(flag_set, blue, peach)
+f0_b(flag_set, blue, peach)
+f0_b(flag_set, blue, peach)
+f0_b(flag_set, blue, peach)
+
+f0_c(green, orange, flag_clear)
+f0_c(green, orange, flag_clear)
+f0_c(green, orange, flag_clear)
+f0_c(green, orange, flag_clear)
+f0_c(green, orange, flag_clear)
+
+Reconstruct for terms with packed local sectags
+
+f0_b(flag_clear, blue, peach)
+f0_b(flag_clear, red, peach)
+f0_b(flag_clear, red, orange)
+f0_c(blue, orange, flag_clear)
+f0_c(blue, pear, flag_clear)
+f0_c(blue, pear, flag_set)
+
+Construct for terms with packed remote sectags
+
+f7_a(41)
+f7_a(41)
+f7_a(41)
+f7_a(41)
+f7_a(41)
+
+f7_b(flag_clear, red, peach, 98.7)
+f7_b(flag_clear, red, peach, 98.7)
+f7_b(flag_clear, red, peach, 98.7)
+f7_b(flag_clear, red, peach, 98.7)
+f7_b(flag_clear, red, peach, 98.7)
+
+f7_c(pear, flag_set, green, 43)
+f7_c(pear, flag_set, green, 43)
+f7_c(pear, flag_set, green, 43)
+f7_c(pear, flag_set, green, 43)
+f7_c(pear, flag_set, green, 43)
+
+Reconstruct for terms with packed remote sectags
+
+f7_a(51)
+f7_b(flag_set, red, peach, 98.7)
+f7_b(flag_set, blue, peach, 98.7)
+f7_b(flag_set, blue, orange, 98.7)
+f7_b(flag_set, blue, orange, 87.6)
+f7_c(apple, flag_set, green, 43)
+f7_c(apple, flag_clear, green, 43)
+f7_c(apple, flag_clear, blue, 43)
+f7_c(apple, flag_clear, blue, 53)

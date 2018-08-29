@@ -621,8 +621,8 @@ ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type, TaggedConsId, MatchCond) :-
         Tag = foreign_tag(ForeignLang, ForeignTag),
         Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_Type))
     ;
-        ( Tag = float_tag(_)
-        ; Tag = closure_tag(_, _, _)
+        ( Tag = dummy_tag
+        ; Tag = float_tag(_)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = type_info_const_tag(_)
@@ -631,14 +631,12 @@ ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type, TaggedConsId, MatchCond) :-
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_entry_tag(_, _)
-        ; Tag = single_functor_tag
-        ; Tag = unshared_tag(_)
+        ; Tag = no_tag
         ; Tag = direct_arg_tag(_)
+        ; Tag = remote_args_tag(_)
         ; Tag = shared_local_tag_no_args(_, _, _)
         ; Tag = local_args_tag(_)
-        ; Tag = shared_remote_tag(_, _)
-        ; Tag = no_tag
-        ; Tag = dummy_tag
+        ; Tag = closure_tag(_, _, _)
         ),
         unexpected($pred, "invalid tag type")
     ),

@@ -98,6 +98,7 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_unify_gen_construct.
+:- import_module ml_backend.ml_unify_gen_util.
 :- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
@@ -159,6 +160,7 @@ ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
             apw_full(arg_only_offset(1), cell_offset(1))),
         rval_type_and_width(NumArgsRval, NumArgsType,
             apw_full(arg_only_offset(2), cell_offset(2)))],
+    NumExtraArgRvalsTypes = 3,
 
     % MaybeConsId = no means that the pointer will not be tagged
     % (i.e. its primary tag bits will be zero).
@@ -170,9 +172,14 @@ ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
     MaybeStag = no,
 
     % Generate a `new_object' statement (or static constant) for the closure.
+    ml_variable_type(!.Info, Var, VarType),
+    specified_arg_types_and_consecutive_full_words(ml_make_boxed_type,
+        NumExtraArgRvalsTypes, ArgVars, ArgVarsTypesWidths),
+    FirstArgNum = 1,
+    TakeAddr = [],
     ml_gen_new_object(MaybeConsId, MaybeConsName, Ptag, MaybeStag,
-        Var, ExtraArgRvalsTypes, ArgVars, ArgModes, [],
-        HowToConstruct, Context, Defns, Stmts, !Info).
+        Var, VarType, ExtraArgRvalsTypes, ArgVarsTypesWidths, ArgModes,
+        FirstArgNum, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info).
 
     % Generate a value for the closure layout struct.
     % See MR_Closure_Layout in ../runtime/mercury_ho_call.h.

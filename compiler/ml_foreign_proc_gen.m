@@ -257,42 +257,6 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
         [EndingCodeStmt],
     Decls = ConvDecls.
 
-:- pred ml_gen_outline_args(list(foreign_arg)::in, list(outline_arg)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_gen_outline_args([], [], !Info).
-ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
-    Arg = foreign_arg(Var, MaybeVarMode, OrigType, BoxPolicy),
-    ml_gen_outline_args(Args, OutlineArgs, !Info),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_var(!.Info, Var, VarLval),
-    (
-        BoxPolicy = bp_native_if_possible,
-        ml_gen_type(!.Info, OrigType, MldsType)
-    ;
-        BoxPolicy = bp_always_boxed,
-        MldsType = mlds_generic_type
-    ),
-    ( if
-        MaybeVarMode = yes(foreign_arg_name_mode(ArgName, Mode)),
-        is_type_a_dummy(ModuleInfo, OrigType) = is_not_dummy_type,
-        not var_is_singleton(ArgName)
-    then
-        mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, TopFunctorMode),
-        (
-            TopFunctorMode = top_in,
-            OutlineArg = ola_in(MldsType, ArgName, ml_lval(VarLval))
-        ;
-            TopFunctorMode = top_out,
-            OutlineArg = ola_out(MldsType, ArgName, VarLval)
-        ;
-            TopFunctorMode = top_unused,
-            OutlineArg = ola_unused
-        )
-    else
-        OutlineArg = ola_unused
-    ).
-
     % For ordinary (not model_non) pragma c_proc,
     % we generate code of the following form:
     %

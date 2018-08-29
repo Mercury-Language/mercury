@@ -1835,9 +1835,9 @@ char *
 MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
     MR_TypeInfo *sub_type_info, MR_Word **sub_value)
 {
-    MR_TypeInfo         new_type_info;
-    MR_Word             *new_value;
-    const MR_DuArgLocn  *arg_locn;
+    MR_TypeInfo         arg_type_info;
+    MR_Word             arg_value;
+    MR_Word             *word_sized_arg_ptr;
     char                *old_path;
     int                 arg_num;
 
@@ -1886,19 +1886,18 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
             path++; // Step over / or ^.
         }
 
-        if (MR_arg(type_info, value, arg_num, &new_type_info, &new_value,
-            &arg_locn, MR_NONCANON_CC))
+        if (MR_arg(type_info, value, MR_NONCANON_CC, arg_num,
+            &arg_type_info, &arg_value, &word_sized_arg_ptr))
         {
-            type_info = new_type_info;
-            if (arg_locn == NULL) {
-                value = new_value;
-            } else {
+            type_info = arg_type_info;
+            if (word_sized_arg_ptr == NULL) {
                 MR_Word storage;
 
                 MR_incr_hp(storage, 1);
-                ((MR_Word *) storage)[0] = MR_arg_value(new_value,
-                    arg_locn);
+                ((MR_Word *) storage)[0] = arg_value;
                 value = (MR_Word *) storage;
+            } else {
+                value = word_sized_arg_ptr;
             }
         } else {
             return old_path;

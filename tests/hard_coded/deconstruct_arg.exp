@@ -42,6 +42,7 @@ deconstruct functor: zip/4
 argument #0: 50
 argument #1: 51
 argument #2: 52
+argument #3: 53
 no other argument access succeeded
 plain deconstruct:
 functor zip arity 4 [50, 51, 52, 53]
@@ -70,6 +71,76 @@ plain deconstruct:
 functor moomoo arity 2 [50, "moo."]
 limited deconstruct 3:
 functor moomoo arity 2 [50, "moo."]
+
+test term: f0_a
+deconstruct functor: f0_a/0
+
+test term: f0_b(flag_set, blue, peach)
+deconstruct functor: f0_b/3
+argument #0: flag_set
+argument #1: blue
+argument #2: peach
+argument named 'f0_b1': flag_set
+argument named 'f0_b2': blue
+argument named 'f0_b3': peach
+no other argument access succeeded
+plain deconstruct:
+functor f0_b arity 3 [flag_set, blue, peach]
+limited deconstruct 3:
+functor f0_b arity 3 [flag_set, blue, peach]
+
+test term: f0_c(green, orange, flag_clear)
+deconstruct functor: f0_c/3
+argument #0: green
+argument #1: orange
+argument #2: flag_clear
+argument named 'f0_c1': green
+argument named 'f0_c2': orange
+argument named 'f0_c3': flag_clear
+no other argument access succeeded
+plain deconstruct:
+functor f0_c arity 3 [green, orange, flag_clear]
+limited deconstruct 3:
+functor f0_c arity 3 [green, orange, flag_clear]
+
+test term: f7_a(41)
+deconstruct functor: f7_a/1
+argument #0: 41
+argument named 'f7_a1': 41
+no other argument access succeeded
+plain deconstruct:
+functor f7_a arity 1 [41]
+limited deconstruct 3:
+functor f7_a arity 1 [41]
+
+test term: f7_b(flag_clear, red, peach)
+deconstruct functor: f7_b/3
+argument #0: flag_clear
+argument #1: red
+argument #2: peach
+argument named 'f7_b1': flag_clear
+argument named 'f7_b2': red
+argument named 'f7_b3': peach
+no other argument access succeeded
+plain deconstruct:
+functor f7_b arity 3 [flag_clear, red, peach]
+limited deconstruct 3:
+functor f7_b arity 3 [flag_clear, red, peach]
+
+test term: f7_c(pear, flag_set, green, 43)
+deconstruct functor: f7_c/4
+argument #0: pear
+argument #1: flag_set
+argument #2: green
+argument #3: 43
+argument named 'f7_c1': pear
+argument named 'f7_c2': flag_set
+argument named 'f7_c3': green
+argument named 'f7_c4': 43
+no other argument access succeeded
+plain deconstruct:
+functor f7_c arity 4 [pear, flag_set, green, 43]
+limited deconstruct 3: failed
 
 test term: 'a'
 deconstruct functor: 'a'/0
@@ -210,13 +281,13 @@ test term: '<<predicate>>'
 deconstruct functor: newline/0
 
 test term: '<<predicate>>'
-deconstruct functor: lambda_deconstruct_arg_m_202/1
+deconstruct functor: lambda_deconstruct_arg_m_251/1
 argument #0: [1, 2]
 no other argument access succeeded
 plain deconstruct:
-functor lambda_deconstruct_arg_m_202 arity 1 [[1, 2]]
+functor lambda_deconstruct_arg_m_251 arity 1 [[1, 2]]
 limited deconstruct 3:
-functor lambda_deconstruct_arg_m_202 arity 1 [[1, 2]]
+functor lambda_deconstruct_arg_m_251 arity 1 [[1, 2]]
 
 test term: '<<predicate>>'
 deconstruct functor: p/3
@@ -239,25 +310,26 @@ functor {} arity 2 [1, 'b']
 limited deconstruct 3:
 functor {} arity 2 [1, 'b']
 
-test term: {1, 'b', "third"}
+test term: {3, 'c', "3rd"}
 deconstruct functor: {}/3
-argument #0: 1
-argument #1: 'b'
-argument #2: "third"
+argument #0: 3
+argument #1: 'c'
+argument #2: "3rd"
 no other argument access succeeded
 plain deconstruct:
-functor {} arity 3 [1, 'b', "third"]
+functor {} arity 3 [3, 'c', "3rd"]
 limited deconstruct 3:
-functor {} arity 3 [1, 'b', "third"]
+functor {} arity 3 [3, 'c', "3rd"]
 
-test term: {1, 'b', "third", {1, 2, 3, 4}}
+test term: {5, 'd', "third", {1, 2, 3, 4}}
 deconstruct functor: {}/4
-argument #0: 1
-argument #1: 'b'
+argument #0: 5
+argument #1: 'd'
 argument #2: "third"
+argument #3: {1, 2, 3, 4}
 no other argument access succeeded
 plain deconstruct:
-functor {} arity 4 [1, 'b', "third", {1, 2, 3, 4}]
+functor {} arity 4 [5, 'd', "third", {1, 2, 3, 4}]
 limited deconstruct 3: failed
 
 test term: array([1000, 2000])
@@ -286,6 +358,7 @@ deconstruct functor: <<array>>/4
 argument #0: 10
 argument #1: 20
 argument #2: 30
+argument #3: 40
 no other argument access succeeded
 plain deconstruct:
 functor <<array>> arity 4 [10, 20, 30, 40]
@@ -296,6 +369,7 @@ deconstruct functor: packed/5
 argument #0: 100
 argument #1: one
 argument #2: two
+argument #3: three
 argument named 'packed1': 100
 argument named 'packed2': one
 argument named 'packed3': two

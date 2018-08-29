@@ -28,6 +28,7 @@ RETRY_PROGS = \
 NONRETRY_PROGS = \
 	ambiguity			\
 	breakpoints			\
+	browse_packed			\
 	browse_pretty			\
 	class_decl			\
 	cmd_quote			\
@@ -272,6 +273,9 @@ all_solutions.out: all_solutions all_solutions.inp
 
 breakpoints.out: breakpoints breakpoints.inp
 	$(MDB_STD) ./breakpoints < breakpoints.inp > breakpoints.out 2>&1
+
+browse_packed.out: browse_packed browse_packed.inp
+	$(MDB) ./browse_packed < browse_packed.inp > browse_packed.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.

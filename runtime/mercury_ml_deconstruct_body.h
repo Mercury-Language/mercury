@@ -80,8 +80,8 @@
     type_info = (MR_TypeInfo) TYPEINFO_ARG;
 
     MR_save_transient_registers();
-    EXPAND_INFO_CALL(type_info, &TERM_ARG, NONCANON,
-            maybe_max_arity_arg &expand_info);
+    EXPAND_INFO_CALL(type_info, &TERM_ARG, NONCANON, maybe_max_arity_arg
+        &expand_info);
     MR_restore_transient_registers();
 
     max_arity_check_start
@@ -89,8 +89,7 @@
         FUNCTOR_ARG = (MR_String) (MR_Integer) conststring_functor;
 
         MR_deconstruct_get_arity(expand_info, ARITY_ARG);
-        MR_deconstruct_get_arg_list(expand_info, args, ARGUMENTS_ARG);
-        MR_deconstruct_free_allocated_arg_type_infos(expand_info, args);
+        MR_deconstruct_get_arg_univs_list(expand_info, ARGUMENTS_ARG);
 #ifdef FUNCTOR_NUMBER_ARG
         MR_deconstruct_get_functor_number(expand_info, FUNCTOR_NUMBER_ARG);
 #endif

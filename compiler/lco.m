@@ -815,13 +815,12 @@ acceptable_construct_unification(DelayForVars, Goal, !UnifyInputVars, !Info) :-
     all_true(acceptable_construct_mode(ModuleInfo), ArgModes),
     get_cons_repn_defn(ModuleInfo, ConsId, CtorRepn),
     ConsTag = CtorRepn ^ cr_tag,
-    % The code generator can't handle some kinds of tags. For example, it does
-    % not make sense to take the address of the field of a function symbol of a
-    % `notag' type. These are the kinds it CAN handle.
-    ( ConsTag = single_functor_tag
-    ; ConsTag = unshared_tag(_)
-    ; ConsTag = shared_remote_tag(_, _)
-    ),
+    % Our optimization is inapplicable to constants, and its implementation
+    % in the code generator can handle only some kinds of functors with args.
+    % For example, it does not make sense to take the address of the field
+    % of a function symbol of a `notag' type. The only functors it can handle
+    % are the ones whose representation is remote_args_tag().
+    ConsTag = remote_args_tag(_),
     % If the construction unification has any existential constraints,
     % then ConstructArgVars will have more elements than the number of
     % arguments in ConsRepn ^ cr_args (the extra variables will be the

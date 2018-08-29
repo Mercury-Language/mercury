@@ -1833,7 +1833,11 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
     public static final int MR_SECTAG_LOCAL              = 2;
     public static final int MR_SECTAG_LOCAL_REST_OF_WORD = 2;   // synonym
     public static final int MR_SECTAG_REMOTE             = 3;
+    public static final int MR_SECTAG_REMOTE_FULL_WORD   = 3;   // synonym
     public static final int MR_SECTAG_VARIABLE           = 4;
+    // These are never used in Java grades.
+    // public static final int MR_SECTAG_LOCAL_BITS      = 5;
+    // public static final int MR_SECTAG_REMOTE_BITS     = 6;
 
     public static final int MR_FUNCTOR_SUBTYPE_NONE      = 0;
     public static final int MR_FUNCTOR_SUBTYPE_EXISTS    = 1;
@@ -1858,7 +1862,7 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
 
 :- pragma foreign_code("Java", "
     //
-    // Type-specific unification and comparison routines
+    // Type-specific unification and comparison routines.
     //
 
     public static boolean

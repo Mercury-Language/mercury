@@ -1,0 +1,31 @@
+echo on
+context none
+register --quiet
+break smallest_t
+continue
+p F0_B
+p F0_B^f0_b1
+p F0_B^f0_b2
+p F0_B^f0_b3
+p F0_C
+p F0_C^f0_c1
+p F0_C^f0_c2
+p F0_C^f0_c3
+p F1
+p F1^f1_1
+p F1^f1_2
+p F1^f1_3
+p F1^f1_4
+p F7_A
+p F7_A^f7_a1
+p F7_B
+p F7_B^f7_b1
+p F7_B^f7_b2
+p F7_B^f7_b3
+p F7_B^f7_b4
+p F7_C
+p F7_C^f7_c1
+p F7_C^f7_c2
+p F7_C^f7_c3
+p F7_C^f7_c4
+continue -n -S

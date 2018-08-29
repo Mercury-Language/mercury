@@ -1034,12 +1034,10 @@ foreign_const_name_and_tag(Mapping, CtorRepn, !NamesAndTagsCord) :-
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = shared_local_tag_no_args(_, _, _)
         ; ConsTag = local_args_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = remote_args_tag(_)
         ; ConsTag = no_tag
         ),
         unexpected($pred, "enum constant requires an int tag")

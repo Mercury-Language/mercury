@@ -82,6 +82,45 @@
     --->    set_rep(list(T))
     where equality is set_equal.
 
+    % An enum type whose representation takes 1 bit.
+:- type flag
+    --->    flag_clear
+    ;       flag_set.
+
+    % An enum type whose representation takes 2 bits.
+:- type color
+    --->    red
+    ;       green
+    ;       blue.
+
+    % An enum type whose representation takes 3 bits.
+:- type packed_fruit
+    --->    apple
+    ;       pear
+    ;       peach
+    ;       orange
+    ;       banana.
+
+    % Every function symbol fN* should be allocated primary tag N.
+    % The function symbols whose names end in _[abc] share their
+    % primary tags, being distinguished by a local (f0) or remote (f7)
+    % secondary tag. These all have an initial sequence of subword-sized
+    % arguments that the compiler should pack next to the secondary tag.
+:- type t
+    --->    f0_a
+    ;       f0_b(f0_b1 :: flag, f0_b2 :: color, f0_b3 :: packed_fruit)
+    ;       f0_c(f0_c1 :: color, f0_c2 :: packed_fruit, f0_c3 :: flag)
+    ;       f1(int)
+    ;       f2(int)
+    ;       f3(int)
+    ;       f4(int)
+    ;       f5(int)
+    ;       f6(int)
+    ;       f7_a(f7_a1 :: int)
+    ;       f7_b(f7_b1 :: flag, f7_b2 :: color, f7_b3 :: packed_fruit)
+    ;       f7_c(f7_c1 :: packed_fruit, f7_c2 :: flag, f7_c3 :: color,
+                f7_c4 :: int).
+
 %---------------------------------------------------------------------------%
 
 % convert list to set
@@ -126,6 +165,16 @@ main(!IO) :-
 
     % test named arguments
     test_all(moomoo(50, "moo."), !IO),
+
+    % test terms with arguments packed next to the local secondary tag
+    test_all(f0_a, !IO),
+    test_all(f0_b(flag_set, blue, peach), !IO),
+    test_all(f0_c(green, orange, flag_clear), !IO),
+
+    % test terms with arguments packed next to the remote secondary tag
+    test_all(f7_a(41), !IO),
+    test_all(f7_b(flag_clear, red, peach), !IO),
+    test_all(f7_c(pear, flag_set, green, 43), !IO),
 
     % test characters
     test_all('a', !IO),
@@ -204,8 +253,8 @@ main(!IO) :-
 
     % test tuples
     test_all({1, 'b'}, !IO),
-    test_all({1, 'b', "third"}, !IO),
-    test_all({1, 'b', "third", {1, 2, 3, 4}}, !IO),
+    test_all({3, 'c', "3rd"}, !IO),
+    test_all({5, 'd', "third", {1, 2, 3, 4}}, !IO),
 
     % test arrays
     test_all(array([1000, 2000]), !IO),
@@ -238,11 +287,26 @@ test_all(T, !IO) :-
         test_deconstruct_arg(T, 0, !RevPairs),
         test_deconstruct_arg(T, 1, !RevPairs),
         test_deconstruct_arg(T, 2, !RevPairs),
+        test_deconstruct_arg(T, 3, !RevPairs),
         test_deconstruct_named_arg(T, "moo", !RevPairs),
         test_deconstruct_named_arg(T, "mooo!", !RevPairs),
         test_deconstruct_named_arg(T, "packed1", !RevPairs),
         test_deconstruct_named_arg(T, "packed2", !RevPairs),
         test_deconstruct_named_arg(T, "packed3", !RevPairs),
+        test_deconstruct_named_arg(T, "f0_b1", !RevPairs),
+        test_deconstruct_named_arg(T, "f0_b2", !RevPairs),
+        test_deconstruct_named_arg(T, "f0_b3", !RevPairs),
+        test_deconstruct_named_arg(T, "f0_c1", !RevPairs),
+        test_deconstruct_named_arg(T, "f0_c2", !RevPairs),
+        test_deconstruct_named_arg(T, "f0_c3", !RevPairs),
+        test_deconstruct_named_arg(T, "f7_a1", !RevPairs),
+        test_deconstruct_named_arg(T, "f7_b1", !RevPairs),
+        test_deconstruct_named_arg(T, "f7_b2", !RevPairs),
+        test_deconstruct_named_arg(T, "f7_b3", !RevPairs),
+        test_deconstruct_named_arg(T, "f7_c1", !RevPairs),
+        test_deconstruct_named_arg(T, "f7_c2", !RevPairs),
+        test_deconstruct_named_arg(T, "f7_c3", !RevPairs),
+        test_deconstruct_named_arg(T, "f7_c4", !RevPairs),
         list.reverse(!.RevPairs, Pairs),
 
         % Do not bore readers with each negative result individually;

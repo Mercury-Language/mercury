@@ -42,6 +42,7 @@
 
 #ifdef FUNCTOR_ARG
     MR_deconstruct_get_functor(expand_info, functor_only, conststring_functor);
+    // Cast away const without getting a warning for it.
     FUNCTOR_ARG = (MR_String) (MR_Integer) conststring_functor;
 #endif
     MR_deconstruct_get_arity(expand_info, ARITY_ARG);

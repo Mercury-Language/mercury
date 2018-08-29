@@ -723,7 +723,13 @@ public enum Sectag_Locn {
     MR_SECTAG_NONE_DIRECT_ARG    = 1,
     MR_SECTAG_LOCAL              = 2,
     MR_SECTAG_LOCAL_REST_OF_WORD = 2,       // synonym
-    MR_SECTAG_REMOTE             = 3
+    MR_SECTAG_REMOTE             = 3,
+    MR_SECTAG_REMOTE_FULL_WORD   = 3        // synonym
+    // These are never used.
+    // MR_SECTAG_VARIABLE        = 4
+    // These are never used in C# grades.
+    // MR_SECTAG_LOCAL_BITS      = 5
+    // MR_SECTAG_REMOTE_BITS     = 6
 }
 
 public enum FunctorSubtypeInfo {

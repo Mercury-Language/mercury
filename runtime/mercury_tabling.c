@@ -13,6 +13,7 @@
 #include "mercury_array_macros.h"
 #include "mercury_builtin_types.h"
 #include "mercury_deconstruct.h"
+#include "mercury_deconstruct_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

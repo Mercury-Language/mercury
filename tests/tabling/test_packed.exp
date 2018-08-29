@@ -1,0 +1,42 @@
+
+local_a
+In:  f0_a
+Out = In
+Out: f0_a
+In:  f0_a
+Out: f0_a
+
+local_b
+In:  f0_b(flag_set, blue, peach)
+Out = In
+Out: f0_b(flag_set, blue, peach)
+In:  f0_b(flag_set, blue, peach)
+Out: f0_b(flag_set, blue, peach)
+
+local_c
+In:  f0_c(green, orange, flag_clear)
+Out = In
+Out: f0_c(green, orange, flag_clear)
+In:  f0_c(green, orange, flag_clear)
+Out: f0_c(green, orange, flag_clear)
+
+remote_a
+In:  f7_a(41)
+Out = In
+Out: f7_a(41)
+In:  f7_a(41)
+Out: f7_a(41)
+
+remote_b
+In:  f7_b(flag_clear, red, peach)
+Out = In
+Out: f7_b(flag_clear, red, peach)
+In:  f7_b(flag_clear, red, peach)
+Out: f7_b(flag_clear, red, peach)
+
+remote_c
+In:  f7_c(pear, flag_set, green, 43)
+Out = In
+Out: f7_c(pear, flag_set, green, 43)
+In:  f7_c(pear, flag_set, green, 43)
+Out: f7_c(pear, flag_set, green, 43)

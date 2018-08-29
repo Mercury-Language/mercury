@@ -155,36 +155,62 @@ ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, ConsTag, TestRval) :-
     ;
         ( ConsTag = dummy_tag
         ; ConsTag = no_tag
-        ; ConsTag = single_functor_tag
         ),
         % In a type with only one cons_id, all vars have that one cons_id.
         TestRval = ml_const(mlconst_true)
     ;
-        ( ConsTag = unshared_tag(Ptag)
-        ; ConsTag = direct_arg_tag(Ptag)
-        ),
+        ConsTag = direct_arg_tag(Ptag),
         VarPtag = ml_unop(tag, VarRval),
         Ptag = ptag(PtagUint8),
+        % XXX ARG_PACK We should get the tag unop to return an unsigned int,
+        % to make using an unsigned comparison here simpler.
         PtagConstRval = ml_const(mlconst_int(uint8.cast_to_int(PtagUint8))),
         TestRval = ml_binop(eq(int_type_int), VarPtag, PtagConstRval)
     ;
-        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-        ml_gen_secondary_tag_rval(Info, Type, VarRval, Ptag, VarSectagRval),
-        RemoteSectag = remote_sectag(SectagUint, _),
-        ConstSectagRval = ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
-        SectagTestRval = ml_binop(eq(int_type_int),
-            VarSectagRval, ConstSectagRval),
-        ml_gen_info_get_num_ptag_bits(Info, NumPtagBits),
-        ( if NumPtagBits = 0u8 then
-            % No need to test the primary tag.
-            TestRval = SectagTestRval
-        else
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            RemoteArgsTagInfo = remote_args_only_functor,
+            % In a type with only one cons_id, all vars have that one cons_id.
+            TestRval = ml_const(mlconst_true)
+        ;
+            RemoteArgsTagInfo = remote_args_unshared(Ptag),
+            VarPtag = ml_unop(tag, VarRval),
+            Ptag = ptag(PtagUint8),
+            PtagConstRval =
+                ml_const(mlconst_int(uint8.cast_to_int(PtagUint8))),
+            TestRval = ml_binop(eq(int_type_int), VarPtag, PtagConstRval)
+        ;
+            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
             VarPtag = ml_unop(tag, VarRval),
             Ptag = ptag(PtagUint8),
             ConstPtagRval =
                 ml_const(mlconst_int(uint8.cast_to_int(PtagUint8))),
             PtagTestRval = ml_binop(eq(int_type_int), VarPtag, ConstPtagRval),
+            ml_gen_secondary_tag_rval(Info, Type, VarRval, Ptag,
+                VarSectagWordRval),
+            RemoteSectag = remote_sectag(SectagUint, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                VarSectagRval = VarSectagWordRval
+            ;
+                SectagSize = rsectag_subword(SectagBits),
+                SectagBits = sectag_bits(_NumSectagBits, SectagMask),
+                VarSectagRval = ml_binop(bitwise_and(int_type_uint),
+                    VarSectagWordRval, ml_const(mlconst_uint(SectagMask)))
+            ),
+            ConstSectagRval =
+                ml_const(mlconst_int(uint.cast_to_int(SectagUint))),
+            SectagTestRval = ml_binop(eq(int_type_int),
+                VarSectagRval, ConstSectagRval),
             TestRval = ml_binop(logical_and, PtagTestRval, SectagTestRval)
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(Data),
+            Ptag = ptag(0u8),
+            ml_gen_secondary_tag_rval(Info, Type, VarRval, Ptag,
+                VarSectagRval),
+            ConstSectagRval = ml_const(mlconst_int(uint.cast_to_int(Data))),
+            TestRval = ml_binop(eq(int_type_int),
+                VarSectagRval, ConstSectagRval)
         )
     ;
         ConsTag = local_args_tag(LocalArgsTagInfo),

@@ -146,7 +146,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
         ( ConsId = type_info_cell_constructor(_)
         ; ConsId = typeclass_info_cell_constructor
         ),
-        ConsTag = unshared_tag(ptag(0u8))
+        ConsTag = remote_args_tag(remote_args_unshared(ptag(0u8)))
     ;
         ConsId = type_info_const(TIConstNum),
         ConsTag = type_info_const_tag(TIConstNum)
@@ -183,7 +183,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
             ( if Arity = 0 then
                 ConsTag = int_tag(int_tag_int(0))
             else
-                ConsTag = single_functor_tag
+                ConsTag = remote_args_tag(remote_args_only_functor)
             )
         ;
             % For these target languages, converting arity-zero tuples into
@@ -191,7 +191,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
             ( TargetLang = target_csharp
             ; TargetLang = target_java
             ),
-            ConsTag = single_functor_tag
+            ConsTag = remote_args_tag(remote_args_only_functor)
         )
     ;
         ConsId = cons(_Name, _Arity, _TypeCtor),

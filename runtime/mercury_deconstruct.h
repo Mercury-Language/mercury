@@ -16,25 +16,17 @@
 #include <stdio.h>
 
 typedef struct {
-    int                     num_extra_args;
-    MR_Word                 *arg_values;
-    const MR_DuArgLocn      *arg_locns;
-    MR_TypeInfo             *arg_type_infos;
-    MR_bool                 can_free_arg_type_infos;
-} MR_ExpandArgsFields;
-
-typedef struct {
     int                     arity;
     int                     functor_number;
     MR_ConstString          functor;
-    MR_ExpandArgsFields     args;
+    MR_Word                 arg_univs_list;
 } MR_ExpandFunctorArgsInfo;
 
 typedef struct {
     int                     arity;
     int                     functor_number;
     MR_ConstString          functor;
-    MR_ExpandArgsFields     args;
+    MR_Word                 arg_univs_list;
     MR_bool                 limit_reached;
 } MR_ExpandFunctorArgsLimitInfo;
 
@@ -46,15 +38,15 @@ typedef struct {
 
 typedef struct {
     int                     arity;
-    MR_ExpandArgsFields     args_only;
+    MR_Word                 arg_univs_list;
 } MR_ExpandArgsOnlyInfo;
 
 typedef struct {
     int                     arity;
     MR_bool                 chosen_index_exists;
-    MR_Word                 *chosen_value_ptr;
-    const MR_DuArgLocn      *chosen_arg_locn;
-    MR_TypeInfo             chosen_type_info;
+    MR_TypeInfo             chosen_arg_type_info;
+    MR_Word                 chosen_arg_term;
+    MR_Word                 *chosen_arg_word_sized_ptr;
 } MR_ExpandChosenArgOnlyInfo;
 
 // MR_NONCANON_ABORT asks that deconstructions of noncanonical types should
@@ -73,6 +65,23 @@ typedef enum {
     MR_NONCANON_ALLOW,
     MR_NONCANON_CC
 } MR_noncanon_handling;
+
+// The MR_expand_* functions do the heavy lifting in the implementation
+// of the main predicates of library/deconstruct.m. Given a term and its type,
+// they can find out and return the name and the arity of the term's top
+// function symbol, a list of the values of all its arguments, or the value
+// of just one argument, chosen by index or by field name. Each variant
+// returns some subset of this information. The subset is given by the fields
+// of the MR_Expand* type referred to by its last argument.
+
+// XXX In each of these functions, the name of the argument that represents
+// the whole term is
+//
+// - Term in deconstruct.m in the library,
+// - term_ptr in mercury_deconstruct.c, and
+// - data_word_ptr here and in mercury_ml_expand_body.h.
+//
+// It would be nice if the terminology was consistent.
 
 extern  void    MR_expand_functor_args(MR_TypeInfo type_info,
                     MR_Word *data_word_ptr, MR_noncanon_handling noncanon,
@@ -100,52 +109,48 @@ extern  void    MR_expand_named_arg_only(MR_TypeInfo type_info,
                     MR_ConstString chosen_name,
                     MR_ExpandChosenArgOnlyInfo *expand_info);
 
-// MR_arg() takes the address of a term, its type, and an
-// argument position (the first argument being at position 1).
-// If the given term has an argument at that position, MR_arg
-// returns MR_TRUE and fills in the locations pointed to by the
-// argument_ptr and arg_type_info_ptr arguments with the value
-// and type of the argument at the selected position.
-// If it doesn't, it fails (i.e. returns MR_FALSE).
+// MR_arg() takes the address of a term, its type, and an argument position
+// (the first argument being at position 1), as well as an indication
+// of the desired `canonicality' of the decomposition.
+//
+// If the given term has an argument at the specified position, MR_arg returns
+// MR_TRUE, and fills in *arg_type_info_ptr and *arg_term_ptr with the
+// type_info and value of that argument at the selected position. It also
+// fills in *word_sized_arg_ptr, with the address of the argument
+// if the argument's size is exactly one word, or with NULL if the size
+// is anything else (double word, subword, or nothing for dummies).
+//
+// If the given term does not have an argument at the specified position,
+// MR_arg fails, i.e. it returns MR_FALSE.
 //
 // You need to wrap MR_{save/restore}_transient_hp() around
 // calls to this function.
 
-extern  MR_bool MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
-                    MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr,
-                    const MR_DuArgLocn **arg_locn_ptr,
-                    MR_noncanon_handling noncanon);
+extern  MR_bool MR_arg(MR_TypeInfo type_info, MR_Word *term,
+                    MR_noncanon_handling noncanon, int arg_index,
+                    MR_TypeInfo *arg_type_info_ptr, MR_Word *arg_term_ptr,
+                    MR_Word **word_sized_arg_ptr);
 
-// MR_named_arg() is just like MR_arg, except the argument
-// is selected by name, not by position.
+// MR_named_arg() is just like MR_arg, except the argument is selected by name,
+// not by position.
 //
 // You need to wrap MR_{save/restore}_transient_hp() around
 // calls to this function.
 
 extern  MR_bool MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
-                    MR_ConstString arg_name, MR_TypeInfo *arg_type_info_ptr,
-                    MR_Word **argument_ptr,
-                    const MR_DuArgLocn **arg_locn_ptr,
-                    MR_noncanon_handling noncanon);
+                    MR_noncanon_handling noncanon, MR_ConstString arg_name,
+                    MR_TypeInfo *arg_type_info_ptr, MR_Word *arg_term_ptr,
+                    MR_Word **word_sized_arg_ptr);
 
 // MR_named_arg_num() takes the address of a term, its type, and an argument
 // name. If the given term has an argument with the given name, it succeeds
 // and returns the argument number (counted starting from 0) of the argument.
-// If it doesn't, it fails (i.e. returns MR_FALSE).
+// If it doesn't, it fails, i.e. returns MR_FALSE.
 //
 // You need to wrap MR_{save/restore}_transient_hp() around
 // calls to this function.
 
 extern  MR_bool MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                     const char *arg_name, int *arg_num_ptr);
-
-#define MR_arg_value(arg_ptr, arg_locn)                                 \
-    ( ((arg_locn) == NULL || (arg_locn)->MR_arg_bits == 0)              \
-    ? *(arg_ptr)                                                        \
-    : MR_arg_value_uncommon(arg_ptr, arg_locn)                          \
-    )
-
-extern  MR_Word MR_arg_value_uncommon(MR_Word *arg_ptr,
-                    const MR_DuArgLocn *arg_locn);
 
 #endif // MERCURY_DECONSTRUCT_H

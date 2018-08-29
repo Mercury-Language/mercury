@@ -201,30 +201,54 @@ generate_test_rval_has_cons_tag(CI, VarRval, ConsTag, TestRval) :-
     ;
         ( ConsTag = dummy_tag
         ; ConsTag = no_tag
-        ; ConsTag = single_functor_tag
         ),
         % In a type with only one cons_id, all vars have that one cons_id.
         TestRval = const(llconst_true)
     ;
-        ( ConsTag = unshared_tag(Ptag)
-        ; ConsTag = direct_arg_tag(Ptag)
-        ),
+        ConsTag = direct_arg_tag(Ptag),
         VarPtag = unop(tag, VarRval),
         Ptag = ptag(PtagUint8),
         PtagConstRval = const(llconst_int(uint8.cast_to_int(PtagUint8))),
         TestRval = binop(eq(int_type_int), VarPtag, PtagConstRval)
     ;
-        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-        VarPtag = unop(tag, VarRval),
-        Ptag = ptag(PtagUint8),
-        ConstPtagRval = const(llconst_int(uint8.cast_to_int(PtagUint8))),
-        PtagTestRval = binop(eq(int_type_int), VarPtag, ConstPtagRval),
-        VarSectagRval = lval(field(yes(Ptag), VarRval, const(llconst_int(0)))),
-        RemoteSectag = remote_sectag(SecTagUint, _),
-        ConstSectagRval = const(llconst_int(uint.cast_to_int(SecTagUint))),
-        SectagTestRval = binop(eq(int_type_int),
-            VarSectagRval, ConstSectagRval),
-        TestRval = binop(logical_and, PtagTestRval, SectagTestRval)
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            RemoteArgsTagInfo = remote_args_only_functor,
+            % In a type with only one cons_id, all vars have that one cons_id.
+            TestRval = const(llconst_true)
+        ;
+            RemoteArgsTagInfo = remote_args_unshared(Ptag),
+            VarPtag = unop(tag, VarRval),
+            Ptag = ptag(PtagUint8),
+            PtagConstRval = const(llconst_int(uint8.cast_to_int(PtagUint8))),
+            TestRval = binop(eq(int_type_int), VarPtag, PtagConstRval)
+        ;
+            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+            VarPtag = unop(tag, VarRval),
+            Ptag = ptag(PtagUint8),
+            ConstPtagRval = const(llconst_int(uint8.cast_to_int(PtagUint8))),
+            PtagTestRval = binop(eq(int_type_int), VarPtag, ConstPtagRval),
+            VarSectagWordRval =
+                lval(field(yes(Ptag), VarRval, const(llconst_int(0)))),
+            RemoteSectag = remote_sectag(SecTagUint, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                VarSectagRval = VarSectagWordRval
+            ;
+                SectagSize = rsectag_subword(SectagBits),
+                SectagBits = sectag_bits(_NumSectagBits, SectagMask),
+                VarSectagRval = binop(bitwise_and(int_type_uint),
+                    VarSectagWordRval, const(llconst_uint(SectagMask)))
+            ),
+            ConstSectagRval = const(llconst_int(uint.cast_to_int(SecTagUint))),
+            SectagTestRval = binop(eq(int_type_int),
+                VarSectagRval, ConstSectagRval),
+            TestRval = binop(logical_and, PtagTestRval, SectagTestRval)
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_Data),
+            % These are supported only on the MLDS backend.
+            unexpected($pred, "remote_args_ctor")
+        )
     ;
         ConsTag = local_args_tag(LocalArgsTagInfo),
         (

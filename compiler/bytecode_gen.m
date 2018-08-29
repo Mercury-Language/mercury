@@ -896,14 +896,6 @@ map_cons_tag(ConsTag, ByteConsTag) :-
         ConsTag = no_tag,
         ByteConsTag = byte_no_tag
     ;
-        ConsTag = single_functor_tag,
-        % `single_functor' is just an optimized version of `unshared_tag(0)';
-        % this optimization is not important for the bytecode.
-        ByteConsTag = byte_unshared_tag(0)
-    ;
-        ConsTag = unshared_tag(Ptag),
-        ByteConsTag = byte_unshared_tag(ptag_to_int(Ptag))
-    ;
         ConsTag = direct_arg_tag(_),
         sorry($pred, "bytecode with direct_arg_tag")
     ;
@@ -915,10 +907,8 @@ map_cons_tag(ConsTag, ByteConsTag) :-
         ConsTag = local_args_tag(_),
         sorry($pred, "bytecode with local_args_tag")
     ;
-        ConsTag = shared_remote_tag(Ptag, RemoteSecTag),
-        RemoteSecTag = remote_sectag(SectagUint, _),
-        Sectag = uint.cast_to_int(SectagUint),
-        ByteConsTag = byte_shared_remote_tag(ptag_to_int(Ptag), Sectag)
+        ConsTag = remote_args_tag(_),
+        sorry($pred, "bytecode with remote_args_tag")
     ;
         ConsTag = string_tag(_),
         unexpected($pred,

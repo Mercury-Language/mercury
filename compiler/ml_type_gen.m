@@ -110,10 +110,11 @@
     ;       tag_uses_base_class.
 
     % A constructor is represented using the base class rather than a derived
-    % class if there is only a single functor, or if there is a single
-    % functor and some constants represented using reserved addresses.
+    % class if there is only a single functor.
     %
 :- func ml_tag_uses_base_class(cons_tag) = tag_uses_base_class.
+:- func ml_remote_args_tag_uses_base_class(remote_args_tag_info)
+    = tag_uses_base_class.
 
     % Return whether this compilation target uses object constructors.
     %
@@ -631,7 +632,7 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
         SecondaryTagClassId, TypeCtor, TypeDefn, CtorRepn,
         BaseClassFields0, BaseClassFields, BaseClassClasses0, BaseClassClasses,
         BaseClassCtors0, BaseClassCtors) :-
-    CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, CtorName, TagVal,
+    CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, CtorName, ConsTag,
         ArgRepns, CtorArity, _Ctxt),
 
     % XXX We should keep a context for the constructor,
@@ -691,9 +692,9 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
 
     % Generate a constructor function to initialize the fields, if needed
     % (not all back-ends use constructor functions).
-    MaybeSecTagVal = get_maybe_secondary_tag(TagVal),
+    MaybeSecTagVal = get_maybe_secondary_tag(ConsTag),
     UsesConstructors = ml_target_uses_constructors(Target),
-    UsesBaseClass = ml_tag_uses_base_class(TagVal),
+    UsesBaseClass = ml_tag_uses_base_class(ConsTag),
     (
         UsesConstructors = yes,
         (
@@ -999,35 +1000,46 @@ ml_gen_enum_constant_data_decl_flags =
 
 %---------------------------------------------------------------------------%
 
-ml_tag_uses_base_class(Tag) = UsesBaseClass :-
+ml_tag_uses_base_class(ConsTag) = UsesBaseClass :-
     % A constructor is represented using the base class (rather than
     % a derived class) if there is only a single functor.
+
     (
-        Tag = single_functor_tag,
-        UsesBaseClass = tag_uses_base_class
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        UsesBaseClass = ml_remote_args_tag_uses_base_class(RemoteArgsTagInfo)
     ;
-        Tag = ground_term_const_tag(_ConstNum, SubTag),
+        ConsTag = ground_term_const_tag(_ConstNum, SubTag),
         UsesBaseClass = ml_tag_uses_base_class(SubTag)
     ;
-        ( Tag = string_tag(_)
-        ; Tag = float_tag(_)
-        ; Tag = int_tag(_)
-        ; Tag = foreign_tag(_, _)
-        ; Tag = closure_tag(_, _, _)
-        ; Tag = type_ctor_info_tag(_, _, _)
-        ; Tag = base_typeclass_info_tag(_, _, _)
-        ; Tag = type_info_const_tag(_)
-        ; Tag = typeclass_info_const_tag(_)
-        ; Tag = tabling_info_tag(_, _)
-        ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_entry_tag(_, _)
-        ; Tag = unshared_tag(_)
-        ; Tag = direct_arg_tag(_)
-        ; Tag = shared_local_tag_no_args(_, _, _)
-        ; Tag = local_args_tag(_)
-        ; Tag = shared_remote_tag(_, _)
-        ; Tag = no_tag
-        ; Tag = dummy_tag
+        ( ConsTag = string_tag(_)
+        ; ConsTag = float_tag(_)
+        ; ConsTag = int_tag(_)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
+        ; ConsTag = direct_arg_tag(_)
+        ; ConsTag = shared_local_tag_no_args(_, _, _)
+        ; ConsTag = local_args_tag(_)
+        ; ConsTag = no_tag
+        ; ConsTag = dummy_tag
+        ),
+        UsesBaseClass = tag_does_not_use_base_class
+    ).
+
+ml_remote_args_tag_uses_base_class(RemoteArgsTagInfo) = UsesBaseClass :-
+    (
+        RemoteArgsTagInfo = remote_args_only_functor,
+        UsesBaseClass = tag_uses_base_class
+    ;
+        ( RemoteArgsTagInfo = remote_args_unshared(_)
+        ; RemoteArgsTagInfo = remote_args_shared(_, _)
+        ; RemoteArgsTagInfo = remote_args_ctor(_)
         ),
         UsesBaseClass = tag_does_not_use_base_class
     ).
@@ -1114,12 +1126,10 @@ enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval) :-
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
         ; ConsTag = shared_local_tag_no_args(_, _, _)
         ; ConsTag = local_args_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = remote_args_tag(_)
         ; ConsTag = no_tag
         ),
         unexpected($pred, "enum constant requires an int or foreign tag")

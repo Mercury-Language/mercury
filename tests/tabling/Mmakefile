@@ -40,9 +40,10 @@ SIMPLE_NONLOOP_PROGS = \
 	pack_args_memo \
 	reset_stats_intermod \
 	specified_hidden_arg \
-	table_foreign_output \
 	table_foreign_enum \
+	table_foreign_output \
 	test_enum \
+	test_packed \
 	unused_args
 
 # Tabling of nondet predicates and deep profiling are (currently)

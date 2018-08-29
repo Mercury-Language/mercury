@@ -220,8 +220,12 @@ start_label:
                             sectag = MR_unmkbody(data_value) &                \
                                 ((1 << ptag_layout->MR_sectag_numbits) - 1);  \
                             break;                                            \
-                        case MR_SECTAG_REMOTE:                                \
+                        case MR_SECTAG_REMOTE_FULL_WORD:                      \
                             sectag = data_value[0];                           \
+                            break;                                            \
+                        case MR_SECTAG_REMOTE_BITS:                           \
+                            sectag = data_value[0] &                          \
+                                ((1 << ptag_layout->MR_sectag_numbits) - 1);  \
                             break;                                            \
                         case MR_SECTAG_NONE:             /* fall-though */    \
                         case MR_SECTAG_NONE_DIRECT_ARG:                       \
@@ -307,9 +311,22 @@ start_label:
                         }
                         break;
 
-                    case MR_SECTAG_REMOTE:
+                    case MR_SECTAG_REMOTE_FULL_WORD:
                         x_sectag = x_data_value[0];
                         y_sectag = y_data_value[0];
+
+                        if (x_sectag != y_sectag) {
+                            return_unify_answer(builtin, user_by_rtti, 0,
+                                MR_FALSE);
+                        }
+
+                        break;
+
+                    case MR_SECTAG_REMOTE_BITS:
+                        x_sectag = x_data_value[0] &
+                            ((1 << ptag_layout->MR_sectag_numbits) - 1);
+                        y_sectag = y_data_value[0] &
+                            ((1 << ptag_layout->MR_sectag_numbits) - 1);
 
                         if (x_sectag != y_sectag) {
                             return_unify_answer(builtin, user_by_rtti, 0,
@@ -364,23 +381,27 @@ start_label:
       #endif
                     break;
 
-                case MR_SECTAG_REMOTE:
+                case MR_SECTAG_REMOTE_FULL_WORD:
                     cur_slot = 1;
                     // The work is done after the switch.
                     break;
 
-                case MR_SECTAG_NONE:                    // fall-through
-                case MR_SECTAG_LOCAL_BITS:
+                case MR_SECTAG_NONE:
                     cur_slot = 0;
                     // The work is done after the switch.
                     break;
 
+                case MR_SECTAG_REMOTE_BITS:     // fall through
+                case MR_SECTAG_LOCAL_BITS:
+                    MR_fatal_error("packed with sectag in du switch NYI");
+                    break;
+
                 case MR_SECTAG_LOCAL_REST_OF_WORD:
                     // This case should have been handled in full above.
-                    MR_fatal_error("MR_SECTAG_LOCAL in direct arg switch");
+                    MR_fatal_error("MR_SECTAG_LOCAL_REST_OF_WORD in du switch");
 
                 default:
-                    MR_fatal_error("bad sectag location in direct arg switch");
+                    MR_fatal_error("bad sectag location in du switch");
                 }
 
                 arity = functor_desc->MR_du_functor_orig_arity;
@@ -435,6 +456,12 @@ start_label:
                 for (i = 0; i < arity; i++) {
                     MR_TypeInfo arg_type_info;
 
+                    // XXX This code is like the expansion of
+                    // MR_get_arg_type_info(type_info, functor_desc,
+                    //     x_data_value, i);
+                    // but with save/restore of transient hp.
+                    // Either that macro should have the same save/restore,
+                    // or this code does not need it.
                     if (MR_arg_type_may_contain_var(functor_desc, i)) {
                         MR_save_transient_hp();
                         arg_type_info = MR_create_type_info_maybe_existq(
@@ -448,6 +475,7 @@ start_label:
                     }
   #ifdef  select_compare_code
                     MR_save_transient_registers();
+                    // XXX The code below is wrong for packed args.
     #ifdef include_compare_rep_code
                     result = MR_generic_compare_representation(arg_type_info,
                         x_data_value[cur_slot], y_data_value[cur_slot]);

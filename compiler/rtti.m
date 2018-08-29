@@ -283,7 +283,7 @@
                 du_ll_sec_tag       :: sectag_and_locn
             )
     ;       du_hl_rep(
-                remote_sec_tag      :: int
+                remote_sec_tag      :: uint
             ).
 
     % Describes the types of the existentially typed arguments of a
@@ -351,7 +351,8 @@
     ;       sectag_none_direct_arg
     ;       sectag_local_rest_of_word
     ;       sectag_local_bits(uint8, uint)              % #bits, mask
-    ;       sectag_remote.
+    ;       sectag_remote_word
+    ;       sectag_remote_bits(uint8, uint).            % #bits, mask
 
     % Describes the location, maybe size, and value of the secondary tag,
     % for a given functor in a given type.
@@ -361,7 +362,8 @@
     ;       sectag_locn_none_direct_arg
     ;       sectag_locn_local_rest_of_word(uint)        % value
     ;       sectag_locn_local_bits(uint, uint8, uint)   % value, #bits, mask
-    ;       sectag_locn_remote(uint).
+    ;       sectag_locn_remote_word(uint)               % value
+    ;       sectag_locn_remote_bits(uint, uint8, uint). % value, #bits, mask
 
     % Information about an argument of a functor in a discriminated union type.
     %
@@ -1536,8 +1538,11 @@ sectag_locn_to_string(SecTag, TargetPrefixes, String) :-
         SecTag = sectag_local_bits(_, _),
         String = "MR_SECTAG_LOCAL_BITS"
     ;
-        SecTag = sectag_remote,
-        String = "MR_SECTAG_REMOTE"
+        SecTag = sectag_remote_word,
+        String = "MR_SECTAG_REMOTE_FULL_WORD"
+    ;
+        SecTag = sectag_remote_bits(_, _),
+        String = "MR_SECTAG_REMOTE_BITS"
     ).
 
 sectag_and_locn_to_locn_string(SecTag, TargetPrefixes, String) :-
@@ -1558,8 +1563,11 @@ sectag_and_locn_to_locn_string(SecTag, TargetPrefixes, String) :-
         SecTag = sectag_locn_local_bits(_, _, _),
         String = "MR_SECTAG_LOCAL_BITS"
     ;
-        SecTag = sectag_locn_remote(_),
-        String = "MR_SECTAG_REMOTE"
+        SecTag = sectag_locn_remote_word(_),
+        String = "MR_SECTAG_REMOTE_FULL_WORD"
+    ;
+        SecTag = sectag_locn_remote_bits(_, _, _),
+        String = "MR_SECTAG_REMOTE_BITS"
     ).
 
 functor_subtype_info_to_string(FunctorSubtypeInfo, TargetPrefixes, String) :-

@@ -45,28 +45,31 @@
 
     MR_TypeInfo         type_info;
     MR_TypeInfo         arg_type_info;
-    MR_Word             *argument_ptr;
-    const MR_DuArgLocn *arg_locn_ptr;
-    MR_Word             value;
+    MR_Word             arg_term;
+    MR_Word             *word_sized_arg_ptr;    // unused here
     MR_bool             success;
 
     type_info = (MR_TypeInfo) TYPEINFO_ARG;
 
     MR_save_transient_registers();
-    success = arg_func(type_info, &TERM_ARG, SELECTOR_ARG, &arg_type_info,
-        &argument_ptr, &arg_locn_ptr, NONCANON);
+    success = arg_func(type_info, &TERM_ARG, NONCANON, SELECTOR_ARG,
+        &arg_type_info, &arg_term, &word_sized_arg_ptr);
     MR_restore_transient_registers();
     if (success) {
-        value = MR_arg_value(argument_ptr, arg_locn_ptr);
-
-        // The following code is what *should* be here. The reason it is
-        // commented out, and the code to create a univ used instead, is
-        // the typechecking bug reported on 30 Jan, 2002.
+        // The following code is what *should* be here. The commit message
+        // of commit fcccbd166f5fe555baffde1b7a644ef5ef14f4dd says it should be
+        // reinstated when "the typechecker has been fixed to allow different
+        // clauses to return existentially typed values". This refers to
+        // predicates such as deconstruct.arg, which has (or at least had)
+        // three separate modes, each of which is for a specific value
+        // of its NONCANON argument, and which has (or at least had) separate
+        // foreign_procs for each mode. See the discussion on m-rev starting
+        // around 2002 Jan 30.
         //
         // SELECTED_ARG = value;
         // SELECTED_TYPE_INFO = arg_type_info;
 
-        MR_new_univ_on_hp(SELECTED_ARG, arg_type_info, value);
+        MR_new_univ_on_hp(SELECTED_ARG, arg_type_info, arg_term);
     }
 
 #ifdef SAVE_SUCCESS

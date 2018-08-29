@@ -935,10 +935,15 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         Locn = "MR_SECTAG_LOCAL_BITS",
         Stag = uint.cast_to_int(StagUint)
     ;
-        SectagAndLocn = sectag_locn_remote(StagUint),
-        Locn = "MR_SECTAG_REMOTE",
+        SectagAndLocn = sectag_locn_remote_word(StagUint),
+        Locn = "MR_SECTAG_REMOTE_FULL_WORD",
         Stag = uint.cast_to_int(StagUint),
         NumSectagBits = 0u8
+    ;
+        SectagAndLocn = sectag_locn_remote_bits(StagUint, NumSectagBits,
+            _Mask),
+        Locn = "MR_SECTAG_REMOTE_BITS",
+        Stag = uint.cast_to_int(StagUint)
     ),
     io.write_string(Locn, !IO),
     io.write_string(",\n\t", !IO),
@@ -1365,18 +1370,6 @@ output_du_ptag_ordered_table_body(RttiTypeCtor,
         output_du_ptag_ordered_table_body(RttiTypeCtor, PtagTail,
             NextPtag, !IO)
     ).
-
-    % Output a `dummy' ptag layout, for use by tags that aren't *real* tags,
-    % such as the tag reserved when --reserve-tag is on.
-    %
-    % XXX Note that if one of these dummy ptag definitions is actually accessed
-    % by the Mercury runtime, the result will be undefined. This should be
-    % fixed by adding a MR_SECTAG_DUMMY and handling it gracefully.
-    %
-:- pred output_dummy_ptag_layout_defn(io::di, io::uo) is det.
-
-output_dummy_ptag_layout_defn(!IO) :-
-    io.write_string("\t{ 0, MR_SECTAG_VARIABLE, NULL },\n", !IO).
 
 %-----------------------------------------------------------------------------%
 

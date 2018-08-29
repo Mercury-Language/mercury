@@ -97,7 +97,8 @@ try_again:
 #endif
                     return 0;
 
-                case MR_SECTAG_REMOTE:
+                case MR_SECTAG_REMOTE_WORD:         // fall-through
+                case MR_SECTAG_REMOTE_BITS:
 #ifdef MR_DEBUG_TERM_SIZES
                     sectag = MR_field(MR_mktag(ptag), term, 0);
 

@@ -161,10 +161,12 @@ associate_cons_id_args_with_widths(ModuleInfo, ConsId, AllArgs,
             zip_args_widths(AllArgs, ConsArgRepns, AllArgsPosWidths)
         else if NumExtraArgs > 0 then
             list.det_split_list(NumExtraArgs, AllArgs, ExtraArgs, ConsArgs),
-            ( if ConsTag = shared_remote_tag(_, RemoteSecTag) then
-                RemoteSecTag = remote_sectag(_, AddedBy),
-                expect(unify(AddedBy, sectag_added_by_unify), $pred,
-                    "AddedBy != sectag_added_by_unify"),
+            ( if
+                ConsTag = remote_args_tag(RemoteArgsTagInfo),
+                RemoteArgsTagInfo = remote_args_shared(_, RemoteSecTag),
+                RemoteSecTag = remote_sectag(_, SectagSize),
+                SectagSize = rsectag_word
+            then
                 InitOffset = 1
             else
                 InitOffset = 0

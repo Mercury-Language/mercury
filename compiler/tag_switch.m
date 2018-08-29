@@ -707,10 +707,17 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
         )
     ;
         (
-            StagLoc = sectag_remote,
+            StagLoc = sectag_remote_word,
             OrigStagRval = lval(field(yes(MainPtag), Rval,
                 const(llconst_int(0)))),
-            Comment = "compute remote sec tag to switch on"
+            Comment = "compute remote word sec tag to switch on"
+        ;
+            StagLoc = sectag_remote_bits(_NumBits, Mask),
+            StagWordRval = lval(field(yes(MainPtag), Rval,
+                const(llconst_int(0)))),
+            OrigStagRval = binop(bitwise_and(int_type_uint),
+                StagWordRval, const(llconst_uint(Mask))),
+            Comment = "compute remote sec tag bits to switch on"
         ;
             StagLoc = sectag_local_rest_of_word,
             OrigStagRval = unop(unmkbody, Rval),

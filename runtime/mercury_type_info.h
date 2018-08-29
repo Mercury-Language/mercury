@@ -803,15 +803,16 @@ typedef struct {
 //
 // The primary and secondary fields give the corresponding tag values, and
 // the sectag_locn field gives the location of the secondary tag.
-// MR_SECTAG_REMOTE means the secondary tag is stored as the first word
+// MR_SECTAG_REMOTE_* means the secondary tag is stored in the first word
 // of the memory cell being pointed to; MR_SECTAG_LOCAL_* means it is stored
-// next to the primary tag itself. MR_SECTAG_LOCAL_BITS means that
+// next to the primary tag itself. MR_SECTAG_{REMOTE,LOCAL}_BITS means that
 // at least *some* of the function symbols whose representation includes
 // the given primary tag value have subword-sized arguments packed
 // next to (and starting immediately after) the secondary tag, while
-// MR_SECTAG_LOCAL_REST_OF_WORD means that this is never the case.
-// MR_SECTAG_NONE_DIRECT_ARG is a sub-case of MR_SECTAG_NONE, where the
-// function symbol is represented as a tagged pointer to its only argument.
+// MR_SECTAG_{REMOTE_FULL_WORD,LOCAL_REST_OF_WORD} means that this is
+// never the case. MR_SECTAG_NONE_DIRECT_ARG is a sub-case of MR_SECTAG_NONE,
+// where the function symbol is represented as a tagged pointer to its
+// only argument.
 //
 // The ordinal field gives the position of the function symbol in the
 // list of function symbols of the type; one function symbol compares
@@ -851,9 +852,11 @@ typedef struct {
 // mode information) then the subtype_info field will be
 // MR_DU_SUBTYPE_INFO_EXISTS, otherwise it will be MR_DU_SUBTYPE_INFO_NONE.
 //
-// If the secondary tag location is MR_SECTAG_LOCAL_BITS, then the
-// num_sectag_bits will specify *how many* bits immediately after the
-// primary tag the secondary tag occupies.
+// If the secondary tag location is MR_SECTAG_{REMOTE,LOCAL}_BITS, then the
+// num_sectag_bits will specify *how many* bits the secondary tag occupies,
+// either at the start of the first word of the remote memory cell
+// (for MR_SECTAG_REMOTE_BITS) or immediately after the primary tag
+// (for MR_SECTAG_LOCAL_BITS).
 
 typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_SECTAG_NONE),
@@ -879,8 +882,11 @@ typedef struct {
     // would require a nontrivial bootstrapping sequence.
     //
     // In the special case of subword-sized arguments that are packed
-    // next to a local secondary tag, the value of the MR_arg_offset field
-    // will be -1.
+    // next to a remote secondary tag (MR_SECTAG_REMOTE_BITS), the value of
+    // the MR_arg_offset field will be -1.
+    // In the special case of subword-sized arguments that are packed
+    // next to a local secondary tag (MR_SECTAG_LOCAL_BITS), the value of
+    // the MR_arg_offset field will be -2.
 
     MR_int_least8_t         MR_arg_shift;
     MR_int_least8_t         MR_arg_bits;
@@ -1066,6 +1072,11 @@ typedef struct {
     // also be something like a uint8_t, while the num_sharers field
     // should be MR_uint_least32_t (or MR_uint_least16_t, if want to make
     // a practical limit official).
+    // XXX ARG_PACK We should consider storing the value of the sectag mask
+    // ((1 << ptag_layout->MR_sectag_numbits) - 1) here, to avoid having to
+    // compute it potentially millions of times. It could be stored either as
+    // a MR_uint_least32_t or as a MR_uint_least16_t, depending on how
+    // conservative we want to be.
 } MR_DuPtagLayout;
 
 typedef const MR_DuPtagLayout *MR_DuTypeLayout;

@@ -1456,12 +1456,24 @@
     ;       new_object(
                 % new_object(Target, Tag, Type, Size, CtorName,
                 %   ArgAndTypes, MayUseAtomic, MaybeAllocId):
+                %
                 % Allocate a memory block of the given size,
-                % initialize it with a new object of the given
-                % type by calling the constructor with the specified
-                % arguments, and put its address in the given lval,
-                % possibly after tagging the address with a given tag.
-                % (Some targets might not support tags.)
+                % initialize it with a new object of the given type
+                % by calling the constructor with the specified arguments,
+                % and put its address in the given lval, possibly after
+                % putting the given ptag on the address. The low level
+                % data representation support ptags; the high level data
+                % representation does not.
+                %
+                % XXX ARG_PACK Some of the following fields are meaningful
+                % only for the low level data representation, some are
+                % meaningful only for the high level data representation.
+                % We should encode these invariants in the data structure,
+                % either by putting each set of such arguments into one
+                % or other alternative of a type such as
+                % :- type t ---> low_level_data(...) ; high_level_data(...).
+                % or by having separate new_object_lld and new_object_hld
+                % atomic statements.
 
                 % The target to assign the new object's address to.
                 mlds_lval,
@@ -1479,6 +1491,8 @@
                 % below) is a secondary tag. For target languages with
                 % constructors, secondary tags are implicitly initialised by
                 % the constructor, not passed in.
+                % XXX update me
+                % XXX document relationship with the maybe(qual_ctor_id) field.
                 bool,
 
                 % The type of the object being allocated.

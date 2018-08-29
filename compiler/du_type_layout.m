@@ -295,7 +295,7 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
     else if NumPtagBits = 3 then
         MaybePrimaryTags = max_primary_tag(ptag(7u8), NumPtagBits)
     else
-        MaxPtagInt = int.pow(2, NumPtagBits) - 1,
+        MaxPtagInt = (1 << NumPtagBits) - 1,
         MaxPtagUint8 = uint8.det_from_int(MaxPtagInt),
         MaybePrimaryTags = max_primary_tag(ptag(MaxPtagUint8), NumPtagBits)
     ),
@@ -562,7 +562,7 @@ add_repn_to_foreign_enum_ctor(TypeCtor, ConsTagMap, Ctor, CtorRepn,
 
 add_dummy_repn_to_ctor_arg(ConsArg) = ConsArgRepn :-
     ConsArg = ctor_arg(MaybeFieldName, Type, Context),
-    DummyWidth = apw_full(arg_only_offset(-1), cell_offset(-1)),
+    DummyWidth = apw_full(arg_only_offset(-3), cell_offset(-3)),
     ConsArgRepn = ctor_arg_repn(MaybeFieldName, Type, DummyWidth, Context).
 
 %---------------------%
@@ -891,9 +891,9 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
     ( if
         Params ^ ddp_maybe_primary_tags = max_primary_tag(_, NumPtagBits),
         Params ^ ddp_allow_packing_local_sectags = yes,
-        ctor_has_all_packable_args(Params, ComponentTypeMap, SingleCtor,
-            NumCtorArgBits),
-        NumPtagBits + NumCtorArgBits =< Params ^ ddp_arg_pack_bits
+        Limit = Params ^ ddp_arg_pack_bits - NumPtagBits,
+        ctor_has_all_packable_args_within_limit(Params, ComponentTypeMap,
+            SingleCtor, Limit, _NumBits)
     then
         SingleCtorTag = local_args_tag(local_args_only_functor),
         % This LocalSectag says the local sectag contains zero bits,
@@ -901,14 +901,14 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
         % (which is therefore also zero).
         LocalSectag = local_sectag(0u, 0u, sectag_bits(0u8, 0u)),
         decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
-            LocalSectag, SingleCtorArgs, SingleCtorArgRepns, !Specs)
+            LocalSectag, SingleCtorArgs, SingleCtorArgRepns)
     else
-        SingleCtorTag = single_functor_tag,
-        NumRemoteSecTagBits = 0,
+        SingleCtorTag = remote_args_tag(remote_args_only_functor),
+        NumRemoteSectagBits = 0,
         decide_complex_du_ctor_remote_args(ModuleInfo, Params,
-            ComponentTypeMap, TypeStatus, NumRemoteSecTagBits, SingleCtorTag,
+            ComponentTypeMap, TypeStatus, NumRemoteSectagBits, SingleCtorTag,
             MaybeExistConstraints, SingleCtorSymName, SingleCtorContext,
-            SingleCtorArgs, SingleCtorArgRepns, !Specs)
+            SingleCtorArgs, SingleCtorArgRepns, _MaybeTagwordArgs, !Specs)
     ),
     SingleCtorRepn = ctor_repn(Ordinal, MaybeExistConstraints,
         SingleCtorSymName, SingleCtorTag,
@@ -932,21 +932,25 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
         TypeCtor, TypeStatus, Ctors, _MaybeCanonical, Repn, !Specs) :-
     Target = Params ^ ddp_target,
     UsesConstructors = target_uses_constructors(Target),
-    (
-        UsesConstructors = no,
-        AddedBy = sectag_added_by_unify
-    ;
-        UsesConstructors = yes,
-        AddedBy = sectag_added_by_constructor
-    ),
     MaybePrimaryTags = Params ^ ddp_maybe_primary_tags,
     (
         MaybePrimaryTags = no_primary_tags,
-        assign_tags_to_non_direct_arg_functors(TypeCtor, ptag(0u8), 0u8,
-            AddedBy, Ctors, NumRemoteSecTags, map.init, CtorTagMap),
+        (
+            UsesConstructors = yes,
+            % In this case, NumRemoteSectags is actually more like "NumDatas".
+            assign_ctor_remote_args_tags(TypeCtor,
+                Ctors, 0u, NumRemoteSectags, map.init, CtorTagMap)
+        ;
+            UsesConstructors = no,
+            assign_unshared_then_shared_remote_args_tags(TypeCtor, 0u8, 0u8,
+                Ctors, NumRemoteSectags, map.init, CtorTagMap)
+        ),
         DirectArgFunctorNames = []
     ;
         MaybePrimaryTags = max_primary_tag(MaxPtag, NumPtagBits),
+        expect(unify(UsesConstructors, no), $pred,
+            "have ptags but UsesConstructors = yes"),
+        MaxPtag = ptag(MaxPtagUint8),
         separate_out_constants(Ctors, Constants, Functors),
         MaybeDirectArgs = Params ^ ddp_maybe_direct_args,
         (
@@ -990,36 +994,60 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
                 true
             else
                 LocalsPtag = ptag(!.CurPtagUint8),
-                CurLocalSecTag0 = 0u,
+                CurLocalSectag0 = 0u,
                 assign_tags_to_constants(TypeCtor, LocalsPtag,
                     NumPtagBits, LocalSectagBits, MustMask,
-                    CurLocalSecTag0, CurLocalSecTag1, Constants, !CtorTagMap),
+                    CurLocalSectag0, CurLocalSectag1, Constants, !CtorTagMap),
                 assign_tags_to_local_packed_functors(TypeCtor, LocalsPtag,
                     NumPtagBits, LocalSectagBits,
-                    CurLocalSecTag1, LocalPackedFunctors, !CtorTagMap),
+                    CurLocalSectag1, LocalPackedFunctors, !CtorTagMap),
                 !:CurPtagUint8 = !.CurPtagUint8 + 1u8
             ),
-            assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag,
+            assign_tags_to_direct_arg_functors(TypeCtor, MaxPtagUint8,
                 !CurPtagUint8, DirectArgFunctors, NonDirectArgFunctors,
                 LeftOverDirectArgFunctors, !CtorTagMap),
-            assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag,
-                !.CurPtagUint8, AddedBy,
+            assign_unshared_then_shared_remote_args_tags(TypeCtor,
+                MaxPtagUint8, !.CurPtagUint8,
                 LeftOverDirectArgFunctors ++ NonLocalPackedFunctors,
-                NumRemoteSecTags, !CtorTagMap),
+                NumRemoteSectags, !CtorTagMap),
             CtorTagMap = !.CtorTagMap
         )
     ),
-    ( if NumRemoteSecTags = 0u then
-        NumRemoteSecTagBits = 0
+    ( if NumRemoteSectags = 0u then
+        NumRemoteSectagBitsInt = 0,
+        NumRemoteSectagBits = 0u8
     else
-        NumRemoteSecTagsInt = uint.cast_to_int(NumRemoteSecTags),
+        NumRemoteSectagsInt = uint.cast_to_int(NumRemoteSectags),
         % XXX int.log2 should actually be uint.log2.
-        int.log2(NumRemoteSecTagsInt, NumRemoteSecTagBits)
+        int.log2(NumRemoteSectagsInt, NumRemoteSectagBitsInt),
+        NumRemoteSectagBits = uint8.det_from_int(NumRemoteSectagBitsInt)
     ),
     list.map_foldl2(
         decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
-            TypeCtor, TypeStatus, CtorTagMap, NumRemoteSecTagBits),
-        Ctors, CtorRepns, map.init, CtorRepnMap, !Specs),
+            TypeCtor, TypeStatus, CtorTagMap, NumRemoteSectagBitsInt),
+        Ctors, CtorRepns0, no_tagword_args, MaybeTagwordArgs, !Specs),
+    (
+        MaybeTagwordArgs = no_tagword_args,
+        CtorRepns = CtorRepns0
+    ;
+        MaybeTagwordArgs = some_tagword_args,
+        % Some ctors with remote_args_tag(remote_args_shared(...)) tags
+        % have arguments packed up against their sectags, so we have to set
+        % the representation of *all* constructors with remote sectags
+        % to use just NumRemoteSectagBits to represent the sectag,
+        % *not* the whole word. We use this to signal the code generator
+        % that computing the remote sectag requires masking off any bits
+        % that are not part of the sectag. If we did not do this, then
+        % bits belonging to the arguments packed next to the sectag
+        % would end up in the value that we compute for the sectag.
+        % Trying to use such a "contaminated" sectag e.g. as an index into
+        % an array of MR_DuFunctorDescs would lead to incorrect behavior.
+        SectagMask = (1u << NumRemoteSectagBitsInt) - 1u,
+        SectagBits = sectag_bits(NumRemoteSectagBits, SectagMask),
+        SectagSize = rsectag_subword(SectagBits),
+        set_remote_args_sectag_size(SectagSize, CtorRepns0, CtorRepns)
+    ),
+    list.foldl(insert_ctor_repn_into_map, CtorRepns, map.init, CtorRepnMap),
     compute_cheaper_tag_test(TypeCtor, CtorRepns, CheaperTagTest),
     % The maybe() wrapper looks to be unnecessary, but we currently use it
     % to allow the representation of "where direct_arg is []" annotations
@@ -1034,31 +1062,83 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
     Repn = du_type_repn(CtorRepns, CtorRepnMap, CheaperTagTest,
         du_type_kind_general, MaybeDirectArgFunctorNames).
 
+:- pred set_remote_args_sectag_size(rsectag_size::in,
+    list(constructor_repn)::in, list(constructor_repn)::out) is det.
+
+set_remote_args_sectag_size(_, [], []).
+set_remote_args_sectag_size(SectagSize,
+        [CtorRepn0 | CtorRepns0], [CtorRepn | CtorRepns]) :-
+    ConsTag0 = CtorRepn0 ^ cr_tag,
+    (
+        ConsTag0 = remote_args_tag(RemoteArgsTagInfo0),
+        (
+            RemoteArgsTagInfo0 = remote_args_shared(Ptag, RemoteSectag0),
+            RemoteSectag0 = remote_sectag(Sectag, _SectagSize0),
+            RemoteSectag = remote_sectag(Sectag, SectagSize),
+            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+            ConsTag = remote_args_tag(RemoteArgsTagInfo),
+            CtorRepn = CtorRepn0 ^ cr_tag := ConsTag
+        ;
+            ( RemoteArgsTagInfo0 = remote_args_only_functor
+            ; RemoteArgsTagInfo0 = remote_args_unshared(_)
+            ; RemoteArgsTagInfo0 = remote_args_ctor(_)
+            ),
+            CtorRepn = CtorRepn0
+        )
+    ;
+        ( ConsTag0 = int_tag(_)
+        ; ConsTag0 = float_tag(_)
+        ; ConsTag0 = string_tag(_)
+        ; ConsTag0 = foreign_tag(_, _)
+        ; ConsTag0 = dummy_tag
+        ; ConsTag0 = shared_local_tag_no_args(_, _, _)
+        ; ConsTag0 = ground_term_const_tag(_, _)
+        ; ConsTag0 = type_info_const_tag(_)
+        ; ConsTag0 = typeclass_info_const_tag(_)
+        ; ConsTag0 = type_ctor_info_tag(_, _, _)
+        ; ConsTag0 = base_typeclass_info_tag(_, _, _)
+        ; ConsTag0 = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag0 = tabling_info_tag(_, _)
+        ; ConsTag0 = table_io_entry_tag(_, _)
+        ; ConsTag0 = local_args_tag(_)
+        ; ConsTag0 = no_tag
+        ; ConsTag0 = direct_arg_tag(_)
+        ; ConsTag0 = closure_tag(_, _, _)
+        ),
+        CtorRepn = CtorRepn0
+    ),
+    set_remote_args_sectag_size(SectagSize, CtorRepns0, CtorRepns).
+
 %---------------------------------------------------------------------------%
 
 :- pred decide_complex_du_type_ctor(module_info::in, decide_du_params::in,
     component_type_map::in, type_ctor::in, type_status::in,
     cons_id_to_tag_map::in, int::in, constructor::in, constructor_repn::out,
-    ctor_name_to_repn_map::in, ctor_name_to_repn_map::out,
+    maybe_tagword_args::in, maybe_tagword_args::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
-        TypeCtor, TypeStatus, CtorTagMap, NumRemoteSecTagBits,
-        Ctor, CtorRepn, !CtorRepnMap, !Specs) :-
+        TypeCtor, TypeStatus, CtorTagMap, NumRemoteSectagBits,
+        Ctor, CtorRepn, !MaybeTagwordArgs, !Specs) :-
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, CtorArity, CtorContext),
     ConsId = cons(CtorSymName, CtorArity, TypeCtor),
     map.lookup(CtorTagMap, ConsId, CtorTag),
     (
-        ( CtorTag = single_functor_tag
-        ; CtorTag = unshared_tag(_)
-        ; CtorTag = shared_remote_tag(_, _)
+        ( CtorTag = remote_args_tag(_)
         ; CtorTag = no_tag
         ; CtorTag = direct_arg_tag(_)
         ),
         decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
-            TypeStatus, NumRemoteSecTagBits, CtorTag, MaybeExistConstraints,
-            CtorSymName, CtorContext, CtorArgs, CtorArgRepns, !Specs)
+            TypeStatus, NumRemoteSectagBits, CtorTag, MaybeExistConstraints,
+            CtorSymName, CtorContext, CtorArgs, CtorArgRepns,
+            CtorMaybeTagwordArgs, !Specs),
+        (
+            CtorMaybeTagwordArgs = no_tagword_args
+        ;
+            CtorMaybeTagwordArgs = some_tagword_args,
+            !:MaybeTagwordArgs = some_tagword_args
+        )
     ;
         CtorTag = local_args_tag(LocalArgsTagInfo),
         (
@@ -1074,7 +1154,7 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
             "shared_local_tag_with_args but exist_constraints"),
         decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
-            LocalSectag, CtorArgs, CtorArgRepns, !Specs)
+            LocalSectag, CtorArgs, CtorArgRepns)
     ;
         ( CtorTag = dummy_tag
         ; CtorTag = int_tag(_)
@@ -1100,33 +1180,31 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         unexpected($pred, "unexpected tag")
     ),
     CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName, CtorTag,
-        CtorArgRepns, CtorArity, CtorContext),
-    insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap).
+        CtorArgRepns, CtorArity, CtorContext).
 
 %---------------------------------------------------------------------------%
 
+:- inst sortof_remote_args_tag for cons_tag/0
+    --->    remote_args_tag(ground)
+    ;       no_tag
+    ;       direct_arg_tag(ground).
+
+:- type maybe_tagword_args
+    --->    no_tagword_args
+    ;       some_tagword_args.
+
 :- pred decide_complex_du_ctor_remote_args(module_info::in,
     decide_du_params::in, component_type_map::in, type_status::in,
-    int::in, cons_tag::in, maybe_cons_exist_constraints::in,
-    sym_name::in, prog_context::in,
+    int::in, cons_tag::in(sortof_remote_args_tag),
+    maybe_cons_exist_constraints::in, sym_name::in, prog_context::in,
     list(constructor_arg)::in, list(constructor_arg_repn)::out,
+    maybe_tagword_args::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
-        TypeStatus, _NumRemoteSecTagBits, CtorTag, MaybeExistConstraints,
-        CtorSymName, CtorContext, CtorArgs, CtorArgRepns, !Specs) :-
-    ( if
-        CtorTag = shared_remote_tag(_, RemoteSectag),
-        % If the target uses constructors, then the *Mercury* compiler
-        % is not responsible for adding the secondary tag to the start
-        % of the memory cell, and for the purposes of unifications,
-        % the cell starts *after* the tag.
-        RemoteSectag ^ rsectag_added = sectag_added_by_unify
-    then
-        NumSecTagWords = 1
-    else
-        NumSecTagWords = 0
-    ),
+        TypeStatus, NumRemoteSectagBits, CtorTag, MaybeExistConstraints,
+        CtorSymName, CtorContext, CtorArgs, CtorArgRepns, MaybeTagwordArgs,
+        !Specs) :-
     (
         MaybeExistConstraints = no_exist_constraints,
         NumExtraArgWords = 0
@@ -1139,7 +1217,8 @@ decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
         NumExtraArgWords = NumTypeInfos + NumTypeClassInfos
     ),
 
-    % The memory cell for a term consists of, in order:
+    % There are two schemes for what a memory cell for a term may look like.
+    % In the traditional scheme, the cell consists of, in order:
     %
     % - a word containing the remote secondary tag bits, if this ctor
     %   has a remote secondary tag;
@@ -1151,54 +1230,93 @@ decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
     %
     % - the words containing the ctor's arguments themselves.
     %
-    % The calls to decide_complex_du_ctor_remote_args_loop decide the
-    % representation only of the last category. FirstArgWordNum measures
-    % offset with respect to the last category only. FirstCellWordNum measures
-    % the offset with respect to the start of the cell.
+    % In a newer scheme that applies only to functors that have secondary tags
+    % but do not have extra arguments containing typeinfos and/or
+    % typeclass_infos, the cell consists of:
     %
-    % TODO In the future, if NumExtraArgWords is really zero, we should pass
-    % FirstArgWordNum = 0, FirstShift = NumRemoteSecTagBits, to allow any
-    % initial sub-word-sized arguments to be packed together with the
-    % secondary tag. If *any* ctor in a du type actually does any such packing,
-    % then accessing the remote secondary tag on values of that type
-    % will require applying a mask to the first word of the cell.
-    % The simplest way to ensure finding all the places where this must be done
-    % is to change the second argument of shared_remote_tag from an int
-    % to something that corresponds either to apw_full_word (the current
-    % arrangement where the remote secondary tag takes a full word) or to
-    % apw_partial_first (the new, optimized arrangement).
+    % - a word containing the remote secondary tag bits, and
+    %   as long a subsequence of the initial subword-sized arguments
+    %   as will fit, and
     %
-    % This change would require changes to the representation of RTTI,
-    % and therefore both to the compiler code that generates RTTI,
-    % and to the runtime code that interprets RTTI. It would probably need
-    % nontrivial bootstrapping.
+    % - the words containing the rest of the ctor's arguments.
     %
+    % The first arm of this switch and the else part of the second arm
+    % handles the first case, while the then part of the second arm
+    % handles the second case.
+    (
+        ( CtorTag = remote_args_tag(remote_args_only_functor)
+        ; CtorTag = remote_args_tag(remote_args_unshared(_))
+        ; CtorTag = remote_args_tag(remote_args_ctor(_))
+        ; CtorTag = no_tag
+        ; CtorTag = direct_arg_tag(_)
+        ),
+        MaybeTagwordArgs = no_tagword_args,
+        TagwordCtorArgRepns = [],
+        NonTagwordCtorArgs = CtorArgs,
+        NumTagwords = 0
+    ;
+        CtorTag = remote_args_tag(remote_args_shared(_, _)),
+        ( if
+            % Is the optimization of packing args next to the remote sectag
+            % allowed?
+            Params ^ ddp_allow_packing_remote_sectags = yes,
+            % Is there a remote sectag we can pack next to?
+            NumRemoteSectagBits > 0,
+            % We cannot put args next to the remote sectag if we have to put
+            % extra typeinfos and/or typeclass_infos between them.
+            NumExtraArgWords = 0,
+
+            % If we pass all the above tests, try to find args to pack
+            % next to the remote sectag.
+            Limit = Params ^ ddp_arg_pack_bits - NumRemoteSectagBits,
+            find_initial_args_packable_within_limit(Params, ComponentTypeMap,
+                Limit, 0, _NumBits, CtorArgs,
+                PackableCtorArgs, LeftOverCtorArgs),
+            % Did we find any?
+            PackableCtorArgs = [_ | _],
+            unqualify_name(CtorSymName) \= Params ^ ddp_experiment
+        then
+            MaybeTagwordArgs = some_tagword_args,
+            % The code of runtime/mercury_ml_expand_body.h has traditionally
+            % set the argument vector to point to the first argument, i.e.
+            % *past* the word containing the secondary tag (which used to fill
+            % the whole of a word). Setting ArgOnlyOffset to -1 for arguments
+            % packed next to the sectag allows such code to still work.
+            ArgOnlyOffset = arg_only_offset(-1),
+            CellOffset = cell_offset(0),
+            decide_tagword_args(Params, ComponentTypeMap, 
+                ArgOnlyOffset, CellOffset, NumRemoteSectagBits,
+                PackableCtorArgs, TagwordCtorArgRepns),
+            NonTagwordCtorArgs = LeftOverCtorArgs
+        else
+            MaybeTagwordArgs = no_tagword_args,
+            TagwordCtorArgRepns = [],
+            NonTagwordCtorArgs = CtorArgs
+        ),
+        NumTagwords = 1
+    ),
+
     FirstArgWordNum = 0,
-    FirstCellWordNum = NumSecTagWords + NumExtraArgWords,
-    NoPackParams = ((Params
-        ^ ddp_allow_packing_ints := no)
-        ^ ddp_allow_packing_dummies := no),
-    decide_complex_du_ctor_remote_args_loop(ModuleInfo, NoPackParams,
-        map.init, FirstArgWordNum, FirstCellWordNum,
-        CtorArgs, CtorArgRepnsBase),
+    FirstCellWordNum = NumTagwords + NumExtraArgWords,
     decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params,
         ComponentTypeMap, FirstArgWordNum, FirstCellWordNum,
-        CtorArgs, CtorArgRepnsPacked),
-    WorthPacking = worth_arg_packing(CtorArgRepnsBase, CtorArgRepnsPacked),
-    (
-        WorthPacking = no,
-        CtorArgRepns = CtorArgRepnsBase
-    ;
-        WorthPacking = yes,
-        CtorArgRepns = CtorArgRepnsPacked
-    ),
+        NonTagwordCtorArgs, NonTagwordCtorArgRepns),
+    CtorArgRepns = TagwordCtorArgRepns ++ NonTagwordCtorArgRepns,
+
     MaybeInformPacking = Params ^ ddp_inform_suboptimal_pack,
     ( if
         MaybeInformPacking = inform_about_packing,
         type_status_defined_in_this_module(TypeStatus) = yes
     then
+        (
+            MaybeTagwordArgs = no_tagword_args,
+            MaybeSectagAsPseudoArg = no
+        ;
+            MaybeTagwordArgs = some_tagword_args,
+            MaybeSectagAsPseudoArg = yes(NumRemoteSectagBits)
+        ),
         inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
-            CtorArgRepns, !Specs)
+            MaybeSectagAsPseudoArg, CtorArgRepns, !Specs)
     else
         true
     ).
@@ -1286,11 +1404,10 @@ decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
 
 :- pred decide_complex_du_ctor_local_args(decide_du_params::in,
     component_type_map::in, local_sectag::in,
-    list(constructor_arg)::in, list(constructor_arg_repn)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
 
 decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
-        LocalSectag, CtorArgs, CtorArgRepns, !Specs) :-
+        LocalSectag, CtorArgs, CtorArgRepns) :-
     % A word representing a constructor with locally packed arguments contains,
     % in order:
     %
@@ -1327,15 +1444,24 @@ decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
         % We ruled this out in compute_local_packable_functors.
         unexpected($pred, "MaybePrimaryTags = no_primary_tags")
     ),
-    ArgOnlyOffset = arg_only_offset(-1),
-    CellOffset = cell_offset(-1),
+    ArgOnlyOffset = arg_only_offset(-2),
+    CellOffset = cell_offset(-2),
     LocalSectag = local_sectag(_, _, SectagBits),
     SectagBits = sectag_bits(NumSectagBits, _),
-    NumPrimSecTagBits = NumPtagBits + uint8.cast_to_int(NumSectagBits),
+    NumPrimSectagBits = NumPtagBits + uint8.cast_to_int(NumSectagBits),
+    decide_tagword_args(Params, ComponentTypeMap, 
+        ArgOnlyOffset, CellOffset, NumPrimSectagBits, CtorArgs, CtorArgRepns).
+
+:- pred decide_tagword_args(decide_du_params::in, component_type_map::in,
+    arg_only_offset::in, cell_offset::in, int::in,
+    list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
+
+decide_tagword_args(Params, ComponentTypeMap, 
+        ArgOnlyOffset, CellOffset, NumFixedBits, CtorArgs, CtorArgRepns) :-
     pair_args_with_packable(Params, ComponentTypeMap,
         CtorArgs, CtorArgsPackables),
     decide_packed_arg_word_loop(do_not_treat_as_first_arg,
-        ArgOnlyOffset, CellOffset, NumPrimSecTagBits, _,
+        ArgOnlyOffset, CellOffset, NumFixedBits, _,
         CtorArgsPackables, CtorArgRepns).
 
 :- type maybe_treat_as_first_arg
@@ -1375,7 +1501,7 @@ decide_packed_arg_word_loop(TreatAsFirst, ArgOnlyOffset, CellOffset,
         decide_packed_arg_word_loop(do_not_treat_as_first_arg,
             ArgOnlyOffset, CellOffset, NumPrefixBits, CurShift,
             ArgsPackables, ArgRepns),
-        ArgMask = int.pow(2, NumArgBits) - 1,
+        ArgMask = (1 << NumArgBits) - 1,
         (
             TreatAsFirst = treat_as_first_arg,
             ArgPosWidth = apw_partial_first(ArgOnlyOffset, CellOffset,
@@ -1540,20 +1666,20 @@ may_pack_arg_type(Params, ComponentTypeMap, ArgType, PackableKind) :-
     list(constructor)::in,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_tags_to_constants(_, _, _, _, _, !CurSecTag, [], !CtorTagMap).
+assign_tags_to_constants(_, _, _, _, _, !CurSectag, [], !CtorTagMap).
 assign_tags_to_constants(TypeCtor, Ptag, NumPtagBits, SectagBits, MustMask,
-        !CurSecTag, [Ctor | Ctors], !CtorTagMap) :-
+        !CurSectag, [Ctor | Ctors], !CtorTagMap) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
         _Context),
     ConsId = cons(SymName, Arity, TypeCtor),
     Ptag = ptag(PtagUint8),
-    PrimSec = (!.CurSecTag << NumPtagBits) \/ uint8.cast_to_uint(PtagUint8),
-    LocalSectag = local_sectag(!.CurSecTag, PrimSec, SectagBits),
+    PrimSec = (!.CurSectag << NumPtagBits) \/ uint8.cast_to_uint(PtagUint8),
+    LocalSectag = local_sectag(!.CurSectag, PrimSec, SectagBits),
     ConsTag = shared_local_tag_no_args(Ptag, LocalSectag, MustMask),
     map.det_insert(ConsId, ConsTag, !CtorTagMap),
-    !:CurSecTag = !.CurSecTag + 1u,
+    !:CurSectag = !.CurSectag + 1u,
     assign_tags_to_constants(TypeCtor, Ptag, NumPtagBits,
-        SectagBits, MustMask, !CurSecTag, Ctors, !CtorTagMap).
+        SectagBits, MustMask, !CurSectag, Ctors, !CtorTagMap).
 
 :- pred assign_tags_to_local_packed_functors(type_ctor::in, ptag::in, int::in,
     sectag_bits::in, uint::in, list(constructor)::in,
@@ -1561,31 +1687,30 @@ assign_tags_to_constants(TypeCtor, Ptag, NumPtagBits, SectagBits, MustMask,
 
 assign_tags_to_local_packed_functors(_, _, _, _, _, [], !CtorTagMap).
 assign_tags_to_local_packed_functors(TypeCtor, Ptag, NumPtagBits, SectagBits,
-        CurSecTag, [Ctor | Ctors], !CtorTagMap) :-
+        CurSectag, [Ctor | Ctors], !CtorTagMap) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
         _Context),
     ConsId = cons(SymName, Arity, TypeCtor),
     Ptag = ptag(PtagUint8),
-    PrimSec = (CurSecTag << NumPtagBits) \/ uint8.cast_to_uint(PtagUint8),
-    LocalSectag = local_sectag(CurSecTag, PrimSec, SectagBits),
+    PrimSec = (CurSectag << NumPtagBits) \/ uint8.cast_to_uint(PtagUint8),
+    LocalSectag = local_sectag(CurSectag, PrimSec, SectagBits),
     ConsTag = local_args_tag(local_args_not_only_functor(Ptag, LocalSectag)),
     map.det_insert(ConsId, ConsTag, !CtorTagMap),
     assign_tags_to_local_packed_functors(TypeCtor, Ptag, NumPtagBits,
-        SectagBits, CurSecTag + 1u, Ctors, !CtorTagMap).
+        SectagBits, CurSectag + 1u, Ctors, !CtorTagMap).
 
 :- pred assign_tags_to_direct_arg_functors(type_ctor::in,
-    ptag::in, uint8::in, uint8::out,
+    uint8::in, uint8::in, uint8::out,
     list(constructor)::in, list(constructor)::in, list(constructor)::out,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
 assign_tags_to_direct_arg_functors(_, _, !CurPtag, [], _, [], !CtorTagMap).
-assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtagUint8,
+assign_tags_to_direct_arg_functors(TypeCtor, MaxPtagUint8, !CurPtagUint8,
         [DirectArgCtor | DirectArgCtors], NonDirectArgCtors, LeftOverCtors,
         !CtorTagMap) :-
     DirectArgCtor = ctor(_Ordinal, _MaybeExistConstraints, Name, _Args, Arity,
         _Context),
     ConsId = cons(Name, Arity, TypeCtor),
-    MaxPtag = ptag(MaxPtagUint8),
     ( if
         % If we are about to run out of unshared tags, stop, and return
         % the leftovers.
@@ -1599,59 +1724,74 @@ assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtagUint8,
         ConsTag = direct_arg_tag(ptag(!.CurPtagUint8)),
         map.det_insert(ConsId, ConsTag, !CtorTagMap),
         !:CurPtagUint8 = !.CurPtagUint8 + 1u8,
-        assign_tags_to_direct_arg_functors(TypeCtor, MaxPtag, !CurPtagUint8,
-            DirectArgCtors, NonDirectArgCtors, LeftOverCtors, !CtorTagMap)
+        assign_tags_to_direct_arg_functors(TypeCtor, MaxPtagUint8,
+            !CurPtagUint8, DirectArgCtors, NonDirectArgCtors, LeftOverCtors,
+            !CtorTagMap)
     ).
 
-:- pred assign_tags_to_non_direct_arg_functors(type_ctor::in,
-    ptag::in, uint8::in, sectag_added_by::in, list(constructor)::in,
+:- pred assign_unshared_then_shared_remote_args_tags(type_ctor::in,
+    uint8::in, uint8::in, list(constructor)::in,
     uint::out, cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_tags_to_non_direct_arg_functors(_, _, _, _, [], 0u, !CtorTagMap).
-assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag, !.CurPtagUint8,
-        AddedBy, [Ctor | Ctors], NumRemoteSecTags, !CtorTagMap) :-
+assign_unshared_then_shared_remote_args_tags(_, _, _, [], 0u, !CtorTagMap).
+assign_unshared_then_shared_remote_args_tags(TypeCtor, MaxPtagUint8,
+        !.CurPtagUint8, [Ctor | Ctors], NumRemoteSectags, !CtorTagMap) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, _Args, Arity,
         _Context),
     ConsId = cons(Name, Arity, TypeCtor),
-    MaxPtag = ptag(MaxPtagUint8),
     ( if
         % If we are about to run out of unshared tags, start assigning
         % shared remote tags instead.
         !.CurPtagUint8 = MaxPtagUint8,
         Ctors = [_ | _]
     then
-        CurRemoteSecTag0 = 0u,
-        assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
-            ptag(!.CurPtagUint8), AddedBy, [Ctor | Ctors],
-            CurRemoteSecTag0, CurRemoteSecTag, !CtorTagMap),
-        % We assigned remote sec tags 0 .. CurRemoteSecTag-1,
-        % which is CurRemoteSecTag sec tags.
-        NumRemoteSecTags = CurRemoteSecTag
+        CurRemoteSectag0 = 0u,
+        assign_shared_remote_args_tags(TypeCtor,
+            ptag(!.CurPtagUint8), [Ctor | Ctors],
+            CurRemoteSectag0, CurRemoteSectag, !CtorTagMap),
+        % We assigned remote sec tags 0 .. CurRemoteSectag-1,
+        % which is CurRemoteSectag sec tags.
+        NumRemoteSectags = CurRemoteSectag
     else
-        ConsTag = unshared_tag(ptag(!.CurPtagUint8)),
+        ConsTag = remote_args_tag(remote_args_unshared(ptag(!.CurPtagUint8))),
         map.det_insert(ConsId, ConsTag, !CtorTagMap),
         !:CurPtagUint8 = !.CurPtagUint8 + 1u8,
-        assign_tags_to_non_direct_arg_functors(TypeCtor, MaxPtag,
-            !.CurPtagUint8, AddedBy, Ctors, NumRemoteSecTags, !CtorTagMap)
+        assign_unshared_then_shared_remote_args_tags(TypeCtor, MaxPtagUint8,
+            !.CurPtagUint8, Ctors, NumRemoteSectags, !CtorTagMap)
     ).
 
-:- pred assign_shared_remote_tags_to_non_direct_arg_functors(type_ctor::in,
-    ptag::in, sectag_added_by::in, list(constructor)::in, uint::in, uint::out,
+:- pred assign_shared_remote_args_tags(type_ctor::in, ptag::in,
+    list(constructor)::in, uint::in, uint::out,
     cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
 
-assign_shared_remote_tags_to_non_direct_arg_functors(_, _, _,
-        [], !CurRemoteSecTag, !CtorTagMap).
-assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
-        Ptag, AddedBy, [Ctor | Ctors], !CurRemoteSecTag, !CtorTagMap) :-
+assign_shared_remote_args_tags(_, _, [], !CurRemoteSectag, !CtorTagMap).
+assign_shared_remote_args_tags(TypeCtor, Ptag, [Ctor | Ctors],
+        !CurRemoteSectag, !CtorTagMap) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
         _Context),
     ConsId = cons(SymName, Arity, TypeCtor),
-    RemoteSectag = remote_sectag(!.CurRemoteSecTag, AddedBy),
-    ConsTag = shared_remote_tag(Ptag, RemoteSectag),
+    % The rsectag_word part of the tag can be overridden later.
+    RemoteSectag = remote_sectag(!.CurRemoteSectag, rsectag_word),
+    ConsTag = remote_args_tag(remote_args_shared(Ptag, RemoteSectag)),
     map.det_insert(ConsId, ConsTag, !CtorTagMap),
-    !:CurRemoteSecTag = !.CurRemoteSecTag + 1u,
-    assign_shared_remote_tags_to_non_direct_arg_functors(TypeCtor,
-        Ptag, AddedBy, Ctors, !CurRemoteSecTag, !CtorTagMap).
+    !:CurRemoteSectag = !.CurRemoteSectag + 1u,
+    assign_shared_remote_args_tags(TypeCtor, Ptag, Ctors,
+        !CurRemoteSectag, !CtorTagMap).
+
+:- pred assign_ctor_remote_args_tags(type_ctor::in,
+    list(constructor)::in, uint::in, uint::out,
+    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
+
+assign_ctor_remote_args_tags(_, [], !CurData, !CtorTagMap).
+assign_ctor_remote_args_tags(TypeCtor, [Ctor | Ctors],
+        !CurData, !CtorTagMap) :-
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
+        _Context),
+    ConsId = cons(SymName, Arity, TypeCtor),
+    ConsTag = remote_args_tag(remote_args_ctor(!.CurData)),
+    map.det_insert(ConsId, ConsTag, !CtorTagMap),
+    !:CurData = !.CurData + 1u,
+    assign_ctor_remote_args_tags(TypeCtor, Ctors, !CurData, !CtorTagMap).
 
 %---------------------------------------------------------------------------%
 
@@ -1913,16 +2053,6 @@ take_local_packable_functors_constant_sectag_bits(ArgPackBits,
 % XXX TYPE_REPN Rationalise the order of the predicates from here onwards.
 %
 
-:- func worth_arg_packing(
-    list(constructor_arg_repn), list(constructor_arg_repn)) = bool.
-
-worth_arg_packing(UnpackedArgs, PackedArgs) = Worthwhile :-
-    count_words(UnpackedArgs, 0, UnpackedLength),
-    count_words(PackedArgs, 0, PackedLength),
-    expect(PackedLength =< UnpackedLength, $pred,
-        "packed length exceeds unpacked length"),
-    worth_arg_packing_compare(UnpackedLength, PackedLength, Worthwhile).
-
 :- pred worth_arg_packing_compare(int::in, int::in, bool::out) is det.
 
 worth_arg_packing_compare(UnpackedLength, PackedLength, Worthwhile) :-
@@ -1940,27 +2070,6 @@ worth_arg_packing_compare(UnpackedLength, PackedLength, Worthwhile) :-
     else
         Worthwhile = no
     ).
-
-:- pred count_words(list(constructor_arg_repn)::in, int::in, int::out) is det.
-
-count_words([], !Count).
-count_words([Arg | Args], !Count) :-
-    ArgPosWidth = Arg ^ car_pos_width,
-    (
-        ( ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
-        ; ArgPosWidth = apw_none_shifted(_, _)
-        ; ArgPosWidth = apw_none_nowhere
-        )
-    ;
-        ( ArgPosWidth = apw_full(_, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
-        ),
-        !:Count = !.Count + 1
-    ;
-        ArgPosWidth = apw_double(_, _, _),
-        !:Count = !.Count + 2
-    ),
-    count_words(Args, !Count).
 
 :- func round_to_even(int) = int.
 
@@ -2304,11 +2413,12 @@ compute_cheaper_tag_test(TypeCtor, CtorRepns, CheaperTagTest) :-
 %---------------------------------------------------------------------------%
 
 :- pred inform_about_any_suboptimal_packing(decide_du_params::in,
-    sym_name::in, prog_context::in, list(constructor_arg_repn)::in,
+    sym_name::in, prog_context::in,
+    maybe(int)::in, list(constructor_arg_repn)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
-        CtorArgRepns, !Specs) :-
+        MaybeSectagAsPseudoArg, CtorArgRepns, !Specs) :-
     % Find the number of words we would need to store all the sub-word-sized
     % arguments in CtorArgRepns using the first-fit-decreasing algorithm
     % (see the wikipedia page on "Bin_packing_problem"). If this number,
@@ -2316,8 +2426,17 @@ inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
     % an informational message giving SubWordBins as one possible better
     % packing order of the arguments than the one in the program.
 
+    (
+        MaybeSectagAsPseudoArg = no,
+        SubWords0 = [],
+        ActualNumSubWords0 = 0
+    ;
+        MaybeSectagAsPseudoArg = yes(NumRemoteSectagBits),
+        SubWords0 = [sub_word(NumRemoteSectagBits, field_id_sectag)],
+        ActualNumSubWords0 = 1
+    ),
     record_subword_args_and_count_their_words(CtorArgRepns, 0,
-        [], SubWords, 0, ActualNumSubWords),
+        SubWords0, SubWords, ActualNumSubWords0, ActualNumSubWords),
     list.sort(SubWords, SortedSubWords),
     list.reverse(SortedSubWords, RevSortedSubWords),
     BinSize = Params ^ ddp_arg_pack_bits,
@@ -2357,7 +2476,8 @@ inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
     ).
 
 :- type field_id
-    --->    field_id_name(string)
+    --->    field_id_sectag
+    ;       field_id_name(int, string)
     ;       field_id_ordinal(int).
 
 :- type sub_word
@@ -2391,7 +2511,7 @@ record_subword_args_and_count_their_words([ArgRepn | ArgRepns], CurArgNum,
         (
             MaybeFieldName = yes(ctor_field_name(SymName, _FieldContext)),
             Name = unqualify_name(SymName),
-            Id = field_id_name(Name)
+            Id = field_id_name(CurArgNum, Name)
         ;
             MaybeFieldName = no,
             Id = field_id_ordinal(CurArgNum)
@@ -2458,11 +2578,15 @@ describe_sub_word(SubWord, Pieces, !TotalNumBits) :-
     !:TotalNumBits = !.TotalNumBits + SubWordNumBits,
     NumBitsStr = string.format("#bits = %d", [i(SubWordNumBits)]),
     (
+        Id = field_id_sectag,
+        Pieces = [words("- the distinguishing tag"),
+            words("at the start of the memory cell,"), fixed(NumBitsStr), nl]
+    ;
         Id = field_id_ordinal(ArgNum),
         Pieces = [words("- the current"), nth_fixed(ArgNum),
             words("argument,"), fixed(NumBitsStr), nl]
     ;
-        Id = field_id_name(ArgName),
+        Id = field_id_name(_ArgNum, ArgName),
         Pieces = [words("- the argument named"), quote(ArgName), suffix(","),
             fixed(NumBitsStr), nl]
     ).
@@ -2542,7 +2666,9 @@ separate_out_local_sectag_packable(Params, ComponentTypeMap,
     separate_out_local_sectag_packable(Params, ComponentTypeMap,
         Ctors, PackableTail, NonPackableTail),
     ( if
-        ctor_has_all_packable_args(Params, ComponentTypeMap, Ctor, NumBits)
+        Limit = Params ^ ddp_arg_pack_bits,
+        ctor_has_all_packable_args_within_limit(Params, ComponentTypeMap, Ctor,
+            Limit, NumBits)
     then
         Packable = [NumBits - Ctor | PackableTail],
         NonPackable = NonPackableTail
@@ -2551,33 +2677,42 @@ separate_out_local_sectag_packable(Params, ComponentTypeMap,
         NonPackable = [Ctor | NonPackableTail]
     ).
 
-:- pred ctor_has_all_packable_args(decide_du_params::in,
-    component_type_map::in, constructor::in, int::out) is semidet.
+:- pred ctor_has_all_packable_args_within_limit(decide_du_params::in,
+    component_type_map::in, constructor::in, int::in, int::out) is semidet.
 
-ctor_has_all_packable_args(Params, ComponentTypeMap, Ctor, NumBits) :-
+ctor_has_all_packable_args_within_limit(Params, ComponentTypeMap, Ctor,
+        Limit, NumBits) :-
     Args = Ctor ^ cons_args,
-    args_are_all_packable(Params, ComponentTypeMap, Args, 0, NumBits),
     Ctor ^ cons_maybe_exist = no_exist_constraints,
-    not (
-        unqualify_name(Ctor ^ cons_name) = Params ^ ddp_experiment
-    ).
+    find_initial_args_packable_within_limit(Params, ComponentTypeMap, Limit,
+        0, NumBits, Args, _PackableArgs, LeftOverArgs),
+    LeftOverArgs = [].
 
-:- pred args_are_all_packable(decide_du_params::in, component_type_map::in,
-    list(constructor_arg)::in, int::in, int::out) is semidet.
+:- pred find_initial_args_packable_within_limit(decide_du_params::in,
+    component_type_map::in, int::in, int::in, int::out,
+    list(constructor_arg)::in,
+    list(constructor_arg)::out, list(constructor_arg)::out) is det.
 
-args_are_all_packable(_, _, [], !NumBits).
-args_are_all_packable(Params, ComponentTypeMap, [Arg | Args], !NumBits) :-
+find_initial_args_packable_within_limit(_, _, _, !NumBits, [], [], []).
+find_initial_args_packable_within_limit(Params, ComponentTypeMap, Limit,
+        !NumBits, [Arg | Args], PackableArgs, LeftOverArgs) :-
     Arg = ctor_arg(_ArgName, ArgType, _ArgContext),
-    ( if may_pack_arg_type(Params, ComponentTypeMap, ArgType, Packable) then
+    ( if
+        may_pack_arg_type(Params, ComponentTypeMap, ArgType, Packable),
         (
             Packable = packable_n_bits(ArgNumArgBits, _FillKind),
             !:NumBits = !.NumBits + ArgNumArgBits
         ;
             Packable = packable_dummy
         ),
-        args_are_all_packable(Params, ComponentTypeMap, Args, !NumBits)
+        !.NumBits =< Limit
+    then
+        find_initial_args_packable_within_limit(Params, ComponentTypeMap,
+            Limit, !NumBits, Args, PackableArgsTail, LeftOverArgs),
+        PackableArgs = [Arg | PackableArgsTail]
     else
-        fail
+        PackableArgs = [],
+        LeftOverArgs = [Arg | Args]
     ).
 
 :- func type_ctor_sna(type_ctor) = format_component.

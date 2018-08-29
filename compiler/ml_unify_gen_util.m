@@ -50,10 +50,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type cons_id_or_closure
-    --->    ordinary_cons_id(cons_id)
-    ;       closure_object(int).            % The initial offset of the args.
-
 :- type may_have_extra_args
     --->    may_not_have_extra_args
     ;       may_have_extra_args.
@@ -63,10 +59,6 @@
 
 :- type arg_var_type_and_width == arg_type_and_width(prog_var).
 :- type arg_const_type_and_width == arg_type_and_width(const_struct_arg).
-
-:- pred associate_maybe_cons_id_args_with_types_widths(ml_gen_info::in,
-    mer_type::in, cons_id_or_closure::in, list(prog_var)::in,
-    list(arg_var_type_and_width)::out) is det.
 
 :- type arg_to_type(Arg) == (func(Arg) = mer_type).
 
@@ -101,6 +93,9 @@
     in(bound(may_have_extra_args)), in, in, in, out) is det.
 :- mode associate_cons_id_args_with_types_widths(in, in,
     in(bound(may_not_have_extra_args)), in, in, in, out) is det.
+
+:- pred specified_arg_types_and_consecutive_full_words(mer_type::in, int::in,
+    list(Arg)::in, list(arg_type_and_width(Arg))::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -144,14 +139,14 @@
             ).
 
 :- pred decide_field_gen(ml_gen_info::in, mlds_lval::in, mer_type::in,
-    cons_id::in, cons_tag::in, field_gen::out) is det.
+    cons_id::in, cons_tag::in, ptag::in, field_gen::out) is det.
 
 %---------------------------------------------------------------------------%
 
-    % ml_gen_secondary_tag_rval(Info, VarType, VarRval, Ptag, StagRval):
+    % ml_gen_secondary_tag_rval(Info, VarType, VarRval, Ptag, SectagRval):
     %
     % Return the rval for the secondary tag field of VarRval, assuming that
-    % VarRval has the specified VarType and PrimaryTag.
+    % VarRval has the specified VarType and Ptag.
     %
     % Exported for use ml_tag_switch.m.
     %
@@ -210,7 +205,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -335,22 +329,6 @@ allocate_consecutive_full_word_ctor_arg_repns_lookup(Info, CurOffset,
 
 %---------------------------------------------------------------------------%
 
-associate_maybe_cons_id_args_with_types_widths(Info, VarType, ConsIdOrClosure,
-        ArgVars, ArgVarsTypesWidths) :-
-    (
-        ConsIdOrClosure = ordinary_cons_id(ConsId),
-        ml_gen_info_get_module_info(Info, ModuleInfo),
-        ml_gen_info_get_var_types(Info, VarTypes),
-        associate_cons_id_args_with_types_widths(ModuleInfo,
-            lookup_var_type_func(VarTypes), may_have_extra_args,
-            VarType, ConsId, ArgVars, ArgVarsTypesWidths)
-    ;
-        ConsIdOrClosure = closure_object(InitOffset),
-        % It is a closure. In this case, the arguments are all boxed.
-        specified_arg_types_and_consecutive_full_words(ml_make_boxed_type,
-            InitOffset, ArgVars, ArgVarsTypesWidths)
-    ).
-
 associate_cons_id_args_with_types_widths(ModuleInfo, ArgToType,
         MayHaveExtraArgs, VarType, ConsId, Args, ArgsTypesWidths) :-
     ( if
@@ -370,10 +348,10 @@ associate_cons_id_args_with_types_widths(ModuleInfo, ArgToType,
                 % types. We can get the type of these from VarTypes.
                 det_split_list(NumExtraArgs, Args, ExtraArgs, NonExtraArgs),
                 ( if
-                    ConsRepnDefn ^ cr_tag =
-                        shared_remote_tag(_, RemoteSectag),
-                    RemoteSectag = remote_sectag(_, AddedBy),
-                    AddedBy = sectag_added_by_unify
+                    ConsRepnDefn ^ cr_tag = remote_args_tag(RemoteArgsTagInfo),
+                    RemoteArgsTagInfo = remote_args_shared(_, RemoteSectag),
+                    RemoteSectag = remote_sectag(_, SectagSize),
+                    SectagSize = rsectag_word
                 then
                     InitOffset = 1
                 else
@@ -440,9 +418,6 @@ lookup_type_and_allocate_consecutive_full_words(ArgToType, CurOffset,
     lookup_type_and_allocate_consecutive_full_words(ArgToType, CurOffset + 1,
         Args, ArgsTypesWidths).
 
-:- pred specified_arg_types_and_consecutive_full_words(mer_type::in, int::in,
-    list(Arg)::in, list(arg_type_and_width(Arg))::out) is det.
-
 specified_arg_types_and_consecutive_full_words(_, _, [], []).
 specified_arg_types_and_consecutive_full_words(Type, CurOffset,
         [Arg | Args], [ArgTypeWidth | ArgsTypesWidths]) :-
@@ -454,26 +429,35 @@ specified_arg_types_and_consecutive_full_words(Type, CurOffset,
 %---------------------------------------------------------------------------%
 
 ml_tag_ptag_and_initial_offset(ConsTag, Ptag, InitOffset) :-
-    % XXX ARG_PACK We always return the same ArgNum.
+    % XXX ARG_PACK Check our callers whether this predicate is actually needed,
+    % or whether our callers could get Ptag and InitOffset more cheaply.
     (
-        ConsTag = single_functor_tag,
-        Ptag = ptag(0u8),
-        InitOffset = cell_offset(0)
-    ;
-        ( ConsTag = unshared_tag(Ptag)
-        ; ConsTag = direct_arg_tag(Ptag)
-        ),
-        InitOffset = cell_offset(0)
-    ;
-        ConsTag = shared_remote_tag(Ptag, RemoteSectag),
-        RemoteSectag = remote_sectag(_, AddedBy),
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
         (
-            AddedBy = sectag_added_by_unify,
-            InitOffset = cell_offset(1)
+            RemoteArgsTagInfo = remote_args_only_functor,
+            Ptag = ptag(0u8),
+            InitOffset = cell_offset(0)
         ;
-            AddedBy = sectag_added_by_constructor,
+            RemoteArgsTagInfo = remote_args_unshared(Ptag),
+            InitOffset = cell_offset(0)
+        ;
+            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+            RemoteSectag = remote_sectag(_, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                InitOffset = cell_offset(1)
+            ;
+                SectagSize = rsectag_subword(_),
+                InitOffset = cell_offset(0)
+            )
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_Data),
+            Ptag = ptag(0u8),
             InitOffset = cell_offset(0)
         )
+    ;
+        ConsTag = direct_arg_tag(Ptag),
+        InitOffset = cell_offset(0)
     ;
         ConsTag = ground_term_const_tag(_, SubTag),
         ml_tag_ptag_and_initial_offset(SubTag, Ptag, InitOffset)
@@ -500,8 +484,7 @@ ml_tag_ptag_and_initial_offset(ConsTag, Ptag, InitOffset) :-
 
 %---------------------------------------------------------------------------%
 
-decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, FieldGen) :-
-    MaybePrimaryTag = get_maybe_primary_tag(ConsTag),
+decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, Ptag, FieldGen) :-
     AddrRval = ml_lval(VarLval),
     ml_gen_type(Info, VarType, AddrType),
 
@@ -553,11 +536,11 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, FieldGen) :-
             unexpected($pred, "unexpected cons_id")
         )
     ),
-    FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia).
+    FieldGen = field_gen(yes(Ptag), AddrRval, AddrType, FieldVia).
 
 %---------------------------------------------------------------------------%
 
-ml_gen_secondary_tag_rval(Info, VarType, Rval, PrimaryTag, StagFieldRval) :-
+ml_gen_secondary_tag_rval(Info, VarType, Rval, Ptag, SectagFieldRval) :-
     ml_gen_info_get_high_level_data(Info, HighLevelData),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
@@ -566,16 +549,16 @@ ml_gen_secondary_tag_rval(Info, VarType, Rval, PrimaryTag, StagFieldRval) :-
         % Note: with the low-level data representation, all fields are boxed,
         % even the secondary tag, and so we need to unbox (i.e. cast) it
         % back to the right type here.
-        StagFieldRval =
+        SectagFieldRval =
             ml_unbox(mlds_native_int_type,
-                ml_lval(ml_field(yes(PrimaryTag), Rval, MLDS_VarType,
+                ml_lval(ml_field(yes(Ptag), Rval, MLDS_VarType,
                     ml_field_offset(ml_const(mlconst_int(0))),
                     mlds_generic_type)))
     ;
         HighLevelData = yes,
         ml_gen_info_get_target(Info, Target),
         FieldId = ml_gen_hl_tag_field_id(ModuleInfo, Target, VarType),
-        StagFieldRval = ml_lval(ml_field(yes(PrimaryTag), Rval, MLDS_VarType,
+        SectagFieldRval = ml_lval(ml_field(yes(Ptag), Rval, MLDS_VarType,
             FieldId, mlds_native_int_type))
     ).
 

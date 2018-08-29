@@ -190,7 +190,7 @@ MR_get_arg_type_info(const MR_TypeInfoParams params,
 {
     MR_Unsigned             arg_num;
     const MR_DuExistInfo    *exist_info;
-    MR_DuExistLocn          exist_locn;
+    const MR_DuExistLocn    *exist_locn;
     int                     exist_varnum;
     int                     slot;
     int                     offset;
@@ -212,9 +212,9 @@ MR_get_arg_type_info(const MR_TypeInfoParams params,
     }
 
     exist_varnum = arg_num - MR_PSEUDOTYPEINFO_EXIST_VAR_BASE - 1;
-    exist_locn = exist_info->MR_exist_typeinfo_locns[exist_varnum];
-    slot = exist_locn.MR_exist_arg_num;
-    offset = exist_locn.MR_exist_offset_in_tci;
+    exist_locn = &exist_info->MR_exist_typeinfo_locns[exist_varnum];
+    slot = exist_locn->MR_exist_arg_num;
+    offset = exist_locn->MR_exist_offset_in_tci;
     if (offset < 0) {
         return (MR_TypeInfo) data_value[slot];
     } else {
@@ -852,27 +852,35 @@ MR_cell_size_for_args(int arity, const MR_DuArgLocn *arg_locns)
         return arity;
     }
 
-    // The meanings of the various special values of MR_arg_bits
+    // The meanings of the various special values of MR_arg_{offset,bits}
     // are documented next to the definition of the MR_DuArgLocn type
     // in mercury_type_info.h.
 
+    // We are looking for the last argument that occupies any storage.
+    // Since we loop backwards, we stop at the *first* argument we find
+    // that occupies any storage, and decide what to return based on
+    // where that argument ends.
     last_arg_num = arity - 1;
     while (last_arg_num >= 0) {
         last_arg = &arg_locns[last_arg_num];
+
+        if (last_arg->MR_arg_offset < 0) {
+            // We reached the tagword; nothing but dummy args follow.
+            return 1;
+        }
+
         if (last_arg->MR_arg_bits >= 0) {
-            // This means that argument #last_arg_num is takes either
+            // This means that argument #last_arg_num takes either
             // one full word, or part of a word. In the latter case,
-            // the rest of the bits in the word (if any are left)
-            // are padding.
+            // the rest of the bits in the word (if any are left) are padding.
             return last_arg->MR_arg_offset + 1;
         } else {
             switch (last_arg->MR_arg_bits) {
                 case -1:
                 case -2:
                 case -3:
-                    // This means that argument #last_arg_num is a
-                    // double precision float, int64 or uint64
-                    // that takes two words.
+                    // This means that argument #last_arg_num takes two words;
+                    // it can be a double precision float, int64 or uint64.
                     return last_arg->MR_arg_offset + 2;
 
                 case -4:

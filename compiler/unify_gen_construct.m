@@ -89,7 +89,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -140,7 +139,7 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         ;
             ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _MustMask),
             LocalSectag = local_sectag(_, PrimSec, _),
-            ConstRval = const(llconst_int(uint.cast_to_int(PrimSec)))
+            ConstRval = const(llconst_uint(PrimSec))
         ;
             ( ConsTag = type_info_const_tag(ConstNum)
             ; ConsTag = typeclass_info_const_tag(ConstNum)
@@ -187,37 +186,66 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         assign_const_to_var(LHSVar, ConstRval, !.CI, !CLD),
         Code = empty
     ;
-        (
-            ConsTag = single_functor_tag,
-            % Treat single_functor the same as unshared_tag(0).
-            Ptag = ptag(0u8)
-        ;
-            ConsTag = unshared_tag(Ptag)
-        ;
-            ConsTag = shared_remote_tag(Ptag, _)
-        ),
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        FirstArgNum0 = 1,
         get_may_use_atomic_alloc(!.CI, MayUseAtomic0),
-        FirstArgNum = 1,
-        generate_and_pack_construct_args(RHSVarsWidths, ArgModes,
-            FirstArgNum, TakeAddr, CellArgs0, MayUseAtomic0, MayUseAtomic,
-            empty, PackCode, !.CI, !CLD),
-        pack_how_to_construct(RHSVarsWidths, HowToConstruct0, HowToConstruct),
         (
-            ( ConsTag = single_functor_tag
-            ; ConsTag = unshared_tag(_Ptag)
+            (
+                RemoteArgsTagInfo = remote_args_only_functor,
+                Ptag = ptag(0u8)
+            ;
+                RemoteArgsTagInfo = remote_args_unshared(Ptag)
             ),
-            CellArgs = CellArgs0
+            TagwordCode = empty,
+            generate_and_pack_construct_args(RHSVarsWidths, ArgModes,
+                FirstArgNum0, TakeAddr, CellArgs, MayUseAtomic0, MayUseAtomic,
+                empty, NonTagwordCode, !.CI, !CLD)
         ;
-            ConsTag = shared_remote_tag(_Ptag, RemoteSectag),
-            RemoteSectag = remote_sectag(SecTagUint, _),
-            Sectag = uint.cast_to_int(SecTagUint),
-            TagArg = cell_arg_full_word(const(llconst_int(Sectag)), complete),
-            CellArgs = [TagArg | CellArgs0]
+            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+            RemoteSectag = remote_sectag(SectagUint, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                FirstArgNum = FirstArgNum0,
+                TagwordRval = const(llconst_uint(SectagUint)),
+                NonTagwordRHSVarsWidths = RHSVarsWidths,
+                NonTagwordArgModes = ArgModes,
+                TagwordCode = empty
+            ;
+                SectagSize = rsectag_subword(_),
+                take_tagword_args_widths_modes(RHSVarsWidths, ArgModes,
+                    TagwordRHSVarsWidths, TagwordArgModes,
+                    NonTagwordRHSVarsWidths, NonTagwordArgModes,
+                    FirstArgNum0, FirstArgNum),
+                ( if SectagUint = 0u then
+                    RevToOrRvals0 = []
+                else
+                    RevToOrRvals0 = [const(llconst_uint(SectagUint))]
+                ),
+                generate_and_pack_tagword(
+                    TagwordRHSVarsWidths, TagwordArgModes,
+                    RevToOrRvals0, RevToOrRvals, !.CI),
+                list.reverse(RevToOrRvals, ToOrRvals),
+                TagwordRval0 = bitwise_or_rvals(ToOrRvals),
+                materialize_vars_in_rval(TagwordRval0, TagwordRval,
+                    TagwordCode, !.CI, !CLD)
+            ),
+            TagwordArg = cell_arg_full_word(TagwordRval, complete),
+            generate_and_pack_construct_args(
+                NonTagwordRHSVarsWidths, NonTagwordArgModes,
+                FirstArgNum, TakeAddr, CellArgs0,
+                MayUseAtomic0, MayUseAtomic, empty, NonTagwordCode,
+                !.CI, !CLD),
+            CellArgs = [TagwordArg | CellArgs0]
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_),
+            % These are supported only on the MLDS backend.
+            unexpected($pred, "remote_args_ctor")
         ),
+        pack_how_to_construct(RHSVarsWidths, HowToConstruct0, HowToConstruct),
         Context = goal_info_get_context(GoalInfo),
         construct_cell(LHSVar, Ptag, CellArgs, HowToConstruct, MaybeSize,
             Context, MayUseAtomic, ConstructCode, !CI, !CLD),
-        Code = PackCode ++ ConstructCode
+        Code = TagwordCode ++ NonTagwordCode ++ ConstructCode
     ;
         ConsTag = local_args_tag(LocalArgsTagInfo),
         expect(unify(TakeAddr, []), $pred, "local_args_tag, TakeAddr != []"),
@@ -231,12 +259,11 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         ConsTag = no_tag,
         expect(unify(TakeAddr, []), $pred, "notag: take_addr"),
         get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
-        Type = variable_type(!.CI, RHSVar),
-        FieldAndArgVar = field_and_arg_var(uv_var(LHSVar), RHSVar, Type),
+        RHSType = variable_type(!.CI, RHSVar),
         % Information can flow to the left as well as to the right
         % in deconstructions.
-        generate_deconstruct_unify_arg(FieldAndArgVar, ArgMode, Code,
-            !.CI, !CLD)
+        generate_deconstruct_no_tag_unify_arg(LHSVar, RHSVar, RHSType, ArgMode,
+            Code, !.CI, !CLD)
     ;
         ConsTag = direct_arg_tag(Ptag),
         expect(unify(TakeAddr, []), $pred, "direct_arg_tag: take_addr"),
@@ -474,7 +501,7 @@ generate_and_pack_tagword([RHSVarWidth | RHSVarsWidths], [ArgMode | ArgModes],
         is_arg_unify_real(CI, RHSVar, ArgMode, _RHSType, IsReal),
         (
             IsReal = not_real_input_arg,
-            RHSRval = const(llconst_int(0))     % Dummy.
+            RHSRval = const(llconst_uint(0u))     % Dummy.
         ;
             IsReal = real_input_arg,
             RHSRval = var(RHSVar)
@@ -496,7 +523,7 @@ generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal, RHSRval,
     is_arg_unify_real(CI, RHSVar, ArgMode, RHSType, IsReal),
     (
         IsReal = not_real_input_arg,
-        RHSRval = const(llconst_int(0))    % Dummy.
+        RHSRval = const(llconst_uint(0u))    % Dummy.
     ;
         IsReal = real_input_arg,
         produce_variable(RHSVar, RHSVarCode, RHSRval, CI, !CLD),
@@ -875,7 +902,7 @@ generate_ground_term_conjunct(ModuleInfo, ExprnOpts, Goal,
         ;
             ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _MustMask),
             LocalSectag = local_sectag(_, PrimSec, _),
-            Const = llconst_int(uint.cast_to_int(PrimSec)),
+            Const = llconst_uint(PrimSec),
             Type = lt_data_ptr
         ),
         expect(unify(RHSVars, []), $pred, "constant has args"),
@@ -893,30 +920,51 @@ generate_ground_term_conjunct(ModuleInfo, ExprnOpts, Goal,
         ),
         unexpected($pred, "unexpected constant")
     ;
-        (
-            ConsTag = single_functor_tag,
-            Ptag = ptag(0u8)
-        ;
-            ConsTag = unshared_tag(Ptag)
-        ;
-            ConsTag = shared_remote_tag(Ptag, _)
-        ),
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
         associate_cons_id_args_with_widths(ModuleInfo, ConsId,
             RHSVars, RHSVarsWidths),
-        generate_ground_term_args(RHSVarsWidths, PackedRHSTypedRvals,
-            !ActiveMap),
         (
-            ( ConsTag = single_functor_tag
-            ; ConsTag = unshared_tag(_Ptag)
+            (
+                RemoteArgsTagInfo = remote_args_only_functor,
+                Ptag = ptag(0u8)
+            ;
+                RemoteArgsTagInfo = remote_args_unshared(Ptag)
             ),
+            generate_ground_term_args(RHSVarsWidths, PackedRHSTypedRvals,
+                !ActiveMap),
             AllRHSTypedRvals = PackedRHSTypedRvals
         ;
-            ConsTag = shared_remote_tag(_Ptag, RemoteSectag),
-            SectagUint = RemoteSectag ^ rsectag_value,
-            StagTypedRval = typed_rval(
-                const(llconst_int(uint.cast_to_int(SectagUint))),
-                lt_int(int_type_int)),
-            AllRHSTypedRvals = [StagTypedRval | PackedRHSTypedRvals]
+            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+            RemoteSectag = remote_sectag(SectagUint, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                TagwordTypedRval = typed_rval(const(llconst_uint(SectagUint)),
+                    lt_int(int_type_uint)),
+                NonTagwordRHSVarsWidths = RHSVarsWidths
+            ;
+                SectagSize = rsectag_subword(_),
+                % XXX ARG_PACK Factor out this code pattern.
+                ( if SectagUint = 0u then
+                    RevToOrRvals0 = []
+                else
+                    RevToOrRvals0 = [const(llconst_uint(SectagUint))]
+                ),
+                generate_ground_term_args_for_one_word(RHSVarsWidths,
+                    NonTagwordRHSVarsWidths, RevToOrRvals0, RevToOrRvals,
+                    !ActiveMap),
+                list.reverse(RevToOrRvals, ToOrRvals),
+                TagwordRval = bitwise_or_rvals(ToOrRvals),
+                TagwordTypedRval = typed_rval(TagwordRval,
+                    lt_int(int_type_uint))
+            ),
+            generate_ground_term_args(NonTagwordRHSVarsWidths,
+                NonTagwordPackedRHSTypedRvals, !ActiveMap),
+            AllRHSTypedRvals =
+                [TagwordTypedRval | NonTagwordPackedRHSTypedRvals]
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_),
+            % These are supported only on the MLDS backend.
+            unexpected($pred, "remote_args_ctor")
         ),
         add_scalar_static_cell(AllRHSTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
@@ -1100,30 +1148,50 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ConstStructMap, ConsTag, ConstArgsPosWidths, TypedRval,
         !StaticCellInfo) :-
     (
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
         (
-            ConsTag = single_functor_tag,
-            Ptag = ptag(0u8)
-        ;
-            ConsTag = unshared_tag(Ptag)
-        ;
-            ConsTag = shared_remote_tag(Ptag, _)
-        ),
-        generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
-            ConstStructMap, ConstArgsPosWidths, PackedArgTypedRvals),
-        (
-            ( ConsTag = single_functor_tag
-            ; ConsTag = unshared_tag(_Ptag)
+            (
+                RemoteArgsTagInfo = remote_args_only_functor,
+                Ptag = ptag(0u8)
+            ;
+                RemoteArgsTagInfo = remote_args_unshared(Ptag)
             ),
-            AllTypedRvals = PackedArgTypedRvals
+            generate_const_struct_args(ModuleInfo, UnboxedFloats, UnboxedInt64s,
+                ConstStructMap, ConstArgsPosWidths, RHSTypedRvals)
         ;
-            ConsTag = shared_remote_tag(_Ptag, RemoteSectag),
-            SectagUint = RemoteSectag ^ rsectag_value,
-            StagTypedRval = typed_rval(
-                const(llconst_int(uint.cast_to_int(SectagUint))),
-                lt_int(int_type_int)),
-            AllTypedRvals = [StagTypedRval | PackedArgTypedRvals]
+            RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+            RemoteSectag = remote_sectag(SectagUint, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                TypedTagwordRval = typed_rval(const(llconst_uint(SectagUint)),
+                    lt_int(int_type_uint)),
+                NonTagwordConstArgsPosWidths = ConstArgsPosWidths
+            ;
+                SectagSize = rsectag_subword(_),
+                ( if SectagUint = 0u then
+                    RevToOrRvals0 = []
+                else
+                    RevToOrRvals0 = [const(llconst_uint(SectagUint))]
+                ),
+                generate_const_struct_args_for_one_word(ModuleInfo,
+                    UnboxedFloats, UnboxedInt64s, ConstStructMap,
+                    ConstArgsPosWidths, NonTagwordConstArgsPosWidths,
+                    RevToOrRvals0, RevToOrRvals),
+                list.reverse(RevToOrRvals, ToOrRvals),
+                TagwordRval = bitwise_or_rvals(ToOrRvals),
+                TypedTagwordRval = typed_rval(TagwordRval,
+                    lt_int(int_type_uint))
+            ),
+            generate_const_struct_args(ModuleInfo, UnboxedFloats,
+                UnboxedInt64s, ConstStructMap, NonTagwordConstArgsPosWidths,
+                NonTagwordTypedRvals),
+            RHSTypedRvals = [TypedTagwordRval | NonTagwordTypedRvals]
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_),
+            % These are supported only on the MLDS backend.
+            unexpected($pred, "remote_args_ctor")
         ),
-        add_scalar_static_cell(AllTypedRvals, DataAddr, !StaticCellInfo),
+        add_scalar_static_cell(RHSTypedRvals, DataAddr, !StaticCellInfo),
         MaybeOffset = no,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         Rval = mkword(Ptag, CellPtrConst),
@@ -1316,7 +1384,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
     ;
         ConsTag = shared_local_tag_no_args(_Ptag, LocalSectag, _MustMask),
         LocalSectag = local_sectag(_, PrimSec, _),
-        Rval = const(llconst_int(uint.cast_to_int(PrimSec))),
+        Rval = const(llconst_uint(PrimSec)),
         TypedRval = typed_rval(Rval, lt_data_ptr)
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
@@ -1348,9 +1416,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
 
         % These tags have arguments, and thus should be handled in
         % generate_const_struct_rval. 
-        ; ConsTag = single_functor_tag
-        ; ConsTag = unshared_tag(_)
-        ; ConsTag = shared_remote_tag(_, _)
+        ; ConsTag = remote_args_tag(_)
         ; ConsTag = local_args_tag(_)
         ; ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
@@ -1469,6 +1535,70 @@ not_taking_addr_of_cur_arg(TakeAddr, CurArgNum) :-
         fail
     else
         true
+    ).
+
+:- pred take_tagword_args_widths_modes(
+    list(arg_and_width(ArgType))::in, list(unify_mode)::in,
+    list(arg_and_width(ArgType))::out, list(unify_mode)::out,
+    list(arg_and_width(ArgType))::out, list(unify_mode)::out,
+    int::in, int::out) is det.
+
+take_tagword_args_widths_modes([], [], [], [], [], [], !CurArgNum).
+take_tagword_args_widths_modes([], [_ | _], _, _, _, _, !CurArgNum) :-
+    unexpected($pred, "length mismatch").
+take_tagword_args_widths_modes([_ | _], [], _, _, _, _, !CurArgNum) :-
+    unexpected($pred, "length mismatch").
+take_tagword_args_widths_modes(
+        [ArgWidth | ArgsWidths], [ArgMode | ArgModes],
+        TagwordArgsWidths, TagwordArgModes,
+        NonTagwordArgsWidths, NonTagwordArgModes, !CurArgNum) :-
+    ArgWidth = arg_and_width(_Arg, ArgPosWidth),
+    (
+        ( ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_shifted(_, _)
+        ),
+        !:CurArgNum = !.CurArgNum + 1,
+        take_tagword_args_widths_modes(ArgsWidths, ArgModes,
+            TailTagwordArgsWidths, TailTagwordArgModes,
+            NonTagwordArgsWidths, NonTagwordArgModes, !CurArgNum),
+        TagwordArgsWidths = [ArgWidth | TailTagwordArgsWidths],
+        TagwordArgModes = [ArgMode | TailTagwordArgModes]
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        TagwordArgsWidths = [],
+        TagwordArgModes = [],
+        NonTagwordArgsWidths = [ArgWidth | ArgsWidths],
+        NonTagwordArgModes = [ArgMode | ArgModes]
+    ).
+
+
+:- pred take_tagword_args_widths(list(arg_and_width(ArgType))::in,
+    list(arg_and_width(ArgType))::out,
+    list(arg_and_width(ArgType))::out) is det.
+
+take_tagword_args_widths([], [], []).
+take_tagword_args_widths([ArgWidth | ArgsWidths],
+        TagwordArgsWidths, NonTagwordArgsWidths) :-
+    ArgWidth = arg_and_width(_Arg, ArgPosWidth),
+    (
+        ( ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_shifted(_, _)
+        ),
+        take_tagword_args_widths(ArgsWidths,
+            TailTagwordArgsWidths, NonTagwordArgsWidths),
+        TagwordArgsWidths = [ArgWidth | TailTagwordArgsWidths]
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        TagwordArgsWidths = [],
+        NonTagwordArgsWidths = [ArgWidth | ArgsWidths]
     ).
 
 %---------------------------------------------------------------------------%
