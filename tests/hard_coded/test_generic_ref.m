@@ -17,8 +17,11 @@
 :- import_module bool.
 :- import_module char.
 :- import_module deconstruct.
+:- import_module float.
 :- import_module int.
+:- import_module int64.
 :- import_module store.
+:- import_module uint64.
 
 %---------------------------------------------------------------------------%
 
@@ -37,7 +40,9 @@ main(!IO) :-
     io.nl(!IO),
     do_test(test7_orig, test7_expected, !IO),
     io.nl(!IO),
-    do_test(test8_orig, test8_expected, !IO).
+    do_test(test8_orig, test8_expected, !IO),
+    io.nl(!IO),
+    do_test(test9_orig, test9_expected, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -233,5 +238,19 @@ test8_orig = packed_1(1i8, 1u8, dummy, dummy, 0i8, 0u8, 'A').
 :- func test8_expected = packed(char).
 
 test8_expected = packed_1(127i8, 255u8, dummy, dummy, 127i8, 255u8, 'Z').
+
+%---------------------------------------------------------------------------%
+
+:- type test9_struct
+    --->    test9_struct(int64, uint64, float, uint64).
+
+:- func test9_orig = test9_struct.
+
+test9_orig = test9_struct(int64.max_int64, uint64.max_uint64, float.infinity,
+    uint64.max_uint64).
+
+:- func test9_expected = test9_struct.
+
+test9_expected = test9_struct(1i64, 1u64, -1.0, 1u64).
 
 %---------------------------------------------------------------------------%

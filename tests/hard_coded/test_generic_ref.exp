@@ -29,3 +29,7 @@ Expected Term: packed_2(dummy, 41041.0, 127i8, 255u8, dummy, 127i8, 255u8)
    Orig. Term: packed_1(1i8, 1u8, dummy, dummy, 0i8, 0u8, 'A')
  Updated Term: packed_1(127i8, 255u8, dummy, dummy, 127i8, 255u8, 'Z')
 Expected Term: packed_1(127i8, 255u8, dummy, dummy, 127i8, 255u8, 'Z')
+
+   Orig. Term: test9_struct(9223372036854775807i64, 18446744073709551615u64, infinity, 18446744073709551615u64)
+ Updated Term: test9_struct(1i64, 1u64, -1.0, 1u64)
+Expected Term: test9_struct(1i64, 1u64, -1.0, 1u64)
