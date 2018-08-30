@@ -1583,7 +1583,7 @@ classify_lambda_arg_modes_present_absent([LambdaArg | LambdaArgs],
         PresentArgs, AbsentArgs) :-
     classify_lambda_arg_modes_present_absent(LambdaArgs,
         PresentArgsTail, AbsentArgsTail),
-    LambdaArg = lambda_arg(_, _, _, _, PresentOrAbsent, _, _),
+    PresentOrAbsent = LambdaArg ^ la_arg_mode_presence,
     (
         PresentOrAbsent = lam_present,
         PresentArgs = [LambdaArg | PresentArgsTail],
@@ -1630,9 +1630,9 @@ add_pred_no_args_have_modes_error(Context, !Specs) :-
 :- type lambda_arg
     --->    lambda_arg(
                 la_arg_num              :: int,
-                la_kind                 :: lambda_arg_kind,
                 la_arg_term             :: prog_term,
                 la_arg_var              :: prog_var,
+                la_kind                 :: lambda_arg_kind,
 
                 % If the lambda argument does not have a "::mode" annotation,
                 % the la_arg_mode_presence field will contain lam_absent,
@@ -1659,17 +1659,17 @@ add_pred_no_args_have_modes_error(Context, !Specs) :-
 :- func project_lambda_arg_term(lambda_arg) = prog_term.
 
 project_lambda_arg_term(LambdaArg) = ArgTerm :-
-    LambdaArg = lambda_arg(_, _, ArgTerm, _, _, _, _).
+    ArgTerm = LambdaArg ^ la_arg_term.
 
 :- func project_lambda_var(lambda_arg) = prog_var.
 
 project_lambda_var(LambdaArg) = LambdaVar :-
-    LambdaArg = lambda_arg(_, _, _, LambdaVar, _, _, _).
+    LambdaVar = LambdaArg ^ la_arg_var.
 
 :- func project_lambda_arg_mode(lambda_arg) = mer_mode.
 
 project_lambda_arg_mode(LambdaArg) = Mode :-
-    LambdaArg = lambda_arg(_, _, _, _, _, Mode, _).
+    Mode = LambdaArg ^ la_arg_mode.
 
 %---------------------------------------------------------------------------%
 
@@ -1750,7 +1750,7 @@ parse_lambda_arg(Kind, ArgModeTerm, LambdaArg, !ArgNum, !VarSet,
     % becoming lambda-quantified.
     LambdaVarName = "LambdaHeadVar__" ++ string.int_to_string(!.ArgNum),
     varset.new_named_var(LambdaVarName, LambdaVar, !VarSet),
-    LambdaArg = lambda_arg(!.ArgNum, Kind, ProgArgTerm, LambdaVar,
+    LambdaArg = lambda_arg(!.ArgNum, ProgArgTerm, LambdaVar, Kind,
         PresentOrAbsent, Mode, ModeContext),
     !:ArgNum = !.ArgNum + 1.
 
@@ -2055,8 +2055,8 @@ partition_args_and_lambda_vars(ModuleInfo,
         InputArgTermsTail, OutputArgTermsTail,
         InputLambdaVarsTail, OutputLambdaVarsTail),
 
-    LambdaArg = lambda_arg(_ArgNum, _Kind, _SupersededArgTerm, LambdaVar,
-        _PresentOrAbsent, Mode, _ModeContext),
+    LambdaArg = lambda_arg(_ArgNum, _SupersededArgTerm, LambdaVar,
+        _Kind, _PresentOrAbsent, Mode, _ModeContext),
 
     % If the mode is undefined, calling mode_is_output/2 directly would cause
     % the compiler to abort, so we don't want to do that.
@@ -2119,11 +2119,11 @@ qualify_lambda_arg_modes_if_not_opt_imported(LambdaArgs0, LambdaArgs,
 qualify_lambda_arg_modes(_InInt, [], [], [], !MQInfo, !Specs).
 qualify_lambda_arg_modes(InInt, [LambdaArg0 | LambdaArgs0],
         [LambdaArg | LambdaArgs], [Mode | Modes], !MQInfo, !Specs) :-
-    LambdaArg0 = lambda_arg(ArgNum, Kind, ProgArgTerm, LambdaVar,
-        PresentOrAbsent, Mode0, ModeContext),
+    LambdaArg0 = lambda_arg(ArgNum, ProgArgTerm, LambdaVar,
+        Kind, PresentOrAbsent, Mode0, ModeContext),
     qualify_lambda_mode(InInt, ModeContext, Mode0, Mode, !MQInfo, !Specs),
-    LambdaArg = lambda_arg(ArgNum, Kind, ProgArgTerm, LambdaVar,
-        PresentOrAbsent, Mode, ModeContext),
+    LambdaArg = lambda_arg(ArgNum, ProgArgTerm, LambdaVar,
+        Kind, PresentOrAbsent, Mode, ModeContext),
     qualify_lambda_arg_modes(InInt, LambdaArgs0,
         LambdaArgs, Modes, !MQInfo, !Specs).
 
