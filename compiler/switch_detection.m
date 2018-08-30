@@ -210,15 +210,15 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
     Requant0 = do_not_need_to_requantify,
     BodyDeletedCallCallees0 = set.init,
-    LocalInfo0 = local_switch_detect_info(ModuleInfo, AllowMulti, VarTypes,
-        Requant0, BodyDeletedCallCallees0),
+    LocalInfo0 = local_switch_detect_info(ModuleInfo, AllowMulti, Requant0,
+        VarTypes, BodyDeletedCallCallees0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
     detect_switches_in_goal(InstMap0, no, Goal0, Goal, LocalInfo0, LocalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
-    LocalInfo = local_switch_detect_info(_ModuleInfo, _AllowMulti, _VarTypes,
-        Requant, BodyDeletedCallCallees),
+    LocalInfo = local_switch_detect_info(_ModuleInfo, _AllowMulti, Requant,
+        _VarTypes, BodyDeletedCallCallees),
     (
         Requant = need_to_requantify,
         requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo)
@@ -236,8 +236,8 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     --->    local_switch_detect_info(
                 lsdi_module_info        :: module_info,
                 lsdi_allow_multi_arm    :: allow_multi_arm,
-                lsdi_vartypes           :: vartypes,
                 lsdi_requant            :: need_to_requantify,
+                lsdi_vartypes           :: vartypes,
                 lsdi_deleted_callees    :: set(pred_proc_id)
             ).
 
