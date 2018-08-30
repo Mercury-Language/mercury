@@ -261,12 +261,12 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
         clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
         clauses_info_get_varset(!.ClausesInfo, VarSet0),
         PurityInfo0 = purity_info(ModuleInfo, run_post_typecheck_tasks,
-            !.PredInfo, VarTypes0, VarSet0, [], do_not_need_to_requantify,
-            have_not_converted_unify),
+            do_not_need_to_requantify, have_not_converted_unify, !.PredInfo,
+            VarTypes0, VarSet0, []),
         compute_purity_for_clauses(Clauses0, Clauses, !.PredInfo,
             purity_pure, ActualPurity, PurityInfo0, PurityInfo),
-        PurityInfo = purity_info(_, _, !:PredInfo,
-            VarTypes, VarSet, GoalSpecs, _, _),
+        PurityInfo = purity_info(_, _, _, _, !:PredInfo,
+            VarTypes, VarSet, GoalSpecs),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
         clauses_info_set_varset(VarSet, !ClausesInfo),
         set_clause_list(Clauses, ClausesRep),
@@ -399,11 +399,11 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
     proc_info_get_varset(ProcInfo0, VarSet0),
     PurityInfo0 = purity_info(ModuleInfo, do_not_run_post_typecheck_tasks,
-        !.PredInfo, VarTypes0, VarSet0, [], do_not_need_to_requantify,
-        have_not_converted_unify),
+        do_not_need_to_requantify, have_not_converted_unify, !.PredInfo,
+        VarTypes0, VarSet0, []),
     compute_goal_purity(Goal0, Goal, Bodypurity, _, PurityInfo0, PurityInfo),
-    PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _,
-        NeedToRequantify, _),
+    PurityInfo = purity_info(_, _, NeedToRequantify, _, !:PredInfo,
+        VarTypes, VarSet, _),
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
     proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
     proc_info_set_varset(VarSet, ProcInfo2, ProcInfo3),
@@ -1627,12 +1627,12 @@ mismatched_outer_var_types(Context) = Spec :-
                 pi_run_post_typecheck   :: run_post_typecheck_tasks,
 
                 % Fields which may be changed.
+                pi_requant              :: need_to_requantify,
+                pi_converted_unify      :: converted_unify,
                 pi_pred_info            :: pred_info,
                 pi_vartypes             :: vartypes,
                 pi_varset               :: prog_varset,
-                pi_messages             :: list(error_spec),
-                pi_requant              :: need_to_requantify,
-                pi_converted_unify      :: converted_unify
+                pi_messages             :: list(error_spec)
             ).
 
 :- pred purity_info_add_message(error_spec::in,
