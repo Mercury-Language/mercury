@@ -138,6 +138,7 @@
 :- import_module int.
 :- import_module pair.
 :- import_module require.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -663,7 +664,7 @@ ml_generate_bit_vec(MLDS_ModuleName, Context, CaseVals, Start, WordBits,
         ConstType, Initializer, Context, BitVecRval, !GlobalData).
 
 :- pred ml_generate_bit_vec_2(assoc_list(int, T)::in, int::in, int::in,
-    map(int, int)::in, map(int, int)::out) is det.
+    map(int, uint)::in, map(int, uint)::out) is det.
 
 ml_generate_bit_vec_2([], _, _, !BitMap).
 ml_generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
@@ -671,27 +672,28 @@ ml_generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
     WordNum = Val // WordBits,
     Offset = Val mod WordBits,
     ( if map.search(!.BitMap, WordNum, X0) then
-        X1 = X0 \/ (1 << Offset)
+        X1 = X0 \/ (1u << Offset),
+        map.det_update(WordNum, X1, !BitMap)
     else
-        X1 = (1 << Offset)
+        X1 = (1u << Offset),
+        map.det_insert(WordNum, X1, !BitMap)
     ),
-    map.set(WordNum, X1, !BitMap),
     ml_generate_bit_vec_2(Rest, Start, WordBits, !BitMap).
 
-:- pred ml_generate_bit_vec_initializers(list(pair(int))::in, int::in,
+:- pred ml_generate_bit_vec_initializers(list(pair(int, uint))::in, int::in,
     list(mlds_rval)::out, list(mlds_initializer)::out) is det.
 
 ml_generate_bit_vec_initializers([], _, [], []).
 ml_generate_bit_vec_initializers(All @ [WordNum - Bits | Rest], Count,
         [Rval | Rvals], [Initializer | Initializers]) :-
     ( if Count < WordNum then
-        WordVal = 0,
+        WordVal = 0u,
         Remainder = All
     else
         WordVal = Bits,
         Remainder = Rest
     ),
-    Rval = ml_const(mlconst_int(WordVal)),
+    Rval = ml_const(mlconst_uint(WordVal)),
     Initializer = init_obj(Rval),
     ml_generate_bit_vec_initializers(Remainder, Count + 1,
         Rvals, Initializers).
