@@ -127,7 +127,7 @@ erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
 
 erlang_type_ctor_details_2(CtorDetails) = Details :-
     (
-        CtorDetails = tcd_enum(_, Functors, _, _, IsDummy, FunctorNums),
+        CtorDetails = tcd_enum(_, IsDummy, Functors, _, _, FunctorNums),
         (
             IsDummy = enum_is_dummy,
             ( if Functors = [F] then

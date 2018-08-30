@@ -171,10 +171,10 @@
 :- type type_ctor_details
     --->    tcd_enum(
                 enum_axioms         :: equality_axioms,
+                enum_is_dummy       :: enum_maybe_dummy,
                 enum_functors       :: list(enum_functor),
                 enum_value_table    :: map(int, enum_functor),
                 enum_name_table     :: map(string, enum_functor),
-                enum_is_dummy       :: enum_maybe_dummy,
                 enum_functor_number_mapping
                                     :: list(int)
             )
@@ -1586,7 +1586,7 @@ type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
         "runtime.TypeCtorRep."),
     TypeCtorDetails = TypeCtorData ^ tcr_rep_details,
     (
-        TypeCtorDetails = tcd_enum(TypeCtorUserEq, _, _, _, IsDummy, _),
+        TypeCtorDetails = tcd_enum(TypeCtorUserEq, IsDummy, _, _, _, _),
         (
             IsDummy = enum_is_dummy,
             expect(unify(TypeCtorUserEq, standard), $pred,
@@ -1766,7 +1766,7 @@ type_ctor_details_num_ptags(TypeCtorDetails) = NumPtags :-
 
 type_ctor_details_num_functors(TypeCtorDetails) = NumFunctors :-
     (
-        TypeCtorDetails = tcd_enum(_, EnumFunctors, _, _, _, _),
+        TypeCtorDetails = tcd_enum(_, _, EnumFunctors, _, _, _),
         list.length(EnumFunctors, NumFunctors)
     ;
         TypeCtorDetails = tcd_foreign_enum(_, _, ForeignFunctors, _, _, _),

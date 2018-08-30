@@ -712,8 +712,8 @@ output_type_ctor_details_defn(Info, RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName, MaybeLayoutName, HaveFunctorNumberMap,
         !DeclSet, !IO) :-
     (
-        TypeCtorDetails = tcd_enum(_, EnumFunctors, EnumByRep, EnumByName,
-            _IsDummy, FunctorNumberMap),
+        TypeCtorDetails = tcd_enum(_, _IsDummy, EnumFunctors,
+            EnumByRep, EnumByName, FunctorNumberMap),
         list.foldl2(output_enum_functor_defn(Info, RttiTypeCtor), EnumFunctors,
             !DeclSet, !IO),
         output_enum_value_ordered_table(Info, RttiTypeCtor, EnumByRep,

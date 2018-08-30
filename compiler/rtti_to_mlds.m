@@ -608,8 +608,8 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
         !GlobalData) :-
     module_info_get_name(ModuleInfo, ModuleName),
     (
-        TypeCtorDetails = tcd_enum(_, EnumFunctors, EnumByValue, EnumByName,
-            _IsDummy, FunctorNumberMap),
+        TypeCtorDetails = tcd_enum(_, _IsDummy, EnumFunctors,
+            EnumByValue, EnumByName, FunctorNumberMap),
         list.foldl(gen_enum_functor_desc(ModuleInfo, RttiTypeCtor),
             EnumFunctors, !GlobalData),
         gen_enum_value_ordered_table(ModuleInfo, RttiTypeCtor,

@@ -539,8 +539,8 @@ make_mercury_enum_details(CtorRepns, IsDummy, EqualityAxioms, Details) :-
     list.foldl2(make_enum_maps, EnumFunctors,
         ValueMap0, ValueMap, NameMap0, NameMap),
     FunctorNumberMap = make_functor_number_map(CtorRepns),
-    Details = tcd_enum(EqualityAxioms, EnumFunctors, ValueMap, NameMap,
-        IsDummy, FunctorNumberMap).
+    Details = tcd_enum(EqualityAxioms, IsDummy, EnumFunctors,
+        ValueMap, NameMap, FunctorNumberMap).
 
     % Create an enum_functor structure for each functor in an enum type.
     % The functors are given to us in ordinal order (since that's how the HLDS
