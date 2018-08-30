@@ -1913,6 +1913,8 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
                 % is is undecidable, this may be a conservative approximation.
 /*  1 */        gi_determinism      :: determinism,
 
+/*  - */        gi_purity           :: purity,
+
                 % The change in insts over this goal (computed during mode
                 % analysis). Since the unreachability problem is undecidable,
                 % the instmap_delta may be reachable even when the goal
@@ -1940,21 +1942,19 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
                 % real non-locals.
 /*  3 */        gi_nonlocals        :: set_of_progvar,
 
-/*  4 */        gi_purity           :: purity,
-
                 % The set of compiler-defined "features" of this goal,
                 % which optimisers may wish to know about.
-/*  5 */        gi_features         :: set(goal_feature),
+/*  4 */        gi_features         :: set(goal_feature),
 
                 % An value that uniquely identifies this goal in its procedure.
-/*  6 */        gi_goal_id          :: goal_id,
+/*  5 */        gi_goal_id          :: goal_id,
 
-/*  7 */        gi_code_gen_info    :: hlds_goal_code_gen_info,
+/*  6 */        gi_code_gen_info    :: hlds_goal_code_gen_info,
 
                 % Extra information about the goal that doesn't fit in an
                 % eight-word cell. Mostly used for information used by
                 % various optional analysis passes, e.g closure analysis.
-/*  8 */        gi_extra            :: hlds_goal_extra_info
+/*  7 */        gi_extra            :: hlds_goal_extra_info
             ).
 
 :- type hlds_goal_extra_info
@@ -1986,7 +1986,7 @@ goal_info_init(GoalInfo) :-
     term.context_init(Context),
     set.init(Features),
     GoalId = goal_id(-1),
-    GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
+    GoalInfo = goal_info(Detism, purity_pure, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
@@ -1998,7 +1998,7 @@ goal_info_init(Context, GoalInfo) :-
     NonLocals = set_of_var.init,
     set.init(Features),
     GoalId = goal_id(-1),
-    GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
+    GoalInfo = goal_info(Detism, purity_pure, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
@@ -2006,14 +2006,14 @@ goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
     set.init(Features),
     term.context_init(Context),
     GoalId = goal_id(-1),
-    GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
+    GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
     set.init(Features),
     GoalId = goal_id(-1),
-    GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
+    GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
@@ -3086,7 +3086,7 @@ rename_generic_call(Must, Subn, Call0, Call) :-
     ).
 
 rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
-    !.GoalInfo = goal_info(Detism, InstMapDelta0, NonLocals0, Purity,
+    !.GoalInfo = goal_info(Detism, Purity, InstMapDelta0, NonLocals0,
         Features, GoalPath, CodeGenInfo0, ExtraInfo0),
 
     rename_vars_in_set_of_var(Must, Subn, NonLocals0, NonLocals),
@@ -3166,7 +3166,7 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
     ExtraInfo = extra_goal_info(Context, RevGoalPath, HO_Values, GoalMode,
         MaybeCTGC, MaybeRBMM, MaybeMCI, MaybeDPInfo),
 
-    !:GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
+    !:GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
         Features, GoalPath, CodeGenInfo, ExtraInfo).
 
 :- pred rename_vars_in_short_reuse_desc(must_rename::in, prog_var_renaming::in,
