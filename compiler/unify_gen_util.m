@@ -335,6 +335,7 @@ cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
         ; Fill = fill_uint8
         ; Fill = fill_uint16
         ; Fill = fill_uint32
+        ; Fill = fill_char21
         ),
         Rval1 = Rval0
     ;
@@ -351,26 +352,19 @@ cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
 
 maybe_cast_masked_off_rval(Fill, MaskedRval0, MaskedRval) :-
     (
-        Fill = fill_enum,
+        ( Fill = fill_enum
+        ; Fill = fill_char21
+        ),
         MaskedRval = MaskedRval0
     ;
-        Fill = fill_int8,
-        MaskedRval = cast(lt_int(int_type_int8), MaskedRval0)
-    ;
-        Fill = fill_uint8,
-        MaskedRval = cast(lt_int(int_type_uint8), MaskedRval0)
-    ;
-        Fill = fill_int16,
-        MaskedRval = cast(lt_int(int_type_int16), MaskedRval0)
-    ;
-        Fill = fill_uint16,
-        MaskedRval = cast(lt_int(int_type_uint16), MaskedRval0)
-    ;
-        Fill = fill_int32,
-        MaskedRval = cast(lt_int(int_type_int32), MaskedRval0)
-    ;
-        Fill = fill_uint32,
-        MaskedRval = cast(lt_int(int_type_uint32), MaskedRval0)
+        ( Fill = fill_int8,     CastType = int_type_int8
+        ; Fill = fill_uint8,    CastType = int_type_uint8
+        ; Fill = fill_int16,    CastType = int_type_int16
+        ; Fill = fill_uint16,   CastType = int_type_uint16
+        ; Fill = fill_int32,    CastType = int_type_int32
+        ; Fill = fill_uint32,   CastType = int_type_uint32
+        ),
+        MaskedRval = cast(lt_int(CastType), MaskedRval0)
     ).
 
 %---------------------------------------------------------------------------%

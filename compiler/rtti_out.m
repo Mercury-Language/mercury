@@ -1182,7 +1182,9 @@ output_du_arg_locns_loop([ArgInfo | ArgInfos], !IO) :-
                 arg_shift(Shift), arg_num_bits(NumBits0), _Mask, Fill)
         ),
         (
-            Fill = fill_enum,
+            ( Fill = fill_enum
+            ; Fill = fill_char21
+            ),
             NumBits = NumBits0
         ;
             Fill = fill_int8,

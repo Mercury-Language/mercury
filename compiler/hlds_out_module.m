@@ -687,6 +687,7 @@ fill_kind_to_string(fill_int32) = "fill int32".
 fill_kind_to_string(fill_uint8) = "fill uint8".
 fill_kind_to_string(fill_uint16) = "fill uint16".
 fill_kind_to_string(fill_uint32) = "fill uint32".
+fill_kind_to_string(fill_char21) = "fill char21".
 
 %-----------------------------------------------------------------------------%
 %

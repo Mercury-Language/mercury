@@ -521,7 +521,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       fill_int32
     ;       fill_uint8
     ;       fill_uint16
-    ;       fill_uint32.
+    ;       fill_uint32
+    ;       fill_char21.
 
 :- type double_word_kind
     --->    dw_float

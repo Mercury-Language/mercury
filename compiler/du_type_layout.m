@@ -167,20 +167,22 @@
 
 :- type decide_du_params
     --->    decide_du_params(
-                ddp_target                  :: compilation_target,
-                ddp_double_word_floats      :: maybe_double_word_floats,
-                ddp_double_word_int64s      :: maybe_double_word_int64s,
-                ddp_unboxed_no_tag_types    :: maybe_unboxed_no_tag_types,
-                ddp_maybe_primary_tags      :: maybe_primary_tags,
-                ddp_arg_pack_bits           :: int,
+                ddp_target                      :: compilation_target,
+                ddp_double_word_floats          :: maybe_double_word_floats,
+                ddp_double_word_int64s          :: maybe_double_word_int64s,
+                ddp_unboxed_no_tag_types        :: maybe_unboxed_no_tag_types,
+                ddp_maybe_primary_tags          :: maybe_primary_tags,
+                ddp_arg_pack_bits               :: int,
 
                 % Only for bootstrapping.
-                ddp_allow_double_word_ints  :: bool,
-                ddp_allow_packing_ints      :: bool,
-                ddp_allow_packing_dummies   :: bool,
-                ddp_allow_packing_local_sectags  :: bool,
+                ddp_allow_double_word_ints      :: bool,
+                ddp_allow_packing_ints          :: bool,
+                ddp_allow_packing_chars         :: bool,
+                ddp_allow_packing_dummies       :: bool,
+                ddp_allow_packing_local_sectags :: bool,
                 ddp_allow_packing_remote_sectags :: bool,
-                ddp_experiment              :: string,
+                ddp_allow_packing_mini_types    :: bool,
+                ddp_experiment                  :: string,
 
                 % We use the direct_arg_map for two purposes:
                 % - to optimize data representations, and
@@ -192,11 +194,13 @@
                 % disabled.
                 % XXX When we remove "where direct_arg is" clauses
                 % from the language, the second purpose will go away.
-                ddp_maybe_direct_args       :: maybe_direct_args,
-                ddp_direct_arg_map          :: direct_arg_map,
+                ddp_maybe_direct_args           :: maybe_direct_args,
+                ddp_direct_arg_map              :: direct_arg_map,
 
-                ddp_inform_suboptimal_pack  :: maybe_inform_about_packing
+                ddp_inform_suboptimal_pack      :: maybe_inform_about_packing
             ).
+
+%---------------------------------------------------------------------------%
 
 decide_type_repns(!ModuleInfo, !Specs) :-
     module_info_get_type_repn_dec(!.ModuleInfo, TypeRepnDec),
@@ -308,13 +312,16 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
         AllowDoubleWordInts),
     globals.lookup_bool_option(Globals, allow_packing_ints,
         AllowPackingInts),
+    globals.lookup_bool_option(Globals, allow_packing_chars,
+        AllowPackingChars),
     globals.lookup_bool_option(Globals, allow_packing_dummies,
         AllowPackingDummies),
     globals.lookup_bool_option(Globals, allow_packing_local_sectags,
         AllowPackingLocalSegtags),
-    % XXX ARG_PACK AllowPackingRemoteSegtags is not yet used.
     globals.lookup_bool_option(Globals, allow_packing_remote_sectags,
         AllowPackingRemoteSegtags),
+    globals.lookup_bool_option(Globals, allow_packing_mini_types,
+        AllowPackingMiniTypes),
 
     % Compute MaybeDirectArgs.
     (
@@ -368,8 +375,9 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
 
     Params = decide_du_params(Target, DoubleWordFloats, DoubleWordInt64s,
         UnboxedNoTagTypes, MaybePrimaryTags, ArgPackBits,
-        AllowDoubleWordInts, AllowPackingInts, AllowPackingDummies,
-        AllowPackingLocalSegtags, AllowPackingRemoteSegtags, Experiment,
+        AllowDoubleWordInts, AllowPackingInts, AllowPackingChars,
+        AllowPackingDummies, AllowPackingLocalSegtags,
+        AllowPackingRemoteSegtags, AllowPackingMiniTypes, Experiment,
         MaybeDirectArgs, DirectArgMap, MaybeInformPacking).
 
 %---------------------------------------------------------------------------%
@@ -404,7 +412,7 @@ build_type_repn_map([TypeRepn | TypeRepns], !TypeRepnMap) :-
             % since an argument cannot take a negative number of bits.
             % However, it is better to represent it as an int until
             % the infrastructure for uints is better developed,
-            % e.g. until we can do logs operations on them, or print them,
+            % e.g. until we can do log operations on them, or print them,
             % without converting them to an int first.
 
 :- type component_type_kind
@@ -791,8 +799,7 @@ add_foreign_if_word_aligned_ptr(ModuleInfo, Params, TypeCtor,
 :- pred add_abstract_if_packable(type_ctor::in, type_details_abstract::in,
     component_type_map::in, component_type_map::out) is det.
 
-add_abstract_if_packable(TypeCtor, AbstractDetails,
-        !ComponentTypeMap) :-
+add_abstract_if_packable(TypeCtor, AbstractDetails, !ComponentTypeMap) :-
     (
         AbstractDetails = abstract_type_fits_in_n_bits(NumBits),
         % XXX TYPE_REPN We should get Fill from AbstractDetails.
@@ -1129,10 +1136,10 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         ; CtorTag = no_tag
         ; CtorTag = direct_arg_tag(_)
         ),
-        decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
-            TypeStatus, NumRemoteSectagBits, CtorTag, MaybeExistConstraints,
-            CtorSymName, CtorContext, CtorArgs, CtorArgRepns,
-            CtorMaybeTagwordArgs, !Specs),
+        decide_complex_du_ctor_remote_args(ModuleInfo, Params,
+            ComponentTypeMap, TypeStatus, NumRemoteSectagBits, CtorTag,
+            MaybeExistConstraints, CtorSymName, CtorContext,
+            CtorArgs, CtorArgRepns, CtorMaybeTagwordArgs, !Specs),
         (
             CtorMaybeTagwordArgs = no_tagword_args
         ;
@@ -1623,38 +1630,49 @@ may_pack_arg_type(Params, ComponentTypeMap, ArgType, PackableKind) :-
             Params ^ ddp_allow_packing_dummies = yes
         )
     else
-        ArgType = builtin_type(builtin_type_int(ArgIntType)),
-        Params ^ ddp_allow_packing_ints = yes,
+        ArgType = builtin_type(ArgBuiltinType),
         (
+            ArgBuiltinType = builtin_type_int(ArgIntType),
+            Params ^ ddp_allow_packing_ints = yes,
             (
-                ArgIntType = int_type_int8,
-                NumArgBits = 8,
-                FillKind = fill_int8
+                (
+                    ArgIntType = int_type_int8,
+                    NumArgBits = 8,
+                    FillKind = fill_int8
+                ;
+                    ArgIntType = int_type_int16,
+                    NumArgBits = 16,
+                    FillKind = fill_int16
+                ;
+                    ArgIntType = int_type_int32,
+                    NumArgBits = 32,
+                    NumArgBits < Params ^ ddp_arg_pack_bits,
+                    FillKind = fill_int32
+                )
             ;
-                ArgIntType = int_type_int16,
-                NumArgBits = 16,
-                FillKind = fill_int16
-            ;
-                ArgIntType = int_type_int32,
-                NumArgBits = 32,
-                NumArgBits < Params ^ ddp_arg_pack_bits,
-                FillKind = fill_int32
+                (
+                    ArgIntType = int_type_uint8,
+                    NumArgBits = 8,
+                    FillKind = fill_uint8
+                ;
+                    ArgIntType = int_type_uint16,
+                    NumArgBits = 16,
+                    FillKind = fill_uint16
+                ;
+                    ArgIntType = int_type_uint32,
+                    NumArgBits = 32,
+                    NumArgBits < Params ^ ddp_arg_pack_bits,
+                    FillKind = fill_uint32
+                )
             )
         ;
-            (
-                ArgIntType = int_type_uint8,
-                NumArgBits = 8,
-                FillKind = fill_uint8
-            ;
-                ArgIntType = int_type_uint16,
-                NumArgBits = 16,
-                FillKind = fill_uint16
-            ;
-                ArgIntType = int_type_uint32,
-                NumArgBits = 32,
-                NumArgBits < Params ^ ddp_arg_pack_bits,
-                FillKind = fill_uint32
-            )
+            ArgBuiltinType = builtin_type_char,
+            Params ^ ddp_allow_packing_chars = yes,
+            % Section 2.4 of the Unicode standard says that "The codespace
+            % consists of the integers from 0 to 10FFFF", which means that
+            % all Unicode characters fit into 21 bits.
+            NumArgBits = 21,
+            FillKind = fill_char21
         ),
         PackableKind = packable_n_bits(NumArgBits, FillKind)
     ).
@@ -2053,35 +2071,6 @@ take_local_packable_functors_constant_sectag_bits(ArgPackBits,
 % XXX TYPE_REPN Rationalise the order of the predicates from here onwards.
 %
 
-:- pred worth_arg_packing_compare(int::in, int::in, bool::out) is det.
-
-worth_arg_packing_compare(UnpackedLength, PackedLength, Worthwhile) :-
-    % Boehm GC will round up allocations (at least) to the next even number
-    % of words. There is no point saving a single word if that word will be
-    % allocated anyway.
-    % XXX TYPE_REPN Test this assertion. The saving in accesses to cache
-    % and/or memory may be more important than the cost of shifts and masks.
-    ( if PackedLength < UnpackedLength then
-        ( if round_to_even(PackedLength) < round_to_even(UnpackedLength) then
-            Worthwhile = yes
-        else
-            Worthwhile = no
-        )
-    else
-        Worthwhile = no
-    ).
-
-:- func round_to_even(int) = int.
-
-round_to_even(I) = E :-
-    ( if int.even(I) then
-        E = I
-    else
-        E = I + 1
-    ).
-
-%---------------------------------------------------------------------------%
-
 :- pred is_direct_arg_ctor(component_type_map::in, module_name::in,
     type_status::in, bool::in, bool::in,
     list(sym_name_and_arity)::in, constructor::in) is semidet.
@@ -2444,11 +2433,7 @@ inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
         [], SubWordBins),
     list.length(SubWordBins, NumSubWordBins),
 
-    worth_arg_packing_compare(ActualNumSubWords, NumSubWordBins, WorthWhile),
-    (
-        WorthWhile = no
-    ;
-        WorthWhile = yes,
+    ( if NumSubWordBins < ActualNumSubWords then
         list.length(CtorArgRepns, CtorArity),
         CtorSymNameArity = sym_name_arity(CtorSymName, CtorArity),
         StartPieces = [words("The arguments of the constructor"),
@@ -2473,6 +2458,8 @@ inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
         Msg = simple_msg(CtorContext, [always(Pieces)]),
         Spec = error_spec(severity_informational, phase_type_check, [Msg]),
         !:Specs = [Spec | !.Specs]
+    else
+        true
     ).
 
 :- type field_id

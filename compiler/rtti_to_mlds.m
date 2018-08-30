@@ -1050,7 +1050,9 @@ gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer) :-
         % NumBits = -4 to -9 mean the argument takes part a word
         % and contains an 8, 16 or 32 bit sized int or uint.
         (
-            Fill = fill_enum,
+            ( Fill = fill_enum
+            ; Fill = fill_char21
+            ),
             NumBits = NumBits0
         ;
             Fill = fill_int8,

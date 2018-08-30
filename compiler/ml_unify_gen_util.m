@@ -832,18 +832,13 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
         ; Fill = fill_uint8
         ; Fill = fill_uint16
         ; Fill = fill_uint32
+        ; Fill = fill_char21
         ),
         Rval1 = Rval0
     ;
-        (
-            Fill = fill_int8,
-            ToMLDSType = mlds_int_type_uint8
-        ;
-            Fill = fill_int16,
-            ToMLDSType = mlds_int_type_uint16
-        ;
-            Fill = fill_int32,
-            ToMLDSType = mlds_int_type_uint32
+        ( Fill = fill_int8,     ToMLDSType = mlds_int_type_uint8
+        ; Fill = fill_int16,    ToMLDSType = mlds_int_type_uint16
+        ; Fill = fill_int32,    ToMLDSType = mlds_int_type_uint32
         ),
         Rval1 = ml_cast(ToMLDSType, Rval0)
     ),

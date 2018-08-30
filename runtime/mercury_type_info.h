@@ -899,10 +899,11 @@ typedef struct {
     // fall into two categories: positive and negative.
     //
     // A strictly positive value of MR_arg_bits means that the argument
-    // is a value of an enum type packed into a word with other sub-word-sized
-    // arguments. To get the value of this argument, shift the word at
-    // the offset given by MR_arg_offset by MR_arg_shift bits to the right
-    // and mask off the bottom MR_arg_bits bits.
+    // is either a char or a value of an enum type, and is packed into
+    // a word with other sub-word-sized arguments. To get the value of
+    // this argument, shift the word at the offset given by MR_arg_offset
+    // by MR_arg_shift bits to the right and mask off the bottom MR_arg_bits
+    // bits.
     //
     // The strictly negative values of MR_arg_bits fall into three
     // subcategories.

@@ -969,7 +969,9 @@ ml_extract_subword_value(WordRval, Shift, Mask, Fill, Rval) :-
     MaskedRval = ml_bitwise_mask(
         ml_right_shift_rval(UnsignedWordRval, Shift), MaskInt),
     (
-        Fill = fill_enum,
+        ( Fill = fill_enum
+        ; Fill = fill_char21
+        ),
         Rval = MaskedRval
     ;
         ( Fill = fill_int8,   CastMLDSType = mlds_int_type_int8
