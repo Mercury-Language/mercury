@@ -2,7 +2,7 @@
 " Language:     Mercury
 " Maintainer:   Sebastian Godelet <sebastian.godelet@outlook.com>
 " Extensions:   *.m *.moo
-" Last Change:  2018-04-07
+" Last Change:  2018-09-01
 
 " for documentation, please use :help mercury-syntax
 
@@ -112,7 +112,7 @@ syn keyword mercuryForeignMod   affects_liveness
 syn keyword mercuryForeignMod     does_not_affect_liveness
 syn keyword mercuryForeignMod     doesnt_affect_liveness
 syn keyword mercuryForeignMod   attach_to_io_state
-syn keyword mercuryForeignMod   can_pass_as_mercury_type stable
+syn keyword mercuryForeignMod   can_pass_as_mercury_type word_aligned_pointer stable
 syn keyword mercuryForeignMod   may_call_mercury will_not_call_mercury
 syn keyword mercuryForeignMod   may_duplicate may_not_duplicate
 syn keyword mercuryForeignMod   may_modify_trail will_not_modify_trail
@@ -307,15 +307,12 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn region  mercuryForeignJavaBlock    matchgroup=mercuryBracket start=/\v\(("Java"|java)/rs=s+1 end=')'
         \ transparent fold contained contains=@mercuryForeign,
         \ mercuryJavaCode,mercuryBlock
-  syn region  mercuryForeignILBlock      matchgroup=mercuryBracket start=/\v\(("IL"|il)/rs=s+1 end=')'
-        \ transparent fold contained contains=@mercuryForeign,
-        \ mercuryILCode,mercuryBlock
   syn region  mercuryForeignErlangBlock  matchgroup=mercuryBracket start=/\v\(("Erlang"|erlang)/rs=s+1 end=')'
         \ transparent fold contained contains=@mercuryForeign,
         \ mercuryErlangCode,mercuryBlock
   syn cluster mercuryForeignBlock contains=mercuryForeignCBlock,
         \ mercuryForeignCSharpBlock,mercuryForeignJavaBlock,
-        \ mercuryForeignErlangBlock,mercuryForeignILBlock
+        \ mercuryForeignErlangBlock
   syn match   mercuryPragmaForeign /\v^\s*:-\s+pragma\s+foreign_(code|proc|decl|type|export(_enum)?|enum|import_module)/
         \ transparent nextgroup=@mercuryForeignBlock
 
@@ -340,7 +337,7 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn match mercuryCLikeFloat /\v<([0-9]+\.[0-9]+([eE][-+]?[0-9]+)?)/ contained
   syn match mercuryCLikeFloat /\v<([0-9]+[eE][-+]?[0-9]+)/ contained
   syn cluster mercuryCLike contains=mercuryCLikeKeyword,mercuryCLikeType
-  syn cluster mercuryCLike add=mercuryCLikeOperator,mercuryCComment,mercuryCLikeChar
+  syn cluster mercuryCLike add=mercuryCLikeOperator,mercuryCComment,mercuryCppLikeComment,mercuryCLikeChar
   syn cluster mercuryCLike add=mercuryCLikeNumber,mercuryCLikeFloat,mercuryCLikeBracket
   syn cluster mercuryCLike add=mercuryCLikeDelimiter,mercuryForeignIface
   syn cluster mercuryCLike add=@mercuryFormatting
@@ -415,11 +412,6 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn match mercuryJavaBool contained "\v<(YES|NO)>"
   syn region mercuryJavaCode   matchgroup=mercuryString start=+"+ skip=+""+ end=+"+
         \ transparent fold contained contains=@mercuryCppLike,mercuryCString,mercuryJavaType
-
-    " Declaration for .NET IL
-  syn match mercuryILType "\v<[u]?int(8|16|32|64)|float(32|64)>" contained
-  syn cluster mercuryIL contains=@mercuryCSharp,mercuryILType
-  syn region mercuryILCode matchgroup=mercuryString start=+"+ skip=+""+ end=+"+ transparent fold contained contains=@mercuryIL
 
     " Declaration for Erlang
   syn keyword mercuryErlangKeyword contained after and andalso band begin bnot bor bsl bsr bxor case
@@ -627,7 +619,6 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   hi def link mercuryCSharpType       mercuryForeignType
   hi def link mercuryJavaBool         mercuryBool
   hi def link mercuryJavaType         mercuryForeignType
-  hi def link mercuryILType           mercuryForeignType
   hi def link mercuryErlangKeyword    Keyword
   hi def link mercuryErlangOperator   Operator
   hi def link mercuryErlangBool       mercuryBool
