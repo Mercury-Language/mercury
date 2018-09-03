@@ -1083,7 +1083,7 @@ write_unification(Info, ModuleInfo, ProgVarSet, InstVarSet, VarNamePrint,
         write_indent(Indent, !IO),
         io.write_string("% ", !IO),
         mercury_output_var(ProgVarSet, VarNamePrint, Var, !IO),
-        io.write_string(" := ", !IO),
+        io.write_string(" <= ", !IO),
         write_functor_and_submodes(Info, ModuleInfo, ProgVarSet, InstVarSet,
             VarNamePrint, Indent, ConsId, ArgVars, ArgModes, !IO),
 
