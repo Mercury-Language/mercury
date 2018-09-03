@@ -871,8 +871,9 @@ ml_generate_and_pack_dynamic_construct_args(Info,
                     OrigMLDS_Type, RHS_MLDS_Type),
                 HeadTakeAddrInfos = [TakeAddrInfo]
             else
-                ml_maybe_box_or_unbox_lval(ModuleInfo, ConsArgType, RHSType,
-                    BoxedRHSType, RHS_MLDS_Type, ArgMode, RHSLval, RHSRval),
+                ml_maybe_box_unbox_or_null_lval(ModuleInfo, ConsArgType,
+                    RHSType, BoxedRHSType, RHS_MLDS_Type, ArgMode,
+                    RHSLval, RHSRval),
                 HeadTakeAddrInfos = []
             ),
             % XXX ARG_PACK We should not need the the last field.
@@ -884,7 +885,7 @@ ml_generate_and_pack_dynamic_construct_args(Info,
                 DoubleWordKind),
             expect(ml_not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
                 "taking address of apw_double"),
-            ml_maybe_box_or_unbox_lval(ModuleInfo, ConsArgType, RHSType,
+            ml_maybe_box_unbox_or_null_lval(ModuleInfo, ConsArgType, RHSType,
                 BoxedRHSType, RHS_MLDS_Type, ArgMode, RHSLval, RHSRval),
             ( if RHSRval = ml_const(mlconst_null(_)) then
                 SubstType = mlds_generic_type,
@@ -927,8 +928,7 @@ ml_generate_and_pack_dynamic_construct_args(Info,
             NumBits, _, Fill),
         expect(ml_not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
             "taking address of apw_partial_first"),
-        ml_gen_var(Info, RHSVar, RHSLval),
-        RHSRval = ml_lval(RHSLval),
+        ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, RHSRval),
 
         % Figure out the type of the field.
         ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -1012,7 +1012,7 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
         [RHSVarTypeWidth | RHSVarsTypesWidths], LeftOverRHSVarsTypesWidths,
         [ArgMode | ArgModes], LeftOverArgModes, CurArgNum, LeftOverArgNum,
         TakeAddr, !RevToOrRvals, !RevPackedArgVars) :-
-    RHSVarTypeWidth = arg_type_and_width(RHSVar, _ConsArgType, ArgPosWidth),
+    RHSVarTypeWidth = arg_type_and_width(RHSVar, ConsArgType, ArgPosWidth),
     (
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
@@ -1027,8 +1027,8 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
             ArgPosWidth = apw_partial_shifted(_, _, Shift, NumBits, _, Fill),
             expect(ml_not_taking_addr_of_cur_arg(TakeAddr, CurArgNum), $pred,
                 "taking address of apw_partial_shifted"),
-            ml_gen_var(Info, RHSVar, RHSLval),
-            RHSRval = ml_lval(RHSLval),
+            ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, RHSRval),
+
             ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
                 !RevToOrRvals),
             PackedArgVar = packed_arg_var(RHSVar, Shift, NumBits, Fill),
@@ -1044,23 +1044,42 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
             TakeAddr, !RevToOrRvals, !RevPackedArgVars)
     ).
 
-:- pred ml_maybe_box_or_unbox_lval(module_info::in,
+:- pred ml_maybe_box_unbox_or_null_lval(module_info::in,
     mer_type::in, mer_type::in, mer_type::in, mlds_type::in,
     unify_mode::in, mlds_lval::in, mlds_rval::out) is det.
 
-ml_maybe_box_or_unbox_lval(ModuleInfo, ConsArgType, ArgType, BoxedArgType,
-        MLDS_Type, ArgMode, Lval, Rval) :-
+ml_maybe_box_unbox_or_null_lval(ModuleInfo, ConsArgType, RHSType, BoxedRHSType,
+        RHS_MLDS_Type, ArgMode, RHSLval, RHSRval) :-
     ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
     ( if
-        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, ArgType,
+        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, RHSType,
             top_in),
-        is_either_type_a_dummy(ModuleInfo, ArgType, ConsArgType) =
+        is_either_type_a_dummy(ModuleInfo, RHSType, ConsArgType) =
             neither_is_dummy_type
     then
-        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, BoxedArgType,
-            bp_native_if_possible, ml_lval(Lval), Rval)
+        ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, BoxedRHSType,
+            bp_native_if_possible, ml_lval(RHSLval), RHSRval)
     else
-        Rval = ml_const(mlconst_null(MLDS_Type))
+        RHSRval = ml_const(mlconst_null(RHS_MLDS_Type))
+    ).
+
+:- pred ml_maybe_null_var(ml_gen_info::in, prog_var::in, mer_type::in,
+    unify_mode::in, mlds_rval::out) is det.
+
+ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, RHSRval) :-
+    ml_variable_type(Info, RHSVar, RHSType),
+    ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ( if
+        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, RHSType,
+            top_in),
+        is_either_type_a_dummy(ModuleInfo, RHSType, ConsArgType) =
+            neither_is_dummy_type
+    then
+        ml_gen_var(Info, RHSVar, RHSLval),
+        RHSRval = ml_lval(RHSLval)
+    else
+        RHSRval = ml_const(mlconst_uint(0u))
     ).
 
     % Generate assignment statements for each of ExtraRvals into the object at
@@ -1099,20 +1118,7 @@ ml_gen_tagword_dynamically(_, [_ | _], [], !RevOrRvals) :-
 ml_gen_tagword_dynamically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
         [ArgMode | ArgModes], !RevOrRvals) :-
     RHSVarTypeWidth = arg_type_and_width(RHSVar, ConsArgType, ArgPosWidth),
-    ml_gen_info_get_module_info(Info, ModuleInfo),
-    ml_variable_type(Info, RHSVar, RHSType),
-    ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
-    ( if
-        from_to_insts_to_top_functor_mode(ModuleInfo, RHSInsts, RHSType,
-            top_in),
-        is_either_type_a_dummy(ModuleInfo, RHSType, ConsArgType) =
-            neither_is_dummy_type
-    then
-        ml_gen_var(Info, RHSVar, RHSLval),
-        RHSRval = ml_lval(RHSLval)
-    else
-        RHSRval = ml_const(mlconst_uint(0u))
-    ),
+    ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, RHSRval),
     ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
         !RevOrRvals),
     ml_gen_tagword_dynamically(Info, RHSVarsTypesWidths, ArgModes,
