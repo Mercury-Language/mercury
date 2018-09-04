@@ -70,11 +70,11 @@
 
 :- type prog_rep_info
     --->    prog_rep_info(
+                pri_module_info         :: module_info,
                 pri_filename            :: string,
                 pri_vartypes            :: vartypes,
                 pri_var_num_map         :: var_num_map,
                 pri_var_num_rep         :: var_num_rep,
-                pri_module_info         :: module_info,
                 pri_flatten_par_conjs   :: flatten_par_conjs
             ).
 
@@ -243,7 +243,7 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
     represent_var_table_as_bytecode(IncludeVarNameTable, IncludeVarTypes,
         VarTypes, VarNumMap, VarNumRep, VarNameTableBytes,
         !StringTable, !TypeTable),
-    Info = prog_rep_info(FileName, VarTypes, VarNumMap, VarNumRep, ModuleInfo,
+    Info = prog_rep_info(ModuleInfo, FileName, VarTypes, VarNumMap, VarNumRep,
         expect_no_par_conjs),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
 

@@ -765,18 +765,25 @@ escape_dir_char(Char, !Str) :-
 
 :- type llds_opt_info
     --->    llds_opt_info(
+                lopt_debug_opt_pred_ids             :: list(string),
+                lopt_debug_opt_pred_names           :: list(string),
+                lopt_num_real_r_regs                :: int,
+                lopt_local_vars_access_threshold    :: int,
+                lopt_opt_repeat                     :: int,
+
+                lopt_gc_method                      :: gc_method,
+
+                lopt_debug_opt                      :: bool,
+
                 lopt_auto_comments                  :: bool,
+                lopt_frameopt_comments              :: bool,
                 lopt_detailed_statistics            :: bool,
                 lopt_very_verbose                   :: bool,
 
                 lopt_checked_nondet_tailcalls       :: bool,
-                lopt_num_real_r_regs                :: int,
-                lopt_gc_method                      :: gc_method,
-
                 lopt_opt_delay_slots                :: bool,
                 lopt_opt_dups                       :: bool,
                 lopt_opt_frames                     :: bool,
-                lopt_frameopt_comments              :: bool,
                 lopt_opt_jumps                      :: bool,
                 lopt_opt_fulljumps                  :: bool,
                 lopt_opt_labels                     :: bool,
@@ -785,33 +792,36 @@ escape_dir_char(Char, !Str) :-
                 lopt_opt_reassign                   :: bool,
                 lopt_pes_tailcalls                  :: bool,
                 lopt_std_labels                     :: bool,
-                lopt_use_local_vars                 :: bool,
-
-                lopt_local_vars_access_threshold    :: int,
-                lopt_opt_repeat                     :: int,
-
-                lopt_debug_opt                      :: bool,
-                lopt_debug_opt_pred_ids             :: list(string),
-                lopt_debug_opt_pred_names           :: list(string)
+                lopt_use_local_vars                 :: bool
             ).
 
 :- func init_llds_opt_info(globals) = llds_opt_info.
 
 init_llds_opt_info(Globals) = Info :-
+    globals.lookup_accumulating_option(Globals, debug_opt_pred_id,
+        DebugOptPredIdStrs),
+    globals.lookup_accumulating_option(Globals, debug_opt_pred_name,
+        DebugOptPredNames),
+    globals.lookup_int_option(Globals, num_real_r_regs, NumRealRRegs),
+    globals.lookup_int_option(Globals, local_var_access_threshold,
+        LocalVarAccessThreshold),
+    globals.lookup_int_option(Globals, optimize_repeat, OptRepeat),
+
+    globals.get_gc_method(Globals, GCMethod),
+
+    globals.lookup_bool_option(Globals, debug_opt, DebugOpt),
+
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
+    globals.lookup_bool_option(Globals, frameopt_comments, FrameOptComments),
     globals.lookup_bool_option(Globals, detailed_statistics,
         DetailedStatistics),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
     globals.lookup_bool_option(Globals, checked_nondet_tailcalls,
         CheckedNondetTailCalls),
-    globals.lookup_int_option(Globals, num_real_r_regs, NumRealRRegs),
-    globals.get_gc_method(Globals, GCMethod),
-
     globals.lookup_bool_option(Globals, optimize_delay_slot, OptDelaySlots),
     globals.lookup_bool_option(Globals, optimize_dups, OptDups),
     globals.lookup_bool_option(Globals, optimize_frames, OptFrames),
-    globals.lookup_bool_option(Globals, frameopt_comments, FrameOptComments),
     globals.lookup_bool_option(Globals, optimize_jumps, OptJumps),
     globals.lookup_bool_option(Globals, optimize_fulljumps, OptFullJumps),
     globals.lookup_bool_option(Globals, optimize_labels, OptLabels),
@@ -822,22 +832,14 @@ init_llds_opt_info(Globals) = Info :-
         PessimizeTailCalls),
     globals.lookup_bool_option(Globals, standardize_labels, StdLabels),
     globals.lookup_bool_option(Globals, use_local_vars, UseLocalVars),
-    globals.lookup_int_option(Globals, local_var_access_threshold,
-        LocalVarAccessThreshold),
-    globals.lookup_int_option(Globals, optimize_repeat, OptRepeat),
 
-    globals.lookup_bool_option(Globals, debug_opt, DebugOpt),
-    globals.lookup_accumulating_option(Globals, debug_opt_pred_id,
-        DebugOptPredIdStrs),
-    globals.lookup_accumulating_option(Globals, debug_opt_pred_name,
-        DebugOptPredNames),
-
-    Info = llds_opt_info(AutoComments, DetailedStatistics, VeryVerbose,
-        CheckedNondetTailCalls, NumRealRRegs, GCMethod,
-        OptDelaySlots, OptDups, OptFrames, FrameOptComments,
+    Info = llds_opt_info(DebugOptPredIdStrs, DebugOptPredNames,
+        NumRealRRegs, LocalVarAccessThreshold, OptRepeat, GCMethod,
+        DebugOpt, AutoComments, FrameOptComments,
+        DetailedStatistics, VeryVerbose,
+        CheckedNondetTailCalls, OptDelaySlots, OptDups, OptFrames,
         OptJumps, OptFullJumps, OptLabels, OptPeep, OptPeepMkword, OptReassign,
-        PessimizeTailCalls, StdLabels, UseLocalVars, LocalVarAccessThreshold,
-        OptRepeat, DebugOpt, DebugOptPredIdStrs, DebugOptPredNames).
+        PessimizeTailCalls, StdLabels, UseLocalVars).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.optimize.

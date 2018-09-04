@@ -287,6 +287,14 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
 
 :- type tti_traversal_info
     --->    tti_traversal_info(
+                % Do we only want to run IR analysis?
+                % The `--term2-arg-size-analysis-only' option.
+                tti_arg_analysis_only           :: bool,
+
+                % If no then do not bother looking for failure constraints.
+                % The `--no-term2-propagate-failure-constraints' options.
+                tti_find_fail_constrs           :: bool,
+
                 % What type of recursion is present in the procedure,
                 % i.e. `none', `direct', `mutual'.
                 tti_recursion                   :: recursion_type,
@@ -327,17 +335,9 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
                 % The number of calls in the procedure.
                 tti_maxcalls                    :: int,
 
-                % If no then do not bother looking for failure constraints.
-                % The `--no-term2-propagate-failure-constraints' options.
-                tti_find_fail_constrs           :: bool,
-
                 % Information about any higher-order calls a procedure makes.
                 % XXX Currently unused.
-                tti_ho_info                     :: list(abstract_ho_call),
-
-                % Do we only want to run IR analysis?
-                % The `--term2-arg-size-analysis-only' option.
-                tti_arg_analysis_only           :: bool
+                tti_ho_info                     :: list(abstract_ho_call)
         ).
 
 :- func init_traversal_info(module_info, functor_info, pred_proc_id,
@@ -346,9 +346,8 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
 
 init_traversal_info(ModuleInfo, Norm, PPId, Context, Types, Zeros,
         VarMap, SCC, FailConstrs, ArgSizeOnly)
-    = tti_traversal_info(none, not_mutually_recursive, [], ModuleInfo, Norm,
-        PPId, Context, Types, Zeros, VarMap, SCC, 0, FailConstrs, [],
-        ArgSizeOnly).
+    = tti_traversal_info(ArgSizeOnly, FailConstrs, none, not_mutually_recursive,
+        [], ModuleInfo, Norm, PPId, Context, Types, Zeros, VarMap, SCC, 0, []).
 
 :- pred info_increment_maxcalls(tti_traversal_info::in,
     tti_traversal_info::out) is det.
