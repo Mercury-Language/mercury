@@ -1498,8 +1498,8 @@ asserted_word_aligned_pointer(foreign_type_assertions(Set)) :-
 :- interface.
 
     % The type definitions for no_tag types have information mirrored in a
-    % separate table for faster lookups. mode_util.mode_to_arg_mode makes
-    % heavy use of type_util.type_is_no_tag_type.
+    % separate table for faster lookups. mode_util.mode_to_top_functor_mode
+    % makes heavy use of type_util.type_is_no_tag_type.
     %
 :- type no_tag_type
     --->    no_tag_type(
