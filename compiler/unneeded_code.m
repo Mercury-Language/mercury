@@ -297,8 +297,8 @@ unneeded_pre_process_proc(!ProcInfo) :-
     --->    uc_option_values(
                 uc_fully_strict         :: bool,
                 uc_reorder_conj         :: bool,
-                uc_copy_limit           :: int,
-                uc_debug                :: bool
+                uc_debug                :: bool,
+                uc_copy_limit           :: int
             ).
 
 :- type unneeded_code_info
@@ -334,7 +334,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     globals.lookup_int_option(Globals, unneeded_code_copy_limit, Limit),
     globals.lookup_bool_option(Globals, unneeded_code_debug, Debug),
-    Options = uc_option_values(FullyStrict, ReorderConj, Limit, Debug),
+    Options = uc_option_values(FullyStrict, ReorderConj, Debug, Limit),
     (
         Debug = no
     ;

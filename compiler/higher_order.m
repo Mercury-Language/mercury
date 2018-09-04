@@ -253,34 +253,34 @@ recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
 :- type ho_request
     --->    ho_request(
                 % Calling predicate.
-                rq_caller           :: pred_proc_id,
+                rq_caller               :: pred_proc_id,
 
                 % Called predicate.
-                rq_callee           :: pred_proc_id,
+                rq_callee               :: pred_proc_id,
 
                 % The call's arguments.
-                rq_args             :: list(prog_var),
+                rq_args                 :: list(prog_var),
 
                 % Type variables for which extra type-infos must be passed
                 % from the caller if --typeinfo-liveness is set.
-                rq_tvars            :: list(tvar),
+                rq_tvars                :: list(tvar),
 
                 % Argument types in caller.
-                rq_ho_args          :: list(higher_order_arg),
-                rq_caller_types     :: list(mer_type),
+                rq_ho_args              :: list(higher_order_arg),
+                rq_caller_types         :: list(mer_type),
+
+                % Caller's typevarset.
+                rq_caller_tvarset       :: tvarset,
 
                 % Should the interface of the specialized procedure
                 % use typeinfo liveness?
-                rq_typeinfo_liveness :: bool,
-
-                % Caller's typevarset.
-                rq_caller_tvarset   :: tvarset,
+                rq_typeinfo_liveness    :: bool,
 
                 % Is this a user-requested specialization?
-                rq_user_req_spec    :: bool,
+                rq_user_req_spec        :: bool,
 
                 % Context of the call which caused the request to be generated.
-                rq_call_context     :: context
+                rq_call_context         :: context
             ).
 
     % Stores cons_id, index in argument vector, number of curried arguments
@@ -411,12 +411,12 @@ recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
                 % Unspecialised argument types in requesting caller.
                 np_unspec_act_types     :: list(mer_type),
 
+                % Caller's typevarset.
+                np_call_tvarset         :: tvarset,
+
                 % Does the interface of the specialized version use type-info
                 % liveness?
                 np_typeinfo_liveness    :: bool,
-
-                % Caller's typevarset.
-                np_call_tvarset         :: tvarset,
 
                 % Is this a user-specified type specialization?
                 np_is_user_spec         :: bool
@@ -1683,7 +1683,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
 
     Request = ho_request(Caller, proc(CalledPred, CalledProc), Args0,
         ExtraTypeInfoTVars, HigherOrderArgs, CallArgTypes,
-        yes, TVarSet, IsUserSpecProc, Context),
+        TVarSet, yes, IsUserSpecProc, Context),
 
     % Check to see if any of the specialized versions of the called pred
     % apply here.
@@ -1860,12 +1860,11 @@ search_for_version(Info, Params, ModuleInfo, Request, [Version | Versions],
 version_matches(Params, ModuleInfo, Request, Version, Match) :-
     Match = match(Version, PartialMatch, Args, ExtraTypeInfoTypes),
     Request = ho_request(_, Callee, Args0, _, RequestHigherOrderArgs,
-        CallArgTypes, _, RequestTVarSet, _, _),
+        CallArgTypes, RequestTVarSet, _, _, _),
     Callee = proc(CalleePredId, _),
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
     Version = new_pred(_, _, _, _, VersionHigherOrderArgs, _,
-        VersionExtraTypeInfoTVars, VersionArgTypes0, _,
-        VersionTVarSet, _),
+        VersionExtraTypeInfoTVars, VersionArgTypes0, VersionTVarSet, _, _),
     higher_order_args_match(RequestHigherOrderArgs,
         VersionHigherOrderArgs, HigherOrderArgs, FullOrPartial),
     (
@@ -2741,7 +2740,7 @@ check_loop_request(Info, Request, !PredsToFix) :-
 
 create_new_pred(Request, NewPred, !Info, !IO) :-
     Request = ho_request(Caller, CalledPredProc, CallArgs, ExtraTypeInfoTVars,
-        HOArgs, ArgTypes, TypeInfoLiveness, CallerTVarSet,
+        HOArgs, ArgTypes, CallerTVarSet, TypeInfoLiveness,
         IsUserTypeSpec, Context),
     Caller = proc(CallerPredId, CallerProcId),
     ModuleInfo0 = !.Info ^ hogi_module_info,
@@ -2841,7 +2840,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 
     NewPred = new_pred(proc(NewPredId, NewProcId), CalledPredProc, Caller,
         SymName, HOArgs, CallArgs, ExtraTypeInfoTVars, ArgTypes,
-        TypeInfoLiveness, CallerTVarSet, IsUserTypeSpec),
+        CallerTVarSet, TypeInfoLiveness, IsUserTypeSpec),
 
     higher_order_add_new_pred(CalledPredProc, NewPred, !Info),
 

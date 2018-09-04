@@ -174,9 +174,10 @@
                 li_tvarset              :: tvarset,
                 li_inst_varset          :: inst_varset,
                 li_rtti_varmaps         :: rtti_varmaps,
-                li_has_parallel_conj    :: has_parallel_conj,
                 li_pred_info            :: pred_info,
                 li_module_info          :: module_info,
+
+                li_has_parallel_conj    :: has_parallel_conj,
 
                 li_recompute_nonlocals  :: bool,
                 % True iff we need to recompute the nonlocals.
@@ -190,7 +191,7 @@ init_lambda_info(VarSet, VarTypes, TypeVarSet, InstVarSet, RttiVarMaps,
     MustRecomputeNonLocals = no,
     HaveExpandedLambdas = no,
     Info = lambda_info(VarSet, VarTypes, TypeVarSet, InstVarSet,
-        RttiVarMaps, HasParallelConj, PredInfo, ModuleInfo,
+        RttiVarMaps, PredInfo, ModuleInfo, HasParallelConj,
         MustRecomputeNonLocals, HaveExpandedLambdas).
 
 lambda_info_get_varset(Info, Info ^ li_varset).
@@ -264,12 +265,12 @@ expand_lambdas_in_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
 
     % Process the goal.
     Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0, InstVarSet0,
-        RttiVarMaps0, HasParallelConj, !.PredInfo, !.ModuleInfo,
-        MustRecomputeNonLocals0, HaveExpandedLambdas0),
+        RttiVarMaps0, !.PredInfo, !.ModuleInfo,
+        HasParallelConj, MustRecomputeNonLocals0, HaveExpandedLambdas0),
     expand_lambdas_in_goal(Goal0, Goal1, Info0, Info1),
     Info1 = lambda_info(VarSet1, VarTypes1, TypeVarSet, _InstVarSet,
-        RttiVarMaps1, _, _PredInfo, !:ModuleInfo, MustRecomputeNonLocals,
-        HaveExpandedLambdas),
+        RttiVarMaps1, _PredInfo, !:ModuleInfo,
+        _HasParallelConj, MustRecomputeNonLocals, HaveExpandedLambdas),
 
     % Check if we need to requantify.
     (
@@ -430,8 +431,8 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         Vars, Modes, Detism, OrigNonLocals0, LambdaGoal, Unification0,
         Functor, Unification, LambdaInfo0, LambdaInfo) :-
     LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet,
-        InstVarSet, RttiVarMaps, HasParallelConj, OrigPredInfo,
-        ModuleInfo0, MustRecomputeNonLocals0, _HaveExpandedLambdas),
+        InstVarSet, RttiVarMaps, OrigPredInfo, ModuleInfo0,
+        HasParallelConj, MustRecomputeNonLocals0, _HaveExpandedLambdas),
 
     % Calculate the constraints which apply to this lambda expression.
     % Note currently we only allow lambda expressions to have universally
@@ -684,8 +685,8 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     HaveExpandedLambdas = yes,
     LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet,
-        InstVarSet, RttiVarMaps, HasParallelConj, OrigPredInfo,
-        ModuleInfo, MustRecomputeNonLocals, HaveExpandedLambdas).
+        InstVarSet, RttiVarMaps, OrigPredInfo, ModuleInfo,
+        HasParallelConj, MustRecomputeNonLocals, HaveExpandedLambdas).
 
 :- pred constraint_contains_vars(list(tvar)::in, prog_constraint::in)
     is semidet.

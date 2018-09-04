@@ -155,7 +155,7 @@ pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo, !PDInfo) :-
     pd_term.local_term_info_init(LocalTermInfo),
     Parents = set.make_singleton_set(PredProcId),
     UnfoldInfo = unfold_info(ProcInfo, HeadInstVars, InstMap, CostDelta,
-        LocalTermInfo, PredInfo, Parents, PredProcId, no, 0, no),
+        LocalTermInfo, PredInfo, Parents, PredProcId, 0, no, no),
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 
 pd_info_get_module_info(PDInfo, PDInfo ^ pdi_module_info).
@@ -244,11 +244,11 @@ pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
                 % Current pred_proc_id.
                 ufi_pred_proc_id    :: pred_proc_id,
 
-                % Has anything changed?
-                ufi_changed         :: bool,
-
                 % Increase in size measured while processing this procedure.
                 ufi_size_delta      :: int,
+
+                % Has anything changed?
+                ufi_changed         :: bool,
 
                 % Does determinism analysis need to be rerun.
                 ufi_rerun_det       :: bool
@@ -288,8 +288,8 @@ pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
 :- pred pd_info_get_pred_info(pd_info::in, pred_info::out) is det.
 :- pred pd_info_get_parents(pd_info::in, set(pred_proc_id)::out) is det.
 :- pred pd_info_get_pred_proc_id(pd_info::in, pred_proc_id::out) is det.
-:- pred pd_info_get_changed(pd_info::in, bool::out) is det.
 :- pred pd_info_get_size_delta(pd_info::in, int::out) is det.
+:- pred pd_info_get_changed(pd_info::in, bool::out) is det.
 :- pred pd_info_get_rerun_det(pd_info::in, bool::out) is det.
 
 :- pred pd_info_set_proc_info(proc_info::in,
@@ -306,15 +306,15 @@ pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
     pd_info::in, pd_info::out) is det.
 :- pred pd_info_set_pred_proc_id(pred_proc_id::in,
     pd_info::in, pd_info::out) is det.
-:- pred pd_info_set_changed(bool::in,
-    pd_info::in, pd_info::out) is det.
 :- pred pd_info_set_size_delta(int::in,
-    pd_info::in, pd_info::out) is det.
-:- pred pd_info_set_rerun_det(bool::in,
     pd_info::in, pd_info::out) is det.
 :- pred pd_info_incr_cost_delta(int::in,
     pd_info::in, pd_info::out) is det.
 :- pred pd_info_incr_size_delta(int::in,
+    pd_info::in, pd_info::out) is det.
+:- pred pd_info_set_changed(bool::in,
+    pd_info::in, pd_info::out) is det.
+:- pred pd_info_set_rerun_det(bool::in,
     pd_info::in, pd_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -337,9 +337,9 @@ pd_info_get_parents(PDInfo, UnfoldInfo ^ ufi_parents) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
 pd_info_get_pred_proc_id(PDInfo, UnfoldInfo ^ ufi_pred_proc_id) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
-pd_info_get_changed(PDInfo, UnfoldInfo ^ ufi_changed) :-
-    pd_info_get_unfold_info(PDInfo, UnfoldInfo).
 pd_info_get_size_delta(PDInfo, UnfoldInfo ^ ufi_size_delta) :-
+    pd_info_get_unfold_info(PDInfo, UnfoldInfo).
+pd_info_get_changed(PDInfo, UnfoldInfo ^ ufi_changed) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
 pd_info_get_rerun_det(PDInfo, UnfoldInfo ^ ufi_rerun_det) :-
     pd_info_get_unfold_info(PDInfo, UnfoldInfo).
@@ -372,13 +372,13 @@ pd_info_set_pred_proc_id(PredProcId, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
     UnfoldInfo = UnfoldInfo0 ^ ufi_pred_proc_id := PredProcId,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
-pd_info_set_changed(Changed, !PDInfo) :-
-    pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
-    UnfoldInfo = UnfoldInfo0 ^ ufi_changed := Changed,
-    pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_size_delta(SizeDelta, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
     UnfoldInfo = UnfoldInfo0 ^ ufi_size_delta := SizeDelta,
+    pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
+pd_info_set_changed(Changed, !PDInfo) :-
+    pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),
+    UnfoldInfo = UnfoldInfo0 ^ ufi_changed := Changed,
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 pd_info_set_rerun_det(Rerun, !PDInfo) :-
     pd_info_get_unfold_info(!.PDInfo, UnfoldInfo0),

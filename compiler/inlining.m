@@ -202,15 +202,17 @@
                 ip_simple                       :: bool,
                 ip_single_use                   :: bool,
                 ip_linear_tail_rec              :: bool,
+
+                ip_highlevel_code               :: bool,
+
+                % Is any procedure being traced in the module?
+                ip_any_tracing                  :: bool,
+
                 ip_linear_tail_rec_max_extra    :: int,
                 ip_call_cost                    :: int,
                 ip_compound_size_threshold      :: int,
                 ip_simple_goal_threshold        :: int,
                 ip_var_threshold                :: int,
-                ip_highlevel_code               :: bool,
-
-                % Is any procedure being traced in the module?
-                ip_any_tracing                  :: bool,
 
                 ip_needed_map                   :: needed_map
             ).
@@ -255,9 +257,9 @@ inline_in_module(!ModuleInfo) :-
         map.init(NeededMap)
     ),
     Params = inline_params(Simple, SingleUse,
-        LinearTailRec, LinearTailRecMaxExtra,
-        CallCost, CompoundThreshold, SimpleThreshold, VarThreshold,
-        HighLevelCode, AnyTracing, NeededMap),
+        LinearTailRec, HighLevelCode, AnyTracing,
+        LinearTailRecMaxExtra, CallCost,
+        CompoundThreshold, SimpleThreshold, VarThreshold, NeededMap),
 
     % Build the call graph and extract the list of SCCs. We process
     % SCCs bottom up, so that if a caller wants to inline a callee
