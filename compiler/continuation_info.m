@@ -86,25 +86,40 @@
     %
 :- type proc_layout_info
     --->    proc_layout_info(
+                pli_detism              :: determinism,
+                % Determines which stack is used.
+
+                pli_eff_trace_level     :: trace_level,
+                % The effective trace level of the procedure.
+
+                pli_eval_method         :: eval_method,
+                % The evaluation method of the procedure.
+
+                pli_trace_body_rep      :: trace_needs_body_rep,
+                % Does the level of execution tracing of this procedure require
+                % a representation of the procedure body in the layout
+                % structures? Note that even if this field is set to
+                % trace_does_not_need_body_rep, other options (such as deep
+                % profiling) may still ask for the body to be included.
+
+                pli_need_proc_id        :: bool,
+                % Do we require the procedure id section of the procedure
+                % layout to be present, even if the option procid_stack_layout
+                % is not set?
+
+                pli_need_all_names      :: bool,
+                % True iff we need the names of all the variables.
+
                 pli_rtti_proc_label     :: rtti_proc_label,
                 % The identity of the procedure.
 
                 pli_entry_label         :: label,
-
-                pli_detism              :: determinism,
-                % Determines which stack is used.
 
                 pli_stack_slot_count    :: int,
                 % Number of stack slots.
 
                 pli_succip_slot         :: maybe(int),
                 % Location of succip on stack.
-
-                pli_eval_method         :: eval_method,
-                % The evaluation method of the procedure.
-
-                pli_eff_trace_level     :: trace_level,
-                % The effective trace level of the procedure.
 
                 pli_call_label          :: maybe(label),
                 % If the trace level is not none, this contains the label
@@ -127,23 +142,11 @@
                 pli_proc_body           :: hlds_goal,
                 % The body of the procedure.
 
-                pli_trace_body_rep      :: trace_needs_body_rep,
-                % Does the level of execution tracing of this procedure require
-                % a representation of the procedure body in the layout
-                % structures? Note that even if this field is set to
-                % trace_does_not_need_body_rep, other options (such as deep
-                % profiling) may still ask for the body to be included.
-
                 pli_initial_instmap     :: instmap,
                 % The instmap at the start of the procedure body.
 
                 pli_trace_slot_info     :: trace_slot_info,
                 % Info about the stack slots used for tracing.
-
-                pli_need_proc_id        :: bool,
-                % Do we require the procedure id section of the procedure
-                % layout to be present, even if the option procid_stack_layout
-                % is not set?
 
                 pli_varset              :: prog_varset,
                 pli_vartypes            :: vartypes,
@@ -153,9 +156,6 @@
                 % Info for each internal label, needed for basic_stack_layouts.
 
                 pli_maybe_table_info    :: maybe(proc_layout_table_info),
-
-                pli_need_all_names      :: bool,
-                % True iff we need the names of all the variables.
 
                 pli_oisu_kind_fors      :: list(oisu_pred_kind_for),
                 pli_deep_prof           :: maybe(proc_deep_prof_info)
