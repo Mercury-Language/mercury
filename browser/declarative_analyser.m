@@ -250,16 +250,15 @@ top_down_search_mode = analyser_top_down.
 
     ;       ques_reason_binding_node(
                 binding_prim_op         :: primitive_op_type,
+                binding_node_eliminated :: bool,
                 binding_filename        :: string,
                 binding_line_no         :: int,
 
+                % The path of the subterm in the binding node,
+                % if it appears in the binding node's atom.
                 maybe_atom_path         :: maybe(term_path),
-                                        % The path of the subterm in the
-                                        % binding node, if it appears in the
-                                        % binding node's atom.
 
-                binding_proc            :: proc_label,
-                binding_node_eliminated :: bool
+                binding_proc            :: proc_label
             )
 
     ;       ques_reason_subterm_no_proc_rep
@@ -827,16 +826,16 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
             )
         then
             SearchResponse = search_response_question(BindingSuspectId,
-                ques_reason_binding_node(PrimOpType, FileName, LineNo,
-                    MaybePath, ProcLabel, no)),
+                ques_reason_binding_node(PrimOpType, no, FileName, LineNo,
+                    MaybePath, ProcLabel)),
             NewMode = FallBackSearchMode
         else
             ( if
                 LastUnknown = yes(Unknown),
                 suspect_still_unknown(!.SearchSpace, Unknown)
             then
-                Reason = ques_reason_binding_node(PrimOpType,
-                    FileName, LineNo, MaybePath, ProcLabel, yes),
+                Reason = ques_reason_binding_node(PrimOpType, yes,
+                    FileName, LineNo, MaybePath, ProcLabel),
                 SearchResponse = search_response_question(Unknown, Reason),
                 NewMode = FallBackSearchMode
             else
@@ -1205,8 +1204,8 @@ reason_to_string(Reason) = Str :-
         Reason = ques_reason_start,
         Str = "this is the node where the `dd' command was issued."
     ;
-        Reason = ques_reason_binding_node(PrimOpType, FileName, LineNo,
-            MaybePath, ProcLabel, Eliminated),
+        Reason = ques_reason_binding_node(PrimOpType, Eliminated,
+            FileName, LineNo, MaybePath, ProcLabel),
         PrimOpStr = primitive_op_type_to_string(PrimOpType),
         LineNoStr = int_to_string(LineNo),
         get_pred_attributes(ProcLabel, SymModule, Name, Arity, PredOrFunc),

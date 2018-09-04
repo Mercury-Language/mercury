@@ -208,16 +208,16 @@
                 % answer the question (such as an `info' command).
                 display_question    :: bool,
 
-                help_system         :: help.system,
-
-                % If this following flag is set to yes then user responses
+                % If this following flag is set to, yes then user responses
                 % will be simulated and will always be `no', except when
                 % confirming a bug in which case the response will be `yes'.
-                testing             :: bool
+                testing             :: bool,
+
+                help_system         :: help.system
             ).
 
-user_state_init(InStr, OutStr, Browser, HelpSystem,
-    user_state(InStr, OutStr, Browser, yes, HelpSystem, no)).
+user_state_init(InStr, OutStr, Browser, HelpSystem, State) :-
+    State = user_state(InStr, OutStr, Browser, yes, no, HelpSystem).
 
 %---------------------------------------------------------------------------%
 
