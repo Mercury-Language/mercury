@@ -1,8 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-
+%
 % Test bitwise operations for signed integers.
+%
+% The .exp file is for grades where int is 64-bit.
+% The .exp2 file is for grades where int is 32-bit.
+%
+%---------------------------------------------------------------------------%
 
 :- module bitwise_int.
 :- interface.
