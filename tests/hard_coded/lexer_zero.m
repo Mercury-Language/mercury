@@ -1,6 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The .exp file is the C backends with double-precision floats.
+% The .exp2 file is for the Java backend.
+% The .exp3 file is for the C# backend.
+% The .exp4 file is for the C backend with single-precision floats.
+%---------------------------------------------------------------------------%
 
 :- module lexer_zero.
 :- interface.
