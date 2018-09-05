@@ -253,9 +253,10 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
     % The size_varset for this procedure is set to rubbish here.
     % When we complete building this SCC we will set it to the correct value.
     IsEntryPoint = ( if set.member(PPId, EntryProcs) then yes else no),
-    AbstractProc = abstract_proc(real(PPId), IsEntryPoint, Context,
+    AbstractProc = abstract_proc(real(PPId), Context,
         HeadSizeVars, Inputs, AbstractBody, SizeVarMap, !.SizeVarset, Zeros,
-        Info ^ tti_recursion, Info ^ tti_maxcalls, Info ^ tti_ho_info),
+        IsEntryPoint, Info ^ tti_recursion, Info ^ tti_maxcalls,
+        Info ^ tti_ho_info),
 
     ThisProcInfo = term_scc_info(PPId, AbstractProc, SizeVarMap,
         IntermodStatus, Info ^ tti_errors, HeadSizeVars),

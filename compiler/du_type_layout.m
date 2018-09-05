@@ -167,12 +167,12 @@
 
 :- type decide_du_params
     --->    decide_du_params(
+                ddp_arg_pack_bits               :: int,
                 ddp_target                      :: compilation_target,
                 ddp_double_word_floats          :: maybe_double_word_floats,
                 ddp_double_word_int64s          :: maybe_double_word_int64s,
                 ddp_unboxed_no_tag_types        :: maybe_unboxed_no_tag_types,
                 ddp_maybe_primary_tags          :: maybe_primary_tags,
-                ddp_arg_pack_bits               :: int,
 
                 % Only for bootstrapping.
                 ddp_allow_double_word_ints      :: bool,
@@ -182,7 +182,6 @@
                 ddp_allow_packing_local_sectags :: bool,
                 ddp_allow_packing_remote_sectags :: bool,
                 ddp_allow_packing_mini_types    :: bool,
-                ddp_experiment                  :: string,
 
                 % We use the direct_arg_map for two purposes:
                 % - to optimize data representations, and
@@ -197,7 +196,9 @@
                 ddp_maybe_direct_args           :: maybe_direct_args,
                 ddp_direct_arg_map              :: direct_arg_map,
 
-                ddp_inform_suboptimal_pack      :: maybe_inform_about_packing
+                ddp_inform_suboptimal_pack      :: maybe_inform_about_packing,
+
+                ddp_experiment                  :: string
             ).
 
 %---------------------------------------------------------------------------%
@@ -373,12 +374,13 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
         MaybeInformPacking = inform_about_packing
     ),
 
-    Params = decide_du_params(Target, DoubleWordFloats, DoubleWordInt64s,
-        UnboxedNoTagTypes, MaybePrimaryTags, ArgPackBits,
+    Params = decide_du_params(ArgPackBits, Target,
+        DoubleWordFloats, DoubleWordInt64s,
+        UnboxedNoTagTypes, MaybePrimaryTags,
         AllowDoubleWordInts, AllowPackingInts, AllowPackingChars,
         AllowPackingDummies, AllowPackingLocalSegtags,
-        AllowPackingRemoteSegtags, AllowPackingMiniTypes, Experiment,
-        MaybeDirectArgs, DirectArgMap, MaybeInformPacking).
+        AllowPackingRemoteSegtags, AllowPackingMiniTypes,
+        MaybeDirectArgs, DirectArgMap, MaybeInformPacking, Experiment).
 
 %---------------------------------------------------------------------------%
 
@@ -1291,7 +1293,7 @@ decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
             % packed next to the sectag allows such code to still work.
             ArgOnlyOffset = arg_only_offset(-1),
             CellOffset = cell_offset(0),
-            decide_tagword_args(Params, ComponentTypeMap, 
+            decide_tagword_args(Params, ComponentTypeMap,
                 ArgOnlyOffset, CellOffset, NumRemoteSectagBits,
                 PackableCtorArgs, TagwordCtorArgRepns),
             NonTagwordCtorArgs = LeftOverCtorArgs
@@ -1456,14 +1458,14 @@ decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
     LocalSectag = local_sectag(_, _, SectagBits),
     SectagBits = sectag_bits(NumSectagBits, _),
     NumPrimSectagBits = NumPtagBits + uint8.cast_to_int(NumSectagBits),
-    decide_tagword_args(Params, ComponentTypeMap, 
+    decide_tagword_args(Params, ComponentTypeMap,
         ArgOnlyOffset, CellOffset, NumPrimSectagBits, CtorArgs, CtorArgRepns).
 
 :- pred decide_tagword_args(decide_du_params::in, component_type_map::in,
     arg_only_offset::in, cell_offset::in, int::in,
     list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
 
-decide_tagword_args(Params, ComponentTypeMap, 
+decide_tagword_args(Params, ComponentTypeMap,
         ArgOnlyOffset, CellOffset, NumFixedBits, CtorArgs, CtorArgRepns) :-
     pair_args_with_packable(Params, ComponentTypeMap,
         CtorArgs, CtorArgsPackables),
@@ -1546,7 +1548,7 @@ decide_packed_arg_word_loop(TreatAsFirst, ArgOnlyOffset, CellOffset,
     % arguments. Make sure that the last packable argument is not of a dummy
     % type; if the list of packable arguments ends with a run of one or more
     % arguments of dummy types, return these as part of the LeftOverArgs.
-    % 
+    %
 :- pred find_word_packable_args(decide_du_params::in, component_type_map::in,
     int::in, int::in, int::out, list(constructor_arg)::in,
     assoc_list(constructor_arg, packable_kind)::out,
@@ -1596,7 +1598,7 @@ find_word_packable_args(Params, ComponentTypeMap, NumAvailBits, !NumUsedBits,
 
     % Pair each of the given args, which must be packable,
     % with its packability information.
-    % 
+    %
 :- pred pair_args_with_packable(decide_du_params::in, component_type_map::in,
     list(constructor_arg)::in, assoc_list(constructor_arg, packable_kind)::out)
     is det.

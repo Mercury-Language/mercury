@@ -284,17 +284,17 @@
                 % The relative order of the lists is unknown.
                 ssimp_elim_vars             :: list(list(prog_var)),
 
+                ssimp_error_specs           :: list(error_spec),
+
+                % Measure of the improvement in the goal from simplification.
+                ssimp_cost_delta            :: int,
+
                 % The default value of this field is allow_messages,
                 % but it is set to do_not_allow_messages during the second pass
                 % of simplification. See the comment in simplify_proc.m
                 % next to the call to simplify_info_set_allow_messages
                 % for the reason why.
                 ssimp_allow_messages        :: maybe_allow_messages,
-
-                ssimp_error_specs           :: list(error_spec),
-
-                % Measure of the improvement in the goal from simplification.
-                ssimp_cost_delta            :: int,
 
                 % Have we seen a parallel conjunction?
                 ssimp_has_parallel_conj     :: has_parallel_conj,
@@ -329,11 +329,13 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     Specs = [],
     CostDelta = 0,
     HasParallelConj = has_no_parallel_conj,
+    FoundContainsTrace = no,
     HasUserEvent = has_no_user_event,
     set.init(TraceGoalProcs),
 
-    SubInfo = simplify_sub_info(RttiVarMaps, ElimVars, AllowMsgs, Specs,
-        CostDelta, HasParallelConj, no, HasUserEvent, TraceGoalProcs),
+    SubInfo = simplify_sub_info(RttiVarMaps, ElimVars, Specs, CostDelta,
+        AllowMsgs, HasParallelConj, FoundContainsTrace, HasUserEvent,
+        TraceGoalProcs),
 
     % SimplifyTasks
     % ModuleInfo

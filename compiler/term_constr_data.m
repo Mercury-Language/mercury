@@ -194,9 +194,6 @@
                 % The procedure that this is an abstraction of.
                 ap_ppid             :: abstract_ppid,
 
-                % Is this procedure called from outside the SCC?
-                ap_is_entry         :: bool,
-
                 % The context of the procedure.
                 ap_context          :: prog_context,
 
@@ -219,6 +216,9 @@
 
                 % The size_vars that have zero size.
                 ap_zeros            :: zero_vars,
+
+                % Is this procedure called from outside the SCC?
+                ap_is_entry         :: bool,
 
                 % The type of recursion present in the procedure.
                 ap_recursion        :: recursion_type,
