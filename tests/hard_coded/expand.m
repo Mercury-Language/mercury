@@ -5,6 +5,13 @@
 % Test case for io.write
 %
 % Author: trd
+%
+% The .exp file is for the C backends.
+% The .exp2 file is for the C backends with older versions of MSVC.
+% The .exp3 file is for the C# backend.
+% The .exp4 file is for the Java backend.
+%
+%---------------------------------------------------------------------------%
 
 :- module expand.
 :- interface.
