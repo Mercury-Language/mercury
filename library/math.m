@@ -56,21 +56,25 @@
 
     % ceiling(X) = Ceil is true if Ceil is the smallest integer
     % not less than X.
+    % If X is of infinite magnitude then Ceil = X.
     %
 :- func ceiling(float) = float.
 
     % floor(X) = Floor is true if Floor is the largest integer
     % not greater than X.
+    % If X is of infinite magnitude then Floor = X.
     %
 :- func floor(float) = float.
 
     % round(X) = Round is true if Round is the integer closest to X.
     % If X has a fractional value of 0.5, it is rounded up.
+    % If X is of infinite magnitude then Round = X.
     %
 :- func round(float) = float.
 
     % truncate(X) = Trunc is true if Trunc is the integer closest to X
     % such that |Trunc| =< |X|.
+    % If X is of infinite magnitude then Trunc = X.
     %
 :- func truncate(float) = float.
 

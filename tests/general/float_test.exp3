@@ -40,18 +40,6 @@ floor(X):     -4
 round(X):     -4
 truncate(X):     -3
 
-X: infinity
-ceiling(X): infinity
-floor(X): infinity
-round(X): infinity
-truncate(X): infinity
-
-X: -infinity
-ceiling(X): -infinity
-floor(X): -infinity
-round(X): -infinity
-truncate(X): -infinity
-
 X:    2.2
 sqrt(X):   1.48
 ln(X):  0.788
