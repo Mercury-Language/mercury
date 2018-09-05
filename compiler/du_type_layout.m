@@ -168,11 +168,15 @@
 :- type decide_du_params
     --->    decide_du_params(
                 ddp_arg_pack_bits               :: int,
+                ddp_maybe_primary_tags          :: maybe_primary_tags,
+
                 ddp_target                      :: compilation_target,
+
                 ddp_double_word_floats          :: maybe_double_word_floats,
                 ddp_double_word_int64s          :: maybe_double_word_int64s,
                 ddp_unboxed_no_tag_types        :: maybe_unboxed_no_tag_types,
-                ddp_maybe_primary_tags          :: maybe_primary_tags,
+
+                ddp_inform_suboptimal_pack      :: maybe_inform_about_packing,
 
                 % Only for bootstrapping.
                 ddp_allow_double_word_ints      :: bool,
@@ -195,8 +199,6 @@
                 % from the language, the second purpose will go away.
                 ddp_maybe_direct_args           :: maybe_direct_args,
                 ddp_direct_arg_map              :: direct_arg_map,
-
-                ddp_inform_suboptimal_pack      :: maybe_inform_about_packing,
 
                 ddp_experiment                  :: string
             ).
@@ -374,13 +376,13 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
         MaybeInformPacking = inform_about_packing
     ),
 
-    Params = decide_du_params(ArgPackBits, Target,
+    Params = decide_du_params(ArgPackBits, MaybePrimaryTags, Target,
         DoubleWordFloats, DoubleWordInt64s,
-        UnboxedNoTagTypes, MaybePrimaryTags,
+        UnboxedNoTagTypes, MaybeInformPacking,
         AllowDoubleWordInts, AllowPackingInts, AllowPackingChars,
         AllowPackingDummies, AllowPackingLocalSegtags,
         AllowPackingRemoteSegtags, AllowPackingMiniTypes,
-        MaybeDirectArgs, DirectArgMap, MaybeInformPacking, Experiment).
+        MaybeDirectArgs, DirectArgMap, Experiment).
 
 %---------------------------------------------------------------------------%
 
