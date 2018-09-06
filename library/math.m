@@ -455,7 +455,14 @@ e = 2.7182818284590452353602874713526625.
     round(Num::in) = (Rounded::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Rounded = java.lang.Math.round(Num);
+    // For +/- infinity Java's round method will return Long.{MAX,MIN}_VALUE.
+    // This does not match the documented Mercury behaviour for round with
+    // infinities.
+    if (java.lang.Double.isInfinite(Num)) {
+        Rounded = Num;
+    } else {
+        Rounded = java.lang.Math.round(Num);
+    }
 ").
 :- pragma foreign_proc("Erlang",
     round(Num::in) = (Rounded::out),
