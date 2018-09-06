@@ -5,6 +5,13 @@
 % If this test fails when run natively under Win32 (no cygwin) then make
 % sure that either the TMPDIR environment variable points somewhere
 % sensible or that a directory <drive letter>:\tmp exists.
+%
+% The .exp file is for the C backends.
+% The .exp2 file is for the Erlang backend.
+% The .exp3 file is for the Java backend.
+% The .exp4 file is for the C# backend.
+%
+%---------------------------------------------------------------------------%
 
 :- module remove_file.
 :- interface.

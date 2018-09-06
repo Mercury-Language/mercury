@@ -1,8 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-
+%
 % Test conversion of Mercury ints to unsigned 32-bit integers.
+%
+% The .exp file is for when int is 64-bit.
+% The .exp2 file is for when int is 32-bit.
+%
+%---------------------------------------------------------------------------%
 
 :- module from_int_uint32.
 :- interface.

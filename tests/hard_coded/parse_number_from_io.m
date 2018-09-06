@@ -1,6 +1,14 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
+%
+% The .exp file is for C grades that use double-precision floats.
+% The .exp2 file is for the Java grades.
+% The .exp3 file is for the C# grades.
+% The .exp4 file is for C grades that use single-precision floats.
+%
+%---------------------------------------------------------------------------%
+
 
 :- module parse_number_from_io.
 :- interface.

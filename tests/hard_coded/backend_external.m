@@ -1,6 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% The .exp file is for the low-level C backend.
+% The .exp2 file is for the high-level C backend.
+%
+%---------------------------------------------------------------------------%
 
 :- module backend_external.
 
@@ -19,12 +24,12 @@ main(!IO) :-
 %---------------------------------------------------------------------------%
 
     % in llds grades: external
-    % in mlds grades: foreign_proc 
+    % in mlds grades: foreign_proc
 :- pred p(int::in, io::di, io::uo) is det.
 :- pragma external_pred(p/3, [low_level_backend]).
 
     % in llds grades: foreign_proc
-    % in mlds grades: external 
+    % in mlds grades: external
 :- pred q(int::in, io::di, io::uo) is det.
 :- pragma external_pred(q/3, [high_level_backend]).
 

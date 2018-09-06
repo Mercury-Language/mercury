@@ -1,8 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-
+%
 % Test basic arithmetic operations for unsigned unsigned integers.
+%
+% The .exp file is for when uint is 64-bit.
+% The .exp2 file is for when uint is 32-bit.
+%
+%---------------------------------------------------------------------------%
 
 :- module uint_arith.
 :- interface.
