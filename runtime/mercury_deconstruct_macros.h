@@ -241,15 +241,17 @@
             /* The arg is a full word value. */                             \
             value = word;                                                   \
             wsa_ptr = word_addr;                                            \
-        } else if (arg_locn.MR_arg_bits > 0) {                              \
-            /* The arg is a packed enumeration value. */                    \
-            value = (word >> (arg_locn).MR_arg_shift)                       \
-                & ((MR_Word) (1 << (arg_locn).MR_arg_bits) - 1);            \
-            wsa_ptr = NULL;                                                 \
         } else {                                                            \
-            /* The only negative values of MR_arg_bits that make sense */   \
-            /* are the ones we have cases for above. */                     \
-            MR_fatal_error("unexpected negative value of MR_arg_bits");     \
+            if (arg_locn.MR_arg_bits > 0) {                                 \
+                /* The arg is a packed enumeration value. */                \
+                value = (word >> (arg_locn).MR_arg_shift)                   \
+                & ((MR_Word) (1 << (arg_locn).MR_arg_bits) - 1);            \
+                wsa_ptr = NULL;                                             \
+            } else {                                                        \
+                /* The only negative values of MR_arg_bits that make */     \
+                /* sense are the ones we have cases for above. */           \
+                MR_fatal_error("unexpected negative value of MR_arg_bits"); \
+            }                                                               \
         }                                                                   \
         break;                                                              \
     }
