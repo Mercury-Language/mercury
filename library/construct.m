@@ -1271,9 +1271,7 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
             MR_fatal_error(""bad type_ctor_rep in construct.construct"");
 
 #endif
-        }
-
-    end_of_main_switch:
+        }   // end of main switch
 
         // Create a univ.
         MR_new_univ_on_hp(Term, type_info, new_data);
