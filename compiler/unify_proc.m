@@ -228,7 +228,7 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
                 generate_unify_proc_body_solver(Context, X, Y,
                     Clause, !Info)
             ;
-                TypeBody = hlds_du_type(Ctors, _, MaybeRepn, _),
+                TypeBody = hlds_du_type(_, _, MaybeRepn, _),
                 (
                     MaybeRepn = no,
                     unexpected($pred, "MaybeRepn = no")
@@ -257,13 +257,15 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
                             Clause, !Info)
                     ;
                         ArgIsDummy = is_not_dummy_type,
+                        CtorRepns = Repn ^ dur_ctor_repns,
                         generate_unify_proc_body_du(SpecDefnInfo,
-                            Ctors, X, Y, Clause, !Info)
+                            CtorRepns, X, Y, Clause, !Info)
                     )
                 ;
                     DuTypeKind = du_type_kind_general,
+                    CtorRepns = Repn ^ dur_ctor_repns,
                     generate_unify_proc_body_du(SpecDefnInfo,
-                        Ctors, X, Y, Clause, !Info)
+                        CtorRepns, X, Y, Clause, !Info)
                 )
             )
         )
@@ -499,7 +501,7 @@ generate_unify_proc_body_enum(Context, X, Y, Clause, !Info) :-
     % (tests/general/det_complicated_unify2.m tests this case.)
     %
 :- pred generate_unify_proc_body_du(spec_pred_defn_info::in,
-    list(constructor)::in, prog_var::in, prog_var::in, clause::out,
+    list(constructor_repn)::in, prog_var::in, prog_var::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_unify_proc_body_du(SpecDefnInfo, Ctors, X, Y, Clause, !Info) :-
@@ -525,13 +527,13 @@ can_compare_constants_as_ints(Info) = CanCompareAsInt :-
         CanCompareAsInt).
 
 :- pred generate_du_unify_case(spec_pred_defn_info::in,
-    prog_var::in, prog_var::in, bool::in, constructor::in, hlds_goal::out,
+    prog_var::in, prog_var::in, bool::in, constructor_repn::in, hlds_goal::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt, Ctor, Goal,
+generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt, CtorRepn, Goal,
         !Info) :-
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName, ArgTypes,
-        FunctorArity, _Ctxt),
+    CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
+        _ConsTag, ArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     ( if TypeCtor = type_ctor(unqualified("{}"), _) then
         FunctorConsId = tuple_cons(FunctorArity)
@@ -540,7 +542,7 @@ generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt, Ctor, Goal,
     ),
     Context = SpecDefnInfo ^ spdi_context,
     ( if
-        ArgTypes = [],
+        ArgRepns = [],
         CanCompareAsInt = yes
     then
         RHS = rhs_functor(FunctorConsId, is_not_exist_constr, []),
@@ -564,7 +566,7 @@ generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt, Ctor, Goal,
             ExistConstraints = cons_exist_constraints(ExistQTVars,
                 _Constraints, _UnconstrainedQTVars, _ConstrainedQTVars)
         ),
-        make_fresh_arg_var_pairs(ExistQTVars, ArgTypes, TypedVarPairs, !Info),
+        make_fresh_arg_var_pairs(ExistQTVars, ArgRepns, TypedVarPairs, !Info),
         VarsX = list.map(project_var_x, TypedVarPairs),
         VarsY = list.map(project_var_y, TypedVarPairs),
         RHSX = rhs_functor(FunctorConsId, is_not_exist_constr, VarsX),
@@ -676,7 +678,7 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
                 generate_compare_proc_body_solver(Context,
                     Res, X, Y, Clause, !Info)
             ;
-                TypeBody = hlds_du_type(Ctors, _, MaybeRepn, _),
+                TypeBody = hlds_du_type(_, _, MaybeRepn, _),
                 (
                     MaybeRepn = no,
                     unexpected($pred, "MaybeRepn = no")
@@ -705,13 +707,15 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
                             Res, X, Y, Clause, !Info)
                     ;
                         ArgIsDummy = is_not_dummy_type,
+                        CtorRepns = Repn ^ dur_ctor_repns,
                         generate_compare_proc_body_du(SpecDefnInfo,
-                            Ctors, Res, X, Y, Clause, !Info)
+                            CtorRepns, Res, X, Y, Clause, !Info)
                     )
                 ;
                     DuTypeKind = du_type_kind_general,
+                    CtorRepns = Repn ^ dur_ctor_repns,
                     generate_compare_proc_body_du(SpecDefnInfo,
-                        Ctors, Res, X, Y, Clause, !Info)
+                        CtorRepns, Res, X, Y, Clause, !Info)
                 )
             )
         )
@@ -892,7 +896,7 @@ generate_compare_proc_body_enum(Context, Res, X, Y, Clause, !Info) :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_compare_proc_body_du(spec_pred_defn_info::in,
-    list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
+    list(constructor_repn)::in, prog_var::in, prog_var::in, prog_var::in,
     clause::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_proc_body_du(SpecDefnInfo, Ctors0, Res, X, Y, Clause,
@@ -934,19 +938,19 @@ generate_compare_proc_body_du(SpecDefnInfo, Ctors0, Res, X, Y, Clause,
     % We follow the Erlang order that tuples of smaller arity always precede
     % tuples of larger arity.
     %
-:- pred compare_ctors_lexically(constructor::in, constructor::in,
+:- pred compare_ctors_lexically(constructor_repn::in, constructor_repn::in,
     comparison_result::out) is det.
 
-compare_ctors_lexically(A, B, Res) :-
-    list.length(A ^ cons_args, ArityA),
-    list.length(B ^ cons_args, ArityB),
+compare_ctors_lexically(CtorA, CtorB, Res) :-
+    list.length(CtorA ^ cr_args, ArityA),
+    list.length(CtorB ^ cr_args, ArityB),
     compare(ArityRes, ArityA, ArityB),
     (
         ArityRes = (=),
         % XXX This assumes the string ordering used by the Mercury compiler is
         % the same as that of the target language compiler.
-        NameA = unqualify_name(A ^ cons_name),
-        NameB = unqualify_name(B ^ cons_name),
+        NameA = unqualify_name(CtorA ^ cr_name),
+        NameB = unqualify_name(CtorB ^ cr_name),
         compare(Res, NameA, NameB)
     ;
         ( ArityRes = (<)
@@ -1017,7 +1021,7 @@ compare_ctors_lexically(A, B, Res) :-
     % predicate.
     %
 :- pred generate_compare_proc_body_du_quad(spec_pred_defn_info::in,
-    list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
+    list(constructor_repn)::in, prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_proc_body_du_quad(SpecDefnInfo, Ctors, R, X, Y, Goal,
@@ -1029,7 +1033,7 @@ generate_compare_proc_body_du_quad(SpecDefnInfo, Ctors, R, X, Y, Goal,
     disj_list_to_goal(Cases, GoalInfo, Goal).
 
 :- pred generate_compare_du_quad_switch_on_x(spec_pred_defn_info::in,
-    list(constructor)::in, list(constructor)::in,
+    list(constructor_repn)::in, list(constructor_repn)::in,
     prog_var::in, prog_var::in, prog_var::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
@@ -1044,7 +1048,7 @@ generate_compare_du_quad_switch_on_x(SpecDefnInfo, [LeftCtor | LeftCtors],
         R, X, Y, !Cases, !Info).
 
 :- pred generate_compare_du_quad_switch_on_y(spec_pred_defn_info::in,
-    constructor::in, list(constructor)::in, string::in,
+    constructor_repn::in, list(constructor_repn)::in, string::in,
     prog_var::in, prog_var::in, prog_var::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
@@ -1066,31 +1070,31 @@ generate_compare_du_quad_switch_on_y(SpecDefnInfo, LeftCtor,
         Cmp1, R, X, Y, [Case | !.Cases], !:Cases, !Info).
 
 :- pred generate_compare_du_quad_compare_asymmetric(spec_pred_defn_info::in,
-    constructor::in, constructor::in,
+    constructor_repn::in, constructor_repn::in,
     string::in, prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, Ctor1, Ctor2,
+generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, CtorA, CtorB,
         CompareOp, R, X, Y, Case, !Info) :-
-    Ctor1 = ctor(_Ordinal1, MaybeExistConstraints1, FunctorName1, ArgTypes1,
-        _Arity1, _Ctxt1),
-    Ctor2 = ctor(_Ordinal2, MaybeExistConstraints2, FunctorName2, ArgTypes2,
-        _Arity2, _Ctxt2),
-    list.length(ArgTypes1, FunctorArity1),
-    list.length(ArgTypes2, FunctorArity2),
+    CtorA = ctor_repn(_OrdinalA, MaybeExistConstraintsA, FunctorNameA,
+        _ConsTagA, ArgRepnA, _ArityA, _CtxtA),
+    CtorB = ctor_repn(_OrdinalB, MaybeExistConstraintsB, FunctorNameB,
+        _ConsTagB, ArgRepnB, _ArityB, _CtxtB),
+    list.length(ArgRepnA, FunctorArityA),
+    list.length(ArgRepnB, FunctorArityB),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
-    FunctorConsId1 = cons(FunctorName1, FunctorArity1, TypeCtor),
-    FunctorConsId2 = cons(FunctorName2, FunctorArity2, TypeCtor),
-    make_fresh_vars_for_cons_args(ArgTypes1, MaybeExistConstraints1, Vars1,
+    FunctorConsIdA = cons(FunctorNameA, FunctorArityA, TypeCtor),
+    FunctorConsIdB = cons(FunctorNameB, FunctorArityB, TypeCtor),
+    make_fresh_vars_for_cons_args(ArgRepnA, MaybeExistConstraintsA, VarsA,
         !Info),
-    make_fresh_vars_for_cons_args(ArgTypes2, MaybeExistConstraints2, Vars2,
+    make_fresh_vars_for_cons_args(ArgRepnB, MaybeExistConstraintsB, VarsB,
         !Info),
-    RHS1 = rhs_functor(FunctorConsId1, is_not_exist_constr, Vars1),
-    RHS2 = rhs_functor(FunctorConsId2, is_not_exist_constr, Vars2),
+    RHSA = rhs_functor(FunctorConsIdA, is_not_exist_constr, VarsA),
+    RHSB = rhs_functor(FunctorConsIdB, is_not_exist_constr, VarsB),
     Context = SpecDefnInfo ^ spdi_context,
-    create_pure_atomic_complicated_unification(X, RHS1, Context,
+    create_pure_atomic_complicated_unification(X, RHSA, Context,
         umc_explicit, [], UnifyX_Goal),
-    create_pure_atomic_complicated_unification(Y, RHS2, Context,
+    create_pure_atomic_complicated_unification(Y, RHSB, Context,
         umc_explicit, [], UnifyY_Goal),
     make_const_construction(Context, R,
         compare_cons_id(CompareOp), ReturnResult),
@@ -1146,7 +1150,7 @@ generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, Ctor1, Ctor2,
     % X_Index = Y_Index implies X = Y.
     %
 :- pred generate_compare_proc_body_du_linear(spec_pred_defn_info::in,
-    list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
+    list(constructor_repn)::in, prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_proc_body_du_linear(SpecDefnInfo, Ctors, Res, X, Y, Goal,
@@ -1243,7 +1247,7 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, Ctors, Res, X, Y, Goal,
     % the code fragments implementing such switch arms.
     %
 :- pred generate_compare_du_linear_cases(spec_pred_defn_info::in,
-    list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
+    list(constructor_repn)::in, prog_var::in, prog_var::in, prog_var::in,
     list(hlds_goal)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_du_linear_cases(_SpecDefnInfo, [], _R, _X, _Y,
@@ -1261,18 +1265,19 @@ generate_compare_du_linear_cases(SpecDefnInfo, [Ctor | Ctors], R, X, Y,
     ;       quad.
 
 :- pred generate_compare_case(spec_pred_defn_info::in,
-    constructor::in, prog_var::in, prog_var::in, prog_var::in,
+    constructor_repn::in, prog_var::in, prog_var::in, prog_var::in,
     linear_or_quad::in, hlds_goal::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_case(SpecDefnInfo, Ctor, R, X, Y, LinearOrQuad, Case, !Info) :-
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName, ArgTypes,
-        FunctorArity, _Ctxt),
+generate_compare_case(SpecDefnInfo, CtorRepn, R, X, Y, LinearOrQuad, Case,
+        !Info) :-
+    CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
+        _ConsTag, ArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
     Context = SpecDefnInfo ^ spdi_context,
     (
-        ArgTypes = [],
+        ArgRepns = [],
         RHS = rhs_functor(FunctorConsId, is_not_exist_constr, []),
         create_pure_atomic_complicated_unification(X, RHS, Context,
             umc_explicit, [], UnifyX_Goal),
@@ -1290,7 +1295,7 @@ generate_compare_case(SpecDefnInfo, Ctor, R, X, Y, LinearOrQuad, Case, !Info) :-
             GoalList = [UnifyX_Goal, UnifyY_Goal, EqualGoal]
         )
     ;
-        ArgTypes = [_ | _],
+        ArgRepns = [_ | _],
         (
             MaybeExistConstraints = no_exist_constraints,
             ExistQTVars = []
@@ -1299,7 +1304,7 @@ generate_compare_case(SpecDefnInfo, Ctor, R, X, Y, LinearOrQuad, Case, !Info) :-
             ExistConstraints = cons_exist_constraints(ExistQTVars,
                 _Constraints, _UnconstrainedQTVars, _ConstrainedQTVars)
         ),
-        make_fresh_arg_var_pairs(ExistQTVars, ArgTypes, TypedVarPairs, !Info),
+        make_fresh_arg_var_pairs(ExistQTVars, ArgRepns, TypedVarPairs, !Info),
         VarsX = list.map(project_var_x, TypedVarPairs),
         VarsY = list.map(project_var_y, TypedVarPairs),
         RHSX = rhs_functor(FunctorConsId, is_not_exist_constr, VarsX),
@@ -1438,7 +1443,7 @@ generate_index_proc_body(SpecDefnInfo, X, Index, Clause, !Info) :-
         TypeBody = hlds_solver_type(_),
         unexpected($pred, "trying to create index proc for a solver type")
     ;
-        TypeBody = hlds_du_type(Ctors, _, MaybeRepn, _),
+        TypeBody = hlds_du_type(_, _, MaybeRepn, _),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")
@@ -1461,7 +1466,8 @@ generate_index_proc_body(SpecDefnInfo, X, Index, Clause, !Info) :-
             unexpected($pred, "trying to create index proc for notag type")
         ;
             DuTypeKind = du_type_kind_general,
-            generate_index_proc_body_du(SpecDefnInfo, Ctors, X, Index,
+            CtorRepns = Repn ^ dur_ctor_repns,
+            generate_index_proc_body_du(SpecDefnInfo, CtorRepns, X, Index,
                 Clause, !Info)
         )
     ).
@@ -1490,7 +1496,7 @@ generate_index_proc_body(SpecDefnInfo, X, Index, Clause, !Info) :-
     %       ).
     %
 :- pred generate_index_proc_body_du(spec_pred_defn_info::in,
-    list(constructor)::in, prog_var::in, prog_var::in, clause::out,
+    list(constructor_repn)::in, prog_var::in, prog_var::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_index_proc_body_du(SpecDefnInfo, Ctors, X, Index, Clause, !Info) :-
@@ -1502,15 +1508,15 @@ generate_index_proc_body_du(SpecDefnInfo, Ctors, X, Index, Clause, !Info) :-
     quantify_clause_body([X, Index], Goal, Context, Clause, !Info).
 
 :- pred generate_index_du_case(spec_pred_defn_info::in,
-    prog_var::in, prog_var::in, constructor::in, hlds_goal::out,
+    prog_var::in, prog_var::in, constructor_repn::in, hlds_goal::out,
     int::in, int::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_index_du_case(SpecDefnInfo, X, Index, Ctor, Goal, !N, !Info) :-
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName, ArgTypes,
-        FunctorArity, _Ctxt),
+    Ctor = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName, _ConsTag,
+        ArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
-    make_fresh_vars_for_cons_args(ArgTypes, MaybeExistConstraints, ArgVars,
+    make_fresh_vars_for_cons_args(ArgRepns, MaybeExistConstraints, ArgVars,
         !Info),
     Context = SpecDefnInfo ^ spdi_context,
     create_pure_atomic_complicated_unification(X,
@@ -1687,7 +1693,7 @@ project_var_y(typed_var_pair(_ArgType, _VarX, VarY)) = VarY.
 %---------------------%
 
 :- pred make_fresh_arg_var_pairs(existq_tvars::in,
-    list(constructor_arg)::in, list(typed_var_pair)::out,
+    list(constructor_arg_repn)::in, list(typed_var_pair)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 make_fresh_arg_var_pairs(ExistQTVars, CtorArgs, TypedVarPairs, !Info) :-
@@ -1711,7 +1717,7 @@ make_fresh_arg_var_pairs(ExistQTVars, CtorArgs, TypedVarPairs, !Info) :-
     !Info ^ upi_vartypes := VarTypes.
 
 :- pred make_fresh_arg_var_pairs(bool::in, int::in,
-    list(constructor_arg)::in, list(typed_var_pair)::out,
+    list(constructor_arg_repn)::in, list(typed_var_pair)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 make_fresh_arg_var_pairs(_GiveFreshVarsTypes, _ArgNum, [], [],
@@ -1724,12 +1730,12 @@ make_fresh_arg_var_pairs(GiveFreshVarsTypes, ArgNum, [CtorArg | CtorArgs],
         TypedVarPairs, !VarSet, !VarTypes).
 
 :- pred make_fresh_arg_var_pair(bool::in, int::in,
-    constructor_arg::in, typed_var_pair::out,
+    constructor_arg_repn::in, typed_var_pair::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 make_fresh_arg_var_pair(GiveFreshVarsTypes, ArgNum, CtorArg, TypedVarPair,
         !VarSet, !VarTypes) :-
-    ArgType = CtorArg ^ arg_type,
+    ArgType = CtorArg ^ car_type,
     ArgNumStr = string.int_to_string(ArgNum),
     varset.new_named_var("ArgX" ++ ArgNumStr, VarX, !VarSet),
     varset.new_named_var("ArgY" ++ ArgNumStr, VarY, !VarSet),
@@ -1744,14 +1750,14 @@ make_fresh_arg_var_pair(GiveFreshVarsTypes, ArgNum, CtorArg, TypedVarPair,
 
 %---------------------%
 
-:- pred make_fresh_vars_for_cons_args(list(constructor_arg)::in,
+:- pred make_fresh_vars_for_cons_args(list(constructor_arg_repn)::in,
     maybe_cons_exist_constraints::in, list(prog_var)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 make_fresh_vars_for_cons_args(CtorArgs, MaybeExistConstraints, Vars, !Info) :-
     (
         MaybeExistConstraints = no_exist_constraints,
-        ArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
+        ArgTypes = list.map(func(C) = C ^ car_type, CtorArgs),
         make_fresh_vars_from_types(ArgTypes, Vars, !Info)
     ;
         MaybeExistConstraints = exist_constraints(_ExistConstraints),
