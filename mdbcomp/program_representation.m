@@ -1392,9 +1392,9 @@ read_encoded_type(ByteCode, StringTable, TypeTable, TypeRep, !Pos) :-
         read_num(ByteCode, VarNum, !Pos),
         TypeRep = type_var_rep(VarNum)
     ;
-        % XXX in order to avoid bumping the deep profiler's binary compatibility
+        % XXX in order to avoid bumping the deep profiler binary compatibility
         % version number when the fixed size integers were added, the newly
-        % added types were assigned unused Selector values.  The next time the
+        % added types were assigned unused Selector values. The next time the
         % format of the program representation file is changed for some
         % unavoidable reason this should be tidied up.
         Selector = 14,
@@ -2046,72 +2046,53 @@ read_n_items(Read, N, Items, !Pos) :-
 %---------------------------------------------------------------------------%
 
 no_type_info_builtin(ModuleName, PredName, Arity) :-
-    no_type_info_builtin_2(ModuleNameType, PredName, Arity),
     (
-        ModuleNameType = builtin,
+        PredName = "unsafe_promise_unique", Arity = 2,
         ModuleName = mercury_public_builtin_module
     ;
-        ModuleNameType = private_builtin,
+        ( PredName = "builtin_compound_eq", Arity = 2
+        ; PredName = "builtin_compound_lt", Arity = 2
+        ; PredName = "instance_constraint_from_typeclass_info", Arity = 3
+        ; PredName = "store_at_ref_impure", Arity = 2
+        ; PredName = "superclass_from_typeclass_info", Arity = 3
+        ; PredName = "type_info_from_typeclass_info", Arity = 3
+        ; PredName = "unconstrained_type_info_from_typeclass_info", Arity = 3
+        ; PredName = "unsafe_type_cast", Arity = 2
+        ),
         ModuleName = mercury_private_builtin_module
     ;
-        ModuleNameType = table_builtin,
+        ( PredName = "table_lookup_insert_enum", Arity = 4
+        ; PredName = "table_lookup_insert_typeclassinfo", Arity = 3
+        ; PredName = "table_lookup_insert_typeinfo", Arity = 3
+        ; PredName = "table_restore_any_answer", Arity = 3
+        ),
         ModuleName = mercury_table_builtin_module
     ;
-        ModuleNameType = term_size_prof_builtin,
+        PredName = "increment_size", Arity = 2,
         ModuleName = mercury_term_size_prof_builtin_module
     ;
-        ModuleNameType = par_builtin,
+        ( PredName = "get_future", Arity = 2
+        ; PredName = "new_future", Arity = 2
+        ; PredName = "signal_future", Arity = 2
+        ; PredName = "wait_future", Arity = 2
+        ),
         ModuleName = mercury_par_builtin_module
     ;
-        ModuleNameType = rtti_implementation_builtin,
+        ( PredName = "result_call_4", Arity = 4
+        ; PredName = "result_call_5", Arity = 5
+        ; PredName = "result_call_6", Arity = 6
+        ; PredName = "result_call_7", Arity = 7
+        ; PredName = "result_call_8", Arity = 8
+        ; PredName = "result_call_9", Arity = 9
+        ; PredName = "semidet_call_3", Arity = 3
+        ; PredName = "semidet_call_4", Arity = 4
+        ; PredName = "semidet_call_5", Arity = 5
+        ; PredName = "semidet_call_6", Arity = 6
+        ; PredName = "semidet_call_7", Arity = 7
+        ; PredName = "semidet_call_8", Arity = 8
+        ),
         ModuleName = mercury_rtti_implementation_builtin_module
     ).
-
-:- type builtin_mod
-    --->    builtin
-    ;       private_builtin
-    ;       table_builtin
-    ;       term_size_prof_builtin
-    ;       par_builtin
-    ;       rtti_implementation_builtin.
-
-:- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
-    is semidet.
-
-no_type_info_builtin_2(private_builtin, "store_at_ref_impure", 2).
-no_type_info_builtin_2(private_builtin, "unsafe_type_cast", 2).
-no_type_info_builtin_2(builtin, "unsafe_promise_unique", 2).
-no_type_info_builtin_2(private_builtin,
-    "superclass_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "instance_constraint_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "unconstrained_type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin, "builtin_compound_eq", 2).
-no_type_info_builtin_2(private_builtin, "builtin_compound_lt", 2).
-no_type_info_builtin_2(table_builtin, "table_restore_any_answer", 3).
-no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
-no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeinfo", 3).
-no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeclassinfo", 3).
-no_type_info_builtin_2(term_size_prof_builtin, "increment_size", 2).
-no_type_info_builtin_2(par_builtin, "new_future", 2).
-no_type_info_builtin_2(par_builtin, "wait_future", 2).
-no_type_info_builtin_2(par_builtin, "get_future", 2).
-no_type_info_builtin_2(par_builtin, "signal_future", 2).
-no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_3", 3).
-no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_4", 4).
-no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_5", 5).
-no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_6", 6).
-no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_7", 7).
-no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_8", 8).
-no_type_info_builtin_2(rtti_implementation_builtin, "result_call_4", 4).
-no_type_info_builtin_2(rtti_implementation_builtin, "result_call_5", 5).
-no_type_info_builtin_2(rtti_implementation_builtin, "result_call_6", 6).
-no_type_info_builtin_2(rtti_implementation_builtin, "result_call_7", 7).
-no_type_info_builtin_2(rtti_implementation_builtin, "result_call_8", 8).
-no_type_info_builtin_2(rtti_implementation_builtin, "result_call_9", 9).
 
     % True iff the given predicate has a `:- pragma external_pred' declaration.
     % Note that the arity includes the hidden type info arguments for
