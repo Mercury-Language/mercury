@@ -32,7 +32,7 @@
     % Generate efficient indexing code for tag based switches.
     %
 :- pred ml_generate_tag_switch(list(tagged_case)::in, prog_var::in,
-    code_model::in, can_fail::in, packed_args_map::in, prog_context::in,
+    code_model::in, can_fail::in, packed_word_map::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -65,7 +65,7 @@
 
 :- type maybe_code
     --->    immediate(mlds_stmt)
-    ;       generate(packed_args_map, hlds_goal).
+    ;       generate(packed_word_map, hlds_goal).
 
 %---------------------------------------------------------------------------%
 
@@ -119,13 +119,13 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail,
     ml_simplify_switch(SwitchStmt0, SwitchStmt, !Info),
     Stmts = [SwitchStmt].
 
-:- pred gen_tagged_case_code(code_model::in, packed_args_map::in,
+:- pred gen_tagged_case_code(code_model::in, packed_word_map::in,
     tagged_case::in, case_id::out, code_map::in, code_map::out,
     unit::in, unit::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_tagged_case_code(CodeModel, EntryPackedArgsMap, TaggedCase, CaseId,
         !CodeMap, !Unit, Info0, Info) :-
-    ml_gen_info_set_packed_args_map(EntryPackedArgsMap, Info0, Info1),
+    ml_gen_info_set_packed_word_map(EntryPackedArgsMap, Info0, Info1),
     TaggedCase = tagged_case(_MainTaggedConsId, OtherTaggedConsIds,
         CaseId, Goal),
     ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, Info1, Info2),
@@ -273,7 +273,7 @@ lookup_code_map(CodeMap, CaseId, CodeModel, Stmt, !Info) :-
         MaybeCode = immediate(Stmt)
     ;
         MaybeCode = generate(EntryPackedArgsMap, Goal),
-        ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+        ml_gen_info_set_packed_word_map(EntryPackedArgsMap, !Info),
         ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info)
     ).
 

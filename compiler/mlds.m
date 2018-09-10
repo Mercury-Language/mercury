@@ -2402,11 +2402,10 @@
             % allocated from a counter that is shared between all
             % lvnc_aux_vars.
 
-    ;       lvnc_packed_args(int).
-            % Each of these MLDS variables contains a copy of one word
-            % in a structured term's memory cell, where that word contains
-            % the values of two or more arguments packed together. The idea
-            % is that for HLDS code such as
+    ;       lvnc_packed_word(int).
+            % Each of these MLDS variables contains a copy of a word that
+            % contains the values of tags and/or arguments packed together.
+            % The idea is that for HLDS code such as
             %
             % ...
             % X0 = f(A0, B0, C0),   % deconstruction
@@ -2420,14 +2419,15 @@
             % to compute the values of B0 and C0 should be needed only if
             % the HLDS code actually uses those variables in their own right.
             %
-            % When the MLDS code generator sees a construction such as the
-            % above, which contains a word containing two or more arguments
-            % all of which are being generated, it allocates a unique integer
-            % for a new lvnc_packed_args variable and assigns that word to it.
-            % Later code that needs those same argument variables packed
-            % the same way may use this new variable instead. As its name
-            % indicates, the ml_unused_assign optimization will delete
-            % the unused assignments.
+            % When the MLDS code generator sees a deconstruction such as the
+            % above, which contains a word containing two or more entities
+            % (tags and/or arguments), all of which are being generated,
+            % it allocates a unique integer for a new lvnc_packed_word variable
+            % and assigns that word to it. Later code that needs the contents
+            % of a word with the same bitfields, filled with some of the same
+            % values, may use this new variable instead. As its name indicates,
+            % the ml_unused_assign optimization will delete the unused
+            % assignments.
 
 :- type mlds_compiler_aux_var
     --->    mcav_commit
@@ -2978,8 +2978,8 @@ ml_local_var_name_to_string(LocalVar) = Str :-
             ),
             Str = string.format("%s_%d", [s(AuxVarStr), i(Num)])
         ;
-            CompVar = lvnc_packed_args(Id),
-            Str = string.format("packed_args_%d", [i(Id)])
+            CompVar = lvnc_packed_word(Id),
+            Str = string.format("packed_word_%d", [i(Id)])
         )
     ).
 

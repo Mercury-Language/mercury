@@ -849,8 +849,6 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         ; Op = int_gt(_), OpStr = ">"
         ; Op = int_le(_), OpStr = "<="
         ; Op = int_ge(_), OpStr = ">="
-        ; Op = unchecked_left_shift(_), OpStr = "<<"
-        ; Op = unchecked_right_shift(_), OpStr = ">>"
         ; Op = bitwise_and(_), OpStr = "&"
         ; Op = bitwise_or(_), OpStr = "|"
         ; Op = bitwise_xor(_), OpStr = "^"
@@ -865,6 +863,23 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         io.write_string(OpStr, !IO),
         io.write_string(" ", !IO),
         mlds_output_rval_as_op_arg(Opts, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        ( Op = unchecked_left_shift(_), OpStr = "<<"
+        ; Op = unchecked_right_shift(_), OpStr = ">>"
+        ),
+        io.write_string("(", !IO),
+        mlds_output_rval_as_op_arg(Opts, X, !IO),
+        io.write_string(" ", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string(" ", !IO),
+        % Avoid clutter in the usual case that the shift amount
+        % is a small constant.
+        ( if Y = ml_const(mlconst_int(YInt)) then
+            io.write_int(YInt, !IO)
+        else
+            mlds_output_rval_as_op_arg(Opts, Y, !IO)
+        ),
         io.write_string(")", !IO)
     ;
         Op = str_cmp,

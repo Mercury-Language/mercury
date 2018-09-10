@@ -861,7 +861,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
     CondCodeModel = goal_info_get_code_model(CondGoalInfo),
-    ml_gen_info_get_packed_args_map(!.Info, EntryPackedArgsMap),
+    ml_gen_info_get_packed_word_map(!.Info, EntryPackedWordMap),
     (
         %   model_det Cond:
         %       <(if Cond then Then else Else)>
@@ -895,14 +895,14 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         ml_gen_test_success(Succeeded, !Info),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
         ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
-        % Start the else branch with EntryPackedArgsMap to prevent it
+        % Start the else branch with EntryPackedWordMap to prevent it
         % from trying to use map entries added by the then branch.
-        ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
         ml_gen_goal_as_block(CodeModel, Else, ElseStmt, !Info),
-        % Start the code after the if-then-else with EntryPackedArgsMap
+        % Start the code after the if-then-else with EntryPackedWordMap
         % to prevent it from trying to use map entries added by a branch
         % that was not taken.
-        ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
         ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
         IfStmt = ml_stmt_if_then_else(Succeeded, ThenStmt, yes(ElseStmt),
             Context),
@@ -964,13 +964,13 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         % Do not take any information about packed args into the new function
         % depth, since that may cause dangling cross-function references
         % when the new function depth is flattened out.
-        ml_gen_info_set_packed_args_map(map.init, !Info),
+        ml_gen_info_set_packed_word_map(map.init, !Info),
         ml_gen_info_increment_func_nest_depth(!Info),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
         ml_gen_info_decrement_func_nest_depth(!Info),
         % Do not take any information about packed args out of the new function
         % depth, for the same reason.
-        ml_gen_info_set_packed_args_map(map.init, !Info),
+        ml_gen_info_set_packed_word_map(map.init, !Info),
         ThenFuncBody =
             ml_stmt_block([], [], [SetCondTrue, ThenStmt], ThenContext),
         % pop nesting level
@@ -980,14 +980,14 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         % Generate `if (!cond_<N>) { <Else> }'.
         ml_gen_test_cond_var(CondVar, CondSucceeded),
         ml_gen_info_set_const_var_map(EntryConstVarMap, !Info),
-        % Start the else branch with EntryPackedArgsMap to prevent it
+        % Start the else branch with EntryPackedWordMap to prevent it
         % from trying to use map entries added by the then branch.
-        ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
         ml_gen_goal_as_block(CodeModel, Else, ElseStmt, !Info),
-        % Start the code after the if-then-else with EntryPackedArgsMap
+        % Start the code after the if-then-else with EntryPackedWordMap
         % to prevent it from trying to use map entries added by a branch
         % that was not taken.
-        ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
         ml_gen_info_set_const_var_map(EntryConstVarMap, !Info),
         IfStmt = ml_stmt_if_then_else(ml_unop(logical_not, CondSucceeded),
             ElseStmt, no, Context),
@@ -1011,7 +1011,7 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
     CondCodeModel = goal_info_get_code_model(CondGoalInfo),
-    ml_gen_info_get_packed_args_map(!.Info, EntryPackedArgsMap),
+    ml_gen_info_get_packed_word_map(!.Info, EntryPackedWordMap),
     (
         % model_det negation:
         %       <not(Goal)>
@@ -1036,10 +1036,10 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         CodeModel = model_semi, CondCodeModel = model_det,
         ml_gen_goal_as_branch(model_det, Cond,
             CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
-        % Start the code after the negation with EntryPackedArgsMap
+        % Start the code after the negation with EntryPackedWordMap
         % to prevent it from trying to use map entries added by a branch
         % that was not taken.
-        ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
         ml_gen_set_success(ml_const(mlconst_false), Context, SetSuccessFalse,
             !Info),
         LocalVarDefns = CondLocalVarDefns,
@@ -1055,10 +1055,10 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         CodeModel = model_semi, CondCodeModel = model_semi,
         ml_gen_goal_as_branch(model_semi, Cond,
             CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
-        % Start the code after the negation with EntryPackedArgsMap
+        % Start the code after the negation with EntryPackedWordMap
         % to prevent it from trying to use map entries added by a branch
         % that was not taken.
-        ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
         ml_gen_test_success(Succeeded, !Info),
         ml_gen_set_success(ml_unop(logical_not, Succeeded),
             Context, InvertSuccess, !Info),

@@ -155,10 +155,10 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Stmts, !Info) :-
     ;
         Disjuncts = [FirstDisjunct | LaterDisjuncts],
         LaterDisjuncts = [_ | _],
-        % Start every disjunct with EntryPackedArgsMap to prevent
+        % Start every disjunct with EntryPackedWordMap to prevent
         % later disjuncts from trying to use map entries added by
         % earlier disjuncts.
-        ml_gen_info_get_packed_args_map(!.Info, EntryPackedArgsMap),
+        ml_gen_info_get_packed_word_map(!.Info, EntryPackedWordMap),
         (
             CodeModel = model_non,
             ( if
@@ -186,20 +186,20 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Stmts, !Info) :-
                 ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info)
             else
                 ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts,
-                    EntryPackedArgsMap, Context, Stmts, !Info)
+                    EntryPackedWordMap, Context, Stmts, !Info)
             )
         ;
             ( CodeModel = model_det
             ; CodeModel = model_semi
             ),
             ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
-                EntryPackedArgsMap, CodeModel, Context, Stmts, !Info)
+                EntryPackedWordMap, CodeModel, Context, Stmts, !Info)
         ),
         % Start the code *after* the whole disjunction with
-        % EntryPackedArgsMap as well, to prevent that code from trying to use
+        % EntryPackedWordMap as well, to prevent that code from trying to use
         % map entries added by a disjunct that may have failed or may not
         % have been taken.
-        ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info)
+        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info)
     ).
 
     % Disable generation of lookup disjunctions on some backends.
@@ -215,12 +215,12 @@ allow_lookup_disj(ml_target_java) = yes.
 %---------------------------------------------------------------------------%
 
 :- pred ml_gen_ordinary_model_det_semi_disj(hlds_goal::in, list(hlds_goal)::in,
-    packed_args_map::in, code_model::in, prog_context::in, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    packed_word_map::in, code_model::in, prog_context::in,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
-        EntryPackedArgsMap, CodeModel, Context, Stmts, !Info) :-
-    ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+        EntryPackedWordMap, CodeModel, Context, Stmts, !Info) :-
+    ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
     (
         LaterDisjuncts = [],
         ml_gen_goal_as_branch_block(CodeModel, FirstDisjunct, Stmt, !Info),
@@ -259,7 +259,7 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
                 !Info),
             ml_gen_test_success(Succeeded, !Info),
             ml_gen_ordinary_model_det_semi_disj(FirstLaterDisjunct,
-                LaterLaterDisjuncts, EntryPackedArgsMap, CodeModel, Context,
+                LaterLaterDisjuncts, EntryPackedWordMap, CodeModel, Context,
                 LaterStmts, !Info),
             LaterStmt = ml_gen_block([], [], LaterStmts, Context),
             IfStmt = ml_stmt_if_then_else(ml_unop(logical_not, Succeeded),
@@ -276,12 +276,12 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
 %---------------------------------------------------------------------------%
 
 :- pred ml_gen_ordinary_model_non_disj(hlds_goal::in, list(hlds_goal)::in,
-    packed_args_map::in, prog_context::in, list(mlds_stmt)::out,
+    packed_word_map::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts,
-        EntryPackedArgsMap, Context, Stmts, !Info) :-
-    ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+        EntryPackedWordMap, Context, Stmts, !Info) :-
+    ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
     (
         LaterDisjuncts = [],
         ml_gen_goal_as_branch_block(model_non, FirstDisjunct, Stmt, !Info),
@@ -298,7 +298,7 @@ ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts,
         ml_gen_goal_as_branch_block(model_non, FirstDisjunct, FirstStmt,
             !Info),
         ml_gen_ordinary_model_non_disj(FirstLaterDisjunct, LaterLaterDisjuncts,
-            EntryPackedArgsMap, Context, LaterStmts, !Info),
+            EntryPackedWordMap, Context, LaterStmts, !Info),
         Stmts = [FirstStmt | LaterStmts]
     ).
 

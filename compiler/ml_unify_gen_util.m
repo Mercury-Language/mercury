@@ -194,6 +194,14 @@
     mer_type::in, mer_type::in, assign_dir::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred local_primsectag_filled_bitfield(ml_gen_info::in,
+    local_args_tag_info::in, filled_bitfield::out) is det.
+
+:- pred remote_sectag_filled_bitfield(uint::in, sectag_bits::in,
+    filled_bitfield::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -218,6 +226,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module term.
+:- import_module uint8.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -910,6 +919,33 @@ ml_compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir) :-
             )
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+local_primsectag_filled_bitfield(Info, LocalArgsTagInfo, FilledBitfield) :-
+    (
+        LocalArgsTagInfo = local_args_only_functor,
+        PrimSec = 0u,
+        NumPrimSecBits = 0
+    ;
+        LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag),
+        LocalSectag = local_sectag(_Sectag, PrimSec, SectagBits),
+        ml_gen_info_get_num_ptag_bits(Info, NumPtagsBitsUint8),
+        SectagBits = sectag_bits(SectagNumBitsUint8, _SectagMaskUint),
+        NumPrimSecBits =
+            uint8.cast_to_int(NumPtagsBitsUint8 + SectagNumBitsUint8)
+    ),
+    ArgNumBits = arg_num_bits(NumPrimSecBits),
+    Bitfield = bitfield(arg_shift(0), ArgNumBits, fill_enum),
+    BitfieldValue = bv_const(PrimSec),
+    FilledBitfield = filled_bitfield(Bitfield, BitfieldValue).
+
+remote_sectag_filled_bitfield(SectagUint, SectagBits, FilledBitfield) :-
+    SectagBits = sectag_bits(SectagNumBitsUint8, _SectagMaskUint),
+    ArgNumBits = arg_num_bits(uint8.cast_to_int(SectagNumBitsUint8)),
+    Bitfield = bitfield(arg_shift(0), ArgNumBits, fill_enum),
+    BitfieldValue = bv_const(SectagUint),
+    FilledBitfield = filled_bitfield(Bitfield, BitfieldValue).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_unify_gen_util.

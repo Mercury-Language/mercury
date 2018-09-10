@@ -117,6 +117,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module term.
+:- import_module uint.
 :- import_module uint8.
 
 %---------------------------------------------------------------------------%
@@ -221,17 +222,13 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             Context, Defns, Stmts, !Info)
     ;
         ConsTag = local_args_tag(LocalArgsTagInfo),
-        (
-            LocalArgsTagInfo = local_args_only_functor,
-            PrimSec = 0u
-        ;
-            LocalArgsTagInfo = local_args_not_only_functor(_Ptag, LocalSectag),
-            LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits)
-        ),
         expect(unify(TakeAddr, []), $pred,
             "taking address of non word-sized argument"),
-        ml_generate_dynamic_construct_tagword_compound(ConsId, PrimSec,
-            LHSVar, RHSVars, ArgModes, HowToConstruct, Context, Stmts, !Info),
+        local_primsectag_filled_bitfield(!.Info, LocalArgsTagInfo,
+            TagFilledBitfield),
+        ml_generate_dynamic_construct_tagword_compound(ConsId,
+            TagFilledBitfield, LHSVar, RHSVars, ArgModes, HowToConstruct,
+            Context, Stmts, !Info),
         Defns = []
     ;
         ( ConsTag = no_tag
@@ -332,7 +329,7 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
             NonTagwordRHSVarsTypesWidths = RHSVarsTypesWidths,
             NonTagwordArgModes = ArgModes
         ;
-            SectagSize = rsectag_subword(_),
+            SectagSize = rsectag_subword(SectagBits),
             ml_take_tagword_args_type_widths_modes(
                 RHSVarsTypesWidths, ArgModes,
                 TagwordRHSVarsTypesWidths, TagwordArgModes,
@@ -342,11 +339,13 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
             (
                 HowToConstruct = construct_dynamically,
                 ml_gen_tagword_dynamically(!.Info, TagwordRHSVarsTypesWidths,
-                    TagwordArgModes, [], RevToOrRvals)
+                    TagwordArgModes, [], RevArgFilledBitfields),
+                UseMap = use_packed_word_map
             ;
                 HowToConstruct = construct_statically,
                 ml_gen_tagword_statically(!.Info, TagwordRHSVarsTypesWidths,
-                    [], RevToOrRvals)
+                    [], RevArgFilledBitfields),
+                UseMap = do_not_use_packed_word_map
             ;
                 HowToConstruct = reuse_cell(_),
                 unexpected($pred, "reuse_cell NYI")
@@ -354,12 +353,14 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
                 HowToConstruct = construct_in_region(_),
                 unexpected($pred, "construct_in_region NYI")
             ),
-            list.reverse(RevToOrRvals, ToOrRvals),
-            TagwordRval = ml_bitwise_or_some_rvals(
-                ml_const(mlconst_uint(SectagUint)), ToOrRvals),
-            BoxedTagwordRval = ml_box(mlds_native_uint_type, TagwordRval),
-            TagwordRvalsTypesWidths = [rval_type_and_width(BoxedTagwordRval,
-                mlds_generic_type, TagwordArgPosWidth)]
+            remote_sectag_filled_bitfield(SectagUint, SectagBits,
+                TagFilledBitfield),
+            list.reverse(RevArgFilledBitfields, ArgFilledBitfields),
+            filled_bitfields_to_packed_word(!.Info, UseMap,
+                TagFilledBitfield, ArgFilledBitfields, TagwordRval),
+
+            TagwordRvalsTypesWidths = [rval_type_and_width(TagwordRval,
+                mlds_native_uint_type, TagwordArgPosWidth)]
         )
     ),
     ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag,
@@ -368,12 +369,13 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
         FirstArgNum, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info).
 
 :- pred ml_generate_dynamic_construct_tagword_compound(cons_id::in,
-    uint::in, prog_var::in, list(prog_var)::in, list(unify_mode)::in,
+    filled_bitfield::in, prog_var::in,
+    list(prog_var)::in, list(unify_mode)::in,
     how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_dynamic_construct_tagword_compound(ConsId, PrimSec, LHSVar,
-        ArgVars, ArgModes, HowToConstruct, Context, Stmts, !Info) :-
+ml_generate_dynamic_construct_tagword_compound(ConsId, TagFilledBitfield,
+        LHSVar, ArgVars, ArgModes, HowToConstruct, Context, Stmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_var_types(!.Info, VarTypes),
     lookup_var_type(VarTypes, LHSVar, LHSType),
@@ -384,17 +386,20 @@ ml_generate_dynamic_construct_tagword_compound(ConsId, PrimSec, LHSVar,
         (
             HowToConstruct = construct_dynamically,
             ml_gen_tagword_dynamically(!.Info, ArgVarsTypesWidths, ArgModes,
-                [], RevToOrRvals)
+                [], RevArgFilledBitfields),
+            UseMap = use_packed_word_map
         ;
             HowToConstruct = construct_statically,
             ml_gen_tagword_statically(!.Info, ArgVarsTypesWidths,
-                [], RevToOrRvals)
+                [], RevArgFilledBitfields),
+            UseMap = do_not_use_packed_word_map
         ),
-        list.reverse(RevToOrRvals, ToOrRvals),
-        TagwordRval = ml_bitwise_or_some_rvals(
-            ml_const(mlconst_uint(PrimSec)), ToOrRvals),
+        list.reverse(RevArgFilledBitfields, ArgFilledBitfields),
         LHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, LHSType),
+        filled_bitfields_to_packed_word(!.Info, UseMap,
+            TagFilledBitfield, ArgFilledBitfields, TagwordRval),
         CastTagwordRval = ml_cast(LHS_MLDS_Type, TagwordRval),
+
         ml_gen_var(!.Info, LHSVar, LHSLval),
         Stmt = ml_gen_assign(LHSLval, CastTagwordRval, Context),
         Stmts = [Stmt],
@@ -928,7 +933,6 @@ ml_generate_and_pack_dynamic_construct_args(Info,
             NumBits, _, Fill),
         expect(ml_not_taking_addr_of_cur_arg(!.TakeAddr, CurArgNum), $pred,
             "taking address of apw_partial_first"),
-        ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, RHSRval),
 
         % Figure out the type of the field.
         ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -938,28 +942,20 @@ ml_generate_and_pack_dynamic_construct_args(Info,
             BoxedRHSType),
         RHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedRHSType),
 
-        ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
-            [], RevToOrRvals0),
-        RevPackedRHSVars0 = [packed_arg_var(RHSVar, Shift, NumBits, Fill)],
+        HeadBitfield = bitfield(Shift, NumBits, Fill),
+        ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode,
+            HeadBitfieldValue),
+        HeadFilledBitfield = filled_bitfield(HeadBitfield, HeadBitfieldValue),
         % Since we define a word to be the same size as a pointer,
         % a sub-word-sized argument cannot possibly hold a pointer.
         % this is why we don't need to update !MayUseAtomic here.
         ml_generate_and_pack_dynamic_construct_packed_word(Info,
             RHSVarsTypesWidths, LeftOverRHSVarsTypesWidths,
             ArgModes, LeftOverArgModes, CurArgNum + 1, LeftOverArgNum,
-            !.TakeAddr, RevToOrRvals0, RevToOrRvals,
-            RevPackedRHSVars0, RevPackedRHSVars),
-        list.reverse(RevPackedRHSVars, PackedRHSVars),
-        ml_gen_info_get_packed_args_map(Info, PackedArgsMap),
-        ( if map.search(PackedArgsMap, PackedRHSVars, OldWordRval) then
-            WordRval = OldWordRval
-        else
-            % XXX ARG_PACK Consider allocating an lvnc_packed_args
-            % variable for this word, and entering it into PackedArgsMap.
-            list.reverse(RevToOrRvals, ToOrRvals),
-            WordRval = ml_bitwise_or_rvals(ToOrRvals)
-        ),
-        % XXX ARG_PACK should we standardize on ml_box or ml_cast?
+            !.TakeAddr, [], RevTailFilledBitfields),
+        list.reverse(RevTailFilledBitfields, TailFilledBitfields),
+        filled_bitfields_to_packed_word(Info, use_packed_word_map,
+            HeadFilledBitfield, TailFilledBitfields, WordRval),
         CastWordRval = ml_cast(mlds_generic_type, WordRval),
         % XXX TYPE_REPN Using the type of the first rval for the type
         % of the whole word preserves old behavior, but seems strange.
@@ -994,24 +990,20 @@ ml_generate_and_pack_dynamic_construct_args(Info,
     list(arg_var_type_and_width)::in, list(arg_var_type_and_width)::out,
     list(unify_mode)::in, list(unify_mode)::out,
     int::in, int::out, list(int)::in,
-    list(mlds_rval)::in, list(mlds_rval)::out,
-    list(packed_arg_var)::in, list(packed_arg_var)::out) is det.
+    list(filled_bitfield)::in, list(filled_bitfield)::out) is det.
 
 ml_generate_and_pack_dynamic_construct_packed_word(_,
-        [], [], [], [], !CurArgNum, _,
-        !RevToOrRvals, !RevPackedArgVars).
+        [], [], [], [], !CurArgNum, _, !RevFilledBitfields).
 ml_generate_and_pack_dynamic_construct_packed_word(_,
-        [], _, [_ | _], _, !CurArgNum, _,
-        !RevToOrRvals, !RevPackedArgVars) :-
+        [], _, [_ | _], _, !CurArgNum, _, !RevFilledBitfields) :-
     unexpected($pred, "length mismatch").
 ml_generate_and_pack_dynamic_construct_packed_word(_,
-        [_ | _], _, [], _, !CurArgNum, _,
-        !RevToOrRvals, !RevPackedArgVars) :-
+        [_ | _], _, [], _, !CurArgNum, _, !RevFilledBitfields) :-
     unexpected($pred, "length mismatch").
 ml_generate_and_pack_dynamic_construct_packed_word(Info,
         [RHSVarTypeWidth | RHSVarsTypesWidths], LeftOverRHSVarsTypesWidths,
         [ArgMode | ArgModes], LeftOverArgModes, CurArgNum, LeftOverArgNum,
-        TakeAddr, !RevToOrRvals, !RevPackedArgVars) :-
+        TakeAddr, !RevFilledBitfields) :-
     RHSVarTypeWidth = arg_type_and_width(RHSVar, ConsArgType, ArgPosWidth),
     (
         ( ArgPosWidth = apw_full(_, _)
@@ -1027,12 +1019,11 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
             ArgPosWidth = apw_partial_shifted(_, _, Shift, NumBits, _, Fill),
             expect(ml_not_taking_addr_of_cur_arg(TakeAddr, CurArgNum), $pred,
                 "taking address of apw_partial_shifted"),
-            ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, RHSRval),
-
-            ml_maybe_shift_and_accumulate_or_rval(RHSRval, Shift, Fill,
-                !RevToOrRvals),
-            PackedArgVar = packed_arg_var(RHSVar, Shift, NumBits, Fill),
-            !:RevPackedArgVars = [PackedArgVar | !.RevPackedArgVars]
+            Bitfield = bitfield(Shift, NumBits, Fill),
+            ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode,
+                BitfieldValue),
+            FilledBitfield = filled_bitfield(Bitfield, BitfieldValue),
+            !:RevFilledBitfields = [FilledBitfield | !.RevFilledBitfields]
         ;
             ArgPosWidth = apw_none_shifted(_, _),
             expect(ml_not_taking_addr_of_cur_arg(TakeAddr, CurArgNum), $pred,
@@ -1041,7 +1032,7 @@ ml_generate_and_pack_dynamic_construct_packed_word(Info,
         ml_generate_and_pack_dynamic_construct_packed_word(Info,
             RHSVarsTypesWidths, LeftOverRHSVarsTypesWidths,
             ArgModes, LeftOverArgModes, CurArgNum + 1, LeftOverArgNum,
-            TakeAddr, !RevToOrRvals, !RevPackedArgVars)
+            TakeAddr, !RevFilledBitfields)
     ).
 
 :- pred ml_maybe_box_unbox_or_null_lval(module_info::in,
@@ -1064,9 +1055,9 @@ ml_maybe_box_unbox_or_null_lval(ModuleInfo, ConsArgType, RHSType, BoxedRHSType,
     ).
 
 :- pred ml_maybe_null_var(ml_gen_info::in, prog_var::in, mer_type::in,
-    unify_mode::in, mlds_rval::out) is det.
+    unify_mode::in, bitfield_value::out) is det.
 
-ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, RHSRval) :-
+ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, BitfieldValue) :-
     ml_variable_type(Info, RHSVar, RHSType),
     ArgMode = unify_modes_lhs_rhs(_LHSInsts, RHSInsts),
     ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -1076,10 +1067,9 @@ ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, RHSRval) :-
         is_either_type_a_dummy(ModuleInfo, RHSType, ConsArgType) =
             neither_is_dummy_type
     then
-        ml_gen_var(Info, RHSVar, RHSLval),
-        RHSRval = ml_lval(RHSLval)
+        BitfieldValue = bv_var(RHSVar)
     else
-        RHSRval = ml_const(mlconst_uint(0u))
+        BitfieldValue = bv_const(0u)
     ).
 
     % Generate assignment statements for each of ExtraRvals into the object at
@@ -1108,35 +1098,64 @@ ml_gen_extra_arg_assigns(VarLval, MLDS_VarType, MaybePrimaryTag,
 
 :- pred ml_gen_tagword_dynamically(ml_gen_info::in,
     list(arg_var_type_and_width)::in, list(unify_mode)::in,
-    list(mlds_rval)::in, list(mlds_rval)::out) is det.
+    list(filled_bitfield)::in, list(filled_bitfield)::out) is det.
 
-ml_gen_tagword_dynamically(_, [], [], !RevOrRvals).
-ml_gen_tagword_dynamically(_, [], [_ | _], !RevOrRvals) :-
+ml_gen_tagword_dynamically(_, [], [], !RevFilledBitfields).
+ml_gen_tagword_dynamically(_, [], [_ | _], !RevFilledBitfields) :-
     unexpected($pred, "length mismatch").
-ml_gen_tagword_dynamically(_, [_ | _], [], !RevOrRvals) :-
+ml_gen_tagword_dynamically(_, [_ | _], [], !RevFilledBitfields) :-
     unexpected($pred, "length mismatch").
 ml_gen_tagword_dynamically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
-        [ArgMode | ArgModes], !RevOrRvals) :-
+        [ArgMode | ArgModes], !RevFilledBitfields) :-
     RHSVarTypeWidth = arg_type_and_width(RHSVar, ConsArgType, ArgPosWidth),
-    ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, RHSRval),
-    ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
-        !RevOrRvals),
+    (
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        unexpected($pred, "non-tagword ArgPosWidth")
+    ;
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, NumBits, _, Fill),
+        Bitfield = bitfield(Shift, NumBits, Fill),
+        ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, BitfieldValue),
+        FilledBitfield = filled_bitfield(Bitfield, BitfieldValue),
+        !:RevFilledBitfields = [FilledBitfield | !.RevFilledBitfields]
+    ;
+        ArgPosWidth = apw_none_shifted(_, _)
+        % This argument does not contribute anything to !RevFilledBitfields.
+    ),
     ml_gen_tagword_dynamically(Info, RHSVarsTypesWidths, ArgModes,
-        !RevOrRvals).
+        !RevFilledBitfields).
 
 :- pred ml_gen_tagword_statically(ml_gen_info::in,
     list(arg_var_type_and_width)::in,
-    list(mlds_rval)::in, list(mlds_rval)::out) is det.
+    list(filled_bitfield)::in, list(filled_bitfield)::out) is det.
 
 ml_gen_tagword_statically(_, [], !RevOrRvals).
 ml_gen_tagword_statically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
-        !RevOrRvals) :-
+        !RevFilledBitfields) :-
     RHSVarTypeWidth = arg_type_and_width(RHSVar, _ConsArgType, ArgPosWidth),
-    ml_gen_info_lookup_const_var(Info, RHSVar, GroundTerm),
-    GroundTerm = ml_ground_term(RHSRval, _MercuryType, _MLDS_Type),
-    ml_maybe_shift_and_accumulate_packed_arg_rval(ArgPosWidth, RHSRval,
-        !RevOrRvals),
-    ml_gen_tagword_statically(Info, RHSVarsTypesWidths, !RevOrRvals).
+    (
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ),
+        unexpected($pred, "non-tagword ArgPosWidth")
+    ;
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, NumBits, _, Fill),
+        Bitfield = bitfield(Shift, NumBits, Fill),
+        ml_gen_info_lookup_const_var(Info, RHSVar, GroundTerm),
+        GroundTerm = ml_ground_term(RHSRval, _MercuryType, _MLDS_Type),
+        BitfieldValue = bv_rval(RHSRval),
+        FilledBitfield = filled_bitfield(Bitfield, BitfieldValue),
+        !:RevFilledBitfields = [FilledBitfield | !.RevFilledBitfields]
+    ;
+        ArgPosWidth = apw_none_shifted(_, _)
+        % This argument does not contribute anything to !RevFilledBitfields.
+    ),
+    ml_gen_tagword_statically(Info, RHSVarsTypesWidths, !RevFilledBitfields).
 
 %---------------------------------------------------------------------------%
 
@@ -2329,6 +2348,252 @@ ml_take_tagword_args_type_widths([ArgTypeWidth | ArgsTypesWidths],
         ),
         TagwordArgsTypesWidths = [],
         NonTagwordArgsTypesWidths = [ArgTypeWidth | ArgsTypesWidths]
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % Should we try searching for the filled bitfields in the packed word map?
+    % The caller should pass do_not_use_packed_word_map if there is no chance
+    % that the search can succeed.
+:- type use_packed_word_map
+    --->    do_not_use_packed_word_map
+    ;       use_packed_word_map.
+
+:- pred filled_bitfields_to_packed_word(ml_gen_info::in,
+    use_packed_word_map::in, filled_bitfield::in, list(filled_bitfield)::in,
+    mlds_rval::out) is det.
+
+filled_bitfields_to_packed_word(Info, UseMap,
+        HeadFilledBitfield, TailFilledBitfields, WordRval) :-
+    get_unfilled_filled_packed_words(HeadFilledBitfield, TailFilledBitfields,
+        PackedWord, FilledPackedWord),
+    ml_gen_info_get_packed_word_map(Info, PackedWordMap),
+    ( if
+        UseMap = use_packed_word_map,
+        map.search(PackedWordMap, PackedWord, Instances),
+        find_best_matching_instance(Instances, FilledPackedWord,
+            MissingBitfields, OldWordRval)
+    then
+        (
+            MissingBitfields = [],
+            WordRval = OldWordRval
+        ;
+            MissingBitfields = [HeadMissingBitfield | TailMissingBitfields],
+            construct_missing_bitfields_mask(
+                HeadMissingBitfield, TailMissingBitfields,
+                MissingBitfieldsMask),
+            ComplementMaskRval = ml_unop(bitwise_complement(int_type_uint),
+                ml_const(mlconst_uint(MissingBitfieldsMask))),
+            MaskedOldWordRval = ml_binop(bitwise_and(int_type_uint),
+                OldWordRval, ComplementMaskRval),
+            construct_rval_for_filled_bitfields(Info,
+                HeadMissingBitfield, TailMissingBitfields,
+                MissingBitfieldsRval),
+            WordRval = ml_binop(bitwise_or(int_type_uint),
+                MaskedOldWordRval, MissingBitfieldsRval)
+        )
+    else
+        % XXX ARG_PACK Consider allocating an lvnc_packed_args
+        % variable for this word, and entering it into PackedWordMap.
+        construct_rval_for_filled_bitfields(Info,
+            HeadFilledBitfield, TailFilledBitfields, WordRval)
+    ).
+
+:- pred find_best_matching_instance(one_or_more(packed_word_instance)::in,
+    filled_packed_word::in, list(filled_bitfield)::out, mlds_rval::out)
+    is semidet.
+
+find_best_matching_instance(Instances, FilledPackedWord,
+        BestMissing, OldWordRval) :-
+    Instances = one_or_more(HeadInstance, TailInstances),
+    HeadInstance = packed_word_instance(HeadFilledPackedWord, _HeadOldWordRval),
+    count_matching_bitfields(HeadFilledPackedWord, FilledPackedWord,
+        HeadMatches, HeadNonMatches, HeadMissing),
+    find_best_matching_instance_loop(TailInstances, FilledPackedWord,
+        HeadInstance, HeadMatches, HeadNonMatches, HeadMissing,
+        BestInstance, BestMatches, _BestNonMatches, BestMissing),
+    % As a heuristic, we want to reuse an existing word only if least two
+    % of its bitfields already contain the right value. If no bitfield
+    % contains the right value, then there is nothing to reuse. And reuse
+    % may be a net loss even if one field contains the right value, because
+    % the reuse approach requires that the bits of the nonreused bitfields
+    % be masked off *before* we can OR in their updated values, forcing
+    % sequential execution of instructions, whereas if we do not reuse
+    % the existing word, then there is no forced sequentiality: the values
+    % of the various bitfields can be ORed with each other in any order
+    % the C compiler finds best. It is true that the nonreuse approach
+    % requires the value of the unchanged bitfield to be available.
+    % Computing the value of that bitfield is a possible extra cost,
+    % but (a) if the rest of the code needs the value of the variable
+    % in that bitfield, we have to incur that cost anyway, and (b) even if
+    % that is not the case, the mask operation doing that computation
+    % can be done in parallel with any mask operations computing the values
+    % of the other bitfields in the same word. The biggest cost of the
+    % nonreusing approach is actually storing the value of the unchanged
+    % bitfield separately from the word containing it. Storing the value
+    % of one such bitfield may cost roughly as much as storing the whole word
+    % or the pointer to it (if its value is not reused while in a register),
+    % but storing the value of *two* such bitfields will almost certainly
+    % have a higher cost.
+    %
+    % However, modern CPUs have such complicated performance characteristics
+    % that the above analysis may be wrong :-(, so exploring other heuristics
+    % may be worthwhile.
+    BestMatches >= 2,
+    BestInstance = packed_word_instance(_, OldWordRval).
+
+:- pred find_best_matching_instance_loop(list(packed_word_instance)::in,
+    filled_packed_word::in,
+    packed_word_instance::in, int::in, int::in, list(filled_bitfield)::in,
+    packed_word_instance::out, int::out, int::out, list(filled_bitfield)::out)
+    is det.
+
+find_best_matching_instance_loop([], _,
+        !.BestInstanceSF, !.BestMatchesSF, !.BestNonMatchesSF, !.BestMissingSF,
+        BestInstance, BestMatches, BestNonMatches, BestMissing) :-
+    BestInstance = !.BestInstanceSF,
+    BestMatches = !.BestMatchesSF,
+    BestNonMatches = !.BestNonMatchesSF,
+    BestMissing = !.BestMissingSF.
+find_best_matching_instance_loop([Instance | Instances], FilledPackedWord,
+        !.BestInstanceSF, !.BestMatchesSF, !.BestNonMatchesSF, !.BestMissingSF,
+        BestInstance, BestMatches, BestNonMatches, BestMissing) :-
+    Instance = packed_word_instance(InsFilledPackedWord, _InsOldWordRval),
+    count_matching_bitfields(InsFilledPackedWord, FilledPackedWord,
+        Matches, NonMatches, Missing),
+    ( if Matches > !.BestMatchesSF then
+        !:BestInstanceSF = Instance,
+        !:BestMatchesSF = Matches,
+        !:BestNonMatchesSF = NonMatches,
+        !:BestMissingSF = Missing
+    else
+        true
+    ),
+    find_best_matching_instance_loop(Instances, FilledPackedWord,
+        !.BestInstanceSF, !.BestMatchesSF, !.BestNonMatchesSF, !.BestMissingSF,
+        BestInstance, BestMatches, BestNonMatches, BestMissing).
+
+:- pred count_matching_bitfields(
+    filled_packed_word::in, filled_packed_word::in,
+    int::out, int::out, list(filled_bitfield)::out) is det.
+
+count_matching_bitfields(FilledPackedWordA, FilledPackedWordB,
+        !:Matches, !:NonMatches, !:RevMissingB) :-
+    FilledPackedWordA = one_or_more(HeadFilledBitfieldA, TailFilledBitfieldsA),
+    FilledPackedWordB = one_or_more(HeadFilledBitfieldB, TailFilledBitfieldsB),
+    !:Matches = 0,
+    !:NonMatches = 0,
+    !:RevMissingB = [],
+    count_matching_bitfield(HeadFilledBitfieldA, HeadFilledBitfieldB,
+        !Matches, !NonMatches, !RevMissingB),
+    count_matching_bitfields_loop(TailFilledBitfieldsA, TailFilledBitfieldsB,
+        !Matches, !NonMatches, !RevMissingB).
+
+:- pred count_matching_bitfields_loop(
+    list(filled_bitfield)::in, list(filled_bitfield)::in,
+    int::in, int::out, int::in, int::out,
+    list(filled_bitfield)::in, list(filled_bitfield)::out) is det.
+
+count_matching_bitfields_loop([], [],
+        !Matches, !NonMatches, !RevMissingB).
+count_matching_bitfields_loop([], [_ | _],
+        !Matches, !NonMatches, !RevMissingB) :-
+    unexpected($pred, "length mismatch").
+count_matching_bitfields_loop([_ | _], [],
+        !Matches, !NonMatches, !RevMissingB) :-
+    unexpected($pred, "length mismatch").
+count_matching_bitfields_loop(
+        [FilledBitfieldA | FilledBitfieldsA],
+        [FilledBitfieldB | FilledBitfieldsB],
+        !Matches, !NonMatches, !RevMissingB) :-
+    count_matching_bitfield(FilledBitfieldA, FilledBitfieldB,
+        !Matches, !NonMatches, !RevMissingB),
+    count_matching_bitfields_loop(FilledBitfieldsA, FilledBitfieldsB,
+        !Matches, !NonMatches, !RevMissingB).
+
+:- pred count_matching_bitfield(filled_bitfield::in, filled_bitfield::in,
+    int::in, int::out, int::in, int::out,
+    list(filled_bitfield)::in, list(filled_bitfield)::out) is det.
+
+count_matching_bitfield(FilledBitfieldA, FilledBitfieldB,
+        !Matches, !NonMatches, !RevMissingB) :-
+    FilledBitfieldA = filled_bitfield(BitfieldA, BitfieldValueA),
+    FilledBitfieldB = filled_bitfield(BitfieldB, BitfieldValueB),
+    expect(unify(BitfieldA, BitfieldB), $pred, "mismatched bitfields"),
+    ( if BitfieldValueA = BitfieldValueB then
+        !:Matches = !.Matches + 1
+    else
+        !:NonMatches = !.NonMatches + 1,
+        !:RevMissingB = [FilledBitfieldB | !.RevMissingB]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred construct_missing_bitfields_mask(filled_bitfield::in,
+    list(filled_bitfield)::in, uint::out) is det.
+
+construct_missing_bitfields_mask(HeadMissingBitfield, TailMissingBitfields,
+        MissingBitfieldsMask) :-
+    make_bitfield_mask(HeadMissingBitfield, HeadBitfieldMask),
+    list.foldl(accumulate_bitfield_mask, TailMissingBitfields,
+        HeadBitfieldMask, MissingBitfieldsMask).
+
+:- pred accumulate_bitfield_mask(filled_bitfield::in,
+    uint::in, uint::out) is det.
+
+accumulate_bitfield_mask(FilledBitfield, !Mask) :-
+    make_bitfield_mask(FilledBitfield, BitfieldMask),
+    !:Mask = !.Mask \/ BitfieldMask.
+
+:- pred make_bitfield_mask(filled_bitfield::in, uint::out) is det.
+
+make_bitfield_mask(FilledBitfield, BitfieldMask) :-
+    FilledBitfield = filled_bitfield(Bitfield, _BitfieldValue),
+    Bitfield = bitfield(Shift, NumBits, _Fill),
+    Shift = arg_shift(ShiftInt),
+    NumBits = arg_num_bits(NumBitsInt),
+    BitfieldMask = ((1u << NumBitsInt) - 1u) << ShiftInt.
+
+%---------------------------------------------------------------------------%
+
+:- pred construct_rval_for_filled_bitfields(ml_gen_info::in,
+    filled_bitfield::in, list(filled_bitfield)::in, mlds_rval::out) is det.
+
+construct_rval_for_filled_bitfields(Info,
+        HeadFilledBitfield, TailFilledBitfields, WordRval) :-
+    RevToOrRvals0 = [],
+    accumulate_translated_filled_bitfield(Info,
+        HeadFilledBitfield, RevToOrRvals0, RevToOrRvals1),
+    list.foldl(accumulate_translated_filled_bitfield(Info),
+        TailFilledBitfields, RevToOrRvals1, RevToOrRvals),
+    list.reverse(RevToOrRvals, ToOrRvals),
+    WordRval = ml_bitwise_or_rvals(ToOrRvals).
+
+:- pred accumulate_translated_filled_bitfield(ml_gen_info::in,
+    filled_bitfield::in, list(mlds_rval)::in, list(mlds_rval)::out) is det.
+
+accumulate_translated_filled_bitfield(Info, FilledBitfield, !RevToOrRvals) :-
+    FilledBitfield = filled_bitfield(Bitfield, BitfieldValue),
+    Bitfield = bitfield(Shift, _NumBits, Fill),
+    (
+        (
+            BitfieldValue = bv_var(Var),
+            ml_gen_var(Info, Var, VarLval),
+            ArgRval = ml_lval(VarLval)
+        ;
+            BitfieldValue = bv_rval(ArgRval)
+        ),
+        ml_maybe_shift_and_accumulate_or_rval(ArgRval, Shift, Fill,
+            !RevToOrRvals)
+    ;
+        BitfieldValue = bv_const(ValueUint),
+        ( if ValueUint = 0u then
+            true
+        else
+            Rval = ml_const(mlconst_uint(ValueUint)),
+            ml_maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill,
+                !RevToOrRvals)
+        )
     ).
 
 %---------------------------------------------------------------------------%

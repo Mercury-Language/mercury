@@ -975,7 +975,11 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
     (
         MaybeSize = yes(Size),
         io.write_string("(", !IO),
-        mlds_output_rval(Opts, Size, !IO),
+        ( if Size = ml_const(mlconst_int(SizeInt)) then
+            io.write_int(SizeInt, !IO)
+        else
+            mlds_output_rval(Opts, Size, !IO)
+        ),
         io.write_string(" * sizeof(MR_Word))", !IO)
     ;
         MaybeSize = no,

@@ -590,13 +590,13 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
         % Do not take any information about packed args into the new function
         % depth, since that may cause dangling cross-function references
         % when the new function depth is flattened out.
-        ml_gen_info_set_packed_args_map(map.init, !Info),
+        ml_gen_info_set_packed_word_map(map.init, !Info),
         ml_gen_info_increment_func_nest_depth(!Info),
         DoGenRest(RestLocalVarDefns, RestFuncDefns, RestStmts, !Info),
         ml_gen_info_decrement_func_nest_depth(!Info),
         % Do not take any information about packed args out of the new function
         % depth, for the same reason.
-        ml_gen_info_set_packed_args_map(map.init, !Info),
+        ml_gen_info_set_packed_word_map(map.init, !Info),
 
         RestStmt = ml_gen_block(RestLocalVarDefns, RestFuncDefns, RestStmts,
             Context),

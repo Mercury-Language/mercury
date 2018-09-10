@@ -251,14 +251,16 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
             InitOffset = cell_offset(0)
         ;
             RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
-            RemoteSectag = remote_sectag(_, SectagSize),
+            RemoteSectag = remote_sectag(SectagUint, SectagSize),
             (
                 SectagSize = rsectag_word,
                 TagwordArgs = no,
                 InitOffset = cell_offset(1)
             ;
-                SectagSize = rsectag_subword(_),
-                TagwordArgs = yes,
+                SectagSize = rsectag_subword(SectagBits),
+                remote_sectag_filled_bitfield(SectagUint, SectagBits,
+                    TagFilledBitfield0),
+                TagwordArgs = yes(TagFilledBitfield0),
                 % The value of InitOffset is used only for tuples and
                 % extra type_info/typeclass_info args. If a function
                 % symbols has a sub-word-sized sectag, it cannot be
@@ -274,7 +276,7 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
         ml_field_names_and_types(!.Info, LHSVarType, ConsId, InitOffset,
             RHSVars, RHSVarRepns),
         (
-            TagwordArgs = yes,
+            TagwordArgs = yes(TagFilledBitfield),
             ml_take_tagword_args(RHSVarRepns, ArgModes,
                 TagwordRHSVarRepns, TagwordArgModes,
                 NonTagwordRHSVarRepns, NonTagwordArgModes,
@@ -289,31 +291,15 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
             CastTagwordRval =
                 ml_cast(mlds_int_type_uint, ml_lval(TagwordLval)),
 
-            ml_gen_deconstruct_tagword_args(!.Info, CastTagwordRval,
+            ml_gen_deconstruct_tagword_args(TagwordLval, CastTagwordRval,
+                mlds_generic_type, TagFilledBitfield,
                 TagwordRHSVarRepns, TagwordArgModes, Context,
-                [], ToOrRvals, 0u, ToOrMask, RightStmts),
-            (
-                ToOrRvals = [],
-                TagwordStmts = RightStmts
-            ;
-                ToOrRvals = [HeadToOrRval | TailToOrRvals],
-                ToOrRval =
-                    ml_bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
-                ComplementMask = ml_const(mlconst_uint(\ ToOrMask)),
-                MaskedOldTagwordRval = ml_binop(bitwise_and(int_type_uint),
-                    CastTagwordRval, ComplementMask),
-                NewTagwordRval = ml_binop(bitwise_or(int_type_uint),
-                    MaskedOldTagwordRval, ToOrRval),
-                CastNewTagwordRval =
-                    ml_cast(mlds_generic_type, NewTagwordRval),
-                LeftStmt =
-                    ml_gen_assign(TagwordLval, CastNewTagwordRval, Context),
-                TagwordStmts = [LeftStmt | RightStmts]
-            ),
+                TagwordDefns, TagwordStmts, !Info),
             ml_gen_dynamic_deconstruct_args(FieldGen,
                 NonTagwordRHSVarRepns, NonTagwordArgModes,
                 FirstNonTagwordArgNum, Context, [], _,
-                Defns, NonTagwordStmts, !Info),
+                NonTagwordDefns, NonTagwordStmts, !Info),
+            Defns = TagwordDefns ++ NonTagwordDefns,
             Stmts = TagwordStmts ++ NonTagwordStmts
         ;
             TagwordArgs = no,
@@ -322,31 +308,77 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
                 FirstNonTagwordArgNum, Context, [], _, Defns, Stmts, !Info)
         )
     ;
-        ConsTag = local_args_tag(_),
+        ConsTag = local_args_tag(LocalArgsTagInfo),
         ml_gen_var(!.Info, LHSVar, LHSVarLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
         CtorArgRepns = ConsRepnDefn ^ cr_args,
         assoc_list.from_corresponding_lists(RHSVars, CtorArgRepns,
             RHSVarRepns),
-        ml_gen_deconstruct_tagword_args(!.Info, ml_lval(LHSVarLval),
-            RHSVarRepns, ArgModes, Context, [], ToOrRvals, 0u, ToOrMask,
-            RightStmts),
+        local_primsectag_filled_bitfield(!.Info, LocalArgsTagInfo,
+            TagFilledBitfield),
+        ml_gen_deconstruct_tagword_args(LHSVarLval, ml_lval(LHSVarLval),
+            mlds_native_uint_type, TagFilledBitfield,
+            RHSVarRepns, ArgModes, Context, Defns, Stmts, !Info)
+    ).
+
+:- pred ml_gen_deconstruct_tagword_args(mlds_lval::in, mlds_rval::in,
+    mlds_type::in, filled_bitfield::in,
+    assoc_list(prog_var, constructor_arg_repn)::in, list(unify_mode)::in,
+    prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_deconstruct_tagword_args(LHSTagwordLval, CastTagwordRval,
+        TagwordType, TagFilledBitfield, RHSVarRepns, ArgModes,
+        Context, Defns, Stmts, !Info) :-
+    ml_gen_deconstruct_tagword_args_loop(!.Info, CastTagwordRval,
+        RHSVarRepns, ArgModes, Context, [], ToOrRvals, 0u, ToOrMask,
+        [], RevArgFilledBitfields,
+        all_partials_assign_right, AllPartialsRight, RightStmts),
+    (
+        AllPartialsRight = all_partials_assign_right,
+        expect(unify(ToOrRvals, []), $pred,
+            "all_partials_assign_right but ToOrRvals != []"),
+        list.reverse(RevArgFilledBitfields, ArgFilledBitfields),
+        FilledBitfields = [TagFilledBitfield | ArgFilledBitfields],
+        record_packed_word(FilledBitfields, CastTagwordRval, Context,
+            Defns, WordVarStmts, !Info),
+        Stmts = WordVarStmts ++ RightStmts
+    ;
+        AllPartialsRight = not_all_partials_assign_right,
+        % We could think about adding calling record_packed_word on the
+        % (updated version of) the LHS word. It may help optimize some later
+        % construction unifications, though this is far less likely to happen
+        % than with all_partials_assign_right deconstructions. (The common
+        % use case motivating calls to record_packed_word, field updates,
+        % always leads to all_partials_assign_right deconstructions.)
         (
             ToOrRvals = [],
+            % If the unifications of some arguments assign to the left,
+            % but the value being assigned to the left is zero, then
+            % we do not include it in ToOrRvals. Thus it is possible
+            % for ToOrRvals to be empty.
+            Defns = [],
             Stmts = RightStmts
         ;
             ToOrRvals = [HeadToOrRval | TailToOrRvals],
+            Defns = [],
             ToOrRval = ml_bitwise_or_some_rvals(HeadToOrRval, TailToOrRvals),
             ComplementMask = ml_const(mlconst_uint(\ ToOrMask)),
-            MaskedOldVarRval = ml_binop(bitwise_and(int_type_uint),
-                ml_lval(LHSVarLval), ComplementMask),
-            NewVarRval = ml_binop(bitwise_or(int_type_uint),
-                MaskedOldVarRval, ToOrRval),
-            LeftStmt = ml_gen_assign(LHSVarLval, NewVarRval, Context),
+            MaskedOldTagwordRval = ml_binop(bitwise_and(int_type_uint),
+                CastTagwordRval, ComplementMask),
+            NewTagwordRval = ml_binop(bitwise_or(int_type_uint),
+                MaskedOldTagwordRval, ToOrRval),
+            ( if TagwordType = mlds_native_uint_type then
+                CastNewTagwordRval = NewTagwordRval
+            else
+                CastNewTagwordRval = ml_cast(TagwordType, NewTagwordRval)
+            ),
+            LeftStmt =
+                ml_gen_assign(LHSTagwordLval, CastNewTagwordRval, Context),
             Stmts = [LeftStmt | RightStmts]
-        ),
-        Defns = []
+        )
     ).
 
 ml_gen_dynamic_deconstruct_args(_, [], [], _, _, TakeAddr,
@@ -378,7 +410,7 @@ ml_gen_dynamic_deconstruct_args(FieldGen,
             Defns, Stmts, !Info),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
     else if
-        ArgPosWidth = apw_partial_first(_, _, _, _, _, _),
+        ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _, _),
         % Without field_via_offset, we have no way to get a whole word
         % from a memory cell at once.
         FieldGen = field_gen(_MaybePtag, _AddrRval, _AddrType, FieldVia),
@@ -388,7 +420,7 @@ ml_gen_dynamic_deconstruct_args(FieldGen,
             ArgVar, CtorArgRepn, ArgMode,
             ArgVarRepns, ArgModes, LeftOverArgVarRepns, LeftOverArgModes,
             CurArgNum, LeftOverArgNum,
-            Context, TakeAddr, HeadDefns, HeadStmts, !Info),
+            CellOffset, Context, TakeAddr, HeadDefns, HeadStmts, !Info),
         ml_gen_dynamic_deconstruct_args(FieldGen,
             LeftOverArgVarRepns, LeftOverArgModes, LeftOverArgNum,
             Context, TakeAddr, TakeAddrInfos, TailDefns, TailStmts, !Info),
@@ -396,7 +428,7 @@ ml_gen_dynamic_deconstruct_args(FieldGen,
         Stmts = HeadStmts ++ TailStmts
     else
         ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, ArgMode,
-            CurArgNum, Context, _PackedArgVars, HeadStmts, !Info),
+            CurArgNum, Context, _FilledBitfields, HeadStmts, !Info),
         ml_gen_dynamic_deconstruct_args(FieldGen, ArgVarRepns, ArgModes,
             NextArgNum, Context, TakeAddr, TakeAddrInfos,
             Defns, TailStmts, !Info),
@@ -407,23 +439,24 @@ ml_gen_dynamic_deconstruct_args(FieldGen,
     prog_var, constructor_arg_repn, unify_mode,
     assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
     assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
-    int, int, prog_context, list(int),
+    int, int, cell_offset, prog_context, list(int),
     list(mlds_local_var_defn), list(mlds_stmt), ml_gen_info, ml_gen_info).
 :- mode ml_gen_dynamic_deconstruct_args_in_word(in, in, in, in, in, in,
-    out, out, in, out, in, in(bound([])), out, out, in, out) is det.
+    out, out, in, out, in, in, in(bound([])), out, out, in, out) is det.
 :- mode ml_gen_dynamic_deconstruct_args_in_word(in, in, in, in, in, in,
-    out, out, in, out, in, in, out, out, in, out) is det.
+    out, out, in, out, in, in, in, out, out, in, out) is det.
 
 ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, ArgMode,
         ArgVarRepns, ArgModes, LeftOverArgVarRepns, LeftOverArgModes,
-        CurArgNum, LeftOverArgNum, Context, TakeAddr, Defns, Stmts, !Info) :-
+        CurArgNum, LeftOverArgNum, CellOffset, Context, TakeAddr,
+        Defns, Stmts, !Info) :-
     ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, ArgMode,
-        CurArgNum, Context, HeadPackedArgVars, HeadStmts, !Info),
+        CurArgNum, Context, FirstFilledBitfields, HeadStmts, !Info),
     (
-        HeadPackedArgVars = [],
+        FirstFilledBitfields = [],
         AllPartialsRight0 = not_all_partials_assign_right
     ;
-        HeadPackedArgVars = [_ | _],
+        FirstFilledBitfields = [_ | _],
         AllPartialsRight0 = all_partials_assign_right
     ),
     NextArgNum = CurArgNum + 1,
@@ -431,50 +464,80 @@ ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, ArgMode,
         ArgVarRepns, ArgModes, LeftOverArgVarRepns, LeftOverArgModes,
         NextArgNum, LeftOverArgNum,
         Context, TakeAddr, AllPartialsRight0, AllPartialsRight,
-        TailPackedArgVars, TailStmts, !Info),
+        LaterFilledBitfields, TailStmts, !Info),
     % XXX ARG_PACK
     % We could get ml_gen_dynamic_deconstruct_args_in_word_loop to tell us
     % when all the args in the word assign left, as in that case,
     % we could generate better code than the one generated by
     % ml_gen_dynamic_deconstruct_arg_unify_assign_left.
+    Stmts0 = HeadStmts ++ TailStmts,
     (
         AllPartialsRight = not_all_partials_assign_right,
         Defns = [],
-        Stmts = HeadStmts ++ TailStmts
+        Stmts = Stmts0
     ;
         AllPartialsRight = all_partials_assign_right,
-        PackedArgVars = HeadPackedArgVars ++ TailPackedArgVars,
-        ml_gen_info_new_packed_args_var(WordCompVar, !Info),
+        FilledBitfields = FirstFilledBitfields ++ LaterFilledBitfields,
 
-        WordVar = lvn_comp_var(WordCompVar),
-        UnsignedType = mlds_int_type_uint,
-        WordVarDefn = mlds_local_var_defn(WordVar, Context, UnsignedType,
-            no_initializer, gc_no_stmt),
-        Defns = [WordVarDefn],
-        ArgPosWidth = CtorArgRepn ^ car_pos_width,
-        ( if ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _, _) then
-            CellOffset = cell_offset(CellOffsetInt)
-        else
-            unexpected($pred, "no apw_partial_first")
-        ),
-
+        CellOffset = cell_offset(CellOffsetInt),
         FieldId = ml_field_offset(ml_const(mlconst_int(CellOffsetInt))),
         FieldGen = field_gen(MaybePtag, AddrRval, AddrType, _),
-        FieldLval = ml_field(MaybePtag, AddrRval, AddrType,
-            FieldId, mlds_generic_type),
-        CastFieldRval = ml_cast(UnsignedType, ml_lval(FieldLval)),
+        FieldLval = ml_field(MaybePtag, AddrRval, AddrType, FieldId,
+            mlds_generic_type),
+        WordRval = ml_lval(FieldLval),
 
-        WordVarLval = ml_local_var(WordVar, UnsignedType),
-        WordAssignStmt = ml_gen_assign(WordVarLval, CastFieldRval, Context),
-        Stmts = [WordAssignStmt | HeadStmts] ++ TailStmts,
+        record_packed_word(FilledBitfields, WordRval, Context,
+            Defns, WordVarStmts, !Info),
+        Stmts = WordVarStmts ++ Stmts0
+    ).
 
-        ml_gen_info_get_packed_args_map(!.Info, PackedArgsMap0),
+:- pred record_packed_word(list(filled_bitfield)::in, mlds_rval::in,
+    prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+record_packed_word(FilledBitfields, WordRval, Context,
+        WordVarDefns, WordVarStmts, !Info) :-
+    (
+        FilledBitfields = [],
+        WordVarDefns = [],
+        WordVarStmts = []
+    ;
+        FilledBitfields = [HeadFilledBitfields | TailFilledBitfields],
+        ml_gen_info_new_packed_word_var(WordCompVar, !Info),
+        WordVar = lvn_comp_var(WordCompVar),
+        WordVarType = mlds_int_type_uint,
+        WordVarDefn = mlds_local_var_defn(WordVar, Context, WordVarType,
+            no_initializer, gc_no_stmt),
+        WordVarDefns = [WordVarDefn],
+
+        WordVarLval = ml_local_var(WordVar, WordVarType),
+        CastWordRval = ml_cast(WordVarType, WordRval),
+        WordAssignStmt = ml_gen_assign(WordVarLval, CastWordRval, Context),
+        WordVarStmts = [WordAssignStmt],
+
+        get_unfilled_filled_packed_words(
+            HeadFilledBitfields, TailFilledBitfields,
+            PackedWord, FilledPackedWord),
+        Instance = packed_word_instance(FilledPackedWord,
+            ml_lval(WordVarLval)),
+
+        ml_gen_info_get_packed_word_map(!.Info, PackedWordMap0),
         % Since this unification *defines* the variables in PackedArgVars,
-        % none of them could have defined by another deconstruct unification
-        % earlier on this path.
-        map.det_insert(PackedArgVars, ml_lval(WordVarLval),
-            PackedArgsMap0, PackedArgsMap),
-        ml_gen_info_set_packed_args_map(PackedArgsMap, !Info)
+        % none of them could have defined by another deconstruction
+        % unification earlier on this path. However, there may have been
+        % previous deconstruction unifications that involved the same
+        % packing scheme.
+        ( if map.search(PackedWordMap0, PackedWord, OldInstances) then
+            OldInstances = one_or_more(HeadOldInstance, TailOldInstances),
+            NewInstances = one_or_more(Instance,
+                [HeadOldInstance | TailOldInstances]),
+            map.det_update(PackedWord, NewInstances,
+                PackedWordMap0, PackedWordMap)
+        else
+            map.det_insert(PackedWord, one_or_more(Instance, []),
+                PackedWordMap0, PackedWordMap)
+        ),
+        ml_gen_info_set_packed_word_map(PackedWordMap, !Info)
     ).
 
 :- type do_all_partials_assign_right
@@ -486,7 +549,7 @@ ml_gen_dynamic_deconstruct_args_in_word(FieldGen, ArgVar, CtorArgRepn, ArgMode,
     assoc_list(prog_var, constructor_arg_repn), list(unify_mode),
     int, int, prog_context, list(int),
     do_all_partials_assign_right, do_all_partials_assign_right,
-    list(packed_arg_var), list(mlds_stmt), ml_gen_info, ml_gen_info).
+    list(filled_bitfield), list(mlds_stmt), ml_gen_info, ml_gen_info).
 :- mode ml_gen_dynamic_deconstruct_args_in_word_loop(in, in, in, out, out,
     in, out, in, in(bound([])), in, out, out, out, in, out) is det.
 :- mode ml_gen_dynamic_deconstruct_args_in_word_loop(in, in, in, out, out,
@@ -506,7 +569,7 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
         [ArgVarRepn | ArgVarRepns], [ArgMode | ArgModes],
         LeftOverArgVarRepns, LeftOverArgModes, CurArgNum, LeftOverArgNum,
         Context, TakeAddr, !AllPartialsRight,
-        PackedArgVars, Stmts, !Info) :-
+        FilledBitfields, Stmts, !Info) :-
     ArgVarRepn = ArgVar - CtorArgRepn,
     ArgPosWidth = CtorArgRepn ^ car_pos_width,
     (
@@ -514,20 +577,20 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
             ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _),
             ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn,
                 ArgMode, CurArgNum, Context,
-                HeadPackedArgVars, HeadStmts, !Info),
+                HeadFilledBitfields, HeadStmts, !Info),
             (
-                HeadPackedArgVars = [],
+                HeadFilledBitfields = [],
                 !:AllPartialsRight = not_all_partials_assign_right
             ;
-                HeadPackedArgVars = [_ | _]
+                HeadFilledBitfields = [_ | _]
             )
         ;
             ArgPosWidth = apw_none_shifted(_, _),
             ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn,
                 ArgMode, CurArgNum, Context,
-                HeadPackedArgVars, HeadStmts, !Info),
-            expect(unify(HeadPackedArgVars, []), $pred,
-                "HeadPackedArgVars != [] for apw_none_shifted")
+                HeadFilledBitfields, HeadStmts, !Info),
+            expect(unify(HeadFilledBitfields, []), $pred,
+                "HeadFilledBitfields != [] for apw_none_shifted")
         ),
         ( if TakeAddr = [CurArgNum | _TailTakeAddr] then
             unexpected($pred,
@@ -540,8 +603,8 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
             ArgVarRepns, ArgModes, LeftOverArgVarRepns, LeftOverArgModes,
             NextArgNum, LeftOverArgNum,
             Context, TakeAddr, !AllPartialsRight,
-            TailPackedArgVars, TailStmts, !Info),
-        PackedArgVars = HeadPackedArgVars ++ TailPackedArgVars,
+            TailFilledBitfields, TailStmts, !Info),
+        FilledBitfields = HeadFilledBitfields ++ TailFilledBitfields,
         Stmts = HeadStmts ++ TailStmts
     ;
         ( ArgPosWidth = apw_full(_, _)
@@ -552,18 +615,18 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(FieldGen,
         LeftOverArgVarRepns = [ArgVarRepn | ArgVarRepns],
         LeftOverArgModes = [ArgMode | ArgModes],
         LeftOverArgNum = CurArgNum,
-        PackedArgVars = [],
+        FilledBitfields = [],
         Stmts = []
     ).
 
 :- pred ml_gen_dynamic_deconstruct_arg(field_gen::in,
     prog_var::in, constructor_arg_repn::in, unify_mode::in,
     int::in, prog_context::in,
-    list(packed_arg_var)::out, list(mlds_stmt)::out,
+    list(filled_bitfield)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, ArgMode,
-        ArgNum, Context, PackedArgVars, Stmts, !Info) :-
+        ArgNum, Context, FilledBitfields, Stmts, !Info) :-
     FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia),
     ArgPosWidth = CtorArgRepn ^ car_pos_width,
     (
@@ -625,10 +688,10 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, ArgMode,
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
             FieldLval, FieldType, ArgVar, ArgLval, ArgType, ArgPosWidth,
-            Context, PackedArgVars, Stmts)
+            Context, FilledBitfields, Stmts)
     ;
         Dir = assign_nondummy_left,
-        PackedArgVars = [],
+        FilledBitfields = [],
         ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo,
             HighLevelData, FieldLval, FieldType, ArgLval, ArgType,
             ArgPosWidth, Context, Stmts)
@@ -637,21 +700,21 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, ArgMode,
         ; Dir = assign_dummy
         ),
         % The unification has no effect.
-        PackedArgVars = [],
+        FilledBitfields = [],
         Stmts = []
     ).
 
 :- pred ml_gen_dynamic_deconstruct_arg_unify_assign_right(module_info::in,
     mlds_lval::in, mer_type::in, prog_var::in, mlds_lval::in, mer_type::in,
     arg_pos_width::in, prog_context::in,
-    list(packed_arg_var)::out, list(mlds_stmt)::out) is det.
+    list(filled_bitfield)::out, list(mlds_stmt)::out) is det.
 
 ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
         LHSLval, LHSType, RHSVar, RHSLval, RHSType, ArgPosWidth,
-        Context, PackedRHSVars, Stmts) :-
+        Context, FilledBitfields, Stmts) :-
     (
         ArgPosWidth = apw_double(_, _, _),
-        PackedRHSVars = [],
+        FilledBitfields = [],
         ( if ml_field_offset_pair(LHSLval, LHSLvalA, LHSLvalB) then
             LHSRval = ml_binop(float_from_dword,
                 ml_lval(LHSLvalA), ml_lval(LHSLvalB))
@@ -663,7 +726,7 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
         Stmts = [Stmt]
     ;
         ArgPosWidth = apw_full(_, _),
-        PackedRHSVars = [],
+        FilledBitfields = [],
         ml_gen_box_or_unbox_rval(ModuleInfo, LHSType, RHSType,
             bp_native_if_possible, ml_lval(LHSLval), LHSRval),
         Stmt = ml_gen_assign(RHSLval, LHSRval, Context),
@@ -674,8 +737,8 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
         ;
             ArgPosWidth = apw_partial_shifted(_, _, Shift, NumBits, Mask, Fill)
         ),
-        PackedRHSVar = packed_arg_var(RHSVar, Shift, NumBits, Fill),
-        PackedRHSVars = [PackedRHSVar],
+        Bitfield = bitfield(Shift, NumBits, Fill),
+        FilledBitfields = [filled_bitfield(Bitfield, bv_var(RHSVar))],
         ml_extract_subword_value(ml_lval(LHSLval), Shift, Mask, Fill,
             ToAssignRval),
         Stmt = ml_gen_assign(RHSLval, ToAssignRval, Context),
@@ -685,7 +748,7 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
         ; ArgPosWidth = apw_none_shifted(_, _)
         ),
         % Generate no code.
-        PackedRHSVars = [],
+        FilledBitfields = [],
         Stmts = []
     ).
 
@@ -746,35 +809,44 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo, HighLevelData,
         Stmts = []
     ).
 
-:- pred ml_gen_deconstruct_tagword_args(ml_gen_info::in, mlds_rval::in,
+:- pred ml_gen_deconstruct_tagword_args_loop(ml_gen_info::in, mlds_rval::in,
     assoc_list(prog_var, constructor_arg_repn)::in, list(unify_mode)::in,
     prog_context::in,
     list(mlds_rval)::in, list(mlds_rval)::out, uint::in, uint::out,
+    list(filled_bitfield)::in, list(filled_bitfield)::out,
+    do_all_partials_assign_right::in, do_all_partials_assign_right::out,
     list(mlds_stmt)::out) is det.
 
-ml_gen_deconstruct_tagword_args(_, _, [], [], _, !ToOrRvals, !ToOrMask, []).
-ml_gen_deconstruct_tagword_args(_, _, [], [_ | _],
-        _, !ToOrRvals, !ToOrMask, _) :-
+ml_gen_deconstruct_tagword_args_loop(_, _, [], [],
+        _, !ToOrRvals, !ToOrMask, !RevFilledBitfields, !AllPartialsRight, []).
+ml_gen_deconstruct_tagword_args_loop(_, _, [], [_ | _],
+        _, !ToOrRvals, !ToOrMask, !RevFilledBitfields, !AllPartialsRight, _) :-
     unexpected($pred, "length mismatch").
-ml_gen_deconstruct_tagword_args(_, _, [_ | _], [],
-        _, !ToOrRvals, !ToOrMask, _) :-
+ml_gen_deconstruct_tagword_args_loop(_, _, [_ | _], [],
+        _, !ToOrRvals, !ToOrMask, !RevFilledBitfields, !AllPartialsRight, _) :-
     unexpected($pred, "length mismatch").
-ml_gen_deconstruct_tagword_args(Info, WordRval,
+ml_gen_deconstruct_tagword_args_loop(Info, WordRval,
         [ArgVarRepn | ArgVarRepns], [ArgMode | ArgModes],
-        Context, !ToOrRvals, !ToOrMask, Stmts) :-
+        Context, !ToOrRvals, !ToOrMask,
+        !RevFilledBitfields, !AllPartialsRight, Stmts) :-
     ml_gen_deconstruct_tagword_arg(Info, WordRval, ArgVarRepn, ArgMode,
-        Context, !ToOrRvals, !ToOrMask, HeadStmts),
-    ml_gen_deconstruct_tagword_args(Info, WordRval, ArgVarRepns, ArgModes,
-        Context, !ToOrRvals, !ToOrMask, TailStmts),
+        Context, !ToOrRvals, !ToOrMask,
+        !RevFilledBitfields, !AllPartialsRight, HeadStmts),
+    ml_gen_deconstruct_tagword_args_loop(Info, WordRval, ArgVarRepns, ArgModes,
+        Context, !ToOrRvals, !ToOrMask,
+        !RevFilledBitfields, !AllPartialsRight, TailStmts),
     Stmts = HeadStmts ++ TailStmts.
 
 :- pred ml_gen_deconstruct_tagword_arg(ml_gen_info::in, mlds_rval::in,
     pair(prog_var, constructor_arg_repn)::in, unify_mode::in, prog_context::in,
     list(mlds_rval)::in, list(mlds_rval)::out, uint::in, uint::out,
+    list(filled_bitfield)::in, list(filled_bitfield)::out,
+    do_all_partials_assign_right::in, do_all_partials_assign_right::out,
     list(mlds_stmt)::out) is det.
 
 ml_gen_deconstruct_tagword_arg(Info, WordRval, ArgVar - CtorArgRepn, ArgMode,
-        Context, !ToOrRvals, !ToOrMask, Stmts) :-
+        Context, !ToOrRvals, !ToOrMask,
+        !RevFilledBitfields, !AllPartialsRight, Stmts) :-
     ml_gen_var(Info, ArgVar, ArgLval),
     ml_variable_type(Info, ArgVar, ArgType),
 
@@ -790,28 +862,36 @@ ml_gen_deconstruct_tagword_arg(Info, WordRval, ArgVar - CtorArgRepn, ArgMode,
     (
         Dir = assign_nondummy_right,
         ml_gen_deconstruct_tagword_arg_assign_right(WordRval,
-            ArgPosWidth, ArgLval, Context, Stmts)
+            ArgPosWidth, ArgVar, ArgLval, Context, !RevFilledBitfields, Stmts)
     ;
         Dir = assign_nondummy_left,
         ml_gen_deconstruct_tagword_arg_assign_left(WordRval,
             ArgPosWidth, ArgLval, !ToOrRvals, !ToOrMask),
+        !:AllPartialsRight = not_all_partials_assign_right,
         Stmts = []
     ;
         ( Dir = assign_nondummy_unused
         ; Dir = assign_dummy
         ),
         % The unification has no effect.
+        !:AllPartialsRight = not_all_partials_assign_right,
         Stmts = []
     ).
 
 :- pred ml_gen_deconstruct_tagword_arg_assign_right(mlds_rval::in,
-    arg_pos_width::in, mlds_lval::in, prog_context::in,
+    arg_pos_width::in, prog_var::in, mlds_lval::in, prog_context::in,
+    list(filled_bitfield)::in, list(filled_bitfield)::out,
     list(mlds_stmt)::out) is det.
 
-ml_gen_deconstruct_tagword_arg_assign_right(WordRval, ArgPosWidth, ArgLval,
-        Context, Stmts) :-
+ml_gen_deconstruct_tagword_arg_assign_right(WordRval, ArgPosWidth,
+        ArgVar, ArgLval, Context, !RevFilledBitfields, Stmts) :-
     (
-        ArgPosWidth = apw_partial_shifted(_, _, Shift, _NumBits, Mask, Fill),
+        ArgPosWidth = apw_partial_shifted(_, _, Shift, NumBits, Mask, Fill),
+        Bitfield = bitfield(Shift, NumBits, Fill),
+        BitfieldValue = bv_var(ArgVar),
+        FilledBitfield = filled_bitfield(Bitfield, BitfieldValue),
+        !:RevFilledBitfields = [FilledBitfield | !.RevFilledBitfields],
+
         ml_extract_subword_value(WordRval, Shift, Mask, Fill, ToAssignRval),
         Stmt = ml_gen_assign(ArgLval, ToAssignRval, Context),
         Stmts = [Stmt]
@@ -912,7 +992,7 @@ ml_gen_dynamic_deconstruct_no_tag(Info, LHSVar, RHSVar, ArgMode, Context,
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
             LHSLval, LHSType, RHSVar, RHSLval, RHSType,
-            ArgPosWidth, Context, _PackedArgVars, Stmts)
+            ArgPosWidth, Context, _FilledBitfields, Stmts)
     ;
         Dir = assign_nondummy_left,
         ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo,

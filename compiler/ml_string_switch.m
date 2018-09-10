@@ -50,7 +50,7 @@
 :- import_module list.
 
 :- pred ml_generate_string_trie_jump_switch(mlds_rval::in,
-    list(tagged_case)::in, code_model::in, can_fail::in, packed_args_map::in,
+    list(tagged_case)::in, code_model::in, can_fail::in, packed_word_map::in,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -60,7 +60,7 @@
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_hash_jump_switch(mlds_rval::in,
-    list(tagged_case)::in, code_model::in, can_fail::in, packed_args_map::in,
+    list(tagged_case)::in, code_model::in, can_fail::in, packed_word_map::in,
     prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -71,7 +71,7 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_binary_jump_switch(mlds_rval::in,
-    list(tagged_case)::in, code_model::in, can_fail::in, packed_args_map::in,
+    list(tagged_case)::in, code_model::in, can_fail::in, packed_word_map::in,
     prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -859,7 +859,7 @@ add_to_strs_case_ids(CaseId, TaggedConsId, !RevStrsCaseIds) :-
 %---------------------------------------------------------------------------%
 
 :- pred gen_tagged_case_codes_for_string_switch(code_model::in,
-    packed_args_map::in, list(tagged_case)::in,
+    packed_word_map::in, list(tagged_case)::in,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -873,7 +873,7 @@ gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCases, !CodeMap, !Info).
 
 :- pred gen_tagged_case_code_for_string_switch_dummy(code_model::in,
-    packed_args_map::in, tagged_case::in, case_id::out,
+    packed_word_map::in, tagged_case::in, case_id::out,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out, unit::in, unit::out) is det.
 
@@ -884,13 +884,13 @@ gen_tagged_case_code_for_string_switch_dummy(CodeModel, EntryPackedArgsMap,
         TaggedCase, !CodeMap, !Info).
 
 :- pred gen_tagged_case_code_for_string_switch(code_model::in,
-    packed_args_map::in, tagged_case::in,
+    packed_word_map::in, tagged_case::in,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCase, !CodeMap, !Info) :-
-    ml_gen_info_set_packed_args_map(EntryPackedArgsMap, !Info),
+    ml_gen_info_set_packed_word_map(EntryPackedArgsMap, !Info),
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds,
         CaseId, Goal),
     ml_gen_goal_as_branch_block(CodeModel, Goal, GoalStmt, !Info),
