@@ -14,15 +14,19 @@
 
 #ifdef  MR_CAN_DO_PENDING_IO
 
-  #ifdef MR_BZERO_NEEDS_STRINGS_HEADER
-    #include <strings.h>
-  #endif
+#ifdef MR_BZERO_NEEDS_STRINGS_HEADER
+  #include <strings.h>
+#endif
 
-#include <sys/types.h>  // for fd_set and FD_ZERO()
-#include <sys/time.h>   // for FD_ZERO()
+#ifdef MR_HAVE_SYS_SELECT_H
+  #include <sys/select.h>   // for select() -- POSIX
+#endif
+
+#include <sys/types.h>      // for fd_set and FD_ZERO()
+#include <sys/time.h>       // for FD_ZERO()
 
 #ifdef MR_HAVE_UNISTD_H
-  #include <unistd.h>   // for FD_ZERO()
+  #include <unistd.h>       // for FD_ZERO()
 #endif
 
 void

@@ -140,7 +140,8 @@
 //  MR_HAVE_UTMPX_H         we have <utmpx.h>
 //  MR_HAVE_SYS_RESOURCE_H  we have <sys/resource.h>
 //  MR_HAVE_DISPATCH_DISPATCH_H we have <dispatch/dispatch.h>
-//  MR_HAVE_STDINT          we have <stdint.h>
+//  MR_HAVE_STDINT_H        we have <stdint.h>
+//  MR_HAVE_SYS_SELECT_H    we have <sys/select.h>
 
 #undef  MR_HAVE_SYS_SIGINFO_H
 #undef  MR_HAVE_SYS_SIGNAL_H
@@ -175,6 +176,7 @@
 #undef  MR_HAVE_SYS_RESOURCE_H
 #undef  MR_HAVE_DISPATCH_DISPATCH_H
 #undef  MR_HAVE_STDINT_H
+#undef  MR_HAVE_SYS_SELECT_H
 
 // MR_HAVE_POSIX_TIMES is defined if we have the POSIX
 // `struct tms' struct and times() function.

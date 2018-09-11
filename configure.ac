@@ -1420,7 +1420,7 @@ MERCURY_CHECK_FOR_HEADERS( \
         sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
         sys/resource.h sys/stropts.h windows.h dirent.h getopt.h malloc.h \
         semaphore.h pthread.h time.h spawn.h fenv.h sys/mman.h sys/sem.h \
-        sched.h utmpx.h dispatch/dispatch.h stdint.h)
+        sched.h utmpx.h dispatch/dispatch.h stdint.h sys/select.h )
 
 if test "$MR_HAVE_GETOPT_H" = 1; then
     GETOPT_H_AVAILABLE=yes
@@ -2426,6 +2426,9 @@ AC_MSG_CHECKING(to see if we can handle contexts blocking on IO)
 AC_CACHE_VAL(mercury_cv_can_do_pending_io,
     AC_TRY_RUN(
         [
+            #ifdef MR_HAVE_SYS_SELECT_H
+            #include <sys/select.h>
+            #endif
             #include <sys/types.h>
             #include <sys/time.h>
             int main() {

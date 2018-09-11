@@ -12,6 +12,9 @@
 #include "mercury_conf.h"
 
 #ifdef MR_CAN_DO_PENDING_IO
+  #ifdef MR_HAVE_SYS_SELECT_H
+    #include <sys/select.h>     // for select() -- POSIX
+  #endif
   #include <sys/types.h>        // for fd_set
   #include <sys/time.h>         // for FD_ZERO()
 #endif
