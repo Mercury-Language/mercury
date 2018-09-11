@@ -7,6 +7,10 @@
 %
 % Author: bromage
 %
+% The .exp file is for backends where io.set_environment_var/4 is supported.
+% The .exp2 file is for Java backend where io.set_environment_var/4 is
+% *not* supported.
+%
 %---------------------------------------------------------------------------%
 
 :- module environment.

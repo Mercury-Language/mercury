@@ -4,6 +4,11 @@
 %
 % File to test string__format predicate.
 %
+% The .exp file is for when int is 32-bit.
+% The .exp2 file is for when int is 64-bit.
+% The .exp3 file is for MSVC.
+%
+%---------------------------------------------------------------------------%
 
 :- module string_format_test.
 

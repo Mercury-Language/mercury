@@ -4,6 +4,10 @@
 % test_parsing_utils.m
 % Ralph Becket <rafe@csse.unimelb.edu.au>
 % Tue Jan 27 13:44:59 EST 2009
+%
+% The .exp file is for backends that use UTF-8 encoded strings.
+% The .exp2 file is for backends that use UTF-16 encoded strings.
+%
 %---------------------------------------------------------------------------%
 
 :- module test_parsing_utils.
