@@ -200,7 +200,7 @@
 #ifdef  EXPAND_ARGS
   #define handle_zero_arity_all_args()                                      \
         do {                                                                \
-            expand_info->arg_univs_list = MR_list_empty_msg(MR_ALLOC_ID);   \
+            expand_info->arg_univs_list = MR_list_empty();                  \
         } while (0)
 #else   // EXPAND_ARGS
   #define handle_zero_arity_all_args()                                      \
@@ -320,9 +320,9 @@
             MR_Word arg_univ;                                               \
             MR_Word list;                                                   \
                                                                             \
-            list = MR_list_empty_msg(MR_ALLOC_ID);                          \
+            list = MR_list_empty();                                         \
             MR_new_univ_on_hp(arg_univ, (arg_ti_expr), (dw_ptr)[0]);        \
-            list = MR_univ_list_cons_msg(arg_univ, list, MR_ALLOC_ID);      \
+            list = MR_univ_list_cons(arg_univ, list);                       \
                                                                             \
             (ei)->arg_univs_list = list;                                    \
         } while (0)
@@ -410,12 +410,12 @@
             MR_Word list;                                                   \
             int     i;                                                      \
                                                                             \
-            list = MR_list_empty_msg(MR_ALLOC_ID);                          \
+            list = MR_list_empty();                                         \
             i = (ei)->arity;                                                \
             while (--i >= 0) {                                              \
                 arg_value = (arg_vector)[i];                                \
                 MR_new_univ_on_hp(arg_univ, (arg_ti), arg_value);           \
-                list = MR_univ_list_cons_msg(arg_univ, list, MR_ALLOC_ID);  \
+                list = MR_univ_list_cons(arg_univ, list);                   \
             }                                                               \
                                                                             \
             (ei)->arg_univs_list = list;                                    \
@@ -715,7 +715,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     MR_get_tagword_arg_value(arg_locns[arg_num], data,
                         arg_value);
                     MR_new_univ_on_hp(arg_univ, arg_type_info, arg_value);
-                    list = MR_univ_list_cons_msg(arg_univ, list, MR_ALLOC_ID);
+                    list = MR_univ_list_cons(arg_univ, list);
                 }
 
                 expand_info->arg_univs_list = list;
@@ -810,7 +810,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         functor_desc, ti_arg_vector, arg_num);
                     arg_value = ao_arg_vector[arg_num];
                     MR_new_univ_on_hp(arg_univ, arg_type_info, arg_value);
-                    list = MR_univ_list_cons_msg(arg_univ, list, MR_ALLOC_ID);
+                    list = MR_univ_list_cons(arg_univ, list);
                 }
             } else {
                 while (--arg_num >= 0) {
@@ -820,7 +820,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     MR_get_non_tagword_arg_value(arg_locns[arg_num],
                         ao_arg_vector, arg_value, word_size_arg_ptr);
                     MR_new_univ_on_hp(arg_univ, arg_type_info, arg_value);
-                    list = MR_univ_list_cons_msg(arg_univ, list, MR_ALLOC_ID);
+                    list = MR_univ_list_cons(arg_univ, list);
                 }
             }
 
@@ -1338,7 +1338,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     closure_layout->MR_closure_arg_pseudo_type_info[i]);
                 arg_value = arg_vector[i];
                 MR_new_univ_on_hp(arg_univ, arg_type_info, arg_value);
-                list = MR_univ_list_cons_msg(arg_univ, list, MR_ALLOC_ID);
+                list = MR_univ_list_cons(arg_univ, list);
             }
             expand_info->arg_univs_list = list;
 
@@ -1427,7 +1427,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             i = expand_info->arity;
             while (--i >= 0) {
                 MR_new_univ_on_hp(arg_univ, arg_type_infos[i], arg_vector[i]);
-                list = MR_univ_list_cons_msg(arg_univ, list, MR_ALLOC_ID);
+                list = MR_univ_list_cons(arg_univ, list);
             }
 
             expand_info->arg_univs_list = list;
