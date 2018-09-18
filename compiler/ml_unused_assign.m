@@ -402,9 +402,14 @@ delete_unused_in_atomic_stmt_return_cord(Stmt0, StmtCord,
         ( if
             TargetLval = ml_local_var(TargetLocalVarName, _Type),
             not set.member(TargetLocalVarName, SeenAfter),
-            ( TargetLocalVarName = lvn_prog_var(_, _)
-            ; TargetLocalVarName = lvn_prog_var_boxed(_, _)
-            ; TargetLocalVarName = lvn_prog_var_conv(_, _, _)
+            (
+                ( TargetLocalVarName = lvn_prog_var(_, _)
+                ; TargetLocalVarName = lvn_prog_var_boxed(_, _)
+                ; TargetLocalVarName = lvn_prog_var_conv(_, _, _)
+                )
+            ;
+                TargetLocalVarName = lvn_comp_var(CompVar),
+                CompVar = lvnc_packed_word(_)
             )
         then
             % We are deleting this statement, because the value it defines
