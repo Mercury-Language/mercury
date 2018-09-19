@@ -1446,9 +1446,14 @@
     % make_temp_file(Dir, Prefix, Suffix, Result, !IO) creates an empty file
     % whose name is different to the name of any existing file. The file will
     % reside in the directory specified by Dir and will have a prefix using up
-    % to the first 5 characters of Prefix. If successful, Result returns the
+    % to the first 5 code units of Prefix. If successful, Result returns the
     % name of the file. It is the responsibility of the caller to delete the
     % file when it is no longer required.
+    %
+    % The reason for truncating Prefix is historical; in future the behaviour
+    % may be changed. Note that the truncation is performed without regard for
+    % code point boundaries. It is recommended to use only (printable) ASCII
+    % characters in the prefix string.
     %
     % The C backend has the following limitations:
     %   - Suffix may be ignored.
@@ -11621,28 +11626,16 @@ import java.util.Random;
     // `open(..., O_CREATE | O_EXCL, ...)' to create the file, checking that
     // there was no existing file with that name.
 
-    int     len, err, fd, num_tries;
-    char    countstr[256];
-    MR_Word filename_word;
+    int     err, fd, num_tries;
     int     flags;
 
-    len = strlen(Dir) + 1 + 5 + 6 + strlen(Suffix) + 1;
-    // Dir + / + Prefix + counter + Suffix + \\0
-    MR_offset_incr_hp_atomic_msg(filename_word, 0,
-        (len + sizeof(MR_Word)) / sizeof(MR_Word),
-        MR_ALLOC_ID, ""string.string/0"");
-    FileName = (MR_String) filename_word;
     if (ML_io_tempnam_counter == 0) {
         ML_io_tempnam_counter = getpid();
     }
     num_tries = 0;
     do {
-        sprintf(countstr, ""%06lX"", ML_io_tempnam_counter & 0xffffffL);
-        strcpy(FileName, Dir);
-        strcat(FileName, Sep);
-        strncat(FileName, Prefix, 5);
-        strncat(FileName, countstr, 6);
-        strcat(FileName, Suffix);
+        FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5s%06lX%s"",
+            Dir, Sep, Prefix, ML_io_tempnam_counter & 0xffffffL, Suffix);
         flags = O_WRONLY | O_CREAT | O_EXCL;
         do {
             #ifdef MR_WIN32
