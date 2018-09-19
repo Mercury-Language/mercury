@@ -1999,45 +1999,160 @@ type classes (@pxref{Type classes}), and existentially quantified types
 @node Builtin types
 @section Builtin types
 
-Certain special types are builtin, or are defined in the Mercury library:
+This section describes the special types that are built into the Mercury
+implementation, or are defined in the standard library.
 
-@table @asis
-@item Primitive types: @code{char}, @code{int}, @code{int8}, @code{int16},
-@code{int32}, @code{int64}, @code{uint}, @code{uint8}, @code{uint16},
-@code{uint32}, @code{uint64}, @code{float}, @code{string}.
-There is a special syntax for constants for all primitive types except
-@code{char}.  (For @code{char}, the standard syntax suffices.)
+@menu
+* Primitive types::
+* Other builtin types::
+@end menu
 
-@item Predicate types: @code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
-@itemx Function types: @code{(func) = T}, @code{func(T1) = T},
-@itemx @code{func(T1, T2) = T}, @dots{}
-These higher-order function and predicate types are used to pass procedure
-addresses and closures to other predicates.  @xref{Higher-order}.
+@node Primitive types
+@subsection Primitive types
 
-@item Tuple types: @code{@{@}}, @code{@{T@}}, @code{@{T1, T2@}}, @dots{}. 
+There is a special syntax for constants of all primitive types except
+@code{char}.
+(For @code{char}, the standard syntax suffixes.)
+
+@menu
+* Signed integer types::
+* Unsigned integer types::
+* Floating-point type::
+* Character type::
+* String type::
+@end menu
+
+@node Signed integer types
+@subsubsection Signed integer types
+There are five primitive signed integer types: @code{int}, @code{int8},
+@code{int16}, @code{int32} and @code{int64}.
+
+Except for @code{int}, the width in bits of each of these is given by the
+numeric suffix in its name.
+
+The width in bits of @code{int} is implementation defined, but must be at least
+32-bits.
+It must be equal to the width of the type @code{uint}.
+
+All signed integer types use two's-complement representation.
+
+Values of the type @code{int8} must be in the range @math{-128}
+(@math{-(2^{8 - 1})}) to @math{127} (@math{2^{8 - 1} - 1}),
+both inclusive.
+
+Values of the type @code{int16} must be in the range @math{-32768}
+(@math{-(2^{16 - 1})}) to @math{32767} (@math{2^{16 - 1} - 1}),
+both inclusive.
+
+Values of the type @code{int32} must be in the range @math{-2147483648}
+(@math{-(2^{32 - 1})}) to @math{2147483647} (@math{2^{32 - 1} - 1}),
+both inclusive.
+
+Values of the type @code{int64} must be in the range @math{-9223372036854775808}
+(@math{-(2^{64 - 1})}) to @math{9223372036854775807} (@math{2^{64 - 1} - 1}),
+both inclusive.
+
+Values of the type @code{int} must be in the range to @math{-(2^{N - 1})} to
+@math{2^{N - 1} - 1}, both inclusive; @math{N} being the width of @code{int} in bits.
+
+@node Unsigned integer types
+@subsubsection Unsigned integer types
+There are five primitive unsigned integer types: @code{uint}, @code{uint8},
+@code{uint16}, @code{uint32} and @code{uint64}.
+
+Except for @code{uint}, the width in bits of each of these types is given by
+the numeric suffix in its name.
+
+The width in bits of @code{uint} is implementation defined, but must be at
+least 32-bits.
+It must be equal to the width of the type @code{int}.
+
+Values of the type @code{uint8} must be in the range @math{0} (@math{2^0 - 1})
+to @math{255} (@math{2^8 - 1}), both inclusive.
+
+Values of the type @code{uint16} must be in the range @math{0} (@math{2^0- 1})
+to @math{65535} (@math{2^16 - 1}), both inclusive.
+
+Values of the type @code{uint32} must be in the range @math{0} (@math{2^0 - 1})
+to @math{4294967295} (@math{2^32 - 1}), both inclusive.
+
+Values of the type @code{uint64} must be in the range @math{0} (@math{2^0 - 1})
+to @math{18446744073709551615} (@math{2^64 - 1}), both inclusive.
+
+Values of the type @math{uint} must be in the range @math{0} (@math{2^0 - 1}) to
+@math{2^N - 1}, both inclusive; @math{N} being the width of @code{uint} in bits.
+
+@node Floating-point type
+@subsubsection Floating-point type
+There is one floating-point type: @code{float}.
+
+It is represented using either the 32-bit single-precision IEEE 754 format or
+the 64-bit double-precision IEEE 754 format.
+
+The choice between the two formats is implementation dependent.
+
+@node Character type
+@subsubsection Character type
+There is one character type: @code{char}.
+
+Values of this type represent Unicode code points.
+
+@node String type
+@subsubsection String type
+There is one string type: @code{string}.
+
+A string is a sequence of characters encoded using either the UTF-8 or UTF-16
+encoding of Unicode.
+
+The choice between the two encodings is implementation dependent.
+
+@node Other builtin types
+@subsection Other builtin types
+
+@menu
+* Predicate and function types::
+* Tuple types::
+* The universal type::
+* The ``state-of-the-world'' type::
+@end menu
+
+@node Predicate and function types
+@subsubsection Predicate and function types
+The predicate types are @code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
+
+@noindent
+The function types are  @code{(func) = T}, @code{func(T1) = T}, @code{func(T1, T2) = T}, @dots{}
+
+Higher-order predicate and function types are used to pass procedure addresses
+and closures to other predicates and functions.  @xref{Higher-order}.
+
+@node Tuple types
+@subsubsection Tuple types
+The tuple types are @code{@{@}}, @code{@{T@}}, @code{@{T1, T2@}}, @dots{}
+
 A tuple type is equivalent to a discriminated union type
 (@pxref{Discriminated unions}) with declaration
 @example
-:- type @{Arg1, Arg2, @dots{}, ArgN@}
-        --->    @{ @{Arg1, Arg2, @dots{}, ArgN@} @}.
+ :- type @{Arg1, Arg2, @dots{}, ArgN@}
+         --->    @{ @{Arg1, Arg2, @dots{}, ArgN@} @}.
 @end example
 
-@item The universal type: @code{univ}.
+@node The universal type
+@subsubsection The universal type
 The type @code{univ} is defined in the standard library module @code{univ},
 along with the predicates @code{type_to_univ/2} and @code{univ_to_type/2}.
-With those predicates, any type can be converted to the universal type
-and back again.
-The universal type is useful for situations
-where you need heterogeneous collections.
+With those predicates, values of any type can be converted to the universal
+type and back again.
+The universal type is useful for situations where you need heterogeneous
+collections.
 
-@item The ``state-of-the-world'' type: @code{io.state}.
+@node The ``state-of-the-world'' type
+@subsubsection The ``state-of-the-world'' type
 The type @code{io.state} is defined in the standard library module @code{io},
 and represents the state of the world.
-Predicates which perform I/O are passed the old state of the world
-and produce a new state of the world.
+Predicates which perform I/O are passed the old state of the world and produce
+a new state of the world.
 In this way, we can give a declarative semantics to code that performs I/O.
-
-@end table
 
 @node User-defined types
 @section User-defined types
