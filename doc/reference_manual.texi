@@ -2030,11 +2030,11 @@ There are five primitive signed integer types: @code{int}, @code{int8},
 Except for @code{int}, the width in bits of each of these is given by the
 numeric suffix in its name.
 
-The width in bits of @code{int} is implementation defined, but must be at least
-32-bits.
-It must be equal to the width of the type @code{uint}.
+The width in bits of @code{int} is implementation defined,
+but must be at least 32-bits.
 
 All signed integer types use two's-complement representation.
+Their width must be equal to the width of the corresponding unsigned type.
 
 Values of the type @code{int8} must be in the range @math{-128}
 (@math{-(2^{8 - 1})}) to @math{127} (@math{2^{8 - 1} - 1}),
@@ -2091,6 +2091,13 @@ the 64-bit double-precision IEEE 754 format.
 
 The choice between the two formats is implementation dependent.
 
+In the Melbourne Mercury implementation,
+@code{float}s are represented
+using the 32-bit single-precision IEEE 754 format
+in grades that have @code{.spf} grade component,
+and using the 64-bit double-precision IEEE 754 format
+in every other grade.
+
 @node Character type
 @subsubsection Character type
 There is one character type: @code{char}.
@@ -2106,6 +2113,10 @@ encoding of Unicode.
 
 The choice between the two encodings is implementation dependent.
 
+In the Melbourne Mercury implementation, @code{string}s are represented
+using UTF-8 when generating code for C or Erlang,
+and using UTF-16 when generating code for C# or Java.
+
 @node Other builtin types
 @subsection Other builtin types
 
@@ -2118,13 +2129,16 @@ The choice between the two encodings is implementation dependent.
 
 @node Predicate and function types
 @subsubsection Predicate and function types
-The predicate types are @code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
+The predicate types are
+@code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
 
 @noindent
-The function types are  @code{(func) = T}, @code{func(T1) = T}, @code{func(T1, T2) = T}, @dots{}
+The function types are
+@code{(func) = T}, @code{func(T1) = T}, @code{func(T1, T2) = T}, @dots{}
 
-Higher-order predicate and function types are used to pass procedure addresses
-and closures to other predicates and functions.  @xref{Higher-order}.
+Higher-order predicate and function types
+are used to pass closures to other predicates and functions.
+@xref{Higher-order}.
 
 @node Tuple types
 @subsubsection Tuple types
@@ -2150,8 +2164,9 @@ collections.
 @subsubsection The ``state-of-the-world'' type
 The type @code{io.state} is defined in the standard library module @code{io},
 and represents the state of the world.
-Predicates which perform I/O are passed the old state of the world and produce
-a new state of the world.
+Predicates which perform I/O
+are passed the only reference to the current state of the world,
+and produce a unique reference to the new state of the world.
 In this way, we can give a declarative semantics to code that performs I/O.
 
 @node User-defined types
