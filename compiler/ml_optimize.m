@@ -1,4 +1,4 @@
-%---------------------------------------------------------------------------%
+% ---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2011 The University of Melbourne.
@@ -394,6 +394,50 @@ peephole_opt_statement(Stmt0, Stmt1, Stmts2, Stmts) :-
             )
         ),
         Stmt = ml_stmt_if_then_else(TestRval, Then, MaybeElse, Context0),
+        Stmts = [Stmt | Stmts2]
+    else if
+        % This pattern optimizes code like this, which we generate often
+        % in automatically defined type-specific comparison predicates:
+        %
+        % succeeded = (X == Y);
+        % succeeded = !(succeeded);
+        %
+        % This pattern replaces that with
+        %
+        % succeeded = (X != Y);
+        %
+        % because it reduces .c file size, because it may yield a speedup
+        % (depending on C compiler optimizations), and because it is easier
+        % to read when debugging generated C code.
+        %
+        % We do this only if the assignment operation is assign itself.
+        % We could do the same with assign_if_in_heap operations as well,
+        % but I (zs) have seen no need for that.
+        %
+        % Likewise, we could check for {float,str}_{eq,ne,lt,le,gt,ge}
+        % as well as for their integer versions, but again, I have seen
+        % no need for that.
+
+        % We test for the negation operation first, since we want to fail fast
+        % in the usual case where the pattern does not apply, and unary ops,
+        % and self-negations in particular, occur less frequently than
+        % binary ops and comparisons.
+        Stmt1 = ml_stmt_atomic(Atomic1, _Context1),
+        Atomic1 = assign(Lval, ml_unop(logical_not, ml_lval(Lval))),
+
+        Stmt0 = ml_stmt_atomic(Atomic0, Context0),
+        Atomic0 = assign(Lval, ml_binop(CompareOp, CmpRvalA, CmpRvalB)),
+
+        ( CompareOp = eq(IntType), NegCompareOp = ne(IntType)
+        ; CompareOp = ne(IntType), NegCompareOp = eq(IntType)
+        ; CompareOp = int_lt(IntType), NegCompareOp = int_ge(IntType)
+        ; CompareOp = int_le(IntType), NegCompareOp = int_gt(IntType)
+        ; CompareOp = int_gt(IntType), NegCompareOp = int_le(IntType)
+        ; CompareOp = int_ge(IntType), NegCompareOp = int_lt(IntType)
+        )
+    then
+        Atomic = assign(Lval, ml_binop(NegCompareOp, CmpRvalA, CmpRvalB)),
+        Stmt = ml_stmt_atomic(Atomic, Context0),
         Stmts = [Stmt | Stmts2]
     else
         fail
