@@ -29,7 +29,7 @@
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-:- pred ml_gen_ordinary_pragma_foreign_proc(code_model::in,
+:- pred ml_gen_foreign_proc(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
@@ -43,7 +43,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
-:- import_module backend_libs.foreign. % XXX needed for pragma foreign code
+:- import_module backend_libs.foreign.
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
@@ -98,8 +98,8 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
         CondRval = ml_binop(Op, RvalA, RvalB)
     ).
 
-ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
-        Args, ExtraArgs, ForeignCode, Context, Decls, Stmts, !Info) :-
+ml_gen_foreign_proc(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
+        ForeignCode, Context, Decls, Stmts, !Info) :-
     Lang = get_foreign_language(Attributes),
     (
         CodeModel = model_det,
@@ -134,7 +134,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
     ),
     (
         Lang = lang_c,
-        ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes,
+        ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes,
             PredId, ProcId, Args, ExtraArgs,
             ForeignCode, Context, Decls, Stmts, !Info)
     ;
@@ -142,7 +142,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         ml_gen_info_get_target(!.Info, Target),
         (
             Target = ml_target_csharp,
-            ml_gen_ordinary_pragma_csharp_java_proc(ml_target_csharp,
+            ml_gen_foreign_proc_for_csharp_or_java(ml_target_csharp,
                 OrdinaryKind, Attributes, PredId, ProcId, Args, ExtraArgs,
                 ForeignCode, Context, Decls, Stmts, !Info)
         ;
@@ -154,7 +154,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         )
     ;
         Lang = lang_java,
-        ml_gen_ordinary_pragma_csharp_java_proc(ml_target_java, OrdinaryKind,
+        ml_gen_foreign_proc_for_csharp_or_java(ml_target_java, OrdinaryKind,
             Attributes, PredId, ProcId, Args, ExtraArgs,
             ForeignCode, Context, Decls, Stmts, !Info)
     ;
@@ -162,7 +162,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         unexpected($pred, "unexpected language Erlang")
     ).
 
-:- type ordinary_pragma_kind
+:- type foreign_proc_detism
     --->    kind_det
     ;       kind_semi
     ;       kind_failure.
@@ -171,14 +171,14 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
     --->    ml_target_java
     ;       ml_target_csharp.
 
-:- pred ml_gen_ordinary_pragma_csharp_java_proc(
-    mlds_target_lang::in(java_or_csharp), ordinary_pragma_kind::in,
+:- pred ml_gen_foreign_proc_for_csharp_or_java(
+    mlds_target_lang::in(java_or_csharp), foreign_proc_detism::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
+ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
         PredId, _ProcId, Args, ExtraArgs, JavaCode, Context, Decls, Stmts,
         !Info) :-
     Lang = get_foreign_language(Attributes),
@@ -193,15 +193,15 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
     ),
 
     % Generate <declaration of one local variable for each arg>
-    ml_gen_pragma_csharp_java_decls(!.Info, MutableSpecial, Args,
+    ml_gen_foreign_proc_csharp_java_decls(!.Info, MutableSpecial, Args,
         ArgDeclsList),
     expect(unify(ExtraArgs, []), $pred, "extra args"),
 
     % Generate code to set the values of the input variables.
-    ml_gen_pragma_ccsj_input_arg_list(Lang, Args, AssignInputsList, !Info),
+    ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputsList, !Info),
 
     % Generate MLDS statements to assign the values of the output variables.
-    ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, Args, Context,
+    ml_gen_foreign_proc_csharp_java_output_args(MutableSpecial, Args, Context,
         AssignOutputsList, ConvDecls, ConvStmts, !Info),
 
     % Put it all together.
@@ -257,10 +257,9 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
         [EndingCodeStmt],
     Decls = ConvDecls.
 
-    % For ordinary (not model_non) pragma c_proc,
-    % we generate code of the following form:
+    % For a C foreign_proc, we generate code of the following form:
     %
-    % model_det pragma_c_proc:
+    % model_det C foreign_proc:
     %
     %   #define MR_ALLOC_ID <allocation id>
     %   #define MR_PROC_LABEL <procedure name>
@@ -278,7 +277,7 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
     %   #undef MR_ALLOC_ID
     %   #undef MR_PROC_LABEL
     %
-    % model_semi pragma_c_proc:
+    % model_semi C foreign_proc:
     %
     %   #define MR_ALLOC_ID <allocation id>
     %   #define MR_PROC_LABEL <procedure name>
@@ -311,29 +310,28 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
     % It would probably be nicer to encode more of the structure
     % in the MLDS, so that (a) we could do better MLDS optimization
     % and (b) so that the generation of C code strings could be
-    % isolated in mlds_to_c.m. Also we will need to do something
-    % different for targets other than C, e.g. when compiling to
-    % Java.
+    % isolated in mlds_to_c_*.m. Also, we need to do something different
+    % for targets other than C, e.g. when compiling to C# or Java.
     %
-:- pred ml_gen_ordinary_pragma_c_proc(ordinary_pragma_kind::in,
+:- pred ml_gen_foreign_proc_for_c(foreign_proc_detism::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
+ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
         OrigArgs, ExtraArgs, C_Code, Context, Decls, Stmts, !Info) :-
     Lang = get_foreign_language(Attributes),
 
     % Generate <declaration of one local variable for each arg>
-    list.append(OrigArgs, ExtraArgs, Args),
-    ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
+    Args = OrigArgs ++ ExtraArgs,
+    ml_gen_foreign_proc_c_decls(!.Info, Lang, Args, ArgDeclsList),
 
     % Generate code to set the values of the input variables.
-    ml_gen_pragma_ccsj_input_arg_list(Lang, Args, AssignInputsList, !Info),
+    ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputsList, !Info),
 
     % Generate code to assign the values of the output variables.
-    ml_gen_pragma_c_output_arg_list(Args, Context,
+    ml_gen_foreign_proc_c_output_args(Args, Context,
         AssignOutputsList, ConvDecls, ConvStmts, !Info),
 
     % Generate code fragments to obtain and release the global lock.
@@ -398,6 +396,18 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     ;
         OrdinaryKind = kind_semi,
         ml_success_lval(SucceededLval, !Info),
+        ( if AssignOutputsList = [], ConvStmts = [] then
+            IfSuccFragments = [],
+            EndIfSuccFragments = []
+        else
+            IfSuccFragments = [
+                raw_target_code("\tif (SUCCESS_INDICATOR) {\n") |
+                AssignOutputsList
+            ],
+            EndIfSuccFragments = [
+                raw_target_code("\t}\n")
+            ]
+        ),
         StartingFragments = list.condense([
             [raw_target_code("{\n")],
             HashDefineAllocId,
@@ -412,16 +422,15 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
             raw_target_code("\n\t\t;}\n")],
             HashUndefAllocId,
             [raw_target_code("#undef MR_PROC_LABEL\n"),
-            raw_target_code(ReleaseLock),
-            raw_target_code("\tif (SUCCESS_INDICATOR) {\n")],
-            AssignOutputsList
+            raw_target_code(ReleaseLock)],
+            IfSuccFragments
         ]),
-        EndingFragments = [
-            raw_target_code("\t}\n"),
-            target_code_output(SucceededLval),
+        EndingFragments = list.condense([
+            EndIfSuccFragments,
+            [target_code_output(SucceededLval),
             raw_target_code(" = SUCCESS_INDICATOR;\n"),
-            raw_target_code("}\n")
-        ]
+            raw_target_code("}\n")]
+        ])
     ),
     StartingCCode = inline_target_code(ml_target_c, StartingFragments),
     StartingCCodeStmt = ml_stmt_atomic(StartingCCode, Context),
@@ -493,7 +502,7 @@ ml_gen_hash_define_mr_alloc_id(C_Codes, Context, HashDefine, HashUndef,
 ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     % Note that we use the pred_id and proc_id of the current procedure,
-    % not the one that the pragma foreign_code originally came from.
+    % not the one that the foreign_code originally came from.
     % There may not be any function address for the latter, e.g. if it
     % has been inlined and the original definition optimized away.
     ml_gen_info_get_pred_proc_id(Info, PredProcId),
@@ -505,24 +514,24 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
 
 %---------------------------------------------------------------------------%
 
-    % ml_gen_pragma_c_decls generates C code to declare the arguments
-    % for a `pragma foreign_proc' declaration.
+    % ml_gen_foreign_proc_c_decls generates C code to declare the arguments
+    % of a foreign_proc.
     %
-:- pred ml_gen_pragma_c_decls(ml_gen_info::in, foreign_language::in,
+:- pred ml_gen_foreign_proc_c_decls(ml_gen_info::in, foreign_language::in,
     list(foreign_arg)::in, list(target_code_component)::out) is det.
 
-ml_gen_pragma_c_decls(_, _, [], []).
-ml_gen_pragma_c_decls(Info, Lang, [Arg | Args], [Decl | Decls]) :-
-    ml_gen_pragma_c_decl(Info, Lang, Arg, Decl),
-    ml_gen_pragma_c_decls(Info, Lang, Args, Decls).
+ml_gen_foreign_proc_c_decls(_, _, [], []).
+ml_gen_foreign_proc_c_decls(Info, Lang, [Arg | Args], [Decl | Decls]) :-
+    ml_gen_foreign_proc_c_decl(Info, Lang, Arg, Decl),
+    ml_gen_foreign_proc_c_decls(Info, Lang, Args, Decls).
 
-    % ml_gen_pragma_c_decl generates C code to declare an argument
-    % of a `pragma foreign_proc' declaration.
+    % ml_gen_foreign_proc_c_decl generates C code to declare an argument
+    % of a foreign_proc.
     %
-:- pred ml_gen_pragma_c_decl(ml_gen_info::in, foreign_language::in,
+:- pred ml_gen_foreign_proc_c_decl(ml_gen_info::in, foreign_language::in,
     foreign_arg::in, target_code_component::out) is det.
 
-ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
+ml_gen_foreign_proc_c_decl(Info, Lang, Arg, Decl) :-
     Arg = foreign_arg(_Var, MaybeNameAndMode, Type, BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ( if
@@ -553,27 +562,27 @@ ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
     --->    mutable_special_case
     ;       not_mutable_special_case.
 
-    % ml_gen_pragma_csharp_java_decls generates C# or Java code to declare the
-    % arguments for a `pragma foreign_proc' declaration.
+    % ml_gen_foreign_proc_csharp_java_decls generates C# or Java code
+    % to declare the arguments for a foreign_proc.
     %
-:- pred ml_gen_pragma_csharp_java_decls(ml_gen_info::in,
+:- pred ml_gen_foreign_proc_csharp_java_decls(ml_gen_info::in,
     mutable_special_case::in, list(foreign_arg)::in,
     list(target_code_component)::out) is det.
 
-ml_gen_pragma_csharp_java_decls(_, _, [], []).
-ml_gen_pragma_csharp_java_decls(Info, MutableSpecial, [Arg | Args],
+ml_gen_foreign_proc_csharp_java_decls(_, _, [], []).
+ml_gen_foreign_proc_csharp_java_decls(Info, MutableSpecial, [Arg | Args],
         Decl ++ Decls) :-
-    ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl),
-    ml_gen_pragma_csharp_java_decls(Info, MutableSpecial, Args, Decls).
+    ml_gen_foreign_proc_csharp_java_decl(Info, MutableSpecial, Arg, Decl),
+    ml_gen_foreign_proc_csharp_java_decls(Info, MutableSpecial, Args, Decls).
 
-    % ml_gen_pragma_csharp_java_decl generates C# or Java code to declare an
-    % argument of a `pragma foreign_proc' declaration.
+    % ml_gen_foreign_proc_csharp_java_decl generates C# or Java code
+    % to declare an argument of a foreign_proc.
     %
-:- pred ml_gen_pragma_csharp_java_decl(ml_gen_info::in,
+:- pred ml_gen_foreign_proc_csharp_java_decl(ml_gen_info::in,
     mutable_special_case::in, foreign_arg::in,
     list(target_code_component)::out) is det.
 
-ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
+ml_gen_foreign_proc_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
     Arg = foreign_arg(_Var, MaybeNameAndMode, Type, _BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ( if
@@ -612,7 +621,7 @@ ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
     % Singleton vars should be ignored when generating the declarations for
     % foreign_proc arguments because:
     %
-    %   - they should not appear in the C code
+    %   - they should not appear in the foreign language code
     %   - they could clash with the system name space
     %
 :- pred var_is_singleton(string::in) is semidet.
@@ -624,23 +633,23 @@ var_is_singleton(Name) :-
 
     % For C, C# and Java.
     %
-:- pred ml_gen_pragma_ccsj_input_arg_list(foreign_language::in,
+:- pred ml_gen_foreign_proc_ccsj_input_args(foreign_language::in,
     list(foreign_arg)::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_ccsj_input_arg_list(Lang, ArgList, AssignInputs, !Info) :-
-    list.map_foldl(ml_gen_pragma_ccsj_input_arg(Lang), ArgList,
+ml_gen_foreign_proc_ccsj_input_args(Lang, ArgList, AssignInputs, !Info) :-
+    list.map_foldl(ml_gen_foreign_proc_ccsj_input_arg(Lang), ArgList,
         AssignInputsList, !Info),
     list.condense(AssignInputsList, AssignInputs).
 
-    % ml_gen_pragma_c_input_arg generates C, C# or Java code to assign the
-    % value of an input arg for a `pragma foreign_proc' declaration.
+    % ml_gen_foreign_proc_c_input_arg generates C, C# or Java code
+    % to assign the value of an input arg for a foreign_proc.
     %
-:- pred ml_gen_pragma_ccsj_input_arg(foreign_language::in, foreign_arg::in,
-    list(target_code_component)::out,
+:- pred ml_gen_foreign_proc_ccsj_input_arg(foreign_language::in,
+    foreign_arg::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_ccsj_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
+ml_gen_foreign_proc_ccsj_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ( if
         ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
@@ -648,7 +657,7 @@ ml_gen_pragma_ccsj_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
         not var_is_singleton(ArgName),
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_in)
     then
-        ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType,
+        ml_gen_foreign_proc_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType,
             BoxPolicy, AssignInput, !Info)
     else
         % If the variable doesn't occur in the ArgNames list,
@@ -656,11 +665,12 @@ ml_gen_pragma_ccsj_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
         AssignInput = []
     ).
 
-:- pred ml_gen_pragma_ccsj_gen_input_arg(foreign_language::in, prog_var::in,
-    string::in, mer_type::in, box_policy::in, list(target_code_component)::out,
+:- pred ml_gen_foreign_proc_ccsj_gen_input_arg(foreign_language::in,
+    prog_var::in, string::in, mer_type::in, box_policy::in,
+    list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
+ml_gen_foreign_proc_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         AssignInput, !Info) :-
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
@@ -734,10 +744,10 @@ input_arg_assignable_with_cast(Lang, HighLevelData,
         ;
             MaybeForeignType = no
         ),
-        % In general, the types used for the C interface are not the same
-        % as the types used by --high-level-data, so we always use a cast
-        % here. (Strictly speaking the cast is not needed for a few cases
-        % like `int', but it doesn't do any harm.)
+        % In general, the types used for the C interface are not the same as
+        % the types used by --high-level-data, so we always use a cast here.
+        % (Strictly speaking the cast is not needed for a few cases like `int',
+        % but it doesn't do any harm.)
         Cast = "(" ++ TypeString ++ ")"
     ;
         Lang = lang_c,
@@ -771,32 +781,31 @@ input_arg_assignable_with_cast(Lang, HighLevelData,
         unexpected($pred, "unexpected language")
     ).
 
-:- pred ml_gen_pragma_csharp_java_output_arg_list(mutable_special_case::in,
+:- pred ml_gen_foreign_proc_csharp_java_output_args(mutable_special_case::in,
     list(foreign_arg)::in, prog_context::in, list(mlds_stmt)::out,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_csharp_java_output_arg_list(_, [], _, [], [], [], !Info).
-ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, [JavaArg | JavaArgs],
-        Context, Stmts, ConvDecls, ConvStmts, !Info) :-
-    ml_gen_pragma_csharp_java_output_arg(MutableSpecial, JavaArg, Context,
-        Stmts1, ConvDecls1, ConvStmts1, !Info),
-    ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, JavaArgs,
+ml_gen_foreign_proc_csharp_java_output_args(_, [], _, [], [], [], !Info).
+ml_gen_foreign_proc_csharp_java_output_args(MutableSpecial,
+        [JavaArg | JavaArgs], Context, Stmts, ConvDecls, ConvStmts, !Info) :-
+    ml_gen_foreign_proc_csharp_java_output_arg(MutableSpecial, JavaArg,
+        Context, Stmts1, ConvDecls1, ConvStmts1, !Info),
+    ml_gen_foreign_proc_csharp_java_output_args(MutableSpecial, JavaArgs,
         Context, Stmts2, ConvDecls2, ConvStmts2, !Info),
     Stmts = Stmts1 ++ Stmts2,
     ConvDecls = ConvDecls1 ++ ConvDecls2,
     ConvStmts = ConvStmts1 ++ ConvStmts2.
 
-    % ml_gen_pragma_csharp_java_output_arg generates MLDS statements
-    % to assign the value of an output arg for a `pragma foreign_proc'
-    % declaration.
+    % ml_gen_foreign_proc_csharp_java_output_arg generates MLDS statements
+    % to assign the value of an output arg for a foreign_proc.
     %
-:- pred ml_gen_pragma_csharp_java_output_arg(mutable_special_case::in,
+:- pred ml_gen_foreign_proc_csharp_java_output_arg(mutable_special_case::in,
     foreign_arg::in, prog_context::in, list(mlds_stmt)::out,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
+ml_gen_foreign_proc_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
         AssignOutput, ConvDecls, ConvOutputStmts, !Info) :-
     ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -837,31 +846,31 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
         ConvOutputStmts = []
     ).
 
-:- pred ml_gen_pragma_c_output_arg_list(list(foreign_arg)::in,
+:- pred ml_gen_foreign_proc_c_output_args(list(foreign_arg)::in,
     prog_context::in, list(target_code_component)::out,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_output_arg_list([], _, [], [], [], !Info).
-ml_gen_pragma_c_output_arg_list([ForeignArg | ForeignArgs], Context,
+ml_gen_foreign_proc_c_output_args([], _, [], [], [], !Info).
+ml_gen_foreign_proc_c_output_args([ForeignArg | ForeignArgs], Context,
         Components, ConvDecls, ConvStmts, !Info) :-
-    ml_gen_pragma_c_output_arg(ForeignArg, Context, Components1,
-        ConvDecls1, ConvStmts1, !Info),
-    ml_gen_pragma_c_output_arg_list(ForeignArgs, Context,
+    ml_gen_foreign_proc_c_output_arg(ForeignArg, Context,
+        Components1, ConvDecls1, ConvStmts1, !Info),
+    ml_gen_foreign_proc_c_output_args(ForeignArgs, Context,
         Components2, ConvDecls2, ConvStmts2, !Info),
     Components = Components1 ++ Components2,
     ConvDecls = ConvDecls1 ++ ConvDecls2,
     ConvStmts = ConvStmts1 ++ ConvStmts2.
 
-    % ml_gen_pragma_c_output_arg generates C code to assign the value of
-    % an output arg for a `pragma foreign_proc' declaration.
+    % ml_gen_foreign_proc_c_output_arg generates C code to assign the value of
+    % an output arg for a foreign_proc.
     %
-:- pred ml_gen_pragma_c_output_arg(foreign_arg::in,
+:- pred ml_gen_foreign_proc_c_output_arg(foreign_arg::in,
     prog_context::in, list(target_code_component)::out,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
+ml_gen_foreign_proc_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
         ConvOutputStmts, !Info) :-
     Arg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -871,7 +880,7 @@ ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
         is_type_a_dummy(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_out)
     then
-        ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
+        ml_gen_foreign_proc_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
             Context, AssignOutput, ConvDecls, ConvOutputStmts, !Info)
     else
         % If the variable doesn't occur in the ArgNames list,
@@ -881,13 +890,13 @@ ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
         ConvOutputStmts = []
     ).
 
-:- pred ml_gen_pragma_c_gen_output_arg(prog_var::in,
+:- pred ml_gen_foreign_proc_c_gen_output_arg(prog_var::in,
     string::in, mer_type::in, box_policy::in, prog_context::in,
     list(target_code_component)::out,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
+ml_gen_foreign_proc_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
         Context, AssignOutput, ConvDecls, ConvOutputStmts, !Info) :-
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),

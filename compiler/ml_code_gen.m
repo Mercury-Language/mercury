@@ -597,7 +597,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
         ),
         (
             MaybeTraceRuntimeCond = no,
-            ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
+            ml_gen_foreign_proc(CodeModel, Attributes,
                 PredId, ProcId, Args, ExtraArgs, ForeignCode,
                 ContextToUse, LocalVarDefns, Stmts, !Info),
             FuncDefns = []
