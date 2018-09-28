@@ -143,7 +143,7 @@ ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
 
     % Compute the rval which holds the number of arguments
     NumArgsRval0 = ml_const(mlconst_int(NumArgs)),
-    NumArgsType0 = mlds_native_int_type,
+    NumArgsType0 = mlds_builtin_type_int(int_type_int),
 
     % Put all the extra arguments of the closure together
     % Note that we need to box these arguments.
@@ -264,7 +264,7 @@ ml_stack_layout_construct_closure_args(ModuleInfo, Target, ClosureArgs,
     Length = list.length(ArgInitsAndTypes),
     LengthRval = ml_const(mlconst_int(Length)),
     CastLengthRval = ml_box(LengthType, LengthRval),
-    LengthType = mlds_native_int_type,
+    LengthType = mlds_builtin_type_int(int_type_int),
     LengthInitAndType = init_obj(CastLengthRval) - LengthType,
     ClosureArgInits = [LengthInitAndType | ArgInitsAndTypes].
 
@@ -332,7 +332,7 @@ ml_gen_pseudo_type_info(ModuleInfo, Target, PseudoTypeInfo, Rval, Type,
         PseudoTypeInfo = type_var(N),
         % Type variables are represented just as integers.
         Rval = ml_const(mlconst_int(N)),
-        Type = mlds_native_int_type
+        Type = mlds_builtin_type_int(int_type_int)
     ;
         ( PseudoTypeInfo = plain_arity_zero_pseudo_type_info(_)
         ; PseudoTypeInfo = plain_pseudo_type_info(_, _)
@@ -454,7 +454,8 @@ arg_type_infos(var_arity_type_info(_VarArityId, ArgTIs)) = ArgTIs.
 
 ml_stack_layout_construct_tvar_vector(ModuleInfo, ConstVarKind, Context,
         TVarLocnMap, TVarVectorAddrRval, ArrayType, !GlobalData) :-
-    ArrayType = mlds_array_type(mlds_native_int_type),
+    IntType = mlds_builtin_type_int(int_type_int),
+    ArrayType = mlds_array_type(IntType),
     ( if map.is_empty(TVarLocnMap) then
         TVarVectorAddrRval = ml_const(mlconst_null(ArrayType))
     else
@@ -477,7 +478,8 @@ ml_stack_layout_construct_tvar_rvals(TVarLocnMap, Vector, VectorTypes) :-
     list.length(TypeParamLocs, TypeParamsLength),
     LengthRval = ml_const(mlconst_int(TypeParamsLength)),
     Vector = [init_obj(LengthRval) | TypeParamLocs],
-    VectorTypes = list.duplicate(TypeParamsLength + 1, mlds_native_int_type).
+    IntType = mlds_builtin_type_int(int_type_int),
+    VectorTypes = list.duplicate(TypeParamsLength + 1, IntType).
 
     % Given a association list of type variables and their locations sorted
     % on the type variables, represent them in an array of location

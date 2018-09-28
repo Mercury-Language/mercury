@@ -118,9 +118,9 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
             MLDS_Type = mlds_mercury_array_type(_ElemType),
             io.write_string("MR_ArrayPtr", !IO)
         ;
-            MLDS_Type = mercury_type(MerType, MaybeForeignType, _),
-            TypeStr =
-                maybe_foreign_type_to_c_string(MerType, MaybeForeignType),
+            MLDS_Type = mercury_nb_type(MerType, _),
+            % XXX We should not need to call this function.
+            TypeStr = maybe_foreign_type_to_c_string(MerType, no),
             io.write_string(TypeStr, !IO)
         ;
             ( MLDS_Type = mlds_cont_type(_)
@@ -140,17 +140,22 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
             MLDS_Type = mlds_native_bool_type,
             io.write_string("MR_bool", !IO)
         ;
-            MLDS_Type = mlds_native_int_type,
-            io.write_string("MR_Integer", !IO)
+            MLDS_Type = mlds_builtin_type_int(IntType),
+            TypeStr =
+                exported_builtin_type_to_c_string(builtin_type_int(IntType)),
+            io.write_string(TypeStr, !IO)
         ;
-            MLDS_Type = mlds_native_uint_type,
-            io.write_string("MR_Unsigned", !IO)
+            MLDS_Type = mlds_builtin_type_float,
+            TypeStr = exported_builtin_type_to_c_string(builtin_type_float),
+            io.write_string(TypeStr, !IO)
         ;
-            MLDS_Type = mlds_native_float_type,
-            io.write_string("MR_Float", !IO)
+            MLDS_Type = mlds_builtin_type_string,
+            TypeStr = exported_builtin_type_to_c_string(builtin_type_string),
+            io.write_string(TypeStr, !IO)
         ;
-            MLDS_Type = mlds_native_char_type,
-            io.write_string("MR_Char", !IO)
+            MLDS_Type = mlds_builtin_type_char,
+            TypeStr = exported_builtin_type_to_c_string(builtin_type_char),
+            io.write_string(TypeStr, !IO)
         ;
             MLDS_Type = mlds_foreign_type(ForeignType),
             (

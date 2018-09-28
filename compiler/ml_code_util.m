@@ -104,18 +104,6 @@
     %
 :- func ml_gen_array_elem_type(array_elem_type) = mlds_type.
 
-    % Return the MLDS type corresponding to a Mercury string type.
-    %
-:- func ml_string_type = mlds_type.
-
-    % Return the MLDS type corresponding to a Mercury int type.
-    %
-:- func ml_int_type = mlds_type.
-
-    % Return the MLDS type corresponding to a Mercury char type.
-    %
-:- func ml_char_type = mlds_type.
-
     % Allocate one or several fresh type variables, with kind `star',
     % to use as the Mercury types of boxed objects (e.g. to get the
     % argument types for tuple constructors or closure constructors).
@@ -468,7 +456,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.foreign.
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
@@ -694,19 +681,10 @@ ml_gen_array_elem_type(ElemType) = MLDS_Type :-
 
 :- func ml_gen_scalar_array_elem_type(scalar_array_elem_type) = mlds_type.
 
-ml_gen_scalar_array_elem_type(scalar_elem_string) = ml_string_type.
-ml_gen_scalar_array_elem_type(scalar_elem_int) = mlds_native_int_type.
+ml_gen_scalar_array_elem_type(scalar_elem_string) = mlds_builtin_type_string.
+ml_gen_scalar_array_elem_type(scalar_elem_int) =
+    mlds_builtin_type_int(int_type_int).
 ml_gen_scalar_array_elem_type(scalar_elem_generic) = mlds_generic_type.
-
-ml_string_type =
-    mercury_type(string_type, no, ctor_cat_builtin(cat_builtin_string)).
-
-ml_int_type =
-    mercury_type(int_type, no,
-        ctor_cat_builtin(cat_builtin_int(int_type_int))).
-
-ml_char_type =
-    mercury_type(char_type, no, ctor_cat_builtin(cat_builtin_char)).
 
 ml_make_boxed_type = BoxedType :-
     varset.init(TypeVarSet0),
@@ -1094,7 +1072,7 @@ ml_must_box_field_type_category(CtorCat, UnboxedFloat, UnboxedInt64s, Width)
 ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval, BoxedRval,
         !GlobalData) :-
     ( if
-        ( MLDS_Type = mercury_type(type_variable(_, _), _, _)
+        ( MLDS_Type = mercury_nb_type(type_variable(_, _), _)
         ; MLDS_Type = mlds_generic_type
         )
     then
@@ -1106,18 +1084,12 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, Width, Rval, BoxedRval,
         % is just a cast (casts are OK in static initializers, but calls
         % to malloc() are not).
         (
-            MLDS_Type = mlds_native_float_type,
+            MLDS_Type = mlds_builtin_type_float,
             ConstVarKind = mgcv_float
         ;
-            MLDS_Type = mercury_type(builtin_type(BuiltinType), _, _),
-            (
-                BuiltinType = builtin_type_float,
-                ConstVarKind = mgcv_float
-            ;
-                BuiltinType = builtin_type_int(IntType),
-                ( IntType = int_type_int64, ConstVarKind = mgcv_int64
-                ; IntType = int_type_uint64, ConstVarKind = mgcv_uint64
-                )
+            MLDS_Type = mlds_builtin_type_int(IntType),
+            ( IntType = int_type_int64, ConstVarKind = mgcv_int64
+            ; IntType = int_type_uint64, ConstVarKind = mgcv_uint64
             )
         ),
         ml_global_data_get_target(!.GlobalData, ml_target_c)

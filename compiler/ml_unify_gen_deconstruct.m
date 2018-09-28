@@ -83,7 +83,6 @@
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_unify_gen_test.
-:- import_module ml_backend.ml_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data_foreign.
 
@@ -288,8 +287,8 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
             TagwordFieldId = ml_field_offset(ml_const(mlconst_int(0))),
             TagwordLval = ml_field(MaybePtag, AddrRval, AddrType,
                 TagwordFieldId, mlds_generic_type),
-            CastTagwordRval =
-                ml_cast(mlds_int_type_uint, ml_lval(TagwordLval)),
+            UintType = mlds_builtin_type_int(int_type_uint),
+            CastTagwordRval = ml_cast(UintType, ml_lval(TagwordLval)),
 
             ml_gen_deconstruct_tagword_args(TagwordLval, CastTagwordRval,
                 mlds_generic_type, TagFilledBitfield,
@@ -318,7 +317,7 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
         local_primsectag_filled_bitfield(!.Info, LocalArgsTagInfo,
             TagFilledBitfield),
         ml_gen_deconstruct_tagword_args(LHSVarLval, ml_lval(LHSVarLval),
-            mlds_native_uint_type, TagFilledBitfield,
+            mlds_builtin_type_int(int_type_uint), TagFilledBitfield,
             RHSVarRepns, ArgModes, Context, Defns, Stmts, !Info)
     ).
 
@@ -370,7 +369,7 @@ ml_gen_deconstruct_tagword_args(LHSTagwordLval, CastTagwordRval,
                 CastTagwordRval, ComplementMask),
             NewTagwordRval = ml_binop(bitwise_or(int_type_uint),
                 MaskedOldTagwordRval, ToOrRval),
-            ( if TagwordType = mlds_native_uint_type then
+            ( if TagwordType = mlds_builtin_type_int(int_type_uint) then
                 CastNewTagwordRval = NewTagwordRval
             else
                 CastNewTagwordRval = ml_cast(TagwordType, NewTagwordRval)
@@ -505,7 +504,7 @@ record_packed_word(FilledBitfields, WordRval, Context,
         FilledBitfields = [HeadFilledBitfields | TailFilledBitfields],
         ml_gen_info_new_packed_word_var(WordCompVar, !Info),
         WordVar = lvn_comp_var(WordCompVar),
-        WordVarType = mlds_int_type_uint,
+        WordVarType = mlds_builtin_type_int(int_type_uint),
         WordVarDefn = mlds_local_var_defn(WordVar, Context, WordVarType,
             no_initializer, gc_no_stmt),
         WordVarDefns = [WordVarDefn],
@@ -794,7 +793,8 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo, HighLevelData,
         RHSRval = ml_lval(RHSLval),
         Shift = arg_shift(ShiftInt),
         Mask = arg_mask(MaskInt),
-        CastLHSRVal = ml_unbox(mlds_int_type_uint, ml_lval(LHSLval)),
+        CastLHSRVal = ml_unbox(mlds_builtin_type_int(int_type_uint),
+            ml_lval(LHSLval)),
         OldLHSBits = ml_bitwise_mask(CastLHSRVal, \ (MaskInt << ShiftInt)),
         NewLHSBits = ml_left_shift_rval(RHSRval, Shift, Fill),
         UpdatedLHSBits = ml_cast(mlds_generic_type,
@@ -1044,7 +1044,7 @@ ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) :-
     fill_kind::in, mlds_rval::out) is det.
 
 ml_extract_subword_value(WordRval, Shift, Mask, Fill, Rval) :-
-    UnsignedWordRval = ml_cast(mlds_int_type_uint, WordRval),
+    UnsignedWordRval = ml_cast(mlds_builtin_type_int(int_type_uint), WordRval),
     Mask = arg_mask(MaskInt),
     MaskedRval = ml_bitwise_mask(
         ml_right_shift_rval(UnsignedWordRval, Shift), MaskInt),
@@ -1054,13 +1054,14 @@ ml_extract_subword_value(WordRval, Shift, Mask, Fill, Rval) :-
         ),
         Rval = MaskedRval
     ;
-        ( Fill = fill_int8,   CastMLDSType = mlds_int_type_int8
-        ; Fill = fill_uint8,  CastMLDSType = mlds_int_type_uint8
-        ; Fill = fill_int16,  CastMLDSType = mlds_int_type_int16
-        ; Fill = fill_uint16, CastMLDSType = mlds_int_type_uint16
-        ; Fill = fill_int32,  CastMLDSType = mlds_int_type_int32
-        ; Fill = fill_uint32, CastMLDSType = mlds_int_type_uint32
+        ( Fill = fill_int8,   CastIntType = int_type_int8
+        ; Fill = fill_uint8,  CastIntType = int_type_uint8
+        ; Fill = fill_int16,  CastIntType = int_type_int16
+        ; Fill = fill_uint16, CastIntType = int_type_uint16
+        ; Fill = fill_int32,  CastIntType = int_type_int32
+        ; Fill = fill_uint32, CastIntType = int_type_uint32
         ),
+        CastMLDSType = mlds_builtin_type_int(CastIntType),
         Rval = ml_cast(CastMLDSType, MaskedRval)
     ).
 

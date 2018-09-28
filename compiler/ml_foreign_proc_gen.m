@@ -598,7 +598,7 @@ ml_gen_foreign_proc_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
             % XXX does this code need to be updated for the other
             % integer types?
             ( if Type = int_type then
-                MLDS_Type = mlds_native_int_type
+                MLDS_Type = mlds_builtin_type_int(int_type_int)
             else
                 MLDS_Type = mlds_generic_type
             )

@@ -1566,7 +1566,7 @@ make_container_proc_with_while_continue(CopyOutValThroughPtrStmts, ReturnStmt,
         set.init, PossibleSwitchValues, [], AllTsccInLocalVars),
 
     SelectorVar = lvn_comp_var(lvnc_tscc_proc_selector),
-    SelectorType = mlds_native_int_type,
+    SelectorType = mlds_builtin_type_int(int_type_int),
     SelectorVarDefn = mlds_local_var_defn(SelectorVar, EntryProcContext,
         SelectorType, no_initializer, gc_no_stmt),
     ContainerVarDefns = [SelectorVarDefn],

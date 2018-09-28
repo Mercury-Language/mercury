@@ -150,17 +150,6 @@
 :- func mlds_maybe_aux_func_id_to_suffix(mlds_maybe_aux_func_id) = string.
 
 %---------------------------------------------------------------------------%
-
-:- func mlds_int_type_int8 = mlds_type.
-:- func mlds_int_type_uint8 = mlds_type.
-:- func mlds_int_type_int16 = mlds_type.
-:- func mlds_int_type_uint16 = mlds_type.
-:- func mlds_int_type_int32 = mlds_type.
-:- func mlds_int_type_uint32 = mlds_type.
-:- func mlds_int_type_int = mlds_type.
-:- func mlds_int_type_uint = mlds_type.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -169,7 +158,6 @@
 :- import_module hlds.hlds_data.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_type.
 
 :- import_module int.
 :- import_module solutions.
@@ -876,7 +864,8 @@ gen_init_bool(yes) = init_obj(ml_const(mlconst_true)).
 gen_init_int(Int) = init_obj(ml_const(mlconst_int(Int))).
 
 gen_init_boxed_int(Int) =
-    init_obj(ml_box(mlds_native_int_type, ml_const(mlconst_int(Int)))).
+    init_obj(ml_box(mlds_builtin_type_int(int_type_int),
+        ml_const(mlconst_int(Int)))).
 
 gen_init_string(String) = init_obj(ml_const(mlconst_string(String))).
 
@@ -884,7 +873,8 @@ gen_init_builtin_const(TargetPrefixes, Name) = init_obj(Rval) :-
     Rval = ml_const(mlconst_named_const(TargetPrefixes, Name)).
 
 gen_init_foreign(Lang, String) =
-    init_obj(ml_const(mlconst_foreign(Lang, String, mlds_native_int_type))).
+    init_obj(ml_const(mlconst_foreign(Lang, String,
+        mlds_builtin_type_int(int_type_int)))).
 
 gen_init_null_pointer(Type) = init_obj(ml_const(mlconst_null(Type))).
 
@@ -939,40 +929,6 @@ mlds_maybe_aux_func_id_to_suffix(MaybeAux) = Suffix :-
         MaybeAux = gc_trace_for_proc_aux_func(SeqNum),
         Suffix = string.format("_%d", [i(10001 + SeqNum)])
     ).
-
-%---------------------------------------------------------------------------%
-
-mlds_int_type_int8 =
-    mercury_type(builtin_type(builtin_type_int(int_type_int8)), no,
-        ctor_cat_builtin(cat_builtin_int(int_type_int8))).
-
-mlds_int_type_uint8 =
-    mercury_type(builtin_type(builtin_type_int(int_type_uint8)), no,
-        ctor_cat_builtin(cat_builtin_int(int_type_uint8))).
-
-mlds_int_type_int16 =
-    mercury_type(builtin_type(builtin_type_int(int_type_int16)), no,
-        ctor_cat_builtin(cat_builtin_int(int_type_int16))).
-
-mlds_int_type_uint16 =
-    mercury_type(builtin_type(builtin_type_int(int_type_uint16)), no,
-        ctor_cat_builtin(cat_builtin_int(int_type_uint16))).
-
-mlds_int_type_int32 =
-    mercury_type(builtin_type(builtin_type_int(int_type_int32)), no,
-        ctor_cat_builtin(cat_builtin_int(int_type_int32))).
-
-mlds_int_type_uint32 =
-    mercury_type(builtin_type(builtin_type_int(int_type_uint32)), no,
-        ctor_cat_builtin(cat_builtin_int(int_type_uint32))).
-
-mlds_int_type_int =
-    mercury_type(builtin_type(builtin_type_int(int_type_int)), no,
-        ctor_cat_builtin(cat_builtin_int(int_type_int))).
-
-mlds_int_type_uint =
-    mercury_type(builtin_type(builtin_type_int(int_type_uint)), no,
-        ctor_cat_builtin(cat_builtin_int(int_type_uint))).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_util.

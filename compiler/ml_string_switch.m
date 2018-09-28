@@ -158,7 +158,7 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         CaseNumDefault = default_case(FailStmt)
     ),
     CaseNumSwitchRange = mlds_switch_range(0, MaxCaseNum),
-    CaseSwitchStmt = ml_stmt_switch(mlds_native_int_type,
+    CaseSwitchStmt = ml_stmt_switch(mlds_builtin_type_int(int_type_int),
         ml_lval(CaseNumVarLval), CaseNumSwitchRange, CaseNumSwitchArms,
         CaseNumDefault, Context),
 
@@ -315,7 +315,7 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
     ml_gen_info_get_target(!.Info, Target),
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
-    MLDS_IntType = mlds_native_int_type,
+    MLDS_IntType = mlds_builtin_type_int(int_type_int),
     FirstSolnFieldTypes = [MLDS_IntType, MLDS_IntType | OutTypes],
     ml_gen_static_vector_type(MLDS_ModuleName, Context, Target,
         FirstSolnFieldTypes, FirstSolnStructTypeNum, FirstSolnStructType,
@@ -579,7 +579,7 @@ insert_case_into_trie_choice(InsertMatched, InsertNotYetMatched, InsertCaseId,
 ml_gen_trie_case_num_var_and_init(Context, CaseNumVarLval, CaseNumVarDefn,
         InitStmt, !Info) :-
     ml_gen_info_new_aux_var_name(mcav_case_num, CaseNumVarName, !Info),
-    CaseNumVarType = mlds_native_int_type,
+    CaseNumVarType = mlds_builtin_type_int(int_type_int),
     % We never need to trace ints.
     CaseNumVarDefn = ml_gen_mlds_var_decl(CaseNumVarName, CaseNumVarType,
         gc_no_stmt, Context),
@@ -665,8 +665,9 @@ convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
             % Could we set this to a known range? If we could,
             % would it be useful?
             SwitchRange = mlds_switch_range_unknown,
-            Stmt = ml_stmt_switch(mlds_native_int_type, SwitchCodeUnitRval,
-                SwitchRange, SwitchArms, default_do_nothing, Context)
+            Stmt = ml_stmt_switch( mlds_builtin_type_int(int_type_int),
+                SwitchCodeUnitRval, SwitchRange, SwitchArms,
+                default_do_nothing, Context)
         )
     ).
 
@@ -752,8 +753,8 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_gen_info_get_target(!.Info, Target),
 
-    MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
-    MLDS_IntType = mlds_native_int_type,
+    MLDS_StringType = mlds_builtin_type_string,
+    MLDS_IntType = mlds_builtin_type_int(int_type_int),
 
     ( if NumCollisions = 0 then
         MLDS_ArgTypes = [MLDS_StringType],
@@ -973,7 +974,7 @@ ml_gen_string_hash_jump_slot(Slot, HashSlotMap, StructType,
             map.det_insert(CaseId, NewEntry, !RevMap)
         )
     else
-        StringRval = ml_const(mlconst_null(ml_string_type)),
+        StringRval = ml_const(mlconst_null(mlds_builtin_type_string)),
         NextSlotRval = ml_const(mlconst_int(-2))
     ),
     (
@@ -1054,8 +1055,8 @@ ml_generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_gen_info_get_target(!.Info, Target),
 
-    MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
-    MLDS_IntType = mlds_native_int_type,
+    MLDS_StringType = mlds_builtin_type_string,
+    MLDS_IntType = mlds_builtin_type_int(int_type_int),
 
     ( if NumCollisions = 0 then
         MLDS_ArgTypes = [MLDS_StringType | OutTypes],
@@ -1169,7 +1170,7 @@ ml_gen_string_hash_simple_lookup_slot(Slot, StructType, HashSlotMap,
         NextSlotRval = ml_const(mlconst_int(Next)),
         OutInitializers = list.map(wrap_init_obj, OutRvals)
     else
-        StringRval = ml_const(mlconst_null(ml_string_type)),
+        StringRval = ml_const(mlconst_null(mlds_builtin_type_string)),
         NextSlotRval = ml_const(mlconst_int(-2)),
         OutInitializers = DummyOutInitializers
     ),
@@ -1204,8 +1205,8 @@ ml_generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_gen_info_get_target(!.Info, Target),
 
-    MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
-    MLDS_IntType = mlds_native_int_type,
+    MLDS_StringType = mlds_builtin_type_string,
+    MLDS_IntType = mlds_builtin_type_int(int_type_int),
 
     ( if NumCollisions = 0 then
         FirstSolnFieldTypes = [MLDS_StringType,
@@ -1359,7 +1360,7 @@ ml_gen_string_hash_several_soln_lookup_slot(Slot, HashSlotMap,
             !:CurLaterSolnIndex = !.CurLaterSolnIndex + NumLaterSolns
         )
     else
-        StringRval = ml_const(mlconst_null(ml_string_type)),
+        StringRval = ml_const(mlconst_null(mlds_builtin_type_string)),
         NextSlotRval = ml_const(mlconst_int(-2)),
         NumLaterSolnsRval = ml_const(mlconst_int(-1)),
         FirstLaterSlotRval = ml_const(mlconst_int(-1)),
@@ -1410,14 +1411,14 @@ ml_gen_string_hash_switch_search_vars(CodeModel, CanFail, LoopPresent,
     %   MR_String   str;
 
     ml_gen_info_new_aux_var_name(mcav_slot, SlotVarName, !Info),
-    SlotVarType = mlds_native_int_type,
+    SlotVarType = mlds_builtin_type_int(int_type_int),
     % We never need to trace ints.
     SlotVarDefn = ml_gen_mlds_var_decl(SlotVarName, SlotVarType,
         gc_no_stmt, Context),
     SlotVarNameType = mlds_local_var_name_type(SlotVarName, SlotVarType),
 
     ml_gen_info_new_aux_var_name(mcav_str, StringVarName, !Info),
-    StringVarType = ml_string_type,
+    StringVarType = mlds_builtin_type_string,
     % StringVar always points to an element of the string_table array.
     % All those elements are static constants; they can never point into
     % the heap. So GC never needs to trace StringVar.
@@ -1597,8 +1598,8 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_gen_info_get_target(!.Info, Target),
 
-    MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
-    MLDS_CaseNumType = mlds_native_int_type,
+    MLDS_StringType = mlds_builtin_type_string,
+    MLDS_CaseNumType = mlds_builtin_type_int(int_type_int),
     MLDS_ArgTypes = [MLDS_StringType, MLDS_CaseNumType],
 
     % Generate the binary search table.
@@ -1638,7 +1639,7 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
     map.to_assoc_list(CaseLabelMap, CaseLabelList),
     ml_gen_string_binary_jump_switch_arms(CaseLabelList, [], SwitchCases0),
     list.sort(SwitchCases0, SwitchCases),
-    SwitchStmt0 = ml_stmt_switch(mlds_native_int_type,
+    SwitchStmt0 = ml_stmt_switch(mlds_builtin_type_int(int_type_int),
         ml_lval(ml_field(yes(ptag(0u8)),
             ml_vector_common_row_addr(VectorCommon, ml_lval(MidVarLval)),
             StructType, CaseNumFieldId, MLDS_StringType)),
@@ -1813,8 +1814,8 @@ ml_generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns0,
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_gen_info_get_target(!.Info, Target),
-    MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
-    MLDS_IntType = mlds_native_int_type,
+    MLDS_StringType = mlds_builtin_type_string,
+    MLDS_IntType = mlds_builtin_type_int(int_type_int),
     FirstSolnFieldTypes =
         [MLDS_StringType, MLDS_IntType, MLDS_IntType | OutTypes],
     LaterSolnFieldTypes = OutTypes,
@@ -1956,8 +1957,8 @@ ml_gen_string_binary_switch_search_vars(CodeModel, CanFail,
     %   int         mid;
     %   MR_String   str;
 
-    IndexType = mlds_native_int_type,
-    ResultType = mlds_native_int_type,
+    IndexType = mlds_builtin_type_int(int_type_int),
+    ResultType = mlds_builtin_type_int(int_type_int),
     % We never need to trace ints.
     IndexGCStmt = gc_no_stmt,
     ResultGCStmt = gc_no_stmt,
@@ -2176,7 +2177,7 @@ ml_should_use_stop_loop(Context, LoopPresent,
         % handled a match, we set the stop loop flag, which will cause the
         % next test of the loop condition to fail.
 
-        StopLoopType = mlds_native_int_type,
+        StopLoopType = mlds_builtin_type_int(int_type_int),
         % We never need to trace ints.
         StopLoopGCStmt = gc_no_stmt,
 

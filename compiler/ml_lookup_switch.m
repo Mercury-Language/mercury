@@ -408,7 +408,7 @@ ml_gen_several_soln_atomic_lookup_switch(IndexRval, OutVars, OutTypes,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_gen_info_get_target(!.Info, Target),
 
-    MLDS_IntType = mlds_native_int_type,
+    MLDS_IntType = mlds_builtin_type_int(int_type_int),
     FirstSolnFieldTypes = [MLDS_IntType, MLDS_IntType | OutTypes],
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
@@ -500,7 +500,7 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
     NumLaterSolnsVarRval = ml_lval(NumLaterSolnsVarLval),
     LaterSlotVarRval = ml_lval(LaterSlotVarLval),
     LimitVarRval = ml_lval(LimitVarLval),
-    MLDS_IntType = mlds_native_int_type,
+    MLDS_IntType = mlds_builtin_type_int(int_type_int),
 
     ml_generate_field_assign(NumLaterSolnsVarLval, MLDS_IntType,
         NumLaterSolnsFieldId, FirstSolnVectorCommon, FirstSolnStructType,
@@ -549,28 +549,26 @@ make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
     ml_gen_info_new_aux_var_name(mcav_num_later_solns, NumLaterSolnsVarName,
         !Info),
     % We never need to trace ints.
-    NumLaterSolnsVarDefn = ml_gen_mlds_var_decl(NumLaterSolnsVarName,
-        mlds_native_int_type, gc_no_stmt, Context),
+    IntType = mlds_builtin_type_int(int_type_int),
+    NumLaterSolnsVarDefn = ml_gen_mlds_var_decl(NumLaterSolnsVarName, IntType,
+        gc_no_stmt, Context),
     NumLaterSolnsVarNameType =
-        mlds_local_var_name_type(NumLaterSolnsVarName, mlds_native_int_type),
-    NumLaterSolnsVarLval =
-        ml_local_var(NumLaterSolnsVarName, mlds_native_int_type),
+        mlds_local_var_name_type(NumLaterSolnsVarName, IntType),
+    NumLaterSolnsVarLval = ml_local_var(NumLaterSolnsVarName, IntType),
 
     ml_gen_info_new_aux_var_name(mcav_later_slot, LaterSlotVarName, !Info),
     % We never need to trace ints.
-    LaterSlotVarDefn = ml_gen_mlds_var_decl(LaterSlotVarName,
-        mlds_native_int_type, gc_no_stmt, Context),
-    LaterSlotVarNameType =
-        mlds_local_var_name_type(LaterSlotVarName, mlds_native_int_type),
-    LaterSlotVarLval = ml_local_var(LaterSlotVarName, mlds_native_int_type),
+    LaterSlotVarDefn = ml_gen_mlds_var_decl(LaterSlotVarName, IntType,
+        gc_no_stmt, Context),
+    LaterSlotVarNameType = mlds_local_var_name_type(LaterSlotVarName, IntType),
+    LaterSlotVarLval = ml_local_var(LaterSlotVarName, IntType),
 
     ml_gen_info_new_aux_var_name(mcav_limit, LimitVarName, !Info),
     % We never need to trace ints.
-    LimitVarDefn = ml_gen_mlds_var_decl(LimitVarName,
-        mlds_native_int_type, gc_no_stmt, Context),
-    LimitVarNameType =
-        mlds_local_var_name_type(LimitVarName, mlds_native_int_type),
-    LimitVarLval = ml_local_var(LimitVarName, mlds_native_int_type),
+    LimitVarDefn = ml_gen_mlds_var_decl(LimitVarName, IntType,
+        gc_no_stmt, Context),
+    LimitVarNameType = mlds_local_var_name_type(LimitVarName, IntType),
+    LimitVarLval = ml_local_var(LimitVarName, IntType),
 
     Defns = [NumLaterSolnsVarDefn, LaterSlotVarDefn, LimitVarDefn],
 
@@ -659,7 +657,7 @@ ml_generate_bit_vec(MLDS_ModuleName, Context, CaseVals, Start, WordBits,
     ml_generate_bit_vec_initializers(WordVals, 0, WordRvals, WordInitializers),
     Initializer = init_array(WordInitializers),
 
-    ConstType = mlds_array_type(mlds_native_int_type),
+    ConstType = mlds_array_type(mlds_builtin_type_int(int_type_int)),
     ml_gen_static_scalar_const_value(MLDS_ModuleName, mgcv_bit_vector,
         ConstType, Initializer, Context, BitVecRval, !GlobalData).
 
@@ -822,22 +820,52 @@ make_dummy_first_soln_row(FirstSolnStructType, FieldTypes,
 
 ml_default_value_for_type(MLDS_Type) = DefaultRval :-
     (
-        MLDS_Type = mlds_native_int_type,
-        DefaultRval = ml_const(mlconst_int(0))
+        MLDS_Type = mlds_builtin_type_int(IntType),
+        (
+            IntType = int_type_int,
+            DefaultRval = ml_const(mlconst_int(0))
+        ;
+            IntType = int_type_int8,
+            DefaultRval = ml_const(mlconst_int8(0i8))
+        ;
+            IntType = int_type_int16,
+            DefaultRval = ml_const(mlconst_int16(0i16))
+        ;
+            IntType = int_type_int32,
+            DefaultRval = ml_const(mlconst_int32(0i32))
+        ;
+            IntType = int_type_int64,
+            DefaultRval = ml_const(mlconst_int64(0i64))
+        ;
+            IntType = int_type_uint,
+            DefaultRval = ml_const(mlconst_uint(0u))
+        ;
+            IntType = int_type_uint8,
+            DefaultRval = ml_const(mlconst_uint8(0u8))
+        ;
+            IntType = int_type_uint16,
+            DefaultRval = ml_const(mlconst_uint16(0u16))
+        ;
+            IntType = int_type_uint32,
+            DefaultRval = ml_const(mlconst_uint32(0u32))
+        ;
+            IntType = int_type_uint64,
+            DefaultRval = ml_const(mlconst_uint64(0u64))
+        )
     ;
-        MLDS_Type = mlds_native_uint_type,
-        DefaultRval = ml_const(mlconst_uint(0u))
+        MLDS_Type = mlds_builtin_type_float,
+        DefaultRval = ml_const(mlconst_float(0.0))
     ;
-        MLDS_Type = mlds_native_char_type,
+        MLDS_Type = mlds_builtin_type_string,
+        DefaultRval = ml_cast(MLDS_Type, ml_const(mlconst_int(0)))
+    ;
+        MLDS_Type = mlds_builtin_type_char,
         DefaultRval = ml_const(mlconst_char(0))
     ;
         MLDS_Type = mlds_native_bool_type,
         DefaultRval = ml_const(mlconst_false)
     ;
-        MLDS_Type = mlds_native_float_type,
-        DefaultRval = ml_const(mlconst_float(0.0))
-    ;
-        ( MLDS_Type = mercury_type(_, _, _)
+        ( MLDS_Type = mercury_nb_type(_, _)
         ; MLDS_Type = mlds_mercury_array_type(_)
         ; MLDS_Type = mlds_foreign_type(_)
         ; MLDS_Type = mlds_class_type(_)

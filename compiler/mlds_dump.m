@@ -1020,7 +1020,7 @@ mercury_types_to_strcord(HeadType, TailTypes) = Cord :-
 
 mlds_type_to_strcord(MLDS_Type) = Cord :-
     (
-        MLDS_Type = mercury_type(MerType, _ForeignType, _CtorCat),
+        MLDS_Type = mercury_nb_type(MerType, _CtorCat),
         Cord = mercury_type_to_strcord(MerType)
     ;
         MLDS_Type = mlds_mercury_array_type(MLDS_ElementType),
@@ -1057,17 +1057,28 @@ mlds_type_to_strcord(MLDS_Type) = Cord :-
         MLDS_Type = mlds_native_bool_type,
         Cord = strcord("native bool")
     ;
-        MLDS_Type = mlds_native_int_type,
-        Cord = strcord("native int")
+        MLDS_Type = mlds_builtin_type_int(IntType),
+        ( IntType = int_type_int,    Str = "int"
+        ; IntType = int_type_int8,   Str = "int8"
+        ; IntType = int_type_int16,  Str = "int16"
+        ; IntType = int_type_int32,  Str = "int32"
+        ; IntType = int_type_int64,  Str = "int64"
+        ; IntType = int_type_uint,   Str = "uint"
+        ; IntType = int_type_uint8,  Str = "uint8"
+        ; IntType = int_type_uint16, Str = "uint16"
+        ; IntType = int_type_uint32, Str = "uint32"
+        ; IntType = int_type_uint64, Str = "uint64"
+        ),
+        Cord = strcord(Str)
     ;
-        MLDS_Type = mlds_native_uint_type,
-        Cord = strcord("native uint")
+        MLDS_Type = mlds_builtin_type_float,
+        Cord = strcord("float")
     ;
-        MLDS_Type = mlds_native_float_type,
-        Cord = strcord("native float")
+        MLDS_Type = mlds_builtin_type_string,
+        Cord = strcord("string")
     ;
-        MLDS_Type = mlds_native_char_type,
-        Cord = strcord("native char")
+        MLDS_Type = mlds_builtin_type_char,
+        Cord = strcord("char")
     ;
         MLDS_Type = mlds_foreign_type(ForeignType),
         (

@@ -53,7 +53,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.foreign.
 :- import_module backend_libs.type_ctor_info.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
@@ -71,7 +70,6 @@
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -734,7 +732,8 @@ gen_notag_functor_desc(ModuleInfo, Target, RttiTypeCtor, NotagFunctorDesc,
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_string(FunctorName),
         PTIInitializer,
-        gen_init_maybe(ml_string_type, gen_init_string, MaybeArgName),
+        gen_init_maybe(mlds_builtin_type_string, gen_init_string,
+            MaybeArgName),
         gen_init_functor_subtype_info(FunctorSubtypeInfo)
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
@@ -978,11 +977,8 @@ gen_field_types(ModuleInfo, Target, RttiTypeCtor, Ordinal, Types,
     list(maybe(string))::in, ml_global_data::in, ml_global_data::out) is det.
 
 gen_field_names(_ModuleInfo, RttiTypeCtor, Ordinal, MaybeNames, !GlobalData) :-
-    StrType = builtin_type(builtin_type_string),
     Initializer = gen_init_array(
-        gen_init_maybe(
-            mercury_type(StrType, no, ctor_cat_builtin(cat_builtin_string)),
-            gen_init_string),
+        gen_init_maybe(mlds_builtin_type_string, gen_init_string),
         MaybeNames),
     RttiName = type_ctor_field_names(Ordinal),
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
@@ -1272,7 +1268,7 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
         RttiData = rtti_data_pseudo_type_info(type_var(VarNum))
     then
         % rtti_data_to_id/3 does not handle this case
-        SrcType = mlds_native_int_type,
+        SrcType = mlds_builtin_type_int(int_type_int),
         Initializer = init_obj(gen_cast(SrcType, DestType,
             ml_const(mlconst_int(VarNum))))
     else if

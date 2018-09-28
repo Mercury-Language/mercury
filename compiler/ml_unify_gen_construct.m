@@ -87,7 +87,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module backend_libs.type_class_info.
 :- import_module check_hlds.
@@ -323,7 +322,8 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
             SectagRval0 = ml_const(mlconst_uint(SectagUint)),
             % With the low-level data representation, all fields -- even the
             % secondary tag -- are boxed, and so we need box it here.
-            SectagRval = ml_box(mlds_native_uint_type, SectagRval0),
+            SectagRval = ml_box(mlds_builtin_type_int(int_type_uint),
+                SectagRval0),
             TagwordRvalsTypesWidths = [rval_type_and_width(SectagRval,
                 mlds_generic_type, TagwordArgPosWidth)],
             NonTagwordRHSVarsTypesWidths = RHSVarsTypesWidths,
@@ -360,7 +360,7 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
                 TagFilledBitfield, ArgFilledBitfields, TagwordRval),
 
             TagwordRvalsTypesWidths = [rval_type_and_width(TagwordRval,
-                mlds_native_uint_type, TagwordArgPosWidth)]
+                mlds_builtin_type_int(int_type_uint), TagwordArgPosWidth)]
         )
     ),
     ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag,
@@ -897,7 +897,7 @@ ml_generate_and_pack_dynamic_construct_args(Info,
                 RHSRvalA = ml_const(mlconst_null(SubstType)),
                 RHSRvalB = ml_const(mlconst_null(SubstType))
             else
-                SubstType = mlds_native_int_type,
+                SubstType = mlds_builtin_type_int(int_type_int),
                 (
                     DoubleWordKind = dw_float,
                     RHSRvalA = ml_unop(dword_float_get_word0, RHSRval),
@@ -1422,7 +1422,7 @@ ml_generate_ground_term_memory_cell(ModuleInfo, Target, HighLevelData,
             (
                 HighLevelData = no,
                 % XXX why is this cast here?
-                TagwordRHSRval = ml_box(mlds_native_char_type, SectagRval0)
+                TagwordRHSRval = ml_box(mlds_builtin_type_char, SectagRval0)
             ;
                 HighLevelData = yes,
                 TagwordRHSRval = SectagRval0
@@ -1684,7 +1684,7 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type,
             (
                 HighLevelData = no,
                 % XXX why is this cast here?
-                TagwordRval = ml_box(mlds_native_char_type, StagRval0)
+                TagwordRval = ml_box(mlds_builtin_type_char, StagRval0)
             ;
                 HighLevelData = yes,
                 TagwordRval = StagRval0
@@ -1992,7 +1992,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % Check for type_infos and typeclass_infos, since these
             % need to be handled specially; their Mercury type definitions
             % are lies on C backends.
-            MLDS_Type = mercury_type(_, _, TypeCtorCategory),
+            MLDS_Type = mercury_nb_type(_, TypeCtorCategory),
             TypeCtorCategory = ctor_cat_system(_),
             Target = ml_target_c
         then
@@ -2009,7 +2009,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
                 MLDS_Type =
                     mlds_class_type(mlds_class_id(QualTypeName, TypeArity, _))
             ;
-                MLDS_Type = mercury_type(MercuryType, _, ctor_cat_user(_)),
+                MLDS_Type = mercury_nb_type(MercuryType, ctor_cat_user(_)),
                 type_to_ctor(MercuryType, TypeCtor),
                 ml_gen_type_name(TypeCtor, QualTypeName, TypeArity)
             )
@@ -2033,7 +2033,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % mapped to `mlds_ptr_type(mlds_class_type(...))', but when
             % declaring static constants we want just the class type,
             % not the pointer type.
-            MLDS_Type = mercury_type(MercuryType, _, ctor_cat_user(_)),
+            MLDS_Type = mercury_nb_type(MercuryType, ctor_cat_user(_)),
             type_to_ctor(MercuryType, TypeCtor)
         then
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
@@ -2042,7 +2042,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
         else if
             % For tuples, a similar issue arises; we want tuple constants
             % to have array type, not the pointer type MR_Tuple.
-            MLDS_Type = mercury_type(_, _, ctor_cat_tuple)
+            MLDS_Type = mercury_nb_type(_, ctor_cat_tuple)
         then
             ConstType = mlds_array_type(mlds_generic_type)
         else if
@@ -2050,7 +2050,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % the pointer type MR_ClosurePtr. Note that we use a low-level
             % data representation for closures, even when --high-level-data
             % is enabled.
-            MLDS_Type = mercury_type(_, _, ctor_cat_higher_order)
+            MLDS_Type = mercury_nb_type(_, ctor_cat_higher_order)
         then
             ConstType = mlds_array_type(mlds_generic_type)
         else

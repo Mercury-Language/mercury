@@ -321,7 +321,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.code_model.
@@ -923,18 +922,33 @@
 %
 
 :- type mlds_type
-    --->    mercury_type(
-                % A Mercury data type.
+    --->    mercury_nb_type(
+                % A Mercury data type that is not a builtin type
+                % (the nb is short for "not builtin"). Builtin types should
+                % be represented using one of the mlds_builtin_type_*
+                % function symbols.
 
-                % The exact Mercury type.
+                % The exact Mercury type. It cannot be builtin_type(_).
+                %
+                % Most places that process mercury_nb_types need only the type
+                % constructor, and not the whole type. However, there are some
+                % places in mlds_to_{cs,java}_*.m that need the types of the
+                % type constructor's arguments too. Nevertheless, we *could*
+                % replace this field with two fields holding the type_ctor
+                % and the argument types. That would require a separate
+                % function symbol in mlds_type for representing type variables
+                % (the only kind of mer_type that has no type_ctor), but
+                % it would allow us to dispense with repeated invocations
+                % of type_to_ctor on the mer_type field here.
                 mer_type,
 
-                % If the Mercury type actually defined a foreign language,
-                % then this field should contain the foreign language
-                % type's name, and any assertions on that foreign type.
-                maybe(foreign_type_and_assertions),
-
-                % What kind of type it is: enum, float, ...
+                % What kind of type it is: enum, dummy, notag, ...
+                % It cannot be ctor_cat_builtin(_).
+                %
+                % We could use a bespoke type here that would be isomorphic
+                % to type_ctor_category except for disallowing builtins,
+                % and maybe type variables (see above). However, that would
+                % require us to duplicate a nontrivial amount of code.
                 type_ctor_category
             )
 
@@ -980,15 +994,19 @@
             % See also the comments in ml_commit_gen.m which show how commits
             % can be implemented for different target languages.
 
+    ;       mlds_builtin_type_int(int_type)
+    ;       mlds_builtin_type_float
+    ;       mlds_builtin_type_string
+    ;       mlds_builtin_type_char
+            % The representations of the builtin types in the target language.
+            %
+            % Note that some target languages do not have types corresponding
+            % *exactly* to each Mercury builtin type. For these, we generate
+            % the closest type available in the target language, e.g. "int"
+            % for mlds_builtin_type_int(int_type_uint) in Java.
+
     ;       mlds_native_bool_type
-    ;       mlds_native_int_type
-    ;       mlds_native_uint_type
-    ;       mlds_native_float_type
-    ;       mlds_native_char_type
-            % MLDS native builtin types.
-            % These are the builtin types of the MLDS target language,
-            % whatever that may be.
-            % Currently we don't actually use many of these.
+            % The representation of booleans in the MLDS target language.
 
     ;       mlds_foreign_type(
                 % This is a type of the target language.
@@ -997,7 +1015,6 @@
 
     ;       mlds_class_type(
                 % MLDS types defined using mlds_class_defn.
-
                 mlds_class_id
             )
 
@@ -2683,21 +2700,44 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                     MLDSType = foreign_type_to_mlds_type(ModuleInfo,
                         ForeignTypeBody)
                 else if TypeBody = hlds_abstract_type(_) then
-                    Category = classify_type_ctor(ModuleInfo, TypeCtor),
-                    MLDSType = mercury_type(Type, no, Category)
+                    CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
+                    MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
                 else
-                    Category = classify_type_defn_body(TypeBody),
-                    MLDSType = mercury_type(Type, no, Category)
+                    CtorCat = classify_type_defn_body(TypeBody),
+                    MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
                 )
             else
-                Category = classify_type_ctor(ModuleInfo, TypeCtor),
-                MLDSType = mercury_type(Type, no, Category)
+                CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
+                MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
             )
         )
     else
         Category = ctor_cat_variable,
-        MLDSType = mercury_type(Type, no, Category)
+        MLDSType = mercury_nb_type(Type, Category)
     ).
+
+:- func type_and_category_to_mlds_type(mer_type, type_ctor_category)
+    = mlds_type.
+
+type_and_category_to_mlds_type(Type, CtorCat) = MLDSType :-
+    ( if CtorCat = ctor_cat_builtin(BuiltinTypeCat) then
+        (
+            BuiltinTypeCat = cat_builtin_int(IntType),
+            MLDSType = mlds_builtin_type_int(IntType)
+        ;
+            BuiltinTypeCat = cat_builtin_float,
+            MLDSType = mlds_builtin_type_float
+        ;
+            BuiltinTypeCat = cat_builtin_string,
+            MLDSType = mlds_builtin_type_string
+        ;
+            BuiltinTypeCat = cat_builtin_char,
+            MLDSType = mlds_builtin_type_char
+        )
+    else
+        MLDSType = mercury_nb_type(Type, CtorCat)
+    ).
+
 %---------------------------------------------------------------------------%
 
 ml_global_const_var_name_to_string(ConstVar, Num) = Str :-

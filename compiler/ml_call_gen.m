@@ -404,10 +404,10 @@ ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
                         ;
                             TsccKind = tscc_self_and_mutual_rec,
                             IdInTSCC = proc_id_in_tscc(TsccProcNum),
+                            IntType = mlds_builtin_type_int(int_type_int),
                             SelectorVar =
                                 lvn_comp_var(lvnc_tscc_proc_selector),
-                            SelectorLval =
-                                ml_local_var(SelectorVar, ml_int_type),
+                            SelectorLval = ml_local_var(SelectorVar, IntType),
                             SetSelectorStmt = ml_stmt_atomic(
                                 assign(SelectorLval,
                                     ml_const(mlconst_int(TsccProcNum))),
@@ -909,7 +909,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
                 % We need to avoid generating assignments to dummy variables
                 % introduced for types such as io.state.
                 Lval = ml_local_var(_VarName, VarType),
-                VarType = mercury_type(ProgDataType, _, _),
+                VarType = mercury_nb_type(ProgDataType, _),
                 is_type_a_dummy(ModuleInfo, ProgDataType) = is_dummy_type
             then
                 Stmts = []

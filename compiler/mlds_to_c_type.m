@@ -79,7 +79,7 @@ mlds_output_type(Opts, Type, !IO) :-
 
 mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
     (
-        MLDS_Type = mercury_type(Type, _, TypeCategory),
+        MLDS_Type = mercury_nb_type(Type, TypeCategory),
         mlds_output_mercury_type_prefix(Opts, Type, TypeCategory, !IO)
     ;
         MLDS_Type = mlds_mercury_array_type(_ElemType),
@@ -94,20 +94,47 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
             io.write_string("MR_ArrayPtr", !IO)
         )
     ;
-        MLDS_Type = mlds_native_int_type,
+        MLDS_Type = mlds_builtin_type_int(int_type_int),
         io.write_string("MR_Integer", !IO)
     ;
-        MLDS_Type = mlds_native_uint_type,
+        MLDS_Type = mlds_builtin_type_int(int_type_uint),
         io.write_string("MR_Unsigned", !IO)
     ;
-        MLDS_Type = mlds_native_float_type,
+        MLDS_Type = mlds_builtin_type_int(int_type_int8),
+        io.write_string("int8_t", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_int(int_type_uint8),
+        io.write_string("uint8_t", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_int(int_type_int16),
+        io.write_string("int16_t", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_int(int_type_uint16),
+        io.write_string("uint16_t", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_int(int_type_int32),
+        io.write_string("int32_t", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_int(int_type_uint32),
+        io.write_string("uint32_t", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_int(int_type_int64),
+        io.write_string("int64_t", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_int(int_type_uint64),
+        io.write_string("uint64_t", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_float,
         io.write_string("MR_Float", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_char,
+        io.write_string("MR_Char", !IO)
+    ;
+        MLDS_Type = mlds_builtin_type_string,
+        io.write_string("MR_String", !IO)
     ;
         MLDS_Type = mlds_native_bool_type,
         io.write_string("MR_bool", !IO)
-    ;
-        MLDS_Type = mlds_native_char_type,
-        io.write_string("MR_Char", !IO)
     ;
         MLDS_Type = mlds_foreign_type(_ForeignType),
         % For binary compatibility with the --target asm back-end,
@@ -201,44 +228,8 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
 
 mlds_output_mercury_type_prefix(Opts, Type, CtorCat, !IO) :-
     (
-        CtorCat = ctor_cat_builtin(cat_builtin_char),
-        io.write_string("MR_Char", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int)),
-        io.write_string("MR_Integer", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint)),
-        io.write_string("MR_Unsigned", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8)),
-        io.write_string("int8_t", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8)),
-        io.write_string("uint8_t", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16)),
-        io.write_string("int16_t", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16)),
-        io.write_string("uint16_t", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32)),
-        io.write_string("int32_t", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32)),
-        io.write_string("uint32_t", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
-        io.write_string("int64_t", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
-        io.write_string("uint64_t", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_string),
-        io.write_string("MR_String", !IO)
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_float),
-        io.write_string("MR_Float", !IO)
+        CtorCat = ctor_cat_builtin(_),
+        unexpected($pred, "ctor_cat_builtin")
     ;
         CtorCat = ctor_cat_void,
         io.write_string("MR_Word", !IO)
@@ -355,13 +346,13 @@ mlds_output_type_suffix(Opts, MLDS_Type, ArraySize, !IO) :-
         MLDS_Type = mlds_unknown_type,
         unexpected($pred, "unknown_type")
     ;
-        ( MLDS_Type = mercury_type(_, _, _)
+        ( MLDS_Type = mercury_nb_type(_, _)
         ; MLDS_Type = mlds_mercury_array_type(_)
-        ; MLDS_Type = mlds_native_int_type
-        ; MLDS_Type = mlds_native_uint_type
-        ; MLDS_Type = mlds_native_float_type
+        ; MLDS_Type = mlds_builtin_type_int(_)
+        ; MLDS_Type = mlds_builtin_type_float
+        ; MLDS_Type = mlds_builtin_type_string
+        ; MLDS_Type = mlds_builtin_type_char
         ; MLDS_Type = mlds_native_bool_type
-        ; MLDS_Type = mlds_native_char_type
         % XXX Currently we cannot output a type suffix.
         ; MLDS_Type = mlds_foreign_type(_)
         ; MLDS_Type = mlds_class_type(_)

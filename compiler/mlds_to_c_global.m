@@ -73,7 +73,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.c_util.
-:- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module libs.
 :- import_module libs.globals.
@@ -84,12 +83,10 @@
 :- import_module ml_backend.mlds_to_c_type.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type.
 
 :- import_module char.
 :- import_module cord.
 :- import_module int.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -205,21 +202,16 @@ mlds_output_scalar_cell_group_struct_field(Opts, Indent, FieldType,
         % Ensure double-word float, int64 and uint64 structure members
         % are word-aligned, not double-aligned.
         (
-            FieldType = mlds_native_float_type,
+            FieldType = mlds_builtin_type_float,
             TypeName = "MR_Float_Aligned"
         ;
-            FieldType = mercury_type(builtin_type(BuiltinType), _, _),
+            FieldType = mlds_builtin_type_int(IntType),
             (
-                BuiltinType = builtin_type_float,
-                TypeName = "MR_Float_Aligned"
+                IntType = int_type_int64,
+                TypeName = "MR_Int64Aligned"
             ;
-                (
-                    BuiltinType = builtin_type_int(int_type_int64),
-                    TypeName = "MR_Int64Aligned"
-                ;
-                    BuiltinType = builtin_type_int(int_type_uint64),
-                    TypeName = "MR_Uint64Aligned"
-                )
+                IntType = int_type_uint64,
+                TypeName = "MR_Uint64Aligned"
             )
         )
     then

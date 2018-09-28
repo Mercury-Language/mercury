@@ -487,7 +487,7 @@ ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
         Initializer0 = init_array(Inits0),
         list.map2(ml_specialize_generic_array_init, Inits0, Inits, Types),
         % XXX ARG_PACK Specialize int64 and uint64 elements as well.
-        list.member(mlds_native_float_type, Types)
+        list.member(mlds_builtin_type_float, Types)
     then
         ConstType = mlds_mostly_generic_array_type(Types),
         Initializer = init_array(Inits)
@@ -506,7 +506,7 @@ ml_specialize_generic_array_init(Init0, Init, Type) :-
         ml_specialize_generic_array_rval(Rval0, Rval)
     then
         Init = init_obj(Rval),
-        Type = mlds_native_float_type
+        Type = mlds_builtin_type_float
     else
         Init = Init0,
         Type = mlds_generic_type
@@ -525,17 +525,12 @@ ml_specialize_generic_array_rval(!Rval) :-
         ),
         % XXX ARG_PACK Specialize for int64s and uint64s as well.
         (
-            Type = mlds_native_float_type,
+            Type = mlds_builtin_type_float,
             !:Rval = SubRval
         ;
-            Type = mercury_type(_, _, CtorCat),
-            (
-                CtorCat = ctor_cat_builtin(cat_builtin_float),
-                !:Rval = SubRval
-            ;
-                CtorCat = ctor_cat_user(cat_user_notag),
-                ml_specialize_generic_array_rval(SubRval, !:Rval)
-            )
+            Type = mercury_nb_type(_, CtorCat),
+            CtorCat = ctor_cat_user(cat_user_notag),
+            ml_specialize_generic_array_rval(SubRval, !:Rval)
         )
     ;
         !.Rval = ml_binop(Op, _, _),

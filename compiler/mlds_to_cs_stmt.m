@@ -693,7 +693,7 @@ output_atomic_stmt_for_csharp(Info, Indent, AtomicStmt, Context, !IO) :-
         ( if
             MaybeCtorName = yes(QualifiedCtorId),
             not (
-                Type = mercury_type(MerType, _, CtorCat),
+                Type = mercury_nb_type(MerType, CtorCat),
                 hand_defined_type_for_csharp(MerType, CtorCat, _, _)
             )
         then

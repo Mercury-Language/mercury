@@ -123,19 +123,21 @@ ml_simplify_switch(Stmt0, Stmt, !Info) :-
 is_integral_type(MLDSType, IntType) :-
     require_complete_switch [MLDSType]
     (
-        ( MLDSType = mlds_native_int_type
-        ; MLDSType = mlds_native_char_type
-        ),
+        MLDSType = mlds_builtin_type_int(IntType)
+    ;
+        MLDSType = mlds_builtin_type_char,
         IntType = int_type_int
     ;
-        MLDSType = mlds_native_uint_type,
-        IntType = int_type_uint
+        ( MLDSType = mlds_builtin_type_float
+        ; MLDSType = mlds_builtin_type_string
+        ),
+        fail
     ;
         ( MLDSType = mlds_mercury_array_type(_)
         ; MLDSType = mlds_cont_type(_)
         ; MLDSType = mlds_commit_type
         ; MLDSType = mlds_native_bool_type
-        ; MLDSType = mlds_native_float_type
+        ; MLDSType = mlds_builtin_type_float
         ; MLDSType = mlds_foreign_type(_)
         ; MLDSType = mlds_class_type(_)
         ; MLDSType = mlds_ptr_type(_)
@@ -152,18 +154,13 @@ is_integral_type(MLDSType, IntType) :-
         ),
         fail
     ;
-        MLDSType = mercury_type(_, _, CtorCat),
-        require_complete_switch [CtorCat] (
-            ( CtorCat = ctor_cat_builtin(cat_builtin_char)
-            ; CtorCat = ctor_cat_enum(cat_enum_mercury)
-            ),
+        MLDSType = mercury_nb_type(_, CtorCat),
+        require_complete_switch [CtorCat]
+        (
+            CtorCat = ctor_cat_enum(cat_enum_mercury),
             IntType = int_type_int
         ;
-            CtorCat = ctor_cat_builtin(cat_builtin_int(IntType))
-        ;
-            ( CtorCat = ctor_cat_builtin(cat_builtin_string)
-            ; CtorCat = ctor_cat_builtin(cat_builtin_float)
-            ; CtorCat = ctor_cat_higher_order
+            ( CtorCat = ctor_cat_higher_order
             ; CtorCat = ctor_cat_tuple
             ; CtorCat = ctor_cat_builtin_dummy
             ; CtorCat = ctor_cat_variable
@@ -181,6 +178,9 @@ is_integral_type(MLDSType, IntType) :-
             % XXX We can switch on foreign enumerations in C, but this may
             % not be the case for the other target languages.
             fail
+        ;
+            CtorCat = ctor_cat_builtin(_),
+            unexpected($pred, "mercury_nb_type but ctor_cat_builtin")
         )
     ).
 

@@ -47,7 +47,6 @@
 :- implementation.
 
 :- import_module backend_libs.
-:- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
@@ -1085,10 +1084,10 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
         ; Type = mlds_cont_type(_)
         ; Type = mlds_commit_type
         ; Type = mlds_native_bool_type
-        ; Type = mlds_native_int_type
-        ; Type = mlds_native_uint_type
-        ; Type = mlds_native_float_type
-        ; Type = mlds_native_char_type
+        ; Type = mlds_builtin_type_int(_)
+        ; Type = mlds_builtin_type_float
+        ; Type = mlds_builtin_type_string
+        ; Type = mlds_builtin_type_char
         ; Type = mlds_foreign_type(_)
         ; Type = mlds_class_type(_)
         ; Type = mlds_array_type(_)
@@ -1100,7 +1099,7 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
         ),
         NeedsForwardingPtrSpace = no
     ;
-        Type = mercury_type(_, _, TypeCategory),
+        Type = mercury_nb_type(_, TypeCategory),
         NeedsForwardingPtrSpace =
             is_introduced_type_info_type_category(TypeCategory)
     ;

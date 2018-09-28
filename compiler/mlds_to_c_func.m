@@ -50,8 +50,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.
-:- import_module backend_libs.foreign.
 :- import_module hlds.
 :- import_module hlds.hlds_pred.            % for pred_proc_id.
 :- import_module libs.
@@ -168,7 +166,7 @@ mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
             Kind \= mlds_enum,
             ClassType = Type
         ;
-            Type = mercury_type(MercuryType, _, ctor_cat_user(_)),
+            Type = mercury_nb_type(MercuryType, ctor_cat_user(_)),
             type_to_ctor(MercuryType, TypeCtor),
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
             ClassId = mlds_class_id(ClassName, ClassArity, mlds_class),

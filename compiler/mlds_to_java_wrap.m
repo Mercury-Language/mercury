@@ -87,12 +87,13 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     ;
         CodeAddrs = [_, _ | _],
         Context = term.context_init,
+        IntType = mlds_builtin_type_int(int_type_int),
 
         % Create the member variable.
         CtorArgName = lvn_field_var_as_local(fvn_ptr_num),
         FieldVarDefn = mlds_field_var_defn(
             fvn_env_field_from_local_var(CtorArgName), Context,
-            ml_gen_const_member_data_decl_flags, mlds_native_int_type,
+            ml_gen_const_member_data_decl_flags, IntType,
             no_initializer, gc_no_stmt),
         FieldVarDefns = [FieldVarDefn],
 
@@ -106,13 +107,12 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
             qual_field_var_name(MLDS_ModuleName, type_qual, fvn_ptr_num),
         FieldId = ml_field_named(FieldName, ClassType),
         FieldLval = ml_field(no, ml_self(ClassType), ClassType,
-            FieldId, mlds_native_int_type),
+            FieldId, IntType),
 
-        CtorArgs = [mlds_argument(CtorArgName, mlds_native_int_type,
-            gc_no_stmt)],
+        CtorArgs = [mlds_argument(CtorArgName, IntType, gc_no_stmt)],
         CtorReturnValues = [],
 
-        CtorArgLval = ml_local_var(CtorArgName, mlds_native_int_type),
+        CtorArgLval = ml_local_var(CtorArgName, IntType),
         CtorArgRval = ml_lval(CtorArgLval),
         CtorStmt = ml_stmt_atomic(assign(FieldLval, CtorArgRval), Context),
 
@@ -195,12 +195,12 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
             ),
         Cases = list.map_corresponding(MakeCase, 0 .. MaxCase, CodeAddrStmts),
 
+        IntType = mlds_builtin_type_int(int_type_int),
         SwitchVarName = lvn_field_var_as_local(fvn_ptr_num),
-        SwitchVarRval =
-            ml_lval(ml_local_var(SwitchVarName, mlds_native_int_type)),
+        SwitchVarRval = ml_lval(ml_local_var(SwitchVarName, IntType)),
         SwitchRange = mlds_switch_range(0, MaxCase),
-        Stmt = ml_stmt_switch(mlds_native_int_type, SwitchVarRval,
-            SwitchRange, Cases, default_is_unreachable, Context)
+        Stmt = ml_stmt_switch(IntType, SwitchVarRval, SwitchRange,
+            Cases, default_is_unreachable, Context)
     ),
 
     % Create new method name.
@@ -313,7 +313,8 @@ generate_call_method_nth_arg(Type, MethodArgVariable, CallArg) :-
 generate_call_method_args_from_array([], _, _, Args, Args).
 generate_call_method_args_from_array([Type | Types], ArrayVar, Counter,
         Args0, Args) :-
-    ArrayRval = ml_lval(ml_local_var(ArrayVar, mlds_native_int_type)),
+    ArrayRval = ml_lval(ml_local_var(ArrayVar,
+        mlds_builtin_type_int(int_type_int))),
     IndexRval = ml_const(mlconst_int(Counter)),
     ElemType = array_elem_scalar(scalar_elem_generic),
     Rval = ml_binop(array_index(ElemType), ArrayRval, IndexRval),

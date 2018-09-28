@@ -92,7 +92,7 @@ output_lval_for_csharp(Info, Lval, !IO) :-
             FieldId = ml_field_offset(OffsetRval),
             ( if
                 ( FieldType = mlds_generic_type
-                ; FieldType = mercury_type(type_variable(_, _), _, _)
+                ; FieldType = mercury_nb_type(type_variable(_, _), _)
                 )
             then
                 true
@@ -198,7 +198,7 @@ output_rval_for_csharp(Info, Rval, !IO) :-
         output_cast_rval_for_csharp(Info, Type, SubRval, !IO)
     ;
         Rval = ml_box(Type, SubRval),
-        ( if Type = mercury_type(comparison_result_type, _, _) then
+        ( if Type = mercury_nb_type(comparison_result_type, _) then
             io.write_string("builtin.comparison_result_object[(int) ", !IO),
             output_rval_for_csharp(Info, SubRval, !IO),
             io.write_string("]", !IO)
@@ -266,7 +266,7 @@ output_cast_rval_for_csharp(Info, Type, Expr, !IO) :-
             io.write_string(")", !IO)
         )
     else if
-        ( Type = mercury_type(_, _, ctor_cat_system(cat_system_type_info))
+        ( Type = mercury_nb_type(_, ctor_cat_system(cat_system_type_info))
         ; Type = mlds_type_info_type
         )
     then
@@ -934,7 +934,7 @@ output_initializer_alloc_only_for_csharp(Info, Initializer, MaybeType, !IO) :-
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
         ( if
-            StructType = mercury_type(_, _, CtorCat),
+            StructType = mercury_nb_type(_, CtorCat),
             type_category_is_array(CtorCat) = is_array
         then
             Size = list.length(FieldInits),
@@ -1011,35 +1011,12 @@ output_initializer_body_list_for_csharp(Info, Inits, !IO) :-
 
 get_default_initializer_for_csharp(Info, Type) = Initializer :-
     (
-        Type = mercury_type(_, _, CtorCat),
+        Type = mercury_nb_type(_, CtorCat),
         (
-            ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int))
-            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8))
-            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16))
-            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32))
-            % C# byte and ushort literals don't have a suffix.
-            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8))
-            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16))
-            ; CtorCat = ctor_cat_builtin(cat_builtin_float)
-            ),
-            Initializer = "0"
+            CtorCat = ctor_cat_builtin(_),
+            unexpected($pred, "mercury_nb_type but ctor_cat_builtin")
         ;
-            ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint))
-            ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32))
-            ),
-            Initializer = "0U"
-        ;
-            CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64)),
-            Initializer = "0L"
-        ;
-            CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64)),
-            Initializer = "0UL"
-        ;
-            CtorCat = ctor_cat_builtin(cat_builtin_char),
-            Initializer = "'\\u0000'"
-        ;
-            ( CtorCat = ctor_cat_builtin(cat_builtin_string)
-            ; CtorCat = ctor_cat_system(_)
+            ( CtorCat = ctor_cat_system(_)
             ; CtorCat = ctor_cat_higher_order
             ; CtorCat = ctor_cat_tuple
             ; CtorCat = ctor_cat_variable
@@ -1055,16 +1032,33 @@ get_default_initializer_for_csharp(Info, Type) = Initializer :-
             Initializer = "default(" ++ TypeString ++ ")"
         )
     ;
-        ( Type = mlds_native_int_type
-        ; Type = mlds_native_float_type
+        ( Type = mlds_builtin_type_int(int_type_int)
+        ; Type = mlds_builtin_type_int(int_type_int8)
+        ; Type = mlds_builtin_type_int(int_type_int16)
+        ; Type = mlds_builtin_type_int(int_type_int32)
+        % C# byte and ushort literals don't have a suffix.
+        ; Type = mlds_builtin_type_int(int_type_uint8)
+        ; Type = mlds_builtin_type_int(int_type_uint16)
+        ; Type = mlds_builtin_type_float
         ),
         Initializer = "0"
     ;
-        Type = mlds_native_uint_type,
+        ( Type = mlds_builtin_type_int(int_type_uint)
+        ; Type = mlds_builtin_type_int(int_type_uint32)
+        ),
         Initializer = "0U"
     ;
-        Type = mlds_native_char_type,
+        Type = mlds_builtin_type_int(int_type_int64),
+        Initializer = "0L"
+    ;
+        Type = mlds_builtin_type_int(int_type_uint64),
+        Initializer = "0UL"
+    ;
+        Type = mlds_builtin_type_char,
         Initializer = "'\\u0000'"
+    ;
+        Type = mlds_builtin_type_string,
+        Initializer = "null"
     ;
         Type = mlds_native_bool_type,
         Initializer = "false"

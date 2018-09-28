@@ -143,13 +143,13 @@ rename_class_names_in_type(Renaming, !Type) :-
         rename_class_names_in_func_params(Renaming, FuncParams0, FuncParams),
         !:Type = mlds_func_type(FuncParams)
     ;
-        ( !.Type = mercury_type(_, _, _)
+        ( !.Type = mercury_nb_type(_, _)
         ; !.Type = mlds_commit_type
         ; !.Type = mlds_native_bool_type
-        ; !.Type = mlds_native_int_type
-        ; !.Type = mlds_native_uint_type
-        ; !.Type = mlds_native_float_type
-        ; !.Type = mlds_native_char_type
+        ; !.Type = mlds_builtin_type_int(_)
+        ; !.Type = mlds_builtin_type_float
+        ; !.Type = mlds_builtin_type_string
+        ; !.Type = mlds_builtin_type_char
         ; !.Type = mlds_foreign_type(_)
         ; !.Type = mlds_generic_type
         ; !.Type = mlds_generic_env_ptr_type

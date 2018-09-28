@@ -79,7 +79,6 @@
 :- implementation.
 
 :- import_module backend_libs.
-:- import_module backend_libs.foreign.
 :- import_module check_hlds.
 :- import_module check_hlds.polymorphism.
 :- import_module hlds.
@@ -199,7 +198,7 @@ ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context, GCStmt,
 
 ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
     (
-        Type = mercury_type(_, _, TypeCategory),
+        Type = mercury_nb_type(_, TypeCategory),
         MightContainPointers =
             ml_type_category_might_contain_pointers(TypeCategory)
     ;
@@ -223,11 +222,11 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
         ),
         MightContainPointers = yes
     ;
-        ( Type = mlds_native_int_type
-        ; Type = mlds_native_uint_type
-        ; Type = mlds_native_float_type
+        ( Type = mlds_builtin_type_int(_)
+        ; Type = mlds_builtin_type_float
+        ; Type = mlds_builtin_type_string
+        ; Type = mlds_builtin_type_char
         ; Type = mlds_native_bool_type
-        ; Type = mlds_native_char_type
         ; Type = mlds_foreign_type(_)
         % We assume that foreign types are not allowed to contain pointers
         % to the Mercury heap.  XXX is this requirement too strict?
@@ -381,7 +380,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     FuncLabel = mlds_func_label(ProcLabel, proc_func),
     QualFuncLabel = qual_func_label(MLDS_Module, FuncLabel),
-    CPointerType = mercury_type(c_pointer_type, no,
+    CPointerType = mercury_nb_type(c_pointer_type,
         ctor_cat_user(cat_user_general)),
     ArgTypes = [mlds_pseudo_type_info_type, CPointerType],
     Signature = mlds_func_signature(ArgTypes, []),

@@ -219,7 +219,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_type_gen.
-:- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
@@ -553,13 +552,14 @@ ml_gen_secondary_tag_rval(Info, VarType, Rval, Ptag, SectagFieldRval) :-
     ml_gen_info_get_high_level_data(Info, HighLevelData),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
+    IntType = mlds_builtin_type_int(int_type_int),
     (
         HighLevelData = no,
         % Note: with the low-level data representation, all fields are boxed,
         % even the secondary tag, and so we need to unbox (i.e. cast) it
         % back to the right type here.
         SectagFieldRval =
-            ml_unbox(mlds_native_int_type,
+            ml_unbox(IntType,
                 ml_lval(ml_field(yes(Ptag), Rval, MLDS_VarType,
                     ml_field_offset(ml_const(mlconst_int(0))),
                     mlds_generic_type)))
@@ -568,7 +568,7 @@ ml_gen_secondary_tag_rval(Info, VarType, Rval, Ptag, SectagFieldRval) :-
         ml_gen_info_get_target(Info, Target),
         FieldId = ml_gen_hl_tag_field_id(ModuleInfo, Target, VarType),
         SectagFieldRval = ml_lval(ml_field(yes(Ptag), Rval, MLDS_VarType,
-            FieldId, mlds_native_int_type))
+            FieldId, IntType))
     ).
 
     % Return the field_id for the "data_tag" field of the specified
@@ -845,13 +845,13 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
         ),
         Rval1 = Rval0
     ;
-        ( Fill = fill_int8,     ToMLDSType = mlds_int_type_uint8
-        ; Fill = fill_int16,    ToMLDSType = mlds_int_type_uint16
-        ; Fill = fill_int32,    ToMLDSType = mlds_int_type_uint32
+        ( Fill = fill_int8,  ToMLDSType = mlds_builtin_type_int(int_type_int8)
+        ; Fill = fill_int16, ToMLDSType = mlds_builtin_type_int(int_type_int16)
+        ; Fill = fill_int32, ToMLDSType = mlds_builtin_type_int(int_type_int32)
         ),
         Rval1 = ml_cast(ToMLDSType, Rval0)
     ),
-    Rval = ml_cast(mlds_int_type_uint, Rval1).
+    Rval = ml_cast(mlds_builtin_type_int(int_type_uint), Rval1).
 
 %---------------------------------------------------------------------------%
 

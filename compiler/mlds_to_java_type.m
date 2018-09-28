@@ -88,7 +88,6 @@
 :- import_module parse_tree.builtin_lib_types.
 
 :- import_module bool.
-:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -108,7 +107,7 @@ output_type_for_java_dims(Info, MLDS_Type, ArrayDims0, !IO) :-
 
 type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
     (
-        MLDS_Type = mercury_type(Type, _, CtorCat),
+        MLDS_Type = mercury_nb_type(Type, CtorCat),
         ( if
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
@@ -138,8 +137,49 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
                 ArrayDims)
         )
     ;
+        MLDS_Type = mlds_builtin_type_int(IntType),
+        % Java lacks unsigned integers.
+        (
+            ( IntType = int_type_int
+            ; IntType = int_type_uint
+            ; IntType = int_type_int32
+            ; IntType = int_type_uint32
+            ),
+            String = "int"
+        ;
+            ( IntType = int_type_int8
+            ; IntType = int_type_uint8
+            ),
+            String = "byte"
+        ;
+            ( IntType = int_type_int16
+            ; IntType = int_type_uint16
+            ),
+            String = "short"
+        ;
+            ( IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            String = "long"
+        ),
+        ArrayDims = []
+    ;
+        MLDS_Type = mlds_builtin_type_float,
+        String = "double",
+        ArrayDims = []
+    ;
+        MLDS_Type = mlds_builtin_type_string,
+        String = "java.lang.String",
+        ArrayDims = []
+    ;
+        MLDS_Type = mlds_builtin_type_char,
+        % Java `char' is not large enough for code points,
+        % so we must use `int'.
+        String = "int",
+        ArrayDims = []
+    ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
-        ( if ElementType = mercury_type(_, _, ctor_cat_variable) then
+        ( if ElementType = mercury_nb_type(_, ctor_cat_variable) then
             % We can't use `java.lang.Object []', since we want a generic type
             % that is capable of holding any kind of array, including e.g.
             % `int []'. Java doesn't have any equivalent of .NET's System.Array
@@ -163,25 +203,8 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
             )
         )
     ;
-        MLDS_Type = mlds_native_int_type,
-        String = "int",
-        ArrayDims = []
-    ;
-        MLDS_Type = mlds_native_uint_type,
-        String = "int", % Java lacks unsigned integers.
-        ArrayDims = []
-    ;
-        MLDS_Type = mlds_native_float_type,
-        String = "double",
-        ArrayDims = []
-    ;
         MLDS_Type = mlds_native_bool_type,
         String = "boolean",
-        ArrayDims = []
-    ;
-        MLDS_Type = mlds_native_char_type,
-        % Java `char' not large enough for code points so we must use `int'.
-        String = "int",
         ArrayDims = []
     ;
         MLDS_Type = mlds_foreign_type(ForeignType),
@@ -276,44 +299,8 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
 
 mercury_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
     (
-        CtorCat = ctor_cat_builtin(cat_builtin_char),
-        % Java `char' not large enough for code points so we must use `int'.
-        String = "int",
-        ArrayDims = []
-    ;
-        ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int))
-        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint))
-        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int32))
-        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint32))
-        ),
-        String = "int",
-        ArrayDims = []
-    ;
-        ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int8))
-        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint8))
-        ),
-        String = "byte",
-        ArrayDims = []
-    ;
-        ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int16))
-        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint16))
-        ),
-        String = "short",
-        ArrayDims = []
-    ;
-        ( CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int64))
-        ; CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_uint64))
-        ),
-        String = "long",
-        ArrayDims = []
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_string),
-        String = "java.lang.String",
-        ArrayDims = []
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_float),
-        String = "double",
-        ArrayDims = []
+        CtorCat = ctor_cat_builtin(_),
+        unexpected($pred, "ctor_cat_builtin")
     ;
         CtorCat = ctor_cat_void,
         String = "builtin.Void_0",
@@ -403,7 +390,7 @@ type_is_array_for_java(Type) = IsArray :-
         IsArray = is_array
     else if Type = mlds_mercury_array_type(_) then
         IsArray = is_array
-    else if Type = mercury_type(_, _, CtorCat) then
+    else if Type = mercury_nb_type(_, CtorCat) then
         IsArray = type_category_is_array(CtorCat)
     else if Type = mlds_rtti_type(RttiIdMaybeElement) then
         rtti_id_maybe_element_java_type(RttiIdMaybeElement,
@@ -488,73 +475,58 @@ boxed_type_to_string_for_java(Info, Type, String) :-
 java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
     require_complete_switch [MLDS_Type]
     (
-        MLDS_Type = mlds_native_bool_type,
-        JavaUnboxedType = "boolean",
-        JavaBoxedType = "java.lang.Boolean",
-        UnboxMethod = "booleanValue"
-    ;
         % NOTE: Java's `char' type is not large enough for code points so we
         % must use `int'.  Java has no unsigned types so we represent them
         % as `int'.
-        ( MLDS_Type = mlds_native_char_type
-        ; MLDS_Type = mlds_native_int_type
-        ; MLDS_Type = mlds_native_uint_type
+        ( MLDS_Type = mlds_builtin_type_char
+        ; MLDS_Type = mlds_builtin_type_int(int_type_int)
+        ; MLDS_Type = mlds_builtin_type_int(int_type_uint)
+        ; MLDS_Type = mlds_builtin_type_int(int_type_int32)
+        ; MLDS_Type = mlds_builtin_type_int(int_type_uint32)
         ),
         JavaUnboxedType = "int",
         JavaBoxedType = "java.lang.Integer",
         UnboxMethod = "intValue"
     ;
-        MLDS_Type = mlds_native_float_type,
+        ( MLDS_Type = mlds_builtin_type_int(int_type_int8)
+        ; MLDS_Type = mlds_builtin_type_int(int_type_uint8)
+        ),
+        JavaUnboxedType = "byte",
+        JavaBoxedType = "java.lang.Byte",
+        UnboxMethod = "byteValue"
+    ;
+        ( MLDS_Type = mlds_builtin_type_int(int_type_int16)
+        ; MLDS_Type = mlds_builtin_type_int(int_type_uint16)
+        ),
+        JavaUnboxedType = "short",
+        JavaBoxedType = "java.lang.Short",
+        UnboxMethod = "shortValue"
+    ;
+        ( MLDS_Type = mlds_builtin_type_int(int_type_int64)
+        ; MLDS_Type = mlds_builtin_type_int(int_type_uint64)
+        ),
+        JavaUnboxedType = "long",
+        JavaBoxedType = "java.lang.Long",
+        UnboxMethod = "longValue"
+    ;
+        MLDS_Type = mlds_builtin_type_float,
         JavaUnboxedType = "double",
         JavaBoxedType = "java.lang.Double",
         UnboxMethod = "doubleValue"
     ;
-        MLDS_Type = mercury_type(MerType, _, TypeCtorCat),
+        MLDS_Type = mlds_builtin_type_string,
+        fail
+    ;
+        MLDS_Type = mlds_native_bool_type,
+        JavaUnboxedType = "boolean",
+        JavaBoxedType = "java.lang.Boolean",
+        UnboxMethod = "booleanValue"
+    ;
+        MLDS_Type = mercury_nb_type(MerType, TypeCtorCat),
         require_complete_switch [MerType]
         (
-            MerType = builtin_type(BuiltinType),
-            require_complete_switch [BuiltinType] (
-                % The rationale for the handling of `char' and `uint' here
-                % is the same as for the mlds_native types above.
-                ( BuiltinType = builtin_type_char
-                ; BuiltinType = builtin_type_int(int_type_int)
-                ; BuiltinType = builtin_type_int(int_type_uint)
-                ; BuiltinType = builtin_type_int(int_type_int32)
-                ; BuiltinType = builtin_type_int(int_type_uint32)
-                ),
-                JavaUnboxedType = "int",
-                JavaBoxedType = "java.lang.Integer",
-                UnboxMethod = "intValue"
-            ;
-                ( BuiltinType = builtin_type_int(int_type_int8)
-                ; BuiltinType = builtin_type_int(int_type_uint8)
-                ),
-                JavaUnboxedType = "byte",
-                JavaBoxedType = "java.lang.Byte",
-                UnboxMethod = "byteValue"
-            ;
-                ( BuiltinType = builtin_type_int(int_type_int16)
-                ; BuiltinType = builtin_type_int(int_type_uint16)
-                ),
-                JavaUnboxedType = "short",
-                JavaBoxedType = "java.lang.Short",
-                UnboxMethod = "shortValue"
-            ;
-                ( BuiltinType = builtin_type_int(int_type_int64)
-                ; BuiltinType = builtin_type_int(int_type_uint64)
-                ),
-                JavaUnboxedType = "long",
-                JavaBoxedType = "java.lang.Long",
-                UnboxMethod = "longValue"
-            ;
-                BuiltinType = builtin_type_float,
-                JavaUnboxedType = "double",
-                JavaBoxedType = "java.lang.Double",
-                UnboxMethod = "doubleValue"
-            ;
-                BuiltinType = builtin_type_string,
-                fail
-            )
+            MerType = builtin_type(_),
+            unexpected($pred, "mercury_nb_type but builtin_type")
         ;
             MerType = defined_type(_, _, _),
             require_complete_switch [TypeCtorCat] (

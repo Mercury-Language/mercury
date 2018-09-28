@@ -327,7 +327,8 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
 
 ml_gen_hld_enum_value_member(Context) =
     mlds_field_var_defn(fvn_mr_value, Context, ml_gen_member_data_decl_flags,
-        mlds_native_int_type, no_initializer, gc_no_stmt).
+        mlds_builtin_type_int(int_type_int),
+        no_initializer, gc_no_stmt).
 
 :- func ml_gen_hld_enum_constant(prog_context, mlds_type, constructor_repn)
     = mlds_field_var_defn.
@@ -342,7 +343,8 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     Name = unqualify_name(QualSymName),
     VarName = fvn_enum_const(Name),
     FieldVarDefn = mlds_field_var_defn(VarName, Context,
-        ml_gen_enum_constant_data_decl_flags, mlds_native_int_type,
+        ml_gen_enum_constant_data_decl_flags,
+        mlds_builtin_type_int(int_type_int),
         init_obj(ConstRval), gc_no_stmt).
 
 %---------------------------------------------------------------------------%
@@ -441,7 +443,8 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
     ( if NumWithSecTag > 0 then
         % Generate the members for the secondary tag.
         TagVarMember = mlds_field_var_defn(fvn_data_tag, Context,
-            ml_gen_member_data_decl_flags, mlds_native_int_type,
+            ml_gen_member_data_decl_flags,
+            mlds_builtin_type_int(int_type_int),
             no_initializer, gc_no_stmt),
         TagConstMembers = [],
         % XXX we don't yet bother with these;
@@ -558,7 +561,8 @@ ml_gen_hld_tag_constant(Context, CtorRepn) = Defns :-
         VarName = fvn_sectag_const(UnqualifiedName),
         ConstValue = ml_const(mlconst_int(SecondaryTag)),
         Defn = mlds_field_var_defn(VarName, Context,
-            ml_gen_enum_constant_data_decl_flags, mlds_native_int_type,
+            ml_gen_enum_constant_data_decl_flags,
+            mlds_builtin_type_int(int_type_int),
             init_obj(ConstValue), gc_no_stmt),
         Defns = [Defn]
     ;
@@ -864,7 +868,7 @@ gen_init_tag(Target, CtorClassId, SecondaryTagClassId, TagVal, Context)
         qual_field_var_name(TagClassQualifier, type_qual, fvn_data_tag),
         mlds_ptr_type(mlds_class_type(SecondaryTagClassId))),
     FieldLval = ml_field(yes(ptag(0u8)), ml_self(CtorClassType), CtorClassType,
-        FieldId, mlds_native_int_type),
+        FieldId, mlds_builtin_type_int(int_type_int)),
     Stmt = ml_stmt_atomic(assign(FieldLval, Rval), Context).
 
 :- pred ml_gen_hld_du_ctor_typeclass_info_field(module_info::in,

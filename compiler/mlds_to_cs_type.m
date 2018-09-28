@@ -85,7 +85,6 @@
 :- import_module parse_tree.builtin_lib_types.
 
 :- import_module bool.
-:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -105,7 +104,7 @@ output_type_for_csharp_dims(Info, MLDS_Type, ArrayDims0, !IO) :-
 
 type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
     (
-        MLDS_Type = mercury_type(Type, _, CtorCat),
+        MLDS_Type = mercury_nb_type(Type, CtorCat),
         ( if
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
@@ -135,7 +134,7 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         )
     ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
-        ( if ElementType = mercury_type(_, _, ctor_cat_variable) then
+        ( if ElementType = mercury_nb_type(_, ctor_cat_variable) then
             String = "System.Array",
             ArrayDims = []
         else
@@ -156,25 +155,25 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
             )
         )
     ;
-        MLDS_Type = mlds_native_int_type,
-        String = "int",
+        MLDS_Type = mlds_builtin_type_int(IntType),
+        String = int_type_to_csharp_type(IntType),
         ArrayDims = []
     ;
-        MLDS_Type = mlds_native_uint_type,
-        String = "uint",
-        ArrayDims = []
-    ;
-        MLDS_Type = mlds_native_float_type,
+        MLDS_Type = mlds_builtin_type_float,
         String = "double",
+        ArrayDims = []
+    ;
+        MLDS_Type = mlds_builtin_type_string,
+        String = "string",
+        ArrayDims = []
+    ;
+        MLDS_Type = mlds_builtin_type_char,
+        % C# `char' not large enough for code points so we must use `int'.
+        String = "int",
         ArrayDims = []
     ;
         MLDS_Type = mlds_native_bool_type,
         String = "bool",
-        ArrayDims = []
-    ;
-        MLDS_Type = mlds_native_char_type,
-        % C# `char' not large enough for code points so we must use `int'.
-        String = "int",
         ArrayDims = []
     ;
         MLDS_Type = mlds_foreign_type(ForeignType),
@@ -340,37 +339,28 @@ csharp_builtin_type(Type, TargetType) :-
         Type = mlds_native_bool_type,
         TargetType = "bool"
     ;
-        % C# `char' is not large enough for code points so we must use `int'.
-        ( Type = mlds_native_int_type
-        ; Type = mlds_native_char_type
-        ),
-        TargetType = "int"
+        Type = mlds_builtin_type_int(IntType),
+        TargetType = int_type_to_csharp_type(IntType)
     ;
-        Type = mlds_native_uint_type,
-        TargetType = "uint"
-    ;
-        Type = mlds_native_float_type,
+        Type = mlds_builtin_type_float,
         TargetType = "double"
     ;
-        Type = mercury_type(MerType, _, TypeCtorCat),
-        require_complete_switch [MerType] (
-            MerType = builtin_type(BuiltinType),
-            require_complete_switch [BuiltinType] (
-                BuiltinType = builtin_type_char,
-                TargetType = "int"
-            ;
-                BuiltinType = builtin_type_int(IntType),
-                TargetType = int_type_to_csharp_type(IntType)
-            ;
-                BuiltinType = builtin_type_float,
-                TargetType = "double"
-            ;
-                BuiltinType = builtin_type_string,
-                fail
-            )
+        Type = mlds_builtin_type_string,
+        fail
     ;
+        % C# `char' is not large enough for code points so we must use `int'.
+        Type = mlds_builtin_type_char,
+        TargetType = "int"
+    ;
+        Type = mercury_nb_type(MerType, TypeCtorCat),
+        require_complete_switch [MerType]
+        (
+            MerType = builtin_type(_BuiltinType),
+            unexpected($pred, "mercury_nb_type but builtin_type")
+        ;
             MerType = defined_type(_, _, _),
-            require_complete_switch [TypeCtorCat] (
+            require_complete_switch [TypeCtorCat]
+            (
                 % io.state and store.store(S) are dummy variables for which we
                 % pass an arbitrary integer. For this reason they should have
                 % the C# type `int'.
@@ -486,7 +476,7 @@ type_is_array_for_csharp(Type) = IsArray :-
         IsArray = is_array
     else if Type = mlds_mercury_array_type(_) then
         IsArray = is_array
-    else if Type = mercury_type(_, _, CtorCat) then
+    else if Type = mercury_nb_type(_, CtorCat) then
         IsArray = type_category_is_array(CtorCat)
     else if Type = mlds_rtti_type(RttiIdMaybeElement) then
         rtti_id_maybe_element_csharp_type(RttiIdMaybeElement,

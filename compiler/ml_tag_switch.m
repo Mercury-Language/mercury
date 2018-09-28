@@ -114,8 +114,8 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail,
 
     % Package up the results into a switch statement.
     Range = mlds_switch_range(0, uint8.cast_to_int(MaxPrimary)),
-    SwitchStmt0 = ml_stmt_switch(mlds_native_int_type, PtagRval, Range,
-        PtagCases, Default, Context),
+    SwitchStmt0 = ml_stmt_switch(mlds_builtin_type_int(int_type_int),
+        PtagRval, Range, PtagCases, Default, Context),
     ml_simplify_switch(SwitchStmt0, SwitchStmt, !Info),
     Stmts = [SwitchStmt].
 
@@ -357,8 +357,8 @@ gen_stag_switch(Cases, CodeMap, Ptag, StagLocn, Var, CodeModel,
 
     % Package up the results into a switch statement.
     Range = mlds_switch_range_unknown, % XXX could do better
-    SwitchStmt = ml_stmt_switch(mlds_native_int_type, StagRval, Range,
-        StagCases, Default, Context),
+    SwitchStmt = ml_stmt_switch(mlds_builtin_type_int(int_type_int),
+        StagRval, Range, StagCases, Default, Context),
     ml_simplify_switch(SwitchStmt, Stmt, !Info).
 
 %---------------------------------------------------------------------------%
