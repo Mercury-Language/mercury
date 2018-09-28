@@ -6828,7 +6828,15 @@ indicator for a foreign procedure is correctly set, and whether
 the foreign procedure body contains operations that are not allowed
 (for example, @code{return} statements in a C foreign procedure).
 Note that since the compiler's ability to parse foreign language code
-is limited some warnings reported by this option may be spurious and
+is limited, some warnings reported by this option may be spurious, and
+some actual errors may not be detected at all.
+
+@sp 1
+@item --warn-suspicious-foreign-code
+@findex --warn-suspicious-foreign-code
+Warn about possible errors in the bodies of foreign code pragmas.
+Note that since the compiler's ability to parse foreign language code
+is limited, some warnings reported by this option may be spurious, and
 some actual errors may not be detected at all.
 
 @sp 1

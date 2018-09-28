@@ -42,6 +42,7 @@ ERRORCHECK_PROGS = \
 	singleton_test_state_var \
 	spurious_obsolete \
 	state_vars_test \
+	suspicious_foreign_code \
 	table_with_inline \
 	unify_f_g \
 	unify_x_f_x \

@@ -193,6 +193,7 @@
     ;       inform_incomplete_switch_threshold
     ;       warn_unresolved_polymorphism
     ;       warn_suspicious_foreign_procs
+    ;       warn_suspicious_foreign_code
     ;       warn_state_var_shadowing
     ;       inform_inferred
     ;       inform_inferred_types
@@ -1209,6 +1210,7 @@ option_defaults_2(warning_option, [
     inform_incomplete_switch_threshold  -   int(0),
     warn_unresolved_polymorphism        -   bool(yes),
     warn_suspicious_foreign_procs       -   bool(no),
+    warn_suspicious_foreign_code        -   bool(no),
     warn_state_var_shadowing            -   bool(yes),
     inform_inferred                     -   bool_special,
     inform_inferred_types               -   bool(yes),
@@ -2121,6 +2123,7 @@ long_option("inform-incomplete-switch-threshold",
                     inform_incomplete_switch_threshold).
 long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
 long_option("warn-suspicious-foreign-procs", warn_suspicious_foreign_procs).
+long_option("warn-suspicious-foreign-code", warn_suspicious_foreign_code).
 long_option("warn-state-var-shadowing", warn_state_var_shadowing).
 long_option("inform-inferred",          inform_inferred).
 long_option("inform-inferred-types",    inform_inferred_types).
@@ -3942,6 +3945,9 @@ options_help_warning -->
         "--warn-suspicious-foreign-procs",
         "\tWarn about possible errors in the bodies of foreign",
         "\tprocedures.",
+        "--warn-suspicious-foreign-code",
+        "\tWarn about possible errors in the bodies of foreign code",
+        "\tpragmas.",
         "--no-warn-state-var-shadowing",
         "\tDo not warn about one state variable shadowing another.",
         "--no-inform-inferred",

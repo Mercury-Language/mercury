@@ -68,6 +68,14 @@
 :- pred check_promise_ex_decl(prog_vars::in, promise_type::in, goal::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
+    % Warn about suspicious things in the bodies of foreign_code pragmas.
+    % Currently, this just checks for the presence of the MR_ALLOC_ID macro
+    % inside the bodies of a foreign_code pragmas.
+    %
+:- pred warn_suspicious_foreign_code(foreign_language::in,
+    foreign_literal_or_include::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
@@ -889,6 +897,44 @@ promise_ex_error(PromiseType, Context, Message, !Specs) :-
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+%-----------------------------------------------------------------------------%
+
+warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
+    (
+        BodyCode = floi_include_file(_)
+    ;
+        BodyCode = floi_literal(Code),
+        (
+            Lang = lang_c,
+            c_code_to_name_list(Code, C_CodeList),
+            ( if list.member("MR_ALLOC_ID", C_CodeList) then
+                Pieces = [
+                    words("Warning: the body of this"),
+                    pragma_decl("foreign_code"),
+                    words("declaration may refer to the"),
+                    quote("MR_ALLOC_ID"), words("macro."),
+                    words("That macro is only defined within the body of"),
+                    pragma_decl("foreign_proc"), words("declarations.")
+                ],
+                Msg = simple_msg(Context,
+                    [option_is_set(warn_suspicious_foreign_code, yes,
+                    [always(Pieces)])]),
+                Severity = severity_conditional(
+                    warn_suspicious_foreign_code, yes,
+                    severity_warning, no),
+                Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+                !:Specs = [Spec | !.Specs]
+            else
+                true
+            )
+        ;
+            ( Lang = lang_csharp
+            ; Lang = lang_java
+            ; Lang = lang_erlang
+            )
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.make_hlds_warn.

@@ -1,0 +1,5 @@
+suspicious_foreign_code.m:010: Warning: the body of this
+suspicious_foreign_code.m:010:   `:- pragma foreign_code' declaration may refer
+suspicious_foreign_code.m:010:   to the `MR_ALLOC_ID' macro. That macro is only
+suspicious_foreign_code.m:010:   defined within the body of
+suspicious_foreign_code.m:010:   `:- pragma foreign_proc' declarations.

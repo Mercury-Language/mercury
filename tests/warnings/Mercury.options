@@ -80,3 +80,4 @@ MCFLAGS-inconsistent_pred_order = \
 MCFLAGS-warn_self_import	= --warn-simple-code
 MCFLAGS-warn_return  		= --warn-suspicious-foreign-procs
 MCFLAGS-warn_succ_ind		= --warn-suspicious-foreign-procs
+MCFLAGS-suspicious_foreign_code = --warn-suspicious-foreign-code

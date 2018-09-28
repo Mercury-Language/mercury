@@ -92,6 +92,7 @@
 :- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.make_hlds.add_pragma.add_pragma_tabling.
 :- import_module hlds.make_hlds.add_pragma.add_pragma_type_spec.
+:- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module libs.
@@ -155,6 +156,7 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
         Pragma = pragma_foreign_code(FCInfo),
         % XXX STATUS Check ItemMercuryStatus
         FCInfo = pragma_info_foreign_code(Lang, BodyCode),
+        warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs),
         ForeignBodyCode = foreign_body_code(Lang, BodyCode, Context),
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ;
