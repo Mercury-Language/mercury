@@ -130,9 +130,9 @@ store_promise(PredId, PredInfo, PromiseType, !ModuleInfo, Goal) :-
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
         get_promise_ex_goal(PredInfo, Goal),
-        predids_from_goal(Goal, PredIds),
+        pred_ids_called_from_goal(Goal, CalleePredIds),
         module_info_get_exclusive_table(!.ModuleInfo, Table0),
-        list.foldl(exclusive_table_add(PredId), PredIds, Table0, Table),
+        list.foldl(exclusive_table_add(PredId), CalleePredIds, Table0, Table),
         module_info_set_exclusive_table(Table, !ModuleInfo)
     ;
         % Exhaustiveness promises -- XXX not yet implemented.

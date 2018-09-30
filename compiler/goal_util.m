@@ -229,22 +229,24 @@
     %
 :- pred direct_subgoal(hlds_goal_expr::in, hlds_goal::out) is nondet.
 
-    % Returns all the predids that are used within a goal.
+    % Returns all the pred_ids that are called from a list of goals.
     %
-:- pred predids_from_goal(hlds_goal::in, list(pred_id)::out) is det.
+:- pred pred_ids_called_from_goals(list(hlds_goal)::in,
+    list(pred_id)::out) is det.
 
-    % Returns all the predids that are called along with the list of
-    % arguments.
-:- pred predids_with_args_from_goal(hlds_goal::in,
+    % Returns all the pred_ids that are called from a goal.
+    %
+:- pred pred_ids_called_from_goal(hlds_goal::in, list(pred_id)::out) is det.
+
+    % Returns all the pred_id/arg_list pairs that are called from a goal.
+    %
+:- pred pred_ids_args_called_from_goal(hlds_goal::in,
     list({pred_id, list(prog_var)})::out) is det.
 
-    % Returns all the predids that are used in a list of goals.
+    % Returns all the pred_proc_ids that are called from a goal.
     %
-:- pred predids_from_goals(list(hlds_goal)::in, list(pred_id)::out) is det.
-
-    % Returns all the procedures that are used within a goal.
-    %
-:- pred pred_proc_ids_from_goal(hlds_goal::in, list(pred_proc_id)::out) is det.
+:- pred pred_proc_ids_called_from_goal(hlds_goal::in,
+    list(pred_proc_id)::out) is det.
 
 :- type goal_is_atomic
     --->    goal_is_atomic
@@ -1227,7 +1229,7 @@ cons_id_proc_refs_acc(ConsId, !ReferredToProcs) :-
 %
 % We could implement goal_calls as
 %   goal_calls(Goal, proc(PredId, ProcId)) :-
-%       goal_contains_subgoal(Goal, call(PredId, ProcId, _, _, _, _)).
+%       goal_contains_subgoal(Goal, plain_call(PredId, ProcId, _, _, _, _)).
 % but the following is more efficient in the (in, in) mode
 % since it avoids creating any choice points.
 %
@@ -1316,7 +1318,7 @@ goal_expr_calls(GoalExpr, PredProcId) :-
 %
 % We could implement goal_calls_pred_id as
 %   goal_calls_pred_id(Goal, PredId) :-
-%       goal_contains_subgoal(Goal, call(PredId, _, _, _, _, _)).
+%       goal_contains_subgoal(Goal, plain_call(PredId, _, _, _, _, _)).
 % but the following is more efficient in the (in, in) mode
 % since it avoids creating any choice points.
 %
@@ -2008,35 +2010,41 @@ generate_cast_with_insts(CastType, InArg, OutArg, InInst, OutInst, Context,
 
 %-----------------------------------------------------------------------------%
 
-predids_from_goals(Goals, PredIds) :-
+pred_ids_called_from_goals(Goals, PredIds) :-
     (
         Goals = [],
         PredIds = []
     ;
-        Goals = [Goal | Rest],
-        predids_from_goal(Goal, PredIds0),
-        predids_from_goals(Rest, PredIds1),
-        PredIds = PredIds0 ++ PredIds1
+        Goals = [HeadGoal | TailGoals],
+        pred_ids_called_from_goal(HeadGoal, HeadPredIds),
+        pred_ids_called_from_goals(TailGoals, TailPredIds),
+        PredIds = HeadPredIds ++ TailPredIds
     ).
 
-predids_from_goal(Goal, PredIds) :-
+pred_ids_called_from_goal(Goal, PredIds) :-
     % Explicit lambda expression needed since goal_calls_pred_id
     % has multiple modes.
     P = ( pred(PredId::out) is nondet :-
-            goal_calls_pred_id(Goal, PredId)
+            goal_contains_goal(Goal, SubGoal),
+            SubGoal = hlds_goal(SubGoalExpr, _),
+            SubGoalExpr = plain_call(PredId, _, _, _, _, _)
         ),
     solutions.solutions(P, PredIds).
 
-predids_with_args_from_goal(Goal, List) :-
-    solutions(
-        ( pred({PredId, Args}::out) is nondet :-
-            goal_contains_goal(Goal, hlds_goal(SubGoal, _)),
-            SubGoal = plain_call(PredId, _, Args, _, _, _)
-        ), List).
+pred_ids_args_called_from_goal(Goal, List) :-
+    P = ( pred({PredId, Args}::out) is nondet :-
+            goal_contains_goal(Goal, SubGoal),
+            SubGoal = hlds_goal(SubGoalExpr, _),
+            SubGoalExpr = plain_call(PredId, _, Args, _, _, _)
+        ),
+    solutions(P, List).
 
-pred_proc_ids_from_goal(Goal, PredProcIds) :-
+pred_proc_ids_called_from_goal(Goal, PredProcIds) :-
     P = ( pred(PredProcId::out) is nondet :-
-            goal_calls(Goal, PredProcId)
+            goal_contains_goal(Goal, SubGoal),
+            SubGoal = hlds_goal(SubGoalExpr, _),
+            SubGoalExpr = plain_call(PredId, ProcId, _, _, _, _),
+            PredProcId = proc(PredId, ProcId)
         ),
     solutions.solutions(P, PredProcIds).
 

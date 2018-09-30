@@ -1980,7 +1980,7 @@ record_intermod_dependencies(ModuleInfo, CallerPredProcId, !AnalysisInfo) :-
     module_info_pred_proc_info(ModuleInfo, CallerPredProcId,
         _CallerPredInfo, CallerProcInfo),
     proc_info_get_goal(CallerProcInfo, Goal),
-    pred_proc_ids_from_goal(Goal, CalleePredProcIds),
+    pred_proc_ids_called_from_goal(Goal, CalleePredProcIds),
     list.foldl(record_intermod_dependencies_2(ModuleInfo),
         CalleePredProcIds, !AnalysisInfo).
 

@@ -720,26 +720,24 @@ equal_goals_cases([CaseA | CaseAs], [CaseB | CaseBs], !Subst) :-
 %-----------------------------------------------------------------------------%
 
 record_preds_used_in(Goal, AssertId, !Module) :-
-    predids_from_goal(Goal, PredIds),
+    pred_ids_called_from_goal(Goal, CalleePredIds),
     % Sanity check.
-    ( if list.member(invalid_pred_id, PredIds) then
+    ( if list.member(invalid_pred_id, CalleePredIds) then
         unexpected($module, $pred, "invalid pred_id")
     else
         true
     ),
-    list.foldl(update_pred_info(AssertId), PredIds, !Module).
+    list.foldl(record_use_in_assertion(AssertId), CalleePredIds, !Module).
 
-%-----------------------------------------------------------------------------%
-
-    % update_pred_info(Id, A, !Module):
+    % record_use_in_assertion(AssertId, PredId, !Module):
     %
-    % Record in the pred_info pointed to by Id that that predicate
-    % is used in the assertion pointed to by A.
+    % Record in PredId's pred_info that that predicate is used
+    % in assertion AssertId.
     %
-:- pred update_pred_info(assert_id::in, pred_id::in,
+:- pred record_use_in_assertion(assert_id::in, pred_id::in,
     module_info::in, module_info::out) is det.
 
-update_pred_info(AssertId, PredId, !Module) :-
+record_use_in_assertion(AssertId, PredId, !Module) :-
     module_info_pred_info(!.Module, PredId, PredInfo0),
     pred_info_get_assertions(PredInfo0, Assertions0),
     set.insert(AssertId, Assertions0, Assertions),

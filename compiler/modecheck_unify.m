@@ -537,7 +537,7 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
         UnifyContext, GoalInfo0, Goal, !ModeInfo) :-
     RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal0),
     % Find out the predicate called in the lambda goal.
-    ( if predids_with_args_from_goal(Goal0, [{PredId, ArgVars}]) then
+    ( if pred_ids_args_called_from_goal(Goal0, [{PredId, ArgVars}]) then
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
