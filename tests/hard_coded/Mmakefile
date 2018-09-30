@@ -43,6 +43,7 @@ ORDINARY_PROGS = \
 	bug452 \
 	bug455_mod_a \
 	bug_pack_bits \
+	bulk_compare_packed \
 	c89_neg_int \
 	c_write_string \
 	calendar_test \
