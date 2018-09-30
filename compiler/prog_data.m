@@ -1574,18 +1574,18 @@ valid_trace_grade_name(GradeName) :-
     % What kind of promise does a promise item contain?
     %
 :- type promise_type
-            % promise ex declarations
     --->    promise_type_exclusive
-            % Each disjunct is mutually exclusive.
+            % Two disjunct cannot be true at once.
 
     ;       promise_type_exhaustive
-            % Disjunction cannot fail.
+            % At least one disjunct will be true.
 
     ;       promise_type_exclusive_exhaustive
-            % Both of the above assertions
+            % Both of the above assertions, which means that
+            % *exactly* one disjunct will be true.
 
     ;       promise_type_true.
-            % Promise goal is true.
+            % Promise that the given goal is true.
 
     % A predicate or function declaration may either give (a) only the types
     % of the arguments, or (b) both their types and modes.

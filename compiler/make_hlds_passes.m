@@ -804,15 +804,15 @@ add_promise(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
         Context, _SeqNum),
     % If the outermost universally quantified variables are placed in the head
     % of the dummy predicate, the typechecker will avoid warning about unbound
-    % type variables as this implicitly adds a universal quantification of the
+    % type variables, as this implicitly adds a universal quantification of the
     % type variables needed.
     term.var_list_to_term_list(UnivVars, HeadVars),
     (
-        % Extra error checking for promise ex declarations.
         ( PromiseType = promise_type_exclusive
         ; PromiseType = promise_type_exhaustive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
+        % Extra error checking for promise ex declarations.
         check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !Specs)
     ;
         PromiseType = promise_type_true
@@ -835,7 +835,7 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
         [s(prog_out.promise_to_string(PromiseType)), i(Line), s(File)], Name),
 
     % Promise declarations are recorded as a predicate with a goal_type
-    % of goal_type_promise(X), where X is of promise_type. This allows us
+    % of goal_type_promise(X), where X is a promise_type. This allows us
     % to leverage off all the other checks in the compiler that operate
     % on predicates.
     %

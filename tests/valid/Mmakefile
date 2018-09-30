@@ -128,6 +128,7 @@ OTHER_PROGS = \
 	foreign_underscore_var \
 	func_default_modes \
 	func_in_head \
+	github_50 \
 	hawkins_switch_bug \
 	headvar_not_found \
 	higher_order \

@@ -468,17 +468,21 @@
 :- pred module_info_pred_proc_info(module_info::in, pred_proc_id::in,
     pred_info::out, proc_info::out) is det.
 
-    % Return a set or list of the pred_ids of all the valid predicates.
-    % (Predicates whose definition contains a type error, etc.
-    % get removed from this list, so that later passes can rely
-    % on the predicates in this list being type-correct, etc.)
+    % Return a set of the pred_ids of all the valid predicates.
+    % Predicates whose definition contains a type error, etc.
+    % get removed from this set, so that later passes can rely
+    % on the predicates in this set being type-correct, etc.
     %
 :- pred module_info_get_valid_pred_id_set(module_info::in,
     set_tree234(pred_id)::out) is det.
+
+    % Return the same pred_ids as module_info_get_valid_pred_id_set,
+    % but in the form of a sorted list.
+    %
 :- pred module_info_get_valid_pred_ids(module_info::in,
     list(pred_id)::out) is det.
 
-    % Remove one or more predicates from the list of valid pred_ids,
+    % Remove one or more predicates from the set of valid pred_ids,
     % to prevent further processing of those predicates after errors
     % have been encountered in them.
     %

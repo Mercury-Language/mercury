@@ -58,7 +58,7 @@
 % We should do a topological sort, and then typecheck it all bottom-up.
 % If we infer an ambiguous type for a pred, we should not reject it
 % immediately; instead we should give it an overloaded type, and keep going.
-% When we've finished type inference, we should then delete unused
+% When we have finished type inference, we should then delete unused
 % overloadings, and only then should we report ambiguity errors,
 % if any overloading still remains.
 %
@@ -694,7 +694,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
             infer_existential_types(ArgTypeVars, ExistQVars,
                 !ExternalTypeParams),
 
-            % Now save the information we inferred in the pred_info
+            % Now save the information we inferred in the pred_info.
             pred_info_set_external_type_params(!.ExternalTypeParams,
                 !PredInfo),
             pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
@@ -3499,11 +3499,11 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     % each procedure that there is a foreign_proc declaration for all
     % languages for which this type has a foreign_type declaration, but
     % this will do for now. Such a check may be difficult because by
-    % this point we've thrown away the clauses which we aren't using
+    % this point we have thrown away the clauses which we are not using
     % in the current compilation.
     %
     % The `.opt' files don't contain the foreign clauses from the source
-    % file that aren't used when compiling in the current grade, so we
+    % file that are not used when compiling in the current grade, so we
     % allow foreign type constructors in `opt_imported' predicates even
     % if there are no foreign clauses. Errors will be caught when creating
     % the `.opt' file.
