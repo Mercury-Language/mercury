@@ -83,7 +83,7 @@ len(L, Len0, Len) :-
   ;
     L = [_ | T],
     Len1 = Len0 + 1,
-      len(T, Len1, Len)
+    len(T, Len1, Len)
   ).
 </pre>
 
@@ -423,7 +423,7 @@ yielding the code represented by "body of procedure ..." above.
 We call these <em>inner</em> or <em>wrapped</em> procedures.
 If the TSCC contains N procedures,
 then each C function we generate will contain N wrapped procedures.
-We call entirety of each C function
+We call the entirety of each C function
 an <em>outer</em> or <em>container</em> procedure,
 since each contains two or more wrapped procedures.
 We must generate a container procedure
@@ -778,7 +778,7 @@ as part of the vector of return values.
 <p>
 When an output argument is passed by reference,
 we create a tscc_output_ptr_M_VarName variable for it
-as well as a tscc_output_ptr_M_VarName variable.
+as well as a tscc_output_M_VarName variable.
 The parts of a container function
 corresponding to such an output argument are the following.
 
