@@ -124,7 +124,7 @@ ml_find_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
         ;
             % We generate incorrect and unnecessary code for the external
             % special preds which are pseudo_imported, so just ignore them.
-            is_unify_or_compare_pred(PredInfo0),
+            is_unify_index_or_compare_pred(PredInfo0),
             PredStatus =
                 pred_status(status_external(status_pseudo_imported))
         )

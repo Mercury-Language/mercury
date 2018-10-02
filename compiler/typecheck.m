@@ -430,7 +430,7 @@ typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, Specs,
         % predicate or if it is a special pred for an existentially typed
         % data type.
         (
-            is_unify_or_compare_pred(!.PredInfo),
+            is_unify_index_or_compare_pred(!.PredInfo),
             not special_pred_needs_typecheck(!.PredInfo, ModuleInfo)
         ;
             pred_info_is_builtin(!.PredInfo),
@@ -518,7 +518,10 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
     some [!ClausesInfo] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
-        clauses_info_get_had_syntax_errors(!.ClausesInfo, FoundSyntaxError),
+        clauses_info_get_had_syntax_errors(!.ClausesInfo, FoundSyntaxError0),
+        ( FoundSyntaxError0 = no_clause_syntax_errors, FoundSyntaxError = no
+        ; FoundSyntaxError0 = some_clause_syntax_errors, FoundSyntaxError = yes
+        ),
         clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep1, _ItemNumbers),
         clause_list_is_empty(ClausesRep1) = ClausesRep1IsEmpty,
         (
@@ -851,8 +854,8 @@ generate_stub_clause(PredId, !PredInfo, ModuleInfo) :-
     module_info::in, clause::out, prog_varset::in, prog_varset::out) is det.
 
 generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
-    % Mark the predicate as a stub
-    % (i.e. record that it originally had no clauses)
+    % Mark the predicate as a stub, i.e. record that it originally
+    % had no clauses.
     pred_info_get_markers(!.PredInfo, Markers0),
     add_marker(marker_stub, Markers0, Markers),
     pred_info_set_markers(Markers, !PredInfo),
@@ -3515,7 +3518,7 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     ( if
         Body ^ du_type_is_foreign_type = yes(_),
         not pred_info_get_goal_type(PredInfo, goal_type_clause_and_foreign),
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
         PredStatus \= pred_status(status_opt_imported)
     then
         ConsTypeInfo = error(foreign_type_constructor(TypeCtor, TypeDefn))
@@ -3524,7 +3527,7 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
         % the current predicate is opt_imported.
         hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
         TypeStatus = type_status(status_abstract_imported),
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
         PredStatus \= pred_status(status_opt_imported)
     then
         ConsTypeInfo = error(abstract_imported_type)

@@ -110,7 +110,6 @@
 :- import_module hlds.add_pred.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.
@@ -263,11 +262,11 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         % cannot be processed yet. (The mark will be changed to
         % `can_process_now' by modecheck_queued_proc.)
         pred_info_get_proc_table(!.PredInfo, !:ProcMap),
-        pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
         map.lookup(!.ProcMap, ProcId, !:ProcInfo),
         proc_info_set_can_process(cannot_process_yet, !ProcInfo),
 
-        copy_clauses_to_proc_in_proc_info(ClausesInfo, ProcId, !ProcInfo),
+        copy_clauses_to_proc_in_proc_info(!.ModuleInfo, !.PredInfo, ProcId,
+            !ProcInfo),
 
         proc_info_get_goal(!.ProcInfo, !:Goal),
         set_goal_contexts(Context, !Goal),

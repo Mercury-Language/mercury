@@ -414,7 +414,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
             % information in this module.
             Intermod = yes,
             pred_info_is_imported_not_external(PredInfo),
-            not is_unify_or_compare_pred(PredInfo)
+            not is_unify_index_or_compare_pred(PredInfo)
         then
             PredModule = pred_info_module(PredInfo),
             PredArity = pred_info_orig_arity(PredInfo),
@@ -1734,7 +1734,7 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
 
             % Don't warn about builtins that have unused arguments.
             not pred_info_is_builtin(PredInfo),
-            not is_unify_or_compare_pred(PredInfo),
+            not is_unify_index_or_compare_pred(PredInfo),
 
             % Don't warn about stubs for procedures with no clauses --
             % in that case, we *expect* none of the arguments to be used.
@@ -1944,7 +1944,7 @@ maybe_record_intermod_unused_args_2(ModuleInfo, UnusedArgInfo,
         PredId, PredInfo, ProcId, !AnalysisInfo) :-
     ( if
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo)
+        not is_unify_index_or_compare_pred(PredInfo)
     then
         PPId = proc(PredId, ProcId),
         ( if map.search(UnusedArgInfo, PPId, UnusedArgs) then
@@ -1992,7 +1992,7 @@ record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
     ( if
         pred_info_is_imported_not_external(CalleePredInfo),
-        not is_unify_or_compare_pred(CalleePredInfo)
+        not is_unify_index_or_compare_pred(CalleePredInfo)
     then
         module_name_func_id(ModuleInfo, CalleePredProcId, CalleeModule,
             CalleeFuncId),

@@ -448,7 +448,7 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
         ( if
             Intermod = yes,
             pred_info_is_imported_not_external(CalleePredInfo),
-            not is_unify_or_compare_pred(CalleePredInfo)
+            not is_unify_index_or_compare_pred(CalleePredInfo)
         then
             % Use the intermodule analysis framework if this is an imported
             % procedure and `--intermodule-analysis' is enabled.

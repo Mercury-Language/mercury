@@ -1509,7 +1509,7 @@ maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
                 % information to understand how the program has been
                 % transformed.
                 not string.contains_char(DumpOptions, 'U'),
-                is_unify_or_compare_pred(PredInfo)
+                is_unify_index_or_compare_pred(PredInfo)
             )
         then
             true

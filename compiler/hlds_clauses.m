@@ -34,6 +34,14 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type maybe_foreign_lang_clauses
+    --->    no_foreign_lang_clauses
+    ;       some_foreign_lang_clauses.
+
+:- type maybe_clause_syntax_errors
+    --->    no_clause_syntax_errors
+    ;       some_clause_syntax_errors.
+
     % The clauses_info structure contains the clauses for a predicate
     % after conversion from the item_list by make_hlds.m.
     % Typechecking is performed on the clauses info, then the clauses
@@ -73,12 +81,12 @@
                 cli_rtti_varmaps            :: rtti_varmaps,
 
                 % Does this predicate/function have foreign language clauses?
-                cli_have_foreign_clauses    :: bool,
+                cli_have_foreign_clauses    :: maybe_foreign_lang_clauses,
 
                 % Did this predicate/function have clauses with syntax errors
                 % in their bodies (so we could know, despite the error, that
                 % the clause was for them)?
-                cli_had_syntax_errors       :: bool
+                cli_had_syntax_errors       :: maybe_clause_syntax_errors
         ).
 
 :- pred clauses_info_init(pred_or_func::in, int::in, clause_item_numbers::in,
@@ -99,9 +107,10 @@
     clause_item_numbers::out) is det.
 :- pred clauses_info_get_rtti_varmaps(clauses_info::in, rtti_varmaps::out)
     is det.
-:- pred clauses_info_get_have_foreign_clauses(clauses_info::in, bool::out)
-    is det.
-:- pred clauses_info_get_had_syntax_errors(clauses_info::in, bool::out) is det.
+:- pred clauses_info_get_have_foreign_clauses(clauses_info::in,
+    maybe_foreign_lang_clauses::out) is det.
+:- pred clauses_info_get_had_syntax_errors(clauses_info::in,
+    maybe_clause_syntax_errors::out) is det.
 
 :- pred clauses_info_set_varset(prog_varset::in,
     clauses_info::in, clauses_info::out) is det.
@@ -117,9 +126,9 @@
     clauses_info::in, clauses_info::out) is det.
 :- pred clauses_info_set_rtti_varmaps(rtti_varmaps::in,
     clauses_info::in, clauses_info::out) is det.
-:- pred clauses_info_set_have_foreign_clauses(bool::in,
+:- pred clauses_info_set_have_foreign_clauses(maybe_foreign_lang_clauses::in,
     clauses_info::in, clauses_info::out) is det.
-:- pred clauses_info_set_had_syntax_errors(bool::in,
+:- pred clauses_info_set_had_syntax_errors(maybe_clause_syntax_errors::in,
     clauses_info::in, clauses_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -222,7 +231,7 @@
     --->    all_modes
             % This clause is applicable to all modes of the predicate.
 
-    ;       selected_modes(list(proc_id)).
+    ;       selected_modes(list(proc_id))
             % This clause or foreign_proc is applicable only to this given
             % list of modes.
             %
@@ -238,6 +247,40 @@
             %
             % For such erroneous clauses and foreign_procs, this is the only
             % way to get them to be typechecked (at least for now).
+
+    ;       unify_in_in_modes
+    ;       unify_non_in_in_modes.
+            % Given two terms such as
+            %
+            % X = f(XA, XB, XC, XD, XE)
+            % Y = f(YA, YB, YC, YD, YE)
+            %
+            % where the B, C and D arguments are packed into the same word,
+            % testing their equality in bulk by testing the equality of
+            % the two words is obviously faster than extracting XB, XC, and XD
+            % from one word, extracting YB, YC, and YD from the other word,
+            % and comparing them pairwise. This is why we generate code to do
+            % bulk comparisons in the automatically generated unify predicates
+            % when possible.
+            %
+            % However, while bulk comparisons are a win for <in,in>
+            % unifications, they work only for unifications in which
+            % all of the bulk-compared arguments are ground, because they
+            % have no means to e.g. copy the value of YC to the XC field in X
+            % if the XC field started out as free.
+            %
+            % Therefore whenever we generate code for a unify predicate
+            % that does one or more bulk comparisons, we mark that clause
+            % as unify_in_in_modes (i.e. being valid only for unifications
+            % in which both inputs are initially ground), and we also generate
+            % another clause free of bulk comparisons, and mark it with
+            % unify_non_in_in_modes, i.e. to be used for all other
+            % unifications.
+            %
+            % If the unify predicate of a type_ctor *can* use bulk comparisons,
+            % then we generate two clauses for it, one unify_in_in_modes
+            % and one unify_non_in_in_modes. If it *cannot* use bulk
+            % comparisons, we generate just one all_modes clause for it.
 
 %-----------------------------------------------------------------------------%
 
@@ -450,11 +493,9 @@ clauses_info_init(PredOrFunc, Arity, ItemNumbers, ClausesInfo) :-
     HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
     set_clause_list([], ClausesRep),
     rtti_varmaps_init(RttiVarMaps),
-    HasForeignClauses = no,
-    HadSyntaxError = no,
     ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
         HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
-        HasForeignClauses, HadSyntaxError).
+        no_foreign_lang_clauses, no_clause_syntax_errors).
 
 clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     varset.init(VarSet),
@@ -466,11 +507,9 @@ clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     set_clause_list([], ClausesRep),
     ItemNumbers = init_clause_item_numbers_comp_gen,
     rtti_varmaps_init(RttiVarMaps),
-    HasForeignClauses = no,
-    HadSyntaxError = no,
     ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
         HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
-        HasForeignClauses, HadSyntaxError).
+        no_foreign_lang_clauses, no_clause_syntax_errors).
 
 clauses_info_get_varset(CI, CI ^ cli_varset).
 clauses_info_get_tvar_name_map(CI, CI ^ cli_tvar_name_map).

@@ -595,7 +595,7 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
                 impl_lang_foreign(NewLang), Context, []),
             Clauses = [Clause | Clauses1],
             set_clause_list(Clauses, ClausesRep),
-            HasForeignClauses = yes,
+            HasForeignClauses = some_foreign_lang_clauses,
             !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
                 InferredVarTypes, HeadVars, ClausesRep, ItemNumbers,
                 RttiVarMaps, HasForeignClauses, HadSyntaxError)
@@ -658,6 +658,11 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                 ProcIds0 = AllProcIds
             ;
                 ApplProcIds0 = selected_modes(ProcIds0)
+            ;
+                ( ApplProcIds0 = unify_in_in_modes
+                ; ApplProcIds0 = unify_non_in_in_modes
+                ),
+                unexpected($pred, "unify mode for user defined predicate")
             ),
             ( if list.delete_first(ProcIds0, NewClauseProcId, ProcIds) then
                 (
@@ -688,6 +693,11 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                 unexpected($pred, "all_modes")
             ;
                 ApplProcIds0 = selected_modes(ProcIds0)
+            ;
+                ( ApplProcIds0 = unify_in_in_modes
+                ; ApplProcIds0 = unify_non_in_in_modes
+                ),
+                unexpected($pred, "unify modes")
             ),
             ( if list.delete_first(ProcIds0, NewClauseProcId, ProcIds) then
                 PreferNewForeignLang = prefer_foreign_language(Globals, Target,

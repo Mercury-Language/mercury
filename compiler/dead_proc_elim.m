@@ -1115,7 +1115,7 @@ dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings, Needed,
 
         % Don't warn for unify or comparison preds,
         % since they may be automatically generated.
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
 
         % Don't warn for procedures introduced from lambda expressions.
         % The only time those procedures will be unused is if the
@@ -1389,7 +1389,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
             (
                 % Don't eliminate special preds since they won't be actually
                 % called from the HLDS until after polymorphism.
-                is_unify_or_compare_pred(PredInfo)
+                is_unify_index_or_compare_pred(PredInfo)
             ;
                 % Don't eliminate preds from builtin modules, since later
                 % passes of the compiler may introduce calls to them

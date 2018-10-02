@@ -216,7 +216,7 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 % these up. These can happen for the Unify pred for the unit
                 % type, if such types are not boxed (as they are not
                 % boxed for the IL backend).
-                not is_unify_or_compare_pred(PredInfo),
+                not is_unify_index_or_compare_pred(PredInfo),
 
                 % Don't warn about predicates which are inferred erroneous
                 % when the appropriate option is set. This is to avoid warnings
@@ -1852,8 +1852,9 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
             % This shouldn't happen; every call to a compiler generated
             % type-specific unification predicate should have a unify_context.
             CallUnifyContext = no,
-            StartingPieces = [words("Some weird unification"
-                ++ "(or explicit call to a type-specific unify predicate?)")]
+            StartingPieces = [words("Some weird unification"),
+                words("(or explicit call to a"),
+                words("type-specific unify predicate?)")]
         )
     else
         (

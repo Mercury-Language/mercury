@@ -458,11 +458,9 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
     vartypes_from_corresponding_lists(HeadVars, HeadTypes, VarTypes),
     map.init(TVarNameMap),
     rtti_varmaps_init(RttiVarMaps),
-    HasForeignClauses = no,
-    HadSyntaxError = no,
     ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
         ProcArgVector, ClausesRep, init_clause_item_numbers_comp_gen,
-        RttiVarMaps, HasForeignClauses, HadSyntaxError),
+        RttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
     % It is pointless but harmless to inline these clauses. The main purpose

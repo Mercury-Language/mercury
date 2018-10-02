@@ -998,7 +998,7 @@ lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo, ReuseAs) :-
         CalleePredInfo),
     ( if
         pred_info_is_imported_not_external(CalleePredInfo),
-        not is_unify_or_compare_pred(CalleePredInfo)
+        not is_unify_index_or_compare_pred(CalleePredInfo)
     then
         Dep = ppid_no_clobbers(OrigPPId, NoClobbers),
         !IrInfo ^ dep_procs := set.insert(!.IrInfo ^ dep_procs, Dep)

@@ -102,6 +102,8 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
@@ -113,6 +115,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint8.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -124,43 +127,43 @@ generate_clauses_for_special_pred(SpecDefnInfo, ClauseInfo, !ModuleInfo) :-
     special_pred_interface(SpecialPredId, Type, ArgTypes, _Modes, _Det),
     some [!Info] (
         info_init(!.ModuleInfo, !:Info),
-        make_fresh_named_vars_from_types(ArgTypes, "HeadVar__", 1, Args,
+        make_fresh_named_vars_from_types(ArgTypes, "HeadVar__", 1, ArgVars,
             !Info),
         (
             SpecialPredId = spec_pred_unify,
-            ( if Args = [X, Y] then
-                generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info)
+            ( if ArgVars = [X, Y] then
+                generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info)
             else
                 unexpected($pred, "bad unify args")
             )
         ;
             SpecialPredId = spec_pred_index,
-            ( if Args = [X, Index] then
+            ( if ArgVars = [X, Index] then
                 generate_index_proc_body(SpecDefnInfo, X, Index, Clause, !Info)
             else
                 unexpected($pred, "bad index args")
-            )
+            ),
+            Clauses = [Clause]
         ;
             SpecialPredId = spec_pred_compare,
-            ( if Args = [Res, X, Y] then
+            ( if ArgVars = [Res, X, Y] then
                 generate_compare_proc_body(SpecDefnInfo,
                     Res, X, Y, Clause, !Info)
             else
                 unexpected($pred, "bad compare args")
-            )
+            ),
+            Clauses = [Clause]
         ),
         info_extract(!.Info, !:ModuleInfo, VarSet, Types)
     ),
     map.init(TVarNameMap),
-    ArgVec = proc_arg_vector_init(pf_predicate, Args),
-    set_clause_list([Clause], ClausesRep),
+    ArgVec = proc_arg_vector_init(pf_predicate, ArgVars),
+    set_clause_list(Clauses, ClausesRep),
     rtti_varmaps_init(RttiVarMaps),
-    % XXX TYPE_REPN Should be HasForeignClauses = no
-    HasForeignClauses = yes,
-    HadSyntaxErrors = no,
+    % XXX TYPE_REPN Should be no_foreign_lang_clauses
     ClauseInfo = clauses_info(VarSet, TVarNameMap, Types, Types, ArgVec,
-        ClausesRep, init_clause_item_numbers_comp_gen,
-        RttiVarMaps, HasForeignClauses, HadSyntaxErrors).
+        ClausesRep, init_clause_item_numbers_comp_gen, RttiVarMaps,
+        some_foreign_lang_clauses, no_clause_syntax_errors).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -169,16 +172,17 @@ generate_clauses_for_special_pred(SpecDefnInfo, ClauseInfo, !ModuleInfo) :-
 %
 
 :- pred generate_unify_proc_body(spec_pred_defn_info::in,
-    prog_var::in, prog_var::in, clause::out,
+    prog_var::in, prog_var::in, list(clause)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
+generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     Context = SpecDefnInfo ^ spdi_context,
     IsDummy = is_type_ctor_a_builtin_dummy(TypeCtor),
     (
         IsDummy = is_builtin_dummy_type_ctor,
-        generate_unify_proc_body_dummy(Context, X, Y, Clause, !Info)
+        generate_unify_proc_body_dummy(Context, X, Y, Clause, !Info),
+        Clauses = [Clause]
     ;
         IsDummy = is_not_builtin_dummy_type_ctor,
         info_get_module_info(!.Info, ModuleInfo),
@@ -188,7 +192,8 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
                 TypeBody, UserEqComp)
         then
             generate_unify_proc_body_user(UserEqComp, X, Y, Context,
-                Clause, !Info)
+                Clause, !Info),
+            Clauses = [Clause]
         else
             (
                 TypeBody = hlds_abstract_type(_),
@@ -202,7 +207,8 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
                 else
                     unexpected($pred,
                         "trying to create unify proc for abstract type")
-                )
+                ),
+                Clauses = [Clause]
             ;
                 TypeBody = hlds_eqv_type(EqvType),
                 EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
@@ -215,18 +221,21 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
                     EqvIsDummy = is_not_dummy_type,
                     generate_unify_proc_body_eqv(Context, EqvType, X, Y,
                         Clause, !Info)
-                )
+                ),
+                Clauses = [Clause]
             ;
                 TypeBody = hlds_foreign_type(_),
                 % If no user defined equality predicate is given,
                 % we treat foreign_types as if they were equivalent
                 % to the builtin type c_pointer.
                 generate_unify_proc_body_eqv(Context, c_pointer_type, X, Y,
-                    Clause, !Info)
+                    Clause, !Info),
+                Clauses = [Clause]
             ;
                 TypeBody = hlds_solver_type(_),
                 generate_unify_proc_body_solver(Context, X, Y,
-                    Clause, !Info)
+                    Clause, !Info),
+                Clauses = [Clause]
             ;
                 TypeBody = hlds_du_type(_, _, MaybeRepn, _),
                 (
@@ -241,11 +250,13 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
                     ; DuTypeKind = du_type_kind_foreign_enum(_)
                     ),
                     generate_unify_proc_body_enum(Context, X, Y,
-                        Clause, !Info)
+                        Clause, !Info),
+                    Clauses = [Clause]
                 ;
                     DuTypeKind = du_type_kind_direct_dummy,
                     generate_unify_proc_body_dummy(Context, X, Y,
-                        Clause, !Info)
+                        Clause, !Info),
+                    Clauses = [Clause]
                 ;
                     DuTypeKind = du_type_kind_notag(_, ArgType, _),
                     ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
@@ -254,18 +265,19 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
                         % Treat this type as if it were a dummy type
                         % itself.
                         generate_unify_proc_body_dummy(Context, X, Y,
-                            Clause, !Info)
+                            Clause, !Info),
+                        Clauses = [Clause]
                     ;
                         ArgIsDummy = is_not_dummy_type,
                         CtorRepns = Repn ^ dur_ctor_repns,
                         generate_unify_proc_body_du(SpecDefnInfo,
-                            CtorRepns, X, Y, Clause, !Info)
+                            CtorRepns, X, Y, Clauses, !Info)
                     )
                 ;
                     DuTypeKind = du_type_kind_general,
                     CtorRepns = Repn ^ dur_ctor_repns,
                     generate_unify_proc_body_du(SpecDefnInfo,
-                        CtorRepns, X, Y, Clause, !Info)
+                        CtorRepns, X, Y, Clauses, !Info)
                 )
             )
         )
@@ -279,7 +291,7 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clause, !Info) :-
 
 generate_unify_proc_body_dummy(Context, X, Y, Clause, !Info) :-
     Goal = true_goal_with_context(Context),
-    quantify_clause_body([X, Y], Goal, Context, Clause, !Info).
+    quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -326,7 +338,7 @@ generate_unify_proc_body_user(NonCanonical, X, Y, Context, Clause, !Info) :-
         Goal0 = hlds_goal(conj(plain_conj, [CallGoal, UnifyGoal]), GoalInfo)
     ),
     maybe_wrap_with_pretest_equality(Context, X, Y, no, Goal0, Goal, !Info),
-    quantify_clause_body([X, Y], Goal, Context, Clause, !Info).
+    quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -396,8 +408,10 @@ generate_unify_proc_body_builtin(SpecDefnInfo, X, Y, Clause, !Info) :-
         unexpected($pred, "bad ctor category")
     ),
     Context = SpecDefnInfo ^ spdi_context,
-    build_call(Name, ArgVars, Context, UnifyGoal, !Info),
-    quantify_clause_body(ArgVars, UnifyGoal, Context, Clause, !Info).
+    build_simple_call(ModuleInfo, mercury_private_builtin_module,
+        Name, ArgVars, Context, UnifyGoal),
+    quantify_clause_body(all_modes, ArgVars, UnifyGoal, Context, Clause,
+        !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -423,7 +437,7 @@ generate_unify_proc_body_eqv(Context, EqvType, X, Y, Clause, !Info) :-
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal([CastXGoal, CastYGoal, UnifyGoal], GoalInfo, Goal),
-    quantify_clause_body([X, Y], Goal, Context, Clause, !Info).
+    quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -433,8 +447,10 @@ generate_unify_proc_body_eqv(Context, EqvType, X, Y, Clause, !Info) :-
 
 generate_unify_proc_body_solver(Context, X, Y, Clause, !Info) :-
     ArgVars = [X, Y],
-    build_call("builtin_unify_solver_type", ArgVars, Context, Goal, !Info),
-    quantify_clause_body(ArgVars, Goal, Context, Clause, !Info).
+    info_get_module_info(!.Info, ModuleInfo),
+    build_simple_call(ModuleInfo, mercury_private_builtin_module,
+        "builtin_unify_solver_type", ArgVars, Context, Goal),
+    quantify_clause_body(all_modes, ArgVars, Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -444,7 +460,55 @@ generate_unify_proc_body_solver(Context, X, Y, Clause, !Info) :-
 
 generate_unify_proc_body_enum(Context, X, Y, Clause, !Info) :-
     make_simple_test(X, Y, umc_explicit, [], Goal),
-    quantify_clause_body([X, Y], Goal, Context, Clause, !Info).
+    quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info).
+
+%---------------------------------------------------------------------------%
+
+:- type maybe_compare_constants_as_ints
+    --->    do_not_compare_constants_as_ints
+    ;       compare_constants_as_ints.
+
+:- type maybe_allow_packed_unify_compare
+    --->    do_not_allow_packed_unify_compare
+    ;       allow_packed_unify_compare.
+
+:- type uc_options
+    --->    uc_options(
+                uco_constants_as_ints       :: maybe_compare_constants_as_ints,
+                uco_packed_unify_compare    :: maybe_allow_packed_unify_compare
+            ).
+
+    % Succeed iff the target back end guarantees that comparing two constants
+    % for equality can be done by casting them both to integers and comparing
+    % the integers for equality.
+    %
+:- func lookup_unify_compare_options(unify_proc_info) = uc_options.
+
+lookup_unify_compare_options(Info) = UCOptions :-
+    info_get_module_info(Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, can_compare_constants_as_ints,
+        BoolCanCompareAsInt),
+    (
+        BoolCanCompareAsInt = no,
+        CanCompareAsInt = do_not_compare_constants_as_ints
+    ;
+        BoolCanCompareAsInt = yes,
+        CanCompareAsInt = compare_constants_as_ints
+    ),
+    globals.lookup_bool_option(Globals, allow_packed_unify_compare,
+        BoolAllowPackedUC),
+    globals.get_target(Globals, Target),
+    ( if
+        BoolAllowPackedUC = yes,
+        % The foreign_procs we generate are all in C.
+        Target = target_c
+    then
+        AllowPackedUC = allow_packed_unify_compare
+    else
+        AllowPackedUC = do_not_allow_packed_unify_compare
+    ),
+    UCOptions = uc_options(CanCompareAsInt, AllowPackedUC).
 
 %---------------------------------------------------------------------------%
 
@@ -501,39 +565,60 @@ generate_unify_proc_body_enum(Context, X, Y, Clause, !Info) :-
     % (tests/general/det_complicated_unify2.m tests this case.)
     %
 :- pred generate_unify_proc_body_du(spec_pred_defn_info::in,
-    list(constructor_repn)::in, prog_var::in, prog_var::in, clause::out,
+    list(constructor_repn)::in, prog_var::in, prog_var::in, list(clause)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_unify_proc_body_du(SpecDefnInfo, Ctors, X, Y, Clause, !Info) :-
-    CanCompareAsInt = can_compare_constants_as_ints(!.Info),
-    list.map_foldl(generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt),
+generate_unify_proc_body_du(SpecDefnInfo, Ctors, X, Y, Clauses, !Info) :-
+    UCOptions = lookup_unify_compare_options(!.Info),
+    list.map_foldl(generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y),
         Ctors, Disjuncts, !Info),
     Context = SpecDefnInfo ^ spdi_context,
     goal_info_init(Context, GoalInfo),
     Goal0 = hlds_goal(disj(Disjuncts), GoalInfo),
     maybe_wrap_with_pretest_equality(Context, X, Y, no, Goal0, Goal, !Info),
-    quantify_clause_body([X, Y], Goal, Context, Clause, !Info).
 
-    % Succeed iff the target back end guarantees that comparing two constants
-    % for equality can be done by casting them both to integers and comparing
-    % the integers for equality.
-    %
-:- func can_compare_constants_as_ints(unify_proc_info) = bool.
+    % Did the clause we just generated use any bulk comparisons?
+    PackedOps = !.Info ^ upi_packed_ops,
+    (
+        PackedOps = used_no_packed_word_ops,
+        % No: mark the clause as suitable for all modes.
+        quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info),
+        Clauses = [Clause]
+    ;
+        PackedOps = used_some_packed_word_ops,
+        % Yes: mark the clause as suitable only for <in,in> modes, and ...
+        quantify_clause_body(unify_in_in_modes, [X, Y], Goal, Context,
+            InInClause, !Info),
 
-can_compare_constants_as_ints(Info) = CanCompareAsInt :-
-    ModuleInfo = Info ^ upi_module_info,
-    module_info_get_globals(ModuleInfo, Globals),
-    lookup_bool_option(Globals, can_compare_constants_as_ints,
-        CanCompareAsInt).
+        % ... generate another clause for non-<in,in> modes for which
+        % the generation of bulk comparisons is disabled.
+        NonPackedUCOptions = UCOptions ^ uco_packed_unify_compare :=
+            do_not_allow_packed_unify_compare,
+        !Info ^ upi_packed_ops := used_no_packed_word_ops,
+        list.map_foldl(
+            generate_du_unify_case(SpecDefnInfo, NonPackedUCOptions, X, Y),
+            Ctors, NonPackedDisjuncts, !Info),
+        expect(unify(!.Info ^ upi_packed_ops, used_no_packed_word_ops), $pred,
+            "packed word ops show up after being disabled"),
+        NonPackedGoal0 = hlds_goal(disj(NonPackedDisjuncts), GoalInfo),
+        maybe_wrap_with_pretest_equality(Context, X, Y, no,
+            NonPackedGoal0, NonPackedGoal, !Info),
+        quantify_clause_body(unify_non_in_in_modes, [X, Y], NonPackedGoal,
+            Context, NonInInClause, !Info),
+
+        % The order of the clauses does not matter; clause_to_proc.m
+        % will always pick or the other, never both.
+        Clauses = [InInClause, NonInInClause]
+    ).
 
 :- pred generate_du_unify_case(spec_pred_defn_info::in,
-    prog_var::in, prog_var::in, bool::in, constructor_repn::in, hlds_goal::out,
+    uc_options::in, prog_var::in, prog_var::in,
+    constructor_repn::in, hlds_goal::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt, CtorRepn, Goal,
-        !Info) :-
+generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y, CtorRepn, Goal, !Info) :-
     CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
-        _ConsTag, ArgRepns, FunctorArity, _Ctxt),
+        ConsTag, CtorArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     ( if TypeCtor = type_ctor(unqualified("{}"), _) then
         FunctorConsId = tuple_cons(FunctorArity)
@@ -541,11 +626,26 @@ generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt, CtorRepn, Goal,
         FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor)
     ),
     Context = SpecDefnInfo ^ spdi_context,
+    compute_exist_constraint_implications(MaybeExistConstraints, ExistQTVars,
+        GiveVarsTypes),
     ( if
-        ArgRepns = [],
-        CanCompareAsInt = yes
+        (
+            CtorArgRepns = [],
+            UCOptions ^ uco_constants_as_ints = compare_constants_as_ints,
+            % There are no arguments to compare.
+            RHSVars = []
+        ;
+            CtorArgRepns = [_ | _],
+            ConsTag = local_args_tag(_),
+            UCOptions ^ uco_packed_unify_compare = allow_packed_unify_compare,
+            % There are arguments to compare, but they are stored
+            % in the same word as the ptag and the sectag (if any).
+            make_fresh_vars(GiveVarsTypes, "_Arg", CtorArgRepns, RHSVars,
+                !Info),
+            !Info ^ upi_packed_ops := used_some_packed_word_ops
+        )
     then
-        RHS = rhs_functor(FunctorConsId, is_not_exist_constr, []),
+        RHS = rhs_functor(FunctorConsId, is_not_exist_constr, RHSVars),
         create_pure_atomic_complicated_unification(X, RHS, Context,
             umc_explicit, [], UnifyX_Goal),
         info_new_named_var(int_type, "CastX", CastX, !Info),
@@ -558,59 +658,231 @@ generate_du_unify_case(SpecDefnInfo, X, Y, CanCompareAsInt, CtorRepn, Goal,
             Context, umc_explicit, [], UnifyY_Goal),
         GoalList = [UnifyX_Goal, CastXGoal, CastYGoal, UnifyY_Goal]
     else
-        (
-            MaybeExistConstraints = no_exist_constraints,
-            ExistQTVars = []
-        ;
-            MaybeExistConstraints = exist_constraints(ExistConstraints),
-            ExistConstraints = cons_exist_constraints(ExistQTVars,
-                _Constraints, _UnconstrainedQTVars, _ConstrainedQTVars)
-        ),
-        make_fresh_arg_var_pairs(ExistQTVars, ArgRepns, TypedVarPairs, !Info),
-        VarsX = list.map(project_var_x, TypedVarPairs),
-        VarsY = list.map(project_var_y, TypedVarPairs),
+        MaybePackableArgsLocn = compute_maybe_packable_args_locn(ConsTag),
+        info_get_module_info(!.Info, ModuleInfo),
+        UCParams = uc_params(ModuleInfo, Context, ExistQTVars,
+            MaybePackableArgsLocn, GiveVarsTypes,
+            UCOptions ^ uco_constants_as_ints,
+            UCOptions ^ uco_packed_unify_compare),
+        VarSet0 = !.Info ^ upi_varset,
+        VarTypes0 = !.Info ^ upi_vartypes,
+        PackedOps0 = !.Info ^ upi_packed_ops,
+        lookup_var_type(VarTypes0, X, TermType),
+        FirstArgNum = 1,
+        generate_arg_unify_goals(UCParams, TermType, X, Y,
+            FirstArgNum, CtorArgRepns, UnifyArgs_Goals, VarsX, VarsY,
+            PackedOps0, PackedOps, VarSet0, VarSet, VarTypes0, VarTypes),
+        !Info ^ upi_varset := VarSet,
+        !Info ^ upi_vartypes := VarTypes,
+        !Info ^ upi_packed_ops := PackedOps,
+
         RHSX = rhs_functor(FunctorConsId, is_not_exist_constr, VarsX),
         RHSY = rhs_functor(FunctorConsId, is_not_exist_constr, VarsY),
         create_pure_atomic_complicated_unification(X, RHSX, Context,
             umc_explicit, [], UnifyX_Goal),
         create_pure_atomic_complicated_unification(Y, RHSY, Context,
             umc_explicit, [], UnifyY_Goal),
-        unify_var_lists(ExistQTVars, TypedVarPairs, UnifyArgs_Goals, !Info),
         GoalList = [UnifyX_Goal, UnifyY_Goal | UnifyArgs_Goals]
     ),
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(GoalList, GoalInfo, Goal).
 
-:- pred unify_var_lists(existq_tvars::in, list(typed_var_pair)::in,
-    list(hlds_goal)::out, unify_proc_info::in, unify_proc_info::out) is det.
+:- pred generate_arg_unify_goals(uc_params::in,
+    mer_type::in, prog_var::in, prog_var::in,
+    int::in, list(constructor_arg_repn)::in, list(hlds_goal)::out,
+    list(prog_var)::out, list(prog_var)::out,
+    maybe_packed_word_ops::in, maybe_packed_word_ops::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-unify_var_lists(_, [], [], !Info).
-unify_var_lists(ExistQTVars, [TypedVarPair | TypedVarPairs], [Goal | Goals],
-        !Info) :-
-    TypedVarPair = typed_var_pair(Type, X, Y),
-    term.context_init(Context),
-    ( if
-        info_get_module_info(!.Info, ModuleInfo),
-        is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
-    then
-        Goal = true_goal
-    else if
-        % When unifying existentially typed arguments, the arguments may have
-        % different types; in that case, rather than just unifying them,
-        % which would be a type error, we call `typed_unify', which is
-        % a builtin that first checks that their types are equal and then
-        % unifies the values.
-        some [ExistQTVar] (
-            list.member(ExistQTVar, ExistQTVars),
-            type_contains_var(Type, ExistQTVar)
-        )
-    then
-        build_call("typed_unify", [X, Y], Context, Goal, !Info)
-    else
-        create_pure_atomic_complicated_unification(X, rhs_var(Y),
-            Context, umc_explicit, [], Goal)
-    ),
-    unify_var_lists(ExistQTVars, TypedVarPairs, Goals, !Info).
+generate_arg_unify_goals(_, _, _, _, _, [], [], [], [],
+        !PackedOps, !VarSet, !VarTypes).
+generate_arg_unify_goals(UCParams, TermType, TermVarX, TermVarY,
+        ArgNum, [CtorArgRepn | CtorArgRepns], Goals, VarsX, VarsY,
+        !PackedOps, !VarSet, !VarTypes) :-
+    may_we_start_packing_at_this_arg_unify(UCParams, CtorArgRepn, UnifyHow),
+    GiveVarsTypes = UCParams ^ ucp_give_vars_types,
+    (
+        UnifyHow = unify_unpacked,
+        Type = CtorArgRepn ^ car_type,
+        ModuleInfo = UCParams ^ ucp_module_info,
+        IsDummy = is_type_a_dummy(ModuleInfo, Type),
+        (
+            IsDummy = is_dummy_type,
+            make_fresh_var_pair(GiveVarsTypes, "_ArgX", "_ArgY", ArgNum,
+                Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+            generate_arg_unify_goals(UCParams, TermType, TermVarX, TermVarY,
+                ArgNum + 1, CtorArgRepns, Goals, TailVarsX, TailVarsY,
+                !PackedOps, !VarSet, !VarTypes)
+        ;
+            IsDummy = is_not_dummy_type,
+            make_fresh_var_pair(GiveVarsTypes, "ArgX", "ArgY", ArgNum,
+                Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+            % When unifying existentially typed arguments, the arguments
+            % may have different types; in that case, rather than just
+            % unifying them, which would be a type error, we call
+            % `typed_unify', which is a builtin that first checks that
+            % their types are equal and then unifies the values.
+            Context = UCParams ^ ucp_context,
+            ( if type_contains_existq_tvar(UCParams, Type) then
+                build_simple_call(ModuleInfo, mercury_private_builtin_module,
+                    "typed_unify", [HeadVarX, HeadVarY], Context, HeadGoal)
+            else
+                create_pure_atomic_complicated_unification(HeadVarX,
+                    rhs_var(HeadVarY), Context, umc_explicit, [], HeadGoal)
+            ),
+            generate_arg_unify_goals(UCParams, TermType, TermVarX, TermVarY,
+                ArgNum + 1, CtorArgRepns, TailGoals, TailVarsX, TailVarsY,
+                !PackedOps, !VarSet, !VarTypes),
+            Goals = [HeadGoal | TailGoals]
+        ),
+        VarsX = [HeadVarX | TailVarsX],
+        VarsY = [HeadVarY | TailVarsY]
+    ;
+        UnifyHow = unify_packed(ArgsLocn, CellOffset),
+        (
+            ArgsLocn = args_local,
+            % If ArgsLocn = args_local, then all the arguments fit into
+            % one word, and we can compare X and Y by casting both to ints
+            % and comparing the ints. And we should have done just that above,
+            % which means that execution should never get here.
+            unexpected($pred, "args_local")
+        ;
+            ArgsLocn = args_remote(Ptag)
+        ),
+        !:PackedOps = used_some_packed_word_ops,
+
+        Type = CtorArgRepn ^ car_type,
+        Context = UCParams ^ ucp_context,
+        expect_not(type_contains_existq_tvar(UCParams, Type), $pred,
+            "sub-word-size argument of existential type"),
+        make_fresh_var_pair(GiveVarsTypes, "_ArgX", "_ArgY", ArgNum,
+            Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+        get_rest_of_word(UCParams, CellOffset,
+            ArgNum, LeftOverArgNum, CtorArgRepns, LeftOverCtorArgRepns,
+            RestOfWordVarsX, RestOfWordVarsY, !VarSet, !VarTypes),
+        ModuleInfo = UCParams ^ ucp_module_info,
+        build_bulk_unify_foreign_proc(ModuleInfo, Ptag, TermType,
+            TermVarX, TermVarY, ArgNum, CellOffset, Context, HeadGoals,
+            !VarSet, !VarTypes),
+
+        generate_arg_unify_goals(UCParams, TermType, TermVarX, TermVarY,
+            LeftOverArgNum, LeftOverCtorArgRepns, TailGoals,
+            TailVarsX, TailVarsY, !PackedOps, !VarSet, !VarTypes),
+        Goals = HeadGoals ++ TailGoals,
+        VarsX = [HeadVarX | RestOfWordVarsX] ++ TailVarsX,
+        VarsY = [HeadVarY | RestOfWordVarsY] ++ TailVarsY
+    ).
+
+:- pred build_bulk_unify_foreign_proc(module_info::in, ptag::in,
+    mer_type::in, prog_var::in, prog_var::in,
+    int::in, cell_offset::in, prog_context::in, list(hlds_goal)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+build_bulk_unify_foreign_proc(ModuleInfo, Ptag, TermType, TermVarX, TermVarY,
+        ArgNum, CellOffset, Context, Goals, !VarSet, !VarTypes) :-
+    % Keep the predicates
+    %   build_bulk_unify_foreign_proc
+    %   select_and_build_signed_comparison_foreign_proc
+    %   select_and_build_bulk_comparison_foreign_proc
+    % in sync where relevant.
+    TermVarArgX = foreign_arg(TermVarX,
+        yes(foreign_arg_name_mode("TermVarX", in_mode)),
+        TermType, bp_native_if_possible),
+    TermVarArgY = foreign_arg(TermVarY,
+        yes(foreign_arg_name_mode("TermVarY", in_mode)),
+        TermType, bp_native_if_possible),
+
+    ForeignCode = "
+        MR_Unsigned *cell_x;
+        MR_Unsigned *cell_y;
+        MR_Unsigned word_x;
+        MR_Unsigned word_y;
+
+        cell_x = (MR_Unsigned *)
+            (((MR_Unsigned) TermVarX) - (MR_Unsigned) Ptag);
+        cell_y = (MR_Unsigned *)
+            (((MR_Unsigned) TermVarY) - (MR_Unsigned) Ptag);
+        word_x = cell_x[CellOffsetVar];
+        word_y = cell_y[CellOffsetVar];
+
+        SUCCESS_INDICATOR = (word_x == word_y);
+    ",
+
+    PredName = "unify_remote_arg_words",
+    make_ptag_and_cell_offset_args(ArgNum, Ptag, CellOffset, Context,
+        WordsArgs, WordsGoals, !VarSet, !VarTypes),
+
+    ForeignArgs = [TermVarArgX, TermVarArgY] ++ WordsArgs,
+    generate_foreign_proc(mercury_private_builtin_module,
+        PredName, pf_predicate, only_mode, detism_semi,
+        purity_pure, pure_proc_foreign_attributes, ForeignArgs, [],
+        no, ForeignCode, [], instmap_delta_bind_no_var,
+        ModuleInfo, Context, UnifyRemoteArgWordGoal),
+    Goals = WordsGoals ++ [UnifyRemoteArgWordGoal].
+
+:- func pure_proc_foreign_attributes = pragma_foreign_proc_attributes.
+
+pure_proc_foreign_attributes = !:Attrs :-
+    !:Attrs = default_attributes(lang_c),
+    set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
+    set_thread_safe(proc_thread_safe, !Attrs),
+    set_purity(purity_pure, !Attrs),
+    set_terminates(proc_terminates, !Attrs),
+    set_may_throw_exception(proc_will_not_throw_exception, !Attrs),
+    set_may_modify_trail(proc_will_not_modify_trail, !Attrs),
+    set_may_call_mm_tabled(proc_will_not_call_mm_tabled, !Attrs),
+    set_affects_liveness(proc_does_not_affect_liveness, !Attrs),
+    set_allocates_memory(proc_does_not_allocate_memory, !Attrs),
+    set_registers_roots(proc_does_not_register_roots, !Attrs).
+
+:- pred get_rest_of_word(uc_params::in, cell_offset::in, int::in, int::out,
+    list(constructor_arg_repn)::in, list(constructor_arg_repn)::out,
+    list(prog_var)::out, list(prog_var)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+get_rest_of_word(_UCParams, _CellOffset, !ArgNum,
+        [], [], [], [], !VarSet, !VarTypes).
+get_rest_of_word(UCParams, CellOffset, !ArgNum,
+        [CtorArgRepn | CtorArgRepns], LeftOverCtorArgRepns,
+        VarsX, VarsY, !VarSet, !VarTypes) :-
+    ArgPosWidth = CtorArgRepn ^ car_pos_width,
+    (
+        ( ArgPosWidth = apw_partial_shifted(_, ArgCellOffset, _, _, _, _)
+        ; ArgPosWidth = apw_none_shifted(_, ArgCellOffset)
+        ),
+        Type = CtorArgRepn ^ car_type,
+        expect_not(type_contains_existq_tvar(UCParams, Type), $pred,
+            "sub-word-size argument of existential type"),
+        expect(unify(CellOffset, ArgCellOffset), $pred,
+            "apw_{partial,none}_shifted offset != CellOffset"),
+        GiveVarsTypes = UCParams ^ ucp_give_vars_types,
+        make_fresh_var_pair(GiveVarsTypes, "_ArgX", "_ArgY", !.ArgNum,
+            Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+        !:ArgNum = !.ArgNum + 1,
+        get_rest_of_word(UCParams, CellOffset, !ArgNum,
+            CtorArgRepns, LeftOverCtorArgRepns,
+            TailVarsX, TailVarsY, !VarSet, !VarTypes),
+        VarsX = [HeadVarX | TailVarsX],
+        VarsY = [HeadVarY | TailVarsY]
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ),
+        LeftOverCtorArgRepns = [CtorArgRepn | CtorArgRepns],
+        VarsX = [],
+        VarsY = []
+    ).
+
+:- pred type_contains_existq_tvar(uc_params::in, mer_type::in) is semidet.
+
+type_contains_existq_tvar(UCParams, Type) :-
+    ExistQTVars = UCParams ^ ucp_existq_tvars,
+    some [ExistQTVar] (
+        list.member(ExistQTVar, ExistQTVars),
+        type_contains_var(Type, ExistQTVar)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -729,7 +1001,7 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
 
 generate_compare_proc_body_dummy(Context, Res, X, Y, Clause, !Info) :-
     generate_return_equal(Res, Context, Goal),
-    quantify_clause_body([Res, X, Y], Goal, Context, Clause, !Info).
+    quantify_clause_body(all_modes, [Res, X, Y], Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -746,9 +1018,10 @@ generate_compare_proc_body_user(Context, NonCanonical, Res, X, Y,
     ;
         NonCanonical = noncanon_uni_only(_),
         % Just generate code that will call error/1.
+        info_get_module_info(!.Info, ModuleInfo),
         ArgVars = [Res, X, Y],
-        build_call("builtin_compare_non_canonical_type", ArgVars, Context,
-            Goal, !Info)
+        build_simple_call(ModuleInfo, mercury_private_builtin_module,
+            "builtin_compare_non_canonical_type", ArgVars, Context, Goal)
     ;
         ( NonCanonical = noncanon_uni_cmp(_, ComparePredName)
         ; NonCanonical = noncanon_cmp_only(ComparePredName)
@@ -767,7 +1040,7 @@ generate_compare_proc_body_user(Context, NonCanonical, Res, X, Y,
         maybe_wrap_with_pretest_equality(Context, X, Y, yes(Res),
             Goal0, Goal, !Info)
     ),
-    quantify_clause_body(ArgVars, Goal, Context, Clause, !Info).
+    quantify_clause_body(all_modes, ArgVars, Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -837,8 +1110,10 @@ generate_compare_proc_body_builtin(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
         unexpected($pred, "bad ctor category")
     ),
     Context = SpecDefnInfo ^ spdi_context,
-    build_call(Name, ArgVars, Context, CompareGoal, !Info),
-    quantify_clause_body(ArgVars, CompareGoal, Context, Clause, !Info).
+    build_simple_call(ModuleInfo, mercury_private_builtin_module,
+        Name, ArgVars, Context, CompareGoal),
+    quantify_clause_body(all_modes, ArgVars, CompareGoal, Context, Clause,
+        !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -852,16 +1127,18 @@ generate_compare_proc_body_eqv(Context, EqvType, Res, X, Y, Clause, !Info) :-
     % the same code we generate now. If it is an abstract type, we should call
     % its comparison procedure directly; if it is a concrete type, we should
     % generate the body of its comparison procedure inline here.
+    info_get_module_info(!.Info, ModuleInfo),
     make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 1, CastX, !Info),
     make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 2, CastY, !Info),
     generate_cast(equiv_type_cast, X, CastX, Context, CastXGoal),
     generate_cast(equiv_type_cast, Y, CastY, Context, CastYGoal),
-    build_call("compare", [Res, CastX, CastY], Context, CompareGoal, !Info),
+    build_simple_call(ModuleInfo, mercury_public_builtin_module,
+        "compare", [Res, CastX, CastY], Context, CompareGoal),
 
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal([CastXGoal, CastYGoal, CompareGoal], GoalInfo, Goal),
-    quantify_clause_body([Res, X, Y], Goal, Context, Clause, !Info).
+    quantify_clause_body(all_modes, [Res, X, Y], Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -870,9 +1147,11 @@ generate_compare_proc_body_eqv(Context, EqvType, Res, X, Y, Clause, !Info) :-
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_proc_body_solver(Context, Res, X, Y, Clause, !Info) :-
+    info_get_module_info(!.Info, ModuleInfo),
     ArgVars = [Res, X, Y],
-    build_call("builtin_compare_solver_type", ArgVars, Context, Goal, !Info),
-    quantify_clause_body(ArgVars, Goal, Context, Clause, !Info).
+    build_simple_call(ModuleInfo, mercury_private_builtin_module,
+        "builtin_compare_solver_type", ArgVars, Context, Goal),
+    quantify_clause_body(all_modes, ArgVars, Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -881,17 +1160,18 @@ generate_compare_proc_body_solver(Context, Res, X, Y, Clause, !Info) :-
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_proc_body_enum(Context, Res, X, Y, Clause, !Info) :-
+    info_get_module_info(!.Info, ModuleInfo),
     IntType = int_type,
     make_fresh_named_var_from_type(IntType, "Cast_HeadVar", 1, CastX, !Info),
     make_fresh_named_var_from_type(IntType, "Cast_HeadVar", 2, CastY, !Info),
     generate_cast(unsafe_type_cast, X, CastX, Context, CastXGoal),
     generate_cast(unsafe_type_cast, Y, CastY, Context, CastYGoal),
-    build_call("builtin_compare_int", [Res, CastX, CastY], Context,
-        CompareGoal, !Info),
+    build_simple_call(ModuleInfo, mercury_private_builtin_module,
+        "builtin_compare_int", [Res, CastX, CastY], Context, CompareGoal),
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal([CastXGoal, CastYGoal, CompareGoal], GoalInfo, Goal),
-    quantify_clause_body([Res, X, Y], Goal, Context, Clause, !Info).
+    quantify_clause_body(all_modes, [Res, X, Y], Goal, Context, Clause, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -903,13 +1183,13 @@ generate_compare_proc_body_du(SpecDefnInfo, Ctors0, Res, X, Y, Clause,
         !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, lexically_order_constructors,
-        LexicalOrder),
+    globals.lookup_bool_option(Globals, order_constructors_for_erlang,
+        ErlangOrder),
     (
-        LexicalOrder = yes,
-        list.sort(compare_ctors_lexically, Ctors0, Ctors)
+        ErlangOrder = yes,
+        list.sort(compare_ctors_for_erlang, Ctors0, Ctors)
     ;
-        LexicalOrder = no,
+        ErlangOrder = no,
         Ctors = Ctors0
     ),
     (
@@ -917,38 +1197,38 @@ generate_compare_proc_body_du(SpecDefnInfo, Ctors0, Res, X, Y, Clause,
         unexpected($pred, "compare for type with no functors")
     ;
         Ctors = [_ | _],
+        UCOptions = lookup_unify_compare_options(!.Info),
         globals.lookup_int_option(Globals, compare_specialization,
             CompareSpec),
         list.length(Ctors, NumCtors),
         ( if NumCtors =< CompareSpec then
-            generate_compare_proc_body_du_quad(SpecDefnInfo,
+            generate_compare_proc_body_du_quad(SpecDefnInfo, UCOptions,
                 Ctors, Res, X, Y, Goal0, !Info)
         else
-            generate_compare_proc_body_du_linear(SpecDefnInfo,
+            generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions,
                 Ctors, Res, X, Y, Goal0, !Info)
         ),
         Context = SpecDefnInfo ^ spdi_context,
         maybe_wrap_with_pretest_equality(Context, X, Y, yes(Res), Goal0, Goal,
             !Info),
         HeadVars = [Res, X, Y],
-        quantify_clause_body(HeadVars, Goal, Context, Clause, !Info)
+        quantify_clause_body(all_modes, HeadVars, Goal, Context, Clause, !Info)
     ).
 
-    % This should only be used for the Erlang backend right now.
-    % We follow the Erlang order that tuples of smaller arity always precede
-    % tuples of larger arity.
+    % Order constructors the way Erlang does it: first by arity,
+    % then by lexicographic order on the name.
     %
-:- pred compare_ctors_lexically(constructor_repn::in, constructor_repn::in,
+:- pred compare_ctors_for_erlang(constructor_repn::in, constructor_repn::in,
     comparison_result::out) is det.
 
-compare_ctors_lexically(CtorA, CtorB, Res) :-
+compare_ctors_for_erlang(CtorA, CtorB, Res) :-
     list.length(CtorA ^ cr_args, ArityA),
     list.length(CtorB ^ cr_args, ArityB),
     compare(ArityRes, ArityA, ArityB),
     (
         ArityRes = (=),
-        % XXX This assumes the string ordering used by the Mercury compiler is
-        % the same as that of the target language compiler.
+        % XXX This assumes the string ordering used by the Mercury compiler
+        % is the same as that of the target language compiler.
         NameA = unqualify_name(CtorA ^ cr_name),
         NameB = unqualify_name(CtorB ^ cr_name),
         compare(Res, NameA, NameB)
@@ -1021,53 +1301,56 @@ compare_ctors_lexically(CtorA, CtorB, Res) :-
     % predicate.
     %
 :- pred generate_compare_proc_body_du_quad(spec_pred_defn_info::in,
-    list(constructor_repn)::in, prog_var::in, prog_var::in, prog_var::in,
+    uc_options::in, list(constructor_repn)::in,
+    prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_proc_body_du_quad(SpecDefnInfo, Ctors, R, X, Y, Goal,
-        !Info) :-
-    generate_compare_du_quad_switch_on_x(SpecDefnInfo, Ctors, Ctors, R, X, Y,
-        [], Cases, !Info),
+generate_compare_proc_body_du_quad(SpecDefnInfo, UCOptions, Ctors,
+        R, X, Y, Goal, !Info) :-
+    % XXX Consider returning switches, not disjunctions, both here
+    % and everywhere else.
+    generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
+        Ctors, Ctors, R, X, Y, [], Cases, !Info),
     Context = SpecDefnInfo ^ spdi_context,
     goal_info_init(Context, GoalInfo),
     disj_list_to_goal(Cases, GoalInfo, Goal).
 
 :- pred generate_compare_du_quad_switch_on_x(spec_pred_defn_info::in,
-    list(constructor_repn)::in, list(constructor_repn)::in,
+    uc_options::in, list(constructor_repn)::in, list(constructor_repn)::in,
     prog_var::in, prog_var::in, prog_var::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_du_quad_switch_on_x(_SpecDefnInfo, [],
-        _RightCtors, _R, _X, _Y, !Cases, !Info).
-generate_compare_du_quad_switch_on_x(SpecDefnInfo, [LeftCtor | LeftCtors],
-        RightCtors, R, X, Y, !Cases, !Info) :-
-    generate_compare_du_quad_switch_on_y(SpecDefnInfo, LeftCtor, RightCtors,
-        ">", R, X, Y, !Cases, !Info),
-    generate_compare_du_quad_switch_on_x(SpecDefnInfo, LeftCtors, RightCtors,
-        R, X, Y, !Cases, !Info).
+generate_compare_du_quad_switch_on_x(_SpecDefnInfo, _UCOptions,
+        [], _RightCtors, _R, _X, _Y, !Cases, !Info).
+generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
+        [LeftCtor | LeftCtors], RightCtors, R, X, Y, !Cases, !Info) :-
+    generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions,
+        LeftCtor, RightCtors, ">", R, X, Y, !Cases, !Info),
+    generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
+        LeftCtors, RightCtors, R, X, Y, !Cases, !Info).
 
 :- pred generate_compare_du_quad_switch_on_y(spec_pred_defn_info::in,
-    constructor_repn::in, list(constructor_repn)::in, string::in,
-    prog_var::in, prog_var::in, prog_var::in,
+    uc_options::in, constructor_repn::in, list(constructor_repn)::in,
+    string::in, prog_var::in, prog_var::in, prog_var::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_du_quad_switch_on_y(_SpecDefnInfo, _LeftCtor,
+generate_compare_du_quad_switch_on_y(_SpecDefnInfo, _UCOptions, _LeftCtor,
         [], _Cmp, _R, _X, _Y, !Cases, !Info).
-generate_compare_du_quad_switch_on_y(SpecDefnInfo, LeftCtor,
+generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions, LeftCtor,
         [RightCtor | RightCtors], Cmp0, R, X, Y, !Cases, !Info) :-
     ( if LeftCtor = RightCtor then
-        generate_compare_case(SpecDefnInfo, LeftCtor,
-            R, X, Y, quad, Case, !Info),
+        generate_compare_case(SpecDefnInfo, UCOptions, quad, LeftCtor,
+            R, X, Y, Case, !Info),
         Cmp1 = "<"
     else
         generate_compare_du_quad_compare_asymmetric(SpecDefnInfo,
             LeftCtor, RightCtor, Cmp0, R, X, Y, Case, !Info),
         Cmp1 = Cmp0
     ),
-    generate_compare_du_quad_switch_on_y(SpecDefnInfo, LeftCtor, RightCtors,
-        Cmp1, R, X, Y, [Case | !.Cases], !:Cases, !Info).
+    generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions, LeftCtor,
+        RightCtors, Cmp1, R, X, Y, [Case | !.Cases], !:Cases, !Info).
 
 :- pred generate_compare_du_quad_compare_asymmetric(spec_pred_defn_info::in,
     constructor_repn::in, constructor_repn::in,
@@ -1123,7 +1406,7 @@ generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, CtorA, CtorB,
     %           Res = (>)   % Return_Greater_Than
     %       else if
     %           % The disjuncts of this disjunction are generated by
-    %           % the predicate generate_linear_compare_cases below.
+    %           % the predicate generate_compare_du_linear_cases below.
     %           (
     %               X = f
     %               R = (=)
@@ -1146,15 +1429,16 @@ generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, CtorA, CtorB,
     %           compare_error   % Abort
     %       ).
     %
-    % Note that disjuncts covering constants do not test Y, since for constants
-    % X_Index = Y_Index implies X = Y.
+    % Note that disjuncts covering constants do not test Y,
+    % since for constants, X_Index = Y_Index implies X = Y.
     %
 :- pred generate_compare_proc_body_du_linear(spec_pred_defn_info::in,
-    list(constructor_repn)::in, prog_var::in, prog_var::in, prog_var::in,
+    uc_options::in, list(constructor_repn)::in,
+    prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_proc_body_du_linear(SpecDefnInfo, Ctors, Res, X, Y, Goal,
-        !Info) :-
+generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions, Ctors,
+        Res, X, Y, Goal, !Info) :-
     IntType = int_type,
     info_new_var(IntType, X_Index, !Info),
     info_new_var(IntType, Y_Index, !Info),
@@ -1176,10 +1460,11 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, Ctors, Res, X, Y, Goal,
     build_spec_pred_call(TypeCtor, spec_pred_index, [Y, Y_Index],
         Y_InstmapDelta, detism_det, Context, Call_Y_Index, !Info),
 
-    build_call("builtin_int_lt", [X_Index, Y_Index], Context,
-        Call_Less_Than, !Info),
-    build_call("builtin_int_gt", [X_Index, Y_Index], Context,
-        Call_Greater_Than, !Info),
+    build_simple_call(ModuleInfo, mercury_private_builtin_module,
+        "builtin_int_lt", [X_Index, Y_Index], Context,
+        Call_Less_Than),
+    build_simple_call(ModuleInfo, mercury_private_builtin_module,
+        "builtin_int_gt", [X_Index, Y_Index], Context, Call_Greater_Than),
 
     make_const_construction(Context, Res,
         compare_cons_id("<"), Return_Less_Than),
@@ -1189,11 +1474,12 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, Ctors, Res, X, Y, Goal,
     create_pure_atomic_complicated_unification(Res, rhs_var(R), Context,
         umc_explicit, [], Return_R),
 
-    generate_compare_du_linear_cases(SpecDefnInfo, Ctors, R, X, Y,
+    generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, Ctors, R, X, Y,
         Cases, !Info),
     CasesGoal = hlds_goal(disj(Cases), GoalInfo),
 
-    build_call("compare_error", [], Context, Abort, !Info),
+    build_simple_call(ModuleInfo, mercury_private_builtin_module,
+        "compare_error", [], Context, Abort),
 
     HandleEqualGoal =
         hlds_goal(
@@ -1215,18 +1501,18 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, Ctors, Res, X, Y, Goal,
                 [Call_X_Index, Call_Y_Index, HandleLessGreaterEqualGoal]),
             GoalInfo).
 
-    % generate_linear_compare_cases: for a type such as
+    % generate_compare_du_linear_cases does a part of the job assigned to
+    % generate_compare_proc_body_du_linear. Specifically, for a type such as
     %
     %   :- type foo
     %       --->    f
     %       ;       g(a)
     %       ;       h(b, foo).
     %
-    % we want to generate code
+    % we generate
     %
     %   (
     %       X = f,      % UnifyX_Goal
-    %       Y = X,      % UnifyY_Goal
     %       R = (=)     % CompareArgs_Goal
     %   ;
     %       X = g(X1),
@@ -1242,21 +1528,19 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, Ctors, Res, X, Y, Goal,
     %       )
     %   )
     %
-    % Note that in the clauses for constants, we unify Y with X, not with
-    % the constant. This is to allow dupelim to eliminate all but one of
-    % the code fragments implementing such switch arms.
-    %
 :- pred generate_compare_du_linear_cases(spec_pred_defn_info::in,
-    list(constructor_repn)::in, prog_var::in, prog_var::in, prog_var::in,
+    uc_options::in, list(constructor_repn)::in,
+    prog_var::in, prog_var::in, prog_var::in,
     list(hlds_goal)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_du_linear_cases(_SpecDefnInfo, [], _R, _X, _Y,
-        [], !Info).
-generate_compare_du_linear_cases(SpecDefnInfo, [Ctor | Ctors], R, X, Y,
-        [Case | Cases], !Info) :-
-    generate_compare_case(SpecDefnInfo, Ctor, R, X, Y, linear, Case, !Info),
-    generate_compare_du_linear_cases(SpecDefnInfo, Ctors, R, X, Y, Cases,
-        !Info).
+generate_compare_du_linear_cases(_SpecDefnInfo, _UCOptions, [],
+        _R, _X, _Y, [], !Info).
+generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, [Ctor | Ctors],
+        R, X, Y, [Case | Cases], !Info) :-
+    generate_compare_case(SpecDefnInfo, UCOptions, linear, Ctor,
+        R, X, Y, Case, !Info),
+    generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, Ctors,
+        R, X, Y, Cases, !Info).
 
 %---------------------%
 
@@ -1265,14 +1549,14 @@ generate_compare_du_linear_cases(SpecDefnInfo, [Ctor | Ctors], R, X, Y,
     ;       quad.
 
 :- pred generate_compare_case(spec_pred_defn_info::in,
-    constructor_repn::in, prog_var::in, prog_var::in, prog_var::in,
-    linear_or_quad::in, hlds_goal::out,
-    unify_proc_info::in, unify_proc_info::out) is det.
+    uc_options::in, linear_or_quad::in, constructor_repn::in,
+    prog_var::in, prog_var::in, prog_var::in,
+    hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_case(SpecDefnInfo, CtorRepn, R, X, Y, LinearOrQuad, Case,
-        !Info) :-
+generate_compare_case(SpecDefnInfo, UCOptions, LinearOrQuad, CtorRepn,
+        R, X, Y, Case, !Info) :-
     CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
-        _ConsTag, ArgRepns, FunctorArity, _Ctxt),
+        ConsTag, ArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
     Context = SpecDefnInfo ^ spdi_context,
@@ -1296,32 +1580,35 @@ generate_compare_case(SpecDefnInfo, CtorRepn, R, X, Y, LinearOrQuad, Case,
         )
     ;
         ArgRepns = [_ | _],
-        (
-            MaybeExistConstraints = no_exist_constraints,
-            ExistQTVars = []
-        ;
-            MaybeExistConstraints = exist_constraints(ExistConstraints),
-            ExistConstraints = cons_exist_constraints(ExistQTVars,
-                _Constraints, _UnconstrainedQTVars, _ConstrainedQTVars)
-        ),
-        make_fresh_arg_var_pairs(ExistQTVars, ArgRepns, TypedVarPairs, !Info),
-        VarsX = list.map(project_var_x, TypedVarPairs),
-        VarsY = list.map(project_var_y, TypedVarPairs),
+        compute_exist_constraint_implications(MaybeExistConstraints,
+            ExistQTVars, GiveVarsTypes),
+        MaybePackableArgsLocn = compute_maybe_packable_args_locn(ConsTag),
+        info_get_module_info(!.Info, ModuleInfo),
+        UCParams = uc_params(ModuleInfo, Context, ExistQTVars,
+            MaybePackableArgsLocn, GiveVarsTypes,
+            UCOptions ^ uco_constants_as_ints,
+            UCOptions ^ uco_packed_unify_compare),
+        VarSet0 = !.Info ^ upi_varset,
+        VarTypes0 = !.Info ^ upi_vartypes,
+        lookup_var_type(VarTypes0, X, TermType),
+        generate_arg_compare_goals(UCParams, TermType, X, Y, R,
+            all_args_in_word_so_far, 1, ArgRepns, CompareArgsGoal,
+            VarsX, VarsY, VarSet0, VarSet, VarTypes0, VarTypes),
+        !Info ^ upi_varset := VarSet,
+        !Info ^ upi_vartypes := VarTypes,
         RHSX = rhs_functor(FunctorConsId, is_not_exist_constr, VarsX),
         RHSY = rhs_functor(FunctorConsId, is_not_exist_constr, VarsY),
         create_pure_atomic_complicated_unification(X, RHSX, Context,
             umc_explicit, [], UnifyX_Goal),
         create_pure_atomic_complicated_unification(Y, RHSY, Context,
             umc_explicit, [], UnifyY_Goal),
-        generate_compare_args(ExistQTVars, TypedVarPairs, R, Context,
-            CompareArgs_Goal, !Info),
-        GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal]
+        GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgsGoal]
     ),
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal(GoalList, GoalInfo, Case).
 
-    % generate_compare_args: for a constructor such as
+    % generate_arg_compare_goals: for a constructor such as
     %
     %   h(list(int), foo, string)
     %
@@ -1341,68 +1628,631 @@ generate_compare_case(SpecDefnInfo, CtorRepn, R, X, Y, LinearOrQuad, Case,
     %       compare(R, X3, Y3)      % Return_Comparison
     %   )
     %
-    % For a constructor with no arguments, we want to generate code
-    %
-    %   R = (=)     % Return_Equal
-    %
-:- pred generate_compare_args(existq_tvars::in, list(typed_var_pair)::in,
-    prog_var::in, prog_context::in, hlds_goal::out,
-    unify_proc_info::in, unify_proc_info::out) is det.
+:- pred generate_arg_compare_goals(uc_params::in,
+    mer_type::in, prog_var::in, prog_var::in, prog_var::in,
+    maybe_all_args_in_word_so_far::in, int::in,
+    list(constructor_arg_repn)::in, hlds_goal::out,
+    list(prog_var)::out, list(prog_var)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-generate_compare_args(_, [], R, Context, Goal, !Info) :-
-    generate_return_equal(R, Context, Goal).
-generate_compare_args(ExistQTVars, [TypedVarPair | TypedVarPairs], R, Context,
-        Goal, !Info) :-
-    TypedVarPair = typed_var_pair(Type, X, Y),
-    goal_info_init(GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo),
-
-    % When comparing existentially typed arguments, the arguments may have
-    % different types; in that case, rather than just comparing them,
-    % which would be a type error, we call `typed_compare', which is a builtin
-    % that first compares their types and then compares their values.
-    ( if
-        some [ExistQTVar] (
-            list.member(ExistQTVar, ExistQTVars),
-            type_contains_var(Type, ExistQTVar)
-        )
-    then
-        ComparePred = "typed_compare"
-    else
-        ComparePred = "compare"
-    ),
-    info_get_module_info(!.Info, ModuleInfo),
-
+generate_arg_compare_goals(UCParams, _, _, _, ResultVar,
+        _, _, [], Goal, [], [], !VarSet, !VarTypes) :-
+    generate_return_equal(ResultVar, UCParams ^ ucp_context, Goal).
+generate_arg_compare_goals(UCParams, TermType, TermVarX, TermVarY, ResultVar,
+        !.MaybeAllArgs, ArgNum, [CtorArgRepn | CtorArgRepns], Goal,
+        VarsX, VarsY, !VarSet, !VarTypes) :-
+    GiveVarsTypes = UCParams ^ ucp_give_vars_types,
+    ModuleInfo = UCParams ^ ucp_module_info,
+    Type = CtorArgRepn ^ car_type,
     IsDummy = is_type_a_dummy(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
         % X and Y contain dummy values, so there is nothing to compare.
-        generate_compare_args(ExistQTVars, TypedVarPairs, R, Context,
-            Goal, !Info)
+        make_fresh_var_pair(GiveVarsTypes, "_ArgX", "_ArgY", ArgNum,
+            Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+        generate_arg_compare_goals(UCParams,
+            TermType, TermVarX, TermVarY, ResultVar,
+            !.MaybeAllArgs, ArgNum + 1, CtorArgRepns, Goal,
+            TailVarsX, TailVarsY, !VarSet, !VarTypes),
+        VarsX = [HeadVarX | TailVarsX],
+        VarsY = [HeadVarY | TailVarsY]
     ;
         IsDummy = is_not_dummy_type,
+        Context = UCParams ^ ucp_context,
+        may_we_start_packing_at_this_arg_compare(UCParams, CtorArgRepn,
+            CompareHow, !MaybeAllArgs),
         (
-            TypedVarPairs = [],
-            build_call(ComparePred, [R, X, Y], Context, Goal, !Info)
+            CompareHow = compare_noop,
+            make_fresh_var_pair(GiveVarsTypes, "_ArgX", "_ArgY", ArgNum,
+                Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+            generate_arg_compare_goals(UCParams,
+                TermType, TermVarX, TermVarY, ResultVar,
+                !.MaybeAllArgs, ArgNum + 1, CtorArgRepns, Goal,
+                TailVarsX, TailVarsY, !VarSet, !VarTypes),
+            VarsX = [HeadVarX | TailVarsX],
+            VarsY = [HeadVarY | TailVarsY]
         ;
-            TypedVarPairs = [_ | _],
-            info_new_var(comparison_result_type, R1, !Info),
-            build_call(ComparePred, [R1, X, Y], Context, Do_Comparison, !Info),
+            CompareHow = compare_unpacked,
+            make_fresh_var_pair(GiveVarsTypes, "ArgX", "ArgY", ArgNum,
+                Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+            % When comparing existentially typed arguments, the arguments
+            % may have different types; in that case, rather than just
+            % comparing them, which would be a type error, we call
+            % `typed_compare', which is a builtin that first compares
+            % their types and then compares their values.
+            ( if type_contains_existq_tvar(UCParams, Type) then
+                ComparePred = "typed_compare",
+                ComparePredModule = mercury_private_builtin_module
+            else
+                ComparePred = "compare",
+                ComparePredModule = mercury_public_builtin_module
+            ),
+            prepare_for_conjoining_arg_comparisons(CtorArgRepns,
+                ArgNum, ResultVar, CurCompareResultVar, ConjoinKind,
+                !VarSet, !VarTypes),
+            build_simple_call(ModuleInfo, ComparePredModule,
+                ComparePred, [CurCompareResultVar, HeadVarX, HeadVarY],
+                Context, SubCompareGoal),
+            conjoin_arg_comparisons(UCParams, ConjoinKind,
+                TermType, TermVarX, TermVarY, ResultVar,
+                not_all_args_in_word_so_far, ArgNum + 1, SubCompareGoal, Goal,
+                TailVarsX, TailVarsY, !VarSet, !VarTypes),
+            VarsX = [HeadVarX | TailVarsX],
+            VarsY = [HeadVarY | TailVarsY]
+        ;
+            CompareHow = compare_subword_signed(ArgsLocn, CellOffset, Shift,
+                SignedIntSize),
+            make_fresh_var_pair(GiveVarsTypes, "_ArgX", "_ArgY", ArgNum,
+                Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+            prepare_for_conjoining_arg_comparisons(CtorArgRepns,
+                ArgNum, ResultVar, CurCompareResultVar, ConjoinKind,
+                !VarSet, !VarTypes),
+            select_and_build_signed_comparison_foreign_proc(ModuleInfo,
+                ArgsLocn, TermType, TermVarX, TermVarY, CurCompareResultVar,
+                ArgNum, CellOffset, Shift, SignedIntSize,
+                Context, SubCompareGoal, !VarSet, !VarTypes),
+            conjoin_arg_comparisons(UCParams, ConjoinKind,
+                TermType, TermVarX, TermVarY, ResultVar,
+                not_all_args_in_word_so_far, ArgNum + 1, SubCompareGoal, Goal,
+                TailVarsX, TailVarsY, !VarSet, !VarTypes),
+            VarsX = [HeadVarX | TailVarsX],
+            VarsY = [HeadVarY | TailVarsY]
+        ;
+            CompareHow = compare_packed(ArgsLocn, CellOffset,
+                Shift0, NumBits0),
+            expect_not(type_contains_existq_tvar(UCParams, Type), $pred,
+                "sub-word-size argument of existential type"),
+            make_fresh_var_pair(GiveVarsTypes, "_ArgX", "_ArgY", ArgNum,
+                Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+            get_bulk_comparable_packed_args(UCParams, CellOffset,
+                ArgNum, LeftOverArgNum, Shift0, Shift, NumBits0, NumBits,
+                CtorArgRepns, LeftOverCtorArgRepns, !MaybeAllArgs,
+                TailBulkVarsX, TailBulkVarsY, !VarSet, !VarTypes),
+            prepare_for_conjoining_arg_comparisons(LeftOverCtorArgRepns,
+                ArgNum, ResultVar, CurCompareResultVar, ConjoinKind,
+                !VarSet, !VarTypes),
+            select_and_build_bulk_comparison_foreign_proc(ModuleInfo, ArgsLocn,
+                TermType, TermVarX, TermVarY, CurCompareResultVar,
+                !.MaybeAllArgs, ArgNum, CellOffset, Shift, NumBits,
+                Context, SubCompareGoal, !VarSet, !VarTypes),
+            conjoin_arg_comparisons(UCParams, ConjoinKind,
+                TermType, TermVarX, TermVarY, ResultVar,
+                !.MaybeAllArgs, LeftOverArgNum, SubCompareGoal, Goal,
+                TailVarsX, TailVarsY, !VarSet, !VarTypes),
+            VarsX = [HeadVarX | TailBulkVarsX] ++ TailVarsX,
+            VarsY = [HeadVarY | TailBulkVarsY] ++ TailVarsY
+        )
+    ).
 
-            make_const_construction(Context, R1,
-                compare_cons_id("="), Check_Equal),
-            CheckNotEqual = hlds_goal(negation(Check_Equal), GoalInfo),
+:- pred select_and_build_signed_comparison_foreign_proc(module_info::in,
+    args_locn::in, mer_type::in, prog_var::in, prog_var::in, prog_var::in,
+    int::in, cell_offset::in, arg_shift::in, string::in,
+    prog_context::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-            create_pure_atomic_complicated_unification(R, rhs_var(R1),
-                Context, umc_explicit, [], Return_R1),
-            Condition = hlds_goal(
-                conj(plain_conj, [Do_Comparison, CheckNotEqual]),
-                GoalInfo),
-            generate_compare_args(ExistQTVars, TypedVarPairs, R, Context,
-                ElseCase, !Info),
-            Goal = hlds_goal(
-                if_then_else([], Condition, Return_R1, ElseCase),
-                GoalInfo)
+select_and_build_signed_comparison_foreign_proc(ModuleInfo, ArgsLocn,
+        TermType, TermVarX, TermVarY, CompareResultVar,
+        ArgNum, CellOffset, Shift, SizeStr,
+        Context, CompareConjGoal, !VarSet, !VarTypes) :-
+    % Keep the predicates
+    %   build_bulk_unify_foreign_proc
+    %   select_and_build_signed_comparison_foreign_proc
+    %   select_and_build_bulk_comparison_foreign_proc
+    % in sync where relevant.
+    TermVarXForeignArg = foreign_arg(TermVarX,
+        yes(foreign_arg_name_mode("TermVarX", in_mode)),
+        TermType, bp_native_if_possible),
+    TermVarYForeignArg = foreign_arg(TermVarY,
+        yes(foreign_arg_name_mode("TermVarY", in_mode)),
+        TermType, bp_native_if_possible),
+    CompareResultForeignArg = foreign_arg(CompareResultVar,
+        yes(foreign_arg_name_mode("ResultVar", out_mode)),
+        comparison_result_type, bp_native_if_possible),
+
+    % Keep the Remote versions in sync with generate_arg_unify_goals.
+    LocalWordsDecl = "
+        MR_Unsigned word_x;
+        MR_Unsigned word_y;
+    ",
+    LocalWordsCode = "
+        word_x = (MR_Unsigned) TermVarX;
+        word_y = (MR_Unsigned) TermVarY;
+    ",
+    RemoteWordsDecl = "
+        MR_Unsigned *cell_x;
+        MR_Unsigned *cell_y;
+        MR_Unsigned word_x;
+        MR_Unsigned word_y;
+    ",
+    RemoteWordsCode = "
+        cell_x = (MR_Unsigned *)
+            (((MR_Unsigned) TermVarX) - (MR_Unsigned) Ptag);
+        cell_y = (MR_Unsigned *)
+            (((MR_Unsigned) TermVarY) - (MR_Unsigned) Ptag);
+        word_x = cell_x[CellOffsetVar];
+        word_y = cell_y[CellOffsetVar];
+    ",
+    ValuesDecl = string.format("
+        MR_Unsigned mask;
+        int%s_t     value_x;
+        int%s_t     value_y;
+    ", [s(SizeStr), s(SizeStr)]),
+    ValuesCode = string.format("
+        mask = (MR_Unsigned) ((UINT64_C(1) << %s) - 1);
+        value_x = (int%s_t) (word_x >> ShiftVar) & mask;
+        value_y = (int%s_t) (word_y >> ShiftVar) & mask;
+    ", [s(SizeStr), s(SizeStr), s(SizeStr)]),
+    CompareValuesCode = "
+        if (value_x < value_y) {
+            ResultVar = MR_COMPARE_LESS;
+        } else if (value_x > value_y) {
+            ResultVar = MR_COMPARE_GREATER;
+        } else {
+            ResultVar = MR_COMPARE_EQUAL;
+        }
+    ",
+
+    Shift = arg_shift(ShiftInt),
+    make_fresh_int_var_and_arg(Context, "ShiftVar", ArgNum, ShiftInt,
+        ShiftForeignArg, MakeShiftGoal, !VarSet, !VarTypes),
+
+    (
+        ArgsLocn = args_local,
+        ComparePredName =
+            string.format("compare_local_int%s_bitfields", [s(SizeStr)]),
+        MaybeWordsArgs = [],
+        MaybeWordsGoals = [],
+        WordsDecl = LocalWordsDecl,
+        WordsCode = LocalWordsCode
+    ;
+        ArgsLocn = args_remote(Ptag),
+        ComparePredName =
+            string.format("compare_remote_int%s_bitfields", [s(SizeStr)]),
+        make_ptag_and_cell_offset_args(ArgNum, Ptag, CellOffset, Context,
+            MaybeWordsArgs, MaybeWordsGoals, !VarSet, !VarTypes),
+        WordsDecl = RemoteWordsDecl,
+        WordsCode = RemoteWordsCode
+    ),
+
+    ForeignArgs = [TermVarXForeignArg, TermVarYForeignArg] ++
+        MaybeWordsArgs ++ [ShiftForeignArg, CompareResultForeignArg],
+    ForeignCode = WordsDecl ++ ValuesDecl ++
+        WordsCode ++ ValuesCode ++ CompareValuesCode,
+
+    generate_foreign_proc(mercury_private_builtin_module,
+        ComparePredName, pf_predicate, only_mode,
+        detism_semi, purity_pure, pure_proc_foreign_attributes,
+        ForeignArgs, [], no, ForeignCode, [],
+        instmap_delta_bind_var(CompareResultVar),
+        ModuleInfo, Context, CompareGoal),
+    CompareConjGoalExpr = conj(plain_conj,
+        MaybeWordsGoals ++ [MakeShiftGoal, CompareGoal]),
+    goal_info_init(Context, ContextGoalInfo),
+    CompareConjGoal = hlds_goal(CompareConjGoalExpr, ContextGoalInfo).
+
+:- pred select_and_build_bulk_comparison_foreign_proc(module_info::in,
+    args_locn::in, mer_type::in, prog_var::in, prog_var::in, prog_var::in,
+    maybe_all_args_in_word_so_far::in, int::in, cell_offset::in,
+    arg_shift::in, arg_num_bits::in, prog_context::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+select_and_build_bulk_comparison_foreign_proc(ModuleInfo, ArgsLocn,
+        TermType, TermVarX, TermVarY, CompareResultVar,
+        MaybeAllArgs, ArgNum, CellOffset, Shift, NumBits,
+        Context, CompareConjGoal, !VarSet, !VarTypes) :-
+    % Keep the predicates
+    %   build_bulk_unify_foreign_proc
+    %   select_and_build_signed_comparison_foreign_proc
+    %   select_and_build_bulk_comparison_foreign_proc
+    % in sync where relevant.
+    TermVarXForeignArg = foreign_arg(TermVarX,
+        yes(foreign_arg_name_mode("TermVarX", in_mode)),
+        TermType, bp_native_if_possible),
+    TermVarYForeignArg = foreign_arg(TermVarY,
+        yes(foreign_arg_name_mode("TermVarY", in_mode)),
+        TermType, bp_native_if_possible),
+    CompareResultForeignArg = foreign_arg(CompareResultVar,
+        yes(foreign_arg_name_mode("ResultVar", out_mode)),
+        comparison_result_type, bp_native_if_possible),
+
+    LocalWordsDecl = "
+        MR_Unsigned word_x;
+        MR_Unsigned word_y;
+    ",
+    LocalWordsCode = "
+        word_x = (MR_Unsigned) TermVarX;
+        word_y = (MR_Unsigned) TermVarY;
+    ",
+    RemoteWordsDecl = "
+        MR_Unsigned *cell_x;
+        MR_Unsigned *cell_y;
+        MR_Unsigned word_x;
+        MR_Unsigned word_y;
+    ",
+    RemoteWordsCode = "
+        cell_x = (MR_Unsigned *)
+            (((MR_Unsigned) TermVarX) - (MR_Unsigned) Ptag);
+        cell_y = (MR_Unsigned *)
+            (((MR_Unsigned) TermVarY) - (MR_Unsigned) Ptag);
+        word_x = cell_x[CellOffsetVar];
+        word_y = cell_y[CellOffsetVar];
+    ",
+    ValuesFromWordsDecl = "
+        MR_Unsigned value_x;
+        MR_Unsigned value_y;
+    ",
+    ValuesFromWordsCode = "
+        value_x = word_x;
+        value_y = word_y;
+    ",
+    ValuesFromShiftMaskDecl = "
+        MR_Unsigned mask;
+        MR_Unsigned value_x;
+        MR_Unsigned value_y;
+    ",
+    ValuesFromShiftMaskCode = "
+        mask = (MR_Unsigned) ((UINT64_C(1) << NumBitsVar) - 1);
+        value_x = (word_x >> ShiftVar) & mask;
+        value_y = (word_y >> ShiftVar) & mask;
+    ",
+    CompareValuesCode = "
+        if (value_x < value_y) {
+            ResultVar = MR_COMPARE_LESS;
+        } else if (value_x > value_y) {
+            ResultVar = MR_COMPARE_GREATER;
+        } else {
+            ResultVar = MR_COMPARE_EQUAL;
+        }
+    ",
+    (
+        MaybeAllArgs = all_args_in_word_so_far,
+        ComparePredNameSuffix = "words",
+        ValuesDecl = ValuesFromWordsDecl,
+        ValuesCode = ValuesFromWordsCode,
+        MaybeShiftMaskArgs = [],
+        MaybeShiftMaskGoals = []
+    ;
+        MaybeAllArgs = not_all_args_in_word_so_far,
+        ComparePredNameSuffix = "bitfields",
+        Shift = arg_shift(ShiftInt),
+        make_fresh_int_var_and_arg(Context, "ShiftVar", ArgNum, ShiftInt,
+            ShiftForeignArg, MakeShiftGoal, !VarSet, !VarTypes),
+        NumBits = arg_num_bits(NumBitsInt),
+        make_fresh_int_var_and_arg(Context, "NumBitsVar", ArgNum, NumBitsInt,
+            NumBitsForeignArg, MakeNumBitsGoal, !VarSet, !VarTypes),
+        ValuesDecl = ValuesFromShiftMaskDecl,
+        ValuesCode = ValuesFromShiftMaskCode,
+        MaybeShiftMaskArgs = [ShiftForeignArg, NumBitsForeignArg],
+        MaybeShiftMaskGoals = [MakeShiftGoal, MakeNumBitsGoal]
+    ),
+
+    (
+        ArgsLocn = args_local,
+        ComparePredName = "compare_local_uint_" ++ ComparePredNameSuffix,
+        MaybeWordsArgs = [],
+        MaybeWordsGoals = [],
+        WordsDecl = LocalWordsDecl,
+        WordsCode = LocalWordsCode
+    ;
+        ArgsLocn = args_remote(Ptag),
+        ComparePredName = "compare_remote_uint_" ++ ComparePredNameSuffix,
+        make_ptag_and_cell_offset_args(ArgNum, Ptag, CellOffset, Context,
+            MaybeWordsArgs, MaybeWordsGoals, !VarSet, !VarTypes),
+        WordsDecl = RemoteWordsDecl,
+        WordsCode = RemoteWordsCode
+    ),
+
+    ForeignArgs = [TermVarXForeignArg, TermVarYForeignArg] ++
+        MaybeWordsArgs ++ MaybeShiftMaskArgs ++ [CompareResultForeignArg],
+    ForeignCode = WordsDecl ++ ValuesDecl ++
+        WordsCode ++ ValuesCode ++ CompareValuesCode,
+
+    generate_foreign_proc(mercury_private_builtin_module,
+        ComparePredName, pf_predicate, only_mode,
+        detism_semi, purity_pure, pure_proc_foreign_attributes,
+        ForeignArgs, [], no, ForeignCode, [],
+        instmap_delta_bind_var(CompareResultVar),
+        ModuleInfo, Context, CompareGoal),
+    CompareConjGoalExpr = conj(plain_conj,
+        MaybeWordsGoals ++ MaybeShiftMaskGoals ++ [CompareGoal]),
+    goal_info_init(Context, ContextGoalInfo),
+    CompareConjGoal = hlds_goal(CompareConjGoalExpr, ContextGoalInfo).
+
+:- type compare_conjoin_kind
+    --->    no_more_comparisons
+    ;       more_comparisons(
+                constructor_arg_repn,
+                list(constructor_arg_repn),
+                prog_var
+            ).
+
+:- pred prepare_for_conjoining_arg_comparisons(list(constructor_arg_repn)::in,
+    int::in, prog_var::in, prog_var::out, compare_conjoin_kind::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+prepare_for_conjoining_arg_comparisons(CtorArgRepns, ArgNum,
+        ResultVar, CurCompareResultVar, ConjoinKind, !VarSet, !VarTypes) :-
+    (
+        CtorArgRepns = [],
+        CurCompareResultVar = ResultVar,
+        ConjoinKind = no_more_comparisons
+    ;
+        CtorArgRepns = [HeadCtorArgRepn | TailCtorArgRepns],
+        make_fresh_var(give_vars_types, "SubResult", ArgNum,
+            comparison_result_type, CurCompareResultVar, !VarSet, !VarTypes),
+        ConjoinKind = more_comparisons(HeadCtorArgRepn, TailCtorArgRepns,
+            CurCompareResultVar)
+    ).
+
+:- pred conjoin_arg_comparisons(uc_params::in, compare_conjoin_kind::in,
+    mer_type::in, prog_var::in, prog_var::in, prog_var::in,
+    maybe_all_args_in_word_so_far::in, int::in, hlds_goal::in, hlds_goal::out,
+    list(prog_var)::out, list(prog_var)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+conjoin_arg_comparisons(UCParams, ConjoinKind,
+        TermType, TermVarX, TermVarY, ResultVar,
+        MaybeAllArgs, NextArgNum, SubCompareGoal, Goal,
+        TailVarsX, TailVarsY, !VarSet, !VarTypes) :-
+    (
+        ConjoinKind = no_more_comparisons,
+        Goal = SubCompareGoal,
+        TailVarsX = [],
+        TailVarsY = []
+    ;
+        ConjoinKind = more_comparisons(HeadCtorArgRepn, TailCtorArgRepns,
+            SubResultVar),
+        Context = UCParams ^ ucp_context,
+        goal_info_init(Context, GoalInfo),
+
+        make_const_construction(Context, SubResultVar, compare_cons_id("="),
+            CheckEqualGoal),
+        CheckNotEqualGoal = hlds_goal(negation(CheckEqualGoal), GoalInfo),
+
+        SubResultRHS = rhs_var(SubResultVar),
+        create_pure_atomic_complicated_unification(ResultVar, SubResultRHS,
+            Context, umc_explicit, [], ReturnSubResultGoal),
+        CondGoalExpr = conj(plain_conj, [SubCompareGoal, CheckNotEqualGoal]),
+        CondGoal = hlds_goal(CondGoalExpr, GoalInfo),
+        generate_arg_compare_goals(UCParams,
+            TermType, TermVarX, TermVarY, ResultVar,
+            MaybeAllArgs, NextArgNum,
+            [HeadCtorArgRepn | TailCtorArgRepns], ElseGoal,
+            TailVarsX, TailVarsY, !VarSet, !VarTypes),
+        GoalExpr = if_then_else([], CondGoal, ReturnSubResultGoal, ElseGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ).
+
+:- pred get_bulk_comparable_packed_args(uc_params::in, cell_offset::in,
+    int::in, int::out,
+    arg_shift::in, arg_shift::out, arg_num_bits::in, arg_num_bits::out,
+    list(constructor_arg_repn)::in, list(constructor_arg_repn)::out,
+    maybe_all_args_in_word_so_far::in, maybe_all_args_in_word_so_far::out,
+    list(prog_var)::out, list(prog_var)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+get_bulk_comparable_packed_args(_UCParams, _CellOffset, !ArgNum,
+        !Shift, !NumBits, [], [], !MaybeAllArgs, [], [], !VarSet, !VarTypes).
+get_bulk_comparable_packed_args(UCParams, CellOffset, !ArgNum,
+        !Shift, !NumBits, [CtorArgRepn | CtorArgRepns], LeftOverCtorArgRepns,
+        !MaybeAllArgs, VarsX, VarsY, !VarSet, !VarTypes) :-
+    ArgPosWidth = CtorArgRepn ^ car_pos_width,
+    (
+        (
+            ArgPosWidth = apw_partial_shifted(_, _, _, _, _, Fill),
+            BulkComparability = fill_bulk_comparability(Fill)
+        ;
+            ArgPosWidth = apw_none_shifted(_, _),
+            BulkComparability = bulk_comparable_unsigned
+        ),
+        (
+            BulkComparability = bulk_comparable_unsigned,
+            Type = CtorArgRepn ^ car_type,
+            expect_not(type_contains_existq_tvar(UCParams, Type), $pred,
+                "sub-word-size argument of existential type"),
+            (
+                ArgPosWidth = apw_partial_shifted(_, ArgCellOffset,
+                    ArgShift, ArgNumBits, _, _),
+                !.Shift = arg_shift(ShiftInt0),
+                !.NumBits = arg_num_bits(NumBitsInt0),
+                ArgShift = arg_shift(ArgShiftInt),
+                ArgNumBits = arg_num_bits(ArgNumBitsInt),
+                ShiftInt = ArgShiftInt,
+                NumBitsInt = NumBitsInt0 + ArgNumBitsInt,
+                expect(unify(ArgShiftInt + ArgNumBitsInt, ShiftInt0), $pred,
+                    "packed arg does not immediately follow previous"),
+                !:Shift = arg_shift(ShiftInt),
+                !:NumBits = arg_num_bits(NumBitsInt)
+            ;
+                ArgPosWidth = apw_none_shifted(_, ArgCellOffset)
+                % Leave !Shift and !NumBits unchanged.
+            ),
+            expect(unify(CellOffset, ArgCellOffset), $pred,
+                "apw_{partial,none}_shifted offset != CellOffset"),
+            GiveVarsTypes = UCParams ^ ucp_give_vars_types,
+            make_fresh_var_pair(GiveVarsTypes, "_ArgX", "_ArgY", !.ArgNum,
+                Type, HeadVarX, HeadVarY, !VarSet, !VarTypes),
+            !:ArgNum = !.ArgNum + 1,
+            get_bulk_comparable_packed_args(UCParams, CellOffset,
+                !ArgNum, !Shift, !NumBits, CtorArgRepns, LeftOverCtorArgRepns,
+                !MaybeAllArgs, TailVarsX, TailVarsY, !VarSet, !VarTypes),
+            VarsX = [HeadVarX | TailVarsX],
+            VarsY = [HeadVarY | TailVarsY]
+        ;
+            BulkComparability = not_bulk_comparable(_SignedIntSize),
+            LeftOverCtorArgRepns = [CtorArgRepn | CtorArgRepns],
+            !:MaybeAllArgs = not_all_args_in_word_so_far,
+            VarsX = [],
+            VarsY = []
+        )
+    ;
+        ( ArgPosWidth = apw_full(_, _)
+        ; ArgPosWidth = apw_double(_, _, _)
+        ; ArgPosWidth = apw_none_nowhere
+        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
+        ),
+        LeftOverCtorArgRepns = [CtorArgRepn | CtorArgRepns],
+        % This arg is in the next word, so if we started with
+        % all_args_in_word_so_far, then return the same.
+        VarsX = [],
+        VarsY = []
+    ).
+
+:- type bulk_comparability
+    --->    not_bulk_comparable(string) % Should be "8", "16" or "32".
+    ;       bulk_comparable_unsigned.
+
+:- func fill_bulk_comparability(fill_kind) = bulk_comparability.
+
+fill_bulk_comparability(Fill) = BulkComparability :-
+    (
+        ( Fill = fill_enum
+        ; Fill = fill_uint8
+        ; Fill = fill_uint16
+        ; Fill = fill_uint32
+        ; Fill = fill_char21
+        ),
+        BulkComparability = bulk_comparable_unsigned
+    ;
+        ( Fill = fill_int8,  SizeStr = "8"
+        ; Fill = fill_int16, SizeStr = "16"
+        ; Fill = fill_int32, SizeStr = "32"
+        ),
+        BulkComparability = not_bulk_comparable(SizeStr)
+    ).
+
+:- type unify_how
+    --->    unify_unpacked
+    ;       unify_packed(args_locn, cell_offset).
+
+:- pred may_we_start_packing_at_this_arg_unify(uc_params::in,
+    constructor_arg_repn::in, unify_how::out) is det.
+
+may_we_start_packing_at_this_arg_unify(UCParams, CtorArgRepn, UnifyHow) :-
+    AllowPackedUnifyCompare = UCParams ^ ucp_packed_unify_compare,
+    (
+        AllowPackedUnifyCompare = do_not_allow_packed_unify_compare,
+        UnifyHow = unify_unpacked
+    ;
+        AllowPackedUnifyCompare = allow_packed_unify_compare,
+        MaybePackableArgsLocn = UCParams ^ ucp_maybe_packable_args,
+        (
+            MaybePackableArgsLocn = unpackable_args,
+            UnifyHow = unify_unpacked
+        ;
+            MaybePackableArgsLocn = packable_args(ArgsLocn),
+            ArgPosWidth = CtorArgRepn ^ car_pos_width,
+            (
+                ( ArgPosWidth = apw_full(_, _)
+                ; ArgPosWidth = apw_double(_, _, _)
+                ; ArgPosWidth = apw_none_nowhere
+                ),
+                UnifyHow = unify_unpacked
+            ;
+                ( ArgPosWidth = apw_partial_first(_, CellOffset, _, _, _, _)
+                ; ArgPosWidth = apw_partial_shifted(_, CellOffset, _, _, _, _)
+                ),
+                % The first arg in a packed word can be apw_partial_shifted
+                % in words whose first packed entity is a remote sectag.
+                UnifyHow = unify_packed(ArgsLocn, CellOffset)
+            ;
+                ArgPosWidth = apw_none_shifted(_, CellOffset),
+                % For unifications, either we unify all the arguments
+                % that are packed into the same word together, or we unify
+                % them all separately, depending on AllowPackedUnifyCompare.
+                % The only situation in which we can start packing here
+                % is a function symbol's representation includes a
+                % sub-word-sized sectag, and the first argument
+                % is of a dummy type.
+                UnifyHow = unify_packed(ArgsLocn, CellOffset)
+            )
+        )
+    ).
+
+:- type compare_how
+    --->    compare_unpacked
+    ;       compare_noop
+    ;       compare_subword_signed(args_locn, cell_offset, arg_shift, string)
+            % The string should give the size: it should be "8", "16" or "32".
+    ;       compare_packed(args_locn, cell_offset, arg_shift, arg_num_bits).
+
+:- pred may_we_start_packing_at_this_arg_compare(uc_params::in,
+    constructor_arg_repn::in, compare_how::out,
+    maybe_all_args_in_word_so_far::in, maybe_all_args_in_word_so_far::out)
+    is det.
+
+may_we_start_packing_at_this_arg_compare(UCParams, CtorArgRepn,
+        CompareHow, !MaybeAllArgs) :-
+    AllowPackedUnifyCompare = UCParams ^ ucp_packed_unify_compare,
+    (
+        AllowPackedUnifyCompare = do_not_allow_packed_unify_compare,
+        CompareHow = compare_unpacked
+        % The value of !:MaybeAllArgs won't be consulted.
+    ;
+        AllowPackedUnifyCompare = allow_packed_unify_compare,
+        MaybePackableArgsLocn = UCParams ^ ucp_maybe_packable_args,
+        (
+            MaybePackableArgsLocn = unpackable_args,
+            CompareHow = compare_unpacked
+        ;
+            MaybePackableArgsLocn = packable_args(ArgsLocn),
+            ArgPosWidth = CtorArgRepn ^ car_pos_width,
+            (
+                ( ArgPosWidth = apw_full(_, _)
+                ; ArgPosWidth = apw_double(_, _, _)
+                ; ArgPosWidth = apw_none_nowhere
+                ),
+                CompareHow = compare_unpacked,
+                !:MaybeAllArgs = all_args_in_word_so_far
+            ;
+                (
+                    ArgPosWidth = apw_partial_first(_, CellOffset,
+                        Shift, NumBits, _, Fill),
+                    !:MaybeAllArgs = all_args_in_word_so_far
+                ;
+                    ArgPosWidth = apw_partial_shifted(_, CellOffset,
+                        Shift, NumBits, _, Fill)
+                    % Leave !MaybeAllArgs as it was.
+                ),
+                % The first arg in a packed word can be apw_partial_shifted
+                % in words whose first packed entity is a remote sectag.
+                BulkComparability = fill_bulk_comparability(Fill),
+                (
+                    BulkComparability = bulk_comparable_unsigned,
+                    CompareHow = compare_packed(ArgsLocn, CellOffset,
+                        Shift, NumBits)
+                ;
+                    BulkComparability = not_bulk_comparable(SignedIntSize),
+                    CompareHow = compare_subword_signed(ArgsLocn, CellOffset,
+                        Shift, SignedIntSize)
+                )
+            ;
+                ArgPosWidth = apw_none_shifted(_, _),
+                % After e.g. an int8 argument, the next packed argument
+                % to compare may be apw_none_shifted.
+                CompareHow = compare_noop
+                % Leave !MaybeAllArgs as it was.
+            )
         )
     ).
 
@@ -1505,7 +2355,7 @@ generate_index_proc_body_du(SpecDefnInfo, Ctors, X, Index, Clause, !Info) :-
     Context = SpecDefnInfo ^ spdi_context,
     goal_info_init(Context, GoalInfo),
     Goal = hlds_goal(disj(Disjuncts), GoalInfo),
-    quantify_clause_body([X, Index], Goal, Context, Clause, !Info).
+    quantify_clause_body(all_modes, [X, Index], Goal, Context, Clause, !Info).
 
 :- pred generate_index_du_case(spec_pred_defn_info::in,
     prog_var::in, prog_var::in, constructor_repn::in, hlds_goal::out,
@@ -1535,19 +2385,10 @@ generate_index_du_case(SpecDefnInfo, X, Index, Ctor, Goal, !N, !Info) :-
 % Utility predicates.
 %
 
-:- pred build_call(string::in, list(prog_var)::in, prog_context::in,
-    hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
+:- pred build_simple_call(module_info::in, module_name::in, string::in,
+    list(prog_var)::in, prog_context::in, hlds_goal::out) is det.
 
-build_call(PredName, ArgVars, Context, Goal, !Info) :-
-    % We assume that the special preds compare/3, index/2, and unify/2
-    % are the only public builtins called by code generated by this module.
-    list.length(ArgVars, Arity),
-    ( if special_pred_name_arity(_, PredName, _, Arity) then
-        ModuleName = mercury_public_builtin_module
-    else
-        ModuleName = mercury_private_builtin_module
-    ),
-    info_get_module_info(!.Info, ModuleInfo),
+build_simple_call(ModuleInfo, ModuleName, PredName, ArgVars, Context, Goal) :-
     generate_simple_call(ModuleName, PredName, pf_predicate,
         mode_no(0), detism_erroneous, purity_pure, ArgVars, [],
         instmap_delta_bind_no_var, ModuleInfo, Context, Goal).
@@ -1643,11 +2484,11 @@ get_pretest_equality_cast_type(Info) = CastType :-
 
 %---------------------------------------------------------------------------%
 
-:- pred quantify_clause_body(list(prog_var)::in, hlds_goal::in,
-    prog_context::in, clause::out,
+:- pred quantify_clause_body(clause_applicable_modes::in,
+    list(prog_var)::in, hlds_goal::in, prog_context::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
+quantify_clause_body(ApplModes, HeadVars, Goal0, Context, Clause, !Info) :-
     info_get_varset(!.Info, Varset0),
     info_get_types(!.Info, Types0),
     info_get_rtti_varmaps(!.Info, RttiVarMaps0),
@@ -1657,7 +2498,7 @@ quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
     info_set_varset(Varset, !Info),
     info_set_types(Types, !Info),
     info_set_rtti_varmaps(RttiVarMaps, !Info),
-    Clause = clause(all_modes, Goal, impl_lang_mercury, Context, []).
+    Clause = clause(ApplModes, Goal, impl_lang_mercury, Context, []).
 
 %---------------------------------------------------------------------------%
 
@@ -1679,74 +2520,109 @@ compare_functor(Name) =
 
 %---------------------------------------------------------------------------%
 
-:- type typed_var_pair
-    --->    typed_var_pair(mer_type, prog_var, prog_var).
+:- type maybe_give_vars_types
+    --->    do_not_give_vars_types
+    ;       give_vars_types.
 
-:- func project_var_x(typed_var_pair) = prog_var.
+:- pred compute_exist_constraint_implications(maybe_cons_exist_constraints::in,
+    existq_tvars::out, maybe_give_vars_types::out) is det.
 
-project_var_x(typed_var_pair(_ArgType, VarX, _VarY)) = VarX.
-
-:- func project_var_y(typed_var_pair) = prog_var.
-
-project_var_y(typed_var_pair(_ArgType, _VarX, VarY)) = VarY.
-
-%---------------------%
-
-:- pred make_fresh_arg_var_pairs(existq_tvars::in,
-    list(constructor_arg_repn)::in, list(typed_var_pair)::out,
-    unify_proc_info::in, unify_proc_info::out) is det.
-
-make_fresh_arg_var_pairs(ExistQTVars, CtorArgs, TypedVarPairs, !Info) :-
+compute_exist_constraint_implications(MaybeExistConstraints, ExistQTVars,
+        GiveVarsTypes) :-
     (
+        MaybeExistConstraints = no_exist_constraints,
         ExistQTVars = [],
-        GiveFreshVarsTypes = yes
+        GiveVarsTypes = give_vars_types
     ;
-        ExistQTVars = [_ | _],
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(ExistQTVars, _Constraints,
+            _UnconstrainedQTVars, _ConstrainedQTVars),
         % If there are existential types involved, then it is too hard to get
         % the types right here (it would require allocating new type variables)
         % -- instead, typecheck.m will typecheck the clause to figure out
         % the correct types. So we just allocate the variables and leave it
         % up to typecheck.m to infer their types.
-        GiveFreshVarsTypes = no
-    ),
+        GiveVarsTypes = do_not_give_vars_types
+    ).
+
+%---------------------%
+
+:- pred make_ptag_and_cell_offset_args(int::in, ptag::in, cell_offset::in,
+    prog_context::in, list(foreign_arg)::out, list(hlds_goal)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+make_ptag_and_cell_offset_args(ArgNum, Ptag, CellOffset, Context, Args, Goals,
+        !VarSet, !VarTypes) :-
+    Ptag = ptag(PtagUint8),
+    PtagInt = uint8.cast_to_int(PtagUint8),
+    make_fresh_int_var_and_arg(Context, "Ptag", ArgNum, PtagInt,
+        PtagForeignArg, MakePtagGoal, !VarSet, !VarTypes),
+    CellOffset = cell_offset(CellOffsetInt),
+    make_fresh_int_var_and_arg(Context, "CellOffsetVar", ArgNum, CellOffsetInt,
+        CellOffsetForeignArg, MakeCellOffsetGoal, !VarSet, !VarTypes),
+    Args = [PtagForeignArg, CellOffsetForeignArg],
+    Goals = [MakePtagGoal, MakeCellOffsetGoal].
+
+%---------------------%
+
+:- pred make_fresh_vars(maybe_give_vars_types::in, string::in,
+    list(constructor_arg_repn)::in, list(prog_var)::out,
+    unify_proc_info::in, unify_proc_info::out) is det.
+
+make_fresh_vars(GiveVarsTypes, Prefix, CtorArgRepns, Vars, !Info) :-
     VarSet0 = !.Info ^ upi_varset,
     VarTypes0 = !.Info ^ upi_vartypes,
-    make_fresh_arg_var_pairs(GiveFreshVarsTypes, 1, CtorArgs, TypedVarPairs,
+    make_fresh_vars_loop(GiveVarsTypes, Prefix, 1, CtorArgRepns, Vars,
         VarSet0, VarSet, VarTypes0, VarTypes),
     !Info ^ upi_varset := VarSet,
     !Info ^ upi_vartypes := VarTypes.
 
-:- pred make_fresh_arg_var_pairs(bool::in, int::in,
-    list(constructor_arg_repn)::in, list(typed_var_pair)::out,
+:- pred make_fresh_vars_loop(maybe_give_vars_types::in,
+    string::in, int::in, list(constructor_arg_repn)::in, list(prog_var)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-make_fresh_arg_var_pairs(_GiveFreshVarsTypes, _ArgNum, [], [],
-        !VarSet, !VarTypes).
-make_fresh_arg_var_pairs(GiveFreshVarsTypes, ArgNum, [CtorArg | CtorArgs],
-        [TypedVarPair | TypedVarPairs], !VarSet, !VarTypes) :-
-    make_fresh_arg_var_pair(GiveFreshVarsTypes, ArgNum, CtorArg,
-        TypedVarPair, !VarSet, !VarTypes),
-    make_fresh_arg_var_pairs(GiveFreshVarsTypes, ArgNum + 1, CtorArgs,
-        TypedVarPairs, !VarSet, !VarTypes).
+make_fresh_vars_loop(_GiveVarsTypes, _Prefix, _ArgNum,
+        [], [], !VarSet, !VarTypes).
+make_fresh_vars_loop(GiveVarsTypes, Prefix, ArgNum,
+        [CtorArgRepn | CtorArgRepns], [Var | Vars], !VarSet, !VarTypes) :-
+    make_fresh_var(GiveVarsTypes, Prefix, ArgNum,
+        CtorArgRepn ^ car_type, Var, !VarSet, !VarTypes),
+    make_fresh_vars_loop(GiveVarsTypes, Prefix, ArgNum + 1,
+        CtorArgRepns, Vars, !VarSet, !VarTypes).
 
-:- pred make_fresh_arg_var_pair(bool::in, int::in,
-    constructor_arg_repn::in, typed_var_pair::out,
+:- pred make_fresh_var(maybe_give_vars_types::in, string::in, int::in,
+    mer_type::in, prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-make_fresh_arg_var_pair(GiveFreshVarsTypes, ArgNum, CtorArg, TypedVarPair,
-        !VarSet, !VarTypes) :-
-    ArgType = CtorArg ^ car_type,
-    ArgNumStr = string.int_to_string(ArgNum),
-    varset.new_named_var("ArgX" ++ ArgNumStr, VarX, !VarSet),
-    varset.new_named_var("ArgY" ++ ArgNumStr, VarY, !VarSet),
+make_fresh_var(GiveVarsTypes, Prefix, Num, Type, Var, !VarSet, !VarTypes) :-
+    NumStr = string.int_to_string(Num),
+    varset.new_named_var(Prefix ++ NumStr, Var, !VarSet),
     (
-        GiveFreshVarsTypes = no
+        GiveVarsTypes = do_not_give_vars_types
     ;
-        GiveFreshVarsTypes = yes,
-        add_var_type(VarX, ArgType, !VarTypes),
-        add_var_type(VarY, ArgType, !VarTypes)
-    ),
-    TypedVarPair = typed_var_pair(ArgType, VarX, VarY).
+        GiveVarsTypes = give_vars_types,
+        add_var_type(Var, Type, !VarTypes)
+    ).
+
+%---------------------%
+
+:- pred make_fresh_var_pair(maybe_give_vars_types::in,
+    string::in, string::in, int::in,
+    mer_type::in, prog_var::out, prog_var::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+make_fresh_var_pair(GiveVarsTypes, PrefixX, PrefixY, Num,
+        Type, VarX, VarY, !VarSet, !VarTypes) :-
+    NumStr = string.int_to_string(Num),
+    varset.new_named_var(PrefixX ++ NumStr, VarX, !VarSet),
+    varset.new_named_var(PrefixY ++ NumStr, VarY, !VarSet),
+    (
+        GiveVarsTypes = do_not_give_vars_types
+    ;
+        GiveVarsTypes = give_vars_types,
+        add_var_type(VarX, Type, !VarTypes),
+        add_var_type(VarY, Type, !VarTypes)
+    ).
 
 %---------------------%
 
@@ -1802,13 +2678,124 @@ make_fresh_named_var_from_type(Type, BaseName, Num, Var, !Info) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred make_fresh_int_var_and_arg(prog_context::in, string::in, int::in,
+    int::in, foreign_arg::out, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+make_fresh_int_var_and_arg(Context, Name, SuffixInt, Value, Arg, Goal,
+        !VarSet, !VarTypes) :-
+    Type = int_type,
+    make_fresh_var(give_vars_types, Name, SuffixInt, Type, Var,
+        !VarSet, !VarTypes),
+    Arg = foreign_arg(Var, yes(foreign_arg_name_mode(Name, in_mode)),
+        Type, bp_native_if_possible),
+    make_int_const_construction(Context, Var, Value, Goal).
+
+%---------------------------------------------------------------------------%
+
+:- func compute_maybe_packable_args_locn(cons_tag) = maybe_packable_args.
+
+compute_maybe_packable_args_locn(ConsTag) = ArgsLocn :-
+    (
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            RemoteArgsTagInfo = remote_args_only_functor,
+            Ptag = ptag(0u8)
+        ;
+            RemoteArgsTagInfo = remote_args_unshared(Ptag)
+        ;
+            RemoteArgsTagInfo = remote_args_shared(Ptag, _)
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(_),
+            % This is a dummy ptag. We enable the use of remote_args_ctors
+            % data type representations only in grades where we won't be
+            % doing any argument packing, which means we also won't be doing
+            % any bulk comparisons of packed arguments.
+            Ptag = ptag(0u8)
+        ),
+        ArgsLocn = packable_args(args_remote(Ptag))
+    ;
+        ConsTag = local_args_tag(_),
+        ArgsLocn = packable_args(args_local)
+    ;
+        ( ConsTag = no_tag
+        ; ConsTag = direct_arg_tag(_)
+        ),
+        ArgsLocn = unpackable_args
+    ;
+        ( ConsTag = int_tag(_)
+        ; ConsTag = float_tag(_)
+        ; ConsTag = string_tag(_)
+        ; ConsTag = foreign_tag(_, _)
+        ; ConsTag = dummy_tag
+        ; ConsTag = shared_local_tag_no_args(_, _, _)
+        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
+        ; ConsTag = closure_tag(_, _, _)
+        ),
+        unexpected($pred, "wrong tag for a general du functor with args")
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % We want to know whether a bulk comparison operation applies
+    % only to *some* of the arguments packed together into a word,
+    % or it *all* of the arguments packed together in a word, because
+    % in the latter case, we can avoid the shift and mask operations
+    % required to extract each bitfield from its word. (We always store
+    % zeroes in the bits in a packed word that do not store arguments.)
+    %
+    % As we process the arguments to include in a bulk compare operation,
+    % we use this type to keep track. The default is all_args_in_word_so_far,
+    % but we fall back to not_all_args_in_word_so_far when we find an argument
+    % that cannot be part of the bulk compare operation. We can go back to
+    % all_args_in_word_so_far only when we get to the next packed word.
+    %
+:- type maybe_all_args_in_word_so_far
+    --->    not_all_args_in_word_so_far
+    ;       all_args_in_word_so_far.
+
+%---------------------------------------------------------------------------%
+
+:- type args_locn
+    --->    args_local
+    ;       args_remote(ptag).
+
+:- type maybe_packable_args
+    --->    unpackable_args
+    ;       packable_args(args_locn).
+
+:- type uc_params
+    --->    uc_params(
+                ucp_module_info             :: module_info,
+                ucp_context                 :: prog_context,
+                ucp_existq_tvars            :: existq_tvars,
+                ucp_maybe_packable_args     :: maybe_packable_args,
+                ucp_give_vars_types         :: maybe_give_vars_types,
+                ucp_constants_as_ints       :: maybe_compare_constants_as_ints,
+                ucp_packed_unify_compare    :: maybe_allow_packed_unify_compare
+            ).
+
+%---------------------------------------------------------------------------%
+
 :- type unify_proc_info
     --->    unify_proc_info(
                 upi_module_info     ::  module_info,
                 upi_varset          ::  prog_varset,
                 upi_vartypes        ::  vartypes,
-                upi_rtti_varmaps    ::  rtti_varmaps
+                upi_rtti_varmaps    ::  rtti_varmaps,
+                upi_packed_ops      ::  maybe_packed_word_ops
             ).
+
+:- type maybe_packed_word_ops
+    --->    used_no_packed_word_ops
+    ;       used_some_packed_word_ops.
 
 :- pred info_init(module_info::in, unify_proc_info::out) is det.
 
@@ -1816,7 +2803,8 @@ info_init(ModuleInfo, UPI) :-
     varset.init(VarSet),
     init_vartypes(VarTypes),
     rtti_varmaps_init(RttiVarMaps),
-    UPI = unify_proc_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps).
+    UPI = unify_proc_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
+        used_no_packed_word_ops).
 
 :- pred info_get_module_info(unify_proc_info::in, module_info::out) is det.
 :- pred info_get_varset(unify_proc_info::in, prog_varset::out) is det.

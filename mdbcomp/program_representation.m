@@ -2052,11 +2052,22 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
     ;
         ( PredName = "builtin_compound_eq", Arity = 2
         ; PredName = "builtin_compound_lt", Arity = 2
+        ; PredName = "compare_local_int16_bitfields", Arity = 4
+        ; PredName = "compare_local_int32_bitfields", Arity = 4
+        ; PredName = "compare_local_int8_bitfields", Arity = 4
+        ; PredName = "compare_local_uint_bitfields", Arity = 5
+        ; PredName = "compare_local_uint_words", Arity = 3
+        ; PredName = "compare_remote_int16_bitfields", Arity = 6
+        ; PredName = "compare_remote_int32_bitfields", Arity = 6
+        ; PredName = "compare_remote_int8_bitfields", Arity = 6
+        ; PredName = "compare_remote_uint_bitfields", Arity = 7
+        ; PredName = "compare_remote_uint_words", Arity = 5
         ; PredName = "instance_constraint_from_typeclass_info", Arity = 3
         ; PredName = "store_at_ref_impure", Arity = 2
         ; PredName = "superclass_from_typeclass_info", Arity = 3
         ; PredName = "type_info_from_typeclass_info", Arity = 3
         ; PredName = "unconstrained_type_info_from_typeclass_info", Arity = 3
+        ; PredName = "unify_remote_arg_words", Arity = 4
         ; PredName = "unsafe_type_cast", Arity = 2
         ),
         ModuleName = mercury_private_builtin_module

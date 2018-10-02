@@ -466,8 +466,8 @@
 
 :- type pred_origin
     --->    origin_special_pred(special_pred_id, type_ctor)
-            % If the predicate is a unify, compare, index or initialisation
-            % predicate, specify which one, and for which type constructor.
+            % If the predicate is a unify, compare or index predicate,
+            % specify which one, and for which type constructor.
 
     ;       origin_instance_method(sym_name, instance_method_constraints)
             % The predicate is a class method implementation. Record
@@ -1166,11 +1166,9 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
     ClausesRep = init_clauses_rep,
     ItemNumbers = init_clause_item_numbers_user,
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    HasForeignClauses = no,
-    HadSyntaxErrors = no,
     ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
         HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
-        HasForeignClauses, HadSyntaxErrors),
+        no_foreign_lang_clauses, no_clause_syntax_errors),
 
     % argument ModuleName
     PredName = unqualify_name(PredSymName),
@@ -3771,12 +3769,12 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
     %
 :- pred is_unify_pred(pred_info::in) is semidet.
 
-    % is_unify_or_compare_pred(PredInfo) succeeds iff the PredInfo is for a
-    % compiler generated instance of a type-specific special_pred (i.e. one
-    % of the unify, compare, or index predicates generated as a type-specific
-    % instance of unify/2, index/2, or compare/3).
+    % is_unify_index_or_compare_pred(PredInfo) succeeds iff the PredInfo
+    % is for a compiler generated instance of a type-specific special_pred
+    % (i.e. one of the unify, compare, or index predicates generated as
+    % a type-specific instance of unify/2, index/2, or compare/3).
     %
-:- pred is_unify_or_compare_pred(pred_info::in) is semidet.
+:- pred is_unify_index_or_compare_pred(pred_info::in) is semidet.
 
     % Is the argument the pred_info for a builtin that can be generated inline?
     %
@@ -3799,8 +3797,9 @@ is_unify_pred(PredInfo) :-
     pred_info_get_origin(PredInfo, Origin),
     Origin = origin_special_pred(spec_pred_unify, _TypeCtor).
 
-is_unify_or_compare_pred(PredInfo) :-
-    pred_info_get_origin(PredInfo, origin_special_pred(_, _)). % XXX bug
+is_unify_index_or_compare_pred(PredInfo) :-
+    pred_info_get_origin(PredInfo, Origin),
+    Origin = origin_special_pred(_SpecialPredId, _TypeCtor).
 
 pred_info_is_builtin(PredInfo) :-
     ModuleName = pred_info_module(PredInfo),

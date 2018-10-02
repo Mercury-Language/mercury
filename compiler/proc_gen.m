@@ -558,7 +558,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         % are correct by construction; for user-defined unify and
         % compare predicates, we *assume* their correctness for now
         % (perhaps not wisely).
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
         % Don't generate bytecode for procs with foreign code.
         goal_has_foreign(Goal) = no
     then

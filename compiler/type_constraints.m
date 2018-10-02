@@ -236,13 +236,13 @@ typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
     map.lookup(Preds0, PredId, PredInfo),
     ( if
         % Compiler-generated predicates are created already type-correct,
-        % so there's no need to typecheck them. The same is true for builtins.
+        % so there is no need to typecheck them. The same is true for builtins.
         % However, compiler-generated unify predicates are not guaranteed to be
         % type-correct if they call a user-defined equality or comparison
         % predicate or if it is a special pred for an existentially quantified
         % type.
         (
-            is_unify_or_compare_pred(PredInfo),
+            is_unify_index_or_compare_pred(PredInfo),
             not special_pred_needs_typecheck(PredInfo, !.HLDS)
         ;
             pred_info_is_builtin(PredInfo)

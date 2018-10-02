@@ -70,7 +70,7 @@ write_proc_stats_for_pred(OutStream, Msg, ModuleInfo, PredId - PredInfo,
         !IO) :-
     ( if
         ( pred_info_is_imported(PredInfo)
-        ; is_unify_or_compare_pred(PredInfo)
+        ; is_unify_index_or_compare_pred(PredInfo)
         )
     then
         true

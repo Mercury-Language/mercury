@@ -41,8 +41,19 @@
 #undef  MR_WORD_TYPE
 
 // MR_BYTES_PER_WORD: the number of bytes per MR_WORD_TYPE.
+// The only two values that the configure script looks for are 4 and 8.
 
 #undef  MR_BYTES_PER_WORD
+
+// MR_BITS_PER_WORD: the number of bits per MR_WORD_TYPE.
+// The only two values that the configure script looks for are 32 and 64.
+
+#undef  MR_BITS_PER_WORD
+
+// MR_MERCURY_IS_{32,64}_BIT: we define MR_MERCURY_IS_32_BIT on 32 bit
+// systems, and we defined MR_MERCURY_IS_64_BIT on 64 bit systems.
+#undef  MR_MERCURY_IS_32_BIT
+#undef  MR_MERCURY_IS_64_BIT
 
 // MR_INTEGER_LENGTH_MODIFIER: the printf() length modifier for a MR_Integer.
 

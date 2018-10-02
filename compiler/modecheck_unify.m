@@ -1226,7 +1226,7 @@ modecheck_complicated_unify(X, Y, Type, FromToInstsOfX, FromToInstsOfY,
         module_info_pred_info(ModuleInfo0, PredId, PredInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap0),
         ( if
-            ( is_unify_or_compare_pred(PredInfo)
+            ( is_unify_index_or_compare_pred(PredInfo)
             ; instmap_is_unreachable(InstMap0)
             )
         then

@@ -580,7 +580,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
             pred_status_defined_in_this_module(PredStatus) = yes,
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_is_imported_not_external(CalleePredInfo),
-            not is_unify_or_compare_pred(CalleePredInfo)
+            not is_unify_index_or_compare_pred(CalleePredInfo)
         then
             !:DepProcs = [CalleePPId | !.DepProcs]
         else

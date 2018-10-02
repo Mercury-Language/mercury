@@ -292,7 +292,8 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
                 MaybeBodyGoal = error1(BodyGoalSpecs),
                 !:Specs = BodyGoalSpecs ++ !.Specs,
                 pred_info_get_clauses_info(!.PredInfo, Clauses0),
-                Clauses = Clauses0 ^ cli_had_syntax_errors := yes,
+                Clauses = Clauses0 ^ cli_had_syntax_errors :=
+                    some_clause_syntax_errors,
                 pred_info_set_clauses_info(Clauses, !PredInfo)
             ;
                 MaybeBodyGoal = ok1(BodyGoal),
@@ -356,7 +357,8 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
                         % some of those variables could have been the result
                         % of typos affecting a word that the programmer meant
                         % to be something else.
-                        Clauses ^ cli_had_syntax_errors = yes
+                        Clauses ^ cli_had_syntax_errors =
+                            some_clause_syntax_errors
                     )
                 then
                     true
@@ -656,13 +658,13 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
         % warnings if there were syntax errors.
         !:Specs = StateVarErrors ++ !.Specs,
         Goal = true_goal,
-        !ClausesInfo ^ cli_had_syntax_errors := yes
+        !ClausesInfo ^ cli_had_syntax_errors := some_clause_syntax_errors
     else
         Goal = Goal0,
         % If we have foreign clauses, we should only add this clause
         % for modes *not* covered by the foreign clauses.
         (
-            HasForeignClauses = yes,
+            HasForeignClauses = some_foreign_lang_clauses,
             get_clause_list(Clauses0, ClausesRep0, ClausesRep1),
             ForeignModeIds = list.condense(list.filter_map(
                 ( func(C) = ProcIds is semidet :-
@@ -673,6 +675,11 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
                         unexpected($module, $pred, "all_modes foreign_proc")
                     ;
                         ApplProcIds = selected_modes(ProcIds)
+                    ;
+                        ( ApplProcIds = unify_in_in_modes
+                        ; ApplProcIds = unify_non_in_in_modes
+                        ),
+                        unexpected($pred, "unify modes for foreign_proc")
                     )
                 ),
                 Clauses0)),
@@ -681,6 +688,11 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
                 ModeIds0 = AllModeIds
             ;
                 ApplModeIds0 = selected_modes(ModeIds0)
+            ;
+                ( ApplModeIds0 = unify_in_in_modes
+                ; ApplModeIds0 = unify_non_in_in_modes
+                ),
+                unexpected($pred, "unify modes for user defined predicate")
             ),
             ModeIds = list.delete_elems(ModeIds0, ForeignModeIds),
             (
@@ -694,7 +706,7 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
                 add_clause(Clause, ClausesRep1, ClausesRep)
             )
         ;
-            HasForeignClauses = no,
+            HasForeignClauses = no_foreign_lang_clauses,
             Clause = clause(ApplModeIds0, Goal, impl_lang_mercury, Context,
                 StateVarWarnings),
             add_clause(Clause, ClausesRep0, ClausesRep)

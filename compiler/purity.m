@@ -493,16 +493,33 @@ compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
         !Info),
     % If this clause doesn't apply to all modes of this procedure,
     % i.e. the procedure has different clauses for different modes,
-    % then we must treat it as impure, unless the programmer has promised
-    % that the clauses are semantically equivalent.
+    % then we must treat it as impure, unless either the compiler or
+    % the programmer has promised that the clauses are semantically equivalent.
     %
     % The default impurity of foreign_proc procedures is handled when
     % processing the foreign_proc goal -- they are not counted as impure
     % here simply because they have different clauses for different modes.
+    ApplicableProcIds = Clause0 ^ clause_applicable_procs,
     ( if
         (
-            ProcIds = pred_info_procids(PredInfo),
-            applies_to_all_modes(Clause0, ProcIds)
+            (
+                ApplicableProcIds = all_modes
+                % Clauses that apply in all modes pose no purity problem.
+            ;
+                ApplicableProcIds = selected_modes(ClauseProcIds),
+                list.sort(ClauseProcIds, SortedClauseProcIds),
+                AllProcIds = pred_info_procids(PredInfo),
+                % Clauses that apply in some modes pose a purity problem
+                % only if the *some* modes are not actually *all* the modes.
+                % (The list returned by pred_info_procids is always sorted.)
+                SortedClauseProcIds = AllProcIds
+            ;
+                ( ApplicableProcIds = unify_in_in_modes
+                ; ApplicableProcIds = unify_non_in_in_modes
+                )
+                % Clauses that have these ApplicableProcIds are all created
+                % by the compiler, and it creates them pure by construction.
+            )
         ;
             pred_info_get_markers(PredInfo, Markers),
             check_marker(Markers, marker_promised_equivalent_clauses)
@@ -539,20 +556,6 @@ compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
         Goal = Goal1
     ),
     Clause = Clause0 ^ clause_body := Goal.
-
-:- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
-
-applies_to_all_modes(Clause, AllProcIds) :-
-    ApplicableProcIds = Clause ^ clause_applicable_procs,
-    (
-        ApplicableProcIds = all_modes
-    ;
-        ApplicableProcIds = selected_modes(ClauseProcIds),
-        % Otherwise the clause applies to the procids in the list.
-        % Check if this is the same as the procids for this procedure.
-        list.sort(ClauseProcIds, SortedClauseProcIds),
-        SortedClauseProcIds = AllProcIds
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -837,7 +840,7 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
         true
     else if
         % Don't require purity annotations on calls in compiler-generated code.
-        is_unify_or_compare_pred(PredInfo)
+        is_unify_index_or_compare_pred(PredInfo)
     then
         true
     else if
@@ -1502,7 +1505,7 @@ error_not_pure_enough(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
 
     Pieces1 = [words("purity error:"), fixed(PredOrFuncStr),
         words("is"), fixed(PurityName), suffix("."), nl],
-    ( if is_unify_or_compare_pred(PredInfo) then
+    ( if is_unify_index_or_compare_pred(PredInfo) then
         Pieces2 = [words("It must be pure.")]
     else
         Pieces2 = [words("It must be declared"), quote(PurityName),

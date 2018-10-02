@@ -10,7 +10,6 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
@@ -34,8 +33,8 @@
     module_info::in, module_info::out) is det.
 :- pred copy_clauses_to_procs_for_pred_in_module_info(pred_id::in,
     module_info::in, module_info::out) is det.
-:- pred copy_clauses_to_proc_in_proc_info(clauses_info::in, proc_id::in,
-    proc_info::in, proc_info::out) is det.
+:- pred copy_clauses_to_proc_in_proc_info(module_info::in, pred_info::in,
+    proc_id::in, proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -48,12 +47,16 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_test.
+:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_args.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
@@ -71,42 +74,43 @@
 copy_clauses_to_proc_for_all_valid_procs(!ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.keys(PredTable0, PredIds),
-    list.foldl(copy_pred_clauses_to_procs_in_pred_table, PredIds,
+    list.foldl(copy_pred_clauses_to_procs_in_pred_table(!.ModuleInfo), PredIds,
         PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
 copy_clauses_to_procs_for_pred_in_module_info(PredId, !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
-    copy_pred_clauses_to_procs_in_pred_table(PredId,
+    copy_pred_clauses_to_procs_in_pred_table(!.ModuleInfo, PredId,
         PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
-:- pred copy_pred_clauses_to_procs_in_pred_table(pred_id::in,
+:- pred copy_pred_clauses_to_procs_in_pred_table(module_info::in, pred_id::in,
     pred_table::in, pred_table::out) is det.
 
-copy_pred_clauses_to_procs_in_pred_table(PredId, !PredTable) :-
+copy_pred_clauses_to_procs_in_pred_table(ModuleInfo, PredId, !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
-    copy_clauses_to_procs_in_pred_info(PredId, PredInfo0, PredInfo),
+    copy_clauses_to_procs_in_pred_info(ModuleInfo, PredId,
+        PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, !PredTable).
 
-:- pred copy_clauses_to_procs_in_pred_info(pred_id::in,
+:- pred copy_clauses_to_procs_in_pred_info(module_info::in, pred_id::in,
     pred_info::in, pred_info::out) is det.
 
-copy_clauses_to_procs_in_pred_info(PredId, !PredInfo) :-
+copy_clauses_to_procs_in_pred_info(ModuleInfo, PredId, !PredInfo) :-
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
     pred_info_get_proc_table(!.PredInfo, ProcMap0),
     map.map_values(
-        copy_clauses_to_maybe_imported_proc_in_proc_info(!.PredInfo,
-            ClausesInfo, PredId),
+        copy_clauses_to_maybe_imported_proc_in_proc_info(ModuleInfo,
+            !.PredInfo, ClausesInfo, PredId),
         ProcMap0, ProcMap),
     pred_info_set_proc_table(ProcMap, !PredInfo).
 
-:- pred copy_clauses_to_maybe_imported_proc_in_proc_info(
+:- pred copy_clauses_to_maybe_imported_proc_in_proc_info(module_info::in,
     pred_info::in, clauses_info::in, pred_id::in, proc_id::in,
     proc_info::in, proc_info::out) is det.
 
-copy_clauses_to_maybe_imported_proc_in_proc_info(PredInfo, ClausesInfo,
-        _PredId, ProcId, !ProcInfo) :-
+copy_clauses_to_maybe_imported_proc_in_proc_info(ModuleInfo, PredInfo,
+        ClausesInfo, _PredId, ProcId, !ProcInfo) :-
     ( if
         (
             pred_info_is_imported(PredInfo)
@@ -131,7 +135,8 @@ copy_clauses_to_maybe_imported_proc_in_proc_info(PredInfo, ClausesInfo,
         proc_info_set_vartypes(VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
     else
-        copy_clauses_to_proc_in_proc_info(ClausesInfo, ProcId, !ProcInfo)
+        copy_clauses_to_proc_in_proc_info(ModuleInfo, PredInfo, ProcId,
+            !ProcInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -139,20 +144,23 @@ copy_clauses_to_maybe_imported_proc_in_proc_info(PredInfo, ClausesInfo,
 copy_clauses_to_nonmethod_procs_for_preds_in_module_info(PredIds,
         !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
-    list.foldl(copy_pred_clauses_to_nonmethod_procs_in_pred_table, PredIds,
-        PredTable0, PredTable),
+    list.foldl(
+        copy_pred_clauses_to_nonmethod_procs_in_pred_table(!.ModuleInfo),
+        PredIds, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
     % For each mode of the given predicate, copy the clauses relevant
     % to the mode and the current backend to the proc_info.
     %
-:- pred copy_pred_clauses_to_nonmethod_procs_in_pred_table(pred_id::in,
-    pred_table::in, pred_table::out) is det.
+:- pred copy_pred_clauses_to_nonmethod_procs_in_pred_table(module_info::in,
+    pred_id::in, pred_table::in, pred_table::out) is det.
 
-copy_pred_clauses_to_nonmethod_procs_in_pred_table(PredId, !PredTable) :-
+copy_pred_clauses_to_nonmethod_procs_in_pred_table(ModuleInfo, PredId,
+        !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
     ( if should_copy_clauses_to_procs(PredInfo0) then
-        copy_clauses_to_procs_in_pred_info(PredId, PredInfo0, PredInfo),
+        copy_clauses_to_procs_in_pred_info(ModuleInfo, PredId,
+            PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, !PredTable)
     else
         true
@@ -166,13 +174,15 @@ should_copy_clauses_to_procs(PredInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-copy_clauses_to_proc_in_proc_info(ClausesInfo, ProcId, !ProcInfo) :-
+copy_clauses_to_proc_in_proc_info(ModuleInfo, PredInfo, ProcId, !ProcInfo) :-
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
     ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars, ClausesRep0,
         _ItemNumbers, RttiInfo, _HaveForeignClauses, _HadSyntaxError),
     % The "replacement" is the replacement of the pred_info's clauses_rep
     % with the goal in the proc_info; the clauses_rep won't be needed again.
     get_clause_list_for_replacement(ClausesRep0, Clauses),
-    select_matching_clauses(ProcId, Clauses, MatchingClauses),
+    select_matching_clauses(ModuleInfo, PredInfo, ProcId, Clauses,
+        MatchingClauses),
     get_clause_disjuncts_and_warnings(MatchingClauses, ClausesDisjuncts,
         StateVarWarnings),
     (
@@ -253,25 +263,85 @@ copy_clauses_to_proc_in_proc_info(ClausesInfo, ProcId, !ProcInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred select_matching_clauses(proc_id::in,
+:- pred select_matching_clauses(module_info::in, pred_info::in, proc_id::in,
     list(clause)::in, list(clause)::out) is det.
 
-select_matching_clauses(ProcId, Clauses, MatchingClauses) :-
+select_matching_clauses(ModuleInfo, PredInfo, ProcId, Clauses,
+        MatchingClauses) :-
+    pred_info_get_origin(PredInfo, Origin),
     % To allow us to process even *very* long lists of clauses without
     % running out of stack, we have to keep select_matching_clauses_loop
     % tail recursive. We do this by making it add each matching clause
     % it processes to the *front* of the list of so-far-detected-to-be-matching
     % clauses, which computes the list of matching clauses in reverse.
     RevMatchingClauses0 = [],
-    select_matching_clauses_acc(ProcId, Clauses,
-        RevMatchingClauses0, RevMatchingClauses),
+    ( if Origin = origin_special_pred(spec_pred_unify, _TypeCtor) then
+        pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+        proc_info_get_argmodes(ProcInfo, ArgModes),
+        ( if
+            list.all_true(mode_initial_inst_is_ground(ModuleInfo), ArgModes)
+        then
+            MaybeInInMode = in_in_mode
+        else
+            MaybeInInMode = not_in_in_mode
+        ),
+        select_matching_unify_clauses_acc(MaybeInInMode, ProcId, Clauses,
+            RevMatchingClauses0, RevMatchingClauses)
+    else
+        select_matching_nonunify_clauses_acc(ProcId, Clauses,
+            RevMatchingClauses0, RevMatchingClauses)
+    ),
     list.reverse(RevMatchingClauses, MatchingClauses).
 
-:- pred select_matching_clauses_acc(proc_id::in, list(clause)::in, 
+:- pred mode_initial_inst_is_ground(module_info::in, mer_mode::in) is semidet.
+
+mode_initial_inst_is_ground(ModuleInfo, Mode) :-
+    InitialInst = mode_get_initial_inst(ModuleInfo, Mode),
+    inst_is_ground(ModuleInfo, InitialInst).
+
+:- type maybe_in_in_mode
+    --->    not_in_in_mode
+    ;       in_in_mode.
+
+:- pred select_matching_unify_clauses_acc(maybe_in_in_mode::in, proc_id::in,
+    list(clause)::in, list(clause)::in, list(clause)::out) is det.
+
+select_matching_unify_clauses_acc(_, _, [], !RevMatchingClauses).
+select_matching_unify_clauses_acc(MaybeInInMode, ProcId, [Clause | Clauses],
+        !RevMatchingClauses) :-
+    ApplicableProcIds = Clause ^ clause_applicable_procs,
+    (
+        ApplicableProcIds = all_modes,
+        !:RevMatchingClauses = [Clause | !.RevMatchingClauses]
+    ;
+        ApplicableProcIds = selected_modes(_),
+        unexpected($pred, "non unify mode")
+    ;
+        ApplicableProcIds = unify_in_in_modes,
+        (
+            MaybeInInMode = not_in_in_mode
+        ;
+            MaybeInInMode = in_in_mode,
+            !:RevMatchingClauses = [Clause | !.RevMatchingClauses]
+        )
+    ;
+        ApplicableProcIds = unify_non_in_in_modes,
+        (
+            MaybeInInMode = not_in_in_mode,
+            !:RevMatchingClauses = [Clause | !.RevMatchingClauses]
+        ;
+            MaybeInInMode = in_in_mode
+        )
+    ),
+    select_matching_unify_clauses_acc(MaybeInInMode, ProcId, Clauses,
+        !RevMatchingClauses).
+
+:- pred select_matching_nonunify_clauses_acc(proc_id::in, list(clause)::in,
     list(clause)::in, list(clause)::out) is det.
 
-select_matching_clauses_acc(_, [], !RevMatchingClauses).
-select_matching_clauses_acc(ProcId, [Clause | Clauses], !RevMatchingClauses) :-
+select_matching_nonunify_clauses_acc(_, [], !RevMatchingClauses).
+select_matching_nonunify_clauses_acc(ProcId, [Clause | Clauses],
+        !RevMatchingClauses) :-
     ApplicableProcIds = Clause ^ clause_applicable_procs,
     (
         ApplicableProcIds = all_modes,
@@ -283,8 +353,13 @@ select_matching_clauses_acc(ProcId, [Clause | Clauses], !RevMatchingClauses) :-
         else
             true
         )
+    ;
+        ( ApplicableProcIds = unify_in_in_modes
+        ; ApplicableProcIds = unify_non_in_in_modes
+        ),
+        unexpected($pred, "unify mode")
     ),
-    select_matching_clauses_acc(ProcId, Clauses, !RevMatchingClauses).
+    select_matching_nonunify_clauses_acc(ProcId, Clauses, !RevMatchingClauses).
 
 %-----------------------------------------------------------------------------%
 

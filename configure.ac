@@ -2136,9 +2136,13 @@ AC_SUBST(MR_ROBDD_BITS_PER_WORD)
 case "$mercury_cv_bits_per_word" in
     32)
         mercury_cv_log_bits_per_word=5
+        AC_DEFINE(MR_MERCURY_IS_32_BITS)
+        AC_SUBST(MERCURY_IS_32_BITS)
         ;;
     64)
         mercury_cv_log_bits_per_word=6
+        AC_DEFINE(MR_MERCURY_IS_64_BITS)
+        AC_SUBST(MERCURY_IS_64_BITS)
         ;;
     *)
         AC_MSG_ERROR([unexpected number of bits per word: expected 32 or 64])

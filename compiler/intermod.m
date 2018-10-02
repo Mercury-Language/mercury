@@ -469,7 +469,7 @@ may_opt_export_pred(PredId, PredInfo, TypeSpecForcePreds) :-
 
     % Don't export builtins since they will be recreated in the
     % importing module anyway.
-    not is_unify_or_compare_pred(PredInfo),
+    not is_unify_index_or_compare_pred(PredInfo),
     not pred_info_is_builtin(PredInfo),
 
     % These will be recreated in the importing module.
@@ -784,7 +784,7 @@ intermod_do_add_proc(PredId, DoWrite, !IntermodInfo) :-
         % will be recreated every time anyway. We don't want declarations
         % for predicates representing promises either.
 
-        ( is_unify_or_compare_pred(PredInfo)
+        ( is_unify_index_or_compare_pred(PredInfo)
         ; pred_info_is_promise(PredInfo, _)
         )
     then
@@ -2200,6 +2200,11 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
                     intermod_write_foreign_clause(Procs, PredOrFunc,
                         PragmaCode, Attributes, Args, VarSet, SymName),
                     ProcIds, !IO)
+            ;
+                ( ApplicableProcIds = unify_in_in_modes
+                ; ApplicableProcIds = unify_non_in_in_modes
+                ),
+                unexpected($module, $pred, "unify modes foreign_proc")
             )
         else
             unexpected($module, $pred, "did not find foreign_proc")
@@ -2512,7 +2517,7 @@ maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
     ( if
         proc_info_is_valid_mode(ProcInfo),
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
 
         module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
@@ -2753,7 +2758,7 @@ write_pragma_termination_for_pred(ModuleInfo, OrderPredInfo, !First, !IO) :-
         ( PredStatus = pred_status(status_exported)
         ; PredStatus = pred_status(status_opt_exported)
         ),
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
 
         % XXX These should be allowed, but the predicate declaration for
         % the specialized predicate is not produced before the termination
@@ -2807,7 +2812,7 @@ write_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo, !First, !IO) :-
         ( PredStatus = pred_status(status_exported)
         ; PredStatus = pred_status(status_opt_exported)
         ),
-        not hlds_pred.is_unify_or_compare_pred(PredInfo),
+        not hlds_pred.is_unify_index_or_compare_pred(PredInfo),
         not set.member(PredId, TypeSpecForcePreds)
     then
         pred_info_get_proc_table(PredInfo, ProcTable),
@@ -2924,7 +2929,7 @@ should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
         % XXX If PredInfo is not a unify or compare pred, then all its
         % procedures must share the same status.
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
         (
             WhatFor = for_analysis_framework
         ;
@@ -2952,7 +2957,7 @@ should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
         % XXX If PredInfo is not a unify or compare pred, then all its
         % procedures must share the same status.
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
         (
             WhatFor = for_analysis_framework
         ;
@@ -2981,7 +2986,7 @@ should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
         % XXX If PredInfo is not a unify or compare pred, then all its
         % procedures must share the same status.
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
         (
             WhatFor = for_analysis_framework
         ;
@@ -3009,7 +3014,7 @@ should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
         % XXX If PredInfo is not a unify or compare pred, then all its
         % procedures must share the same status.
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
 
         % Don't write out info for reuse versions of procedures.
         pred_info_get_origin(PredInfo, PredOrigin),
@@ -3039,7 +3044,7 @@ should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
         % XXX If PredInfo is not a unify or compare pred, then all its
         % procedures must share the same status.
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
         (
             WhatFor = for_analysis_framework
         ;

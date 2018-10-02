@@ -31,6 +31,8 @@
 
 %-----------------------------------------------------------------------------%
 
+    % write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO):
+    %
 :- pred write_pred(hlds_out_info::in, output_lang::in, module_info::in,
     int::in, pred_id::in, pred_info::in, io::di, io::uo) is det.
 
@@ -455,6 +457,25 @@ write_clause(Info, Lang, ModuleInfo,PredId, PredOrFunc, VarSet, TypeQual,
             ModeInts = list.map(proc_id_to_int, Modes),
             write_intlist(ModeInts, !IO),
             io.write_string("\n", !IO)
+        else
+            true
+        )
+    ;
+        ApplicableModes = unify_in_in_modes,
+        ( if string.contains_char(DumpOptions, 'm') then
+            write_indent(Indent, !IO),
+            io.write_string(
+                "% This clause applies only to <in,in> unify modes.\n", !IO)
+        else
+            true
+        )
+    ;
+        ApplicableModes = unify_non_in_in_modes,
+        ( if string.contains_char(DumpOptions, 'm') then
+            write_indent(Indent, !IO),
+            io.write_string(
+                "% This clause applies only to non <in,in> unify modes.\n",
+                !IO)
         else
             true
         )

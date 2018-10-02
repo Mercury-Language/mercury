@@ -688,11 +688,9 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
         set_clause_list([IntroducedClause], ClausesRep),
         rtti_varmaps_init(RttiVarMaps),
-        HasForeignClauses = no,
-        HadSyntaxErrors = no,
         ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
             HeadVarVec, ClausesRep, init_clause_item_numbers_comp_gen,
-            RttiVarMaps, HasForeignClauses, HadSyntaxErrors)
+            RttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors)
     ;
         % Handle the arbitrary clauses syntax.
         InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),
