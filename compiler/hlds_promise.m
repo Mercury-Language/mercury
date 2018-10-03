@@ -22,7 +22,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module counter.
 :- import_module map.
 :- import_module multi_map.
 
@@ -59,21 +59,34 @@
 
 :- implementation.
 
-:- type assert_id == int.
+:- type assert_id
+    --->    assert_id(int).
+
 :- type assertion_table
-    --->    assertion_table(assert_id, map(assert_id, pred_id)).
+    --->    assertion_table(
+                % A counter to be used in allocating the next assert_id.
+                counter,
 
-assertion_table_init(assertion_table(0, AssertionMap)) :-
-    map.init(AssertionMap).
+                % Maps the id of an assertion to the pred_id of the predicate
+                % that represents the assertion.
+                map(assert_id, pred_id)
+            ).
 
-assertion_table_add_assertion(Assertion, Id, !AssertionTable) :-
-    !.AssertionTable = assertion_table(Id, AssertionMap0),
-    map.det_insert(Id, Assertion, AssertionMap0, AssertionMap),
-    !:AssertionTable = assertion_table(Id + 1, AssertionMap).
+assertion_table_init(AssertionTable) :-
+    counter.init(0, Counter),
+    map.init(AssertionMap),
+    AssertionTable = assertion_table(Counter, AssertionMap).
 
-assertion_table_lookup(AssertionTable, Id, Assertion) :-
-    AssertionTable = assertion_table(_MaxId, AssertionMap),
-    map.lookup(AssertionMap, Id, Assertion).
+assertion_table_add_assertion(AssertionPredId, AssertId, !AssertionTable) :-
+    !.AssertionTable = assertion_table(Counter0, AssertionMap0),
+    counter.allocate(AssertIdInt, Counter0, Counter),
+    AssertId = assert_id(AssertIdInt),
+    map.det_insert(AssertId, AssertionPredId, AssertionMap0, AssertionMap),
+    !:AssertionTable = assertion_table(Counter, AssertionMap).
+
+assertion_table_lookup(AssertionTable, AssertId, AssertionPredId) :-
+    AssertionTable = assertion_table(_Counter, AssertionMap),
+    map.lookup(AssertionMap, AssertId, AssertionPredId).
 
 assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
     map.values(AssertionMap, PredIds).
@@ -88,7 +101,8 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
     %
     % e.g. :- all [X]
     %       promise_exclusive
-    %       some [Y] (
+    %       some [Y]
+    %       (
     %           p(X, Y)
     %       ;
     %           q(X)
