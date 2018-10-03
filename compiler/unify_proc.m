@@ -2739,7 +2739,11 @@ compute_maybe_packable_args_locn(ConsTag) = ArgsLocn :-
         ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = closure_tag(_, _, _)
         ),
-        unexpected($pred, "wrong tag for a general du functor with args")
+        % These ConsTags are for terms that have no arguments.
+        % *If* we can compare constants as ints, we should never get here,
+        % but in some situations (such as the Erlang grade), we cannot compare
+        % them as ints, which *does* allow us to get here.
+        ArgsLocn = unpackable_args
     ).
 
 %---------------------------------------------------------------------------%
