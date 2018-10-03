@@ -639,9 +639,9 @@ ticket_counter_type = c_pointer_type.
 
 trail_generate_call(PredName, Detism, Purity, Args, InstMapDelta, ModuleInfo,
         Context, CallGoal) :-
-    goal_util.generate_simple_call(mercury_private_builtin_module, PredName,
-        pf_predicate, only_mode, Detism, Purity, Args, [], InstMapDelta,
-        ModuleInfo, Context, CallGoal).
+    goal_util.generate_simple_call(ModuleInfo, mercury_private_builtin_module,
+        PredName, pf_predicate, only_mode, Detism, Purity, Args, [],
+        InstMapDelta, Context, CallGoal).
 
 %-----------------------------------------------------------------------------%
 
@@ -662,10 +662,10 @@ trail_generate_foreign_proc(PredName, Purity, InstMapDelta,
     ),
     ExtraArgs  = [],
     MaybeTraceRuntimeCond = no,
-    goal_util.generate_foreign_proc(PrivateBuiltinModule, PredName,
+    goal_util.generate_foreign_proc(ModuleInfo, PrivateBuiltinModule, PredName,
         pf_predicate, only_mode, Detism, Purity, FinalForeignProcAttrs, Args,
         ExtraArgs, MaybeTraceRuntimeCond, ForeignCode, [], InstMapDelta,
-        ModuleInfo, Context, ForeignProcGoal).
+        Context, ForeignProcGoal).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.add_trail_ops.

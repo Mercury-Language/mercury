@@ -872,18 +872,18 @@ region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
         RegionInstruction = create_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
-        generate_simple_call(mercury_region_builtin_module,
+        generate_simple_call(ModuleInfo, mercury_region_builtin_module,
             create_region_pred_name, pf_predicate, only_mode, detism_det,
             purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
-            ModuleInfo, Context, CallGoal)
+            Context, CallGoal)
     ;
         RegionInstruction = remove_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
-        generate_simple_call(mercury_region_builtin_module,
+        generate_simple_call(ModuleInfo, mercury_region_builtin_module,
             remove_region_pred_name, pf_predicate, only_mode, detism_det,
             purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
-            ModuleInfo, Context, CallGoal)
+            Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),
         unexpected($pred, "neither create nor remove instruction")
@@ -906,19 +906,19 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
         RegionInstruction = create_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
-        generate_simple_call(mercury_region_builtin_module,
+        generate_simple_call(ModuleInfo, mercury_region_builtin_module,
             create_region_pred_name, pf_predicate, only_mode, detism_det,
             purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
-            ModuleInfo, Context, CallGoal)
+            Context, CallGoal)
     ;
         RegionInstruction = remove_region(RegionName),
         region_name_to_var_with_both_renamings_before(RegionName,
             ResurRenaming, IteRenaming, RegionVar, !NameToVar, !VarSet,
             !VarTypes),
-        generate_simple_call(mercury_region_builtin_module,
+        generate_simple_call(ModuleInfo, mercury_region_builtin_module,
             remove_region_pred_name, pf_predicate, only_mode, detism_det,
             purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
-            ModuleInfo, Context, CallGoal)
+            Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),
         unexpected($pred, "neither create nor remove instruction")

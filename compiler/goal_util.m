@@ -360,8 +360,9 @@
 :- pred reordering_maintains_termination(bool::in, hlds_goal::in,
     hlds_goal::in, bool::out, module_info::in, module_info::out) is det.
 
-    % generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
-    %   Purity, Args, Features, InstMapDelta, ModuleInfo, Context, CallGoal):
+    % generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc,
+    %   ModeNo, Detism, Purity, Args, Features, InstMapDelta, Context,
+    %   CallGoal):
     %
     % Generate a call to a builtin procedure (e.g. from the private_builtin
     % or table_builtin module). This is used by HLDS->HLDS transformation
@@ -372,14 +373,15 @@
     %
     % If ModeNo = mode_no(N) then the Nth procedure is used, counting from 0.
     %
-:- pred generate_simple_call(module_name::in, string::in, pred_or_func::in,
-    mode_no::in, determinism::in, purity::in, list(prog_var)::in,
-    list(goal_feature)::in, instmap_delta::in,
-    module_info::in, term.context::in, hlds_goal::out) is det.
+:- pred generate_simple_call(module_info::in, module_name::in, string::in,
+    pred_or_func::in, mode_no::in, determinism::in, purity::in,
+    list(prog_var)::in, list(goal_feature)::in, instmap_delta::in,
+    term.context::in, hlds_goal::out) is det.
 
-    % generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
-    %   Purity, Attributes, Args, ExtraArgs, MaybeTraceRuntimeCond, Code,
-    %   Features, InstMapDelta, ModuleInfo, Context, CallGoal):
+    % generate_foreign_proc(ModuleInfo, ModuleName, ProcName, PredOrFunc,
+    %   ModeNo, Detism, Purity, Attributes, Args, ExtraArgs,
+    %   MaybeTraceRuntimeCond, Code, Features, InstMapDelta, Context,
+    %   CallGoal):
     %
     % generate_foreign_proc is similar to generate_simple_call,
     % but also assumes that the called predicate is defined via a
@@ -389,13 +391,13 @@
     % inlining the call, generate_foreign_proc also passes ExtraArgs
     % as well as Args.
     %
-:- pred generate_foreign_proc(module_name::in, string::in, pred_or_func::in,
-    mode_no::in, determinism::in, purity::in,
+:- pred generate_foreign_proc(module_info::in, module_name::in, string::in,
+    pred_or_func::in, mode_no::in, determinism::in, purity::in,
     pragma_foreign_proc_attributes::in,
     list(foreign_arg)::in, list(foreign_arg)::in,
     maybe(trace_expr(trace_runtime))::in, string::in,
     list(goal_feature)::in, instmap_delta::in,
-    module_info::in, term.context::in, hlds_goal::out) is det.
+    term.context::in, hlds_goal::out) is det.
 
     % Generate a cast goal. The input and output insts are just ground.
     %
@@ -1927,8 +1929,8 @@ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal,
 
 %-----------------------------------------------------------------------------%
 
-generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
-        Args, Features, InstMapDelta0, ModuleInfo, Context, Goal) :-
+generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc, ModeNo,
+        Detism, Purity, Args, Features, InstMapDelta0, Context, Goal) :-
     list.length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
@@ -1961,9 +1963,9 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
     list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
-        Purity, Attributes, Args, ExtraArgs, MaybeTraceRuntimeCond, Code,
-        Features, InstMapDelta0, ModuleInfo, Context, Goal) :-
+generate_foreign_proc(ModuleInfo, ModuleName, ProcName, PredOrFunc, ModeNo,
+        Detism, Purity, Attributes, Args, ExtraArgs, MaybeTraceRuntimeCond,
+        Code, Features, InstMapDelta0, Context, Goal) :-
     list.length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),

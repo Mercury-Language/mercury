@@ -141,11 +141,11 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                         !Attributes),
                     Attributes = !.Attributes
                 ),
-                generate_foreign_proc(ModuleName, ProcName, pf_predicate,
-                    only_mode, detism_semi, purity_impure, Attributes,
-                    Args, ExtraArgs, MaybeRuntimeCond, runtime_test_code,
-                    Features, instmap_delta_bind_no_var, ModuleInfo, Context,
-                    Cond),
+                generate_foreign_proc(ModuleInfo, ModuleName, ProcName,
+                    pf_predicate, only_mode, detism_semi, purity_impure,
+                    Attributes, Args, ExtraArgs, MaybeRuntimeCond,
+                    runtime_test_code, Features, instmap_delta_bind_no_var,
+                    Context, Cond),
 
                 Then = hlds_goal(conj(parallel_conj, Goals), GoalInfo),
                 Else = hlds_goal(conj(plain_conj, Goals), GoalInfo),

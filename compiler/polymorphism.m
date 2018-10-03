@@ -2643,12 +2643,11 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
 
         % We extract the superclass typeclass_info by inserting a call
         % to superclass_from_typeclass_info in private_builtin.
-        goal_util.generate_simple_call(mercury_private_builtin_module,
-            "superclass_from_typeclass_info",
+        goal_util.generate_simple_call(ModuleInfo,
+            mercury_private_builtin_module, "superclass_from_typeclass_info",
             pf_predicate, only_mode, detism_det, purity_pure,
             [SubClassVar, IndexVar, TypeClassInfoVar], [],
-            instmap_delta_bind_no_var, ModuleInfo, term.context_init,
-            SuperClassGoal),
+            instmap_delta_bind_no_var, term.context_init, SuperClassGoal),
         Goals = SubClassVarGoals ++ IndexGoals ++ [SuperClassGoal],
         MaybeTCIConstArg = no,
 
@@ -3770,10 +3769,10 @@ gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
     Type = type_variable(TypeVar, Kind),
     new_type_info_var_raw(Type, type_info, TypeInfoVar,
         !VarSet, !VarTypes, !RttiVarMaps),
-    goal_util.generate_simple_call(mercury_private_builtin_module,
+    goal_util.generate_simple_call(ModuleInfo, mercury_private_builtin_module,
         "type_info_from_typeclass_info", pf_predicate, only_mode,
         detism_det, purity_pure, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
-        instmap_delta_bind_var(TypeInfoVar), ModuleInfo, Context,
+        instmap_delta_bind_var(TypeInfoVar), Context,
         CallGoal),
     Goals = IndexGoals ++ [CallGoal].
 

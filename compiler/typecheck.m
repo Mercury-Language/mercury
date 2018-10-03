@@ -873,9 +873,9 @@ generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     else
         CalleeName = "no_clauses"
     ),
-    generate_simple_call(mercury_private_builtin_module, CalleeName,
-        pf_predicate, only_mode, detism_det, purity_pure, [PredNameVar], [],
-        instmap_delta_bind_no_var, ModuleInfo, Context, CallGoal),
+    generate_simple_call(ModuleInfo, mercury_private_builtin_module,
+        CalleeName, pf_predicate, only_mode, detism_det, purity_pure,
+        [PredNameVar], [], instmap_delta_bind_no_var, Context, CallGoal),
 
     % Combine the unification and call into a conjunction.
     goal_info_init(Context, GoalInfo),

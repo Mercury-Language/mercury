@@ -779,10 +779,10 @@ size_prof_process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr,
         % The increment_size primitive doesn't need Var's type_info,
         % so we make it a no_type_info_builtin.
         TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
-        goal_util.generate_simple_call(TermSizeProfBuiltin,
-            "increment_size", pf_predicate, only_mode, detism_det,
-            purity_impure, [Var, SizeVar], [], instmap_delta_bind_no_var,
-            !.Info ^ spi_module_info, Context, UpdateGoal),
+        goal_util.generate_simple_call(!.Info ^ spi_module_info,
+            TermSizeProfBuiltin, "increment_size", pf_predicate, only_mode,
+            detism_det, purity_impure, [Var, SizeVar], [],
+            instmap_delta_bind_no_var, Context, UpdateGoal),
         % Put UnifyGoal first in case it fails.
         Goals = [UnifyGoal] ++ ArgGoals ++ SizeGoals ++ [UpdateGoal],
         GoalExpr = conj(plain_conj, Goals)
@@ -847,11 +847,10 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
         !Info ^ spi_vartypes := VarTypes1,
         get_new_var(int_type, "FinalSizeVar", SizeVar, !Info),
         TermSizeProfModule = mercury_term_size_prof_builtin_module,
-        goal_util.generate_simple_call(TermSizeProfModule,
-            "term_size_plus", pf_function, mode_no(0), detism_det, purity_pure,
-            [SizeVar0, KnownSizeVar, SizeVar], [],
-            instmap_delta_bind_var(SizeVar),
-            !.Info ^ spi_module_info, Context, AddGoal),
+        goal_util.generate_simple_call(!.Info ^ spi_module_info,
+            TermSizeProfModule, "term_size_plus", pf_function, mode_no(0),
+            detism_det, purity_pure, [SizeVar0, KnownSizeVar, SizeVar], [],
+            instmap_delta_bind_var(SizeVar), Context, AddGoal),
         Goals = [KnownSizeGoal, AddGoal]
     ).
 
@@ -910,12 +909,11 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
             !Info ^ spi_varset := VarSet,
             !Info ^ spi_vartypes := VarTypes,
             PrivateBuiltin = mercury_private_builtin_module,
-            goal_util.generate_simple_call(PrivateBuiltin,
-                "type_info_from_typeclass_info", pf_predicate, only_mode,
-                detism_det, purity_pure,
+            goal_util.generate_simple_call(!.Info ^ spi_module_info,
+                PrivateBuiltin, "type_info_from_typeclass_info", pf_predicate,
+                only_mode, detism_det, purity_pure,
                 [TypeClassInfoVar, SlotVar, TypeInfoVar], [],
-                instmap_delta_bind_var(TypeInfoVar),
-                !.Info ^ spi_module_info, Context, ExtractGoal),
+                instmap_delta_bind_var(TypeInfoVar), Context, ExtractGoal),
             record_type_info_var(Type, TypeInfoVar, !Info),
             TypeInfoGoals = [SlotGoal, ExtractGoal]
         )
@@ -1037,10 +1035,10 @@ make_size_goal(TypeInfoVar, Arg, Context, SizeGoal,
         Args = [TypeInfoVar, Arg, SizeVar]
     ),
     TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
-    goal_util.generate_simple_call(TermSizeProfBuiltin, Pred, pf_predicate,
-        only_mode, detism_det, purity_pure, Args,
-        [], instmap_delta_bind_var(SizeVar),
-        !.Info ^ spi_module_info, Context, SizeGoal),
+    goal_util.generate_simple_call(!.Info ^ spi_module_info,
+        TermSizeProfBuiltin, Pred, pf_predicate, only_mode, detism_det,
+        purity_pure, Args, [], instmap_delta_bind_var(SizeVar), Context,
+        SizeGoal),
     MaybeSizeVar = yes(SizeVar).
 
 %---------------------------------------------------------------------------%

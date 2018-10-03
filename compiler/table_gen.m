@@ -3297,8 +3297,8 @@ table_generate_call(PredName, Detism, Args, Purity, InstMapDelta, ModuleInfo,
     else
         Features = Features0
     ),
-    goal_util.generate_simple_call(BuiltinModule, PredName, pf_predicate,
-        only_mode, Detism, Purity, Args, Features, InstMapDelta, ModuleInfo,
+    goal_util.generate_simple_call(ModuleInfo, BuiltinModule, PredName,
+        pf_predicate, only_mode, Detism, Purity, Args, Features, InstMapDelta,
         Context, Goal).
 
 :- pred table_generate_foreign_proc(string::in, determinism::in,
@@ -3325,10 +3325,9 @@ table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
     ),
     BuiltinModule = mercury_table_builtin_module,
     MaybeTraceRuntimCond = no,
-    goal_util.generate_foreign_proc(BuiltinModule, PredName, pf_predicate,
-        only_mode, Detism, Purity, Attributes, Args, ExtraArgs,
-        MaybeTraceRuntimCond, Code, Features, InstMapDelta, ModuleInfo,
-        Context, Goal).
+    goal_util.generate_foreign_proc( ModuleInfo,BuiltinModule, PredName,
+        pf_predicate, only_mode, Detism, Purity, Attributes, Args, ExtraArgs,
+        MaybeTraceRuntimCond, Code, Features, InstMapDelta, Context, Goal).
 
 :- pred append_fail(hlds_goal::in, hlds_goal::out) is det.
 

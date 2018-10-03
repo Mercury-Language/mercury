@@ -1569,12 +1569,12 @@ replace_string_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
             _HeadSpecContext, !ValueVars, !VarSet, !VarTypes),
         make_result_var_if_needed(MaybeResultVar, ResultVar,
             !VarSet, !VarTypes),
-        generate_simple_call(mercury_string_module, "++", pf_function,
-            only_mode, detism_det, purity_pure,
+        generate_simple_call(ModuleInfo, mercury_string_module, "++",
+            pf_function, only_mode, detism_det, purity_pure,
             [HeadSpecVar, TailSpecsVar, ResultVar], [],
             instmap_delta_from_assoc_list(
                 [ResultVar - ground(unique, none_or_default_func)]),
-            ModuleInfo, Context, AppendGoal),
+            Context, AppendGoal),
         Goals = TailSpecsGoals ++ HeadSpecGoals ++ [AppendGoal]
     ).
 
@@ -1708,10 +1708,10 @@ replace_one_io_format(ModuleInfo, Spec, MaybeStreamVar,
         ArgVars = [SpecVar, IOInVar, IOOutVar]
     ),
     make_di_uo_instmap_delta(IOInVar, IOOutVar, InstMapDelta),
-    generate_simple_call(mercury_io_module, "write_string",
+    generate_simple_call(ModuleInfo, mercury_io_module, "write_string",
         pf_predicate, only_mode, detism_det, purity_pure, ArgVars,
-        [feature_do_not_warn_implicit_stream],
-        InstMapDelta, ModuleInfo, SpecContext, CallGoal),
+        [feature_do_not_warn_implicit_stream], InstMapDelta, SpecContext,
+        CallGoal),
     Goals = SpecGoals ++ [CallGoal].
 
 %---------------------------------------------------------------------------%
@@ -1746,10 +1746,10 @@ create_stream_string_writer_format_replacement(ModuleInfo, Specs, Context,
     ArgVars = [TC_InfoVarForStream, StreamVar, ResultVar,
         StateInVar, StateOutVar],
     make_di_uo_instmap_delta(StateInVar, StateOutVar, InstMapDelta),
-    generate_simple_call(mercury_stream_module, "put",
+    generate_simple_call(ModuleInfo, mercury_stream_module, "put",
         pf_predicate, only_mode, detism_det, purity_pure, ArgVars,
-        [feature_do_not_warn_implicit_stream],
-        InstMapDelta, ModuleInfo, Context, CallGoal),
+        [feature_do_not_warn_implicit_stream], InstMapDelta, Context,
+        CallGoal),
     Goals = StringFormatGoals ++ [CallGoal],
 
     set_of_var.insert_list([TC_InfoVarForStream, StreamVar,
@@ -1783,13 +1783,13 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             !VarSet, !VarTypes),
         maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
             !VarSet, !VarTypes),
-        generate_simple_call(mercury_string_format_module,
+        generate_simple_call(ModuleInfo, mercury_string_format_module,
             "format_char_component" ++ WidthSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ [ValueVar, ResultVar], [],
             instmap_delta_from_assoc_list(
                 [ResultVar - ground(unique, none_or_default_func)]),
-            ModuleInfo, Context, CallGoal),
+            Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ [CallGoal]
     ;
         Spec = compiler_spec_string(Context, Flags,
@@ -1822,13 +1822,13 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
                 WidthGoals, !VarSet, !VarTypes),
             maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
                 !VarSet, !VarTypes),
-            generate_simple_call(mercury_string_format_module,
+            generate_simple_call(ModuleInfo, mercury_string_format_module,
                 "format_string_component" ++ WidthSuffix ++ PrecSuffix,
                 pf_predicate, only_mode, detism_det, purity_pure,
                 [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar],
                 [], instmap_delta_from_assoc_list(
                     [ResultVar - ground(unique, none_or_default_func)]),
-                ModuleInfo, Context, CallGoal),
+                Context, CallGoal),
             Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
         )
     ;
@@ -1843,13 +1843,13 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             !VarSet, !VarTypes),
         maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
             !VarSet, !VarTypes),
-        generate_simple_call(mercury_string_format_module,
+        generate_simple_call(ModuleInfo, mercury_string_format_module,
             "format_signed_int_component" ++ WidthSuffix ++ PrecSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar], [],
             instmap_delta_from_assoc_list(
                 [ResultVar - ground(unique, none_or_default_func)]),
-            ModuleInfo, Context, CallGoal),
+            Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
     ;
         Spec = compiler_spec_unsigned_int(Context, Flags,
@@ -1864,14 +1864,14 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
             !VarSet, !VarTypes),
         build_int_base_arg(Base, BaseVar, BaseGoal, !VarSet, !VarTypes),
-        generate_simple_call(mercury_string_format_module,
+        generate_simple_call(ModuleInfo, mercury_string_format_module,
             "format_unsigned_int_component" ++ WidthSuffix ++ PrecSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [BaseVar, ValueVar, ResultVar], [],
             instmap_delta_from_assoc_list(
                 [ResultVar - ground(unique, none_or_default_func)]),
-            ModuleInfo, Context, CallGoal),
+            Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [BaseGoal, CallGoal]
     ;
         Spec = compiler_spec_float(Context, Flags,
@@ -1886,14 +1886,14 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
             !VarSet, !VarTypes),
         build_float_kind_arg(Kind, KindVar, KindGoal, !VarSet, !VarTypes),
-        generate_simple_call(mercury_string_format_module,
+        generate_simple_call(ModuleInfo, mercury_string_format_module,
             "format_float_component" ++ WidthSuffix ++ PrecSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [KindVar, ValueVar, ResultVar], [],
             instmap_delta_from_assoc_list(
                 [ResultVar - ground(unique, none_or_default_func)]),
-            ModuleInfo, Context, CallGoal),
+            Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [KindGoal, CallGoal]
     ).
 

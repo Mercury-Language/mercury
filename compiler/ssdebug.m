@@ -502,9 +502,9 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
     Args = [FileNameVar, LineNumberVar],
     Features = [],
     instmap_delta_init_reachable(InstMapDelta),
-    generate_simple_call(mercury_ssdb_builtin_module, "set_context",
-        pf_predicate, only_mode, detism_det, purity_impure, Args, Features,
-        InstMapDelta, ModuleInfo, Context, SetContextGoal),
+    generate_simple_call(ModuleInfo, mercury_ssdb_builtin_module,
+        "set_context", pf_predicate, only_mode, detism_det, purity_impure,
+        Args, Features, InstMapDelta, Context, SetContextGoal),
 
     conj_list_to_goal([MakeFileName, MakeLineNumber, SetContextGoal, Goal0],
         GoalInfo, Goal).
@@ -1213,10 +1213,9 @@ make_handle_event(HandleTypeString, Arguments, HandleEventGoal, !ModuleInfo,
     SSDBModule = mercury_ssdb_builtin_module,
     Features = [],
     Context = term.context_init,
-    goal_util.generate_simple_call(SSDBModule, HandleTypeString,
+    goal_util.generate_simple_call(!.ModuleInfo, SSDBModule, HandleTypeString,
         pf_predicate, only_mode, detism_det, purity_impure, Arguments,
-        Features, instmap_delta_bind_no_var, !.ModuleInfo, Context,
-        HandleEventGoal).
+        Features, instmap_delta_bind_no_var, Context, HandleEventGoal).
 
     % make_proc_id_construction(ModuleInfo, PredInfo, Goals, Var,
     %   !VarSet, !VarTypes)
