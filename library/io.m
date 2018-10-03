@@ -1748,6 +1748,8 @@
 :- instance stream.stream(binary_input_stream,  io).
 :- instance stream.input(binary_input_stream, io).
 :- instance stream.reader(binary_input_stream, int, io, io.error).
+:- instance stream.reader(binary_input_stream, int8, io, io.error).
+:- instance stream.reader(binary_input_stream, uint8, io, io.error).
 :- instance stream.bulk_reader(binary_input_stream, int,
         bitmap, io, io.error).
 :- instance stream.putback(binary_input_stream, int, io, io.error).
@@ -12595,6 +12597,24 @@ result_to_stream_result(error(Error)) = error(Error).
 [
     ( get(Stream, Result, !IO) :-
         read_byte(Stream, Result0, !IO),
+        Result = result_to_stream_result(Result0)
+    )
+].
+
+:- instance stream.reader(binary_input_stream, int8, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        read_binary_int8(Stream, Result0, !IO),
+        Result = result_to_stream_result(Result0)
+    )
+].
+
+:- instance stream.reader(binary_input_stream, uint8, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        read_binary_uint8(Stream, Result0, !IO),
         Result = result_to_stream_result(Result0)
     )
 ].
