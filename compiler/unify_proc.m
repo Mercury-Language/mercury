@@ -568,17 +568,48 @@ lookup_unify_compare_options(Info) = UCOptions :-
     list(constructor_repn)::in, prog_var::in, prog_var::in, list(clause)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_unify_proc_body_du(SpecDefnInfo, Ctors, X, Y, Clauses, !Info) :-
+generate_unify_proc_body_du(SpecDefnInfo, CtorRepns, X, Y, Clauses, !Info) :-
     UCOptions = lookup_unify_compare_options(!.Info),
-    list.map_foldl(generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y),
-        Ctors, Disjuncts, !Info),
     Context = SpecDefnInfo ^ spdi_context,
-    goal_info_init(Context, GoalInfo),
-    Goal0 = hlds_goal(disj(Disjuncts), GoalInfo),
-    maybe_wrap_with_pretest_equality(Context, X, Y, no, Goal0, Goal, !Info),
+    ( if
+        UCOptions ^ uco_constants_as_ints = compare_constants_as_ints,
+        UCOptions ^ uco_packed_unify_compare = allow_packed_unify_compare,
+        MayUnifyCtorAsWhole =
+            ( pred(CtorRepn::in) is semidet :-
+                CtorRepn = ctor_repn(_, _, _, ConsTag, CtorArgRepns, _, _),
+                (
+                    CtorArgRepns = []
+                ;
+                    CtorArgRepns = [_ | _],
+                    ConsTag = local_args_tag(_)
+                )
+            ),
+        list.all_true(MayUnifyCtorAsWhole, CtorRepns)
+    then
+        CastType = get_pretest_equality_cast_type(!.Info),
+        info_new_named_var(CastType, "CastX", CastX, !Info),
+        info_new_named_var(CastType, "CastY", CastY, !Info),
+        generate_cast(unsafe_type_cast, X, CastX, Context, CastXGoal),
+        generate_cast(unsafe_type_cast, Y, CastY, Context, CastYGoal),
+        create_pure_atomic_complicated_unification(CastX, rhs_var(CastY),
+            Context, umc_explicit, [], EqualityGoal),
+        GoalExpr = conj(plain_conj, [CastXGoal, CastYGoal, EqualityGoal]),
+        goal_info_init(Context, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        % Casting X and Y to e.g. an integer when they contain arguments
+        % is a kind of packed word operation.
+        PackedOps = used_some_packed_word_ops
+    else
+        list.map_foldl(generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y),
+            CtorRepns, Disjuncts, !Info),
+        goal_info_init(Context, GoalInfo),
+        Goal0 = hlds_goal(disj(Disjuncts), GoalInfo),
+        maybe_wrap_with_pretest_equality(Context, X, Y, no,
+            Goal0, Goal, !Info),
+        PackedOps = !.Info ^ upi_packed_ops
+    ),
 
-    % Did the clause we just generated use any bulk comparisons?
-    PackedOps = !.Info ^ upi_packed_ops,
+    % Did the clause we just generate use any bulk operations?
     (
         PackedOps = used_no_packed_word_ops,
         % No: mark the clause as suitable for all modes.
@@ -597,7 +628,7 @@ generate_unify_proc_body_du(SpecDefnInfo, Ctors, X, Y, Clauses, !Info) :-
         !Info ^ upi_packed_ops := used_no_packed_word_ops,
         list.map_foldl(
             generate_du_unify_case(SpecDefnInfo, NonPackedUCOptions, X, Y),
-            Ctors, NonPackedDisjuncts, !Info),
+            CtorRepns, NonPackedDisjuncts, !Info),
         expect(unify(!.Info ^ upi_packed_ops, used_no_packed_word_ops), $pred,
             "packed word ops show up after being disabled"),
         NonPackedGoal0 = hlds_goal(disj(NonPackedDisjuncts), GoalInfo),
@@ -1179,7 +1210,7 @@ generate_compare_proc_body_enum(Context, Res, X, Y, Clause, !Info) :-
     list(constructor_repn)::in, prog_var::in, prog_var::in, prog_var::in,
     clause::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_proc_body_du(SpecDefnInfo, Ctors0, Res, X, Y, Clause,
+generate_compare_proc_body_du(SpecDefnInfo, CtorRepns0, Res, X, Y, Clause,
         !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
@@ -1187,33 +1218,139 @@ generate_compare_proc_body_du(SpecDefnInfo, Ctors0, Res, X, Y, Clause,
         ErlangOrder),
     (
         ErlangOrder = yes,
-        list.sort(compare_ctors_for_erlang, Ctors0, Ctors)
+        list.sort(compare_ctors_for_erlang, CtorRepns0, CtorRepns)
     ;
         ErlangOrder = no,
-        Ctors = Ctors0
+        CtorRepns = CtorRepns0
     ),
-    (
-        Ctors = [],
-        unexpected($pred, "compare for type with no functors")
-    ;
-        Ctors = [_ | _],
-        UCOptions = lookup_unify_compare_options(!.Info),
+    expect_not(unify(CtorRepns, []), $pred,
+        "compare for type with no functors"),
+    UCOptions = lookup_unify_compare_options(!.Info),
+    Context = SpecDefnInfo ^ spdi_context,
+    ( if
+        UCOptions ^ uco_constants_as_ints = compare_constants_as_ints,
+        UCOptions ^ uco_packed_unify_compare = allow_packed_unify_compare,
+        % Can we compare two values of this type by casting both values
+        % to unsigned and comparing the results?
+        (
+            CtorRepns = [CtorRepnA],
+            % If all the arguments of functor A are stored next to the ptag,
+            % and if they are all comparable as unsigned, two conditions
+            % that is_ctor_with_all_locally_packed_unsigned_args will test,
+            % and if they are arranged earlier-args-in-more-significant-bits,
+            % which is always guaranteed for packed arguments by
+            % du_type_layout.m, then yes, cast-to-unsigned-and-compare
+            % will work.
+            is_ctor_with_all_locally_packed_unsigned_args(CtorRepnA, _)
+        ;
+            CtorRepns = [CtorRepnA, CtorRepnB],
+            % If functor A comes before functor B, and
+            %
+            % - the value of a term whose functor is A *must* be all zeroes
+            % - the value of a term whose functor is B *cannot* be all zeroes
+            %
+            % then comparing two terms, one bound to A and one bound to B,
+            % by casting both to unsigned and comparing the results, will yield
+            % the correct result.
+            %
+            % If A has arity zero, then there is only one possible term whose
+            % functor is A, so cast-to-unsigned-and-compare works when
+            % both terms are bound to A. And if B's arguments meet the
+            % conditions laid out in the first switch arm above, then
+            % cast-to-unsigned-and-compare also works when both terms
+            % are bound to B.
+            CtorRepnA = ctor_repn(_OrdinalA, _MaybeExistConstraintsA,
+                _FunctorNameA, ConsTagA, _CtorArgRepnsA, ArityA, _CtxtA),
+            ArityA = 0,
+            ConsTagA = local_args_tag(LocalArgsTagInfoA),
+            LocalArgsTagInfoA =
+                local_args_not_only_functor(PtagA, LocalSecTagA),
+            PtagA = ptag(0u8),
+            LocalSecTagA = local_sectag(0u, _, _),
+
+            is_ctor_with_all_locally_packed_unsigned_args(CtorRepnB,
+                PtagBUint8),
+            PtagBUint8 > 0u8
+        )
+        % If the type has three or more functors, then cast-to-unsigned-and-
+        % compare will not work. 
+        %
+        % If the third functor is a constant, then one of the constants
+        % will have a nonzero local sectag value. If the arguments of the
+        % non-constant functor happen to be all zeros, then this nonzero
+        % local sectag can cause the unsigned comparison to report that
+        % the constant is greater then the non-constant, even if the constant
+        % comes earlier in the list of functors. And if this constant comes
+        % later in the list of functors, then the unsigned comparison will
+        % yield the wrong result if the value of some argument in the
+        % nonconstant causes a bit to be set that is more significant
+        % than the bit(s) set in the local sectag. So regardless of the
+        % relative order of these two functors, correctness would not be
+        % guaranteed.
+        %
+        % If the third functor is a non-constant, then comparisons between
+        % terms bound to different non-constants should be decided by the
+        % local sectags of the two terms regardless of the values of their
+        % arguments, but the local sectag is stored in *less* significant bits
+        % than the arguments. We cannot move the position of the local sectag
+        % without incurring significant costs in RTTI complexity.
+    then
+        CastType = uint_type,
+        info_new_named_var(CastType, "CastX", CastX, !Info),
+        info_new_named_var(CastType, "CastY", CastY, !Info),
+        generate_cast(unsafe_type_cast, X, CastX, Context, CastXGoal),
+        generate_cast(unsafe_type_cast, Y, CastY, Context, CastYGoal),
+        build_simple_call(ModuleInfo, mercury_public_builtin_module, "compare",
+            [Res, CastX, CastY], Context, CompareGoal),
+        GoalExpr = conj(plain_conj, [CastXGoal, CastYGoal, CompareGoal]),
+        goal_info_init(Context, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    else
         globals.lookup_int_option(Globals, compare_specialization,
             CompareSpec),
-        list.length(Ctors, NumCtors),
+        list.length(CtorRepns, NumCtors),
         ( if NumCtors =< CompareSpec then
             generate_compare_proc_body_du_quad(SpecDefnInfo, UCOptions,
-                Ctors, Res, X, Y, Goal0, !Info)
+                CtorRepns, Res, X, Y, Goal0, !Info)
         else
             generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions,
-                Ctors, Res, X, Y, Goal0, !Info)
+                CtorRepns, Res, X, Y, Goal0, !Info)
         ),
-        Context = SpecDefnInfo ^ spdi_context,
         maybe_wrap_with_pretest_equality(Context, X, Y, yes(Res), Goal0, Goal,
-            !Info),
-        HeadVars = [Res, X, Y],
-        quantify_clause_body(all_modes, HeadVars, Goal, Context, Clause, !Info)
-    ).
+            !Info)
+    ),
+    HeadVars = [Res, X, Y],
+    quantify_clause_body(all_modes, HeadVars, Goal, Context, Clause, !Info).
+
+:- pred is_ctor_with_all_locally_packed_unsigned_args(constructor_repn::in,
+    uint8::out) is semidet.
+
+is_ctor_with_all_locally_packed_unsigned_args(CtorRepn, PtagUint8) :-
+    CtorRepn = ctor_repn(_Ordinal, _MaybeExistConstraints,
+        _FunctorName, ConsTag, CtorArgRepns, Arity, _Ctxt),
+    Arity > 0,
+    ConsTag = local_args_tag(LocalArgsTagInfo),
+    (
+        LocalArgsTagInfo = local_args_only_functor,
+        PtagUint8 = 0u8
+    ;
+        LocalArgsTagInfo = local_args_not_only_functor(Ptag, LocalSecTag),
+        Ptag = ptag(PtagUint8),
+        LocalSecTag = local_sectag(0u, _, _)
+    ),
+    IsArgUnsignedComparable =
+        ( pred(CtorArgRepn::in) is semidet :-
+            ArgPosWidth = CtorArgRepn ^ car_pos_width,
+            (
+                ( ArgPosWidth = apw_partial_first(_, _, _, _, _, Fill)
+                ; ArgPosWidth = apw_partial_shifted(_, _, _, _, _, Fill)
+                ),
+                fill_bulk_comparability(Fill) = bulk_comparable_unsigned
+            ;
+                ArgPosWidth = apw_none_shifted(_, _)
+            )
+        ),
+    list.all_true(IsArgUnsignedComparable, CtorArgRepns).
 
     % Order constructors the way Erlang does it: first by arity,
     % then by lexicographic order on the name.
@@ -1221,16 +1358,16 @@ generate_compare_proc_body_du(SpecDefnInfo, Ctors0, Res, X, Y, Clause,
 :- pred compare_ctors_for_erlang(constructor_repn::in, constructor_repn::in,
     comparison_result::out) is det.
 
-compare_ctors_for_erlang(CtorA, CtorB, Res) :-
-    list.length(CtorA ^ cr_args, ArityA),
-    list.length(CtorB ^ cr_args, ArityB),
+compare_ctors_for_erlang(CtorRepnA, CtorRepnB, Res) :-
+    list.length(CtorRepnA ^ cr_args, ArityA),
+    list.length(CtorRepnB ^ cr_args, ArityB),
     compare(ArityRes, ArityA, ArityB),
     (
         ArityRes = (=),
         % XXX This assumes the string ordering used by the Mercury compiler
         % is the same as that of the target language compiler.
-        NameA = unqualify_name(CtorA ^ cr_name),
-        NameB = unqualify_name(CtorB ^ cr_name),
+        NameA = unqualify_name(CtorRepnA ^ cr_name),
+        NameB = unqualify_name(CtorRepnB ^ cr_name),
         compare(Res, NameA, NameB)
     ;
         ( ArityRes = (<)
@@ -1305,12 +1442,12 @@ compare_ctors_for_erlang(CtorA, CtorB, Res) :-
     prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_proc_body_du_quad(SpecDefnInfo, UCOptions, Ctors,
+generate_compare_proc_body_du_quad(SpecDefnInfo, UCOptions, CtorRepns,
         R, X, Y, Goal, !Info) :-
     % XXX Consider returning switches, not disjunctions, both here
     % and everywhere else.
     generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
-        Ctors, Ctors, R, X, Y, [], Cases, !Info),
+        CtorRepns, CtorRepns, R, X, Y, [], Cases, !Info),
     Context = SpecDefnInfo ^ spdi_context,
     goal_info_init(Context, GoalInfo),
     disj_list_to_goal(Cases, GoalInfo, Goal).
@@ -1322,13 +1459,14 @@ generate_compare_proc_body_du_quad(SpecDefnInfo, UCOptions, Ctors,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_du_quad_switch_on_x(_SpecDefnInfo, _UCOptions,
-        [], _RightCtors, _R, _X, _Y, !Cases, !Info).
+        [], _RightCtorRepns, _R, _X, _Y, !Cases, !Info).
 generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
-        [LeftCtor | LeftCtors], RightCtors, R, X, Y, !Cases, !Info) :-
+        [LeftCtorRepn | LeftCtorRepns], RightCtorRepns, R, X, Y,
+        !Cases, !Info) :-
     generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions,
-        LeftCtor, RightCtors, ">", R, X, Y, !Cases, !Info),
+        LeftCtorRepn, RightCtorRepns, ">", R, X, Y, !Cases, !Info),
     generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
-        LeftCtors, RightCtors, R, X, Y, !Cases, !Info).
+        LeftCtorRepns, RightCtorRepns, R, X, Y, !Cases, !Info).
 
 :- pred generate_compare_du_quad_switch_on_y(spec_pred_defn_info::in,
     uc_options::in, constructor_repn::in, list(constructor_repn)::in,
@@ -1336,41 +1474,41 @@ generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
     list(hlds_goal)::in, list(hlds_goal)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_du_quad_switch_on_y(_SpecDefnInfo, _UCOptions, _LeftCtor,
+generate_compare_du_quad_switch_on_y(_SpecDefnInfo, _UCOptions, _LeftCtorRepn,
         [], _Cmp, _R, _X, _Y, !Cases, !Info).
-generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions, LeftCtor,
-        [RightCtor | RightCtors], Cmp0, R, X, Y, !Cases, !Info) :-
-    ( if LeftCtor = RightCtor then
-        generate_compare_case(SpecDefnInfo, UCOptions, quad, LeftCtor,
+generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions, LeftCtorRepn,
+        [RightCtorRepn | RightCtorRepns], Cmp0, R, X, Y, !Cases, !Info) :-
+    ( if LeftCtorRepn = RightCtorRepn then
+        generate_compare_case(SpecDefnInfo, UCOptions, quad, LeftCtorRepn,
             R, X, Y, Case, !Info),
         Cmp1 = "<"
     else
         generate_compare_du_quad_compare_asymmetric(SpecDefnInfo,
-            LeftCtor, RightCtor, Cmp0, R, X, Y, Case, !Info),
+            LeftCtorRepn, RightCtorRepn, Cmp0, R, X, Y, Case, !Info),
         Cmp1 = Cmp0
     ),
-    generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions, LeftCtor,
-        RightCtors, Cmp1, R, X, Y, [Case | !.Cases], !:Cases, !Info).
+    generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions, LeftCtorRepn,
+        RightCtorRepns, Cmp1, R, X, Y, [Case | !.Cases], !:Cases, !Info).
 
 :- pred generate_compare_du_quad_compare_asymmetric(spec_pred_defn_info::in,
     constructor_repn::in, constructor_repn::in,
     string::in, prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, CtorA, CtorB,
+generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, CtorRepnA, CtorRepnB,
         CompareOp, R, X, Y, Case, !Info) :-
-    CtorA = ctor_repn(_OrdinalA, MaybeExistConstraintsA, FunctorNameA,
-        _ConsTagA, ArgRepnA, _ArityA, _CtxtA),
-    CtorB = ctor_repn(_OrdinalB, MaybeExistConstraintsB, FunctorNameB,
-        _ConsTagB, ArgRepnB, _ArityB, _CtxtB),
-    list.length(ArgRepnA, FunctorArityA),
-    list.length(ArgRepnB, FunctorArityB),
+    CtorRepnA = ctor_repn(_OrdinalA, MaybeExistConstraintsA, FunctorNameA,
+        _ConsTagA, ArgRepnsA, _ArityA, _CtxtA),
+    CtorRepnB = ctor_repn(_OrdinalB, MaybeExistConstraintsB, FunctorNameB,
+        _ConsTagB, ArgRepnsB, _ArityB, _CtxtB),
+    list.length(ArgRepnsA, FunctorArityA),
+    list.length(ArgRepnsB, FunctorArityB),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     FunctorConsIdA = cons(FunctorNameA, FunctorArityA, TypeCtor),
     FunctorConsIdB = cons(FunctorNameB, FunctorArityB, TypeCtor),
-    make_fresh_vars_for_cons_args(ArgRepnA, MaybeExistConstraintsA, VarsA,
+    make_fresh_vars_for_cons_args(ArgRepnsA, MaybeExistConstraintsA, VarsA,
         !Info),
-    make_fresh_vars_for_cons_args(ArgRepnB, MaybeExistConstraintsB, VarsB,
+    make_fresh_vars_for_cons_args(ArgRepnsB, MaybeExistConstraintsB, VarsB,
         !Info),
     RHSA = rhs_functor(FunctorConsIdA, is_not_exist_constr, VarsA),
     RHSB = rhs_functor(FunctorConsIdB, is_not_exist_constr, VarsB),
@@ -1437,7 +1575,7 @@ generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, CtorA, CtorB,
     prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions, Ctors,
+generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions, CtorRepns,
         Res, X, Y, Goal, !Info) :-
     IntType = int_type,
     info_new_var(IntType, X_Index, !Info),
@@ -1474,8 +1612,8 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions, Ctors,
     create_pure_atomic_complicated_unification(Res, rhs_var(R), Context,
         umc_explicit, [], Return_R),
 
-    generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, Ctors, R, X, Y,
-        Cases, !Info),
+    generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, CtorRepns,
+        R, X, Y, Cases, !Info),
     CasesGoal = hlds_goal(disj(Cases), GoalInfo),
 
     build_simple_call(ModuleInfo, mercury_private_builtin_module,
@@ -1533,13 +1671,13 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions, Ctors,
     prog_var::in, prog_var::in, prog_var::in,
     list(hlds_goal)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_du_linear_cases(_SpecDefnInfo, _UCOptions, [],
-        _R, _X, _Y, [], !Info).
-generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, [Ctor | Ctors],
-        R, X, Y, [Case | Cases], !Info) :-
-    generate_compare_case(SpecDefnInfo, UCOptions, linear, Ctor,
+generate_compare_du_linear_cases(_SpecDefnInfo, _UCOptions,
+        [], _R, _X, _Y, [], !Info).
+generate_compare_du_linear_cases(SpecDefnInfo, UCOptions,
+        [CtorRepn | CtorRepns], R, X, Y, [Case | Cases], !Info) :-
+    generate_compare_case(SpecDefnInfo, UCOptions, linear, CtorRepn,
         R, X, Y, Case, !Info),
-    generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, Ctors,
+    generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, CtorRepns,
         R, X, Y, Cases, !Info).
 
 %---------------------%
@@ -2349,9 +2487,10 @@ generate_index_proc_body(SpecDefnInfo, X, Index, Clause, !Info) :-
     list(constructor_repn)::in, prog_var::in, prog_var::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_index_proc_body_du(SpecDefnInfo, Ctors, X, Index, Clause, !Info) :-
+generate_index_proc_body_du(SpecDefnInfo, CtorRepns, X, Index,
+        Clause, !Info) :-
     list.map_foldl2(generate_index_du_case(SpecDefnInfo, X, Index),
-        Ctors, Disjuncts, 0, _, !Info),
+        CtorRepns, Disjuncts, 0, _, !Info),
     Context = SpecDefnInfo ^ spdi_context,
     goal_info_init(Context, GoalInfo),
     Goal = hlds_goal(disj(Disjuncts), GoalInfo),
@@ -2361,9 +2500,9 @@ generate_index_proc_body_du(SpecDefnInfo, Ctors, X, Index, Clause, !Info) :-
     prog_var::in, prog_var::in, constructor_repn::in, hlds_goal::out,
     int::in, int::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_index_du_case(SpecDefnInfo, X, Index, Ctor, Goal, !N, !Info) :-
-    Ctor = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName, _ConsTag,
-        ArgRepns, FunctorArity, _Ctxt),
+generate_index_du_case(SpecDefnInfo, X, Index, CtorRepn, Goal, !N, !Info) :-
+    CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
+        _ConsTag, ArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
     make_fresh_vars_for_cons_args(ArgRepns, MaybeExistConstraints, ArgVars,
@@ -2411,14 +2550,20 @@ build_spec_pred_call(TypeCtor, SpecialPredId, ArgVars, InstmapDelta, Detism,
 
 %---------------------------------------------------------------------------%
 
+    % We can start unify and compare predicates that may call other predicates
+    % with an equality test, since it often succeeds, and when it does, it is
+    % faster than executing the rest of the predicate body.
+    %
 :- pred maybe_wrap_with_pretest_equality(prog_context::in,
     prog_var::in, prog_var::in, maybe(prog_var)::in,
     hlds_goal::in, hlds_goal::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes, Goal0, Goal,
-        !Info) :-
-    ShouldPretestEq = should_pretest_equality(!.Info),
+maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes,
+        Goal0, Goal, !Info) :-
+    ModuleInfo = !.Info ^ upi_module_info,
+    module_info_get_globals(ModuleInfo, Globals),
+    lookup_bool_option(Globals, should_pretest_equality, ShouldPretestEq),
     (
         ShouldPretestEq = no,
         Goal = Goal0
@@ -2456,17 +2601,6 @@ maybe_wrap_with_pretest_equality(Context, X, Y, MaybeCompareRes, Goal0, Goal,
             FeaturedGoalInfo),
         Goal = hlds_goal(GoalExpr, FeaturedGoalInfo)
     ).
-
-    % We can start unify and compare predicates that may call other predicates
-    % with an equality test, since it often succeeds, and when it does, it is
-    % faster than executing the rest of the predicate body.
-    %
-:- func should_pretest_equality(unify_proc_info) = bool.
-
-should_pretest_equality(Info) = ShouldPretestEq :-
-    ModuleInfo = Info ^ upi_module_info,
-    module_info_get_globals(ModuleInfo, Globals),
-    lookup_bool_option(Globals, should_pretest_equality, ShouldPretestEq).
 
 :- func get_pretest_equality_cast_type(unify_proc_info) = mer_type.
 
