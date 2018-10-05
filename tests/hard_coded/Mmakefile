@@ -287,6 +287,8 @@ ORDINARY_PROGS = \
 	promise_eqv_solns_typeclasses \
 	psqueue_test \
 	pure_mutable \
+	putback_binary_int8 \
+	putback_binary_uint8 \
 	puzzle_detism_bug \
 	qual_adv_test \
 	qual_basic_test \

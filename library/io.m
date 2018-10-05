@@ -996,11 +996,12 @@
 :- mode binary_input_stream_foldl2_io_maybe_stop(in,
     (pred(in, out, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
-    % Un-reads a byte from the current binary input stream
-    % or from the specified stream.
+    % Un-reads a byte from the current binary input stream or from the
+    % specified stream. The byte is taken from the bottom 8 bits of the
+    % specified int.
     %
     % You can put back as many bytes as you like.
-    % You can even put back something that you didn't actually read.
+    % You can even put back something that you did not actually read.
     %
     % On some systems and backends, only one byte of pushback is guaranteed.
     % `putback_byte' will throw an io.error exception if the pushback buffer
@@ -1010,8 +1011,23 @@
     % the file position is already zero, in which case the new file position
     % is unspecified.
     %
+    %
 :- pred putback_byte(int::in, io::di, io::uo) is det.
 :- pred putback_byte(io.binary_input_stream::in, int::in, io::di, io::uo)
+    is det.
+
+    % Like putback_byte, but where the byte value un-read is the 8 bits of the
+    % int8 reinterpreted as a uint8.
+    %
+:- pred putback_int8(int8::in, io::di, io::uo) is det.
+:- pred putback_int8(io.binary_input_stream::in, int8::in, io::di, io::uo)
+    is det.
+
+    % Like putback_byte, but where the byte value un-read is the 8 bits of the
+    % uint8.
+    %
+:- pred putback_uint8(uint8::in, io::di, io::uo) is det.
+:- pred putback_uint8(io.binary_input_stream::in, uint8::in, io::di, io::uo)
     is det.
 
 %---------------------------------------------------------------------------%
@@ -1753,6 +1769,8 @@
 :- instance stream.bulk_reader(binary_input_stream, int,
         bitmap, io, io.error).
 :- instance stream.putback(binary_input_stream, int, io, io.error).
+:- instance stream.putback(binary_input_stream, int8, io, io.error).
+:- instance stream.putback(binary_input_stream, uint8, io, io.error).
 :- instance stream.seekable(binary_input_stream, io).
 
 %---------------------------------------------------------------------------%
@@ -4479,6 +4497,14 @@ putback_char(Char, !IO) :-
 putback_byte(Char, !IO) :-
     binary_input_stream(Stream, !IO),
     putback_byte(Stream, Char, !IO).
+
+putback_int8(Int8, !IO) :-
+    binary_input_stream(Stream, !IO),
+    putback_int8(Stream, Int8, !IO).
+
+putback_uint8(UInt8, !IO) :-
+    binary_input_stream(Stream, !IO),
+    putback_uint8(Stream, UInt8, !IO).
 
 read(Result, !IO) :-
     term_io.read_term(ReadResult, !IO),
@@ -7747,6 +7773,39 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
     }
 ").
 
+putback_int8(binary_input_stream(Stream), Int8, !IO) :-
+    UInt8 = uint8.cast_from_int8(Int8),
+    putback_uint8_2(Stream, UInt8, Ok, !IO),
+    (
+        Ok = yes
+    ;
+        Ok = no,
+        throw(io_error("failed to put back int8"))
+    ).
+
+putback_uint8(binary_input_stream(Stream), UInt8, !IO) :-
+    putback_uint8_2(Stream, UInt8, Ok, !IO),
+    (
+        Ok = yes
+    ;
+        Ok = no,
+        throw(io_error("failed to put back uint8"))
+    ).
+
+:- pred putback_uint8_2(stream::in, uint8::in, bool::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    putback_uint8_2(Stream::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io,
+        does_not_affect_liveness, no_sharing],
+"
+    MercuryFilePtr mf = Stream;
+    if (MR_UNGETCH(*mf, UInt8) == EOF) {
+        Ok = MR_FALSE;
+    } else {
+        Ok = MR_TRUE;
+    }
+").
+
 :- pragma foreign_proc("C#",
     read_char_code_2(File::in, Result::out, Char::out, Error::out,
         _IO0::di, _IO::uo),
@@ -7829,6 +7888,19 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
     }
 ").
 
+:- pragma foreign_proc("C#",
+    putback_uint8_2(File::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    io.MR_MercuryFileStruct mf = File;
+    if (mf.putback == -1) {
+        mf.putback = UInt8;
+        Ok = mr_bool.YES;
+    } else {
+        Ok = mr_bool.NO;
+    }
+").
+
 :- pragma foreign_proc("Java",
     read_char_code_2(File::in, Result::out, CharCode::out, Error::out,
         _IO0::di, _IO::uo),
@@ -7889,6 +7961,14 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
     Ok = bool.YES;
 ").
 
+:- pragma foreign_proc("Java",
+    putback_uint8_2(File::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    ((io.MR_BinaryInputFile) File).ungetc((byte) UInt8);
+    Ok = bool.YES;
+").
+
 :- pragma foreign_proc("Erlang",
     read_char_code_2(Stream::in, Result::out, Char::out, Error::out,
         _IO0::di, _IO::uo),
@@ -7946,6 +8026,14 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     mercury__io:mercury_putback(File, Byte),
+    Ok = {yes}
+").
+
+:- pragma foreign_proc("Erlang",
+    putback_uint8_2(File::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    mercury__io:mercury_putback(File, UInt8),
     Ok = {yes}
 ").
 
@@ -12634,6 +12722,18 @@ result_to_stream_result(error(Error)) = error(Error).
     where
 [
     pred(unget/4) is putback_byte
+].
+
+:- instance stream.putback(binary_input_stream, int8, io, io.error)
+    where
+[
+    pred(unget/4) is putback_int8
+].
+
+:- instance stream.putback(binary_input_stream, uint8, io, io.error)
+    where
+[
+    pred(unget/4) is putback_uint8
 ].
 
 :- instance stream.seekable(binary_input_stream, io)

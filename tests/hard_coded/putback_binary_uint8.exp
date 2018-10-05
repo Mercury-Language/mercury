@@ -1,0 +1,32 @@
+Position: 0
+
+Read: 97u8
+Position: 1
+
+Seek: +1
+Position: 2
+
+Read: 99u8
+Position: 3
+
+Put back: 128u8
+Position: 2
+
+Read: 128u8
+Position: 3
+
+Read: 10u8
+Position: 4
+
+Read: eof
+Position: 4
+
+Put back: 255u8
+Position: 3
+
+Seek: -2
+Position: 1
+
+Read: 98u8
+Position: 2
+
