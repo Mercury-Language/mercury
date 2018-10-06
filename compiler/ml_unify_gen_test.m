@@ -25,9 +25,8 @@
     % We generate the boolean rval TestRval, which will evaluate to true
     % iff Var has the functor specified by ConsId.
     %
-:- pred ml_generate_test_var_has_cons_id(prog_var::in,
-    cons_id::in, mlds_rval::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_generate_test_var_has_cons_id(prog_var::in, cons_id::in,
+    mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -60,7 +59,9 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_unify_gen_util.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.prog_type.
 
+:- import_module maybe.
 :- import_module require.
 :- import_module term.
 :- import_module uint.
@@ -70,16 +71,13 @@
 
 ml_generate_test_var_has_cons_id(Var, ConsId, TestRval, !Info) :-
     % NOTE: Keep in sync with ml_generate_test_var_has_tagged_cons_id below.
-
-    % TODO: apply the reverse tag test optimization for types with two
-    % functors (see unify_gen.m).
-
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
     ml_variable_type(!.Info, Var, VarType),
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
-    ml_generate_test_rval_has_cons_tag(!.Info, VarRval, VarType, ConsTag,
-        TestRval).
+    ml_get_maybe_cheaper_tag_test(!.Info, VarType, CheaperTagTest),
+    ml_generate_test_rval_has_cons_tag(!.Info, VarRval, VarType,
+        CheaperTagTest, ConsTag, TestRval).
 
 %---------------------------------------------------------------------------%
 
@@ -90,11 +88,13 @@ ml_generate_test_var_has_one_tagged_cons_id(Var,
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
     ml_variable_type(!.Info, Var, VarType),
+    ml_get_maybe_cheaper_tag_test(!.Info, VarType, CheaperTagTest),
 
     ml_generate_test_rval_has_tagged_cons_id(!.Info, VarRval, VarType,
-        MainTaggedConsId, MainTestRval),
+        CheaperTagTest, MainTaggedConsId, MainTestRval),
     list.map(
-        ml_generate_test_rval_has_tagged_cons_id(!.Info, VarRval, VarType),
+        ml_generate_test_rval_has_tagged_cons_id(!.Info, VarRval, VarType,
+            CheaperTagTest),
         OtherTaggedConsIds, OtherTestRvals),
     ml_logical_or_rvals(MainTestRval, OtherTestRvals, TestRval).
 
@@ -118,12 +118,14 @@ ml_logical_or_rvals(FirstRval, LaterRvals, Rval) :-
 %---------------------------------------------------------------------------%
 
 :- pred ml_generate_test_rval_has_tagged_cons_id(ml_gen_info::in,
-    mlds_rval::in, mer_type::in, tagged_cons_id::in, mlds_rval::out) is det.
+    mlds_rval::in, mer_type::in, maybe_cheaper_tag_test::in,
+    tagged_cons_id::in, mlds_rval::out) is det.
 
-ml_generate_test_rval_has_tagged_cons_id(Info, Rval, Type, TaggedConsId,
-        TestRval) :-
+ml_generate_test_rval_has_tagged_cons_id(Info, Rval, Type, CheaperTagTest,
+        TaggedConsId, TestRval) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    ml_generate_test_rval_has_cons_tag(Info, Rval, Type, ConsTag, TestRval).
+    ml_generate_test_rval_has_cons_tag(Info, Rval, Type, CheaperTagTest,
+        ConsTag, TestRval).
 
     % ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, ConsTag,
     %   TestRval):
@@ -132,9 +134,35 @@ ml_generate_test_rval_has_tagged_cons_id(Info, Rval, Type, TaggedConsId,
     % the specified ConsTag, and false otherwise. Type is the type of VarRval.
     %
 :- pred ml_generate_test_rval_has_cons_tag(ml_gen_info::in,
+    mlds_rval::in, mer_type::in, maybe_cheaper_tag_test::in, cons_tag::in,
+    mlds_rval::out) is det.
+
+ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, CheaperTagTest,
+        ConsTag, TestRval) :-
+    ( if
+        CheaperTagTest = cheaper_tag_test(_ExpensiveConsId, ExpensiveConsTag,
+            _CheapConsId, CheapConsTag),
+        ConsTag = ExpensiveConsTag
+    then
+        ml_generate_test_rval_has_cons_tag_direct(Info, VarRval, Type,
+            CheapConsTag, CheapConsTagTestRval),
+        ( if
+            CheapConsTagTestRval = ml_binop(eq(IntType), SubRvalA, SubRvalB)
+        then
+            TestRval = ml_binop(ne(IntType), SubRvalA, SubRvalB)
+        else
+            TestRval = ml_unop(logical_not, CheapConsTagTestRval)
+        )
+    else
+        ml_generate_test_rval_has_cons_tag_direct(Info, VarRval, Type,
+            ConsTag, TestRval)
+    ).
+
+:- pred ml_generate_test_rval_has_cons_tag_direct(ml_gen_info::in,
     mlds_rval::in, mer_type::in, cons_tag::in, mlds_rval::out) is det.
 
-ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, ConsTag, TestRval) :-
+ml_generate_test_rval_has_cons_tag_direct(Info, VarRval, Type,
+        ConsTag, TestRval) :-
     (
         ConsTag = int_tag(IntTag),
         ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -330,6 +358,26 @@ ml_generate_test_rval_is_int_tag(ModuleInfo, Rval, Type, IntTag, TestRval) :-
         Const = mlconst_uint64(UInt64)
     ),
     TestRval = ml_binop(eq(EqType), Rval, ml_const(Const)).
+
+%---------------------------------------------------------------------------%
+
+:- pred ml_get_maybe_cheaper_tag_test(ml_gen_info::in, mer_type::in,
+    maybe_cheaper_tag_test::out) is det.
+
+ml_get_maybe_cheaper_tag_test(Info, Type, CheaperTagTest) :-
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    type_to_ctor_det(Type, TypeCtor),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    ( if
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+        get_type_defn_body(TypeDefn, TypeBody),
+        TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+        MaybeRepn = yes(Repn)
+    then
+        CheaperTagTest = Repn ^ dur_cheaper_tag_test
+    else
+        CheaperTagTest = no_cheaper_tag_test
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_unify_gen_test.
