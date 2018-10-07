@@ -226,6 +226,7 @@
 :- import_module require.
 :- import_module term.
 :- import_module uint8.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -837,8 +838,17 @@ ml_is_zero_const(Const) = IsZero :-
 
 ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
     (
-        ( Fill = fill_enum
-        ; Fill = fill_uint8
+        Fill = fill_enum,
+        % If we can (because the value to be cast is a constant),
+        % make it unnecessary to add an explicit cast below.
+        ( if Rval0 = ml_const(mlconst_enum(EnumInt, _Type)) then
+            EnumUint = uint.det_from_int(EnumInt),
+            Rval1 = ml_const(mlconst_uint(EnumUint))
+        else
+            Rval1 = Rval0
+        )
+    ;
+        ( Fill = fill_uint8
         ; Fill = fill_uint16
         ; Fill = fill_uint32
         ; Fill = fill_char21
@@ -857,7 +867,25 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
         ),
         Rval1 = ml_cast(ToMLDSType, Rval0)
     ),
-    Rval = ml_cast(mlds_builtin_type_int(int_type_uint), Rval1).
+    ( if
+        % Don't cast Rval1 to unsigned if it is *already* of that type.
+        % Of course, other kinds of rvals may also be known to be unsigned,
+        % but these two patterns cover the rvals that our callers give us.
+        (
+            % Unsigned constants are unsigned.
+            Rval1 = ml_const(mlconst_uint(_))
+        ;
+            % Shifted unsigned constants are also unsigned.
+            Rval1 = ml_binop(Binop, ml_const(mlconst_uint(_)), _),
+            ( Binop = unchecked_left_shift(int_type_uint)
+            ; Binop = unchecked_right_shift(int_type_uint)
+            )
+        )
+    then
+        Rval = Rval1
+    else
+        Rval = ml_cast(mlds_builtin_type_int(int_type_uint), Rval1)
+    ).
 
 %---------------------------------------------------------------------------%
 
