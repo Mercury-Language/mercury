@@ -294,17 +294,35 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             % builtin_translation.
             Code = assign(Y, leaf(X))
         ;
-            ( PredName = "builtin_int_gt", CompareOp = int_gt(int_type_int)
-            ; PredName = "builtin_int_lt", CompareOp = int_lt(int_type_int)
+            ( PredName = "builtin_int_gt",    CmpOp = int_gt(int_type_int)
+            ; PredName = "builtin_int_lt",    CmpOp = int_lt(int_type_int)
+            ; PredName = "builtin_int8_gt",   CmpOp = int_gt(int_type_int8)
+            ; PredName = "builtin_int8_lt",   CmpOp = int_lt(int_type_int8)
+            ; PredName = "builtin_int16_gt",  CmpOp = int_gt(int_type_int16)
+            ; PredName = "builtin_int16_lt",  CmpOp = int_lt(int_type_int16)
+            ; PredName = "builtin_int32_gt",  CmpOp = int_gt(int_type_int32)
+            ; PredName = "builtin_int32_lt",  CmpOp = int_lt(int_type_int32)
+            ; PredName = "builtin_int64_gt",  CmpOp = int_gt(int_type_int64)
+            ; PredName = "builtin_int64_lt",  CmpOp = int_lt(int_type_int64)
+            ; PredName = "builtin_uint_gt",   CmpOp = int_gt(int_type_uint)
+            ; PredName = "builtin_uint_lt",   CmpOp = int_lt(int_type_uint)
+            ; PredName = "builtin_uint8_gt",  CmpOp = int_gt(int_type_uint8)
+            ; PredName = "builtin_uint8_lt",  CmpOp = int_lt(int_type_uint8)
+            ; PredName = "builtin_uint16_gt", CmpOp = int_gt(int_type_uint16)
+            ; PredName = "builtin_uint16_lt", CmpOp = int_lt(int_type_uint16)
+            ; PredName = "builtin_uint32_gt", CmpOp = int_gt(int_type_uint32)
+            ; PredName = "builtin_uint32_lt", CmpOp = int_lt(int_type_uint32)
+            ; PredName = "builtin_uint64_gt", CmpOp = int_gt(int_type_uint64)
+            ; PredName = "builtin_uint64_lt", CmpOp = int_lt(int_type_uint64)
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
+            Code = test(binary(CmpOp, leaf(X), leaf(Y)))
         ;
-            ( PredName = "builtin_compound_eq", CompareOp = compound_eq
-            ; PredName = "builtin_compound_lt", CompareOp = compound_lt
+            ( PredName = "builtin_compound_eq", CmpOp = compound_eq
+            ; PredName = "builtin_compound_lt", CmpOp = compound_lt
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
+            Code = test(binary(CmpOp, leaf(X), leaf(Y)))
 
         ;
             PredName = "pointer_equal", ProcNum = 0,
@@ -412,13 +430,13 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             PredName = "\\", ProcNum = 0, Args = [X, Y],
             Code = assign(Y, unary(bitwise_complement(IntType), leaf(X)))
         ;
-            ( PredName = ">", CompareOp = int_gt(IntType)
-            ; PredName = "<", CompareOp = int_lt(IntType)
-            ; PredName = ">=", CompareOp = int_ge(IntType)
-            ; PredName = "=<", CompareOp = int_le(IntType)
+            ( PredName = ">", CmpOp = int_gt(IntType)
+            ; PredName = "<", CmpOp = int_lt(IntType)
+            ; PredName = ">=", CmpOp = int_ge(IntType)
+            ; PredName = "=<", CmpOp = int_le(IntType)
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
+            Code = test(binary(CmpOp, leaf(X), leaf(Y)))
         )
     ;
         ModuleName = "float",
@@ -452,13 +470,13 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ProcNum = 0, Args = [X, Y, Z],
             Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))
         ;
-            ( PredName = ">", CompareOp = float_gt
-            ; PredName = "<", CompareOp = float_lt
-            ; PredName = ">=", CompareOp = float_ge
-            ; PredName = "=<", CompareOp = float_le
+            ( PredName = ">",  CmpOp = float_gt
+            ; PredName = "<",  CmpOp = float_lt
+            ; PredName = ">=", CmpOp = float_ge
+            ; PredName = "=<", CmpOp = float_le
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
+            Code = test(binary(CmpOp, leaf(X), leaf(Y)))
         )
     ).
 

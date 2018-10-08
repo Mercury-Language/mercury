@@ -3051,6 +3051,8 @@ long_option("trace-goal-only-locals-2017-07-05",
                                     compiler_sufficiently_recent).
 long_option("no-reserved-addrs",
                                     compiler_sufficiently_recent).
+long_option("builtin-lt-gt-2018-10-08",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("ignore-par-conjunctions",
                                     ignore_par_conjunctions).
