@@ -559,7 +559,7 @@ EOF
             --halt-at-warn \
             $link_static_opt conftest \
             --erlang-native-code \
-            --warn-insts-with-functors-without-type \
+            --warn-suspicious-foreign-code \
             --no-no-reserved-addrs \
             --no-ssdb \
             </dev/null >&AC_FD_CC 2>&1 &&
