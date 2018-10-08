@@ -1320,8 +1320,6 @@ merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % Given two instmap deltas, unify them to produce a new instmap_delta.
-    %
 unify_instmap_delta(_, _, unreachable, InstMapDelta, InstMapDelta,
         !ModuleInfo).
 unify_instmap_delta(_, _, reachable(InstMapping), unreachable,
