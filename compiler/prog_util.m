@@ -151,7 +151,7 @@
     % machines) that would be greater than max_int if interpreted as a positive
     % integer.
     %
-    % XXX UINT - we should revisit the the above behaviour once support for
+    % XXX UINT - we should revisit the above behaviour once support for
     % unsigned integers is stable.
     %
 :- pred source_integer_to_int(integer_base::in, integer::in, int::out)

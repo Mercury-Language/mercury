@@ -206,7 +206,7 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
             !.Continue = yes,
 
             % XXX We may be able to prove termination in more cases if we pass
-            % it !.Polyhedron instead of of polyhedron.universe ... although
+            % it !.Polyhedron instead of polyhedron.universe ... although
             % I don't think it is a major concern at the moment.
             find_edges_in_disj(Proc, AbstractSCC, ModuleInfo,
                 MaxMatrixSize, polyhedron.universe, Goals, !Calls,

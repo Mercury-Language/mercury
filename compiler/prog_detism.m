@@ -103,7 +103,7 @@
 
 det_conjunction_detism(DetismA, DetismB, Detism) :-
     % When figuring out the determinism of a conjunction, if the second goal
-    % is unreachable, then then the determinism of the conjunction is just
+    % is unreachable, then the determinism of the conjunction is just
     % the determinism of the first goal.
 
     determinism_components(DetismA, CanFailA, MaxSolnA),

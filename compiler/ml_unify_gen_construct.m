@@ -881,7 +881,7 @@ ml_generate_and_pack_dynamic_construct_args(Info,
                     RHSLval, RHSRval),
                 HeadTakeAddrInfos = []
             ),
-            % XXX ARG_PACK We should not need the the last field.
+            % XXX ARG_PACK We should not need the last field.
             RHSRvalTypeWidth =
                 rval_type_and_width(RHSRval, RHS_MLDS_Type, ArgPosWidth),
             HeadRHSRvalsTypesWidths = [RHSRvalTypeWidth]

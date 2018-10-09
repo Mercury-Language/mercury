@@ -2507,7 +2507,7 @@ init_label_layouts_info = Info :-
     % and variable locations in separate structures (not arrays), our use
     % of common structures for them ensured that any identical copies of
     % such structures would be optimized away. This optimization is even
-    % more effective, since it it allows the sequence we need for one label
+    % more effective, since it allows the sequence we need for one label
     % to be found as (a) a subsequence of the longer sequence for another
     % label, and (b) straddling the sequences of two (or possibly even more)
     % other labels.

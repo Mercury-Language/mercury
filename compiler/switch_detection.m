@@ -707,7 +707,7 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
     % with the smallest variable number.
     %
     % When we convert the disjunction into a switch based on the chosen
-    % candidate, we need to fill in the can_fail field of the the switch
+    % candidate, we need to fill in the can_fail field of the switch
     % we create. We get the value we need from the cs_can_fail field.
 :- type candidate_switch
     --->    candidate_switch(
