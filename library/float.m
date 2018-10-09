@@ -116,12 +116,44 @@
 
 %---------------------------------------------------------------------------%
 %
-% Conversion functions.
+% Conversion from integer types.
 %
 
-    % Convert int to float.
+    % Convert an int into float.
+    %
+    % The behaviour when the int exceeds the range of what can be exactly
+    % represented by a float is undefined.
     %
 :- func float(int) = float.
+
+    % Convert a signed 8-bit integer into a float.
+    % Always succeeds as all signed 8-bit integers have an exact
+    % floating-point representation.
+    %
+:- func from_int8(int8) = float.
+
+    % Convert a signed 16-bit integer into a float.
+    % Always succeeds as all unsigned 8-bit integers have an exact
+    % floating-point representation.
+    %
+:- func from_int16(int16) = float.
+
+    % Convert an unsigned 8-bit integer into a float.
+    % Always succeeds as all signed 16-bit integers have an exact
+    % floating-point representation.
+    %
+:- func from_uint8(uint8) =  float.
+
+    % Convert an unsigned 16-bit integer into a float.
+    % Always succeeds as all unsigned 16-bit integers have an exact
+    % floating-point representation.
+    %
+:- func from_uint16(uint16) = float.
+
+%---------------------------------------------------------------------------%
+%
+% Conversion to int.
+%
 
     % ceiling_to_int(X) returns the smallest integer not less than X.
     %
@@ -365,7 +397,7 @@ X / Y = Z :-
 
 %---------------------------------------------------------------------------%
 %
-% Conversion functions.
+% Conversion from integer types.
 %
 
 %   For Java, overflows are not detected, so this must be tested for
@@ -400,6 +432,135 @@ X / Y = Z :-
 "
     FloatVal = float(IntVal)
 ").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    from_int8(Int8Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    FloatVal = Int8Val;
+").
+
+:- pragma foreign_proc("C#",
+    from_int8(Int8Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = (double) Int8Val;
+").
+
+:- pragma foreign_proc("Java",
+    from_int8(Int8Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = (double) Int8Val;
+").
+
+:- pragma foreign_proc("Erlang",
+    from_int8(Int8Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = float(Int8Val)
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    from_uint8(UInt8Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    FloatVal = UInt8Val;
+").
+
+:- pragma foreign_proc("C#",
+    from_uint8(UInt8Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = (double) UInt8Val;
+").
+
+:- pragma foreign_proc("Java",
+    from_uint8(UInt8Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = (double) (UInt8Val & 0xff);
+").
+
+:- pragma foreign_proc("Erlang",
+    from_uint8(UInt8Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = float(UInt8Val)
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    from_int16(Int16Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    FloatVal = Int16Val;
+").
+
+:- pragma foreign_proc("C#",
+    from_int16(Int16Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = (double) Int16Val;
+").
+
+:- pragma foreign_proc("Java",
+    from_int16(Int16Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = (double) Int16Val;
+").
+
+:- pragma foreign_proc("Erlang",
+    from_int16(Int16Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = float(Int16Val)
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    from_uint16(UInt16Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    FloatVal = UInt16Val;
+").
+
+:- pragma foreign_proc("C#",
+    from_uint16(UInt16Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = (double) UInt16Val;
+").
+
+:- pragma foreign_proc("Java",
+    from_uint16(UInt16Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = (double) (UInt16Val & 0xffff);
+").
+
+:- pragma foreign_proc("Erlang",
+    from_uint16(UInt16Val::in) = (FloatVal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatVal = float(UInt16Val)
+").
+
+%---------------------------------------------------------------------------%
+%
+% Conversion to ints.
+%
 
 :- pragma foreign_proc("C",
     ceiling_to_int(X::in) = (Ceil::out),

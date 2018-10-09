@@ -1,0 +1,42 @@
+*** Testing int8 -> float conversion ***
+
+from_int8(-128i8) = -128.0
+from_int8(-1i8) = -1.0
+from_int8(0i8) = 0.0
+from_int8(8i8) = 8.0
+from_int8(16i8) = 16.0
+from_int8(32i8) = 32.0
+from_int8(64i8) = 64.0
+from_int8(127i8) = 127.0
+
+*** Testing uint8 -> float conversion ***
+
+from_uint8(0u8) = 0.0
+from_uint8(1u8) = 1.0
+from_uint8(2u8) = 2.0
+from_uint8(8u8) = 8.0
+from_uint8(23u8) = 23.0
+from_uint8(127u8) = 127.0
+from_uint8(128u8) = 128.0
+from_uint8(255u8) = 255.0
+
+*** Testing int16 -> float conversion ***
+
+from_int16(-32768i16) = -32768.0
+from_int16(-129i16) = -129.0
+from_int16(-128i16) = -128.0
+from_int16(-1i16) = -1.0
+from_int16(0i16) = 0.0
+from_int16(1i16) = 1.0
+from_int16(127i16) = 127.0
+from_int16(128i16) = 128.0
+from_int16(32767i16) = 32767.0
+
+*** Testing uint16 -> float conversion ***
+
+from_uint16(0u16) = 0.0
+from_uint16(1u16) = 1.0
+from_uint16(8u16) = 8.0
+from_uint16(127u16) = 127.0
+from_uint16(128u16) = 128.0
+from_uint16(32767u16) = 32767.0

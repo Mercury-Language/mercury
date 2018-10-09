@@ -125,6 +125,7 @@ ORDINARY_PROGS = \
 	field_syntax \
 	finalise_decl \
 	finalize_to_bitmap \
+	float_conv \
 	float_field \
 	float_ground_term \
 	float_map \
