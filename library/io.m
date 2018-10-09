@@ -877,6 +877,7 @@
     % Return the number of bytes read. On end-of-file, the number of
     % bytes read will be less than the size of the bitmap, and
     % the result will be `ok'.
+    % Throws an exception if the bitmap has a partial final byte.
     %
 :- pred read_bitmap(bitmap::bitmap_di, bitmap::bitmap_uo,
     int::out, io.res::out, io::di, io::uo) is det.
