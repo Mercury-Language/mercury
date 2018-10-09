@@ -58,7 +58,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Arithmetic functions
+% Arithmetic functions.
 %
 
     % Addition.
@@ -95,8 +95,9 @@
 
 %---------------------------------------------------------------------------%
 %
-% Comparison predicates
+% Comparison predicates.
 %
+
     % Less than.
     %
 :- pred (float::in) < (float::in) is semidet.
@@ -115,7 +116,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Conversion functions
+% Conversion functions.
 %
 
     % Convert int to float.
@@ -142,7 +143,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Miscellaneous functions
+% Miscellaneous functions.
 %
 
     % Absolute value.
@@ -170,7 +171,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Classification
+% Classification.
 %
 
     % True iff the argument is of infinite magnitude.
@@ -204,7 +205,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% System constants
+% System constants.
 %
 
     % Maximum finite floating-point number.
@@ -364,8 +365,9 @@ X / Y = Z :-
 
 %---------------------------------------------------------------------------%
 %
-% Conversion functions
+% Conversion functions.
 %
+
 %   For Java, overflows are not detected, so this must be tested for
 %   explicitly. So every time there's a cast to int, the bounds are
 %   checked first.
@@ -547,7 +549,7 @@ X / Y = Z :-
 
 %---------------------------------------------------------------------------%
 %
-% Miscellaneous functions
+% Miscellaneous functions.
 %
 
 abs(Num) = Abs :-
@@ -745,8 +747,9 @@ is_zero(0.0).
 
 %---------------------------------------------------------------------------%
 %
-% System constants
+% System constants.
 %
+
 % For C, the floating-point system constants are derived from <float.h> and
 % implemented using the C interface.
 %
