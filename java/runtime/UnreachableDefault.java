@@ -4,7 +4,7 @@
 // Copyright (C) 2018 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 //
-// This exception signals when an unreachable default case of of a switch
+// This exception signals when an unreachable default case of a switch
 // statement is reached.
 //
 

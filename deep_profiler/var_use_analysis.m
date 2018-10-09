@@ -1008,7 +1008,7 @@ disj_var_first_use(RevGoalPath, Disjuncts, Detism, StaticInfo,
         !CostSoFar, FoundFirstUse) :-
     % We cannot handle nondet/multi disjunctions. So we use pessimistic
     % defaults for FoundFirstUse if this disjunction is nondet or multi.
-    % For calculating the cost of the disjunction, assume that is is a semidet
+    % For calculating the cost of the disjunction, assume that it is a semidet
     % disjunction. Doing this will find the incorrect cost for the
     % disjunction. However disjunctions occur rarely, so this is not likely
     % to dramatically affect anything.
@@ -1403,7 +1403,7 @@ rec_conj_var_first_use([Conj | Conjs], ConjNum, RecCalls, StaticInfo,
 
 rec_disj_var_first_use(Disjs, RecCalls, Info, FoundFirstUse, !CostSoFar) :-
     % We do not handle disjunctions, just use a pessimistic default.
-    % For calculating the cost of the disjunction, assume that is is a semidet
+    % For calculating the cost of the disjunction, assume that it is a semidet
     % disjunction. Doing this will find the incorrect cost for the
     % disjunction, however disjunctions occur rarely, so this is not likely
     % to dramatically affect anything.

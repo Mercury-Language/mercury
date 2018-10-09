@@ -28,7 +28,7 @@
 
 %---------------------------------------------------------------------------%
 
-	% A message to be displayed to the user.
+    % A message to be displayed to the user.
     %
 :- type message
     --->    message(
@@ -112,7 +112,7 @@
             % these situations.
 
     ;       notice_partition_does_not_have_costly_calls(int, int)
-            % A partition does not enough enough costly calls (>1) and
+            % A partition does not enough costly calls (>1) and
             % could not be parallelised, we could have parallelised them
             % if we could parallelise over non-atomic code.
             %

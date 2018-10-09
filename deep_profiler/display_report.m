@@ -4968,7 +4968,7 @@ sort_clique_rows_by_preferences(Prefs, !CliqueRowDatas) :-
     OrderCriteria = Prefs ^ pref_criteria,
     (
         OrderCriteria = by_context,
-        % For cliques, we don't have have a single context. We could use the
+        % For cliques, we do not have a single context. We could use the
         % contexts of the procedures in the clique, but using the clique number
         % seems more useful.
         list.sort(compare_clique_rows_by_number, !CliqueRowDatas)

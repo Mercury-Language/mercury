@@ -1201,7 +1201,7 @@ MR_dump_stack_record_print_to_socket(FILE *fp, MR_bool include_trace_data,
     const MR_StackFrameDumpInfo *frame_dump_info)
 {
     // XXX If the external debugger is ever needed again, it should be updated
-    // to send information across the socket about about any reuse of a stack
+    // to send information across the socket about any reuse of a stack
     // frame by tail recursion events.
 
     if (frame_dump_info->MR_sdi_min_level != frame_dump_info->MR_sdi_max_level)

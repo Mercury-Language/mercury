@@ -855,7 +855,7 @@ typedef struct MR_StackTraversal_Struct {
 // If the procedure lives on the nondet stack, or if it cannot create any
 // temporary nondet stack frames, the maybe_maxfr field will contain a negative
 // number. If it lives on the det stack, and can create temporary nondet stack
-// frames, it will contain the number number of the stack slot that contains the
+// frames, it will contain the number of the stack slot that contains the
 // value of maxfr on entry, for use in executing the retry debugger command
 // from the middle of the procedure.
 //

@@ -1075,7 +1075,7 @@ MR_threadscope_finalize_engine(MercuryEngine *eng)
 // The master upon hearing from the slave records it's TSC and then signals
 // the slave. The slave can then compute the delay in this round. The slave
 // takes the NR_TSC_SYNC_NUM_BEST_ROUNDS best delays (smallest) and computes
-// the offset as the average between between the difference of the clocks based
+// the offset as the average between the difference of the clocks based
 // on Cristan's algorithm (1989).
 
 typedef struct {

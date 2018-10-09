@@ -568,7 +568,7 @@ atomic_goal_recursion_data(Info, RevGoalPath, AtomicGoal, RecursionData) :-
         Info = recursion_analysis_info(ThisClique, CallSiteMap, _),
         map.lookup(CallSiteMap, RevGoalPath, CostAndCallees),
         ( if cost_and_callees_is_recursive(ThisClique, CostAndCallees) then
-            % Cost will be 1.0 for for each call to recursive calls but we
+            % Cost will be 1.0 for each call to recursive calls but we
             % calculate this later.
             RecursionLevel = 1 - recursion_level(0.0, certain)
         else

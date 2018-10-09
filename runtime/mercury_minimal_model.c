@@ -1625,8 +1625,8 @@ print_stack_segment(FILE *fp, MR_Word *segment, MR_Integer size)
 
 ////////////////////////////////////////////////////////////////////////////
 
-// This part of the file implements the suspension and and resumption
-// of derivations.
+// This part of the file implements the suspension and resumption of
+// derivations.
 //
 // We need to define stubs for the predicates which are marked as `:- external'
 // in table_builtin.m, even if MR_USE_MINIMAL_MODEL_STACK_COPY is not enabled,

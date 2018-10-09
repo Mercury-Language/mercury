@@ -93,7 +93,7 @@ extern  void    MR_get_signal_action(int sig, MR_signal_action *old_action,
 extern  void    MR_set_signal_action(int sig, MR_signal_action *action,
                     const char *error_message);
 
-// Change the behaviour of system calls when the the specified signal
+// Change the behaviour of system calls when the specified signal
 // is received. If restart is MR_TRUE, they will be restarted;
 // if it is MR_FALSE, they won't. This function may have no effect
 // on some systems.

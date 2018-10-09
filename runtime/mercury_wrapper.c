@@ -2010,7 +2010,7 @@ MR_process_options(int argc, char **argv)
 
                     // Particular rounding modes are only supported if the
                     // corresponding FE_* macro is defined. The four below are
-                    // the ones from C99  C99 says that these macros
+                    // the ones from C99. C99 says that these macros
                     // should expand to a nonnegative value, so we use a
                     // negative value to indicate that the selected rounding
                     // mode is not supported by the system.

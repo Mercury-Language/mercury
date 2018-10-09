@@ -4444,7 +4444,7 @@ This is a bug-fix release.
   foreign exported to any language.  Previously, warnings were incorrectly
   emitted if there were only foreign_export pragmas for foreign languages
   unsupported by the current backend.  (Bug #183)
-* The compiler now emits a warning if the variable that is the subject of
+* The compiler now emits a warning if the variable that is the subject
   of a require_complete_switch scope does not appear in the scoped goal.
   (Bug #257)
 * A bug that caused a compiler abort in the low-level C backend has been

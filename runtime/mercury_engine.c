@@ -254,7 +254,7 @@ MR_dump_prev_locations(void)
 // have to change if we start using the caller-save registers.
 //
 // The called routine may invoke C functions which in turn
-// invoke call_engine() to invoke invoke Mercury routines (which
+// invoke call_engine() to invoke Mercury routines (which
 // in turn invoke C functions which ... etc. ad infinitum.)
 //
 // MR_call_engine() calls setjmp() and then invokes call_engine_inner()
