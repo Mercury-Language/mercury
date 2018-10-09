@@ -5674,16 +5674,14 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 
 :- pragma foreign_code("Java",
 "
-    // All text files (including stdin/stdout/stderr) are run through
-    // stream readers/writers, which use the default charset encoding.
-    // In other words, while strings and characters are stored internally
-    // using unicode, all files are read and written using the default
-    // system charset.
+    // While strings are stored internally as UTF-16, all text file I/O
+    // (including stdin/stdout/stderr) is run through stream readers/writers
+    // that use UTF-8 encoding.
     // Binary files are opened via RandomAccessFile, which supports seek,
     // but not character encoding/decoding or buffering.
     // Binary stdin and stdout are a special case. They are opened via
     // FileInput/OutputStreams and seeking is controlled through use of
-    // FileChannels (requiring Java versions >= 1.4).
+    // FileChannels.
     //
     // The use of the methods in this implementation is not very flexible.
     // You may not perform text mode operations on a binary file or vice versa.
