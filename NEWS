@@ -115,7 +115,7 @@ Changes that may break compatibility:
 
 * We have changed the semantics of int.abs/1 so that it throws an exception
   if its argument is equal to int.min_int.  The old behaviour of this function
-  is provided by the the new function int.unchecked_abs/1.
+  is provided by the new function int.unchecked_abs/1.
 
 * We have changed the semantics of array.map_corresponding_foldl/6 so that it
   throws an exception if the input arrays differ in size.
