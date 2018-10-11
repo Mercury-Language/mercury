@@ -123,15 +123,29 @@
     %
 :- pred compare_error is erroneous.
 
-    % The builtin < operator on ints, used in the code generated
-    % for compare/3 preds.
+    % The builtin < and > operators on integers of all sizes and both
+    % signednesses, used in the code generated for compare/3 preds.
     %
 :- pred builtin_int_lt(int::in, int::in) is semidet.
-
-    % The builtin > operator on ints, used in the code generated
-    % for compare/3 preds.
-    %
 :- pred builtin_int_gt(int::in, int::in) is semidet.
+:- pred builtin_int8_lt(int8::in, int8::in) is semidet.
+:- pred builtin_int8_gt(int8::in, int8::in) is semidet.
+:- pred builtin_int16_lt(int16::in, int16::in) is semidet.
+:- pred builtin_int16_gt(int16::in, int16::in) is semidet.
+:- pred builtin_int32_lt(int32::in, int32::in) is semidet.
+:- pred builtin_int32_gt(int32::in, int32::in) is semidet.
+:- pred builtin_int64_lt(int64::in, int64::in) is semidet.
+:- pred builtin_int64_gt(int64::in, int64::in) is semidet.
+:- pred builtin_uint_lt(int::in, int::in) is semidet.
+:- pred builtin_uint_gt(int::in, int::in) is semidet.
+:- pred builtin_uint8_lt(uint8::in, uint8::in) is semidet.
+:- pred builtin_uint8_gt(uint8::in, uint8::in) is semidet.
+:- pred builtin_uint16_lt(uint16::in, uint16::in) is semidet.
+:- pred builtin_uint16_gt(uint16::in, uint16::in) is semidet.
+:- pred builtin_uint32_lt(uint32::in, uint32::in) is semidet.
+:- pred builtin_uint32_gt(uint32::in, uint32::in) is semidet.
+:- pred builtin_uint64_lt(uint64::in, uint64::in) is semidet.
+:- pred builtin_uint64_gt(uint64::in, uint64::in) is semidet.
 
     % These should never be called -- the compiler replaces calls to these
     % predicates with inline code. These predicates are declared not to take

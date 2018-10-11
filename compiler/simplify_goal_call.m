@@ -668,9 +668,28 @@ simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
             % When generating code for target languages that have builtin
             % operations for comparing structured terms, we replace calls
             % to Mercury's compare with the target's builtin compare.
-            simplify_improve_builtin_compare(ModeNum, Args,
-                ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info)
+            Context = goal_info_get_context(GoalInfo0),
+            simplify_improve_builtin_compare(ModeNum, Args, Context,
+                ImprovedGoalExpr, ImprovedGoalInfo, !Info)
         )
+    ;
+        ModuleName = "private_builtin",
+        ( PredName = "builtin_compare_int",     TypeName = "int"
+        ; PredName = "builtin_compare_int8",    TypeName = "int8"
+        ; PredName = "builtin_compare_int16",   TypeName = "int16"
+        ; PredName = "builtin_compare_int32",   TypeName = "int32"
+        ; PredName = "builtin_compare_int64",   TypeName = "int64"
+        ; PredName = "builtin_compare_uint",    TypeName = "uint"
+        ; PredName = "builtin_compare_uint8",   TypeName = "uint8"
+        ; PredName = "builtin_compare_uint16",  TypeName = "uint16"
+        ; PredName = "builtin_compare_uint32",  TypeName = "uint32"
+        ; PredName = "builtin_compare_uint64",  TypeName = "uint64"
+        ),
+        Args = [R, X, Y],
+        ModeNum = 0,
+        Context = goal_info_get_context(GoalInfo0),
+        simplify_improve_builtin_compare_int_uint(!.Info, TypeName,
+            R, X, Y, Context, ImprovedGoalExpr, ImprovedGoalInfo)
     ;
         ModuleName = "int",
         simplify_improve_int_call(InstMap0, ModuleName, PredName, ModeNum,
@@ -785,11 +804,11 @@ simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
     ).
 
 :- pred simplify_improve_builtin_compare(int::in, list(prog_var)::in,
-    hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out,
+    prog_context::in, hlds_goal_expr::out, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is semidet.
 
-simplify_improve_builtin_compare(_ModeNum, Args, ImprovedGoalExpr, !GoalInfo,
-        !Info) :-
+simplify_improve_builtin_compare(_ModeNum, Args, Context,
+        GoalExpr, GoalInfo, !Info) :-
     % On the Erlang backend, it is faster for us to use builtin comparison
     % operators on high level data structures than to deconstruct the data
     % structure and compare the atomic constituents. We can only do this
@@ -799,40 +818,102 @@ simplify_improve_builtin_compare(_ModeNum, Args, ImprovedGoalExpr, !GoalInfo,
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, can_compare_compound_values, yes),
-    list.reverse(Args, [Y, X, Res | _]),
+    list.reverse(Args, [Y, X, R | _]),
     simplify_info_get_var_types(!.Info, VarTypes),
     lookup_var_type(VarTypes, Y, Type),
     type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
 
     require_det (
-        Context = goal_info_get_context(!.GoalInfo),
+        % We cannot use simplify_build_compare_ite because there is
+        % no builtin_compound_gt predicate (yet).
+        % Using simplify_build_compare_ite would yield faster code,
+        % because the code we generate here start with an equality test,
+        % which is 99+% likely to fail. Starting with a less than or
+        % greater than test would be bette. Since such a test can be expected
+        % to determine the final outcome in almost 50% of cases, it would
+        % let us avoid the cost of the second test *much* more frequently.
+
         goal_util.generate_simple_call(ModuleInfo,
             mercury_private_builtin_module, "builtin_compound_eq",
             pf_predicate, only_mode, detism_semi, purity_pure, [X, Y], [],
-            instmap_delta_bind_no_var, Context, CondEq),
+            instmap_delta_bind_no_var, Context, CmpEqGoal),
         goal_util.generate_simple_call(ModuleInfo,
             mercury_private_builtin_module, "builtin_compound_lt",
             pf_predicate, only_mode, detism_semi, purity_pure, [X, Y], [],
-            instmap_delta_bind_no_var, Context, CondLt),
+            instmap_delta_bind_no_var, Context, CmpLtGoal),
 
         Builtin = mercury_public_builtin_module,
-        TypeCtor = type_ctor(
-            qualified(mercury_public_builtin_module, "comparison_result"),
-            0),
-        make_const_construction(Context, Res,
-            cons(qualified(Builtin, "="), 0, TypeCtor), ReturnEq),
-        make_const_construction(Context, Res,
-            cons(qualified(Builtin, "<"), 0, TypeCtor), ReturnLt),
-        make_const_construction(Context, Res,
-            cons(qualified(Builtin, ">"), 0, TypeCtor), ReturnGt),
+        CmpRes = qualified(mercury_public_builtin_module, "comparison_result"),
+        CmpResTypeCtor = type_ctor(CmpRes, 0),
+        FunctorResultLt = cons(qualified(Builtin, "<"), 0, CmpResTypeCtor),
+        FunctorResultEq = cons(qualified(Builtin, "="), 0, CmpResTypeCtor),
+        FunctorResultGt = cons(qualified(Builtin, ">"), 0, CmpResTypeCtor),
+        make_const_construction(Context, R, FunctorResultLt, ReturnLtGoal),
+        make_const_construction(Context, R, FunctorResultEq, ReturnEqGoal),
+        make_const_construction(Context, R, FunctorResultGt, ReturnGtGoal),
 
-        NonLocals = set_of_var.list_to_set([Res, X, Y]),
-        goal_info_set_nonlocals(NonLocals, !GoalInfo),
+        NonLocals = set_of_var.list_to_set([R, X, Y]),
+        goal_info_init(NonLocals, instmap_delta_bind_var(R), detism_det,
+            purity_pure, Context, GoalInfo),
 
-        RestExpr = if_then_else([], CondLt, ReturnLt, ReturnGt),
-        Rest = hlds_goal(RestExpr, !.GoalInfo),
-        ImprovedGoalExpr = if_then_else([], CondEq, ReturnEq, Rest)
+        ReturnLtGtGoalExpr = if_then_else([], CmpLtGoal,
+            ReturnLtGoal, ReturnGtGoal),
+        ReturnLtGtGoal = hlds_goal(ReturnLtGtGoalExpr, GoalInfo),
+        GoalExpr = if_then_else([], CmpEqGoal, ReturnEqGoal, ReturnLtGtGoal)
     ).
+
+:- pred simplify_improve_builtin_compare_int_uint(simplify_info::in,
+    string::in, prog_var::in, prog_var::in, prog_var::in,
+    prog_context::in, hlds_goal_expr::out, hlds_goal_info::out) is det.
+
+simplify_improve_builtin_compare_int_uint(Info, TypeName,
+        R, X, Y, Context, GoalExpr, GoalInfo) :-
+    % Replace a call to builtin_compare_<inttype>(R, X, Y) with its body,
+    % effectively inlining it, and thus avoiding the cost of a cross-module
+    % call.
+    ModuleSymName = mercury_private_builtin_module,
+    PredNameLt = "builtin_" ++ TypeName ++ "_lt",
+    PredNameGt = "builtin_" ++ TypeName ++ "_gt",
+    simplify_make_cmp_goal_expr(Info, ModuleSymName, PredNameLt,
+        inline_builtin, X, Y, Context, CmpLtGoal),
+    simplify_make_cmp_goal_expr(Info, ModuleSymName, PredNameGt,
+        inline_builtin, X, Y, Context, CmpGtGoal),
+    simplify_build_compare_ite(CmpLtGoal, CmpGtGoal, R, X, Y, Context,
+        GoalExpr, GoalInfo).
+
+:- pred simplify_build_compare_ite(hlds_goal::in, hlds_goal::in,
+    prog_var::in, prog_var::in, prog_var::in, prog_context::in,
+    hlds_goal_expr::out, hlds_goal_info::out) is det.
+
+simplify_build_compare_ite(CmpLtGoal, CmpGtGoal, R, X, Y, Context,
+        GoalExpr, GoalInfo) :-
+    Builtin = mercury_public_builtin_module,
+    CmpRes = qualified(mercury_public_builtin_module, "comparison_result"),
+    CmpResTypeCtor = type_ctor(CmpRes, 0),
+    FunctorResultLt = cons(qualified(Builtin, "<"), 0, CmpResTypeCtor),
+    FunctorResultEq = cons(qualified(Builtin, "="), 0, CmpResTypeCtor),
+    FunctorResultGt = cons(qualified(Builtin, ">"), 0, CmpResTypeCtor),
+    make_const_construction(Context, R, FunctorResultLt, ReturnLtGoal),
+    make_const_construction(Context, R, FunctorResultEq, ReturnEqGoal),
+    make_const_construction(Context, R, FunctorResultGt, ReturnGtGoal),
+
+    % This assumes that CmpLtGoal and CmpGtGoal take only X and Y as inputs.
+    % This assumption will be *wrong* if the shared type of X and Y is
+    % polymorphic, because in that case, the typeinfos describing the actual
+    % types bound to the type variables in the polymorphic type will *also*
+    % be nonlocals.
+    %
+    % If we ever want to use this predicate in such cases, we will have to get
+    % our caller to pass us the extra nonlocals.
+    NonLocals = set_of_var.list_to_set([R, X, Y]),
+    goal_info_init(NonLocals, instmap_delta_bind_var(R), detism_det,
+        purity_pure, Context, GoalInfo),
+
+    ReturnGtEqGoalExpr =
+        if_then_else([], CmpGtGoal, ReturnGtGoal, ReturnEqGoal),
+    ReturnGtEqGoal = hlds_goal(ReturnGtEqGoalExpr, GoalInfo),
+    GoalExpr =
+        if_then_else([], CmpLtGoal, ReturnLtGoal, ReturnGtEqGoal).
 
 :- pred simplify_improve_int_call(instmap::in, string::in, string::in,
     int::in, list(prog_var)::in, hlds_goal_expr::out,
@@ -954,6 +1035,32 @@ simplify_make_binary_op_goal_expr(Info, ModuleName, Op, IsBuiltin, X, Y, Z,
     MaybeUnifyContext = no,
     GoalExpr = plain_call(OpPredId, OpProcId, OpArgs, IsBuiltin,
         MaybeUnifyContext, OpSymName).
+
+:- pred simplify_make_cmp_goal_expr(simplify_info::in,
+    module_name::in, string::in, builtin_state::in,
+    prog_var::in, prog_var::in, prog_context::in, hlds_goal::out) is det.
+
+simplify_make_cmp_goal_expr(Info, ModuleSymName, Op, IsBuiltin, X, Y,
+        Context, Goal) :-
+    OpSymName = qualified(ModuleSymName, Op),
+    simplify_info_get_module_info(Info, ModuleInfo),
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    predicate_table_lookup_pred_sym_arity(PredTable, is_fully_qualified,
+        OpSymName, 2, OpPredIds),
+    ( if OpPredIds = [OpPredIdPrime] then
+        OpPredId = OpPredIdPrime
+    else
+        unexpected($pred, "cannot find " ++ Op)
+    ),
+    OpProcIdInt = 0,
+    proc_id_to_int(OpProcId, OpProcIdInt),
+    OpArgs = [X, Y],
+    MaybeUnifyContext = no,
+    GoalExpr = plain_call(OpPredId, OpProcId, OpArgs, IsBuiltin,
+        MaybeUnifyContext, OpSymName),
+    goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_no_var,
+        detism_semi, purity_pure, Context, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred simplify_make_int_const(int::in, prog_var::out, hlds_goal::out,
     simplify_info::in, simplify_info::out) is det.

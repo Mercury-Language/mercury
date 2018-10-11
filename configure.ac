@@ -558,9 +558,7 @@ EOF
             --verbose \
             --halt-at-warn \
             $link_static_opt conftest \
-            --erlang-native-code \
-            --warn-suspicious-foreign-code \
-            --no-no-reserved-addrs \
+            --builtin-lt-gt-2018-10-08 \
             --no-ssdb \
             </dev/null >&AC_FD_CC 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
