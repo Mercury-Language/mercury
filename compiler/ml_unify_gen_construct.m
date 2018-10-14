@@ -1216,7 +1216,11 @@ ml_genenate_dynamic_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
             ),
             ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
                 bp_native_if_possible, RHSRval0, RHSRval1),
-            RHSRval = ml_cast(LHS_MLDS_Type, ml_mkword(Ptag, RHSRval1))
+            ( if Ptag = ptag(0u8) then
+                RHSRval = ml_cast(LHS_MLDS_Type, RHSRval1)
+            else
+                RHSRval = ml_cast(LHS_MLDS_Type, ml_mkword(Ptag, RHSRval1))
+            )
         ),
         Stmt = ml_gen_assign(LHSLval, RHSRval, Context),
         Stmts = [Stmt]
@@ -2253,12 +2257,16 @@ is_apw_full(apw_full(_, _)).
 ml_cast_cons_tag(Type, ConsTag, Rval) = CastRval :-
     (
         ConsTag = no_tag,
-        TagRval = Rval
+        ToCastRval = Rval
     ;
         ConsTag = direct_arg_tag(Ptag),
-        TagRval = ml_mkword(Ptag, Rval)
+        ( if Ptag = ptag(0u8) then
+            ToCastRval = Rval
+        else
+            ToCastRval = ml_mkword(Ptag, Rval)
+        )
     ),
-    CastRval = ml_cast(Type, TagRval).
+    CastRval = ml_cast(Type, ToCastRval).
 
 :- pred ml_gen_info_lookup_const_var_rval(ml_gen_info::in, prog_var::in,
     mlds_rval::out) is det.

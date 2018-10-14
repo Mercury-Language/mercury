@@ -691,7 +691,8 @@ generate_field_take_address_assigns([FieldAddr | FieldAddrs],
     unify_mode::in, mer_type::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_direct_arg_construct(Var, Arg, Ptag, ArgMode, Type, Code, CI, !CLD) :-
+generate_direct_arg_construct(Var, ArgVar, Ptag, ArgMode, Type, Code,
+        CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
     compute_assign_direction(ModuleInfo, ArgMode, Type, Dir),
     (
@@ -699,7 +700,12 @@ generate_direct_arg_construct(Var, Arg, Ptag, ArgMode, Type, Code, CI, !CLD) :-
         unexpected($pred, "assign right in construction")
     ;
         Dir = assign_left,
-        assign_expr_to_var(Var, mkword(Ptag, var(Arg)), Code, !CLD)
+        ( if Ptag = ptag(0u8) then
+            assign_var_to_var(Var, ArgVar, !CLD),
+            Code = empty
+        else
+            assign_expr_to_var(Var, mkword(Ptag, var(ArgVar)), Code, !CLD)
+        )
     ;
         Dir = assign_unused,
         % Construct a tagged pointer to a pointer value
@@ -994,7 +1000,11 @@ generate_ground_term_conjunct(ModuleInfo, ExprnOpts, Goal,
         ConsTag = direct_arg_tag(Ptag),
         get_notag_or_direct_arg_arg(RHSVars, RHSVar),
         map.det_remove(RHSVar, typed_rval(RHSRval, _RvalType), !ActiveMap),
-        LHSRval = mkword(Ptag, RHSRval),
+        ( if Ptag = ptag(0u8) then
+            LHSRval = RHSRval
+        else
+            LHSRval = mkword(Ptag, RHSRval)
+        ),
         ActiveGroundTerm = typed_rval(LHSRval, lt_data_ptr),
         map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
     ;
@@ -1221,7 +1231,11 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         generate_const_struct_arg(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             ConstStructMap, ConstArgPosWidth, ArgTypedRval),
         ArgTypedRval = typed_rval(ArgRval, _RvalType),
-        Rval = mkword(Ptag, ArgRval),
+        ( if Ptag = ptag(0u8) then
+            Rval = ArgRval
+        else
+            Rval = mkword(Ptag, ArgRval)
+        ),
         TypedRval = typed_rval(Rval, lt_data_ptr)
     ;
         ( ConsTag = int_tag(_)

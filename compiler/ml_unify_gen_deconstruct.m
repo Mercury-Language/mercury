@@ -953,9 +953,15 @@ ml_gen_dynamic_deconstruct_direct_arg(Info, Ptag, LHSVar, RHSVar, ArgMode,
             bp_native_if_possible, ml_lval(LHSLval), LHSRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, RHSType),
         Ptag = ptag(PtagUint8),
-        PtagInt = uint8.cast_to_int(PtagUint8),
-        CastRval = ml_cast(MLDS_Type,
-            ml_binop(body, LHSRval, ml_const(mlconst_int(PtagInt)))),
+        ( if PtagUint8 = 0u8 then
+            % Masking off the ptag would be a null operation, since it is
+            % already all zeroes.
+            CastRval = ml_cast(MLDS_Type, LHSRval)
+        else
+            PtagInt = uint8.cast_to_int(PtagUint8),
+            CastRval = ml_cast(MLDS_Type,
+                ml_binop(body, LHSRval, ml_const(mlconst_int(PtagInt))))
+        ),
         Stmt = ml_gen_assign(RHSLval, CastRval, Context),
         Stmts = [Stmt]
     ;

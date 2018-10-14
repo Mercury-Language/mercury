@@ -1,0 +1,54 @@
+
+            struct0(0, 40)
+direct_arg0(struct0(0, 40))
+
+            struct1(1, 39, no)
+direct_arg1(struct1(1, 39, no))
+
+            struct2(2, 38, yes, no)
+direct_arg2(struct2(2, 38, yes, no))
+
+            struct3(3, 37, no, yes, no)
+direct_arg3(struct3(3, 37, no, yes, no))
+
+            struct4(4, 36, yes, no, yes, no)
+direct_arg4(struct4(4, 36, yes, no, yes, no))
+
+            struct5(5, 35, no, yes, no, yes, no)
+direct_arg5(struct5(5, 35, no, yes, no, yes, no))
+
+            struct6(6, 34, yes, no, yes, no, yes, no)
+direct_arg6(struct6(6, 34, yes, no, yes, no, yes, no))
+
+            struct7(7, 33, no, yes, no, yes, no, yes, no)
+direct_arg7(struct7(7, 33, no, yes, no, yes, no, yes, no))
+
+non_direct_arg 8 32
+non_direct_arg(8, 32)
+
+            struct0(0, 40)
+direct_arg0(struct0(0, 40))
+
+            struct1(1, 39, no)
+direct_arg1(struct1(1, 39, no))
+
+            struct2(2, 38, yes, no)
+direct_arg2(struct2(2, 38, yes, no))
+
+            struct3(3, 37, no, yes, no)
+direct_arg3(struct3(3, 37, no, yes, no))
+
+            struct4(4, 36, yes, no, yes, no)
+direct_arg4(struct4(4, 36, yes, no, yes, no))
+
+            struct5(5, 35, no, yes, no, yes, no)
+direct_arg5(struct5(5, 35, no, yes, no, yes, no))
+
+            struct6(6, 34, yes, no, yes, no, yes, no)
+direct_arg6(struct6(6, 34, yes, no, yes, no, yes, no))
+
+            struct7(7, 33, no, yes, no, yes, no, yes, no)
+direct_arg7(struct7(7, 33, no, yes, no, yes, no, yes, no))
+
+non_direct_arg 8 32
+non_direct_arg(8, 32)

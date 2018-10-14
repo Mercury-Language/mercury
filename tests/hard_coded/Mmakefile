@@ -93,6 +93,7 @@ ORDINARY_PROGS = \
 	direct_arg_partial_inst \
 	direct_arg_partial_inst2 \
 	direct_arg_tags \
+	direct_arg_tags_2 \
 	disjs_in_switch \
 	division_test \
 	dos \

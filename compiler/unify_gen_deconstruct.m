@@ -677,9 +677,16 @@ generate_direct_arg_deconstruct(LHSVar, RHSVar, Ptag, ArgMode, Code,
         Dir = assign_right,
         ( if variable_is_forward_live(!.CLD, RHSVar) then
             Ptag = ptag(PtagUint8),
-            LHSBodyRval = binop(body, var(LHSVar),
-                const(llconst_int(uint8.cast_to_int(PtagUint8)))),
-            assign_expr_to_var(RHSVar, LHSBodyRval, Code, !CLD)
+            ( if PtagUint8 = 0u8 then
+                % Masking off the ptag would be a null operation,
+                % since it is already all zeroes.
+                assign_var_to_var(RHSVar, LHSVar, !CLD),
+                Code = empty
+            else
+                LHSBodyRval = binop(body, var(LHSVar),
+                    const(llconst_int(uint8.cast_to_int(PtagUint8)))),
+                assign_expr_to_var(RHSVar, LHSBodyRval, Code, !CLD)
+            )
         else
             Code = empty
         )
