@@ -62,12 +62,6 @@ main(!IO) :-
         direct_arg7(S),
         non_direct_arg(3, 4)
     ],
-    list.foldl(write_nl, L1, !IO),
+    list.foldl(io.write_line, L1, !IO),
     io.nl(!IO),
-    list.foldl(write_nl, L2, !IO).
-
-:- pred write_nl(T::in, io::di, io::uo) is det.
-
-write_nl(X, !IO) :-
-    io.write(X, !IO),
-    io.nl(!IO).
+    list.foldl(io.write_line, L2, !IO).

@@ -5,6 +5,7 @@
 % Construction of a partially instantiated value involving a direct argument
 % functor did not produce any code, causing incorrectly behaviour at run-time
 % if the value was deconstructed.
+%
 
 :- module direct_arg_partial_inst2.
 :- interface.

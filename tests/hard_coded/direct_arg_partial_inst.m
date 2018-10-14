@@ -5,6 +5,7 @@
 % A construction of a direct argument functor with a free argument was
 % completely ignored. This test case caused a compiler abort during LLDS
 % code generation.
+%
 
 :- module direct_arg_partial_inst.
 :- interface.
@@ -31,14 +32,14 @@
 :- pred foo(list(fruit)::in, string::out) is det.
 
 foo(Xs, R) :-
-    (
+    ( if
         % X was not recorded in the var_state_map.
         X = apple(_),
         % Compiler tries to flush X to the stack.
-        member(X, Xs)
-    ->
+        list.member(X, Xs)
+    then
         R = "found"
-    ;
+    else
         R = "not found"
     ).
 
