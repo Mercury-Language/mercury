@@ -816,9 +816,15 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
             words("out of"), int_fixed(NumAllInsts), words("branches."), nl],
         VerbosePieces =
             [words("It has the following instantiation states."), nl],
-        NonVerbosePieces =
-            [words("It has non-ground instantiation states"),
-            words("in the following branches."), nl],
+        ( if NumAllInsts - NumGroundInsts > 1 then
+            NonVerbosePieces =
+                [words("It has non-ground instantiation states"),
+                words("in the following branches."), nl]
+        else
+            % The message for the non-ground branch will *say*
+            % it is for such a branch.
+            NonVerbosePieces = []
+        ),
         VarMsg = simple_msg(MainContext,
             [always(CommonPieces),
             verbose_and_nonverbose(VerbosePieces, NonVerbosePieces)]),
@@ -1643,14 +1649,24 @@ report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
         ReportIsGround = report_is_ground_v_and_nonv,
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         ( if inst_is_ground(ModuleInfo, Inst) then
-            IntroPieces = [words("In this branch,"), VarNamePiece,
-                words("has the ground instantiatedness")],
-            Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst),
+            ( if Inst = ground(shared, none_or_default_func) then
+                Pieces = [words("In this branch,"), VarNamePiece,
+                    words("is ground."), nl]
+            else
+                IntroPieces = [words("In this branch,"), VarNamePiece,
+                    words("has the ground instantiatedness")],
+                Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst)
+            ),
             Msg = simple_msg(Context, [verbose_and_nonverbose(Pieces, [])])
         else
-            IntroPieces = [words("In this branch,"), VarNamePiece,
-                words("has the non-ground instantiatedness")],
-            Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst),
+            ( if ( Inst = free ; Inst = free(_) ) then
+                Pieces = [words("In this branch,"), VarNamePiece,
+                    words("is free."), nl]
+            else
+                IntroPieces = [words("In this branch,"), VarNamePiece,
+                    words("has the non-ground instantiatedness")],
+                Pieces = report_inst_in_branch(ModeInfo, IntroPieces, Inst)
+            ),
             Msg = simple_msg(Context, [always(Pieces)])
         )
     ).

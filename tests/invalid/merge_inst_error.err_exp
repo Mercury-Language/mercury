@@ -3,23 +3,12 @@ merge_inst_error.m:060:   mode mismatch in disjunction.
 merge_inst_error.m:060:   The variable `S' is ground in 4 out of 6 branches.
 merge_inst_error.m:060:   It has non-ground instantiation states in the
 merge_inst_error.m:060:   following branches.
-merge_inst_error.m:047:     In this branch, `S' has the non-ground
-merge_inst_error.m:047:     instantiatedness
-merge_inst_error.m:047:       free.
-merge_inst_error.m:053:     In this branch, `S' has the non-ground
-merge_inst_error.m:053:     instantiatedness
-merge_inst_error.m:053:       free.
+merge_inst_error.m:047:   In this branch, `S' is free.
+merge_inst_error.m:053:   In this branch, `S' is free.
 merge_inst_error.m:093: In clause for `switch2(in, out)':
 merge_inst_error.m:093:   mode mismatch in disjunction.
-merge_inst_error.m:093:   The variable `S' is ground in 4 out of 6 branches.
-merge_inst_error.m:093:   It has non-ground instantiation states in the
-merge_inst_error.m:093:   following branches.
-merge_inst_error.m:076:     In this branch, `S' has the non-ground
-merge_inst_error.m:076:     instantiatedness
-merge_inst_error.m:076:       free.
-merge_inst_error.m:077:     In this branch, `S' has the non-ground
-merge_inst_error.m:077:     instantiatedness
-merge_inst_error.m:077:       free.
+merge_inst_error.m:093:   The variable `S' is ground in 5 out of 6 branches.
+merge_inst_error.m:077:   In this branch, `S' is free.
 merge_inst_error.m:124: In clause for `switch3(in, out)':
 merge_inst_error.m:124:   mode mismatch in disjunction.
 merge_inst_error.m:124:   The variable `S' has the following instantiation

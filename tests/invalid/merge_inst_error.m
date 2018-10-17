@@ -73,7 +73,7 @@ test2(T, !IO) :-
 
 switch2(T, S) :-
     (
-        ( T = ta
+        ( T = ta, S = "ta"
         ; T = tb
         )
         % S = "tab"
