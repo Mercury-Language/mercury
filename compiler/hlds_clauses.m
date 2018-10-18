@@ -455,31 +455,40 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
         else if ItemNum =< UpperNum0 then
             unexpected($pred, "duplicate item number")
         else if ItemNum = UpperNum0 + 1 then
-            FirstRegion = clause_item_number_region(LowerNum0, ItemNum,
+            FirstRegion1 = clause_item_number_region(LowerNum0, ItemNum,
                 LowerContext0, Context),
-            !:Regions = [FirstRegion | LaterRegions0]
+            maybe_merge_clause_item_number_regions(FirstRegion1, LaterRegions0,
+                !:Regions)
         else
             add_clause_item_number_regions(ItemNum, Context,
                 LaterRegions0, LaterRegions1),
-            % See if we need to merge FirstRegion0 with the first region
-            % of LaterRegions1.
-            (
-                LaterRegions1 = [],
-                unexpected($pred, "insertion yields empty list")
-            ;
-                LaterRegions1 = [FirstLaterRegion1 | LaterLaterRegions1],
-                FirstLaterRegion1 = clause_item_number_region(
-                    LowerNum1, UpperNum1, _LowerContext1, UpperContext1),
-                ( if UpperNum0 + 1 = LowerNum1 then
-                    FirstRegion =
-                        clause_item_number_region(LowerNum0, UpperNum1,
-                            LowerContext0, UpperContext1),
-                    !:Regions = [FirstRegion | LaterLaterRegions1]
-                else
-                    !:Regions = [FirstRegion0, FirstLaterRegion1
-                        | LaterLaterRegions1]
-                )
-            )
+            maybe_merge_clause_item_number_regions(FirstRegion0, LaterRegions1,
+                !:Regions)
+        )
+    ).
+
+    % Merge Region0 with the first region of Regions12 if need be.
+    %
+:- pred maybe_merge_clause_item_number_regions(
+    clause_item_number_region::in, list(clause_item_number_region)::in,
+    list(clause_item_number_region)::out) is det.
+
+maybe_merge_clause_item_number_regions(Region0, Regions12, Regions) :-
+    (
+        Regions12 = [],
+        Regions = [Region0]
+    ;
+        Regions12 = [Region1 | Regions2],
+        Region0 = clause_item_number_region(
+            LowerNum0, UpperNum0, LowerContext0, _UpperContext0),
+        Region1 = clause_item_number_region(
+            LowerNum1, UpperNum1, _LowerContext1, UpperContext1),
+        ( if UpperNum0 + 1 = LowerNum1 then
+            Region01 = clause_item_number_region(LowerNum0, UpperNum1,
+                LowerContext0, UpperContext1),
+            Regions = [Region01 | Regions2]
+        else
+            Regions = [Region0, Region1 | Regions2]
         )
     ).
 
