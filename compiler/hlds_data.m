@@ -1321,12 +1321,6 @@ set_type_defn_prev_errors(X, !Defn) :-
     --->    ctor_arg_repn(
                 car_field_name      :: maybe(ctor_field_name),
                 car_type            :: mer_type,
-
-                % XXX TYPE_REPN
-                % Later, we should be able to store arguments next to
-                % the primary tag, if all the arguments fit there
-                % (which means we don't need to use those bits
-                % as a heap pointer).
                 car_pos_width       :: arg_pos_width,
                 car_context         :: prog_context
             ).
