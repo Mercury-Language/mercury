@@ -3053,6 +3053,8 @@ long_option("no-reserved-addrs",
                                     compiler_sufficiently_recent).
 long_option("builtin-lt-gt-2018-10-08",
                                     compiler_sufficiently_recent).
+long_option("fixed-contiguity-2018-10-19",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("ignore-par-conjunctions",
                                     ignore_par_conjunctions).
