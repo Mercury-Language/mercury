@@ -5889,7 +5889,9 @@ int8_to_string(_) = _ :-
     uint8_to_string(U8::in) = (S::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    char buffer[4]; // 3 for digits, 1 for nul.
+    // Use a larger buffer than necessary (3 bytes for digits, 1 for nul)
+    // to avoid spurious warning from gcc -Werror=format-overflow.
+    char buffer[24];
     sprintf(buffer, ""%"" PRIu8, U8);
     MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
     strcpy(S, buffer);
