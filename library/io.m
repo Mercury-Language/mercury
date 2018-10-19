@@ -10058,6 +10058,8 @@ binary_output_stream(binary_output_stream(Stream), !IO) :-
     Stream = mercury_current_binary_output();
 ").
 
+%---------------------------------------------------------------------------%
+
 :- pragma foreign_proc("C",
     get_line_number(LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
@@ -10065,11 +10067,20 @@ binary_output_stream(binary_output_stream(Stream), !IO) :-
 "
     LineNum = MR_line_number(*mercury_current_text_input());
 ").
+:- pragma foreign_proc("C#",
+    get_line_number(LineNum::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    LineNum = io.mercury_current_text_input.line_number;
+").
 
 get_line_number(input_stream(Stream), LineNum, !IO) :-
     get_line_number_2(Stream, LineNum, !IO).
 
+%---------------------%
+
 :- pred get_line_number_2(stream::in, int::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
     get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
@@ -10077,6 +10088,14 @@ get_line_number(input_stream(Stream), LineNum, !IO) :-
 "
     LineNum = MR_line_number(*Stream);
 ").
+:- pragma foreign_proc("C#",
+    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    LineNum = Stream.line_number;
+").
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     set_line_number(LineNum::in, _IO0::di, _IO::uo),
@@ -10085,12 +10104,19 @@ get_line_number(input_stream(Stream), LineNum, !IO) :-
 "
     MR_line_number(*mercury_current_text_input()) = LineNum;
 ").
+:- pragma foreign_proc("C#",
+    set_line_number(LineNum::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    io.mercury_current_text_input.line_number = LineNum;
+").
 
 set_line_number(input_stream(Stream), LineNum, !IO) :-
     set_line_number_2(Stream, LineNum,!IO).
 
-:- pred set_line_number_2(stream::in, int::in, io::di, io::uo)
-    is det.
+%---------------------%
+
+:- pred set_line_number_2(stream::in, int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
@@ -10099,6 +10125,14 @@ set_line_number(input_stream(Stream), LineNum, !IO) :-
 "
     MR_line_number(*Stream) = LineNum;
 ").
+:- pragma foreign_proc("C#",
+    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"{
+    Stream.line_number = LineNum;
+}").
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
@@ -10107,9 +10141,17 @@ set_line_number(input_stream(Stream), LineNum, !IO) :-
 "
     LineNum = MR_line_number(*mercury_current_text_output());
 ").
+:- pragma foreign_proc("C#",
+    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    LineNum = io.mercury_current_text_output.line_number;
+").
 
 get_output_line_number(output_stream(Stream), LineNum, !IO) :-
     get_output_line_number_2(Stream, LineNum, !IO).
+
+%---------------------%
 
 :- pred get_output_line_number_2(stream::in, int::out, io::di, io::uo)
     is det.
@@ -10121,6 +10163,14 @@ get_output_line_number(output_stream(Stream), LineNum, !IO) :-
 "
     LineNum = MR_line_number(*Stream);
 ").
+:- pragma foreign_proc("C#",
+    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"{
+    LineNum = Stream.line_number;
+}").
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
@@ -10129,11 +10179,20 @@ get_output_line_number(output_stream(Stream), LineNum, !IO) :-
 "
     MR_line_number(*mercury_current_text_output()) = LineNum;
 ").
+:- pragma foreign_proc("C#",
+    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    io.mercury_current_text_output.line_number = LineNum;
+").
 
 set_output_line_number(output_stream(Stream), LineNum, !IO) :-
     set_output_line_number_2(Stream, LineNum, !IO).
 
+%---------------------%
+
 :- pred set_output_line_number_2(stream::in, int::in, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
     set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
@@ -10141,12 +10200,20 @@ set_output_line_number(output_stream(Stream), LineNum, !IO) :-
 "
     MR_line_number(*Stream) = LineNum;
 ").
+:- pragma foreign_proc("C#",
+    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"{
+    Stream.line_number = LineNum;
+}").
+
+%---------------------------------------------------------------------------%
 
 set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
     set_input_stream_2(NewStream, OutStream, !IO).
 
-:- pred set_input_stream_2(stream::in, stream::out, io::di, io::uo)
-    is det.
+:- pred set_input_stream_2(stream::in, stream::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
     set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
@@ -10158,8 +10225,9 @@ set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
         mercury_current_text_input_index);
 ").
 
-set_output_stream(output_stream(NewStream), output_stream(OutStream),
-        !IO) :-
+%---------------------%
+
+set_output_stream(output_stream(NewStream), output_stream(OutStream), !IO) :-
     set_output_stream_2(NewStream, OutStream, !IO).
 
 :- pred set_output_stream_2(stream::in, stream::out, io::di, io::uo) is det.
@@ -10175,12 +10243,15 @@ set_output_stream(output_stream(NewStream), output_stream(OutStream),
         mercury_current_text_output_index);
 ").
 
+%---------------------%
+
 set_binary_input_stream(binary_input_stream(NewStream),
         binary_input_stream(OutStream), !IO) :-
     set_binary_input_stream_2(NewStream, OutStream, !IO).
 
 :- pred set_binary_input_stream_2(stream::in, stream::out,
     io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
     set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
@@ -10197,8 +10268,11 @@ set_binary_output_stream(binary_output_stream(NewStream),
         binary_output_stream(OutStream), !IO) :-
     set_binary_output_stream_2(NewStream, OutStream, !IO).
 
+%---------------------%
+
 :- pred set_binary_output_stream_2(stream::in, stream::out,
     io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
     set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
@@ -10210,6 +10284,8 @@ set_binary_output_stream(binary_output_stream(NewStream),
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
         mercury_current_binary_output_index);
 ").
+
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C#",
     stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
@@ -10274,61 +10350,7 @@ set_binary_output_stream(binary_output_stream(NewStream),
     Stream = io.mercury_current_binary_output;
 ").
 
-:- pragma foreign_proc("C#",
-    get_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = io.mercury_current_text_input.line_number;
-").
-
-:- pragma foreign_proc("C#",
-    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = Stream.line_number;
-").
-
-:- pragma foreign_proc("C#",
-    set_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    io.mercury_current_text_input.line_number = LineNum;
-").
-
-:- pragma foreign_proc("C#",
-    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
-    Stream.line_number = LineNum;
-}").
-
-:- pragma foreign_proc("C#",
-    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = io.mercury_current_text_output.line_number;
-").
-
-:- pragma foreign_proc("C#",
-    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
-    LineNum = Stream.line_number;
-}").
-
-:- pragma foreign_proc("C#",
-    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    io.mercury_current_text_output.line_number = LineNum;
-").
-
-:- pragma foreign_proc("C#",
-    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
-    Stream.line_number = LineNum;
-}").
+%---------------------%
 
 :- pragma foreign_proc("C#",
     set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
@@ -11868,7 +11890,7 @@ import java.util.Random;
         end.
 ").
 
-%-----------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred do_make_temp_directory(string::in, string::in, string::in, string::in,
     string::out, system_error::out, io::di, io::uo) is det.

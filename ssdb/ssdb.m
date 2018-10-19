@@ -457,9 +457,37 @@ get_debugger_state_safer(DebuggerState, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred install_sigint_handler(io::di, io::uo) is det.
+:- pragma foreign_code("C",
+"
+static void MR_ssdb_sigint_handler(void)
+{
+    SSDB_step_next_stop();
+}
+").
 
-install_sigint_handler(!IO).
+:- pragma foreign_code("C#",
+"
+static void sigint_handler(object sender, System.ConsoleCancelEventArgs args)
+{
+    SSDB_step_next_stop();
+    // Don't terminate the process.
+    args.Cancel = true;
+}
+").
+
+:- pragma foreign_code("Java",
+"
+public static class SigIntHandler implements sun.misc.SignalHandler {
+//  XXX Using the @Override annotation here causes compilation errors
+//  with Java 1.5.
+//  @Override
+    public void handle(sun.misc.Signal sig) {
+        SSDB_step_next_stop();
+    }
+}
+").
+
+:- pred install_sigint_handler(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     install_sigint_handler(_IO0::di, _IO::uo),
@@ -467,14 +495,6 @@ install_sigint_handler(!IO).
 "
     MR_setup_signal(SIGINT, (MR_Code *) MR_ssdb_sigint_handler,
         MR_FALSE, ""ssdb: cannot install SIGINT signal handler"");
-").
-
-:- pragma foreign_code("C",
-"
-static void MR_ssdb_sigint_handler(void)
-{
-    SSDB_step_next_stop();
-}
 ").
 
 :- pragma foreign_proc("C#",
@@ -495,16 +515,6 @@ static void MR_ssdb_sigint_handler(void)
     catch (System.Exception e) {}
 ").
 
-:- pragma foreign_code("C#",
-"
-static void sigint_handler(object sender, System.ConsoleCancelEventArgs args)
-{
-    SSDB_step_next_stop();
-    // Don't terminate the process.
-    args.Cancel = true;
-}
-").
-
 :- pragma foreign_proc("Java",
     install_sigint_handler(IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
@@ -515,17 +525,7 @@ static void sigint_handler(object sender, System.ConsoleCancelEventArgs args)
     IO = IO0;
 ").
 
-:- pragma foreign_code("Java",
-"
-public static class SigIntHandler implements sun.misc.SignalHandler {
-//  XXX Using the @Override annotation here causes compilation errors
-//  with Java 1.5.
-//  @Override
-    public void handle(sun.misc.Signal sig) {
-        SSDB_step_next_stop();
-    }
-}
-").
+install_sigint_handler(!IO).
 
 :- pred step_next_stop(io::di, io::uo) is det.
 
@@ -833,19 +833,8 @@ search_nondet_stack_frame_2(ProcId, Depth, N, StackDepth, MaybeStackFrame,
 
 %----------------------------------------------------------------------------%
 %
-% Support for exception events (Java only currently)
+% Support for exception events (Java only currently).
 %
-
-:- pred install_exception_hooks(io::di, io::uo) is det.
-
-install_exception_hooks(!IO).
-
-:- pragma foreign_proc("C#",
-    install_exception_hooks(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
-"
-    exception.ssdb_hooks = new ssdb.SsdbHooks();
-").
 
 :- pragma foreign_code("C#", "
 private class SsdbHooks : exception.SsdbHooks {
@@ -862,13 +851,6 @@ private class SsdbHooks : exception.SsdbHooks {
         ssdb.SSDB_rollback_nondet_stack(CSN);
     }
 }
-").
-
-:- pragma foreign_proc("Java",
-    install_exception_hooks(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
-"
-    exception.ssdb_hooks = new ssdb.SsdbHooks();
 ").
 
 :- pragma foreign_code("Java", "
@@ -889,6 +871,24 @@ private static class SsdbHooks extends exception.SsdbHooks {
         ssdb.SSDB_rollback_nondet_stack(CSN);
     }
 }
+").
+
+:- pred install_exception_hooks(io::di, io::uo) is det.
+
+install_exception_hooks(!IO).
+
+:- pragma foreign_proc("C#",
+    install_exception_hooks(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    exception.ssdb_hooks = new ssdb.SsdbHooks();
+").
+
+:- pragma foreign_proc("Java",
+    install_exception_hooks(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    exception.ssdb_hooks = new ssdb.SsdbHooks();
 ").
 
 :- impure pred handle_event_excp(string::in, string::in, univ::in) is det.

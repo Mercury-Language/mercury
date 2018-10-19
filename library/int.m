@@ -797,6 +797,8 @@ legacy_right_shift(X, Y) = Z :-
 % XXX we should probably provide unsigned_lt as a builtin for ints.
 %
 :- pred unsigned_lt(int::in, int::in) is semidet.
+:- pragma no_determinism_warning(unsigned_lt/2).
+
 :- pragma foreign_proc("C",
     unsigned_lt(A::in, B::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -818,7 +820,6 @@ legacy_right_shift(X, Y) = Z :-
     SUCCESS_INDICATOR = (A & 0xffffffffL) < (B & 0xffffffffL);
 ").
 
-:- pragma no_determinism_warning(unsigned_lt/2).
 unsigned_lt(_, _) :-
     private_builtin.sorry("int.unsigned_lt/2 NYI for Erlang").
 

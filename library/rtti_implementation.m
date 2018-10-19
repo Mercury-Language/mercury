@@ -1336,67 +1336,11 @@ type_info_get_functor_lex(TypeInfo0, Ordinal, FunctorNumber) :-
 :- pragma foreign_type("Java", unify_or_compare_pred,
     "jmercury.runtime.MethodPtr").
 
+% We override the Mercury definitions in the Java and .NET backends.
+
+%---------------------%
+
 :- pred semidet_call_3(P::in, T::in, U::in) is semidet.
-semidet_call_3(_::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_3").
-
-:- pred semidet_call_4(P::in, A::in, T::in, U::in) is semidet.
-semidet_call_4(_::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_4").
-
-:- pred semidet_call_5(P::in, A::in, B::in, T::in, U::in) is semidet.
-semidet_call_5(_::in, _::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_5").
-
-:- pred semidet_call_6(P::in, A::in, B::in, C::in, T::in, U::in) is semidet.
-semidet_call_6(_::in, _::in, _::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_6").
-
-:- pred semidet_call_7(P::in, A::in, B::in, C::in, D::in, T::in, U::in)
-    is semidet.
-semidet_call_7(_::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_7").
-
-:- pred semidet_call_8(P::in, A::in, B::in, C::in, D::in, E::in, T::in, U::in)
-    is semidet.
-semidet_call_8(_::in, _::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_8").
-
-:- pred result_call_4(P::in, comparison_result::out,
-    T::in, U::in) is det.
-result_call_4(_::in, (=)::out, _::in, _::in) :-
-    det_unimplemented("result_call_4").
-
-:- pred result_call_5(P::in, comparison_result::out,
-    A::in, T::in, U::in) is det.
-result_call_5(_::in, (=)::out, _::in, _::in, _::in) :-
-    det_unimplemented("comparison_result").
-
-:- pred result_call_6(P::in, comparison_result::out,
-    A::in, B::in, T::in, U::in) is det.
-result_call_6(_::in, (=)::out, _::in, _::in, _::in, _::in) :-
-    det_unimplemented("comparison_result").
-
-:- pred result_call_7(P::in, comparison_result::out,
-    A::in, B::in, C::in, T::in, U::in) is det.
-result_call_7(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in) :-
-    det_unimplemented("comparison_result").
-
-:- pred result_call_8(P::in, comparison_result::out,
-    A::in, B::in, C::in, D::in, T::in, U::in) is det.
-result_call_8(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in, _::in) :-
-    det_unimplemented("comparison_result").
-
-:- pred result_call_9(P::in, comparison_result::out,
-    A::in, B::in, C::in, D::in, E::in, T::in, U::in) is det.
-result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
-        _::in, _::in) :-
-    det_unimplemented("result_call_9").
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-    % We override the above definitions in the .NET backend.
 
 :- pragma foreign_proc("C#",
     semidet_call_3(Pred::in, X::in, Y::in),
@@ -1406,6 +1350,21 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         = (runtime.MethodPtr2_r1<object, object, bool>) Pred;
     SUCCESS_INDICATOR = pred(X, Y);
 ").
+:- pragma foreign_proc("Java",
+    semidet_call_3(Pred::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr2 P = (jmercury.runtime.MethodPtr2) Pred;
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(X, Y);
+").
+
+semidet_call_3(_::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_3").
+
+%---------------------%
+
+:- pred semidet_call_4(P::in, A::in, T::in, U::in) is semidet.
+
 :- pragma foreign_proc("C#",
     semidet_call_4(Pred::in, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1414,6 +1373,21 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         = (runtime.MethodPtr3_r1<object, object, object, bool>) Pred;
     SUCCESS_INDICATOR = pred(A, X, Y);
 ").
+:- pragma foreign_proc("Java",
+    semidet_call_4(Pred::in, A::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr3 P = (jmercury.runtime.MethodPtr3) Pred;
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, X, Y);
+").
+
+semidet_call_4(_::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_4").
+
+%---------------------%
+
+:- pred semidet_call_5(P::in, A::in, B::in, T::in, U::in) is semidet.
+
 :- pragma foreign_proc("C#",
     semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1422,6 +1396,21 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         = (runtime.MethodPtr4_r1<object, object, object, object, bool>) Pred;
     SUCCESS_INDICATOR = pred(A, B, X, Y);
 ").
+:- pragma foreign_proc("Java",
+    semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr4 P = (jmercury.runtime.MethodPtr4) Pred;
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, X, Y);
+").
+
+semidet_call_5(_::in, _::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_5").
+
+%---------------------%
+
+:- pred semidet_call_6(P::in, A::in, B::in, C::in, T::in, U::in) is semidet.
+
 :- pragma foreign_proc("C#",
     semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1431,6 +1420,22 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
             Pred;
     SUCCESS_INDICATOR = pred(A, B, C, X, Y);
 ").
+:- pragma foreign_proc("Java",
+    semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr5 P = (jmercury.runtime.MethodPtr5) Pred;
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, X, Y);
+").
+
+semidet_call_6(_::in, _::in, _::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_6").
+
+%---------------------%
+
+:- pred semidet_call_7(P::in, A::in, B::in, C::in, D::in, T::in, U::in)
+    is semidet.
+
 :- pragma foreign_proc("C#",
     semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1441,6 +1446,22 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
             object, bool>) Pred;
     SUCCESS_INDICATOR = pred(A, B, C, D, X, Y);
 ").
+:- pragma foreign_proc("Java",
+    semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr6 P = (jmercury.runtime.MethodPtr6) Pred;
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, D, X, Y);
+").
+
+semidet_call_7(_::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_7").
+
+%---------------------%
+
+:- pred semidet_call_8(P::in, A::in, B::in, C::in, D::in, E::in, T::in, U::in)
+    is semidet.
+
 :- pragma foreign_proc("C#",
     semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in,
         X::in, Y::in),
@@ -1452,6 +1473,21 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
             object, bool>) Pred;
     SUCCESS_INDICATOR = pred(A, B, C, D, E, X, Y);
 ").
+:- pragma foreign_proc("Java",
+    semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr7 P = (jmercury.runtime.MethodPtr7) Pred;
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, D, E, X, Y);
+").
+
+semidet_call_8(_::in, _::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_8").
+
+%---------------------%
+
+:- pred result_call_4(P::in, comparison_result::out,
+    T::in, U::in) is det.
 
 :- pragma foreign_proc("C#",
     result_call_4(Pred::in, Res::out, X::in, Y::in),
@@ -1463,6 +1499,21 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         = (runtime.MethodPtr2_r1<object, object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(X, Y);
 ").
+:- pragma foreign_proc("Java",
+    result_call_4(Pred::in, Res::out, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr2 P = (jmercury.runtime.MethodPtr2) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(X, Y);
+").
+
+result_call_4(_::in, (=)::out, _::in, _::in) :-
+    det_unimplemented("result_call_4").
+
+%---------------------%
+
+:- pred result_call_5(P::in, comparison_result::out,
+    A::in, T::in, U::in) is det.
 
 :- pragma foreign_proc("C#",
     result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
@@ -1472,6 +1523,22 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         = (runtime.MethodPtr3_r1<object, object, object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, X, Y);
 ").
+:- pragma foreign_proc("Java",
+    result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr3 P = (jmercury.runtime.MethodPtr3) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(A, X, Y);
+").
+
+result_call_5(_::in, (=)::out, _::in, _::in, _::in) :-
+    det_unimplemented("comparison_result").
+
+%---------------------%
+
+:- pred result_call_6(P::in, comparison_result::out,
+    A::in, B::in, T::in, U::in) is det.
+
 :- pragma foreign_proc("C#",
     result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1480,6 +1547,22 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         = (runtime.MethodPtr4_r1<object, object, object, object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, X, Y);
 ").
+:- pragma foreign_proc("Java",
+    result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr4 P = (jmercury.runtime.MethodPtr4) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, X, Y);
+").
+
+result_call_6(_::in, (=)::out, _::in, _::in, _::in, _::in) :-
+    det_unimplemented("comparison_result").
+
+%---------------------%
+
+:- pred result_call_7(P::in, comparison_result::out,
+    A::in, B::in, C::in, T::in, U::in) is det.
+
 :- pragma foreign_proc("C#",
     result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1489,6 +1572,22 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
             object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, C, X, Y);
 ").
+:- pragma foreign_proc("Java",
+    result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr5 P = (jmercury.runtime.MethodPtr5) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, X, Y);
+").
+
+result_call_7(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in) :-
+    det_unimplemented("comparison_result").
+
+%---------------------%
+
+:- pred result_call_8(P::in, comparison_result::out,
+    A::in, B::in, C::in, D::in, T::in, U::in) is det.
+
 :- pragma foreign_proc("C#",
     result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in,
         Y::in),
@@ -1499,8 +1598,24 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         = (runtime.MethodPtr6_r1<object, object, object, object, object,
             object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, C, D, X, Y);
-
 ").
+:- pragma foreign_proc("Java",
+    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in,
+        Y::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    jmercury.runtime.MethodPtr6 P = (jmercury.runtime.MethodPtr6) Pred;
+    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, D, X, Y);
+").
+
+result_call_8(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in, _::in) :-
+    det_unimplemented("comparison_result").
+
+%---------------------%
+
+:- pred result_call_9(P::in, comparison_result::out,
+    A::in, B::in, C::in, D::in, E::in, T::in, U::in) is det.
+
 :- pragma foreign_proc("C#",
     result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
         X::in, Y::in),
@@ -1512,92 +1627,6 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
             object, object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, C, D, E, X, Y);
 ").
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-    % We override the above definitions in the Java backend.
-
-:- pragma foreign_proc("Java",
-    semidet_call_3(Pred::in, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr2 P = (jmercury.runtime.MethodPtr2) Pred;
-    SUCCESS_INDICATOR = (Boolean) P.call___0_0(X, Y);
-").
-:- pragma foreign_proc("Java",
-    semidet_call_4(Pred::in, A::in, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr3 P = (jmercury.runtime.MethodPtr3) Pred;
-    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, X, Y);
-").
-:- pragma foreign_proc("Java",
-    semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr4 P = (jmercury.runtime.MethodPtr4) Pred;
-    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, X, Y);
-").
-:- pragma foreign_proc("Java",
-    semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr5 P = (jmercury.runtime.MethodPtr5) Pred;
-    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, X, Y);
-").
-:- pragma foreign_proc("Java",
-    semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr6 P = (jmercury.runtime.MethodPtr6) Pred;
-    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, D, X, Y);
-").
-:- pragma foreign_proc("Java",
-    semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr7 P = (jmercury.runtime.MethodPtr7) Pred;
-    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, D, E, X, Y);
-").
-
-:- pragma foreign_proc("Java",
-    result_call_4(Pred::in, Res::out, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr2 P = (jmercury.runtime.MethodPtr2) Pred;
-    Res = (builtin.Comparison_result_0) P.call___0_0(X, Y);
-").
-
-:- pragma foreign_proc("Java",
-    result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr3 P = (jmercury.runtime.MethodPtr3) Pred;
-    Res = (builtin.Comparison_result_0) P.call___0_0(A, X, Y);
-").
-:- pragma foreign_proc("Java",
-    result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr4 P = (jmercury.runtime.MethodPtr4) Pred;
-    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, X, Y);
-").
-:- pragma foreign_proc("Java",
-    result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr5 P = (jmercury.runtime.MethodPtr5) Pred;
-    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, X, Y);
-").
-:- pragma foreign_proc("Java",
-    result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in,
-        Y::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    jmercury.runtime.MethodPtr6 P = (jmercury.runtime.MethodPtr6) Pred;
-    Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, D, X, Y);
-").
 :- pragma foreign_proc("Java",
     result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
         X::in, Y::in),
@@ -1606,6 +1635,10 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     jmercury.runtime.MethodPtr7 P = (jmercury.runtime.MethodPtr7) Pred;
     Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, D, E, X, Y);
 ").
+
+result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
+        _::in, _::in) :-
+    det_unimplemented("result_call_9").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3925,13 +3958,6 @@ same_pointer_value_untyped(_, _) :-
 %---------------------------------------------------------------------------%
 
 :- func get_primary_tag(T) = int.
-:- func get_remote_secondary_tag(T) = int.
-
-get_primary_tag(_::in) = (0::out) :-
-    det_unimplemented("get_primary_tag").
-
-get_remote_secondary_tag(_::in) = (0::out) :-
-    det_unimplemented("get_remote_secondary_tag").
 
 :- pragma foreign_proc("C#",
     get_primary_tag(X::in) = (Tag::out),
@@ -3941,6 +3967,18 @@ get_remote_secondary_tag(_::in) = (0::out) :-
     // there is no primary tag, so we always return zero.
     Tag = 0;
 ").
+:- pragma foreign_proc("Java",
+    get_primary_tag(_X::in) = (Tag::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // For the Java back-end, there is no primary tag, so always return 0.
+    Tag = 0;
+").
+
+get_primary_tag(_::in) = (0::out) :-
+    det_unimplemented("get_primary_tag").
+
+:- func get_remote_secondary_tag(T) = int.
 
 :- pragma foreign_proc("C#",
     get_remote_secondary_tag(X::in) = (Tag::out),
@@ -3959,15 +3997,6 @@ get_remote_secondary_tag(_::in) = (0::out) :-
     }
 #endif
 ").
-
-:- pragma foreign_proc("Java",
-    get_primary_tag(_X::in) = (Tag::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    // For the Java back-end, there is no primary tag, so always return 0.
-    Tag = 0;
-").
-
 :- pragma foreign_proc("Java",
     get_remote_secondary_tag(X::in) = (Tag::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -3984,6 +4013,9 @@ get_remote_secondary_tag(_::in) = (0::out) :-
             ""found"");
     }
 ").
+
+get_remote_secondary_tag(_::in) = (0::out) :-
+    det_unimplemented("get_remote_secondary_tag").
 
 :- type sectag_locn
     --->    stag_none
@@ -4324,22 +4356,16 @@ typeclass_info_type_info(TypeClassInfo, Index) = TypeInfo :-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+%
+% The generic definitions of var_arity_type_info_index_as_ti/pti assume
+% that variable arity type_infos store the arity in the first word but
+% that is not true for the jmercury.runtime.TypeInfo_Struct in Java.
+%
+% Keep this in sync with the Java version of type_info_index_as_ti/pti.
+%
 
 :- func var_arity_type_info_index_as_ti(type_info, int) = type_info.
-:- func var_arity_type_info_index_as_pti(type_info, int) = pseudo_type_info.
 
-var_arity_type_info_index_as_ti(TypeInfo, Index) =
-    type_info_index_as_ti(TypeInfo, Index + 1).
-
-var_arity_type_info_index_as_pti(TypeInfo, Index) =
-    type_info_index_as_pti(TypeInfo, Index + 1).
-
-    % The generic definitions of var_arity_type_info_index_as_ti/pti assume
-    % that variable arity type_infos store the arity in the first word but
-    % that's not true for the jmercury.runtime.TypeInfo_Struct in Java.
-    %
-    % Keep this in sync with the Java version of type_info_index_as_ti/pti.
-    %
 :- pragma foreign_proc("C#",
     var_arity_type_info_index_as_ti(TypeInfo::in, VarNum::in)
         = (TypeInfoAtIndex::out),
@@ -4360,6 +4386,13 @@ var_arity_type_info_index_as_pti(TypeInfo, Index) =
         (jmercury.runtime.TypeInfo_Struct) TypeInfo.args[VarNum - 1];
 ").
 
+var_arity_type_info_index_as_ti(TypeInfo, Index) =
+    type_info_index_as_ti(TypeInfo, Index + 1).
+
+%---------------------%
+
+:- func var_arity_type_info_index_as_pti(type_info, int) = pseudo_type_info.
+
 :- pragma foreign_proc("C#",
     var_arity_type_info_index_as_pti(TypeInfo::in, VarNum::in)
         = (PseudoTypeInfoAtIndex::out),
@@ -4379,17 +4412,12 @@ var_arity_type_info_index_as_pti(TypeInfo, Index) =
     PseudoTypeInfoAtIndex = TypeInfo.args[VarNum - 1];
 ").
 
+var_arity_type_info_index_as_pti(TypeInfo, Index) =
+    type_info_index_as_pti(TypeInfo, Index + 1).
+
+%---------------------%
+
 :- func type_info_index_as_ti(type_info, int) = type_info.
-:- func type_info_index_as_pti(type_info, int) = pseudo_type_info.
-
-type_info_index_as_ti(TypeInfo, _) = TypeInfo :-
-    % This is an "unimplemented" definition in Mercury, which will be
-    % used by default.
-    det_unimplemented("type_info_index").
-
-type_info_index_as_pti(TypeInfo, _) = PseudoTypeInfo :-
-    det_unimplemented("type_info_index_as_pti"),
-    private_builtin.unsafe_type_cast(TypeInfo, PseudoTypeInfo).
 
 :- pragma foreign_proc("C#",
     type_info_index_as_ti(TypeInfo::in, VarNum::in) = (TypeInfoAtIndex::out),
@@ -4401,21 +4429,6 @@ type_info_index_as_pti(TypeInfo, _) = PseudoTypeInfo :-
     TypeInfoAtIndex = (object[]) TypeInfo[VarNum];
 #endif
 ").
-
-:- pragma foreign_proc("C#",
-    type_info_index_as_pti(TypeInfo::in, VarNum::in) = (PseudoTypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-#if MR_HIGHLEVEL_DATA
-    PseudoTypeInfo = TypeInfo.args[VarNum - 1];
-#else
-    PseudoTypeInfo = (object[]) TypeInfo[VarNum];
-#endif
-").
-
-    % Keep this in sync with the Java version of
-    % var_arity_type_info_index_as_ti/pti and type_info_index_as_ti/pti.
-    %
 :- pragma foreign_proc("Java",
     type_info_index_as_ti(TypeInfo::in, VarNum::in) = (TypeInfoAtIndex::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -4429,6 +4442,25 @@ type_info_index_as_pti(TypeInfo, _) = PseudoTypeInfo :-
         (jmercury.runtime.TypeInfo_Struct) TypeInfo.args[VarNum - 1];
 ").
 
+type_info_index_as_ti(TypeInfo, _) = TypeInfo :-
+    % This is an "unimplemented" definition in Mercury, which will be
+    % used by default.
+    det_unimplemented("type_info_index").
+
+%---------------------%
+
+:- func type_info_index_as_pti(type_info, int) = pseudo_type_info.
+
+:- pragma foreign_proc("C#",
+    type_info_index_as_pti(TypeInfo::in, VarNum::in) = (PseudoTypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+#if MR_HIGHLEVEL_DATA
+    PseudoTypeInfo = TypeInfo.args[VarNum - 1];
+#else
+    PseudoTypeInfo = (object[]) TypeInfo[VarNum];
+#endif
+").
 :- pragma foreign_proc("Java",
     type_info_index_as_pti(TypeInfo::in, VarNum::in) = (PseudoTypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -4441,11 +4473,14 @@ type_info_index_as_pti(TypeInfo, _) = PseudoTypeInfo :-
     PseudoTypeInfo = TypeInfo.args[VarNum - 1];
 ").
 
+type_info_index_as_pti(TypeInfo, _) = PseudoTypeInfo :-
+    det_unimplemented("type_info_index_as_pti"),
+    private_builtin.unsafe_type_cast(TypeInfo, PseudoTypeInfo).
+
+%---------------------%
+
 :- pred set_type_info_index(int::in, int::in, type_info::in,
     type_info::di, type_info::uo) is det.
-
-set_type_info_index(_, _, _, !TypeInfo) :-
-    det_unimplemented("set_type_info_index").
 
 :- pragma foreign_proc("C#",
     set_type_info_index(Offset::in, Index::in, Value::in,
@@ -4468,6 +4503,11 @@ set_type_info_index(_, _, _, !TypeInfo) :-
     TypeInfo0.args[Index] = Value;
     TypeInfo = TypeInfo0;
 ").
+
+set_type_info_index(_, _, _, !TypeInfo) :-
+    det_unimplemented("set_type_info_index").
+
+%---------------------%
 
 :- pred semidet_unimplemented(string::in) is semidet.
 
@@ -5440,6 +5480,8 @@ unsafe_make_enum(_) = _ :-
 %---------------------------------------------------------------------------%
 
 :- pred null(T::in) is semidet.
+:- pragma no_determinism_warning(null/1).
+
 :- pragma foreign_proc("C",
     null(S::in),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -5459,7 +5501,6 @@ unsafe_make_enum(_) = _ :-
     SUCCESS_INDICATOR = (S == null);
 ").
 
-:- pragma no_determinism_warning(null/1).
 null(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -5468,6 +5509,7 @@ null(_) :-
 %---------------------------------------------------------------------------%
 
 :- func null_string = string.
+
 :- pragma foreign_proc("C",
     null_string = (Str::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -5486,6 +5528,7 @@ null(_) :-
 "
     Str = null;
 ").
+
 null_string = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -5494,6 +5537,7 @@ null_string = _ :-
 %---------------------------------------------------------------------------%
 
 :- func unsafe_get_enum_value(T) = int.
+:- pragma no_determinism_warning(unsafe_get_enum_value/1).
 
 :- pragma foreign_proc("C#",
     unsafe_get_enum_value(Enum::in) = (Value::out),
@@ -5516,7 +5560,6 @@ null_string = _ :-
     }
 ").
 
-:- pragma no_determinism_warning(unsafe_get_enum_value/1).
 unsafe_get_enum_value(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -5525,6 +5568,7 @@ unsafe_get_enum_value(_) = _ :-
 %---------------------------------------------------------------------------%
 
 :- func unsafe_get_foreign_enum_value(T) = int.
+:- pragma no_determinism_warning(unsafe_get_foreign_enum_value/1).
 
 :- pragma foreign_proc("C#",
     unsafe_get_foreign_enum_value(T::in) = (Value::out),
@@ -5533,7 +5577,6 @@ unsafe_get_enum_value(_) = _ :-
     Value = (int) T;
 ").
 
-:- pragma no_determinism_warning(unsafe_get_foreign_enum_value/1).
 unsafe_get_foreign_enum_value(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.

@@ -359,6 +359,8 @@ det_from_int(I) = U16 :-
         error("uint16.det_from_int: cannot convert int to uint16")
     ).
 
+:- pragma no_determinism_warning(cast_from_int/1).
+
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (U16::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -381,12 +383,13 @@ det_from_int(I) = U16 :-
     U16 = (short) I;
 ").
 
-:- pragma no_determinism_warning(cast_from_int/1).
 cast_from_int(_) = _ :-
     sorry($module, "uint16.cast_from_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(to_int/1).
+
 :- pragma foreign_proc("C",
     to_int(U16::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -409,10 +412,11 @@ cast_from_int(_) = _ :-
     I = U16 & 0xffff;
 ").
 
-:- pragma no_determinism_warning(to_int/1).
 to_int(_) = _ :-
     sorry($module, "uint16.to_int/1 NYI for Erlang").
 
+:- pragma no_determinism_warning(cast_to_int/1).
+
 :- pragma foreign_proc("C",
     cast_to_int(U16::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -435,11 +439,12 @@ to_int(_) = _ :-
     I = U16 & 0xffff;
 ").
 
-:- pragma no_determinism_warning(cast_to_int/1).
 cast_to_int(_) = _ :-
     sorry($module, "uint16.cast_to_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_to_uint/1).
 
 :- pragma foreign_proc("C",
     cast_to_uint(U16::in) = (U::out),
@@ -463,11 +468,12 @@ cast_to_int(_) = _ :-
     U = U16 & 0xffff;
 ").
 
-:- pragma no_determinism_warning(cast_to_uint/1).
 cast_to_uint(_) = _ :-
     sorry($module, "uint16.cast_to_uint/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_from_int16/1).
 
 :- pragma foreign_proc("C",
     cast_from_int16(I16::in) = (U16::out),
@@ -491,7 +497,6 @@ cast_to_uint(_) = _ :-
     U16 = I16;
 ").
 
-:- pragma no_determinism_warning(cast_from_int16/1).
 cast_from_int16(_) = _ :-
     sorry($module, "uint16.cast_from_int16/1 NYI for Erlang").
 

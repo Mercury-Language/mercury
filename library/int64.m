@@ -370,6 +370,8 @@
 
 from_int(I) = cast_from_int(I).
 
+:- pragma no_determinism_warning(cast_from_int/1).
+
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (I64::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -391,11 +393,12 @@ from_int(I) = cast_from_int(I).
     I64 = (long) I; // Mercury's 'int' type in the Java grade is 32-bits.
 ").
 
-:- pragma no_determinism_warning(cast_from_int/1).
 cast_from_int(_) = _ :-
     sorry($module, "NYI int64.cast_from_int for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_to_int/1).
 
 :- pragma foreign_proc("C",
     cast_to_int(I64::in) = (I::out),
@@ -418,11 +421,12 @@ cast_from_int(_) = _ :-
     I = (int) I64;
 ").
 
-:- pragma no_determinism_warning(cast_to_int/1).
 cast_to_int(_) = _ :-
     sorry($module, "NYI int64.cast_to_int for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_from_uint64/1).
 
 :- pragma foreign_proc("C",
     cast_from_uint64(U64::in) = (I64::out),
@@ -445,7 +449,6 @@ cast_to_int(_) = _ :-
     I64 = (long) U64;
 ").
 
-:- pragma no_determinism_warning(cast_from_uint64/1).
 cast_from_uint64(_) = _ :-
     sorry($module, "NYI int64.cast_from_uint64 for Erlang").
 

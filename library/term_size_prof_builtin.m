@@ -181,38 +181,6 @@ increment_size(_Value, _Incr) :-
     MR_fatal_error(""complexity_mark_active"");
 ").
 
-:- pragma foreign_proc("C",
-    complexity_call_proc(Slot::out),
-    [thread_safe, will_not_call_mercury],
-"
-    // Mention Slot to avoid warning.
-    MR_fatal_error(""complexity_call_proc"");
-").
-
-:- pragma foreign_proc("C",
-    complexity_exit_proc(Slot::in),
-    [thread_safe, will_not_call_mercury],
-"
-    // Mention Slot to avoid warning.
-    MR_fatal_error(""complexity_exit_proc"");
-").
-
-:- pragma foreign_proc("C",
-    complexity_fail_proc(Slot::in),
-    [thread_safe, will_not_call_mercury],
-"
-    // Mention Slot to avoid warning.
-    MR_fatal_error(""complexity_fail_proc"");
-").
-
-:- pragma foreign_proc("C",
-    complexity_redo_proc(Slot::in),
-    [thread_safe, will_not_call_mercury],
-"
-    // Mention Slot to avoid warning.
-    MR_fatal_error(""complexity_redo_proc"");
-").
-
 complexity_is_active(IsActive) :-
     impure private_builtin.imp,
     ( if semidet_succeed then
@@ -222,17 +190,49 @@ complexity_is_active(IsActive) :-
         IsActive = is_active
     ).
 
+:- pragma foreign_proc("C",
+    complexity_call_proc(Slot::out),
+    [thread_safe, will_not_call_mercury],
+"
+    // Mention Slot to avoid warning.
+    MR_fatal_error(""complexity_call_proc"");
+").
+
 complexity_call_proc(Slot) :-
     impure private_builtin.imp,
     % Required only to avoid warnings; never executed.
     private_builtin.unsafe_type_cast(0, Slot).
 
+:- pragma foreign_proc("C",
+    complexity_exit_proc(Slot::in),
+    [thread_safe, will_not_call_mercury],
+"
+    // Mention Slot to avoid warning.
+    MR_fatal_error(""complexity_exit_proc"");
+").
+
 complexity_exit_proc(_Slot) :-
     impure private_builtin.imp.
+
+:- pragma foreign_proc("C",
+    complexity_fail_proc(Slot::in),
+    [thread_safe, will_not_call_mercury],
+"
+    // Mention Slot to avoid warning.
+    MR_fatal_error(""complexity_fail_proc"");
+").
 
 complexity_fail_proc(_Slot) :-
     impure private_builtin.imp,
     fail.
+
+:- pragma foreign_proc("C",
+    complexity_redo_proc(Slot::in),
+    [thread_safe, will_not_call_mercury],
+"
+    // Mention Slot to avoid warning.
+    MR_fatal_error(""complexity_redo_proc"");
+").
 
 complexity_redo_proc(_Slot) :-
     impure private_builtin.imp,

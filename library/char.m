@@ -416,6 +416,9 @@
 
 %---------------------------------------------------------------------------%
 
+to_int(C) = N :-
+    to_int(C, N).
+
 :- pragma foreign_proc("C",
     to_int(Character::in, Int::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -423,9 +426,6 @@
 "
     Int = (MR_UnsignedChar) Character;
 ").
-
-to_int(C) = N :-
-    to_int(C, N).
 
 :- pragma foreign_proc("C",
     to_int(Character::in, Int::in),

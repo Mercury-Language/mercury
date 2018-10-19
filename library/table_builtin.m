@@ -125,18 +125,20 @@
     % and answer tables.
     %
 :- type ml_trie_node
-    --->   ml_trie_node(c_pointer).
+    --->    ml_trie_node(c_pointer).
 :- pragma foreign_type("C", ml_trie_node, "MR_TrieNode",
     [can_pass_as_mercury_type]).
 
     % This type represents a block of memory that contains one word
     % for each output argument of a procedure.
     %
-:- type ml_answer_block --->    ml_answer_block(c_pointer).
+:- type ml_answer_block
+    --->    ml_answer_block(c_pointer).
 :- pragma foreign_type("C", ml_answer_block, "MR_AnswerBlock",
     [can_pass_as_mercury_type]).
 
-:- type ml_proc_table_info ---> ml_proc_table_info(c_pointer).
+:- type ml_proc_table_info
+    --->    ml_proc_table_info(c_pointer).
 :- pragma foreign_type("C", ml_proc_table_info, "MR_ProcTableInfoPtr",
     [can_pass_as_mercury_type]).
 
@@ -189,12 +191,20 @@
     MR_tbl_loop_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Status);
 ").
 
+table_loop_setup(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_loop_setup").
+
 :- pragma foreign_proc("C",
     table_loop_setup_shortcut(T0::in, T::out, Status::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_loop_setup_shortcut(T0, T, Status);
 ").
+
+table_loop_setup_shortcut(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_loop_setup_shortcut").
 
 :- pragma foreign_proc("C",
     table_loop_mark_as_inactive(T::in),
@@ -203,12 +213,21 @@
     MR_tbl_loop_mark_as_inactive(MR_TABLE_DEBUG_BOOL, T);
 ").
 
+table_loop_mark_as_inactive(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_loop_mark_as_inactive").
+
 :- pragma foreign_proc("C",
     table_loop_mark_as_inactive_and_fail(T::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_loop_mark_as_inactive_and_fail(MR_TABLE_DEBUG_BOOL, T);
 ").
+
+table_loop_mark_as_inactive_and_fail(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_loop_mark_as_inactive"),
+    fail.
 
 :- pragma foreign_proc("C",
     table_loop_mark_as_active_and_fail(T::in),
@@ -217,34 +236,7 @@
     MR_tbl_loop_mark_as_active_and_fail(MR_TABLE_DEBUG_BOOL, T);
 ").
 
-table_loop_setup(_, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_loop_setup").
-
-table_loop_setup_shortcut(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_loop_setup_shortcut").
-
-table_loop_mark_as_inactive(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_loop_mark_as_inactive").
-
-table_loop_mark_as_inactive_and_fail(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_loop_mark_as_inactive"),
-    fail.
-
 table_loop_mark_as_active_and_fail(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
     impure private_builtin.imp,
     private_builtin.sorry("table_loop_mark_as_active"),
     fail.
@@ -371,7 +363,8 @@ table_loop_mark_as_active_and_fail(_) :-
 
 :- implementation.
 
-:- type memo_non_record --->        memo_non_record(c_pointer).
+:- type memo_non_record
+    --->    memo_non_record(c_pointer).
 :- pragma foreign_type("C", memo_non_record, "MR_MemoNonRecordPtr",
     [can_pass_as_mercury_type]).
 
@@ -382,12 +375,20 @@ table_loop_mark_as_active_and_fail(_) :-
     MR_tbl_memo_det_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Status);
 ").
 
+table_memo_det_setup(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_det_setup").
+
 :- pragma foreign_proc("C",
     table_memo_det_setup_shortcut(T0::in, T::out, Status::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_det_setup_shortcut(T0, T, Status);
 ").
+
+table_memo_det_setup_shortcut(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_det_setup_shortcut").
 
 :- pragma foreign_proc("C",
     table_memo_semi_setup(T::in, Status::out),
@@ -396,12 +397,20 @@ table_loop_mark_as_active_and_fail(_) :-
     MR_tbl_memo_semi_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Status);
 ").
 
+table_memo_semi_setup(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_semi_setup").
+
 :- pragma foreign_proc("C",
     table_memo_semi_setup_shortcut(T0::in, T::out, Status::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_semi_setup_shortcut(T0, T, Status);
 ").
+
+table_memo_semi_setup_shortcut(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_semi_setup_shortcut").
 
 :- pragma foreign_proc("C",
     table_memo_non_setup(T0::in, Record::out, Status::out),
@@ -417,12 +426,21 @@ table_loop_mark_as_active_and_fail(_) :-
     MR_tbl_memo_mark_as_failed(MR_TABLE_DEBUG_BOOL, T);
 ").
 
+table_memo_mark_as_failed(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_failed"),
+    fail.
+
 :- pragma foreign_proc("C",
     table_memo_mark_as_succeeded(T::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_mark_as_succeeded(MR_TABLE_DEBUG_BOOL, T);
 ").
+
+table_memo_mark_as_succeeded(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_succeeded").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_incomplete(R::in),
@@ -431,6 +449,10 @@ table_loop_mark_as_active_and_fail(_) :-
     MR_tbl_memo_mark_as_incomplete(MR_TABLE_DEBUG_BOOL, R);
 ").
 
+table_memo_mark_as_incomplete(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_incomplete").
+
 :- pragma foreign_proc("C",
     table_memo_mark_as_active_and_fail(R::in),
     [will_not_call_mercury, does_not_affect_liveness],
@@ -438,12 +460,20 @@ table_loop_mark_as_active_and_fail(_) :-
     MR_tbl_memo_mark_as_active_and_fail(MR_TABLE_DEBUG_BOOL, R);
 ").
 
+table_memo_mark_as_active_and_fail(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_active_and_fail").
+
 :- pragma foreign_proc("C",
     table_memo_mark_as_complete_and_fail(R::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_mark_as_complete_and_fail(MR_TABLE_DEBUG_BOOL, R);
 ").
+
+table_memo_mark_as_complete_and_fail(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_complete_and_fail").
 
 :- pragma foreign_proc("C",
     table_memo_create_answer_block(T::in, Size::in, AnswerBlock::out),
@@ -453,12 +483,20 @@ table_loop_mark_as_active_and_fail(_) :-
         T, Size, AnswerBlock);
 ").
 
+table_memo_create_answer_block(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_create_answer_block").
+
 :- pragma foreign_proc("C",
     table_memo_fill_answer_block_shortcut(T::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_fill_answer_block_shortcut(T);
 ").
+
+table_memo_fill_answer_block_shortcut(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_fill_answer_block_shortcut").
 
 :- pragma foreign_proc("C",
     table_memo_get_answer_block(T::in, AnswerBlock::out),
@@ -467,6 +505,10 @@ table_loop_mark_as_active_and_fail(_) :-
     MR_tbl_memo_get_answer_block(MR_TABLE_DEBUG_BOOL, T, AnswerBlock);
 ").
 
+table_memo_get_answer_block(_, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_memo_get_answer_block").
+
 :- pragma foreign_proc("C",
     table_memo_get_answer_block_shortcut(T::in),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
@@ -474,12 +516,20 @@ table_loop_mark_as_active_and_fail(_) :-
     MR_tbl_memo_get_answer_block_shortcut(T);
 ").
 
+table_memo_get_answer_block_shortcut(_) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_memo_get_answer_block_shortcut").
+
 :- pragma foreign_proc("C",
     table_memo_non_get_answer_table(R::in, AT::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_memo_non_get_answer_table(MR_TABLE_DEBUG_BOOL, R, AT);
 ").
+
+table_memo_non_get_answer_table(_, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_memo_non_get_answer_table").
 
 :- pragma foreign_proc("C",
     table_memo_non_answer_is_not_duplicate(T::in),
@@ -489,6 +539,10 @@ table_loop_mark_as_active_and_fail(_) :-
         T, SUCCESS_INDICATOR);
 ").
 
+table_memo_non_answer_is_not_duplicate(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_non_answer_is_not_duplicate").
+
 :- pragma foreign_proc("C",
     table_memo_non_answer_is_not_duplicate_shortcut(R::in),
     [will_not_call_mercury, does_not_affect_liveness],
@@ -497,12 +551,21 @@ table_loop_mark_as_active_and_fail(_) :-
         SUCCESS_INDICATOR);
 ").
 
+table_memo_non_answer_is_not_duplicate_shortcut(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry(
+        "table_memo_non_answer_is_not_duplicate_shortcut").
+
 :- pragma foreign_proc("C",
     table_memo_non_create_answer_block_shortcut(R::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_memo_non_create_answer_block_shortcut(R::in);
 ").
+
+table_memo_non_create_answer_block_shortcut(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_non_create_answer_block_shortcut").
 
 :- pragma foreign_proc("C",
     table_memo_non_return_all_shortcut(R::in),
@@ -511,118 +574,12 @@ table_loop_mark_as_active_and_fail(_) :-
     MR_tbl_memo_non_return_all_shortcut(R);
 ").
 
-:- pragma external_pred(table_memo_return_all_answers_nondet/2).
-:- pragma external_pred(table_memo_return_all_answers_multi/2).
-
-table_memo_det_setup(_, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_det_setup").
-
-table_memo_det_setup_shortcut(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_det_setup_shortcut").
-
-table_memo_semi_setup(_, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_semi_setup").
-
-table_memo_semi_setup_shortcut(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_semi_setup_shortcut").
-
-table_memo_mark_as_failed(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_mark_as_failed"),
-    fail.
-
-table_memo_mark_as_succeeded(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_mark_as_succeeded").
-
-table_memo_mark_as_incomplete(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_mark_as_incomplete").
-
-table_memo_mark_as_active_and_fail(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_mark_as_active_and_fail").
-
-table_memo_mark_as_complete_and_fail(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_mark_as_complete_and_fail").
-
-table_memo_create_answer_block(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_create_answer_block").
-
-table_memo_fill_answer_block_shortcut(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_fill_answer_block_shortcut").
-
-table_memo_get_answer_block(_, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_memo_get_answer_block").
-
 table_memo_non_return_all_shortcut(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
     semipure private_builtin.semip,
     private_builtin.sorry("table_memo_non_return_all_shortcut").
 
-table_memo_get_answer_block_shortcut(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_memo_get_answer_block_shortcut").
-
-table_memo_non_get_answer_table(_, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_memo_non_get_answer_table").
-
-table_memo_non_answer_is_not_duplicate(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_non_answer_is_not_duplicate").
-
-table_memo_non_answer_is_not_duplicate_shortcut(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry(
-        "table_memo_non_answer_is_not_duplicate_shortcut").
-
-table_memo_non_create_answer_block_shortcut(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_memo_non_create_answer_block_shortcut").
+:- pragma external_pred(table_memo_return_all_answers_nondet/2).
+:- pragma external_pred(table_memo_return_all_answers_multi/2).
 
 %---------------------------------------------------------------------------%
 
@@ -739,12 +696,20 @@ table_memo_non_create_answer_block_shortcut(_) :-
         SUCCESS_INDICATOR);
 ").
 
+table_io_in_range(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_io_in_range").
+
 :- pragma foreign_proc("C",
     table_io_has_occurred(T::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_io_has_occurred(MR_TABLE_DEBUG_BOOL, T, SUCCESS_INDICATOR);
 ").
+
+table_io_has_occurred(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_io_has_occurred").
 
 table_io_copy_io_state(IO, IO).
 
@@ -755,6 +720,10 @@ table_io_copy_io_state(IO, IO).
     MR_tbl_io_left_bracket_unitized_goal(TraceEnabled);
 ").
 
+table_io_left_bracket_unitized_goal(_TraceEnabled) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_io_left_bracket_unitized_goal").
+
 :- pragma foreign_proc("C",
     table_io_right_bracket_unitized_goal(TraceEnabled::in),
     [will_not_call_mercury, does_not_affect_liveness],
@@ -762,27 +731,7 @@ table_io_copy_io_state(IO, IO).
     MR_tbl_io_right_bracket_unitized_goal(TraceEnabled);
 ").
 
-table_io_in_range(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_io_in_range").
-
-table_io_has_occurred(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_io_has_occurred").
-
-table_io_left_bracket_unitized_goal(_TraceEnabled) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_io_left_bracket_unitized_goal").
-
 table_io_right_bracket_unitized_goal(_TraceEnabled) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
     impure private_builtin.imp,
     private_builtin.sorry("table_io_right_bracket_unitized_goal").
 
@@ -869,13 +818,15 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 
 :- implementation.
 
-:- type ml_subgoal --->     ml_subgoal(c_pointer).
+:- type ml_subgoal
+    --->    ml_subgoal(c_pointer).
 :- pragma foreign_type("C", ml_subgoal, "MR_SubgoalPtr",
     [can_pass_as_mercury_type]).
 
     % This type represents a list of answers of a model_non predicate.
     %
-:- type ml_answer_list ---> ml_answer_list(c_pointer).
+:- type ml_answer_list
+    --->    ml_answer_list(c_pointer).
 :- pragma foreign_type("C", ml_answer_list, "MR_AnswerList",
     [can_pass_as_mercury_type]).
 
@@ -901,12 +852,20 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     MR_tbl_mm_return_all_shortcut(AnswerBlock);
 ").
 
+table_mm_return_all_shortcut(_) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_mm_return_all_shortcut").
+
 :- pragma foreign_proc("C",
     table_mm_get_answer_table(Subgoal::in, AnswerTable::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_mm_get_answer_table(MR_TABLE_DEBUG_BOOL, Subgoal, AnswerTable);
 ").
+
+table_mm_get_answer_table(_, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_mm_get_answer_table").
 
 :- pragma foreign_proc("C",
     table_mm_answer_is_not_duplicate(TrieNode::in),
@@ -915,6 +874,10 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     MR_tbl_mm_answer_is_not_duplicate(MR_TABLE_DEBUG_BOOL, TrieNode,
         SUCCESS_INDICATOR);
 ").
+
+table_mm_answer_is_not_duplicate(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_mm_answer_is_not_duplicate").
 
 :- pragma foreign_proc("C",
     table_mm_answer_is_not_duplicate_shortcut(Subgoal::in),
@@ -928,6 +891,10 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     MR_fatal_error(""table_mm_answer_is_not_duplicate_shortcut: direct call"");
 ").
 
+table_mm_answer_is_not_duplicate_shortcut(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_mm_answer_is_not_duplicate_shortcut").
+
 :- pragma foreign_proc("C",
     table_mm_create_answer_block(Subgoal::in, Size::in, AnswerBlock::out),
     [will_not_call_mercury, does_not_affect_liveness],
@@ -936,6 +903,10 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
         Subgoal, Size, AnswerBlock);
 ").
 
+table_mm_create_answer_block(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_mm_create_answer_block").
+
 :- pragma foreign_proc("C",
     table_mm_fill_answer_block_shortcut(Subgoal::in),
     [will_not_call_mercury, does_not_affect_liveness],
@@ -943,39 +914,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     MR_tbl_mm_fill_answer_block_shortcut(Subgoal);
 ").
 
-table_mm_return_all_shortcut(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_mm_return_all_shortcut").
-
-table_mm_get_answer_table(_, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_mm_get_answer_table").
-
-table_mm_answer_is_not_duplicate(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_mm_answer_is_not_duplicate").
-
-table_mm_answer_is_not_duplicate_shortcut(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_mm_answer_is_not_duplicate_shortcut").
-
-table_mm_create_answer_block(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_mm_create_answer_block").
-
 table_mm_fill_answer_block_shortcut(_) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
     impure private_builtin.imp,
     private_builtin.sorry("table_mm_fill_answer_block_shortcut").
 
@@ -1066,14 +1005,16 @@ table_mm_fill_answer_block_shortcut(_) :-
     % This type represents the data structure at the tips of the call table
     % in the own stack implementation of minimal model tabling.
     %
-:- type ml_consumer --->    ml_consumer(c_pointer).
+:- type ml_consumer
+    --->    ml_consumer(c_pointer).
 :- pragma foreign_type("C", ml_consumer, "MR_ConsumerPtr",
     [can_pass_as_mercury_type]).
 
     % This type represents the generators in the own stack implementation
     % of minimal model tabling.
     %
-:- type ml_generator --->   ml_generator(c_pointer).
+:- type ml_generator
+    --->    ml_generator(c_pointer).
 :- pragma foreign_type("C", ml_generator, "MR_GeneratorPtr",
     [can_pass_as_mercury_type]).
 
@@ -1087,6 +1028,9 @@ table_mm_fill_answer_block_shortcut(_) :-
     MR_fatal_error(""table_mmos_save_inputs: direct call"");
 ").
 
+table_mmos_save_inputs :-
+    impure private_builtin.imp.
+
 :- pragma foreign_proc("C",
     table_mmos_setup_consumer(T::in, GeneratorPred::in, Consumer::out),
     [will_not_call_mercury, does_not_affect_liveness],
@@ -1098,6 +1042,15 @@ table_mm_fill_answer_block_shortcut(_) :-
     // Mention T, GeneratorPred, Consumer to shut up the warning.
     MR_fatal_error(""table_mmos_setup_consumer: direct call"");
 ").
+
+table_mmos_setup_consumer(_, _, Consumer) :-
+    impure private_builtin.imp,
+    % Required only to avoid warnings; never executed.
+    pretend_to_generate_value(Consumer).
+
+    % Required only to avoid warnings; never executed.
+    %
+:- pred pretend_to_generate_value(T::out) is det.
 
 :- pragma foreign_proc("C",
     table_mmos_answer_is_not_duplicate(T::in),
@@ -1159,12 +1112,20 @@ table_mm_fill_answer_block_shortcut(_) :-
     // MR_tbl_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
 ").
 
+table_mmos_create_answer_block(_, _, AnswerBlock) :-
+    impure private_builtin.imp,
+    % Required only to avoid warnings; never executed.
+    pretend_to_generate_value(AnswerBlock).
+
 :- pragma foreign_proc("C",
     table_mmos_return_answer(Generator::in, AnswerBlock::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     // MR_tbl_mmos_return_answer(Generator, AnswerBlock);
 ").
+
+table_mmos_return_answer(_, _) :-
+    impure private_builtin.imp.
 
 :- pragma foreign_proc("C",
     table_mmos_completion(Generator::in),
@@ -1173,29 +1134,9 @@ table_mm_fill_answer_block_shortcut(_) :-
     // MR_tbl_mmos_completion(Generator);
 ").
 
-table_mmos_save_inputs :-
-    impure private_builtin.imp.
-
-table_mmos_setup_consumer(_, _, Consumer) :-
-    impure private_builtin.imp,
-    % Required only to avoid warnings; never executed.
-    pretend_to_generate_value(Consumer).
-
-table_mmos_create_answer_block(_, _, AnswerBlock) :-
-    impure private_builtin.imp,
-    % Required only to avoid warnings; never executed.
-    pretend_to_generate_value(AnswerBlock).
-
-table_mmos_return_answer(_, _) :-
-    impure private_builtin.imp.
-
 table_mmos_completion(_) :-
     impure private_builtin.imp,
     fail.
-
-    % Required only to avoid warnings; never executed.
-    %
-:- pred pretend_to_generate_value(T::out) is det.
 
 pretend_to_generate_value(Bogus) :-
     % The following code will throw an exception if executed.
@@ -1544,12 +1485,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_lookup_insert_int(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
+table_lookup_insert_int(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int").
+
 :- pragma foreign_proc("C",
     table_lookup_insert_uint(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_uint(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
+
+table_lookup_insert_uint(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_start_int(T0::in, S::in, V::in, T::out),
@@ -1559,12 +1508,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
         T0, S, V, T);
 ").
 
+table_lookup_insert_start_int(_, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_start_int").
+
 :- pragma foreign_proc("C",
     table_lookup_insert_int8(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_int8(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
+
+table_lookup_insert_int8(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int8").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_uint8(T0::in, V::in, T::out),
@@ -1573,12 +1530,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_lookup_insert_uint8(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
+table_lookup_insert_uint8(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint8").
+
 :- pragma foreign_proc("C",
     table_lookup_insert_int16(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_int16(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
+
+table_lookup_insert_int16(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int16").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_uint16(T0::in, V::in, T::out),
@@ -1587,12 +1552,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_lookup_insert_uint16(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
+table_lookup_insert_uint16(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint16").
+
 :- pragma foreign_proc("C",
     table_lookup_insert_int32(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_int32(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
+
+table_lookup_insert_int32(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int32").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_uint32(T0::in, V::in, T::out),
@@ -1601,12 +1574,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_lookup_insert_uint32(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
+table_lookup_insert_uint32(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint32").
+
 :- pragma foreign_proc("C",
     table_lookup_insert_int64(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_int64(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
+
+table_lookup_insert_int64(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int64").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_uint64(T0::in, V::in, T::out),
@@ -1615,12 +1596,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_lookup_insert_uint64(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
+table_lookup_insert_uint64(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_uint64").
+
 :- pragma foreign_proc("C",
     table_lookup_insert_char(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_char(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
+
+table_lookup_insert_char(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_char").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_string(T0::in, V::in, T::out),
@@ -1629,12 +1618,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_lookup_insert_string(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
+table_lookup_insert_string(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_string").
+
 :- pragma foreign_proc("C",
     table_lookup_insert_float(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_lookup_insert_float(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
+
+table_lookup_insert_float(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_float").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_enum(T0::in, R::in, V::in, T::out),
@@ -1643,6 +1640,10 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_lookup_insert_enum(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         R, V, T);
 ").
+
+table_lookup_insert_enum(_, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_enum").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_foreign_enum(T0::in, V::in, T::out),
@@ -1660,6 +1661,10 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
         TypeInfo_for_T, V, T);
 ").
 
+table_lookup_insert_gen(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_gen").
+
 :- pragma foreign_proc("C",
     table_lookup_insert_gen_addr(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
@@ -1667,6 +1672,10 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_lookup_insert_gen_addr(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
         TypeInfo_for_T, V, T);
 ").
+
+table_lookup_insert_gen_addr(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_gen_addr").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_gen_poly(T0::in, V::in, T::out),
@@ -1676,6 +1685,10 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
         TypeInfo_for_T, V, T);
 ").
 
+table_lookup_insert_gen_poly(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_gen_poly").
+
 :- pragma foreign_proc("C",
     table_lookup_insert_gen_poly_addr(T0::in, V::in, T::out),
     [will_not_call_mercury, does_not_affect_liveness],
@@ -1683,6 +1696,10 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_lookup_insert_gen_poly_addr(NULL, MR_TABLE_DEBUG_BOOL,
         MR_FALSE, T0, TypeInfo_for_T, V, T);
 ").
+
+table_lookup_insert_gen_poly_addr(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_gen_poly_addr").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_typeinfo(T0::in, V::in, T::out),
@@ -1709,12 +1726,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_save_int_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_save_int_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int_answer").
+
 :- pragma foreign_proc("C",
     table_save_uint_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_uint_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_save_uint_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint_answer").
 
 :- pragma foreign_proc("C",
     table_save_int8_answer(AB::in, Offset::in, V::in),
@@ -1723,12 +1748,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_save_int8_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_save_int8_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int8_answer").
+
 :- pragma foreign_proc("C",
     table_save_uint8_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_uint8_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_save_uint8_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint8_answer").
 
 :- pragma foreign_proc("C",
     table_save_int16_answer(AB::in, Offset::in, V::in),
@@ -1737,12 +1770,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_save_int16_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_save_int16_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int16_answer").
+
 :- pragma foreign_proc("C",
     table_save_uint16_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_uint16_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_save_uint16_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint16_answer").
 
 :- pragma foreign_proc("C",
     table_save_int32_answer(AB::in, Offset::in, V::in),
@@ -1751,12 +1792,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_save_int32_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_save_int32_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int32_answer").
+
 :- pragma foreign_proc("C",
     table_save_uint32_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_uint32_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_save_uint32_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint32_answer").
 
 :- pragma foreign_proc("C",
     table_save_int64_answer(AB::in, Offset::in, V::in),
@@ -1765,12 +1814,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_save_int64_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_save_int64_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int64_answer").
+
 :- pragma foreign_proc("C",
     table_save_uint64_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_uint64_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_save_uint64_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_uint64_answer").
 
 :- pragma foreign_proc("C",
     table_save_char_answer(AB::in, Offset::in, V::in),
@@ -1779,12 +1836,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_save_char_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_save_char_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_char_answer").
+
 :- pragma foreign_proc("C",
     table_save_string_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_string_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_save_string_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_string_answer").
 
 :- pragma foreign_proc("C",
     table_save_float_answer(AB::in, Offset::in, V::in),
@@ -1793,12 +1858,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_save_float_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_save_float_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_float_answer").
+
 :- pragma foreign_proc("C",
     table_save_io_state_answer(AB::in, Offset::in, V::ui),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     MR_tbl_save_io_state_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_save_io_state_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_io_state_answer").
 
 :- pragma foreign_proc("C",
     table_save_any_answer(AB::in, Offset::in, V::in),
@@ -1808,12 +1881,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
         TypeInfo_for_T, V);
 ").
 
+table_save_any_answer(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_any_answer").
+
 :- pragma foreign_proc("C",
     table_restore_int_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_int_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_restore_int_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_int_answer").
 
 :- pragma foreign_proc("C",
     table_restore_uint_answer(AB::in, Offset::in, V::out),
@@ -1822,12 +1903,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_restore_uint_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_restore_uint_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_uint_answer").
+
 :- pragma foreign_proc("C",
     table_restore_int8_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_int8_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_restore_int8_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_int8_answer").
 
 :- pragma foreign_proc("C",
     table_restore_uint8_answer(AB::in, Offset::in, V::out),
@@ -1836,12 +1925,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_restore_uint8_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_restore_uint8_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_uint8_answer").
+
 :- pragma foreign_proc("C",
     table_restore_int16_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_int16_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_restore_int16_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_int16_answer").
 
 :- pragma foreign_proc("C",
     table_restore_uint16_answer(AB::in, Offset::in, V::out),
@@ -1850,12 +1947,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_restore_uint16_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_restore_uint16_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_uint16_answer").
+
 :- pragma foreign_proc("C",
     table_restore_int32_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_int32_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_restore_int32_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_int32_answer").
 
 :- pragma foreign_proc("C",
     table_restore_uint32_answer(AB::in, Offset::in, V::out),
@@ -1864,12 +1969,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_restore_uint32_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_restore_uint32_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_uint32_answer").
+
 :- pragma foreign_proc("C",
     table_restore_int64_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_int64_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_restore_int64_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_int64_answer").
 
 :- pragma foreign_proc("C",
     table_restore_uint64_answer(AB::in, Offset::in, V::out),
@@ -1878,12 +1991,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_restore_uint64_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_restore_uint64_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_uint64_answer").
+
 :- pragma foreign_proc("C",
     table_restore_char_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_char_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_restore_char_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_char_answer").
 
 :- pragma foreign_proc("C",
     table_restore_string_answer(AB::in, Offset::in, V::out),
@@ -1892,12 +2013,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_restore_string_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_restore_string_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_string_answer").
+
 :- pragma foreign_proc("C",
     table_restore_float_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_float_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_restore_float_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_float_answer").
 
 :- pragma foreign_proc("C",
     table_restore_io_state_answer(AB::in, Offset::in, V::uo),
@@ -1906,12 +2035,20 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     MR_tbl_restore_io_state_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
+table_restore_io_state_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_io_state_answer").
+
 :- pragma foreign_proc("C",
     table_restore_any_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     MR_tbl_restore_any_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
+
+table_restore_any_answer(_, _, _) :-
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_any_answer").
 
 table_error(Message) :-
     error(Message).
@@ -1923,249 +2060,7 @@ table_error(Message) :-
     MR_table_report_statistics(stderr);
 ").
 
-table_lookup_insert_int(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_int").
-
-table_lookup_insert_uint(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_uint").
-
-table_lookup_insert_start_int(_, _, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_start_int").
-
-table_lookup_insert_int8(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_int8").
-
-table_lookup_insert_uint8(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_uint8").
-
-table_lookup_insert_int16(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_int16").
-
-table_lookup_insert_uint16(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_uint16").
-
-table_lookup_insert_int32(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_int32").
-
-table_lookup_insert_uint32(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_uint32").
-
-table_lookup_insert_int64(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_int64").
-
-table_lookup_insert_uint64(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_uint64").
-
-table_lookup_insert_char(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_char").
-
-table_lookup_insert_string(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_string").
-
-table_lookup_insert_float(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_float").
-
-table_lookup_insert_enum(_, _, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_enum").
-
-table_lookup_insert_gen(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_gen").
-
-table_lookup_insert_gen_poly(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_gen_poly").
-
-table_lookup_insert_gen_addr(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_gen_addr").
-
-table_lookup_insert_gen_poly_addr(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_lookup_insert_gen_poly_addr").
-
-table_save_int_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_int_answer").
-
-table_save_uint_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_uint_answer").
-
-table_save_int8_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_int8_answer").
-
-table_save_uint8_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_uint8_answer").
-
-table_save_int16_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_int16_answer").
-
-table_save_uint16_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_uint16_answer").
-
-table_save_int32_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_int32_answer").
-
-table_save_uint32_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_uint32_answer").
-
-table_save_int64_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_int64_answer").
-
-table_save_uint64_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_uint64_answer").
-
-table_save_char_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_char_answer").
-
-table_save_string_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_string_answer").
-
-table_save_float_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_float_answer").
-
-table_save_io_state_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_io_state_answer").
-
-table_save_any_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    impure private_builtin.imp,
-    private_builtin.sorry("table_save_any_answer").
-
-table_restore_int_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_restore_int_answer").
-
-table_restore_char_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_restore_char_answer").
-
-table_restore_string_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_restore_string_answer").
-
-table_restore_float_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_restore_float_answer").
-
-table_restore_io_state_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_restore_io_state_answer").
-
-table_restore_any_answer(_, _, _) :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
-    semipure private_builtin.semip,
-    private_builtin.sorry("table_restore_any_answer").
-
 table_report_statistics :-
-    % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.
     impure private_builtin.imp,
     private_builtin.sorry("table_report_statistics").
 

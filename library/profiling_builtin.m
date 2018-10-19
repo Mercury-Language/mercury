@@ -290,6 +290,63 @@
 :- pragma external_pred(non_fail_port_code_ac/2).
 :- pragma external_pred(non_fail_port_code_sr/3).
 
+det_call_port_code_ac(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("det_call_port_code_ac").
+det_call_port_code_sr(_, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("det_call_port_code_sr").
+det_exit_port_code_ac(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("det_exit_port_code_ac").
+det_exit_port_code_sr(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("det_exit_port_code_sr").
+semi_call_port_code_ac(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("semi_call_port_code_ac").
+semi_call_port_code_sr(_, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("semi_call_port_code_sr").
+semi_exit_port_code_ac(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("semi_exit_port_code_ac").
+semi_exit_port_code_sr(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("semi_exit_port_code_sr").
+semi_fail_port_code_ac(_, _) :-
+    impure private_builtin.imp,
+    semidet_succeed,
+    private_builtin.sorry("semi_fail_port_code_ac").
+semi_fail_port_code_sr(_, _, _) :-
+    impure private_builtin.imp,
+    semidet_succeed,
+    private_builtin.sorry("semi_fail_port_code_sr").
+non_call_port_code_ac(_, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_call_port_code_ac").
+non_call_port_code_sr(_, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_call_port_code_sr").
+non_exit_port_code_ac(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_exit_port_code_ac").
+non_exit_port_code_sr(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_exit_port_code_sr").
+non_redo_port_code_ac(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_redo_port_code_ac").
+non_redo_port_code_sr(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_redo_port_code_sr").
+non_fail_port_code_ac(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_fail_port_code_ac").
+non_fail_port_code_sr(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("non_fail_port_code_sr").
+
 %---------------------------------------------------------------------------%
 % Procedures that prepare for calls
 %---------------------------------------------------------------------------%
@@ -338,6 +395,10 @@
     MR_fatal_error(""prepare_for_normal_call: deep profiling not enabled"");
 #endif
 }").
+
+prepare_for_normal_call(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_normal_call").
 
 :- pragma foreign_proc("C",
     prepare_for_special_call(CSN::in, TypeInfo::in),
@@ -406,6 +467,10 @@
 #endif
 }").
 
+prepare_for_special_call(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_special_call").
+
 :- pragma foreign_proc("C",
     prepare_for_ho_call(CSN::in, Closure::in),
     [thread_safe, will_not_call_mercury],
@@ -472,6 +537,10 @@
 #endif
 }").
 
+prepare_for_ho_call(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_ho_call").
+
 :- pragma foreign_proc("C",
     prepare_for_method_call(CSN::in, TypeClassInfo::in, MethodNum::in),
     [thread_safe, will_not_call_mercury],
@@ -528,6 +597,10 @@
 #endif
 }").
 
+prepare_for_method_call(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_method_call").
+
 :- pragma foreign_proc("C",
     prepare_for_callback(CSN::in),
     [thread_safe, will_not_call_mercury],
@@ -557,6 +630,10 @@
     MR_fatal_error(""prepare_for_callback: deep profiling not enabled"");
 #endif
 }").
+
+prepare_for_callback(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_callback").
 
 %---------------------------------------------------------------------------%
 % Procedures needed for handling tail recursive procedures
@@ -609,6 +686,10 @@
 #endif
 }").
 
+prepare_for_tail_call(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_tail_call").
+
 :- pragma foreign_proc("C",
     save_and_zero_activation_info_ac(Count::out, Ptr::out),
     [thread_safe, will_not_call_mercury],
@@ -643,6 +724,10 @@
 #endif
 }").
 
+save_and_zero_activation_info_ac(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_and_zero_activation_info_ac").
+
 :- pragma foreign_proc("C",
     save_and_zero_activation_info_sr(Ptr::out),
     [thread_safe, will_not_call_mercury],
@@ -674,6 +759,10 @@
     MR_fatal_error(""save_and_zero_activation_info_sr: deep profiling not enabled"");
 #endif
 }").
+
+save_and_zero_activation_info_sr(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_and_zero_activation_info_sr").
 
 :- pragma foreign_proc("C",
     rezero_activation_info_ac,
@@ -707,6 +796,10 @@
 #endif
 }").
 
+rezero_activation_info_ac :-
+    impure private_builtin.imp,
+    private_builtin.sorry("rezero_activation_info_ac").
+
 :- pragma foreign_proc("C",
     rezero_activation_info_sr,
     [thread_safe, will_not_call_mercury],
@@ -737,6 +830,10 @@
     MR_fatal_error(""rezero_activation_info_sr: deep profiling not enabled"");
 #endif
 }").
+
+rezero_activation_info_sr :-
+    impure private_builtin.imp,
+    private_builtin.sorry("rezero_activation_info_sr").
 
 :- pragma foreign_proc("C",
     reset_activation_info_ac(Count::in, Ptr::in),
@@ -770,6 +867,10 @@
 #endif
 }").
 
+reset_activation_info_ac(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("reset_activation_info_ac").
+
 :- pragma foreign_proc("C",
     reset_activation_info_sr(Ptr::in),
     [thread_safe, will_not_call_mercury],
@@ -800,6 +901,10 @@
     MR_fatal_error(""reset_activation_info_sr: deep profiling not enabled"");
 #endif
 }").
+
+reset_activation_info_sr(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("reset_activation_info_sr").
 
 %---------------------------------------------------------------------------%
 % instance of increment_{static,dynamic}_coverage_point_count
@@ -842,6 +947,10 @@
             ""static coverage profiling not enabled"");
 #endif // MR_DEEP_PROFILING_COVERAGE_STATIC
 ").
+
+increment_static_coverage_point_count(_, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("increment_static_coverage_point_count").
 
 :- pragma foreign_proc("C",
     increment_dynamic_coverage_point_count(CPIndex::in),
@@ -896,6 +1005,10 @@
 #endif // MR_DEEP_PROFILING_COVERAGE_DYNAMIC
 ").
 
+increment_dynamic_coverage_point_count(_) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("increment_dynamic_coverage_point_count").
+
 %---------------------------------------------------------------------------%
 % instances of save_recursion_depth_N
 %---------------------------------------------------------------------------%
@@ -915,6 +1028,10 @@
 #undef MR_REC_DEPTH_BODY
 }").
 
+save_recursion_depth_1(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_1").
+
 :- pragma foreign_proc("C",
     save_recursion_depth_2(CSD::in, CSNsVector::in,
         OuterCount1::out, OuterCount2::out),
@@ -932,6 +1049,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+save_recursion_depth_2(_, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_2").
 
 :- pragma foreign_proc("C",
     save_recursion_depth_3(CSD::in, CSNsVector::in,
@@ -952,6 +1073,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+save_recursion_depth_3(_, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_3").
 
 :- pragma foreign_proc("C",
     save_recursion_depth_4(CSD::in, CSNsVector::in,
@@ -976,6 +1101,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+save_recursion_depth_4(_, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_4").
 
 :- pragma foreign_proc("C",
     save_recursion_depth_5(CSD::in, CSNsVector::in,
@@ -1002,6 +1131,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+save_recursion_depth_5(_, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_5").
 
 :- pragma foreign_proc("C",
     save_recursion_depth_6(CSD::in, CSNsVector::in,
@@ -1030,6 +1163,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+save_recursion_depth_6(_, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_6").
 
 :- pragma foreign_proc("C",
     save_recursion_depth_7(CSD::in, CSNsVector::in,
@@ -1061,6 +1198,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+save_recursion_depth_7(_, _, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_7").
 
 :- pragma foreign_proc("C",
     save_recursion_depth_8(CSD::in, CSNsVector::in,
@@ -1095,6 +1236,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+save_recursion_depth_8(_, _, _, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_8").
 
 :- pragma foreign_proc("C",
     save_recursion_depth_9(CSD::in, CSNsVector::in,
@@ -1132,6 +1277,10 @@
 #undef MR_REC_DEPTH_BODY
 }").
 
+save_recursion_depth_9(_, _, _, _, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_9").
+
 %---------------------------------------------------------------------------%
 % instances of restore_recursion_depth_exit_N
 %---------------------------------------------------------------------------%
@@ -1151,6 +1300,10 @@
 #undef MR_REC_DEPTH_BODY
 }").
 
+restore_recursion_depth_exit_1(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_exith_fail_1").
+
 :- pragma foreign_proc("C",
     restore_recursion_depth_exit_2(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in),
@@ -1168,6 +1321,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_exit_2(_, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_exith_fail_2").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_exit_3(CSD::in, CSNsVector::in,
@@ -1188,6 +1345,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_exit_3(_, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_exith_fail_3").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_exit_4(CSD::in, CSNsVector::in,
@@ -1212,6 +1373,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_exit_4(_, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_exith_fail_4").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_exit_5(CSD::in, CSNsVector::in,
@@ -1238,6 +1403,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_exit_5(_, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_exith_fail_5").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_exit_6(CSD::in, CSNsVector::in,
@@ -1266,6 +1435,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_exit_6(_, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_exith_fail_6").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_exit_7(CSD::in, CSNsVector::in,
@@ -1297,6 +1470,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_exit_7(_, _, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_exith_fail_7").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_exit_8(CSD::in, CSNsVector::in,
@@ -1331,6 +1508,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_exit_8(_, _, _, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_exith_fail_8").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_exit_9(CSD::in, CSNsVector::in,
@@ -1368,6 +1549,10 @@
 #undef MR_REC_DEPTH_BODY
 }").
 
+restore_recursion_depth_exit_9(_, _, _, _, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_exith_fail_9").
+
 %---------------------------------------------------------------------------%
 % instances of restore_recursion_depth_fail_N
 %---------------------------------------------------------------------------%
@@ -1387,6 +1572,10 @@
 #undef MR_REC_DEPTH_BODY
 }").
 
+restore_recursion_depth_fail_1(_, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_1").
+
 :- pragma foreign_proc("C",
     restore_recursion_depth_fail_2(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in),
@@ -1404,6 +1593,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_fail_2(_, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_2").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_fail_3(CSD::in, CSNsVector::in,
@@ -1424,6 +1617,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_fail_3(_, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_3").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_fail_4(CSD::in, CSNsVector::in,
@@ -1448,6 +1645,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_fail_4(_, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_4").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_fail_5(CSD::in, CSNsVector::in,
@@ -1474,6 +1675,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_fail_5(_, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_5").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_fail_6(CSD::in, CSNsVector::in,
@@ -1502,6 +1707,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_fail_6(_, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_6").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_fail_7(CSD::in, CSNsVector::in,
@@ -1533,6 +1742,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_fail_7(_, _, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_7").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_fail_8(CSD::in, CSNsVector::in,
@@ -1567,6 +1780,10 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+restore_recursion_depth_fail_8(_, _, _, _, _, _, _, _, _, _) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_8").
 
 :- pragma foreign_proc("C",
     restore_recursion_depth_fail_9(CSD::in, CSNsVector::in,
@@ -1604,186 +1821,13 @@
 #undef MR_REC_DEPTH_BODY
 }").
 
-% These versions are only used for back-ends for which there is no
-    % matching foreign_proc version.
-
-prepare_for_normal_call(_) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("prepare_for_normal_call").
-prepare_for_special_call(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("prepare_for_special_call").
-prepare_for_ho_call(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("prepare_for_ho_call").
-prepare_for_method_call(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("prepare_for_method_call").
-prepare_for_callback(_) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("prepare_for_callback").
-prepare_for_tail_call(_) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("prepare_for_tail_call").
-
-det_call_port_code_ac(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("det_call_port_code_ac").
-det_call_port_code_sr(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("det_call_port_code_sr").
-det_exit_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("det_exit_port_code_ac").
-det_exit_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("det_exit_port_code_sr").
-semi_call_port_code_ac(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("semi_call_port_code_ac").
-semi_call_port_code_sr(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("semi_call_port_code_sr").
-semi_exit_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("semi_exit_port_code_ac").
-semi_exit_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("semi_exit_port_code_sr").
-semi_fail_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    semidet_succeed,
-    private_builtin.sorry("semi_fail_port_code_ac").
-semi_fail_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    semidet_succeed,
-    private_builtin.sorry("semi_fail_port_code_sr").
-non_call_port_code_ac(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_call_port_code_ac").
-non_call_port_code_sr(_, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_call_port_code_sr").
-non_exit_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_exit_port_code_ac").
-non_exit_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_exit_port_code_sr").
-non_redo_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_redo_port_code_ac").
-non_redo_port_code_sr(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_redo_port_code_sr").
-non_fail_port_code_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_fail_port_code_ac").
-non_fail_port_code_sr(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("non_fail_port_code_sr").
-save_and_zero_activation_info_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_and_zero_activation_info_ac").
-save_and_zero_activation_info_sr(_) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_and_zero_activation_info_sr").
-rezero_activation_info_ac :-
-    impure private_builtin.imp,
-    private_builtin.sorry("rezero_activation_info_ac").
-rezero_activation_info_sr :-
-    impure private_builtin.imp,
-    private_builtin.sorry("rezero_activation_info_sr").
-reset_activation_info_ac(_, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("reset_activation_info_ac").
-reset_activation_info_sr(_) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("reset_activation_info_sr").
-save_recursion_depth_1(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_recursion_depth_1").
-save_recursion_depth_2(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_recursion_depth_2").
-save_recursion_depth_3(_, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_recursion_depth_3").
-save_recursion_depth_4(_, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_recursion_depth_4").
-save_recursion_depth_5(_, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_recursion_depth_5").
-save_recursion_depth_6(_, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_recursion_depth_6").
-save_recursion_depth_7(_, _, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_recursion_depth_7").
-save_recursion_depth_8(_, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_recursion_depth_8").
-save_recursion_depth_9(_, _, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("save_recursion_depth_9").
-restore_recursion_depth_exit_1(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_exit_1").
-restore_recursion_depth_exit_2(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_exit_2").
-restore_recursion_depth_exit_3(_, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_exit_3").
-restore_recursion_depth_exit_4(_, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_exit_4").
-restore_recursion_depth_exit_5(_, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_exit_5").
-restore_recursion_depth_exit_6(_, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_exit_6").
-restore_recursion_depth_exit_7(_, _, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_exit_7").
-restore_recursion_depth_exit_8(_, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_exit_8").
-restore_recursion_depth_exit_9(_, _, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_exit_9").
-restore_recursion_depth_fail_1(_, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_fail_1").
-restore_recursion_depth_fail_2(_, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_fail_2").
-restore_recursion_depth_fail_3(_, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_fail_3").
-restore_recursion_depth_fail_4(_, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_fail_4").
-restore_recursion_depth_fail_5(_, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_fail_5").
-restore_recursion_depth_fail_6(_, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_fail_6").
-restore_recursion_depth_fail_7(_, _, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_fail_7").
-restore_recursion_depth_fail_8(_, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin.imp,
-    private_builtin.sorry("restore_recursion_depth_fail_8").
 restore_recursion_depth_fail_9(_, _, _, _, _, _, _, _, _, _, _) :-
     impure private_builtin.imp,
     private_builtin.sorry("restore_recursion_depth_fail_9").
 
-:- pragma foreign_code("Erlang", "
+%---------------------------------------------------------------------------%
 
+:- pragma foreign_code("Erlang", "
     % These stubs are needed so that the Erlang compiler doesn't complain
     % about missing definitions for exported functions.
 
@@ -1842,3 +1886,5 @@ restore_recursion_depth_fail_9(_, _, _, _, _, _, _, _, _, _, _) :-
         mercury__private_builtin:sorry_1_p_0(
             ""deep profiling in Erlang backend"").
 ").
+
+%---------------------------------------------------------------------------%

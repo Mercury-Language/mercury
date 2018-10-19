@@ -540,6 +540,7 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0)
         "}"]).
 
 :- func int_length_modifier = string.
+:- pragma no_determinism_warning(int_length_modifier/0).
 
 :- pragma foreign_proc("C",
     int_length_modifier = (LengthModifier::out),
@@ -549,7 +550,6 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0)
     MR_make_aligned_string(LengthModifier, MR_INTEGER_LENGTH_MODIFIER);
 }").
 
-:- pragma no_determinism_warning(int_length_modifier/0).
 int_length_modifier = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.
@@ -560,6 +560,7 @@ int_length_modifier = _ :-
     % format string is valid.
     %
 :- func native_format_float(string, float) = string.
+:- pragma no_determinism_warning(native_format_float/2).
 
 :- pragma foreign_proc("C",
     native_format_float(FormatStr::in, Val::in) = (Str::out),
@@ -571,7 +572,6 @@ int_length_modifier = _ :-
     MR_restore_transient_hp();
 }").
 
-:- pragma no_determinism_warning(native_format_float/2).
 native_format_float(_, _) = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.
@@ -582,6 +582,7 @@ native_format_float(_, _) = _ :-
     % format string is valid.
     %
 :- func native_format_int(string, int) = string.
+:- pragma no_determinism_warning(native_format_int/2).
 
 :- pragma foreign_proc("C",
     native_format_int(FormatStr::in, Val::in) = (Str::out),
@@ -593,7 +594,6 @@ native_format_float(_, _) = _ :-
     MR_restore_transient_hp();
 }").
 
-:- pragma no_determinism_warning(native_format_int/2).
 native_format_int(_, _) = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.
@@ -604,6 +604,7 @@ native_format_int(_, _) = _ :-
     % format string is valid.
     %
 :- func native_format_string(string, string) = string.
+:- pragma no_determinism_warning(native_format_string/2).
 
 :- pragma foreign_proc("C",
     native_format_string(FormatStr::in, Val::in) = (Str::out),
@@ -615,7 +616,6 @@ native_format_int(_, _) = _ :-
     MR_restore_transient_hp();
 }").
 
-:- pragma no_determinism_warning(native_format_string/2).
 native_format_string(_, _) = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.
@@ -626,6 +626,7 @@ native_format_string(_, _) = _ :-
     % format string is valid.
     %
 :- func native_format_char(string, char) = string.
+:- pragma no_determinism_warning(native_format_char/2).
 
 :- pragma foreign_proc("C",
     native_format_char(FormatStr::in, Val::in) = (Str::out),
@@ -637,7 +638,6 @@ native_format_string(_, _) = _ :-
     MR_restore_transient_hp();
 }").
 
-:- pragma no_determinism_warning(native_format_char/2).
 native_format_char(_, _) = _ :-
     % This predicate is only called if using_sprintf/0, so we produce an error
     % by default.

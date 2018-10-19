@@ -118,6 +118,8 @@
     --->    handle(c_pointer).
 
 :- pred is_null(c_pointer::in) is semidet.
+:- pragma no_determinism_warning(is_null/1).
+
 :- pragma foreign_proc("C",
     is_null(Pointer::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -125,7 +127,6 @@
     SUCCESS_INDICATOR = ((void *) Pointer == NULL)
 ").
 
-:- pragma no_determinism_warning(is_null/1).
 is_null(_) :-
     private_builtin.sorry("is_null").
 
@@ -140,6 +141,7 @@ open(FileName, Mode, Scope, Result, !IO) :-
 
 :- pred dlopen(string::in, link_mode::in, scope::in, c_pointer::out,
     io::di, io::uo) is det.
+:- pragma no_determinism_warning(dlopen/6).
 
 :- pragma foreign_proc("C",
     dlopen(FileName::in, Mode::in, Scope::in, Result::out, _IO0::di, _IO::uo),
@@ -161,7 +163,6 @@ open(FileName, Mode, Scope, Result, !IO) :-
 #endif
 }").
 
-:- pragma no_determinism_warning(dlopen/6).
 dlopen(_, _, _, _, !IO) :-
     private_builtin.sorry("dlopen").
 
@@ -173,6 +174,7 @@ dlopen(_, _, _, _, !IO) :-
     % Convert the given procedure address to a closure.
     %
 :- func make_closure(c_pointer) = c_pointer.
+:- pragma no_determinism_warning(make_closure/1).
 
 :- pragma foreign_proc("C",
     make_closure(ProcAddr::in) = (Closure::out),
@@ -183,7 +185,6 @@ dlopen(_, _, _, _, !IO) :-
     MR_restore_transient_hp();
 }").
 
-:- pragma no_determinism_warning(make_closure/1).
 make_closure(_) = _ :-
     private_builtin.sorry("make_closure").
 
@@ -311,6 +312,7 @@ mercury_sym(Handle, MercuryProc0, Result, !IO) :-
 
 :- pred dlsym(c_pointer::in, string::in, c_pointer::out,
     io::di, io::uo) is det.
+:- pragma no_determinism_warning(dlsym/5).
 
 :- pragma foreign_proc("C",
     dlsym(Handle::in, Name::in, Pointer::out, _IO0::di, _IO::uo),
@@ -323,11 +325,11 @@ mercury_sym(Handle, MercuryProc0, Result, !IO) :-
 #endif
 }").
 
-:- pragma no_determinism_warning(dlsym/5).
 dlsym(_, _, _, !IO) :-
     private_builtin.sorry("dlsym").
 
 :- pred dlerror(string::out, io::di, io::uo) is det.
+:- pragma no_determinism_warning(dlerror/3).
 
 :- pragma foreign_proc("C",
     dlerror(ErrorMsg::out, _IO0::di, _IO::uo),
@@ -346,7 +348,6 @@ dlsym(_, _, _, !IO) :-
     MR_make_aligned_string_copy(ErrorMsg, msg);
 }").
 
-:- pragma no_determinism_warning(dlerror/3).
 dlerror(_, !IO) :-
     private_builtin.sorry("dlerror").
 
@@ -356,12 +357,13 @@ close(handle(Handle), Result, !IO) :-
     Result = (if ErrorMsg = "" then dl_ok else dl_error(ErrorMsg)).
 
 :- pred dlclose(c_pointer::in, io::di, io::uo) is det.
+:- pragma no_determinism_warning(dlclose/3).
 
-    % Note that dlclose() may call finalization code (e.g. destructors
-    % for global variables in C++) which may end up calling Mercury,
-    % so it's not safe to declare this as `will_not_call_mercury'.
 :- pragma foreign_proc("C",
     dlclose(Handle::in, _IO0::di, _IO::uo),
+    % Note that dlclose() may call finalization code (e.g. destructors
+    % for global variables in C++) which may end up calling Mercury,
+    % so it is NOT safe to declare this as `will_not_call_mercury'.
     [may_call_mercury, promise_pure, tabled_for_io],
 "
 #if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLCLOSE)
@@ -369,13 +371,14 @@ close(handle(Handle), Result, !IO) :-
 #endif
 ").
 
-:- pragma no_determinism_warning(dlclose/3).
 dlclose(_, !IO) :-
     private_builtin.sorry("dlclose").
 
 %---------------------------------------------------------------------------%
 
 :- pred high_level_code is semidet.
+:- pragma no_determinism_warning(high_level_code/0).
+
 :- pragma foreign_proc("C",
     high_level_code,
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -387,7 +390,6 @@ dlclose(_, !IO) :-
 #endif
 ").
 
-:- pragma no_determinism_warning(high_level_code/0).
 high_level_code :-
     private_builtin.sorry("high_level_code").
 

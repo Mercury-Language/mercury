@@ -625,6 +625,8 @@ pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
 
 %---------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(pseudo_type_ctor/1).
+
 :- pragma foreign_proc("C",
     type_ctor(TypeInfo::in) = (TypeCtor::out),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
@@ -673,7 +675,6 @@ type_ctor(TypeDesc) = TypeCtorDesc :-
     }
 }").
 
-:- pragma no_determinism_warning(pseudo_type_ctor/1).
 pseudo_type_ctor(_) = _ :-
     private_builtin.sorry("pseudo_type_ctor/1").
 
@@ -862,6 +863,7 @@ type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pragma promise_equivalent_clauses(make_type/2).
+:- pragma no_determinism_warning(make_type/2).
 
 make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
     ( if erlang_rtti_implementation.is_erlang_backend then
@@ -871,7 +873,6 @@ make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
         private_builtin.sorry("make_type(in, in) = out")
     ).
 
-:- pragma no_determinism_warning(make_type/2).
 make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     private_builtin.sorry("make_type(out, out) = in").
 

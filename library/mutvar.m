@@ -85,84 +85,6 @@ new_mutvar(X, Ref) :-
     Ref = unsafe_promise_unique(Ref0).
 
 %---------------------------------------------------------------------------%
-%
-% C implementation
-%
-
-    %  This type is a builtin type whose operations are implemented in C.
-    %
-:- type mutvar(T)
-    --->    mutvar(private_builtin.ref(T)).
-
-:- pragma foreign_proc("C",
-    new_mutvar0(Ref::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_ALLOC_ID, ""mutvar.mutvar/1"");
-    MR_define_size_slot(0, Ref, 1);
-").
-
-:- pragma foreign_proc("C",
-    get_mutvar(Ref::in, X::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    X = * (MR_Word *) Ref;
-").
-
-:- pragma foreign_proc("C",
-    set_mutvar(Ref::in, X::in),
-    [will_not_call_mercury, thread_safe],
-"
-    *(MR_Word *) Ref = X;
-").
-
-:- pragma foreign_proc("C",
-    clear_mutvar(Ref::in),
-    [will_not_call_mercury, thread_safe],
-"
-    *(MR_Word *) Ref = 0;
-").
-
-%---------------------------------------------------------------------------%
-%
-% C# implementation
-%
-
-:- pragma foreign_type("C#", mutvar(T), "object[]").
-
-:- pragma foreign_proc("C#",
-    new_mutvar0(Ref::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    Ref = new object[1];
-").
-
-:- pragma foreign_proc("C#",
-    get_mutvar(Ref::in, X::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    X = Ref[0];
-").
-
-:- pragma foreign_proc("C#",
-    set_mutvar(Ref::in, X::in),
-    [will_not_call_mercury, thread_safe],
-"
-    Ref[0] = X;
-").
-
-:- pragma foreign_proc("C#",
-    clear_mutvar(Ref::in),
-    [will_not_call_mercury, thread_safe],
-"
-    Ref[0] = null;
-").
-
-%---------------------------------------------------------------------------%
-%
-% Java implementation
-%
 
 :- pragma foreign_code("Java",
 "
@@ -178,45 +100,39 @@ new_mutvar(X, Ref) :-
     }
 ").
 
-:- pragma foreign_type("Java", mutvar(T), "mutvar.Mutvar").
+    %  This type is a builtin type whose operations are implemented in C.
+    %
+:- type mutvar(T)
+    --->    mutvar(private_builtin.ref(T)).
 
+:- pragma foreign_type("C#", mutvar(T), "object[]").
+:- pragma foreign_type("Java", mutvar(T), "mutvar.Mutvar").
+:- pragma foreign_type("Erlang", mutvar(T), "").
+% Erlang implementation:
+% XXX ets are not garbage collected but shareable between processes
+
+%---------------------%
+
+:- pragma foreign_proc("C",
+    new_mutvar0(Ref::uo),
+    [will_not_call_mercury, thread_safe],
+"
+    MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
+        MR_ALLOC_ID, ""mutvar.mutvar/1"");
+    MR_define_size_slot(0, Ref, 1);
+").
+:- pragma foreign_proc("C#",
+    new_mutvar0(Ref::uo),
+    [will_not_call_mercury, thread_safe],
+"
+    Ref = new object[1];
+").
 :- pragma foreign_proc("Java",
     new_mutvar0(Ref::uo),
     [will_not_call_mercury, thread_safe],
 "
     Ref = new mutvar.Mutvar();
 ").
-
-:- pragma foreign_proc("Java",
-    get_mutvar(Ref::in, X::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    X = Ref.object;
-").
-
-:- pragma foreign_proc("Java",
-    set_mutvar(Ref::in, X::in),
-    [will_not_call_mercury, thread_safe],
-"
-    Ref.object = X;
-").
-
-:- pragma foreign_proc("Java",
-    clear_mutvar(Ref::in),
-    [will_not_call_mercury, thread_safe],
-"
-    Ref.object = null;
-").
-
-%---------------------------------------------------------------------------%
-%
-% Erlang implementation
-% XXX ets are not garbage collected
-% but shareable between processes
-%
-
-:- pragma foreign_type("Erlang", mutvar(T), "").
-
 :- pragma foreign_proc("Erlang",
     new_mutvar0(Ref::uo),
     [will_not_call_mercury, thread_safe],
@@ -224,6 +140,26 @@ new_mutvar(X, Ref) :-
     Ref = ets:new(mutvar, [set, public])
 ").
 
+%---------------------%
+
+:- pragma foreign_proc("C",
+    get_mutvar(Ref::in, X::uo),
+    [will_not_call_mercury, thread_safe],
+"
+    X = * (MR_Word *) Ref;
+").
+:- pragma foreign_proc("C#",
+    get_mutvar(Ref::in, X::uo),
+    [will_not_call_mercury, thread_safe],
+"
+    X = Ref[0];
+").
+:- pragma foreign_proc("Java",
+    get_mutvar(Ref::in, X::uo),
+    [will_not_call_mercury, thread_safe],
+"
+    X = Ref.object;
+").
 :- pragma foreign_proc("Erlang",
     get_mutvar(Ref::in, X::uo),
     [will_not_call_mercury, thread_safe],
@@ -231,6 +167,26 @@ new_mutvar(X, Ref) :-
     [{value, X}] = ets:lookup(Ref, value)
 ").
 
+%---------------------%
+
+:- pragma foreign_proc("C",
+    set_mutvar(Ref::in, X::in),
+    [will_not_call_mercury, thread_safe],
+"
+    *(MR_Word *) Ref = X;
+").
+:- pragma foreign_proc("C#",
+    set_mutvar(Ref::in, X::in),
+    [will_not_call_mercury, thread_safe],
+"
+    Ref[0] = X;
+").
+:- pragma foreign_proc("Java",
+    set_mutvar(Ref::in, X::in),
+    [will_not_call_mercury, thread_safe],
+"
+    Ref.object = X;
+").
 :- pragma foreign_proc("Erlang",
     set_mutvar(Ref::in, X::in),
     [will_not_call_mercury, thread_safe],
@@ -238,6 +194,26 @@ new_mutvar(X, Ref) :-
     ets:insert(Ref, {value, X})
 ").
 
+%---------------------%
+
+:- pragma foreign_proc("C",
+    clear_mutvar(Ref::in),
+    [will_not_call_mercury, thread_safe],
+"
+    *(MR_Word *) Ref = 0;
+").
+:- pragma foreign_proc("C#",
+    clear_mutvar(Ref::in),
+    [will_not_call_mercury, thread_safe],
+"
+    Ref[0] = null;
+").
+:- pragma foreign_proc("Java",
+    clear_mutvar(Ref::in),
+    [will_not_call_mercury, thread_safe],
+"
+    Ref.object = null;
+").
 :- pragma foreign_proc("Erlang",
     clear_mutvar(Ref::in),
     [will_not_call_mercury, thread_safe],

@@ -630,6 +630,10 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 % currently we don't support implementations in multiple languages
 % for procedures with existentially typed arguments.
 
+% XXX The Mercury implementations of these predicates are inefficient,
+% since they unnecessarily construct the list of univs for all the arguments,
+% rather than just constructing one univ for the argument selected.
+
 :- pred univ_arg_dna(T::in, int::in, univ::out) is semidet.
 :- pred univ_arg_can(T::in, int::in, univ::out) is semidet.
 
@@ -654,6 +658,8 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 :- pred univ_named_arg_idcc(T::in, string::in, univ::in, univ::out, int::out)
     is cc_multi.
 
+%---------------------%
+
 :- pragma foreign_proc("C",
     univ_arg_dna(Term::in, Index::in, Argument::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -675,6 +681,10 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 #undef  SAVE_SUCCESS
 }").
 
+univ_arg_dna(Term, Index, Arg) :-
+    local_deconstruct(Term, do_not_allow, _Functor, _, _Arity, Arguments),
+    list.index0(Arguments, Index, Arg).
+
 :- pragma foreign_proc("C",
     univ_arg_can(Term::in, Index::in, Argument::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -695,6 +705,10 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 #undef  NONCANON
 #undef  SAVE_SUCCESS
 }").
+
+univ_arg_can(Term, Index, Arg) :-
+    local_deconstruct(Term, canonicalize, _Functor, _, _Arity, Arguments),
+    list.index0(Arguments, Index, Arg).
 
 :- pragma foreign_proc("C",
     univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
@@ -723,6 +737,17 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
     }
 }").
 
+univ_arg_idcc(Term, Index, DummyUniv, Argument, Success) :-
+    local_deconstruct(Term, include_details_cc, _Functor, _FunctorNumber,
+        _Arity, Arguments),
+    ( if list.index0(Arguments, Index, Arg) then
+        Argument = Arg,
+        Success = 1
+    else
+        Argument = DummyUniv,
+        Success = 0
+    ).
+
 :- pragma foreign_proc("C",
     univ_named_arg_dna(Term::in, Name::in, Argument::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -746,6 +771,9 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 #undef  SAVE_SUCCESS
 }").
 
+univ_named_arg_dna(Term, Name, Argument) :-
+    local_univ_named_arg(Term, do_not_allow, Name, Argument).
+
 :- pragma foreign_proc("C",
     univ_named_arg_can(Term::in, Name::in, Argument::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -768,6 +796,9 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 #undef  SELECT_BY_NAME
 #undef  SAVE_SUCCESS
 }").
+
+univ_named_arg_can(Term, Name, Argument) :-
+    local_univ_named_arg(Term, canonicalize, Name, Argument).
 
 :- pragma foreign_proc("C",
     univ_named_arg_idcc(Term::in, Name::in, DummyUniv::in,
@@ -799,35 +830,6 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 
 }").
 
-% XXX These Mercury implementations are all inefficient, since they
-% unnecessarily construct the list of univs for all the arguments, rather than
-% just constructing one univ for the argument selected.
-
-univ_arg_dna(Term, Index, Arg) :-
-    local_deconstruct(Term, do_not_allow, _Functor, _, _Arity, Arguments),
-    list.index0(Arguments, Index, Arg).
-
-univ_arg_can(Term, Index, Arg) :-
-    local_deconstruct(Term, canonicalize, _Functor, _, _Arity, Arguments),
-    list.index0(Arguments, Index, Arg).
-
-univ_arg_idcc(Term, Index, DummyUniv, Argument, Success) :-
-    local_deconstruct(Term, include_details_cc, _Functor, _FunctorNumber,
-        _Arity, Arguments),
-    ( if list.index0(Arguments, Index, Arg) then
-        Argument = Arg,
-        Success = 1
-    else
-        Argument = DummyUniv,
-        Success = 0
-    ).
-
-univ_named_arg_dna(Term, Name, Argument) :-
-    local_univ_named_arg(Term, do_not_allow, Name, Argument).
-
-univ_named_arg_can(Term, Name, Argument) :-
-    local_univ_named_arg(Term, canonicalize, Name, Argument).
-
 univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
     ( if local_univ_named_arg(Term, include_details_cc, Name, Arg) then
         Argument = Arg,
@@ -850,6 +852,10 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 :- pred deconstruct_can(T::in, string::out, int::out, list(univ)::out) is det.
 :- pred deconstruct_idcc(T::in, string::out,
     int::out, int::out, list(univ)::out) is cc_multi.
+
+    % XXX The Mercury implementations of all of these limited_* procedures
+    % are inefficient -- they construct Functor and Arguments even in the case
+    % when Arity > MaxArity.
 
 :- pred limited_deconstruct_dna(T::in, int::in,
     string::out, int::out, list(univ)::out) is semidet.
@@ -885,6 +891,10 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #undef  NONCANON
 }").
 
+deconstruct_dna(Term, Functor, FunctorNumber, Arity, Arguments) :-
+    local_deconstruct(Term, do_not_allow, Functor, FunctorNumber, Arity,
+        Arguments).
+
 :- pragma foreign_proc("C",
     deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -909,6 +919,9 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #undef  ARGUMENTS_ARG
 #undef  NONCANON
 }").
+
+deconstruct_can(Term, Functor, Arity, Arguments) :-
+    local_deconstruct(Term, canonicalize, Functor, _, Arity, Arguments).
 
 :- pragma foreign_proc("C",
     deconstruct_idcc(Term::in, Functor::out, FunctorNumber::out,
@@ -936,6 +949,10 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #undef  ARGUMENTS_ARG
 #undef  NONCANON
 }").
+
+deconstruct_idcc(Term, Functor, FunctorNumber, Arity, Arguments) :-
+    local_deconstruct(Term, include_details_cc, Functor, FunctorNumber, Arity,
+        Arguments).
 
 :- pragma foreign_proc("C",
     limited_deconstruct_dna(Term::in, MaxArity::in,
@@ -966,6 +983,10 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #undef  SAVE_SUCCESS
 }").
 
+limited_deconstruct_dna(Term, MaxArity, Functor, Arity, Arguments) :-
+    local_deconstruct(Term, do_not_allow, Functor, _, Arity, Arguments),
+    Arity =< MaxArity.
+
 :- pragma foreign_proc("C",
     limited_deconstruct_can(Term::in, MaxArity::in,
         Functor::out, Arity::out, Arguments::out),
@@ -994,6 +1015,10 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
 #undef  NONCANON
 #undef  SAVE_SUCCESS
 }").
+
+limited_deconstruct_can(Term, MaxArity, Functor, Arity, Arguments) :-
+    local_deconstruct(Term, canonicalize, Functor, _, Arity, Arguments),
+    Arity =< MaxArity.
 
 :- pragma foreign_proc("C",
     limited_deconstruct_idcc(Term::in, MaxArity::in, Functor::out,
@@ -1032,28 +1057,6 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
         Arguments = MR_list_empty();
     }
 }").
-
-deconstruct_dna(Term, Functor, FunctorNumber, Arity, Arguments) :-
-    local_deconstruct(Term, do_not_allow, Functor, FunctorNumber, Arity,
-        Arguments).
-
-deconstruct_can(Term, Functor, Arity, Arguments) :-
-    local_deconstruct(Term, canonicalize, Functor, _, Arity, Arguments).
-
-deconstruct_idcc(Term, Functor, FunctorNumber, Arity, Arguments) :-
-    local_deconstruct(Term, include_details_cc, Functor, FunctorNumber, Arity,
-        Arguments).
-
-    % XXX The Mercury implementations of all of these limited_* procedures
-    % are inefficient -- they construct Functor and Arguments even in the case
-    % when Arity > MaxArity.
-limited_deconstruct_dna(Term, MaxArity, Functor, Arity, Arguments) :-
-    local_deconstruct(Term, do_not_allow, Functor, _, Arity, Arguments),
-    Arity =< MaxArity.
-
-limited_deconstruct_can(Term, MaxArity, Functor, Arity, Arguments) :-
-    local_deconstruct(Term, canonicalize, Functor, _, Arity, Arguments),
-    Arity =< MaxArity.
 
 limited_deconstruct_idcc(Term, _MaxArity, Functor, Arity, Arguments) :-
     % For this one, the caller checks Arity =< MaxArity.

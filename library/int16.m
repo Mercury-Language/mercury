@@ -381,6 +381,8 @@ det_from_int(I) = I16 :-
         error("int16.det_from_int: cannot convert int to int16")
     ).
 
+:- pragma no_determinism_warning(cast_from_int/1).
+
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (I16::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -403,12 +405,13 @@ det_from_int(I) = I16 :-
     I16 = (short) I;
 ").
 
-:- pragma no_determinism_warning(cast_from_int/1).
 cast_from_int(_) = _ :-
     sorry($module, "int16.cast_from_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(to_int/1).
+
 :- pragma foreign_proc("C",
     to_int(I16::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -430,10 +433,11 @@ cast_from_int(_) = _ :-
     I = I16;
 ").
 
-:- pragma no_determinism_warning(to_int/1).
 to_int(_) = _ :-
     sorry($module, "int16.to_int/1 NYI for Erlang").
 
+:- pragma no_determinism_warning(cast_to_int/1).
+
 :- pragma foreign_proc("C",
     cast_to_int(I16::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -455,11 +459,12 @@ to_int(_) = _ :-
     I = I16;
 ").
 
-:- pragma no_determinism_warning(cast_to_int/1).
 cast_to_int(_) = _ :-
     sorry($module, "int16.cast_to_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_from_uint16/1).
 
 :- pragma foreign_proc("C",
     cast_from_uint16(U16::in) = (I16::out),
@@ -483,7 +488,6 @@ cast_to_int(_) = _ :-
     I16 = U16;
 ").
 
-:- pragma no_determinism_warning(cast_from_uint16/1).
 cast_from_uint16(_) = _ :-
     sorry($module, "int16.cast_from_uint16/1 NYI for Erlang").
 
@@ -641,6 +645,8 @@ num_trailing_zeros(I16) = N :-
 
 %---------------------%
 
+:- pragma no_determinism_warning(reverse_bytes/1).
+
 :- pragma foreign_proc("C",
     reverse_bytes(A::in) = (B::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -662,7 +668,6 @@ num_trailing_zeros(I16) = N :-
     B = java.lang.Short.reverseBytes(A);
 ").
 
-:- pragma no_determinism_warning(reverse_bytes/1).
 reverse_bytes(_) = _ :-
     sorry($module, "int16.reverse_bytes/1 NYI for Erlang").
 

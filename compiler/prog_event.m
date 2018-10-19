@@ -148,9 +148,6 @@ read_specs_file(SpecsFile, TermFile, Result, !IO) :-
         Result = error(Problem)
     ).
 
-:- pred read_specs_file_2(string::in, string::in, string::out,
-    io::di, io::uo) is det.
-
 :- pragma foreign_decl("C",
 "
 #include ""mercury_event_spec.h""
@@ -166,6 +163,10 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
                 int spec_fd, size_t size, char *spec_buf);
 ").
 
+:- pred read_specs_file_2(string::in, string::in, string::out,
+    io::di, io::uo) is det.
+:- pragma no_determinism_warning(read_specs_file_2/5).
+
 :- pragma foreign_proc("C",
     read_specs_file_2(SpecsFileName::in, TermFileName::in, Problem::out,
         _IO0::di, _IO::uo),
@@ -178,7 +179,6 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
     MR_restore_transient_hp();
 ").
 
-:- pragma no_determinism_warning(read_specs_file_2/5).
 read_specs_file_2(_, _, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 

@@ -340,6 +340,8 @@
 
 %---------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(from_int/2).
+
 :- pragma foreign_proc("C",
     from_int(I::in, U64::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -370,7 +372,6 @@
     SUCCESS_INDICATOR = (I < 0) ? false : true;
 ").
 
-:- pragma no_determinism_warning(from_int/2).
 from_int(_, _) :-
     sorry($module, "uint64.from_int NYI for Erlang").
 
@@ -382,6 +383,8 @@ det_from_int(I) = U64 :-
     ).
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_from_int/1).
 
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (U64::out),
@@ -405,11 +408,12 @@ det_from_int(I) = U64 :-
     U64 = I;
 ").
 
-:- pragma no_determinism_warning(cast_from_int/1).
 cast_from_int(_) = _ :-
     sorry($module, "uint64.cast_from_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_to_int/1).
 
 :- pragma foreign_proc("C",
     cast_to_int(U64::in) = (I::out),
@@ -433,11 +437,12 @@ cast_from_int(_) = _ :-
     I = (int) U64;
 ").
 
-:- pragma no_determinism_warning(cast_to_int/1).
 cast_to_int(_) = _ :-
     sorry($module, "uint64.cast_to_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_to_uint/1).
 
 :- pragma foreign_proc("C",
     cast_to_uint(U64::in) = (U::out),
@@ -461,11 +466,12 @@ cast_to_int(_) = _ :-
     U = (int) U64;
 ").
 
-:- pragma no_determinism_warning(cast_to_uint/1).
 cast_to_uint(_) = _ :-
     sorry($module, "uint64.cast_to_uint/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_from_int64/1).
 
 :- pragma foreign_proc("C",
     cast_from_int64(I64::in) = (U64::out),
@@ -489,7 +495,6 @@ cast_to_uint(_) = _ :-
     U64 = I64;
 ").
 
-:- pragma no_determinism_warning(cast_from_int64/1).
 cast_from_int64(_) = _ :-
     sorry($module, "uint64.cast_from_int64/1 NYI for Erlang").
 

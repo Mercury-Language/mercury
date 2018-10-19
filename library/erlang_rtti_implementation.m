@@ -535,6 +535,7 @@ type_ctor_desc_and_args(TypeDesc, TypeCtorDesc, ArgsDescs) :-
     ArgsDescs = type_descs_from_type_infos(ArgInfos).
 
 :- func make_pred_type_ctor_desc(int) = type_ctor_desc.
+:- pragma no_determinism_warning(make_pred_type_ctor_desc/1).
 
 :- pragma foreign_proc("Erlang",
     make_pred_type_ctor_desc(Arity::in) = (TypeCtorDesc::out),
@@ -543,11 +544,11 @@ type_ctor_desc_and_args(TypeDesc, TypeCtorDesc, ArgsDescs) :-
     TypeCtorDesc = {pred, Arity}
 ").
 
-:- pragma no_determinism_warning(make_pred_type_ctor_desc/1).
 make_pred_type_ctor_desc(_) = _ :-
     private_builtin.sorry("make_pred_type_ctor_desc").
 
 :- func make_func_type_ctor_desc(int) = type_ctor_desc.
+:- pragma no_determinism_warning(make_func_type_ctor_desc/1).
 
 :- pragma foreign_proc("Erlang",
     make_func_type_ctor_desc(Arity::in) = (TypeCtorDesc::out),
@@ -556,11 +557,11 @@ make_pred_type_ctor_desc(_) = _ :-
     TypeCtorDesc = {func, Arity}
 ").
 
-:- pragma no_determinism_warning(make_func_type_ctor_desc/1).
 make_func_type_ctor_desc(_) = _ :-
     private_builtin.sorry("make_func_type_ctor_desc").
 
 :- func make_tuple_type_ctor_desc(int) = type_ctor_desc.
+:- pragma no_determinism_warning(make_tuple_type_ctor_desc/1).
 
 :- pragma foreign_proc("Erlang",
     make_tuple_type_ctor_desc(Arity::in) = (TypeCtorDesc::out),
@@ -569,7 +570,6 @@ make_func_type_ctor_desc(_) = _ :-
     TypeCtorDesc = {tuple, Arity}
 ").
 
-:- pragma no_determinism_warning(make_tuple_type_ctor_desc/1).
 make_tuple_type_ctor_desc(_) = _ :-
     private_builtin.sorry("make_tuple_type_ctor_desc").
 
@@ -662,6 +662,8 @@ make_fixed_arity_type_info(TypeCtorInfo, ArgTypeInfos, TypeInfo) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(type_ctor_desc_name_and_arity/4).
+
 :- pragma foreign_proc("Erlang",
     type_ctor_desc_name_and_arity(TypeCtorDesc::in, ModuleName::out, Name::out,
         Arity::out),
@@ -690,7 +692,6 @@ make_fixed_arity_type_info(TypeCtorInfo, ArgTypeInfos, TypeInfo) :-
     end
 ").
 
-:- pragma no_determinism_warning(type_ctor_desc_name_and_arity/4).
 type_ctor_desc_name_and_arity(_, _, _, _) :-
     private_builtin.sorry("type_ctor_desc_name_and_arity/4").
 
@@ -1598,6 +1599,7 @@ check_tuple_arg_types(TypeInfo, [I | Is], [U | Us]) :-
     check_tuple_arg_types(TypeInfo, Is, Us).
 
 :- func univ_type_info(univ) = type_info.
+:- pragma no_determinism_warning(univ_type_info/1).
 
 :- pragma foreign_proc(erlang,
     univ_type_info(Univ::in) = (TypeInfo::out),
@@ -1606,13 +1608,13 @@ check_tuple_arg_types(TypeInfo, [I | Is], [U | Us]) :-
     {univ_cons, TypeInfo, _} = Univ
 ").
 
-:- pragma no_determinism_warning(univ_type_info/1).
 univ_type_info(_) = _ :-
     private_builtin.sorry("univ_type_info").
 
     % Construct a du type and store it in a univ.
     %
 :- func construct_univ(type_info, string, list(univ)) = univ.
+:- pragma no_determinism_warning(construct_univ/3).
 
 :- pragma foreign_proc(erlang,
     construct_univ(TypeInfo::in, Functor::in, Args::in) = (Univ::out),
@@ -1628,7 +1630,6 @@ univ_type_info(_) = _ :-
             [list_to_atom(List) | lists:map(fun univ_to_value/1, Args)])}
 ").
 
-:- pragma no_determinism_warning(construct_univ/3).
 construct_univ(_, _, _) = _ :-
     private_builtin.sorry("construct_univ").
 
@@ -1650,6 +1651,7 @@ construct_tuple_univ(_, _) = _ :-
     % Construct a empty list and store it in a univ.
     %
 :- func construct_empty_list_univ(type_info) = univ.
+:- pragma no_determinism_warning(construct_empty_list_univ/1).
 
 :- pragma foreign_proc(erlang,
     construct_empty_list_univ(TypeInfo::in) = (Univ::out),
@@ -1658,13 +1660,13 @@ construct_tuple_univ(_, _) = _ :-
     Univ = {univ_cons, TypeInfo, []}
 ").
 
-:- pragma no_determinism_warning(construct_empty_list_univ/1).
 construct_empty_list_univ(_) = _ :-
     private_builtin.sorry("construct_empty_list_univ").
 
     % Construct a cons cell and store it in a univ.
     %
 :- func construct_list_cons_univ(type_info, univ, univ) = univ.
+:- pragma no_determinism_warning(construct_list_cons_univ/3).
 
 :- pragma foreign_proc(erlang,
     construct_list_cons_univ(TypeInfo::in, H::in, T::in) = (Univ::out),
@@ -1673,7 +1675,6 @@ construct_empty_list_univ(_) = _ :-
     Univ = {univ_cons, TypeInfo, [univ_to_value(H) | univ_to_value(T)]}
 ").
 
-:- pragma no_determinism_warning(construct_list_cons_univ/3).
 construct_list_cons_univ(_, _, _) = _ :-
     private_builtin.sorry("construct_list_cons_univ").
 
@@ -1697,6 +1698,7 @@ construct_tuple_2(Args, ArgTypes, Arity) = Tuple :-
     Tuple = construct_tuple_3(TypeInfo, Arity, ArgTypes, Args).
 
 :- func construct_tuple_3(type_info, int, list(type_desc), list(univ)) = univ.
+:- pragma no_determinism_warning(construct_tuple_3/4).
 
 :- pragma foreign_proc(erlang,
     construct_tuple_3(TI::in, Arity::in, ArgTypes::in, Args::in) = (Term::out),
@@ -1713,7 +1715,6 @@ construct_tuple_2(Args, ArgTypes, Arity) = Tuple :-
     Term = {univ_cons, TupleTypeInfo, Tuple}
 ").
 
-:- pragma no_determinism_warning(construct_tuple_3/4).
 construct_tuple_3(_, _, _, _) = _ :-
     private_builtin.sorry("construct_tuple_3").
 
@@ -1822,6 +1823,7 @@ var_arity_type_info_index(I, TI) = TI ^ unsafe_type_info_index(I + 2).
     % directly.
     %
 :- func unsafe_type_info_index(int, type_info) = type_info.
+:- pragma no_determinism_warning(unsafe_type_info_index/2).
 
 :- pragma foreign_proc("Erlang",
     unsafe_type_info_index(Index::in, TypeInfo::in) = (SubTypeInfo::out),
@@ -1830,11 +1832,11 @@ var_arity_type_info_index(I, TI) = TI ^ unsafe_type_info_index(I + 2).
     SubTypeInfo = element(Index, TypeInfo)
 ").
 
-:- pragma no_determinism_warning(unsafe_type_info_index/2).
 unsafe_type_info_index(_, _) = type_info :-
     det_unimplemented("unsafe_type_info_index").
 
 :- func get_fixed_arity_arg_type_infos(type_info) = list(type_info).
+:- pragma no_determinism_warning(get_fixed_arity_arg_type_infos/1).
 
 :- pragma foreign_proc("Erlang",
     get_fixed_arity_arg_type_infos(TypeInfo::in) = (Args::out),
@@ -1848,11 +1850,11 @@ unsafe_type_info_index(_, _) = type_info :-
     end
 ").
 
-:- pragma no_determinism_warning(get_fixed_arity_arg_type_infos/1).
 get_fixed_arity_arg_type_infos(_) = _ :-
     private_builtin.sorry("get_fixed_arity_arg_type_infos").
 
 :- func get_var_arity_arg_type_infos(type_info) = list(type_info).
+:- pragma no_determinism_warning(get_var_arity_arg_type_infos/1).
 
 :- pragma foreign_proc("Erlang",
     get_var_arity_arg_type_infos(TypeInfo::in) = (Args::out),
@@ -1861,7 +1863,6 @@ get_fixed_arity_arg_type_infos(_) = _ :-
     Args = lists:nthtail(?ML_ti_var_arity, tuple_to_list(TypeInfo))
 ").
 
-:- pragma no_determinism_warning(get_var_arity_arg_type_infos/1).
 get_var_arity_arg_type_infos(_) = _ :-
     private_builtin.sorry("get_var_arity_arg_type_infos").
 
@@ -1869,6 +1870,7 @@ get_var_arity_arg_type_infos(_) = _ :-
 %---------------------------------------------------------------------------%
 
 :- func type_ctor_rep(type_ctor_info_evaled) = erlang_type_ctor_rep.
+:- pragma no_determinism_warning(type_ctor_rep/1).
 
 :- pragma foreign_proc("Erlang",
     type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
@@ -1880,7 +1882,6 @@ get_var_arity_arg_type_infos(_) = _ :-
     void
 ").
 
-:- pragma no_determinism_warning(type_ctor_rep/1).
 type_ctor_rep(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -2032,84 +2033,6 @@ unsafe_cast(T) = U :-
     % used by default.
 
 :- pred semidet_call_3(P::in, T::in, U::in) is semidet.
-semidet_call_3(_::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_3").
-
-:- pred semidet_call_4(P::in, A::in, T::in, U::in) is semidet.
-semidet_call_4(_::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_4").
-
-:- pred semidet_call_5(P::in, A::in, B::in, T::in, U::in) is semidet.
-semidet_call_5(_::in, _::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_5").
-
-:- pred semidet_call_6(P::in, A::in, B::in, C::in, T::in, U::in) is semidet.
-semidet_call_6(_::in, _::in, _::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_6").
-
-:- pred semidet_call_7(P::in, A::in, B::in, C::in, D::in, T::in, U::in)
-    is semidet.
-semidet_call_7(_::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_7").
-
-:- pred semidet_call_8(P::in, A::in, B::in, C::in, D::in, E::in, T::in, U::in)
-    is semidet.
-semidet_call_8(_::in, _::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
-    semidet_unimplemented("semidet_call_8").
-
-:- pred result_call_4(P::in, comparison_result::out,
-    T::in, U::in) is det.
-result_call_4(_::in, (=)::out, _::in, _::in) :-
-    det_unimplemented("result_call_4").
-
-:- pred result_call_5(P::in, comparison_result::out,
-    A::in, T::in, U::in) is det.
-result_call_5(_::in, (=)::out, _::in, _::in, _::in) :-
-    det_unimplemented("comparison_result").
-
-:- pred result_call_6(P::in, comparison_result::out,
-    A::in, B::in, T::in, U::in) is det.
-result_call_6(_::in, (=)::out, _::in, _::in, _::in, _::in) :-
-    det_unimplemented("comparison_result").
-
-:- pred result_call_7(P::in, comparison_result::out,
-    A::in, B::in, C::in, T::in, U::in) is det.
-result_call_7(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in) :-
-    det_unimplemented("comparison_result").
-
-:- pred result_call_8(P::in, comparison_result::out,
-    A::in, B::in, C::in, D::in, T::in, U::in) is det.
-result_call_8(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in, _::in) :-
-    det_unimplemented("comparison_result").
-
-:- pred result_call_9(P::in, comparison_result::out,
-    A::in, B::in, C::in, D::in, E::in, T::in, U::in) is det.
-result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
-        _::in, _::in) :-
-    det_unimplemented("result_call_9").
-
-:- pred semidet_unimplemented(string::in) is semidet.
-
-semidet_unimplemented(S) :-
-    ( semidet_succeed ->
-        unexpected($module, $pred, "unimplemented: " ++ S)
-    ;
-        semidet_succeed
-    ).
-
-:- pred det_unimplemented(string::in) is det.
-
-det_unimplemented(S) :-
-    ( semidet_succeed ->
-        unexpected($module, $pred, "unimplemented: " ++ S)
-    ;
-        true
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-    % We override the above definitions in the Erlang backend.
 
 :- pragma foreign_proc("Erlang",
     semidet_call_3(Pred::in, X::in, Y::in),
@@ -2117,18 +2040,42 @@ det_unimplemented(S) :-
 "
     SUCCESS_INDICATOR = case Pred(X, Y) of {} -> true; fail -> false end
 ").
+
+semidet_call_3(_::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_3").
+
+%---------------------%
+
+:- pred semidet_call_4(P::in, A::in, T::in, U::in) is semidet.
+
 :- pragma foreign_proc("Erlang",
     semidet_call_4(Pred::in, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = case Pred(A, X, Y) of {} -> true; fail -> false end
 ").
+
+semidet_call_4(_::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_4").
+
+%---------------------%
+
+:- pred semidet_call_5(P::in, A::in, B::in, T::in, U::in) is semidet.
+
 :- pragma foreign_proc("Erlang",
     semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = case Pred(A, B, X, Y) of {} -> true; fail -> false end
 ").
+
+semidet_call_5(_::in, _::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_5").
+
+%---------------------%
+
+:- pred semidet_call_6(P::in, A::in, B::in, C::in, T::in, U::in) is semidet.
+
 :- pragma foreign_proc("Erlang",
     semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2139,6 +2086,15 @@ det_unimplemented(S) :-
             fail -> false
         end
 ").
+
+semidet_call_6(_::in, _::in, _::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_6").
+
+%---------------------%
+
+:- pred semidet_call_7(P::in, A::in, B::in, C::in, D::in, T::in, U::in)
+    is semidet.
+
 :- pragma foreign_proc("Erlang",
     semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2149,6 +2105,15 @@ det_unimplemented(S) :-
             fail -> false
         end
 ").
+
+semidet_call_7(_::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_7").
+
+%---------------------%
+
+:- pred semidet_call_8(P::in, A::in, B::in, C::in, D::in, E::in, T::in, U::in)
+    is semidet.
+
 :- pragma foreign_proc("Erlang",
     semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in,
         X::in, Y::in),
@@ -2161,6 +2126,14 @@ det_unimplemented(S) :-
         end
 ").
 
+semidet_call_8(_::in, _::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
+    semidet_unimplemented("semidet_call_8").
+
+%---------------------%
+
+:- pred result_call_4(P::in, comparison_result::out,
+    T::in, U::in) is det.
+
 :- pragma foreign_proc("Erlang",
     result_call_4(Pred::in, Res::out, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2168,24 +2141,59 @@ det_unimplemented(S) :-
     Res = Pred(X, Y)
 ").
 
+result_call_4(_::in, (=)::out, _::in, _::in) :-
+    det_unimplemented("result_call_4").
+
+%---------------------%
+
+:- pred result_call_5(P::in, comparison_result::out,
+    A::in, T::in, U::in) is det.
+
 :- pragma foreign_proc("Erlang",
     result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Res = Pred(A, X, Y)
 ").
+
+result_call_5(_::in, (=)::out, _::in, _::in, _::in) :-
+    det_unimplemented("comparison_result").
+
+%---------------------%
+
+:- pred result_call_6(P::in, comparison_result::out,
+    A::in, B::in, T::in, U::in) is det.
+
 :- pragma foreign_proc("Erlang",
     result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Res = Pred(A, B, X, Y)
 ").
+
+result_call_6(_::in, (=)::out, _::in, _::in, _::in, _::in) :-
+    det_unimplemented("comparison_result").
+
+%---------------------%
+
+:- pred result_call_7(P::in, comparison_result::out,
+    A::in, B::in, C::in, T::in, U::in) is det.
+
 :- pragma foreign_proc("Erlang",
     result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Res = Pred(A, B, C, X, Y)
 ").
+
+result_call_7(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in) :-
+    det_unimplemented("comparison_result").
+
+%---------------------%
+
+:- pred result_call_8(P::in, comparison_result::out,
+    A::in, B::in, C::in, D::in, T::in, U::in) is det.
+
 :- pragma foreign_proc("Erlang",
     result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in,
         X::in, Y::in),
@@ -2193,6 +2201,15 @@ det_unimplemented(S) :-
 "
     Res = Pred(A, B, C, D, X, Y)
 ").
+
+result_call_8(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in, _::in) :-
+    det_unimplemented("comparison_result").
+
+%---------------------%
+
+:- pred result_call_9(P::in, comparison_result::out,
+    A::in, B::in, C::in, D::in, E::in, T::in, U::in) is det.
+
 :- pragma foreign_proc("Erlang",
     result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
         X::in, Y::in),
@@ -2200,6 +2217,30 @@ det_unimplemented(S) :-
 "
     Res = Pred(A, B, C, D, E, X, Y)
 ").
+
+result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
+        _::in, _::in) :-
+    det_unimplemented("result_call_9").
+
+%---------------------------------------------------------------------------%
+
+:- pred semidet_unimplemented(string::in) is semidet.
+
+semidet_unimplemented(S) :-
+    ( if semidet_succeed then
+        unexpected($pred, "unimplemented: " ++ S)
+    else
+        semidet_succeed
+    ).
+
+:- pred det_unimplemented(string::in) is det.
+
+det_unimplemented(S) :-
+    ( if semidet_succeed then
+        unexpected($pred, "unimplemented: " ++ S)
+    else
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 

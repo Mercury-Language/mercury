@@ -763,6 +763,7 @@ have_job_ctl_ipc :-
 ").
 
 :- pred create_job_ctl(int::in, maybe(job_ctl)::out, io::di, io::uo) is det.
+:- pragma no_determinism_warning(create_job_ctl/4).
 
 :- pragma foreign_proc("C",
     create_job_ctl(TotalJobs::in, MaybeJobCtl::out, _IO0::di, _IO::uo),
@@ -783,11 +784,11 @@ have_job_ctl_ipc :-
 #endif
 ").
 
-:- pragma no_determinism_warning(create_job_ctl/4).
 create_job_ctl(_, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
 :- pred destroy_job_ctl(job_ctl::in, io::di, io::uo) is det.
+:- pragma no_determinism_warning(destroy_job_ctl/3).
 
 :- pragma foreign_proc("C",
     destroy_job_ctl(JobCtl::in, _IO0::di, _IO::uo),
@@ -805,11 +806,11 @@ create_job_ctl(_, _, _, _) :-
 #endif
 ").
 
-:- pragma no_determinism_warning(destroy_job_ctl/3).
 destroy_job_ctl(_, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
 :- pred accept_task(job_ctl::in, int::out, io::di, io::uo) is det.
+:- pragma no_determinism_warning(accept_task/4).
 
 :- pragma foreign_proc("C",
     accept_task(JobCtl::in, TaskNumber::out, _IO0::di, _IO::uo),
@@ -837,11 +838,11 @@ destroy_job_ctl(_, _, _) :-
 #endif
 ").
 
-:- pragma no_determinism_warning(accept_task/4).
 accept_task(_, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
 :- pred mark_task_done(job_ctl::in, int::in, io::di, io::uo) is det.
+:- pragma no_determinism_warning(mark_task_done/4).
 
 :- pragma foreign_proc("C",
     mark_task_done(JobCtl::in, TaskNumber::in, _IO0::di, _IO::uo),
@@ -855,11 +856,11 @@ accept_task(_, _, _, _) :-
 #endif
 ").
 
-:- pragma no_determinism_warning(mark_task_done/4).
 mark_task_done(_, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
 :- pred mark_task_error(job_ctl::in, int::in, bool::in, io::di, io::uo) is det.
+:- pragma no_determinism_warning(mark_task_error/5).
 
 :- pragma foreign_proc("C",
     mark_task_error(JobCtl::in, TaskNumber::in, KeepGoing::in,
@@ -879,11 +880,11 @@ mark_task_done(_, _, _, _) :-
 #endif
 ").
 
-:- pragma no_determinism_warning(mark_task_error/5).
 mark_task_error(_, _, _, _, _) :-
     unexpected($file, $pred, "non-C backend").
 
 :- pred mark_abort(job_ctl::in, io::di, io::uo) is det.
+:- pragma no_determinism_warning(mark_abort/3).
 
 :- pragma foreign_proc("C",
     mark_abort(JobCtl::in, _IO0::di, _IO::uo),
@@ -897,7 +898,6 @@ mark_task_error(_, _, _, _, _) :-
 #endif
 ").
 
-:- pragma no_determinism_warning(mark_abort/3).
 mark_abort(_, _, _) :-
     unexpected($file, $pred, "non-C backend").
 

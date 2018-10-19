@@ -157,9 +157,6 @@ can_spawn :-
 
 :- pred can_spawn_context is semidet.
 
-can_spawn_context :-
-    semidet_fail.
-
 :- pragma foreign_proc("C",
     can_spawn_context,
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
@@ -170,6 +167,15 @@ can_spawn_context :-
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+:- pragma foreign_proc("Java",
+    can_spawn_context,
+    [will_not_call_mercury, promise_pure],
+"
+    SUCCESS_INDICATOR = true;
+").
+
+can_spawn_context :-
+    semidet_fail.
 
 :- pragma foreign_proc("C",
     can_spawn_native,
@@ -181,21 +187,12 @@ can_spawn_context :-
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
-
 :- pragma foreign_proc("C#",
     can_spawn_native,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = true;
 ").
-
-:- pragma foreign_proc("Java",
-    can_spawn_context,
-    [will_not_call_mercury, promise_pure],
-"
-    SUCCESS_INDICATOR = true;
-").
-
 :- pragma foreign_proc("Java",
     can_spawn_native,
     [will_not_call_mercury, promise_pure, thread_safe],

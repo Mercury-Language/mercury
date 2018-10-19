@@ -143,6 +143,8 @@ link_collect(ObjectFile, Filter, Initialize, PostProcess, SendResult,
     ).
 
 :- pred set_to_null_pointer(c_pointer::out) is det.
+:- pragma no_determinism_warning(set_to_null_pointer/1).
+
 :- pragma foreign_proc("C",
     set_to_null_pointer(Pointer::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -150,7 +152,6 @@ link_collect(ObjectFile, Filter, Initialize, PostProcess, SendResult,
     (Pointer = (MR_Word) NULL)
 ").
 
-:- pragma no_determinism_warning(set_to_null_pointer/1).
 set_to_null_pointer(_) :-
     private_builtin.sorry("collect_lib.set_to_null_pointer").
 

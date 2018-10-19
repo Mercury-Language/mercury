@@ -356,6 +356,8 @@
 
 %---------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(from_int/2).
+
 :- pragma foreign_proc("C",
     from_int(I::in, U32::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -386,7 +388,6 @@
     SUCCESS_INDICATOR = (I < 0) ? false : true;
 ").
 
-:- pragma no_determinism_warning(from_int/2).
 from_int(_, _) :-
     sorry($module, "uint32.from_int NYI for Erlang").
 
@@ -396,6 +397,8 @@ det_from_int(I) = U :-
     else
         error("uint32.det_from_int: cannot convert int to uint32")
     ).
+
+:- pragma no_determinism_warning(cast_from_int/1).
 
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (U32::out),
@@ -419,11 +422,12 @@ det_from_int(I) = U :-
     U32 = I;
 ").
 
-:- pragma no_determinism_warning(cast_from_int/1).
 cast_from_int(_) = _ :-
     sorry($module, "uint32.cast_from_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_to_int/1).
 
 :- pragma foreign_proc("C",
     cast_to_int(U32::in) = (I::out),
@@ -447,11 +451,12 @@ cast_from_int(_) = _ :-
     I = U32;
 ").
 
-:- pragma no_determinism_warning(cast_to_int/1).
 cast_to_int(_) = _ :-
     sorry($module, "uint32.cast_to_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_to_uint/1).
 
 :- pragma foreign_proc("C",
     cast_to_uint(U32::in) = (U::out),
@@ -475,11 +480,12 @@ cast_to_int(_) = _ :-
     U = U32;
 ").
 
-:- pragma no_determinism_warning(cast_to_uint/1).
 cast_to_uint(_) = _ :-
     sorry($module, "uint32.cast_to_uint/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_to_uint64/1).
 
 :- pragma foreign_proc("C",
     cast_to_uint64(U32::in) = (U64::out),
@@ -503,11 +509,12 @@ cast_to_uint(_) = _ :-
     U64 = (long) U32 & 0xffffffffL;
 ").
 
-:- pragma no_determinism_warning(cast_to_uint64/1).
 cast_to_uint64(_) = _ :-
     sorry($module, "uint32.cast_to_uint64/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_from_int32/1).
 
 :- pragma foreign_proc("C",
     cast_from_int32(I32::in) = (U32::out),
@@ -531,7 +538,6 @@ cast_to_uint64(_) = _ :-
     U32 = I32;
 ").
 
-:- pragma no_determinism_warning(cast_from_int32/1).
 cast_from_int32(_) = _ :-
     sorry($module, "uint32.cast_from_int32/1 NYI for Erlang").
 

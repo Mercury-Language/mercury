@@ -333,6 +333,8 @@ det_from_int(I) = U8 :-
         error("uint8.det_from_int: cannot convert int to uint8")
     ).
 
+:- pragma no_determinism_warning(cast_from_int/1).
+
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (U8::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -355,12 +357,13 @@ det_from_int(I) = U8 :-
     U8 = (byte) I;
 ").
 
-:- pragma no_determinism_warning(cast_from_int/1).
 cast_from_int(_) = _ :-
     sorry($module, "uint8.cast_from_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(to_int/1).
+
 :- pragma foreign_proc("C",
     to_int(U8::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -383,10 +386,11 @@ cast_from_int(_) = _ :-
     I = U8 & 0xff;
 ").
 
-:- pragma no_determinism_warning(to_int/1).
 to_int(_) = _ :-
     sorry($module, "uint8.to_int/1 NYI for Erlang").
 
+:- pragma no_determinism_warning(cast_to_int/1).
+
 :- pragma foreign_proc("C",
     cast_to_int(U8::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -409,11 +413,12 @@ to_int(_) = _ :-
     I = U8 & 0xff;
 ").
 
-:- pragma no_determinism_warning(cast_to_int/1).
 cast_to_int(_) = _ :-
     sorry($module, "uint8.cast_to_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_to_uint/1).
 
 :- pragma foreign_proc("C",
     cast_to_uint(U8::in) = (U::out),
@@ -437,11 +442,12 @@ cast_to_int(_) = _ :-
     U = U8 & 0xff;
 ").
 
-:- pragma no_determinism_warning(cast_to_uint/1).
 cast_to_uint(_) = _ :-
     sorry($module, "uint8.cast_to_uint/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(cast_from_int8/1).
 
 :- pragma foreign_proc("C",
     cast_from_int8(I8::in) = (U8::out),
@@ -465,7 +471,6 @@ cast_to_uint(_) = _ :-
     U8 = I8;
 ").
 
-:- pragma no_determinism_warning(cast_from_int8/1).
 cast_from_int8(_) = _ :-
     sorry($module, "uint8.cast_from_int8/1 NYI for Erlang").
 
@@ -579,13 +584,6 @@ const uint8_t ML_uint8_num_ones_table[256] = {
 };
 ").
 
-:- pragma foreign_proc("C",
-    num_ones(U::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    N = ML_uint8_num_ones_table[U];
-").
-
 :- pragma foreign_code("C#", "
 public static byte[] num_ones_table = {
     0,1,1,2,1,2,2,3,
@@ -622,6 +620,13 @@ public static byte[] num_ones_table = {
     5,6,6,7,6,7,7,8
 };
 
+").
+
+:- pragma foreign_proc("C",
+    num_ones(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    N = ML_uint8_num_ones_table[U];
 ").
 
 :- pragma foreign_proc("C#",
@@ -682,12 +687,6 @@ const uint8_t ML_uint8_nlz_table[256] = {
 
 ").
 
-:- pragma foreign_proc("C",
-    num_leading_zeros(I::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    N = ML_uint8_nlz_table[I];
-").
 :- pragma foreign_code("C#", "
 public static byte[] nlz_table = {
   8,7,6,6,5,5,5,5,
@@ -726,13 +725,6 @@ public static byte[] nlz_table = {
 
 ").
 
-:- pragma foreign_proc("C#",
-    num_leading_zeros(U::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    N = mercury.uint8.nlz_table[U];
-").
-
 :- pragma foreign_code("Java", "
 public static byte[] nlz_table = {
   8,7,6,6,5,5,5,5,
@@ -768,6 +760,20 @@ public static byte[] nlz_table = {
   0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0
 };
+").
+
+:- pragma foreign_proc("C",
+    num_leading_zeros(I::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    N = ML_uint8_nlz_table[I];
+").
+
+:- pragma foreign_proc("C#",
+    num_leading_zeros(U::in) = (N::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N = mercury.uint8.nlz_table[U];
 ").
 
 :- pragma foreign_proc("Java",

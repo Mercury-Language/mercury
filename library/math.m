@@ -1046,6 +1046,8 @@ tanh(X) = Tanh :-
 have_fma :-
     semidet_false.
 
+:- pragma no_determinism_warning(fma/3).
+
 :- pragma foreign_proc("C",
     fma(X::in, Y::in, Z::in) = (FMA::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1058,7 +1060,6 @@ have_fma :-
 #endif
 ").
 
-:- pragma no_determinism_warning(fma/3).
 fma(_, _, _) = _ :-
     private_builtin.sorry("math.fma").
 

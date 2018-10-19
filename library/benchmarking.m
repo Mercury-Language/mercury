@@ -183,6 +183,27 @@ extern void ML_report_full_memory_stats(void);
     ML_report_stats();
 ").
 
+:- pragma foreign_proc("C#",
+    report_stats,
+    [may_call_mercury, terminates],
+"
+    ML_report_stats();
+").
+
+:- pragma foreign_proc("Java",
+    report_stats,
+    [may_call_mercury, terminates],
+"
+    ML_report_stats();
+").
+
+:- pragma foreign_proc("Erlang",
+    report_stats,
+    [may_call_mercury, terminates],
+"
+    'ML_report_stats'()
+").
+
 :- pragma foreign_proc("C",
     report_full_memory_stats,
     [will_not_call_mercury],
@@ -193,13 +214,6 @@ extern void ML_report_full_memory_stats(void);
 ").
 
 :- pragma foreign_proc("C#",
-    report_stats,
-    [may_call_mercury, terminates],
-"
-    ML_report_stats();
-").
-
-:- pragma foreign_proc("C#",
     report_full_memory_stats,
     [will_not_call_mercury],
 "
@@ -207,24 +221,10 @@ extern void ML_report_full_memory_stats(void);
 ").
 
 :- pragma foreign_proc("Java",
-    report_stats,
-    [may_call_mercury, terminates],
-"
-    ML_report_stats();
-").
-
-:- pragma foreign_proc("Java",
     report_full_memory_stats,
     [will_not_call_mercury],
 "
     ML_report_full_memory_stats();
-").
-
-:- pragma foreign_proc("Erlang",
-    report_stats,
-    [may_call_mercury, terminates],
-"
-    'ML_report_stats'()
 ").
 
 %---------------------------------------------------------------------------%
@@ -1011,6 +1011,9 @@ repeat(N) :-
 :- pragma foreign_code("C", "
     volatile        MR_Word ML_benchmarking_dummy_word;
 ").
+:- pragma foreign_code("Java", "
+    static volatile Object ML_benchmarking_dummy_word;
+").
 
 :- impure pred do_nothing(T::in) is det.
 
@@ -1027,10 +1030,6 @@ repeat(N) :-
 "
 ").
 
-:- pragma foreign_code("Java",
-"
-    static volatile Object ML_benchmarking_dummy_word;
-").
 :- pragma foreign_proc("Java",
     do_nothing(X::in),
     [will_not_call_mercury, thread_safe],

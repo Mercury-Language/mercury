@@ -375,7 +375,7 @@
     %
 :- pred semidet_true is semidet.
 
-    % A synonym for semidet_fail/0
+    % A synonym for semidet_fail/0.
     %
 :- pred semidet_false is semidet.
 
@@ -667,6 +667,7 @@ compare_rep_tuple_pos(Result, TermA, TermB, Index, Arity) :-
     ).
 
 :- pred tuple_arity(T::in, int::out) is det.
+:- pragma no_determinism_warning(tuple_arity/2).
 
 :- pragma foreign_proc("C",
     tuple_arity(_Term::in, Arity::out),
@@ -675,11 +676,11 @@ compare_rep_tuple_pos(Result, TermA, TermB, Index, Arity) :-
     Arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY((MR_TypeInfo) TypeInfo_for_T);
 ").
 
-:- pragma no_determinism_warning(tuple_arity/2).
 tuple_arity(_, _) :-
    private_builtin.sorry("tuple_arity/2").
 
 :- some [ArgT] pred tuple_arg(T::in, int::in, ArgT::out) is det.
+:- pragma no_determinism_warning(tuple_arg/3).
 
 :- pragma foreign_proc("C",
     tuple_arg(Term::in, Index::in, Arg::out),
@@ -693,7 +694,6 @@ tuple_arity(_, _) :-
     Arg = arg_vector[Index];
 ").
 
-:- pragma no_determinism_warning(tuple_arg/3).
 tuple_arg(_, _, -1) :-
    private_builtin.sorry("tuple_arg/3").
 
@@ -1245,6 +1245,15 @@ __Compare____tuple_0_0(object x, object y)
 % interface to make sure that the compiler doesn't issue any determinism
 % warnings for them.
 
+% We can't just use "true" and "fail" in the Mercury versions, because that
+% provokes warnings from determinism analysis, and the library is compiled
+% with --halt-at-warn. So instead we use 0+0 = (or \=) 0.
+% This is guaranteed to succeed or fail (respectively),
+% and with a bit of luck will even get optimized by constant propagation.
+% But this optimization won't happen until after determinism analysis,
+% which doesn't know anything about integer arithmetic,
+% so this code won't provide a warning from determinism analysis.
+
 :- pragma foreign_proc("C",
     semidet_succeed,
     [will_not_call_mercury, thread_safe, promise_pure,
@@ -1252,6 +1261,22 @@ __Compare____tuple_0_0(object x, object y)
 "
     SUCCESS_INDICATOR = MR_TRUE;
 ").
+:- pragma foreign_proc("C#",
+    semidet_succeed,
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = true;
+").
+:- pragma foreign_proc("Erlang",
+    semidet_succeed,
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = true
+").
+
+semidet_succeed :-
+    0 + 0 = 0.
+
 :- pragma foreign_proc("C",
     semidet_fail,
     [will_not_call_mercury, thread_safe, promise_pure,
@@ -1259,25 +1284,11 @@ __Compare____tuple_0_0(object x, object y)
 "
     SUCCESS_INDICATOR = MR_FALSE;
 ").
-
-:- pragma foreign_proc("C#",
-    semidet_succeed,
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    SUCCESS_INDICATOR = true;
-").
 :- pragma foreign_proc("C#",
     semidet_fail,
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     SUCCESS_INDICATOR = false;
-").
-
-:- pragma foreign_proc("Erlang",
-    semidet_succeed,
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    SUCCESS_INDICATOR = true
 ").
 :- pragma foreign_proc("Erlang",
     semidet_fail,
@@ -1286,22 +1297,12 @@ __Compare____tuple_0_0(object x, object y)
     SUCCESS_INDICATOR = false
 ").
 
-% We can't just use "true" and "fail" here, because that provokes warnings
-% from determinism analysis, and the library is compiled with --halt-at-warn.
-% So instead we use 0+0 = (or \=) 0.
-% This is guaranteed to succeed or fail (respectively),
-% and with a bit of luck will even get optimized by constant propagation.
-% But this optimization won't happen until after determinism analysis,
-% which doesn't know anything about integer arithmetic,
-% so this code won't provide a warning from determinism analysis.
-
-semidet_succeed :-
-    0 + 0 = 0.
 semidet_fail :-
     0 + 0 \= 0.
 
 semidet_true :-
     semidet_succeed.
+
 semidet_false :-
     semidet_fail.
 

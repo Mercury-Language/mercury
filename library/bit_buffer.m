@@ -198,21 +198,13 @@ new_buffer_2(BM, Pos, Size, UseStream, Stream, State, ReadStatus) =
 :- func (bit_buffer(_, _, Error)::bit_buffer_ui) ^ read_status =
     (stream.res(Error)::out) is det.
 
-Buffer ^ bitmap = Buffer ^ mer_bitmap.
-Buffer ^ pos = Buffer ^ mer_pos.
-Buffer ^ size = Buffer ^ mer_size.
-Buffer ^ use_stream = Buffer ^ mer_use_stream.
-Buffer ^ stream = Buffer ^ mer_stream.
-Buffer ^ state = unsafe_promise_unique(Buffer ^ mer_state).
-Buffer ^ filled_bitmaps = Buffer ^ mer_filled_bitmaps.
-Buffer ^ read_status = Buffer ^ mer_read_status.
-
 :- pragma foreign_proc("C",
     bitmap(Buffer::bit_buffer_ui) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     BM = Buffer->ML_bit_buffer_bitmap;
 ").
+Buffer ^ bitmap = Buffer ^ mer_bitmap.
 
 :- pragma foreign_proc("C",
     pos(Buffer::bit_buffer_ui) = (Pos::out),
@@ -220,6 +212,7 @@ Buffer ^ read_status = Buffer ^ mer_read_status.
 "
     Pos = Buffer->ML_bit_buffer_pos;
 ").
+Buffer ^ pos = Buffer ^ mer_pos.
 
 :- pragma foreign_proc("C",
     size(Buffer::bit_buffer_ui) = (Size::out),
@@ -227,6 +220,7 @@ Buffer ^ read_status = Buffer ^ mer_read_status.
 "
     Size = Buffer->ML_bit_buffer_size;
 ").
+Buffer ^ size = Buffer ^ mer_size.
 
 :- pragma foreign_proc("C",
     use_stream(Buffer::bit_buffer_ui) = (UseStream::out),
@@ -234,6 +228,7 @@ Buffer ^ read_status = Buffer ^ mer_read_status.
 "
     UseStream = Buffer->ML_bit_buffer_use_stream;
 ").
+Buffer ^ use_stream = Buffer ^ mer_use_stream.
 
 :- pragma foreign_proc("C",
     stream(Buffer::bit_buffer_ui) = (Stream::out),
@@ -241,6 +236,7 @@ Buffer ^ read_status = Buffer ^ mer_read_status.
 "
     Stream = Buffer->ML_bit_buffer_stream;
 ").
+Buffer ^ stream = Buffer ^ mer_stream.
 
 :- pragma foreign_proc("C",
     state(Buffer::bit_buffer_ui) = (State::uo),
@@ -248,6 +244,7 @@ Buffer ^ read_status = Buffer ^ mer_read_status.
 "
     State = Buffer->ML_bit_buffer_state;
 ").
+Buffer ^ state = unsafe_promise_unique(Buffer ^ mer_state).
 
 :- pragma foreign_proc("C",
     filled_bitmaps(Buffer::bit_buffer_ui) = (FilledBMs::out),
@@ -255,6 +252,7 @@ Buffer ^ read_status = Buffer ^ mer_read_status.
 "
     FilledBMs = Buffer->ML_bit_buffer_filled_bitmaps;
 ").
+Buffer ^ filled_bitmaps = Buffer ^ mer_filled_bitmaps.
 
 :- pragma foreign_proc("C",
     read_status(Buffer::bit_buffer_ui) = (ReadStatus::out),
@@ -262,6 +260,7 @@ Buffer ^ read_status = Buffer ^ mer_read_status.
 "
     ReadStatus = Buffer->ML_bit_buffer_read_status;
 ").
+Buffer ^ read_status = Buffer ^ mer_read_status.
 
 :- pred set_all(bitmap::bitmap_di, bit_index::in, num_bits::in, State::di,
     list(bitmap)::in, bit_buffer(Stream, State, Error)::bit_buffer_di,

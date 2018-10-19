@@ -300,6 +300,8 @@ raise_signal(_::in, IO::di, IO::uo).
     raise((int)Signal);
 ").
 
+:- pragma no_determinism_warning(send_signal/4).
+
 :- pragma foreign_proc("C",
     send_signal(Pid::in, Signal::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -309,9 +311,10 @@ raise_signal(_::in, IO::di, IO::uo).
 #endif
 ").
 
-:- pragma no_determinism_warning(send_signal/4).
 send_signal(_, _, _, _) :-
     sorry($file, $pred).
+
+:- pragma no_determinism_warning(sigint/0).
 
 :- pragma foreign_proc("C",
     sigint = (Sigint::out),
@@ -320,7 +323,6 @@ send_signal(_, _, _, _) :-
     Sigint = SIGINT;
 ").
 
-:- pragma no_determinism_warning(sigint/0).
 sigint = _ :-
     sorry($file, $pred).
 
@@ -377,6 +379,7 @@ start_in_forked_process(P, MaybePid, !IO) :-
 
 :- pred start_in_forked_process_2(io_pred::in(io_pred), pid::out,
     io::di, io::uo) is det.
+:- pragma no_determinism_warning(start_in_forked_process_2/4).
 
 :- pragma foreign_proc("C",
     start_in_forked_process_2(Pred::in(io_pred), Pid::out,
@@ -401,7 +404,6 @@ start_in_forked_process(P, MaybePid, !IO) :-
 #endif /* ! MC_CAN_FORK */
 ").
 
-:- pragma no_determinism_warning(start_in_forked_process_2/4).
 start_in_forked_process_2(_, _, !IO) :-
     sorry($pred, "NYI in languages other than C").
 
@@ -431,6 +433,7 @@ call_child_process_io_pred(P, Status, !IO) :-
     % If Pid is -1 then wait for any child process to exit.
     %
 :- pred do_wait(pid::in, pid::out, int::out, io::di, io::uo) is det.
+:- pragma no_determinism_warning(do_wait/5).
 
 :- pragma foreign_proc("C",
     do_wait(Pid::in, WaitedPid::out, Status::out, _IO0::di, _IO::uo),
@@ -503,7 +506,6 @@ call_child_process_io_pred(P, Status, !IO) :-
 #endif /* ! MC_CAN_FORK */
 ").
 
-:- pragma no_determinism_warning(do_wait/5).
 do_wait(_, _, _, _, _) :-
     sorry($file, $pred).
 

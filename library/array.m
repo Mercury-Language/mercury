@@ -1405,6 +1405,24 @@ init(Size, Item, Array) :-
     ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
     ML_init_array(Array, Size, Item);
 ").
+:- pragma foreign_proc("C#",
+    init_2(Size::in, Item::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = array.ML_new_array(Size, Item);
+").
+:- pragma foreign_proc("Java",
+    init_2(Size::in, Item::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = array.ML_new_array(Size, Item, true);
+").
+:- pragma foreign_proc("Erlang",
+    init_2(Size::in, Item::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = erlang:make_tuple(Size, Item)
+").
 
 make_empty_array = A :-
     array.make_empty_array(A).
@@ -1416,13 +1434,6 @@ make_empty_array = A :-
 "
     ML_alloc_array(Array, 1, MR_ALLOC_ID);
     ML_init_array(Array, 0, 0);
-").
-
-:- pragma foreign_proc("C#",
-    init_2(Size::in, Item::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = array.ML_new_array(Size, Item);
 ").
 :- pragma foreign_proc("C#",
     make_empty_array(Array::array_uo),
@@ -1437,32 +1448,18 @@ make_empty_array = A :-
     // a non-trivial amount of work.
     Array = null;
 ").
-
-:- pragma foreign_proc("Erlang",
-    init_2(Size::in, Item::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = erlang:make_tuple(Size, Item)
-").
-:- pragma foreign_proc("Erlang",
-    make_empty_array(Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = {}
-").
-
-:- pragma foreign_proc("Java",
-    init_2(Size::in, Item::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = array.ML_new_array(Size, Item, true);
-").
 :- pragma foreign_proc("Java",
     make_empty_array(Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // XXX as per C#
     Array = null;
+").
+:- pragma foreign_proc("Erlang",
+    make_empty_array(Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = {}
 ").
 
 %---------------------------------------------------------------------------%

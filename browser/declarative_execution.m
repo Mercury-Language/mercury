@@ -880,6 +880,7 @@ disj_node_from_id(Store, NodeId, Node) :-
 
 :- pred search_trace_node_store(trace_node_store::in, trace_node_id::in,
     trace_node(trace_node_id)::out) is semidet.
+:- pragma no_determinism_warning(search_trace_node_store/3).
 
 :- pragma foreign_proc("C",
     search_trace_node_store(_Store::in, Id::in, Node::out),
@@ -890,7 +891,6 @@ disj_node_from_id(Store, NodeId, Node) :-
 "
 ).
 
-:- pragma no_determinism_warning(search_trace_node_store/3).
 search_trace_node_store(_, _, _) :-
     private_builtin.sorry("search_trace_node_store").
 
@@ -1301,6 +1301,7 @@ construct_neg_fail_node(Preceding, Neg, Label) =
     node_neg_fail(Preceding, Neg, Label).
 
 :- pred null_trace_node_id(trace_node_id::out) is det.
+:- pragma no_determinism_warning(null_trace_node_id/1).
 
 :- pragma foreign_proc("C",
     null_trace_node_id(Id::out),
@@ -1309,7 +1310,6 @@ construct_neg_fail_node(Preceding, Neg, Label) =
     Id = (MR_Word) NULL;
 ").
 
-:- pragma no_determinism_warning(null_trace_node_id/1).
 null_trace_node_id(_) :-
     private_builtin.sorry("null_trace_node_id").
 
@@ -1431,6 +1431,7 @@ node_map(Store, NodeId, map(Map0), Map) :-
     ).
 
 :- pred node_id_to_key(trace_node_id::in, trace_node_key::out) is det.
+:- pragma no_determinism_warning(node_id_to_key/2).
 
 :- pragma foreign_proc("C",
     node_id_to_key(Id::in, Key::out),
@@ -1439,12 +1440,12 @@ node_map(Store, NodeId, map(Map0), Map) :-
     Key = (MR_Integer) Id;
 ").
 
-:- pragma no_determinism_warning(node_id_to_key/2).
 node_id_to_key(_, _) :-
     private_builtin.sorry("node_id_to_key").
 
 :- pred convert_node(trace_node(trace_node_id)::in,
     trace_node(trace_node_key)::out) is det.
+:- pragma no_determinism_warning(convert_node/2).
 
 :- pragma foreign_proc("C",
     convert_node(N1::in, N2::out),
@@ -1453,7 +1454,6 @@ node_id_to_key(_, _) :-
     N2 = N1;
 ").
 
-:- pragma no_determinism_warning(convert_node/2).
 convert_node(_, _) :-
     private_builtin.sorry("convert_node").
 

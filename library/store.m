@@ -277,10 +277,12 @@ store_equal(_, _) :-
 store_compare(_, _, _) :-
     error("attempt to compare two stores").
 
-    % Mutvars and references are each represented as a pointer to a single word
-    % on the heap.
-:- type generic_mutvar(T, S) ---> mutvar(private_builtin.ref(T)).
-:- type generic_ref(T, S) ---> ref(private_builtin.ref(T)).
+    % Mutvars and references are each represented as a pointer
+    % to a single word on the heap.
+:- type generic_mutvar(T, S)
+    --->    mutvar(private_builtin.ref(T)).
+:- type generic_ref(T, S)
+    --->    ref(private_builtin.ref(T)).
 
 init(S) :-
     store.do_init(S).
@@ -321,11 +323,18 @@ init(S) :-
 %
 % Then we could do something like this:
 %
-%   Ptr <- new(Val)   -->   new_mutvar(Val, Ptr).
-%   Val <- !Ptr       -->   get_mutvar(Ptr, Val).
-%   !Ptr := Val   -->   set_mutvar(Ptr, Val).
+%   Ptr <- new(Val) -->   new_mutvar(Val, Ptr).
+%   Val <- !Ptr     -->   get_mutvar(Ptr, Val).
+%   !Ptr := Val     -->   set_mutvar(Ptr, Val).
 %
-% I wonder whether it is worth it?  Hmm, probably not.
+% I wonder whether it is worth it? Hmm, probably not.
+
+:- pragma foreign_type("C#", generic_mutvar(T, S), "object[]").
+:- pragma foreign_type("Java", generic_mutvar(T, S), "mutvar.Mutvar").
+% XXX ets are not garbage collected
+% but shareable between processes
+
+:- pragma foreign_type("Erlang", generic_mutvar(T, S), "").
 
 :- pragma foreign_proc("C",
     new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
@@ -337,74 +346,18 @@ init(S) :-
     * (MR_Word *) Mutvar = Val;
     S = S0;
 ").
-
-:- pragma foreign_proc("C",
-    get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    Val = * (MR_Word *) Mutvar;
-    S = S0;
-").
-
-:- pragma foreign_proc("C",
-    set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    * (MR_Word *) Mutvar = Val;
-    S = S0;
-").
-
-:- pragma foreign_type("C#", generic_mutvar(T, S), "object[]").
-
 :- pragma foreign_proc("C#",
     new_mutvar(Val::in, Mutvar::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Mutvar = new object[] { Val };
 ").
-
-:- pragma foreign_proc("C#",
-    get_mutvar(Mutvar::in, Val::out, _S0::di, _S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Val = Mutvar[0];
-").
-
-:- pragma foreign_proc("C#",
-    set_mutvar(Mutvar::in, Val::in, _S0::di, _S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Mutvar[0] = Val;
-").
-
-:- pragma foreign_type("Java", generic_mutvar(T, S), "mutvar.Mutvar").
-
 :- pragma foreign_proc("Java",
     new_mutvar(Val::in, Mutvar::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Mutvar = new mutvar.Mutvar(Val);
 ").
-
-:- pragma foreign_proc("Java",
-    get_mutvar(Mutvar::in, Val::out, _S0::di, _S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Val = Mutvar.object;
-").
-
-:- pragma foreign_proc("Java",
-    set_mutvar(Mutvar::in, Val::in, _S0::di, _S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Mutvar.object = Val;
-").
-
-% XXX ets are not garbage collected
-% but shareable between processes
-
-:- pragma foreign_type("Erlang", generic_mutvar(T, S), "").
-
 :- pragma foreign_proc("Erlang",
     new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -414,6 +367,25 @@ init(S) :-
     S = S0
 ").
 
+:- pragma foreign_proc("C",
+    get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Val = * (MR_Word *) Mutvar;
+    S = S0;
+").
+:- pragma foreign_proc("C#",
+    get_mutvar(Mutvar::in, Val::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Val = Mutvar[0];
+").
+:- pragma foreign_proc("Java",
+    get_mutvar(Mutvar::in, Val::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Val = Mutvar.object;
+").
 :- pragma foreign_proc("Erlang",
     get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -422,6 +394,25 @@ init(S) :-
     S = S0
 ").
 
+:- pragma foreign_proc("C",
+    set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    * (MR_Word *) Mutvar = Val;
+    S = S0;
+").
+:- pragma foreign_proc("C#",
+    set_mutvar(Mutvar::in, Val::in, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Mutvar[0] = Val;
+").
+:- pragma foreign_proc("Java",
+    set_mutvar(Mutvar::in, Val::in, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Mutvar.object = Val;
+").
 :- pragma foreign_proc("Erlang",
     set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],

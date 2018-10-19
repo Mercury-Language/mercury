@@ -515,6 +515,14 @@ times(Tms, Result, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+:- pragma foreign_proc("C#",
+    clk_tck = (Ret::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"{
+    // TicksPerSecond is guaranteed to be 10,000,000
+    Ret = (int) System.TimeSpan.TicksPerSecond;
+}").
+
 clk_tck = Ret :-
     Ret0 = c_clk_tck,
     ( if Ret0 = -1 then
@@ -535,16 +543,6 @@ clk_tck = Ret :-
     Ret = -1;
 #endif
 ").
-
-c_clk_tck = -1.   % default is to throw an exception.
-
-:- pragma foreign_proc("C#",
-    clk_tck = (Ret::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"{
-    // TicksPerSecond is guaranteed to be 10,000,000
-    Ret = (int) System.TimeSpan.TicksPerSecond;
-}").
 :- pragma foreign_proc("Java",
     c_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -553,6 +551,8 @@ c_clk_tck = -1.   % default is to throw an exception.
     // so say that there are 1000 clock ticks per second.
     Ret = 1000;
 ").
+
+c_clk_tck = -1.   % default, to get clk_tck to throw an exception.
 
 %---------------------------------------------------------------------------%
 
