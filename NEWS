@@ -405,6 +405,8 @@ Changes to the Mercury standard library:
 
 * The following predicates and functions have been added to the list module:
 
+   - any_true/2
+   - any_false/2
    - reverse_prepend/2
    - reverse_prepend/3
    - take_while/4

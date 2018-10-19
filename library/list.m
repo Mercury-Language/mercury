@@ -678,6 +678,18 @@
 :- pred find_first_match(pred(X)::in(pred(in) is semidet), list(X)::in,
     X::out) is semidet.
 
+    % any_true(Pred, List):
+    % Succeeds iff Pred succeeds for at least one element of List.
+    % Same as `not all_false(Pred, List)'.
+    %
+:- pred any_true(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+
+    % any_false(Pred, List):
+    % Succeeds iff Pred fails for at least one element of List.
+    % Same as `not all_true(Pred, List)'.
+    %
+:- pred any_false(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+
     % all_true(Pred, List) takes a closure with one input argument.
     % If Pred succeeds for every member of List, all_true succeeds.
     % If Pred fails for any member of List, all_true fails.
@@ -2849,6 +2861,12 @@ find_first_match(P, [H | T], FirstMatch) :-
     else
         find_first_match(P, T, FirstMatch)
     ).
+
+any_true(P, L) :-
+    not all_false(P, L).
+
+any_false(P, L) :-
+    not all_true(P, L).
 
 all_true(_P, []).
 all_true(P, [X | Xs]) :-
