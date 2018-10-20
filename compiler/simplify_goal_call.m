@@ -130,6 +130,8 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     maybe_generate_warning_for_infinite_loop_call(PredId, ProcId,
         Args, IsBuiltin, PredInfo, ProcInfo, GoalInfo0, NestedContext,
         Common0, !Info),
+    maybe_generate_warning_for_useless_comparison(PredInfo,
+        InstMap0, Args, GoalInfo0, !Info),
 
     % Try to evaluate the call at compile-time.
     ModuleSymName = pred_info_module(PredInfo),
@@ -594,6 +596,109 @@ input_args_are_equiv([Arg | Args], [HeadVar | HeadVars], [Mode | Modes],
         true
     ),
     input_args_are_equiv(Args, HeadVars, Modes, CommonInfo, ModuleInfo).
+
+%---------------------%
+
+    % Generate warnings for comparisons at are tautologies or contradictions.
+    % For example:
+    %
+    %      X : uint32 < 0u32
+    %      X : uint >= 0u
+    %
+:- pred maybe_generate_warning_for_useless_comparison(
+    pred_info::in, instmap::in, list(prog_var)::in,
+    hlds_goal_info::in, simplify_info::in, simplify_info::out) is det.
+
+maybe_generate_warning_for_useless_comparison(
+        PredInfo, InstMap, Args, GoalInfo, !Info) :-
+    pred_info_is_pred_or_func(PredInfo) = PredOrFunc,
+    ModuleSymName = pred_info_module(PredInfo),
+    ( if
+        is_std_lib_module_name(ModuleSymName, ModuleName),
+        PredOrFunc = pf_predicate,
+        Args = [ArgA, ArgB],
+        simplify_do_warn_simple_code(!.Info)
+    then
+        pred_info_get_name(PredInfo, PredName),
+        instmap_lookup_var(InstMap, ArgA, InstA),
+        instmap_lookup_var(InstMap, ArgB, InstB),
+        ( if
+            is_useless_unsigned_comparison(ModuleName, PredName, InstA,
+                InstB, WarnPieces)
+        then
+            GoalContext = goal_info_get_context(GoalInfo),
+            PredPieces = describe_one_pred_info_name(should_module_qualify,
+                PredInfo),
+            Pieces = [words("Warning: call to")] ++ PredPieces ++
+                WarnPieces,
+            Msg = simple_msg(GoalContext,
+                [option_is_set(warn_simple_code, yes,
+                    [always(Pieces)])]),
+            Spec = error_spec(severity_warning,
+                phase_simplify(report_in_any_mode), [Msg]),
+            simplify_info_add_message(Spec, !Info)
+        else
+            true
+        )
+    else
+        true
+    ).
+
+:- pred is_useless_unsigned_comparison(string::in, string::in, mer_inst::in,
+    mer_inst::in, format_components::out) is semidet.
+
+is_useless_unsigned_comparison(ModuleName, PredName, ArgA, ArgB,
+        Pieces) :-
+    (
+        PredName = ">=",
+        arg_is_unsigned_zero(ModuleName, ArgB, ZeroStr),
+        Pieces = [words("cannot fail."), nl,
+            words("All"), words(ModuleName), words("values are"),
+            words(">="), words(ZeroStr), suffix(".")]
+    ;
+        PredName = "=<",
+        arg_is_unsigned_zero(ModuleName, ArgA, ZeroStr),
+        Pieces = [words("cannot fail."), nl,
+            words(ZeroStr), words("=<"), words("all"),
+            words(ModuleName), words("values.")]
+    ;
+        PredName = "<",
+        arg_is_unsigned_zero(ModuleName, ArgB, ZeroStr),
+        Pieces = [words("cannot succeed."), nl,
+            words("There are no"), words(ModuleName),
+            words("values <"), words(ZeroStr), suffix(".")]
+    ;
+        PredName = ">",
+        arg_is_unsigned_zero(ModuleName, ArgA, ZeroStr),
+        Pieces = [words("cannot succeed."), nl,
+            words(ZeroStr), words("> no"), words(ModuleName),
+            words("values.")]
+    ).
+
+:- pred arg_is_unsigned_zero(string::in, mer_inst::in, string::out) is semidet.
+
+arg_is_unsigned_zero(ModuleName, Arg, ZeroStr) :-
+    (
+        ModuleName = "uint",
+        Arg = bound(_, _, [bound_functor(uint_const(0u), [])]),
+        ZeroStr = "0u"
+    ;
+        ModuleName = "uint8",
+        Arg = bound(_, _, [bound_functor(uint8_const(0u8), [])]),
+        ZeroStr = "0u8"
+    ;
+        ModuleName = "uint16",
+        Arg = bound(_, _, [bound_functor(uint16_const(0u16), [])]),
+        ZeroStr = "0u16"
+    ;
+        ModuleName = "uint32",
+        Arg = bound(_, _, [bound_functor(uint32_const(0u32), [])]),
+        ZeroStr = "0u32"
+    ;
+        ModuleName = "uint64",
+        Arg = bound(_, _, [bound_functor(uint64_const(0u64), [])]),
+        ZeroStr = "0u64"
+    ).
 
 %---------------------------------------------------------------------------%
 %
