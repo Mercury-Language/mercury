@@ -612,7 +612,7 @@ decide_type_repns_pass(Verbose, Stats, !HLDS, !Specs, !IO) :-
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     maybe_write_string(Verbose,
         "% Deciding type representations...\n", !IO),
-    decide_type_repns(!HLDS, !Specs),
+    decide_type_repns(!HLDS, !Specs, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
