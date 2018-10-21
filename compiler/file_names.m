@@ -174,6 +174,18 @@
 :- pred make_include_file_path(string::in, string::in, string::out) is det.
 
 %---------------------------------------------------------------------------%
+
+    % This predicate is intended to output profiling data that can later
+    % be used to improve the operation of this module. It appends to
+    % /tmp/TRANSLATIONS_RECORD information about the frequency with which
+    % this module is asked to translate file names with various suffixes,
+    % provided that the gathering of this information has been enabled by
+    % both the right trace flag at compile time and the right environment
+    % variable at runtime.
+    %
+:- pred write_translations_record_if_any(io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -185,8 +197,10 @@
 
 :- import_module bool.
 :- import_module dir.
+:- import_module int.
 :- import_module library.
 :- import_module list.
+:- import_module map.
 :- import_module require.
 :- import_module string.
 
@@ -278,6 +292,23 @@ module_name_to_file_name_general(Globals, Search, MkDir, Ext,
         BaseName = sym_name_to_string_sep(ModuleName, ".") ++ Ext,
         choose_file_name(Globals, ModuleName, [], BaseName, Ext, Search, MkDir,
             FileName, !IO)
+    ),
+    trace [compile_time(flag("file_name_translations")),
+        runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
+    (
+        get_translations(Translations0, !TIO),
+        Key = record_key(ModuleName, Ext, Search, MkDir),
+        ( if map.search(Translations0, Key, Value0) then
+            Value0 = record_value(ValueFileName, Count0),
+            expect(unify(FileName, ValueFileName), $module,
+                "FileName != ValueFileName"),
+            Value = record_value(ValueFileName, Count0 + 1),
+            map.det_update(Key, Value, Translations0, Translations)
+        else
+            Value = record_value(FileName, 1),
+            map.det_insert(Key, Value, Translations0, Translations)
+        ),
+        set_translations(Translations, !TIO)
     ).
 
 module_name_to_lib_file_name(Globals, Prefix, ModuleName, Ext, MkDir,
@@ -337,6 +368,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
         % Even if not putting files in a `Mercury' directory, Java files will
         % have non-empty BaseParentDirs (the package) which may need to be
         % created.
+        % ZZZ Most of the code of make_file_name handles UseSubdirs = yes.
         make_file_name(Globals, BaseParentDirs, Search, MkDir, BaseName, Ext,
             FileName, !IO)
     else if
@@ -666,6 +698,104 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
         % That seems a silly thing to write in a source file.
         Path = dirname(ModuleSourceFileName) / OrigFileName
     ).
+
+%---------------------------------------------------------------------------%
+
+:- type record_key
+    --->    record_key(module_name, string, maybe_search, maybe_create_dirs).
+
+:- type record_value
+    --->    record_value(string, int).
+
+:- mutable(translations, map(record_key, record_value), map.init, ground,
+    [untrailed, attach_to_io_state]).
+
+write_translations_record_if_any(!IO) :-
+    get_translations(Translations, !IO),
+    ( if map.is_empty(Translations) then
+        true
+    else
+        map.foldl4(gather_translation_stats, Translations,
+            0, NumKeys, 0, NumLookups,
+            map.init, ExtMap, map.init, ExtSchDirMap),
+        io.open_append("/tmp/TRANSLATIONS_RECORD", Result, !IO),
+        (
+            Result = ok(Stream),
+            io.format(Stream, "overall_stats %d %d\n",
+                [i(NumKeys), i(NumLookups)], !IO),
+            map.foldl(write_out_ext_entry(Stream), ExtMap, !IO),
+            map.foldl(write_out_ext_sch_dir_entry(Stream), ExtSchDirMap, !IO),
+            io.close_output(Stream, !IO)
+        ;
+            Result = error(_)
+        )
+    ).
+
+:- type ext_search_mkdir
+    --->    ext_search_mkdir(string, maybe_search, maybe_create_dirs).
+
+:- type count_sum
+    --->    count_sum(int, int).
+
+:- pred gather_translation_stats(record_key::in, record_value::in,
+    int::in, int::out, int::in, int::out,
+    map(string, count_sum)::in, map(string, count_sum)::out,
+    map(string, count_sum)::in, map(string, count_sum)::out) is det.
+
+gather_translation_stats(Key, Value, !NumKeys, !NumLookups,
+        !ExtMap, !ExtSchDirMap) :-
+    !:NumKeys = !.NumKeys + 1,
+    Value = record_value(_FileName, Count),
+    !:NumLookups = !.NumLookups + Count,
+    Key = record_key(_ModuleName, Ext0, Search, MkDir),
+    ( if Ext0 = "" then
+        Ext = "no_suffix"
+    else
+        Ext = Ext0
+    ),
+    (
+        Search = do_search,
+        SearchStr = "_search"
+    ;
+        Search = do_not_search,
+        SearchStr = "_nosearch"
+    ),
+    (
+        MkDir = do_create_dirs,
+        MkDirStr = "_mkdir"
+    ;
+        MkDir = do_not_create_dirs,
+        MkDirStr = "_nomkdir"
+    ),
+    ExtSchDir = Ext ++ SearchStr ++ MkDirStr,
+    update_count_sum_map(Ext, Count, !ExtMap),
+    update_count_sum_map(ExtSchDir, Count, !ExtSchDirMap).
+
+:- pred update_count_sum_map(T::in, int::in,
+    map(T, count_sum)::in, map(T, count_sum)::out) is det.
+
+update_count_sum_map(Key, Count, !Map) :-
+    ( if map.search(!.Map, Key, Entry0) then
+        Entry0 = count_sum(Cnt0, Sum0),
+        Entry = count_sum(Cnt0 + 1, Sum0 + Count),
+        map.det_update(Key, Entry, !Map)
+    else
+        Entry = count_sum(1, Count),
+        map.det_insert(Key, Entry, !Map)
+    ).
+
+:- pred write_out_ext_entry(io.text_output_stream::in,
+    string::in, count_sum::in, io::di, io::uo) is det.
+
+write_out_ext_entry(Stream, Ext, count_sum(Cnt, Sum), !IO) :-
+    io.format(Stream, "ext %d %d %s\n", [i(Cnt), i(Sum), s(Ext)], !IO).
+
+:- pred write_out_ext_sch_dir_entry(io.text_output_stream::in,
+    string::in, count_sum::in, io::di, io::uo) is det.
+
+write_out_ext_sch_dir_entry(Stream, ExtSchDir, count_sum(Cnt, Sum), !IO) :-
+    io.format(Stream, "ext_sch_dir %d %d %s\n",
+        [i(Cnt), i(Sum), s(ExtSchDir)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.file_names.

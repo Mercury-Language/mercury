@@ -1,0 +1,51 @@
+#!/usr/bin/awk -f
+$1 == "overall_stats" {
+        num_invocations += 1;
+        overall_count += $2;
+        overall_sum += $3;
+    }
+$1 == "ext" {
+        ext = $4;
+        ext_count[ext] += $2;
+        ext_sum[ext] += $3;
+    }
+$1 == "ext_sch_dir" {
+        esd = $4;
+        esd_count[esd] += $2;
+        esd_sum[esd] += $3;
+    }
+END {
+        printf "number of compiler invocations:      %8d\n", num_invocations;
+        printf "number of file name lookups:         %8d\n", overall_sum;
+        printf "number of file name unique results:  %8d\n", overall_count;
+        printf "number of lookups per unique result: %8.2f\n\n",
+            (overall_sum + 0.0) / overall_count;
+
+        printf "----------------------------------------------------------\n\n";
+
+        num_exts = asorti(ext_count, ext_sort_keys);
+
+        for (i = 1; i <= num_exts; i++) {
+            e = ext_sort_keys[i];
+            printf "ext %-32s lookups:                   %8d\n",
+                e, ext_sum[e];
+            printf "ext %-32s unique results:            %8d\n",
+                e, ext_count[e];
+            printf "ext %-32s lookups per unique result: %8.2f\n\n",
+                e, (ext_sum[e] + 0.0) / ext_count[e];
+        }
+
+        printf "----------------------------------------------------------\n\n";
+
+        num_esds = asorti(esd_count, esd_sort_keys);
+
+        for (i = 1; i <= num_esds; i++) {
+            e = esd_sort_keys[i];
+            printf "esd %-32s lookups:                   %8d\n",
+                e, esd_sum[e];
+            printf "esd %-32s unique results:            %8d\n",
+                e, esd_count[e];
+            printf "esd %-32s lookups per unique result: %8.2f\n\n",
+                e, (esd_sum[e] + 0.0) / esd_count[e];
+        }
+    }

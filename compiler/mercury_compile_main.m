@@ -126,7 +126,7 @@ real_main(!IO) :-
 
     unlimit_stack(!IO),
 
-    % Replace all @file arguments with the contents of the file
+    % Replace all @file arguments with the contents of the file.
     expand_at_file_arguments(CmdLineArgs, Res, !IO),
     (
         Res = ok(ExpandedCmdLineArgs),
@@ -137,7 +137,8 @@ real_main(!IO) :-
 
         io.write_string(io.error_message(E), !IO),
         io.nl(!IO)
-    ).
+    ),
+    write_translations_record_if_any(!IO).
 
     % Expand @File arguments.
     % Each argument in the above form is replaced with a list of arguments
