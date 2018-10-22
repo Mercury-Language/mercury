@@ -1823,7 +1823,7 @@ parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
             Pieces = [words("Error: invalid run_time parameter"),
                 quote(TermStr), suffix("."), nl,
                 words("The only acceptable run_time paramaters have the form"),
-                quote("env(""name of anvironment variable"")"), nl],
+                quote("env(""name of an environment variable"")"), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(TermContext, [always(Pieces)])]),
             MaybeRuntime = error1([Spec])
