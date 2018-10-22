@@ -204,7 +204,10 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         %   (a) abstract, (b) du/eqv/solver and (c) foreign types in lists
         %   whose elements are of different, specialized types; and
         % - call specialized versions of add_type_defn in each foldl5 below.
-        % XXX TYPE_REPN consider treating du/eqv/solver type defns separately
+        % XXX TYPE_REPN Consider treating du/eqv/solver type defns separately,
+        % but beware: the current code of maybe_make_abstract_type_defn,
+        % while usually returning abstract types, sometimes returns Mercury
+        % types.
         list.foldl5(add_type_defn, ItemTypeDefnsAbstract,
             !ModuleInfo, !FoundInvalidType, !Specs,
             !SolverAuxPredInfos, !SolverItemMutables),
