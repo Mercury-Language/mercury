@@ -113,8 +113,6 @@
     % class if there is only a single functor.
     %
 :- func ml_tag_uses_base_class(cons_tag) = tag_uses_base_class.
-:- func ml_remote_args_tag_uses_base_class(remote_args_tag_info)
-    = tag_uses_base_class.
 
     % Return whether this compilation target uses object constructors.
     %
@@ -1036,7 +1034,13 @@ ml_tag_uses_base_class(ConsTag) = UsesBaseClass :-
         UsesBaseClass = tag_does_not_use_base_class
     ).
 
+:- func ml_remote_args_tag_uses_base_class(remote_args_tag_info)
+    = tag_uses_base_class.
+
 ml_remote_args_tag_uses_base_class(RemoteArgsTagInfo) = UsesBaseClass :-
+    % The ml_unify_gen_construct.m module has (currently) three predicates
+    % that all do the job of this predicate interspersed with other jobs.
+    % If this code changes, code there will have to change as well.
     (
         RemoteArgsTagInfo = remote_args_only_functor,
         UsesBaseClass = tag_uses_base_class

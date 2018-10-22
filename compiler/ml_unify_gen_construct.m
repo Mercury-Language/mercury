@@ -256,20 +256,7 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
 ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
         RHSVars, ArgModes, TakeAddr, HowToConstruct, Context,
         Defns, Stmts, !Info) :-
-    % Figure out which class name to construct.
     ml_gen_info_get_target(!.Info, Target),
-    % XXX ARG_PACK We should include consider including MaybeCtorName
-    % in RemoteArgsTagInfo.
-    UsesBaseClass = ml_remote_args_tag_uses_base_class(RemoteArgsTagInfo),
-    (
-        UsesBaseClass = tag_uses_base_class,
-        MaybeCtorName = no
-    ;
-        UsesBaseClass = tag_does_not_use_base_class,
-        ml_cons_name(Target, ConsId, CtorName),
-        MaybeCtorName = yes(CtorName)
-    ),
-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_var_types(!.Info, VarTypes),
     ml_variable_type(!.Info, LHSVar, LHSType),
@@ -282,11 +269,14 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
     (
         (
             RemoteArgsTagInfo = remote_args_only_functor,
+            UsesBaseClass = tag_uses_base_class,
             Ptag = ptag(0u8)
         ;
-            RemoteArgsTagInfo = remote_args_unshared(Ptag)
+            RemoteArgsTagInfo = remote_args_unshared(Ptag),
+            UsesBaseClass = tag_does_not_use_base_class
         ;
             RemoteArgsTagInfo = remote_args_ctor(_Data),
+            UsesBaseClass = tag_does_not_use_base_class,
             UsesConstructors = ml_target_uses_constructors(Target),
             expect(unify(UsesConstructors, yes), $pred,
                 "remote_args_ctor but UsesConstructors = no"),
@@ -310,6 +300,7 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
         NonTagwordArgModes = ArgModes
     ;
         RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+        UsesBaseClass = tag_does_not_use_base_class,
         UsesConstructors = ml_target_uses_constructors(Target),
         expect(unify(UsesConstructors, no), $pred,
             "remote_args_shared but UsesConstructors = yes"),
@@ -362,6 +353,17 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
             TagwordRvalsTypesWidths = [rval_type_and_width(TagwordRval,
                 mlds_builtin_type_int(int_type_uint), TagwordArgPosWidth)]
         )
+    ),
+    % Figure out which class name to construct.
+    % XXX ARG_PACK We should consider including MaybeCtorName
+    % in RemoteArgsTagInfo.
+    (
+        UsesBaseClass = tag_uses_base_class,
+        MaybeCtorName = no
+    ;
+        UsesBaseClass = tag_does_not_use_base_class,
+        ml_cons_name(Target, ConsId, CtorName),
+        MaybeCtorName = yes(CtorName)
     ),
     ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag,
         LHSVar, LHSType, TagwordRvalsTypesWidths,
@@ -1402,11 +1404,14 @@ ml_generate_ground_term_memory_cell(ModuleInfo, Target, HighLevelData,
     (
         (
             RemoteArgsTagInfo = remote_args_only_functor,
+            UsesBaseClass = tag_uses_base_class,
             Ptag = ptag(0u8)
         ;
-            RemoteArgsTagInfo = remote_args_unshared(Ptag)
+            RemoteArgsTagInfo = remote_args_unshared(Ptag),
+            UsesBaseClass = tag_does_not_use_base_class
         ;
             RemoteArgsTagInfo = remote_args_ctor(_Data),
+            UsesBaseClass = tag_does_not_use_base_class,
             UsesConstructors = ml_target_uses_constructors(Target),
             expect(unify(UsesConstructors, yes), $pred,
                 "remote_args_ctor but UsesConstructors = no"),
@@ -1416,6 +1421,7 @@ ml_generate_ground_term_memory_cell(ModuleInfo, Target, HighLevelData,
         NonTagwordRHSVarsTypesWidths = RHSVarsTypesWidths
     ;
         RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+        UsesBaseClass = tag_does_not_use_base_class,
         UsesConstructors = ml_target_uses_constructors(Target),
         expect(unify(UsesConstructors, no), $pred,
             "remote_args_shared but UsesConstructors = yes"),
@@ -1459,8 +1465,6 @@ ml_generate_ground_term_memory_cell(ModuleInfo, Target, HighLevelData,
             NonTagwordRHSVarsTypesWidths, NonTagwordRHSRvalsTypesWidths,
             !GlobalData, !GroundTermMap)
     ),
-    % XXX ARG_PACK Move to top, and inline in each branch.
-    UsesBaseClass = ml_remote_args_tag_uses_base_class(RemoteArgsTagInfo),
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         Context, LHSType, LHS_MLDS_Type, yes(ConsId),
         UsesBaseClass, Ptag, TagwordRHSRvals, NonTagwordRHSRvalsTypesWidths,
@@ -1664,11 +1668,14 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type,
     (
         (
             RemoteArgsTagInfo = remote_args_only_functor,
+            UsesBaseClass = tag_uses_base_class,
             Ptag = ptag(0u8)
         ;
-            RemoteArgsTagInfo = remote_args_unshared(Ptag)
+            RemoteArgsTagInfo = remote_args_unshared(Ptag),
+            UsesBaseClass = tag_does_not_use_base_class
         ;
             RemoteArgsTagInfo = remote_args_ctor(_Data),
+            UsesBaseClass = tag_does_not_use_base_class,
             UsesConstructors = ml_target_uses_constructors(Target),
             expect(unify(UsesConstructors, yes), $pred,
                 "remote_args_ctor but UsesConstructors = no"),
@@ -1678,6 +1685,7 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type,
         NonTagwordArgsTypesWidths = ArgsTypesWidths
     ;
         RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
+        UsesBaseClass = tag_does_not_use_base_class,
         UsesConstructors = ml_target_uses_constructors(Target),
         expect(unify(UsesConstructors, no), $pred,
             "remote_args_shared but UsesConstructors = yes"),
@@ -1713,8 +1721,6 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type,
     ml_gen_const_struct_args(Info, !.ConstStructMap,
         NonTagwordArgsTypesWidths, NonTagwordRvalsTypesWidths, !GlobalData),
 
-    % XXX ARG_PACK Move to top, and inline in each branch.
-    UsesBaseClass = ml_remote_args_tag_uses_base_class(RemoteArgsTagInfo),
     ModuleInfo = Info ^ mcsi_module_info,
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
         term.context_init, VarType, MLDS_Type, yes(ConsId),
