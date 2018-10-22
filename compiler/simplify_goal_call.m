@@ -351,15 +351,25 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
         list.filter(unify(IOStateType), ArgTypes, IOStateArgTypes),
         IOStateArgTypes = [_, _],
 
-        % ... where the callee predicate has a twin that has
-        % one extra initial argument that is a stream.
+        % ... where the callee predicate has a twin that has one extra argument
+        % that is a stream, and that extra argument is after any typeinfo
+        % and/or typeclass_info args added by polymorphism, but before any
+        % of the user-visible arguments.
+
+        pred_info_get_orig_arity(PredInfo, OrigArity),
+        list.length(ArgTypes, FullArity),
+        NumExtraArgs = FullArity - OrigArity,
+        list.det_split_list(NumExtraArgs, ArgTypes,
+            ExtraArgTypes, UserArgTypes),
+
         module_info_get_predicate_table(ModuleInfo, PredTable),
         PredSymName = qualified(ModuleName, PredName),
-        list.length(ArgTypes, Arity),
         predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-            PredOrFunc, PredSymName, Arity + 1, PredIds),
-        list.filter(one_extra_stream_arg(ModuleInfo, ArgTypes), PredIds,
-            OneExtraStreamArgPredIds),
+            PredOrFunc, PredSymName, OrigArity + 1, PredIds),
+        list.filter(
+            one_extra_stream_arg(ModuleInfo, NumExtraArgs,
+                ExtraArgTypes, UserArgTypes),
+            PredIds, OneExtraStreamArgPredIds),
         OneExtraStreamArgPredIds = [_ | _]
     then
         GoalContext = goal_info_get_context(GoalInfo),
@@ -414,25 +424,35 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
         MaybeSpec = no
     ).
 
-:- pred one_extra_stream_arg(module_info::in, list(mer_type)::in, pred_id::in)
-    is semidet.
+:- pred one_extra_stream_arg(module_info::in, int::in,
+    list(mer_type)::in, list(mer_type)::in, pred_id::in) is semidet.
 
-one_extra_stream_arg(ModuleInfo, OrigArgTypes, PredId) :-
+one_extra_stream_arg(ModuleInfo, NumExtraArgs,
+        BaseExtraArgTypes, BaseUserArgTypes, PredId) :-
+    % We are testing whether the relationship between the argument list
+    % of the base predicate (BaseArgTypes) and the argument list of this
+    % predicate (ArgTypes) looks like this:
+    %
+    % BaseArgTypes = BaseExtraArgTypes ++ BaseUserArgTypes
+    % ArgTypes = BaseExtraArgTypes ++ [StreamArgType] ++ BaseUserArgTypes
+    %
+    % where NumExtraArgs is the length of BaseExtraArgTypes.
+
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    ArgTypes = [HeadArgType | TailArgTypes],
+    list.split_list(NumExtraArgs, ArgTypes, ExtraArgTypes, UserArgTypes),
 
-    % Is the first argument a stream type? (We could list all the stream
+    ExtraArgTypes = BaseExtraArgTypes,
+    UserArgTypes = [HeadUserArgType | TailUserArgTypes],
+    TailUserArgTypes = BaseUserArgTypes,
+
+    % Is the added argument a stream type? (We could list all the stream
     % types defined in library/io.m here, but it is probably more robust
     % to assume that all types in io.m whose names end in "stream" qualify.
     % We don't think we will ever give any non-stream type such a name.)
-    HeadArgType = defined_type(HeadArgTypeSymName, [], kind_star),
-    HeadArgTypeSymName = qualified(mercury_io_module, HeadArgTypeName),
-    string.suffix(HeadArgTypeName, "stream"),
-
-    % Do the later arguments have the same types as the argument types
-    % in the original call?
-    TailArgTypes = OrigArgTypes.
+    HeadUserArgType = defined_type(HeadUserArgTypeSymName, [], kind_star),
+    HeadUserArgTypeSymName = qualified(mercury_io_module, HeadUserArgTypeName),
+    string.suffix(HeadUserArgTypeName, "stream").
 
 %---------------------%
 
