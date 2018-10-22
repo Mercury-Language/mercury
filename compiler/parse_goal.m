@@ -1720,7 +1720,7 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                     [simple_msg(TermContext, [always(Pieces)])]),
                 MaybeCompiletime = error1([Spec])
             )
-        else if Atom = "tracelevel" then
+        else if ( Atom = "tracelevel" ; Atom = "trace_level" ) then
             ( if SubTerms = [SubTerm] then
                 ( if
                     SubTerm = term.functor(term.atom(LevelName), [], _),
@@ -1755,7 +1755,13 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
         else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid compile_time parameter"),
-                quote(TermStr), suffix("."), nl],
+                quote(TermStr), suffix("."), nl,
+                words("The acceptable compile_time paramaters"),
+                words("have one of the following forms:"), nl,
+                quote("flag(""name of --trace-flag parameter"")"), nl,
+                quote("grade(""grade name"")"), nl,
+                quote("tracelevel(shallow)"), nl,
+                quote("tracelevel(deep)"), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(TermContext, [always(Pieces)])]),
             MaybeCompiletime = error1([Spec])
@@ -1763,7 +1769,13 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid compile_time parameter"),
-            quote(TermStr), suffix("."), nl],
+            quote(TermStr), suffix("."), nl,
+            words("The acceptable compile_time paramaters"),
+            words("have one of the following forms:"), nl,
+            quote("flag(""name of --trace-flag parameter"")"), nl,
+            quote("grade(""grade name"")"), nl,
+            quote("tracelevel(shallow)"), nl,
+            quote("tracelevel(deep)"), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
         MaybeCompiletime = error1([Spec])
@@ -1809,7 +1821,9 @@ parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
         else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid run_time parameter"),
-                quote(TermStr), suffix("."), nl],
+                quote(TermStr), suffix("."), nl,
+                words("The only acceptable run_time paramaters have the form"),
+                quote("env(""name of anvironment variable"")"), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(TermContext, [always(Pieces)])]),
             MaybeRuntime = error1([Spec])
