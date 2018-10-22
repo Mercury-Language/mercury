@@ -275,7 +275,6 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         ConsTag = closure_tag(PredId, ProcId, EvalMethod),
         expect(unify(TakeAddr, []), $pred, "closure_tag has take_addr"),
         expect(unify(MaybeSize, no), $pred, "closure_tag has size"),
-        % XXX TYPE_REPN
         construct_closure(PredId, ProcId, EvalMethod, LHSVar, RHSVars,
             GoalInfo, Code, !CI, !CLD)
     ).
