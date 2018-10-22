@@ -88,7 +88,7 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             )
         else
             RepnTermStr = describe_error_term(VarSet, RepnTerm),
-            RepnPieces = [words("Error: the third argument of a"),
+            RepnPieces = [words("Error: the second argument of a"),
                 decl("type_representation"), words("item"),
                 words("should specify the type's representation."),
                 words("Expected one of"),
