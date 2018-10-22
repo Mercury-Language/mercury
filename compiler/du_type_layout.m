@@ -277,10 +277,20 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
         )
     ),
 
-    % XXX TYPE_REPN Fold over TypeCtorsTypeDefns instead.
-    foldl_over_type_ctor_defns(
-        add_special_pred_decl_defns_for_type_maybe_lazily,
-        TypeTable, !ModuleInfo).
+    add_special_pred_decl_defns_for_types_maybe_lazily(TypeCtorsTypeDefns,
+        !ModuleInfo).
+
+:- pred add_special_pred_decl_defns_for_types_maybe_lazily(
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    module_info::in, module_info::out) is det.
+
+add_special_pred_decl_defns_for_types_maybe_lazily([], !ModuleInfo).
+add_special_pred_decl_defns_for_types_maybe_lazily(
+        [TypeCtor - TypeDefn | TypeCtorsTypeDefns], !ModuleInfo) :-
+    add_special_pred_decl_defns_for_type_maybe_lazily(
+        TypeCtor, TypeDefn, !ModuleInfo),
+    add_special_pred_decl_defns_for_types_maybe_lazily(
+        TypeCtorsTypeDefns, !ModuleInfo).
 
 :- pred setup_decide_du_params(globals::in, direct_arg_map::in,
     decide_du_params::out) is det.
