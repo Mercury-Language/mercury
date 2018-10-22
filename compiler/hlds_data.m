@@ -1111,9 +1111,6 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % for the current target language for this type, then
                 % add_type.m will set the body of this type to
                 % hlds_foreign_type, not hlds_du_type.
-                %
-                % XXX TYPE_REPN We should consider moving the decision point
-                % from add_type.m to du_type_layout.m.
                 du_type_is_foreign_type     :: maybe(foreign_type_body)
             )
     ;       hlds_eqv_type(mer_type)
