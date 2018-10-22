@@ -350,9 +350,6 @@
     list(constructor)::in, maybe_canonical::in,
     sym_name::out, mer_type::out, maybe(string)::out) is semidet.
 
-% XXX TYPE_REPN The du_type_is_* tests should be done just once when computing
-% du_type_kind. If we can achieve that, these predicates should not be here.
-
     % Is the discriminated union type with the given list of constructors
     % a notag type?
     %
