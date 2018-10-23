@@ -9,8 +9,6 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-
-:- import_module int.
 :- import_module require.
 
 :- typeclass toto(T) where
@@ -42,7 +40,7 @@ gen_toto_char('?').
 :- mode int_gen_toto(in, out) is det.
 
 int_gen_toto(X, Y) :-
-    ( compare(=, X, X + 0) ->
+    ( compare(=, X, X) ->
         gen_toto_float(Y)
     ;
         error("oops")

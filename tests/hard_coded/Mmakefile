@@ -366,6 +366,7 @@ ORDINARY_PROGS = \
 	system_sort \
 	tag_switch_dup_label \
 	tail_rec_scc \
+	tautological_compare \
 	term_io_test \
 	term_to_univ_test \
 	test234_sorted_insert \
