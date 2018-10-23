@@ -29,7 +29,7 @@
     % If it doesn't, and the option --warn-nothing-exported is set,
     % report a warning.
     %
-:- pred check_for_no_exports(globals::in, raw_compilation_unit::in,
+:- pred maybe_check_for_no_exports(globals::in, raw_compilation_unit::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Given a raw compilation unit, which will be a module's interface,
@@ -61,7 +61,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-check_for_no_exports(Globals, RawCompUnit, !Specs) :-
+maybe_check_for_no_exports(Globals, RawCompUnit, !Specs) :-
     globals.lookup_bool_option(Globals, warn_nothing_exported, ExportWarning),
     (
         ExportWarning = no
