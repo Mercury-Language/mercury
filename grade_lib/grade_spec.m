@@ -118,13 +118,16 @@
 
     ;       svalue_low_tag_bits_use_0
             % If we are using 0 low primary tag bits, then the data
-            % representation may use no primary tag at all (which is what
-            % svalue_low_tag_bits_use_0 is intended to mean here), or
-            % it may use (an almost arbitrary number of) high primary tag bits.
-            % Since we haven't used high ptag bits in ages, I (zs) see no need
-            % to handle them here. If that changes, we would need a new solver
-            % variable named (say) svar_high_tag_bits_use, whose value
-            % being any nonzero value would imply svalue_low_tag_bits_use_0.
+            % representation may use no primary tag at all.
+            % Once upon a time, we *could* use (an almost arbitrary number of)
+            % high primary tag bits, but we eventually removed that capability,
+            % never having used it for anything except benchmarking the extent
+            % of the superiority of low tags :-).
+            %
+            % If we ever wanted to bring back high tags, which is extremely
+            % unlikely, we would need a new solver variable named (say)
+            % svar_high_tag_bits_use, whose value being any nonzero value
+            % would imply svalue_low_tag_bits_use_0.
     ;       svalue_low_tag_bits_use_2
     ;       svalue_low_tag_bits_use_3
 

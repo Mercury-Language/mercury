@@ -68,7 +68,7 @@
                 gv_ssdebug              :: grade_var_ssdebug,
                 gv_target_debug         :: grade_var_target_debug,
                 gv_rbmm                 :: grade_var_rbmm,
-                gv_rbmmm_debug          :: grade_var_rbmm_debug,
+                gv_rbmm_debug           :: grade_var_rbmm_debug,
                 gv_rbmm_prof            :: grade_var_rbmm_prof,
                 gv_merc_file            :: grade_var_merc_file,
                 gv_merc_float           :: grade_var_merc_float

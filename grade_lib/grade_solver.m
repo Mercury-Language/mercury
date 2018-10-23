@@ -7,7 +7,7 @@
 %
 % This module implements the solver for grade problems.
 %
-% The state of the solver consists of set of solver variables, each with
+% The state of the solver consists of a set of solver variables, each with
 % a set of possible values. A grade problem narrows the set of possible
 % values of some of the solver variables. Solving a grade problem
 % consists of finding an assignment of a single possible value to each
@@ -25,8 +25,12 @@
 %
 % For grade problems that have more than one solution, we want to return
 % the solution that is "best" in some sense. We have two ways to make such
-% choices: we can choose in the absolute space of all possible valid grades,
-% or relative to a specified set of grades.
+% choices:
+%
+% - we can choose in the ABSOLUTE space of all possible valid grades, or
+%
+% - we can choose RELATIVE to a specified set of grades, such as the set of
+%   installed grades.
 %
 % When we are looking for absolute solutions, we use labeling. A labeling
 % step looks for solver variables with two or more values that are still
@@ -37,19 +41,19 @@
 % specs in grade_spec.m.) It then invokes propagation again to process
 % the implications of that choice. If propagation still does not arrive
 % either at failure (some solver variable has no possible values) or success
-% (all solver variables have exactly one possible value), it invoked labelling
-% again. This continues as long as needed. (Since both labelling and
+% (all solver variables have exactly one possible value), it invokes labelling
+% again. This continues as long as needed. Since both labelling and
 % propagation monotonically remove possible values from solver variables,
-% the process is guaranteed to terminate, and to do so reasonably quickly.)
+% the process is guaranteed to terminate, and to do so reasonably quickly.
 %
 % When we are looking for the best match relative to a specified set of grades,
 % intended to be the set of already installed grades, we don't do labelling.
-% Instead, after discard the installed grades that don't match the results of
-% propagation, we repeatedly find the highest priority solver variable that has
-% two or more matches in the remaining set of installed grades, and discard
-% the installed grades in the set that map that variable to any value
-% but the most preferred still-possible value of that variable. We stop
-% when the set has been whittled down a single installed grade.
+% Instead, after discarding the installed grades that don't match the results
+% of propagation, we repeatedly find the highest priority solver variable
+% that has two or more matches in the remaining set of installed grades,
+% and discard the installed grades in the set that map that variable
+% to any value but the most preferred still-possible value of that variable.
+% We stop when the set has been whittled down a single installed grade.
 
 :- module grade_lib.grade_solver.
 :- interface.
@@ -168,8 +172,8 @@
 
 :- type failure_tree
     --->    failure_tree(
-                % The solving process fails when we find that a
-                % solver variable has no possible values.
+                % The solving process fails when we find that
+                % a solver variable has no possible value.
 
                 solver_var_id,
                 % This is the solver variable.
@@ -177,9 +181,10 @@
                 list(why_var_is_not_value)
                 % For each of the values that this variable may ordinarily
                 % have, and which was not ruled out by autoconfiguration
-                % or directly by the user, this says why that value
-                % has been ruled out. (This means we have an entry in this list
-                % only for values that were ruled out by propagation.)
+                % or directly by the user, this says why that value has been
+                % ruled out. (The qualifications mean we have an entry
+                % in this list only for values that were ruled out
+                % by propagation.)
             ).
 
 :- type why_var_is_not_value
@@ -289,8 +294,11 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
             FoundFailure = found_failure,
             FoundFailureSuffix = " (found failure)"
         ),
-        io.format("\nAFTER PROPAGATE PASS %d%s\n",
-            [i(NumPasses0), s(FoundFailureSuffix)], !IO),
+        list.length(Requirements0, NumReqs0),
+        list.length(Requirements1, NumReqs1),
+        io.format("\nAFTER PROPAGATE PASS %d, #reqs %d -> %d%s\n",
+            [i(NumPasses0), i(NumReqs0), i(NumReqs1), s(FoundFailureSuffix)],
+            !IO),
         io.write_string(solver_var_map_to_str("    ", !.SolverVarMap), !IO),
         io.nl(!IO)
     ),
@@ -353,7 +361,7 @@ propagate_pass([Requirement | Requirements], !RevRequirements,
                 % We know that (IfVarId = IfValueId). We can therefore
                 % impose (ThenVarId in ReqThenValueIds). This won't need
                 % to be imposed again.
-                %
+
                 KeepReq = no,
                 ReqAppl = requirement_application(ReqId, ReqDesc,
                     narrow_then_values),
@@ -400,7 +408,7 @@ propagate_pass([Requirement | Requirements], !RevRequirements,
             % Since (ThenVarId in ReqThenValueIds) is false,
             % we can impose (IfVarId = IfValueId) being false as well.
             % This won't need to be imposed again.
-            %
+
             KeepReq = no,
             IfCntPoss = IfCntPoss0 - 1,
             ReqAppl = requirement_application(ReqId, ReqDesc, delete_if_value),
