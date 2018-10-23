@@ -1034,30 +1034,37 @@ simplify_improve_int_call(InstMap0, ModuleName, PredName, ModeNum, Args,
         ImprovedGoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, pregenerated_dist, no),
-    target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
-    ( if PredName = "quot_bits_per_int" then
-        Args = [X, Y],
-        % There is no point in checking whether bits_per_int is 0;
-        % it isn't.
-        Op = "unchecked_quotient",
-        simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
-            ImprovedGoalExpr, !.GoalInfo, !Info)
-    else if PredName = "times_bits_per_int" then
-        Args = [X, Y],
-        Op = "*",
-        simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
-            ImprovedGoalExpr, !.GoalInfo, !Info)
-    else if PredName = "rem_bits_per_int" then
-        Args = [X, Y],
-        % There is no point in checking whether bits_per_int is 0;
-        % it isn't.
-        Op = "unchecked_rem",
-        simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
-            ImprovedGoalExpr, !.GoalInfo, !Info)
-    else
-        simplify_improve_int_type_call(int_type_int, InstMap0, ModuleName,
-            PredName, ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info)
+    globals.lookup_bool_option(Globals, pregenerated_dist, PregeneratedDist),
+    (
+        PregeneratedDist = no,
+        target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
+        ( if PredName = "quot_bits_per_int" then
+            Args = [X, Y],
+            % There is no point in checking whether bits_per_int is 0;
+            % it isn't.
+            Op = "unchecked_quotient",
+            simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
+                ImprovedGoalExpr, !.GoalInfo, !Info)
+        else if PredName = "times_bits_per_int" then
+            Args = [X, Y],
+            Op = "*",
+            simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
+                ImprovedGoalExpr, !.GoalInfo, !Info)
+        else if PredName = "rem_bits_per_int" then
+            Args = [X, Y],
+            % There is no point in checking whether bits_per_int is 0;
+            % it isn't.
+            Op = "unchecked_rem",
+            simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
+                ImprovedGoalExpr, !.GoalInfo, !Info)
+        else
+            simplify_improve_int_type_call(int_type_int, InstMap0, ModuleName,
+                PredName, ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info)
+        )
+    ;
+        PregeneratedDist = yes,
+        simplify_improve_int_type_comparison_call(ModuleName, PredName,
+            ModeNum, Args, ImprovedGoalExpr)
     ).
 
     % simplify_make_int_ico_op(ModuleName, Op, X, IntConst, Y, GoalExpr,
@@ -1168,9 +1175,16 @@ simplify_improve_uint_call(InstMap0, ModuleName, PredName, ModeNum, Args,
         ImprovedGoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, pregenerated_dist, no),
-    simplify_improve_int_type_call(int_type_uint, InstMap0, ModuleName,
-        PredName, ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info).
+    globals.lookup_bool_option(Globals, pregenerated_dist, PregeneratedDist),
+    (
+        PregeneratedDist = no,
+        simplify_improve_int_type_call(int_type_uint, InstMap0, ModuleName,
+            PredName, ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info)
+    ;
+        PregeneratedDist = yes,
+        simplify_improve_int_type_comparison_call(ModuleName, PredName,
+            ModeNum, Args, ImprovedGoalExpr)
+    ).
 
 :- pred simplify_improve_int_type_call(int_type::in, instmap::in, string::in,
     string::in, int::in, list(prog_var)::in, hlds_goal_expr::out,
@@ -1178,7 +1192,7 @@ simplify_improve_uint_call(InstMap0, ModuleName, PredName, ModeNum, Args,
     simplify_info::in, simplify_info::out) is semidet.
 
 simplify_improve_int_type_call(IntType, InstMap0, ModuleName, PredName,
-        _ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info) :-
+        ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     (
@@ -1222,6 +1236,21 @@ simplify_improve_int_type_call(IntType, InstMap0, ModuleName, PredName,
         simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
             inline_builtin, X, Y, Z, ImprovedGoalExpr)
     ;
+        ( PredName = "<"
+        ; PredName = ">"
+        ; PredName = "=<"
+        ; PredName = ">="
+        ),
+        simplify_improve_int_type_comparison_call(ModuleName, PredName,
+            ModeNum, Args, ImprovedGoalExpr)
+    ).
+
+:- pred simplify_improve_int_type_comparison_call(string::in, string::in,
+    int::in, list(prog_var)::in, hlds_goal_expr::out) is semidet.
+
+simplify_improve_int_type_comparison_call(_ModuleName, PredName, _ModeNum,
+        Args, ImprovedGoalExpr) :-
+    (
         ( PredName = "<"
         ; PredName = ">"
         ),
