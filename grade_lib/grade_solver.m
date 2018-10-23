@@ -286,7 +286,8 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
     propagate_pass(Requirements0, [], RevRequirements1, !SolverVarMap,
         not_changed, Changed, havent_found_failure, FoundFailure),
     list.reverse(RevRequirements1, Requirements1),
-    trace [compile_time(flag("debug_solver")), io(!IO)] (
+    trace [compile_time(flag("debug_solver")), io(!IO)]
+    (
         (
             FoundFailure = havent_found_failure,
             FoundFailureSuffix = ""
@@ -307,8 +308,8 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
         % The next pass may have one of two results. Either it will return
         % not_changed, in which case the pass is wasted, or it will return
         % changed, with some of the changes being implications of the failure
-        % we have already found. (If x = x1 implies Y in {y1,y2}), then
-        % having no possible value left for Y in this pass will leave
+        % we have already found. (For example, If X = x1 implies Y in {y1,y2},
+        % then having no possible value left for Y in this pass may leave
         % no possible value for X in the next pass.) However, no further
         % pass can turn the failure back to a success, so there is no point
         % in doing such passes. There is point in NOT doing them: it allows
@@ -551,11 +552,11 @@ accumulate_poss_value_strings([SolverVarValue | SolverVarValues],
 label_step(!SolverVarPriorities, !SolverMap) :-
     find_first_undetermined_var(!SolverVarPriorities, !.SolverMap,
         FirstVarId, FirstVar0),
-    FirstVar0 = solver_var(_CntAll, _CntPoss, FirstValues0),
+    FirstVar0 = solver_var(CntAll, _CntPoss0, FirstValues0),
     find_first_possible_value_and_commit(FirstVarId,
         FirstValues0, FirstValues),
-    FirstVar1 = FirstVar0 ^ sv_cnt_possible := 1,
-    FirstVar = FirstVar1 ^ sv_values := FirstValues,
+    CntPoss = 1,
+    FirstVar = solver_var(CntAll, CntPoss, FirstValues),
     map.det_update(FirstVarId, FirstVar, !SolverMap).
 
 :- pred find_first_undetermined_var(

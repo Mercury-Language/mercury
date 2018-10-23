@@ -7,13 +7,16 @@
 %
 % This module provides predicates that set up a grade problem to be solved.
 %
-% The state of the solver consists of set of solver variables, each with
+% The state of the solver consists of a set of solver variables, each with
 % a set of possible values. A grade problem narrows the set of possible
-% values of some of the solver variables. A solver variable can be set
-% to be equal to some value, which sets all the other previously-possible
-% values of that solver variable to not possible. Or a solver variable
-% can be set to not-equal some value, which sets only that value of the
-% variable to not possible.
+% values of some of the solver variables. It can do so in one of two ways.
+%
+% 1:    A solver variable can be set to be equal to some value, which sets
+%       all the other previously-possible values of that solver variable
+%       to not possible.
+%
+% 2:    A solver variable can be set to not-equal some value, which sets
+%       only that value of the variable to not possible.
 %
 % Some of the solver variables are intended to always start out with known
 % values; these are the solver variables that record the results of
