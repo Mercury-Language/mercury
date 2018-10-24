@@ -17,4 +17,5 @@ simple_code.m:068: In clause for `r(in(bound(1)), out(bound(42)))':
 simple_code.m:068:   in argument 1 of clause head:
 simple_code.m:068:   warning: unification of `HeadVar__1' and 2 cannot succeed.
 simple_code.m:068:   `HeadVar__1' has instantiatedness `bound(1)'.
-simple_code.m:101: Warning: recursive call will lead to infinite recursion.
+simple_code.m:101: Warning: recursive call to predicate `anc'/2 will lead to
+simple_code.m:101:   infinite recursion.

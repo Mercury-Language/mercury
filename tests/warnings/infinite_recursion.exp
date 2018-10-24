@@ -1,6 +1,6 @@
-infinite_recursion.m:017: Warning: recursive call will lead to infinite
-infinite_recursion.m:017:   recursion.
-infinite_recursion.m:026: Warning: recursive call will lead to infinite
-infinite_recursion.m:026:   recursion.
-infinite_recursion.m:038: Warning: recursive call will lead to infinite
-infinite_recursion.m:038:   recursion.
+infinite_recursion.m:017: Warning: recursive call to predicate `main'/2 will
+infinite_recursion.m:017:   lead to infinite recursion.
+infinite_recursion.m:026: Warning: recursive call to predicate `loop'/0 will
+infinite_recursion.m:026:   lead to infinite recursion.
+infinite_recursion.m:038: Warning: recursive call to predicate `funny_append'/3
+infinite_recursion.m:038:   will lead to infinite recursion.

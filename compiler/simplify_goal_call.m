@@ -571,27 +571,22 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
         pred_info_get_purity(PredInfo, Purity),
         Purity \= purity_impure
     then
-        GoalContext = goal_info_get_context(GoalInfo),
-
-        % It would be better if we supplied more information than just
-        % the line number, e.g. we should print the name of the containing
-        % predicate.
-
-        MainPieces = [words("Warning: recursive call will lead to"),
-            words("infinite recursion."), nl],
+        PredNamePieces = describe_one_pred_info_name(should_not_module_qualify,
+            PredInfo),
+        MainPieces = [words("Warning: recursive call to") | PredNamePieces] ++
+            [words("will lead to infinite recursion."), nl],
         VerbosePieces =
             [words("If this recursive call is executed,"),
             words("the procedure will call itself"),
             words("with exactly the same input arguments,"),
             words("leading to infinite recursion."), nl],
-        Msg = simple_msg(GoalContext,
+        Msg = simple_msg(goal_info_get_context(GoalInfo),
             [option_is_set(warn_simple_code, yes,
                 [always(MainPieces),
                 verbose_only(verbose_once, VerbosePieces)])]),
         Severity = severity_conditional(warn_simple_code, yes,
             severity_warning, no),
-        Spec = error_spec(Severity,
-            phase_simplify(report_in_any_mode), [Msg]),
+        Spec = error_spec(Severity, phase_simplify(report_in_any_mode), [Msg]),
         simplify_info_add_message(Spec, !Info)
     else
         true
@@ -619,18 +614,18 @@ input_args_are_equiv([Arg | Args], [HeadVar | HeadVars], [Mode | Modes],
 
 %---------------------%
 
-    % Generate warnings for comparisons at are tautologies or contradictions.
+    % Generate warnings for comparisons that are tautologies or contradictions.
     % For example:
     %
-    %      X : uint32 < 0u32
-    %      X : uint >= 0u
+    %      X : uint32 < 0u32        cannot succeed
+    %      X : uint >= 0u           always succeeds
     %
-:- pred maybe_generate_warning_for_useless_comparison(
-    pred_info::in, instmap::in, list(prog_var)::in,
-    hlds_goal_info::in, simplify_info::in, simplify_info::out) is det.
+:- pred maybe_generate_warning_for_useless_comparison(pred_info::in,
+    instmap::in, list(prog_var)::in, hlds_goal_info::in,
+    simplify_info::in, simplify_info::out) is det.
 
-maybe_generate_warning_for_useless_comparison(
-        PredInfo, InstMap, Args, GoalInfo, !Info) :-
+maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
+        GoalInfo, !Info) :-
     pred_info_is_pred_or_func(PredInfo) = PredOrFunc,
     ModuleSymName = pred_info_module(PredInfo),
     ( if
@@ -649,11 +644,9 @@ maybe_generate_warning_for_useless_comparison(
             GoalContext = goal_info_get_context(GoalInfo),
             PredPieces = describe_one_pred_info_name(should_module_qualify,
                 PredInfo),
-            Pieces = [words("Warning: call to")] ++ PredPieces ++
-                WarnPieces,
+            Pieces = [words("Warning: call to")] ++ PredPieces ++ WarnPieces,
             Msg = simple_msg(GoalContext,
-                [option_is_set(warn_simple_code, yes,
-                    [always(Pieces)])]),
+                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
             Spec = error_spec(severity_warning,
                 phase_simplify(report_in_any_mode), [Msg]),
             simplify_info_add_message(Spec, !Info)
@@ -667,8 +660,7 @@ maybe_generate_warning_for_useless_comparison(
 :- pred is_useless_unsigned_comparison(string::in, string::in, mer_inst::in,
     mer_inst::in, format_components::out) is semidet.
 
-is_useless_unsigned_comparison(ModuleName, PredName, ArgA, ArgB,
-        Pieces) :-
+is_useless_unsigned_comparison(ModuleName, PredName, ArgA, ArgB, Pieces) :-
     (
         PredName = ">=",
         arg_is_unsigned_zero(ModuleName, ArgB, ZeroStr),
@@ -721,6 +713,7 @@ arg_is_unsigned_zero(ModuleName, Arg, ZeroStr) :-
     ).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates that improve the code, if they can.
 %
@@ -751,6 +744,8 @@ simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0, GoalInfo0,
         Common = Common0,
         MaybeAssignsGoalExpr = no
     ).
+
+%---------------------------------------------------------------------------%
 
     % simplify_improve_library_call(InstMap0, ModuleName, PredName,
     %   ModeNum, Args, ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info):
@@ -1006,14 +1001,14 @@ simplify_build_compare_ite(CmpLtGoal, CmpGtGoal, R, X, Y, Context,
     ( if X = Y then
         ReturnEqGoal = hlds_goal(GoalExpr, GoalInfo)
     else
-        % This assumes that CmpLtGoal and CmpGtGoal take only X and Y as inputs.
-        % This assumption will be *wrong* if the shared type of X and Y is
-        % polymorphic, because in that case, the typeinfos describing the actual
-        % types bound to the type variables in the polymorphic type will *also*
-        % be nonlocals.
+        % This assumes that CmpLtGoal and CmpGtGoal take only X and Y
+        % as inputs. This assumption will be *wrong* if the shared type
+        % of X and Y is polymorphic, because in that case, the typeinfos
+        % describing the actual types bound to the type variables in the
+        % polymorphic type will *also* be nonlocals.
         %
-        % If we ever want to use this predicate in such cases, we will have to get
-        % our caller to pass us the extra nonlocals.
+        % If we ever want to use this predicate in such cases, we will
+        % have to get our caller to pass us the extra nonlocals.
         NonLocals = set_of_var.list_to_set([R, X, Y]),
         goal_info_init(NonLocals, instmap_delta_bind_var(R), detism_det,
             purity_pure, Context, GoalInfo),
@@ -1063,8 +1058,7 @@ simplify_improve_int_call(InstMap0, ModuleName, PredName, ModeNum, Args,
         )
     ;
         PregeneratedDist = yes,
-        simplify_improve_int_type_comparison_call(ModuleName, PredName,
-            ModeNum, Args, ImprovedGoalExpr)
+        replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr)
     ).
 
     % simplify_make_int_ico_op(ModuleName, Op, X, IntConst, Y, GoalExpr,
@@ -1182,8 +1176,7 @@ simplify_improve_uint_call(InstMap0, ModuleName, PredName, ModeNum, Args,
             PredName, ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info)
     ;
         PregeneratedDist = yes,
-        simplify_improve_int_type_comparison_call(ModuleName, PredName,
-            ModeNum, Args, ImprovedGoalExpr)
+        replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr)
     ).
 
 :- pred simplify_improve_int_type_call(int_type::in, instmap::in, string::in,
@@ -1192,7 +1185,7 @@ simplify_improve_uint_call(InstMap0, ModuleName, PredName, ModeNum, Args,
     simplify_info::in, simplify_info::out) is semidet.
 
 simplify_improve_int_type_call(IntType, InstMap0, ModuleName, PredName,
-        ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info) :-
+        _ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     (
@@ -1241,15 +1234,13 @@ simplify_improve_int_type_call(IntType, InstMap0, ModuleName, PredName,
         ; PredName = "=<"
         ; PredName = ">="
         ),
-        simplify_improve_int_type_comparison_call(ModuleName, PredName,
-            ModeNum, Args, ImprovedGoalExpr)
+        replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr)
     ).
 
-:- pred simplify_improve_int_type_comparison_call(string::in, string::in,
-    int::in, list(prog_var)::in, hlds_goal_expr::out) is semidet.
+:- pred replace_tautological_comparisons(string::in, list(prog_var)::in,
+    hlds_goal_expr::out) is semidet.
 
-simplify_improve_int_type_comparison_call(_ModuleName, PredName, _ModeNum,
-        Args, ImprovedGoalExpr) :-
+replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr) :-
     (
         ( PredName = "<"
         ; PredName = ">"

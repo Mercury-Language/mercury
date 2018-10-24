@@ -5,3 +5,9 @@ MCFLAGS-tc_minimal	=	--no-inlining
 
 MCFLAGS-reset_stats_intermod    = --intermodule-optimisation
 MCFLAGS-reset_stats_intermod_2  = --intermodule-optimisation
+
+# We want to test the operation of the code that catches the infinite loop
+# at *runtime*, so we don't want a warning about the infinite loop,
+# turned into an error by --halt-at-warn, to cause the failure of test case
+# at *compile* time.
+MCFLAGS-loopcheck = --no-warn-simple-code

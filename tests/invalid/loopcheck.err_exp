@@ -6,7 +6,8 @@ loopcheck.m:020:   procedure with determinism `erroneous'.
 loopcheck.m:020:   The pragma requested is only valid for the following
 loopcheck.m:020:   determinisms: cc_multi, cc_nondet, det, multi, nondet and
 loopcheck.m:020:   semidet.
-loopcheck.m:022: Warning: recursive call will lead to infinite recursion.
+loopcheck.m:022: Warning: recursive call to predicate `loop'/1 will lead to
+loopcheck.m:022:   infinite recursion.
 loopcheck.m:022:   If this recursive call is executed, the procedure will call
 loopcheck.m:022:   itself with exactly the same input arguments, leading to
 loopcheck.m:022:   infinite recursion.
