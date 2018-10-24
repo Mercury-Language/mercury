@@ -249,7 +249,8 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     list.map_foldl(
         decide_if_complex_du_type(!.ModuleInfo, Params, ComponentTypeMap),
         TypeCtorsTypeDefns1, TypeCtorsTypeDefns, !Specs),
-    set_all_type_ctor_defns(TypeCtorsTypeDefns, TypeTable),
+    set_all_type_ctor_defns(TypeCtorsTypeDefns, SortedTypeCtorsTypeDefns,
+        TypeTable),
     module_info_set_type_table(TypeTable, !ModuleInfo),
 
     list.foldl2(add_pragma_foreign_export_enum, ForeignExportEnums,
@@ -277,8 +278,8 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
         )
     ),
 
-    add_special_pred_decl_defns_for_types_maybe_lazily(TypeCtorsTypeDefns,
-        !ModuleInfo).
+    add_special_pred_decl_defns_for_types_maybe_lazily(
+        SortedTypeCtorsTypeDefns, !ModuleInfo).
 
 :- pred add_special_pred_decl_defns_for_types_maybe_lazily(
     assoc_list(type_ctor, hlds_type_defn)::in,

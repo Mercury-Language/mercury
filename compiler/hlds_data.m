@@ -879,7 +879,7 @@ cons_table_optimize(!ConsTable) :-
     assoc_list(type_ctor, hlds_type_defn)::out) is det.
 
 :- pred set_all_type_ctor_defns(assoc_list(type_ctor, hlds_type_defn)::in,
-    type_table::out) is det.
+    assoc_list(type_ctor, hlds_type_defn)::out, type_table::out) is det.
 
 :- pred foldl_over_type_ctor_defns(
     pred(type_ctor, hlds_type_defn, T, T)::
@@ -956,7 +956,7 @@ get_all_type_ctor_defns_2(TypeCtorTable, !TypeCtorsDefns) :-
 
 %---------------------%
 
-set_all_type_ctor_defns(TypeCtorsDefns, TypeTable) :-
+set_all_type_ctor_defns(TypeCtorsDefns, SortedTypeCtorsDefns, TypeTable) :-
     list.sort(compare_type_ctor_defns_by_name,
         TypeCtorsDefns, SortedTypeCtorsDefns),
     gather_type_ctors_by_name(SortedTypeCtorsDefns,
