@@ -20,6 +20,7 @@
 :- import_module check_hlds.typecheck_info.
 :- import_module hlds.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.

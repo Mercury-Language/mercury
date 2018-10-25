@@ -206,6 +206,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_module.

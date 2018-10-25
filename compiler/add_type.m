@@ -50,6 +50,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
+:- import_module hlds.hlds_cons.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds_error.
 :- import_module libs.globals.

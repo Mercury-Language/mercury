@@ -64,7 +64,7 @@
 :- implementation.
 
 :- import_module hlds.
-:- import_module hlds.hlds_data.    % for type field_access_type
+:- import_module hlds.hlds_cons.    % for type field_access_type
 :- import_module hlds.hlds_pred.    % for field_access_function_name,
                                     % type pred_id.
 :- import_module libs.options.

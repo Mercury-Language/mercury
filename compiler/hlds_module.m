@@ -28,6 +28,7 @@
 :- import_module check_hlds.proc_requests.
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_class.
+:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_inst_mode.

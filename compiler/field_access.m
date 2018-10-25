@@ -100,7 +100,7 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.superhomogeneous.
 :- import_module parse_tree.parse_sym_name.

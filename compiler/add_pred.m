@@ -85,7 +85,7 @@
 
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds_error.
