@@ -91,6 +91,7 @@
 :- import_module check_hlds.oisu_check.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.post_typecheck.
+:- import_module check_hlds.pre_typecheck.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
@@ -250,6 +251,7 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
         ExceededTypeCheckIterationLimit = no
     ;
         TypeCheckConstraints = no,
+        prepare_for_typecheck_module(!HLDS),
         typecheck_module(!HLDS, TypeCheckSpecs, FoundSyntaxError,
             ExceededTypeCheckIterationLimit)
     ),

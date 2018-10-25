@@ -36,7 +36,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
-:- pred prepape_for_typecheck_module(module_info::in, module_info::out) is det.
+:- pred prepare_for_typecheck_module(module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -72,7 +72,7 @@
 
 %---------------------------------------------------------------------------%
 
-prepape_for_typecheck_module(!ModuleInfo) :-
+prepare_for_typecheck_module(!ModuleInfo) :-
     module_info_get_valid_pred_id_set(!.ModuleInfo, OrigValidPredIdSet),
     module_info_get_preds(!.ModuleInfo, PredMap0),
     map.to_sorted_assoc_list(PredMap0, PredIdsInfos0),
