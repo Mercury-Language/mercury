@@ -103,10 +103,7 @@
 :- import_module check_hlds.typecheck_errors.
 :- import_module check_hlds.typecheck_info.
 :- import_module check_hlds.typeclasses.
-:- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
-:- import_module hlds.headvar_names.
-:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
@@ -139,7 +136,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -164,26 +160,6 @@ typecheck_module(!ModuleInfo, Specs, FoundSyntaxError,
     module_info_get_valid_pred_id_set(!.ModuleInfo, OrigValidPredIdSet),
     OrigValidPredIds = set_tree234.to_sorted_list(OrigValidPredIdSet),
 
-    module_info_get_preds(!.ModuleInfo, PredMap0),
-    map.to_assoc_list(PredMap0, PredIdsInfos0),
-
-    % We seem to need this prepass. Without it, the typechecker throws
-    % an exception for two test cases involving field access functions.
-    % The reason is almost certainly that some part of the typechecker
-    % inspects the definitions of callees (even though it shouldn't),
-    % and thus gets things wrong if field access functions haven't yet had
-    % their defining clauses added to their pred_infos. We cannot add the
-    % defining clauses to the pred_infos of field access functions when those
-    % pred_infos are created, since those clauses are only defaults; any
-    % clauses given by the user override them. This pass is the first chance
-    % to decide that there won't be any user-given clauses coming, and that
-    % therefore the default clauses should be the actual clauses.
-    prepare_for_typecheck(!.ModuleInfo, OrigValidPredIdSet,
-        PredIdsInfos0, PredIdsInfos),
-
-    map.from_sorted_assoc_list(PredIdsInfos, PredMap),
-    module_info_set_preds(PredMap, !ModuleInfo),
-
     typecheck_to_fixpoint(1, MaxIterations, !ModuleInfo,
         OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
         CheckSpecs, FoundSyntaxError, ExceededIterationLimit),
@@ -191,34 +167,6 @@ typecheck_module(!ModuleInfo, Specs, FoundSyntaxError,
     construct_type_inference_messages(!.ModuleInfo, FinalValidPredIdSet,
         OrigValidPredIds, [], InferSpecs),
     Specs = InferSpecs ++ CheckSpecs.
-
-:- pred prepare_for_typecheck(module_info::in, set_tree234(pred_id)::in,
-    assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out)
-    is det.
-
-prepare_for_typecheck(_, _, [], []).
-prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
-        [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
-    some [!PredInfo] (
-        PredIdInfo0 = PredId - !:PredInfo,
-        ( if set_tree234.contains(ValidPredIdSet, PredId) then
-            % Goal ids are used to identify typeclass constraints.
-            pred_info_get_clauses_info(!.PredInfo, GoalIdClausesInfo0),
-            fill_goal_id_slots_in_clauses(ModuleInfo, _ContainingGoalMap,
-                GoalIdClausesInfo0, GoalIdClausesInfo),
-            pred_info_set_clauses_info(GoalIdClausesInfo, !PredInfo),
-
-            maybe_add_field_access_function_clause(ModuleInfo, !PredInfo),
-
-            module_info_get_globals(ModuleInfo, Globals),
-            maybe_improve_headvar_names(Globals, !PredInfo),
-            PredIdInfo = PredId - !.PredInfo
-        else
-            PredIdInfo = PredIdInfo0
-        )
-    ),
-    prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
-        PredIdsInfos0, PredIdsInfos).
 
     % Repeatedly typecheck the code for a group of predicates
     % until a fixpoint is reached, or until some errors are detected.
@@ -1059,56 +1007,6 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, Body),
     special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body).
-
-%---------------------------------------------------------------------------%
-
-    % For a field access function for which the user has supplied
-    % a declaration but no clauses, add a clause
-    % 'foo :='(X, Y) = 'foo :='(X, Y).
-    % As for the default clauses added for builtins, this is not a recursive
-    % call -- post_typecheck.m will expand the body into unifications.
-    %
-:- pred maybe_add_field_access_function_clause(module_info::in,
-    pred_info::in, pred_info::out) is det.
-
-maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
-    pred_info_get_status(!.PredInfo, PredStatus),
-    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers0),
-    ( if
-        pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
-        clause_list_is_empty(ClausesRep0) = yes,
-        pred_status_defined_in_this_module(PredStatus) = yes
-    then
-        clauses_info_get_headvars(ClausesInfo0, HeadVars),
-        proc_arg_vector_to_func_args(HeadVars, FuncArgs, FuncRetVal),
-        pred_info_get_context(!.PredInfo, Context),
-        FuncModule = pred_info_module(!.PredInfo),
-        FuncName = pred_info_name(!.PredInfo),
-        PredArity = pred_info_orig_arity(!.PredInfo),
-        adjust_func_arity(pf_function, FuncArity, PredArity),
-        FuncSymName = qualified(FuncModule, FuncName),
-        FuncConsId = cons(FuncSymName, FuncArity, cons_id_dummy_type_ctor),
-        FuncRHS = rhs_functor(FuncConsId, is_not_exist_constr, FuncArgs),
-        create_pure_atomic_complicated_unification(FuncRetVal,
-            FuncRHS, Context, umc_explicit, [], Goal0),
-        Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-        NonLocals = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
-        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-        Goal = hlds_goal(GoalExpr, GoalInfo),
-        Clause = clause(all_modes, Goal, impl_lang_mercury, Context, []),
-        set_clause_list([Clause], ClausesRep),
-        ItemNumbers = init_clause_item_numbers_comp_gen,
-        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
-            ClausesInfo0, ClausesInfo),
-        pred_info_update_goal_type(goal_type_clause_and_foreign, !PredInfo),
-        pred_info_set_clauses_info(ClausesInfo, !PredInfo),
-        pred_info_get_markers(!.PredInfo, Markers0),
-        add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
-        pred_info_set_markers(Markers, !PredInfo)
-    else
-        true
-    ).
 
 %---------------------------------------------------------------------------%
 

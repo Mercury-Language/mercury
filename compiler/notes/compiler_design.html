@@ -945,11 +945,15 @@ so that the compiler does the right thing for options such as
     with actual names given by the programmer.
     <p>
     For efficiency, this phase not a standalone pass,
-    but is instead invoked by the typechecker.
+    but is instead invoked by pre_typecheck.m.
 
 <dt> type checking
 <dd>
     <ul>
+    <li>
+        pre_typecheck.m does some chores
+        that need to be done before typechecking
+        and which cannot be done earlier.
     <li>
         typecheck.m handles type checking, overloading resolution &amp;
         module name resolution, and almost fully qualifies all predicate
