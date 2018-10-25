@@ -571,8 +571,8 @@ search_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
         Count, [], Constraints).
 
 :- pred search_hlds_constraint_list_2(constraint_map::in, constraint_type::in,
-    goal_id::in, int::in, list(prog_constraint)::in,
-    list(prog_constraint)::out) is semidet.
+    goal_id::in, int::in,
+    list(prog_constraint)::in, list(prog_constraint)::out) is semidet.
 
 search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId, Count,
         !Constraints) :-
