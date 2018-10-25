@@ -811,28 +811,39 @@ simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
         simplify_improve_builtin_compare_int_uint(!.Info, TypeName,
             R, X, Y, Context, ImprovedGoalExpr, ImprovedGoalInfo)
     ;
-        ModuleName = "int",
-        simplify_improve_int_call(InstMap0, ModuleName, PredName, ModeNum,
-            Args, ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info)
-    ;
-        ModuleName = "uint",
-        simplify_improve_uint_call(InstMap0, ModuleName, PredName, ModeNum,
-            Args, ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info)
-    ;
-        ( ModuleName = "int8",      IntType = int_type_int8
-        ; ModuleName = "uint8",     IntType = int_type_uint8
+        ( ModuleName = "int",       IntType = int_type_int
+        ; ModuleName = "int8",      IntType = int_type_int8
         ; ModuleName = "int16",     IntType = int_type_int16
-        ; ModuleName = "uint16",    IntType = int_type_uint16
         ; ModuleName = "int32",     IntType = int_type_int32
-        ; ModuleName = "uint32",    IntType = int_type_uint32
         ; ModuleName = "int64",     IntType = int_type_int64
+        ; ModuleName = "uint",      IntType = int_type_uint
+        ; ModuleName = "uint8",     IntType = int_type_uint8
+        ; ModuleName = "uint16",    IntType = int_type_uint16
+        ; ModuleName = "uint32",    IntType = int_type_uint32
         ; ModuleName = "uint64",    IntType = int_type_uint64
         ),
-        simplify_improve_int_type_call(IntType, InstMap0, ModuleName, PredName,
-            ModeNum, Args, ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo,
-            !Info)
+        simplify_info_get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, pregenerated_dist, Pregen),
+        (
+            Pregen = yes,
+            % Tautological comparisons generate warnings (which we treat
+            % as errors) from some compilers, so we avoid emitting them
+            % even in pregen grades.
+            replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr),
+            ImprovedGoalInfo = GoalInfo0
+        ;
+            Pregen = no,
+            % This also optimizes away tautological comparisons, but does
+            % other optimizations as well.
+            simplify_improve_arith_shift_cmp_ops(IntType, InstMap0,
+                ModuleName, PredName, ModeNum, Args, ImprovedGoalExpr,
+                GoalInfo0, ImprovedGoalInfo, !Info)
+        )
     ),
     simplify_info_set_should_requantify(!Info).
+
+%---------------------%
 
 :- pred simplify_inline_builtin_inequality(prog_var::in,
     prog_var::in, prog_var::in, string::in, bool::in, hlds_goal_info::in,
@@ -904,6 +915,8 @@ simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
             [CmpGoal, hlds_goal(negation(UnifyGoal), UnifyInfo)])
     ).
 
+%---------------------%
+
 :- pred simplify_improve_builtin_compare(int::in, list(prog_var)::in,
     prog_context::in, hlds_goal_expr::out, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is semidet.
@@ -963,6 +976,8 @@ simplify_improve_builtin_compare(_ModeNum, Args, Context,
         GoalExpr = if_then_else([], CmpEqGoal, ReturnEqGoal, ReturnLtGtGoal)
     ).
 
+%---------------------%
+
 :- pred simplify_improve_builtin_compare_int_uint(simplify_info::in,
     string::in, prog_var::in, prog_var::in, prog_var::in,
     prog_context::in, hlds_goal_expr::out, hlds_goal_info::out) is det.
@@ -1020,46 +1035,7 @@ simplify_build_compare_ite(CmpLtGoal, CmpGtGoal, R, X, Y, Context,
             if_then_else([], CmpLtGoal, ReturnLtGoal, ReturnGtEqGoal)
     ).
 
-:- pred simplify_improve_int_call(instmap::in, string::in, string::in,
-    int::in, list(prog_var)::in, hlds_goal_expr::out,
-    hlds_goal_info::in, hlds_goal_info::out,
-    simplify_info::in, simplify_info::out) is semidet.
-
-simplify_improve_int_call(InstMap0, ModuleName, PredName, ModeNum, Args,
-        ImprovedGoalExpr, !GoalInfo, !Info) :-
-    simplify_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, pregenerated_dist, PregeneratedDist),
-    (
-        PregeneratedDist = no,
-        target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
-        ( if PredName = "quot_bits_per_int" then
-            Args = [X, Y],
-            % There is no point in checking whether bits_per_int is 0;
-            % it isn't.
-            Op = "unchecked_quotient",
-            simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
-                ImprovedGoalExpr, !.GoalInfo, !Info)
-        else if PredName = "times_bits_per_int" then
-            Args = [X, Y],
-            Op = "*",
-            simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
-                ImprovedGoalExpr, !.GoalInfo, !Info)
-        else if PredName = "rem_bits_per_int" then
-            Args = [X, Y],
-            % There is no point in checking whether bits_per_int is 0;
-            % it isn't.
-            Op = "unchecked_rem",
-            simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
-                ImprovedGoalExpr, !.GoalInfo, !Info)
-        else
-            simplify_improve_int_type_call(int_type_int, InstMap0, ModuleName,
-                PredName, ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info)
-        )
-    ;
-        PregeneratedDist = yes,
-        replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr)
-    ).
+%---------------------%
 
     % simplify_make_int_ico_op(ModuleName, Op, X, IntConst, Y, GoalExpr,
     %   OrigGoalInfo, !Info):
@@ -1160,72 +1136,56 @@ simplify_make_int_const(IntConst, ConstVar, Goal, !Info) :-
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred simplify_improve_uint_call(instmap::in, string::in, string::in,
-    int::in, list(prog_var)::in, hlds_goal_expr::out,
+%---------------------%
+
+:- pred simplify_improve_arith_shift_cmp_ops(int_type::in, instmap::in,
+    string::in, string::in, int::in, list(prog_var)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is semidet.
 
-simplify_improve_uint_call(InstMap0, ModuleName, PredName, ModeNum, Args,
-        ImprovedGoalExpr, !GoalInfo, !Info) :-
-    simplify_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, pregenerated_dist, PregeneratedDist),
-    (
-        PregeneratedDist = no,
-        simplify_improve_int_type_call(int_type_uint, InstMap0, ModuleName,
-            PredName, ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info)
-    ;
-        PregeneratedDist = yes,
-        replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr)
-    ).
-
-:- pred simplify_improve_int_type_call(int_type::in, instmap::in, string::in,
-    string::in, int::in, list(prog_var)::in, hlds_goal_expr::out,
-    hlds_goal_info::in, hlds_goal_info::out,
-    simplify_info::in, simplify_info::out) is semidet.
-
-simplify_improve_int_type_call(IntType, InstMap0, ModuleName, PredName,
+simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
         _ModeNum, Args, ImprovedGoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     (
-        ( PredName = "/"
-        ; PredName = "//"
+        ( PredName = "quot_bits_per_int", Op = "unchecked_quotient"
+        ; PredName = "rem_bits_per_int", Op = "unchecked_rem"
+        ),
+        % There is no point in checking whether bits_per_int is 0;
+        % it isn't.
+        IntType = int_type_int,
+        Args = [X, Y],
+        target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
+        simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
+            ImprovedGoalExpr, !.GoalInfo, !Info)
+    ;
+        PredName = "times_bits_per_int",
+        IntType = int_type_int,
+        Args = [X, Y],
+        Op = "*",
+        target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
+        simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
+            ImprovedGoalExpr, !.GoalInfo, !Info)
+    ;
+        ( PredName = "/",   Op = "unchecked_quotient"
+        ; PredName = "//",  Op = "unchecked_quotient"
+        ; PredName = "rem", Op = "unchecked_rem"
         ),
         Args = [X, Y, Z],
         instmap_lookup_var(InstMap0, Y, InstY),
         InstY = bound(_, _, [bound_functor(ConsY, [])]),
         is_non_zero_const(IntType, ConsY),
-        Op = "unchecked_quotient",
         simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
             inline_builtin, X, Y, Z, ImprovedGoalExpr)
     ;
-        PredName = "rem",
-        Args = [X, Y, Z],
-        instmap_lookup_var(InstMap0, Y, InstY),
-        InstY = bound(_, _, [bound_functor(ConsY, [])]),
-        is_non_zero_const(IntType, ConsY),
-        Op = "unchecked_rem",
-        simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
-            inline_builtin, X, Y, Z, ImprovedGoalExpr)
-    ;
-        PredName = "<<",
+        ( PredName = "<<", Op = "unchecked_left_shift"
+        ; PredName = ">>", Op = "unchecked_right_shift"
+        ),
         Args = [X, Y, Z],
         instmap_lookup_var(InstMap0, Y, InstY),
         InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal >= 0,
         YVal < int_type_target_bits(Globals, IntType),
-        Op = "unchecked_left_shift",
-        simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
-            inline_builtin, X, Y, Z, ImprovedGoalExpr)
-    ;
-        PredName = ">>",
-        Args = [X, Y, Z],
-        instmap_lookup_var(InstMap0, Y, InstY),
-        InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
-        YVal >= 0,
-        YVal < int_type_target_bits(Globals, IntType),
-        Op = "unchecked_right_shift",
         simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
             inline_builtin, X, Y, Z, ImprovedGoalExpr)
     ;
@@ -1241,6 +1201,7 @@ simplify_improve_int_type_call(IntType, InstMap0, ModuleName, PredName,
     hlds_goal_expr::out) is semidet.
 
 replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr) :-
+    % Our callers should invoke us whenever the code here may succeed.
     (
         ( PredName = "<"
         ; PredName = ">"
@@ -1254,6 +1215,12 @@ replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr) :-
         Args = [X, X],
         ImprovedGoalExpr = true_goal_expr
     ).
+
+%---------------------------------------------------------------------------%
+%
+% Utility predicates that may be of interest to more than one
+% of the predicates above.
+%
 
 :- pred is_non_zero_const(int_type::in, cons_id::in) is semidet.
 
