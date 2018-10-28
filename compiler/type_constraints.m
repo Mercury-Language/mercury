@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=4 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
@@ -25,6 +25,8 @@
 
 :- import_module list.
 
+    % Typecheck the module using constraints.
+    %
 :- pred typecheck_constraints(module_info::in, module_info::out,
     list(error_spec)::out) is det.
 
@@ -147,7 +149,7 @@
 :- type type_domain_map == map(tvar, type_domain).
 
 :- type type_domain
-    --->    tdomain(set(mer_type))
+    --->    tdomain_nonfixed(set(mer_type))
             % A type-domain consisting of multiple possible types.
 
     ;       tdomain_singleton(mer_type)
@@ -213,9 +215,6 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % This is the predicate called by the compiler to perform the typecheck
-    % pass.
-    %
 typecheck_constraints(!HLDS, Specs) :-
     % hlds_module.module_info_get_type_table(!.HLDS, TypeEnv),
     hlds_module.module_info_get_event_set(!.HLDS, event_set(_, EventEnv)),
@@ -267,96 +266,6 @@ typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
         typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs)
     ).
 
-:- pred typecheck_one_predicate(pred_id::in,
-    tconstr_environment::in, tconstr_environment::out,
-    module_info::in, module_info::out,
-    error_specs::in, error_specs::out) is det.
-
-typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
-    some [!Preds, !PredInfo, !ClausesInfo, !Clauses, !Goals, !PredEnv,
-        !TCInfo, !Vartypes]
-    (
-        % Find the clause list in the predicate definition.
-        !:PredEnv = !.Environment ^ tce_pred_env,
-        predicate_table_get_preds(!.PredEnv, !:Preds),
-        map.lookup(!.Preds, PredId, !:PredInfo),
-        pred_info_get_typevarset(!.PredInfo, TVarSet),
-        pred_info_get_context(!.PredInfo, Context),
-        pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
-        clauses_info_get_varset(!.ClausesInfo, ProgVarSet),
-
-        trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
-            LineNumber = string.int_to_string(term.context_line(Context)),
-            FileName = term.context_file(Context),
-            PredNumber = int_to_string(pred_id_to_int(PredId)),
-            io.write_string("=== Predicate " ++ PredNumber ++ " [" ++
-                FileName ++ ": " ++ LineNumber ++ "] ===\n", !IO)
-        ),
-
-        % Create a set of constraints on the types of the head variables.
-        clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
-        pred_info_get_arg_types(!.PredInfo, HeadTypes),
-        prog_type.type_vars_list(HeadTypes, HeadTVars),
-        ( if list.same_length(HeadTypes, HeadVars) then
-            list.foldl_corresponding(variable_assignment_constraint(Context),
-                HeadVars, HeadTypes, tconstr_info(bimap.init, counter.init(0),
-                map.init, map.init, TVarSet, []), !:TCInfo)
-        else
-            unexpected($pred, "head variable types vs vars mismatch")
-        ),
-
-        % Generate constraints for each clause of the predicate.
-        fill_goal_id_slots_in_clauses(!.HLDS, ContainingGoalMap, !ClausesInfo),
-        ForwardGoalPathMap =
-            create_forward_goal_path_map(ContainingGoalMap),
-        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),
-        get_clause_list_for_replacement(ClausesRep0, !:Clauses),
-        list.map(get_clause_body, !.Clauses, !:Goals),
-        list.foldl(goal_to_constraint(!.Environment), !.Goals, !TCInfo),
-        trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
-            print_pred_constraint(!.TCInfo, ProgVarSet, !IO)
-        ),
-
-        % Solve all the constraints.
-        find_type_constraint_solutions(Context, ProgVarSet, DomainMap0,
-            !TCInfo),
-        list.foldl2_corresponding(unify_equal_tvars(!.TCInfo, set.init),
-            HeadTVars, HeadTVars,
-            map.init, ReplacementMap, DomainMap0, DomainMap),
-        trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
-            print_constraint_solution(!.TCInfo, ProgVarSet, DomainMap, !IO)
-        ),
-
-        % Update the HLDS with the results of the solving and report any
-        % ambiguity errors found in this process.
-        list.map2(
-            update_goal(!.PredEnv, !.TCInfo ^ tconstr_constraint_map,
-                ForwardGoalPathMap),
-            !Goals, PredErrors),
-        create_vartypes_map(Context, ProgVarSet, !.TCInfo ^ tconstr_tvarset,
-            !.TCInfo ^ tconstr_var_map, DomainMap, ReplacementMap, !:Vartypes,
-            VarTypeErrors),
-        list.map_corresponding(set_clause_body, !.Goals, !Clauses),
-        list.condense([VarTypeErrors | PredErrors], NewErrors),
-        list.foldl(add_message_to_spec, NewErrors, !TCInfo),
-        set_clause_list(!.Clauses, ClausesRep),
-        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
-        list.foldl(add_unused_prog_var(!.TCInfo), HeadVars, !Vartypes),
-        clauses_info_set_vartypes(!.Vartypes, !ClausesInfo),
-        pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
-        pred_info_set_typevarset(!.TCInfo ^ tconstr_tvarset, !PredInfo),
-        map.det_update(PredId, !.PredInfo, !Preds),
-        predicate_table_set_preds(!.Preds, !PredEnv),
-        module_info_set_predicate_table(!.PredEnv, !HLDS),
-        !Environment ^ tce_pred_env := !.PredEnv,
-        !:Specs = !.TCInfo ^ tconstr_error_specs ++ !.Specs
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% General typechecking utility predicates.
-%
-
     % A compiler-generated predicate only needs type checking if
     % (a) it is a user-defined equality pred, or
     % (b) it is the unification or comparison predicate for an existially
@@ -385,6 +294,96 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
     hlds_data.get_type_defn_body(TypeDefn, Body),
     special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body).
 
+%-----------------------------------------------------------------------------%
+
+:- pred typecheck_one_predicate(pred_id::in,
+    tconstr_environment::in, tconstr_environment::out,
+    module_info::in, module_info::out,
+    error_specs::in, error_specs::out) is det.
+
+typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
+    some [!Preds, !PredInfo, !ClausesInfo, !Clauses, !Goals, !PredEnv,
+        !TCInfo, !Vartypes]
+    (
+        % Find the clause list in the predicate definition.
+        !:PredEnv = !.Environment ^ tce_pred_env,
+        predicate_table_get_preds(!.PredEnv, !:Preds),
+        map.lookup(!.Preds, PredId, !:PredInfo),
+        pred_info_get_typevarset(!.PredInfo, TVarSet),
+        pred_info_get_context(!.PredInfo, Context),
+        pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
+        clauses_info_get_varset(!.ClausesInfo, ProgVarSet),
+
+        trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
+        (
+            LineNumber = string.int_to_string(term.context_line(Context)),
+            FileName = term.context_file(Context),
+            PredNumber = int_to_string(pred_id_to_int(PredId)),
+            io.write_string("=== Predicate " ++ PredNumber ++ " [" ++
+                FileName ++ ": " ++ LineNumber ++ "] ===\n", !IO)
+        ),
+
+        % Create a set of constraints on the types of the head variables.
+        clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
+        pred_info_get_arg_types(!.PredInfo, HeadTypes),
+        prog_type.type_vars_list(HeadTypes, HeadTVars),
+        ( if list.same_length(HeadTypes, HeadVars) then
+            list.foldl_corresponding(variable_assignment_constraint(Context),
+                HeadVars, HeadTypes, tconstr_info(bimap.init, counter.init(0),
+                map.init, map.init, TVarSet, []), !:TCInfo)
+        else
+            unexpected($pred, "head variable types vs vars mismatch")
+        ),
+
+        % Generate constraints for each clause of the predicate.
+        fill_goal_id_slots_in_clauses(!.HLDS, ContainingGoalMap, !ClausesInfo),
+        ForwardGoalPathMap =
+            create_forward_goal_path_map(ContainingGoalMap),
+        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),
+        get_clause_list_for_replacement(ClausesRep0, !:Clauses),
+        list.map(get_clause_body, !.Clauses, !:Goals),
+        list.foldl(goal_to_constraint(!.Environment), !.Goals, !TCInfo),
+        trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
+        (
+            print_pred_constraint(!.TCInfo, ProgVarSet, !IO)
+        ),
+
+        % Solve all the constraints.
+        find_type_constraint_solutions(Context, ProgVarSet, DomainMap0,
+            !TCInfo),
+        list.foldl2_corresponding(unify_equal_tvars(!.TCInfo, set.init),
+            HeadTVars, HeadTVars,
+            map.init, ReplacementMap, DomainMap0, DomainMap),
+        trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
+        (
+            print_constraint_solution(!.TCInfo, ProgVarSet, DomainMap, !IO)
+        ),
+
+        % Update the HLDS with the results of the solving and report any
+        % ambiguity errors found in this process.
+        list.map2(
+            update_goal(!.PredEnv, !.TCInfo ^ tconstr_constraint_map,
+                ForwardGoalPathMap),
+            !Goals, PredErrors),
+        create_vartypes_map(Context, ProgVarSet, !.TCInfo ^ tconstr_tvarset,
+            !.TCInfo ^ tconstr_var_map, DomainMap, ReplacementMap, !:Vartypes,
+            VarTypeErrors),
+        list.map_corresponding(set_clause_body, !.Goals, !Clauses),
+        list.condense([VarTypeErrors | PredErrors], NewErrors),
+        list.foldl(add_message_to_spec, NewErrors, !TCInfo),
+        set_clause_list(!.Clauses, ClausesRep),
+        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
+        list.foldl(add_unused_prog_var(!.TCInfo), HeadVars, !Vartypes),
+        clauses_info_set_vartypes(!.Vartypes, !ClausesInfo),
+        pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
+        pred_info_set_typevarset(!.TCInfo ^ tconstr_tvarset, !PredInfo),
+        map.det_update(PredId, !.PredInfo, !Preds),
+        predicate_table_set_preds(!.Preds, !PredEnv),
+        module_info_set_predicate_table(!.PredEnv, !HLDS),
+        !Environment ^ tce_pred_env := !.PredEnv,
+        !:Specs = !.TCInfo ^ tconstr_error_specs ++ !.Specs
+    ).
+
     % Updates the goal with the pred_ids of all predicates called in the goal.
     % If there is an ambiguous predicate call, chooses one predicate to be
     % the "correct" one and returns an error message describing the problem.
@@ -398,11 +397,11 @@ update_goal(PredEnv, ConstraintMap, ForwardGoalPathMap, !Goal, Errors) :-
     list.filter_map(has_one_disjunct, Disjunctions, Conjunctions),
     list.filter_map(pred_constraint_info, Conjunctions, DefinitePredData),
     list.filter_map(has_multiple_disjuncts, Disjunctions, AmbigDisjuncts),
-    list.filter_map(diagnose_ambig_pred_error(PredEnv), AmbigDisjuncts,
-        Errors),
+    list.filter_map(diagnose_ambig_pred_error(PredEnv),
+        AmbigDisjuncts, Errors),
 
-    list.map(list.filter_map(pred_constraint_info), AmbigDisjuncts,
-        AmbigPredDatas),
+    list.map(list.filter_map(pred_constraint_info),
+        AmbigDisjuncts, AmbigPredDatas),
     AmbigPredData = list.filter_map(list.head, AmbigPredDatas),
     PredData = DefinitePredData ++ AmbigPredData,
     list.foldl(apply_pred_data_to_goal(ForwardGoalPathMap), PredData, !Goal).
@@ -429,7 +428,8 @@ apply_pred_data_to_goal(ForwardGoalPathMap, GoalId - PredId, !Goal) :-
 set_goal_pred_id(PredId, Goal0, MaybeGoal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     ( if GoalExpr0 = plain_call(_, _, _, _, _, _) then
-        trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
+        trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
+        (
             Context = goal_info_get_context(GoalInfo),
             LineNumber = term.context_line(Context),
             FileName = term.context_file(Context),
@@ -456,20 +456,7 @@ has_one_disjunct(tconstr_disj(Cs, no), C) :-
 has_one_disjunct(tconstr_disj(_, yes(C)), C).
 has_one_disjunct(tconstr_conj(C), C).
 
-:- pred get_first_disjunct(type_constraint::in, conj_type_constraint::out)
-    is semidet.
-
-get_first_disjunct(tconstr_disj(Cs, no), C) :-
-    list.filter(still_active, Cs, [C | _]).
-get_first_disjunct(tconstr_disj(_, yes(C)), C).
-get_first_disjunct(tconstr_conj(C), C).
-
-:- pred has_multiple_disjuncts(type_constraint::in,
-    list(conj_type_constraint)::out)  is semidet.
-
-has_multiple_disjuncts(tconstr_disj(Cs0, _), Cs) :-
-    list.filter(still_active, Cs0, Cs),
-    Cs = [_, _ | _].
+%-----------------------------------------------------------------------------%
 
     % Creates the vartypes map, which is inserted into the relevant pred_info
     % and used by the rest of the compiler.
@@ -512,7 +499,7 @@ find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
             Domain = tdomain_singleton(Type),
             MaybeMsg = no
         ;
-            Domain = tdomain(Types),
+            Domain = tdomain_nonfixed(Types),
             ( if set.is_singleton(Types, Type0) then
                 Type = Type0,
                 MaybeMsg = no
@@ -538,13 +525,604 @@ find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
         MaybeMsg = no
     ).
 
-:- pred get_clause_body(clause::in, hlds_goal::out) is det.
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% Constraint generation.
+%
 
-get_clause_body(Clause, Clause ^ clause_body).
+    % Turn a goal expression to a constraint on the types of variable
+    % appearing within that goal, then update all relevant maps with the
+    % information in the new constraint.
+    %
+:- pred goal_to_constraint(tconstr_environment::in, hlds_goal::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
 
-:- pred set_clause_body(hlds_goal::in, clause::in, clause::out) is det.
+goal_to_constraint(Environment, Goal, !TCInfo) :-
+    % Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    (
+        GoalExpr = unify(_, _, _, _, _),
+        unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo)
+    ;
+        GoalExpr = plain_call(_, _, _, _, _, _),
+        plain_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo)
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo,
+            !TCInfo)
+    ;
+        GoalExpr = generic_call(_, _, _, _, _),
+        generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo,
+            !TCInfo)
+    ;
+        GoalExpr = conj(_, Goals),
+        list.foldl(goal_to_constraint(Environment), Goals, !TCInfo)
+    ;
+        GoalExpr = disj(Goals),
+        list.foldl(goal_to_constraint(Environment), Goals, !TCInfo)
+    ;
+        GoalExpr = negation(SubGoal),
+        goal_to_constraint(Environment, SubGoal, !TCInfo)
+    ;
+        GoalExpr = scope(_, SubGoal),
+        goal_to_constraint(Environment, SubGoal, !TCInfo)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        goal_to_constraint(Environment, Cond, !TCInfo),
+        goal_to_constraint(Environment, Then, !TCInfo),
+        goal_to_constraint(Environment, Else, !TCInfo)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        list.map(get_case_goal, Cases, Goals),
+        list.foldl(goal_to_constraint(Environment), Goals, !TCInfo)
+    ;
+        GoalExpr = shorthand(_),
+        shorthand_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo)
+    ).
 
-set_clause_body(Goal, Clause, Clause ^ clause_body := Goal).
+%-----------------------------------------------------------------------------%
+
+    % Transform a unification constraint into an assignment of types
+    % to the variables being unified.
+    %
+:- pred unify_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_unify), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    Context = goal_info_get_context(GoalInfo),
+    GoalExpr = unify(L, RHS, _, _, _),
+    get_var_type(L, LTVar, !TCInfo),
+    (
+        RHS = rhs_var(R),
+        get_var_type(R, RTVar, !TCInfo),
+        Constraints = [ctconstr([stconstr(LTVar, tvar_to_type(RTVar))],
+            tconstr_active, Context, no, no)],
+        RelevantTVars = [LTVar, RTVar]
+    ;
+        RHS = rhs_functor(ConsId, _, Args),
+        ( if
+            builtin_atomic_type(ConsId, Builtin)
+        then
+            SimpleConstraint = stconstr(LTVar, builtin_type(Builtin)),
+            Constraints = [ctconstr([SimpleConstraint], tconstr_active,
+                Context, no, no)],
+            RelevantTVars = [LTVar]
+        else if
+            ConsId = cons(Name, Arity, _TypeCtor),
+            % The _TypeCtor field is not meaningful yet.
+            Arity = list.length(Args)
+        then
+            list.map_foldl(get_var_type, Args, ArgTypeVars, !TCInfo),
+            % If it is a data constructor, create a disjunction constraint
+            % with each possible type of the constructor.
+            Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
+            ( if search_cons_table(FuncEnv, ConsId, ConsDefns) then
+                list.map_foldl(
+                    functor_unif_constraint(LTVar, ArgTypeVars, GoalInfo),
+                    ConsDefns, TypeConstraints, !TCInfo)
+            else
+                TypeConstraints = []
+            ),
+            % If it is a closure constructor, create a disjunction
+            % constraint for each predicate it could refer to.
+            predicate_table_lookup_sym(PredEnv, may_be_partially_qualified,
+                Name, PredIds),
+            (
+                PredIds = [_ | _],
+                predicate_table_get_preds(PredEnv, Preds),
+                list.filter_map_foldl(
+                    ho_pred_unif_constraint(Preds, GoalInfo, LTVar,
+                        ArgTypeVars),
+                    PredIds, PredConstraints, !TCInfo)
+            ;
+                PredIds = [],
+                PredConstraints = []
+            ),
+            Constraints = TypeConstraints ++ PredConstraints,
+            (
+                Constraints = [],
+                Pieces = [words("The constructor"),
+                    qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+                    words("has not been defined."), nl],
+                ErrMsg = simple_msg(Context, [always(Pieces)]),
+                add_message_to_spec(ErrMsg, !TCInfo)
+            ;
+                Constraints = [_ | _]
+            ),
+            RelevantTVars = [LTVar | ArgTypeVars]
+        else
+            Pieces = [words("The given type is not supported"),
+                words("by constraint-based type checking."), nl],
+            ErrMsg = simple_msg(Context, [always(Pieces)]),
+            add_message_to_spec(ErrMsg, !TCInfo),
+            RelevantTVars = [],
+            Constraints = []
+        )
+    ;
+        RHS = rhs_lambda_goal(Purity, _, PredOrFunc, EvalMethod, _, Args,
+            _, _, LambdaGoal),
+        list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
+        ArgTypes = list.map(tvar_to_type, ArgTVars),
+        construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
+            ArgTypes, LambdaType),
+        Constraints = [ctconstr([stconstr(LTVar, LambdaType)],
+            tconstr_active, Context, no, no)],
+        RelevantTVars = [LTVar | ArgTVars],
+        goal_to_constraint(Environment, LambdaGoal, !TCInfo)
+    ),
+    add_type_constraint(Constraints, RelevantTVars, !TCInfo).
+
+    % Create a conjunction of type constraints from a functor unification goal.
+    % The LHS variable is constrained to be of the result type, and each RHS
+    % variable is constrained to be of the appropriate argument type. May
+    % only be called if the arity of the functor is equal to the number of
+    % arguments given to it.
+    %
+:- pred functor_unif_constraint(tvar::in, list(tvar)::in, hlds_goal_info::in,
+    hlds_cons_defn::in, conj_type_constraint::out, type_constraint_info::in,
+    type_constraint_info::out) is det.
+
+functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
+        !TCInfo) :-
+    ConsDefn = hlds_cons_defn(TypeCtor, FunctorTVarSet, TypeParams0, _, _,
+        FuncArgs, _),
+    Context = goal_info_get_context(Info),
+    GoalId = goal_info_get_goal_id(Info),
+    % Find the types of each argument and the result type, given a renaming
+    % of type variables.
+    list.map(get_ctor_arg_type, FuncArgs, FuncArgTypes0),
+    prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
+        FunctorTVarSet, NewTVarSet, TVarRenaming),
+    !TCInfo ^ tconstr_tvarset := NewTVarSet,
+    prog_type_subst.apply_variable_renaming_to_tvar_list(TVarRenaming,
+        TypeParams0, TypeParams),
+    prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
+        FuncArgTypes0, FuncArgTypes),
+    Params = list.map(tvar_to_type, TypeParams),
+    prog_type.construct_type(TypeCtor, Params, ResultType),
+    LHS_Constraint = stconstr(LTVar, ResultType),
+    RHS_Constraints = list.map_corresponding(create_stconstr,
+        ArgTVars, FuncArgTypes),
+    Constraints = ctconstr([LHS_Constraint | RHS_Constraints],
+        tconstr_active, Context, yes(GoalId), no).
+
+    % Creates a constraint from a higher-order unification, e.g,
+    % :- pred add(int, int, int), X = add(Y) ->
+    % X :: pred(int, int), Y :: int.
+    % Fails if the number of arguments supplied to the predicate is greater
+    % than its arity.
+    %
+:- pred ho_pred_unif_constraint(pred_table::in, hlds_goal_info::in, tvar::in,
+    list(tvar)::in, pred_id::in, conj_type_constraint::out,
+    type_constraint_info::in, type_constraint_info::out) is semidet.
+
+ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
+        !TCInfo) :-
+    Context = goal_info_get_context(Info),
+    ( if map.search(PredTable, PredId, PredInfo) then
+        pred_info_get_arg_types(PredInfo, PredArgTypes0),
+        pred_info_get_typevarset(PredInfo, PredTVarSet),
+        pred_info_get_purity(PredInfo, Purity),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
+            PredTVarSet, NewTVarSet, TVarRenaming),
+        !TCInfo ^ tconstr_tvarset := NewTVarSet,
+        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
+            PredArgTypes0, PredArgTypes),
+        ( if
+            list.split_list(list.length(ArgTVars), PredArgTypes, HOArgTypes,
+                LambdaTypes)
+        then
+            ArgConstraints = list.map_corresponding(create_stconstr,
+                ArgTVars, HOArgTypes),
+            ( if
+                PredOrFunc = pf_function,
+                LambdaTypes = [ReturnType]
+            then
+                Type = ReturnType
+            else
+                Type = higher_order_type(PredOrFunc, LambdaTypes,
+                    none_or_default_func, Purity, lambda_normal)
+            ),
+            LHSConstraint = stconstr(LHSTVar, Type),
+            Constraints = [LHSConstraint | ArgConstraints]
+        else
+            fail
+        )
+    else
+        Pieces = [words("The predicate with id"),
+            int_fixed(pred_id_to_int(PredId)),
+            words("has not been defined."), nl],
+        ErrMsg = simple_msg(Context, [always(Pieces)]),
+        add_message_to_spec(ErrMsg, !TCInfo),
+        Constraints = []
+    ),
+    GoalId = goal_info_get_goal_id(Info),
+    Constraint = ctconstr(Constraints, tconstr_active, Context,
+        yes(GoalId), yes(PredId)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred plain_call_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+plain_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    Environment = tconstr_environment(_, _, _FuncEnv, PredEnv),
+    GoalExpr = plain_call(_, _, Args, _, _, Name),
+    % Transform a call to variable assignments of the variables
+    % used in the call.
+    predicate_table_lookup_pred_sym(PredEnv, may_be_partially_qualified,
+        Name, PredIds0),
+    predicate_table_get_preds(PredEnv, Preds),
+    list.filter(pred_has_arity(Preds, list.length(Args)), PredIds0, PredIds),
+    list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
+    list.map2_foldl(pred_call_constraint(Preds, GoalInfo, ArgTVars),
+        PredIds, Constraints, PredTVars, !TCInfo),
+    list.condense([ArgTVars | PredTVars], TVars),
+    add_type_constraint(Constraints, TVars, !TCInfo).
+
+:- pred generic_call_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_generic_call), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    GoalExpr = generic_call(Details, Vars, _, _, _),
+    Context = goal_info_get_context(GoalInfo),
+    list.map_foldl(get_var_type, Vars, ArgTVars, !TCInfo),
+    ArgTypes = list.map(tvar_to_type, ArgTVars),
+    (
+        Details = higher_order(CallVar, Purity, PredOrFunc, _),
+        HOType = higher_order_type(PredOrFunc, ArgTypes, none_or_default_func,
+            Purity, lambda_normal),
+        variable_assignment_constraint(Context, CallVar, HOType, !TCInfo)
+    ;
+        % Class methods are handled by looking up the method number in the
+        % class' method list.
+        Details = class_method(_, MethodNum, ClassId, _),
+        ClassId = class_id(Name, Arity),
+        ( if map.search(Environment ^ tce_class_env, ClassId, ClassDefn) then
+            ( if
+                list.index0(ClassDefn ^ classdefn_hlds_interface, MethodNum,
+                    Method)
+            then
+                Method = proc(PredId, _),
+                predicate_table_get_preds(Environment ^ tce_pred_env, Preds),
+                ( if pred_has_arity(Preds, list.length(Vars), PredId) then
+                    pred_call_constraint(Preds, GoalInfo, ArgTVars, PredId,
+                        Constraint, PredTVars, !TCInfo),
+                    list.append(ArgTVars, PredTVars, TVars),
+                    add_type_constraint([Constraint], TVars, !TCInfo)
+                else
+                    Pieces = [words("Incorrect number of arguments"),
+                        words("provided to method"), int_fixed(MethodNum),
+                        words("of typeclass"),
+                        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+                        suffix("."), nl],
+                    ErrMsg = simple_msg(Context, [always(Pieces)]),
+                    add_message_to_spec(ErrMsg, !TCInfo)
+                )
+            else
+                Pieces = [words("The typeclass"),
+                    qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+                    words("does not have the given method."), nl],
+                ErrMsg = simple_msg(Context, [always(Pieces)]),
+                add_message_to_spec(ErrMsg, !TCInfo)
+            )
+        else
+            Pieces = [words("The typeclass"),
+                qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
+                words("is undefined."), nl],
+            ErrMsg = simple_msg(Context, [always(Pieces)]),
+            add_message_to_spec(ErrMsg, !TCInfo)
+        )
+    ;
+        Details = event_call(Name),
+        ( if event_arg_types(Environment ^ tce_event_env, Name, _ArgTypes) then
+            Pieces = [words("Event calls are not yet supported"),
+                words("by constraint-based typechecking."), nl],
+            ErrMsg = simple_msg(Context, [always(Pieces)]),
+            add_message_to_spec(ErrMsg, !TCInfo)
+        else
+            Pieces = [words("There is not event named"), words(Name),
+                suffix("."), nl],
+            ErrMsg = simple_msg(Context, [always(Pieces)]),
+            add_message_to_spec(ErrMsg, !TCInfo)
+        )
+    ;
+        % Casts do not contain any type information.
+        Details = cast(_)
+    ).
+
+    % Creates a constraint from the information stored in a predicate
+    % definition. This may only be called if the number of arguments given
+    % is equal to the arity of the predicate.
+    %
+:- pred pred_call_constraint(pred_table::in, hlds_goal_info::in,
+    list(tvar)::in, pred_id::in, conj_type_constraint::out, list(tvar)::out,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+pred_call_constraint(PredTable, Info, ArgTVars, PredId, Constraint, TVars,
+        !TCInfo) :-
+    Context = goal_info_get_context(Info),
+    ( if map.search(PredTable, PredId, PredInfo) then
+        pred_info_get_arg_types(PredInfo, PredArgTypes0),
+        pred_info_get_typevarset(PredInfo, PredTVarSet),
+        prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
+            PredTVarSet, NewTVarSet, TVarRenaming),
+        !TCInfo ^ tconstr_tvarset := NewTVarSet,
+        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
+            PredArgTypes0, PredArgTypes),
+        Constraints = list.map_corresponding(create_stconstr, ArgTVars,
+            PredArgTypes),
+        prog_type.type_vars_list(PredArgTypes, TVars)
+    else
+        Pieces = [words("The predicate with id"),
+            int_fixed(pred_id_to_int(PredId)),
+            words("has not been defined."), nl],
+        ErrMsg = simple_msg(Context, [always(Pieces)]),
+        add_message_to_spec(ErrMsg, !TCInfo),
+        TVars = [],
+        Constraints = []
+    ),
+    GoalId = goal_info_get_goal_id(Info),
+    Constraint = ctconstr(Constraints, tconstr_active, Context,
+        yes(GoalId), yes(PredId)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred foreign_proc_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_foreign_proc), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    GoalExpr = call_foreign_proc(_, PredId, _, ForeignArgs, _, _, _),
+    Context = goal_info_get_context(GoalInfo),
+    ArgVars = list.map(foreign_arg_var, ForeignArgs),
+    ArgTypes0 = list.map(foreign_arg_type, ForeignArgs),
+    predicate_table_get_preds(Environment ^ tce_pred_env, Preds),
+    ( if map.search(Preds, PredId, PredInfo) then
+        pred_info_get_typevarset(PredInfo, PredTVarSet),
+        prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
+            PredTVarSet, NewTVarSet, TVarRenaming),
+        !TCInfo ^ tconstr_tvarset := NewTVarSet,
+        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
+            ArgTypes0, ArgTypes),
+        list.foldl_corresponding(variable_assignment_constraint(Context),
+            ArgVars, ArgTypes, !TCInfo)
+    else
+        unexpected($pred, "cannot find pred_info for foreign_proc")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred shorthand_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_shorthand), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+shorthand_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    GoalExpr = shorthand(Shorthand),
+    (
+        Shorthand = atomic_goal(GoalType, Outer, Inner, _,
+            Main, Alternatives, _),
+        % Atomic goals are handled by forcing their inner arguments
+        % to be of type stm_atomic_type, their outer arguments to be
+        % of type stm_atomic_type or io_state_type, depending on the type
+        % of atomic goal. The transaction goals are handled by recursive
+        % calls to goal_to_constraint.
+
+        Context = goal_info_get_context(GoalInfo),
+        % Inner variable handling (simple assignment).
+        Inner = atomic_interface_vars(InnerInitVar, InnerFinalVar),
+        variable_assignment_constraint(Context, InnerInitVar, stm_atomic_type,
+            !TCInfo),
+        variable_assignment_constraint(Context, InnerFinalVar, stm_atomic_type,
+            !TCInfo),
+        % Create possible constraints on outer variables.
+        Outer = atomic_interface_vars(OuterInitVar, OuterFinalVar),
+        get_var_type(OuterInitVar, OuterInit, !TCInfo),
+        get_var_type(OuterFinalVar, OuterFinal, !TCInfo),
+        InitStmConstraint = ctconstr([stconstr(OuterInit, stm_atomic_type)],
+            tconstr_active, Context, no, no),
+        InitIOConstraint = ctconstr([stconstr(OuterInit, io_state_type)],
+            tconstr_active, Context, no, no),
+        FinalStmConstraint = ctconstr([stconstr(OuterFinal, stm_atomic_type)],
+            tconstr_active, Context, no, no),
+        FinalIOConstraint = ctconstr([stconstr(OuterFinal, io_state_type)],
+            tconstr_active, Context, no, no),
+        % Determine which constraints should be applied to outer variables..
+        (
+            GoalType = unknown_atomic_goal_type,
+            add_type_constraint([InitStmConstraint, InitIOConstraint],
+                [OuterInit], !TCInfo),
+            add_type_constraint([FinalStmConstraint, FinalIOConstraint],
+                [OuterFinal], !TCInfo)
+        ;
+            GoalType = top_level_atomic_goal,
+            add_type_constraint([InitIOConstraint], [OuterInit], !TCInfo),
+            add_type_constraint([FinalIOConstraint], [OuterFinal], !TCInfo)
+        ;
+            GoalType = nested_atomic_goal,
+            add_type_constraint([InitStmConstraint], [OuterInit], !TCInfo),
+            add_type_constraint([FinalStmConstraint], [OuterFinal], !TCInfo)
+        ),
+        % Recursively evaluate transaction goals.
+        list.foldl(goal_to_constraint(Environment), [Main | Alternatives],
+            !TCInfo)
+    ;
+        Shorthand = try_goal(MaybeIO, _ResultVar, SubGoal),
+        Context = goal_info_get_context(GoalInfo),
+        (
+            MaybeIO = yes(try_io_state_vars(IOVarA, IOVarB)),
+            get_var_type(IOVarA, InitA, !TCInfo),
+            get_var_type(IOVarB, InitB, !TCInfo),
+            ConstraintA = ctconstr([stconstr(InitA, io_state_type)],
+                tconstr_active, Context, no, no),
+            ConstraintB = ctconstr([stconstr(InitB, io_state_type)],
+                tconstr_active, Context, no, no),
+            add_type_constraint([ConstraintA], [InitA], !TCInfo),
+            add_type_constraint([ConstraintB], [InitB], !TCInfo)
+        ;
+            MaybeIO = no
+        ),
+        goal_to_constraint(Environment, SubGoal, !TCInfo)
+    ;
+        Shorthand = bi_implication(GoalA, GoalB),
+        goal_to_constraint(Environment, GoalA, !TCInfo),
+        goal_to_constraint(Environment, GoalB, !TCInfo)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % Creates a constraint from the assignment of a type to a program variable.
+    %
+:- pred variable_assignment_constraint(prog_context::in, prog_var::in,
+    mer_type::in, type_constraint_info::in, type_constraint_info::out) is det.
+
+variable_assignment_constraint(Context, Var, Type, !TCInfo) :-
+    prog_type.type_vars(Type, TypeVariables),
+    get_var_type(Var, TVar, !TCInfo),
+    Constraint = ctconstr([stconstr(TVar, Type)], tconstr_active, Context,
+        no, no),
+    add_type_constraint([Constraint], [TVar | TypeVariables], !TCInfo).
+
+%-----------------------------------------------------------------------------%
+%
+% Constraint generation utility predicates.
+%
+
+:- pred pred_has_arity(pred_table::in, int::in, pred_id::in) is semidet.
+
+pred_has_arity(Preds, Arity, PredId) :-
+    map.lookup(Preds, PredId, Pred),
+    pred_info_get_arg_types(Pred, PredArgTypes),
+    list.length(PredArgTypes) = Arity.
+
+    % Converts any builtin atomic type to a string representing that type.
+    %
+:- pred builtin_atomic_type(cons_id::in, builtin_type::out) is semidet.
+
+builtin_atomic_type(int_const(_), builtin_type_int(int_type_int)).
+builtin_atomic_type(uint_const(_), builtin_type_int(int_type_uint)).
+builtin_atomic_type(int8_const(_), builtin_type_int(int_type_int8)).
+builtin_atomic_type(uint8_const(_), builtin_type_int(int_type_uint8)).
+builtin_atomic_type(int16_const(_), builtin_type_int(int_type_int16)).
+builtin_atomic_type(uint16_const(_), builtin_type_int(int_type_uint16)).
+builtin_atomic_type(int32_const(_), builtin_type_int(int_type_int32)).
+builtin_atomic_type(uint32_const(_), builtin_type_int(int_type_uint32)).
+builtin_atomic_type(float_const(_), builtin_type_float).
+builtin_atomic_type(string_const(_), builtin_type_string).
+builtin_atomic_type(cons(unqualified(String), 0, _), builtin_type_char) :-
+    string.char_to_string(_, String).
+builtin_atomic_type(impl_defined_const(Name), Type) :-
+    (
+        ( Name = "file"
+        ; Name = "module"
+        ; Name = "pred"
+        ; Name = "grade"
+        ),
+        Type = builtin_type_string
+    ;
+        Name = "line",
+        Type = builtin_type_int(int_type_int)
+    ).
+
+    % Creates a new id for a type constraint, then maps each of the given type
+    % variables to that constraint.
+    %
+:- pred add_type_constraint(list(conj_type_constraint)::in, list(tvar)::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+add_type_constraint(Constraints, TVars, !TConstrInfo) :-
+    some [!ConstraintCounter, !ConstraintMap, !VarConstraints] (
+        !.TConstrInfo = tconstr_info(VarMap, !:ConstraintCounter,
+            !:ConstraintMap, !:VarConstraints, TVarSet, Errors),
+        (
+            Constraints = []
+        ;
+            (
+                Constraints = [SingleConstraint],
+                Constraint = tconstr_conj(SingleConstraint)
+            ;
+                Constraints = [_, _ | _],
+                Constraint = tconstr_disj(Constraints, no)
+            ),
+            counter.allocate(Id, !ConstraintCounter),
+            map.det_insert(Id, Constraint, !ConstraintMap),
+            list.foldl(map_var_to_constraint(Id), TVars, !VarConstraints)
+        ),
+        !:TConstrInfo = tconstr_info(VarMap, !.ConstraintCounter,
+            !.ConstraintMap, !.VarConstraints, TVarSet, Errors)
+    ).
+
+:- pred map_var_to_constraint(type_constraint_id::in, tvar::in,
+    var_constraint_map::in, var_constraint_map::out) is det.
+
+map_var_to_constraint(Id, TVar, !VarConstraints) :-
+    ( if map.search(!.VarConstraints, TVar, OldIds) then
+        ( if list.contains(OldIds, Id) then
+            true
+        else
+            map.det_update(TVar, [Id | OldIds], !VarConstraints)
+        )
+    else
+        map.det_insert(TVar, [Id], !VarConstraints)
+    ).
+
+    % If a program variable corresponds to a particular type variable, return
+    % that type variable. Otherwise, create a new type variable and map the
+    % program variable to it, then return that type variable.
+    %
+:- pred get_var_type(prog_var::in, tvar::out,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+get_var_type(Var, TVar,
+        tconstr_info(!.VarMap, CC, CM, VC, !.TVarSet, Errs),
+        tconstr_info(!:VarMap, CC, CM, VC, !:TVarSet, Errs)) :-
+    ( if bimap.search(!.VarMap, Var, TVar0) then
+        TVar = TVar0
+    else
+        varset.new_var(TVar, !TVarSet),
+        bimap.det_insert(Var, TVar, !VarMap)
+    ).
+
+:- func create_stconstr(tvar, mer_type) = simple_type_constraint.
+
+create_stconstr(TVar, Type) = stconstr(TVar, Type).
+
+:- pred get_case_goal(case::in, hlds_goal::out) is det.
+
+get_case_goal(Case, Case ^ case_goal).
+
+:- pred get_ctor_arg_type(constructor_arg::in, mer_type::out) is det.
+
+get_ctor_arg_type(ctor_arg(_, Type, _), Type).
+
+:- func tvar_to_type(tvar) = mer_type.
+
+tvar_to_type(TVar) = type_variable(TVar, kind_star).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -581,7 +1159,8 @@ find_type_constraint_solutions(Context, ProgVarSet, DomainMap, !TCInfo) :-
             % Unsatisfiability error (no solutions). If labeling was required
             % and no labeling assignment produced a solution, pick an arbitrary
             % labeling to report (this should be rare in real programs).
-            trace [compile_time(flag("type_error_reporting")), io(!IO)] (
+            trace [compile_time(flag("type_error_reporting")), io(!IO)]
+            (
                 io.write_string("\nUnsatisfiability error\n", !IO)
             ),
             map.to_assoc_list(FirstSolution, SolutionAssocList),
@@ -602,7 +1181,8 @@ find_type_constraint_solutions(Context, ProgVarSet, DomainMap, !TCInfo) :-
                 % Ambiguity error (many solutions).
                 list.foldl(map.union(type_domain_union), Solutions, map.init,
                     DomainMap),
-                trace [compile_time(flag("type_error_reporting")), io(!IO)] (
+                trace [compile_time(flag("type_error_reporting")), io(!IO)]
+                (
                     io.write_string("\nAmbiguity error\n", !IO)
                 )
             )
@@ -616,7 +1196,8 @@ find_type_constraint_solutions(Context, ProgVarSet, DomainMap, !TCInfo) :-
 
 solve_constraint_labeling(TVarSet, VarConstraints, ConstraintMap0, DomainMap0,
         Guesses, Solution) :-
-    trace [compile_time(flag("type_constraint_prop")), io(!IO)] (
+    trace [compile_time(flag("type_constraint_prop")), io(!IO)]
+    (
         map.to_assoc_list(Guesses, GuessesAssocList),
         list.foldl(print_guess(TVarSet), GuessesAssocList, !IO)
     ),
@@ -729,7 +1310,8 @@ propagate(TVarSet, VarConstraints, ConstraintId, !ConstraintMap, !DomainMap) :-
     map.lookup(!.ConstraintMap, ConstraintId, Constraint0),
     find_domain(Constraint0, Constraint, !.DomainMap, NewDomainMap),
     % Print the changes to the domain map.
-    trace [compile_time(flag("type_constraint_prop")), io(!IO)] (
+    trace [compile_time(flag("type_constraint_prop")), io(!IO)]
+    (
         io.format("Constraint %d:\n", [i(ConstraintId)], !IO),
         map.to_sorted_assoc_list(NewDomainMap, NewDomainAssocList),
         list.foldl(print_domain_map_change(TVarSet, !.DomainMap),
@@ -767,8 +1349,6 @@ create_domain(!.DomainMap, !Constraint, !:DomainMap) :-
 :- pred find_domain(type_constraint::in, type_constraint::out,
     type_domain_map::in, type_domain_map::out) is det.
 
-    % A conjunction of constraints requires each constraint to be met.
-    %
 find_domain(Constraint0, Constraint, !DomainMap) :-
     (
         Constraint0 = tconstr_conj(ConjConstraints0),
@@ -945,10 +1525,10 @@ unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
         apply_variable_renaming_to_type(Renaming, Type0, Type),
         map.det_update(Target, tdomain_singleton(Type), !DomainMap)
     else if
-        map.search(!.DomainMap, Target, tdomain(Types0))
+        map.search(!.DomainMap, Target, tdomain_nonfixed(Types0))
     then
         set.map(apply_variable_renaming_to_type(Renaming), Types0, Types),
-        map.det_update(Target, tdomain(Types), !DomainMap)
+        map.det_update(Target, tdomain_nonfixed(Types), !DomainMap)
     else
         % This will only be reached if there are no constraints on the type of
         % a variable. In this case, there can be no variable replacement
@@ -1037,8 +1617,8 @@ restrict_domain(TVar, Type, !DomainMap) :-
     else
         CurrDomain = tdomain_any
     ),
-    type_domain_intersect(CurrDomain, tdomain(set.make_singleton_set(Type)),
-        NewDomain),
+    type_domain_intersect(CurrDomain,
+        tdomain_nonfixed(set.make_singleton_set(Type)), NewDomain),
     map.set(TVar, NewDomain, !DomainMap).
 
 :- pred type_domain_intersect(type_domain::in, type_domain::in,
@@ -1058,40 +1638,40 @@ type_domain_intersect(DomainA, DomainB, Domain) :-
         ( if unify_types(TypeA, TypeB, Type) then
             Domain = tdomain_singleton(Type)
         else
-            Domain = tdomain(set.init)
+            Domain = tdomain_nonfixed(set.init)
         )
     ;
         DomainA = tdomain_singleton(TypeA),
-        DomainB = tdomain(TypesB),
+        DomainB = tdomain_nonfixed(TypesB),
         % Symmetrical case below.
         set.filter_map(unify_types(TypeA), TypesB, UnifiedTypes),
         ( if set.is_singleton(UnifiedTypes, SingletonType) then
             Domain = tdomain_singleton(SingletonType)
         else
-            Domain = tdomain(UnifiedTypes)
+            Domain = tdomain_nonfixed(UnifiedTypes)
         )
     ;
-        DomainA = tdomain(_),
+        DomainA = tdomain_nonfixed(_),
         DomainB = tdomain_any,
         Domain = DomainA
     ;
-        DomainA = tdomain(TypesA),
+        DomainA = tdomain_nonfixed(TypesA),
         DomainB = tdomain_singleton(TypeB),
         % Symmetrical case above.
         set.filter_map(unify_types(TypeB), TypesA, UnifiedTypes),
         ( if set.is_singleton(UnifiedTypes, SingletonType) then
             Domain = tdomain_singleton(SingletonType)
         else
-            Domain = tdomain(UnifiedTypes)
+            Domain = tdomain_nonfixed(UnifiedTypes)
         )
     ;
-        DomainA = tdomain(TypesA),
-        DomainB = tdomain(TypesB),
+        DomainA = tdomain_nonfixed(TypesA),
+        DomainB = tdomain_nonfixed(TypesB),
         set.to_sorted_list(TypesA, TypeListA),
         set.to_sorted_list(TypesB, TypeListB),
         td_list_intersect(TypeListB, TypeListA, TypeList),
         set.sorted_list_to_set(TypeList, Types),
-        Domain = tdomain(Types)
+        Domain = tdomain_nonfixed(Types)
     ).
 
     % Very similar to set.intersect, but will unify equal functors with
@@ -1205,35 +1785,35 @@ type_domain_union(DomainA, DomainB, Domain) :-
         ( if TypeA = TypeB then
             Domain = tdomain_singleton(TypeA)
         else
-            Domain = tdomain(set.from_list([TypeA, TypeB]))
+            Domain = tdomain_nonfixed(set.from_list([TypeA, TypeB]))
         )
     ;
         DomainA = tdomain_singleton(TypeA),
-        DomainB = tdomain(TypesB),
+        DomainB = tdomain_nonfixed(TypesB),
         % Symmetrical case below.
         ( if set.is_empty(TypesB) then
             Domain = DomainA
         else
-            Domain = tdomain(set.insert(TypesB, TypeA))
+            Domain = tdomain_nonfixed(set.insert(TypesB, TypeA))
         )
     ;
-        DomainA = tdomain(_),
+        DomainA = tdomain_nonfixed(_),
         DomainB = tdomain_any,
         Domain = tdomain_any
     ;
-        DomainA = tdomain(TypesA),
+        DomainA = tdomain_nonfixed(TypesA),
         DomainB = tdomain_singleton(TypeB),
         % Symmetrical case above.
         ( if set.is_empty(TypesA) then
             Domain = DomainB
         else
-            Domain = tdomain(set.insert(TypesA, TypeB))
+            Domain = tdomain_nonfixed(set.insert(TypesA, TypeB))
         )
     ;
-        DomainA = tdomain(TypesA),
-        DomainB = tdomain(TypesB),
+        DomainA = tdomain_nonfixed(TypesA),
+        DomainB = tdomain_nonfixed(TypesB),
         set.union(TypesA, TypesB, Types),
-        Domain = tdomain(Types)
+        Domain = tdomain_nonfixed(Types)
     ).
 
 :- pred still_active(conj_type_constraint::in) is semidet.
@@ -1257,7 +1837,7 @@ constraint_is_satisfiable(DomainMap, SimpleConstraints) :-
 
 non_empty_domain(tdomain_any).
 non_empty_domain(tdomain_singleton(_)).
-non_empty_domain(tdomain(D)) :-
+non_empty_domain(tdomain_nonfixed(D)) :-
     set.is_non_empty(D).
 
     % Checks whether the given variable domain is compatible with the
@@ -1275,7 +1855,7 @@ domain_map_unchanged(DomainMap, (TVar - Domain)) :-
 equal_domain(tdomain_any, tdomain_any).
 equal_domain(tdomain_singleton(A), tdomain_singleton(B)) :-
     unify_types(A, B, _).
-equal_domain(tdomain(A), tdomain(B)) :-
+equal_domain(tdomain_nonfixed(A), tdomain_nonfixed(B)) :-
     ( if
         set.count(A, C),
         set.count(B, C)
@@ -1288,7 +1868,7 @@ equal_domain(tdomain(A), tdomain(B)) :-
 
 :- pred has_empty_domain(pair(tvar, type_domain)::in, tvar::out) is semidet.
 
-has_empty_domain(TVar - tdomain(Domain), TVar) :-
+has_empty_domain(TVar - tdomain_nonfixed(Domain), TVar) :-
     set.is_empty(Domain).
 
     % Checks if a variable which was not previously known to have a singleton
@@ -1297,13 +1877,13 @@ has_empty_domain(TVar - tdomain(Domain), TVar) :-
 :- pred has_singleton_domain(type_domain_map::in, tvar::in) is semidet.
 
 has_singleton_domain(DomainMap, TVar) :-
-    map.search(DomainMap, TVar, tdomain(Domain)),
+    map.search(DomainMap, TVar, tdomain_nonfixed(Domain)),
     set.is_singleton(Domain, _).
 
 :- pred is_singleton_domain(type_domain::in, mer_type::out) is semidet.
 
 is_singleton_domain(tdomain_singleton(Type), Type).
-is_singleton_domain(tdomain(Domain), Type) :-
+is_singleton_domain(tdomain_nonfixed(Domain), Type) :-
     set.is_singleton(Domain, Type).
 
 :- pred update_singleton_domain(tvar::in, type_domain_map::in,
@@ -1311,7 +1891,7 @@ is_singleton_domain(tdomain(Domain), Type) :-
 
 update_singleton_domain(TVar, !DomainMap) :-
     ( if
-        map.search(!.DomainMap, TVar, tdomain(Domain)),
+        map.search(!.DomainMap, TVar, tdomain_nonfixed(Domain)),
         set.is_singleton(Domain, Type)
     then
         map.set(TVar, tdomain_singleton(Type), !DomainMap)
@@ -1341,7 +1921,7 @@ tvars_in_simple_constraint(stconstr(TVar, Type), [TVar | TVars]) :-
 :- pred constraint_has_no_solutions(type_domain_map::in) is semidet.
 
 constraint_has_no_solutions(DomainMap) :-
-    list.member(tdomain(set.init), map.values(DomainMap)).
+    list.member(tdomain_nonfixed(set.init), map.values(DomainMap)).
 
 :- pred constraint_has_one_solution(type_domain_map::in) is semidet.
 :- pragma consider_used(constraint_has_one_solution/1).
@@ -1356,12 +1936,12 @@ constraint_has_multiple_solutions(DomainMap, Var, Domains) :-
     map.to_assoc_list(DomainMap, DomainMap1),
     list.filter(has_ambiguous_domain, DomainMap1, AmbigDomains0),
     list.sort(domain_size_compare, AmbigDomains0, [(Var - Domain0) | _]),
-    Domain0 = tdomain(Domain1),
+    Domain0 = tdomain_nonfixed(Domain1),
     Domains = set.to_sorted_list(set.map(to_singleton_type_domain, Domain1)).
 
 :- pred has_ambiguous_domain(pair(tvar, type_domain)::in) is semidet.
 
-has_ambiguous_domain((_ - tdomain(Dom))) :-
+has_ambiguous_domain((_ - tdomain_nonfixed(Dom))) :-
     set.count(Dom, Size),
     Size > 1.
 
@@ -1374,8 +1954,8 @@ has_ambiguous_domain((_ - tdomain(Dom))) :-
 
 domain_size_compare((_ - A), (_ - B), Result) :-
     ( if
-        A = tdomain(D1),
-        B = tdomain(D2)
+        A = tdomain_nonfixed(D1),
+        B = tdomain_nonfixed(D2)
     then
         list.length(set.to_sorted_list(D1), L1),
         list.length(set.to_sorted_list(D2), L2),
@@ -1553,7 +2133,8 @@ min_unsat_constraints(TCInfo, D, P, !MinUnsats) :-
     TCInfo = tconstr_info(VarMap, _, ConstraintMap, VarConstraints0,
         TVarSet, _),
     set.union(P, D, Union),
-    trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
+    trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
+    (
         list.map(string.int_to_string, set.to_sorted_list(Union), Ids),
         io.print("\n    Constraints " ++ string.join_list(", ", Ids) ++ "\n",
             !IO)
@@ -1612,595 +2193,6 @@ conj_constraint_get_context(Constraint, Constraint ^ tconstr_context).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
-% Constraint generation.
-%
-
-    % Turn a goal expression to a constraint on the types of variable
-    % appearing within that goal, then update all relevant maps with the
-    % information in the new constraint.
-    %
-:- pred goal_to_constraint(tconstr_environment::in, hlds_goal::in,
-    type_constraint_info::in, type_constraint_info::out) is det.
-
-goal_to_constraint(Environment, Goal, !TCInfo) :-
-    % Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-    (
-        GoalExpr = unify(_, _, _, _, _),
-        unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo)
-    ;
-        GoalExpr = plain_call(_, _, _, _, _, _),
-        plain_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo)
-    ;
-        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo,
-            !TCInfo)
-    ;
-        GoalExpr = generic_call(_, _, _, _, _),
-        generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo,
-            !TCInfo)
-    ;
-        GoalExpr = conj(_, Goals),
-        list.foldl(goal_to_constraint(Environment), Goals, !TCInfo)
-    ;
-        GoalExpr = disj(Goals),
-        list.foldl(goal_to_constraint(Environment), Goals, !TCInfo)
-    ;
-        GoalExpr = negation(SubGoal),
-        goal_to_constraint(Environment, SubGoal, !TCInfo)
-    ;
-        GoalExpr = scope(_, SubGoal),
-        goal_to_constraint(Environment, SubGoal, !TCInfo)
-    ;
-        GoalExpr = if_then_else(_, Cond, Then, Else),
-        goal_to_constraint(Environment, Cond, !TCInfo),
-        goal_to_constraint(Environment, Then, !TCInfo),
-        goal_to_constraint(Environment, Else, !TCInfo)
-    ;
-        GoalExpr = switch(_, _, Cases),
-        list.map(get_case_goal, Cases, Goals),
-        list.foldl(goal_to_constraint(Environment), Goals, !TCInfo)
-    ;
-        GoalExpr = shorthand(_),
-        shorthand_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo)
-    ).
-
-    % Transform a unification constraint into an assignment of types
-    % to the variables being unified.
-    %
-:- pred unify_goal_to_constraint(tconstr_environment::in,
-    hlds_goal_expr::in(goal_expr_unify), hlds_goal_info::in,
-    type_constraint_info::in, type_constraint_info::out) is det.
-
-unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
-    Context = goal_info_get_context(GoalInfo),
-    GoalExpr = unify(L, RHS, _, _, _),
-    get_var_type(L, LTVar, !TCInfo),
-    (
-        RHS = rhs_var(R),
-        get_var_type(R, RTVar, !TCInfo),
-        Constraints = [ctconstr([stconstr(LTVar, tvar_to_type(RTVar))],
-            tconstr_active, Context, no, no)],
-        RelevantTVars = [LTVar, RTVar]
-    ;
-        RHS = rhs_functor(ConsId, _, Args),
-        ( if
-            builtin_atomic_type(ConsId, Builtin)
-        then
-            SimpleConstraint = stconstr(LTVar, builtin_type(Builtin)),
-            Constraints = [ctconstr([SimpleConstraint], tconstr_active,
-                Context, no, no)],
-            RelevantTVars = [LTVar]
-        else if
-            ConsId = cons(Name, Arity, _TypeCtor),
-            % The _TypeCtor field is not meaningful yet.
-            Arity = list.length(Args)
-        then
-            list.map_foldl(get_var_type, Args, ArgTypeVars, !TCInfo),
-            % If it is a data constructor, create a disjunction constraint
-            % with each possible type of the constructor.
-            Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
-            ( if search_cons_table(FuncEnv, ConsId, ConsDefns) then
-                list.map_foldl(
-                    functor_unif_constraint(LTVar, ArgTypeVars, GoalInfo),
-                    ConsDefns, TypeConstraints, !TCInfo)
-            else
-                TypeConstraints = []
-            ),
-            % If it is a closure constructor, create a disjunction
-            % constraint for each predicate it could refer to.
-            predicate_table_lookup_sym(PredEnv, may_be_partially_qualified,
-                Name, PredIds),
-            (
-                PredIds = [_ | _],
-                predicate_table_get_preds(PredEnv, Preds),
-                list.filter_map_foldl(
-                    ho_pred_unif_constraint(Preds, GoalInfo, LTVar,
-                        ArgTypeVars),
-                    PredIds, PredConstraints, !TCInfo)
-            ;
-                PredIds = [],
-                PredConstraints = []
-            ),
-            Constraints = TypeConstraints ++ PredConstraints,
-            (
-                Constraints = [],
-                Pieces = [words("The constructor"),
-                    qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
-                    words("has not been defined."), nl],
-                ErrMsg = simple_msg(Context, [always(Pieces)]),
-                add_message_to_spec(ErrMsg, !TCInfo)
-            ;
-                Constraints = [_ | _]
-            ),
-            RelevantTVars = [LTVar | ArgTypeVars]
-        else
-            Pieces = [words("The given type is not supported"),
-                words("by constraint-based type checking."), nl],
-            ErrMsg = simple_msg(Context, [always(Pieces)]),
-            add_message_to_spec(ErrMsg, !TCInfo),
-            RelevantTVars = [],
-            Constraints = []
-        )
-    ;
-        RHS = rhs_lambda_goal(Purity, _, PredOrFunc, EvalMethod, _, Args,
-            _, _, LambdaGoal),
-        list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
-        ArgTypes = list.map(tvar_to_type, ArgTVars),
-        construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
-            ArgTypes, LambdaType),
-        Constraints = [ctconstr([stconstr(LTVar, LambdaType)],
-            tconstr_active, Context, no, no)],
-        RelevantTVars = [LTVar | ArgTVars],
-        goal_to_constraint(Environment, LambdaGoal, !TCInfo)
-    ),
-    add_type_constraint(Constraints, RelevantTVars, !TCInfo).
-
-:- pred plain_call_goal_to_constraint(tconstr_environment::in,
-    hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_info::in,
-    type_constraint_info::in, type_constraint_info::out) is det.
-
-plain_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
-    Environment = tconstr_environment(_, _, _FuncEnv, PredEnv),
-    GoalExpr = plain_call(_, _, Args, _, _, Name),
-    % Transform a call to variable assignments of the variables
-    % used in the call.
-    predicate_table_lookup_pred_sym(PredEnv, may_be_partially_qualified,
-        Name, PredIds0),
-    predicate_table_get_preds(PredEnv, Preds),
-    list.filter(pred_has_arity(Preds, list.length(Args)), PredIds0, PredIds),
-    list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
-    list.map2_foldl(pred_call_constraint(Preds, GoalInfo, ArgTVars),
-        PredIds, Constraints, PredTVars, !TCInfo),
-    list.condense([ArgTVars | PredTVars], TVars),
-    add_type_constraint(Constraints, TVars, !TCInfo).
-
-:- pred foreign_proc_goal_to_constraint(tconstr_environment::in,
-    hlds_goal_expr::in(goal_expr_foreign_proc), hlds_goal_info::in,
-    type_constraint_info::in, type_constraint_info::out) is det.
-
-foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
-    GoalExpr = call_foreign_proc(_, PredId, _, ForeignArgs, _, _, _),
-    Context = goal_info_get_context(GoalInfo),
-    ArgVars = list.map(foreign_arg_var, ForeignArgs),
-    ArgTypes0 = list.map(foreign_arg_type, ForeignArgs),
-    predicate_table_get_preds(Environment ^ tce_pred_env, Preds),
-    ( if map.search(Preds, PredId, PredInfo) then
-        pred_info_get_typevarset(PredInfo, PredTVarSet),
-        prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
-            PredTVarSet, NewTVarSet, TVarRenaming),
-        !TCInfo ^ tconstr_tvarset := NewTVarSet,
-        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
-            ArgTypes0, ArgTypes),
-        list.foldl_corresponding(variable_assignment_constraint(Context),
-            ArgVars, ArgTypes, !TCInfo)
-    else
-        unexpected($pred, "cannot find pred_info for foreign_proc")
-    ).
-
-:- pred generic_call_goal_to_constraint(tconstr_environment::in,
-    hlds_goal_expr::in(goal_expr_generic_call), hlds_goal_info::in,
-    type_constraint_info::in, type_constraint_info::out) is det.
-
-generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
-    GoalExpr = generic_call(Details, Vars, _, _, _),
-    Context = goal_info_get_context(GoalInfo),
-    list.map_foldl(get_var_type, Vars, ArgTVars, !TCInfo),
-    ArgTypes = list.map(tvar_to_type, ArgTVars),
-    (
-        Details = higher_order(CallVar, Purity, PredOrFunc, _),
-        HOType = higher_order_type(PredOrFunc, ArgTypes, none_or_default_func,
-            Purity, lambda_normal),
-        variable_assignment_constraint(Context, CallVar, HOType, !TCInfo)
-    ;
-        % Class methods are handled by looking up the method number in the
-        % class' method list.
-        Details = class_method(_, MethodNum, ClassId, _),
-        ClassId = class_id(Name, Arity),
-        ( if map.search(Environment ^ tce_class_env, ClassId, ClassDefn) then
-            ( if
-                list.index0(ClassDefn ^ classdefn_hlds_interface, MethodNum,
-                    Method)
-            then
-                Method = proc(PredId, _),
-                predicate_table_get_preds(Environment ^ tce_pred_env, Preds),
-                ( if pred_has_arity(Preds, list.length(Vars), PredId) then
-                    pred_call_constraint(Preds, GoalInfo, ArgTVars, PredId,
-                        Constraint, PredTVars, !TCInfo),
-                    list.append(ArgTVars, PredTVars, TVars),
-                    add_type_constraint([Constraint], TVars, !TCInfo)
-                else
-                    Pieces = [words("Incorrect number of arguments"),
-                        words("provided to method"), int_fixed(MethodNum),
-                        words("of typeclass"),
-                        qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
-                        suffix("."), nl],
-                    ErrMsg = simple_msg(Context, [always(Pieces)]),
-                    add_message_to_spec(ErrMsg, !TCInfo)
-                )
-            else
-                Pieces = [words("The typeclass"),
-                    qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
-                    words("does not have the given method."), nl],
-                ErrMsg = simple_msg(Context, [always(Pieces)]),
-                add_message_to_spec(ErrMsg, !TCInfo)
-            )
-        else
-            Pieces = [words("The typeclass"),
-                qual_sym_name_and_arity(sym_name_arity(Name, Arity)),
-                words("is undefined."), nl],
-            ErrMsg = simple_msg(Context, [always(Pieces)]),
-            add_message_to_spec(ErrMsg, !TCInfo)
-        )
-    ;
-        Details = event_call(Name),
-        ( if event_arg_types(Environment ^ tce_event_env, Name, _ArgTypes) then
-            Pieces = [words("Event calls are not yet supported"),
-                words("by constraint-based typechecking."), nl],
-            ErrMsg = simple_msg(Context, [always(Pieces)]),
-            add_message_to_spec(ErrMsg, !TCInfo)
-        else
-            Pieces = [words("There is not event named"), words(Name),
-                suffix("."), nl],
-            ErrMsg = simple_msg(Context, [always(Pieces)]),
-            add_message_to_spec(ErrMsg, !TCInfo)
-        )
-    ;
-        % Casts do not contain any type information.
-        Details = cast(_)
-    ).
-
-:- pred shorthand_goal_to_constraint(tconstr_environment::in,
-    hlds_goal_expr::in(goal_expr_shorthand), hlds_goal_info::in,
-    type_constraint_info::in, type_constraint_info::out) is det.
-
-shorthand_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
-    GoalExpr = shorthand(Shorthand),
-    (
-        Shorthand = atomic_goal(GoalType, Outer, Inner, _,
-            Main, Alternatives, _),
-        % Atomic goals are handled by forcing their inner arguments
-        % to be of type stm_atomic_type, their outer arguments to be
-        % of type stm_atomic_type or io_state_type, depending on the type
-        % of atomic goal. The transaction goals are handled by recursive
-        % calls to goal_to_constraint.
-
-        Context = goal_info_get_context(GoalInfo),
-        % Inner variable handling (simple assignment).
-        Inner = atomic_interface_vars(InnerInitVar, InnerFinalVar),
-        variable_assignment_constraint(Context, InnerInitVar, stm_atomic_type,
-            !TCInfo),
-        variable_assignment_constraint(Context, InnerFinalVar, stm_atomic_type,
-            !TCInfo),
-        % Create possible constraints on outer variables.
-        Outer = atomic_interface_vars(OuterInitVar, OuterFinalVar),
-        get_var_type(OuterInitVar, OuterInit, !TCInfo),
-        get_var_type(OuterFinalVar, OuterFinal, !TCInfo),
-        InitStmConstraint = ctconstr([stconstr(OuterInit, stm_atomic_type)],
-            tconstr_active, Context, no, no),
-        InitIOConstraint = ctconstr([stconstr(OuterInit, io_state_type)],
-            tconstr_active, Context, no, no),
-        FinalStmConstraint = ctconstr([stconstr(OuterFinal, stm_atomic_type)],
-            tconstr_active, Context, no, no),
-        FinalIOConstraint = ctconstr([stconstr(OuterFinal, io_state_type)],
-            tconstr_active, Context, no, no),
-        % Determine which constraints should be applied to outer variables..
-        (
-            GoalType = unknown_atomic_goal_type,
-            add_type_constraint([InitStmConstraint, InitIOConstraint],
-                [OuterInit], !TCInfo),
-            add_type_constraint([FinalStmConstraint, FinalIOConstraint],
-                [OuterFinal], !TCInfo)
-        ;
-            GoalType = top_level_atomic_goal,
-            add_type_constraint([InitIOConstraint], [OuterInit], !TCInfo),
-            add_type_constraint([FinalIOConstraint], [OuterFinal], !TCInfo)
-        ;
-            GoalType = nested_atomic_goal,
-            add_type_constraint([InitStmConstraint], [OuterInit], !TCInfo),
-            add_type_constraint([FinalStmConstraint], [OuterFinal], !TCInfo)
-        ),
-        % Recursively evaluate transaction goals.
-        list.foldl(goal_to_constraint(Environment), [Main | Alternatives],
-            !TCInfo)
-    ;
-        Shorthand = try_goal(MaybeIO, _ResultVar, SubGoal),
-        Context = goal_info_get_context(GoalInfo),
-        (
-            MaybeIO = yes(try_io_state_vars(IOVarA, IOVarB)),
-            get_var_type(IOVarA, InitA, !TCInfo),
-            get_var_type(IOVarB, InitB, !TCInfo),
-            ConstraintA = ctconstr([stconstr(InitA, io_state_type)],
-                tconstr_active, Context, no, no),
-            ConstraintB = ctconstr([stconstr(InitB, io_state_type)],
-                tconstr_active, Context, no, no),
-            add_type_constraint([ConstraintA], [InitA], !TCInfo),
-            add_type_constraint([ConstraintB], [InitB], !TCInfo)
-        ;
-            MaybeIO = no
-        ),
-        goal_to_constraint(Environment, SubGoal, !TCInfo)
-    ;
-        Shorthand = bi_implication(GoalA, GoalB),
-        goal_to_constraint(Environment, GoalA, !TCInfo),
-        goal_to_constraint(Environment, GoalB, !TCInfo)
-    ).
-
-    % Creates a constraint from the information stored in a predicate
-    % definition. This may only be called if the number of arguments given
-    % is equal to the arity of the predicate.
-    %
-:- pred pred_call_constraint(pred_table::in, hlds_goal_info::in,
-    list(tvar)::in, pred_id::in, conj_type_constraint::out, list(tvar)::out,
-    type_constraint_info::in, type_constraint_info::out) is det.
-
-pred_call_constraint(PredTable, Info, ArgTVars, PredId, Constraint, TVars,
-        !TCInfo) :-
-    Constraint = ctconstr(Constraints, tconstr_active, Context,
-        yes(GoalId), yes(PredId)),
-    Context = goal_info_get_context(Info),
-    GoalId = goal_info_get_goal_id(Info),
-    ( if map.search(PredTable, PredId, PredInfo) then
-        pred_info_get_arg_types(PredInfo, PredArgTypes0),
-        pred_info_get_typevarset(PredInfo, PredTVarSet),
-        prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
-            PredTVarSet, NewTVarSet, TVarRenaming),
-        !TCInfo ^ tconstr_tvarset := NewTVarSet,
-        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
-            PredArgTypes0, PredArgTypes),
-        Constraints = list.map_corresponding(create_stconstr, ArgTVars,
-            PredArgTypes),
-        prog_type.type_vars_list(PredArgTypes, TVars)
-    else
-        Pieces = [words("The predicate with id"),
-            int_fixed(pred_id_to_int(PredId)),
-            words("has not been defined."), nl],
-        ErrMsg = simple_msg(Context, [always(Pieces)]),
-        add_message_to_spec(ErrMsg, !TCInfo),
-        TVars = [],
-        Constraints = []
-    ).
-
-    % Creates a constraint from a higher-order unification, e.g,
-    % :- pred add(int, int, int), X = add(Y) ->
-    % X :: pred(int, int), Y :: int.
-    % Fails if the number of arguments supplied to the predicate is greater
-    % than its arity.
-    %
-:- pred ho_pred_unif_constraint(pred_table::in, hlds_goal_info::in, tvar::in,
-    list(tvar)::in, pred_id::in, conj_type_constraint::out,
-    type_constraint_info::in, type_constraint_info::out) is semidet.
-
-ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
-        !TCInfo) :-
-    Constraint = ctconstr(Constraints, tconstr_active, Context,
-        yes(GoalId), yes(PredId)),
-    Context = goal_info_get_context(Info),
-    GoalId = goal_info_get_goal_id(Info),
-    ( if map.search(PredTable, PredId, PredInfo) then
-        pred_info_get_arg_types(PredInfo, PredArgTypes0),
-        pred_info_get_typevarset(PredInfo, PredTVarSet),
-        pred_info_get_purity(PredInfo, Purity),
-        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
-            PredTVarSet, NewTVarSet, TVarRenaming),
-        !TCInfo ^ tconstr_tvarset := NewTVarSet,
-        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
-            PredArgTypes0, PredArgTypes),
-        ( if
-            list.split_list(list.length(ArgTVars), PredArgTypes, HOArgTypes,
-                LambdaTypes)
-        then
-            ArgConstraints = list.map_corresponding(create_stconstr,
-                ArgTVars, HOArgTypes),
-            ( if
-                PredOrFunc = pf_function,
-                LambdaTypes = [ReturnType]
-            then
-                Type = ReturnType
-            else
-                Type = higher_order_type(PredOrFunc, LambdaTypes,
-                    none_or_default_func, Purity, lambda_normal)
-            ),
-            LHSConstraint = stconstr(LHSTVar, Type),
-            Constraints = [LHSConstraint | ArgConstraints]
-        else
-            fail
-        )
-    else
-        Pieces = [words("The predicate with id"),
-            int_fixed(pred_id_to_int(PredId)),
-            words("has not been defined."), nl],
-        ErrMsg = simple_msg(Context, [always(Pieces)]),
-        add_message_to_spec(ErrMsg, !TCInfo),
-        Constraints = []
-    ).
-
-    % Creates a constraint from the assignment of a type to a program variable.
-    %
-:- pred variable_assignment_constraint(prog_context::in, prog_var::in,
-    mer_type::in, type_constraint_info::in, type_constraint_info::out) is det.
-
-variable_assignment_constraint(Context, Var, Type, !TCInfo) :-
-    prog_type.type_vars(Type, TypeVariables),
-    get_var_type(Var, TVar, !TCInfo),
-    Constraint = ctconstr([stconstr(TVar, Type)], tconstr_active, Context,
-        no, no),
-    add_type_constraint([Constraint], [TVar | TypeVariables], !TCInfo).
-
-    % Create a conjunction of type constraints from a functor unification goal.
-    % The LHS variable is constrained to be of the result type, and each RHS
-    % variable is constrained to be of the appropriate argument type. May
-    % only be called if the arity of the functor is equal to the number of
-    % arguments given to it.
-    %
-:- pred functor_unif_constraint(tvar::in, list(tvar)::in, hlds_goal_info::in,
-    hlds_cons_defn::in, conj_type_constraint::out, type_constraint_info::in,
-    type_constraint_info::out) is det.
-
-functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
-        !TCInfo) :-
-    ConsDefn = hlds_cons_defn(TypeCtor, FunctorTVarSet, TypeParams0, _, _,
-        FuncArgs, _),
-    Context = goal_info_get_context(Info),
-    GoalId = goal_info_get_goal_id(Info),
-    % Find the types of each argument and the result type, given a renaming
-    % of type variables.
-    list.map(get_ctor_arg_type, FuncArgs, FuncArgTypes0),
-    prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
-        FunctorTVarSet, NewTVarSet, TVarRenaming),
-    !TCInfo ^ tconstr_tvarset := NewTVarSet,
-    prog_type_subst.apply_variable_renaming_to_tvar_list(TVarRenaming,
-        TypeParams0, TypeParams),
-    prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
-        FuncArgTypes0, FuncArgTypes),
-    Params = list.map(tvar_to_type, TypeParams),
-    prog_type.construct_type(TypeCtor, Params, ResultType),
-    LHS_Constraint = stconstr(LTVar, ResultType),
-    RHS_Constraints = list.map_corresponding(create_stconstr,
-        ArgTVars, FuncArgTypes),
-    Constraints = ctconstr([LHS_Constraint | RHS_Constraints],
-        tconstr_active, Context, yes(GoalId), no).
-
-%-----------------------------------------------------------------------------%
-%
-% Constraint generation utility predicates.
-%
-
-:- pred pred_has_arity(pred_table::in, int::in, pred_id::in) is semidet.
-
-pred_has_arity(Preds, Arity, PredId) :-
-    map.lookup(Preds, PredId, Pred),
-    pred_info_get_arg_types(Pred, PredArgTypes),
-    list.length(PredArgTypes) = Arity.
-
-    % Converts any builtin atomic type to a string representing that type.
-    %
-:- pred builtin_atomic_type(cons_id::in, builtin_type::out) is semidet.
-
-builtin_atomic_type(int_const(_), builtin_type_int(int_type_int)).
-builtin_atomic_type(uint_const(_), builtin_type_int(int_type_uint)).
-builtin_atomic_type(int8_const(_), builtin_type_int(int_type_int8)).
-builtin_atomic_type(uint8_const(_), builtin_type_int(int_type_uint8)).
-builtin_atomic_type(int16_const(_), builtin_type_int(int_type_int16)).
-builtin_atomic_type(uint16_const(_), builtin_type_int(int_type_uint16)).
-builtin_atomic_type(int32_const(_), builtin_type_int(int_type_int32)).
-builtin_atomic_type(uint32_const(_), builtin_type_int(int_type_uint32)).
-builtin_atomic_type(float_const(_), builtin_type_float).
-builtin_atomic_type(string_const(_), builtin_type_string).
-builtin_atomic_type(cons(unqualified(String), 0, _), builtin_type_char) :-
-    string.char_to_string(_, String).
-builtin_atomic_type(impl_defined_const(Name), Type) :-
-    (
-        ( Name = "file"
-        ; Name = "module"
-        ; Name = "pred"
-        ; Name = "grade"
-        ),
-        Type = builtin_type_string
-    ;
-        Name = "line",
-        Type = builtin_type_int(int_type_int)
-    ).
-
-    % Creates a new id for a type constraint, then maps each of the given type
-    % variables to that constraint.
-    %
-:- pred add_type_constraint(list(conj_type_constraint)::in, list(tvar)::in,
-    type_constraint_info::in, type_constraint_info::out) is det.
-
-add_type_constraint(Constraints, TVars, !TConstrInfo) :-
-    some [!ConstraintCounter, !ConstraintMap, !VarConstraints] (
-        !.TConstrInfo = tconstr_info(VarMap, !:ConstraintCounter,
-            !:ConstraintMap, !:VarConstraints, TVarSet, Errors),
-        (
-            Constraints = []
-        ;
-            (
-                Constraints = [SingleConstraint],
-                Constraint = tconstr_conj(SingleConstraint)
-            ;
-                Constraints = [_, _ | _],
-                Constraint = tconstr_disj(Constraints, no)
-            ),
-            counter.allocate(Id, !ConstraintCounter),
-            map.det_insert(Id, Constraint, !ConstraintMap),
-            list.foldl(map_var_to_constraint(Id), TVars, !VarConstraints)
-        ),
-        !:TConstrInfo = tconstr_info(VarMap, !.ConstraintCounter,
-            !.ConstraintMap, !.VarConstraints, TVarSet, Errors)
-    ).
-
-:- pred map_var_to_constraint(type_constraint_id::in, tvar::in,
-    var_constraint_map::in, var_constraint_map::out) is det.
-
-map_var_to_constraint(Id, TVar, !VarConstraints) :-
-    ( if map.search(!.VarConstraints, TVar, OldIds) then
-        ( if list.contains(OldIds, Id) then
-            true
-        else
-            map.det_update(TVar, [Id | OldIds], !VarConstraints)
-        )
-    else
-        map.det_insert(TVar, [Id], !VarConstraints)
-    ).
-
-    % If a program variable corresponds to a particular type variable, return
-    % that type variable. Otherwise, create a new type variable and map the
-    % program variable to it, then return that type variable.
-    %
-:- pred get_var_type(prog_var::in, tvar::out,
-    type_constraint_info::in, type_constraint_info::out) is det.
-
-get_var_type(Var, TVar,
-        tconstr_info(!.VarMap, CC, CM, VC, !.TVarSet, Errs),
-        tconstr_info(!:VarMap, CC, CM, VC, !:TVarSet, Errs)) :-
-    ( if bimap.search(!.VarMap, Var, TVar0) then
-        TVar = TVar0
-    else
-        varset.new_var(TVar, !TVarSet),
-        bimap.det_insert(Var, TVar, !VarMap)
-    ).
-
-:- func create_stconstr(tvar, mer_type) = simple_type_constraint.
-
-create_stconstr(TVar, Type) = stconstr(TVar, Type).
-
-:- pred get_case_goal(case::in, hlds_goal::out) is det.
-
-get_case_goal(Case, Case ^ case_goal).
-
-:- pred get_ctor_arg_type(constructor_arg::in, mer_type::out) is det.
-
-get_ctor_arg_type(ctor_arg(_, Type, _), Type).
-
-:- func tvar_to_type(tvar) = mer_type.
-
-tvar_to_type(TVar) = type_variable(TVar, kind_star).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-%
 % Constraint printing.
 %
 
@@ -2213,7 +2205,7 @@ print_guess(TVarSet, Guess, !IO) :-
     print_type_domain(TVarSet, Guess, !IO).
 
     % If one or more conjunction constraints have become unsatisfiable, print
-    % out those constraints
+    % out those constraints.
     %
 :- pred print_constraint_change(tvarset::in, type_constraint::in,
     type_constraint::in, io::di, io::uo) is det.
@@ -2324,7 +2316,7 @@ type_domain_to_string(TVarSet, Domain, DomainName) :-
         Domain = tdomain_singleton(Type),
         type_to_string(TVarSet, Type, DomainName)
     ;
-        Domain = tdomain(DomainSet),
+        Domain = tdomain_nonfixed(DomainSet),
         list.map(type_to_string(TVarSet), set.to_sorted_list(DomainSet),
             DomainTypeNames),
         DomainName = string.join_list(", ", DomainTypeNames)
@@ -2469,6 +2461,36 @@ type_to_string(TVarSet, Type, Name) :-
         Type = kinded_type(Type0, _),
         type_to_string(TVarSet, Type0, Name)
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Utility predicates.
+%
+
+:- pred get_clause_body(clause::in, hlds_goal::out) is det.
+
+get_clause_body(Clause, BodyGoal) :-
+    BodyGoal = Clause ^ clause_body.
+
+:- pred set_clause_body(hlds_goal::in, clause::in, clause::out) is det.
+
+set_clause_body(BodyGoal, !Clause) :-
+    !Clause ^ clause_body := BodyGoal.
+
+:- pred get_first_disjunct(type_constraint::in, conj_type_constraint::out)
+    is semidet.
+
+get_first_disjunct(tconstr_disj(Cs, no), C) :-
+    list.filter(still_active, Cs, [C | _]).
+get_first_disjunct(tconstr_disj(_, yes(C)), C).
+get_first_disjunct(tconstr_conj(C), C).
+
+:- pred has_multiple_disjuncts(type_constraint::in,
+    list(conj_type_constraint)::out)  is semidet.
+
+has_multiple_disjuncts(tconstr_disj(Cs0, _), Cs) :-
+    list.filter(still_active, Cs0, Cs),
+    Cs = [_, _ | _].
 
 %-----------------------------------------------------------------------------%
 %
