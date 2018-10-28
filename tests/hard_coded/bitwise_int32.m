@@ -132,7 +132,7 @@ run_shift_test_3(ShiftOpFunc, Desc, A, B, !IO) :-
 :- func numbers = list(int32).
 
 numbers = [
-    -2_147_483_648_i32
+    -2_147_483_648_i32,
     -32_768_i32,
     -128_i32,
     0_i32,

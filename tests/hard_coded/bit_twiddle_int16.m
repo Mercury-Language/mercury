@@ -81,7 +81,7 @@ run_twiddle_test_b_2(Func, Desc, A, !IO) :-
 :- func numbers = list(int16).
 
 numbers = [
-    -32_768_i16
+    -32_768_i16,
     -128_i16,
     0_i16,
     1_i16,
