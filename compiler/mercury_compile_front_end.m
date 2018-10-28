@@ -89,6 +89,7 @@
 :- import_module check_hlds.mode_constraints.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.oisu_check.
+:- import_module check_hlds.old_type_constraints.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.post_typecheck.
 :- import_module check_hlds.pre_typecheck.
@@ -245,7 +246,12 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
     maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
     (
         TypeCheckConstraints = yes,
-        typecheck_constraints(!HLDS, TypeCheckSpecs),
+        globals.lookup_string_option(Globals, experiment, Experiment),
+        ( if Experiment = "old_type_constraints" then
+            old_typecheck_constraints(!HLDS, TypeCheckSpecs)
+        else
+            typecheck_constraints(!HLDS, TypeCheckSpecs)
+        ),
         % XXX We should teach typecheck_constraints to report syntax errors.
         FoundSyntaxError = no,
         ExceededTypeCheckIterationLimit = no
