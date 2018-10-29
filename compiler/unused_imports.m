@@ -216,6 +216,9 @@ compare_avails(AvailA, AvailB, Result) :-
 maybe_generate_redundant_avail_warnings(_ModuleName, [], _, !Specs).
 maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
         !.PrevAvails, !Specs) :-
+    % XXX UNUSED_IMPORT Harmonize the operation of this predicate with
+    % the operation of warn_unused_interface_import
+    % in module_qual.qual_errors.m.
     list.foldl(add_msg_if_avail_as_general(ModuleName, Avail), !.PrevAvails,
         [], PrevMsgs),
     (

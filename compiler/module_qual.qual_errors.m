@@ -352,6 +352,9 @@ report_invalid_user_inst(_SymName, _Insts, ErrorContext, !Specs) :-
 
 warn_unused_interface_import(ParentModuleName,
         ImportedModuleName - ImportContexts, !Specs) :-
+     UNUSED_IMPORT Harmonize the operation of this predicate with
+    % the operation of maybe_generate_redundant_avail_warnings
+    % in unused_imports.m.
     ImportContexts = one_or_more(HeadContext, TailContexts),
     HeadPieces =
         [words("In module"), qual_sym_name(ParentModuleName), suffix(":"), nl,
