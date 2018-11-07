@@ -231,20 +231,20 @@ but these hold respectively, the current and the next state.
 In Prolog, it is quite normal to give to @code{print}
 an argument that is an atom that is not used anywhere else in the program,
 or at least not in code related to the code that does the printing.
-This is because the term being printed does not have to belong to a defined
-type.
+This is because the term being printed
+does not have to belong to a defined type.
 Since Mercury is strongly typed, the atom being printed
 @emph{would} have to be a data constructor of a defined type.
 A Mercury programmer @emph{could} define a meaningless type
 just to give one of its data constructors to a call to @code{print},
 but it is far better to simply call a predicate specifically designed
-to print the string you want printed:
+to print the string, or integer, or character, you want to print:
 
 @example
 @group
 write_total(Total, !IO) :-
     io.write_string("The total is ", !IO),
-    io.print(Total, !IO),
+    io.write_int(Total, !IO),
     io.write_char('.', !IO),
     io.nl(!IO).
 @end group
@@ -280,6 +280,11 @@ integers must be wrapped inside @code{i()},
 floats must be wrapped inside @code{f()},
 strings must be wrapped inside @code{s()}, and
 chars must be wrapped inside @code{c()}.
+Despite appearances, in the usual case of the format string being constant,
+the wrappers and the list of arguments have neither time nor space overhead,
+because the compiler optimizes them away,
+replacing the call to @code{io.format} with
+the calls to @code{io.write_string}, @code{io.write_int} etc above.
 
 One of the important consequences of our model for input and output
 is that predicates that can fail may not do input or output.
@@ -759,8 +764,11 @@ is
 
 @example
 intersect(List1, List2, Intersection) :-
-    solutions((pred(X::out) is nondet :-
-        (list.member(X, List1), list.member(X, List2))), Intersection).
+    solutions(
+        ( pred(X::out) is nondet :-
+            list.member(X, List1),
+            list.member(X, List2)
+        ), Intersection).
 @end example
 
 Alternately, this could also be written as
@@ -770,8 +778,10 @@ intersect(List1, List2, Intersection) :-
     solutions(member_of_both(List1, List2), Intersection).
 
 :- pred member_of_both(list(T)::in, list(T)::in, T::out) is nondet.
+
 member_of_both(List1, List2, X) :-
-    list.member(X, List1), list.member(X, List2).
+    list.member(X, List1),
+    list.member(X, List2).
 @end example
 
 @noindent
