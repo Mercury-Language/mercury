@@ -2729,11 +2729,14 @@ update_field_in_map(Map, Index, Value) =
 @node The standard ordering
 @section The standard ordering
 
-For every Mercury type there exists a standard ordering;
+For (almost) every Mercury type there exists a standard ordering;
 any two values of the same type can be compared under this ordering
 by using the @code{builtin.compare/3} predicate.
 The ordering is total, meaning that the corresponding binary relations
 are reflexive, transitive and anti-symmetric.
+The one exception is higher-order types,
+which cannot be unified or compared;
+any attempt to do so will raise an exception.
 
 The existence of this ordering makes it possible to implement
 generic data structures such as sets and maps,
@@ -2742,8 +2745,8 @@ Furthermore, different platforms often have their own natural orderings
 which are not necessarily consistent with each other.
 As such, the standard ordering for most types is not fully defined.
 
-For the primitive integer types, the standard ordering is the usual numerical
-ordering.
+For the primitive integer types,
+the standard ordering is the usual numerical ordering.
 Implementations should reject code containing overflowing integer literals.
 
 For the primitive type @code{float},
@@ -2776,10 +2779,17 @@ with the first argument being the most significant.
 
 For discriminated union types,
 if both values have the same principal constructor
-then corresponding arguments are compared,
+then corresponding arguments are compared in order,
 with the first argument being the most significant.
 If the values have different principal constructors,
-the result of comparing them is not defined.
+then the value whose principal constructor
+is listed first in the definition of the type
+will compare as less than the other value.
+There is one exception from this rule:
+in types that are subject to a @code{foreign_enum} pragma,
+the outcomes of comparisons are decided
+by user's chosen foreign language representations,
+using the rules of the foreign language.
 
 @node Modes
 @chapter Modes
