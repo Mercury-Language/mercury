@@ -1,0 +1,102 @@
+-------FILL--------
+Array0 = array([])
+Fill = "bar"
+Array = array([])
+-------FILL--------
+Array0 = array(["foo"])
+Fill = "bar"
+Array = array(["bar"])
+-------FILL--------
+Array0 = array(["foo", "foo", "foo"])
+Fill = "bar"
+Array = array(["bar", "bar", "bar"])
+-------FILL--------
+Array0 = array(['a', 'a', 'a'])
+Fill = 'b'
+Array = array(['b', 'b', 'b'])
+-------FILL--------
+Array0 = array([561, 561, 561])
+Fill = -561
+Array = array([-561, -561, -561])
+-------FILL--------
+Array0 = array([34u, 34u, 34u])
+Fill = 41u
+Array = array([41u, 41u, 41u])
+-------FILL--------
+Array0 = array([-128i8, -128i8, -128i8])
+Fill = 127i8
+Array = array([127i8, 127i8, 127i8])
+-------FILL--------
+Array0 = array([0u8, 0u8, 0u8])
+Fill = 255u8
+Array = array([255u8, 255u8, 255u8])
+-------FILL--------
+Array0 = array([-32768i16, -32768i16, -32768i16])
+Fill = 32767i16
+Array = array([32767i16, 32767i16, 32767i16])
+-------FILL--------
+Array0 = array([0u16, 0u16, 0u16])
+Fill = 65535u16
+Array = array([65535u16, 65535u16, 65535u16])
+-------FILL--------
+Array0 = array([-2147483648i32, -2147483648i32, -2147483648i32])
+Fill = 2147483647i32
+Array = array([2147483647i32, 2147483647i32, 2147483647i32])
+-------FILL--------
+Array0 = array([0u32, 0u32, 0u32])
+Fill = 4294967295u32
+Array = array([4294967295u32, 4294967295u32, 4294967295u32])
+-------FILL--------
+Array0 = array([-9223372036854775808i64, -9223372036854775808i64, -9223372036854775808i64])
+Fill = 9223372036854775807i64
+Array = array([9223372036854775807i64, 9223372036854775807i64, 9223372036854775807i64])
+-------FILL--------
+Array0 = array([0u64, 0u64, 0u64])
+Fill = 18446744073709551615u64
+Array = array([18446744073709551615u64, 18446744073709551615u64, 18446744073709551615u64])
+-------FILL--------
+Array0 = array([dummy, dummy, dummy])
+Fill = dummy
+Array = array([dummy, dummy, dummy])
+-------FILL--------
+Array0 = array([orange, orange, orange])
+Fill = lemon
+Array = array([lemon, lemon, lemon])
+-------FILL--------
+Array0 = array([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
+Fill = [4, 5, 6]
+Array = array([[4, 5, 6], [4, 5, 6], [4, 5, 6]])
+-------FILL--------
+Array0 = array([color(0u8, 0u8, 0u8), color(0u8, 0u8, 0u8), color(0u8, 0u8, 0u8)])
+Fill = color(255u8, 255u8, 255u8)
+Array = array([color(255u8, 255u8, 255u8), color(255u8, 255u8, 255u8), color(255u8, 255u8, 255u8)])
+-------FILL RANGE-------
+Array0 = array([1, 2, 3, 4, 5, 6])
+Lo = 3
+Hi = 1
+Fill = 561
+EXCEPTION: "predicate `array.fill_range\'/5: Unexpected: empty range"
+-------FILL RANGE-------
+Array0 = array([1, 2, 3, 4, 5, 6])
+Lo = -1
+Hi = 3
+Fill = 561
+INDEX-OUT-OF-BOUNDS: "fill_range: index -1 not in range [0, 5]"
+-------FILL RANGE-------
+Array0 = array([1, 2, 3, 4, 5, 6])
+Lo = 1
+Hi = 8
+Fill = 561
+INDEX-OUT-OF-BOUNDS: "fill_range: index 8 not in range [0, 5]"
+-------FILL RANGE-------
+Array0 = array([1, 2, 3, 4, 5, 6])
+Lo = 1
+Hi = 3
+Fill = 561
+Array = array([1, 561, 561, 561, 5, 6])
+-------FILL RANGE-------
+Array0 = array([])
+Lo = 0
+Hi = 0
+Fill = 561
+INDEX-OUT-OF-BOUNDS: "fill_range: index 0 not in range [0, -1]"

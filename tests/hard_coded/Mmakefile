@@ -671,6 +671,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 	endif
 	NON_PROFDEEP_PROGS = \
 		$(NON_PROFDEEP_PROGS_2) \
+		array_fill \
 		allow_stubs \
 		arith_int16 \
 		arith_int32 \

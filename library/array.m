@@ -264,7 +264,7 @@
 %:- mode unsafe_lookup(array_ui, in, out) is det.
 :- mode unsafe_lookup(in, in, out) is det.
 
-    % set sets the nth element of an array, and returns the
+    % set sets the N'th element of an array, and returns the
     % resulting array (good opportunity for destructive update ;-).
     % Throws an exception if the index is out of bounds.
     %
@@ -376,6 +376,19 @@
     %
 :- func shrink(array(T), int) = array(T).
 :- mode shrink(array_di, in) = array_uo is det.
+
+    % fill(Item, Array0, Array):
+    % Sets every element of the array to `Elem'.
+    %
+:- pred fill(T::in, array(T)::array_di, array(T)::array_uo) is det.
+
+    % fill_range(Item, Lo, Hi, !Array):
+    % Sets every element of the array with index in the range Lo..Hi
+    % (inclusive) to Item. Throws a software_error1/ exception if Lo > Hi.
+    % Throws an index_out_of_bound/0 exception if Lo or Hi is out of bounds.
+    %
+:- pred fill_range(T::in, int::in, int::in,
+     array(T)::array_di, array(T)::array_uo) is det.
 
     % from_list takes a list, and returns an array containing those
     % elements in the same order that they occurred in the list.
@@ -1130,7 +1143,6 @@ ML_shrink_array(System.Array arr, int Size)
         return tmp;
     }
 }
-
 ").
 
 :- pragma foreign_code("Java", "
@@ -1378,6 +1390,35 @@ ML_array_resize(Object Array0, int Size, Object Item)
         }
         return Array;
     }
+}
+
+public static Object
+ML_array_fill(Object array, int fromIndex, int toIndex, Object Item)
+{
+    if (array == null) {
+        return null;
+    }
+
+    if (array instanceof int[]) {
+        java.util.Arrays.fill(((int []) array), fromIndex, toIndex, (Integer) Item);
+    } else if (array instanceof double[]) {
+        java.util.Arrays.fill(((double []) array), fromIndex, toIndex, (Double) Item);
+    } else if (array instanceof byte[]) {
+        java.util.Arrays.fill(((byte []) array), fromIndex, toIndex, (Byte) Item);
+    } else if (array instanceof short[]) {
+        java.util.Arrays.fill(((short []) array), fromIndex, toIndex,(Short) Item);
+    } else if (array instanceof long[]) {
+        java.util.Arrays.fill(((long []) array), fromIndex, toIndex,(Long) Item);
+    } else if (array instanceof char[]) {
+        java.util.Arrays.fill(((char []) array), fromIndex, toIndex,(Character) Item);
+    } else if (array instanceof boolean[]) {
+        java.util.Arrays.fill(((boolean []) array), fromIndex, toIndex,(Boolean) Item);
+    } else if (array instanceof float[]) {
+        java.util.Arrays.fill(((float []) array), fromIndex, toIndex,(Float) Item);
+    } else {
+        java.util.Arrays.fill(((Object []) array), fromIndex, toIndex,Item);
+    }
+    return array;
 }
 ").
 
@@ -2042,6 +2083,7 @@ shrink(Size, !Array) :-
     Array = list_to_tuple(lists:sublist(tuple_to_list(Array0), Size))
 ").
 
+% JJJ FIXME: why don't we handle the other primitive types below.
 :- pragma foreign_proc("Java",
     shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2064,6 +2106,44 @@ shrink(Size, !Array) :-
         System.arraycopy(Array0, 0, Array, 0, Size);
     }
 ").
+
+%---------------------------------------------------------------------------%
+
+fill(Item, !Array) :-
+    array.bounds(!.Array, Min, Max),
+    do_fill_range(Item, Min, Max, !Array).
+
+fill_range(Item, Lo, Hi, !Array) :-
+    ( if Lo > Hi then
+        unexpected($pred, "empty range")
+    else if not in_bounds(!.Array, Lo) then
+        out_of_bounds_error(!.Array, Lo, "fill_range")
+    else if not in_bounds(!.Array, Hi) then
+        out_of_bounds_error(!.Array, Hi, "fill_range")
+    else
+        do_fill_range(Item, Lo, Hi, !Array)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred do_fill_range(T::in, int::in, int::in,
+     array(T)::array_di, array(T)::array_uo) is det.
+
+:- pragma foreign_proc("Java",
+    do_fill_range(Item::in, Lo::in, Hi::in,
+        Array0::array_di, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = jmercury.array.ML_array_fill(Array0, Lo, Hi + 1, Item);
+").
+
+do_fill_range(Item, Lo, Hi, !Array) :-
+    ( if Lo =< Hi then
+        array.unsafe_set(Lo, Item, !Array),
+        do_fill_range(Item, Lo + 1, Hi, !Array)
+    else
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 

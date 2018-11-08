@@ -461,15 +461,18 @@ Changes to the Mercury standard library:
    - semidet_greatest_index/1
    - foldl_corresponding/5
    - foldl2_corresponding/7
+   - fill/3
+   - fill_range/5
 
    The following functions in the array module have been deprecated:
 
    - least_index/1
    - greatest_index/1
 
-* The following function has been added to the array2d module:
+* The following predicates have been added to the array2d module:
 
    - is_empty/1
+   - fill/3
 
 * The following predicates have been added to the time module:
 

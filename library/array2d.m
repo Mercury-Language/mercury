@@ -128,6 +128,11 @@
 %:- mode lists(array2d_ui) = out is det.
 :- mode lists(in        ) = out is det.
 
+    % fill(Item, !Array2d):
+    % Sets every element of the array to Item.
+    %
+:- pred fill(T::in, array2d(T)::array2d_di, array2d(T)::array2d_uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -232,6 +237,13 @@ lists_2(IJ, J, N, A, Xs, Xss) =
       else
          [Xs | Xss]
      ).
+
+%---------------------------------------------------------------------------%
+
+fill(Item, A0, A) :-
+    A0 = array2d(M, N, Array0),
+    array.fill(Item, Array0, Array),
+    A = array2d(M, N, Array).
 
 %---------------------------------------------------------------------------%
 :- end_module array2d.
