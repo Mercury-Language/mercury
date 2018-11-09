@@ -11306,11 +11306,14 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 %---------------------%
 
 :- pragma foreign_proc("Java",
-    progname(_Default::in, PrognameOut::out, _IO0::di, _IO::uo),
+    progname(Default::in, PrognameOut::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
     PrognameOut = jmercury.runtime.JavaInternal.progname;
+    if (PrognameOut == null) {
+        PrognameOut = Default;
+    }
 ").
 
 :- pragma foreign_proc("Java",
@@ -11319,9 +11322,13 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 "
     String[] arg_vector = jmercury.runtime.JavaInternal.args;
     Args = list.empty_list();
-    // arg_vector does not include the executable name.
-    for (int i = arg_vector.length - 1; i >= 0; --i) {
-        Args = list.cons(arg_vector[i], Args);
+    // The argument vector may not be set if Mercury is being used
+    // as a library by a native Java application.
+    if (arg_vector != null) {
+        // arg_vector does not include the executable name.
+        for (int i = arg_vector.length - 1; i >= 0; --i) {
+            Args = list.cons(arg_vector[i], Args);
+        }
     }
 ").
 
