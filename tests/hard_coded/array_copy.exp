@@ -1,0 +1,42 @@
+=====================
+Array0 = array(['a', 'b', 'c'])
+Array = array(['a', 'b', 'c'])
+=====================
+Array0 = array([1, 2, 3])
+Array = array([1, 2, 3])
+=====================
+Array0 = array([1u, 2u, 3u])
+Array = array([1u, 2u, 3u])
+=====================
+Array0 = array([1i8, 2i8, 3i8])
+Array = array([1i8, 2i8, 3i8])
+=====================
+Array0 = array([1u8, 2u8, 3u8])
+Array = array([1u8, 2u8, 3u8])
+=====================
+Array0 = array([1i16, 2i16, 3i16])
+Array = array([1i16, 2i16, 3i16])
+=====================
+Array0 = array([1u16, 2u16, 3u16])
+Array = array([1u16, 2u16, 3u16])
+=====================
+Array0 = array([1i32, 2i32, 3i32])
+Array = array([1i32, 2i32, 3i32])
+=====================
+Array0 = array([1u32, 2u32, 3u32])
+Array = array([1u32, 2u32, 3u32])
+=====================
+Array0 = array([1i64, 2i64, 3i64])
+Array = array([1i64, 2i64, 3i64])
+=====================
+Array0 = array([1u64, 2u64, 3u64])
+Array = array([1u64, 2u64, 3u64])
+=====================
+Array0 = array(["foo", "bar", "baaz"])
+Array = array(["foo", "bar", "baaz"])
+=====================
+Array0 = array([apple, lemon, orange])
+Array = array([apple, lemon, orange])
+=====================
+Array0 = array([[1], [2, 2], [3, 3, 3]])
+Array = array([[1], [2, 2], [3, 3, 3]])

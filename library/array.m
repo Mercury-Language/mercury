@@ -2218,9 +2218,21 @@ copy(A1) = A2 :-
     } else if (Array0 instanceof double[]) {
         Size = ((double[]) Array0).length;
         Array = new double[Size];
+    } else if (Array0 instanceof byte[]) {
+        Size = ((byte[]) Array0).length;
+        Array = new byte[Size];
+    } else if (Array0 instanceof short[]) {
+        Size = ((short[]) Array0).length;
+        Array = new short[Size];
+    } else if (Array0 instanceof long[]) {
+        Size = ((long[]) Array0).length;
+        Array = new long[Size];
     } else if (Array0 instanceof char[]) {
         Size = ((char[]) Array0).length;
         Array = new char[Size];
+    } else if (Array0 instanceof float[]) {
+        Size = ((float[]) Array0).length;
+        Array = new float[Size];
     } else if (Array0 instanceof boolean[]) {
         Size = ((boolean[]) Array0).length;
         Array = new boolean[Size];
