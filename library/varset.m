@@ -78,6 +78,8 @@
     varset(T)::in, varset(T)::out) is det.
 
     % Create multiple new variables.
+    % Throws an exception if a negative number of new variables
+    % is requested.
     %
 :- pred new_vars(int::in, list(var(T))::out,
     varset(T)::in, varset(T)::out) is det.
@@ -97,7 +99,7 @@
 
     % Delete the names and values for a sorted list of variables.
     % (If the list is not sorted, the predicate or function will
-    % either throw an exception of return incorrect output.)
+    % either throw an exception or return incorrect output.)
     %
 :- func delete_sorted_vars(varset(T), list(var(T))) = varset(T).
 :- pred delete_sorted_vars(list(var(T))::in,
