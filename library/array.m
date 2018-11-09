@@ -91,7 +91,8 @@
 :- func make_empty_array = (array(T)::array_uo) is det.
 
     % init(Size, Init, Array) creates an array with bounds from 0
-    % to Size-1, with each element initialized to Init.
+    % to Size-1, with each element initialized to Init.  Throws an
+    % exception if Size < 0.
     %
 :- pred init(int, T, array(T)).
 :- mode init(in, in, array_uo) is det.
@@ -111,7 +112,7 @@
     % Create an array with bounds from 0 to Size - 1 using the function
     % Generate to set the initial value of each element of the array.
     % The initial value of the element at index K will be the result of
-    % calling the function Generate(K).
+    % calling the function Generate(K). Throws an exception if Size < 0.
     %
 :- func generate(int::in, (func(int) = T)::in) = (array(T)::array_uo)
     is det.
