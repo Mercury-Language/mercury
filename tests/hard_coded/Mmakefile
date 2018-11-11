@@ -673,6 +673,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 	NON_PROFDEEP_PROGS = \
 		$(NON_PROFDEEP_PROGS_2) \
 		array_fill \
+		array_shrink \
 		allow_stubs \
 		arith_int16 \
 		arith_int32 \

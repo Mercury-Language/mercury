@@ -366,14 +366,16 @@
 
     % shrink(Size, Array0, Array):
     % The array is shrunk to make it fit the new size `Size'.
-    % Throws an exception if `Size' is larger than the size of `Array0'.
+    % Throws an exception if `Size' is larger than the size of `Array0' or
+    % if `Size' < 0.
     %
 :- pred shrink(int, array(T), array(T)).
 :- mode shrink(in, array_di, array_uo) is det.
 
     % shrink(Array0, Size) = Array:
     % The array is shrunk to make it fit the new size `Size'.
-    % Throws an exception if `Size' is larger than the size of `Array0'.
+    % Throws an exception if `Size' is larger than the size of `Array0' or
+    % if `Size' < 0.
     %
 :- func shrink(array(T), int) = array(T).
 :- mode shrink(array_di, in) = array_uo is det.
@@ -385,7 +387,7 @@
 
     % fill_range(Item, Lo, Hi, !Array):
     % Sets every element of the array with index in the range Lo..Hi
-    % (inclusive) to Item. Throws a software_error1/ exception if Lo > Hi.
+    % (inclusive) to Item. Throws a software_error/1 exception if Lo > Hi.
     % Throws an index_out_of_bound/0 exception if Lo or Hi is out of bounds.
     %
 :- pred fill_range(T::in, int::in, int::in,
@@ -2047,7 +2049,9 @@ shrink(!.Array, N) = !:Array :-
 
 shrink(Size, !Array) :-
     OldSize = array.size(!.Array),
-    ( if Size > OldSize then
+    ( if Size < 0 then
+        unexpected($pred, "cannot shrink to a negative size")
+    else if Size > OldSize then
         unexpected($pred, "cannot shrink to a larger size")
     else if Size = OldSize then
         true
@@ -2084,7 +2088,6 @@ shrink(Size, !Array) :-
     Array = list_to_tuple(lists:sublist(tuple_to_list(Array0), Size))
 ").
 
-% JJJ FIXME: why don't we handle the other primitive types below.
 :- pragma foreign_proc("Java",
     shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2095,8 +2098,16 @@ shrink(Size, !Array) :-
         Array = new int[Size];
     } else if (Array0 instanceof double[]) {
         Array = new double[Size];
+    } else if (Array0 instanceof byte[]) {
+        Array = new byte[Size];
+    } else if (Array0 instanceof short[]) {
+        Array = new short[Size];
+    } else if (Array0 instanceof long[]) {
+        Array = new long[Size];
     } else if (Array0 instanceof char[]) {
         Array = new char[Size];
+    } else if (Array0 instanceof float[]) {
+        Array = new float[Size];
     } else if (Array0 instanceof boolean[]) {
         Array = new boolean[Size];
     } else {
