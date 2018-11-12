@@ -1,0 +1,72 @@
+================
+Array0 = array([1, 2, 3, 4])
+Swap: -1 <-> 0
+EXCEPTION: "first argument of array.swap: index -1 not in range [0, 3]"
+================
+Array0 = array([1, 2, 3, 4])
+Swap: 2 <-> -1
+EXCEPTION: "second argument of array.swap: index -1 not in range [0, 3]"
+================
+Array0 = array([1, 2, 3, 4])
+Swap: 0 <-> 0
+Array = array([1, 2, 3, 4])
+================
+Array0 = array([1, 2, 3, 4])
+Swap: 1 <-> 2
+Array = array([1, 3, 2, 4])
+================
+Array0 = array([1i8, 2i8, 3i8, 4i8])
+Swap: 0 <-> 1
+Array = array([2i8, 1i8, 3i8, 4i8])
+================
+Array0 = array([1u8, 2u8, 3u8, 4u8])
+Swap: 0 <-> 1
+Array = array([2u8, 1u8, 3u8, 4u8])
+================
+Array0 = array([1i16, 2i16, 3i16, 4i16])
+Swap: 0 <-> 1
+Array = array([2i16, 1i16, 3i16, 4i16])
+================
+Array0 = array([1u16, 2u16, 3u16, 4u16])
+Swap: 0 <-> 1
+Array = array([2u16, 1u16, 3u16, 4u16])
+================
+Array0 = array([1i32, 2i32, 3i32, 4i32])
+Swap: 0 <-> 1
+Array = array([2i32, 1i32, 3i32, 4i32])
+================
+Array0 = array([1u32, 2u32, 3u32, 4u32])
+Swap: 0 <-> 1
+Array = array([2u32, 1u32, 3u32, 4u32])
+================
+Array0 = array([1i64, 2i64, 3i64, 4i64])
+Swap: 0 <-> 1
+Array = array([2i64, 1i64, 3i64, 4i64])
+================
+Array0 = array([1u64, 2u64, 3u64, 4u64])
+Swap: 0 <-> 1
+Array = array([2u64, 1u64, 3u64, 4u64])
+================
+Array0 = array([1.0, 2.0, 3.0, 4.0])
+Swap: 0 <-> 1
+Array = array([2.0, 1.0, 3.0, 4.0])
+================
+Array0 = array(["one", "two", "three", "four"])
+Swap: 0 <-> 1
+Array = array(["two", "one", "three", "four"])
+================
+Array0 = array(['a', 'b', 'c', 'd'])
+Swap: 0 <-> 1
+Array = array(['b', 'a', 'c', 'd'])
+================
+Array0 = array([orange, lemon, apple, pear])
+Swap: 0 <-> 1
+Array = array([lemon, orange, apple, pear])
+================
+Array0 = array([color(1u8, 1u8, 1u8), color(2u8, 2u8, 2u8), color(3u8, 3u8, 3u8), color(4u8, 4u8, 4u8)])
+Swap: 0 <-> 1
+Array = array([color(2u8, 2u8, 2u8), color(1u8, 1u8, 1u8), color(3u8, 3u8, 3u8), color(4u8, 4u8, 4u8)])
+================
+Array0 = array([[1], [2, 2], [3, 3, 3], [4, 4, 4, 4]])
+Swap: 0 <-> 1
+Array = array([[2, 2], [1], [3, 3, 3], [4, 4, 4, 4]])

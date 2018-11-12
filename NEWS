@@ -466,6 +466,8 @@ Changes to the Mercury standard library:
    - foldl2_corresponding/7
    - fill/3
    - fill_range/5
+   - swap/4
+   - unsafe_swap/4
 
    The following functions in the array module have been deprecated:
 

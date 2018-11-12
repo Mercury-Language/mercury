@@ -333,6 +333,18 @@
 :- func 'unsafe_elem :='(int, array(T), T) = array(T).
 :- mode 'unsafe_elem :='(in, array_di, in) = array_uo is det.
 
+    % swap(I, J, !Array):
+    % Swap the item in the I'th position with the item in the J'th position.
+    % Throws an exception if either of I or J is out-of-bounds.
+    %
+:- pred swap(int, int, array(T), array(T)).
+:- mode swap(in, in, array_di, array_uo) is det.
+
+    % As above, but omit the bounds checks.
+    %
+:- pred unsafe_swap(int, int, array(T), array(T)).
+:- mode unsafe_swap(in, in, array_di, array_uo) is det.
+
     % Returns every element of the array, one by one.
     %
 :- pred member(array(T)::in, T::out) is nondet.
@@ -2141,9 +2153,9 @@ fill_range(Item, Lo, Hi, !Array) :-
     ( if Lo > Hi then
         unexpected($pred, "empty range")
     else if not in_bounds(!.Array, Lo) then
-        out_of_bounds_error(!.Array, Lo, "fill_range")
+        arg_out_of_bounds_error(!.Array, "second", "fill_range", Lo)
     else if not in_bounds(!.Array, Hi) then
-        out_of_bounds_error(!.Array, Hi, "fill_range")
+        arg_out_of_bounds_error(!.Array, "third", "fill_range", Hi)
     else
         do_fill_range(Item, Lo, Hi, !Array)
     ).
@@ -2426,6 +2438,23 @@ map_2(N, Size, Closure, OldArray, !NewArray) :-
         array.unsafe_set(N, NewElem, !NewArray),
         map_2(N + 1, Size, Closure, OldArray, !NewArray)
     ).
+
+%---------------------------------------------------------------------------%
+
+swap(I, J, !Array) :-
+    ( if not in_bounds(!.Array, I) then
+        arg_out_of_bounds_error(!.Array, "first", "array.swap", I)
+    else if not in_bounds(!.Array, J) then
+        arg_out_of_bounds_error(!.Array, "second", "array.swap", J)
+    else
+        unsafe_swap(I, J, !Array)
+    ).
+
+unsafe_swap(I, J, !Array) :-
+    array.unsafe_lookup(!.Array, I, IVal),
+    array.unsafe_lookup(!.Array, J, JVal),
+    array.unsafe_set(I, JVal, !Array),
+    array.unsafe_set(J, IVal, !Array).
 
 %---------------------------------------------------------------------------%
 
@@ -3396,6 +3425,18 @@ out_of_bounds_error(Array, Index, PredName) :-
     array.bounds(Array, Min, Max),
     string.format("%s: index %d not in range [%d, %d]",
         [s(PredName), i(Index), i(Min), i(Max)], Msg),
+    throw(array.index_out_of_bounds(Msg)).
+
+    % Like the above, but for use in cases where the are multiple arguments
+    % that correspond to array indices.
+    %
+:- pred arg_out_of_bounds_error(array(T), string, string, int).
+:- mode arg_out_of_bounds_error(in, in, in, in) is erroneous.
+
+arg_out_of_bounds_error(Array, ArgPosn, PredName, Index) :-
+    array.bounds(Array, Min, Max),
+    string.format("%s argument of %s: index %d not in range [%d, %d]",
+        [s(ArgPosn), s(PredName), i(Index), i(Min), i(Max)], Msg),
     throw(array.index_out_of_bounds(Msg)).
 
 %---------------------------------------------------------------------------%

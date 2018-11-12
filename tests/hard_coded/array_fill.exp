@@ -81,13 +81,13 @@ Array0 = array([1, 2, 3, 4, 5, 6])
 Lo = -1
 Hi = 3
 Fill = 561
-INDEX-OUT-OF-BOUNDS: "fill_range: index -1 not in range [0, 5]"
+INDEX-OUT-OF-BOUNDS: "second argument of fill_range: index -1 not in range [0, 5]"
 -------FILL RANGE-------
 Array0 = array([1, 2, 3, 4, 5, 6])
 Lo = 1
 Hi = 8
 Fill = 561
-INDEX-OUT-OF-BOUNDS: "fill_range: index 8 not in range [0, 5]"
+INDEX-OUT-OF-BOUNDS: "third argument of fill_range: index 8 not in range [0, 5]"
 -------FILL RANGE-------
 Array0 = array([1, 2, 3, 4, 5, 6])
 Lo = 1
@@ -99,4 +99,4 @@ Array0 = array([])
 Lo = 0
 Hi = 0
 Fill = 561
-INDEX-OUT-OF-BOUNDS: "fill_range: index 0 not in range [0, -1]"
+INDEX-OUT-OF-BOUNDS: "second argument of fill_range: index 0 not in range [0, -1]"

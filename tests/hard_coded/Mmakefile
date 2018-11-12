@@ -675,6 +675,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		array_fill \
 		array_resize \
 		array_shrink \
+		array_swap \
 		allow_stubs \
 		arith_int16 \
 		arith_int32 \
