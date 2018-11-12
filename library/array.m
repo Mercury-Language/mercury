@@ -352,14 +352,16 @@
 
     % resize(Size, Init, Array0, Array):
     % The array is expanded or shrunk to make it fit the new size `Size'.
-    % Any new entries are filled with `Init'.
+    % Any new entries are filled with `Init'. Throws an exception if
+    % `Size' < 0.
     %
 :- pred resize(int, T, array(T), array(T)).
 :- mode resize(in, in, array_di, array_uo) is det.
 
     % resize(Array0, Size, Init) = Array:
     % The array is expanded or shrunk to make it fit the new size `Size'.
-    % Any new entries are filled with `Init'.
+    % Any new entries are filled with `Init'. Throws an exception if
+    % `Size' < 0.
     %
 :- func resize(array(T), int, T) = array(T).
 :- mode resize(array_di, in, in) = array_uo is det.
@@ -1964,8 +1966,18 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 resize(!.Array, N, X) = !:Array :-
     array.resize(N, X, !Array).
 
+resize(N, X, !Array) :-
+    ( if N  < 0 then
+        unexpected($pred, "cannot resize to a negative size")
+    else
+        do_resize(N, X, !Array)
+    ).
+
+:- pred do_resize(int, T, array(T), array(T)).
+:- mode do_resize(in, in, array_di, array_uo) is det.
+
 :- pragma foreign_proc("C",
-    resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
+    do_resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(int, T, array(T), array(T)), [
@@ -1983,14 +1995,14 @@ resize(!.Array, N, X) = !:Array :-
 ").
 
 :- pragma foreign_proc("C#",
-    resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
+    do_resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = array.ML_array_resize(Array0, Size, Item);
 ").
 
 :- pragma foreign_proc("Erlang",
-    resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
+    do_resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     InitialSize = size(Array0),
@@ -2007,7 +2019,7 @@ resize(!.Array, N, X) = !:Array :-
 ").
 
 :- pragma foreign_proc("Java",
-    resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
+    do_resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = jmercury.array.ML_array_resize(Array0, Size, Item);

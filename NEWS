@@ -120,8 +120,8 @@ Changes that may break compatibility:
 * We have changed the semantics of array.map_corresponding_foldl/6 so that it
   throws an exception if the input arrays differ in size.
 
-* We have changed the semantics of array.shrink/3 so that it throws an
-  exception if its first argument is negative.
+* We have changed the semantics of array.shrink/3 and array.resize/4 so that
+  they throw an exception if their first argument is negative.
 
 Changes to the Mercury language:
 

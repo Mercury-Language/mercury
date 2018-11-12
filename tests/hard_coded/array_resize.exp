@@ -1,0 +1,165 @@
+================
+Array0 = array([1, 2, 3, 4])
+Size = -1
+Init = 42
+EXCEPTION: "predicate `array.resize\'/4: Unexpected: cannot resize to a negative size"
+================
+Array0 = array([1, 2, 3, 4])
+Size = 0
+Init = 42
+Array = array([])
+================
+Array0 = array([1, 2, 3, 4])
+Size = 3
+Init = 42
+Array = array([1, 2, 3])
+================
+Array0 = array([1, 2, 3, 4])
+Size = 4
+Init = 42
+Array = array([1, 2, 3, 4])
+================
+Array0 = array([1, 2, 3, 4])
+Size = 5
+Init = 42
+Array = array([1, 2, 3, 4, 42])
+================
+Array0 = array([1i8, 2i8, 3i8, 4i8])
+Size = 3
+Init = 42i8
+Array = array([1i8, 2i8, 3i8])
+================
+Array0 = array([1i8, 2i8, 3i8, 4i8])
+Size = 6
+Init = 42i8
+Array = array([1i8, 2i8, 3i8, 4i8, 42i8, 42i8])
+================
+Array0 = array([1u8, 2u8, 3u8, 4u8])
+Size = 3
+Init = 42u8
+Array = array([1u8, 2u8, 3u8])
+================
+Array0 = array([1u8, 2u8, 3u8, 4u8])
+Size = 6
+Init = 42u8
+Array = array([1u8, 2u8, 3u8, 4u8, 42u8, 42u8])
+================
+Array0 = array([1i16, 2i16, 3i16, 4i16])
+Size = 3
+Init = 42i16
+Array = array([1i16, 2i16, 3i16])
+================
+Array0 = array([1i16, 2i16, 3i16, 4i16])
+Size = 6
+Init = 42i16
+Array = array([1i16, 2i16, 3i16, 4i16, 42i16, 42i16])
+================
+Array0 = array([1u16, 2u16, 3u16, 4u16])
+Size = 3
+Init = 42u16
+Array = array([1u16, 2u16, 3u16])
+================
+Array0 = array([1u16, 2u16, 3u16, 4u16])
+Size = 6
+Init = 42u16
+Array = array([1u16, 2u16, 3u16, 4u16, 42u16, 42u16])
+================
+Array0 = array([1i32, 2i32, 3i32, 4i32])
+Size = 3
+Init = 42i32
+Array = array([1i32, 2i32, 3i32])
+================
+Array0 = array([1i32, 2i32, 3i32, 4i32])
+Size = 6
+Init = 42i32
+Array = array([1i32, 2i32, 3i32, 4i32, 42i32, 42i32])
+================
+Array0 = array([1u32, 2u32, 3u32, 4u32])
+Size = 3
+Init = 42u32
+Array = array([1u32, 2u32, 3u32])
+================
+Array0 = array([1u32, 2u32, 3u32, 4u32])
+Size = 6
+Init = 42u32
+Array = array([1u32, 2u32, 3u32, 4u32, 42u32, 42u32])
+================
+Array0 = array([1i64, 2i64, 3i64, 4i64])
+Size = 3
+Init = 42i64
+Array = array([1i64, 2i64, 3i64])
+================
+Array0 = array([1i64, 2i64, 3i64, 4i64])
+Size = 6
+Init = 42i64
+Array = array([1i64, 2i64, 3i64, 4i64, 42i64, 42i64])
+================
+Array0 = array([1u64, 2u64, 3u64, 4u64])
+Size = 3
+Init = 42u64
+Array = array([1u64, 2u64, 3u64])
+================
+Array0 = array([1u64, 2u64, 3u64, 4u64])
+Size = 6
+Init = 42u64
+Array = array([1u64, 2u64, 3u64, 4u64, 42u64, 42u64])
+================
+Array0 = array([1.0, 2.0, 3.0, 4.0])
+Size = 3
+Init = 42.0
+Array = array([1.0, 2.0, 3.0])
+================
+Array0 = array([1.0, 2.0, 3.0, 4.0])
+Size = 36
+Init = 42.0
+Array = array([1.0, 2.0, 3.0, 4.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0, 42.0])
+================
+Array0 = array(["one", "two", "three", "four"])
+Size = 3
+Init = "forty-two"
+Array = array(["one", "two", "three"])
+================
+Array0 = array([1.0, 2.0, 3.0, 4.0])
+Size = 6
+Init = 42.0
+Array = array([1.0, 2.0, 3.0, 4.0, 42.0, 42.0])
+================
+Array0 = array(['a', 'b', 'c', 'd'])
+Size = 3
+Init = 'X'
+Array = array(['a', 'b', 'c'])
+================
+Array0 = array(['a', 'b', 'c', 'd'])
+Size = 6
+Init = 'X'
+Array = array(['a', 'b', 'c', 'd', 'X', 'X'])
+================
+Array0 = array([orange, lemon, apple, pear])
+Size = 3
+Init = pineapple
+Array = array([orange, lemon, apple])
+================
+Array0 = array([orange, lemon, apple, pear])
+Size = 6
+Init = pineapple
+Array = array([orange, lemon, apple, pear, pineapple, pineapple])
+================
+Array0 = array([color(1u8, 1u8, 1u8), color(2u8, 2u8, 2u8), color(3u8, 3u8, 3u8), color(4u8, 4u8, 4u8)])
+Size = 3
+Init = color(0u8, 0u8, 0u8)
+Array = array([color(1u8, 1u8, 1u8), color(2u8, 2u8, 2u8), color(3u8, 3u8, 3u8)])
+================
+Array0 = array([color(1u8, 1u8, 1u8), color(2u8, 2u8, 2u8), color(3u8, 3u8, 3u8), color(4u8, 4u8, 4u8)])
+Size = 6
+Init = color(0u8, 0u8, 0u8)
+Array = array([color(1u8, 1u8, 1u8), color(2u8, 2u8, 2u8), color(3u8, 3u8, 3u8), color(4u8, 4u8, 4u8), color(0u8, 0u8, 0u8), color(0u8, 0u8, 0u8)])
+================
+Array0 = array([[1], [2, 2], [3, 3, 3], [4, 4, 4, 4]])
+Size = 3
+Init = [42]
+Array = array([[1], [2, 2], [3, 3, 3]])
+================
+Array0 = array([[1], [2, 2], [3, 3, 3], [4, 4, 4, 4]])
+Size = 6
+Init = [42]
+Array = array([[1], [2, 2], [3, 3, 3], [4, 4, 4, 4], [42], [42]])
