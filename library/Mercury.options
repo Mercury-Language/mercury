@@ -29,7 +29,7 @@ MCFLAGS-tree234 += --structure-sharing-widening 1
 # Bug workarounds.
 MCFLAGS-std_util += --no-halt-at-warn
 MCFLAGS-dir += --no-halt-at-warn
-MCFLAGS-exception += --no-halt-at-warn
+MCFLAGS-exception += --no-halt-at-warn --no-warn-non-contiguous-clauses --no-warn-non-contiguous-foreign-procs
 
 # Workaround for a compiler abort with --profile-for-implicit-parallelism.
 # Bug #98 in Mantis.
@@ -38,7 +38,7 @@ MCFLAGS-erlang_rtti_implementation += --no-inline-simple
 
 # Older versions of the compiler warn about `:- pragma foreign_export'
 # not being implemented for Java, which is a lie.
-MCFLAGS-io += --no-halt-at-warn
+MCFLAGS-io += --no-halt-at-warn --no-warn-non-contiguous-clauses --no-warn-non-contiguous-foreign-procs
 
 # io.m uses library features that are supported by POSIX but which are not
 # part of ANSI C, such as `struct stat', fileno(), and putenv().

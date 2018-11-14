@@ -558,7 +558,7 @@ EOF
             --verbose \
             --halt-at-warn \
             $link_static_opt conftest \
-            --builtin-lt-gt-2018-10-08 \
+            --fixed-contiguity-2018-10-19 \
             --no-ssdb \
             </dev/null >&AC_FD_CC 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
