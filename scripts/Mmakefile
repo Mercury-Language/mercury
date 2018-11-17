@@ -203,5 +203,6 @@ realclean_local: clean_scripts
 clean_scripts:
 	for file in *.in; do rm -f `basename $$file .in`; done
 	rm -f test_mdbrc
+	rm -f config.log
 
 #-----------------------------------------------------------------------------#

@@ -493,6 +493,7 @@ tar: 	$(GENERATED_DOCS)
 	cd doc && mmake distclean
 	-rm -f errs errs2 update.log
 	-rm -f config.status config.cache config.log configure.log a.out
+	-rm -f scripts/config.log
 	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
 	-rm -f Mmake.common
 	-rm -f extras/Mmake.params
