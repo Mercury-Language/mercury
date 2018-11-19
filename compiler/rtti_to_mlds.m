@@ -1,7 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2012, 2014 The University of Melbourne.
+% Copyright (C) 2001-2012 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -77,11 +78,16 @@
 :- import_module digraph.
 :- import_module map.
 :- import_module maybe.
+:- import_module int16.
+:- import_module int32.
+:- import_module int8.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module term.
 :- import_module uint.
+:- import_module uint16.
+:- import_module uint32.
 :- import_module uint8.
 :- import_module univ.
 
@@ -204,8 +210,22 @@ gen_init_rtti_data_defn(ModuleInfo, Target, RttiData, !GlobalData) :-
             TypeArity, UnifyUniv, CompareUniv, Flags, TypeCtorDetails),
         RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, TypeArity),
         TypeModuleName = sym_name_to_string(TypeModule),
-        NumPtags = type_ctor_details_num_ptags(TypeCtorDetails),
-        NumFunctors = type_ctor_details_num_functors(TypeCtorDetails),
+        MaybeNumPtags = type_ctor_details_num_ptags(TypeCtorDetails),
+        (
+            MaybeNumPtags = yes(NumPtags),
+            NumPtagsEncoding = int8.det_from_int(NumPtags)
+        ;
+            MaybeNumPtags = no,
+            NumPtagsEncoding = -1i8
+        ),
+        MaybeNumFunctors = type_ctor_details_num_functors(TypeCtorDetails),
+        (
+            MaybeNumFunctors = yes(NumFunctors),
+            NumFunctorsEncoding = NumFunctors
+        ;
+            MaybeNumFunctors = no,
+            NumFunctorsEncoding = -1
+        ),
         FunctorsRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_functors),
         LayoutRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_layout),
 
@@ -223,25 +243,38 @@ gen_init_rtti_data_defn(ModuleInfo, Target, RttiData, !GlobalData) :-
             CompareUniv, CompareInitializer, !GlobalData),
 
         Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-            gen_init_int(TypeArity),
-            gen_init_int(Version),
-            gen_init_int(NumPtags),
+            % MR_type_ctor_arity -- XXX MAKE_FIELD_UNSIGNED
+            gen_init_int(uint16.to_int(TypeArity)),
+            % MR_type_ctor_version
+            gen_init_uint8(Version),
+            % MR_type_ctor_num_ptags
+            gen_init_int8(NumPtagsEncoding),
+            % MR_type_ctor_rep_CAST_ME
             gen_init_type_ctor_rep(TypeCtorData),
+            % MR_type_ctor_unify_pred
             UnifyInitializer,
+            % MR_type_ctor_compare_pred
             CompareInitializer,
+            % MR_type_ctor_module_name
             gen_init_string(TypeModuleName),
+            % MR_type_ctor_name
             gen_init_string(TypeName),
             % In the C back-end, these two "structs" are actually unions.
             % We need to use `init_struct' here so that the initializers
             % get enclosed in curly braces.
+            % MR_type_ctor_functors
             init_struct(mlds_rtti_type(item_type(FunctorsRttiId)), [
                 FunctorsInfo
             ]),
+            % MR_type_ctor_layout
             init_struct(mlds_rtti_type(item_type(LayoutRttiId)), [
                 LayoutInfo
             ]),
-            gen_init_int(NumFunctors),
-            gen_init_int(encode_type_ctor_flags(Flags)),
+            % MR_type_ctor_num_functors
+            gen_init_int(NumFunctorsEncoding),
+            % MR_type_ctor_flags
+            gen_init_uint16(encode_type_ctor_flags(Flags)),
+            % MR_type_ctor_functor_number_map
             NumberMapInfo
 
             % These two are commented out while the corresponding fields of the
@@ -658,7 +691,7 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
             type_ctor_functor_number_map)
     ;
         TypeCtorDetails = tcd_notag(_, NotagFunctor),
-        gen_functor_number_map(RttiTypeCtor, [0], !GlobalData),
+        gen_functor_number_map(RttiTypeCtor, [0u32], !GlobalData),
         LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_notag_functor_desc),
         FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
@@ -695,8 +728,10 @@ gen_enum_functor_desc(_ModuleInfo, RttiTypeCtor, EnumFunctor, !GlobalData) :-
     RttiName = type_ctor_enum_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
+        % MR_enum_functor_name
         gen_init_string(FunctorName),
-        gen_init_int(Ordinal)
+        % MR_enum_functor_ordinal -- XXX MAKE_FIELD_UNSIGNED
+        gen_init_int32(int32.cast_from_uint32(Ordinal))
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
@@ -710,8 +745,11 @@ gen_foreign_enum_functor_desc(_ModuleInfo, Lang, RttiTypeCtor,
     RttiName = type_ctor_foreign_enum_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
+        % MR_foreign_enum_functor_name
         gen_init_string(FunctorName),
-        gen_init_int(Ordinal),
+        % MR_foreign_enum_functor_ordinal -- XXX MAKE_FIELD_UNSIGNED
+        gen_init_int32(int32.cast_from_uint32(Ordinal)),
+        % MR_foreign_enum_functor_value
         gen_init_foreign(Lang, Value)
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
@@ -730,10 +768,14 @@ gen_notag_functor_desc(ModuleInfo, Target, RttiTypeCtor, NotagFunctorDesc,
     RttiName = type_ctor_notag_functor_desc,
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
+        % MR_notag_functor_name
         gen_init_string(FunctorName),
+        % MR_notag_functor_arg_type
         PTIInitializer,
+        % MR_notag_functor_arg_name
         gen_init_maybe(mlds_builtin_type_string, gen_init_string,
             MaybeArgName),
+        % MR_notag_functor_subtype
         gen_init_functor_subtype_info(FunctorSubtypeInfo)
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
@@ -761,7 +803,7 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         ArgInfos = [],
         ArgTypeInitializer = gen_init_null_pointer(
             mlds_rtti_type(item_type(
-                ctor_rtti_id(RttiTypeCtor, type_ctor_field_types(0)))))
+                ctor_rtti_id(RttiTypeCtor, type_ctor_field_types(0u32)))))
     ),
     (
         HaveArgNames = yes,
@@ -773,7 +815,7 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         HaveArgNames = no,
         ArgNameInitializer = gen_init_null_pointer(
             mlds_rtti_type(item_type(
-                ctor_rtti_id(RttiTypeCtor, type_ctor_field_names(0)))))
+                ctor_rtti_id(RttiTypeCtor, type_ctor_field_names(0u32)))))
     ),
     gen_field_locns(ModuleInfo, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
         !GlobalData),
@@ -785,7 +827,7 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         HaveArgLocns = no,
         ArgLocnsInitializer = gen_init_null_pointer(
             mlds_rtti_type(item_type(
-                ctor_rtti_id(RttiTypeCtor, type_ctor_field_locns(0)))))
+                ctor_rtti_id(RttiTypeCtor, type_ctor_field_locns(0u32)))))
     ),
     (
         MaybeExistInfo = yes(ExistInfo),
@@ -797,15 +839,14 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         MaybeExistInfo = no,
         ExistInfoInitializer = gen_init_null_pointer(
             mlds_rtti_type(item_type(
-                ctor_rtti_id(RttiTypeCtor, type_ctor_exist_info(0)))))
+                ctor_rtti_id(RttiTypeCtor, type_ctor_exist_info(0u32)))))
     ),
     (
         Rep = du_ll_rep(Ptag, SectagAndLocn),
-        Ptag = ptag(PtagUint8),
-        PtagInt = uint8.cast_to_int(PtagUint8)
+        Ptag = ptag(PtagUint8)
     ;
         Rep = du_hl_rep(Data),
-        PtagInt = 0,
+        PtagUint8 = 0u8,
         SectagAndLocn = sectag_locn_remote_word(Data)
     ),
     (
@@ -839,20 +880,24 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
     ),
     RttiName = type_ctor_du_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
+    ArityInt16 = int16.cast_from_uint16(Arity),     % XXX MAKE_FIELD_UNSIGNED
+    OrdinalInt32 = int32.cast_from_uint32(Ordinal), % XXX MAKE_FIELD_UNSIGNED
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        gen_init_string(FunctorName),
-        gen_init_int(Arity),
-        gen_init_int(ContainsVarBitVector),
-        gen_init_sectag_locn(Locn),
-        gen_init_int(PtagInt),
-        gen_init_int(Stag),
-        gen_init_int(Ordinal),
-        ArgTypeInitializer,
-        ArgNameInitializer,
-        ArgLocnsInitializer,
-        ExistInfoInitializer,
+        gen_init_string(FunctorName),   % MR_du_functor_name
+        gen_init_int16(ArityInt16),     % MR_du_functor_orig_arity
+        gen_init_uint16(ContainsVarBitVector),
+                                        % MR_du_functor_arg_type_contains_var
+        gen_init_sectag_locn(Locn),     % MR_du_functor_sectag_locn
+        gen_init_uint8(PtagUint8),      % MR_du_functor_primary
+        gen_init_int(Stag),             % MR_du_functor_secondary
+        gen_init_int32(OrdinalInt32),   % MR_du_functor_ordinal
+        ArgTypeInitializer,             % MR_du_functor_arg_types
+        ArgNameInitializer,             % MR_du_functor_arg_names
+        ArgLocnsInitializer,            % MR_du_functor_arg_locns
+        ExistInfoInitializer,           % MR_du_functor_exist_info
         gen_init_functor_subtype_info(FunctorSubtypeInfo),
-        wrap_init_obj(ml_const(mlconst_uint8(NumSectagBits)))
+                                        % MR_du_functor_subtype
+        gen_init_uint8(NumSectagBits)   % MR_du_functor_num_sectag_bits
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
@@ -863,18 +908,21 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
 
 gen_init_exist_locn(RttiTypeCtor, ExistTypeInfoLocn) = Initializer :-
     (
-        ExistTypeInfoLocn = typeinfo_in_tci(SlotInCell, SlotInTci)
+        ExistTypeInfoLocn = typeinfo_in_tci(SlotInCell, SlotInTci),
+        SlotInTciEncoding = int16.cast_from_uint16(SlotInTci)
     ;
         ExistTypeInfoLocn = plain_typeinfo(SlotInCell),
-        SlotInTci = -1
+        SlotInTciEncoding = -1i16
     ),
     RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_exist_locn),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        gen_init_int(SlotInCell),
-        gen_init_int(SlotInTci)
+        % MR_exist_arg_num -- XXX MAKE_FIELD_UNSIGNED
+        gen_init_int16(int16.cast_from_uint16(SlotInCell)),
+        % MR_exist_offset_in_tci
+        gen_init_int16(SlotInTciEncoding)
     ]).
 
-:- pred gen_exist_locns_array(module_info::in, rtti_type_ctor::in, int::in,
+:- pred gen_exist_locns_array(module_info::in, rtti_type_ctor::in, uint32::in,
     list(exist_typeinfo_locn)::in, ml_global_data::in, ml_global_data::out)
     is det.
 
@@ -907,15 +955,15 @@ gen_tc_constraint(ModuleInfo, Target, MakeRttiId, Constraint, RttiId,
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
-:- pred make_exist_tc_constr_id(rtti_type_ctor::in, int::in, int::in, int::in,
-    rtti_id::out) is det.
+:- pred make_exist_tc_constr_id(rtti_type_ctor::in, uint32::in, int::in,
+    int::in, rtti_id::out) is det.
 
 make_exist_tc_constr_id(RttiTypeCtor, Ordinal, TCNum, Arity, RttiId) :-
     RttiName = type_ctor_exist_tc_constr(Ordinal, TCNum, Arity),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName).
 
 :- pred gen_exist_info(module_info::in, mlds_target_lang::in,
-    rtti_type_ctor::in, int::in, exist_info::in,
+    rtti_type_ctor::in, uint32::in, exist_info::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_exist_info(ModuleInfo, Target, RttiTypeCtor, Ordinal, ExistInfo,
@@ -950,17 +998,23 @@ gen_exist_info(ModuleInfo, Target, RttiTypeCtor, Ordinal, ExistInfo,
     gen_exist_locns_array(ModuleInfo, RttiTypeCtor, Ordinal, Locns,
         !GlobalData),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        gen_init_int(Plain),
-        gen_init_int(InTci),
-        gen_init_int(Tci),
+        % MR_exist_typeinfos_plain -- XXX MAKE_FIELD_UNSIGNED
+        gen_init_int16(int16.cast_from_uint16(Plain)),
+        % MR_exist_typeinfos_in_tci -- XXX MAKE_FIELD_UNSIGNED
+        gen_init_int16(int16.cast_from_uint16(InTci)),
+        % MR_exist_tcis -- XXX MAKE_FIELD_UNSIGNED
+        gen_init_int16(int16.det_from_int(Tci)),
+        % MR_exist_typeinfo_locns
         gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_exist_locns(Ordinal)),
+        % MR_exist_constraints
         ConstrInitializer
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
 :- pred gen_field_types(module_info::in, mlds_target_lang::in,
-    rtti_type_ctor::in, int::in, list(rtti_maybe_pseudo_type_info_or_self)::in,
+    rtti_type_ctor::in, uint32::in,
+    list(rtti_maybe_pseudo_type_info_or_self)::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_field_types(ModuleInfo, Target, RttiTypeCtor, Ordinal, Types,
@@ -973,7 +1027,7 @@ gen_field_types(ModuleInfo, Target, RttiTypeCtor, Ordinal, Types,
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
 
-:- pred gen_field_names(module_info::in, rtti_type_ctor::in, int::in,
+:- pred gen_field_names(module_info::in, rtti_type_ctor::in, uint32::in,
     list(maybe(string))::in, ml_global_data::in, ml_global_data::out) is det.
 
 gen_field_names(_ModuleInfo, RttiTypeCtor, Ordinal, MaybeNames, !GlobalData) :-
@@ -984,7 +1038,7 @@ gen_field_names(_ModuleInfo, RttiTypeCtor, Ordinal, MaybeNames, !GlobalData) :-
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
 
-:- pred gen_field_locns(module_info::in, rtti_type_ctor::in, int::in,
+:- pred gen_field_locns(module_info::in, rtti_type_ctor::in, uint32::in,
     list(du_arg_info)::in, bool::out, ml_global_data::in, ml_global_data::out)
     is det.
 
@@ -1082,15 +1136,15 @@ gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer) :-
         NumBits = -10
     ),
     ArgLocnInitializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        gen_init_int(ArgOnlyOffset),
-        gen_init_int(Shift),
-        gen_init_int(NumBits)
+        gen_init_int(ArgOnlyOffset),    % MR_arg_offset
+        gen_init_int(Shift),            % MR_arg_shift
+        gen_init_int(NumBits)           % MR_arg_bits
     ]).
 
 %-----------------------------------------------------------------------------%
 
 :- pred gen_enum_value_ordered_table(module_info::in, rtti_type_ctor::in,
-    map(int, enum_functor)::in,
+    map(uint32, enum_functor)::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_enum_value_ordered_table(ModuleInfo, RttiTypeCtor, EnumByValue,
@@ -1120,7 +1174,7 @@ gen_enum_name_ordered_table(ModuleInfo, RttiTypeCtor, EnumByName,
         !GlobalData).
 
 :- pred gen_foreign_enum_ordinal_ordered_table(module_info::in,
-    rtti_type_ctor::in, map(int, foreign_enum_functor)::in,
+    rtti_type_ctor::in, map(uint32, foreign_enum_functor)::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_foreign_enum_ordinal_ordered_table(ModuleInfo, RttiTypeCtor,
@@ -1189,12 +1243,15 @@ gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, CurPtag,
     RttiName = type_ctor_du_ptag_layout(Ptag),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
-        % XXX ARG_PACK Why isn't the num_sharers field itself unsigned?
-        gen_init_int(uint.cast_to_int(NumSharers)),
+        % MR_sectag_sharers
+        gen_init_uint32(NumSharers),
+        % MR_sectag_locn
         gen_init_sectag_locn(SectagLocn),
+        % MR_sectag_alternatives
         gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_stag_ordered_table(Ptag)),
-        init_obj(ml_const(mlconst_int8(NumSectagBits)))
+        % MR_sectag_numbits
+        gen_init_int8(NumSectagBits)
     ]),
     CurPtag = ptag(CurPtagUint8),
     NextPtag = ptag(CurPtagUint8 + 1u8),
@@ -1218,7 +1275,7 @@ gen_du_stag_ordered_table(ModuleName, RttiTypeCtor, Ptag - SectagTable,
         !GlobalData).
 
 :- pred gen_du_name_ordered_table(module_info::in, rtti_type_ctor::in,
-    map(string, map(int, du_functor))::in,
+    map(string, map(uint16, du_functor))::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_du_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap,
@@ -1234,14 +1291,21 @@ gen_du_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap,
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
 
-:- pred gen_functor_number_map(rtti_type_ctor::in, list(int)::in,
+:- pred gen_functor_number_map(rtti_type_ctor::in, list(uint32)::in,
     ml_global_data::in, ml_global_data::out) is det.
 
 gen_functor_number_map(RttiTypeCtor, FunctorNumberMap, !GlobalData) :-
-    Initializer = gen_init_array(gen_init_int, FunctorNumberMap),
+    Initializer = gen_init_array(gen_init_functor_number, FunctorNumberMap),
     RttiName = type_ctor_functor_number_map,
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
+
+:- func gen_init_functor_number(uint32) = mlds_initializer.
+
+gen_init_functor_number(NumUint32) = Init :-
+    % XXX MAKE_FIELD_UNSIGNED
+    Num = uint32.cast_to_int(NumUint32),
+    Init = gen_init_int(Num).
 
 %-----------------------------------------------------------------------------%
 

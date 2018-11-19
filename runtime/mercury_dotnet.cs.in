@@ -370,8 +370,8 @@ public class PseudoTypeInfo {
 
 public class TypeCtorInfo_Struct : PseudoTypeInfo {
     public int              arity;
-    public int              type_ctor_version;
-    public int              type_ctor_num_ptags;
+    public byte             type_ctor_version;
+    public sbyte            type_ctor_num_ptags;
     public TypeCtorRep      type_ctor_rep;
     public object           unify_pred;
     public object           compare_pred;
@@ -380,7 +380,7 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
     public TypeFunctors     type_functors;
     public TypeLayout       type_layout;
     public int              type_ctor_num_functors;
-    public short            type_ctor_flags;
+    public ushort           type_ctor_flags;
     public int[]            type_functor_number_map;
 
     // This attribute is also to prevent cyclic copying in deep_copy.
@@ -410,8 +410,8 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
 
     public void init(
         int type_arity,
-        int version,
-        int num_ptags,
+        byte version,
+        sbyte num_ptags,
         TypeCtorRep rep,
         object unify_proc,
         object compare_proc,
@@ -420,7 +420,7 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
         object name_ordered_functor_descs,  // TypeFunctors
         object value_ordered_functor_descs, // TypeLayout
         int num_functors,
-        short flags,
+        ushort flags,
         int[] functor_number_map)
     {
         arity = type_arity;
@@ -669,10 +669,10 @@ public class TypeFunctors {
 
 public class DuFunctorDesc {
     public string           du_functor_name;
-    public int              du_functor_orig_arity;
-    public int              du_functor_arg_type_contains_var;
+    public short            du_functor_orig_arity;
+    public ushort           du_functor_arg_type_contains_var;
     public Sectag_Locn      du_functor_sectag_locn;
-    public int              du_functor_primary;
+    public byte             du_functor_primary;
     public int              du_functor_secondary;
     public int              du_functor_ordinal;
     public PseudoTypeInfo[] du_functor_arg_types;
@@ -680,17 +680,17 @@ public class DuFunctorDesc {
     public DuArgLocn[]      du_functor_arg_locns;
     public DuExistInfo      du_functor_exist_info;
     public FunctorSubtypeInfo   du_functor_subtype_info;
-    public int              du_functor_num_sectag_bits; // unused in C# grades
+    public byte             du_functor_num_sectag_bits; // unused in C# grades
 
     public DuFunctorDesc() {
     }
 
     public void init(
         string functor_name,
-        int orig_arity,
-        int arg_type_contains_var,
+        short orig_arity,
+        ushort arg_type_contains_var,
         Sectag_Locn sectag_locn,
-        int primary,
+        byte primary,
         int secondary,
         int ordinal,
         // XXX why do we need to use object here?
@@ -699,7 +699,7 @@ public class DuFunctorDesc {
         object arg_locns,
         object exist_info,
         FunctorSubtypeInfo functor_subtype_info,
-        int num_sectag_bits)
+        byte num_sectag_bits)
     {
         du_functor_name = functor_name;
         du_functor_orig_arity = orig_arity;
@@ -738,13 +738,13 @@ public enum FunctorSubtypeInfo {
 }
 
 public class DuPtagLayout {
-    public int          sectag_sharers;
+    public uint         sectag_sharers;
     public Sectag_Locn  sectag_locn;
     public /* final */ DuFunctorDesc[] sectag_alternatives;
     public sbyte        sectag_numbits;     // unused in C# grades
 
     public DuPtagLayout(
-        int sharers,
+        uint sharers,
         Sectag_Locn locn,
         DuFunctorDesc[] alts,
         sbyte numbits)
@@ -756,7 +756,7 @@ public class DuPtagLayout {
     }
 
     public DuPtagLayout(
-        int sharers,
+        uint sharers,
         int locn,
         DuFunctorDesc[] alts,
         sbyte numbits)
@@ -766,11 +766,11 @@ public class DuPtagLayout {
 }
 
 public class DuArgLocn {
-    public int arg_offset;
-    public int arg_shift;
-    public int arg_bits;
+    public short arg_offset;
+    public sbyte arg_shift;
+    public sbyte arg_bits;
 
-    public DuArgLocn(int arg_offset, int arg_shift, int arg_bits) {
+    public DuArgLocn(short arg_offset, sbyte arg_shift, sbyte arg_bits) {
         this.arg_offset = arg_offset;
         this.arg_shift = arg_shift;
         this.arg_bits = arg_bits;
@@ -778,9 +778,9 @@ public class DuArgLocn {
 }
 
 public class DuExistInfo {
-    public int exist_typeinfos_plain;
-    public int exist_typeinfos_in_tci;
-    public int exist_tcis;
+    public short exist_typeinfos_plain;
+    public short exist_typeinfos_in_tci;
+    public short exist_tcis;
     public /* final */ DuExistLocn[] exist_typeinfo_locns;
     public /* final */ TypeClassConstraint[] exist_constraints;
 
@@ -788,9 +788,9 @@ public class DuExistInfo {
     }
 
     public void init(
-        int typeinfos_plain,
-        int typeinfos_in_tci,
-        int tcis,
+        short typeinfos_plain,
+        short typeinfos_in_tci,
+        short tcis,
         DuExistLocn[] typeinfo_locns,
         TypeClassConstraint[] constraints)
     {
@@ -803,10 +803,10 @@ public class DuExistInfo {
 }
 
 public class DuExistLocn {
-    public int exist_arg_num;
-    public int exist_offset_in_tci;
+    public short exist_arg_num;
+    public short exist_offset_in_tci;
 
-    public DuExistLocn(int arg_num, int offset_in_tci) {
+    public DuExistLocn(short arg_num, short offset_in_tci) {
         exist_arg_num = arg_num;
         exist_offset_in_tci = offset_in_tci;
     }

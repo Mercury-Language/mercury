@@ -957,7 +957,7 @@ set_type_defn_prev_errors(X, !Defn) :-
     --->    ctor_repn(
                 % The ordinal number of the functor. The first functor
                 % in a type definition has ordinal number 0.
-                cr_ordinal          :: int,
+                cr_ordinal          :: uint32,
 
                 % Existential constraints, if any.
                 cr_maybe_exist      :: maybe_cons_exist_constraints,

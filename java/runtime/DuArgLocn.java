@@ -9,11 +9,11 @@ package jmercury.runtime;
 
 public class DuArgLocn implements java.io.Serializable {
 
-    public int arg_offset;
-    public int arg_shift;
-    public int arg_bits;
+    public short arg_offset;
+    public byte arg_shift;
+    public byte arg_bits;
 
-    public DuArgLocn(int arg_offset, int arg_shift, int arg_bits)
+    public DuArgLocn(short arg_offset, byte arg_shift, byte arg_bits)
     {
         this.arg_offset = arg_offset;
         this.arg_shift = arg_shift;

@@ -182,6 +182,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module uint.
+:- import_module uint16.
 :- import_module uint8.
 
 %----------------------------------------------------------------------------%
@@ -1455,7 +1456,7 @@ output_rval_const(Info, Const, !IO) :-
         )
     ).
 
-:- pred output_type_ctor_addr(module_name::in, string::in, int::in,
+:- pred output_type_ctor_addr(module_name::in, string::in, uint16::in,
     io::di, io::uo) is det.
 
 output_type_ctor_addr(Module0, Name, Arity, !IO) :-
@@ -1467,7 +1468,7 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
     % We don't need to mangle the module name, but we do need to convert it
     % to a C identifier in the standard fashion.
     ModuleStr = sym_name_mangle(Module),
-    ( if Arity = 0 then
+    ( if Arity = 0u16 then
         ( if
             ModuleStr = "builtin",
             builtin_type_to_type_ctor_addr(Name, Macro)
@@ -1486,7 +1487,7 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
         else
             io.format("MR_CTOR0_ADDR(%s, %s)", [s(ModuleStr), s(Name)], !IO)
         )
-    else if Arity = 1 then
+    else if Arity = 1u16 then
         ( if
             Name = "list",
             ModuleStr = "list"
@@ -1502,7 +1503,7 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
         )
     else
         io.format("MR_CTOR_ADDR(%s, %s, %d)",
-            [s(ModuleStr), s(Name), i(Arity)], !IO)
+            [s(ModuleStr), s(Name), i(uint16.to_int(Arity))], !IO)
     ).
 
 :- pred builtin_type_to_type_ctor_addr(string::in, string::out) is semidet.

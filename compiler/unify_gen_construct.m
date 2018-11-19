@@ -89,6 +89,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint16.
 
 %---------------------------------------------------------------------------%
 
@@ -150,7 +151,8 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             TypedRval = typed_rval(ConstRval, _Type)
         ;
             ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
-            RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
+            RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName,
+                uint16.det_from_int(TypeArity)),
             DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
                 type_ctor_type_ctor_info)),
             ConstRval = const(llconst_data_addr(DataId, no))
@@ -1401,7 +1403,8 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
         TypedRval = typed_rval(Rval, lt_data_ptr)
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
-        RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
+        RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName,
+            uint16.det_from_int(TypeArity)),
         DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
             type_ctor_type_ctor_info)),
         Rval = const(llconst_data_addr(DataId, no)),

@@ -77,10 +77,10 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bag.
-:- import_module int.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
+:- import_module uint32.
 :- import_module unit.
 
 parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
@@ -246,13 +246,13 @@ du_type_rhs_ctors_and_where_terms(Term, CtorsTerm, MaybeWhereTerm) :-
 parse_maybe_exist_quant_constructors(ModuleName, VarSet, Term,
         MaybeConstructors) :-
     disjunction_to_one_or_more(Term, one_or_more(HeadBodyTerm, TailBodyTerms)),
-    parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, 0,
+    parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, 0u32,
         HeadBodyTerm, TailBodyTerms, MaybeConstructors).
 
     % Try to parse the term as a list of constructors.
     %
 :- pred parse_maybe_exist_quant_constructors_loop(module_name::in, varset::in,
-    int::in, term::in, list(term)::in,
+    uint32::in, term::in, list(term)::in,
     maybe1(one_or_more(constructor))::out) is det.
 
 parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, CurOrdinal,
@@ -271,7 +271,7 @@ parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, CurOrdinal,
     ;
         TailTerms = [HeadTailTerm | TailTailTerms],
         parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
-            CurOrdinal + 1, HeadTailTerm, TailTailTerms,
+            CurOrdinal + 1u32, HeadTailTerm, TailTailTerms,
             MaybeTailConstructors),
         ( if
             MaybeHeadConstructor = ok1(HeadConstructor),
@@ -287,7 +287,7 @@ parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, CurOrdinal,
     ).
 
 :- pred parse_maybe_exist_quant_constructor(module_name::in, varset::in,
-    int::in, term::in, maybe1(constructor)::out) is det.
+    uint32::in, term::in, maybe1(constructor)::out) is det.
 
 parse_maybe_exist_quant_constructor(ModuleName, VarSet, Ordinal, Term,
         MaybeConstructor) :-
@@ -311,8 +311,8 @@ parse_maybe_exist_quant_constructor(ModuleName, VarSet, Ordinal, Term,
             MaybeConstructor)
     ).
 
-:- pred parse_constructor(module_name::in, varset::in, int::in, list(tvar)::in,
-    term::in, maybe1(constructor)::out) is det.
+:- pred parse_constructor(module_name::in, varset::in, uint32::in,
+    list(tvar)::in, term::in, maybe1(constructor)::out) is det.
 
 parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
         MaybeConstructor) :-

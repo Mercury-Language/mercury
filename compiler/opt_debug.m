@@ -544,46 +544,46 @@ dump_pred_proc_id(proc(PredId, ProcId)) =
 
 dump_rtti_type_ctor(rtti_type_ctor(ModuleName, TypeName, Arity)) =
     "rtti_type_ctor(" ++ sym_name_mangle(ModuleName) ++ ", "
-        ++ name_mangle(TypeName) ++ int_to_string(Arity) ++ ")".
+        ++ name_mangle(TypeName) ++ uint16_to_string(Arity) ++ ")".
 
 dump_rtti_name(RttiName) = Str :-
     (
         RttiName = type_ctor_exist_locns(Ordinal),
-        Str = "exist_locns_" ++ int_to_string(Ordinal)
+        Str = "exist_locns_" ++ uint32_to_string(Ordinal)
     ;
         RttiName = type_ctor_exist_locn,
         Str = "exist_loc"
     ;
         RttiName = type_ctor_exist_tc_constr(Ordinal, TCCNum, Arity),
-        Str = "exist_tc_constr_" ++ int_to_string(Ordinal) ++ "_"
+        Str = "exist_tc_constr_" ++ uint32_to_string(Ordinal) ++ "_"
             ++ int_to_string(TCCNum) ++ "_" ++ int_to_string(Arity)
     ;
         RttiName = type_ctor_exist_tc_constrs(Ordinal),
-        Str = "exist_tc_constrs_" ++ int_to_string(Ordinal)
+        Str = "exist_tc_constrs_" ++ uint32_to_string(Ordinal)
     ;
         RttiName = type_ctor_exist_info(Ordinal),
-        Str = "exist_info_" ++ int_to_string(Ordinal)
+        Str = "exist_info_" ++ uint32_to_string(Ordinal)
     ;
         RttiName = type_ctor_field_names(Ordinal),
-        Str = "field_names_" ++ int_to_string(Ordinal)
+        Str = "field_names_" ++ uint32_to_string(Ordinal)
     ;
         RttiName = type_ctor_field_types(Ordinal),
-        Str = "field_types_" ++ int_to_string(Ordinal)
+        Str = "field_types_" ++ uint32_to_string(Ordinal)
     ;
         RttiName = type_ctor_field_locns(Ordinal),
-        Str = "field_locns_" ++ int_to_string(Ordinal)
+        Str = "field_locns_" ++ uint32_to_string(Ordinal)
     ;
         RttiName = type_ctor_enum_functor_desc(Ordinal),
-        Str = "enum_functor_desc_" ++ int_to_string(Ordinal)
+        Str = "enum_functor_desc_" ++ uint32_to_string(Ordinal)
     ;
         RttiName = type_ctor_foreign_enum_functor_desc(Ordinal),
-        Str = "foreign_enum_functor_desc_" ++ int_to_string(Ordinal)
+        Str = "foreign_enum_functor_desc_" ++ uint32_to_string(Ordinal)
     ;
         RttiName = type_ctor_notag_functor_desc,
         Str = "notag_functor_desc_"
     ;
         RttiName = type_ctor_du_functor_desc(Ordinal),
-        Str = "du_functor_desc_" ++ int_to_string(Ordinal)
+        Str = "du_functor_desc_" ++ uint32_to_string(Ordinal)
     ;
         RttiName = type_ctor_enum_name_ordered_table,
         Str = "enum_name_ordered_table"

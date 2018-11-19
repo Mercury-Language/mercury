@@ -125,6 +125,9 @@
 :- import_module assoc_list.
 :- import_module counter.
 :- import_module int.
+:- import_module int16.
+:- import_module int32.
+:- import_module int8.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -132,6 +135,8 @@
 :- import_module require.
 :- import_module string.
 :- import_module uint.
+:- import_module uint16.
+:- import_module uint32.
 :- import_module uint8.
 :- import_module univ.
 
@@ -168,7 +173,7 @@ output_rtti_data_defn(Info, RttiDefn, !DeclSet, !IO) :-
 
 output_base_typeclass_info_defn(Info, TCName, InstanceModuleName,
         InstanceString, BaseTypeClassInfo, !DeclSet, !IO) :-
-    BaseTypeClassInfo =base_typeclass_info(N1, N2, N3, N4, N5, Methods),
+    BaseTypeClassInfo = base_typeclass_info(N1, N2, N3, N4, N5, Methods),
     CodeAddrs = list.map(make_code_addr, Methods),
     list.foldl2(output_record_code_addr_decls(Info), CodeAddrs, !DeclSet, !IO),
     io.write_string("\n", !IO),
@@ -627,7 +632,7 @@ output_type_ctor_data_defn(Info, TypeCtorData, !DeclSet, !IO) :-
         MaybeFunctorsName, MaybeLayoutName, HaveFunctorNumberMap,
         !DeclSet, !IO),
     det_univ_to_type(UnifyUniv, UnifyProcLabel),
-    UnifyCodeAddr   = make_code_addr(UnifyProcLabel),
+    UnifyCodeAddr = make_code_addr(UnifyProcLabel),
     det_univ_to_type(CompareUniv, CompareProcLabel),
     CompareCodeAddr = make_code_addr(CompareProcLabel),
     CodeAddrs = [UnifyCodeAddr, CompareCodeAddr],
@@ -635,23 +640,40 @@ output_type_ctor_data_defn(Info, TypeCtorData, !DeclSet, !IO) :-
     output_generic_rtti_data_defn_start(Info,
         ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info), !DeclSet, !IO),
     io.write_string(" = {\n\t", !IO),
-    io.write_int(TypeArity, !IO),
+    % MR_type_ctor_arity -- XXX MAKE_FIELD_UNSIGNED
+    io.write_int(uint16.to_int(TypeArity), !IO),
     io.write_string(",\n\t", !IO),
-    io.write_int(Version, !IO),
+    % MR_type_ctor_version
+    io.write_uint8(Version, !IO),
     io.write_string(",\n\t", !IO),
-    io.write_int(type_ctor_details_num_ptags(TypeCtorDetails), !IO),
+    % MR_type_ctor_num_ptags
+    MaybeNumPtags = type_ctor_details_num_ptags(TypeCtorDetails),
+    (
+        MaybeNumPtags = yes(NumPtags),
+        NumPtagsEncoding = int8.det_from_int(NumPtags)
+    ;
+        MaybeNumPtags = no,
+        NumPtagsEncoding = -1i8
+    ),
+    io.write_int8(NumPtagsEncoding, !IO),
     io.write_string(",\n\t", !IO),
+    % MR_type_ctor_rep_CAST_ME
     rtti.type_ctor_rep_to_string(TypeCtorData, _TargetPrefixes, CtorRepStr),
     io.write_string(CtorRepStr, !IO),
     io.write_string(",\n\t", !IO),
+    % MR_type_ctor_unify_pred
     output_static_code_addr(UnifyCodeAddr, !IO),
     io.write_string(",\n\t", !IO),
+    % MR_type_ctor_compare_pred
     output_static_code_addr(CompareCodeAddr, !IO),
     io.write_string(",\n\t""", !IO),
+    % MR_type_ctor_module_name
     c_util.output_quoted_string_cur_stream(sym_name_to_string(Module), !IO),
     io.write_string(""",\n\t""", !IO),
+    % MR_type_ctor_name
     c_util.output_quoted_string_cur_stream(TypeName, !IO),
     io.write_string(""",\n\t", !IO),
+    % MR_type_ctor_functors
     (
         MaybeFunctorsName = yes(FunctorsName),
         FunctorsRttiId = ctor_rtti_id(RttiTypeCtor, FunctorsName),
@@ -663,6 +685,7 @@ output_type_ctor_data_defn(Info, TypeCtorData, !DeclSet, !IO) :-
         io.write_string("{ 0 }", !IO)
     ),
     io.write_string(",\n\t", !IO),
+    % MR_type_ctor_layout
     (
         MaybeLayoutName = yes(LayoutName),
         LayoutRttiId = ctor_rtti_id(RttiTypeCtor, LayoutName),
@@ -674,10 +697,21 @@ output_type_ctor_data_defn(Info, TypeCtorData, !DeclSet, !IO) :-
         io.write_string("{ 0 }", !IO)
     ),
     io.write_string(",\n\t", !IO),
-    io.write_int(type_ctor_details_num_functors(TypeCtorDetails), !IO),
+    % MR_type_ctor_num_functors -- XXX MAKE_FIELD_UNSIGNED
+    MaybeNumFunctors = type_ctor_details_num_functors(TypeCtorDetails),
+    (
+        MaybeNumFunctors = yes(NumFunctors),
+        NumFunctorsEncoding = int32.det_from_int(NumFunctors)
+    ;
+        MaybeNumFunctors = no,
+        NumFunctorsEncoding = -1i32
+    ),
+    io.write_int32(NumFunctorsEncoding, !IO),
     io.write_string(",\n\t", !IO),
-    io.write_int(encode_type_ctor_flags(Flags), !IO),
+    % MR_type_ctor_flags
+    io.write_uint16(encode_type_ctor_flags(Flags), !IO),
     io.write_string(",\n\t", !IO),
+    % MR_type_ctor_functor_number_map
     (
         HaveFunctorNumberMap = yes,
         FunctorNumberMapRttiId =
@@ -759,7 +793,7 @@ output_type_ctor_details_defn(Info, RttiTypeCtor, TypeCtorDetails,
         TypeCtorDetails = tcd_notag(_, NotagFunctor),
         output_notag_functor_defn(Info, RttiTypeCtor, NotagFunctor,
             !DeclSet, !IO),
-        output_functor_number_map(Info, RttiTypeCtor, [0], !DeclSet, !IO),
+        output_functor_number_map(Info, RttiTypeCtor, [0u32], !DeclSet, !IO),
         MaybeLayoutName = yes(type_ctor_notag_functor_desc),
         MaybeFunctorsName = yes(type_ctor_notag_functor_desc),
         HaveFunctorNumberMap = yes
@@ -800,9 +834,11 @@ output_enum_functor_defn(Info, RttiTypeCtor, EnumFunctor, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_enum_functor_desc(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
+    % MR_enum_functor_name
     c_util.output_quoted_string_cur_stream(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
-    io.write_int(Ordinal, !IO),
+    % MR_enum_functor_ordinal -- XXX MAKE_FIELD_UNSIGNED
+    io.write_int32(int32.cast_from_uint32(Ordinal), !IO),
     io.write_string("\n};\n", !IO).
 
 :- pred output_foreign_enum_functor_defn(llds_out_info::in, rtti_type_ctor::in,
@@ -817,10 +853,13 @@ output_foreign_enum_functor_defn(Info, RttiTypeCtor, ForeignEnumFunctor,
         type_ctor_foreign_enum_functor_desc(FunctorOrdinal)),
     output_generic_rtti_data_defn_start(Info, RttiId, !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
+    % MR_foreign_enum_functor_name
     c_util.output_quoted_string_cur_stream(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
-    io.write_int(FunctorOrdinal, !IO),
+    % MR_foreign_enum_functor_ordinal -- XXX MAKE_FIELD_UNSIGNED
+    io.write_int32(int32.cast_from_uint32(FunctorOrdinal), !IO),
     io.write_string(",\n\t", !IO),
+    % MR_foreign_enum_functor_value
     io.write_string(FunctorValue, !IO),
     io.write_string("\n};\n", !IO).
 
@@ -838,8 +877,10 @@ output_notag_functor_defn(Info, RttiTypeCtor, NotagFunctor, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_notag_functor_desc),
         !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
+    % MR_notag_functor_name
     c_util.output_quoted_string_cur_stream(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
+    % MR_notag_functor_arg_type
     (
         ArgType = plain(ArgTypeInfo),
         output_cast_addr_of_rtti_data("(MR_PseudoTypeInfo) ",
@@ -852,6 +893,7 @@ output_notag_functor_defn(Info, RttiTypeCtor, NotagFunctor, !DeclSet, !IO) :-
             rtti_data_pseudo_type_info(ArgPseudoTypeInfo), !IO)
     ),
     io.write_string(",\n\t", !IO),
+    % MR_notag_functor_arg_name
     (
         MaybeArgName = yes(ArgName),
         io.write_string("""", !IO),
@@ -862,6 +904,7 @@ output_notag_functor_defn(Info, RttiTypeCtor, NotagFunctor, !DeclSet, !IO) :-
         io.write_string("NULL", !IO)
     ),
     io.write_string(",\n\t", !IO),
+    % MR_notag_functor_subtype
     output_functor_subtype_info(FunctorSubtypeInfo, !IO),
     io.write_string("\n};\n", !IO).
 
@@ -901,12 +944,15 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_du_functor_desc(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n\t""", !IO),
+    % MR_du_functor_name
     c_util.output_quoted_string_cur_stream(FunctorName, !IO),
     io.write_string(""",\n\t", !IO),
-    io.write_int(OrigArity, !IO),
+    % MR_du_functor_orig_arity -- XXX MAKE_FIELD_UNSIGNED
+    io.write_int16(int16.cast_from_uint16(OrigArity), !IO),
     io.write_string(",\n\t", !IO),
+    % MR_du_functor_arg_type_contains_var
     ContainsVarBitVector = compute_contains_var_bit_vector(ArgTypes),
-    io.write_int(ContainsVarBitVector, !IO),
+    io.write_uint16(ContainsVarBitVector, !IO),
     io.write_string(",\n\t", !IO),
     (
         Rep = du_ll_rep(Ptag, SectagAndLocn)
@@ -918,41 +964,46 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
     (
         SectagAndLocn = sectag_locn_none,
         Locn = "MR_SECTAG_NONE",
-        Stag = -1,
+        StagEncoding = -1i32,
         NumSectagBits = 0u8
     ;
         SectagAndLocn = sectag_locn_none_direct_arg,
         Locn = "MR_SECTAG_NONE_DIRECT_ARG",
-        Stag = -1,
+        StagEncoding = -1i32,
         NumSectagBits = 0u8
     ;
         SectagAndLocn = sectag_locn_local_rest_of_word(StagUint),
         Locn = "MR_SECTAG_LOCAL_REST_OF_WORD",
-        Stag = uint.cast_to_int(StagUint),
+        StagEncoding = int32.det_from_int(uint.cast_to_int(StagUint)),
         NumSectagBits = 0u8
     ;
         SectagAndLocn = sectag_locn_local_bits(StagUint, NumSectagBits, _Mask),
         Locn = "MR_SECTAG_LOCAL_BITS",
-        Stag = uint.cast_to_int(StagUint)
+        StagEncoding = int32.det_from_int(uint.cast_to_int(StagUint))
     ;
         SectagAndLocn = sectag_locn_remote_word(StagUint),
         Locn = "MR_SECTAG_REMOTE_FULL_WORD",
-        Stag = uint.cast_to_int(StagUint),
+        StagEncoding = int32.det_from_int(uint.cast_to_int(StagUint)),
         NumSectagBits = 0u8
     ;
         SectagAndLocn = sectag_locn_remote_bits(StagUint, NumSectagBits,
             _Mask),
         Locn = "MR_SECTAG_REMOTE_BITS",
-        Stag = uint.cast_to_int(StagUint)
+        StagEncoding = int32.det_from_int(uint.cast_to_int(StagUint))
     ),
+    % MR_du_functor_sectag_locn
     io.write_string(Locn, !IO),
     io.write_string(",\n\t", !IO),
+    % MR_du_functor_primary
     io.write_uint8(PtagUint8, !IO),
     io.write_string(",\n\t", !IO),
-    io.write_int(Stag, !IO),
+    % MR_du_functor_secondary -- XXX MAKE_FIELD_UNSIGNED
+    io.write_int32(StagEncoding, !IO),
     io.write_string(",\n\t", !IO),
-    io.write_int(Ordinal, !IO),
+    % MR_du_functor_ordinal -- XXX MAKE_FIELD_UNSIGNED
+    io.write_int32(int32.cast_from_uint32(Ordinal), !IO),
     io.write_string(",\n\t", !IO),
+    % MR_du_functor_arg_types
     io.write_string("(MR_PseudoTypeInfo *) ", !IO), % cast away const
     (
         ArgInfos = [_ | _],
@@ -963,6 +1014,7 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         io.write_string("NULL", !IO)
     ),
     io.write_string(",\n\t", !IO),
+    % MR_du_functor_arg_names
     (
         HaveArgNames = yes,
         output_addr_of_ctor_rtti_id(RttiTypeCtor,
@@ -972,6 +1024,7 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         io.write_string("NULL", !IO)
     ),
     io.write_string(",\n\t", !IO),
+    % MR_du_functor_arg_locns
     (
         HaveArgLocns = yes,
         output_addr_of_ctor_rtti_id(RttiTypeCtor,
@@ -981,6 +1034,7 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         io.write_string("NULL", !IO)
     ),
     io.write_string(",\n\t", !IO),
+    % MR_du_functor_exist_info
     (
         MaybeExistInfo = yes(_),
         output_addr_of_ctor_rtti_id(RttiTypeCtor,
@@ -990,8 +1044,10 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         io.write_string("NULL", !IO)
     ),
     io.write_string(",\n\t", !IO),
+    % MR_du_functor_subtype
     output_functor_subtype_info(FunctorSubtypeInfo, !IO),
     io.write_string(",\n\t", !IO),
+    % MR_du_functor_num_sectag_bits
     io.write_uint8(NumSectagBits, !IO),
     io.write_string("\n};\n", !IO).
 
@@ -1010,7 +1066,7 @@ output_functor_subtype_info(FunctorSubtypeInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred output_exist_locns_array(llds_out_info::in, rtti_type_ctor::in,
-    int::in, list(exist_typeinfo_locn)::in,
+    uint32::in, list(exist_typeinfo_locn)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_exist_locns_array(Info, RttiTypeCtor, Ordinal, Locns, !DeclSet, !IO) :-
@@ -1029,7 +1085,7 @@ output_exist_locns_array(Info, RttiTypeCtor, Ordinal, Locns, !DeclSet, !IO) :-
         io.write_string("};\n", !IO)
     ).
 
-:- pred make_exist_tc_constr_id(rtti_type_ctor::in, int::in,
+:- pred make_exist_tc_constr_id(rtti_type_ctor::in, uint32::in,
     int::in, int::in, rtti_id::out) is det.
 
 make_exist_tc_constr_id(RttiTypeCtor, Ordinal, TCNum, Arity, RttiId) :-
@@ -1037,7 +1093,7 @@ make_exist_tc_constr_id(RttiTypeCtor, Ordinal, TCNum, Arity, RttiId) :-
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName).
 
 :- pred output_exist_constraints_data(llds_out_info::in, rtti_type_ctor::in,
-    int::in, list(tc_constraint)::in, decl_set::in, decl_set::out,
+    uint32::in, list(tc_constraint)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
 output_exist_constraints_data(Info, RttiTypeCtor, Ordinal, Constraints,
@@ -1052,7 +1108,7 @@ output_exist_constraints_data(Info, RttiTypeCtor, Ordinal, Constraints,
         !IO),
     io.write_string("\n};\n", !IO).
 
-:- pred output_exist_info(llds_out_info::in, rtti_type_ctor::in, int::in,
+:- pred output_exist_info(llds_out_info::in, rtti_type_ctor::in, uint32::in,
     exist_info::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_exist_info(Info, RttiTypeCtor, Ordinal, ExistInfo, !DeclSet, !IO) :-
@@ -1070,25 +1126,31 @@ output_exist_info(Info, RttiTypeCtor, Ordinal, ExistInfo, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_exist_info(Ordinal)),
         !DeclSet, !IO),
     io.write_string(" = {\n\t", !IO),
-    io.write_int(Plain, !IO),
+    % MR_exist_typeinfos_plain -- XXX MAKE_FIELD_UNSIGNED
+    io.write_int16(int16.cast_from_uint16(Plain), !IO),
     io.write_string(",\n\t", !IO),
-    io.write_int(InTci, !IO),
+    % MR_exist_typeinfos_in_tci -- XXX MAKE_FIELD_UNSIGNED
+    io.write_int16(int16.cast_from_uint16(InTci), !IO),
     io.write_string(",\n\t", !IO),
+    % MR_exist_tcis
     list.length(Constraints, Tci),
-    io.write_int(Tci, !IO),
+    io.write_int16(int16.det_from_int(Tci), !IO),
     io.write_string(",\n\t", !IO),
+    % MR_exist_typeinfo_locns
     output_ctor_rtti_id(RttiTypeCtor, type_ctor_exist_locns(Ordinal), !IO),
     io.write_string(",\n\t", !IO),
+    % MR_exist_constraints
     (
         Constraints = [_ | _],
         output_ctor_rtti_id(RttiTypeCtor, type_ctor_exist_tc_constrs(Ordinal),
             !IO)
     ;
-        Constraints = []
+        Constraints = [],
+        io.write_string("NULL", !IO)
     ),
     io.write_string("\n};\n", !IO).
 
-:- pred output_du_arg_types(llds_out_info::in, rtti_type_ctor::in, int::in,
+:- pred output_du_arg_types(llds_out_info::in, rtti_type_ctor::in, uint32::in,
     list(rtti_maybe_pseudo_type_info_or_self)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
@@ -1107,7 +1169,7 @@ output_du_arg_types(Info, RttiTypeCtor, Ordinal, ArgTypes, !DeclSet, !IO) :-
     output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", ArgTypeDatas, !IO),
     io.write_string("};\n", !IO).
 
-:- pred output_du_arg_names(llds_out_info::in, rtti_type_ctor::in, int::in,
+:- pred output_du_arg_names(llds_out_info::in, rtti_type_ctor::in, uint32::in,
     list(maybe(string))::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
@@ -1120,7 +1182,7 @@ output_du_arg_names(Info, RttiTypeCtor, Ordinal, MaybeNames, !DeclSet, !IO) :-
     output_maybe_quoted_strings(MaybeNames, !IO),
     io.write_string("};\n", !IO).
 
-:- pred output_du_arg_locns(llds_out_info::in, rtti_type_ctor::in, int::in,
+:- pred output_du_arg_locns(llds_out_info::in, rtti_type_ctor::in, uint32::in,
     list(du_arg_info)::in, bool::out, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
@@ -1222,6 +1284,7 @@ output_du_arg_locns_loop([ArgInfo | ArgInfos], !IO) :-
         Shift = 0,
         NumBits = -10
     ),
+    % MR_arg_offset, MR_arg_shift, MR_arg_bits
     io.format("\t{ %d, %d, %d },\n",
         [i(ArgOnlyOffset), i(Shift), i(NumBits)], !IO),
     output_du_arg_locns_loop(ArgInfos, !IO).
@@ -1229,7 +1292,7 @@ output_du_arg_locns_loop([ArgInfo | ArgInfos], !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred output_enum_value_ordered_table(llds_out_info::in, rtti_type_ctor::in,
-    map(int, enum_functor)::in, decl_set::in, decl_set::out,
+    map(uint32, enum_functor)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
 output_enum_value_ordered_table(Info, RttiTypeCtor, FunctorMap,
@@ -1259,7 +1322,7 @@ output_enum_name_ordered_table(Info, RttiTypeCtor, FunctorMap,
     io.write_string("};\n", !IO).
 
 :- pred output_foreign_enum_ordinal_ordered_table(llds_out_info::in,
-    rtti_type_ctor::in, map(int, foreign_enum_functor)::in,
+    rtti_type_ctor::in, map(uint32, foreign_enum_functor)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_foreign_enum_ordinal_ordered_table(Info, RttiTypeCtor, FunctorMap,
@@ -1289,7 +1352,7 @@ output_foreign_enum_name_ordered_table(Info, RttiTypeCtor, FunctorMap,
     io.write_string("};\n", !IO).
 
 :- pred output_du_name_ordered_table(llds_out_info::in, rtti_type_ctor::in,
-    map(string, map(int, du_functor))::in, decl_set::in, decl_set::out,
+    map(string, map(uint16, du_functor))::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
 output_du_name_ordered_table(Info, RttiTypeCtor, NameArityMap,
@@ -1352,14 +1415,18 @@ output_du_ptag_ordered_table_body(RttiTypeCtor,
     SectagTable = sectag_table(SectagLocn, NumSectagBits, NumSharers,
         _SectagMap),
     io.write_string("\t{ ", !IO),
-    io.write_uint(NumSharers, !IO),
+    % MR_sectag_sharers
+    io.write_uint32(NumSharers, !IO),
     io.write_string(", ", !IO),
+    % MR_sectag_locn
     rtti.sectag_locn_to_string(SectagLocn, _TargetPrefixes, LocnStr),
     io.write_string(LocnStr, !IO),
     io.write_string(",\n\t", !IO),
+    % MR_sectag_alternatives
     output_ctor_rtti_id(RttiTypeCtor, type_ctor_du_stag_ordered_table(Ptag),
         !IO),
     io.write_string(",\n\t", !IO),
+    % MR_sectag_numbits
     io.write_int8(NumSectagBits, !IO),
     (
         PtagTail = [],
@@ -1383,7 +1450,7 @@ make_code_addr(ProcLabel) =
 %-----------------------------------------------------------------------------%
 
 :- pred output_functor_number_map(llds_out_info::in, rtti_type_ctor::in,
-    list(int)::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
+    list(uint32)::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_functor_number_map(Info, RttiTypeCtor, FunctorNumberMap,
         !DeclSet, !IO) :-
@@ -1391,8 +1458,16 @@ output_functor_number_map(Info, RttiTypeCtor, FunctorNumberMap,
         ctor_rtti_id(RttiTypeCtor, type_ctor_functor_number_map),
         !DeclSet, !IO),
     io.write_string(" = {\n\t", !IO),
-    io.write_list(FunctorNumberMap, ",\n\t", io.write_int, !IO),
+    io.write_list(FunctorNumberMap, ",\n\t", output_functor_number_map_value,
+        !IO),
     io.write_string("\n};\n\t", !IO).
+
+:- pred output_functor_number_map_value(uint32::in, io::di, io::uo) is det.
+
+output_functor_number_map_value(NumUint32, !IO) :-
+    % XXX MAKE_FIELD_UNSIGNED
+    Num = uint32.cast_to_int(NumUint32),
+    io.write_int(Num, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1667,7 +1742,7 @@ init_rtti_data_if_nec(Data, !IO) :-
         MangledTypeName = name_mangle(TypeName),
         io.write_string(MangledTypeName, !IO),
         io.write_string("_", !IO),
-        io.write_int(Arity, !IO),
+        io.write_uint16(Arity, !IO),
         io.write_string("_0);\n", !IO)
     ;
         Data = rtti_data_base_typeclass_info(TCName, _ModuleName, ClassArity,
@@ -1905,14 +1980,18 @@ output_exist_locn(Locn, !IO) :-
     (
         Locn = plain_typeinfo(SlotInCell),
         io.write_string("{ ", !IO),
-        io.write_int(SlotInCell, !IO),
+        % MR_exist_arg_num -- XXX MAKE_FIELD_UNSIGNED
+        io.write_int16(int16.cast_from_uint16(SlotInCell), !IO),
+        % MR_exist_offset_in_tci
         io.write_string(", -1 }", !IO)
     ;
         Locn = typeinfo_in_tci(SlotInCell, SlotInTci),
         io.write_string("{ ", !IO),
-        io.write_int(SlotInCell, !IO),
+        % MR_exist_arg_num -- XXX MAKE_FIELD_UNSIGNED
+        io.write_int16(int16.cast_from_uint16(SlotInCell), !IO),
         io.write_string(", ", !IO),
-        io.write_int(SlotInTci, !IO),
+        % MR_exist_offset_in_tci -- XXX MAKE_FIELD_UNSIGNED
+        io.write_int16(int16.cast_from_uint16(SlotInTci), !IO),
         io.write_string(" }", !IO)
     ).
 

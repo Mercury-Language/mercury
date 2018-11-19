@@ -9,9 +9,9 @@ package jmercury.runtime;
 
 public class DuExistInfo implements java.io.Serializable {
 
-    public int exist_typeinfos_plain;
-    public int exist_typeinfos_in_tci;
-    public int exist_tcis;
+    public short exist_typeinfos_plain;
+    public short exist_typeinfos_in_tci;
+    public short exist_tcis;
     public /* final */ DuExistLocn[] exist_typeinfo_locns;
     public /* final */ TypeClassConstraint[] exist_constraints;
 
@@ -19,9 +19,9 @@ public class DuExistInfo implements java.io.Serializable {
     {
     }
 
-    public void init(int typeinfos_plain,
-        int typeinfos_in_tci,
-        int tcis,
+    public void init(short typeinfos_plain,
+        short typeinfos_in_tci,
+        short tcis,
         DuExistLocn[] typeinfo_locns,
         TypeClassConstraint constraints[])
     {

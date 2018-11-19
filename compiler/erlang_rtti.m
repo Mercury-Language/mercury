@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007, 2011 The University of Melbourne.
+% Copyright (C) 2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,10 +46,10 @@
     %
 :- type erlang_type_ctor_data
     --->    erlang_type_ctor_data(
-                etcr_version        :: int,
+                etcr_version        :: uint8,
                 etcr_module_name    :: module_name,
                 etcr_type_name      :: string,
-                etcr_arity          :: int,
+                etcr_arity          :: uint16,
 
                 %
                 % It is possible that the type doesn't have
@@ -108,13 +109,13 @@
 :- type erlang_du_functor
     --->    erlang_du_functor(
                 edu_name            :: string,
-                edu_orig_arity      :: int,
+                edu_orig_arity      :: uint16,
 
                     % The declaration order of the functor.
-                edu_ordinal         :: int,
+                edu_ordinal         :: uint32,
 
                     % The lexicographic order of the functor.
-                edu_lex             :: int,
+                edu_lex             :: uint32,
 
                     % erlang atom which represents the functor
                     % currently encoded version of name

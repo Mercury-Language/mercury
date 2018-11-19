@@ -142,6 +142,8 @@
 :- import_module bool.
 :- import_module char.
 :- import_module int.
+:- import_module int16.
+:- import_module int32.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
@@ -1067,7 +1069,7 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
     DuFunctorDesc = TypeFunctors ^ du_functor_desc(TypeCtorRep, FunctorNumber),
 
     FunctorName = DuFunctorDesc ^ du_functor_name,
-    Arity = DuFunctorDesc ^ du_functor_arity,
+    Arity = int16.to_int(DuFunctorDesc ^ du_functor_arity),
 
     ArgTypes = DuFunctorDesc ^ du_functor_arg_types,
     F =
@@ -1262,7 +1264,7 @@ type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
         TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
         DuFunctorDesc = TypeFunctors ^ du_functor_desc(TypeCtorRep,
             FunctorNum),
-        Ordinal = du_functor_ordinal(DuFunctorDesc)
+        Ordinal = int32.to_int(du_functor_ordinal(DuFunctorDesc))
     ;
         ( TypeCtorRep = tcr_equiv
         ; TypeCtorRep = tcr_equiv_ground
@@ -2820,8 +2822,8 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
                 FunctorDesc = PTagEntry ^ du_sectag_alternatives(SecTag)
             ),
             Functor = FunctorDesc ^ du_functor_name,
-            Ordinal = FunctorDesc ^ du_functor_ordinal,
-            Arity = FunctorDesc ^ du_functor_arity,
+            Ordinal = int32.to_int(FunctorDesc ^ du_functor_ordinal),
+            Arity = int16.to_int(FunctorDesc ^ du_functor_arity),
             Arguments = iterate(0, Arity - 1,
                 get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo))
         ;
@@ -3224,7 +3226,7 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
                 SecTag = get_remote_secondary_tag(Term)
             ),
             FunctorDesc = PTagEntry ^ du_sectag_alternatives(SecTag),
-            Arity = FunctorDesc ^ du_functor_arity,
+            Arity = int16.to_int(FunctorDesc ^ du_functor_arity),
             ( if
                 get_du_functor_arg_names(FunctorDesc, Names),
                 search_arg_names(Names, 0, Arity, Name, Index)
@@ -3398,8 +3400,8 @@ expand_type_name(TypeCtorInfo, Wrap) = Name :-
 
 get_arg(Term, SecTagLocn, FunctorDesc, TypeInfo, Index, Arg) :-
     ( if get_du_functor_exist_info(FunctorDesc, ExistInfo) then
-        ExtraArgs = exist_info_typeinfos_plain(ExistInfo) +
-            exist_info_tcis(ExistInfo)
+        ExtraArgs = int16.to_int(exist_info_typeinfos_plain(ExistInfo)) +
+            int16.to_int(exist_info_tcis(ExistInfo))
     else
         ExtraArgs = 0
     ),
@@ -3610,7 +3612,7 @@ get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
         ExistVarNum = VarNum - first_exist_quant_varnum + 1,
         ExistLocn = typeinfo_locns_index(ExistVarNum, ExistInfo),
         Slot = ExistLocn ^ exist_arg_num,
-        Offset = ExistLocn ^ exist_offset_in_tci,
+        Offset = int16.to_int(ExistLocn ^ exist_offset_in_tci),
 
         ( if Offset < 0 then
             ArgTypeInfo = get_type_info_from_term(Term, Slot)
@@ -3957,7 +3959,7 @@ same_pointer_value_untyped(_, _) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- func get_primary_tag(T) = int.
+:- func get_primary_tag(T) = uint8.
 
 :- pragma foreign_proc("C#",
     get_primary_tag(X::in) = (Tag::out),
@@ -3975,7 +3977,7 @@ same_pointer_value_untyped(_, _) :-
     Tag = 0;
 ").
 
-get_primary_tag(_::in) = (0::out) :-
+get_primary_tag(_) = 0u8 :-
     det_unimplemented("get_primary_tag").
 
 :- func get_remote_secondary_tag(T) = int.
@@ -4055,7 +4057,7 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 :- pragma foreign_type("C#", typeinfo_locn, "runtime.DuExistLocn").
 :- pragma foreign_type("Java", typeinfo_locn, "jmercury.runtime.DuExistLocn").
 
-:- func ptag_index(int, type_layout) = ptag_entry.
+:- func ptag_index(uint8, type_layout) = ptag_entry.
 
     % This is an "unimplemented" definition in Mercury, which will be
     % used by default.
@@ -4159,9 +4161,9 @@ typeinfo_locns_index(_, _) = _ :-
     TypeInfoLocn = ExistInfo.exist_typeinfo_locns[VarNum - 1];
 ").
 
-:- func exist_info_typeinfos_plain(exist_info) = int.
+:- func exist_info_typeinfos_plain(exist_info) = int16.
 
-exist_info_typeinfos_plain(_) = -1 :-
+exist_info_typeinfos_plain(_) = -1i16 :-
     det_unimplemented("exist_info_typeinfos_plain").
 
 :- pragma foreign_proc("C#",
@@ -4171,8 +4173,7 @@ exist_info_typeinfos_plain(_) = -1 :-
 #if MR_HIGHLEVEL_DATA
     TypeInfosPlain = ExistInfo.exist_typeinfos_plain;
 #else
-    TypeInfosPlain = (int)
-        ExistInfo[(int) exist_info_field_nums.typeinfos_plain];
+    TypeInfosPlain = ExistInfo[(int) exist_info_field_nums.typeinfos_plain];
 #endif
 ").
 
@@ -4183,9 +4184,9 @@ exist_info_typeinfos_plain(_) = -1 :-
     TypeInfosPlain = ExistInfo.exist_typeinfos_plain;
 ").
 
-:- func exist_info_tcis(exist_info) = int.
+:- func exist_info_tcis(exist_info) = int16.
 
-exist_info_tcis(_) = -1 :-
+exist_info_tcis(_) = -1i16 :-
     det_unimplemented("exist_info_tcis").
 
 :- pragma foreign_proc("C#",
@@ -4195,7 +4196,7 @@ exist_info_tcis(_) = -1 :-
 #if MR_HIGHLEVEL_DATA
     TCIs = ExistInfo.exist_tcis;
 #else
-    TCIs = (int) ExistInfo[(int) exist_info_field_nums.tcis];
+    TCIs = ExistInfo[(int) exist_info_field_nums.tcis];
 #endif
 ").
 
@@ -4206,9 +4207,9 @@ exist_info_tcis(_) = -1 :-
     TCIs = ExistInfo.exist_tcis;
 ").
 
-:- func exist_arg_num(typeinfo_locn) = int.
+:- func exist_arg_num(typeinfo_locn) = int16.
 
-exist_arg_num(_) = -1 :-
+exist_arg_num(_) = -1i16 :-
     det_unimplemented("exist_arg_num").
 
 :- pragma foreign_proc("C#",
@@ -4218,7 +4219,7 @@ exist_arg_num(_) = -1 :-
 #if MR_HIGHLEVEL_DATA
     ArgNum = TypeInfoLocn.exist_arg_num;
 #else
-    ArgNum = (int) TypeInfoLocn[(int) exist_locn_field_nums.exist_arg_num];
+    ArgNum = TypeInfoLocn[(int) exist_locn_field_nums.exist_arg_num];
 #endif
 ").
 
@@ -4229,9 +4230,9 @@ exist_arg_num(_) = -1 :-
     ArgNum = TypeInfoLocn.exist_arg_num;
 ").
 
-:- func exist_offset_in_tci(typeinfo_locn) = int.
+:- func exist_offset_in_tci(typeinfo_locn) = int16.
 
-exist_offset_in_tci(_) = -1 :-
+exist_offset_in_tci(_) = -1i16 :-
     det_unimplemented("exist_offset_in_tci").
 
 :- pragma foreign_proc("C#",
@@ -4241,8 +4242,7 @@ exist_offset_in_tci(_) = -1 :-
 #if MR_HIGHLEVEL_DATA
     ArgNum = TypeInfoLocn.exist_offset_in_tci;
 #else
-    ArgNum = (int)
-        TypeInfoLocn[(int) exist_locn_field_nums.exist_offset_in_tci];
+    ArgNum = TypeInfoLocn[(int) exist_locn_field_nums.exist_offset_in_tci];
 #endif
 ").
 
@@ -4253,7 +4253,7 @@ exist_offset_in_tci(_) = -1 :-
     ArgNum = TypeInfoLocn.exist_offset_in_tci;
 ").
 
-:- func get_type_info_from_term(U, int) = type_info.
+:- func get_type_info_from_term(U, int16) = type_info.
 
 get_type_info_from_term(_, _) = _ :-
     private_builtin.sorry("get_type_info_from_term").
@@ -4304,7 +4304,7 @@ get_type_info_from_term(_, _) = _ :-
     }
 ").
 
-:- func get_typeclass_info_from_term(U, int) = typeclass_info.
+:- func get_typeclass_info_from_term(U, int16) = typeclass_info.
 
 get_typeclass_info_from_term(_, _) = _ :-
     private_builtin.sorry("get_type_info_from_term").
@@ -4976,7 +4976,7 @@ du_functor_name(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(0).
     Name = DuFunctorDesc.du_functor_name;
 ").
 
-:- func du_functor_arity(du_functor_desc) = int.
+:- func du_functor_arity(du_functor_desc) = int16.
 
 du_functor_arity(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(1).
 
@@ -4994,7 +4994,7 @@ du_functor_arity(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(1).
     Arity = DuFunctorDesc.du_functor_orig_arity;
 ").
 
-:- func du_functor_arg_type_contains_var(du_functor_desc) = int.
+:- func du_functor_arg_type_contains_var(du_functor_desc) = uint16.
 
 du_functor_arg_type_contains_var(DuFunctorDesc) =
     DuFunctorDesc ^ unsafe_index(2).
@@ -5032,7 +5032,7 @@ du_functor_sectag_locn(DuFunctorDesc) =
     SectagLocn = DuFunctorDesc.du_functor_sectag_locn;
 ").
 
-:- func du_functor_primary(du_functor_desc) = int.
+:- func du_functor_primary(du_functor_desc) = uint8.
 
 du_functor_primary(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(4).
 
@@ -5050,7 +5050,7 @@ du_functor_primary(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(4).
     Primary = DuFunctorDesc.du_functor_primary;
 ").
 
-:- func du_functor_secondary(du_functor_desc) = int.
+:- func du_functor_secondary(du_functor_desc) = int32.
 
 du_functor_secondary(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(5).
 
@@ -5068,7 +5068,7 @@ du_functor_secondary(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(5).
     Secondary = DuFunctorDesc.du_functor_secondary;
 ").
 
-:- func du_functor_ordinal(du_functor_desc) = int.
+:- func du_functor_ordinal(du_functor_desc) = int32.
 
 du_functor_ordinal(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(6).
 

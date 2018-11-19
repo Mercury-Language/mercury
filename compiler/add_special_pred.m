@@ -502,7 +502,7 @@ collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
 
     make_tuple_args_and_repns(Context, TupleArgTypes, CtorArgs, CtorArgRepns),
 
-    Ordinal = 0,
+    Ordinal = 0u32,
     CtorSymName = unqualified("{}"),
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, TupleArity, Context),

@@ -750,7 +750,7 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, Body0,
     % if the arg type is a 64 bit float on a 32 bit platform.
     SingleArgRepn = ctor_arg_repn(MaybeSingleArgFieldName, SingleArgType,
         apw_full(arg_only_offset(0), cell_offset(0)), SingleArgContext),
-    SingleCtorRepn = ctor_repn(0, no_exist_constraints,
+    SingleCtorRepn = ctor_repn(0u32, no_exist_constraints,
         SingleCtorSymName, SingleCtorTag, [SingleArgRepn], 1,
         SingleCtorContext),
     insert_ctor_repn_into_map(SingleCtorRepn, map.init, CtorRepnMap),

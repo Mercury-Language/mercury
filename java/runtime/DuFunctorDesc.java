@@ -10,10 +10,10 @@ package jmercury.runtime;
 public class DuFunctorDesc implements java.io.Serializable {
 
     public java.lang.String du_functor_name;
-    public int du_functor_orig_arity;
-    public int du_functor_arg_type_contains_var;
+    public short du_functor_orig_arity;
+    public short du_functor_arg_type_contains_var;
     public Sectag_Locn du_functor_sectag_locn;
-    public int du_functor_primary;
+    public byte du_functor_primary;
     public int du_functor_secondary;
     public int du_functor_ordinal;
     // XXX PseudoTypeInfo's have not been implemented properly
@@ -30,10 +30,10 @@ public class DuFunctorDesc implements java.io.Serializable {
     }
 
     public void init(java.lang.String functor_name,
-        int orig_arity,
-        int arg_type_contains_var,
+        short orig_arity,
+        short arg_type_contains_var,
         int sectag_locn,
-        int primary,
+        byte primary,
         int secondary,
         int ordinal,
         // XXX why do we need to use Object here?

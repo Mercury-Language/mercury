@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,7 +103,7 @@
     --->    rtti_type_ctor(
                 module_name,        % module name
                 string,             % type ctor's name
-                arity               % type ctor's arity
+                uint16              % type ctor's arity
             ).
 
     % A var_arity_ctor_id uniquely identifies a variable arity type
@@ -122,10 +123,10 @@
     %
 :- type type_ctor_data
     --->    type_ctor_data(
-                tcr_version         :: int,
+                tcr_version         :: uint8,
                 tcr_module_name     :: module_name,
                 tcr_type_name       :: string,
-                tcr_arity           :: int,
+                tcr_arity           :: uint16,
                 tcr_unify_pred      :: univ,
                 tcr_compare_pred    :: univ,
                 tcr_flags           :: set(type_ctor_flag),
@@ -173,28 +174,28 @@
                 enum_axioms         :: equality_axioms,
                 enum_is_dummy       :: enum_maybe_dummy,
                 enum_functors       :: list(enum_functor),
-                enum_value_table    :: map(int, enum_functor),
+                enum_value_table    :: map(uint32, enum_functor),
                 enum_name_table     :: map(string, enum_functor),
                 enum_functor_number_mapping
-                                    :: list(int)
+                                    :: list(uint32)
             )
     ;       tcd_foreign_enum(
                 foreign_enum_language      :: foreign_language,
                 foreign_enum_axioms        :: equality_axioms,
                 foreign_enum_functors      :: list(foreign_enum_functor),
-                foreign_enum_ordinal_table :: map(int, foreign_enum_functor),
+                foreign_enum_ordinal_table :: map(uint32, foreign_enum_functor),
                 foreign_enum_name_table    :: map(string,
                                                 foreign_enum_functor),
                 foreign_enum_functor_number_mapping
-                                           :: list(int)
+                                           :: list(uint32)
             )
     ;       tcd_du(
                 du_axioms           :: equality_axioms,
                 du_functors         :: list(du_functor),
                 du_value_table      :: ptag_map,
-                du_name_table       :: map(string, map(int, du_functor)),
+                du_name_table       :: map(string, map(uint16, du_functor)),
                 du_functor_number_mapping
-                                    :: list(int)
+                                    :: list(uint32)
             )
     ;       tcd_notag(
                 notag_axioms        :: equality_axioms,
@@ -231,7 +232,7 @@
 :- type enum_functor
     --->    enum_functor(
                 enum_name           :: string,
-                enum_ordinal        :: int
+                enum_ordinal        :: uint32
             ).
 
     % Descriptor for a functor in a foreign enum type.
@@ -241,7 +242,7 @@
 :- type foreign_enum_functor
     --->    foreign_enum_functor(
                 foreign_enum_name    :: string,
-                foreign_enum_ordinal :: int,
+                foreign_enum_ordinal :: uint32,
                 foreign_enum_value   :: string
             ).
 
@@ -264,8 +265,8 @@
 :- type du_functor
     --->    du_functor(
                 du_name             :: string,
-                du_orig_arity       :: int,
-                du_ordinal          :: int,
+                du_orig_arity       :: uint16,
+                du_ordinal          :: uint32,
                 du_rep              :: du_rep,
                 du_arg_infos        :: list(du_arg_info),
                 du_exist_info       :: maybe(exist_info),
@@ -293,8 +294,8 @@
     %
 :- type exist_info
     --->    exist_info(
-                exist_num_plain_typeinfos   :: int,
-                exist_num_typeinfos_in_tcis :: int,
+                exist_num_plain_typeinfos   :: uint16,
+                exist_num_typeinfos_in_tcis :: uint16,
                 exist_typeclass_constraints :: list(tc_constraint),
                 exist_typeinfo_locns        :: list(exist_typeinfo_locn)
             ).
@@ -308,16 +309,16 @@
 :- type exist_typeinfo_locn
     --->    plain_typeinfo(
                 % The typeinfo is stored directly in the cell, at this offset.
-                int
+                uint16
             )
     ;       typeinfo_in_tci(
                 % The typeinfo is stored indirectly in the typeclass info
                 % stored at this offset in the cell.
-                int,
+                uint16,
 
                 % To find the typeinfo inside the typeclass info structure,
                 % give this integer to the MR_typeclass_info_type_info macro.
-                int
+                uint16
             ).
 
     % These tables let the runtime system interpret values in memory
@@ -338,8 +339,7 @@
     --->    sectag_table(
                 sectag_locn         :: sectag_locn,
                 sectag_num_bits     :: int8,
-                % XXX The number of sharers *should* fit in a 32 bit number.
-                sectag_num_sharers  :: uint,
+                sectag_num_sharers  :: uint32,
                 sectag_map          :: stag_map
             ).
 
@@ -613,20 +613,20 @@
     ;       tc_rtti_id(tc_name, tc_rtti_name).
 
 :- type ctor_rtti_name
-    --->    type_ctor_exist_locns(int)                  % functor ordinal
+    --->    type_ctor_exist_locns(uint32)               % functor ordinal
     ;       type_ctor_exist_locn
-    ;       type_ctor_exist_tc_constr(int, int, int)    % functor ordinal,
+    ;       type_ctor_exist_tc_constr(uint32, int, int) % functor ordinal,
                                                         % constraint ordinal,
                                                         % constraint arity
-    ;       type_ctor_exist_tc_constrs(int)             % functor ordinal
-    ;       type_ctor_exist_info(int)                   % functor ordinal
-    ;       type_ctor_field_names(int)                  % functor ordinal
-    ;       type_ctor_field_types(int)                  % functor ordinal
-    ;       type_ctor_field_locns(int)                  % functor ordinal
-    ;       type_ctor_enum_functor_desc(int)            % functor ordinal
-    ;       type_ctor_foreign_enum_functor_desc(int)    % functor ordinal
+    ;       type_ctor_exist_tc_constrs(uint32)          % functor ordinal
+    ;       type_ctor_exist_info(uint32)                % functor ordinal
+    ;       type_ctor_field_names(uint32)               % functor ordinal
+    ;       type_ctor_field_types(uint32)               % functor ordinal
+    ;       type_ctor_field_locns(uint32)               % functor ordinal
+    ;       type_ctor_enum_functor_desc(uint32)         % functor ordinal
+    ;       type_ctor_foreign_enum_functor_desc(uint32) % functor ordinal
     ;       type_ctor_notag_functor_desc
-    ;       type_ctor_du_functor_desc(int)              % functor ordinal
+    ;       type_ctor_du_functor_desc(uint32)           % functor ordinal
     ;       type_ctor_enum_name_ordered_table
     ;       type_ctor_enum_value_ordered_table
     ;       type_ctor_foreign_enum_name_ordered_table
@@ -672,7 +672,7 @@
 % Functions operating on RTTI data.
 %
 
-:- func encode_type_ctor_flags(set(type_ctor_flag)) = int.
+:- func encode_type_ctor_flags(set(type_ctor_flag)) = uint16.
 
     % Return the id of the type constructor.
     %
@@ -781,17 +781,18 @@
 :- func maybe_pseudo_type_info_or_self_to_rtti_data(
     rtti_maybe_pseudo_type_info_or_self) = rtti_data.
 
-    % Given a type constructor with the given details, return the number
-    % of primary tag values used by the type. The return value will be
-    % negative if the type constructor doesn't reserve primary tags.
+    % Given a type constructor with the given details, return `yes(NumPtags)'
+    % where NumPtags is the number of primary tag values used by the type,
+    % or `no' if the type constructor doesn't use primary tags.
     %
-:- func type_ctor_details_num_ptags(type_ctor_details) = int.
+:- func type_ctor_details_num_ptags(type_ctor_details) = maybe(int).
 
-    % Given a type constructor with the given details, return the number
-    % of function symbols defined by the type. The return value will be
-    % negative if the type constructor doesn't define any function symbols.
+    % Given a type constructor with the given details, return
+    % `yes(NumFunctors)' where NumFunctors is the number of function symbols
+    % defined by the type, or `no' if the type constructor doesn't define any
+    % function symbols.
     %
-:- func type_ctor_details_num_functors(type_ctor_details) = int.
+:- func type_ctor_details_num_functors(type_ctor_details) = maybe(int).
 
     % Extract the argument name (if any) from a du_arg_info.
     %
@@ -964,13 +965,14 @@
 :- import_module require.
 :- import_module string.
 :- import_module table_builtin.
+:- import_module uint16.
 :- import_module uint8.
 
 %----------------------------------------------------------------------------%
 
 encode_type_ctor_flags(FlagSet) = Encoding :-
     set.to_sorted_list(FlagSet, FlagList),
-    list.foldl(encode_type_ctor_flag, FlagList, 0, Encoding).
+    list.foldl(encode_type_ctor_flag, FlagList, 0u16, Encoding).
 
     % NOTE: the encoding here must match the one in
     % runtime/mercury_type_info.h.
@@ -978,12 +980,13 @@ encode_type_ctor_flags(FlagSet) = Encoding :-
     % Also note: we used to use 1 to encode types that reserved a tag
     % for constraint solvers.
     %
-:- pred encode_type_ctor_flag(type_ctor_flag::in, int::in, int::out) is det.
+:- pred encode_type_ctor_flag(type_ctor_flag::in, uint16::in, uint16::out)
+    is det.
 
 encode_type_ctor_flag(variable_arity_flag, !Encoding) :-
-    !:Encoding = !.Encoding + 2.
+    !:Encoding = !.Encoding + 2u16.
 encode_type_ctor_flag(kind_of_du_flag, !Encoding) :-
-    !:Encoding = !.Encoding + 4.
+    !:Encoding = !.Encoding + 4u16.
 
 rtti_data_to_id(RttiData, RttiId) :-
     (
@@ -1042,13 +1045,13 @@ pti_get_rtti_type_ctor(type_var(_)) = _ :-
 
 var_arity_id_to_rtti_type_ctor(pred_type_info) = Ctor :-
     Builtin = mercury_public_builtin_module,
-    Ctor = rtti_type_ctor(Builtin, "pred", 0).
+    Ctor = rtti_type_ctor(Builtin, "pred", 0u16).
 var_arity_id_to_rtti_type_ctor(func_type_info) = Ctor :-
     Builtin = mercury_public_builtin_module,
-    Ctor = rtti_type_ctor(Builtin, "func", 0).
+    Ctor = rtti_type_ctor(Builtin, "func", 0u16).
 var_arity_id_to_rtti_type_ctor(tuple_type_info) = Ctor :-
     Builtin = mercury_public_builtin_module,
-    Ctor = rtti_type_ctor(Builtin, "tuple", 0).
+    Ctor = rtti_type_ctor(Builtin, "tuple", 0u16).
 
 rtti_id_maybe_element_has_array_type(item_type(RttiId)) =
     rtti_id_has_array_type(RttiId).
@@ -1170,7 +1173,7 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
     mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, A_str),
     (
         RttiName = type_ctor_exist_locns(Ordinal),
-        string.int_to_string(Ordinal, O_str),
+        O_str = string.uint32_to_string(Ordinal),
         string.append_list([ModuleName, "__exist_locns_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
@@ -1179,43 +1182,43 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_ctor_exist_tc_constr(Ordinal, TCCNum, _),
-        string.int_to_string(Ordinal, O_str),
-        string.int_to_string(TCCNum, N_str),
+        O_str = string.uint32_to_string(Ordinal),
+        N_str = string.int_to_string(TCCNum),
         string.append_list([ModuleName, "__exist_tc_constr_",
             TypeName, "_", A_str, "_", O_str, "_", N_str], Str)
     ;
         RttiName = type_ctor_exist_tc_constrs(Ordinal),
-        string.int_to_string(Ordinal, O_str),
+        O_str = string.uint32_to_string(Ordinal),
         string.append_list([ModuleName, "__exist_tc_constrs_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = type_ctor_exist_info(Ordinal),
-        string.int_to_string(Ordinal, O_str),
+        O_str = string.uint32_to_string(Ordinal),
         string.append_list([ModuleName, "__exist_info_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = type_ctor_field_names(Ordinal),
-        string.int_to_string(Ordinal, O_str),
+        O_str = string.uint32_to_string(Ordinal),
         string.append_list([ModuleName, "__field_names_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = type_ctor_field_types(Ordinal),
-        string.int_to_string(Ordinal, O_str),
+        O_str = string.uint32_to_string(Ordinal),
         string.append_list([ModuleName, "__field_types_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = type_ctor_field_locns(Ordinal),
-        string.int_to_string(Ordinal, O_str),
+        O_str = string.uint32_to_string(Ordinal),
         string.append_list([ModuleName, "__field_locns_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = type_ctor_enum_functor_desc(Ordinal),
-        string.int_to_string(Ordinal, O_str),
+        O_str = string.uint32_to_string(Ordinal),
         string.append_list([ModuleName, "__enum_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = type_ctor_foreign_enum_functor_desc(Ordinal),
-        string.int_to_string(Ordinal, O_str),
+        O_str = string.uint32_to_string(Ordinal),
         string.append_list([ModuleName, "__foreign_enum_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
@@ -1224,7 +1227,7 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_ctor_du_functor_desc(Ordinal),
-        string.int_to_string(Ordinal, O_str),
+        O_str = string.uint32_to_string(Ordinal),
         string.append_list([ModuleName, "__du_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
@@ -1429,7 +1432,7 @@ mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr) :-
     ),
     ModuleName = sym_name_mangle(ModuleNameSym),
     TypeName = name_mangle(TypeName0),
-    string.int_to_string(TypeArity, ArityStr).
+    ArityStr = string.uint16_to_string(TypeArity).
 
 :- pred mangle_rtti_type_class_name(tc_name::in,
     string::out, string::out, string::out) is det.
@@ -1661,7 +1664,7 @@ type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
         TypeCtorDetails = tcd_foreign(IsStable),
         ModuleName = TypeCtorData ^ tcr_module_name,
         TypeName = TypeCtorData ^ tcr_type_name,
-        TypeArity = TypeCtorData ^ tcr_arity,
+        TypeArity = uint16.to_int(TypeCtorData ^ tcr_arity),
         TypeCtor = type_ctor(qualified(ModuleName, TypeName), TypeArity),
         ( if type_ctor_is_array(TypeCtor) then
             % XXX This is a kludge to allow accurate GC to trace arrays.
@@ -1745,7 +1748,7 @@ maybe_pseudo_type_info_or_self_to_rtti_data(plain(TypeInfo)) =
 maybe_pseudo_type_info_or_self_to_rtti_data(self) =
     rtti_data_pseudo_type_info(type_var(0)).
 
-type_ctor_details_num_ptags(TypeCtorDetails) = NumPtags :-
+type_ctor_details_num_ptags(TypeCtorDetails) = MaybeNumPtags :-
     (
         ( TypeCtorDetails = tcd_enum(_, _, _, _, _, _)
         ; TypeCtorDetails = tcd_foreign_enum(_, _, _, _, _, _)
@@ -1755,35 +1758,39 @@ type_ctor_details_num_ptags(TypeCtorDetails) = NumPtags :-
         ; TypeCtorDetails = tcd_impl_artifact(_)
         ; TypeCtorDetails = tcd_foreign(_)
         ),
-        NumPtags = -1
+        MaybeNumPtags = no
     ;
         TypeCtorDetails = tcd_du(_, _, PtagMap, _, _),
         map.keys(PtagMap, Ptags),
         list.det_last(Ptags, LastPtag),
         LastPtag = ptag(LastPtagUint8),
-        NumPtags = uint8.cast_to_int(LastPtagUint8) + 1
+        NumPtags = uint8.to_int(LastPtagUint8) + 1,
+        MaybeNumPtags = yes(NumPtags)
     ).
 
-type_ctor_details_num_functors(TypeCtorDetails) = NumFunctors :-
+type_ctor_details_num_functors(TypeCtorDetails) = MaybeNumFunctors :-
     (
-        TypeCtorDetails = tcd_enum(_, _, EnumFunctors, _, _, _),
-        list.length(EnumFunctors, NumFunctors)
-    ;
-        TypeCtorDetails = tcd_foreign_enum(_, _, ForeignFunctors, _, _, _),
-        list.length(ForeignFunctors, NumFunctors)
-    ;
-        TypeCtorDetails = tcd_du(_, DuFunctors, _, _, _),
-        list.length(DuFunctors, NumFunctors)
-    ;
-        TypeCtorDetails = tcd_notag(_, _),
-        NumFunctors = 1
+        (
+            TypeCtorDetails = tcd_enum(_, _, EnumFunctors, _, _, _),
+            list.length(EnumFunctors, NumFunctors)
+        ;
+            TypeCtorDetails = tcd_foreign_enum(_, _, ForeignFunctors, _, _, _),
+            list.length(ForeignFunctors, NumFunctors)
+        ;
+            TypeCtorDetails = tcd_du(_, DuFunctors, _, _, _),
+            list.length(DuFunctors, NumFunctors)
+        ;
+            TypeCtorDetails = tcd_notag(_, _),
+            NumFunctors = 1
+        ),
+        MaybeNumFunctors = yes(NumFunctors)
     ;
         ( TypeCtorDetails = tcd_eqv(_)
         ; TypeCtorDetails = tcd_builtin(_)
         ; TypeCtorDetails = tcd_impl_artifact(_)
         ; TypeCtorDetails = tcd_foreign(_)
         ),
-        NumFunctors = -1
+        MaybeNumFunctors = no
     ).
 
 du_arg_info_name(ArgInfo) = ArgInfo ^ du_arg_name.

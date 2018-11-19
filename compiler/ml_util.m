@@ -119,6 +119,16 @@
 :- func gen_init_bool(bool) = mlds_initializer.
 
 :- func gen_init_int(int) = mlds_initializer.
+:- func gen_init_uint(uint) = mlds_initializer.
+
+:- func gen_init_int8(int8) = mlds_initializer.
+:- func gen_init_uint8(uint8) = mlds_initializer.
+
+:- func gen_init_int16(int16) = mlds_initializer.
+:- func gen_init_uint16(uint16) = mlds_initializer.
+
+:- func gen_init_int32(int32) = mlds_initializer.
+:- func gen_init_uint32(uint32) = mlds_initializer.
 
 :- func gen_init_boxed_int(int) = mlds_initializer.
 
@@ -862,6 +872,16 @@ gen_init_bool(no) = init_obj(ml_const(mlconst_false)).
 gen_init_bool(yes) = init_obj(ml_const(mlconst_true)).
 
 gen_init_int(Int) = init_obj(ml_const(mlconst_int(Int))).
+gen_init_uint(Int) = init_obj(ml_const(mlconst_uint(Int))).
+
+gen_init_int8(Int) = init_obj(ml_const(mlconst_int8(Int))).
+gen_init_uint8(Int) = init_obj(ml_const(mlconst_uint8(Int))).
+
+gen_init_int16(Int) = init_obj(ml_const(mlconst_int16(Int))).
+gen_init_uint16(Int) = init_obj(ml_const(mlconst_uint16(Int))).
+
+gen_init_int32(Int) = init_obj(ml_const(mlconst_int32(Int))).
+gen_init_uint32(Int) = init_obj(ml_const(mlconst_uint32(Int))).
 
 gen_init_boxed_int(Int) =
     init_obj(ml_box(mlds_builtin_type_int(int_type_int),

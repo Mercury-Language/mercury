@@ -103,19 +103,19 @@ maybe_get_special_predicate(Univ) =
     % aborting on reserved types, and specially handling the list type.
     %
 :- func erlang_type_ctor_details(module_name, string,
-    int, type_ctor_details) = erlang_type_ctor_details.
+    uint16, type_ctor_details) = erlang_type_ctor_details.
 
 erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
     ( if
         ModuleName = unqualified("list"),
         TypeName = "list",
-        Arity = 1
+        Arity = 1u16
     then
         D = erlang_list
     else if
         ModuleName = unqualified("array"),
         TypeName = "array",
-        Arity = 1
+        Arity = 1u16
     then
         D = erlang_array
     else
@@ -153,9 +153,9 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
     ;
         CtorDetails = tcd_notag(_, NoTagFunctor),
         NoTagFunctor = notag_functor(Name, TypeInfo, ArgName, SubtypeInfo),
-        OrigArity = 1,
-        Ordinal = 0,
-        FunctorNum = 0,
+        OrigArity = 1u16,
+        Ordinal = 0u32,
+        FunctorNum = 0u32,
         ArgTypeInfo = convert_to_rtti_maybe_pseudo_type_info_or_self(TypeInfo),
         ArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
         ArgInfos = [du_arg_info(ArgName, ArgTypeInfo, ArgPosWidth)],
@@ -178,17 +178,17 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
 
     % Convert an enum_functor into the equivalent erlang_du_functor
     %
-:- pred convert_enum_functor(enum_functor::in, int::in, erlang_du_functor::out)
-    is det.
+:- pred convert_enum_functor(enum_functor::in, uint32::in,
+    erlang_du_functor::out) is det.
 
 convert_enum_functor(EnumFunctor, FunctorNum, ErlangFunctor) :-
     EnumFunctor = enum_functor(Name, Ordinal),
-    ErlangFunctor = erlang_du_functor(Name, 0, Ordinal, FunctorNum,
+    ErlangFunctor = erlang_du_functor(Name, 0u16, Ordinal, FunctorNum,
         erlang_atom_raw(Name), [], no, functor_subtype_none).
 
     % Convert a du_functor into the equivalent erlang_du_functor
     %
-:- pred convert_du_functor(du_functor::in, int::in, erlang_du_functor::out)
+:- pred convert_du_functor(du_functor::in, uint32::in, erlang_du_functor::out)
     is det.
 
 convert_du_functor(Functor, FunctorNum, ErlangFunctor) :-
@@ -574,8 +574,8 @@ type_ctor_data_to_elds(ModuleInfo, TypeCtorData, RttiDefns) :-
     ),
 
     ELDSTypeCtorData = elds_tuple([
-        elds_term(elds_int(Arity)),
-        elds_term(elds_int(Version)),
+        elds_term(elds_uint16(Arity)),
+        elds_term(elds_uint8(Version)),
         UnifyExpr,
         CompareExpr,
         elds_term(elds_list_of_ints(sym_name_to_string(ModuleName))),

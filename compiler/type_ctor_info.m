@@ -58,7 +58,7 @@
     % variable in their type.
     %
 :- func compute_contains_var_bit_vector(
-    list(rtti_maybe_pseudo_type_info_or_self)) = int.
+    list(rtti_maybe_pseudo_type_info_or_self)) = uint16.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -97,7 +97,8 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module uint.
+:- import_module uint16.
+:- import_module uint32.
 :- import_module univ.
 :- import_module varset.
 
@@ -411,8 +412,9 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ; TypeBody = hlds_abstract_type(_)
             )
         ),
-        TypeCtorData = type_ctor_data(Version, ModuleName, TypeName, TypeArity,
-            UnifyUniv, CompareUniv, !.Flags, Details)
+        TypeCtorData = type_ctor_data(Version, ModuleName, TypeName,
+            uint16.det_from_int(TypeArity), UnifyUniv, CompareUniv,
+            !.Flags, Details)
     ),
     RttiData = rtti_data_type_ctor_info(TypeCtorData).
 
@@ -484,9 +486,9 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
     % generate them) as well as the code in the runtime that uses RTTI
     % to conform to whatever changes the new version introduces.
     %
-:- func type_ctor_info_rtti_version = int.
+:- func type_ctor_info_rtti_version = uint8.
 
-type_ctor_info_rtti_version = 17.
+type_ctor_info_rtti_version = 17u8.
 
 %---------------------------------------------------------------------------%
 
@@ -533,7 +535,7 @@ make_mercury_enum_details(CtorRepns, IsDummy, EqualityAxioms, Details) :-
         expect(unify(IsDummy, enum_is_not_dummy), $pred,
             "more than one ctor but dummy")
     ),
-    make_enum_functors(CtorRepns, IsDummy, 0, EnumFunctors),
+    make_enum_functors(CtorRepns, IsDummy, 0u32, EnumFunctors),
     ValueMap0 = map.init,
     NameMap0 = map.init,
     list.foldl2(make_enum_maps, EnumFunctors,
@@ -551,7 +553,7 @@ make_mercury_enum_details(CtorRepns, IsDummy, EqualityAxioms, Details) :-
     % is constructed.
     %
 :- pred make_enum_functors(list(constructor_repn)::in, enum_maybe_dummy::in,
-    int::in, list(enum_functor)::out) is det.
+    uint32::in, list(enum_functor)::out) is det.
 
 make_enum_functors([], _, _, []).
 make_enum_functors([FunctorRepn | FunctorRepns], IsDummy, CurOrdinal,
@@ -565,7 +567,8 @@ make_enum_functors([FunctorRepn | FunctorRepns], IsDummy, CurOrdinal,
     expect(unify(Arity, 0), $pred, "functor in enum has nonzero arity"),
     (
         IsDummy = enum_is_not_dummy,
-        expect(unify(ConsTag, int_tag(int_tag_int(CurOrdinal))), $pred,
+        CurOrdinalInt = uint32.cast_to_int(CurOrdinal),
+        expect(unify(ConsTag, int_tag(int_tag_int(CurOrdinalInt))), $pred,
             "enum functor's tag is not the expected int_tag")
     ;
         IsDummy = enum_is_dummy,
@@ -574,10 +577,10 @@ make_enum_functors([FunctorRepn | FunctorRepns], IsDummy, CurOrdinal,
     ),
     FunctorName = unqualify_name(SymName),
     EnumFunctor = enum_functor(FunctorName, CurOrdinal),
-    make_enum_functors(FunctorRepns, IsDummy, CurOrdinal + 1, EnumFunctors).
+    make_enum_functors(FunctorRepns, IsDummy, CurOrdinal + 1u32, EnumFunctors).
 
 :- pred make_enum_maps(enum_functor::in,
-    map(int, enum_functor)::in, map(int, enum_functor)::out,
+    map(uint32, enum_functor)::in, map(uint32, enum_functor)::out,
     map(string, enum_functor)::in, map(string, enum_functor)::out) is det.
 
 make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
@@ -594,7 +597,7 @@ make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
     type_ctor_details::out) is det.
 
 make_foreign_enum_details(Lang, CtorRepns, EqualityAxioms, Details) :-
-    make_foreign_enum_functors(Lang, CtorRepns, 0, ForeignEnumFunctors),
+    make_foreign_enum_functors(Lang, CtorRepns, 0u32, ForeignEnumFunctors),
     OrdinalMap0 = map.init,
     NameMap0 = map.init,
     list.foldl2(make_foreign_enum_maps, ForeignEnumFunctors,
@@ -612,7 +615,7 @@ make_foreign_enum_details(Lang, CtorRepns, EqualityAxioms, Details) :-
     % structure is constructed.
     %
 :- pred make_foreign_enum_functors(foreign_language::in,
-    list(constructor_repn)::in, int::in,
+    list(constructor_repn)::in, uint32::in,
     list(foreign_enum_functor)::out) is det.
 
 make_foreign_enum_functors(_, [], _, []).
@@ -656,12 +659,12 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], CurOrdinal,
     FunctorName = unqualify_name(SymName),
     ForeignEnumFunctor = foreign_enum_functor(FunctorName, CurOrdinal,
         ForeignTagValue),
-    make_foreign_enum_functors(Lang, FunctorRepns, CurOrdinal + 1,
+    make_foreign_enum_functors(Lang, FunctorRepns, CurOrdinal + 1u32,
         ForeignEnumFunctors).
 
 :- pred make_foreign_enum_maps(foreign_enum_functor::in,
-    map(int, foreign_enum_functor)::in,
-    map(int, foreign_enum_functor)::out,
+    map(uint32, foreign_enum_functor)::in,
+    map(uint32, foreign_enum_functor)::out,
     map(string, foreign_enum_functor)::in,
     map(string, foreign_enum_functor)::out) is det.
 
@@ -684,7 +687,7 @@ make_foreign_enum_maps(ForeignEnumFunctor, !OrdinalMap, !NameMap) :-
     int::in, equality_axioms::in, type_ctor_details::out) is det.
 
 make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, Details) :-
-    make_du_functors(ModuleInfo, Ctors, 0, TypeArity, DuFunctors),
+    make_du_functors(ModuleInfo, Ctors, 0u32, TypeArity, DuFunctors),
     list.foldl(make_du_ptag_ordered_table, DuFunctors, map.init, DuPtagTable),
     FunctorNumberMap = make_functor_number_map(Ctors),
     list.foldl(make_du_name_ordered_table, DuFunctors,
@@ -701,7 +704,7 @@ make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, Details) :-
     % this is how the type layout structure is constructed.
     %
 :- pred make_du_functors(module_info::in, list(constructor_repn)::in,
-    int::in, int::in, list(du_functor)::out) is det.
+    uint32::in, int::in, list(du_functor)::out) is det.
 
 make_du_functors(_, [], _, _, []).
 make_du_functors(ModuleInfo, [CtorRepn | CtorRepns],
@@ -725,11 +728,11 @@ make_du_functors(ModuleInfo, [CtorRepn | CtorRepns],
     ),
     list.map_foldl(generate_du_arg_info(TypeArity, ExistTVars),
         ConsArgRepns, ArgInfos, functor_subtype_none, FunctorSubtypeInfo),
-    DuFunctor = du_functor(FunctorName, Arity, CurOrdinal, DuRep,
-        ArgInfos, MaybeExistInfo, FunctorSubtypeInfo),
+    DuFunctor = du_functor(FunctorName, uint16.det_from_int(Arity), CurOrdinal,
+        DuRep, ArgInfos, MaybeExistInfo, FunctorSubtypeInfo),
 
     make_du_functors(ModuleInfo, CtorRepns,
-        CurOrdinal + 1, TypeArity, DuFunctors).
+        CurOrdinal + 1u32, TypeArity, DuFunctors).
 
 :- pred get_du_rep(cons_tag::in, du_rep::out) is det.
 
@@ -845,13 +848,6 @@ generate_du_arg_info(NumUnivTVars, ExistTVars, ConsArgRepn, ArgInfo,
         true
     ).
 
-    % This function gives the size of the MR_du_functor_arg_type_contains_var
-    % field of the C type MR_DuFunctorDesc in bits.
-    %
-:- func contains_var_bit_vector_size = int.
-
-contains_var_bit_vector_size = 16.
-
     % Construct the RTTI structures that record information about the locations
     % of the typeinfos describing the types of the existentially typed
     % arguments of a functor.
@@ -865,7 +861,7 @@ generate_exist_info(ExistConstraints, ClassTable, ExistInfo) :-
     map.init(LocnMap0),
     list.foldl2(
         ( pred(T::in, N0::in, N::out, Lm0::in, Lm::out) is det :-
-            Locn = plain_typeinfo(N0),
+            Locn = plain_typeinfo(uint16.det_from_int(N0)),
             map.det_insert(T, Locn, Lm0, Lm),
             N = N0 + 1
         ), UnconstrainedTVars, 0, TIsPlain, LocnMap0, LocnMap1),
@@ -878,7 +874,12 @@ generate_exist_info(ExistConstraints, ClassTable, ExistInfo) :-
         ( pred(TVar::in, Locn::out) is det :-
             map.lookup(LocnMap, TVar, Locn)
         ), ExistTVars, ExistLocns),
-    ExistInfo = exist_info(TIsPlain, TIsInTCIs, TCConstraints, ExistLocns).
+    ExistInfo = exist_info(
+        uint16.det_from_int(TIsPlain),
+        uint16.det_from_int(TIsInTCIs),
+        TCConstraints,
+        ExistLocns
+    ).
 
 :- pred find_type_info_index(list(prog_constraint)::in, class_table::in,
     int::in, tvar::in, map(tvar, exist_typeinfo_locn)::in,
@@ -892,7 +893,10 @@ find_type_info_index(Constraints, ClassTable, StartSlot, TVar, !LocnMap) :-
     map.lookup(ClassTable, class_id(ClassName, ClassArity), ClassDefn),
     list.length(ClassDefn ^ classdefn_supers, NumSuperClasses),
     RealTypeInfoIndex = TypeInfoIndex + NumSuperClasses,
-    Locn = typeinfo_in_tci(Slot, RealTypeInfoIndex),
+    Locn = typeinfo_in_tci(
+        uint16.det_from_int(Slot),
+        uint16.det_from_int(RealTypeInfoIndex)
+    ),
     map.det_insert(TVar, Locn, !LocnMap).
 
 :- pred first_matching_type_class_info(list(prog_constraint)::in, tvar::in,
@@ -966,19 +970,19 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         expect(unify(NumSectagBits0, NumSectagBits), $pred,
             "sectag num bits disagreement"),
         map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
-        SectagTable = sectag_table(Locn0, NumSectagBits0, NumSharers0 + 1u,
+        SectagTable = sectag_table(Locn0, NumSectagBits0, NumSharers0 + 1u32,
             SectagMap),
         map.det_update(Ptag, SectagTable, !PtagTable)
     else
         SectagMap = map.singleton(Sectag, DuFunctor),
-        SectagTable = sectag_table(SectagLocn, NumSectagBits, 1u,
+        SectagTable = sectag_table(SectagLocn, NumSectagBits, 1u32,
             SectagMap),
         map.det_insert(Ptag, SectagTable, !PtagTable)
     ).
 
 :- pred make_du_name_ordered_table(du_functor::in,
-    map(string, map(int, du_functor))::in,
-    map(string, map(int, du_functor))::out) is det.
+    map(string, map(uint16, du_functor))::in,
+    map(string, map(uint16, du_functor))::out) is det.
 
 make_du_name_ordered_table(DuFunctor, !NameTable) :-
     Name = DuFunctor ^ du_name,
@@ -996,29 +1000,36 @@ make_du_name_ordered_table(DuFunctor, !NameTable) :-
     % Construct the array mapping ordinal constructor numbers
     % to lexicographic constructor numbers.
     %
-:- func make_functor_number_map(list(constructor_repn)) = list(int).
+:- func make_functor_number_map(list(constructor_repn)) = list(uint32).
 
 make_functor_number_map(OrdinalCtors) = OrdinalToLexicographicSeqNums :-
     OrdinalCtorNames = list.map(ctor_name_arity, OrdinalCtors),
     list.sort(OrdinalCtorNames, LexicographicCtorNames),
     LexicographicSeqNums = 0 `..` (list.length(OrdinalCtors) - 1),
     map.from_corresponding_lists(LexicographicCtorNames, LexicographicSeqNums,
-        LexicographicCtorNameToSeqNumMap),
-    map.apply_to_list(OrdinalCtorNames, LexicographicCtorNameToSeqNumMap,
-        OrdinalToLexicographicSeqNums).
+        CtorNameToSeqNumMap),
+    list.map(lookup_functor_number(CtorNameToSeqNumMap),
+        OrdinalCtorNames, OrdinalToLexicographicSeqNums).
 
 :- func ctor_name_arity(constructor_repn) = {sym_name, arity}.
 
 ctor_name_arity(Ctor) = {Ctor ^ cr_name, list.length(Ctor ^ cr_args)}.
 
+:- pred lookup_functor_number(map({sym_name, arity}, int)::in,
+    {sym_name, arity}::in, uint32::out) is det.
+
+lookup_functor_number(CtorNameToSeqNumMap, CtorName, SeqNumUint32) :-
+    map.lookup(CtorNameToSeqNumMap, CtorName, SeqNum),
+    SeqNumUint32 = uint32.det_from_int(SeqNum).
+
 %---------------------------------------------------------------------------%
 
 compute_contains_var_bit_vector(ArgTypes) = Vector :-
-    compute_contains_var_bit_vector_2(ArgTypes, 0, 0, Vector).
+    compute_contains_var_bit_vector_2(ArgTypes, 0, 0u16, Vector).
 
 :- pred compute_contains_var_bit_vector_2(
-    list(rtti_maybe_pseudo_type_info_or_self)::in, int::in, int::in, int::out)
-    is det.
+    list(rtti_maybe_pseudo_type_info_or_self)::in, int::in,
+    uint16::in, uint16::out) is det.
 
 compute_contains_var_bit_vector_2([], _, !Vector).
 compute_contains_var_bit_vector_2([ArgType | ArgTypes], ArgNum, !Vector) :-
@@ -1035,7 +1046,7 @@ compute_contains_var_bit_vector_2([ArgType | ArgTypes], ArgNum, !Vector) :-
     ),
     compute_contains_var_bit_vector_2(ArgTypes, ArgNum + 1, !Vector).
 
-:- pred update_contains_var_bit_vector(int::in, int::in, int::out) is det.
+:- pred update_contains_var_bit_vector(int::in, uint16::in, uint16::out) is det.
 
 update_contains_var_bit_vector(ArgNum, !Vector) :-
     ( if ArgNum >= contains_var_bit_vector_size - 1 then
@@ -1043,7 +1054,14 @@ update_contains_var_bit_vector(ArgNum, !Vector) :-
     else
         BitNum = ArgNum
     ),
-    !:Vector = !.Vector \/ (1 << BitNum).
+    !:Vector = !.Vector \/ (1u16 << BitNum).
+
+    % This function gives the size of the MR_du_functor_arg_type_contains_var
+    % field of the C type MR_DuFunctorDesc in bits.
+    %
+:- func contains_var_bit_vector_size = int.
+
+contains_var_bit_vector_size = 16.
 
 %---------------------------------------------------------------------------%
 :- end_module backend_libs.type_ctor_info.

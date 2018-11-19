@@ -117,6 +117,7 @@
 :- import_module require.
 :- import_module term.
 :- import_module uint.
+:- import_module uint16.
 :- import_module uint8.
 
 %---------------------------------------------------------------------------%
@@ -181,7 +182,8 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
             ModuleName = fixup_builtin_module(ModuleName0),
             MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-            RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
+            RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName,
+                uint16.det_from_int(TypeArity)),
             RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
             Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
             ConstRval = ml_cast(LHS_MLDS_Type, ml_const(Const))
@@ -1850,7 +1852,8 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         ConsTag = type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
         ModuleName = fixup_builtin_module(ModuleName0),
         MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-        RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
+        RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName,
+            uint16.det_from_int(TypeArity)),
         RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
         Const = mlconst_data_addr_rtti(MLDS_Module, RttiId),
         Rval = ml_cast(MLDS_Type, ml_const(Const))

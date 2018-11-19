@@ -1211,7 +1211,7 @@ type_constructors(ModuleInfo, Type, Constructors) :-
         CtorArgs = list.map(
             (func(ArgType) = ctor_arg(no, ArgType, Context)),
             TypeArgs),
-        Constructors = [ctor(0, MaybeExistConstraints, unqualified("{}"),
+        Constructors = [ctor(0u32, MaybeExistConstraints, unqualified("{}"),
             CtorArgs, list.length(CtorArgs), Context)]
     else
         module_info_get_type_table(ModuleInfo, TypeTable),

@@ -14,8 +14,8 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo
     implements java.io.Serializable
 {
     public int                  arity;
-    public int                  type_ctor_version;
-    public int                  type_ctor_num_ptags; // if DU
+    public byte                 type_ctor_version;
+    public byte                 type_ctor_num_ptags; // if DU
     public TypeCtorRep          type_ctor_rep;
     public MethodPtr            unify_pred;
     public MethodPtr            compare_pred;
@@ -24,7 +24,7 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo
     public TypeFunctors         type_functors;
     public TypeLayout           type_layout;
     public int                  type_ctor_num_functors;
-    public /* short */ int      type_ctor_flags;
+    public short                type_ctor_flags;
     public int[]                type_functor_number_map;
 
     public TypeCtorInfo_Struct()
@@ -54,18 +54,17 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo
 
     public void init(
         int type_arity,
-        int version,
-        int num_ptags,
+        byte version,
+        byte num_ptags,
         int rep,
         Object unify_proc,
         Object compare_proc,
-        String module, String name,
-        // TypeFunctors
-        java.lang.Object name_ordered_functor_descs,
-        // TypeLayout
-        java.lang.Object value_ordered_functor_descs,
+        String module,
+        String name,
+        java.lang.Object name_ordered_functor_descs, // TypeFunctors
+        java.lang.Object value_ordered_functor_descs, // TypeLayout
         int num_functors,
-        int flags,
+        short flags,
         int[] functor_number_map)
     {
         arity = type_arity;

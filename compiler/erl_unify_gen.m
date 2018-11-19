@@ -102,6 +102,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
+:- import_module uint16.
 
 %-----------------------------------------------------------------------------%
 
@@ -352,7 +353,8 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
         pred_const_to_closure(ShroudedPredProcId, Args, Expr, !Info)
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeCtor, Arity),
-        RttiTypeCtor = rtti_type_ctor(ModuleName, TypeCtor, Arity),
+        RttiTypeCtor = rtti_type_ctor(ModuleName, TypeCtor,
+            uint16.det_from_int(Arity)),
         RttiId = elds_rtti_type_ctor_id(RttiTypeCtor),
         Expr = elds_rtti_ref(RttiId)
     ;

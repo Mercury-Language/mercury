@@ -10,10 +10,10 @@ package jmercury.runtime;
 // Corresponds to MR_DuExistLocn in runtime/mercury_type_info.h.
 
 public class DuExistLocn implements java.io.Serializable {
-    public int exist_arg_num;
-    public int exist_offset_in_tci;
+    public short exist_arg_num;
+    public short exist_offset_in_tci;
 
-    public DuExistLocn(int arg_num, int offset_in_tci) {
+    public DuExistLocn(short arg_num, short offset_in_tci) {
         exist_arg_num = arg_num;
         exist_offset_in_tci = offset_in_tci;
     }

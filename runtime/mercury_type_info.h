@@ -745,8 +745,8 @@ typedef const MR_TypeClassConstraintStruct      *MR_TypeClassConstraint;
 // macro.
 
 typedef struct {
-    MR_int_least16_t    MR_exist_arg_num;
-    MR_int_least16_t    MR_exist_offset_in_tci;
+    MR_int_least16_t    MR_exist_arg_num;       // XXX MAKE_FIELD_UNSIGNED
+    MR_int_least16_t    MR_exist_offset_in_tci; // negative is possible
 } MR_DuExistLocn;
 
 // This structure contains information about the typeinfos of the
@@ -780,6 +780,7 @@ typedef struct {
 // typeclass_info in the functor is derived.
 
 typedef struct {
+    // XXX MAKE_FIELD_UNSIGNED - first three fields
     MR_int_least16_t                MR_exist_typeinfos_plain;
     MR_int_least16_t                MR_exist_typeinfos_in_tci;
     MR_int_least16_t                MR_exist_tcis;
@@ -888,7 +889,7 @@ typedef struct {
     // next to a local secondary tag (MR_SECTAG_LOCAL_BITS), the value of
     // the MR_arg_offset field will be -2.
 
-    MR_int_least8_t         MR_arg_shift;
+    MR_int_least8_t         MR_arg_shift;   // XXX MAKE_FIELD_UNSIGNED
     MR_int_least8_t         MR_arg_bits;
     // If MR_arg_bits is 0, then the argument occupies the entire word
     // at the offset given by MR_arg_offset within the term's memory cell.
@@ -965,17 +966,20 @@ typedef enum {
 typedef struct {
     MR_ConstString          MR_du_functor_name;
     MR_int_least16_t        MR_du_functor_orig_arity;
-    MR_int_least16_t        MR_du_functor_arg_type_contains_var;
+                            // XXX MAKE_FIELD_UNSIGNED
+    MR_uint_least16_t       MR_du_functor_arg_type_contains_var;
     MR_Sectag_Locn          MR_du_functor_sectag_locn;
-    MR_int_least8_t         MR_du_functor_primary;
-    MR_int_least32_t        MR_du_functor_secondary;
+    MR_uint_least8_t        MR_du_functor_primary;
+    MR_int_least32_t        MR_du_functor_secondary;    // -1 = no sectag
+                            // XXX MAKE_FIELD_UNSIGNED
     MR_int_least32_t        MR_du_functor_ordinal;
+                            // XXX MAKE_FIELD_UNSIGNED
     const MR_PseudoTypeInfo *MR_du_functor_arg_types;
     const MR_ConstString    *MR_du_functor_arg_names;
     const MR_DuArgLocn      *MR_du_functor_arg_locns;
     const MR_DuExistInfo    *MR_du_functor_exist_info;
     MR_FunctorSubtype       MR_du_functor_subtype;
-    MR_int_least8_t         MR_du_functor_num_sectag_bits;
+    MR_uint_least8_t        MR_du_functor_num_sectag_bits;
 } MR_DuFunctorDesc;
 
 typedef const MR_DuFunctorDesc              *MR_DuFunctorDescPtr;
@@ -1014,7 +1018,7 @@ typedef const MR_DuFunctorDesc              *MR_DuFunctorDescPtr;
 
 typedef struct {
     MR_ConstString      MR_enum_functor_name;
-    MR_int_least32_t    MR_enum_functor_ordinal;
+    MR_int_least32_t    MR_enum_functor_ordinal;    // XXX MAKE_FIELD_UNSIGNED
 } MR_EnumFunctorDesc;
 
 typedef const MR_EnumFunctorDesc            *MR_EnumFunctorDescPtr;
@@ -1024,6 +1028,7 @@ typedef const MR_EnumFunctorDesc            *MR_EnumFunctorDescPtr;
 typedef struct {
     MR_ConstString      MR_foreign_enum_functor_name;
     MR_int_least32_t    MR_foreign_enum_functor_ordinal;
+                        // XXX MAKE_FIELD_UNSIGNED
     MR_Integer          MR_foreign_enum_functor_value;
 } MR_ForeignEnumFunctorDesc;
 
@@ -1063,16 +1068,15 @@ typedef const MR_NotagFunctorDesc           *MR_NotagFunctorDescPtr;
 // type_ctor_info.
 
 typedef struct {
-    MR_int_least32_t                MR_sectag_sharers;
+    MR_uint_least32_t               MR_sectag_sharers;
     MR_Sectag_Locn                  MR_sectag_locn;
     const MR_DuFunctorDesc * const *MR_sectag_alternatives;
     // numbits = -1 means rest-of-word (for local) or full-word (for remote).
     int8_t                          MR_sectag_numbits;
     // XXX ARG_PACK The numbits field should be before MR_sectag_alternatives,
     // but that requires nontrivial bootstrapping. The locn field should
-    // also be something like a uint8_t, while the num_sharers field
-    // should be MR_uint_least32_t (or MR_uint_least16_t, if want to make
-    // a practical limit official).
+    // also be something like a uint8_t. The num_sharers field could be
+    // MR_uint_least16_t if we want to make a practical limit official.
     // XXX ARG_PACK We should consider storing the value of the sectag mask
     // ((1 << ptag_layout->MR_sectag_numbits) - 1) here, to avoid having to
     // compute it potentially millions of times. It could be stored either as
@@ -1200,6 +1204,7 @@ typedef union {
 
 // Map from ordinal (declaration order) functor numbers to lexicographic
 // functor numbers which can be passed to construct.construct.
+// XXX MAKE_FIELD_UNSIGNED (also change to 16 or 32-bits later)
 
 typedef const MR_Integer        *MR_FunctorNumberMap;
 
@@ -1214,9 +1219,9 @@ typedef const MR_Integer        *MR_FunctorNumberMap;
     // files listed at the top of this file, as well as in the macros below.
 
 struct MR_TypeCtorInfo_Struct {
-    MR_Integer          MR_type_ctor_arity;
-    MR_int_least8_t     MR_type_ctor_version;
-    MR_int_least8_t     MR_type_ctor_num_ptags;         // if DU
+    MR_Integer          MR_type_ctor_arity;         // XXX MAKE_FIELD_UNSIGNED
+    MR_uint_least8_t    MR_type_ctor_version;
+    MR_int_least8_t     MR_type_ctor_num_ptags;     // negative if not DU
     MR_TypeCtorRepInt   MR_type_ctor_rep_CAST_ME;
     MR_ProcAddr         MR_type_ctor_unify_pred;
     MR_ProcAddr         MR_type_ctor_compare_pred;
@@ -1224,8 +1229,9 @@ struct MR_TypeCtorInfo_Struct {
     MR_ConstString      MR_type_ctor_name;
     MR_TypeFunctors     MR_type_ctor_functors;
     MR_TypeLayout       MR_type_ctor_layout;
-    MR_int_least32_t    MR_type_ctor_num_functors;
-    MR_int_least16_t    MR_type_ctor_flags;
+    MR_int_least32_t    MR_type_ctor_num_functors;  // negative if no symbols
+                                                    // XXX MAKE_FIELD_UNSIGNED
+    MR_uint_least16_t   MR_type_ctor_flags;
     MR_FunctorNumberMap MR_type_ctor_functor_number_map;
 
 // The following fields will be added later, once we can exploit them:

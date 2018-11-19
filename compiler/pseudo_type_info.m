@@ -72,6 +72,7 @@
 :- import_module list.
 :- import_module require.
 :- import_module term.
+:- import_module uint16.
 
 %---------------------------------------------------------------------------%
 
@@ -108,7 +109,8 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             TypeName = unqualify_name(QualTypeName),
             sym_name_get_module_name_default(QualTypeName,
                 unqualified("builtin"), TypeModule),
-            RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
+            RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName,
+                uint16.det_from_int(Arity)),
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
             expect(check_arity(PseudoArgs, Arity), $pred, "arity mismatch"),
@@ -172,7 +174,8 @@ construct_type_info(Type, TypeInfo) :-
         TypeName = unqualify_name(QualTypeName),
         sym_name_get_module_name_default(QualTypeName,
             unqualified("builtin"), TypeModule),
-        RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
+        RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName,
+            uint16.det_from_int(Arity)),
         generate_plain_args(TypeArgs, TypeInfoArgs),
         expect(check_arity(TypeInfoArgs, Arity), $pred, "arity mismatch"),
         (

@@ -383,7 +383,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     --->    ctor(
                 % The ordinal number of the functor. The first functor
                 % in a type definition has ordinal number 0.
-                cons_ordinal        :: int,
+                cons_ordinal        :: uint32,
 
                 % Existential constraints, if any.
                 cons_maybe_exist    :: maybe_cons_exist_constraints,
