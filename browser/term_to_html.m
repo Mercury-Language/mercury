@@ -92,9 +92,9 @@ make_file_url_prefix(Path0, FilePrefix) :-
 header(FilePrefix) = [
     "<!doctype html>\n",
 
-    "<link rel='stylesheet' href='", FilePrefix, "/jstree.style.min.css' />\n",
-    "<script src='", FilePrefix, "/jquery.slim.min.js'></script>\n",
-    "<script src='", FilePrefix, "/jstree.min.js'></script>\n",
+    "<link rel='stylesheet' href='", FilePrefix, "/jstree.style.css' />\n",
+    "<script src='", FilePrefix, "/jquery.slim.js'></script>\n",
+    "<script src='", FilePrefix, "/jstree.js'></script>\n",
 
     "<link rel='stylesheet' href='", FilePrefix, "/mdb_term_browser.css' />\n",
     "<script src='", FilePrefix, "/mdb_term_browser.js'></script>\n",

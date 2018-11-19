@@ -48,7 +48,7 @@ License version 2:
 The following file is from the jquery project, distributed under the
 following license:
 
-    scripts/jquery.slim.min.js
+    scripts/jquery.slim.js
 
 	Copyright JS Foundation and other contributors, https://js.foundation/
 
@@ -76,8 +76,8 @@ following license:
 The following files are from the jstree project, distributed under the
 following license:
 
-    scripts/jstree.min.js
-    scripts/jstree.style.min.css
+    scripts/jstree.js
+    scripts/jstree.style.css
     scripts/32px.png
     scripts/40px.png
     scripts/throbber.gif
