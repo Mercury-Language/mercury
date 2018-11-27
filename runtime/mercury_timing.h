@@ -24,20 +24,20 @@
 #include <limits.h>         // CLK_TCK is defined here, on some systems
 
 //
-// `HZ' is the number of clock ticks per second.
+// Get the number of clock ticks per second.
 // It is used when converting a clock_t value to a time in seconds.
 // It may be defined by <sys/time.h>, but if it is not defined there,
 // we may be able to use `sysconf(_SC_CLK_TCK)' or CLOCKS_PER_SEC or
 // CLK_TCK instead.
 
-#ifdef HZ
-  #define MR_CLOCK_TICKS_PER_SECOND HZ
-#elif defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+#if defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
   #define MR_CLOCK_TICKS_PER_SECOND ((int) sysconf(_SC_CLK_TCK))
 #elif defined(CLOCKS_PER_SEC)
   #define MR_CLOCK_TICKS_PER_SECOND CLOCKS_PER_SEC
 #elif defined(CLK_TCK)
   #define MR_CLOCK_TICKS_PER_SECOND CLK_TCK
+#elif defined(HZ)
+  #define MR_CLOCK_TICKS_PER_SECOND HZ
 #else
   // just leave it undefined
 #endif
