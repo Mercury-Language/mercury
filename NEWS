@@ -474,10 +474,12 @@ Changes to the Mercury standard library:
    - least_index/1
    - greatest_index/1
 
-* The following predicates have been added to the array2d module:
+* The following predicates and functions have been added to the array2d
+  module:
 
    - is_empty/1
    - fill/3
+   - from_array/3
 
 * The following predicates have been added to the time module:
 

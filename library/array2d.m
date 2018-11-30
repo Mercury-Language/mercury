@@ -25,7 +25,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % A array2d is a two-dimensional array stored in row-major order
+    % An array2d is a two-dimensional array stored in row-major order
     % (that is, the elements of the first row in left-to-right
     % order, followed by the elements of the second row and so forth.)
     %
@@ -46,7 +46,7 @@
 :- func init(int, int, T) = array2d(T).
 :- mode init(in, in, in) = array2d_uo is det.
 
-    % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs a array2d
+    % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs an array2d
     % of size M * N, with the special case that bounds(array2d([]), 0, 0).
     %
     % An exception is thrown if the sublists are not all the same length.
@@ -54,17 +54,26 @@
 :- func array2d(list(list(T))) = array2d(T).
 :- mode array2d(in) = array2d_uo is det.
 
+    % A synonym for the above.
+    %
+:- func from_lists(list(list(T))) = array2d(T).
+:- mode from_lists(in) = array2d_uo is det.
+
+    % from_array(M, N, Array) constructs an array2d of size M * N where the
+    % elements are taken from Array in row-major order, i.e. the element at row
+    % I column J is taken from Array at index (I * N + J). Indices start from
+    % zero. Throws an exception if M < 0 or N < 0, or if the number of elements
+    % in Array does not equal M * N.
+    %
+:- func from_array(int, int, array(T)) = array2d(T).
+:- mode from_array(in, in, array_di) = array2d_uo is det.
+
     % is_empty(Array):
     % True iff Array contains zero elements.
     %
 :- pred is_empty(array2d(T)).
 %:- mode is_empty(array2d_ui) is semidet.
 :- mode is_empty(in) is semidet.
-
-    % A synonym for the above.
-    %
-:- func from_lists(list(list(T))) = array2d(T).
-:- mode from_lists(in) = array2d_uo is det.
 
     % bounds(array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), M, N)
     %
@@ -80,7 +89,7 @@
 :- mode in_bounds(in,       in,  in ) is semidet.
 
     % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) ^ elem(I, J) = X
-    % where X is the J+1th element of the I+1th row (that is, indices
+    % where X is the J+1'th element of the I+1'th row (that is, indices
     % start from zero.)
     %
     % An exception is thrown unless 0 =< I < M, 0 =< J < N.
@@ -175,10 +184,33 @@ array2d(Xss @ [Xs | _]) = T :-
           else  func_error("array2d.array2d/1: non-rectangular list of lists")
         ).
 
+from_lists(Xss) = array2d(Xss).
+
+from_array(M, N, Array) = Array2d :-
+    ( if
+        M >= 0,
+        N >= 0
+    then
+        array.size(Array, Size),
+        compare(Result, Size, M * N),
+        (
+            Result = (=),
+            Array2d = array2d(M, N, Array)
+        ;
+            Result = (>),
+            error("array2d.from_array: too many elements")
+        ;
+            Result = (<),
+            error("array2d.from_array: too few elements")
+        )
+    else
+        error("array2d.from_array: bounds must be non-negative")
+    ).
+
+%---------------------------------------------------------------------------%
+
 is_empty(array2d(_, _, A)) :-
     array.is_empty(A).
-
-from_lists(Xss) = array2d(Xss).
 
 %---------------------------------------------------------------------------%
 

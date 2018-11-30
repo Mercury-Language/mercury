@@ -1,0 +1,45 @@
+------FROM ARRAY------
+Array = array([])
+M = -1
+N = -1
+EXCEPTION: "array2d.from_array: bounds must be non-negative"
+------FROM ARRAY------
+Array = array([])
+M = 0
+N = -1
+EXCEPTION: "array2d.from_array: bounds must be non-negative"
+------FROM ARRAY------
+Array = array([])
+M = -1
+N = 0
+EXCEPTION: "array2d.from_array: bounds must be non-negative"
+------FROM ARRAY------
+Array = array([])
+M = 2
+N = 2
+EXCEPTION: "array2d.from_array: too few elements"
+------FROM ARRAY------
+Array = array([1, 2, 3, 4, 5])
+M = 2
+N = 2
+EXCEPTION: "array2d.from_array: too many elements"
+------FROM ARRAY------
+Array = array([])
+M = 0
+N = 0
+Array2d = array2d(0, 0, array([]))
+------FROM ARRAY------
+Array = array([1])
+M = 1
+N = 1
+Array2d = array2d(1, 1, array([1]))
+------FROM ARRAY------
+Array = array([1, 2, 3, 4])
+M = 2
+N = 2
+Array2d = array2d(2, 2, array([1, 2, 3, 4]))
+------FROM ARRAY------
+Array = array([1, 2, 3, 4, 5, 6])
+M = 2
+N = 3
+Array2d = array2d(2, 3, array([1, 2, 3, 4, 5, 6]))
