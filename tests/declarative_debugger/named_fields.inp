@@ -2,7 +2,7 @@ register --quiet
 table_io allow
 table_io start
 echo on
-break swap
+break named_fields.swap
 c
 f
 dd -a

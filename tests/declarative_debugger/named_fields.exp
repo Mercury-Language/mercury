@@ -2,7 +2,7 @@
 mdb> mdb> mdb> I/O tabling started.
 mdb> echo on
 Command echo enabled.
-mdb> break swap
+mdb> break named_fields.swap
  0: + stop  interface func named_fields.swap/1-0 (det)
 mdb> c
       E2:     C2 CALL func named_fields.swap/1-0 (det) named_fields.m:31 (named_fields.m:17)
