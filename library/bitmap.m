@@ -1000,7 +1000,7 @@ unsafe_is_clear(BM, I) :-
     copy(BM0::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    BM = new MercuryBitmap(BM0.num_bits);
+    BM = new jmercury.runtime.MercuryBitmap(BM0.num_bits);
     System.arraycopy(BM0.elements, 0, BM.elements, 0, BM0.elements.length);
 ").
 
@@ -2028,7 +2028,7 @@ bytes_compare(Result, Index, MaxIndex, BM1, BM2) :-
     allocate_bitmap(N::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    BM = new MercuryBitmap(N);
+    BM = new jmercury.runtime.MercuryBitmap(N);
 ").
 
 :- pragma foreign_proc("C#",
