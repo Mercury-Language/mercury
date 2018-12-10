@@ -1345,8 +1345,8 @@
     %
     % d     int     signed integer
     % i     int     signed integer
-    % o     int     signed octal        with '0' prefix
-    % x,X   int     signed hex          with '0x', '0X' prefix
+    % o     int     unsigned octal      with '0' prefix
+    % x,X   int     unsigned hex        with '0x', '0X' prefix
     % u     int     unsigned integer
     % c     char    character
     % s     string  string
