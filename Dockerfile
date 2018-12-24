@@ -20,8 +20,12 @@ ENV MERCURY_DEV_TARGET $MERCURY_TMP/mercury
 ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE y
 
 # install packaged compiler for bootstrapping
+# first install curl and lsb-realse so we can add the public key for downloading
+# Mercury packages.
+# Then add the remote repository and install all packages required for building
+# the Mercury compiler from source.
 RUN ( echo 'debconf debconf/frontend select Noninteractive' \
-        | debconf-set-selections ) && \ 
+        | debconf-set-selections ) && \
     apt-get update && apt-get install -y \
         apt-utils \
         curl \
@@ -47,7 +51,7 @@ COPY ${MERCURY_DEV_SOURCE} .
 #   - `docker build http://uri.to.bootstrapped.tar.gz',
 #   - `docker build https://github.com/:user:/mercury.git'
 #   - `docker build .'
-#        
+#
 # Bootcheck fails currently: ( MAKE_DIR=`pwd`/scripts PATH=$PATH:`pwd`/scripts tools/bootcheck $MERCURY_DEV_PARALLEL ) \
 RUN ( \
         ([ -f ./configure ] || ./prepare.sh) \
