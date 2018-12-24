@@ -1,0 +1,30 @@
+================
+Array = array([1, 2, 3, 4, 5])
+Lo = 0
+Hi = 4
+List = [1, 2, 3, 4, 5]
+================
+Array = array([1, 2, 3, 4, 5])
+Lo = 1
+Hi = 3
+List = [2, 3, 4]
+================
+Array = array([1, 2, 3, 4, 5])
+Lo = 0
+Hi = 0
+List = [1]
+================
+Array = array([1, 2, 3, 4, 5])
+Lo = -1
+Hi = 0
+EXCEPTION: "second argument of fetch_items: index -1 not in range [0, 4]"
+================
+Array = array([1, 2, 3, 4, 5])
+Lo = 0
+Hi = 6
+EXCEPTION: "third argument of fetch_items: index 6 not in range [0, 4]"
+================
+Array = array([1, 2, 3, 4, 5])
+Lo = 4
+Hi = 2
+List = []

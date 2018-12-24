@@ -402,7 +402,7 @@
     % fill_range(Item, Lo, Hi, !Array):
     % Sets every element of the array with index in the range Lo..Hi
     % (inclusive) to Item. Throws a software_error/1 exception if Lo > Hi.
-    % Throws an index_out_of_bound/0 exception if Lo or Hi is out of bounds.
+    % Throws an index_out_of_bounds/0 exception if Lo or Hi is out of bounds.
     %
 :- pred fill_range(T::in, int::in, int::in,
      array(T)::array_di, array(T)::array_uo) is det.
@@ -429,9 +429,11 @@
 %:- mode to_list(array_ui) = out is det.
 :- mode to_list(in) = out is det.
 
-    % fetch_items takes an array and a lower and upper index,
-    % and places those items in the array between these indices into a list.
-    % It is an error if either index is out of bounds.
+    % fetch_items(Array, Lo, Hi, List):
+    % Returns a list containing the items in the array with index in the range
+    % Lo..Hi (both inclusive) in the same order that they occurred in the
+    % array. Returns an empty list if Hi < Lo. Throws an index_out_of_bounds/0
+    % exception if Lo or Hi is out of bounds.
     %
 :- pred fetch_items(array(T), int, int, list(T)).
 :- mode fetch_items(in, in, in, out) is det.
@@ -2332,8 +2334,12 @@ to_list(Array) = List :-
     to_list(Array, List).
 
 to_list(Array, List) :-
-    bounds(Array, Low, High),
-    fetch_items(Array, Low, High, List).
+    ( if is_empty(Array) then
+        List = []
+    else
+        bounds(Array, Low, High),
+        fetch_items(Array, Low, High, List)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -2341,21 +2347,18 @@ fetch_items(Array, Low, High) = List :-
     fetch_items(Array, Low, High, List).
 
 fetch_items(Array, Low, High, List) :-
-    ( if
-        High < Low
-    then
+    ( if not in_bounds(Array, Low) then
+        arg_out_of_bounds_error(Array, "second", "fetch_items", Low)
+    else if not in_bounds(Array, High) then
+        arg_out_of_bounds_error(Array, "third", "fetch_items", High)
+    else if High < Low then
         % If High is less than Low, then there cannot be any array indexes
         % within the range Low -> High (inclusive). This can happen when
         % calling to_list/2 on the empty array. Testing for this condition
         % here rather than in to_list/2 is more general.
         List = []
-    else if
-        array.in_bounds(Array, Low),
-        array.in_bounds(Array, High)
-    then
-        List = do_foldr_func(func(X, Xs) = [X | Xs], Array, [], Low, High)
     else
-        unexpected($pred, "one or more indexes is out-of-bounds")
+        List = do_foldr_func(func(X, Xs) = [X | Xs], Array, [], Low, High)
     ).
 
 %---------------------------------------------------------------------------%

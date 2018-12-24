@@ -123,6 +123,11 @@ Changes that may break compatibility:
 * We have changed the semantics of array.shrink/3 and array.resize/4 so that
   they throw an exception if their first argument is negative.
 
+* We have changed the semantics of array.fetch_times/4 so that it always
+  throws an exception if its second or third argument is out of bounds.
+  Previously, it would return an empty if list if its third argument was less
+  than the second even if one, or both, of these arguments was out of bounds.
+
 Changes to the Mercury language:
 
 * We have added a new primitive type, uint, which is an unsigned integer type
