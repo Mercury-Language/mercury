@@ -1,3 +1,5 @@
+benchmarks/*
 boehm_gc/*
 extras/*
+samples/*
 README.*

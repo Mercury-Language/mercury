@@ -11,20 +11,33 @@ ARG MERCURY_TMP=/var/tmp
 ARG MERCURY_DEV_DEFAULT_GRADE=asm_fast.gc
 ARG MERCURY_DEV_LIBGRADES=${MERCURY_DEV_DEFAULT_GRADE}
 ARG MERCURY_DEV_PARALLEL=-j3
-ARG MERCURY_DEV_STAGE=1
 ARG MERCURY_DEV_PREFIX=/usr/local/mercury
 # When using a source tarball, the source needs to be the top level directory,
 # e.g. `mercury-srcdist-rotd-2017-10-19'
 ARG MERCURY_DEV_SOURCE=.
 
 ENV MERCURY_DEV_TARGET $MERCURY_TMP/mercury
+ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE y
 
 # install packaged compiler for bootstrapping
-RUN apt-get install -y curl && \
+RUN ( echo 'debconf debconf/frontend select Noninteractive' \
+        | debconf-set-selections ) && \ 
+    apt-get update && apt-get install -y \
+        apt-utils \
+        curl \
+        gnupg2 \
+        lsb-release && \
     ( curl -fsSL https://paul.bone.id.au/paul.asc | apt-key add - ) && \
-    printf "deb $MERCURY_DL $(lsb_release -cs) main\ndeb-src $MERCURY_DL $(lsb_release -cs) main" \
+    printf "%s $MERCURY_DL $(lsb_release -cs) main\n" "deb" "deb-src" \
         > /etc/apt/sources.list.d/mercury.list && \
     apt-get update && apt-get install -y \
+        autoconf \
+        automake \
+        bison \
+        flex \
+        git \
+        make \
+        pkg-config \
         mercury-rotd-recommended
 
 WORKDIR $MERCURY_DEV_TARGET
@@ -34,18 +47,15 @@ COPY ${MERCURY_DEV_SOURCE} .
 #   - `docker build http://uri.to.bootstrapped.tar.gz',
 #   - `docker build https://github.com/:user:/mercury.git'
 #   - `docker build .'
+#        
+# Bootcheck fails currently: ( MAKE_DIR=`pwd`/scripts PATH=$PATH:`pwd`/scripts tools/bootcheck $MERCURY_DEV_PARALLEL ) \
 RUN ( \
         ([ -f ./configure ] || ./prepare.sh) \
         && ./configure \
             --enable-libgrades=$MERCURY_DEV_LIBGRADES \
             --with-default-grade=$MERCURY_DEFAULT_GRADE \
             --prefix=$MERCURY_DEV_PREFIX \
-        && ([ -f ./configure ] || make depend) \
-        && make PARALLEL=$MERCURY_DEV_PARALLEL \
-        && tools/bootcheck $MERCURY_DEV_PARALLEL \
-        && ([$MERCURY_DEV_STAGE -eq 1] \
-            || ( cd stage2 && make install PARALLEL=$MERCURY_DEV_PARALLEL ) \
-        ) \
+        && make PARALLEL=$MERCURY_DEV_PARALLEL install \
         && rm -fR ${MERCURY_BOOTSTRAP_TARGET} \
         && rm -fR $MERCURY_DEV_TARGET \
     )
