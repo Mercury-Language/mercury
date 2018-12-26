@@ -39,7 +39,6 @@ RUN ( echo 'debconf debconf/frontend select Noninteractive' \
         automake \
         bison \
         flex \
-        git \
         make \
         pkg-config \
         mercury-rotd-recommended
