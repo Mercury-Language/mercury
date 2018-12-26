@@ -59,6 +59,7 @@ RUN ( \
             --enable-libgrades=$MERCURY_DEV_LIBGRADES \
             --with-default-grade=$MERCURY_DEFAULT_GRADE \
             --prefix=$MERCURY_DEV_PREFIX \
+            --disable-symlinks \
         && make PARALLEL=$MERCURY_DEV_PARALLEL install \
         && rm -fR ${MERCURY_BOOTSTRAP_TARGET} \
         && rm -fR $MERCURY_DEV_TARGET \
