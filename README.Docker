@@ -19,6 +19,7 @@ Currently there are three stages:
 
 Used variables and arguments (for all stages):
 
+  - MERCURY_BOOTSTRAP: iff "y" then use a bootstrap mmc while building the compiler
   - MERCURY_DEPEND_ARG: Currently defined as either jessie or stretch, to support building for different debian distributions.
   - MERCURY_DL: Where to find the packaged ROTD compiler for Debian (see above).
   - MERCURY_DEV_SOURCE: Source directory from where to obtain the compiler source code. Used to support building from tarballs (see below).
@@ -31,7 +32,7 @@ Used variables and arguments (for all stages):
 Additionally building the ROTD tarball is supported via:
 
 ```bash
-docker build --target compiler --build-arg MERCURY_DEV_SOURCE=mercury-srcdist-rotd-2018-12-24 http://dl.mercurylang.org/rotd/mercury-srcdist-rotd-2018-12-24.tar.gz
+docker build --build-arg MERCURY_BOOTSTRAP=n --build-arg MERCURY_DEV_SOURCE=mercury-srcdist-rotd-2018-12-24 http://dl.mercurylang.org/rotd/mercury-srcdist-rotd-2018-12-24.tar.gz
 ```
 
 Using containerised mmc on the host platform

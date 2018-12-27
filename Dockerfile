@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
 
 FROM base AS bootstrap
 
+ARG MERCURY_BOOTSTRAP=y
 ARG MERCURY_DL=http://dl.mercurylang.org/deb/
 ARG MERCURY_DEV_DEFAULT_GRADE=asm_fast.gc
 ARG MERCURY_DEV_LIBGRADES=${MERCURY_DEV_DEFAULT_GRADE}
@@ -39,18 +40,18 @@ ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE y
 RUN ( echo 'debconf debconf/frontend select Noninteractive' \
         | debconf-set-selections ) && \
     apt-get update && apt-get install -y \
-        curl \
-        gnupg2 \
-        lsb-release && \
-    ( curl -fsSL https://paul.bone.id.au/paul.asc | apt-key add - ) && \
-    printf "%s $MERCURY_DL $(lsb_release -cs) main\n" "deb" "deb-src" \
-        > /etc/apt/sources.list.d/mercury.list && \
-    apt-get update && apt-get install -y \
-        autoconf \
-        automake \
         bison \
         flex \
-        mercury-rotd-recommended
+        $([ "$MERCURY_BOOTSTRAP" != "y" ] || \
+            echo autoconf automake curl gnupg2 lsb-release) && \
+    [ "${MERCURY_BOOTSTRAP}" != "y" ] || \
+        ( \
+            ( curl -fsSL https://paul.bone.id.au/paul.asc | apt-key add - ) && \
+            printf "%s $MERCURY_DL $(lsb_release -cs) main\n" "deb" "deb-src" \
+                > /etc/apt/sources.list.d/mercury.list && \
+            apt-get update && apt-get install -y \
+                mercury-rotd-recommended \
+        )
 
 WORKDIR $MERCURY_DEV_TARGET
 COPY ${MERCURY_DEV_SOURCE} .

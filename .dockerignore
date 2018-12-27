@@ -12,7 +12,8 @@ confdefs.h
 config.cache
 config.log
 config.status
-configure
+# configure is not ignored, s.th. tarballs are supported
+# configure
 /.configured_library_grades
 configure.help
 configure.log
