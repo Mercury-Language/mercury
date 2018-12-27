@@ -1,0 +1,68 @@
+This file documents using Mercury within a Docker container.
+
+Motivation
+==========
+
+Docker is a popular way to archieve cross-platform containerisation of applications.
+Due to the rather lengthy compile time of the Mercury compiler itself, a way to package the compiler and all of its
+dependencies is a desirable goal.
+
+Building Mercury
+================
+
+The [Dockerfile](Dockerfile) is a [multi-staged](https://docs.docker.com/develop/develop-images/multistage-build/) Dockerfile.
+Currently there are three stages:
+  * base: Defines the basic image that all Mercury related containers should use.
+    Based on Debian (Apline Linux works as well but is not supported yet), it comes with gcc, make, pkg-config and libc headers.
+  * bootstrap: Installs the packaged ROTD compiler from the [download page](http://dl.mercurylang.org/deb/) and autotools.
+  * compiler: Uses the bootstrapped compiler to (auto-)configure Mercury and install it into a single-layered container.
+
+Used variables and arguments (for all stages):
+
+  - MERCURY_DEPEND_ARG: Currently defined as either jessie or stretch, to support building for different debian distributions.
+  - MERCURY_DL: Where to find the packaged ROTD compiler for Debian (see above).
+  - MERCURY_DEV_SOURCE: Source directory from where to obtain the compiler source code. Used to support building from tarballs (see below).
+  - MERCURY_DEV_TARGET: Temporary directory used as container working directory and for building the compiler.
+  - MERCURY_DEV_PREFIX: Default prefix to install Mercury to (```/usr/local/mercury```).
+  - MERUCRY_DEV_LIBGRADES and MERCURY_DEV_DEFAULT_GRADE: Grades to build, as defined by ```./configure --enable-libgrades```.
+    Default is asm_fast.gc.
+  - MERCURY_DEV_PARALLEL: Just as ```make PARALLEL=```, defaults to ```-j3```.
+
+Additionally building the ROTD tarball is supported via:
+
+```bash
+docker build --target compiler --build-arg MERCURY_DEV_SOURCE=mercury-srcdist-rotd-2018-12-24 http://dl.mercurylang.org/rotd/mercury-srcdist-rotd-2018-12-24.tar.gz
+```
+
+Using containerised mmc on the host platform
+============================================
+
+```bash
+docker run --rm --mount type=bind,src="$(pwd)",dst=/var/tmp/mercury mercury-dev --linkage static -m hello
+```
+
+The mount directive mounts the current working directory as a directory inside the container, where the containers default working directory is ```/var/tmp/mercury```, see MERCURY_DEV_TARGET.
+
+Another use case is to build entire libraries, such as [mercury-json](https://github.com/juliensf/mercury-json.git).
+For this the entry point has to be changed in case a Makefile or similar is used:
+
+```bash
+git clone https://github.com/juliensf/mercury-json.git
+docker run --rm --mount type=bind,src="$(pwd)/mercury-json",dst=/var/tmp/mercury --entrypoint make mercury-dev:multi runtests
+```
+
+Limitations
+===========
+
+Currently only static linkage is supported, as dynamic linkage searches the host for the Mercury runtime library, which might not be installed or not binary compatible.
+Similary, ```--use-grade-subdirs``` is not supported as it uses symbolic links that do not work properly on all platforms, but might work in a Linux only environment.
+Windows containers are not supported yet, but will be in the future. For this multi-arch files can be utilised.
+Note that using [Docker in comination with WSL](https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly) is tested and supported.
+Please follow all the instructions including changing the mount points from ```/mnt/c``` to ```/c``` only.
+Additionally only mounting shared volumes work, such as from the local user profile directory.
+
+As this is not yet established within the Mercury community, there are no best-pratices and conventions defined.
+It would be desirable to define a common location for installing libraries, a default set of grades available.
+Using Docker volumes to store both the runtime libraries and the extra/third party libraries would allow composition of complex build scripts.
+
+As an enhancement to the Mercury compiler special publish and pack targets could be designed that would allow isolated deployment and packaging of Mercury libraries and executables. This is already something [.NET Core](https://github.com/dotnet/core) supports via the [.NET Core CLI](https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-publish?tabs=netcore21).

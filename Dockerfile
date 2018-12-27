@@ -4,9 +4,8 @@
 #   - stretch
 #   - jessie
 ARG MERCURY_DEPEND_TAG=stretch
-ARG MERCURY_TMP=/var/tmp
 ARG MERCURY_DEV_PREFIX=/usr/local/mercury
-ARG MERCURY_DEV_TARGET=$MERCURY_TMP/mercury
+ARG MERCURY_DEV_TARGET=/var/tmp/mercury
 
 # first stage, base image
 FROM debian:${MERCURY_DEPEND_TAG} AS base
@@ -27,7 +26,6 @@ ARG MERCURY_DEV_PARALLEL=-j3
 # e.g. `mercury-srcdist-rotd-2017-10-19'
 ARG MERCURY_DEV_SOURCE=.
 # inherited variables
-ARG MERCURY_TMP
 ARG MERCURY_DEV_PREFIX
 ARG MERCURY_DEV_TARGET
 
@@ -76,7 +74,6 @@ RUN ( \
     )
 
 FROM base AS compiler
-ARG MERCURY_TMP
 ARG MERCURY_DEV_PREFIX
 ARG MERCURY_DEV_TARGET
 WORKDIR $MERCURY_DEV_TARGET
