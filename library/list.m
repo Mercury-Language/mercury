@@ -736,14 +736,14 @@
     % filter(Pred, List, TrueList, FalseList) takes a closure with one
     % input argument and for each member X of List, calls the closure.
     % X is included in TrueList iff Pred(X) is true.
-    % X is included in FalseList iff Pred(X) is true.
+    % X is included in FalseList iff Pred(X) is false.
     %
 :- pred filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out, list(X)::out) is det.
 
     % negated_filter(Pred, List) = FalseList takes a closure with one
     % input argument and for each member of List `X', calls the closure.
-    % X is included in FalseList iff Pred(X) is true.
+    % X is included in FalseList iff Pred(X) is false.
     %
 :- func negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in)
     = (list(X)::out) is det.
