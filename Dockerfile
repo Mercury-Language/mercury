@@ -4,19 +4,33 @@
 #   - stretch
 #   - jessie
 ARG MERCURY_DEPEND_TAG=stretch
-FROM debian:${MERCURY_DEPEND_TAG}
+ARG MERCURY_TMP=/var/tmp
+ARG MERCURY_DEV_PREFIX=/usr/local/mercury
+ARG MERCURY_DEV_TARGET=$MERCURY_TMP/mercury
+
+# first stage, base image
+FROM debian:${MERCURY_DEPEND_TAG} AS base
+RUN apt-get update && apt-get install -y \
+    apt-utils \
+    gcc \
+    libc-dev \
+    make \
+    pkg-config
+
+FROM base AS bootstrap
 
 ARG MERCURY_DL=http://dl.mercurylang.org/deb/
-ARG MERCURY_TMP=/var/tmp
 ARG MERCURY_DEV_DEFAULT_GRADE=asm_fast.gc
 ARG MERCURY_DEV_LIBGRADES=${MERCURY_DEV_DEFAULT_GRADE}
 ARG MERCURY_DEV_PARALLEL=-j3
-ARG MERCURY_DEV_PREFIX=/usr/local/mercury
 # When using a source tarball, the source needs to be the top level directory,
 # e.g. `mercury-srcdist-rotd-2017-10-19'
 ARG MERCURY_DEV_SOURCE=.
+# inherited variables
+ARG MERCURY_TMP
+ARG MERCURY_DEV_PREFIX
+ARG MERCURY_DEV_TARGET
 
-ENV MERCURY_DEV_TARGET $MERCURY_TMP/mercury
 ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE y
 
 # install packaged compiler for bootstrapping
@@ -27,7 +41,6 @@ ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE y
 RUN ( echo 'debconf debconf/frontend select Noninteractive' \
         | debconf-set-selections ) && \
     apt-get update && apt-get install -y \
-        apt-utils \
         curl \
         gnupg2 \
         lsb-release && \
@@ -39,8 +52,6 @@ RUN ( echo 'debconf debconf/frontend select Noninteractive' \
         automake \
         bison \
         flex \
-        make \
-        pkg-config \
         mercury-rotd-recommended
 
 WORKDIR $MERCURY_DEV_TARGET
@@ -64,6 +75,12 @@ RUN ( \
         && rm -fR $MERCURY_DEV_TARGET \
     )
 
+FROM base AS compiler
+ARG MERCURY_TMP
+ARG MERCURY_DEV_PREFIX
+ARG MERCURY_DEV_TARGET
+WORKDIR $MERCURY_DEV_TARGET
+COPY --from=bootstrap $MERCURY_DEV_PREFIX $MERCURY_DEV_PREFIX
 ENV PATH ${MERCURY_DEV_PREFIX}/bin:$PATH
 
 ENTRYPOINT ["mmc"]
