@@ -303,22 +303,66 @@
 % ML_Ranges ML_ranges_universe(void);
 % Return the set of integers from (min_int+1)..max_int.
 %
-% int ML_ranges_is_empty(ML_Ranges ranges);
-% Succeeds iff ranges is the empty set.
+% ML_Ranges ML_ranges_range(MR_Integer l, MR_Integer h);
+% Return the set of integers from `l' to `h' inclusive.
 %
-% MR_Integer ML_ranges_size(ML_Ranges ranges);
-% Return the number of distinct integers in a range.a
+% int ML_ranges_is_empty(ML_Ranges r);
+% Return true iff `r` is the empty set.
+%
+% MR_Integer ML_ranges_size(ML_Ranges r);
+% Return the number of distinct integers in `r'.
 %
 % int ML_ranges_split(ML_Ranges d, MR_Integer *l, MR_Integer *h,
 %       ML_Ranges *rest);
-% If `d' is not the empty set, then set `l' and `h"'to the lower
-% and upper bound of the first range in `d'; `rest' is set to `d'
-% with the first range removed.
+% Return true if `d' is not the empty set, setting `l' and `h' to the
+% lower and upper bound of the first range in `d', and setting `rest'
+% to `d' with the first range removed.
+% Return false if `d' is the empty set.
 %
 % ML_Ranges ML_ranges_insert(MR_Integer i, ML_ranges r);
 % Return the ranges value that is the result of inserting the integer
 % `i' into the ranges value `r'.
+
+%-----------------------------------------------------------------------------%
 %
+% Java interface to ranges.
+%
+
+% This section describes the Java interface to the ranges/0 type that is
+% exported by this module.
+%
+% In Java the ranges/0 type is represented by the ranges.Ranges_0 class.
+% The following operations are exported as public static methods of the ranges
+% module and may be called from Java code.
+%
+% ranges.Ranges_0 empty();
+% Return the empty set.
+%
+% ranges.Ranges_0 universe();
+% Return the set of integers from (min_int+1)..max_int.
+%
+% ranges.Ranges_0 range(int l, int, h);
+% Return the set of integers from `l' to `h' inclusive.
+%
+% boolean is_empty(ranges.Ranges_0 r);
+% Return true iff `r' is the empty set.
+%
+% int size(ranges.Ranges_0 r);
+% Return the number of distinct integers in `r'.
+%
+% boolean split(ranges.Ranges_0 d,
+%     jmercury.runtime.Ref<Integer> l,
+%     jmercury.runtime.Ref<Integer> h,
+%     jmercury.runtime.Ref<ranges.Ranges_0> rest);
+% Return true if `d' is not the empty set, setting `l' and `h' to the
+% lower and upper bound of the first range in `d', and setting `rest'
+% to `d' with the first range removed.
+% Return false if `d' is the empty set.
+%
+% ranges.Ranges_0 insert(int i, ranges.Ranges_0 r);
+% Return the ranges value that is the result of inserting the integer
+% `i' into the ranges value `r'.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -362,18 +406,24 @@ typedef MR_Word ML_Ranges;
 ").
 
 :- pragma foreign_export("C", ranges.empty = out, "ML_ranges_empty").
+:- pragma foreign_export("Java", ranges.empty = out, "empty").
 
 empty = nil.
 
 :- pragma foreign_export("C", ranges.is_empty(in), "ML_ranges_is_empty").
+:- pragma foreign_export("Java", ranges.is_empty(in), "is_empty").
 
 is_empty(nil).
 
 is_non_empty(range(_, _, _)).
 
 :- pragma foreign_export("C", universe = out, "ML_ranges_universe").
+:- pragma foreign_export("Java", universe = out, "universe").
 
 universe = range(min_int, max_int, nil).
+
+:- pragma foreign_export("C", range(in, in) = out, "range").
+:- pragma foreign_export("Java", range(in, in) = out, "range").
 
 range(Min, Max) = Ranges :-
     ( if Min = min_int then
@@ -386,6 +436,8 @@ range(Min, Max) = Ranges :-
 
 :- pragma foreign_export("C", ranges.split(in, out, out, out),
     "ML_ranges_split").
+:- pragma foreign_export("Java", ranges.split(in, out, out, out),
+    "split").
 
 split(range(Min1, Max, Rest), Min1 + 1, Max, Rest).
 
@@ -393,6 +445,7 @@ is_contiguous(Range, Min + 1, Max) :-
     Range = range(Min, Max, nil).
 
 :- pragma foreign_export("C", ranges.insert(in, in) = out, "ML_ranges_insert").
+:- pragma foreign_export("Java", ranges.insert(in, in) = out, "insert").
 
 insert(N, As) = union(As, range(N, N)).
 insert(N, As, Bs) :- Bs = insert(N, As).
@@ -402,6 +455,7 @@ delete(N, As) = difference(As, range(N, N)).
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_export("C", size(in) = out, "ML_ranges_size").
+:- pragma foreign_export("Java", size(in) = out, "size").
 
 size(nil) = 0.
 size(range(L, U, Rest)) = (U - L) + size(Rest).
