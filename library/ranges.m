@@ -422,7 +422,7 @@ is_non_empty(range(_, _, _)).
 
 universe = range(min_int, max_int, nil).
 
-:- pragma foreign_export("C", range(in, in) = out, "range").
+:- pragma foreign_export("C", range(in, in) = out, "ML_ranges_range").
 :- pragma foreign_export("Java", range(in, in) = out, "range").
 
 range(Min, Max) = Ranges :-
