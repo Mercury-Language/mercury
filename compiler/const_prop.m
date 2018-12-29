@@ -1030,195 +1030,295 @@ evaluate_test("int64", ">=", 0, Args, Result) :-
 
 evaluate_test("uint", "<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
-    ( if XVal < YVal then
-        Result = yes
-    else
+    ( if YVal = 0u then
+        % Special case: there are no uints that are < 0u.
         Result = no
+    else
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        ( if XVal < YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint", "=<", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
-    ( if XVal =< YVal then
+    ( if XVal = 0u then
+        % Special case: 0u =< all uints.
         Result = yes
     else
-        Result = no
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        ( if XVal =< YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint", ">", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
-    ( if XVal > YVal then
-        Result = yes
-    else
+    ( if XVal = 0u then
+        % Special case: 0u > than no uints.
         Result = no
+    else
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+        ( if XVal > YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint", ">=", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
-    ( if XVal >= YVal then
+    ( if YVal = 0u then
+        % Special case: all uints are >= 0u.
         Result = yes
     else
-        Result = no
+        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        ( if XVal >= YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 
     % 8-bit unsigned integer comparisons.
 
 evaluate_test("uint8", "<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint8_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint8_const(YVal), [])]),
-    ( if XVal < YVal then
-        Result = yes
-    else
+    ( if YVal = 0u8 then
+        % Special case: there are no uint8s that are < 0u8.
         Result = no
+    else
+        X ^ arg_inst = bound(_, _, [bound_functor(uint8_const(XVal), [])]),
+        ( if XVal < YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint8", "=<", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint8_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint8_const(YVal), [])]),
-    ( if XVal =< YVal then
+    ( if XVal = 0u8 then
+        % Special case: 0u8 =< all uint8s.
         Result = yes
     else
-        Result = no
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint8_const(YVal), [])]),
+        ( if XVal =< YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint8", ">", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint8_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint8_const(YVal), [])]),
-    ( if XVal > YVal then
-        Result = yes
-    else
+    ( if XVal = 0u8 then
+        % Special case: 0u8 > than no uint8s.
         Result = no
+    else
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint8_const(YVal), [])]),
+        ( if XVal > YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint8", ">=", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint8_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint8_const(YVal), [])]),
-    ( if XVal >= YVal then
+    ( if YVal = 0u8 then
+        % Special case: all uint8s are >= 0u8.
         Result = yes
     else
-        Result = no
+        X ^ arg_inst = bound(_, _, [bound_functor(uint8_const(XVal), [])]),
+        ( if XVal >= YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 
     % 16-bit unsigned integer comparisons.
 
 evaluate_test("uint16", "<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint16_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint16_const(YVal), [])]),
-    ( if XVal < YVal then
-        Result = yes
-    else
+    ( if YVal = 0u16 then
+        % Special case: there are no uint16s that are < 0u16.
         Result = no
+    else
+        X ^ arg_inst = bound(_, _, [bound_functor(uint16_const(XVal), [])]),
+        ( if XVal < YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint16", "=<", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint16_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint16_const(YVal), [])]),
-    ( if XVal =< YVal then
+    ( if XVal = 0u16 then
+        % Special case: 0u16 =< all uint16s.
         Result = yes
     else
-        Result = no
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint16_const(YVal), [])]),
+        ( if XVal =< YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint16", ">", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint16_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint16_const(YVal), [])]),
-    ( if XVal > YVal then
-        Result = yes
-    else
+    ( if XVal = 0u16 then
+        % Special case: 0u16 > than no uint16s.
         Result = no
+    else
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint16_const(YVal), [])]),
+        ( if XVal > YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint16", ">=", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint16_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint16_const(YVal), [])]),
-    ( if XVal >= YVal then
+    ( if YVal = 0u16 then
+        % Special case: all uint16s are >= 0u16.
         Result = yes
     else
-        Result = no
+        X ^ arg_inst = bound(_, _, [bound_functor(uint16_const(XVal), [])]),
+        ( if XVal >= YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 
     % 32-bit unsigned integer comparisons.
 
 evaluate_test("uint32", "<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint32_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint32_const(YVal), [])]),
-    ( if XVal < YVal then
-        Result = yes
-    else
+    ( if YVal = 0u32 then
+        % Special case: there are no uint32s that are < 0u32.
         Result = no
+    else
+        X ^ arg_inst = bound(_, _, [bound_functor(uint32_const(XVal), [])]),
+        ( if XVal < YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint32", "=<", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint32_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint32_const(YVal), [])]),
-    ( if XVal =< YVal then
+    ( if XVal = 0u32 then
+        % Special case: 0u32 =< all uint32s.
         Result = yes
     else
-        Result = no
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint32_const(YVal), [])]),
+        ( if XVal =< YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint32", ">", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint32_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint32_const(YVal), [])]),
-    ( if XVal > YVal then
-        Result = yes
-    else
+    ( if XVal = 0u32 then
+        % Special case: 0u32 > than no uint32s.
         Result = no
+    else
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint32_const(YVal), [])]),
+        ( if XVal > YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint32", ">=", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint32_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint32_const(YVal), [])]),
-    ( if XVal >= YVal then
+    ( if YVal = 0u32 then
+        % Special case: all uint32s are >= 0u32.
         Result = yes
     else
-        Result = no
+        X ^ arg_inst = bound(_, _, [bound_functor(uint32_const(XVal), [])]),
+        ( if XVal >= YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 
     % 64-bit unsigned integer comparisons.
 
 evaluate_test("uint64", "<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint64_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint64_const(YVal), [])]),
-    ( if XVal < YVal then
-        Result = yes
-    else
+    ( if YVal = 0u64 then
+        % Special case: there are no uint64s that are < 0u64.
         Result = no
+    else
+        X ^ arg_inst = bound(_, _, [bound_functor(uint64_const(XVal), [])]),
+        ( if XVal < YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint64", "=<", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint64_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint64_const(YVal), [])]),
-    ( if XVal =< YVal then
+    ( if XVal = 0u64 then
+        % Special case: 0u64 =< all uint64s.
         Result = yes
     else
-        Result = no
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint64_const(YVal), [])]),
+        ( if XVal =< YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint64", ">", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(uint64_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(uint64_const(YVal), [])]),
-    ( if XVal > YVal then
-        Result = yes
-    else
+    ( if XVal = 0u64 then
+        % Special case: 0u64 > than no uint64s.
         Result = no
+    else
+        Y ^ arg_inst = bound(_, _, [bound_functor(uint64_const(YVal), [])]),
+        ( if XVal > YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 evaluate_test("uint64", ">=", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_, _, [bound_functor(uint64_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(uint64_const(YVal), [])]),
-    ( if XVal >= YVal then
+    ( if YVal = 0u64 then
+        % Special case: all uint64s are >= 0u64.
         Result = yes
     else
-        Result = no
+        X ^ arg_inst = bound(_, _, [bound_functor(uint64_const(XVal), [])]),
+        ( if XVal >= YVal then
+            Result = yes
+        else
+            Result = no
+        )
     ).
 
     % Float comparisons
@@ -1273,6 +1373,8 @@ evaluate_test("private_builtin", "typed_unify", Mode, Args, Result) :-
         Result0 = yes,
         eval_unify(X, Y, Result)
     ).
+
+%---------------------------------------------------------------------------%
 
     % evaluate_semidet_call(ModuleName, ProcName, ModeNum, Args, Result):
     %
