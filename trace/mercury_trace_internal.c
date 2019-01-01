@@ -257,7 +257,7 @@ MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
 static const char MR_trace_banner[] =
 "Melbourne Mercury Debugger, mdb version %s.\n\
 Copyright 1998-2012 The University of Melbourne.\n\
-Copyright 2013-2018 The Mercury team.\n\
+Copyright 2013-2019 The Mercury team.\n\
 mdb is free software; there is absolutely no warranty for mdb.\n";
 
 static FILE *
