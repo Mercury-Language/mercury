@@ -6,11 +6,11 @@ bug197.m:026: In clause for predicate `foo'/3:
 bug197.m:026:   in argument 1 of call to predicate `list.foldl'/4:
 bug197.m:026:   type error: argument has type `pred(string, T, V_6, V_6)',
 bug197.m:026:   expected type was `pred(L, A, A)'.
-bug197.m:031: In clause for predicate `bug197.foo'/3:
-bug197.m:031:   warning: variable `STATE_VARIABLE_SS_20' occurs only once in
-bug197.m:031:   this scope.
 bug197.m:031: Error: cannot use !:SS here due to the surrounding lambda
 bug197.m:031:   expression; you may only refer to !.SS.
 bug197.m:026:   Here is the surrounding context that makes state variable SS
 bug197.m:026:   readonly.
+bug197.m:031: In clause for predicate `bug197.foo'/3:
+bug197.m:031:   warning: variable `STATE_VARIABLE_SS_20' occurs only once in
+bug197.m:031:   this scope.
 For more information, recompile with `-E'.

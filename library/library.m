@@ -84,6 +84,7 @@
 :- import_module diet.
 :- import_module digraph.
 :- import_module dir.
+:- import_module edit_seq.
 :- import_module enum.
 :- import_module eqvclass.
 :- import_module exception.
@@ -260,6 +261,7 @@ mercury_std_library_module("deconstruct").
 mercury_std_library_module("diet").
 mercury_std_library_module("digraph").
 mercury_std_library_module("dir").
+mercury_std_library_module("edit_seq").
 mercury_std_library_module("enum").
 mercury_std_library_module("eqvclass").
 mercury_std_library_module("erlang_builtin").

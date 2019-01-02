@@ -24,9 +24,9 @@ invalid_binary_literal.m:025: Syntax error: unterminated binary literal.
 invalid_binary_literal.m:027: Syntax error at token `. ': unexpected token at
 invalid_binary_literal.m:027:   start of (sub)term.
 invalid_binary_literal.m:027: Syntax error: unterminated binary literal.
-invalid_binary_literal.m:029: Syntax error: unterminated decimal literal.
 invalid_binary_literal.m:029: Error: clause for predicate
 invalid_binary_literal.m:029:   `invalid_binary_literal.b11'/0
 invalid_binary_literal.m:029:   without corresponding `:- pred' declaration.
 invalid_binary_literal.m:029: Inferred :- pred b11.
+invalid_binary_literal.m:029: Syntax error: unterminated decimal literal.
 invalid_binary_literal.m:031: Syntax error: unterminated decimal literal.

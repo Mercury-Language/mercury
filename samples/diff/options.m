@@ -450,8 +450,6 @@ postprocess_output_style_2(no, no, no, no, no, no, no, no, no, no, yes,
 
 %-----------------------------------------------------------------------------%
 
-    % Help text for the options.
-    %
 options_help(!IO) :-
     io.write_strings([
         "Output styles:\n",

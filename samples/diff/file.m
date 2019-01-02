@@ -9,7 +9,7 @@
 % Main author: bromage
 % Simplified by Marnix Klooster <marnix@worldonline.nl>
 %
-% This module provides file input.  One can read a file entirely,
+% This module provides file input. One can read a file entirely,
 % select a single line from a read file, get the number of lines
 % in a read file, and convert a read file to a list of strings.
 %
@@ -79,9 +79,8 @@
                 file_contents :: array(string)
             ).
 
-    % Open the stream, read from the stream, then close the stream.
-    %
 read_file(FileName, File, !IO) :-
+    % Open the stream, read from the stream, then close the stream.
     io.open_input(FileName, Res, !IO),
     (
         Res = ok(InputStream),
@@ -93,8 +92,8 @@ read_file(FileName, File, !IO) :-
         File = error(Error)
     ).
 
-    % Get the input stream, then read from it.
 read_input(FileName, ok(file(FileName, Contents)), !IO) :-
+    % Get the input stream, then read from it.
     io.input_stream(InputStream, !IO),
     file.read_stream(InputStream, Contents, !IO).
 
@@ -106,9 +105,9 @@ read_input(FileName, ok(file(FileName, Contents)), !IO) :-
 read_stream(Stream, File, !IO) :-
     file.read_stream2(Stream, 0, File, !IO).
 
-    % Given a Stream from which LinesIn lines have already been
-    % read, fill File[LinesIn] to File[LinesOut-1] with the rest
-    % of the lines.  LinesOut is the number of lines in the file.
+    % Given a Stream from which LinesIn lines have already been read,
+    % fill File[LinesIn] to File[LinesOut-1] with the rest of the lines.
+    % LinesOut is the number of lines in the file.
     % (Note that line numbering starts at zero.)
     %
 :- pred read_stream2(io.input_stream::in, int::in,

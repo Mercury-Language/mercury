@@ -193,12 +193,23 @@ mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
 
 maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
         IsClassMethod, Context, DescPieces, !Specs) :-
-    % This is not considered an unconditional error anymore:
-    % if there is no `:- pred' or `:- func' declaration,
-    % and the declaration is local, and not a type class method,
-    % and the `--infer-types' option was specified,
-    % then we just add an implicit declaration for that predicate or
-    % function, marking it as one whose type will be inferred.
+    % Our caller (or one of its ancestors) will add an implicit declaration
+    % for every undeclared predicate or function that has a reference to it
+    % either in a clause or in some other declaration (e.g. a tabling pragma).
+    % It will also mark the predicate as one whose type should be inferred.
+
+    % We allow programmers to define predicates without declaring them first
+    % if the user has specified the `--infer-types' option, unless
+    % circumstances force us to require a predicate declaration anyway.
+    %
+    % The two relevant circumstances are:
+    %
+    % - predicates exported from their defining module, which must be declared
+    %   to allow the compiler to put that declaration into the module's
+    %   interface file without running the typechecker, and
+    %
+    % - predicates which implement type class methods.
+    %   XXX Document the reason for the requirement here.
 
     DefinedInThisModule = pred_status_defined_in_this_module(Status),
     IsExported = pred_status_is_exported(Status),
@@ -213,7 +224,8 @@ maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
         true
     else
         PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
-        MainPieces = [words("Error:") | DescPieces] ++ [words("for"),
+        MainPieces = [invis_order_default_start(1),
+            words("Error:") | DescPieces] ++ [words("for"),
             simple_call(simple_call_id(PredOrFunc, Name, Arity)), nl,
             words("without corresponding"),
             decl(PredOrFuncStr), words("declaration."), nl],
@@ -272,9 +284,16 @@ gather_porf_arities(ModuleInfo, [PredId | PredIds], WantedPorF,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PorF = pred_info_is_pred_or_func(PredInfo),
     ( if PorF = WantedPorF then
-        pred_info_get_orig_arity(PredInfo, OrigArity),
-        adjust_func_arity(PorF, OrigArity, Arity),
-        set.insert(Arity, !PorFArities)
+        pred_info_get_markers(PredInfo, Markers),
+        ( if check_marker(Markers, marker_no_pred_decl) then
+            % This pred has no declaration, so including its arity in the list
+            % would be misleading.
+            true
+        else
+            pred_info_get_orig_arity(PredInfo, OrigArity),
+            adjust_func_arity(PorF, OrigArity, Arity),
+            set.insert(Arity, !PorFArities)
+        )
     else
         true
     ).

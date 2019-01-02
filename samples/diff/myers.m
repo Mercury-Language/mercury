@@ -10,14 +10,13 @@
 % Main author: bromage.
 %
 % TO DO: We should implement the big-snake heuristic (a.k.a.
-%   --speed-large-files).
+% --speed-large-files).
 %
 % ALSO TO DO: Gene Myers et al have since produced another algorithm
-%   which takes O(NP) time where P is the number of deletions in
-%   the edit script.  If the `too expensive' heuristic can be
-%   retro-fitted onto that algorithm easily enough, we should try
-%   out this algorithm and see how fast it runs.  In theory, we
-%   should be looking at about a 2x speedup.
+% which takes O(NP) time where P is the number of deletions in the edit script.
+% If the `too expensive' heuristic can be retro-fitted onto that algorithm
+% easily enough, we should try out this algorithm and see how fast it runs.
+% In theory, we should be looking at about a 2x speedup.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -65,7 +64,7 @@ diff_by_myers(FileX, FileY, Diff, !IO) :-
     DOffset = SizeY + 1,
 
     % If we don't insist on --minimal, calculate the approximate square root of
-    % the input size for the "too expensive" heuristic.  The effect of this is
+    % the input size for the "too expensive" heuristic. The effect of this is
     % to limit the amount of work to about O(n ** (1.5 log n)) at the expense
     % of finding a possibly non-minimal diff.
 
@@ -79,16 +78,15 @@ diff_by_myers(FileX, FileY, Diff, !IO) :-
         Heur = too_expensive(SizeHeuristic)
     ),
 
-        % Fill the arrays with nondescript numbers which
-        % the algorithm shouldn't produce.  (For debugging
-        % purposes.)
+    % Fill the arrays with nondescript numbers which
+    % the algorithm shouldn't produce. (For debugging purposes.)
     array.init(SizeMax, -65537, Fwd),
     array.init(SizeMax, -65537, Bwd),
     myers.bsearch(DOffset, FileX, FileY, 0, SizeX, 0, SizeY,
         Heur, Fwd, _, Bwd, _, [], Diff).
 
-    % XXX This lower bound is a guess.  Need to do some measurements
-    %     to see if it's good or not.
+    % XXX This lower bound is a guess. Need to do some measurements
+    % to see if it's good or not.
 :- func minimum_too_expensive = int.
 
 minimum_too_expensive = 256.
@@ -144,9 +142,10 @@ myers.bsearch(DOffset, FileX, FileY, Xlow0, Xhigh0, Ylow0, Yhigh0, Heur,
     ;       none.
 
     % The best part about this algorithm is: We don't actually need to find the
-    % middle of the diff.  We only have to find an estimate to it.  If we don't
+    % middle of the diff. We only have to find an estimate to it. If we don't
     % find the exact middle, we will have a correct diff, but it won't
     % necessarily be minimal.
+    %
 :- pred find_middle(int::in, array(int)::in, array(int)::in, pos::in, pos::in,
     pos::in, pos::in, heur::in, array(int)::array_di, array(int)::array_uo,
     array(int)::array_di, array(int)::array_uo, pos::out, pos::out, int::out,
@@ -334,7 +333,7 @@ try_heuristics(Constants, !Fwd, !Bwd, Fmin, Fmax, Bmin, Bmax, !Cost,
 too_expensive_heuristic(Constants, Fwd, Bwd, Fmin, Fmax, Bmin, Bmax, !Cost,
         Mid, HeurReq) :-
     % Find the best diagonal that we can, take the end of that diagonal as the
-    % "middle".  Do not apply the heuristic recursively to that best diagonal.
+    % "middle". Do not apply the heuristic recursively to that best diagonal.
 
     Constants = constants(DOffset, _, _, Xlow, Xhigh, Ylow, Yhigh, _, _, _,
         Heur),
@@ -348,8 +347,8 @@ too_expensive_heuristic(Constants, Fwd, Bwd, Fmin, Fmax, Bmin, Bmax, !Cost,
     find_best_backward_diagonal(Bmax, Bmin, Bwd, Xlow, Ylow, DOffset, MaxInt,
         BXYBest, 0, BXBest),
 
-        % Choose which of these diagonals is the better one
-        % and return that as the "middle" point.
+    % Choose which of these diagonals is the better one
+    % and return that as the "middle" point.
     ( if
         FXYBest - (Xhigh + Yhigh) < (Xlow + Ylow) - BXYBest
     then
@@ -445,6 +444,7 @@ scan_forward(FileX, FileY, Xhigh, Yhigh, !Xlow, !Ylow) :-
     ).
 
     % Travel backwards along a snake.
+    %
 :- pred scan_backward(array(int)::in, array(int)::in, int::in, int::in,
     int::in, int::out, int::in, int::out) is det.
 

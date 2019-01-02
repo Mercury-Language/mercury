@@ -1,7 +1,7 @@
+impure_func_t3.m:019: In call to predicate `io.print'/3:
+impure_func_t3.m:019:   warning: unnecessary `impure' indicator.
+impure_func_t3.m:019:   No purity indicator is necessary.
 impure_func_t3.m:019: In call to impure function
 impure_func_t3.m:019:   `impure_func_t3.get_counter'/0:
 impure_func_t3.m:019:   purity error: call must be in an explicit unification
 impure_func_t3.m:019:   which is preceded by `impure' indicator.
-impure_func_t3.m:019: In call to predicate `io.print'/3:
-impure_func_t3.m:019:   warning: unnecessary `impure' indicator.
-impure_func_t3.m:019:   No purity indicator is necessary.

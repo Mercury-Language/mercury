@@ -23,20 +23,20 @@
 
 %-----------------------------------------------------------------------------%
 
-    % A pos is a non-negative number representing a position in a
-    % list.  The position before all elements is 0, the one
-    % between the first and second elements is 1, etc.
+    % A pos is a non-negative number representing a position in a list.
+    % The position before all elements is 0, the one between the first
+    % and second elements is 1, etc.
     %
 :- type pos == int.
 
 %-----------------------------------------------------------------------------%
 
-    % A segment is a pair of positions.  Numbering items from 0,
+    % A segment is a pair of positions. Numbering items from 0,
     % segment P-Q stands for items P up to, but not including, Q.
     % (Rationale: see the interpretation of type pos above.)
     %
-    % Invariant: In any segment X - Y, it should always be true
-    % that X =< Y.  If X=Y, the segment is empty.
+    % Invariant: In any segment X - Y, it should always be true that X =< Y.
+    % If X=Y, the segment is empty.
     %
 :- type segment == pair(pos,pos).
 
@@ -120,7 +120,7 @@ add_edit(X1 - X2, Y1 - Y2, [Edit0 | Diff0], Diff) :-
     then
         Diff = [change(X1 - X3, Y1 - Y3) | Diff0]
     else
-        % This is just copied from the base case.  Pretty much.
+        % This is just copied from the base case. Pretty much.
         ( if X1 = X2 then
             ( if Y1 = Y2 then
                 Diff = [Edit0 | Diff0]

@@ -10,10 +10,16 @@ errors2.m:009:   `:- interface' or an `:- implementation' declaration.
 errors2.m:009:   The following assumes that the missing declaration is an
 errors2.m:009:   `:- implementation' declaration.
 errors2.m:009: Error: no clauses for predicate `bind_type_param'/2.
-errors2.m:011: Inferred :- pred bind_type_param(int).
 errors2.m:011: Error: clause for predicate `errors2.bind_type_param'/1
 errors2.m:011:   without corresponding `:- pred' declaration.
 errors2.m:011:   However, a predicate of that name does exist with arity 2.
+errors2.m:011: Inferred :- pred bind_type_param(int).
+errors2.m:011:   The argument list difference from the arity 2 version is
+errors2.m:011:     pred(
+errors2.m:011:   -     V_1,
+errors2.m:011:   -     V_2
+errors2.m:011:   +     int
+errors2.m:011:     )
 errors2.m:025: Error: no clauses for predicate `produce_string'/1.
 errors2.m:027: Error: no clauses for predicate `expect_int'/1.
 errors2.m:033: In clause for predicate `type_error'/0:

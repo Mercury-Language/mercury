@@ -701,7 +701,6 @@ unqualified_pred_error(PredName, Arity, Context, !Specs) :-
 preds_add_implicit_report_error(!ModuleInfo, ModuleName, PredName, Arity,
         PredOrFunc, Status, IsClassMethod, Context, Origin, DescPieces,
         PredId, !Specs) :-
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     maybe_report_undefined_pred_error(!.ModuleInfo, PredName, Arity,
         PredOrFunc, Status, IsClassMethod, Context, DescPieces, !Specs),
     (
@@ -714,29 +713,24 @@ preds_add_implicit_report_error(!ModuleInfo, ModuleName, PredName, Arity,
     ),
     clauses_info_init(PredOrFunc, Arity, init_clause_item_numbers_user,
         ClausesInfo),
-    preds_do_add_implicit(!.ModuleInfo, ModuleName, PredName, Arity,
-        PredOrFunc, Status, Context, Origin, ClausesInfo, PredId,
-        PredicateTable0, PredicateTable),
-    module_info_set_predicate_table(PredicateTable, !ModuleInfo).
+    preds_do_add_implicit(ModuleName, PredName, Arity, PredOrFunc, Status,
+        Context, Origin, ClausesInfo, PredId, !ModuleInfo).
 
 preds_add_implicit_for_assertion(!ModuleInfo, ModuleName, PredName,
         Arity, PredOrFunc, HeadVars, Status, Context, PredId) :-
     clauses_info_init_for_assertion(HeadVars, ClausesInfo),
     term.context_file(Context, FileName),
     term.context_line(Context, LineNum),
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    preds_do_add_implicit(!.ModuleInfo, ModuleName, PredName, Arity,
-        PredOrFunc, Status, Context, origin_assertion(FileName, LineNum),
-        ClausesInfo, PredId, PredicateTable0, PredicateTable),
-    module_info_set_predicate_table(PredicateTable, !ModuleInfo).
+    Origin = origin_assertion(FileName, LineNum),
+    preds_do_add_implicit(ModuleName, PredName, Arity, PredOrFunc, Status,
+        Context, Origin, ClausesInfo, PredId, !ModuleInfo).
 
-:- pred preds_do_add_implicit(module_info::in, module_name::in,
-    sym_name::in, arity::in, pred_or_func::in,
-    pred_status::in, prog_context::in, pred_origin::in, clauses_info::in,
-    pred_id::out, predicate_table::in, predicate_table::out) is det.
+:- pred preds_do_add_implicit(module_name::in, sym_name::in, arity::in,
+    pred_or_func::in, pred_status::in, prog_context::in, pred_origin::in,
+    clauses_info::in, pred_id::out, module_info::in, module_info::out) is det.
 
-preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
-        PredStatus, Context, Origin, ClausesInfo, PredId, !PredicateTable) :-
+preds_do_add_implicit(ModuleName, PredName, Arity, PredOrFunc,
+        PredStatus, Context, Origin, ClausesInfo, PredId, !ModuleInfo) :-
     CurUserDecl = maybe.no,
     init_markers(Markers0),
     varset.init(TVarSet0),
@@ -758,13 +752,15 @@ preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
     add_marker(marker_infer_type, Markers0, Markers1),
     add_marker(marker_no_pred_decl, Markers1, Markers),
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
-    predicate_table_lookup_pf_sym_arity(!.PredicateTable,
+    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
+    predicate_table_lookup_pf_sym_arity(PredicateTable0,
         is_fully_qualified, PredOrFunc, PredName, Arity, PredIds),
     (
         PredIds = [],
-        module_info_get_partial_qualifier_info(ModuleInfo, MQInfo),
+        module_info_get_partial_qualifier_info(!.ModuleInfo, MQInfo),
         predicate_table_insert_qual(PredInfo, may_be_unqualified, MQInfo,
-            PredId, !PredicateTable)
+            PredId, PredicateTable0, PredicateTable),
+        module_info_set_predicate_table(PredicateTable, !ModuleInfo)
     ;
         PredIds = [_ | _],
         unexpected($pred, "search succeeded")

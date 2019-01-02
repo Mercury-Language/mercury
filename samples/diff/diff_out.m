@@ -111,7 +111,7 @@ robust(cvs_merge_conflict).
 %-----------------------------------------------------------------------------%
 
     % show_file shows the segment of the file from Low to High, with
-    % each line preceded by the Prefix character and a space.  The diff(1)
+    % each line preceded by the Prefix character and a space. The diff(1)
     % format specifies that the lines effected in the first file should be
     % flagged by '<' and the lines effected in the second file should be
     % flagged by '>'.
@@ -166,7 +166,7 @@ expand_tabs([C | Cs], Pos, !IO) :-
     % predicate to display that output.
     %
     % Some of these options (notably the ones which require no output) should
-    % have been handled already by the time we reach here.  In those cases, we
+    % have been handled already by the time we reach here. In those cases, we
     % just call error/1.
     %
 display_diff(File1, File2, Diff, !IO) :-
@@ -211,9 +211,8 @@ display_diff_2(ifdef(Sym), File1, File2, Diff, !IO) :-
     display_diff_ifdef(Sym, File1, File2, Diff, !IO).
 
 display_diff_2(brief, File1, File2, _Diff, !IO) :-
-    % XXX For this output style, we really don't need to
-    %     perform a complete diff.  This should be handled
-    %     higher up for efficiency.
+    % XXX For this output style, we really don't need to perform
+    % a complete diff. This should be handled higher up for efficiency.
     file.get_file_name(File1, FileName1),
     file.get_file_name(File2, FileName2),
     io.write_strings(["Files ", FileName1, " and ",
@@ -275,8 +274,8 @@ display_diff_normal_2(File1, File2, [SingDiff | Diff], FromStr, ToStr, !IO) :-
     % Like ed(1), a pair of numbers which are identical are abbreviated by a
     % single number.
     % MK: Assumption X=<X2
-    % AJB: And, similarly, Y=<Y2.  This is actually an
-    %      invariant of the segment type.  See difftype.m.
+    % AJB: And, similarly, Y=<Y2. This is actually an invariant of the
+    % segment type. See difftype.m.
     %
 :- pred write_command(segment::in, char::in, segment::in,
     io::di, io::uo) is det.
@@ -327,8 +326,7 @@ display_diff_rcs(File1, File2, [Cmd | Diff], !IO) :-
     ),
     display_diff_rcs(File1, File2, Diff, !IO).
 
-    % diff_out.write_command_rcs displays a diff command in
-    % the RCS ,v format.
+    % diff_out.write_command_rcs displays a diff command in the RCS ,v format.
     %
 :- pred write_command_rcs(char::in, int::in, int::in, io::di, io::uo) is det.
 
@@ -384,8 +382,8 @@ write_command_ed(X - X2, C, !IO) :-
 %-----------------------------------------------------------------------------%
 
     % display_diff_forward_ed takes a diff and displays it in ed(1) format, but
-    % with all diff_out forward.  This is actually useless for feeding to
-    % ed(1), but nicer to read.
+    % with all diff_out forward. This is actually useless for feeding to ed(1),
+    % but nicer to read.
     %
 :- pred display_diff_forward_ed(file::in, file::in, diff::in,
     io::di, io::uo) is det.
@@ -410,7 +408,7 @@ display_diff_forward_ed(File1, File2, [Cmd | Diff], !IO) :-
 
     % write_command_forward_ed displays a forward ed(1) command.
     % The difference between this and write_command_ed is that the command char
-    % comes first here.  Who comes up with these dumb formats anyway?
+    % comes first here. Who comes up with these dumb formats anyway?
     %
 :- pred write_command_forward_ed(segment::in, char::in, io::di, io::uo) is det.
 
@@ -433,8 +431,8 @@ write_command_forward_ed(X - X2, C, !IO) :-
     % display_diff_ifdef writes out the files in a unified diff,
     % using #ifdefs around each edit.
     %
-    % TO DO: GNU diff makes this output style much more
-    %        configurable.  We should too.
+    % TO DO: GNU diff makes this output style much more configurable.
+    % We should too.
     %
 :- pred display_diff_ifdef(string::in, file::in, file::in, diff::in,
     io::di, io::uo) is det.
@@ -602,7 +600,7 @@ display_unified_diff(Context, File1, File2, Diff, !IO) :-
     diff_to_context_diff(Size1, Size2, Context, Diff, CDiff),
     file.get_file_name(File1, Name1),
     file.get_file_name(File2, Name2),
-        % XXX Should also print out file dates.  But how?
+    % XXX Should also print out file dates. But how?
     io.write_strings(["--- ", Name1, "\n"], !IO),
     io.write_strings(["+++ ", Name2, "\n"], !IO),
     globals.io_lookup_bool_option(initial_tab, InitialTab, !IO),
@@ -672,7 +670,7 @@ display_context_diff(Context, File1, File2, Diff, !IO) :-
     diff_to_context_diff(Size1, Size2, Context, Diff, CDiff),
     file.get_file_name(File1, Name1),
     file.get_file_name(File2, Name2),
-        % XXX Should also print out file dates.  But how??
+    % XXX Should also print out file dates. But how??
     io.write_strings(["*** ", Name1, "\n"], !IO),
     io.write_strings(["--- ", Name2, "\n"], !IO),
 
@@ -783,11 +781,10 @@ display_context_diff_right(Prev, Size2, File2, [Edit | Diff], NoneStr,
     % Side-by-side diffs are incredibly complex, as you'll see if
     % you inspect the code below.
     %
-    % TO DO: GNU diff has --sdiff-merge-assist, but I can find no
-    %        documentation on what this actually does, and haven't
-    %        had the time to investigate.  For the moment, we accept
-    %        the option and note here whether or not it's turned on,
-    %        but do nothing with it.
+    % TO DO: GNU diff has --sdiff-merge-assist, but I can find no documentation
+    % on what this actually does, and haven't had the time to investigate.
+    % For the moment, we accept the option and note here whether or not
+    % it is turned on, but do nothing with it.
 
     % Parameters to pass around.
     %
@@ -864,7 +861,7 @@ display_diff_side_by_side_2(Prev, SBS, File1, File2, [Edit | Diff], !IO) :-
         Edit = change(X1 - X2, Y1 - Y2),
         % The side-by-side change diff format is sort of weird.
         % We have to compute the minimum of the two change sizes, and display
-        % "changed" lines for the minimum of these sizes.  Then we display
+        % "changed" lines for the minimum of these sizes. Then we display
         % "added" or "deleted" lines for whatever is left over.
         int.min(X2 - X1, Y2 - Y1, Size),
         show_sbs_changed_lines(File1, File2, SBS, X1, Y1, Size, !IO),
@@ -989,9 +986,8 @@ put_spaces(Spaces, !OutPos, !IO) :-
         put_spaces(Spaces - 1, !OutPos, !IO)
     ).
 
-    % Given a "from" column and a "to" column, put sufficient
-    % spaces on the output stream to reach that column.  Use
-    % tabs if we can.
+    % Given a "from" column and a "to" column, put sufficient spaces
+    % on the output stream to reach that column. Use tabs if we can.
     %
 :- pred tab_to_column(int::in, int::in, io::di, io::uo) is det.
 
@@ -1074,7 +1070,7 @@ print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos, !IO) :-
         )
     ***********/
     else
-        % The default case.  Print and be done with it.
+        % The default case. Print and be done with it.
         InPos = InPos0 + 1,
         ( if InPos < OutBound then
             OutPos1 = InPos,

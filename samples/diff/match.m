@@ -9,22 +9,21 @@
 % Main author: bromage
 %
 % This module contains code to match common lines before diffing, based on
-% the command-line options presented.  The important command-line options
+% the command-line options presented. The important command-line options
 % are --ignore-case, --ignore-all-space and --ignore-space-change.
 %
 % The output of build_matches is two arrays of integers, where any two
 % lines are assigned the same integer iff they are identical (modulo case,
-% space and/or space change depending on the command line options).  An
-% added benefit of doing this here is that the diff algorithm (myers.m)
+% space and/or space change depending on the command line options).
+% An added benefit of doing this here is that the diff algorithm (myers.m)
 % only has to compare integers instead of strings.
 %
-% TO DO: We should collapse sequences of lines which only appear in one
-%        file and pretend the whole sequence is just one line.  (GNU
-%        diff does the same thing a slightly different way, but this
-%        approach seems a bit more Mercury-esque.)  Since Myers'
-%    algorithm runs in O(ND) time, and performing this pre-filtering
-%    here would reduce the value of D (by quite a lot in real-world
-%    cases), things should speed up.
+% TO DO: We should collapse sequences of lines which only appear in one file
+% and pretend the whole sequence is just one line. (GNU diff does the same
+% thing a slightly different way, but this approach seems a bit more
+% Mercury-esque.)  Since Myers' algorithm runs in O(ND) time, and performing
+% this pre-filtering here would reduce the value of D (by quite a lot
+% in real-world cases), things should speed up.
 %
 %-----------------------------------------------------------------------------%
 

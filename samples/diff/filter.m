@@ -16,10 +16,9 @@
 % add, delete or change blank lines.
 %
 % TO DO: What exactly is a blank line, and does its definition change
-%        if --ignore-space-change or --ignore-all-space have been
-%        specified?  At the moment, we define a blank line to be a line
-%        containing zero or more whitespace characters.  Check if this is
-%        correct or not.
+% if --ignore-space-change or --ignore-all-space have been specified?
+% At the moment, we define a blank line to be a line containing zero or more
+% whitespace characters. Check if this is correct or not.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -56,7 +55,6 @@
 
 filter_diff(File1, File2, !Diff, !IO) :-
     globals.io_lookup_bool_option(ignore_blank_lines, FilterBlank, !IO),
-
     (
         % If we didn't request a filter, skip this pass.
         FilterBlank = no

@@ -39,8 +39,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % main: top-level predicate.
-    %
 main(!IO) :-
     io.command_line_arguments(Args0, !IO),
     options.get_option_ops(OptionOps),
@@ -91,16 +89,23 @@ version(!IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % main_2 analyses the command-line arguments which are not
-    % options and calls diff.do_diff.
+    % main_2 analyses the command-line arguments which are not options
+    % and calls diff.do_diff.
     %
 :- pred main_2(list(string)::in, io::di, io::uo) is det.
 
-main_2([], !IO) :-
-    usage_error("missing operand", !IO).
-main_2([Fname1 | Rest], !IO)  :-
+main_2(Args, !IO)  :-
     (
-        Rest = [Fname2 | _],
+        Args = [],
+        usage_error("missing operand", !IO)
+    ;
+        Args = [_],
+        usage_error("missing operand", !IO)
+    ;
+        Args = [_, _, _ | _],
+        usage_error("too many operands", !IO)
+    ;
+        Args = [Fname1, Fname2],
         ( if Fname1 = Fname2 then
             % Not sure why anyone would want to diff two
             % files with the same name, but just in case ...
@@ -141,31 +146,27 @@ main_2([Fname1 | Rest], !IO)  :-
             Contents1 = error(Msg),
             usage_io_error(Msg, !IO)
         )
-    ;
-        Rest = [],
-        usage_error("missing operand", !IO)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % do_diff takes the files plus all the command
-    % line options and determines what to do with them.
-    %
-    % At the moment, we're organised into four passes:
-    %
-    %   - build_matches determines which lines from the input files match
-    %    (using the appropriate command- line options).
-    %   - diff_by_myers takes the matches produced and computes a diff between
-    %     them.
-    %   - filter_diff analyses the diff, filtering out any edits which the user
-    %     said that they didn't want to see (using the appropriate command-line
-    %     options).
-    %   - display_diff outputs the diff in whatever output format the user
-    %     chose.
+    % do_diff takes the files plus all the command line options
+    % and determines what to do with them.
     %
 :- pred do_diff(file::in, file::in, io::di, io::uo) is det.
 
 do_diff(File1, File2, !IO) :-
+    % There are four passes:
+    %
+    % - build_matches determines which lines from the input files match
+    %   (using the appropriate command-line options).
+    % - diff_by_myers takes the matches produced and computes a diff between
+    %   them.
+    % - filter_diff analyses the diff, filtering out any edits which the user
+    %   said that they didn't want to see (using the appropriate command-line
+    %   options).
+    % - display_diff outputs the diff in whatever output format the user chose.
+    %
     build_matches(File1, File2, FileX, FileY, !IO),
     diff_by_myers(FileX, FileY, Diff0, !IO),
     filter_diff(File1, File2, Diff0, Diff, !IO),

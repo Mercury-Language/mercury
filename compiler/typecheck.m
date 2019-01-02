@@ -242,7 +242,7 @@ construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
         set_tree234.contains(ValidPredIdSet, PredId),
         not pred_info_is_promise(PredInfo, _)
     then
-        Spec = construct_type_inference_message(PredInfo),
+        Spec = construct_type_inference_message(ModuleInfo, PredId, PredInfo),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -253,12 +253,13 @@ construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
     % Construct a message containing the inferred `pred' or `func' declaration
     % for a single predicate.
     %
-:- func construct_type_inference_message(pred_info) = error_spec.
+:- func construct_type_inference_message(module_info, pred_id, pred_info)
+    = error_spec.
 
-construct_type_inference_message(PredInfo) = Spec :-
+construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    Name = unqualified(PredName),
+    UnqualPredSymName = unqualified(PredName),
     pred_info_get_context(PredInfo, Context),
     pred_info_get_arg_types(PredInfo, VarSet, ExistQVars, Types0),
     strip_builtin_qualifiers_from_type_list(Types0, Types),
@@ -268,20 +269,54 @@ construct_type_inference_message(PredInfo) = Spec :-
     VarNamePrint = print_name_only,
     (
         PredOrFunc = pf_predicate,
+        ArgTypes = Types,
+        MaybeReturnType = no,
         TypeStr = mercury_pred_type_to_string(VarSet, VarNamePrint, ExistQVars,
-            Name, Types, MaybeDet, Purity, ClassContext)
+            UnqualPredSymName, Types, MaybeDet, Purity, ClassContext)
     ;
         PredOrFunc = pf_function,
-        pred_args_to_func_args(Types, ArgTypes, RetType),
+        pred_args_to_func_args(Types, ArgTypes, ReturnType),
+        MaybeReturnType = yes(ReturnType),
         TypeStr = mercury_func_type_to_string(VarSet, VarNamePrint, ExistQVars,
-            Name, ArgTypes, RetType, MaybeDet, Purity, ClassContext)
+            UnqualPredSymName, ArgTypes, ReturnType, MaybeDet, Purity,
+            ClassContext)
     ),
-    Pieces = [words("Inferred"), words(TypeStr), nl],
-    Msg = simple_msg(Context,
-        [option_is_set(inform_inferred_types, yes, [always(Pieces)])]),
-    Severity = severity_conditional(inform_inferred_types, yes,
-        severity_informational, no),
+    InferredPieces = [invis_order_default_start(2),
+        words("Inferred"), words(TypeStr), nl],
+
+    module_info_get_predicate_table(ModuleInfo, PredicateTable),
+    ModuleName = pred_info_module(PredInfo),
+    QualPredSymName = qualified(ModuleName, PredName),
+    predicate_table_lookup_pf_sym(PredicateTable, is_fully_qualified,
+        PredOrFunc, QualPredSymName, AllPredIds),
+    list.delete_all(AllPredIds, PredId, AllOtherPredIds),
+    PredIsDeclared =
+        ( pred(OtherPredId::in) is semidet :-
+            module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
+            pred_info_get_markers(OtherPredInfo, OtherPredMarkers),
+            not check_marker(OtherPredMarkers, marker_infer_type)
+        ),
+    list.filter(PredIsDeclared, AllOtherPredIds, AllOtherDeclaredPredIds),
+    (
+        AllOtherDeclaredPredIds = [],
+        Msg = simple_msg(Context,
+            [option_is_set(inform_inferred_types, yes,
+                [always(InferredPieces)])]),
+        Severity = severity_conditional(inform_inferred_types, yes,
+            severity_informational, no)
+    ;
+        AllOtherDeclaredPredIds = [_ | _],
+        list.map(
+            construct_pred_decl_diff(ModuleInfo, ArgTypes, MaybeReturnType),
+            AllOtherDeclaredPredIds, DiffPieceLists),
+        Pieces = [invis_order_default_start(2)] ++ InferredPieces ++
+            list.condense(DiffPieceLists),
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Severity = severity_informational
+    ),
     Spec = error_spec(Severity, phase_type_check, [Msg]).
+
+%---------------------------------------------------------------------------%
 
 :- func typecheck_report_max_iterations_exceeded(int) = error_spec.
 

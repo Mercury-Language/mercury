@@ -1,0 +1,1100 @@
+
+------------------
+
+SeqA:   []
+SeqB:   []
+Params: replace
+Edits:  []
+Diff:
+
+------------------
+
+SeqA:   []
+SeqB:   []
+Params: delete/insert
+Edits:  []
+Diff:
+
+------------------
+
+SeqA:   []
+SeqB:   [3]
+Params: replace
+Edits:  [insert(1, 3)]
+Diff:
++ 3
+
+------------------
+
+SeqA:   []
+SeqB:   [3]
+Params: delete/insert
+Edits:  [insert(1, 3)]
+Diff:
++ 3
+
+------------------
+
+SeqA:   []
+SeqB:   [42]
+Params: replace
+Edits:  [insert(1, 42)]
+Diff:
++ 42
+
+------------------
+
+SeqA:   []
+SeqB:   [42]
+Params: delete/insert
+Edits:  [insert(1, 42)]
+Diff:
++ 42
+
+------------------
+
+SeqA:   []
+SeqB:   [3, 4, 5, 12, 13]
+Params: replace
+Edits:  [insert(1, 3), insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Diff:
++ 3
++ 4
++ 5
++ 12
++ 13
+
+------------------
+
+SeqA:   []
+SeqB:   [3, 4, 5, 12, 13]
+Params: delete/insert
+Edits:  [insert(1, 3), insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Diff:
++ 3
++ 4
++ 5
++ 12
++ 13
+
+------------------
+
+SeqA:   []
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: replace
+Edits:  [insert(1, 1), insert(1, 2), insert(1, 3), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Diff:
++ 1
++ 2
++ 3
++ 4
++ 11
++ 12
++ 13
++ 14
+
+------------------
+
+SeqA:   []
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: delete/insert
+Edits:  [insert(1, 1), insert(1, 2), insert(1, 3), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Diff:
++ 1
++ 2
++ 3
++ 4
++ 11
++ 12
++ 13
++ 14
+
+------------------
+
+SeqA:   []
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: replace
+Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 3), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Diff:
++ 1
++ 19
++ 2
++ 29
++ 3
++ 38
++ 39
++ 4
++ 12
++ 11
++ 13
++ 14
+
+------------------
+
+SeqA:   []
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: delete/insert
+Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 3), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Diff:
++ 1
++ 19
++ 2
++ 29
++ 3
++ 38
++ 39
++ 4
++ 12
++ 11
++ 13
++ 14
+
+------------------
+
+SeqA:   [3]
+SeqB:   []
+Params: replace
+Edits:  [delete(1)]
+Diff:
+- 3
+
+------------------
+
+SeqA:   [3]
+SeqB:   []
+Params: delete/insert
+Edits:  [delete(1)]
+Diff:
+- 3
+
+------------------
+
+SeqA:   [3]
+SeqB:   [3]
+Params: replace
+Edits:  []
+Diff:
+  3
+
+------------------
+
+SeqA:   [3]
+SeqB:   [3]
+Params: delete/insert
+Edits:  []
+Diff:
+  3
+
+------------------
+
+SeqA:   [3]
+SeqB:   [42]
+Params: replace
+Edits:  [replace(1, 42)]
+Diff:
+- 3
++ 42
+
+------------------
+
+SeqA:   [3]
+SeqB:   [42]
+Params: delete/insert
+Edits:  [delete(1), insert(1, 42)]
+Diff:
+- 3
++ 42
+
+------------------
+
+SeqA:   [3]
+SeqB:   [3, 4, 5, 12, 13]
+Params: replace
+Edits:  [insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Diff:
+  3
++ 4
++ 5
++ 12
++ 13
+
+------------------
+
+SeqA:   [3]
+SeqB:   [3, 4, 5, 12, 13]
+Params: delete/insert
+Edits:  [insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Diff:
+  3
++ 4
++ 5
++ 12
++ 13
+
+------------------
+
+SeqA:   [3]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: replace
+Edits:  [insert(1, 1), insert(1, 2), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Diff:
+  3
++ 1
++ 2
++ 4
++ 11
++ 12
++ 13
++ 14
+
+------------------
+
+SeqA:   [3]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: delete/insert
+Edits:  [insert(1, 1), insert(1, 2), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Diff:
+  3
++ 1
++ 2
++ 4
++ 11
++ 12
++ 13
++ 14
+
+------------------
+
+SeqA:   [3]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: replace
+Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Diff:
+  3
++ 1
++ 19
++ 2
++ 29
++ 38
++ 39
++ 4
++ 12
++ 11
++ 13
++ 14
+
+------------------
+
+SeqA:   [3]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: delete/insert
+Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Diff:
+  3
++ 1
++ 19
++ 2
++ 29
++ 38
++ 39
++ 4
++ 12
++ 11
++ 13
++ 14
+
+------------------
+
+SeqA:   [42]
+SeqB:   []
+Params: replace
+Edits:  [delete(1)]
+Diff:
+- 42
+
+------------------
+
+SeqA:   [42]
+SeqB:   []
+Params: delete/insert
+Edits:  [delete(1)]
+Diff:
+- 42
+
+------------------
+
+SeqA:   [42]
+SeqB:   [3]
+Params: replace
+Edits:  [replace(1, 3)]
+Diff:
+- 42
++ 3
+
+------------------
+
+SeqA:   [42]
+SeqB:   [3]
+Params: delete/insert
+Edits:  [delete(1), insert(1, 3)]
+Diff:
+- 42
++ 3
+
+------------------
+
+SeqA:   [42]
+SeqB:   [42]
+Params: replace
+Edits:  []
+Diff:
+  42
+
+------------------
+
+SeqA:   [42]
+SeqB:   [42]
+Params: delete/insert
+Edits:  []
+Diff:
+  42
+
+------------------
+
+SeqA:   [42]
+SeqB:   [3, 4, 5, 12, 13]
+Params: replace
+Edits:  [replace(1, 3), insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Diff:
+- 42
++ 3
++ 4
++ 5
++ 12
++ 13
+
+------------------
+
+SeqA:   [42]
+SeqB:   [3, 4, 5, 12, 13]
+Params: delete/insert
+Edits:  [delete(1), insert(1, 3), insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Diff:
+- 42
++ 3
++ 4
++ 5
++ 12
++ 13
+
+------------------
+
+SeqA:   [42]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: replace
+Edits:  [replace(1, 1), insert(1, 2), insert(1, 3), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Diff:
+- 42
++ 1
++ 2
++ 3
++ 4
++ 11
++ 12
++ 13
++ 14
+
+------------------
+
+SeqA:   [42]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: delete/insert
+Edits:  [delete(1), insert(1, 1), insert(1, 2), insert(1, 3), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Diff:
+- 42
++ 1
++ 2
++ 3
++ 4
++ 11
++ 12
++ 13
++ 14
+
+------------------
+
+SeqA:   [42]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: replace
+Edits:  [replace(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 3), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Diff:
+- 42
++ 1
++ 19
++ 2
++ 29
++ 3
++ 38
++ 39
++ 4
++ 12
++ 11
++ 13
++ 14
+
+------------------
+
+SeqA:   [42]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: delete/insert
+Edits:  [delete(1), insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 3), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Diff:
+- 42
++ 1
++ 19
++ 2
++ 29
++ 3
++ 38
++ 39
++ 4
++ 12
++ 11
++ 13
++ 14
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   []
+Params: replace
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5)]
+Diff:
+- 3
+- 4
+- 5
+- 12
+- 13
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   []
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5)]
+Diff:
+- 3
+- 4
+- 5
+- 12
+- 13
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [3]
+Params: replace
+Edits:  [delete(2), delete(3), delete(4), delete(5)]
+Diff:
+  3
+- 4
+- 5
+- 12
+- 13
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [3]
+Params: delete/insert
+Edits:  [delete(2), delete(3), delete(4), delete(5)]
+Diff:
+  3
+- 4
+- 5
+- 12
+- 13
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [42]
+Params: replace
+Edits:  [replace(1, 42), delete(2), delete(3), delete(4), delete(5)]
+Diff:
+- 3
+- 4
+- 5
+- 12
+- 13
++ 42
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [42]
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), insert(5, 42)]
+Diff:
+- 3
+- 4
+- 5
+- 12
+- 13
++ 42
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [3, 4, 5, 12, 13]
+Params: replace
+Edits:  []
+Diff:
+  3
+  4
+  5
+  12
+  13
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [3, 4, 5, 12, 13]
+Params: delete/insert
+Edits:  []
+Diff:
+  3
+  4
+  5
+  12
+  13
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: replace
+Edits:  [insert(1, 1), insert(1, 2), replace(3, 11), insert(5, 14)]
+Diff:
+  3
++ 1
++ 2
+  4
+- 5
++ 11
+  12
+  13
++ 14
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: delete/insert
+Edits:  [insert(1, 1), insert(1, 2), delete(3), insert(3, 11), insert(5, 14)]
+Diff:
+  3
++ 1
++ 2
+  4
+- 5
++ 11
+  12
+  13
++ 14
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: replace
+Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), replace(2, 38), replace(3, 39), insert(3, 4), insert(4, 11), insert(5, 14)]
+Diff:
+  3
+- 4
+- 5
++ 1
++ 19
++ 2
++ 29
++ 38
++ 39
++ 4
+  12
++ 11
+  13
++ 14
+
+------------------
+
+SeqA:   [3, 4, 5, 12, 13]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: delete/insert
+Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 38), insert(1, 39), delete(3), insert(4, 11), insert(5, 14)]
+Diff:
+  3
++ 1
++ 19
++ 2
++ 29
++ 38
++ 39
+  4
+- 5
+  12
++ 11
+  13
++ 14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   []
+Params: replace
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Diff:
+- 1
+- 2
+- 3
+- 4
+- 11
+- 12
+- 13
+- 14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   []
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Diff:
+- 1
+- 2
+- 3
+- 4
+- 11
+- 12
+- 13
+- 14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [3]
+Params: replace
+Edits:  [delete(1), delete(2), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Diff:
+- 1
+- 2
+  3
+- 4
+- 11
+- 12
+- 13
+- 14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [3]
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Diff:
+- 1
+- 2
+  3
+- 4
+- 11
+- 12
+- 13
+- 14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [42]
+Params: replace
+Edits:  [replace(1, 42), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Diff:
+- 1
+- 2
+- 3
+- 4
+- 11
+- 12
+- 13
+- 14
++ 42
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [42]
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), insert(8, 42)]
+Diff:
+- 1
+- 2
+- 3
+- 4
+- 11
+- 12
+- 13
+- 14
++ 42
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [3, 4, 5, 12, 13]
+Params: replace
+Edits:  [delete(1), delete(2), replace(5, 5), delete(8)]
+Diff:
+- 1
+- 2
+  3
+  4
+- 11
++ 5
+  12
+  13
+- 14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [3, 4, 5, 12, 13]
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(5), insert(5, 5), delete(8)]
+Diff:
+- 1
+- 2
+  3
+  4
+- 11
++ 5
+  12
+  13
+- 14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: replace
+Edits:  []
+Diff:
+  1
+  2
+  3
+  4
+  11
+  12
+  13
+  14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: delete/insert
+Edits:  []
+Diff:
+  1
+  2
+  3
+  4
+  11
+  12
+  13
+  14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: replace
+Edits:  [insert(1, 19), insert(2, 29), replace(4, 38), replace(5, 39), insert(5, 4), insert(6, 11)]
+Diff:
+  1
++ 19
+  2
++ 29
+  3
+- 4
+- 11
++ 38
++ 39
++ 4
+  12
++ 11
+  13
+  14
+
+------------------
+
+SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: delete/insert
+Edits:  [insert(1, 19), insert(2, 29), insert(3, 38), insert(3, 39), delete(5), insert(6, 11)]
+Diff:
+  1
++ 19
+  2
++ 29
+  3
++ 38
++ 39
+  4
+- 11
+  12
++ 11
+  13
+  14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   []
+Params: replace
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Diff:
+- 1
+- 19
+- 2
+- 29
+- 3
+- 38
+- 39
+- 4
+- 12
+- 11
+- 13
+- 14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   []
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Diff:
+- 1
+- 19
+- 2
+- 29
+- 3
+- 38
+- 39
+- 4
+- 12
+- 11
+- 13
+- 14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [3]
+Params: replace
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Diff:
+- 1
+- 19
+- 2
+- 29
+  3
+- 38
+- 39
+- 4
+- 12
+- 11
+- 13
+- 14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [3]
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Diff:
+- 1
+- 19
+- 2
+- 29
+  3
+- 38
+- 39
+- 4
+- 12
+- 11
+- 13
+- 14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [42]
+Params: replace
+Edits:  [replace(1, 42), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Diff:
+- 1
+- 19
+- 2
+- 29
+- 3
+- 38
+- 39
+- 4
+- 12
+- 11
+- 13
+- 14
++ 42
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [42]
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12), insert(12, 42)]
+Diff:
+- 1
+- 19
+- 2
+- 29
+- 3
+- 38
+- 39
+- 4
+- 12
+- 11
+- 13
+- 14
++ 42
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [3, 4, 5, 12, 13]
+Params: replace
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(6), delete(7), insert(8, 5), delete(10), delete(12)]
+Diff:
+- 1
+- 19
+- 2
+- 29
+  3
+- 38
+- 39
+  4
++ 5
+  12
+- 11
+  13
+- 14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [3, 4, 5, 12, 13]
+Params: delete/insert
+Edits:  [delete(1), delete(2), delete(3), delete(4), delete(6), delete(7), insert(8, 5), delete(10), delete(12)]
+Diff:
+- 1
+- 19
+- 2
+- 29
+  3
+- 38
+- 39
+  4
++ 5
+  12
+- 11
+  13
+- 14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: replace
+Edits:  [delete(2), delete(4), delete(6), delete(7), delete(9), insert(10, 12)]
+Diff:
+  1
+- 19
+  2
+- 29
+  3
+- 38
+- 39
+  4
+- 12
+  11
++ 12
+  13
+  14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
+Params: delete/insert
+Edits:  [delete(2), delete(4), delete(6), delete(7), delete(9), insert(10, 12)]
+Diff:
+  1
+- 19
+  2
+- 29
+  3
+- 38
+- 39
+  4
+- 12
+  11
++ 12
+  13
+  14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: replace
+Edits:  []
+Diff:
+  1
+  19
+  2
+  29
+  3
+  38
+  39
+  4
+  12
+  11
+  13
+  14
+
+------------------
+
+SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
+Params: delete/insert
+Edits:  []
+Diff:
+  1
+  19
+  2
+  29
+  3
+  38
+  39
+  4
+  12
+  11
+  13
+  14

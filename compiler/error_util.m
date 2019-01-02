@@ -696,56 +696,6 @@ contains_errors_and_or_warnings(Globals, Specs) = ErrorsOrWarnings :-
 
 %---------------------------------------------------------------------------%
 
-sort_error_msgs(Msgs0, Msgs) :-
-    list.sort_and_remove_dups(compare_error_msgs, Msgs0, Msgs).
-
-:- func project_msgs_contexts(list(error_msg)) = list(prog_context).
-
-project_msgs_contexts([]) = [].
-project_msgs_contexts([Msg | Msgs]) = Contexts :-
-    TailContexts = project_msgs_contexts(Msgs),
-    MaybeContext = project_msg_context(Msg),
-    (
-        MaybeContext = yes(Context),
-        Contexts = [Context | TailContexts]
-    ;
-        MaybeContext = no,
-        Contexts = TailContexts
-    ).
-
-:- pred compare_error_msgs(error_msg::in, error_msg::in,
-    comparison_result::out) is det.
-
-compare_error_msgs(MsgA, MsgB, Result) :-
-    MaybeContextA = project_msg_context(MsgA),
-    MaybeContextB = project_msg_context(MsgB),
-    compare(ContextResult, MaybeContextA, MaybeContextB),
-    (
-        ContextResult = (=),
-        compare(Result, MsgA, MsgB)
-    ;
-        ( ContextResult = (>)
-        ; ContextResult = (<)
-        ),
-        Result = ContextResult
-    ).
-
-:- func project_msg_context(error_msg) = maybe(prog_context).
-
-project_msg_context(Msg) = MaybeContext :-
-    (
-        Msg = simple_msg(Context, _),
-        MaybeContext = yes(Context)
-    ;
-        Msg = error_msg(yes(Context), _, _, _),
-        MaybeContext = yes(Context)
-    ;
-        Msg = error_msg(no, _, _, __),
-        MaybeContext = no
-    ).
-
-%---------------------------------------------------------------------------%
-
 :- type error_spec_accumulator == maybe(pair(set(error_spec))).
 
 init_error_spec_accumulator = no.
@@ -910,19 +860,108 @@ remove_conditionals_in_msg_component(Globals, Component, !ComponentCord) :-
         !:ComponentCord = cord.snoc(!.ComponentCord, Component)
     ).
 
+%---------------------------------------------------------------------------%
+
 :- pred compare_error_specs(error_spec::in, error_spec::in,
     comparison_result::out) is det.
 
 compare_error_specs(SpecA, SpecB, Result) :-
     SpecA = error_spec(_, _, MsgsA),
     SpecB = error_spec(_, _, MsgsB),
-    ContextsA = project_msgs_contexts(MsgsA),
-    ContextsB = project_msgs_contexts(MsgsB),
-    compare(ContextResult, ContextsA, ContextsB),
-    ( if ContextResult = (=) then
+    compare_error_msg_lists(MsgsA, MsgsB, MsgsResult),
+    (
+        MsgsResult = (=),
         compare(Result, SpecA, SpecB)
-    else
+    ;
+        ( MsgsResult = (>)
+        ; MsgsResult = (<)
+        ),
+        Result = MsgsResult
+    ).
+
+:- pred compare_error_msg_lists(list(error_msg)::in, list(error_msg)::in,
+    comparison_result::out) is det.
+
+compare_error_msg_lists(MsgsA, MsgsB, Result) :-
+    (
+        MsgsA = [],
+        MsgsB = [],
+        Result = (=)
+    ;
+        MsgsA = [],
+        MsgsB = [_ | _],
+        Result = (<)
+    ;
+        MsgsA = [_ | _],
+        MsgsB = [],
+        Result = (>)
+    ;
+        MsgsA = [HeadMsgA | TailMsgsA],
+        MsgsB = [HeadMsgB | TailMsgsB],
+        compare_error_msgs(HeadMsgA, HeadMsgB, HeadResult),
+        (
+            HeadResult = (=),
+            compare_error_msg_lists(TailMsgsA, TailMsgsB, Result)
+        ;
+            ( HeadResult = (>)
+            ; HeadResult = (<)
+            ),
+            Result = HeadResult
+        )
+    ).
+
+sort_error_msgs(Msgs0, Msgs) :-
+    list.sort_and_remove_dups(compare_error_msgs, Msgs0, Msgs).
+
+:- pred compare_error_msgs(error_msg::in, error_msg::in,
+    comparison_result::out) is det.
+
+compare_error_msgs(MsgA, MsgB, Result) :-
+    MaybeContextA = project_msg_context(MsgA),
+    MaybeContextB = project_msg_context(MsgB),
+    compare(ContextResult, MaybeContextA, MaybeContextB),
+    (
+        ContextResult = (=),
+        ComponentsA = project_msg_components(MsgA),
+        ComponentsB = project_msg_components(MsgB),
+        compare(ComponentsResult, ComponentsA, ComponentsB),
+        (
+            ComponentsResult = (=),
+            compare(Result, MsgA, MsgB)
+        ;
+            ( ComponentsResult = (>)
+            ; ComponentsResult = (<)
+            ),
+            Result = ComponentsResult
+        )
+    ;
+        ( ContextResult = (>)
+        ; ContextResult = (<)
+        ),
         Result = ContextResult
+    ).
+
+:- func project_msg_context(error_msg) = maybe(prog_context).
+
+project_msg_context(Msg) = MaybeContext :-
+    (
+        Msg = simple_msg(Context, _),
+        MaybeContext = yes(Context)
+    ;
+        Msg = error_msg(yes(Context), _, _, _),
+        MaybeContext = yes(Context)
+    ;
+        Msg = error_msg(no, _, _, __),
+        MaybeContext = no
+    ).
+
+:- func project_msg_components(error_msg) = list(error_msg_component).
+
+project_msg_components(Msg) = Components :-
+    (
+        Msg = simple_msg(_, Components)
+    ;
+        Msg = error_msg(_, _, _, Components)
     ).
 
 %---------------------------------------------------------------------------%

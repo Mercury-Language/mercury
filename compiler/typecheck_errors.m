@@ -177,6 +177,10 @@
 :- func report_missing_tvar_in_foreign_code(type_error_clause_context,
     prog_context, string) = error_spec.
 
+:- pred construct_pred_decl_diff(module_info::in,
+    list(mer_type)::in, maybe(mer_type)::in, pred_id::in,
+    list(format_component)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -200,6 +204,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module edit_seq.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
@@ -2411,6 +2416,104 @@ type_to_pieces(MaybeAddQuotes, Type0, TVarSet, ExternalTypeParams) = Pieces :-
 :- func string_to_pieces(string) = list(format_component).
 
 string_to_pieces(Str) = [words(Str)].
+
+%-----------------------------------------------------------------------------%
+
+construct_pred_decl_diff(ModuleInfo, ActualArgTypes, MaybeActualReturnType,
+        OtherPredId, Pieces) :-
+    module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
+    pred_info_get_arg_types(OtherPredInfo, OtherTypes),
+    % It would be nice if we could print the names of type variables,
+    % but there are two problems. The lesser problem is that the names
+    % may be different in the varsets of the two predicates, which may be
+    % confusing. The more deadly problem is that a type variable that
+    % exists in one of the varsets may not exist in the other.
+    % Therefore printing variable numbers is the best thing we can do,
+    % as a general case. (We *could* do better in the special case
+    % where neither problem arises.)
+    varset.init(TVarSet),
+    (
+        MaybeActualReturnType = no,
+        list.length(OtherTypes, OtherArity),
+        pred_decl_lines(TVarSet, ActualArgTypes, ActualLines),
+        pred_decl_lines(TVarSet, OtherTypes, OtherLines)
+    ;
+        MaybeActualReturnType = yes(ActualReturnType),
+        pred_args_to_func_args(OtherTypes, OtherArgTypes, OtherReturnType),
+        list.length(OtherArgTypes, OtherArity),
+        func_decl_lines(TVarSet, ActualArgTypes, ActualReturnType,
+            ActualLines),
+        func_decl_lines(TVarSet, OtherArgTypes, OtherReturnType,
+            OtherLines)
+    ),
+    EditParams = edit_params(1, 1, 2), % cost(replace) = cost(delete + insert).
+    find_shortest_edit_seq(EditParams, OtherLines, ActualLines, EditSeq),
+    find_diff_seq(OtherLines, EditSeq, DiffSeq),
+    DiffPieceLists = list.map(diff_to_pieces, DiffSeq),
+    list.condense(DiffPieceLists, DiffPieces),
+    Pieces = [words("The argument list difference from the arity"),
+        int_fixed(OtherArity), words("version is"), nl] ++ DiffPieces.
+
+:- func diff_to_pieces(diff(string)) = list(format_component).
+
+diff_to_pieces(Diff) = Pieces :-
+    (
+        Diff = unchanged(Line),
+        Char = " "
+    ;
+        Diff = deleted(Line),
+        Char = "-"
+    ;
+        Diff = inserted(Line),
+        Char = "+"
+    ),
+    Pieces = [fixed(Char ++ " " ++ Line), nl].
+
+:- pred pred_decl_lines(tvarset::in, list(mer_type)::in,
+    list(string)::out) is det.
+
+pred_decl_lines(TVarSet, ArgTypes, Lines) :-
+    ( if list.split_last(ArgTypes, NonLastArgTypes, LastArgType) then
+        arg_decl_lines("pred", TVarSet, NonLastArgTypes, LastArgType, "",
+            Lines)
+    else
+        Lines = ["pred"]
+    ).
+
+:- pred func_decl_lines(tvarset::in, list(mer_type)::in, mer_type::in,
+    list(string)::out) is det.
+
+func_decl_lines(TVarSet, ArgTypes, ReturnType, Lines) :-
+    ReturnTypeStr =
+        mercury_type_to_string(TVarSet, print_num_only, ReturnType),
+    ReturnTypeSuffix = " = " ++ ReturnTypeStr,
+    ( if list.split_last(ArgTypes, NonLastArgTypes, LastArgType) then
+        arg_decl_lines("func", TVarSet, NonLastArgTypes, LastArgType,
+            ReturnTypeSuffix, Lines)
+    else
+        Lines = ["func" ++ ReturnTypeSuffix]
+    ).
+
+:- pred arg_decl_lines(string::in, tvarset::in,
+    list(mer_type)::in, mer_type::in, string::in, list(string)::out) is det.
+
+arg_decl_lines(PredOrFuncStr, TVarSet, NonLastArgTypes, LastArgType, Suffix,
+        Lines) :-
+    NonLastArgTypeStrs = list.map(
+        mercury_type_to_string(TVarSet, print_num_only), NonLastArgTypes),
+    AddComma =
+        (func(NonLastArgTypeStr) = one_indent ++ NonLastArgTypeStr ++ ","),
+    NonLastArgTypeLines = list.map(AddComma, NonLastArgTypeStrs),
+    LastArgTypeStr =
+        mercury_type_to_string(TVarSet, print_num_only, LastArgType),
+    Lines = [PredOrFuncStr ++ "("] ++
+        NonLastArgTypeLines ++
+        [one_indent ++ LastArgTypeStr,
+        ")" ++ Suffix].
+
+:- func one_indent = string.
+
+one_indent = "    ".
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_errors.

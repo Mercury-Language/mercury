@@ -10,12 +10,12 @@ multisoln_func.m:020:   likely, this procedure should be a predicate, not a
 multisoln_func.m:020:   function.
 multisoln_func.m:026: Error: invalid determinism for `test' = out:
 multisoln_func.m:026:   the primary mode of a function cannot be `cc_multi'.
+multisoln_func.m:033: Inferred :- func test2 = int.
 multisoln_func.m:033: Error: invalid determinism for `test2' = out:
 multisoln_func.m:033:   the primary mode of a function cannot be `multi'.
-multisoln_func.m:033: Inferred :- func test2 = int.
+multisoln_func.m:037: Inferred :- func test3(int) = int.
 multisoln_func.m:037: Error: invalid determinism for `test3'(in) = out:
 multisoln_func.m:037:   the primary mode of a function cannot be `nondet'.
-multisoln_func.m:037: Inferred :- func test3(int) = int.
+multisoln_func.m:041: Inferred :- func test3b(int) = int.
 multisoln_func.m:041: Error: invalid determinism for `test3b'(in) = out:
 multisoln_func.m:041:   the primary mode of a function cannot be `cc_nondet'.
-multisoln_func.m:041: Inferred :- func test3b(int) = int.

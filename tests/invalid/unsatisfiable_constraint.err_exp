@@ -1,4 +1,13 @@
 unsatisfiable_constraint.m:039: In predicate `test'/1:
+unsatisfiable_constraint.m:039:   type error: unsatisfied typeclass constraints:
+unsatisfiable_constraint.m:039:     `unsatisfiable_constraint.a(A, B, A, V_8)',
+unsatisfiable_constraint.m:039:     `unsatisfiable_constraint.a(A, B, C, V_14)',
+unsatisfiable_constraint.m:039:     `unsatisfiable_constraint.b(A, C)'
+unsatisfiable_constraint.m:039:   The constraints are due to:
+unsatisfiable_constraint.m:043:     a goal here,
+unsatisfiable_constraint.m:044:     a goal here, and
+unsatisfiable_constraint.m:045:     a goal here.
+unsatisfiable_constraint.m:039: In predicate `test'/1:
 unsatisfiable_constraint.m:039:   warning: unresolved polymorphism.
 unsatisfiable_constraint.m:039:   The variables with unbound types were:
 unsatisfiable_constraint.m:039:     C: C
@@ -12,12 +21,3 @@ unsatisfiable_constraint.m:039:   type variables listed above didn't get bound.
 unsatisfiable_constraint.m:039:   (I ought to tell you which call caused the
 unsatisfiable_constraint.m:039:   problem, but I'm afraid you'll have to work
 unsatisfiable_constraint.m:039:   it out yourself. My apologies.)
-unsatisfiable_constraint.m:039: In predicate `test'/1:
-unsatisfiable_constraint.m:039:   type error: unsatisfied typeclass constraints:
-unsatisfiable_constraint.m:039:     `unsatisfiable_constraint.a(A, B, A, V_8)',
-unsatisfiable_constraint.m:039:     `unsatisfiable_constraint.a(A, B, C, V_14)',
-unsatisfiable_constraint.m:039:     `unsatisfiable_constraint.b(A, C)'
-unsatisfiable_constraint.m:039:   The constraints are due to:
-unsatisfiable_constraint.m:043:     a goal here,
-unsatisfiable_constraint.m:044:     a goal here, and
-unsatisfiable_constraint.m:045:     a goal here.

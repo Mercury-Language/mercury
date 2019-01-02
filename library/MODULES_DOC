@@ -20,6 +20,7 @@ deconstruct.m
 diet.m
 digraph.m
 dir.m
+edit_seq.m
 enum.m
 eqvclass.m
 exception.m

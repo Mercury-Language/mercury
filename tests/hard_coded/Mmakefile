@@ -104,6 +104,7 @@ ORDINARY_PROGS = \
 	dup_vars_in_trace_scopes_only \
 	dupcall_impurity \
 	dupcall_types_bug \
+	edit_seq_test \
 	ee_dummy \
 	ee_valid_test \
 	elim_local_var_char \

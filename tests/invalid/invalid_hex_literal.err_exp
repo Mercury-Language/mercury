@@ -24,9 +24,9 @@ invalid_hex_literal.m:025: Syntax error: unterminated hexadecimal literal.
 invalid_hex_literal.m:027: Syntax error at token `. ': unexpected token at
 invalid_hex_literal.m:027:   start of (sub)term.
 invalid_hex_literal.m:027: Syntax error: unterminated hexadecimal literal.
-invalid_hex_literal.m:029: Syntax error: unterminated decimal literal.
 invalid_hex_literal.m:029: Error: clause for predicate
 invalid_hex_literal.m:029:   `invalid_hex_literal.xff'/0
 invalid_hex_literal.m:029:   without corresponding `:- pred' declaration.
 invalid_hex_literal.m:029: Inferred :- pred xff.
+invalid_hex_literal.m:029: Syntax error: unterminated decimal literal.
 invalid_hex_literal.m:031: Syntax error: unterminated decimal literal.

@@ -3,7 +3,6 @@ bigtest.m:005: Error: module `bigtest' should start with either an
 bigtest.m:005:   `:- interface' or an `:- implementation' declaration.
 bigtest.m:005:   The following assumes that the missing declaration is an
 bigtest.m:005:   `:- implementation' declaration.
-bigtest.m:005: Error: `export_sym' is not a valid declaration type.
 bigtest.m:005: Warning: interface for module `bigtest' does not export
 bigtest.m:005:   anything.
 bigtest.m:005:   To be useful, a module should export something. A file should
@@ -11,6 +10,7 @@ bigtest.m:005:   contain at least one declaration other than `:- import_module'
 bigtest.m:005:   in its interface section(s). This would normally be a
 bigtest.m:005:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
 bigtest.m:005:   declaration.
+bigtest.m:005: Error: `export_sym' is not a valid declaration type.
 bigtest.m:006: Error: `export_pred' is not a valid declaration type.
 bigtest.m:007: Error: `export_type' is not a valid declaration type.
 bigtest.m:009: Error: clause for predicate `bigtest.fact'/0
