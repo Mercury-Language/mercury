@@ -47,27 +47,9 @@ In order to install the C#, Erlang or Java grades you will require a C#,
 Erlang or Java compiler to be included in the Windows PATH.
 (See the relevant README files for further details, e.g. README.Java etc)
 
-
-*** IMPORTANT NOTE FOR USERS OF VISUAL STUDIO 2013 (OR LATER) ***
-
-The Makefile for the Boehm garbage collector requires the files NtWin32.Mak and
-Win32.Mak to be present in the build environment.  These files are *not*
-included with Visual Studio 2013+ and must be copied or included from the
-Windows SDK.  The last version known to provide those files is the Windows 7.1
-SDK.  The need for those files should go away once we update Boehm GC to
-version 7.6.8 (not yet released).
-
-To include the above files, append the SDK directory to the end of the INCLUDE
-environment variable, for example (with the Windows 7.1 SDK):
-
-   C:\> set INCLUDE=%INCLUDE%;C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1a\Include
-
-Alternatively, copy the NtWin32.Mak and Win32.Mak files into the "boehm_gc"
-directory of the Mercury source tree.
-
-Note that boehm_gc/NT_MAKEFILE is hardcoded for the i386 architecture.
-Building for x86_64 will at least require editing of some makefiles.
-This problem can also be resolved once we update Boehm GC to version 7.6.8.
+Note that boehm_gc/NT_MAKEFILE supports both i386 and x64 architectures,
+but the compiler can only target i386 for now. The architecture is controlled
+by the CPU parameter of NT_MAKEFILE.
 
 -----------------------------------------------------------------------------
 
