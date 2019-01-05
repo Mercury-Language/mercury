@@ -46,12 +46,24 @@
 %
 
 :- type maybe_int_switch_info
-    --->    int_switch(
-                lower_limit     :: int,
-                upper_limit     :: int,
-                num_values      :: int
-            )
+    --->    int_switch(int_switch_info(int))
+    ;       uint_switch(int_switch_info(uint))
+    ;       int8_switch(int_switch_info(int8))
+    ;       uint8_switch(int_switch_info(uint8))
+    ;       int16_switch(int_switch_info(int16))
+    ;       uint16_switch(int_switch_info(uint16))
+    ;       int32_switch(int_switch_info(int32))
+    ;       uint32_switch(int_switch_info(uint32))
+    ;       int64_switch(int_switch_info(int64))
+    ;       uint64_switch(int_switch_info(uint64))
     ;       not_int_switch.
+
+:- type int_switch_info(T)
+    --->    int_switch_info(
+                lower_limt  :: T,
+                upper_limit :: T,
+                num_values  :: int
+            ).
 
     % tag_cases(ModuleInfo, Type, Cases, TaggedCases, MaybeIntSwitchInfo):
     %
@@ -77,8 +89,8 @@
 
 :- type switch_category
     --->    atomic_switch
-            % A switch on int, char, enum or a 8-, 16 or 32-bit signed
-            % or unsigned ineger.
+            % A switch on int, uint, char, enum or a 8-, 16 or 32-bit signed or
+            % unsigned integer.
 
     ;       int64_switch
             % A switch on a 64-bit integer.
@@ -381,12 +393,19 @@
 :- import_module libs.options.
 
 :- import_module int.
+:- import_module int8.
+:- import_module int16.
+:- import_module int32.
+:- import_module int64.
 :- import_module io.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
 :- import_module uint8.
+:- import_module uint16.
+:- import_module uint32.
+:- import_module uint64.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -406,24 +425,57 @@ tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
     Case = case(MainConsId, OtherConsIds, Goal),
     MainConsTag = cons_id_to_tag(ModuleInfo, MainConsId),
     TaggedMainConsId = tagged_cons_id(MainConsId, MainConsTag),
-    ( if MainConsTag = int_tag(int_tag_int(IntTag)) then
-        list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo),
-            OtherConsIds, TaggedOtherConsIds,
-            IntTag, LowerLimit1, IntTag, UpperLimit1,
-            1, NumValues1, is_int_switch, IsIntSwitch1),
-        TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
-            case_id(0), Goal),
-        tag_cases_in_int_switch(ModuleInfo, SwitchVarType, 1,
-            Cases, TaggedCases,
-            LowerLimit1, LowerLimit, UpperLimit1, UpperLimit,
-            NumValues1, NumValues, IsIntSwitch1, IsIntSwitch),
+    ( if MainConsTag = int_tag(IntTag) then
         (
-            IsIntSwitch = is_int_switch,
-            MaybeIntSwitchLimits = int_switch(LowerLimit, UpperLimit,
-                NumValues)
+            IntTag = int_tag_int(IntTagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, IntTagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
         ;
-            IsIntSwitch = is_not_int_switch,
-            MaybeIntSwitchLimits = not_int_switch
+            IntTag = int_tag_uint(UIntTagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, UIntTagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
+        ;
+            IntTag = int_tag_int8(Int8TagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, Int8TagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
+        ;
+            IntTag = int_tag_uint8(UInt8TagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, UInt8TagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
+        ;
+            IntTag = int_tag_int16(Int16TagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, Int16TagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
+        ;
+            IntTag = int_tag_uint16(UInt16TagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, UInt16TagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
+        ;
+            IntTag = int_tag_int32(Int32TagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, Int32TagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
+        ;
+            IntTag = int_tag_uint32(UInt32TagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, UInt32TagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
+        ;
+            IntTag = int_tag_int64(Int64TagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, Int64TagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
+        ;
+            IntTag = int_tag_uint64(UInt64TagVal),
+            tag_cases_in_int_switch(ModuleInfo, SwitchVarType,
+                TaggedMainConsId, OtherConsIds, Goal, Cases, UInt64TagVal,
+                TaggedCase, TaggedCases, MaybeIntSwitchLimits)
         )
     else
         list.map(tag_cons_id(ModuleInfo), OtherConsIds, TaggedOtherConsIds),
@@ -432,6 +484,199 @@ tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
         tag_cases_plain(ModuleInfo, SwitchVarType, 1, Cases, TaggedCases),
         MaybeIntSwitchLimits = not_int_switch
     ).
+
+%---------------------%
+
+:- typeclass int_tag_value(T) where [
+    func int_tag_min(T, T) = T,
+    func int_tag_max(T, T) = T,
+    pred cons_tag_is_int_tag(cons_tag::in, T::out) is semidet,
+    func wrap_int_switch_info(int_switch_info(T)) = maybe_int_switch_info
+].
+
+:- instance int_tag_value(int) where [
+    func(int_tag_min/2) is int.min,
+    func(int_tag_max/2) is int.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_int(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+        int_switch(IntSwitchInfo)
+    )
+].
+
+:- instance int_tag_value(int8) where [
+    func(int_tag_min/2) is int8.min,
+    func(int_tag_max/2) is int8.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_int8(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+       int8_switch(IntSwitchInfo)
+    )
+].
+
+:- instance int_tag_value(int16) where [
+    func(int_tag_min/2) is int16.min,
+    func(int_tag_max/2) is int16.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_int16(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+       int16_switch(IntSwitchInfo)
+    )
+].
+
+:- instance int_tag_value(int32) where [
+    func(int_tag_min/2) is int32.min,
+    func(int_tag_max/2) is int32.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_int32(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+        int32_switch(IntSwitchInfo)
+    )
+].
+
+:- instance int_tag_value(int64) where [
+    func(int_tag_min/2) is int64.min,
+    func(int_tag_max/2) is int64.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_int64(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+       int64_switch(IntSwitchInfo)
+    )
+].
+
+:- instance int_tag_value(uint) where [
+    func(int_tag_min/2) is uint.min,
+    func(int_tag_max/2) is uint.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_uint(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+       uint_switch(IntSwitchInfo)
+    )
+].
+
+:- instance int_tag_value(uint8) where [
+    func(int_tag_min/2) is uint8.min,
+    func(int_tag_max/2) is uint8.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_uint8(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+       uint8_switch(IntSwitchInfo)
+    )
+].
+
+:- instance int_tag_value(uint16) where [
+    func(int_tag_min/2) is uint16.min,
+    func(int_tag_max/2) is uint16.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_uint16(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+       uint16_switch(IntSwitchInfo)
+    )
+].
+
+:- instance int_tag_value(uint32) where [
+    func(int_tag_min/2) is uint32.min,
+    func(int_tag_max/2) is uint32.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_uint32(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+       uint32_switch(IntSwitchInfo)
+    )
+].
+
+:- instance int_tag_value(uint64) where [
+    func(int_tag_min/2) is uint64.min,
+    func(int_tag_max/2) is uint64.max,
+    ( cons_tag_is_int_tag(ConsTag, TagVal) :-
+        ConsTag = int_tag(int_tag_uint64(TagVal))
+    ),
+    ( wrap_int_switch_info(IntSwitchInfo) =
+       uint64_switch(IntSwitchInfo)
+    )
+].
+
+:- pred tag_cases_in_int_switch(module_info::in, mer_type::in,
+    tagged_cons_id::in, list(cons_id)::in, hlds_goal::in,
+    list(case)::in, T::in, tagged_case::out, list(tagged_case)::out,
+    maybe_int_switch_info::out) is det <= int_tag_value(T).
+
+tag_cases_in_int_switch(ModuleInfo, SwitchVarType, TaggedMainConsId,
+        OtherConsIds, Goal, Cases, IntTagVal, TaggedCase, TaggedCases,
+        MaybeIntSwitchLimits) :-
+    list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo),
+        OtherConsIds, TaggedOtherConsIds,
+        IntTagVal, LowerLimit1, IntTagVal, UpperLimit1,
+        1, NumValues1, is_int_switch, IsIntSwitch1),
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
+        case_id(0), Goal),
+    do_tag_cases_in_int_switch(ModuleInfo, SwitchVarType, 1,
+        Cases, TaggedCases,
+        LowerLimit1, LowerLimit, UpperLimit1, UpperLimit,
+        NumValues1, NumValues, IsIntSwitch1, IsIntSwitch),
+    (
+        IsIntSwitch = is_int_switch,
+        IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
+        MaybeIntSwitchLimits = wrap_int_switch_info(IntSwitchInfo)
+    ;
+        IsIntSwitch = is_not_int_switch,
+        MaybeIntSwitchLimits = not_int_switch
+    ).
+
+:- pred do_tag_cases_in_int_switch(module_info::in, mer_type::in, int::in,
+    list(case)::in, list(tagged_case)::out, T::in, T::out,
+    T::in, T::out, int::in, int::out, is_int_switch::in, is_int_switch::out)
+    is det <= int_tag_value(T).
+
+do_tag_cases_in_int_switch(_, _, _, [], [], !LowerLimit, !UpperLimit,
+        !NumValues, !IsIntSwitch).
+do_tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
+        [TaggedCase | TaggedCases], !LowerLimit, !UpperLimit,
+        !NumValues, !IsIntSwitch) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    tag_cons_id_in_int_switch(ModuleInfo, MainConsId, TaggedMainConsId,
+        !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch),
+    list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo),
+        OtherConsIds, TaggedOtherConsIds, !LowerLimit, !UpperLimit,
+        !NumValues, !IsIntSwitch),
+    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
+        case_id(CaseNum), Goal),
+    do_tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum + 1,
+        Cases, TaggedCases, !LowerLimit, !UpperLimit,
+        !NumValues, !IsIntSwitch).
+
+:- pred tag_cons_id_in_int_switch(module_info::in,
+    cons_id::in, tagged_cons_id::out,
+    T::in, T::out, T::in, T::out, int::in, int::out,
+    is_int_switch::in, is_int_switch::out) is det <= int_tag_value(T).
+
+tag_cons_id_in_int_switch(ModuleInfo, ConsId, TaggedConsId,
+        !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch) :-
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+    TaggedConsId = tagged_cons_id(ConsId, ConsTag),
+    ( if cons_tag_is_int_tag(ConsTag, IntTag) then
+        !:LowerLimit = int_tag_min(IntTag, !.LowerLimit),
+        !:UpperLimit = int_tag_max(IntTag, !.UpperLimit),
+        !:NumValues = !.NumValues + 1
+    else
+        !:IsIntSwitch = is_not_int_switch
+    ).
+
+%---------------------%
+
+:- pred tag_cons_id(module_info::in, cons_id::in, tagged_cons_id::out) is det.
+
+tag_cons_id(ModuleInfo, ConsId, TaggedConsId) :-
+    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
+    TaggedConsId = tagged_cons_id(ConsId, ConsTag).
 
 :- pred tag_cases_plain(module_info::in, mer_type::in, int::in, list(case)::in,
     list(tagged_case)::out) is det.
@@ -446,50 +691,6 @@ tag_cases_plain(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
         case_id(CaseNum), Goal),
     tag_cases_plain(ModuleInfo, SwitchVarType, CaseNum + 1, Cases,
         TaggedCases).
-
-:- pred tag_cases_in_int_switch(module_info::in, mer_type::in, int::in,
-    list(case)::in, list(tagged_case)::out, int::in, int::out, int::in,
-    int::out, int::in, int::out, is_int_switch::in, is_int_switch::out) is det.
-
-tag_cases_in_int_switch(_, _, _, [], [], !LowerLimit, !UpperLimit,
-        !NumValues, !IsIntSwitch).
-tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
-        [TaggedCase | TaggedCases], !LowerLimit, !UpperLimit,
-        !NumValues, !IsIntSwitch) :-
-    Case = case(MainConsId, OtherConsIds, Goal),
-    tag_cons_id_in_int_switch(ModuleInfo, MainConsId, TaggedMainConsId,
-        !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch),
-    list.map_foldl4(tag_cons_id_in_int_switch(ModuleInfo),
-        OtherConsIds, TaggedOtherConsIds, !LowerLimit, !UpperLimit,
-        !NumValues, !IsIntSwitch),
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
-        case_id(CaseNum), Goal),
-    tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum + 1,
-        Cases, TaggedCases, !LowerLimit, !UpperLimit,
-        !NumValues, !IsIntSwitch).
-
-:- pred tag_cons_id(module_info::in, cons_id::in, tagged_cons_id::out) is det.
-
-tag_cons_id(ModuleInfo, ConsId, TaggedConsId) :-
-    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-    TaggedConsId = tagged_cons_id(ConsId, ConsTag).
-
-:- pred tag_cons_id_in_int_switch(module_info::in,
-    cons_id::in, tagged_cons_id::out,
-    int::in, int::out, int::in, int::out, int::in, int::out,
-    is_int_switch::in, is_int_switch::out) is det.
-
-tag_cons_id_in_int_switch(ModuleInfo, ConsId, TaggedConsId,
-        !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch) :-
-    ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-    TaggedConsId = tagged_cons_id(ConsId, ConsTag),
-    ( if ConsTag = int_tag(int_tag_int(IntTag)) then
-        int.min(IntTag, !LowerLimit),
-        int.max(IntTag, !UpperLimit),
-        !:NumValues = !.NumValues + 1
-    else
-        !:IsIntSwitch = is_not_int_switch
-    ).
 
 %-----------------------------------------------------------------------------%
 

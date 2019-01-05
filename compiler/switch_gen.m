@@ -201,8 +201,8 @@ generate_atomic_or_int64_switch(ModuleInfo, Globals, CodeModel, CanFail,
         TaggedCases, GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
     num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
     ( if
-        MaybeIntSwitchInfo =
-            int_switch(LowerLimit, UpperLimit, NumValues),
+        MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
+        IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
         % Since lookup switches rely on static ground terms to work
         % efficiently, there is no point in using a lookup switch
         % if static ground terms are not enabled. Well, actually,
@@ -242,8 +242,8 @@ generate_atomic_or_int64_switch(ModuleInfo, Globals, CodeModel, CanFail,
             NeedBitVecCheck, NeedRangeCheck,
             MaybeEnd1, MaybeEnd, SwitchCode, !CI, !.CLD)
     else if
-        MaybeIntSwitchInfo =
-            int_switch(LowerLimit, UpperLimit, NumValues),
+        MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
+        IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
         globals.lookup_int_option(Globals, dense_switch_size,
             DenseSize),
         NumConsIds >= DenseSize,
