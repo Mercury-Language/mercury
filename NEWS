@@ -656,7 +656,7 @@ Changes to the Mercury compiler:
 
 * We have disabled the old --num-reserved-objects option.
 
-* We have upgraded the bundled Boehm GC to v7.6.6 and libatomic_ops to v7.6.2.
+* We have upgraded the bundled Boehm GC to v7.6.10 and libatomic_ops to v7.6.2.
 
 Change to the Mercury debugger:
 
