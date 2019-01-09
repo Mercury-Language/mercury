@@ -1,0 +1,36 @@
+================
+Input: []
+Result: EOF (read big-endian)
+================
+Input: [0u8]
+Result: Incomplete ([0u8]) (read big-endian)
+================
+Input: [1u8, 0u8] (LE: 1) (BE: 256)
+Result: 256i16 (read big-endian)
+================
+Input: [255u8, 0u8] (LE: 255) (BE: -256)
+Result: -256i16 (read big-endian)
+================
+Input: []
+Result: EOF (read little-endian)
+================
+Input: [0u8]
+Result: Incomplete ([0u8]) (read little-endian)
+================
+Input: [1u8, 0u8] (LE: 1) (BE: 256)
+Result: 1i16 (read little-endian)
+================
+Input: [255u8, 0u8] (LE: 255) (BE: -256)
+Result: 255i16 (read little-endian)
+================
+Input: []
+Result: EOF (read native byte order)
+================
+Input: [0u8]
+Result: Incomplete ([0u8]) (read native byte order)
+================
+Input: [1u8, 0u8] (LE: 1) (BE: 256)
+Result: 1i16 (read native byte order)
+================
+Input: [255u8, 0u8] (LE: 255) (BE: -256)
+Result: 255i16 (read native byte order)

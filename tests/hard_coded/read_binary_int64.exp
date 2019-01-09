@@ -1,0 +1,108 @@
+================
+Input: []
+Result: EOF (read big-endian)
+================
+Input: [1u8]
+Result: Incomplete ([1u8]) (read big-endian)
+================
+Input: [1u8, 2u8]
+Result: Incomplete ([1u8, 2u8]) (read big-endian)
+================
+Input: [1u8, 2u8, 3u8]
+Result: Incomplete ([1u8, 2u8, 3u8]) (read big-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8]) (read big-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8]) (read big-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8, 6u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8, 6u8]) (read big-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8, 7u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8, 7u8]) (read big-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8, 7u8, 8u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8, 7u8, 8u8]) (read big-endian)
+================
+Input: [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8] (LE: 72057594037927936) (BE: 1)
+Result: 1i64 (read big-endian)
+================
+Input: [255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] (LE: 255) (BE: -72057594037927936)
+Result: -72057594037927936i64 (read big-endian)
+================
+Input: [1u8, 1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] (LE: 257) (BE: 72339069014638592)
+Result: 72339069014638592i64 (read big-endian)
+================
+Input: []
+Result: EOF (read little-endian)
+================
+Input: [1u8]
+Result: Incomplete ([1u8]) (read little-endian)
+================
+Input: [1u8, 2u8]
+Result: Incomplete ([1u8, 2u8]) (read little-endian)
+================
+Input: [1u8, 2u8, 3u8]
+Result: Incomplete ([1u8, 2u8, 3u8]) (read little-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8]) (read little-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8]) (read little-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8, 6u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8, 6u8]) (read little-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8, 7u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8, 7u8]) (read little-endian)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8, 7u8, 8u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8, 7u8, 8u8]) (read little-endian)
+================
+Input: [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8] (LE: 72057594037927936) (BE: 1)
+Result: 72057594037927936i64 (read little-endian)
+================
+Input: [255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] (LE: 255) (BE: -72057594037927936)
+Result: 255i64 (read little-endian)
+================
+Input: [1u8, 1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] (LE: 257) (BE: 72339069014638592)
+Result: 257i64 (read little-endian)
+================
+Input: []
+Result: EOF (read native byte order)
+================
+Input: [1u8]
+Result: Incomplete ([1u8]) (read native byte order)
+================
+Input: [1u8, 2u8]
+Result: Incomplete ([1u8, 2u8]) (read native byte order)
+================
+Input: [1u8, 2u8, 3u8]
+Result: Incomplete ([1u8, 2u8, 3u8]) (read native byte order)
+================
+Input: [1u8, 2u8, 3u8, 4u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8]) (read native byte order)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8]) (read native byte order)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8, 6u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8, 6u8]) (read native byte order)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8, 7u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8, 7u8]) (read native byte order)
+================
+Input: [1u8, 2u8, 3u8, 4u8, 5u8, 7u8, 8u8]
+Result: Incomplete ([1u8, 2u8, 3u8, 4u8, 5u8, 7u8, 8u8]) (read native byte order)
+================
+Input: [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8] (LE: 72057594037927936) (BE: 1)
+Result: 72057594037927936i64 (read native byte order)
+================
+Input: [255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] (LE: 255) (BE: -72057594037927936)
+Result: 255i64 (read native byte order)
+================
+Input: [1u8, 1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] (LE: 257) (BE: 72339069014638592)
+Result: 257i64 (read native byte order)

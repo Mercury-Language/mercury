@@ -303,6 +303,12 @@ ORDINARY_PROGS = \
 	random_permutation \
 	random_simple \
 	rational_test \
+	read_binary_int16 \
+	read_binary_int32 \
+	read_binary_int64 \
+	read_binary_uint16 \
+	read_binary_uint32 \
+	read_binary_uint64 \
 	read_min_int \
 	recursive_main \
 	redoip_clobber \
