@@ -26,6 +26,8 @@ Options:
         directory, and compare stage3 to stage2.bad, not stage2.ok.
     -d, --dependency-only
         Check only that the dependencies can be made in stage3.
+    -G <grade>, --grade <grade>
+        Specify the grade to test.
     -h, --help
         Display this usage message.
     -j <num-jobs>, --jobs <num-jobs>
@@ -47,6 +49,7 @@ Options:
 # in scripts/c2init.in.
 STD_LIB_NAME=mer_std
 MDBCOMP_LIB_NAME=mer_mdbcomp
+BROWSER_LIB_NAME=mer_browser
 
 set -x
 
@@ -55,6 +58,7 @@ alltestdirs="benchmarks general hard_coded invalid valid warnings"
 bootcheck="true"
 compile_only="false"
 dependency_only="false"
+grade=""
 library_only="false"
 jfactor=""
 mmake_opts=""
@@ -77,6 +81,11 @@ while [ $# -gt 0 ]; do
 
     -d|--dependency-only)
         dependency_only="true" ;;
+
+    -G|--grade)
+        grade="$2"; shift ;;
+    -G*)
+        grade="` expr X$1 : 'X-G\(.*\)' `"; ;;
 
     -h|--help)
         echo "$usage"
@@ -146,6 +155,12 @@ while [ $# -gt 0 ]; do
     shift
 done
 
+if test "${grade}" != ""
+then
+    grade_mmake_opts="GRADE=${grade}"
+    mmake_opts="${grade_mmake_opts} ${mmake_opts}"
+fi
+
 root=`/bin/pwd`
 
 MERCURY_COMPILER=$root/compiler/mercury_compile
@@ -159,42 +174,50 @@ export MMAKE_VPATH
 MMAKE_DIR=../scripts
 export MMAKE_DIR
 
-# Ensure that mmake will not disturb the .o and .c files placed there by binary
+# Ensure that mmake will not disturb the .o and .c files in stage2
+# that were placed there by the binary script.
 
 set +x
 
 touch stage2/library/*.c
 touch stage2/mdbcomp/*.c
+touch stage2/browser/*.c
 touch stage2/compiler/*.c
 
 sleep 2
 
 touch stage2/library/*.int0
 touch stage2/mdbcomp/*.int0
+touch stage2/browser/*.int0
 touch stage2/compiler/*.int0
 
 sleep 2
 
 touch stage2/library/*.date0
 touch stage2/mdbcomp/*.date0
+touch stage2/browser/*.date0
 touch stage2/compiler/*.date0
 
 sleep 2
 
 touch stage2/library/*.int3
 touch stage2/mdbcomp/*.int3
+touch stage2/browser/*.int3
 touch stage2/compiler/*.int3
 
 sleep 2
 
 touch stage2/library/*.date3
 touch stage2/mdbcomp/*.date3
+touch stage2/browser/*.date3
 touch stage2/compiler/*.date3
 
 touch stage2/library/*.int2
 touch stage2/library/*.int
 touch stage2/mdbcomp/*.int2
 touch stage2/mdbcomp/*.int
+touch stage2/browser/*.int2
+touch stage2/browser/*.int
 touch stage2/compiler/*.int2
 touch stage2/compiler/*.int
 
@@ -202,6 +225,7 @@ sleep 2
 
 touch stage2/library/*.date
 touch stage2/mdbcomp/*.date
+touch stage2/browser/*.date
 touch stage2/compiler/*.date
 
 touch stage2/library/*.opt
@@ -217,15 +241,20 @@ touch stage2/library/*.trans_opt_date
 touch stage2/library/*.o
 touch stage2/library/*.pic_o
 touch stage2/mdbcomp/*.o
+touch stage2/mdbcomp/*.pic_o
+touch stage2/browser/*.o
+touch stage2/browser/*.pic_o
 touch stage2/compiler/*.o
 
-# Rebuild the stage2 library and compiler from the components already there.
-
-/bin/rm -f stage2/library/lib$STD_LIB_NAME.{a,so,dylib}
-/bin/rm -f stage2/mdbcomp/lib$MDBCOMP_LIB_NAME.{a,so,dylib}
-/bin/rm -f stage2/compiler/{mercury_compile}
+# Rebuild the stage2 library, mdbcomp, browser and compiler
+# from the C and object files already there.
 
 set -x
+
+/bin/rm -f stage2/library/lib${STD_LIB_NAME}.{a,so,dylib}
+/bin/rm -f stage2/mdbcomp/lib${MDBCOMP_LIB_NAME}.{a,so,dylib}
+/bin/rm -f stage2/browser/lib${BROWSER_LIB_NAME}.{a,so,dylib}
+/bin/rm -f stage2/compiler/mercury_compile
 
 if (cd stage2/library ; mmake $mmake_opts $jfactor)
 then
@@ -245,6 +274,15 @@ else
     exit 1
 fi
 
+if (cd stage2/browser ; mmake $mmake_opts $jfactor library)
+then
+    echo "building of stage 2 browser successful"
+else
+    echo "building of stage 2 browser not successful"
+    touch .stage2_problem
+    exit 1
+fi
+
 if (cd stage2/compiler ; mmake $mmake_opts $jfactor mercury_compile)
 then
     echo "building of stage 2 compiler successful"
@@ -257,8 +295,17 @@ fi
 unset MMAKE_VPATH
 unset MMAKE_DIR
 
-MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
+MERCURY_COMPILER=${root}/stage2/compiler/mercury_compile
 export MERCURY_COMPILER
+
+WORKSPACE=${root}/stage2
+export WORKSPACE
+
+MMAKE_DIR=${root}/stage2/scripts
+export MMAKE_DIR
+
+PATH=${root}/stage2/util:${root}stage2/scripts:$PATH
+export PATH
 
 ulimit -t 200
 
@@ -278,9 +325,9 @@ fi
 if "$bootcheck"
 then
 
-    # Rebuild the stage3 library, mdbcomp and compiler from scratch
+    # Rebuild the stage3 library, mdbcomp, browser and compiler from scratch.
 
-    for dir in library mdbcomp compiler
+    for dir in library mdbcomp browser compiler
     do
         /bin/rm -f stage3/$dir/*.c
         /bin/rm -f stage3/$dir/*.c_date
@@ -297,8 +344,8 @@ then
         /bin/rm -f stage3/$dir/*.int
     done
 
-    if (cd stage3 ; mmake $mmake_opts depend_library depend_mdbcomp \
-        depend_compiler)
+    if (cd stage3 ; mmake $mmake_opts \
+        depend_library depend_mdbcomp depend_browser depend_compiler)
     then
         echo "building of stage 3 dependencies successful"
         if $dependency_only
@@ -337,6 +384,15 @@ then
         exit 1
     fi
 
+    if (cd stage3/browser ; mmake -S $mmake_opts $jfactor int3s ints ; \
+        mmake -S $mmake_opts $jfactor cs)
+    then
+        echo "building of stage 3 browser successful"
+    else
+        echo "building of stage 3 browser not successful"
+        exit 1
+    fi
+
     if (cd stage3/compiler ; mmake -S $mmake_opts $jfactor int3s ints ; \
         mmake -S $mmake_opts $jfactor cs)
     then
@@ -350,7 +406,7 @@ then
     then
         founddiff=false
         cat /dev/null > $outfile
-        for dir in library mdbcomp compiler
+        for dir in library mdbcomp browser compiler
         do
             # `mmake cs' in the compiler directory doesn't build
             # `mercury_compile_init.c', so we only compare the `.c'
@@ -374,7 +430,7 @@ fi
 
 for testdir in $testdirs
 do
-    if (cd tests/$testdir; mmake runtests)
+    if (cd tests/$testdir; mmake $grade_mmake_opts runtests)
     then
         echo "tests in the $testdir directory successful"
     else

@@ -35,11 +35,13 @@ Options:
     -d, --dependency-only
         Make dependencies for stage3 only. Do not compile stage3.
     -D <dirname>, --dir <dirname>
-        Confine the search to one directory, library, mdbcomp
+        Confine the search to one directory, library, mdbcomp, browser
         or compiler. (Usually useful only after a previous search.)
     -f <modulename>, --file <modulename>
         Confine the search to the named file(s).
         (Usually useful only after a previous search.)
+    -G <grade>, --grade <grade>
+        Specify the grade to test.
     -h, --help
         Display this usage message.
     -j <num-jobs>, --jobs <num-jobs>
@@ -72,6 +74,7 @@ set -x
 bootcheck=""
 compile_only=""
 dependency_only=""
+grade=""
 library_only=""
 jfactor=
 mmake_opts=""
@@ -125,6 +128,11 @@ while [ $# -gt 0 ]; do
     -f*)
         allmodules="$allmodules ` expr $1 : '-f\(.*\)' `"; ;;
 
+    -G|--grade)
+        grade="$2"; shift ;;
+    -G*)
+        grade="` expr X$1 : 'X-G\(.*\)' `"; ;;
+
     -h|--help)
         echo "$usage"
         exit 0 ;;
@@ -177,6 +185,15 @@ while [ $# -gt 0 ]; do
     shift
 done
 
+if test "${grade}" != ""
+then
+    grade_opt="--grade ${grade}"
+    mmake_grade_opt="GRADE=${grade}"
+else
+    grade_opt=""
+    mmake_grade_opt=""
+fi
+
 if "$negative"
 then
     base=bad
@@ -211,22 +228,27 @@ fi
 
 echo "starting at `date`"
 
+possibly_suspect_dirs="library mdbcomp browser compiler"
+
 for dir in $base $trial
 do
-    for subdir in library mdbcomp compiler
+    for subdir in ${possibly_suspect_dirs}
     do
         case $subdir in
-            library)    example_o=builtin.o ;;
-            mdbcomp)    example_o=mdbcomp.prim_data.o ;;
-            compiler)   example_o=check_hlds.cse_detection.o ;;
+            library)    example=builtin ;;
+            mdbcomp)    example=mdbcomp.prim_data ;;
+            browser)    example=mdb.declarative_edt ;;
+            compiler)   example=check_hlds.cse_detection ;;
         esac
 
-        if test -f stage2.$dir/$subdir/$example_o
+        ( cd stage2.$dir/$subdir; gunzip *.gz )
+
+        if test -f stage2.$dir/$subdir/${example}.o
         then
-            echo "stage2.$dir/$subdir seems to have its object files"
+            echo "stage2.$dir/$subdir seems to have its .o files"
         else
             echo "reconstructing object files in stage2.$dir/$subdir"
-            ( cd stage2.$dir/$subdir; mmake )
+            ( cd stage2.$dir/$subdir; mmake ${mmake_grade_opt} )
         fi
     done
 done
@@ -241,7 +263,6 @@ wait
 $RMSTAGECMD $trueroot/stage2/* < /dev/null
 echo linking stage 2... 1>&2
 cd stage2
-ln -s $root/main.c .
 mkdir compiler
 cd compiler
 ln -s $root/compiler/[a-h]*.m .
@@ -264,6 +285,7 @@ cp $root/library/MODULES_UNDOC .
 cp $root/library/Mmake* .
 cp $root/library/Mercury* .
 cp $root/library/*FLAGS* .
+cp $root/library/MODULES* .
 cp $root/library/.mgnuc* .
 cd $root/stage2
 mkdir mdbcomp
@@ -274,6 +296,15 @@ cp $root/mdbcomp/Mmake* .
 cp $root/mdbcomp/Mercury* .
 cp $root/mdbcomp/*FLAGS* .
 cp $root/mdbcomp/.mgnuc* .
+cd $root/stage2
+mkdir browser
+cd browser
+ln -s $root/browser/*.m .
+ln -s $root/browser/*.init .
+cp $root/browser/Mmake* .
+cp $root/browser/Mercury* .
+cp $root/browser/*FLAGS* .
+cp $root/browser/.mgnuc* .
 cd $root/stage2
 if "$copy_runtime"
 then
@@ -290,7 +321,6 @@ else
     ln -s $root/stage2.ok/runtime .
 fi
 ln -s $root/boehm_gc .
-ln -s $root/browser .
 ln -s $root/ssdb .
 ln -s $root/trace .
 ln -s $root/robdd .
@@ -317,6 +347,7 @@ cp stage2.ok/library/*.dep stage2/library
 cp stage2.ok/library/*.dv stage2/library
 cp stage2.ok/library/*.int0 stage2/library
 cp stage2.ok/library/*.int3 stage2/library
+cp stage2.ok/library/*.date0 stage2/library
 cp stage2.ok/library/*.date3 stage2/library
 cp stage2.ok/library/*.int stage2/library
 cp stage2.ok/library/*.int2 stage2/library
@@ -332,17 +363,31 @@ cp stage2.ok/mdbcomp/*.dep stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.dv stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.int0 stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.int3 stage2/mdbcomp
+cp stage2.ok/mdbcomp/*.date0 stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.date3 stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.int stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.int2 stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.date stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.mh stage2/mdbcomp
 cp stage2.ok/mdbcomp/*.mih stage2/mdbcomp
+# cp stage2.ok/browser/*.d stage2/browser
+cp stage2.ok/browser/*.dep stage2/browser
+cp stage2.ok/browser/*.dv stage2/browser
+cp stage2.ok/browser/*.int0 stage2/browser
+cp stage2.ok/browser/*.int3 stage2/browser
+cp stage2.ok/browser/*.date0 stage2/browser
+cp stage2.ok/browser/*.date3 stage2/browser
+cp stage2.ok/browser/*.int stage2/browser
+cp stage2.ok/browser/*.int2 stage2/browser
+cp stage2.ok/browser/*.date stage2/browser
+cp stage2.ok/browser/*.mh stage2/browser
+cp stage2.ok/browser/*.mih stage2/browser
 # cp stage2.ok/compiler/*.d stage2/compiler
 cp stage2.ok/compiler/*.dep stage2/compiler
 cp stage2.ok/compiler/*.dv stage2/compiler
 cp stage2.ok/compiler/*.int0 stage2/compiler
 cp stage2.ok/compiler/*.int3 stage2/compiler
+cp stage2.ok/compiler/*.date0 stage2/compiler
 cp stage2.ok/compiler/*.date3 stage2/compiler
 cp stage2.ok/compiler/*.int stage2/compiler
 cp stage2.ok/compiler/*.int2 stage2/compiler
@@ -359,8 +404,8 @@ then
     wait
     $RMSTAGECMD $trueroot/stage3/* < /dev/null
     echo linking stage 3... 1>&2
+
     cd stage3
-    ln -s $root/main.c
     mkdir compiler
     cd compiler
     # Break up the links into several chunks.
@@ -374,28 +419,41 @@ then
     cp $root/compiler/Mercury* .
     cp $root/compiler/*FLAGS* .
     cp $root/compiler/.mgnuc* .
+
     cd $root/stage3
     mkdir library
     cd library
     ln -s $root/library/[a-l]*.m .
     ln -s $root/library/[m-z]*.m .
     ln -s $root/library/*.init .
+    cp $root/library/Mmake* .
     cp $root/library/Mercury* .
     cp $root/library/*FLAGS* .
+    cp $root/library/MODULES* .
     cp $root/library/.mgnuc* .
-    cp $root/library/Mmake* .
+
     cd $root/stage3
     mkdir mdbcomp
     cd mdbcomp
     ln -s $root/mdbcomp/*.m .
     ln -s $root/mdbcomp/*.init .
+    cp $root/mdbcomp/Mmake* .
     cp $root/mdbcomp/Mercury* .
     cp $root/mdbcomp/*FLAGS* .
     cp $root/mdbcomp/.mgnuc* .
-    cp $root/mdbcomp/Mmake* .
+
+    cd $root/stage3
+    mkdir browser
+    cd browser
+    ln -s $root/browser/*.m .
+    ln -s $root/browser/*.init .
+    cp $root/browser/Mmake* .
+    cp $root/browser/Mercury* .
+    cp $root/browser/*FLAGS* .
+    cp $root/browser/.mgnuc* .
+
     cd $root/stage3
     ln -s $root/boehm_gc .
-    ln -s $root/browser .
     ln -s $root/ssdb .
     ln -s $root/trace .
     ln -s $root/doc .
@@ -417,11 +475,9 @@ then
     cd $root
 fi
 
-set -x
-
 if "$copy_runtime"
 then
-    if (cd stage2 ; mmake $mmake_opts $jfactor runtime)
+    if (cd stage2 ; mmake $mmake_grade_opt $mmake_opts $jfactor runtime)
     then
         echo "building of stage 2 runtime successful"
     else
@@ -429,8 +485,6 @@ then
         exit 1
     fi
 fi
-
-cp stage2.ok/main.o stage2
 
 if test "$alldirs" = ""
 then
@@ -460,23 +514,27 @@ then
             then
                 echo testing whether the problem is in $testsubdir
 
-                for subdir in library mdbcomp compiler
+                for subdir in ${possibly_suspect_dirs}
                 do
                     if test "$subdir" = "$testsubdir"
                     then
-                        echo linking stage2/$subdir from stage2.bad/$subdir 1>&2
+                        echo copying stage2/$subdir from stage2.bad/$subdir \
+                            1>&2
                         cp stage2.bad/$subdir/*.[co] stage2/$subdir
-                        cp stage2.bad/$subdir/*.pic_o stage2/$subdir
+                        cp stage2.bad/$subdir/*.pic_o stage2/$subdir \
+                            > /dev/null 2>&1
                     else
-                        echo linking stage2/$subdir from stage2.ok/$subdir 1>&2
+                        echo copying stage2/$subdir from stage2.ok/$subdir \
+                            1>&2
                         cp stage2.ok/$subdir/*.[co] stage2/$subdir
-                        cp stage2.ok/$subdir/*.pic_o stage2/$subdir
+                        cp stage2.ok/$subdir/*.pic_o stage2/$subdir \
+                            > /dev/null 2>&1
                     fi
                 done
 
                 binary_step $bootcheck $compile_only $compare_to_bad \
-                    $dependency_only $library_only $jfactor -m "$mmake_opts" \
-                    $outfile $testdirs -s "$single_command"
+                    $dependency_only $library_only $jfactor $grade_opt \
+                    -m "$mmake_opts" $outfile $testdirs -s "$single_command"
                 step_status=$?
 
                 if test -f .stage2_problem
@@ -513,11 +571,11 @@ then
         exit 1
     fi
 else
-    for subdir in library mdbcomp compiler
+    for subdir in ${possibly_suspect_dirs}
     do
         echo linking stage2/$subdir from stage2.ok/$subdir 1>&2
         cp stage2.ok/$subdir/*.[co] stage2/$subdir
-        cp stage2.ok/$subdir/*.pic_o stage2/$subdir
+        cp stage2.ok/$subdir/*.pic_o stage2/$subdir > /dev/null 2>&1
     done
 
     testeddir=$alldirs
@@ -532,9 +590,10 @@ fi
 
 set +x
 echo linking stage2 from stage2.$base 1>&2
-cp stage2.$base/library/*.[co] stage2/library
-cp stage2.$base/library/*.pic_o stage2/library
-cp stage2.$base/compiler/*.[co] stage2/compiler
+cp stage2.$base/library/*.{c,o,pic_o} stage2/library
+cp stage2.$base/mdbcomp/*.{c,o,pic_o} stage2/mdbcomp
+cp stage2.$base/browser/*.{c,o,pic_o} stage2/browser
+cp stage2.$base/compiler/*.{c,o} stage2/compiler
 set -x
 
 # find the set of candidate modules
@@ -577,15 +636,18 @@ do
     for module in $tested
     do
         cp stage2.$trial/$testeddir/$module.[co] stage2/$testeddir
-        if test $testeddir = library
-        then
-            cp stage2.$trial/library/$module.pic_o stage2/library
-        fi
+        case "${testeddir}" in
+            library|mdbcomp|browser)
+                cp stage2.$trial/${testeddir}/$module.pic_o stage2/${testeddir}
+                ;;
+        esac
     done
 
     if "$negative"
     then
-        if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $library_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+        if binary_step $bootcheck $compile_only $compare_to_bad \
+            $dependency_only $library_only $jfactor $grade_opt \
+            -m "$mmake_opts" $outfile $testdirs -s "$single_command"
         then
             echo "test succeeded"
             lasttest=success
@@ -606,7 +668,9 @@ do
             doubtful="$newdoubtful"
         fi
     else
-        if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $library_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+        if binary_step $bootcheck $compile_only $compare_to_bad \
+            $dependency_only $library_only $jfactor $grade_opt \
+            -m "$mmake_opts" $outfile $testdirs -s "$single_command"
         then
             echo "test succeeded"
             lasttest=success
@@ -632,10 +696,11 @@ do
     for module in $tested
     do
         cp stage2.$base/$testeddir/$module.[co] stage2/$testeddir
-        if test $testeddir = library
-        then
-            cp stage2.$base/library/$module.pic_o stage2/library
-        fi
+        case "${testeddir}" in
+            library|mdbcomp|browser)
+                cp stage2.$base/${testeddir}/$module.pic_o stage2/${testeddir}
+                ;;
+        esac
     done
 
     tested=`half $doubtful`
@@ -691,7 +756,9 @@ while test $i -le $basecnt
 do
     # If two corresponding parts from stage2.ok and stage.bad are the same,
     # then the bug cannot be in that part.
-    if cmp -s stage2.$base/$testeddir/$module.c.part.$i stage2.$trial/$testeddir/$module.c.part.$i
+    if cmp -s \
+        stage2.$base/$testeddir/$module.c.part.$i \
+        stage2.$trial/$testeddir/$module.c.part.$i
     then
         knowngood="$knowngood $i"
     else
@@ -714,12 +781,14 @@ do
     assemble $base $trial $testeddir $module $basecnt $tested
     cd stage2/$testeddir
     /bin/rm $module.o
-    mmake $module.o
+    mmake ${mmake_grade_opt} $module.o
     cd $root
 
     if "$negative"
     then
-        if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $library_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+        if binary_step $bootcheck $compile_only $compare_to_bad \
+            $dependency_only $library_only $jfactor $grade_opt \
+            -m "$mmake_opts" $outfile $testdirs -s "$single_command"
         then
             echo "test succeeded"
             lasttest=success
@@ -749,7 +818,9 @@ do
             doubtful="$newdoubtful"
         fi
     else
-        if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $library_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+        if binary_step $bootcheck $compile_only $compare_to_bad \
+            $dependency_only $library_only $jfactor $grade_opt \
+            -m "$mmake_opts" $outfile $testdirs -s "$single_command"
         then
             echo "test succeeded"
             lasttest=success
