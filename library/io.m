@@ -2249,16 +2249,16 @@ using System.Security.Principal;
     % inner loops.
 
 :- type result_code
-    --->    ok
-    ;       eof
-    ;       error.
+    --->    result_code_ok
+    ;       result_code_eof
+    ;       result_code_error.
 
 :- pragma foreign_export_enum("C", result_code/0,
-    [prefix("ML_RESULT_CODE_"), uppercase]).
+    [prefix("ML_"), uppercase]).
 :- pragma foreign_export_enum("C#", result_code/0,
-    [prefix("ML_RESULT_CODE_"), uppercase]).
+    [prefix("ML_"), uppercase]).
 :- pragma foreign_export_enum("Java", result_code/0,
-    [prefix("ML_RESULT_CODE_"), uppercase]).
+    [prefix("ML_"), uppercase]).
 
 :- type maybe_incomplete_result_code
     --->    mirc_ok
@@ -2435,15 +2435,15 @@ read_char(Result, !IO) :-
     read_char(Stream, Result, !IO).
 
 read_char(Stream, Result, !IO) :-
-    read_char_code(Stream, Result0, Char, Error, !IO),
+    read_char_code(Stream, ResultCode, Char, Error, !IO),
     (
-        Result0 = ok,
+        ResultCode = result_code_ok,
         Result = ok(Char)
     ;
-        Result0 = eof,
+        ResultCode = result_code_eof,
         Result = eof
     ;
-        Result0 = error,
+        ResultCode = result_code_error,
         make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
@@ -2451,15 +2451,15 @@ read_char(Stream, Result, !IO) :-
 :- pragma inline(read_char_unboxed/5).
 
 read_char_unboxed(Stream, Result, Char, !IO) :-
-    read_char_code(Stream, Result0, Char, Error, !IO),
+    read_char_code(Stream, ResultCode, Char, Error, !IO),
     (
-        Result0 = ok,
+        ResultCode = result_code_ok,
         Result = ok
     ;
-        Result0 = eof,
+        ResultCode = result_code_eof,
         Result = eof
     ;
-        Result0 = error,
+        ResultCode = result_code_error,
         make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
@@ -2473,15 +2473,15 @@ read_byte(Result, !IO) :-
     read_byte(Stream, Result, !IO).
 
 read_byte(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), Result0, Byte, Error, !IO),
+    read_byte_val(input_stream(Stream), ResultCode, Byte, Error, !IO),
     (
-        Result0 = ok,
+        ResultCode = result_code_ok,
         Result = ok(Byte)
     ;
-        Result0 = eof,
+        ResultCode = result_code_eof,
         Result = eof
     ;
-        Result0 = error,
+        ResultCode = result_code_error,
         make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
@@ -2491,16 +2491,16 @@ read_binary_int8(Result, !IO) :-
     read_binary_int8(Stream, Result, !IO).
 
 read_binary_int8(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), Result0, Int, Error, !IO),
+    read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
     (
-        Result0 = ok,
+        ResultCode = result_code_ok,
         Int8 = cast_from_int(Int),
         Result = ok(Int8)
     ;
-        Result0 = eof,
+        ResultCode = result_code_eof,
         Result = eof
     ;
-        Result0 = error,
+        ResultCode = result_code_error,
         make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
@@ -2510,16 +2510,16 @@ read_binary_uint8(Result, !IO) :-
     read_binary_uint8(Stream, Result, !IO).
 
 read_binary_uint8(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), Result0, Int, Error, !IO),
+    read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
     (
-        Result0 = ok,
+        ResultCode = result_code_ok,
         UInt8 = cast_from_int(Int),
         Result = ok(UInt8)
     ;
-        Result0 = eof,
+        ResultCode = result_code_eof,
         Result = eof
     ;
-        Result0 = error,
+        ResultCode = result_code_error,
         make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
@@ -2664,7 +2664,7 @@ read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    do_read_binary_uint16(Stream::in, ByteOrder::in, Result::out,
+    do_read_binary_uint16(Stream::in, ByteOrder::in, ResultCode::out,
         UInt16::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -2691,13 +2691,13 @@ read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
         }
         if (nread < 2) {
             if (nread > 0) {
-                Result = io.ML_MIRC_INCOMPLETE;
+                ResultCode = io.ML_MIRC_INCOMPLETE;
                 IncompleteBytes = list.cons(buffer[0], IncompleteBytes);
             } else {
-                Result = io.ML_MIRC_EOF;
+                ResultCode = io.ML_MIRC_EOF;
             }
         } else {
-            Result = io.ML_MIRC_OK;
+            ResultCode = io.ML_MIRC_OK;
             if (ByteOrder == io.ML_LITTLE_ENDIAN) {
                 UInt16 = (ushort) (buffer[1] << 8 | (buffer[0] & 0x00ff));
             } else {
@@ -2706,13 +2706,13 @@ read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
         }
         Error = null;
     } catch (System.Exception e) {
-        Result = io.ML_MIRC_ERROR;
+        ResultCode = io.ML_MIRC_ERROR;
         Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    do_read_binary_uint16(Stream::in, ByteOrder::in, Result::out,
+    do_read_binary_uint16(Stream::in, ByteOrder::in, ResultCode::out,
         UInt16::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -2732,13 +2732,13 @@ read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
         }
         if (nread < 2) {
             if (nread > 0) {
-                Result = io.ML_MIRC_INCOMPLETE;
+                ResultCode = io.ML_MIRC_INCOMPLETE;
                 IncompleteBytes = list.cons(buffer[0], IncompleteBytes);
             } else {
-                Result = io.ML_MIRC_EOF;
+                ResultCode = io.ML_MIRC_EOF;
             }
         } else {
-            Result = io.ML_MIRC_OK;
+            ResultCode = io.ML_MIRC_OK;
             if (ByteOrder == io.ML_LITTLE_ENDIAN) {
                 UInt16 = (short) (buffer[1] << 8 | (buffer[0] & 0x00ff));
             } else {
@@ -2747,7 +2747,7 @@ read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
         }
         Error = null;
     } catch (java.lang.Exception e) {
-        Result = io.ML_MIRC_ERROR;
+        ResultCode = io.ML_MIRC_ERROR;
         Error = e;
     }
 ").
@@ -3400,7 +3400,7 @@ native_byte_order_is_big_endian :-
                                                                              \
         if (nread < nbytes) {                                                \
             result_value = 0;                                                \
-            if (MR_FERROR(*Stream)) {                                        \
+            if (MR_FERROR(*stream)) {                                        \
                 result_code = ML_MIRC_ERROR,                                 \
                 result_error = errno;                                        \
             } else if (nread > 0) {                                          \
@@ -3474,18 +3474,18 @@ read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
     % Default implementation for Erlang.
 do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, Error, !IO) :-
     ( if NumBytes > 0 then
-        read_byte_val(input_stream(Stream), Result0, Byte, Error0, !IO),
+        read_byte_val(input_stream(Stream), ResultCode, Byte, Error0, !IO),
         (
-            Result0 = ok,
+            ResultCode = result_code_ok,
             !:Bitmap = !.Bitmap ^ unsafe_byte(Start) := Byte,
             !:BytesRead = !.BytesRead + 1,
             do_read_bitmap(Stream, Start + 1, NumBytes - 1,
                 !Bitmap, !BytesRead, Error, !IO)
         ;
-            Result0 = eof,
+            ResultCode = result_code_eof,
             Error = Error0
         ;
-            Result0 = error,
+            ResultCode = result_code_error,
             Error = Error0
         )
     else
@@ -3684,15 +3684,15 @@ read_line(Result, !IO) :-
     read_line(Stream, Result, !IO).
 
 read_line(Stream, Result, !IO) :-
-    read_line_2(Stream, Result0, Chars, Error, !IO),
+    read_line_2(Stream, ResultCode, Chars, Error, !IO),
     (
-        Result0 = ok,
+        ResultCode = result_code_ok,
         Result = ok(Chars)
     ;
-        Result0 = eof,
+        ResultCode = result_code_eof,
         Result = eof
     ;
-        Result0 = error,
+        ResultCode = result_code_error,
         make_err_msg(Error, "read failed: ", Msg),
         Result = error(io_error(Msg))
     ).
@@ -3703,9 +3703,9 @@ read_line(Stream, Result, !IO) :-
 read_line_2(Stream, Result, Chars, Error, !IO) :-
     read_char_code(Stream, Result0, Char, Error0, !IO),
     (
-        Result0 = ok,
+        Result0 = result_code_ok,
         ( if Char = '\n' then
-            Result = ok,
+            Result = result_code_ok,
             Chars = [Char],
             Error = Error0
         else
@@ -3713,8 +3713,8 @@ read_line_2(Stream, Result, Chars, Error, !IO) :-
             Chars = [Char | CharsTail] % lcmc
         )
     ;
-        ( Result0 = eof
-        ; Result0 = error
+        ( Result0 = result_code_eof
+        ; Result0 = result_code_error
         ),
         Result = Result0,
         Chars = [],
@@ -3847,9 +3847,9 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
 read_line_as_string_2(Stream, FirstCall, Res, String, Error, !IO) :-
     % XXX This is terribly inefficient, a better approach would be to
     % use a buffer like what is done for io.read_file_as_string.
-    read_char_code(input_stream(Stream), ReadChar, Char, Error0, !IO),
+    read_char_code(input_stream(Stream), ResultCode, Char, Error0, !IO),
     (
-        ReadChar = ok,
+        ResultCode = result_code_ok,
         ( if Char = '\n' then
             Res = ok,
             String = "\n",
@@ -3863,7 +3863,7 @@ read_line_as_string_2(Stream, FirstCall, Res, String, Error, !IO) :-
             string.first_char(String, Char, String0)
         )
     ;
-        ReadChar = eof,
+        ResultCode = result_code_eof,
         (
             FirstCall = yes,
             Res = eof
@@ -3874,7 +3874,7 @@ read_line_as_string_2(Stream, FirstCall, Res, String, Error, !IO) :-
         String = "",
         Error = Error0
     ;
-        ReadChar = error,
+        ResultCode = result_code_error,
         Res = error,
         String = "",
         Error = Error0
@@ -5156,17 +5156,17 @@ read_into_array(Stream, !Array, !Pos, Size, Error, !IO) :-
     ( if !.Pos >= Size then
         Error = no_error
     else
-        read_char_code(Stream, Result, Char, Error0, !IO),
+        read_char_code(Stream, ResultCode, Char, Error0, !IO),
         (
-            Result = ok,
+            ResultCode = result_code_ok,
             array.set(!.Pos, Char, !Array),
             !:Pos = !.Pos + 1,
             read_into_array(Stream, !Array, !Pos, Size, Error, !IO)
         ;
-            Result = eof,
+            ResultCode = result_code_eof,
             Error = Error0
         ;
-            Result = error,
+            ResultCode = result_code_error,
             Error = Error0
         )
     ).
@@ -8647,14 +8647,14 @@ throw_on_close_error(Error, !IO) :-
 % Input predicates.
 %
 
-read_char_code(input_stream(Stream), Result, Char, Error, !IO) :-
-    read_char_code_2(Stream, Result, Char, Error, !IO).
+read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
+    read_char_code_2(Stream, ResultCode, Char, Error, !IO).
 
 :- pred read_char_code_2(stream::in, result_code::out, char::out,
     system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    read_char_code_2(Stream::in, Result::out, Char::out, Error::out,
+    read_char_code_2(Stream::in, ResultCode::out, Char::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing, may_not_duplicate],
@@ -8668,15 +8668,15 @@ read_char_code(input_stream(Stream), Result, Char, Error, !IO) :-
     c = mercury_get_byte(Stream);
     uc = c;
     if (uc <= 0x7f) {
-        Result = ML_RESULT_CODE_OK;
+        ResultCode = ML_RESULT_CODE_OK;
         Char = uc;
         Error = 0;
     } else if (c == EOF) {
         if (MR_FERROR(*Stream)) {
-            Result = ML_RESULT_CODE_ERROR;
+            ResultCode = ML_RESULT_CODE_ERROR;
             Error = errno;
         } else {
-            Result = ML_RESULT_CODE_EOF;
+            ResultCode = ML_RESULT_CODE_EOF;
             Error = 0;
         }
         Char = 0;
@@ -8697,7 +8697,7 @@ read_char_code(input_stream(Stream), Result, Char, Error, !IO) :-
                 uc = c;
                 if (c == EOF) {
                     // Illegal byte sequence whether EOF or I/O error.
-                    Result = ML_RESULT_CODE_ERROR;
+                    ResultCode = ML_RESULT_CODE_ERROR;
                     Error = MR_FERROR(*Stream) ? errno : EILSEQ;
                     Char = 0;
                     break;
@@ -8708,18 +8708,18 @@ read_char_code(input_stream(Stream), Result, Char, Error, !IO) :-
                 buf[i] = '\\0';
                 c = MR_utf8_get(buf, 0);
                 if (c < 0) {
-                    Result = ML_RESULT_CODE_ERROR;
+                    ResultCode = ML_RESULT_CODE_ERROR;
                     Error = EILSEQ;
                     Char = 0;
                 } else {
-                    Result = ML_RESULT_CODE_OK;
+                    ResultCode = ML_RESULT_CODE_OK;
                     Char = c;
                     Error = 0;
                 }
             }
         } else {
             // Invalid lead byte.
-            Result = ML_RESULT_CODE_ERROR;
+            ResultCode = ML_RESULT_CODE_ERROR;
             Error = EILSEQ;
             Char = 0;
         }
@@ -8732,7 +8732,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
 :- pred read_byte_val_2(stream::in, result_code::out, int::out,
     system_error::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    read_byte_val_2(Stream::in, Result::out, ByteVal::out, Error::out,
+    read_byte_val_2(Stream::in, ResultCode::out, ByteVal::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
@@ -8740,15 +8740,15 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     int b = mercury_get_byte(Stream);
     if (b == EOF) {
         if (MR_FERROR(*Stream)) {
-            Result = ML_RESULT_CODE_ERROR;
+            ResultCode = ML_RESULT_CODE_ERROR;
             Error = errno;
         } else {
-            Result = ML_RESULT_CODE_EOF;
+            ResultCode = ML_RESULT_CODE_EOF;
             Error = 0;
         }
         ByteVal = 0;
     } else {
-        Result = ML_RESULT_CODE_OK;
+        ResultCode = ML_RESULT_CODE_OK;
         ByteVal = b;
         Error = 0;
     }
@@ -8850,7 +8850,7 @@ putback_uint8(binary_input_stream(Stream), UInt8, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    read_char_code_2(File::in, Result::out, Char::out, Error::out,
+    read_char_code_2(File::in, ResultCode::out, Char::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
@@ -8858,28 +8858,28 @@ putback_uint8(binary_input_stream(Stream), UInt8, !IO) :-
     try {
         int c = io.mercury_getc(mf);
         if (c == -1) {
-            Result = io.ML_RESULT_CODE_EOF;
+            ResultCode = io.ML_RESULT_CODE_EOF;
             Char = 0;
         } else {
-            Result = io.ML_RESULT_CODE_OK;
+            ResultCode = io.ML_RESULT_CODE_OK;
             Char = c;
         }
         Error = null;
     } catch (System.Exception e) {
-        Result = io.ML_RESULT_CODE_ERROR;
+        ResultCode = io.ML_RESULT_CODE_ERROR;
         Char = 0;
         Error = e;
     }
 ").
 
 :- pragma foreign_proc("C#",
-    read_byte_val_2(File::in, Result::out, ByteVal::out, Error::out,
+    read_byte_val_2(File::in, ResultCode::out, ByteVal::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     io.MR_MercuryFileStruct mf = File;
     if (mf.putback != -1) {
-        Result = io.ML_RESULT_CODE_OK;
+        ResultCode = io.ML_RESULT_CODE_OK;
         ByteVal = mf.putback;
         Error = null;
         mf.putback = -1;
@@ -8887,15 +8887,15 @@ putback_uint8(binary_input_stream(Stream), UInt8, !IO) :-
         try {
             int b = mf.stream.ReadByte();
             if (b == -1) {
-                Result = io.ML_RESULT_CODE_EOF;
+                ResultCode = io.ML_RESULT_CODE_EOF;
                 ByteVal = 0;
             } else {
-                Result = io.ML_RESULT_CODE_OK;
+                ResultCode = io.ML_RESULT_CODE_OK;
                 ByteVal = b;
             }
             Error = null;
         } catch (System.Exception e) {
-            Result = io.ML_RESULT_CODE_ERROR;
+            ResultCode = io.ML_RESULT_CODE_ERROR;
             ByteVal = 0;
             Error = e;
         }
@@ -8945,44 +8945,44 @@ putback_uint8(binary_input_stream(Stream), UInt8, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    read_char_code_2(File::in, Result::out, CharCode::out, Error::out,
+    read_char_code_2(File::in, ResultCode::out, CharCode::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
         int c = ((io.MR_TextInputFile) File).read_char();
         if (c == -1) {
-            Result = io.ML_RESULT_CODE_EOF;
+            ResultCode = io.ML_RESULT_CODE_EOF;
             CharCode = 0;
         } else {
-            Result = io.ML_RESULT_CODE_OK;
+            ResultCode = io.ML_RESULT_CODE_OK;
             CharCode = c;
         }
         Error = null;
     } catch (java.io.IOException e) {
-        Result = io.ML_RESULT_CODE_ERROR;
+        ResultCode = io.ML_RESULT_CODE_ERROR;
         CharCode = 0;
         Error = e;
     }
 ").
 
 :- pragma foreign_proc("Java",
-    read_byte_val_2(File::in, Result::out, ByteVal::out, Error::out,
+    read_byte_val_2(File::in, ResultCode::out, ByteVal::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
         int b = ((io.MR_BinaryInputFile) File).read_byte();
         if (b == -1) {
-            Result = io.ML_RESULT_CODE_EOF;
+            ResultCode = io.ML_RESULT_CODE_EOF;
             ByteVal = 0;
         } else {
-            Result = io.ML_RESULT_CODE_OK;
+            ResultCode = io.ML_RESULT_CODE_OK;
             ByteVal = b;
         }
         Error = null;
     } catch (java.io.IOException e) {
-        Result = io.ML_RESULT_CODE_ERROR;
+        ResultCode = io.ML_RESULT_CODE_ERROR;
         ByteVal = 0;
         Error = e;
     }
@@ -9013,44 +9013,44 @@ putback_uint8(binary_input_stream(Stream), UInt8, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    read_char_code_2(Stream::in, Result::out, Char::out, Error::out,
+    read_char_code_2(Stream::in, ResultCode::out, Char::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
     case mercury__io:mercury_getc(Stream) of
         C when is_integer(C) ->
-            Result = {ok},
+            ResultCode = {ok},
             Char = C,
             Error = ok;
         eof ->
-            Result = {eof},
+            ResultCode = {eof},
             Char = 0,
             Error = ok;
         {error, Reason} ->
-            Result = {error},
+            ResultCode = {error},
             Char = 0,
             Error = {error, Reason}
     end
 ").
 
 :- pragma foreign_proc("Erlang",
-    read_byte_val_2(Stream::in, Result::out, ByteVal::out, Error::out,
+    read_byte_val_2(Stream::in, ResultCode::out, ByteVal::out, Error::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "
     case mercury__io:mercury_getc(Stream) of
         B when is_integer(B) ->
-            Result = {ok},
+            ResultCode = {ok},
             ByteVal = B,
             Error = ok;
         eof ->
-            Result = {eof},
+            ResultCode = {eof},
             ByteVal = 0,
             Error = ok;
         {error, Reason} ->
-            Result = {error},
+            ResultCode = {error},
             ByteVal = 0,
             Error = {error, Reason}
     end
