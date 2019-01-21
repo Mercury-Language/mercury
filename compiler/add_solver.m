@@ -97,21 +97,20 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     % We set the kinds to `star'. This will be different when we have
     % a kind system.
     prog_type.var_list_to_type_list(map.init, TypeParams, Args),
-    SolverType        = defined_type(TypeSymName, Args, kind_star),
-    Arity             = length(TypeParams),
+    SolverType = defined_type(TypeSymName, Args, kind_star),
+    list.length(TypeParams, Arity),
 
-    RepnType          = SolverTypeDetails ^ std_representation_type,
-    AnyInst           = SolverTypeDetails ^ std_any_inst,
-    GroundInst        = SolverTypeDetails ^ std_ground_inst,
+    RepnType = SolverTypeDetails ^ std_representation_type,
+    AnyInst = SolverTypeDetails ^ std_any_inst,
+    GroundInst = SolverTypeDetails ^ std_ground_inst,
 
-    InAnyMode         = in_mode(AnyInst),
-    InGroundMode      = in_mode(GroundInst),
+    InAnyMode = in_mode(AnyInst),
+    InGroundMode = in_mode(GroundInst),
+    OutAnyMode = out_mode(AnyInst),
+    OutGroundMode = out_mode(GroundInst),
 
-    OutAnyMode        = out_mode(AnyInst),
-    OutGroundMode     = out_mode(GroundInst),
-
-    InstVarSet        = varset.init,
-    ExistQTVars       = [],
+    InstVarSet = varset.init,
+    ExistQTVars = [],
 
     init_markers(NoMarkers),
 
@@ -121,11 +120,11 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     %
     ToGroundRepnSymName = solver_to_ground_repn_symname(TypeSymName, Arity),
     ToGroundRepnArgTypesModes =
-        [type_and_mode(SolverType, in_mode      ),
+        [type_and_mode(SolverType, in_mode),
          type_and_mode(RepnType,   OutGroundMode)],
     ToGroundOrigin = origin_solver_type(TypeSymName, Arity,
         solver_type_to_ground_pred),
-    module_add_pred_or_func(ToGroundOrigin, Context, ItemNumber,    
+    module_add_pred_or_func(ToGroundOrigin, Context, ItemNumber,
         MaybeItemMercuryStatus, PredStatus, NeedQual,
         pf_function, ToGroundRepnSymName, TVarSet, InstVarSet, ExistQTVars,
         ToGroundRepnArgTypesModes, NoConstraints, yes(detism_det),
@@ -137,7 +136,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     %
     ToAnyRepnSymName = solver_to_any_repn_symname(TypeSymName, Arity),
     ToAnyRepnArgTypesModes =
-        [type_and_mode(SolverType, in_any_mode ),
+        [type_and_mode(SolverType, in_any_mode),
          type_and_mode(RepnType,   OutAnyMode)],
     ToAnyOrigin = origin_solver_type(TypeSymName, Arity,
         solver_type_to_any_pred),
@@ -153,8 +152,8 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     %
     FromGroundRepnSymName = repn_to_ground_solver_symname(TypeSymName, Arity),
     FromGroundRepnArgTypesModes =
-        [type_and_mode(RepnType,   InGroundMode   ),
-         type_and_mode(SolverType, out_mode       )],
+        [type_and_mode(RepnType,   InGroundMode),
+         type_and_mode(SolverType, out_mode)],
     FromGroundOrigin = origin_solver_type(TypeSymName, Arity,
         solver_type_from_ground_pred),
     module_add_pred_or_func(FromGroundOrigin, Context, ItemNumber,
@@ -169,7 +168,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     %
     FromAnyRepnSymName = repn_to_any_solver_symname(TypeSymName, Arity),
     FromAnyRepnArgTypesModes =
-        [type_and_mode(RepnType,   InAnyMode   ),
+        [type_and_mode(RepnType,   InAnyMode),
          type_and_mode(SolverType, out_any_mode)],
     FromAnyOrigin = origin_solver_type(TypeSymName, Arity,
         solver_type_from_any_pred),
@@ -203,14 +202,13 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
         _TVarSet, SolverTypeDetails, Context, ItemMercuryStatus, _NeedQual),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
 
-    Arity = length(TypeParams),
+    list.length(TypeParams, Arity),
 
     AnyInst = SolverTypeDetails ^ std_any_inst,
     GroundInst = SolverTypeDetails ^ std_ground_inst,
 
     InAnyMode = in_mode(AnyInst),
     InGroundMode = in_mode(GroundInst),
-
     OutAnyMode = out_mode(AnyInst),
     OutGroundMode = out_mode(GroundInst),
 

@@ -226,12 +226,13 @@ module_add_mode_defn(ItemModeDefnInfo, ModeStatus, InvalidMode, !ModuleInfo,
     mode_table::in, mode_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-modes_add(VarSet, Name, Args, eqv_mode(Body), Context, ModeStatus, InvalidMode,
+modes_add(VarSet, Name, Args, ModeBody, Context, ModeStatus, InvalidMode,
         !ModeTable, !Specs) :-
     list.length(Args, Arity),
     ModeId = mode_id(Name, Arity),
-    ModeDefn = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Context,
-        ModeStatus),
+    ModeBody = eqv_mode(EqvMode),
+    HldsModeBody = hlds_mode_body(EqvMode),
+    ModeDefn = hlds_mode_defn(VarSet, Args, HldsModeBody, Context, ModeStatus),
     ( if mode_table_insert(ModeId, ModeDefn, !ModeTable) then
         true
     else
@@ -249,8 +250,9 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), Context, ModeStatus, InvalidMode,
                 Context, OrigContext, Extras, !Specs)
         )
     ),
-    check_for_cyclic_mode(!.ModeTable, ModeId, ModeId, [],
-        Context, InvalidMode, !Specs).
+    Expansions0 = [],
+    check_for_cyclic_mode(!.ModeTable, ModeId, ModeId, Expansions0, Context,
+        InvalidMode, !Specs).
 
     % Check if the mode is infinitely recursive at the top level.
     %
@@ -269,7 +271,7 @@ check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
         ( if
             map.search(ModeDefns, ModeId0, ModeDefn),
             ModeDefn = hlds_mode_defn(_, _, Body, _, _),
-            Body = eqv_mode(EqvMode),
+            Body = hlds_mode_body(EqvMode),
             EqvMode = user_defined_mode(Name, Args)
         then
             Arity = list.length(Args),

@@ -126,8 +126,8 @@ module_add_pred_or_func(Origin, Context, ItemNumber,
     then
         MaybeModes = no
     else if
-        % Assume that a function with no modes but with a determinism
-        % declared has the default modes.
+        % A function declaration that contains no argument modes but does
+        % specify a determinism is implicitly specifying the default mode.
         PredOrFunc = pf_function,
         MaybeModes0 = no,
         MaybeDet = yes(_)
@@ -226,10 +226,10 @@ add_new_pred(Origin, Context, ItemNumber, MaybeItemMercuryStatus, PredStatus0,
     list.length(Types, Arity),
     (
         PredName = unqualified(_PName),
+        % All predicate names passed into this predicate should have been
+        % qualified by the parser when they were first read.
         module_info_incr_errors(!ModuleInfo),
         unqualified_pred_error(PredName, Arity, Context, !Specs)
-        % All predicate names passed into this predicate should have
-        % been qualified by the parser when they were first read.
     ;
         PredName = qualified(MNameOfPred, PName),
         ( if

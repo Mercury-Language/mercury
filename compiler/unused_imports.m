@@ -513,8 +513,7 @@ mode_used_modules(mode_id(Name, _Arity), ModeDefn, !UsedModules) :-
         DefinedInThisModule = yes,
         Visibility = mode_visibility(ModeStatus),
         record_sym_name_module_as_used(Visibility, Name, !UsedModules),
-        ModeBody = ModeDefn ^ mody_body,
-        ModeBody = eqv_mode(Mode),
+        ModeDefn ^ mody_body = hlds_mode_body(Mode),
         mer_mode_used_modules(Visibility, Mode, !UsedModules)
     ;
         DefinedInThisModule = no

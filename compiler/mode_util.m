@@ -1309,7 +1309,7 @@ mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
         map.search(ModeDefns, mode_id(BuiltinName, Arity), HLDS_Mode)
     ),
     HLDS_Mode = hlds_mode_defn(_VarSet, Params, ModeDefn, _Context, _Status),
-    ModeDefn = eqv_mode(Mode0),
+    ModeDefn = hlds_mode_body(Mode0),
     mode_substitute_arg_list(Mode0, Params, Args, Mode),
     mode_get_insts_semidet(ModuleInfo, Mode, Initial, Final).
 

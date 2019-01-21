@@ -1754,7 +1754,7 @@ intermod_write_modes(OutInfo, ModuleInfo, !IO) :-
 
 intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !First, !IO) :-
     ModeId = mode_id(SymName, _Arity),
-    ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode), Context,
+    ModeDefn = hlds_mode_defn(Varset, Args, hlds_mode_body(Mode), Context,
         ModeStatus),
     ( if
         SymName = qualified(ModuleName, _),

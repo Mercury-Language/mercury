@@ -222,46 +222,53 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     ),
 
     % We process inst definitions after all type definitions because
-    % the processing of type-specific insts may require access to the
-    % definition of any type constructor.
+    % the processing of a type-specific inst may require access not just
+    % to the definition of *that* type, but of any other type that occurs
+    % in its definition, either directly or indirectly.
     list.foldl3(add_inst_defn, ItemInstDefns,
         !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
 
-    % Mode definitions may refer to user defined insts. We don't yet
-    % exploit the availability of all inst definitions when we process
-    % a mode definition, but in the future, we could.
+    % Mode definitions may refer to user defined insts. Since we have already
+    % seen all inst definitions, we could check whether the newly defined
+    % mode refers to an undefined inst, we do not (yet) do so.
     list.foldl3(add_mode_defn, ItemModeDefns,
         !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
 
     % A predicate declaration defines the type of the arguments of a predicate,
-    % and may give the modes of those arguments. We don't yet exploit
-    % the availability of all type and mode definitions when we process
-    % a pred declaration (e.g. for error checking), but in the future,
-    % we could.
+    % and may give the modes of those arguments. Since we have already seen
+    % all type, inst and mode definitions, we could check whether the newly
+    % defined refers to an undefined type, inst, or mode, but we do not (yet)
+    % do so.
     list.foldl2(add_pred_decl, ItemPredDecls,
         !ModuleInfo, !Specs),
 
     % We need to process the mode declaration of a predicate
     % after we have seen the (type) declaration of the predicate.
     % In the past, this required the predicate declaration to precede
-    % the mode declaration in the source code.
+    % the mode declaration in the source code, but now, the order does not
+    % matter.
+    %
+    % Note that mode declarations embedded in predmode declarations
+    % have already been added to the HLDS by add_pred_decl.
     list.foldl2(add_mode_decl, ItemModeDecls,
         !ModuleInfo, !Specs),
     list.foldl2(add_solver_type_aux_pred_decls, SolverAuxPredInfos,
         !ModuleInfo, !Specs),
 
-    % Every mutable has its own set of access predicates. Declare them,
-    % whether the mutable definition was a standalone item or part of
-    % the definition of a solver type. We have to do this after we add
-    % types and insts to the HLDS, so we can check the types and insts
-    % in the mutable for validity.
+    % Every mutable has its own set of access predicates. Declare them
+    % (using predmode declarations, which specify their types, modes and
+    % determinism) whether the mutable definition was a standalone item
+    % or part of the definition of a solver type.
+    %
+    % We have to do this after we add types and insts to the HLDS,
+    % so we can check the types and insts in the mutable for validity.
     % XXX Currently, we check only the inst for validity.
     list.foldl2(add_aux_pred_decls_for_mutable_if_local, ItemMutables,
         !ModuleInfo, !Specs),
     list.foldl2(add_aux_pred_decls_for_mutable_if_local, SolverItemMutables,
         !ModuleInfo, !Specs),
 
-    % Record typeclass definitions.
+    % Record the definitions of typeclasses.
     list.foldl2(add_typeclass_defn, ItemTypeclasses,
         !ModuleInfo, !Specs),
 
@@ -618,8 +625,8 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
         ExistQVars, Purity, ClassContext, Context, SeqNum),
     % Any WithType and WithInst annotations should have been expanded
     % and the type and/or inst put into TypesAndModes by equiv_type.m.
-    expect(unify(WithType, no), $module, $pred, "WithType != no"),
-    expect(unify(WithInst, no), $module, $pred, "WithInst != no"),
+    expect(unify(WithType, no), $pred, "WithType != no"),
+    expect(unify(WithInst, no), $pred, "WithInst != no"),
 
     PredName = unqualify_name(PredSymName),
     ( if PredName = "" then
@@ -630,9 +637,10 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
-        % If this predicate was added as a result of the mutable transformation
-        % then mark this predicate as a mutable access pred. We do this so that
-        % we can tell optimizations, like inlining, to treat it specially.
+        % If this predicate was added as a result of the mutable
+        % transformation, then mark this predicate as a mutable access pred.
+        % We do this so that we can tell optimizations, like inlining,
+        % to treat it specially.
         init_markers(Markers0),
         (
             Origin = item_origin_compiler(CompilerAttrs),
@@ -688,7 +696,7 @@ add_mode_decl(StatusItem, !ModuleInfo, !Specs) :-
             MaybePredOrFunc = no,
             % equiv_type.m should have either set the pred_or_func
             % or removed the item from the parse tree.
-            unexpected($module, $pred, "no pred_or_func on mode declaration")
+            unexpected($pred, "no pred_or_func on mode declaration")
         )
     ).
 
@@ -727,7 +735,7 @@ maybe_add_default_mode(SectionItem, !ModuleInfo) :-
                 module_info_set_predicate_table(PredTable, !ModuleInfo)
             ;
                 PredIds = [],
-                unexpected($module, $pred, "can't find func declaration")
+                unexpected($pred, "can't find func declaration")
             )
         )
     ).
@@ -775,7 +783,7 @@ add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
                         AllowExport = do_allow_export
                     ;
                         AllowExport = do_not_allow_export,
-                        unexpected($module, $pred, "bad introduced clause")
+                        unexpected($pred, "bad introduced clause")
                     )
                 )
             ;
@@ -884,7 +892,7 @@ add_initialise(StatusItem, !ModuleInfo, !Specs) :-
             implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs)
         ;
             Origin = item_origin_compiler(_CompilerAttrs),
-            unexpected($module, $pred, "bad introduced initialise declaration")
+            unexpected($pred, "bad introduced initialise declaration")
         )
     ;
         ItemMercuryStatus = item_defined_in_other_module(_)
@@ -917,7 +925,7 @@ add_finalise(StatusItem, !ModuleInfo, !Specs) :-
             implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs)
         ;
             Origin = item_origin_compiler(_),
-            unexpected($module, $pred, "bad introduced finalise declaration")
+            unexpected($pred, "bad introduced finalise declaration")
         )
     ;
         ItemMercuryStatus = item_defined_in_other_module(_)

@@ -1205,7 +1205,7 @@ write_mode_table_entry(Indent, ModeId, ModeDefn, !IO) :-
         write_inst_params(HeadInstParam, TailInstParams, InstVarSet, !IO),
         io.write_string(")", !IO)
     ),
-    ModeBody = eqv_mode(EqvMode),
+    ModeBody = hlds_mode_body(EqvMode),
     io.write_string(":\n", !IO),
     write_indent(Indent, !IO),
     mercury_output_mode(output_debug, InstVarSet, EqvMode, !IO),

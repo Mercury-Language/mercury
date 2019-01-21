@@ -1097,7 +1097,7 @@ find_items_used_by_ctor_arg(CtorArg, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_mode_defn(Defn, !Info) :-
-    Defn = hlds_mode_defn(_, _, eqv_mode(Mode), _, _),
+    Defn = hlds_mode_defn(_, _, hlds_mode_body(Mode), _, _),
     find_items_used_by_mode(Mode, !Info).
 
 :- pred find_items_used_by_inst_defn(hlds_inst_defn::in,

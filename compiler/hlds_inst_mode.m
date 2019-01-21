@@ -610,10 +610,11 @@ inst_table_set_mostly_uniq_insts(X, !InstTable) :-
                 mode_status     :: mode_status
             ).
 
-    % The only sort of mode definitions allowed are equivalence modes.
+    % The only sort of mode definitions allowed are equivalence modes:
+    % the given mode name is defined as being equivalent to some other mode.
     %
 :- type hlds_mode_body
-    --->    eqv_mode(mer_mode).  % This mode is equivalent to some other mode.
+    --->    hlds_mode_body(mer_mode).
 
     % Given a mode table get the mode_id - hlds_mode_defn map.
     %
