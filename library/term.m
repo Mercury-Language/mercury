@@ -772,8 +772,10 @@
     % Returns the highest numbered variable returned from this var_supply.
     %
 :- func var_supply_max_var(var_supply(T)) = var(T).
-
 :- func var_supply_num_allocated(var_supply(T)) = int.
+
+:- func force_construct_var(int) = var(T).
+:- func force_construct_var_supply(int) = var_supply(T).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1500,5 +1502,9 @@ context_file(context(FileName, _), FileName).
 var_supply_max_var(var_supply(V)) = var(V).
 
 var_supply_num_allocated(var_supply(V)) = V.
+
+force_construct_var(V) = var(V).
+
+force_construct_var_supply(V) = var_supply(V).
 
 %---------------------------------------------------------------------------%

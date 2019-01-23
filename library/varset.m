@@ -10,20 +10,30 @@
 % Main author: fjh.
 % Stability: low.
 %
-% This file provides facilities for manipulating collections of
-% variables and terms.
-% It provides the 'varset' ADT. A varset is a set of variables.
-% (These variables are object-level variables, and are represented
-% as ground terms, so it might help to think of them as "variable ids"
-% rather than variables.)
-% Associated with each variable there can be both a name and a value
-% (binding).
+% This file provides facilities for manipulating collections of variables.
+% through the 'varset' ADT. These variables are object-level variables,
+% and are represented as ground terms, so it might help to think of them
+% as "variable ids" rather than Prolog-style variables.
 %
-% There may be some design flaws in the relationship between varset.m, and
-% term.m.  Once we have implemented unique modes and destructive assignment, we
-% will need to rethink the design;  we may end up modifying these modules
-% considerably, or we may end up making new single-threaded versions of these
-% modules.
+% A varset may record a name and/or a value (binding) with each variable.
+%
+% Many situations require dealing with several distinct sets of variables
+% that should never be mixed together. For example, a compiler may handle
+% both program variables and type variables, and it does not make sense
+% to a have a single varset containing both program variables and type
+% variables. The varsets provided by this module are thus parameterized;
+% the compiler can use e.g. varset(prog_var_type) to hold program variables
+% and varset(tvar_type) to hold type variables. Since all operations on
+% two or more varsets require agreement on the argument of the varset/1
+% type constructor, any accidental mixup of different instances of varset/1
+% is guaranteed to be caught by the compiler.
+%
+% In situations in which this is not a concern, programmers may use
+% the standard generic varset instance.
+%
+% Note that there are some design flaws in the relationship between
+% varset.m and term.m. There is too much coupling between the two,
+% which may and should be fixed later, e.g. by merging the two modules.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -41,8 +51,7 @@
 %---------------------------------------------------------------------------%
 
 :- type varset(T).
-
-:- type varset  ==  varset(generic).
+:- type varset == varset(generic).
 
 %---------------------%
 
@@ -370,12 +379,12 @@ new_maybe_named_var(MaybeName, Var, !VarSet) :-
     !:VarSet = varset(MaxId, Names, Values).
 
 new_vars(NumVars, NewVars, !VarSet) :-
-    varset.new_vars_loop(NumVars, [], RevNewVars, !VarSet),
+    new_vars_loop(NumVars, [], RevNewVars, !VarSet),
     % Return the new variables in order.
     list.reverse(RevNewVars, NewVars).
 
-:- pred varset.new_vars_loop(int::in, list(var(T))::in,
-    list(var(T))::out, varset(T)::in, varset(T)::out) is det.
+:- pred new_vars_loop(int::in, list(var(T))::in, list(var(T))::out,
+    varset(T)::in, varset(T)::out) is det.
 
 new_vars_loop(NumVars, !RevNewVars, !VarSet) :-
     ( if NumVars > 0 then
@@ -427,10 +436,10 @@ vars(VarSet) = Vars :-
 vars(VarSet, Vars) :-
     MaxId = VarSet ^ var_supply,
     term.init_var_supply(N0),
-    varset.vars_loop(N0, MaxId, [], RevVars),
+    vars_loop(N0, MaxId, [], RevVars),
     list.reverse(RevVars, Vars).
 
-:- pred varset.vars_loop(var_supply(T)::in, var_supply(T)::in,
+:- pred vars_loop(var_supply(T)::in, var_supply(T)::in,
     list(var(T))::in, list(var(T))::out) is det.
 
 vars_loop(Cur, Max, !RevVars) :-
@@ -439,7 +448,7 @@ vars_loop(Cur, Max, !RevVars) :-
     else
         term.create_var(Var, Cur, Next),
         !:RevVars = [Var | !.RevVars],
-        varset.vars_loop(Next, Max, !RevVars)
+        vars_loop(Next, Max, !RevVars)
     ).
 
 %---------------------------------------------------------------------------%
@@ -497,15 +506,15 @@ bind_vars(!.VarSet, Subst) = !:VarSet :-
 
 bind_vars(Subst, !VarSet) :-
     map.to_assoc_list(Subst, VarsValues),
-    varset.bind_vars_loop(VarsValues, !VarSet).
+    bind_vars_loop(VarsValues, !VarSet).
 
-:- pred varset.bind_vars_loop(assoc_list(var(T), term(T))::in, varset(T)::in,
+:- pred bind_vars_loop(assoc_list(var(T), term(T))::in, varset(T)::in,
     varset(T)::out) is det.
 
 bind_vars_loop([], !VarSet).
 bind_vars_loop([Var - Value | VarsValues], !VarSet) :-
-    varset.bind_var(Var, Value, !VarSet),
-    varset.bind_vars_loop(VarsValues, !VarSet).
+    bind_var(Var, Value, !VarSet),
+    bind_vars_loop(VarsValues, !VarSet).
 
 %---------------------------------------------------------------------------%
 
@@ -537,31 +546,109 @@ set_bindings(!.VarSet, Values, !:VarSet) :-
 
 %---------------------------------------------------------------------------%
 %
-% We scan through the second varset, introducing a fresh variable
-% into the first varset for each var in the second, and building up
-% a renaming which maps the variables in the second varset into
-% the corresponding fresh variable in the first varset.
+% We have four near-identical copies of code implementing four related
+% but nevertheless distinct exported predicates:
 %
-% The structure of this code is identical to the structure of the code
-% in the next block.
+% - merge_renaming
+% - merge_renaming_without_names
+% - merge_subst
+% - merge_subst_without_names
 %
+% The code of the merge_subst* predicates must be distinct from the code
+% of the merge_renaming* predicates due to differences in argument types.
+% The code of the merge_*_without_renames predicates must be distinct from
+% the code renaming versions if we don't want to pay the cost of passing
+% around name maps unnecessarily.
+%
+% The approach we follow in the simple implementation of each of the above
+% exported predicates is that we scan through the second varset, introducing
+% a fresh variable into the first varset for each var in the second,
+% and building up a renaming which maps the variables in the second varset
+% into the corresponding fresh variable in the first varset.
+%
+% The fast implementation each of the above exported predicates does the
+% same conceptual job, but with differences in detail.
+%
+% 1 Instead of inserting oldvar-newvar pairs into the rename map,
+%   it constructs a sorted flat assoc list to be turned into a map.
+%   If the two varsets have M and N vars respectively, then the simple
+%   algorithm is O(N log N), while the fast one is O(N).
+%
+% 2 Instead of looking up the name of each variable in the second varset
+%   in a map, it flattens the second varset's name map and iterates
+%   over the resulting list of var-name pairs. Again, the simple algorithm
+%   is O(N log N), while the fast one is O(N).
+%
+% 3 Instead of inserting newvar-name pairs into the updated name map,
+%   it constructs a sorted flat assoc list for the new entries.
+%   Constructing the updated name map requires flattening the old name map,
+%   appending the new entries to it, and turning the result into a map.
+%   The simple algorithm is O(N log (M+N)), since it does N insertions
+%   into a map whose final size is O(M+N), while the fast algorithm is
+%   O(M + N). This *may* yield a slowdown if M is much bigger than N.
+%
+% As their names say, the _without_names versions of these predicates
+% do not update the name map, so the slowdown mentioned in point 3
+% cannot occur for them. This is why they have a separate heuristic.
+%
+
+:- pred use_simple_loop(int::in, int::in) is semidet.
+:- pragma inline(use_simple_loop/2).
+
+use_simple_loop(NumAllocatedA, NumAllocatedB) :-
+    % XXX The numbers in this heuristic should to be determined by benchmarks.
+    (
+        % If NumAllocatedB (the N in the complexity analysis above)
+        % is small, then the asymptotic complexity does not matter as much
+        % as the constant factors.
+        NumAllocatedB =< 5
+    ;
+        % Avoid flattening NamesA if it does not buy us enough speed on NamesB.
+        NumAllocatedA >= NumAllocatedB * 16
+    ).
+
+:- pred use_simple_loop_without_names(int::in, int::in) is semidet.
+:- pragma inline(use_simple_loop_without_names/2).
+
+use_simple_loop_without_names(_NumAllocatedA, NumAllocatedB) :-
+    % XXX The numbers in this heuristic should to be determined by benchmarks.
+    % If NumAllocatedB (the N in the complexity analysis above)
+    % is small, then the asymptotic complexity does not matter as much
+    % as the constant factors.
+    NumAllocatedB =< 5.
+
+%---------------------%
 
 merge_renaming(VarSetA, VarSetB, VarSet, Renaming) :-
-    VarSetB = varset(SupplyB, NamesB, _ValuesB),
-    term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
-    map.init(Renaming0),
-    varset.merge_renaming_loop(SupplyB0, SupplyB, NamesB,
-        SupplyA, Supply, NamesA, Names, Renaming0, Renaming),
+    VarSetB = varset(SupplyB, NamesB, _ValuesB),
+    NumAllocatedA = var_supply_num_allocated(SupplyA),
+    NumAllocatedB = var_supply_num_allocated(SupplyB),
+    ( if use_simple_loop(NumAllocatedA, NumAllocatedB) then
+        term.init_var_supply(SupplyB0),
+        map.init(Renaming0),
+        simple_merge_renaming_loop(SupplyB0, SupplyB, NamesB,
+            SupplyA, Supply, NamesA, Names, Renaming0, Renaming)
+    else
+        map.to_sorted_assoc_list(NamesA, NamesListA),
+        map.to_sorted_assoc_list(NamesB, NamesListB),
+        fast_merge_renaming_loop(1, NumAllocatedB, NumAllocatedA, NumAllocated,
+            NamesListB, [], RevNamesListSuffix, [], RevRenamingList),
+        Supply = force_construct_var_supply(NumAllocated),
+        list.reverse(RevNamesListSuffix, NamesListSuffix),
+        NamesList = NamesListA ++ NamesListSuffix,
+        map.from_sorted_assoc_list(NamesList, Names),
+        map.from_rev_sorted_assoc_list(RevRenamingList, Renaming)
+    ),
     VarSet = varset(Supply, Names, ValuesA).
 
-:- pred varset.merge_renaming_loop(var_supply(T)::in, var_supply(T)::in,
+:- pred simple_merge_renaming_loop(var_supply(T)::in, var_supply(T)::in,
     map(var(T), string)::in,
     var_supply(T)::in, var_supply(T)::out,
     map(var(T), string)::in, map(var(T), string)::out,
     renaming(T)::in, renaming(T)::out) is det.
 
-merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
+simple_merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
         !Supply, !Names, !Renaming) :-
     ( if !.SupplyB = MaxSupplyB then
         true
@@ -574,24 +661,79 @@ merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
             true
         ),
         map.det_insert(VarB, Var, !Renaming),
-        varset.merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
+        simple_merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
             !Supply, !Names, !Renaming)
     ).
 
+:- pred fast_merge_renaming_loop(int::in, int::in, int::in, int::out,
+    assoc_list(var(T), string)::in,
+    assoc_list(var(T), string)::in, assoc_list(var(T), string)::out,
+    assoc_list(var(T), var(T))::in, assoc_list(var(T), var(T))::out) is det.
+
+fast_merge_renaming_loop(CurVarNumB, NumAllocatedB, !NumAllocated,
+        VarsNamesB @ [HeadVarB - HeadNameB | TailVarsNamesB],
+        !RevNamesListSuffix, !RevRenaming) :-
+    !:NumAllocated = !.NumAllocated + 1,
+    Var = force_construct_var(!.NumAllocated),
+    VarB = force_construct_var(CurVarNumB),
+    !:RevRenaming = [VarB - Var | !.RevRenaming],
+    ( if CurVarNumB = var_to_int(HeadVarB) then
+        !:RevNamesListSuffix = [Var - HeadNameB | !.RevNamesListSuffix],
+        NextVarsNamesB = TailVarsNamesB
+    else
+        NextVarsNamesB = VarsNamesB
+    ),
+    fast_merge_renaming_loop(CurVarNumB + 1, NumAllocatedB, !NumAllocated,
+        NextVarsNamesB, !RevNamesListSuffix, !RevRenaming).
+fast_merge_renaming_loop(CurVarNumB, NumAllocatedB, !NumAllocated,
+        [], !RevNamesListSuffix, !RevRenaming) :-
+    fast_merge_renaming_loop_leftover(CurVarNumB, NumAllocatedB,
+        !NumAllocated, !RevRenaming).
+
+    % A version of fast_merge_renaming_loop specialized for the case
+    % where there are no names left from VarSetB.
+    %
+:- pred fast_merge_renaming_loop_leftover(int::in, int::in, int::in, int::out,
+    assoc_list(var(T), var(T))::in, assoc_list(var(T), var(T))::out) is det.
+
+fast_merge_renaming_loop_leftover(CurVarNumB, NumAllocatedB,
+        !NumAllocated, !RevRenaming) :-
+    ( if CurVarNumB > NumAllocatedB then
+        true
+    else
+        !:NumAllocated = !.NumAllocated + 1,
+        Var = force_construct_var(!.NumAllocated),
+        VarB = force_construct_var(CurVarNumB),
+        !:RevRenaming = [VarB - Var | !.RevRenaming],
+        fast_merge_renaming_loop_leftover(CurVarNumB + 1, NumAllocatedB,
+            !NumAllocated, !RevRenaming)
+    ).
+
+%---------------------%
+
 merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming) :-
-    VarSetB = varset(SupplyB, _NamesB, _ValuesB),
-    term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
-    map.init(Renaming0),
-    varset.merge_renaming_without_names_loop(SupplyB0, SupplyB,
-        SupplyA, Supply, Renaming0, Renaming),
+    VarSetB = varset(SupplyB, _NamesB, _ValuesB),
+    NumAllocatedA = var_supply_num_allocated(SupplyA),
+    NumAllocatedB = var_supply_num_allocated(SupplyB),
+    ( if use_simple_loop_without_names(NumAllocatedA, NumAllocatedB) then
+        term.init_var_supply(SupplyB0),
+        map.init(Renaming0),
+        simple_merge_renaming_without_names_loop(SupplyB0, SupplyB,
+            SupplyA, Supply, Renaming0, Renaming)
+    else
+        fast_merge_renaming_without_names_loop(1, NumAllocatedB,
+            NumAllocatedA, NumAllocated, [], RevRenamingList),
+        Supply = force_construct_var_supply(NumAllocated),
+        map.from_rev_sorted_assoc_list(RevRenamingList, Renaming)
+    ),
     VarSet = varset(Supply, NamesA, ValuesA).
 
-:- pred varset.merge_renaming_without_names_loop(var_supply(T)::in,
+:- pred simple_merge_renaming_without_names_loop(var_supply(T)::in,
     var_supply(T)::in, var_supply(T)::in, var_supply(T)::out,
     renaming(T)::in, renaming(T)::out) is det.
 
-merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
+simple_merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
         !Supply, !Renaming) :-
     ( if !.SupplyB = MaxSupplyB then
         true
@@ -599,31 +741,63 @@ merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
         term.create_var(Var, !Supply),
         term.create_var(VarB, !SupplyB),
         map.det_insert(VarB, Var, !Renaming),
-        varset.merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
+        simple_merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
             !Supply, !Renaming)
+    ).
+
+:- pred fast_merge_renaming_without_names_loop(int::in, int::in,
+    int::in, int::out,
+    assoc_list(var(T), var(T))::in, assoc_list(var(T), var(T))::out) is det.
+
+fast_merge_renaming_without_names_loop(CurVarNumB, NumAllocatedB,
+        !NumAllocated, !RevRenaming) :-
+    ( if CurVarNumB > NumAllocatedB then
+        true
+    else
+        !:NumAllocated = !.NumAllocated + 1,
+        Var = force_construct_var(!.NumAllocated),
+        VarB = force_construct_var(CurVarNumB),
+        !:RevRenaming = [VarB - Var | !.RevRenaming],
+        fast_merge_renaming_without_names_loop(CurVarNumB + 1, NumAllocatedB,
+            !NumAllocated, !RevRenaming)
     ).
 
 %---------------------------------------------------------------------------%
 %
-% The structure of this code is identical to the structure of the code
-% in the previous block.
+% The structure of the merge_subst_* predicates is identical to the structure
+% of the merge_renaming_* predicates.
+%
 
 merge_subst(VarSetA, VarSetB, VarSet, Subst) :-
-    VarSetB = varset(SupplyB, NamesB, _ValuesB),
-    term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
-    map.init(Subst0),
-    varset.merge_subst_loop(SupplyB0, SupplyB, NamesB,
-        SupplyA, Supply, NamesA, Names, Subst0, Subst),
+    VarSetB = varset(SupplyB, NamesB, _ValuesB),
+    NumAllocatedA = var_supply_num_allocated(SupplyA),
+    NumAllocatedB = var_supply_num_allocated(SupplyB),
+    ( if use_simple_loop(NumAllocatedA, NumAllocatedB) then
+        term.init_var_supply(SupplyB0),
+        map.init(Subst0),
+        simple_merge_subst_loop(SupplyB0, SupplyB, NamesB,
+            SupplyA, Supply, NamesA, Names, Subst0, Subst)
+    else
+        map.to_sorted_assoc_list(NamesA, NamesListA),
+        map.to_sorted_assoc_list(NamesB, NamesListB),
+        fast_merge_subst_loop(1, NumAllocatedB, NumAllocatedA, NumAllocated,
+            NamesListB, [], RevNamesListSuffix, [], RevSubstList),
+        Supply = force_construct_var_supply(NumAllocated),
+        list.reverse(RevNamesListSuffix, NamesListSuffix),
+        NamesList = NamesListA ++ NamesListSuffix,
+        map.from_sorted_assoc_list(NamesList, Names),
+        map.from_rev_sorted_assoc_list(RevSubstList, Subst)
+    ),
     VarSet = varset(Supply, Names, ValuesA).
 
-:- pred varset.merge_subst_loop(var_supply(T)::in, var_supply(T)::in,
+:- pred simple_merge_subst_loop(var_supply(T)::in, var_supply(T)::in,
     map(var(T), string)::in,
     var_supply(T)::in, var_supply(T)::out,
     map(var(T), string)::in, map(var(T), string)::out,
     substitution(T)::in, substitution(T)::out) is det.
 
-merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
+simple_merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
         !Supply, !Names, !Subst) :-
     ( if !.SupplyB = MaxSupplyB then
         true
@@ -635,36 +809,111 @@ merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
         else
             true
         ),
-        Replacement = term.variable(Var, context_init),
+        Replacement = term.variable(Var, term.context_init),
         map.det_insert(VarB, Replacement, !Subst),
-        varset.merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
+        simple_merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
             !Supply, !Names, !Subst)
     ).
 
+:- pred fast_merge_subst_loop(int::in, int::in, int::in, int::out,
+    assoc_list(var(T), string)::in,
+    assoc_list(var(T), string)::in, assoc_list(var(T), string)::out,
+    assoc_list(var(T), term(T))::in, assoc_list(var(T), term(T))::out) is det.
+
+fast_merge_subst_loop(CurVarNumB, NumAllocatedB, !NumAllocated,
+        VarsNamesB @ [HeadVarB - HeadNameB | TailVarsNamesB],
+        !RevNamesListSuffix, !RevSubst) :-
+    !:NumAllocated = !.NumAllocated + 1,
+    Var = force_construct_var(!.NumAllocated),
+    VarB = force_construct_var(CurVarNumB),
+    Replacement = term.variable(Var, term.context_init),
+    !:RevSubst = [VarB - Replacement | !.RevSubst],
+    ( if CurVarNumB = var_to_int(HeadVarB) then
+        !:RevNamesListSuffix = [Var - HeadNameB | !.RevNamesListSuffix],
+        NextVarsNamesB = TailVarsNamesB
+    else
+        NextVarsNamesB = VarsNamesB
+    ),
+    fast_merge_subst_loop(CurVarNumB + 1, NumAllocatedB, !NumAllocated,
+        NextVarsNamesB, !RevNamesListSuffix, !RevSubst).
+fast_merge_subst_loop(CurVarNumB, NumAllocatedB, !NumAllocated,
+        [], !RevNamesListSuffix, !RevSubst) :-
+    fast_merge_subst_loop_leftover(CurVarNumB, NumAllocatedB,
+        !NumAllocated, !RevSubst).
+
+    % A version of fast_merge_subst_loop specialized for the case
+    % where there are no names left from VarSetB.
+    %
+:- pred fast_merge_subst_loop_leftover(int::in, int::in, int::in, int::out,
+    assoc_list(var(T), term(T))::in, assoc_list(var(T), term(T))::out) is det.
+
+fast_merge_subst_loop_leftover(CurVarNumB, NumAllocatedB,
+        !NumAllocated, !RevSubst) :-
+    ( if CurVarNumB > NumAllocatedB then
+        true
+    else
+        !:NumAllocated = !.NumAllocated + 1,
+        Var = force_construct_var(!.NumAllocated),
+        VarB = force_construct_var(CurVarNumB),
+        Replacement = term.variable(Var, term.context_init),
+        !:RevSubst = [VarB - Replacement | !.RevSubst],
+        fast_merge_subst_loop_leftover(CurVarNumB + 1, NumAllocatedB,
+            !NumAllocated, !RevSubst)
+    ).
+
+%---------------------%
+
 merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst) :-
-    VarSetB = varset(SupplyB, _NamesB, _ValuesB),
-    term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
-    map.init(Subst0),
-    varset.merge_subst_without_names_loop(SupplyB0, SupplyB,
-        SupplyA, Supply, Subst0, Subst),
+    VarSetB = varset(SupplyB, _NamesB, _ValuesB),
+    NumAllocatedA = var_supply_num_allocated(SupplyA),
+    NumAllocatedB = var_supply_num_allocated(SupplyB),
+    ( if use_simple_loop_without_names(NumAllocatedA, NumAllocatedB) then
+        term.init_var_supply(SupplyB0),
+        map.init(Subst0),
+        simple_merge_subst_without_names_loop(SupplyB0, SupplyB,
+            SupplyA, Supply, Subst0, Subst)
+    else
+        fast_merge_subst_without_names_loop(1, NumAllocatedB,
+            NumAllocatedA, NumAllocated, [], RevSubstList),
+        Supply = force_construct_var_supply(NumAllocated),
+        map.from_rev_sorted_assoc_list(RevSubstList, Subst)
+    ),
     VarSet = varset(Supply, NamesA, ValuesA).
 
-:- pred varset.merge_subst_without_names_loop( var_supply(T)::in,
+:- pred simple_merge_subst_without_names_loop( var_supply(T)::in,
     var_supply(T)::in, var_supply(T)::in, var_supply(T)::out,
     substitution(T)::in, substitution(T)::out) is det.
 
-merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
+simple_merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
         !Supply, !Subst) :-
     ( if !.SupplyB = MaxSupplyB then
         true
     else
         term.create_var(Var, !Supply),
         term.create_var(VarB, !SupplyB),
-        Replacement = term.variable(Var, context_init),
+        Replacement = term.variable(Var, term.context_init),
         map.det_insert(VarB, Replacement, !Subst),
-        varset.merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
+        simple_merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
             !Supply, !Subst)
+    ).
+
+:- pred fast_merge_subst_without_names_loop(int::in, int::in,
+    int::in, int::out,
+    assoc_list(var(T), term(T))::in, assoc_list(var(T), term(T))::out) is det.
+
+fast_merge_subst_without_names_loop(CurVarNumB, NumAllocatedB,
+        !NumAllocated, !RevSubst) :-
+    ( if CurVarNumB > NumAllocatedB then
+        true
+    else
+        !:NumAllocated = !.NumAllocated + 1,
+        Var = force_construct_var(!.NumAllocated),
+        VarB = force_construct_var(CurVarNumB),
+        Replacement = term.variable(Var, term.context_init),
+        !:RevSubst = [VarB - Replacement | !.RevSubst],
+        fast_merge_subst_without_names_loop(CurVarNumB + 1, NumAllocatedB,
+            !NumAllocated, !RevSubst)
     ).
 
 %---------------------------------------------------------------------------%
@@ -708,7 +957,7 @@ ensure_unique_names(AllVars, Suffix, !VarSet) :-
         map.init, VarNames),
     !VarSet ^ var_names := VarNames.
 
-:- pred varset.ensure_unique_names_loop(list(var(T))::in, string::in,
+:- pred ensure_unique_names_loop(list(var(T))::in, string::in,
     set(string)::in, map(var(T), string)::in, map(var(T), string)::in,
     map(var(T), string)::out) is det.
 
@@ -729,7 +978,7 @@ ensure_unique_names_loop([Var | Vars], Suffix, !.UsedNames,
     append_suffix_until_unique(TrialName, Suffix, !.UsedNames, FinalName),
     set.insert(FinalName, !UsedNames),
     map.det_insert(Var, FinalName, !VarNames),
-    varset.ensure_unique_names_loop(Vars, Suffix, !.UsedNames,
+    ensure_unique_names_loop(Vars, Suffix, !.UsedNames,
         OldVarNames, !VarNames).
 
 :- pred append_suffix_until_unique(string::in, string::in, set(string)::in,
