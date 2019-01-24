@@ -515,6 +515,11 @@ tar: 	$(GENERATED_DOCS)
 			--dereference -cf - 				\
 			mercury-srcdist-$(VERSION) | 			\
 			gzip -9 > mercury-srcdist-$(VERSION).tar.gz;	\
+		test -z $(XZ) || $(TAR) --exclude ".git"                \
+			--exclude ".gitignore"				\
+			--dereference -cf - 				\
+			mercury-srcdist-$(VERSION) | 			\
+			$(XZ) > mercury-srcdist-$(VERSION).tar.xz;	\
 		mv mercury-srcdist-$(VERSION)	$$ROOTNAME;		\
 		mv stuff-to-exclude/quickcheck  $$ROOTNAME/extras/quickcheck; \
 		mv stuff-to-exclude/*		$$ROOTNAME;		\
