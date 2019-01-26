@@ -37,6 +37,13 @@
     % to remove representation from type_defn items and to put it into separate
     % type_repn items instead.
     %
+    % XXX TYPE_REPN Consider the relationship between this predicate and
+    % make_impl_type_abstract in write_module_interface_files.m. Unlike this
+    % predicate, that one has access to the definitions of the types
+    % in this module, so it knows whether e.g. an equivalence type definition
+    % makes the defined type equivalent to a type that needs special treatment
+    % by the algorithm that decides data representations.
+    %
 :- pred maybe_make_abstract_type_defn(short_int_file_kind::in,
     item_type_defn_info::in, item_type_defn_info::out) is det.
 

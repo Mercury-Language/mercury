@@ -745,7 +745,7 @@ strip_unnecessary_impl_defns(!IntAvails, !ImpAvails, !IntItems, !ImpItems) :-
         set.foldl(multi_map.delete, RemovableAbstractExportedTypes,
             !ImpTypesMap),
 
-        map.foldl(add_type_defn_items_from_map, !.ImpTypesMap, !ImpItems),
+        map.foldl_values(add_type_defn_items, !.ImpTypesMap, !ImpItems),
 
         find_need_imports(!.ImpItems, NeedImports, NeedForeignImports),
         (
@@ -772,16 +772,17 @@ strip_unnecessary_impl_defns(!IntAvails, !ImpAvails, !IntItems, !ImpItems) :-
     % See the comment on the one call above.
     %
 :- pred find_removable_abstract_exported_types(type_defn_map::in,
-    type_ctor::in, assoc_list(type_defn, item_type_defn_info)::in,
+    type_ctor::in, list(item_type_defn_info)::in,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
 find_removable_abstract_exported_types(IntTypesMap,
-        ImpTypeCtor, ImpTypeDefnPairs, !AbstractExportedTypes) :-
+        ImpTypeCtor, ImpItemTypeDefnInfos, !AbstractExportedTypes) :-
     ( if
-        all [Defn] (
-            list.member(Defn - _, ImpTypeDefnPairs)
+        all [ImpItemTypeDefnInfo] (
+            list.member(ImpItemTypeDefnInfo, ImpItemTypeDefnInfos)
         => (
-            Defn = parse_tree_abstract_type(Details),
+            ImpItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
+            TypeDefn = parse_tree_abstract_type(Details),
             Details \= abstract_type_fits_in_n_bits(_)
         )),
         multi_map.contains(IntTypesMap, ImpTypeCtor)
@@ -791,21 +792,13 @@ find_removable_abstract_exported_types(IntTypesMap,
         true
     ).
 
-:- pred add_type_defn_items_from_map(
-    type_ctor::in, list(pair(type_defn, item_type_defn_info))::in,
-    list(item)::in, list(item)::out) is det.
-
-add_type_defn_items_from_map(_TypeCtor, TypeDefnPairs, !ImpItems) :-
-    add_type_defn_items(TypeDefnPairs, !ImpItems).
-
-:- pred add_type_defn_items(assoc_list(type_defn, item_type_defn_info)::in,
+:- pred add_type_defn_items(list(item_type_defn_info)::in,
     list(item)::in, list(item)::out) is det.
 
 add_type_defn_items([], !ImpItems).
-add_type_defn_items([TypeDefnPair | TypeDefnPairs], !ImpItems) :-
-    TypeDefnPair = _TypeDefn - ItemTypeDefn,
-    !:ImpItems = [item_type_defn(ItemTypeDefn) | !.ImpItems],
-    add_type_defn_items(TypeDefnPairs, !ImpItems).
+add_type_defn_items([ItemTypeDefnInfo | ItemTypeDefnInfos], !ImpItems) :-
+    !:ImpItems = [item_type_defn(ItemTypeDefnInfo) | !.ImpItems],
+    add_type_defn_items(ItemTypeDefnInfos, !ImpItems).
 
 %---------------------------------------------------------------------------%
 
@@ -934,35 +927,65 @@ insert_type_defn(New, [Head | Tail], Result) :-
     ).
 
 :- pred make_impl_type_abstract(type_defn_map::in,
-    assoc_list(type_defn, item_type_defn_info)::in,
-    assoc_list(type_defn, item_type_defn_info)::out) is det.
+    list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
 
-make_impl_type_abstract(TypeDefnMap, !TypeDefnPairs) :-
-    ( if
-        !.TypeDefnPairs = [TypeDefn0 - ItemTypeDefn0],
-        TypeDefn0 = parse_tree_du_type(DetailsDu)
-    then
-        DetailsDu = type_details_du(Ctors, MaybeEqCmp, MaybeDirectArgCtors),
-        ( if
-            constructor_list_represents_dummy_argument_type(TypeDefnMap, Ctors,
-                MaybeEqCmp, MaybeDirectArgCtors)
-        then
-            % Leave dummy types alone.
-            true
-        else
-            ( if du_type_is_enum(DetailsDu, NumBits) then
-                % XXX TYPE_REPN We should also generate fits_in_n_bits
-                % if the original type is a less-than-word-sized builtin,
-                % such as int8.
-                Details = abstract_type_fits_in_n_bits(NumBits)
+make_impl_type_abstract(TypeDefnMap, !ItemTypeDefnInfos) :-
+    ( if !.ItemTypeDefnInfos = [ItemTypeDefnInfo0] then
+        % XXX TYPE_REPN We should also generate fits_in_n_bits if the
+        % original type is a less-than-word-sized builtin, such as int8.
+
+        ItemTypeDefnInfo0 = item_type_defn_info(_, _, TypeDefn0, _, _, _),
+        (
+            TypeDefn0 = parse_tree_du_type(DetailsDu0),
+            DetailsDu0 = type_details_du(Ctors, MaybeEqCmp,
+                MaybeDirectArgCtors),
+            ( if
+                constructor_list_represents_dummy_argument_type(TypeDefnMap,
+                    Ctors, MaybeEqCmp, MaybeDirectArgCtors)
+            then
+                % Leave dummy types alone.
+                true
             else
-                Details = abstract_type_general
-            ),
-            Defn = parse_tree_abstract_type(Details),
-            ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := Defn,
-            !:TypeDefnPairs = [Defn - ItemTypeDefn]
+                ( if du_type_is_enum(DetailsDu0, NumBits) then
+                    DetailsAbs = abstract_type_fits_in_n_bits(NumBits)
+                else
+                    DetailsAbs = abstract_type_general
+                ),
+                TypeDefn = parse_tree_abstract_type(DetailsAbs),
+                ItemTypeDefnInfo = ItemTypeDefnInfo0 ^ td_ctor_defn
+                    := TypeDefn,
+                !:ItemTypeDefnInfos = [ItemTypeDefnInfo]
+            )
+        ;
+            TypeDefn0 = parse_tree_eqv_type(_)
+            % XXX TYPE_REPN We currently leave the type definition alone.
+            % However, in the future we should test whether the type
+            % equivalence is to a type that requires special treatment,
+            % either with respect to type representation (because it is smaller
+            % than a word, because it is bigger than a word, or because it is
+            % guaranteed to be an aligned pointer) or because it needs to be
+            % passed in an FP register.
+            %
+            % If the type does require special treatment, we should generate
+            % an item that specifies that treatment, and no more.
+            % If the type does not require special treatment, we should
+            % generate an item that specifies the absence of a need for
+            % special treatment: a simple abstract type definition
+            % should suffice.
+        ;
+            TypeDefn0 = parse_tree_abstract_type(_)
+            % This type is already abstract.
+        ;
+            ( TypeDefn0 = parse_tree_solver_type(_)
+            ; TypeDefn0 = parse_tree_foreign_type(_)
+            )
+            % XXX TYPE_REPN Keeping these in their non-abstract form
+            % looks like a bug to me. -zs
         )
     else
+        % This type constructor has either no definition, or two or more
+        % definitions. In either case, the error should be reported somewhere
+        % else.
         true
     ).
 
@@ -1022,11 +1045,13 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
             else if
                 % Can we find a definition of the type that tells us it is a
                 % dummy type?
-                multi_map.search(TypeDefnMap, TypeCtor, TypeDefns),
-                list.member(TypeDefn - _, TypeDefns),
+                multi_map.search(TypeDefnMap, TypeCtor, ItemTypeDefnInfos),
+                list.member(ItemTypeDefnInfo, ItemTypeDefnInfos),
+                ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn,
+                    _, _, _),
+                TypeDefn = parse_tree_du_type(DetailsDu),
                 DetailsDu = type_details_du(TypeCtors, MaybeEqCmp,
                     MaybeDirectArgCtors),
-                TypeDefn = parse_tree_du_type(DetailsDu),
                 CoveredTypes = [Type | CoveredTypes0],
                 constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
                     TypeCtors, MaybeEqCmp, MaybeDirectArgCtors, CoveredTypes)
@@ -1091,18 +1116,18 @@ get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
         AbsImplExpEnumTypeCtors]).
 
 :- pred accumulate_abs_impl_exported_type_lhs(type_defn_map::in,
-    type_defn_map::in,
-    pair(type_ctor, pair(type_defn, item_type_defn_info))::in,
+    type_defn_map::in, pair(type_ctor, item_type_defn_info)::in,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
 accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
-        TypeCtor - (TypeDefn - _Item), !AbsEqvLhsTypeCtors,
+        TypeCtor - ItemTypeDefnInfo, !AbsEqvLhsTypeCtors,
         !AbsImplExpEnumTypeCtors, !DummyTypeCtors) :-
     % A type may have multiple definitions because it may be defined both
     % as a foreign type and as a Mercury type. We grab any equivalence types
     % that are in there.
+    ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
     (
         TypeDefn = parse_tree_eqv_type(_),
         ( if map.search(InterfaceTypeMap, TypeCtor, _) then
@@ -1154,13 +1179,14 @@ accumulate_abs_impl_exported_type_rhs(ImplTypeMap, TypeCtor,
     ).
 
 :- pred accumulate_abs_eqv_type_rhs_2(type_defn_map::in,
-    pair(type_defn, item_type_defn_info)::in,
+    item_type_defn_info::in,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _,
+accumulate_abs_eqv_type_rhs_2(ImplTypeMap, ItemTypeDefnInfo,
         !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules) :-
+    ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
     (
         TypeDefn = parse_tree_eqv_type(DetailsEqv),
         DetailsEqv = type_details_eqv(RhsType),
@@ -1253,10 +1279,8 @@ cons_args_to_type_ctor_set([Arg | Args], !TypeCtors) :-
 
 %---------------------------------------------------------------------------%
 
-:- type type_defn_map ==
-    multi_map(type_ctor, pair(type_defn, item_type_defn_info)).
-:- type type_defn_pair ==
-    pair(type_ctor, pair(type_defn, item_type_defn_info)).
+:- type type_defn_map == multi_map(type_ctor, item_type_defn_info).
+:- type type_defn_pair == pair(type_ctor, item_type_defn_info).
 
 :- pred gather_type_defns_in_section(module_section::in,
     list(item)::in, list(item)::out,
@@ -1275,29 +1299,22 @@ gather_type_defns_in_section_loop(_, [], !ItemsCord, !TypesMap).
 gather_type_defns_in_section_loop(Section, [Item | Items],
         !ItemsCord, !TypesMap) :-
     ( if Item = item_type_defn(ItemTypeDefn) then
-        ItemTypeDefn = item_type_defn_info(Name, Args, Body, _, _, _),
-        TypeCtor = type_ctor(Name, length(Args)),
+        ItemTypeDefn = item_type_defn_info(Name, Args, _, _, _, _),
+        TypeCtor = type_ctor(Name, list.length(Args)),
         (
             Section = ms_interface,
-            !:ItemsCord = cord.snoc(!.ItemsCord, Item),
-            gather_type_defn(TypeCtor, Body, ItemTypeDefn, !TypesMap)
+            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
         ;
-            Section = ms_implementation,
+            Section = ms_implementation
             % We don't add this to !ItemsCord yet -- we may be removing it.
-            gather_type_defn(TypeCtor, Body, ItemTypeDefn, !TypesMap)
-        )
+        ),
+        multi_map.set(TypeCtor, ItemTypeDefn, !TypesMap)
     else
         !:ItemsCord = cord.snoc(!.ItemsCord, Item)
     ),
     gather_type_defns_in_section_loop(Section, Items, !ItemsCord, !TypesMap).
 
 %---------------------------------------------------------------------------%
-
-:- pred gather_type_defn(type_ctor::in, type_defn::in, item_type_defn_info::in,
-    type_defn_map::in, type_defn_map::out) is det.
-
-gather_type_defn(TypeCtor, Body, ItemTypeDefn, !DefnMap) :-
-    multi_map.set(TypeCtor, Body - ItemTypeDefn, !DefnMap).
 
 :- pred get_requirements_of_impl_typeclasses_in_items(list(item)::in,
     set(module_name)::out) is det.
@@ -1754,7 +1771,11 @@ strip_unnecessary_impl_defns_in_items([Item | Items],
             FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values),
             ( if
                 map.search(IntTypesMap, TypeCtor, Defns),
-                Defns \= [parse_tree_abstract_type(_) - _]
+                not (
+                    Defns = [Defn],
+                    Defn = item_type_defn_info(_, _, Body, _, _, _),
+                    Body = parse_tree_abstract_type(_)
+                )
             then
                 !:ItemsCord = cord.snoc(!.ItemsCord, Item)
             else
