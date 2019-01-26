@@ -53,7 +53,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % write_private_interface_file(Globals, SourceFileName,
+    % write_private_interface_file_in0(Globals, SourceFileName,
     %   SourceFileModuleName, CompUnit, MaybeTimestamp, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
@@ -67,11 +67,11 @@
     % these to qualify all the declarations as much as possible. Then write
     % out the .int0 file.
     %
-:- pred write_private_interface_file(globals::in, file_name::in,
-    module_name::in, raw_compilation_unit::in, maybe(timestamp)::in,
+:- pred write_private_interface_file_int0(globals::in, file_name::in,
+    module_name::in, maybe(timestamp)::in, raw_compilation_unit::in,
     io::di, io::uo) is det.
 
-    % write_interface_file(Globals, SourceFileName,
+    % write_interface_file_int1_int2(Globals, SourceFileName,
     %   SourceFileModuleName, CompUnit, MaybeTimestamp, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
@@ -83,13 +83,13 @@
     % to qualify all items in the interface as much as possible. Then write out
     % the .int and .int2 files.
     %
-:- pred write_interface_file(globals::in, file_name::in,
-    module_name::in, raw_compilation_unit::in, maybe(timestamp)::in,
+:- pred write_interface_file_int1_int2(globals::in, file_name::in,
+    module_name::in, maybe(timestamp)::in, raw_compilation_unit::in,
     io::di, io::uo) is det.
 
     % Output the unqualified short interface file to <module>.int3.
     %
-:- pred write_short_interface_file(globals::in, file_name::in,
+:- pred write_short_interface_file_int3(globals::in, file_name::in,
     raw_compilation_unit::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -136,8 +136,8 @@
 % Write out .int0 files.
 %
 
-write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
-        RawCompUnit0, MaybeTimestamp, !IO) :-
+write_private_interface_file_int0(Globals, SourceFileName,
+        SourceFileModuleName, MaybeTimestamp, RawCompUnit0, !IO) :-
     RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext, _),
     grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit0, ModuleAndImports, !IO),
@@ -413,8 +413,8 @@ add_item_to_section_items(Section, Item, !IntItemsCord, !ImpItemsCord) :-
 % Write out .int and .int2 files.
 %
 
-write_interface_file(Globals, SourceFileName, SourceFileModuleName,
-        RawCompUnit0, MaybeTimestamp, !IO) :-
+write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
+        MaybeTimestamp, RawCompUnit0, !IO) :-
     RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext,
         _RawItemBlocks0),
     get_interface(include_impl_types, RawCompUnit0, IntRawCompUnit),
@@ -552,7 +552,7 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
 % Write out .int3 files.
 %
 
-write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO) :-
+write_short_interface_file_int3(Globals, SourceFileName, RawCompUnit, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
 

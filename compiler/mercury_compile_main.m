@@ -830,7 +830,7 @@ compile_with_module_options(Globals, ModuleName, DetectedGradeFlags,
     ;
         InvokedByMake = no,
         Builder =
-            (pred(BuildGlobals::in, _::in, Succeeded0::out, X::in, X::out,
+            ( pred(BuildGlobals::in, _::in, Succeeded0::out, X::in, X::out,
                     IO0::di, IO::uo) is det :-
                 Compile(BuildGlobals, Succeeded0, IO0, IO)
             ),
@@ -949,8 +949,7 @@ process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
 
 :- pred process_compiler_arg_build(op_mode_args::in, file_or_module::in,
     list(string)::in, globals::in, list(string)::in, bool::out,
-    unit::in, {list(string), list(string)}::out,
-    io::di, io::uo) is det.
+    unit::in, {list(string), list(string)}::out, io::di, io::uo) is det.
 
 process_compiler_arg_build(OpModeArgs, FileOrModule, OptionArgs, Globals, _,
         Succeeded, _DummyInput, {Modules, ExtraObjFiles}, !IO) :-
@@ -1010,20 +1009,18 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
+        OpModeArgs = opma_make_interface(InterfaceFile),
         (
-            OpModeArgs = opma_make_private_interface,
-            ProcessModule = call_make_private_interface(Globals0),
+            InterfaceFile = omif_int3,
+            ReturnTimestamp = dont_return_timestamp
+        ;
+            InterfaceFile = omif_int0,
             globals.lookup_bool_option(Globals0, generate_item_version_numbers,
                 GenerateVersionNumbers),
             ReturnTimestamp =
                 version_numbers_return_timestamp(GenerateVersionNumbers)
         ;
-            OpModeArgs = opma_make_short_interface,
-            ProcessModule = call_make_short_interface(Globals0),
-            ReturnTimestamp = dont_return_timestamp
-        ;
-            OpModeArgs = opma_make_interface,
-            ProcessModule = call_make_interface(Globals0),
+            InterfaceFile = omif_int1_int2,
             globals.lookup_bool_option(Globals0, generate_item_version_numbers,
                 GenerateVersionNumbers),
             ReturnTimestamp =
@@ -1043,10 +1040,24 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
             % XXX _NumErrors
             write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
-            list.foldl(
-                apply_process_module(ProcessModule, FileName, ModuleName,
-                    MaybeTimestamp),
-                RawCompUnits, !IO)
+            (
+                InterfaceFile = omif_int0,
+                list.foldl(
+                    write_private_interface_file_int0(Globals0,
+                        FileName, ModuleName, MaybeTimestamp),
+                    RawCompUnits, !IO)
+            ;
+                InterfaceFile = omif_int1_int2,
+                list.foldl(
+                    write_interface_file_int1_int2(Globals0,
+                        FileName, ModuleName, MaybeTimestamp),
+                    RawCompUnits, !IO)
+            ;
+                InterfaceFile = omif_int3,
+                list.foldl(
+                    write_short_interface_file_int3(Globals0, FileName),
+                    RawCompUnits, !IO)
+            )
         ),
         ModulesToLink = [],
         ExtraObjFiles = []
@@ -1163,41 +1174,6 @@ find_timestamp_files_2(Globals, TimestampSuffix, ModuleName, TimestampFiles,
     module_name_to_file_name(Globals, do_create_dirs, TimestampSuffix,
         ModuleName, FileName, !IO),
     TimestampFiles = [FileName].
-
-%---------------------%
-
-:- pred call_make_interface(globals::in, file_name::in, module_name::in,
-    maybe(timestamp)::in, raw_compilation_unit::in, io::di, io::uo) is det.
-
-call_make_interface(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, RawCompUnit, !IO) :-
-    write_interface_file(Globals, SourceFileName, SourceFileModuleName,
-        RawCompUnit, MaybeTimestamp, !IO).
-
-:- pred call_make_short_interface(globals::in, file_name::in, module_name::in,
-    maybe(timestamp)::in, raw_compilation_unit::in, io::di, io::uo) is det.
-
-call_make_short_interface(Globals, SourceFileName, _, _, RawCompUnit, !IO) :-
-    write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO).
-
-:- pred call_make_private_interface(globals::in, file_name::in,
-    module_name::in, maybe(timestamp)::in, raw_compilation_unit::in,
-    io::di, io::uo) is det.
-
-call_make_private_interface(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, RawCompUnit, !IO) :-
-    write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
-        RawCompUnit, MaybeTimestamp, !IO).
-
-:- pred apply_process_module(
-    pred(file_name, module_name, maybe(timestamp), raw_compilation_unit,
-        io, io)::in(pred(in, in, in, in, di, uo) is det),
-    file_name::in, module_name::in, maybe(timestamp)::in,
-    raw_compilation_unit::in, io::di, io::uo) is det.
-
-apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
-        RawCompUnit, !IO) :-
-    ProcessModule(FileName, ModuleName, MaybeTimestamp, RawCompUnit, !IO).
 
 %---------------------------------------------------------------------------%
 

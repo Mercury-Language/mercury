@@ -1123,9 +1123,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     % since including line numbers in those would cause unnecessary
     % recompilation.
     ( if
-        ( OpMode = opm_top_args(opma_make_private_interface)
-        ; OpMode = opm_top_args(opma_make_short_interface)
-        ; OpMode = opm_top_args(opma_make_interface)
+        ( OpMode = opm_top_args(opma_make_interface(_))
         ; OpMode = opm_top_args(opma_augment(opmau_make_opt_int))
         ; OpMode = opm_top_args(opma_augment(opmau_make_trans_opt_int))
         )
@@ -1137,7 +1135,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
 
     % We never use version number information in `.int3',
     % `.opt' or `.trans_opt' files.
-    ( if OpMode = opm_top_args(opma_make_short_interface) then
+    ( if OpMode = opm_top_args(opma_make_interface(omif_int3)) then
         globals.set_option(generate_item_version_numbers, bool(no), !Globals)
     else
         true

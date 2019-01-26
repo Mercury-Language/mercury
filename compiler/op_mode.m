@@ -68,11 +68,14 @@
 :- type op_mode_args
     --->    opma_generate_dependencies
     ;       opma_generate_dependency_file
-    ;       opma_make_private_interface
-    ;       opma_make_short_interface
-    ;       opma_make_interface
+    ;       opma_make_interface(op_mode_interface_file)
     ;       opma_convert_to_mercury
     ;       opma_augment(op_mode_augment).
+
+:- type op_mode_interface_file
+    --->    omif_int0
+    ;       omif_int1_int2
+    ;       omif_int3.
 
 %---------------------%
 
@@ -230,9 +233,7 @@ may_be_together_with_check_only(OpMode) = MayBeTogether :-
         (
             ( OpModeArgs = opma_generate_dependencies
             ; OpModeArgs = opma_generate_dependency_file
-            ; OpModeArgs = opma_make_private_interface
-            ; OpModeArgs = opma_make_interface
-            ; OpModeArgs = opma_make_short_interface
+            ; OpModeArgs = opma_make_interface(_)
             ; OpModeArgs = opma_convert_to_mercury
             ),
             MayBeTogether = yes
@@ -326,11 +327,11 @@ bool_op_modes = [
     only_opmode_generate_dependency_file -
         opm_top_args(opma_generate_dependency_file),
     only_opmode_make_private_interface -
-        opm_top_args(opma_make_private_interface),
+        opm_top_args(opma_make_interface(omif_int0)),
     only_opmode_make_short_interface -
-        opm_top_args(opma_make_short_interface),
+        opm_top_args(opma_make_interface(omif_int3)),
     only_opmode_make_interface -
-        opm_top_args(opma_make_interface),
+        opm_top_args(opma_make_interface(omif_int1_int2)),
     only_opmode_convert_to_mercury -
         opm_top_args(opma_convert_to_mercury),
 
@@ -431,14 +432,17 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
             MOPA = opma_generate_dependency_file,
             Str = "--generate-dependency_file"
         ;
-            MOPA = opma_make_private_interface,
-            Str = "--make-private-interface"
-        ;
-            MOPA = opma_make_short_interface,
-            Str = "--make-short-interface"
-        ;
-            MOPA = opma_make_interface,
-            Str = "--make-interface"
+            MOPA = opma_make_interface(InterfaceFile),
+            (
+                InterfaceFile = omif_int0,
+                Str = "--make-private-interface"
+            ;
+                InterfaceFile = omif_int1_int2,
+                Str = "--make-interface"
+            ;
+                InterfaceFile = omif_int3,
+                Str = "--make-short-interface"
+            )
         ;
             MOPA = opma_convert_to_mercury,
             Str = "--convert-to-mercury"

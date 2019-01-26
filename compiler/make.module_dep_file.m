@@ -933,7 +933,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
 make_short_interfaces(ErrorStream, SourceFileName, RawCompUnits, Globals,
         _, Succeeded, !Info, !IO) :-
     io.set_output_stream(ErrorStream, OutputStream, !IO),
-    list.foldl(write_short_interface_file(Globals, SourceFileName),
+    list.foldl(write_short_interface_file_int3(Globals, SourceFileName),
         RawCompUnits, !IO),
     io.set_output_stream(OutputStream, _, !IO),
     io.get_exit_status(ExitStatus, !IO),
