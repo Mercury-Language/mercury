@@ -12,14 +12,14 @@
 %
 % Error: a tool like the old unix tool of the same name.
 %
-% Error's jobs is to process compiler error messages, and insert them
-% as comments into the source files they refer to. By making the error messages
-% move with the code they refer to as the code is changed, this can help
-% programmers fix many errors in a single editing session; after fixing
-% one error, they don't have to recompile to get updated line numbers on
-% the remaining errors.
+% Error's job is to parse compiler error messages, and insert each message
+% as a comment into its source file next to the line the message refers to.
+% By making the error messages move with the code they refer to as
+% the code is changed, this can help programmers fix many errors in a
+% single editing session; after fixing one error, they don't have to recompile
+% to get updated line numbers on the remaining errors.
 %
-% Error takes a list of files on the command line, and looks for errors
+% Error takes a list of files on the command line, and looks for messages
 % in the format:
 %
 %   filename:linenumber: error message
@@ -49,9 +49,7 @@
 %   - better error handling
 %   - look for environment variables other than EDITOR
 %   - usage message, help message
-%   - take input from stdin if no filenames given or if the filename is "-"
-%   - handle options using getopt
-%   - handle commenting styles other than /* .... */
+%   - handle commenting styles other than /* .... */ and %
 
 :- module error.
 
@@ -68,6 +66,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
+:- import_module getopt.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -81,13 +80,63 @@
 :- type file_error_map == map(line_number, list(message)).
 :- type error_map == map(filename, file_error_map).
 
+:- type comment_style
+    --->    cs_slash_star
+    ;       cs_percent.
+
+%------------------------------------------------------------------------------%
+
 main(!IO) :-
     io.command_line_arguments(Args0, !IO),
-    ( Args0 = ["-v" | Args1] ->
-        InvokeEditor = yes,
-        Args = Args1
+    OptionOps = option_ops_multi(short_options, long_options, option_defaults),
+    getopt.process_options(OptionOps, Args0, Args, GetoptResult),
+    (
+        GetoptResult = error(ErrorMessage),
+        io.write_string(ErrorMessage, !IO),
+        io.set_exit_status(1, !IO)
     ;
-        InvokeEditor = no,
+        GetoptResult = ok(OptionTable),
+        getopt.lookup_bool_option(OptionTable, invoke_editor, InvokeEditor),
+        getopt.lookup_bool_option(OptionTable, comment_slash_star, SlashStar),
+        getopt.lookup_bool_option(OptionTable, comment_percent, Percent),
+        (
+            SlashStar = no,
+            Percent = no,
+            MaybeStyle = yes(cs_slash_star)
+        ;
+            SlashStar = no,
+            Percent = yes,
+            MaybeStyle = yes(cs_percent)
+        ;
+            SlashStar = yes,
+            Percent = no,
+            MaybeStyle = yes(cs_slash_star)
+        ;
+            SlashStar = yes,
+            Percent = yes,
+            io.write_string("error: you can specify only one comment style\n",
+                !IO),
+            io.set_exit_status(1, !IO),
+            MaybeStyle = no
+        ),
+        (
+            MaybeStyle = no
+        ;
+            MaybeStyle = yes(Style),
+            run_error(InvokeEditor, Style, Args, !IO)
+        )
+    ).
+
+:- pred run_error(bool::in, comment_style::in, list(string)::in,
+    io::di, io::uo) is det.
+
+run_error(InvokeEditor, Style, Args0, !IO) :-
+    % If there are no filename arguments, default to processing standard input.
+    (
+        Args0 = [],
+        Args = ["-"]
+    ;
+        Args0 = [_ | _],
         Args = Args0
     ),
     map.init(ErrorMap0),
@@ -103,7 +152,7 @@ main(!IO) :-
         list.foldl(io.write_string(StdErr), IgnoreMsgs, !IO),
 
         % Insert all the error lines we COULD parse into the files they name.
-        process_error_map(ErrorMap, !IO),
+        process_error_map(Style, ErrorMap, !IO),
         (
             InvokeEditor = yes,
             invoke_editor(ErrorMap, !IO)
@@ -121,17 +170,25 @@ main(!IO) :-
 read_error_files([], !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO).
 read_error_files([FileName | FileNames], !ErrorMap, !ProblemMsgs, !IgnoreMsgs,
         !IO) :-
-    io.open_input(FileName, Result, !IO),
-    (
-        Result = ok(Stream),
-        read_errors(Stream, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO),
-        io.close_input(Stream, !IO),
+    ( if FileName = "-" then
+        InputStream = io.stdin_stream,
+        read_errors(InputStream, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO),
         read_error_files(FileNames, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO)
-    ;
-        Result = error(Error),
-        io.error_message(Error, ErrorMsg),
-        string.format("error: %s\n", [s(ErrorMsg)], ProblemMsg),
-        !:ProblemMsgs = !.ProblemMsgs ++ [ProblemMsg]
+    else
+        io.open_input(FileName, Result, !IO),
+        (
+            Result = ok(InputStream),
+            read_errors(InputStream, !ErrorMap, !ProblemMsgs, !IgnoreMsgs,
+                !IO),
+            io.close_input(InputStream, !IO),
+            read_error_files(FileNames, !ErrorMap, !ProblemMsgs, !IgnoreMsgs,
+                !IO)
+        ;
+            Result = error(Error),
+            io.error_message(Error, ErrorMsg),
+            string.format("error: %s\n", [s(ErrorMsg)], ProblemMsg),
+            !:ProblemMsgs = !.ProblemMsgs ++ [ProblemMsg]
+        )
     ).
 
 :- pred read_errors(io.input_stream::in, error_map::in, error_map::out,
@@ -149,9 +206,9 @@ read_errors(Stream, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO) :-
         !:ProblemMsgs = !.ProblemMsgs ++ [ProblemMsg]
     ;
         Result = ok(Chars),
-        ( parse_error(Chars, File, Line, Message) ->
+        ( if parse_error(Chars, File, Line, Message) then
             insert_error(File, Line, Message, !ErrorMap)
-        ;
+        else
             string.from_char_list(Chars, Str),
             string.format("ignoring: %s", [s(Str)], IgnoreMsg),
             !:IgnoreMsgs = !.IgnoreMsgs ++ [IgnoreMsg]
@@ -163,15 +220,15 @@ read_errors(Stream, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO) :-
     error_map::in, error_map::out) is det.
 
 insert_error(FileName, LineNumber, Message, !ErrorMap) :-
-    ( map.search(!.ErrorMap, FileName, FileMap0) ->
-        ( map.search(FileMap0, LineNumber, Messages0) ->
+    ( if map.search(!.ErrorMap, FileName, FileMap0) then
+        ( if map.search(FileMap0, LineNumber, Messages0) then
             Messages = Messages0 ++ [Message]
-        ;
+        else
             Messages = [Message]
         ),
         map.set(LineNumber, Messages, FileMap0, FileMap),
         map.det_update(FileName, FileMap, !ErrorMap)
-    ;
+    else
         map.from_assoc_list([LineNumber - [Message]], FileMap),
         map.det_insert(FileName, FileMap, !ErrorMap)
     ).
@@ -180,15 +237,18 @@ insert_error(FileName, LineNumber, Message, !ErrorMap) :-
     message::out) is semidet.
 
 parse_error(Chars, File, Line, Message) :-
-    take_while((pred(C0::in) is semidet :-
-        C0 \= (':')
-    ), Chars, FileChars, [_|Rest0]),
-    take_while((pred(C1::in) is semidet :-
-        C1 \= (':')
-    ), Rest0, LineChars, [_|Rest1]), % throw away the :
-    take_while((pred(C2::in) is semidet :-
-        C2 \= ('\n')
-    ), Rest1, MsgChars, _),
+    NotColon =
+        ( pred(C::in) is semidet :-
+            C \= (':')
+        ),
+    NotNewLine =
+        ( pred(C::in) is semidet :-
+            C \= ('\n')
+        ),
+    % The _s throw away the colons after the filename and line number.
+    list.take_while(NotColon, Chars, FileChars, [_ | AfterFileChars]),
+    list.take_while(NotColon, AfterFileChars, LineChars, [_ | AfterLineChars]),
+    list.take_while(NotNewLine, AfterLineChars, MsgChars, _),
     string.from_char_list(FileChars, File),
     string.from_char_list(LineChars, LineStr),
     string.to_int(LineStr, Line),
@@ -196,19 +256,18 @@ parse_error(Chars, File, Line, Message) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred process_error_map(error_map::in, io::di, io::uo) is det.
-
-process_error_map(ErrorMap, !IO) :-
-    map.to_assoc_list(ErrorMap, ErrorList),
-    process_error_map_2(ErrorList, !IO).
-
-:- pred process_error_map_2(assoc_list(filename, file_error_map)::in,
+:- pred process_error_map(comment_style::in, error_map::in,
     io::di, io::uo) is det.
 
-process_error_map_2([], !IO).
-process_error_map_2([Head | Tail], !IO) :-
-    Head = FileName - FileErrorMap,
-    map.to_assoc_list(FileErrorMap, FileErrorList),
+process_error_map(Style, ErrorMap, !IO) :-
+    map.to_assoc_list(ErrorMap, ErrorAssocList),
+    list.foldl(process_errors_for_file(Style), ErrorAssocList, !IO).
+
+:- pred process_errors_for_file(comment_style::in,
+    pair(filename, file_error_map)::in, io::di, io::uo) is det.
+
+process_errors_for_file(Style, FileName - FileErrorMap, !IO) :-
+    map.to_assoc_list(FileErrorMap, FileErrors),
     string.append(FileName, ".orig", DotOrigFileName),
     io.rename_file(FileName, DotOrigFileName, RenameResult, !IO),
     (
@@ -219,7 +278,8 @@ process_error_map_2([Head | Tail], !IO) :-
             io.open_output(FileName, OutputResult, !IO),
             (
                 OutputResult = ok(OutputStream),
-                merge_file(InputStream, OutputStream, FileErrorList, 1, !IO),
+                merge_errors_into_file(InputStream, OutputStream, Style,
+                    FileErrors, 1, !IO),
                 io.close_output(OutputStream, !IO),
                 % There is nothing we can do if the remove fails.
                 io.remove_file(DotOrigFileName, _RemoveResult, !IO),
@@ -231,6 +291,7 @@ process_error_map_2([Head | Tail], !IO) :-
                 io.error_message(Err, Msg),
                 io.stderr_stream(StdErr, !IO),
                 io.format(StdErr, "error: %s\n", [s(Msg)], !IO),
+                % Move the original file back to its original name.
                 io.rename_file(DotOrigFileName, FileName, _, !IO)
             ),
             io.close_input(InputStream, !IO)
@@ -248,26 +309,27 @@ process_error_map_2([Head | Tail], !IO) :-
         io.stderr_stream(StdErr, !IO),
         io.format(StdErr, "error: cannot rename file: %s.\n", [s(ErrorMsg)],
             !IO)
-    ),
-    process_error_map_2(Tail, !IO).
+    ).
 
-:- pred merge_file(io.input_stream::in, io.output_stream::in,
-    assoc_list(line_number, list(message))::in, int::in, io::di, io::uo)
-    is det.
+:- pred merge_errors_into_file(io.input_stream::in, io.output_stream::in,
+    comment_style::in, assoc_list(line_number, list(message))::in, int::in,
+    io::di, io::uo) is det.
 
-merge_file(InputStream, OutputStream, [], _, !IO) :-
-    copy_rest(InputStream, OutputStream, !IO).
-merge_file(InputStream, OutputStream, [Head | Tail], CurrentLineNumber, !IO) :-
+merge_errors_into_file(InputStream, OutputStream, _, [], _, !IO) :-
+    copy_rest_of_file(InputStream, OutputStream, !IO).
+merge_errors_into_file(InputStream, OutputStream, Style, [Head | Tail],
+        CurrentLineNumber, !IO) :-
     Head = LineNumber - Msgs,
-    ( LineNumber =< CurrentLineNumber ->
-        CommentMsgs = list.map(make_comment, Msgs),
+    ( if LineNumber =< CurrentLineNumber then
+        CommentMsgs = list.map(make_comment(Style), Msgs),
         list.foldl(io.write_string(OutputStream), CommentMsgs, !IO),
-        merge_file(InputStream, OutputStream, Tail, CurrentLineNumber, !IO)
-    ;
+        merge_errors_into_file(InputStream, OutputStream, Style,
+            Tail, CurrentLineNumber, !IO)
+    else
         io.read_line(InputStream, Res0, !IO),
         (
             Res0 = eof,
-            error_rest(OutputStream, [Head | Tail], !IO)
+            merge_rest_of_errors(OutputStream, Style, [Head | Tail], !IO)
         ;
             Res0 = error(Err),
             io.error_message(Err, Msg),
@@ -277,15 +339,15 @@ merge_file(InputStream, OutputStream, [Head | Tail], CurrentLineNumber, !IO) :-
             Res0 = ok(Chars),
             string.from_char_list(Chars, Str),
             io.write_string(OutputStream, Str, !IO),
-            merge_file(InputStream, OutputStream, [Head | Tail],
-                CurrentLineNumber + 1, !IO)
+            merge_errors_into_file(InputStream, OutputStream, Style,
+                [Head | Tail], CurrentLineNumber + 1, !IO)
         )
     ).
 
-:- pred copy_rest(io.input_stream::in, io.output_stream::in, io::di, io::uo)
-    is det.
+:- pred copy_rest_of_file(io.input_stream::in, io.output_stream::in,
+    io::di, io::uo) is det.
 
-copy_rest(InputStream, OutputStream, !IO) :-
+copy_rest_of_file(InputStream, OutputStream, !IO) :-
     io.read_line(InputStream, Result, !IO),
     (
         Result = eof
@@ -298,22 +360,29 @@ copy_rest(InputStream, OutputStream, !IO) :-
         Result = ok(Chars),
         string.from_char_list(Chars, Str),
         io.write_string(OutputStream, Str, !IO),
-        copy_rest(InputStream, OutputStream, !IO)
+        copy_rest_of_file(InputStream, OutputStream, !IO)
     ).
 
-:- pred error_rest(io.output_stream::in,
+:- pred merge_rest_of_errors(io.output_stream::in, comment_style::in,
     assoc_list(line_number, list(message))::in, io::di, io::uo) is det.
 
-error_rest(_OutputStream, [], !IO).
-error_rest(OutputStream, [Head | Tail], !IO) :-
+merge_rest_of_errors(_OutputStream, _, [], !IO).
+merge_rest_of_errors(OutputStream, Style, [Head | Tail], !IO) :-
     Head = _LineNumber - Msgs,
-    CommentMsgs = list.map(make_comment, Msgs),
+    CommentMsgs = list.map(make_comment(Style), Msgs),
     list.foldl(io.write_string(OutputStream), CommentMsgs, !IO),
-    error_rest(OutputStream, Tail, !IO).
+    merge_rest_of_errors(OutputStream, Style, Tail, !IO).
 
-:- func make_comment(string) = string.
+:- func make_comment(comment_style, string) = string.
 
-make_comment(Msg) = "/* ### " ++ Msg ++ " */\n".
+make_comment(Style, Msg) = CommentMsg :-
+    (
+        Style = cs_slash_star,
+        CommentMsg = "/* ### " ++ Msg ++ " */\n"
+    ;
+        Style = cs_percent,
+        CommentMsg = "% ### " ++ Msg ++ "\n"
+    ).
 
 %------------------------------------------------------------------------------%
 
@@ -329,3 +398,28 @@ invoke_editor(ErrorMap, !IO) :-
     string.format("%s +/### %s", [s(Editor), s(AllFileNames)], CommandStr),
     % XXX We ignore the error status, which isn't nice.
     io.call_system(CommandStr, _Res, !IO).
+
+%------------------------------------------------------------------------------%
+
+:- type option
+    --->    invoke_editor
+    ;       comment_slash_star
+    ;       comment_percent.
+
+:- pred short_options(char::in, option::out) is semidet.
+
+short_options('v', invoke_editor).
+short_options('s', comment_slash_star).
+short_options('p', comment_percent).
+
+:- pred long_options(string::in, option::out) is semidet.
+
+long_options("invoke_editor", invoke_editor).
+long_options("slash-star-comments", comment_slash_star).
+long_options("percent-comments", comment_percent).
+
+:- pred option_defaults(option::out, option_data::out) is multi.
+
+option_defaults(invoke_editor, bool(no)).
+option_defaults(comment_slash_star, bool(no)).
+option_defaults(comment_percent, bool(no)).
