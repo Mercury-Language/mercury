@@ -3193,12 +3193,6 @@ show_sectag_bits(MaybePrimaryTags, ArgsLocn, Sectag, SectagBits) = Desc :-
         )
     ).
 
-:- func show_sectag_word(int) = string.
-
-show_sectag_word(Sectag) =
-    string.format("remote secondary tag %d (in heap cell word 0, all bits)",
-        [i(Sectag)]).
-
 :- func arg_word_desc(args_locn, cell_offset) = string.
 
 arg_word_desc(ArgsLocn, CellOffset) = Desc :-

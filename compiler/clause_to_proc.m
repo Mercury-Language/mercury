@@ -47,8 +47,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
@@ -280,12 +278,6 @@ select_matching_clauses(PredInfo, ProcId, Clauses, MatchingClauses) :-
             RevMatchingClauses0, RevMatchingClauses)
     ),
     list.reverse(RevMatchingClauses, MatchingClauses).
-
-:- pred mode_initial_inst_is_ground(module_info::in, mer_mode::in) is semidet.
-
-mode_initial_inst_is_ground(ModuleInfo, Mode) :-
-    InitialInst = mode_get_initial_inst(ModuleInfo, Mode),
-    inst_is_ground(ModuleInfo, InitialInst).
 
 :- type maybe_in_in_mode
     --->    not_in_in_mode

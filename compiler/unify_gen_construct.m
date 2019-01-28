@@ -1431,7 +1431,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
         ; ConsTag = table_io_entry_tag(_, _)
 
         % These tags have arguments, and thus should be handled in
-        % generate_const_struct_rval. 
+        % generate_const_struct_rval.
         ; ConsTag = remote_args_tag(_)
         ; ConsTag = local_args_tag(_)
         ; ConsTag = no_tag
@@ -1589,32 +1589,6 @@ take_tagword_args_widths_modes(
         TagwordArgModes = [],
         NonTagwordArgsWidths = [ArgWidth | ArgsWidths],
         NonTagwordArgModes = [ArgMode | ArgModes]
-    ).
-
-
-:- pred take_tagword_args_widths(list(arg_and_width(ArgType))::in,
-    list(arg_and_width(ArgType))::out,
-    list(arg_and_width(ArgType))::out) is det.
-
-take_tagword_args_widths([], [], []).
-take_tagword_args_widths([ArgWidth | ArgsWidths],
-        TagwordArgsWidths, NonTagwordArgsWidths) :-
-    ArgWidth = arg_and_width(_Arg, ArgPosWidth),
-    (
-        ( ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _)
-        ; ArgPosWidth = apw_none_shifted(_, _)
-        ),
-        take_tagword_args_widths(ArgsWidths,
-            TailTagwordArgsWidths, NonTagwordArgsWidths),
-        TagwordArgsWidths = [ArgWidth | TailTagwordArgsWidths]
-    ;
-        ( ArgPosWidth = apw_full(_, _)
-        ; ArgPosWidth = apw_double(_, _, _)
-        ; ArgPosWidth = apw_partial_first(_, _, _, _, _, _)
-        ; ArgPosWidth = apw_none_nowhere
-        ),
-        TagwordArgsWidths = [],
-        NonTagwordArgsWidths = [ArgWidth | ArgsWidths]
     ).
 
 %---------------------------------------------------------------------------%
