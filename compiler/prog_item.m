@@ -816,8 +816,13 @@
                 % XXX TYPE_REPN maybe notag
                 mer_type
             )
-    ;       tcrepn_fits_in_n_bits(int)
+    ;       tcrepn_fits_in_n_bits(int, fill_kind)
+    ;       tcrepn_is_word_aligned_ptr(wap_kind)
     ;       tcrepn_has_direct_arg_functors(list(sym_name_and_arity)).
+
+:- type wap_kind
+    --->    wap_foreign_type_assertion
+    ;       wap_mercury_type(sym_name_and_arity).
 
 %-----------------------------------------------------------------------------%
 %

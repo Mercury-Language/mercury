@@ -1471,14 +1471,30 @@ mercury_output_item_type_repn(_Info, ItemTypeRepn, !IO) :-
         RepnInfo = tcrepn_is_notag,
         io.write_string("is_notag", !IO)
     ;
-        RepnInfo = tcrepn_fits_in_n_bits(NumBits),
+        RepnInfo = tcrepn_fits_in_n_bits(NumBits, FillKind),
+        fill_kind_string(FillKind, FillKindStr),
         io.write_string("fits_in_n_bits(", !IO),
         io.write_int(NumBits, !IO),
+        io.write_string(", ", !IO),
+        io.write_string(FillKindStr, !IO),
         io.write_string(")", !IO)
     ;
         RepnInfo = tcrepn_is_eqv_to(EqvType),
         io.write_string("is_eqv_to(", !IO),
         mercury_output_type(TVarSet, print_num_only, EqvType, !IO),
+        io.write_string(")", !IO)
+    ;
+        RepnInfo = tcrepn_is_word_aligned_ptr(WAP),
+        io.write_string("is_word_aligned_ptr(", !IO),
+        (
+            WAP = wap_foreign_type_assertion,
+            io.write_string("foreign_type_assertion", !IO)
+        ;
+            WAP = wap_mercury_type(SymNameAndArity),
+            io.write_string("mercury_type(", !IO),
+            write_sym_name_and_arity(SymNameAndArity, !IO),
+            io.write_string(")", !IO)
+        ),
         io.write_string(")", !IO)
     ;
         RepnInfo = tcrepn_has_direct_arg_functors(SymNameAndArities),

@@ -309,7 +309,7 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         (
             ( RepInfo0 = tcrepn_is_direct_dummy
             ; RepInfo0 = tcrepn_is_notag
-            ; RepInfo0 = tcrepn_fits_in_n_bits(_)
+            ; RepInfo0 = tcrepn_fits_in_n_bits(_, _)
             ; RepInfo0 = tcrepn_has_direct_arg_functors(_)
             ),
             RepInfo = RepInfo0
@@ -321,6 +321,25 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
             qualify_type(InInt, ErrorContext, EqvType0, EqvType,
                 !Info, !Specs),
             RepInfo = tcrepn_is_eqv_to(EqvType)
+        ;
+            RepInfo0 = tcrepn_is_word_aligned_ptr(WAP0),
+            (
+                WAP0 = wap_foreign_type_assertion,
+                WAP = WAP0
+            ;
+                WAP0 = wap_mercury_type(WAPTypeSNA0),
+                list.length(ArgTVars, TypeCtorArity),
+                TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+                ErrorContext = mqec_type_repn(Context, TypeCtor),
+                WAPTypeSNA0 = sym_name_arity(SymName0, Arity),
+                TypeCtorId0 = mq_id(SymName0, Arity),
+                mq_info_get_types(!.Info, Types),
+                find_unique_match(InInt, ErrorContext, Types, type_id,
+                    TypeCtorId0, SymName, !Info, !Specs),
+                WAPTypeSNA = sym_name_arity(SymName, Arity),
+                WAP = wap_mercury_type(WAPTypeSNA)
+            ),
+            RepInfo = tcrepn_is_word_aligned_ptr(WAP)
         ),
         ItemTypeRepnInfo = item_type_repn_info(TypeCtorSymName, ArgTVars,
             RepInfo, TVarSet, Context, SeqNum),

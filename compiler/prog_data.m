@@ -524,10 +524,18 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       fill_uint32
     ;       fill_char21.
 
+:- pred fill_kind_string(fill_kind, string).
+:- mode fill_kind_string(in, out) is det.
+:- mode fill_kind_string(out, in) is semidet.
+
 :- type double_word_kind
     --->    dw_float
     ;       dw_int64
     ;       dw_uint64.
+
+:- pred double_word_kind_string(double_word_kind, string).
+:- mode double_word_kind_string(in, out) is det.
+:- mode double_word_kind_string(out, in) is semidet.
 
 :- type arg_only_offset
     --->    arg_only_offset(int).
@@ -804,6 +812,19 @@ arg_pos_width_to_width_only(ArgPosWidth) = ArgWidth :-
         ),
         ArgWidth = aw_none
     ).
+
+fill_kind_string(fill_enum, "fill_enum").
+fill_kind_string(fill_int8, "fill_int8").
+fill_kind_string(fill_int16, "fill_int16").
+fill_kind_string(fill_int32, "fill_int32").
+fill_kind_string(fill_uint8, "fill_uint8").
+fill_kind_string(fill_uint16, "fill_uint16").
+fill_kind_string(fill_uint32, "fill_uint32").
+fill_kind_string(fill_char21, "fill_char21").
+
+double_word_kind_string(dw_float, "dw_float").
+double_word_kind_string(dw_int64, "dw_int64").
+double_word_kind_string(dw_uint64, "dw_uint64").
 
 is_builtin_type_sym_name(SymName) :-
     SymName = unqualified(Name),

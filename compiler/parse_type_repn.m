@@ -62,6 +62,7 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             ; AtomStr = "is_notag"
             ; AtomStr = "is_equivalent_to"
             ; AtomStr = "fits_in_n_bits"
+            ; AtomStr = "is_word_aligned_ptr"
             ; AtomStr = "has_direct_arg_functors"
             )
         then
@@ -82,6 +83,10 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 parse_type_repn_fits_in_n_bits(AtomStr, RepnArgs,
                     RepnContext, MaybeRepn)
             ;
+                AtomStr = "is_word_aligned_ptr",
+                parse_type_repn_is_word_aligned_ptr(AtomStr, RepnArgs,
+                    RepnContext, MaybeRepn)
+            ;
                 AtomStr = "has_direct_arg_functors",
                 parse_type_repn_has_direct_arg_functors(AtomStr, RepnArgs,
                     RepnContext, MaybeRepn)
@@ -95,7 +100,8 @@ parse_type_repn_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 quote("is_direct_dummy"), suffix(","),
                 quote("is_notag"), suffix(","),
                 quote("is_equivalent_to"), suffix(","),
-                quote("fits_in_n_bits"), words("and"),
+                quote("fits_in_n_bits"), suffix(","),
+                quote("is_word_aligned_ptr"), words("and"),
                 quote("has_direct_arg_functors"), suffix(","),
                 words("got"), quote(RepnTermStr), suffix("."), nl],
             RepnSpec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -191,14 +197,92 @@ parse_type_repn_equivalent_to(VarSet, RepnStr, RepnArgs, RepnContext,
 
 parse_type_repn_fits_in_n_bits(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
     (
-        RepnArgs = [RepnArg],
-        ( if decimal_term_to_int(RepnArg, N) then
-            MaybeRepn = ok1(tcrepn_fits_in_n_bits(N))
+        RepnArgs = [RepnArg1, RepnArg2],
+        ( if decimal_term_to_int(RepnArg1, N0) then
+            MaybeNumBits = ok1(N0)
         else
-            Pieces = [words("Error: the argument of"), quote(RepnStr),
-                words("should be an integer."), nl],
+            NumBitsPieces = [words("Error: the first argument of"),
+                quote(RepnStr), words("should be an integer."), nl],
+            NumBitsSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(RepnArg1),
+                    [always(NumBitsPieces)])]),
+            MaybeNumBits = error1([NumBitsSpec])
+        ),
+        ( if
+            RepnArg2 = term.functor(term.atom(AtomStr2), [], _),
+            fill_kind_string(FillKind2, AtomStr2)
+        then
+            MaybeFillKind = ok1(FillKind2)
+        else
+            FillKindPieces = [words("Error: the second argument of"),
+                quote(RepnStr), words("should be a fill kind."), nl],
+            FillKindSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(RepnArg2),
+                    [always(FillKindPieces)])]),
+            MaybeFillKind = error1([FillKindSpec])
+        ),
+        ( if
+            MaybeNumBits = ok1(N),
+            MaybeFillKind = ok1(FillKind)
+        then
+            MaybeRepn = ok1(tcrepn_fits_in_n_bits(N, FillKind))
+        else
+            Specs = get_any_errors1(MaybeNumBits) ++
+                get_any_errors1(MaybeFillKind),
+            MaybeRepn = error1(Specs)
+        )
+    ;
+        ( RepnArgs = []
+        ; RepnArgs = [_]
+        ; RepnArgs = [_, _, _ | _]
+        ),
+        Pieces = [words("Error:"), quote(RepnStr), 
+            words("should have exactly two arguments,"),
+            words("an integer and a fill kind."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(RepnContext, [always(Pieces)])]),
+        MaybeRepn = error1([Spec])
+    ).
+
+:- pred parse_type_repn_is_word_aligned_ptr(string::in, list(term)::in,
+    term.context::in, maybe1(type_ctor_repn_info)::out) is det.
+
+parse_type_repn_is_word_aligned_ptr(RepnStr, RepnArgs, RepnContext,
+        MaybeRepn) :-
+    (
+        RepnArgs = [RepnArg],
+        ( if
+            RepnArg = term.functor(term.atom(AtomStr), AtomArgs, _),
+            AtomStr = "foreign_type_assertion",
+            AtomArgs = []
+        then
+            Repn = tcrepn_is_word_aligned_ptr(wap_foreign_type_assertion),
+            MaybeRepn = ok1(Repn)
+        else if
+            RepnArg = term.functor(term.atom(AtomStr), AtomArgs, _),
+            AtomStr = "mercury_type",
+            AtomArgs = [AtomArg]
+        then
+            ( if parse_name_and_arity_unqualified(AtomArg, SymName, Arity) then
+                WAP = wap_mercury_type(sym_name_arity(SymName, Arity)),
+                Repn = tcrepn_is_word_aligned_ptr(WAP),
+                MaybeRepn = ok1(Repn)
+            else
+                Pieces = [words("Error: the argument of"),
+                    quote("mercury_type"), words("should have the form"),
+                    quote("type_name/arity"), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(AtomArg), [always(Pieces)])]),
+                MaybeRepn = error1([Spec])
+            )
+        else
+            Pieces = [words("Error: the argument of"), quote(RepnStr), 
+                words("should be either"),
+                quote("foreign_type_assertion"), suffix(","),
+                words("or have the form"),
+                quote("mercury_type(type_name/type_arity)"), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(RepnArg), [always(Pieces)])]),
+                [simple_msg(RepnContext, [always(Pieces)])]),
             MaybeRepn = error1([Spec])
         )
     ;
@@ -206,7 +290,11 @@ parse_type_repn_fits_in_n_bits(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         ; RepnArgs = [_, _ | _]
         ),
         Pieces = [words("Error:"), quote(RepnStr), 
-            words("should have exactly one argument, an integer."), nl],
+            words("should have exactly one argument,"),
+            words("which should be either"),
+            quote("foreign_type_assertion"), suffix(","),
+            words("or have the form"),
+            quote("mercury_type(type_name / type_arity)"), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(RepnContext, [always(Pieces)])]),
         MaybeRepn = error1([Spec])
