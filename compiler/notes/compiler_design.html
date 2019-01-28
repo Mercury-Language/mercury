@@ -439,6 +439,13 @@ such as pretty-printing.
     .int, .opt etc files.
 
     <p>
+    canicalize_interface.m has code to put the contents of
+    `.int0', `.int', `.int2', and `.int3' files into a standard order,
+    to prevent the need to recompile the modules that import them
+    if the only change to a module is a reordering of some declarations
+    (which causes no change in the module's semantics).
+
+    <p>
     write_module_interface_files.m has the code to write out
     `.int0', `.int', `.int2', and `.int3' files.
 

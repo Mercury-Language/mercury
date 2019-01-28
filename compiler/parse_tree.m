@@ -85,6 +85,7 @@
 
 % Transformations that act on the parse tree,
 % and stuff relating to the module system.
+:- include_module canonicalize_interface.
 :- include_module check_raw_comp_unit.
 :- include_module comp_unit_interface.
 :- include_module deps_map.
