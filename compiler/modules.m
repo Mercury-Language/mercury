@@ -597,6 +597,7 @@ split_items_into_clauses_and_decls([Item | Items],
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
         ; Item = item_mutable(_)
+        ; Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         ),

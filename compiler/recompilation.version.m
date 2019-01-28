@@ -422,6 +422,8 @@ gather_in_item(Section, Item, !Info) :-
             Section, GatheredItems0, GatheredItems),
         !Info ^ gii_gathered_items := GatheredItems
     ;
+        Item = item_foreign_import_module(_)
+    ;
         ( Item = item_clause(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -628,7 +630,6 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
     (
         ( PragmaType = pragma_foreign_decl(_)
-        ; PragmaType = pragma_foreign_import_module(_)
         ; PragmaType = pragma_foreign_code(_)
         ; PragmaType = pragma_foreign_export_enum(_)
         ; PragmaType = pragma_foreign_enum(_)
@@ -1049,9 +1050,12 @@ is_item_changed(Item1, Item2, Changed) :-
             Changed = changed
         )
     ;
-        Item1 = item_type_repn(_),
-        % Type representation item record information derived from
-        % *other items*. They cannot change unless those other items change.
+        ( Item1 = item_foreign_import_module(_)
+        ; Item1 = item_type_repn(_)
+        ),
+        % Foreign import module and type representation items record
+        % information derived from *other items*. They cannot change
+        % unless those other items change.
         Changed = unchanged
     ;
         Item1 = item_nothing(ItemNothing1),

@@ -937,7 +937,7 @@ parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
 parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
         SeqNum, MaybeIOM) :-
     ( if
-        PragmaTerms = [LangTerm, ImportTerm]
+        PragmaTerms = [LangTerm, ModuleNameTerm]
     then
         LangContextPieces = cord.from_list([
             words("In first argument of"),
@@ -945,34 +945,30 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
         ]),
         parse_foreign_language(LangContextPieces, VarSet, LangTerm,
             MaybeForeignLang),
-        ( if try_parse_sym_name_and_no_args(ImportTerm, Import0) then
-            MaybeImportModule = ok1(Import0)
+        ( if try_parse_sym_name_and_no_args(ModuleNameTerm, ModuleName0) then
+            MaybeModuleName = ok1(ModuleName0)
         else
-            ImportModulePieces = [
-                words("Error: invalid module name"),
-                quote(describe_error_term(VarSet, ImportTerm)),
+            ModuleNamePieces = [words("Error: invalid module name"),
+                quote(describe_error_term(VarSet, ModuleNameTerm)),
                 words("in"), pragma_decl("foreign_import_module"),
                 words("declaration."), nl],
-            ImportModuleSpec = error_spec(severity_error,
+            ModuleNameSpec = error_spec(severity_error,
                 phase_term_to_parse_tree,
-                [simple_msg(get_term_context(ImportTerm),
-                [always(ImportModulePieces)])]),
-            MaybeImportModule = error1([ImportModuleSpec])
+                [simple_msg(get_term_context(ModuleNameTerm),
+                    [always(ModuleNamePieces)])]),
+            MaybeModuleName = error1([ModuleNameSpec])
         ),
         ( if
             MaybeForeignLang = ok1(Language),
-            MaybeImportModule = ok1(Import)
+            MaybeModuleName = ok1(ModuleName)
         then
-            FIM = foreign_import_module_info(Language, Import),
-            FIMInfo = pragma_info_foreign_import_module(FIM),
-            Pragma = pragma_foreign_import_module(FIMInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user, Context,
-                SeqNum),
-            Item = item_pragma(ItemPragma),
+            FIMInfo = item_foreign_import_module_info(Language, ModuleName,
+                Context, SeqNum),
+            Item = item_foreign_import_module(FIMInfo),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybeForeignLang) ++
-                get_any_errors1(MaybeImportModule),
+                get_any_errors1(MaybeModuleName),
             MaybeIOM = error1(Specs)
         )
     else

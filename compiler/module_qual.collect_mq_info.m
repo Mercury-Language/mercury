@@ -331,6 +331,7 @@ collect_mq_info_in_item(MQSection, Permissions, Item, !Info) :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
+        ; Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         )

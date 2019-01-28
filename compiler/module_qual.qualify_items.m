@@ -134,6 +134,7 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         ; Item0 = item_initialise(_)
         ; Item0 = item_finalise(_)
         ; Item0 = item_promise(_)
+        ; Item0 = item_foreign_import_module(_)
         ; Item0 = item_nothing(_)
         ),
         Item = Item0
@@ -1138,7 +1139,6 @@ qualify_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
     (
         ( Pragma0 = pragma_foreign_decl(_)
         ; Pragma0 = pragma_foreign_code(_)
-        ; Pragma0 = pragma_foreign_import_module(_)
         ; Pragma0 = pragma_external_proc(_)
           % The predicate name in the pragma_external_proc is constructed
           % already qualified.

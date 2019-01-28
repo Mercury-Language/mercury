@@ -522,7 +522,7 @@
 :- pred module_add_foreign_body_code(foreign_body_code::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_add_foreign_import_module(foreign_import_module_info::in,
+:- pred module_add_foreign_import_module(item_foreign_import_module_info::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_add_fact_table_file(string::in,
@@ -1540,9 +1540,10 @@ module_add_foreign_body_code(ForeignBodyCode, !Module) :-
     ForeignBodyCodes = cord.snoc(ForeignBodyCodes0, ForeignBodyCode),
     module_info_set_foreign_body_codes(ForeignBodyCodes, !Module).
 
-module_add_foreign_import_module(ForeignImportModule, !Module) :-
+module_add_foreign_import_module(ItemFIM, !Module) :-
     module_info_get_foreign_import_modules(!.Module, ForeignImportModules0),
-    ForeignImportModule = foreign_import_module_info(Lang, ModuleName),
+    ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
+        _Context, _SeqNum),
     add_foreign_import_module(Lang, ModuleName,
         ForeignImportModules0, ForeignImportModules),
     module_info_set_foreign_import_modules(ForeignImportModules, !Module).

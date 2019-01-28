@@ -467,7 +467,6 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             ( Pragma = pragma_foreign_decl(_)
             ; Pragma = pragma_foreign_code(_)
             ; Pragma = pragma_foreign_proc(_)
-            ; Pragma = pragma_foreign_import_module(_)
             ; Pragma = pragma_foreign_proc_export(_)
             ; Pragma = pragma_foreign_export_enum(_)
             ; Pragma = pragma_foreign_enum(_)
@@ -547,6 +546,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
         ; Item = item_typeclass(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
+        ; Item = item_foreign_import_module(_)
         ; Item = item_nothing(_)
         )
     ;

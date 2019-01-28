@@ -68,7 +68,7 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
                 item_num_mode_defn                  :: int,
                 item_num_pred_decl                  :: int,
                 item_num_mode_decl                  :: int,
-                item_num_pragma_fim                 :: int,
+                item_num_fim                        :: int,
                 item_num_pragma_term                :: int,
                 item_num_pragma_term2               :: int,
                 item_num_pragma_exceptions          :: int,
@@ -276,6 +276,9 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
         Item = item_mutable(_),
         !ItemStats ^ item_num_mutable := !.ItemStats ^ item_num_mutable + 1
     ;
+        Item = item_foreign_import_module(_),
+        !ItemStats ^ item_num_fim := !.ItemStats ^ item_num_fim + 1
+    ;
         Item = item_type_repn(_),
         !ItemStats ^ item_num_type_repn := !.ItemStats ^ item_num_type_repn + 1
     ;
@@ -289,10 +292,6 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
 gather_stats_in_item_pragma(ItemPragmaInfo, !ItemStats) :-
     ItemPragmaInfo = item_pragma_info(PragmaType, _, _, _),
     (
-        PragmaType = pragma_foreign_import_module(_),
-        !ItemStats ^ item_num_pragma_fim :=
-            !.ItemStats ^ item_num_pragma_fim + 1
-    ;
         PragmaType = pragma_termination_info(_),
         !ItemStats ^ item_num_pragma_term :=
             !.ItemStats ^ item_num_pragma_term + 1
@@ -540,7 +539,7 @@ write_section_stats(Stream, SectionName - SectionStats, !IO) :-
 
 write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     ItemStats = item_stats(Clause, TypeDefn, InstDefn, ModeDefn,
-        PredDecl, ModeDecl, PragmaFIM, PragmaTerm, PragmaTerm2,
+        PredDecl, ModeDecl, FIM, PragmaTerm, PragmaTerm2,
         PragmaExcp, PragmaTrail, PragmaMM, PragmaPass2, PragmaPass3,
         Promise, Typeclasse, Instance, Initialise, Finalise, Mutable,
         TypeRepn, Nothing),
@@ -550,7 +549,7 @@ write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     write_one_stat(Stream, SectionName, "item_mode_defn", ModeDefn, !IO),
     write_one_stat(Stream, SectionName, "item_pred_decl", PredDecl, !IO),
     write_one_stat(Stream, SectionName, "item_mode_decl", ModeDecl, !IO),
-    write_one_stat(Stream, SectionName, "item_pragma_fim", PragmaFIM, !IO),
+    write_one_stat(Stream, SectionName, "item_fim", FIM, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_term", PragmaTerm, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_term2", PragmaTerm2, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_excp", PragmaExcp, !IO),

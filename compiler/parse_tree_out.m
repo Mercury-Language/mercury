@@ -18,6 +18,7 @@
 :- import_module libs.globals.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 
 :- import_module io.
@@ -100,6 +101,14 @@
 
 :- pred mercury_output_instance_method(instance_method::in, io::di, io::uo)
     is det.
+
+%---------------------------------------------------------------------------%
+%
+% Output a foreign_import_module pragma.
+%
+
+:- pred mercury_output_foreign_import_module_info(
+    foreign_import_module_info::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -584,6 +593,12 @@ mercury_output_item(Info, Item, !IO) :-
     ;
         Item = item_mutable(ItemMutable),
         mercury_output_item_mutable(Info, ItemMutable, !IO)
+    ;
+        Item = item_foreign_import_module(ItemFIM),
+        ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
+            _Context, _SeqNum),
+        FIM = foreign_import_module_info(Lang, ModuleName),
+        mercury_output_foreign_import_module_info(FIM, !IO)
     ;
         Item = item_type_repn(ItemTypeRepn),
         mercury_output_item_type_repn(Info, ItemTypeRepn, !IO)
@@ -1448,6 +1463,17 @@ mercury_output_item_mutable(Info, ItemMutable, !IO) :-
     mercury_output_inst(Lang, varset.init, Inst, !IO),
     io.write_string(", ", !IO),
     io.print(Attrs, !IO),
+    io.write_string(").\n", !IO).
+
+%---------------------------------------------------------------------------%
+
+mercury_output_foreign_import_module_info(FIM, !IO) :-
+    FIM = foreign_import_module_info(Lang, ModuleName),
+    io.write_string(":- pragma foreign_import_module(", !IO),
+    mercury_format_foreign_language_string(Lang, !IO),
+    io.write_string(", ", !IO),
+    mercury_output_bracketed_sym_name_ngt(not_next_to_graphic_token,
+        ModuleName, !IO),
     io.write_string(").\n", !IO).
 
 %---------------------------------------------------------------------------%

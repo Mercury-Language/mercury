@@ -25,7 +25,6 @@
 :- inst pragma_pass_2_inst for pragma_type/0
     --->    pragma_foreign_decl(ground)
     ;       pragma_foreign_code(ground)
-    ;       pragma_foreign_import_module(ground)
     ;       pragma_external_proc(ground)
     ;       pragma_inline(ground)
     ;       pragma_no_inline(ground)
@@ -159,10 +158,6 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
         warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs),
         ForeignBodyCode = foreign_body_code(Lang, BodyCode, Context),
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
-    ;
-        Pragma = pragma_foreign_import_module(FIMInfo),
-        FIMInfo = pragma_info_foreign_import_module(ForeignImportModule),
-        module_add_foreign_import_module(ForeignImportModule, !ModuleInfo)
     ;
         Pragma = pragma_external_proc(ExternalInfo),
         % XXX STATUS Check ItemMercuryStatus

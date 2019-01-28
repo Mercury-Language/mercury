@@ -79,7 +79,6 @@
 :- implementation.
 
 :- import_module parse_tree.item_util.
-:- import_module parse_tree.prog_data_foreign.
 
 :- import_module cord.
 :- import_module maybe.
@@ -279,9 +278,7 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         (
-            ( Pragma = pragma_foreign_import_module(_)
-            ; Pragma = pragma_foreign_enum(_)
-            ),
+            Pragma = pragma_foreign_enum(_),
             MaybeIFileItem = yes(Item)
         ;
             % XXX I am not sure about the proper value of MaybeIFileItem
@@ -336,6 +333,9 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
         ),
         MaybeIFileItem = no
     ;
+        Item = item_foreign_import_module(_),
+        MaybeIFileItem = yes(Item)
+    ;
         Item = item_type_repn(_),
         % XXX TYPE_REPN Implement this.
         unexpected($pred, "item_type_repn")
@@ -385,13 +385,9 @@ accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
 :- func make_foreign_import(module_name, foreign_language) = item.
 
 make_foreign_import(ModuleName, Lang) = Item :-
-    Attrs = item_compiler_attributes(do_not_allow_export, is_not_mutable),
-    Origin = item_origin_compiler(Attrs),
-    FIM = foreign_import_module_info(Lang, ModuleName),
-    Info = pragma_info_foreign_import_module(FIM),
-    Pragma = pragma_foreign_import_module(Info),
-    ItemPragma = item_pragma_info(Pragma, Origin, term.context_init, -1),
-    Item = item_pragma(ItemPragma).
+    ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
+        term.context_init, -1),
+    Item = item_foreign_import_module(ItemFIM).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.

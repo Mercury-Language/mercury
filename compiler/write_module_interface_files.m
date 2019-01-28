@@ -335,6 +335,7 @@ process_item_for_private_interface(ModuleName, Section, Item,
         ; Item = item_mode_decl(_)
         ; Item = item_promise(_)
         ; Item = item_typeclass(_)
+        ; Item = item_foreign_import_module(_)
         ; Item = item_nothing(_)
         ),
         add_item_to_section_items(Section, Item,
@@ -1345,6 +1346,7 @@ accumulate_requirements_of_impl_typeclass_in_item(Item, !Modules) :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
+        ; Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         )
@@ -1461,6 +1463,7 @@ report_and_strip_clauses_in_items_loop([Item0 | Items0],
         ; Item0 = item_initialise(_)
         ; Item0 = item_finalise(_)
         ; Item0 = item_mutable(_)
+        ; Item0 = item_foreign_import_module(_)
         ; Item0 = item_type_repn(_)
         ; Item0 = item_nothing(_)
         ),
@@ -1621,24 +1624,14 @@ get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
     ;
         ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
+        ; Item = item_foreign_import_module(_)
         ),
         !:ItemsCord = cord.snoc(!.ItemsCord, Item)
-    ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        % XXX This if-then-else should be a switch, or (even better)
-        % we should take pragma_foreign_import_modules out of the pragma items
-        % and given them their own item type.
-        ( if Pragma = pragma_foreign_import_module(_) then
-            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
-        else
-            true
-            % Do not include Item in !ItemsCord.
-        )
     ;
         ( Item = item_clause(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -1756,18 +1749,19 @@ strip_unnecessary_impl_defns_in_items([], _, _, _, !ItemsCord).
 strip_unnecessary_impl_defns_in_items([Item | Items],
         NeedForeignImports, IntTypesMap, NecessaryTypeCtors, !ItemsCord) :-
     (
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        Item = item_foreign_import_module(_),
         % XXX ITEM_LIST The foreign imports should be stored outside
         % the item list.
-        ( if Pragma = pragma_foreign_import_module(_) then
-            (
-                NeedForeignImports = need_foreign_imports,
-                !:ItemsCord = cord.snoc(!.ItemsCord, Item)
-            ;
-                NeedForeignImports = dont_need_foreign_imports
-            )
-        else if Pragma = pragma_foreign_enum(FEInfo) then
+        (
+            NeedForeignImports = need_foreign_imports,
+            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        ;
+            NeedForeignImports = dont_need_foreign_imports
+        )
+    ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        ( if Pragma = pragma_foreign_enum(FEInfo) then
             FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values),
             ( if
                 map.search(IntTypesMap, TypeCtor, Defns),
@@ -1827,15 +1821,7 @@ strip_unnecessary_impl_defns_in_items([Item | Items],
 strip_foreign_import_items([], !ItemsCord).
 strip_foreign_import_items([Item | Items], !ItemsCord) :-
     (
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        % XXX ITEM_LIST The foreign imports should be stored outside
-        % the item list.
-        ( if Pragma = pragma_foreign_import_module(_) then
-            true
-        else
-            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
-        )
+        Item = item_foreign_import_module(_)
     ;
         ( Item = item_clause(_)
         ; Item = item_type_defn(_)
@@ -1843,6 +1829,7 @@ strip_foreign_import_items([Item | Items], !ItemsCord) :-
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
         ; Item = item_promise(_)
@@ -2245,7 +2232,6 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
             ; Pragma = pragma_structure_sharing(_)
             ; Pragma = pragma_structure_reuse(_)
             ; Pragma = pragma_require_feature_set(_)
-            ; Pragma = pragma_foreign_import_module(_)
             ; Pragma = pragma_require_tail_recursion(_)
             ),
             set.insert(Item, !SortableItems)
@@ -2261,6 +2247,7 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         ( Item = item_promise(_)
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
+        ; Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
         ),
         set.insert(Item, !SortableItems)

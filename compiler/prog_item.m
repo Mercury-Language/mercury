@@ -386,6 +386,7 @@
     ;       item_initialise(item_initialise_info)
     ;       item_finalise(item_finalise_info)
     ;       item_mutable(item_mutable_info)
+    ;       item_foreign_import_module(item_foreign_import_module_info)
     ;       item_type_repn(item_type_repn_info)
     ;       item_nothing(item_nothing_info).
 
@@ -563,6 +564,33 @@
                 mut_attrs                       :: mutable_var_attributes,
                 mut_context                     :: prog_context,
                 mut_seq_num                     :: int
+            ).
+
+:- type item_foreign_import_module_info
+    --->    item_foreign_import_module_info(
+                % Equivalent to
+                % `:- pragma foreign_decl(Lang, "#include <module>.h").'
+                % except that the name of the header file is not hard-coded,
+                % and mmake can use the dependency information.
+                % The language and the module name is in the one argument.
+                %
+                % XXX ITEM_LIST We should consider replacing these kinds
+                % of items with a new slot in parse trees  containing
+                % a map from foreign languages to a set of the names
+                % of the foreign-imported modules. However, that would
+                % require figuring out exactly *which* kinds of entities'
+                % parse trees may meaningfully contain such information.
+
+                fim_lang                        :: foreign_language,
+                fim_module_name                 :: module_name,
+
+                % These items can appear only in interface files,
+                % not in source code. We therefore should not need to know
+                % their context or their sequence number. However, having
+                % them here avoids having to special-case their handling
+                % (while they are an item, anyway).
+                fim_context                     :: prog_context,
+                fim_seq_num                     :: int
             ).
 
 :- type item_type_repn_info
@@ -833,7 +861,6 @@
     --->    pragma_foreign_decl(pragma_info_foreign_decl)
     ;       pragma_foreign_code(pragma_info_foreign_code)
     ;       pragma_foreign_proc(pragma_info_foreign_proc)
-    ;       pragma_foreign_import_module(pragma_info_foreign_import_module)
     ;       pragma_foreign_proc_export(pragma_info_foreign_proc_export)
     ;       pragma_foreign_export_enum(pragma_info_foreign_export_enum)
     ;       pragma_foreign_enum(pragma_info_foreign_enum)
@@ -903,16 +930,6 @@
                 proc_varset             :: prog_varset,
                 proc_instvarset         :: inst_varset,
                 proc_impl               :: pragma_foreign_proc_impl
-            ).
-
-:- type pragma_info_foreign_import_module
-    --->    pragma_info_foreign_import_module(
-                % Equivalent to
-                % `:- pragma foreign_decl(Lang, "#include <module>.h").'
-                % except that the name of the header file is not hard-coded,
-                % and mmake can use the dependency information.
-                % The language and the module name is in the one argument.
-                imp_info                :: foreign_import_module_info
             ).
 
 :- type pragma_info_foreign_proc_export
@@ -1479,6 +1496,9 @@ get_item_context(Item) = Context :-
         Item = item_mutable(ItemMutable),
         Context = ItemMutable ^ mut_context
     ;
+        Item = item_foreign_import_module(ItemFIM),
+        Context = ItemFIM ^ fim_context
+    ;
         Item = item_type_repn(ItemTypeRepn),
         Context = ItemTypeRepn ^ tr_context
     ;
@@ -1637,7 +1657,6 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         % the corresponding type definition is in the interface.
         % This is checked in make_hlds.
         ( Pragma = pragma_foreign_enum(_)
-        ; Pragma = pragma_foreign_import_module(_)
         ; Pragma = pragma_obsolete(_)
         ; Pragma = pragma_type_spec(_)
         ; Pragma = pragma_termination_info(_)
@@ -1752,10 +1771,6 @@ pragma_context_pieces(Pragma) = ContextPieces :-
         Pragma = pragma_foreign_enum(_),
         ContextPieces = [pragma_decl("foreign_enum"), words("declaration")]
     ;
-        Pragma = pragma_foreign_import_module(_),
-        ContextPieces = [pragma_decl("foreign_import_module"),
-            words("declaration")]
-    ;
         Pragma = pragma_obsolete(_),
         ContextPieces = [pragma_decl("obsolete"), words("declaration")]
     ;
@@ -1864,12 +1879,24 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         get_pragma_foreign_code(Globals, Pragma, !Info)
     ;
+        Item = item_foreign_import_module(FIMInfo),
+        FIMInfo = item_foreign_import_module_info(Lang, ImportedModule, _, _),
+        globals.get_backend_foreign_languages(Globals, BackendLangs),
+        ( if list.member(Lang, BackendLangs) then
+            ForeignImportModules0 = !.Info ^ all_foreign_import_modules,
+            add_foreign_import_module(Lang, ImportedModule,
+                ForeignImportModules0, ForeignImportModules),
+            !Info ^ all_foreign_import_modules := ForeignImportModules
+        else
+            true
+        )
+    ;
         Item = item_mutable(_),
         % Mutables introduce foreign_procs, but mutable declarations
         % won't have been expanded by the time we get here, so we need
         % to handle them separately.
         % XXX mutables are currently only implemented for the C backends
-        % but we should handle the Java/IL backends here as well.
+        % but we should handle the Java/C# backends here as well.
         % (See do_get_item_foreign_code for details/5).
         UsedForeignLanguages0 = !.Info ^ used_foreign_languages,
         set.insert(lang_c, UsedForeignLanguages0, UsedForeignLanguages),
@@ -1959,18 +1986,6 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
                 set.insert(!.Info ^ used_foreign_languages, Lang),
             !Info ^ module_has_foreign_export :=
                 contains_foreign_export
-        else
-            true
-        )
-    ;
-        Pragma = pragma_foreign_import_module(FIMInfo),
-        FIMInfo = pragma_info_foreign_import_module(FIM),
-        FIM = foreign_import_module_info(Lang, ImportedModule),
-        ( if list.member(Lang, BackendLangs) then
-            ForeignImportModules0 = !.Info ^ all_foreign_import_modules,
-            add_foreign_import_module(Lang, ImportedModule,
-                ForeignImportModules0, ForeignImportModules),
-            !Info ^ all_foreign_import_modules := ForeignImportModules
         else
             true
         )

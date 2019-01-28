@@ -155,7 +155,8 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         ItemTypeDefnsAbstract, ItemTypeDefnsMercury, ItemTypeDefnsForeign,
         ItemInstDefns, ItemModeDefns, ItemPredDecls, ItemModeDecls,
         ItemPromises, ItemTypeclasses, ItemInstances,
-        ItemInitialises, ItemFinalises, ItemMutables, ItemTypeRepns,
+        ItemInitialises, ItemFinalises, ItemMutables,
+        ItemFIMs, ItemTypeRepns,
         ItemForeignEnums, ItemForeignExportEnums,
         ItemPragmas2, ItemPragmas3, ItemClauses),
 
@@ -316,6 +317,8 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % of ItemPragmas2.
     add_pass_2_pragmas(ItemPragmas2,
         !ModuleInfo, !Specs),
+    list.foldl(module_add_foreign_import_module, ItemFIMs,
+        !ModuleInfo),
 
     % Since all declared predicates are in now the HLDS, we could check
     % all type definitions that define type-specific unify and/or compare

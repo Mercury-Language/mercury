@@ -224,7 +224,9 @@ item_needs_imports(Item) = NeedsImports :-
         ),
         NeedsImports = yes
     ;
-        Item = item_nothing(_),
+        ( Item = item_foreign_import_module(_)
+        ; Item = item_nothing(_)
+        ),
         NeedsImports = no
     ).
 
@@ -267,8 +269,7 @@ item_needs_foreign_imports(Item) = Langs :-
             FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
             Langs = [get_foreign_language(Attrs)]
         ;
-            ( Pragma = pragma_foreign_import_module(_)
-            ; Pragma = pragma_foreign_export_enum(_)
+            ( Pragma = pragma_foreign_export_enum(_)
             ; Pragma = pragma_external_proc(_)
             ; Pragma = pragma_type_spec(_)
             ; Pragma = pragma_inline(_)
@@ -310,6 +311,7 @@ item_needs_foreign_imports(Item) = Langs :-
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
+        ; Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         ),

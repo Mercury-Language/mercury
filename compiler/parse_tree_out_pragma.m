@@ -44,9 +44,6 @@
 :- func mercury_pragma_foreign_decl_to_string(pragma_info_foreign_decl)
     = string.
 
-:- pred mercury_output_pragma_foreign_import_module(
-    pragma_info_foreign_import_module::in, io::di, io::uo) is det.
-
 :- pred mercury_output_pragma_foreign_proc(output_lang::in,
     pragma_info_foreign_proc::in, io::di, io::uo) is det.
 :- func mercury_pragma_foreign_proc_to_string(output_lang,
@@ -136,9 +133,6 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
     ;
         Pragma = pragma_foreign_code(FCInfo),
         mercury_output_pragma_foreign_code(FCInfo, !IO)
-    ;
-        Pragma = pragma_foreign_import_module(FIMInfo),
-        mercury_output_pragma_foreign_import_module(FIMInfo, !IO)
     ;
         Pragma = pragma_foreign_proc(FPInfo),
         mercury_output_pragma_foreign_proc(Lang, FPInfo, !IO)
@@ -420,21 +414,6 @@ mercury_is_source_char(Char) :-
     ; Char = '\n'
     ; Char = '\t'
     ).
-
-%---------------------------------------------------------------------------%
-%
-% Output a foreign_import_module pragma.
-%
-
-mercury_output_pragma_foreign_import_module(FIMinfo, !IO) :-
-    FIMinfo = pragma_info_foreign_import_module(FIM),
-    FIM = foreign_import_module_info(Lang, ModuleName),
-    io.write_string(":- pragma foreign_import_module(", !IO),
-    mercury_format_foreign_language_string(Lang, !IO),
-    io.write_string(", ", !IO),
-    mercury_output_bracketed_sym_name_ngt(not_next_to_graphic_token,
-        ModuleName, !IO),
-    io.write_string(").\n", !IO).
 
 %---------------------------------------------------------------------------%
 %

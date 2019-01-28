@@ -1480,7 +1480,8 @@ write_intermod_info_body(IntermodInfo, !IO) :-
             true
         else
             io.nl(!IO),
-            set.fold(intermod_write_foreign_import, ForeignImports, !IO)
+            set.fold(mercury_output_foreign_import_module_info,
+                ForeignImports, !IO)
         )
     ;
         WriteHeader = no
@@ -1847,15 +1848,6 @@ intermod_write_instance(OutInfo, ClassId - InstanceDefn, !IO) :-
     Item = item_instance(ItemInstance),
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
     mercury_output_item(MercInfo, Item, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred intermod_write_foreign_import(foreign_import_module_info::in,
-    io::di, io::uo) is det.
-
-intermod_write_foreign_import(ForeignImport, !IO) :-
-    FIMInfo = pragma_info_foreign_import_module(ForeignImport),
-    mercury_output_pragma_foreign_import_module(FIMInfo, !IO).
 
 %---------------------------------------------------------------------------%
 
