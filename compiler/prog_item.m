@@ -640,8 +640,8 @@
     %
 :- func import_or_use_decl_name(import_or_use) = string.
 
-    % The representation of an `:- import_module' or an `:- % use_module'
-    % declaration is a list of one or more item_import_uses, each of which
+    % The representation of an `:- import_module' or an `:- use_module'
+    % declaration is a list of one or more item_avails, each of which
     % makes available to the current module the entities in the interface
     % of the module named in the declaration.
     %
