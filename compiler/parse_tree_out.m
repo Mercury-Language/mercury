@@ -595,10 +595,7 @@ mercury_output_item(Info, Item, !IO) :-
         mercury_output_item_mutable(Info, ItemMutable, !IO)
     ;
         Item = item_foreign_import_module(ItemFIM),
-        ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
-            _Context, _SeqNum),
-        FIM = foreign_import_module_info(Lang, ModuleName),
-        mercury_output_foreign_import_module_info(FIM, !IO)
+        mercury_output_item_foreign_import_module(ItemFIM, !IO)
     ;
         Item = item_type_repn(ItemTypeRepn),
         mercury_output_item_type_repn(Info, ItemTypeRepn, !IO)
@@ -1466,6 +1463,15 @@ mercury_output_item_mutable(Info, ItemMutable, !IO) :-
     io.write_string(").\n", !IO).
 
 %---------------------------------------------------------------------------%
+
+:- pred mercury_output_item_foreign_import_module(
+    item_foreign_import_module_info::in, io::di, io::uo) is det.
+
+mercury_output_item_foreign_import_module(ItemFIM, !IO) :-
+    ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
+        _Context, _SeqNum),
+    FIM = foreign_import_module_info(Lang, ModuleName),
+    mercury_output_foreign_import_module_info(FIM, !IO).
 
 mercury_output_foreign_import_module_info(FIM, !IO) :-
     FIM = foreign_import_module_info(Lang, ModuleName),
