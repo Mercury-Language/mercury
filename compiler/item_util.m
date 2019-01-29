@@ -169,9 +169,9 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
             MaybeAbstractItemTypeDefn = ItemTypeDefn
         ;
             MaybeCanonical = noncanon(_NonCanonical),
-            AbsttactDetailsForeign = type_details_foreign(ForeignType,
+            AbstractDetailsForeign = type_details_foreign(ForeignType,
                 noncanon(noncanon_abstract(non_solver_type)), Assertions),
-            AbstractTypeDefn = parse_tree_foreign_type(AbsttactDetailsForeign),
+            AbstractTypeDefn = parse_tree_foreign_type(AbstractDetailsForeign),
             MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
                 AbstractTypeDefn
         )
