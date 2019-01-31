@@ -528,8 +528,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
                     ms_interface, ms_implementation,
                     !.IntIncls, !.ImpIncls, !.IntAvails, !.ImpAvails,
                     !.IntItems, !.ImpItems, BothRawItemBlocks),
-                get_short_interface_from_raw_item_blocks(sifk_int2,
-                    BothRawItemBlocks,
+                get_short_interface_from_raw_item_blocks(BothRawItemBlocks,
                     ShortIntIncls, ShortImpIncls,
                     ShortIntAvails, ShortImpAvails,
                     ShortIntItems, ShortImpItems),
@@ -558,33 +557,15 @@ write_short_interface_file_int3(Globals, SourceFileName, RawCompUnit, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
 
-    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext, _),
-    some [!Specs] (
-        !:Specs = [],
-        get_interface(dont_include_impl_types, RawCompUnit, IntRawCompUnit),
-        IntRawCompUnit = raw_compilation_unit(_, _, IFileRawItemBlocks0),
-        % Assertions are also stripped since they should only be written
-        % to .opt files.
-        strip_assertions_in_item_blocks(IFileRawItemBlocks0,
-            IFileRawItemBlocks1),
-        report_and_strip_clauses_in_item_blocks(IFileRawItemBlocks1,
-            IFileRawItemBlocks, !Specs),
-        get_short_interface_from_raw_item_blocks(sifk_int3, IFileRawItemBlocks,
-            IntIncls0, ImpIncls0, IntAvails0, ImpAvails0,
-            IntItems0, ImpItems0),
-        MaybeVersionNumbers = no,
-        ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int3,
-            ModuleNameContext, MaybeVersionNumbers, IntIncls0, ImpIncls0,
-            IntAvails0, ImpAvails0, IntItems0, ImpItems0),
-        module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
-            !Specs),
-        write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
-            !IO),
-        % XXX why do we do this even if there are some errors?
-        actually_write_interface_file(Globals, SourceFileName,
-            ParseTreeInt, no, !IO),
-        touch_interface_datestamp(Globals, ModuleName, ".date3", !IO)
-    ).
+    RawCompUnit = raw_compilation_unit(ModuleName, _, _),
+    generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt0, Specs0),
+    module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
+        Specs0, Specs),
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+    % XXX Why do we do this even if there are some errors?
+    actually_write_interface_file(Globals, SourceFileName, ParseTreeInt, no,
+        !IO),
+    touch_interface_datestamp(Globals, ModuleName, ".date3", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -660,17 +641,6 @@ src_item_blocks_to_int_imp_items_loop([SrcItemBlock | SrcItemBlocks],
         !IntItemsCord, !ImpItemsCord).
 
 %---------------------------------------------------------------------------%
-
-:- pred strip_assertions_in_item_blocks(list(item_block(MS))::in,
-    list(item_block(MS))::out) is det.
-
-strip_assertions_in_item_blocks([], []).
-strip_assertions_in_item_blocks([ItemBlock0 | ItemBlocks0],
-        [ItemBlock | ItemBlocks]) :-
-    ItemBlock0 = item_block(Section, Context, Incls, Avails, Items0),
-    strip_assertions_in_items(Items0, Items),
-    ItemBlock = item_block(Section, Context, Incls, Avails, Items),
-    strip_assertions_in_item_blocks(ItemBlocks0, ItemBlocks).
 
 :- pred strip_assertions_in_items(list(item)::in, list(item)::out) is det.
 
@@ -1406,20 +1376,6 @@ accumulate_modules_from_constraint_arg_type(ArgType, !Modules) :-
 
 %---------------------------------------------------------------------------%
 
-    % XXX ITEM_LIST Integrate this traversal with other traversals.
-    %
-:- pred report_and_strip_clauses_in_item_blocks(
-    list(item_block(MS))::in, list(item_block(MS))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_and_strip_clauses_in_item_blocks([], [], !Specs).
-report_and_strip_clauses_in_item_blocks([ItemBlock0 | ItemBlocks0],
-        [ItemBlock | ItemBlocks], !Specs) :-
-    ItemBlock0 = item_block(Section, Context, Incls, Avails, Items0),
-    report_and_strip_clauses_in_items(Items0, Items, !Specs),
-    ItemBlock = item_block(Section, Context, Incls, Avails, Items),
-    report_and_strip_clauses_in_item_blocks(ItemBlocks0, ItemBlocks, !Specs).
-
 :- pred report_and_strip_clauses_in_items(list(item)::in, list(item)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1471,14 +1427,6 @@ report_and_strip_clauses_in_items_loop([Item0 | Items0],
         !:RevItems = [Item0 | !.RevItems]
     ),
     report_and_strip_clauses_in_items_loop(Items0, !RevItems, !Specs).
-
-:- func clause_in_interface_warning(string, prog_context) = error_spec.
-
-clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
-    Pieces = [words("Warning:"), words(ClauseOrPragma),
-        words("in module interface.")],
-    Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
 
 %---------------------------------------------------------------------------%
 
@@ -1564,20 +1512,19 @@ actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
     % interface is empty, or only contains abstract type declarations,
     % then it doesn't need any import_module declarations.
     %
-:- pred get_short_interface_from_raw_item_blocks(short_int_file_kind::in,
-    list(raw_item_block)::in,
+:- pred get_short_interface_from_raw_item_blocks(list(raw_item_block)::in,
     list(item_include)::out, list(item_include)::out,
     list(item_avail)::out, list(item_avail)::out,
     list(item)::out, list(item)::out) is det.
 
-get_short_interface_from_raw_item_blocks(_Kind, [], [], [], [], [], [], []).
-get_short_interface_from_raw_item_blocks(Kind, [RawItemBlock | RawItemBlocks],
+get_short_interface_from_raw_item_blocks([], [], [], [], [], [], []).
+get_short_interface_from_raw_item_blocks([RawItemBlock | RawItemBlocks],
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems) :-
-    get_short_interface_from_raw_item_blocks(Kind, RawItemBlocks,
+    get_short_interface_from_raw_item_blocks(RawItemBlocks,
         IntInclsTail, ImpInclsTail, IntAvailsTail, ImpAvailsTail,
         IntItemsTail, ImpItemsTail),
     RawItemBlock = item_block(Section, _Context, Incls, Avails1, Items0),
-    get_short_interface_from_items_acc(Kind, Items0, cord.init, ItemsCord),
+    get_short_interface_from_items_acc(Items0, cord.init, ItemsCord),
     Items1 = cord.list(ItemsCord),
     % XXX ITEM_LIST Integrate maybe_strip_import_decls into
     % get_short_interface_from_items_acc.
@@ -1600,15 +1547,15 @@ get_short_interface_from_raw_item_blocks(Kind, [RawItemBlock | RawItemBlocks],
         ImpItems = Items ++ ImpItemsTail
     ).
 
-:- pred get_short_interface_from_items_acc(short_int_file_kind::in,
-    list(item)::in, cord(item)::in, cord(item)::out) is det.
+:- pred get_short_interface_from_items_acc(list(item)::in,
+    cord(item)::in, cord(item)::out) is det.
 
-get_short_interface_from_items_acc(_Kind, [], !ItemsCord).
-get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
+get_short_interface_from_items_acc([], !ItemsCord).
+get_short_interface_from_items_acc([Item | Items], !ItemsCord) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
-        maybe_make_abstract_type_defn(Kind,
-            ItemTypeDefnInfo, MaybeAbstractItemTypeDefnInfo),
+        maybe_make_abstract_type_defn_for_int2(ItemTypeDefnInfo,
+            MaybeAbstractItemTypeDefnInfo),
         MaybeAbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
         !:ItemsCord = cord.snoc(!.ItemsCord, MaybeAbstractItem)
     ;
@@ -1618,10 +1565,10 @@ get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
         !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
     ;
         Item = item_instance(ItemInstanceInfo),
-        maybe_make_abstract_instance(Kind,
-            ItemInstanceInfo, MaybeAbstractItemInstanceInfo),
-        MaybeAbstractItem = item_instance(MaybeAbstractItemInstanceInfo),
-        !:ItemsCord = cord.snoc(!.ItemsCord, MaybeAbstractItem)
+        AbstractItemInstanceInfo = ItemInstanceInfo ^ ci_method_instances
+            := instance_body_abstract,
+        AbstractItem = item_instance(AbstractItemInstanceInfo),
+        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
     ;
         ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
@@ -1643,7 +1590,7 @@ get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
         % Do not include Item in !ItemsCord.
         % XXX TYPE_REPN Is this the right thing to do for item_type_repn?
     ),
-    get_short_interface_from_items_acc(Kind, Items, !ItemsCord).
+    get_short_interface_from_items_acc(Items, !ItemsCord).
 
 %---------------------------------------------------------------------------%
 

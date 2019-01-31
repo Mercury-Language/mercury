@@ -21,6 +21,8 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -53,6 +55,17 @@
 
 %---------------------------------------------------------------------------%
 
+    % This qualifies everything as much as it can given the information
+    % in the current module and writes out the .int3 file.
+    % XXX document me better
+    %
+    % XXX Why do we report errors NOW, as opposed to when we generate code?
+    %
+:- pred generate_short_interface_int3(globals::in, raw_compilation_unit::in,
+    parse_tree_int::out, list(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
+
     % This predicate is exported for use by modules.m.
     %
     % XXX ITEM_LIST They shouldn't be needed; the representation of the
@@ -74,12 +87,21 @@
     list(foreign_language)::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- func clause_in_interface_warning(string, prog_context) = error_spec.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.item_util.
+:- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_type.
 
+:- import_module bool.
 :- import_module cord.
 :- import_module maybe.
 :- import_module require.
@@ -265,8 +287,8 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
         % in type declarations. Since these constructors are abstractly
         % exported, we won't need the local instance declarations.
         Item = item_type_defn(ItemTypeDefnInfo),
-        maybe_make_abstract_type_defn(sifk_int2,
-            ItemTypeDefnInfo, MaybeAbstractItemTypeDefnInfo),
+        maybe_make_abstract_type_defn_for_int2(ItemTypeDefnInfo,
+            MaybeAbstractItemTypeDefnInfo),
         AbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
         MaybeIFileItem = yes(AbstractItem)
     ;
@@ -343,6 +365,262 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
 
 %---------------------------------------------------------------------------%
 
+generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt, !:Specs) :-
+    RawCompUnit =
+        raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
+    !:Specs = [],
+    get_short_interface_int3_for_item_blocks(RawItemBlocks,
+        cord.init, IntInclsCord, cord.init, IntAvailsCord0,
+        cord.init, IntItemsCord0, cord.init, StdFIMItemsCord,
+        do_not_need_avails, NeedAvails, need_fims(set.init), NeedFIMs,
+        implicit_langs(set.init), ImplicitLangs, !Specs),
+    IntIncls = cord.list(IntInclsCord),
+    (
+        NeedAvails = do_not_need_avails,
+        IntAvails = []
+    ;
+        NeedAvails = do_need_avails,
+        IntAvails = cord.list(IntAvailsCord0)
+    ),
+    IntItems0 = cord.list(IntItemsCord0),
+    NeedFIMs = need_fims(NeedFIMLangs),
+    ( if set.is_empty(NeedFIMLangs) then
+        IntItems = IntItems0
+    else
+        % The StdFIMItems come from the source module, while ImplicitFIMItems
+        % are created here by us based on the needs on *all* the items
+        % in the source module.
+        %
+        % XXX This code preserves old behavior. I (zs) do not understand
+        % why we want that behavior.
+        %
+        % First, why are we including in the .int3 file foreign_import_module
+        % items that refer to languages that the rest of the .int3 file does
+        % not refer to? In other words, why aren't we filtering StdFIMItems
+        % and ImplicitFIMItems and keeping only the ones whose languages
+        % are in NeedFIMLangs?
+        %
+        % Second, why do .int3 file need foreign_import_module items at all?
+        StdFIMItems = cord.list(StdFIMItemsCord),
+        ImplicitLangs = implicit_langs(ImplicitLangsSet),
+        ImplicitFIMItems = list.map(make_foreign_import(ModuleName),
+            set.to_sorted_list(ImplicitLangsSet)),
+        IntItems = IntItems0 ++ StdFIMItems ++ ImplicitFIMItems
+    ),
+    MaybeVersionNumbers = no,
+    ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int3, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, [], IntAvails, [], IntItems, []),
+    module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
+        !Specs).
+
+:- type need_avails
+    --->    do_not_need_avails
+    ;       do_need_avails.
+
+:- type need_fims
+    --->    need_fims(set(foreign_language)).
+
+:- type implicit_langs
+    --->    implicit_langs(set(foreign_language)).
+
+:- pred get_short_interface_int3_for_item_blocks(list(raw_item_block)::in,
+    cord(item_include)::in, cord(item_include)::out,
+    cord(item_avail)::in, cord(item_avail)::out,
+    cord(item)::in, cord(item)::out,
+    cord(item)::in, cord(item)::out,
+    need_avails::in, need_avails::out,
+    need_fims::in, need_fims::out,
+    implicit_langs::in, implicit_langs::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+get_short_interface_int3_for_item_blocks([],
+        !IntIncls, !IntAvails, !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
+get_short_interface_int3_for_item_blocks([RawItemBlock | RawItemBlocks],
+        !IntIncls, !IntAvails, !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs) :-
+    RawItemBlock = item_block(Section, _SectionContext, Incls, Avails, Items),
+    (
+        Section = ms_interface,
+        !:IntIncls = !.IntIncls ++ cord.from_list(Incls),
+        !:IntAvails = !.IntAvails ++ cord.from_list(Avails),
+        get_short_interface_int3_for_items(Items, !IntItems, !StdFIMItems,
+            !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs)
+    ;
+        Section = ms_implementation
+    ),
+    get_short_interface_int3_for_item_blocks(RawItemBlocks,
+        !IntIncls, !IntAvails, !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
+
+:- pred get_short_interface_int3_for_items(list(item)::in,
+    cord(item)::in, cord(item)::out,
+    cord(item)::in, cord(item)::out,
+    need_avails::in, need_avails::out,
+    need_fims::in, need_fims::out,
+    implicit_langs::in, implicit_langs::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+get_short_interface_int3_for_items([], !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
+get_short_interface_int3_for_items([Item | Items], !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs) :-
+    (
+        Item = item_type_defn(ItemTypeDefnInfo),
+        make_type_defn_abstract_type_for_int3(ItemTypeDefnInfo,
+            AbstractOrForeignItemTypeDefnInfo,
+            !NeedAvails, !NeedFIMs, !ImplicitLangs),
+        AbstractOrForeignItem =
+            item_type_defn(AbstractOrForeignItemTypeDefnInfo),
+        !:IntItems = cord.snoc(!.IntItems, AbstractOrForeignItem)
+    ;
+        Item = item_typeclass(ItemTypeClassInfo),
+        AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
+            := class_interface_abstract,
+        AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
+        !:IntItems = cord.snoc(!.IntItems, AbstractItem),
+        !:NeedAvails = do_need_avails
+    ;
+        Item = item_instance(ItemInstanceInfo),
+        AbstractItemInstanceInfo = ItemInstanceInfo ^ ci_method_instances
+            := instance_body_abstract,
+        AbstractItem = item_instance(AbstractItemInstanceInfo),
+        !:IntItems = cord.snoc(!.IntItems, AbstractItem),
+        !:NeedAvails = do_need_avails
+    ;
+        ( Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ),
+        !:IntItems = cord.snoc(!.IntItems, Item),
+        !:NeedAvails = do_need_avails
+    ;
+        Item = item_foreign_import_module(FIMInfo),
+        FIMInfo = item_foreign_import_module_info(Lang, Module, _, _),
+        StdFIMInfo = item_foreign_import_module_info(Lang, Module,
+            term.context_init, -1),
+        StdItem = item_foreign_import_module(StdFIMInfo),
+        !:StdFIMItems = cord.snoc(!.StdFIMItems, StdItem)
+    ;
+        Item = item_clause(ItemClause),
+        Context = ItemClause ^ cl_context,
+        Spec = clause_in_interface_warning("clause", Context),
+        !:Specs = [Spec | !.Specs]
+    ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, Context, _),
+        AllowedInInterface = pragma_allowed_in_interface(Pragma),
+        (
+            AllowedInInterface = no,
+            Spec = clause_in_interface_warning("pragma", Context),
+            !:Specs = [Spec | !.Specs]
+        ;
+            AllowedInInterface = yes
+        ),
+        Langs = pragma_needs_foreign_imports(Pragma),
+        !.ImplicitLangs = implicit_langs(ImplicitLangsSet0),
+        set.insert_list(Langs, ImplicitLangsSet0, ImplicitLangsSet),
+        !:ImplicitLangs = implicit_langs(ImplicitLangsSet)
+    ;
+        Item = item_mutable(_),
+        Langs = all_foreign_languages,
+        !.ImplicitLangs = implicit_langs(ImplicitLangsSet0),
+        set.insert_list(Langs, ImplicitLangsSet0, ImplicitLangsSet),
+        !:ImplicitLangs = implicit_langs(ImplicitLangsSet)
+    ;
+        ( Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_type_repn(_)
+        ; Item = item_nothing(_)
+        )
+    ),
+    get_short_interface_int3_for_items(Items, !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
+
+:- pred make_type_defn_abstract_type_for_int3(item_type_defn_info::in,
+    item_type_defn_info::out,
+    need_avails::in, need_avails::out, need_fims::in, need_fims::out,
+    implicit_langs::in, implicit_langs::out) is det.
+
+make_type_defn_abstract_type_for_int3(ItemTypeDefn,
+        AbstractOrForeignItemTypeDefnInfo,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs) :-
+    TypeDefn = ItemTypeDefn ^ td_ctor_defn,
+    (
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu =
+            type_details_du(Ctors, MaybeCanonical, _MaybeDirectArgCtors),
+        ( if du_type_is_enum(DetailsDu, NumBits) then
+            AbstractDetails = abstract_type_fits_in_n_bits(NumBits)
+        else if du_type_is_notag(Ctors, MaybeCanonical) then
+            AbstractDetails = abstract_notag_type
+        else if du_type_is_dummy(DetailsDu) then
+            AbstractDetails = abstract_dummy_type
+        else
+            AbstractDetails = abstract_type_general
+        ),
+        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
+            := parse_tree_abstract_type(AbstractDetails)
+    ;
+        TypeDefn = parse_tree_abstract_type(_AbstractDetails),
+        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn
+    ;
+        TypeDefn = parse_tree_solver_type(_),
+        % rafe: XXX we need to also export the details of the forwarding type
+        % for the representation and the forwarding pred for initialization.
+        AbstractDetails = abstract_solver_type,
+        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
+            := parse_tree_abstract_type(AbstractDetails)
+    ;
+        TypeDefn = parse_tree_eqv_type(_),
+        % XXX Is this right for solver types?
+        % XXX TYPE_REPN Is this right for types that are eqv to enums,
+        % or to known size ints/uints?
+        AbstractDetails = abstract_type_general,
+        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
+            := parse_tree_abstract_type(AbstractDetails)
+    ;
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
+            Assertions),
+        % We always need the definitions of foreign types
+        % to handle inter-language interfacing correctly.
+        % XXX Even in .int3 files?
+        % However, we want to abstract away any unify and compare predicates.
+        (
+            MaybeCanonical = canon,
+            AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn
+        ;
+            MaybeCanonical = noncanon(_NonCanonical),
+            AbstractMaybeCanonical =
+                noncanon(noncanon_abstract(non_solver_type)),
+            AbstractDetailsForeign = type_details_foreign(ForeignType,
+                AbstractMaybeCanonical, Assertions),
+            AbstractForeignTypeDefn =
+                parse_tree_foreign_type(AbstractDetailsForeign),
+            AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
+                := AbstractForeignTypeDefn
+        ),
+        % XXX ITEM_LIST This preserves old behavior, but I (zs) do not see
+        % why this is needed: foreign type definitions do not contain
+        % any sym_names with whose module qualification any imported modules
+        % could help.
+        !:NeedAvails = do_need_avails,
+
+        Lang = foreign_type_language(ForeignType),
+        !.NeedFIMs = need_fims(NeedFIMLangs0),
+        set.insert(Lang, NeedFIMLangs0, NeedFIMLangs),
+        !:NeedFIMs = need_fims(NeedFIMLangs),
+
+        !.ImplicitLangs = implicit_langs(ImplicitLangsSet0),
+        set.insert(Lang, ImplicitLangsSet0, ImplicitLangsSet),
+        !:ImplicitLangs = implicit_langs(ImplicitLangsSet)
+    ).
+
+%---------------------------------------------------------------------------%
+
 add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
         ItemBlocks0, ItemBlocks) :-
     list.foldl(accumulate_foreign_import_langs_in_item_block, ItemBlocks0,
@@ -359,7 +637,14 @@ add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
         ItemBlocks = [ImportItemBlock | ItemBlocks0]
     ).
 
-%---------------------%
+:- func make_foreign_import(module_name, foreign_language) = item.
+
+make_foreign_import(ModuleName, Lang) = Item :-
+    ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
+        term.context_init, -1),
+    Item = item_foreign_import_module(ItemFIM).
+
+%---------------------------------------------------------------------------%
 
 get_foreign_self_imports_from_item_blocks(ItemBlocks, Langs) :-
     list.foldl(accumulate_foreign_import_langs_in_item_block, ItemBlocks,
@@ -380,14 +665,13 @@ accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
     Langs = item_needs_foreign_imports(Item),
     set.insert_list(Langs, !LangSet).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
-:- func make_foreign_import(module_name, foreign_language) = item.
-
-make_foreign_import(ModuleName, Lang) = Item :-
-    ItemFIM = item_foreign_import_module_info(Lang, ModuleName,
-        term.context_init, -1),
-    Item = item_foreign_import_module(ItemFIM).
+clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
+    Pieces = [words("Warning:"), words(ClauseOrPragma),
+        words("in module interface.")],
+    Spec = error_spec(severity_warning, phase_term_to_parse_tree,
+        [simple_msg(Context, [always(Pieces)])]).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.

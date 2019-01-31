@@ -44,14 +44,11 @@
     % makes the defined type equivalent to a type that needs special treatment
     % by the algorithm that decides data representations.
     %
-:- pred maybe_make_abstract_type_defn(short_int_file_kind::in,
+:- pred maybe_make_abstract_type_defn_for_int2(
     item_type_defn_info::in, item_type_defn_info::out) is det.
 
 :- pred make_abstract_typeclass(item_typeclass_info::in,
     item_typeclass_info::out) is det.
-
-:- pred maybe_make_abstract_instance(short_int_file_kind::in,
-    item_instance_info::in, item_instance_info::out) is det.
 
     % All instance declarations must be written to `.int' files as
     % abstract instance declarations, because the method names have not yet
@@ -68,6 +65,8 @@
 
 :- func item_needs_foreign_imports(item) = list(foreign_language).
 
+:- func pragma_needs_foreign_imports(pragma_type) = list(foreign_language).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -76,14 +75,13 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_type.
 
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
-maybe_make_abstract_type_defn(ShortIntFileKind,
-        ItemTypeDefn, MaybeAbstractItemTypeDefn) :-
+maybe_make_abstract_type_defn_for_int2(ItemTypeDefn,
+        MaybeAbstractItemTypeDefn) :-
     TypeDefn = ItemTypeDefn ^ td_ctor_defn,
     (
         TypeDefn = parse_tree_du_type(DetailsDu),
@@ -97,32 +95,16 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
         % unchanged, without something on it that says "use these functors
         % *only* for these purposes", is a bug in my opinion.
         (
-            ShortIntFileKind = sifk_int2,
-            (
-                MaybeCanonical = canon,
-                MaybeAbstractItemTypeDefn = ItemTypeDefn
-            ;
-                MaybeCanonical = noncanon(_NonCanonical),
-                AbstractDetailsDu = type_details_du(Ctors,
-                    noncanon(noncanon_abstract(non_solver_type)),
-                    MaybeDirectArgCtors),
-                AbstractTypeDefn = parse_tree_du_type(AbstractDetailsDu),
-                MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
-                    AbstractTypeDefn
-            )
+            MaybeCanonical = canon,
+            MaybeAbstractItemTypeDefn = ItemTypeDefn
         ;
-            ShortIntFileKind = sifk_int3,
-            ( if du_type_is_enum(DetailsDu, NumBits) then
-                AbstractDetails = abstract_type_fits_in_n_bits(NumBits)
-            else if du_type_is_notag(Ctors, MaybeCanonical) then
-                AbstractDetails = abstract_notag_type
-            else if du_type_is_dummy(DetailsDu) then
-                AbstractDetails = abstract_dummy_type
-            else
-                AbstractDetails = abstract_type_general
-            ),
-            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
-                := parse_tree_abstract_type(AbstractDetails)
+            MaybeCanonical = noncanon(_NonCanonical),
+            AbstractDetailsDu = type_details_du(Ctors,
+                noncanon(noncanon_abstract(non_solver_type)),
+                MaybeDirectArgCtors),
+            AbstractTypeDefn = parse_tree_du_type(AbstractDetailsDu),
+            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
+                AbstractTypeDefn
         )
     ;
         TypeDefn = parse_tree_abstract_type(_AbstractDetails),
@@ -142,21 +124,7 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
         % non-abstract equivalence types always get fully expanded
         % before code generation, even in modules that only indirectly
         % import the definition of the equivalence type.
-        % But the full definitions are not needed for the `.int3'
-        % files. So we convert equivalence types into abstract types
-        % only for the `.int3' files.
-        (
-            ShortIntFileKind = sifk_int2,
-            MaybeAbstractItemTypeDefn = ItemTypeDefn
-        ;
-            ShortIntFileKind = sifk_int3,
-            % XXX is this right for solver types?
-            % XXX TYPE_REPN is this right for types that are
-            % eqv to enums, or to known size ints/uints?
-            AbstractDetails = abstract_type_general,
-            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
-                := parse_tree_abstract_type(AbstractDetails)
-        )
+        MaybeAbstractItemTypeDefn = ItemTypeDefn
     ;
         TypeDefn = parse_tree_foreign_type(DetailsForeign),
         DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
@@ -180,16 +148,6 @@ maybe_make_abstract_type_defn(ShortIntFileKind,
 make_abstract_typeclass(ItemTypeClass, AbstractItemTypeClass) :-
     AbstractItemTypeClass = ItemTypeClass ^ tc_class_methods
         := class_interface_abstract.
-
-maybe_make_abstract_instance(ShortIntFileKind,
-        ItemInstance, MaybeAbstractItemInstance) :-
-    (
-        ShortIntFileKind = sifk_int2,
-        MaybeAbstractItemInstance = make_instance_abstract(ItemInstance)
-    ;
-        ShortIntFileKind = sifk_int3,
-        MaybeAbstractItemInstance = ItemInstance
-    ).
 
 make_instance_abstract(ItemInstance0) = ItemInstance :-
     ItemInstance = ItemInstance0 ^ ci_method_instances
@@ -249,57 +207,7 @@ item_needs_foreign_imports(Item) = Langs :-
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
-        (
-            (
-                Pragma = pragma_foreign_decl(FDInfo),
-                FDInfo = pragma_info_foreign_decl(Lang, _, _)
-            ;
-                Pragma = pragma_foreign_code(FCInfo),
-                FCInfo = pragma_info_foreign_code(Lang, _)
-            ;
-                Pragma = pragma_foreign_enum(FEInfo),
-                FEInfo = pragma_info_foreign_enum(Lang, _, _)
-            ;
-                Pragma = pragma_foreign_proc_export(FPEInfo),
-                FPEInfo = pragma_info_foreign_proc_export(Lang, _, _)
-            ),
-            Langs = [Lang]
-        ;
-            Pragma = pragma_foreign_proc(FPInfo),
-            FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
-            Langs = [get_foreign_language(Attrs)]
-        ;
-            ( Pragma = pragma_foreign_export_enum(_)
-            ; Pragma = pragma_external_proc(_)
-            ; Pragma = pragma_type_spec(_)
-            ; Pragma = pragma_inline(_)
-            ; Pragma = pragma_no_inline(_)
-            ; Pragma = pragma_consider_used(_)
-            ; Pragma = pragma_unused_args(_)
-            ; Pragma = pragma_exceptions(_)
-            ; Pragma = pragma_trailing_info(_)
-            ; Pragma = pragma_mm_tabling_info(_)
-            ; Pragma = pragma_obsolete(_)
-            ; Pragma = pragma_no_detism_warning(_)
-            ; Pragma = pragma_require_tail_recursion(_)
-            ; Pragma = pragma_oisu(_)
-            ; Pragma = pragma_tabled(_)
-            ; Pragma = pragma_fact_table(_)
-            ; Pragma = pragma_promise_eqv_clauses(_)
-            ; Pragma = pragma_promise_pure(_)
-            ; Pragma = pragma_promise_semipure(_)
-            ; Pragma = pragma_termination_info(_)
-            ; Pragma = pragma_termination2_info(_)
-            ; Pragma = pragma_terminates(_)
-            ; Pragma = pragma_does_not_terminate(_)
-            ; Pragma = pragma_check_termination(_)
-            ; Pragma = pragma_mode_check_clauses(_)
-            ; Pragma = pragma_structure_sharing(_)
-            ; Pragma = pragma_structure_reuse(_)
-            ; Pragma = pragma_require_feature_set(_)
-            ),
-            Langs = []
-        )
+        Langs = pragma_needs_foreign_imports(Pragma)
     ;
         ( Item = item_clause(_)
         ; Item = item_inst_defn(_)
@@ -314,6 +222,59 @@ item_needs_foreign_imports(Item) = Langs :-
         ; Item = item_foreign_import_module(_)
         ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
+        ),
+        Langs = []
+    ).
+
+pragma_needs_foreign_imports(Pragma) = Langs :-
+    (
+        (
+            Pragma = pragma_foreign_decl(FDInfo),
+            FDInfo = pragma_info_foreign_decl(Lang, _, _)
+        ;
+            Pragma = pragma_foreign_code(FCInfo),
+            FCInfo = pragma_info_foreign_code(Lang, _)
+        ;
+            Pragma = pragma_foreign_enum(FEInfo),
+            FEInfo = pragma_info_foreign_enum(Lang, _, _)
+        ;
+            Pragma = pragma_foreign_proc_export(FPEInfo),
+            FPEInfo = pragma_info_foreign_proc_export(Lang, _, _)
+        ),
+        Langs = [Lang]
+    ;
+        Pragma = pragma_foreign_proc(FPInfo),
+        FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
+        Langs = [get_foreign_language(Attrs)]
+    ;
+        ( Pragma = pragma_foreign_export_enum(_)
+        ; Pragma = pragma_external_proc(_)
+        ; Pragma = pragma_type_spec(_)
+        ; Pragma = pragma_inline(_)
+        ; Pragma = pragma_no_inline(_)
+        ; Pragma = pragma_consider_used(_)
+        ; Pragma = pragma_unused_args(_)
+        ; Pragma = pragma_exceptions(_)
+        ; Pragma = pragma_trailing_info(_)
+        ; Pragma = pragma_mm_tabling_info(_)
+        ; Pragma = pragma_obsolete(_)
+        ; Pragma = pragma_no_detism_warning(_)
+        ; Pragma = pragma_require_tail_recursion(_)
+        ; Pragma = pragma_oisu(_)
+        ; Pragma = pragma_tabled(_)
+        ; Pragma = pragma_fact_table(_)
+        ; Pragma = pragma_promise_eqv_clauses(_)
+        ; Pragma = pragma_promise_pure(_)
+        ; Pragma = pragma_promise_semipure(_)
+        ; Pragma = pragma_termination_info(_)
+        ; Pragma = pragma_termination2_info(_)
+        ; Pragma = pragma_terminates(_)
+        ; Pragma = pragma_does_not_terminate(_)
+        ; Pragma = pragma_check_termination(_)
+        ; Pragma = pragma_mode_check_clauses(_)
+        ; Pragma = pragma_structure_sharing(_)
+        ; Pragma = pragma_structure_reuse(_)
+        ; Pragma = pragma_require_feature_set(_)
         ),
         Langs = []
     ).
