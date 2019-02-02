@@ -238,6 +238,11 @@
             % which originally came from an implementation section of a module
             % that contains submodules; such items need to be exported
             % to the submodules.
+            %
+            % A raw item block whose section is ms_implementation is marked
+            % as sms_impl_but_exported_to_submodules by the predicate
+            % get_src_item_blocks_public_children, which is called indirectly
+            % by grab_imported_modules and grab_unqual_imported_modules.
 
 :- type imported_or_used
     --->    iou_imported
