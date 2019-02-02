@@ -133,67 +133,6 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- type which_grab
-    --->    grab_imported(maybe(timestamp), set(module_name))
-    ;       grab_unqual_imported.
-
-:- pred grab_maybe_qual_imported_modules(file_name::in, module_name::in,
-    which_grab::in, raw_compilation_unit::in,
-    list(src_item_block)::out, module_and_imports::out,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out, io::di, io::uo) is det.
-
-grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
-        WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports,
-        !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed, !IO) :-
-    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-        RawItemBlocks),
-    % XXX Why do we compute NestedChildren, FactDeps, ForeignIncludeFiles,
-    % SrcItemBlocks and PublicChildren differently in these two cases?
-    (
-        WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
-        (
-            MaybeTimestamp = yes(Timestamp),
-            MaybeTimestampMap = yes(map.singleton(ModuleName,
-                module_timestamp(fk_src, Timestamp, may_be_unqualified)))
-        ;
-            MaybeTimestamp = no,
-            MaybeTimestampMap = no
-        ),
-
-        get_src_item_blocks_public_children(RawCompUnit,
-            SrcItemBlocks, PublicChildren),
-
-        % XXX ITEM_LIST Store the FactDeps and ForeignIncludeFiles
-        % in the raw_comp_unit.
-        get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactDeps),
-        get_foreign_include_files_in_item_blocks(RawItemBlocks,
-            ForeignIncludeFiles)
-    ;
-        WhichGrab = grab_unqual_imported,
-        set.init(NestedChildren),
-        MaybeTimestampMap = no,
-
-        raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
-        map.init(PublicChildren),
-
-        FactDeps = [],
-        ForeignIncludeFiles = cord.init
-    ),
-
-    % Construct the initial module import structure.
-    InitSpecs = [],
-    make_module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext, SrcItemBlocks, InitSpecs,
-        PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
-        MaybeTimestampMap, !:ModuleAndImports),
-
-    % Find the modules named in import_module and use_module decls.
-    get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
-        !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed).
-
 grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         MaybeTimestamp, NestedChildren, RawCompUnit, HaveReadModuleMaps,
         !:ModuleAndImports, !IO) :-
@@ -475,6 +414,69 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             [], ImportAccessSpecs),
         module_and_imports_add_specs(ImportAccessSpecs, !ModuleAndImports)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- type which_grab
+    --->    grab_imported(maybe(timestamp), set(module_name))
+    ;       grab_unqual_imported.
+
+:- pred grab_maybe_qual_imported_modules(file_name::in, module_name::in,
+    which_grab::in, raw_compilation_unit::in,
+    list(src_item_block)::out, module_and_imports::out,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out,
+    multi_map(module_name, prog_context)::out, io::di, io::uo) is det.
+
+grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
+        WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports,
+        !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed, !IO) :-
+    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+        RawItemBlocks),
+    % XXX Why do we compute NestedChildren, FactDeps, ForeignIncludeFiles,
+    % SrcItemBlocks and PublicChildren differently in these two cases?
+    (
+        WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
+        (
+            MaybeTimestamp = yes(Timestamp),
+            MaybeTimestampMap = yes(map.singleton(ModuleName,
+                module_timestamp(fk_src, Timestamp, may_be_unqualified)))
+        ;
+            MaybeTimestamp = no,
+            MaybeTimestampMap = no
+        ),
+
+        get_src_item_blocks_public_children(RawCompUnit,
+            SrcItemBlocks, PublicChildren),
+
+        % XXX ITEM_LIST Store the FactDeps and ForeignIncludeFiles
+        % in the raw_comp_unit.
+        get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactDeps),
+        get_foreign_include_files_in_item_blocks(RawItemBlocks,
+            ForeignIncludeFiles)
+    ;
+        WhichGrab = grab_unqual_imported,
+        set.init(NestedChildren),
+        MaybeTimestampMap = no,
+
+        raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
+        map.init(PublicChildren),
+
+        FactDeps = [],
+        ForeignIncludeFiles = cord.init
+    ),
+
+    % Construct the initial module import structure.
+    InitSpecs = [],
+    make_module_and_imports(SourceFileName, SourceFileModuleName,
+        ModuleName, ModuleNameContext, SrcItemBlocks, InitSpecs,
+        PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
+        MaybeTimestampMap, !:ModuleAndImports),
+
+    % Find the modules named in import_module and use_module decls.
+    get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
+        !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed).
 
 %---------------------------------------------------------------------------%
 
