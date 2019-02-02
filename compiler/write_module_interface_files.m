@@ -395,123 +395,130 @@ process_item_for_private_interface(ModuleName, Item,
 
 write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
         MaybeTimestamp, RawCompUnit0, !IO) :-
-    RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext,
-        _RawItemBlocks0),
+    RawCompUnit0 = raw_compilation_unit(ModuleName, _, _),
     get_interface(include_impl_types, RawCompUnit0, IntRawCompUnit),
 
     % Get the .int3 files for imported modules.
     grab_unqual_imported_modules(Globals, SourceFileName,
         SourceFileModuleName, IntRawCompUnit, ModuleAndImports, !IO),
 
-    some [!Specs, !IntIncls, !ImpIncls, !IntAvails, !ImpAvails,
-        !IntItems, !ImpItems]
-    (
-        % Check whether we succeeded.
-        module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit0,
-            !:Specs, Errors),
-        ( if set.is_non_empty(Errors) then
-            PrefixMsg = "Error reading short interface files.\n",
-            report_file_not_written(Globals, !.Specs, yes(PrefixMsg),
+    % Check whether we succeeded.
+    module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
+        Specs0, Errors),
+    ( if set.is_non_empty(Errors) then
+        PrefixMsg = "Error reading short interface files.\n",
+        report_file_not_written(Globals, Specs0, yes(PrefixMsg),
+            ModuleName, ".int", yes(".int2"), !IO)
+    else
+        % Module-qualify all items.
+        module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
+            map.init, _, "", _, _, _, _, _, Specs0, Specs),
+
+        % We want to finish writing the interface files (and keep
+        % the exit status at zero) if we found some warnings.
+        globals.set_option(halt_at_warn, bool(no),
+            Globals, NoHaltAtWarnGlobals),
+        write_error_specs(Specs, NoHaltAtWarnGlobals,
+            0, _NumWarnings, 0, NumErrors, !IO),
+        ( if NumErrors > 0 then
+            report_file_not_written(Globals, [], no,
                 ModuleName, ".int", yes(".int2"), !IO)
         else
-            % Module-qualify all items.
-            module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
-                map.init, _, "", _, _, _, _, _, !Specs),
-
-            % We want to finish writing the interface files (and keep
-            % the exit status at zero) if we found some warnings.
-            globals.set_option(halt_at_warn, bool(no),
-                Globals, NoHaltAtWarnGlobals),
-            write_error_specs(!.Specs, NoHaltAtWarnGlobals,
-                0, _NumWarnings, 0, NumErrors, !IO),
-            ( if NumErrors > 0 then
-                report_file_not_written(Globals, [], no,
-                    ModuleName, ".int", yes(".int2"), !IO)
-            else
-                % Strip out the imported interfaces. Assertions are also
-                % stripped since they should only be written to .opt files.
-                % Check for some warnings, and then write out the `.int'
-                % and `int2' files and touch the `.date' file.
-
-                % XXX ITEM_LIST Why do we augment the raw comp unit
-                % if we throw away the augmented part?
-                AugCompUnit = aug_compilation_unit(_, _,
-                    _ModuleVersionNumbers, SrcItemBlocks,
-                    _DirectIntItemBlocks, _IndirectIntItemBlocks,
-                    _OptItemBlocks, _IntForOptItemBlocks),
-                src_item_blocks_to_int_imp_items(SrcItemBlocks,
-                    do_strip_assertions, !:IntIncls, !:ImpIncls,
-                    !:IntAvails, !:ImpAvails, !:IntItems, !:ImpItems),
-                strip_unnecessary_impl_defns(!IntAvails, !ImpAvails,
-                    !IntItems, !ImpItems),
-                report_and_strip_clauses_in_items(!IntItems,
-                    [], InterfaceSpecs0),
-                report_and_strip_clauses_in_items(!ImpItems,
-                    InterfaceSpecs0, InterfaceSpecs1),
-                ToCheckIntItemBlock = item_block(ms_interface,
-                    ModuleNameContext, !.IntIncls, !.IntAvails, !.IntItems),
-                check_interface_item_blocks_for_no_exports(Globals,
-                    ModuleName, ModuleNameContext, [ToCheckIntItemBlock],
-                    InterfaceSpecs1, InterfaceSpecs),
-                write_error_specs(InterfaceSpecs, Globals,
-                    0, _NumWarnings2, 0, _NumErrors2, !IO),
-                % XXX _NumErrors
-                % The MaybeVersionNumbers we put into ParseTreeInt1 and
-                % ParseTreeInt2 are dummies. If we want to generate version
-                % numbers in interface files, the two calls below to
-                % actually_write_interface_file will do it.
-                % XXX BOTH of those calls will do it. This should not
-                % be necessary; since the .int2 file is a shorter version
-                % of the .int file, it should be faster to compute the
-                % version number record in ParseTreeInt2 by taking the one
-                % in ParseTreeInt1 and deleting the irrelevant entries
-                % than to compute it from the items in ParseTreeInt2 itself.
-                % This would best be done by having the code that
-                % cuts !.IntItems and !.ImpItems down to ShortIntItems
-                % and ShortImpItems delete entries from ParseTreeInt1's
-                % version number record as it deletes the items they are for
-                % themselves.
-                %
-                % When creating an augmented compilation unit, we should
-                % never read in both the .int file and the .int2 file for
-                % the same module, so the fact that both files will have
-                % version number info for the same module shouldn't cause
-                % a collision in the augmented compilation unit's version
-                % number map.
-                DummyMaybeVersionNumbers = no,
-                ParseTreeInt1 = parse_tree_int(ModuleName, ifk_int,
-                    ModuleNameContext, DummyMaybeVersionNumbers,
-                    !.IntIncls, !.ImpIncls, !.IntAvails, !.ImpAvails,
-                    !.IntItems, !.ImpItems),
-                actually_write_interface_file(Globals, SourceFileName,
-                    ParseTreeInt1, MaybeTimestamp, !IO),
-                % XXX ITEM_LIST Couldn't we get ShortIntItems and
-                % ShortImpItems without constructing BothRawItemBlocks?
-                % XXX Yes, we could, but we call
-                % get_short_interface_from_raw_item_blocks
-                % from someplace else as well.
-                int_imp_items_to_item_blocks(ModuleNameContext,
-                    ms_interface, ms_implementation,
-                    !.IntIncls, !.ImpIncls, !.IntAvails, !.ImpAvails,
-                    !.IntItems, !.ImpItems, BothRawItemBlocks),
-                get_short_interface_from_raw_item_blocks(BothRawItemBlocks,
-                    ShortIntIncls, ShortImpIncls,
-                    ShortIntAvails, ShortImpAvails,
-                    ShortIntItems, ShortImpItems),
-                % The MaybeVersionNumbers in ParseTreeInt is a dummy.
-                % If the want to generate version numbers in interface files,
-                % this will be by the call to actually_write_interface_file
-                % below.
-                ParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
-                    ModuleNameContext, DummyMaybeVersionNumbers,
-                    ShortIntIncls, ShortImpIncls,
-                    ShortIntAvails, ShortImpAvails,
-                    ShortIntItems, ShortImpItems),
-                actually_write_interface_file(Globals, SourceFileName,
-                    ParseTreeInt2, MaybeTimestamp, !IO),
-                touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
-            )
+            % Construct and write out the `.int' and `.int2' files.
+            generate_interface_int1_int2(Globals, AugCompUnit,
+                ParseTreeInt1, ParseTreeInt2, InterfaceSpecs),
+            % XXX _NumErrors2
+            write_error_specs(InterfaceSpecs, Globals,
+                0, _NumWarnings2, 0, _NumErrors2, !IO),
+            actually_write_interface_file(Globals, SourceFileName,
+                ParseTreeInt1, MaybeTimestamp, !IO),
+            actually_write_interface_file(Globals, SourceFileName,
+                ParseTreeInt2, MaybeTimestamp, !IO),
+            touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
         )
+    ).
+
+:- pred generate_interface_int1_int2(globals::in, aug_compilation_unit::in,
+    parse_tree_int::out, parse_tree_int::out, list(error_spec)::out) is det.
+
+generate_interface_int1_int2(Globals, AugCompUnit,
+        ParseTreeInt1, ParseTreeInt2, InterfaceSpecs) :-
+    some [!IntIncls, !ImpIncls, !IntAvails, !ImpAvails,
+        !IntItems, !ImpItems]
+    (
+        % Strip out the imported interfaces. Assertions are also
+        % stripped since they should only be written to .opt files.
+        % Check for some warnings, and then write out the `.int'
+        % and `int2' files and touch the `.date' file.
+
+        % XXX ITEM_LIST Why do we augment the raw comp unit
+        % if we throw away the augmented part?
+        AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
+            _ModuleVersionNumbers, SrcItemBlocks,
+            _DirectIntItemBlocks, _IndirectIntItemBlocks,
+            _OptItemBlocks, _IntForOptItemBlocks),
+        src_item_blocks_to_int_imp_items(SrcItemBlocks,
+            !:IntIncls, !:ImpIncls, !:IntAvails, !:ImpAvails,
+            !:IntItems, !:ImpItems),
+        strip_unnecessary_impl_defns(!IntAvails, !ImpAvails,
+            !IntItems, !ImpItems),
+        report_and_strip_clauses_in_items(!IntItems,
+            [], InterfaceSpecs0),
+        report_and_strip_clauses_in_items(!ImpItems,
+            InterfaceSpecs0, InterfaceSpecs1),
+        ToCheckIntItemBlock = item_block(ms_interface,
+            ModuleNameContext, !.IntIncls, !.IntAvails, !.IntItems),
+        check_interface_item_blocks_for_no_exports(Globals,
+            ModuleName, ModuleNameContext, [ToCheckIntItemBlock],
+            InterfaceSpecs1, InterfaceSpecs),
+        % The MaybeVersionNumbers we put into ParseTreeInt1 and
+        % ParseTreeInt2 are dummies. If we want to generate version
+        % numbers in interface files, the two calls below to
+        % actually_write_interface_file will do it.
+        % XXX BOTH of those calls will do it. This should not
+        % be necessary; since the .int2 file is a shorter version
+        % of the .int file, it should be faster to compute the
+        % version number record in ParseTreeInt2 by taking the one
+        % in ParseTreeInt1 and deleting the irrelevant entries
+        % than to compute it from the items in ParseTreeInt2 itself.
+        % This would best be done by having the code that
+        % cuts !.IntItems and !.ImpItems down to ShortIntItems
+        % and ShortImpItems delete entries from ParseTreeInt1's
+        % version number record as it deletes the items they are for
+        % themselves.
+        %
+        % When creating an augmented compilation unit, we should
+        % never read in both the .int file and the .int2 file for
+        % the same module, so the fact that both files will have
+        % version number info for the same module shouldn't cause
+        % a collision in the augmented compilation unit's version
+        % number map.
+        DummyMaybeVersionNumbers = no,
+        ParseTreeInt1 = parse_tree_int(ModuleName, ifk_int,
+            ModuleNameContext, DummyMaybeVersionNumbers,
+            !.IntIncls, !.ImpIncls, !.IntAvails, !.ImpAvails,
+            !.IntItems, !.ImpItems),
+        % XXX ITEM_LIST Couldn't we get ShortIntItems and
+        % ShortImpItems without constructing BothRawItemBlocks?
+        % XXX Yes, we could, but we call
+        % get_short_interface_from_raw_item_blocks
+        % from someplace else as well.
+        int_imp_items_to_item_blocks(ModuleNameContext,
+            ms_interface, ms_implementation,
+            !.IntIncls, !.ImpIncls, !.IntAvails, !.ImpAvails,
+            !.IntItems, !.ImpItems, BothRawItemBlocks),
+        get_short_interface_from_raw_item_blocks(BothRawItemBlocks,
+            ShortIntIncls, ShortImpIncls,
+            ShortIntAvails, ShortImpAvails,
+            ShortIntItems, ShortImpItems),
+        % The MaybeVersionNumbers in ParseTreeInt is a dummy.
+        % If the want to generate version numbers in interface files,
+        % this will be by the call to actually_write_interface_file
+        % below.
+        ParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
+            ModuleNameContext, DummyMaybeVersionNumbers,
+            ShortIntIncls, ShortImpIncls, ShortIntAvails, ShortImpAvails,
+            ShortIntItems, ShortImpItems)
     ).
 
 %---------------------------------------------------------------------------%
@@ -535,19 +542,14 @@ write_short_interface_file_int3(Globals, SourceFileName, RawCompUnit, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- type maybe_strip_assertions
-    --->    dont_strip_assertions
-    ;       do_strip_assertions.
-
 :- pred src_item_blocks_to_int_imp_items(list(src_item_block)::in,
-    maybe_strip_assertions::in,
     list(item_include)::out, list(item_include)::out,
     list(item_avail)::out, list(item_avail)::out,
     list(item)::out, list(item)::out) is det.
 
-src_item_blocks_to_int_imp_items(SrcItemBlocks, MaybeStripAssertions,
+src_item_blocks_to_int_imp_items(SrcItemBlocks,
         IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems) :-
-    src_item_blocks_to_int_imp_items_loop(SrcItemBlocks, MaybeStripAssertions,
+    src_item_blocks_to_int_imp_items_loop(SrcItemBlocks,
         cord.init, IntInclsCord, cord.init, ImpInclsCord,
         cord.init, IntAvailsCord, cord.init, ImpAvailsCord,
         cord.init, IntItemsCord, cord.init, ImpItemsCord),
@@ -559,7 +561,6 @@ src_item_blocks_to_int_imp_items(SrcItemBlocks, MaybeStripAssertions,
     ImpItems = cord.list(ImpItemsCord).
 
 :- pred src_item_blocks_to_int_imp_items_loop(list(src_item_block)::in,
-    maybe_strip_assertions::in,
     cord(item_include)::in, cord(item_include)::out,
     cord(item_include)::in, cord(item_include)::out,
     cord(item_avail)::in, cord(item_avail)::out,
@@ -567,11 +568,10 @@ src_item_blocks_to_int_imp_items(SrcItemBlocks, MaybeStripAssertions,
     cord(item)::in, cord(item)::out,
     cord(item)::in, cord(item)::out) is det.
 
-src_item_blocks_to_int_imp_items_loop([], _,
+src_item_blocks_to_int_imp_items_loop([],
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord).
 src_item_blocks_to_int_imp_items_loop([SrcItemBlock | SrcItemBlocks],
-        MaybeStripAssertions,
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord) :-
     SrcItemBlock = item_block(SrcSection, _Context, Incls, Avails, Items),
@@ -579,30 +579,18 @@ src_item_blocks_to_int_imp_items_loop([SrcItemBlock | SrcItemBlocks],
         SrcSection = sms_interface,
         !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
         !:IntAvailsCord = !.IntAvailsCord ++ cord.from_list(Avails),
-        (
-            MaybeStripAssertions = dont_strip_assertions,
-            !:IntItemsCord = !.IntItemsCord ++ cord.from_list(Items)
-        ;
-            MaybeStripAssertions = do_strip_assertions,
-            strip_assertions_in_items(Items, StrippedItems),
-            !:IntItemsCord = !.IntItemsCord ++ cord.from_list(StrippedItems)
-        )
+        strip_assertions_in_items(Items, StrippedItems),
+        !:IntItemsCord = !.IntItemsCord ++ cord.from_list(StrippedItems)
     ;
         ( SrcSection = sms_implementation
         ; SrcSection = sms_impl_but_exported_to_submodules
         ),
         !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
         !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(Avails),
-        (
-            MaybeStripAssertions = dont_strip_assertions,
-            !:ImpItemsCord = !.ImpItemsCord ++ cord.from_list(Items)
-        ;
-            MaybeStripAssertions = do_strip_assertions,
-            strip_assertions_in_items(Items, StrippedItems),
-            !:ImpItemsCord = !.ImpItemsCord ++ cord.from_list(StrippedItems)
-        )
+        strip_assertions_in_items(Items, StrippedItems),
+        !:ImpItemsCord = !.ImpItemsCord ++ cord.from_list(StrippedItems)
     ),
-    src_item_blocks_to_int_imp_items_loop(SrcItemBlocks, MaybeStripAssertions,
+    src_item_blocks_to_int_imp_items_loop(SrcItemBlocks,
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord).
 
