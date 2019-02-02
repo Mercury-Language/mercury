@@ -123,7 +123,6 @@
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module cord.
-:- import_module dir.
 :- import_module map.
 :- import_module multi_map.
 :- import_module require.
@@ -468,9 +467,17 @@ grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
     ),
 
     % Construct the initial module import structure.
+    % XXX ITEM_LIST sms_interface is a guess. The original code (whose
+    % behavior the current code is trying to emulate) simply added
+    % the generated items to a raw item list, seemingly without caring
+    % about what section those items would end up (it certainly did not
+    % look for any section markers).
+    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
+        sms_interface, SrcItemBlocks, SrcItemBlocksWithFIMs),
+
     InitSpecs = [],
     make_module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext, SrcItemBlocks, InitSpecs,
+        ModuleName, ModuleNameContext, SrcItemBlocksWithFIMs, InitSpecs,
         PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
         MaybeTimestampMap, !:ModuleAndImports),
 
@@ -1100,7 +1107,7 @@ process_module_private_interface(Globals, HaveReadModuleMapInt,
 process_module_long_interface(Globals, HaveReadModuleMapInt, NeedQual,
         Module, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
         !IntImportsUses, !ImpImportsUses, !ModuleAndImports, !IO) :-
-    % XXX It should be possible to factor our the differences between
+    % XXX It should be possible to factor out the differences between
     % process_module_{long,short}_interface.
     ProcessInterfaceKind = pik_long(IntFileKind, NeedQual),
     process_module_interface_general(Globals, ProcessInterfaceKind,
@@ -1127,7 +1134,7 @@ process_module_long_interface(Globals, HaveReadModuleMapInt, NeedQual,
 process_module_short_interface(Globals, HaveReadModuleMapInt,
         Module, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
         !IntImportsUses, !ImpImportsUses, !ModuleAndImports, !IO) :-
-    % XXX It should be possible to factor our the differences between
+    % XXX It should be possible to factor out the differences between
     % process_module_{long,short}_interface.
     ProcessInterfaceKind = pik_short(IntFileKind),
     process_module_interface_general(Globals, ProcessInterfaceKind,
@@ -1256,45 +1263,6 @@ maybe_log_augment_decision(Why, Kind, ModuleName, IntFileKind, Read, !IO) :-
             [s(Why), s(Kind), s(ReadStr),
             s(ModuleNameStr), s(ExtensionStr)], !TIO)
     ).
-
-%---------------------------------------------------------------------------%
-
-:- pred make_module_and_imports(file_name::in,
-    module_name::in, module_name::in, prog_context::in,
-    list(src_item_block)::in, list(error_spec)::in,
-    multi_map(module_name, prog_context)::in, set(module_name)::in,
-    list(string)::in, foreign_include_file_infos::in,
-    maybe(module_timestamp_map)::in, module_and_imports::out) is det.
-
-make_module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext, SrcItemBlocks0, Specs,
-        PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
-        MaybeTimestampMap, Module) :-
-    % XXX The reason why make_module_and_imports is here and not in
-    % module_imports.m is this call. This should be fixed, preferably
-    % by changing the module_and_imports structure.
-    % XXX ITEM_LIST oms_interface is a guess. The original code (whose
-    % behavior the current code is trying to emulate) simply added
-    % the generated items to a raw item list, seemingly without caring
-    % about what section those items would end up (it certainly did not
-    % look for any section markers).
-    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        sms_interface, SrcItemBlocks0, SrcItemBlocks),
-    set.init(Ancestors),
-    map.init(IntDeps),
-    map.init(ImpDeps),
-    set.init(IndirectDeps),
-    map.init(IncludeDeps),
-    ForeignImports = init_foreign_import_modules,
-    set.init(Errors),
-    Module = module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext,
-        Ancestors, IntDeps, ImpDeps, IndirectDeps, IncludeDeps,
-        PublicChildren, NestedChildren, FactDeps,
-        ForeignImports, ForeignIncludeFiles,
-        contains_foreign_code_unknown, contains_no_foreign_export,
-        SrcItemBlocks, cord.init, cord.init, cord.init, cord.init, map.init,
-        Specs, Errors, MaybeTimestampMap, no_main, dir.this_directory).
 
 %---------------------------------------------------------------------------%
 

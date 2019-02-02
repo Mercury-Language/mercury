@@ -609,6 +609,8 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         Specs = [],
         set.init(Errors),
         MaybeTimestamps = no,
+        % XXX MODULE_AND_IMPORTS This code should not know the definition
+        % of the module_and_imports type.
         ModuleAndImports = module_and_imports(SourceFileName,
             SourceFileModuleName, ModuleName, ModuleNameContext,
             set.list_to_set(Parents),

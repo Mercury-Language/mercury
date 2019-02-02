@@ -275,6 +275,8 @@ generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
 
 generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         !MmakeFile, !IO) :-
+    % XXX MODULE_AND_IMPORTS This code should not know the definition
+    % of the module_and_imports type.
     ModuleAndImports = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, _ModuleNameContext, ParentDeps, IntDepsMap, ImpDepsMap,
         IndirectDeps, _Children, InclDepsMap, NestedDeps, FactDeps0,
