@@ -968,6 +968,32 @@ version_numbers_return_timestamp(yes) = do_return_timestamp.
 
 do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         ModulesToLink, ExtraObjFiles, !IO) :-
+    % XXX ITEM_LIST There is an inconsistency between the various OpModeArgs
+    % that construct a module_and_imports structure in how they do it.
+    %
+    % The op modes that generate one or more dependency files call predicates
+    % in generate_dep_d_files.m, which all end up constructing that structure
+    % by calling init_module_and_imports. On the other hand, the op modes
+    % that augment the module call augment_and_process_module, which
+    % calls grab_imported_modules, which constructs that structure
+    % using make_module_and_imports. And once they create an initial
+    % module_and_imports structure, they subject that structure to
+    % different further processing.
+    %
+    % I (zs) think that this is probably the reason why the .d files
+    % of a program contain one set of contents just after the program's
+    % dependencies are built (or rebuilt), and a different set of contents
+    % after we start generated interface files and target code for the
+    % program's modules.
+    %
+    % This may be *acceptable* behavior if the approaches using
+    % init_module_and_imports and make_module_and_imports both compute
+    % supersets of all the actual dependencies, even if e.g.
+    % the approach using make_module_and_imports computes a *bigger*
+    % superset. However, it is definitely not *good* behavior.
+    %
+    % The best fix seems to be to use a single approach, and that
+    % approach should be the one using make_module_and_imports.
     (
         OpModeArgs = opma_generate_dependencies,
         (
@@ -1216,11 +1242,12 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
             RawCompUnits0, Specs0, Specs1),
         (
             MaybeModulesToRecompile = some_modules(ModulesToRecompile),
-            ToRecompile = (pred(RawCompUnit::in) is semidet :-
-                RawCompUnit =
-                    raw_compilation_unit(RawCompUnitModuleName, _, _),
-                list.member(RawCompUnitModuleName, ModulesToRecompile)
-            ),
+            ToRecompile =
+                ( pred(RawCompUnit::in) is semidet :-
+                    RawCompUnit =
+                        raw_compilation_unit(RawCompUnitModuleName, _, _),
+                    list.member(RawCompUnitModuleName, ModulesToRecompile)
+                ),
             list.filter(ToRecompile, RawCompUnits0, RawCompUnitsToCompile)
         ;
             MaybeModulesToRecompile = all_modules,
