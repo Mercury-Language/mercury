@@ -1537,6 +1537,8 @@ check_module_accessibility(ModuleName, InclMap, ImportUseMap, ImportedModule,
     string::in, import_or_use_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
+        ImportOrUseContext, !Specs) :-
 % The error message should come out like this
 % (the second sentence is included only with --verbose-errors):
 % very_long_name.m:123: In module `very_long_name':
@@ -1548,8 +1550,6 @@ check_module_accessibility(ModuleName, InclMap, ImportUseMap, ImportedModule,
 % very_long_name.m:123:   `parent_module' does not contain an `include_module'
 % very_long_name.m:123:   declaration for module `sub_module'.
 
-report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
-        ImportOrUseContext, !Specs) :-
     ImportOrUseContext = import_or_use_context(ImportOrUse, Context),
     ( ImportOrUse = import_decl, DeclName = "import_module"
     ; ImportOrUse = use_decl, DeclName = "use_module"
