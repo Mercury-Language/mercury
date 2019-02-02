@@ -17,7 +17,10 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -25,22 +28,12 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % Given a raw compilation unit, check whether the module exports anything.
-    % If it doesn't, and the option --warn-nothing-exported is set,
+    % Given a list of raw item blocks, check whether the ms_interface blocks
+    % export anything. If they don't, and --warn-nothing-exported is set,
     % report a warning.
     %
-:- pred maybe_check_for_no_exports(globals::in, raw_compilation_unit::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-    % Given a raw compilation unit, which will be a module's interface,
-    % check whether that interface exports anything. If it doesn't, and
-    % --warn-nothing-exported is set, report a warning.
-    %
-    % Basically, it does the same job as check_for_no_exports, except
-    % our caller has already done the task of computing the module's
-    % interface, and given it to us.
-    %
-:- pred check_int_for_no_exports(raw_compilation_unit::in,
+:- pred check_interface_item_blocks_for_no_exports(globals::in,
+    module_name::in, prog_context::in, list(raw_item_block)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -49,10 +42,6 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
-:- import_module parse_tree.comp_unit_interface.
-:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module maybe.
@@ -61,25 +50,22 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-maybe_check_for_no_exports(Globals, RawCompUnit, !Specs) :-
+check_interface_item_blocks_for_no_exports(Globals, ModuleName, Context,
+        RawItemBlocks, !Specs) :-
     globals.lookup_bool_option(Globals, warn_nothing_exported, ExportWarning),
     (
         ExportWarning = no
     ;
         ExportWarning = yes,
-        get_interface(dont_include_impl_types, RawCompUnit, IntRawCompUnit),
-        check_int_for_no_exports(IntRawCompUnit, !Specs)
-    ).
-
-check_int_for_no_exports(IntRawCompUnit, !Specs) :-
-    IntRawCompUnit = raw_compilation_unit(ModuleName, Context, RawItemBlocks),
-    do_ms_interface_item_blocks_export_anything(RawItemBlocks, ExportAnything),
-    (
-        ExportAnything = yes
-    ;
-        ExportAnything = no,
-        generate_no_exports_warning(ModuleName, Context, WarnSpec),
-        !:Specs = [WarnSpec | !.Specs]
+        do_ms_interface_item_blocks_export_anything(RawItemBlocks,
+            ExportAnything),
+        (
+            ExportAnything = yes
+        ;
+            ExportAnything = no,
+            generate_no_exports_warning(ModuleName, Context, WarnSpec),
+            !:Specs = [WarnSpec | !.Specs]
+        )
     ).
 
 :- pred do_ms_interface_item_blocks_export_anything(list(raw_item_block)::in,
