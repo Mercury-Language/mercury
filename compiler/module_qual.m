@@ -566,6 +566,8 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
 
 init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         ItemBlocksD, ReportErrors, Info) :-
+    % XXX ITEM_LIST Given that our caller starts with an aug_compilation_unit,
+    % shouldn't we know the implicit dependencies already?
     get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksA,
         ImportDepsA, UseDepsA),
     get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksB,

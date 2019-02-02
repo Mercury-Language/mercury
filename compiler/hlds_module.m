@@ -929,6 +929,9 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     map.init(LambdasPerContext),
     map.init(AtomicsPerContext),
 
+    % XXX ITEM_LIST Given that we start with an aug_compilation_unit,
+    % shouldn't the work of finding implicit dependencies have already
+    % been done?
     % XXX ITEM_LIST Should a tabled predicate declared in a .int* or .*opt
     % file generate an implicit dependency?
     get_implicit_dependencies_in_item_blocks(Globals, SrcItemBlocks,
