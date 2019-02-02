@@ -145,16 +145,18 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         !IntImpIndirectImported, !ImpImpIndirectImported]
     (
         WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
-        grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
-            WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports,
-            IntImportedMap, IntUsedMap, ImpImportedMap, ImpUsedMap, !IO),
+        make_initial_module_and_imports(SourceFileName, SourceFileModuleName,
+            WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports),
+
+        % Find the modules named in import_module and use_module decls.
+        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+            RawItemBlocks),
+        get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
+            IntImportedMap, IntUsedMap, ImpImportedMap, ImpUsedMap),
         set.sorted_list_to_set(map.keys(IntImportedMap), !:IntImported),
         set.sorted_list_to_set(map.keys(IntUsedMap), !:IntUsed),
         set.sorted_list_to_set(map.keys(ImpImportedMap), !:ImpImported),
         set.sorted_list_to_set(map.keys(ImpUsedMap), !:ImpUsed),
-
-        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-            RawItemBlocks),
 
         HaveReadModuleMapInt = HaveReadModuleMaps ^ hrmm_int,
 
@@ -306,16 +308,18 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
     (
         WhichGrab = grab_unqual_imported,
         % XXX _SrcItemBlocks
-        grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
-            WhichGrab, RawCompUnit, _SrcItemBlocks, !:ModuleAndImports,
-            IntImportedMap, IntUsedMap, ImpImportedMap, ImpUsedMap, !IO),
+        make_initial_module_and_imports(SourceFileName, SourceFileModuleName,
+            WhichGrab, RawCompUnit, _SrcItemBlocks, !:ModuleAndImports),
+
+        % Find the modules named in import_module and use_module decls.
+        RawCompUnit = raw_compilation_unit(ModuleName, _ModuleNameContext,
+            RawItemBlocks),
+        get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
+            IntImportedMap, IntUsedMap, ImpImportedMap, ImpUsedMap),
         set.sorted_list_to_set(map.keys(IntImportedMap), !:IntImported),
         set.sorted_list_to_set(map.keys(IntUsedMap), !:IntUsed),
         set.sorted_list_to_set(map.keys(ImpImportedMap), !:ImpImported),
         set.sorted_list_to_set(map.keys(ImpUsedMap), !:ImpUsed),
-
-        RawCompUnit = raw_compilation_unit(ModuleName, _ModuleNameContext,
-            RawItemBlocks),
 
         map.init(HaveReadModuleMapInt),
 
@@ -420,21 +424,17 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
     --->    grab_imported(maybe(timestamp), set(module_name))
     ;       grab_unqual_imported.
 
-:- pred grab_maybe_qual_imported_modules(file_name::in, module_name::in,
+:- pred make_initial_module_and_imports(file_name::in, module_name::in,
     which_grab::in, raw_compilation_unit::in,
-    list(src_item_block)::out, module_and_imports::out,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out,
-    multi_map(module_name, prog_context)::out, io::di, io::uo) is det.
+    list(src_item_block)::out, module_and_imports::out) is det.
 
-grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
-        WhichGrab, RawCompUnit, SrcItemBlocks, !:ModuleAndImports,
-        !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed, !IO) :-
+make_initial_module_and_imports(SourceFileName, SourceFileModuleName,
+        WhichGrab, RawCompUnit, SrcItemBlocks, ModuleAndImports) :-
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
     % XXX Why do we compute NestedChildren, FactDeps, ForeignIncludeFiles,
     % SrcItemBlocks and PublicChildren differently in these two cases?
+    % XXX And why do we return SrcItemBlocks, instead of SrcItemBlocksWithFIMs?
     (
         WhichGrab = grab_imported(MaybeTimestamp, NestedChildren),
         (
@@ -479,11 +479,7 @@ grab_maybe_qual_imported_modules(SourceFileName, SourceFileModuleName,
     make_module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ModuleNameContext, SrcItemBlocksWithFIMs, InitSpecs,
         PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
-        MaybeTimestampMap, !:ModuleAndImports),
-
-    % Find the modules named in import_module and use_module decls.
-    get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
-        !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed).
+        MaybeTimestampMap, ModuleAndImports).
 
 %---------------------------------------------------------------------------%
 
