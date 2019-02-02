@@ -11,4 +11,4 @@ missing_interface_import.m:014: In declaration of predicate `q'/1:
 missing_interface_import.m:014:   error: undefined type `list'/1.
 missing_interface_import.m:014:   (The module `list' has not been imported in
 missing_interface_import.m:014:   the interface.)
-`missing_interface_import.int' not written.
+`missing_interface_import.int' and `missing_interface_import.int2' not written.

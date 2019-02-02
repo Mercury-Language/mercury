@@ -139,7 +139,7 @@
 
 write_private_interface_file_int0(Globals, SourceFileName,
         SourceFileModuleName, MaybeTimestamp, RawCompUnit0, !IO) :-
-    RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext, _),
+    RawCompUnit0 = raw_compilation_unit(ModuleName, _, _),
     grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit0, ModuleAndImports, !IO),
 
@@ -147,63 +147,58 @@ write_private_interface_file_int0(Globals, SourceFileName,
     module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
         Specs0, Errors),
     ( if set.is_non_empty(Errors) then
-        module_name_to_file_name(Globals, do_not_create_dirs, ".int0",
-            ModuleName, FileName, !IO),
-        % XXX _NumErrors
-        write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
-            !IO),
-        io.write_strings(["Error reading interface files.\n",
-            "`", FileName, "' not written.\n"], !IO)
+        PrefixMsg = "Error reading interface files.\n",
+        report_file_not_written(Globals, Specs0, yes(PrefixMsg),
+            ModuleName, ".int0", no, !IO)
     else
         % Module-qualify all items.
+        % XXX ITEM_LIST We don't need grab_unqual_imported_modules
+        % to include in ModuleAndImports and thus in AugCompUnit1
+        % any items that (a) generate_private_interface_int0 below
+        % will throw away, and (b) which don't help the module qualification
+        % of the items that it keeps.
         module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
             map.init, _EventSpecMap, "", _, _, _, _, _, Specs0, Specs),
         (
             Specs = [_ | _],
-            module_name_to_file_name(Globals, do_not_create_dirs, ".m",
-                ModuleName, FileName, !IO),
-            % XXX _NumErrors
-            write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
-                !IO),
-            io.write_strings(["`", FileName, "' not written.\n"], !IO)
+            report_file_not_written(Globals, Specs, no,
+                ModuleName, ".int0", no, !IO)
         ;
             Specs = [],
-
-            % Write out the `.int0' file.
-
-            AugCompUnit = aug_compilation_unit(AugModuleName,
-                _ModuleNameContext, ModuleVersionNumbers, SrcItemBlocks,
-                _DirectIntItemBlocks, _IndirectIntItemBlocks,
-                _OptItemBlocks, _IntForOptItemBlocks),
-            expect(unify(ModuleName, AugModuleName), $module, $pred,
-                "AugModuleName != ModuleName"),
-            % XXX ITEM_LIST Should pass AugCompUnit2
-            process_item_blocks_for_private_interface(ModuleName,
-                SrcItemBlocks,
-                cord.init, IntInclsCord, cord.init, ImpInclsCord,
-                cord.init, IntAvailsCord, cord.init, ImpAvailsCord,
-                cord.init, IntItemsCord, cord.init, ImpItemsCord),
-            ( if
-                map.search(ModuleVersionNumbers, ModuleName, VersionNumbers)
-            then
-                MaybeVersionNumbers = yes(VersionNumbers)
-            else
-                MaybeVersionNumbers = no
-            ),
-            IntIncls = cord.list(IntInclsCord),
-            ImpIncls = cord.list(ImpInclsCord),
-            IntAvails = cord.list(IntAvailsCord),
-            ImpAvails = cord.list(ImpAvailsCord),
-            IntItems = cord.list(IntItemsCord),
-            ImpItems = cord.list(ImpItemsCord),
-            ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int0,
-                ModuleNameContext, MaybeVersionNumbers, IntIncls, ImpIncls,
-                IntAvails, ImpAvails, IntItems, ImpItems),
+            % Construct and write out the `.int0' file.
+            generate_private_interface_int0(AugCompUnit, ParseTreeInt),
             actually_write_interface_file(Globals, SourceFileName,
-                ParseTreeInt0, MaybeTimestamp, !IO),
+                ParseTreeInt, MaybeTimestamp, !IO),
             touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
         )
     ).
+
+:- pred generate_private_interface_int0(aug_compilation_unit::in,
+    parse_tree_int::out) is det.
+
+generate_private_interface_int0(AugCompUnit, ParseTreeInt) :-
+    AugCompUnit = aug_compilation_unit(ModuleName,
+        ModuleNameContext, ModuleVersionNumbers, SrcItemBlocks,
+        _DirectIntItemBlocks, _IndirectIntItemBlocks,
+        _OptItemBlocks, _IntForOptItemBlocks),
+    process_item_blocks_for_private_interface(ModuleName, SrcItemBlocks,
+        cord.init, IntInclsCord, cord.init, ImpInclsCord,
+        cord.init, IntAvailsCord, cord.init, ImpAvailsCord,
+        cord.init, IntItemsCord, cord.init, ImpItemsCord),
+    ( if map.search(ModuleVersionNumbers, ModuleName, VersionNumbers) then
+        MaybeVersionNumbers = yes(VersionNumbers)
+    else
+        MaybeVersionNumbers = no
+    ),
+    IntIncls = cord.list(IntInclsCord),
+    ImpIncls = cord.list(ImpInclsCord),
+    IntAvails = cord.list(IntAvailsCord),
+    ImpAvails = cord.list(ImpAvailsCord),
+    IntItems = cord.list(IntItemsCord),
+    ImpItems = cord.list(ImpItemsCord),
+    ParseTreeInt = parse_tree_int(ModuleName, ifk_int0,
+        ModuleNameContext, MaybeVersionNumbers, IntIncls, ImpIncls,
+        IntAvails, ImpAvails, IntItems, ImpItems).
 
     % process_items_for_private_interface processes each item in the item
     % list of a module, as part of the process of creating .int0 files.
@@ -232,10 +227,10 @@ write_private_interface_file_int0(Globals, SourceFileName,
     %
     % - It makes any instance declarations abstract.
     %
-    % - It removes the items that divide sections from each other, and then
-    %   collects the remaining items in two lists, containing the items
-    %   that appear in the interface section and in the implementation section
-    %   respectively.
+    % - It separates the includes, avails and items into those that appear
+    %   in the interface section and in the implementation section
+    %   respectively. (There is an exception to this, marked with
+    %   an XXX below).
     %
 :- pred process_item_blocks_for_private_interface(module_name::in,
     list(src_item_block)::in,
@@ -254,51 +249,50 @@ process_item_blocks_for_private_interface(ModuleName, [ItemBlock | ItemBlocks],
         !IntItemsCord, !ImpItemsCord) :-
     ItemBlock = item_block(SrcSection, _, Incls, Avails, Items),
     (
-        (
-            SrcSection = sms_interface,
-            !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
-            !:IntAvailsCord = !.IntAvailsCord ++ cord.from_list(Avails),
-            % XXX ITEM_LIST Document why we need to add ImportAvails
-            % to !ImpAvailsCord.
-            list.filter(avail_is_import, Avails, ImportAvails),
-            !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(ImportAvails),
-            Section = ms_interface
-        ;
-            SrcSection = sms_implementation,
-            !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
-            !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(Avails),
-            Section = ms_implementation
-        ),
-        process_items_for_private_interface(ModuleName, Section, Items,
-            !IntItemsCord, !ImpItemsCord)
+        SrcSection = sms_interface,
+        !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
+        !:IntAvailsCord = !.IntAvailsCord ++ cord.from_list(Avails),
+        % XXX ITEM_LIST Document why we need to add ImportAvails
+        % to !ImpAvailsCord.
+        list.filter(avail_is_import, Avails, ImportAvails),
+        !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(ImportAvails),
+        process_items_for_private_interface(ModuleName, Items,
+            !IntItemsCord)
     ;
-        % XXX ITEM_LIST Is this the right thing to do for sms_impl_but_...?
-        SrcSection = sms_impl_but_exported_to_submodules
-        % Do nothing.
+        ( SrcSection = sms_implementation
+        ; SrcSection = sms_impl_but_exported_to_submodules
+        ),
+        % XXX ITEM_LIST our parent calls grab_unqual_imported_modules,
+        % which has traditionally NOT changed sms_implementation
+        % to sms_impl_but_exported_to_submodules even in the presence
+        % of submodules, but future factorizations of common code
+        % may change that.
+        !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
+        !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(Avails),
+        process_items_for_private_interface(ModuleName, Items,
+            !ImpItemsCord)
     ),
     process_item_blocks_for_private_interface(ModuleName, ItemBlocks,
         !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
         !IntItemsCord, !ImpItemsCord).
 
 :- pred process_items_for_private_interface(module_name::in,
-    module_section::in, list(item)::in,
-    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
+    list(item)::in, cord(item)::in, cord(item)::out) is det.
 
-process_items_for_private_interface(_ModuleName, _Section, [],
-        !IntItemsCord, !ImpItemsCord).
-process_items_for_private_interface(ModuleName, Section, [Item | Items],
-        !IntItemsCord, !ImpItemsCord) :-
-    process_item_for_private_interface(ModuleName, Section, Item,
-        !IntItemsCord, !ImpItemsCord),
-    process_items_for_private_interface(ModuleName, Section, Items,
-        !IntItemsCord, !ImpItemsCord).
+process_items_for_private_interface(_ModuleName, [],
+        !SectionItemsCord).
+process_items_for_private_interface(ModuleName, [Item | Items],
+        !SectionItemsCord) :-
+    process_item_for_private_interface(ModuleName, Item,
+        !SectionItemsCord),
+    process_items_for_private_interface(ModuleName, Items,
+        !SectionItemsCord).
 
 :- pred process_item_for_private_interface(module_name::in,
-    module_section::in, item::in,
-    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
+    item::in, cord(item)::in, cord(item)::out) is det.
 
-process_item_for_private_interface(ModuleName, Section, Item,
-        !IntItemsCord, !ImpItemsCord) :-
+process_item_for_private_interface(ModuleName, Item,
+        !SectionItemsCord) :-
     (
         ( Item = item_clause(_)
         ; Item = item_initialise(_)
@@ -321,8 +315,7 @@ process_item_for_private_interface(ModuleName, Section, Item,
             AllowedInInterface = no
         ;
             AllowedInInterface = yes,
-            add_item_to_section_items(Section, Item,
-                !IntItemsCord, !ImpItemsCord)
+            !:SectionItemsCord = cord.snoc(!.SectionItemsCord, Item)
         )
     ;
         % XXX ITEM_LIST The action here follows what this predicate used
@@ -339,15 +332,13 @@ process_item_for_private_interface(ModuleName, Section, Item,
         ; Item = item_foreign_import_module(_)
         ; Item = item_nothing(_)
         ),
-        add_item_to_section_items(Section, Item,
-            !IntItemsCord, !ImpItemsCord)
+        !:SectionItemsCord = cord.snoc(!.SectionItemsCord, Item)
     ;
         Item = item_instance(InstanceInfo),
         AbstractInstanceInfo = make_instance_abstract(InstanceInfo),
         AbstractItem = item_instance(AbstractInstanceInfo),
-        add_item_to_section_items(Section, AbstractItem,
-            !IntItemsCord, !ImpItemsCord)
-    ;
+        !:SectionItemsCord = cord.snoc(!.SectionItemsCord, AbstractItem)
+;
         Item = item_mutable(ItemMutable),
         ItemMutable = item_mutable_info(MutableName,
             _OrigType, Type, _OrigInst, Inst, _Value, _Varset, Attrs,
@@ -361,10 +352,10 @@ process_item_for_private_interface(ModuleName, Section, Item,
                 MutableName, Type, Inst, Context),
             ConstantGetPredDeclItem = item_pred_decl(ConstantGetPredDecl),
             ConstantSetPredDeclItem = item_pred_decl(ConstantSetPredDecl),
-            add_item_to_section_items(Section, ConstantGetPredDeclItem,
-                !IntItemsCord, !ImpItemsCord),
-            add_item_to_section_items(Section, ConstantSetPredDeclItem,
-                !IntItemsCord, !ImpItemsCord)
+            !:SectionItemsCord =
+                cord.snoc(!.SectionItemsCord, ConstantGetPredDeclItem),
+            !:SectionItemsCord =
+                cord.snoc(!.SectionItemsCord, ConstantSetPredDeclItem)
         ;
             ConstantInterface = mutable_not_constant,
             StdGetPredDecl = std_get_pred_decl(ModuleName,
@@ -373,10 +364,10 @@ process_item_for_private_interface(ModuleName, Section, Item,
                 MutableName, Type, Inst, Context),
             StdGetPredDeclItem = item_pred_decl(StdGetPredDecl),
             StdSetPredDeclItem = item_pred_decl(StdSetPredDecl),
-            add_item_to_section_items(Section, StdGetPredDeclItem,
-                !IntItemsCord, !ImpItemsCord),
-            add_item_to_section_items(Section, StdSetPredDeclItem,
-                !IntItemsCord, !ImpItemsCord),
+            !:SectionItemsCord =
+                cord.snoc(!.SectionItemsCord, StdGetPredDeclItem),
+            !:SectionItemsCord =
+                cord.snoc(!.SectionItemsCord, StdSetPredDeclItem),
 
             IOStateInterface = mutable_var_attach_to_io_state(Attrs),
             (
@@ -387,27 +378,14 @@ process_item_for_private_interface(ModuleName, Section, Item,
                     MutableName, Type, Inst, Context),
                 IOGetPredDeclItem = item_pred_decl(IOGetPredDecl),
                 IOSetPredDeclItem = item_pred_decl(IOSetPredDecl),
-                add_item_to_section_items(Section, IOGetPredDeclItem,
-                    !IntItemsCord, !ImpItemsCord),
-                add_item_to_section_items(Section, IOSetPredDeclItem,
-                    !IntItemsCord, !ImpItemsCord)
+                !:SectionItemsCord =
+                    cord.snoc(!.SectionItemsCord, IOGetPredDeclItem),
+                !:SectionItemsCord =
+                    cord.snoc(!.SectionItemsCord, IOSetPredDeclItem)
             ;
                 IOStateInterface = mutable_dont_attach_to_io_state
             )
         )
-    ).
-
-:- pred add_item_to_section_items(module_section::in, item::in,
-    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
-:- pragma inline(add_item_to_section_items/6).
-
-add_item_to_section_items(Section, Item, !IntItemsCord, !ImpItemsCord) :-
-    (
-        Section = ms_interface,
-        !:IntItemsCord = cord.snoc(!.IntItemsCord, Item)
-    ;
-        Section = ms_implementation,
-        !:ImpItemsCord = cord.snoc(!.ImpItemsCord, Item)
     ).
 
 %---------------------------------------------------------------------------%
@@ -432,32 +410,23 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
         module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit0,
             !:Specs, Errors),
         ( if set.is_non_empty(Errors) then
-            % XXX _NumErrors
-            write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
-                !IO),
-            module_name_to_file_name(Globals, do_not_create_dirs, ".int",
-                ModuleName, IntFileName, !IO),
-            module_name_to_file_name(Globals, do_not_create_dirs, ".int2",
-                ModuleName, Int2FileName, !IO),
-            io.write_strings(["Error reading short interface files.\n",
-                "`", IntFileName, "' and ",
-                "`", Int2FileName, "' not written.\n"], !IO)
+            PrefixMsg = "Error reading short interface files.\n",
+            report_file_not_written(Globals, !.Specs, yes(PrefixMsg),
+                ModuleName, ".int", yes(".int2"), !IO)
         else
             % Module-qualify all items.
             module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
                 map.init, _, "", _, _, _, _, _, !Specs),
 
-            % We want to finish writing the interface file (and keep
+            % We want to finish writing the interface files (and keep
             % the exit status at zero) if we found some warnings.
             globals.set_option(halt_at_warn, bool(no),
                 Globals, NoHaltAtWarnGlobals),
             write_error_specs(!.Specs, NoHaltAtWarnGlobals,
                 0, _NumWarnings, 0, NumErrors, !IO),
             ( if NumErrors > 0 then
-                module_name_to_file_name(Globals, do_not_create_dirs, ".int",
-                    ModuleName, IntFileName, !IO),
-                io.write_strings(["`", IntFileName, "' ", "not written.\n"],
-                    !IO)
+                report_file_not_written(Globals, [], no,
+                    ModuleName, ".int", yes(".int2"), !IO)
             else
                 % Strip out the imported interfaces. Assertions are also
                 % stripped since they should only be written to .opt files.
@@ -1191,7 +1160,7 @@ accumulate_modules(TypeCtor, !Modules) :-
         set.insert(ModuleName, !Modules)
     ;
         SymName = unqualified(_),
-        unexpected($module, $pred, "unqualified type encountered")
+        unexpected($pred, "unqualified type encountered")
     ).
 
     % Given a type, return the set of user-defined type constructors
@@ -1331,7 +1300,7 @@ accumulate_requirements_of_impl_from_constraint(Constraint, !Modules) :-
         set.insert(ModuleName, !Modules)
     ;
         ClassName = unqualified(_),
-        unexpected($module, $pred, "unknown typeclass in constraint")
+        unexpected($pred, "unknown typeclass in constraint")
     ),
     accumulate_modules_from_constraint_arg_types(ArgTypes, !Modules).
 
@@ -1460,7 +1429,7 @@ actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
         % Find the timestamp of the current module.
         (
             MaybeTimestamp = no,
-            unexpected($module, $pred,
+            unexpected($pred,
                 "with `--smart-recompilation', timestamp not read")
         ;
             MaybeTimestamp = yes(Timestamp)
@@ -1787,6 +1756,43 @@ strip_foreign_import_items([Item | Items], !ItemsCord) :-
         !:ItemsCord = cord.snoc(!.ItemsCord, Item)
     ),
     strip_foreign_import_items(Items, !ItemsCord).
+
+%---------------------------------------------------------------------------%
+
+:- pred report_file_not_written(globals::in, list(error_spec)::in,
+    maybe(string)::in, module_name::in, string::in, maybe(string)::in,
+    io::di, io::uo) is det.
+
+report_file_not_written(Globals, Specs, MaybePrefixMsg,
+        ModuleName, SuffixA, MaybeSuffixB, !IO) :-
+    % XXX _NumErrors
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+    (
+        MaybePrefixMsg = no
+    ;
+        MaybePrefixMsg = yes(PrefixMsg),
+        io.write_string(PrefixMsg, !IO)
+    ),
+    % We use write_error_spec to print the message the interface file or
+    % files not being written in order to wrap the message if it is
+    % longer than the line length.
+    module_name_to_file_name(Globals, do_not_create_dirs, SuffixA,
+        ModuleName, IntAFileName, !IO),
+    (
+        MaybeSuffixB = no,
+        NotWrittenPieces = [quote(IntAFileName), words("not written."), nl]
+    ;
+        MaybeSuffixB = yes(SuffixB),
+        module_name_to_file_name(Globals, do_not_create_dirs, SuffixB,
+            ModuleName, IntBFileName, !IO),
+        NotWrittenPieces = [quote(IntAFileName), words("and"),
+            quote(IntBFileName), words("not written."), nl]
+    ),
+    NotWrittenMsg = error_msg(no, treat_as_first, 0,
+        [always(NotWrittenPieces)]),
+    NotWrittenSpec = error_spec(severity_informational, phase_read_files,
+        [NotWrittenMsg]),
+    write_error_spec(NotWrittenSpec, Globals, 0, _, 0, _, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.write_module_interface_files.

@@ -2,8 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Regression test: the Mercury compiler of Mon Mar 2, 1998
-% failed to report an error for this test case.
+% Regression test: the Mercury compiler of Mon Mar 2, 1998 failed to report
+% an error for this test case. The .err_exp2 file is for --use-subdirs.
 
 :- module missing_interface_import.
 :- interface.

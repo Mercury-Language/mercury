@@ -13,4 +13,5 @@ missing_interface_import.m:010:   `missing_interface_import.q'/1:
 missing_interface_import.m:010:   error: undefined type `list'/1.
 missing_interface_import.m:010:   (The module `list' has not been imported in
 missing_interface_import.m:010:   the interface.)
-`Mercury/ints/missing_interface_import.int' not written.
+`Mercury/ints/missing_interface_import.int' and
+  `Mercury/int2s/missing_interface_import.int2' not written.
