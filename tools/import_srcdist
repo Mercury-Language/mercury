@@ -1,0 +1,55 @@
+#!/bin/sh
+# Copyright (C) 2019 The Mercury team.
+#
+# This script imports a Mercury source distribution tarball into the
+# mercury-srcdist repository.
+#
+
+set -eu
+
+if test "$#" -ne 1
+then
+    echo "Usage: $0 mercury-srcdist-version.tar.{gz,xz}"
+    exit 1
+fi
+
+archive=$1
+if test ! -f "$archive"
+then
+    echo "Expected file: $archive" >&2
+    exit 1
+fi
+
+basename=$(basename "$archive")
+basename=${basename%.tar.*}
+version=${basename#mercury-srcdist-}
+version=${version#mercury-compiler-}
+tag=$version
+
+# Sanity check.
+case $version in
+    rotd-20??-??-??*) ;;
+    ??.??*) ;;
+    *)
+        echo "Unexpected version: $version" >&2
+        exit 1
+        ;;
+esac
+
+existtag=$( git tag -l "$tag" )
+if test "$existtag" = "$tag"
+then
+    echo "Tag already exists: $tag"
+    exit 0
+fi
+
+# Hard code the initial commit in case the user runs this script in an
+# unexpected workspace.
+#initialcommit=$( git rev-list --max-parents=0 HEAD | tail -n 1 )
+initialcommit=9101f6d96bc9d0e2ec0f84048d85b00c4826a595
+git checkout --detach "$initialcommit"
+git clean -fdxq .
+tar xf "$archive" --strip-components=1
+git add .
+git commit -q -m "Imported $basename"
+git tag -a -m "Tag $version" "$tag"
