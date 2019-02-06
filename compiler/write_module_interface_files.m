@@ -118,7 +118,6 @@
 :- import_module recompilation.
 :- import_module recompilation.version.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
 :- import_module list.
@@ -443,8 +442,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
 
 generate_interface_int1_int2(Globals, AugCompUnit,
         ParseTreeInt1, ParseTreeInt2, InterfaceSpecs) :-
-    some [!IntIncls, !ImpIncls, !IntAvails, !ImpAvails,
-        !IntItems, !ImpItems]
+    some [!IntAvails, !ImpAvails, !IntItems, !ImpItems]
     (
         % Strip out the imported interfaces. Assertions are also
         % stripped since they should only be written to .opt files.
@@ -458,7 +456,7 @@ generate_interface_int1_int2(Globals, AugCompUnit,
             _DirectIntItemBlocks, _IndirectIntItemBlocks,
             _OptItemBlocks, _IntForOptItemBlocks),
         src_item_blocks_to_int_imp_items(SrcItemBlocks,
-            !:IntIncls, !:ImpIncls, !:IntAvails, !:ImpAvails,
+            IntIncls, ImpIncls, !:IntAvails, !:ImpAvails,
             !:IntItems, !:ImpItems),
         strip_unnecessary_impl_defns(!IntAvails, !ImpAvails,
             !IntItems, !ImpItems),
@@ -467,14 +465,14 @@ generate_interface_int1_int2(Globals, AugCompUnit,
         report_and_strip_clauses_in_items(!ImpItems,
             InterfaceSpecs0, InterfaceSpecs1),
         ToCheckIntItemBlock = item_block(ms_interface,
-            ModuleNameContext, !.IntIncls, !.IntAvails, !.IntItems),
+            ModuleNameContext, IntIncls, !.IntAvails, !.IntItems),
         check_interface_item_blocks_for_no_exports(Globals,
             ModuleName, ModuleNameContext, [ToCheckIntItemBlock],
             InterfaceSpecs1, InterfaceSpecs),
         % The MaybeVersionNumbers we put into ParseTreeInt1 and
         % ParseTreeInt2 are dummies. If we want to generate version
-        % numbers in interface files, the two calls below to
-        % actually_write_interface_file will do it.
+        % numbers in interface files, the two calls in our caller
+        % to actually_write_interface_file will do it.
         % XXX BOTH of those calls will do it. This should not
         % be necessary; since the .int2 file is a shorter version
         % of the .int file, it should be faster to compute the
@@ -496,7 +494,7 @@ generate_interface_int1_int2(Globals, AugCompUnit,
         DummyMaybeVersionNumbers = no,
         ParseTreeInt1 = parse_tree_int(ModuleName, ifk_int,
             ModuleNameContext, DummyMaybeVersionNumbers,
-            !.IntIncls, !.ImpIncls, !.IntAvails, !.ImpAvails,
+            IntIncls, ImpIncls, !.IntAvails, !.ImpAvails,
             !.IntItems, !.ImpItems),
         % XXX ITEM_LIST Couldn't we get ShortIntItems and
         % ShortImpItems without constructing BothRawItemBlocks?
@@ -505,7 +503,7 @@ generate_interface_int1_int2(Globals, AugCompUnit,
         % from someplace else as well.
         int_imp_items_to_item_blocks(ModuleNameContext,
             ms_interface, ms_implementation,
-            !.IntIncls, !.ImpIncls, !.IntAvails, !.ImpAvails,
+            IntIncls, ImpIncls, !.IntAvails, !.ImpAvails,
             !.IntItems, !.ImpItems, BothRawItemBlocks),
         get_short_interface_from_raw_item_blocks(BothRawItemBlocks,
             ShortIntIncls, ShortImpIncls,
@@ -514,7 +512,7 @@ generate_interface_int1_int2(Globals, AugCompUnit,
         % The MaybeVersionNumbers in ParseTreeInt is a dummy.
         % If the want to generate version numbers in interface files,
         % this will be by the call to actually_write_interface_file
-        % below.
+        % in our caller.
         ParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
             ModuleNameContext, DummyMaybeVersionNumbers,
             ShortIntIncls, ShortImpIncls, ShortIntAvails, ShortImpAvails,
@@ -607,8 +605,6 @@ strip_assertions_in_items(Items0, Items) :-
 
 strip_assertions_in_items_acc([], !RevItems).
 strip_assertions_in_items_acc([Item | Items], !RevItems) :-
-    % If this code ever changes to care about the order of the items,
-    % you will need to modify strip_imported_items_and_assertions.
     ( if
         Item = item_promise(ItemPromise),
         ItemPromise = item_promise_info(promise_type_true, _, _, _, _, _)
@@ -627,73 +623,59 @@ strip_assertions_in_items_acc([Item | Items], !RevItems) :-
     list(item)::in, list(item)::out, list(item)::in, list(item)::out) is det.
 
 strip_unnecessary_impl_defns(!IntAvails, !ImpAvails, !IntItems, !ImpItems) :-
-    some [!IntTypesMap, !ImpTypesMap] (
-        map.init(!:IntTypesMap),
-        map.init(!:ImpTypesMap),
-        gather_type_defns_in_section(ms_interface,
-            !IntItems, !IntTypesMap),
-        gather_type_defns_in_section(ms_implementation,
-            !ImpItems, !ImpTypesMap),
-        BothTypesMap = multi_map.merge(!.IntTypesMap, !.ImpTypesMap),
+    gather_type_defns_in_section(ms_interface,
+        !IntItems, multi_map.init, IntTypesMap),
+    gather_type_defns_in_section(ms_implementation,
+        !ImpItems, multi_map.init, ImpTypesMap),
+    BothTypesMap = multi_map.merge(IntTypesMap, ImpTypesMap),
 
-        % Work out which module imports in the implementation section of
-        % the interface are required by the definitions of equivalence
-        % types and dummy types in the implementation.
-        get_requirements_of_impl_exported_types(!.IntTypesMap, !.ImpTypesMap,
-            BothTypesMap, NecessaryDummyTypeCtors,
-            NecessaryAbsImpExpTypeCtors, NecessaryTypeImpImports),
-        set.union(NecessaryDummyTypeCtors, NecessaryAbsImpExpTypeCtors,
-            AllNecessaryTypeCtors),
+    % Work out which module imports in the implementation section of
+    % the interface are required by the definitions of equivalence
+    % types and dummy types in the implementation.
+    get_requirements_of_impl_exported_types(IntTypesMap, ImpTypesMap,
+        BothTypesMap, NecessaryTypeCtors, NecessaryTypeImpImports),
 
-        % Work out which module imports in the implementation section of
-        % the interface file are required by the definitions of typeclasses
-        % in the implementation. Specifically, we require the ones
-        % that are needed by any constraints on the typeclasses.
-        get_requirements_of_impl_typeclasses_in_items(!.ImpItems,
-            NecessaryTypeclassImpImports),
+    % Work out which module imports in the implementation section of
+    % the interface file are required by the definitions of typeclasses
+    % in the implementation. Specifically, we require the ones
+    % that are needed by any constraints on the typeclasses.
+    get_requirements_of_impl_typeclasses_in_items(!.ImpItems,
+        NecessaryTypeclassImpImports),
 
-        NecessaryImpImports = set.union(NecessaryTypeImpImports,
-            NecessaryTypeclassImpImports),
+    NecessaryImpImports = set.union(NecessaryTypeImpImports,
+        NecessaryTypeclassImpImports),
 
-        % If a type in the implementation section isn't dummy and doesn't have
-        % foreign type alternatives, make it abstract.
-        map.map_values_only(make_impl_type_abstract(BothTypesMap),
-            !ImpTypesMap),
+    % If a type in the implementation section isn't dummy and doesn't have
+    % foreign type alternatives, make it abstract.
+    map.map_values_only(make_impl_type_abstract(BothTypesMap),
+        ImpTypesMap, AbstractImpTypesMap),
 
-        % If there is an exported type declaration for a type with an abstract
-        % declaration in the implementation (usually it will originally
-        % have been a d.u. type), remove the declaration in the implementation.
-        % Don't remove `type_is_abstract_enum' declarations, though.
-        %
-        % XXX This comment doesn't match the code.
-        map.foldl(find_removable_abstract_exported_types(!.IntTypesMap),
-            !.ImpTypesMap, set.init, RemovableAbstractExportedTypes),
-        set.foldl(multi_map.delete, RemovableAbstractExportedTypes,
-            !ImpTypesMap),
+    % If there is an exported type declaration for a type with an abstract
+    % declaration in the implementation (usually it will originally
+    % have been a d.u. type), remove the declaration in the implementation.
+    % Don't remove `type_is_abstract_enum' declarations, though.
+    %
+    % XXX This comment doesn't match the code.
+    map.foldl(find_removable_abstract_exported_types(IntTypesMap),
+        AbstractImpTypesMap, set.init, RemovableAbstractExportedTypes),
+    set.foldl(multi_map.delete, RemovableAbstractExportedTypes,
+        AbstractImpTypesMap, AbstractFilteredImpTypesMap),
 
-        map.foldl_values(add_type_defn_items, !.ImpTypesMap, !ImpItems),
+    map.foldl_values(add_type_defn_items, AbstractFilteredImpTypesMap,
+        !ImpItems),
 
-        find_need_imports(!.ImpItems, NeedImports, NeedForeignImports),
-        (
-            NeedImports = need_imports,
-            strip_unnecessary_impl_imports(NecessaryImpImports, !ImpAvails)
-        ;
-            NeedImports = dont_need_imports,
-            !:ImpAvails = []
-        ),
-        strip_unnecessary_impl_defns_in_items(!.ImpItems, NeedForeignImports,
-            !.IntTypesMap, AllNecessaryTypeCtors, cord.init, ItemsCord),
-        !:ImpItems = cord.list(ItemsCord),
+    find_need_imports(!.ImpItems, NeedImports, NeedForeignImports),
+    (
+        NeedImports = need_imports,
+        strip_unnecessary_impl_imports(NecessaryImpImports, !ImpAvails)
+    ;
+        NeedImports = dont_need_imports,
+        !:ImpAvails = []
+    ),
 
-        (
-            !.ImpItems = []
-        ;
-            !.ImpItems = [_ | _],
-            standardize_items(!ImpItems)
-        ),
-        standardize_imports(!IntAvails),
-        standardize_imports(!ImpAvails)
-    ).
+    strip_unnecessary_impl_defns_in_items(!.ImpItems, NeedForeignImports,
+        IntTypesMap, NecessaryTypeCtors, cord.init, ItemsCord),
+    !:ImpItems = cord.list(ItemsCord).
 
     % See the comment on the one call above.
     %
@@ -704,13 +686,17 @@ strip_unnecessary_impl_defns(!IntAvails, !ImpAvails, !IntItems, !ImpItems) :-
 find_removable_abstract_exported_types(IntTypesMap,
         ImpTypeCtor, ImpItemTypeDefnInfos, !AbstractExportedTypes) :-
     ( if
-        all [ImpItemTypeDefnInfo] (
+        all [ImpItemTypeDefnInfo]
+        (
             list.member(ImpItemTypeDefnInfo, ImpItemTypeDefnInfos)
-        => (
-            ImpItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
-            TypeDefn = parse_tree_abstract_type(Details),
-            Details \= abstract_type_fits_in_n_bits(_)
-        )),
+        =>
+            (
+                ImpItemTypeDefnInfo =
+                    item_type_defn_info(_, _, TypeDefn, _, _, _),
+                TypeDefn = parse_tree_abstract_type(Details),
+                Details \= abstract_type_fits_in_n_bits(_)
+            )
+        ),
         multi_map.contains(IntTypesMap, ImpTypeCtor)
     then
         set.insert(ImpTypeCtor, !AbstractExportedTypes)
@@ -727,130 +713,6 @@ add_type_defn_items([ItemTypeDefnInfo | ItemTypeDefnInfos], !ImpItems) :-
     add_type_defn_items(ItemTypeDefnInfos, !ImpItems).
 
 %---------------------------------------------------------------------------%
-
-:- pred standardize_imports(list(item_avail)::in, list(item_avail)::out)
-    is det.
-
-standardize_imports(Avails0, Avails) :-
-    standardize_imports_build_map(Avails0, map.init, Map),
-    map.to_assoc_list(Map, AssocList),
-    rebuild_imports(AssocList, Avails).
-
-:- type module_import_info
-    --->    module_import_info(import_or_use, prog_context, int).
-
-:- pred standardize_imports_build_map(list(item_avail)::in,
-    map(module_name, module_import_info)::in,
-    map(module_name, module_import_info)::out) is det.
-
-standardize_imports_build_map([], !Map).
-standardize_imports_build_map([Avail | Avails], !Map) :-
-    (
-        Avail = avail_import(avail_import_info(ModuleName, Context, SeqNum)),
-        ImportOrUse = import_decl
-    ;
-        Avail = avail_use(avail_use_info(ModuleName, Context, SeqNum)),
-        ImportOrUse = use_decl
-    ),
-    ( if map.search(!.Map, ModuleName, OldInfo) then
-        OldInfo = module_import_info(OldImportOrUse, OldContext, _OldSeqNum),
-        ( if ImportOrUse = OldImportOrUse then
-            % If we see two `:- import_module' or two `:- use_module'
-            % declarations for the same module, we keep the textually
-            % earlier one. (It shouldn't matter which one we keep, since
-            % our caller shouldn't use the contexts, but just in case
-            % that changes later, ...)
-            ( if compare((<), Context, OldContext) then
-                Info = module_import_info(ImportOrUse, Context, SeqNum),
-                map.det_update(ModuleName, Info, !Map)
-            else
-                true
-            )
-        else
-            % If we see both `:- import_module' and `:- use_module' for a
-            % module, we keep the import, since the use doesn't allow
-            % any references the import doesn't.
-            ( if ImportOrUse = import_decl, OldImportOrUse = use_decl then
-                Info = module_import_info(ImportOrUse, Context, SeqNum),
-                map.det_update(ModuleName, Info, !Map)
-            else
-                % The import is already the one in the map.
-                true
-            )
-        )
-    else
-        Info = module_import_info(ImportOrUse, Context, SeqNum),
-        map.det_insert(ModuleName, Info, !Map)
-    ),
-    standardize_imports_build_map(Avails, !Map).
-
-:- pred rebuild_imports(assoc_list(module_name, module_import_info)::in,
-    list(item_avail)::out) is det.
-
-rebuild_imports([], []).
-rebuild_imports([Pair | Pairs], [Avail | Avails]) :-
-    Pair = ModuleName - module_import_info(ImportOrUse, Context, SeqNum),
-    (
-        ImportOrUse = import_decl,
-        Avail = avail_import(avail_import_info(ModuleName, Context, SeqNum))
-    ;
-        ImportOrUse = use_decl,
-        Avail = avail_use(avail_use_info(ModuleName, Context, SeqNum))
-    ),
-    rebuild_imports(Pairs, Avails).
-
-%---------------------------------------------------------------------------%
-
-:- pred standardize_items(list(item)::in, list(item)::out) is det.
-
-standardize_items(Items0, Items) :-
-    do_standardize_impl_items(Items0, [], RevRemainderItems,
-        [], TypeDefnInfos),
-    list.reverse(RevRemainderItems, RemainderItems),
-    TypeDefnItems = list.map(wrap_type_defn_item, TypeDefnInfos),
-    Items = TypeDefnItems ++ RemainderItems.
-
-:- func wrap_type_defn_item(item_type_defn_info) = item.
-
-wrap_type_defn_item(ItemTypeDefn) = item_type_defn(ItemTypeDefn).
-
-:- pred do_standardize_impl_items(list(item)::in,
-    list(item)::in, list(item)::out,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
-
-do_standardize_impl_items([], !RevRemainderItems, !TypeDefns).
-do_standardize_impl_items([Item | Items], !RevRemainderItems, !TypeDefns) :-
-    ( if Item = item_type_defn(ItemTypeDefn) then
-        insert_type_defn(ItemTypeDefn, !TypeDefns)
-    else
-        !:RevRemainderItems = [Item | !.RevRemainderItems]
-    ),
-    do_standardize_impl_items(Items, !RevRemainderItems, !TypeDefns).
-
-:- pred insert_type_defn(item_type_defn_info::in,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
-
-insert_type_defn(New, [], [New]).
-insert_type_defn(New, [Head | Tail], Result) :-
-    New = item_type_defn_info(NewSymName, NewParams, _, _, _, _),
-    Head = item_type_defn_info(HeadSymName, HeadParams, _, _, _, _),
-    compare(CompareSymName, NewSymName, HeadSymName),
-    ( if
-        (
-            CompareSymName = (<)
-        ;
-            CompareSymName = (=),
-            list.length(NewParams, NewParamsLength),
-            list.length(HeadParams, HeadParamsLength),
-            compare(Compare, NewParamsLength, HeadParamsLength),
-            Compare = (<)
-        )
-    then
-        Result = [New, Head | Tail]
-    else
-        insert_type_defn(New, Tail, NewTail),
-        Result = [Head | NewTail]
-    ).
 
 :- pred make_impl_type_abstract(type_defn_map::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
@@ -912,6 +774,15 @@ make_impl_type_abstract(TypeDefnMap, !ItemTypeDefnInfos) :-
         % This type constructor has either no definition, or two or more
         % definitions. In either case, the error should be reported somewhere
         % else.
+        % XXX This is not true. It is perfectly oj for a type constructor
+        % to have one Mercury definition as a du type and several foreign
+        % language definitions. For these, we probably *should* process
+        % the du definition as above.
+        % XXX TYPE_REP In such cases, we should consider replacing
+        % the foreign definitions with a new kind of internal-use-only item
+        % that records the presence of foreign type definitions for the type,
+        % and lists, for each foreign language with a definition, the
+        % assertions from that definition, but no more.
         true
     ).
 
@@ -940,15 +811,15 @@ constructor_list_represents_dummy_argument_type(TypeDefnMap,
 
 constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor],
         canon, no, CoveredTypes) :-
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, Args, _Arity,
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, CtorArgs, _Arity,
         _Context),
     MaybeExistConstraints = no_exist_constraints,
     (
         % A single zero-arity constructor.
-        Args = []
+        CtorArgs = []
     ;
         % A constructor with a single dummy argument.
-        Args = [ctor_arg(_, ArgType, _)],
+        CtorArgs = [ctor_arg(_, ArgType, _)],
         ctor_arg_is_dummy_type(TypeDefnMap, ArgType, CoveredTypes) = yes
     ).
 
@@ -976,11 +847,11 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
                 ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn,
                     _, _, _),
                 TypeDefn = parse_tree_du_type(DetailsDu),
-                DetailsDu = type_details_du(TypeCtors, MaybeEqCmp,
+                DetailsDu = type_details_du(Ctors, MaybeEqCmp,
                     MaybeDirectArgCtors),
                 CoveredTypes = [Type | CoveredTypes0],
                 constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
-                    TypeCtors, MaybeEqCmp, MaybeDirectArgCtors, CoveredTypes)
+                    Ctors, MaybeEqCmp, MaybeDirectArgCtors, CoveredTypes)
             then
                 IsDummyType = yes
             else
@@ -998,8 +869,8 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
         IsDummyType = no
     ).
 
-    % get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
-    %   BothTypeMap, DummyTypeCtors, NecessaryTypeCtors, Modules):
+    % get_requirements_of_impl_exported_types(IntTypeMap, ImpTypeMap,
+    %   BothTypeMap, NecessaryTypeCtors, Modules):
     %
     % Figure out the set of abstract equivalence type constructors
     % (i.e. the types that are exported as abstract types and which are defined
@@ -1008,15 +879,15 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
     % constructors, and the set of private type constructors referred to
     % by the right hand side of any type in NecessaryTypeCtors.
     %
-    % Return in DummyTypeCtors the set of dummy type constructors.
+    % XXX Return in DummyTypeCtors the set of dummy type constructors.
     %
     % Given a du type definition in the implementation section, we should
-    % include it in AbsImplExpLhsTypeCtors if the type constructor is abstract
+    % include it in AbsImpExpLhsTypeCtors if the type constructor is abstract
     % exported and the implementation section also contains a foreign_type
     % definition of the type constructor.
     %
     % Given a enumeration type definition in the implementation section, we
-    % should include it in AbsImplExpEnumTypeCtors if the type constructor is
+    % should include it in AbsImpExpEnumTypeCtors if the type constructor is
     % abstract exported.
     %
     % Return in Modules the set of modules that define the type constructors
@@ -1024,22 +895,21 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
     %
 :- pred get_requirements_of_impl_exported_types(type_defn_map::in,
     type_defn_map::in, type_defn_map::in,
-    set(type_ctor)::out, set(type_ctor)::out, set(module_name)::out) is det.
+    set(type_ctor)::out, set(module_name)::out) is det.
 
-get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
-        BothTypeMap, DummyTypeCtors, NecessaryTypeCtors, Modules) :-
-    multi_map.to_flat_assoc_list(ImplTypeMap, ImplTypes),
+get_requirements_of_impl_exported_types(IntTypesMap, ImpTypeMap,
+        BothTypeMap, NecessaryTypeCtors, NecessaryTypeImpModules) :-
+    multi_map.to_flat_assoc_list(ImpTypeMap, ImpTypes),
     list.foldl3(
-        accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypeMap),
-        ImplTypes, set.init, AbsImplExpLhsTypeCtors,
-        set.init, AbsImplExpEnumTypeCtors, set.init, DummyTypeCtors),
-    set.fold3(accumulate_abs_impl_exported_type_rhs(ImplTypeMap),
-        AbsImplExpLhsTypeCtors,
+        accumulate_abs_impl_exported_type_lhs(IntTypesMap, BothTypeMap),
+        ImpTypes, set.init, AbsImpExpLhsTypeCtors,
+        set.init, AbsImpExpEnumTypeCtors, set.init, DummyTypeCtors),
+    set.fold3(accumulate_abs_impl_exported_type_rhs(ImpTypeMap),
+        AbsImpExpLhsTypeCtors,
         set.init, AbsEqvRhsTypeCtors, set.init, ForeignDuFieldTypeCtors,
-        set.init, Modules),
-    NecessaryTypeCtors = set.union_list([AbsImplExpLhsTypeCtors,
-        AbsEqvRhsTypeCtors, ForeignDuFieldTypeCtors,
-        AbsImplExpEnumTypeCtors]).
+        set.init, NecessaryTypeImpModules),
+    NecessaryTypeCtors = set.union_list([DummyTypeCtors, AbsImpExpLhsTypeCtors,
+        AbsEqvRhsTypeCtors, ForeignDuFieldTypeCtors, AbsImpExpEnumTypeCtors]).
 
 :- pred accumulate_abs_impl_exported_type_lhs(type_defn_map::in,
     type_defn_map::in, pair(type_ctor, item_type_defn_info)::in,
@@ -1047,23 +917,23 @@ get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
-accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
+accumulate_abs_impl_exported_type_lhs(IntTypesMap, BothTypesMap,
         TypeCtor - ItemTypeDefnInfo, !AbsEqvLhsTypeCtors,
-        !AbsImplExpEnumTypeCtors, !DummyTypeCtors) :-
+        !AbsImpExpEnumTypeCtors, !DummyTypeCtors) :-
     % A type may have multiple definitions because it may be defined both
     % as a foreign type and as a Mercury type. We grab any equivalence types
     % that are in there.
     ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
     (
         TypeDefn = parse_tree_eqv_type(_),
-        ( if map.search(InterfaceTypeMap, TypeCtor, _) then
+        ( if map.search(IntTypesMap, TypeCtor, _) then
             set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
         else
             true
         )
     ;
         TypeDefn = parse_tree_foreign_type(_),
-        ( if map.search(InterfaceTypeMap, TypeCtor, _) then
+        ( if map.search(IntTypesMap, TypeCtor, _) then
             set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
         else
             true
@@ -1072,10 +942,10 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu = type_details_du(Ctors, MaybeEqCmp, MaybeDirectArgCtors),
         ( if
-            map.search(InterfaceTypeMap, TypeCtor, _),
+            map.search(IntTypesMap, TypeCtor, _),
             du_type_is_enum(DetailsDu, _NumBits)
         then
-            set.insert(TypeCtor, !AbsImplExpEnumTypeCtors)
+            set.insert(TypeCtor, !AbsImpExpEnumTypeCtors)
         else if
             constructor_list_represents_dummy_argument_type(BothTypesMap,
                 Ctors, MaybeEqCmp, MaybeDirectArgCtors)
@@ -1095,12 +965,14 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
     set(type_ctor)::in, set(type_ctor)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_abs_impl_exported_type_rhs(ImplTypeMap, TypeCtor,
+accumulate_abs_impl_exported_type_rhs(ImpTypeMap, TypeCtor,
         !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules) :-
-    ( if map.search(ImplTypeMap, TypeCtor, TypeDefns) then
-        list.foldl3(accumulate_abs_eqv_type_rhs_2(ImplTypeMap), TypeDefns,
+    ( if map.search(ImpTypeMap, TypeCtor, TypeDefns) then
+        list.foldl3(accumulate_abs_eqv_type_rhs_2(ImpTypeMap), TypeDefns,
             !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules)
     else
+        % TypeCtor is not defined in the implementation section
+        % of this module.
         true
     ).
 
@@ -1110,26 +982,33 @@ accumulate_abs_impl_exported_type_rhs(ImplTypeMap, TypeCtor,
     set(type_ctor)::in, set(type_ctor)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_abs_eqv_type_rhs_2(ImplTypeMap, ItemTypeDefnInfo,
+accumulate_abs_eqv_type_rhs_2(ImpTypeMap, ItemTypeDefnInfo,
         !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules) :-
     ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
     (
         TypeDefn = parse_tree_eqv_type(DetailsEqv),
         DetailsEqv = type_details_eqv(RhsType),
-        type_to_type_ctor_set(RhsType, set.init, RhsTypeCtors),
+        type_to_user_type_ctor_set(RhsType, set.init, RhsTypeCtors),
+
         set.difference(RhsTypeCtors, !.AbsEqvRhsTypeCtors, NewRhsTypeCtors),
-        set.fold(accumulate_modules, NewRhsTypeCtors, !Modules),
+        % Logically, we want to invoke the three calls below
+        % on all RhsTypeCtors. However, any type_ctor in RhsTypeCtors
+        % that is also in !.AbsEqvRhsTypeCtors, we have alteady done so,
+        % and since all these operations are idempotent, there is no point
+        % in invoking them again.
         set.union(NewRhsTypeCtors, !AbsEqvRhsTypeCtors),
-        set.fold3(accumulate_abs_impl_exported_type_rhs(ImplTypeMap),
+        set.fold(accumulate_modules_used_by_type_ctor, NewRhsTypeCtors,
+            !Modules),
+        set.fold3(accumulate_abs_impl_exported_type_rhs(ImpTypeMap),
             NewRhsTypeCtors, !AbsEqvRhsTypeCtors, set.init, _, !Modules)
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu = type_details_du(Ctors, _, _),
         % There must exist a foreign type alternative to this type. As the du
         % type will be exported, we require the types of all the fields.
-        ctors_to_type_ctor_set(Ctors, set.init, RhsTypeCtors),
+        ctors_to_user_type_ctor_set(Ctors, set.init, RhsTypeCtors),
         set.union(RhsTypeCtors, !ForeignDuFieldTypeCtors),
-        set.fold(accumulate_modules, RhsTypeCtors, !Modules)
+        set.fold(accumulate_modules_used_by_type_ctor, RhsTypeCtors, !Modules)
     ;
         ( TypeDefn = parse_tree_abstract_type(_)
         ; TypeDefn = parse_tree_solver_type(_)
@@ -1137,71 +1016,66 @@ accumulate_abs_eqv_type_rhs_2(ImplTypeMap, ItemTypeDefnInfo,
         )
     ).
 
-:- pred accumulate_modules(type_ctor::in,
+:- pred accumulate_modules_used_by_type_ctor(type_ctor::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_modules(TypeCtor, !Modules) :-
-    % NOTE: This assumes that everything has been module qualified.
+accumulate_modules_used_by_type_ctor(TypeCtor, !Modules) :-
     TypeCtor = type_ctor(SymName, _Arity),
     (
         SymName = qualified(ModuleName, _),
         set.insert(ModuleName, !Modules)
     ;
         SymName = unqualified(_),
+        % Our ancestor generate_interface_int1_int2 should be invoked
+        % only *after* the module qualification of the augmented compilation
+        % unit whose contents we are now processing.
         unexpected($pred, "unqualified type encountered")
     ).
 
     % Given a type, return the set of user-defined type constructors
-    % occurring in it.
+    % occurring in it. We do not gather the type constructors of
+    % builtin types, higher-order types and typle types, because
+    % are always available without any module needing to be imported,
+    % which is what our caller uses our results for.
     %
-:- pred type_to_type_ctor_set(mer_type::in,
+:- pred type_to_user_type_ctor_set(mer_type::in,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
-type_to_type_ctor_set(Type, !TypeCtors) :-
+type_to_user_type_ctor_set(Type, !TypeCtors) :-
     ( if type_to_ctor_and_args(Type, TypeCtor, Args) then
         TypeCtor = type_ctor(SymName, _Arity),
         ( if
-            type_ctor_is_higher_order(TypeCtor, _, _, _)
+            ( is_builtin_type_sym_name(SymName)
+            ; type_ctor_is_higher_order(TypeCtor, _, _, _)
+            ; type_ctor_is_tuple(TypeCtor)
+            )
         then
-            % Higher-order types are builtin so just get the type_ctors
-            % from the arguments.
-            true
-        else if
-            type_ctor_is_tuple(TypeCtor)
-        then
-            % Tuples are builtin so just get the type_ctors from the
-            % arguments.
-            true
-        else if
-            is_builtin_type_sym_name(SymName)
-        then
-            % We don't need to import these modules as the types are builtin.
             true
         else
             set.insert(TypeCtor, !TypeCtors)
         ),
-        list.foldl(type_to_type_ctor_set, Args, !TypeCtors)
+        list.foldl(type_to_user_type_ctor_set, Args, !TypeCtors)
     else
         true
     ).
 
-:- pred ctors_to_type_ctor_set(list(constructor)::in,
+:- pred ctors_to_user_type_ctor_set(list(constructor)::in,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
-ctors_to_type_ctor_set([], !TypeCtors).
-ctors_to_type_ctor_set([Ctor | Ctors], !TypeCtors) :-
+ctors_to_user_type_ctor_set([], !TypeCtors).
+ctors_to_user_type_ctor_set([Ctor | Ctors], !TypeCtors) :-
     Ctor = ctor(_, _, _, ConsArgs, _, _),
-    cons_args_to_type_ctor_set(ConsArgs, !TypeCtors),
-    ctors_to_type_ctor_set(Ctors, !TypeCtors).
+    ctor_args_to_user_type_ctor_set(ConsArgs, !TypeCtors),
+    ctors_to_user_type_ctor_set(Ctors, !TypeCtors).
 
-:- pred cons_args_to_type_ctor_set(list(constructor_arg)::in,
+:- pred ctor_args_to_user_type_ctor_set(list(constructor_arg)::in,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
-cons_args_to_type_ctor_set([], !TypeCtors).
-cons_args_to_type_ctor_set([Arg | Args], !TypeCtors) :-
+ctor_args_to_user_type_ctor_set([], !TypeCtors).
+ctor_args_to_user_type_ctor_set([Arg | Args], !TypeCtors) :-
     Arg = ctor_arg(_, Type, _),
-    type_to_type_ctor_set(Type, !TypeCtors),
-    cons_args_to_type_ctor_set(Args, !TypeCtors).
+    type_to_user_type_ctor_set(Type, !TypeCtors),
+    ctor_args_to_user_type_ctor_set(Args, !TypeCtors).
 
 %---------------------------------------------------------------------------%
 
@@ -1282,7 +1156,6 @@ accumulate_requirements_of_impl_typeclass_in_item(Item, !Modules) :-
 
 accumulate_requirements_of_impl_from_constraint(Constraint, !Modules) :-
     Constraint = constraint(ClassName, ArgTypes),
-    % NOTE: This assumes that everything has been module qualified.
     (
         ClassName = qualified(ModuleName, _),
         set.insert(ModuleName, !Modules)
@@ -1290,42 +1163,41 @@ accumulate_requirements_of_impl_from_constraint(Constraint, !Modules) :-
         ClassName = unqualified(_),
         unexpected($pred, "unknown typeclass in constraint")
     ),
-    accumulate_modules_from_constraint_arg_types(ArgTypes, !Modules).
+    accumulate_modules_from_types(ArgTypes, !Modules).
 
-:- pred accumulate_modules_from_constraint_arg_types(list(mer_type)::in,
+:- pred accumulate_modules_from_types(list(mer_type)::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_modules_from_constraint_arg_types(ArgTypes, !Modules) :-
-    list.foldl(accumulate_modules_from_constraint_arg_type, ArgTypes,
-        !Modules).
+accumulate_modules_from_types([], !Modules).
+accumulate_modules_from_types([Type | Types], !Modules) :-
+    accumulate_modules_from_type(Type, !Modules),
+    accumulate_modules_from_types(Types, !Modules).
 
-:- pred accumulate_modules_from_constraint_arg_type(mer_type::in,
+:- pred accumulate_modules_from_type(mer_type::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_modules_from_constraint_arg_type(ArgType, !Modules) :-
+accumulate_modules_from_type(Type, !Modules) :-
     (
         % Do nothing for these types - they cannot affect the set of
         % implementation imports in an interface file.
-        ( ArgType = type_variable(_, _)
-        ; ArgType = builtin_type(_)
+        ( Type = type_variable(_, _)
+        ; Type = builtin_type(_)
         )
     ;
-        ArgType = defined_type(TypeName, Args, _),
+        Type = defined_type(TypeName, ArgTypes, _),
         det_sym_name_get_module_name(TypeName, ModuleName),
         set.insert(ModuleName, !Modules),
-        accumulate_modules_from_constraint_arg_types(Args, !Modules)
+        accumulate_modules_from_types(ArgTypes, !Modules)
     ;
-        (
-            ArgType = tuple_type(Args, _)
-        ;
-            ArgType = apply_n_type(_, Args, _)
-        ;
-            ArgType = kinded_type(KindedType, _), Args = [KindedType]
-        ;
-            ArgType = higher_order_type(_, Args, _HOInstInfo, _, _)
-            % XXX accumulate modules from ho_inst_info
+        Type = kinded_type(KindedType, _),
+        accumulate_modules_from_type(KindedType, !Modules)
+    ;
+        ( Type = tuple_type(ArgTypes, _)
+        ; Type = apply_n_type(_, ArgTypes, _)
+        ; Type = higher_order_type(_, ArgTypes, _HOInstInfo, _, _)
         ),
-        accumulate_modules_from_constraint_arg_types(Args, !Modules)
+        % XXX ITEM_LIST accumulate modules from _HOInstInfo
+        accumulate_modules_from_types(ArgTypes, !Modules)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1636,9 +1508,9 @@ is_not_unnecessary_impl_import(NecessaryImports, Avail) :-
     %    pragma_foreign_import_module items.
     %
     % 2. Retain only those foreign_enum pragmas that correspond to types
-    %    that are actually defined in the interface of the module. (IntTypesMap
-    %    maps the types defined in the interface to the information about them
-    %    that is visible in the interface.)
+    %    that are actually defined in the interface of the module.
+    %    (IntTypesMap maps the types defined in the interface to the
+    %    information about them that is visible in the interface.)
     %
     % 3. Remove all type declarations for type constructors that are
     %    not in NecessaryTypeCtors.
