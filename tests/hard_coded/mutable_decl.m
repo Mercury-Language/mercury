@@ -41,8 +41,7 @@ main(!IO) :-
     io.write_list([X0, X1, X2], ", ", io.write_int, !IO),
     io.nl(!IO),
     impure set_x(0),
-    ( if impure my_member(1, [2, 3, 4, 5, 6])
-    then
+    ( if impure my_member(1, [2, 3, 4, 5, 6]) then
         io.print("what the?!\n", !IO)
     else
         true
