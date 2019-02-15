@@ -444,9 +444,9 @@ generate_interface_int1_int2(Globals, AugCompUnit,
         ParseTreeInt1, ParseTreeInt2, InterfaceSpecs) :-
     some [!IntAvails, !ImpAvails, !IntItems, !ImpItems]
     (
-        % The new way to generate the .int file.
-        generate_interface_int1(Globals, AugCompUnit, ParseTreeInt1,
-            InterfaceSpecs),
+        % The new way to generate the .int and .int2 files.
+        comp_unit_interface.generate_interfaces_int1_int2(Globals,
+            AugCompUnit, ParseTreeInt1, ParseTreeInt2, InterfaceSpecs),
 
         % The start of the old way to generate the .int file.
 
@@ -497,11 +497,11 @@ generate_interface_int1_int2(Globals, AugCompUnit,
         % version number info for the same module shouldn't cause
         % a collision in the augmented compilation unit's version
         % number map.
-        DummyMaybeVersionNumbers = no,
         IntAvailsOld = !.IntAvails,
         ImpAvailsOld = !.ImpAvails,
         IntItemsOld = !.IntItems,
         ImpItemsOld = !.ImpItems,
+        % DummyMaybeVersionNumbers = no,
         % ParseTreeInt1Old = parse_tree_int(ModuleName, ifk_int,
         %     ModuleNameContext, DummyMaybeVersionNumbers,
         %     IntIncls, ImpIncls, IntAvailsOld, ImpAvailsOld,
@@ -532,17 +532,10 @@ generate_interface_int1_int2(Globals, AugCompUnit,
             $pred, "imp avail mismatch"),
         expect(unify(IntItemsSorted, IntItemsOldSorted),
             $pred, "int item mismatch"),
-        ( if ImpItemsSorted = ImpItemsOldSorted then
-            true
-        else
-            trace [io(!IO)] (
-                io.write_string("ImpItemsSorted\n", !IO),
-                io.write_list(ImpItemsSorted, "", io.write_line, !IO),
-                io.write_string("ImpItemsOldSorted\n", !IO),
-                io.write_list(ImpItemsOldSorted, "", io.write_line, !IO)
-            ),
-            unexpected($pred, "imp item mismatch")
-        ),
+        expect(unify(ImpItemsSorted, ImpItemsOldSorted),
+            $pred, "imp item mismatch"),
+
+        % The start of the old way to generate the .int2 file.
 
         % XXX ITEM_LIST Couldn't we get ShortIntItems and
         % ShortImpItems without constructing BothRawItemBlocks?
@@ -554,17 +547,40 @@ generate_interface_int1_int2(Globals, AugCompUnit,
             IntIncls, ImpIncls, IntAvails, ImpAvails,
             IntItems, ImpItems, BothRawItemBlocks),
         get_short_interface_from_raw_item_blocks(BothRawItemBlocks,
-            ShortIntIncls, ShortImpIncls,
-            ShortIntAvails, ShortImpAvails,
-            ShortIntItems, ShortImpItems),
+            _ShortIntInclsOld, _ShortImpInclsOld,
+            ShortIntAvailsOld, ShortImpAvailsOld,
+            ShortIntItemsOld, ShortImpItemsOld),
         % The MaybeVersionNumbers in ParseTreeInt is a dummy.
         % If the want to generate version numbers in interface files,
         % this will be by the call to actually_write_interface_file
         % in our caller.
-        ParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
-            ModuleNameContext, DummyMaybeVersionNumbers,
-            ShortIntIncls, ShortImpIncls, ShortIntAvails, ShortImpAvails,
-            ShortIntItems, ShortImpItems)
+        % ParseTreeInt2Old = parse_tree_int(ModuleName, ifk_int2,
+        %     ModuleNameContext, DummyMaybeVersionNumbers,
+        %     ShortIntIncls, ShortImpIncls, ShortIntAvails, ShortImpAvails,
+        %     ShortIntItems, ShortImpItems),
+
+        % The end of the old way to generate the .int2 file.
+
+        ParseTreeInt2 = parse_tree_int(_, _, _, _,
+            _ShortIntIncls, _ShortImpIncls, ShortIntAvails, ShortImpAvails,
+            ShortIntItems, ShortImpItems),
+
+        list.sort(ShortIntAvails, ShortIntAvailsSorted),
+        list.sort(ShortImpAvails, ShortImpAvailsSorted),
+        list.sort(ShortIntAvailsOld, ShortIntAvailsOldSorted),
+        list.sort(ShortImpAvailsOld, ShortImpAvailsOldSorted),
+        list.sort(ShortIntItems, ShortIntItemsSorted),
+        list.sort(ShortImpItems, ShortImpItemsSorted),
+        list.sort(ShortIntItemsOld, ShortIntItemsOldSorted),
+        list.sort(ShortImpItemsOld, ShortImpItemsOldSorted),
+        expect(unify(ShortIntAvailsSorted, ShortIntAvailsOldSorted),
+            $pred, "short int avail mismatch"),
+        expect(unify(ShortImpAvailsSorted, ShortImpAvailsOldSorted),
+            $pred, "short imp avail mismatch"),
+        expect(unify(ShortIntItemsSorted, ShortIntItemsOldSorted),
+            $pred, "short int item mismatch"),
+        expect(unify(ShortImpItemsSorted, ShortImpItemsOldSorted),
+            $pred, "short imp item mismatch")
     ).
 
 %---------------------------------------------------------------------------%
