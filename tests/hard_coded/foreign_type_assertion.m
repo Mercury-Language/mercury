@@ -72,20 +72,25 @@ typedef coord *coord_ptr;
 "
     switch (X)
     {
-        case north: Y = east;
-                break;
+        case north:
+            Y = east;
+            break;
 
-        case east:  Y = south;
-                break;
+        case east:
+            Y = south;
+            break;
 
-        case south: Y = west;
-                break;
+        case south:
+            Y = west;
+            break;
 
-        case west:  Y = north;
-                break;
+        case west:
+            Y = north;
+            break;
 
-        default:    MR_fatal_error(""update_dir: bad dir"");
-                break;
+        default:
+            MR_fatal_error(""update_dir: bad dir"");
+            break;
     }
 ").
 
@@ -108,20 +113,25 @@ typedef coord *coord_ptr;
 "
     switch (X)
     {
-        case north: printf(""north\\n"");
-                break;
+        case north:
+            printf(""north\\n"");
+            break;
 
-        case east:  printf(""east\\n"");
-                break;
+        case east:
+            printf(""east\\n"");
+            break;
 
-        case south: printf(""south\\n"");
-                break;
+        case south:
+            printf(""south\\n"");
+            break;
 
-        case west:  printf(""west\\n"");
-                break;
+        case west:
+            printf(""west\\n"");
+            break;
 
-        default:    MR_fatal_error(""write_dir: bad dir"");
-                break;
+        default:
+            MR_fatal_error(""write_dir: bad dir"");
+            break;
     }
 
     S = S0;
