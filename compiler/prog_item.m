@@ -489,10 +489,10 @@
 
 :- type item_pragma_info
     --->    item_pragma_info(
-                pragma_type                     :: pragma_type,
-                pragma_maybe_attrs              :: item_maybe_attrs,
-                pragma_context                  :: prog_context,
-                pragma_seq_num                  :: int
+                prag_type                       :: pragma_type,
+                prag_maybe_attrs                :: item_maybe_attrs,
+                prag_context                    :: prog_context,
+                prag_seq_num                    :: int
             ).
 
 :- type item_promise_info
@@ -1481,7 +1481,7 @@ get_item_context(Item) = Context :-
         Context = ItemModeDecl ^ pfm_context
     ;
         Item = item_pragma(ItemPragma),
-        Context = ItemPragma ^ pragma_context
+        Context = ItemPragma ^ prag_context
     ;
         Item = item_promise(ItemPromise),
         Context = ItemPromise ^ prom_context

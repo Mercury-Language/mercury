@@ -444,6 +444,12 @@ generate_interface_int1_int2(Globals, AugCompUnit,
         ParseTreeInt1, ParseTreeInt2, InterfaceSpecs) :-
     some [!IntAvails, !ImpAvails, !IntItems, !ImpItems]
     (
+        % The new way to generate the .int file.
+        generate_interface_int1(Globals, AugCompUnit, ParseTreeInt1,
+            InterfaceSpecs),
+
+        % The start of the old way to generate the .int file.
+
         % Strip out the imported interfaces. Assertions are also
         % stripped since they should only be written to .opt files.
         % Check for some warnings, and then write out the `.int'
@@ -468,7 +474,7 @@ generate_interface_int1_int2(Globals, AugCompUnit,
             ModuleNameContext, IntIncls, !.IntAvails, !.IntItems),
         check_interface_item_blocks_for_no_exports(Globals,
             ModuleName, ModuleNameContext, [ToCheckIntItemBlock],
-            InterfaceSpecs1, InterfaceSpecs),
+            InterfaceSpecs1, InterfaceSpecsOld),
         % The MaybeVersionNumbers we put into ParseTreeInt1 and
         % ParseTreeInt2 are dummies. If we want to generate version
         % numbers in interface files, the two calls in our caller
@@ -492,10 +498,52 @@ generate_interface_int1_int2(Globals, AugCompUnit,
         % a collision in the augmented compilation unit's version
         % number map.
         DummyMaybeVersionNumbers = no,
-        ParseTreeInt1 = parse_tree_int(ModuleName, ifk_int,
-            ModuleNameContext, DummyMaybeVersionNumbers,
-            IntIncls, ImpIncls, !.IntAvails, !.ImpAvails,
-            !.IntItems, !.ImpItems),
+        IntAvailsOld = !.IntAvails,
+        ImpAvailsOld = !.ImpAvails,
+        IntItemsOld = !.IntItems,
+        ImpItemsOld = !.ImpItems,
+        % ParseTreeInt1Old = parse_tree_int(ModuleName, ifk_int,
+        %     ModuleNameContext, DummyMaybeVersionNumbers,
+        %     IntIncls, ImpIncls, IntAvailsOld, ImpAvailsOld,
+        %     IntItemsOld, ImpItemsOld),
+
+        % The end of the old way to generate the .int file.
+
+        ParseTreeInt1 = parse_tree_int(_ModuleName, _IntFileKind,
+            _ModuleNameContext, _DummyMaybeVersionNumbers,
+            _IntIncls, _ImpIncls, IntAvails, ImpAvails,
+            IntItems, ImpItems),
+
+        list.sort(InterfaceSpecs, InterfaceSpecsSorted),
+        list.sort(InterfaceSpecsOld, InterfaceSpecsOldSorted),
+        list.sort(IntAvails, IntAvailsSorted),
+        list.sort(ImpAvails, ImpAvailsSorted),
+        list.sort(IntAvailsOld, IntAvailsOldSorted),
+        list.sort(ImpAvailsOld, ImpAvailsOldSorted),
+        list.sort(IntItems, IntItemsSorted),
+        list.sort(ImpItems, ImpItemsSorted),
+        list.sort(IntItemsOld, IntItemsOldSorted),
+        list.sort(ImpItemsOld, ImpItemsOldSorted),
+        expect(unify(InterfaceSpecsSorted, InterfaceSpecsOldSorted),
+            $pred, "interface specs mismatch"),
+        expect(unify(IntAvailsSorted, IntAvailsOldSorted),
+            $pred, "int avail mismatch"),
+        expect(unify(ImpAvailsSorted, ImpAvailsOldSorted),
+            $pred, "imp avail mismatch"),
+        expect(unify(IntItemsSorted, IntItemsOldSorted),
+            $pred, "int item mismatch"),
+        ( if ImpItemsSorted = ImpItemsOldSorted then
+            true
+        else
+            trace [io(!IO)] (
+                io.write_string("ImpItemsSorted\n", !IO),
+                io.write_list(ImpItemsSorted, "", io.write_line, !IO),
+                io.write_string("ImpItemsOldSorted\n", !IO),
+                io.write_list(ImpItemsOldSorted, "", io.write_line, !IO)
+            ),
+            unexpected($pred, "imp item mismatch")
+        ),
+
         % XXX ITEM_LIST Couldn't we get ShortIntItems and
         % ShortImpItems without constructing BothRawItemBlocks?
         % XXX Yes, we could, but we call
@@ -503,8 +551,8 @@ generate_interface_int1_int2(Globals, AugCompUnit,
         % from someplace else as well.
         int_imp_items_to_item_blocks(ModuleNameContext,
             ms_interface, ms_implementation,
-            IntIncls, ImpIncls, !.IntAvails, !.ImpAvails,
-            !.IntItems, !.ImpItems, BothRawItemBlocks),
+            IntIncls, ImpIncls, IntAvails, ImpAvails,
+            IntItems, ImpItems, BothRawItemBlocks),
         get_short_interface_from_raw_item_blocks(BothRawItemBlocks,
             ShortIntIncls, ShortImpIncls,
             ShortIntAvails, ShortImpAvails,

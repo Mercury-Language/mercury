@@ -127,6 +127,13 @@
     %  MaybeTimestampMap, ModuleAndImports):
     %
     % Construct a module_and_imports structure another way.
+    % While the code that gets invoked when we make dependencies
+    % calls init_module_and_imports, the code that gets invoked
+    % when we generate interface files or target code uses this
+    % predicate. This difference is (or at least should be) unnecessary;
+    % we should build module_and_imports structures the same way
+    % for both tasks.
+    %
     % XXX ITEM_LIST This predicate is used by code in modules.m to create
     % a module_and_imports structure in what seems (to me, zs) to be
     % a partially filled in state. If that perception is correct,

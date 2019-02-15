@@ -77,6 +77,7 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module maybe.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 
@@ -178,7 +179,6 @@ item_needs_imports(Item) = NeedsImports :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
-        ; Item = item_type_repn(_)
         ),
         NeedsImports = yes
     ;
@@ -186,6 +186,10 @@ item_needs_imports(Item) = NeedsImports :-
         ; Item = item_nothing(_)
         ),
         NeedsImports = no
+    ;
+        Item = item_type_repn(_),
+        % These should not be generated yet.
+        unexpected($pred, "item_type_repn")
     ).
 
 item_needs_foreign_imports(Item) = Langs :-
@@ -220,10 +224,13 @@ item_needs_foreign_imports(Item) = Langs :-
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_foreign_import_module(_)
-        ; Item = item_type_repn(_)
         ; Item = item_nothing(_)
         ),
         Langs = []
+    ;
+        Item = item_type_repn(_),
+        % These should not be generated yet.
+        unexpected($pred, "item_type_repn")
     ).
 
 pragma_needs_foreign_imports(Pragma) = Langs :-
