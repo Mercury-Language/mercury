@@ -92,8 +92,7 @@
     list(mer_mode), mer_mode, maybe(determinism)) = string.
 :- pred mercury_format_func_mode_decl(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
-    string::in, string::in, U::di, U::uo) is det
-    <= output(U).
+    string::in, string::in, U::di, U::uo) is det <= output(U).
 
     % XXX Document me.
     %
