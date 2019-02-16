@@ -885,21 +885,22 @@
 :- pred read_binary_uint8(io.binary_input_stream::in, io.result(uint8)::out,
     io::di, io::uo) is det.
 
-    % The following predicates read multibyte integer values from the current
-    % binary input stream or from the specified binary input stream.
+    % The following predicates read multibyte integer values, either
+    % from the current binary input stream, or from the specified
+    % binary input stream.
     %
     % The names of these predicates have the form:
     %
     %    read_binary_<TYPE><SUFFIX>
     %
     % where <TYPE> is the name of one of the Mercury multibyte fixed size
-    % integer types. <SUFFIX> is optional and specifies what order the
-    % bytes in input stream that make up the multibyte integer occur
-    % in. It may be one of:
+    % integer types. The optional <SUFFIX> specifies the order in which
+    % the bytes that make up the multibyte integer occur in input stream.
+    % The suffix may be one of:
     %
-    %     no suffix - native byte order of the underlying platform.
-    %     "_le"     - little endian byte order.
-    %     "_be"     - big endian byte order.
+    % "_le":    the bytes are in little endian byte order.
+    % "_be":    the bytes are in big endian byte order.
+    % none:     the bytes are in the byte order of the underlying platform.
     %
 :- pred read_binary_int16(maybe_incomplete_result(int16)::out,
     io::di, io::uo) is det.
@@ -1198,20 +1199,21 @@
 
 %---------------------%
 
-    % The following predicates write multibyte integer values to the current
-    % binary output stream or to the specified output stream.
+    % The following predicates write multibyte integer values, either to the
+    % current binary output stream, or to the specified binary output stream.
     %
     % These names of these predicates have the form:
     %
     %    write_binary_<TYPE><SUFFIX>
     %
     % where <TYPE> is the name of one of the Mercury multibyte fixed size
-    % integer types. <SUFFIX> is optional and specifies the byte order in
-    % which the integer value is written to the stream.  It may be one of:
+    % integer types. The optional <SUFFIX> specifies the order in which
+    % the bytes that make up the multibyte integer are written to the stream.
+    % The suffix may be one of:
     %
-    %     no suffix - native byte order of the underlying platform.
-    %     "_le"     - little endian byte order.
-    %     "_be"     - big endian byte order.
+    % "_le":    the bytes are in little endian byte order.
+    % "_be":    the bytes are in big endian byte order.
+    % none:     the bytes are in the byte order of the underlying platform.
     %
 :- pred write_binary_int16(int16::in, io::di, io::uo) is det.
 :- pred write_binary_int16(io.binary_output_stream::in, int16::in,
@@ -3327,15 +3329,15 @@ native_byte_order_is_big_endian :-
 
 :- pragma foreign_decl("C", "
 
-// ML_N_BIT_INT_T(n) expands to the name of an n-bit unsigned integer type in
-// C.
+// ML_N_BIT_UINT_T(n) expands to the name of an n-bit unsigned integer type
+// in C, if N is 8, 16, 32 or 64.
 //
 #define ML_N_BIT_INT_T(n) \
     MR_PASTE3(uint, n, _t)
 
 // ML_REVERSE_BYTES_FUNC(n) expands to the name a function exported by the
 // Mercury runtime that can be used to reverse the bytes in an n-bit
-// unsigned integer.
+// unsigned integer, if N is 16, 32 or 64.
 //
 #define ML_REVERSE_BYTES_FUNC(n) \
     MR_PASTE3(MR_uint, n, _reverse_bytes)
@@ -3344,7 +3346,7 @@ native_byte_order_is_big_endian :-
 //     uintN_t value):
 //
 // Build an n-bit unsigned integer using the bytes stored in the array
-// 'buffer'.  The order of the bytes in the buffer are given by 'byte_order'.
+// 'buffer'. The order of the bytes in the buffer are given by 'byte_order'.
 // The result is assigned to the lvalue 'value'
 //
 // We have two definitions of this macro, one for big-endian machines
@@ -3386,10 +3388,10 @@ native_byte_order_is_big_endian :-
 // 'result_code' is set the status code (maybe_incomplete_result_code/0)
 // for the read.
 // 'result_value' is the value of the integer read on a successful read
-// or zero otherwise.
+// and zero otherwise.
 // 'result_incomplete' is the list of bytes read so far for an incomplete
-// read or the empty list otherwise.
-// 'result_error' is the errno if an I/O error occurs or zero otherwise.
+// read, and the empty list otherwise.
+// 'result_error' is the errno if an I/O error occurs, and zero otherwise.
 //
 #define ML_do_read_binary_uintN(nbytes, nbits, stream, byte_order,           \
        result_code, result_value, result_incomplete, result_error)           \
