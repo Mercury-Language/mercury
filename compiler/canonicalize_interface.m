@@ -33,10 +33,16 @@
     % all the modules that import that interface file.
     %
     % We should be able to just sort the includes, avails and items
-    % in the parse tree. The includes and avails we *can* sort, but we cannot
-    % sort the items, because the code that adds items to the parse tree
-    % (in make_hlds_passes.m) requires that e.g. the predicate declaration
-    % for a predicate precede any mode declaration for that predicate.
+    % in the parse tree. The includes and avails we *could* always sort,
+    % but for a long time we could not sort the items, because the code that
+    % added items to the parse tree did so in three passes, and the ordering
+    % of the items that were processed in the same pass mattered. For example,
+    % if the ":- mode" declaration of a predicate preceded the ":- pred"
+    % declaration of that predicate, the compiler would generate an error
+    % message. Now that we add each kind of item to the HLDS in a separate
+    % pass, we *could* just sort the list of items, but keeping the previous
+    % ordering does make interface files easier to understand for us humans.
+    %
     % The order we generate puts items in this order:
     %
     % - All type definitions.
@@ -66,20 +72,11 @@
     %   and declaration-like pragmas. These may refer to types
     %   (for e.g. type_spec pragmas), insts/modes (e.g. as part of procedure
     %   specifiers), and predicates and functions. We sort these, as the
-    %   ordering between them does not matter, with one exception: we rely
-    %   on the fact that all typeclass items come before all instance items
-    %   in the standard ordering, since make_hlds_passes.m would want to
-    %   to know about the existence of a typeclass before seeing an instance
-    %   declaration for it.
-    %
-    % - All clauses, clause-like pragmas, initialise and finalise declarations,
-    %   and mutable declarations (which contain implicit initializations).
-    %   The order of these matters, so we preserve them. All these items
-    %   may refer to any of the items in the earlier categories.
+    %   ordering between them does not matter.
     %
     % Note that while we *could* just sort the Avails, we do process them
     % a bit more, for two reasons: to remove duplicates (which sorting could
-    % do as well), and to remove the use_module declaration for modules
+    % do as well), and to remove the use_module declarations for modules
     % that have an import_module declaration as well (which sorting could
     % *not* do).
     %
@@ -105,6 +102,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module require.
 :- import_module set.
 :- import_module term.
 
@@ -119,7 +117,15 @@ order_parse_tree_int_contents(ParseTreeInt0, ParseTreeInt) :-
     order_avails(IntAvails0, IntAvails),
     order_avails(ImpAvails0, ImpAvails),
     order_items(IntItems0, IntItems),
-    order_items(ImpItems0, ImpItems),
+    (
+        ImpItems0 = [],
+        % Do not try to tear apart and then put back together
+        % the empty list of items; there is no point.
+        ImpItems = ImpItems0
+    ;
+        ImpItems0 = [_ | _],
+        order_items(ImpItems0, ImpItems)
+    ),
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntItems, ImpItems).
@@ -187,6 +193,9 @@ order_items(Items, OrderedItems) :-
         map.init, PredRelatedMap,
         set.init, SortableItems,
         cord.init, NonReorderableItemsCord),
+    NonReorderableItems = cord.list(NonReorderableItemsCord),
+    expect(unify(NonReorderableItems, []), $pred,
+        "non-reorderable items in interface"),
     some [!OrderedItemsCord] (
         !:OrderedItemsCord = cord.init,
         map.foldl_values(append_sym_name_map_items, TypeDefnMap,
@@ -199,7 +208,6 @@ order_items(Items, OrderedItems) :-
             !OrderedItemsCord),
         !:OrderedItemsCord = !.OrderedItemsCord ++
             cord.from_list(set.to_sorted_list(SortableItems)),
-        !:OrderedItemsCord = !.OrderedItemsCord ++ NonReorderableItemsCord,
         OrderedItems = cord.list(!.OrderedItemsCord)
     ).
 
@@ -259,6 +267,16 @@ order_items(Items, OrderedItems) :-
 
 %---------------------------------------------------------------------------%
 
+    % Classify the given list of items into the different categories
+    % needed by order_items.
+    %
+    % No interface file of any kind should ever include any of the kinds
+    % of items that we put into NonReorderableItems, so we could delete
+    % the !NonReorderableItemsCord argument pair. However, .opt files
+    % *may* contain such items (such as clauses). So we keep that argument
+    % pair to allow us to use this predicate to canonicalize the contents
+    % of .opt (and .trans_opt) files in the future.
+    %
 :- pred classify_items(list(item)::in,
     sym_name_items_map::in, sym_name_items_map::out,
     sym_name_items_map::in, sym_name_items_map::out,
@@ -446,7 +464,6 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
         ; Item = item_foreign_import_module(_)
-        ; Item = item_type_repn(_)
         ),
         set.insert(Item, !SortableItems)
     ;
@@ -454,9 +471,15 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
-        ; Item = item_nothing(_)
         ),
         !:NonReorderableItemsCord = cord.snoc(!.NonReorderableItemsCord, Item)
+    ;
+        Item = item_type_repn(_),
+        % We do not generate such items yet.
+        unexpected($pred, "item_type_repn")
+    ;
+        Item = item_nothing(_)
+        % Ignore these items.
     ),
     classify_items(Items, !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         !PredRelatedMap, !SortableItems, !NonReorderableItemsCord).
