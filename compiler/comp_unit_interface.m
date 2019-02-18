@@ -1464,8 +1464,13 @@ accumulate_abs_imp_exported_type_lhs_2(IntTypesMap, BothTypesMap,
             % because the only foreign types that *need* the same treatment
             % as equivalence types are foreign types that are bigger than
             % one word in size. These should be extremely rare, so it should
-            % be ok to require programmers to signal them with a specific
-            % attribute on the foreign type definition.
+            % be ok for us to require programmers to add a new attribute
+            % (named something like "may_be_larger_than_word") on the
+            % definitions of foreign types that may be larger than a word
+            % on *some* platforms (not necessarily *all* platforms).
+            % For example, a type that is defined to be implemented by
+            % the C type int64_t will be word sized on x86_64, but will be
+            % larger than word sized on plain on 32 bit x86.
             set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors)
         else
             true
