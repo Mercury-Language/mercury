@@ -30,41 +30,34 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % get_interface(RawCompUnit, InterfaceRawCompUnit):
+    % This qualifies everything as much as it can given the information
+    % in the current module and writes out the .int3 file.
+    % XXX document me better
     %
-    % We return interface sections almost intact, changing them only by
-    % making instance declarations abstract. We delete implementation
-    % sections entirely.
+    % XXX Why do we report errors NOW, as opposed to when we generate code?
     %
-    % XXX ITEM_LIST This predicate is called from module_imports.m.
-    % The caller is part of the code that implements --generate-dependencies.
-    % The code in write_module_interface_files.m that generates .int and
-    % .int2 files calls generate_pre_grab_pre_qual_item_blocks below.
-    % Since the contents of the .d and .dep files should be derived
-    % from what goes into .int and .int2 files, the fact that it uses
-    % a different predicate, and therefore a different algorithm,
-    % looks like a bug. This is almost certainly the reason why
-    % the contents put into .d files by mmc --generate-dependencies
-    % gets overwritten by *different* contents after we start generating
-    % interface files.
-    %
-    % XXX ITEM_LIST Change the outputs to two lists of includes, two lists
-    % of avails, and two lists of items, for the interface and
-    % implementation sections respectively.
-    %
-:- pred get_interface(raw_compilation_unit::in, raw_compilation_unit::out)
-    is det.
-
-    % As above, but also return ...
-    % XXX ITEM_LIST document EXACTLY what the second list of item blocks is.
-    %
-:- pred get_int_and_imp(raw_compilation_unit::in,
-    list(raw_item_block)::out, list(raw_item_block)::out) is det.
+:- pred generate_short_interface_int3(globals::in, raw_compilation_unit::in,
+    parse_tree_int::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
-    % generate_pre_grab_pre_qual_item_blocks(RawCompUnit,
+    % generate_private_interface_int0(AugCompUnit, ParseTreeInt0):
+    %
+    % Generate the private interface of a module (its .int0 file), which
+    % makes available some not-generally-available items to the other modules
+    % nested inside it.
+    %
+:- pred generate_private_interface_int0(aug_compilation_unit::in,
+    parse_tree_int::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % generate_pre_grab_pre_qual_item_blocks_int1_int2(RawCompUnit,
     %   InterfaceRawCompUnit):
+    %
+    % Prepare for the generation of .int and .int2 files by generating
+    % the part of the raw compilation unit that needs to be module qualified
+    % before the invocation of generate_interfaces_int1_int2.
     %
     % We return interface sections almost intact, changing them only by
     % making instance declarations abstract. We delete most kinds of items
@@ -97,26 +90,57 @@
     % but put the original, non-abstract instance definition in the
     % implementation section."
     %
-:- pred generate_pre_grab_pre_qual_interface(
+:- pred generate_pre_grab_pre_qual_interface_for_int1_int2(
     raw_compilation_unit::in, raw_compilation_unit::out) is det.
 
-%---------------------------------------------------------------------------%
-
-    % This qualifies everything as much as it can given the information
-    % in the current module and writes out the .int3 file.
-    % XXX document me better
-    %
-    % XXX Why do we report errors NOW, as opposed to when we generate code?
-    %
-:- pred generate_short_interface_int3(globals::in, raw_compilation_unit::in,
-    parse_tree_int::out, list(error_spec)::out) is det.
-
-%---------------------------------------------------------------------------%
-
-    % Generate the contents for the .int file.
+    % Generate the contents for the .int and .int2 files.
     %
 :- pred generate_interfaces_int1_int2(globals::in, aug_compilation_unit::in,
     parse_tree_int::out, parse_tree_int::out, list(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % XXX ITEM_LIST This predicate should not need to be exported.
+    %
+:- func clause_in_interface_warning(string, prog_context) = error_spec.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% The predicates in rest of the interface should not be needed at all.
+%
+
+    % get_interface(RawCompUnit, InterfaceRawCompUnit):
+    %
+    % We return interface sections almost intact, changing them only by
+    % making instance declarations abstract. We delete implementation
+    % sections entirely.
+    %
+    % XXX ITEM_LIST This predicate is called from module_imports.m.
+    % The caller is part of the code that implements --generate-dependencies.
+    % The code in write_module_interface_files.m that generates .int and
+    % .int2 files calls generate_pre_grab_pre_qual_item_blocks.
+    % Since the contents of the .d and .dep files should be derived
+    % from what goes into .int and .int2 files, the fact that it uses
+    % a different predicate, and therefore a different algorithm,
+    % looks like a bug. This is almost certainly the reason why
+    % the contents put into .d files by mmc --generate-dependencies
+    % gets overwritten by *different* contents after we start generating
+    % interface files.
+    %
+    % XXX ITEM_LIST Change the outputs to two lists of includes, two lists
+    % of avails, and two lists of items, for the interface and
+    % implementation sections respectively.
+    %
+:- pred get_interface(raw_compilation_unit::in, raw_compilation_unit::out)
+    is det.
+
+    % As above, but also return ...
+    % XXX ITEM_LIST document EXACTLY what the second list of item blocks is.
+    %
+:- pred get_int_and_imp(raw_compilation_unit::in,
+    list(raw_item_block)::out, list(raw_item_block)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -141,10 +165,6 @@
     list(foreign_language)::out) is det.
 
 %---------------------------------------------------------------------------%
-
-:- func clause_in_interface_warning(string, prog_context) = error_spec.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -154,6 +174,7 @@
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
@@ -169,160 +190,481 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-get_interface(RawCompUnit, InterfaceRawCompUnit) :-
+generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt, !:Specs) :-
     RawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
-    % XXX ITEM_LIST Don't compute _NonIFileItemBlocksCord
-    % just to throw it away. If we mode-specialize
-    % get_ifile_and_noifile_in_raw_item_blocks_acc for
-    % dont_gather_noifile_items, will the compiler optimize away
-    % the arguments for NoIFileItemBlocks?
-    get_ifile_and_noifile_in_raw_item_blocks_acc(dont_gather_noifile_items,
-        RawItemBlocks,
-        cord.init, IFileItemBlocksCord, cord.init, _NoIFileItemBlocksCord),
-    IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
-    % XXX ITEM_LIST The ms_interface is a guess.
-    % XXX ITEM_LIST (It seems to be a wrong guess; the compiler bootstraps
-    % even if we pass ms_implementation here.)
-    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        ms_interface, IFileItemBlocks0, IFileItemBlocks),
-    InterfaceRawCompUnit =
-        raw_compilation_unit(ModuleName, ModuleNameContext, IFileItemBlocks).
+    !:Specs = [],
+    get_short_interface_int3_from_item_blocks(RawItemBlocks,
+        cord.init, IntInclsCord, cord.init, IntAvailsCord0,
+        cord.init, IntItemsCord0, cord.init, StdFIMItemsCord,
+        do_not_need_avails, NeedAvails, need_fims(set.init), NeedFIMs,
+        implicit_langs(set.init), ImplicitLangs, !Specs),
+    IntIncls = cord.list(IntInclsCord),
+    (
+        NeedAvails = do_not_need_avails,
+        IntAvails = []
+    ;
+        NeedAvails = do_need_avails,
+        IntAvails = cord.list(IntAvailsCord0)
+    ),
+    IntItems0 = cord.list(IntItemsCord0),
+    NeedFIMs = need_fims(NeedFIMLangs),
+    ( if set.is_empty(NeedFIMLangs) then
+        IntItems = IntItems0
+    else
+        % The StdFIMItems come from the source module, while ImplicitFIMItems
+        % are created here by us based on the needs on *all* the items
+        % in the source module.
+        %
+        % XXX This code preserves old behavior. I (zs) do not understand
+        % why we want that behavior.
+        %
+        % First, why are we including in the .int3 file foreign_import_module
+        % items that refer to languages that the rest of the .int3 file does
+        % not refer to? In other words, why aren't we filtering StdFIMItems
+        % and ImplicitFIMItems and keeping only the ones whose languages
+        % are in NeedFIMLangs?
+        %
+        % Second, why do .int3 files need foreign_import_module items at all?
+        StdFIMItems = cord.list(StdFIMItemsCord),
+        ImplicitLangs = implicit_langs(ImplicitLangsSet),
+        ImplicitFIMItems = list.map(make_foreign_import(ModuleName),
+            set.to_sorted_list(ImplicitLangsSet)),
+        IntItems = IntItems0 ++ StdFIMItems ++ ImplicitFIMItems
+    ),
+    MaybeVersionNumbers = no,
+    ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int3, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, [], IntAvails, [], IntItems, []),
+    module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
+        !Specs).
 
-get_int_and_imp(RawCompUnit, IFileItemBlocks, NoIFileItemBlocks) :-
-    RawCompUnit =
-        raw_compilation_unit(ModuleName, _ModuleNameContext, RawItemBlocks),
-    get_ifile_and_noifile_in_raw_item_blocks_acc(gather_noifile_items,
-        RawItemBlocks,
-        cord.init, IFileItemBlocksCord, cord.init, NoIFileItemBlocksCord),
-    IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
-    NoIFileItemBlocks = cord.list(NoIFileItemBlocksCord),
-    % XXX ITEM_LIST The ms_interface is a guess.
-    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        ms_interface, IFileItemBlocks0, IFileItemBlocks).
+:- type need_avails
+    --->    do_not_need_avails
+    ;       do_need_avails.
 
-%---------------------------------------------------------------------------%
+:- type need_fims
+    --->    need_fims(set(foreign_language)).
 
-:- type maybe_gather_noifile_items
-    --->    dont_gather_noifile_items
-    ;       gather_noifile_items.
+:- type implicit_langs
+    --->    implicit_langs(set(foreign_language)).
 
-:- mode gather_noifile_items == in(bound(gather_noifile_items)).
-:- mode dont_gather_noifile_items == in(bound(dont_gather_noifile_items)).
+:- pred get_short_interface_int3_from_item_blocks(list(raw_item_block)::in,
+    cord(item_include)::in, cord(item_include)::out,
+    cord(item_avail)::in, cord(item_avail)::out,
+    cord(item)::in, cord(item)::out,
+    cord(item)::in, cord(item)::out,
+    need_avails::in, need_avails::out,
+    need_fims::in, need_fims::out,
+    implicit_langs::in, implicit_langs::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred get_ifile_and_noifile_in_raw_item_blocks_acc(
-    maybe_gather_noifile_items, list(raw_item_block),
-    cord(raw_item_block), cord(raw_item_block),
-    cord(raw_item_block), cord(raw_item_block)).
-:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(
-    dont_gather_noifile_items, in, in, out, in, out) is det.
-:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(
-    gather_noifile_items, in, in, out, in, out) is det.
-
-get_ifile_and_noifile_in_raw_item_blocks_acc(_,
-        [], !IFileItemBlocksCord, !NoIFileItemBlocksCord).
-get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
-        [RawItemBlock | RawItemBlocks],
-        !IFileItemBlocksCord, !NoIFileItemBlocksCord) :-
-    RawItemBlock = item_block(Section, SectionContext, Incls, Avails, Items),
+get_short_interface_int3_from_item_blocks([],
+        !IntIncls, !IntAvails, !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
+get_short_interface_int3_from_item_blocks([RawItemBlock | RawItemBlocks],
+        !IntIncls, !IntAvails, !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs) :-
+    RawItemBlock = item_block(Section, _SectionContext, Incls, Avails, Items),
     (
         Section = ms_interface,
-        IFileIncls = Incls,
-        IFileAvails = Avails,
-        NoIFileIncls = [],
-        NoIFileAvails = []
+        !:IntIncls = !.IntIncls ++ cord.from_list(Incls),
+        !:IntAvails = !.IntAvails ++ cord.from_list(Avails),
+        get_short_interface_int3_from_items(Items, !IntItems, !StdFIMItems,
+            !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs)
     ;
-        Section = ms_implementation,
-        IFileIncls = [],
-        IFileAvails = [],
+        Section = ms_implementation
+    ),
+    get_short_interface_int3_from_item_blocks(RawItemBlocks,
+        !IntIncls, !IntAvails, !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
+
+:- pred get_short_interface_int3_from_items(list(item)::in,
+    cord(item)::in, cord(item)::out,
+    cord(item)::in, cord(item)::out,
+    need_avails::in, need_avails::out,
+    need_fims::in, need_fims::out,
+    implicit_langs::in, implicit_langs::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+get_short_interface_int3_from_items([], !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
+get_short_interface_int3_from_items([Item | Items], !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs) :-
+    (
+        Item = item_type_defn(ItemTypeDefnInfo),
+        make_type_defn_abstract_type_for_int3(ItemTypeDefnInfo,
+            AbstractOrForeignItemTypeDefnInfo,
+            !NeedAvails, !NeedFIMs, !ImplicitLangs),
+        AbstractOrForeignItem =
+            item_type_defn(AbstractOrForeignItemTypeDefnInfo),
+        !:IntItems = cord.snoc(!.IntItems, AbstractOrForeignItem)
+    ;
+        Item = item_typeclass(ItemTypeClassInfo),
+        AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
+            := class_interface_abstract,
+        AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
+        !:IntItems = cord.snoc(!.IntItems, AbstractItem),
+        !:NeedAvails = do_need_avails
+    ;
+        Item = item_instance(ItemInstanceInfo),
+        AbstractItemInstanceInfo = ItemInstanceInfo ^ ci_method_instances
+            := instance_body_abstract,
+        AbstractItem = item_instance(AbstractItemInstanceInfo),
+        !:IntItems = cord.snoc(!.IntItems, AbstractItem),
+        !:NeedAvails = do_need_avails
+    ;
+        ( Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ),
+        !:IntItems = cord.snoc(!.IntItems, Item),
+        !:NeedAvails = do_need_avails
+    ;
+        Item = item_foreign_import_module(FIMInfo),
+        FIMInfo = item_foreign_import_module_info(Lang, Module, _, _),
+        StdFIMInfo = item_foreign_import_module_info(Lang, Module,
+            term.context_init, -1),
+        StdItem = item_foreign_import_module(StdFIMInfo),
+        !:StdFIMItems = cord.snoc(!.StdFIMItems, StdItem)
+    ;
+        Item = item_clause(ItemClause),
+        Context = ItemClause ^ cl_context,
+        Spec = clause_in_interface_warning("clause", Context),
+        !:Specs = [Spec | !.Specs]
+    ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, Context, _),
+        AllowedInInterface = pragma_allowed_in_interface(Pragma),
         (
-            GatherNoIFileItems = dont_gather_noifile_items,
-            NoIFileIncls = [],
-            NoIFileAvails = []
+            AllowedInInterface = no,
+            Spec = clause_in_interface_warning("pragma", Context),
+            !:Specs = [Spec | !.Specs]
         ;
-            GatherNoIFileItems = gather_noifile_items,
-            NoIFileIncls = Incls,
-            NoIFileAvails = Avails
+            AllowedInInterface = yes
+        ),
+        Langs = pragma_needs_foreign_imports(Pragma),
+        !.ImplicitLangs = implicit_langs(ImplicitLangsSet0),
+        set.insert_list(Langs, ImplicitLangsSet0, ImplicitLangsSet),
+        !:ImplicitLangs = implicit_langs(ImplicitLangsSet)
+    ;
+        Item = item_mutable(_),
+        Langs = all_foreign_languages,
+        !.ImplicitLangs = implicit_langs(ImplicitLangsSet0),
+        set.insert_list(Langs, ImplicitLangsSet0, ImplicitLangsSet),
+        !:ImplicitLangs = implicit_langs(ImplicitLangsSet)
+    ;
+        ( Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_type_repn(_)
+        ; Item = item_nothing(_)
         )
     ),
-    get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
-        Items, cord.init, IFileItemsCord, cord.init, NoIFileItemsCord),
-    IFileItems = cord.list(IFileItemsCord),
-    NoIFileItems = cord.list(NoIFileItemsCord),
-    ( if
-        IFileIncls = [],
-        IFileAvails = [],
-        IFileItems = []
-    then
-        true
-    else
-        IFileItemBlock = item_block(Section, SectionContext,
-            IFileIncls, IFileAvails, IFileItems),
-        !:IFileItemBlocksCord =
-            cord.snoc(!.IFileItemBlocksCord, IFileItemBlock)
-    ),
-    ( if
-        NoIFileIncls = [],
-        NoIFileAvails = [],
-        NoIFileItems = []
-    then
-        true
-    else
-        NoIFileItemBlock = item_block(Section, SectionContext,
-            NoIFileIncls, NoIFileAvails, NoIFileItems),
-        !:NoIFileItemBlocksCord =
-            cord.snoc(!.NoIFileItemBlocksCord, NoIFileItemBlock)
-    ),
-    get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
-        RawItemBlocks, !IFileItemBlocksCord, !NoIFileItemBlocksCord).
+    get_short_interface_int3_from_items(Items, !IntItems, !StdFIMItems,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
 
-:- pred get_ifile_and_noifile_in_items_acc(maybe_gather_noifile_items,
-    module_section, list(item),
-    cord(item), cord(item), cord(item), cord(item)).
-:- mode get_ifile_and_noifile_in_items_acc(
-    dont_gather_noifile_items, in, in, in, out, in, out) is det.
-:- mode get_ifile_and_noifile_in_items_acc(
-    gather_noifile_items, in, in, in, out, in, out) is det.
+:- pred make_type_defn_abstract_type_for_int3(item_type_defn_info::in,
+    item_type_defn_info::out,
+    need_avails::in, need_avails::out, need_fims::in, need_fims::out,
+    implicit_langs::in, implicit_langs::out) is det.
 
-get_ifile_and_noifile_in_items_acc(_, _,
-        [], !IFileItemsCord, !NoIFileItemsCord).
-get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
-        [Item | Items], !IFileItemsCord, !NoIFileItemsCord) :-
+make_type_defn_abstract_type_for_int3(ItemTypeDefn,
+        AbstractOrForeignItemTypeDefnInfo,
+        !NeedAvails, !NeedFIMs, !ImplicitLangs) :-
+    TypeDefn = ItemTypeDefn ^ td_ctor_defn,
     (
-        Section = ms_interface,
-        ( if Item = item_instance(ItemInstance) then
-            % Include the abstract version of the instance in the
-            % interface, ...
-            AbstractItemInstance = make_instance_abstract(ItemInstance),
-            AbstractItem = item_instance(AbstractItemInstance),
-            !:IFileItemsCord = cord.snoc(!.IFileItemsCord, AbstractItem),
-
-            % ... and the concrete version in the implementation.
-            (
-                GatherNoIFileItems = dont_gather_noifile_items
-            ;
-                GatherNoIFileItems = gather_noifile_items,
-                !:NoIFileItemsCord = cord.snoc(!.NoIFileItemsCord, Item)
-            )
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu =
+            type_details_du(Ctors, MaybeCanonical, _MaybeDirectArgCtors),
+        ( if du_type_is_enum(DetailsDu, NumBits) then
+            AbstractDetails = abstract_type_fits_in_n_bits(NumBits)
+        else if du_type_is_notag(Ctors, MaybeCanonical) then
+            AbstractDetails = abstract_notag_type
+        else if du_type_is_dummy(DetailsDu) then
+            AbstractDetails = abstract_dummy_type
         else
-            !:IFileItemsCord = cord.snoc(!.IFileItemsCord, Item)
+            AbstractDetails = abstract_type_general
+        ),
+        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
+            := parse_tree_abstract_type(AbstractDetails)
+    ;
+        TypeDefn = parse_tree_abstract_type(_AbstractDetails),
+        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn
+    ;
+        TypeDefn = parse_tree_solver_type(_),
+        % rafe: XXX we need to also export the details of the forwarding type
+        % for the representation and the forwarding pred for initialization.
+        AbstractDetails = abstract_solver_type,
+        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
+            := parse_tree_abstract_type(AbstractDetails)
+    ;
+        TypeDefn = parse_tree_eqv_type(_),
+        % XXX Is this right for solver types?
+        % XXX TYPE_REPN Is this right for types that are eqv to enums,
+        % or to known size ints/uints?
+        AbstractDetails = abstract_type_general,
+        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
+            := parse_tree_abstract_type(AbstractDetails)
+    ;
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
+        DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
+            Assertions),
+        % We always need the definitions of foreign types
+        % to handle inter-language interfacing correctly.
+        % XXX Even in .int3 files?
+        % However, we want to abstract away any unify and compare predicates.
+        (
+            MaybeCanonical = canon,
+            AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn
+        ;
+            MaybeCanonical = noncanon(_NonCanonical),
+            AbstractMaybeCanonical =
+                noncanon(noncanon_abstract(non_solver_type)),
+            AbstractDetailsForeign = type_details_foreign(ForeignType,
+                AbstractMaybeCanonical, Assertions),
+            AbstractForeignTypeDefn =
+                parse_tree_foreign_type(AbstractDetailsForeign),
+            AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
+                := AbstractForeignTypeDefn
+        ),
+        % XXX ITEM_LIST This preserves old behavior, but I (zs) do not see
+        % why this is needed: foreign type definitions do not contain
+        % any sym_names with whose module qualification any imported modules
+        % could help.
+        !:NeedAvails = do_need_avails,
+
+        Lang = foreign_type_language(ForeignType),
+        !.NeedFIMs = need_fims(NeedFIMLangs0),
+        set.insert(Lang, NeedFIMLangs0, NeedFIMLangs),
+        !:NeedFIMs = need_fims(NeedFIMLangs),
+
+        !.ImplicitLangs = implicit_langs(ImplicitLangsSet0),
+        set.insert(Lang, ImplicitLangsSet0, ImplicitLangsSet),
+        !:ImplicitLangs = implicit_langs(ImplicitLangsSet)
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+generate_private_interface_int0(AugCompUnit, ParseTreeInt) :-
+    AugCompUnit = aug_compilation_unit(ModuleName,
+        ModuleNameContext, ModuleVersionNumbers, SrcItemBlocks,
+        _DirectIntItemBlocks, _IndirectIntItemBlocks,
+        _OptItemBlocks, _IntForOptItemBlocks),
+    get_private_interface_int0_from_item_blocks(ModuleName, SrcItemBlocks,
+        cord.init, IntInclsCord, cord.init, ImpInclsCord,
+        cord.init, IntAvailsCord, cord.init, ImpAvailsCord,
+        cord.init, IntItemsCord, cord.init, ImpItemsCord),
+    ( if map.search(ModuleVersionNumbers, ModuleName, VersionNumbers) then
+        MaybeVersionNumbers = yes(VersionNumbers)
+    else
+        MaybeVersionNumbers = no
+    ),
+    IntIncls = cord.list(IntInclsCord),
+    ImpIncls = cord.list(ImpInclsCord),
+    IntAvails = cord.list(IntAvailsCord),
+    ImpAvails = cord.list(ImpAvailsCord),
+    IntItems = cord.list(IntItemsCord),
+    ImpItems = cord.list(ImpItemsCord),
+    ParseTreeInt = parse_tree_int(ModuleName, ifk_int0,
+        ModuleNameContext, MaybeVersionNumbers, IntIncls, ImpIncls,
+        IntAvails, ImpAvails, IntItems, ImpItems).
+
+    % get_private_interface_int0_from_item_blocks processes each item
+    % in the item blocks of a module, as part of the process of creating
+    % .int0 files.
+    %
+    % The `.int0' file contains items which are available to any module in the
+    % interface section, and items which are only available to submodules in
+    % the implementation section. The term "private interface" is ambiguous:
+    % sometimes it refers to the `.int0' file which, as just explained,
+    % contains the public interface as well. The term "private interface
+    % proper" may be used to refer to the information in the implementation
+    % section of the `.int0' file.
+    %
+    % (Historically, the `.int0' file did not distinguish between the public
+    % and private interfaces.)
+    %
+    % This predicate has several jobs.
+    %
+    % - It removes items that do not belong in the private interface,
+    %   in either sense. This includes clauses, pragmas that function as
+    %   clauses, and initialise and finalise declarations, since effectively
+    %   they also represent code.
+    %
+    % - It expands any mutable declarations into the pred and mode declarations
+    %   for their access predicates, since only these components of a
+    %   mutable declaration should be written to a private interface file.
+    %
+    % - It makes any instance declarations abstract.
+    %
+    % - It separates the includes, avails and items into those that appear
+    %   in the interface section and in the implementation section
+    %   respectively. (There is an exception to this, marked with
+    %   an XXX below).
+    %
+:- pred get_private_interface_int0_from_item_blocks(module_name::in,
+    list(src_item_block)::in,
+    cord(item_include)::in, cord(item_include)::out,
+    cord(item_include)::in, cord(item_include)::out,
+    cord(item_avail)::in, cord(item_avail)::out,
+    cord(item_avail)::in, cord(item_avail)::out,
+    cord(item)::in, cord(item)::out,
+    cord(item)::in, cord(item)::out) is det.
+
+get_private_interface_int0_from_item_blocks(_ModuleName, [],
+        !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
+        !IntItemsCord, !ImpItemsCord).
+get_private_interface_int0_from_item_blocks(ModuleName,
+        [ItemBlock | ItemBlocks],
+        !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
+        !IntItemsCord, !ImpItemsCord) :-
+    ItemBlock = item_block(SrcSection, _, Incls, Avails, Items),
+    (
+        SrcSection = sms_interface,
+        !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
+        !:IntAvailsCord = !.IntAvailsCord ++ cord.from_list(Avails),
+        % XXX ITEM_LIST Document why we need to add ImportAvails
+        % to !ImpAvailsCord.
+        list.filter(avail_is_import, Avails, ImportAvails),
+        !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(ImportAvails),
+        get_private_interface_int0_from_items(ModuleName, Items,
+            !IntItemsCord)
+    ;
+        ( SrcSection = sms_implementation
+        ; SrcSection = sms_impl_but_exported_to_submodules
+        ),
+        % XXX ITEM_LIST Our parent calls grab_unqual_imported_modules,
+        % which has traditionally NOT changed sms_implementation
+        % to sms_impl_but_exported_to_submodules even in the presence
+        % of submodules, but future factorizations of common code
+        % may change that.
+        !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
+        !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(Avails),
+        get_private_interface_int0_from_items(ModuleName, Items,
+            !ImpItemsCord)
+    ),
+    get_private_interface_int0_from_item_blocks(ModuleName, ItemBlocks,
+        !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
+        !IntItemsCord, !ImpItemsCord).
+
+:- pred get_private_interface_int0_from_items(module_name::in,
+    list(item)::in, cord(item)::in, cord(item)::out) is det.
+
+get_private_interface_int0_from_items(_ModuleName, [],
+        !SectionItemsCord).
+get_private_interface_int0_from_items(ModuleName, [Item | Items],
+        !SectionItemsCord) :-
+    get_private_interface_int0_from_item(ModuleName, Item,
+        !SectionItemsCord),
+    get_private_interface_int0_from_items(ModuleName, Items,
+        !SectionItemsCord).
+
+:- pred get_private_interface_int0_from_item(module_name::in,
+    item::in, cord(item)::in, cord(item)::out) is det.
+
+get_private_interface_int0_from_item(ModuleName, Item, !SectionItemsCord) :-
+    (
+        ( Item = item_clause(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        )
+        % Don't include in either section of the private interface.
+    ;
+        Item = item_type_repn(_)
+        % process_item_for_private_interface should be invoked only on items
+        % from the *source file*, not on items read from any interface file.
+        % Any occurrence of item_type_repns in the source file should have been
+        % caught and reported by the parsing code. If through some bug
+        % they make it here, neither reporting them again nor aborting the
+        % compiler is likely to be helpful.
+    ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        AllowedInInterface = pragma_allowed_in_interface(Pragma),
+        (
+            AllowedInInterface = no
+        ;
+            AllowedInInterface = yes,
+            !:SectionItemsCord = cord.snoc(!.SectionItemsCord, Item)
         )
     ;
-        Section = ms_implementation,
+        % XXX ITEM_LIST The action here follows what this predicate used
+        % to do before the item list change. I (zs) don't think that
+        % it does the right thing for item_nothing, but then again
+        % I don't think that such items actually reach here ...
+        ( Item = item_type_defn(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_promise(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_foreign_import_module(_)
+        ; Item = item_nothing(_)
+        ),
+        !:SectionItemsCord = cord.snoc(!.SectionItemsCord, Item)
+    ;
+        Item = item_instance(InstanceInfo),
+        AbstractInstanceInfo = make_instance_abstract(InstanceInfo),
+        AbstractItem = item_instance(AbstractInstanceInfo),
+        !:SectionItemsCord = cord.snoc(!.SectionItemsCord, AbstractItem)
+    ;
+        Item = item_mutable(ItemMutable),
+        ItemMutable = item_mutable_info(MutableName,
+            _OrigType, Type, _OrigInst, Inst, _Value, _Varset, Attrs,
+            Context, _SeqNum),
+        ConstantInterface = mutable_var_constant(Attrs),
         (
-            GatherNoIFileItems = dont_gather_noifile_items
+            ConstantInterface = mutable_constant,
+            ConstantGetPredDecl = constant_get_pred_decl(ModuleName,
+                MutableName, Type, Inst, Context),
+            ConstantSetPredDecl = constant_set_pred_decl(ModuleName,
+                MutableName, Type, Inst, Context),
+            ConstantGetPredDeclItem = item_pred_decl(ConstantGetPredDecl),
+            ConstantSetPredDeclItem = item_pred_decl(ConstantSetPredDecl),
+            !:SectionItemsCord =
+                cord.snoc(!.SectionItemsCord, ConstantGetPredDeclItem),
+            !:SectionItemsCord =
+                cord.snoc(!.SectionItemsCord, ConstantSetPredDeclItem)
         ;
-            GatherNoIFileItems = gather_noifile_items,
-            !:NoIFileItemsCord = cord.snoc(!.NoIFileItemsCord, Item)
+            ConstantInterface = mutable_not_constant,
+            StdGetPredDecl = std_get_pred_decl(ModuleName,
+                MutableName, Type, Inst, Context),
+            StdSetPredDecl = std_set_pred_decl(ModuleName,
+                MutableName, Type, Inst, Context),
+            StdGetPredDeclItem = item_pred_decl(StdGetPredDecl),
+            StdSetPredDeclItem = item_pred_decl(StdSetPredDecl),
+            !:SectionItemsCord =
+                cord.snoc(!.SectionItemsCord, StdGetPredDeclItem),
+            !:SectionItemsCord =
+                cord.snoc(!.SectionItemsCord, StdSetPredDeclItem),
+
+            IOStateInterface = mutable_var_attach_to_io_state(Attrs),
+            (
+                IOStateInterface = mutable_attach_to_io_state,
+                IOGetPredDecl = io_get_pred_decl(ModuleName,
+                    MutableName, Type, Inst, Context),
+                IOSetPredDecl = io_set_pred_decl(ModuleName,
+                    MutableName, Type, Inst, Context),
+                IOGetPredDeclItem = item_pred_decl(IOGetPredDecl),
+                IOSetPredDeclItem = item_pred_decl(IOSetPredDecl),
+                !:SectionItemsCord =
+                    cord.snoc(!.SectionItemsCord, IOGetPredDeclItem),
+                !:SectionItemsCord =
+                    cord.snoc(!.SectionItemsCord, IOSetPredDeclItem)
+            ;
+                IOStateInterface = mutable_dont_attach_to_io_state
+            )
         )
-    ),
-    get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
-        Items, !IFileItemsCord, !NoIFileItemsCord).
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_pre_grab_pre_qual_interface(RawCompUnit, InterfaceRawCompUnit) :-
+generate_pre_grab_pre_qual_interface_for_int1_int2(RawCompUnit,
+        InterfaceRawCompUnit) :-
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
     generate_pre_grab_pre_qual_item_blocks(RawItemBlocks,
@@ -466,263 +808,6 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
         Item = item_type_repn(_),
         % XXX TYPE_REPN Implement this.
         unexpected($pred, "item_type_repn")
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt, !:Specs) :-
-    RawCompUnit =
-        raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
-    !:Specs = [],
-    get_short_interface_int3_for_item_blocks(RawItemBlocks,
-        cord.init, IntInclsCord, cord.init, IntAvailsCord0,
-        cord.init, IntItemsCord0, cord.init, StdFIMItemsCord,
-        do_not_need_avails, NeedAvails, need_fims(set.init), NeedFIMs,
-        implicit_langs(set.init), ImplicitLangs, !Specs),
-    IntIncls = cord.list(IntInclsCord),
-    (
-        NeedAvails = do_not_need_avails,
-        IntAvails = []
-    ;
-        NeedAvails = do_need_avails,
-        IntAvails = cord.list(IntAvailsCord0)
-    ),
-    IntItems0 = cord.list(IntItemsCord0),
-    NeedFIMs = need_fims(NeedFIMLangs),
-    ( if set.is_empty(NeedFIMLangs) then
-        IntItems = IntItems0
-    else
-        % The StdFIMItems come from the source module, while ImplicitFIMItems
-        % are created here by us based on the needs on *all* the items
-        % in the source module.
-        %
-        % XXX This code preserves old behavior. I (zs) do not understand
-        % why we want that behavior.
-        %
-        % First, why are we including in the .int3 file foreign_import_module
-        % items that refer to languages that the rest of the .int3 file does
-        % not refer to? In other words, why aren't we filtering StdFIMItems
-        % and ImplicitFIMItems and keeping only the ones whose languages
-        % are in NeedFIMLangs?
-        %
-        % Second, why do .int3 files need foreign_import_module items at all?
-        StdFIMItems = cord.list(StdFIMItemsCord),
-        ImplicitLangs = implicit_langs(ImplicitLangsSet),
-        ImplicitFIMItems = list.map(make_foreign_import(ModuleName),
-            set.to_sorted_list(ImplicitLangsSet)),
-        IntItems = IntItems0 ++ StdFIMItems ++ ImplicitFIMItems
-    ),
-    MaybeVersionNumbers = no,
-    ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int3, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, [], IntAvails, [], IntItems, []),
-    module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
-        !Specs).
-
-:- type need_avails
-    --->    do_not_need_avails
-    ;       do_need_avails.
-
-:- type need_fims
-    --->    need_fims(set(foreign_language)).
-
-:- type implicit_langs
-    --->    implicit_langs(set(foreign_language)).
-
-:- pred get_short_interface_int3_for_item_blocks(list(raw_item_block)::in,
-    cord(item_include)::in, cord(item_include)::out,
-    cord(item_avail)::in, cord(item_avail)::out,
-    cord(item)::in, cord(item)::out,
-    cord(item)::in, cord(item)::out,
-    need_avails::in, need_avails::out,
-    need_fims::in, need_fims::out,
-    implicit_langs::in, implicit_langs::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-get_short_interface_int3_for_item_blocks([],
-        !IntIncls, !IntAvails, !IntItems, !StdFIMItems,
-        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
-get_short_interface_int3_for_item_blocks([RawItemBlock | RawItemBlocks],
-        !IntIncls, !IntAvails, !IntItems, !StdFIMItems,
-        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs) :-
-    RawItemBlock = item_block(Section, _SectionContext, Incls, Avails, Items),
-    (
-        Section = ms_interface,
-        !:IntIncls = !.IntIncls ++ cord.from_list(Incls),
-        !:IntAvails = !.IntAvails ++ cord.from_list(Avails),
-        get_short_interface_int3_for_items(Items, !IntItems, !StdFIMItems,
-            !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs)
-    ;
-        Section = ms_implementation
-    ),
-    get_short_interface_int3_for_item_blocks(RawItemBlocks,
-        !IntIncls, !IntAvails, !IntItems, !StdFIMItems,
-        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
-
-:- pred get_short_interface_int3_for_items(list(item)::in,
-    cord(item)::in, cord(item)::out,
-    cord(item)::in, cord(item)::out,
-    need_avails::in, need_avails::out,
-    need_fims::in, need_fims::out,
-    implicit_langs::in, implicit_langs::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-get_short_interface_int3_for_items([], !IntItems, !StdFIMItems,
-        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
-get_short_interface_int3_for_items([Item | Items], !IntItems, !StdFIMItems,
-        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs) :-
-    (
-        Item = item_type_defn(ItemTypeDefnInfo),
-        make_type_defn_abstract_type_for_int3(ItemTypeDefnInfo,
-            AbstractOrForeignItemTypeDefnInfo,
-            !NeedAvails, !NeedFIMs, !ImplicitLangs),
-        AbstractOrForeignItem =
-            item_type_defn(AbstractOrForeignItemTypeDefnInfo),
-        !:IntItems = cord.snoc(!.IntItems, AbstractOrForeignItem)
-    ;
-        Item = item_typeclass(ItemTypeClassInfo),
-        AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
-            := class_interface_abstract,
-        AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
-        !:IntItems = cord.snoc(!.IntItems, AbstractItem),
-        !:NeedAvails = do_need_avails
-    ;
-        Item = item_instance(ItemInstanceInfo),
-        AbstractItemInstanceInfo = ItemInstanceInfo ^ ci_method_instances
-            := instance_body_abstract,
-        AbstractItem = item_instance(AbstractItemInstanceInfo),
-        !:IntItems = cord.snoc(!.IntItems, AbstractItem),
-        !:NeedAvails = do_need_avails
-    ;
-        ( Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ),
-        !:IntItems = cord.snoc(!.IntItems, Item),
-        !:NeedAvails = do_need_avails
-    ;
-        Item = item_foreign_import_module(FIMInfo),
-        FIMInfo = item_foreign_import_module_info(Lang, Module, _, _),
-        StdFIMInfo = item_foreign_import_module_info(Lang, Module,
-            term.context_init, -1),
-        StdItem = item_foreign_import_module(StdFIMInfo),
-        !:StdFIMItems = cord.snoc(!.StdFIMItems, StdItem)
-    ;
-        Item = item_clause(ItemClause),
-        Context = ItemClause ^ cl_context,
-        Spec = clause_in_interface_warning("clause", Context),
-        !:Specs = [Spec | !.Specs]
-    ;
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, Context, _),
-        AllowedInInterface = pragma_allowed_in_interface(Pragma),
-        (
-            AllowedInInterface = no,
-            Spec = clause_in_interface_warning("pragma", Context),
-            !:Specs = [Spec | !.Specs]
-        ;
-            AllowedInInterface = yes
-        ),
-        Langs = pragma_needs_foreign_imports(Pragma),
-        !.ImplicitLangs = implicit_langs(ImplicitLangsSet0),
-        set.insert_list(Langs, ImplicitLangsSet0, ImplicitLangsSet),
-        !:ImplicitLangs = implicit_langs(ImplicitLangsSet)
-    ;
-        Item = item_mutable(_),
-        Langs = all_foreign_languages,
-        !.ImplicitLangs = implicit_langs(ImplicitLangsSet0),
-        set.insert_list(Langs, ImplicitLangsSet0, ImplicitLangsSet),
-        !:ImplicitLangs = implicit_langs(ImplicitLangsSet)
-    ;
-        ( Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_promise(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_type_repn(_)
-        ; Item = item_nothing(_)
-        )
-    ),
-    get_short_interface_int3_for_items(Items, !IntItems, !StdFIMItems,
-        !NeedAvails, !NeedFIMs, !ImplicitLangs, !Specs).
-
-:- pred make_type_defn_abstract_type_for_int3(item_type_defn_info::in,
-    item_type_defn_info::out,
-    need_avails::in, need_avails::out, need_fims::in, need_fims::out,
-    implicit_langs::in, implicit_langs::out) is det.
-
-make_type_defn_abstract_type_for_int3(ItemTypeDefn,
-        AbstractOrForeignItemTypeDefnInfo,
-        !NeedAvails, !NeedFIMs, !ImplicitLangs) :-
-    TypeDefn = ItemTypeDefn ^ td_ctor_defn,
-    (
-        TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu =
-            type_details_du(Ctors, MaybeCanonical, _MaybeDirectArgCtors),
-        ( if du_type_is_enum(DetailsDu, NumBits) then
-            AbstractDetails = abstract_type_fits_in_n_bits(NumBits)
-        else if du_type_is_notag(Ctors, MaybeCanonical) then
-            AbstractDetails = abstract_notag_type
-        else if du_type_is_dummy(DetailsDu) then
-            AbstractDetails = abstract_dummy_type
-        else
-            AbstractDetails = abstract_type_general
-        ),
-        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails)
-    ;
-        TypeDefn = parse_tree_abstract_type(_AbstractDetails),
-        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn
-    ;
-        TypeDefn = parse_tree_solver_type(_),
-        % rafe: XXX we need to also export the details of the forwarding type
-        % for the representation and the forwarding pred for initialization.
-        AbstractDetails = abstract_solver_type,
-        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails)
-    ;
-        TypeDefn = parse_tree_eqv_type(_),
-        % XXX Is this right for solver types?
-        % XXX TYPE_REPN Is this right for types that are eqv to enums,
-        % or to known size ints/uints?
-        AbstractDetails = abstract_type_general,
-        AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails)
-    ;
-        TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
-            Assertions),
-        % We always need the definitions of foreign types
-        % to handle inter-language interfacing correctly.
-        % XXX Even in .int3 files?
-        % However, we want to abstract away any unify and compare predicates.
-        (
-            MaybeCanonical = canon,
-            AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn
-        ;
-            MaybeCanonical = noncanon(_NonCanonical),
-            AbstractMaybeCanonical =
-                noncanon(noncanon_abstract(non_solver_type)),
-            AbstractDetailsForeign = type_details_foreign(ForeignType,
-                AbstractMaybeCanonical, Assertions),
-            AbstractForeignTypeDefn =
-                parse_tree_foreign_type(AbstractDetailsForeign),
-            AbstractOrForeignItemTypeDefnInfo = ItemTypeDefn ^ td_ctor_defn
-                := AbstractForeignTypeDefn
-        ),
-        % XXX ITEM_LIST This preserves old behavior, but I (zs) do not see
-        % why this is needed: foreign type definitions do not contain
-        % any sym_names with whose module qualification any imported modules
-        % could help.
-        !:NeedAvails = do_need_avails,
-
-        Lang = foreign_type_language(ForeignType),
-        !.NeedFIMs = need_fims(NeedFIMLangs0),
-        set.insert(Lang, NeedFIMLangs0, NeedFIMLangs),
-        !:NeedFIMs = need_fims(NeedFIMLangs),
-
-        !.ImplicitLangs = implicit_langs(ImplicitLangsSet0),
-        set.insert(Lang, ImplicitLangsSet0, ImplicitLangsSet),
-        !:ImplicitLangs = implicit_langs(ImplicitLangsSet)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1282,8 +1367,8 @@ accumulate_modules_from_type(Type, !Modules) :-
     % XXX ITEM_LIST The comment lines starting with a double percent
     % are the comment on the original version of this predicate.
     %
-    %% Figure out the set of abstract equivalence type constructors
-    %% (i.e. the types that are exported as abstract types and which are defined
+    %% Figure out the set of abstract equivalence type constructors (i.e.
+    %% the types that are exported as abstract types and which are defined
     %% in the implementation section as equivalence types or as foreign types).
     %% Return in NeededTypeCtors the smallest set containing those
     %% constructors, and the set of private type constructors referred to
@@ -1677,8 +1762,8 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
     type_ctor::in, list(item_type_defn_info)::in,
     list(item)::in, list(item)::out) is det.
 
-maybe_add_maybe_abstract_type_defn_items(BothTypesMap, IntTypesMap, NeededTypeCtors,
-        TypeCtor, ImpItemTypeDefnInfos, !ImpTypeDefnItems) :-
+maybe_add_maybe_abstract_type_defn_items(BothTypesMap, IntTypesMap,
+        NeededTypeCtors, TypeCtor, ImpItemTypeDefnInfos, !ImpTypeDefnItems) :-
     ( if
         set.member(TypeCtor, NeededTypeCtors),
         make_imp_type_abstract(BothTypesMap,
@@ -1966,6 +2051,168 @@ get_int2_items_from_int1_acc([Item | Items], !ItemsCord) :-
     get_int2_items_from_int1_acc(Items, !ItemsCord).
 
 %---------------------------------------------------------------------------%
+
+clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
+    Pieces = [words("Warning:"), words(ClauseOrPragma),
+        words("in module interface.")],
+    Spec = error_spec(severity_warning, phase_term_to_parse_tree,
+        [simple_msg(Context, [always(Pieces)])]).
+
+%---------------------------------------------------------------------------%
+% The rest of this module should not be needed.
+%---------------------------------------------------------------------------%
+
+get_interface(RawCompUnit, InterfaceRawCompUnit) :-
+    RawCompUnit =
+        raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
+    % XXX ITEM_LIST Don't compute _NonIFileItemBlocksCord
+    % just to throw it away. If we mode-specialize
+    % get_ifile_and_noifile_in_raw_item_blocks_acc for
+    % dont_gather_noifile_items, will the compiler optimize away
+    % the arguments for NoIFileItemBlocks?
+    get_ifile_and_noifile_in_raw_item_blocks_acc(dont_gather_noifile_items,
+        RawItemBlocks,
+        cord.init, IFileItemBlocksCord, cord.init, _NoIFileItemBlocksCord),
+    IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
+    % XXX ITEM_LIST The ms_interface is a guess.
+    % XXX ITEM_LIST (It seems to be a wrong guess; the compiler bootstraps
+    % even if we pass ms_implementation here.)
+    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
+        ms_interface, IFileItemBlocks0, IFileItemBlocks),
+    InterfaceRawCompUnit =
+        raw_compilation_unit(ModuleName, ModuleNameContext, IFileItemBlocks).
+
+get_int_and_imp(RawCompUnit, IFileItemBlocks, NoIFileItemBlocks) :-
+    RawCompUnit =
+        raw_compilation_unit(ModuleName, _ModuleNameContext, RawItemBlocks),
+    get_ifile_and_noifile_in_raw_item_blocks_acc(gather_noifile_items,
+        RawItemBlocks,
+        cord.init, IFileItemBlocksCord, cord.init, NoIFileItemBlocksCord),
+    IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
+    NoIFileItemBlocks = cord.list(NoIFileItemBlocksCord),
+    % XXX ITEM_LIST The ms_interface is a guess.
+    add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
+        ms_interface, IFileItemBlocks0, IFileItemBlocks).
+
+%---------------------------------------------------------------------------%
+
+:- type maybe_gather_noifile_items
+    --->    dont_gather_noifile_items
+    ;       gather_noifile_items.
+
+:- mode gather_noifile_items == in(bound(gather_noifile_items)).
+:- mode dont_gather_noifile_items == in(bound(dont_gather_noifile_items)).
+
+:- pred get_ifile_and_noifile_in_raw_item_blocks_acc(
+    maybe_gather_noifile_items, list(raw_item_block),
+    cord(raw_item_block), cord(raw_item_block),
+    cord(raw_item_block), cord(raw_item_block)).
+:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(
+    dont_gather_noifile_items, in, in, out, in, out) is det.
+:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(
+    gather_noifile_items, in, in, out, in, out) is det.
+
+get_ifile_and_noifile_in_raw_item_blocks_acc(_,
+        [], !IFileItemBlocksCord, !NoIFileItemBlocksCord).
+get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
+        [RawItemBlock | RawItemBlocks],
+        !IFileItemBlocksCord, !NoIFileItemBlocksCord) :-
+    RawItemBlock = item_block(Section, SectionContext, Incls, Avails, Items),
+    (
+        Section = ms_interface,
+        IFileIncls = Incls,
+        IFileAvails = Avails,
+        NoIFileIncls = [],
+        NoIFileAvails = []
+    ;
+        Section = ms_implementation,
+        IFileIncls = [],
+        IFileAvails = [],
+        (
+            GatherNoIFileItems = dont_gather_noifile_items,
+            NoIFileIncls = [],
+            NoIFileAvails = []
+        ;
+            GatherNoIFileItems = gather_noifile_items,
+            NoIFileIncls = Incls,
+            NoIFileAvails = Avails
+        )
+    ),
+    get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
+        Items, cord.init, IFileItemsCord, cord.init, NoIFileItemsCord),
+    IFileItems = cord.list(IFileItemsCord),
+    NoIFileItems = cord.list(NoIFileItemsCord),
+    ( if
+        IFileIncls = [],
+        IFileAvails = [],
+        IFileItems = []
+    then
+        true
+    else
+        IFileItemBlock = item_block(Section, SectionContext,
+            IFileIncls, IFileAvails, IFileItems),
+        !:IFileItemBlocksCord =
+            cord.snoc(!.IFileItemBlocksCord, IFileItemBlock)
+    ),
+    ( if
+        NoIFileIncls = [],
+        NoIFileAvails = [],
+        NoIFileItems = []
+    then
+        true
+    else
+        NoIFileItemBlock = item_block(Section, SectionContext,
+            NoIFileIncls, NoIFileAvails, NoIFileItems),
+        !:NoIFileItemBlocksCord =
+            cord.snoc(!.NoIFileItemBlocksCord, NoIFileItemBlock)
+    ),
+    get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
+        RawItemBlocks, !IFileItemBlocksCord, !NoIFileItemBlocksCord).
+
+:- pred get_ifile_and_noifile_in_items_acc(maybe_gather_noifile_items,
+    module_section, list(item),
+    cord(item), cord(item), cord(item), cord(item)).
+:- mode get_ifile_and_noifile_in_items_acc(
+    dont_gather_noifile_items, in, in, in, out, in, out) is det.
+:- mode get_ifile_and_noifile_in_items_acc(
+    gather_noifile_items, in, in, in, out, in, out) is det.
+
+get_ifile_and_noifile_in_items_acc(_, _,
+        [], !IFileItemsCord, !NoIFileItemsCord).
+get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
+        [Item | Items], !IFileItemsCord, !NoIFileItemsCord) :-
+    (
+        Section = ms_interface,
+        ( if Item = item_instance(ItemInstance) then
+            % Include the abstract version of the instance in the
+            % interface, ...
+            AbstractItemInstance = make_instance_abstract(ItemInstance),
+            AbstractItem = item_instance(AbstractItemInstance),
+            !:IFileItemsCord = cord.snoc(!.IFileItemsCord, AbstractItem),
+
+            % ... and the concrete version in the implementation.
+            (
+                GatherNoIFileItems = dont_gather_noifile_items
+            ;
+                GatherNoIFileItems = gather_noifile_items,
+                !:NoIFileItemsCord = cord.snoc(!.NoIFileItemsCord, Item)
+            )
+        else
+            !:IFileItemsCord = cord.snoc(!.IFileItemsCord, Item)
+        )
+    ;
+        Section = ms_implementation,
+        (
+            GatherNoIFileItems = dont_gather_noifile_items
+        ;
+            GatherNoIFileItems = gather_noifile_items,
+            !:NoIFileItemsCord = cord.snoc(!.NoIFileItemsCord, Item)
+        )
+    ),
+    get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
+        Items, !IFileItemsCord, !NoIFileItemsCord).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
@@ -2017,14 +2264,6 @@ accumulate_foreign_import_langs_in_item_block(ItemBlock, !LangSet) :-
 accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
     Langs = item_needs_foreign_imports(Item),
     set.insert_list(Langs, !LangSet).
-
-%---------------------------------------------------------------------------%
-
-clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
-    Pieces = [words("Warning:"), words(ClauseOrPragma),
-        words("in module interface.")],
-    Spec = error_spec(severity_warning, phase_term_to_parse_tree,
-        [simple_msg(Context, [always(Pieces)])]).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.
