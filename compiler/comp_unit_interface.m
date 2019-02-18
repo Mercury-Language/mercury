@@ -30,20 +30,45 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- type maybe_include_impl_types
-    --->    dont_include_impl_types
-    ;       include_impl_types.
-
-    % get_interface(IncludeImplTypes, !RawCompUnit):
+    % get_interface(RawCompUnit, InterfaceRawCompUnit):
     %
     % We return interface sections almost intact, changing them only by
-    % making instance declarations abstract.
+    % making instance declarations abstract. We delete implementation
+    % sections entirely.
     %
-    % If IncludeImplTypes = dont_include_impl_types, then we delete
-    % implementation sections entirely.
+    % XXX ITEM_LIST This predicate is called from module_imports.m.
+    % The caller is part of the code that implements --generate-dependencies.
+    % The code in write_module_interface_files.m that generates .int and
+    % .int2 files calls generate_pre_grab_pre_qual_item_blocks below.
+    % Since the contents of the .d and .dep files should be derived
+    % from what goes into .int and .int2 files, the fact that it uses
+    % a different predicate, and therefore a different algorithm,
+    % looks like a bug. This is almost certainly the reason why
+    % the contents put into .d files by mmc --generate-dependencies
+    % gets overwritten by *different* contents after we start generating
+    % interface files.
     %
-    % If IncludeImplTypes = include_impl_types, then we still delete
-    % most kinds of items from implementation sections, keeping only
+    % XXX ITEM_LIST Change the outputs to two lists of includes, two lists
+    % of avails, and two lists of items, for the interface and
+    % implementation sections respectively.
+    %
+:- pred get_interface(raw_compilation_unit::in, raw_compilation_unit::out)
+    is det.
+
+    % As above, but also return ...
+    % XXX ITEM_LIST document EXACTLY what the second list of item blocks is.
+    %
+:- pred get_int_and_imp(raw_compilation_unit::in,
+    list(raw_item_block)::out, list(raw_item_block)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % generate_pre_grab_pre_qual_item_blocks(RawCompUnit,
+    %   InterfaceRawCompUnit):
+    %
+    % We return interface sections almost intact, changing them only by
+    % making instance declarations abstract. We delete most kinds of items
+    % from implementation sections, keeping only
     %
     % - Type definitions, in a possibly changed form. Specifically,
     %   we replace the definitions (a) solver types and (b) noncanonical
@@ -61,24 +86,8 @@
     % foreign_import_module declaration for the current module
     % for the any language, we add such an item.
     %
-    % XXX ITEM_LIST This predicate is called from two places.
-    % The caller in write_module_interface_files.m specifies
-    % include_impl_types, whose job is to generate .int and .int2 files.
-    % It is used to build a version of the raw compilation unit that will be
-    % fully module qualified before being processed further.
-    % The caller in module_imports.m specifies dont_include_impl_types,
-    % and its job is part of the process of generating .d and .dep files.
-    % Since the contents of the .d and .dep files should be derived
-    % from what goes into .int and .int2 files, the fact that it uses
-    % a different algorithm looks like a bug.
-    %
-    % XXX ITEM_LIST Once we eliminated the second caller, we can
-    % both delete the flag parameter that has become unnecessary,
-    % and change the outputs to two lists of includes, two lists
-    % of avails, and two lists of items, for the interface and
-    % implementation sections respectively.
-    %
-    % XXX ITEM_LIST The original comment on this predicate was:
+    % XXX ITEM_LIST The original comment on this predicate,
+    % when it was conjoined with the code of get_interface above, was:
     % "Given the raw compilation unit of a module, extract and return
     % the part of that module that will go into the .int file of the module.
     % This will typically mostly be the interface section of the module,
@@ -88,15 +97,8 @@
     % but put the original, non-abstract instance definition in the
     % implementation section."
     %
-:- pred get_interface(maybe_include_impl_types::in,
+:- pred generate_pre_grab_pre_qual_interface(
     raw_compilation_unit::in, raw_compilation_unit::out) is det.
-
-    % As above, but also return ...
-    % XXX ITEM_LIST document EXACTLY what the second list of item blocks is.
-    %
-:- pred get_int_and_impl(maybe_include_impl_types::in,
-    raw_compilation_unit::in,
-    list(raw_item_block)::out, list(raw_item_block)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -167,7 +169,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-get_interface(IncludeImplTypes, RawCompUnit, InterfaceRawCompUnit) :-
+get_interface(RawCompUnit, InterfaceRawCompUnit) :-
     RawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
     % XXX ITEM_LIST Don't compute _NonIFileItemBlocksCord
@@ -175,8 +177,8 @@ get_interface(IncludeImplTypes, RawCompUnit, InterfaceRawCompUnit) :-
     % get_ifile_and_noifile_in_raw_item_blocks_acc for
     % dont_gather_noifile_items, will the compiler optimize away
     % the arguments for NoIFileItemBlocks?
-    get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
-        dont_gather_noifile_items, RawItemBlocks,
+    get_ifile_and_noifile_in_raw_item_blocks_acc(dont_gather_noifile_items,
+        RawItemBlocks,
         cord.init, IFileItemBlocksCord, cord.init, _NoIFileItemBlocksCord),
     IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
     % XXX ITEM_LIST The ms_interface is a guess.
@@ -187,12 +189,11 @@ get_interface(IncludeImplTypes, RawCompUnit, InterfaceRawCompUnit) :-
     InterfaceRawCompUnit =
         raw_compilation_unit(ModuleName, ModuleNameContext, IFileItemBlocks).
 
-get_int_and_impl(IncludeImplTypes, RawCompUnit,
-        IFileItemBlocks, NoIFileItemBlocks) :-
+get_int_and_imp(RawCompUnit, IFileItemBlocks, NoIFileItemBlocks) :-
     RawCompUnit =
         raw_compilation_unit(ModuleName, _ModuleNameContext, RawItemBlocks),
-    get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
-        gather_noifile_items, RawItemBlocks,
+    get_ifile_and_noifile_in_raw_item_blocks_acc(gather_noifile_items,
+        RawItemBlocks,
         cord.init, IFileItemBlocksCord, cord.init, NoIFileItemBlocksCord),
     IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
     NoIFileItemBlocks = cord.list(NoIFileItemBlocksCord),
@@ -209,19 +210,19 @@ get_int_and_impl(IncludeImplTypes, RawCompUnit,
 :- mode gather_noifile_items == in(bound(gather_noifile_items)).
 :- mode dont_gather_noifile_items == in(bound(dont_gather_noifile_items)).
 
-:- pred get_ifile_and_noifile_in_raw_item_blocks_acc(maybe_include_impl_types,
+:- pred get_ifile_and_noifile_in_raw_item_blocks_acc(
     maybe_gather_noifile_items, list(raw_item_block),
     cord(raw_item_block), cord(raw_item_block),
     cord(raw_item_block), cord(raw_item_block)).
-:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(in,
+:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(
     dont_gather_noifile_items, in, in, out, in, out) is det.
-:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(in,
+:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(
     gather_noifile_items, in, in, out, in, out) is det.
 
-get_ifile_and_noifile_in_raw_item_blocks_acc(_, _,
+get_ifile_and_noifile_in_raw_item_blocks_acc(_,
         [], !IFileItemBlocksCord, !NoIFileItemBlocksCord).
-get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
-        GatherNoIFileItems, [RawItemBlock | RawItemBlocks],
+get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
+        [RawItemBlock | RawItemBlocks],
         !IFileItemBlocksCord, !NoIFileItemBlocksCord) :-
     RawItemBlock = item_block(Section, SectionContext, Incls, Avails, Items),
     (
@@ -232,15 +233,8 @@ get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
         NoIFileAvails = []
     ;
         Section = ms_implementation,
-        (
-            IncludeImplTypes = dont_include_impl_types,
-            IFileIncls = [],
-            IFileAvails = []
-        ;
-            IncludeImplTypes = include_impl_types,
-            IFileIncls = Incls,
-            IFileAvails = Avails
-        ),
+        IFileIncls = [],
+        IFileAvails = [],
         (
             GatherNoIFileItems = dont_gather_noifile_items,
             NoIFileIncls = [],
@@ -251,9 +245,8 @@ get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
             NoIFileAvails = Avails
         )
     ),
-    get_ifile_and_noifile_in_items_acc(IncludeImplTypes, GatherNoIFileItems,
-        Section, Items,
-        cord.init, IFileItemsCord, cord.init, NoIFileItemsCord),
+    get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
+        Items, cord.init, IFileItemsCord, cord.init, NoIFileItemsCord),
     IFileItems = cord.list(IFileItemsCord),
     NoIFileItems = cord.list(NoIFileItemsCord),
     ( if
@@ -280,22 +273,21 @@ get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
         !:NoIFileItemBlocksCord =
             cord.snoc(!.NoIFileItemBlocksCord, NoIFileItemBlock)
     ),
-    get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
-        GatherNoIFileItems, RawItemBlocks,
-        !IFileItemBlocksCord, !NoIFileItemBlocksCord).
+    get_ifile_and_noifile_in_raw_item_blocks_acc(GatherNoIFileItems,
+        RawItemBlocks, !IFileItemBlocksCord, !NoIFileItemBlocksCord).
 
-:- pred get_ifile_and_noifile_in_items_acc(maybe_include_impl_types,
-    maybe_gather_noifile_items, module_section, list(item),
+:- pred get_ifile_and_noifile_in_items_acc(maybe_gather_noifile_items,
+    module_section, list(item),
     cord(item), cord(item), cord(item), cord(item)).
-:- mode get_ifile_and_noifile_in_items_acc(in,
+:- mode get_ifile_and_noifile_in_items_acc(
     dont_gather_noifile_items, in, in, in, out, in, out) is det.
-:- mode get_ifile_and_noifile_in_items_acc(in,
+:- mode get_ifile_and_noifile_in_items_acc(
     gather_noifile_items, in, in, in, out, in, out) is det.
 
-get_ifile_and_noifile_in_items_acc(_, _, _,
+get_ifile_and_noifile_in_items_acc(_, _,
         [], !IFileItemsCord, !NoIFileItemsCord).
-get_ifile_and_noifile_in_items_acc(IncludeImplTypes, GatherNoIFileItems,
-        Section, [Item | Items], !IFileItemsCord, !NoIFileItemsCord) :-
+get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
+        [Item | Items], !IFileItemsCord, !NoIFileItemsCord) :-
     (
         Section = ms_interface,
         ( if Item = item_instance(ItemInstance) then
@@ -322,20 +314,110 @@ get_ifile_and_noifile_in_items_acc(IncludeImplTypes, GatherNoIFileItems,
         ;
             GatherNoIFileItems = gather_noifile_items,
             !:NoIFileItemsCord = cord.snoc(!.NoIFileItemsCord, Item)
-        ),
-        % XXX ITEM_LIST Unify include_in_int_file_implementation with
-        % include_in_short_interface.
-        ( if
-            IncludeImplTypes = include_impl_types,
-            include_in_int_file_implementation(Item) = yes(IFileItem)
-        then
-            !:IFileItemsCord = cord.snoc(!.IFileItemsCord, IFileItem)
-        else
-            true
         )
     ),
-    get_ifile_and_noifile_in_items_acc(IncludeImplTypes, GatherNoIFileItems,
-        Section, Items, !IFileItemsCord, !NoIFileItemsCord).
+    get_ifile_and_noifile_in_items_acc(GatherNoIFileItems, Section,
+        Items, !IFileItemsCord, !NoIFileItemsCord).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+generate_pre_grab_pre_qual_interface(RawCompUnit, InterfaceRawCompUnit) :-
+    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+        RawItemBlocks),
+    generate_pre_grab_pre_qual_item_blocks(RawItemBlocks,
+        cord.init, IntInclsCord, cord.init, ImpInclsCord,
+        cord.init, IntAvailsCord, cord.init, ImpAvailsCord,
+        cord.init, IntItemsCord, cord.init, ImpItemsCord),
+    IntIncls = cord.list(IntInclsCord),
+    ImpIncls = cord.list(ImpInclsCord),
+    IntAvails = cord.list(IntAvailsCord),
+    ImpAvails = cord.list(ImpAvailsCord),
+    IntItems0 = cord.list(IntItemsCord),
+    ImpItems = cord.list(ImpItemsCord),
+    list.foldl(accumulate_foreign_import_langs_in_item, IntItems0,
+        set.init, LangSet0),
+    list.foldl(accumulate_foreign_import_langs_in_item, ImpItems,
+        LangSet0, LangSet),
+    Langs = set.to_sorted_list(LangSet),
+    (
+        Langs = [],
+        IntItems = IntItems0
+    ;
+        Langs = [_ | _],
+        % XXX ITEM_LIST Adding the foreign_import_module items to the
+        % interface section is a guess.
+        % XXX ITEM_LIST (It seems to be a wrong guess; the compiler bootstraps
+        % even if we add them to implementation section.)
+        list.foldl(accumulate_foreign_import(ModuleName), Langs,
+            IntItems0, IntItems)
+    ),
+    int_imp_items_to_item_blocks(ModuleNameContext,
+        ms_interface, ms_implementation,
+        IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems,
+        InterfaceItemBlocks),
+    InterfaceRawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+        InterfaceItemBlocks).
+
+%---------------------------------------------------------------------------%
+
+:- pred generate_pre_grab_pre_qual_item_blocks(list(raw_item_block)::in,
+    cord(item_include)::in, cord(item_include)::out,
+    cord(item_include)::in, cord(item_include)::out,
+    cord(item_avail)::in, cord(item_avail)::out,
+    cord(item_avail)::in, cord(item_avail)::out,
+    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
+
+generate_pre_grab_pre_qual_item_blocks([],
+        !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
+        !IntItemsCord, !ImpItemsCord).
+generate_pre_grab_pre_qual_item_blocks([RawItemBlock | RawItemBlocks],
+        !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
+        !IntItemsCord, !ImpItemsCord) :-
+    RawItemBlock = item_block(Section, _SectionContext, Incls, Avails, Items),
+    (
+        Section = ms_interface,
+        !:IntInclsCord = !.IntInclsCord ++ cord.from_list(Incls),
+        !:IntAvailsCord = !.IntAvailsCord ++ cord.from_list(Avails),
+        generate_pre_grab_pre_qual_items_int(Items, !IntItemsCord)
+    ;
+        Section = ms_implementation,
+        !:ImpInclsCord = !.ImpInclsCord ++ cord.from_list(Incls),
+        !:ImpAvailsCord = !.ImpAvailsCord ++ cord.from_list(Avails),
+        generate_pre_grab_pre_qual_items_imp(Items, !ImpItemsCord)
+    ),
+    generate_pre_grab_pre_qual_item_blocks(RawItemBlocks,
+        !IntInclsCord, !ImpInclsCord, !IntAvailsCord, !ImpAvailsCord,
+        !IntItemsCord, !ImpItemsCord).
+
+:- pred generate_pre_grab_pre_qual_items_int(list(item)::in,
+    cord(item)::in, cord(item)::out) is det.
+
+generate_pre_grab_pre_qual_items_int([], !ItemsCord).
+generate_pre_grab_pre_qual_items_int([Item | Items], !ItemsCord) :-
+    ( if Item = item_instance(ItemInstance) then
+        AbstractItemInstance = ItemInstance ^ ci_method_instances
+            := instance_body_abstract,
+        AbstractItem = item_instance(AbstractItemInstance),
+        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
+    else
+        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+    ),
+    generate_pre_grab_pre_qual_items_int(Items, !ItemsCord).
+
+:- pred generate_pre_grab_pre_qual_items_imp(list(item)::in,
+    cord(item)::in, cord(item)::out) is det.
+
+generate_pre_grab_pre_qual_items_imp([], !ItemsCord).
+generate_pre_grab_pre_qual_items_imp([Item | Items], !ItemsCord) :-
+    MaybeIncludeItem = include_in_int_file_implementation(Item),
+    (
+        MaybeIncludeItem = yes(IncludeItem),
+        !:ItemsCord = cord.snoc(!.ItemsCord, IncludeItem)
+    ;
+        MaybeIncludeItem = no
+    ),
+    generate_pre_grab_pre_qual_items_imp(Items, !ItemsCord).
 
 :- func include_in_int_file_implementation(item) = maybe(item).
 
@@ -351,7 +433,8 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
         MaybeIFileItem = yes(AbstractItem)
     ;
         Item = item_typeclass(ItemTypeClassInfo),
-        make_abstract_typeclass(ItemTypeClassInfo, AbstractItemTypeClassInfo),
+        AbstractItemTypeClassInfo = ItemTypeClassInfo ^ tc_class_methods
+            := class_interface_abstract,
         AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
         MaybeIFileItem = yes(AbstractItem)
     ;
@@ -360,45 +443,9 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
-        (
-            Pragma = pragma_foreign_enum(_),
+        ( if Pragma = pragma_foreign_enum(_) then
             MaybeIFileItem = yes(Item)
-        ;
-            % XXX I am not sure about the proper value of MaybeIFileItem
-            % for some of these. -zs
-            ( Pragma = pragma_foreign_decl(_)
-            ; Pragma = pragma_foreign_code(_)
-            ; Pragma = pragma_foreign_proc(_)
-            ; Pragma = pragma_foreign_proc_export(_)
-            ; Pragma = pragma_foreign_export_enum(_)
-            ; Pragma = pragma_external_proc(_)
-            ; Pragma = pragma_type_spec(_)
-            ; Pragma = pragma_inline(_)
-            ; Pragma = pragma_no_inline(_)
-            ; Pragma = pragma_consider_used(_)
-            ; Pragma = pragma_unused_args(_)
-            ; Pragma = pragma_exceptions(_)
-            ; Pragma = pragma_trailing_info(_)
-            ; Pragma = pragma_mm_tabling_info(_)
-            ; Pragma = pragma_obsolete(_)
-            ; Pragma = pragma_no_detism_warning(_)
-            ; Pragma = pragma_require_tail_recursion(_)
-            ; Pragma = pragma_oisu(_)
-            ; Pragma = pragma_tabled(_)
-            ; Pragma = pragma_fact_table(_)
-            ; Pragma = pragma_promise_eqv_clauses(_)
-            ; Pragma = pragma_promise_pure(_)
-            ; Pragma = pragma_promise_semipure(_)
-            ; Pragma = pragma_termination_info(_)
-            ; Pragma = pragma_termination2_info(_)
-            ; Pragma = pragma_terminates(_)
-            ; Pragma = pragma_does_not_terminate(_)
-            ; Pragma = pragma_check_termination(_)
-            ; Pragma = pragma_mode_check_clauses(_)
-            ; Pragma = pragma_structure_sharing(_)
-            ; Pragma = pragma_structure_reuse(_)
-            ; Pragma = pragma_require_feature_set(_)
-            ),
+        else
             MaybeIFileItem = no
         )
     ;
@@ -1592,7 +1639,7 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
 
 %---------------------%
 
-    % Give a type constructor's type definitions from the implementation
+    % Given a type constructor's type definitions from the implementation
     % section, as recorded in ImpTypesMap, include their abstract versions
     % in !ImpTypeDefnItems, the list of type definition items scheduled to be
     % added back to the implementation section, *provided* that
@@ -1936,6 +1983,12 @@ add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
             [], [], ImportItems),
         ItemBlocks = [ImportItemBlock | ItemBlocks0]
     ).
+
+:- pred accumulate_foreign_import(module_name::in, foreign_language::in,
+    list(item)::in, list(item)::out) is det.
+
+accumulate_foreign_import(ModuleName, Lang, !Items) :-
+    !:Items = [make_foreign_import(ModuleName, Lang) | !.Items].
 
 :- func make_foreign_import(module_name, foreign_language) = item.
 

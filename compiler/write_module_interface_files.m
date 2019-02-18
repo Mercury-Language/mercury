@@ -395,7 +395,7 @@ process_item_for_private_interface(ModuleName, Item,
 write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
         MaybeTimestamp, RawCompUnit0, !IO) :-
     RawCompUnit0 = raw_compilation_unit(ModuleName, _, _),
-    get_interface(include_impl_types, RawCompUnit0, IntRawCompUnit),
+    generate_pre_grab_pre_qual_interface(RawCompUnit0, IntRawCompUnit),
 
     % Get the .int3 files for imported modules.
     grab_unqual_imported_modules(Globals, SourceFileName,

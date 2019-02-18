@@ -500,8 +500,7 @@ get_src_item_blocks_public_children(RawCompUnit,
         raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
         map.init(PublicChildren)
     else
-        get_int_and_impl(dont_include_impl_types, RawCompUnit,
-            IFileItemBlocks, NoIFileItemBlocks),
+        get_int_and_imp(RawCompUnit, IFileItemBlocks, NoIFileItemBlocks),
         raw_item_blocks_to_src(IFileItemBlocks, IFileSrcItemBlocks),
         raw_item_blocks_to_split_src(NoIFileItemBlocks, NoIFileSrcItemBlocks),
         SrcItemBlocks = IFileSrcItemBlocks ++ NoIFileSrcItemBlocks,

@@ -384,7 +384,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     multi_map.merge(ImplicitImplUseDeps, ImplUseDeps0, ImplUseDeps),
     multi_map.merge(ImplImportDeps, ImplUseDeps, ImplementationDeps),
 
-    get_interface(dont_include_impl_types, RawCompUnit0, RawCompUnit),
+    get_interface(RawCompUnit0, RawCompUnit),
     RawCompUnit = raw_compilation_unit(_, _, InterfaceItemBlocks),
     get_dependencies_in_item_blocks(InterfaceItemBlocks,
         InterfaceImportDeps0, InterfaceUseDeps0),
