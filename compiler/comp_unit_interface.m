@@ -1460,17 +1460,16 @@ accumulate_abs_imp_exported_type_lhs_2(IntTypesMap, BothTypesMap,
     ;
         ImpTypeDefn = parse_tree_foreign_type(_),
         ( if map.search(IntTypesMap, TypeCtor, _) then
-            % XXX ITEM_LIST This looks like a lost opportunity to me,
+            % XXX ITEM_LIST This looks like a lost opportunity to me (zs),
             % because the only foreign types that *need* the same treatment
             % as equivalence types are foreign types that are bigger than
-            % one word in size. These should be extremely rare, so it should
-            % be ok for us to require programmers to add a new attribute
-            % (named something like "may_be_larger_than_word") on the
-            % definitions of foreign types that may be larger than a word
-            % on *some* platforms (not necessarily *all* platforms).
-            % For example, a type that is defined to be implemented by
-            % the C type int64_t will be word sized on x86_64, but will be
-            % larger than word sized on plain on 32 bit x86.
+            % one word in size. The ones that have can_pass_as_mercury_type
+            % as an attribute are supposed to fit into one word (though
+            % that assertion may be valid for some platforms only) and thus
+            % *could* be left out of !AbsExpEqvLhsTypeCtors.
+            %
+            % However, before making such a change, consider everything
+            % in the discussion on this topic on m-rev on 2019 feb 18-19.
             set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors)
         else
             true
